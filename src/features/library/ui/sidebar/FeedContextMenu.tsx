@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { MoreVertical, Pencil, RefreshCw, Trash2 } from 'lucide-react';
+import { CheckCheck, MoreVertical, Pencil, RefreshCw, Trash2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +14,7 @@ import type { SavedFeedSubscription } from '@/features/library/domain/types/feed
 export interface FeedContextMenuProps {
   feed: SavedFeedSubscription;
   onRefresh?: (feed: SavedFeedSubscription) => void;
+  onMarkAllAsRead?: (feed: SavedFeedSubscription) => void;
   onEdit: (feed: SavedFeedSubscription) => void;
   onDelete: (feed: SavedFeedSubscription) => void;
 }
@@ -21,6 +22,7 @@ export interface FeedContextMenuProps {
 export function FeedContextMenu({
   feed,
   onRefresh,
+  onMarkAllAsRead,
   onEdit,
   onDelete,
 }: FeedContextMenuProps) {
@@ -33,7 +35,7 @@ export function FeedContextMenu({
             e.preventDefault();
             e.stopPropagation();
           }}
-          className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground opacity-0 group-hover/item:opacity-100 data-[state=open]:opacity-100 data-[state=open]:bg-background data-[state=open]:border-border data-[state=open]:shadow-2xs data-[state=open]:text-foreground focus-visible:opacity-100 border border-transparent hover:border-border/50 hover:bg-background hover:shadow-2xs active:scale-95 transition-all duration-150 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground opacity-0 group-hover/item:opacity-100 data-[state=open]:opacity-100 data-[state=open]:bg-muted data-[state=open]:text-foreground focus-visible:opacity-100 hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring"
           aria-label={`Options for ${feed.name}`}
         >
           <MoreVertical className="size-3.5 shrink-0" strokeWidth={1.5} />
@@ -45,7 +47,7 @@ export function FeedContextMenu({
         sideOffset={4}
         collisionPadding={12}
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="w-44 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
+        className="w-48 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
       >
         {onRefresh && (
           <DropdownMenuItem
@@ -54,6 +56,16 @@ export function FeedContextMenu({
           >
             <RefreshCw className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
             <span>Refresh Feed</span>
+          </DropdownMenuItem>
+        )}
+
+        {onMarkAllAsRead && (
+          <DropdownMenuItem
+            onClick={() => onMarkAllAsRead(feed)}
+            className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+          >
+            <CheckCheck className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+            <span>Mark Feed as Read</span>
           </DropdownMenuItem>
         )}
 

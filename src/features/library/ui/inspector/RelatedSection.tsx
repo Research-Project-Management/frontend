@@ -240,20 +240,6 @@ export default function RelatedSection(props: RelatedSectionProps) {
         </div>
       )}
 
-      {/* Empty state with inline Add action */}
-      {!isLoading && relatedList.length === 0 && canEdit && (
-        <div className="pt-0.5 px-1.5">
-          <button
-            type="button"
-            onClick={() => setModalOpen(true)}
-            className="inline-flex items-center gap-1 text-11 text-muted-foreground hover:text-foreground transition-colors cursor-pointer py-0.5"
-          >
-            <Plus className="size-3" strokeWidth={1.5} />
-            Add related item
-          </button>
-        </div>
-      )}
-
       {/* Relations list in Inspector */}
       {!isLoading && relatedList.length > 0 && (
         <div className="flex flex-col gap-2">

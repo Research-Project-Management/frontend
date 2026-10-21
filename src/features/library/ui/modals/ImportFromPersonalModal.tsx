@@ -209,7 +209,7 @@ export default function ImportFromPersonalModal({
           <div>
             <div className="flex items-center gap-2">
               <Library
-                className="size-4 text-primary shrink-0"
+                className="size-4 text-foreground shrink-0"
                 strokeWidth={1.5}
               />
               <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">

@@ -18,6 +18,52 @@ import type { InspectorSectionId } from '@/features/library/core/store/library-u
 
 export type InspectorTabKey = InspectorSectionId;
 
+/**
+ * Inspector Levels counted from bottom icon to top icon:
+ * Level 1: 'cite' (1 bar/tab: Citation)
+ * Level 2: 'relations' (2 bars/tabs: Related, Citation)
+ * Level 3: 'tags' (3 bars/tabs: Tags, Related, Citation)
+ * Level 4: 'collections' (4 bars/tabs: Collections, Tags, Related, Citation)
+ * Level 5: 'notes' (5 bars/tabs: Notes, Collections, Tags, Related, Citation)
+ * Level 6: 'files' (6 bars/tabs: Attachments, Notes, Collections, Tags, Related, Citation)
+ * Level 7: 'abstract' (7 bars/tabs: Abstract, Attachments, Notes, Collections, Tags, Related, Citation)
+ * Level 8: 'info' (8 bars/tabs: Details, Abstract, Attachments, Notes, Collections, Tags, Related, Citation)
+ */
+export const INSPECTOR_LEVELS_FROM_BOTTOM: InspectorSectionId[] = [
+  'cite',
+  'relations',
+  'tags',
+  'collections',
+  'notes',
+  'files',
+  'abstract',
+  'info',
+];
+
+export const INSPECTOR_LEVELS = INSPECTOR_LEVELS_FROM_BOTTOM;
+
+export const SECTION_TO_LEVEL: Record<InspectorSectionId, number> = {
+  cite: 1,
+  relations: 2,
+  tags: 3,
+  collections: 4,
+  notes: 5,
+  files: 6,
+  abstract: 7,
+  info: 8,
+};
+
+export const LEVEL_TO_SECTION: Record<number, InspectorSectionId> = {
+  1: 'cite',
+  2: 'relations',
+  3: 'tags',
+  4: 'collections',
+  5: 'notes',
+  6: 'files',
+  7: 'abstract',
+  8: 'info',
+};
+
 interface TabItem {
   id: InspectorTabKey;
   label: string;
@@ -40,6 +86,7 @@ export interface InspectorTabsProps {
 /**
  * Vertical Icon Panel Bar
  * Replaces the horizontal tabs with a dedicated vertical bar adhering to Flux workspace specs.
+ * Supports level selection: Level 1 (bottom citation) to Level 8 (top info).
  */
 export function InspectorTabs({
   activeTab,
@@ -96,7 +143,10 @@ export function InspectorTabs({
       <div className={cn("flex flex-col items-center gap-1 w-full px-1", hideRailToggle ? "pt-2" : "pt-1.5")}>
         {tabs.map((tab) => {
           const Icon = tab.icon;
-          const isActive = isInspectorOpen && activeTab === tab.id;
+          const tabLevel = SECTION_TO_LEVEL[tab.id];
+          const activeLevel = SECTION_TO_LEVEL[activeTab] || 8;
+          const isSelectedLevel = isInspectorOpen && activeTab === tab.id;
+          const isInActiveLevel = isInspectorOpen && tabLevel <= activeLevel;
 
           return (
             <Tooltip key={tab.id}>
@@ -104,26 +154,41 @@ export function InspectorTabs({
                 <button
                   type="button"
                   onClick={() => {
+                    if (isInspectorOpen && activeTab === tab.id) {
+                      onToggleInspector?.();
+                      return;
+                    }
                     if (!isInspectorOpen) {
                       onToggleInspector?.();
                     }
                     onTabChange(tab.id);
                   }}
                   className={cn(
-                    'relative size-8 flex items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors cursor-pointer text-foreground before:absolute before:-inset-1.5 md:before:hidden',
-                    isActive
-                      ? 'bg-muted font-medium'
-                      : 'hover:bg-muted',
+                    'relative size-8 flex items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary transition-all cursor-pointer before:absolute before:-inset-1.5 md:before:hidden',
+                    isSelectedLevel
+                      ? 'bg-muted text-foreground font-semibold shadow-xs ring-1 ring-border'
+                      : isInActiveLevel
+                        ? 'text-foreground hover:bg-muted/70'
+                        : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/40',
                   )}
-                  aria-label={tab.label}
-                  aria-current={isActive ? 'true' : undefined}
+                  aria-label={`${tab.label} (Level ${tabLevel})`}
+                  aria-current={isSelectedLevel ? 'true' : undefined}
                 >
-                  <Icon className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+                  <Icon className="size-4 shrink-0" strokeWidth={1.5} />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="left" sideOffset={6}>
-                {tab.label}
-                {tab.badge !== undefined && tab.badge > 0 ? ` (${tab.badge})` : ''}
+              <TooltipContent side="left" sideOffset={6} className="text-11">
+                <div className="flex items-center gap-1.5 font-medium">
+                  <span>{tab.label}</span>
+                  <span className="text-10 px-1 py-0.5 rounded bg-muted text-muted-foreground font-mono">
+                    L{tabLevel} • {tabLevel} tab{tabLevel > 1 ? 's' : ''}
+                  </span>
+                </div>
+                {tab.badge !== undefined && tab.badge > 0 && (
+                  <div className="text-10 text-muted-foreground mt-0.5">
+                    Count: {tab.badge}
+                  </div>
+                )}
               </TooltipContent>
             </Tooltip>
           );
@@ -137,5 +202,3 @@ export function InspectorTabs({
 }
 
 export default InspectorTabs;
-
-

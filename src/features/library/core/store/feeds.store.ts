@@ -1,20 +1,29 @@
 import { create } from 'zustand';
+import { z } from 'zod';
 import {
   SavedFeedSubscription,
+  savedFeedSubscriptionSchema,
   DEFAULT_ACADEMIC_FEEDS,
   FEEDS_STORAGE_KEY,
   FEEDS_READ_STATE_KEY,
+  FeedReadFilterType,
+  FeedRetentionDays,
 } from '@/features/library/domain/types/feeds.types';
+import type { ParsedFeedEntry } from '@/features/library/domain/feed-parser.domain';
 
 interface FeedsStore {
   feeds: SavedFeedSubscription[];
   activeFeedId: string | null;
+  selectedFeedEntry: ParsedFeedEntry | null;
+  readFilter: FeedReadFilterType;
   refreshCounter: number;
   readEntryIds: Set<string>;
   loadFeeds: () => void;
   setActiveFeedId: (id: string | null) => void;
+  setSelectedFeedEntry: (entry: ParsedFeedEntry | null) => void;
+  setReadFilter: (filter: FeedReadFilterType) => void;
   triggerRefresh: () => void;
-  addFeed: (name: string, url: string, retentionDays?: number) => SavedFeedSubscription;
+  addFeed: (name: string, url: string, retentionDays?: FeedRetentionDays) => SavedFeedSubscription;
   updateFeed: (id: string, updates: Partial<Omit<SavedFeedSubscription, 'id'>>) => void;
   removeFeed: (id: string) => void;
   markEntryAsRead: (entryId: string) => void;
@@ -26,6 +35,8 @@ interface FeedsStore {
 export const useFeedsStore = create<FeedsStore>((set, get) => ({
   feeds: DEFAULT_ACADEMIC_FEEDS,
   activeFeedId: null,
+  selectedFeedEntry: null,
+  readFilter: 'all',
   refreshCounter: 0,
   readEntryIds: new Set<string>(),
 
@@ -35,8 +46,9 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
       const saved = window.localStorage.getItem(FEEDS_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          set({ feeds: parsed });
+        const parsedFeeds = z.array(savedFeedSubscriptionSchema).safeParse(parsed);
+        if (parsedFeeds.success && parsedFeeds.data.length > 0) {
+          set({ feeds: parsedFeeds.data });
         } else {
           set({ feeds: DEFAULT_ACADEMIC_FEEDS });
         }
@@ -48,7 +60,11 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
       if (savedRead) {
         const parsedRead = JSON.parse(savedRead);
         if (Array.isArray(parsedRead)) {
-          set({ readEntryIds: new Set(parsedRead) });
+          set({
+            readEntryIds: new Set(
+              parsedRead.filter((id): id is string => typeof id === 'string'),
+            ),
+          });
         }
       }
     } catch {
@@ -58,9 +74,13 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
 
   setActiveFeedId: (id) => set({ activeFeedId: id }),
 
+  setSelectedFeedEntry: (entry) => set({ selectedFeedEntry: entry }),
+
+  setReadFilter: (filter) => set({ readFilter: filter }),
+
   triggerRefresh: () => set((s) => ({ refreshCounter: s.refreshCounter + 1 })),
 
-  addFeed: (name, url, retentionDays = 30) => {
+  addFeed: (name, url, retentionDays: FeedRetentionDays = 30) => {
     const trimmedUrl = url.trim();
     const trimmedName =
       name.trim() || trimmedUrl.replace(/^https?:\/\/(www\.)?/i, '').slice(0, 42);

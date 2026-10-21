@@ -5,13 +5,9 @@ import {
   Library,
   FileText,
   X,
-  Printer,
   Download,
   Maximize2,
   Minimize2,
-  ChevronDown,
-  Search,
-  Check,
 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { logger } from "@/shared/lib/logger";
@@ -20,12 +16,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/shared/components/ui/tooltip";
-import { Input } from "@/shared/components/ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-} from "@/shared/components/ui/dropdown-menu";
 import type { ReaderDocument } from "@/features/library/domain/types/reader.types";
 import type { ReaderTab } from "@/features/library/core/store/reader.store";
 
@@ -59,8 +49,6 @@ export const ReaderTopbar = memo(function ReaderTopbar({
   const libraryTitle = scopeTitle || "My Library";
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
-  const [isTabsMenuOpen, setIsTabsMenuOpen] = useState(false);
-  const [tabSearchQuery, setTabSearchQuery] = useState("");
 
   useEffect(() => {
     setIsMounted(true);
@@ -70,18 +58,6 @@ export const ReaderTopbar = memo(function ReaderTopbar({
     document.addEventListener("fullscreenchange", handleFsChange);
     return () =>
       document.removeEventListener("fullscreenchange", handleFsChange);
-  }, []);
-
-  // Global shortcut for Open-Tabs menu: Ctrl+; (or Cmd+; on Mac)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === ";") {
-        e.preventDefault();
-        setIsTabsMenuOpen((prev) => !prev);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
   const handleToggleFullscreen = () => {
@@ -129,14 +105,6 @@ export const ReaderTopbar = memo(function ReaderTopbar({
       : "library";
   const isDocumentActive = currentTabId !== "library";
 
-  const filteredTabs = useMemo(() => {
-    if (!tabSearchQuery.trim()) return effectiveTabs;
-    const q = tabSearchQuery.toLowerCase().trim();
-    return effectiveTabs.filter(
-      (t) => t.title && t.title.toLowerCase().includes(q),
-    );
-  }, [effectiveTabs, tabSearchQuery]);
-
   return (
     <header className="h-10 shrink-0 bg-background border-b border-border flex items-center px-1 select-none z-30 text-12">
       {/* Scrollable Tabs Bar */}
@@ -173,7 +141,7 @@ export const ReaderTopbar = memo(function ReaderTopbar({
                   className="size-3.5 shrink-0 text-foreground"
                   strokeWidth={1.5}
                 />
-                <span className="truncate max-w-[140px]">{tabTitle}</span>
+                <span className="font-sans font-medium">{tabTitle}</span>
               </button>
             );
           }
@@ -182,9 +150,16 @@ export const ReaderTopbar = memo(function ReaderTopbar({
             <div
               key={tab.id}
               role="tab"
-              tabIndex={0}
               aria-selected={isActive}
+              tabIndex={0}
               onClick={() => onSelectTab?.(tab.id)}
+              onAuxClick={(e) => {
+                // Middle click to close tab
+                if (e.button === 1 && onCloseTab) {
+                  e.preventDefault();
+                  onCloseTab(tab.id);
+                }
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
@@ -231,157 +206,8 @@ export const ReaderTopbar = memo(function ReaderTopbar({
         })}
       </div>
 
-      {/* Zotero-native Open-Tabs Menu Button (Ctrl+;) */}
-      <div className="flex items-center px-0.5 shrink-0">
-        <DropdownMenu open={isTabsMenuOpen} onOpenChange={setIsTabsMenuOpen}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  aria-label="List all tabs (Ctrl+;)"
-                  className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                >
-                  <ChevronDown
-                    className="size-3.5 text-foreground shrink-0"
-                    strokeWidth={1.5}
-                  />
-                </button>
-              </DropdownMenuTrigger>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-11">
-              Open Tabs (Ctrl+;)
-            </TooltipContent>
-          </Tooltip>
-
-          <DropdownMenuContent
-            align="end"
-            className="w-72 max-h-[380px] flex flex-col p-1.5 text-12 bg-popover border border-border shadow-raised-200 rounded-md z-50 font-sans"
-          >
-            {/* Search tabs input */}
-            <div className="relative flex items-center mb-1.5">
-              <Search
-                className="size-3.5 absolute left-2 text-muted-foreground pointer-events-none shrink-0"
-                strokeWidth={1.5}
-              />
-              <Input
-                type="text"
-                value={tabSearchQuery}
-                onChange={(e) => setTabSearchQuery(e.target.value)}
-                placeholder="Search open tabs..."
-                className="h-7 pl-7 pr-6 text-11 bg-background font-sans"
-                autoFocus
-              />
-              {tabSearchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setTabSearchQuery("")}
-                  className="size-4 absolute right-1.5 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer"
-                  aria-label="Clear tab search"
-                >
-                  <X className="size-3" strokeWidth={1.5} />
-                </button>
-              )}
-            </div>
-
-            {/* Scrollable tabs list */}
-            <div className="overflow-y-auto max-h-[280px] space-y-0.5 thin-scrollbar">
-              {filteredTabs.length === 0 ? (
-                <div className="py-4 text-center text-11 text-muted-foreground">
-                  No matching open tabs
-                </div>
-              ) : (
-                filteredTabs.map((tab) => {
-                  const isActive = tab.id === currentTabId;
-                  const isLibrary =
-                    tab.id === "library" || tab.type === "library";
-
-                  return (
-                    <div
-                      key={tab.id}
-                      onClick={() => {
-                        if (isLibrary) {
-                          if (onSelectTab) onSelectTab("library");
-                          else if (onBack) onBack();
-                        } else {
-                          onSelectTab?.(tab.id);
-                        }
-                        setIsTabsMenuOpen(false);
-                      }}
-                      className={cn(
-                        "group flex items-center justify-between gap-2 px-2 py-1.5 rounded-md cursor-pointer transition-colors text-12 select-none",
-                        isActive
-                          ? "bg-primary/10 text-primary font-medium"
-                          : "text-foreground hover:bg-muted",
-                      )}
-                    >
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        {isLibrary ? (
-                          <Library
-                            className="size-3.5 shrink-0 text-foreground"
-                            strokeWidth={1.5}
-                          />
-                        ) : (
-                          <FileText
-                            className="size-3.5 shrink-0 text-foreground"
-                            strokeWidth={1.5}
-                          />
-                        )}
-                        <span className="truncate flex-1 font-sans">
-                          {tab.title || "Untitled"}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-1 shrink-0">
-                        {isActive && (
-                          <Check
-                            className="size-3.5 text-primary shrink-0"
-                            strokeWidth={1.5}
-                          />
-                        )}
-                        {!isLibrary && onCloseTab && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onCloseTab(tab.id);
-                            }}
-                            className="size-5 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                            title="Close tab"
-                            aria-label={`Close tab ${tab.title}`}
-                          >
-                            <X className="size-3" strokeWidth={1.5} />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
       {/* Right side document actions: Print, Export PDF, Fullscreen */}
       <div className="flex items-center gap-1 px-1.5 shrink-0">
-        {onPrint && isDocumentActive && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={onPrint}
-                className="size-7 flex items-center justify-center rounded-md hover:bg-muted text-foreground transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                aria-label="Print document"
-              >
-                <Printer className="size-3.5 shrink-0" strokeWidth={1.5} />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-11">
-              Print (Ctrl+P)
-            </TooltipContent>
-          </Tooltip>
-        )}
 
         {onExportAnnotatedPdf && isDocumentActive && (
           <Tooltip>

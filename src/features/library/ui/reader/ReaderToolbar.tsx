@@ -28,6 +28,7 @@ import {
   Hand,
   MousePointer,
   Loader2,
+  ScanText,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -155,10 +156,7 @@ function ToolbarIconButton({
           disabled={disabled}
           aria-label={ariaLabel}
           className={cn(
-            "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:opacity-30 disabled:hover:bg-transparent",
-            active
-              ? "bg-background text-foreground font-medium border border-border-subtle shadow-xs"
-              : "text-foreground hover:bg-muted",
+            "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:opacity-30 disabled:hover:bg-transparent text-foreground hover:bg-muted",
             className,
           )}
         >
@@ -244,16 +242,14 @@ export const ReaderToolbar = memo(function ReaderToolbar({
         {/* Toggle Left Sidebar */}
         <ToolbarIconButton
           onClick={onToggleSidebar}
-          active={isSidebarOpen}
+          active={false}
           ariaLabel={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
           tooltip={
-            isSidebarOpen ? "Close sidebar (Ctrl+\\)" : "Open sidebar (Ctrl+\\)"
+            isSidebarOpen ? "Close sidebar" : "Open sidebar"
           }
         >
           <PanelLeft className="size-4 shrink-0" strokeWidth={1.5} />
         </ToolbarIconButton>
-
-        <div className="w-px h-3.5 bg-border mx-0.5" />
 
         {/* Zoom Controls: Out, In, Auto Width */}
         <ToolbarIconButton
@@ -734,7 +730,7 @@ export const ReaderToolbar = memo(function ReaderToolbar({
             isInspectorOpen ? "Close details pane" : "Open details pane"
           }
           tooltip={
-            isInspectorOpen ? "Close details (Ctrl+/)" : "Open details (Ctrl+/)"
+            isInspectorOpen ? "Close details" : "Open details"
           }
         >
           <PanelRight className="size-4 shrink-0" strokeWidth={1.5} />

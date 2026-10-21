@@ -293,3 +293,74 @@ export function DuplicatesStackIllustration({ className }: TIllustrationAssetPro
     </svg>
   );
 }
+
+/**
+ * 10. FeedStackIllustration
+ * 3D isometric RSS Feed publication stack with radiating broadcast waves
+ */
+export function FeedStackIllustration({ className }: TIllustrationAssetProps) {
+  return (
+    <svg width="162" height="180" viewBox="0 0 162 180" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <BaseSlabs />
+      {/* Floating Signal Gem (Top Right) */}
+      <g>
+        <path d="M136.0 28.0L148.0 34.0L138.0 40.0L126.0 34.0L136.0 28.0Z" fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.secondary} stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.primary} strokeWidth="0.4" />
+        <circle cx="136.0" cy="34.0" r="1.5" fill={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.secondary} />
+      </g>
+      {/* 3D Stack of Research Feed Articles */}
+      <g>
+        {/* Bottom Card */}
+        <path d="M42.0 84.0L80.0 102.0L118.0 84.0L80.0 66.0L42.0 84.0Z" fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.tertiary} stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.primary} strokeWidth="0.4" />
+        <path d="M42.0 84.0V89.0L80.0 107.0V102.0L42.0 84.0Z" fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.secondary} stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.primary} strokeWidth="0.4" />
+        <path d="M80.0 102.0V107.0L118.0 89.0V84.0L80.0 102.0Z" fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.primary} stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.primary} strokeWidth="0.4" />
+
+        {/* Top Active Article Card */}
+        <path d="M46.0 74.0L80.0 91.0L114.0 74.0L80.0 57.0L46.0 74.0Z" fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.primary} stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.primary} strokeWidth="0.5" />
+        <path d="M58.0 70.0L84.0 57.0" stroke={ILLUSTRATION_COLOR_TOKEN_MAP.fill.quaternary} strokeWidth="0.8" strokeLinecap="round" />
+        <path d="M58.0 75.0L96.0 56.0" stroke={ILLUSTRATION_COLOR_TOKEN_MAP.fill.quaternary} strokeWidth="0.8" strokeLinecap="round" />
+      </g>
+      {/* 3D Isometric RSS Broadcast Waves Floating Above */}
+      <g>
+        {/* Broadcast Source Node */}
+        <path d="M80.0 48.0L84.0 50.5L80.0 53.0L76.0 50.5L80.0 48.0Z" fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.secondary} stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.tertiary} strokeWidth="0.6" />
+        {/* Wave 1 (Inner Arc) */}
+        <path d="M71.0 44.0C74.0 40.5 86.0 40.5 89.0 44.0" stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.secondary} strokeWidth="1.2" strokeLinecap="round" />
+        {/* Wave 2 (Middle Arc) */}
+        <path d="M64.0 37.0C70.0 31.0 90.0 31.0 96.0 37.0" stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.tertiary} strokeWidth="1.5" strokeLinecap="round" />
+        {/* Wave 3 (Outer Arc) */}
+        <path d="M57.0 30.0C66.0 22.0 94.0 22.0 103.0 30.0" stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.secondary} strokeWidth="1.2" strokeLinecap="round" opacity="0.7" />
+      </g>
+    </svg>
+  );
+}
+
+/**
+ * 11. FeedAllReadIllustration
+ * 3D isometric All Caught Up / Checkmark illustration on platform
+ */
+export function FeedAllReadIllustration({ className }: TIllustrationAssetProps) {
+  return (
+    <svg width="162" height="180" viewBox="0 0 162 180" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <BaseSlabs />
+      {/* Sparkle Gem (Top Right) */}
+      <g>
+        <path d="M136.0 28.0L145.0 33.0L136.0 38.0L127.0 33.0L136.0 28.0Z" fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.secondary} stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.primary} strokeWidth="0.4" />
+        <circle cx="136.0" cy="33.0" r="1.5" fill={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.secondary} />
+      </g>
+      {/* 3D Stack of read publication cards */}
+      <g>
+        <path d="M44.0 80.0L80.0 98.0L116.0 80.0L80.0 62.0L44.0 80.0Z" fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.primary} stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.primary} strokeWidth="0.5" />
+        <path d="M54.0 76.0L80.0 63.0" stroke={ILLUSTRATION_COLOR_TOKEN_MAP.fill.quaternary} strokeWidth="0.8" strokeLinecap="round" />
+        <path d="M54.0 81.0L92.0 62.0" stroke={ILLUSTRATION_COLOR_TOKEN_MAP.fill.quaternary} strokeWidth="0.8" strokeLinecap="round" />
+      </g>
+      {/* 3D Isometric Checkmark Floating Proudly Above */}
+      <g>
+        {/* Checkmark Shadow */}
+        <ellipse cx="80.0" cy="62.0" rx="16.0" ry="6.0" fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.quaternary} opacity="0.3" />
+        {/* Floating Checkmark Badge */}
+        <circle cx="80.0" cy="40.0" r="14.0" fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.primary} stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.tertiary} strokeWidth="1.2" />
+        <path d="M73.0 40.0L78.0 45.0L88.0 35.0" stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.tertiary} strokeWidth="2.0" strokeLinecap="round" strokeLinejoin="round" />
+      </g>
+    </svg>
+  );
+}

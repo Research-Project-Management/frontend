@@ -9,13 +9,18 @@ import {
   DialogTitle,
 } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
-import { RefreshCw, Plus, Rss, Trash2, Loader2, CheckCircle2, ExternalLink, Check, BookPlus, FileText } from 'lucide-react';
+import { RefreshCw, Plus, Rss, Trash2, Loader2, ExternalLink, Check, CheckCircle2, BookPlus, FileText } from 'lucide-react';
 import { toast } from 'sonner';
+import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
+import { FeedStackIllustration } from '@/features/library/ui/content/LibraryIllustrations';
 import { useFetchAcademicFeed } from '@/features/library/sdk/queries/ingestion.queries';
 import { useItems } from '@/features/library/sdk/queries/catalog.queries';
 import {
   mapFeedEntryToCreateItemPayload,
   type ParsedFeedEntry,
+  type FeedCreatorApiItem,
+  type FeedEntryApiItem,
+  type FeedFetchApiResponse,
 } from '@/features/library/domain/feed-parser.domain';
 import type { Collection } from '@/features/library/domain/types/library.types';
 import { cn } from '@/shared/lib/utils';
@@ -23,60 +28,6 @@ import { useFeedsStore } from '@/features/library/core/store/feeds.store';
 import type { SavedFeedSubscription } from '@/features/library/domain/types/feeds.types';
 
 export type { SavedFeedSubscription };
-
-interface FeedCreatorApiItem {
-  firstName?: string;
-  lastName?: string;
-  creatorType?: string;
-}
-
-interface FeedEntryApiItem {
-  id?: string;
-  title: string;
-  authors: string[];
-  creators?: FeedCreatorApiItem[];
-  doi?: string;
-  arxivId?: string;
-  url?: string;
-  link?: string;
-  pdfUrl?: string;
-  publicationDate?: string;
-  published?: string;
-  year?: number | null;
-  publicationTitle?: string;
-  volume?: string;
-  issue?: string;
-  pages?: string;
-  abstract?: string;
-  summary?: string;
-  keywords?: string[];
-}
-
-interface FeedFetchApiResponse {
-  feedTitle?: string;
-  entries?: FeedEntryApiItem[];
-  data?: FeedFetchApiResponse;
-}
-
-const DEFAULT_ACADEMIC_FEEDS: SavedFeedSubscription[] = [
-  {
-    id: 'arxiv-cs-ai',
-    name: 'arXiv: Artificial Intelligence (cs.AI)',
-    url: 'https://rss.arxiv.org/rss/cs.AI',
-  },
-  {
-    id: 'arxiv-cs-cl',
-    name: 'arXiv: Computation and Language (cs.CL)',
-    url: 'https://rss.arxiv.org/rss/cs.CL',
-  },
-  {
-    id: 'nature-main',
-    name: 'Nature — Current Issue Research',
-    url: 'https://www.nature.com/nature.rss',
-  },
-];
-
-const FEEDS_STORAGE_KEY = 'flux_library_rss_feeds_v1';
 
 export interface FeedsManagerModalProps {
   open: boolean;
@@ -213,7 +164,7 @@ export default function FeedsManagerModal({
         ...itemData,
         collectionIds: targetCollectionId ? [targetCollectionId] : undefined,
         silent: true,
-      } as any);
+      });
       setSavedEntryIds((prev) => new Set(prev).add(entry.id));
       toast.success('Saved article to Library', {
         description: entry.title,
@@ -287,7 +238,7 @@ export default function FeedsManagerModal({
           {/* Left Pane: Subscribed Feeds */}
           <div className="w-full md:w-64 shrink-0 flex flex-col bg-muted/20 p-2.5 gap-2 overflow-y-auto">
             <div className="flex items-center justify-between px-1">
-              <span className="text-11 font-semibold text-muted-foreground uppercase tracking-wider">
+              <span className="text-12 font-medium text-foreground">
                 Subscribed Feeds ({feeds.length})
               </span>
               <button
@@ -327,11 +278,11 @@ export default function FeedsManagerModal({
                     variant="ghost"
                     size="sm"
                     onClick={() => setIsAddingFeed(false)}
-                    className="h-6 px-2 text-10"
+                    className="h-7 px-2.5 text-12 cursor-pointer"
                   >
                     Cancel
                   </Button>
-                  <Button type="submit" size="sm" className="h-6 px-2.5 text-10">
+                  <Button type="submit" size="sm" className="h-7 px-3 text-12 cursor-pointer">
                     Add Feed
                   </Button>
                 </div>
@@ -377,21 +328,25 @@ export default function FeedsManagerModal({
 
           {/* Right Pane: Feed Entries */}
           <div className="flex-1 min-w-0 flex flex-col overflow-hidden bg-background">
-            {isLoadingEntries ? (
+            {!activeFeed ? (
+              <PlaneEmptyState
+                illustration={FeedStackIllustration}
+                title="No feed selected"
+                description="Select a feed from the list or subscribe to a new feed."
+                isCompact
+              />
+            ) : isLoadingEntries ? (
               <div className="flex-1 flex flex-col items-center justify-center gap-2 text-muted-foreground">
                 <Loader2 className="size-5 animate-spin" />
                 <span className="text-12">Fetching latest articles from feed...</span>
               </div>
             ) : entries.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center gap-2 p-6 text-center text-muted-foreground">
-                <CheckCircle2 className="size-6 stroke-1" />
-                <p className="text-13 font-medium text-foreground">
-                  No articles found in this feed
-                </p>
-                <p className="text-11 max-w-sm">
-                  Check the RSS/Atom URL or click Refresh to try loading the feed again.
-                </p>
-              </div>
+              <PlaneEmptyState
+                illustration={FeedStackIllustration}
+                title="No articles found"
+                description="Check the RSS/Atom URL or click Refresh to try loading the feed again."
+                isCompact
+              />
             ) : (
               <div className="flex-1 overflow-y-auto divide-y divide-border">
                 {entries.map((entry) => {
@@ -450,7 +405,7 @@ export default function FeedsManagerModal({
                               </>
                             ) : isSaved ? (
                               <>
-                                <Check className="size-3 text-emerald-500" />
+                                <Check className="size-3 text-foreground" />
                                 <span>Saved</span>
                               </>
                             ) : (
@@ -469,9 +424,9 @@ export default function FeedsManagerModal({
                         </p>
                       )}
 
-                      <div className="flex flex-wrap items-center gap-2 pt-0.5 text-10 text-muted-foreground font-mono">
+                      <div className="flex flex-wrap items-center gap-2 pt-0.5 text-11 text-muted-foreground">
                         {(entry.publicationTitle || feedTitle) && (
-                          <span className="px-1.5 py-0.5 rounded bg-muted text-foreground">
+                          <span className="font-normal text-muted-foreground">
                             {entry.publicationTitle || feedTitle}
                           </span>
                         )}
@@ -479,8 +434,8 @@ export default function FeedsManagerModal({
                         {entry.doi && <span>DOI: {entry.doi}</span>}
                         {entry.arxivId && <span>arXiv:{entry.arxivId}</span>}
                         {entry.pdfUrl && (
-                          <span className="inline-flex items-center gap-0.5 text-primary">
-                            <FileText className="size-2.5" /> PDF available
+                          <span className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground">
+                            <FileText className="size-3 text-muted-foreground" /> PDF available
                           </span>
                         )}
                       </div>

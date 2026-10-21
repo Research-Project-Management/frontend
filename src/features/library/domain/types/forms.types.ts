@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { retractionNatureSchema } from './retraction.types';
+import { feedRetentionDaysSchema } from './feeds.types';
 
 // ── Collection Form ──────────────────────────────────────────────────────────
 export const collectionFormSchema = z.object({
@@ -81,3 +82,28 @@ export const authorshipSchema = z.object({
 });
 
 export type AuthorshipFormValues = z.infer<typeof authorshipSchema>;
+
+// ── Feed Subscriptions Forms ─────────────────────────────────────────────────
+export const addFeedSchema = z.object({
+  url: z
+    .string()
+    .trim()
+    .min(1, 'Feed URL is required')
+    .url('Please enter a valid HTTP or HTTPS feed URL'),
+  name: z.string().optional(),
+  retentionDays: feedRetentionDaysSchema,
+});
+
+export type AddFeedFormValues = z.infer<typeof addFeedSchema>;
+
+export const editFeedSchema = z.object({
+  url: z
+    .string()
+    .trim()
+    .min(1, 'Feed URL is required')
+    .url('Please enter a valid HTTP or HTTPS feed URL'),
+  name: z.string().trim().min(1, 'Feed title is required'),
+  retentionDays: feedRetentionDaysSchema,
+});
+
+export type EditFeedFormValues = z.infer<typeof editFeedSchema>;

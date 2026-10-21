@@ -363,7 +363,7 @@ export function LibraryContent({
     >
       {isDragOver && (
         <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-background/85 backdrop-blur-sm border-2 border-dashed border-primary pointer-events-none animate-in fade-in-50 duration-150">
-          <UploadCloud className="size-10 text-primary animate-pulse mb-2" strokeWidth={1.5} />
+          <UploadCloud className="size-10 text-muted-foreground animate-pulse mb-2" strokeWidth={1.5} />
           <p className="text-14 font-semibold text-foreground">Drop files to upload</p>
           <p className="text-12 text-foreground">PDF, BibTeX, RIS will be uploaded directly</p>
         </div>

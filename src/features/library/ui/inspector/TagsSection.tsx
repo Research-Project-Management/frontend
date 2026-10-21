@@ -229,20 +229,6 @@ export default function TagsSection({
         </div>
       )}
 
-      {/* Empty state inline Add action */}
-      {tags.length === 0 && !isAdding && canEdit && (
-        <div className="pt-0.5 px-1.5">
-          <button
-            type="button"
-            onClick={() => setIsAdding(true)}
-            className="inline-flex items-center gap-1 text-11 text-muted-foreground hover:text-foreground transition-colors cursor-pointer py-0.5"
-          >
-            <Plus className="size-3" strokeWidth={1.5} />
-            Add tag
-          </button>
-        </div>
-      )}
-
       {/* List of tags using InfoSection's exact synchronized input style */}
       {tags.map((tag) => (
         <TagItemInput

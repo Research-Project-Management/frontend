@@ -7,7 +7,8 @@ import { useLibraryUIStore } from '@/features/library/core/store/library-ui.stor
 import { useProcessModalStore } from '@/features/library/core/store/process-modal.store';
 import { useCreateCollectionMutation } from '@/features/library/sdk/queries/collections.queries';
 import { useCollectionsQuery } from '@/features/library/sdk/queries/collections.queries';
-import { useDeleteLibraryItemsMutation, useBatchPurgeItemsMutation, itemKeys } from '@/features/library/sdk/queries/catalog.queries';
+import { toast } from 'sonner';
+import { useDeleteLibraryItemsMutation, useBatchPurgeItemsMutation, useUpdateLibraryItemMutation, itemKeys } from '@/features/library/sdk/queries/catalog.queries';
 import { useSavedSearches } from '@/features/library/sdk/queries/saved-searches-relations.queries';
 import {
   executeTrackedIdentifierIngestion,
@@ -97,13 +98,28 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
     isCreating: isCreatingSS,
     isUpdating: isUpdatingSS,
   } = useSavedSearches(effectiveScope, { enabled: isSavedSearchModalOpen });
+  const updateItemMutation = useUpdateLibraryItemMutation(effectiveScope);
   const handleCreateCollection = async (data: CollectionFormValues) => {
-    await createCollectionMutation.mutateAsync({
+    const res = await createCollectionMutation.mutateAsync({
       name: data.name,
       description: data.description,
       color: data.color,
       parentId: data.parentId !== undefined ? data.parentId : (payload?.parentId ?? null),
     });
+    const createdId =
+      (res as { collection?: { id: string }; id?: string })?.collection?.id ||
+      (res as { id?: string })?.id;
+    if (payload?.assignToItemId && createdId) {
+      const currentIds = Array.isArray(payload.currentCollectionIds)
+        ? (payload.currentCollectionIds as string[])
+        : [];
+      updateItemMutation.mutate({
+        itemId: payload.assignToItemId as string,
+        data: { collectionIds: [...currentIds, createdId] },
+        silent: true,
+      });
+      toast.success(`Created & added to "${data.name}"`, { id: 'col-assign' });
+    }
     closeModal();
   };
 

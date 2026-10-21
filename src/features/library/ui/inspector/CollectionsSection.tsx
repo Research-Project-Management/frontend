@@ -6,6 +6,7 @@ import {
   Library,
   Folder,
   FolderKanban,
+  FolderPlus,
   X,
   Plus,
   Search,
@@ -292,15 +293,15 @@ export function CollectionPickerPopover(props: CollectionPickerPopoverProps) {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Search Header */}
-        <div className="flex items-center gap-1.5 px-2.5 py-1.5 border-b border-border-subtle bg-muted">
+        <div className="flex items-center gap-1.5 px-2.5 py-1.5">
           <Search
             className="size-3.5 text-muted-foreground shrink-0"
             strokeWidth={1.5}
           />
           <input
             type="text"
-            placeholder="Search or add collection..."
-            aria-label="Search or add collection"
+            placeholder="Search collections..."
+            aria-label="Search collections"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={(e) => {
@@ -378,45 +379,43 @@ export function CollectionPickerPopover(props: CollectionPickerPopoverProps) {
           )}
         </div>
 
-        {/* Quick Create option if search query doesn't match an existing collection */}
-        {searchQuery.trim() && !exactMatchExists && (
-          <div className="p-1 border-t border-border-subtle bg-background">
-            <button
-              type="button"
-              disabled={isCreatingQuick}
-              onClick={handleQuickCreateAndAssign}
-              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-primary/10 text-primary text-12 cursor-pointer transition-colors"
-            >
-              {isCreatingQuick ? (
-                <Loader2 className="size-3.5 animate-spin shrink-0" />
-              ) : (
-                <Plus className="size-3.5 shrink-0" strokeWidth={1.5} />
-              )}
-              <span className="truncate">
-                Create <strong>&ldquo;{searchQuery.trim()}&rdquo;</strong> &amp;
-                assign
-              </span>
-            </button>
+        {/* Simplified footer: Create collection option */}
+        {canEdit && (
+          <div className="p-1 border-t border-border flex items-center">
+            {searchQuery.trim() && !exactMatchExists ? (
+              <button
+                type="button"
+                disabled={isCreatingQuick}
+                onClick={handleQuickCreateAndAssign}
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted text-foreground text-12 cursor-pointer transition-colors"
+              >
+                {isCreatingQuick ? (
+                  <Loader2 className="size-3.5 animate-spin shrink-0" />
+                ) : (
+                  <Plus className="size-3.5 shrink-0" strokeWidth={1.5} />
+                )}
+                <span className="truncate">
+                  Create <strong>&ldquo;{searchQuery.trim()}&rdquo;</strong>
+                </span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  openModal("CREATE_COLLECTION", {
+                    assignToItemId: item.id,
+                    currentCollectionIds: Array.from(assignedCollectionIdsSet),
+                  });
+                }}
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted text-foreground text-12 cursor-pointer transition-colors font-normal"
+              >
+                <FolderPlus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                <span>New collection...</span>
+              </button>
+            )}
           </div>
         )}
-
-        {/* Footer info & global create modal trigger */}
-        <div className="p-1 border-t border-border-subtle flex items-center justify-between px-2.5 py-1 text-11 text-muted-foreground bg-muted">
-          <span>
-            {collections.length}{" "}
-            {collections.length === 1 ? "collection" : "collections"}
-          </span>
-          <button
-            type="button"
-            onClick={() => {
-              setOpen(false);
-              openModal("CREATE_COLLECTION");
-            }}
-            className="text-primary hover:underline cursor-pointer font-medium"
-          >
-            New collection...
-          </button>
-        </div>
       </PopoverContent>
     </Popover>
   );
@@ -490,22 +489,23 @@ export default function CollectionsSection(props: CollectionsSectionProps) {
             Libraries and Collections
           </h3>
           {canEdit && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => openModal("CREATE_COLLECTION")}
-                  className="size-5 flex items-center justify-center rounded text-foreground hover:bg-muted cursor-pointer transition-colors"
-                  aria-label="Create collection"
-                >
-                  <Plus
-                    className="size-3.5 text-foreground shrink-0"
-                    strokeWidth={1.5}
-                  />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="top">Create collection</TooltipContent>
-            </Tooltip>
+            <CollectionPickerPopover
+              item={item}
+              scopeId={effectiveScope}
+              canEdit={canEdit}
+              align="end"
+            >
+              <button
+                type="button"
+                className="size-5 flex items-center justify-center rounded text-foreground hover:bg-muted cursor-pointer transition-colors"
+                aria-label="Manage collections"
+              >
+                <Plus
+                  className="size-3.5 text-foreground shrink-0"
+                  strokeWidth={1.5}
+                />
+              </button>
+            </CollectionPickerPopover>
           )}
         </div>
       )}
@@ -538,33 +538,7 @@ export default function CollectionsSection(props: CollectionsSectionProps) {
             <TooltipContent side="top">{`Navigate to ${libraryTitle}`}</TooltipContent>
           </Tooltip>
         </div>
-
-        {assignedCollectionIdsSet.size > 0 && (
-          <span className="text-11 px-1.5 py-0.2 rounded bg-muted font-medium text-foreground shrink-0">
-            {assignedCollectionIdsSet.size}
-          </span>
-        )}
       </div>
-
-      {/* When Unfiled: Clean inline Add action */}
-      {assignedCollectionIdsSet.size === 0 && canEdit && (
-        <div className="pt-0.5 px-1.5">
-          <CollectionPickerPopover
-            item={item}
-            scopeId={effectiveScope}
-            canEdit={canEdit}
-            align="start"
-          >
-            <button
-              type="button"
-              className="inline-flex items-center gap-1 text-11 text-foreground hover:text-foreground transition-colors cursor-pointer py-0.5"
-            >
-              <Plus className="size-3" strokeWidth={1.5} />
-              Add to a collection
-            </button>
-          </CollectionPickerPopover>
-        </div>
-      )}
 
       {/* When Assigned: Hierarchical Collection Rows */}
       {assignedCollections.map((col) => {
@@ -631,25 +605,6 @@ export default function CollectionsSection(props: CollectionsSectionProps) {
         );
       })}
 
-      {/* In-body Add action link when already assigned to collections */}
-      {assignedCollections.length > 0 && canEdit && (
-        <div className="pt-1 px-1.5">
-          <CollectionPickerPopover
-            item={item}
-            scopeId={effectiveScope}
-            canEdit={canEdit}
-            align="start"
-          >
-            <button
-              type="button"
-              className="inline-flex items-center gap-1 text-11 text-foreground hover:text-foreground transition-colors cursor-pointer"
-            >
-              <Plus className="size-3" strokeWidth={1.5} />
-              Add to another collection
-            </button>
-          </CollectionPickerPopover>
-        </div>
-      )}
     </div>
   );
 }

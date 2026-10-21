@@ -69,12 +69,12 @@ export function ReaderLeftRail({
                 <button
                   type="button"
                   onClick={() => {
-                    if (!isOpen) {
-                      onToggleOpen();
-                    } else if (activeTab === tab.id) {
-                      // Clicking currently active tab toggles sidebar closed
+                    if (isOpen && activeTab === tab.id) {
                       onToggleOpen();
                       return;
+                    }
+                    if (!isOpen) {
+                      onToggleOpen();
                     }
                     onTabChange(tab.id);
                   }}
@@ -82,7 +82,7 @@ export function ReaderLeftRail({
                     "relative size-8 flex items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors cursor-pointer text-foreground before:absolute before:-inset-1.5 md:before:hidden",
                     isActive
                       ? "bg-muted text-foreground font-medium shadow-xs"
-                      : "hover:bg-muted text-muted-foreground hover:text-foreground",
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
                   )}
                   aria-label={tab.label}
                   aria-current={isActive ? "true" : undefined}

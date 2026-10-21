@@ -36,6 +36,7 @@ import {
 } from "./LibraryDisplayPopover";
 import { TopbarSearch } from "./TopbarSearch";
 import { TopbarNewItemDropdown } from "./TopbarNewItemDropdown";
+import { TopbarNewFeedDropdown } from "./TopbarNewFeedDropdown";
 import { useLibraryUIStore } from "@/features/library/core/store/library-ui.store";
 import { useLibraryPermissions } from "@/features/library/core/coordinator/permissions.coordinator";
 import type { Item } from "@/features/library/domain/types/library.types";
@@ -442,9 +443,9 @@ export function LibraryTopbar({
                       )}
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <h1 className="text-13 font-medium tracking-tight text-foreground truncate max-w-[200px] sm:max-w-[320px]">
+                          <span className="text-13 font-medium tracking-tight text-foreground truncate max-w-[200px] sm:max-w-[320px]">
                             {crumb.name}
-                          </h1>
+                          </span>
                         </TooltipTrigger>
                         <TooltipContent side="bottom" sideOffset={6}>
                           {crumb.name}
@@ -464,9 +465,9 @@ export function LibraryTopbar({
                 strokeWidth={1.5}
               />
             )}
-            <h1 className="text-13 font-medium tracking-tight text-foreground truncate">
+            <span className="text-13 font-medium tracking-tight text-foreground truncate">
               {displayTitle}
-            </h1>
+            </span>
           </div>
         )}
       </div>
@@ -517,44 +518,13 @@ export function LibraryTopbar({
             <span>Empty Trash</span>
           </Button>
         ) : isFeed ? (
-          <div className="flex items-center gap-1">
-            {onMarkAllFeedRead && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={onMarkAllFeedRead}
-                    className="size-8 rounded-md text-foreground hover:bg-muted cursor-pointer transition-colors select-none shrink-0"
-                    aria-label="Mark all articles as read"
-                  >
-                    <CheckCheck className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" sideOffset={6}>
-                  Mark all as read
-                </TooltipContent>
-              </Tooltip>
-            )}
-            {onRefreshFeed && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={onRefreshFeed}
-                    className="size-8 rounded-md text-foreground hover:bg-muted cursor-pointer transition-colors select-none shrink-0"
-                    aria-label="Refresh feed"
-                  >
-                    <RefreshCw className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" sideOffset={6}>
-                  Refresh feed
-                </TooltipContent>
-              </Tooltip>
+          <div className="flex items-center gap-1.5">
+            {/* Centralized New Feed Action Dropdown */}
+            {isEffectiveCanEdit && (
+              <TopbarNewFeedDropdown
+                onRefreshFeed={onRefreshFeed}
+                onMarkAllFeedRead={onMarkAllFeedRead}
+              />
             )}
           </div>
         ) : isEffectiveCanEdit && !isTrash && !isFeed ? (

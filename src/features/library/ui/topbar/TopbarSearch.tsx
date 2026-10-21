@@ -128,10 +128,10 @@ export function TopbarSearch({
       <Search
         strokeWidth={1.5}
         className={cn(
-          'absolute top-1/2 -translate-y-1/2 size-3.5 transition-colors duration-150 z-10 shrink-0 text-muted-foreground group-hover:text-foreground',
+          'absolute top-1/2 -translate-y-1/2 size-3.5 transition-colors duration-150 z-10 shrink-0',
           active
-            ? 'left-2 translate-x-0'
-            : 'left-1/2 -translate-x-1/2'
+            ? 'left-2 translate-x-0 text-foreground'
+            : 'left-1/2 -translate-x-1/2 text-muted-foreground group-hover:text-foreground'
         )}
       />
       <Input
@@ -162,10 +162,10 @@ export function TopbarSearch({
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={handleClear}
-          className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center justify-center size-5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer rounded-md outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-2 md:before:hidden"
+          className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center justify-center size-5 text-foreground hover:opacity-80 hover:bg-muted transition-colors cursor-pointer rounded-md outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-2 md:before:hidden"
           aria-label="Clear search"
         >
-          <X className="size-3 shrink-0" />
+          <X className="size-3 shrink-0 text-foreground" strokeWidth={1.5} />
         </button>
       )}
     </div>

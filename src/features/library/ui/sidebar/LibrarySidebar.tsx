@@ -270,18 +270,20 @@ export function LibrarySidebar() {
 
   const sidebarBody = (
     <>
-      {/* Upper Area: Header, Collections Tree, Views */}
-      <div className="flex-1 min-h-0 flex flex-col p-2.5 pt-4 pb-1">
-          {/* Header with expandable search & controls */}
-          <SidebarHeader
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            canManageCollections={canManageCollections}
-            onOpenCreateRoot={handlers.openCreateRoot}
-            onOpenCreateSavedSearch={() => openModal('SAVED_SEARCH')}
-            onToggleCollapse={toggleSidebar}
-          />
+      {/* Topbar Header matching the h-11 border-b of LibraryTopbar & Inspector */}
+      <div className="h-11 border-b border-border px-2.5 flex items-center shrink-0">
+        <SidebarHeader
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          canManageCollections={canManageCollections}
+          onOpenCreateRoot={handlers.openCreateRoot}
+          onOpenCreateSavedSearch={() => openModal('SAVED_SEARCH')}
+          onToggleCollapse={toggleSidebar}
+        />
+      </div>
 
+      {/* Upper Area: Collections Tree, Views */}
+      <div className="flex-1 min-h-0 flex flex-col p-2.5 pt-2.5 pb-1">
           {/* Navigation Links */}
             <nav
               aria-label="Library Navigation"

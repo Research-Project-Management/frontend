@@ -52,8 +52,8 @@ export function SidebarHeader({
   return (
     <div
       className={cn(
-        "mb-3 flex items-center h-8 font-semibold text-sm tracking-tight text-foreground select-none",
-        isSearchExpanded || searchQuery ? "px-0 w-full" : "justify-between px-2 w-full"
+        "flex items-center h-8 font-semibold text-sm tracking-tight text-foreground select-none w-full",
+        isSearchExpanded || searchQuery ? "px-0" : "justify-between px-1"
       )}
     >
       {isSearchExpanded || searchQuery ? (

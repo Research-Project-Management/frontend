@@ -68,6 +68,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
   const searchParams = useSearchParams();
   const initialSearchQuery =
     searchParams.get("q") || searchParams.get("search") || undefined;
+  const activeScope = useLibraryUIStore((s) => s.activeScope);
   const { state, actions } = useReader(paperId, onBack);
   const {
     scopeId,
@@ -414,9 +415,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     setIsSidebarOpen(false);
   }, [setIsSidebarOpen]);
 
-  const handleCloseInspector = useCallback(() => {
-    setIsInspectorOpen(false);
-  }, [setIsInspectorOpen]);
+
 
   const handleClearPendingText = useCallback(() => {
     setPendingNoteText("");
@@ -612,7 +611,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
       {/* WORKSPACE VIEWPORT */}
       <div className="relative flex flex-1 min-w-0 min-h-0 w-full overflow-hidden bg-background">
         {/* 3. SIDEBAR (Activity Rail + Collapsible Resizable Panel) */}
-        {!isReadingMode && (
+        {!isReadingMode && isSidebarOpen && (
           <Sidebar
             isOpen={isSidebarOpen}
             onClose={handleCloseSidebar}
@@ -654,11 +653,6 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
               variant="document"
               title="Document not found"
               description="The document could not be found or you do not have permission."
-              action={{
-                label: "Return to Library",
-                onClick: goBack,
-                icon: ChevronLeft,
-              }}
             />
           ) : epubOrSnapshotInfo ? (
             <EpubAndSnapshotViewer
@@ -719,10 +713,6 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
               variant="document"
               title={paper.title || "Paper Reference"}
               description="No PDF, EPUB, or Web Snapshot attached to this entry. You can review metadata or notes using the side panel."
-              action={{
-                label: "Open Details",
-                onClick: () => setIsReaderInspectorOpen(true),
-              }}
             />
           )}
         </main>

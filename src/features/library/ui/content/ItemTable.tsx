@@ -79,6 +79,7 @@ export const ItemTable = React.memo(function ItemTable({
   const clearSelection = useLibraryUIStore((s) => s.clearSelection);
   const toggleSelect = useLibraryUIStore((s) => s.toggleSelect);
   const setActiveItem = useLibraryUIStore((s) => s.setActiveItem);
+  const setIsInspectorOpen = useLibraryUIStore((s) => s.setIsInspectorOpen);
   const storeDisplayOptions = useLibraryUIStore((s) => s.displayOptions);
   const setStoreDisplayOptions = useLibraryUIStore((s) => s.setDisplayOptions);
   const openModal = useLibraryUIStore((s) => s.openModal);
@@ -239,7 +240,13 @@ export const ItemTable = React.memo(function ItemTable({
     }
   };
 
-  // Row click handler: activates the item to view in inspector, opens the inspector if closed, and toggles off if clicked again.
+  // O(1) lookup map by item ID for action guards
+  const itemsById = useMemo(
+    () => new Map(items.map((it) => [it.id, it])),
+    [items],
+  );
+
+    // Row click handler: activates the item to view in inspector, opens the inspector if closed, and toggles off if clicked again.
   // NEVER checks or shows the checkbox automatically (checkbox must be explicitly clicked by user).
   const handleRowClick = useCallback(
     (_e: React.MouseEvent, item: Item, index: number) => {
@@ -304,11 +311,7 @@ export const ItemTable = React.memo(function ItemTable({
     [router, isTrash, itemsById],
   );
 
-  // O(1) lookup map by item ID for action guards
-  const itemsById = useMemo(
-    () => new Map(items.map((it) => [it.id, it])),
-    [items],
-  );
+
 
   // Keyboard navigation matching Zotero 7 desktop parity
   const handleKeyDown = (e: React.KeyboardEvent) => {

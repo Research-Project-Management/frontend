@@ -47,7 +47,7 @@ function InlineDiffView({
     <div className="p-4 bg-muted border-t border-border space-y-2.5">
       <div className="flex items-center justify-between text-11 text-foreground font-medium">
         <span className="flex items-center gap-1.5 font-semibold text-foreground">
-          <Columns className="size-3.5 text-primary" />
+          <Columns className="size-3.5 text-foreground" />
           Field-by-Field Comparison
         </span>
         <div className="flex items-center gap-2">

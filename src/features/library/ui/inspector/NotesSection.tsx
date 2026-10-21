@@ -9,6 +9,7 @@ import {
   ChevronUp,
   Pencil,
   Loader2,
+  FileText,
 } from "lucide-react";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { Button } from "@/shared/components/ui/button";
@@ -28,7 +29,9 @@ import { toast } from "sonner";
 import type { Item } from "@/features/library/domain/types/library.types";
 import {
   FormattedNoteBody,
-  NoteFormattingToolbar,
+  NoteEditorBox,
+  getNoteDisplayTitle,
+  getNotePreviewSnippet,
 } from "./NoteMarkdownEditor";
 
 export interface NotesSectionProps {
@@ -76,8 +79,6 @@ function NotesSectionContent({
     () => new Set(),
   );
 
-  const newTextareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const editTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     if (forceAdding && canEdit) {
@@ -207,28 +208,6 @@ function NotesSectionContent({
                 <TooltipTrigger asChild>
                   <button
                     type="button"
-                    onClick={handleExtractFromAnnotations}
-                    disabled={isExtractingFromAnnotations}
-                    className="h-5 px-1.5 flex items-center gap-1 rounded text-10 font-medium text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors disabled:opacity-50"
-                    aria-label="Add note from PDF annotations"
-                  >
-                    {isExtractingFromAnnotations ? (
-                      <Loader2 className="size-3 animate-spin shrink-0" />
-                    ) : (
-                      <FileText className="size-3 shrink-0" />
-                    )}
-                    <span>From Highlights</span>
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  Generate structured note from PDF highlights &amp; annotations
-                </TooltipContent>
-              </Tooltip>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
                     onClick={() => setIsAdding(true)}
                     className="size-5 flex items-center justify-center rounded text-foreground hover:bg-muted cursor-pointer transition-colors"
                     aria-label="Add note"
@@ -246,73 +225,20 @@ function NotesSectionContent({
         </div>
       )}
 
-      {/* Quick Action Bar when header is hidden by parent InspectorSection */}
-      {hideHeader && canEdit && notes.length > 0 && !isAdding && (
-        <div className="flex items-center justify-between gap-1 pb-0.5">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={handleExtractFromAnnotations}
-                disabled={isExtractingFromAnnotations}
-                className="h-6 px-2 flex items-center gap-1.5 rounded-md text-11 font-medium text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors disabled:opacity-50"
-              >
-                {isExtractingFromAnnotations ? (
-                  <Loader2 className="size-3 animate-spin shrink-0" />
-                ) : (
-                  <FileText className="size-3 shrink-0 text-primary" />
-                )}
-                <span>Add Note from Annotations</span>
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="top">
-              Compile all PDF highlights and comments into a structured note
-            </TooltipContent>
-          </Tooltip>
-        </div>
-      )}
-
-      {/* Add New Note Box (Rich Markdown Editor) */}
+      {/* Add New Note Box */}
       {isAdding && (
-        <div className="space-y-1 p-2.5 bg-background rounded-md border border-border focus-within:border-primary focus-within:ring-1 focus-within:ring-ring transition-colors text-xs">
-          <NoteFormattingToolbar
-            textareaRef={newTextareaRef}
-            value={newNoteContent}
-            onChange={setNewNoteContent}
-            onSave={handleSaveNewNote}
-            onCancel={() => {
-              setIsAdding(false);
-              setNewNoteContent("");
-              onCancelAdding?.();
-            }}
-          />
-          <Textarea
-            ref={newTextareaRef}
-            autoFocus
-            placeholder="Write a research note... (Supports **bold**, *italic*, ### headings, - lists, > quotes)"
-            value={newNoteContent}
-            onChange={(e) => setNewNoteContent(e.target.value)}
-            onKeyDown={(e) => {
-              if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-                e.preventDefault();
-                if (newNoteContent.trim()) {
-                  handleSaveNewNote();
-                }
-              } else if (e.key === "Escape") {
-                e.preventDefault();
-                setIsAdding(false);
-                setNewNoteContent("");
-                onCancelAdding?.();
-              }
-            }}
-            rows={4}
-            className="text-xs resize-y w-full min-h-[76px] max-h-60 overflow-y-auto border-0 focus-visible:ring-0 p-0 bg-transparent rounded-none outline-none shadow-none placeholder:text-muted-foreground leading-relaxed"
-          />
-          <div className="flex items-center justify-between text-10 font-normal text-muted-foreground select-none pt-1 border-t border-border font-mono">
-            <span>Markdown formatting supported</span>
-            <span>Ctrl+Enter to save · Esc to cancel</span>
-          </div>
-        </div>
+        <NoteEditorBox
+          value={newNoteContent}
+          onChange={setNewNoteContent}
+          onSave={handleSaveNewNote}
+          onCancel={() => {
+            setIsAdding(false);
+            setNewNoteContent("");
+            onCancelAdding?.();
+          }}
+          autoFocus
+          placeholder="Write a research note... (Supports **bold**, *italic*, ### headings, - lists, > quotes)"
+        />
       )}
 
       {/* Notes List */}
@@ -345,7 +271,7 @@ function NotesSectionContent({
                     {isExtractingFromAnnotations ? (
                       <Loader2 className="size-3 animate-spin shrink-0" />
                     ) : (
-                      <FileText className="size-3 text-primary shrink-0" />
+                      <FileText className="size-3 text-foreground shrink-0" />
                     )}
                     <span>From PDF Highlights</span>
                   </Button>
@@ -362,46 +288,22 @@ function NotesSectionContent({
           {notes.map((n) => {
             const isEditing = editingNoteId === n.id;
             const isExpanded = expandedNoteIds.has(n.id);
+            const displayTitle = getNoteDisplayTitle(n);
+            const snippet = getNotePreviewSnippet(n.content, displayTitle);
             const isLongNote =
-              n.content.split("\n").length > 3 || n.content.length > 180;
+              n.content.split("\n").length > 2 || n.content.length > 100;
+            const hasMatchingHeader = n.content.trim().startsWith("#");
 
             if (isEditing) {
               return (
-                <div
+                <NoteEditorBox
                   key={n.id}
-                  className="space-y-1 p-2.5 bg-background rounded-md border border-border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-colors text-xs"
-                >
-                  <NoteFormattingToolbar
-                    textareaRef={editTextareaRef}
-                    value={editingContent}
-                    onChange={setEditingContent}
-                    onSave={() => handleSaveEdit(n.id)}
-                    onCancel={handleCancelEdit}
-                  />
-                  <Textarea
-                    ref={editTextareaRef}
-                    autoFocus
-                    value={editingContent}
-                    onChange={(e) => setEditingContent(e.target.value)}
-                    onKeyDown={(e) => {
-                      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-                        e.preventDefault();
-                        if (editingContent.trim()) {
-                          handleSaveEdit(n.id);
-                        }
-                      } else if (e.key === "Escape") {
-                        e.preventDefault();
-                        handleCancelEdit();
-                      }
-                    }}
-                    rows={5}
-                    className="text-xs resize-y w-full min-h-[84px] max-h-64 overflow-y-auto border-0 focus-visible:ring-0 p-0 bg-transparent rounded-none outline-none shadow-none placeholder:text-muted-foreground leading-relaxed"
-                  />
-                  <div className="flex items-center justify-between text-10 font-normal text-muted-foreground select-none pt-1 border-t border-border font-mono">
-                    <span>Markdown formatting supported</span>
-                    <span>Ctrl+Enter to save · Esc to cancel</span>
-                  </div>
-                </div>
+                  value={editingContent}
+                  onChange={setEditingContent}
+                  onSave={() => handleSaveEdit(n.id)}
+                  onCancel={handleCancelEdit}
+                  autoFocus
+                />
               );
             }
 
@@ -415,43 +317,38 @@ function NotesSectionContent({
               <div
                 key={n.id}
                 className={cn(
-                  "group/note flex flex-col gap-1 px-2.5 py-2 rounded-md border border-border/60 bg-background/50 hover:bg-muted/40 transition-colors text-xs min-w-0",
+                  "group/note flex flex-col p-2.5 rounded-lg border border-border/70 bg-card text-xs min-w-0 shadow-xs",
                 )}
               >
-                <div className="flex items-start justify-between gap-2 min-w-0">
-                  <div
-                    onClick={() => {
-                      if (isLongNote) {
-                        toggleExpandNote(n.id);
-                      } else if (canEdit) {
-                        handleStartEdit(n);
-                      }
-                    }}
-                    className="flex items-start gap-2 min-w-0 flex-1 cursor-pointer"
-                  >
-                    <div className="size-4 mt-0.5 shrink-0 flex items-center justify-center">
-                      <NoteIcon className="size-3.5 text-foreground shrink-0" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <FormattedNoteBody
-                        content={n.content}
-                        isExpanded={isExpanded}
-                      />
-                    </div>
+                <div
+                  onClick={() => isLongNote && toggleExpandNote(n.id)}
+                  className={cn(
+                    "flex items-center justify-between gap-1.5 min-w-0 select-none",
+                    isLongNote && "cursor-pointer",
+                  )}
+                >
+                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                    <NoteIcon className="size-3.5 text-muted-foreground shrink-0" />
+                    <span
+                      className="text-11 font-medium text-foreground truncate"
+                      title={displayTitle}
+                    >
+                      {displayTitle}
+                    </span>
                   </div>
 
-                  {/* Action Cluster: Page Jump, Edit, Expand, Delete */}
-                  <div className="flex items-center gap-1 shrink-0">
+                  {/* Action Cluster: Page Jump, Edit, Delete, Expand */}
+                  <div
+                    className="flex items-center gap-0.5 shrink-0"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {onNavigateToAnnotation && firstPageNum !== null && (
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onNavigateToAnnotation(firstPageNum);
-                            }}
-                            className="text-10 font-medium text-primary hover:underline px-1.5 py-0.5 rounded bg-primary/10 hover:bg-primary/20 shrink-0 cursor-pointer"
+                            onClick={() => onNavigateToAnnotation(firstPageNum)}
+                            className="text-10 font-medium text-primary hover:underline px-1.5 py-0.5 rounded bg-primary/10 hover:bg-primary/20 shrink-0 cursor-pointer transition-colors mr-0.5"
                           >
                             p. {firstPageNum}
                           </button>
@@ -460,43 +357,13 @@ function NotesSectionContent({
                       </Tooltip>
                     )}
 
-                    {isLongNote && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleExpandNote(n.id);
-                            }}
-                            className="size-5 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
-                            aria-label={
-                              isExpanded ? "Collapse note" : "Expand note"
-                            }
-                          >
-                            {isExpanded ? (
-                              <ChevronUp className="size-3.5 shrink-0" />
-                            ) : (
-                              <ChevronDown className="size-3.5 shrink-0" />
-                            )}
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top">
-                          {isExpanded ? "Collapse note" : "Expand full note"}
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-
                     {canEdit && (
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleStartEdit(n);
-                            }}
-                            className="invisible group-hover/note:visible max-md:visible size-5 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
+                            onClick={() => handleStartEdit(n)}
+                            className="opacity-0 group-hover/note:opacity-100 max-md:opacity-100 size-6 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-opacity"
                             aria-label="Edit note"
                           >
                             <Pencil className="size-3 shrink-0" />
@@ -511,8 +378,7 @@ function NotesSectionContent({
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
+                            onClick={() => {
                               if (deleteNote) {
                                 const target = canonicalNotes.find(
                                   (cn) => cn.id === n.id,
@@ -520,7 +386,7 @@ function NotesSectionContent({
                                 deleteNote(n.id, target?.version);
                               }
                             }}
-                            className="invisible group-hover/note:visible max-md:visible size-5 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
+                            className="opacity-0 group-hover/note:opacity-100 max-md:opacity-100 size-6 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-opacity"
                             aria-label="Delete note"
                           >
                             <MinusCircle className="size-3.5 shrink-0" />
@@ -529,8 +395,58 @@ function NotesSectionContent({
                         <TooltipContent side="top">Delete note</TooltipContent>
                       </Tooltip>
                     )}
+
+                    {isLongNote && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={() => toggleExpandNote(n.id)}
+                            className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                            aria-label={
+                              isExpanded ? "Collapse note" : "Expand note"
+                            }
+                          >
+                            {isExpanded ? (
+                              <ChevronUp className="size-3.5 shrink-0" />
+                            ) : (
+                              <ChevronDown className="size-3.5 shrink-0" />
+                            )}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                          {isExpanded ? "Collapse note" : "Expand note"}
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
                   </div>
                 </div>
+
+                {/* Body: Preview when collapsed, Markdown when expanded */}
+                {isExpanded ? (
+                  <div className="border-t border-border/40 mt-1.5 pt-1.5 select-text">
+                    <FormattedNoteBody
+                      content={n.content}
+                      isExpanded={true}
+                      omitFirstHeading={hasMatchingHeader}
+                    />
+                  </div>
+                ) : snippet ? (
+                  <div
+                    onClick={() => {
+                      if (isLongNote) toggleExpandNote(n.id);
+                      else if (canEdit) handleStartEdit(n);
+                    }}
+                    className={cn(
+                      "min-w-0 mt-1",
+                      isLongNote ? "cursor-pointer" : canEdit ? "cursor-text" : "",
+                    )}
+                  >
+                    <p className="text-11 text-muted-foreground line-clamp-2 leading-relaxed select-text font-sans">
+                      {snippet}
+                    </p>
+                  </div>
+                ) : null}
               </div>
             );
           })}

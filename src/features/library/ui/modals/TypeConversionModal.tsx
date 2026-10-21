@@ -3,12 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Loader2,
-  ArrowRight,
-  CheckCircle2,
   AlertTriangle,
-  PlusCircle,
-  Archive,
-  ShieldCheck,
   RefreshCw,
 } from "lucide-react";
 import {
@@ -22,17 +17,17 @@ import {
 import { Button } from "@/shared/components/ui/button";
 import { Checkbox } from "@/shared/components/ui/checkbox";
 import { Label } from "@/shared/components/ui/label";
-import { Badge } from "@/shared/components/ui/badge";
 import type { Item } from "@/features/library/domain/types/library.types";
 import {
   ALL_ITEM_TYPES_FLAT,
   FIELD_LABELS,
+  ITEM_TYPE_FIELDS_MAP,
+  BASE_FIELD_MAPPINGS,
+  REVERSE_BASE_FIELD_MAPPINGS,
   humanizeFieldName,
-  SchemaFieldDefinition,
 } from "@/features/library/domain/types/library.types";
 import { useItemTypeConversion } from "@/features/library/sdk/queries/saved-searches-relations.queries";
 import { type TypeConversionPreview } from "@/features/library/sdk/queries/saved-searches-relations.queries";
-import { cn } from "@/shared/lib/utils";
 
 export type TypeConversionItemLike = {
   id?: string;
@@ -84,7 +79,6 @@ export function TypeConversionModal({
   const itemId = currentItem?.id || "";
   const sourceType = currentItem?.itemType || "journalArticle";
   const scopeId = propScopeId || currentItem?.projectId || "user";
-  const itemTitle = currentItem?.title || "Untitled Item";
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [preview, setPreview] = useState<TypeConversionPreview | null>(
@@ -93,9 +87,6 @@ export function TypeConversionModal({
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [retainUnmapped, setRetainUnmapped] = useState(true);
-  const [mobileTab, setMobileTab] = useState<"retained" | "extra" | "new">(
-    "retained",
-  );
 
   const { previewAsync, convertAsync, isConverting } =
     useItemTypeConversion(scopeId);
@@ -145,63 +136,54 @@ export function TypeConversionModal({
     loadPreview();
   }, [loadPreview, initialPreview, targetType]);
 
-  // ── Column 1: Retained / Mapped Calculations ───────────────────────────────
-  const mappedFields = useMemo(
-    () => preview?.mappedFields ?? [],
-    [preview?.mappedFields],
-  );
-
-  const preservedFieldDetails = useMemo(() => {
-    const list = preview?.preservedFields ?? [];
-    const projected: Record<string, unknown> = preview?.projectedItem
-      ? { ...preview.projectedItem }
-      : {};
-    const current: Record<string, unknown> = currentItem
-      ? { ...currentItem }
-      : {};
-
-    return list.map((fieldKey) => {
-      const val = projected[fieldKey] ?? current[fieldKey];
-      return {
-        key: fieldKey,
-        label: resolveFieldLabel(fieldKey),
-        value: formatValue(val),
-      };
-    });
-  }, [preview?.preservedFields, preview?.projectedItem, currentItem]);
-
-  const creatorRoleChanges = useMemo(() => {
-    return (preview?.creatorChanges ?? []).filter(
-      (c) => c.fromRole && c.toRole && c.fromRole !== c.toRole,
-    );
-  }, [preview?.creatorChanges]);
-
-  const totalRetainedCount = preservedFieldDetails.length + mappedFields.length;
-
-  // ── Column 2: Overflow to Extra Calculations ───────────────────────────────
+  // Fields that actually have content and will be dropped/lost in this specific item
   const droppedWithValues = useMemo(() => {
     return (preview?.droppedFields ?? []).filter(
       (d) => d.value !== null && d.value !== undefined && d.value !== "",
     );
   }, [preview?.droppedFields]);
 
-  const extraBufferLines = useMemo(() => {
-    return droppedWithValues.map(
-      (d) =>
-        `${d.label || resolveFieldLabel(d.field)}: ${formatValue(d.value)}`,
-    );
-  }, [droppedWithValues]);
+  // Schema-level unsupported fields: Fields present in source type schema that are not supported by target type
+  const schemaUnsupportedFieldLabels = useMemo(() => {
+    if (!sourceType || !targetType || sourceType === targetType) return [];
 
-  // ── Column 3: New Available Fields Calculations ────────────────────────────
-  const newAvailableFields = useMemo((): SchemaFieldDefinition[] => {
-    if (!Array.isArray(preview?.newAvailableFields)) return [];
-    return preview.newAvailableFields.map((f) => ({
-      field: f.field,
-      label: f.label || resolveFieldLabel(f.field),
-      type: (f.type as SchemaFieldDefinition["type"]) || "text",
-      category: (f.category as SchemaFieldDefinition["category"]) || "core",
-    }));
-  }, [preview?.newAvailableFields]);
+    const sourceFields = ITEM_TYPE_FIELDS_MAP[sourceType] || [];
+    const targetFields = new Set(ITEM_TYPE_FIELDS_MAP[targetType] || []);
+
+    const sourceBase = BASE_FIELD_MAPPINGS[sourceType] || {};
+    const targetReverseBase = REVERSE_BASE_FIELD_MAPPINGS[targetType] || {};
+
+    const unsupported = sourceFields.filter((sf) => {
+      // Direct field match in target
+      if (targetFields.has(sf)) return false;
+
+      // Base semantic mapping match (e.g. publicationTitle -> bookTitle)
+      const baseSemantic = sourceBase[sf];
+      if (baseSemantic) {
+        const mappedTarget = targetReverseBase[baseSemantic];
+        if (mappedTarget && targetFields.has(mappedTarget)) return false;
+      }
+
+      // Always preserved system/metadata fields
+      if (
+        sf === "title" ||
+        sf === "abstract" ||
+        sf === "abstractNote" ||
+        sf === "date" ||
+        sf === "year" ||
+        sf === "url" ||
+        sf === "DOI" ||
+        sf === "extra" ||
+        sf === "citationKey"
+      ) {
+        return false;
+      }
+
+      return true;
+    });
+
+    return unsupported.map((f) => resolveFieldLabel(f));
+  }, [sourceType, targetType]);
 
   // ── Confirm Handler ────────────────────────────────────────────────────────
   const handleConfirm = async () => {
@@ -227,500 +209,159 @@ export function TypeConversionModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[880px] w-[95vw] max-h-[88vh] p-5 rounded-xl border border-border bg-background shadow-raised-300 font-sans flex flex-col gap-4 overflow-hidden">
-        {/* Header with Transformation badges */}
-        <DialogHeader className="text-left space-y-1.5 shrink-0 border-b border-border pb-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
-                Convert Item Type
-              </DialogTitle>
-              <Badge
-                variant="outline"
-                className="text-11 font-mono px-1.5 py-0 border-border text-muted-foreground bg-muted"
-              >
-                Zotero v42 Schema
-              </Badge>
-            </div>
-            {/* Transformation Path */}
-            <div className="flex items-center gap-1.5 text-xs">
-              <span className="font-medium text-foreground px-2 py-0.5 rounded bg-muted">
-                {sourceTypeName}
-              </span>
-              <ArrowRight className="size-3.5 text-muted-foreground shrink-0" />
-              <span className="font-semibold px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary">
-                {targetTypeName}
-              </span>
-            </div>
-          </div>
-          <DialogDescription
-            className="text-xs text-muted-foreground truncate"
-            title={itemTitle}
-          >
-            Reviewing bibliographic schema transformation for{" "}
-            <span className="font-medium text-foreground">
-              &ldquo;{itemTitle}&rdquo;
-            </span>
+      <DialogContent
+        onCloseAutoFocus={(e) => e.preventDefault()}
+        className="w-full sm:max-w-[480px] p-6 bg-background border border-border shadow-raised-200 rounded-md gap-4 overflow-hidden"
+      >
+        {/* Header with Title only */}
+        <DialogHeader className="text-left shrink-0">
+          <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
+            Convert Item Type
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            Review item type conversion details and confirm changes.
           </DialogDescription>
         </DialogHeader>
 
-        {/* Mobile View Tab Switcher (Visible only below md breakpoint) */}
-        <div
-          role="tablist"
-          aria-label="Conversion preview categories"
-          className="flex md:hidden items-center rounded-lg bg-muted p-1 gap-1 text-xs shrink-0"
-        >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mobileTab === "retained"}
-            onClick={() => setMobileTab("retained")}
-            className={cn(
-              "flex-1 py-1 px-2 rounded-md font-medium transition-colors text-center cursor-pointer relative before:absolute before:-inset-1.5 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-              mobileTab === "retained"
-                ? "bg-background text-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            Retained ({totalRetainedCount})
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mobileTab === "extra"}
-            onClick={() => setMobileTab("extra")}
-            className={cn(
-              "flex-1 py-1 px-2 rounded-md font-medium transition-colors text-center cursor-pointer relative before:absolute before:-inset-1.5 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-              mobileTab === "extra"
-                ? "bg-background text-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            Extra ({droppedWithValues.length})
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mobileTab === "new"}
-            onClick={() => setMobileTab("new")}
-            className={cn(
-              "flex-1 py-1 px-2 rounded-md font-medium transition-colors text-center cursor-pointer relative before:absolute before:-inset-1.5 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-              mobileTab === "new"
-                ? "bg-background text-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            New Fields ({newAvailableFields.length})
-          </button>
-        </div>
-
-        {/* Body Content */}
-        <div className="flex-1 overflow-y-auto min-h-0 pr-0.5 thin-scrollbar">
+        {/* Body Content - Zotero Authentic Layout */}
+        <div className="space-y-4">
           {isLoadingPreview ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center space-y-3">
-              <Loader2 className="size-6 animate-spin text-primary shrink-0" />
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-foreground">
-                  Computing Schema Compatibility
-                </p>
-                <p className="text-xs text-foreground">
-                  Resolving semantic base mappings, extra buffer fields, and
-                  contributor roles…
-                </p>
-              </div>
+            <div className="flex flex-col items-center justify-center py-8 text-center space-y-2">
+              <Loader2 className="size-4 animate-spin text-muted-foreground shrink-0" />
+              <p className="text-13 text-muted-foreground">
+                Checking field compatibility…
+              </p>
             </div>
           ) : previewError ? (
-            <div className="p-4 rounded-lg border border-destructive/30 bg-destructive/5 text-destructive space-y-3">
+            <div className="p-3 rounded-md border border-destructive/30 bg-destructive/5 text-destructive space-y-2">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="size-4 shrink-0" />
-                <p className="text-sm font-medium">
-                  Failed to compute conversion preview
+                <p className="text-13 font-medium">
+                  Failed to check field compatibility
                 </p>
               </div>
-              <p className="text-xs opacity-90">{previewError}</p>
+              <p className="text-12 opacity-90">{previewError}</p>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={loadPreview}
-                className="h-7 text-xs gap-1.5"
+                className="h-7 text-12 gap-1.5 rounded-md border-border"
               >
                 <RefreshCw className="size-3" /> Retry
               </Button>
             </div>
           ) : (
-            /* 3-Column Breakdown Layout */
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 items-start">
-              {/* ── COLUMN 1: Retained & Mapped Fields ─────────────────────── */}
-              <div
-                className={cn(
-                  "rounded-lg border border-border bg-card p-3.5 space-y-3 flex flex-col",
-                  mobileTab !== "retained" && "hidden md:flex",
-                )}
-              >
-                <div className="flex items-center justify-between pb-2 border-b border-border-subtle">
-                  <div className="flex items-center gap-1.5">
-                    <CheckCircle2 className="size-4 text-success shrink-0" />
-                    <span className="text-xs font-semibold text-foreground">
-                      Retained & Mapped
-                    </span>
-                  </div>
-                  <Badge
-                    variant="secondary"
-                    className="text-11 h-5 px-1.5 font-normal"
-                  >
-                    {totalRetainedCount}{" "}
-                    {totalRetainedCount === 1 ? "field" : "fields"}
-                  </Badge>
-                </div>
+            <div className="space-y-3.5 text-13">
+              {/* Primary confirmation prompt (Zotero Desktop Standard) */}
+              <p className="text-foreground leading-normal">
+                Are you sure you want to change the item type from{" "}
+                <span className="font-semibold">{sourceTypeName}</span> to{" "}
+                <span className="font-semibold">{targetTypeName}</span>?
+              </p>
 
-                <div className="space-y-2 text-xs">
-                  {/* Semantic Mappings */}
-                  {mappedFields.length > 0 && (
-                    <div className="space-y-1.5">
-                      <span className="text-11 font-medium text-foreground tracking-normal block">
-                        Mapped Base Fields
-                      </span>
-                      {mappedFields.map((m, idx) => (
-                        <div
-                          key={`map-${m.fromField}-${idx}`}
-                          className="p-2 rounded-md bg-success/10 border border-success/20 space-y-1"
-                        >
-                          <div className="flex items-center justify-between font-medium">
-                            <span className="text-success">
-                              {resolveFieldLabel(m.fromField)}
-                            </span>
-                            <ArrowRight className="size-3 text-success shrink-0" />
-                            <span className="text-success">
-                              {resolveFieldLabel(m.toField)}
-                            </span>
-                          </div>
-                          <p
-                            className="text-11 text-foreground truncate"
-                            title={formatValue(m.value)}
-                          >
-                            &ldquo;{formatValue(m.value)}&rdquo;
-                          </p>
-                          <Badge
-                            variant="outline"
-                            className="text-10 h-4 px-1 py-0 text-success border-success/30"
-                          >
-                            {m.rule === "base-semantic"
-                              ? "BaseField Mapping"
-                              : "Special rule"}
-                          </Badge>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Creator Role Adjustments */}
-                  {creatorRoleChanges.length > 0 && (
-                    <div className="space-y-1.5 pt-1">
-                      <span className="text-11 font-medium text-foreground tracking-normal block">
-                        Contributor Roles
-                      </span>
-                      {creatorRoleChanges.map((c, idx) => (
-                        <div
-                          key={`creator-${idx}`}
-                          className="p-2 rounded-md bg-muted border border-border-subtle text-11 space-y-0.5"
-                        >
-                          <div className="flex items-center justify-between font-medium">
-                            <span className="capitalize text-foreground">
-                              {c.fromRole}
-                            </span>
-                            <ArrowRight className="size-3 text-foreground shrink-0" />
-                            <span className="capitalize text-foreground font-semibold">
-                              {c.toRole}
-                            </span>
-                          </div>
-                          <p className="text-muted-foreground text-10">
-                            {c.reason === "primary-fallback"
-                              ? "Primary role adaptation"
-                              : "Role preserved in schema"}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Preserved Fields */}
-                  <div className="space-y-1.5 pt-1">
-                    <span className="text-11 font-medium text-foreground tracking-normal block">
-                      Preserved Attributes
-                    </span>
-                    <div className="max-h-[220px] overflow-y-auto space-y-1 thin-scrollbar pr-1">
-                      {preservedFieldDetails.length > 0 ? (
-                        preservedFieldDetails.map((f) => (
-                          <div
-                            key={f.key}
-                            className="flex items-center justify-between py-1 px-1.5 rounded hover:bg-muted transition-colors"
-                          >
-                            <span
-                              className="font-medium text-foreground truncate pr-2"
-                              title={f.label}
-                            >
-                              {f.label}
-                            </span>
-                            <span
-                              className="text-muted-foreground text-11 font-mono truncate max-w-[130px]"
-                              title={f.value}
-                            >
-                              {f.value || "—"}
-                            </span>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-muted-foreground italic text-center py-2">
-                          No direct fields
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* ── COLUMN 2: Overflow to Extra ────────────────────────────── */}
-              <div
-                className={cn(
-                  "rounded-lg border border-border bg-card p-3.5 space-y-3 flex flex-col",
-                  mobileTab !== "extra" && "hidden md:flex",
-                )}
-              >
-                <div className="flex items-center justify-between pb-2 border-b border-border-subtle">
-                  <div className="flex items-center gap-1.5">
-                    <Archive className="size-4 text-warning shrink-0" />
-                    <span className="text-xs font-semibold text-foreground">
-                      Overflow to Extra
-                    </span>
-                  </div>
-                  <Badge
-                    variant={
-                      droppedWithValues.length > 0 ? "secondary" : "outline"
-                    }
-                    className={cn(
-                      "text-11 h-5 px-1.5 font-normal",
-                      droppedWithValues.length > 0
-                        ? "text-warning bg-warning/10 border-warning/30"
-                        : "text-muted-foreground",
-                    )}
-                  >
-                    {droppedWithValues.length}{" "}
-                    {droppedWithValues.length === 1 ? "field" : "fields"}
-                  </Badge>
-                </div>
-
-                <div className="space-y-3 text-xs flex-1 flex flex-col">
-                  {droppedWithValues.length > 0 ? (
-                    <>
-                      <p className="text-foreground leading-relaxed text-11">
-                        Fields not present in{" "}
-                        <span className="font-medium text-foreground">
-                          {targetTypeName}
-                        </span>{" "}
-                        schema.
-                      </p>
-
-                      {/* Discarded Fields Table */}
-                      <div className="rounded-md border border-border bg-muted max-h-[140px] overflow-y-auto thin-scrollbar">
-                        <table className="w-full text-left table-fixed">
-                          <tbody className="divide-y divide-border-subtle">
-                            {droppedWithValues.map((d, idx) => (
-                              <tr
-                                key={`dropped-${d.field}-${idx}`}
-                                className="hover:bg-muted"
-                              >
-                                <td
-                                  className="py-1 px-2.5 font-medium text-foreground w-1/2 truncate"
-                                  title={d.label || d.field}
-                                >
-                                  {d.label || resolveFieldLabel(d.field)}
-                                </td>
-                                <td
-                                  className="py-1 px-2.5 text-muted-foreground font-mono text-11 w-1/2 truncate"
-                                  title={formatValue(d.value)}
-                                >
-                                  {formatValue(d.value)}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {/* Retain in Extra Checkbox */}
-                      <div className="space-y-2 pt-1 border-t border-border-subtle">
-                        <div className="flex items-start gap-2">
-                          <Checkbox
-                            id="modal-retain-extra"
-                            checked={retainUnmapped}
-                            onCheckedChange={(checked) =>
-                              setRetainUnmapped(Boolean(checked))
-                            }
-                            className="size-4 mt-0.5 border-border data-[state=checked]:border-primary"
-                          />
-                          <div className="space-y-0.5 select-none">
-                            <Label
-                              htmlFor="modal-retain-extra"
-                              className="text-xs font-medium text-foreground cursor-pointer"
-                            >
-                              Safely buffer in Extra note
-                            </Label>
-                            <p className="text-10 text-muted-foreground leading-normal">
-                              Appends{" "}
-                              <code className="font-mono text-10">
-                                Key: Value
-                              </code>{" "}
-                              lines into Extra, compliant with Zotero and
-                              Citeproc CSL.
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Monospace Extra preview */}
-                        {retainUnmapped ? (
-                          <div className="p-2 rounded-md bg-muted font-mono text-11 text-foreground border border-border space-y-0.5 max-h-[120px] overflow-y-auto thin-scrollbar">
-                            <span className="text-10 font-sans font-medium text-foreground block mb-1">
-                              Will append to Extra:
-                            </span>
-                            {extraBufferLines.map((line, idx) => (
-                              <div
-                                key={`extra-line-${idx}`}
-                                className="truncate"
-                                title={line}
-                              >
-                                {line}
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="p-2 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-11 flex items-center gap-1.5">
-                            <AlertTriangle className="size-3.5 shrink-0" />
-                            <span>
-                              Unmapped fields will be permanently discarded.
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center text-center p-4 space-y-2 text-foreground">
-                      <ShieldCheck className="size-8 text-success stroke-[1.5]" />
-                      <div className="space-y-0.5">
-                        <p className="text-xs font-semibold text-foreground">
-                          Zero Schema Loss
-                        </p>
-                        <p className="text-11 text-muted-foreground">
-                          All fields fit directly or mapped into{" "}
-                          {targetTypeName}. No values will overflow to Extra.
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* ── COLUMN 3: New Available Fields ─────────────────────────── */}
-              <div
-                className={cn(
-                  "rounded-lg border border-border bg-card p-3.5 space-y-3 flex flex-col",
-                  mobileTab !== "new" && "hidden md:flex",
-                )}
-              >
-                <div className="flex items-center justify-between pb-2 border-b border-border-subtle">
-                  <div className="flex items-center gap-1.5">
-                    <PlusCircle className="size-4 text-primary shrink-0" />
-                    <span className="text-xs font-semibold text-foreground">
-                      New Available Fields
-                    </span>
-                  </div>
-                  <Badge
-                    variant="outline"
-                    className="text-11 h-5 px-1.5 font-normal text-primary border-primary"
-                  >
-                    {newAvailableFields.length}{" "}
-                    {newAvailableFields.length === 1 ? "field" : "fields"}
-                  </Badge>
-                </div>
-
-                <div className="space-y-2 text-xs flex-1 flex flex-col">
-                  <p className="text-foreground leading-relaxed text-11">
-                    Fields unlocked by{" "}
-                    <span className="font-medium text-foreground">
-                      {targetTypeName}
-                    </span>{" "}
-                    schema ready for curation:
+              {/* Case 1: Item has populated fields that will be dropped */}
+              {droppedWithValues.length > 0 ? (
+                <div className="space-y-2.5">
+                  <p className="text-foreground font-medium">
+                    The following fields will be lost:
                   </p>
 
-                  <div className="flex-1 max-h-[280px] overflow-y-auto space-y-1 thin-scrollbar pr-1">
-                    {newAvailableFields.length > 0 ? (
-                      newAvailableFields.map((f: SchemaFieldDefinition) => (
-                        <div
-                          key={`new-${f.field}`}
-                          className="flex items-center justify-between py-1 px-2 rounded-md bg-muted hover:bg-muted transition-colors"
-                        >
-                          <span
-                            className="font-medium text-foreground truncate pr-2"
-                            title={f.label}
+                  <div className="rounded-md border border-border bg-muted/30 p-2.5 max-h-[160px] overflow-y-auto thin-scrollbar">
+                    <ul className="space-y-1.5 text-12">
+                      {droppedWithValues.map((d) => {
+                        const label = d.label || resolveFieldLabel(d.field);
+                        const valStr = formatValue(d.value);
+                        return (
+                          <li
+                            key={d.field}
+                            className="flex items-start justify-between gap-3 text-foreground"
                           >
-                            {f.label}
-                          </span>
-                          <span className="text-10 font-mono text-muted-foreground px-1 py-0.5 rounded bg-background border border-border-subtle">
-                            {f.category || f.type}
-                          </span>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="flex-1 flex flex-col items-center justify-center text-center p-4 space-y-1 text-foreground">
-                        <CheckCircle2 className="size-6 text-muted-foreground stroke-1" />
-                        <p className="text-xs text-muted-foreground">
-                          No additional fields in target schema
-                        </p>
-                      </div>
-                    )}
+                            <span className="font-medium shrink-0">{label}:</span>
+                            <span
+                              className="text-muted-foreground truncate text-right font-normal"
+                              title={valStr}
+                            >
+                              {valStr}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+
+                  {/* Safety option: preserve unmapped fields in Extra */}
+                  <div className="pt-1 flex items-start gap-2.5">
+                    <Checkbox
+                      id="preserve-extra"
+                      checked={retainUnmapped}
+                      onCheckedChange={(checked) =>
+                        setRetainUnmapped(Boolean(checked))
+                      }
+                      className="mt-0.5"
+                    />
+                    <Label
+                      htmlFor="preserve-extra"
+                      className="text-12 font-normal text-muted-foreground leading-tight cursor-pointer"
+                    >
+                      Preserve lost fields in the{" "}
+                      <span className="font-medium text-foreground">Extra</span>{" "}
+                      field
+                    </Label>
                   </div>
                 </div>
-              </div>
+              ) : schemaUnsupportedFieldLabels.length > 0 ? (
+                /* Case 2: Current item has no values in unmapped fields, but schemas differ */
+                <div className="space-y-1.5 text-12 text-muted-foreground">
+                  <p>
+                    No filled data will be lost on this item.
+                  </p>
+                  <p className="text-11 leading-normal opacity-90">
+                    Fields not supported by {targetTypeName}:{" "}
+                    <span className="text-foreground font-medium">
+                      {schemaUnsupportedFieldLabels.join(", ")}
+                    </span>
+                    .
+                  </p>
+                </div>
+              ) : (
+                /* Case 3: Fully compatible schemas */
+                <p className="text-12 text-muted-foreground">
+                  All fields in this item are supported by {targetTypeName}. No
+                  data will be lost.
+                </p>
+              )}
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <DialogFooter className="gap-2 pt-2 border-t border-border shrink-0 sm:justify-between items-center">
-          <div className="text-11 text-muted-foreground hidden sm:flex items-center gap-1.5">
-            <span className="inline-block size-1.5 rounded-full bg-success" />
-            <span>Lossless conversion with optimistic locking</span>
-          </div>
-
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => onOpenChange(false)}
-              disabled={isConverting}
-              className="h-8 px-3 text-13 font-medium"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              onClick={handleConfirm}
-              disabled={
-                isConverting || isLoadingPreview || Boolean(previewError)
-              }
-              className="h-8 px-4 text-13 font-medium gap-1.5"
-            >
-              {isConverting ? (
-                <>
-                  <Loader2 className="size-3.5 animate-spin" />
-                  <span>Converting…</span>
-                </>
-              ) : (
-                <span>Convert to {targetTypeName}</span>
-              )}
-            </Button>
-          </div>
+        <DialogFooter className="pt-2 shrink-0 flex items-center justify-end gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => onOpenChange(false)}
+            disabled={isConverting}
+            className="h-8 px-3 text-13 font-medium cursor-pointer text-foreground rounded-md hover:bg-muted"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            onClick={handleConfirm}
+            disabled={
+              isConverting || isLoadingPreview || Boolean(previewError)
+            }
+            className="h-8 px-3 text-13 font-medium cursor-pointer rounded-md shadow-none gap-1.5"
+          >
+            {isConverting ? (
+              <>
+                <Loader2 className="size-3.5 animate-spin" />
+                <span>Converting…</span>
+              </>
+            ) : (
+              <span>Convert to {targetTypeName}</span>
+            )}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

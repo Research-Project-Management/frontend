@@ -241,7 +241,7 @@ export function ReaderSidebar({
           )}
         >
           {/* Header with Title */}
-          <div className="h-10 shrink-0 border-b border-border px-3 flex items-center bg-muted">
+          <div className="h-10 shrink-0 border-b border-border px-3 flex items-center bg-background">
             <h2 className="text-12 font-semibold text-foreground truncate">
               {panelTitle}
             </h2>
@@ -329,10 +329,6 @@ export function ReaderSidebar({
                   variant="search"
                   title="No matching headings"
                   description={`No headings match "${outlineFilter}".`}
-                  action={{
-                    label: "Clear filter",
-                    onClick: () => setOutlineFilter(""),
-                  }}
                   isCompact
                 />
               ) : (

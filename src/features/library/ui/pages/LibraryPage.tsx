@@ -10,6 +10,7 @@ import { LibraryTopbar, type BreadcrumbItem } from '@/features/library/ui/topbar
 import { LibraryContent, mapOrderByToSavedSearchSortBy } from '@/features/library/ui/content/LibraryContent';
 import { LibraryInspector } from '@/features/library/ui/inspector/LibraryInspector';
 import { DuplicateMergeInspector } from '@/features/library/ui/inspector/DuplicateMergeInspector';
+import { FeedItemInspector } from '@/features/library/ui/inspector/FeedItemInspector';
 import { ErrorBoundary } from '@/shared/components/ui/error-boundary';
 import { useLibraryNavigation } from '@/features/library/core/coordinator/navigation.coordinator';
 
@@ -26,7 +27,8 @@ import { useTrash, useLibraryCountsQuery, useItemTypes, useItems, useLibraryDelt
 import { useMergeDuplicates } from '@/features/library/sdk/queries/ingestion.queries';
 import { formatItemTypeLabel } from '@/features/library/domain/metadata';
 import { parseEmojiPrefix } from '@/features/library/domain/academic-text';
-import type { Item, DuplicateGroup } from '@/features/library/domain/types/library.types';
+import { mapFeedEntryToCreateItemPayload, type ParsedFeedEntry } from '@/features/library/domain/feed-parser.domain';
+import type { Item, DuplicateGroup, Collection } from '@/features/library/domain/types/library.types';
 
 interface LibraryPageProps {
   scopeId?: string;
@@ -79,12 +81,18 @@ export function ModernLibraryPage({
   const openModal = useLibraryUIStore((s) => s.openModal);
   const setActiveItem = useLibraryUIStore((s) => s.setActiveItem);
   const selectOnly = useLibraryUIStore((s) => s.selectOnly);
+  const isInspectorOpen = useLibraryUIStore((s) => s.isInspectorOpen);
   const setIsInspectorOpen = useLibraryUIStore((s) => s.setIsInspectorOpen);
   const displayOptions = useLibraryUIStore((s) => s.displayOptions);
   const startBatchUpload = useProcessModalStore((s) => s.startBatchUpload);
   const feeds = useFeedsStore((s) => s.feeds);
   const loadFeeds = useFeedsStore((s) => s.loadFeeds);
   const triggerRefresh = useFeedsStore((s) => s.triggerRefresh);
+  const selectedFeedEntry = useFeedsStore((s) => s.selectedFeedEntry);
+  const readEntryIds = useFeedsStore((s) => s.readEntryIds);
+  const toggleEntryRead = useFeedsStore((s) => s.toggleEntryRead);
+  const markEntryAsRead = useFeedsStore((s) => s.markEntryAsRead);
+  const markAllEntriesAsRead = useFeedsStore((s) => s.markAllEntriesAsRead);
 
   React.useEffect(() => {
     loadFeeds();
@@ -107,6 +115,13 @@ export function ModernLibraryPage({
   const isSavedSearchView = nav.isSavedSearchView;
   const effectiveView = view || (nav.filterParam && nav.filterParam !== 'saved-search' ? nav.filterParam : undefined);
 
+  // Master-Detail Layout: Auto-open Inspector when viewing RSS feeds on desktop
+  React.useEffect(() => {
+    if (effectiveView === 'feed') {
+      setIsInspectorOpen(true);
+    }
+  }, [effectiveView, setIsInspectorOpen]);
+
   const filterTitle = effectiveView === 'feed'
     ? (currentFeed ? currentFeed.name : 'Feeds')
     : (effectiveView ? FILTER_TITLE_MAP[effectiveView] : undefined);
@@ -119,6 +134,7 @@ export function ModernLibraryPage({
   useLibraryDeltaSync(effectiveScopeId);
 
   const { data: collections = [] } = useCollectionsQuery(effectiveScopeId);
+  const collectionList: Collection[] = (collections as Collection[]) || [];
   const { savedSearches = [] } = useSavedSearches(effectiveScopeId);
   const collectionMap = useMemo(() => {
     const map = new Map<string, (typeof collections)[number]>();
@@ -184,7 +200,7 @@ export function ModernLibraryPage({
                   icon: Rss,
                 })),
                 onSelectSwitcherOption: (feedId: string) => {
-                  router.push(`/library?filter=feed&feedId=${feedId}`);
+                  router.push(`/library/feeds/${feedId}`);
                 },
               },
             ]
@@ -241,15 +257,17 @@ export function ModernLibraryPage({
       return;
     }
     if (effectiveView === 'feed') {
-      router.push(`/library?filter=feed&feedId=${crumbId}`);
+      if (!crumbId || crumbId === '__feeds__') {
+        router.push('/library/feeds');
+        return;
+      }
+      router.push(`/library/feeds/${crumbId}`);
       return;
     }
     nav.navigateToCollection(crumbId);
   };
 
-  // Shared upload handler — used for both file and folder uploads.
-  // folderName is accepted by the folder variant but not used in the upload logic
-  // (folder structure is implicit in the File.webkitRelativePath metadata).
+  // Shared upload handler
   const processUpload = (files: File[]) => {
     if (!files?.length) return;
     void startBatchUpload(files, {
@@ -266,7 +284,6 @@ export function ModernLibraryPage({
 
   const handleDirectFilesUpload = processUpload;
   const handleDirectFolderUpload = (files: File[], _folderName: string) => processUpload(files);
-
 
   const { createItem } = useItems({
     scopeId: effectiveScopeId,
@@ -309,8 +326,6 @@ export function ModernLibraryPage({
   const { trashItems, emptyTrash } = useTrash(effectiveScopeId, { enabled: isTrash });
   const clearSelection = useLibraryUIStore((s) => s.clearSelection);
 
-  // Opens the confirmation dialog instead of using window.confirm.
-  // The actual deletion is dispatched via onConfirm inside LibraryModals.
   const handleEmptyTrash = () => {
     if (trashItems.length === 0) {
       toast.info('Trash is already empty', { id: 'empty-trash' });
@@ -327,7 +342,6 @@ export function ModernLibraryPage({
       },
     });
   };
-
 
   const { data: countsData } = useLibraryCountsQuery(effectiveScopeId);
   const displayCount = useMemo(() => {
@@ -402,6 +416,35 @@ export function ModernLibraryPage({
     [mergeMutation],
   );
 
+  // Feed save handler for FeedItemInspector
+  const [isFeedItemSaving, setIsFeedItemSaving] = useState(false);
+  const [savedFeedItemIds, setSavedFeedItemIds] = useState<Set<string>>(() => new Set());
+
+  const handleSaveFeedItemFromInspector = async (entry: ParsedFeedEntry, targetColId?: string) => {
+    markEntryAsRead(entry.id);
+    setIsFeedItemSaving(true);
+    try {
+      const payload = mapFeedEntryToCreateItemPayload(entry, {
+        scopeId: effectiveScopeId,
+        collectionId: targetColId,
+      });
+      await createItem({ ...payload, silent: true } as any);
+      setSavedFeedItemIds((prev) => new Set(prev).add(entry.id));
+      const colName = targetColId
+        ? collectionList.find((c) => c.id === targetColId)?.name
+        : undefined;
+      toast.success(colName ? `Saved to "${colName}"` : 'Saved to Library', {
+        description: `"${entry.title.slice(0, 48)}..." added to your collection.`,
+      });
+    } catch (err: unknown) {
+      toast.error('Failed to save to library', {
+        description: err instanceof Error ? err.message : 'Please try again.',
+      });
+    } finally {
+      setIsFeedItemSaving(false);
+    }
+  };
+
   const savedSearchTitle = currentSavedSearch
     ? parseEmojiPrefix(currentSavedSearch.name).label
     : undefined;
@@ -416,13 +459,13 @@ export function ModernLibraryPage({
   return (
     <div className="flex h-full w-full min-h-0 relative">
       {/* Main Workspace (Topbar + Data Content) */}
-      <div className="flex flex-1 flex-col min-w-0 min-h-0">
+      <div className="flex flex-1 flex-col min-w-0 min-h-0 overflow-hidden">
         <LibraryTopbar
           title={displayTitle}
           icon={
             isTrash
               ? Trash2
-              : (effectiveView ? FILTER_ICON_MAP[effectiveView] : undefined)
+              : ((effectiveView && effectiveView !== 'feed') ? FILTER_ICON_MAP[effectiveView] : undefined)
           }
           count={effectiveView === 'feed' ? undefined : displayCount}
           breadcrumbs={breadcrumbs}
@@ -437,6 +480,17 @@ export function ModernLibraryPage({
               ? () => {
                   triggerRefresh();
                   toast.info(`Refreshing "${currentFeed?.name || 'feed'}"...`);
+                }
+              : undefined
+          }
+          onMarkAllFeedRead={
+            effectiveView === 'feed'
+              ? () => {
+                  // Mark all entries as read by triggering feedsStore
+                  if (selectedFeedEntry) {
+                    markAllEntriesAsRead([selectedFeedEntry.id]);
+                  }
+                  toast.success(`Marked all articles in "${currentFeed?.name || 'feed'}" as read`);
                 }
               : undefined
           }
@@ -472,7 +526,7 @@ export function ModernLibraryPage({
         </div>
       </div>
 
-      {/* Inspector Panel (Right side details, metadata, attachments, or duplicate merge workbench) */}
+      {/* Inspector Panel (Right side details, metadata, attachments, duplicate merge workbench, or Feed Inspector) */}
       <ErrorBoundary variant="section" featureName="Metadata Inspector">
         {effectiveView === 'duplicates' && selectedDuplicateGroupItems.length >= 2 ? (
           <div className="hidden md:flex w-80 lg:w-96 xl:w-[420px] h-full shrink-0 flex-col overflow-hidden border-l border-border bg-background">
@@ -497,6 +551,22 @@ export function ModernLibraryPage({
               }}
             />
           </div>
+        ) : effectiveView === 'feed' ? (
+          isInspectorOpen ? (
+            <div className="hidden md:flex w-80 lg:w-[420px] xl:w-[480px] 2xl:w-[520px] h-full shrink-0 flex-col overflow-hidden border-l border-border bg-background">
+              <FeedItemInspector
+                entry={selectedFeedEntry}
+                feedTitle={currentFeed?.name}
+                collections={collectionList}
+                isRead={selectedFeedEntry ? readEntryIds.has(selectedFeedEntry.id) : false}
+                isSaving={isFeedItemSaving}
+                isSaved={selectedFeedEntry ? savedFeedItemIds.has(selectedFeedEntry.id) : false}
+                onToggleRead={toggleEntryRead}
+                onSave={handleSaveFeedItemFromInspector}
+                onClose={() => setIsInspectorOpen(false)}
+              />
+            </div>
+          ) : null
         ) : (
           <LibraryInspector scopeId={effectiveScopeId} canEdit={canEdit} />
         )}
@@ -509,6 +579,3 @@ export function ModernLibraryPage({
 }
 
 export default ModernLibraryPage;
-
-
-

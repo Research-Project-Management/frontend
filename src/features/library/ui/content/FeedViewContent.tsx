@@ -1,7 +1,22 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import {} from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import {
+  Rss,
+  EyeOff,
+  Eye,
+  ExternalLink,
+  Loader2,
+  Check,
+  BookPlus,
+  ChevronDown,
+  Folder,
+  ChevronUp,
+  Calendar,
+  Bookmark,
+  RefreshCw,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/shared/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
@@ -13,54 +28,29 @@ import {
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
 import { useFetchAcademicFeed } from '@/features/library/sdk/queries/ingestion.queries';
-import { useItems } from '@/features/library/sdk/queries/catalog.queries';
+import { useItems, useLibraryItemsQuery } from '@/features/library/sdk/queries/catalog.queries';
 import { useCollections } from '@/features/library/sdk/queries/collections.queries';
 import type { Collection } from '@/features/library/domain/types/library.types';
 import {
   parseFeedXml,
   mapFeedEntryToCreateItemPayload,
   type ParsedFeedEntry,
+  type FeedCreatorApiItem,
+  type FeedEntryApiItem,
+  type FeedFetchApiResponse,
 } from '@/features/library/domain/feed-parser.domain';
 import { useFeedsStore } from '@/features/library/core/store/feeds.store';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { ContentSkeleton } from '@/features/library/ui/content/ContentSkeleton';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
+import {
+  FeedStackIllustration,
+  FeedAllReadIllustration,
+  SearchStackIllustration,
+} from '@/features/library/ui/content/LibraryIllustrations';
+import { useSearchParams } from 'next/navigation';
 import { cn } from '@/shared/lib/utils';
-
-interface FeedCreatorApiItem {
-  firstName?: string;
-  lastName?: string;
-  creatorType?: string;
-}
-
-interface FeedEntryApiItem {
-  id?: string;
-  title: string;
-  authors: string[];
-  creators?: FeedCreatorApiItem[];
-  doi?: string;
-  arxivId?: string;
-  url?: string;
-  link?: string;
-  pdfUrl?: string;
-  publicationDate?: string;
-  published?: string;
-  year?: number | null;
-  publicationTitle?: string;
-  volume?: string;
-  issue?: string;
-  pages?: string;
-  abstract?: string;
-  summary?: string;
-  keywords?: string[];
-}
-
-interface FeedFetchApiResponse {
-  feedTitle?: string;
-  entries?: FeedEntryApiItem[];
-  data?: FeedFetchApiResponse;
-}
 
 interface FeedViewContentProps {
   feedId?: string | null;
@@ -69,7 +59,6 @@ interface FeedViewContentProps {
 }
 
 export function FeedViewContent({ feedId, scopeId = 'user', canEdit = true }: FeedViewContentProps) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const searchQuery = (searchParams.get('q') || '').trim();
   const { createItem } = useItems({ scopeId, enabled: false });
@@ -80,16 +69,19 @@ export function FeedViewContent({ feedId, scopeId = 'user', canEdit = true }: Fe
     loadFeeds,
     refreshCounter,
     readEntryIds,
+    selectedFeedEntry,
+    setSelectedFeedEntry,
+    readFilter,
+    setReadFilter,
     markEntryAsRead,
     toggleEntryRead,
-    markAllEntriesAsRead,
     isEntryRead,
   } = useFeedsStore();
   const openModal = useLibraryUIStore((s) => s.openModal);
+  const isInspectorOpen = useLibraryUIStore((s) => s.isInspectorOpen);
+  const setIsInspectorOpen = useLibraryUIStore((s) => s.setIsInspectorOpen);
 
-  // Tab filter: 'all' or 'unread'
-  const [readFilter, setReadFilter] = useState<'all' | 'unread'>('all');
-  // State for expanded abstracts
+  // State for expanded abstracts in inline view
   const [expandedEntryIds, setExpandedEntryIds] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
@@ -102,6 +94,24 @@ export function FeedViewContent({ feedId, scopeId = 'user', canEdit = true }: Fe
   }, [feeds, feedId]);
 
   const { mutateAsync: fetchAcademicFeed, isPending: isFetching } = useFetchAcademicFeed();
+
+  // Query library items to cross-reference if an article is already saved in library
+  const { data: libraryData } = useLibraryItemsQuery(
+    scopeId,
+    { limit: 100, fields: ['id', 'title', 'doi', 'url'] },
+    { enabled: true },
+  );
+
+  const libraryItemLookup = useMemo(() => {
+    const doiMap = new Set<string>();
+    const titleMap = new Set<string>();
+    const items = libraryData?.items || [];
+    for (const item of items) {
+      if (item.doi) doiMap.add(item.doi.trim().toLowerCase());
+      if (item.title) titleMap.add(item.title.trim().toLowerCase());
+    }
+    return { doiMap, titleMap };
+  }, [libraryData?.items]);
 
   const [rawEntries, setRawEntries] = useState<ParsedFeedEntry[]>([]);
   const [feedTitle, setFeedTitle] = useState<string>('');
@@ -141,9 +151,11 @@ export function FeedViewContent({ feedId, scopeId = 'user', canEdit = true }: Fe
             })),
             doi: e.doi,
             arxivId: e.arxivId,
+            primaryCategory: e.primaryCategory || e.keywords?.[0],
             url: e.url || e.link,
             pdfUrl: e.pdfUrl,
-            publishedAt: e.publicationDate || e.published,
+            publishedAt: e.publicationDate || e.published || e.updated,
+            updatedAt: e.updated,
             year: e.year ?? undefined,
             publicationTitle: e.publicationTitle,
             volume: e.volume,
@@ -151,6 +163,8 @@ export function FeedViewContent({ feedId, scopeId = 'user', canEdit = true }: Fe
             pages: e.pages,
             abstract: e.abstract || e.summary,
             categories: e.keywords || [],
+            comment: e.comment,
+            rights: e.rights,
             feedFormat: 'rss2',
           })),
         );
@@ -183,17 +197,14 @@ export function FeedViewContent({ feedId, scopeId = 'user', canEdit = true }: Fe
     });
   }, [rawEntries, activeFeed?.retentionDays]);
 
-  // Count unread items
-  const unreadCount = useMemo(() => {
-    return retentionFilteredEntries.filter((e) => !readEntryIds.has(e.id)).length;
-  }, [retentionFilteredEntries, readEntryIds]);
-
   // Read filter + search filter
   const filteredEntries = useMemo(() => {
     let list = retentionFilteredEntries;
 
     if (readFilter === 'unread') {
       list = list.filter((e) => !readEntryIds.has(e.id));
+    } else if (readFilter === 'read') {
+      list = list.filter((e) => readEntryIds.has(e.id));
     }
 
     if (!searchQuery) return list;
@@ -208,6 +219,98 @@ export function FeedViewContent({ feedId, scopeId = 'user', canEdit = true }: Fe
     );
   }, [retentionFilteredEntries, readFilter, readEntryIds, searchQuery]);
 
+  // Master-Detail: Auto-select the first article if none is currently selected
+  useEffect(() => {
+    if (filteredEntries.length > 0) {
+      if (!selectedFeedEntry || !filteredEntries.some((e) => e.id === selectedFeedEntry.id)) {
+        setSelectedFeedEntry(filteredEntries[0]);
+      }
+    }
+  }, [filteredEntries, selectedFeedEntry, setSelectedFeedEntry]);
+
+  // Virtualizer for scalable performance with 500-1000+ items
+  const parentRef = useRef<HTMLDivElement>(null);
+
+  const rowVirtualizer = useVirtualizer({
+    count: filteredEntries.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 110,
+    overscan: 10,
+  });
+
+  // Keyboard navigation shortcuts: Backtick (`) or m to toggle read, j/k or ArrowDown/ArrowUp
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      if (
+        activeEl &&
+        (activeEl.tagName === 'INPUT' ||
+          activeEl.tagName === 'TEXTAREA' ||
+          (activeEl as HTMLElement).isContentEditable)
+      ) {
+        return;
+      }
+
+      // Ctrl/Cmd + Shift + S: Save selected feed entry to My Library
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'S' || e.key === 's')) {
+        if (selectedFeedEntry && canEdit) {
+          e.preventDefault();
+          void handleSaveEntry(selectedFeedEntry);
+        }
+      } else if (e.key === '`' || e.key === 'm') {
+        if (selectedFeedEntry) {
+          e.preventDefault();
+          toggleEntryRead(selectedFeedEntry.id);
+        }
+      } else if (e.key === 'j' || e.key === 'ArrowDown') {
+        if (filteredEntries.length === 0) return;
+        e.preventDefault();
+        const currentIndex = filteredEntries.findIndex((item) => item.id === selectedFeedEntry?.id);
+        const nextIndex = currentIndex < filteredEntries.length - 1 ? currentIndex + 1 : 0;
+        const nextEntry = filteredEntries[nextIndex];
+        setSelectedFeedEntry(nextEntry);
+        rowVirtualizer.scrollToIndex(nextIndex, { align: 'auto' });
+        if (!isEntryRead(nextEntry.id)) {
+          markEntryAsRead(nextEntry.id);
+        }
+      } else if (e.key === 'k' || e.key === 'ArrowUp') {
+        if (filteredEntries.length === 0) return;
+        e.preventDefault();
+        const currentIndex = filteredEntries.findIndex((item) => item.id === selectedFeedEntry?.id);
+        const prevIndex = currentIndex > 0 ? currentIndex - 1 : filteredEntries.length - 1;
+        const prevEntry = filteredEntries[prevIndex];
+        setSelectedFeedEntry(prevEntry);
+        rowVirtualizer.scrollToIndex(prevIndex, { align: 'auto' });
+        if (!isEntryRead(prevEntry.id)) {
+          markEntryAsRead(prevEntry.id);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [
+    selectedFeedEntry,
+    filteredEntries,
+    canEdit,
+    toggleEntryRead,
+    setSelectedFeedEntry,
+    isEntryRead,
+    markEntryAsRead,
+    rowVirtualizer,
+  ]);
+
+  // Check if article is already in library (via DOI or exact Title)
+  const isItemInLibrary = useCallback(
+    (entry: ParsedFeedEntry) => {
+      if (savedEntryIds.has(entry.id)) return true;
+      if (entry.doi && libraryItemLookup.doiMap.has(entry.doi.trim().toLowerCase())) return true;
+      if (entry.title && libraryItemLookup.titleMap.has(entry.title.trim().toLowerCase())) return true;
+      return false;
+    },
+    [savedEntryIds, libraryItemLookup],
+  );
+
   const handleSaveEntry = async (entry: ParsedFeedEntry, targetCollectionId?: string) => {
     markEntryAsRead(entry.id);
     setSavingEntryIds((prev) => new Set(prev).add(entry.id));
@@ -216,7 +319,7 @@ export function FeedViewContent({ feedId, scopeId = 'user', canEdit = true }: Fe
         scopeId,
         collectionId: targetCollectionId,
       });
-      await createItem({ ...createPayload, silent: true } as any);
+      await createItem({ ...createPayload, silent: true });
       setSavedEntryIds((prev) => new Set(prev).add(entry.id));
 
       const colName = targetCollectionId
@@ -238,423 +341,448 @@ export function FeedViewContent({ feedId, scopeId = 'user', canEdit = true }: Fe
     }
   };
 
-  const handleMarkAllRead = () => {
-    const allIds = retentionFilteredEntries.map((e) => e.id);
-    markAllEntriesAsRead(allIds);
-    toast.success('Marked all as read', {
-      description: `All ${allIds.length} articles in this feed are marked as read.`,
-    });
+  const handleSelectEntry = (entry: ParsedFeedEntry) => {
+    if (!isEntryRead(entry.id)) {
+      markEntryAsRead(entry.id);
+    }
+    setSelectedFeedEntry(entry);
   };
 
   if (!activeFeed) {
     return (
-      <div className="flex-1 w-full h-full min-h-[440px] flex flex-col items-center justify-center p-8 text-center select-none bg-background">
-        <Rss className="size-10 text-muted-foreground mb-3" strokeWidth={1.5} />
-        <h3 className="text-16 font-semibold text-foreground mb-1">No RSS Feeds Subscribed</h3>
-        <p className="text-13 text-foreground max-w-sm mb-4">
-          Stay updated with preprints and peer-reviewed articles by subscribing to feeds.
-        </p>
-        <Button
-          size="sm"
-          onClick={() => openModal('ADD_FEED')}
-          className="h-8 gap-1.5 cursor-pointer font-medium"
-        >
-          <Rss className="size-3.5" />
-          Subscribe to New Feed
-        </Button>
-      </div>
+      <PlaneEmptyState
+        illustration={FeedStackIllustration}
+        title="No RSS feeds subscribed"
+        description="Stay updated with preprints and peer-reviewed articles by subscribing to feeds."
+      />
     );
   }
 
   return (
     <div className="h-full w-full flex flex-col overflow-hidden bg-background">
-      {/* Top Filter Bar: All / Unread Filter + Quick Actions */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/20 shrink-0">
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => setReadFilter('all')}
-            className={cn(
-              'h-7 px-2.5 rounded-md text-12 font-medium transition-colors cursor-pointer select-none',
-              readFilter === 'all'
-                ? 'bg-background text-foreground shadow-2xs border border-border/80'
-                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
-            )}
-          >
-            All ({retentionFilteredEntries.length})
-          </button>
-          <button
-            type="button"
-            onClick={() => setReadFilter('unread')}
-            className={cn(
-              'h-7 px-2.5 rounded-md text-12 font-medium transition-colors cursor-pointer select-none flex items-center gap-1.5',
-              readFilter === 'unread'
-                ? 'bg-background text-foreground shadow-2xs border border-border/80'
-                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
-            )}
-          >
-            {unreadCount > 0 && <span className="size-1.5 rounded-full bg-blue-500 shrink-0" />}
-            Unread ({unreadCount})
-          </button>
-        </div>
-
-        <div className="flex items-center gap-1">
-          {unreadCount > 0 && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleMarkAllRead}
-                  className="h-7 px-2 text-11 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer gap-1.5"
-                >
-                  <CheckCheck className="size-3.5" />
-                  <span className="hidden sm:inline">Mark all read</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Mark all feed items as read</TooltipContent>
-            </Tooltip>
+      {/* Sub Navigation Bar: All / Unread / Read (Your Work style) */}
+      <nav
+        aria-label="Feed read state filter"
+        className="flex items-center gap-1 border-b border-border px-4 bg-background select-none shrink-0 h-10 min-h-10"
+      >
+        <button
+          type="button"
+          onClick={() => setReadFilter('all')}
+          className={cn(
+            'relative flex h-full items-center px-3.5 text-13 font-medium transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer shrink-0',
+            readFilter === 'all'
+              ? 'text-primary'
+              : 'text-muted-foreground hover:text-foreground',
           )}
+        >
+          <span>All</span>
+          {readFilter === 'all' && (
+            <div className="absolute -bottom-[1px] left-0 right-0 h-[2px] bg-primary" />
+          )}
+        </button>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => void loadFeedEntries()}
-                className="size-7 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
-                aria-label="Refresh feed"
-              >
-                <RefreshCw className={cn('size-3.5', isFetching && 'animate-spin')} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">Refresh feed</TooltipContent>
-          </Tooltip>
-        </div>
-      </div>
+        <button
+          type="button"
+          onClick={() => setReadFilter('unread')}
+          className={cn(
+            'relative flex h-full items-center px-3.5 text-13 font-medium transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer shrink-0',
+            readFilter === 'unread'
+              ? 'text-primary'
+              : 'text-muted-foreground hover:text-foreground',
+          )}
+        >
+          <span>Unread</span>
+          {readFilter === 'unread' && (
+            <div className="absolute -bottom-[1px] left-0 right-0 h-[2px] bg-primary" />
+          )}
+        </button>
 
-      {/* Main Feed Content List */}
-      <div className="flex-1 overflow-y-auto min-h-0 bg-background divide-y divide-border">
+        <button
+          type="button"
+          onClick={() => setReadFilter('read')}
+          className={cn(
+            'relative flex h-full items-center px-3.5 text-13 font-medium transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer shrink-0',
+            readFilter === 'read'
+              ? 'text-primary'
+              : 'text-muted-foreground hover:text-foreground',
+          )}
+        >
+          <span>Read</span>
+          {readFilter === 'read' && (
+            <div className="absolute -bottom-[1px] left-0 right-0 h-[2px] bg-primary" />
+          )}
+        </button>
+      </nav>
+
+      {/* Main Feed Content List - Virtualized for instant smooth scrolling */}
+      <div
+        ref={parentRef}
+        className="flex-1 overflow-y-auto min-h-0 bg-transparent pb-10 scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+      >
         {isFetching && rawEntries.length === 0 ? (
-          <div className="p-6">
-            <ContentSkeleton rowCount={6} />
+          <div className="p-3">
+            <ContentSkeleton rowCount={8} />
           </div>
         ) : fetchError ? (
           <PlaneErrorState
             title="Failed to load RSS feed"
-            description={fetchError.message || 'Unable to reach or parse the feed URL.'}
+            description="Unable to reach or parse the RSS feed URL. The remote server may be temporarily down or blocking external requests."
             error={fetchError}
+            className="h-full min-h-[440px]"
           />
         ) : filteredEntries.length === 0 ? (
-          <div className="flex-1 w-full h-full min-h-[300px] flex flex-col items-center justify-center p-8 text-center text-foreground">
-            <CheckCircle2 className="size-8 stroke-1 mb-2 text-muted-foreground" />
-            <h4 className="text-14 font-semibold text-foreground mb-1">
-              {readFilter === 'unread'
-                ? 'All caught up!'
-                : searchQuery
-                  ? 'No matching articles'
-                  : 'No articles in this feed'}
-            </h4>
-            <p className="text-12 text-muted-foreground max-w-sm mb-4">
-              {readFilter === 'unread'
-                ? 'You have read all articles in this feed.'
-                : searchQuery
-                  ? `No feed articles matched "${searchQuery}".`
-                  : 'The feed returned no articles or might be temporarily unavailable.'}
-            </p>
-            {readFilter === 'unread' ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setReadFilter('all')}
-                className="h-8 gap-1.5 text-12 cursor-pointer"
-              >
-                View all articles
-              </Button>
-            ) : !searchQuery ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => void loadFeedEntries()}
-                className="h-8 gap-1.5 text-12 cursor-pointer"
-              >
-                <RefreshCw className="size-3.5" />
-                Try Again
-              </Button>
-            ) : null}
-          </div>
+          searchQuery ? (
+            <PlaneEmptyState
+              illustration={SearchStackIllustration}
+              title="No matching articles"
+              description={`No feed articles matched "${searchQuery}". Try checking for spelling errors or searching with different keywords.`}
+              className="h-full min-h-[400px]"
+            />
+          ) : readFilter === 'unread' ? (
+            <PlaneEmptyState
+              illustration={FeedAllReadIllustration}
+              title="All caught up!"
+              description="You have read all articles in this feed."
+              className="h-full min-h-[400px]"
+            />
+          ) : readFilter === 'read' ? (
+            <PlaneEmptyState
+              illustration={FeedStackIllustration}
+              title="No read articles"
+              description="Articles you read in this feed will be listed here."
+              className="h-full min-h-[400px]"
+            />
+          ) : (
+            <PlaneEmptyState
+              illustration={FeedStackIllustration}
+              title="No articles in this feed"
+              description="The feed returned no articles or might be temporarily unavailable."
+              className="h-full min-h-[400px]"
+            />
+          )
         ) : (
-          filteredEntries.map((entry) => {
-            const isSaving = savingEntryIds.has(entry.id);
-            const isSaved = savedEntryIds.has(entry.id);
-            const isRead = isEntryRead(entry.id);
-            const isExpanded = expandedEntryIds.has(entry.id);
+          <div
+            style={{
+              height: `${rowVirtualizer.getTotalSize()}px`,
+              width: '100%',
+              position: 'relative',
+            }}
+          >
+            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+              const entry = filteredEntries[virtualRow.index];
+              if (!entry) return null;
 
-            return (
-              <div
-                key={entry.id}
-                onClick={() => {
-                  if (!isRead) markEntryAsRead(entry.id);
-                }}
-                className={cn(
-                  'p-4 hover:bg-muted/40 transition-colors flex flex-col gap-1.5 cursor-pointer relative',
-                  !isRead && 'bg-blue-50/20 dark:bg-blue-950/10',
-                )}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <div className="flex items-start gap-2">
-                      {/* Unread indicator dot */}
-                      {!isRead ? (
-                        <span
-                          className="size-2 rounded-full bg-blue-500 shrink-0 mt-1.5"
-                          title="Unread"
-                        />
-                      ) : (
-                        <span className="size-2 shrink-0 mt-1.5 opacity-0" />
-                      )}
+              const isSaving = savingEntryIds.has(entry.id);
+              const isSaved = isItemInLibrary(entry);
+              const isRead = isEntryRead(entry.id);
+              const isExpanded = expandedEntryIds.has(entry.id);
+              const isSelected = selectedFeedEntry?.id === entry.id;
 
-                      <h3
-                        className={cn(
-                          'text-13 leading-snug tracking-tight',
-                          isRead
-                            ? 'font-medium text-foreground/80'
-                            : 'font-semibold text-foreground',
-                        )}
-                      >
-                        {entry.title}
-                      </h3>
-                    </div>
-
-                    {entry.authors.length > 0 && (
-                      <p className="text-11 text-muted-foreground truncate pl-4">
-                        {entry.authors.join(', ')}
-                      </p>
+              return (
+                <div
+                  key={entry.id}
+                  data-index={virtualRow.index}
+                  ref={rowVirtualizer.measureElement}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
+                  className="border-b border-border/60"
+                >
+                  <article
+                    aria-label={entry.title}
+                    onClick={() => handleSelectEntry(entry)}
+                    className={cn(
+                      'px-4 py-3.5 flex flex-col gap-2 cursor-pointer relative',
+                      isSelected && 'bg-muted/60',
                     )}
-                  </div>
-
-                  {/* Action buttons */}
-                  <div
-                    className="flex items-center gap-1.5 shrink-0"
-                    onClick={(e) => e.stopPropagation()}
                   >
-                    {/* Read / Unread toggle */}
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => toggleEntryRead(entry.id)}
-                          className="size-7 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
-                          aria-label={isRead ? 'Mark as unread' : 'Mark as read'}
-                        >
-                          {isRead ? (
-                            <EyeOff className="size-3.5" />
-                          ) : (
-                            <Eye className="size-3.5 text-blue-500" />
-                          )}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top">
-                        {isRead ? 'Mark as unread' : 'Mark as read'}
-                      </TooltipContent>
-                    </Tooltip>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <h3 className="text-14 sm:text-[15px] font-semibold text-foreground leading-snug tracking-tight block">
+                          {entry.title}
+                        </h3>
 
-                    {entry.url && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => window.open(entry.url, '_blank', 'noopener,noreferrer')}
-                            className="h-7 px-2 text-11 gap-1 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
-                          >
-                            <ExternalLink className="size-3" />
-                            <span className="hidden sm:inline">Source</span>
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top">Open in new tab</TooltipContent>
-                      </Tooltip>
-                    )}
+                        {entry.authors.length > 0 && (
+                          <p className="text-12 text-muted-foreground truncate font-normal leading-normal">
+                            {entry.authors.join(', ')}
+                          </p>
+                        )}
+                      </div>
 
-                    {canEdit && (
-                      <div className="flex items-center -space-x-px">
-                        <Button
-                          type="button"
-                          variant={isSaved ? 'outline' : 'default'}
-                          size="sm"
-                          disabled={isSaving || isSaved}
-                          onClick={() => handleSaveEntry(entry)}
-                          className={cn(
-                            'h-7 px-2.5 text-11 gap-1.5 cursor-pointer shadow-none',
-                            collections.length > 0 && !isSaved && 'rounded-r-none border-r-0',
-                          )}
-                        >
-                          {isSaving ? (
-                            <>
-                              <Loader2 className="size-3 animate-spin" />
-                              <span>Saving...</span>
-                            </>
-                          ) : isSaved ? (
-                            <>
-                              <Check className="size-3 text-emerald-500" />
-                              <span>Saved</span>
-                            </>
-                          ) : (
-                            <>
-                              <BookPlus className="size-3" />
-                              <span>Save to Library</span>
-                            </>
-                          )}
-                        </Button>
+                      {/* Action buttons */}
+                      <div
+                        className="flex items-center gap-1 shrink-0"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {/* Read / Unread toggle */}
+                        <Tooltip delayDuration={300}>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => toggleEntryRead(entry.id)}
+                              className="size-7 rounded-md text-foreground cursor-pointer"
+                              aria-label={isRead ? 'Mark as unread' : 'Mark as read'}
+                            >
+                              {isRead ? (
+                                <EyeOff className="size-3.5 text-foreground" />
+                              ) : (
+                                <Eye className="size-3.5 text-foreground" />
+                              )}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="text-xs">
+                            {isRead ? 'Mark as unread' : 'Mark as read'}
+                          </TooltipContent>
+                        </Tooltip>
 
-                        {/* Save to Collection Dropdown */}
-                        {collectionList.length > 0 && !isSaved && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
+                        {entry.url && (
+                          <Tooltip delayDuration={300}>
+                            <TooltipTrigger asChild>
                               <Button
                                 type="button"
-                                variant="default"
+                                variant="ghost"
                                 size="icon"
-                                disabled={isSaving || isSaved}
-                                className="h-7 w-6 rounded-l-none px-0 shadow-none border-l border-primary-foreground/20 cursor-pointer"
-                                aria-label="Save to specific collection"
+                                onClick={() => window.open(entry.url, '_blank', 'noopener,noreferrer')}
+                                className="size-7 rounded-md text-foreground cursor-pointer"
+                                aria-label="View source"
                               >
-                                <ChevronDown className="size-3" />
+                                <ExternalLink className="size-3.5 text-foreground" />
                               </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent
-                              align="end"
-                              side="bottom"
-                              sideOffset={4}
-                              className="w-56 p-1 rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 z-50 select-none"
-                            >
-                              <div className="px-2 py-1.5 text-11 font-medium text-muted-foreground">
-                                Save to collection...
-                              </div>
-                              <DropdownMenuSeparator className="my-1" />
-                              <DropdownMenuItem
-                                onClick={() => handleSaveEntry(entry)}
-                                className="h-7.5 px-2 text-12 font-medium cursor-pointer rounded hover:bg-muted"
-                              >
-                                <BookPlus className="size-3.5 mr-2 text-primary" />
-                                <span>My Library (Root)</span>
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator className="my-1" />
-                              <div className="max-h-48 overflow-y-auto space-y-0.5 scrollbar-none">
-                                {collectionList.map((col: Collection) => (
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="text-xs">View source</TooltipContent>
+                          </Tooltip>
+                        )}
+
+                        {canEdit && (
+                          <div className="flex items-center -space-x-px">
+                            <Tooltip delayDuration={300}>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  disabled={isSaving || isSaved}
+                                  onClick={() => handleSaveEntry(entry)}
+                                  className={cn(
+                                    'size-7 text-foreground cursor-pointer',
+                                    collectionList.length > 0 && !isSaved ? 'rounded-l-md rounded-r-none' : 'rounded-md',
+                                  )}
+                                  aria-label={isSaved ? 'In library' : isSaving ? 'Saving to library...' : 'Save to library'}
+                                >
+                                  {isSaving ? (
+                                    <Loader2 className="size-3.5 animate-spin text-foreground" />
+                                  ) : isSaved ? (
+                                    <Check className="size-3.5 text-foreground" />
+                                  ) : (
+                                    <BookPlus className="size-3.5 text-foreground" />
+                                  )}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-xs">
+                                {isSaved ? 'In library' : isSaving ? 'Saving to library...' : 'Save to library'}
+                              </TooltipContent>
+                            </Tooltip>
+
+                            {/* Save to Collection Dropdown */}
+                            {collectionList.length > 0 && !isSaved && (
+                              <DropdownMenu>
+                                <Tooltip delayDuration={300}>
+                                  <TooltipTrigger asChild>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        disabled={isSaving || isSaved}
+                                        className="h-7 w-4.5 rounded-l-none rounded-r-md px-0 text-foreground cursor-pointer"
+                                        aria-label="Save to specific collection"
+                                      >
+                                        <ChevronDown className="size-3 text-foreground" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="text-xs">
+                                    Save to collection...
+                                  </TooltipContent>
+                                </Tooltip>
+                                <DropdownMenuContent
+                                  align="end"
+                                  side="bottom"
+                                  sideOffset={4}
+                                  className="w-56 p-1 rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 z-50 select-none"
+                                >
+                                  <div className="px-2 py-1.5 text-11 font-medium text-muted-foreground">
+                                    Save to collection...
+                                  </div>
+                                  <DropdownMenuSeparator className="my-1" />
                                   <DropdownMenuItem
-                                    key={col.id}
-                                    onClick={() => handleSaveEntry(entry, col.id)}
-                                    className="h-7.5 px-2 text-12 cursor-pointer rounded hover:bg-muted flex items-center gap-2"
+                                    onClick={() => handleSaveEntry(entry)}
+                                    className="h-7.5 px-2 text-12 font-medium cursor-pointer rounded hover:bg-muted"
                                   >
-                                    <Folder className="size-3.5 text-muted-foreground shrink-0" />
-                                    <span className="truncate">{col.name}</span>
+                                    <BookPlus className="size-3.5 mr-2 text-muted-foreground" />
+                                    <span>My Library (Root)</span>
                                   </DropdownMenuItem>
-                                ))}
-                              </div>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                                  <DropdownMenuSeparator className="my-1" />
+                                  <div className="max-h-48 overflow-y-auto space-y-0.5 scrollbar-none">
+                                    {collectionList.map((col: Collection) => (
+                                      <DropdownMenuItem
+                                        key={col.id}
+                                        onClick={() => handleSaveEntry(entry, col.id)}
+                                        className="h-7.5 px-2 text-12 cursor-pointer rounded hover:bg-muted flex items-center gap-2"
+                                      >
+                                        <Folder className="size-3.5 text-muted-foreground shrink-0" />
+                                        <span className="truncate">{col.name}</span>
+                                      </DropdownMenuItem>
+                                    ))}
+                                  </div>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Abstract with Expand / Collapse */}
+                    {entry.abstract && (
+                      <div className="w-full">
+                        <p
+                          className={cn(
+                            'text-[13px] leading-relaxed text-muted-foreground transition-all',
+                            !isExpanded && 'line-clamp-2',
+                          )}
+                        >
+                          {entry.abstract}
+                        </p>
+                        {entry.abstract.length > 140 && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleAbstract(entry.id);
+                            }}
+                            className="inline-flex items-center gap-1 text-12 font-medium text-muted-foreground hover:text-foreground hover:underline mt-1 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-xs"
+                          >
+                            {isExpanded ? (
+                              <>
+                                <span>Show less</span>
+                                <ChevronUp className="size-3" />
+                              </>
+                            ) : (
+                              <>
+                                <span>Show more</span>
+                                <ChevronDown className="size-3" />
+                              </>
+                            )}
+                          </button>
                         )}
                       </div>
                     )}
-                  </div>
-                </div>
 
-                {/* Abstract with Expand / Collapse */}
-                {entry.abstract && (
-                  <div className="pl-4">
-                    <p
-                      className={cn(
-                        'text-11 leading-relaxed text-foreground/90 transition-all',
-                        !isExpanded && 'line-clamp-2',
+                    {/* Metadata & Links - Clean academic citation order (Date -> Source -> Identifier -> Direct Resource) */}
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-12 text-foreground">
+                      {/* 1. Date of publication (full date formatted or year fallback) */}
+                      {(() => {
+                        const dateVal = entry.publishedAt || (entry.year ? String(entry.year) : null);
+                        if (!dateVal) return null;
+                        let formattedDate: string | null = null;
+                        if (entry.publishedAt) {
+                          const d = new Date(entry.publishedAt);
+                          if (!isNaN(d.getTime())) {
+                            formattedDate = new Intl.DateTimeFormat('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            }).format(d);
+                          }
+                        }
+                        const displayDate = formattedDate || (entry.year ? String(entry.year) : dateVal);
+                        return (
+                          <span className="inline-flex items-center gap-1.5 font-medium">
+                            <Calendar className="size-3.5 text-foreground shrink-0" />
+                            <span>{displayDate}</span>
+                          </span>
+                        );
+                      })()}
+
+                      {/* 2. Publication / Venue / Journal */}
+                      {entry.publicationTitle && entry.publicationTitle !== feedTitle && (
+                        <span className="inline-flex items-center font-normal">
+                          {entry.publicationTitle}
+                        </span>
                       )}
-                    >
-                      {entry.abstract}
-                    </p>
-                    {entry.abstract.length > 140 && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleAbstract(entry.id);
-                        }}
-                        className="inline-flex items-center gap-1 text-10 font-medium text-primary hover:underline mt-0.5 cursor-pointer"
-                      >
-                        {isExpanded ? (
-                          <>
-                            <span>Show less</span>
-                            <ChevronUp className="size-3" />
-                          </>
-                        ) : (
-                          <>
-                            <span>Show more</span>
-                            <ChevronDown className="size-3" />
-                          </>
-                        )}
-                      </button>
-                    )}
-                  </div>
-                )}
 
-                {/* Metadata Badges */}
-                <div className="flex flex-wrap items-center gap-2 pt-1 pl-4 text-10 font-mono text-muted-foreground">
-                  {(entry.publicationTitle || feedTitle) && (
-                    <span className="px-1.5 py-0.5 rounded bg-muted text-foreground font-sans">
-                      {entry.publicationTitle || feedTitle}
-                    </span>
-                  )}
-                  {entry.year && (
-                    <span className="flex items-center gap-0.5 text-foreground">
-                      <Calendar className="size-3" /> {entry.year}
-                    </span>
-                  )}
-                  {entry.arxivId ? (
-                    <a
-                      href={`https://arxiv.org/abs/${entry.arxivId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="hover:text-primary hover:underline cursor-pointer"
-                    >
-                      arXiv:{entry.arxivId}
-                    </a>
-                  ) : entry.doi ? (
-                    <a
-                      href={`https://doi.org/${entry.doi}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="hover:text-primary hover:underline cursor-pointer"
-                    >
-                      DOI: {entry.doi}
-                    </a>
-                  ) : null}
+                      {/* 2.5 Primary Category / Subject (e.g. cs.AI, Physics) */}
+                      {(entry.primaryCategory || (entry.categories && entry.categories.length > 0)) && (
+                        <span className="inline-flex items-center font-normal text-muted-foreground">
+                          {entry.primaryCategory || entry.categories[0]}
+                        </span>
+                      )}
 
-                  {/* Direct clickable PDF available badge */}
-                  {entry.pdfUrl && (
-                    <a
-                      href={entry.pdfUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        markEntryAsRead(entry.id);
-                      }}
-                      className="inline-flex items-center gap-1 text-primary hover:underline cursor-pointer font-sans font-medium px-1.5 py-0.5 rounded bg-primary/10 hover:bg-primary/15 transition-colors"
-                      title="Open PDF in new tab"
-                    >
-                      <FileText className="size-3" /> PDF available
-                    </a>
-                  )}
+                      {/* 3. Canonical Permanent Identifier (arXiv ID or DOI) */}
+                      {entry.arxivId ? (
+                        <a
+                          href={`https://arxiv.org/abs/${entry.arxivId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center gap-1.5 hover:underline cursor-pointer"
+                        >
+                          <Bookmark className="size-3.5 text-foreground shrink-0" />
+                          <span>arXiv:{entry.arxivId}</span>
+                        </a>
+                      ) : entry.doi ? (
+                        <a
+                          href={`https://doi.org/${entry.doi}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center hover:underline cursor-pointer"
+                        >
+                          DOI: {entry.doi}
+                        </a>
+                      ) : null}
+
+                      {/* 4. Direct External Link / PDF Resource */}
+                      {(() => {
+                        const targetUrl = entry.pdfUrl || entry.url;
+                        if (!targetUrl) return null;
+                        let displayLabel = targetUrl;
+                        try {
+                          const parsed = new URL(targetUrl);
+                          displayLabel = parsed.hostname.replace(/^www\./, '') + (parsed.pathname.length > 20 ? parsed.pathname.slice(0, 18) + '…' : parsed.pathname);
+                        } catch {
+                          displayLabel = targetUrl.length > 28 ? targetUrl.slice(0, 26) + '…' : targetUrl;
+                        }
+                        return (
+                          <a
+                            href={targetUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              markEntryAsRead(entry.id);
+                            }}
+                            className="inline-flex items-center gap-1.5 hover:underline cursor-pointer max-w-[240px] truncate"
+                            title={targetUrl}
+                          >
+                            <ExternalLink className="size-3.5 text-foreground shrink-0" />
+                            <span className="truncate">{displayLabel}</span>
+                          </a>
+                        );
+                      })()}
+                    </div>
+                  </article>
                 </div>
-              </div>
-            );
-          })
+              );
+            })}
+          </div>
         )}
       </div>
     </div>

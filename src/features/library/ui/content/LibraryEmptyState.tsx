@@ -3,6 +3,9 @@
 import React, { useState, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/shared/lib/utils';
+import { Button } from '@/shared/components/ui/button';
+import { Upload, Plus } from 'lucide-react';
+import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { RecentlyReadEmptyState } from './RecentlyReadEmptyState';
 import {
   libraryIllustrationStyles,
@@ -14,6 +17,8 @@ import {
   CollectionStackIllustration,
   AllReferencesStackIllustration,
   SearchStackIllustration,
+  FeedStackIllustration,
+  FeedAllReadIllustration,
 } from './LibraryIllustrations';
 
 export interface LibraryEmptyStateProps {
@@ -26,6 +31,8 @@ export interface LibraryEmptyStateProps {
   className?: string;
   title?: string;
   description?: string;
+  action?: React.ReactNode;
+  illustration?: React.ComponentType<{ className?: string }>;
 }
 
 type EmptyStateVariant =
@@ -38,6 +45,9 @@ type EmptyStateVariant =
   | 'publications'
   | 'saved-search'
   | 'collection'
+  | 'feed'
+  | 'feed-unread'
+  | 'feed-read'
   | 'default';
 
 interface EmptyStateConfig {
@@ -59,14 +69,17 @@ function DefaultLibraryEmptyState({
   variant,
   title,
   description,
+  action,
+  illustration,
   className,
 }: DefaultLibraryEmptyStateProps) {
   const [isDragOver, setIsDragOver] = useState(false);
+  const openModal = useLibraryUIStore((s) => s.openModal);
 
   const getConfig = (): EmptyStateConfig => {
     if (title) {
       return {
-        illustration: variant === 'search' ? SearchStackIllustration : CollectionStackIllustration,
+        illustration: illustration ?? (variant === 'search' ? SearchStackIllustration : CollectionStackIllustration),
         title,
         description: description ?? (variant === 'search' ? `No records found matching "${search}".` : 'No documents in this collection yet.'),
         showDropzone: false,
@@ -74,6 +87,27 @@ function DefaultLibraryEmptyState({
     }
 
     switch (variant) {
+      case 'feed':
+        return {
+          illustration: FeedStackIllustration,
+          title: 'No RSS feeds subscribed',
+          description: 'Stay updated with preprints and peer-reviewed articles by subscribing to feeds.',
+          showDropzone: false,
+        };
+      case 'feed-unread':
+        return {
+          illustration: FeedAllReadIllustration,
+          title: 'All caught up!',
+          description: 'You have read all articles in this feed.',
+          showDropzone: false,
+        };
+      case 'feed-read':
+        return {
+          illustration: FeedStackIllustration,
+          title: 'No read articles',
+          description: 'Articles you read in this feed will be listed here.',
+          showDropzone: false,
+        };
       case 'search':
         return {
           illustration: SearchStackIllustration,
@@ -229,6 +263,9 @@ export function LibraryEmptyState(props: LibraryEmptyStateProps) {
     if (activeFilter === 'unfiled') return 'unfiled';
     if (activeFilter === 'my-publications' || activeFilter === 'publications') return 'publications';
     if (activeFilter === 'saved-search') return 'saved-search';
+    if (activeFilter === 'feed' || activeFilter === 'feeds') return 'feed';
+    if (activeFilter === 'feed-unread') return 'feed-unread';
+    if (activeFilter === 'feed-read') return 'feed-read';
     if (props.collectionId) return 'collection';
     return 'default';
   })();

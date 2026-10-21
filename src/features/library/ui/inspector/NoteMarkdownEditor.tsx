@@ -1,20 +1,41 @@
 "use client";
 
-import React from "react";
+import React, { useRef } from "react";
 import { Bold, Italic, Heading3, List, Quote } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/shared/components/ui/tooltip";
+import { Textarea } from "@/shared/components/ui/textarea";
 import { cn } from "@/shared/lib/utils";
 
 /**
  * Renders inline Markdown tokens (**bold**, *italic*, `code`) cleanly.
  */
 export function renderInlineMarkdown(text: string): React.ReactNode {
-  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g);
+  // Supports markdown links [text](url) as well as **bold**, *italic*, `code`
+  const parts = text.split(/(\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g);
   return parts.map((part, idx) => {
+    if (part.startsWith("[") && part.includes("](") && part.endsWith(")")) {
+      const match = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+      if (match) {
+        const linkText = match[1];
+        const linkUrl = match[2];
+        return (
+          <a
+            key={idx}
+            href={linkUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="text-primary hover:underline font-medium inline-flex items-center gap-0.5 break-all"
+          >
+            {renderInlineMarkdown(linkText)}
+          </a>
+        );
+      }
+    }
     if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
       return (
         <strong key={idx} className="font-semibold text-foreground">
@@ -49,18 +70,28 @@ export function renderInlineMarkdown(text: string): React.ReactNode {
 export function FormattedNoteBody({
   content,
   isExpanded,
+  omitFirstHeading = false,
 }: {
   content: string;
   isExpanded: boolean;
+  omitFirstHeading?: boolean;
 }) {
-  const lines = content.split("\n");
-  const visibleLines = isExpanded ? lines : lines.slice(0, 4);
+  let lines = content.split("\n");
+
+  if (omitFirstHeading && lines.length > 0 && lines[0].startsWith("#")) {
+    lines = lines.slice(1);
+    while (lines.length > 0 && (!lines[0].trim() || lines[0].trim() === "---")) {
+      lines = lines.slice(1);
+    }
+  }
+
+  const visibleLines = isExpanded ? lines : lines.slice(0, 3);
 
   return (
     <div
       className={cn(
         "space-y-1 text-xs text-foreground leading-relaxed break-words select-text",
-        !isExpanded && "line-clamp-3",
+        !isExpanded && "line-clamp-2",
       )}
     >
       {visibleLines.map((rawLine, idx) => {
@@ -72,7 +103,7 @@ export function FormattedNoteBody({
           return (
             <h4
               key={idx}
-              className="text-xs font-semibold text-foreground pt-0.5"
+              className="text-11 font-semibold text-foreground pt-0.5"
             >
               {renderInlineMarkdown(line.slice(4))}
             </h4>
@@ -83,7 +114,7 @@ export function FormattedNoteBody({
           return (
             <h3
               key={idx}
-              className="text-13 font-semibold text-foreground pt-0.5"
+              className="text-xs font-semibold text-foreground pt-0.5"
             >
               {renderInlineMarkdown(cleanHeading)}
             </h3>
@@ -93,7 +124,7 @@ export function FormattedNoteBody({
           return (
             <blockquote
               key={idx}
-              className="border-l-2 border-primary/50 pl-2 italic text-muted-foreground my-0.5"
+              className="border-l-2 border-primary/60 pl-2.5 my-1 text-muted-foreground bg-muted/20 py-0.5 rounded-r"
             >
               {renderInlineMarkdown(line.slice(2))}
             </blockquote>
@@ -131,8 +162,8 @@ export function NoteFormattingToolbar({
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
   value: string;
   onChange: (nextValue: string) => void;
-  onSave: () => void;
-  onCancel: () => void;
+  onSave?: () => void;
+  onCancel?: () => void;
 }) {
   const applyWrap = (prefix: string, suffix = prefix, placeholder = "text") => {
     const el = textareaRef.current;
@@ -173,15 +204,17 @@ export function NoteFormattingToolbar({
     });
   };
 
+  const hasActionButtons = Boolean(onSave && onCancel);
+
   return (
-    <div className="flex items-center justify-between gap-1 pb-1.5 mb-1 border-b border-border select-none">
+    <div className="flex items-center justify-between gap-1 pb-1 mb-1 border-b border-border/50 select-none">
       <div className="flex items-center gap-0.5">
         <Tooltip>
           <TooltipTrigger asChild>
             <button
               type="button"
               onClick={() => applyWrap("**", "**", "bold")}
-              className="size-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+              className="size-5.5 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
               aria-label="Bold"
             >
               <Bold className="size-3.5" strokeWidth={1.75} />
@@ -195,7 +228,7 @@ export function NoteFormattingToolbar({
             <button
               type="button"
               onClick={() => applyWrap("*", "*", "italic")}
-              className="size-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+              className="size-5.5 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
               aria-label="Italic"
             >
               <Italic className="size-3.5" strokeWidth={1.75} />
@@ -209,7 +242,7 @@ export function NoteFormattingToolbar({
             <button
               type="button"
               onClick={() => applyLinePrefix("### ")}
-              className="size-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+              className="size-5.5 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
               aria-label="Heading"
             >
               <Heading3 className="size-3.5" strokeWidth={1.75} />
@@ -223,7 +256,7 @@ export function NoteFormattingToolbar({
             <button
               type="button"
               onClick={() => applyLinePrefix("- ")}
-              className="size-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+              className="size-5.5 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
               aria-label="Bullet list"
             >
               <List className="size-3.5" strokeWidth={1.75} />
@@ -237,7 +270,7 @@ export function NoteFormattingToolbar({
             <button
               type="button"
               onClick={() => applyLinePrefix("> ")}
-              className="size-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+              className="size-5.5 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
               aria-label="Quote"
             >
               <Quote className="size-3.5" strokeWidth={1.75} />
@@ -247,23 +280,172 @@ export function NoteFormattingToolbar({
         </Tooltip>
       </div>
 
-      <div className="flex items-center gap-1">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="h-5 px-1.5 rounded text-10 font-medium text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          onClick={onSave}
-          disabled={!value.trim()}
-          className="h-5 px-2 rounded text-10 font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 cursor-pointer transition-colors"
-        >
-          Save
-        </button>
+      {hasActionButtons && (
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="h-5 px-1.5 rounded text-10 font-medium text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={!value.trim()}
+            className="h-5 px-2 rounded text-10 font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 cursor-pointer transition-colors"
+          >
+            Save
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export interface NoteEditorBoxProps {
+  value: string;
+  onChange: (nextValue: string) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  autoFocus?: boolean;
+  placeholder?: string;
+  isSaving?: boolean;
+  minRows?: number;
+}
+
+/**
+ * Standard note editor box with integrated formatting toolbar, non-resizing clean textarea, and footer actions.
+ */
+export function NoteEditorBox({
+  value,
+  onChange,
+  onSave,
+  onCancel,
+  autoFocus = true,
+  placeholder = "Write a research note... (Supports **bold**, *italic*, ### headings, - lists, > quotes)",
+  isSaving = false,
+  minRows = 3,
+}: NoteEditorBoxProps) {
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  return (
+    <div className="flex flex-col p-2.5 rounded-lg border border-border bg-card shadow-xs gap-1.5 transition-all focus-within:border-ring focus-within:ring-1 focus-within:ring-ring">
+      <NoteFormattingToolbar
+        textareaRef={textareaRef}
+        value={value}
+        onChange={onChange}
+      />
+      <Textarea
+        ref={textareaRef}
+        autoFocus={autoFocus}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+            e.preventDefault();
+            if (value.trim()) onSave();
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            onCancel();
+          }
+        }}
+        rows={minRows}
+        className="text-xs resize-none w-full min-h-[68px] max-h-56 overflow-y-auto border-0 focus-visible:ring-0 p-0 bg-transparent rounded-none outline-none shadow-none placeholder:text-muted-foreground/60 leading-relaxed font-sans"
+      />
+      <div className="flex items-center justify-between pt-1 border-t border-border/40 select-none">
+        <span className="text-10 text-muted-foreground font-sans">
+          <kbd className="font-mono text-10">Ctrl+Enter</kbd> to save
+        </span>
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="h-6 px-2 rounded-md text-11 font-medium text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={!value.trim() || isSaving}
+            className="h-6 px-2.5 rounded-md text-11 font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 cursor-pointer transition-colors"
+          >
+            Save
+          </button>
+        </div>
       </div>
     </div>
   );
+}
+
+/**
+ * Extracts a clean, concise title for a note without markdown noise.
+ */
+export function getNoteDisplayTitle(note: {
+  title?: string;
+  content: string;
+}): string {
+  if (note.title && note.title.trim()) {
+    return note.title.trim();
+  }
+  const lines = note.content.trim().split("\n");
+  const firstNonEmpty = lines.find((l) => l.trim().length > 0) || "";
+  if (firstNonEmpty.startsWith("#")) {
+    const cleaned = firstNonEmpty
+      .replace(/^#+\s*/, "")
+      .replace(/[*_`]/g, "")
+      .trim();
+    if (cleaned) return cleaned;
+  }
+  if (firstNonEmpty) {
+    const cleaned = firstNonEmpty.replace(/[*_`]/g, "").trim();
+    return cleaned.length > 50 ? `${cleaned.slice(0, 50)}…` : cleaned;
+  }
+  return "Note";
+}
+
+/**
+ * Generates a clean text preview snippet of the note content, stripping redundant title headings and markdown syntax.
+ */
+export function getNotePreviewSnippet(
+  content: string,
+  displayTitle?: string,
+): string {
+  const lines = content.trim().split("\n");
+  let startIndex = 0;
+
+  if (lines.length > 0 && lines[0].startsWith("#")) {
+    const headingText = lines[0]
+      .replace(/^#+\s*/, "")
+      .replace(/[*_`]/g, "")
+      .trim();
+    if (
+      !displayTitle ||
+      displayTitle === "Note" ||
+      headingText.toLowerCase().includes(displayTitle.toLowerCase()) ||
+      displayTitle.toLowerCase().includes(headingText.toLowerCase())
+    ) {
+      startIndex = 1;
+    }
+  }
+
+  while (
+    startIndex < lines.length &&
+    (!lines[startIndex].trim() || lines[startIndex].trim() === "---")
+  ) {
+    startIndex++;
+  }
+
+  const remaining = lines.slice(startIndex).join(" ");
+  return remaining
+    .replace(/^#+\s+/gm, "")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/^>\s+/gm, "")
+    .replace(/^[-*]\s+/gm, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }

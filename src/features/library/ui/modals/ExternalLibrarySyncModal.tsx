@@ -363,7 +363,7 @@ export default function ExternalLibrarySyncModal({
               </div>
 
               <div className="p-2.5 rounded-md bg-muted/40 border border-border/60 flex items-start gap-2 text-11 text-muted-foreground">
-                <GitCompare className="size-3.5 text-primary shrink-0 mt-0.5" />
+                <GitCompare className="size-3.5 text-foreground shrink-0 mt-0.5" />
                 <span>
                   Existing items with matching DOIs or citation keys are automatically
                   deduplicated so you can safely re-sync at any time.

@@ -15,32 +15,22 @@ import { useRelations } from '@/features/library/sdk/queries/saved-searches-rela
 import { itemKeys } from '@/features/library/sdk/query-keys';
 import { normalizeTags } from '@/features/library/domain/metadata';
 
-/**
- * Inspector Levels counted from bottom icon to top icon:
- * Level 1: 'cite' (1 bar: Citation)
- * Level 2: 'relations' (2 bars: Related, Citation)
- * Level 3: 'tags' (3 bars: Tags, Related, Citation)
- * Level 4: 'collections' (4 bars: Collections, Tags, Related, Citation)
- * Level 5: 'notes' (Notes)
- * Level 6: 'files' (Attachments)
- * Level 7: 'abstract' (Abstract summary)
- * Level 8: 'info' (Details: bibliographic metadata)
- */
-export const INSPECTOR_LEVELS_FROM_BOTTOM: InspectorSectionId[] = [
-  'cite',
-  'relations',
-  'tags',
-  'collections',
-  'notes',
-  'files',
-  'abstract',
-  'info',
-];
+import {
+  InspectorTabs,
+  INSPECTOR_LEVELS_FROM_BOTTOM,
+  INSPECTOR_LEVELS,
+  SECTION_TO_LEVEL,
+  LEVEL_TO_SECTION,
+} from './InspectorTabs';
 
-export const INSPECTOR_LEVELS = INSPECTOR_LEVELS_FROM_BOTTOM;
+export {
+  INSPECTOR_LEVELS_FROM_BOTTOM,
+  INSPECTOR_LEVELS,
+  SECTION_TO_LEVEL,
+  LEVEL_TO_SECTION,
+};
 import { usePanelResize } from '@/features/library/ui/hooks/usePanelResize';
 import { InspectorHeader } from './InspectorHeader';
-import { InspectorTabs } from './InspectorTabs';
 
 import dynamic from 'next/dynamic';
 const InfoSection = dynamic(() => import('./InfoSection'), { ssr: false });
@@ -51,7 +41,7 @@ const AttachmentsSection = dynamic(() => import('./AttachmentsSection'), {
 const CiteSection = dynamic(() => import('./CiteSection'), { ssr: false });
 const NotesSection = dynamic(() => import('./NotesSection'), { ssr: false });
 const TagsSection = dynamic(() => import('./TagsSection'), { ssr: false });
-import CollectionsSection from './CollectionsSection';
+import CollectionsSection, { CollectionPickerPopover } from './CollectionsSection';
 const RelatedSection = dynamic(() => import('./RelatedSection'), { ssr: false });
 
 import { cn } from '@/shared/lib/utils';
@@ -304,6 +294,23 @@ function LibraryInspectorContent({
     (activeItemId ? lastItemRef.current : null);
   const handleClose = propOnClose || toggleInspector;
 
+  const currentLevel = SECTION_TO_LEVEL[activeInspectorTab] || 8;
+
+  // Ensure sections within the active level are expanded when level changes
+  useEffect(() => {
+    setExpandedSections((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      INSPECTOR_LEVELS_FROM_BOTTOM.forEach((secId) => {
+        if (SECTION_TO_LEVEL[secId] <= currentLevel && !next[secId]) {
+          next[secId] = true;
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [currentLevel]);
+
   const isItemInTrash = Boolean(effectiveItem?.deletedAt);
   const effectiveCanEdit = canEdit && !isItemInTrash;
 
@@ -383,7 +390,7 @@ function LibraryInspectorContent({
 
   // Relations data
   const { relatedItems } = useRelations(targetScope, effectiveItem?.id || '', {
-    enabled: Boolean(effectiveItem?.id && expandedSections.relations),
+    enabled: Boolean(effectiveItem?.id && expandedSections.relations && currentLevel >= 2),
   });
 
   // Tags list
@@ -404,17 +411,24 @@ function LibraryInspectorContent({
   const hasTags = tagsList.length > 0 || isAddingTag;
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // All sections are retained; selecting a tab expands and smoothly scrolls to it
+  // Level-based inspector tabs: Selecting a level activates that level (Level 1 to 8)
   const handleTabChange = (tabId: InspectorSectionId) => {
     setActiveInspectorTab(tabId);
-    setExpandedSections((prev) => ({ ...prev, [tabId]: true }));
+    const targetLevel = SECTION_TO_LEVEL[tabId] || 8;
+    setExpandedSections((prev) => {
+      const next = { ...prev };
+      INSPECTOR_LEVELS_FROM_BOTTOM.forEach((secId) => {
+        if (SECTION_TO_LEVEL[secId] <= targetLevel) {
+          next[secId] = true;
+        }
+      });
+      return next;
+    });
+
     const container = scrollContainerRef.current;
     if (!container) return;
     requestAnimationFrame(() => {
-      const el = document.getElementById(`inspector-section-${tabId}`);
-      if (el && container) {
-        container.scrollTo({ top: el.offsetTop, behavior: 'smooth' });
-      }
+      container.scrollTo({ top: 0, behavior: 'smooth' });
     });
   };
 
@@ -435,202 +449,214 @@ function LibraryInspectorContent({
                 ref={scrollContainerRef}
                 className="relative flex-1 min-h-0 overflow-y-auto overflow-x-hidden bg-background inspector-scrollbar scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
               >
-                {/* 1. Details */}
-                <InspectorSection
-                  id="info"
-                  title="Details"
-                  isExpanded={expandedSections.info}
-                  onToggleExpand={() => toggleSection('info')}
-                  contentClassName="px-3 pt-1.5 pb-2.5 flex flex-col gap-1"
-                  canEdit={effectiveCanEdit}
-                >
-                  <InfoSection
-                    item={effectiveItem}
-                    onUpdateItem={handleUpdateItem}
+                {/* 1. Details (Level 8) */}
+                {currentLevel >= 8 && (
+                  <InspectorSection
+                    id="info"
+                    title="Details"
+                    isExpanded={expandedSections.info}
+                    onToggleExpand={() => toggleSection('info')}
+                    contentClassName="px-3 pt-1.5 pb-2.5 flex flex-col gap-1"
                     canEdit={effectiveCanEdit}
-                    scopeId={targetScope}
-                  />
-                </InspectorSection>
+                  >
+                    <InfoSection
+                      item={effectiveItem}
+                      onUpdateItem={handleUpdateItem}
+                      canEdit={effectiveCanEdit}
+                      scopeId={targetScope}
+                    />
+                  </InspectorSection>
+                )}
 
-                {/* 2. Abstract */}
-                <InspectorSection
-                  id="abstract"
-                  title="Abstract"
-                  isExpanded={expandedSections.abstract}
-                  onToggleExpand={() => toggleSection('abstract')}
-                  onAdd={
-                    !hasAbstract && effectiveCanEdit
-                      ? () => {
-                          setExpandedSections((prev) => ({ ...prev, abstract: true }));
-                        }
-                      : undefined
-                  }
-                  contentClassName={hasAbstract ? "px-3 pt-1.5 pb-2.5 flex flex-col gap-2" : "px-3 pt-1.5 pb-2.5"}
-                  canEdit={effectiveCanEdit}
-                >
-                  <AbstractSection
-                    item={effectiveItem}
-                    onUpdateItem={handleUpdateItem}
+                {/* 2. Abstract (Level 7) */}
+                {currentLevel >= 7 && (
+                  <InspectorSection
+                    id="abstract"
+                    title="Abstract"
+                    isExpanded={expandedSections.abstract}
+                    onToggleExpand={() => toggleSection('abstract')}
+                    onAdd={
+                      !hasAbstract && effectiveCanEdit
+                        ? () => {
+                            setExpandedSections((prev) => ({ ...prev, abstract: true }));
+                          }
+                        : undefined
+                    }
+                    contentClassName={hasAbstract ? "px-3 pt-1.5 pb-2.5 flex flex-col gap-2" : "px-3 pt-1.5 pb-2.5"}
                     canEdit={effectiveCanEdit}
-                    hideHeader
-                  />
-                </InspectorSection>
+                  >
+                    <AbstractSection
+                      item={effectiveItem}
+                      onUpdateItem={handleUpdateItem}
+                      canEdit={effectiveCanEdit}
+                      hideHeader
+                    />
+                  </InspectorSection>
+                )}
 
-                {/* 3. Attachments */}
-                <InspectorSection
-                  id="files"
-                  title="Attachments"
-                  count={attachmentCount}
-                  isExpanded={expandedSections.files}
-                  onToggleExpand={() => toggleSection('files')}
-                  onAdd={() => {
-                    setExpandedSections((prev) => ({ ...prev, files: true }));
-                    attachmentsAddRef.current?.();
-                  }}
-                  contentClassName={hasFiles ? 'px-3 pt-1.5 pb-2.5 flex flex-col gap-2' : 'p-0'}
-                  canEdit={effectiveCanEdit}
-                >
-                  <AttachmentsSection
-                    item={effectiveItem}
-                    scopeId={targetScope}
-                    hideHeader
-                    canEdit={effectiveCanEdit}
-                    onRegisterAdd={(fn) => {
-                      attachmentsAddRef.current = fn;
+                {/* 3. Attachments (Level 6) */}
+                {currentLevel >= 6 && (
+                  <InspectorSection
+                    id="files"
+                    title="Attachments"
+                    count={attachmentCount}
+                    isExpanded={expandedSections.files}
+                    onToggleExpand={() => toggleSection('files')}
+                    onAdd={() => {
+                      setExpandedSections((prev) => ({ ...prev, files: true }));
+                      attachmentsAddRef.current?.();
                     }}
-                  />
-                </InspectorSection>
-
-                {/* 4. Notes */}
-                <InspectorSection
-                  id="notes"
-                  title="Notes"
-                  count={noteCount}
-                  isExpanded={expandedSections.notes}
-                  onToggleExpand={() => toggleSection('notes')}
-                  onAdd={() => {
-                    setExpandedSections((prev) => ({ ...prev, notes: true }));
-                    setIsAddingNote(true);
-                  }}
-                  contentClassName={hasNotes ? 'px-3 pt-1.5 pb-2.5 flex flex-col gap-2' : 'p-0'}
-                  canEdit={effectiveCanEdit}
-                >
-                  <NotesSection
-                    item={effectiveItem}
-                    scopeId={targetScope}
-                    hideHeader
-                    forceAdding={isAddingNote || Boolean(pendingNoteText)}
-                    pendingText={pendingNoteText}
-                    onClearPendingText={onClearPendingText}
-                    onNavigateToAnnotation={onNavigateToAnnotation}
-                    onCancelAdding={() => setIsAddingNote(false)}
+                    contentClassName={hasFiles ? 'px-3 pt-1.5 pb-2.5 flex flex-col gap-2' : 'p-0'}
                     canEdit={effectiveCanEdit}
-                  />
-                </InspectorSection>
+                  >
+                    <AttachmentsSection
+                      item={effectiveItem}
+                      scopeId={targetScope}
+                      hideHeader
+                      canEdit={effectiveCanEdit}
+                      onRegisterAdd={(fn) => {
+                        attachmentsAddRef.current = fn;
+                      }}
+                    />
+                  </InspectorSection>
+                )}
+
+                {/* 4. Notes (Level 5) */}
+                {currentLevel >= 5 && (
+                  <InspectorSection
+                    id="notes"
+                    title="Notes"
+                    count={noteCount}
+                    isExpanded={expandedSections.notes}
+                    onToggleExpand={() => toggleSection('notes')}
+                    onAdd={() => {
+                      setExpandedSections((prev) => ({ ...prev, notes: true }));
+                      setIsAddingNote(true);
+                    }}
+                    contentClassName={hasNotes ? 'px-3 pt-1.5 pb-2.5 flex flex-col gap-2' : 'p-0'}
+                    canEdit={effectiveCanEdit}
+                  >
+                    <NotesSection
+                      item={effectiveItem}
+                      scopeId={targetScope}
+                      hideHeader
+                      forceAdding={isAddingNote || Boolean(pendingNoteText)}
+                      pendingText={pendingNoteText}
+                      onClearPendingText={onClearPendingText}
+                      onNavigateToAnnotation={onNavigateToAnnotation}
+                      onCancelAdding={() => setIsAddingNote(false)}
+                      canEdit={effectiveCanEdit}
+                    />
+                  </InspectorSection>
+                )}
 
                 {/* 5. Libraries and Collections (Level 4) */}
-                <InspectorSection
-                  id="collections"
-                  title="Libraries and Collections"
-                  count={itemCollectionIds.length}
-                  isExpanded={expandedSections.collections}
-                  onToggleExpand={() => toggleSection('collections')}
-                  actionSlot={
-                    effectiveCanEdit ? (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
+                {currentLevel >= 4 && (
+                  <InspectorSection
+                    id="collections"
+                    title="Libraries and Collections"
+                    count={itemCollectionIds.length}
+                    isExpanded={expandedSections.collections}
+                    onToggleExpand={() => toggleSection('collections')}
+                    actionSlot={
+                      effectiveCanEdit && effectiveItem ? (
+                        <CollectionPickerPopover
+                          item={effectiveItem}
+                          scopeId={targetScope}
+                          canEdit={effectiveCanEdit}
+                          align="end"
+                        >
                           <button
                             type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openModal('CREATE_COLLECTION');
-                            }}
                             className="size-5 rounded flex items-center justify-center text-foreground hover:bg-muted cursor-pointer transition-colors relative before:absolute before:-inset-2.5 md:before:hidden"
-                            aria-label="Create collection"
+                            aria-label="Add or remove from collections"
                           >
                             <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                           </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom" sideOffset={6}>
-                          Create collection
-                        </TooltipContent>
-                      </Tooltip>
-                    ) : null
-                  }
-                  contentClassName="px-3 pt-1.5 pb-2.5 flex flex-col gap-1"
-                  canEdit={effectiveCanEdit}
-                >
-                  <CollectionsSection
-                    item={effectiveItem}
-                    scopeId={targetScope}
-                    hideHeader
+                        </CollectionPickerPopover>
+                      ) : null
+                    }
+                    contentClassName="px-3 pt-1.5 pb-2.5 flex flex-col gap-1"
                     canEdit={effectiveCanEdit}
-                  />
-                </InspectorSection>
+                  >
+                    <CollectionsSection
+                      item={effectiveItem}
+                      scopeId={targetScope}
+                      hideHeader
+                      canEdit={effectiveCanEdit}
+                    />
+                  </InspectorSection>
+                )}
 
                 {/* 6. Tags (Level 3) */}
-                <InspectorSection
-                  id="tags"
-                  title="Tags"
-                  count={tagsList.length}
-                  isExpanded={expandedSections.tags}
-                  onToggleExpand={() => toggleSection('tags')}
-                  onAdd={() => {
-                    setExpandedSections((prev) => ({ ...prev, tags: true }));
-                    setIsAddingTag(true);
-                  }}
-                  contentClassName={hasTags || effectiveCanEdit ? 'px-3 pt-1.5 pb-2.5 flex flex-col gap-1' : 'p-0'}
-                  canEdit={effectiveCanEdit}
-                >
-                  <TagsSection
-                    item={effectiveItem}
-                    precomputedTags={tagsList}
-                    onUpdateItem={handleUpdateItem}
-                    hideHeader
-                    forceAdding={isAddingTag}
-                    onCancelAdding={() => setIsAddingTag(false)}
+                {currentLevel >= 3 && (
+                  <InspectorSection
+                    id="tags"
+                    title="Tags"
+                    count={tagsList.length}
+                    isExpanded={expandedSections.tags}
+                    onToggleExpand={() => toggleSection('tags')}
+                    onAdd={() => {
+                      setExpandedSections((prev) => ({ ...prev, tags: true }));
+                      setIsAddingTag(true);
+                    }}
+                    contentClassName={hasTags || isAddingTag ? 'px-3 pt-1.5 pb-2.5 flex flex-col gap-1' : 'p-0'}
                     canEdit={effectiveCanEdit}
-                  />
-                </InspectorSection>
+                  >
+                    <TagsSection
+                      item={effectiveItem}
+                      precomputedTags={tagsList}
+                      onUpdateItem={handleUpdateItem}
+                      hideHeader
+                      forceAdding={isAddingTag}
+                      onCancelAdding={() => setIsAddingTag(false)}
+                      canEdit={effectiveCanEdit}
+                    />
+                  </InspectorSection>
+                )}
 
                 {/* 7. Related (Level 2) */}
-                <InspectorSection
-                  id="relations"
-                  title="Related"
-                  count={relatedItems.length}
-                  isExpanded={expandedSections.relations}
-                  onToggleExpand={() => toggleSection('relations')}
-                  onAdd={() => {
-                    handleAddRelatedOpenChange(true);
-                  }}
-                  contentClassName={relatedItems.length > 0 || effectiveCanEdit ? 'px-3 pt-1.5 pb-2.5 flex flex-col gap-2' : 'p-0'}
-                  canEdit={effectiveCanEdit}
-                >
-                  <RelatedSection
-                    item={effectiveItem}
-                    scopeId={targetScope}
-                    onSelectItem={handleSelectItem}
-                    hideHeader
-                    isAddOpen={isAddRelatedOpen}
-                    onAddOpenChange={handleAddRelatedOpenChange}
+                {currentLevel >= 2 && (
+                  <InspectorSection
+                    id="relations"
+                    title="Related"
+                    count={relatedItems.length}
+                    isExpanded={expandedSections.relations}
+                    onToggleExpand={() => toggleSection('relations')}
+                    onAdd={() => {
+                      handleAddRelatedOpenChange(true);
+                    }}
+                    contentClassName={relatedItems.length > 0 ? 'px-3 pt-1.5 pb-2.5 flex flex-col gap-2' : 'p-0'}
                     canEdit={effectiveCanEdit}
-                  />
-                </InspectorSection>
+                  >
+                    <RelatedSection
+                      item={effectiveItem}
+                      scopeId={targetScope}
+                      onSelectItem={handleSelectItem}
+                      hideHeader
+                      isAddOpen={isAddRelatedOpen}
+                      onAddOpenChange={handleAddRelatedOpenChange}
+                      canEdit={effectiveCanEdit}
+                    />
+                  </InspectorSection>
+                )}
 
                 {/* 8. Citation (Level 1) */}
-                <InspectorSection
-                  id="cite"
-                  title="Citation"
-                  isExpanded={expandedSections.cite}
-                  onToggleExpand={() => toggleSection('cite')}
-                  contentClassName="px-3 pt-1.5 pb-2.5 flex flex-col gap-2"
-                  canEdit={effectiveCanEdit}
-                >
-                  <CiteSection
-                    item={effectiveItem}
-                    scopeId={targetScope}
-                  />
-                </InspectorSection>
+                {currentLevel >= 1 && (
+                  <InspectorSection
+                    id="cite"
+                    title="Citation"
+                    isExpanded={expandedSections.cite}
+                    onToggleExpand={() => toggleSection('cite')}
+                    contentClassName="px-3 pt-1.5 pb-2.5 flex flex-col gap-2"
+                    canEdit={effectiveCanEdit}
+                  >
+                    <CiteSection
+                      item={effectiveItem}
+                      scopeId={targetScope}
+                    />
+                  </InspectorSection>
+                )}
               </div>
             </>
           ) : (

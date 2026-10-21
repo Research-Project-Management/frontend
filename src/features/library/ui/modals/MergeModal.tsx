@@ -223,7 +223,7 @@ export function MergeModal({
           <div className="p-3 rounded-md border border-border bg-muted flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-12">
             <div className="flex items-center gap-2 min-w-0">
               <ShieldCheck
-                className="size-4 text-emerald-600 dark:text-emerald-500 shrink-0"
+                className="size-4 text-foreground shrink-0"
                 strokeWidth={1.75}
               />
               <span className="text-11 text-muted-foreground leading-normal">
@@ -287,7 +287,7 @@ export function MergeModal({
                     className="h-7 px-2.5 text-11 gap-1.5 font-medium rounded-md border-border text-foreground hover:bg-muted"
                     title="Auto-select the most complete values (longest abstract, full author names, canonical DOI)"
                   >
-                    <Check className="size-3 text-primary shrink-0" />
+                    <Check className="size-3 text-foreground shrink-0" />
                     <span>Recommend Best</span>
                   </Button>
                 )}

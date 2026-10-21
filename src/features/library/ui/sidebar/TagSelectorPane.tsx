@@ -1,7 +1,20 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import {} from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronRight,
+  Tag as TagIcon,
+  X,
+  Plus,
+  MoreHorizontal,
+  Search,
+  Palette,
+  Check,
+  Hash,
+  Pencil,
+  Trash2,
+} from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import {
   Tooltip,
@@ -270,7 +283,7 @@ export function TagSelectorPane({
                   onClick={() => deleteAutomaticTags()}
                   className="gap-2 text-xs text-destructive focus:text-destructive cursor-pointer"
                 >
-                  <Tag className="size-3.5" />
+                  <TagIcon className="size-3.5" />
                   <span>Delete Automatic Tags in Library</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -455,7 +468,7 @@ export function TagSelectorPane({
                                   />
                                   <span className="flex-1">{c.label}</span>
                                   {tag.color === c.value && (
-                                    <Check className="size-3.5 text-primary" />
+                                    <Check className="size-3.5 text-foreground" />
                                   )}
                                 </DropdownMenuItem>
                               ))}
@@ -493,7 +506,7 @@ export function TagSelectorPane({
                                     Press {num} in table
                                   </span>
                                   {tag.shortcut === num && (
-                                    <Check className="size-3.5 text-primary" />
+                                    <Check className="size-3.5 text-foreground" />
                                   )}
                                 </DropdownMenuItem>
                               ))}

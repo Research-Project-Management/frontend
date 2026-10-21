@@ -46,7 +46,7 @@ export function ReaderInspector({
       {...rest}
       item={effectiveItem}
       onSelectItem={effectiveOnSelect}
-      hideRailToggle={true}
+      hideRailToggle={false}
       defaultOpen={rest.defaultOpen ?? false}
     />
   );

@@ -128,32 +128,15 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, State> {
     // ── Variant: Section (For sub-views, tabs, modular panels) ──
     if (variant === 'section') {
       return (
-        <div
-          role="alert"
-          className={cn(
-            'min-h-[220px] w-full flex flex-col items-center justify-center p-6 text-center rounded-lg border border-border/60 bg-card/60 backdrop-blur-xs space-y-3',
-            className
-          )}
-        >
-          <div className="size-9 rounded-full bg-destructive/10 text-destructive flex items-center justify-center shrink-0">
-            <AlertTriangle className="size-4 shrink-0" />
-          </div>
-
-          <div className="space-y-1 max-w-sm">
-            <h4 className="text-sm font-semibold text-foreground">
-              {featureName ? `Issue in ${featureName}` : 'Unable to render this module'}
-            </h4>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              {description || 'An unexpected issue occurred, but other modules remain operational.'}
-            </p>
-          </div>
-
-          {error.message && process.env.NODE_ENV === 'development' && (
-            <div className="max-w-md w-full p-2 rounded bg-muted/80 text-left font-mono text-11 text-muted-foreground overflow-x-auto max-h-20">
-              {error.message}
-            </div>
-          )}
-        </div>
+        <PlaneErrorState
+          title={featureName ? `Issue in ${featureName}` : 'Unable to render this module'}
+          description={
+            description ||
+            'An unexpected issue occurred, but other modules remain operational.'
+          }
+          error={error}
+          className={cn('min-h-[340px] p-6', className)}
+        />
       );
     }
 

@@ -304,8 +304,10 @@
   --surface: #FAFAF9;
   --panel: #F3F2F0;
   --editor-bg: var(--canvas);
-  --editor-gutter: var(--canvas);
+  --editor-gutter: transparent;
+  --editor-gutter-border: transparent;
   --editor-active-line: #e2f2ff;
+  --editor-active-line-gutter: var(--editor-active-line);
   --border: #E4E4E4;
   --border-subtle: #EBEBEB;
   --divide-subtle: #EBEBEB;
@@ -450,8 +452,10 @@
   --surface: #111118;
   --panel: #0D0D14;
   --editor-bg: var(--canvas);
-  --editor-gutter: var(--canvas);
+  --editor-gutter: transparent;
+  --editor-gutter-border: transparent;
   --editor-active-line: rgba(56, 189, 248, 0.12);
+  --editor-active-line-gutter: var(--editor-active-line);
   --border: #2D2D31;
   --border-subtle: #222226;
   --divide-subtle: #222226;
@@ -750,17 +754,6 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-}
-
 /* --------------------------------------------------------------------------
    5. COMPONENTS & OVERRIDES
    -------------------------------------------------------------------------- */
@@ -781,39 +774,58 @@
   }
 }
 
-::-webkit-scrollbar-button {
+::-webkit-scrollbar-button,
+*::-webkit-scrollbar-button {
   display: none !important;
   width: 0 !important;
   height: 0 !important;
 }
 
-::-webkit-scrollbar {
+::-webkit-scrollbar,
+*::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
-::-webkit-scrollbar-track {
+::-webkit-scrollbar-track,
+*::-webkit-scrollbar-track {
   background: transparent !important;
 }
 
-::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-thumb,
+*::-webkit-scrollbar-thumb {
   background-color: transparent !important;
   border-radius: 9999px !important;
   transition: background-color 0.2s ease;
 }
 
 *:hover::-webkit-scrollbar-thumb,
-*:focus-within::-webkit-scrollbar-thumb,
-*:active::-webkit-scrollbar-thumb {
+*:focus-within::-webkit-scrollbar-thumb {
   background-color: var(--border) !important;
 }
 
-::-webkit-scrollbar-thumb:hover {
+::-webkit-scrollbar-thumb:hover,
+*::-webkit-scrollbar-thumb:hover {
   background-color: var(--muted-foreground) !important;
 }
 
-::-webkit-scrollbar-corner {
+::-webkit-scrollbar-corner,
+*::-webkit-scrollbar-corner {
   background: transparent !important;
+}
+
+/* --------------------------------------------------------------------------
+   GLOBAL OVERLAY SCROLLBAR PRECISION
+   Eliminates physical scrollbar gutters on Windows/Chromium so hover and active
+   states extend 100% edge-to-edge without white gap artifacts.
+   -------------------------------------------------------------------------- */
+.overflow-y-auto {
+  overflow-y: auto;
+  overflow-y: overlay;
+}
+.overflow-auto {
+  overflow: auto;
+  overflow: overlay;
 }
 
 @supports not selector(::-webkit-scrollbar) {
@@ -1337,23 +1349,17 @@
 }
 
 /* --------------------------------------------------------------------------
-   SONNER TOASTER LAYOUT ANIMATION SUPPRESSION
-   Strictly overrides Sonner's auto-injected layout property (height) animation.
+   SONNER TOASTER LAYOUT ANIMATION SUPPRESSION (IMPECCABLE CRAFT FLOOR)
+   Overrides Sonner's auto-injected layout property (height) animation with
+   performant transform/opacity/box-shadow to eliminate layout thrashing.
    -------------------------------------------------------------------------- */
 [data-sonner-toaster],
 [data-sonner-toaster] *,
-[data-sonner-toast],
-[data-sonner-toast] *,
 [data-height-wrapper] {
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease !important;
   transition-property: transform, opacity !important;
 }
 
-/* --------------------------------------------------------------------------
-   SONNER TOAST REFLOW SUPPRESSION (IMPECCABLE CRAFT FLOOR)
-   Replaces layout property animation (transition: height) with transform/opacity
-   to eliminate layout thrashing during toast dismissal.
-   -------------------------------------------------------------------------- */
 [data-sonner-toast] {
   transition: transform 350ms cubic-bezier(0.16, 1, 0.3, 1), opacity 300ms ease, box-shadow 200ms ease !important;
   transition-property: transform, opacity, box-shadow !important;
@@ -1387,25 +1393,96 @@
 }
 
 /* --------------------------------------------------------------------------
-   CODEMIRROR 6 TOP INSET & ACTIVE LINE
-   Provides balanced vertical breathing room (8px top inset) for editor content
-   and line gutters while keeping active line highlights crisp.
+   CODEMIRROR 6 ACTIVE LINE & INSET TOP ALIGNMENT
+   Ensure gutters and content start flush at the top (0px) so the gutter border
+   connects seamlessly to the toolbar border and activeLineGutter aligns 1:1
+   with activeLine.
    -------------------------------------------------------------------------- */
+.cm-editor {
+  padding-top: 0 !important;
+}
+
+.cm-editor .cm-scroller {
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+  overflow-y: overlay !important;
+  scrollbar-gutter: auto !important;
+}
+
+.cm-editor .cm-scroller::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.cm-editor .cm-scroller::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.cm-editor .cm-scroller::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.cm-editor .cm-scroller::-webkit-scrollbar-thumb {
+  background-color: transparent !important;
+  border-radius: 9999px !important;
+  transition: background-color 0.2s ease;
+}
+
+.cm-editor:hover .cm-scroller::-webkit-scrollbar-thumb,
+.cm-editor .cm-scroller:hover::-webkit-scrollbar-thumb {
+  background-color: var(--border) !important;
+}
+
+.cm-editor .cm-scroller::-webkit-scrollbar-thumb:hover {
+  background-color: var(--muted-foreground) !important;
+}
+
+.cm-editor .cm-scroller::-webkit-scrollbar-corner {
+  background: transparent !important;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  .cm-editor .cm-scroller {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+  .cm-editor:hover .cm-scroller {
+    scrollbar-color: var(--border) transparent;
+  }
+}
+
 .cm-editor .cm-content {
-  padding-top: 8px !important;
+  flex-grow: 1 !important;
+  flex-shrink: 0 !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+  padding-top: 0 !important;
   padding-bottom: 32px !important;
 }
 
 .cm-editor .cm-gutters {
-  padding-top: 8px !important;
+  padding-top: 0 !important;
+  min-height: 100% !important;
+  background-color: var(--editor-gutter, transparent) !important;
+  border-right: none !important;
+}
+
+.cm-editor .cm-line {
+  box-sizing: border-box !important;
+  padding: 0 8px !important;
 }
 
 .cm-editor .cm-activeLine {
   background-color: var(--editor-active-line, #e2f2ff) !important;
+  box-sizing: border-box !important;
+  padding: 0 8px !important;
 }
 
 .cm-editor .cm-activeLineGutter {
   background-color: var(--editor-active-line, #e2f2ff) !important;
+  font-weight: 600 !important;
 }
 
 /* --------------------------------------------------------------------------
@@ -1424,7 +1501,7 @@
   width: 1px !important;
   height: 1px !important;
   padding: 0 !important;
-  margin: -1px !important;
+  margin: 0 !important;
   overflow: hidden !important;
   clip: rect(0, 0, 0, 0) !important;
   white-space: nowrap !important;

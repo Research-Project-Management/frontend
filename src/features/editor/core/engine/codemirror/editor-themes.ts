@@ -46,15 +46,15 @@ const autoThemeStyle = EditorView.theme({
     backgroundColor: 'var(--editor-selection, #bfdbfe) !important',
   },
   '.cm-gutters': {
-    backgroundColor: 'var(--editor-gutter, var(--canvas, #FCFCFB))',
+    backgroundColor: 'var(--editor-gutter, transparent)',
     color: 'var(--muted-foreground, #64748b)',
-    borderRight: '1px solid var(--border, #e2e8f0)',
+    borderRight: 'none',
   },
   '&.cm-editor .cm-activeLine, .cm-activeLine': {
-    backgroundColor: 'var(--editor-active-line, #f1f5f9)',
+    backgroundColor: 'var(--editor-active-line, #e2f2ff)',
   },
   '&.cm-editor .cm-activeLineGutter, .cm-activeLineGutter': {
-    backgroundColor: 'var(--editor-active-line, #f1f5f9)',
+    backgroundColor: 'var(--editor-active-line, #e2f2ff)',
     color: 'var(--foreground, #0f172a)',
     fontWeight: '600',
   },
@@ -88,15 +88,15 @@ const latexLightStyle = EditorView.theme({
     backgroundColor: '#c8e1ff !important',
   },
   '.cm-gutters': {
-    backgroundColor: '#f7f7f7',
+    backgroundColor: 'var(--editor-gutter, transparent)',
     color: '#57606a',
-    borderRight: '1px solid #e1e4e8',
+    borderRight: 'none',
   },
   '&.cm-editor .cm-activeLine, .cm-activeLine': {
-    backgroundColor: '#f0f7ff',
+    backgroundColor: 'var(--editor-active-line, #e2f2ff)',
   },
   '&.cm-editor .cm-activeLineGutter, .cm-activeLineGutter': {
-    backgroundColor: '#e2f2ff',
+    backgroundColor: 'var(--editor-active-line, #e2f2ff)',
     color: '#0366d6',
     fontWeight: 'bold',
   },
@@ -131,7 +131,7 @@ const latexDarkStyle = EditorView.theme({
   '.cm-gutters': {
     backgroundColor: '#252526',
     color: '#858585',
-    borderRight: '1px solid #333333',
+    borderRight: 'none',
   },
   '&.cm-editor .cm-activeLine, .cm-activeLine': {
     backgroundColor: '#2a2d2e',
@@ -172,7 +172,7 @@ const draculaStyle = EditorView.theme({
   '.cm-gutters': {
     backgroundColor: '#282a36',
     color: '#6272a4',
-    borderRight: '1px solid #44475a',
+    borderRight: 'none',
   },
   '&.cm-editor .cm-activeLine, .cm-activeLine': {
     backgroundColor: '#44475a66',
@@ -212,7 +212,7 @@ const monokaiStyle = EditorView.theme({
   '.cm-gutters': {
     backgroundColor: '#272822',
     color: '#75715e',
-    borderRight: '1px solid #3e3d32',
+    borderRight: 'none',
   },
   '&.cm-editor .cm-activeLine, .cm-activeLine': {
     backgroundColor: '#3e3d32',
@@ -252,7 +252,7 @@ const solarizedLightStyle = EditorView.theme({
   '.cm-gutters': {
     backgroundColor: '#eee8d5',
     color: '#586e75',
-    borderRight: '1px solid #d3368222',
+    borderRight: 'none',
   },
   '&.cm-editor .cm-activeLine, .cm-activeLine': {
     backgroundColor: '#07364210',
@@ -292,7 +292,7 @@ const solarizedDarkStyle = EditorView.theme({
   '.cm-gutters': {
     backgroundColor: '#073642',
     color: '#586e75',
-    borderRight: '1px solid #002b36',
+    borderRight: 'none',
   },
   '&.cm-editor .cm-activeLine, .cm-activeLine': {
     backgroundColor: '#07364288',
@@ -329,7 +329,7 @@ const githubDarkStyle = EditorView.theme({
   '.cm-gutters': {
     backgroundColor: '#0d1117',
     color: '#6e7681',
-    borderRight: '1px solid #21262d',
+    borderRight: 'none',
   },
   '&.cm-editor .cm-activeLine, .cm-activeLine': {
     backgroundColor: '#161b22',
@@ -369,7 +369,7 @@ const cobaltStyle = EditorView.theme({
   '.cm-gutters': {
     backgroundColor: '#001b33',
     color: '#38566f',
-    borderRight: '1px solid #001224',
+    borderRight: 'none',
   },
   '&.cm-editor .cm-activeLine, .cm-activeLine': {
     backgroundColor: '#003366',
@@ -409,7 +409,7 @@ const eclipseStyle = EditorView.theme({
   '.cm-gutters': {
     backgroundColor: '#f0f0f0',
     color: '#57606a',
-    borderRight: '1px solid #cccccc',
+    borderRight: 'none',
   },
   '&.cm-editor .cm-activeLine, .cm-activeLine': {
     backgroundColor: '#e8f2fe',

@@ -67,7 +67,7 @@ export const PdfPaginationControls = React.memo(function PdfPaginationControls({
             onClick={onPrevPage}
             disabled={pageNumber <= 1}
             aria-label="Previous page"
-            className="size-7 flex items-center justify-center rounded-md text-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary shrink-0 relative after:absolute after:-inset-1.5 after:content-['']"
+            className="size-7 flex items-center justify-center rounded-md text-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border shrink-0 relative after:absolute after:-inset-1.5 after:content-['']"
           >
             <ChevronLeft className="size-3.5 shrink-0" />
           </button>
@@ -89,7 +89,7 @@ export const PdfPaginationControls = React.memo(function PdfPaginationControls({
           }}
           onBlur={handlePageCommit}
           aria-label="Current page number"
-          className="w-9 h-7 text-center rounded-md border border-border bg-sidebar text-foreground text-xs font-medium focus:bg-background focus:outline-none focus:ring-1 focus:ring-primary tabular-nums shrink-0"
+          className="w-9 h-7 text-center rounded-md border border-border bg-sidebar text-foreground text-xs font-medium focus:bg-background focus:outline-none focus:ring-1 focus:ring-border tabular-nums shrink-0"
         />
         <span className="text-muted-foreground font-mono text-xs whitespace-nowrap shrink-0 pr-1 select-none">
           / {numPages || 1}
@@ -104,7 +104,7 @@ export const PdfPaginationControls = React.memo(function PdfPaginationControls({
             onClick={onNextPage}
             disabled={pageNumber >= numPages}
             aria-label="Next page"
-            className="size-7 flex items-center justify-center rounded-md text-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary shrink-0 relative after:absolute after:-inset-1.5 after:content-['']"
+            className="size-7 flex items-center justify-center rounded-md text-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border shrink-0 relative after:absolute after:-inset-1.5 after:content-['']"
           >
             <ChevronRight className="size-3.5 shrink-0" />
           </button>

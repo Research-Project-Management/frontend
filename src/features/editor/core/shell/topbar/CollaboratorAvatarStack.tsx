@@ -127,7 +127,7 @@ export function CollaboratorAvatarStack({
                   zIndex,
                 }}
                 className={cn(
-                  "relative size-7 rounded-full border-2 bg-background flex items-center justify-center shrink-0 cursor-pointer outline-none transition-colors hover:z-30 focus-visible:ring-1 focus-visible:ring-primary"
+                  "relative size-7 rounded-full border-2 bg-background flex items-center justify-center shrink-0 cursor-pointer outline-none transition-colors hover:z-30 focus-visible:ring-1 focus-visible:ring-border"
                 )}
               >
                 {c.avatar ? (
@@ -210,7 +210,7 @@ export function CollaboratorAvatarStack({
             <button
               type="button"
               aria-label={`+${remainingCount} more collaborators`}
-              className="relative size-7 rounded-full border-2 border-background bg-muted hover:bg-muted/80 text-foreground font-semibold text-11 flex items-center justify-center shrink-0 cursor-pointer outline-none transition-colors hover:z-30 focus-visible:ring-1 focus-visible:ring-primary select-none"
+              className="relative size-7 rounded-full border-2 border-background bg-muted hover:bg-muted/80 text-foreground font-semibold text-11 flex items-center justify-center shrink-0 cursor-pointer outline-none transition-colors hover:z-30 focus-visible:ring-1 focus-visible:ring-border select-none"
             >
               +{remainingCount}
             </button>

@@ -93,7 +93,7 @@ export function ViewMenu() {
 
   return (
     <MenubarMenu>
-      <MenubarTrigger className="px-2.5 py-1 text-xs font-medium text-foreground hover:bg-sidebar-hover data-[state=open]:bg-sidebar-accent cursor-pointer rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary select-none transition-colors">
+      <MenubarTrigger className="px-2.5 py-1 text-xs font-medium text-foreground hover:bg-sidebar-hover data-[state=open]:bg-sidebar-accent cursor-pointer rounded-md outline-none focus-visible:ring-1 focus-visible:ring-border select-none transition-colors">
         View
       </MenubarTrigger>
 
@@ -115,7 +115,7 @@ export function ViewMenu() {
         >
           <div className="size-4 flex items-center justify-center shrink-0">
             {layout === 'split' ? (
-              <Check className="size-4 text-primary stroke-[2.5]" />
+              <Check className="size-4 text-foreground stroke-[2.5]" />
             ) : (
               <Columns2 className="size-4 opacity-70" strokeWidth={1.8} />
             )}
@@ -135,7 +135,7 @@ export function ViewMenu() {
         >
           <div className="size-4 flex items-center justify-center shrink-0">
             {layout === 'editor-only' ? (
-              <Check className="size-4 text-primary stroke-[2.5]" />
+              <Check className="size-4 text-foreground stroke-[2.5]" />
             ) : (
               <PenIcon className="size-3.5 opacity-70" />
             )}
@@ -155,7 +155,7 @@ export function ViewMenu() {
         >
           <div className="size-4 flex items-center justify-center shrink-0">
             {layout === 'viewer-only' ? (
-              <Check className="size-4 text-primary stroke-[2.5]" />
+              <Check className="size-4 text-foreground stroke-[2.5]" />
             ) : (
               <PdfDocIcon className="size-4 opacity-70" />
             )}
@@ -204,7 +204,7 @@ export function ViewMenu() {
               )}
             >
               <div className="size-4 flex items-center justify-center shrink-0">
-                {editorMode === 'code' && <Check className="size-3.5 text-primary stroke-[2.5]" />}
+                {editorMode === 'code' && <Check className="size-3.5 text-foreground stroke-[2.5]" />}
               </div>
               <span className="flex-1 text-xs">Code (LaTeX)</span>
             </MenubarItem>
@@ -218,7 +218,7 @@ export function ViewMenu() {
               )}
             >
               <div className="size-4 flex items-center justify-center shrink-0">
-                {editorMode === 'visual' && <Check className="size-3.5 text-primary stroke-[2.5]" />}
+                {editorMode === 'visual' && <Check className="size-3.5 text-foreground stroke-[2.5]" />}
               </div>
               <span className="flex-1 text-xs">Visual Editor (Rich Text)</span>
             </MenubarItem>
@@ -290,7 +290,7 @@ export function ViewMenu() {
           className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-sm text-foreground hover:bg-muted focus:bg-muted focus:text-foreground cursor-pointer transition-colors text-xs font-medium select-none"
         >
           <div className="size-4 flex items-center justify-center shrink-0">
-            {showEditorTabs && <Check className="size-3.5 text-primary stroke-[2.5]" />}
+            {showEditorTabs && <Check className="size-3.5 text-foreground stroke-[2.5]" />}
           </div>
           <span className="flex-1 text-xs whitespace-nowrap">Show editor tabs</span>
         </MenubarItem>
@@ -301,7 +301,7 @@ export function ViewMenu() {
           className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-sm text-foreground hover:bg-muted focus:bg-muted focus:text-foreground cursor-pointer transition-colors text-xs font-medium select-none"
         >
           <div className="size-4 flex items-center justify-center shrink-0">
-            {showEquationPreview && <Check className="size-3.5 text-primary stroke-[2.5]" />}
+            {showEquationPreview && <Check className="size-3.5 text-foreground stroke-[2.5]" />}
           </div>
           <span className="flex-1 text-xs whitespace-nowrap">Show equation preview</span>
         </MenubarItem>
@@ -316,7 +316,7 @@ export function ViewMenu() {
           className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-sm text-foreground hover:bg-muted focus:bg-muted focus:text-foreground cursor-pointer transition-colors text-xs font-medium select-none"
         >
           <div className="size-4 flex items-center justify-center shrink-0">
-            {fileOutlineOpen && <Check className="size-3.5 text-primary stroke-[2.5]" />}
+            {fileOutlineOpen && <Check className="size-3.5 text-foreground stroke-[2.5]" />}
           </div>
           <span className="flex-1 text-xs whitespace-nowrap">Show file outline</span>
         </MenubarItem>

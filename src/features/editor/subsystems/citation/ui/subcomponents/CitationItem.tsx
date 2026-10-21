@@ -20,6 +20,8 @@ export const CitationItem = memo(function CitationItem({
   onCopy,
   onInspect,
 }: CitationItemProps) {
+  const hasMetadata = Boolean(item.authorsSummary || item.journal || item.year);
+
   return (
     <div
       role="button"
@@ -31,16 +33,16 @@ export const CitationItem = memo(function CitationItem({
           onSelect(item.key);
         }
       }}
-      className="group relative flex flex-col gap-0.5 p-2 rounded-md hover:bg-muted/70 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary text-left select-none"
+      className="group relative flex flex-col gap-1 p-2.5 rounded-lg hover:bg-muted/60 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border text-left select-none border border-transparent hover:border-border/60"
     >
-      {/* Top row: Key + Source badge + Year */}
-      <div className="flex items-center justify-between gap-1.5 min-w-0">
+      {/* 1. Header line: Citation Key + Type badge + Year */}
+      <div className="flex items-center justify-between gap-1.5 min-w-0 pr-16 sm:pr-0">
         <div className="flex items-center gap-1.5 min-w-0">
-          <span className="font-mono text-11 font-medium bg-background border border-border text-foreground px-1.5 py-0.5 rounded-sm truncate shrink-0 max-w-[150px]">
+          <span className="font-mono text-11 font-medium text-foreground bg-muted/60 border border-border/70 px-1.5 py-0.5 rounded truncate shrink-0 max-w-[170px]">
             {item.key}
           </span>
           {item.source === 'bib' && (
-            <span className="text-11 font-mono px-1.5 py-0.5 rounded-xs bg-muted text-muted-foreground shrink-0 border border-border/40">
+            <span className="text-10 font-mono px-1 py-0.5 rounded-xs text-muted-foreground border border-border/40 shrink-0">
               .bib
             </span>
           )}
@@ -52,27 +54,29 @@ export const CitationItem = memo(function CitationItem({
         )}
       </div>
 
-      {/* Title */}
-      <p className="text-13 font-serif font-normal text-foreground line-clamp-2 leading-snug tracking-normal">
+      {/* 2. Title */}
+      <p className="text-13 font-medium text-foreground line-clamp-2 leading-snug tracking-tight">
         {item.title}
       </p>
 
-      {/* Authors & Journal */}
-      <p className="text-12 text-muted-foreground truncate font-sans">
-        {item.authorsSummary}
-        {item.journal ? ` · ${item.journal}` : ''}
-      </p>
+      {/* 3. Authors & Publication info */}
+      {hasMetadata && (
+        <p className="text-12 text-muted-foreground truncate">
+          {item.authorsSummary}
+          {item.journal ? (item.authorsSummary ? ` · ${item.journal}` : item.journal) : ''}
+        </p>
+      )}
 
-      {/* Quick actions on hover & visible on touch */}
-      <div className="absolute right-2 top-2 opacity-80 sm:opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity flex items-center gap-0.5 bg-background/95 backdrop-blur-xs p-0.5 rounded-md border border-border shadow-xs">
+      {/* 4. Action buttons on hover: Clean neutral muted style, consistent with shell */}
+      <div className="absolute right-2 top-2 opacity-90 sm:opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity flex items-center gap-0.5 bg-background p-0.5 rounded-md border border-border shadow-xs">
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
             onInspect(item.key);
           }}
-          className="size-6 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer relative after:absolute after:-inset-1 after:content-['']"
-          title="Inspect details"
+          className="size-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+          title="Details"
           aria-label="Inspect reference details"
         >
           <Info className="size-3.5 shrink-0" />
@@ -83,12 +87,12 @@ export const CitationItem = memo(function CitationItem({
             e.stopPropagation();
             onCopy(item.key);
           }}
-          className="size-6 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer relative after:absolute after:-inset-1 after:content-['']"
-          title="Copy \\cite command"
-          aria-label="Copy citation command"
+          className="size-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+          title="Copy \\cite key"
+          aria-label="Copy citation key"
         >
           {isCopied ? (
-            <Check className="size-3.5 text-primary shrink-0" />
+            <Check className="size-3.5 text-foreground shrink-0" />
           ) : (
             <Copy className="size-3.5 shrink-0" />
           )}
@@ -99,9 +103,9 @@ export const CitationItem = memo(function CitationItem({
             e.stopPropagation();
             onSelect(item.key);
           }}
-          className="size-6 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer relative after:absolute after:-inset-1 after:content-['']"
-          title="Insert \\cite at cursor"
-          aria-label="Insert citation at cursor"
+          className="size-6 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+          title="Insert \\cite"
+          aria-label="Insert citation"
         >
           <Plus className="size-3.5 shrink-0" />
         </button>

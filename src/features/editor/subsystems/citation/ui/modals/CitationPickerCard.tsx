@@ -41,7 +41,7 @@ export const CitationPickerCard = memo(function CitationPickerCard({
         }
       }}
       className={cn(
-        'group flex flex-col gap-1 p-2.5 rounded-md cursor-pointer transition-colors border text-left select-none outline-none focus-visible:ring-1 focus-visible:ring-primary',
+        'group flex flex-col gap-1 p-2.5 rounded-md cursor-pointer transition-colors border text-left select-none outline-none focus-visible:ring-1 focus-visible:ring-border',
         isSelected
           ? 'bg-muted border-border text-foreground font-medium'
           : 'border-transparent hover:bg-muted text-foreground',

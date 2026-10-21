@@ -137,7 +137,7 @@ export function LayoutSwitcher() {
         <button
           type="button"
           aria-label="Layout options"
-          className="flex items-center gap-1.5 h-7 px-2 sm:px-2.5 rounded-md text-xs font-medium text-foreground/80 hover:text-foreground hover:bg-sidebar-hover data-[state=open]:bg-sidebar-accent data-[state=open]:text-foreground transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer select-none relative after:absolute after:-inset-1 after:content-['']"
+          className="flex items-center gap-1.5 h-7 px-2 sm:px-2.5 rounded-md text-xs font-medium text-foreground/80 hover:text-foreground hover:bg-sidebar-hover data-[state=open]:bg-sidebar-accent data-[state=open]:text-foreground transition-colors outline-none focus-visible:ring-1 focus-visible:ring-border cursor-pointer select-none relative after:absolute after:-inset-1 after:content-['']"
         >
           <Columns2 className="size-3.5 shrink-0" strokeWidth={1.8} />
           <span className="hidden sm:inline">Layout</span>

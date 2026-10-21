@@ -322,6 +322,7 @@ class VisualHeadingsPlugin {
     // 2. outer/longer ranges before inner ranges (b.to - a.to)
     pending.sort((a, b) => {
       if (a.from !== b.from) return a.from - b.from;
+      if (a.deco.startSide !== b.deco.startSide) return a.deco.startSide - b.deco.startSide;
       if (a.to !== b.to) return b.to - a.to;
       return 0;
     });

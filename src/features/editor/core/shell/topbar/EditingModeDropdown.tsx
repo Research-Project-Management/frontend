@@ -74,7 +74,7 @@ export function EditingModeDropdown() {
           type="button"
           title={getTooltip()}
           aria-label={`Editing mode: ${getLabel()}`}
-          className="flex items-center gap-1.5 h-7 px-2 rounded-md text-xs font-medium text-foreground/80 hover:text-foreground hover:bg-sidebar-hover data-[state=open]:bg-sidebar-accent data-[state=open]:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none"
+          className="flex items-center gap-1 h-7 px-1.5 rounded-md text-xs font-medium text-foreground/80 hover:text-foreground hover:bg-sidebar-hover data-[state=open]:bg-sidebar-accent data-[state=open]:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border select-none"
         >
           {currentMode === 'viewing' ? (
             <Eye className="size-3.5 shrink-0 text-foreground" />
@@ -83,9 +83,7 @@ export function EditingModeDropdown() {
           ) : (
             <Pen className="size-3.5 shrink-0 text-foreground" />
           )}
-          <span className="hidden sm:inline">
-            {getLabel()}
-          </span>
+
           <ChevronDown className="size-3 opacity-60 shrink-0" />
         </button>
       </DropdownMenuTrigger>

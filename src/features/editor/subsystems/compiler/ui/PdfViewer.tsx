@@ -273,14 +273,6 @@ export function PdfViewer({ isDetached = false }: PdfViewerProps = {}) {
     prevCompileStatusRef.current = compileStatus;
   }, [compileStatus, pdfUrl, parsedLog]);
 
-  // Open CompilerLogs and AI Assistant in Left Sidebar when editor requests AI fix
-  useEffect(() => {
-    return editorCommandBus.subscribe('editor:suggest-fix', () => {
-      setShowLogsOverlay(true);
-      useWorkspaceStore.getState().setSidebarLeftOpen(true);
-    });
-  }, []);
-
 
   const onDocumentLoadSuccess = useCallback(async (pdf: { numPages: number } & Partial<PdfDocumentProxyLike>) => {
     pdfDocRef.current = pdf as PdfDocumentProxyLike;
@@ -364,7 +356,7 @@ export function PdfViewer({ isDetached = false }: PdfViewerProps = {}) {
           <a ref={downloadRef} className="hidden" aria-hidden="true" />
 
           {/* PDF Viewer Surface (Overleaf 1:1 Parity) */}
-          <div ref={pdfContainerRef} className="flex-1 min-h-0 relative flex flex-col overflow-hidden">
+          <div ref={pdfContainerRef} className="flex-1 min-h-0 relative flex flex-col">
             <PdfFindBar
               isOpen={isSearchOpen}
               query={searchQuery}

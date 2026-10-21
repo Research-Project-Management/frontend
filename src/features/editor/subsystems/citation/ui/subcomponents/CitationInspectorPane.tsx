@@ -316,7 +316,7 @@ export function CitationInspectorPane({
           {cleanAbstract && (
             <div className="space-y-1.5 pt-2 border-t border-border">
               <div className="flex items-center justify-between">
-                <h4 className="text-11 font-medium uppercase tracking-wider text-muted-foreground">
+                <h4 className="text-11 font-medium text-muted-foreground">
                   Abstract
                 </h4>
                 {cleanAbstract.length > 250 && (
@@ -346,7 +346,7 @@ export function CitationInspectorPane({
               <button
                 type="button"
                 onClick={() => setIsBibtexOpen((prev) => !prev)}
-                className="text-11 font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors cursor-pointer select-none"
+                className="text-11 font-medium text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors cursor-pointer select-none"
               >
                 <ChevronRight
                   className={cn(

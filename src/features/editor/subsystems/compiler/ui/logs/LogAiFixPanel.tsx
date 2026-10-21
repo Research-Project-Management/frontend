@@ -93,7 +93,7 @@ export function LogAiFixPanel({
                 disabled={isFixApplied}
                 onClick={() => onApplyFix?.(entry, fixResult)}
                 className={cn(
-                  'h-8 px-3 rounded-md text-13 font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                  'h-8 px-3 rounded-md text-13 font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border',
                   isFixApplied
                     ? 'bg-muted text-muted-foreground border border-border cursor-not-allowed inline-flex items-center gap-1.5'
                     : 'bg-primary hover:bg-primary-hover text-primary-foreground'

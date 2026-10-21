@@ -63,7 +63,7 @@ export default function CitationTab({ onClose }: CitationTabProps) {
             <button
               type="button"
               onClick={() => openPickerModal()}
-              className="size-7 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors motion-reduce:transition-none cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="size-7 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors motion-reduce:transition-none cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border"
               aria-label="Insert citation"
             >
               <Plus className="size-3.5 shrink-0 text-foreground" strokeWidth={1.5} />
@@ -76,24 +76,27 @@ export default function CitationTab({ onClose }: CitationTabProps) {
       </SidebarPanelHeader>
 
       {/* ── Search Bar ── */}
-      <div className="p-2 border-b border-border shrink-0 bg-background">
+      <div className="px-2 pt-1 pb-1 shrink-0 bg-background">
         <div className="relative">
-          <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none shrink-0" />
+          <SearchIcon
+            className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-foreground pointer-events-none shrink-0"
+            strokeWidth={1.5}
+          />
           <Input
             type="text"
             placeholder="Search citations..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-8 pl-8 pr-7 text-xs bg-background border border-border rounded-md placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary w-full transition-colors"
+            className="h-8 pl-8 pr-7 text-xs bg-background border border-border rounded-md placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-border focus-visible:border-primary w-full transition-colors"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 size-4 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer"
+              className="absolute right-2 top-1/2 -translate-y-1/2 size-4 flex items-center justify-center text-foreground hover:opacity-80 transition-opacity cursor-pointer"
               aria-label="Clear search"
             >
-              <X className="size-3" />
+              <X className="size-3 text-foreground" strokeWidth={1.5} />
             </button>
           )}
         </div>

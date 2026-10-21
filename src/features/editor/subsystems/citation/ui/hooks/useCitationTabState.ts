@@ -246,20 +246,42 @@ export function useCitationTabState() {
       }
     }
 
-    // 3. Add inline \bibitem entries from document content
+    // 3. Add inline \bibitem entries from document content with extracted metadata
     if (content && content.indexOf('\\bibitem') !== -1) {
       const sanitized = stripLatexComments(content);
-      BIBITEM_REGEX.lastIndex = 0;
+      // Match each \bibitem up to the next \bibitem or \end{thebibliography}
+      const bibitemBlockRegex = /\\bibitem(?:\[[^\]]*\])?\{([^}]+)\}([\s\S]*?)(?=\\bibitem|\\end\{thebibliography\}|$)/g;
       let bMatch: RegExpExecArray | null;
-      while ((bMatch = BIBITEM_REGEX.exec(sanitized)) !== null) {
+      while ((bMatch = bibitemBlockRegex.exec(sanitized)) !== null) {
         const key = bMatch[1]?.trim();
+        const rawBody = bMatch[2] || '';
         const lowerKey = key?.toLowerCase();
         if (lowerKey && !map.has(lowerKey)) {
+          // Clean body text from TeX commands
+          const cleanBody = rawBody
+            .replace(/\\[a-zA-Z]+(\[[^\]]*\])?(\{[^}]*\})?/g, (m, opt, arg) => {
+              const inner = m.match(/\{([^}]*)\}/);
+              return inner ? inner[1] : ' ';
+            })
+            .replace(/[{}$_~#^%]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+          // Extract year if present (e.g. 1999, 2024)
+          const yearMatch = cleanBody.match(/\b(19\d{2}|20\d{2})\b/);
+          const year = yearMatch ? yearMatch[1] : undefined;
+
+          // Split parts: author / title / venue
+          const parts = cleanBody.split(/[.,;]\s+/).map((p) => p.trim()).filter(Boolean);
+          const authorPart = parts.length > 0 ? parts[0] : '';
+          const titlePart = parts.length > 1 ? parts.slice(1).join('. ') : (authorPart || key);
+
           map.set(lowerKey, {
             id: `bibitem-${key}`,
             key,
-            title: 'Document Bibliography Item',
-            authorsSummary: 'Inline \\bibitem',
+            title: titlePart || key,
+            authorsSummary: authorPart && authorPart !== titlePart ? authorPart : '',
+            year,
             source: 'bib',
           });
         }

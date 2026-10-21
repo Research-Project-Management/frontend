@@ -197,7 +197,7 @@ export function LibraryTabPane({
                       }
                     }}
                     className={cn(
-                      'flex items-start gap-2.5 py-2 px-1 hover:bg-muted/20 transition-colors cursor-pointer text-12 outline-none focus-visible:ring-1 focus-visible:ring-primary rounded-sm',
+                      'flex items-start gap-2.5 py-2 px-1 hover:bg-muted/20 transition-colors cursor-pointer text-12 outline-none focus-visible:ring-1 focus-visible:ring-border rounded-sm',
                       isSelected && 'bg-muted/15',
                     )}
                   >

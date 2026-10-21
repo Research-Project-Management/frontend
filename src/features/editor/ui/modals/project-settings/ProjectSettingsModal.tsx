@@ -436,7 +436,7 @@ export function ProjectSettingsModal() {
             type="button"
             onClick={() => setSettingsPanelOpen(false)}
             aria-label="Close menu"
-            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1.5 after:content-['']"
+            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border relative after:absolute after:-inset-1.5 after:content-['']"
           >
             <X className="size-4 shrink-0" />
           </button>
@@ -466,7 +466,7 @@ export function ProjectSettingsModal() {
             <section aria-labelledby="menu-download-heading">
               <h3
                 id="menu-download-heading"
-                className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground px-1 mb-2.5"
+                className="text-[11px] font-semibold text-muted-foreground px-1 mb-2.5"
               >
                 Download
               </h3>
@@ -518,7 +518,7 @@ export function ProjectSettingsModal() {
             <section aria-labelledby="menu-sync-heading" className="space-y-2">
               <h3
                 id="menu-sync-heading"
-                className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground px-1 mb-2.5"
+                className="text-[11px] font-semibold text-muted-foreground px-1 mb-2.5"
               >
                 Sync
               </h3>
@@ -662,7 +662,7 @@ export function ProjectSettingsModal() {
             <section aria-labelledby="menu-wordcount-heading" className="space-y-2">
               <h3
                 id="menu-wordcount-heading"
-                className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground px-1 mb-2.5"
+                className="text-[11px] font-semibold text-muted-foreground px-1 mb-2.5"
               >
                 Project Functions
               </h3>
@@ -746,7 +746,7 @@ export function ProjectSettingsModal() {
             <section aria-labelledby="menu-tools-heading" className="space-y-2 pt-2 border-t border-border">
               <h3
                 id="menu-tools-heading"
-                className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground px-1 mb-2.5"
+                className="text-[11px] font-semibold text-muted-foreground px-1 mb-2.5"
               >
                 Integrations & Tools
               </h3>

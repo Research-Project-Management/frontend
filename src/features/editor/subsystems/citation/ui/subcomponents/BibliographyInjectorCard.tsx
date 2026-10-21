@@ -187,7 +187,7 @@ export const BibliographyInjectorCard = React.memo(function BibliographyInjector
           type="button"
           onClick={handleInsert}
           disabled={isInjecting}
-          className="flex-1 h-7 px-2.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 text-11 font-medium flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors shadow-none outline-none focus-visible:ring-1 focus-visible:ring-primary"
+          className="flex-1 h-7 px-2.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 text-11 font-medium flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors shadow-none outline-none focus-visible:ring-1 focus-visible:ring-border"
         >
           {isInjecting ? (
             <RefreshCw className="size-3 animate-spin shrink-0" />
@@ -200,7 +200,7 @@ export const BibliographyInjectorCard = React.memo(function BibliographyInjector
         <button
           type="button"
           onClick={handleCopy}
-          className="h-7 px-2.5 rounded-md border border-border bg-background hover:bg-muted text-foreground text-11 font-medium flex items-center justify-center gap-1.5 cursor-pointer transition-colors shadow-none outline-none focus-visible:ring-1 focus-visible:ring-primary"
+          className="h-7 px-2.5 rounded-md border border-border bg-background hover:bg-muted text-foreground text-11 font-medium flex items-center justify-center gap-1.5 cursor-pointer transition-colors shadow-none outline-none focus-visible:ring-1 focus-visible:ring-border"
           title="Copy full bibliography to clipboard"
         >
           {isCopied ? (

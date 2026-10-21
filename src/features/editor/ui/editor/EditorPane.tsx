@@ -14,7 +14,7 @@
  */
 
 import React from 'react';
-import { ArrowLeftRight, X, FileCode2, ChevronDown, Check, Columns2 } from 'lucide-react';
+import { ArrowLeftRight, X, FileCode2, ChevronDown, Check } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import {
   DropdownMenu,
@@ -124,10 +124,7 @@ export function EditorPane({
   return (
     <div
       onClick={onFocusPane}
-      className={cn(
-        'h-full w-full flex flex-col bg-canvas min-h-0 min-w-0 transition-colors duration-150',
-        isSplitActive && isActivePane && 'ring-1 ring-primary/40'
-      )}
+      className="h-full w-full flex flex-col bg-canvas min-h-0 min-w-0 transition-colors duration-150"
     >
       {/* ── Pane Header ────────────────────────────────────────────────────── */}
       {isSplitActive ? (
@@ -138,10 +135,10 @@ export function EditorPane({
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="flex items-center gap-1.5 px-2 py-1 -ml-1 rounded-sm hover:bg-muted text-xs font-medium text-foreground truncate max-w-[200px] outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors cursor-pointer group"
+                  className="flex items-center gap-1.5 px-2 py-1 -ml-1 rounded-sm hover:bg-muted text-xs font-medium text-foreground truncate max-w-[200px] outline-none focus-visible:ring-1 focus-visible:ring-border transition-colors cursor-pointer group"
                   aria-label="Switch file"
                 >
-                  <FileCode2 className="size-3.5 text-primary shrink-0" />
+                  <FileCode2 className="size-3.5 text-muted-foreground shrink-0" />
                   <span className="truncate">{fileName}</span>
                   <ChevronDown className="size-3 text-muted-foreground shrink-0 opacity-60 group-hover:opacity-100 transition-opacity" />
                 </button>
@@ -168,7 +165,7 @@ export function EditorPane({
                           <FileCode2 className="size-3.5 shrink-0 text-muted-foreground" />
                           <span className="truncate">{title}</span>
                         </div>
-                        {isCurrent && <Check className="size-3.5 shrink-0 text-primary" />}
+                        {isCurrent && <Check className="size-3.5 shrink-0 text-foreground" />}
                       </DropdownMenuItem>
                     );
                   })
@@ -179,7 +176,7 @@ export function EditorPane({
             {cachedModel?.isDirty && (
               <span className="size-1.5 rounded-full bg-primary shrink-0" title="Unsaved changes" />
             )}
-            <span className="text-[10px] text-muted-foreground uppercase font-mono font-medium tracking-wider px-1.5 py-0.5 bg-muted/60 rounded">
+            <span className="text-[10px] text-muted-foreground font-mono font-medium tracking-normal px-1.5 py-0.5 bg-muted/60 rounded">
               {paneId}
             </span>
           </div>
@@ -222,20 +219,6 @@ export function EditorPane({
           rootPageId={rootPageId || projectId}
           activeFileId={fileId}
           availableFiles={availableFiles as { id: string; title: string }[] | undefined}
-          rightSlot={
-            onSplitRight && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onSplitRight}
-                className="size-7 text-muted-foreground hover:text-foreground cursor-pointer"
-                title="Split editor right"
-                aria-label="Split editor right"
-              >
-                <Columns2 className="size-3.5" />
-              </Button>
-            )
-          }
         />
       ) : !showEditorTabs && fileId ? (
         <div className="flex items-center h-8 bg-surface border-b border-border px-3 shrink-0 gap-2">

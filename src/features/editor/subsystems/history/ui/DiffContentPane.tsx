@@ -83,7 +83,7 @@ export function DiffContentPane({
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Changed Files Tab Bar */}
         <div className="flex items-center gap-1.5 px-3 py-2 bg-muted/30 border-b overflow-x-auto shrink-0 select-none">
-          <span className="text-xs font-semibold text-muted-foreground mr-1.5 uppercase tracking-wider text-10">
+          <span className="text-xs font-semibold text-muted-foreground mr-1.5 tracking-normal text-10">
             Files:
           </span>
           {diffData.files.map((file) => {
@@ -141,12 +141,12 @@ export function DiffContentPane({
                 <span className="text-destructive">-{activeFileDiff.deletions}</span>
               </Badge>
               {activeFileDiff.status === 'deleted' && (
-                <Badge variant="destructive" className="text-10 uppercase font-mono px-1.5 h-4">
+                <Badge variant="destructive" className="text-10 font-mono px-1.5 h-4">
                   Deleted
                 </Badge>
               )}
               {activeFileDiff.status === 'added' && (
-                <Badge variant="default" className="text-10 uppercase font-mono px-1.5 h-4 bg-success/20 text-success border-success/30">
+                <Badge variant="default" className="text-10 font-mono px-1.5 h-4 bg-success/20 text-success border-success/30">
                   New File
                 </Badge>
               )}
@@ -217,7 +217,7 @@ export function DiffContentPane({
         {activeFileDiff && activeFileDiff.status === 'deleted' && selectedBaseVersion && (
           <div className="flex items-center justify-between px-4 py-2 bg-destructive/10 border-b border-destructive/20 text-xs shrink-0">
             <div className="flex items-center gap-2 text-foreground">
-              <span className="font-semibold text-destructive uppercase text-10 tracking-wide px-1.5 py-0.5 rounded bg-destructive/20">
+              <span className="font-semibold text-destructive text-10 tracking-normal px-1.5 py-0.5 rounded bg-destructive/20">
                 Deleted File
               </span>
               <span>

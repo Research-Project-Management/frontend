@@ -159,7 +159,7 @@ export const PdfSyncTeXHighlightBox = React.memo(function PdfSyncTeXHighlightBox
         {/* Left Accent Indicator / Baseline Pin (Overleaf Parity) */}
         <div
           data-testid="synctex-pdf-accent-bar"
-          className="absolute -left-2 top-1/2 -translate-y-1/2 w-1.5 h-4/5 max-h-5 rounded-full bg-warning shadow-none"
+          className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-4/5 max-h-5 rounded-full bg-warning shadow-none"
         />
       </div>
     );

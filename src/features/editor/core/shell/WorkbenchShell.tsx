@@ -88,7 +88,7 @@ export function WorkbenchShell({
   );
 
   return (
-    <div className={cn('h-screen w-screen flex flex-col bg-background select-none', className)}>
+    <div className={cn('h-screen w-screen flex flex-col bg-background', className)}>
       {/* ── Slot 1: Global Topbar ─────────────────────────────────────────── */}
       {topBar && <header className="shrink-0 z-30">{topBar}</header>}
 
@@ -96,7 +96,7 @@ export function WorkbenchShell({
       <OfflineBanner />
 
       {/* ── Core Workspace (Horizontal Shell Area) ────────────────────────── */}
-      <main className="flex-1 flex relative min-h-0 overflow-hidden">
+      <main className="flex-1 flex relative min-h-0">
         {/* ── Slot 2: Far-Left Activity Bar (Icon Strip) ──────────────────── */}
         {activityBar && (
           <div className="h-full shrink-0 z-20">
@@ -109,7 +109,7 @@ export function WorkbenchShell({
           <>
             {sidebarLeftOpen && (
               <aside
-                style={{ width: `${sidebarLeftWidth}px` }}
+                style={{ width: `${sidebarLeftWidth}px`, minWidth: `${sidebarLeftWidth}px`, maxWidth: `${sidebarLeftWidth}px` }}
                 className="h-full shrink-0 flex flex-col bg-surface overflow-hidden z-20"
               >
                 {leftSidebar}
@@ -128,7 +128,7 @@ export function WorkbenchShell({
         )}
 
         {/* ── Center Work Area: Editor & PDF Preview ──────────────────────── */}
-        <div ref={containerRef} className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
+        <div ref={containerRef} className="flex-1 flex flex-col min-w-0 min-h-0">
           <div className="flex-1 flex min-h-0 min-w-0">
             {/* ── Slot 4: Center Editor Area ────────────────────────────────── */}
             {editor && (

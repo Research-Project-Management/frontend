@@ -43,16 +43,15 @@ interface ActivityItem {
   id: ActivityBarTab;
   label: string;
   icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
-  shortcut?: string;
 }
 
 const PRIMARY_ACTIVITIES: ActivityItem[] = [
-  { id: 'files', label: 'File Tree', icon: Files, shortcut: 'Ctrl+Shift+E' },
-  { id: 'search', label: 'Search in Project', icon: Search, shortcut: 'Ctrl+Shift+F' },
-  { id: 'citations', label: 'Citations & BibTeX', icon: BookMarked },
-  { id: 'review', label: 'Review & Comments', icon: MessageSquareText },
+  { id: 'files', label: 'File Tree', icon: Files },
+  { id: 'search', label: 'Search in Project', icon: Search },
+  { id: 'citations', label: 'Citations, BibTeX', icon: BookMarked },
+  { id: 'review', label: 'Review, Comments', icon: MessageSquareText },
   { id: 'chat', label: 'Project Chat', icon: MessageSquare },
-  { id: 'ai', label: 'AI Assistant', icon: Bot, shortcut: 'Ctrl+I' },
+  { id: 'ai', label: 'AI Assistant', icon: Bot },
 ];
 
 export function ActivityBar() {
@@ -71,13 +70,12 @@ export function ActivityBar() {
       className="h-full w-12 shrink-0 flex flex-col items-center justify-between border-r border-border bg-sidebar py-2.5 select-none z-30"
     >
       <TooltipProvider delayDuration={150}>
-        {/* Top Section: Primary Viewlets (Including AI Assistant) */}
+        {/* Top Section: Primary Viewlets */}
         <div className="flex flex-col items-center gap-1.5 w-full">
           {PRIMARY_ACTIVITIES.map((item) => {
             const isActive = sidebarLeftOpen && activeSidebarTab === item.id;
             const Icon = item.icon;
             const isReview = item.id === 'review';
-            const isAi = item.id === 'ai';
             const showBadge = isReview && totalPendingCount > 0;
             const badgeCount = totalPendingCount;
 
@@ -95,21 +93,14 @@ export function ActivityBar() {
                     aria-label={item.label}
                     onClick={handleClick}
                     className={cn(
-                      'group relative flex size-9 items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                      'group relative flex size-9 items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border',
                       isActive
-                        ? 'bg-sidebar-accent text-foreground font-semibold'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-sidebar-hover'
+                        ? 'bg-muted text-foreground font-medium'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted font-normal'
                     )}
                   >
-                    {/* Active left indicator bar */}
-                    {isActive && (
-                      <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r bg-primary" />
-                    )}
                     <Icon
-                      className={cn(
-                        'size-4.5 shrink-0',
-                        isAi && 'text-ai'
-                      )}
+                      className="size-4.5 shrink-0"
                       strokeWidth={1.8}
                     />
 
@@ -121,13 +112,8 @@ export function ActivityBar() {
                     )}
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="right" className="flex items-center gap-2">
-                  <span>{item.label}</span>
-                  {item.shortcut && (
-                    <span className="text-11 text-muted-foreground font-mono">
-                      {item.shortcut}
-                    </span>
-                  )}
+                <TooltipContent side="right" className="text-xs">
+                  {item.label}
                 </TooltipContent>
               </Tooltip>
             );
@@ -141,25 +127,24 @@ export function ActivityBar() {
             buttonClassName="size-9 text-muted-foreground hover:text-foreground"
           />
 
-
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 type="button"
-                aria-label="Project Settings"
+                aria-label="Settings"
                 onClick={toggleSettingsPanel}
                 className={cn(
-                  'flex size-9 items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                  'relative flex size-9 items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border',
                   settingsPanelOpen
-                    ? 'bg-sidebar-accent text-foreground'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-sidebar-hover'
+                    ? 'bg-muted text-foreground font-medium'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted font-normal'
                 )}
               >
                 <Settings className="size-4.5 shrink-0" strokeWidth={1.8} />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right">
-              <span>Settings</span>
+            <TooltipContent side="right" className="text-xs">
+              Settings
             </TooltipContent>
           </Tooltip>
         </div>

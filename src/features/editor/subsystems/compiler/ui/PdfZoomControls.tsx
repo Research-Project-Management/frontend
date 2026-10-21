@@ -60,7 +60,7 @@ export const PdfZoomControls = React.memo(function PdfZoomControls({
               type="button"
               onClick={onZoomOut}
               aria-label="Zoom out"
-              className="size-7 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1.5 after:content-['']"
+              className="size-7 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border relative after:absolute after:-inset-1.5 after:content-['']"
             >
               <Minus className="size-3.5" />
             </button>
@@ -75,7 +75,7 @@ export const PdfZoomControls = React.memo(function PdfZoomControls({
           <button
             type="button"
             aria-label="Select zoom level"
-            className="h-7 px-2 flex items-center gap-1 rounded-md text-xs font-mono font-medium text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']"
+            className="h-7 px-2 flex items-center gap-1 rounded-md text-xs font-mono font-medium text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border relative after:absolute after:-inset-1 after:content-['']"
           >
             <span>{autoFit ? fitLabel : `${percentage}%`}</span>
             <ChevronDown className="size-3 opacity-60" />
@@ -150,7 +150,7 @@ export const PdfZoomControls = React.memo(function PdfZoomControls({
               type="button"
               onClick={onZoomIn}
               aria-label="Zoom in"
-              className="size-7 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1.5 after:content-['']"
+              className="size-7 flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border relative after:absolute after:-inset-1.5 after:content-['']"
             >
               <Plus className="size-3.5" />
             </button>

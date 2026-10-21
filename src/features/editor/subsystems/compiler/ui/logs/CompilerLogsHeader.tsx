@@ -39,7 +39,7 @@ export function CompilerLogsHeader({
           type="button"
           onClick={onClose}
           aria-label="Back to PDF"
-          className="h-7 px-2.5 flex items-center gap-1.5 rounded-md border border-border bg-canvas hover:bg-muted text-foreground text-xs font-medium transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-[''] shrink-0"
+          className="h-7 px-2.5 flex items-center gap-1.5 rounded-md border border-border bg-canvas hover:bg-muted text-foreground text-xs font-medium transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-border relative after:absolute after:-inset-1 after:content-[''] shrink-0"
         >
           <ChevronLeft className="size-3.5 shrink-0 text-muted-foreground" />
           <span>Back to PDF</span>
@@ -57,7 +57,7 @@ export function CompilerLogsHeader({
               onClick={onPrevError}
               aria-label="Previous error (Shift+F8)"
               title="Previous error (Shift+F8)"
-              className="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-muted text-foreground transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1.5 after:content-['']"
+              className="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-muted text-foreground transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-border relative after:absolute after:-inset-1.5 after:content-['']"
             >
               <ChevronLeft className="size-3.5" />
             </button>
@@ -66,7 +66,7 @@ export function CompilerLogsHeader({
               onClick={onNextError}
               aria-label="Next error (F8)"
               title="Next error (F8)"
-              className="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-muted text-foreground transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1.5 after:content-['']"
+              className="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-muted text-foreground transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-border relative after:absolute after:-inset-1.5 after:content-['']"
             >
               <ChevronRight className="size-3.5" />
             </button>

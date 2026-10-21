@@ -13,20 +13,20 @@ export default function EditorLayout({
 }) {
   const router = useRouter();
   const { user, isLoading } = useAuth();
+  const [mounted, setMounted] = React.useState(false);
 
   useEffect(() => {
-    if (!isLoading && !user) {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mounted && !isLoading && !user) {
       router.replace('/');
     }
-  }, [isLoading, user, router]);
+  }, [mounted, isLoading, user, router]);
 
-  // If unauthenticated, block rendering and redirect to marketing
-  if (!isLoading && !user) {
-    return null;
-  }
-
-  // Show instant workbench skeleton while session is being verified
-  if (isLoading) {
+  // Before mount or while verifying session, render consistent skeleton matching SSR
+  if (!mounted || isLoading || !user) {
     return <EditorSkeleton />;
   }
 
@@ -36,7 +36,7 @@ export default function EditorLayout({
       featureName="Document Editor"
       description="An issue occurred while rendering the document editor."
     >
-      <div className="h-dvh max-h-dvh w-full flex flex-col relative overflow-hidden" suppressHydrationWarning>
+      <div className="h-dvh max-h-dvh w-full flex flex-col relative" suppressHydrationWarning>
         <Suspense fallback={<EditorSkeleton />}>
           {children}
         </Suspense>

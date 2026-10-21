@@ -38,6 +38,10 @@ export function createDiagnosticsGutter(options: DiagnosticsGutterOptions = {}):
     const diagnostics: Diagnostic[] = [];
 
     for (const item of fileDiagnostics) {
+      // Do not duplicate linter diagnostics if they come from the real-time linter source
+      if (item.source === 'LaTeX Linter') {
+        continue;
+      }
       const lineNum = Math.max(1, Math.min(item.line, doc.lines));
       const line = doc.line(lineNum);
 

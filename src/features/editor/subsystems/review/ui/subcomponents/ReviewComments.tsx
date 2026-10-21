@@ -166,7 +166,7 @@ export const ReplyForm = React.memo(function ReplyForm({
                 handleSubmit(onSubmit)();
               }
             }}
-            className="w-full h-8 px-2.5 pr-8 rounded-md border border-input bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors disabled:opacity-50"
+            className="w-full h-8 px-2.5 pr-8 rounded-md border border-input bg-background text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-border transition-colors disabled:opacity-50"
           />
         )}
       />
@@ -357,7 +357,7 @@ export const CommentCard = React.memo(function CommentCard({
             onChange={setEditContent}
             members={members}
             rows={2}
-            className="w-full text-xs p-2 rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-y"
+            className="w-full text-xs p-2 rounded-md border border-input bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-border resize-y"
             autoFocus
           />
           <div className="flex items-center justify-end gap-1.5">

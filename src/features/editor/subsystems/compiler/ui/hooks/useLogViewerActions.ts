@@ -140,26 +140,20 @@ export function useLogViewerActions({
       const startLine = fix.startLine || entry.line;
       const endLine = fix.endLine && startLine && fix.endLine >= startLine ? fix.endLine : startLine;
 
-      if (
-        fix.fixedSnippet &&
-        engine &&
-        typeof engine.getContent === 'function' &&
-        typeof engine.setContent === 'function' &&
-        startLine &&
-        startLine >= 1
-      ) {
+      // Consistent Flow: Always propose interactive Diff for user review (Tab to Accept, Esc to Reject)
+      const success = aiCoordinator.proposeDiff(fileId, fix.fixedSnippet, {
+        line: startLine,
+        endLine,
+        title: `AI Fix: ${fix.explanation || entry.message}`,
+      });
+
+      if (!success && engine && typeof engine.getContent === 'function' && typeof engine.setContent === 'function' && startLine && startLine >= 1) {
         const content = engine.getContent();
         const lines = content.split('\n');
         const startIdx = Math.min(startLine - 1, Math.max(0, lines.length - 1));
         const endIdx = Math.min((endLine || startLine) - 1, Math.max(startIdx, lines.length - 1));
         lines.splice(startIdx, endIdx - startIdx + 1, fix.fixedSnippet);
         engine.setContent(lines.join('\n'));
-      } else {
-        aiCoordinator.proposeDiff(fileId, fix.fixedSnippet, {
-          line: startLine,
-          endLine,
-          title: `AI Fix: ${fix.explanation || entry.message}`,
-        });
       }
 
       onApplied?.();

@@ -575,7 +575,8 @@ export function parseLatexLog(raw: string): ParsedLog {
     // Bad boxes: Overfull/Underfull \hbox or \vbox
     if (/^(Overfull|Underfull)\s*\\[hv]box/.test(line)) {
       const currentTrackedFile = getCurrentTrackedFile();
-      const lineRef = line.match(/lines?\s+(\d+)/);
+      // LaTeX logs output single line `lines 5` or range `lines 5--5` / `lines 5-10`
+      const lineRef = line.match(/lines?\s+(\d+)(?:--?(\d+))?/i);
       tryAdd(badBoxes, {
         message: line.trim(),
         file: currentTrackedFile,

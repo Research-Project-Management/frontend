@@ -320,7 +320,7 @@ export function AiInputArea({
                       setWebSearchEnabled(!webSearchEnabled);
                     }
                   }}
-                  className="flex items-center justify-between px-2.5 py-1.5 rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors cursor-pointer select-none text-foreground text-13 font-normal"
+                  className="flex items-center justify-between px-2.5 py-1.5 rounded-md hover:bg-muted focus:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-border transition-colors cursor-pointer select-none text-foreground text-13 font-normal"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <Globe className="size-4 text-foreground shrink-0" />

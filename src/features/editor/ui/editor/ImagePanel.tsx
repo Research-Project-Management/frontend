@@ -29,7 +29,7 @@ export function ImagePanel({ asset }: ImagePanelProps) {
   return (
     <div className="flex flex-col h-full w-full bg-background select-none">
       <div className="flex items-center gap-2 px-4 py-2 border-b border-border text-xs text-muted-foreground shrink-0 bg-secondary/30">
-        <FileImage className="size-3.5 text-primary shrink-0" />
+        <FileImage className="size-3.5 text-muted-foreground shrink-0" />
         <span className="font-medium text-foreground truncate">{asset.filename}</span>
         {ext && (
           <span className="px-1.5 py-0.5 rounded-sm bg-secondary font-mono text-[11px] text-muted-foreground">

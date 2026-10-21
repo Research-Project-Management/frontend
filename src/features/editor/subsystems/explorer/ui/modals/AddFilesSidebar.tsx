@@ -62,7 +62,7 @@ export function AddFilesSidebar({
             aria-controls={`add-files-panel-${id}`}
             onClick={() => onSelectTab(id)}
             className={cn(
-              'w-full min-h-[34px] flex items-center gap-2.5 px-3 py-2 rounded-md text-12 font-medium text-left transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary whitespace-nowrap',
+              'w-full min-h-[34px] flex items-center gap-2.5 px-3 py-2 rounded-md text-12 font-medium text-left transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border whitespace-nowrap',
               isActive
                 ? 'bg-background text-foreground font-semibold border border-border/60'
                 : 'text-muted-foreground hover:text-foreground hover:bg-muted/60',

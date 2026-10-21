@@ -2,9 +2,7 @@
 
 import React, { useState } from 'react';
 import {
-  AlertCircle,
-  AlertTriangle,
-  Info,
+  ChevronRight,
   Wand2,
   Loader2,
 } from 'lucide-react';
@@ -52,6 +50,10 @@ export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
       setIsExplainOpen(false);
       return;
     }
+    // Close AI fix if open
+    if (fixResult && onSuggestFix) {
+      onSuggestFix(entry);
+    }
     if (activeExplanation) {
       setIsExplainOpen(true);
       return;
@@ -68,64 +70,67 @@ export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
     }
   };
 
+  const hasExpandableContent = Boolean(
+    activeExplanation ||
+    entry.explanation ||
+    entry.code ||
+    entry.rawExcerpt ||
+    (entry.detail && !/^[@^~.?!\s]+$/.test(entry.detail) && entry.detail.length > 1) ||
+    fixResult ||
+    isFixLoading
+  );
+  const isExpanded = isExplainOpen || Boolean(fixResult || isFixLoading);
+
   return (
     <div
       id={id}
       onClick={isClickable ? onClick : undefined}
       className={cn(
         'flex flex-col gap-1.5 px-3 py-2.5 border-b border-border last:border-b-0 transition-colors',
-        isClickable && 'cursor-pointer hover:bg-muted/50 focus-visible:bg-muted/70 outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset',
+        isClickable && 'cursor-pointer hover:bg-muted/50 focus-visible:bg-muted/70 outline-none focus-visible:ring-1 focus-visible:ring-border focus-visible:ring-inset',
       )}
     >
-      <div className="flex items-start gap-2.5">
-        {type === 'error' && <AlertCircle className="size-3.5 text-destructive shrink-0 mt-0.5" />}
-        {type === 'warning' && <AlertTriangle className="size-3.5 text-warning shrink-0 mt-0.5" />}
-        {type === 'badbox' && <Info className="size-3.5 text-muted-foreground shrink-0 mt-0.5" />}
-        <div className="flex-1 min-w-0">
+      <div className="flex items-start gap-2">
+        <button
+          type="button"
+          aria-label={isExpanded ? 'Collapse details' : 'Expand details'}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleToggleExplain();
+          }}
+          className={cn(
+            'size-5 -ml-1 mt-0.5 inline-flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-transform cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border shrink-0',
+            !hasExpandableContent && 'opacity-40 cursor-default hover:bg-transparent hover:text-muted-foreground'
+          )}
+          disabled={!hasExpandableContent}
+        >
+          <ChevronRight
+            className={cn(
+              'size-3.5 transition-transform duration-150',
+              isExpanded && 'rotate-90'
+            )}
+          />
+        </button>
+        <div className="flex-1 min-w-0 max-w-[72ch]">
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-1.5 sm:gap-2">
-            <p className="text-foreground font-mono text-xs leading-snug break-words min-w-0">
+            <p className="text-foreground font-mono text-xs leading-snug break-words min-w-0 max-w-[70ch]">
               {entry.message}
             </p>
             <div className="flex items-center flex-wrap gap-1.5 shrink-0">
-
-              {entry.quickFix && onApplyQuickFix && (
+              {entry.quickFix && onApplyQuickFix ? (
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     onApplyQuickFix(entry, entry.quickFix!);
                   }}
-                  className="min-h-[28px] flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-md font-medium text-primary bg-primary/10 border border-primary/20 hover:bg-primary/20 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors relative after:absolute after:-inset-1 after:content-['']"
+                  className="min-h-[26px] flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-md font-medium text-primary bg-primary/10 border border-primary/20 hover:bg-primary/20 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border transition-colors relative after:absolute after:-inset-1 after:content-['']"
                   title={`Quick fix: ${entry.quickFix.description}`}
                 >
                   <Wand2 className="size-3" />
                   <span>Quick fix</span>
                 </button>
-              )}
-
-              {(entry.explanation || entry.code || type === 'error') && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleToggleExplain();
-                  }}
-                  className={cn(
-                    'min-h-[28px] flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-md font-medium shrink-0 transition-colors border cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-[\'\']',
-                    isExplainOpen
-                      ? 'bg-primary/15 text-primary border-primary/30 font-semibold'
-                      : 'bg-muted/60 text-muted-foreground border-border hover:bg-muted hover:text-foreground'
-                  )}
-                  title="View LaTeX error explanation and remedies"
-                >
-                  {isExplaining && (
-                    <Loader2 className="size-3 animate-spin motion-reduce:animate-none text-primary" />
-                  )}
-                  <span>{isExplainOpen ? 'Hide guide' : 'Explain'}</span>
-                </button>
-              )}
-
-              {type === 'error' && onSuggestFix && (
+              ) : type === 'error' && onSuggestFix ? (
                 <button
                   type="button"
                   onClick={(e) => {
@@ -133,7 +138,7 @@ export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
                     onSuggestFix(entry);
                   }}
                   className={cn(
-                    'min-h-[28px] flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-md font-medium shrink-0 transition-colors border cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai relative after:absolute after:-inset-1 after:content-[\'\']',
+                    'min-h-[26px] flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-md font-medium shrink-0 transition-colors border cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai relative after:absolute after:-inset-1 after:content-[\'\']',
                     fixResult || isFixLoading
                       ? 'bg-ai/15 text-ai border-ai/30 font-semibold'
                       : 'bg-ai/10 text-ai border-ai/25 hover:bg-ai/20'
@@ -143,7 +148,29 @@ export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
                   {isFixLoading && (
                     <Loader2 className="size-3 animate-spin motion-reduce:animate-none text-ai" />
                   )}
-                  <span>{fixResult ? 'Hide fix' : 'Suggest fix'}</span>
+                  <span>{fixResult ? 'Hide fix' : 'Fix with AI'}</span>
+                </button>
+              ) : null}
+
+              {(entry.explanation || entry.code) && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleToggleExplain();
+                  }}
+                  className={cn(
+                    'min-h-[26px] flex items-center gap-1 text-xs px-2 py-0.5 rounded-md font-medium shrink-0 transition-colors border cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border relative after:absolute after:-inset-1 after:content-[\'\']',
+                    isExplainOpen
+                      ? 'bg-primary/15 text-primary border-primary/30 font-semibold'
+                      : 'bg-muted/60 text-muted-foreground border-border hover:bg-muted hover:text-foreground'
+                  )}
+                  title="View LaTeX error explanation"
+                >
+                  {isExplaining && (
+                    <Loader2 className="size-3 animate-spin motion-reduce:animate-none text-primary" />
+                  )}
+                  <span>{isExplainOpen ? 'Hide guide' : 'Guide'}</span>
                 </button>
               )}
             </div>
@@ -169,19 +196,19 @@ export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
             </p>
           )}
           {entry.rawExcerpt ? (
-            <pre className="mt-1.5 pl-3 py-1 border-l border-border/70 font-mono text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed select-text overflow-x-auto bg-transparent">
+            <pre className="mt-1.5 pl-3 py-1 border-l border-border/70 font-mono text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed select-text overflow-x-auto bg-transparent max-w-[70ch]">
               {entry.rawExcerpt}
             </pre>
           ) : (
             entry.detail && !/^[@^~.?!\s]+$/.test(entry.detail) && entry.detail.length > 1 && (
-              <p className="text-muted-foreground text-xs mt-0.5 truncate font-mono">{entry.detail}</p>
+              <p className="text-muted-foreground text-xs mt-0.5 truncate font-mono max-w-[70ch]">{entry.detail}</p>
             )
           )}
         </div>
       </div>
 
-      {/* LaTeX Error Guide Expansion Panel */}
-      {isExplainOpen && activeExplanation && (
+      {/* LaTeX Error Guide Expansion Panel (Only if no AI fix active) */}
+      {isExplainOpen && activeExplanation && !fixResult && !isFixLoading && (
         <LogExplanationPanel explanation={activeExplanation} />
       )}
 

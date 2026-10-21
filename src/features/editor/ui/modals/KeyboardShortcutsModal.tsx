@@ -344,7 +344,7 @@ export default function KeyboardShortcutsModal({
             type="button"
             onClick={() => onOpenChange(false)}
             aria-label="Close"
-            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors cursor-pointer relative after:absolute after:-inset-1.5 after:content-['']"
+            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-border transition-colors cursor-pointer relative after:absolute after:-inset-1.5 after:content-['']"
           >
             <X className="size-4" strokeWidth={1.5} />
           </button>
@@ -373,7 +373,7 @@ export default function KeyboardShortcutsModal({
                 type="button"
                 onClick={() => setActiveCategory(cat)}
                 className={cn(
-                  'px-2.5 py-1 rounded-sm text-11 font-medium transition-colors cursor-pointer whitespace-nowrap outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-[\'\']',
+                  'px-2.5 py-1 rounded-sm text-11 font-medium transition-colors cursor-pointer whitespace-nowrap outline-none focus-visible:ring-1 focus-visible:ring-border relative after:absolute after:-inset-1 after:content-[\'\']',
                   activeCategory === cat
                     ? 'bg-background text-foreground font-semibold border border-border/60'
                     : 'text-muted-foreground hover:text-foreground border border-transparent'

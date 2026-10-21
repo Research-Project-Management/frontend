@@ -276,15 +276,13 @@ export function CompilerLogs({
 
       const targetIdx = idx !== -1 ? idx : parsed.errors.length > 0 ? 0 : -1;
       if (targetIdx !== -1) {
-        const entry = enrichEntry(parsed.errors[targetIdx]);
-        handleSuggestFix(entry, targetIdx);
         setTimeout(() => {
           const el = document.getElementById(`log-entry-err-${targetIdx}`);
           el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }, 120);
       }
     });
-  }, [parsed.errors, enrichEntry, handleSuggestFix]);
+  }, [parsed.errors]);
 
   const handleEntryClick = useCallback((entry: LogEntry) => {
     if (entry.line) {
@@ -342,7 +340,7 @@ export function CompilerLogs({
   const effectiveTotalLogsCount = totalLogsCount;
 
   return (
-    <div className="h-full w-full flex flex-col bg-canvas text-foreground select-none overflow-hidden font-sans">
+    <div className="h-full w-full flex flex-col bg-canvas text-foreground overflow-hidden font-sans">
       {/* ── Top Header Toolbar (Overleaf 1:1 Parity) ── */}
       <CompilerLogsHeader
         onCompile={onCompile}
@@ -398,7 +396,7 @@ export function CompilerLogs({
           />
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto bg-background divide-y divide-border/60 font-mono">
+        <div className="flex-1 overflow-y-auto bg-background divide-y divide-border/60 font-mono select-text">
           {/* Collapsible: > Raw logs accordion (Overleaf 1:1 Match) */}
           <div id="raw-latex-logs" className="bg-background">
             <div className="flex items-center px-3 py-2 hover:bg-muted/60 transition-colors">
@@ -407,7 +405,7 @@ export function CompilerLogs({
                 aria-expanded={isRawLogsOpen}
                 aria-controls="raw-latex-logs-content"
                 onClick={() => setIsRawLogsOpen((prev) => !prev)}
-                className="flex items-center gap-2 text-left font-medium text-xs text-foreground cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary w-full"
+                className="flex items-center gap-2 text-left font-medium text-xs text-foreground cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-border w-full"
               >
                 <ChevronRight
                   className={cn('size-3.5 text-muted-foreground transition-transform duration-150', isRawLogsOpen && 'rotate-90')}

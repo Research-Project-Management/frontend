@@ -159,11 +159,9 @@ export const PdfToolbar = React.memo(function PdfToolbar({
     return () => ro.disconnect();
   }, []);
 
-  // Display secondary viewer toggles directly on toolbar only when width >= 500px
-  const showExtendedUtilities = toolbarWidth >= 500;
   // Keep zoom scale controls visible unless viewport is extremely narrow (< 400px)
   const collapseScale = toolbarWidth < 400;
-  // Hide SyncTeX when viewport is ultra narrow (< 360px)
+  // Hide SyncTeX & Search on toolbar when viewport is ultra narrow (< 360px)
   const isUltraCompact = toolbarWidth < 360;
 
   return (
@@ -197,7 +195,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                         : 'Logs and output files'
                   }
                   className={cn(
-                    'size-7 relative flex items-center justify-center rounded-md transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-[\'\']',
+                    'size-7 relative flex items-center justify-center rounded-md transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-border after:absolute after:-inset-1.5 after:content-[\'\']',
                     showLog
                       ? 'bg-primary/10 text-primary font-medium'
                       : 'text-foreground hover:bg-muted',
@@ -242,7 +240,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
               onClick={onDownload}
               disabled={!pdfUrl}
               aria-label="Download PDF"
-              className="size-7 relative flex items-center justify-center rounded-md text-foreground hover:bg-muted disabled:cursor-not-allowed transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-['']"
+              className="size-7 relative flex items-center justify-center rounded-md text-foreground hover:bg-muted disabled:cursor-not-allowed transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-border after:absolute after:-inset-1.5 after:content-['']"
             >
               <Download className="size-3.5 shrink-0" />
             </button>
@@ -253,266 +251,206 @@ export const PdfToolbar = React.memo(function PdfToolbar({
         </Tooltip>
       </div>
 
-      {/* 2. Right section: Controls + adaptive 3-dot utility menu */}
+      {/* 2. Right section (Overleaf Order): SyncTeX -> Pagination -> Zoom -> Search -> Viewer Options (•••) */}
       <div className="flex items-center gap-1 shrink-0 select-none">
-        {/* View utility buttons: only shown on toolbar when not ultra-compact */}
-            {!isUltraCompact && (
-              <>
-                {/* Find in document (Ctrl+F) */}
-                {onToggleSearch && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        onClick={onToggleSearch}
-                        disabled={!pdfUrl}
-                        aria-label="Find in document (Ctrl+F)"
-                        className={cn(
-                          'size-7 relative flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed after:absolute after:-inset-1.5 after:content-[\'\']',
-                          isSearchOpen
-                            ? 'bg-primary/10 text-primary font-medium'
-                            : 'text-foreground hover:bg-muted',
-                        )}
-                      >
-                        <Search className="size-3.5 shrink-0" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="text-xs">
-                      Find in document (Ctrl+F)
-                    </TooltipContent>
-                  </Tooltip>
+        {/* 2.1 Synchronized Scrolling / SyncTeX Toggle */}
+        {!isUltraCompact && onToggleSyncScroll && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={onToggleSyncScroll}
+                aria-label={syncScroll ? 'Disable synchronized scrolling' : 'Enable synchronized scrolling'}
+                className={cn(
+                  'size-7 relative flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border after:absolute after:-inset-1.5 after:content-[\'\']',
+                  syncScroll
+                    ? 'text-primary hover:bg-muted font-medium'
+                    : 'text-muted-foreground hover:bg-muted',
                 )}
-
-                {/* Extended Viewer Options: only shown directly on toolbar when wide (>= 660px) */}
-                {showExtendedUtilities && (
-                  <>
-                    {/* Invert colors (Dark mode PDF) */}
-                    {onToggleInvertColors && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            onClick={onToggleInvertColors}
-                            aria-label={invertColors ? 'Normal PDF view' : 'Dark mode (Invert PDF colors)'}
-                            className={cn(
-                              'size-7 relative flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-[\'\']',
-                              invertColors
-                                ? 'bg-primary/10 text-primary font-medium'
-                                : 'text-foreground hover:bg-muted',
-                            )}
-                          >
-                            <InvertColorsIcon className="size-4" />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom" className="text-xs">
-                          {invertColors ? 'Normal PDF view' : 'Dark mode (Invert PDF colors)'}
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-
-                    {/* Two-page spread */}
-                    {onToggleSpreadView && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            onClick={onToggleSpreadView}
-                            aria-label={isSpreadView ? 'Single page view' : 'Two-page spread view'}
-                            className={cn(
-                              'size-7 relative flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-[\'\']',
-                              isSpreadView
-                                ? 'bg-primary/10 text-primary font-medium'
-                                : 'text-foreground hover:bg-muted',
-                            )}
-                          >
-                            <BookOpen className="size-4" />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom" className="text-xs">
-                          {isSpreadView ? 'Single page view' : 'Two-page spread view'}
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-
-                    {/* Synchronized Scrolling Toggle (Overleaf Parity) */}
-                    {onToggleSyncScroll && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            onClick={onToggleSyncScroll}
-                            aria-label={syncScroll ? 'Disable synchronized scrolling' : 'Enable synchronized scrolling'}
-                            className={cn(
-                              'size-7 relative flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-[\'\']',
-                              syncScroll
-                                ? 'text-primary hover:bg-muted font-medium'
-                                : 'text-muted-foreground hover:bg-muted',
-                            )}
-                          >
-                            {syncScroll ? (
-                              <Link2 className="size-3.5 shrink-0" />
-                            ) : (
-                              <Link2Off className="size-3.5 shrink-0" />
-                            )}
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom" className="text-xs">
-                          {syncScroll ? 'Disable synchronized scrolling' : 'Enable synchronized scrolling'}
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-
-                    {/* Pop-out / Detached PDF Preview Window (Overleaf Parity) */}
-                    {!isDetached && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              editorCommandBus.dispatch({ type: 'preview:detach' });
-                            }}
-                            aria-label="Open PDF in separate window"
-                            className="size-7 relative flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-[''] text-foreground hover:bg-muted"
-                          >
-                            <ExternalLink className="size-3.5 shrink-0" />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom" className="text-xs">
-                          Open in separate window (Pop-out Preview)
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-                  </>
-                )}
-              </>
-            )}
-
-            {/* Pagination Controls (< [ 1 ] / 1 >) */}
-            <PdfPaginationControls
-              pageNumber={pageNumber}
-              numPages={numPages}
-              onPrevPage={onPrevPage}
-              onNextPage={onNextPage}
-              onJumpToPage={onJumpToPage}
-              className="px-0.5"
-            />
-
-            {/* Zoom Controls: always visible on toolbar unless extremely small (< 400px) */}
-            {!collapseScale && (
-              <PdfZoomControls
-                scale={scale}
-                autoFit={autoFit}
-                fitMode={fitMode}
-                compact={toolbarWidth < 680}
-                onToggleAutoFit={onToggleAutoFit}
-                onSetFitMode={onSetFitMode}
-                onZoomIn={onZoomIn}
-                onZoomOut={onZoomOut}
-                onSetScale={onSetScale}
-              />
-            )}
-
-            {/* More Options Menu: always accessible for Viewer options & Scale controls */}
-            <Popover open={isMenuOpen} onOpenChange={setIsMenuOpen}>
-              <Tooltip open={isMenuOpen ? false : menuTooltipOpen} onOpenChange={setMenuTooltipOpen}>
-                <TooltipTrigger asChild>
-                  <PopoverTrigger asChild>
-                    <button
-                      type="button"
-                      aria-label="Viewer options"
-                      className={cn(
-                        'size-7 relative flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-[\'\']',
-                        isMenuOpen
-                          ? 'bg-muted text-foreground'
-                          : 'text-foreground hover:bg-muted',
-                      )}
-                    >
-                      <MoreHorizontal className="size-4" />
-                    </button>
-                  </PopoverTrigger>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="text-xs">
-                  Viewer options
-                </TooltipContent>
-              </Tooltip>
-
-              <PopoverContent
-                align="end"
-                sideOffset={6}
-                onOpenAutoFocus={(e) => e.preventDefault()}
-                className="w-56 p-1.5 bg-popover text-popover-foreground border border-border shadow-md rounded-md z-50 text-xs font-sans select-none"
               >
-                {/* Secondary Viewer Toggles */}
-                <div className="pb-1 mb-1 border-b border-border space-y-0.5">
-                  <div className="px-2 py-1 text-12 font-medium text-muted-foreground select-none">
-                    Viewer options
-                  </div>
-                  {onToggleInvertColors && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onToggleInvertColors();
-                        setIsMenuOpen(false);
-                      }}
-                      className="w-full flex items-center justify-between px-2 py-1.5 rounded-sm hover:bg-muted text-foreground transition-colors cursor-pointer text-left"
-                    >
-                      <span className="flex items-center gap-2">
-                        <InvertColorsIcon className="size-3.5" />
-                        <span>Dark mode (Invert)</span>
-                      </span>
-                      {invertColors && <Check className="size-3.5 text-foreground" />}
-                    </button>
-                  )}
-                  {onToggleSpreadView && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onToggleSpreadView();
-                        setIsMenuOpen(false);
-                      }}
-                      className="w-full flex items-center justify-between px-2 py-1.5 rounded-sm hover:bg-muted text-foreground transition-colors cursor-pointer text-left"
-                    >
-                      <span className="flex items-center gap-2">
-                        <BookOpen className="size-3.5" />
-                        <span>Two-page spread</span>
-                      </span>
-                      {isSpreadView && <Check className="size-3.5 text-foreground" />}
-                    </button>
-                  )}
-                  {onToggleSyncScroll && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onToggleSyncScroll();
-                        setIsMenuOpen(false);
-                      }}
-                      className="w-full flex items-center justify-between px-2 py-1.5 rounded-sm hover:bg-muted text-foreground transition-colors cursor-pointer text-left"
-                    >
-                      <span className="flex items-center gap-2">
-                        <Link2 className="size-3.5" />
-                        <span>Sync scrolling</span>
-                      </span>
-                      {syncScroll && <Check className="size-3.5 text-foreground" />}
-                    </button>
-                  )}
-                  {!isDetached && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        editorCommandBus.dispatch({ type: 'preview:detach' });
-                        setIsMenuOpen(false);
-                      }}
-                      className="w-full flex items-center justify-between px-2 py-1.5 rounded-sm hover:bg-muted text-foreground transition-colors cursor-pointer text-left"
-                    >
-                      <span className="flex items-center gap-2">
-                        <ExternalLink className="size-3.5" />
-                        <span>Separate window</span>
-                      </span>
-                    </button>
-                  )}
-                </div>
+                {syncScroll ? (
+                  <Link2 className="size-3.5 shrink-0" />
+                ) : (
+                  <Link2Off className="size-3.5 shrink-0" />
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">
+              {syncScroll ? 'Disable synchronized scrolling' : 'Enable synchronized scrolling'}
+            </TooltipContent>
+          </Tooltip>
+        )}
 
-                {/* Scale / Zoom controls in popover */}
+        {/* 2.2 Pagination Controls (< [ 1 ] / N >) */}
+        <PdfPaginationControls
+          pageNumber={pageNumber}
+          numPages={numPages}
+          onPrevPage={onPrevPage}
+          onNextPage={onNextPage}
+          onJumpToPage={onJumpToPage}
+          className="px-0.5"
+        />
+
+        {/* 2.3 Zoom Controls: always visible on toolbar unless extremely small (< 400px) */}
+        {!collapseScale && (
+          <PdfZoomControls
+            scale={scale}
+            autoFit={autoFit}
+            fitMode={fitMode}
+            compact={toolbarWidth < 560}
+            onToggleAutoFit={onToggleAutoFit}
+            onSetFitMode={onSetFitMode}
+            onZoomIn={onZoomIn}
+            onZoomOut={onZoomOut}
+            onSetScale={onSetScale}
+          />
+        )}
+
+        {/* 2.4 Find in document (Ctrl+F) */}
+        {!isUltraCompact && onToggleSearch && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={onToggleSearch}
+                disabled={!pdfUrl}
+                aria-label="Find in document (Ctrl+F)"
+                className={cn(
+                  'size-7 relative flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border disabled:cursor-not-allowed after:absolute after:-inset-1.5 after:content-[\'\']',
+                  isSearchOpen
+                    ? 'bg-primary/10 text-primary font-medium'
+                    : 'text-foreground hover:bg-muted',
+                )}
+              >
+                <Search className="size-3.5 shrink-0" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">
+              Find in document (Ctrl+F)
+            </TooltipContent>
+          </Tooltip>
+        )}
+
+        {/* 2.5 Viewer Options Menu (•••): Centralizes secondary display modes & responsive fallbacks */}
+        <Popover open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+          <Tooltip open={isMenuOpen ? false : menuTooltipOpen} onOpenChange={setMenuTooltipOpen}>
+            <TooltipTrigger asChild>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Viewer options"
+                  className={cn(
+                    'size-7 relative flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border after:absolute after:-inset-1.5 after:content-[\'\']',
+                    isMenuOpen
+                      ? 'bg-muted text-foreground'
+                      : 'text-foreground hover:bg-muted',
+                  )}
+                >
+                  <MoreHorizontal className="size-4" />
+                </button>
+              </PopoverTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">
+              Viewer options
+            </TooltipContent>
+          </Tooltip>
+
+          <PopoverContent
+            align="end"
+            sideOffset={6}
+            onOpenAutoFocus={(e) => e.preventDefault()}
+            className="w-56 p-1.5 bg-popover text-popover-foreground border border-border shadow-md rounded-md z-50 text-xs font-sans select-none"
+          >
+            {/* Secondary Viewer Toggles */}
+            <div className={cn('space-y-0.5', collapseScale && 'pb-1 mb-1 border-b border-border')}>
+              <div className="px-2 py-1 text-12 font-medium text-muted-foreground select-none">
+                Viewer options
+              </div>
+              {isUltraCompact && onToggleSearch && (
+                <button
+                  type="button"
+                  disabled={!pdfUrl}
+                  onClick={() => {
+                    onToggleSearch();
+                    setIsMenuOpen(false);
+                  }}
+                  className="w-full flex items-center justify-between px-2 py-1.5 rounded-sm hover:bg-muted text-foreground disabled:opacity-50 transition-colors cursor-pointer text-left"
+                >
+                  <span className="flex items-center gap-2">
+                    <Search className="size-3.5" />
+                    <span>Find in document</span>
+                  </span>
+                  {isSearchOpen && <Check className="size-3.5 text-foreground" />}
+                </button>
+              )}
+              {onToggleInvertColors && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onToggleInvertColors();
+                    setIsMenuOpen(false);
+                  }}
+                  className="w-full flex items-center justify-between px-2 py-1.5 rounded-sm hover:bg-muted text-foreground transition-colors cursor-pointer text-left"
+                >
+                  <span className="flex items-center gap-2">
+                    <InvertColorsIcon className="size-3.5" />
+                    <span>Dark mode (Invert)</span>
+                  </span>
+                  {invertColors && <Check className="size-3.5 text-foreground" />}
+                </button>
+              )}
+              {onToggleSpreadView && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onToggleSpreadView();
+                    setIsMenuOpen(false);
+                  }}
+                  className="w-full flex items-center justify-between px-2 py-1.5 rounded-sm hover:bg-muted text-foreground transition-colors cursor-pointer text-left"
+                >
+                  <span className="flex items-center gap-2">
+                    <BookOpen className="size-3.5" />
+                    <span>Two-page spread</span>
+                  </span>
+                  {isSpreadView && <Check className="size-3.5 text-foreground" />}
+                </button>
+              )}
+              {isUltraCompact && onToggleSyncScroll && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onToggleSyncScroll();
+                    setIsMenuOpen(false);
+                  }}
+                  className="w-full flex items-center justify-between px-2 py-1.5 rounded-sm hover:bg-muted text-foreground transition-colors cursor-pointer text-left"
+                >
+                  <span className="flex items-center gap-2">
+                    <Link2 className="size-3.5" />
+                    <span>Sync scrolling</span>
+                  </span>
+                  {syncScroll && <Check className="size-3.5 text-foreground" />}
+                </button>
+              )}
+              {!isDetached && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    editorCommandBus.dispatch({ type: 'preview:detach' });
+                    setIsMenuOpen(false);
+                  }}
+                  className="w-full flex items-center justify-between px-2 py-1.5 rounded-sm hover:bg-muted text-foreground transition-colors cursor-pointer text-left"
+                >
+                  <span className="flex items-center gap-2">
+                    <ExternalLink className="size-3.5" />
+                    <span>Open in separate window</span>
+                  </span>
+                </button>
+              )}
+            </div>
+
+            {/* Scale / Zoom fallback controls in popover ONLY when collapsed on toolbar */}
+            {collapseScale && (
+              <>
                 <div className="flex items-center justify-between px-2 py-1">
                   <span className="font-semibold text-foreground text-xs">Scale</span>
                   <span className="text-[11px] font-mono text-muted-foreground tabular-nums">
@@ -531,7 +469,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                     type="button"
                     onClick={onZoomOut}
                     aria-label="Zoom out"
-                    className="size-7 flex-1 flex items-center justify-center rounded-sm border border-border hover:bg-muted text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    className="size-7 flex-1 flex items-center justify-center rounded-sm border border-border hover:bg-muted text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border"
                     title="Zoom out"
                   >
                     <Minus className="size-3.5" />
@@ -543,7 +481,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                       else onToggleAutoFit();
                     }}
                     className={cn(
-                      'h-7 px-2.5 flex items-center justify-center rounded-sm border text-xs font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                      'h-7 px-2.5 flex items-center justify-center rounded-sm border text-xs font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border',
                       autoFit && fitMode !== 'height'
                         ? 'bg-primary text-primary-foreground border-primary font-semibold'
                         : 'border-border hover:bg-muted text-foreground',
@@ -558,7 +496,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                       else onToggleAutoFit();
                     }}
                     className={cn(
-                      'h-7 px-2.5 flex items-center justify-center rounded-sm border text-xs font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                      'h-7 px-2.5 flex items-center justify-center rounded-sm border text-xs font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border',
                       autoFit && fitMode === 'height'
                         ? 'bg-primary text-primary-foreground border-primary font-semibold'
                         : 'border-border hover:bg-muted text-foreground',
@@ -570,7 +508,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                     type="button"
                     onClick={onZoomIn}
                     aria-label="Zoom in"
-                    className="size-7 flex-1 flex items-center justify-center rounded-sm border border-border hover:bg-muted text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    className="size-7 flex-1 flex items-center justify-center rounded-sm border border-border hover:bg-muted text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border"
                     title="Zoom in"
                   >
                     <Plus className="size-3.5" />
@@ -588,7 +526,7 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                           onSetScale?.(preset);
                         }}
                         className={cn(
-                          'h-7 min-h-[28px] px-1 rounded-sm text-[11px] font-mono flex items-center justify-center transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-0.5 after:content-[\'\']',
+                          'h-7 min-h-[28px] px-1 rounded-sm text-[11px] font-mono flex items-center justify-center transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border relative after:absolute after:-inset-0.5 after:content-[\'\']',
                           isSelected
                             ? 'bg-primary/10 text-primary font-semibold border border-primary/30'
                             : 'hover:bg-muted text-foreground',
@@ -599,8 +537,10 @@ export const PdfToolbar = React.memo(function PdfToolbar({
                     );
                   })}
                 </div>
-              </PopoverContent>
-            </Popover>
+              </>
+            )}
+          </PopoverContent>
+        </Popover>
       </div>
     </div>
   );

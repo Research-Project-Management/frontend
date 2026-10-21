@@ -219,7 +219,7 @@ export const NotificationDigestBadge: React.FC<NotificationDigestBadgeProps> = (
             tabIndex={0}
             aria-expanded={isExpanded}
             aria-label="Toggle notification digest details"
-            className="flex items-center gap-2 cursor-pointer select-none flex-1 min-w-0 outline-none focus-visible:ring-1 focus-visible:ring-primary rounded-sm"
+            className="flex items-center gap-2 cursor-pointer select-none flex-1 min-w-0 outline-none focus-visible:ring-1 focus-visible:ring-border rounded-sm"
             onClick={() => setIsExpanded(!isExpanded)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
@@ -253,7 +253,7 @@ export const NotificationDigestBadge: React.FC<NotificationDigestBadgeProps> = (
               type="button"
               disabled={flushBundle.isPending}
               onClick={handleFlushNow}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-sm text-12 font-medium bg-warning/20 hover:bg-warning/30 text-foreground transition-colors disabled:opacity-50 cursor-pointer leading-normal outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-sm text-12 font-medium bg-warning/20 hover:bg-warning/30 text-foreground transition-colors disabled:opacity-50 cursor-pointer leading-normal outline-none focus-visible:ring-1 focus-visible:ring-border"
               title="Flush digest immediately to collaborators"
             >
               {flushBundle.isPending ? (
@@ -267,7 +267,7 @@ export const NotificationDigestBadge: React.FC<NotificationDigestBadgeProps> = (
             <button
               type="button"
               onClick={() => setIsExpanded(!isExpanded)}
-              className="p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border"
               title={isExpanded ? 'Collapse' : 'Expand details'}
             >
               {isExpanded ? (

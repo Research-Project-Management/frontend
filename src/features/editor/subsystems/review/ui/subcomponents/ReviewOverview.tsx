@@ -96,7 +96,7 @@ export const OverviewFileGroup = React.memo(function OverviewFileGroup({
             onNavigateToFile(file.id);
           }
         }}
-        className="flex items-center justify-between px-3.5 py-2 bg-muted/40 hover:bg-muted/70 cursor-pointer transition-colors border-b border-border outline-none focus-visible:ring-1 focus-visible:ring-primary"
+        className="flex items-center justify-between px-3.5 py-2 bg-muted/40 hover:bg-muted/70 cursor-pointer transition-colors border-b border-border outline-none focus-visible:ring-1 focus-visible:ring-border"
       >
         <div className="flex items-center gap-2 min-w-0">
           <FileText className="size-3.5 text-muted-foreground shrink-0" />

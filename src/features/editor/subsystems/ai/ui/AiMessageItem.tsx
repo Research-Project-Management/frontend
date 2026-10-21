@@ -61,7 +61,7 @@ export function AiMessageItem({
         return (
           <div className="my-2.5 overflow-hidden rounded-md border border-border bg-background/90 text-foreground">
             <div className="flex items-center justify-between border-b border-border/80 bg-muted/50 px-2.5 py-1 text-10">
-              <span className="font-mono text-muted-foreground uppercase">{lang}</span>
+              <span className="font-mono text-muted-foreground">{lang}</span>
               <div className="flex items-center gap-1">
                 <button
                   type="button"

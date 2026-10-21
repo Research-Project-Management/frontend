@@ -81,7 +81,7 @@ export function PrimarySidebar() {
 
   return (
     <div
-      className="flex h-full flex-col border-r border-border min-w-0 overflow-hidden select-none"
+      className="flex h-full flex-col min-w-0 overflow-hidden select-none"
       role="region"
       aria-label="Primary Sidebar"
     >

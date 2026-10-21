@@ -198,39 +198,6 @@ export const StorageFileRow = React.memo(function StorageFileRow({
         </TooltipContent>
       </Tooltip>
 
-      {/* Asset Diagnostics Badge */}
-      {diagSummary.errorCount > 0 ? (
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger asChild>
-            <span
-              data-testid="file-error-badge"
-              data-count={diagSummary.errorCount}
-              className="shrink-0 flex items-center justify-center min-w-4 h-4 px-1 rounded-full text-10 font-mono font-semibold bg-destructive text-destructive-foreground cursor-default select-none shadow-none"
-            >
-              {diagSummary.errorCount}
-            </span>
-          </TooltipTrigger>
-          <TooltipContent side="top" className="text-11">
-            {diagSummary.errorCount} error{diagSummary.errorCount > 1 ? 's' : ''}
-          </TooltipContent>
-        </Tooltip>
-      ) : diagSummary.warningCount > 0 ? (
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger asChild>
-            <span
-              data-testid="file-warning-badge"
-              data-count={diagSummary.warningCount}
-              className="shrink-0 flex items-center justify-center min-w-4 h-4 px-1 rounded-full text-10 font-mono font-semibold bg-warning/20 text-warning border border-warning/30 cursor-default select-none shadow-none"
-            >
-              {diagSummary.warningCount}
-            </span>
-          </TooltipTrigger>
-          <TooltipContent side="top" className="text-11">
-            {diagSummary.warningCount} warning{diagSummary.warningCount > 1 ? 's' : ''}
-          </TooltipContent>
-        </Tooltip>
-      ) : null}
-
       <RowActions>
         <DropdownMenuItem
           onClick={(e) => {

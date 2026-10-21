@@ -151,7 +151,7 @@ export function ProjectTitleDropdown() {
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className="group flex items-center gap-1.5 h-7 px-2 rounded-md text-xs font-semibold text-foreground/90 hover:bg-sidebar-hover hover:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none max-w-[180px] sm:max-w-[260px] md:max-w-[320px]"
+            className="group flex items-center gap-1.5 h-7 px-2 rounded-md text-xs font-semibold text-foreground/90 hover:bg-sidebar-hover hover:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border select-none max-w-[180px] sm:max-w-[260px] md:max-w-[320px]"
             title={displayTitle}
             aria-label={`Project: ${displayTitle}`}
           >
@@ -258,7 +258,7 @@ export function ProjectTitleDropdown() {
               type="button"
               onClick={() => setIsRenameOpen(false)}
               aria-label="Close"
-              className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors cursor-pointer"
+              className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-border transition-colors cursor-pointer"
             >
               <X className="size-4" strokeWidth={1.5} />
             </button>

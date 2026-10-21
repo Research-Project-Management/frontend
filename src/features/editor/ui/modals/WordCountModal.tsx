@@ -296,7 +296,7 @@ export function WordCountModal({
             <button
               type="button"
               onClick={onClose}
-              className="size-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors cursor-pointer relative after:absolute after:-inset-1.5 after:content-['']"
+              className="size-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-border transition-colors cursor-pointer relative after:absolute after:-inset-1.5 after:content-['']"
               aria-label="Close"
             >
               <X className="size-4" strokeWidth={1.5} />

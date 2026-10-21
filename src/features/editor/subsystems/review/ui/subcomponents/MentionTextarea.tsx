@@ -284,7 +284,7 @@ export const MentionTextarea = React.forwardRef<
                     {member.role && (
                       <span
                         className={cn(
-                          'text-10 uppercase px-1 py-0.2 rounded-sm font-semibold shrink-0',
+                          'text-10 px-1 py-0.2 rounded-sm font-semibold shrink-0',
                           isSelected
                             ? 'bg-primary-foreground/20 text-primary-foreground'
                             : 'bg-muted text-muted-foreground',
@@ -318,7 +318,7 @@ export const MentionTextarea = React.forwardRef<
           onKeyUp={(e) => checkMentionTrigger(e.currentTarget)}
           onKeyDown={handleKeyDown}
           className={cn(
-            'w-full rounded-md border border-input bg-background px-2.5 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 disabled:opacity-50',
+            'w-full rounded-md border border-input bg-background px-2.5 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-border/50 disabled:opacity-50',
             className,
           )}
         />
@@ -338,7 +338,7 @@ export const MentionTextarea = React.forwardRef<
           onKeyUp={(e) => checkMentionTrigger(e.currentTarget)}
           onKeyDown={handleKeyDown}
           className={cn(
-            'w-full resize-none rounded-md border border-input bg-background p-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 disabled:opacity-50 leading-relaxed',
+            'w-full resize-none rounded-md border border-input bg-background p-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-border/50 disabled:opacity-50 leading-relaxed',
             className,
           )}
         />

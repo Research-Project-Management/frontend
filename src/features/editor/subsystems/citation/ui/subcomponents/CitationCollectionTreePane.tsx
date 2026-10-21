@@ -78,7 +78,7 @@ export function CitationCollectionTreePane({
             aria-selected={selectedNav === 'all'}
             onClick={() => onSelectNav('all')}
             className={cn(
-              'w-full h-7 px-2 flex items-center gap-2 rounded-md text-12 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none text-left',
+              'w-full h-7 px-2 flex items-center gap-2 rounded-md text-12 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border select-none text-left',
               selectedNav === 'all'
                 ? 'bg-muted text-foreground font-medium'
                 : 'text-foreground hover:bg-muted',
@@ -95,7 +95,7 @@ export function CitationCollectionTreePane({
             aria-selected={selectedNav === 'cited'}
             onClick={() => onSelectNav('cited')}
             className={cn(
-              'w-full h-7 px-2 flex items-center gap-2 rounded-md text-12 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none text-left',
+              'w-full h-7 px-2 flex items-center gap-2 rounded-md text-12 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border select-none text-left',
               selectedNav === 'cited'
                 ? 'bg-muted text-foreground font-medium'
                 : 'text-foreground hover:bg-muted',
@@ -112,7 +112,7 @@ export function CitationCollectionTreePane({
             aria-selected={selectedNav === 'library'}
             onClick={() => onSelectNav('library')}
             className={cn(
-              'w-full h-7 px-2 flex items-center gap-2 rounded-md text-12 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none text-left',
+              'w-full h-7 px-2 flex items-center gap-2 rounded-md text-12 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border select-none text-left',
               selectedNav === 'library'
                 ? 'bg-muted text-foreground font-medium'
                 : 'text-foreground hover:bg-muted',
@@ -129,7 +129,7 @@ export function CitationCollectionTreePane({
             aria-selected={selectedNav === 'bib'}
             onClick={() => onSelectNav('bib')}
             className={cn(
-              'w-full h-7 px-2 flex items-center gap-2 rounded-md text-12 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none text-left',
+              'w-full h-7 px-2 flex items-center gap-2 rounded-md text-12 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border select-none text-left',
               selectedNav === 'bib'
                 ? 'bg-muted text-foreground font-medium'
                 : 'text-foreground hover:bg-muted',
@@ -175,7 +175,7 @@ export function CitationCollectionTreePane({
                       }
                     }}
                     className={cn(
-                      'w-full h-7 px-2 flex items-center gap-1.5 rounded-md text-12 transition-colors cursor-pointer outline-none select-none text-left group focus-visible:ring-1 focus-visible:ring-primary',
+                      'w-full h-7 px-2 flex items-center gap-1.5 rounded-md text-12 transition-colors cursor-pointer outline-none select-none text-left group focus-visible:ring-1 focus-visible:ring-border',
                       isSelected
                         ? 'bg-muted text-foreground font-medium'
                         : 'text-foreground hover:bg-muted',
@@ -226,7 +226,7 @@ export function CitationCollectionTreePane({
                             aria-selected={isSubSelected}
                             onClick={() => onSelectNav(subNode.id)}
                             className={cn(
-                              'w-full h-6 px-2 flex items-center gap-2 rounded-md text-11 transition-colors cursor-pointer outline-none select-none text-left focus-visible:ring-1 focus-visible:ring-primary',
+                              'w-full h-6 px-2 flex items-center gap-2 rounded-md text-11 transition-colors cursor-pointer outline-none select-none text-left focus-visible:ring-1 focus-visible:ring-border',
                               isSubSelected
                                 ? 'bg-muted text-foreground font-medium'
                                 : 'text-foreground hover:bg-muted',

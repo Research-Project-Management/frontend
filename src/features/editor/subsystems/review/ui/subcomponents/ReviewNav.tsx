@@ -61,7 +61,7 @@ export function ReviewHeader({
             type="button"
             onClick={handleToggle}
             className={cn(
-              'flex size-7 items-center justify-center rounded-md transition-colors motion-reduce:transition-none cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1.5 after:content-[\'\']',
+              'flex size-7 items-center justify-center rounded-md transition-colors motion-reduce:transition-none cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border relative after:absolute after:-inset-1.5 after:content-[\'\']',
               showResolved
                 ? 'bg-muted text-foreground'
                 : 'text-foreground hover:bg-muted',

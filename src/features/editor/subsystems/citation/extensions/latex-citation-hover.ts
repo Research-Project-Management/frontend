@@ -168,7 +168,7 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
 
   const typeBadge = document.createElement('span');
   typeBadge.className =
-    'px-1.5 py-0.5 rounded-sm text-[10px] font-semibold tracking-wider bg-primary/15 text-primary border border-primary/20 uppercase';
+    'px-1.5 py-0.5 rounded-sm text-[10px] font-semibold tracking-normal bg-primary/15 text-primary border border-primary/20';
   typeBadge.textContent = typeStr;
   leftPills.appendChild(typeBadge);
 
@@ -180,7 +180,7 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
   if (entry.isRetracted) {
     const retractedBadge = document.createElement('span');
     retractedBadge.className =
-      'px-1.5 py-0.5 rounded-sm text-[10px] font-semibold bg-destructive/15 text-destructive border border-destructive/30 uppercase tracking-wide flex items-center gap-1';
+      'px-1.5 py-0.5 rounded-sm text-[10px] font-semibold bg-destructive/15 text-destructive border border-destructive/30 tracking-normal flex items-center gap-1';
     retractedBadge.innerHTML = '<span>RETRACTED</span>';
     leftPills.appendChild(retractedBadge);
   }
@@ -218,7 +218,7 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
       'rounded-md bg-destructive/10 border border-destructive/30 p-2.5 my-2 text-xs flex flex-col gap-1 text-destructive';
 
     const alertHeader = document.createElement('div');
-    alertHeader.className = 'flex items-center gap-1.5 font-semibold text-[11px] uppercase tracking-wider text-destructive';
+    alertHeader.className = 'flex items-center gap-1.5 font-semibold text-[11px] tracking-normal text-destructive';
     alertHeader.innerHTML = '<span>WARNING: RETRACTED PUBLICATION</span>';
     alertBox.appendChild(alertHeader);
 
@@ -302,7 +302,7 @@ function renderResolvedCard(container: HTMLElement, entry: BibEntry, citeKey: st
     'rounded-md bg-muted/30 border border-border/50 p-2 text-xs flex flex-col gap-1';
 
   const previewLabel = document.createElement('div');
-  previewLabel.className = 'text-[10px] uppercase font-semibold text-muted-foreground tracking-wider flex items-center justify-between';
+  previewLabel.className = 'text-[10px] font-semibold text-muted-foreground tracking-normal flex items-center justify-between';
   previewLabel.innerHTML = `
     <span>Citation preview</span>
     <span class="text-[9px] font-normal normal-case text-muted-foreground/80">${isVn ? 'Vietnamese name order' : 'Academic standard'}</span>
@@ -370,7 +370,7 @@ function renderUnresolvedCard(container: HTMLElement, citeKey: string): void {
 
   const warningBadge = document.createElement('span');
   warningBadge.className =
-    'px-1.5 py-0.5 rounded-sm text-[10px] font-semibold bg-warning/15 text-warning border border-warning/30 uppercase';
+    'px-1.5 py-0.5 rounded-sm text-[10px] font-semibold bg-warning/15 text-warning border border-warning/30';
   warningBadge.textContent = 'Not found';
   header.appendChild(warningBadge);
 

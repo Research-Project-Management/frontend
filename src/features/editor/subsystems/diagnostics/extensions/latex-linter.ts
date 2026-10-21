@@ -175,6 +175,31 @@ export async function latexLinterSource(view: EditorView): Promise<Diagnostic[]>
 
   lastDocText = text;
   lastDiagnostics = results;
+
+  // Sync linter results into diagnosticsCoordinator so Gutter, Lens, and Panels have unified state
+  const activeDoc = usePageStore.getState().getActiveDocument();
+  const fileKey = activeDoc?.path || activeDoc?.title || activeDoc?.id;
+  if (fileKey) {
+    const doc = view.state.doc;
+    const normKey = fileKey.replace(/\\/g, '/').replace(/^\.\//, '').toLowerCase();
+    diagnosticsCoordinator.ingestLinterDiagnostics(
+      fileKey,
+      results.map((d, idx) => {
+        const line = doc.lineAt(d.from);
+        return {
+          id: `lint-${idx}-${line.number}`,
+          file: fileKey,
+          normalizedPath: normKey,
+          line: line.number,
+          column: d.from - line.from + 1,
+          message: d.message,
+          severity: d.severity === 'error' ? 'error' : 'warning',
+          source: 'LaTeX Linter',
+        };
+      })
+    );
+  }
+
   return results;
 }
 

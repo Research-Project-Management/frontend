@@ -221,69 +221,6 @@ export const TexFileRow = React.memo(function TexFileRow({
         </TooltipContent>
       </Tooltip>
 
-      {/* File Diagnostics Badge (Overleaf Parity) */}
-      {diagSummary.errorCount > 0 ? (
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger asChild>
-            <span
-              data-testid="file-error-badge"
-              data-count={diagSummary.errorCount}
-              className="shrink-0 flex items-center justify-center min-w-4 h-4 px-1 rounded-full text-10 font-mono font-semibold bg-destructive text-destructive-foreground cursor-default select-none shadow-none"
-            >
-              {diagSummary.errorCount}
-            </span>
-          </TooltipTrigger>
-          <TooltipContent side="top" className="text-11">
-            {diagSummary.errorCount} error{diagSummary.errorCount > 1 ? 's' : ''}
-            {diagSummary.warningCount > 0 ? `, ${diagSummary.warningCount} warning${diagSummary.warningCount > 1 ? 's' : ''}` : ''}
-          </TooltipContent>
-        </Tooltip>
-      ) : diagSummary.warningCount > 0 ? (
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger asChild>
-            <span
-              data-testid="file-warning-badge"
-              data-count={diagSummary.warningCount}
-              className="shrink-0 flex items-center justify-center min-w-4 h-4 px-1 rounded-full text-10 font-mono font-semibold bg-warning/20 text-warning border border-warning/30 cursor-default select-none shadow-none"
-            >
-              {diagSummary.warningCount}
-            </span>
-          </TooltipTrigger>
-          <TooltipContent side="top" className="text-11">
-            {diagSummary.warningCount} warning{diagSummary.warningCount > 1 ? 's' : ''}
-          </TooltipContent>
-        </Tooltip>
-      ) : null}
-
-      {isMain && (
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger asChild>
-            <span className="shrink-0 flex items-center gap-1 text-11 font-mono px-1.5 py-0.5 rounded-sm border border-warning/40 bg-warning/10 text-warning font-medium cursor-default select-none">
-              <Star className="size-2.5 fill-current shrink-0" />
-              <span>main</span>
-            </span>
-          </TooltipTrigger>
-          <TooltipContent side="top" className="text-11">
-            Main document
-          </TooltipContent>
-        </Tooltip>
-      )}
-
-      {linkedFile && (
-        <Tooltip delayDuration={300}>
-          <TooltipTrigger asChild>
-            <span className="shrink-0 flex items-center gap-1 text-11 font-mono px-1.5 py-0.5 rounded-sm border border-border bg-primary/10 text-primary cursor-default">
-              <Link2 className="size-3 shrink-0" />
-              <span>{linkedFile.providerType || 'linked'}</span>
-            </span>
-          </TooltipTrigger>
-          <TooltipContent side="top" className="text-11">
-            Linked from {linkedFile.providerType || 'external source'}{' '}
-            {linkedFile.lastSyncedAt ? `(Synced ${new Date(linkedFile.lastSyncedAt).toLocaleTimeString()})` : ''}
-          </TooltipContent>
-        </Tooltip>
-      )}
-
       {/* Row action dropdown trigger (⋮) */}
       <RowActions>
         {linkedFile && onRefreshLinked && (
@@ -310,7 +247,7 @@ export const TexFileRow = React.memo(function TexFileRow({
             <span>Unlink external source</span>
           </DropdownMenuItem>
         )}
-        {!isMain ? (
+        {!isMain && (
           <DropdownMenuItem
             onClick={(e) => {
               e.stopPropagation();
@@ -320,14 +257,6 @@ export const TexFileRow = React.memo(function TexFileRow({
           >
             <Star className="size-4 text-warning shrink-0" strokeWidth={1.5} />
             <span>Set as Main Document</span>
-          </DropdownMenuItem>
-        ) : (
-          <DropdownMenuItem
-            disabled
-            className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap text-muted-foreground/80 rounded-md cursor-default select-none opacity-80"
-          >
-            <Star className="size-4 text-warning fill-warning shrink-0" />
-            <span>Current Main Document</span>
           </DropdownMenuItem>
         )}
         <DropdownMenuItem

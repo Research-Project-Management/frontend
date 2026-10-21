@@ -39,7 +39,7 @@ export const CitationValidationBanner = memo(function CitationValidationBanner({
                 key={k}
                 type="button"
                 onClick={() => onSelectKey?.(k)}
-                className="px-2 py-0.5 min-h-[24px] font-mono text-10 font-medium rounded-sm bg-warning/15 text-foreground hover:bg-warning/25 transition-colors cursor-pointer border border-warning/20 outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-['']"
+                className="px-2 py-0.5 min-h-[24px] font-mono text-10 font-medium rounded-sm bg-warning/15 text-foreground hover:bg-warning/25 transition-colors cursor-pointer border border-warning/20 outline-none focus-visible:ring-1 focus-visible:ring-border relative after:absolute after:-inset-1 after:content-['']"
                 title={`Click to filter by ${k}`}
               >
                 {k}

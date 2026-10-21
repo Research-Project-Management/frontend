@@ -19,7 +19,6 @@ import {
 import {
   SuggestionCard,
   SuggestionBulkActions,
-  TrackChangesControlBar,
 } from './subcomponents/ReviewSuggestions';
 import { OverviewView } from './subcomponents/ReviewOverview';
 import { reviewCoordinator } from '@/features/editor/subsystems/review/coordinator/review.coordinator';
@@ -68,10 +67,6 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
     setOverviewResolvedCount,
   } = useReviewState();
 
-  const reviewMode = useSettingsStore((s) => s.reviewMode);
-  const setReviewMode = useSettingsStore((s) => s.setReviewMode);
-  const trackChangesViewMode = useSettingsStore((s) => s.trackChangesViewMode);
-  const setTrackChangesViewMode = useSettingsStore((s) => s.setTrackChangesViewMode);
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden text-foreground select-none">
@@ -81,18 +76,6 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
         onToggleResolved={handleToggleResolved}
         activeResolvedCount={activeResolvedCount}
         onClose={onClose}
-      />
-
-      {/* ── Overleaf View Mode Control Bar ── */}
-      <TrackChangesControlBar
-        reviewMode={Boolean(reviewMode)}
-        onToggleReviewMode={setReviewMode}
-        viewMode={trackChangesViewMode}
-        onViewModeChange={(mode) => {
-          if (mode === 'changes' || mode === 'clean' || mode === 'original') {
-            setTrackChangesViewMode(mode);
-          }
-        }}
       />
 
       {/* ── Content View Area ── */}

@@ -85,7 +85,7 @@ export const CompileButton = React.memo(function CompileButton({
         aria-label="Recompile document (Ctrl+Enter)"
         title="Recompile (Ctrl+Enter)"
         className={cn(
-          'flex items-center gap-1.5 h-7 px-2.5 rounded-l-md text-xs font-semibold transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary select-none bg-primary text-primary-foreground',
+          'flex items-center gap-1.5 h-7 px-2.5 rounded-l-md text-xs font-semibold transition-colors outline-none focus-visible:ring-1 focus-visible:ring-border select-none bg-primary text-primary-foreground',
           isRunning
             ? 'opacity-90 cursor-wait'
             : 'hover:bg-primary/90 cursor-pointer'
@@ -108,7 +108,7 @@ export const CompileButton = React.memo(function CompileButton({
             type="button"
             aria-label="Compilation Options"
             className={cn(
-              'flex items-center justify-center size-7 border-l border-primary-foreground/20 rounded-r-md bg-primary text-primary-foreground transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer relative after:absolute after:-inset-1.5 after:content-[\'\']',
+              'flex items-center justify-center size-7 border-l border-primary-foreground/20 rounded-r-md bg-primary text-primary-foreground transition-colors outline-none focus-visible:ring-1 focus-visible:ring-border cursor-pointer relative after:absolute after:-inset-1.5 after:content-[\'\']',
               isRunning ? 'opacity-90 hover:opacity-100' : 'hover:bg-primary/90'
             )}
           >

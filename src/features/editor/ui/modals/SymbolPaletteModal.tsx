@@ -185,7 +185,7 @@ export function SymbolPaletteModal({
                             onClick={() => insertSymbol(sym)}
                             aria-label={`${sym.command} (${sym.name})`}
                             className={cn(
-                              'group flex flex-col items-center justify-center h-12 rounded-sm border transition-all cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset',
+                              'group flex flex-col items-center justify-center h-12 rounded-sm border transition-all cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border focus-visible:ring-inset',
                               isRecent
                                 ? 'bg-primary/15 border-primary text-primary font-semibold'
                                 : 'bg-background border-border hover:border-primary/50 hover:bg-primary/5 text-foreground'
@@ -240,7 +240,7 @@ export function SymbolPaletteModal({
             variant="outline"
             size="sm"
             onClick={() => onOpenChange(false)}
-            className="h-8 text-xs cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="h-8 text-xs cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground outline-none focus-visible:ring-1 focus-visible:ring-border"
           >
             Close
           </Button>

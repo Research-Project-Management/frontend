@@ -911,7 +911,6 @@ export function createTrackChangesExtension(
     })),
     trackChangesReviewModeFilter,
     trackChangesDecorationsField,
-    trackChangesGutter,
     trackChangesHoverTooltip,
     trackChangesTheme,
   ];

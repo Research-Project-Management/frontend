@@ -205,13 +205,24 @@ export class DiagnosticsCoordinatorRegistry {
 
     for (let i = 0; i < errors.length; i++) {
       const err = errors[i];
+      // Do not process info messages or badboxes into editor line diagnostics
+      if (err.severity === 'info' || /^(Overfull|Underfull)\s*\\[hv]box/i.test(err.message || '')) {
+        continue;
+      }
+
+      // If an error does not have a specific line, DO NOT force it onto line 1 in the code editor!
+      // In Overleaf, errors without line numbers stay in the Compiler Logs panel and do not annotate editor code.
+      if (!err.line || err.line < 1) {
+        continue;
+      }
+
       const rawFile = err.file ? err.file.trim() : '';
       const canonicalKey = rawFile ? this.resolveCanonicalKey(rawFile) : normDefault;
 
       const heuristic = !err.suggestion
         ? heuristicLatexErrorFix({
             errorMessage: err.message,
-            errorLine: err.line ?? 1,
+            errorLine: err.line,
             errorFile: err.file || defaultFile,
             detail: err.context,
           })
@@ -223,10 +234,10 @@ export class DiagnosticsCoordinatorRegistry {
       const confidence = heuristic?.confidence;
 
       const item: IndexedDiagnosticItem = {
-        id: `comp-${i}-${err.line ?? 0}`,
+        id: `comp-${i}-${err.line}`,
         file: err.file || defaultFile,
         normalizedPath: canonicalKey,
-        line: Math.max(1, err.line || 1),
+        line: err.line,
         column: 1,
         message: err.message,
         severity: err.severity === 'warning' ? 'warning' : 'error',
@@ -275,15 +286,24 @@ export class DiagnosticsCoordinatorRegistry {
       } else if (compilerItems.length === 0) {
         combined = linterItems;
       } else {
-        const seen = new Set<string>();
+        const normalizeMsg = (m: string) =>
+          m.toLowerCase().replace(/^(?:!|latex error:|error:|\s)+/g, '').replace(/[\s\r\n]+/g, ' ').trim();
+        const seenLineCode = new Set<string>();
+        const seenMessages = new Set<string>();
         combined = [];
         for (const item of compilerItems) {
-          seen.add(`${item.line}:${item.code || item.message.slice(0, 30)}`);
+          const norm = normalizeMsg(item.message);
+          seenLineCode.add(`${item.line}:${item.code || norm.slice(0, 40)}`);
+          seenMessages.add(norm);
           combined.push(item);
         }
         for (const item of linterItems) {
-          const itemKey = `${item.line}:${item.code || item.message.slice(0, 30)}`;
-          if (!seen.has(itemKey)) {
+          const norm = normalizeMsg(item.message);
+          const itemKey = `${item.line}:${item.code || norm.slice(0, 40)}`;
+          // Deduplicate if identical line + message or identical message already exists in compiler items
+          if (!seenLineCode.has(itemKey) && !seenMessages.has(norm)) {
+            seenLineCode.add(itemKey);
+            seenMessages.add(norm);
             combined.push(item);
           }
         }

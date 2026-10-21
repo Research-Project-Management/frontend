@@ -68,24 +68,34 @@ import { getThemeExtension } from './editor-themes';
 export const editorBaseTheme = EditorView.theme({
   '&': {
     height: '100%',
+    backgroundColor: 'var(--editor-bg, var(--canvas, #FCFCFB))',
   },
   '.cm-scroller': {
-    overflow: 'auto',
+    overflowX: 'auto',
+    overflowY: 'auto',
+    fontFamily: 'inherit',
   },
   '.cm-content': {
     padding: '0 0 32px 0',
+    flexGrow: '1',
+    flexShrink: '0',
+    minWidth: '0',
+    boxSizing: 'border-box',
   },
   '.cm-line': {
-    padding: '0 12px',
+    padding: '0 8px',
+    boxSizing: 'border-box',
   },
   '&.cm-editor .cm-activeLine, .cm-activeLine': {
-    padding: '0 12px',
+    padding: '0 8px',
+    boxSizing: 'border-box',
   },
   '.cm-gutters': {
-    borderRight: '1px solid var(--border)',
-    backgroundColor: 'transparent',
+    borderRight: 'none',
+    backgroundColor: 'var(--editor-gutter, transparent)',
     color: 'var(--muted-foreground, #57606a)',
     fontFamily: 'var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+    userSelect: 'none',
     padding: '0 0 32px 0',
   },
   '.cm-gutterElement': {
@@ -95,16 +105,33 @@ export const editorBaseTheme = EditorView.theme({
     fontFamily: 'inherit',
     boxSizing: 'border-box',
   },
+  '.cm-gutter.cm-foldGutter': {
+    width: '14px',
+    minWidth: '14px',
+  },
+  '.cm-gutter.cm-foldGutter .cm-gutterElement': {
+    justifyContent: 'center',
+    padding: '0',
+    width: '14px',
+    minWidth: '14px',
+    cursor: 'pointer',
+  },
+  '.cm-gutter.cm-lineNumbers': {
+    minWidth: '32px',
+  },
   '.cm-lineNumbers .cm-gutterElement': {
     justifyContent: 'flex-end',
-    padding: '0 4px 0 10px',
-    minWidth: '28px',
-    cursor: 'default',
+    padding: '0 4px 0 0',
+    minWidth: '32px',
+    fontVariantNumeric: 'tabular-nums',
+    cursor: 'pointer',
   },
   '.cm-gutterElement.cm-foldGutter': {
     justifyContent: 'center',
-    padding: '0 2px',
-    width: '16px',
+    padding: '0',
+    width: '14px',
+    minWidth: '14px',
+    marginRight: '0px',
     cursor: 'pointer',
   },
   '.cm-fold-marker': {
@@ -113,22 +140,28 @@ export const editorBaseTheme = EditorView.theme({
     justifyContent: 'center',
     width: '14px',
     height: '14px',
-    borderRadius: '2px',
+    borderRadius: '3px',
     color: 'var(--muted-foreground, #57606a)',
-    opacity: '0.5',
     transition: 'opacity 0.15s ease, color 0.15s ease, background-color 0.15s ease',
   },
-  '.cm-gutters:hover .cm-fold-marker': {
-    opacity: '0.75',
+  '.cm-fold-marker.cm-fold-open': {
+    opacity: '0',
   },
-  '.cm-fold-marker:hover': {
+  '.cm-gutters:hover .cm-fold-marker.cm-fold-open': {
+    opacity: '0.45',
+  },
+  '.cm-fold-marker.cm-fold-open:hover': {
     opacity: '1 !important',
     color: 'var(--foreground)',
-    backgroundColor: 'var(--muted, rgba(125, 125, 125, 0.15))',
+    backgroundColor: 'var(--muted, rgba(125, 125, 125, 0.2))',
   },
   '.cm-fold-marker.cm-fold-closed': {
-    opacity: '0.9',
+    opacity: '1',
     color: 'var(--primary, #0969DA)',
+  },
+  '.cm-fold-marker.cm-fold-closed:hover': {
+    opacity: '1 !important',
+    backgroundColor: 'var(--muted, rgba(125, 125, 125, 0.2))',
   },
   '.cm-foldGutter span': {
     display: 'inline-flex',
@@ -277,6 +310,35 @@ export function createFoldMarkerDOM(open: boolean): HTMLElement {
 export function createModernFoldGutter(): Extension {
   return foldGutter({
     markerDOM: (open) => createFoldMarkerDOM(open),
+  });
+}
+
+/**
+ * Creates configured lineNumbers extension with standard editor event handling:
+ * - Left click selects the entire line.
+ * - Shift+Left click extends the active selection range to the target line.
+ */
+export function createConfiguredLineNumbers(): Extension {
+  return lineNumbers({
+    domEventHandlers: {
+      mousedown(view, line, event) {
+        const mouseEvent = event as MouseEvent;
+        if (mouseEvent.button !== 0) return false;
+        const docLength = view.state.doc.length;
+        const targetTo = Math.min(line.to + 1, docLength);
+        if (mouseEvent.shiftKey) {
+          const anchor = view.state.selection.main.anchor;
+          view.dispatch({
+            selection: EditorSelection.range(anchor, targetTo),
+          });
+        } else {
+          view.dispatch({
+            selection: EditorSelection.range(line.from, targetTo),
+          });
+        }
+        return true;
+      },
+    },
   });
 }
 
@@ -430,7 +492,7 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
         : []
     ),
     editorCompartments.lineNumbers.of(
-      showLineNumbers ? [lineNumbers(), highlightActiveLineGutter(), createModernFoldGutter()] : []
+      showLineNumbers ? [createModernFoldGutter(), createConfiguredLineNumbers(), highlightActiveLineGutter()] : []
     ),
     editorCompartments.lineWrapping.of(lineWrapping ? EditorView.lineWrapping : []),
     editorCompartments.bracketMatching.of(
@@ -484,8 +546,19 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
 
 // ── Compartment Reconfiguration Helpers (0ms Runtime Mutations) ───────────────
 
+export const visualModeTheme = EditorView.theme({
+  '.cm-gutters': {
+    display: 'none !important',
+  },
+  '.cm-content': {
+    paddingLeft: '24px',
+    paddingRight: '24px',
+  },
+});
+
 export function createVisualModeExtensions(): Extension[] {
   return [
+    visualModeTheme,
     latexVisualHeadings(),
     latexVisualMath(),
     latexVisualCitations(),
@@ -499,7 +572,7 @@ export function reconfigureVisualMode(view: EditorView, enabled: boolean): void 
         enabled ? createVisualModeExtensions() : []
       ),
       editorCompartments.lineNumbers.reconfigure(
-        enabled ? [] : [lineNumbers(), highlightActiveLineGutter(), createModernFoldGutter()]
+        enabled ? [] : [createModernFoldGutter(), createConfiguredLineNumbers(), highlightActiveLineGutter()]
       ),
     ],
   });
@@ -585,7 +658,7 @@ export function computeCompartmentReconfigEffects(
   if (prevEffectiveLineNumbers !== nextEffectiveLineNumbers) {
     effects.push(
       editorCompartments.lineNumbers.reconfigure(
-        nextEffectiveLineNumbers ? [lineNumbers(), highlightActiveLineGutter(), createModernFoldGutter()] : []
+        nextEffectiveLineNumbers ? [createModernFoldGutter(), createConfiguredLineNumbers(), highlightActiveLineGutter()] : []
       )
     );
   }

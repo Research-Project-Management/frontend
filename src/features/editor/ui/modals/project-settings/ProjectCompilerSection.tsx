@@ -100,7 +100,7 @@ export function ProjectCompilerSection({
     <section aria-labelledby="menu-settings-heading" className="space-y-1">
       <h3
         id="menu-settings-heading"
-        className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground px-1 mb-2.5"
+        className="text-[11px] font-semibold text-muted-foreground px-1 mb-2.5"
       >
         Settings
       </h3>

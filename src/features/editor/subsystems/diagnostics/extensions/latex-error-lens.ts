@@ -119,62 +119,36 @@ export class ErrorLensWidget extends WidgetType {
     divider.className = 'cm-error-lens-divider';
     wrap.appendChild(divider);
 
-    // 3. "Fix with AI" 1-Click Action Button (Flux AI Copilot Purple)
-    const fixBtn = document.createElement('button');
-    fixBtn.type = 'button';
-    fixBtn.className = 'cm-error-lens-btn cm-error-lens-btn-fix';
-    fixBtn.setAttribute('data-testid', 'error-lens-fix-btn');
-    fixBtn.title = 'AI AutoFix: Generate instant inline diff for this line (Mod-Enter to accept)';
-    fixBtn.innerHTML = `
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 8V4H8"/>
-        <rect width="16" height="12" x="4" y="8" rx="2"/>
-        <path d="M2 14h2"/>
-        <path d="M20 14h2"/>
-        <path d="M15 13v2"/>
-        <path d="M9 13v2"/>
-      </svg>
-      <span>Fix with AI</span>
-    `;
-    const triggerFix = (e: Event) => {
-      e.preventDefault();
-      e.stopPropagation();
-      editorCommandBus.dispatch({
-        type: 'ai:autofix-diagnostic',
-        diagnostic: this.diagnostic,
-      });
-    };
-    fixBtn.onmousedown = (e) => e.stopPropagation();
-    fixBtn.onclick = triggerFix;
-    wrap.appendChild(fixBtn);
-
-    // 4. "Ask AI" in Sidebar Action Button
-    const askBtn = document.createElement('button');
-    askBtn.type = 'button';
-    askBtn.className = 'cm-error-lens-btn cm-error-lens-btn-chat';
-    askBtn.setAttribute('data-testid', 'error-lens-ask-btn');
-    askBtn.title = 'Open AI Assistant in left sidebar with full error context';
-    askBtn.innerHTML = `
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-      </svg>
-    `;
-    const triggerAsk = (e: Event) => {
-      e.preventDefault();
-      e.stopPropagation();
-      editorCommandBus.dispatch({
-        type: 'editor:suggest-fix',
-        error: {
-          message: this.diagnostic.message,
-          line: this.diagnostic.line,
-          file: this.diagnostic.file || this.filePath,
-          context: this.diagnostic.context,
-        },
-      });
-    };
-    askBtn.onmousedown = (e) => e.stopPropagation();
-    askBtn.onclick = triggerAsk;
-    wrap.appendChild(askBtn);
+    // 3. Single Action Button: Quick Fix or Fix with AI (if diagnostic has a resolved line)
+    if (this.diagnostic.line && this.diagnostic.line >= 1) {
+      const fixBtn = document.createElement('button');
+      fixBtn.type = 'button';
+      fixBtn.className = 'cm-error-lens-btn cm-error-lens-btn-fix';
+      fixBtn.setAttribute('data-testid', 'error-lens-fix-btn');
+      fixBtn.title = 'AI AutoFix: Generate instant inline diff for this line (Tab to accept, Esc to reject)';
+      fixBtn.innerHTML = `
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 8V4H8"/>
+          <rect width="16" height="12" x="4" y="8" rx="2"/>
+          <path d="M2 14h2"/>
+          <path d="M20 14h2"/>
+          <path d="M15 13v2"/>
+          <path d="M9 13v2"/>
+        </svg>
+        <span>Fix with AI</span>
+      `;
+      const triggerFix = (e: Event) => {
+        e.preventDefault();
+        e.stopPropagation();
+        editorCommandBus.dispatch({
+          type: 'ai:autofix-diagnostic',
+          diagnostic: this.diagnostic,
+        });
+      };
+      fixBtn.onmousedown = (e) => e.stopPropagation();
+      fixBtn.onclick = triggerFix;
+      wrap.appendChild(fixBtn);
+    }
 
     return wrap;
   }

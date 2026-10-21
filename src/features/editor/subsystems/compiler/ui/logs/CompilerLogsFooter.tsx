@@ -44,7 +44,7 @@ export function CompilerLogsFooter({
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="h-7 px-2.5 rounded-md bg-canvas hover:bg-muted text-foreground text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary border border-border relative after:absolute after:-inset-1 after:content-['']"
+            className="h-7 px-2.5 rounded-md bg-canvas hover:bg-muted text-foreground text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-border border border-border relative after:absolute after:-inset-1 after:content-['']"
           >
             <span>Other logs and files</span>
             <ChevronUp
@@ -73,7 +73,7 @@ export function CompilerLogsFooter({
                 key={file}
                 type="button"
                 onClick={() => onDownloadFile(file)}
-                className="w-full min-h-[28px] text-left px-2 py-1 text-xs text-foreground/90 hover:text-foreground hover:bg-muted rounded-xs transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary truncate"
+                className="w-full min-h-[28px] text-left px-2 py-1 text-xs text-foreground/90 hover:text-foreground hover:bg-muted rounded-xs transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border truncate"
                 title={`Download ${file}`}
               >
                 {file}
@@ -85,7 +85,7 @@ export function CompilerLogsFooter({
           <button
             type="button"
             onClick={onDownloadAll}
-            className="w-full min-h-[28px] text-left px-2 py-1 text-xs font-normal text-foreground hover:bg-muted rounded-xs transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="w-full min-h-[28px] text-left px-2 py-1 text-xs font-normal text-foreground hover:bg-muted rounded-xs transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border"
           >
             Download all ({outputFiles.length})
           </button>

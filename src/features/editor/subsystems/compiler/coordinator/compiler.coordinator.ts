@@ -462,15 +462,19 @@ export class CompilerCoordinatorRegistry {
             : rawLog
               ? parseCompileErrors(rawLog)
               : [];
-        const successDiagnostics: CompileError[] = rawSuccessDiagnostics.map((d) => ({
-          line: d.line,
-          message: sanitizeDash(d.message),
-          context: sanitizeDash(d.context || ''),
-          file: d.file,
-          severity: d.severity,
-          code: d.code,
-          suggestion: d.suggestion,
-        }));
+        // Only ingest real errors and warnings into Editor Diagnostics Coordinator.
+        // Filter out badboxes and info messages (Overfull \hbox etc.) so they stay in CompilerLogs panel only.
+        const successDiagnostics: CompileError[] = rawSuccessDiagnostics
+          .filter((d) => d.severity !== 'info' && !/^(Overfull|Underfull)\s*\\[hv]box/i.test(d.message || ''))
+          .map((d) => ({
+            line: d.line,
+            message: sanitizeDash(d.message),
+            context: sanitizeDash(d.context || ''),
+            file: d.file,
+            severity: d.severity,
+            code: d.code,
+            suggestion: d.suggestion,
+          }));
         compileStore.setCompileErrors(successDiagnostics);
         diagnosticsCoordinator.ingestCompilerErrors(successDiagnostics, resolvedMainFile);
 
@@ -509,24 +513,28 @@ export class CompilerCoordinatorRegistry {
 
         const formattedErrors: CompileError[] =
           res.diagnostics && res.diagnostics.length > 0
-            ? res.diagnostics.map((d) => ({
-                line: d.line,
-                message: sanitizeDash(d.message),
-                context: sanitizeDash(d.context || ''),
-                file: d.file,
-                severity: d.severity,
-                code: d.code,
-                suggestion: d.suggestion,
-              }))
-            : (res.errors || []).map((err) => ({
-                line: err.line,
-                message: sanitizeDash(err.message),
-                context: sanitizeDash(err.context),
-                file: err.file,
-                severity: err.severity,
-                code: err.code,
-                suggestion: err.suggestion,
-              }));
+            ? res.diagnostics
+                .filter((d) => d.severity !== 'info' && !/^(Overfull|Underfull)\s*\\[hv]box/i.test(d.message || ''))
+                .map((d) => ({
+                  line: d.line,
+                  message: sanitizeDash(d.message),
+                  context: sanitizeDash(d.context || ''),
+                  file: d.file,
+                  severity: d.severity,
+                  code: d.code,
+                  suggestion: d.suggestion,
+                }))
+            : (res.errors || [])
+                .filter((err) => err.severity !== 'info' && !/^(Overfull|Underfull)\s*\\[hv]box/i.test(err.message || ''))
+                .map((err) => ({
+                  line: err.line,
+                  message: sanitizeDash(err.message),
+                  context: sanitizeDash(err.context),
+                  file: err.file,
+                  severity: err.severity,
+                  code: err.code,
+                  suggestion: err.suggestion,
+                }));
 
         compileStore.setCompileErrors(formattedErrors);
         diagnosticsCoordinator.ingestCompilerErrors(formattedErrors, resolvedMainFile);

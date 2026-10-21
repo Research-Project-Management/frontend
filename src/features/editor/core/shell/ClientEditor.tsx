@@ -22,12 +22,19 @@ const ModernWorkbenchLayout = dynamic(
 );
 
 export default function ClientEditor() {
+  const [mounted, setMounted] = React.useState(false);
+
   useEffect(() => {
+    setMounted(true);
     const unsubBeforeUnload = sessionCoordinator.initBeforeUnloadProtection();
     return () => {
       unsubBeforeUnload();
     };
   }, []);
+
+  if (!mounted) {
+    return <EditorSkeleton />;
+  }
 
   return (
     <TooltipProvider delayDuration={200}>

@@ -40,7 +40,7 @@ export const UnresolvedKeysList = memo(function UnresolvedKeysList({
                 onFind(key);
               }
             }}
-            className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-md bg-warning/10 border border-warning/20 text-foreground cursor-pointer hover:bg-warning/15 transition-colors group outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-md bg-warning/10 border border-warning/20 text-foreground cursor-pointer hover:bg-warning/15 transition-colors group outline-none focus-visible:ring-1 focus-visible:ring-border"
           >
             <span className="font-mono text-11 font-medium text-warning truncate">
               {key}

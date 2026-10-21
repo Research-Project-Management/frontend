@@ -111,11 +111,6 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
     enabled: !!parentPageId,
   });
 
-  const { data: deletedFilesList = [] } = useQuery({
-    ...deletedFilesQuery(parentPageId || ''),
-    enabled: Boolean(parentPageId),
-  });
-
   const projectId =
     routeProjectId ||
     extractProjectId(parentPage) ||
@@ -674,21 +669,15 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
           })}
         />
 
-        {/* Header Toolbar & Search Filter */}
+        {/* Header Toolbar */}
         <FileTreeToolbar
           isFileTreeOpen={isFileTreeOpen}
           onToggleFileTree={() => setIsFileTreeOpen((prev) => !prev)}
           onOpenFileModal={handleOpenFileModal}
           onStartCreateFolder={handleStartCreateFolder}
           onOpenUploadModal={handleOpenUploadModal}
-          onOpenDeletedFilesModal={() => {
-            editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'deleted-files' });
-          }}
-          deletedFilesCount={deletedFilesList.length}
           linkedFilesCount={linkedFiles.length}
           onRefreshAllLinkedFiles={refreshAllLinkedFiles}
-          fileFilter={fileFilter}
-          onFileFilterChange={setFileFilter}
           onClose={onClose}
         />
 

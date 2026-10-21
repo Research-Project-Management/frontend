@@ -40,14 +40,14 @@ export function CompilerLogsFilterTabs({
         aria-selected={activeTab === 'all'}
         onClick={() => onSelectTab('all')}
         className={cn(
-          'h-full flex items-center gap-1.5 text-xs transition-colors cursor-pointer border-b-2 outline-none focus-visible:ring-1 focus-visible:ring-primary',
+          'h-full flex items-center gap-1.5 text-xs transition-colors cursor-pointer border-b-2 outline-none focus-visible:ring-1 focus-visible:ring-border',
           activeTab === 'all'
             ? 'border-primary text-foreground font-semibold'
             : 'border-transparent text-muted-foreground hover:text-foreground font-medium'
         )}
       >
         <span>All logs</span>
-        <span className="px-1.5 py-0.5 rounded-full text-xs font-mono font-medium bg-muted text-foreground/80">
+        <span className="px-1.5 py-0.5 rounded-full text-xs font-mono font-medium bg-muted text-muted-foreground">
           {totalLogsCount}
         </span>
       </button>
@@ -58,19 +58,14 @@ export function CompilerLogsFilterTabs({
         aria-selected={activeTab === 'errors'}
         onClick={() => onSelectTab('errors')}
         className={cn(
-          'h-full flex items-center gap-1.5 text-xs transition-colors cursor-pointer border-b-2 outline-none focus-visible:ring-1 focus-visible:ring-primary',
+          'h-full flex items-center gap-1.5 text-xs transition-colors cursor-pointer border-b-2 outline-none focus-visible:ring-1 focus-visible:ring-border',
           activeTab === 'errors'
             ? 'border-primary text-foreground font-semibold'
             : 'border-transparent text-muted-foreground hover:text-foreground font-medium'
         )}
       >
         <span>Errors</span>
-        <span
-          className={cn(
-            'px-1.5 py-0.5 rounded-full text-xs font-mono font-semibold',
-            errorsCount > 0 ? 'bg-destructive text-destructive-foreground' : 'bg-muted text-foreground/80 font-medium'
-          )}
-        >
+        <span className="px-1.5 py-0.5 rounded-full text-xs font-mono font-medium bg-muted text-muted-foreground">
           {errorsCount}
         </span>
       </button>
@@ -81,19 +76,14 @@ export function CompilerLogsFilterTabs({
         aria-selected={activeTab === 'warnings'}
         onClick={() => onSelectTab('warnings')}
         className={cn(
-          'h-full flex items-center gap-1.5 text-xs transition-colors cursor-pointer border-b-2 outline-none focus-visible:ring-1 focus-visible:ring-primary',
+          'h-full flex items-center gap-1.5 text-xs transition-colors cursor-pointer border-b-2 outline-none focus-visible:ring-1 focus-visible:ring-border',
           activeTab === 'warnings'
             ? 'border-primary text-foreground font-semibold'
             : 'border-transparent text-muted-foreground hover:text-foreground font-medium'
         )}
       >
         <span>Warnings</span>
-        <span
-          className={cn(
-            'px-1.5 py-0.5 rounded-full text-xs font-mono font-semibold',
-            warningsCount > 0 ? 'bg-warning/15 text-warning border border-warning/20' : 'bg-muted text-foreground/80 font-medium'
-          )}
-        >
+        <span className="px-1.5 py-0.5 rounded-full text-xs font-mono font-medium bg-muted text-muted-foreground">
           {warningsCount}
         </span>
       </button>
@@ -104,14 +94,14 @@ export function CompilerLogsFilterTabs({
         aria-selected={activeTab === 'info'}
         onClick={() => onSelectTab('info')}
         className={cn(
-          'h-full flex items-center gap-1.5 text-xs transition-colors cursor-pointer border-b-2 outline-none focus-visible:ring-1 focus-visible:ring-primary',
+          'h-full flex items-center gap-1.5 text-xs transition-colors cursor-pointer border-b-2 outline-none focus-visible:ring-1 focus-visible:ring-border',
           activeTab === 'info'
             ? 'border-primary text-foreground font-semibold'
             : 'border-transparent text-muted-foreground hover:text-foreground font-medium'
         )}
       >
         <span>Info</span>
-        <span className="px-1.5 py-0.5 rounded-full text-xs font-mono font-medium bg-muted text-foreground/80">
+        <span className="px-1.5 py-0.5 rounded-full text-xs font-mono font-medium bg-muted text-muted-foreground">
           {badBoxesCount}
         </span>
       </button>

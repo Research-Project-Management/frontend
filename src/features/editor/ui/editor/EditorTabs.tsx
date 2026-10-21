@@ -73,11 +73,11 @@ const TabItem = React.memo(function TabItem({ tab, isActive, rootPageId, canClos
       onAuxClick={handleAuxClick}
       onKeyDown={handleKeyDown}
       className={cn(
-        'group/tab relative flex items-center gap-1.5 h-full px-3 cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary',
+        'group/tab relative flex items-center gap-1.5 h-full px-3 cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-border',
         'min-w-0 max-w-[200px] shrink-0 transition-colors motion-reduce:transition-none text-12 border-r border-border/60',
         isActive
-          ? 'bg-canvas text-foreground font-medium z-10 before:absolute before:top-0 before:inset-x-0 before:h-[2px] before:bg-primary before:z-20 after:absolute after:bottom-[-1px] after:inset-x-0 after:h-[1px] after:bg-canvas after:z-20'
-          : 'bg-surface/50 text-muted-foreground hover:bg-muted/40 hover:text-foreground',
+          ? 'bg-transparent text-foreground font-medium z-10 before:absolute before:top-0 before:inset-x-0 before:h-[2px] before:bg-primary before:z-20'
+          : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground',
       )}
     >
       {/* File Document Icon - Clean project style */}
@@ -97,7 +97,7 @@ const TabItem = React.memo(function TabItem({ tab, isActive, rootPageId, canClos
           }}
           onAuxClick={(e) => e.preventDefault()}
           className={cn(
-            "ml-auto shrink-0 relative flex items-center justify-center rounded-xs transition-opacity motion-reduce:transition-none outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer hover:bg-muted text-foreground",
+            "ml-auto shrink-0 relative flex items-center justify-center rounded-xs transition-opacity motion-reduce:transition-none outline-none focus-visible:ring-1 focus-visible:ring-border cursor-pointer hover:bg-muted text-foreground",
             "size-4 p-0.5 after:absolute after:-inset-2 after:content-['']",
             isActive
               ? "opacity-70 hover:opacity-100"

@@ -26,12 +26,12 @@ export const CitationBottomNav = memo(function CitationBottomNav({
         className={cn(
           'relative flex flex-1 flex-col items-center justify-center gap-1 h-full transition-colors cursor-pointer text-xs font-medium',
           filterTab === 'document'
-            ? 'text-primary font-semibold'
+            ? 'text-foreground font-semibold bg-muted/30'
             : 'text-muted-foreground hover:text-foreground',
         )}
       >
         {filterTab === 'document' && (
-          <div className="absolute top-0 inset-x-0 h-[2px] bg-primary" />
+          <div className="absolute top-0 inset-x-0 h-[2px] bg-foreground" />
         )}
         <FileText className="size-3.5 shrink-0" />
         <span className="leading-tight">In Document</span>
@@ -44,12 +44,12 @@ export const CitationBottomNav = memo(function CitationBottomNav({
         className={cn(
           'relative flex flex-1 flex-col items-center justify-center gap-1 h-full transition-colors cursor-pointer text-xs font-medium',
           filterTab === 'library'
-            ? 'text-primary font-semibold'
+            ? 'text-foreground font-semibold bg-muted/30'
             : 'text-muted-foreground hover:text-foreground',
         )}
       >
         {filterTab === 'library' && (
-          <div className="absolute top-0 inset-x-0 h-[2px] bg-primary" />
+          <div className="absolute top-0 inset-x-0 h-[2px] bg-foreground" />
         )}
         <Library className="size-3.5 shrink-0" />
         <span className="leading-tight">Library</span>

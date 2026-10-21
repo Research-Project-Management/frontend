@@ -43,11 +43,9 @@ import EditMenu from './topbar/EditMenu';
 import InsertMenu from './topbar/InsertMenu';
 import ViewMenu from './topbar/ViewMenu';
 import FormatMenu from './topbar/FormatMenu';
-import HelpMenu from './topbar/HelpMenu';
 import LayoutSwitcher from './topbar/LayoutSwitcher';
 import ProjectTitleDropdown from './topbar/ProjectTitleDropdown';
 import CollaboratorAvatarStack from './topbar/CollaboratorAvatarStack';
-import EditingModeDropdown from './topbar/EditingModeDropdown';
 
 import { editorCommandBus, sessionCoordinator, useSettingsStore, usePageStore, useWorkspaceStore } from '@/features/editor/core';
 import { useCompileStore } from '@/features/editor/subsystems/compiler';
@@ -147,7 +145,7 @@ export function Topbar() {
     <TooltipProvider delayDuration={150}>
       <nav
         aria-label="Editor toolbar"
-        className="relative flex h-10 items-center justify-between gap-2 px-2.5 py-0.5 bg-sidebar border-b border-border shrink-0 z-30 select-none"
+        className="relative flex h-10 items-center justify-between gap-2 px-2.5 py-0.5 bg-sidebar shrink-0 z-30 select-none"
       >
         {/* ── Left: Back / Logo, Full Menubar ── */}
         <div className="flex items-center min-w-0 shrink-0 gap-1.5">
@@ -157,7 +155,7 @@ export function Topbar() {
             onClick={() => editorCommandBus.dispatch({ type: 'sidebar:toggle-panel', panel: 'Files' })}
             title="Open Explorer & Tools"
             aria-label="Open Explorer & Tools"
-            className="md:hidden relative flex items-center justify-center p-1.5 rounded-md text-foreground hover:bg-sidebar-hover transition-colors mr-1 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary after:absolute after:-inset-1.5 after:content-['']"
+            className="md:hidden relative flex items-center justify-center p-1.5 rounded-md text-foreground hover:bg-sidebar-hover transition-colors mr-1 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border after:absolute after:-inset-1.5 after:content-['']"
           >
             <PanelLeft className="size-4 shrink-0" />
           </button>
@@ -168,7 +166,7 @@ export function Topbar() {
               <Link
                 href={homeHref}
                 aria-label="Back to Projects"
-                className="group relative flex size-7 items-center justify-center rounded-md hover:bg-sidebar-hover transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary shrink-0 cursor-pointer"
+                className="group relative flex size-7 items-center justify-center rounded-md hover:bg-sidebar-hover transition-colors outline-none focus-visible:ring-1 focus-visible:ring-border shrink-0 cursor-pointer"
               >
                 <img
                   src="/Flux.svg"
@@ -193,7 +191,6 @@ export function Topbar() {
             <InsertMenu />
             <ViewMenu />
             <FormatMenu />
-            <HelpMenu />
           </Menubar>
         </div>
 
@@ -248,7 +245,7 @@ export function Topbar() {
                     useSettingsStore.getState().setSettingsPanelOpen(true);
                   }}
                   aria-label={`GitHub: ${githubLinkData.link.repoFullName} (${githubLinkData.link.branch})`}
-                  className="hidden lg:flex items-center gap-1.5 h-7 px-2 rounded-md text-xs font-normal text-muted-foreground hover:text-foreground hover:bg-sidebar-hover transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none mr-0.5"
+                  className="hidden lg:flex items-center gap-1.5 h-7 px-2 rounded-md text-xs font-normal text-muted-foreground hover:text-foreground hover:bg-sidebar-hover transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border select-none mr-0.5"
                 >
                   <GitHubIcon className="size-3.5 shrink-0 text-foreground/70" />
                   <span className="max-w-[110px] truncate text-11 font-mono">
@@ -268,9 +265,6 @@ export function Topbar() {
           {/* Collaborator Presence Avatar Stack (Overleaf Parity: Before Action Buttons) */}
           <CollaboratorAvatarStack />
 
-          {/* Editing Mode Dropdown (Overleaf Parity: Editing vs Reviewing vs Viewing) */}
-          <EditingModeDropdown />
-
           {/* History Button (Overleaf Parity: Top Right) */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -279,7 +273,7 @@ export function Topbar() {
                 onClick={handleToggleHistory}
                 aria-label="History (revisions)"
                 className={cn(
-                  "flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none",
+                  "flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border select-none",
                   isHistoryOpen
                     ? "bg-background text-foreground font-semibold"
                     : "text-foreground/80 hover:text-foreground hover:bg-sidebar-hover"
@@ -302,7 +296,7 @@ export function Topbar() {
                   type="button"
                   onClick={() => editorCommandBus.dispatch({ type: 'preview:attach' })}
                   aria-label="Re-attach PDF to editor"
-                  className="flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 border border-primary/25 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary select-none animate-in fade-in duration-200"
+                  className="flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 border border-primary/25 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border select-none animate-in fade-in duration-200"
                 >
                   <ExternalLink className="size-3.5 shrink-0" />
                   <span className="hidden md:inline">Re-attach PDF</span>

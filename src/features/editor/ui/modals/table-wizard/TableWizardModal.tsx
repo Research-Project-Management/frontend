@@ -279,7 +279,7 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
                       type="button"
                       onClick={() => setTableStyle(s.id)}
                       className={cn(
-                        'min-h-[28px] h-7 px-2 text-11 font-medium rounded-sm border transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-[\'\']',
+                        'min-h-[28px] h-7 px-2 text-11 font-medium rounded-sm border transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border relative after:absolute after:-inset-1 after:content-[\'\']',
                         tableStyle === s.id
                           ? 'bg-primary text-primary-foreground border-primary font-semibold'
                           : 'bg-background border-border text-foreground hover:bg-muted'
@@ -366,7 +366,7 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
                               value={tableHeaders[cIdx] || ''}
                               onChange={(e) => updateTableHeader(cIdx, e.target.value)}
                               placeholder={`Header ${cIdx + 1}`}
-                              className="h-7 text-xs font-semibold rounded-md border-border bg-background focus:ring-1 focus:ring-primary"
+                              className="h-7 text-xs font-semibold rounded-md border-border bg-background focus:ring-1 focus:ring-border"
                             />
                           </td>
                         ))}
@@ -388,7 +388,7 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
                               value={tableData[rIdx]?.[cIdx] ?? ''}
                               onChange={(e) => updateTableCell(rIdx, cIdx, e.target.value)}
                               placeholder={`r${rIdx + 1}, c${cIdx + 1}`}
-                              className="h-7 text-xs rounded-md border-border/80 bg-background focus:ring-1 focus:ring-primary"
+                              className="h-7 text-xs rounded-md border-border/80 bg-background focus:ring-1 focus:ring-border"
                             />
                           </td>
                         ))}
@@ -527,7 +527,7 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
                   onChange={(e) => setPastedText(e.target.value)}
                   placeholder="Paste TSV (from Excel), CSV, or \begin{tabular} snippet..."
                   rows={2}
-                  className="w-full p-1.5 text-11 font-mono rounded-md border border-border bg-background resize-none outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full p-1.5 text-11 font-mono rounded-md border border-border bg-background resize-none outline-none focus:ring-1 focus:ring-border"
                 />
               </div>
             </div>
@@ -558,7 +558,7 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
                       type="button"
                       onClick={() => setMatrixType(m.id as MatrixType)}
                       className={cn(
-                        'min-h-[28px] h-7 px-2 text-11 font-mono font-medium rounded-sm border transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-[\'\']',
+                        'min-h-[28px] h-7 px-2 text-11 font-mono font-medium rounded-sm border transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border relative after:absolute after:-inset-1 after:content-[\'\']',
                         matrixType === m.id
                           ? 'bg-primary text-primary-foreground border-primary font-semibold'
                           : 'bg-background border-border text-foreground hover:bg-muted'
@@ -694,7 +694,7 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
                         value={matrixCells[rIdx]?.[cIdx] ?? ''}
                         onChange={(e) => updateMatrixCell(rIdx, cIdx, e.target.value)}
                         placeholder={`a_${rIdx + 1}${cIdx + 1}`}
-                        className="h-7 text-xs font-mono text-center rounded-md border-border bg-background focus:ring-1 focus:ring-primary p-0.5"
+                        className="h-7 text-xs font-mono text-center rounded-md border-border bg-background focus:ring-1 focus:ring-border p-0.5"
                       />
                     ))
                   )}
@@ -729,7 +729,7 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
             variant="outline"
             size="sm"
             onClick={copySnippet}
-            className="gap-1.5 h-8 text-xs cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="gap-1.5 h-8 text-xs cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground outline-none focus-visible:ring-1 focus-visible:ring-border"
           >
             <Copy className="size-3.5" />
             Copy Code
@@ -741,7 +741,7 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
               variant="outline"
               size="sm"
               onClick={() => onOpenChange(false)}
-              className="w-full sm:w-auto h-8 text-xs cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="w-full sm:w-auto h-8 text-xs cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground outline-none focus-visible:ring-1 focus-visible:ring-border"
             >
               Cancel
             </Button>
@@ -750,7 +750,7 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
               variant="default"
               size="sm"
               onClick={insertSnippet}
-              className="w-full sm:w-auto gap-1.5 h-8 text-xs font-medium rounded-md bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="w-full sm:w-auto gap-1.5 h-8 text-xs font-medium rounded-md bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border"
             >
               <Check className="size-3.5" />
               {tab === 'table' ? 'Insert Table' : 'Insert Matrix'}

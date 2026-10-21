@@ -238,7 +238,7 @@ export default function TemplateGalleryModal() {
             type="button"
             onClick={() => setIsTemplateModalOpen(false)}
             aria-label="Close"
-            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors cursor-pointer relative after:absolute after:-inset-1.5 after:content-['']"
+            className="size-7 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-border transition-colors cursor-pointer relative after:absolute after:-inset-1.5 after:content-['']"
           >
             <X className="size-4" strokeWidth={1.5} />
           </button>
@@ -260,7 +260,7 @@ export default function TemplateGalleryModal() {
                   placeholder="Search templates..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 text-xs bg-background border border-border rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary text-foreground placeholder:text-muted-foreground"
+                  className="w-full pl-8 pr-3 py-1.5 text-xs bg-background border border-border rounded-md outline-none focus-visible:ring-1 focus-visible:ring-border text-foreground placeholder:text-muted-foreground"
                 />
               </div>
             </div>
@@ -293,7 +293,7 @@ export default function TemplateGalleryModal() {
                         }
                       }}
                       className={cn(
-                        'p-3 rounded-md border transition-all cursor-pointer text-left outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                        'p-3 rounded-md border transition-all cursor-pointer text-left outline-none focus-visible:ring-1 focus-visible:ring-border',
                         isSelected
                           ? 'bg-primary/10 border-primary'
                           : 'border-border/60 hover:border-border hover:bg-muted/40'
@@ -344,7 +344,7 @@ export default function TemplateGalleryModal() {
                     type="button"
                     onClick={() => setPreviewTab('main')}
                     className={cn(
-                      'px-2 py-0.5 rounded-sm text-11 font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                      'px-2 py-0.5 rounded-sm text-11 font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border',
                       previewTab === 'main'
                         ? 'bg-background text-foreground font-semibold'
                         : 'text-muted-foreground hover:text-foreground'
@@ -357,7 +357,7 @@ export default function TemplateGalleryModal() {
                       type="button"
                       onClick={() => setPreviewTab('bib')}
                       className={cn(
-                        'px-2 py-0.5 rounded-sm text-11 font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                        'px-2 py-0.5 rounded-sm text-11 font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border',
                         previewTab === 'bib'
                           ? 'bg-background text-foreground font-semibold'
                           : 'text-muted-foreground hover:text-foreground'
@@ -372,7 +372,7 @@ export default function TemplateGalleryModal() {
                   type="button"
                   onClick={copyCode}
                   title="Copy code"
-                  className="size-7 rounded-md flex items-center justify-center border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1.5 after:content-['']"
+                  className="size-7 rounded-md flex items-center justify-center border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border relative after:absolute after:-inset-1.5 after:content-['']"
                 >
                   <Copy className="size-3.5" />
                 </button>

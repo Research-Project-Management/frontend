@@ -315,7 +315,7 @@ export function FigureWizardModal({
                       }
                     }}
                     className={cn(
-                      'group relative rounded-md border p-1.5 flex flex-col items-center gap-1.5 cursor-pointer transition-all outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                      'group relative rounded-md border p-1.5 flex flex-col items-center gap-1.5 cursor-pointer transition-all outline-none focus-visible:ring-1 focus-visible:ring-border',
                       isSelected
                         ? 'bg-primary/10 border-primary'
                         : 'bg-background border-border hover:border-border hover:bg-muted/40',
@@ -375,7 +375,7 @@ export function FigureWizardModal({
                   type="button"
                   onClick={() => setValue('width', p.id, { shouldValidate: true })}
                   className={cn(
-                    'h-7 px-2 text-11 font-medium rounded-sm border truncate text-center transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-[\'\']',
+                    'h-7 px-2 text-11 font-medium rounded-sm border truncate text-center transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border relative after:absolute after:-inset-1 after:content-[\'\']',
                     values.width === p.id
                       ? 'bg-primary text-primary-foreground border-primary'
                       : 'bg-background border-border text-foreground hover:bg-muted',
@@ -424,7 +424,7 @@ export function FigureWizardModal({
                     type="button"
                     onClick={() => setValue('placement', spec, { shouldValidate: true })}
                     className={cn(
-                      'min-h-[28px] px-2 py-0.5 text-11 font-mono rounded-sm border transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-[\'\']',
+                      'min-h-[28px] px-2 py-0.5 text-11 font-mono rounded-sm border transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border relative after:absolute after:-inset-1 after:content-[\'\']',
                       values.placement === spec
                         ? 'bg-primary text-primary-foreground border-primary'
                         : 'bg-background border-border text-foreground hover:bg-muted',
@@ -448,7 +448,7 @@ export function FigureWizardModal({
                     type="button"
                     onClick={() => setValue('angle', deg, { shouldValidate: true })}
                     className={cn(
-                      'min-h-[28px] px-2 py-0.5 text-11 font-mono rounded-sm border transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative after:absolute after:-inset-1 after:content-[\'\']',
+                      'min-h-[28px] px-2 py-0.5 text-11 font-mono rounded-sm border transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border relative after:absolute after:-inset-1 after:content-[\'\']',
                       (values.angle ?? '0') === deg
                         ? 'bg-primary text-primary-foreground border-primary'
                         : 'bg-background border-border text-foreground hover:bg-muted',
@@ -490,7 +490,7 @@ export function FigureWizardModal({
             variant="outline"
             size="sm"
             onClick={copyFigureCode}
-            className="gap-1.5 h-8 text-xs cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground outline-none focus-visible:ring-1 focus-visible:ring-primary"
+            className="gap-1.5 h-8 text-xs cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground outline-none focus-visible:ring-1 focus-visible:ring-border"
           >
             <Copy className="size-3.5" />
             Copy Code
@@ -502,7 +502,7 @@ export function FigureWizardModal({
               variant="outline"
               size="sm"
               onClick={() => onOpenChange(false)}
-              className="h-8 text-xs cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="h-8 text-xs cursor-pointer rounded-md border-border bg-background hover:bg-muted text-foreground outline-none focus-visible:ring-1 focus-visible:ring-border"
             >
               Cancel
             </Button>
@@ -511,7 +511,7 @@ export function FigureWizardModal({
               variant="default"
               size="sm"
               onClick={insertFigure}
-              className="gap-1.5 h-8 text-xs font-medium rounded-md bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="gap-1.5 h-8 text-xs font-medium rounded-md bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border"
             >
               <Check className="size-3.5" />
               Insert Figure

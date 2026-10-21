@@ -8,7 +8,6 @@ import { Input } from '@/shared/components/ui/input';
 import { Popover, PopoverTrigger, PopoverContent } from '@/shared/components/ui/popover';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { PageLayout, PageContent } from '@/shared/components/layout/PageLayout';
-import { PageHeader } from '@/shared/components/layout/PageHeader';
 import {
   Plus,
   Pencil,
@@ -220,8 +219,7 @@ export default function StatePage() {
   if (isLoading) {
     return (
       <PageLayout>
-        <PageHeader title="States" icon={CircleDot} />
-        <PageContent maxWidth="md">
+        <PageContent maxWidth="xl">
           <div className="space-y-4">
             <Skeleton className="h-8 w-48 rounded-md motion-reduce:animate-none" />
             <Skeleton className="h-4 w-96 rounded-md motion-reduce:animate-none" />
@@ -238,9 +236,8 @@ export default function StatePage() {
 
   return (
     <PageLayout>
-      <PageHeader title="States" icon={CircleDot} />
 
-      <PageContent maxWidth="md">
+      <PageContent maxWidth="xl">
         <div className="space-y-6">
           {/* Top Pill Tabs Switcher */}
           <div className="flex items-center gap-1.5 p-1 rounded-lg bg-muted/60 border border-border/40 w-fit">

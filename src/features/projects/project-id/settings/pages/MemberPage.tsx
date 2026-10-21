@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
-import { ArrowDownAZ, ArrowUpZA, ChevronDown, Search, Users } from 'lucide-react';
+import { ArrowDownAZ, ArrowUpZA, ChevronDown, Search } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -10,7 +10,6 @@ import { Skeleton } from '@/shared/components/ui/skeleton';
 import { DeleteModal } from '@/features/settings/components/labels/DeleteModal';
 import { toast } from 'sonner';
 import { PageLayout, PageContent } from '@/shared/components/layout/PageLayout';
-import { PageHeader } from '@/shared/components/layout/PageHeader';
 import { PageToolbar } from '@/shared/components/layout/PageToolbar';
 import { Assignee } from '../components/member/Assignee';
 import { Item } from '../components/member/Item';
@@ -47,7 +46,7 @@ function SortableHeader({
         <button
           type="button"
           aria-label={`Sort by ${label}`}
-          className="inline-flex items-center gap-1 transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-0.5 relative before:absolute before:-inset-1 md:before:hidden"
+          className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-1 py-0.5 -mx-1 hover:bg-muted/60 relative before:absolute before:-inset-1 md:before:hidden"
         >
           <span className={cn(active && 'text-foreground font-semibold')}>{label}</span>
           <ChevronDown
@@ -159,8 +158,7 @@ export default function MemberPage() {
   if (isLoading) {
     return (
       <PageLayout>
-        <PageHeader title="Members" icon={Users} />
-        <PageContent maxWidth="md">
+        <PageContent maxWidth="xl">
           <div className="space-y-6">
             <Skeleton className="h-10 w-full rounded-md motion-reduce:animate-none" />
             <Skeleton className="h-10 w-full rounded-md motion-reduce:animate-none" />
@@ -174,8 +172,7 @@ export default function MemberPage() {
   if (isError || !project) {
     return (
       <PageLayout>
-        <PageHeader title="Members" icon={Users} />
-        <PageContent maxWidth="md">
+        <PageContent maxWidth="xl">
           <div className="text-13 text-muted-foreground">
             Error loading project members.
           </div>
@@ -184,37 +181,9 @@ export default function MemberPage() {
     );
   }
 
-  const topBarActions = (
-    <div className="flex items-center gap-2">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleImport}
-        className="relative h-8 px-3 text-12 font-medium border-border bg-background hover:bg-muted text-foreground cursor-pointer rounded-md shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
-      >
-        Import
-      </Button>
-      {isOwnerOrAdmin && (
-        <Button
-          size="sm"
-          onClick={() => setAddDialogOpen(true)}
-          className="relative h-8 px-3 text-12 font-medium bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer rounded-md shadow-none shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
-        >
-          Add member
-        </Button>
-      )}
-    </div>
-  );
-
   return (
     <PageLayout>
-      <PageHeader
-        title="Members"
-        icon={Users}
-        actions={topBarActions}
-      />
-
-      <PageContent maxWidth="md">
+      <PageContent maxWidth="xl">
         <div className="space-y-6">
           {/* Top Settings: Default Assignee */}
           <Assignee
@@ -242,6 +211,23 @@ export default function MemberPage() {
 
               <div className="flex items-center gap-2 shrink-0">
                 <Filter currentRole={roleFilter} onSelectRole={setRoleFilter} />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleImport}
+                  className="relative h-8 px-3 text-12 font-medium border-border bg-background hover:bg-muted text-foreground cursor-pointer rounded-md shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
+                >
+                  Import
+                </Button>
+                {isOwnerOrAdmin && (
+                  <Button
+                    size="sm"
+                    onClick={() => setAddDialogOpen(true)}
+                    className="relative h-8 px-3 text-12 font-medium bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer rounded-md shadow-none shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden"
+                  >
+                    Add member
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -250,7 +236,7 @@ export default function MemberPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-12 border-collapse">
                   <thead>
-                    <tr className="border-b border-border bg-muted/60 text-muted-foreground select-none">
+                    <tr className="border-b border-border bg-muted/50 text-muted-foreground select-none">
                       <th className="py-2.5 px-4 font-medium" aria-sort={sortField === 'name' ? (sortAsc ? 'ascending' : 'descending') : 'none'}>
                         <SortableHeader label="Full name" field="name" sortField={sortField} sortAsc={sortAsc} onSort={handleSort} />
                       </th>
@@ -286,7 +272,7 @@ export default function MemberPage() {
                     </tr>
                   </thead>
 
-                  <tbody className="divide-y divide-border/60">
+                  <tbody className="divide-y divide-border">
                     {filteredMembers.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="py-12 text-center text-13 text-muted-foreground">

@@ -4,7 +4,7 @@ import type { PageSchema, CreatePageSchema } from '../schemas/page.schema';
 
 export type Page = PageSchema;
 export type CreatePageInput = CreatePageSchema;
-export type PageStatus = 'published' | 'draft' | 'archived';
+export type PageStatus = 'active' | 'archived' | 'published' | 'draft';
 
 export type PagesViewMode = 'grid' | 'list';
 

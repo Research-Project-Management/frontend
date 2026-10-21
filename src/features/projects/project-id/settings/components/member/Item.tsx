@@ -70,15 +70,15 @@ export function Item({
   const dateFormatted = formatDate(joinedAt);
 
   return (
-    <tr className="group border-b border-border hover:bg-muted transition-colors text-12">
+    <tr className="group hover:bg-muted/40 transition-colors text-12">
       {/* Full name & Avatar */}
       <td className="py-2.5 px-4">
         <div className="flex items-center gap-3">
-          <Avatar className="size-7 rounded-full border border-border shrink-0">
+          <Avatar className="size-7 rounded-full border border-border/80 shrink-0">
             {user.avatar && (
               <AvatarImage src={user.avatar} className="object-cover" />
             )}
-            <AvatarFallback className="text-11 bg-muted text-muted-foreground font-semibold">
+            <AvatarFallback className="text-11 bg-muted/70 group-hover:bg-background text-foreground font-medium transition-colors">
               {user.name
                 .split(' ')
                 .map((n) => n[0])
@@ -110,7 +110,7 @@ export function Item({
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="inline-flex items-center gap-1 font-semibold text-foreground hover:underline transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-0.5 select-none relative before:absolute before:-inset-1 md:before:hidden"
+                className="inline-flex items-center gap-1 font-semibold text-foreground hover:text-primary transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring rounded px-1 py-0.5 -mx-1 hover:bg-background/80 select-none relative before:absolute before:-inset-1 md:before:hidden"
               >
                 <span>{roleLabel}</span>
                 <ChevronDown className="size-3 text-muted-foreground shrink-0" />
@@ -165,7 +165,7 @@ export function Item({
               <button
                 type="button"
                 aria-label="Member options"
-                className="size-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 max-md:opacity-100 transition-opacity cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-2 md:before:hidden"
+                className="size-7 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-background hover:shadow-2xs opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 max-md:opacity-100 transition-all cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-2 md:before:hidden"
               >
                 <MoreHorizontal className="size-4 shrink-0" />
               </button>

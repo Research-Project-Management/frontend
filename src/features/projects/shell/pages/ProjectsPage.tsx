@@ -193,8 +193,15 @@ export function ProjectsPage() {
     setTagModalProject(null);
   }, []);
 
-  const handleCreateSuccess = React.useCallback(() => setIsCreateOpen(false), []);
-  const handleUploadZipSuccess = React.useCallback(() => setIsUploadZipOpen(false), []);
+  const handleCreateSuccess = React.useCallback(() => {
+    setIsCreateOpen(false);
+    refetch();
+  }, [refetch]);
+
+  const handleUploadZipSuccess = React.useCallback(() => {
+    setIsUploadZipOpen(false);
+    refetch();
+  }, [refetch]);
 
   const handleCopyLink = React.useCallback((projectId: string, e: React.MouseEvent) => {
     e.preventDefault();

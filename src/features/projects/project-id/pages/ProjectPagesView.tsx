@@ -75,9 +75,7 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
   const [importDocFormat, setImportDocFormat] = useState<'docx' | 'md'>('docx');
   const [isImportGithubOpen, setIsImportGithubOpen] = useState(false);
   const [title, setTitle] = useState('');
-  const [status, setStatus] = useState<PageStatus>('published');
   const [templateType, setTemplateType] = useState<'blank' | 'example'>('blank');
-  const [createSelectedLabelIds, setCreateSelectedLabelIds] = useState<string[]>([]);
   const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -159,12 +157,6 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
 
   const { createPage } = usePageActions();
 
-  const handleToggleCreateLabel = (labelId: string) => {
-    setCreateSelectedLabelIds((prev) =>
-      prev.includes(labelId) ? prev.filter((id) => id !== labelId) : [...prev, labelId]
-    );
-  };
-
   const handleCreate = async () => {
     const trimmedTitle = title.trim();
     if (!trimmedTitle || !projectId) return;
@@ -173,14 +165,12 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
       const data = await createPage.mutateAsync({
         projectId,
         title: trimmedTitle,
-        status,
-        labels: createSelectedLabelIds,
+        status: 'active',
+        labels: [],
         templateType,
       });
       setIsCreateModalOpen(false);
       setTitle('');
-      setStatus('published');
-      setCreateSelectedLabelIds([]);
       setTemplateType('blank');
       const mainFileId =
         data.mainFileId ||
@@ -200,9 +190,13 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
     if (!projectId) return;
     const toastId = toast.loading(`Importing ${file.name}...`);
     try {
-      await manuscriptService.export.importProjectZip(projectId, file);
+      const result = await manuscriptService.export.importProjectZip(projectId, file);
       await queryClient.invalidateQueries({ queryKey: pageKeys.all });
-      toast.success('Project imported', { id: toastId });
+      toast.success('Project imported successfully', { id: toastId });
+      const targetDocId = result?.rootDocId;
+      if (targetDocId) {
+        router.push(`/projects/${projectId}/pages/${targetDocId}`);
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Import failed', { id: toastId });
     }
@@ -215,7 +209,6 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
         viewMode={viewMode}
         setViewMode={setViewMode}
         onCreateClick={(template) => {
-          setCreateSelectedLabelIds([]);
           setTemplateType(template ?? 'blank');
           setIsCreateModalOpen(true);
         }}
@@ -329,14 +322,8 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
         setIsOpen={setIsCreateModalOpen}
         title={title}
         setTitle={setTitle}
-        status={status}
-        setStatus={setStatus}
         handleCreate={handleCreate}
         isCreating={createPage.isPending}
-        projectLabels={projectLabels}
-        selectedLabelIds={createSelectedLabelIds}
-        onToggleLabel={handleToggleCreateLabel}
-        onClearLabels={() => setCreateSelectedLabelIds([])}
         templateType={templateType}
         setTemplateType={setTemplateType}
       />

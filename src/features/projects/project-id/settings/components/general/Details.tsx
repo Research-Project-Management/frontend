@@ -66,23 +66,60 @@ export function GeneralDetails({
 
   return (
     <div className="space-y-5">
-      {/* ── Project Name ── */}
-      <div className="space-y-1.5">
-        <Label className="text-12 font-medium text-foreground">Project name</Label>
-        <Input
-          value={name}
-          onChange={(e) => onNameChange(e.target.value)}
-          placeholder="Enter project name"
-          className={`h-8 text-13 rounded-md border-border bg-background px-2.5 focus-visible:ring-1 focus-visible:ring-ring ${
-            errors?.name ? 'border-destructive focus-visible:ring-destructive' : ''
-          }`}
-        />
-        {errors?.name && (
-          <p className="text-11 text-destructive font-medium px-0.5">{errors.name.message}</p>
-        )}
+      {/* ── Row 1: Project Name & Project ID on the same row ── */}
+      <div className="flex flex-col sm:flex-row items-start gap-4">
+        {/* Project Name */}
+        <div className="flex-1 w-full space-y-1.5 min-w-0">
+          <Label className="text-12 font-medium text-foreground">Project name</Label>
+          <Input
+            value={name}
+            onChange={(e) => onNameChange(e.target.value)}
+            placeholder="Enter project name"
+            className={`h-8 text-13 rounded-md border-border bg-background px-2.5 focus-visible:ring-1 focus-visible:ring-ring ${
+              errors?.name ? 'border-destructive focus-visible:ring-destructive' : ''
+            }`}
+          />
+          {errors?.name && (
+            <p className="text-11 text-destructive font-medium px-0.5">{errors.name.message}</p>
+          )}
+        </div>
+
+        {/* Project ID */}
+        <div className="w-full sm:w-48 md:w-56 shrink-0 space-y-1.5 min-w-0">
+          <Label className="text-12 font-medium text-foreground">Project ID</Label>
+          <div className="relative">
+            <Input
+              value={identifier}
+              onChange={handleIdentifierInput}
+              placeholder="e.g. XINCHAO23"
+              className={`h-8 text-13 font-mono font-medium rounded-md border-border bg-background px-2.5 pr-8 focus-visible:ring-1 focus-visible:ring-ring ${
+                errors?.identifier ? 'border-destructive focus-visible:ring-destructive' : ''
+              }`}
+            />
+            {errors?.identifier && (
+              <p className="text-11 text-destructive font-medium px-0.5 mt-1">{errors.identifier.message}</p>
+            )}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 size-5 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring rounded transition-colors before:absolute before:-inset-2 md:before:hidden"
+                    aria-label="Project ID info"
+                  >
+                    <Info className="size-3.5 shrink-0" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent className="text-12 max-w-xs shadow-overlay">
+                  The project ID is used as the prefix for all work items in this project (e.g. {identifier || 'PRJ'}-1).
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        </div>
       </div>
 
-      {/* ── Description ── */}
+      {/* ── Row 2: Description ── */}
       <div className="space-y-1.5">
         <Label className="text-12 font-medium text-foreground">Description</Label>
         <Textarea
@@ -91,40 +128,6 @@ export function GeneralDetails({
           placeholder="Enter project description"
           className="text-13 min-h-[110px] rounded-md border-border bg-background focus-visible:ring-1 focus-visible:ring-ring resize-none p-2.5 leading-relaxed"
         />
-      </div>
-
-      {/* ── Project ID ── */}
-      <div className="space-y-1.5 max-w-md">
-        <Label className="text-12 font-medium text-foreground">Project ID</Label>
-        <div className="relative">
-          <Input
-            value={identifier}
-            onChange={handleIdentifierInput}
-            placeholder="e.g. XINCHAO23"
-            className={`h-8 text-13 font-mono font-medium rounded-md border-border bg-background px-2.5 pr-8 focus-visible:ring-1 focus-visible:ring-ring ${
-              errors?.identifier ? 'border-destructive focus-visible:ring-destructive' : ''
-            }`}
-          />
-          {errors?.identifier && (
-            <p className="text-11 text-destructive font-medium px-0.5 mt-1">{errors.identifier.message}</p>
-          )}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  className="absolute right-1.5 top-1/2 -translate-y-1/2 size-5 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring rounded transition-colors before:absolute before:-inset-2 md:before:hidden"
-                  aria-label="Project ID info"
-                >
-                  <Info className="size-3.5 shrink-0" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent className="text-12 max-w-xs shadow-overlay">
-                The project ID is used as the prefix for all work items in this project (e.g. {identifier || 'PRJ'}-1).
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
       </div>
 
       {/* ── Action Row: Update Project & Created Date ── */}

@@ -16,8 +16,7 @@ export default function ProjectsLayout({ children }: { children?: React.ReactNod
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
 
-  // If inside project settings, hide outer project sidebar so settings sidebar has full focus
-  const isProjectSettings = pathname.includes('/settings');
+
 
   useEffect(() => {
     setMounted(true);
@@ -74,10 +73,6 @@ export default function ProjectsLayout({ children }: { children?: React.ReactNod
       // ignore
     }
   };
-
-  if (isProjectSettings) {
-    return <div className="h-full w-full overflow-hidden">{children}</div>;
-  }
 
   return (
     <div className="relative flex h-full min-h-0 min-w-0">

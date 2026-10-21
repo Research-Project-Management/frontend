@@ -27,7 +27,6 @@ const DeleteModal = dynamic(
   { ssr: false }
 );
 import { PageLayout, PageContent } from '@/shared/components/layout/PageLayout';
-import { PageHeader } from '@/shared/components/layout/PageHeader';
 import { PageToolbar } from '@/shared/components/layout/PageToolbar';
 import { EmptyState } from '@/shared/components/layout/EmptyState';
 import {
@@ -377,8 +376,7 @@ export default function LabelPage() {
   if (isLoadingLabels || isLoadingProject) {
     return (
       <PageLayout>
-        <PageHeader title="Labels" icon={Tag} />
-        <PageContent maxWidth="md">
+        <PageContent maxWidth="xl">
           <div className="space-y-6">
             <Skeleton className="h-8 w-48 rounded motion-reduce:animate-none" />
             <Skeleton className="h-4 w-80 rounded motion-reduce:animate-none" />
@@ -396,8 +394,7 @@ export default function LabelPage() {
   if (isError || !project) {
     return (
       <PageLayout>
-        <PageHeader title="Labels" icon={Tag} />
-        <PageContent maxWidth="md">
+        <PageContent maxWidth="xl">
           <div className="text-13 text-muted-foreground">
             Error loading project.
           </div>
@@ -410,9 +407,8 @@ export default function LabelPage() {
 
   return (
     <PageLayout>
-      <PageHeader title="Labels" icon={Tag} />
 
-      <PageContent maxWidth="md">
+      <PageContent maxWidth="xl">
         <div className="space-y-6">
 
           {/* ── Toolbar: Search & Add Label Button ── */}

@@ -7,7 +7,7 @@ export const pageSchema = z.object({
   title: z.string(),
   description: z.string().optional(),
   content: z.unknown().optional(),
-  status: z.enum(['draft', 'published', 'archived']).optional(),
+  status: z.enum(['active', 'archived', 'draft', 'published']).optional(),
   pdfThumbnail: z.string().optional(),
   labels: z.array(
     z.object({
@@ -38,7 +38,7 @@ export const createPageSchema = z.object({
   projectId: z.string().min(1, 'Project ID is required'),
   title: z.string().min(1, 'Title is required'),
   content: z.string().optional(),
-  status: z.enum(['draft', 'published', 'archived']).optional(),
+  status: z.enum(['active', 'archived', 'draft', 'published']).optional(),
   labels: z.array(z.string()).optional(),
   templateType: z.enum(['blank', 'example']).default('blank').optional(),
 });

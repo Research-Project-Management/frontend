@@ -11,6 +11,7 @@ import {
   Pencil,
   Link2,
   Copy,
+  Archive,
   Trash2,
 } from 'lucide-react';
 import {
@@ -35,7 +36,7 @@ export const ListView = React.memo(function ListView({ pages, onEdit }: ListView
   const router = useRouter();
   const [sortColumn, setSortColumn] = useState<'title' | 'author' | 'updatedAt' | 'status'>('updatedAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  const { deletePage, duplicatePage } = usePageActions();
+  const { deletePage, duplicatePage, updateStatus } = usePageActions();
 
   const handleSort = (column: 'title' | 'author' | 'updatedAt' | 'status') => {
     if (sortColumn === column) {
@@ -67,8 +68,8 @@ export const ListView = React.memo(function ListView({ pages, onEdit }: ListView
         aVal = a.author?.name?.toLowerCase() || '';
         bVal = b.author?.name?.toLowerCase() || '';
       } else if (sortColumn === 'status') {
-        aVal = a.status || 'published';
-        bVal = b.status || 'published';
+        aVal = a.status === 'archived' ? 'archived' : 'active';
+        bVal = b.status === 'archived' ? 'archived' : 'active';
       } else if (sortColumn === 'updatedAt') {
         aVal = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
         bVal = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
@@ -86,6 +87,13 @@ export const ListView = React.memo(function ListView({ pages, onEdit }: ListView
       navigator.clipboard.writeText(fullUrl);
       toast.success('Page link copied to clipboard');
     }
+  };
+
+  const handleToggleArchive = (pageId: string, isArchived: boolean) => {
+    updateStatus.mutate({
+      pageId,
+      status: isArchived ? 'active' : 'archived',
+    });
   };
 
   const handleDelete = (pageId: string, pageTitle: string) => {
@@ -178,7 +186,8 @@ export const ListView = React.memo(function ListView({ pages, onEdit }: ListView
             const linkHref = `/projects/${projId}/pages/${page.id}${fileQuery}`;
             const labels = (page.labels as Array<{ id?: string; name?: string; color?: string } | string>) || [];
             const authorName = page.author?.name;
-            const status = page.status || 'published';
+            const isArchived = page.status === 'archived';
+            const displayStatus = isArchived ? 'Archived' : 'Active';
 
             return (
               <tr
@@ -203,19 +212,19 @@ export const ListView = React.memo(function ListView({ pages, onEdit }: ListView
                 <td className="px-3 h-10 py-0 align-middle">
                   <span
                     className={cn(
-                      "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-11 font-mono font-medium capitalize",
-                      status === 'published'
-                        ? "bg-success/10 text-success border border-success/20"
-                        : "bg-warning/10 text-warning border border-warning/20"
+                      "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-11 font-mono font-medium",
+                      isArchived
+                        ? "bg-muted text-muted-foreground border border-border"
+                        : "bg-success/10 text-success border border-success/20"
                     )}
                   >
                     <span
                       className={cn(
                         "size-1.5 rounded-full shrink-0",
-                        status === 'published' ? "bg-success" : "bg-warning"
+                        isArchived ? "bg-muted-foreground" : "bg-success"
                       )}
                     />
-                    <span>{status}</span>
+                    <span>{displayStatus}</span>
                   </span>
                 </td>
 
@@ -337,6 +346,13 @@ export const ListView = React.memo(function ListView({ pages, onEdit }: ListView
                         >
                           <Copy className="size-3.5 text-muted-foreground" />
                           <span>Duplicate</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleToggleArchive(page.id, isArchived)}
+                          className="cursor-pointer gap-2 text-12"
+                        >
+                          <Archive className="size-3.5 text-muted-foreground" />
+                          <span>{isArchived ? 'Restore page' : 'Archive page'}</span>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem

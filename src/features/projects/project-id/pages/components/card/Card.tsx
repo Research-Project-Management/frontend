@@ -9,6 +9,7 @@ import {
   Pencil,
   Link2,
   Copy,
+  Archive,
   Trash2,
 } from 'lucide-react';
 import {
@@ -59,7 +60,7 @@ function extractSnippet(content?: unknown): string | null {
 export const Card = React.memo(function Card({ page, onEdit }: CardProps) {
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { deletePage, duplicatePage } = usePageActions();
+  const { deletePage, duplicatePage, updateStatus } = usePageActions();
 
   const projId =
     typeof page.projectId === 'object' && page.projectId !== null && 'id' in page.projectId
@@ -77,7 +78,8 @@ export const Card = React.memo(function Card({ page, onEdit }: CardProps) {
     () => page.description || extractSnippet(page.content),
     [page.description, page.content]
   );
-  const status = page.status || 'published';
+  const isArchived = page.status === 'archived';
+  const displayStatus = isArchived ? 'Archived' : 'Active';
   const labels = (page.labels as Array<{ id?: string; name?: string; color?: string } | string>) || [];
 
   const handleCopyLink = (e: React.MouseEvent) => {
@@ -94,6 +96,15 @@ export const Card = React.memo(function Card({ page, onEdit }: CardProps) {
     e.preventDefault();
     e.stopPropagation();
     duplicatePage.mutate(page.id);
+  };
+
+  const handleToggleArchive = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    updateStatus.mutate({
+      pageId: page.id,
+      status: isArchived ? 'active' : 'archived',
+    });
   };
 
   const handleDelete = (e: React.MouseEvent) => {
@@ -123,21 +134,9 @@ export const Card = React.memo(function Card({ page, onEdit }: CardProps) {
             {/* Paper Header: LaTeX badge & title bar */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1.5 text-11 font-mono font-medium text-muted-foreground">
-                    <FileText className="size-3 text-muted-foreground" strokeWidth={1.5} />
-                    <span>LaTeX</span>
-                  </div>
-                  <span
-                    className={cn(
-                      "text-11 font-mono font-medium px-1.5 py-0.5 rounded-sm capitalize",
-                      status === 'published'
-                        ? "bg-success/10 text-success border border-success/20"
-                        : "bg-warning/10 text-warning border border-warning/20"
-                    )}
-                  >
-                    {status}
-                  </span>
+                <div className="flex items-center gap-1.5 text-11 font-mono font-medium text-muted-foreground">
+                  <FileText className="size-3 text-muted-foreground" strokeWidth={1.5} />
+                  <span>LaTeX</span>
                 </div>
               </div>
               <div className="h-1.5 w-3/4 bg-foreground/15 rounded-full" />
@@ -217,6 +216,13 @@ export const Card = React.memo(function Card({ page, onEdit }: CardProps) {
               >
                 <Copy className="size-3.5 text-muted-foreground" />
                 <span>Duplicate</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={handleToggleArchive}
+                className="cursor-pointer gap-2 text-12"
+              >
+                <Archive className="size-3.5 text-muted-foreground" />
+                <span>{isArchived ? 'Restore page' : 'Archive page'}</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem

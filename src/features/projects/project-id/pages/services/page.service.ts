@@ -65,7 +65,7 @@ export const PageService = {
     pageId: string,
     data: {
       title?: string;
-      status?: 'draft' | 'published' | 'archived';
+      status?: 'active' | 'archived' | 'draft' | 'published';
       description?: string;
     },
   ) => {

@@ -6,7 +6,6 @@ import { Skeleton } from "@/shared/components/ui/skeleton";
 import { FileText, LayoutGrid } from 'lucide-react';
 import { WorkItemsIcon } from "@/shared/components/icons";
 import { PageLayout, PageContent } from '@/shared/components/layout/PageLayout';
-import { PageHeader } from '@/shared/components/layout/PageHeader';
 import { Item } from '../components/module/Item';
 import { useModules } from '../hooks/use-module';
 import type { ModuleDef } from '../types/module.types';
@@ -27,8 +26,7 @@ export default function ModulesPage() {
   if (isLoading) {
     return (
       <PageLayout>
-        <PageHeader title="Modules" icon={LayoutGrid} />
-        <PageContent maxWidth="md">
+        <PageContent maxWidth="xl">
           <Skeleton className="h-64 w-full rounded-md motion-reduce:animate-none" />
         </PageContent>
       </PageLayout>
@@ -38,8 +36,7 @@ export default function ModulesPage() {
   if (isError || !project) {
     return (
       <PageLayout>
-        <PageHeader title="Modules" icon={LayoutGrid} />
-        <PageContent maxWidth="md">
+        <PageContent maxWidth="xl">
           <div className="text-13 text-muted-foreground">
             Error loading project.
           </div>
@@ -50,9 +47,8 @@ export default function ModulesPage() {
 
   return (
     <PageLayout>
-      <PageHeader title="Modules" icon={LayoutGrid} />
 
-      <PageContent maxWidth="md">
+      <PageContent maxWidth="xl">
         {/* Module Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
           {MODULES.map((mod) => (

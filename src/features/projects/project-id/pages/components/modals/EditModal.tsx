@@ -30,23 +30,17 @@ interface EditModalProps {
   projectLabels?: ProjectLabelItem[];
 }
 
-type PageStatus = 'published' | 'draft' | 'archived';
+type PageStatus = 'active' | 'archived';
 
 const STATUS_CONFIG: Record<
   PageStatus,
   { label: string; color: string; bg: string; border: string }
 > = {
-  published: {
-    label: 'Published',
+  active: {
+    label: 'Active',
     color: 'var(--color-success, #1A7F37)',
     bg: 'bg-success/10 text-success',
     border: 'border-success/20',
-  },
-  draft: {
-    label: 'Draft',
-    color: 'var(--color-warning, #9A6700)',
-    bg: 'bg-warning/10 text-warning',
-    border: 'border-warning/20',
   },
   archived: {
     label: 'Archived',
@@ -65,7 +59,7 @@ export function EditModal({
 }: EditModalProps) {
   const queryClient = useQueryClient();
   const [title, setTitle] = useState('');
-  const [status, setStatus] = useState<PageStatus>('published');
+  const [status, setStatus] = useState<PageStatus>('active');
   const [description, setDescription] = useState('');
   const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
   const [labelSearch, setLabelSearch] = useState('');
@@ -76,7 +70,8 @@ export function EditModal({
   useEffect(() => {
     if (page && isOpen) {
       setTitle(page.title || '');
-      setStatus((page.status as PageStatus) || 'published');
+      const rawStatus = (page.status as string) || 'active';
+      setStatus(rawStatus === 'archived' ? 'archived' : 'active');
       setDescription(page.description || '');
       const existingLabelIds = (page.labels || [])
         .map((l: string | { id?: string }) => (typeof l === 'string' ? l : l.id))
@@ -138,7 +133,7 @@ export function EditModal({
     }
   };
 
-  const currentStatusConfig = STATUS_CONFIG[status] || STATUS_CONFIG.published;
+  const currentStatusConfig = STATUS_CONFIG[status] || STATUS_CONFIG.active;
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>

@@ -83,5 +83,21 @@ export const usePageActions = () => {
     onError: (error: Error) => toast.error(error.message || 'Failed to update title', { id: 'project-page-action' }),
   });
 
-  return { createPage, deletePage, duplicatePage, updateTitle };
+  const updateStatus = useMutation({
+    mutationFn: ({ pageId, status }: { pageId: string; status: 'active' | 'archived' | 'draft' | 'published' }) =>
+      PageService.updatePage(pageId, { status }),
+    onSuccess: (data, variables) => {
+      if (data?.id) {
+        queryClient.invalidateQueries({ queryKey: pageKeys.detail(data.id) });
+      }
+      queryClient.invalidateQueries({ queryKey: pageKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['archived-pages'] });
+      toast.success(variables.status === 'archived' ? 'Page archived' : 'Page restored', {
+        id: 'project-page-action',
+      });
+    },
+    onError: (error: Error) => toast.error(error.message || 'Failed to update page status', { id: 'project-page-action' }),
+  });
+
+  return { createPage, deletePage, duplicatePage, updateTitle, updateStatus };
 };

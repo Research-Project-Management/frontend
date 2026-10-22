@@ -108,11 +108,11 @@ export function DetachedPdfPlaceholder() {
         {/* SyncTeX Tips */}
         <div className="pt-2 border-t border-border/60 text-[11px] text-muted-foreground/80 space-y-1 text-left w-full">
           <div className="flex items-start gap-1.5">
-            <span className="text-primary font-bold">•</span>
+            <span className="text-primary font-semibold">•</span>
             <span>Click inside the detached PDF to jump to corresponding code lines.</span>
           </div>
           <div className="flex items-start gap-1.5">
-            <span className="text-primary font-bold">•</span>
+            <span className="text-primary font-semibold">•</span>
             <span>Closing the separate tab or clicking Re-attach restores preview here.</span>
           </div>
         </div>

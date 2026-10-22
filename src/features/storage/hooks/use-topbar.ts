@@ -95,7 +95,10 @@ export function useTopbar({
 
       let existingItems: StorageItem[] = [];
       try {
-        const res = await getAllFiles(scopeId, targetFolder);
+        const res = await getAllFiles(scopeId, {
+          parentId: targetFolder,
+          limit: 500,
+        });
         existingItems = res?.files || [];
       } catch {
         existingItems = [];
@@ -103,6 +106,13 @@ export function useTopbar({
 
       const folderPathCache = new Map<string, string | null>();
       folderPathCache.set('', targetFolder);
+
+      // Seed top-level existing folders in targetFolder so uploading a folder reuses existing folders instead of creating duplicates
+      for (const item of existingItems) {
+        if (item.isFolder && item.filename) {
+          folderPathCache.set(item.filename, item.id);
+        }
+      }
 
       const ensureFolderPath = async (relDirPath: string): Promise<string | null> => {
         if (!relDirPath) return targetFolder;

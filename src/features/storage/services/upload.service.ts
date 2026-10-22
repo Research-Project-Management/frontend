@@ -39,8 +39,10 @@ export interface CompletePresignedParams {
   sizeBytes?: number;
   mimeType?: string;
   projectId?: string;
+  pageId?: string;
   parentId?: string | null;
   contentHash?: string;
+  metaData?: Record<string, unknown> | null;
 }
 
 export interface InitiateMultipartResult {
@@ -111,7 +113,12 @@ export const uploadDirectWithProgress = (
   blob: Blob | File,
   fileName: string,
   onProgress?: (progress: number) => void,
-  options?: { projectId?: string; parentId?: string | null; signal?: AbortSignal },
+  options?: {
+    projectId?: string;
+    pageId?: string;
+    parentId?: string | null;
+    signal?: AbortSignal;
+  },
 ): Promise<{ url: string; path: string; fileId: string }> => {
   return new Promise((resolve, reject) => {
     if (options?.signal?.aborted) {
@@ -122,6 +129,7 @@ export const uploadDirectWithProgress = (
     formData.append('file', blob, fileName);
     formData.append('fileName', fileName);
     if (options?.projectId) formData.append('projectId', options.projectId);
+    if (options?.pageId) formData.append('pageId', options.pageId);
     if (options?.parentId) formData.append('parentId', options.parentId);
 
     const xhr = new XMLHttpRequest();
@@ -187,14 +195,17 @@ export const uploadBlobWithPresigned = async (
     projectId?: string;
     pageId?: string;
     parentId?: string | null;
+    metaData?: Record<string, unknown> | null;
     signal?: AbortSignal;
     onProgress?: (progress: number) => void;
   } | ((progress: number) => void),
 ): Promise<{ url: string; path: string; fileId?: string }> => {
   const onProgress = typeof options === 'function' ? options : options?.onProgress;
   const projectId = typeof options === 'object' ? options?.projectId : undefined;
-  const signal = typeof options === 'object' ? options?.signal : undefined;
+  const pageId = typeof options === 'object' ? options?.pageId : undefined;
   const parentId = typeof options === 'object' ? options?.parentId : undefined;
+  const metaData = typeof options === 'object' ? options?.metaData : undefined;
+  const signal = typeof options === 'object' ? options?.signal : undefined;
 
   try {
     const contentHash = await computeClientSha256Hex(blob);
@@ -203,8 +214,10 @@ export const uploadBlobWithPresigned = async (
       mimeType: blob.type || 'application/octet-stream',
       size: blob.size,
       projectId,
+      pageId,
       parentId,
       contentHash,
+      metaData,
     });
 
     // Zero-byte Instant CAS Deduplication Hit
@@ -253,8 +266,10 @@ export const uploadBlobWithPresigned = async (
         size: blob.size,
         mimeType: blob.type || 'application/octet-stream',
         projectId,
+        pageId,
         parentId,
         contentHash,
+        metaData,
       });
 
       return {
@@ -268,7 +283,12 @@ export const uploadBlobWithPresigned = async (
     // Fallback to direct upload if presigned fails
   }
 
-  return uploadDirectWithProgress(blob, fileName, onProgress, { projectId, parentId, signal });
+  return uploadDirectWithProgress(blob, fileName, onProgress, {
+    projectId,
+    pageId,
+    parentId,
+    signal,
+  });
 };
 
 // ── 2. Multipart Chunked Upload (S3 Protocol for Large Files) ───────────────
@@ -280,6 +300,7 @@ export const initiateMultipart = (
   projectId?: string | null,
   parentId?: string | null,
   expectedHash?: string,
+  pageId?: string | null,
 ) => {
   return apiPost<InitiateMultipartResult>('/api/v1/storage/files/multipart/initiate', {
     filename,
@@ -287,6 +308,7 @@ export const initiateMultipart = (
     totalSize,
     sizeBytes: totalSize,
     projectId,
+    pageId,
     parentId,
     expectedHash,
   });
@@ -382,6 +404,7 @@ export const uploadLargeFileResumable = async (
     options.projectId,
     options.parentId,
     expectedHash,
+    options.pageId,
   );
 
   const partSize = session.partSize;
@@ -483,6 +506,7 @@ export const uploadFile = async (
     projectId: params.projectId,
     pageId: params.pageId || undefined,
     parentId: params.parentId,
+    metaData: params.metaData,
     onProgress: params.onProgress,
   });
 

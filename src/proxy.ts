@@ -20,6 +20,7 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const rawToken = request.cookies.get('accessToken')?.value;
+  const hasRefreshToken = Boolean(request.cookies.get('refresh_token')?.value);
 
   const hasRawToken = Boolean(rawToken && rawToken.trim());
   const isAuthenticated = isTokenValid(rawToken);
@@ -27,7 +28,7 @@ export function proxy(request: NextRequest) {
   // 1. Marketing root page:
   // Root page (landing page) is accessible to everyone (both authenticated and unauthenticated).
   if (pathname === '/') {
-    if (hasRawToken && !isAuthenticated) {
+    if (hasRawToken && !isAuthenticated && !hasRefreshToken) {
       const response = NextResponse.next();
       response.cookies.delete('accessToken');
       return response;
@@ -46,19 +47,27 @@ export function proxy(request: NextRequest) {
     }
 
     const response = NextResponse.next();
-    if (hasRawToken && !isAuthenticated) {
+    if (hasRawToken && !isAuthenticated && !hasRefreshToken) {
       response.cookies.delete('accessToken');
     }
     return response;
   }
 
   // 3. Protected internal application routes:
-  // If user is not authenticated, redirect to login page preserving the target URL.
+  // If user is not authenticated:
+  // - If they have a valid refresh_token cookie, allow request to render App Shell so client can silentRefresh.
+  // - Otherwise, redirect to login page preserving the target URL.
   const isProtected = PROTECTED_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
 
   if (isProtected && !isAuthenticated) {
+    if (hasRefreshToken) {
+      // User session is still active via HttpOnly refresh_token cookie.
+      // Allow request to proceed to client app, where api.ts will execute silentRefresh.
+      return NextResponse.next();
+    }
+
     const loginUrl = new URL('/login', request.url);
     const fullOriginalUrl = `${pathname}${request.nextUrl.search}`;
     loginUrl.searchParams.set('redirect', fullOriginalUrl);

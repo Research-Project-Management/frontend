@@ -137,9 +137,12 @@ async function silentRefresh(): Promise<RefreshTokenResult> {
 
     const refreshData = (await refreshResponse.json()) as {
       accessToken?: string;
+      data?: {
+        accessToken?: string;
+      };
     };
 
-    const newAccessToken = refreshData?.accessToken;
+    const newAccessToken = refreshData?.data?.accessToken ?? refreshData?.accessToken;
     if (newAccessToken) {
       setAuthToken(newAccessToken);
       return {

@@ -68,12 +68,6 @@ export function setCachedUser(user: AuthUser | null): void {
  * Resilient against transient backend reboots and gateway 502/503 errors.
  */
 export const getUser = async (): Promise<AuthUser | null> => {
-  const token = getAuthToken();
-  if (!token) {
-    setCachedUser(null);
-    return null;
-  }
-
   try {
     const data = await apiGet<{ user?: AuthUser } & Partial<AuthUser>>('/auth/user', { silent: true });
     const user = data?.user || (data?.id ? (data as AuthUser) : null);

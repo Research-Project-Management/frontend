@@ -9,7 +9,7 @@ import type {
   ReaderDocument,
 } from "@/features/library/domain/types/reader.types";
 import type { ReaderAnnotationTool } from "@/features/library/core/store/reader.store";
-import { ZOTERO_COLORS } from "@/features/library/ui/reader/ReaderToolbar";
+import { ANNOTATION_PALETTE_COLORS } from "@/features/library/ui/reader/ReaderToolbar";
 
 export interface TextSelectionToolbarProps {
   selectedText: string;
@@ -98,10 +98,10 @@ export function TextSelectionToolbar({
       }}
       onMouseUp={(e) => e.stopPropagation()}
     >
-      {/* 8 Zotero Color Highlight Dots */}
+      {/* 8 Standard Highlight Color Dots */}
       {onAnnotate && (
         <div className="flex items-center gap-1 pr-1.5 border-r border-border">
-          {ZOTERO_COLORS.map((c) => {
+          {ANNOTATION_PALETTE_COLORS.map((c) => {
             const isSelected = activeColor === c.hex;
             return (
               <button

@@ -85,8 +85,10 @@ export interface ReaderToolbarProps {
   onTriggerOcr?: () => void;
 }
 
-import { ZOTERO_COLORS } from "@/features/library/domain/reader.domain";
-export { ZOTERO_COLORS };
+import {
+  ANNOTATION_PALETTE_COLORS,
+} from "@/features/library/domain/reader.domain";
+export { ANNOTATION_PALETTE_COLORS };
 
 const ZOOM_PRESETS = [
   { label: "50%", value: 0.5 },
@@ -479,7 +481,7 @@ export const ReaderToolbar = memo(function ReaderToolbar({
             align="center"
             className="p-1.5 grid grid-cols-4 gap-1 min-w-0 bg-popover border border-border shadow-raised-200 rounded-md z-50 font-sans"
           >
-            {ZOTERO_COLORS.map((c) => (
+            {ANNOTATION_PALETTE_COLORS.map((c) => (
               <Tooltip key={c.id}>
                 <TooltipTrigger asChild>
                   <button

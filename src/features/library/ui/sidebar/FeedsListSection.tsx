@@ -45,7 +45,7 @@ export function FeedsListSection({
 
   return (
     <div className="mt-1.5 flex flex-col gap-0.5 w-full">
-      {/* Root Section Item: Feeds (Zotero Top-level item) */}
+      {/* Root Section Item: Feeds */}
       <div className="relative group/root flex items-center w-full">
         <div
           onClick={() => {

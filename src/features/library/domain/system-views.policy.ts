@@ -1,5 +1,5 @@
 /**
- * Pure Domain Policy: Zotero 7 System Views & "My Publications" Authorship / Open Access License Guard
+ * Pure Domain Policy: System Views & "My Publications" Authorship / Open Access License Guard
  */
 
 import { isItemRetracted } from './retraction';
@@ -154,12 +154,12 @@ export function isItemUnfiled(item: Record<string, unknown>): boolean {
 }
 
 /**
- * Filters a list of library items according to Zotero 7 System View rules:
+ * Filters a list of library items according to System View rules:
  * - `'trash'`: returns only trashed items (`isTrashed` / `deletedAt`).
  * - All non-trash views (`'all'`, `'my-publications'`, `'unfiled'`, `'retracted'`, `'starred'`, `'duplicates'`):
  *   strictly exclude trashed items so deleted items never leak!
  * - `'my-publications'` / `'publications'`: strictly returns `[]` if `scope.type === 'project'`
- *   (My Publications is personal-only in Zotero 7) and requires `isItemInMyPublications(item)`.
+ *   (My Publications is personal-only) and requires `isItemInMyPublications(item)`.
  * - `'unfiled'`: items with zero collections (`collectionIds.length === 0 && collections.length === 0`).
  * - `'retracted'`: items flagged as retracted (`isItemRetracted(item)`).
  */

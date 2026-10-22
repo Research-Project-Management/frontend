@@ -217,7 +217,7 @@ export function CreateSavedSearchModal({
             </div>
           </div>
 
-          {/* 4. Checkbox Options - Zotero Scope Options */}
+          {/* 4. Checkbox Options - Scope Options */}
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 py-1">
             <label className="flex items-center gap-2 cursor-pointer select-none">
               <Checkbox

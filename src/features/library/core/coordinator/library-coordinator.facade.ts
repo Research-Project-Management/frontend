@@ -33,7 +33,7 @@ export interface UseLibraryCoordinatorOptions {
  * - Batch Actions (Trash, Restore, Detach, Export, Merge)
  * - Navigation & View/Search state
  * - Modal Dialog Bus triggers
- * - Quick Citation Copying (Zotero 7 keyboard shortcuts)
+ * - Quick Citation Copying (Standard keyboard shortcuts)
  */
 export function useLibraryCoordinator(options: UseLibraryCoordinatorOptions = {}) {
   const {

@@ -76,11 +76,19 @@ const BOLD_PREFIX_REGEX = /\\textbf\{/g;
 const ITALIC_PREFIX_REGEX = /\\textit\{/g;
 
 const LEVEL_CLASS_MAP = {
-  chapter: 'cm-visual-chapter',
-  h1: 'cm-visual-h1',
-  h2: 'cm-visual-h2',
-  h3: 'cm-visual-h3',
-  paragraph: 'cm-visual-paragraph',
+  chapter: 'cm-visual-line-chapter',
+  h1: 'cm-visual-line-h1',
+  h2: 'cm-visual-line-h2',
+  h3: 'cm-visual-line-h3',
+  paragraph: 'cm-visual-line-paragraph',
+} as const;
+
+const HEADING_TEXT_CLASS_MAP = {
+  chapter: 'cm-visual-heading-chapter',
+  h1: 'cm-visual-heading-h1',
+  h2: 'cm-visual-heading-h2',
+  h3: 'cm-visual-heading-h3',
+  paragraph: 'cm-visual-heading-paragraph',
 } as const;
 
 const DECO_LINE_BY_LEVEL: Record<HeadingMatch['level'], Decoration> = {
@@ -91,48 +99,95 @@ const DECO_LINE_BY_LEVEL: Record<HeadingMatch['level'], Decoration> = {
   paragraph: Decoration.line({ class: LEVEL_CLASS_MAP.paragraph }),
 };
 
+const DECO_HEADING_TEXT_BY_LEVEL: Record<HeadingMatch['level'], Decoration> = {
+  chapter: Decoration.mark({ class: HEADING_TEXT_CLASS_MAP.chapter }),
+  h1: Decoration.mark({ class: HEADING_TEXT_CLASS_MAP.h1 }),
+  h2: Decoration.mark({ class: HEADING_TEXT_CLASS_MAP.h2 }),
+  h3: Decoration.mark({ class: HEADING_TEXT_CLASS_MAP.h3 }),
+  paragraph: Decoration.mark({ class: HEADING_TEXT_CLASS_MAP.paragraph }),
+};
+
 const DECO_SYNTAX_DIM = Decoration.mark({ class: 'cm-visual-syntax-dim' });
+const DECO_SYNTAX_ACTIVE = Decoration.mark({ class: 'cm-visual-syntax-active' });
 const DECO_BOLD_TEXT = Decoration.mark({ class: 'cm-visual-bold-text' });
 const DECO_ITALIC_TEXT = Decoration.mark({ class: 'cm-visual-italic-text' });
 
 // ── Visual Decorations Theme ──────────────────────────────────────────────────
 
 const visualHeadingsTheme = EditorView.baseTheme({
-  '.cm-visual-chapter': {
-    fontSize: '1.75rem',
-    fontWeight: '800',
-    lineHeight: '1.25',
-    color: 'var(--foreground, #0f172a)',
-  },
-  '.cm-visual-h1': {
-    fontSize: '1.45rem',
-    fontWeight: '700',
+  // Line classes: gentle line height and vertical breathing room without altering font metrics
+  '.cm-visual-line-chapter, .cm-visual-chapter': {
     lineHeight: '1.3',
-    color: 'var(--foreground, #0f172a)',
+    paddingTop: '6px',
+    paddingBottom: '2px',
   },
-  '.cm-visual-h2': {
-    fontSize: '1.25rem',
-    fontWeight: '600',
+  '.cm-visual-line-h1, .cm-visual-h1': {
     lineHeight: '1.35',
-    color: 'var(--foreground, #0f172a)',
+    paddingTop: '5px',
+    paddingBottom: '2px',
   },
-  '.cm-visual-h3': {
-    fontSize: '1.1rem',
-    fontWeight: '600',
+  '.cm-visual-line-h2, .cm-visual-h2': {
+    lineHeight: '1.35',
+    paddingTop: '4px',
+    paddingBottom: '2px',
+  },
+  '.cm-visual-line-h3, .cm-visual-h3': {
     lineHeight: '1.4',
+    paddingTop: '2px',
+    paddingBottom: '1px',
+  },
+  '.cm-visual-line-paragraph, .cm-visual-paragraph': {
+    lineHeight: '1.4',
+  },
+
+  // Heading title text formatting: applied strictly to the heading content between braces
+  '.cm-visual-heading-chapter': {
+    fontSize: '1.55rem',
+    fontWeight: '800',
+    letterSpacing: '-0.02em',
     color: 'var(--foreground, #0f172a)',
   },
-  '.cm-visual-paragraph': {
-    fontSize: '1.02rem',
+  '.cm-visual-heading-h1': {
+    fontSize: '1.35rem',
+    fontWeight: '700',
+    letterSpacing: '-0.015em',
+    color: 'var(--foreground, #0f172a)',
+  },
+  '.cm-visual-heading-h2': {
+    fontSize: '1.18rem',
+    fontWeight: '600',
+    letterSpacing: '-0.01em',
+    color: 'var(--foreground, #0f172a)',
+  },
+  '.cm-visual-heading-h3': {
+    fontSize: '1.08rem',
+    fontWeight: '600',
+    color: 'var(--foreground, #0f172a)',
+  },
+  '.cm-visual-heading-paragraph': {
+    fontSize: '1rem',
     fontWeight: '600',
     fontStyle: 'italic',
   },
+
+  // Syntax markers: Monospace, stable font size and metrics in both active and dimmed states
   '.cm-visual-syntax-dim': {
-    opacity: '0.22',
-    fontSize: '0.78em',
-    letterSpacing: '-0.02em',
+    fontFamily: 'var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+    fontSize: '0.88em',
+    fontWeight: '400',
+    color: 'var(--muted-foreground, #64748b)',
+    opacity: '0.3',
     transition: 'opacity 0.15s ease',
   },
+  '.cm-visual-syntax-active': {
+    fontFamily: 'var(--font-ibm-plex-mono), "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+    fontSize: '0.88em',
+    fontWeight: '400',
+    color: 'var(--muted-foreground, #64748b)',
+    opacity: '0.8',
+    transition: 'opacity 0.15s ease',
+  },
+
   '.cm-visual-bold-text': {
     fontWeight: '700',
   },
@@ -221,22 +276,32 @@ class VisualHeadingsPlugin {
             deco: DECO_LINE_BY_LEVEL[level],
           });
 
-          // If cursor is not on this line, dim the macro syntax `\section{` and `}`
-          if (!isCursorOnLine) {
-            const openCmdStart = matchStart;
-            const openCmdEnd = line.from + openBraceIndex + 1;
-            const closeBraceStart = line.from + closeBraceIndex;
-            const closeBraceEnd = matchEnd;
+          const openCmdStart = matchStart;
+          const openCmdEnd = line.from + openBraceIndex + 1;
+          const textStart = openCmdEnd;
+          const textEnd = line.from + closeBraceIndex;
+          const closeBraceStart = textEnd;
+          const closeBraceEnd = matchEnd;
 
+          // Stable syntax decorations for \section{ and } (0px layout shift)
+          const syntaxDeco = isCursorOnLine ? DECO_SYNTAX_ACTIVE : DECO_SYNTAX_DIM;
+          pending.push({
+            from: openCmdStart,
+            to: openCmdEnd,
+            deco: syntaxDeco,
+          });
+          pending.push({
+            from: closeBraceStart,
+            to: closeBraceEnd,
+            deco: syntaxDeco,
+          });
+
+          // Style only the inner heading title text
+          if (textEnd > textStart) {
             pending.push({
-              from: openCmdStart,
-              to: openCmdEnd,
-              deco: DECO_SYNTAX_DIM,
-            });
-            pending.push({
-              from: closeBraceStart,
-              to: closeBraceEnd,
-              deco: DECO_SYNTAX_DIM,
+              from: textStart,
+              to: textEnd,
+              deco: DECO_HEADING_TEXT_BY_LEVEL[level],
             });
           }
         }
@@ -264,18 +329,17 @@ class VisualHeadingsPlugin {
             });
           }
 
-          if (!isCursorInMatch) {
-            pending.push({
-              from: matchStart,
-              to: textStart,
-              deco: DECO_SYNTAX_DIM,
-            });
-            pending.push({
-              from: textEnd,
-              to: matchEnd,
-              deco: DECO_SYNTAX_DIM,
-            });
-          }
+          const syntaxDeco = isCursorInMatch ? DECO_SYNTAX_ACTIVE : DECO_SYNTAX_DIM;
+          pending.push({
+            from: matchStart,
+            to: textStart,
+            deco: syntaxDeco,
+          });
+          pending.push({
+            from: textEnd,
+            to: matchEnd,
+            deco: syntaxDeco,
+          });
         }
 
         // 3. Scan for \textit{...} with balanced braces
@@ -301,18 +365,17 @@ class VisualHeadingsPlugin {
             });
           }
 
-          if (!isCursorInMatch) {
-            pending.push({
-              from: matchStart,
-              to: textStart,
-              deco: DECO_SYNTAX_DIM,
-            });
-            pending.push({
-              from: textEnd,
-              to: matchEnd,
-              deco: DECO_SYNTAX_DIM,
-            });
-          }
+          const syntaxDeco = isCursorInMatch ? DECO_SYNTAX_ACTIVE : DECO_SYNTAX_DIM;
+          pending.push({
+            from: matchStart,
+            to: textStart,
+            deco: syntaxDeco,
+          });
+          pending.push({
+            from: textEnd,
+            to: matchEnd,
+            deco: syntaxDeco,
+          });
         }
       }
     }

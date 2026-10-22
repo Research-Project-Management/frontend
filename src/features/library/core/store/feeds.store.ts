@@ -1,11 +1,7 @@
 import { create } from 'zustand';
-import { z } from 'zod';
 import {
   SavedFeedSubscription,
-  savedFeedSubscriptionSchema,
   DEFAULT_ACADEMIC_FEEDS,
-  FEEDS_STORAGE_KEY,
-  FEEDS_READ_STATE_KEY,
   FeedReadFilterType,
   FeedRetentionDays,
 } from '@/features/library/domain/types/feeds.types';
@@ -42,7 +38,6 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
   readEntryIds: new Set<string>(),
 
   loadFeeds: async () => {
-    // 1. Try to load from Backend Database first
     try {
       const res = await FeedsService.getSubscriptions();
       if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
@@ -56,49 +51,20 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
         return;
       }
     } catch {
-      // Fallback to localStorage if backend is unreachable or user is not logged in
+      // Backend offline or error: use defaults
     }
-
-    if (typeof window === 'undefined') return;
-    try {
-      const saved = window.localStorage.getItem(FEEDS_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        const parsedFeeds = z.array(savedFeedSubscriptionSchema).safeParse(parsed);
-        if (parsedFeeds.success && parsedFeeds.data.length > 0) {
-          set({ feeds: parsedFeeds.data });
-        } else {
-          set({ feeds: DEFAULT_ACADEMIC_FEEDS });
-        }
-      } else {
-        set({ feeds: DEFAULT_ACADEMIC_FEEDS });
-      }
-
-      const savedRead = window.localStorage.getItem(FEEDS_READ_STATE_KEY);
-      if (savedRead) {
-        const parsedRead = JSON.parse(savedRead);
-        if (Array.isArray(parsedRead)) {
-          set({
-            readEntryIds: new Set(
-              parsedRead.filter((id): id is string => typeof id === 'string'),
-            ),
-          });
-        }
-      }
-    } catch {
-      // ignore JSON parse or localStorage errors
-    }
+    set({ feeds: DEFAULT_ACADEMIC_FEEDS });
   },
 
-  setActiveFeedId: (id) => set({ activeFeedId: id }),
+  setActiveFeedId: (id) => set({ activeFeedId: id, selectedFeedEntry: null }),
 
   setSelectedFeedEntry: (entry) => set({ selectedFeedEntry: entry }),
 
   setReadFilter: (filter) => set({ readFilter: filter }),
 
-  triggerRefresh: () => set((s) => ({ refreshCounter: s.refreshCounter + 1 })),
+  triggerRefresh: () => set((state) => ({ refreshCounter: state.refreshCounter + 1 })),
 
-  addFeed: (name, url, retentionDays: FeedRetentionDays = 30) => {
+  addFeed: (name, url, retentionDays = 30) => {
     const trimmedUrl = url.trim();
     const trimmedName =
       name.trim() || trimmedUrl.replace(/^https?:\/\/(www\.)?/i, '').slice(0, 42);
@@ -113,15 +79,8 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
     const nextFeeds = [...get().feeds, newFeed];
 
     set({ feeds: nextFeeds, activeFeedId: id });
-    if (typeof window !== 'undefined') {
-      try {
-        window.localStorage.setItem(FEEDS_STORAGE_KEY, JSON.stringify(nextFeeds));
-      } catch {
-        // ignore storage errors
-      }
-    }
 
-    // Background sync to backend without blocking local state
+    // Server-authoritative subscription via Backend API
     FeedsService.subscribe({
       url: trimmedUrl,
       customTitle: trimmedName,
@@ -138,7 +97,7 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
         }
       })
       .catch(() => {
-        // Offline fallback
+        // Handled silently
       });
 
     return newFeed;
@@ -149,43 +108,24 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
       f.id === id ? { ...f, ...updates } : f
     );
     set({ feeds: nextFeeds });
-    if (typeof window !== 'undefined') {
-      try {
-        window.localStorage.setItem(FEEDS_STORAGE_KEY, JSON.stringify(nextFeeds));
-      } catch {
-        // ignore storage errors
-      }
-    }
 
-    // Background sync to backend without blocking local state
+    // Sync with backend API
     FeedsService.updateSubscription(id, {
       customTitle: updates.name,
       cleanupDays: updates.retentionDays,
-    }).catch(() => {
-      // Offline fallback
-    });
+    }).catch(() => {});
   },
 
   removeFeed: async (id) => {
-    // Attempt backend sync
     try {
       await FeedsService.unsubscribe(id);
-    } catch {
-      // Offline fallback
-    }
+    } catch {}
 
     const nextFeeds = get().feeds.filter((f) => f.id !== id);
     const nextActiveId =
       get().activeFeedId === id ? nextFeeds[0]?.id ?? null : get().activeFeedId;
 
     set({ feeds: nextFeeds, activeFeedId: nextActiveId });
-    if (typeof window !== 'undefined') {
-      try {
-        window.localStorage.setItem(FEEDS_STORAGE_KEY, JSON.stringify(nextFeeds));
-      } catch {
-        // ignore storage errors
-      }
-    }
   },
 
   markEntryAsRead: (entryId: string) => {
@@ -195,16 +135,8 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
     next.add(entryId);
     set({ readEntryIds: next });
 
-    // Sync with backend asynchronously
+    // Server-authoritative state sync
     FeedsService.markItemRead(entryId, true).catch(() => {});
-
-    if (typeof window !== 'undefined') {
-      try {
-        window.localStorage.setItem(FEEDS_READ_STATE_KEY, JSON.stringify(Array.from(next)));
-      } catch {
-        // ignore storage errors
-      }
-    }
   },
 
   toggleEntryRead: (entryId: string) => {
@@ -218,16 +150,8 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
     }
     set({ readEntryIds: next });
 
-    // Sync with backend asynchronously
+    // Server-authoritative state sync
     FeedsService.markItemRead(entryId, isNowRead).catch(() => {});
-
-    if (typeof window !== 'undefined') {
-      try {
-        window.localStorage.setItem(FEEDS_READ_STATE_KEY, JSON.stringify(Array.from(next)));
-      } catch {
-        // ignore storage errors
-      }
-    }
   },
 
   markAllEntriesAsRead: (entryIds: string[]) => {
@@ -237,16 +161,8 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
     }
     set({ readEntryIds: next });
 
-    // Sync with backend asynchronously
+    // Server-authoritative state sync
     FeedsService.markAllRead(entryIds).catch(() => {});
-
-    if (typeof window !== 'undefined') {
-      try {
-        window.localStorage.setItem(FEEDS_READ_STATE_KEY, JSON.stringify(Array.from(next)));
-      } catch {
-        // ignore storage errors
-      }
-    }
   },
 
   isEntryRead: (entryId: string) => {

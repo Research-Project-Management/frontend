@@ -32,7 +32,6 @@ import { useItems, useLibraryItemsQuery } from '@/features/library/sdk/queries/c
 import { useCollections } from '@/features/library/sdk/queries/collections.queries';
 import type { Collection } from '@/features/library/domain/types/library.types';
 import {
-  parseFeedXml,
   mapFeedEntryToCreateItemPayload,
   type ParsedFeedEntry,
   type FeedCreatorApiItem,
@@ -171,8 +170,6 @@ export function FeedViewContent({ feedId, scopeId = 'user', canEdit = true }: Fe
             feedFormat: 'rss2',
           })),
         );
-      } else if (typeof payload === 'string') {
-        setRawEntries(parseFeedXml(payload));
       } else {
         setRawEntries([]);
       }
@@ -710,7 +707,7 @@ export function FeedViewContent({ feedId, scopeId = 'user', canEdit = true }: Fe
                         }
                         const displayDate = formattedDate || (entry.year ? String(entry.year) : dateVal);
                         return (
-                          <span className="inline-flex items-center gap-1.5 font-medium">
+                          <span className="inline-flex items-center gap-1.5 font-medium shrink-0">
                             <Calendar className="size-3.5 text-foreground shrink-0" />
                             <span>{displayDate}</span>
                           </span>
@@ -719,14 +716,20 @@ export function FeedViewContent({ feedId, scopeId = 'user', canEdit = true }: Fe
 
                       {/* 2. Publication / Venue / Journal */}
                       {entry.publicationTitle && entry.publicationTitle !== feedTitle && (
-                        <span className="inline-flex items-center font-normal">
+                        <span
+                          className="inline-flex items-center font-normal shrink-0 min-w-0 max-w-full truncate"
+                          title={entry.publicationTitle}
+                        >
                           {entry.publicationTitle}
                         </span>
                       )}
 
                       {/* 2.5 Primary Category / Subject (e.g. cs.AI, Physics) */}
                       {(entry.primaryCategory || (entry.categories && entry.categories.length > 0)) && (
-                        <span className="inline-flex items-center font-normal text-muted-foreground">
+                        <span
+                          className="inline-flex items-center font-normal text-muted-foreground shrink-0 min-w-0 max-w-full truncate"
+                          title={entry.primaryCategory || entry.categories[0]}
+                        >
                           {entry.primaryCategory || entry.categories[0]}
                         </span>
                       )}
@@ -738,7 +741,8 @@ export function FeedViewContent({ feedId, scopeId = 'user', canEdit = true }: Fe
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center gap-1.5 hover:underline cursor-pointer"
+                          className="inline-flex items-center gap-1.5 hover:underline cursor-pointer shrink-0 min-w-0 max-w-full"
+                          title={`arXiv:${entry.arxivId}`}
                         >
                           <Bookmark className="size-3.5 text-foreground shrink-0" />
                           <span>arXiv:{entry.arxivId}</span>
@@ -749,7 +753,8 @@ export function FeedViewContent({ feedId, scopeId = 'user', canEdit = true }: Fe
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center hover:underline cursor-pointer"
+                          className="inline-flex items-center hover:underline cursor-pointer shrink-0 min-w-0 max-w-full"
+                          title={`DOI: ${entry.doi}`}
                         >
                           DOI: {entry.doi}
                         </a>
@@ -762,9 +767,11 @@ export function FeedViewContent({ feedId, scopeId = 'user', canEdit = true }: Fe
                         let displayLabel = targetUrl;
                         try {
                           const parsed = new URL(targetUrl);
-                          displayLabel = parsed.hostname.replace(/^www\./, '') + (parsed.pathname.length > 20 ? parsed.pathname.slice(0, 18) + '…' : parsed.pathname);
+                          const cleanHost = parsed.hostname.replace(/^www\./, '');
+                          const cleanPath = parsed.pathname === '/' ? '' : parsed.pathname.replace(/\/$/, '');
+                          displayLabel = `${cleanHost}${cleanPath}`;
                         } catch {
-                          displayLabel = targetUrl.length > 28 ? targetUrl.slice(0, 26) + '…' : targetUrl;
+                          displayLabel = targetUrl.replace(/^https?:\/\/(www\.)?/, '');
                         }
                         return (
                           <a
@@ -775,7 +782,7 @@ export function FeedViewContent({ feedId, scopeId = 'user', canEdit = true }: Fe
                               e.stopPropagation();
                               markEntryAsRead(entry.id);
                             }}
-                            className="inline-flex items-center gap-1.5 hover:underline cursor-pointer max-w-[240px] truncate"
+                            className="inline-flex items-center gap-1.5 hover:underline cursor-pointer shrink-0 min-w-0 max-w-full text-foreground/90 hover:text-foreground"
                             title={targetUrl}
                           >
                             <ExternalLink className="size-3.5 text-foreground shrink-0" />

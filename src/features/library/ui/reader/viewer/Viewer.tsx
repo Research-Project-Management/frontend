@@ -12,7 +12,7 @@ import type {
   ReaderNavigationTarget,
 } from "@/features/library/domain/types/reader.types";
 import type { ReaderAnnotationTool } from "@/features/library/core/store/reader.store";
-import { ZOTERO_COLORS } from "@/features/library/ui/reader/ReaderToolbar";
+import { ANNOTATION_PALETTE_COLORS } from "@/features/library/ui/reader/ReaderToolbar";
 import {
   computeEffectivePdfPageWidth,
   computeSpreadPairs,
@@ -30,7 +30,7 @@ import "react-pdf/dist/Page/AnnotationLayer.css";
 import { cn } from "@/shared/lib/utils";
 import { setupPdfWorker, getSharedPdfDocumentOptions } from "@/shared/lib/pdfjs-worker";
 
-export { ZOTERO_COLORS, DocumentPageSkeleton };
+export { ANNOTATION_PALETTE_COLORS, DocumentPageSkeleton };
 
 setupPdfWorker();
 const SHARED_PDF_OPTIONS = getSharedPdfDocumentOptions();

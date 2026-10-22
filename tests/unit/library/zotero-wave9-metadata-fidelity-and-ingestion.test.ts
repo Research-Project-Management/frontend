@@ -13,7 +13,7 @@ import {
 } from '@/features/library/ui/inspector/fields/CreatorFields';
 import {
   formatAndSanitizeExtraMetadata,
-  isAllowedZoteroExtraKey,
+  isAllowedItemExtraKey,
 } from '@/features/library/domain/metadata';
 
 function makeBaseItem(overrides: Partial<Item> & Record<string, unknown> = {}): Item {
@@ -431,12 +431,12 @@ describe('Zotero Wave 9 — Frontend Metadata Fidelity, Inspector Field Complete
       expect(sanitized).not.toContain('MergedFromIds');
       expect(sanitized).not.toContain('PrimaryCategory');
 
-      expect(isAllowedZoteroExtraKey('IngestionStatus')).toBe(false);
-      expect(isAllowedZoteroExtraKey('verification_score')).toBe(false);
-      expect(isAllowedZoteroExtraKey('fieldProvenance')).toBe(false);
-      expect(isAllowedZoteroExtraKey('engineUsed')).toBe(false);
-      expect(isAllowedZoteroExtraKey('PMID')).toBe(true);
-      expect(isAllowedZoteroExtraKey('Original Date')).toBe(true);
+      expect(isAllowedItemExtraKey('IngestionStatus')).toBe(false);
+      expect(isAllowedItemExtraKey('verification_score')).toBe(false);
+      expect(isAllowedItemExtraKey('fieldProvenance')).toBe(false);
+      expect(isAllowedItemExtraKey('engineUsed')).toBe(false);
+      expect(isAllowedItemExtraKey('PMID')).toBe(true);
+      expect(isAllowedItemExtraKey('Original Date')).toBe(true);
     });
   });
 });

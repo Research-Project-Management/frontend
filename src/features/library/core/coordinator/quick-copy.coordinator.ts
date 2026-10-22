@@ -17,7 +17,7 @@ export interface UseQuickCopyOptions {
 }
 
 /**
- * Zotero 7 Parity Quick Copy Coordinator:
+ * Native Academic Quick Copy Coordinator:
  * - Ctrl+Shift+C (Cmd+Shift+C on macOS): Copy Selected References as Bibliography
  * - Ctrl+Shift+A (Cmd+Shift+A on macOS): Copy Selected References as In-text Citation
  */

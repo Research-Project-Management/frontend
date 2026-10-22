@@ -21,7 +21,7 @@ import {
 } from "@/features/library/domain/types/item-types.types";
 import { cleanDoi, extractArxivId } from "./identifiers";
 import { generateCitationKey } from "./citations";
-import { isValidValue, cleanValue, parseZoteroExtraField } from "./metadata";
+import { isValidValue, cleanValue, parseItemExtraField } from "./metadata";
 
 export { ALL_SCHEMA_FIELD_KEYS };
 
@@ -614,7 +614,7 @@ export function prepareInspectorFieldContext(
     if (cached) return cached;
   }
   const p = item as Record<string, unknown>;
-  const parsedExtraMap = preParsedExtraMap ?? parseZoteroExtraField(item.extra);
+  const parsedExtraMap = preParsedExtraMap ?? parseItemExtraField(item.extra);
   const rawEf = (item.extraFields as Record<string, unknown>) || {};
   const ef: Record<string, unknown> =
     Object.keys(parsedExtraMap).length > 0

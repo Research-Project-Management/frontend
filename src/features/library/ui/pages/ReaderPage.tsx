@@ -115,7 +115,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     updateAnnotation,
   } = actions;
 
-  // Zotero-standard URL citation jumping: ?page=X&annotation=Y
+  // Standard URL citation jumping: ?page=X&annotation=Y
   useEffect(() => {
     const pageParam = searchParams.get("page");
     const annParam = searchParams.get("annotation") || undefined;
@@ -127,7 +127,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     }
   }, [searchParams, actions]);
 
-  // Zotero 7 Multi-Tab Store
+  // Multi-Tab Store
   const {
     tabs,
     activeTabId,
@@ -166,7 +166,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     Boolean(initialSearchQuery),
   );
 
-  // Page Presentation Mode (Zotero 7: Continuous Scroll, Single Page, Two Pages/Spread)
+  // Page Presentation Mode (Continuous Scroll, Single Page, Two Pages/Spread)
   const [viewMode, setViewMode] = useState<"single" | "continuous" | "spread">(
     "continuous",
   );
@@ -522,7 +522,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background">
-      {/* 1. ZOTERO 7 MULTI-PAPER TAB BAR (Row 1) */}
+      {/* 1. MULTI-PAPER TAB BAR (Row 1) */}
       {!isReadingMode && (
         <Topbar
           paper={paper}
@@ -537,7 +537,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
         />
       )}
 
-      {/* 2. ZOTERO 7 DEDICATED READER TOOLBAR (Row 2) */}
+      {/* 2. DEDICATED READER TOOLBAR (Row 2) */}
       {(paperUrl || epubOrSnapshotInfo) && (
         <ReaderToolbar
           isSidebarOpen={isSidebarOpen}

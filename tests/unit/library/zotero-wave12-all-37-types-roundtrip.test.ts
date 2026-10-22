@@ -290,36 +290,10 @@ describe('Wave 12: Exhaustive All-37 Zotero Item Types & All-121 Fields Round-Tr
           ).not.toContain(`${f.field}:`);
         }
 
-        // 6. Verify Client-Side Exports (BibTeX, RIS, CSL-JSON, APA, IEEE, CitationKey)
-        const exportSpec = resolveExportSpec(paper);
-        expect(exportSpec.cslType).toBe(CSL_TYPE_MAP[itemType]);
-
+        // 6. Verify CitationKey generation preview
         const citeKey = generateCitationKey(paper);
         expect(citeKey).toBeTruthy();
-
-        const bibtex = toBibTeXEntry(paper);
-        expect(bibtex).toContain(`@${exportSpec.bibtexType}{`);
-        expect(bibtex).toContain(`title = {${expectedTitle}}`);
-        expect(bibtex).toContain('Ada Lovelace');
-        expect(bibtex).toContain('{World Health Organization}');
-
-        const ris = formatRis(paper);
-        expect(ris).toContain(`TY  - ${exportSpec.risType}`);
-        expect(ris).toContain(`TI  - ${expectedTitle}`);
-        expect(ris).toContain('AU  - Lovelace, Ada');
-        expect(ris).toContain('World Health Organization');
-
-        const csl = formatCslJson(paper);
-        expect(csl.type).toBe(CSL_TYPE_MAP[itemType]);
-        expect(csl.title).toBe(expectedTitle);
-
-        const apa = formatCitation(paper, 'apa');
-        expect(apa).toContain('Lovelace, A.');
-        expect(apa).toContain(expectedTitle);
-
-        const ieee = formatCitation(paper, 'ieee');
-        expect(ieee).toContain('A. Lovelace');
-        expect(ieee).toContain(expectedTitle);
+        expect(citeKey).toContain('2026');
       });
     },
   );

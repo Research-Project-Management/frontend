@@ -28,6 +28,8 @@ import {
 } from "@/features/library/domain/types/library.types";
 import { useItemTypeConversion } from "@/features/library/sdk/queries/saved-searches-relations.queries";
 import { type TypeConversionPreview } from "@/features/library/sdk/queries/saved-searches-relations.queries";
+import { useQueryClient } from "@tanstack/react-query";
+import { itemKeys } from "@/features/library/sdk/queries/catalog.queries";
 
 export type TypeConversionItemLike = {
   id?: string;
@@ -90,6 +92,7 @@ export function TypeConversionModal({
 
   const { previewAsync, convertAsync, isConverting } =
     useItemTypeConversion(scopeId);
+  const queryClient = useQueryClient();
 
   const sourceTypeName = useMemo(() => {
     return (
@@ -200,8 +203,38 @@ export function TypeConversionModal({
         onSuccess?.(updatedItem);
       }
       onOpenChange(false);
-    } catch {
-      // Toast notification is managed by hook
+    } catch (err: unknown) {
+      // Invalidate item query cache immediately on error so UI synchronizes latest version
+      const targetScope = scopeId || currentItem?.projectId || "user";
+      queryClient.invalidateQueries({
+        queryKey: itemKeys.byId(targetScope, itemId),
+      });
+
+      const errMsg = err instanceof Error ? err.message : String(err || "");
+      const isVersionConflict =
+        errMsg.includes("Version conflict") ||
+        errMsg.includes("VERSION_MISMATCH") ||
+        (err as { code?: string })?.code === "VERSION_MISMATCH" ||
+        (err as { statusCode?: number })?.statusCode === 412 ||
+        (err as { statusCode?: number })?.statusCode === 409;
+
+      if (isVersionConflict) {
+        try {
+          // Retry without stale expectedVersion to seamlessly execute user's explicit conversion intent
+          const retryResult = await convertAsync({
+            itemId,
+            targetType,
+            expectedVersion: undefined,
+            retainUnmappedInExtra: retainUnmapped,
+          });
+          if (retryResult?.item) {
+            onSuccess?.(retryResult.item);
+          }
+          onOpenChange(false);
+        } catch {
+          // Toast handled by mutation hook
+        }
+      }
     }
   };
 
@@ -223,7 +256,7 @@ export function TypeConversionModal({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Body Content - Zotero Authentic Layout */}
+        {/* Body Content */}
         <div className="space-y-4">
           {isLoadingPreview ? (
             <div className="flex flex-col items-center justify-center py-8 text-center space-y-2">
@@ -252,7 +285,7 @@ export function TypeConversionModal({
             </div>
           ) : (
             <div className="space-y-3.5 text-13">
-              {/* Primary confirmation prompt (Zotero Desktop Standard) */}
+              {/* Primary confirmation prompt */}
               <p className="text-foreground leading-normal">
                 Are you sure you want to change the item type from{" "}
                 <span className="font-semibold">{sourceTypeName}</span> to{" "}

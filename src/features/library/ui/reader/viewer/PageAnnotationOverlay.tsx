@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { StickyNote, Trash2, X, Loader2 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import type { ReaderAnnotation, AnnotationRect } from '@/features/library/domain/types/reader.types';
-import { ZOTERO_COLORS } from '@/features/library/ui/reader/ReaderToolbar';
+import { ANNOTATION_PALETTE_COLORS } from '@/features/library/ui/reader/ReaderToolbar';
 
 export interface ActiveHighlightTooltipState {
   id: string;
@@ -310,11 +310,11 @@ export function AnnotationQuickEditCard({
         </div>
       </div>
 
-      {/* 2. Zotero 8-Color Palette Picker */}
+      {/* 2. Standard 8-Color Annotation Palette Picker */}
       <div className="flex items-center justify-between gap-1 pb-2 border-b border-border-subtle">
         <span className="text-10 font-medium text-muted-foreground">Color:</span>
         <div className="flex items-center gap-1">
-          {ZOTERO_COLORS.map((c) => {
+          {ANNOTATION_PALETTE_COLORS.map((c) => {
             const isSelected =
               (tooltip.color || '#ffd400').toLowerCase() === c.hex.toLowerCase();
             return (

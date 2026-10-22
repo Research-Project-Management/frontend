@@ -291,7 +291,7 @@ export const ItemTable = React.memo(function ItemTable({
 
 
 
-  // Keyboard navigation matching Zotero 7 desktop parity
+  // Desktop-grade keyboard navigation
   const { handleKeyDown } = useLibraryKeyboardShortcuts({
     items,
     sortedItems,

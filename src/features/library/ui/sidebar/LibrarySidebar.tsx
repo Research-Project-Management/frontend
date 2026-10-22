@@ -271,7 +271,7 @@ export function LibrarySidebar() {
   const sidebarBody = (
     <>
       {/* Topbar Header matching the h-11 border-b of LibraryTopbar & Inspector */}
-      <div className="h-11 border-b border-border px-2.5 flex items-center shrink-0">
+      <div className="h-11 px-2.5 flex items-center shrink-0">
         <SidebarHeader
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -423,7 +423,7 @@ export function LibrarySidebar() {
                 </div>
               )}
 
-              {/* 2. Feeds (Root Level - Zotero Standard) */}
+              {/* 2. Feeds (Root Level) */}
               <FeedsListSection
                 basePath={basePath}
                 navId={id}

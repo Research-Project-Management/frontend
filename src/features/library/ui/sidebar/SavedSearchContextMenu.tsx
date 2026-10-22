@@ -26,7 +26,7 @@ export interface SavedSearchContextMenuProps {
 }
 
 /**
- * SavedSearchContextMenu (Zotero-Standard Enterprise Smart Search Menu)
+ * SavedSearchContextMenu (Smart Search Menu)
  * Provides complete lifecycle management: Edit Criteria, Rename, Duplicate, Delete.
  */
 export function SavedSearchContextMenu({

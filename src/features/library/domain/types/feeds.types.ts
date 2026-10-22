@@ -55,6 +55,3 @@ export const DEFAULT_ACADEMIC_FEEDS: SavedFeedSubscription[] = [
     retentionDays: 30,
   },
 ];
-
-export const FEEDS_STORAGE_KEY = 'flux_library_rss_feeds_v1';
-export const FEEDS_READ_STATE_KEY = 'flux_library_rss_read_entries_v1';

@@ -581,7 +581,7 @@ export function formatItemTypeLabel(rawType?: string | null): string {
  * (`PMID`/`PMCID` on `journalArticle`, `originalDate` on `book`/`bookSection`) and must remain
  * allowed as explicit `Key: Value` lines in the Zotero `Extra` textarea.
  */
-const ALLOWED_ZOTERO_EXTRA_LINE_KEYS = new Set<string>([
+const ALLOWED_ITEM_EXTRA_LINE_KEYS = new Set<string>([
   "pmid",
   "pmcid",
   "originaldate",
@@ -591,7 +591,7 @@ export const INTERNAL_AND_DEDICATED_METADATA_KEYS = new Set<string>([
   // Automatically derived from all 121 Zotero Schema v42 fields across all 37 item types
   ...Array.from(ALL_SCHEMA_FIELD_KEYS)
     .map((f) => f.toLowerCase())
-    .filter((k) => !ALLOWED_ZOTERO_EXTRA_LINE_KEYS.has(k)),
+    .filter((k) => !ALLOWED_ITEM_EXTRA_LINE_KEYS.has(k)),
   // Internal / system / audit / duplicate / retraction / ingestion telemetry state
   "dismissedduplicateids",
   "mergedcitationkeys",
@@ -727,7 +727,7 @@ export const INTERNAL_AND_DEDICATED_METADATA_KEYS = new Set<string>([
  * from structured `extraFields` / JSONB into the `Extra` display when they are NOT
  * already a dedicated first-class schema field of the item's `itemType`.
  */
-const GENUINE_ZOTERO_EXTRA_OVERFLOW_KEYS = new Set<string>([
+const GENUINE_ITEM_EXTRA_OVERFLOW_KEYS = new Set<string>([
   "pmid",
   "pmcid",
   "nihmsid",
@@ -740,12 +740,13 @@ const GENUINE_ZOTERO_EXTRA_OVERFLOW_KEYS = new Set<string>([
   "texids",
 ]);
 
-export function isAllowedZoteroExtraKey(rawKey: string): boolean {
+export function isAllowedItemExtraKey(rawKey: string): boolean {
   const trimmed = rawKey.trim();
   if (!trimmed || trimmed.startsWith("_")) return false;
   const normalized = trimmed.toLowerCase().replace(/[\s_-]+/g, "");
   return !INTERNAL_AND_DEDICATED_METADATA_KEYS.has(normalized);
 }
+
 
 /**
  * Formats the extra metadata field for inspector display.
@@ -815,7 +816,7 @@ export function formatAndSanitizeExtraMetadata(
       .trim()
       .toLowerCase()
       .replace(/[\s_-]+/g, "");
-    if (!GENUINE_ZOTERO_EXTRA_OVERFLOW_KEYS.has(normKey)) return false;
+    if (!GENUINE_ITEM_EXTRA_OVERFLOW_KEYS.has(normKey)) return false;
     return !isDedicatedFieldOnCurrentType(rawKey);
   };
 
@@ -829,7 +830,7 @@ export function formatAndSanitizeExtraMetadata(
       const key = kvMatch[1]!.trim();
       const val = kvMatch[2]!.trim();
       if (
-        !isAllowedZoteroExtraKey(key) ||
+        !isAllowedItemExtraKey(key) ||
         isDedicatedFieldOnCurrentType(key) ||
         !isValidValue(val) ||
         val === "[object Object]"
@@ -1004,7 +1005,7 @@ export function getItemDisplayDate(
  * All Zotero Schema v42 field keys promoted from `extraFields` / `metadata` onto top-level `Item`
  * during `mapBackendItem`. Automatically derived from `ALL_SCHEMA_FIELD_KEYS`.
  */
-export const ALL_ZOTERO_PROMOTE_KEYS: readonly string[] = Array.from(
+export const ALL_SCHEMA_PROMOTE_KEYS: readonly string[] = Array.from(
   ALL_SCHEMA_FIELD_KEYS,
 ).filter((k) => k !== "title" && k !== "extra");
 
@@ -1075,7 +1076,7 @@ function mergeRawItemPartials(rec: Record<string, unknown>): {
     mapped.extraFields = { ...ef };
   }
 
-  for (const k of ALL_ZOTERO_PROMOTE_KEYS) {
+  for (const k of ALL_SCHEMA_PROMOTE_KEYS) {
     if (!isValidValue(mapped[k]) && isValidValue(ef[k])) {
       mapped[k] = ef[k];
     }
@@ -1429,10 +1430,10 @@ const PARSED_EXTRA_OBJECT_CACHE = new WeakMap<object, Readonly<Record<string, st
 const MAX_EXTRA_CACHE_SIZE = 5000;
 
 /**
- * Parses Zotero's "Extra" field cheater syntax (both `Key: Value` lines and `{:Key: Value}` blocks)
+ * Parses item "Extra" field extended syntax (both `Key: Value` lines and `{:Key: Value}` blocks)
  * into a dictionary supporting both exact, lowercase, and canonical field lookups.
  */
-export function parseZoteroExtraField(extra?: unknown): Record<string, string> {
+export function parseItemExtraField(extra?: unknown): Record<string, string> {
   if (!extra) return {};
 
   if (typeof extra === "string") {
@@ -1510,7 +1511,7 @@ export function parseZoteroExtraField(extra?: unknown): Record<string, string> {
         return cacheAndReturn(result);
       }
     } catch {
-      // Fall through to line-by-line Zotero Extra parsing
+      // Fall through to line-by-line Extra field parsing
     }
   }
 
@@ -1521,7 +1522,7 @@ export function parseZoteroExtraField(extra?: unknown): Record<string, string> {
     setKey(inlineMatch[1], inlineMatch[2]);
   }
 
-  // 3. Parse standard Zotero `Key: Value` lines
+  // 3. Parse standard `Key: Value` lines
   const lines = trimmed.split(/\r?\n/);
   for (const line of lines) {
     const cleanLine = line.replace(/\{:[^:}]+:[^}]+\}/g, "").trim();
@@ -1536,6 +1537,7 @@ export function parseZoteroExtraField(extra?: unknown): Record<string, string> {
 
   return cacheAndReturn(result);
 }
+
 
 /**
  * Normalizes an uploaded file name to a clean presentation title.

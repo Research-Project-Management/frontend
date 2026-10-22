@@ -1,7 +1,7 @@
 /**
  * Pure Domain Model: Deep Metadata Diff & Asset Aggregation Engine
  *
- * Zotero-grade Deep Metadata Diff & Asset Aggregation Engine for Duplicate Merging.
+ * Native Deep Metadata Diff & Asset Aggregation Engine for Duplicate Merging.
  * Inspects all canonical bibliographic fields, flags field conflicts,
  * computes smart value recommendations, and calculates non-destructive asset union.
  */
@@ -273,7 +273,7 @@ function parseItemTimestamp(item: Record<string, unknown>): number | null {
 }
 
 /**
- * Selects the best default master item ID in a duplicate cluster following Zotero/Zoplicate conventions:
+ * Selects the best default master item ID in a duplicate cluster following academic deduplication conventions:
  * - `'smart'` (default): Prefers non-retracted published items (`journalArticle`, `conferencePaper`, `book`, `bookSection`)
  *   with a peer-reviewed DOI over unpublished `preprint` / `arXiv` / `document` items, scoring metadata completeness
  *   across `MERGEABLE_FIELDS`, attachments, and notes (breaking ties by oldest `createdAt`).
@@ -378,7 +378,7 @@ export function selectBestMasterItemId(
  * unique normalized lines from duplicates such as `PMID: ...`, `PMCID: ...`, `arXiv: ...`, `Original Date: ...`),
  * while also collecting alternate `citationKey` values into `tex.ids` if different from the master item's `citationKey`.
  */
-export function mergeZoteroExtraFields(
+export function mergeItemExtraFields(
   items: readonly Item[],
   masterItemId: string,
 ): string {
@@ -474,6 +474,7 @@ export function mergeZoteroExtraFields(
 
   return lines.join('\n');
 }
+
 
 /**
  * Scores a field option value for "Recommend Best" resolution.
@@ -702,7 +703,7 @@ export function buildMergedItemPayload(
       'journalArticle';
   }
 
-  const mergedExtra = mergeZoteroExtraFields(items, masterId);
+  const mergedExtra = mergeItemExtraFields(items, masterId);
   if (mergedExtra && !('extra' in fieldOverrides)) {
     resolvedFields.extra = mergedExtra;
   }

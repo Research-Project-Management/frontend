@@ -269,7 +269,7 @@ export function ProjectLibrariesSection({
                         renameSavedSearchValue={renameSavedSearchValue}
                       />
 
-                      {/* Project Duplicate Items Nav Item (Zotero Group Library parity) */}
+                      {/* Project Duplicate Items Nav Item */}
                       <div className="flex flex-col gap-0.5 w-full">
                         <SidebarNavItem
                           href={`${basePath}/duplicates`}

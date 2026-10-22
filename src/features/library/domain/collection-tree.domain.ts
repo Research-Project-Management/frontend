@@ -1,5 +1,5 @@
 /**
- * Pure Hierarchical Collection Tree Utilities (Zotero 7 Collections & Subcollections)
+ * Pure Hierarchical Collection Tree Utilities (Hierarchical Collections & Subcollections)
  */
 
 import type { Collection } from './types/library.types';

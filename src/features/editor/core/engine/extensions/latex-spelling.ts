@@ -70,6 +70,11 @@ const sessionIgnoredWords = new Set<string>([
   'overleaf', 'latex', 'pdflatex', 'xelatex', 'lualatex', 'bibtex', 'biber',
   'et', 'al', 'arxiv', 'doi', 'rgb', 'rgba', 'cpu', 'gpu', 'api', 'url',
   'fig', 'tab', 'eq', 'sec', 'algo', 'auth', 'init', 'impl', 'repo',
+  // Months & calendar dates (Overleaf parity)
+  'january', 'february', 'march', 'april', 'may', 'june', 'july',
+  'august', 'september', 'october', 'november', 'december',
+  'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
+  'today', 'date', 'dated', 'maketitle', 'documentclass', 'usepackage', 'author', 'title',
 ]);
 
 const MAX_WORD_VALIDITY_CACHE_SIZE = 5000;

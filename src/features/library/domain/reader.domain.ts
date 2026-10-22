@@ -72,11 +72,13 @@ export const ANNOTATION_COLORS = {
 
 export type AnnotationColorId = keyof typeof ANNOTATION_COLORS;
 
-export const ZOTERO_COLORS = Object.values(ANNOTATION_COLORS).map((c) => ({
+/** Standard 8-Color Academic Annotation Palette */
+export const ANNOTATION_PALETTE_COLORS = Object.values(ANNOTATION_COLORS).map((c) => ({
   id: c.id,
   label: c.name,
   hex: c.border,
 }));
+
 
 const HEX_TO_COLOR_ID_MAP = new Map<string, AnnotationColorId>(
   Object.values(ANNOTATION_COLORS).map((c) => [c.border.toLowerCase(), c.id]),

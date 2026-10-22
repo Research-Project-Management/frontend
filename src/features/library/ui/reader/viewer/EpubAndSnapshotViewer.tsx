@@ -62,7 +62,7 @@ function resolveEpubPath(baseDir: string, relativeHref: string): string {
 }
 
 /**
- * Zotero 7-style Unified EPUB & Web Snapshot Reader
+ * Unified EPUB & Web Snapshot Reader
  * Supports:
  * - Native `.epub` archive unpacking via JSZip (OPF spine + TOC + Chapter HTML)
  * - Clean Web Snapshot HTML rendering

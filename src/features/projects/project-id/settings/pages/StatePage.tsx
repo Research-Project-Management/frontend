@@ -219,7 +219,7 @@ export default function StatePage() {
   if (isLoading) {
     return (
       <PageLayout>
-        <PageContent maxWidth="xl">
+        <PageContent maxWidth="lg">
           <div className="space-y-4">
             <Skeleton className="h-8 w-48 rounded-md motion-reduce:animate-none" />
             <Skeleton className="h-4 w-96 rounded-md motion-reduce:animate-none" />
@@ -237,7 +237,7 @@ export default function StatePage() {
   return (
     <PageLayout>
 
-      <PageContent maxWidth="xl">
+      <PageContent maxWidth="lg">
         <div className="space-y-6">
           {/* Top Pill Tabs Switcher */}
           <div className="flex items-center gap-1.5 p-1 rounded-lg bg-muted/60 border border-border/40 w-fit">

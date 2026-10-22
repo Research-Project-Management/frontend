@@ -225,6 +225,8 @@ export const ProjectService = {
   updateStateItem: updateProjectStateItemApi,
   reorderStates: reorderProjectStatesApi,
   deleteState: deleteProjectStateApi,
+  resetStates: resetProjectStatesApi,
+  duplicate: duplicateProjectApi,
   getDefaultStatesTemplate: fetchDefaultStatesTemplate,
   checkIdentifier: checkProjectIdentifierApi,
   // Trash & Permanent Delete

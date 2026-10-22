@@ -376,7 +376,7 @@ export default function LabelPage() {
   if (isLoadingLabels || isLoadingProject) {
     return (
       <PageLayout>
-        <PageContent maxWidth="xl">
+        <PageContent maxWidth="lg">
           <div className="space-y-6">
             <Skeleton className="h-8 w-48 rounded motion-reduce:animate-none" />
             <Skeleton className="h-4 w-80 rounded motion-reduce:animate-none" />
@@ -394,7 +394,7 @@ export default function LabelPage() {
   if (isError || !project) {
     return (
       <PageLayout>
-        <PageContent maxWidth="xl">
+        <PageContent maxWidth="lg">
           <div className="text-13 text-muted-foreground">
             Error loading project.
           </div>
@@ -408,7 +408,7 @@ export default function LabelPage() {
   return (
     <PageLayout>
 
-      <PageContent maxWidth="xl">
+      <PageContent maxWidth="lg">
         <div className="space-y-6">
 
           {/* ── Toolbar: Search & Add Label Button ── */}

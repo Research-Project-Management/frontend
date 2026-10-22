@@ -119,6 +119,8 @@ export function useAssignProjectLabels() {
       queryClient.invalidateQueries({ queryKey: projectKeys.all() });
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: projectLabelKeys.byProject(variables.projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.byId(variables.projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.overview(variables.projectId) });
     },
     onError: (err: unknown) => {
       toast.error(err instanceof Error ? err.message : 'Failed to update project tags');
@@ -139,6 +141,8 @@ export function useRemoveProjectLabel() {
       queryClient.invalidateQueries({ queryKey: projectKeys.all() });
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: projectLabelKeys.byProject(variables.projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.byId(variables.projectId) });
+      queryClient.invalidateQueries({ queryKey: projectKeys.overview(variables.projectId) });
     },
     onError: (err: unknown) => {
       toast.error(err instanceof Error ? err.message : 'Failed to remove tag');

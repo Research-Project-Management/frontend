@@ -158,7 +158,7 @@ export default function MemberPage() {
   if (isLoading) {
     return (
       <PageLayout>
-        <PageContent maxWidth="xl">
+        <PageContent maxWidth="lg">
           <div className="space-y-6">
             <Skeleton className="h-10 w-full rounded-md motion-reduce:animate-none" />
             <Skeleton className="h-10 w-full rounded-md motion-reduce:animate-none" />
@@ -172,7 +172,7 @@ export default function MemberPage() {
   if (isError || !project) {
     return (
       <PageLayout>
-        <PageContent maxWidth="xl">
+        <PageContent maxWidth="lg">
           <div className="text-13 text-muted-foreground">
             Error loading project members.
           </div>
@@ -183,7 +183,7 @@ export default function MemberPage() {
 
   return (
     <PageLayout>
-      <PageContent maxWidth="xl">
+      <PageContent maxWidth="lg">
         <div className="space-y-6">
           {/* Top Settings: Default Assignee */}
           <Assignee

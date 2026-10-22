@@ -48,7 +48,7 @@ export default function GeneralPage() {
   if (isLoading) {
     return (
       <PageLayout>
-        <PageContent maxWidth="xl">
+        <PageContent maxWidth="lg">
           <div className="space-y-6">
             <Skeleton className="h-44 w-full rounded-md" />
             <Skeleton className="h-10 w-full rounded-md" />
@@ -63,7 +63,7 @@ export default function GeneralPage() {
   if (isError || !project) {
     return (
       <PageLayout>
-        <PageContent maxWidth="xl">
+        <PageContent maxWidth="lg">
           <div className="text-12 text-muted-foreground">
             Error loading project details.
           </div>
@@ -74,7 +74,7 @@ export default function GeneralPage() {
 
   return (
     <PageLayout>
-      <PageContent maxWidth="xl">
+      <PageContent maxWidth="lg">
         <div className="space-y-6">
           {/* ── Visual Banner & Icon ── */}
           <GeneralBanner

@@ -26,7 +26,7 @@ export default function ModulesPage() {
   if (isLoading) {
     return (
       <PageLayout>
-        <PageContent maxWidth="xl">
+        <PageContent maxWidth="lg">
           <Skeleton className="h-64 w-full rounded-md motion-reduce:animate-none" />
         </PageContent>
       </PageLayout>
@@ -36,7 +36,7 @@ export default function ModulesPage() {
   if (isError || !project) {
     return (
       <PageLayout>
-        <PageContent maxWidth="xl">
+        <PageContent maxWidth="lg">
           <div className="text-13 text-muted-foreground">
             Error loading project.
           </div>
@@ -48,7 +48,7 @@ export default function ModulesPage() {
   return (
     <PageLayout>
 
-      <PageContent maxWidth="xl">
+      <PageContent maxWidth="lg">
         {/* Module Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
           {MODULES.map((mod) => (

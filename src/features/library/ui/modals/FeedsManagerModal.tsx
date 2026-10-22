@@ -132,11 +132,11 @@ export default function FeedsManagerModal({
     }
   }, [open, activeFeed, loadFeedEntries]);
 
-  const handleAddFeedSubscription = (e: React.FormEvent) => {
+  const handleAddFeedSubscription = async (e: React.FormEvent) => {
     e.preventDefault();
     const url = newFeedUrl.trim();
     if (!url) return;
-    const newFeed = addFeed(newFeedName, url);
+    const newFeed = await addFeed(newFeedName, url);
     setNewFeedName('');
     setNewFeedUrl('');
     setIsAddingFeed(false);
@@ -158,8 +158,8 @@ export default function FeedsManagerModal({
         scopeId,
         collectionId: targetCollectionId || undefined,
       });
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { collectionId: _, ...itemData } = createPayload;
+      const { collectionId: _unusedCollectionId, ...itemData } = createPayload;
+      void _unusedCollectionId;
       await createItem({
         ...itemData,
         collectionIds: targetCollectionId ? [targetCollectionId] : undefined,

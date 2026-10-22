@@ -128,14 +128,17 @@ export function FeedViewContent({ feedId, scopeId = 'user', canEdit = true }: Fe
     });
   };
 
-  const loadFeedEntries = useCallback(async () => {
+  const loadFeedEntries = useCallback(async (forceRefresh = false) => {
     if (!activeFeed?.url) {
       setRawEntries([]);
       return;
     }
     setFetchError(null);
     try {
-      const res: FeedFetchApiResponse | string = await fetchAcademicFeed(activeFeed.url);
+      const res: FeedFetchApiResponse | string = await fetchAcademicFeed({
+        url: activeFeed.url,
+        forceRefresh,
+      });
       const payload = typeof res === 'object' && res !== null && res.data ? res.data : res;
       if (payload && typeof payload === 'object' && Array.isArray(payload.entries)) {
         setFeedTitle(payload.feedTitle || activeFeed.name);
@@ -179,8 +182,11 @@ export function FeedViewContent({ feedId, scopeId = 'user', canEdit = true }: Fe
     }
   }, [activeFeed, fetchAcademicFeed]);
 
+  const prevRefreshCounter = useRef(refreshCounter);
   useEffect(() => {
-    void loadFeedEntries();
+    const isManualTrigger = refreshCounter > prevRefreshCounter.current;
+    prevRefreshCounter.current = refreshCounter;
+    void loadFeedEntries(isManualTrigger);
   }, [loadFeedEntries, refreshCounter]);
 
   // Retention filter: filter out items older than activeFeed.retentionDays (if set and > 0)

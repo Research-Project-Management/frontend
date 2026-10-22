@@ -1812,9 +1812,13 @@ export const IngestionService = {
       },
     ),
 
-  fetchFeed: async (url: string): Promise<{
+  fetchFeed: async (
+    url: string,
+    forceRefresh = false,
+  ): Promise<{
     feedTitle: string;
     entries: Array<{
+      id?: string;
       title: string;
       authors: string[];
       published?: string;
@@ -1827,6 +1831,7 @@ export const IngestionService = {
     const res = await libraryClient.post<{
       feedTitle?: string;
       entries?: Array<{
+        id?: string;
         title: string;
         authors: string[];
         published?: string;
@@ -1838,6 +1843,7 @@ export const IngestionService = {
       data?: {
         feedTitle?: string;
         entries?: Array<{
+          id?: string;
           title: string;
           authors: string[];
           published?: string;
@@ -1847,7 +1853,7 @@ export const IngestionService = {
           link?: string;
         }>;
       };
-    }>(getIngestionUrl(undefined, 'fetch-feed'), { url });
+    }>(getIngestionUrl(undefined, 'fetch-feed'), { url, forceRefresh });
     const payload = res && typeof res === 'object' && 'data' in res && res.data ? res.data : res;
     return {
       feedTitle: payload?.feedTitle || 'Academic Feed',
@@ -2307,6 +2313,44 @@ export const ItemService = ItemsService;
 export const QualityService = CurationService;
 export const fetchReferenceByDoi = CitationService.resolveDoi;
 
+export const FeedsService = {
+  getSubscriptions: () =>
+    libraryClient.get<{ data: Array<{
+      id: string;
+      userId: string;
+      feedId: string;
+      customTitle: string | null;
+      cleanupReadAfter: number;
+      cleanupUnreadAfter: number;
+      feed: {
+        id: string;
+        url: string;
+        title: string;
+        siteUrl: string | null;
+        description: string | null;
+        lastFetchedAt: string | null;
+      };
+    }> }>(resolveLibraryUrl('ingestion', '/feeds/subscriptions')),
+
+  subscribe: (data: { url: string; customTitle?: string; cleanupDays?: number }) =>
+    libraryClient.post<{ data: unknown }>(resolveLibraryUrl('ingestion', '/feeds/subscriptions'), data),
+
+  updateSubscription: (feedId: string, data: { customTitle?: string; cleanupDays?: number }) =>
+    libraryClient.patch<{ data: unknown }>(resolveLibraryUrl('ingestion', `/feeds/subscriptions/${encodeURIComponent(feedId)}`), data),
+
+  unsubscribe: (feedId: string) =>
+    libraryClient.delete<void>(resolveLibraryUrl('ingestion', `/feeds/subscriptions/${encodeURIComponent(feedId)}`)),
+
+  getItems: (feedId: string, params?: { readStatus?: 'read' | 'unread' | 'all'; limit?: number }) =>
+    libraryClient.get<{ data: unknown[] }>(resolveLibraryUrl('ingestion', `/feeds/${encodeURIComponent(feedId)}/items`), { params }),
+
+  markItemRead: (itemId: string, isRead = true) =>
+    libraryClient.post<{ success: boolean }>(resolveLibraryUrl('ingestion', `/feeds/items/${encodeURIComponent(itemId)}/read`), { isRead }),
+
+  markAllRead: (itemIds: string[]) =>
+    libraryClient.post<{ success: boolean }>(resolveLibraryUrl('ingestion', '/feeds/items/mark-all-read'), { itemIds }),
+};
+
 export const libraryServices = {
   items: ItemsService,
   collections: CollectionsService,
@@ -2324,6 +2368,7 @@ export const libraryServices = {
   retraction: RetractionService,
   search: SearchService,
   sync: SyncService,
+  feeds: FeedsService,
   reader: readerService,
 };
 

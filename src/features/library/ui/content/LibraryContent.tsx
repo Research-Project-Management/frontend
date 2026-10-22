@@ -276,10 +276,13 @@ export function LibraryContent({
     [canEdit, isTrash, onDirectFilesUpload],
   );
 
+  const displayedItemsRef = React.useRef(displayedItems);
+  displayedItemsRef.current = displayedItems;
+
   const handleDetachItem = useCallback(
     (itemId: string) => {
       if (!collectionId) return;
-      const targetItem = displayedItems.find((it) => it.id === itemId);
+      const targetItem = displayedItemsRef.current.find((it) => it.id === itemId);
       if (targetItem?._isProcessing) {
         toast.warning('Cannot remove files that are currently uploading or processing', {
           id: 'library-item-guard',
@@ -288,7 +291,7 @@ export function LibraryContent({
       }
       detachMutation.mutate({ collectionId, itemId });
     },
-    [collectionId, detachMutation, displayedItems],
+    [collectionId, detachMutation],
   );
 
   const { setSorting } = nav;

@@ -14,6 +14,7 @@ export const collectionSchema = z.object({
   createdBy: userSchema.optional(),
   itemCount: z.number().optional().default(0),
   recursiveItemCount: z.number().optional(),
+  version: z.number().optional().default(1),
   createdAt: z.string().optional().default(''),
   updatedAt: z.string().optional().default(''),
 });
@@ -26,10 +27,15 @@ export interface CollectionInput {
   color?: string;
   icon?: string;
   parentId?: string | null;
+  expectedVersion?: number;
+  version?: number;
 }
 
 export type CreateCollectionDTO = CollectionInput;
-export type UpdateCollectionDTO = Partial<CollectionInput>;
+export type UpdateCollectionDTO = Partial<CollectionInput> & {
+  expectedVersion?: number;
+  version?: number;
+};
 
 export interface MoveToTrashTarget {
   id?: string;
@@ -41,4 +47,3 @@ export interface MoveToTrashTarget {
   count?: number;
   items?: Array<{ id: string; title: string }>;
 }
-

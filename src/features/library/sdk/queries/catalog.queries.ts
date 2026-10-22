@@ -647,12 +647,28 @@ export function useItem(
   scopeId?: string,
   options?: { enabled?: boolean },
 ) {
+  const queryClient = useQueryClient();
   const targetScope = normalizeScopeId(scopeId);
   return useQuery({
     queryKey: itemKeys.byId(targetScope, id || ''),
     queryFn: () => ItemsService.getById(targetScope, id || ''),
     enabled: (options?.enabled ?? true) && Boolean(id),
+    staleTime: 1000 * 30,
     gcTime: 5 * 60 * 1000,
+    placeholderData: (previousData) => {
+      if (previousData) return previousData;
+      if (!id) return undefined;
+      const listQueries = queryClient.getQueriesData<{ items?: Item[] }>({
+        queryKey: itemKeys.all(targetScope),
+      });
+      for (const [, listData] of listQueries) {
+        if (Array.isArray(listData?.items)) {
+          const found = listData.items.find((it) => it.id === id);
+          if (found) return found;
+        }
+      }
+      return undefined;
+    },
   });
 }
 
@@ -1145,6 +1161,32 @@ export function useLibraryDeltaSync(
           const itemId = String(
             change.entityId ?? change.itemId ?? rawData.id ?? change.id ?? '',
           );
+
+          if (entityType === 'collection' || entityType === 'collectionitem') {
+            await queryClient.invalidateQueries({
+              queryKey: collectionKeys.all(effectiveScope),
+            });
+            continue;
+          }
+
+          if (entityType === 'tag' || entityType === 'itemtag') {
+            await queryClient.invalidateQueries({
+              queryKey: tagKeys.list(effectiveScope),
+            });
+            continue;
+          }
+
+          if (entityType === 'note') {
+            const parentItemId = String(
+              rawData.itemId ?? change.itemId ?? '',
+            );
+            if (parentItemId) {
+              await queryClient.invalidateQueries({
+                queryKey: noteKeys.list(effectiveScope, parentItemId),
+              });
+            }
+            continue;
+          }
 
           if (entityType !== 'item' || !itemId) continue;
 

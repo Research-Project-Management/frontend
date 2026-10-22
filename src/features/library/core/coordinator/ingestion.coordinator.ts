@@ -10,6 +10,7 @@ import type {
   InvalidationClient,
 } from '@/features/library/domain/types/batch-upload.types';
 import { cleanFilenameToTitle } from '@/features/library/domain/metadata';
+import { BatchFlowManager } from '@/features/library/core/manager/batch-flow.manager';
 
 // Stage 1: Provisional Item Creation & Modal Initialization
 
@@ -404,20 +405,18 @@ export async function executeBatchUpload(
     }
   };
 
-  const runWorker = async () => {
-    while (queue.length > 0) {
-      const nextEntry = queue.shift();
-      if (!nextEntry) break;
-      await processFile(nextEntry);
-    }
-  };
+  // Execute batch using classic Bounded Worker Pool Pattern
+  const tasks = files.map((file, index) => ({
+    id: initialProcessingItems[index]!.id,
+    name: file.name,
+    data: { file, index, provisionalId: initialProcessingItems[index]!.id },
+    execute: (entry: { file: File; index: number; provisionalId: string }) => processFile(entry),
+  }));
 
-  const workers = Array.from(
-    { length: Math.min(concurrency, files.length) },
-    () => runWorker(),
-  );
-
-  await Promise.all(workers);
+  const flowManager = new BatchFlowManager<{ file: File; index: number; provisionalId: string }>({
+    concurrency,
+  });
+  await flowManager.execute(tasks);
   await synchronizeBatchCaches(queryClient, scopeId, effectiveCollection);
 
   // Ensure all provisional items for this batch are wiped

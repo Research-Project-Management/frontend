@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
   libraryServices,
@@ -23,6 +23,37 @@ export { collectionKeys, invalidateCollections };
 export type UseCollectionsScopeInput =
   | string
   | { scopeId?: string; projectId?: string; enabled?: boolean };
+
+function resolveCachedCollectionVersion(
+  queryClient: QueryClient,
+  effectiveScope: string,
+  collectionId: string,
+  explicitExpectedVersion?: number,
+  explicitVersion?: number,
+): number | undefined {
+  if (typeof explicitExpectedVersion === 'number') return explicitExpectedVersion;
+  if (typeof explicitVersion === 'number') return explicitVersion;
+
+  const cached = queryClient.getQueryData<Collection>(
+    collectionKeys.byId(effectiveScope, collectionId),
+  );
+  if (typeof cached?.version === 'number') {
+    return cached.version;
+  }
+
+  const listData = queryClient.getQueryData<
+    Collection[] | { collections: Collection[] }
+  >(collectionKeys.all(effectiveScope));
+  const collections = Array.isArray(listData) ? listData : listData?.collections;
+  if (Array.isArray(collections)) {
+    const found = collections.find((c) => c.id === collectionId);
+    if (typeof found?.version === 'number') {
+      return found.version;
+    }
+  }
+
+  return undefined;
+}
 
 export function useCollections(scopeIdOrOptions?: UseCollectionsScopeInput) {
   const scopeId =
@@ -76,12 +107,23 @@ export function useCollections(scopeIdOrOptions?: UseCollectionsScopeInput) {
       const targetScope = overrideScope || scopeId;
       const rawParent = rest.parentId;
       const cleanParentId = rawParent === 'root' ? null : rawParent;
+
+      const resolvedVersion = resolveCachedCollectionVersion(
+        queryClient,
+        targetScope,
+        collectionId,
+        rest.expectedVersion,
+        rest.version,
+      );
+
       const payload: UpdateCollectionDTO = {
         name: rest.name !== undefined ? rest.name.trim() : undefined,
         description:
           rest.description !== undefined ? rest.description.trim() : undefined,
         color: rest.color,
         icon: rest.icon,
+        expectedVersion: resolvedVersion,
+        version: resolvedVersion,
       };
       if (rawParent !== undefined) {
         payload.parentId = cleanParentId;
@@ -131,10 +173,20 @@ export function useCollections(scopeIdOrOptions?: UseCollectionsScopeInput) {
           context.previousCollections,
         );
       }
-      toast.error('Failed to update collection', {
-        description: err.message || 'Please try again.',
-        id: 'collection-mutation',
-      });
+      const isConflict =
+        (err as { status?: number })?.status === 409 ||
+        err.message?.includes('409') ||
+        err.message?.toLowerCase().includes('conflict') ||
+        err.message?.toLowerCase().includes('version');
+      toast.error(
+        isConflict ? 'Conflict: Collection modified concurrently' : 'Failed to update collection',
+        {
+          description: isConflict
+            ? 'The collection was updated elsewhere. State refreshed to latest version.'
+            : (err.message || 'Please try again.'),
+          id: 'collection-mutation',
+        },
+      );
     },
     onSettled: (_res, _err, variables) => {
       const targetScope = variables.scopeId || scopeId;

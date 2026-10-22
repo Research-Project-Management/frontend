@@ -29,7 +29,10 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
   const params = useParams() as { paperId?: string; projectId?: string };
   const router = useRouter();
   const qc = useQueryClient();
-  const rawProjectId = params?.projectId;
+  const activeScope = useLibraryUIStore((s) => s.activeScope);
+  const rawProjectId =
+    params?.projectId ||
+    (activeScope.type === 'project' ? activeScope.projectId || activeScope.id : undefined);
   const isProject = Boolean(
     rawProjectId && rawProjectId !== 'me' && rawProjectId !== 'user',
   );
@@ -47,7 +50,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
   const fulltext = fulltextQuery.data ?? null;
   const isLoadingFulltext = fulltextQuery.isLoading;
 
-  const paperUrl = getItemFileUrl(paper);
+  const paperUrl = getItemFileUrl(paper, scopeId);
   const {
     blobUrl: pdfBlobUrl,
     isLoading: pdfLoading,
@@ -64,7 +67,9 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
   const [zoom, setZoom] = useState(1.0);
 
   const effectiveAttachmentId =
-    paper?.attachments?.[0]?.id || paper?.primaryFile?.fileId || undefined;
+    paper?.attachments?.find((a) => a.attachmentType === 'primary_pdf')?.id ||
+    paper?.attachments?.[0]?.id ||
+    undefined;
 
   const {
     annotations = [],

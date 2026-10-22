@@ -11,6 +11,7 @@ import { useReader } from "@/features/library/ui/reader/hooks/use-reader";
 import { useShallow } from "zustand/react/shallow";
 import { useReaderStore } from "@/features/library/core/store/reader.store";
 import { useLibraryUIStore } from "@/features/library/core/store/library-ui.store";
+import { useLibraryPermissions } from "@/features/library/core/coordinator/permissions.coordinator";
 import {
   useOcrExtraction,
   useExportAnnotatedPdf,
@@ -69,6 +70,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
   const initialSearchQuery =
     searchParams.get("q") || searchParams.get("search") || undefined;
   const activeScope = useLibraryUIStore((s) => s.activeScope);
+  const { canEditItem: canEdit } = useLibraryPermissions();
   const { state, actions } = useReader(paperId, onBack);
   const {
     scopeId,
@@ -722,7 +724,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
           <ReaderInspector
             item={paper}
             scopeId={scopeId}
-            canEdit={true}
+            canEdit={canEdit}
             defaultOpen={isReaderInspectorOpen}
             onClose={handleCloseInspector}
             onSelectItem={handleSelectItem}

@@ -338,10 +338,16 @@ export const useLibraryUIStore = create<LibraryUIState>()(
   ),
 );
 
-// Granular Row Selectors
+// Granular Row & Performance Selectors
 export const useIsItemSelected = (id: string): boolean =>
   useLibraryUIStore((state) => state.selectedIds.has(id));
 
 export const useIsActiveItem = (id: string): boolean =>
   useLibraryUIStore((state) => state.activeItemId === id);
+
+export const useSelectionCount = (): number =>
+  useLibraryUIStore((state) => state.selectedIds.size);
+
+export const useHasSelection = (): boolean =>
+  useLibraryUIStore((state) => state.selectedIds.size > 0);
 

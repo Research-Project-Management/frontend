@@ -1,8 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useMemo } from "react";
-
-import { useRouter, useParams, useSearchParams } from "next/navigation";
+import React from "react";
 import {
   FileText,
   BookOpen,
@@ -18,7 +16,6 @@ import {
   Upload,
   Link2,
 } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/shared/components/ui/button";
 import {
   DropdownMenu,
@@ -31,15 +28,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/shared/components/ui/tooltip";
-import { getItemFileUrl } from "@/features/library/domain/item-url";
-import {
-  downloadAnnotatedPdf,
-  UploadService,
-} from "@/features/library/sdk/library.client";
-import {
-  useAttachments,
-  useRenameAttachment,
-} from "@/features/library/sdk/queries/extraction.queries";
+import { useAttachmentCoordinator } from "./useAttachmentCoordinator";
 import { PdfPagePreview } from "./PdfPagePreview";
 import type {
   Item,
@@ -68,208 +57,38 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
     canEdit = true,
     onRegisterAdd,
   } = props;
-  const router = useRouter();
-  const params = useParams();
-  const searchParams = useSearchParams();
-  const currentQuery = searchParams.get("q");
-  const qParam = currentQuery ? `?q=${encodeURIComponent(currentQuery)}` : "";
-  const routeProjectId =
-    typeof params?.projectId === "string" ? params.projectId : undefined;
-  const rawScopeId =
-    scopeId || paper.projectId || routeProjectId || "user";
-
   const {
-    captureSnapshot,
-    isCapturingSnapshot,
-    setPrimary,
+    rawScopeId,
+    fileInputRef,
+    isUploadingFile,
+    handleFileSelect,
+    isAddingLink,
+    linkUrlInput,
+    setLinkUrlInput,
+    linkTitleInput,
+    setLinkTitleInput,
+    isSubmittingLink,
+    handleOpenLinkForm,
+    handleCancelLink,
+    handleSubmitLinkAttachment,
+    primaryAttachment,
+    otherAttachments,
+    hasSnapshot,
+    paperUrl,
+    handleOpenReader,
+    handleDownload,
+    isDownloadingAnnotated,
+    handleDownloadAnnotatedPdf,
     isSettingPrimary,
-    add: addAttachment,
-  } = useAttachments(rawScopeId, paper.id || "");
-  const [isDownloadingAnnotated, setIsDownloadingAnnotated] = useState(false);
-  const [isUploadingFile, setIsUploadingFile] = useState(false);
-  const [isAddingLink, setIsAddingLink] = useState(false);
-  const [linkUrlInput, setLinkUrlInput] = useState("");
-  const [linkTitleInput, setLinkTitleInput] = useState("");
-  const [isSubmittingLink, setIsSubmittingLink] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const renameAttachmentMutation = useRenameAttachment(rawScopeId);
-
-  useEffect(() => {
-    if (onRegisterAdd) {
-      onRegisterAdd(() => {
-        fileInputRef.current?.click();
-      });
-    }
-  }, [onRegisterAdd]);
-
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !paper.id) return;
-    try {
-      setIsUploadingFile(true);
-      const uploaded = await UploadService.uploadMultipart(rawScopeId, file);
-      await addAttachment({
-        itemId: paper.id,
-        filename: uploaded.filename,
-        url: uploaded.url,
-        size: uploaded.size,
-        mimeType: uploaded.mimeType,
-        linkMode: "imported_file",
-        attachmentType: "supplementary",
-      });
-    } catch (err) {
-      toast.error("Failed to attach file", {
-        description: err instanceof Error ? err.message : "Please try again.",
-      });
-    } finally {
-      setIsUploadingFile(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
-
-  const handleOpenLinkForm = () => {
-    setLinkUrlInput("");
-    setLinkTitleInput("");
-    setIsAddingLink(true);
-  };
-
-  const handleSubmitLinkAttachment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!paper.id) return;
-    const targetUrl = linkUrlInput.trim();
-    if (!targetUrl) return;
-    const linkTitle = linkTitleInput.trim() || targetUrl;
-
-    try {
-      setIsSubmittingLink(true);
-      await addAttachment({
-        itemId: paper.id,
-        filename: linkTitle,
-        url: targetUrl,
-        size: 0,
-        mimeType: "text/uri-list",
-        linkMode: "linked_url",
-        attachmentType: "other",
-      });
-      setIsAddingLink(false);
-      setLinkUrlInput("");
-      setLinkTitleInput("");
-    } catch (err) {
-      toast.error("Failed to attach link", {
-        description:
-          err instanceof Error
-            ? err.message
-            : "Please check the URL and try again.",
-      });
-    } finally {
-      setIsSubmittingLink(false);
-    }
-  };
-
-  type AttachmentLike = Omit<ItemAttachment, "attachmentType"> & {
-    attachmentType?: ItemAttachment["attachmentType"] | "web_snapshot";
-    type?: string;
-    name?: string;
-    fileUrl?: string;
-  };
-
-  const rawAttachments = paper.attachments || EMPTY_ATTACHMENTS;
-  const paperUrl = getItemFileUrl(paper);
-
-  const paperFilename = paper.filename;
-
-  const primaryAttachment = useMemo(() => {
-    return (
-      (rawAttachments as AttachmentLike[]).find(
-        (att) =>
-          att.attachmentType === "primary_pdf" ||
-          att.type === "primary_pdf" ||
-          (paperFilename &&
-            (att.filename === paperFilename || att.name === paperFilename)),
-      ) || null
-    );
-  }, [rawAttachments, paperFilename]);
-
-  const otherAttachments = useMemo(() => {
-    return (rawAttachments as AttachmentLike[]).filter(
-      (att) => {
-        if (att.attachmentType === "primary_pdf" || att.type === "primary_pdf")
-          return false;
-        if (
-          paperFilename &&
-          (att.filename === paperFilename || att.name === paperFilename)
-        )
-          return false;
-        return true;
-      },
-    );
-  }, [rawAttachments, paperFilename]);
-
-  const hasSnapshot = useMemo(() => {
-    return (rawAttachments as AttachmentLike[]).some(
-      (att) =>
-        att.linkMode === "imported_url" ||
-        att.attachmentType === "snapshot" ||
-        att.attachmentType === "web_snapshot" ||
-        att.mimeType === "text/html" ||
-        att.filename?.toLowerCase().endsWith(".html"),
-    );
-  }, [rawAttachments]);
-
-  const handleOpenReader = () => {
-    if (!paper.id) return;
-    router.push(`/library/papers/${paper.id}${qParam}`);
-  };
-
-  const handleDownload = (url: string, filename: string) => {
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.target = "_blank";
-    a.rel = "noopener noreferrer";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  };
-
-  const handleDownloadAnnotatedPdf = async () => {
-    if (!paper.id) return;
-    try {
-      setIsDownloadingAnnotated(true);
-      await downloadAnnotatedPdf(
-        rawScopeId,
-        paper.id,
-        `${paper.title || "document"}-annotated.pdf`,
-      );
-      toast.success("Annotated PDF downloaded", {
-        id: "annotated-pdf-download",
-      });
-    } catch (err: unknown) {
-      toast.error("Failed to export annotated PDF", {
-        description:
-          err instanceof Error
-            ? err.message
-            : "Please verify that annotations exist or try again.",
-        id: "annotated-pdf-download",
-      });
-    } finally {
-      setIsDownloadingAnnotated(false);
-    }
-  };
-
-  const handleSetPrimary = async (attachmentId: string) => {
-    if (!paper.id || !attachmentId) return;
-    try {
-      await setPrimary(attachmentId);
-    } catch {
-      // Toast notification is handled inside useAttachments
-    }
-  };
-
-  const handleCaptureSnapshot = async () => {
-    if (!paper.id || !paper.url) return;
-    await captureSnapshot(paper.url);
-  };
+    handleSetPrimary,
+    isCapturingSnapshot,
+    handleCaptureSnapshot,
+    renameAttachmentMutation,
+  } = useAttachmentCoordinator({
+    item: paper,
+    scopeId,
+    onRegisterAdd,
+  });
 
   if (
     !paperUrl &&
@@ -401,7 +220,7 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => setIsAddingLink(false)}
+                onClick={handleCancelLink}
                 disabled={isSubmittingLink}
                 className="h-6 px-2 text-11"
               >

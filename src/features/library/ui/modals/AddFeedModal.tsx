@@ -123,7 +123,7 @@ export function AddFeedModal({ open, onOpenChange }: AddFeedModalProps) {
         }
       }
 
-      const newFeed = addFeed(finalName, data.url, data.retentionDays);
+      const newFeed = await addFeed(finalName, data.url, data.retentionDays);
       toast.success(`Subscribed to "${newFeed.name}"`);
       onOpenChange(false);
       router.push(`/library/feeds/${newFeed.id}`);

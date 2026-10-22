@@ -2,7 +2,6 @@
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { ChevronDown, ChevronRight, Plus, X } from 'lucide-react';
 import {
   Tooltip,
@@ -10,10 +9,8 @@ import {
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
 import { useLibraryUIStore, type InspectorSectionId } from '@/features/library/core/store/library-ui.store';
-import { useLibraryItemDetailQuery, useUpdateLibraryItemMutation } from '@/features/library/sdk/queries/catalog.queries';
 import { useRelations } from '@/features/library/sdk/queries/saved-searches-relations.queries';
-import { itemKeys } from '@/features/library/sdk/query-keys';
-import { normalizeTags } from '@/features/library/domain/metadata';
+import { useInspectorItemResolver } from './useInspectorItemResolver';
 
 import {
   InspectorTabs,
@@ -246,52 +243,19 @@ function LibraryInspectorContent({
     }
   }, []);
 
-  // Scope & Item resolution
-  const targetScope = scopeId || 'user';
-  const incomingItem = propItem || null;
-
-  // If item was not passed directly as a prop, query by activeItemId
-  const queryItemId = !incomingItem && activeItemId ? activeItemId : undefined;
-  const { data: queriedItem, isLoading } = useLibraryItemDetailQuery(
+  // Scope & Item resolution via Repository / Resolver Pattern
+  const {
+    effectiveItem,
     targetScope,
-    queryItemId,
-  );
+    isLoading,
+    effectiveCanEdit,
+    attachmentCount,
+    noteCount,
+    tagsList,
+    itemCollectionIds,
+    handleUpdateItem,
+  } = useInspectorItemResolver({ propItem, scopeId, canEdit });
 
-  const queryClient = useQueryClient();
-
-  // Fast-lookup in existing query cache to eliminate any loading flicker/jump when clicking different items
-  // without triggering an unneeded network fetch of the entire library
-  const cachedListItem = useMemo(() => {
-    if (!queryItemId) return null;
-    const directCached = queryClient.getQueryData<Item | { item?: Item }>(itemKeys.byId(targetScope, queryItemId));
-    const resolvedDirect = (directCached && 'item' in directCached && directCached.item ? directCached.item : directCached) as Item | undefined;
-    if (resolvedDirect && resolvedDirect.id === queryItemId) return resolvedDirect;
-
-    const queries = queryClient.getQueriesData<{ items?: Item[] }>({ queryKey: itemKeys.all(targetScope) });
-    for (const [_, data] of queries) {
-      if (Array.isArray(data?.items)) {
-        const found = data.items.find((it: Item) => it.id === queryItemId);
-        if (found) return found;
-      }
-    }
-    return null;
-  }, [queryClient, targetScope, queryItemId]);
-
-  // Keep previous item while switching items to prevent unmounting and layout bounce
-  const lastItemRef = useRef<Item | null>(null);
-  if (queriedItem) {
-    lastItemRef.current = queriedItem;
-  } else if (cachedListItem) {
-    lastItemRef.current = cachedListItem;
-  } else if (!activeItemId) {
-    lastItemRef.current = null;
-  }
-
-  const effectiveItem =
-    incomingItem ||
-    queriedItem ||
-    cachedListItem ||
-    (activeItemId ? lastItemRef.current : null);
   const handleClose = propOnClose || toggleInspector;
 
   const currentLevel = SECTION_TO_LEVEL[activeInspectorTab] || 8;
@@ -310,32 +274,6 @@ function LibraryInspectorContent({
       return changed ? next : prev;
     });
   }, [currentLevel]);
-
-  const isItemInTrash = Boolean(effectiveItem?.deletedAt);
-  const effectiveCanEdit = canEdit && !isItemInTrash;
-
-  // Calculate file & note counts for tab badges (O(1) — no memoization needed)
-  const attachmentCount = effectiveItem?.attachments?.length ?? 0;
-  const noteCount = effectiveItem?.notes?.length ?? 0;
-
-  const updateMutation = useUpdateLibraryItemMutation(targetScope);
-
-  const handleUpdateItem = (
-    payload: Partial<Item>,
-    options?: { silent?: boolean },
-  ) => {
-    if (!effectiveItem || !effectiveCanEdit) return;
-    const version =
-      payload.version ??
-      effectiveItem.version;
-    const isSilent = Boolean(options?.silent || payload.silent);
-    updateMutation.mutate({
-      itemId: effectiveItem.id,
-      data: payload,
-      expectedVersion: typeof version === 'number' ? version : undefined,
-      silent: isSilent,
-    });
-  };
 
   // Collapsible section state: Details and Abstract are expanded by default, others collapsed
   const [expandedSections, setExpandedSections] = useState<Record<InspectorSectionId, boolean>>({
@@ -375,28 +313,10 @@ function LibraryInspectorContent({
     }
   }, []);
 
-  const itemCollectionIds = useMemo(() => {
-    if (!effectiveItem) return [];
-    const ids = new Set<string>();
-    if (Array.isArray(effectiveItem.collectionIds)) {
-      effectiveItem.collectionIds.forEach((id: string) => id && ids.add(id));
-    }
-    if (Array.isArray(effectiveItem.collections)) {
-      effectiveItem.collections.forEach((c: { id?: string }) => c?.id && ids.add(c.id));
-    }
-    return Array.from(ids);
-  }, [effectiveItem]);
-
-
   // Relations data
   const { relatedItems } = useRelations(targetScope, effectiveItem?.id || '', {
     enabled: Boolean(effectiveItem?.id && expandedSections.relations && currentLevel >= 2),
   });
-
-  // Tags list
-  const tagsList = useMemo(() => {
-    return normalizeTags(effectiveItem);
-  }, [effectiveItem]);
 
   // Section emptiness flags (to prevent empty padding when clean/empty)
   const hasFiles = Boolean(

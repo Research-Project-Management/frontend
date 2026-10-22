@@ -416,7 +416,11 @@ export function useMergeDuplicates(scopeId?: string) {
 
 export function useFetchAcademicFeed() {
   return useMutation({
-    mutationFn: (url: string) => libraryServices.ingestion.fetchFeed(url),
+    mutationFn: (param: string | { url: string; forceRefresh?: boolean }) => {
+      const url = typeof param === 'string' ? param : param.url;
+      const forceRefresh = typeof param === 'object' ? param.forceRefresh : false;
+      return libraryServices.ingestion.fetchFeed(url, forceRefresh);
+    },
     onError: (error: Error) => {
       toast.error('Failed to fetch feed', {
         description: error.message || 'Could not load feed from URL.',

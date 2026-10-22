@@ -1,6 +1,11 @@
-﻿import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
-  sanitizeItemPayload, ItemService, QualityService, SyncService } from '@/features/library/sdk/library.client';
+  sanitizeItemPayload,
+  ItemService,
+  QualityService,
+  SyncService,
+  FeedsService,
+} from '@/features/library/sdk/library.client';
 import * as api from '@/shared/lib/api';
 
 describe('Library Module — Client Zero-Trust & Sanitization', () => {
@@ -317,6 +322,30 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
       );
       expect(res.tombstones).toHaveLength(1);
       expect(res.tombstones[0].entityId).toBe('item-99');
+    });
+  });
+
+  describe('FeedsService — API Prefix & Scope Resolution', () => {
+    it('should include /api/v1/library/feeds prefix for all feed operations', async () => {
+      vi.mocked(api.apiGet).mockResolvedValueOnce({ data: [] });
+      await FeedsService.getSubscriptions();
+      expect(api.apiGet).toHaveBeenCalledWith(
+        '/api/v1/library/feeds/subscriptions',
+      );
+
+      vi.mocked(api.apiPost).mockResolvedValueOnce({ data: { id: 'sub-1' } });
+      await FeedsService.subscribe({ url: 'https://arxiv.org/rss/cs.AI' });
+      expect(api.apiPost).toHaveBeenCalledWith(
+        '/api/v1/library/feeds/subscriptions',
+        { url: 'https://arxiv.org/rss/cs.AI' },
+      );
+
+      vi.mocked(api.apiPost).mockResolvedValueOnce({ success: true });
+      await FeedsService.markItemRead('feed-item-1', true);
+      expect(api.apiPost).toHaveBeenCalledWith(
+        '/api/v1/library/feeds/items/feed-item-1/read',
+        { isRead: true },
+      );
     });
   });
 });

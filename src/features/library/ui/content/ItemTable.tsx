@@ -17,6 +17,7 @@ import {
   useCollectionsQuery,
   useMoveCollectionItemsMutation,
 } from "@/features/library/sdk/queries/collections.queries";
+import { useTags } from "@/features/library/sdk/queries/tags-notes.queries";
 import { itemKeys, tagKeys } from "@/features/library/sdk/query-keys";
 import {
   DEFAULT_LIBRARY_DISPLAY_OPTIONS,
@@ -25,10 +26,11 @@ import {
 } from "@/features/library/ui/topbar/LibraryDisplayPopover";
 import { sortLibraryItems } from "@/features/library/domain/sort-items.domain";
 import { normalizeTags } from "@/features/library/domain/metadata";
-import { useTags } from "@/features/library/sdk/queries/tags-notes.queries";
 import { ItemTableHeader } from "./ItemTableHeader";
 import { ItemTableRow } from "./ItemTableRow";
-import type { Item } from "@/features/library/domain/types/library.types";
+import { useLibraryKeyboardShortcuts } from "./useLibraryKeyboardShortcuts";
+import { useLibraryItemOperations } from "./useLibraryItemOperations";
+import type { Item, Collection } from "@/features/library/domain/types/library.types";
 
 export interface ItemTableProps {
   items: Item[];
@@ -55,6 +57,9 @@ export interface ItemTableProps {
  * - ItemTableRow: Memoized row listening to granular boolean selectors
  * - ItemContextMenu: Isolated context menu portal
  */
+const EMPTY_COLLECTIONS: Collection[] = [];
+const EMPTY_TAGS: unknown[] = [];
+
 export const ItemTable = React.memo(function ItemTable({
   items,
   totalCount,
@@ -104,37 +109,10 @@ export const ItemTable = React.memo(function ItemTable({
   const restoreMutation = useBatchRestoreItemsMutation(scopeId);
   const purgeMutation = useBatchPurgeItemsMutation(scopeId);
   const moveMutation = useMoveCollectionItemsMutation(scopeId);
-  const { data: collections = [] } = useCollectionsQuery(scopeId);
-  const { tags: scopeTags } = useTags(scopeId);
-
-  const handleMoveToCollection = useCallback(
-    async (itemId: string, targetCollectionId: string) => {
-      if (propOnMoveToCollection) {
-        propOnMoveToCollection(itemId, targetCollectionId);
-        return;
-      }
-      const toastId = toast.loading("Moving reference...", { id: "move-doc" });
-      try {
-        await moveMutation.mutateAsync({
-          targetCollectionId,
-          itemIds: [itemId],
-        });
-        toast.success("Reference moved", {
-          description: "Reference successfully moved to collection.",
-          id: toastId,
-        });
-      } catch (err: unknown) {
-        toast.error("Failed to move reference", {
-          description:
-            err instanceof Error
-              ? err.message
-              : "Could not move document to collection.",
-          id: toastId,
-        });
-      }
-    },
-    [propOnMoveToCollection, moveMutation],
-  );
+  const { data: rawCollections } = useCollectionsQuery(scopeId);
+  const collections = rawCollections ?? EMPTY_COLLECTIONS;
+  const { tags: rawScopeTags } = useTags(scopeId);
+  const scopeTags = (rawScopeTags ?? EMPTY_TAGS) as typeof rawScopeTags;
 
   // Sorting state derived directly from displayOptions
   const sortColumn = displayOptions?.orderBy || "createdAt";
@@ -314,216 +292,40 @@ export const ItemTable = React.memo(function ItemTable({
 
 
   // Keyboard navigation matching Zotero 7 desktop parity
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!sortedItems.length) return;
-    const currentActiveId = useLibraryUIStore.getState().activeItemId;
-    const currentIndex = sortedItems.findIndex((it) => it.id === currentActiveId);
+  const { handleKeyDown } = useLibraryKeyboardShortcuts({
+    items,
+    sortedItems,
+    itemsById,
+    isTrash,
+    collectionId,
+    scopeTags,
+    onDetachItem,
+    handleOpenItem,
+    deleteItems: (ids) => deleteMutation.mutate(ids),
+    updateItemMutation,
+    lastSelectedIndexRef,
+  });
 
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      const nextIndex = Math.min(currentIndex + 1, sortedItems.length - 1);
-      const nextItem = sortedItems[nextIndex];
-      if (nextItem) {
-        setActiveItem(nextItem.id);
-        lastSelectedIndexRef.current = nextIndex;
-      }
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      const prevIndex = Math.max(currentIndex - 1, 0);
-      const prevItem = sortedItems[prevIndex];
-      if (prevItem) {
-        setActiveItem(prevItem.id);
-        lastSelectedIndexRef.current = prevIndex;
-      }
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      setActiveItem(null);
-      clearSelection();
-    } else if (e.key === " ") {
-      e.preventDefault();
-      if (currentActiveId) {
-        toggleSelect(currentActiveId);
-      }
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      if (currentActiveId && !isTrash) {
-        handleOpenItem(currentActiveId);
-      }
-    } else if (e.key === "Delete" || e.key === "Backspace") {
-      e.preventDefault();
-      const currentSelectedIds = useLibraryUIStore.getState().selectedIds;
-      const rawIds =
-        currentSelectedIds.size > 0
-          ? Array.from(currentSelectedIds)
-          : currentActiveId
-            ? [currentActiveId]
-            : [];
-      const isProcessingItem = (id: string) => {
-        const it = itemsById.get(id);
-        return Boolean(
-          it?._isProcessing ||
-            id.startsWith("temp-") ||
-            id.startsWith("provisional-"),
-        );
-      };
-      const hasProcessing = rawIds.some(isProcessingItem);
-      if (hasProcessing) {
-        toast.warning(
-          "Cannot delete or remove items that are currently uploading or processing",
-          {
-            id: "library-item-guard",
-          },
-        );
-      }
-      const ids = rawIds.filter((id) => !isProcessingItem(id));
-      if (ids.length > 0) {
-        if (isTrash) {
-          openModal("DELETE_CONFIRM", { itemIds: ids, permanent: true });
-        } else if (onDetachItem && collectionId && !e.shiftKey) {
-          // Zotero 7: In collection, Delete removes from collection without deleting paper from library
-          ids.forEach((id) => onDetachItem(id));
-          clearSelection();
-        } else {
-          // Move to trash
-          deleteMutation.mutate(ids);
-          clearSelection();
-        }
-      }
-    } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a") {
-      e.preventDefault();
-      selectAll(items.map((it) => it.id));
-    } else if (
-      !e.ctrlKey &&
-      !e.metaKey &&
-      !e.altKey &&
-      /^[1-9]$/.test(e.key) &&
-      !isTrash
-    ) {
-      const shortcutNum = parseInt(e.key, 10);
-      const matchedTag = scopeTags.find((t) => t.shortcut === shortcutNum);
-      if (!matchedTag) return;
-
-      const currentSelectedIds = useLibraryUIStore.getState().selectedIds;
-      const targetIds =
-        currentSelectedIds.size > 0
-          ? Array.from(currentSelectedIds)
-          : currentActiveId
-            ? [currentActiveId]
-            : [];
-      if (targetIds.length === 0) return;
-
-      e.preventDefault();
-      const targetItems = targetIds
-        .map((id) => itemsById.get(id))
-        .filter((it): it is Item => Boolean(it && !it._isProcessing));
-      if (targetItems.length === 0) return;
-
-      const tagLower = matchedTag.name.toLowerCase();
-      // If all target items already have this tag, remove it; otherwise add it to all
-      const allHaveTag = targetItems.every((it) =>
-        normalizeTags(it).some((t) => t.toLowerCase() === tagLower),
-      );
-
-      void (async () => {
-        try {
-          await Promise.all(
-            targetItems.map((it) => {
-              const currentTags = normalizeTags(it);
-              const nextTags = allHaveTag
-                ? currentTags.filter((t) => t.toLowerCase() !== tagLower)
-                : currentTags.some((t) => t.toLowerCase() === tagLower)
-                  ? currentTags
-                  : [...currentTags, matchedTag.name];
-              return updateItemMutation.mutateAsync({
-                itemId: it.id,
-                data: { tags: nextTags },
-                silent: true,
-              });
-            }),
-          );
-          queryClient.invalidateQueries({ queryKey: itemKeys.all(scopeId) });
-          queryClient.invalidateQueries({
-            queryKey: tagKeys.list(scopeId),
-          });
-          for (const it of targetItems) {
-            queryClient.invalidateQueries({
-              queryKey: itemKeys.byId(scopeId, it.id),
-            });
-          }
-          toast.success(
-            allHaveTag
-              ? `Removed tag "${matchedTag.name}" (#${shortcutNum})`
-              : `Added tag "${matchedTag.name}" (#${shortcutNum})`,
-            { id: "shortcut-tag-toggle" },
-          );
-        } catch {
-          toast.error(`Failed to toggle tag "${matchedTag.name}"`, {
-            id: "shortcut-tag-toggle",
-          });
-        }
-      })();
-    }
-  };
-
-  const handleToggleStar = useCallback(
-    (item: Item, isStarred: boolean) => {
-      if (item._isProcessing) return;
-      toggleStarMutation.mutate({
-        id: item.id,
-        isStarred: !isStarred,
-      });
-    },
-    [toggleStarMutation],
-  );
-
-  const handleDelete = useCallback(
-    (id: string) => {
-      const targetItem = itemsById.get(id);
-      if (targetItem?._isProcessing) {
-        toast.warning(
-          "Cannot delete an item that is currently uploading or processing",
-          {
-            id: "library-item-guard",
-          },
-        );
-        return;
-      }
-      deleteMutation.mutate([id]);
-    },
-    [deleteMutation, itemsById],
-  );
-
-  const handleRestore = useCallback(
-    (id: string) => {
-      if (onRestoreItems) {
-        onRestoreItems([id]);
-      } else {
-        restoreMutation.mutate([id]);
-      }
-    },
-    [onRestoreItems, restoreMutation],
-  );
-
-  const handlePurge = useCallback(
-    (id: string) => {
-      const targetItem = itemsById.get(id);
-      if (targetItem?._isProcessing) {
-        toast.warning(
-          "Cannot delete an item that is currently uploading or processing",
-          {
-            id: "library-item-guard",
-          },
-        );
-        return;
-      }
-      if (onPermanentDeleteItems) {
-        onPermanentDeleteItems([id]);
-      } else {
-        purgeMutation.mutate([id]);
-      }
-    },
-    [onPermanentDeleteItems, purgeMutation, itemsById],
-  );
+  // Unified Document Operations (Star, Delete, Restore, Purge, Move)
+  const {
+    handleToggleStar,
+    handleDelete,
+    handleRestore,
+    handlePurge,
+    handleMoveToCollection,
+  } = useLibraryItemOperations({
+    itemsById,
+    isTrash,
+    collectionId,
+    propOnMoveToCollection,
+    onRestoreItems,
+    onPermanentDeleteItems,
+    toggleStarMutation,
+    deleteMutation,
+    restoreMutation,
+    purgeMutation,
+    moveMutation,
+  });
 
   // Dynamically compute table minimum width to prevent column squashing when fields are toggled
   const tableMinWidth = useMemo(() => {

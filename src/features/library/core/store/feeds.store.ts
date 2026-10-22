@@ -10,6 +10,7 @@ import {
   FeedRetentionDays,
 } from '@/features/library/domain/types/feeds.types';
 import type { ParsedFeedEntry } from '@/features/library/domain/feed-parser.domain';
+import { FeedsService } from '@/features/library/sdk/library.client';
 
 interface FeedsStore {
   feeds: SavedFeedSubscription[];
@@ -18,14 +19,14 @@ interface FeedsStore {
   readFilter: FeedReadFilterType;
   refreshCounter: number;
   readEntryIds: Set<string>;
-  loadFeeds: () => void;
+  loadFeeds: () => Promise<void>;
   setActiveFeedId: (id: string | null) => void;
   setSelectedFeedEntry: (entry: ParsedFeedEntry | null) => void;
   setReadFilter: (filter: FeedReadFilterType) => void;
   triggerRefresh: () => void;
   addFeed: (name: string, url: string, retentionDays?: FeedRetentionDays) => SavedFeedSubscription;
   updateFeed: (id: string, updates: Partial<Omit<SavedFeedSubscription, 'id'>>) => void;
-  removeFeed: (id: string) => void;
+  removeFeed: (id: string) => Promise<void>;
   markEntryAsRead: (entryId: string) => void;
   toggleEntryRead: (entryId: string) => void;
   markAllEntriesAsRead: (entryIds: string[]) => void;
@@ -40,7 +41,24 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
   refreshCounter: 0,
   readEntryIds: new Set<string>(),
 
-  loadFeeds: () => {
+  loadFeeds: async () => {
+    // 1. Try to load from Backend Database first
+    try {
+      const res = await FeedsService.getSubscriptions();
+      if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+        const mappedFeeds: SavedFeedSubscription[] = res.data.map((sub) => ({
+          id: sub.feedId || sub.id,
+          name: sub.customTitle || sub.feed?.title || 'Academic Feed',
+          url: sub.feed?.url || '',
+          retentionDays: (sub.cleanupReadAfter || 30) as FeedRetentionDays,
+        }));
+        set({ feeds: mappedFeeds });
+        return;
+      }
+    } catch {
+      // Fallback to localStorage if backend is unreachable or user is not logged in
+    }
+
     if (typeof window === 'undefined') return;
     try {
       const saved = window.localStorage.getItem(FEEDS_STORAGE_KEY);
@@ -85,6 +103,7 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
     const trimmedName =
       name.trim() || trimmedUrl.replace(/^https?:\/\/(www\.)?/i, '').slice(0, 42);
     const id = `feed-${Date.now()}`;
+
     const newFeed: SavedFeedSubscription = {
       id,
       name: trimmedName,
@@ -101,6 +120,27 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
         // ignore storage errors
       }
     }
+
+    // Background sync to backend without blocking local state
+    FeedsService.subscribe({
+      url: trimmedUrl,
+      customTitle: trimmedName,
+      cleanupDays: retentionDays,
+    })
+      .then((res) => {
+        const sub = (res?.data as { feedId?: string; id?: string }) || {};
+        const serverId = sub.feedId || sub.id;
+        if (serverId && serverId !== id) {
+          set((state) => ({
+            feeds: state.feeds.map((f) => (f.id === id ? { ...f, id: serverId } : f)),
+            activeFeedId: state.activeFeedId === id ? serverId : state.activeFeedId,
+          }));
+        }
+      })
+      .catch(() => {
+        // Offline fallback
+      });
+
     return newFeed;
   },
 
@@ -116,9 +156,24 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
         // ignore storage errors
       }
     }
+
+    // Background sync to backend without blocking local state
+    FeedsService.updateSubscription(id, {
+      customTitle: updates.name,
+      cleanupDays: updates.retentionDays,
+    }).catch(() => {
+      // Offline fallback
+    });
   },
 
-  removeFeed: (id) => {
+  removeFeed: async (id) => {
+    // Attempt backend sync
+    try {
+      await FeedsService.unsubscribe(id);
+    } catch {
+      // Offline fallback
+    }
+
     const nextFeeds = get().feeds.filter((f) => f.id !== id);
     const nextActiveId =
       get().activeFeedId === id ? nextFeeds[0]?.id ?? null : get().activeFeedId;
@@ -139,6 +194,10 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
     const next = new Set(current);
     next.add(entryId);
     set({ readEntryIds: next });
+
+    // Sync with backend asynchronously
+    FeedsService.markItemRead(entryId, true).catch(() => {});
+
     if (typeof window !== 'undefined') {
       try {
         window.localStorage.setItem(FEEDS_READ_STATE_KEY, JSON.stringify(Array.from(next)));
@@ -150,13 +209,18 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
 
   toggleEntryRead: (entryId: string) => {
     const current = get().readEntryIds;
+    const isNowRead = !current.has(entryId);
     const next = new Set(current);
-    if (next.has(entryId)) {
+    if (!isNowRead) {
       next.delete(entryId);
     } else {
       next.add(entryId);
     }
     set({ readEntryIds: next });
+
+    // Sync with backend asynchronously
+    FeedsService.markItemRead(entryId, isNowRead).catch(() => {});
+
     if (typeof window !== 'undefined') {
       try {
         window.localStorage.setItem(FEEDS_READ_STATE_KEY, JSON.stringify(Array.from(next)));
@@ -172,6 +236,10 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
       if (id) next.add(id);
     }
     set({ readEntryIds: next });
+
+    // Sync with backend asynchronously
+    FeedsService.markAllRead(entryIds).catch(() => {});
+
     if (typeof window !== 'undefined') {
       try {
         window.localStorage.setItem(FEEDS_READ_STATE_KEY, JSON.stringify(Array.from(next)));

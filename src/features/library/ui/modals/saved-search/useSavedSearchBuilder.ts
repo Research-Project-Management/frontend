@@ -253,6 +253,7 @@ export function useSavedSearchBuilder({
     searchSubcollections,
     showOnlyTopLevel,
     includeParentAndChild,
+    previewConditions,
   ]);
 
   const handleAddCondition = (afterIndex?: number) => {

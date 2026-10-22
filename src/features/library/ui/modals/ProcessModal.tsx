@@ -10,6 +10,9 @@ import {
   DialogDescription,
 } from "@/shared/components/ui/dialog";
 import { Button } from "@/shared/components/ui/button";
+import { Progress } from "@/shared/components/ui/progress";
+import { Badge } from "@/shared/components/ui/badge";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { CheckCircle2, AlertCircle, RefreshCw, Loader2, X } from "lucide-react";
 import type { ProcessModalState } from "@/features/library/core/store/process-modal.store";
 import { cn } from "@/shared/lib/utils";
@@ -178,10 +181,10 @@ export default function ProcessModal({
                 Metadata Retrieval
               </DialogTitle>
               {state.isComplete && !state.error && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-11 font-medium bg-success/10 text-success">
+                <Badge variant="completed" className="text-11 gap-1 py-0.5">
                   <CheckCircle2 className="size-3" />
                   Completed
-                </span>
+                </Badge>
               )}
             </div>
             <DialogDescription className="sr-only">
@@ -207,16 +210,11 @@ export default function ProcessModal({
               </span>
             </div>
 
-            {/* Progress Bar */}
-            <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-              <div
-                className={cn(
-                  "h-full w-full origin-left transition-transform duration-300 ease-out rounded-full",
-                  state.error ? "bg-destructive" : "bg-primary",
-                )}
-                style={{ transform: `scaleX(${percentage / 100})` }}
-              />
-            </div>
+            {/* Global Progress Component */}
+            <Progress
+              value={percentage}
+              className={cn("h-1.5 w-full bg-muted", state.error && "[&>[data-slot=progress-indicator]]:bg-destructive")}
+            />
           </div>
 
           {/* Error Banner if any */}
@@ -236,9 +234,10 @@ export default function ProcessModal({
                   <span>Item Name</span>
                 </div>
 
-                {/* Rows separated by clean subtle dividers */}
-                <div className="max-h-[300px] overflow-y-auto divide-y divide-border-subtle">
-                  {items.map((item, idx) => {
+                {/* Rows wrapped in ScrollArea with clean subtle dividers */}
+                <ScrollArea className="max-h-[300px]">
+                  <div className="divide-y divide-border-subtle">
+                    {items.map((item, idx) => {
                     const status = String(item.status);
                     const isItemFailed = [
                       "FAILED",
@@ -310,8 +309,9 @@ export default function ProcessModal({
                         </div>
                       </div>
                     );
-                  })}
-                </div>
+                    })}
+                  </div>
+                </ScrollArea>
               </div>
             </div>
           )}

@@ -78,13 +78,12 @@ export default function AddLinkModal({
     const trimmedTitle = data.title?.trim();
 
     try {
+      reset({ url: "", title: "" });
+      onOpenChange(false);
       await onSubmit({
         url: trimmedUrl,
         title: trimmedTitle || undefined,
       });
-
-      reset({ url: "", title: "" });
-      onOpenChange(false);
     } catch {
       // Handled by parent
     }

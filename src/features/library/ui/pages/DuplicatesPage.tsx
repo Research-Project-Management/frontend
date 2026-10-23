@@ -95,7 +95,7 @@ export function DuplicatesPage() {
           />
         </div>
       ) : (
-        <LibraryInspector scopeId={effectiveScopeId} canEdit={canEdit} />
+        <LibraryInspector scopeId={effectiveScopeId} canEdit={canEdit} isLibrary={true} />
       )}
 
       {/* Zone 5: Self-managed Modals */}

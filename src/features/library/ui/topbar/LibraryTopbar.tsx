@@ -542,8 +542,8 @@ export function LibraryTopbar({
           />
         ) : null}
 
-        {/* Inspector Toggle Button with preceding divider line - Hidden when panel is open */}
-        {showInspectorToggle && !isInspectorOpen && (
+        {/* Inspector Toggle Button with preceding divider line */}
+        {showInspectorToggle && (
           <div className="flex items-center gap-1 ml-0.5 -mr-1 sm:-mr-2">
             <div className="h-4 w-px bg-border shrink-0" aria-hidden="true" />
             <Tooltip>
@@ -553,8 +553,11 @@ export function LibraryTopbar({
                   variant="ghost"
                   size="icon"
                   onClick={onToggleInspector || toggleInspector}
-                  className="size-8 rounded-md text-foreground hover:bg-muted cursor-pointer transition-colors select-none shrink-0"
-                  aria-label="Open inspector"
+                  className={cn(
+                    "size-8 rounded-md text-foreground hover:bg-muted cursor-pointer transition-colors select-none shrink-0",
+                    isInspectorOpen && "bg-muted text-foreground"
+                  )}
+                  aria-label={isInspectorOpen ? "Close inspector" : "Open inspector"}
                 >
                   <PanelRight
                     className="size-4 text-foreground shrink-0"
@@ -563,7 +566,7 @@ export function LibraryTopbar({
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom" align="end" sideOffset={6}>
-                Expand panel
+                {isInspectorOpen ? "Collapse panel" : "Expand panel"}
               </TooltipContent>
             </Tooltip>
           </div>

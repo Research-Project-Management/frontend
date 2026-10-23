@@ -143,10 +143,7 @@ export function InspectorTabs({
       <div className={cn("flex flex-col items-center gap-1 w-full px-1", hideRailToggle ? "pt-2" : "pt-1.5")}>
         {tabs.map((tab) => {
           const Icon = tab.icon;
-          const tabLevel = SECTION_TO_LEVEL[tab.id];
-          const activeLevel = SECTION_TO_LEVEL[activeTab] || 8;
-          const isSelectedLevel = isInspectorOpen && activeTab === tab.id;
-          const isInActiveLevel = isInspectorOpen && tabLevel <= activeLevel;
+          const isSelected = isInspectorOpen && activeTab === tab.id;
 
           return (
             <Tooltip key={tab.id}>
@@ -165,14 +162,12 @@ export function InspectorTabs({
                   }}
                   className={cn(
                     'relative size-8 flex items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary transition-all cursor-pointer before:absolute before:-inset-1.5 md:before:hidden',
-                    isSelectedLevel
+                    isSelected
                       ? 'bg-muted text-foreground font-semibold shadow-xs ring-1 ring-border'
-                      : isInActiveLevel
-                        ? 'text-foreground hover:bg-muted/70'
-                        : 'text-muted-foreground/60 hover:text-foreground hover:bg-muted/40',
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
                   )}
-                  aria-label={`${tab.label} (Level ${tabLevel})`}
-                  aria-current={isSelectedLevel ? 'true' : undefined}
+                  aria-label={tab.label}
+                  aria-current={isSelected ? 'true' : undefined}
                 >
                   <Icon className="size-4 shrink-0" strokeWidth={1.5} />
                 </button>
@@ -180,15 +175,12 @@ export function InspectorTabs({
               <TooltipContent side="left" sideOffset={6} className="text-11">
                 <div className="flex items-center gap-1.5 font-medium">
                   <span>{tab.label}</span>
-                  <span className="text-10 px-1 py-0.5 rounded bg-muted text-muted-foreground font-mono">
-                    L{tabLevel} • {tabLevel} tab{tabLevel > 1 ? 's' : ''}
-                  </span>
+                  {tab.badge !== undefined && tab.badge > 0 && (
+                    <span className="text-10 px-1 py-0.5 rounded bg-muted text-muted-foreground font-mono">
+                      {tab.badge}
+                    </span>
+                  )}
                 </div>
-                {tab.badge !== undefined && tab.badge > 0 && (
-                  <div className="text-10 text-muted-foreground mt-0.5">
-                    Count: {tab.badge}
-                  </div>
-                )}
               </TooltipContent>
             </Tooltip>
           );

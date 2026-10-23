@@ -568,7 +568,7 @@ export function ModernLibraryPage({
             </div>
           ) : null
         ) : (
-          <LibraryInspector scopeId={effectiveScopeId} canEdit={canEdit} />
+          <LibraryInspector scopeId={effectiveScopeId} canEdit={canEdit} isLibrary={true} />
         )}
       </ErrorBoundary>
 

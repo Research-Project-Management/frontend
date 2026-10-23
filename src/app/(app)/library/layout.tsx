@@ -1,8 +1,9 @@
-﻿'use client';
+'use client';
 
 import { usePathname } from 'next/navigation';
 import { LibrarySidebar as Sidebar } from '@/features/library/ui/sidebar/LibrarySidebar';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import { LibraryModals } from '@/features/library/ui/modals/LibraryModals';
 import React from "react";
 
 export default function LibraryLayout({
@@ -28,8 +29,7 @@ export default function LibraryLayout({
       <main className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden relative">
         {children}
       </main>
+      <LibraryModals />
     </div>
   );
 }
-
-

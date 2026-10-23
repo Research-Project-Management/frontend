@@ -99,7 +99,7 @@ export function DuplicatesPage() {
       )}
 
       {/* Zone 5: Self-managed Modals */}
-      <LibraryModals scopeId={effectiveScopeId} />
+      {/* LibraryModals mounted at LibraryLayout */}
     </div>
   );
 }

@@ -573,7 +573,7 @@ export function ModernLibraryPage({
       </ErrorBoundary>
 
       {/* Modals (Centralized Dialog Bus) */}
-      <LibraryModals scopeId={effectiveScopeId} />
+      {/* LibraryModals mounted at LibraryLayout */}
     </div>
   );
 }

@@ -351,3 +351,7 @@ export const useSelectionCount = (): number =>
 export const useHasSelection = (): boolean =>
   useLibraryUIStore((state) => state.selectedIds.size > 0);
 
+
+if (typeof window !== 'undefined') {
+  (window as any).__LIBRARY_UI_STORE__ = useLibraryUIStore;
+}

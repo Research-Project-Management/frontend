@@ -775,7 +775,7 @@ export function CreatorFields({
                       aria-hidden="true"
                       strokeWidth={1.5}
                     />
-                    <span>Show fewer authors</span>
+                    <span>Show less</span>
                   </>
                 ) : (
                   <>
@@ -784,12 +784,7 @@ export function CreatorFields({
                       aria-hidden="true"
                       strokeWidth={1.5}
                     />
-                    <span>
-                      Show {authorEntries.length - MAX_COLLAPSED_AUTHORS}{" "}
-                      {authorEntries.length - MAX_COLLAPSED_AUTHORS === 1
-                        ? "more author"
-                        : "more authors"}
-                    </span>
+                    <span>Show more</span>
                   </>
                 )}
               </button>

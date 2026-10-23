@@ -499,6 +499,7 @@ export function getPublicationVenue(
   if (!item || typeof item !== "object") return "";
   const rec = item as Record<string, unknown>;
   const extra = (rec.extraFields as Record<string, unknown> | undefined) || {};
+  const meta = (rec.metadata as Record<string, unknown> | undefined) || {};
 
   const clean = (val: unknown): string => {
     if (!isValidValue(val)) return "";
@@ -508,22 +509,22 @@ export function getPublicationVenue(
   const itemType = (item as Item).itemType;
   const preferredField = getVenueFieldForType(itemType);
   if (preferredField) {
-    const val = clean(rec[preferredField] ?? extra[preferredField]);
+    const val = clean(rec[preferredField] ?? extra[preferredField] ?? meta[preferredField]);
     if (val) return val;
   }
 
   const fallbackFields = [
-    "journal",
     "publicationTitle",
-    "bookTitle",
+    "journal",
     "proceedingsTitle",
     "conferenceName",
+    "bookTitle",
     "meetingName",
+    "repository",
+    "publisher",
     "court",
     "issuingAuthority",
     "authority",
-    "repository",
-    "publisher",
     "company",
     "organization",
     "institution",
@@ -546,19 +547,21 @@ export function getPublicationVenue(
   ];
 
   for (const field of fallbackFields) {
-    if (field in rec) {
-      const val = clean(rec[field]);
-      if (val) return val;
-    }
+    const val = clean(rec[field] ?? extra[field] ?? meta[field]);
+    if (val) return val;
   }
 
-  if (extra && typeof extra === "object") {
-    for (const field of fallbackFields) {
-      if (field in extra) {
-        const val = clean(extra[field]);
-        if (val) return val;
-      }
-    }
+  // Preprints / arXiv fallback: If item has an arxivId or eprint and no explicit venue was found
+  const arxivId = clean(
+    rec.arxivId ??
+      extra.arxivId ??
+      meta.arxivId ??
+      rec.archiveID ??
+      extra.archiveID ??
+      meta.archiveID,
+  );
+  if (arxivId) {
+    return "arXiv";
   }
 
   return "";

@@ -2,19 +2,20 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { ProjectMetadata, ProjectState, ProjectPriority, ProjectStatusUpdate } from '../types/overview.types';
+import {
+  ProjectMetadata,
+  ProjectStatusUpdate,
+} from '../types/overview.types';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import {
   Calendar,
   Users,
-  Shield,
   Settings,
-  AlertCircle,
   Clock,
   Flag,
   User,
-  Activity,
+  ExternalLink,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
@@ -23,27 +24,15 @@ interface ProjectPropertiesSidebarProps {
   currentUpdate?: ProjectStatusUpdate | null;
 }
 
-const STATE_CONFIG: Record<
-  ProjectState,
-  { label: string; color: string }
-> = {
-  draft: { label: 'Draft', color: 'bg-muted text-foreground border border-border' },
-  planning: { label: 'Planning', color: 'bg-muted text-foreground border border-border' },
-  execution: { label: 'In Execution', color: 'bg-muted text-foreground border border-border' },
-  monitoring: { label: 'Monitoring', color: 'bg-muted text-foreground border border-border' },
-  completed: { label: 'Completed', color: 'bg-muted text-foreground border border-border' },
-  cancelled: { label: 'Cancelled', color: 'bg-muted text-foreground/60 border border-border line-through' },
-};
-
 const PRIORITY_CONFIG: Record<
-  ProjectPriority,
-  { label: string; color: string }
+  string,
+  { label: string; color: string; dotColor: string }
 > = {
-  urgent: { label: 'Urgent', color: 'text-foreground font-medium' },
-  high: { label: 'High', color: 'text-foreground font-medium' },
-  medium: { label: 'Medium', color: 'text-foreground font-medium' },
-  low: { label: 'Low', color: 'text-foreground/70 font-normal' },
-  none: { label: 'None', color: 'text-foreground/50' },
+  urgent: { label: 'Urgent', color: 'text-rose-500', dotColor: 'bg-rose-500' },
+  high: { label: 'High', color: 'text-amber-500', dotColor: 'bg-amber-500' },
+  medium: { label: 'Medium', color: 'text-blue-500', dotColor: 'bg-blue-500' },
+  low: { label: 'Low', color: 'text-muted-foreground', dotColor: 'bg-muted-foreground' },
+  none: { label: 'None', color: 'text-muted-foreground/60', dotColor: 'bg-muted-foreground/40' },
 };
 
 function formatDate(dateStr: string | null): string {
@@ -57,194 +46,241 @@ function formatDate(dateStr: string | null): string {
 
 export function ProjectPropertiesSidebar({
   project,
-  currentUpdate,
 }: ProjectPropertiesSidebarProps) {
-  const stateLabel =
+  // Directly bind state info returned from DB via project.state
+  const stateName =
     typeof project.state === 'object' && project.state !== null
       ? project.state.name
-      : typeof project.state === 'string' && project.state in STATE_CONFIG
-        ? STATE_CONFIG[project.state as keyof typeof STATE_CONFIG].label
-        : typeof project.state === 'string'
-          ? project.state
-          : 'Unassigned';
+      : typeof project.state === 'string'
+        ? project.state
+        : null;
 
   const stateColor =
     typeof project.state === 'object' && project.state !== null && project.state.color
       ? project.state.color
-      : '#0284c7';
+      : null;
+
   const priorityMeta = PRIORITY_CONFIG[project.priority] || {
-    label: project.priority,
+    label: project.priority || 'None',
     color: 'text-foreground',
+    dotColor: 'bg-muted-foreground',
   };
 
+  const membersList = project.members || [];
+  const displayMembers = membersList.slice(0, 5);
+  const totalMembers = project.totalMembers ?? membersList.length;
+  const remainingCount = Math.max(0, totalMembers - displayMembers.length);
+
   return (
-    <div className="rounded-xl border border-border bg-card p-5 flex flex-col gap-5">
-      <div className="flex items-center justify-between">
-        <h3 className="text-13 font-semibold tracking-tight text-foreground">
-          Project Details
-        </h3>
-        <Button asChild variant="ghost" size="icon" className="size-7 text-foreground hover:bg-muted cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-          <Link href={`/projects/${project.id}/settings`}>
-            <Settings className="size-3.5" />
-          </Link>
-        </Button>
-      </div>
-
-      <div className="flex flex-col gap-4 text-12">
-        {/* State */}
-        <div className="flex items-center justify-between py-1 border-b border-border/40">
-          <span className="text-foreground/70 font-medium flex items-center gap-1.5">
-            <Clock className="size-3.5" /> State
-          </span>
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-medium text-11 bg-muted text-foreground border border-border">
-            <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: stateColor }} />
-            {stateLabel}
-          </span>
+    <div className="flex flex-col gap-4">
+      {/* Properties Inspector Card - Bound directly to database */}
+      <div className="rounded-lg border border-border bg-card p-4 sm:p-5 flex flex-col gap-4 transition-colors">
+        <div className="flex items-center justify-between">
+          <h3 className="text-13 font-semibold tracking-tight text-foreground">
+            Project Properties
+          </h3>
+          <Button
+            asChild
+            variant="ghost"
+            size="icon"
+            className="size-7 text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
+            title="Edit settings"
+          >
+            <Link href={`/projects/${project.id}/settings`}>
+              <Settings className="size-3.5" />
+            </Link>
+          </Button>
         </div>
 
-        {/* Priority */}
-        <div className="flex items-center justify-between py-1 border-b border-border/40">
-          <span className="text-foreground/70 font-medium flex items-center gap-1.5">
-            <Flag className="size-3.5" /> Priority
-          </span>
-          <span className={`capitalize text-12 ${priorityMeta.color}`}>
-            {priorityMeta.label}
-          </span>
-        </div>
+        {/* Key-Value Properties Rows from DB */}
+        <div className="flex flex-col gap-3 text-12">
+          {/* State */}
+          <div className="flex items-center justify-between py-1 border-b border-border/50">
+            <span className="text-muted-foreground font-medium flex items-center gap-1.5">
+              <Clock className="size-3.5" /> State
+            </span>
+            {stateName ? (
+              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-11 font-medium bg-muted/60 text-foreground border border-border/70">
+                {stateColor && (
+                  <span
+                    className="size-1.5 rounded-full shrink-0"
+                    style={{ backgroundColor: stateColor }}
+                  />
+                )}
+                <span>{stateName}</span>
+              </div>
+            ) : (
+              <span className="text-muted-foreground italic text-11">Unassigned</span>
+            )}
+          </div>
 
-        {/* Health Status */}
-        <div className="flex items-center justify-between py-1 border-b border-border/40">
-          <span className="text-foreground/70 font-medium flex items-center gap-1.5">
-            <Activity className="size-3.5" /> Health
-          </span>
-          {currentUpdate ? (
+          {/* Priority */}
+          <div className="flex items-center justify-between py-1 border-b border-border/50">
+            <span className="text-muted-foreground font-medium flex items-center gap-1.5">
+              <Flag className="size-3.5" /> Priority
+            </span>
+            <div className="inline-flex items-center gap-1.5 text-12 font-medium capitalize">
+              <span className={`size-1.5 rounded-full ${priorityMeta.dotColor}`} />
+              <span className={priorityMeta.color}>{priorityMeta.label}</span>
+            </div>
+          </div>
+
+          {/* Project Lead */}
+          <div className="flex items-center justify-between py-1 border-b border-border/50">
+            <span className="text-muted-foreground font-medium flex items-center gap-1.5">
+              <User className="size-3.5" /> Project Lead
+            </span>
+            {project.lead ? (
+              <div className="flex items-center gap-1.5">
+                <div className="size-5 rounded-full bg-muted border border-border flex items-center justify-center overflow-hidden shrink-0">
+                  {project.lead.avatar ? (
+                    <img
+                      src={project.lead.avatar}
+                      alt={project.lead.name}
+                      className="size-full object-cover"
+                    />
+                  ) : (
+                    <User className="size-3 text-muted-foreground" />
+                  )}
+                </div>
+                <span className="font-medium text-foreground text-12">
+                  {project.lead.name}
+                </span>
+              </div>
+            ) : (
+              <span className="text-muted-foreground italic text-11">Unassigned</span>
+            )}
+          </div>
+
+          {/* Start Date */}
+          <div className="flex items-center justify-between py-1 border-b border-border/50">
+            <span className="text-muted-foreground font-medium flex items-center gap-1.5">
+              <Calendar className="size-3.5" /> Start Date
+            </span>
+            <span className="text-foreground font-medium font-mono text-11">
+              {formatDate(project.startDate)}
+            </span>
+          </div>
+
+          {/* Target Date */}
+          <div className="flex items-center justify-between py-1">
+            <span className="text-muted-foreground font-medium flex items-center gap-1.5">
+              <Calendar className="size-3.5" /> Target Date
+            </span>
             <span
-              className={`px-2 py-0.5 rounded-md font-medium text-11 capitalize ${
-                currentUpdate.status === 'on_track'
-                  ? 'bg-success/10 text-success'
-                  : currentUpdate.status === 'at_risk'
-                    ? 'bg-warning/10 text-warning'
-                    : 'bg-destructive/10 text-destructive'
+              className={`font-medium font-mono text-11 ${
+                project.isOverdue
+                  ? 'text-rose-500 font-semibold'
+                  : 'text-foreground'
               }`}
             >
-              {currentUpdate.status.replace('_', ' ')}
+              {formatDate(project.targetDate)}
+              {project.isOverdue && (
+                <span className="ml-1 text-11 uppercase tracking-wider font-sans font-bold">
+                  (Overdue)
+                </span>
+              )}
             </span>
-          ) : (
-            <span className="text-foreground/70 italic text-11">Not reported</span>
-          )}
-        </div>
-
-        {/* Lead */}
-        <div className="flex items-center justify-between py-1 border-b border-border/40">
-          <span className="text-foreground/70 font-medium flex items-center gap-1.5">
-            <Shield className="size-3.5" /> Project Lead
-          </span>
-          {project.lead ? (
-            <div className="flex items-center gap-1.5">
-              <div className="size-5 rounded-full bg-muted flex items-center justify-center text-10 font-semibold overflow-hidden">
-                {project.lead.avatar ? (
-                  <img
-                    src={project.lead.avatar}
-                    alt={project.lead.name}
-                    className="size-full object-cover"
-                  />
-                ) : (
-                  <User className="size-3" />
-                )}
-              </div>
-              <span className="font-medium text-foreground truncate max-w-[120px]">
-                {project.lead.name}
-              </span>
-            </div>
-          ) : (
-            <span className="text-foreground/70 italic">None</span>
-          )}
-        </div>
-
-        {/* Timeline Dates */}
-        <div className="flex flex-col gap-2 py-1 border-b border-border/40">
-          <span className="text-foreground/70 font-medium flex items-center gap-1.5">
-            <Calendar className="size-3.5" /> Timeline
-          </span>
-          <div className="grid grid-cols-2 gap-2 text-foreground">
-            <div>
-              <span className="text-10 text-foreground/70 block">Start Date</span>
-              <span className="font-medium">{formatDate(project.startDate)}</span>
-            </div>
-            <div>
-              <span className="text-10 text-foreground/70 block">Target Date</span>
-              <span className="font-medium">{formatDate(project.targetDate)}</span>
-            </div>
           </div>
-
-          {project.daysRemaining !== null && (
-            <div className="mt-1">
-              <Badge
-                variant="outline"
-                className="text-11 font-medium bg-muted text-foreground border-border"
-              >
-                {project.isOverdue ? (
-                  <span className="flex items-center gap-1">
-                    <AlertCircle className="size-3 text-foreground" /> Overdue by{' '}
-                    {Math.abs(project.daysRemaining)} days
-                  </span>
-                ) : project.daysRemaining === 0 ? (
-                  'Due today'
-                ) : (
-                  `${project.daysRemaining} days remaining`
-                )}
-              </Badge>
-            </div>
-          )}
         </div>
+      </div>
 
-        {/* Members */}
-        <div className="flex flex-col gap-2 pt-1">
-          <div className="flex items-center justify-between">
-            <span className="text-foreground/70 font-medium flex items-center gap-1.5">
-              <Users className="size-3.5" /> Members ({project.totalMembers})
+      {/* Team Members Card - Bound to DB project_members */}
+      <div className="rounded-lg border border-border bg-card p-4 sm:p-5 flex flex-col gap-3.5 transition-colors">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <Users className="size-3.5 text-muted-foreground" />
+            <h3 className="text-13 font-semibold tracking-tight text-foreground">
+              Team Members
+            </h3>
+            <span className="text-11 text-muted-foreground font-mono">
+              ({totalMembers})
             </span>
-            <Link
-              href={`/projects/${project.id}/settings/members`}
-              className="text-11 text-foreground hover:underline relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            >
+          </div>
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            className="h-6 px-1.5 text-11 font-medium text-muted-foreground hover:text-foreground cursor-pointer"
+          >
+            <Link href={`/projects/${project.id}/settings?tab=members`}>
               Manage
             </Link>
-          </div>
+          </Button>
+        </div>
 
-          <div className="flex flex-col gap-1.5 mt-1">
-            {(project.members || []).slice(0, 5).map((m) => (
+        {displayMembers.length > 0 ? (
+          <div className="flex flex-col divide-y divide-border/40">
+            {displayMembers.map((member) => (
               <div
-                key={m.id}
-                className="flex items-center justify-between gap-2 py-0.5"
+                key={member.id}
+                className="py-2 flex items-center justify-between gap-2 text-12 first:pt-0 last:pb-0"
               >
                 <div className="flex items-center gap-2 min-w-0">
-                  <div className="size-5 rounded-full bg-muted flex items-center justify-center text-10 overflow-hidden shrink-0">
-                    {m.avatar ? (
+                  <div className="size-6 rounded-full bg-muted border border-border flex items-center justify-center overflow-hidden shrink-0">
+                    {member.avatar ? (
                       <img
-                        src={m.avatar}
-                        alt={m.name}
+                        src={member.avatar}
+                        alt={member.name}
                         className="size-full object-cover"
                       />
                     ) : (
-                      <User className="size-3 text-foreground/70" />
+                      <User className="size-3 text-muted-foreground" />
                     )}
                   </div>
                   <span className="font-medium text-foreground truncate">
-                    {m.name}
+                    {member.name}
                   </span>
                 </div>
-                <span className="text-10 text-foreground/70 font-mono tracking-normal">
-                  {m.role}
-                </span>
+                <Badge
+                  variant="outline"
+                  className="h-5 px-2 text-11 font-medium uppercase tracking-wider text-muted-foreground border-border/80"
+                >
+                  {member.role || 'Member'}
+                </Badge>
               </div>
             ))}
-            {(project.totalMembers || 0) > 5 && (
-              <span className="text-11 text-foreground/70 mt-1">
-                +{(project.totalMembers || 0) - 5} more members
-              </span>
+
+            {remainingCount > 0 && (
+              <div className="pt-2 text-11 text-muted-foreground text-center">
+                + {remainingCount} more members
+              </div>
             )}
           </div>
+        ) : (
+          <div className="text-12 text-muted-foreground italic py-1">
+            No additional members added yet.
+          </div>
+        )}
+      </div>
+
+      {/* Quick Links Card */}
+      <div className="rounded-lg border border-border bg-card p-4 flex flex-col gap-2.5 transition-colors">
+        <span className="text-11 font-semibold uppercase tracking-wider text-muted-foreground">
+          Quick Access
+        </span>
+        <div className="flex flex-col gap-1 text-12">
+          <Link
+            href={`/projects/${project.id}/work-items`}
+            className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50 text-foreground transition-colors"
+          >
+            <span>All Work Items</span>
+            <ExternalLink className="size-3 text-muted-foreground" />
+          </Link>
+          <Link
+            href={`/projects/${project.id}/pages`}
+            className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50 text-foreground transition-colors"
+          >
+            <span>Project Documents & Pages</span>
+            <ExternalLink className="size-3 text-muted-foreground" />
+          </Link>
+          <Link
+            href={`/projects/${project.id}/settings`}
+            className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50 text-foreground transition-colors"
+          >
+            <span>General Settings</span>
+            <ExternalLink className="size-3 text-muted-foreground" />
+          </Link>
         </div>
       </div>
     </div>

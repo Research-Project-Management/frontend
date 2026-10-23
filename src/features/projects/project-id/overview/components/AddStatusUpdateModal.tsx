@@ -12,7 +12,7 @@ import {
 import { Button } from '@/shared/components/ui/button';
 import { Textarea } from '@/shared/components/ui/textarea';
 import { Label } from '@/shared/components/ui/label';
-import { CheckCircle2, AlertTriangle, AlertOctagon, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { ProjectStatusIndicator } from '../types/overview.types';
 import { toast } from 'sonner';
 
@@ -20,43 +20,32 @@ interface AddStatusUpdateModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: { status: ProjectStatusIndicator; message: string }) => Promise<void>;
+  currentStatus?: ProjectStatusIndicator;
 }
 
-const STATUS_OPTIONS: {
+const STATUS_OPTIONS: Array<{
   value: ProjectStatusIndicator;
   label: string;
-  description: string;
-  icon: React.ElementType;
-  activeColor: string;
-  badgeBg: string;
-  textColor: string;
-}[] = [
+  dotColor: string;
+  selectedClass: string;
+}> = [
   {
     value: 'on_track',
     label: 'On Track',
-    description: 'Progressing as planned, no blockers',
-    icon: CheckCircle2,
-    activeColor: 'border-foreground bg-muted text-foreground ring-1 ring-border',
-    badgeBg: 'bg-muted text-foreground',
-    textColor: 'text-foreground',
+    dotColor: 'bg-emerald-500',
+    selectedClass: 'border-emerald-500/50 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium ring-1 ring-emerald-500/25',
   },
   {
     value: 'at_risk',
     label: 'At Risk',
-    description: 'Potential delays or emerging blockers',
-    icon: AlertTriangle,
-    activeColor: 'border-foreground bg-muted text-foreground ring-1 ring-border',
-    badgeBg: 'bg-muted text-foreground',
-    textColor: 'text-foreground',
+    dotColor: 'bg-amber-500',
+    selectedClass: 'border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-medium ring-1 ring-amber-500/25',
   },
   {
     value: 'off_track',
     label: 'Off Track',
-    description: 'Major blockers or critical delays',
-    icon: AlertOctagon,
-    activeColor: 'border-foreground bg-muted text-foreground ring-1 ring-border',
-    badgeBg: 'bg-muted text-foreground',
-    textColor: 'text-foreground',
+    dotColor: 'bg-rose-500',
+    selectedClass: 'border-rose-500/50 bg-rose-500/10 text-rose-600 dark:text-rose-400 font-medium ring-1 ring-rose-500/25',
   },
 ];
 
@@ -64,30 +53,37 @@ export function AddStatusUpdateModal({
   open,
   onOpenChange,
   onSubmit,
+  currentStatus = 'on_track',
 }: AddStatusUpdateModalProps) {
-  const [selectedStatus, setSelectedStatus] = useState<ProjectStatusIndicator>('on_track');
+  const [selectedStatus, setSelectedStatus] = useState<ProjectStatusIndicator>(currentStatus);
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Sync initial state when modal opens
+  React.useEffect(() => {
+    if (open) {
+      setSelectedStatus(currentStatus || 'on_track');
+      setMessage('');
+    }
+  }, [open, currentStatus]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanMessage = message.trim();
-
-    if (!cleanMessage) {
-      toast.error('Please enter an update message', { id: 'project-status-update' });
+    if (!selectedStatus) {
+      toast.error('Please pick a project health status');
       return;
     }
 
+    setIsSubmitting(true);
     try {
-      setIsSubmitting(true);
-      await onSubmit({ status: selectedStatus, message: cleanMessage });
-      toast.success('Project status update posted', { id: 'project-status-update' });
-      setMessage('');
-      setSelectedStatus('on_track');
+      await onSubmit({
+        status: selectedStatus,
+        message: message.trim(),
+      });
+      toast.success('Project status updated successfully');
       onOpenChange(false);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to post project status update';
-      toast.error(msg, { id: 'project-status-update' });
+      toast.error(err instanceof Error ? err.message : 'Failed to publish status update');
     } finally {
       setIsSubmitting(false);
     }
@@ -95,91 +91,77 @@ export function AddStatusUpdateModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] shadow-raised-200">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle className="text-16 font-semibold text-foreground">Post Project Status Update</DialogTitle>
-            <DialogDescription className="text-13 text-foreground/70">
-              Inform stakeholders and team members about current project health, highlights, and risks.
-            </DialogDescription>
-          </DialogHeader>
+      <DialogContent className="sm:max-w-md p-5 gap-4 rounded-lg border-border bg-background shadow-raised-200">
+        <DialogHeader className="gap-1 text-left">
+          <DialogTitle className="text-16 font-semibold tracking-tight text-foreground">
+            Update Status
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            Update the overall health status and progress notes for this project.
+          </DialogDescription>
+        </DialogHeader>
 
-          <div className="flex flex-col gap-4 py-4">
-            {/* Status Selector */}
-            <div className="flex flex-col gap-2">
-              <Label className="text-12 font-medium text-foreground">Project Health Status</Label>
-              <div className="grid grid-cols-3 gap-2">
-                {STATUS_OPTIONS.map((opt) => {
-                  const Icon = opt.icon;
-                  const isSelected = selectedStatus === opt.value;
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => setSelectedStatus(opt.value)}
-                      disabled={isSubmitting}
-                      className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all cursor-pointer select-none relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${
-                        isSelected
-                          ? opt.activeColor
-                          : 'border-border/60 bg-muted/20 hover:bg-muted text-foreground/70'
-                      }`}
-                    >
-                      <Icon className="size-5 mb-1.5 text-foreground" />
-                      <span className="text-xs font-semibold">{opt.label}</span>
-                      <span className="text-10 leading-tight opacity-75 mt-0.5 line-clamp-2">
-                        {opt.value === 'on_track' ? 'On schedule' : opt.value === 'at_risk' ? 'Has risks' : 'Delayed'}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Message Area */}
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="status-message" className="text-12 font-medium text-foreground">
-                Update Summary & Details
-              </Label>
-              <Textarea
-                id="status-message"
-                placeholder="Summarize recent progress, key deliverables completed, or any blockers requiring attention..."
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                disabled={isSubmitting}
-                className="min-h-[110px] text-13 resize-none focus-visible:ring-1 focus-visible:ring-ring"
-                maxLength={2000}
-              />
-              <div className="flex justify-end text-10 text-foreground/70">
-                {message.length} / 2000
-              </div>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          {/* Health Status selector - Clean Single Dot Indicator */}
+          <div className="space-y-1.5">
+            <Label className="text-12 font-medium text-foreground">
+              Health Status
+            </Label>
+            <div className="grid grid-cols-3 gap-2">
+              {STATUS_OPTIONS.map((opt) => {
+                const isSelected = selectedStatus === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setSelectedStatus(opt.value)}
+                    className={`flex items-center justify-center gap-2 py-2 px-3 rounded-md border text-center transition-all cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-primary ${
+                      isSelected
+                        ? opt.selectedClass
+                        : 'border-border/70 bg-muted/20 hover:bg-muted/40 text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <span className={`size-2 rounded-full shrink-0 ${opt.dotColor}`} />
+                    <span className="text-12">{opt.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          {/* Update notes message */}
+          <div className="space-y-1.5">
+            <Label className="text-12 font-medium text-foreground">
+              Description
+            </Label>
+            <Textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Add status details, key progress or blockers..."
+              rows={4}
+              className="text-13 resize-none border-border bg-background focus-visible:ring-1 focus-visible:ring-ring rounded-md"
+            />
+          </div>
+
+          <DialogFooter className="flex items-center justify-end gap-2.5 pt-1">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
-              className="h-8 px-3 text-12 font-medium text-foreground hover:bg-muted cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="h-8 px-3 text-12 font-medium border-border hover:bg-muted"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               size="sm"
-              disabled={isSubmitting || !message.trim()}
-              className="h-8 px-3 text-12 font-medium gap-1.5 bg-foreground text-background hover:bg-foreground/90 cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              disabled={isSubmitting}
+              className="h-8 px-3 text-12 font-medium bg-primary text-primary-foreground hover:bg-primary/90"
             >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="size-3.5 animate-spin" />
-                  <span>Posting...</span>
-                </>
-              ) : (
-                'Post Update'
-              )}
+              {isSubmitting && <Loader2 className="size-3.5 mr-1.5 animate-spin" />}
+              <span>Save Status</span>
             </Button>
           </DialogFooter>
         </form>
@@ -187,3 +169,5 @@ export function AddStatusUpdateModal({
     </Dialog>
   );
 }
+
+export default AddStatusUpdateModal;

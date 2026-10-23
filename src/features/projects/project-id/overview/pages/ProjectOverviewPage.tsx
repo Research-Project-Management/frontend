@@ -3,15 +3,11 @@
 import React from 'react';
 import { useParams } from 'next/navigation';
 import { useProjectOverview } from '../hooks/use-project-overview';
-import { ProjectHeaderCard } from '../components/ProjectHeaderCard';
-import { WorkItemProgressCard } from '../components/WorkItemProgressCard';
-import { RecentActivityList } from '../components/RecentActivityList';
-import { ProjectPropertiesSidebar } from '../components/ProjectPropertiesSidebar';
-import { ProjectStatusCard } from '../components/ProjectStatusCard';
+import { CleanProjectOverview } from '../components/CleanProjectOverview';
 import { Switcher } from '@/features/projects/project-id/components/layout/Switcher';
 import { Skeleton } from '@/shared/components/ui/skeleton';
-import { Button } from '@/shared/components/ui/button';
-import { Compass, AlertCircle, RefreshCw } from 'lucide-react';
+import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
+import { Compass } from 'lucide-react';
 
 export function ProjectOverviewPage() {
   const params = useParams<{ projectId: string }>();
@@ -28,18 +24,21 @@ export function ProjectOverviewPage() {
   if (isLoading) {
     return (
       <div className="flex-1 flex min-h-0 flex-col h-full bg-background overflow-hidden">
-        <header className="h-11 border-b border-border px-4 flex items-center bg-background shrink-0 select-none">
-          <Skeleton className="h-6 w-32" />
+        <header className="h-11 border-b border-border px-3 sm:px-4 flex items-center bg-transparent shrink-0 select-none">
+          <Skeleton className="h-6 w-36 rounded-md" />
         </header>
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 max-w-7xl mx-auto w-full">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <div className="lg:col-span-8 flex flex-col gap-6">
-              <Skeleton className="h-48 w-full rounded-xl" />
-              <Skeleton className="h-36 w-full rounded-xl" />
-              <Skeleton className="h-40 w-full rounded-xl" />
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 max-w-5xl mx-auto w-full">
+          <div className="flex flex-col gap-6">
+            <Skeleton className="h-16 w-full rounded-lg" />
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <Skeleton className="h-20 w-full rounded-lg" />
+              <Skeleton className="h-20 w-full rounded-lg" />
+              <Skeleton className="h-20 w-full rounded-lg" />
+              <Skeleton className="h-20 w-full rounded-lg" />
             </div>
-            <div className="lg:col-span-4 flex flex-col gap-6">
-              <Skeleton className="h-80 w-full rounded-xl" />
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+              <Skeleton className="md:col-span-8 h-64 w-full rounded-lg" />
+              <Skeleton className="md:col-span-4 h-64 w-full rounded-lg" />
             </div>
           </div>
         </div>
@@ -49,37 +48,24 @@ export function ProjectOverviewPage() {
 
   if (isError || !data) {
     return (
-      <div className="flex-1 flex min-h-0 flex-col h-full bg-background overflow-hidden items-center justify-center p-4">
-        <div className="flex flex-col items-center gap-3 text-center max-w-sm">
-          <div className="size-12 rounded-full bg-muted text-foreground flex items-center justify-center">
-            <AlertCircle className="size-6" />
-          </div>
-          <h2 className="text-16 font-semibold text-foreground">
-            Unable to load project overview
-          </h2>
-          <p className="text-13 text-foreground/70">
-            {(error as Error)?.message || 'An error occurred while fetching the project overview data.'}
-          </p>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => refetch()}
-            className="mt-2 h-8 px-3 text-12 font-medium gap-1.5 text-foreground hover:bg-muted cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          >
-            <RefreshCw className="size-3.5" />
-            <span>Retry</span>
-          </Button>
-        </div>
-      </div>
+      <PlaneErrorState
+        title="Unable to load project overview"
+        description="Could not connect to the backend server or project overview data is unavailable. Navigation and other workspaces remain safe."
+        error={error}
+        reset={() => refetch()}
+      />
     );
   }
 
-  const { project, metrics, recentActivities, currentUpdate } = data;
+  const { project } = data;
 
   return (
     <div className="flex-1 flex min-h-0 flex-col h-full bg-background overflow-hidden">
-      {/* Top Header with Switcher */}
-      <header className="h-11 border-b border-border px-3 sm:px-4 flex items-center justify-between gap-2 bg-background shrink-0 text-13 w-full min-w-0 select-none sticky top-0 z-10">
+      {/* Top Header with Switcher matching work-items and pages */}
+      <header
+        className="h-11 border-b border-border px-3 sm:px-4 flex items-center justify-between gap-2.5 bg-transparent shrink-0 text-13 w-full min-w-0 select-none sticky top-0 z-20"
+        style={{ paddingLeft: 'max(0.75rem, var(--header-offset, 0px))' }}
+      >
         <Switcher
           project={{
             id: project.id,
@@ -91,32 +77,12 @@ export function ProjectOverviewPage() {
         />
       </header>
 
-      {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 max-w-7xl mx-auto w-full">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Main Left Column (8 cols) */}
-          <div className="lg:col-span-8 flex flex-col gap-6">
-            <ProjectHeaderCard project={project} />
-
-            <ProjectStatusCard
-              projectId={project.id}
-              currentUpdate={currentUpdate}
-            />
-
-            <WorkItemProgressCard projectId={project.id} metrics={metrics} />
-
-            <RecentActivityList activities={recentActivities} />
-          </div>
-
-          {/* Sidebar Right Column (4 cols) */}
-          <div className="lg:col-span-4 flex flex-col gap-6">
-            <ProjectPropertiesSidebar
-              project={project}
-              currentUpdate={currentUpdate}
-            />
-          </div>
-        </div>
+      {/* Main Clean Content Area */}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 w-full">
+        <CleanProjectOverview data={data} />
       </div>
     </div>
   );
 }
+
+export default ProjectOverviewPage;

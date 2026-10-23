@@ -17,15 +17,22 @@ import {
   User,
   ChevronDown,
   ChevronUp,
+  Clock,
 } from 'lucide-react';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 import { AddStatusUpdateModal } from './AddStatusUpdateModal';
-import { useProjectStatusUpdates, useCreateProjectStatusUpdate, useDeleteProjectStatusUpdate } from '../hooks/use-project-overview';
+import {
+  useProjectStatusUpdates,
+  useCreateProjectStatusUpdate,
+  useDeleteProjectStatusUpdate,
+} from '../hooks/use-project-overview';
 import { toast } from 'sonner';
 
 interface ProjectStatusCardProps {
   projectId: string;
   currentUpdate: ProjectStatusUpdate | null;
+  isModalOpen?: boolean;
+  onModalOpenChange?: (open: boolean) => void;
 }
 
 const STATUS_CONFIG: Record<
@@ -36,32 +43,32 @@ const STATUS_CONFIG: Record<
     badgeClass: string;
     icon: React.ElementType;
     iconColor: string;
-    borderClass: string;
+    indicatorDot: string;
   }
 > = {
   on_track: {
     label: 'On Track',
     sublabel: 'Progressing according to schedule with no major blockers',
-    badgeClass: 'bg-success/10 text-success border-success/30',
+    badgeClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
     icon: CheckCircle2,
-    iconColor: 'text-success',
-    borderClass: 'border-border hover:border-success/40',
+    iconColor: 'text-emerald-500',
+    indicatorDot: 'bg-emerald-500',
   },
   at_risk: {
     label: 'At Risk',
     sublabel: 'Emerging blockers or risks need attention from the team',
-    badgeClass: 'bg-warning/10 text-warning border-warning/30',
+    badgeClass: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
     icon: AlertTriangle,
-    iconColor: 'text-warning',
-    borderClass: 'border-border hover:border-warning/40',
+    iconColor: 'text-amber-500',
+    indicatorDot: 'bg-amber-500',
   },
   off_track: {
     label: 'Off Track',
     sublabel: 'Critical delays or blockers currently impacting deliverables',
-    badgeClass: 'bg-destructive/10 text-destructive border-destructive/30',
+    badgeClass: 'bg-destructive/10 text-destructive border-destructive/20',
     icon: AlertOctagon,
     iconColor: 'text-destructive',
-    borderClass: 'border-border hover:border-destructive/40',
+    indicatorDot: 'bg-destructive',
   },
 };
 
@@ -76,9 +83,18 @@ function formatRelativeTime(dateStr: string): string {
 export function ProjectStatusCard({
   projectId,
   currentUpdate,
+  isModalOpen: controlledModalOpen,
+  onModalOpenChange: setControlledModalOpen,
 }: ProjectStatusCardProps) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [internalModalOpen, setInternalModalOpen] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+
+  const isModalOpen =
+    controlledModalOpen !== undefined ? controlledModalOpen : internalModalOpen;
+  const setIsModalOpen =
+    setControlledModalOpen !== undefined
+      ? setControlledModalOpen
+      : setInternalModalOpen;
 
   const { data: updatesList } = useProjectStatusUpdates(projectId);
   const createUpdateMutation = useCreateProjectStatusUpdate(projectId);
@@ -90,30 +106,26 @@ export function ProjectStatusCard({
   const handleDeleteUpdate = async (updateId: string) => {
     try {
       await deleteUpdateMutation.mutateAsync(updateId);
-      toast.success('Status update deleted', { id: 'project-status-update' });
+      toast.success('Status update deleted');
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete status update', { id: 'project-status-update' });
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to delete status update',
+      );
     }
   };
 
   return (
     <>
-      <div className="rounded-xl border border-border bg-card p-5 flex flex-col gap-4">
+      <div className="rounded-lg border border-border bg-card p-4 sm:p-5 flex flex-col gap-3.5 transition-colors">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <h3 className="text-13 font-semibold tracking-tight text-foreground">
-              Project Status & Health
-            </h3>
-            {currentUpdate && config && (
-              <Badge
-                variant="outline"
-                className={`text-11 font-medium gap-1 py-0.5 px-2 ${config.badgeClass}`}
-              >
-                <config.icon className="size-3" />
-                {config.label}
-              </Badge>
-            )}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="size-6 rounded-md bg-muted flex items-center justify-center text-muted-foreground shrink-0">
+              <Clock className="size-3.5" />
+            </div>
+            <h2 className="text-13 font-semibold tracking-tight text-foreground">
+              Project Health & Status
+            </h2>
           </div>
 
           <div className="flex items-center gap-2">
@@ -122,151 +134,135 @@ export function ProjectStatusCard({
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowHistory(!showHistory)}
-                className="h-7 text-12 font-medium text-foreground hover:bg-muted gap-1 px-2 cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="h-7 px-2 text-12 font-medium text-muted-foreground hover:text-foreground cursor-pointer"
               >
-                <History className="size-3.5" />
-                {showHistory ? 'Hide History' : `History (${updatesList.length})`}
+                <History className="size-3.5 mr-1" />
+                <span>History ({updatesList.length})</span>
                 {showHistory ? (
-                  <ChevronUp className="size-3" />
+                  <ChevronUp className="size-3 ml-1" />
                 ) : (
-                  <ChevronDown className="size-3" />
+                  <ChevronDown className="size-3 ml-1" />
                 )}
               </Button>
             )}
+
             <Button
               variant="outline"
               size="sm"
               onClick={() => setIsModalOpen(true)}
-              className="h-7 text-12 font-medium gap-1 px-2.5 text-foreground hover:bg-muted cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="h-7 px-2.5 text-12 font-medium border-border hover:bg-muted text-foreground cursor-pointer"
             >
-              <Plus className="size-3.5" />
-              Post Update
+              <Plus className="size-3 mr-1" />
+              <span>Update Status</span>
             </Button>
           </div>
         </div>
 
-        {/* Current / Latest Status Banner */}
+        {/* Current Status Content */}
         {currentUpdate && config ? (
-          <div
-            className={`rounded-md border bg-card ${config.borderClass} p-4 transition-colors flex flex-col gap-3`}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <div className={`p-1.5 rounded-md bg-background/80 ${config.iconColor}`}>
-                  <config.icon className="size-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-12 font-semibold text-foreground">
-                      {config.label}
-                    </span>
-                    <span className="text-11 text-foreground/70">
-                      • {formatRelativeTime(currentUpdate.createdAt)}
-                    </span>
-                  </div>
-                  <p className="text-11 text-foreground/70 mt-0.5">
-                    {config.sublabel}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Message Body */}
-            <div className="text-13 text-foreground whitespace-pre-wrap leading-relaxed pl-1">
-              {currentUpdate.message}
-            </div>
-
-            {/* Author Footer */}
-            <div className="flex items-center justify-between pt-1 border-t border-border/40 text-11 text-foreground/70">
-              <div className="flex items-center gap-1.5">
-                <div className="size-4 rounded-full bg-muted flex items-center justify-center overflow-hidden">
-                  {currentUpdate.author.avatar ? (
-                    <img
-                      src={currentUpdate.author.avatar}
-                      alt={currentUpdate.author.name || ''}
-                      className="size-full object-cover"
-                    />
-                  ) : (
-                    <User className="size-2.5" />
-                  )}
-                </div>
-                <span>
-                  Updated by{' '}
-                  <span className="font-medium text-foreground">
-                    {currentUpdate.author.name || 'Team member'}
-                  </span>
+          <div className="rounded-md bg-muted/30 p-3.5 flex flex-col gap-2.5">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Badge
+                  variant="outline"
+                  className={`px-2 py-0.5 text-11 font-medium gap-1.5 ${config.badgeClass}`}
+                >
+                  <span className={`size-1.5 rounded-full ${config.indicatorDot}`} />
+                  <span>{config.label}</span>
+                </Badge>
+                <span className="text-12 text-muted-foreground">
+                  {config.sublabel}
                 </span>
               </div>
+
+              <div className="flex items-center gap-2 text-12 text-muted-foreground">
+                <span className="font-mono">
+                  {formatRelativeTime(currentUpdate.createdAt)}
+                </span>
+                {currentUpdate.author?.name && (
+                  <span>by {currentUpdate.author.name}</span>
+                )}
+              </div>
             </div>
+
+            {currentUpdate.message && (
+              <p className="text-13 text-foreground/90 leading-relaxed pt-1 border-t border-border/40 whitespace-pre-wrap">
+                {currentUpdate.message}
+              </p>
+            )}
           </div>
         ) : (
-          /* Empty State */
-          <div className="flex flex-col items-center justify-center py-6 text-center border border-dashed border-border/70 rounded-lg p-4 bg-muted/10">
-            <div className="size-8 rounded-full bg-muted flex items-center justify-center text-foreground mb-2">
-              <CheckCircle2 className="size-4" />
+          <div className="rounded-md border border-dashed border-border/80 bg-muted/10 p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-13 font-medium text-foreground">
+                No status update posted yet
+              </span>
+              <span className="text-12 text-muted-foreground">
+                Keep your team aligned by posting a quick update on current project health and milestones.
+              </span>
             </div>
-            <p className="text-13 font-medium text-foreground">
-              No status updates yet
-            </p>
-            <p className="text-11 text-foreground/70 max-w-xs mt-1">
-              Keep collaborators and stakeholders informed about progress and blockers.
-            </p>
             <Button
-              variant="outline"
+              variant="default"
               size="sm"
               onClick={() => setIsModalOpen(true)}
-              className="mt-3 text-12 font-medium gap-1.5 h-7 px-2.5 text-foreground hover:bg-muted cursor-pointer relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="h-8 px-3 text-12 font-medium shrink-0 cursor-pointer"
             >
-              <Plus className="size-3" />
-              Post first status update
+              <Plus className="size-3.5 mr-1.5" />
+              <span>Post first update</span>
             </Button>
           </div>
         )}
 
-        {/* Historical Timeline (Collapsible) */}
+        {/* Historical Updates Drawer / List */}
         {showHistory && updatesList && updatesList.length > 0 && (
-          <div className="flex flex-col gap-2 pt-2 border-t border-border/50">
-            <span className="text-11 font-medium text-foreground/70 tracking-normal">
-              Update Timeline History
+          <div className="flex flex-col gap-2 pt-2 border-t border-border/60">
+            <span className="text-11 font-semibold uppercase tracking-wider text-muted-foreground px-1">
+              Previous Updates
             </span>
-            <div className="flex flex-col gap-2 max-h-60 overflow-y-auto pr-1">
+            <div className="flex flex-col divide-y divide-border/40 max-h-60 overflow-y-auto pr-1">
               {updatesList.map((item) => {
-                const itemConfig = STATUS_CONFIG[item.status];
+                const itemCfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.on_track;
+                const ItemIcon = itemCfg.icon;
                 return (
                   <div
                     key={item.id}
-                    className="flex flex-col gap-1.5 p-3 rounded-lg border border-border/60 bg-muted/20 text-12"
+                    className="py-2.5 px-2 flex items-start justify-between gap-3 hover:bg-muted/30 rounded-md transition-colors group"
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Badge
-                          variant="outline"
-                          className={`text-10 font-medium py-0 px-1.5 gap-1 ${itemConfig.badgeClass}`}
-                        >
-                          <itemConfig.icon className="size-2.5" />
-                          {itemConfig.label}
-                        </Badge>
-                        <span className="text-10 text-foreground/70">
-                          {formatRelativeTime(item.createdAt)}
-                        </span>
-                        <span className="text-10 text-foreground/70">
-                          by {item.author.name || 'Member'}
-                        </span>
+                    <div className="flex items-start gap-2.5 min-w-0">
+                      <ItemIcon
+                        className={`size-4 shrink-0 mt-0.5 ${itemCfg.iconColor}`}
+                      />
+                      <div className="flex flex-col min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-12 font-medium text-foreground">
+                            {itemCfg.label}
+                          </span>
+                          <span className="text-12 text-muted-foreground font-mono">
+                            {formatRelativeTime(item.createdAt)}
+                          </span>
+                          {item.author?.name && (
+                            <span className="text-12 text-muted-foreground">
+                              &bull; {item.author.name}
+                            </span>
+                          )}
+                        </div>
+                        {item.message && (
+                          <p className="text-12 text-muted-foreground mt-0.5 line-clamp-2">
+                            {item.message}
+                          </p>
+                        )}
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDeleteUpdate(item.id)}
-                        className="size-6 text-foreground hover:bg-muted cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                        title="Delete update"
-                        aria-label="Delete update"
-                      >
-                        <Trash2 className="size-3" />
-                      </Button>
                     </div>
-                    <p className="text-11 text-foreground/70 whitespace-pre-wrap">
-                      {item.message}
-                    </p>
+
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDeleteUpdate(item.id)}
+                      className="size-6 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity shrink-0 cursor-pointer"
+                      title="Delete this update"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
                   </div>
                 );
               })}
@@ -275,11 +271,12 @@ export function ProjectStatusCard({
         )}
       </div>
 
+      {/* Add Modal */}
       <AddStatusUpdateModal
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
-        onSubmit={async (input) => {
-          await createUpdateMutation.mutateAsync(input);
+        onSubmit={async (data) => {
+          await createUpdateMutation.mutateAsync(data);
         }}
       />
     </>

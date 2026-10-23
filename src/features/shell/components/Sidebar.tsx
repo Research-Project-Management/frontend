@@ -6,10 +6,12 @@ import { usePathname } from 'next/navigation';
 import { motion, LayoutGroup } from 'framer-motion';
 import {
   Settings,
+  MessageSquare,
 } from 'lucide-react';
 import { ProjectsIcon, LibraryIcon, StorageIcon } from '@/shared/components/icons';
 import { cn } from "@/shared/lib/utils";
 import { useAiCompanionStore } from '@/features/ai/store/ai-companion.store';
+import { useChatBadgeCounts } from '@/features/chat/hooks/use-chat-queries';
 import {
   Tooltip,
   TooltipContent,
@@ -28,6 +30,7 @@ const NAV_ITEMS_LEFT = [
 ] as const;
 
 const NAV_ITEMS_RIGHT = [
+  { label: 'Chat', icon: MessageSquare, to: '/chat' },
   { label: 'Storage', icon: StorageIcon, to: '/storage' },
   { label: 'Settings', icon: Settings, to: '/settings' },
 ] as const;
@@ -39,6 +42,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const isOpen = useAiCompanionStore((s) => s.isOpen);
   const toggleOpen = useAiCompanionStore((s) => s.toggleOpen);
+  const { totalUnreadMessages, pendingFriendRequests, totalBadgeCount } = useChatBadgeCounts();
 
   const renderNavLink = (item: typeof ALL_NAV_ITEMS[number]) => {
     const Icon = item.icon;
@@ -57,7 +61,7 @@ export default function Sidebar() {
           pathname.startsWith('/your-work/')
         : pathname === item.to || pathname.startsWith(`${item.to}/`);
 
-    return (
+    const navContent = (
       <Link
         key={item.label}
         href={fullPath}
@@ -78,6 +82,15 @@ export default function Sidebar() {
           <Icon
             className="relative z-10 size-4.5 text-foreground transition-transform duration-200"
           />
+
+          {item.label === 'Chat' && totalBadgeCount > 0 && (
+            <span
+              className="absolute -top-1 -right-1 z-20 flex h-4.5 min-w-4.5 px-1 items-center justify-center rounded-full bg-primary text-primary-foreground font-mono text-10 font-semibold leading-none ring-2 ring-muted shadow-2xs pointer-events-none"
+              title={`${totalUnreadMessages} unread messages, ${pendingFriendRequests} pending requests`}
+            >
+              {totalBadgeCount > 99 ? '99+' : totalBadgeCount}
+            </span>
+          )}
         </div>
 
         <span
@@ -90,6 +103,29 @@ export default function Sidebar() {
         </span>
       </Link>
     );
+
+    if (item.label === 'Chat' && totalBadgeCount > 0) {
+      return (
+        <Tooltip key={item.label}>
+          <TooltipTrigger asChild>
+            {navContent}
+          </TooltipTrigger>
+          <TooltipContent side="right" sideOffset={10}>
+            <div className="flex flex-col gap-0.5 text-11">
+              <span className="font-semibold text-foreground">Chat</span>
+              {totalUnreadMessages > 0 && (
+                <span className="text-muted-foreground">{totalUnreadMessages} unread message{totalUnreadMessages > 1 ? 's' : ''}</span>
+              )}
+              {pendingFriendRequests > 0 && (
+                <span className="text-muted-foreground">{pendingFriendRequests} pending request{pendingFriendRequests > 1 ? 's' : ''}</span>
+              )}
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      );
+    }
+
+    return navContent;
   };
 
   return (
@@ -98,37 +134,8 @@ export default function Sidebar() {
         aria-label='Main Navigation'
         className='order-2 relative flex h-14 shrink-0 items-center justify-between bg-transparent px-2 py-1 md:order-1 md:h-full md:w-11 md:flex-col md:justify-start md:gap-3 md:rounded-none md:border-t-0 md:border-r-0 md:bg-muted md:p-0 md:py-2 select-none z-30'
       >
-        {/* ── Mobile Real Scooped Notch Background & Border (Precise scooped notch cutout) ── */}
-        <div className='md:hidden absolute inset-0 pointer-events-none overflow-visible -z-10'>
-          {/* Left panel */}
-          <div className='absolute left-0 top-0 w-[calc(50%-44px)] h-full bg-muted border-t border-border' />
-          
-          {/* Center notched cutout */}
-          <div className='absolute left-1/2 -translate-x-1/2 top-0 w-[88px] h-full overflow-visible'>
-            <svg
-              className='w-[88px] h-full overflow-visible'
-              viewBox='0 0 88 56'
-              fill='none'
-              preserveAspectRatio='none'
-            >
-              {/* Notch Background Fill */}
-              <path
-                d='M 0,0 C 8,0 14,5 19,18 A 26 26 0 0 0 69 18 C 74,5 80,0 88,0 L 88,56 L 0,56 Z'
-                className='fill-muted'
-              />
-              {/* Top Notch Border Stroke */}
-              <path
-                d='M 0,0.5 C 8,0.5 14,5.5 19,18.5 A 26 26 0 0 0 69 18.5 C 74,5.5 80,0.5 88,0.5'
-                className='stroke-border'
-                strokeWidth='1'
-                fill='none'
-              />
-            </svg>
-          </div>
-
-          {/* Right panel */}
-          <div className='absolute right-0 top-0 w-[calc(50%-44px)] h-full bg-muted border-t border-border' />
-        </div>
+        {/* ── Mobile Navigation Bar Background ── */}
+        <div className='md:hidden absolute inset-0 pointer-events-none -z-10 bg-muted border-t border-border' />
 
         {/* ── Mobile Layout (< md): Left 2 items + Elevated Center AI Button + Right 2 items ── */}
         <div className='flex md:hidden items-center justify-around w-full'>

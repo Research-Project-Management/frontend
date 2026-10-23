@@ -3,7 +3,7 @@
 import React from 'react';
 import { useParams } from 'next/navigation';
 import { Skeleton } from "@/shared/components/ui/skeleton";
-import { FileText, LayoutGrid } from 'lucide-react';
+import { FileText, LayoutGrid, MessageSquare } from 'lucide-react';
 import { WorkItemsIcon } from "@/shared/components/icons";
 import { PageLayout, PageContent } from '@/shared/components/layout/PageLayout';
 import { Item } from '../components/module/Item';
@@ -15,6 +15,7 @@ import type { ModuleDef } from '../types/module.types';
 const MODULES: ModuleDef[] = [
   { id: 'work-items', label: 'Work items',  desc: 'Research activities and work item tracking', icon: WorkItemsIcon, locked: true },
   { id: 'pages',      label: 'Pages',       desc: 'Collaborative documents, notes and manuscripts', icon: FileText },
+  { id: 'chat',       label: 'Project Chat', desc: 'Real-time discussion channels for project collaborators', icon: MessageSquare },
 ];
 
 // ── Page ───────────────────────────────────────────────────────────────────────

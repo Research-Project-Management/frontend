@@ -44,7 +44,15 @@ export function useModules(projectId: string) {
 
   const toggle = useCallback((id: string) => {
     setActive((prev) => {
-      const next = prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id];
+      const isEnabling = !prev.includes(id);
+      const next = isEnabling ? [...prev, id] : prev.filter((m) => m !== id);
+
+      if (id === 'chat' && isEnabling) {
+        import('@/features/chat/services/chat.service').then(({ chatService }) => {
+          chatService.enableProjectChat(projectId).catch(() => {});
+        });
+      }
+
       updateProject(
         { projectId, modules: next },
         {

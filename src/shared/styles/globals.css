@@ -1760,4 +1760,19 @@
   border-radius: 2px !important;
 }
 
+/* Impeccable Quality: Suppress accidental organic contour clip-paths on document elements */
+body *:not(.sr-only) {
+  clip-path: none;
+}
+
+/* Impeccable Quality: Suppress layout property transitions on height */
+[data-sonner-toaster] [data-sonner-toast],
+[data-sonner-toast],
+[data-sonner-toaster],
+[data-sonner-toaster] * {
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s !important;
+  transition-property: transform, opacity, box-shadow !important;
+}
+
+
 

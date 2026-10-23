@@ -25,10 +25,11 @@ export function Toaster({ ...props }: ToasterProps) {
       // 1. Sanitize raw style tags injected into head
       const styleTags = document.querySelectorAll('style');
       styleTags.forEach((tag) => {
-        if (tag.textContent && (tag.textContent.includes('height 400ms') || tag.textContent.includes('height .4s') || tag.textContent.includes('height 0.4s'))) {
+        if (tag.textContent && tag.textContent.includes('height')) {
           tag.textContent = tag.textContent
-            .replace(/,?\s*height\s+(?:\.4s|0?\.4s|400ms)/g, '')
-            .replace(/height\s+(?:\.4s|0?\.4s|400ms),?\s*/g, '');
+            .replace(/,?\s*height(?:\s+[^,;}]*)?/gi, '')
+            .replace(/height(?:\s+[^,;}]*)?,?\s*/gi, '')
+            .replace(/transition:\s*,/g, 'transition: ');
         }
       });
 

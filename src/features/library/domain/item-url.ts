@@ -118,7 +118,7 @@ export function getItemFileUrl(
     if (oaUrl) return oaUrl;
   }
 
-  // 6. arXiv fallback
+  // 6. arXiv fallback (use direct PDF download link without HTML redirect)
   const arxivMatch =
     item.arxivId ||
     item.doi?.match(/arxiv\.(\d{4}\.\d{4,5}(?:v\d+)?)/i)?.[1] ||
@@ -128,7 +128,8 @@ export function getItemFileUrl(
     item.filename?.match(/^(\d{4}\.\d{4,5}(?:v\d+)?)(?:\.pdf)?$/i)?.[1];
 
   if (arxivMatch) {
-    return `https://arxiv.org/pdf/${arxivMatch.replace(/\.pdf$/i, "")}.pdf`;
+    const cleanId = arxivMatch.replace(/\.pdf$/i, "");
+    return `https://arxiv.org/pdf/${cleanId}`;
   }
 
   return "";

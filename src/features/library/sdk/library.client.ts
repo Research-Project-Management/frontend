@@ -359,7 +359,15 @@ export const fetchPdfBlob = async (url: string, signal?: AbortSignal): Promise<B
   }
 
   const executeFetch = async (): Promise<Blob> => {
-    const isLocalStatic = targetUrl.startsWith('/papers/') || targetUrl.startsWith('/public/');
+    let normalizedTarget = targetUrl.trim();
+    // Special handling for arXiv URLs: /pdf/<id>.pdf redirects to /pdf/<id> which causes CORS in browsers
+    if (normalizedTarget.includes('arxiv.org/pdf/') && normalizedTarget.endsWith('.pdf')) {
+      normalizedTarget = normalizedTarget.replace(/\.pdf$/i, '');
+    } else if (normalizedTarget.includes('arxiv.org/abs/')) {
+      normalizedTarget = normalizedTarget.replace('arxiv.org/abs/', 'arxiv.org/pdf/');
+    }
+
+    const isLocalStatic = normalizedTarget.startsWith('/papers/') || normalizedTarget.startsWith('/public/');
     const libraryHost = getLibraryServiceHost();
     const rawApiBase =
       libraryHost ||
@@ -372,19 +380,19 @@ export const fetchPdfBlob = async (url: string, signal?: AbortSignal): Promise<B
         ? window.location.origin
         : rawApiBase;
 
-    let resolvedUrl = targetUrl;
+    let resolvedUrl = normalizedTarget;
     let isTrustedOrigin = false;
     try {
-      if (targetUrl.startsWith('http://') || targetUrl.startsWith('https://')) {
-        resolvedUrl = targetUrl;
+      if (normalizedTarget.startsWith('http://') || normalizedTarget.startsWith('https://')) {
+        resolvedUrl = normalizedTarget;
       } else if (isLocalStatic) {
-        resolvedUrl = targetUrl;
+        resolvedUrl = normalizedTarget;
       } else if (rawApiBase) {
         const cleanBase = rawApiBase.replace(/\/+$/, '');
-        const cleanPath = targetUrl.replace(/^\/+/, '');
+        const cleanPath = normalizedTarget.replace(/^\/+/, '');
         resolvedUrl = `${cleanBase}/${cleanPath}`;
       } else {
-        resolvedUrl = targetUrl;
+        resolvedUrl = normalizedTarget;
       }
 
       if (baseUrl) {
@@ -395,12 +403,12 @@ export const fetchPdfBlob = async (url: string, signal?: AbortSignal): Promise<B
           resolvedOrigin === new URL(baseUrl).origin ||
           resolvedOrigin === apiOrigin ||
           resolvedOrigin === libOrigin ||
-          targetUrl.startsWith('/api/');
+          normalizedTarget.startsWith('/api/');
       } else {
-        isTrustedOrigin = targetUrl.startsWith('/api/');
+        isTrustedOrigin = normalizedTarget.startsWith('/api/');
       }
     } catch {
-      isTrustedOrigin = targetUrl.startsWith('/api/');
+      isTrustedOrigin = normalizedTarget.startsWith('/api/');
     }
 
     const headers: Record<string, string> = {};
@@ -409,10 +417,21 @@ export const fetchPdfBlob = async (url: string, signal?: AbortSignal): Promise<B
       headers.Authorization = `Bearer ${token}`;
     }
 
-    const response = await fetch(resolvedUrl, {
-      credentials: isTrustedOrigin && !isLocalStatic ? 'include' : 'same-origin',
-      headers,
-    });
+    let response: Response;
+    try {
+      response = await fetch(resolvedUrl, {
+        credentials: isTrustedOrigin && !isLocalStatic ? 'include' : 'same-origin',
+        headers,
+      });
+    } catch (networkErr: unknown) {
+      const msg = networkErr instanceof Error ? networkErr.message : String(networkErr);
+      if (resolvedUrl.startsWith('http://') || resolvedUrl.startsWith('https://')) {
+        throw new Error(
+          `Unable to load PDF from external source due to browser security (CORS) or network error: ${msg}. You can open the original document directly in a new tab.`
+        );
+      }
+      throw new Error(`Network error while downloading PDF: ${msg}`);
+    }
 
     if (!response.ok) {
       if (response.status === 401) throw new Error('Unauthorized: Session expired or invalid authentication.');

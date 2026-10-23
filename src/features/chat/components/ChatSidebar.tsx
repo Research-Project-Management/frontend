@@ -31,6 +31,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
+import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 
 interface ChatSidebarProps {
   conversations: {
@@ -521,28 +522,41 @@ export function ChatSidebar({ conversations, isLoading }: ChatSidebarProps) {
           filteredProjectGroups.length === 0 &&
           filteredGroups.length === 0 &&
           filteredDirects.length === 0 && (
-            <div className="py-8 px-4 text-center space-y-2.5">
-              <p className="text-12 text-muted-foreground">No conversations found</p>
-              <div className="flex flex-col gap-1.5 max-w-[190px] mx-auto">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 text-12 px-3 shadow-2xs justify-start cursor-pointer"
-                  onClick={openFriendManagerModal}
-                >
-                  <UserPlus className="size-3.5 mr-2 shrink-0" />
-                  <span>Find & Add Friends</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 text-12 px-3 shadow-2xs justify-start cursor-pointer"
-                  onClick={openCreateGroupModal}
-                >
-                  <Users className="size-3.5 mr-2 shrink-0" />
-                  <span>Create New Group</span>
-                </Button>
-              </div>
+            <div className="py-6 px-3">
+              <PlaneEmptyState
+                variant={searchQuery ? 'search' : 'chat'}
+                isCompact
+                title={searchQuery ? 'No matches found' : 'No conversations'}
+                description={
+                  searchQuery
+                    ? 'No channels, direct messages, or groups match your query.'
+                    : 'Start by adding friends or creating a group.'
+                }
+                action={
+                  !searchQuery ? (
+                    <div className="flex flex-col gap-1.5 w-full mt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-11 px-2.5 shadow-2xs justify-start cursor-pointer"
+                        onClick={openFriendManagerModal}
+                      >
+                        <UserPlus className="size-3.5 mr-2 shrink-0" />
+                        <span>Find & Add Friends</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-11 px-2.5 shadow-2xs justify-start cursor-pointer"
+                        onClick={openCreateGroupModal}
+                      >
+                        <Users className="size-3.5 mr-2 shrink-0" />
+                        <span>Create New Group</span>
+                      </Button>
+                    </div>
+                  ) : undefined
+                }
+              />
             </div>
           )}
       </div>

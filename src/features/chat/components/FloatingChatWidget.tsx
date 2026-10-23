@@ -23,6 +23,8 @@ import { useChatSocket } from '../hooks/use-chat-socket';
 import { ConversationItem, FilterTab } from '../types/chat.types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { Button } from '@/shared/components/ui/button';
+import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
+import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 
 export default function FloatingChatWidget() {
@@ -237,8 +239,13 @@ export default function FloatingChatWidget() {
               {/* List */}
               <div className="flex-1 min-h-0 overflow-y-auto p-1.5 space-y-0.5 sidebar-scrollbar">
                 {filteredList.length === 0 ? (
-                  <div className="py-12 text-center text-12 text-muted-foreground">
-                    No conversations found
+                  <div className="py-8 px-2">
+                    <PlaneEmptyState
+                      variant="search"
+                      isCompact
+                      title="No conversations"
+                      description="No conversations found."
+                    />
                   </div>
                 ) : (
                   filteredList.map((conv) => (
@@ -347,7 +354,7 @@ function FloatingConversationView({
   const [content, setContent] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const { data, isLoading } = useInfiniteMessages(conversation.id);
+  const { data, isLoading, isError, error } = useInfiniteMessages(conversation.id);
   const { emitTyping } = useChatSocket(conversation.id);
   const sendMessageMutation = useSendMessage(conversation.id);
   const typingDebounceRef = useRef<NodeJS.Timeout | null>(null);
@@ -429,10 +436,22 @@ function FloatingConversationView({
           <div className="h-full flex items-center justify-center py-10">
             <Loader2 className="size-5 animate-spin text-muted-foreground" />
           </div>
+        ) : isError ? (
+          <div className="h-full flex items-center justify-center p-4">
+            <PlaneErrorState
+              title="Unable to load messages"
+              description="Could not load message history."
+              error={error}
+            />
+          </div>
         ) : flatMessages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center p-4 space-y-1">
-            <p className="text-12 font-medium text-foreground">No messages yet</p>
-            <p className="text-11 text-muted-foreground">Send a message to start the conversation.</p>
+          <div className="h-full flex items-center justify-center p-4">
+            <PlaneEmptyState
+              variant="chat"
+              isCompact
+              title="No messages yet"
+              description="Send a message to start the conversation."
+            />
           </div>
         ) : (
           flatMessages.map((msg) => {

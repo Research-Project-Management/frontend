@@ -514,7 +514,21 @@ export const INSPECTOR_FIELD_DESCRIPTORS: Record<
   string,
   InspectorFieldDescriptor
 > = {
-  date: { get: getDateValue, patch: buildDatePatch },
+  pages: {
+    get: ({ p, ef }) => {
+      const raw = ((p.pages || ef.pages || '') as string).trim();
+      return raw
+        ? raw.replace(/\s*(?:--+|[\u2010-\u2015\u2212])\s*/g, '-').replace(/\s*-\s*/g, '-')
+        : '';
+    },
+    patch: (val) => {
+      const cleaned = typeof val === 'string'
+        ? val.trim().replace(/\s*(?:--+|[\u2010-\u2015\u2212])\s*/g, '-').replace(/\s*-\s*/g, '-')
+        : val;
+      return { pages: cleaned || '' };
+    },
+  },
+    date: { get: getDateValue, patch: buildDatePatch },
   publicationdate: { get: getDateValue, patch: buildDatePatch },
   publicationtitle: { get: getPublicationTitleValue },
   journal: { get: getPublicationTitleValue },

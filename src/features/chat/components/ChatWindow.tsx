@@ -3,13 +3,10 @@
 import React, { useRef, useEffect, useMemo, useCallback } from 'react';
 import {
   Hash,
-  Users,
-  MessageSquare,
   Info,
   MoreVertical,
   Loader2,
 } from 'lucide-react';
-import { cn } from '@/shared/lib/utils';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useChatStore } from '../store/chat.store';
 import { useInfiniteMessages, useSendMessage, useAddReaction } from '../hooks/use-chat-queries';
@@ -20,6 +17,8 @@ import { ChatMessage, ConversationItem } from '../types/chat.types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
+import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
+import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import {
   Tooltip,
   TooltipContent,
@@ -43,6 +42,8 @@ export function ChatWindow({ conversation }: ChatWindowProps) {
     hasNextPage,
     isFetchingNextPage,
     isLoading: isLoadingMessages,
+    isError: isErrorMessages,
+    error: messagesError,
   } = useInfiniteMessages(conversationId);
 
   // Realtime Socket
@@ -173,19 +174,12 @@ export function ChatWindow({ conversation }: ChatWindowProps) {
 
   if (!conversation) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-8 bg-background select-none text-center">
-        <div className="max-w-md flex flex-col items-center space-y-3">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted text-muted-foreground text-11 font-medium">
-            <MessageSquare className="size-3.5 text-foreground shrink-0" />
-            <span>Flux Chat</span>
-          </div>
-          <h3 className="font-semibold text-14 text-foreground tracking-tight">
-            Select a conversation to start
-          </h3>
-          <p className="text-12 text-muted-foreground leading-relaxed max-w-sm">
-            Choose a project channel, direct message, or group from the left panel to begin collaborating.
-          </p>
-        </div>
+      <div className="flex-1 flex items-center justify-center p-8 bg-background select-none">
+        <PlaneEmptyState
+          variant="chat"
+          title="Select a conversation to start"
+          description="Choose a project channel, direct message, or group from the left panel to begin collaborating."
+        />
       </div>
     );
   }
@@ -286,19 +280,22 @@ export function ChatWindow({ conversation }: ChatWindowProps) {
           <div className="h-full flex items-center justify-center">
             <Loader2 className="size-6 animate-spin text-muted-foreground" />
           </div>
+        ) : isErrorMessages ? (
+          <div className="h-full flex items-center justify-center p-6">
+            <PlaneErrorState
+              title="Unable to load messages"
+              description="An error occurred while loading message history for this conversation."
+              error={messagesError}
+            />
+          </div>
         ) : flatMessages.length === 0 ? (
-          <div className="h-full flex flex-col justify-end p-6 pb-4 space-y-2 select-none">
-            <div className="space-y-1">
-              <div className="inline-flex items-center gap-1.5 text-11 font-medium text-foreground bg-muted border border-border px-2 py-0.5 rounded">
-                {conversation.type === 'project_channel' ? `#${conversation.name}` : conversation.name}
-              </div>
-              <h4 className="text-15 font-semibold tracking-tight text-foreground">
-                Welcome to {conversation.type === 'project_channel' ? `#${conversation.name}` : conversation.name}!
-              </h4>
-              <p className="text-13 text-muted-foreground max-w-md leading-relaxed">
-                This is the start of the {conversation.type === 'project_channel' ? `#${conversation.name} channel` : conversation.name}. Send a message to start collaborating with members!
-              </p>
-            </div>
+          <div className="h-full flex items-center justify-center p-6 select-none">
+            <PlaneEmptyState
+              variant="chat"
+              isCompact
+              title={`Welcome to ${conversation.type === 'project_channel' ? `#${conversation.name}` : conversation.name}!`}
+              description={`This is the start of the ${conversation.type === 'project_channel' ? `#${conversation.name} channel` : conversation.name}. Send a message to start collaborating with members!`}
+            />
           </div>
         ) : (
           flatMessages.map((msg: ChatMessage) => (

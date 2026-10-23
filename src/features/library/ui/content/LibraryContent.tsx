@@ -2,7 +2,7 @@
 
 import React, { useMemo, useCallback, useState } from 'react';
 import { toast } from 'sonner';
-import { UploadCloud, ChevronLeft, ChevronRight } from 'lucide-react';
+import { UploadCloud } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { useLibraryItemsQuery } from '@/features/library/sdk/queries/catalog.queries';
 import { useDetachItemFromCollectionMutation } from '@/features/library/sdk/queries/collections.queries';
@@ -40,19 +40,6 @@ const ITEM_LIST_FIELDS = [
 
 const PAGE_SIZE = 50;
 
-/** Computes visible page numbers with ellipsis for clean minimal pagination */
-function getVisiblePages(currentPage: number, totalPages: number): (number | 'ellipsis')[] {
-  if (totalPages <= 7) {
-    return Array.from({ length: totalPages }, (_, i) => i + 1);
-  }
-  if (currentPage <= 4) {
-    return [1, 2, 3, 4, 5, 'ellipsis', totalPages];
-  }
-  if (currentPage >= totalPages - 3) {
-    return [1, 'ellipsis', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
-  }
-  return [1, 'ellipsis', currentPage - 1, currentPage, currentPage + 1, 'ellipsis', totalPages];
-}
 
 /** Maps generic library order-by fields to the saved search results API sortBy contract. */
 export const mapOrderByToSavedSearchSortBy = (
@@ -386,84 +373,7 @@ export function LibraryContent({
         </ErrorBoundary>
       </div>
 
-      {totalPages > 1 && (
-        <nav
-          role="navigation"
-          aria-label="Pagination"
-          className="flex items-center justify-center py-2 px-4 border-t border-border shrink-0 select-none bg-background"
-        >
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              disabled={nav.page <= 1}
-              onClick={() => {
-                clearSelection();
-                nav.setPage(nav.page - 1);
-              }}
-              aria-label="Previous page"
-              className={cn(
-                'inline-flex items-center justify-center size-7 rounded-md text-xs font-medium transition-colors relative before:absolute before:-inset-2 md:before:hidden',
-                nav.page <= 1
-                  ? 'text-muted-foreground cursor-not-allowed pointer-events-none'
-                  : 'text-foreground hover:bg-muted cursor-pointer',
-              )}
-            >
-              <ChevronLeft className="size-3.5" />
-            </button>
 
-            {getVisiblePages(nav.page, totalPages).map((p, idx) => {
-              if (p === 'ellipsis') {
-                return (
-                  <span
-                    key={`ellipsis-${idx}`}
-                    className="inline-flex items-center justify-center size-7 text-xs text-foreground select-none"
-                  >
-                    …
-                  </span>
-                );
-              }
-              const isCurrent = p === nav.page;
-              return (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => {
-                    clearSelection();
-                    nav.setPage(p);
-                  }}
-                  aria-current={isCurrent ? 'page' : undefined}
-                  className={cn(
-                    'inline-flex items-center justify-center size-7 rounded-md text-xs font-medium transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden',
-                    isCurrent
-                      ? 'bg-muted text-foreground font-semibold border border-border shadow-xs'
-                      : 'text-foreground hover:bg-muted',
-                  )}
-                >
-                  {p}
-                </button>
-              );
-            })}
-
-            <button
-              type="button"
-              disabled={nav.page >= totalPages}
-              onClick={() => {
-                clearSelection();
-                nav.setPage(nav.page + 1);
-              }}
-              aria-label="Next page"
-              className={cn(
-                'inline-flex items-center justify-center size-7 rounded-md text-xs font-medium transition-colors relative before:absolute before:-inset-2 md:before:hidden',
-                nav.page >= totalPages
-                  ? 'text-muted-foreground cursor-not-allowed pointer-events-none'
-                  : 'text-foreground hover:bg-muted cursor-pointer',
-              )}
-            >
-              <ChevronRight className="size-3.5" />
-            </button>
-          </div>
-        </nav>
-      )}
 
       {/* Floating Multi-Selection Action Bar */}
       <BatchBar

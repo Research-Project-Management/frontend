@@ -6,11 +6,12 @@ import { ChatWindow } from './ChatWindow';
 import { CreateChannelModal } from './CreateChannelModal';
 import { CreateGroupModal } from './CreateGroupModal';
 import { FriendManagerModal } from './FriendManagerModal';
+import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { useConversations } from '../hooks/use-chat-queries';
 import { useChatStore } from '../store/chat.store';
 
 export function ChatView() {
-  const { data: conversationsData, isLoading } = useConversations();
+  const { data: conversationsData, isLoading, isError, error } = useConversations();
   const {
     activeConversation,
     activeConversationId,
@@ -92,6 +93,18 @@ export function ChatView() {
     activeConversationId,
     setActiveConversation,
   ]);
+
+  if (isError) {
+    return (
+      <div className="size-full flex items-center justify-center p-8 bg-background">
+        <PlaneErrorState
+          title="Unable to load conversations"
+          description="We couldn't retrieve your channels and messages. Other workspaces remain safe."
+          error={error}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="size-full flex overflow-hidden">

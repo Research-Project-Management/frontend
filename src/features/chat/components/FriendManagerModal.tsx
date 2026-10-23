@@ -33,6 +33,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
+import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 
 type ModalTab = 'search' | 'requests' | 'friends';
 
@@ -262,10 +263,17 @@ export function FriendManagerModal() {
                   <Loader2 className="size-5 animate-spin text-muted-foreground" />
                 </div>
               ) : searchResults.length === 0 ? (
-                <div className="py-8 text-center text-12 text-muted-foreground px-4">
-                  {searchQuery.trim()
-                    ? 'No users found matching your search'
-                    : 'No suggestions available. Suggestions appear when you share projects or mutual friends.'}
+                <div className="py-6 px-4">
+                  <PlaneEmptyState
+                    variant="search"
+                    isCompact
+                    title={searchQuery.trim() ? 'No users found' : 'No suggestions'}
+                    description={
+                      searchQuery.trim()
+                        ? 'No users match your search query.'
+                        : 'Suggestions appear when you share projects or mutual friends.'
+                    }
+                  />
                 </div>
               ) : (
                 searchResults.map((user) => {
@@ -367,9 +375,14 @@ export function FriendManagerModal() {
                   <Loader2 className="size-4 animate-spin text-muted-foreground" />
                 </div>
               ) : incomingCount === 0 ? (
-                <p className="text-12 text-muted-foreground py-2 text-center">
-                  No pending friend requests.
-                </p>
+                <div className="py-4 px-2">
+                  <PlaneEmptyState
+                    variant="default"
+                    isCompact
+                    title="No friend requests"
+                    description="You don't have any pending incoming friend requests."
+                  />
+                </div>
               ) : (
                 friendRequests?.incoming.map((req) => (
                   <div

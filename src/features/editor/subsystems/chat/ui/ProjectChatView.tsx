@@ -16,6 +16,7 @@ import {
   type ProjectChatMessage,
 } from '@/features/editor/sdk/realtime/yjs-socket-provider';
 import { Button } from '@/shared/components/ui/button';
+import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { Input } from '@/shared/components/ui/input';
 import { cn } from '@/shared/lib/utils';
 
@@ -93,12 +94,13 @@ export function ProjectChatView({
     <div className="flex flex-1 flex-col overflow-hidden min-h-0 bg-background">
       <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center py-10 px-4 text-muted-foreground">
-            <MessageSquare className="size-7 mb-2 opacity-50" strokeWidth={1.5} />
-            <p className="text-xs font-medium text-foreground">Project Chat</p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              Send real-time messages to collaborators working in this manuscript.
-            </p>
+          <div className="flex items-center justify-center h-full p-4 select-none">
+            <PlaneEmptyState
+              variant="chat"
+              isCompact
+              title="Project Chat"
+              description="Send real-time messages to collaborators working in this manuscript."
+            />
           </div>
         ) : (
           messages.map((msg) => {

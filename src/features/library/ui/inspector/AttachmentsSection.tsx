@@ -251,7 +251,7 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
         <div className="flex flex-col gap-1.5 w-full">
           {/* Primary PDF Row */}
           {paperUrl ? (
-            <div className="flex items-center justify-between px-2 py-1 min-h-[28px] rounded-md hover:bg-muted border border-border">
+            <div className="flex items-center justify-between px-2.5 py-1.5 min-h-[32px] rounded-md bg-background hover:bg-muted border border-border transition-colors">
               <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
                 <div className="size-4 shrink-0 flex items-center justify-center">
                   <FileText className="size-4 text-foreground shrink-0" />
@@ -259,7 +259,7 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
                 <div className="min-w-0 flex-1">
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <p className="text-xs font-medium text-foreground break-all leading-snug">
+                      <p className="text-xs font-medium text-foreground truncate leading-snug">
                         {primaryAttachment?.title ||
                           paper.filename ||
                           (paper.openAccessPdfUrl ? "Open Access PDF" : "PDF")}
@@ -276,7 +276,7 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
                     primaryAttachment.title !== paper.filename && (
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <p className="text-10 text-foreground truncate">
+                          <p className="text-10 text-muted-foreground truncate">
                             {paper.filename}
                           </p>
                         </TooltipTrigger>
@@ -384,7 +384,7 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
             return (
               <div
                 key={att.id}
-                className="flex items-center justify-between px-2 py-1 min-h-[28px] rounded-md hover:bg-muted border border-border transition-colors"
+                className="flex items-center justify-between px-2.5 py-1.5 min-h-[32px] rounded-md bg-background hover:bg-muted border border-border transition-colors"
               >
                 <div
                   className={`flex items-center gap-2 min-w-0 flex-1 mr-2 ${isSnapshot || isEpub || isLink ? "cursor-pointer" : ""}`}
@@ -549,17 +549,17 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
             type="button"
             disabled={isCapturingSnapshot}
             onClick={handleCaptureSnapshot}
-            className="w-full mt-1 h-8 flex items-center justify-center gap-1.5 px-2 rounded-md border border-dashed border-border hover:bg-muted text-12 text-foreground transition-colors disabled:opacity-50 cursor-pointer relative before:absolute before:-inset-1 md:before:hidden"
+            className="w-full mt-1.5 min-h-[32px] py-1.5 flex items-center justify-center gap-1.5 px-3 rounded-md border border-dashed border-border bg-background hover:bg-muted text-12 font-medium text-foreground transition-colors disabled:opacity-50 cursor-pointer overflow-hidden box-border"
           >
             {isCapturingSnapshot ? (
               <>
                 <Loader2 className="size-3.5 animate-spin text-foreground shrink-0" />
-                <span>Capturing Web Snapshot...</span>
+                <span className="truncate">Capturing Web Snapshot...</span>
               </>
             ) : (
               <>
                 <Globe className="size-3.5 text-foreground shrink-0" />
-                <span>
+                <span className="truncate">
                   {hasSnapshot ? "Update Web Snapshot" : "Capture Web Snapshot"}
                 </span>
               </>

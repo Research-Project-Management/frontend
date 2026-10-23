@@ -38,7 +38,8 @@ export default function Recent() {
       .map((item) => ({
         ...item,
         title: item.title || item.name || 'Project',
-        updatedAt: item.updatedAt || new Date().toISOString(),
+        type: ((item.type || (item as { entityType?: string }).entityType || 'work-item') === 'work_item' ? 'work-item' : (item.type || (item as { entityType?: string }).entityType || 'work-item')) as RecentItem['type'],
+        updatedAt: item.updatedAt || (item as { lastInteractedAt?: string }).lastInteractedAt || new Date().toISOString(),
         users: (Array.isArray(item.users) && item.users.length > 0)
           ? item.users
           : (item.updatedBy ? [item.updatedBy] : [currentUserObj]),

@@ -545,9 +545,10 @@ export type WorkItemActivityLog = ActivityLog;
 export type ProjectItemsData = {
   items?: Item[];
   workItems?: Item[];
-  columns: Column[];
+  columns?: Column[];
   states?: Column[];
   projectName?: string;
+  total?: number;
 };
 export type ProjectWorkItemsData = ProjectItemsData;
 

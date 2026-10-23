@@ -96,8 +96,12 @@ export interface ProjectAnalyticsDistribution {
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-const unwrapItem = (res: { workItem?: Item; item?: Item }): { workItem: Item; item: Item } => {
-  const item = (res.workItem || res.item) as Item;
+const unwrapItem = (res: unknown): { workItem: Item; item: Item } => {
+  if (!res || typeof res !== 'object') {
+    return { workItem: {} as Item, item: {} as Item };
+  }
+  const obj = res as Record<string, unknown>;
+  const item = (obj.workItem || obj.item || obj.data || obj) as Item;
   return { workItem: item, item };
 };
 
@@ -106,8 +110,23 @@ const unwrapItem = (res: { workItem?: Item; item?: Item }): { workItem: Item; it
 export const workItemApi = {
   // ── 1. Items (Core CRUD, Ranking, Hierarchy) ──────────────────────────────
   items: {
-    getProjectItems: (projectId: string) =>
-      apiGet<ProjectItemsData>(`/api/projects/${projectId}/work-items`),
+    getProjectItems: async (projectId: string): Promise<ProjectItemsData> => {
+      const res = await apiGet<ProjectItemsData | Item[]>(`/api/projects/${projectId}/work-items`);
+      if (Array.isArray(res)) {
+        return {
+          items: res,
+          workItems: res,
+          columns: [],
+        };
+      }
+      const items = res?.items || res?.workItems || [];
+      return {
+        ...res,
+        items,
+        workItems: items,
+        columns: res?.columns || res?.states || [],
+      };
+    },
 
     getItems: async (): Promise<Item[]> => {
       const response = await apiGet<{ data?: Item[]; workItems?: Item[] } | Item[]>(

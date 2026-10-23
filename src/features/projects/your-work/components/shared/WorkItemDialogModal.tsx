@@ -43,7 +43,10 @@ export function WorkItemDialogModal({
   const deleteWorkItemMutation = useDeleteWorkItem();
   const duplicateWorkItemMutation = useDuplicateWorkItem();
 
-  const fetchedWorkItem = (projectWorkItems?.workItems || projectWorkItems?.items || []).find((t: { id?: string }) => t.id === workItemId);
+  const rawItems = Array.isArray(projectWorkItems)
+    ? projectWorkItems
+    : (projectWorkItems?.workItems || projectWorkItems?.items || []);
+  const fetchedWorkItem = (rawItems as Array<{ id?: string }>).find((t) => t.id === workItemId);
   const workItem = fetchedWorkItem || initialWorkItem;
   const pDetails = projectDetails as (typeof projectDetails & { workItemColumns?: Array<{ id: string; name: string; [key: string]: unknown }>; members?: Array<{ id?: string; userId?: string; [key: string]: unknown }> }) | undefined;
   const rawColumns = projectWorkItems?.columns && projectWorkItems.columns.length > 0

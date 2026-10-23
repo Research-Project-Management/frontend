@@ -126,14 +126,19 @@ export function CreateModal({
   }, [isDifferentProject, remoteDetails, members]);
 
   const effectiveAvailableItems = useMemo<Item[]>(() => {
+    const extractItems = (data: unknown): Item[] => {
+      if (!data) return [];
+      if (Array.isArray(data)) return data as Item[];
+      const obj = data as { items?: Item[]; workItems?: Item[] };
+      return obj.items || obj.workItems || [];
+    };
+
     if (isDifferentProject && remoteItemsData) {
-      const data = remoteItemsData as { items?: Item[]; workItems?: Item[] };
-      return data.items || data.workItems || [];
+      return extractItems(remoteItemsData);
     }
     if (availableItems && availableItems.length > 0) return availableItems;
     if (remoteItemsData) {
-      const data = remoteItemsData as { items?: Item[]; workItems?: Item[] };
-      return data.items || data.workItems || [];
+      return extractItems(remoteItemsData);
     }
     return [];
   }, [isDifferentProject, remoteItemsData, availableItems]);

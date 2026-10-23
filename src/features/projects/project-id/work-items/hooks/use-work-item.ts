@@ -2,6 +2,7 @@
 
 import { useMemo, useCallback } from 'react';
 import type {
+  Item,
   Project,
   ProjectMember,
   Priority,
@@ -53,7 +54,10 @@ export function useProject({ projectId }: UseProjectOptions) {
   const reorderMut = useReorderItem();
   const subItemMut = useCreateSubItem();
 
-  const items = useMemo(() => itemsQ.data?.items ?? itemsQ.data?.workItems ?? [], [itemsQ.data]);
+  const items = useMemo(() => {
+    if (Array.isArray(itemsQ.data)) return itemsQ.data as Item[];
+    return itemsQ.data?.items ?? itemsQ.data?.workItems ?? [];
+  }, [itemsQ.data]);
   const project = useMemo(() => {
     const projectData = detailsQ.data;
     if (!projectData) return undefined;
@@ -65,7 +69,9 @@ export function useProject({ projectId }: UseProjectOptions) {
     if (Array.isArray(statesQ.data) && statesQ.data.length > 0) {
       return normalizeStates(statesQ.data);
     }
-    const rawCols = itemsQ.data?.columns || (itemsQ.data as { states?: unknown[] } | undefined)?.states;
+    const rawCols = !Array.isArray(itemsQ.data)
+      ? (itemsQ.data?.columns || (itemsQ.data as { states?: unknown[] } | undefined)?.states)
+      : undefined;
     if (Array.isArray(rawCols) && rawCols.length > 0) return normalizeStates(rawCols);
     if (Array.isArray(projectColumns) && projectColumns.length > 0) return normalizeStates(projectColumns);
     return [...DEFAULT_STATES];

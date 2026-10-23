@@ -10,6 +10,7 @@ import {
   FolderGit2,
   ChevronDown,
   UserPlus,
+  X,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { useChatStore } from '../store/chat.store';
@@ -17,6 +18,7 @@ import { useFriendRequests } from '../hooks/use-chat-queries';
 import { ConversationItem, FilterTab } from '../types/chat.types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
 import { Badge } from '@/shared/components/ui/badge';
 import {
   DropdownMenu,
@@ -54,6 +56,21 @@ export function ChatSidebar({ conversations, isLoading }: ChatSidebarProps) {
 
   const { data: friendRequests } = useFriendRequests();
   const pendingFriendRequests = friendRequests?.incoming?.length || 0;
+  const [isSearchExpanded, setIsSearchExpanded] = React.useState(false);
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
+
+  const expandSearch = () => {
+    if (!isSearchExpanded) {
+      setIsSearchExpanded(true);
+      setTimeout(() => searchInputRef.current?.focus(), 50);
+    }
+  };
+
+  const handleClearSearch = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSearchQuery('');
+    setIsSearchExpanded(false);
+  };
 
   // Group project channels by project
   const projectGroups = useMemo(() => {
@@ -135,80 +152,146 @@ export function ChatSidebar({ conversations, isLoading }: ChatSidebarProps) {
 
   return (
     <aside className="w-60 shrink-0 border-r border-border flex flex-col h-full select-none">
-      {/* 1. Header Row (Fixed height h-11, matching Topbar, clean subtle bottom border) */}
-      <div className="h-11 px-3 flex items-center justify-between shrink-0 border-b border-border select-none">
-        <div className="flex items-center gap-2">
-          <MessageSquare className="size-4 text-foreground shrink-0" />
-          <span className="text-13 font-heading font-semibold tracking-tight text-foreground">Messages</span>
-        </div>
-        <div className="flex items-center gap-1">
-          {/* Icon 2 người (Users): Bạn bè & Lời mời kết bạn */}
-          <Tooltip delayDuration={150}>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted relative cursor-pointer"
-                aria-label={pendingFriendRequests > 0 ? `Friends & Requests (${pendingFriendRequests} pending)` : 'Friends & Requests'}
-                onClick={openFriendManagerModal}
-              >
-                <Users className="size-4 text-foreground" />
-                {pendingFriendRequests > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-primary text-primary-foreground font-mono text-11 font-bold leading-none ring-2 ring-background shadow-2xs pointer-events-none tabular-nums">
-                    {pendingFriendRequests > 99 ? '99+' : pendingFriendRequests}
-                  </span>
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              {pendingFriendRequests > 0
-                ? `Friends & Requests (${pendingFriendRequests} pending)`
-                : 'Friends & Requests'}
-            </TooltipContent>
-          </Tooltip>
-
-          {/* Dấu + (Plus): Tạo nhóm hoặc Kết bạn */}
-          <DropdownMenu>
-            <Tooltip delayDuration={150}>
-              <TooltipTrigger asChild>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
-                    aria-label="Create Group or Add Friend"
+      {/* 1. Header Row (Fixed height h-11, matching Topbar & LibrarySidebar, without border-b) */}
+      <div className="h-11 px-2.5 flex items-center shrink-0 select-none">
+        <div
+          className={cn(
+            'flex items-center h-8 font-semibold text-sm tracking-tight text-foreground select-none w-full',
+            isSearchExpanded || searchQuery ? 'px-0' : 'justify-between px-1',
+          )}
+        >
+          {isSearchExpanded || searchQuery ? (
+            <div className="relative flex items-center w-full h-8 rounded-md border border-border bg-background overflow-hidden font-normal text-13">
+              <Search
+                className="absolute top-1/2 -translate-y-1/2 size-3.5 z-10 left-2.5 translate-x-0 text-muted-foreground pointer-events-none shrink-0"
+                strokeWidth={1.5}
+              />
+              <Input
+                ref={searchInputRef}
+                autoFocus
+                placeholder="Search conversations..."
+                aria-label="Search conversations"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setSearchQuery('');
+                    setIsSearchExpanded(false);
+                  }
+                }}
+                onBlur={() => {
+                  if (!searchQuery) {
+                    setIsSearchExpanded(false);
+                  }
+                }}
+                className="h-full text-13 font-normal tracking-tight py-0 leading-none border-none bg-transparent focus-visible:ring-0 focus-visible:border-none focus-visible:outline-none focus:outline-none outline-none shadow-none w-full placeholder:text-muted-foreground placeholder:font-normal pl-8 pr-7 text-foreground"
+              />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    onClick={handleClearSearch}
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center justify-center size-5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer rounded-md outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-2 md:before:hidden"
+                    aria-label="Clear search"
                   >
-                    <Plus className="size-4 text-foreground" />
-                  </Button>
-                </DropdownMenuTrigger>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Create Group or Add Friend</TooltipContent>
-            </Tooltip>
-            <DropdownMenuContent align="end" className="w-44">
-              <DropdownMenuItem onClick={openCreateGroupModal} className="cursor-pointer">
-                <Users className="size-3.5 mr-2 text-foreground" />
-                <span>Create Group</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={openFriendManagerModal} className="cursor-pointer">
-                <UserPlus className="size-3.5 mr-2 text-foreground" />
-                <span>Add Friend</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
+                    <X className="size-3 shrink-0" strokeWidth={1.5} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" align="start" sideOffset={6} alignOffset={2}>
+                  Clear search
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-2">
+                <MessageSquare className="size-4 text-foreground shrink-0" />
+                <span className="text-13 font-heading font-semibold tracking-tight text-foreground">
+                  Messages
+                </span>
+              </div>
+              <div className="flex items-center gap-0.5 shrink-0">
+                {/* Search toggle button */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={expandSearch}
+                      className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary relative before:absolute before:-inset-1.5 md:before:hidden"
+                      aria-label="Search conversations"
+                    >
+                      <Search className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" align="start" sideOffset={6} alignOffset={2}>
+                    Search conversations
+                  </TooltipContent>
+                </Tooltip>
 
-      {/* 2. Search Bar */}
-      <div className="px-2.5 pt-2 pb-1.5 shrink-0">
-        <div className="relative flex items-center">
-          <Search className="absolute left-2.5 size-3.5 text-foreground shrink-0 pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Search..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-8 pl-8 pr-2.5 text-13 font-normal rounded-md bg-background border border-border shadow-2xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-          />
+                {/* Friends & Requests */}
+                <Tooltip delayDuration={150}>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted relative cursor-pointer"
+                      aria-label={
+                        pendingFriendRequests > 0
+                          ? `Friends & Requests (${pendingFriendRequests} pending)`
+                          : 'Friends & Requests'
+                      }
+                      onClick={openFriendManagerModal}
+                    >
+                      <Users className="size-4 text-foreground" />
+                      {pendingFriendRequests > 0 && (
+                        <span className="absolute -top-1 -right-1 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-primary text-primary-foreground font-mono text-11 font-semibold leading-none ring-2 ring-background shadow-2xs pointer-events-none tabular-nums">
+                          {pendingFriendRequests > 99 ? '99+' : pendingFriendRequests}
+                        </span>
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    {pendingFriendRequests > 0
+                      ? `Friends & Requests (${pendingFriendRequests} pending)`
+                      : 'Friends & Requests'}
+                  </TooltipContent>
+                </Tooltip>
+
+                {/* Create Group or Add Friend */}
+                <DropdownMenu>
+                  <Tooltip delayDuration={150}>
+                    <TooltipTrigger asChild>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
+                          aria-label="Create Group or Add Friend"
+                        >
+                          <Plus className="size-4 text-foreground" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">Create Group or Add Friend</TooltipContent>
+                  </Tooltip>
+                  <DropdownMenuContent align="end" className="w-44">
+                    <DropdownMenuItem onClick={openCreateGroupModal} className="cursor-pointer">
+                      <Users className="size-3.5 mr-2 text-foreground" />
+                      <span>Create Group</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={openFriendManagerModal} className="cursor-pointer">
+                      <UserPlus className="size-3.5 mr-2 text-foreground" />
+                      <span>Add Friend</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </>
+          )}
         </div>
       </div>
 

@@ -18,10 +18,6 @@ const AiCompanionSidebar = dynamic(
   { ssr: false, loading: () => null }
 );
 
-const FloatingChatWidget = dynamic(
-  () => import('@/features/chat/components/FloatingChatWidget'),
-  { ssr: false, loading: () => null }
-);
 
 function AiCompanionSlot() {
   const isOpen = useAiCompanionStore((s) => s.isOpen);
@@ -62,11 +58,6 @@ export default function AppLayout({
             {children}
           </Suspense>
         </ErrorBoundary>
-        <ErrorBoundary fallback={null} featureName="Floating Chat">
-          <Suspense fallback={null}>
-            <FloatingChatWidget />
-          </Suspense>
-        </ErrorBoundary>
       </div>
     );
   }
@@ -91,13 +82,6 @@ export default function AppLayout({
           <ErrorBoundary fallback={null} featureName="AI Companion">
             <Suspense fallback={null}>
               <AiCompanionSlot />
-            </Suspense>
-          </ErrorBoundary>
-        )}
-        {!pathname.startsWith('/chat') && (
-          <ErrorBoundary fallback={null} featureName="Floating Chat">
-            <Suspense fallback={null}>
-              <FloatingChatWidget />
             </Suspense>
           </ErrorBoundary>
         )}

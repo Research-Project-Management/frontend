@@ -31,7 +31,7 @@ type UndoAction =
     };
 
 /**
- * Manages desktop Zotero-native multi-annotation selection, batch operations,
+ * Manages native multi-annotation selection, batch operations,
  * context actions, and undo/redo inside the PDF Reader.
  */
 export function useAnnotationBatch({

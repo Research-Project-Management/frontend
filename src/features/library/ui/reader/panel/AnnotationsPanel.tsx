@@ -4,21 +4,21 @@ import React, { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
-  Loader2,
-  Edit3,
-  Trash2,
-  Highlighter,
-  Check,
-  X,
-  Search,
-  FileText,
-  RotateCcw,
-  ArrowUpDown,
-  User,
-  Download,
   StickyNote,
+  Trash2,
+  X,
+  Loader2,
   AlertTriangle,
+  Highlighter,
+  Search,
+  RotateCcw,
+  Check,
+  Edit3,
+  FileText,
   Palette,
+  Download,
+  User,
+  ArrowUpDown,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Form } from '@/shared/components/ui/form';
@@ -30,24 +30,27 @@ import {
 } from '@/shared/components/ui/dropdown-menu';
 import {
   ContextMenu,
-  ContextMenuTrigger,
   ContextMenuContent,
   ContextMenuItem,
-  ContextMenuSub,
-  ContextMenuSubTrigger,
-  ContextMenuSubContent,
   ContextMenuSeparator,
   ContextMenuShortcut,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger,
 } from '@/shared/components/ui/context-menu';
 import { cn } from '@/shared/lib/utils';
 import { useAnnotations } from '@/features/library/sdk/queries/reader.queries';
-import { annotationFormSchema } from '@/features/library/domain/types/reader.schema';
 import type {
   ReaderDocument,
   ReaderAnnotation,
   AnnotationFormData,
 } from '@/features/library/domain/types/reader.types';
-import { PdfAnnotationEngine, ZOTERO_COLORS } from '@/features/library/domain/reader.domain';
+import { annotationFormSchema } from '@/features/library/domain/types/reader.schema';
+import {
+  PdfAnnotationEngine,
+  ANNOTATION_PALETTE_COLORS,
+} from '@/features/library/domain/reader.domain';
 
 export interface AnnotationsPanelProps {
   paper: ReaderDocument;
@@ -66,10 +69,10 @@ export interface AnnotationsPanelProps {
 
 const EMPTY_SELECTED_IDS = new Set<string>();
 
-const ZOTERO_COLOR_BY_HEX_MAP: ReadonlyMap<
+const ANNOTATION_COLOR_BY_HEX_MAP: ReadonlyMap<
   string,
-  (typeof ZOTERO_COLORS)[number]
-> = new Map(ZOTERO_COLORS.map((c) => [c.hex.toLowerCase(), c]));
+  (typeof ANNOTATION_PALETTE_COLORS)[number]
+> = new Map(ANNOTATION_PALETTE_COLORS.map((c) => [c.hex.toLowerCase(), c]));
 
 function AnnotationEditForm({
   initialQuote,
@@ -204,12 +207,12 @@ export function AnnotationsPanel({
 
   const selectedIdsArray = useMemo(() => Array.from(selectedIds), [selectedIds]);
 
-  // Zotero behavior: Only show colors and tags that actually exist in the current paper's annotations
+  // Native Reader behavior: Only show colors and tags that actually exist in the current paper's annotations
   const existingColors = useMemo(() => {
-    const map = new Map<string, (typeof ZOTERO_COLORS)[number]>();
+    const map = new Map<string, (typeof ANNOTATION_PALETTE_COLORS)[number]>();
     for (const a of annotations) {
       const hex = (a.color || '#ffd400').toLowerCase();
-      const match = ZOTERO_COLOR_BY_HEX_MAP.get(hex);
+      const match = ANNOTATION_COLOR_BY_HEX_MAP.get(hex);
       if (match && !map.has(match.id)) {
         map.set(match.id, match);
       }
@@ -830,7 +833,7 @@ export function AnnotationsPanel({
                         <span>Change Color</span>
                       </ContextMenuSubTrigger>
                       <ContextMenuSubContent className="w-36 bg-popover border border-border shadow-raised-200 rounded-md p-1 z-50 font-sans">
-                        {ZOTERO_COLORS.map((c) => (
+                        {ANNOTATION_PALETTE_COLORS.map((c) => (
                           <ContextMenuItem
                             key={c.id}
                             onClick={() => onBatchChangeColor?.(c.hex, targetIds)}

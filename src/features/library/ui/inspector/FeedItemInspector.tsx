@@ -306,7 +306,7 @@ export function FeedItemInspector({
                   href={entry.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-foreground hover:underline truncate"
+                  className="text-foreground hover:underline truncate min-w-0 block"
                   title={entry.url}
                 >
                   {entry.url}
@@ -324,7 +324,7 @@ export function FeedItemInspector({
                   onClick={() => {
                     if (!isRead) onToggleRead?.(entry.id);
                   }}
-                  className="text-foreground hover:underline truncate"
+                  className="text-foreground hover:underline truncate min-w-0 block"
                   title={entry.pdfUrl}
                 >
                   {entry.pdfUrl}
@@ -339,7 +339,8 @@ export function FeedItemInspector({
                   href={`https://doi.org/${entry.doi}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-foreground hover:underline truncate"
+                  className="text-foreground hover:underline truncate min-w-0 block"
+                  title={entry.doi}
                 >
                   {entry.doi}
                 </a>
@@ -353,7 +354,8 @@ export function FeedItemInspector({
                   href={`https://arxiv.org/abs/${entry.arxivId}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-foreground hover:underline"
+                  className="text-foreground hover:underline truncate min-w-0 block"
+                  title={entry.arxivId}
                 >
                   {entry.arxivId}
                 </a>

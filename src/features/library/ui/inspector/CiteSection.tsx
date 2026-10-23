@@ -229,7 +229,7 @@ export default function CiteSection({ item, scopeId }: CiteSectionProps) {
   return (
     <>
       <div className="flex flex-col gap-2 min-w-0 font-sans select-none">
-        {/* ⚠️ Citation Guard: Retraction Notice (Zotero Style) */}
+        {/* ⚠️ Citation Guard: Retraction Notice */}
         {(item?.isRetracted || item?.retractionStatus === "retracted") && (
           <div className="p-2 rounded-md border border-destructive/30 bg-destructive/10 text-destructive text-xs flex items-start gap-2 select-none shrink-0 animate-in fade-in duration-200">
             <ShieldAlert

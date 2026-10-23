@@ -73,7 +73,7 @@ export function DuplicatesPage() {
         </div>
       </div>
 
-      {/* Zone 4: Inspector Panel (Zotero 7 Merge Inspector when duplicates selected) */}
+      {/* Zone 4: Inspector Panel (Merge Inspector when duplicates selected) */}
       {selectedGroupItems.length >= 2 ? (
         <div className="hidden md:flex w-80 lg:w-96 xl:w-[420px] h-full shrink-0 flex-col overflow-hidden border-l border-border bg-background">
           <DuplicateMergeInspector

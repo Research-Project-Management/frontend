@@ -332,7 +332,10 @@ export function useItemTypeConversion(scopeId?: string) {
         });
       }
     },
-    onError: (err: Error) => {
+    onError: (err: Error, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: itemKeys.byId(effectiveScopeId, variables.itemId),
+      });
       toast.error('Conversion failed', {
         description: err.message || 'Could not convert item type.',
         id: 'type-conversion',

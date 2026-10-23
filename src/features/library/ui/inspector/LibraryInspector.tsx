@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown, ChevronRight, Plus, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, X, FileText, Loader2 } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -98,11 +98,10 @@ function InspectorSection({
           )}
         </button>
 
-        {/* Right Corner Action Cluster: [ + ] [ > / v ] */}
+        {/* Right Corner Action Cluster: [ actionSlot ] [ + ] [ > / v ] */}
         <div role="presentation" className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-          {actionSlot ? (
-            actionSlot
-          ) : onAdd && canEdit ? (
+          {actionSlot}
+          {onAdd && canEdit && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
@@ -124,7 +123,7 @@ function InspectorSection({
                 {`Add ${title.toLowerCase()}`}
               </TooltipContent>
             </Tooltip>
-          ) : null}
+          )}
 
           <Tooltip>
             <TooltipTrigger asChild>
@@ -175,6 +174,7 @@ export interface LibraryInspectorProps {
   onNavigateToAnnotation?: (pageNumber: number, annotationId?: string) => void;
   hideRailToggle?: boolean;
   defaultOpen?: boolean;
+  isReader?: boolean;
 }
 
 /**
@@ -201,6 +201,7 @@ function LibraryInspectorContent({
   onNavigateToAnnotation,
   hideRailToggle = false,
   defaultOpen = false,
+  isReader = false,
 }: LibraryInspectorProps) {
   // Sidebar & View store state
   const storeIsInspectorOpen = useLibraryUIStore((s) => s.isInspectorOpen);
@@ -319,6 +320,17 @@ function LibraryInspectorContent({
   });
 
   // Section emptiness flags (to prevent empty padding when clean/empty)
+  const [extractNotesState, setExtractNotesState] = useState<{
+    extract: (() => Promise<void>) | null;
+    isExtracting: boolean;
+  }>({ extract: null, isExtracting: false });
+  const handleRegisterExtract = useCallback(
+    (action: { extract: () => Promise<void>; isExtracting: boolean }) => {
+      setExtractNotesState(action);
+    },
+    [],
+  );
+
   const hasFiles = Boolean(
     effectiveItem?.filename ||
     (effectiveItem?.attachments && effectiveItem.attachments.length > 0) ||
@@ -453,6 +465,36 @@ function LibraryInspectorContent({
                       setExpandedSections((prev) => ({ ...prev, notes: true }));
                       setIsAddingNote(true);
                     }}
+                    actionSlot={
+                      isReader && effectiveCanEdit ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                extractNotesState.extract?.();
+                              }}
+                              disabled={extractNotesState.isExtracting}
+                              className="size-5 rounded flex items-center justify-center text-foreground hover:bg-muted cursor-pointer transition-colors relative before:absolute before:-inset-2.5 md:before:hidden disabled:opacity-50"
+                              aria-label="Extract from PDF highlights"
+                            >
+                              {extractNotesState.isExtracting ? (
+                                <Loader2 className="size-3.5 animate-spin text-foreground shrink-0" />
+                              ) : (
+                                <FileText
+                                  className="size-3.5 text-foreground shrink-0"
+                                  strokeWidth={1.5}
+                                />
+                              )}
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">
+                            From PDF Highlights
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : undefined
+                    }
                     contentClassName={hasNotes ? 'px-3 pt-1.5 pb-2.5 flex flex-col gap-2' : 'p-0'}
                     canEdit={effectiveCanEdit}
                   >
@@ -466,6 +508,8 @@ function LibraryInspectorContent({
                       onNavigateToAnnotation={onNavigateToAnnotation}
                       onCancelAdding={() => setIsAddingNote(false)}
                       canEdit={effectiveCanEdit}
+                      isReader={isReader}
+                      onRegisterExtract={handleRegisterExtract}
                     />
                   </InspectorSection>
                 )}

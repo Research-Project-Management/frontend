@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import {
   MinusCircle,
   Plus,
@@ -11,8 +11,6 @@ import {
   Loader2,
   FileText,
 } from "lucide-react";
-import { Textarea } from "@/shared/components/ui/textarea";
-import { Button } from "@/shared/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
@@ -44,6 +42,11 @@ export interface NotesSectionProps {
   pendingText?: string;
   onClearPendingText?: () => void;
   onNavigateToAnnotation?: (pageNumber: number, annotationId?: string) => void;
+  isReader?: boolean;
+  onRegisterExtract?: (register: {
+    extract: () => Promise<void>;
+    isExtracting: boolean;
+  }) => void;
 }
 
 export function NoteIcon({ className = "size-3.5" }: { className?: string }) {
@@ -71,6 +74,8 @@ function NotesSectionContent({
   pendingText,
   onClearPendingText,
   onNavigateToAnnotation,
+  isReader = false,
+  onRegisterExtract,
 }: NotesSectionProps & { item: Item }) {
   const paperId = paper.id;
   const activeScopeId = scopeId || paper?.projectId || "user";
@@ -78,7 +83,6 @@ function NotesSectionContent({
   const [expandedNoteIds, setExpandedNoteIds] = useState<Set<string>>(
     () => new Set(),
   );
-
 
   useEffect(() => {
     if (forceAdding && canEdit) {
@@ -138,7 +142,7 @@ function NotesSectionContent({
     });
   };
 
-  const handleExtractFromAnnotations = async () => {
+  const handleExtractFromAnnotations = useCallback(async () => {
     try {
       await extractFromAnnotations({
         includeComments: true,
@@ -147,7 +151,16 @@ function NotesSectionContent({
     } catch (caughtError) {
       logger.error("Failed to extract notes from annotations", caughtError);
     }
-  };
+  }, [extractFromAnnotations]);
+
+  useEffect(() => {
+    if (onRegisterExtract) {
+      onRegisterExtract({
+        extract: handleExtractFromAnnotations,
+        isExtracting: isExtractingFromAnnotations,
+      });
+    }
+  }, [onRegisterExtract, isExtractingFromAnnotations, handleExtractFromAnnotations]);
 
   const handleSaveNewNote = async () => {
     const trimmedContent = newNoteContent.trim();
@@ -193,7 +206,7 @@ function NotesSectionContent({
     setEditingContent("");
   };
 
-  if (notes.length === 0 && !isAdding && hideHeader && !canEdit) {
+  if (notes.length === 0 && !isAdding && hideHeader) {
     return null;
   }
 
@@ -204,6 +217,29 @@ function NotesSectionContent({
           <h3 className="text-12 font-medium text-foreground">Notes</h3>
           {canEdit && (
             <div className="flex items-center gap-1">
+              {isReader && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={handleExtractFromAnnotations}
+                      disabled={isExtractingFromAnnotations}
+                      className="size-5 flex items-center justify-center rounded text-foreground hover:bg-muted cursor-pointer transition-colors"
+                      aria-label="Extract from PDF highlights"
+                    >
+                      {isExtractingFromAnnotations ? (
+                        <Loader2 className="size-3.5 animate-spin text-foreground shrink-0" />
+                      ) : (
+                        <FileText
+                          className="size-3.5 text-foreground shrink-0"
+                          strokeWidth={1.5}
+                        />
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">From PDF Highlights</TooltipContent>
+                </Tooltip>
+              )}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
@@ -242,48 +278,7 @@ function NotesSectionContent({
       )}
 
       {/* Notes List */}
-      {notes.length === 0 && !isAdding ? (
-        <div className="py-3 px-2.5 text-center text-11 text-muted-foreground flex flex-col items-center justify-center gap-2 font-sans">
-          <span>No notes for this reference yet.</span>
-          {canEdit && (
-            <div className="flex flex-wrap items-center justify-center gap-1.5">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsAdding(true)}
-                className="h-6 text-11 text-foreground hover:bg-muted px-2 gap-1 cursor-pointer font-normal"
-              >
-                <Plus className="size-3 text-foreground" strokeWidth={1.5} />
-                <span>Add note</span>
-              </Button>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleExtractFromAnnotations}
-                    disabled={isExtractingFromAnnotations}
-                    className="h-6 text-11 text-foreground hover:bg-muted px-2 gap-1 cursor-pointer font-normal"
-                  >
-                    {isExtractingFromAnnotations ? (
-                      <Loader2 className="size-3 animate-spin shrink-0" />
-                    ) : (
-                      <FileText className="size-3 text-foreground shrink-0" />
-                    )}
-                    <span>From PDF Highlights</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  Automatically extract all PDF highlights and comments into a note
-                </TooltipContent>
-              </Tooltip>
-            </div>
-          )}
-        </div>
-      ) : (
+      {notes.length > 0 && (
         <div className="flex flex-col gap-1.5 min-w-0">
           {notes.map((n) => {
             const isEditing = editingNoteId === n.id;

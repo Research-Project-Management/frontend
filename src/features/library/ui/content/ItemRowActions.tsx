@@ -29,6 +29,7 @@ import { useCitationStyles } from '@/features/library/sdk/queries/citation.queri
 import { useMoveCollectionItemsMutation } from '@/features/library/sdk/queries/collections.queries';
 import {
   executeCopyMultiCite,
+  executeCopyInTextCite,
   executeExportAllBibtex,
 } from '@/features/library/core/coordinator/citation-export.coordinator';
 import { getCleanStyleLabel } from '@/features/library/domain/citations';
@@ -90,6 +91,11 @@ export const ItemRowActions = React.memo(function ItemRowActions({
       return;
     }
     await executeCopyMultiCite([item], effectiveScope, style);
+  };
+
+  const handleCopyInTextCitation = async (style: CslStyle = 'apa') => {
+    setIsOpen(false);
+    await executeCopyInTextCite([item], scopeId || 'user', style);
   };
 
   const handleCopyCitationKey = () => {
@@ -221,6 +227,24 @@ export const ItemRowActions = React.memo(function ItemRowActions({
                     <DropdownMenuItem onClick={() => handleCopyBibliography('bibtex')} className="cursor-pointer text-12 py-1.5 px-2 font-mono text-11">
                       BibTeX
                     </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors">
+                    <Quote className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                    <span>Copy In-text Citation</span>
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent className="w-48 p-1 text-12 shadow-raised-200 select-none max-h-64 overflow-y-auto">
+                    {availableStyles.map((style) => (
+                      <DropdownMenuItem
+                        key={style.id}
+                        onClick={() => handleCopyInTextCitation(style.id as CslStyle)}
+                        className="cursor-pointer text-12 py-1.5 px-2 truncate"
+                      >
+                        {style.label}
+                      </DropdownMenuItem>
+                    ))}
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
 

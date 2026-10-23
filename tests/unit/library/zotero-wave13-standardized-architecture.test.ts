@@ -2,7 +2,7 @@
  * Wave 13: Architectural Flow Standardization, Pipeline Consolidation & Single Source of Truth
  *
  * Verifies:
- * 1. `ALL_SCHEMA_FIELD_KEYS`, `DIRECT_METADATA_FIELDS`, `ALL_ZOTERO_PROMOTE_KEYS`, and `INTERNAL_AND_DEDICATED_METADATA_KEYS`
+ * 1. `ALL_SCHEMA_FIELD_KEYS`, `DIRECT_METADATA_FIELDS`, `ALL_SCHEMA_PROMOTE_KEYS`, and `INTERNAL_AND_DEDICATED_METADATA_KEYS`
  *    are automatically derived from the 37 Zotero Schema v42 item types (`INITIAL_ITEM_TYPE_FIELDS_MAP`) with 0 drift.
  * 2. `InfoSection.tsx` and `utils/metadata.util.ts` re-export the exact same canonical domain references from
  *    `domain/item-field-schema.ts`.
@@ -29,8 +29,8 @@ import {
   buildInspectorFieldPatch,
 } from '@/features/library/domain/item-field-schema';
 import {
-  ALL_ZOTERO_PROMOTE_KEYS,
-  isAllowedZoteroExtraKey,
+  ALL_SCHEMA_PROMOTE_KEYS,
+  isAllowedItemExtraKey,
   mapBackendItem,
   getItemDisplayTitle,
 } from '@/features/library/domain/metadata';
@@ -39,7 +39,7 @@ import * as DomainExports from '@/features/library/domain/item-field-schema';
 import type { Item } from '@/features/library/domain/types/library.types';
 
 describe('Wave 13: Architectural Flow Standardization & Single Source of Truth', () => {
-  it('derives ALL_SCHEMA_FIELD_KEYS, DIRECT_METADATA_FIELDS, and ALL_ZOTERO_PROMOTE_KEYS automatically from the 37 Zotero item types with zero drift', () => {
+  it('derives ALL_SCHEMA_FIELD_KEYS, DIRECT_METADATA_FIELDS, and ALL_SCHEMA_PROMOTE_KEYS automatically from the 37 Zotero item types with zero drift', () => {
     const all37Types = Object.keys(INITIAL_ITEM_TYPE_FIELDS_MAP);
     expect(all37Types.length).toBe(37);
     expect(ALL_SCHEMA_FIELD_KEYS.size).toBe(121);
@@ -57,8 +57,8 @@ describe('Wave 13: Architectural Flow Standardization & Single Source of Truth',
             `Expected DIRECT_METADATA_FIELDS to contain ${itemType}.${field}`,
           ).toBe(true);
           expect(
-            ALL_ZOTERO_PROMOTE_KEYS.includes(field),
-            `Expected ALL_ZOTERO_PROMOTE_KEYS to include ${itemType}.${field}`,
+            ALL_SCHEMA_PROMOTE_KEYS.includes(field),
+            `Expected ALL_SCHEMA_PROMOTE_KEYS to include ${itemType}.${field}`,
           ).toBe(true);
         }
       }
@@ -69,9 +69,9 @@ describe('Wave 13: Architectural Flow Standardization & Single Source of Truth',
     for (const field of ALL_SCHEMA_FIELD_KEYS) {
       const lower = field.toLowerCase();
       if (lower === 'pmid' || lower === 'pmcid' || lower === 'originaldate') {
-        expect(isAllowedZoteroExtraKey(field)).toBe(true);
+        expect(isAllowedItemExtraKey(field)).toBe(true);
       } else {
-        expect(isAllowedZoteroExtraKey(field)).toBe(false);
+        expect(isAllowedItemExtraKey(field)).toBe(false);
       }
     }
   });

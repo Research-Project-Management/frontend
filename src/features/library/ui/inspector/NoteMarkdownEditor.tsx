@@ -150,7 +150,7 @@ export function FormattedNoteBody({
 }
 
 /**
- * Formatting toolbar for Rich-Text / Markdown note editing (Zotero 7 Note Editor parity)
+ * Formatting toolbar for Rich-Text / Markdown note editing (Rich Note Editor)
  */
 export function NoteFormattingToolbar({
   textareaRef,

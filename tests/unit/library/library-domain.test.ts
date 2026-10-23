@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+﻿import { describe, it, expect } from "vitest";
 import {
   normalizeAuthors,
   parseAuthorName,
@@ -15,10 +15,7 @@ import {
   cleanPaperTitle,
   normalizeAcademicTitleCase,
 } from "@/features/library/domain/identifiers";
-import {
-  generateCitationKey,
-  toBibTeXEntry,
-} from "@/features/library/domain/citations";
+import { generateCitationKey, toAsciiKeyPart, getCleanStyleLabel, formatCitationStyleLabel } from "@/features/library/domain/citations";
 import { resolveArxivCategory } from "@/features/library/domain/categories";
 import {
   inspectItemDifferences,
@@ -248,19 +245,9 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
       expect(key3).toBe("vaswani2017attentionb");
     });
 
-    it("should export standard BibTeX entry", () => {
-      const item = {
-        title: "Deep Residual Learning",
-        authors: ["He, Kaiming", "Zhang, Xiangyu"],
-        year: 2016,
-        doi: "10.1109/CVPR.2016.90",
-        itemType: "conferencePaper",
-      };
-      const bibtex = toBibTeXEntry(item);
-      expect(bibtex).toContain("@inproceedings{he2016deep,");
-      expect(bibtex).toContain("title = {Deep Residual Learning}");
-      expect(bibtex).toContain("doi = {10.1109/CVPR.2016.90}");
-      expect(bibtex).toContain("year = {2016}");
+    it("should transliterate author surname and clean diacritics", () => {
+      expect(toAsciiKeyPart("Schrödinger")).toBe("schrodinger");
+      expect(toAsciiKeyPart("Nguyễn")).toBe("nguyen");
     });
   });
 
@@ -669,44 +656,10 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
       });
     });
 
-    it("should export consistent BibTeX, RIS, CSL-JSON, and formatted citations via ITEM_TYPE_EXPORT_SPEC and formatCitation", async () => {
-      const {
-        ITEM_TYPE_EXPORT_SPEC,
-        resolveExportSpec,
-        toBibTeXEntry,
-        formatRis,
-        formatCslJson,
-        formatCitation,
-      } = await import("@/features/library/domain/citations");
-
-      expect(ITEM_TYPE_EXPORT_SPEC.conferencepaper).toEqual({
-        bibtexType: "inproceedings",
-        risType: "CONF",
-        cslType: "paper-conference",
-      });
-
-      const thesisItem: any = {
-        id: "th-1",
-        title: "Foundations of Distributed Graph Systems",
-        itemType: "thesis",
-        authors: ["Ada Lovelace"],
-        year: 2025,
-        university: "Oxford University",
-        doi: "10.1000/ox.2025",
-      };
-
-      expect(resolveExportSpec(thesisItem).bibtexType).toBe("phdthesis");
-      expect(toBibTeXEntry(thesisItem)).toContain("@phdthesis{");
-      expect(formatRis(thesisItem)).toContain("TY  - THES");
-      const csl = formatCslJson(thesisItem);
-      expect(csl.type).toBe("thesis");
-
-      expect(formatCitation(thesisItem, "apa")).toContain(
-        "Foundations of Distributed Graph Systems",
-      );
-      expect(formatCitation(thesisItem, "ieee")).toContain(
-        "Foundations of Distributed Graph Systems",
-      );
+    it("should format clean citation style labels for UI presentation", () => {
+      expect(getCleanStyleLabel("apa-7th")).toBe("APA");
+      expect(getCleanStyleLabel("ieee")).toBe("IEEE");
+      expect(formatCitationStyleLabel("chicago-author-date")).toBe("Chicago (Author-Date)");
     });
 
     it("should resolve item field values declaratively across FIELD_ALIAS_MAP in diff.ts", async () => {

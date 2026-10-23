@@ -35,8 +35,8 @@ import { useTags } from '@/features/library/sdk/queries/tags-notes.queries';
 import { useLibraryNavigation } from '@/features/library/core/coordinator/navigation.coordinator';
 import type { Tag } from '@/features/library/domain/types/tags.types';
 
-/** Official Zotero 9-Color Tag Palette */
-export const ZOTERO_TAG_COLORS = [
+/** Standard Academic 9-Color Tag Palette */
+export const TAG_PALETTE_COLORS = [
   { label: 'Red', value: '#ff6666' },
   { label: 'Orange', value: '#fb923c' },
   { label: 'Yellow', value: '#facc15' },
@@ -48,13 +48,14 @@ export const ZOTERO_TAG_COLORS = [
   { label: 'Gray', value: '#94a3b8' },
 ] as const;
 
+
 export interface TagSelectorPaneProps {
   scopeId: string;
   canEdit?: boolean;
 }
 
 /**
- * Zotero 7-style Collapsible Tag Selector Pane for the Left Library Sidebar.
+ * Collapsible Tag Selector Pane for the Left Library Sidebar.
  * Supports:
  * - Instant tag filtering in the main catalog
  * - Colored tags with keyboard shortcuts (1-9)
@@ -170,7 +171,7 @@ export function TagSelectorPane({
       // If assigning a shortcut and the tag has no color yet, give it a default color from the palette
       const defaultColor =
         shortcut && !tag.color
-          ? ZOTERO_TAG_COLORS[(shortcut - 1) % ZOTERO_TAG_COLORS.length].value
+          ? TAG_PALETTE_COLORS[(shortcut - 1) % TAG_PALETTE_COLORS.length].value
           : tag.color;
 
       await updateTag({
@@ -456,7 +457,7 @@ export function TagSelectorPane({
                               <span>Assign Color</span>
                             </DropdownMenuSubTrigger>
                             <DropdownMenuSubContent className="w-40 text-xs">
-                              {ZOTERO_TAG_COLORS.map((c) => (
+                              {TAG_PALETTE_COLORS.map((c) => (
                                 <DropdownMenuItem
                                   key={c.value}
                                   onClick={() => handleAssignColor(tag, c.value)}

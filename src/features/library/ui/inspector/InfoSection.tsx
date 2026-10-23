@@ -5,7 +5,7 @@ import type { Item } from "@/features/library/domain/types/library.types";
 import { cleanDoi } from "@/features/library/domain/identifiers";
 import {
   cleanValue,
-  parseZoteroExtraField,
+  parseItemExtraField,
 } from "@/features/library/domain/metadata";
 import {
   getItemTypeDefinition,
@@ -92,7 +92,7 @@ export default function InfoSection({
   );
 
   const parsedExtraMap = useMemo(
-    () => parseZoteroExtraField(item?.extra),
+    () => parseItemExtraField(item?.extra),
     [item?.extra],
   );
 

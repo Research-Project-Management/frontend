@@ -146,11 +146,6 @@ function withLibraryServiceOptions(
   options?: RequestOptions,
   scopeId?: string,
 ): RequestOptions | undefined {
-  const isExternalMicroserviceUrl = url.startsWith('http://') || url.startsWith('https://');
-  if (!isExternalMicroserviceUrl) {
-    return options;
-  }
-
   const token = !options?.skipAuth ? getAuthToken() : null;
   const extraHeaders: Record<string, string> = {
     ...((options?.headers as Record<string, string>) || {}),
@@ -1909,10 +1904,10 @@ export const CurationService = {
           ...mapBackendItem(it),
           ...(rawTags ? { tags: rawTags } : {}),
         };
-        const validated = itemSchema.parse(mapped);
+        const parseRes = itemSchema.safeParse(mapped);
         return {
           ...mapped,
-          ...validated,
+          ...(parseRes.success ? parseRes.data : {}),
         };
       });
       return {

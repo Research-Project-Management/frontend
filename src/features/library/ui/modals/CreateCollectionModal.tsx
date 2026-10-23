@@ -53,7 +53,7 @@ export default function CreateCollectionModal({
   const form = useForm<CollectionFormValues>({
     resolver: zodResolver(collectionFormSchema),
     defaultValues: {
-      name: "Untitled",
+      name: "",
       description: "",
       color: "",
       parentId: defaultParentId ?? null,
@@ -71,7 +71,7 @@ export default function CreateCollectionModal({
   useEffect(() => {
     if (open) {
       reset({
-        name: "Untitled",
+        name: "",
         description: "",
         color: "",
         parentId: defaultParentId ?? null,

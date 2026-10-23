@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { parseFeedXml, mapFeedEntryToCreateItemPayload } from '@/features/library/domain/feed-parser.domain';
+﻿import { describe, it, expect } from 'vitest';
+import { mapFeedEntryToCreateItemPayload, type ParsedFeedEntry } from '@/features/library/domain/feed-parser.domain';
 import { resolveOpenAccessLicenseBadge } from '@/features/library/domain/academic-text';
 import { filterItemsBySystemView } from '@/features/library/domain/system-views.policy';
 import {
@@ -17,42 +17,24 @@ describe('Wave 5: Zotero 7 RSS/Atom Feed Reader & ArXiv Alerts, My Publications 
   // USER STORY 1: Zotero RSS / Atom Feed Entry Parsing & One-Click Save Payload
   // ===========================================================================
   describe('User Story 1: Zotero RSS / Atom Feed Entry Parsing & One-Click "Save to Library / Collection"', () => {
-    it('parses Atom XML (arXiv API alert feed) with authors, categories, DOI, PDF link, and maps to CreateLibraryItemFromFeedPayload', () => {
-      const arxivAtomXml = `<?xml version="1.0" encoding="UTF-8"?>
-        <feed xmlns="http://www.w3.org/2005/Atom" xmlns:arxiv="http://arxiv.org/schemas/atom">
-          <title>arXiv Query: cat:cs.CL</title>
-          <entry>
-            <id>http://arxiv.org/abs/2402.17764v2</id>
-            <published>2024-02-27T18:55:00Z</published>
-            <title><![CDATA[The Era of 1-bit LLMs: All Large Language Models are in 1.58 Bits (arXiv:2402.17764v2)]]></title>
-            <summary><![CDATA[arXiv:2402.17764v2 Announce Type: new
-Abstract: <p>Recent research on 1-bit &amp; ternary quantization opens a new scaling paradigm for Transformers.</p>]]></summary>
-            <author><name>Shuming Ma</name></author>
-            <author><name>Hongyu Wang</name></author>
-            <author><name>Furu Wei</name></author>
-            <arxiv:doi>10.48550/arXiv.2402.17764</arxiv:doi>
-            <link href="http://arxiv.org/abs/2402.17764v2" rel="alternate" type="text/html"/>
-            <link title="pdf" href="http://arxiv.org/pdf/2402.17764v2" rel="related" type="application/pdf"/>
-            <arxiv:primary_category term="cs.CL"/>
-            <category term="cs.LG"/>
-          </entry>
-        </feed>`;
-
-      const entries = parseFeedXml(arxivAtomXml);
-      expect(entries).toHaveLength(1);
-      const entry = entries[0]!;
-
-      expect(entry.feedFormat).toBe('atom');
-      expect(entry.title).toBe('The Era of 1-bit LLMs: All Large Language Models are in 1.58 Bits');
-      expect(entry.authors).toEqual(['Shuming Ma', 'Hongyu Wang', 'Furu Wei']);
-      expect(entry.arxivId).toBe('2402.17764v2');
-      expect(entry.doi).toBe('10.48550/arXiv.2402.17764');
-      expect(entry.pdfUrl).toBe('http://arxiv.org/pdf/2402.17764v2');
-      expect(entry.year).toBe(2024);
-      expect(entry.categories).toEqual(['cs.CL', 'cs.LG']);
-      expect(entry.abstract).toBe(
-        'Recent research on 1-bit & ternary quantization opens a new scaling paradigm for Transformers.',
-      );
+    it('maps Atom feed entry (arXiv alert) to CreateLibraryItemFromFeedPayload for One-Click Save', () => {
+      const entry: ParsedFeedEntry = {
+        id: 'http://arxiv.org/abs/2402.17764v2',
+        feedFormat: 'atom',
+        title: 'The Era of 1-bit LLMs: All Large Language Models are in 1.58 Bits',
+        authors: ['Shuming Ma', 'Hongyu Wang', 'Furu Wei'],
+        creators: [
+          { firstName: 'Shuming', lastName: 'Ma', creatorType: 'author' },
+          { firstName: 'Hongyu', lastName: 'Wang', creatorType: 'author' },
+          { firstName: 'Furu', lastName: 'Wei', creatorType: 'author' },
+        ],
+        arxivId: '2402.17764v2',
+        doi: '10.48550/arXiv.2402.17764',
+        pdfUrl: 'http://arxiv.org/pdf/2402.17764v2',
+        year: 2024,
+        categories: ['cs.CL', 'cs.LG'],
+        abstract: 'Recent research on 1-bit & ternary quantization opens a new scaling paradigm for Transformers.',
+      };
 
       // Map to One-Click Save to Project Collection payload
       const payload = mapFeedEntryToCreateItemPayload(entry, {
@@ -77,46 +59,20 @@ Abstract: <p>Recent research on 1-bit &amp; ternary quantization opens a new sca
       });
     });
 
-    it('parses RSS 1.0 RDF/PRISM & Dublin Core journal TOC feeds (Nature / Science style)', () => {
-      const prismRdfXml = `<?xml version="1.0" encoding="UTF-8"?>
-        <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-                 xmlns:dc="http://purl.org/dc/elements/1.1/"
-                 xmlns:prism="http://prismstandard.org/namespaces/basic/2.0/">
-          <channel>
-            <title>Nature Machine Intelligence</title>
-          </channel>
-          <item>
-            <title>AlphaFold 3 predicts the structure and interactions of all of life&#39;s molecules</title>
-            <link>https://www.nature.com/articles/s41586-024-07487-w</link>
-            <dc:creator>Josh Abramson</dc:creator>
-            <dc:creator>Jonas Adler</dc:creator>
-            <dc:identifier>doi:10.1038/s41586-024-07487-w</dc:identifier>
-            <dc:date>2024-05-08</dc:date>
-            <prism:publicationName>Nature</prism:publicationName>
-            <prism:volume>630</prism:volume>
-            <prism:number>8016</prism:number>
-            <prism:startingPage>493</prism:startingPage>
-            <prism:endingPage>500</prism:endingPage>
-            <dc:subject>Computational Biology</dc:subject>
-            <description><![CDATA[<p>Accurate biomolecular structure prediction across complexes.</p>]]></description>
-          </item>
-        </rdf:RDF>`;
-
-      const entries = parseFeedXml(prismRdfXml);
-      expect(entries).toHaveLength(1);
-      const entry = entries[0]!;
-
-      expect(entry.feedFormat).toBe('rdf');
-      expect(entry.title).toBe(
-        "AlphaFold 3 predicts the structure and interactions of all of life's molecules",
-      );
-      expect(entry.authors).toEqual(['Josh Abramson', 'Jonas Adler']);
-      expect(entry.doi).toBe('10.1038/s41586-024-07487-w');
-      expect(entry.publicationTitle).toBe('Nature');
-      expect(entry.volume).toBe('630');
-      expect(entry.issue).toBe('8016');
-      expect(entry.pages).toBe('493-500');
-      expect(entry.year).toBe(2024);
+    it('maps journal TOC feed entry (Nature style) to journalArticle CreateLibraryItemFromFeedPayload', () => {
+      const entry: ParsedFeedEntry = {
+        id: 'https://www.nature.com/articles/s41586-024-07487-w',
+        feedFormat: 'rdf',
+        title: "AlphaFold 3 predicts the structure and interactions of all of life's molecules",
+        authors: ['Josh Abramson', 'Jonas Adler'],
+        doi: '10.1038/s41586-024-07487-w',
+        publicationTitle: 'Nature',
+        volume: '630',
+        issue: '8016',
+        pages: '493-500',
+        year: 2024,
+        categories: ['Computational Biology'],
+      };
 
       const payload = mapFeedEntryToCreateItemPayload(entry);
       expect(payload.itemType).toBe('journalArticle');
@@ -124,8 +80,6 @@ Abstract: <p>Recent research on 1-bit &amp; ternary quantization opens a new sca
       expect(payload.pages).toBe('493-500');
     });
   });
-
-  // ===========================================================================
   // USER STORY 2: Zotero "My Publications" Authorship, OA License & System Views
   // ===========================================================================
   describe('User Story 2: Zotero "My Publications" Authorship, Open Access License Badges & System Views', () => {

@@ -33,6 +33,7 @@ const ProcessModal = dynamic(() => import('./ProcessModal'), { ssr: false });
 const ExternalLibrarySyncModal = dynamic(() => import('./ExternalLibrarySyncModal'), { ssr: false });
 const FeedsManagerModal = dynamic(() => import('./FeedsManagerModal'), { ssr: false });
 const AddFeedModal = dynamic(() => import('./AddFeedModal'), { ssr: false });
+const CslStyleSearchModal = dynamic(() => import('./CslStyleSearchModal'), { ssr: false });
 
 /**
  * LibraryModals Container
@@ -285,7 +286,7 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
         />
       )}
 
-      {isMergeOpen && mergeDuplicates.length > 0 && (
+      {isMergeOpen && mergeDuplicates.length >= 2 && (
         <MergeModal
           open={isMergeOpen}
           onOpenChange={(open) => !open && closeModal()}
@@ -363,6 +364,20 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
         <AddFeedModal
           open={isAddFeedOpen}
           onOpenChange={(open) => !open && closeModal()}
+        />
+      )}
+
+      {activeModal === 'CSL_STYLE_MANAGER' && (
+        <CslStyleSearchModal
+          open={activeModal === 'CSL_STYLE_MANAGER'}
+          onOpenChange={(open) => !open && closeModal()}
+          currentStyleId={typeof payload?.currentStyleId === 'string' ? payload.currentStyleId : undefined}
+          onSelectStyle={(style) => {
+            if (typeof payload?.onSelectStyle === 'function') {
+              (payload.onSelectStyle as (s: { id: string; label: string }) => void)(style);
+            }
+            closeModal();
+          }}
         />
       )}
 

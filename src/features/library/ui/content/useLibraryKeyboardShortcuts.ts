@@ -23,7 +23,7 @@ export interface UseLibraryKeyboardShortcutsOptions {
 
 /**
  * useLibraryKeyboardShortcuts
- * Encapsulates desktop-grade keyboard navigation & quick actions (Zotero parity):
+ * Encapsulates desktop-grade keyboard navigation & quick actions (Desktop parity):
  * - ArrowUp / ArrowDown: Row selection & navigation
  * - Space: Toggle checkbox selection
  * - Enter: Open paper detail

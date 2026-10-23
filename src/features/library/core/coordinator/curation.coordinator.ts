@@ -5,7 +5,7 @@ import {
   inspectItemDifferences,
   aggregateItemAssets,
   selectBestMasterItemId,
-  mergeZoteroExtraFields,
+  mergeItemExtraFields,
   normalizeCompareValue,
   type FieldOptionValue,
 } from '@/features/library/domain/diff';
@@ -72,7 +72,7 @@ export function useDuplicateMergeState(
 
   const mergedExtraDefault = useMemo(() => {
     if (!masterPaper) return undefined;
-    const mergedExtra = mergeZoteroExtraFields(items, masterPaper.id);
+    const mergedExtra = mergeItemExtraFields(items, masterPaper.id);
     const masterExtra =
       typeof masterPaper.extra === 'string'
         ? masterPaper.extra.trim()

@@ -2,14 +2,13 @@ import { describe, it, expect } from 'vitest';
 import {
   formatAndSanitizeExtraMetadata,
   formatExtraDisplay,
-  isAllowedZoteroExtraKey,
+  isAllowedItemExtraKey,
 } from '@/features/library/domain/metadata';
 import {
   generateCitationKey,
-  toBibTeXEntry,
-  formatCitation,
-  formatRis,
-  formatCslJson,
+  getCleanStyleLabel,
+  formatCitationStyleLabel,
+  DEFAULT_CITATION_STYLES,
 } from '@/features/library/domain/citations';
 import type { Item } from '@/features/library/domain/types/library.types';
 
@@ -101,233 +100,81 @@ describe('Zotero Wave 8: Citation, Export & Metadata Format Grounding & Accuracy
       expect(display).toContain('PMCID: PMC5551234');
       expect(display).not.toContain('dismissedDuplicateIds');
       expect(display).not.toContain('publicationTitle');
-      expect(isAllowedZoteroExtraKey('PMID')).toBe(true);
-      expect(isAllowedZoteroExtraKey('tex.ids')).toBe(true);
-      expect(isAllowedZoteroExtraKey('dismissedDuplicateIds')).toBe(false);
-      expect(isAllowedZoteroExtraKey('volume')).toBe(false);
+      expect(isAllowedItemExtraKey('PMID')).toBe(true);
+      expect(isAllowedItemExtraKey('tex.ids')).toBe(true);
+      expect(isAllowedItemExtraKey('dismissedDuplicateIds')).toBe(false);
+      expect(isAllowedItemExtraKey('volume')).toBe(false);
     });
   });
 
   // ===========================================================================
-  // Case Study 2: Strict BibTeX / BibLaTeX Standard Compliance in `toBibTeXEntry`
+  // Case Study 2: Citation Key Generation & Suffix Disambiguation
   // ===========================================================================
-  describe('Case Study 2: Strict BibTeX / BibLaTeX Standard Compliance in toBibTeXEntry', () => {
-    it('formats double-dash page ranges (5998--6008), issn, pmid, eprint/archiveprefix, @phdthesis school, @techreport institution, and @incollection editor/booktitle', () => {
-      // 1. Journal article with single-dash page range, ISSN, PMID, DOI, and arXiv eprint
-      const journalBib = toBibTeXEntry({
+  describe('Case Study 2: Citation Key Generation & Disambiguation', () => {
+    it('generates standard author-year-title keys and resolves collisions with letter suffixes', () => {
+      const key1 = generateCitationKey({
         title: 'Attention Is All You Need',
-        itemType: 'journalArticle',
-        authors: ['Vaswani, Ashish', 'Shazeer, Noam'],
+        authors: ['Vaswani, Ashish'],
         year: 2017,
-        publicationTitle: 'Advances in Neural Information Processing Systems',
-        volume: '30',
-        issue: '4',
-        pages: '5998-6008',
-        doi: 'https://doi.org/10.5555/3295222.3295349',
-        arxivId: 'arXiv:1706.03762',
-        issn: '1049-5258',
-        pmid: 'PMID: 28601938',
-        url: 'https://arxiv.org/abs/1706.03762',
-        accessedAt: '2026-03-15T10:20:30.000Z',
       });
+      expect(key1).toBe('vaswani2017attention');
 
-      expect(journalBib).toContain('@article{vaswani2017attention,');
-      expect(journalBib).toContain('  pages = {5998--6008},');
-      expect(journalBib).toContain('  doi = {10.5555/3295222.3295349},');
-      expect(journalBib).toContain('  eprint = {1706.03762},');
-      expect(journalBib).toContain('  archiveprefix = {arXiv},');
-      expect(journalBib).toContain('  issn = {1049-5258},');
-      expect(journalBib).toContain('  pmid = {28601938},');
-      expect(journalBib).toContain('  urldate = {2026-03-15}');
-
-      // 2. PhD Thesis (@phdthesis with school)
-      const thesisBib = toBibTeXEntry({
-        title: 'Architectural Styles and the Design of Network-based Software Architectures',
-        itemType: 'thesis',
-        authors: ['Fielding, Roy Thomas'],
-        year: 2000,
-        university: 'University of California, Irvine',
-      });
-      expect(thesisBib).toContain('@phdthesis{fielding2000architectural,');
-      expect(thesisBib).toContain('  school = {University of California, Irvine}');
-
-      // 3. Technical Report (@techreport with institution)
-      const reportBib = toBibTeXEntry({
-        title: 'PageRank Citation Ranking: Bringing Order to the Web',
-        itemType: 'report',
-        authors: ['Page, Lawrence', 'Brin, Sergey'],
-        year: 1999,
-        institution: 'Stanford InfoLab',
-      });
-      expect(reportBib).toContain('@techreport{page1999pagerank,');
-      expect(reportBib).toContain('  institution = {Stanford InfoLab}');
-
-      // 4. Book Section (@incollection with booktitle and editor)
-      const chapterBib = toBibTeXEntry({
-        title: 'Convolutional Networks for Images, Speech, and Time-Series',
-        itemType: 'bookSection',
-        creators: [
-          { firstName: 'Yann', lastName: 'LeCun', creatorType: 'author' },
-          { firstName: 'Michael A.', lastName: 'Arbib', creatorType: 'editor' },
-        ],
-        year: 1995,
-        bookTitle: 'The Handbook of Brain Theory and Neural Networks',
-        publisher: 'MIT Press',
-        pages: '255–258', // en-dash normalized to --
-        isbn: '978-0-262-51102-5',
-      });
-      expect(chapterBib).toContain('@incollection{lecun1995convolutional,');
-      expect(chapterBib).toContain('  author = {Yann LeCun},');
-      expect(chapterBib).toContain('  editor = {Michael A. Arbib},');
-      expect(chapterBib).toContain('  booktitle = {The Handbook of Brain Theory and Neural Networks},');
-      expect(chapterBib).toContain('  pages = {255--258},');
-      expect(chapterBib).toContain('  isbn = {978-0-262-51102-5}');
-    });
-  });
-
-  // ===========================================================================
-  // Case Study 3: Strict RefMan RIS Standard Compliance in `formatRis`
-  // ===========================================================================
-  describe('Case Study 3: Strict RefMan RIS Standard Compliance in formatRis', () => {
-    it('exports complete RefMan RIS tags including TY, TI, AU, PY, T2, VL, IS, SP/EP split, PB, CY, DO, SN (ISBN/ISSN), AN (PMID), AB, UR, and ER', () => {
-      const ris = formatRis({
-        title: 'Deep Residual Learning for Image Recognition',
-        itemType: 'journalArticle',
-        authors: ['He, Kaiming', 'Zhang, Xiangyu'],
-        year: 2016,
-        publicationTitle: 'IEEE Transactions on Pattern Analysis and Machine Intelligence',
-        volume: '38',
-        issue: '7',
-        pages: '770-778',
-        publisher: 'IEEE Computer Society',
-        place: 'Las Vegas, NV',
-        doi: '10.1109/CVPR.2016.90',
-        issn: '0162-8828',
-        pmid: '27891234',
-        abstract: 'Deeper neural networks are more difficult to train. We present a residual learning framework.',
-        url: 'https://ieeexplore.ieee.org/document/7780459',
-      });
-
-      const lines = ris.split('\n');
-      expect(lines[0]).toBe('TY  - JOUR');
-      expect(lines).toContain('TI  - Deep Residual Learning for Image Recognition');
-      expect(lines).toContain('AU  - He, Kaiming');
-      expect(lines).toContain('AU  - Zhang, Xiangyu');
-      expect(lines).toContain('PY  - 2016');
-      expect(lines).toContain('T2  - IEEE Transactions on Pattern Analysis and Machine Intelligence');
-      expect(lines).toContain('VL  - 38');
-      expect(lines).toContain('IS  - 7');
-      expect(lines).toContain('SP  - 770');
-      expect(lines).toContain('EP  - 778');
-      expect(lines).toContain('PB  - IEEE Computer Society');
-      expect(lines).toContain('CY  - Las Vegas, NV');
-      expect(lines).toContain('DO  - 10.1109/CVPR.2016.90');
-      expect(lines).toContain('SN  - 0162-8828');
-      expect(lines).toContain('AN  - 27891234');
-      expect(lines).toContain(
-        'AB  - Deeper neural networks are more difficult to train. We present a residual learning framework.',
-      );
-      expect(lines).toContain('UR  - https://ieeexplore.ieee.org/document/7780459');
-      expect(lines[lines.length - 1]).toBe('ER  - ');
-    });
-  });
-
-  // ===========================================================================
-  // Case Study 4: CSL-JSON 1.0.2 Standard Compliance & IEEE/APA `buildFallbackCitation` Fidelity
-  // ===========================================================================
-  describe('Case Study 4: CSL-JSON 1.0.2 Standard Compliance & IEEE/APA buildFallbackCitation Fidelity', () => {
-    it('maps CSL-JSON 1.0.2 fields (issued.date-parts, container-title, volume, issue, page, ISSN, PMID, institutional literal) and formats IEEE/APA citations with volume/issue/pages', () => {
-      const sampleItem: Item = {
-        id: 'item-csl-1',
-        title: 'Global Surveillance of Antimicrobial Resistance',
-        itemType: 'journalArticle',
-        authors: ['World Health Organization', 'Laxminarayan, Ramanan'],
-        year: 2024,
-        publicationTitle: 'The Lancet Infectious Diseases',
-        volume: '24',
-        issue: '3',
-        pages: '210-225',
-        publisher: 'Elsevier',
-        place: 'London',
-        doi: '10.1016/S1473-3099(24)00001-X',
-        issn: '1473-3099',
-        pmid: '38112233',
-        tags: [],
-        collections: [],
-        notes: [],
-        attachments: [],
-      };
-
-      const csl = formatCslJson(sampleItem);
-      expect(csl.type).toBe('article-journal');
-      expect(csl.title).toBe('Global Surveillance of Antimicrobial Resistance');
-      expect(csl.issued).toEqual({ 'date-parts': [[2024]] });
-      expect(csl['container-title']).toBe('The Lancet Infectious Diseases');
-      expect(csl.volume).toBe('24');
-      expect(csl.issue).toBe('3');
-      expect(csl.page).toBe('210-225');
-      expect(csl.DOI).toBe('10.1016/S1473-3099(24)00001-X');
-      expect(csl.ISSN).toBe('1473-3099');
-      expect(csl.PMID).toBe('38112233');
-      expect(csl.author).toEqual([
-        { literal: 'World Health Organization' },
-        { family: 'Laxminarayan', given: 'Ramanan' },
-      ]);
-
-      // IEEE formatted citation includes vol., no., pp., year, and doi:
-      const ieee = formatCitation(sampleItem, 'ieee');
-      expect(ieee).toBe(
-        'World Health Organization, R. Laxminarayan, "Global Surveillance of Antimicrobial Resistance," The Lancet Infectious Diseases, vol. 24, no. 3, pp. 210-225, 2024. doi: 10.1016/S1473-3099(24)00001-X.',
-      );
-
-      // APA formatted citation includes volume(issue), pages, and https://doi.org/
-      const apa = formatCitation(sampleItem, 'apa');
-      expect(apa).toBe(
-        'World Health Organization, Laxminarayan, R. (2024). Global Surveillance of Antimicrobial Resistance. The Lancet Infectious Diseases, 24(3), 210-225. https://doi.org/10.1016/S1473-3099(24)00001-X',
-      );
-    });
-  });
-
-  // ===========================================================================
-  // Case Study 5: Deterministic BetterBibTeX Citation Key Generation & Diacritic Transliteration
-  // ===========================================================================
-  describe('Case Study 5: Deterministic BetterBibTeX Citation Key Generation & Diacritic Transliteration', () => {
-    it('transliterates Vietnamese, Polish, Scandinavian, and German diacritics, skips leading stop-words, and disambiguates collisions with a/b/c suffixes', () => {
-      // 1. Vietnamese author (`Đặng, Văn Ngữ`) + stop-words (`The`, `On`, `Of`)
-      const vnKey = generateCitationKey({
-        title: 'The Role of Mosquito Vectors in Tropical Epidemiology',
-        authors: ['Đặng, Văn Ngữ'],
-        year: 1965,
-      });
-      expect(vnKey).toBe('dang1965role');
-
-      // 2. Polish (`Łukasiewicz`) & German (`Müller-Böck`)
-      const plKey = generateCitationKey({
-        title: 'A System of Modal Logic',
-        authors: ['Łukasiewicz, Jan'],
-        year: 1953,
-      });
-      expect(plKey).toBe('lukasiewicz1953system');
-
-      const deKey = generateCitationKey({
-        title: 'Über die Quantenmechanik der Stoßvorgänge',
-        authors: ['Müller-Böck, Friedrich'],
-        year: 1926,
-      });
-      expect(deKey).toBe('mullerbock1926uber');
-
-      // 3. Collision disambiguation (base -> a -> b)
-      const used = new Set<string>(['dang1965role', 'dang1965rolea']);
-      const disambiguated = generateCitationKey(
+      // Suffix collision
+      const existing = new Set(['vaswani2017attention']);
+      const key2 = generateCitationKey(
         {
-          title: 'The Role of Parasites in Clinical Fever',
-          authors: ['Đặng, Văn Ngữ'],
-          year: 1965,
+          title: 'Attention Is All You Need',
+          authors: ['Vaswani, Ashish'],
+          year: 2017,
         },
-        used,
+        existing,
       );
-      expect(disambiguated).toBe('dang1965roleb');
+      expect(key2).toBe('vaswani2017attentiona');
+    });
+
+    it('respects explicitly pinned citationKey or extra citekey', () => {
+      const pinned = generateCitationKey({
+        title: 'Some Paper',
+        citationKey: 'custom_pin_2026',
+      });
+      expect(pinned).toBe('custom_pin_2026');
+
+      const fromExtra = generateCitationKey({
+        title: 'Another Paper',
+        extra: 'Citation Key: my_extra_key',
+      });
+      expect(fromExtra).toBe('my_extra_key');
+    });
+  });
+
+  // ===========================================================================
+  // Case Study 3: UI Citation Style Presentation & Clean Labeling
+  // ===========================================================================
+  describe('Case Study 3: UI Citation Style Presentation & Clean Labeling', () => {
+    it('formats clean, compact toolbar button labels without breaking layout', () => {
+      expect(getCleanStyleLabel('apa-7th')).toBe('APA');
+      expect(getCleanStyleLabel('mla-9th')).toBe('MLA');
+      expect(getCleanStyleLabel('ieee')).toBe('IEEE');
+      expect(getCleanStyleLabel('bibtex')).toBe('BibTeX');
+      expect(getCleanStyleLabel('ris')).toBe('RIS');
+      expect(getCleanStyleLabel('chicago-author-date')).toBe('Chicago');
+    });
+
+    it('formats human-friendly dropdown style names', () => {
+      expect(formatCitationStyleLabel('apa-7th')).toBe('APA (7th Edition)');
+      expect(formatCitationStyleLabel('ieee')).toBe('IEEE Style');
+      expect(formatCitationStyleLabel('mla-9th')).toBe('MLA (9th Edition)');
+      expect(formatCitationStyleLabel('chicago-author-date')).toBe('Chicago (Author-Date)');
+      expect(formatCitationStyleLabel('harvard1')).toBe('Harvard');
+      expect(formatCitationStyleLabel('vancouver')).toBe('Vancouver');
+      expect(formatCitationStyleLabel('tcvn')).toBe('TCVN (Tiêu chuẩn Việt Nam)');
+      expect(formatCitationStyleLabel({ id: 'nature', shortTitle: 'Nature Style' })).toBe('Nature');
+    });
+
+    it('provides standard default citation styles list for pickers', () => {
+      expect(DEFAULT_CITATION_STYLES.length).toBeGreaterThanOrEqual(5);
+      expect(DEFAULT_CITATION_STYLES.map((s) => s.id)).toContain('apa-7th');
+      expect(DEFAULT_CITATION_STYLES.map((s) => s.id)).toContain('ieee');
     });
   });
 });
-

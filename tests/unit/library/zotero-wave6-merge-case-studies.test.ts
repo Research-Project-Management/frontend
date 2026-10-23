@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import {
-  MERGEABLE_FIELDS, scoreFieldCandidate, selectBestMasterItemId, inspectItemDifferences, mergeZoteroExtraFields, buildMergedItemPayload, aggregateItemAssets, resolveItemFieldValue, normalizeCompareValue, } from '@/features/library/domain/diff';
+  MERGEABLE_FIELDS, scoreFieldCandidate, selectBestMasterItemId, inspectItemDifferences, mergeItemExtraFields, buildMergedItemPayload, aggregateItemAssets, resolveItemFieldValue, normalizeCompareValue, } from '@/features/library/domain/diff';
 import { useDuplicateMergeState } from '@/features/library/core/coordinator/curation.coordinator';
 import { getLibraryPermissions } from '@/features/library/domain/library-permissions.policy';
 import { QualityService } from '@/features/library/sdk/library.client';
@@ -134,7 +134,7 @@ describe('Zotero Wave 6: Comprehensive Duplicate Detection & Merge Case Studies 
         extra: 'Original Date: 2022\ntex.ids: doudna2022preprint\nReviewed scientifically by Lab Alpha',
       });
 
-      const mergedExtra = mergeZoteroExtraFields([itemA, itemB, itemC], 'dup-pubmed');
+      const mergedExtra = mergeItemExtraFields([itemA, itemB, itemC], 'dup-pubmed');
 
       // Master Citation Key is preserved
       expect(mergedExtra).toContain('Citation Key: doudna2023crispr');

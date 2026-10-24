@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { useParams } from 'next/navigation';
-import { useProjects } from '@/features/projects/shell/hooks/use-project';
+import dynamic from 'next/dynamic';
+import { useProjectsQuery } from '@/features/projects/shell/hooks/use-project';
 import {
   useDrafts,
   useCreateDraft,
@@ -14,18 +14,32 @@ import {
 import { EmptyState } from '../components/layout/EmptyState';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { ListView } from '../components/views/ListView';
-import { EditorModal } from '../components/modals/EditorModal';
-import { MoveToProjectModal } from '../components/modals/MoveToProjectModal';
-import { DeleteModal } from '../components/modals/DeleteModal';
 import { PageLayout, PageContent } from '@/shared/components/layout/PageLayout';
 import { PageHeader } from '@/shared/components/layout/PageHeader';
+import {
+  WorkspaceRowListSkeleton,
+  WorkspaceViewTransition,
+} from '@/shared/components/layout/WorkspaceSkeleton';
 import { DraftsIcon } from '@/shared/components/icons';
 import { Button } from '@/shared/components/ui/button';
 import type { WorkItemDraft } from '../types/draft.types';
 import type { WorkItemPriority } from '@/features/projects/project-id/work-items/types/work-item.types';
 
+const EditorModal = dynamic(
+  () => import('../components/modals/EditorModal').then((m) => m.EditorModal),
+  { ssr: false }
+);
+const MoveToProjectModal = dynamic(
+  () => import('../components/modals/MoveToProjectModal').then((m) => m.MoveToProjectModal),
+  { ssr: false }
+);
+const DeleteModal = dynamic(
+  () => import('../components/modals/DeleteModal').then((m) => m.DeleteModal),
+  { ssr: false }
+);
+
 export default function DraftsPage() {
-  const { projects = [] } = useProjects();
+  const { projects = [] } = useProjectsQuery();
 
   // Modal States
   const [isEditorModalOpen, setIsEditorModalOpen] = useState(false);
@@ -38,7 +52,7 @@ export default function DraftsPage() {
   const [deletingDraft, setDeletingDraft] = useState<WorkItemDraft | null>(null);
 
   // Queries & Mutations
-  const { data, isLoading, isError, error, refetch } = useDrafts();
+  const { data, isLoading, isError, error } = useDrafts();
   const drafts = data?.drafts || [];
   const total = data?.total ?? drafts.length;
 
@@ -151,21 +165,7 @@ export default function DraftsPage() {
 
       <PageContent maxWidth="full" noPadding>
         {isLoading ? (
-          <div className="flex flex-col divide-y divide-border border-b border-border">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-8 px-4 flex items-center justify-between gap-4 animate-pulse">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="h-3 w-24 rounded bg-muted shrink-0" />
-                  <div className="h-3 w-64 max-w-sm rounded bg-muted" />
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <div className="h-5 w-20 rounded-md bg-muted" />
-                  <div className="h-5 w-16 rounded-md bg-muted" />
-                  <div className="size-5 rounded-md bg-muted" />
-                </div>
-              </div>
-            ))}
-          </div>
+          <WorkspaceRowListSkeleton variant="drafts" rows={8} />
         ) : isError ? (
           <PlaneErrorState
             title="Failed to load drafts"
@@ -175,44 +175,52 @@ export default function DraftsPage() {
         ) : drafts.length === 0 ? (
           <EmptyState onCreateDraft={handleOpenCreate} />
         ) : (
-          <ListView
-            drafts={drafts}
-            onEdit={handleEdit}
-            onDuplicate={handleDuplicate}
-            onMoveToProject={handleOpenMove}
-            onDelete={handleOpenDelete}
-          />
+          <WorkspaceViewTransition>
+            <ListView
+              drafts={drafts}
+              onEdit={handleEdit}
+              onDuplicate={handleDuplicate}
+              onMoveToProject={handleOpenMove}
+              onDelete={handleOpenDelete}
+            />
+          </WorkspaceViewTransition>
         )}
       </PageContent>
 
       {/* Create / Edit Draft Modal matching Image 3 */}
-      <EditorModal
-        isOpen={isEditorModalOpen}
-        onClose={() => setIsEditorModalOpen(false)}
-        draft={editingDraft}
-        projects={projects}
-        onSave={handleSaveDraft}
-        isSaving={createDraft.isPending || updateDraft.isPending}
-      />
+      {isEditorModalOpen && (
+        <EditorModal
+          isOpen={isEditorModalOpen}
+          onClose={() => setIsEditorModalOpen(false)}
+          draft={editingDraft}
+          projects={projects}
+          onSave={handleSaveDraft}
+          isSaving={createDraft.isPending || updateDraft.isPending}
+        />
+      )}
 
       {/* Move to Project Modal */}
-      <MoveToProjectModal
-        isOpen={isMoveModalOpen}
-        onClose={() => setIsMoveModalOpen(false)}
-        draft={movingDraft}
-        projects={projects}
-        onMove={handleConfirmMove}
-        isMoving={publishDraft.isPending}
-      />
+      {isMoveModalOpen && (
+        <MoveToProjectModal
+          isOpen={isMoveModalOpen}
+          onClose={() => setIsMoveModalOpen(false)}
+          draft={movingDraft}
+          projects={projects}
+          onMove={handleConfirmMove}
+          isMoving={publishDraft.isPending}
+        />
+      )}
 
       {/* Delete Confirmation Modal */}
-      <DeleteModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        draft={deletingDraft}
-        onConfirm={handleConfirmDelete}
-        isDeleting={deleteDraft.isPending}
-      />
+      {isDeleteModalOpen && (
+        <DeleteModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
+          draft={deletingDraft}
+          onConfirm={handleConfirmDelete}
+          isDeleting={deleteDraft.isPending}
+        />
+      )}
     </PageLayout>
   );
 }

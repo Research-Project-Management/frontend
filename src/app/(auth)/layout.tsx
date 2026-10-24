@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { getSafeRedirectUrl } from '@/shared/utils/auth-token.util';
+import AuthLoading from './loading';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -39,17 +40,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <Suspense
-      fallback={
-        <main
-          className="flex min-h-dvh items-center justify-center bg-background"
-          suppressHydrationWarning
-        >
-          <Loader2 className="h-8 w-8 animate-spin text-primary shrink-0" />
-          <span className="sr-only">Loading...</span>
-        </main>
-      }
-    >
+    <Suspense fallback={<AuthLoading />}>
       <AuthGuard>{children}</AuthGuard>
     </Suspense>
   );

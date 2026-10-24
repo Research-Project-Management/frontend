@@ -15,7 +15,7 @@ export function useConversations() {
   return useQuery({
     queryKey: CHAT_QUERY_KEYS.conversations,
     queryFn: () => chatService.getConversations(),
-    staleTime: 1000 * 30, // 30 seconds
+    staleTime: 1000 * 60 * 2, // 2 minutes (real-time updates arrive via WebSocket)
     refetchOnWindowFocus: false,
   });
 }
@@ -38,6 +38,8 @@ export function useFriends() {
   return useQuery({
     queryKey: CHAT_QUERY_KEYS.friends,
     queryFn: () => chatService.getFriends(),
+    staleTime: 1000 * 60 * 2,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -45,6 +47,8 @@ export function useFriendRequests() {
   return useQuery({
     queryKey: CHAT_QUERY_KEYS.friendRequests,
     queryFn: () => chatService.getFriendRequests(),
+    staleTime: 1000 * 60 * 2,
+    refetchOnWindowFocus: false,
   });
 }
 

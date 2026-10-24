@@ -217,7 +217,7 @@ export function useUnreadNotificationCount() {
     queryKey: ['notifications', 'unread-count', user?.id],
     queryFn: () => inboxService.getUnreadCount(),
     enabled: Boolean(user?.id),
-    staleTime: 30_000,
+    staleTime: 2 * 60_000,
     refetchOnWindowFocus: false,
   });
 }

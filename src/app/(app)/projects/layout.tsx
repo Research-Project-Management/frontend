@@ -1,1 +1,5 @@
-export { default } from '@/features/projects/shell/components/ProjectLayout';
+import React from 'react';
+
+export default function ProjectsRouteLayout({ children }: { children: React.ReactNode }) {
+  return <>{children}</>;
+}

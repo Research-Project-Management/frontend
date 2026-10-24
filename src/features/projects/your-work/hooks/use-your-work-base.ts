@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/features/auth/hooks/use-auth';
-import { useProjects } from '@/features/projects/shell/hooks/use-project';
+import { useProjectsQuery } from '@/features/projects/shell/hooks/use-project';
 import { getYourWork } from '../services/your-work.service';
 import {
   yourWorkSummaryResponseSchema,
@@ -26,7 +26,7 @@ export function useYourWork(projectId?: string) {
     projects = [],
     isLoading: isLoadingProjects,
     isError: isProjectsError,
-  } = useProjects();
+  } = useProjectsQuery();
 
   const currentUserId = user?.id;
 

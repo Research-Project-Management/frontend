@@ -6,7 +6,6 @@ import YourWorkNavigationBar from '@/features/projects/your-work/components/layo
 import ProfileSidebar from '@/features/projects/your-work/components/profile/ProfileSidebar';
 import { YourWorkProvider, useYourWorkContext } from '@/features/projects/your-work/context/your-work.context';
 import { WorkItemDialogModal } from '@/features/projects/your-work/components/shared/WorkItemDialogModal';
-import ProjectLayout from '@/features/projects/shell/components/ProjectLayout';
 
 function YourWorkLayoutContent({ children }: { children: React.ReactNode }) {
   const {
@@ -80,11 +79,8 @@ function YourWorkLayoutContent({ children }: { children: React.ReactNode }) {
 
 export default function YourWorkLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ProjectLayout>
-      <YourWorkProvider>
-        <YourWorkLayoutContent>{children}</YourWorkLayoutContent>
-      </YourWorkProvider>
-    </ProjectLayout>
+    <YourWorkProvider>
+      <YourWorkLayoutContent>{children}</YourWorkLayoutContent>
+    </YourWorkProvider>
   );
 }
-

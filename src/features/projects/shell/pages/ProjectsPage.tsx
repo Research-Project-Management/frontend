@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useTransition } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { prefetchProjectWorkspace } from '@/features/projects/project-id/work-items/hooks/use-work-items-query';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import {
@@ -21,6 +23,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { Button } from '@/shared/components/ui/button';
 import { Skeleton } from '@/shared/components/ui/skeleton';
+import { WorkspaceCardGridSkeleton } from '@/shared/components/layout/WorkspaceSkeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
@@ -73,12 +76,15 @@ import type { Project } from '../types/project.types';
 type ViewMode = 'grid' | 'list';
 
 function ProjectCardSkeleton() {
+  return <WorkspaceCardGridSkeleton variant="projects" count={8} />;
+}
+function LegacyProjectCardSkeletonUnused() {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 min-w-0">
       {Array.from({ length: 8 }).map((_, i) => (
         <div
           key={i}
-          className="flex flex-col rounded-lg border border-border bg-card p-4 space-y-3 animate-pulse"
+          className="flex flex-col rounded-lg border border-border bg-card p-4 space-y-3"
         >
           <Skeleton className="h-24 w-full rounded-md" />
           <div className="space-y-2">
@@ -93,6 +99,7 @@ function ProjectCardSkeleton() {
 }
 
 export function ProjectsPage() {
+  const queryClient = useQueryClient();
   const { user } = useAuth();
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -232,7 +239,7 @@ export function ProjectsPage() {
       />
 
       {/* Toolbar: Filter Tabs (All, Public, Private), Sort & View Mode */}
-      {activeProjects.length > 0 && (
+      {(isLoading || activeProjects.length > 0) && (
         <div
           className="flex flex-wrap items-center justify-between gap-3 px-6 py-2.5 border-b border-border bg-muted select-none shrink-0"
           style={{ paddingLeft: 'max(1.5rem, var(--header-offset, 0px))' }}
@@ -382,13 +389,7 @@ export function ProjectsPage() {
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto p-6 min-w-0">
         {/* Loading state */}
-        {isLoading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <ProjectCardSkeleton key={i} />
-            ))}
-          </div>
-        )}
+        {isLoading && <ProjectCardSkeleton />}
 
         {/* Error state */}
         {!isLoading && isError && (
@@ -433,7 +434,9 @@ export function ProjectsPage() {
               return (
                 <div
                   key={projectId}
-                  className="group flex items-center justify-between gap-4 px-4 py-2.5 min-h-11 hover:bg-muted transition-colors text-12"
+                  onMouseEnter={() => prefetchProjectWorkspace(queryClient, projectId)}
+                  onFocus={() => prefetchProjectWorkspace(queryClient, projectId)}
+                  className="group flex items-center justify-between gap-4 px-4 py-2.5 min-h-11 hover:bg-muted transition-colors text-12 content-auto-row"
                 >
                   {/* Left: Avatar + Title + Key + Description */}
                   <div className="flex items-center gap-3 min-w-0 flex-1">

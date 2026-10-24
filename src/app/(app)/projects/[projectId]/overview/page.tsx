@@ -1,6 +1,4 @@
-import AppLoading from '@/app/(app)/loading';
 import type { Metadata } from 'next';
-import { Suspense } from 'react';
 import { ProjectOverviewPage } from '@/features/projects/project-id/overview/pages/ProjectOverviewPage';
 
 export const metadata: Metadata = {
@@ -9,9 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function OverviewRoutePage() {
-  return (
-    <Suspense fallback={<AppLoading />}>
-      <ProjectOverviewPage />
-    </Suspense>
-  );
+  return <ProjectOverviewPage />;
 }

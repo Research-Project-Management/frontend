@@ -1774,5 +1774,17 @@ body *:not(.sr-only) {
   transition-property: transform, opacity, box-shadow !important;
 }
 
+/* ── CSS Content-Visibility Utilities (Vercel rendering-content-visibility) ── */
+.content-auto-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 230px;
+}
+
+.content-auto-row {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 44px;
+}
+
+
 
 

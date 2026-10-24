@@ -4,7 +4,6 @@ import { useCard } from '@/features/projects/stickies/hooks/use-card';
 import React, { useState, useEffect } from "react";
 import Card from '../components/card/Card';
 import { type Sticky } from '@/features/projects/stickies/types/sticky.types';
-import { Loader2 } from "lucide-react";
 import { StickiesIcon } from "@/shared/components/icons";
 import {
   DndContext,
@@ -19,7 +18,10 @@ import {
 } from "@dnd-kit/sortable";
 import { Sortable } from '../components/card/Sortable';
 import { PageLayout, PageContent } from '@/shared/components/layout/PageLayout';
-import { PageHeader } from '@/shared/components/layout/PageHeader';
+import {
+  WorkspaceCardGridSkeleton,
+  WorkspaceViewTransition,
+} from '@/shared/components/layout/WorkspaceSkeleton';
 import TopBar from '../components/layout/TopBar';
 import EmptyState from '../components/layout/EmptyState';
 
@@ -44,20 +46,6 @@ export default function StickyPage() {
     search: searchQuery,
   });
 
-  if (state.status.isLoading) {
-    return (
-      <PageLayout>
-        <PageHeader title={copy.title} icon={StickiesIcon} />
-        <PageContent maxWidth="full">
-          <div className="flex-1 flex items-center justify-center gap-3 text-muted-foreground py-20">
-            <Loader2 className="h-5 w-5 animate-spin shrink-0" />
-            <span className="text-13 font-normal">{copy.loading}</span>
-          </div>
-        </PageContent>
-      </PageLayout>
-    );
-  }
-
   return (
     <PageLayout>
       <TopBar
@@ -69,65 +57,69 @@ export default function StickyPage() {
       />
 
       <PageContent maxWidth="full" noPadding className="p-5">
-        {state.items.length === 0 ? (
+        {state.status.isLoading ? (
+          <WorkspaceCardGridSkeleton variant="stickies" count={10} />
+        ) : state.items.length === 0 ? (
           <EmptyState searchQuery={searchQuery} />
         ) : (
-          <DndContext
-            sensors={state.sensors}
-            collisionDetection={closestCorners}
-            onDragStart={actions.dragStart}
-            onDragEnd={actions.dragEnd}
-          >
-            <SortableContext
-              items={state.items.map((sticky: Sticky) => sticky.id)}
-              strategy={rectSortingStrategy}
+          <WorkspaceViewTransition>
+            <DndContext
+              sensors={state.sensors}
+              collisionDetection={closestCorners}
+              onDragStart={actions.dragStart}
+              onDragEnd={actions.dragEnd}
             >
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 min-[1200px]:grid-cols-5 xl:grid-cols-5 gap-4 items-start">
-                {state.items.map((sticky: Sticky) => (
-                  <Sortable
-                    key={sticky.id}
-                    sticky={sticky}
-                    onUpdate={actions.update}
-                    onDelete={actions.delete}
-                  />
-                ))}
-              </div>
-            </SortableContext>
+              <SortableContext
+                items={state.items.map((sticky: Sticky) => sticky.id)}
+                strategy={rectSortingStrategy}
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 min-[1200px]:grid-cols-5 xl:grid-cols-5 gap-4 items-start">
+                  {state.items.map((sticky: Sticky) => (
+                    <Sortable
+                      key={sticky.id}
+                      sticky={sticky}
+                      onUpdate={actions.update}
+                      onDelete={actions.delete}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
 
-            {isMounted &&
-              createPortal(
-                <DragOverlay
-                  dropAnimation={{
-                    sideEffects: defaultDropAnimationSideEffects({
-                      styles: {
-                        active: {
-                          opacity: '0.5',
+              {isMounted &&
+                createPortal(
+                  <DragOverlay
+                    dropAnimation={{
+                      sideEffects: defaultDropAnimationSideEffects({
+                        styles: {
+                          active: {
+                            opacity: '0.5',
+                          },
                         },
-                      },
-                    }),
-                  }}
-                >
-                  {state.activeId
-                    ? (() => {
-                        const sticky = state.items.find(
-                          (n: Sticky) => n.id === state.activeId,
-                        );
-                        return sticky ? (
-                          <div className="w-[240px] h-[340px] rotate-1 scale-105 cursor-grabbing">
-                            <Card
-                              sticky={sticky}
-                              onUpdate={actions.update}
-                              onDelete={actions.delete}
-                              isDragging={true}
-                            />
-                          </div>
-                        ) : null;
-                      })()
-                    : null}
-                </DragOverlay>,
-                document.body,
-              )}
-          </DndContext>
+                      }),
+                    }}
+                  >
+                    {state.activeId
+                      ? (() => {
+                          const sticky = state.items.find(
+                            (n: Sticky) => n.id === state.activeId,
+                          );
+                          return sticky ? (
+                            <div className="w-[240px] h-[340px] rotate-1 scale-105 cursor-grabbing">
+                              <Card
+                                sticky={sticky}
+                                onUpdate={actions.update}
+                                onDelete={actions.delete}
+                                isDragging={true}
+                              />
+                            </div>
+                          ) : null;
+                        })()
+                      : null}
+                  </DragOverlay>,
+                  document.body,
+                )}
+            </DndContext>
+          </WorkspaceViewTransition>
         )}
       </PageContent>
     </PageLayout>

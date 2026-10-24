@@ -1,7 +1,10 @@
 'use client';
 
 import React from 'react';
-import { Skeleton } from '@/shared/components/ui/skeleton';
+import {
+  WorkspaceRowListSkeleton,
+  WorkspaceViewTransition,
+} from '@/shared/components/layout/WorkspaceSkeleton';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { useOptionalYourWorkContext } from '../../context/your-work.context';
 
@@ -25,10 +28,12 @@ export function YourWorkPageLayout({
 
   if (isLoading) {
     return (
-      <div className="space-y-4 max-w-6xl mx-auto p-6">
-        <Skeleton className="h-10 w-48 rounded-md" />
-        <Skeleton className="h-32 rounded-md" />
-        <Skeleton className="h-32 rounded-md" />
+      <div className="max-w-6xl mx-auto p-6">
+        <WorkspaceRowListSkeleton
+          rows={8}
+          variant="your-work"
+          className="p-0"
+        />
       </div>
     );
   }
@@ -46,11 +51,10 @@ export function YourWorkPageLayout({
   }
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto p-6">
+    <WorkspaceViewTransition className="space-y-6 max-w-6xl mx-auto p-6">
       {renderList ? renderList(handleOpenWorkItem) : children}
-    </div>
+    </WorkspaceViewTransition>
   );
 }
 
 export default YourWorkPageLayout;
-

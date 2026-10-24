@@ -36,9 +36,9 @@ export function PageLayout({ children, className }: PageLayoutProps) {
 /**
  * PageContent
  *
- * The scrollable body beneath PageHeader. Provides uniform horizontal padding
- * and a centred max-width container so every settings / list page looks
- * consistent without each page hard-coding its own padding.
+ * The scrollable body beneath PageHeader. Provides uniform horizontal padding,
+ * a centred max-width container, and a synchronized zero-shift fade-in reveal
+ * so every settings / list page looks and transitions consistently.
  *
  * Props:
  *  - maxWidth: 'sm' | 'md' | 'lg' | 'xl' | 'full'  (default 'lg')
@@ -68,7 +68,7 @@ export function PageContent({
   return (
     <main
       className={cn(
-        'flex-1 min-h-0 overflow-y-auto',
+        'flex-1 min-h-0 overflow-y-auto animate-in fade-in duration-150 ease-out motion-reduce:animate-none',
         !noPadding && 'p-6 md:p-8',
         className,
       )}

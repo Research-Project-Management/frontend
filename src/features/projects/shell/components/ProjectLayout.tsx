@@ -2,21 +2,15 @@
 
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { PanelLeft } from "lucide-react";
 
-const ProjectsSidebar = dynamic(
-  () => import('@/features/projects/shell/components/Sidebar'),
-  { ssr: false, loading: () => null }
-);
+import ProjectsSidebar from '@/features/projects/shell/components/Sidebar';
 
 export default function ProjectsLayout({ children }: { children?: React.ReactNode }) {
   const [isSidebarVisible, setIsSidebarVisible] = useState(true);
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
-
-
 
   useEffect(() => {
     setMounted(true);

@@ -26,7 +26,8 @@ export function useMyProjectInvitations() {
   return useQuery({
     queryKey: invitationKeys.myInvitations,
     queryFn: ({ signal }) => fetchMyInvitations(signal),
-    staleTime: 15_000,
+    staleTime: 2 * 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 

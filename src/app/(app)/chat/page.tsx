@@ -1,6 +1,4 @@
-import AppLoading from '@/app/(app)/loading';
 import type { Metadata } from 'next';
-import { Suspense } from 'react';
 import { ChatView } from '@/features/chat/components/ChatView';
 
 export const metadata: Metadata = {
@@ -10,10 +8,8 @@ export const metadata: Metadata = {
 
 export default function ChatPage() {
   return (
-    <Suspense fallback={<AppLoading />}>
-      <div className="size-full overflow-hidden">
-        <ChatView />
-      </div>
-    </Suspense>
+    <div className="size-full overflow-hidden">
+      <ChatView />
+    </div>
   );
 }

@@ -80,7 +80,7 @@ const nextConfig: NextConfig = {
 
   experimental: {
     turbopackRustReactCompiler: true,
-    turbopackFileSystemCacheForDev: false,
+    turbopackFileSystemCacheForDev: true,
     turbopackFileSystemCacheForBuild: false,
     proxyClientMaxBodySize: '100mb',
     optimizePackageImports: [

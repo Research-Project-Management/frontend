@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useId, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -15,14 +15,12 @@ import {
   Share2,
   Link2,
   Briefcase,
-  Layers,
   PanelLeft,
   MessageSquare,
   Wallet,
   FileText,
   MoreHorizontal,
 } from 'lucide-react';
-import { motion, LayoutGroup } from 'framer-motion';
 import { toast } from 'sonner';
 import { logger } from '@/shared/lib/logger';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/shared/components/ui/collapsible';
@@ -37,10 +35,16 @@ import {
   StickiesIcon,
   ProjectAvatar,
 } from '@/shared/components/icons';
-import { useProjects } from '../hooks/use-project';
+import { useProjectsQuery } from '../hooks/use-project';
 import type { Project } from '../types/project.types';
 import { useFavorites } from '@/features/projects/favorite/hooks/use-favorites';
+import { useQueryClient } from '@tanstack/react-query';
 import { useProject } from '@/features/projects/project-id/work-items/hooks/use-work-item';
+import { prefetchProjectWorkspace } from '@/features/projects/project-id/work-items/hooks/use-work-items-query';
+import {
+  prefetchWorkspaceRoute,
+  prefetchProjectSubmodule,
+} from '@/features/shell/lib/navigation-prefetch';
 
 const CreateProjectModal = dynamic(
   () =>
@@ -91,21 +95,22 @@ type NavItem = {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function Sidebar({ onToggle }: { onToggle?: () => void }) {
+  const queryClient = useQueryClient();
   const params = useParams<{ projectId?: string }>();
   const pathname = usePathname();
-  const id = useId();
 
   // Modals state
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
   const [isCreateWorkItemOpen, setIsCreateWorkItemOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
-  const { projects = [], isLoading } = useProjects();
+  const { projects = [], isLoading } = useProjectsQuery();
 
-  // Active project context for quick work item creation
+  // Active project context for quick work item creation (only load project details/states when modal is open)
   const activeProjectId = params?.projectId || (projects && projects.length > 0 ? projects[0]?.id : '');
+  const shouldLoadProjectContext = Boolean(isCreateWorkItemOpen);
   const { state: activeProjectState, actions: activeProjectActions } = useProject({
-    projectId: activeProjectId || '',
+    projectId: shouldLoadProjectContext ? (activeProjectId || '') : '',
   });
 
   // Main navigation items: strictly (home, drafts, your work, stickies)
@@ -198,7 +203,6 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
     const projId = project.id || '';
     const isOpen = expandedProjects.has(projId);
     const projectModules = project.modules ?? [];
-    const isProjActive = pathname.includes(`/projects/${projId}`);
     const isFavorited = favoriteProjectIds.has(projId);
 
     return (
@@ -209,12 +213,14 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
         onOpenChange={() => toggleProject(projId)}
       >
         <div
-          className="group/row flex h-8 w-full items-center justify-between gap-1.5 rounded-md px-2.5 transition-colors select-none outline-none text-foreground hover:bg-muted font-normal"
+          onMouseEnter={() => prefetchProjectWorkspace(queryClient, projId)}
+          onFocus={() => prefetchProjectWorkspace(queryClient, projId)}
+          className="group/row flex h-8 w-full items-center justify-between gap-1.5 rounded-md px-2.5 select-none outline-none text-foreground hover:bg-muted font-normal"
         >
           <CollapsibleTrigger asChild>
             <button
               type="button"
-              className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left text-13 transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left text-13 outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               <ProjectAvatar avatar={project.avatar} name={project.name} id={projId} size="xs" />
               <span className="min-w-0 truncate text-13 tracking-tight text-foreground font-medium">
@@ -234,8 +240,8 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                       type="button"
                       aria-label="Project options"
                       className={cn(
-                        "size-6 flex items-center justify-center rounded-md cursor-pointer text-muted-foreground hover:text-foreground hover:bg-background hover:shadow-2xs transition-all duration-150 active:scale-95 outline-none focus-visible:ring-1 focus-visible:ring-primary",
-                        "opacity-0 group-hover/row:opacity-100 data-[state=open]:opacity-100 data-[state=open]:bg-background data-[state=open]:text-foreground data-[state=open]:shadow-2xs focus:opacity-100"
+                        "size-6 flex items-center justify-center rounded-md cursor-pointer text-muted-foreground hover:text-foreground hover:bg-background active:scale-95 outline-none focus-visible:ring-1 focus-visible:ring-primary",
+                        "opacity-0 group-hover/row:opacity-100 data-[state=open]:opacity-100 data-[state=open]:bg-background data-[state=open]:text-foreground focus:opacity-100"
                       )}
                       onClick={(e) => e.stopPropagation()}
                     >
@@ -260,7 +266,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                 >
                   <Star
                     className={cn(
-                      "size-4 shrink-0 transition-colors",
+                      "size-4 shrink-0",
                       isFavorited
                         ? "fill-warning text-warning"
                         : "text-foreground"
@@ -342,13 +348,13 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                     type="button"
                     aria-label={isOpen ? "Collapse project" : "Expand project"}
                     className={cn(
-                      "size-6 flex items-center justify-center rounded-md cursor-pointer text-muted-foreground hover:text-foreground hover:bg-background hover:shadow-2xs transition-all duration-150 active:scale-95 outline-none focus-visible:ring-1 focus-visible:ring-primary",
+                      "size-6 flex items-center justify-center rounded-md cursor-pointer text-muted-foreground hover:text-foreground hover:bg-background active:scale-95 outline-none focus-visible:ring-1 focus-visible:ring-primary",
                       isOpen ? "opacity-100" : "opacity-0 group-hover/row:opacity-100 focus:opacity-100"
                     )}
                   >
                     <ChevronDown
                       className={cn(
-                        "size-3.5 text-inherit transition-transform duration-200",
+                        "size-3.5 text-inherit transition-transform duration-150",
                         isOpen ? "" : "-rotate-90"
                       )}
                     />
@@ -400,8 +406,10 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                 <Link
                   href={link}
                   key={moduleKey}
+                  onMouseEnter={() => prefetchProjectSubmodule(queryClient, projId, moduleKey)}
+                  onFocus={() => prefetchProjectSubmodule(queryClient, projId, moduleKey)}
                   className={cn(
-                    "group flex h-8 items-center gap-2 rounded-md pl-6 pr-2.5 text-13 leading-5 transition-colors outline-none",
+                    "group flex h-8 items-center gap-2 rounded-md pl-6 pr-2.5 text-13 leading-5 outline-none",
                     modActive
                       ? "bg-muted text-foreground font-medium"
                       : "text-foreground font-normal hover:bg-muted"
@@ -436,7 +444,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
           }}
           aria-label="Collapse sidebar"
           title="Collapse sidebar"
-          className="flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+          className="flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
         >
           <PanelLeft className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.5} />
         </button>
@@ -446,8 +454,10 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
       <div className="mb-2 shrink-0">
         <button
           type="button"
+          onMouseEnter={() => activeProjectId && prefetchProjectWorkspace(queryClient, activeProjectId)}
+          onFocus={() => activeProjectId && prefetchProjectWorkspace(queryClient, activeProjectId)}
           onClick={() => setIsCreateWorkItemOpen(true)}
-          className="flex h-8 w-full items-center gap-2 rounded-md border border-border bg-background px-2.5 text-13 font-medium text-foreground cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary shadow-2xs"
+          className="flex h-8 w-full items-center gap-2 rounded-md border border-border bg-background hover:bg-muted px-2.5 text-13 font-medium text-foreground cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
         >
           <AddWorkItemIcon className="size-4 shrink-0 text-foreground" />
           <span className="tracking-tight">New work item</span>
@@ -458,40 +468,32 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
       <div className="flex-1 min-h-0 overflow-y-auto sidebar-scrollbar flex flex-col gap-2">
         {/* Nav items: strictly (home, drafts, your work, sticky) */}
         <div className="shrink-0">
-          <LayoutGroup id={`sb-nav-${id}`}>
-            <nav className="flex flex-col gap-1">
-              {navItems.map((item) => {
-                const active = isActive(item);
-                return (
-                  <Link
-                    href={item.to}
-                    key={item.label}
-                    className={cn(
-                      "group relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none",
-                      active
-                        ? "bg-muted text-foreground font-medium"
-                        : "text-foreground hover:bg-muted font-normal"
-                    )}
-                  >
-                    {active && (
-                      <motion.div
-                        layoutId={`sb-nav-active-${id}`}
-                        className="absolute inset-0 rounded-md bg-muted"
-                        initial={false}
-                        transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                      />
-                    )}
-                    <item.icon
-                      className="relative z-10 size-4 shrink-0 text-foreground"
-                    />
-                    <span className="relative z-10 min-w-0 truncate tracking-tight">
-                      {item.label}
-                    </span>
-                  </Link>
-                );
-              })}
-            </nav>
-          </LayoutGroup>
+          <nav className="flex flex-col gap-1">
+            {navItems.map((item) => {
+              const active = isActive(item);
+              return (
+                <Link
+                  href={item.to}
+                  key={item.label}
+                  onMouseEnter={() => prefetchWorkspaceRoute(queryClient, item.to)}
+                  onFocus={() => prefetchWorkspaceRoute(queryClient, item.to)}
+                  className={cn(
+                    "group relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 outline-none",
+                    active
+                      ? "bg-muted text-foreground font-medium"
+                      : "text-foreground hover:bg-muted font-normal"
+                  )}
+                >
+                  <item.icon
+                    className="relative z-10 size-4 shrink-0 text-foreground"
+                  />
+                  <span className="relative z-10 min-w-0 truncate tracking-tight">
+                    {item.label}
+                  </span>
+                </Link>
+              );
+            })}
+          </nav>
         </div>
 
         {/* Workspace section */}
@@ -502,7 +504,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
         >
           <div className="flex items-center justify-between h-7 px-2.5 text-11 font-medium text-muted-foreground select-none">
             <CollapsibleTrigger asChild>
-              <button className="flex-1 text-left text-11 font-medium text-muted-foreground hover:text-foreground cursor-pointer outline-none transition-colors">
+              <button className="flex-1 text-left text-11 font-medium text-muted-foreground hover:text-foreground cursor-pointer outline-none">
                 Workspace
               </button>
             </CollapsibleTrigger>
@@ -513,11 +515,11 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                   <button
                     type="button"
                     aria-label={overviewSectionOpen ? "Collapse workspace" : "Expand workspace"}
-                    className="size-5 flex items-center justify-center rounded-sm cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted transition-colors outline-none"
+                    className="size-5 flex items-center justify-center rounded-sm cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted outline-none"
                   >
                     <ChevronDown
                       className={cn(
-                        "size-3 text-inherit transition-transform duration-200",
+                        "size-3 text-inherit transition-transform duration-150",
                         overviewSectionOpen ? "" : "-rotate-90"
                       )}
                     />
@@ -543,8 +545,10 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                   <Link
                     key={item.id}
                     href={item.to}
+                    onMouseEnter={() => prefetchWorkspaceRoute(queryClient, item.to)}
+                    onFocus={() => prefetchWorkspaceRoute(queryClient, item.to)}
                     className={cn(
-                      "group flex h-8 items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none",
+                      "group flex h-8 items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 outline-none",
                       active
                         ? "bg-muted text-foreground font-medium"
                         : "text-foreground hover:bg-muted font-normal"
@@ -568,7 +572,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
             <div className="flex items-center justify-between h-7 px-2.5 text-11 font-medium text-muted-foreground select-none">
               <Link
                 href="/projects/favorite"
-                className="flex-1 text-left text-11 font-medium text-muted-foreground hover:text-foreground cursor-pointer outline-none transition-colors"
+                className="flex-1 text-left text-11 font-medium text-muted-foreground hover:text-foreground cursor-pointer outline-none"
               >
                 Favorites
               </Link>
@@ -579,11 +583,11 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                     <button
                       type="button"
                       aria-label={favoritesSectionOpen ? "Collapse favorites" : "Expand favorites"}
-                      className="size-5 flex items-center justify-center rounded-sm cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted transition-colors outline-none"
+                      className="size-5 flex items-center justify-center rounded-sm cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted outline-none"
                     >
                       <ChevronDown
                         className={cn(
-                          "size-3 text-inherit transition-transform duration-200",
+                          "size-3 text-inherit transition-transform duration-150",
                           favoritesSectionOpen ? "" : "-rotate-90"
                         )}
                       />
@@ -612,7 +616,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
         >
           <div className="group/proj-header flex items-center justify-between h-7 px-2.5 text-11 font-medium text-muted-foreground select-none">
             <CollapsibleTrigger asChild>
-              <button className="flex-1 text-left text-11 font-medium text-muted-foreground hover:text-foreground cursor-pointer outline-none transition-colors">
+              <button className="flex-1 text-left text-11 font-medium text-muted-foreground hover:text-foreground cursor-pointer outline-none">
                 Projects
               </button>
             </CollapsibleTrigger>
@@ -627,7 +631,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                     aria-label="Create project"
                     onClick={() => setCreateProjectOpen(true)}
                     className={cn(
-                      "size-5 flex items-center justify-center rounded-sm cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted transition-colors outline-none",
+                      "size-5 flex items-center justify-center rounded-sm cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted outline-none",
                       createProjectOpen
                         ? "bg-muted text-foreground"
                         : "opacity-0 group-hover/proj-header:opacity-100 focus:opacity-100"
@@ -648,11 +652,11 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
                     <button
                       type="button"
                       aria-label={projectsSectionOpen ? "Collapse projects" : "Expand projects"}
-                      className="size-5 flex items-center justify-center rounded-sm cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted transition-colors outline-none"
+                      className="size-5 flex items-center justify-center rounded-sm cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted outline-none"
                     >
                       <ChevronDown
                         className={cn(
-                          "size-3 text-inherit transition-transform duration-200",
+                          "size-3 text-inherit transition-transform duration-150",
                           projectsSectionOpen ? "" : "-rotate-90"
                         )}
                       />

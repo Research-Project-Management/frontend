@@ -465,10 +465,44 @@ export interface UseProjectsReturn {
   refetch: () => Promise<unknown>;
 }
 
+export function useProjectsQuery(): UseProjectsState & { refetch: () => Promise<unknown> } {
+  const query = useQuery({
+    queryKey: projectKeys.all(),
+    queryFn: ({ signal }: { signal?: AbortSignal }) => fetchUserProjects('all', signal),
+    staleTime: 60_000,
+  });
+
+  const pData = query.data as Record<string, unknown> | undefined;
+  const projectsList: Project[] = useMemo(() => {
+    if (!pData) return [];
+    if (Array.isArray(pData)) return pData as Project[];
+    if (Array.isArray(pData.projects)) return pData.projects as Project[];
+    if (typeof pData.data === 'object' && pData.data !== null) {
+      const nested = pData.data as Record<string, unknown>;
+      if (Array.isArray(nested.projects)) return nested.projects as Project[];
+      if (Array.isArray(nested)) return nested as Project[];
+    }
+    return [];
+  }, [pData]);
+
+  return useMemo(
+    () => ({
+      projects: projectsList,
+      isLoading: query.isLoading,
+      isError: query.isError,
+      error: (query.error as Error) ?? null,
+      total: projectsList.length,
+      refetch: query.refetch,
+    }),
+    [projectsList, query.isLoading, query.isError, query.error, query.refetch]
+  );
+}
+
 export function useProjects(options?: { isArchived?: boolean }): UseProjectsReturn {
   const query = useQuery({
     queryKey: projectKeys.all(),
     queryFn: ({ signal }: { signal?: AbortSignal }) => fetchUserProjects('all', signal),
+    staleTime: 60_000,
   });
 
   const createMutation = useCreateProject();
@@ -586,14 +620,113 @@ export interface UseProjectReturn {
   refetch: () => Promise<unknown>;
 }
 
-export function useProject(
+export function useProjectQuery(
   projectId: string,
   options?: { enabled?: boolean }
-): UseProjectReturn {
+): UseProjectState & { data?: { project: Project } | Project; refetch: () => Promise<unknown> } {
+  const queryClient = useQueryClient();
   const query = useQuery<{ project: Project } | Project>({
     queryKey: projectKeys.byId(projectId),
     queryFn: () => ProjectService.getById(projectId),
     enabled: (options?.enabled ?? true) && !!projectId,
+    staleTime: 2 * 60_000,
+    placeholderData: () => {
+      if (!projectId) return undefined;
+      const allData = queryClient.getQueryData<unknown>(projectKeys.all());
+      if (!allData) return undefined;
+      let list: Project[] = [];
+      if (Array.isArray(allData)) {
+        list = allData as Project[];
+      } else if (typeof allData === 'object' && allData !== null) {
+        const obj = allData as Record<string, unknown>;
+        if (Array.isArray(obj.projects)) list = obj.projects as Project[];
+        else if (typeof obj.data === 'object' && obj.data !== null && Array.isArray((obj.data as Record<string, unknown>).projects)) {
+          list = (obj.data as Record<string, unknown>).projects as Project[];
+        }
+      }
+      const match = list.find((p) => p.id === projectId || p.identifier === projectId || p.key === projectId);
+      return match ? { project: match } : undefined;
+    },
+  });
+
+  const project: Project | null = useMemo(() => {
+    if (!query.data) return null;
+    const dataObj = query.data as Record<string, unknown>;
+    if ('project' in dataObj && dataObj.project) {
+      return dataObj.project as Project;
+    }
+    if ('data' in dataObj && dataObj.data && typeof dataObj.data === 'object') {
+      return dataObj.data as Project;
+    }
+    return query.data as unknown as Project;
+  }, [query.data]);
+
+  const yourRole = useMemo(() => {
+    if (!query.data) return null;
+    const dataObj = query.data as Record<string, unknown>;
+    const nestedProject = dataObj.project as Record<string, unknown> | undefined;
+    return (
+      (dataObj.yourRole as string | null | undefined) ||
+      (nestedProject?.yourRole as string | null | undefined) ||
+      project?.yourRole ||
+      null
+    );
+  }, [query.data, project]);
+
+  const permissions = useMemo<ProjectPermissions | null>(() => {
+    if (!query.data) return null;
+    const dataObj = query.data as Record<string, unknown>;
+    const nestedProject = dataObj.project as Record<string, unknown> | undefined;
+    return (
+      (dataObj.permissions as ProjectPermissions | null | undefined) ||
+      (nestedProject?.permissions as ProjectPermissions | null | undefined) ||
+      project?.permissions ||
+      null
+    );
+  }, [query.data, project]);
+
+  return useMemo(
+    () => ({
+      project,
+      yourRole,
+      permissions,
+      raw: query.data,
+      data: query.data,
+      isLoading: query.isLoading,
+      isError: query.isError,
+      refetch: query.refetch,
+    }),
+    [project, yourRole, permissions, query.data, query.isLoading, query.isError, query.refetch]
+  );
+}
+
+export function useProject(
+  projectId: string,
+  options?: { enabled?: boolean }
+): UseProjectReturn {
+  const queryClient = useQueryClient();
+  const query = useQuery<{ project: Project } | Project>({
+    queryKey: projectKeys.byId(projectId),
+    queryFn: () => ProjectService.getById(projectId),
+    enabled: (options?.enabled ?? true) && !!projectId,
+    staleTime: 2 * 60_000,
+    placeholderData: () => {
+      if (!projectId) return undefined;
+      const allData = queryClient.getQueryData<unknown>(projectKeys.all());
+      if (!allData) return undefined;
+      let list: Project[] = [];
+      if (Array.isArray(allData)) {
+        list = allData as Project[];
+      } else if (typeof allData === 'object' && allData !== null) {
+        const obj = allData as Record<string, unknown>;
+        if (Array.isArray(obj.projects)) list = obj.projects as Project[];
+        else if (typeof obj.data === 'object' && obj.data !== null && Array.isArray((obj.data as Record<string, unknown>).projects)) {
+          list = (obj.data as Record<string, unknown>).projects as Project[];
+        }
+      }
+      const match = list.find((p) => p.id === projectId || p.identifier === projectId || p.key === projectId);
+      return match ? { project: match } : undefined;
+    },
   });
 
   const updateMutation = useUpdateProject();

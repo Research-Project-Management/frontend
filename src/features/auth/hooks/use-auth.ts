@@ -38,6 +38,17 @@ export interface UseAuthReturn {
  * if (state.status === 'loading') return <Spinner />;
  * ```
  */
+function getCachedUserFallback(): AuthUser | undefined {
+  if (typeof window === 'undefined') return undefined;
+  if (!hasAuthToken() || !isTokenValid(getAuthToken())) return undefined;
+  try {
+    const raw = localStorage.getItem('flux_cached_user');
+    return raw ? (JSON.parse(raw) as AuthUser) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export const useAuth = (): UseAuthReturn => {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -45,6 +56,7 @@ export const useAuth = (): UseAuthReturn => {
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: authKeys.session(),
     queryFn: getUser,
+    placeholderData: () => getCachedUserFallback(),
     staleTime: 5 * 60 * 1_000, // 5 minutes
     refetchOnWindowFocus: false,
     retry: (failureCount, err) => {

@@ -10,6 +10,7 @@ import AppLoading from './loading';
 
 import Topbar from '@/features/shell/components/Topbar';
 import Sidebar from '@/features/shell/components/Sidebar';
+import ProjectLayout from '@/features/projects/shell/components/ProjectLayout';
 
 import { useAiCompanionStore } from '@/features/ai/store/ai-companion.store';
 
@@ -18,6 +19,20 @@ const AiCompanionSidebar = dynamic(
   { ssr: false, loading: () => null }
 );
 
+const PROJECT_WORKSPACE_PREFIXES = [
+  '/home',
+  '/projects',
+  '/drafts',
+  '/stickies',
+  '/your-work',
+  '/pages',
+];
+
+function isProjectWorkspaceRoute(pathname: string): boolean {
+  return PROJECT_WORKSPACE_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
+}
 
 function AiCompanionSlot() {
   const isOpen = useAiCompanionStore((s) => s.isOpen);
@@ -34,6 +49,7 @@ export default function AppLayout({
   const pathname = usePathname();
   const { user, isLoading } = useAuth();
   const isPaperReader = pathname.includes('/library/papers/');
+  const isProjectWorkspace = isProjectWorkspaceRoute(pathname);
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -72,11 +88,21 @@ export default function AppLayout({
           <Sidebar />
         </ErrorBoundary>
         <div className='order-1 flex-1 min-w-0 rounded-md border border-border bg-background md:order-2 flex flex-col relative min-h-0 overflow-hidden'>
-          <ErrorBoundary resetKeys={[pathname]} variant="full" featureName="Page Content">
-            <Suspense fallback={<AppLoading />}>
-              {children}
-            </Suspense>
-          </ErrorBoundary>
+          {isProjectWorkspace ? (
+            <ProjectLayout>
+              <ErrorBoundary resetKeys={[pathname]} variant="full" featureName="Page Content">
+                <Suspense fallback={<AppLoading />}>
+                  {children}
+                </Suspense>
+              </ErrorBoundary>
+            </ProjectLayout>
+          ) : (
+            <ErrorBoundary resetKeys={[pathname]} variant="full" featureName="Page Content">
+              <Suspense fallback={<AppLoading />}>
+                {children}
+              </Suspense>
+            </ErrorBoundary>
+          )}
         </div>
         {!pathname.startsWith('/ai') && (
           <ErrorBoundary fallback={null} featureName="AI Companion">

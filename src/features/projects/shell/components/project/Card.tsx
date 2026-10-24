@@ -1,6 +1,8 @@
 'use client';
 
 import React from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { prefetchProjectWorkspace } from '@/features/projects/project-id/work-items/hooks/use-work-items-query';
 import Link from 'next/link';
 import {
   Lock,
@@ -36,6 +38,7 @@ export type CardProps = {
 };
 
 export const Card = React.memo(function Card({ project, onArchive, onManageTags }: CardProps) {
+  const queryClient = useQueryClient();
   const projectId = project.id || '';
   const projectKey = project.key || project.identifier || getProjectKey(project.name);
   const isPrivate = isProjectPrivate(project);
@@ -88,7 +91,11 @@ export const Card = React.memo(function Card({ project, onArchive, onManageTags 
   };
 
   return (
-    <div className="group relative flex flex-col rounded-lg border border-border bg-card overflow-hidden transition-all duration-200 hover:border-border min-w-0 content-auto-card">
+    <div
+      onMouseEnter={() => prefetchProjectWorkspace(queryClient, projectId)}
+      onFocus={() => prefetchProjectWorkspace(queryClient, projectId)}
+      className="group relative flex flex-col rounded-lg border border-border bg-card overflow-hidden transition-all duration-200 hover:border-border min-w-0 content-auto-card"
+    >
       {/* Banner / Cover Header */}
       <div className={cn('relative h-24 w-full bg-gradient-to-tr overflow-hidden', bannerClass)}>
         <div className="absolute inset-0 bg-background/20 backdrop-blur-[0.5px]" />

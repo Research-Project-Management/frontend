@@ -9,7 +9,6 @@ import {
   UserPlus,
   LogOut,
   Image as ImageIcon,
-  Mail,
   Bell,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -23,11 +22,15 @@ import { useAuth } from '@/features/auth/hooks/use-auth';
 import { Avatar, AvatarImage, AvatarFallback } from "@/shared/components/ui/avatar";
 import { resolveFileUrl } from "@/shared/lib/file-client";
 import { useUserCover } from '@/features/settings/hooks/use-user-cover';
-import { CoverModal } from '@/shared/components/ui/cover-modal';
 import { useUpload } from "@/shared/hooks/use-upload";
 import dynamic from 'next/dynamic';
 import { useMyProjectInvitations } from '@/features/projects/invitation/hooks/use-project-invitations';
 import { useUnreadNotificationCount } from '../hooks/use-inbox';
+
+const CoverModal = dynamic(
+  () => import('@/shared/components/ui/cover-modal').then((m) => m.CoverModal),
+  { ssr: false }
+);
 
 const CreateProjectModal = dynamic(
   () =>
@@ -58,6 +61,7 @@ export default function AccountDropdown({ align = 'start' }: AccountDropdownProp
   const { data: invitations = [] } = useMyProjectInvitations();
   const { data: unreadCount = 0 } = useUnreadNotificationCount();
   const [mounted, setMounted] = useState(false);
+  const [isCoverModalOpen, setIsCoverModalOpen] = useState(false);
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [isProjectInvitesOpen, setIsProjectInvitesOpen] = useState(false);
 
@@ -123,14 +127,16 @@ export default function AccountDropdown({ align = 'start' }: AccountDropdownProp
 
   return (
     <>
-      <CoverModal
-        currentCover={cover}
-        onSelectCover={handleSelectCover}
-        onUploadCustomCover={handleUploadCustomCover}
-        isUploading={isUploading}
-      >
-        <button id="account-cover-modal-trigger" className="hidden" type="button" />
-      </CoverModal>
+      {isCoverModalOpen && (
+        <CoverModal
+          open={isCoverModalOpen}
+          onOpenChange={setIsCoverModalOpen}
+          currentCover={cover}
+          onSelectCover={handleSelectCover}
+          onUploadCustomCover={handleUploadCustomCover}
+          isUploading={isUploading}
+        />
+      )}
 
       {/* ── Create Project Modal ── */}
       {isCreateProjectOpen && (
@@ -194,9 +200,7 @@ export default function AccountDropdown({ align = 'start' }: AccountDropdownProp
               {/* Change Cover Trigger Button */}
               <button
                 type="button"
-                onClick={() => {
-                  document.getElementById('account-cover-modal-trigger')?.click();
-                }}
+                onClick={() => setIsCoverModalOpen(true)}
                 className="absolute top-2 right-2 flex items-center gap-1 px-2 py-0.5 rounded-md bg-black/55 hover:bg-black/75 text-white text-11 font-medium transition-colors cursor-pointer opacity-85 hover:opacity-100 backdrop-blur-xs outline-none"
                 title="Change background"
               >
@@ -295,20 +299,6 @@ export default function AccountDropdown({ align = 'start' }: AccountDropdownProp
           </div>
         </DropdownMenuContent>
       </DropdownMenu>
-
-      {isCreateProjectOpen && (
-        <CreateProjectModal
-          open={isCreateProjectOpen}
-          onOpenChange={setIsCreateProjectOpen}
-        />
-      )}
-
-      {isProjectInvitesOpen && (
-        <ProjectInvitesModal
-          open={isProjectInvitesOpen}
-          onOpenChange={setIsProjectInvitesOpen}
-        />
-      )}
     </>
   );
 }

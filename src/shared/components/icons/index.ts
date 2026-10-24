@@ -24,5 +24,5 @@ export {
   getRandomProjectEmoji,
   getDeterministicProjectEmoji,
 } from "./ProjectAvatar";
-export { ICON_MAP, ICONS, ICON_PALETTE, type IconItem } from "./icon-data";
-export { EMOJI_CATEGORIES, SKIN_TONES, type EmojiItem, type EmojiCategory } from "./emoji-data";
+export { ICON_MAP, type IconItem } from "./icon-data";
+export type { EmojiItem, EmojiCategory } from "./emoji-data";

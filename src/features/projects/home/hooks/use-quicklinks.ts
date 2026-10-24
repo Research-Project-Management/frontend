@@ -3,11 +3,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Quicklink } from '../types/home.types';
 
-export function useQuicklinks(scopeId: string = 'default') {
-  const [links, setLinks] = useState<Quicklink[]>([]);
-  const [isLoaded, setIsLoaded] = useState(false);
+const quicklinksMemoryCache = new Map<string, Quicklink[]>();
 
+export function useQuicklinks(scopeId: string = 'default') {
   const storageKey = `flux-quicklinks-${scopeId || 'default'}`;
+
+  const [links, setLinks] = useState<Quicklink[]>(
+    () => quicklinksMemoryCache.get(storageKey) ?? []
+  );
+  const [isLoaded, setIsLoaded] = useState<boolean>(() =>
+    quicklinksMemoryCache.has(storageKey)
+  );
 
   useEffect(() => {
     try {
@@ -15,8 +21,14 @@ export function useQuicklinks(scopeId: string = 'default') {
       if (raw) {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) {
-          setLinks(parsed as Quicklink[]);
+          const valid = parsed as Quicklink[];
+          quicklinksMemoryCache.set(storageKey, valid);
+          setLinks(valid);
+        } else {
+          quicklinksMemoryCache.set(storageKey, []);
         }
+      } else {
+        quicklinksMemoryCache.set(storageKey, []);
       }
     } catch (e) {
       console.error('Failed to load quicklinks', e);
@@ -37,6 +49,7 @@ export function useQuicklinks(scopeId: string = 'default') {
           },
           ...prev,
         ];
+        quicklinksMemoryCache.set(storageKey, next);
         localStorage.setItem(storageKey, JSON.stringify(next));
         return next;
       });
@@ -52,6 +65,7 @@ export function useQuicklinks(scopeId: string = 'default') {
             ? { ...link, url: data.url, title: data.title || link.title }
             : link
         );
+        quicklinksMemoryCache.set(storageKey, next);
         localStorage.setItem(storageKey, JSON.stringify(next));
         return next;
       });
@@ -63,6 +77,7 @@ export function useQuicklinks(scopeId: string = 'default') {
     (id: string) => {
       setLinks((prev) => {
         const next = prev.filter((link) => link.id !== id);
+        quicklinksMemoryCache.set(storageKey, next);
         localStorage.setItem(storageKey, JSON.stringify(next));
         return next;
       });

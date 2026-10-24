@@ -1,21 +1,10 @@
 'use client';
 
-import dynamic from 'next/dynamic';
 import { useAiCompanionStore } from '@/features/ai/store/ai-companion.store';
-import type { SendMessageOptions } from '@/features/ai/components/companion/CompanionInput';
-
-const CompanionInput = dynamic(
-  () =>
-    import('@/features/ai/components/companion/CompanionInput').then(
-      (m) => m.CompanionInput
-    ),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="w-full h-14 rounded-md border border-border/60 bg-muted/30 animate-pulse motion-reduce:animate-none" />
-    ),
-  }
-);
+import {
+  CompanionInput,
+  type SendMessageOptions,
+} from '@/features/ai/components/companion/CompanionInput';
 
 interface ChatAiProps {
   onSend?: (

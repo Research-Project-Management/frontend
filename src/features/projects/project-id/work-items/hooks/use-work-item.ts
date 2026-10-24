@@ -84,7 +84,7 @@ export function useProject({ projectId }: UseProjectOptions) {
   }, [labels]);
   const isSaving = updateMut.isPending || createMut.isPending;
   const isDeleting = deleteMut.isPending;
-  const isLoading = itemsQ.isLoading || detailsQ.isLoading || statesQ.isLoading;
+  const isLoading = itemsQ.isLoading;
   const isError = itemsQ.isError || detailsQ.isError;
   const error = itemsQ.error || detailsQ.error;
 

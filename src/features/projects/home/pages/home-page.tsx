@@ -10,14 +10,15 @@ import { fixMojibake } from "@/shared/lib/utils";
 import ChatAi from "../components/chat-ai";
 import Recent from "../components/Recent";
 import Quicklinks from "../components/quicklinks";
+import Stickies from "../components/Stickies";
 import { Section } from "../components/layouts/section";
 import { Topbar } from "../components/layouts/topbar";
 import { Shapes } from "lucide-react";
 
-const Stickies = dynamic(() => import("../components/Stickies"), {
-  ssr: false,
-  loading: () => <div className="h-32 w-full rounded-md bg-muted/30 animate-pulse motion-reduce:animate-none" />,
-});
+// Stickies imported statically above to avoid double skeleton waterfall
+// (ssr: false removed)
+// (loading fallback removed)
+// (end dynamic Stickies)
 
 const ManageWidgetsModal = dynamic(
   () =>
@@ -60,14 +61,19 @@ import {
 
 // ─── Main dashboard ──────────────────────────────────────────────────────────
 
+let hasHydratedHome = false;
+
 export default function HomePage() {
   const { user, isLoading: isUserLoading } = useAuth();
-  const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted] = useState(() => hasHydratedHome);
   const [now, setNow] = useState<Date>(() => new Date());
-  const [config, setConfig] = useState<SectionConfig[]>(defaultSectionConfig);
+  const [config, setConfig] = useState<SectionConfig[]>(() =>
+    hasHydratedHome ? loadSectionConfig() : defaultSectionConfig()
+  );
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
+    hasHydratedHome = true;
     setMounted(true);
     setNow(new Date());
     setConfig(loadSectionConfig());
@@ -113,14 +119,14 @@ export default function HomePage() {
         <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-10 flex flex-col gap-10">
           {/* Greeting Section */}
           <div className="flex flex-col items-center justify-center text-center space-y-2 mt-6 mb-8">
-            {!mounted || isUserLoading ? (
+            {isUserLoading && !user ? (
               <div className="flex flex-col items-center gap-3">
                 <Skeleton className="h-10 w-64 rounded-full motion-reduce:animate-none" />
                 <Skeleton className="h-5 w-40 rounded-full motion-reduce:animate-none" />
               </div>
             ) : (
               <>
-                <h1 className="text-24 md:text-26 font-semibold tracking-tight text-foreground leading-tight">
+                <h1 className="text-24 md:text-26 font-semibold tracking-tight text-foreground leading-tight" suppressHydrationWarning>
                   {greeting.text}{fullName ? `, ${fullName}` : ""}
                 </h1>
                 <div className="flex items-center gap-2 text-12 font-medium text-muted-foreground mt-1.5" suppressHydrationWarning>

@@ -35,7 +35,10 @@ import type {
   Priority,
 } from '@/features/projects/project-id/work-items/types/work-item.types';
 import { Button } from '@/shared/components/ui/button';
-import { Skeleton } from '@/shared/components/ui/skeleton';
+import {
+  WorkspaceRowListSkeleton,
+  WorkspaceBoardSkeleton,
+} from '@/shared/components/layout/WorkspaceSkeleton';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { Archive } from 'lucide-react';
 import { WorkItemsIcon } from '@/shared/components/icons';
@@ -523,26 +526,6 @@ export function WorkItemPage({
   const isProjectEmpty = displayItems.length === 0 && !isLoading && !showArchived;
   const isArchivedEmpty = showArchived && displayItems.length === 0 && !isLoading;
 
-  if (isLoading) {
-    return (
-      <div className="flex-1 flex flex-col h-full animate-in fade-in duration-300">
-        <div className="px-4 h-11 flex items-center gap-2 border-b border-border">
-          <Skeleton className="h-6 w-48" />
-        </div>
-        <div className="flex-1 flex gap-5 p-6 overflow-hidden">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="w-72 space-y-3">
-              <Skeleton className="h-8 w-full rounded-md" />
-              <Skeleton className="h-24 w-full rounded-md" />
-              <Skeleton className="h-24 w-full rounded-md" />
-              <Skeleton className="h-16 w-full rounded-md" />
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex-1 flex flex-col h-full min-h-0 bg-background">
       {/* Topbar Filter & Navigation */}
@@ -606,8 +589,6 @@ export function WorkItemPage({
         </div>
       )}
 
-
-
       {/* Filter Active Pills Bar */}
       <FilterPillsBar
         columns={columns}
@@ -630,41 +611,49 @@ export function WorkItemPage({
 
       {/* Main View Area Container */}
       <div className="flex-1 flex flex-col min-h-0 relative">
-        <WorkItemViewContainer
-          viewMode={viewMode}
-          isArchivedEmpty={isArchivedEmpty}
-          isProjectEmpty={isProjectEmpty}
-          onDisableArchived={() => setShowArchived(false)}
-          onCreateItemFromEmpty={() => {
-            const firstCol = columns[0];
-            handleOpenAddDialog(firstCol ? resolveStateId(firstCol) : '');
-          }}
-          isReadOnly={isReadOnly}
-          projectId={projectId}
-          activeFilteredItems={activeFilteredItems}
-          itemsByColumnId={itemsByColumnId}
-          visibleColumns={visibleColumns}
-          columns={columns}
-          displayOptions={displayOptions}
-          currentUserId={currentUser?.id}
-          members={members}
-          labelMap={labelMap}
-          selectedIds={selectedIds}
-          onToggleSelect={handleToggleSelect}
-          onSelectAll={(ids) => handleSelectAll(ids || [])}
-          onOpenAddDialog={handleOpenAddDialog}
-          onOpenEditDialog={handleOpenEditDialog}
-          onDeleteCard={handleDeleteCard}
-          onDuplicateCard={handleDuplicateCard}
-          onJoinCard={handleJoinCard}
-          onLeaveCard={handleLeaveCard}
-          onMoveCard={handleMoveCard}
-          onReorderCard={handleReorderCard}
-          onQuickUpdateItem={handleQuickUpdateItem}
-          onQuickUpdateItemFromCard={handleQuickUpdateItemFromCard}
-          onAssignExistingItemsToDate={handleAssignExistingItemsToDate}
-          updateDisplayProperty={updateDisplayProperty}
-        />
+        {isLoading ? (
+          viewMode === 'list' || viewMode === 'table' ? (
+            <WorkspaceRowListSkeleton variant="work-items" rows={10} />
+          ) : (
+            <WorkspaceBoardSkeleton columns={4} />
+          )
+        ) : (
+          <WorkItemViewContainer
+            viewMode={viewMode}
+            isArchivedEmpty={isArchivedEmpty}
+            isProjectEmpty={isProjectEmpty}
+            onDisableArchived={() => setShowArchived(false)}
+            onCreateItemFromEmpty={() => {
+              const firstCol = columns[0];
+              handleOpenAddDialog(firstCol ? resolveStateId(firstCol) : '');
+            }}
+            isReadOnly={isReadOnly}
+            projectId={projectId}
+            activeFilteredItems={activeFilteredItems}
+            itemsByColumnId={itemsByColumnId}
+            visibleColumns={visibleColumns}
+            columns={columns}
+            displayOptions={displayOptions}
+            currentUserId={currentUser?.id}
+            members={members}
+            labelMap={labelMap}
+            selectedIds={selectedIds}
+            onToggleSelect={handleToggleSelect}
+            onSelectAll={(ids) => handleSelectAll(ids || [])}
+            onOpenAddDialog={handleOpenAddDialog}
+            onOpenEditDialog={handleOpenEditDialog}
+            onDeleteCard={handleDeleteCard}
+            onDuplicateCard={handleDuplicateCard}
+            onJoinCard={handleJoinCard}
+            onLeaveCard={handleLeaveCard}
+            onMoveCard={handleMoveCard}
+            onReorderCard={handleReorderCard}
+            onQuickUpdateItem={handleQuickUpdateItem}
+            onQuickUpdateItemFromCard={handleQuickUpdateItemFromCard}
+            onAssignExistingItemsToDate={handleAssignExistingItemsToDate}
+            updateDisplayProperty={updateDisplayProperty}
+          />
+        )}
       </div>
 
       {/* Floating Bulk Actions Bar */}

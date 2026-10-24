@@ -5,26 +5,23 @@ import dynamic from 'next/dynamic';
 import { Archive } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { EmptyState } from '@/features/projects/project-id/work-items/components/views/EmptyState';
+import { BoardView } from '@/features/projects/project-id/work-items/components/views/BoardView';
+import { ListView } from '@/features/projects/project-id/work-items/components/views/ListView';
+import { TableView } from '@/features/projects/project-id/work-items/components/views/TableView';
+import {
+  WorkspaceRowListSkeleton,
+  WorkspaceViewTransition,
+} from '@/shared/components/layout/WorkspaceSkeleton';
 
-const BoardView = dynamic(
-  () => import('@/features/projects/project-id/work-items/components/views/BoardView').then((m) => m.BoardView),
-  { ssr: false }
-);
-const ListView = dynamic(
-  () => import('@/features/projects/project-id/work-items/components/views/ListView').then((m) => m.ListView),
-  { ssr: false }
-);
+const ViewFallback = () => <WorkspaceRowListSkeleton variant="work-items" rows={10} />;
+
 const CalendarView = dynamic(
   () => import('@/features/projects/project-id/work-items/components/views/CalendarView').then((m) => m.CalendarView),
-  { ssr: false }
-);
-const TableView = dynamic(
-  () => import('@/features/projects/project-id/work-items/components/views/TableView').then((m) => m.TableView),
-  { ssr: false }
+  { ssr: false, loading: ViewFallback }
 );
 const TimelineView = dynamic(
   () => import('@/features/projects/project-id/work-items/components/views/TimelineView').then((m) => m.TimelineView),
-  { ssr: false }
+  { ssr: false, loading: ViewFallback }
 );
 
 import type { WorkItemViewContainerProps } from '@/features/projects/project-id/work-items/types/layout.types';
@@ -97,7 +94,7 @@ export function WorkItemViewContainer({
   }
 
   return (
-    <>
+    <WorkspaceViewTransition className="flex-1 flex flex-col min-h-0">
       {viewMode === 'list' && (
         <ListView
           projectId={projectId}
@@ -202,6 +199,6 @@ export function WorkItemViewContainer({
           onUpdateItem={onQuickUpdateItem}
         />
       )}
-    </>
+    </WorkspaceViewTransition>
   );
 }

@@ -53,15 +53,17 @@ export function WorkItemModals({
   return (
     <>
       {/* Analytics Drawer */}
-      <AnalyticsDrawer
-        isOpen={isAnalyticsOpen}
-        onClose={onCloseAnalytics}
-        project={project || undefined}
-        projectId={projectId}
-        items={analyticsItems}
-        columns={columns}
-        assignees={analyticsAssignees}
-      />
+      {isAnalyticsOpen && (
+        <AnalyticsDrawer
+          isOpen={isAnalyticsOpen}
+          onClose={onCloseAnalytics}
+          project={project || undefined}
+          projectId={projectId}
+          items={analyticsItems}
+          columns={columns}
+          assignees={analyticsAssignees}
+        />
+      )}
 
       {/* Work Item Create Dialog */}
       {modal.type === 'create' && (

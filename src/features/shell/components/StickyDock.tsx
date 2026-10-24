@@ -179,7 +179,7 @@ export default function StickyDock({ className, buttonClassName }: StickyDockPro
     };
   }, [isPillOpen]);
 
-  const { query, mutations } = useSticky();
+  const { query, mutations } = useSticky({ enabled: isPillOpen || isModalOpen || Boolean(activeStickyId) });
   const stickies = useMemo(() => (query.data || []) as Sticky[], [query.data]);
 
   const activeSticky = useMemo(

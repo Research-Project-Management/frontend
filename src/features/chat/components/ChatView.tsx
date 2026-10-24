@@ -1,14 +1,39 @@
 'use client';
 
 import React, { useEffect, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { ChatSidebar } from './ChatSidebar';
 import { ChatWindow } from './ChatWindow';
-import { CreateChannelModal } from './CreateChannelModal';
-import { CreateGroupModal } from './CreateGroupModal';
-import { FriendManagerModal } from './FriendManagerModal';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { useConversations } from '../hooks/use-chat-queries';
 import { useChatStore } from '../store/chat.store';
+
+const CreateChannelModal = dynamic(
+  () => import('./CreateChannelModal').then((m) => m.CreateChannelModal),
+  { ssr: false }
+);
+const CreateGroupModal = dynamic(
+  () => import('./CreateGroupModal').then((m) => m.CreateGroupModal),
+  { ssr: false }
+);
+const FriendManagerModal = dynamic(
+  () => import('./FriendManagerModal').then((m) => m.FriendManagerModal),
+  { ssr: false }
+);
+
+function ChatModalsSlot() {
+  const isCreateChannelModalOpen = useChatStore((s) => s.isCreateChannelModalOpen);
+  const isCreateGroupModalOpen = useChatStore((s) => s.isCreateGroupModalOpen);
+  const isFriendManagerModalOpen = useChatStore((s) => s.isFriendManagerModalOpen);
+
+  return (
+    <>
+      {isCreateChannelModalOpen && <CreateChannelModal />}
+      {isCreateGroupModalOpen && <CreateGroupModal />}
+      {isFriendManagerModalOpen && <FriendManagerModal />}
+    </>
+  );
+}
 
 export function ChatView() {
   const { data: conversationsData, isLoading, isError, error } = useConversations();
@@ -115,9 +140,7 @@ export function ChatView() {
       <ChatWindow conversation={activeConversation} />
 
       {/* Dialogs */}
-      <CreateChannelModal />
-      <CreateGroupModal />
-      <FriendManagerModal />
+      <ChatModalsSlot />
     </div>
   );
 }

@@ -23,7 +23,9 @@ export interface CoverModalProps {
   onSelectCover: (coverUrl: string) => void;
   onUploadCustomCover: (file: File) => Promise<void>;
   isUploading?: boolean;
-  children: React.ReactNode;
+  children?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   title?: string;
   description?: string;
 }
@@ -34,10 +36,14 @@ export function CoverModal({
   onUploadCustomCover,
   isUploading,
   children,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
   title = 'Change Cover Image',
   description = 'Choose a cover image from Unsplash, curated textures, or upload a custom image.',
 }: CoverModalProps) {
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = controlledOpen !== undefined ? controlledOpen : uncontrolledOpen;
+  const setOpen = controlledOnOpenChange || setUncontrolledOpen;
   const [tab, setTab] = useState<'unsplash' | 'images' | 'upload'>('unsplash');
   const [search, setSearch] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -79,7 +85,7 @@ export function CoverModal({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
+      {children ? <DialogTrigger asChild>{children}</DialogTrigger> : null}
 
       <DialogContent className="max-w-xl p-5 rounded-md border border-border/80 bg-background space-y-4 shadow-raised-200">
         <DialogHeader className="sr-only">

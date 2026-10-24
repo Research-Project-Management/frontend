@@ -96,9 +96,7 @@ function branchNameMatches(node: TreeNode, query: string): boolean {
   );
 }
 
-const isIndexedPaper = (paper: Item): paper is Item & { ragDocId: string } => {
-  return paper.ragStatus === 'indexed' && typeof paper.ragDocId === 'string' && paper.ragDocId.length > 0;
-};
+const isSelectablePaper = (paper: Item): boolean => Boolean(paper.id);
 
 const compactAuthors = (paper: Item) => {
   if (!paper.authors.length) return '';
@@ -144,7 +142,7 @@ export function SourcePickerModal({
     const raw = selectedCollectionId
       ? (Array.isArray(collectionItems) ? collectionItems : [])
       : items ?? [];
-    return raw.filter(isIndexedPaper);
+    return raw.filter(isSelectablePaper);
   }, [collectionItems, items, selectedCollectionId]);
 
   const papersLoading = selectedCollectionId
@@ -190,13 +188,13 @@ export function SourcePickerModal({
   const [pendingSelection, setPendingSelection] = useState<Map<string, SelectedSource>>(new Map());
 
   const togglePaper = (p: Item) => {
-    if (!isIndexedPaper(p)) return;
+    if (!isSelectablePaper(p)) return;
     setPendingSelection((prev) => {
       const next = new Map(prev);
-      if (next.has(p.ragDocId)) {
-        next.delete(p.ragDocId);
+      if (next.has(p.id)) {
+        next.delete(p.id);
       } else {
-        next.set(p.ragDocId, {
+        next.set(p.id, {
           id: p.id,
           name: p.title,
           sourceType: 'library',
@@ -420,9 +418,9 @@ export function SourcePickerModal({
                 ) : (
                   activePapers.map((paper) => {
                     const checked =
-                      pendingSelection.has(paper.ragDocId) ||
-                      sources.some((s) => s.id === paper.ragDocId);
-                    const alreadyAdded = sources.some((s) => s.id === paper.ragDocId);
+                      pendingSelection.has(paper.id) ||
+                      sources.some((s) => s.id === paper.id);
+                    const alreadyAdded = sources.some((s) => s.id === paper.id);
 
                     return (
                       <div

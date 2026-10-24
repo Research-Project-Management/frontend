@@ -39,8 +39,9 @@ export function CompanionHistory({
   currentProjectId,
   onNewChat,
 }: CompanionHistoryProps) {
-  const { activeChatId, setActiveChatId, setHistoryView } =
-    useAiCompanionStore();
+  const activeChatId = useAiCompanionStore((s) => s.activeChatId);
+  const setActiveChatId = useAiCompanionStore((s) => s.setActiveChatId);
+  const setHistoryView = useAiCompanionStore((s) => s.setHistoryView);
 
   const [chats, setChats] = useState<ChatSession[]>([]);
   const [loading, setLoading] = useState(true);

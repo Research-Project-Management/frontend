@@ -13,6 +13,7 @@
 // 1. Domain Models & Engines
 export {
   buildFileTree,
+  buildUnifiedTree,
   filterFileTree,
   inferResearchFolder,
   getRootFilePriority,

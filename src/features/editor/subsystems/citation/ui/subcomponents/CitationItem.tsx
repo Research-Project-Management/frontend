@@ -68,7 +68,7 @@ export const CitationItem = memo(function CitationItem({
       )}
 
       {/* 4. Action buttons on hover: Clean neutral muted style, consistent with shell */}
-      <div className="absolute right-2 top-2 opacity-90 sm:opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity flex items-center gap-0.5 bg-background p-0.5 rounded-md border border-border shadow-xs">
+      <div className="absolute right-2 top-2 opacity-90 sm:opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity flex items-center gap-0.5 bg-background p-0.5 rounded-md border border-border shadow-none">
         <button
           type="button"
           onClick={(e) => {

@@ -142,7 +142,7 @@ export function ResizeHandle({
       onDoubleClick={onDoubleClick}
       onKeyDown={onKeyDown}
       className={cn(
-        'group relative shrink-0 outline-none select-none z-20 flex overflow-hidden transition-all duration-150 touch-none',
+        'group relative shrink-0 outline-none select-none z-20 flex overflow-hidden transition-colors duration-150 touch-none',
         isHorizontal
           ? 'h-[6px] w-full cursor-row-resize flex-row items-center justify-center bg-sidebar border-y border-border'
           : 'w-[8px] h-full cursor-col-resize flex-col items-center bg-sidebar border-r border-border',
@@ -159,7 +159,7 @@ export function ResizeHandle({
           onTouchStart={(e) => e.stopPropagation()}
           aria-label={isCollapsed ? 'Expand panel' : 'Collapse panel'}
           className={cn(
-            'absolute z-30 flex items-center justify-center cursor-pointer outline-none p-0 transition-all duration-150',
+            'absolute z-30 flex items-center justify-center cursor-pointer outline-none p-0 transition-[color,background-color,border-color,opacity,transform] duration-150',
             'w-full h-14 rounded-none',
             'bg-muted-foreground/20 text-muted-foreground',
             'hover:bg-muted-foreground/35 hover:text-foreground active:scale-95',

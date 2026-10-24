@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { usePageStore } from '@/features/editor/core';
@@ -30,16 +30,27 @@ export { useReviewPendingCount } from './useReviewPendingCount';
 import type { ReviewScope } from '../subcomponents/ReviewNav';
 export type { ReviewScope };
 
-function scrollToReviewItem(targetId: string, prefix: 'comment' | 'suggestion' = 'comment'): void {
+function scrollToReviewItem(
+  targetId: string,
+  prefix: 'comment' | 'suggestion' = 'comment',
+  timerRef?: React.MutableRefObject<ReturnType<typeof setTimeout> | null>
+): void {
   requestAnimationFrame(() => {
     const el = document.getElementById(`${prefix}-${targetId}`);
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     } else {
-      setTimeout(() => {
+      if (timerRef?.current) {
+        clearTimeout(timerRef.current);
+      }
+      const timer = setTimeout(() => {
+        if (timerRef) timerRef.current = null;
         const retryEl = document.getElementById(`${prefix}-${targetId}`);
         retryEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }, 80);
+      if (timerRef) {
+        timerRef.current = timer;
+      }
     }
   });
 }
@@ -156,16 +167,30 @@ export function useReviewState() {
   // Real-time notifications
   useReviewRealtimeNotifications({ pageId, userId: user?.id });
 
+  const scrollRetryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const navLineTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (scrollRetryTimerRef.current) {
+        clearTimeout(scrollRetryTimerRef.current);
+      }
+      if (navLineTimerRef.current) {
+        clearTimeout(navLineTimerRef.current);
+      }
+    };
+  }, []);
+
   // Listen to deep-link events from CodeMirror glyphs
   useEffect(() => {
     const unsub = editorCommandBus.subscribe('sidebar:open-panel', (cmd) => {
       setScope('current');
       if (cmd.commentId) {
         setHighlightId(cmd.commentId);
-        scrollToReviewItem(cmd.commentId, 'comment');
+        scrollToReviewItem(cmd.commentId, 'comment', scrollRetryTimerRef);
       } else if (cmd.suggestionId) {
         setHighlightId(cmd.suggestionId);
-        scrollToReviewItem(cmd.suggestionId, 'suggestion');
+        scrollToReviewItem(cmd.suggestionId, 'suggestion', scrollRetryTimerRef);
       }
     });
 
@@ -258,9 +283,10 @@ export function useReviewState() {
       suggestions,
       comments,
       trackChangesViewMode,
-      Boolean(reviewMode)
+      Boolean(reviewMode),
+      pageId
     );
-  }, [suggestions, comments, trackChangesViewMode, reviewMode]);
+  }, [suggestions, comments, trackChangesViewMode, reviewMode, pageId]);
 
   const currentFileResolvedCount = resolvedComments.length + resolvedSuggestions.length;
   const activeResolvedCount = scope === 'current' ? currentFileResolvedCount : overviewResolvedCount;
@@ -281,7 +307,11 @@ export function useReviewState() {
   const handleNavigateToFileAndLine = useCallback((targetFileId: string, line?: number) => {
     selectFile(targetFileId);
     if (line != null) {
-      setTimeout(() => {
+      if (navLineTimerRef.current) {
+        clearTimeout(navLineTimerRef.current);
+      }
+      navLineTimerRef.current = setTimeout(() => {
+        navLineTimerRef.current = null;
         jumpToEditorLine(line);
       }, 100);
     }

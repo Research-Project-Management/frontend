@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import React from 'react';
 import CitationPickerModal from '@/features/editor/subsystems/citation/ui/modals/CitationPickerModal';
@@ -56,7 +56,7 @@ vi.mock('@/features/library/sdk', () => ({
   }),
 }));
 
-vi.mock('@/features/editor/ui/hooks/useCitation', () => ({
+vi.mock('@/features/editor/subsystems/citation/ui/hooks/useCitation', () => ({
   useEditorCitations: vi.fn().mockReturnValue({
     libraryItems: [
       {

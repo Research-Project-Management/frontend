@@ -1,7 +1,8 @@
 /**
- * diagnostic-types.ts
+ * diagnostics.types.ts
  *
  * Canonical Domain Diagnostic Contract (Layer 1: Pure Domain Model).
+ * Location: `features/editor/domain/types/diagnostics.types.ts`
  * Shared across the Editor Command Bus, Diagnostics Coordinator, CodeMirror Gutter,
  * Inline Error Lens, and AI AutoFix assistants.
  */

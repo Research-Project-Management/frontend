@@ -190,33 +190,80 @@ export function buildFileTree(params: BuildFileTreeParams): FileTreeNode[] {
   } = params;
 
   const rootFiles: FileTreeFileNode[] = [];
-  const folderMap = new Map<string, FileTreeFolderNode>();
+  const topFolders = new Map<string, FileTreeFolderNode>();
+  const allFoldersByPath = new Map<string, FileTreeFolderNode>();
+
+  const ensureFolderHierarchy = (
+    rawFolderPath: string,
+    explicitId?: string,
+    storageData?: StorageItem
+  ): FileTreeFolderNode | null => {
+    const segments = rawFolderPath.replace(/\\/g, '/').split('/').map((s) => s.trim()).filter(Boolean);
+    if (segments.length === 0) return null;
+
+    let currentPath = '';
+    let parentFolder: FileTreeFolderNode | null = null;
+
+    for (let i = 0; i < segments.length; i++) {
+      const segment = segments[i];
+      currentPath = currentPath ? `${currentPath}/${segment}` : segment;
+      const key = currentPath.toLowerCase();
+      let folder = allFoldersByPath.get(key);
+
+      if (!folder) {
+        const isLeaf = i === segments.length - 1;
+        folder = {
+          type: 'folder',
+          id: isLeaf && explicitId ? explicitId : `folder:${currentPath}`,
+          name: segment,
+          fullPath: currentPath,
+          children: [],
+          ...(isLeaf && storageData ? { storageData } : {}),
+        };
+        allFoldersByPath.set(key, folder);
+        if (parentFolder) {
+          parentFolder.children.push(folder);
+        } else {
+          topFolders.set(key, folder);
+        }
+      } else if (i === segments.length - 1) {
+        if (explicitId && folder.id.startsWith('folder:')) {
+          folder.id = explicitId;
+        }
+        if (storageData && !folder.storageData) {
+          folder.storageData = storageData;
+        }
+      }
+      parentFolder = folder;
+    }
+
+    return parentFolder;
+  };
 
   // 1. Explicit storage folders from projectFiles
   projectFiles?.forEach((f) => {
     if (f.isFolder && f.id !== projectId && f.id !== parentPageId) {
       const name = (f.filename || '').trim();
-      if (name && !folderMap.has(name)) {
-        folderMap.set(name, {
-          type: 'folder',
-          id: f.id || `folder:${name}`,
-          name,
-          fullPath: name,
-          children: [],
-          storageData: f,
-        });
+      if (name) {
+        ensureFolderHierarchy(name, f.id, f);
       }
     }
   });
 
   const existingTexTitles = new Set<string>();
+  const seenFileIds = new Set<string>();
 
   // 2. Process TeX files
   files?.forEach((f) => {
     const rawPath = (f.title || '').trim().replace(/\\/g, '/');
     if (!rawPath) return;
+    if (f.id && seenFileIds.has(f.id)) return;
+    const normPathLower = rawPath.replace(/^\/+/, '').toLowerCase();
+    if (existingTexTitles.has(normPathLower)) return;
+
     const resolvedTitle = f.title || rawPath;
-    existingTexTitles.add(rawPath.toLowerCase());
+    existingTexTitles.add(normPathLower);
+    if (f.id) seenFileIds.add(f.id);
 
     const parts = rawPath.split('/').filter(Boolean);
     if (parts.length <= 1) {
@@ -233,16 +280,8 @@ export function buildFileTree(params: BuildFileTreeParams): FileTreeNode[] {
           );
 
       if (inferredFolder) {
-        if (!folderMap.has(inferredFolder)) {
-          folderMap.set(inferredFolder, {
-            type: 'folder',
-            id: `folder:${inferredFolder}`,
-            name: inferredFolder,
-            fullPath: inferredFolder,
-            children: [],
-          });
-        }
-        folderMap.get(inferredFolder)!.children.push({
+        const folder = ensureFolderHierarchy(inferredFolder);
+        folder?.children.push({
           type: 'file',
           id: f.id,
           title: resolvedTitle,
@@ -263,18 +302,10 @@ export function buildFileTree(params: BuildFileTreeParams): FileTreeNode[] {
         });
       }
     } else {
-      const folderName = parts[0];
-      if (!folderMap.has(folderName)) {
-        folderMap.set(folderName, {
-          type: 'folder',
-          id: `folder:${folderName}`,
-          name: folderName,
-          fullPath: folderName,
-          children: [],
-        });
-      }
-      const leafName = parts.slice(1).join('/');
-      folderMap.get(folderName)!.children.push({
+      const folderPath = parts.slice(0, -1).join('/');
+      const leafName = parts[parts.length - 1];
+      const folder = ensureFolderHierarchy(folderPath);
+      folder?.children.push({
         type: 'file',
         id: f.id,
         title: resolvedTitle,
@@ -308,7 +339,7 @@ export function buildFileTree(params: BuildFileTreeParams): FileTreeNode[] {
     Boolean(storeMainFileLower && existingTexTitles.has(storeMainFileLower)) ||
     existingTexTitles.has('main.tex');
 
-  if (parentPage && !hasRootDocument) {
+  if (parentPage && !hasRootDocument && !seenFileIds.has(parentPage.id)) {
     rootFiles.unshift({
       type: 'file',
       id: parentPage.id,
@@ -318,11 +349,15 @@ export function buildFileTree(params: BuildFileTreeParams): FileTreeNode[] {
       kind: 'tex',
       isRootDoc: true,
     });
+    seenFileIds.add(parentPage.id);
+    existingTexTitles.add(resolvedRootTitleLower);
   }
 
   // 4. Storage assets / files
+  const seenAssetPaths = new Set<string>();
   projectFiles?.forEach((f) => {
     if (f.isFolder) return;
+    if (f.id && seenFileIds.has(f.id)) return;
     const fname = (f.filename || '').trim();
     if (
       !fname ||
@@ -337,9 +372,12 @@ export function buildFileTree(params: BuildFileTreeParams): FileTreeNode[] {
     if (!fname.includes('.') && (!f.size || f.size === 0) && !f.url) {
       return;
     }
-    if (existingTexTitles.has(fname.toLowerCase())) return;
-
     const rawPath = fname.replace(/\\/g, '/');
+    const normAssetLower = rawPath.replace(/^\/+/, '').toLowerCase();
+    if (existingTexTitles.has(normAssetLower) || seenAssetPaths.has(normAssetLower)) return;
+    seenAssetPaths.add(normAssetLower);
+    if (f.id) seenFileIds.add(f.id);
+
     const parts = rawPath.split('/').filter(Boolean);
     if (parts.length <= 1) {
       const inferredFolder = inferResearchFolder(
@@ -350,16 +388,8 @@ export function buildFileTree(params: BuildFileTreeParams): FileTreeNode[] {
         mainBibFile || 'references.bib',
       );
       if (inferredFolder) {
-        if (!folderMap.has(inferredFolder)) {
-          folderMap.set(inferredFolder, {
-            type: 'folder',
-            id: `folder:${inferredFolder}`,
-            name: inferredFolder,
-            fullPath: inferredFolder,
-            children: [],
-          });
-        }
-        folderMap.get(inferredFolder)!.children.push({
+        const folder = ensureFolderHierarchy(inferredFolder);
+        folder?.children.push({
           type: 'file',
           id: f.id,
           title: f.filename,
@@ -378,26 +408,64 @@ export function buildFileTree(params: BuildFileTreeParams): FileTreeNode[] {
         });
       }
     } else {
-      const folderName = parts[0];
-      if (!folderMap.has(folderName)) {
-        folderMap.set(folderName, {
-          type: 'folder',
-          id: `folder:${folderName}`,
-          name: folderName,
-          fullPath: folderName,
-          children: [],
-        });
-      }
-      folderMap.get(folderName)!.children.push({
+      const folderPath = parts.slice(0, -1).join('/');
+      const leafName = parts[parts.length - 1];
+      const folder = ensureFolderHierarchy(folderPath);
+      folder?.children.push({
         type: 'file',
         id: f.id,
         title: f.filename,
-        displayLabel: parts.slice(1).join('/'),
+        displayLabel: leafName,
         kind: 'asset',
         storageData: f,
       });
     }
   });
+
+  // 5. Enforce single isRootDoc invariant across the entire tree
+  const allFileNodes: FileTreeFileNode[] = [...rootFiles];
+  const collectFileNodes = (nodes: FileTreeNode[]) => {
+    for (const n of nodes) {
+      if (n.type === 'file') {
+        allFileNodes.push(n);
+      } else {
+        collectFileNodes(n.children);
+      }
+    }
+  };
+  for (const folder of topFolders.values()) {
+    collectFileNodes(folder.children);
+  }
+
+  let primaryRootNode: FileTreeFileNode | undefined;
+  if (mainFileId) {
+    primaryRootNode = allFileNodes.find((n) => n.id === mainFileId);
+  }
+  if (!primaryRootNode && configuredMainFile) {
+    const cfgLower = configuredMainFile.toLowerCase();
+    primaryRootNode = allFileNodes.find(
+      (n) => n.title.toLowerCase() === cfgLower || n.displayLabel.toLowerCase() === cfgLower
+    );
+  }
+  if (!primaryRootNode) {
+    primaryRootNode = allFileNodes.find((n) => Boolean(n.isRootDoc));
+  }
+  if (!primaryRootNode && storeMainFileLower) {
+    primaryRootNode = allFileNodes.find(
+      (n) => n.title.toLowerCase() === storeMainFileLower || n.displayLabel.toLowerCase() === storeMainFileLower
+    );
+  }
+  if (!primaryRootNode && parentPage?.id) {
+    primaryRootNode = allFileNodes.find((n) => n.id === parentPage.id);
+  }
+  if (!primaryRootNode) {
+    primaryRootNode = allFileNodes.find((n) => n.displayLabel.toLowerCase() === 'main.tex');
+  }
+  for (const node of allFileNodes) {
+    if (node.kind === 'tex') {
+      node.isRootDoc = primaryRootNode ? node.id === primaryRootNode.id : false;
+    }
+  }
 
   // Sort root files
   rootFiles.sort((a, b) => {
@@ -407,26 +475,43 @@ export function buildFileTree(params: BuildFileTreeParams): FileTreeNode[] {
     return NATURAL_COLLATOR.compare(a.displayLabel, b.displayLabel);
   });
 
-  // Sort folders
-  const sortedFolders = Array.from(folderMap.values()).sort((a, b) => {
+  // Sort folders and their nested children recursively
+  const sortFolderChildrenRecursively = (folder: FileTreeFolderNode) => {
+    for (const child of folder.children) {
+      if (child.type === 'folder') {
+        sortFolderChildrenRecursively(child);
+      }
+    }
+    folder.children.sort((a, b) => {
+      if (a.type !== b.type) {
+        return a.type === 'folder' ? -1 : 1;
+      }
+      if (a.type === 'folder' && b.type === 'folder') {
+        const prioA = getFolderPriority(a.name);
+        const prioB = getFolderPriority(b.name);
+        if (prioA !== prioB) return prioA - prioB;
+        return NATURAL_COLLATOR.compare(a.name, b.name);
+      }
+      if (a.type === 'file' && b.type === 'file') {
+        return NATURAL_COLLATOR.compare(a.displayLabel, b.displayLabel);
+      }
+      return 0;
+    });
+  };
+
+  const sortedFolders = Array.from(topFolders.values()).sort((a, b) => {
     const prioA = getFolderPriority(a.name);
     const prioB = getFolderPriority(b.name);
     if (prioA !== prioB) return prioA - prioB;
     return NATURAL_COLLATOR.compare(a.name, b.name);
   });
 
-  // Sort children inside each folder naturally
-  sortedFolders.forEach((folder) => {
-    folder.children.sort((a, b) => {
-      if (a.type === 'file' && b.type === 'file') {
-        return NATURAL_COLLATOR.compare(a.displayLabel, b.displayLabel);
-      }
-      return 0;
-    });
-  });
+  sortedFolders.forEach(sortFolderChildrenRecursively);
 
   return [...rootFiles, ...sortedFolders];
 }
+
+export const buildUnifiedTree = buildFileTree;
 
 /**
  * Filter tree items recursively by query

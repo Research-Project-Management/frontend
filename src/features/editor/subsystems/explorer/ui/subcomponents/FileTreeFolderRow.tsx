@@ -43,7 +43,8 @@ export const FileTreeFolderRow = React.memo(function FileTreeFolderRow({
   onUploadToFolder,
   children,
 }: FileTreeFolderRowProps) {
-  const folderDiag = useFolderDiagnosticsSummary(node.name);
+  const folderKey = node.fullPath || node.name;
+  const folderDiag = useFolderDiagnosticsSummary(folderKey);
 
   return (
     <div className="flex flex-col">

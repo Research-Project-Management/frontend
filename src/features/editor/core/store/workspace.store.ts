@@ -13,7 +13,7 @@
 
 import { create } from 'zustand';
 import { persist, subscribeWithSelector } from 'zustand/middleware';
-import type { WorkspaceTab } from '@/features/editor/domain/types/workspace.types';
+import type { WorkspaceTab, EditorTab } from '@/features/editor/domain/types/workspace.types';
 
 // ── Layout Enums & Types ──────────────────────────────────────────────────────
 
@@ -21,14 +21,7 @@ export type ActivityBarTab = 'files' | 'search' | 'citations' | 'review' | 'chat
 export type EditorSplitMode = 'none' | 'vertical' | 'horizontal';
 export type ActiveEditorPane = 'primary' | 'secondary';
 
-export interface EditorTab {
-  id: string;
-  title: string;
-  isDirty?: boolean;
-  fileUrl?: string;
-  path?: string;
-  isRoot?: boolean;
-}
+export type { WorkspaceTab, EditorTab };
 
 // ── Consolidated Workspace & Layout State Interface ──────────────────────────
 
@@ -221,6 +214,10 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
             if (nextSecondary === tabId) {
               nextSecondary = null;
             }
+            let nextSecondaryFileId = state.secondaryFileId;
+            if (nextSecondaryFileId === tabId) {
+              nextSecondaryFileId = null;
+            }
 
             return {
               tabsByProject: {
@@ -235,6 +232,7 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
                 ...state.secondaryActiveByProject,
                 [projectId]: nextSecondary,
               },
+              secondaryFileId: nextSecondaryFileId,
             };
           });
         },

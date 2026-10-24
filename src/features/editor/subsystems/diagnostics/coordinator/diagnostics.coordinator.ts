@@ -14,7 +14,7 @@
 import type { CompileError } from '@/features/editor/domain/types/compiler.types';
 import { normalizeLatexPath } from '@/features/editor/domain/latex/latex-dag-engine';
 import { heuristicLatexErrorFix } from '@/features/editor/domain/ai/ai-error-assist';
-import type { EditorDiagnosticItem } from '@/features/editor/domain/diagnostics/diagnostic-types';
+import type { EditorDiagnosticItem } from '@/features/editor/domain/types/diagnostics.types';
 import { type WarningFilterOptions, filterDiagnostics } from '@/features/editor/domain/latex/warning-filter';
 import { useSettingsStore, type DocumentSettingsState } from '@/features/editor/core/store/settings.store';
 
@@ -67,6 +67,7 @@ export interface DiagnosticsSnapshot {
 }
 
 export class DiagnosticsCoordinatorRegistry {
+  private static readonly MAX_ALIAS_MAP_SIZE = 500;
   private fileIndex = new Map<string, IndexedDiagnosticItem[]>();
   private linterIndex = new Map<string, IndexedDiagnosticItem[]>();
   private unmappedDiagnostics: IndexedDiagnosticItem[] = [];
@@ -91,6 +92,10 @@ export class DiagnosticsCoordinatorRegistry {
     this.unmappedDiagnostics = [];
     this.aliasMap.clear();
     this.notify();
+  }
+
+  public clearDiagnostics(): void {
+    this.clear();
   }
 
   public setFilterOptions(options: WarningFilterOptions): void {
@@ -137,7 +142,13 @@ export class DiagnosticsCoordinatorRegistry {
         if (item.line >= fromLine) {
           compChanged = true;
           changed = true;
-          return { ...item, line: Math.max(1, item.line + deltaLines) };
+          const newLine = Math.max(1, item.line + deltaLines);
+          const newEndLine = item.endLine !== undefined ? Math.max(newLine, item.endLine + deltaLines) : undefined;
+          return {
+            ...item,
+            line: newLine,
+            ...(newEndLine !== undefined ? { endLine: newEndLine } : {}),
+          };
         }
         return item;
       });
@@ -154,7 +165,13 @@ export class DiagnosticsCoordinatorRegistry {
         if (item.line >= fromLine) {
           linterChanged = true;
           changed = true;
-          return { ...item, line: Math.max(1, item.line + deltaLines) };
+          const newLine = Math.max(1, item.line + deltaLines);
+          const newEndLine = item.endLine !== undefined ? Math.max(newLine, item.endLine + deltaLines) : undefined;
+          return {
+            ...item,
+            line: newLine,
+            ...(newEndLine !== undefined ? { endLine: newEndLine } : {}),
+          };
         }
         return item;
       });
@@ -169,12 +186,24 @@ export class DiagnosticsCoordinatorRegistry {
     }
   }
 
+  private setBoundedAlias(key: string, canonical: string): void {
+    if (this.aliasMap.has(key)) {
+      this.aliasMap.delete(key);
+    } else if (this.aliasMap.size >= DiagnosticsCoordinatorRegistry.MAX_ALIAS_MAP_SIZE) {
+      const oldest = this.aliasMap.keys().next().value;
+      if (oldest !== undefined) {
+        this.aliasMap.delete(oldest);
+      }
+    }
+    this.aliasMap.set(key, canonical);
+  }
+
   public registerAlias(canonicalPath: string, alias: string): void {
     if (!canonicalPath || !alias) return;
     const normCanonical = normalizeLatexPath(canonicalPath);
     const normAlias = normalizeLatexPath(alias);
-    this.aliasMap.set(alias, normCanonical);
-    this.aliasMap.set(normAlias, normCanonical);
+    this.setBoundedAlias(alias, normCanonical);
+    this.setBoundedAlias(normAlias, normCanonical);
   }
 
   private resolveCanonicalKey(fileIdOrPath: string): string {
@@ -205,8 +234,8 @@ export class DiagnosticsCoordinatorRegistry {
 
     for (let i = 0; i < errors.length; i++) {
       const err = errors[i];
-      // Do not process info messages or badboxes into editor line diagnostics
-      if (err.severity === 'info' || /^(Overfull|Underfull)\s*\\[hv]box/i.test(err.message || '')) {
+      // Do not process pure info messages into editor line diagnostics
+      if (err.severity === 'info') {
         continue;
       }
 

@@ -191,6 +191,7 @@ export function DocumentConflictDialog({
               value={mergedText}
               onChange={(e) => setMergedText(e.target.value)}
               spellCheck={false}
+              aria-label="Merged document content"
               data-testid="conflict-merge-textarea"
             />
           </div>

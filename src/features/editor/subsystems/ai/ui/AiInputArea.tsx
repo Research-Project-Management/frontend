@@ -139,7 +139,7 @@ export function AiInputArea({
       )}
 
       {/* Input Box */}
-      <div className="rounded-md border border-border/80 bg-muted/20 focus-within:border-ai/50 focus-within:bg-background transition-all p-2 flex flex-col gap-1.5">
+      <div className="rounded-md border border-border/80 bg-muted/20 focus-within:border-ai/50 focus-within:bg-background transition-colors p-2 flex flex-col gap-1.5">
         {/* Attached Files List */}
         {(attachedFiles.length > 0 || uploadingFiles.length > 0) && (
           <div className="flex items-center gap-1.5 flex-wrap pb-1.5 pt-0.5 max-h-32 overflow-y-auto">
@@ -148,7 +148,7 @@ export function AiInputArea({
               return (
                 <Tooltip key={up.id}>
                   <TooltipTrigger asChild>
-                    <div className="inline-flex h-6.5 items-center gap-1.5 px-2 rounded-md border border-border/70 bg-muted/40 text-11 text-foreground transition-all select-none max-w-[240px] cursor-default">
+                    <div className="inline-flex h-6.5 items-center gap-1.5 px-2 rounded-md border border-border/70 bg-muted/40 text-11 text-foreground transition-colors select-none max-w-[240px] cursor-default">
                       <Loader2 className="size-3 animate-spin text-ai shrink-0 motion-reduce:animate-none" />
                       <span className="truncate max-w-[120px] font-medium">{up.name}</span>
                       <span className="text-10 text-muted-foreground font-mono shrink-0">
@@ -174,7 +174,7 @@ export function AiInputArea({
               return (
                 <div
                   key={file.id}
-                  className="group relative inline-flex h-6.5 items-center gap-1.5 px-2 rounded-md border border-border bg-background hover:bg-muted/50 text-11 text-foreground transition-all select-none max-w-[240px]"
+                  className="group relative inline-flex h-6.5 items-center gap-1.5 px-2 rounded-md border border-border bg-background hover:bg-muted/50 text-11 text-foreground transition-colors select-none max-w-[240px]"
                 >
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -369,7 +369,7 @@ export function AiInputArea({
                     onClick={() => onSendMessage()}
                     disabled={(!inputPrompt.trim() && attachedFiles.length === 0) || uploadingFiles.length > 0}
                     className={cn(
-                      'flex size-7 items-center justify-center rounded-md p-0 transition-all select-none',
+                      'flex size-7 items-center justify-center rounded-md p-0 transition-colors select-none',
                       uploadingFiles.length > 0
                         ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-60'
                         : (!inputPrompt.trim() && attachedFiles.length === 0)

@@ -48,8 +48,8 @@ interface ActivityItem {
 const PRIMARY_ACTIVITIES: ActivityItem[] = [
   { id: 'files', label: 'File Tree', icon: Files },
   { id: 'search', label: 'Search in Project', icon: Search },
-  { id: 'citations', label: 'Citations, BibTeX', icon: BookMarked },
-  { id: 'review', label: 'Review, Comments', icon: MessageSquareText },
+  { id: 'citations', label: 'Citations & BibTeX', icon: BookMarked },
+  { id: 'review', label: 'Review & Comments', icon: MessageSquareText },
   { id: 'chat', label: 'Project Chat', icon: MessageSquare },
   { id: 'ai', label: 'AI Assistant', icon: Bot },
 ];
@@ -94,9 +94,13 @@ export function ActivityBar() {
                     onClick={handleClick}
                     className={cn(
                       'group relative flex size-9 items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border',
-                      isActive
-                        ? 'bg-muted text-foreground font-medium'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted font-normal'
+                      item.id === 'ai'
+                        ? isActive
+                          ? 'bg-ai-subtle text-ai font-medium'
+                          : 'text-ai hover:text-ai hover:bg-ai-subtle/50 font-normal'
+                        : isActive
+                          ? 'bg-muted text-foreground font-medium'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted font-normal'
                     )}
                   >
                     <Icon

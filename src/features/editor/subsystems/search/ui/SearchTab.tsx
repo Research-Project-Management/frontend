@@ -106,6 +106,7 @@ export default function SearchTab() {
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const replaceInputRef = useRef<HTMLInputElement>(null);
+  const focusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const debouncedQuery = useDebounce(query, 250);
   const effectiveQuery = instantQuery !== null ? instantQuery : debouncedQuery;
 
@@ -133,6 +134,11 @@ export default function SearchTab() {
   // Auto-focus input on mount
   useEffect(() => {
     searchInputRef.current?.focus();
+    return () => {
+      if (focusTimerRef.current) {
+        clearTimeout(focusTimerRef.current);
+      }
+    };
   }, []);
 
   // Listen for sidebar:open-panel events with prefilled query
@@ -145,13 +151,23 @@ export default function SearchTab() {
         if (cmd.showReplace !== undefined) {
           setShowReplace(cmd.showReplace);
         }
-        setTimeout(() => {
+        if (focusTimerRef.current) {
+          clearTimeout(focusTimerRef.current);
+        }
+        focusTimerRef.current = setTimeout(() => {
+          focusTimerRef.current = null;
           searchInputRef.current?.focus();
           searchInputRef.current?.select();
         }, 50);
       }
     });
-    return unsub;
+    return () => {
+      unsub();
+      if (focusTimerRef.current) {
+        clearTimeout(focusTimerRef.current);
+        focusTimerRef.current = null;
+      }
+    };
   }, [setQuery, setShowReplace]);
 
   // Fetch all text files in project
@@ -347,6 +363,7 @@ export default function SearchTab() {
                 handleSearch();
               }
             }}
+            aria-label="Search all project files"
             placeholder="Search all project files..."
             className="h-8 pl-8 pr-8 text-xs bg-background border-border/80 focus-visible:ring-1 focus-visible:ring-border rounded-md w-full placeholder:text-muted-foreground"
           />
@@ -431,7 +448,8 @@ export default function SearchTab() {
                 ref={replaceInputRef}
                 value={replaceText}
                 onChange={(e) => setReplaceText(e.target.value)}
-                placeholder="Replace with..."
+                aria-label="Replace with"
+              placeholder="Replace with..."
                 className="h-8 pl-8 pr-8 text-xs bg-background border-border/80 focus-visible:ring-1 focus-visible:ring-border rounded-md w-full placeholder:text-muted-foreground"
               />
               {replaceText ? (

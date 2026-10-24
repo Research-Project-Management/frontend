@@ -1,4 +1,4 @@
-import type { BibEntry } from './bib-parser';
+import type { BibEntry } from '@/features/editor/domain/latex/bib-parser';
 import { getRetractionInfo } from '@/features/library/domain/retraction';
 
 export interface RetractedItemInfo {

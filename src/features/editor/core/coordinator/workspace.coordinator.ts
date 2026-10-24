@@ -20,8 +20,15 @@ import { extractDocumentContentString } from '@/features/editor/domain/types/cor
 import { latexDagEngine } from '@/features/editor/domain/latex/latex-dag-engine';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics';
+import type {
+  WorkspaceCoordinatorPorts,
+  WorkspaceNotificationPort,
+  WorkspaceServicePort,
+  WorkspaceStorePort,
+} from '@/features/editor/domain/workspace/workspace-service-port';
 import {
   editorCommandBus,
+  sessionCoordinator,
   useWorkspaceStore,
   usePageStore,
   useSettingsStore,
@@ -51,24 +58,36 @@ export interface MoveItemOptions {
 
 type CreatedFileNode = LinkedFileDto & { title?: string; content?: string };
 
-export class WorkspaceCoordinatorRegistry {
-  private initialized = false;
-  private projectFiles: Array<{ id: string; title?: string; name?: string; path?: string; content?: unknown }> = [];
+const defaultServicePort: WorkspaceServicePort = {
+  createNode: (projectId, data) => manuscriptService.structure.createNode(projectId, data),
+  renameNode: (projectId, itemId, data) => manuscriptService.structure.renameNode(projectId, itemId, data),
+  deleteNode: (projectId, fileId) => manuscriptService.structure.deleteNode(projectId, fileId),
+  moveNode: (projectId, itemId, data) => manuscriptService.structure.moveNode(projectId, itemId, data),
+  restoreFile: (fileId) => manuscriptService.docs.restore(fileId),
+  setRootDoc: (projectId, fileId) => manuscriptService.structure.setRootDoc(projectId, fileId),
+  getFilesByProjectId: (projectId) => fileService.getByPageId(projectId),
+  updateFileContent: (fileId, content) => manuscriptService.docs.updateContent(fileId, content),
+};
 
-  constructor() {
-    this.initCommandSubscriptions();
-  }
+const defaultNotificationPort: WorkspaceNotificationPort = {
+  notifySuccess: (message, id) => {
+    toast.success(message, id ? { id } : undefined);
+  },
+  notifyError: (message, id) => {
+    toast.error(message, id ? { id } : undefined);
+  },
+  notifyInfo: (message, id) => {
+    toast.info(message, id ? { id } : undefined);
+  },
+};
 
-  private getActiveProjectId(): string | null {
-    return (
-      usePageStore.getState().projectId ||
-      usePageStore.getState().parentPageId ||
-      usePageStore.getState().currentPage?.id ||
-      null
-    );
-  }
-
-  private closeTabInStore(fileId: string): void {
+const defaultStorePort: WorkspaceStorePort = {
+  getActiveProjectId: () =>
+    usePageStore.getState().projectId ||
+    usePageStore.getState().parentPageId ||
+    usePageStore.getState().currentPage?.id ||
+    null,
+  closeTab: (fileId: string) => {
     const wsStore = useWorkspaceStore.getState();
     for (const projId of Object.keys(wsStore.tabsByProject)) {
       wsStore.closeTab(projId, fileId);
@@ -78,9 +97,8 @@ export class WorkspaceCoordinatorRegistry {
       const parentPage = pageStore.currentPage;
       pageStore.setActiveFilePage(parentPage && parentPage.id !== fileId ? parentPage : null);
     }
-  }
-
-  private updateTabTitleInStore(projectId: string, itemId: string, newTitle: string): void {
+  },
+  updateTabTitle: (projectId: string, itemId: string, newTitle: string) => {
     const wsStore = useWorkspaceStore.getState();
     for (const projId of Object.keys(wsStore.tabsByProject)) {
       wsStore.updateTabTitle(projId, itemId, newTitle);
@@ -88,6 +106,49 @@ export class WorkspaceCoordinatorRegistry {
     if (projectId && !wsStore.tabsByProject[projectId]) {
       wsStore.updateTabTitle(projectId, itemId, newTitle);
     }
+  },
+  setMainFile: (fileNameOrId: string) => {
+    useSettingsStore.getState().setMainFile(fileNameOrId);
+  },
+  getActiveDocumentId: () => usePageStore.getState().getActiveDocument()?.id ?? null,
+};
+
+export class WorkspaceCoordinatorRegistry {
+  private initialized = false;
+  private projectFiles: Array<{ id: string; title?: string; name?: string; path?: string; content?: unknown }> = [];
+  private servicePort: WorkspaceServicePort = defaultServicePort;
+  private notificationPort: WorkspaceNotificationPort = defaultNotificationPort;
+  private storePort: WorkspaceStorePort = defaultStorePort;
+
+  constructor(ports?: WorkspaceCoordinatorPorts) {
+    if (ports) {
+      this.setPorts(ports);
+    }
+    this.initCommandSubscriptions();
+  }
+
+  public setPorts(ports: WorkspaceCoordinatorPorts): void {
+    if (ports.service) this.servicePort = ports.service;
+    if (ports.notification) this.notificationPort = ports.notification;
+    if (ports.store) this.storePort = ports.store;
+  }
+
+  public resetPorts(): void {
+    this.servicePort = defaultServicePort;
+    this.notificationPort = defaultNotificationPort;
+    this.storePort = defaultStorePort;
+  }
+
+  private getActiveProjectId(): string | null {
+    return this.storePort.getActiveProjectId();
+  }
+
+  private closeTabInStore(fileId: string): void {
+    this.storePort.closeTab(fileId);
+  }
+
+  private updateTabTitleInStore(projectId: string, itemId: string, newTitle: string): void {
+    this.storePort.updateTabTitle(projectId, itemId, newTitle);
   }
 
   private initCommandSubscriptions(): void {
@@ -135,12 +196,12 @@ export class WorkspaceCoordinatorRegistry {
     const effectiveProjectId = optProjectId || this.getActiveProjectId();
 
     if (!effectiveProjectId) {
-      toast.error('Cannot create file: no active project');
+      this.notificationPort.notifyError('Cannot create file: no active project');
       return null;
     }
 
     try {
-      const res = (await manuscriptService.structure.createNode(effectiveProjectId, {
+      const res = (await this.servicePort.createNode(effectiveProjectId, {
         name,
         parentId: folderId,
         content,
@@ -177,11 +238,11 @@ export class WorkspaceCoordinatorRegistry {
         });
       }
 
-      toast.success(`Created "${name}"`, { id: `create-file-${name}` });
+      this.notificationPort.notifySuccess(`Created "${name}"`, `create-file-${name}`);
       return newFile;
     } catch (err: unknown) {
       console.error('[WorkspaceCoordinator] Create file error:', err);
-      toast.error((err as Error)?.message || `Failed to create "${name}"`, { id: `create-file-${name}` });
+      this.notificationPort.notifyError((err as Error)?.message || `Failed to create "${name}"`, `create-file-${name}`);
       return null;
     }
   }
@@ -196,10 +257,33 @@ export class WorkspaceCoordinatorRegistry {
     if (!effectiveProjectId) return false;
 
     try {
-      await manuscriptService.structure.renameNode(effectiveProjectId, itemId, { name: newName });
+      await this.servicePort.renameNode(effectiveProjectId, itemId, { name: newName });
 
       // 1. Cascade rename to Tabs Store across all project/page scopes
       this.updateTabTitleInStore(effectiveProjectId, itemId, newName);
+
+      // 1c. If renaming a folder, update child tab paths
+      const wsStore = useWorkspaceStore.getState();
+      const oldPrefix = oldName.replace(/^\/+/, '');
+      const newPrefix = newName.replace(/^\/+/, '');
+      for (const [pId, tabs] of Object.entries(wsStore.tabsByProject)) {
+        let changed = false;
+        const nextTabs = tabs.map((t) => {
+          if (t.path) {
+            const cleanPath = t.path.replace(/^\/+/, '');
+            if (cleanPath.startsWith(`${oldPrefix}/`)) {
+              changed = true;
+              return { ...t, path: `/${cleanPath.replace(oldPrefix, newPrefix)}` };
+            }
+          }
+          return t;
+        });
+        if (changed) {
+          useWorkspaceStore.setState((s) => ({
+            tabsByProject: { ...s.tabsByProject, [pId]: nextTabs },
+          }));
+        }
+      }
 
       // 1b. Cascade rename to PageStore if active or current page matches
       const pageStore = usePageStore.getState();
@@ -214,10 +298,8 @@ export class WorkspaceCoordinatorRegistry {
       }
 
       // 2. Cascade rename to LRU Cache
+      lruDocumentCache.renameFile(itemId, newName);
       const model = lruDocumentCache.getModel(itemId);
-      if (model) {
-        model.filePath = newName;
-      }
 
       // 3. Cascade rename to Diagnostics Coordinator (alias old path to new path)
       diagnosticsCoordinator.registerAlias(newName, oldName);
@@ -235,11 +317,14 @@ export class WorkspaceCoordinatorRegistry {
         payload: { action: 'rename', itemId, oldName, newName },
       });
 
-      toast.success(`Renamed to "${newName}"`, { id: `rename-file-${itemId}` });
+      this.notificationPort.notifySuccess(`Renamed to "${newName}"`, `rename-file-${itemId}`);
       return true;
     } catch (err: unknown) {
       console.error('[WorkspaceCoordinator] Rename error:', err);
-      toast.error((err as Error)?.message || `Failed to rename "${oldName}"`, { id: `rename-file-${itemId}` });
+      this.notificationPort.notifyError(
+        (err as Error)?.message || `Failed to rename "${oldName}"`,
+        `rename-file-${itemId}`
+      );
       return false;
     }
   }
@@ -252,9 +337,10 @@ export class WorkspaceCoordinatorRegistry {
     if (!effectiveProjectId) return false;
 
     try {
-      await manuscriptService.structure.deleteNode(effectiveProjectId, fileId);
+      await this.servicePort.deleteNode(effectiveProjectId, fileId);
 
-      // 1. Close open tab if present
+      // 1. Evict and close open tab if present
+      sessionCoordinator.evictDeletedFile(fileId);
       this.closeTabInStore(fileId);
       editorCommandBus.dispatch({ type: 'navigation:close-tab', fileId });
 
@@ -269,11 +355,11 @@ export class WorkspaceCoordinatorRegistry {
         payload: { action: 'delete', fileId },
       });
 
-      toast.success('File moved to trash', { id: `delete-file-${fileId}` });
+      this.notificationPort.notifySuccess('File moved to trash', `delete-file-${fileId}`);
       return true;
     } catch (err: unknown) {
       console.error('[WorkspaceCoordinator] Delete error:', err);
-      toast.error((err as Error)?.message || 'Failed to delete file', { id: `delete-file-${fileId}` });
+      this.notificationPort.notifyError((err as Error)?.message || 'Failed to delete file', `delete-file-${fileId}`);
       return false;
     }
   }
@@ -287,7 +373,7 @@ export class WorkspaceCoordinatorRegistry {
     if (!effectiveProjectId) return false;
 
     try {
-      await manuscriptService.structure.moveNode(effectiveProjectId, itemId, {
+      await this.servicePort.moveNode(effectiveProjectId, itemId, {
         destParentId: targetFolderId,
       });
 
@@ -296,11 +382,11 @@ export class WorkspaceCoordinatorRegistry {
         payload: { action: 'move', itemId, targetFolderId },
       });
 
-      toast.success('Moved successfully', { id: `move-file-${itemId}` });
+      this.notificationPort.notifySuccess('Moved successfully', `move-file-${itemId}`);
       return true;
     } catch (err: unknown) {
       console.error('[WorkspaceCoordinator] Move error:', err);
-      toast.error((err as Error)?.message || 'Failed to move item', { id: `move-file-${itemId}` });
+      this.notificationPort.notifyError((err as Error)?.message || 'Failed to move item', `move-file-${itemId}`);
       return false;
     }
   }
@@ -311,7 +397,7 @@ export class WorkspaceCoordinatorRegistry {
   public async restoreFile(fileId: string, optProjectId?: string): Promise<unknown> {
     const effectiveProjectId = optProjectId || this.getActiveProjectId();
     try {
-      const res = (await manuscriptService.docs.restore(fileId)) as {
+      const res = (await this.servicePort.restoreFile(fileId, effectiveProjectId || undefined)) as {
         page?: { id: string; title?: string; name?: string; content?: unknown; projectId?: string };
         data?: { id: string; title?: string; name?: string; content?: unknown; projectId?: string };
         id?: string;
@@ -345,11 +431,11 @@ export class WorkspaceCoordinatorRegistry {
         payload: { action: 'restore', fileId, page },
       });
 
-      toast.success('File restored', { id: `restore-file-${fileId}` });
+      this.notificationPort.notifySuccess('File restored', `restore-file-${fileId}`);
       return res;
     } catch (err: unknown) {
       console.error('[WorkspaceCoordinator] Restore error:', err);
-      toast.error((err as Error)?.message || 'Failed to restore file', { id: `restore-file-${fileId}` });
+      this.notificationPort.notifyError((err as Error)?.message || 'Failed to restore file', `restore-file-${fileId}`);
       throw err;
     }
   }
@@ -362,22 +448,22 @@ export class WorkspaceCoordinatorRegistry {
     if (!effectiveProjectId) return false;
 
     try {
-      await manuscriptService.structure.setRootDoc(effectiveProjectId, fileId);
+      await this.servicePort.setRootDoc(effectiveProjectId, fileId);
       const cached = lruDocumentCache.getModel(fileId);
       const matchedProjectFile = this.projectFiles.find((f) => f.id === fileId);
       const resolvedFileName = cached?.filePath || matchedProjectFile?.title || matchedProjectFile?.name || fileId;
-      useSettingsStore.getState().setMainFile(resolvedFileName);
+      this.storePort.setMainFile(resolvedFileName);
 
       editorCommandBus.dispatch({
         type: 'filetree:updated',
         payload: { action: 'set-root', fileId },
       });
 
-      toast.success('Set as main document', { id: 'set-main-file' });
+      this.notificationPort.notifySuccess('Set as main document', 'set-main-file');
       return true;
     } catch (err: unknown) {
       console.error('[WorkspaceCoordinator] Set main document error:', err);
-      toast.error((err as Error)?.message || 'Failed to set main document', { id: 'set-main-file' });
+      this.notificationPort.notifyError((err as Error)?.message || 'Failed to set main document', 'set-main-file');
       throw err;
     }
   }
@@ -389,6 +475,7 @@ export class WorkspaceCoordinatorRegistry {
     this.projectFiles = [...files];
     latexSymbolsIndex.clear();
     latexDagEngine.clear();
+    diagnosticsCoordinator.clearDiagnostics();
     for (const file of files) {
       const path = file.path || file.title || file.name || file.id;
       const content = extractDocumentContentString(file.content);
@@ -415,7 +502,12 @@ export class WorkspaceCoordinatorRegistry {
     const { executeProjectCitekeyRefactor } = await import(
       '@/features/editor/subsystems/citation/model/citation-refactor'
     );
-    return executeProjectCitekeyRefactor(oldKey, newKey, optProjectId || this.getActiveProjectId() || undefined);
+    return executeProjectCitekeyRefactor(oldKey, newKey, optProjectId || this.getActiveProjectId() || undefined, {
+      service: this.servicePort,
+      notification: this.notificationPort,
+      store: this.storePort,
+      projectFiles: this.projectFiles,
+    });
   }
 }
 

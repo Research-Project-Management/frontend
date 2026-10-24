@@ -19,7 +19,8 @@ import type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-
 import type { AiErrorFixResult } from '@/features/editor/domain/ai/ai-error-assist';
 import { manuscriptService, downloadAuxFileUrl, downloadAllArtifactsZipUrl } from '@/features/editor/sdk/manuscript.service';
 import { aiCoordinator } from '@/features/editor/subsystems/ai';
-import { usePageStore } from '@/features/editor/core';
+import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
+import { usePageStore, workspaceCoordinator } from '@/features/editor/core';
 
 export function copySnippetToClipboard(snippet?: string): void {
   if (!snippet) return;
@@ -136,12 +137,33 @@ export function useLogViewerActions({
   const applyAiFix = useCallback(
     (entry: LogEntry, fix: AiErrorFixResult, onApplied?: () => void) => {
       const pageStore = usePageStore.getState();
-      const fileId = pageStore.activeFilePage?.id || pageStore.currentPage?.id || 'main.tex';
+      let targetFileId = pageStore.activeFilePage?.id || pageStore.currentPage?.id || 'main.tex';
+      let targetFileName = pageStore.activeFilePage?.title || 'main.tex';
+
+      if (entry.file) {
+        const cleanEntryFile = entry.file.replace(/^\/+/, '');
+        const projectFiles = workspaceCoordinator.getProjectFiles() || [];
+        const found = projectFiles.find(
+          (f: { id: string; title?: string; name?: string; path?: string }) => f.title === cleanEntryFile || f.name === cleanEntryFile || (f.path && f.path.replace(/^\/+/, '') === cleanEntryFile)
+        );
+        if (found) {
+          targetFileId = found.id;
+          targetFileName = found.title || cleanEntryFile;
+        }
+      }
+
+      if (targetFileId !== pageStore.activeFilePage?.id) {
+        navigationCoordinator.openDocument({
+          fileId: targetFileId,
+          title: targetFileName,
+        });
+      }
+
       const startLine = fix.startLine || entry.line;
       const endLine = fix.endLine && startLine && fix.endLine >= startLine ? fix.endLine : startLine;
 
       // Consistent Flow: Always propose interactive Diff for user review (Tab to Accept, Esc to Reject)
-      const success = aiCoordinator.proposeDiff(fileId, fix.fixedSnippet, {
+      const success = aiCoordinator.proposeDiff(targetFileId, fix.fixedSnippet, {
         line: startLine,
         endLine,
         title: `AI Fix: ${fix.explanation || entry.message}`,
@@ -157,9 +179,9 @@ export function useLogViewerActions({
       }
 
       onApplied?.();
-      onCompile?.();
+      // Notice: Do NOT call onCompile?.() immediately on diff proposal — compile only after diff is accepted!
     },
-    [engine, onCompile],
+    [engine],
   );
 
   const downloadAuxFile = useCallback(

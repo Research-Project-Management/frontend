@@ -43,7 +43,8 @@ export function useEditorReviewSync(
       suggestions,
       comments,
       trackChangesViewMode,
-      Boolean(reviewMode)
+      Boolean(reviewMode),
+      fileId
     );
   }, [fileId, view, suggestions, comments, trackChangesViewMode, reviewMode]);
 

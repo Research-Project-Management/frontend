@@ -38,9 +38,9 @@ import { cn } from '@/shared/lib/utils';
 
 import { manuscriptService, historyService, historyKeys } from '@/features/editor/sdk/manuscript.service';
 import { exportVersionAsZip } from '@/features/editor/sdk/archive/archive-export';
-import { clearYjsProviderPool } from '@/features/editor/sdk/realtime/yjs-socket-provider';
+import { clearYjsProviderPool, updateActiveYjsDocContent } from '@/features/editor/sdk/realtime/yjs-socket-provider';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
-import { editorCommandBus, usePageStore, workspaceCoordinator } from '@/features/editor/core';
+import { editorCommandBus, usePageStore, workspaceCoordinator, sessionCoordinator } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { draftStorageService } from '@/features/editor/domain/document/draft-storage';
 import type {
@@ -256,8 +256,10 @@ export function HistoryPage({
   });
 
   const restoreMutation = useMutation({
-    mutationFn: (version: number) =>
-      historyService.restoreProjectVersion(effectiveProjectId, version),
+    mutationFn: async (version: number) => {
+      sessionCoordinator.resetSession();
+      return await historyService.restoreProjectVersion(effectiveProjectId, version);
+    },
     onSuccess: (_, restoredVersion) => {
       toast.success(`Project successfully restored to v${restoredVersion}`, { id: 'history-restore' });
       setConfirmingRestore(false);
@@ -347,7 +349,19 @@ export function HistoryPage({
 
       // 3. Update document content if docId found, or create new file if it was deleted
       if (docId) {
-        await manuscriptService.docs.updateContent(docId, baseContent);
+        const isYjsActive =
+          updateActiveYjsDocContent(docId, baseContent, effectiveProjectId, 'history-restore') ||
+          sessionCoordinator.isRealtimeConnected(docId);
+        if (isYjsActive) {
+          editorCommandBus.dispatch({
+            type: 'editor:set-content',
+            content: baseContent,
+            fileId: docId,
+          });
+          await sessionCoordinator.flushFile(docId);
+        } else {
+          await manuscriptService.docs.updateContent(docId, baseContent);
+        }
       } else {
         const created = await manuscriptService.docs.create({
           projectId: effectiveProjectId,
@@ -393,11 +407,11 @@ export function HistoryPage({
         docId: docId || filePath,
         content: baseContent,
       });
-      const activeId = usePageStore.getState().activePageId || usePageStore.getState().activeFilePage?.id;
-      if (docId && activeId === docId) {
+      if (docId) {
         editorCommandBus.dispatch({
           type: 'editor:set-content',
           content: baseContent,
+          fileId: docId,
         });
       }
     },

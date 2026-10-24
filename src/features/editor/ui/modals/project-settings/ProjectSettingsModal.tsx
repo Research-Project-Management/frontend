@@ -7,7 +7,7 @@
  * Location: `features/editor/ui/modals/project-settings/ProjectSettingsModal.tsx`
  */
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { duplicateProjectApi } from '@/features/projects/shell/services/project.service';
 import {
@@ -206,6 +206,19 @@ export function ProjectSettingsModal() {
   const [copiedGitToken, setCopiedGitToken] = useState(false);
   const [gitRepoInfo, setGitRepoInfo] = useState<{ cloneUrl?: string; branch?: string } | null>(null);
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
+  const copyGitUrlTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const copyGitTokenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyGitUrlTimerRef.current) {
+        clearTimeout(copyGitUrlTimerRef.current);
+      }
+      if (copyGitTokenTimerRef.current) {
+        clearTimeout(copyGitTokenTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!effectiveProjectId || !settingsPanelOpen) return;
@@ -238,7 +251,13 @@ export function ProjectSettingsModal() {
       navigator.clipboard.writeText(`git clone ${gitCloneUrl}`);
       setCopiedGitUrl(true);
       toast.success('Git clone command copied to clipboard!', { id: 'copy-git-url' });
-      setTimeout(() => setCopiedGitUrl(false), 2000);
+      if (copyGitUrlTimerRef.current) {
+        clearTimeout(copyGitUrlTimerRef.current);
+      }
+      copyGitUrlTimerRef.current = setTimeout(() => {
+        copyGitUrlTimerRef.current = null;
+        setCopiedGitUrl(false);
+      }, 2000);
     }
   };
 
@@ -304,7 +323,13 @@ export function ProjectSettingsModal() {
       navigator.clipboard.writeText(gitToken);
       setCopiedGitToken(true);
       toast.success('Git Token copied to clipboard!', { id: 'copy-git-token' });
-      setTimeout(() => setCopiedGitToken(false), 2000);
+      if (copyGitTokenTimerRef.current) {
+        clearTimeout(copyGitTokenTimerRef.current);
+      }
+      copyGitTokenTimerRef.current = setTimeout(() => {
+        copyGitTokenTimerRef.current = null;
+        setCopiedGitToken(false);
+      }, 2000);
     }
   };
 

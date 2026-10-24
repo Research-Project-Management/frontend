@@ -8,8 +8,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { CompilerEngine, CompileMode } from '@/features/editor/domain/types/compiler.types';
+import type { TrackChangesViewMode } from '@/features/editor/domain/types/suggestion.types';
 
-export type { CompilerEngine, CompileMode };
+export type { CompilerEngine, CompileMode, TrackChangesViewMode };
 export type LayoutMode = 'split' | 'editor-only' | 'viewer-only';
 export type EditorTheme =
   | 'auto'
@@ -26,7 +27,6 @@ export type EditorTheme =
   | 'light'
   | 'dark';
 export type KeybindingMode = 'standard' | 'vim' | 'emacs';
-export type TrackChangesViewMode = 'changes' | 'clean' | 'original';
 export type SettingsTab =
   | 'editor'
   | 'compiler'

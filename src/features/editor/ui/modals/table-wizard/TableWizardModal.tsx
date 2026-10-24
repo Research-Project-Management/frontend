@@ -343,6 +343,7 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
                                 type="button"
                                 onClick={() => removeTableColumn(cIdx)}
                                 className="text-muted-foreground hover:text-destructive cursor-pointer p-1 rounded-sm relative after:absolute after:-inset-1.5 after:content-['']"
+                                aria-label={`Remove Column ${cIdx + 1}`}
                                 title="Remove Column"
                               >
                                 <Trash2 className="size-2.5" />
@@ -365,7 +366,8 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
                             <Input
                               value={tableHeaders[cIdx] || ''}
                               onChange={(e) => updateTableHeader(cIdx, e.target.value)}
-                              placeholder={`Header ${cIdx + 1}`}
+                              aria-label={`Header ${cIdx + 1}`}
+                            placeholder={`Header ${cIdx + 1}`}
                               className="h-7 text-xs font-semibold rounded-md border-border bg-background focus:ring-1 focus:ring-border"
                             />
                           </td>
@@ -387,6 +389,7 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
                             <Input
                               value={tableData[rIdx]?.[cIdx] ?? ''}
                               onChange={(e) => updateTableCell(rIdx, cIdx, e.target.value)}
+                              aria-label={`Row ${rIdx + 1} Column ${cIdx + 1}`}
                               placeholder={`r${rIdx + 1}, c${cIdx + 1}`}
                               className="h-7 text-xs rounded-md border-border/80 bg-background focus:ring-1 focus:ring-border"
                             />
@@ -398,6 +401,7 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
                               type="button"
                               onClick={() => removeTableRow(rIdx)}
                               className="text-muted-foreground hover:text-destructive cursor-pointer p-1 rounded-md transition-colors relative after:absolute after:-inset-1.5 after:content-['']"
+                              aria-label={`Delete Row ${rIdx + 1}`}
                               title="Delete Row"
                             >
                               <Trash2 className="size-3" />
@@ -444,6 +448,7 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
                     handleGenerateAiTable();
                   }
                 }}
+                aria-label="Describe table for AI generation"
                 placeholder="Describe your table or paste raw unformatted text (e.g. 'Compare ResNet, ViT, Mamba on ImageNet with Accuracy, Params, and Latency'). Press Ctrl+Enter to generate..."
                 rows={2}
                 className="w-full p-2 text-xs rounded-md border border-border bg-background resize-none outline-none focus:ring-1 focus:ring-ai focus:border-ai/40"
@@ -462,7 +467,8 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
                     <Input
                       value={caption}
                       onChange={(e) => setCaption(e.target.value)}
-                      placeholder="Table caption"
+                      aria-label="Table caption"
+                    placeholder="Table caption"
                       className="h-7 text-xs bg-background"
                     />
                   </div>
@@ -473,7 +479,8 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
                     <Input
                       value={label}
                       onChange={(e) => setLabel(e.target.value)}
-                      placeholder="tab:results"
+                      aria-label="Table label"
+                    placeholder="tab:results"
                       className="h-7 text-xs font-mono bg-background"
                     />
                   </div>
@@ -525,6 +532,7 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
                 <textarea
                   value={pastedText}
                   onChange={(e) => setPastedText(e.target.value)}
+                  aria-label="Paste Excel, CSV, or LaTeX code"
                   placeholder="Paste TSV (from Excel), CSV, or \begin{tabular} snippet..."
                   rows={2}
                   className="w-full p-1.5 text-11 font-mono rounded-md border border-border bg-background resize-none outline-none focus:ring-1 focus:ring-border"
@@ -693,6 +701,7 @@ Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and endi
                         key={`mat-${rIdx}-${cIdx}`}
                         value={matrixCells[rIdx]?.[cIdx] ?? ''}
                         onChange={(e) => updateMatrixCell(rIdx, cIdx, e.target.value)}
+                        aria-label={`Matrix cell row ${rIdx + 1} column ${cIdx + 1}`}
                         placeholder={`a_${rIdx + 1}${cIdx + 1}`}
                         className="h-7 text-xs font-mono text-center rounded-md border-border bg-background focus:ring-1 focus:ring-border p-0.5"
                       />

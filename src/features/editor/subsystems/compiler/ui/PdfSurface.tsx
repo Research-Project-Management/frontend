@@ -179,7 +179,7 @@ export const PdfSyncTeXHighlightBox = React.memo(function PdfSyncTeXHighlightBox
       }}
     >
       <span className="relative flex size-9 items-center justify-center">
-        <span className="absolute inline-flex size-full animate-ping motion-reduce:animate-none rounded-full bg-primary/60 opacity-80" />
+        <span className="absolute inline-flex size-full rounded-full bg-primary/60 opacity-80" />
         <span className="absolute inline-flex size-6 rounded-full border-2 border-primary bg-primary/20" />
         <span className="relative inline-flex size-2 rounded-full bg-primary" />
       </span>
@@ -316,7 +316,7 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
       onClickCapture={handleClickCapture}
       onDoubleClickCapture={handleDoubleClick}
       className={cn(
-        "bg-canvas dark:bg-card relative flex items-center justify-center cursor-text transition-all shrink-0",
+        "bg-canvas dark:bg-card relative flex items-center justify-center cursor-text shrink-0",
         isSpreadView ? "my-0" : "border-b border-border/60 last:border-b-0"
       )}
       style={{
@@ -349,7 +349,7 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
           }
         />
       ) : (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50 text-muted-foreground/30 select-none animate-pulse motion-reduce:animate-none">
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50 text-muted-foreground/30 select-none">
           <span className="text-xs font-mono font-medium">Page {pageNum}</span>
         </div>
       )}

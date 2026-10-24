@@ -34,6 +34,7 @@ import {
   useConnectivityStore,
   getActiveEditorContent,
   getActiveEditorEngine,
+  getEditorEngineForFile,
   getActivePdfViewer,
 } from '@/features/editor/core';
 import { useCompileStore } from './compiler.store';
@@ -79,7 +80,9 @@ export class CompilationSnapshotProvider {
     const compileStore = useCompileStore.getState();
 
     const activeDoc = pageStore.getActiveDocument();
-    const activeContent = options.activeContentOverride || getActiveEditorContent() || extractDocumentContentString(activeDoc?.content);
+    const targetFileId = activeDoc?.id || options.rootFileId;
+    const targetEngine = targetFileId ? getEditorEngineForFile(targetFileId) : null;
+    const activeContent = options.activeContentOverride || targetEngine?.getContent?.() || (targetFileId === activeDoc?.id ? getActiveEditorContent() : null) || extractDocumentContentString(activeDoc?.content);
 
     const baseFiles = options.projectFiles || workspaceCoordinator.getProjectFiles() || [];
     const lruModels = lruDocumentCache.getAllModels();
@@ -325,7 +328,8 @@ export class CompilerCoordinatorRegistry {
     this.compileAbortController = currentController;
     const effectiveActiveFileId = activeDoc?.id || rootPageId;
     const activeTitle = pageStore.getActiveDocumentTitle();
-    const currentVal = getActiveEditorContent() || extractDocumentContentString(activeDoc?.content);
+    const activeEngine = effectiveActiveFileId ? getEditorEngineForFile(effectiveActiveFileId) : null;
+    const currentVal = activeEngine?.getContent?.() || (effectiveActiveFileId === activeDoc?.id ? getActiveEditorContent() : null) || extractDocumentContentString(activeDoc?.content);
 
     // 2. Pre-compile atomic flush barrier: commit drafts, sync active buffer, trigger background save
     await CompilationFlushBarrier.execute(effectiveActiveFileId, currentVal);
@@ -465,7 +469,7 @@ export class CompilerCoordinatorRegistry {
         // Only ingest real errors and warnings into Editor Diagnostics Coordinator.
         // Filter out badboxes and info messages (Overfull \hbox etc.) so they stay in CompilerLogs panel only.
         const successDiagnostics: CompileError[] = rawSuccessDiagnostics
-          .filter((d) => d.severity !== 'info' && !/^(Overfull|Underfull)\s*\\[hv]box/i.test(d.message || ''))
+          .filter((d) => d.severity !== 'info')
           .map((d) => ({
             line: d.line,
             message: sanitizeDash(d.message),

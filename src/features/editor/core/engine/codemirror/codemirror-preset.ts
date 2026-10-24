@@ -142,7 +142,6 @@ export const editorBaseTheme = EditorView.theme({
     height: '14px',
     borderRadius: '3px',
     color: 'var(--muted-foreground, #57606a)',
-    transition: 'opacity 0.15s ease, color 0.15s ease, background-color 0.15s ease',
   },
   '.cm-fold-marker.cm-fold-open': {
     opacity: '0',
@@ -244,7 +243,7 @@ export const editorBaseTheme = EditorView.theme({
 });
 
 export function createTypographyExtension(
-  fontSize: number = 14,
+  fontSize: number = 13,
   fontFamily?: string,
   lineHeight?: number
 ): Extension {

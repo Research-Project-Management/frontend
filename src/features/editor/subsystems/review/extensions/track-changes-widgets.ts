@@ -281,32 +281,32 @@ export function createTrackChangesTooltipDOM(s: PageSuggestion): HTMLElement {
 
 export const trackChangesTheme = EditorView.baseTheme({
   '.cm-track-change-insert': {
-    backgroundColor: 'rgba(34, 197, 94, 0.18)',
+    backgroundColor: 'color-mix(in srgb, var(--success, #1A7F37) 18%, transparent)',
     textDecoration: 'underline',
-    textDecorationColor: '#22c55e',
+    textDecorationColor: 'var(--success, #1A7F37)',
     textDecorationThickness: '2px',
     borderRadius: '2px',
     cursor: 'pointer',
   },
   '.cm-track-change-delete': {
-    backgroundColor: 'rgba(239, 68, 68, 0.18)',
+    backgroundColor: 'color-mix(in srgb, var(--destructive, #CF222E) 18%, transparent)',
     textDecoration: 'line-through',
-    textDecorationColor: '#ef4444',
+    textDecorationColor: 'var(--destructive, #CF222E)',
     textDecorationThickness: '2px',
-    color: '#ef4444',
+    color: 'var(--destructive, #CF222E)',
     borderRadius: '2px',
     cursor: 'pointer',
   },
   '.cm-track-change-replace': {
-    backgroundColor: 'rgba(59, 130, 246, 0.18)',
+    backgroundColor: 'color-mix(in srgb, var(--primary, #0969DA) 18%, transparent)',
     textDecoration: 'underline',
-    textDecorationColor: '#3b82f6',
+    textDecorationColor: 'var(--primary, #0969DA)',
     borderRadius: '2px',
     cursor: 'pointer',
   },
   '.cm-comment-highlight': {
-    backgroundColor: 'rgba(245, 158, 11, 0.18)',
-    borderBottom: '2px dashed #f59e0b',
+    backgroundColor: 'color-mix(in srgb, var(--warning, #9A6700) 18%, transparent)',
+    borderBottom: '2px dashed var(--warning, #9A6700)',
     borderRadius: '2px',
     cursor: 'pointer',
   },
@@ -328,7 +328,7 @@ export const trackChangesTheme = EditorView.baseTheme({
     right: '-3px',
     fontSize: '8px',
     fontWeight: '600',
-    backgroundColor: 'var(--warning, #f59e0b)',
+    backgroundColor: 'var(--warning, #9A6700)',
     color: 'var(--warning-foreground, #000)',
     borderRadius: '999px',
     padding: '0 3px',
@@ -369,7 +369,7 @@ export const trackChangesTheme = EditorView.baseTheme({
     justifyContent: 'center',
     fontSize: '9px',
     fontWeight: '600',
-    color: '#ffffff',
+    color: 'var(--canvas, #FCFCFB)',
     flexShrink: '0',
   },
   '.cm-track-author-details': {
@@ -413,11 +413,11 @@ export const trackChangesTheme = EditorView.baseTheme({
     lineHeight: '1.4',
   },
   '.cm-track-diff-del': {
-    color: 'var(--destructive, #ef4444)',
+    color: 'var(--destructive, #CF222E)',
     textDecoration: 'line-through',
   },
   '.cm-track-diff-ins': {
-    color: 'var(--success, #22c55e)',
+    color: 'var(--success, #1A7F37)',
   },
   '.cm-track-desc': {
     fontStyle: 'italic',
@@ -444,11 +444,11 @@ export const trackChangesTheme = EditorView.baseTheme({
     fontWeight: '500',
     cursor: 'pointer',
     border: 'none',
-    transition: 'all 0.15s ease',
+    transition: 'color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease',
   },
   '.cm-track-btn-accept': {
-    backgroundColor: 'var(--primary, #2563eb)',
-    color: 'var(--primary-foreground, #ffffff)',
+    backgroundColor: 'var(--primary, #0969DA)',
+    color: 'var(--primary-foreground, var(--canvas, #FCFCFB))',
     '&:hover': {
       filter: 'brightness(1.1)',
     },
@@ -459,8 +459,8 @@ export const trackChangesTheme = EditorView.baseTheme({
     border: '1px solid var(--border, rgba(255,255,255,0.15))',
     '&:hover': {
       backgroundColor: 'hsl(var(--destructive) / 0.15)',
-      color: 'var(--destructive, #ef4444)',
-      borderColor: 'var(--destructive, #ef4444)',
+      color: 'var(--destructive, #CF222E)',
+      borderColor: 'var(--destructive, #CF222E)',
     },
   },
 });

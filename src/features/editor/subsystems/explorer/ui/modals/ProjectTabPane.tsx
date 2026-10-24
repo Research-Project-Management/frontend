@@ -212,6 +212,7 @@ export function ProjectTabPane({
             <Input
               value={projectTargetName}
               onChange={(e) => setProjectTargetName(e.target.value)}
+              aria-label="File name in this project"
               placeholder="File name"
               className="h-8 text-12 bg-muted/40 rounded-md border-border/60 focus:bg-background"
             />

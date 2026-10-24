@@ -25,6 +25,7 @@ class EditorCommandBusImpl implements IEditorCommandBus {
   private traceHistory: CommandTraceEntry[] = [];
   private maxHistorySize = 100;
   private tracingEnabled = true;
+  private bufferedCommands = new Map<string, { command: EditorCommand; expiresAt: number }>();
   private errorReporter: (error: unknown, command: EditorCommand) => void = (err, cmd) => {
     console.error(`[CommandBus] Error handling command "${cmd.type}":`, err);
   };
@@ -77,7 +78,7 @@ class EditorCommandBusImpl implements IEditorCommandBus {
 
       // 1. Dispatch to type-specific handlers
       const typeHandlers = this.handlers.get(cmd.type);
-      if (typeHandlers) {
+      if (typeHandlers && typeHandlers.size > 0) {
         for (const handler of typeHandlers) {
           try {
             void handler(cmd);
@@ -86,6 +87,15 @@ class EditorCommandBusImpl implements IEditorCommandBus {
             this.errorReporter(err, cmd);
           }
         }
+      } else if (
+        cmd.type === 'sidebar:open-ai-panel' ||
+        cmd.type === 'sidebar:open-panel'
+      ) {
+        // Buffer replayable viewlet command for up to 3000ms until component mounts
+        this.bufferedCommands.set(cmd.type, {
+          command: cmd,
+          expiresAt: Date.now() + 3000,
+        });
       }
 
       // 2. Dispatch to global observers
@@ -202,6 +212,19 @@ class EditorCommandBusImpl implements IEditorCommandBus {
     const set = this.handlers.get(type)!;
     set.add(handler as unknown as CommandHandler<EditorCommand, unknown>);
 
+    // If there is a freshly buffered command for this type, replay it immediately
+    const buffered = this.bufferedCommands.get(type);
+    if (buffered) {
+      if (Date.now() <= buffered.expiresAt) {
+        try {
+          void handler(buffered.command as Extract<EditorCommand, { type: K }>);
+        } catch (err) {
+          this.errorReporter(err, buffered.command);
+        }
+      }
+      this.bufferedCommands.delete(type);
+    }
+
     return () => {
       set.delete(handler as unknown as CommandHandler<EditorCommand, unknown>);
       if (set.size === 0) {
@@ -223,6 +246,7 @@ class EditorCommandBusImpl implements IEditorCommandBus {
     this.globalHandlers.clear();
     this.middlewares = [];
     this.traceHistory = [];
+    this.bufferedCommands.clear();
   }
 }
 
@@ -251,9 +275,51 @@ export type {
 
 let activeEngineInstance: IEditorEngine | null = null;
 let activeViewerInstance: unknown = null;
+const enginesByFileId = new Map<string, IEditorEngine>();
+const engineChangeListeners = new Set<() => void>();
+
+function notifyEngineListeners(): void {
+  for (const listener of engineChangeListeners) {
+    try {
+      listener();
+    } catch {
+      // Ignore listener error
+    }
+  }
+}
+
+export function subscribeEditorEngineChanges(listener: () => void): () => void {
+  engineChangeListeners.add(listener);
+  return () => {
+    engineChangeListeners.delete(listener);
+  };
+}
+
+export function registerEditorEngine(fileId: string, engine: IEditorEngine): void {
+  enginesByFileId.set(fileId, engine);
+  if (!activeEngineInstance) {
+    activeEngineInstance = engine;
+  }
+  notifyEngineListeners();
+}
+
+export function unregisterEditorEngine(fileId: string, engine: IEditorEngine): void {
+  if (enginesByFileId.get(fileId) === engine) {
+    enginesByFileId.delete(fileId);
+  }
+  if (activeEngineInstance === engine) {
+    activeEngineInstance = enginesByFileId.values().next().value ?? null;
+  }
+  notifyEngineListeners();
+}
+
+export function getEditorEngineForFile(fileId: string): IEditorEngine | null {
+  return enginesByFileId.get(fileId) ?? null;
+}
 
 export function setActiveEditorEngine(engine: IEditorEngine | null): void {
   activeEngineInstance = engine;
+  notifyEngineListeners();
 }
 
 export function getActiveEditorEngine(): IEditorEngine | null {
@@ -261,10 +327,7 @@ export function getActiveEditorEngine(): IEditorEngine | null {
 }
 
 export function getActiveEditorContent(): string {
-  if (activeEngineInstance && typeof activeEngineInstance.getContent === 'function') {
-    return activeEngineInstance.getContent();
-  }
-  return '';
+  return activeEngineInstance?.getContent() ?? '';
 }
 
 export function setActivePdfViewer(viewer: unknown): void {
@@ -292,6 +355,13 @@ export function registerDefaultBridges(): void {
       activeEngineInstance?.focus();
     }),
     editorCommandBus.subscribe('editor:set-content', (cmd) => {
+      if (cmd.fileId) {
+        const target = enginesByFileId.get(cmd.fileId);
+        if (target) {
+          target.setContent?.(cmd.content);
+          return;
+        }
+      }
       activeEngineInstance?.setContent?.(cmd.content);
     }),
     editorCommandBus.subscribe('editor:undo', () => {
@@ -355,4 +425,3 @@ export function registerDefaultBridges(): void {
 
 // Initial binding
 registerDefaultBridges();
-

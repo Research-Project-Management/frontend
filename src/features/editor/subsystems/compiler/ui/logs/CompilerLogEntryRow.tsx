@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import {
   ChevronRight,
-  Wand2,
+  Bot,
   Loader2,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
@@ -127,7 +127,7 @@ export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
                   className="min-h-[26px] flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-md font-medium text-primary bg-primary/10 border border-primary/20 hover:bg-primary/20 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border transition-colors relative after:absolute after:-inset-1 after:content-['']"
                   title={`Quick fix: ${entry.quickFix.description}`}
                 >
-                  <Wand2 className="size-3" />
+                  <Bot className="size-3" />
                   <span>Quick fix</span>
                 </button>
               ) : type === 'error' && onSuggestFix ? (
@@ -182,6 +182,7 @@ export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
               {entry.line !== undefined && (
                 <button
                   type="button"
+                  aria-label={`Go to line ${entry.line}${entry.file ? ` in ${entry.file}` : ''}`}
                   onClick={(e) => {
                     e.stopPropagation();
                     onClick?.();
@@ -196,7 +197,7 @@ export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
             </p>
           )}
           {entry.rawExcerpt ? (
-            <pre className="mt-1.5 pl-3 py-1 border-l border-border/70 font-mono text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed select-text overflow-x-auto bg-transparent max-w-[70ch]">
+            <pre className="mt-1.5 px-2.5 py-1 border border-border/60 rounded-sm bg-muted/20 font-mono text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed select-text overflow-x-auto max-w-[70ch]">
               {entry.rawExcerpt}
             </pre>
           ) : (

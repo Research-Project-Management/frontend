@@ -309,6 +309,7 @@ export const MentionTextarea = React.forwardRef<
           value={value}
           disabled={disabled}
           autoFocus={autoFocus}
+          aria-label={placeholder || 'Comment input'}
           placeholder={placeholder}
           onChange={(e) => {
             onChange(e.target.value);
@@ -329,6 +330,7 @@ export const MentionTextarea = React.forwardRef<
           rows={rows}
           disabled={disabled}
           autoFocus={autoFocus}
+          aria-label={placeholder || 'Comment text'}
           placeholder={placeholder}
           onChange={(e) => {
             onChange(e.target.value);

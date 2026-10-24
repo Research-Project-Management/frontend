@@ -161,8 +161,8 @@ export function useActiveDocument() {
   const setActive = useWorkspaceStore((s) => s.setActiveTab);
 
   useEffect(() => {
-    if (effectiveProjectId && typeof setProjectId === 'function') setProjectId(effectiveProjectId);
-    if (pageId && typeof setParentPageId === 'function') setParentPageId(pageId);
+    if (effectiveProjectId) setProjectId(effectiveProjectId);
+    if (pageId) setParentPageId(pageId);
   }, [effectiveProjectId, pageId, setProjectId, setParentPageId]);
 
   // Proactively index all project files for 0ms cross-file \cite, \ref, and DAG symbols

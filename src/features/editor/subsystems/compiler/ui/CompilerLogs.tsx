@@ -287,7 +287,8 @@ export function CompilerLogs({
   const handleEntryClick = useCallback((entry: LogEntry) => {
     if (entry.line) {
       if (onJumpToError) {
-        onJumpToError(entry.file, entry.line);
+        onJumpToError(entry.file || 'main.tex', entry.line);
+        toast.info(`Jumped to ${entry.file || 'main.tex'} line ${entry.line}`);
       } else {
         editorCommandBus.dispatch({
           type: 'editor:jump-to-line',
@@ -320,6 +321,21 @@ export function CompilerLogs({
     const el = document.getElementById(`log-entry-err-${prevIdx}`);
     el?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
   }, [currentErrorIdx, parsed.errors, handleEntryClick]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F8') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          handlePrevError();
+        } else {
+          handleNextError();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleNextError, handlePrevError]);
 
   // Sync with external error-stepped events from navigation coordinator
   useEffect(() => {

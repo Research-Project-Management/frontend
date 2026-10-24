@@ -83,7 +83,7 @@ export function OfflineBanner() {
 
   if (justReconnected) {
     return (
-      <div className="w-full bg-success text-success-foreground border-b border-success/30 px-4 py-1.5 flex items-center justify-between text-xs font-medium z-30 transition-all">
+      <div className="w-full bg-success text-success-foreground border-b border-success/30 px-4 py-1.5 flex items-center justify-between text-xs font-medium z-30 transition-colors">
         <div className="flex items-center gap-2">
           <CheckCircle2 className="size-4 shrink-0" />
           <span>Connection restored! All pending changes have been synchronized.</span>
@@ -95,7 +95,7 @@ export function OfflineBanner() {
   return (
     <div
       role="alert"
-      className="w-full bg-warning text-warning-foreground border-b border-warning/30 px-4 py-1.5 flex items-center justify-between text-xs font-medium z-30 shadow-none transition-all"
+      className="w-full bg-warning text-warning-foreground border-b border-warning/30 px-4 py-1.5 flex items-center justify-between text-xs font-medium z-30 shadow-none transition-colors"
     >
       <div className="flex items-center gap-2 overflow-hidden">
         <WifiOff className="size-4 shrink-0" />

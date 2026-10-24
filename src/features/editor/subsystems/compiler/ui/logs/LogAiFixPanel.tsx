@@ -28,7 +28,7 @@ export function LogAiFixPanel({
       role="region"
       aria-label="AI Error Assist"
       onClick={(e) => e.stopPropagation()}
-      className="ml-6 mt-2 pl-3.5 pr-2 py-2 border-l border-ai/40 text-xs space-y-2.5 select-text"
+      className="ml-6 mt-2 px-3 py-2 border border-ai/30 bg-ai-subtle/40 rounded-md text-xs space-y-2.5 select-text"
     >
       <div className="flex items-center justify-between">
         <h4 className="font-semibold text-13 text-foreground tracking-tight">
@@ -96,7 +96,7 @@ export function LogAiFixPanel({
                   'h-8 px-3 rounded-md text-13 font-medium transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border',
                   isFixApplied
                     ? 'bg-muted text-muted-foreground border border-border cursor-not-allowed inline-flex items-center gap-1.5'
-                    : 'bg-primary hover:bg-primary-hover text-primary-foreground'
+                    : 'bg-ai hover:bg-ai-hover text-ai-foreground'
                 )}
               >
                 {isFixApplied ? (

@@ -116,6 +116,7 @@ export const PdfFindBar = React.memo(function PdfFindBar({
         value={query}
         onChange={(e) => onQueryChange(e.target.value)}
         onKeyDown={handleKeyDown}
+        aria-label="Find in PDF document"
         placeholder="Find in document…"
         className="w-24 sm:w-44 min-w-0 flex-1 h-6 bg-transparent text-xs text-foreground placeholder:text-muted-foreground outline-none border-none font-normal"
       />

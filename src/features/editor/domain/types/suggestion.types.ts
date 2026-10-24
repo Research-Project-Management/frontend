@@ -33,6 +33,7 @@ export type ResolveSuggestionInput = z.infer<typeof resolveSuggestionSchema>;
 
 export type SuggestionType = 'insert' | 'delete' | 'replace';
 export type SuggestionStatus = 'pending' | 'accepted' | 'rejected';
+export type TrackChangesViewMode = 'changes' | 'clean' | 'original' | 'show' | 'hide';
 
 export interface SuggestionAuthor {
   id: string;

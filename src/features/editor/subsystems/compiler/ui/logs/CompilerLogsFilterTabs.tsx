@@ -40,10 +40,10 @@ export function CompilerLogsFilterTabs({
         aria-selected={activeTab === 'all'}
         onClick={() => onSelectTab('all')}
         className={cn(
-          'h-full flex items-center gap-1.5 text-xs transition-colors cursor-pointer border-b-2 outline-none focus-visible:ring-1 focus-visible:ring-border',
+          'h-7 px-2.5 rounded-md flex items-center gap-1.5 text-xs transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border',
           activeTab === 'all'
-            ? 'border-primary text-foreground font-semibold'
-            : 'border-transparent text-muted-foreground hover:text-foreground font-medium'
+            ? 'bg-muted text-foreground font-semibold ring-1 ring-inset ring-border'
+            : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 font-medium'
         )}
       >
         <span>All logs</span>
@@ -58,10 +58,10 @@ export function CompilerLogsFilterTabs({
         aria-selected={activeTab === 'errors'}
         onClick={() => onSelectTab('errors')}
         className={cn(
-          'h-full flex items-center gap-1.5 text-xs transition-colors cursor-pointer border-b-2 outline-none focus-visible:ring-1 focus-visible:ring-border',
+          'h-7 px-2.5 rounded-md flex items-center gap-1.5 text-xs transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border',
           activeTab === 'errors'
-            ? 'border-primary text-foreground font-semibold'
-            : 'border-transparent text-muted-foreground hover:text-foreground font-medium'
+            ? 'bg-muted text-foreground font-semibold ring-1 ring-inset ring-border'
+            : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 font-medium'
         )}
       >
         <span>Errors</span>
@@ -76,10 +76,10 @@ export function CompilerLogsFilterTabs({
         aria-selected={activeTab === 'warnings'}
         onClick={() => onSelectTab('warnings')}
         className={cn(
-          'h-full flex items-center gap-1.5 text-xs transition-colors cursor-pointer border-b-2 outline-none focus-visible:ring-1 focus-visible:ring-border',
+          'h-7 px-2.5 rounded-md flex items-center gap-1.5 text-xs transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border',
           activeTab === 'warnings'
-            ? 'border-primary text-foreground font-semibold'
-            : 'border-transparent text-muted-foreground hover:text-foreground font-medium'
+            ? 'bg-muted text-foreground font-semibold ring-1 ring-inset ring-border'
+            : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 font-medium'
         )}
       >
         <span>Warnings</span>
@@ -94,10 +94,10 @@ export function CompilerLogsFilterTabs({
         aria-selected={activeTab === 'info'}
         onClick={() => onSelectTab('info')}
         className={cn(
-          'h-full flex items-center gap-1.5 text-xs transition-colors cursor-pointer border-b-2 outline-none focus-visible:ring-1 focus-visible:ring-border',
+          'h-7 px-2.5 rounded-md flex items-center gap-1.5 text-xs transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border',
           activeTab === 'info'
-            ? 'border-primary text-foreground font-semibold'
-            : 'border-transparent text-muted-foreground hover:text-foreground font-medium'
+            ? 'bg-muted text-foreground font-semibold ring-1 ring-inset ring-border'
+            : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 font-medium'
         )}
       >
         <span>Info</span>

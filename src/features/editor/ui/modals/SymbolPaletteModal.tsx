@@ -134,6 +134,7 @@ export function SymbolPaletteModal({
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            aria-label="Search symbols by command or name"
             placeholder="Search symbols by command or name (e.g. alpha, sum, int, infty, le)..."
             className="pl-8 h-8 text-xs font-mono rounded-md border-border bg-background"
             autoFocus
@@ -185,7 +186,7 @@ export function SymbolPaletteModal({
                             onClick={() => insertSymbol(sym)}
                             aria-label={`${sym.command} (${sym.name})`}
                             className={cn(
-                              'group flex flex-col items-center justify-center h-12 rounded-sm border transition-all cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border focus-visible:ring-inset',
+                              'group flex flex-col items-center justify-center h-12 rounded-sm border transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border focus-visible:ring-inset',
                               isRecent
                                 ? 'bg-primary/15 border-primary text-primary font-semibold'
                                 : 'bg-background border-border hover:border-primary/50 hover:bg-primary/5 text-foreground'

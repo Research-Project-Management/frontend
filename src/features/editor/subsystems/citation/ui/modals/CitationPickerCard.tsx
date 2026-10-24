@@ -2,7 +2,7 @@
 
 import React, { memo } from 'react';
 import { cn } from '@/shared/lib/utils';
-import type { BibEntry } from '@/features/editor/subsystems/citation/model/bib-parser';
+import type { BibEntry } from '@/features/editor/domain/latex/bib-parser';
 import { formatBibEntryAuthorSummary } from '@/features/editor/subsystems/citation/model/citation-formatter';
 
 interface CitationPickerCardProps {

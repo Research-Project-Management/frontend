@@ -19,6 +19,10 @@ export {
   getActivePdfViewer,
   setActivePdfViewer,
   registerDefaultBridges,
+  registerEditorEngine,
+  unregisterEditorEngine,
+  getEditorEngineForFile,
+  subscribeEditorEngineChanges,
 } from './bus/command-bus';
 
 export type {
@@ -42,6 +46,7 @@ export type {
   ActiveEditorPane,
   LayoutState,
   EditorTab,
+  WorkspaceTab,
 } from './store/workspace.store';
 
 export {
@@ -98,6 +103,8 @@ export {
   sessionCoordinator,
   SessionCoordinatorRegistry,
   shouldUseRealtimePersistence,
+  type DocumentPersistencePort,
+  type DocumentSessionOptions,
   type DraftSnapshot,
   type DocumentConflict,
   type ConflictListener,

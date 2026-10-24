@@ -25,19 +25,17 @@ import {
 import { Input } from '@/shared/components/ui/input';
 import { Button } from '@/shared/components/ui/button';
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, } from '@/shared/components/ui/alert-dialog';
-import {
   Search, X, Loader2, Check, SearchX, Binary, } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { filesQuery, pageKeys } from '@/features/editor/ui/hooks/document.queries';
-import { useEditorCitations } from '@/features/editor/ui/hooks/useCitation';
+import { useEditorCitations } from '@/features/editor/subsystems/citation/ui/hooks/useCitation';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import {
   extractCitationKeys, formatCitationSnippet, formatBibEntryToBibtex, formatItemToBibtex, } from '@/features/editor/subsystems/citation/model/citation-formatter';
 import { validateAcademicIdentifier } from '@/features/editor/subsystems/citation/model/citation.schema';
 import {
   buildRetractedCitationMap, type RetractedItemInfo, } from '@/features/editor/subsystems/citation/model/retracted-citations';
-import type { BibEntry } from '@/features/editor/subsystems/citation/model/bib-parser';
+import type { BibEntry } from '@/features/editor/domain/latex/bib-parser';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import type { BibEntryDto } from '@/features/editor/sdk/manuscript/types';
 import { useCollections } from '@/features/library/sdk/queries/collections.queries';
@@ -60,6 +58,7 @@ import {
   type CollectionNode,
 } from '../subcomponents/CitationCollectionTreePane';
 import { CitationInspectorPane } from '../subcomponents/CitationInspectorPane';
+import { CitationRetractionAlertDialog } from '../subcomponents/CitationRetractionAlertDialog';
 
 export type CitationStyle =
   | 'latex-cite'
@@ -966,51 +965,11 @@ export default function CitationPickerModal({
       </DialogContent>
 
       {/* Retraction Warning Dialog */}
-      <AlertDialog
-        open={Boolean(pendingRetracted)}
-        onOpenChange={(next) => {
-          if (!next) setPendingRetracted(null);
-        }}
-      >
-        <AlertDialogContent className="w-[95vw] sm:max-w-lg">
-          <AlertDialogHeader>
-            <AlertDialogTitle>This work has been retracted</AlertDialogTitle>
-            <AlertDialogDescription>
-              {pendingRetracted?.info.title
-                ? `"${pendingRetracted.info.title}" `
-                : 'This reference '}
-              is listed as retracted
-              {pendingRetracted?.info.reason ? `: ${pendingRetracted.info.reason}` : '.'} Do you still
-              want to cite it?
-              {pendingRetracted?.info.noticeUrl && (
-                <>
-                  {' '}
-                  <a
-                    href={pendingRetracted.info.noticeUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline underline-offset-2 text-primary"
-                  >
-                    View retraction notice
-                  </a>
-                </>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (pendingRetracted) insertCitation(pendingRetracted.entry);
-                setPendingRetracted(null);
-              }}
-            >
-              Cite anyway
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <CitationRetractionAlertDialog
+        pendingRetracted={pendingRetracted}
+        onDismiss={() => setPendingRetracted(null)}
+        onConfirmCiteAnyway={(entry) => insertCitation(entry)}
+      />
     </Dialog>
   );
 }
-

@@ -15,6 +15,12 @@ export {
   reviewCoordinator,
   ReviewCoordinatorRegistry,
 } from './coordinator/review.coordinator';
+export type {
+  ReviewServicePort,
+  ReviewNotificationPort,
+  ReviewStorePort,
+  ReviewCoordinatorPorts,
+} from './model/review-service-port';
 
 // 2. CodeMirror Extensions
 export {
@@ -41,7 +47,7 @@ export {
   rejectDiffEffect,
   clearDiffEffect,
   type DiffProposal,
-} from './extensions/inline-diff';
+} from '@/features/editor/core/engine/extensions/inline-diff';
 
 // 3. UI Presentation Layer
 export { default as ReviewTab } from './ui/ReviewTab';

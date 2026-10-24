@@ -10,62 +10,35 @@
  * - Single source of truth for all Manuscript HTTP communication.
  */
 
-import * as api from '@/shared/lib/api';
 import {
   apiGet,
   apiPost,
   apiPut,
   apiPatch,
   apiDelete,
+  rawFetch,
   getAuthToken,
-  getEffectiveBaseUrl,
 } from '@/shared/lib/api';
 import { MANUSCRIPTS_API_BASE, getManuscriptsBaseUrl } from './base';
 import type {
   DocstoreDocDto,
-  StructureNodeDto,
   QueueUpdatePayload,
   FlushResultDto,
-  FileMetadataDto,
   DiagnosticReportDto,
   AutoFixResultDto,
   ErrorExplanationDto,
-  ExportFileResult,
-  BibEntryDto,
-  CitationValidationDto,
-  LinkedFileDto,
-  CreateLinkedFilePayload,
   CompileLatexPayload,
   CompileLatexResponse,
   WordCountResponse,
   PreviewCompileResult,
   AuxFileItem,
-  CreateSuggestionPayload,
   ForwardSyncPayload,
   ForwardSyncResult,
   ReverseSyncPayload,
   ReverseSyncResult,
-  SearchOptions,
-  SearchResultResponse,
-  BatchReplaceOptions,
-  BatchReplaceResultResponse,
-  VersionDiffResponse,
-  ProjectVersionListItem,
-  ProjectSnapshotDetail,
-  ProjectDiffResponse,
-  VersionLabelItem,
-  ImportProjectZipResult,
-  ProjectTemplateItem,
-  ReconstructedContent,
 } from './types';
 import type { Page, PageFile } from '@/features/editor/domain/types/core.types';
-import type { PageComment } from '@/features/editor/domain/types/comment.types';
-import type { PageSuggestion, SuggestionStatus } from '@/features/editor/domain/types/suggestion.types';
-import type { PageVersion, ProjectEvent } from '@/features/editor/domain/types/history.types';
-import type { DocumentExportFormat } from '@/features/editor/domain/types/export.types';
 import type { EditorStorageItem } from '@/features/editor/domain/types/storage-item.types';
-import { uploadBlobWithPresigned } from '@/features/storage';
-import { API_BASE_URL } from '@/config/env';
 import type {
   AcademicAiActionParams,
   AcademicAiActionResult,
@@ -74,12 +47,6 @@ import type {
   AiErrorFixParams,
   AiErrorFixResult,
 } from '@/features/editor/domain/ai/ai-error-assist';
-import {
-  maskLatexEntities,
-  getAcademicSystemPrompt,
-  applyHeuristicTransformation,
-} from '@/features/editor/domain/ai/ai-academic-assistant';
-import { heuristicLatexErrorFix } from '@/features/editor/domain/ai/ai-error-assist';
 import { countLatexWords } from '../../domain/document/word-count';
 import type {
   PendingBundleInfo,
@@ -95,6 +62,7 @@ export type {
   PendingBundleInfo,
   NotificationDigest,
   NotificationBundlingSettings,
+  EditorStorageItem,
 };
 
 // ── Sub-domain: docs.api.ts ──────────────────────────────────────
@@ -103,7 +71,6 @@ export type {
  *
  * Document and file management sub-API: CRUD, title, thumbnails, incremental sync, docstore.
  */
-
 
 export const docs = {
   getById: async (docId: string): Promise<Page> => {
@@ -118,9 +85,18 @@ export const docs = {
     return res.page;
   },
 
-  updateContent: async (docId: string, content: string): Promise<Page> => {
+  updateContent: async (
+    docId: string,
+    content: string,
+    options?: { expectedRev?: number; expectedVersion?: number },
+  ): Promise<Page> => {
     if (!docId) throw new Error('docId is required');
-    const res = await apiPut<{ page: Page }>(`${MANUSCRIPTS_API_BASE}/docs/${docId}`, { content });
+    const payload = {
+      content,
+      ...(options?.expectedRev !== undefined ? { expectedRev: options.expectedRev } : {}),
+      ...(options?.expectedVersion !== undefined ? { expectedVersion: options.expectedVersion } : {}),
+    };
+    const res = await apiPut<{ page: Page }>(`${MANUSCRIPTS_API_BASE}/docs/${docId}`, payload);
     return res.page;
   },
 
@@ -244,12 +220,12 @@ export const docs = {
 
   getRawDoc: async (projectId: string, docId: string): Promise<string> => {
     try {
-      const token = getAuthToken();
-      const res = await fetch(`${getManuscriptsBaseUrl()}/projects/${projectId}/docs/doc/${docId}/raw`, {
-        headers: {
-          Authorization: token ? `Bearer ${token}` : '',
-        },
-      });
+      const res = await rawFetch(
+        `${getManuscriptsBaseUrl()}/projects/${projectId}/docs/doc/${docId}/raw`,
+        'GET',
+        undefined,
+        { silent: true },
+      );
       if (!res.ok) return '';
       return await res.text();
     } catch {
@@ -294,95 +270,12 @@ export const docs = {
   },
 };
 
-
-// ── Sub-domain: structure.api.ts ──────────────────────────────────────
-/**
- * structure.api.ts
- *
- * Project hierarchy, folder tree nodes, root document management sub-API.
- */
-
-
-export const structure = {
-  getTree: async (projectId: string) => {
-    return await apiGet(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/tree`);
-  },
-
-  getAllNodes: async (projectId: string): Promise<StructureNodeDto[]> => {
-    if (!projectId) return [];
-    try {
-      return await apiGet<StructureNodeDto[]>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes`, { silent: true });
-    } catch {
-      return [];
-    }
-  },
-
-  getNodeById: async (projectId: string, nodeId: string): Promise<StructureNodeDto | null> => {
-    if (!projectId || !nodeId) return null;
-    try {
-      return await apiGet<StructureNodeDto>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${nodeId}`, { silent: true });
-    } catch {
-      return null;
-    }
-  },
-
-  createNode: async (projectId: string, dto: Partial<StructureNodeDto> & { name: string; content?: string }) => {
-    return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes`, {
-      ...dto,
-      type: typeof dto?.type === 'string' ? dto.type.toUpperCase() : (dto?.type || 'DOC'),
-    });
-  },
-
-  moveNode: async (projectId: string, nodeId: string, dto: { parentId?: string | null; destParentId?: string | null; destPath?: string; sortOrder?: number; [key: string]: unknown }) => {
-    const payload = {
-      ...dto,
-      ...(dto.destParentId === undefined && dto.parentId !== undefined
-        ? { destParentId: dto.parentId }
-        : {}),
-    };
-    return await apiPatch(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${nodeId}/move`, payload);
-  },
-
-  renameNode: async (projectId: string, nodeId: string, dto: { name: string; [key: string]: unknown }) => {
-    return await apiPatch(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${nodeId}/rename`, dto);
-  },
-
-  deleteNode: async (projectId: string, nodeId: string) => {
-    return await apiDelete(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${nodeId}`);
-  },
-
-  getRootDoc: async (projectId: string): Promise<StructureNodeDto | null> => {
-    if (!projectId) return null;
-    try {
-      return await apiGet<StructureNodeDto>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/root-doc`, { silent: true });
-    } catch {
-      return null;
-    }
-  },
-
-  setRootDoc: async (projectId: string, nodeId: string): Promise<StructureNodeDto> => {
-    return await apiPost<StructureNodeDto>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/root-doc/${nodeId}`,
-      {},
-    );
-  },
-
-  reorderNode: async (projectId: string, nodeId: string, sortOrder: number): Promise<void> => {
-    await apiPost(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${nodeId}/reorder`,
-      { sortOrder },
-    );
-  },
-};
-
-
 // ── Sub-domain: updater.api.ts ──────────────────────────────────────
 /**
  * updater.api.ts
  *
  * Document updater service for batch updates, buffer flushing, and state eviction.
  */
-
 
 export const updater = {
   queueUpdate: async (
@@ -445,52 +338,6 @@ export const updater = {
   },
 };
 
-
-// ── Sub-domain: filestore.api.ts ──────────────────────────────────────
-/**
- * filestore.api.ts
- *
- * Filestore binary assets sub-API: Stream URLs, multipart uploads, signed URLs, deletion.
- */
-
-
-export const filestore = {
-  getStreamUrl: (projectId: string, fileId: string): string => {
-    return `${MANUSCRIPTS_API_BASE}/projects/${projectId}/files/${fileId}`;
-  },
-
-  upload: async (projectId: string, file: File | Blob, filename?: string): Promise<FileMetadataDto> => {
-    const name = filename || (file instanceof File ? file.name : 'unnamed.bin');
-    const formData = new FormData();
-    formData.append('file', file, name);
-    const token = getAuthToken();
-    const res = await fetch(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/files?name=${encodeURIComponent(name)}`, {
-      method: 'POST',
-      headers: {
-        Authorization: token ? `Bearer ${token}` : '',
-      },
-      body: formData,
-    });
-    if (!res.ok) throw new Error(`File upload failed: ${res.statusText}`);
-    return (await res.json()) as FileMetadataDto;
-  },
-
-  getSignedUrl: async (projectId: string, fileId: string, expiresIn = 3600): Promise<{ signedUrl: string | null }> => {
-    try {
-      return await apiGet<{ signedUrl: string | null }>(
-        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/files/${fileId}/signed-url?expiresIn=${expiresIn}`,
-      );
-    } catch {
-      return { signedUrl: null };
-    }
-  },
-
-  delete: async (projectId: string, fileId: string): Promise<void> => {
-    return await apiDelete(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/files/${fileId}`);
-  },
-};
-
-
 // ── Sub-domain: compiler.api.ts ──────────────────────────────────────
 /**
  * compiler.api.ts
@@ -512,11 +359,6 @@ export const compiler = {
     }
 
     try {
-      const targetProjectId = body.project_id || body.projectId;
-      if (targetProjectId) {
-        // Non-blocking background flush: in-memory snapshot is already in body.files/source
-        void updater.flushProject(targetProjectId).catch(() => {});
-      }
       return await apiPost<CompileLatexResponse>(`${MANUSCRIPTS_API_BASE}/compile`, body, {
         signal: effectiveSignal,
         timeout: 120000,
@@ -598,12 +440,12 @@ export const compiler = {
   listAuxFiles: async (projectId: string): Promise<AuxFileItem[]> => {
     if (!projectId) return [];
     try {
-      const token = getAuthToken();
-      const res = await fetch(`${getManuscriptsBaseUrl()}/projects/${projectId}/artifacts`, {
-        headers: {
-          Authorization: token ? `Bearer ${token}` : '',
-        },
-      });
+      const res = await rawFetch(
+        `${getManuscriptsBaseUrl()}/projects/${projectId}/artifacts`,
+        'GET',
+        undefined,
+        { silent: true },
+      );
       if (!res.ok) return [];
       const data = (await res.json()) as { files?: AuxFileItem[] };
       return data.files || [];
@@ -664,7 +506,6 @@ export const compiler = {
   },
 };
 
-
 // ── Sub-domain: synctex.api.ts ──────────────────────────────────────
 /**
  * synctex.api.ts
@@ -720,14 +561,12 @@ export const synctex = {
 
 export const synctexService = synctex;
 
-
 // ── Sub-domain: diagnostics.api.ts ──────────────────────────────────────
 /**
  * diagnostics.api.ts
  *
  * Diagnostics, linter, autofix, and explanation sub-API.
  */
-
 
 export const diagnostics = {
   parseLog: async (logText: string, engine = 'pdflatex'): Promise<DiagnosticReportDto> => {
@@ -777,7 +616,6 @@ export const diagnostics = {
   },
 };
 
-
 import {
   comments,
   suggestions,
@@ -792,6 +630,34 @@ import {
   AcademicAiService,
   suggestLatexFix,
 } from './ai-api.client';
+import {
+  structure,
+  filestore,
+  storage,
+  citations,
+  templates,
+  spelling,
+  spellingService,
+  gitApi,
+  linkedFiles,
+  type CustomDictionaryResponse,
+  type SpellingSuggestionResponse,
+  type MisspelledWord,
+  type SpellingReport,
+  type CheckSpellingPayload,
+  type GitTokenInfo,
+  type GitRepoInfo,
+} from './manuscript-storage-tree.client';
+
+export type {
+  CustomDictionaryResponse,
+  SpellingSuggestionResponse,
+  MisspelledWord,
+  SpellingReport,
+  CheckSpellingPayload,
+  GitTokenInfo,
+  GitRepoInfo,
+};
 
 export {
   comments,
@@ -804,514 +670,16 @@ export {
   ai,
   AcademicAiService,
   suggestLatexFix,
+  structure,
+  filestore,
+  storage,
+  citations,
+  templates,
+  spelling,
+  spellingService,
+  gitApi,
+  linkedFiles,
 };
-
-
-// ── Sub-domain: storage.api.ts ──────────────────────────────────────
-/**
- * storage.api.ts
- *
- * Manuscripts Storage & File Hierarchy Sub-API (Part of manuscriptService SDK).
- * Mirrors Backend modules/storage & project structure:
- *  - S3 / R2 Asset uploads (/api/v1/storage/files/upload, presigned direct R2)
- *  - Storage file & folder hierarchy (/projects/:projectId/structure/nodes)
- *  - Item management (rename, move, delete, root doc)
- */
-
-
-
-export type { EditorStorageItem };
-
-export const storage = {
-  getProjectFiles: async (projectId: string, parentId?: string | null): Promise<EditorStorageItem[]> => {
-    if (!projectId) return [];
-    try {
-      const endpoint = parentId
-        ? `${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes?parentId=${parentId}`
-        : `${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes`;
-      const nodes = await apiGet<StructureNodeDto[]>(endpoint, { silent: true });
-      if (Array.isArray(nodes)) {
-        return nodes.map((n) => ({
-          id: n.id,
-          filename: n.name,
-          isFolder: n.type?.toUpperCase() === 'FOLDER',
-          parentId: n.parentId,
-          size: n.sizeBytes,
-          createdAt: n.createdAt,
-          updatedAt: n.updatedAt,
-        }));
-      }
-    } catch {
-      return [];
-    }
-    return [];
-  },
-
-  getPageFiles: async (pageId: string, parentId?: string | null): Promise<EditorStorageItem[]> => {
-    return storage.getProjectFiles(pageId, parentId);
-  },
-
-  uploadPageFile: async (
-    pageId: string,
-    file: File,
-    parentId?: string | null,
-    onProgress?: (progress: number) => void,
-    projectId?: string,
-  ): Promise<EditorStorageItem> => {
-    const targetProjectId = projectId || pageId;
-    const completed = await uploadBlobWithPresigned(file, file.name, {
-      projectId: targetProjectId,
-      parentId: parentId || null,
-      onProgress,
-    });
-
-    const id = completed.fileId || '';
-    return {
-      id,
-      filename: file.name,
-      size: file.size,
-      mimeType: file.type,
-      isFolder: false,
-      parentId: parentId || null,
-      url: completed.url || `/api/v1/storage/files/${id}/content`,
-    };
-  },
-
-  createFileRecord: async (
-    pageId: string,
-    params: {
-      filename: string;
-      size: number;
-      mimeType: string;
-      url: string;
-      parentId?: string | null;
-      fileBase64?: string;
-    },
-    projectId?: string,
-  ) => {
-    const targetProjectId = projectId || pageId;
-    return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${targetProjectId}/structure/nodes`, {
-      name: params.filename,
-      type: 'FILE',
-      parentId: params.parentId ?? null,
-      url: params.url,
-      sizeBytes: params.size,
-      mimeType: params.mimeType,
-    });
-  },
-
-  createFile: async (
-    projectId: string,
-    name: string,
-    parentId?: string | null,
-    content?: string,
-  ) => {
-    return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes`, {
-      name,
-      type: 'DOC',
-      parentId: parentId ?? null,
-      ...(content !== undefined ? { content } : {}),
-    });
-  },
-
-  createFolder: async (projectId: string, name: string, parentId?: string | null) => {
-    return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes`, {
-      name,
-      type: 'FOLDER',
-      parentId: parentId ?? null,
-    });
-  },
-
-  createPageFolder: async (pageId: string, name: string, parentId?: string | null) => {
-    return storage.createFolder(pageId, name, parentId);
-  },
-
-  createProjectFolder: async (projectId: string, name: string, parentId?: string | null) => {
-    return storage.createFolder(projectId, name, parentId);
-  },
-
-  renameItem: async (itemId: string, name: string, projectId?: string) => {
-    return await apiPatch(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${itemId}/rename`, { name });
-  },
-
-  deleteItem: async (itemId: string, projectId?: string) => {
-    return await apiDelete(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${itemId}`);
-  },
-
-  permanentlyDeleteItem: async (itemId: string, projectId?: string) => {
-    return storage.deleteItem(itemId, projectId);
-  },
-
-  moveItem: async (itemId: string, targetFolderId: string | null, projectId?: string) => {
-    return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${itemId}/move`, {
-      destParentId: targetFolderId,
-    });
-  },
-
-  reorderItem: async (itemId: string, sortOrder: number, projectId?: string) => {
-    if (!projectId) return null;
-    return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${itemId}/reorder`, {
-      sortOrder,
-    });
-  },
-
-  setRootDoc: async (nodeId: string, projectId: string) => {
-    return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/root-doc/${nodeId}`, {});
-  },
-
-  getRootDoc: async (projectId: string): Promise<StructureNodeDto | null> => {
-    if (!projectId) return null;
-    try {
-      return await apiGet<StructureNodeDto>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/root-doc`, { silent: true });
-    } catch {
-      return null;
-    }
-  },
-};
-
-
-
-
-
-
-// ── Sub-domain: citations.api.ts ──────────────────────────────────────
-/**
- * citations.api.ts
- *
- * Citations and bibliography sub-API: Search, resolve, validation, library sync, raw parsing.
- */
-
-
-export const citations = {
-  search: async (projectId: string, query = '', limit = 20): Promise<BibEntryDto[]> => {
-    return await apiGet<BibEntryDto[]>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/citations/search?query=${encodeURIComponent(query)}&limit=${limit}`,
-    );
-  },
-
-  resolve: async (projectId: string, identifier: string): Promise<{ success: boolean; entry: BibEntryDto }> => {
-    return await apiPost<{ success: boolean; entry: BibEntryDto }>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/citations/resolve`,
-      { identifier },
-    );
-  },
-
-  validate: async (projectId: string): Promise<CitationValidationDto> => {
-    return await apiGet<CitationValidationDto>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/citations/validate`);
-  },
-
-  syncLibrary: async (
-    projectId: string,
-    dto: { provider?: string; collectionId: string; collectionName?: string; targetBibFile?: string; targetFilename?: string },
-  ) => {
-    const payload = {
-      ...dto,
-      ...(dto.targetBibFile && !dto.targetFilename ? { targetFilename: dto.targetBibFile } : {}),
-    };
-    return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/citations/sync-library`, payload);
-  },
-
-  listLibraryCollections: async (): Promise<Array<Record<string, unknown>>> => {
-    try {
-      return await apiGet<Array<Record<string, unknown>>>(`${MANUSCRIPTS_API_BASE}/citations/library-collections`);
-    } catch {
-      return [];
-    }
-  },
-
-  parseRaw: async (rawBibtex: string): Promise<BibEntryDto[]> => {
-    try {
-      return await apiPost<BibEntryDto[]>(`${MANUSCRIPTS_API_BASE}/citations/parse-raw`, { rawBibtex });
-    } catch {
-      return [];
-    }
-  },
-};
-
-
-// ── Sub-domain: templates.api.ts ──────────────────────────────────────
-/**
- * templates.api.ts
- *
- * Templates & gallery sub-API: List, search, retrieve, instantiate, custom templates, scaffolding.
- */
-
-
-export const templates = {
-  list: async (query?: { category?: string; search?: string; limit?: number; skip?: number; offset?: number }): Promise<ProjectTemplateItem[]> => {
-    const params: Record<string, string> = {};
-    if (query?.category) params.category = query.category;
-    if (query?.search) params.search = query.search;
-    if (query?.limit) params.limit = String(query.limit);
-    if (query?.skip !== undefined) {
-      params.skip = String(query.skip);
-      params.offset = String(query.skip);
-    } else if (query?.offset !== undefined) {
-      params.offset = String(query.offset);
-    }
-    const res = await apiGet<ProjectTemplateItem[] | { templates?: ProjectTemplateItem[] }>(`${MANUSCRIPTS_API_BASE}/projects/templates`, { params });
-    return Array.isArray(res) ? res : res?.templates || [];
-  },
-
-  search: async (query: { q?: string; category?: string; tags?: string[] }): Promise<ProjectTemplateItem[]> => {
-    const params: Record<string, string> = {};
-    if (query.q) params.q = query.q;
-    if (query.category) params.category = query.category;
-    const res = await apiGet<ProjectTemplateItem[] | { templates?: ProjectTemplateItem[] }>(`${MANUSCRIPTS_API_BASE}/templates/search`, { params });
-    return Array.isArray(res) ? res : res?.templates || [];
-  },
-
-  getById: async (id: string): Promise<ProjectTemplateItem | null> => {
-    return await apiGet<ProjectTemplateItem>(`${MANUSCRIPTS_API_BASE}/templates/${id}`);
-  },
-
-  instantiate: async (templateId: string, projectName: string): Promise<{ projectId: string; [key: string]: unknown }> => {
-    return await apiPost<{ projectId: string; [key: string]: unknown }>(`${MANUSCRIPTS_API_BASE}/templates/instantiate`, { templateId, projectName });
-  },
-
-  createCustom: async (dto: Record<string, unknown>): Promise<ProjectTemplateItem> => {
-    return await apiPost<ProjectTemplateItem>(`${MANUSCRIPTS_API_BASE}/templates/custom`, dto);
-  },
-
-  scaffold: async (projectId: string, templateId: string): Promise<Record<string, unknown>> => {
-    return await apiPost<Record<string, unknown>>(`${MANUSCRIPTS_API_BASE}/templates/scaffold`, { projectId, templateId });
-  },
-};
-
-
-// ── Sub-domain: spelling.api.ts ──────────────────────────────────────
-/**
- * spelling.api.ts
- *
- * Manuscripts Spelling & Custom Dictionaries Sub-API (Part of manuscriptService SDK).
- * - Check document spelling
- * - Get candidate suggestions
- * - Manage learned words (List, Add, Remove) for Project & User dictionaries
- */
-
-
-export interface CustomDictionaryResponse {
-  words: string[];
-}
-
-export interface SpellingSuggestionResponse {
-  word: string;
-  suggestions: string[];
-}
-
-export interface MisspelledWord {
-  word: string;
-  line: number;
-  col: number;
-  length: number;
-  suggestions: string[];
-}
-
-export interface SpellingReport {
-  language: string;
-  totalWordsChecked: number;
-  misspelledCount: number;
-  errors: MisspelledWord[];
-}
-
-export interface CheckSpellingPayload {
-  text?: string;
-  docId?: string;
-  language?: string;
-}
-
-export const spelling = {
-  /**
-   * Check LaTeX document spelling and return errors with suggestions.
-   */
-  checkSpelling: async (
-    projectId: string,
-    payload: CheckSpellingPayload,
-  ): Promise<SpellingReport> => {
-    try {
-      const res = await apiPost<SpellingReport>(
-        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/spelling/check`,
-        payload,
-      );
-      return res;
-    } catch {
-      return {
-        language: payload.language || 'en-US',
-        totalWordsChecked: 0,
-        misspelledCount: 0,
-        errors: [],
-      };
-    }
-  },
-
-  /**
-   * List custom words learned for a specific project.
-   */
-  getProjectDictionary: async (projectId: string): Promise<string[]> => {
-    try {
-      const res = await apiGet<CustomDictionaryResponse>(
-        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/spelling/dictionary`,
-      );
-      return res?.words || [];
-    } catch {
-      return [];
-    }
-  },
-
-  /**
-   * Add a word to the project's custom dictionary.
-   */
-  learnProjectWord: async (projectId: string, word: string): Promise<boolean> => {
-    const res = await apiPost<{ success: boolean; word: string }>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/spelling/dictionary/learn`,
-      { word },
-    );
-    return res?.success ?? true;
-  },
-
-  /**
-   * Remove a word from the project's custom dictionary.
-   */
-  unlearnProjectWord: async (projectId: string, word: string): Promise<boolean> => {
-    const res = await apiDelete<{ success: boolean; removed: boolean; word: string }>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/spelling/dictionary/${encodeURIComponent(word)}`,
-    );
-    return res?.success ?? true;
-  },
-
-  /**
-   * List personal custom words learned across all projects for the current user.
-   */
-  getUserDictionary: async (): Promise<string[]> => {
-    try {
-      const res = await apiGet<CustomDictionaryResponse>(
-        `${MANUSCRIPTS_API_BASE}/spelling/user-dictionary`,
-      );
-      return res?.words || [];
-    } catch {
-      return [];
-    }
-  },
-
-  /**
-   * Add a word to the user's personal dictionary.
-   */
-  learnUserWord: async (word: string): Promise<boolean> => {
-    const res = await apiPost<{ success: boolean; word: string }>(
-      `${MANUSCRIPTS_API_BASE}/spelling/user-dictionary/learn`,
-      { word },
-    );
-    return res?.success ?? true;
-  },
-
-  /**
-   * Remove a word from the user's personal dictionary.
-   */
-  unlearnUserWord: async (word: string): Promise<boolean> => {
-    const res = await apiDelete<{ success: boolean; removed: boolean; word: string }>(
-      `${MANUSCRIPTS_API_BASE}/spelling/user-dictionary/${encodeURIComponent(word)}`,
-    );
-    return res?.success ?? true;
-  },
-
-  /**
-   * Get suggestions for a misspelled word.
-   */
-  getSuggestions: async (word: string, language: string = 'en_US'): Promise<string[]> => {
-    try {
-      const res = await apiGet<SpellingSuggestionResponse>(
-        `${MANUSCRIPTS_API_BASE}/spelling/suggestions?word=${encodeURIComponent(word)}&language=${encodeURIComponent(language)}`,
-      );
-      return res?.suggestions || [];
-    } catch {
-      return [];
-    }
-  },
-};
-
-export const spellingService = spelling;
-
-
-
-
-// ── Sub-domain: git.api.ts ──────────────────────────────────────
-/**
- * git.api.ts
- *
- * Git Smart-HTTP & Git Access Token sub-API for Manuscripts.
- */
-
-
-export interface GitTokenInfo {
-  id: string;
-  label: string;
-  prefix: string;
-  createdAt: string;
-  lastUsedAt: string | null;
-}
-
-export interface GitRepoInfo {
-  enabled: boolean;
-  cloneUrl: string;
-  branch: string;
-  canPush: boolean;
-  tokens: GitTokenInfo[];
-}
-
-export const gitApi = {
-  getRepoInfo: async (projectId: string): Promise<GitRepoInfo> => {
-    return apiGet<GitRepoInfo>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/git`);
-  },
-
-  listTokens: async (): Promise<{ tokens: GitTokenInfo[] }> => {
-    return apiGet<{ tokens: GitTokenInfo[] }>(`${MANUSCRIPTS_API_BASE}/git/tokens`);
-  },
-
-  createToken: async (label?: string): Promise<{ token: string }> => {
-    return apiPost<{ token: string }>(`${MANUSCRIPTS_API_BASE}/git/tokens`, { label });
-  },
-
-  revokeToken: async (tokenId: string): Promise<{ success: boolean }> => {
-    return apiDelete<{ success: boolean }>(`${MANUSCRIPTS_API_BASE}/git/tokens/${tokenId}`);
-  },
-};
-
-
-// ── Sub-domain: linked-files.api.ts ──────────────────────────────────────
-/**
- * linked-files.api.ts
- *
- * Linked external files sub-API: URL imports, Zotero, Mendeley, Dropbox, GitHub syncing.
- */
-
-
-export const linkedFiles = {
-  list: async (projectId: string): Promise<LinkedFileDto[]> => {
-    return await apiGet<LinkedFileDto[]>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/linked-files`);
-  },
-
-  create: async (projectId: string, payload: CreateLinkedFilePayload): Promise<LinkedFileDto> => {
-    const body = {
-      ...payload,
-      provider: payload.provider || (payload.providerType ? payload.providerType.toLowerCase() : 'url'),
-    };
-    return await apiPost<LinkedFileDto>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/linked-files`, body);
-  },
-
-  refresh: async (projectId: string, fileId: string): Promise<LinkedFileDto> => {
-    return await apiPost<LinkedFileDto>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/linked-files/${fileId}/refresh`, {});
-  },
-
-  delete: async (projectId: string, fileId: string, deleteNode = false): Promise<void> => {
-    return await apiDelete(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/linked-files/${fileId}?deleteNode=${deleteNode}`);
-  },
-
-  refreshAll: async (projectId?: string): Promise<{ refreshedCount: number }> => {
-    return await apiPost<{ refreshedCount: number }>(`${MANUSCRIPTS_API_BASE}/linked-files/refresh-all`, { projectId });
-  },
-};
-
-
 
 // ── Unified Manuscript Service Facade ─────────────────────────────────────────
 
@@ -1342,4 +710,3 @@ export const manuscriptService = {
 };
 
 export default manuscriptService;
-

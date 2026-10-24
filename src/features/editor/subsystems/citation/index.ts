@@ -16,7 +16,7 @@ export {
   parseBibContent,
   parseMultipleBibContents,
   type BibEntry,
-} from './model/bib-parser';
+} from '@/features/editor/domain/latex/bib-parser';
 export {
   isLatexDocument,
   detectDocumentCitationStyle,

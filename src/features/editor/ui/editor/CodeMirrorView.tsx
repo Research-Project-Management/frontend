@@ -31,6 +31,7 @@ import {
   YjsCodeMirrorAdapter,
   type YjsCollabOptions,
 } from '@/features/editor/core/engine/collaboration/yjs-codemirror-adapter';
+import { clearDiffEffect } from '@/features/editor/core/engine/extensions/inline-diff';
 import {
   createTrackChangesExtension,
   setTrackChangesViewModeEffect,
@@ -55,6 +56,7 @@ import {
   editorCommandBus,
   useSettingsStore,
   useConnectivityStore,
+  usePageStore,
 } from '@/features/editor/core';
 import { cn } from '@/shared/lib/utils';
 
@@ -71,6 +73,7 @@ export interface CodeMirrorViewProps {
   className?: string;
   projectId?: string;
   isActive?: boolean;
+  isSecondary?: boolean;
   onCursorChange?: (line: number, column: number) => void;
 }
 
@@ -140,6 +143,7 @@ export function buildEditorState(options: BuildEditorStateOptions): EditorState 
   });
 
   const trackChangesExtension = createTrackChangesExtension({
+    pageId: options.fileId,
     initialViewMode:
       options.trackChangesViewMode === 'clean' ||
       options.trackChangesViewMode === 'original' ||
@@ -232,6 +236,7 @@ export function CodeMirrorView({
   className,
   projectId,
   isActive = true,
+  isSecondary = false,
   onCursorChange,
 }: CodeMirrorViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -242,7 +247,10 @@ export function CodeMirrorView({
 
   // Track currently loaded file within the mounted view instance
   const currentFileIdRef = useRef<string>(fileId);
+  const activeFileIdRef = currentFileIdRef;
   const currentFilePathRef = useRef<string>(filePath);
+  const isSecondaryRef = useRef<boolean>(isSecondary);
+  isSecondaryRef.current = isSecondary;
 
   // Narrow selectors to prevent useless re-renders when other settings mutate
   const keybinding = useSettingsStore((s) => s.keybinding);
@@ -504,6 +512,7 @@ export function CodeMirrorView({
       navigationCoordinator.registerEditorView(fileId, filePath);
     }
 
+    let diagSyncTimerId: ReturnType<typeof setTimeout> | null = null;
     const unsubDiagnostics = diagnosticsCoordinator.subscribe(() => {
       const runSync = () => {
         if (viewRef.current) {
@@ -512,7 +521,9 @@ export function CodeMirrorView({
             syncErrorLens(viewRef.current, currentFilePathRef.current);
           } catch {
             // Defer if called mid-transaction
-            setTimeout(() => {
+            if (diagSyncTimerId !== null) clearTimeout(diagSyncTimerId);
+            diagSyncTimerId = setTimeout(() => {
+              diagSyncTimerId = null;
               if (viewRef.current) {
                 forceLinting(viewRef.current);
                 syncErrorLens(viewRef.current, currentFilePathRef.current);
@@ -584,7 +595,12 @@ export function CodeMirrorView({
 
     const unsubSetContent = editorCommandBus.subscribe('editor:set-content', (cmd) => {
       const anyCmd = cmd as { type: string; content: string; fileId?: string };
-      if ((!anyCmd.fileId || anyCmd.fileId === currentFileIdRef.current) && viewRef.current) {
+      const activeDocId = usePageStore.getState().getActiveDocumentId();
+      const shouldApply = anyCmd.fileId
+        ? anyCmd.fileId === activeFileIdRef.current
+        : !isSecondaryRef.current || activeDocId === activeFileIdRef.current;
+
+      if (shouldApply && viewRef.current) {
         const liveYText = yTextRef.current;
         if (liveYText) {
           const currentYDocText = liveYText.toString();
@@ -631,6 +647,7 @@ export function CodeMirrorView({
 
     return () => {
       if (scrollRafId !== null) cancelAnimationFrame(scrollRafId);
+      if (diagSyncTimerId !== null) clearTimeout(diagSyncTimerId);
       view.scrollDOM.removeEventListener('scroll', handleScroll);
       view.dom.removeEventListener('focus', handleFocus, true);
       view.dom.removeEventListener('mousedown', handleFocus, true);
@@ -642,7 +659,7 @@ export function CodeMirrorView({
       if (viewRef.current) {
         flushViewState(viewRef.current, currentFileIdRef.current);
       }
-      reviewCoordinator.bindEditorView(null, currentFileIdRef.current);
+      reviewCoordinator.unbindEditorView(view, currentFileIdRef.current);
       if (getActiveEditorEngine() === engineAdapter) {
         setActiveEditorEngine(null);
       }
@@ -674,7 +691,7 @@ export function CodeMirrorView({
     // 1. Flush previous document content & viewState to LRU Cache
     if (!isSameDoc) {
       flushViewState(view, prevFileId);
-      reviewCoordinator.bindEditorView(null, prevFileId);
+      reviewCoordinator.unbindEditorView(view, prevFileId);
     } else {
       const mainSel = view.state.selection.main;
       const scrollDOM = view.scrollDOM;
@@ -690,6 +707,9 @@ export function CodeMirrorView({
 
     // 3. 0ms Zero-Remount State Swap (Preserves DOM container & event listeners)
     view.setState(nextState);
+    if (!isSameDoc) {
+      view.dispatch({ effects: clearDiffEffect.of() });
+    }
     boundYTextRef.current = yText ?? null;
     prevConfigRef.current = {
       runtime: currentRuntimeConfig,

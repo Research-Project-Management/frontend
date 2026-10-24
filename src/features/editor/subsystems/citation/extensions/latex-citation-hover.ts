@@ -15,7 +15,7 @@
 
 import { hoverTooltip, type Tooltip, type EditorView } from '@codemirror/view';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
-import type { BibEntry } from '../model/bib-parser';
+import type { BibEntry } from '@/features/editor/domain/latex/bib-parser';
 import {
   LATEX_CITE_REGEX,
   PANDOC_BRACKET_REGEX,

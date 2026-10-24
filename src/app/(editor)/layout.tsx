@@ -6,6 +6,8 @@ import { useAuth } from '@/features/auth/hooks/use-auth';
 import { ErrorBoundary } from '@/shared/components/ui/error-boundary';
 import EditorSkeleton from '@/features/editor/core/shell/EditorSkeleton';
 
+let hasHydratedEditor = false;
+
 export default function EditorLayout({
   children,
 }: {
@@ -13,9 +15,10 @@ export default function EditorLayout({
 }) {
   const router = useRouter();
   const { user, isLoading } = useAuth();
-  const [mounted, setMounted] = React.useState(false);
+  const [mounted, setMounted] = React.useState(() => hasHydratedEditor);
 
   useEffect(() => {
+    hasHydratedEditor = true;
     setMounted(true);
   }, []);
 

@@ -32,20 +32,105 @@ import {
 } from '@/features/editor/subsystems/review/extensions/track-changes.extension';
 import type { PageSuggestion } from '@/features/editor/domain/types/suggestion.types';
 import type { PageComment } from '@/features/editor/domain/types/comment.types';
+import type {
+  ReviewServicePort,
+  ReviewNotificationPort,
+  ReviewStorePort,
+  ReviewCoordinatorPorts,
+} from '@/features/editor/subsystems/review/model/review-service-port';
+
+const defaultServicePort: ReviewServicePort = suggestionService;
+
+const defaultNotificationPort: ReviewNotificationPort = {
+  notifySuccess: (message: string, id?: string) => {
+    toast.success(message, id ? { id } : undefined);
+  },
+  notifyError: (message: string, id?: string) => {
+    toast.error(message, id ? { id } : undefined);
+  },
+};
+
+const defaultStorePort: ReviewStorePort = {
+  setPendingComment: (payload) => {
+    useDocumentCollaborationStore.getState().setPendingComment(payload);
+  },
+  openReviewSidebar: () => {
+    useWorkspaceStore.getState().setActiveSidebarTab('review');
+    useWorkspaceStore.getState().setSidebarLeftOpen(true);
+    editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'Review' });
+  },
+};
 
 export class ReviewCoordinatorRegistry {
-  private activeView: EditorView | null = null;
+  private servicePort: ReviewServicePort = defaultServicePort;
+  private notificationPort: ReviewNotificationPort = defaultNotificationPort;
+  private storePort: ReviewStorePort = defaultStorePort;
+  private viewsByFileId = new Map<string, Set<EditorView>>();
+  private lastBoundView: EditorView | null = null;
   private activePageId: string | null = null;
+
+  public get activeView(): EditorView | null {
+    if (this.activePageId) {
+      const views = this.viewsByFileId.get(this.activePageId);
+      if (views && views.size > 0) {
+        if (this.lastBoundView && views.has(this.lastBoundView)) {
+          return this.lastBoundView;
+        }
+        let latest: EditorView | null = null;
+        for (const v of views) latest = v;
+        return latest;
+      }
+    }
+    return this.lastBoundView;
+  }
+
+  public set activeView(view: EditorView | null) {
+    this.lastBoundView = view;
+  }
+
+  private getViewsForFile(fileId?: string | null, fallbackView?: EditorView | null): EditorView[] {
+    const result = new Set<EditorView>();
+    if (fallbackView) result.add(fallbackView);
+    const targetId = fileId || this.activePageId;
+    if (targetId) {
+      const views = this.viewsByFileId.get(targetId);
+      if (views) {
+        for (const v of views) result.add(v);
+      }
+    }
+    if (result.size === 0 && this.activeView) {
+      result.add(this.activeView);
+    }
+    return Array.from(result);
+  }
   private currentSuggestions = new Map<string, PageSuggestion>();
   private currentComments = new Map<string, PageComment>();
   private localToPersistedId = new Map<string, string>();
   private pendingPersistTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private rollbackSnapshots = new Map<string, { view: EditorView; range: { from: number; to: number }; postMutationTo: number; originalText: string; sug: PageSuggestion }>();
+  private readonly inFlightSuggestionCreates = new Set<string>();
+  private pendingConcurrentSuggestionUpdates = new Map<string, { pageId: string; sug: PageSuggestion }>();
   private currentViewMode: TrackChangesViewMode = 'changes';
   private currentReviewMode = false;
   private initialized = false;
 
-  constructor() {
+  constructor(ports?: ReviewCoordinatorPorts) {
+    if (ports) {
+      this.setPorts(ports);
+    }
     this.initSubscriptions();
+  }
+
+  public setPorts(ports: ReviewCoordinatorPorts): void {
+    if (ports.service) this.servicePort = ports.service;
+    if (ports.notification) this.notificationPort = ports.notification;
+    if (ports.store) this.storePort = ports.store;
+  }
+
+  public resetPorts(): void {
+    this.servicePort = defaultServicePort;
+    this.notificationPort = defaultNotificationPort;
+    this.storePort = defaultStorePort;
   }
 
   private initSubscriptions(): void {
@@ -87,6 +172,13 @@ export class ReviewCoordinatorRegistry {
 
     // 6. Sync locally recorded suggestions from Suggesting Mode keystrokes and persist to backend
     editorCommandBus.subscribe('editor:review-event', (cmd) => {
+      if (cmd.event === 'suggestion:rollback') {
+        const payload = cmd.payload as { suggestionId?: string } | undefined;
+        if (payload?.suggestionId) {
+          this.rollbackSuggestionLocally(payload.suggestionId);
+        }
+        return;
+      }
       if (cmd.event === 'suggestion:local-recorded') {
         const sug = (cmd.payload as { suggestion?: PageSuggestion })?.suggestion;
         if (sug) {
@@ -110,24 +202,42 @@ export class ReviewCoordinatorRegistry {
       clearTimeout(existingTimer);
     }
 
+    if (this.inFlightSuggestionCreates.has(sug.id) || this.localToPersistedId.has(sug.id)) {
+      if (this.inFlightSuggestionCreates.has(sug.id)) {
+        this.pendingConcurrentSuggestionUpdates.set(sug.id, { pageId, sug });
+      }
+      return;
+    }
+
     const timer = setTimeout(() => {
       this.pendingPersistTimers.delete(sug.id);
+      if (this.inFlightSuggestionCreates.has(sug.id) || this.localToPersistedId.has(sug.id)) {
+        return;
+      }
       const latest = this.currentSuggestions.get(sug.id) ?? sug;
       if (latest.status && latest.status !== 'pending') return;
 
-      void suggestionService
-        .createSuggestion({
-          pageId,
-          type: latest.type,
-          originalText: latest.originalText || '',
-          suggestedText: latest.suggestedText || '',
-          fromLine: latest.fromLine || 1,
-          fromColumn: latest.fromColumn || 1,
-          toLine: latest.toLine || latest.fromLine || 1,
-          toColumn: latest.toColumn || 1,
-          silent: true,
-        })
-        .then((created) => {
+      this.inFlightSuggestionCreates.add(sug.id);
+
+      const createPayload = {
+        pageId,
+        type: latest.type,
+        originalText: latest.originalText || '',
+        suggestedText: latest.suggestedText || '',
+        fromLine: latest.fromLine || 1,
+        fromColumn: latest.fromColumn || 1,
+        toLine: latest.toLine || latest.fromLine || 1,
+        toColumn: latest.toColumn || 1,
+        idempotencyKey: sug.id,
+        silent: true,
+      };
+
+      const createPromise = this.servicePort.createSuggestion
+        ? this.servicePort.createSuggestion(createPayload)
+        : suggestionService.createSuggestion(createPayload);
+      void createPromise.then((created) => {
+          this.inFlightSuggestionCreates.delete(sug.id);
+          this.pendingConcurrentSuggestionUpdates.delete(sug.id);
           if (!created?.id) return;
           this.localToPersistedId.set(sug.id, created.id);
           const currentLocal = this.currentSuggestions.get(sug.id);
@@ -144,18 +254,21 @@ export class ReviewCoordinatorRegistry {
 
             // If user already accepted/rejected locally while create was in flight, sync resolution
             if (currentLocal.status === 'accepted') {
-              void suggestionService.acceptSuggestion(pageId, created.id).catch(() => {});
+              void this.servicePort.acceptSuggestion(pageId, created.id).catch(() => {});
             } else if (currentLocal.status === 'rejected') {
-              void suggestionService.rejectSuggestion(pageId, created.id).catch(() => {});
+              void this.servicePort.rejectSuggestion(pageId, created.id).catch(() => {});
             }
           }
 
-          if (this.activeView && this.activePageId === pageId) {
+          const targetViews = this.getViewsForFile(pageId);
+          for (const v of targetViews) {
             try {
-              this.activeView.dispatch({
+              v.dispatch({
                 effects: [
                   setTrackChangesSuggestionsEffect.of(
-                    Array.from(this.currentSuggestions.values())
+                    Array.from(this.currentSuggestions.values()).filter(
+                      (s) => !s.pageId || s.pageId === pageId
+                    )
                   ),
                 ],
               });
@@ -172,6 +285,8 @@ export class ReviewCoordinatorRegistry {
           });
         })
         .catch((err) => {
+          this.inFlightSuggestionCreates.delete(sug.id);
+          this.pendingConcurrentSuggestionUpdates.delete(sug.id);
           console.debug('[ReviewCoordinator] Failed to persist local suggestion:', err);
         });
     }, 350);
@@ -191,27 +306,37 @@ export class ReviewCoordinatorRegistry {
     const endLine = optLine ?? sel?.endLine ?? cursor?.line ?? 1;
     const selectedText = optSelectedText ?? engine?.getSelectedText?.() ?? '';
 
-    useDocumentCollaborationStore.getState().setPendingComment({
+    this.storePort.setPendingComment({
       startLine,
       endLine,
       selectedText,
     });
-    useWorkspaceStore.getState().setActiveSidebarTab('review');
-    useWorkspaceStore.getState().setSidebarLeftOpen(true);
-    editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'Review' });
+    this.storePort.openReviewSidebar();
   }
 
   /**
    * Registers current CodeMirror EditorView for live decoration updates.
    */
   public bindEditorView(view: EditorView | null, pageId: string): void {
+    if (!view) {
+      this.unbindEditorView(null, pageId);
+      return;
+    }
+
     const isPageSwitch = this.activePageId !== null && this.activePageId !== pageId;
-    this.activeView = view;
+    this.lastBoundView = view;
     this.activePageId = pageId;
+
+    let set = this.viewsByFileId.get(pageId);
+    if (!set) {
+      set = new Set<EditorView>();
+      this.viewsByFileId.set(pageId, set);
+    }
+    set.add(view);
 
     if (isPageSwitch) {
       for (const [id, s] of this.currentSuggestions.entries()) {
-        if (s.pageId && s.pageId !== pageId) {
+        if (s.pageId && s.pageId !== pageId && !this.viewsByFileId.has(s.pageId)) {
           this.currentSuggestions.delete(id);
         } else if (!s.pageId) {
           this.currentSuggestions.delete(id);
@@ -220,19 +345,53 @@ export class ReviewCoordinatorRegistry {
       this.currentComments.clear();
     }
 
-    if (view) {
-      this.syncEditorDecorations(
-        view,
-        Array.from(this.currentSuggestions.values()).filter(
-          (s) => !s.pageId || s.pageId === pageId
-        ),
-        Array.from(this.currentComments.values()).filter((c) => {
-          const commentPageId = c.page || c.projectPageId;
-          return !commentPageId || commentPageId === pageId;
-        }),
-        this.currentViewMode,
-        this.currentReviewMode
-      );
+    this.syncEditorDecorations(
+      view,
+      Array.from(this.currentSuggestions.values()).filter(
+        (s) => !s.pageId || s.pageId === pageId
+      ),
+      Array.from(this.currentComments.values()).filter((c) => {
+        const commentPageId = c.page || c.projectPageId;
+        return !commentPageId || commentPageId === pageId;
+      }),
+      this.currentViewMode,
+      this.currentReviewMode,
+      pageId
+    );
+  }
+
+  /**
+   * Unbinds a specific EditorView instance (or all views for a pageId when view is null)
+   * without wiping out other active split-pane EditorViews.
+   */
+  public unbindEditorView(view: EditorView | null, pageId: string): void {
+    const set = this.viewsByFileId.get(pageId);
+    if (set) {
+      if (view) {
+        set.delete(view);
+      } else {
+        set.clear();
+      }
+      if (set.size === 0) {
+        this.viewsByFileId.delete(pageId);
+      }
+    }
+
+    if (view && this.lastBoundView === view) {
+      this.lastBoundView = null;
+      for (const [, views] of this.viewsByFileId.entries()) {
+        for (const v of views) {
+          this.lastBoundView = v;
+        }
+      }
+    } else if (!view && this.activePageId === pageId && !this.viewsByFileId.has(pageId)) {
+      this.lastBoundView = null;
+      for (const [fid, views] of this.viewsByFileId.entries()) {
+        for (const v of views) {
+          this.activePageId = fid;
+          this.lastBoundView = v;
+        }
+      }
     }
   }
 
@@ -269,18 +428,20 @@ export class ReviewCoordinatorRegistry {
     suggestions: PageSuggestion[],
     comments: PageComment[],
     viewMode: TrackChangesViewMode = 'changes',
-    reviewMode: boolean = false
+    reviewMode: boolean = false,
+    pageId?: string | null
   ): void {
+    const targetPageId = pageId ?? this.activePageId;
     const preservedLocal: PageSuggestion[] = [];
     for (const s of this.currentSuggestions.values()) {
-      if (s.id.startsWith('sug-local-') && (!this.activePageId || !s.pageId || s.pageId === this.activePageId)) {
+      if (s.id.startsWith('sug-local-') && (!targetPageId || !s.pageId || s.pageId === targetPageId)) {
         preservedLocal.push(s);
       }
     }
 
     this.currentSuggestions.clear();
     for (const s of suggestions) {
-      if (!this.activePageId || !s.pageId || s.pageId === this.activePageId) {
+      if (!targetPageId || !s.pageId || s.pageId === targetPageId) {
         this.currentSuggestions.set(s.id, s);
       }
     }
@@ -300,7 +461,7 @@ export class ReviewCoordinatorRegistry {
     const scopedComments: PageComment[] = [];
     for (const c of comments) {
       const commentPageId = c.page || c.projectPageId;
-      if (!this.activePageId || !commentPageId || commentPageId === this.activePageId) {
+      if (!targetPageId || !commentPageId || commentPageId === targetPageId) {
         this.currentComments.set(c.id, c);
         scopedComments.push(c);
       }
@@ -308,20 +469,22 @@ export class ReviewCoordinatorRegistry {
     this.currentViewMode = viewMode;
     this.currentReviewMode = reviewMode;
 
-    const targetView = view || this.activeView;
-    if (!targetView) return;
+    const targetViews = this.getViewsForFile(targetPageId, view);
+    if (targetViews.length === 0) return;
 
-    try {
-      targetView.dispatch({
-        effects: [
-          setTrackChangesSuggestionsEffect.of(mergedSuggestions),
-          setTrackChangesCommentsEffect.of(scopedComments),
-          setTrackChangesViewModeEffect.of(viewMode),
-          setTrackChangesReviewModeEffect.of(reviewMode),
-        ],
-      });
-    } catch (err) {
-      console.debug('[ReviewCoordinator] Failed to sync decorations:', err);
+    for (const targetView of targetViews) {
+      try {
+        targetView.dispatch({
+          effects: [
+            setTrackChangesSuggestionsEffect.of(mergedSuggestions),
+            setTrackChangesCommentsEffect.of(scopedComments),
+            setTrackChangesViewModeEffect.of(viewMode),
+            setTrackChangesReviewModeEffect.of(reviewMode),
+          ],
+        });
+      } catch (err) {
+        console.debug('[ReviewCoordinator] Failed to sync decorations:', err);
+      }
     }
   }
 
@@ -336,6 +499,7 @@ export class ReviewCoordinatorRegistry {
     const doc = view.state.doc;
     const { from, to } = resolveSuggestionRange(doc, sug);
     const currentSlice = from < to && to <= doc.length ? doc.sliceString(from, to) : '';
+    let postMutationTo = to;
 
     if (action === 'accept') {
       if (sug.type === 'delete') {
@@ -344,18 +508,21 @@ export class ReviewCoordinatorRegistry {
           view.dispatch({
             changes: { from, to, insert: '' },
           });
+          postMutationTo = from;
         }
       } else if (sug.type === 'replace' && sug.suggestedText !== undefined) {
         if (from < to && to <= doc.length && currentSlice !== sug.suggestedText) {
           view.dispatch({
             changes: { from, to, insert: sug.suggestedText },
           });
+          postMutationTo = from + sug.suggestedText.length;
         }
       } else if (sug.type === 'insert' && sug.suggestedText) {
         if (from <= to && to <= doc.length && currentSlice !== sug.suggestedText) {
           view.dispatch({
             changes: { from, to: from, insert: sug.suggestedText },
           });
+          postMutationTo = from + sug.suggestedText.length;
         }
       }
     } else {
@@ -366,16 +533,33 @@ export class ReviewCoordinatorRegistry {
           view.dispatch({
             changes: { from, to, insert: '' },
           });
+          postMutationTo = from;
         }
       } else if (sug.type === 'replace' && sug.originalText !== undefined) {
         if (from < to && to <= doc.length && currentSlice !== sug.originalText) {
           view.dispatch({
             changes: { from, to, insert: sug.originalText },
           });
+          postMutationTo = from + sug.originalText.length;
+        }
+      } else if (sug.type === 'delete' && sug.originalText) {
+        // If deleted text was already removed from doc (from === to), re-insert it on reject
+        if (from === to && from <= doc.length) {
+          view.dispatch({
+            changes: { from, to: from, insert: sug.originalText },
+          });
+          postMutationTo = from + sug.originalText.length;
         }
       }
-      // If type === 'delete', original text was preserved in document
     }
+
+    this.rollbackSnapshots.set(sug.id, {
+      view,
+      range: { from, to },
+      postMutationTo,
+      originalText: currentSlice,
+      sug: { ...sug },
+    });
 
     // Mark suggestion resolved in local cache
     const updatedSug = {
@@ -406,10 +590,42 @@ export class ReviewCoordinatorRegistry {
     return stateSugs.find((s) => s.id === suggestionId || (mappedId && s.id === mappedId));
   }
 
+  public rollbackSuggestionLocally(suggestionId: string): void {
+    const effectiveId = this.localToPersistedId.get(suggestionId) ?? suggestionId;
+    const snap = this.rollbackSnapshots.get(effectiveId) || this.rollbackSnapshots.get(suggestionId);
+    if (!snap) return;
+    this.rollbackSnapshots.delete(effectiveId);
+    this.rollbackSnapshots.delete(suggestionId);
+    const { view, sug, range, postMutationTo, originalText } = snap;
+    const doc = view.state.doc;
+    const currentLen = doc.length;
+    const safeFrom = Math.min(range.from, currentLen);
+    const safeTo = Math.min(postMutationTo, currentLen);
+
+    if (originalText !== undefined && (safeFrom !== safeTo || originalText.length > 0)) {
+      view.dispatch({
+        changes: { from: safeFrom, to: safeTo, insert: originalText },
+      });
+    }
+
+    const restoredSug: PageSuggestion = { ...sug, status: 'pending' };
+    this.currentSuggestions.set(sug.id, restoredSug);
+    this.syncEditorDecorations(
+      view,
+      Array.from(this.currentSuggestions.values()),
+      Array.from(this.currentComments.values()),
+      this.currentViewMode,
+      this.currentReviewMode
+    );
+  }
+
   public applySuggestionByIdLocally(suggestionId: string, action: 'accept' | 'reject'): void {
     const sug = this.resolveKnownSuggestion(suggestionId);
-    if (this.activeView && sug) {
-      this.applySuggestionLocally(this.activeView, sug, action);
+    if (sug) {
+      const targetViews = this.getViewsForFile(sug.pageId, this.activeView);
+      for (const view of targetViews) {
+        this.applySuggestionLocally(view, sug, action);
+      }
     }
   }
 
@@ -497,7 +713,7 @@ export class ReviewCoordinatorRegistry {
     const effectiveId = this.localToPersistedId.get(suggestionId) ?? suggestionId;
 
     if (effectiveId.startsWith('sug-local-')) {
-      toast.success(`Change ${pastTense}`, { id: `sug-${suggestionId}` });
+      this.notificationPort.notifySuccess(`Change ${pastTense}`, `sug-${suggestionId}`);
       editorCommandBus.dispatch({
         type: 'editor:review-event',
         pageId,
@@ -509,11 +725,11 @@ export class ReviewCoordinatorRegistry {
 
     try {
       if (action === 'accept') {
-        await suggestionService.acceptSuggestion(pageId, effectiveId);
+        await this.servicePort.acceptSuggestion(pageId, effectiveId);
       } else {
-        await suggestionService.rejectSuggestion(pageId, effectiveId);
+        await this.servicePort.rejectSuggestion(pageId, effectiveId);
       }
-      toast.success(`Change ${pastTense}`, { id: `sug-${suggestionId}` });
+      this.notificationPort.notifySuccess(`Change ${pastTense}`, `sug-${suggestionId}`);
       editorCommandBus.dispatch({
         type: 'editor:review-event',
         pageId,
@@ -522,7 +738,11 @@ export class ReviewCoordinatorRegistry {
       });
       return true;
     } catch (err: unknown) {
-      toast.error((err as Error)?.message || `Failed to ${action} change`, { id: `sug-${suggestionId}` });
+      this.rollbackSuggestionLocally(effectiveId);
+      this.notificationPort.notifyError(
+        (err as Error)?.message || `Failed to ${action} change`,
+        `sug-${suggestionId}`
+      );
       editorCommandBus.dispatch({
         type: 'editor:review-event',
         pageId,
@@ -563,11 +783,11 @@ export class ReviewCoordinatorRegistry {
 
     try {
       if (action === 'accept') {
-        await suggestionService.acceptAllSuggestions(pageId);
+        await this.servicePort.acceptAllSuggestions(pageId);
       } else {
-        await suggestionService.rejectAllSuggestions(pageId);
+        await this.servicePort.rejectAllSuggestions(pageId);
       }
-      toast.success(`All changes ${pastTense}`, { id: 'sug-bulk' });
+      this.notificationPort.notifySuccess(`All changes ${pastTense}`, 'sug-bulk');
       editorCommandBus.dispatch({
         type: 'editor:review-event',
         pageId,
@@ -575,7 +795,10 @@ export class ReviewCoordinatorRegistry {
       });
       return true;
     } catch (err: unknown) {
-      toast.error((err as Error)?.message || `Failed to ${action} all changes`, { id: 'sug-bulk' });
+      this.notificationPort.notifyError(
+        (err as Error)?.message || `Failed to ${action} all changes`,
+        'sug-bulk'
+      );
       return false;
     }
   }
@@ -620,7 +843,7 @@ export class ReviewCoordinatorRegistry {
       action === 'accept' ? 'suggestion:accepted-selected' : 'suggestion:rejected-selected';
 
     if (persistedIds.length === 0) {
-      toast.success(`${suggestionIds.length} changes ${pastTense}`, { id: 'sug-bulk' });
+      this.notificationPort.notifySuccess(`${suggestionIds.length} changes ${pastTense}`, 'sug-bulk');
       editorCommandBus.dispatch({
         type: 'editor:review-event',
         pageId,
@@ -632,11 +855,11 @@ export class ReviewCoordinatorRegistry {
 
     try {
       if (action === 'accept') {
-        await suggestionService.acceptSelectedSuggestions(pageId, persistedIds);
+        await this.servicePort.acceptSelectedSuggestions(pageId, persistedIds);
       } else {
-        await suggestionService.rejectSelectedSuggestions(pageId, persistedIds);
+        await this.servicePort.rejectSelectedSuggestions(pageId, persistedIds);
       }
-      toast.success(`${suggestionIds.length} changes ${pastTense}`, { id: 'sug-bulk' });
+      this.notificationPort.notifySuccess(`${suggestionIds.length} changes ${pastTense}`, 'sug-bulk');
       editorCommandBus.dispatch({
         type: 'editor:review-event',
         pageId,
@@ -645,7 +868,10 @@ export class ReviewCoordinatorRegistry {
       });
       return true;
     } catch (err: unknown) {
-      toast.error((err as Error)?.message || `Failed to ${action} selected changes`, { id: 'sug-bulk' });
+      this.notificationPort.notifyError(
+        (err as Error)?.message || `Failed to ${action} selected changes`,
+        'sug-bulk'
+      );
       return false;
     }
   }

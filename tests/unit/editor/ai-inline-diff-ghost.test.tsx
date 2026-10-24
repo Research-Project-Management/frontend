@@ -9,7 +9,7 @@ import {
   acceptDiffEffect,
   rejectDiffEffect,
   createInlineDiffExtension,
-} from '@/features/editor/subsystems/review/extensions/inline-diff';
+} from '@/features/editor/core/engine/extensions/inline-diff';
 import { editorCommandBus } from '@/features/editor/core';
 import { aiCoordinator } from '@/features/editor/subsystems/ai';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';

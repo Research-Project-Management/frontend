@@ -37,7 +37,7 @@ import {
   hoverTooltip,
   type Tooltip,
 } from '@codemirror/view';
-import type { PageSuggestion } from '@/features/editor/domain/types/suggestion.types';
+import type { PageSuggestion, TrackChangesViewMode } from '@/features/editor/domain/types/suggestion.types';
 import type { PageComment } from '@/features/editor/domain/types/comment.types';
 import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 import {
@@ -50,8 +50,7 @@ import {
 } from './track-changes-widgets';
 
 export { trackChangesTheme };
-
-export type TrackChangesViewMode = 'changes' | 'clean' | 'original' | 'show' | 'hide';
+export type { TrackChangesViewMode };
 
 export interface RawTrackChangeItem {
   id: string;
@@ -114,6 +113,7 @@ export const setReviewModeEffect = setTrackChangesReviewModeEffect;
 export const setViewModeEffect = setTrackChangesViewModeEffect;
 
 export interface TrackChangesConfig {
+  pageId?: string;
   suggestions: PageSuggestion[];
   comments: PageComment[];
   viewMode: TrackChangesViewMode;
@@ -121,6 +121,7 @@ export interface TrackChangesConfig {
 }
 
 export interface TrackChangesExtensionOptions {
+  pageId?: string;
   initialSuggestions?: PageSuggestion[];
   initialComments?: PageComment[];
   initialViewMode?: TrackChangesViewMode;
@@ -150,13 +151,15 @@ export function getSafeOffset(
 export function resolveSuggestionRange(
   doc: EditorView['state']['doc'],
   s: PageSuggestion,
-  getFullText?: () => string,
+  _getFullText?: () => string,
 ): { from: number; to: number } {
   const cand = s as typeof s & {
     fromIndex?: number;
     fromOffset?: number;
     toIndex?: number;
     toOffset?: number;
+    startLine?: number;
+    endLine?: number;
   };
   const rawFrom = cand.fromIndex ?? cand.fromOffset;
   const rawTo = cand.toIndex ?? cand.toOffset;
@@ -168,9 +171,12 @@ export function resolveSuggestionRange(
     };
   }
 
-  if (s.fromLine && s.toLine && s.toColumn !== undefined) {
-    const f = getSafeOffset(doc, s.fromLine, s.fromColumn, rawFrom);
-    const t = getSafeOffset(doc, s.toLine, s.toColumn, rawTo);
+  const anchorFromLine = cand.startLine ?? s.fromLine;
+  const anchorToLine = cand.endLine ?? s.toLine;
+
+  if (anchorFromLine && anchorToLine && s.toColumn !== undefined) {
+    const f = getSafeOffset(doc, anchorFromLine, s.fromColumn, rawFrom);
+    const t = getSafeOffset(doc, anchorToLine, s.toColumn, rawTo);
     if (f < t) return { from: f, to: t };
   }
 
@@ -179,8 +185,8 @@ export function resolveSuggestionRange(
       ? [s.suggestedText, s.originalText]
       : [s.originalText, s.suggestedText];
 
-  if (s.fromLine && doc.lines > 0) {
-    const safeLineNum = Math.max(1, Math.min(s.fromLine, doc.lines));
+  if (anchorFromLine && doc.lines > 0) {
+    const safeLineNum = Math.max(1, Math.min(anchorFromLine, doc.lines));
     const lineObj = doc.line(safeLineNum);
     for (const text of candidates) {
       if (text) {
@@ -193,26 +199,31 @@ export function resolveSuggestionRange(
         }
       }
     }
-  }
 
-  const hasValidCandidate = candidates.some(Boolean);
-  if (hasValidCandidate) {
-    const fullText = getFullText ? getFullText() : doc.toString();
+    // Bounded local window search around [anchorFromLine - 5, anchorToLine + 5]
+    // Only search neighboring lines when candidate text is at least 3 characters to prevent matching stray punctuation
+    const safeEndLineNum = Math.max(safeLineNum, Math.min(anchorToLine ?? safeLineNum, doc.lines));
+    const minWindowLine = Math.max(1, safeLineNum - 5);
+    const maxWindowLine = Math.min(doc.lines, safeEndLineNum + 5);
+    const windowFrom = doc.line(minWindowLine).from;
+    const windowTo = doc.line(maxWindowLine).to;
+    const windowSlice = doc.sliceString(windowFrom, windowTo);
+
     for (const text of candidates) {
-      if (text) {
-        const idx = fullText.indexOf(text);
+      if (text && text.length >= 3) {
+        const idx = windowSlice.indexOf(text);
         if (idx !== -1) {
           return {
-            from: idx,
-            to: idx + text.length,
+            from: windowFrom + idx,
+            to: Math.min(doc.length, windowFrom + idx + text.length),
           };
         }
       }
     }
   }
 
-  const from = getSafeOffset(doc, s.fromLine, s.fromColumn, rawFrom);
-  let to = getSafeOffset(doc, s.toLine ?? s.fromLine, s.toColumn, rawTo);
+  const from = getSafeOffset(doc, anchorFromLine, s.fromColumn, rawFrom);
+  let to = getSafeOffset(doc, anchorToLine ?? anchorFromLine, s.toColumn, rawTo);
   if (from === to) {
     const fallbackLen =
       (s.type === 'insert' ? s.suggestedText?.length : s.originalText?.length) ||
@@ -662,6 +673,7 @@ export const trackChangesReviewModeFilter = EditorState.transactionFilter.of((tr
   if (!tr.docChanged) return tr;
   const config = tr.startState.field(trackChangesStateField, false);
   if (!config || !config.reviewMode) return tr;
+  const currentScopePageId = config.pageId || '';
 
   const userEvt = tr.annotation(Transaction.userEvent);
   if (!userEvt || (!userEvt.startsWith('input') && !userEvt.startsWith('delete'))) {
@@ -740,7 +752,7 @@ export const trackChangesReviewModeFilter = EditorState.transactionFilter.of((tr
     if (!coalescedSug) {
       coalescedSug = {
         id: `sug-local-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        pageId: '',
+        pageId: currentScopePageId,
         type: 'insert',
         originalText: '',
         suggestedText: insertedText,
@@ -763,7 +775,7 @@ export const trackChangesReviewModeFilter = EditorState.transactionFilter.of((tr
     queueMicrotask(() => {
       editorCommandBus.dispatch({
         type: 'editor:review-event',
-        pageId: '',
+        pageId: currentScopePageId,
         event: 'suggestion:local-recorded',
         payload: { suggestion: recorded },
       });
@@ -812,7 +824,7 @@ export const trackChangesReviewModeFilter = EditorState.transactionFilter.of((tr
     if (!coalescedSug) {
       coalescedSug = {
         id: `sug-local-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        pageId: '',
+        pageId: currentScopePageId,
         type: 'delete',
         originalText: deletedText,
         suggestedText: '',
@@ -835,7 +847,7 @@ export const trackChangesReviewModeFilter = EditorState.transactionFilter.of((tr
     queueMicrotask(() => {
       editorCommandBus.dispatch({
         type: 'editor:review-event',
-        pageId: '',
+        pageId: currentScopePageId,
         event: 'suggestion:local-recorded',
         payload: { suggestion: recorded },
       });
@@ -855,7 +867,7 @@ export const trackChangesReviewModeFilter = EditorState.transactionFilter.of((tr
 
     const replaceSug: PageSuggestion = {
       id: `sug-local-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      pageId: '',
+      pageId: currentScopePageId,
       type: 'replace',
       originalText,
       suggestedText: insertedText,
@@ -876,7 +888,7 @@ export const trackChangesReviewModeFilter = EditorState.transactionFilter.of((tr
     queueMicrotask(() => {
       editorCommandBus.dispatch({
         type: 'editor:review-event',
-        pageId: '',
+        pageId: currentScopePageId,
         event: 'suggestion:local-recorded',
         payload: { suggestion: replaceSug },
       });
@@ -904,6 +916,7 @@ export function createTrackChangesExtension(
 
   return [
     trackChangesStateField.init(() => ({
+      pageId: options.pageId || '',
       suggestions: options.initialSuggestions || [],
       comments: options.initialComments || [],
       viewMode,

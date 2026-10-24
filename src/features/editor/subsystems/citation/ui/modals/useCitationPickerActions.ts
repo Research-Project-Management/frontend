@@ -15,7 +15,7 @@ import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { formatBibEntryToBibtex } from '@/features/editor/subsystems/citation/model/citation-formatter';
-import type { BibEntry } from '@/features/editor/subsystems/citation/model/bib-parser';
+import type { BibEntry } from '@/features/editor/domain/latex/bib-parser';
 
 export function useCitationPickerActions() {
   const [isResolving, setIsResolving] = useState(false);

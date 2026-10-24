@@ -10,7 +10,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import * as Y from 'yjs';
 import { LatexDagEngine } from '@/features/editor/domain/latex/latex-dag-engine';
 import { LatexSymbolsIndexCore } from '@/features/editor/domain/latex/latex-symbols-core';
-import { parseBibContent } from '@/features/editor/subsystems/citation/model/bib-parser';
+import { parseBibContent } from '@/features/editor/domain/latex/bib-parser';
 import {
   refactorCitationKeyAcrossFiles,
   validateCitationKey,

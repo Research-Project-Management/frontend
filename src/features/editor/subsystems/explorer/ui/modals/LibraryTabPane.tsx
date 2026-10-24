@@ -123,7 +123,8 @@ export function LibraryTabPane({
             </label>
             <Input
               {...registerLibraryBibtex('fileName')}
-              placeholder="references.bib"
+              aria-label="BibTeX file name"
+            placeholder="references.bib"
               className="h-8 text-12 bg-muted/40 rounded-md border-border/60 focus:bg-background"
             />
             {libraryBibtexErrors.fileName && (
@@ -139,7 +140,8 @@ export function LibraryTabPane({
               <Input
                 value={librarySearch}
                 onChange={(e) => setLibrarySearch(e.target.value)}
-                placeholder="Filter papers..."
+                aria-label="Search library"
+            placeholder="Filter papers..."
                 className="h-8 text-12 pl-8 bg-muted/40 rounded-md border-border/60 focus:bg-background"
               />
             </div>

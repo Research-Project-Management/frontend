@@ -6,6 +6,7 @@
 
 import { create } from 'zustand';
 import type { CompileStatus, CompileError } from '@/features/editor/domain/types/compiler.types';
+import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store';
 
 export interface DocumentCompilerState {
   // ── Dirty content tracking ─────────────────────────────────────────────
@@ -180,8 +181,23 @@ export const useCompileStore = create<DocumentCompilerState>()((set, get) => ({
   },
 
   setIsViewerPoppedOut(poppedOut) {
-    set({ isViewerPoppedOut: poppedOut });
+    if (get().isViewerPoppedOut !== poppedOut) {
+      set({ isViewerPoppedOut: poppedOut });
+    }
+    if (useWorkspaceStore.getState().isPdfDetached !== poppedOut) {
+      useWorkspaceStore.getState().setPdfDetached(poppedOut);
+    }
   },
 }));
+
+// Keep useWorkspaceStore.isPdfDetached and useCompileStore.isViewerPoppedOut bidirectionally synchronized
+useWorkspaceStore.subscribe(
+  (s) => s.isPdfDetached,
+  (isPdfDetached) => {
+    if (useCompileStore.getState().isViewerPoppedOut !== isPdfDetached) {
+      useCompileStore.setState({ isViewerPoppedOut: isPdfDetached });
+    }
+  },
+);
 
 export type { CompileStatus, CompileError };

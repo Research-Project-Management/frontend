@@ -12,6 +12,7 @@
 
 import {
   getActiveEditorEngine,
+  getEditorEngineForFile,
   getActiveEditorContent,
   editorCommandBus,
   usePageStore,
@@ -19,7 +20,7 @@ import {
   sessionCoordinator,
 } from '@/features/editor/core';
 import { diagnosticsCoordinator, type IndexedDiagnosticItem } from '@/features/editor/subsystems/diagnostics';
-import type { EditorDiagnosticItem } from '@/features/editor/domain/diagnostics/diagnostic-types';
+import type { EditorDiagnosticItem } from '@/features/editor/domain/types/diagnostics.types';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import type { DiffProposal } from '@/features/editor/domain/types/ports/editor-engine.port';
@@ -300,7 +301,7 @@ export class AiCoordinatorRegistry {
     options?: { line?: number; endLine?: number; title?: string }
   ): boolean {
     if (!replacement) return false;
-    const engine = getActiveEditorEngine();
+    const engine = (fileId ? getEditorEngineForFile(fileId) : null) || getActiveEditorEngine();
     if (!engine || !engine.proposeDiff) {
       return this.applyDirect(fileId, options?.line, replacement);
     }

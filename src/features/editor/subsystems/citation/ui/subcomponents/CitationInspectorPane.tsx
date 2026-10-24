@@ -27,7 +27,7 @@ import {
   formatBibEntryToBibtex,
   cleanAbstractText,
 } from '@/features/editor/subsystems/citation/model/citation-formatter';
-import type { BibEntry } from '@/features/editor/subsystems/citation/model/bib-parser';
+import type { BibEntry } from '@/features/editor/domain/latex/bib-parser';
 import { editorCommandBus } from '@/features/editor/core';
 import type { CitationStyle } from '../modals/CitationPickerModal';
 

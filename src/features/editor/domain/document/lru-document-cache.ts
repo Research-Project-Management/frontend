@@ -31,6 +31,8 @@ export interface DocumentModelState {
   isDirty: boolean;
   /** Monotonic counter bumped on every content mutation; used for race-free markClean. */
   contentVersion?: number;
+  serverRev?: number;
+  serverUpdatedAt?: string;
   lastSavedAt?: number;
   lastActiveAt: number;
   metadata?: Record<string, unknown>;
@@ -131,6 +133,8 @@ export class LRUDocumentCache {
       yText?: unknown;
       selection?: DocumentCursorSelection;
       scrollViewport?: DocumentScrollViewport;
+      serverRev?: number;
+      serverUpdatedAt?: string;
     }
   ): DocumentModelState {
     const existing = this.models.get(fileId);
@@ -141,6 +145,8 @@ export class LRUDocumentCache {
       if (initialData.filePath) existing.filePath = initialData.filePath;
       if (initialData.projectId) existing.projectId = initialData.projectId;
       if (initialData.yText !== undefined) existing.yText = initialData.yText;
+      if (initialData.serverRev !== undefined) existing.serverRev = initialData.serverRev;
+      if (initialData.serverUpdatedAt !== undefined) existing.serverUpdatedAt = initialData.serverUpdatedAt;
       if (!existing.isDirty && initialData.content !== existing.content) {
         existing.content = initialData.content;
       }
@@ -157,6 +163,8 @@ export class LRUDocumentCache {
       selection: initialData.selection,
       scrollViewport: initialData.scrollViewport,
       yText: initialData.yText,
+      serverRev: initialData.serverRev,
+      serverUpdatedAt: initialData.serverUpdatedAt,
       isDirty: false,
       lastActiveAt: now,
     };
@@ -365,6 +373,29 @@ export class LRUDocumentCache {
 
   public markSaved(fileId: string): void {
     this.markClean(fileId);
+  }
+
+  /**
+   * Encapsulated domain command to rename a file's path and notify listeners.
+   */
+  public renameFile(fileId: string, newFilePath: string): void {
+    const model = this.models.get(fileId);
+    if (!model) return;
+    model.filePath = newFilePath;
+    model.lastActiveAt = Date.now();
+    this.touch(fileId);
+    this.notify(fileId, model);
+  }
+
+  /**
+   * Encapsulated domain command to update server optimistic concurrency metadata.
+   */
+  public updateServerVersion(fileId: string, meta: { rev?: number; updatedAt?: string }): void {
+    const model = this.models.get(fileId);
+    if (!model) return;
+    if (meta.rev !== undefined) model.serverRev = meta.rev;
+    if (meta.updatedAt !== undefined) model.serverUpdatedAt = meta.updatedAt;
+    this.notify(fileId, model);
   }
 
   /**

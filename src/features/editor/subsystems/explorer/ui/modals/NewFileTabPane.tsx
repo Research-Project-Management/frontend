@@ -94,6 +94,7 @@ export function NewFileTabPane({
               registerNewFile('fileName').ref(e);
               newFileInputRef.current = e;
             }}
+            aria-label="File name"
             placeholder="e.g. section1.tex, appendix.tex"
             className="h-8 text-12 bg-muted/40 rounded-md border-border/60 focus:bg-background"
             autoFocus

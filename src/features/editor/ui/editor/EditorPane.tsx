@@ -36,7 +36,14 @@ const ImagePanel = dynamic(
 
 import { EditorToolbar } from './EditorToolbar';
 import { EditorContextMenu } from './EditorContextMenu';
-import { useSettingsStore, sessionCoordinator } from '@/features/editor/core';
+import {
+  useSettingsStore,
+  useWorkspaceStore,
+  useCompileStore,
+  sessionCoordinator,
+  setActiveEditorEngine,
+  getEditorEngineForFile,
+} from '@/features/editor/core';
 import { useEditorCollaboration } from '@/features/editor/ui/hooks/useCollaboration';
 import { lruDocumentCache } from '@/features/editor/subsystems/explorer';
 import { extractDocumentContentString, type Page, type PageFile } from '@/features/editor/domain/types/core.types';
@@ -97,8 +104,16 @@ export function EditorPane({
         !/\.(tex|bib|sty|cls|md|txt)$/i.test(fileName)),
   );
 
-  // Content resolution with LRU cache
+  // Content resolution with LRU cache & reactive dirty tracking
   const cachedModel = fileId ? lruDocumentCache.getModel(fileId) : null;
+  const isDirtyInCompileStore = useCompileStore((s) => (fileId ? s.dirtyFileIds.has(fileId) : false));
+  const isDirtyInWorkspaceStore = useWorkspaceStore((s) => {
+    if (!fileId) return false;
+    const scopeKey = rootPageId || projectId;
+    const tabs = scopeKey ? s.tabsByProject[scopeKey] : undefined;
+    return Boolean(tabs?.some((t) => t.id === fileId && t.isDirty));
+  });
+  const isDirty = Boolean(cachedModel?.isDirty || isDirtyInCompileStore || isDirtyInWorkspaceStore);
   const fileContent = file && 'content' in file ? (file as { content?: unknown }).content : undefined;
   const fallbackContent = extractDocumentContentString(fileContent);
   const rawContent =
@@ -121,9 +136,20 @@ export function EditorPane({
     sessionCoordinator.setRealtimeConnected(fileId, isRealtimeConnected);
   }, [fileId, isRealtimeConnected]);
 
+  const handleSyncFocus = () => {
+    onFocusPane?.();
+    if (fileId) {
+      const engine = getEditorEngineForFile(fileId);
+      if (engine) {
+        setActiveEditorEngine(engine);
+      }
+    }
+  };
+
   return (
     <div
-      onClick={onFocusPane}
+      onMouseDown={handleSyncFocus}
+      onClick={handleSyncFocus}
       className="h-full w-full flex flex-col bg-canvas min-h-0 min-w-0 transition-colors duration-150"
     >
       {/* ── Pane Header ────────────────────────────────────────────────────── */}
@@ -173,7 +199,7 @@ export function EditorPane({
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {cachedModel?.isDirty && (
+            {isDirty && (
               <span className="size-1.5 rounded-full bg-primary shrink-0" title="Unsaved changes" />
             )}
             <span className="text-[10px] text-muted-foreground font-mono font-medium tracking-normal px-1.5 py-0.5 bg-muted/60 rounded">
@@ -248,7 +274,7 @@ export function EditorPane({
             }
           />
         ) : fileId ? (
-          <div className="flex-1 min-h-0 min-w-0 w-full flex flex-col bg-canvas overflow-hidden">
+          <div onMouseDown={handleSyncFocus} className="flex-1 min-h-0 min-w-0 w-full flex flex-col bg-canvas overflow-hidden">
             <EditorToolbar readOnly={isLocked} onSplitRight={onSplitRight} />
             <div className="flex-1 min-h-0 min-w-0 w-full overflow-hidden">
               <EditorContextMenu>
@@ -263,6 +289,7 @@ export function EditorPane({
                   isRealtimeConnected={isRealtimeConnected}
                   projectId={projectId}
                   isActive={isActivePane}
+                  isSecondary={paneId === 'secondary'}
                 />
               </EditorContextMenu>
             </div>

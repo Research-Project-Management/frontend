@@ -64,6 +64,7 @@ export const useAcceptSuggestion = (customClient?: QueryClient) => {
   const queryClient = useSafeQueryClient(customClient);
   return useMutation({
     mutationFn: async ({ pageId, suggestionId }: { pageId: string; suggestionId: string }) => {
+      reviewCoordinator.applySuggestionByIdLocally(suggestionId, 'accept');
       return await suggestionService.acceptSuggestion(pageId, suggestionId);
     },
     onMutate: async ({ pageId, suggestionId }) => {
@@ -78,6 +79,7 @@ export const useAcceptSuggestion = (customClient?: QueryClient) => {
       return { previousData, pageId };
     },
     onError: (_err, vars, context) => {
+      reviewCoordinator.rollbackSuggestionLocally(vars.suggestionId);
       if (context?.previousData) {
         context.previousData.forEach(([key, val]) => {
           queryClient.setQueryData(key, val);
@@ -100,6 +102,7 @@ export const useRejectSuggestion = (customClient?: QueryClient) => {
   const queryClient = useSafeQueryClient(customClient);
   return useMutation({
     mutationFn: async ({ pageId, suggestionId }: { pageId: string; suggestionId: string }) => {
+      reviewCoordinator.applySuggestionByIdLocally(suggestionId, 'reject');
       return await suggestionService.rejectSuggestion(pageId, suggestionId);
     },
     onMutate: async ({ pageId, suggestionId }) => {
@@ -114,6 +117,7 @@ export const useRejectSuggestion = (customClient?: QueryClient) => {
       return { previousData, pageId };
     },
     onError: (_err, vars, context) => {
+      reviewCoordinator.rollbackSuggestionLocally(vars.suggestionId);
       if (context?.previousData) {
         context.previousData.forEach(([key, val]) => {
           queryClient.setQueryData(key, val);

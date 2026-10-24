@@ -359,7 +359,8 @@ export default function KeyboardShortcutsModal({
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" strokeWidth={1.5} />
             <Input
               type="text"
-              placeholder="Search shortcut or action..."
+              aria-label="Search shortcut or action"
+            placeholder="Search shortcut or action..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-8 pl-8 pr-2 text-12 bg-muted/40 rounded-md border-border/60 focus:bg-background"

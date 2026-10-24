@@ -14,7 +14,16 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { manuscriptService, fileService } from '@/features/editor/sdk/manuscript.service';
-import { workspaceCoordinator, usePageStore, useWorkspaceStore, useSettingsStore, editorCommandBus } from '@/features/editor/core';
+import {
+  workspaceCoordinator,
+  sessionCoordinator,
+  usePageStore,
+  useWorkspaceStore,
+  useSettingsStore,
+  editorCommandBus,
+} from '@/features/editor/core';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
+import { updateActiveYjsDocContent } from '@/features/editor/sdk/realtime/yjs-socket-provider';
 import { pageKeys } from './document.queries';
 import { toast } from 'sonner';
 
@@ -66,7 +75,17 @@ export function usePageActions() {
   const updateContentMutation = useMutation({
     mutationFn: async ({ pageId, content }: { pageId: string; content: string }) => {
       if (isLocked) throw new Error('Document is locked');
-      setCurrentPage((prev) => (prev ? { ...prev, content } : prev));
+      setCurrentPage((prev) => (prev && prev.id === pageId ? { ...prev, content } : prev));
+      lruDocumentCache.updateContent(pageId, content, true);
+      const isYjsActive =
+        updateActiveYjsDocContent(pageId, content) ||
+        sessionCoordinator.isRealtimeConnected(pageId);
+      if (isYjsActive) {
+        editorCommandBus.dispatch({ type: 'editor:set-content', content, fileId: pageId });
+        sessionCoordinator.notifyContentChange(pageId, content, { isRealtimeActive: true });
+        await sessionCoordinator.flushFile(pageId);
+        return { id: pageId, content };
+      }
       return await manuscriptService.docs.updateContent(pageId, content);
     },
     onSuccess: (updated, variables) => {

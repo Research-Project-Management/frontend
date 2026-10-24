@@ -92,6 +92,7 @@ export function UploadTabPane({
         ref={fileInputRef}
         type="file"
         multiple
+        aria-label="Upload files"
         className="hidden"
         onChange={handleNativeFilesPicked}
       />
@@ -99,6 +100,7 @@ export function UploadTabPane({
         ref={folderInputRef}
         type="file"
         multiple
+        aria-label="Upload folder"
         className="hidden"
         onChange={handleNativeFolderPicked}
         {...folderInputProps}

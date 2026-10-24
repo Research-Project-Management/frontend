@@ -24,7 +24,20 @@ export interface WarningFilterOptions {
 const BAD_BOX_REGEX = /(?:Overfull|Underfull)\s*\\[hv]box/i;
 const FONT_WARNING_REGEX = /(?:LaTeX Font Warning|Font shape|font has no|size substitutions with small differences)/i;
 const PACKAGE_WARNING_REGEX = /(?:Package\s+\S+\s+Warning|Class\s+\S+\s+Warning|pdfTeX\s+warning)/i;
+const MAX_PATTERN_REGEX_CACHE_SIZE = 200;
 const patternRegexCache = new Map<string, RegExp | null>();
+
+function setPatternRegexCache(key: string, value: RegExp | null): void {
+  if (patternRegexCache.has(key)) {
+    patternRegexCache.delete(key);
+  } else if (patternRegexCache.size >= MAX_PATTERN_REGEX_CACHE_SIZE) {
+    const oldestKey = patternRegexCache.keys().next().value;
+    if (oldestKey !== undefined) {
+      patternRegexCache.delete(oldestKey);
+    }
+  }
+  patternRegexCache.set(key, value);
+}
 
 function getCompiledRegex(trimmed: string): RegExp | null {
   if (!trimmed.startsWith('/') || trimmed.lastIndexOf('/') <= 0) return null;
@@ -35,10 +48,10 @@ function getCompiledRegex(trimmed: string): RegExp | null {
     const patternStr = trimmed.slice(1, lastSlash);
     const flags = trimmed.slice(lastSlash + 1) || 'i';
     const reg = new RegExp(patternStr, flags);
-    patternRegexCache.set(trimmed, reg);
+    setPatternRegexCache(trimmed, reg);
     return reg;
   } catch {
-    patternRegexCache.set(trimmed, null);
+    setPatternRegexCache(trimmed, null);
     return null;
   }
 }

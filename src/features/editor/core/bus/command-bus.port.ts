@@ -42,12 +42,12 @@ export type DialogName =
   | 'github-sync'
   | 'project-settings';
 
-import type { EditorDiagnosticItem } from '@/features/editor/domain/diagnostics/diagnostic-types';
+import type { EditorDiagnosticItem } from '@/features/editor/domain/types/diagnostics.types';
 export type { EditorDiagnosticItem };
 
 export type EditorCommand =
   | { type: 'editor:jump-to-line'; line: number; highlight?: 'error' | 'synctex'; column?: number; length?: number }
-  | { type: 'editor:set-content'; content: string }
+  | { type: 'editor:set-content'; content: string; fileId?: string }
   | { type: 'editor:insert-text'; text: string }
   | { type: 'editor:wrap-selection'; prefix: string; suffix: string; placeholder?: string }
   | { type: 'editor:format'; format: LatexFormatType }

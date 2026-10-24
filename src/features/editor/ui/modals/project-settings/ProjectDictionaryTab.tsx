@@ -38,6 +38,7 @@ export function ProjectDictionaryTab() {
         <Input
           value={newDictionaryWord}
           onChange={(e) => setNewDictionaryWord(e.target.value)}
+          aria-label="Add new word to dictionary"
           placeholder="Add new word..."
           className="h-8 text-xs bg-background"
         />
@@ -59,6 +60,7 @@ export function ProjectDictionaryTab() {
               <button
                 type="button"
                 onClick={() => removeWord({ word, isProject: false })}
+                aria-label={`Remove ${word}`}
                 className="hover:text-destructive cursor-pointer ml-0.5"
               >
                 <X className="size-3" />

@@ -4,229 +4,56 @@
  * Real-Time Socket.IO & Yjs Collaboration Provider for Flux (Overleaf Parity).
  * Connects CodeMirror 6 (via y-codemirror.next) to Backend ManuscriptRealtimeGateway (/manuscripts)
  * backed by Redis horizontal room fan-out.
- *
- * Features:
- * - Handshake auth with JWT bearer token and user metadata (name, avatar, color).
- * - Automatic project & document room joins (project:join, doc:join).
- * - Bi-directional real-time cursor awareness (doc:cursor) with Yjs RelativePosition mapping.
- * - Active collaborator presence list synchronization (doc:user-joined, doc:user-left).
- * - Resilient auto-reconnect with polling fallback and smooth cleanup on unmount.
  */
 
 import * as Y from 'yjs';
-import * as syncProtocol from 'y-protocols/sync';
-import * as encoding from 'lib0/encoding';
-import * as decoding from 'lib0/decoding';
 import { Awareness, removeAwarenessStates } from 'y-protocols/awareness';
 import { io, type Socket } from 'socket.io-client';
 import { getEffectiveBaseUrl, getAuthToken } from '@/shared/lib/api';
 import type { IEditorCommandBus } from '@/features/editor/core/bus/command-bus.port';
 import type { CollaborationPresence } from '@/features/editor/sdk/manuscript.service';
+import {
+  buildLineStartsIndex,
+  getOffsetFromRowCol,
+  getRowColFromOffset,
+  applyTextDiff,
+  applyBinarySyncFrame,
+  encodeMergedYjsUpdates,
+  encodeYjsSyncStep1,
+  extractLocalCursorCoords,
+  toCollaborationPresence,
+  applyRemoteCursorAwareness,
+  removeRemoteCollaborator,
+  type CollaboratorUser,
+  type ConnectionStatus,
+  type CompileProgressPayload,
+  type DocContentUpdatedPayload,
+  type RemoteCursorSelection,
+  type RemoteCursorData,
+  type RemotePresencePayload,
+  type RemoteCursorPayload,
+  type RemoteUserJoinedPayload,
+  type ProjectChatMessage,
+  type YjsSocketIOProviderOptions,
+} from './yjs-awareness-sync';
 
-export interface CollaboratorUser {
-  id: string;
-  name: string;
-  avatar?: string | null;
-  color?: string;
-  role?: string;
-}
-
-export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected';
-
-export interface CompileProgressPayload {
-  status?: string;
-  logs?: string | string[];
-}
-
-export interface DocContentUpdatedPayload {
-  docId: string;
-  content: string;
-}
-
-export interface RemoteCursorSelection {
-  anchor: { row: number; column: number };
-  head: { row: number; column: number };
-}
-
-export interface RemoteCursorData {
-  row: number;
-  column: number;
-  selection?: RemoteCursorSelection | null;
-}
-
-export interface RemotePresencePayload {
-  userId: string;
-  socketId?: string;
-  name?: string;
-  avatar?: string | null;
-  color?: string;
-  role?: string;
-  cursor?: RemoteCursorData | null;
-  [key: string]: unknown;
-}
-
-export type RemoteCursorPayload = RemotePresencePayload;
-export type RemoteUserJoinedPayload = RemotePresencePayload;
-
-export interface ProjectChatMessage {
-  id: string;
-  projectId: string;
-  userId: string;
-  userName: string;
-  userColor?: string;
-  userAvatar?: string;
-  text: string;
-  replyToId?: string;
-  createdAt: string;
-}
-
-export interface YjsSocketIOProviderOptions {
-  user?: CollaboratorUser;
-  baseUrl?: string;
-  token?: string;
-  initialContent?: string;
-  commandBus?: IEditorCommandBus;
-  onStatusChange?: (status: ConnectionStatus) => void;
-  onSynced?: () => void;
-  onCollaboratorsChange?: (collaborators: CollaborationPresence[]) => void;
-  onChatMessage?: (message: ProjectChatMessage) => void;
-}
-
-/**
- * Precomputes a 0-indexed table of character offsets where each line starts.
- * Time Complexity: O(N) once per document mutation.
- * Space Complexity: O(L) where L is the number of lines.
- */
-export function buildLineStartsIndex(text: string): number[] {
-  const starts: number[] = [0];
-  for (let i = 0; i < text.length; i++) {
-    if (text.charCodeAt(i) === 10) {
-      starts.push(i + 1);
-    }
-  }
-  return starts;
-}
-
-/**
- * Maps a (row, column) coordinate (1-indexed) in text to an absolute character offset.
- * - With `lineStarts` index: O(1) direct array lookup.
- * - Without `lineStarts` index: O(N) linear scan fallback.
- */
-export function getOffsetFromRowCol(
-  text: string,
-  row: number,
-  column: number,
-  lineStarts?: number[],
-): number {
-  if (!text || text.length === 0) return 0;
-  const targetLine = Math.max(1, row);
-  const targetCol = Math.max(1, column);
-
-  if (lineStarts && lineStarts.length > 0) {
-    if (targetLine > lineStarts.length) {
-      return text.length;
-    }
-    const lineIdx = targetLine - 1;
-    const lineStartOffset = lineStarts[lineIdx];
-    const nextNewline =
-      lineIdx + 1 < lineStarts.length ? lineStarts[lineIdx + 1] - 1 : text.length;
-    const lineLength = nextNewline - lineStartOffset;
-    const colOffset = Math.min(Math.max(0, targetCol - 1), lineLength);
-    return Math.min(text.length, lineStartOffset + colOffset);
-  }
-
-  let currentLine = 1;
-  let lineStartOffset = 0;
-
-  for (let i = 0; i < text.length; i++) {
-    if (currentLine === targetLine) break;
-    if (text[i] === '\n') {
-      currentLine++;
-      lineStartOffset = i + 1;
-    }
-  }
-
-  // If target line exceeds document lines, clamp to end of document
-  if (targetLine > currentLine) {
-    return text.length;
-  }
-
-  let nextNewline = text.indexOf('\n', lineStartOffset);
-  if (nextNewline === -1) nextNewline = text.length;
-  const lineLength = nextNewline - lineStartOffset;
-
-  const colOffset = Math.min(Math.max(0, targetCol - 1), lineLength);
-  return Math.min(text.length, lineStartOffset + colOffset);
-}
-
-/**
- * Maps an absolute character offset in text to a (row, column) coordinate (1-indexed).
- * - With `lineStarts` index: O(log L) binary search (upper-bound).
- * - Without `lineStarts` index: O(N) linear scan fallback.
- */
-export function getRowColFromOffset(
-  text: string,
-  offset: number,
-  lineStarts?: number[],
-): { row: number; col: number } {
-  const safeOffset = Math.max(0, Math.min(text.length, offset));
-
-  if (lineStarts && lineStarts.length > 0) {
-    let low = 0;
-    let high = lineStarts.length - 1;
-    while (low <= high) {
-      const mid = (low + high) >>> 1;
-      if (lineStarts[mid] <= safeOffset) {
-        low = mid + 1;
-      } else {
-        high = mid - 1;
-      }
-    }
-    const lineIdx = Math.max(0, high);
-    return {
-      row: lineIdx + 1,
-      col: safeOffset - lineStarts[lineIdx] + 1,
-    };
-  }
-
-  let row = 1;
-  let lastLineStart = 0;
-
-  for (let i = 0; i < safeOffset; i++) {
-    if (text[i] === '\n') {
-      row++;
-      lastLineStart = i + 1;
-    }
-  }
-
-  const col = safeOffset - lastLineStart + 1;
-  return { row, col };
-}
-
-/**
- * Applies the minimal prefix/suffix splice that turns yText into target, as one transaction.
- */
-export function applyTextDiff(yText: Y.Text, target: string, origin: unknown = 'local'): boolean {
-  const current = yText.toString();
-  if (current === target) return false;
-  let start = 0;
-  const minLen = Math.min(current.length, target.length);
-  while (start < minLen && current.charCodeAt(start) === target.charCodeAt(start)) start++;
-  let endCur = current.length;
-  let endTgt = target.length;
-  while (endCur > start && endTgt > start && current.charCodeAt(endCur - 1) === target.charCodeAt(endTgt - 1)) {
-    endCur--;
-    endTgt--;
-  }
-  const doc = yText.doc;
-  const apply = () => {
-    if (endCur > start) yText.delete(start, endCur - start);
-    if (endTgt > start) yText.insert(start, target.slice(start, endTgt));
-  };
-  if (doc) doc.transact(apply, origin);
-  else apply();
-  return true;
-}
+export {
+  buildLineStartsIndex,
+  getOffsetFromRowCol,
+  getRowColFromOffset,
+  applyTextDiff,
+  type CollaboratorUser,
+  type ConnectionStatus,
+  type CompileProgressPayload,
+  type DocContentUpdatedPayload,
+  type RemoteCursorSelection,
+  type RemoteCursorData,
+  type RemotePresencePayload,
+  type RemoteCursorPayload,
+  type RemoteUserJoinedPayload,
+  type ProjectChatMessage,
+  type YjsSocketIOProviderOptions,
+};
 
 export class YjsSocketIOProvider {
   /** Mutable: replaced when rebuilding from the server (see onDocReplaced). */
@@ -366,23 +193,20 @@ export class YjsSocketIOProvider {
     const rawBase = (this.options.baseUrl || getEffectiveBaseUrl() || '').replace(/\/$/, '');
     const socketUrl = rawBase ? `${rawBase}/manuscripts` : '/manuscripts';
     const token = this.options.token || getAuthToken() || undefined;
-
     const user = this.options.user;
-    const authPayload: Record<string, unknown> = {
-      token,
-      userId: user?.id,
-      name: user?.name,
-      avatar: user?.avatar,
-      color: user?.color,
-    };
 
     try {
-      const fakeSocket = (globalThis as { __fluxFakeSocket?: Socket })
-        .__fluxFakeSocket;
+      const fakeSocket = (globalThis as { __fluxFakeSocket?: Socket }).__fluxFakeSocket;
       this.socket = fakeSocket ?? io(socketUrl, {
         path: '/socket.io',
         transports: ['polling', 'websocket'],
-        auth: authPayload,
+        auth: {
+          token,
+          userId: user?.id,
+          name: user?.name,
+          avatar: user?.avatar,
+          color: user?.color,
+        },
         reconnection: true,
         reconnectionAttempts: Infinity,
         reconnectionDelay: 1000,
@@ -392,7 +216,6 @@ export class YjsSocketIOProvider {
 
       this.registerSocketEvents();
 
-      // Setup browser online auto-reconnect listener to self-heal upon network recovery
       if (typeof window !== 'undefined' && !this.handleOnline) {
         this.handleOnline = () => {
           if (!this.destroyed && this.socket && !this.socket.connected) {
@@ -415,19 +238,7 @@ export class YjsSocketIOProvider {
     targetDoc: Y.Doc,
     emitStep2Reply: boolean,
   ): void {
-    const rawData = data instanceof Uint8Array ? data : new Uint8Array(data);
-    const decoder = decoding.createDecoder(rawData);
-    const replyEncoder = encoding.createEncoder();
-    while (decoding.hasContent(decoder)) {
-      syncProtocol.readSyncMessage(decoder, replyEncoder, targetDoc, 'socket.io');
-    }
-    if (emitStep2Reply && encoding.length(replyEncoder) > 0) {
-      this.socket?.emit('doc:sync:step2', {
-        projectId: this.projectId,
-        docId: this.pageId,
-        data: encoding.toUint8Array(replyEncoder),
-      });
-    }
+    applyBinarySyncFrame(data, targetDoc, this.socket, this.projectId, this.pageId, emitStep2Reply);
   }
 
   private registerSocketEvents(): void {
@@ -438,7 +249,6 @@ export class YjsSocketIOProvider {
       this.status = 'connected';
       this.emitStatus('connected');
 
-      // 1. Join project room
       this.socket?.emit(
         'project:join',
         { projectId: this.projectId },
@@ -449,7 +259,6 @@ export class YjsSocketIOProvider {
         },
       );
 
-      // 2. Join document editor room
       this.socket?.emit(
         'doc:join',
         { projectId: this.projectId, docId: this.pageId },
@@ -457,7 +266,6 @@ export class YjsSocketIOProvider {
           if (res?.success && Array.isArray(res.docPresence)) {
             this.handleInitialDocPresence(res.docPresence);
           }
-          // Initiate Binary CRDT Yjs Handshake with server
           this.initiateYjsSync();
         },
       );
@@ -468,7 +276,6 @@ export class YjsSocketIOProvider {
       this.status = 'disconnected';
       this.emitStatus('disconnected');
 
-      // Clear remote awareness states
       const remoteClientIds = Array.from(this.socketToClientIdMap.values());
       if (remoteClientIds.length > 0) {
         removeAwarenessStates(this.awareness, remoteClientIds, 'socket.io');
@@ -486,55 +293,38 @@ export class YjsSocketIOProvider {
       }
     });
 
-    // Binary Yjs sync:update from server / remote collaborators
-    const handleIncomingSyncUpdate = (payload: {
+    this.socket.on('doc:sync:update', (payload: {
       projectId: string;
       docId: string;
       data: Uint8Array | ArrayLike<number>;
     }) => {
-      if (this.destroyed) return;
-      if (payload.projectId !== this.projectId || payload.docId !== this.pageId)
+      if (this.destroyed || payload.projectId !== this.projectId || payload.docId !== this.pageId || !payload.data) {
         return;
-      if (!payload.data) return;
-
+      }
       try {
         this.applySyncFrame(payload.data, this.doc, true);
       } catch {
         try {
-          const raw =
-            payload.data instanceof Uint8Array
-              ? payload.data
-              : new Uint8Array(payload.data);
+          const raw = payload.data instanceof Uint8Array ? payload.data : new Uint8Array(payload.data);
           Y.applyUpdate(this.doc, raw, 'socket.io');
         } catch (applyErr) {
-          console.warn(
-            '[YjsSocketIOProvider] Error applying incoming sync:update:',
-            applyErr,
-          );
+          console.warn('[YjsSocketIOProvider] Error applying incoming sync:update:', applyErr);
         }
       }
-    };
-    this.socket.on('doc:sync:update', handleIncomingSyncUpdate);
+    });
 
-    const handleSyncStep2Push = (payload: {
+    this.socket.on('doc:sync:step2', (payload: {
       docId: string;
       data: Uint8Array | ArrayLike<number>;
     }) => {
-      if (this.destroyed) return;
-      if (payload.docId !== this.pageId) return;
-      if (!payload.data) return;
+      if (this.destroyed || payload.docId !== this.pageId || !payload.data) return;
       try {
         this.applySyncFrame(payload.data, this.doc, false);
       } catch (err) {
-        console.warn(
-          '[YjsSocketIOProvider] Error applying incoming sync:step2:',
-          err,
-        );
+        console.warn('[YjsSocketIOProvider] Error applying incoming sync:step2:', err);
       }
-    };
-    this.socket.on('doc:sync:step2', handleSyncStep2Push);
+    });
 
-    // Real-time LaTeX compilation streaming
     this.socket.on('compile:progress', (data: CompileProgressPayload | string) => {
       if (this.destroyed) return;
       const status = typeof data === 'object' && data?.status ? data.status : 'compiling';
@@ -546,38 +336,31 @@ export class YjsSocketIOProvider {
       });
     });
 
-    // Remote cursor update from peer
     this.socket.on('doc:cursor', (data: RemoteCursorPayload) => {
       if (this.destroyed) return;
       this.handleRemoteCursor(data);
     });
 
-    // Collaborator joined document room
     this.socket.on('doc:user-joined', (data: RemoteUserJoinedPayload) => {
-      if (this.destroyed) return;
-      if (data.socketId === this.socket?.id) return;
+      if (this.destroyed || data.socketId === this.socket?.id) return;
       this.handleUserJoined(data);
     });
 
-    // Collaborator left document room
     this.socket.on('doc:user-left', (data: { userId?: string; socketId?: string }) => {
       if (this.destroyed) return;
       this.handleUserLeft(data);
     });
 
-    // Project-level user left
     this.socket.on('project:user-left', (data: { userId?: string; socketId?: string }) => {
       if (this.destroyed) return;
       this.handleUserLeft(data);
     });
 
-    // Real-time project file-tree mutation (create, rename, move, delete)
     this.socket.on('fileTree:update', (data: Record<string, unknown>) => {
       if (this.destroyed) return;
       this.commandBus?.dispatch({ type: 'filetree:updated', payload: data });
     });
 
-    // Real-time document content update from collaborator
     this.socket.on('doc:content-updated', (data: DocContentUpdatedPayload) => {
       if (this.destroyed) return;
       if (data?.docId && typeof data?.content === 'string') {
@@ -589,63 +372,26 @@ export class YjsSocketIOProvider {
       }
     });
 
-    // Real-time Track Changes & Review broadcasts
-    this.socket.on('track-changes:recorded', (data: Record<string, unknown> & { docId?: string }) => {
-      if (this.destroyed) return;
-      const docId = data?.docId || this.pageId;
-      this.commandBus?.dispatch({
-        type: 'editor:review-event',
-        pageId: docId,
-        event: 'suggestion:recorded',
-        payload: data,
+    const reviewEvents: Array<[string, 'suggestion:recorded' | 'suggestion:resolved' | 'comment:created' | 'comment:replied' | 'comment:resolved']> = [
+      ['track-changes:recorded', 'suggestion:recorded'],
+      ['track-changes:resolved', 'suggestion:resolved'],
+      ['comment:created', 'comment:created'],
+      ['comment:replied', 'comment:replied'],
+      ['comment:resolved', 'comment:resolved'],
+    ];
+    for (const [socketEvent, reviewEvent] of reviewEvents) {
+      this.socket.on(socketEvent, (data: Record<string, unknown> & { docId?: string }) => {
+        if (this.destroyed) return;
+        this.commandBus?.dispatch({
+          type: 'editor:review-event',
+          pageId: data?.docId || this.pageId,
+          event: reviewEvent,
+          payload: data,
+        });
       });
-    });
+    }
 
-    this.socket.on('track-changes:resolved', (data: Record<string, unknown> & { docId?: string }) => {
-      if (this.destroyed) return;
-      const docId = data?.docId || this.pageId;
-      this.commandBus?.dispatch({
-        type: 'editor:review-event',
-        pageId: docId,
-        event: 'suggestion:resolved',
-        payload: data,
-      });
-    });
-
-    this.socket.on('comment:created', (data: Record<string, unknown> & { docId?: string }) => {
-      if (this.destroyed) return;
-      const docId = data?.docId || this.pageId;
-      this.commandBus?.dispatch({
-        type: 'editor:review-event',
-        pageId: docId,
-        event: 'comment:created',
-        payload: data,
-      });
-    });
-
-    this.socket.on('comment:replied', (data: Record<string, unknown> & { docId?: string }) => {
-      if (this.destroyed) return;
-      const docId = data?.docId || this.pageId;
-      this.commandBus?.dispatch({
-        type: 'editor:review-event',
-        pageId: docId,
-        event: 'comment:replied',
-        payload: data,
-      });
-    });
-
-    this.socket.on('comment:resolved', (data: Record<string, unknown> & { docId?: string }) => {
-      if (this.destroyed) return;
-      const docId = data?.docId || this.pageId;
-      this.commandBus?.dispatch({
-        type: 'editor:review-event',
-        pageId: docId,
-        event: 'comment:resolved',
-        payload: data,
-      });
-    });
-
-    const handleChatMessage = (msg: ProjectChatMessage) => {
+    this.socket.on('project:chat:new', (msg: ProjectChatMessage) => {
       if (this.destroyed || !msg) return;
       this.options.onChatMessage?.(msg);
       for (const listener of this.chatListeners) {
@@ -655,8 +401,7 @@ export class YjsSocketIOProvider {
           console.warn('[YjsSocketIOProvider] chat listener error:', err);
         }
       }
-    };
-    this.socket.on('project:chat:new', handleChatMessage);
+    });
   }
 
   private getIndexedText(): { text: string; lineStarts: number[] } {
@@ -670,23 +415,18 @@ export class YjsSocketIOProvider {
   private setupLocalDocListener(): void {
     const doc = this.doc;
     doc.on('update', (update: Uint8Array, origin: unknown) => {
-      // Ignore updates from a replaced (stale) doc: they must never reach the server.
       if (doc !== this.doc) return;
       this.cachedText = null;
       this.cachedLineStarts = null;
       if (origin === 'socket.io' || this.destroyed) return;
 
-      // Always queue local updates. When the socket is disconnected they are retained
-      // (never dropped) and flushed after reconnect + sync handshake.
       this.pendingUpdates.push(update);
       if (this.pendingUpdates.length > 256) {
-        // Compact to bound memory during long offline sessions.
         this.pendingUpdates = [Y.mergeUpdates(this.pendingUpdates)];
       }
       if (!this.socket || !this.socket.connected) return;
       if (this.updateBatchTimer) return;
 
-      // 20ms micro-batch window: merges rapid keystrokes/plugins/multi-cursors into 1 network frame
       this.updateBatchTimer = setTimeout(() => {
         this.updateBatchTimer = null;
         this.flushPendingUpdates();
@@ -696,12 +436,6 @@ export class YjsSocketIOProvider {
 
   // ── HTTP-save-while-disconnected handling ──────────────────────────────────
 
-  /**
-   * True when the document content was persisted over HTTP (REST PUT) while the socket was
-   * disconnected. The backend splices REST content into the live server Y.Doc, so on reconnect
-   * our offline Yjs items must NOT be sent (they would duplicate text). Instead the local doc
-   * is rebuilt from server state and any remaining difference is re-applied as a fresh edit.
-   */
   private httpSavedWhileDisconnected = false;
   private resyncInFlight = false;
   private readonly docReplacedListeners = new Set<(provider: YjsSocketIOProvider) => void>();
@@ -726,21 +460,16 @@ export class YjsSocketIOProvider {
     };
   }
 
-  /**
-   * Discards local Y.Doc state and rebuilds from the server, then re-applies the local text
-   * difference as a single new transaction. Nothing is lost, nothing is duplicated.
-   */
   private rebuildFromServer(): void {
     if (!this.socket || !this.socket.connected || this.destroyed || this.resyncInFlight) return;
     this.resyncInFlight = true;
 
     const freshDoc = new Y.Doc();
-    const encoder = encoding.createEncoder();
-    syncProtocol.writeSyncStep1(encoder, freshDoc); // empty state vector => full server state
+    const step1Data = encodeYjsSyncStep1(freshDoc);
 
     this.socket.emit(
       'doc:sync:step1',
-      { projectId: this.projectId, docId: this.pageId, data: encoding.toUint8Array(encoder) },
+      { projectId: this.projectId, docId: this.pageId, data: step1Data },
       (res?: { success?: boolean; data?: Uint8Array | ArrayLike<number> | unknown; error?: string }) => {
         this.resyncInFlight = false;
         if (this.destroyed) {
@@ -748,7 +477,6 @@ export class YjsSocketIOProvider {
           return;
         }
         if (!res?.success) {
-          // Keep the flag; retry on next reconnect. Never fall back to sending stale items.
           console.warn('[YjsSocketIOProvider] Server rebuild failed; will retry on reconnect:', res?.error);
           freshDoc.destroy();
           return;
@@ -765,10 +493,8 @@ export class YjsSocketIOProvider {
 
         const oldDoc = this.doc;
         const oldAwareness = this.awareness;
-        // Latest local text (includes edits typed while the rebuild was in flight).
         const localText = oldDoc.getText('latex').toString();
 
-        // Swap in the fresh doc; drop every queued update belonging to the old doc.
         this.pendingUpdates = [];
         if (this.updateBatchTimer) {
           clearTimeout(this.updateBatchTimer);
@@ -785,7 +511,6 @@ export class YjsSocketIOProvider {
         this.setupLocalDocListener();
         this.httpSavedWhileDisconnected = false;
 
-        // Re-apply any remaining local difference as a new local transaction.
         applyTextDiff(this.yText, localText, 'local-resync');
         this.flushPendingUpdates();
 
@@ -798,7 +523,6 @@ export class YjsSocketIOProvider {
           }
         }
         this.options.onSynced?.();
-        // Destroy stale instances after bindings had a chance to reconfigure.
         setTimeout(() => {
           oldAwareness.destroy();
           oldDoc.destroy();
@@ -810,7 +534,7 @@ export class YjsSocketIOProvider {
   /**
    * Immediately flush all pending local Yjs updates into a single merged binary sync message.
    */
-  public flushPendingUpdates(): void {
+  public flushPendingUpdates(): boolean {
     if (this.updateBatchTimer) {
       clearTimeout(this.updateBatchTimer);
       this.updateBatchTimer = null;
@@ -820,40 +544,34 @@ export class YjsSocketIOProvider {
       this.httpSavedWhileDisconnected ||
       this.resyncInFlight ||
       !this.socket ||
-      !this.socket.connected ||
-      this.pendingUpdates.length === 0
+      !this.socket.connected
     ) {
-      return;
+      return false;
+    }
+    if (this.pendingUpdates.length === 0) {
+      return true;
     }
 
     const updatesToEmit = this.pendingUpdates;
     this.pendingUpdates = [];
 
-    const mergedUpdate = updatesToEmit.length === 1 ? updatesToEmit[0] : Y.mergeUpdates(updatesToEmit);
-    const encoder = encoding.createEncoder();
-    syncProtocol.writeUpdate(encoder, mergedUpdate);
-    const syncMessage = encoding.toUint8Array(encoder);
-
     this.socket.emit('doc:sync:update', {
       projectId: this.projectId,
       docId: this.pageId,
-      data: syncMessage,
+      data: encodeMergedYjsUpdates(updatesToEmit),
     });
+    return true;
   }
 
   private initiateYjsSync(): void {
     if (!this.socket || !this.socket.connected || this.destroyed) return;
 
     if (this.httpSavedWhileDisconnected) {
-      // Server already has our text via the REST splice: never send local items/state.
       this.rebuildFromServer();
       return;
     }
 
-    // Send binary sync:step1 with local state vector
-    const encoder = encoding.createEncoder();
-    syncProtocol.writeSyncStep1(encoder, this.doc);
-    const step1Payload = encoding.toUint8Array(encoder);
+    const step1Payload = encodeYjsSyncStep1(this.doc);
 
     this.socket.emit(
       'doc:sync:step1',
@@ -876,43 +594,11 @@ export class YjsSocketIOProvider {
             this.yText.insert(0, this.options.initialContent!);
           }, 'local-init');
         }
-        // Flush any local updates queued while disconnected (Yjs updates are idempotent).
         this.flushPendingUpdates();
         this.isSynced = true;
         this.options.onSynced?.();
       },
     );
-  }
-
-  private toCollaborationPresence(
-    data: RemotePresencePayload,
-    existing?: CollaborationPresence,
-  ): CollaborationPresence {
-    return {
-      ...existing,
-      id: data.userId,
-      userId: data.userId,
-      socketId: data.socketId ?? existing?.socketId,
-      name: data.name || existing?.name || 'Collaborator',
-      avatar: data.avatar !== undefined ? data.avatar : existing?.avatar,
-      color: data.color || existing?.color || '#3b82f6',
-      role: data.role ?? existing?.role,
-      cursor: data.cursor
-        ? {
-            line: data.cursor.row,
-            column: data.cursor.column,
-            selection: data.cursor.selection
-              ? {
-                  startLineNumber: data.cursor.selection.anchor.row,
-                  startColumn: data.cursor.selection.anchor.column,
-                  endLineNumber: data.cursor.selection.head.row,
-                  endColumn: data.cursor.selection.head.column,
-                }
-              : undefined,
-          }
-        : existing?.cursor,
-      lastActiveAt: Date.now(),
-    };
   }
 
   private handleInitialDocPresence(docPresence: RemotePresencePayload[]): void {
@@ -922,7 +608,7 @@ export class YjsSocketIOProvider {
       if (!p || p.socketId === this.socket?.id) continue;
 
       const key = p.socketId || p.userId;
-      this.collaboratorsMap.set(key, this.toCollaborationPresence(p));
+      this.collaboratorsMap.set(key, toCollaborationPresence(p));
 
       if (p.cursor) {
         this.handleRemoteCursor(p);
@@ -933,50 +619,19 @@ export class YjsSocketIOProvider {
   }
 
   private handleRemoteCursor(data: RemoteCursorPayload): void {
-    if (!data || !data.cursor) return;
-    if (data.socketId && data.socketId === this.socket?.id) return;
-
-    const clientId = this.getOrCreateClientId(data.socketId || data.userId);
     const { text, lineStarts } = this.getIndexedText();
-
-    const anchorRow = data.cursor.selection?.anchor?.row ?? data.cursor.row;
-    const anchorCol = data.cursor.selection?.anchor?.column ?? data.cursor.column;
-    const headRow = data.cursor.selection?.head?.row ?? data.cursor.row;
-    const headCol = data.cursor.selection?.head?.column ?? data.cursor.column;
-
-    const anchorOffset = getOffsetFromRowCol(text, anchorRow, anchorCol, lineStarts);
-    const headOffset = getOffsetFromRowCol(text, headRow, headCol, lineStarts);
-
-    const anchor = Y.createRelativePositionFromTypeIndex(this.yText, anchorOffset);
-    const head = Y.createRelativePositionFromTypeIndex(this.yText, headOffset);
-
-    const isNew = !this.awareness.states.has(clientId);
-    this.awareness.states.set(clientId, {
-      user: {
-        id: data.userId,
-        name: data.name || 'Collaborator',
-        color: data.color || '#3b82f6',
-        avatar: data.avatar,
-      },
-      cursor: { anchor, head },
+    applyRemoteCursorAwareness({
+      data,
+      localSocketId: this.socket?.id,
+      doc: this.doc,
+      yText: this.yText,
+      awareness: this.awareness,
+      socketToClientIdMap: this.socketToClientIdMap,
+      collaboratorsMap: this.collaboratorsMap,
+      text,
+      lineStarts,
+      onCollaboratorsChange: this.options.onCollaboratorsChange,
     });
-
-    const currentClock = this.awareness.meta.get(clientId)?.clock || 0;
-    this.awareness.meta.set(clientId, {
-      clock: currentClock + 1,
-      lastUpdated: Date.now(),
-    });
-
-    this.awareness.emit('change', [
-      {
-        added: isNew ? [clientId] : [],
-        updated: isNew ? [] : [clientId],
-        removed: [],
-      },
-      'socket.io',
-    ]);
-
-    this.updateCollaboratorCursor(data);
   }
 
   private handleUserJoined(data: RemoteUserJoinedPayload): void {
@@ -988,7 +643,7 @@ export class YjsSocketIOProvider {
       this.collaboratorsMap.delete(data.userId);
     }
 
-    this.collaboratorsMap.set(key, this.toCollaborationPresence(data, existing));
+    this.collaboratorsMap.set(key, toCollaborationPresence(data, existing));
 
     if (data.cursor) {
       this.handleRemoteCursor(data);
@@ -998,115 +653,44 @@ export class YjsSocketIOProvider {
   }
 
   private handleUserLeft(data: { userId?: string; socketId?: string }): void {
-    if (data.socketId) {
-      this.collaboratorsMap.delete(data.socketId);
-    }
-    if (data.userId) {
-      this.collaboratorsMap.delete(data.userId);
-      for (const [k, c] of this.collaboratorsMap) {
-        if (c.userId === data.userId || c.id === data.userId) {
-          this.collaboratorsMap.delete(k);
-        }
-      }
-    }
-
-    const targetKey = data.socketId || data.userId;
-    if (targetKey) {
-      const clientId = this.socketToClientIdMap.get(targetKey);
-      if (clientId) {
-        removeAwarenessStates(this.awareness, [clientId], 'socket.io');
-        this.socketToClientIdMap.delete(targetKey);
-      }
-    }
-
-    this.options.onCollaboratorsChange?.(Array.from(this.collaboratorsMap.values()));
-  }
-
-  private updateCollaboratorCursor(data: RemoteCursorPayload): void {
-    if (!data.cursor) return;
-    const key = data.socketId || data.userId;
-    const existing =
-      this.collaboratorsMap.get(key) ||
-      (data.socketId ? this.collaboratorsMap.get(data.userId) : undefined);
-    if (data.socketId && existing && !this.collaboratorsMap.has(data.socketId)) {
-      this.collaboratorsMap.delete(data.userId);
-    }
-
-    this.collaboratorsMap.set(key, this.toCollaborationPresence(data, existing));
-    this.options.onCollaboratorsChange?.(Array.from(this.collaboratorsMap.values()));
-  }
-
-  private getOrCreateClientId(key: string): number {
-    let clientId = this.socketToClientIdMap.get(key);
-    if (clientId !== undefined) return clientId;
-
-    let hash = 5381;
-    for (let i = 0; i < key.length; i++) {
-      hash = ((hash << 5) + hash) + key.charCodeAt(i);
-      hash |= 0;
-    }
-    clientId = Math.abs(hash);
-    if (clientId === this.doc.clientID || clientId === 0) {
-      clientId = this.doc.clientID + 1000 + (Math.abs(hash) % 10000);
-    }
-    this.socketToClientIdMap.set(key, clientId);
-    return clientId;
+    removeRemoteCollaborator({
+      data,
+      awareness: this.awareness,
+      socketToClientIdMap: this.socketToClientIdMap,
+      collaboratorsMap: this.collaboratorsMap,
+      onCollaboratorsChange: this.options.onCollaboratorsChange,
+    });
   }
 
   private setupLocalAwarenessListener(): void {
     this.awareness.on(
       'change',
       ({ added, updated }: { added: number[]; updated: number[]; removed: number[] }, origin: unknown) => {
-      if (origin === 'socket.io') return;
-      if (
-        added.includes(this.awareness.clientID) ||
-        updated.includes(this.awareness.clientID)
-      ) {
-        this.scheduleEmitLocalCursor();
-      }
-    });
+        if (origin === 'socket.io') return;
+        if (
+          added.includes(this.awareness.clientID) ||
+          updated.includes(this.awareness.clientID)
+        ) {
+          this.scheduleEmitLocalCursor();
+        }
+      },
+    );
   }
 
   private scheduleEmitLocalCursor(): void {
     if (this.destroyed) return;
-
-    const localState = this.awareness.getLocalState();
-    if (!localState || !localState.cursor) return;
-    const { anchor, head } = localState.cursor;
-    if (!anchor || !head) return;
-
-    const anchorAbs = Y.createAbsolutePositionFromRelativePosition(anchor, this.doc);
-    const headAbs = Y.createAbsolutePositionFromRelativePosition(head, this.doc);
-    if (!anchorAbs || !headAbs || anchorAbs.type !== this.yText || headAbs.type !== this.yText) {
-      return;
-    }
-
     const { text, lineStarts } = this.getIndexedText();
-    const anchorPos = getRowColFromOffset(text, anchorAbs.index, lineStarts);
-    const headPos = getRowColFromOffset(text, headAbs.index, lineStarts);
-
-    // Avoid re-emitting identical position
-    if (
-      this.lastEmittedCoords &&
-      this.lastEmittedCoords.row === headPos.row &&
-      this.lastEmittedCoords.col === headPos.col &&
-      anchorAbs.index === headAbs.index
-    ) {
-      return;
-    }
-    this.lastEmittedCoords = { row: headPos.row, col: headPos.col };
-
-    const isPoint = anchorAbs.index === headAbs.index;
-    this.sendCursor(
-      headPos.row,
-      headPos.col,
-      isPoint
-        ? null
-        : {
-            anchor: { row: anchorPos.row, column: anchorPos.col },
-            head: { row: headPos.row, column: headPos.col },
-          },
-    );
+    const extracted = extractLocalCursorCoords({
+      awareness: this.awareness,
+      doc: this.doc,
+      yText: this.yText,
+      text,
+      lineStarts,
+      lastEmittedCoords: this.lastEmittedCoords,
+    });
+    if (!extracted) return;
+    this.lastEmittedCoords = extracted.nextLastEmittedCoords;
+    this.sendCursor(extracted.headRow, extracted.headCol, extracted.selection);
   }
 
   /**
@@ -1217,89 +801,13 @@ export class YjsSocketIOProvider {
   }
 }
 
-// ── Provider Pool (Multi-Tab Resilient Singleton Management) ────────────────
-const providerPool = new Map<string, { provider: YjsSocketIOProvider; refCount: number }>();
-
-export function getOrCreateYjsProvider(
-  projectId: string,
-  pageId: string,
-  options?: YjsSocketIOProviderOptions
-): YjsSocketIOProvider {
-  const key = `${projectId}:${pageId}`;
-  const existing = providerPool.get(key);
-  if (existing && !existing.provider.isDestroyed) {
-    if (options?.commandBus) {
-      existing.provider.setCommandBus(options.commandBus);
-    }
-    existing.refCount++;
-    return existing.provider;
-  }
-  const provider = new YjsSocketIOProvider(projectId, pageId, undefined, options);
-  providerPool.set(key, { provider, refCount: 1 });
-  return provider;
-}
-
-export function releaseYjsProvider(projectId: string, pageId: string): void {
-  const key = `${projectId}:${pageId}`;
-  const item = providerPool.get(key);
-  if (!item) return;
-  item.refCount--;
-  if (item.refCount <= 0) {
-    item.provider.destroy();
-    providerPool.delete(key);
-  }
-}
-
-/**
- * Notifies every pooled provider for pageId that its content was just persisted over REST.
- * Providers whose socket is disconnected will rebuild from the server on reconnect instead of
- * replaying offline Yjs items (the backend already spliced the REST content into the live doc).
- */
-export function markHttpSavedWhileDisconnected(pageId: string): void {
-  for (const { provider } of providerPool.values()) {
-    if (provider.pageId === pageId) provider.markHttpSaved();
-  }
-}
-
-/**
- * Flushes pending Yjs updates for a specific project/document provider if present in the pool.
- */
-export function flushYjsProvider(projectId: string | undefined, pageId: string): boolean {
-  let flushed = false;
-  if (projectId) {
-    const item = providerPool.get(`${projectId}:${pageId}`);
-    if (item && !item.provider.isDestroyed) {
-      item.provider.flushPendingUpdates();
-      return true;
-    }
-  }
-  for (const { provider } of providerPool.values()) {
-    if (!provider.isDestroyed && provider.pageId === pageId) {
-      provider.flushPendingUpdates();
-      flushed = true;
-    }
-  }
-  return flushed;
-}
-
-/**
- * Flushes pending Yjs updates across all active pooled providers (optionally scoped to projectId).
- */
-export function flushYjsProviders(projectId?: string): void {
-  for (const { provider } of providerPool.values()) {
-    if (!provider.isDestroyed && (!projectId || provider.projectId === projectId)) {
-      provider.flushPendingUpdates();
-    }
-  }
-}
-
-/**
- * Destroys all pooled providers and clears the pool.
- * Useful for test isolation and resetting collaboration state.
- */
-export function clearYjsProviderPool(): void {
-  for (const item of providerPool.values()) {
-    item.provider.destroy();
-  }
-  providerPool.clear();
-}
+export {
+  getOrCreateYjsProvider,
+  releaseYjsProvider,
+  markHttpSavedWhileDisconnected,
+  flushYjsProvider,
+  flushYjsProviders,
+  getActiveYjsProvider,
+  updateActiveYjsDocContent,
+  clearYjsProviderPool,
+} from './yjs-provider-pool';

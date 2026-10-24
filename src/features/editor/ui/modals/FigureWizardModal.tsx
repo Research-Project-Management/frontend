@@ -237,6 +237,7 @@ export function FigureWizardModal({
             ref={fileInputRef}
             type="file"
             accept="image/*,.pdf,.eps"
+            aria-label="Upload figure image"
             className="hidden"
             onChange={handleFilePicked}
           />
@@ -250,7 +251,7 @@ export function FigureWizardModal({
           onDragLeave={() => setIsDragging(false)}
           onDrop={handleDrop}
           className={cn(
-            'space-y-2 rounded-md transition-all',
+            'space-y-2 rounded-md transition-colors',
             isDragging && 'ring-2 ring-primary ring-offset-2 bg-primary/5 p-1'
           )}
         >
@@ -315,7 +316,7 @@ export function FigureWizardModal({
                       }
                     }}
                     className={cn(
-                      'group relative rounded-md border p-1.5 flex flex-col items-center gap-1.5 cursor-pointer transition-all outline-none focus-visible:ring-1 focus-visible:ring-border',
+                      'group relative rounded-md border p-1.5 flex flex-col items-center gap-1.5 cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-border',
                       isSelected
                         ? 'bg-primary/10 border-primary'
                         : 'bg-background border-border hover:border-border hover:bg-muted/40',
@@ -355,6 +356,7 @@ export function FigureWizardModal({
             <Input
               value={values.selectedFilename}
               onChange={(e) => handleSelectImage(e.target.value)}
+              aria-label="Image filename, relative path, or URL"
               placeholder="e.g. plot.png, figures/chart.pdf, or https://..."
               className="h-8 text-xs font-mono rounded-md border-border bg-background"
             />
@@ -395,6 +397,7 @@ export function FigureWizardModal({
               </label>
               <Input
                 {...register('caption')}
+                aria-label="Figure caption"
                 placeholder="Figure caption description"
                 className="h-8 text-xs rounded-md border-border bg-background"
               />
@@ -405,6 +408,7 @@ export function FigureWizardModal({
               </label>
               <Input
                 {...register('label')}
+                aria-label="Figure label"
                 placeholder="fig:my_figure"
                 className="h-8 text-xs font-mono rounded-md border-border bg-background"
               />

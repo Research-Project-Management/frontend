@@ -39,7 +39,7 @@ export const CompilationErrorBanner = React.memo(function CompilationErrorBanner
       aria-live="polite"
       data-testid="compilation-error-banner"
       className={cn(
-        'flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-3.5 py-2 bg-destructive/10 border-b border-destructive/25 text-destructive select-none z-20 shrink-0 transition-all duration-150',
+        'flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-3.5 py-2 bg-destructive/10 border-b border-destructive/25 text-destructive select-none z-20 shrink-0 transition-colors duration-150',
         className
       )}
     >

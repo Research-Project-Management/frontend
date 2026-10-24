@@ -10,12 +10,16 @@ export type ActiveSidePanel = 'explorer' | 'outline' | 'citations' | 'review' | 
 
 export interface WorkspaceTab {
   readonly id: string;
-  readonly path: string;
   readonly title: string;
-  readonly isDirty: boolean;
-  readonly isPinned: boolean;
-  readonly lastAccessedAt: number;
+  readonly path?: string;
+  readonly fileUrl?: string;
+  readonly isDirty?: boolean;
+  readonly isPinned?: boolean;
+  readonly isRoot?: boolean;
+  readonly lastAccessedAt?: number;
 }
+
+export type EditorTab = WorkspaceTab;
 
 export interface WorkspaceLayoutConfig {
   readonly splitMode: SplitMode;

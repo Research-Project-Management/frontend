@@ -113,7 +113,8 @@ export function ProjectTitleDropdown() {
   useEffect(() => {
     if (isRenameOpen) {
       renameForm.reset({ name: displayTitle });
-      setTimeout(() => renameInputRef.current?.select(), 50);
+      const timer = setTimeout(() => renameInputRef.current?.select(), 50);
+      return () => clearTimeout(timer);
     }
   }, [isRenameOpen, displayTitle, renameForm]);
 

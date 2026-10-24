@@ -392,6 +392,7 @@ export interface CreateSuggestionPayload {
   toColumn?: number;
   description?: string;
   projectId?: string;
+  idempotencyKey?: string;
   silent?: boolean;
 }
 

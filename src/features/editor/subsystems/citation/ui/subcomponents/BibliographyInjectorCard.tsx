@@ -97,10 +97,14 @@ export const BibliographyInjectorCard = React.memo(function BibliographyInjector
         sessionCoordinator.notifyContentChange(activeDocId, nextContent);
       }
 
-      if (engine && typeof engine.setContent === 'function') {
+      if (engine?.setContent) {
         engine.setContent(nextContent);
       } else {
-        editorCommandBus.dispatch({ type: 'editor:set-content', content: nextContent });
+        editorCommandBus.dispatch({
+          type: 'editor:set-content',
+          content: nextContent,
+          fileId: activeDocId ?? undefined,
+        });
       }
       if (refreshContent) refreshContent();
 

@@ -12,14 +12,17 @@ export interface AiSuggestionsHeroProps {
 export function AiSuggestionsHero({ onSelectSuggestion }: AiSuggestionsHeroProps) {
   return (
     <div className="flex flex-col justify-center select-none py-1 gap-2.5 my-auto">
-      {/* Central Luminous 3D AI Orb */}
+      {/* Academic Copilot Hero */}
       <CompanionHero />
 
       {/* Suggestions Section */}
       <div className="w-full pt-1 flex flex-col gap-0.5 text-left">
-        <div className="px-2 mb-1">
+        <div className="px-2 mb-1 flex items-center justify-between">
           <span className="text-12 font-medium text-muted-foreground">
             Suggestions
+          </span>
+          <span className="text-10 font-medium text-ai bg-ai-subtle border border-ai-border px-1.5 py-0.5 rounded-sm">
+            RAG Verified
           </span>
         </div>
         <div className="space-y-0.5">

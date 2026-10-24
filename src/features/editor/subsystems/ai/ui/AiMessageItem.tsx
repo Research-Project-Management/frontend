@@ -124,10 +124,15 @@ export function AiMessageItem({
   if (isStreaming) {
     return (
       <div className="flex flex-col gap-1 w-full items-start text-13">
-        <div className="relative max-w-[92%] rounded-md px-3 py-2 leading-relaxed bg-muted/50 border border-border/80 text-foreground">
-          <div className="text-10 font-medium text-ai mb-1 flex items-center gap-1 select-none">
-            <Loader2 className="size-2.5 animate-spin motion-reduce:animate-none" />
-            <span>Flux AI Assistant</span>
+        <div className="relative max-w-[92%] rounded-md px-3 py-2 leading-relaxed bg-ai-subtle/40 border border-ai-border/60 text-foreground">
+          <div className="text-10 font-medium text-ai mb-1 flex items-center justify-between gap-2 select-none">
+            <div className="flex items-center gap-1">
+              <Loader2 className="size-2.5 animate-spin motion-reduce:animate-none" />
+              <span>Flux AI Assistant</span>
+            </div>
+            <span className="text-10 font-medium text-ai bg-ai-subtle border border-ai-border px-1.5 py-0.5 rounded-sm">
+              RAG Verified
+            </span>
           </div>
           {thinking && <ThinkingBlock content={thinking} isOpen={isThinkingOpen} />}
           <div className="prose prose-sm dark:prose-invert max-w-none text-13 space-y-2 break-words [&>p]:leading-relaxed [&>ul]:pl-4 [&>ol]:pl-4 [&_code]:font-mono [&_code]:text-11">
@@ -157,9 +162,17 @@ export function AiMessageItem({
           'relative max-w-[92%] rounded-md px-3 py-2 leading-relaxed',
           isUser
             ? 'bg-primary text-primary-foreground font-normal whitespace-pre-wrap'
-            : 'bg-muted/50 border border-border/80 text-foreground'
+            : 'bg-ai-subtle/40 border border-ai-border/60 text-foreground'
         )}
       >
+        {!isUser && (
+          <div className="mb-1.5 flex items-center justify-between gap-2 select-none">
+            <span className="text-10 font-medium text-ai">Flux AI Assistant</span>
+            <span className="text-10 font-medium text-ai bg-ai-subtle border border-ai-border px-1.5 py-0.5 rounded-sm">
+              RAG Verified
+            </span>
+          </div>
+        )}
         {thinking && <ThinkingBlock content={thinking} isOpen={isThinkingOpen} />}
         {isUser ? (
           <div>{msg?.content}</div>

@@ -317,7 +317,7 @@ export function WordCountModal({
             <TabsList className="grid grid-cols-3 h-8 p-0.5 bg-muted/60 border border-border/50 rounded-md">
               <TabsTrigger
                 value="document"
-                className="text-12 gap-1.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:font-semibold transition-all font-medium truncate"
+                className="text-12 gap-1.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:font-semibold transition-colors font-medium truncate"
               >
                 <FileText className="size-3.5 shrink-0" strokeWidth={1.5} />
                 <span className="truncate">{activeFileName || 'Document'}</span>
@@ -325,7 +325,7 @@ export function WordCountModal({
 
               <TabsTrigger
                 value="project"
-                className="text-12 gap-1.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:font-semibold transition-all font-medium"
+                className="text-12 gap-1.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:font-semibold transition-colors font-medium"
               >
                 <Files className="size-3.5 shrink-0" strokeWidth={1.5} />
                 <span>Project</span>
@@ -334,7 +334,7 @@ export function WordCountModal({
               <TabsTrigger
                 value="selection"
                 disabled={!hasSelection}
-                className="text-12 gap-1.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:font-semibold transition-all disabled:opacity-40 font-medium"
+                className="text-12 gap-1.5 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:font-semibold transition-colors disabled:opacity-40 font-medium"
               >
                 <MousePointer className="size-3.5 shrink-0" strokeWidth={1.5} />
                 <span>Selection</span>

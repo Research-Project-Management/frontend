@@ -174,6 +174,7 @@ export function UrlTabPane({
           <Input
             {...registerUrl('url')}
             onChange={(e) => handleUrlInputChange(e.target.value)}
+            aria-label="URL to fetch"
             placeholder="https://example.com/dataset.csv or raw GitHub URL"
             className="h-8 text-12 bg-muted/40 rounded-md border-border/60 focus:bg-background"
           />
@@ -188,6 +189,7 @@ export function UrlTabPane({
           </label>
           <Input
             {...registerUrl('fileName')}
+            aria-label="File name in this project"
             placeholder="e.g. data.csv, imported.tex"
             className="h-8 text-12 bg-muted/40 rounded-md border-border/60 focus:bg-background"
           />

@@ -243,7 +243,11 @@ export function EditorArea() {
     if (!recoverableDraft || !displayPage?.id) return;
     const restoredContent = recoverableDraft.content;
     sessionCoordinator.restoreDraft(displayPage.id, restoredContent);
-    editorCommandBus.dispatch({ type: 'editor:set-content', content: restoredContent });
+    editorCommandBus.dispatch({
+      type: 'editor:set-content',
+      content: restoredContent,
+      fileId: displayPage.id,
+    });
     setRecoverableDraft(null);
     toast.success('Draft restored successfully!', { id: 'draft-recovery-status' });
   }, [recoverableDraft, displayPage?.id]);

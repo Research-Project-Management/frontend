@@ -4,7 +4,7 @@
  */
 
 import type { Item } from '@/features/library/domain/types/library.types';
-import type { BibEntry } from './bib-parser';
+import type { BibEntry } from '@/features/editor/domain/latex/bib-parser';
 
 /**
  * Regex matching LaTeX citation commands with optional square-bracket arguments:

@@ -257,6 +257,7 @@ export default function TemplateGalleryModal() {
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
                 <input
                   type="text"
+                  aria-label="Search templates"
                   placeholder="Search templates..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -293,7 +294,7 @@ export default function TemplateGalleryModal() {
                         }
                       }}
                       className={cn(
-                        'p-3 rounded-md border transition-all cursor-pointer text-left outline-none focus-visible:ring-1 focus-visible:ring-border',
+                        'p-3 rounded-md border transition-colors cursor-pointer text-left outline-none focus-visible:ring-1 focus-visible:ring-border',
                         isSelected
                           ? 'bg-primary/10 border-primary'
                           : 'border-border/60 hover:border-border hover:bg-muted/40'
@@ -372,6 +373,7 @@ export default function TemplateGalleryModal() {
                   type="button"
                   onClick={copyCode}
                   title="Copy code"
+                  aria-label="Copy template code"
                   className="size-7 rounded-md flex items-center justify-center border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border relative after:absolute after:-inset-1.5 after:content-['']"
                 >
                   <Copy className="size-3.5" />

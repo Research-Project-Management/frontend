@@ -45,7 +45,7 @@ import {
   deletedFilesQuery,
 } from '@/features/editor/ui/hooks/document.queries';
 import { usePageActions } from '@/features/editor/ui/hooks/usePageActions';
-import { editorCommandBus, workspaceCoordinator } from '@/features/editor/core';
+import { editorCommandBus, workspaceCoordinator, sessionCoordinator } from '@/features/editor/core';
 import type { EditorStorageItem as StorageItem } from '@/features/editor/domain/types/storage-item.types';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { type LinkedFileDto } from '@/features/editor/sdk/manuscript/types';
@@ -365,10 +365,26 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
     [searchParams, pageId, parentPageId, mainFileId, configuredMainFile],
   );
 
+  const folderFocusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (folderFocusTimerRef.current) {
+        clearTimeout(folderFocusTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleStartCreateFolder = useCallback(() => {
     setIsCreatingFolder(true);
     setNewFolderName('');
-    setTimeout(() => newFolderInputRef.current?.focus(), 0);
+    if (folderFocusTimerRef.current) {
+      clearTimeout(folderFocusTimerRef.current);
+    }
+    folderFocusTimerRef.current = setTimeout(() => {
+      folderFocusTimerRef.current = null;
+      newFolderInputRef.current?.focus();
+    }, 0);
   }, []);
 
   const handleCancelCreate = useCallback(() => {
@@ -469,11 +485,9 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
         return;
       }
       const oldTitle = files?.find((f) => f.id === fileId)?.title ?? '';
-      void handleRenameSubmit(fileId, parsed.data.name, oldTitle);
-      updateTitleMutation.mutate(
-        { pageId: fileId, title: parsed.data.name, oldTitle },
-        { onSuccess: () => setRenamingId(null) },
-      );
+      void handleRenameSubmit(fileId, parsed.data.name, oldTitle).finally(() => {
+        setRenamingId(null);
+      });
     },
     [renameValue, files, handleRenameSubmit, updateTitleMutation],
   );
@@ -492,6 +506,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
     if (!fileToDelete || !parentPageId) return;
     const targetId = fileToDelete.id;
 
+    sessionCoordinator.evictDeletedFile(targetId);
     deletePageMutation.mutate(targetId, {
       onSuccess: () => {
         navigationCoordinator.closeDocument(targetId);

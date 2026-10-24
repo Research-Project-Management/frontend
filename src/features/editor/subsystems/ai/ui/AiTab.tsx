@@ -54,6 +54,7 @@ export default function AiTab({ onClose }: AiTabProps) {
   const params = useParams<{ projectId?: string; pageId?: string; draftId?: string }>();
   const currentPageId = usePageStore((s) => s.currentPage?.id);
   const currentPageTitle = usePageStore((s) => s.currentPage?.title);
+  const activeFilePage = usePageStore((s) => s.activeFilePage);
   const currentPageProjectId = usePageStore((s) => {
     const p = s.currentPage?.projectId;
     return typeof p === 'string' ? p : p?.id || null;
@@ -92,7 +93,16 @@ export default function AiTab({ onClose }: AiTabProps) {
   const [isUploadedDocsModalOpen, setIsUploadedDocsModalOpen] = useState(false);
 
   const abortControllerRef = useRef<AbortController | null>(null);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current) {
+        clearTimeout(copyTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -239,7 +249,7 @@ export default function AiTab({ onClose }: AiTabProps) {
     abortControllerRef.current = abortController;
 
     try {
-      const activeFilename = currentPageTitle || 'document.tex';
+      const activeFilename = activeFilePage?.title || currentPageTitle || 'document.tex';
       const fileContent = getContent();
       const finalDocIds = [
         ...attachedFiles.map((f) => f.id),
@@ -304,7 +314,13 @@ export default function AiTab({ onClose }: AiTabProps) {
   const handleCopyCode = async (code: string, blockId: string) => {
     await copyCode(code);
     setCopiedIndex(blockId);
-    setTimeout(() => setCopiedIndex(null), 2000);
+    if (copyTimerRef.current) {
+      clearTimeout(copyTimerRef.current);
+    }
+    copyTimerRef.current = setTimeout(() => {
+      copyTimerRef.current = null;
+      setCopiedIndex(null);
+    }, 2000);
   };
 
   const handleAttachItems = useCallback(

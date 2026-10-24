@@ -5,13 +5,13 @@ import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { usePageStore, editorCommandBus, workspaceCoordinator } from '@/features/editor/core';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
-import { useEditorCitations } from '@/features/editor/ui/hooks/useCitation';
+import { useEditorCitations } from '@/features/editor/subsystems/citation/ui/hooks/useCitation';
 import { toast } from 'sonner';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { type CitationValidationResult } from '@/features/editor/sdk/manuscript/types';
 import { generateCitationKey } from '@/features/library/domain/citations';
 import { filesQuery } from '@/features/editor/ui/hooks/document.queries';
-import { parseBibContent, type BibEntry } from '@/features/editor/subsystems/citation/model/bib-parser';
+import { parseBibContent, type BibEntry } from '@/features/editor/domain/latex/bib-parser';
 import {
   extractCitationKeys,
   stripLatexComments,
@@ -42,8 +42,21 @@ interface CachedBibFile {
   sample: string;
   entries: BibEntry[];
 }
+const MAX_BIB_PARSE_CACHE_SIZE = 50;
 const bibParseCache = new Map<string, CachedBibFile>();
 const BIBITEM_REGEX = /\\bibitem(?:\[[^\]]*\])?\{([^}]+)\}/g;
+
+function setBibParseCache(key: string, value: CachedBibFile): void {
+  if (bibParseCache.has(key)) {
+    bibParseCache.delete(key);
+  } else if (bibParseCache.size >= MAX_BIB_PARSE_CACHE_SIZE) {
+    const oldestKey = bibParseCache.keys().next().value;
+    if (oldestKey !== undefined) {
+      bibParseCache.delete(oldestKey);
+    }
+  }
+  bibParseCache.set(key, value);
+}
 
 export function useCitationTabState() {
   const params = useParams<{ projectId?: string; pageId?: string }>();
@@ -175,7 +188,7 @@ export function useCitationTabState() {
       } else {
         try {
           entries = parseBibContent(f.content);
-          bibParseCache.set(fileId, {
+          setBibParseCache(fileId, {
             length: f.content.length,
             sample,
             entries,

@@ -79,7 +79,7 @@ export const autoTheme: Extension = [
 const latexLightStyle = EditorView.theme({
   '&': {
     color: '#24292e',
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FCFCFB',
   },
   '.cm-content': {
     caretColor: '#000000',
@@ -98,13 +98,13 @@ const latexLightStyle = EditorView.theme({
   '&.cm-editor .cm-activeLineGutter, .cm-activeLineGutter': {
     backgroundColor: 'var(--editor-active-line, #e2f2ff)',
     color: '#0366d6',
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
 });
 
 const latexLightHighlight = HighlightStyle.define([
   { tag: t.comment, color: '#6a737d', fontStyle: 'italic' },
-  { tag: [t.keyword, t.operatorKeyword], color: '#005cc5', fontWeight: 'bold' },
+  { tag: [t.keyword, t.operatorKeyword], color: '#005cc5', fontWeight: '600' },
   { tag: [t.string, t.special(t.string)], color: '#22863a' },
   { tag: [t.number, t.atom], color: '#005cc5' },
   { tag: [t.macroName, t.standard(t.name)], color: '#6f42c1', fontWeight: '600' },
@@ -139,13 +139,13 @@ const latexDarkStyle = EditorView.theme({
   '&.cm-editor .cm-activeLineGutter, .cm-activeLineGutter': {
     backgroundColor: '#333738',
     color: '#ffffff',
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
 }, { dark: true });
 
 const latexDarkHighlight = HighlightStyle.define([
   { tag: t.comment, color: '#6a9955', fontStyle: 'italic' },
-  { tag: [t.keyword, t.operatorKeyword], color: '#569cd6', fontWeight: 'bold' },
+  { tag: [t.keyword, t.operatorKeyword], color: '#569cd6', fontWeight: '600' },
   { tag: [t.string, t.special(t.string)], color: '#ce9178' },
   { tag: [t.number, t.atom], color: '#b5cea8' },
   { tag: [t.macroName, t.standard(t.name)], color: '#4ec9b0', fontWeight: '600' },
@@ -185,7 +185,7 @@ const draculaStyle = EditorView.theme({
 
 const draculaHighlight = HighlightStyle.define([
   { tag: t.comment, color: '#6272a4', fontStyle: 'italic' },
-  { tag: [t.keyword, t.operatorKeyword], color: '#ff79c6', fontWeight: 'bold' },
+  { tag: [t.keyword, t.operatorKeyword], color: '#ff79c6', fontWeight: '600' },
   { tag: [t.string, t.special(t.string)], color: '#f1fa8c' },
   { tag: [t.number, t.atom], color: '#bd93f9' },
   { tag: [t.macroName, t.standard(t.name)], color: '#50fa7b', fontWeight: '600' },
@@ -225,7 +225,7 @@ const monokaiStyle = EditorView.theme({
 
 const monokaiHighlight = HighlightStyle.define([
   { tag: t.comment, color: '#75715e', fontStyle: 'italic' },
-  { tag: [t.keyword, t.operatorKeyword], color: '#f92672', fontWeight: 'bold' },
+  { tag: [t.keyword, t.operatorKeyword], color: '#f92672', fontWeight: '600' },
   { tag: [t.string, t.special(t.string)], color: '#e6db74' },
   { tag: [t.number, t.atom], color: '#ae81ff' },
   { tag: [t.macroName, t.standard(t.name)], color: '#a6e22e', fontWeight: '600' },
@@ -265,7 +265,7 @@ const solarizedLightStyle = EditorView.theme({
 
 const solarizedLightHighlight = HighlightStyle.define([
   { tag: t.comment, color: '#93a1a1', fontStyle: 'italic' },
-  { tag: [t.keyword, t.operatorKeyword], color: '#859900', fontWeight: 'bold' },
+  { tag: [t.keyword, t.operatorKeyword], color: '#859900', fontWeight: '600' },
   { tag: [t.string, t.special(t.string)], color: '#2aa198' },
   { tag: [t.number, t.atom], color: '#d33682' },
   { tag: [t.macroName, t.standard(t.name)], color: '#268bd2', fontWeight: '600' },
@@ -342,7 +342,7 @@ const githubDarkStyle = EditorView.theme({
 
 const githubDarkHighlight = HighlightStyle.define([
   { tag: t.comment, color: '#8b949e', fontStyle: 'italic' },
-  { tag: [t.keyword, t.operatorKeyword], color: '#ff7b72', fontWeight: 'bold' },
+  { tag: [t.keyword, t.operatorKeyword], color: '#ff7b72', fontWeight: '600' },
   { tag: [t.string, t.special(t.string)], color: '#a5d6ff' },
   { tag: [t.number, t.atom], color: '#79c0ff' },
   { tag: [t.macroName, t.standard(t.name)], color: '#d2a8ff', fontWeight: '600' },
@@ -382,7 +382,7 @@ const cobaltStyle = EditorView.theme({
 
 const cobaltHighlight = HighlightStyle.define([
   { tag: t.comment, color: '#0088ff', fontStyle: 'italic' },
-  { tag: [t.keyword, t.operatorKeyword], color: '#ff9d00', fontWeight: 'bold' },
+  { tag: [t.keyword, t.operatorKeyword], color: '#ff9d00', fontWeight: '600' },
   { tag: [t.string, t.special(t.string)], color: '#3ad900' },
   { tag: [t.number, t.atom], color: '#ff628c' },
   { tag: [t.macroName, t.standard(t.name)], color: '#ffee80', fontWeight: '600' },
@@ -398,7 +398,7 @@ export const cobaltTheme: Extension = [
 const eclipseStyle = EditorView.theme({
   '&': {
     color: '#000000',
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FCFCFB',
   },
   '.cm-content': {
     caretColor: '#000000',
@@ -417,13 +417,13 @@ const eclipseStyle = EditorView.theme({
   '&.cm-editor .cm-activeLineGutter, .cm-activeLineGutter': {
     backgroundColor: '#d8e8fc',
     color: '#000000',
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
 });
 
 const eclipseHighlight = HighlightStyle.define([
   { tag: t.comment, color: '#3f7f5f', fontStyle: 'italic' },
-  { tag: [t.keyword, t.operatorKeyword], color: '#7f0055', fontWeight: 'bold' },
+  { tag: [t.keyword, t.operatorKeyword], color: '#7f0055', fontWeight: '600' },
   { tag: [t.string, t.special(t.string)], color: '#2a00ff' },
   { tag: [t.number, t.atom], color: '#0000c0' },
   { tag: [t.macroName, t.standard(t.name)], color: '#7f0055', fontWeight: '600' },

@@ -268,7 +268,8 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
                 <div className="mt-2.5 space-y-1">
                   <Input
                     {...registerPush('commitMessage')}
-                    placeholder="Commit message..."
+                    aria-label="Commit message"
+                placeholder="Commit message..."
                     className="h-8 text-xs bg-background"
                   />
                   {pushErrors.commitMessage && (

@@ -158,7 +158,8 @@ export default function DeletedFilesModal({
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search deleted files..."
+                aria-label="Search deleted files"
+              placeholder="Search deleted files..."
                 className="pl-8 h-8 text-12 bg-muted/40 rounded-md border-border/60 focus:bg-background"
               />
             </div>

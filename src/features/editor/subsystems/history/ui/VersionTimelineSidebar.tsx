@@ -122,6 +122,7 @@ export function VersionTimelineSidebar({
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            aria-label="Filter versions, labels, or authors"
             placeholder="Filter versions, labels, or authors..."
             className="h-7 pl-8 text-xs bg-background"
           />
@@ -132,7 +133,7 @@ export function VersionTimelineSidebar({
       <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-1.5 divide-y-0">
         {isLoadingVersions ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground text-xs gap-2">
-            <Loader2 className="size-5 animate-spin text-primary" />
+            <Loader2 className="size-5 animate-spin motion-reduce:animate-none text-primary" />
             <span>Loading version history...</span>
           </div>
         ) : filteredVersions.length === 0 ? (
@@ -156,7 +157,7 @@ export function VersionTimelineSidebar({
                 key={v.id || v.version}
                 onClick={() => onSelectVersion(v.version)}
                 className={cn(
-                  'group relative flex flex-col p-2.5 rounded-md border transition-all cursor-pointer text-left',
+                  'group relative flex flex-col p-2.5 rounded-md border transition-colors cursor-pointer text-left',
                   isTarget
                     ? 'bg-primary/10 border-primary/40'
                     : isBase
@@ -240,6 +241,7 @@ export function VersionTimelineSidebar({
                     <Input
                       value={newLabelText}
                       onChange={(e) => setNewLabelText(e.target.value)}
+                      aria-label="Label name"
                       placeholder="Label name (e.g. v1.0-draft)..."
                       className="h-6 text-[11px] px-2"
                       autoFocus

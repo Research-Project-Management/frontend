@@ -236,6 +236,19 @@ export function refactorCitationKeyAcrossFiles(
   return { modifiedFiles, totalCount };
 }
 
+import type {
+  WorkspaceServicePort,
+  WorkspaceNotificationPort,
+  WorkspaceStorePort,
+} from '@/features/editor/domain/workspace/workspace-service-port';
+
+export interface CitekeyRefactorContext {
+  service?: WorkspaceServicePort;
+  notification?: WorkspaceNotificationPort;
+  store?: WorkspaceStorePort;
+  projectFiles?: Array<{ id: string; title?: string; name?: string; path?: string; content?: unknown }>;
+}
+
 /**
  * Orchestrates project-wide citation key refactoring across backend files, LRU cache,
  * symbol index, DAG engine, and the active CodeMirror buffer.
@@ -243,12 +256,20 @@ export function refactorCitationKeyAcrossFiles(
 export async function executeProjectCitekeyRefactor(
   oldKey: string,
   newKey: string,
-  optProjectId?: string
+  optProjectId?: string,
+  ctx?: CitekeyRefactorContext
 ): Promise<{ success: boolean; modifiedCount: number; replacedCount: number }> {
   const { toast } = await import('sonner');
+  const notifyError = (msg: string, id?: string) =>
+    ctx?.notification ? ctx.notification.notifyError(msg, id) : toast.error(msg, id ? { id } : undefined);
+  const notifyInfo = (msg: string, id?: string) =>
+    ctx?.notification ? ctx.notification.notifyInfo(msg, id) : toast.info(msg, id ? { id } : undefined);
+  const notifySuccess = (msg: string, id?: string) =>
+    ctx?.notification ? ctx.notification.notifySuccess(msg, id) : toast.success(msg, id ? { id } : undefined);
+
   const validation = validateCitationKey(newKey, oldKey);
   if (!validation.isValid) {
-    toast.error(validation.error || 'Invalid citation key', { id: 'refactor-citekey' });
+    notifyError(validation.error || 'Invalid citation key', 'refactor-citekey');
     return { success: false, modifiedCount: 0, replacedCount: 0 };
   }
 
@@ -268,23 +289,24 @@ export async function executeProjectCitekeyRefactor(
 
   const pageState = usePageStore.getState();
   const activeDoc = pageState.getActiveDocument();
-  const activeDocId = activeDoc?.id ?? null;
+  const activeDocId = ctx?.store ? ctx.store.getActiveDocumentId() : (activeDoc?.id ?? null);
   const effectiveProjectId =
     optProjectId ||
+    (ctx?.store ? ctx.store.getActiveProjectId() : null) ||
     pageState.projectId ||
     pageState.parentPageId ||
     activeDoc?.id ||
     '';
 
   if (!effectiveProjectId) {
-    toast.error('No active project found', { id: 'refactor-citekey' });
+    notifyError('No active project found', 'refactor-citekey');
     return { success: false, modifiedCount: 0, replacedCount: 0 };
   }
 
   const fileMap = new Map<string, { id: string; path: string; content: string }>();
 
   // 1. Include files registered in workspaceCoordinator
-  const wsFiles = workspaceCoordinator.getProjectFiles() || [];
+  const wsFiles = ctx?.projectFiles ?? workspaceCoordinator.getProjectFiles() ?? [];
   for (const wf of wsFiles) {
     if (wf.id) {
       const cached = lruDocumentCache.get(wf.id);
@@ -298,13 +320,15 @@ export async function executeProjectCitekeyRefactor(
 
   // 2. Fetch backend files and merge (preferring unsaved local edits in lruDocumentCache)
   try {
-    const files = await fileService.getByPageId(effectiveProjectId);
+    const files = ctx?.service
+      ? await ctx.service.getFilesByProjectId(effectiveProjectId)
+      : await fileService.getByPageId(effectiveProjectId);
     for (const f of files) {
       if (f.id) {
         const cached = lruDocumentCache.get(f.id);
         fileMap.set(f.id, {
           id: f.id,
-          path: cached?.filePath || f.title || '',
+          path: cached?.filePath || f.title || ('name' in f && f.name ? f.name : '') || '',
           content: cached?.content ?? f.content ?? '',
         });
       }
@@ -315,13 +339,15 @@ export async function executeProjectCitekeyRefactor(
 
   if (fileMap.size === 0 && activeDoc?.id && activeDoc.id !== effectiveProjectId) {
     try {
-      const pageFiles = await fileService.getByPageId(activeDoc.id);
+      const pageFiles = ctx?.service
+        ? await ctx.service.getFilesByProjectId(activeDoc.id)
+        : await fileService.getByPageId(activeDoc.id);
       for (const f of pageFiles) {
         if (f.id) {
           const cached = lruDocumentCache.get(f.id);
           fileMap.set(f.id, {
             id: f.id,
-            path: cached?.filePath || f.title || '',
+            path: cached?.filePath || f.title || ('name' in f && f.name ? f.name : '') || '',
             content: cached?.content ?? f.content ?? '',
           });
         }
@@ -374,7 +400,7 @@ export async function executeProjectCitekeyRefactor(
   const { modifiedFiles, totalCount } = refactorCitationKeyAcrossFiles(projectFiles, oldKey, newKey);
 
   if (modifiedFiles.length === 0) {
-    toast.info(`No citations found referencing @${oldKey}`, { id: 'refactor-citekey' });
+    notifyInfo(`No citations found referencing @${oldKey}`, 'refactor-citekey');
     return { success: true, modifiedCount: 0, replacedCount: 0 };
   }
 
@@ -403,7 +429,11 @@ export async function executeProjectCitekeyRefactor(
     latexDagEngine.parseAndRegister(mod.path, mod.newContent, mod.id);
 
     try {
-      await manuscriptService.docs.updateContent(mod.id, mod.newContent);
+      if (ctx?.service) {
+        await ctx.service.updateFileContent(mod.id, mod.newContent);
+      } else {
+        await manuscriptService.docs.updateContent(mod.id, mod.newContent);
+      }
     } catch (err) {
       console.warn(`[CitationRefactor] Failed to save updated file ${mod.path} to backend:`, err);
     }
@@ -419,7 +449,7 @@ export async function executeProjectCitekeyRefactor(
       store.setCurrentPage((prev) =>
         prev && prev.id === mod.id ? { ...prev, content: mod.newContent, docContent: mod.newContent } : prev
       );
-      editorCommandBus.dispatch({ type: 'editor:set-content', content: mod.newContent });
+      editorCommandBus.dispatch({ type: 'editor:set-content', content: mod.newContent, fileId: mod.id });
     }
   }
 
@@ -428,9 +458,9 @@ export async function executeProjectCitekeyRefactor(
     payload: { action: 'refactor-citekey', oldKey, newKey, totalCount },
   });
 
-  toast.success(
+  notifySuccess(
     `Renamed @${oldKey} to @${newKey} (${totalCount} occurrences in ${modifiedFiles.length} files)!`,
-    { id: 'refactor-citekey' }
+    'refactor-citekey'
   );
   return { success: true, modifiedCount: modifiedFiles.length, replacedCount: totalCount };
 }

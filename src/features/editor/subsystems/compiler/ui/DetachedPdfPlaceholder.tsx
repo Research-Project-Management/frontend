@@ -37,13 +37,13 @@ export function DetachedPdfPlaceholder() {
       data-testid="detached-pdf-placeholder"
       className="h-full w-full flex flex-col items-center justify-center p-6 bg-canvas text-foreground select-none overflow-y-auto"
     >
-      <div className="w-full max-w-sm flex flex-col items-center text-center p-6 rounded-xl border border-border/80 bg-card shadow-sm space-y-4">
+      <div className="w-full max-w-sm flex flex-col items-center text-center p-6 rounded-md border border-border bg-card shadow-none space-y-4">
         {/* Icon & Popout Badge */}
         <div className="relative">
-          <div className="size-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shadow-inner">
+          <div className="size-12 rounded-md bg-primary/10 text-primary flex items-center justify-center shadow-none">
             <ExternalLink className="size-6 stroke-[1.8]" />
           </div>
-          <span className="absolute -bottom-1 -right-1 size-3 rounded-full bg-emerald-500 ring-2 ring-card" />
+          <span className="absolute -bottom-1 -right-1 size-3 rounded-full bg-success ring-2 ring-card" />
         </div>
 
         {/* Headings */}
@@ -60,7 +60,7 @@ export function DetachedPdfPlaceholder() {
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/60 border border-border/40 text-[11px] font-medium">
           {compileStatus === 'compiling' ? (
             <>
-              <Loader2 className="size-3.5 text-amber-500 animate-spin" />
+              <Loader2 className="size-3.5 text-warning animate-spin motion-reduce:animate-none" />
               <span className="text-muted-foreground">Compiling document…</span>
             </>
           ) : compileStatus === 'error' ? (
@@ -70,7 +70,7 @@ export function DetachedPdfPlaceholder() {
             </>
           ) : (
             <>
-              <CheckCircle2 className="size-3.5 text-emerald-500" />
+              <CheckCircle2 className="size-3.5 text-success" />
               <span className="text-muted-foreground">
                 Synchronized {formattedTime ? `(${formattedTime})` : ''}
               </span>
@@ -85,7 +85,7 @@ export function DetachedPdfPlaceholder() {
             variant="default"
             size="sm"
             onClick={handleReattach}
-            className="w-full sm:flex-1 h-8 text-xs gap-1.5 font-medium shadow-sm cursor-pointer"
+            className="w-full sm:flex-1 h-8 text-xs gap-1.5 font-medium cursor-pointer"
           >
             <Minimize2 className="size-3.5" />
             <span>Re-attach PDF</span>

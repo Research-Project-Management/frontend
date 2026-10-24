@@ -27,7 +27,7 @@ import {
   type DecorationSet,
   WidgetType,
 } from '@codemirror/view';
-import type { EditorDiagnosticItem } from '@/features/editor/domain/diagnostics/diagnostic-types';
+import type { EditorDiagnosticItem } from '@/features/editor/domain/types/diagnostics.types';
 import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 
 export type IndexedDiagnosticItem = EditorDiagnosticItem;
@@ -269,17 +269,17 @@ export const errorLensTheme = EditorView.baseTheme({
     zIndex: '10',
   },
   '.cm-error-lens-error': {
-    backgroundColor: 'color-mix(in srgb, var(--destructive) 9%, var(--canvas, #ffffff))',
+    backgroundColor: 'color-mix(in srgb, var(--destructive) 9%, var(--canvas, #FCFCFB))',
     color: 'var(--destructive)',
     border: '1px solid color-mix(in srgb, var(--destructive) 24%, transparent)',
   },
   '.cm-error-lens-warning': {
-    backgroundColor: 'color-mix(in srgb, var(--warning) 9%, var(--canvas, #ffffff))',
+    backgroundColor: 'color-mix(in srgb, var(--warning) 9%, var(--canvas, #FCFCFB))',
     color: 'var(--warning)',
     border: '1px solid color-mix(in srgb, var(--warning) 24%, transparent)',
   },
   '.cm-error-lens-info': {
-    backgroundColor: 'color-mix(in srgb, var(--primary) 9%, var(--canvas, #ffffff))',
+    backgroundColor: 'color-mix(in srgb, var(--primary) 9%, var(--canvas, #FCFCFB))',
     color: 'var(--primary)',
     border: '1px solid color-mix(in srgb, var(--primary) 24%, transparent)',
   },
@@ -322,7 +322,7 @@ export const errorLensTheme = EditorView.baseTheme({
     fontWeight: '600',
     letterSpacing: '0.01em',
     border: '1px solid color-mix(in srgb, var(--ai, #8250DF) 30%, transparent)',
-    backgroundColor: 'color-mix(in srgb, var(--ai, #8250DF) 12%, var(--canvas, #ffffff))',
+    backgroundColor: 'color-mix(in srgb, var(--ai, #8250DF) 12%, var(--canvas, #FCFCFB))',
     color: 'var(--ai, #8250DF)',
     '&:hover': {
       backgroundColor: 'var(--ai, #8250DF)',

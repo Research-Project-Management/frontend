@@ -242,7 +242,7 @@ export function TrackChangesControlBar({
               className={cn(
                 'px-2.5 py-0.5 rounded-sm text-11 font-medium transition-colors cursor-pointer',
                 reviewMode
-                  ? 'bg-primary text-primary-foreground font-semibold shadow-2xs'
+                  ? 'bg-primary text-primary-foreground font-semibold'
                   : 'text-muted-foreground hover:text-foreground',
               )}
             >
@@ -255,7 +255,7 @@ export function TrackChangesControlBar({
               className={cn(
                 'px-2.5 py-0.5 rounded-sm text-11 font-medium transition-colors cursor-pointer',
                 !reviewMode
-                  ? 'bg-background text-foreground font-semibold shadow-2xs'
+                  ? 'bg-background text-foreground font-semibold'
                   : 'text-muted-foreground hover:text-foreground',
               )}
             >

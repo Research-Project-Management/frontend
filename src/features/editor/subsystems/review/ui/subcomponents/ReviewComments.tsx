@@ -158,6 +158,7 @@ export const ReplyForm = React.memo(function ReplyForm({
           <input
             {...field}
             type="text"
+            aria-label="Reply to comment"
             placeholder="Reply..."
             disabled={isPending}
             onKeyDown={(e) => {

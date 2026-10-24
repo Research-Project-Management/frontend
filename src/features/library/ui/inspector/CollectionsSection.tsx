@@ -74,7 +74,7 @@ function useItemCollectionsManager(
       data: Partial<Item>,
       options?: { expectedVersion?: number; silent?: boolean },
     ) => {
-      updateItemMutation.mutate({
+      return updateItemMutation.mutateAsync({
         itemId,
         data,
         expectedVersion: options?.expectedVersion,
@@ -137,8 +137,9 @@ function useItemCollectionsManager(
         ? prevIds.filter((id) => id !== targetColId)
         : [...prevIds, targetColId];
 
-      updateItem(
-        item.id,
+      const targetItemId = item.id;
+      const mutationPromise = updateItem(
+        targetItemId,
         {
           collectionIds: remainingIds,
         },
@@ -161,18 +162,34 @@ function useItemCollectionsManager(
           action: {
             label: "Undo",
             onClick: () => {
-              updateItem(
-                item.id,
-                {
-                  collectionIds: prevIds,
-                },
-                { expectedVersion: item.version },
-              );
-              toast.success(`Restored to "${colName}"`, { id: "col-assign" });
+              void mutationPromise
+                .catch(() => undefined)
+                .then((res) => {
+                  const returnedItem =
+                    res && typeof res === "object" && "item" in res && res.item
+                      ? (res.item as Partial<Item>)
+                      : (res as Partial<Item> | undefined);
+                  const latestVersion =
+                    typeof returnedItem?.version === "number"
+                      ? returnedItem.version
+                      : undefined;
+                  return updateItem(
+                    targetItemId,
+                    {
+                      collectionIds: prevIds,
+                    },
+                    { expectedVersion: latestVersion },
+                  );
+                })
+                .then(() => {
+                  toast.success(`Restored to "${colName}"`, { id: "col-assign" });
+                })
+                .catch(() => undefined);
             },
           },
         });
       } else {
+        void mutationPromise.catch(() => undefined);
         toast.success(`Added to "${colName}"`, { id: "col-assign" });
       }
     },
@@ -197,18 +214,22 @@ function useItemCollectionsManager(
   };
 }
 
-// ── CollectionPickerPopover Component ────────────────────────────────────────
-export interface CollectionPickerPopoverProps {
+// ── CollectionPickerContent Component (Lazy Popover Content) ───────────────
+interface CollectionPickerContentProps {
   item: Item;
   scopeId?: string;
   canEdit?: boolean;
   align?: "start" | "center" | "end";
-  children: React.ReactNode;
+  onClose: () => void;
 }
 
-export function CollectionPickerPopover(props: CollectionPickerPopoverProps) {
-  const { item, scopeId, canEdit = true, align = "end", children } = props;
-  const [open, setOpen] = useState(false);
+function CollectionPickerContent({
+  item,
+  scopeId,
+  canEdit = true,
+  align = "end",
+  onClose,
+}: CollectionPickerContentProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreatingQuick, setIsCreatingQuick] = useState(false);
 
@@ -284,139 +305,165 @@ export function CollectionPickerPopover(props: CollectionPickerPopoverProps) {
   }, [collections, searchQuery]);
 
   return (
+    <PopoverContent
+      align={align}
+      sideOffset={6}
+      className="w-[270px] p-0 rounded-lg border border-border bg-popover text-popover-foreground shadow-raised-300 overflow-hidden z-50 select-none font-sans"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Search Header */}
+      <div className="flex items-center gap-1.5 px-2.5 py-1.5">
+        <Search
+          className="size-3.5 text-muted-foreground shrink-0"
+          strokeWidth={1.5}
+        />
+        <input
+          type="text"
+          placeholder="Search collections..."
+          aria-label="Search collections"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (
+              e.key === "Enter" &&
+              searchQuery.trim() &&
+              !exactMatchExists
+            ) {
+              e.preventDefault();
+              handleQuickCreateAndAssign();
+            }
+          }}
+          className="w-full bg-transparent text-12 text-foreground placeholder:text-muted-foreground outline-none"
+          autoFocus
+        />
+        {searchQuery && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="text-muted-foreground hover:text-foreground hover:bg-muted p-0.5 rounded cursor-pointer shrink-0"
+                aria-label="Clear search"
+              >
+                <X className="size-3" strokeWidth={1.5} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top">Clear search</TooltipContent>
+          </Tooltip>
+        )}
+      </div>
+
+      {/* Collections List with Checkbox Selection */}
+      <div className="max-h-56 overflow-y-auto p-1 flex flex-col gap-0.5">
+        {filteredCollections.length === 0 ? (
+          <div className="py-4 px-2 text-center text-11 text-muted-foreground">
+            {searchQuery
+              ? `No collections matching "${searchQuery}"`
+              : "No collections available"}
+          </div>
+        ) : (
+          filteredCollections.map((col: Collection) => {
+            const isAssigned = assignedCollectionIdsSet.has(col.id);
+            const path = getCollectionAncestorPath(col.id, colMap);
+
+            return (
+              <div
+                key={col.id}
+                onClick={() => handleToggleCollection(col.id)}
+                className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted cursor-pointer transition-colors text-12 select-none group"
+              >
+                <Checkbox
+                  checked={isAssigned}
+                  onCheckedChange={() => handleToggleCollection(col.id)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="size-3.5 rounded-xs shrink-0 cursor-pointer"
+                />
+                <Folder
+                  className="size-3.5 text-foreground shrink-0"
+                  strokeWidth={1.5}
+                />
+                <div className="min-w-0 flex-1 flex flex-col justify-center">
+                  {path && (
+                    <span className="text-10 text-muted-foreground truncate leading-none mb-0.5">
+                      {path}
+                    </span>
+                  )}
+                  <span className="truncate leading-tight text-foreground font-normal">
+                    {col.name}
+                  </span>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Simplified footer: Create collection option */}
+      {canEdit && (
+        <div className="p-1 border-t border-border flex items-center">
+          {searchQuery.trim() && !exactMatchExists ? (
+            <button
+              type="button"
+              disabled={isCreatingQuick}
+              onClick={handleQuickCreateAndAssign}
+              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted text-foreground text-12 cursor-pointer transition-colors"
+            >
+              {isCreatingQuick ? (
+                <Loader2 className="size-3.5 animate-spin shrink-0" />
+              ) : (
+                <Plus className="size-3.5 shrink-0" strokeWidth={1.5} />
+              )}
+              <span className="truncate">
+                Create <strong>&ldquo;{searchQuery.trim()}&rdquo;</strong>
+              </span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                openModal("CREATE_COLLECTION", {
+                  assignToItemId: item.id,
+                  currentCollectionIds: Array.from(assignedCollectionIdsSet),
+                });
+              }}
+              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted text-foreground text-12 cursor-pointer transition-colors font-normal"
+            >
+              <FolderPlus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+              <span>New collection...</span>
+            </button>
+          )}
+        </div>
+      )}
+    </PopoverContent>
+  );
+}
+
+// ── CollectionPickerPopover Component ────────────────────────────────────────
+export interface CollectionPickerPopoverProps {
+  item: Item;
+  scopeId?: string;
+  canEdit?: boolean;
+  align?: "start" | "center" | "end";
+  children: React.ReactNode;
+}
+
+export function CollectionPickerPopover(props: CollectionPickerPopoverProps) {
+  const { item, scopeId, canEdit = true, align = "end", children } = props;
+  const [open, setOpen] = useState(false);
+
+  return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
-      <PopoverContent
-        align={align}
-        sideOffset={6}
-        className="w-[270px] p-0 rounded-lg border border-border bg-popover text-popover-foreground shadow-raised-300 overflow-hidden z-50 select-none font-sans"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Search Header */}
-        <div className="flex items-center gap-1.5 px-2.5 py-1.5">
-          <Search
-            className="size-3.5 text-muted-foreground shrink-0"
-            strokeWidth={1.5}
-          />
-          <input
-            type="text"
-            placeholder="Search collections..."
-            aria-label="Search collections"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (
-                e.key === "Enter" &&
-                searchQuery.trim() &&
-                !exactMatchExists
-              ) {
-                e.preventDefault();
-                handleQuickCreateAndAssign();
-              }
-            }}
-            className="w-full bg-transparent text-12 text-foreground placeholder:text-muted-foreground outline-none"
-            autoFocus
-          />
-          {searchQuery && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery("")}
-                  className="text-muted-foreground hover:text-foreground hover:bg-muted p-0.5 rounded cursor-pointer shrink-0"
-                  aria-label="Clear search"
-                >
-                  <X className="size-3" strokeWidth={1.5} />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="top">Clear search</TooltipContent>
-            </Tooltip>
-          )}
-        </div>
-
-        {/* Collections List with Checkbox Selection */}
-        <div className="max-h-56 overflow-y-auto p-1 flex flex-col gap-0.5">
-          {filteredCollections.length === 0 ? (
-            <div className="py-4 px-2 text-center text-11 text-muted-foreground">
-              {searchQuery
-                ? `No collections matching "${searchQuery}"`
-                : "No collections available"}
-            </div>
-          ) : (
-            filteredCollections.map((col: Collection) => {
-              const isAssigned = assignedCollectionIdsSet.has(col.id);
-              const path = getCollectionAncestorPath(col.id, colMap);
-
-              return (
-                <div
-                  key={col.id}
-                  onClick={() => handleToggleCollection(col.id)}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted cursor-pointer transition-colors text-12 select-none group"
-                >
-                  <Checkbox
-                    checked={isAssigned}
-                    onCheckedChange={() => handleToggleCollection(col.id)}
-                    onClick={(e) => e.stopPropagation()}
-                    className="size-3.5 rounded-xs shrink-0 cursor-pointer"
-                  />
-                  <Folder
-                    className="size-3.5 text-foreground shrink-0"
-                    strokeWidth={1.5}
-                  />
-                  <div className="min-w-0 flex-1 flex flex-col justify-center">
-                    {path && (
-                      <span className="text-10 text-muted-foreground truncate leading-none mb-0.5">
-                        {path}
-                      </span>
-                    )}
-                    <span className="truncate leading-tight text-foreground font-normal">
-                      {col.name}
-                    </span>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-
-        {/* Simplified footer: Create collection option */}
-        {canEdit && (
-          <div className="p-1 border-t border-border flex items-center">
-            {searchQuery.trim() && !exactMatchExists ? (
-              <button
-                type="button"
-                disabled={isCreatingQuick}
-                onClick={handleQuickCreateAndAssign}
-                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted text-foreground text-12 cursor-pointer transition-colors"
-              >
-                {isCreatingQuick ? (
-                  <Loader2 className="size-3.5 animate-spin shrink-0" />
-                ) : (
-                  <Plus className="size-3.5 shrink-0" strokeWidth={1.5} />
-                )}
-                <span className="truncate">
-                  Create <strong>&ldquo;{searchQuery.trim()}&rdquo;</strong>
-                </span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  setOpen(false);
-                  openModal("CREATE_COLLECTION", {
-                    assignToItemId: item.id,
-                    currentCollectionIds: Array.from(assignedCollectionIdsSet),
-                  });
-                }}
-                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted text-foreground text-12 cursor-pointer transition-colors font-normal"
-              >
-                <FolderPlus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                <span>New collection...</span>
-              </button>
-            )}
-          </div>
-        )}
-      </PopoverContent>
+      {open && (
+        <CollectionPickerContent
+          item={item}
+          scopeId={scopeId}
+          canEdit={canEdit}
+          align={align}
+          onClose={() => setOpen(false)}
+        />
+      )}
     </Popover>
   );
 }

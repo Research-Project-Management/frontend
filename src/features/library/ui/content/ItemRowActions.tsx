@@ -128,8 +128,8 @@ export const ItemRowActions = React.memo(function ItemRowActions({
             className={cn(
               'size-6 rounded-md flex items-center justify-center transition-all duration-150 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring',
               isOpen
-                ? 'bg-background text-foreground shadow-2xs border border-border'
-                : 'text-muted-foreground hover:text-foreground hover:bg-background border border-transparent hover:border-border hover:shadow-2xs active:scale-95',
+                ? 'bg-background text-foreground border border-border'
+                : 'text-muted-foreground hover:text-foreground hover:bg-background border border-transparent hover:border-border',
             )}
           >
             <MoreVertical className="size-3.5 shrink-0" strokeWidth={1.5} />

@@ -4,12 +4,22 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { Search, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import type { DocumentFulltext } from '@/features/library/domain/types/reader.types';
 
+export interface PdfSearchDocumentProxy {
+  numPages: number;
+  getPage?: (pageNumber: number) => Promise<{
+    getTextContent: () => Promise<{
+      items: Array<unknown>;
+    }>;
+  }>;
+}
+
 export interface UseViewerSearchOptions {
   isSearchOpen: boolean;
   initialSearchQuery?: string;
   fulltext?: DocumentFulltext | null;
   numPages: number;
   pageRefs: React.MutableRefObject<Map<number, HTMLDivElement>>;
+  pdfDocument?: PdfSearchDocumentProxy | null;
   scrollToPage: (page: number) => void;
 }
 
@@ -19,12 +29,15 @@ export function useViewerSearch({
   fulltext,
   numPages,
   pageRefs,
+  pdfDocument,
   scrollToPage,
 }: UseViewerSearchOptions) {
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery || '');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(initialSearchQuery || '');
   const [currentMatchIdx, setCurrentMatchIdx] = useState(0);
+  const [extractedPageText, setExtractedPageText] = useState<Map<number, string> | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const extractedForDocRef = useRef<PdfSearchDocumentProxy | null>(null);
 
   useEffect(() => {
     if (initialSearchQuery) {
@@ -68,6 +81,55 @@ export function useViewerSearch({
     }));
   }, [fulltext?.sections]);
 
+  useEffect(() => {
+    if (!pdfDocument) {
+      extractedForDocRef.current = null;
+      setExtractedPageText(null);
+      return;
+    }
+    const q = debouncedSearchQuery.trim();
+    if (!isSearchOpen && (!q || q.length < 2)) return;
+    if (extractedForDocRef.current === pdfDocument) return;
+    if (typeof pdfDocument.getPage !== 'function' || numPages <= 0) return;
+
+    let cancelled = false;
+    extractedForDocRef.current = pdfDocument;
+
+    async function extractAllPagesText() {
+      const map = new Map<number, string>();
+      for (let p = 1; p <= numPages; p++) {
+        if (cancelled) return;
+        try {
+          const page = await pdfDocument!.getPage!(p);
+          if (cancelled) return;
+          const textContent = await page.getTextContent();
+          if (cancelled) return;
+          const pageStr = textContent.items
+            .map((item) => {
+              if (item && typeof item === 'object' && 'str' in item) {
+                const s = (item as { str?: unknown }).str;
+                return typeof s === 'string' ? s : '';
+              }
+              return '';
+            })
+            .join(' ')
+            .toLowerCase();
+          map.set(p, pageStr);
+        } catch {
+          // Ignore individual page extraction failure
+        }
+      }
+      if (!cancelled) {
+        setExtractedPageText(map);
+      }
+    }
+
+    void extractAllPagesText();
+    return () => {
+      cancelled = true;
+    };
+  }, [pdfDocument, numPages, isSearchOpen, debouncedSearchQuery]);
+
   const searchMatches = useMemo(() => {
     const q = debouncedSearchQuery.trim().toLowerCase();
     if (!q || q.length < 2) return [];
@@ -82,6 +144,13 @@ export function useViewerSearch({
     }
     if (list.length === 0 && numPages > 0) {
       for (let p = 1; p <= numPages; p++) {
+        const cachedText = extractedPageText?.get(p);
+        if (cachedText !== undefined) {
+          if (cachedText.includes(q)) {
+            list.push({ page: p });
+          }
+          continue;
+        }
         const pEl = pageRefs.current.get(p);
         if (pEl && pEl.textContent?.toLowerCase().includes(q)) {
           list.push({ page: p });
@@ -89,7 +158,7 @@ export function useViewerSearch({
       }
     }
     return list;
-  }, [debouncedSearchQuery, indexedSections, numPages, pageRefs]);
+  }, [debouncedSearchQuery, indexedSections, numPages, pageRefs, extractedPageText]);
 
   const handleNextMatch = useCallback(() => {
     if (searchMatches.length === 0) return;

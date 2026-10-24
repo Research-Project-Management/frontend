@@ -37,6 +37,7 @@ export interface UseLibraryBatchCoordinatorOptions {
   view?: string;
   isTrash?: boolean;
   canEdit?: boolean;
+  enableKeydownListener?: boolean;
 }
 
 const EMPTY_ITEMS: Item[] = [];
@@ -65,6 +66,7 @@ export function useLibraryBatchCoordinator({
   collectionId,
   isTrash = false,
   canEdit = true,
+  enableKeydownListener = true,
 }: UseLibraryBatchCoordinatorOptions = {}) {
   const effectiveScope = scopeId || 'user';
 
@@ -88,21 +90,26 @@ export function useLibraryBatchCoordinator({
   }, [items, selectedIds]);
 
   const selectedCount = selectedIds.size;
-  const isAllSelected = items.length > 0 && selectedCount === items.length;
+  const isAllSelected = items.length > 0 && items.every((item) => selectedIds.has(item.id));
 
   // Processing Guards
-  const processingIds = useMemo(
-    () =>
-      new Set(
-        selectedItems
-          .filter(isProvisionalOrProcessingItem)
-          .map((item) => item.id),
-      ),
-    [selectedItems],
-  );
+  const processingIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const item of selectedItems) {
+      if (isProvisionalOrProcessingItem(item)) {
+        set.add(item.id);
+      }
+    }
+    for (const id of selectedIds) {
+      if (id.startsWith('temp-') || id.startsWith('provisional-')) {
+        set.add(id);
+      }
+    }
+    return set;
+  }, [selectedItems, selectedIds]);
 
   const isAllProcessingSelected =
-    selectedItems.length > 0 && selectedItems.every(isProvisionalOrProcessingItem);
+    selectedCount > 0 && processingIds.size === selectedCount;
 
   // Retraction Warning
   const retractedSelected = useMemo(
@@ -112,15 +119,28 @@ export function useLibraryBatchCoordinator({
 
   // Keyboard Shortcuts (Escape to clear)
   useEffect(() => {
-    if (selectedCount === 0) return;
+    if (!enableKeydownListener || selectedCount === 0) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        clearSelection();
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      if (useLibraryUIStore.getState().activeModal !== null) return;
+
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable ||
+          target.closest('[role="dialog"]') !== null)
+      ) {
+        return;
       }
+
+      clearSelection();
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedCount, clearSelection]);
+  }, [enableKeydownListener, selectedCount, clearSelection]);
 
   // Range Select (Shift + Click support)
   const rangeSelect = useCallback(

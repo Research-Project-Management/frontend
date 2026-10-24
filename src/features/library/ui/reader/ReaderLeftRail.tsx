@@ -81,7 +81,7 @@ export function ReaderLeftRail({
                   className={cn(
                     "relative size-8 flex items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors cursor-pointer text-foreground before:absolute before:-inset-1.5 md:before:hidden",
                     isActive
-                      ? "bg-muted text-foreground font-medium shadow-xs"
+                      ? "bg-muted text-foreground font-medium"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
                   )}
                   aria-label={tab.label}

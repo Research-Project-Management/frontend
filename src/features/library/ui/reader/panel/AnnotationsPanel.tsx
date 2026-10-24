@@ -1,8 +1,6 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 import {
   StickyNote,
   Trash2,
@@ -21,7 +19,6 @@ import {
   ArrowUpDown,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
-import { Form } from '@/shared/components/ui/form';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -46,12 +43,17 @@ import type {
   ReaderAnnotation,
   AnnotationFormData,
 } from '@/features/library/domain/types/reader.types';
-import { annotationFormSchema } from '@/features/library/domain/types/reader.schema';
 import {
   PdfAnnotationEngine,
   ANNOTATION_PALETTE_COLORS,
 } from '@/features/library/domain/reader.domain';
-
+import {
+  AnnotationEditForm,
+  ANNOTATION_COLOR_BY_HEX_MAP,
+  extractAnnotationFacets,
+  computeRangeSelectedAnnotationIds,
+  filterAndSortAnnotations,
+} from './AnnotationEditForm';
 export interface AnnotationsPanelProps {
   paper: ReaderDocument;
   scopeId?: string;
@@ -68,100 +70,6 @@ export interface AnnotationsPanelProps {
 }
 
 const EMPTY_SELECTED_IDS = new Set<string>();
-
-const ANNOTATION_COLOR_BY_HEX_MAP: ReadonlyMap<
-  string,
-  (typeof ANNOTATION_PALETTE_COLORS)[number]
-> = new Map(ANNOTATION_PALETTE_COLORS.map((c) => [c.hex.toLowerCase(), c]));
-
-function AnnotationEditForm({
-  initialQuote,
-  initialComment,
-  initialColor,
-  initialTags = [],
-  isSaving,
-  onSave,
-  onCancel,
-}: {
-  initialQuote?: string;
-  initialComment?: string;
-  initialColor?: string;
-  initialTags?: string[];
-  isSaving: boolean;
-  onSave: (data: AnnotationFormData) => Promise<void>;
-  onCancel: () => void;
-}) {
-  const [tagText, setTagText] = useState((initialTags || []).join(', '));
-  const form = useForm<AnnotationFormData>({
-    resolver: zodResolver(annotationFormSchema),
-    defaultValues: {
-      quoteText: initialQuote || '',
-      comment: initialComment || '',
-      color: initialColor,
-      tags: initialTags,
-    },
-  });
-
-  const { register, handleSubmit } = form;
-
-  const handleFormSubmit = (data: AnnotationFormData) => {
-    const parsedTags = tagText
-      .split(',')
-      .map((t) => t.trim().replace(/^#/, ''))
-      .filter((t) => t.length > 0);
-    return onSave({ ...data, tags: parsedTags });
-  };
-
-  return (
-    <Form {...form}>
-      <form
-        onSubmit={handleSubmit(handleFormSubmit)}
-        onClick={(e) => e.stopPropagation()}
-        className="space-y-2 rounded-md border border-border p-2 bg-background font-sans"
-      >
-        <input
-          {...register('quoteText')}
-          aria-label="Quote text"
-          placeholder="Quote text..."
-          className="w-full bg-transparent text-12 font-medium outline-none text-foreground font-sans"
-        />
-        <textarea
-          {...register('comment')}
-          aria-label="Comment"
-          placeholder="Add a note/comment..."
-          rows={2}
-          className="w-full resize-none bg-transparent text-12 outline-none text-foreground leading-relaxed font-sans"
-        />
-        <input
-          value={tagText}
-          onChange={(e) => setTagText(e.target.value)}
-          aria-label="Tags"
-          placeholder="Tags (e.g. methodology, result)..."
-          className="w-full bg-transparent text-11 font-mono outline-none text-foreground placeholder:text-muted-foreground border-t border-border-subtle pt-1"
-        />
-        <div className="flex justify-end gap-1">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-7 text-11 px-2.5 cursor-pointer rounded-md border-border bg-background text-foreground hover:bg-muted relative before:absolute before:-inset-1.5 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
-            onClick={onCancel}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            size="sm"
-            className="h-7 text-11 px-3 font-medium cursor-pointer rounded-md relative before:absolute before:-inset-1.5 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary"
-            disabled={isSaving}
-          >
-            {isSaving ? <Loader2 className="size-3 animate-spin shrink-0" strokeWidth={1.5} /> : 'Save'}
-          </Button>
-        </div>
-      </form>
-    </Form>
-  );
-}
 
 export function AnnotationsPanel({
   paper,
@@ -207,78 +115,24 @@ export function AnnotationsPanel({
 
   const selectedIdsArray = useMemo(() => Array.from(selectedIds), [selectedIds]);
 
-  // Native Reader behavior: Only show colors and tags that actually exist in the current paper's annotations
-  const existingColors = useMemo(() => {
-    const map = new Map<string, (typeof ANNOTATION_PALETTE_COLORS)[number]>();
-    for (const a of annotations) {
-      const hex = (a.color || '#ffd400').toLowerCase();
-      const match = ANNOTATION_COLOR_BY_HEX_MAP.get(hex);
-      if (match && !map.has(match.id)) {
-        map.set(match.id, match);
-      }
-    }
-    return Array.from(map.values());
-  }, [annotations]);
+  const { existingColors, existingTags, availableAuthors } = useMemo(
+    () => extractAnnotationFacets(annotations),
+    [annotations],
+  );
 
-  const existingTags = useMemo(() => {
-    const set = new Set<string>();
-    for (const a of annotations) {
-      if (a.tags) {
-        for (const t of a.tags) {
-          if (t && t.trim()) set.add(t.trim());
-        }
-      }
-    }
-    return Array.from(set);
-  }, [annotations]);
+  const filteredAnnotations = useMemo(
+    () =>
+      filterAndSortAnnotations(annotations, {
+        searchQuery,
+        selectedColor,
+        selectedTag,
+        authorFilter,
+        sortBy,
+      }),
+    [annotations, searchQuery, selectedColor, selectedTag, authorFilter, sortBy],
+  );
 
-  const availableAuthors = useMemo(() => {
-    const set = new Set<string>();
-    for (const a of annotations) {
-      if (a.authorId) set.add(a.authorId);
-    }
-    return Array.from(set);
-  }, [annotations]);
-
-  const filteredAnnotations = useMemo(() => {
-    const qLower = searchQuery.trim().toLowerCase();
-    const colorLower = selectedColor === 'all' ? null : selectedColor.toLowerCase();
-
-    const list = annotations.filter((a) => {
-      if (authorFilter !== 'all' && a.authorId !== authorFilter) return false;
-      if (selectedTag && (!a.tags || !a.tags.includes(selectedTag))) return false;
-      if (colorLower !== null && (a.color || '#ffd400').toLowerCase() !== colorLower) {
-        return false;
-      }
-      if (!qLower) return true;
-      return Boolean(
-        (a.quoteText && a.quoteText.toLowerCase().includes(qLower)) ||
-          (a.comment && a.comment.toLowerCase().includes(qLower)) ||
-          (a.tags && a.tags.some((t) => t.toLowerCase().includes(qLower))),
-      );
-    });
-
-    if (sortBy === 'position') {
-      return PdfAnnotationEngine.sortAnnotationsInReadingOrder(list);
-    }
-
-    if (sortBy === 'newest' || sortBy === 'oldest') {
-      const tsMap = new Map<string, number>();
-      for (const a of list) {
-        const ts = Date.parse(a.createdAt);
-        tsMap.set(a.id, Number.isNaN(ts) ? 0 : ts);
-      }
-      const dir = sortBy === 'newest' ? -1 : 1;
-      return list.sort((a, b) => ((tsMap.get(a.id) ?? 0) - (tsMap.get(b.id) ?? 0)) * dir);
-    }
-
-    return list.sort((a, b) => (a.color || '').localeCompare(b.color || ''));
-  }, [annotations, searchQuery, selectedColor, selectedTag, authorFilter, sortBy]);
-
-  const handleSaveEdit = async (
-    annotation: ReaderAnnotation,
-    data: AnnotationFormData,
-  ) => {
+  const handleSaveEdit = async (annotation: ReaderAnnotation, data: AnnotationFormData) => {
     if (!effectiveAttachmentId) return;
     try {
       await updateAnnotation(annotation.id, annotation.version, {
@@ -288,79 +142,47 @@ export function AnnotationsPanel({
         tags: data.tags,
       });
       setEditingId(null);
-    } catch {
-      // Handled in hook
-    }
+    } catch { /* Handled in hook */ }
   };
 
   const handleDelete = async (annotation: ReaderAnnotation) => {
     if (!effectiveAttachmentId) return;
     try {
-      if (onBatchDelete) {
-        await onBatchDelete([annotation.id]);
-      } else {
-        await deleteAnnotation(annotation.id, annotation.version);
-      }
+      if (onBatchDelete) await onBatchDelete([annotation.id]);
+      else await deleteAnnotation(annotation.id, annotation.version);
       setDeletingId(null);
-    } catch {
-      // Handled in hook
-    }
+    } catch { /* Handled in hook */ }
   };
 
   const handleJumpToPage = (pageIndex?: number, annotationId?: string) => {
-    if (pageIndex !== undefined && onNavigateToPage) {
-      onNavigateToPage(pageIndex + 1, annotationId);
-    }
+    if (pageIndex !== undefined && onNavigateToPage) onNavigateToPage(pageIndex + 1, annotationId);
   };
 
-  // Card click with standard Desktop Zotero multi-selection (click, Ctrl+click, Shift+click)
-  const handleCardClick = (
-    e: React.MouseEvent,
-    annotation: ReaderAnnotation,
-  ) => {
+  const handleCardClick = (e: React.MouseEvent, annotation: ReaderAnnotation) => {
     if (editingId === annotation.id) return;
-
     if (e.ctrlKey || e.metaKey) {
-      // Ctrl/Cmd+click: Toggle individual selection
-      if (onToggleSelect) {
-        onToggleSelect(annotation.id);
-      } else if (onSelectIds) {
+      if (onToggleSelect) onToggleSelect(annotation.id);
+      else if (onSelectIds) {
         const next = new Set(selectedIds);
         if (next.has(annotation.id)) next.delete(annotation.id);
         else next.add(annotation.id);
         onSelectIds(next);
       }
       setLastSelectedId(annotation.id);
-    } else if (e.shiftKey && lastSelectedId) {
-      // Shift+click: Range selection
-      const idx1 = filteredAnnotations.findIndex((a) => a.id === lastSelectedId);
-      const idx2 = filteredAnnotations.findIndex((a) => a.id === annotation.id);
-      if (idx1 !== -1 && idx2 !== -1 && onSelectIds) {
-        const start = Math.min(idx1, idx2);
-        const end = Math.max(idx1, idx2);
-        const rangeIds = filteredAnnotations.slice(start, end + 1).map((a) => a.id);
-        const next = new Set(selectedIds);
-        for (const rid of rangeIds) next.add(rid);
-        onSelectIds(next);
-      }
+    } else if (e.shiftKey && lastSelectedId && onSelectIds) {
+      const next = computeRangeSelectedAnnotationIds(filteredAnnotations, selectedIds, lastSelectedId, annotation.id);
+      if (next) onSelectIds(next);
     } else {
-      // Normal click: select single item and navigate to it in reader
-      if (onSelectIds) {
-        onSelectIds(new Set([annotation.id]));
-      }
+      onSelectIds?.(new Set([annotation.id]));
       setLastSelectedId(annotation.id);
       handleJumpToPage(annotation.pageIndex, annotation.id);
     }
   };
 
-  // Keyboard navigation on list container (Ctrl+A to select all, Del/Backspace to delete, Esc to clear)
   const handleContainerKeyDown = (e: React.KeyboardEvent) => {
     const target = e.target as HTMLElement | null;
     const tag = target?.tagName?.toLowerCase();
-    if (tag === 'input' || tag === 'textarea' || target?.isContentEditable) {
-      return;
-    }
-
+    if (tag === 'input' || tag === 'textarea' || target?.isContentEditable) return;
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
       e.preventDefault();
       onSelectIds?.(new Set(filteredAnnotations.map((a) => a.id)));
@@ -368,9 +190,7 @@ export function AnnotationsPanel({
       onSelectIds?.(new Set());
     } else if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIds.size > 0) {
       e.preventDefault();
-      if (onBatchDelete) {
-        onBatchDelete(Array.from(selectedIds));
-      }
+      onBatchDelete?.(Array.from(selectedIds));
     }
   };
 
@@ -574,7 +394,7 @@ export function AnnotationsPanel({
 
       {/* Selection Status Bar (shown when >= 1 selected) */}
       {selectedIds.size > 0 && (
-        <div className="flex items-center justify-between px-3 py-1.5 bg-muted border-b border-border text-11 text-foreground shrink-0 animate-in fade-in duration-100">
+        <div className="flex items-center justify-between px-3 py-1.5 bg-muted border-b border-border text-11 text-foreground shrink-0">
           <div className="flex items-center gap-1.5 font-medium">
             <span className="flex size-4 items-center justify-center rounded bg-primary text-10 font-semibold tabular-nums text-primary-foreground">
               {selectedIds.size}
@@ -890,8 +710,8 @@ export function AnnotationsPanel({
                       type="button"
                       onClick={() => setSelectedColor(active ? 'all' : c.hex)}
                       className={cn(
-                        'size-4 rounded-full border border-border hover:scale-125 transition-transform cursor-pointer relative',
-                        active && 'ring-2 ring-primary ring-offset-1 scale-110',
+                        'size-4 rounded-full border border-border transition-colors cursor-pointer relative',
+                        active && 'ring-2 ring-primary ring-offset-1',
                       )}
                       style={{ backgroundColor: c.hex }}
                       title={`${c.label} (${active ? 'Active' : 'Filter by this color'})`}

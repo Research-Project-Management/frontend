@@ -231,7 +231,7 @@ export default function CiteSection({ item, scopeId }: CiteSectionProps) {
       <div className="flex flex-col gap-2 min-w-0 font-sans select-none">
         {/* ⚠️ Citation Guard: Retraction Notice */}
         {(item?.isRetracted || item?.retractionStatus === "retracted") && (
-          <div className="p-2 rounded-md border border-destructive/30 bg-destructive/10 text-destructive text-xs flex items-start gap-2 select-none shrink-0 animate-in fade-in duration-200">
+          <div className="p-2 rounded-md border border-destructive/30 bg-destructive/10 text-destructive text-xs flex items-start gap-2 select-none shrink-0">
             <ShieldAlert
               className="size-4 text-destructive shrink-0 mt-0.5"
               strokeWidth={1.5}

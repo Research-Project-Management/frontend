@@ -2,9 +2,7 @@
 
 import React, { useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { toast } from "sonner";
 import { useLibraryUIStore } from "@/features/library/core/store/library-ui.store";
 import {
   useToggleStarItemMutation,
@@ -18,14 +16,12 @@ import {
   useMoveCollectionItemsMutation,
 } from "@/features/library/sdk/queries/collections.queries";
 import { useTags } from "@/features/library/sdk/queries/tags-notes.queries";
-import { itemKeys, tagKeys } from "@/features/library/sdk/query-keys";
 import {
   DEFAULT_LIBRARY_DISPLAY_OPTIONS,
   type LibraryDisplayOptions,
   type LibraryOrderBy,
 } from "@/features/library/ui/topbar/LibraryDisplayPopover";
 import { sortLibraryItems } from "@/features/library/domain/sort-items.domain";
-import { normalizeTags } from "@/features/library/domain/metadata";
 import { ItemTableHeader } from "./ItemTableHeader";
 import { ItemTableRow } from "./ItemTableRow";
 import { useLibraryKeyboardShortcuts } from "./useLibraryKeyboardShortcuts";
@@ -77,7 +73,6 @@ export const ItemTable = React.memo(function ItemTable({
   onSortChange,
 }: ItemTableProps) {
   const router = useRouter();
-  const queryClient = useQueryClient();
 
   // Store actions
   const selectAll = useLibraryUIStore((s) => s.selectAll);
@@ -152,6 +147,10 @@ export const ItemTable = React.memo(function ItemTable({
       sortLibraryItems(items, sortColumn, sortDirection, Boolean(onSortChange)),
     [items, onSortChange, sortColumn, sortDirection],
   );
+
+  // Reference-stable ref to keep handleToggleSelect memoized across item changes
+  const sortedItemsRef = useRef(sortedItems);
+  sortedItemsRef.current = sortedItems;
 
   // Precise row height estimate (32px / h-8) adhering strictly to Flat Precision SaaS rhythm
   const estimatedRowHeight = 32;
@@ -252,7 +251,7 @@ export const ItemTable = React.memo(function ItemTable({
         const currentSelectedIds = useLibraryUIStore.getState().selectedIds;
         const start = Math.min(lastSelectedIndexRef.current, index);
         const end = Math.max(lastSelectedIndexRef.current, index);
-        const rangeIds = sortedItems.slice(start, end + 1).map((it) => it.id);
+        const rangeIds = sortedItemsRef.current.slice(start, end + 1).map((it) => it.id);
         selectAll(
           Array.from(new Set([...Array.from(currentSelectedIds), ...rangeIds])),
         );
@@ -261,7 +260,7 @@ export const ItemTable = React.memo(function ItemTable({
       }
       lastSelectedIndexRef.current = index;
     },
-    [sortedItems, selectAll, toggleSelect],
+    [selectAll, toggleSelect],
   );
 
   const handleOpenItem = useCallback(

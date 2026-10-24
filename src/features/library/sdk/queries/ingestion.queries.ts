@@ -365,11 +365,14 @@ export async function executeTrackedIdentifierIngestion({
 
 // ── Curation & Duplicates Queries ─────────────────────────────────────────────
 
-export function useDuplicateGroups(scopeId?: string) {
+export function useDuplicateGroups(
+  scopeId?: string,
+  options?: { enabled?: boolean },
+) {
   return useQuery({
     queryKey: curationKeys.duplicates(scopeId),
     queryFn: () => libraryServices.curation.getDuplicates(scopeId),
-    enabled: true,
+    enabled: options?.enabled ?? true,
     gcTime: 3 * 60 * 1000,
   });
 }
@@ -655,3 +658,43 @@ export function useRetraction(scopeId?: string, options?: { includeItems?: boole
   };
 }
 
+
+export function useSyncExternalBibtexMutation(scopeId?: string) {
+  const queryClient = useQueryClient();
+  const effectiveScope = normalizeScopeId(scopeId);
+
+  return useMutation({
+    mutationFn: async ({
+      bibtex,
+      collectionId,
+      remoteCollectionName,
+    }: {
+      bibtex: string;
+      collectionId?: string;
+      remoteCollectionName: string;
+    }) => {
+      const res = await IngestionService.ingest(effectiveScope, {
+        source: 'bibtex',
+        content: bibtex,
+        collectionId,
+      });
+      const resRecord = res as { data?: { runId?: string }; runId?: string } | null;
+      const runId = resRecord?.data?.runId || resRecord?.runId;
+      if (runId) {
+        const pollOutcome = await pollIngestionRunCompletion(effectiveScope, runId, {
+          fallbackTitle: remoteCollectionName,
+          maxWaitMs: 90000,
+        });
+        if (!pollOutcome.ok) {
+          throw new Error(pollOutcome.error || 'Ingestion run failed to complete');
+        }
+      }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) }),
+        queryClient.invalidateQueries({ queryKey: itemKeys.counts(effectiveScope) }),
+        invalidateCollections(queryClient, effectiveScope),
+      ]);
+      return res;
+    },
+  });
+}

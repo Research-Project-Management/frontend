@@ -14,6 +14,7 @@ export interface UseQuickCopyOptions {
   selectedIds?: Set<string>;
   activeItemId?: string | null;
   defaultStyle?: CslStyle;
+  enableKeydownListener?: boolean;
 }
 
 /**
@@ -27,6 +28,7 @@ export function useQuickCopyCoordinator({
   selectedIds: propSelectedIds,
   activeItemId: propActiveItemId,
   defaultStyle = 'apa',
+  enableKeydownListener = true,
 }: UseQuickCopyOptions = {}) {
   const getTargetItemIds = useCallback((): string[] => {
     if (propSelectedIds && propSelectedIds.size > 0) {
@@ -166,6 +168,7 @@ export function useQuickCopyCoordinator({
 
   // Global Keyboard Listener
   useEffect(() => {
+    if (!enableKeydownListener) return;
     const isMac =
       typeof navigator !== 'undefined'
         ? /mac/i.test(navigator.userAgent) ||
@@ -203,7 +206,7 @@ export function useQuickCopyCoordinator({
 
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, [copyBibliography, copyInTextCitation]);
+  }, [enableKeydownListener, copyBibliography, copyInTextCitation]);
 
   return useMemo(
     () => ({

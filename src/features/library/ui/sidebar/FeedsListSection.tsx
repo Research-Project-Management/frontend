@@ -2,11 +2,16 @@
 
 import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { Rss, ChevronRight, Plus } from 'lucide-react';
 import { SidebarNavItem } from './SidebarNavItem';
 import { FeedContextMenu } from './FeedContextMenu';
-import { EditFeedModal } from '../modals/EditFeedModal';
 import { useFeedsStore } from '@/features/library/core/store/feeds.store';
+
+const EditFeedModal = dynamic(
+  () => import('../modals/EditFeedModal').then((m) => m.EditFeedModal),
+  { ssr: false },
+);
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';

@@ -34,6 +34,7 @@ export function FeedPageContent({
   const loadFeeds = useFeedsStore((s) => s.loadFeeds);
   const triggerRefresh = useFeedsStore((s) => s.triggerRefresh);
   const selectedFeedEntry = useFeedsStore((s) => s.selectedFeedEntry);
+  const currentFeedEntries = useFeedsStore((s) => s.currentFeedEntries);
   const readEntryIds = useFeedsStore((s) => s.readEntryIds);
   const toggleEntryRead = useFeedsStore((s) => s.toggleEntryRead);
   const markEntryAsRead = useFeedsStore((s) => s.markEntryAsRead);
@@ -137,7 +138,10 @@ export function FeedPageContent({
             toast.info(`Refreshing "${currentFeed?.name || 'feed'}"...`);
           }}
           onMarkAllFeedRead={() => {
-            if (selectedFeedEntry) {
+            const allIds = currentFeedEntries.map((e) => e.id);
+            if (allIds.length > 0) {
+              markAllEntriesAsRead(allIds);
+            } else if (selectedFeedEntry) {
               markAllEntriesAsRead([selectedFeedEntry.id]);
             }
             toast.success(`Marked all articles in "${currentFeed?.name || 'feed'}" as read`);

@@ -12,12 +12,20 @@ import { useUpdateLibraryItemMutation } from "@/features/library/sdk/queries/cat
 import { useRetraction } from "@/features/library/sdk/queries/ingestion.queries";
 import { useBatchRestoreItemsMutation } from "@/features/library/sdk/queries/catalog.queries";
 import type { Item } from "@/features/library/domain/types/library.types";
+import dynamic from "next/dynamic";
 import {
   isItemRetracted,
   getRetractionInfo,
 } from "@/features/library/domain/retraction";
-import { RetractionNoticeModal } from "@/features/library/ui/modals/RetractionNoticeModal";
-import DeleteModal from "@/features/library/ui/modals/DeleteModal";
+
+const RetractionNoticeModal = dynamic(
+  () => import("@/features/library/ui/modals/RetractionNoticeModal").then((m) => m.RetractionNoticeModal),
+  { ssr: false },
+);
+const DeleteModal = dynamic(
+  () => import("@/features/library/ui/modals/DeleteModal"),
+  { ssr: false },
+);
 
 interface InspectorHeaderProps {
   item: Item;

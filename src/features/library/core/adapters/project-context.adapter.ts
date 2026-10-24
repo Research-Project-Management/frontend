@@ -1,6 +1,7 @@
 'use client';
 
-import { useProjects } from '@/features/projects/shell/hooks/use-project';
+import { useMemo } from 'react';
+import { useProjectsQuery } from '@/features/projects/shell/hooks/use-project';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 
 export interface LibraryProjectScope {
@@ -32,19 +33,32 @@ export interface UseLibraryProjectContextReturn {
  * Decouples library internals from external project and authentication module implementations.
  */
 export function useLibraryProjectContext(): UseLibraryProjectContextReturn {
-  const { projects = [], isLoading } = useProjects();
+  const { projects = [], isLoading } = useProjectsQuery();
   const { user, isAuthenticated } = useAuth();
 
+  const mappedProjects = useMemo(
+    () =>
+      projects.map(
+        (p): LibraryProjectScope => ({
+          ...p,
+          id: p.id,
+          name: p.name,
+          role: typeof p.role === 'string' ? p.role : undefined,
+          permissions: p.permissions,
+        }),
+      ),
+    [projects],
+  );
+
+  const currentUser = useMemo(
+    () => (user ? { id: user.id, email: user.email, name: user.name } : null),
+    [user],
+  );
+
   return {
-    projects: projects.map((p): LibraryProjectScope => ({
-      ...p,
-      id: p.id,
-      name: p.name,
-      role: typeof p.role === 'string' ? p.role : undefined,
-      permissions: p.permissions,
-    })),
+    projects: mappedProjects,
     isLoadingProjects: isLoading,
-    currentUser: user ? { id: user.id, email: user.email, name: user.name } : null,
+    currentUser,
     currentUserId: user?.id,
     isAuthenticated,
   };

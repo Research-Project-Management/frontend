@@ -2,10 +2,9 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
 import type { LucideIcon } from 'lucide-react';
-import { cn } from "@/shared/lib/utils";
-import { logger } from "@/shared/lib/logger";
+import { cn } from '@/shared/lib/utils';
+import { logger } from '@/shared/lib/logger';
 
 export interface SidebarNavItemProps {
   href: string;
@@ -13,7 +12,7 @@ export interface SidebarNavItemProps {
   customIcon?: React.ReactNode;
   label: string;
   isActive: boolean;
-  navId: string;
+  navId?: string;
   badge?: React.ReactNode;
   action?: React.ReactNode;
   onClick?: () => void;
@@ -26,7 +25,6 @@ export function SidebarNavItem({
   customIcon,
   label,
   isActive,
-  navId,
   badge,
   action,
   onClick,
@@ -81,22 +79,14 @@ export function SidebarNavItem({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={cn(
-          "relative flex h-8 w-full items-center gap-2.5 rounded-md pr-2.5 text-13 leading-5 transition-colors outline-none select-none pl-6",
-          action && "pr-8",
+          'relative flex h-8 w-full items-center gap-2.5 rounded-md pr-2.5 text-13 leading-5 outline-none select-none pl-6',
+          action && 'pr-8',
           isActive
-            ? "bg-muted text-foreground font-medium"
-            : "text-foreground hover:bg-muted group-hover/item:bg-muted has-[[data-state=open]]:bg-muted font-normal",
-          isDragOverTarget && "bg-primary/10 text-primary font-medium ring-1 ring-primary ring-inset"
+            ? 'bg-muted text-foreground font-medium'
+            : 'text-foreground hover:bg-muted group-hover/item:bg-muted has-[[data-state=open]]:bg-muted font-normal',
+          isDragOverTarget && 'bg-primary/10 text-primary font-medium ring-1 ring-primary ring-inset'
         )}
       >
-        {isActive && (
-          <motion.div
-            layoutId={`library-nav-active-${navId}`}
-            className="absolute inset-0 rounded-md bg-muted"
-            initial={false}
-            transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-          />
-        )}
         {customIcon ? (
           <span className="relative z-10 flex size-4 shrink-0 items-center justify-center text-13 leading-none select-none">
             {customIcon}
@@ -107,10 +97,12 @@ export function SidebarNavItem({
             strokeWidth={1.5}
           />
         ) : null}
-        <span className={cn(
-          "relative z-10 min-w-0 truncate flex-1 tracking-tight text-foreground",
-          isActive ? "font-medium" : "font-normal"
-        )}>
+        <span
+          className={cn(
+            'relative z-10 min-w-0 truncate flex-1 tracking-tight text-foreground',
+            isActive ? 'font-medium' : 'font-normal'
+          )}
+        >
           {label}
         </span>
         {badge}

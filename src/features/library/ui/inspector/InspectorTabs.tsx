@@ -163,7 +163,7 @@ export function InspectorTabs({
                   className={cn(
                     'relative size-8 flex items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary transition-all cursor-pointer before:absolute before:-inset-1.5 md:before:hidden',
                     isSelected
-                      ? 'bg-muted text-foreground font-semibold shadow-xs ring-1 ring-border'
+                      ? 'bg-muted text-foreground font-semibold ring-1 ring-border'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
                   )}
                   aria-label={tab.label}

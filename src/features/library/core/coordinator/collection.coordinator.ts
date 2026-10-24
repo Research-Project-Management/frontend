@@ -1,8 +1,12 @@
 import { useState, useCallback, useMemo } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { libraryServices } from '@/features/library/sdk/library.client';
-import { useCollections } from '@/features/library/sdk/queries/collections.queries';
+import { useCollections, invalidateCollections } from '@/features/library/sdk/queries/collections.queries';
 import { triggerBrowserTextDownload } from '@/features/library/core/coordinator/citation-export.coordinator';
+import { canMoveCollection } from '@/features/library/domain/collection-tree.domain';
+import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import type {
   Collection,
   CollectionInput,
@@ -18,6 +22,8 @@ export interface UseCollectionCoordinatorParams {
     project: Collection[];
     projectId?: string;
   };
+  activeCollectionId?: string | null;
+  onNavigate?: (path: string) => void;
 }
 
 /**
@@ -35,7 +41,17 @@ export function useCollectionCoordinator({
   effectiveScopeId,
   collections,
   allCollectionsByScope,
+  activeCollectionId: propActiveCollectionId,
+  onNavigate,
 }: UseCollectionCoordinatorParams) {
+  const router = useRouter();
+  const params = useParams() as { collectionId?: string } | null;
+  const queryClient = useQueryClient();
+  const storeCollectionId = useLibraryUIStore((s) => s.activeCollectionId);
+  const setActiveCollectionId = useLibraryUIStore((s) => s.setActiveCollectionId);
+
+  const resolvedActiveCollectionId =
+    propActiveCollectionId ?? params?.collectionId ?? storeCollectionId;
   // Modal states
   const [createOpen, setCreateOpen] = useState(false);
   const [createParentId, setCreateParentId] = useState<string | null>(null);
@@ -169,15 +185,32 @@ export function useCollectionCoordinator({
 
   const handleConfirmTrash = useCallback(async () => {
     if (!trashTarget?.id) return;
+    const targetId = trashTarget.id;
     await collectionService.deleteCollection({
-      collectionId: trashTarget.id,
+      collectionId: targetId,
       strategy: trashTarget.withItems ? 'cascade' : 'orphan',
       scopeId: trashTarget.scopeId || effectiveScopeId,
     });
-  }, [trashTarget, collectionService, effectiveScopeId]);
+    if (resolvedActiveCollectionId === targetId) {
+      setActiveCollectionId(null);
+      if (onNavigate) {
+        onNavigate('/library');
+      } else {
+        router.push('/library');
+      }
+    }
+  }, [trashTarget, collectionService, effectiveScopeId, resolvedActiveCollectionId, setActiveCollectionId, onNavigate, router]);
 
   const handleMove = useCallback(
     (collectionId: string, newParentId: string | null) => {
+      const allCols = allCollectionsByScope
+        ? [...allCollectionsByScope.user, ...allCollectionsByScope.project]
+        : collections;
+      const targetList = allCols.length > 0 ? allCols : collections;
+      if (!canMoveCollection(targetList, collectionId, newParentId)) {
+        toast.error('Cannot move collection into itself or its descendants');
+        return;
+      }
       const { scopeId } = findCollectionAndScope(collectionId);
       collectionService.updateCollection({
         collectionId,
@@ -185,23 +218,71 @@ export function useCollectionCoordinator({
         scopeId,
       });
     },
-    [collectionService, findCollectionAndScope],
+    [allCollectionsByScope, collectionService, collections, findCollectionAndScope],
   );
 
   const handleCopy = useCallback(
-    (collectionId: string, targetParentId: string | null) => {
+    async (collectionId: string, targetParentId: string | null) => {
       const { collection: target, scopeId } = findCollectionAndScope(collectionId);
       if (!target) return;
-      collectionService.createCollection({
-        name: `${target.name} (Copy)`,
-        description: target.description,
-        color: target.color,
-        icon: target.icon,
-        parentId: targetParentId,
-        scopeId,
-      });
+
+      const toastId = toast.loading(`Copying "${target.name}"...`, { id: 'collection-copy' });
+      try {
+        const allCols = allCollectionsByScope
+          ? [...allCollectionsByScope.user, ...allCollectionsByScope.project]
+          : collections;
+        const sourceCols = allCols.length > 0 ? allCols : collections;
+
+        const copySubtree = async (
+          srcId: string,
+          destParentId: string | null,
+          isRoot: boolean,
+        ): Promise<void> => {
+          const { collection: src } = findCollectionAndScope(srcId);
+          if (!src) return;
+          const copyName = isRoot ? `${src.name} (Copy)` : src.name;
+          const res = await libraryServices.collections.create(scopeId, {
+            name: copyName,
+            description: src.description,
+            color: src.color,
+            icon: src.icon,
+            parentId: destParentId,
+          });
+          const newCol = (res as { collection?: Collection })?.collection;
+          if (!newCol?.id) return;
+
+          // Copy items in this collection
+          try {
+            const { items } = await libraryServices.items.getByCollection(scopeId, srcId);
+            if (items && items.length > 0) {
+              await libraryServices.collections.assignItems(
+                scopeId,
+                newCol.id,
+                items.map((i) => i.id),
+              );
+            }
+          } catch {
+            // Best-effort item assignment when duplicating collection tree
+          }
+
+          // Recursively copy subcollections in parallel
+          const childCollections = sourceCols.filter((c) => c.parentId === srcId);
+          await Promise.all(
+            childCollections.map((child) => copySubtree(child.id, newCol.id, false)),
+          );
+        };
+
+        await copySubtree(collectionId, targetParentId, true);
+        invalidateCollections(queryClient, scopeId);
+        toast.success(`Successfully copied "${target.name}"`, { id: toastId });
+      } catch (err: unknown) {
+        toast.error('Failed to copy collection', {
+          description: err instanceof Error ? err.message : String(err),
+          id: toastId,
+        });
+      }
     },
-    [collectionService, findCollectionAndScope],
+    [allCollectionsByScope, collections, findCollectionAndScope, queryClient],
   );
 
   const handleExportBibtex = useCallback(

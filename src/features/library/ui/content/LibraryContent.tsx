@@ -2,12 +2,12 @@
 
 import React, { useMemo, useCallback, useState } from 'react';
 import { toast } from 'sonner';
-import { UploadCloud } from 'lucide-react';
+import { UploadCloud, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { useLibraryItemsQuery } from '@/features/library/sdk/queries/catalog.queries';
 import { useDetachItemFromCollectionMutation } from '@/features/library/sdk/queries/collections.queries';
 import { useCollectionsQuery } from '@/features/library/sdk/queries/collections.queries';
-import { useSavedSearchResults } from '@/features/library/sdk/queries/saved-searches-relations.queries';
+import { useSavedSearchResults, useSavedSearches } from '@/features/library/sdk/queries/saved-searches-relations.queries';
 import { ContentSkeleton } from './ContentSkeleton';
 import { ItemTable } from './ItemTable';
 import { DuplicatesContent } from './DuplicatesContent';
@@ -99,8 +99,17 @@ export function LibraryContent({
 
   const effectiveView = view || (nav.filterParam && nav.filterParam !== 'saved-search' ? nav.filterParam : undefined);
 
-  const effectiveOrderBy = nav.orderBy || displayOptions?.orderBy;
-  const effectiveOrderDirection = nav.orderDirection || displayOptions?.orderDirection;
+  const { savedSearches = [] } = useSavedSearches(scopeId, { enabled: isSavedSearchView });
+  const activeSavedSearch = useMemo(
+    () => savedSearches.find((s) => s.id === effectiveSavedSearchId),
+    [savedSearches, effectiveSavedSearchId],
+  );
+
+  const savedSearchSortBy = isSavedSearchView && !nav.orderBy ? (activeSavedSearch?.sortBy as LibraryOrderBy | undefined) : undefined;
+  const savedSearchSortOrder = isSavedSearchView && !nav.orderDirection ? activeSavedSearch?.sortOrder : undefined;
+
+  const effectiveOrderBy = nav.orderBy || savedSearchSortBy || displayOptions?.orderBy;
+  const effectiveOrderDirection = nav.orderDirection || savedSearchSortOrder || displayOptions?.orderDirection;
 
   const queryParams = useMemo(
     () => ({
@@ -157,7 +166,9 @@ export function LibraryContent({
     {
       page: nav.page,
       limit: PAGE_SIZE,
-      sortBy: mapOrderByToSavedSearchSortBy(effectiveOrderBy),
+      sortBy:
+        mapOrderByToSavedSearchSortBy(effectiveOrderBy) ||
+        mapOrderByToSavedSearchSortBy(savedSearchSortBy),
       sortOrder: effectiveOrderDirection,
     },
   );
@@ -364,6 +375,8 @@ export function LibraryContent({
           <ItemTable
             items={displayedItems}
             totalCount={totalCount}
+            hasNextPage={nav.page < totalPages}
+            onLoadMore={nav.page < totalPages ? () => nav.setPage(nav.page + 1) : undefined}
             onSortChange={handleSortChange}
             scopeId={scopeId}
             collectionId={collectionId}
@@ -373,7 +386,55 @@ export function LibraryContent({
         </ErrorBoundary>
       </div>
 
-
+      {totalPages > 1 && (
+        <div className="h-9 shrink-0 border-t border-border bg-background px-4 flex items-center justify-between select-none">
+          <span className="text-12 text-muted-foreground">
+            Showing{' '}
+            <span className="font-mono tabular-nums text-foreground">
+              {Math.min((nav.page - 1) * PAGE_SIZE + 1, totalCount)}
+            </span>
+            {'–'}
+            <span className="font-mono tabular-nums text-foreground">
+              {Math.min(nav.page * PAGE_SIZE, totalCount)}
+            </span>{' '}
+            of{' '}
+            <span className="font-mono tabular-nums text-foreground">
+              {totalCount}
+            </span>
+          </span>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              disabled={nav.page <= 1}
+              onClick={() => {
+                clearSelection();
+                nav.setPage(nav.page - 1);
+              }}
+              aria-label="Previous page"
+              className="h-6 px-2 rounded border border-border bg-background hover:bg-muted disabled:opacity-40 disabled:pointer-events-none text-12 text-foreground flex items-center gap-1 cursor-pointer transition-colors"
+            >
+              <ChevronLeft className="size-3.5 shrink-0" strokeWidth={1.5} />
+              <span>Previous</span>
+            </button>
+            <span className="text-12 text-muted-foreground px-1.5 font-mono tabular-nums">
+              {nav.page} / {totalPages}
+            </span>
+            <button
+              type="button"
+              disabled={nav.page >= totalPages}
+              onClick={() => {
+                clearSelection();
+                nav.setPage(nav.page + 1);
+              }}
+              aria-label="Next page"
+              className="h-6 px-2 rounded border border-border bg-background hover:bg-muted disabled:opacity-40 disabled:pointer-events-none text-12 text-foreground flex items-center gap-1 cursor-pointer transition-colors"
+            >
+              <span>Next</span>
+              <ChevronRight className="size-3.5 shrink-0" strokeWidth={1.5} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Floating Multi-Selection Action Bar */}
       <BatchBar

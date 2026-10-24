@@ -100,6 +100,8 @@ export const createSavedSearchSchema = z.object({
   sortBy: z.enum(['dateAdded', 'year', 'title', 'creator']).optional(),
   sortOrder: z.enum(['asc', 'desc']).optional(),
   isPinned: z.boolean().optional(),
+  targetScope: z.string().optional(),
+  scope: z.string().optional(),
 });
 
 export const updateSavedSearchSchema = createSavedSearchSchema.partial();

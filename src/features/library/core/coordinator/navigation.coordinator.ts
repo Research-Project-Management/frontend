@@ -28,6 +28,7 @@ export interface LibraryNavigationFilters {
  */
 export function parseLibrarySearchParams(searchParams: {
   get: (name: string) => string | null;
+  getAll?: (name: string) => string[];
 }): LibraryNavigationFilters {
   const search = searchParams.get('q') || undefined;
   const filter = searchParams.get('filter') || undefined;
@@ -48,12 +49,27 @@ export function parseLibrarySearchParams(searchParams: {
       ? parsedToYear
       : undefined;
 
-  const type = searchParams.get('type') || searchParams.get('itemType') || undefined;
-  const readStatus = searchParams.get('readStatus') || undefined;
+  const types = searchParams.getAll ? searchParams.getAll('type').filter(Boolean) : [];
+  const type =
+    types.length > 0
+      ? types.join(',')
+      : (searchParams.get('type') || searchParams.get('itemType') || undefined);
+
+  const readStatuses = searchParams.getAll ? searchParams.getAll('readStatus').filter(Boolean) : [];
+  const readStatus =
+    readStatuses.length > 0
+      ? readStatuses.join(',')
+      : (searchParams.get('readStatus') || undefined);
+
   const hasFileParam = searchParams.get('hasFile');
   const hasNotesParam = searchParams.get('hasNotes');
   const fileStatusParam = searchParams.get('fileStatus');
-  const tag = searchParams.get('tag') || undefined;
+
+  const tags = searchParams.getAll ? searchParams.getAll('tag').filter(Boolean) : [];
+  const tag =
+    tags.length > 0
+      ? tags.join(',')
+      : (searchParams.get('tag') || undefined);
 
   let hasFile: boolean | undefined = undefined;
   if (hasFileParam !== null) hasFile = hasFileParam === 'true';

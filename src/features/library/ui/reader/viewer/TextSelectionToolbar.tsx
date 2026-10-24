@@ -123,8 +123,8 @@ export function TextSelectionToolbar({
                 }}
                 title={`Highlight in ${c.label}`}
                 className={cn(
-                  "size-3.5 rounded-full border border-border hover:scale-125 transition-transform cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-2.5 md:before:hidden",
-                  isSelected && "ring-2 ring-primary ring-offset-1 scale-110",
+                  "size-3.5 rounded-full border border-border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-2.5 md:before:hidden",
+                  isSelected && "ring-2 ring-primary ring-offset-1",
                 )}
                 style={{ backgroundColor: c.hex }}
               />

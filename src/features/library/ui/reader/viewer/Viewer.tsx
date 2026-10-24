@@ -18,7 +18,11 @@ import {
   computeSpreadPairs,
   isPageInVirtualWindow,
 } from "@/features/library/domain/pdf-viewport.model";
-import { useViewerSearch, ViewerSearchBar } from "./ViewerSearchBar";
+import {
+  useViewerSearch,
+  ViewerSearchBar,
+  type PdfSearchDocumentProxy,
+} from "./ViewerSearchBar";
 import { TextSelectionToolbar } from "./TextSelectionToolbar";
 import { AnnotationQuickEditCard } from "./PageAnnotationOverlay";
 import { DocumentPageSkeleton } from "./DocumentPageSkeleton";
@@ -112,6 +116,9 @@ export default function Viewer({
   const [pulsingAnnotationId, setPulsingAnnotationId] = useState<string | null>(
     null,
   );
+  const [pdfDocument, setPdfDocument] = useState<PdfSearchDocumentProxy | null>(
+    null,
+  );
   const pdfDocRef = useRef<{
     cleanup?: () => Promise<void> | void;
     destroy?: () => Promise<void> | void;
@@ -124,6 +131,7 @@ export default function Viewer({
     return () => {
       const doc = pdfDocRef.current;
       pdfDocRef.current = null;
+      setPdfDocument(null);
       void doc?.cleanup?.();
       void doc?.destroy?.();
     };
@@ -185,6 +193,7 @@ export default function Viewer({
     fulltext,
     numPages,
     pageRefs,
+    pdfDocument,
     scrollToPage,
   });
 
@@ -259,12 +268,14 @@ export default function Viewer({
     return () => obs.disconnect();
   }, [numPages, onVisiblePageChange]);
 
-  const onDocumentLoadSuccess = (doc: {
-    numPages: number;
-    cleanup?: () => Promise<void> | void;
-    destroy?: () => Promise<void> | void;
-  }) => {
+  const onDocumentLoadSuccess = (
+    doc: PdfSearchDocumentProxy & {
+      cleanup?: () => Promise<void> | void;
+      destroy?: () => Promise<void> | void;
+    },
+  ) => {
     pdfDocRef.current = doc;
+    setPdfDocument(doc);
     setNumPages(doc.numPages);
     onTotalPagesChange?.(doc.numPages);
     setDocError(null);

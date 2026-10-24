@@ -247,7 +247,7 @@ export default function ImportFromPersonalModal({
                 className={cn(
                   "w-full h-8 px-2.5 flex items-center justify-between rounded-md text-12 transition-colors text-left cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                   selectedScope === "all"
-                    ? "bg-muted text-foreground font-medium shadow-xs"
+                    ? "bg-muted text-foreground font-medium"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted font-normal",
                 )}
               >
@@ -273,7 +273,7 @@ export default function ImportFromPersonalModal({
                     className={cn(
                       "w-full h-8 px-2.5 flex items-center justify-between rounded-md text-12 transition-colors text-left cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                       isSelected
-                        ? "bg-muted text-foreground font-medium shadow-xs"
+                        ? "bg-muted text-foreground font-medium"
                         : "text-muted-foreground hover:text-foreground hover:bg-muted font-normal",
                     )}
                   >
@@ -309,7 +309,7 @@ export default function ImportFromPersonalModal({
                   className={cn(
                     "w-full h-8 px-2.5 flex items-center justify-between rounded-md text-12 transition-colors text-left cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                     selectedScope === "unfiled"
-                      ? "bg-muted text-foreground font-medium shadow-xs"
+                      ? "bg-muted text-foreground font-medium"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted font-normal",
                   )}
                 >

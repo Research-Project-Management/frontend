@@ -22,6 +22,7 @@ export interface LibraryCommandState {
   isExecuting: boolean;
   isUndoing: boolean;
   lastCommand: LibraryCommand | null;
+  epoch: number;
 }
 
 export interface LibraryCommandActions {
@@ -43,11 +44,18 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
   isExecuting: false,
   isUndoing: false,
   lastCommand: null,
+  epoch: 0,
 
   executeCommand: async <T>(command: LibraryCommand<T>, options: { silentToast?: boolean } = {}): Promise<T> => {
     set({ isExecuting: true });
+    const startEpoch = get().epoch;
     try {
       const result = await command.execute();
+
+      if (get().epoch !== startEpoch) {
+        set({ isExecuting: false });
+        return result;
+      }
 
       set((s) => ({
         undoStack: [command, ...s.undoStack.slice(0, MAX_HISTORY_LENGTH - 1)],
@@ -57,12 +65,15 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
       }));
 
       if (!options.silentToast) {
+        const toastId = command.id.startsWith('trash-') ? 'item-delete' : `cmd-${command.id}`;
         toast.success(command.description, {
-          id: `cmd-${command.id}`,
+          id: toastId,
           action: {
-            label: 'Hoàn tác',
+            label: 'Undo',
             onClick: () => {
-              void get().undo();
+              if (get().epoch === startEpoch) {
+                void get().undo();
+              }
             },
           },
         });
@@ -72,35 +83,43 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
     } catch (err: unknown) {
       set({ isExecuting: false });
       const message = err instanceof Error ? err.message : 'Operation failed';
-      toast.error(`Thao tác thất bại: ${message}`, { id: `cmd-err-${command.id}` });
+      toast.error(`Operation failed: ${message}`, { id: `cmd-err-${command.id}` });
       throw err;
     }
   },
 
   undo: async (): Promise<boolean> => {
-    const { undoStack, isUndoing } = get();
-    if (undoStack.length === 0 || isUndoing) return false;
+    const { undoStack, isUndoing, isExecuting } = get();
+    if (undoStack.length === 0 || isUndoing || isExecuting) return false;
 
-    const [commandToUndo, ...remainingUndo] = undoStack;
+    const commandToUndo = undoStack[0];
     if (!commandToUndo) return false;
 
+    const startEpoch = get().epoch;
     set({ isUndoing: true });
     try {
       await commandToUndo.undo();
 
+      if (get().epoch !== startEpoch) {
+        set({ isUndoing: false });
+        return false;
+      }
+
       set((s) => ({
-        undoStack: remainingUndo,
+        undoStack: s.undoStack.filter((c) => c.id !== commandToUndo.id),
         redoStack: [commandToUndo, ...s.redoStack.slice(0, MAX_HISTORY_LENGTH - 1)],
         lastCommand: commandToUndo,
         isUndoing: false,
       }));
 
-      toast.info(`Đã hoàn tác: ${commandToUndo.description}`, {
+      toast.info(`Undone: ${commandToUndo.description}`, {
         id: `undo-${commandToUndo.id}`,
         action: {
-          label: 'Làm lại',
+          label: 'Redo',
           onClick: () => {
-            void get().redo();
+            if (get().epoch === startEpoch) {
+              void get().redo();
+            }
           },
         },
       });
@@ -109,18 +128,19 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
     } catch (err: unknown) {
       set({ isUndoing: false });
       const message = err instanceof Error ? err.message : 'Undo failed';
-      toast.error(`Hoàn tác thất bại: ${message}`);
+      toast.error(`Undo failed: ${message}`);
       return false;
     }
   },
 
   redo: async (): Promise<boolean> => {
-    const { redoStack, isExecuting } = get();
-    if (redoStack.length === 0 || isExecuting) return false;
+    const { redoStack, isExecuting, isUndoing } = get();
+    if (redoStack.length === 0 || isExecuting || isUndoing) return false;
 
-    const [commandToRedo, ...remainingRedo] = redoStack;
+    const commandToRedo = redoStack[0];
     if (!commandToRedo) return false;
 
+    const startEpoch = get().epoch;
     set({ isExecuting: true });
     try {
       if (commandToRedo.redo) {
@@ -129,19 +149,26 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
         await commandToRedo.execute();
       }
 
+      if (get().epoch !== startEpoch) {
+        set({ isExecuting: false });
+        return false;
+      }
+
       set((s) => ({
-        redoStack: remainingRedo,
+        redoStack: s.redoStack.filter((c) => c.id !== commandToRedo.id),
         undoStack: [commandToRedo, ...s.undoStack.slice(0, MAX_HISTORY_LENGTH - 1)],
         lastCommand: commandToRedo,
         isExecuting: false,
       }));
 
-      toast.success(`Đã làm lại: ${commandToRedo.description}`, {
+      toast.success(`Redone: ${commandToRedo.description}`, {
         id: `redo-${commandToRedo.id}`,
         action: {
-          label: 'Hoàn tác',
+          label: 'Undo',
           onClick: () => {
-            void get().undo();
+            if (get().epoch === startEpoch) {
+              void get().undo();
+            }
           },
         },
       });
@@ -150,13 +177,18 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
     } catch (err: unknown) {
       set({ isExecuting: false });
       const message = err instanceof Error ? err.message : 'Redo failed';
-      toast.error(`Làm lại thất bại: ${message}`);
+      toast.error(`Redo failed: ${message}`);
       return false;
     }
   },
 
   clearHistory: () => {
-    set({ undoStack: [], redoStack: [], lastCommand: null });
+    set((s) => ({
+      undoStack: [],
+      redoStack: [],
+      lastCommand: null,
+      epoch: s.epoch + 1,
+    }));
   },
 }));
 
@@ -202,9 +234,9 @@ export interface TrashCommandOptions {
 export function createTrashCommand(options: TrashCommandOptions): LibraryCommand {
   const count = options.itemIds.length;
   const description =
-    count === 1 && options.itemTitle
-      ? `Đã chuyển "${options.itemTitle}" vào thùng rác`
-      : `Đã chuyển ${count} tài liệu vào thùng rác`;
+    count === 1
+      ? 'Item moved to trash'
+      : `Moved ${count} items to trash`;
 
   return {
     id: `trash-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -234,8 +266,10 @@ export function createRestoreCommand(options: RestoreCommandOptions): LibraryCom
   const count = options.itemIds.length;
   const description =
     count === 1 && options.itemTitle
-      ? `Đã khôi phục "${options.itemTitle}"`
-      : `Đã khôi phục ${count} tài liệu`;
+      ? `Restored "${options.itemTitle}"`
+      : count === 1
+        ? 'Restored 1 item'
+        : `Restored ${count} items`;
 
   return {
     id: `restore-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -267,8 +301,8 @@ export interface MoveItemsCommandOptions {
 
 export function createMoveItemsCommand(options: MoveItemsCommandOptions): LibraryCommand {
   const count = options.itemIds.length;
-  const destName = options.targetCollectionName || 'bộ sưu tập mới';
-  const description = `Đã chuyển ${count} tài liệu đến ${destName}`;
+  const destName = options.targetCollectionName || 'collection';
+  const description = `Moved ${count} ${count === 1 ? 'item' : 'items'} to ${destName}`;
 
   return {
     id: `move-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -305,7 +339,7 @@ export interface ToggleStarCommandOptions {
 }
 
 export function createToggleStarCommand(options: ToggleStarCommandOptions): LibraryCommand {
-  const actionText = options.newStarred ? 'Đã đánh dấu sao' : 'Đã bỏ đánh dấu sao';
+  const actionText = options.newStarred ? 'Starred' : 'Unstarred';
   const description = options.itemTitle ? `${actionText} "${options.itemTitle}"` : actionText;
 
   return {

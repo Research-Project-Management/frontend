@@ -2,7 +2,6 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { useQueryClient } from '@tanstack/react-query';
 import { UploadCloud } from 'lucide-react';
 
 import {
@@ -12,6 +11,7 @@ import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem, } from '@/shared/components/ui/select';
 
 import { useCollectionsQuery } from '@/features/library/sdk/queries/collections.queries';
+import { useLibraryCacheSynchronizer } from '@/features/library/sdk/queries/catalog.queries';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { useProcessModalStore } from '@/features/library/core/store/process-modal.store';
 import type { Collection } from '@/features/library/domain/types/library.types';
@@ -36,7 +36,7 @@ export default function UploadFilesModal({
   initialFiles = EMPTY_FILES,
   onSuccess,
 }: UploadFilesModalProps) {
-  const queryClient = useQueryClient();
+  const { queryClient } = useLibraryCacheSynchronizer(scopeId);
   const routeParams = useParams() as { collectionId?: string };
   const fileInputRef = useRef<HTMLInputElement>(null);
   const startBatchUpload = useProcessModalStore((s) => s.startBatchUpload);

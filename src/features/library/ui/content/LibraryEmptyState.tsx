@@ -214,7 +214,7 @@ function DefaultLibraryEmptyState({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       className={cn(
-        'flex-1 w-full h-full min-h-[440px] flex flex-col items-center justify-center p-8 text-center select-none animate-in fade-in-50 duration-200 transition-colors',
+        'flex-1 w-full h-full min-h-[440px] flex flex-col items-center justify-center p-8 text-center select-none transition-colors',
         config.showDropzone && canEdit && isDragOver && 'border-2 border-dashed border-primary bg-primary/5 ring-1 ring-primary',
         className,
       )}

@@ -11,6 +11,7 @@ import type {
 } from '@/features/library/domain/types/batch-upload.types';
 import { cleanFilenameToTitle } from '@/features/library/domain/metadata';
 import { BatchFlowManager } from '@/features/library/core/manager/batch-flow.manager';
+import { DocumentFlowStateMachine } from '@/features/library/core/manager/document-flow-state.machine';
 
 // Stage 1: Provisional Item Creation & Modal Initialization
 
@@ -221,15 +222,34 @@ export async function executeBatchUpload(
     });
   };
 
+  const fsms = new Map<string, DocumentFlowStateMachine>();
+  files.forEach((file, idx) => {
+    const provisionalId = initialProcessingItems[idx]!.id;
+    const fsm = new DocumentFlowStateMachine(provisionalId, file.name, file.size);
+    fsm.transition({
+      type: 'QUEUE',
+      provisionalId,
+      fileName: file.name,
+      fileSize: file.size,
+    });
+    fsms.set(provisionalId, fsm);
+  });
+
   const processFile = async (entry: { file: File; index: number; provisionalId: string }) => {
     const { file, index, provisionalId } = entry;
     const lowerName = file.name.toLowerCase();
+    const fsm = fsms.get(provisionalId);
+
+    if (fsm?.state === 'FAILED' || fsm?.state === 'CANCELLED') {
+      fsm.transition({ type: 'RETRY' });
+    }
+    fsm?.transition({ type: 'START_UPLOAD' });
 
     // Set item to UPLOADING
     store.setState((s) => {
       if (!s.state.data) return s;
       const items = s.state.data.items.map((i: IngestionProgressItem, idx: number) =>
-        idx === index ? { ...i, status: 'UPLOADING' as const } : i,
+        idx === index ? { ...i, status: 'UPLOADING' as const, error: undefined } : i,
       );
       return {
         state: {
@@ -283,6 +303,7 @@ export async function executeBatchUpload(
           itemPayload?.id || resRecord?.data?.itemId || resRecord?.itemId;
 
         if (bibRunId) {
+          fsm?.transition({ type: 'START_EXTRACTION', runId: bibRunId });
           const pollOutcome = await pollIngestionRunCompletion(
             scopeId,
             bibRunId,
@@ -292,44 +313,38 @@ export async function executeBatchUpload(
             },
           );
           if (!pollOutcome.ok) {
-            markFileFailed(
-              file,
-              index,
-              provisionalId,
-              pollOutcome.error || 'Bibliography import failed',
-            );
-            return;
+            throw new Error(pollOutcome.error || 'Bibliography import failed');
           }
           extractedTitle = pollOutcome.title || extractedTitle;
           resolvedItemId = pollOutcome.itemId || resolvedItemId;
         }
 
+        fsm?.transition({
+          type: 'COMPLETE',
+          itemId: resolvedItemId || provisionalId,
+          title: extractedTitle,
+        });
         markFileSucceeded(file, index, provisionalId, extractedTitle, resolvedItemId, true);
         return;
       }
 
       // Branch B: Binary / PDF Upload + Metadata Extraction
-      let uploadRes: { fileId?: string; url?: string } | null = null;
-      try {
-        uploadRes = await UploadService.uploadMultipart(scopeId, file, {
-          onProgress: (percent: number) => {
-            store.setState((s) => ({
-              processingItems: s.processingItems.map((p) =>
-                p.id === provisionalId ? { ...p, progress: percent } : p,
-              ),
-            }));
-          },
-        });
-      } catch (uploadErr: unknown) {
-        const errorMsg = uploadErr instanceof Error ? uploadErr.message : 'Upload failed';
-        markFileFailed(file, index, provisionalId, errorMsg);
-        return;
-      }
+      const uploadRes = await UploadService.uploadMultipart(scopeId, file, {
+        onProgress: (percent: number) => {
+          fsm?.transition({ type: 'UPLOAD_PROGRESS', progress: percent });
+          store.setState((s) => ({
+            processingItems: s.processingItems.map((p) =>
+              p.id === provisionalId ? { ...p, progress: percent } : p,
+            ),
+          }));
+        },
+      });
 
       if (!uploadRes?.fileId) {
-        markFileFailed(file, index, provisionalId, 'Upload succeeded without file identifier');
-        return;
+        throw new Error('Upload succeeded without file identifier');
       }
+
+      fsm?.transition({ type: 'UPLOAD_COMPLETED', fileId: uploadRes.fileId });
 
       // Transition to PROCESSING
       store.setState((s) => {
@@ -355,53 +370,49 @@ export async function executeBatchUpload(
       });
 
       const identifiedTitle = cleanFilenameToTitle(file.name);
-      let completedItemId: string | undefined = undefined;
-      let runId: string | undefined = undefined;
+      const ingestRes = await IngestionService.ingest(scopeId, {
+        source: 'pdf',
+        fileId: uploadRes.fileId,
+        filename: file.name,
+        collectionId: effectiveCollection,
+      });
 
-      try {
-        const ingestRes = await IngestionService.ingest(scopeId, {
-          source: 'pdf',
-          fileId: uploadRes.fileId,
-          filename: file.name,
-          collectionId: effectiveCollection,
-        });
-
-        const ingestPayload = ingestRes as {
-          data?: { runId?: string; itemId?: string; status?: string };
-          runId?: string;
-          itemId?: string;
-          status?: string;
-        } | null;
-        runId = ingestPayload?.data?.runId || ingestPayload?.runId;
-        completedItemId = ingestPayload?.data?.itemId || ingestPayload?.itemId;
-      } catch (submitErr) {
-        const errorMsg =
-          submitErr instanceof Error ? submitErr.message : 'Ingestion submission failed';
-        markFileFailed(file, index, provisionalId, errorMsg);
-        return;
-      }
+      const ingestPayload = ingestRes as {
+        data?: { runId?: string; itemId?: string; status?: string };
+        runId?: string;
+        itemId?: string;
+        status?: string;
+      } | null;
+      const runId = ingestPayload?.data?.runId || ingestPayload?.runId;
+      const completedItemId = ingestPayload?.data?.itemId || ingestPayload?.itemId;
 
       let finalTitle = identifiedTitle;
       let finalItemId = completedItemId;
 
       if (runId) {
+        fsm?.transition({ type: 'START_EXTRACTION', runId });
         const pollOutcome = await pollIngestionRunCompletion(
           scopeId,
           runId,
           { fallbackTitle: identifiedTitle, initialItemId: completedItemId },
         );
         if (!pollOutcome.ok) {
-          markFileFailed(file, index, provisionalId, pollOutcome.error || 'Extraction failed');
-          return;
+          throw new Error(pollOutcome.error || 'Extraction failed');
         }
         finalTitle = pollOutcome.title || identifiedTitle;
         finalItemId = pollOutcome.itemId || completedItemId;
       }
 
+      fsm?.transition({
+        type: 'COMPLETE',
+        itemId: finalItemId || provisionalId,
+        title: finalTitle,
+      });
       markFileSucceeded(file, index, provisionalId, finalTitle, finalItemId, true);
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Processing failed';
-      markFileFailed(file, index, provisionalId, errorMsg);
+      fsm?.transition({ type: 'FAIL', error: errorMsg });
+      throw err instanceof Error ? err : new Error(errorMsg);
     }
   };
 
@@ -416,7 +427,20 @@ export async function executeBatchUpload(
   const flowManager = new BatchFlowManager<{ file: File; index: number; provisionalId: string }>({
     concurrency,
   });
-  await flowManager.execute(tasks);
+  const batchProgress = await flowManager.execute(tasks);
+
+  // Mark any files that exhausted all retries as failed
+  batchProgress.errors.forEach((error, taskId) => {
+    const taskEntry = queue.find((q) => q.provisionalId === taskId);
+    if (taskEntry) {
+      markFileFailed(
+        taskEntry.file,
+        taskEntry.index,
+        taskEntry.provisionalId,
+        error.message || 'Processing failed',
+      );
+    }
+  });
   await synchronizeBatchCaches(queryClient, scopeId, effectiveCollection);
 
   // Ensure all provisional items for this batch are wiped

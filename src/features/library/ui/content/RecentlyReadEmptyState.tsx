@@ -267,7 +267,7 @@ export function RecentlyReadEmptyState() {
   return (
     <div
       data-testid="recently-read-empty"
-      className="flex-1 w-full h-full min-h-[440px] flex flex-col items-center justify-center p-8 text-center select-none animate-in fade-in-50 duration-200"
+      className="flex-1 w-full h-full min-h-[440px] flex flex-col items-center justify-center p-8 text-center select-none"
     >
       <style dangerouslySetInnerHTML={{ __html: libraryIllustrationStyles }} />
 

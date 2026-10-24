@@ -291,7 +291,7 @@ export function DuplicatesContent({
 
   if (activeGroups.length === 0) {
     return (
-      <div className="flex-1 w-full h-full min-h-[440px] flex flex-col items-center justify-center p-8 text-center select-none animate-in fade-in-50 duration-200 bg-background">
+      <div className="flex-1 w-full h-full min-h-[440px] flex flex-col items-center justify-center p-8 text-center select-none bg-background">
         <style dangerouslySetInnerHTML={{ __html: libraryIllustrationStyles }} />
         <div className="plane-library-illustration mb-6 flex items-center justify-center">
           <DuplicatesStackIllustration />

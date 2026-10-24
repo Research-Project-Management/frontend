@@ -2,29 +2,31 @@
 
 import React, { useMemo, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import dynamic from 'next/dynamic';
 import { Trash2, Files, Rss, Star, Inbox, Award, ShieldAlert, History } from 'lucide-react';
 import { LibraryTopbar, type BreadcrumbItem } from '@/features/library/ui/topbar/LibraryTopbar';
-import { LibraryContent, mapOrderByToSavedSearchSortBy } from '@/features/library/ui/content/LibraryContent';
+import { LibraryContent } from '@/features/library/ui/content/LibraryContent';
 import { LibraryInspector } from '@/features/library/ui/inspector/LibraryInspector';
-import { DuplicateMergeInspector } from '@/features/library/ui/inspector/DuplicateMergeInspector';
-import { FeedItemInspector } from '@/features/library/ui/inspector/FeedItemInspector';
 import { ErrorBoundary } from '@/shared/components/ui/error-boundary';
 import { useLibraryNavigation } from '@/features/library/core/coordinator/navigation.coordinator';
 
-const LibraryModals = dynamic(
-  () => import('@/features/library/ui/modals/LibraryModals').then((m) => m.LibraryModals), { ssr: false }
+const DuplicateMergeInspector = dynamic(
+  () => import('@/features/library/ui/inspector/DuplicateMergeInspector').then((m) => m.DuplicateMergeInspector),
+  { ssr: false }
+);
+const FeedItemInspector = dynamic(
+  () => import('@/features/library/ui/inspector/FeedItemInspector').then((m) => m.FeedItemInspector),
+  { ssr: false }
 );
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { useFeedsStore } from '@/features/library/core/store/feeds.store';
 import { useLibraryPermissions } from '@/features/library/core/coordinator/permissions.coordinator';
 import { useProcessModalStore } from '@/features/library/core/store/process-modal.store';
-import { useCollectionsQuery, invalidateCollections } from '@/features/library/sdk/queries/collections.queries';
-import { useSavedSearches, useSavedSearchResults } from '@/features/library/sdk/queries/saved-searches-relations.queries';
-import { useTrash, useLibraryCountsQuery, useItemTypes, useItems, useLibraryDeltaSync, itemKeys } from '@/features/library/sdk/queries/catalog.queries';
-import { useMergeDuplicates } from '@/features/library/sdk/queries/ingestion.queries';
+import { useCollectionsQuery } from '@/features/library/sdk/queries/collections.queries';
+import { useSavedSearches } from '@/features/library/sdk/queries/saved-searches-relations.queries';
+import { useTrash, useLibraryCountsQuery, useItemTypes, useItems, useLibraryDeltaSync, useLibraryCacheSynchronizer } from '@/features/library/sdk/queries/catalog.queries';
+import { useMergeDuplicates, useDuplicateGroups } from '@/features/library/sdk/queries/ingestion.queries';
 import { formatItemTypeLabel } from '@/features/library/domain/metadata';
 import { parseEmojiPrefix } from '@/features/library/domain/academic-text';
 import { mapFeedEntryToCreateItemPayload, type ParsedFeedEntry } from '@/features/library/domain/feed-parser.domain';
@@ -75,7 +77,7 @@ export function ModernLibraryPage({
 }: LibraryPageProps) {
   const router = useRouter();
   const nav = useLibraryNavigation();
-  const queryClient = useQueryClient();
+  const { queryClient, invalidateScopeItemsAndCounts } = useLibraryCacheSynchronizer(propScopeId);
   const params = useParams() as { collectionId?: string; projectId?: string };
   const activeScope = useLibraryUIStore((s) => s.activeScope);
   const openModal = useLibraryUIStore((s) => s.openModal);
@@ -90,13 +92,24 @@ export function ModernLibraryPage({
   const triggerRefresh = useFeedsStore((s) => s.triggerRefresh);
   const selectedFeedEntry = useFeedsStore((s) => s.selectedFeedEntry);
   const readEntryIds = useFeedsStore((s) => s.readEntryIds);
+  const currentFeedEntries = useFeedsStore((s) => s.currentFeedEntries);
   const toggleEntryRead = useFeedsStore((s) => s.toggleEntryRead);
   const markEntryAsRead = useFeedsStore((s) => s.markEntryAsRead);
   const markAllEntriesAsRead = useFeedsStore((s) => s.markAllEntriesAsRead);
 
+  const isSavedSearchView = nav.isSavedSearchView;
+  const effectiveView = view || (nav.filterParam && nav.filterParam !== 'saved-search' ? nav.filterParam : undefined);
+
   React.useEffect(() => {
-    loadFeeds();
-  }, [loadFeeds]);
+    if (effectiveView === 'feed') {
+      loadFeeds();
+      return;
+    }
+    const timer = setTimeout(() => {
+      loadFeeds();
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [loadFeeds, effectiveView]);
 
   const currentFeed = useMemo(() => {
     if (!nav.feedId) return feeds[0];
@@ -111,9 +124,6 @@ export function ModernLibraryPage({
     propCollectionId || params?.collectionId || undefined;
 
   const { canEditItem: canEdit } = useLibraryPermissions();
-
-  const isSavedSearchView = nav.isSavedSearchView;
-  const effectiveView = view || (nav.filterParam && nav.filterParam !== 'saved-search' ? nav.filterParam : undefined);
 
   // Master-Detail Layout: Auto-open Inspector when viewing RSS feeds on desktop
   React.useEffect(() => {
@@ -135,7 +145,7 @@ export function ModernLibraryPage({
 
   const { data: collections = [] } = useCollectionsQuery(effectiveScopeId);
   const collectionList: Collection[] = (collections as Collection[]) || [];
-  const { savedSearches = [] } = useSavedSearches(effectiveScopeId);
+  const { savedSearches = [] } = useSavedSearches(effectiveScopeId, { enabled: isSavedSearchView });
   const collectionMap = useMemo(() => {
     const map = new Map<string, (typeof collections)[number]>();
     for (const c of collections) {
@@ -154,16 +164,9 @@ export function ModernLibraryPage({
   const effectiveOrderBy = nav.orderBy || displayOptions?.orderBy;
   const effectiveOrderDirection = nav.orderDirection || displayOptions?.orderDirection;
 
-  const savedSearchResults = useSavedSearchResults(
-    effectiveScopeId,
-    isSavedSearchView && nav.savedSearchId ? nav.savedSearchId : null,
-    {
-      page: nav.page,
-      limit: 50,
-      sortBy: mapOrderByToSavedSearchSortBy(effectiveOrderBy),
-      sortOrder: effectiveOrderDirection,
-    },
-  );
+  const duplicateGroupsQuery = useDuplicateGroups(effectiveScopeId, {
+    enabled: effectiveView === 'duplicates',
+  });
 
   // Deep linking: auto-select item and open inspector if ?item=... or ?selected=... is in URL
   React.useEffect(() => {
@@ -275,9 +278,7 @@ export function ModernLibraryPage({
       collectionId: effectiveCollectionId,
       queryClient,
       onSuccess: () => {
-        invalidateCollections(queryClient, effectiveScopeId);
-        void queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScopeId) });
-        void queryClient.invalidateQueries({ queryKey: itemKeys.counts(effectiveScopeId) });
+        void invalidateScopeItemsAndCounts(effectiveScopeId, { includeCollections: true });
       },
     });
   };
@@ -346,13 +347,10 @@ export function ModernLibraryPage({
   const { data: countsData } = useLibraryCountsQuery(effectiveScopeId);
   const displayCount = useMemo(() => {
     if (isTrash) return trashItems.length;
+    if (effectiveView === 'duplicates') {
+      return duplicateGroupsQuery.data?.duplicateGroups?.length ?? 0;
+    }
     if (isSavedSearchView) {
-      if (typeof savedSearchResults.data?.meta?.totalCount === 'number') {
-        return savedSearchResults.data.meta.totalCount;
-      }
-      if (savedSearchResults.data?.items) {
-        return savedSearchResults.data.items.length;
-      }
       return currentSavedSearch?.cachedCount ?? 0;
     }
     if (currentCollection) {
@@ -366,9 +364,9 @@ export function ModernLibraryPage({
   }, [
     isTrash,
     trashItems.length,
+    effectiveView,
+    duplicateGroupsQuery.data?.duplicateGroups?.length,
     isSavedSearchView,
-    savedSearchResults.data?.meta?.totalCount,
-    savedSearchResults.data?.items,
     currentSavedSearch?.cachedCount,
     currentCollection,
     displayOptions?.includeSubcollections,
@@ -428,7 +426,7 @@ export function ModernLibraryPage({
         scopeId: effectiveScopeId,
         collectionId: targetColId,
       });
-      await createItem({ ...payload, silent: true } as any);
+      await createItem({ ...payload, silent: true } as Parameters<typeof createItem>[0]);
       setSavedFeedItemIds((prev) => new Set(prev).add(entry.id));
       const colName = targetColId
         ? collectionList.find((c) => c.id === targetColId)?.name
@@ -486,8 +484,10 @@ export function ModernLibraryPage({
           onMarkAllFeedRead={
             effectiveView === 'feed'
               ? () => {
-                  // Mark all entries as read by triggering feedsStore
-                  if (selectedFeedEntry) {
+                  const allIds = currentFeedEntries.map((e) => e.id);
+                  if (allIds.length > 0) {
+                    markAllEntriesAsRead(allIds);
+                  } else if (selectedFeedEntry) {
                     markAllEntriesAsRead([selectedFeedEntry.id]);
                   }
                   toast.success(`Marked all articles in "${currentFeed?.name || 'feed'}" as read`);
@@ -548,6 +548,8 @@ export function ModernLibraryPage({
                 if (selectedDuplicateGroupKey) {
                   dismissDuplicateGroupRef.current?.(selectedDuplicateGroupKey);
                 }
+                setSelectedDuplicateGroup(null);
+                setSelectedDuplicateGroupKey(null);
               }}
             />
           </div>

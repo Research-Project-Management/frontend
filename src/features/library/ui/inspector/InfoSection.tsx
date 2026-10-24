@@ -17,7 +17,6 @@ import {
 import { toast } from "sonner";
 import { copyToClipboard as copyText } from "@/shared/lib/utils";
 import { useItemTypes } from "@/features/library/sdk/queries/catalog.queries";
-import { useItemTypeConversion } from "@/features/library/sdk/queries/saved-searches-relations.queries";
 import { CreatorFields } from "./fields/CreatorFields";
 import { GeneralFields } from "./fields/GeneralFields";
 import { DynamicInspectorField } from "./fields/DynamicInspectorField";
@@ -59,7 +58,6 @@ export default function InfoSection({
   const currentItemType = normalizeCanonicalItemType(item?.itemType);
   const scopeId = propScopeId || item?.projectId || "user";
 
-  useItemTypeConversion(scopeId);
   const { types: registryItemTypes } = useItemTypes(scopeId || undefined);
 
   const itemTypeDefinitions = useMemo(
@@ -219,7 +217,7 @@ export default function InfoSection({
       {/* Dynamic Schema Fields for Selected Item Type in Canonical Zotero Order */}
       {dynamicFields.map((fieldDef: SchemaFieldDefinition) => (
         <DynamicInspectorField
-          key={fieldDef.field}
+          key={`${item.id}-${fieldDef.field}`}
           fieldDef={fieldDef}
           val={getFieldValue(fieldDef.field)}
           displayDoi={displayDoi}

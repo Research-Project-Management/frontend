@@ -369,7 +369,7 @@ export default function RelatedSection(props: RelatedSectionProps) {
                   className={cn(
                     'text-left px-2.5 py-1.5 rounded-md text-12 flex items-center justify-between gap-2 cursor-pointer transition-colors select-none shrink-0 sm:shrink sm:w-full',
                     selectedCollectionFilter === 'all'
-                      ? 'bg-background text-foreground font-medium shadow-2xs border border-border-subtle'
+                      ? 'bg-background text-foreground font-medium border border-border-subtle'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted font-normal',
                   )}
                 >
@@ -399,7 +399,7 @@ export default function RelatedSection(props: RelatedSectionProps) {
                           className={cn(
                             'text-left px-2.5 py-1.5 rounded-md text-12 flex items-center justify-between gap-2 cursor-pointer transition-colors select-none shrink-0 sm:shrink sm:w-full',
                             isSelected
-                              ? 'bg-background text-foreground font-medium shadow-2xs border border-border-subtle'
+                              ? 'bg-background text-foreground font-medium border border-border-subtle'
                               : 'text-muted-foreground hover:text-foreground hover:bg-muted font-normal',
                           )}
                           aria-label={`${col.name} (${count} items)`}

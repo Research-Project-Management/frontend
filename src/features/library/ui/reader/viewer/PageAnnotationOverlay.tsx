@@ -49,8 +49,8 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
               id={`annotation-${ann.id}`}
               data-annotation-id={ann.id}
               className={cn(
-                'absolute pointer-events-auto cursor-pointer z-20 group transition-transform hover:scale-125 focus-visible:outline-none',
-                isPulsing && 'ring-4 ring-primary ring-offset-2 animate-pulse scale-125',
+                'absolute pointer-events-auto cursor-pointer z-20 group transition-colors focus-visible:outline-none',
+                isPulsing && 'ring-2 ring-primary ring-offset-2',
               )}
               style={{
                 left: `${r.x1 * 100}%`,
@@ -83,7 +83,7 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
               data-annotation-id={ann.id}
               className={cn(
                 'absolute pointer-events-auto cursor-pointer text-11 font-sans font-medium px-1.5 py-0.5 rounded bg-background/95 border backdrop-blur-xs flex items-center gap-1 z-20 transition-all',
-                isPulsing && 'ring-4 ring-primary ring-offset-1 animate-pulse',
+                isPulsing && 'ring-2 ring-primary ring-offset-1',
               )}
               style={{
                 left: `${r.x1 * 100}%`,
@@ -119,7 +119,7 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
                 isRect && 'border-2 rounded-sm',
                 isUnderline && 'border-b-2 rounded-none',
                 !isRect && !isUnderline && 'rounded-[2px] hover:opacity-75',
-                isPulsing && 'ring-4 ring-primary ring-offset-1 animate-pulse z-30 shadow-md',
+                isPulsing && 'ring-2 ring-primary ring-offset-1 z-30',
               )}
               style={{
                 left: `${r.x1 * 100}%`,
@@ -160,7 +160,7 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
             data-annotation-id={ann.id}
             className={cn(
               'absolute top-2 left-2 z-20 pointer-events-auto flex items-center gap-1 px-1.5 py-0.5 rounded-md text-10 font-mono border shadow-none cursor-pointer bg-background/85 backdrop-blur-xs',
-              isPulsing && 'ring-4 ring-primary ring-offset-1 animate-pulse',
+              isPulsing && 'ring-2 ring-primary ring-offset-1',
             )}
             style={{ borderColor: colorHex }}
             onClick={(e) => {
@@ -325,8 +325,8 @@ export function AnnotationQuickEditCard({
                 title={c.label}
                 onClick={() => handleCardColorChange(c.hex)}
                 className={cn(
-                  'size-3.5 rounded-full border border-border hover:scale-125 transition-transform cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-2.5 md:before:hidden',
-                  isSelected && 'ring-2 ring-primary ring-offset-1 scale-110',
+                  'size-3.5 rounded-full border border-border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-2.5 md:before:hidden',
+                  isSelected && 'ring-2 ring-primary ring-offset-1',
                 )}
                 style={{ backgroundColor: c.hex }}
               />

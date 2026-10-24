@@ -13,6 +13,13 @@ import { useLibraryNavigation } from '@/features/library/core/coordinator/naviga
 import { useLibraryCommandManager } from '@/features/library/core/manager/library-command.manager';
 import type { Item } from '@/features/library/domain/types/library.types';
 
+export { useAttachmentCoordinator } from '@/features/library/core/coordinator/attachment.coordinator';
+export { useInspectorItemResolver } from '@/features/library/core/coordinator/inspector-item.coordinator';
+export { useLibraryFacetCounts } from '@/features/library/core/coordinator/facet-filter.coordinator';
+export { useSavedSearchBuilder } from '@/features/library/core/coordinator/saved-search-builder.coordinator';
+export { useLibraryItemOperations } from '@/features/library/core/coordinator/item-operations.coordinator';
+export { useReader } from '@/features/library/core/coordinator/reader/use-reader';
+
 export interface UseLibraryCoordinatorOptions {
   items?: Item[];
   scopeId?: string;
@@ -20,6 +27,7 @@ export interface UseLibraryCoordinatorOptions {
   view?: string;
   isTrash?: boolean;
   canEdit?: boolean;
+  enableKeydownListeners?: boolean;
 }
 
 /**
@@ -43,6 +51,7 @@ export function useLibraryCoordinator(options: UseLibraryCoordinatorOptions = {}
     view,
     isTrash = false,
     canEdit = true,
+    enableKeydownListeners = false,
   } = options;
 
   // 1. Core Zustand UI Store Access
@@ -60,6 +69,7 @@ export function useLibraryCoordinator(options: UseLibraryCoordinatorOptions = {}
   const hasSelection = useHasSelection();
 
   // 3. Delegate to Specialized Sub-Coordinators
+  // Avoid redundant global window keydown listener registration if already handled by child coordinators
   const batchCoordinator = useLibraryBatchCoordinator({
     items,
     scopeId,
@@ -67,11 +77,13 @@ export function useLibraryCoordinator(options: UseLibraryCoordinatorOptions = {}
     view,
     isTrash,
     canEdit,
+    enableKeydownListener: enableKeydownListeners,
   });
 
   const quickCopyCoordinator = useQuickCopyCoordinator({
     scopeId,
     items,
+    enableKeydownListener: enableKeydownListeners,
   });
 
   const navigation = useLibraryNavigation();

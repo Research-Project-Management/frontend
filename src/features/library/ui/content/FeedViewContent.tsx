@@ -33,9 +33,10 @@ import { useCollections } from '@/features/library/sdk/queries/collections.queri
 import type { Collection } from '@/features/library/domain/types/library.types';
 import {
   mapFeedEntryToCreateItemPayload,
+  normalizeFetchedFeedEntries,
+  filterFeedEntriesByRetention,
+  filterFeedEntriesByReadAndQuery,
   type ParsedFeedEntry,
-  type FeedCreatorApiItem,
-  type FeedEntryApiItem,
   type FeedFetchApiResponse,
 } from '@/features/library/domain/feed-parser.domain';
 import { useFeedsStore } from '@/features/library/core/store/feeds.store';
@@ -55,9 +56,15 @@ interface FeedViewContentProps {
   feedId?: string | null;
   scopeId?: string;
   canEdit?: boolean;
+  onMarkAllRead?: (entryIds: string[]) => void;
 }
 
-export function FeedViewContent({ feedId, scopeId = 'user', canEdit = true }: FeedViewContentProps) {
+export function FeedViewContent({
+  feedId,
+  scopeId = 'user',
+  canEdit = true,
+  onMarkAllRead,
+}: FeedViewContentProps) {
   const searchParams = useSearchParams();
   const searchQuery = (searchParams.get('q') || '').trim();
   const { createItem } = useItems({ scopeId, enabled: false });
@@ -70,10 +77,12 @@ export function FeedViewContent({ feedId, scopeId = 'user', canEdit = true }: Fe
     readEntryIds,
     selectedFeedEntry,
     setSelectedFeedEntry,
+    setCurrentFeedEntries,
     readFilter,
     setReadFilter,
     markEntryAsRead,
     toggleEntryRead,
+    markAllEntriesAsRead,
     isEntryRead,
   } = useFeedsStore();
   const openModal = useLibraryUIStore((s) => s.openModal);
@@ -141,35 +150,7 @@ export function FeedViewContent({ feedId, scopeId = 'user', canEdit = true }: Fe
       const payload = typeof res === 'object' && res !== null && res.data ? res.data : res;
       if (payload && typeof payload === 'object' && Array.isArray(payload.entries)) {
         setFeedTitle(payload.feedTitle || activeFeed.name);
-        setRawEntries(
-          payload.entries.map((e: FeedEntryApiItem, idx: number) => ({
-            id: e.id || e.url || e.link || `feed-item-${idx}`,
-            title: e.title,
-            authors: e.authors || [],
-            creators: (e.creators || []).map((c: FeedCreatorApiItem) => ({
-              firstName: c.firstName || '',
-              lastName: c.lastName || '',
-              creatorType: 'author' as const,
-            })),
-            doi: e.doi,
-            arxivId: e.arxivId,
-            primaryCategory: e.primaryCategory || e.keywords?.[0],
-            url: e.url || e.link,
-            pdfUrl: e.pdfUrl,
-            publishedAt: e.publicationDate || e.published || e.updated,
-            updatedAt: e.updated,
-            year: e.year ?? undefined,
-            publicationTitle: e.publicationTitle,
-            volume: e.volume,
-            issue: e.issue,
-            pages: e.pages,
-            abstract: e.abstract || e.summary,
-            categories: e.keywords || [],
-            comment: e.comment,
-            rights: e.rights,
-            feedFormat: 'rss2',
-          })),
-        );
+        setRawEntries(normalizeFetchedFeedEntries(payload.entries));
       } else {
         setRawEntries([]);
       }
@@ -187,42 +168,27 @@ export function FeedViewContent({ feedId, scopeId = 'user', canEdit = true }: Fe
   }, [loadFeedEntries, refreshCounter]);
 
   // Retention filter: filter out items older than activeFeed.retentionDays (if set and > 0)
-  const retentionFilteredEntries = useMemo(() => {
-    const days = activeFeed?.retentionDays ?? 30;
-    if (!days || days <= 0) return rawEntries;
+  const retentionFilteredEntries = useMemo(
+    () => filterFeedEntriesByRetention(rawEntries, activeFeed?.retentionDays),
+    [rawEntries, activeFeed?.retentionDays],
+  );
 
-    const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
-    return rawEntries.filter((e) => {
-      if (!e.publishedAt) return true;
-      const t = Date.parse(e.publishedAt);
-      if (isNaN(t)) return true;
-      return t >= cutoff;
-    });
-  }, [rawEntries, activeFeed?.retentionDays]);
+  const filteredEntries = useMemo(
+    () =>
+      filterFeedEntriesByReadAndQuery(
+        retentionFilteredEntries,
+        readFilter,
+        readEntryIds,
+        searchQuery,
+      ),
+    [retentionFilteredEntries, readFilter, readEntryIds, searchQuery],
+  );
 
-  // Read filter + search filter
-  const filteredEntries = useMemo(() => {
-    let list = retentionFilteredEntries;
+  // Master-Detail: Auto-select the first article if none is currently selected, and sync current entries for bulk Mark All Read
+  useEffect(() => {
+    setCurrentFeedEntries(retentionFilteredEntries);
+  }, [retentionFilteredEntries, setCurrentFeedEntries]);
 
-    if (readFilter === 'unread') {
-      list = list.filter((e) => !readEntryIds.has(e.id));
-    } else if (readFilter === 'read') {
-      list = list.filter((e) => readEntryIds.has(e.id));
-    }
-
-    if (!searchQuery) return list;
-    const q = searchQuery.toLowerCase();
-    return list.filter(
-      (e) =>
-        e.title.toLowerCase().includes(q) ||
-        e.authors.some((a) => a.toLowerCase().includes(q)) ||
-        (e.abstract && e.abstract.toLowerCase().includes(q)) ||
-        (e.doi && e.doi.toLowerCase().includes(q)) ||
-        (e.arxivId && e.arxivId.toLowerCase().includes(q)),
-    );
-  }, [retentionFilteredEntries, readFilter, readEntryIds, searchQuery]);
-
-  // Master-Detail: Auto-select the first article if none is currently selected
   useEffect(() => {
     if (filteredEntries.length > 0) {
       if (!selectedFeedEntry || !filteredEntries.some((e) => e.id === selectedFeedEntry.id)) {

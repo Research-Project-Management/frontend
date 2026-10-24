@@ -187,3 +187,72 @@ export function parseOpmlFeeds(opmlContent: string): OpmlFeedItem[] {
 
   return feeds;
 }
+
+export function normalizeFetchedFeedEntries(entries: FeedEntryApiItem[]): ParsedFeedEntry[] {
+  return entries.map((e: FeedEntryApiItem, idx: number) => ({
+    id: e.id || e.url || e.link || `feed-item-${idx}`,
+    title: e.title,
+    authors: e.authors || [],
+    creators: (e.creators || []).map((c: FeedCreatorApiItem) => ({
+      firstName: c.firstName || '',
+      lastName: c.lastName || '',
+      creatorType: 'author' as const,
+    })),
+    doi: e.doi,
+    arxivId: e.arxivId,
+    primaryCategory: e.primaryCategory || e.keywords?.[0],
+    url: e.url || e.link,
+    pdfUrl: e.pdfUrl,
+    publishedAt: e.publicationDate || e.published || e.updated,
+    updatedAt: e.updated,
+    year: e.year ?? undefined,
+    publicationTitle: e.publicationTitle,
+    volume: e.volume,
+    issue: e.issue,
+    pages: e.pages,
+    abstract: e.abstract || e.summary,
+    categories: e.keywords || [],
+    comment: e.comment,
+    rights: e.rights,
+    feedFormat: 'rss2',
+  }));
+}
+
+export function filterFeedEntriesByRetention(
+  entries: ParsedFeedEntry[],
+  retentionDays?: number | null,
+): ParsedFeedEntry[] {
+  const days = retentionDays ?? 30;
+  if (!days || days <= 0) return entries;
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  return entries.filter((e) => {
+    if (!e.publishedAt) return true;
+    const t = Date.parse(e.publishedAt);
+    if (isNaN(t)) return true;
+    return t >= cutoff;
+  });
+}
+
+export function filterFeedEntriesByReadAndQuery(
+  entries: ParsedFeedEntry[],
+  readFilter: 'all' | 'unread' | 'read',
+  readEntryIds: ReadonlySet<string>,
+  searchQuery: string,
+): ParsedFeedEntry[] {
+  let list = entries;
+  if (readFilter === 'unread') {
+    list = list.filter((e) => !readEntryIds.has(e.id));
+  } else if (readFilter === 'read') {
+    list = list.filter((e) => readEntryIds.has(e.id));
+  }
+  if (!searchQuery) return list;
+  const q = searchQuery.toLowerCase();
+  return list.filter(
+    (e) =>
+      e.title.toLowerCase().includes(q) ||
+      e.authors.some((a) => a.toLowerCase().includes(q)) ||
+      (e.abstract && e.abstract.toLowerCase().includes(q)) ||
+      (e.doi && e.doi.toLowerCase().includes(q)) ||
+      (e.arxivId && e.arxivId.toLowerCase().includes(q)),
+  );
+}

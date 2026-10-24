@@ -28,8 +28,7 @@ import {
 } from "@/features/library/domain/types/library.types";
 import { useItemTypeConversion } from "@/features/library/sdk/queries/saved-searches-relations.queries";
 import { type TypeConversionPreview } from "@/features/library/sdk/queries/saved-searches-relations.queries";
-import { useQueryClient } from "@tanstack/react-query";
-import { itemKeys } from "@/features/library/sdk/queries/catalog.queries";
+import { useLibraryCacheSynchronizer } from "@/features/library/sdk/queries/catalog.queries";
 
 export type TypeConversionItemLike = {
   id?: string;
@@ -92,7 +91,7 @@ export function TypeConversionModal({
 
   const { previewAsync, convertAsync, isConverting } =
     useItemTypeConversion(scopeId);
-  const queryClient = useQueryClient();
+  const { invalidateItemById } = useLibraryCacheSynchronizer(scopeId);
 
   const sourceTypeName = useMemo(() => {
     return (
@@ -206,9 +205,7 @@ export function TypeConversionModal({
     } catch (err: unknown) {
       // Invalidate item query cache immediately on error so UI synchronizes latest version
       const targetScope = scopeId || currentItem?.projectId || "user";
-      queryClient.invalidateQueries({
-        queryKey: itemKeys.byId(targetScope, itemId),
-      });
+      void invalidateItemById(itemId, targetScope);
 
       const errMsg = err instanceof Error ? err.message : String(err || "");
       const isVersionConflict =

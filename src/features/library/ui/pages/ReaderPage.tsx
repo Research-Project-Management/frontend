@@ -456,10 +456,11 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
   const retractionDetails = paper?.retractionDetails as
     { reason?: string; noticeUrl?: string } | undefined;
 
-  // Detect EPUB or Web Snapshot attachment when primary file is .epub / .html or when no PDF exists
+  // Detect EPUB or Web Snapshot attachment when primary file is .epub / .html or when requested attachment is selected
   const epubOrSnapshotInfo = (() => {
     if (!paper) return null;
     type RawAttItem = {
+      id?: string;
       url?: string;
       fileUrl?: string;
       mimeType?: string;
@@ -470,6 +471,35 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     const rawAtts: RawAttItem[] = Array.isArray(paper.attachments)
       ? (paper.attachments as RawAttItem[])
       : [];
+
+    const requestedAttId = searchParams.get("attachmentId");
+    const activeAtt = requestedAttId
+      ? rawAtts.find((a: RawAttItem) => a.id === requestedAttId)
+      : (state.selectedAttachment as RawAttItem | undefined);
+
+    if (activeAtt) {
+      const attMime = activeAtt.mimeType?.toLowerCase() || "";
+      const attName = (activeAtt.filename || "").toLowerCase();
+      const attUrl = (activeAtt.fileUrl || activeAtt.url || paperUrl || "") as string;
+      const isSnapshot =
+        activeAtt.attachmentType === "snapshot" ||
+        activeAtt.attachmentType === "web_snapshot" ||
+        activeAtt.linkMode === "imported_url" ||
+        attMime === "text/html" ||
+        attName.endsWith(".html");
+      const isEpub =
+        attMime.includes("epub") ||
+        attName.endsWith(".epub") ||
+        /\.epub(?:$|\?)/i.test(attUrl);
+
+      if (isEpub) {
+        return { mode: "epub" as const, url: attUrl };
+      }
+      if (isSnapshot) {
+        return { mode: "snapshot" as const, url: attUrl };
+      }
+    }
+
     const primaryMime = paper.primaryFile?.mimeType?.toLowerCase() || "";
     const primaryName = (
       paper.filename ||

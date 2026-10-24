@@ -129,7 +129,7 @@ export function getItemFileUrl(
 
   if (arxivMatch) {
     const cleanId = arxivMatch.replace(/\.pdf$/i, "");
-    return `https://arxiv.org/pdf/${cleanId}`;
+    return `https://arxiv.org/pdf/${cleanId}.pdf`;
   }
 
   return "";

@@ -5,6 +5,7 @@ import { cn } from '@/shared/lib/utils';
 
 export interface InlineFieldProps {
   value: string;
+  itemKey?: string;
   ariaLabel?: string;
   onSave: (val: string) => void;
   onChange?: (val: string) => void;
@@ -19,6 +20,7 @@ export interface InlineFieldProps {
  */
 export function InlineField({
   value,
+  itemKey,
   ariaLabel,
   onSave,
   onChange,
@@ -28,10 +30,19 @@ export function InlineField({
 }: InlineFieldProps) {
   const [draft, setDraft] = useState(value);
   const inputRef = useRef<HTMLInputElement>(null);
+  const activeItemKeyRef = useRef(itemKey);
+  const focusedItemKeyRef = useRef(itemKey);
+  const focusedInitialValueRef = useRef(value);
 
   useEffect(() => {
+    activeItemKeyRef.current = itemKey;
     setDraft(value);
-  }, [value]);
+  }, [value, itemKey]);
+
+  const handleFocus = () => {
+    focusedItemKeyRef.current = itemKey;
+    focusedInitialValueRef.current = value;
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (readOnly) return;
@@ -42,6 +53,14 @@ export function InlineField({
 
   const handleBlur = () => {
     if (readOnly) return;
+    // Guard against cross-item draft corruption when switching active items mid-edit
+    if (
+      (itemKey !== undefined && focusedItemKeyRef.current !== activeItemKeyRef.current) ||
+      (itemKey === undefined && focusedInitialValueRef.current !== value)
+    ) {
+      setDraft(value);
+      return;
+    }
     const trimmed = draft.trim();
     if (trimmed !== value.trim()) {
       onSave(trimmed);
@@ -81,6 +100,7 @@ export function InlineField({
       type="text"
       aria-label={ariaLabel || 'Metadata field'}
       value={draft}
+      onFocus={handleFocus}
       onChange={handleChange}
       onBlur={handleBlur}
       onKeyDown={handleKeyDown}

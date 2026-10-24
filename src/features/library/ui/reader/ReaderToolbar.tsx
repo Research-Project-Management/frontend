@@ -464,7 +464,7 @@ export const ReaderToolbar = memo(function ReaderToolbar({
                   aria-label="Pick annotation color"
                 >
                   <span
-                    className="size-3.5 rounded-full border border-border shadow-2xs shrink-0"
+                    className="size-3.5 rounded-full border border-border shrink-0"
                     style={{ backgroundColor: activeColor }}
                   />
                   <ChevronDown
@@ -489,7 +489,7 @@ export const ReaderToolbar = memo(function ReaderToolbar({
                     onClick={() => onSelectColor?.(c.hex)}
                     aria-label={`Color ${c.label}`}
                     className={cn(
-                      "size-5 rounded-full border border-border hover:scale-110 transition-transform cursor-pointer relative flex items-center justify-center",
+                      "size-5 rounded-full border border-border transition-colors cursor-pointer relative flex items-center justify-center",
                       activeColor === c.hex &&
                         "ring-2 ring-primary ring-offset-1",
                     )}
@@ -649,7 +649,7 @@ export const ReaderToolbar = memo(function ReaderToolbar({
                     className={cn(
                       "flex-1 py-1 text-center text-11 rounded-sm border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                       themeMode === "normal"
-                        ? "border-primary bg-primary/10 text-primary font-medium shadow-xs"
+                        ? "border-primary bg-primary/10 text-primary font-medium"
                         : "border-border bg-background text-foreground hover:bg-muted",
                     )}
                   >
@@ -663,7 +663,7 @@ export const ReaderToolbar = memo(function ReaderToolbar({
                     className={cn(
                       "flex-1 py-1 text-center text-11 rounded-sm border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                       themeMode === "sepia"
-                        ? "border-primary bg-primary/10 text-primary font-medium shadow-xs"
+                        ? "border-primary bg-primary/10 text-primary font-medium"
                         : "border-border bg-background text-foreground hover:bg-muted",
                     )}
                   >
@@ -677,7 +677,7 @@ export const ReaderToolbar = memo(function ReaderToolbar({
                     className={cn(
                       "flex-1 py-1 text-center text-11 rounded-sm border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                       themeMode === "dark"
-                        ? "border-primary bg-primary/10 text-primary font-medium shadow-xs"
+                        ? "border-primary bg-primary/10 text-primary font-medium"
                         : "border-border bg-background text-foreground hover:bg-muted",
                     )}
                   >

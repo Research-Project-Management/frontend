@@ -4,11 +4,14 @@
  * Provides 0ms instant bootstrap with persistent client-side cache and runtime reactivity.
  */
 
-export const SCHEMA_CACHE_KEY = 'flux:library:schema-v42:cache';
+import {
+  SCHEMA_CACHE_KEY,
+  isBrowser,
+  saveSchemaCache,
+  loadSchemaCache,
+} from '@/features/library/core/adapters/schema-storage.adapter';
 
-export function isBrowser(): boolean {
-  return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
-}
+export { SCHEMA_CACHE_KEY, isBrowser, saveSchemaCache, loadSchemaCache };
 
 /**
  * Converts a camelCase field identifier into a human-readable title.
@@ -346,49 +349,3 @@ export function updateCachedFields(types: unknown[]): void {
   }
 }
 
-let memorySchemaSnapshot: unknown | null | undefined = undefined;
-
-/**
- * Persists the backend schema snapshot to localStorage for 0ms initial render on future loads.
- */
-export function saveSchemaCache(data: unknown): void {
-  if (!data) return;
-  memorySchemaSnapshot = data;
-  if (!isBrowser()) return;
-  try {
-    window.localStorage.setItem(
-      SCHEMA_CACHE_KEY,
-      JSON.stringify({
-        version: 42,
-        timestamp: Date.now(),
-        data,
-      }),
-    );
-  } catch {
-    // Gracefully handle storage quota or private browsing mode
-  }
-}
-
-/**
- * Retrieves the cached backend schema snapshot from localStorage if available.
- * Memoized in-memory so multiple callers don't repeatedly read and parse localStorage.
- */
-export function loadSchemaCache(): unknown | null {
-  if (memorySchemaSnapshot !== undefined) {
-    return memorySchemaSnapshot;
-  }
-  if (!isBrowser()) return null;
-  try {
-    const raw = window.localStorage.getItem(SCHEMA_CACHE_KEY);
-    if (!raw) {
-      memorySchemaSnapshot = null;
-      return null;
-    }
-    const parsed = JSON.parse(raw) as Record<string, unknown> | null;
-    memorySchemaSnapshot = parsed?.data ?? null;
-    return memorySchemaSnapshot;
-  } catch {
-    memorySchemaSnapshot = null;
-    return null;
-  }
-}

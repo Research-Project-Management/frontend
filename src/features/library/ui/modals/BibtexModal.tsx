@@ -127,7 +127,7 @@ export default function PaperBibtexDialog({
                 className={cn(
                   "px-2.5 py-1 text-12 font-medium rounded-sm transition-colors cursor-pointer relative before:absolute before:-inset-1.5 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-ring",
                   format === "bibtex"
-                    ? "bg-background text-foreground font-medium border border-border-subtle shadow-xs"
+                    ? "bg-background text-foreground font-medium border border-border-subtle"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted",
                 )}
               >
@@ -141,7 +141,7 @@ export default function PaperBibtexDialog({
                 className={cn(
                   "px-2.5 py-1 text-12 font-medium rounded-sm transition-colors cursor-pointer relative before:absolute before:-inset-1.5 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-ring",
                   format === "ris"
-                    ? "bg-background text-foreground font-medium border border-border-subtle shadow-xs"
+                    ? "bg-background text-foreground font-medium border border-border-subtle"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted",
                 )}
               >

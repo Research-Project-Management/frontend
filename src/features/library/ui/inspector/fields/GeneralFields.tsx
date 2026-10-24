@@ -1,11 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { Check } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import type { Item } from "@/features/library/domain/types/library.types";
-import { itemKeys, patchItemAcrossScopeCaches } from "@/features/library/sdk/queries/catalog.queries";
+import { useLibraryCacheSynchronizer } from "@/features/library/sdk/queries/catalog.queries";
 import { type TypeConversionPreview } from "@/features/library/sdk/queries/saved-searches-relations.queries";
 import {
   SchemaItemTypeDefinition,
@@ -50,7 +49,7 @@ export function GeneralFields({
   canEdit = true,
   scopeId,
 }: GeneralFieldsProps) {
-  const queryClient = useQueryClient();
+  const { syncConvertedOrPatchedItem } = useLibraryCacheSynchronizer(scopeId);
 
   const [isConversionDialogOpen, setIsConversionDialogOpen] = useState(false);
   const [targetConversionType, setTargetConversionType] = useState<string>("");
@@ -192,20 +191,7 @@ export function GeneralFields({
           initialPreview={previewData}
           onSuccess={(updatedItem: Item) => {
             const targetScope = scopeId || item.projectId || "user";
-            if (updatedItem?.id) {
-              patchItemAcrossScopeCaches(
-                queryClient,
-                targetScope,
-                updatedItem.id,
-                updatedItem,
-              );
-            }
-            queryClient.invalidateQueries({
-              queryKey: itemKeys.byId(targetScope, item.id),
-            });
-            queryClient.invalidateQueries({
-              queryKey: itemKeys.all(targetScope),
-            });
+            syncConvertedOrPatchedItem(item.id, updatedItem, targetScope);
           }}
         />
       )}

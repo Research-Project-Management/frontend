@@ -243,7 +243,7 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
           <PdfPagePreview
             paper={paper}
             paperUrl={paperUrl}
-            onOpenReader={handleOpenReader}
+            onOpenReader={() => handleOpenReader(primaryAttachment?.id)}
           />
         ) : null}
 
@@ -303,7 +303,7 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
                   className="w-64 p-1.5 text-xs font-sans rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 space-y-0.5"
                 >
                   <DropdownMenuItem
-                    onClick={handleOpenReader}
+                    onClick={() => handleOpenReader(primaryAttachment?.id)}
                     className="gap-2 cursor-pointer"
                   >
                     <BookOpen className="size-3.5 text-foreground shrink-0" />
@@ -373,6 +373,9 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
             const isEpub =
               att.mimeType?.toLowerCase().includes("epub") ||
               att.filename?.toLowerCase().endsWith(".epub");
+            const isPdf =
+              att.mimeType === "application/pdf" ||
+              att.filename?.toLowerCase().endsWith(".pdf");
             const isLink =
               att.linkMode === "linked_url" ||
               (!att.fileId &&
@@ -387,10 +390,10 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
                 className="flex items-center justify-between px-2.5 py-1.5 min-h-[32px] rounded-md bg-background hover:bg-muted border border-border transition-colors"
               >
                 <div
-                  className={`flex items-center gap-2 min-w-0 flex-1 mr-2 ${isSnapshot || isEpub || isLink ? "cursor-pointer" : ""}`}
+                  className={`flex items-center gap-2 min-w-0 flex-1 mr-2 ${isSnapshot || isEpub || isPdf || isLink ? "cursor-pointer" : ""}`}
                   onClick={
-                    isEpub || isSnapshot
-                      ? handleOpenReader
+                    isEpub || isSnapshot || isPdf
+                      ? () => handleOpenReader(att.id)
                       : isLink && downloadUrl
                         ? () =>
                             window.open(
@@ -466,13 +469,19 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
                       align="end"
                       className="w-64 p-1.5 text-xs font-sans rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 space-y-0.5"
                     >
-                      {(isSnapshot || isEpub) && (
+                      {(isSnapshot || isEpub || isPdf) && (
                         <DropdownMenuItem
-                          onClick={handleOpenReader}
+                          onClick={() => handleOpenReader(att.id)}
                           className="gap-2 cursor-pointer"
                         >
                           <BookOpen className="size-3.5 text-foreground shrink-0" />
-                          <span>{isEpub ? 'Open EPUB in Reader' : 'Open Snapshot in Reader'}</span>
+                          <span>
+                            {isEpub
+                              ? 'Open EPUB in Reader'
+                              : isSnapshot
+                                ? 'Open Snapshot in Reader'
+                                : 'Open in Reader'}
+                          </span>
                         </DropdownMenuItem>
                       )}
                       {!isLink && (

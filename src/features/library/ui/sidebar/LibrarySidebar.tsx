@@ -126,22 +126,46 @@ export function LibrarySidebar() {
   }, [activeScope, currentUserId, projects, setActiveScope]);
 
   const {
-    savedSearches,
-    createSavedSearch,
-    updateSavedSearch,
-    deleteSavedSearch,
-  } = useSavedSearches(effectiveScopeId);
+    savedSearches: userSavedSearches,
+    createSavedSearch: createUserSavedSearch,
+    updateSavedSearch: updateUserSavedSearch,
+    deleteSavedSearch: deleteUserSavedSearch,
+  } = useSavedSearches('user');
+
+  const {
+    savedSearches: projectSavedSearches,
+    createSavedSearch: createProjectSavedSearch,
+    updateSavedSearch: updateProjectSavedSearch,
+    deleteSavedSearch: deleteProjectSavedSearch,
+  } = useSavedSearches(projectId, { enabled: isInProjectContext });
 
   const handleEditSavedSearch = (ss: SavedSearch) => {
     openModal('SAVED_SEARCH', { savedSearch: ss });
   };
 
   const handleDuplicateSavedSearch = async (ss: SavedSearch) => {
-    await createSavedSearch({
+    const isProjectSearch =
+      Boolean(ss.projectId) ||
+      (activeScope.type === 'project' && ss.scopeId === activeScope.id);
+    const targetCreate =
+      isProjectSearch && projectId ? createProjectSavedSearch : createUserSavedSearch;
+    await targetCreate({
       name: `${ss.name} (Copy)`,
       conjunction: ss.conjunction || 'AND',
       conditions: ss.conditions,
+      sortBy: ss.sortBy,
+      sortOrder: ss.sortOrder,
+      scopeOptions: ss.scopeOptions,
     });
+  };
+
+  const handleDeleteSavedSearch = async (id: string) => {
+    const inUser = userSavedSearches.some((s) => s.id === id);
+    if (inUser) {
+      await deleteUserSavedSearch(id);
+    } else {
+      await deleteProjectSavedSearch(id);
+    }
   };
 
   const handleStartRenameSavedSearch = (id: string, name: string) => {
@@ -153,10 +177,18 @@ export function LibrarySidebar() {
     if (id !== '__cancel__') {
       const trimmed = renameSavedSearchValue.trim();
       if (trimmed) {
-        await updateSavedSearch({
-          id,
-          data: { name: trimmed },
-        });
+        const inUser = userSavedSearches.some((s) => s.id === id);
+        if (inUser) {
+          await updateUserSavedSearch({
+            id,
+            data: { name: trimmed },
+          });
+        } else {
+          await updateProjectSavedSearch({
+            id,
+            data: { name: trimmed },
+          });
+        }
       }
     }
     setRenamingSavedSearchId(null);
@@ -242,6 +274,7 @@ export function LibrarySidebar() {
     effectiveScopeId,
     collections,
     allCollectionsByScope,
+    activeCollectionId: activeId,
   });
 
   const [isMounted, setIsMounted] = useState(false);
@@ -331,7 +364,7 @@ export function LibrarySidebar() {
                         setIsLibraryExpanded((v) => !v);
                       }}
                       aria-label={isLibraryExpanded ? 'Collapse My Library' : 'Expand My Library'}
-                      className="absolute right-1.5 top-1/2 -translate-y-1/2 z-20 flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground border border-transparent hover:border-border/50 hover:bg-background hover:shadow-2xs active:scale-95 cursor-pointer transition-all duration-150 outline-none focus-visible:ring-1 focus-visible:ring-primary before:absolute before:-inset-2 md:before:hidden"
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 z-20 flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground border border-transparent hover:border-border/50 hover:bg-background cursor-pointer transition-colors duration-150 outline-none focus-visible:ring-1 focus-visible:ring-primary before:absolute before:-inset-2 md:before:hidden"
                     >
                       <ChevronRight
                         className={cn(
@@ -362,7 +395,7 @@ export function LibrarySidebar() {
                     currentFilter={currentFilter}
                     isUserScope={isUserScope}
                     navId={id}
-                    savedSearches={savedSearches}
+                    savedSearches={userSavedSearches}
                     currentSavedSearchId={currentSavedSearchId}
                     currentFeedId={currentFeedId}
                     onDropItems={handleBatchMoveItems}
@@ -375,7 +408,7 @@ export function LibrarySidebar() {
                       });
                       handleMobileLinkClick();
                     }}
-                    onDeleteSavedSearch={(id) => deleteSavedSearch(id)}
+                    onDeleteSavedSearch={handleDeleteSavedSearch}
                     onEditSavedSearch={handleEditSavedSearch}
                     onStartRenameSavedSearch={handleStartRenameSavedSearch}
                     onSubmitRenameSavedSearch={handleSubmitRenameSavedSearch}
@@ -442,7 +475,7 @@ export function LibrarySidebar() {
                 navId={id}
                 projectTree={projectTree}
                 projectCollections={projectCollections}
-                savedSearches={savedSearches}
+                savedSearches={projectSavedSearches}
                 currentSavedSearchId={currentSavedSearchId}
                 currentFilter={currentFilter}
                 activeId={!isUserScope ? (activeId ?? null) : null}
@@ -473,7 +506,7 @@ export function LibrarySidebar() {
                 onSubmitRenameSavedSearch={handleSubmitRenameSavedSearch}
                 onRenameSavedSearchValueChange={setRenameSavedSearchValue}
                 onDuplicateSavedSearch={handleDuplicateSavedSearch}
-                onDeleteSavedSearch={(id) => deleteSavedSearch(id)}
+                onDeleteSavedSearch={handleDeleteSavedSearch}
                 renamingSavedSearchId={renamingSavedSearchId}
                 renameSavedSearchValue={renameSavedSearchValue}
                 pathname={pathname}

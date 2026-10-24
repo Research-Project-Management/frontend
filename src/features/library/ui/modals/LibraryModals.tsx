@@ -2,13 +2,12 @@
 
 import React from 'react';
 import dynamic from 'next/dynamic';
-import { useQueryClient } from '@tanstack/react-query';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { useProcessModalStore } from '@/features/library/core/store/process-modal.store';
 import { useCreateCollectionMutation } from '@/features/library/sdk/queries/collections.queries';
 import { useCollectionsQuery } from '@/features/library/sdk/queries/collections.queries';
 import { toast } from 'sonner';
-import { useDeleteLibraryItemsMutation, useBatchPurgeItemsMutation, useUpdateLibraryItemMutation, itemKeys } from '@/features/library/sdk/queries/catalog.queries';
+import { useDeleteLibraryItemsMutation, useBatchPurgeItemsMutation, useUpdateLibraryItemMutation, useLibraryCacheSynchronizer } from '@/features/library/sdk/queries/catalog.queries';
 import { useSavedSearches } from '@/features/library/sdk/queries/saved-searches-relations.queries';
 import {
   executeTrackedIdentifierIngestion,
@@ -41,7 +40,7 @@ const CslStyleSearchModal = dynamic(() => import('./CslStyleSearchModal'), { ssr
  * Listens to `useLibraryUIStore` so no component has to drill modal props.
  */
 export function LibraryModals({ scopeId }: { scopeId?: string }) {
-  const queryClient = useQueryClient();
+  const { queryClient, invalidateScopeItemsAndCounts } = useLibraryCacheSynchronizer(scopeId);
   const activeModal = useLibraryUIStore((s) => s.activeModal);
   const modalProps = useLibraryUIStore((s) => s.modalProps);
   const payload = modalProps as {
@@ -65,6 +64,8 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
   };
   const closeModal = useLibraryUIStore((s) => s.closeModal);
   const clearSelection = useLibraryUIStore((s) => s.clearSelection);
+  const activeItemId = useLibraryUIStore((s) => s.activeItemId);
+  const setActiveItem = useLibraryUIStore((s) => s.setActiveItem);
   const activeScope = useLibraryUIStore((s) => s.activeScope);
   const effectiveScope = scopeId || (activeScope.type === 'project' ? activeScope.id : 'user');
 
@@ -142,6 +143,9 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
       await deleteItemsMutation.mutateAsync(itemIdsToDelete);
     }
     clearSelection();
+    if (activeItemId && itemIdsToDelete.includes(activeItemId)) {
+      setActiveItem(null);
+    }
     closeModal();
   };
 
@@ -264,8 +268,7 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
           scopeId={effectiveScope}
           projectName={activeScope?.name || 'Project'}
           onSuccess={() => {
-            queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
-            queryClient.invalidateQueries({ queryKey: itemKeys.counts(effectiveScope) });
+            void invalidateScopeItemsAndCounts(effectiveScope);
             closeModal();
           }}
         />
@@ -279,8 +282,7 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
           targetType={payload?.targetType || 'journalArticle'}
           scopeId={effectiveScope}
           onSuccess={() => {
-            queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
-            queryClient.invalidateQueries({ queryKey: itemKeys.counts(effectiveScope) });
+            void invalidateScopeItemsAndCounts(effectiveScope);
             closeModal();
           }}
         />
@@ -306,7 +308,7 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
           defaultCollectionId={payload?.collectionId || ''}
           initialFiles={payload?.files || payload?.initialFiles || []}
           onSuccess={() => {
-            queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
+            void invalidateScopeItemsAndCounts(effectiveScope);
             closeModal();
           }}
         />

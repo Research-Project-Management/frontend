@@ -1,15 +1,14 @@
 'use client';
 
-import { useState, useMemo, memo } from 'react';
+import { useState, memo } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
 import { Folder, ChevronRight } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
 import { logger } from "@/shared/lib/logger";
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import { useLibraryCacheSynchronizer } from '@/features/library/sdk/queries/catalog.queries';
 import type { TreeNode, CollectionActionHandlers } from './sidebar.types';
 import type { Collection } from '@/features/library/domain/types/library.types';
-import { getValidMoveTargets } from '@/features/library/domain/collection-tree.domain';
 import { CollectionContextMenu } from './CollectionContextMenu';
 
 export interface CollectionNodeProps extends CollectionActionHandlers {
@@ -49,6 +48,7 @@ export const CollectionNode = memo(function CollectionNode({
   onLinkClick,
   onDropItems,
 }: CollectionNodeProps) {
+  const { prefetchCollection } = useLibraryCacheSynchronizer(node.projectId || undefined);
   const to = `${basePath}/${node.id}`;
   const isActive = activeId === node.id;
   const hasChildren = node.children.length > 0;
@@ -97,18 +97,13 @@ export const CollectionNode = memo(function CollectionNode({
   // Hierarchy indentation: 24px (align with SidebarNavItem pl-6) + depth * 16px
   const paddingLeft = 24 + depth * 16;
 
+  const handlePrefetch = () => {
+    prefetchCollection(node.id, node.projectId);
+  };
+
   return (
     <div className="flex flex-col gap-0.5 w-full">
       <div className="group/node relative flex items-center w-full">
-        {isActive && (
-          <motion.div
-            layoutId={`col-active-${navId}`}
-            className="absolute inset-0 rounded-md bg-muted"
-            initial={false}
-            transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-          />
-        )}
-
         {renamingId === node.id && canManageCollections ? (
           <div
             className="relative z-10 flex h-8 w-full items-center pr-2 min-w-0 gap-2.5"
@@ -132,8 +127,9 @@ export const CollectionNode = memo(function CollectionNode({
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
+            onMouseEnter={handlePrefetch}
             className={cn(
-              "group/node relative z-10 flex h-8 w-full items-center gap-2 rounded-md pr-1.5 transition-colors cursor-pointer select-none text-13 leading-5 tracking-tight",
+              "group/node relative z-10 flex h-8 w-full items-center gap-2 rounded-md pr-1.5 cursor-pointer select-none text-13 leading-5 tracking-tight",
               isActive
                 ? "bg-muted text-foreground font-medium"
                 : "text-foreground hover:bg-muted group-hover/node:bg-muted has-[[data-state=open]]:bg-muted font-normal",
@@ -144,6 +140,7 @@ export const CollectionNode = memo(function CollectionNode({
             <Link
               href={to}
               onClick={onLinkClick}
+              onFocus={handlePrefetch}
               className="flex flex-1 min-w-0 items-center gap-2.5 py-1 outline-none shrink-0"
             >
               <Folder className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
@@ -183,7 +180,7 @@ export const CollectionNode = memo(function CollectionNode({
                         setIsOpen((v) => !v);
                       }}
                       aria-label={effectiveIsOpen ? `Collapse ${node.name}` : `Expand ${node.name}`}
-                      className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground border border-transparent hover:border-border/50 hover:bg-background hover:shadow-2xs active:scale-95 cursor-pointer transition-all duration-150 outline-none focus-visible:ring-1 focus-visible:ring-primary relative before:absolute before:-inset-2 md:before:hidden"
+                      className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground border border-transparent hover:border-border/50 hover:bg-background cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative before:absolute before:-inset-2 md:before:hidden"
                     >
                       <ChevronRight
                         className={cn(
@@ -243,4 +240,3 @@ export const CollectionNode = memo(function CollectionNode({
     </div>
   );
 });
-

@@ -38,10 +38,16 @@ export function useSavedSearches(
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: CreateSavedSearchInput) =>
-      SavedSearchesService.create(effectiveScope, data),
-    onSuccess: () => {
-      invalidateSavedSearches(queryClient, effectiveScope);
+    mutationFn: async (data: CreateSavedSearchInput) => {
+      const targetScope = data.targetScope || data.scope || effectiveScope;
+      const created = await SavedSearchesService.create(targetScope, data);
+      return { created, targetScope };
+    },
+    onSuccess: ({ targetScope }) => {
+      invalidateSavedSearches(queryClient, targetScope);
+      if (targetScope !== effectiveScope) {
+        invalidateSavedSearches(queryClient, effectiveScope);
+      }
       toast.success('Smart collection created', { id: 'saved-search-mutation' });
     },
     onError: (err: Error) => {

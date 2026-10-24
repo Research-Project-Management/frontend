@@ -155,13 +155,13 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
       } else {
         queryClient.invalidateQueries({ queryKey: noteKeys.all(scopeId) });
       }
-      if (!res?.totalExtracted) {
+      if (!res || res.totalExtracted === 0) {
         toast.info('No annotations in this document to extract', {
           id: 'reader-annotation-toast',
         });
       } else {
         toast.success('Notes synthesized', {
-          description: `Extracted ${res.totalExtracted} notes from document highlights.`,
+          description: `Extracted ${res.totalExtracted} note${res.totalExtracted === 1 ? '' : 's'} from document highlights.`,
           id: 'reader-annotation-toast',
         });
       }

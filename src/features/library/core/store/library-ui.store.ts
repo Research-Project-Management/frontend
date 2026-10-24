@@ -6,6 +6,7 @@ import {
   DEFAULT_LIBRARY_DISPLAY_OPTIONS,
   type LibraryDisplayOptions,
 } from '@/features/library/domain/types/display.types';
+import { useLibraryCommandStore } from '@/features/library/core/manager/library-command.manager';
 
 export type InspectorSectionId =
   | 'info'
@@ -113,14 +114,19 @@ const createScopeSlice: StateCreator<
 
   setActiveScope: (activeScope) =>
     set((state) => {
-      const prevKey = `${state.activeScope.type}:${state.activeScope.id || 'user'}`;
-      const nextKey = `${activeScope.type}:${activeScope.id || 'user'}`;
+      const resolveScopeKey = (s: LibraryScope) => {
+        const rawId = s.type === 'project' ? (s.projectId || s.id) : s.id;
+        return `${s.type}:${!rawId || rawId === 'me' || rawId === 'personal' ? 'user' : rawId}`;
+      };
+      const prevKey = resolveScopeKey(state.activeScope);
+      const nextKey = resolveScopeKey(activeScope);
       if (prevKey === nextKey) {
         if (state.activeScope.name === activeScope.name) {
           return state;
         }
         return { activeScope };
       }
+      useLibraryCommandStore.getState().clearHistory();
       return {
         activeScope,
         selectedIds: state.selectedIds.size === 0 ? state.selectedIds : new Set<string>(),
@@ -334,6 +340,52 @@ export const useLibraryUIStore = create<LibraryUIState>()(
         inspectorWidth: state.inspectorWidth,
         displayOptions: state.displayOptions,
       }),
+      merge: (persistedState, currentState) => {
+        const persisted = (persistedState as Partial<LibraryUIState>) || {};
+        const clamp = (val: unknown, min: number, max: number, fallback: number): number => {
+          if (typeof val !== 'number' || Number.isNaN(val)) return fallback;
+          return Math.min(Math.max(val, min), max);
+        };
+
+        const sidebarWidth = clamp(persisted.sidebarWidth, 200, 400, currentState.sidebarWidth);
+        const inspectorWidth = clamp(persisted.inspectorWidth, 300, 640, currentState.inspectorWidth);
+
+        const rawScope = persisted.activeScope;
+        const isValidScope =
+          rawScope &&
+          typeof rawScope === 'object' &&
+          (rawScope.type === 'user' || rawScope.type === 'project');
+
+        const activeScope: LibraryScope = isValidScope
+          ? {
+              type: rawScope.type,
+              id: typeof rawScope.id === 'string' ? rawScope.id : '',
+              name: typeof rawScope.name === 'string' ? rawScope.name : 'Library',
+              ...(rawScope.type === 'project' && typeof rawScope.projectId === 'string'
+                ? { projectId: rawScope.projectId }
+                : {}),
+            }
+          : currentState.activeScope;
+
+        const rawDisplay = persisted.displayOptions;
+        const displayOptions: LibraryDisplayOptions = {
+          ...DEFAULT_LIBRARY_DISPLAY_OPTIONS,
+          ...(rawDisplay || {}),
+          columns: {
+            ...DEFAULT_LIBRARY_DISPLAY_OPTIONS.columns,
+            ...(rawDisplay?.columns || {}),
+          },
+        };
+
+        return {
+          ...currentState,
+          ...persisted,
+          sidebarWidth,
+          inspectorWidth,
+          activeScope,
+          displayOptions,
+        };
+      },
     },
   ),
 );
@@ -352,6 +404,6 @@ export const useHasSelection = (): boolean =>
   useLibraryUIStore((state) => state.selectedIds.size > 0);
 
 
-if (typeof window !== 'undefined') {
-  (window as any).__LIBRARY_UI_STORE__ = useLibraryUIStore;
+if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
+  (window as unknown as Record<string, unknown>).__LIBRARY_UI_STORE__ = useLibraryUIStore;
 }

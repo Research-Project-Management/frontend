@@ -258,7 +258,7 @@ export function EpubAndSnapshotViewer({
 
   const themeClasses =
     themeMode === 'dark'
-      ? 'bg-zinc-900 text-zinc-100'
+      ? 'bg-card text-card-foreground'
       : themeMode === 'sepia'
         ? 'bg-[#f4ecd8] text-[#3c3222]'
         : 'bg-background text-foreground';
@@ -470,7 +470,7 @@ export function EpubAndSnapshotViewer({
             <iframe
               src={url}
               sandbox="allow-same-origin allow-popups"
-              className="w-full h-full min-h-[75vh] border border-border rounded-md bg-white"
+              className="w-full h-full min-h-[75vh] border border-border rounded-md bg-background"
               title={title || 'Web Snapshot'}
             />
           )}

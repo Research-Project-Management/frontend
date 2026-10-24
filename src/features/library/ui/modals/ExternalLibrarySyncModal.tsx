@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 import { Check, RefreshCw, ExternalLink, FolderOpen, GitCompare, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -27,10 +26,7 @@ import {
   useRemoteCollections,
 } from '@/features/settings/hooks/use-integrations';
 import { integrationService } from '@/features/settings/services/integration.service';
-import { IngestionService } from '@/features/library/sdk/library.client';
-import { itemKeys } from '@/features/library/sdk/query-keys';
-import { invalidateCollections } from '@/features/library/sdk/queries/collections.queries';
-import { pollIngestionRunCompletion } from '@/features/library/sdk';
+import { useSyncExternalBibtexMutation } from '@/features/library/sdk/queries/ingestion.queries';
 import type { Collection } from '@/features/library/domain/types/library.types';
 
 export interface ExternalLibrarySyncModalProps {
@@ -50,7 +46,7 @@ export default function ExternalLibrarySyncModal({
   collections = [],
   defaultCollectionId = null,
 }: ExternalLibrarySyncModalProps) {
-  const queryClient = useQueryClient();
+  const syncExternalBibtexMutation = useSyncExternalBibtexMutation(scopeId);
   const [provider, setProvider] = useState<'zotero' | 'mendeley'>(defaultProvider);
   const [selectedRemoteCollection, setSelectedRemoteCollection] = useState<string>('all');
   const [targetCollectionId, setTargetCollectionId] = useState<string>(
@@ -122,31 +118,11 @@ export default function ExternalLibrarySyncModal({
         remoteCollections.find((c) => c.id === selectedRemoteCollection)?.name ||
         'selected collection';
 
-      const res = await IngestionService.ingest(scopeId, {
-        source: 'bibtex',
-        content: bibtex,
+      await syncExternalBibtexMutation.mutateAsync({
+        bibtex,
         collectionId: destinationCollectionId,
+        remoteCollectionName: remoteColName,
       });
-
-      const resRecord = res as {
-        data?: { runId?: string };
-        runId?: string;
-      } | null;
-      const runId = resRecord?.data?.runId || resRecord?.runId;
-
-      if (runId) {
-        const pollOutcome = await pollIngestionRunCompletion(scopeId, runId, {
-          fallbackTitle: remoteColName,
-          maxWaitMs: 90000,
-        });
-        if (!pollOutcome.ok) {
-          throw new Error(pollOutcome.error || 'Ingestion run failed to complete');
-        }
-      }
-
-      await queryClient.invalidateQueries({ queryKey: itemKeys.all(scopeId) });
-      await queryClient.invalidateQueries({ queryKey: itemKeys.counts(scopeId) });
-      invalidateCollections(queryClient, scopeId);
 
       toast.success(
         `Successfully synced "${remoteColName}" into your Library!`,
@@ -204,7 +180,7 @@ export default function ExternalLibrarySyncModal({
               }}
               className={`flex items-center justify-center gap-2 h-8 rounded-md text-xs font-medium transition-colors cursor-pointer ${
                 provider === 'zotero'
-                  ? 'bg-background text-foreground shadow-xs border border-border/60'
+                  ? 'bg-background text-foreground border border-border/60'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
@@ -219,7 +195,7 @@ export default function ExternalLibrarySyncModal({
               }}
               className={`flex items-center justify-center gap-2 h-8 rounded-md text-xs font-medium transition-colors cursor-pointer ${
                 provider === 'mendeley'
-                  ? 'bg-background text-foreground shadow-xs border border-border/60'
+                  ? 'bg-background text-foreground border border-border/60'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
@@ -238,7 +214,7 @@ export default function ExternalLibrarySyncModal({
                 {isConnected ? (
                   <Badge
                     variant="outline"
-                    className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-10 h-4 px-1.5 gap-1"
+                    className="bg-success/10 text-success border-success/30 text-10 h-4 px-1.5 gap-1"
                   >
                     <Check className="size-2.5" />
                     Connected

@@ -124,7 +124,7 @@ export function FormattedNoteBody({
           return (
             <blockquote
               key={idx}
-              className="border-l-2 border-primary/60 pl-2.5 my-1 text-muted-foreground bg-muted/20 py-0.5 rounded-r"
+              className="border-l border-border pl-2.5 my-1 text-muted-foreground bg-muted/20 py-0.5 rounded-r"
             >
               {renderInlineMarkdown(line.slice(2))}
             </blockquote>
@@ -330,7 +330,7 @@ export function NoteEditorBox({
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   return (
-    <div className="flex flex-col p-2.5 rounded-lg border border-border bg-card shadow-xs gap-1.5 transition-all focus-within:border-ring focus-within:ring-1 focus-within:ring-ring">
+    <div className="flex flex-col p-2.5 rounded-lg border border-border bg-card gap-1.5 transition-all focus-within:border-ring focus-within:ring-1 focus-within:ring-ring">
       <NoteFormattingToolbar
         textareaRef={textareaRef}
         value={value}

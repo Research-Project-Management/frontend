@@ -312,7 +312,7 @@ function NotesSectionContent({
               <div
                 key={n.id}
                 className={cn(
-                  "group/note flex flex-col p-2.5 rounded-lg border border-border/70 bg-card text-xs min-w-0 shadow-xs",
+                  "group/note flex flex-col p-2.5 rounded-lg border border-border/70 bg-card text-xs min-w-0",
                 )}
               >
                 <div

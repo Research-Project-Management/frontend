@@ -5,6 +5,7 @@ import { cn } from "@/shared/lib/utils";
 
 export interface InlineTextareaProps {
   value: string;
+  itemKey?: string;
   placeholder?: string;
   ariaLabel?: string;
   onSave: (val: string) => void;
@@ -19,6 +20,7 @@ export interface InlineTextareaProps {
  */
 export function InlineTextarea({
   value,
+  itemKey,
   placeholder,
   ariaLabel,
   onSave,
@@ -28,10 +30,19 @@ export function InlineTextarea({
 }: InlineTextareaProps) {
   const [draft, setDraft] = useState(value);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const activeItemKeyRef = useRef(itemKey);
+  const focusedItemKeyRef = useRef(itemKey);
+  const focusedInitialValueRef = useRef(value);
 
   useEffect(() => {
+    activeItemKeyRef.current = itemKey;
     setDraft(value);
-  }, [value]);
+  }, [value, itemKey]);
+
+  const handleFocus = () => {
+    focusedItemKeyRef.current = itemKey;
+    focusedInitialValueRef.current = value;
+  };
 
   const adjustHeight = useCallback(() => {
     const el = textareaRef.current;
@@ -69,6 +80,14 @@ export function InlineTextarea({
   }
 
   const commit = () => {
+    // Guard against cross-item draft corruption when switching active items mid-edit
+    if (
+      (itemKey !== undefined && focusedItemKeyRef.current !== activeItemKeyRef.current) ||
+      (itemKey === undefined && focusedInitialValueRef.current !== value)
+    ) {
+      setDraft(value);
+      return;
+    }
     const trimmed = draft.trim();
     if (trimmed !== value) {
       onSave(trimmed);
@@ -82,6 +101,7 @@ export function InlineTextarea({
       value={draft}
       placeholder={placeholder}
       aria-label={ariaLabel || "Text area"}
+      onFocus={handleFocus}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}
       onKeyDown={(e) => {

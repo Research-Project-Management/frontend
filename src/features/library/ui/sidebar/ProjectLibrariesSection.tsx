@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { motion } from 'framer-motion';
 import { Users, ChevronRight, Folder, Files } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import { useLibraryCacheSynchronizer } from '@/features/library/sdk/queries/catalog.queries';
 import type { TreeNode, CollectionActionHandlers } from './sidebar.types';
 import type { Collection, LibraryScope, ProjectRole } from '@/features/library/domain/types/library.types';
 import type { SavedSearch } from '@/features/library/domain/types/saved-searches.types';
@@ -114,6 +114,7 @@ export function ProjectLibrariesSection({
   renameSavedSearchValue = '',
   pathname = '',
 }: ProjectLibrariesSectionProps) {
+  const { prefetchProjectScope } = useLibraryCacheSynchronizer(activeScope.id);
   const [isProjectsExpanded, setIsProjectsExpanded] = useState(true);
 
   return (
@@ -123,7 +124,7 @@ export function ProjectLibrariesSection({
           type="button"
           onClick={() => setIsProjectsExpanded((v) => !v)}
           className={cn(
-            "group/item relative flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none select-none pr-8 cursor-pointer text-left",
+            "group/item relative flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 outline-none select-none pr-8 cursor-pointer text-left",
             activeScope.type === 'project'
               ? "bg-muted text-foreground font-medium"
               : "text-foreground hover:bg-muted group-hover/root:bg-muted font-normal"
@@ -145,7 +146,7 @@ export function ProjectLibrariesSection({
                 setIsProjectsExpanded((v) => !v);
               }}
               aria-label={isProjectsExpanded ? 'Collapse Project Libraries' : 'Expand Project Libraries'}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 z-20 flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground border border-transparent hover:border-border/50 hover:bg-background transition-colors duration-150 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 z-20 flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground border border-transparent hover:border-border/50 hover:bg-background cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               <ChevronRight
                 className={cn(
@@ -186,6 +187,8 @@ export function ProjectLibrariesSection({
                 <div key={project.id} className="flex flex-col gap-0.5 w-full">
                   <button
                     type="button"
+                    onMouseEnter={() => prefetchProjectScope(project.id)}
+                    onFocus={() => prefetchProjectScope(project.id)}
                     onClick={() => {
                       const role = resolveProjectRole(project, currentUserId);
                       onSelectProject({
@@ -201,20 +204,12 @@ export function ProjectLibrariesSection({
                       });
                     }}
                     className={cn(
-                      "group/item relative flex h-8 w-full items-center gap-2.5 rounded-md pr-2.5 pl-6 text-13 leading-5 transition-colors outline-none select-none text-left cursor-pointer",
+                      "group/item relative flex h-8 w-full items-center gap-2.5 rounded-md pr-2.5 pl-6 text-13 leading-5 outline-none select-none text-left cursor-pointer",
                       isProjectActive
                         ? "bg-muted text-foreground font-medium"
                         : "text-foreground hover:bg-muted group-hover/root:bg-muted has-[[data-state=open]]:bg-muted font-normal",
                     )}
                   >
-                    {isProjectActive && (
-                      <motion.div
-                        layoutId={`library-project-active-${navId}`}
-                        className="absolute inset-0 rounded-md bg-muted"
-                        initial={false}
-                        transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                      />
-                    )}
                     <Folder className="relative z-10 size-4 shrink-0 text-foreground" strokeWidth={1.5} />
                     <span className="relative z-10 min-w-0 truncate flex-1 tracking-tight">
                       {project.name}

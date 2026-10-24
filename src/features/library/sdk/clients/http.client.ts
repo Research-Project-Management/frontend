@@ -7,7 +7,7 @@
  * 1. Transport & URL Resolution:
  *    - Defaults to `/api/v1` (Monolith or unified API Gateway).
  *    - Standalone microservice host support via `NEXT_PUBLIC_LIBRARY_SERVICES_URL`.
- *    - Single-tenant scope semantics: Personal ('user') and Project ('projectId' via `X-Project-Id`).
+ *    - User & Project scope semantics: Personal ('user') and Project ('projectId' via `X-Project-Id`).
  * 2. Unified Service Domain Operations (`libraryServices`):
  *    - items, collections, tags, notes, savedSearches, relations
  *    - citations, exports, attachments, upload, ingestion, curation, retraction, search, sync, reader

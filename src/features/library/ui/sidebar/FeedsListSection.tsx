@@ -37,7 +37,9 @@ export function FeedsListSection({
 }: FeedsListSectionProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { feeds, removeFeed, triggerRefresh, markAllEntriesAsRead } = useFeedsStore();
+  const feeds = useFeedsStore((s) => s.feeds);
+  const removeFeed = useFeedsStore((s) => s.removeFeed);
+  const triggerRefresh = useFeedsStore((s) => s.triggerRefresh);
   const openModal = useLibraryUIStore((s) => s.openModal);
   const [isExpanded, setIsExpanded] = useState(true);
   const [editingFeed, setEditingFeed] = useState<SavedFeedSubscription | null>(null);

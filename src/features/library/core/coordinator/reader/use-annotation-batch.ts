@@ -62,8 +62,12 @@ export function useAnnotationBatch({
   const [undoStack, setUndoStack] = useState<UndoAction[]>([]);
   const [redoStack, setRedoStack] = useState<UndoAction[]>([]);
   const isProcessingRef = useRef(false);
+  const attachmentEpochRef = useRef(0);
 
   useEffect(() => {
+    attachmentEpochRef.current += 1;
+    isProcessingRef.current = false;
+    setIsBatchProcessing(false);
     setSelectedAnnotationIds(new Set());
     setUndoStack([]);
     setRedoStack([]);

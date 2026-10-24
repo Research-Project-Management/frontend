@@ -71,9 +71,14 @@ export function useTrash(
     mutationFn: async (items: Item[]) => {
       if (items.length === 0) return 0;
       const ids = items.map((item) => item.id).filter(Boolean);
-      if (ids.length === 0) return 0;
-      const res = await ItemsService.bulkPurge(effectiveScope, ids);
-      return res?.count ?? ids.length;
+      const chunks = chunkUniqueIds(ids, 100);
+      if (chunks.length === 0) return 0;
+      let totalPurged = 0;
+      for (const chunk of chunks) {
+        const res = await ItemsService.bulkPurge(effectiveScope, chunk);
+        totalPurged += res?.count ?? chunk.length;
+      }
+      return totalPurged;
     },
     onSuccess: (count) => {
       toast.success('Trash emptied', {

@@ -316,7 +316,6 @@ const EMPTY_BACKEND_ITEM_DEFAULTS: Item = {
   isRetracted: false,
   isMyPublication: false,
   crossrefEnriched: false,
-  ragStatus: "none",
   identifiers: [],
   version: 1,
   isDeleted: false,

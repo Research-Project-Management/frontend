@@ -103,7 +103,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     importExternal,
   } = useAnnotations(scopeId, effectiveAttachmentId);
 
-  // Sub-hook 1: Reading progress restoration, debounced sync, markAsRead & RAG polling
+  // Sub-hook 1: Reading progress restoration, debounced sync & markAsRead
   useReadingProgress({
     scopeId,
     paper,

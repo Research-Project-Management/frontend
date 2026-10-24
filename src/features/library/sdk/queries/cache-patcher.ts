@@ -1,6 +1,9 @@
 import { useCallback } from 'react';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
-import { prefetchLibraryCollection } from '@/features/shell/lib/navigation-prefetch';
+import {
+  prefetchLibraryCollection,
+  prefetchLibraryProjectScope,
+} from '@/features/shell/lib/navigation-prefetch';
 import type { Item } from '@/features/library/domain/types/library.types';
 import type { InvalidationClient } from '@/features/library/domain/types/batch-upload.types';
 import {
@@ -387,6 +390,13 @@ export function useLibraryCacheSynchronizer(defaultScopeId?: string) {
     [queryClient],
   );
 
+  const prefetchProjectScope = useCallback(
+    (projectId: string) => {
+      prefetchLibraryProjectScope(queryClient, projectId);
+    },
+    [queryClient],
+  );
+
   return {
     queryClient,
     invalidateScopeItemsAndCounts,
@@ -394,5 +404,6 @@ export function useLibraryCacheSynchronizer(defaultScopeId?: string) {
     syncConvertedOrPatchedItem,
     resolveCachedItem,
     prefetchCollection,
+    prefetchProjectScope,
   };
 }

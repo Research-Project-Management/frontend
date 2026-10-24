@@ -20,8 +20,8 @@ export interface LibraryPermissions {
 
 /**
  * User Scope:
- * Personal library workspace for the user.
- * The user is always the Owner of this personal workspace, with full administration and edit permissions.
+ * Personal library for the user.
+ * The user is always the Owner of this personal library, with full administration and edit permissions.
  * There is no concept of external members or role hierarchy in the User scope.
  */
 export interface UserLibraryScope {
@@ -35,7 +35,7 @@ export interface UserLibraryScope {
 
 /**
  * Project Scope:
- * Collaborative library workspace within a project.
+ * Collaborative library within a user project.
  * User permissions are strictly determined by the 4 standard project roles:
  * 'owner' | 'coordinator' | 'contributor' | 'reviewer' (no commenter or viewer).
  */

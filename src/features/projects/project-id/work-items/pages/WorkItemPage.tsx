@@ -12,7 +12,6 @@ import {
 import { WorkItemViewContainer } from '@/features/projects/project-id/work-items/components/layout/WorkItemViewContainer';
 import {
   useProject,
-  useBulkUpdate,
   useBulkDelete,
   useWorkItemSelection,
 } from '@/features/projects/project-id/work-items/hooks/use-work-item';
@@ -80,7 +79,6 @@ export function WorkItemPage({
   const allItems = projectItems || EMPTY_ITEMS;
 
   // ── 2. Multi-select & Bulk Operations ──────────────────────────────────────
-  const bulkUpdateMutation = useBulkUpdate();
   const bulkDeleteMutation = useBulkDelete();
   const bulkArchiveMutation = useBulkArchive();
   const bulkRestoreMutation = useBulkRestore();
@@ -101,17 +99,21 @@ export function WorkItemPage({
   const handleBulkUpdate = useCallback(
     (data: Record<string, unknown>) => {
       if (selectedIds.length === 0) return;
-      bulkUpdateMutation.mutate(
-        {
+      projectActions
+        .bulk({
           workItemIds: selectedIds,
           ids: selectedIds,
           data,
           projectId,
-        },
-        { onSuccess: handleClearSelection }
-      );
+        })
+        .then(() => {
+          handleClearSelection();
+        })
+        .catch(() => {
+          // Handled by bulk mutation hook
+        });
     },
-    [selectedIds, projectId, bulkUpdateMutation, handleClearSelection]
+    [selectedIds, projectId, projectActions, handleClearSelection]
   );
 
   const handleBulkUpdateState = useCallback((columnId: string) => handleBulkUpdate({ columnId }), [handleBulkUpdate]);
@@ -676,7 +678,7 @@ export function WorkItemPage({
         onRestoreSelected={handleBulkRestore}
         isArchivedView={showArchived}
         isUpdating={
-          bulkUpdateMutation.isPending ||
+          projectState.isBulkUpdating ||
           bulkDeleteMutation.isPending ||
           bulkArchiveMutation.isPending ||
           bulkRestoreMutation.isPending

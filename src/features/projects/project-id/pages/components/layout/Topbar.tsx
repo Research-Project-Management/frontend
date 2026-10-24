@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useRef, useMemo } from 'react';
-import { motion } from 'framer-motion';
 import { PenLine, Search, X, Columns3, AlignJustify, ListFilter, Check } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -370,22 +369,15 @@ export function Topbar({
                       type="button"
                       role="tab"
                       aria-selected={isSelected}
-                      onClick={() => setViewMode(opt.id)}
+                      onClick={() => React.startTransition(() => setViewMode(opt.id))}
                       className={cn(
-                        'relative size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-1 md:before:hidden',
+                        'relative size-7 flex items-center justify-center rounded-md cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1 md:before:hidden',
                         isSelected
-                          ? 'text-foreground font-medium'
+                          ? 'bg-background border border-border/50 text-foreground font-medium'
                           : 'text-muted-foreground hover:text-foreground hover:bg-background/40'
                       )}
                       aria-label={opt.label}
                     >
-                      {isSelected && (
-                        <motion.div
-                          layoutId="pages-view-toggle"
-                          className="absolute inset-0 bg-background rounded-md border border-border/50"
-                          transition={{ duration: 0.15, ease: 'easeOut' }}
-                        />
-                      )}
                       <span className="relative z-10 flex items-center justify-center">
                         <IconComp className="size-4 shrink-0" strokeWidth={1.75} />
                       </span>

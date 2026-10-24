@@ -329,10 +329,22 @@ export async function apiFetch<T>(
   // Auth-scoped request deduplication key to prevent cross-identity cache leaks
   const token = !options.skipAuth ? getAuthToken() : null;
   const tokenScope = token ? token.slice(-8) : 'anon';
-  const requestKey = isGet && !options.signal ? `${tokenScope}:${normalizedMethod}:${buildUrl(path, options.params)}` : null;
+  const requestKey =
+    isGet && !options.signal?.aborted
+      ? `${tokenScope}:${normalizedMethod}:${buildUrl(path, options.params)}`
+      : null;
 
   if (requestKey && inFlightRequests.has(requestKey)) {
-    return inFlightRequests.get(requestKey) as Promise<T>;
+    const sharedPromise = inFlightRequests.get(requestKey) as Promise<T>;
+    return sharedPromise.catch((err: unknown) => {
+      const isAborted =
+        (err as Error)?.name === 'AbortError' ||
+        (err as Error)?.message?.toLowerCase().includes('aborted');
+      if (isAborted && !options.signal?.aborted) {
+        return apiFetch<T>(path, method, body, options);
+      }
+      throw err;
+    });
   }
 
   const executionPromise = (async () => {

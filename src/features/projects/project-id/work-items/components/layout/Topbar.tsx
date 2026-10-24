@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback } from 'react';
-import { motion } from 'framer-motion';
+
 import {
   ChevronRight,
 } from 'lucide-react';
@@ -164,18 +164,18 @@ export function Topbar({
                       type="button"
                       role="tab"
                       aria-selected={isSelected}
-                      onClick={() => onViewChange?.(v.id)}
+                      onClick={() => React.startTransition(() => onViewChange?.(v.id))}
                       className={cn(
                         'relative size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-2 md:before:hidden',
-                        isSelected ? 'text-foreground' : 'text-foreground hover:bg-background/40',
+                        isSelected ? 'bg-background border border-border text-foreground font-medium' : 'text-foreground hover:bg-background/40',
                       )}
                       aria-label={v.label}
                     >
-                      {isSelected && (
-                        <motion.div
-                          layoutId="work-items-view-toggle"
+                      {false && isSelected && (
+                        <div
+
                           className="absolute inset-0 bg-background rounded-md shadow-none border border-border"
-                          transition={{ type: 'spring', bounce: 0.15, duration: 0.4 }}
+
                         />
                       )}
                       <span className="relative z-10 flex items-center justify-center">

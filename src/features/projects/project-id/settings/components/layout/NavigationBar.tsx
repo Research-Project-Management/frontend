@@ -3,7 +3,9 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/shared/lib/utils';
+import { prefetchProjectSettingsTab } from '@/features/shell/lib/navigation-prefetch';
 
 export const SETTINGS_TABS = [
   { key: 'general', label: 'General', href: '' },
@@ -25,6 +27,7 @@ export function ProjectSettingsNavigationBar({
   className,
 }: ProjectSettingsNavigationBarProps) {
   const pathname = usePathname();
+  const queryClient = useQueryClient();
   const basePath = `/projects/${projectId}/settings`;
 
   const getIsActive = (tabHref: string) => {
@@ -56,9 +59,11 @@ export function ProjectSettingsNavigationBar({
           <Link
             key={tab.key}
             href={targetHref}
+            onMouseEnter={() => prefetchProjectSettingsTab(queryClient, projectId, tab.key)}
+            onFocus={() => prefetchProjectSettingsTab(queryClient, projectId, tab.key)}
             aria-current={isActive ? 'page' : undefined}
             className={cn(
-              'relative flex h-full items-center gap-2 px-3.5 text-13 font-medium transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring shrink-0 before:absolute before:-inset-y-0.5 before:inset-x-0 md:before:hidden',
+              'relative flex h-full items-center gap-2 px-3.5 text-13 font-medium outline-none focus-visible:ring-1 focus-visible:ring-ring shrink-0 before:absolute before:-inset-y-0.5 before:inset-x-0 md:before:hidden',
               isActive
                 ? 'text-primary'
                 : 'text-muted-foreground hover:text-foreground',

@@ -40,6 +40,44 @@ import type { UseProjectOptions } from '@/features/projects/project-id/work-item
 
 export type { UseProjectOptions };
 
+/**
+ * Lightweight Quick-Create Context Hook.
+ * Only fetches project details + states and mounts a single `useCreateItem` mutation,
+ * avoiding the 4 queries + 7 mutations of the full `useProject` workspace hook.
+ */
+export function useQuickCreateWorkItemContext(projectId: string) {
+  const detailsQ = useProjectDetails(projectId);
+  const statesQ = useProjectStates(projectId);
+  const createMut = useCreateItem();
+
+  const project = useMemo(() => {
+    const projectData = detailsQ.data;
+    if (!projectData) return undefined;
+    return ('project' in projectData && projectData.project ? projectData.project : projectData) as Project | undefined;
+  }, [detailsQ.data]);
+
+  const projectColumns = (project as { workItemColumns?: unknown[] } | undefined)?.workItemColumns;
+  const columns = useMemo(() => {
+    if (Array.isArray(statesQ.data) && statesQ.data.length > 0) {
+      return normalizeStates(statesQ.data);
+    }
+    if (Array.isArray(projectColumns) && projectColumns.length > 0) {
+      return normalizeStates(projectColumns);
+    }
+    return [...DEFAULT_STATES];
+  }, [statesQ.data, projectColumns]);
+
+  const members = useMemo(() => (project?.members ?? []) as ProjectMember[], [project?.members]);
+
+  return {
+    project,
+    columns,
+    members,
+    isSaving: createMut.isPending,
+    create: createMut.mutateAsync,
+  };
+}
+
 export function useProject({ projectId }: UseProjectOptions) {
   const itemsQ = useProjectItems(projectId);
   const detailsQ = useProjectDetails(projectId);
@@ -84,6 +122,7 @@ export function useProject({ projectId }: UseProjectOptions) {
   }, [labels]);
   const isSaving = updateMut.isPending || createMut.isPending;
   const isDeleting = deleteMut.isPending;
+  const isBulkUpdating = bulkMut.isPending;
   const isLoading = itemsQ.isLoading;
   const isError = itemsQ.isError || detailsQ.isError;
   const error = itemsQ.error || detailsQ.error;
@@ -102,6 +141,7 @@ export function useProject({ projectId }: UseProjectOptions) {
         isError,
         isSaving,
         isDeleting,
+        isBulkUpdating,
         error,
       },
       isLoading,
@@ -109,8 +149,9 @@ export function useProject({ projectId }: UseProjectOptions) {
       error,
       isSaving,
       isDeleting,
+      isBulkUpdating,
     }),
-    [items, columns, project, members, labels, labelMap, isLoading, isError, isSaving, isDeleting, error]
+    [items, columns, project, members, labels, labelMap, isLoading, isError, isSaving, isDeleting, isBulkUpdating, error]
   );
 
   const createMutAsync = createMut.mutateAsync;

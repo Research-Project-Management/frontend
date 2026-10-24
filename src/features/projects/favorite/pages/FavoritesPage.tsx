@@ -19,7 +19,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
-import { Skeleton } from '@/shared/components/ui/skeleton';
+import {
+  WorkspaceCardGridSkeleton,
+  WorkspaceViewTransition,
+} from '@/shared/components/layout/WorkspaceSkeleton';
 import { Card } from '@/features/projects/shell/components/project/Card';
 import { CollapsibleSearchInput } from '@/features/projects/shell/components/project/CollapsibleSearchInput';
 
@@ -30,7 +33,7 @@ const CreateProjectModal = dynamic(
     ),
   { ssr: false }
 );
-import { useProjects } from '@/features/projects/shell/hooks/use-project';
+import { useProjectsQuery } from '@/features/projects/shell/hooks/use-project';
 import { useFavorites } from '../hooks/use-favorites';
 import {
   filterActiveProjects,
@@ -59,7 +62,7 @@ export function FavoritesPage() {
     }
   }, []);
 
-  const { projects: rawProjects = [], isLoading } = useProjects();
+  const { projects: rawProjects = [], isLoading } = useProjectsQuery();
   const { favoriteIds } = useFavorites();
 
   const favoriteProjects = useMemo(() => {
@@ -76,7 +79,7 @@ export function FavoritesPage() {
     <div className="flex flex-col h-full bg-background overflow-hidden">
       {/* Topbar */}
       <header
-        className="flex items-center justify-between px-4 h-11 border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-20 shrink-0 select-none min-w-0"
+        className="flex items-center justify-between px-4 h-11 border-b border-border bg-background sticky top-0 z-20 shrink-0 select-none min-w-0"
         style={{ paddingLeft: 'max(1rem, var(--header-offset, 0px))' }}
       >
         {/* Left: Star Icon, Title & Count */}
@@ -119,69 +122,63 @@ export function FavoritesPage() {
             onClick={() => setIsCreateOpen(true)}
             className="relative h-8 gap-1.5 px-3 text-13 font-medium shadow-none cursor-pointer focus-visible:ring-1 focus-visible:ring-ring touch-manipulation sm:after:hidden after:absolute after:-inset-1.5 after:content-['']"
           >
-            <Plus className="size-3.5 shrink-0" />
-            <span>New Project</span>
+            <Plus className="size-3.5 text-primary-foreground" />
+            <span>New project</span>
           </Button>
         </div>
       </header>
 
-      {/* Toolbar: Sort & View Mode */}
+      {/* Secondary Toolbar: Sort + View Mode (only if there are favorites) */}
       {favoriteProjects.length > 0 && (
-        <div
-          className="flex flex-wrap items-center justify-between gap-3 px-6 h-10 border-b border-border bg-muted select-none shrink-0"
-          style={{ paddingLeft: 'max(1.5rem, var(--header-offset, 0px))' }}
-        >
-          <div className="text-12 text-muted-foreground">
-            Showing {filteredProjects.length} of {favoriteProjects.length} favorite {favoriteProjects.length === 1 ? 'project' : 'projects'}
+        <div className="flex items-center justify-between px-4 h-9 border-b border-border/60 bg-background shrink-0 select-none text-12">
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <BarChart3 className="size-3.5 text-foreground shrink-0" />
+            <span>
+              Showing <strong className="text-foreground font-medium">{filteredProjects.length}</strong> starred{' '}
+              {filteredProjects.length === 1 ? 'project' : 'projects'}
+            </span>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            {/* Sort */}
+          <div className="flex items-center gap-2">
+            {/* Sort Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="relative flex items-center gap-1.5 px-2 py-1 rounded-md text-12 font-medium text-foreground hover:bg-muted transition-colors cursor-pointer border border-border focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none touch-manipulation sm:after:hidden after:absolute after:-inset-1.5 after:content-['']"
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="relative h-7 px-2 text-12 font-normal gap-1.5 text-foreground hover:bg-muted cursor-pointer focus-visible:ring-1 focus-visible:ring-ring touch-manipulation sm:after:hidden after:absolute after:-inset-1.5 after:content-['']"
                 >
-                  <ArrowUpDown className="size-3 text-foreground shrink-0" />
+                  <ArrowUpDown className="size-3 text-foreground" />
                   <span>
+                    Sort:{' '}
                     {sortBy === 'updated'
-                      ? 'Recently updated'
-                      : sortBy === 'name'
-                        ? 'Name (A-Z)'
-                        : 'Newest created'}
+                      ? 'Last updated'
+                      : sortBy === 'created'
+                        ? 'Created date'
+                        : 'Name'}
                   </span>
-                </button>
+                </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44 p-1 text-12 shadow-overlay bg-popover">
-                <DropdownMenuItem
-                  onClick={() => setSortBy('updated')}
-                  className={cn('cursor-pointer font-medium text-12', sortBy === 'updated' && 'font-semibold text-primary')}
-                >
-                  Recently updated
+              <DropdownMenuContent align="end" className="w-40">
+                <DropdownMenuItem onClick={() => setSortBy('updated')} className="text-12 cursor-pointer">
+                  Last updated
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setSortBy('name')}
-                  className={cn('cursor-pointer font-medium text-12', sortBy === 'name' && 'font-semibold text-primary')}
-                >
+                <DropdownMenuItem onClick={() => setSortBy('created')} className="text-12 cursor-pointer">
+                  Created date
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortBy('name')} className="text-12 cursor-pointer">
                   Name (A-Z)
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setSortBy('created')}
-                  className={cn('cursor-pointer font-medium text-12', sortBy === 'created' && 'font-semibold text-primary')}
-                >
-                  Newest created
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* View Mode */}
-            <div className="flex items-center border border-border rounded-md p-0.5 bg-background">
+            {/* View Mode Toggle */}
+            <div className="flex items-center rounded-md border border-border bg-background p-0.5">
               <button
                 type="button"
-                onClick={() => setViewMode('grid')}
+                onClick={() => React.startTransition(() => setViewMode('grid'))}
                 className={cn(
-                  'relative p-1 rounded cursor-pointer transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none touch-manipulation sm:after:hidden after:absolute after:-inset-1.5 after:content-[\'\']',
+                  'relative p-1 rounded cursor-pointer focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none touch-manipulation sm:after:hidden after:absolute after:-inset-1.5 after:content-[\'\']',
                   viewMode === 'grid' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'
                 )}
                 title="Grid view"
@@ -190,9 +187,9 @@ export function FavoritesPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setViewMode('list')}
+                onClick={() => React.startTransition(() => setViewMode('list'))}
                 className={cn(
-                  'relative p-1 rounded cursor-pointer transition-colors focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none touch-manipulation sm:after:hidden after:absolute after:-inset-1.5 after:content-[\'\']',
+                  'relative p-1 rounded cursor-pointer focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none touch-manipulation sm:after:hidden after:absolute after:-inset-1.5 after:content-[\'\']',
                   viewMode === 'list' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'
                 )}
                 title="List view"
@@ -206,19 +203,7 @@ export function FavoritesPage() {
 
       {/* Main Content Area */}
       <main className="flex-1 overflow-y-auto p-6">
-        {isLoading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="flex flex-col rounded-lg border border-border bg-card p-4 space-y-3 animate-pulse motion-reduce:animate-none">
-                <Skeleton className="h-24 w-full rounded-md" />
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-2/3" />
-                  <Skeleton className="h-3 w-1/3" />
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        {isLoading && <WorkspaceCardGridSkeleton variant="projects" count={4} />}
 
         {!isLoading && favoriteProjects.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20 text-center select-none">
@@ -244,19 +229,21 @@ export function FavoritesPage() {
         )}
 
         {!isLoading && filteredProjects.length > 0 && (
-          viewMode === 'grid' ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-              {filteredProjects.map((project) => (
-                <Card key={project.id} project={project} />
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {filteredProjects.map((project) => (
-                <Card key={project.id} project={project} />
-              ))}
-            </div>
-          )
+          <WorkspaceViewTransition>
+            {viewMode === 'grid' ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+                {filteredProjects.map((project) => (
+                  <Card key={project.id} project={project} />
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {filteredProjects.map((project) => (
+                  <Card key={project.id} project={project} />
+                ))}
+              </div>
+            )}
+          </WorkspaceViewTransition>
         )}
       </main>
 

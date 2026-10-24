@@ -39,8 +39,7 @@ import { useProjectsQuery } from '../hooks/use-project';
 import type { Project } from '../types/project.types';
 import { useFavorites } from '@/features/projects/favorite/hooks/use-favorites';
 import { useQueryClient } from '@tanstack/react-query';
-import { useProject } from '@/features/projects/project-id/work-items/hooks/use-work-item';
-import { prefetchProjectWorkspace } from '@/features/projects/project-id/work-items/hooks/use-work-items-query';
+import { useQuickCreateWorkItemContext } from '@/features/projects/project-id/work-items/hooks/use-work-item';
 import {
   prefetchWorkspaceRoute,
   prefetchProjectSubmodule,
@@ -94,6 +93,50 @@ type NavItem = {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
+function QuickCreateWorkItemDialog({
+  open,
+  onOpenChange,
+  activeProjectId,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  activeProjectId: string;
+}) {
+  const { project, columns, members, isSaving, create } =
+    useQuickCreateWorkItemContext(activeProjectId);
+
+  return (
+    <CreateModal
+      open={open}
+      onOpenChange={onOpenChange}
+      columns={columns}
+      members={members}
+      project={project}
+      onSubmit={async (formData: Record<string, unknown>) => {
+        const targetProjId =
+          (typeof formData.projectId === 'string' ? formData.projectId : null) ||
+          activeProjectId;
+        if (!targetProjId) {
+          toast.error('Please select or create a project first');
+          return;
+        }
+        const itemTitle =
+          typeof formData.title === 'string' ? formData.title.trim() : '';
+        if (!itemTitle) {
+          toast.error('Work item title is required');
+          return;
+        }
+        await create({
+          ...formData,
+          title: itemTitle,
+          projectId: targetProjId,
+        });
+      }}
+      isSubmitting={isSaving}
+    />
+  );
+}
+
 export function Sidebar({ onToggle }: { onToggle?: () => void }) {
   const queryClient = useQueryClient();
   const params = useParams<{ projectId?: string }>();
@@ -106,12 +149,8 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
 
   const { projects = [], isLoading } = useProjectsQuery();
 
-  // Active project context for quick work item creation (only load project details/states when modal is open)
+  // Active project ID for quick work item creation
   const activeProjectId = params?.projectId || (projects && projects.length > 0 ? projects[0]?.id : '');
-  const shouldLoadProjectContext = Boolean(isCreateWorkItemOpen);
-  const { state: activeProjectState, actions: activeProjectActions } = useProject({
-    projectId: shouldLoadProjectContext ? (activeProjectId || '') : '',
-  });
 
   // Main navigation items: strictly (home, drafts, your work, stickies)
   const navItems: NavItem[] = [
@@ -213,8 +252,8 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
         onOpenChange={() => toggleProject(projId)}
       >
         <div
-          onMouseEnter={() => prefetchProjectWorkspace(queryClient, projId)}
-          onFocus={() => prefetchProjectWorkspace(queryClient, projId)}
+          onMouseEnter={() => prefetchProjectSubmodule(queryClient, projId, 'work-items')}
+          onFocus={() => prefetchProjectSubmodule(queryClient, projId, 'work-items')}
           className="group/row flex h-8 w-full items-center justify-between gap-1.5 rounded-md px-2.5 select-none outline-none text-foreground hover:bg-muted font-normal"
         >
           <CollapsibleTrigger asChild>
@@ -454,8 +493,8 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
       <div className="mb-2 shrink-0">
         <button
           type="button"
-          onMouseEnter={() => activeProjectId && prefetchProjectWorkspace(queryClient, activeProjectId)}
-          onFocus={() => activeProjectId && prefetchProjectWorkspace(queryClient, activeProjectId)}
+          onMouseEnter={() => activeProjectId && prefetchProjectSubmodule(queryClient, activeProjectId, 'work-items')}
+          onFocus={() => activeProjectId && prefetchProjectSubmodule(queryClient, activeProjectId, 'work-items')}
           onClick={() => setIsCreateWorkItemOpen(true)}
           className="flex h-8 w-full items-center gap-2 rounded-md border border-border bg-background hover:bg-muted px-2.5 text-13 font-medium text-foreground cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
         >
@@ -704,36 +743,10 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
       )}
 
       {isCreateWorkItemOpen && (
-        <CreateModal
+        <QuickCreateWorkItemDialog
           open={isCreateWorkItemOpen}
           onOpenChange={setIsCreateWorkItemOpen}
-          columns={activeProjectState.columns}
-          members={activeProjectState.members}
-          project={activeProjectState.project}
-          onSubmit={async (formData: Record<string, unknown>) => {
-            const targetProjId =
-              (typeof formData.projectId === 'string' ? formData.projectId : null) ||
-              activeProjectId;
-            if (!targetProjId) {
-              toast.error('Please select or create a project first');
-              return;
-            }
-            const itemTitle =
-              typeof formData.title === 'string' ? formData.title.trim() : '';
-            if (!itemTitle) {
-              toast.error('Work item title is required');
-              return;
-            }
-            const createFn = activeProjectActions.create;
-            if (createFn) {
-              await createFn({
-                ...formData,
-                title: itemTitle,
-                projectId: targetProjId,
-              });
-            }
-          }}
-          isSubmitting={activeProjectState.isSaving}
+          activeProjectId={activeProjectId || ''}
         />
       )}
     </aside>

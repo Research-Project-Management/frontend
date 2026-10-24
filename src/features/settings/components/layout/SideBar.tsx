@@ -2,8 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import { Tag, User, SlidersHorizontal, Blocks, Bell, Lock } from 'lucide-react';
-import React, { useId } from 'react';
-import { motion, LayoutGroup } from 'framer-motion';
+import React from 'react';
 import Link from 'next/link';
 import { cn } from "@/shared/lib/utils";
 
@@ -15,7 +14,6 @@ interface NavItem {
 
 export function SideBar() {
   const pathname = usePathname();
-  const id = useId();
 
   const navItems: NavItem[] = [
     { label: 'Profile', icon: User, to: '/settings' },
@@ -39,20 +37,12 @@ export function SideBar() {
         title={item.label}
         aria-current={isActive ? 'page' : undefined}
         className={cn(
-          'group/item relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 transition-colors duration-150 select-none max-md:shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1.5 md:before:hidden',
+          'group/item relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 select-none max-md:shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-1.5 md:before:hidden',
           isActive
-            ? 'text-foreground font-medium'
-            : 'text-muted-foreground hover:text-foreground hover:bg-muted/70 font-normal',
+            ? 'bg-muted text-foreground font-medium'
+            : 'text-muted-foreground hover:text-foreground hover:bg-muted font-normal',
         )}
       >
-        {isActive && (
-          <motion.div
-            layoutId={`settings-nav-active-${id}`}
-            className="absolute inset-0 rounded-md bg-muted motion-reduce:animate-none"
-            initial={false}
-            transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-          />
-        )}
         <item.icon
           className="relative z-10 size-4 shrink-0 text-foreground"
           strokeWidth={1.5}
@@ -78,14 +68,12 @@ export function SideBar() {
 
       <div className="flex-1 min-h-0 flex flex-col p-2.5 overflow-hidden">
         {/* Navigation Links */}
-        <LayoutGroup id={`settings-nav-${id}`}>
-          <nav
-            aria-label="Settings Navigation"
-            className="flex-1 overflow-x-hidden overflow-y-auto flex flex-col gap-0.5 pr-1 max-md:flex-row max-md:overflow-x-auto max-md:py-1 max-md:px-1"
-          >
-            {navItems.map(renderItem)}
-          </nav>
-        </LayoutGroup>
+        <nav
+          aria-label="Settings Navigation"
+          className="flex-1 overflow-x-hidden overflow-y-auto flex flex-col gap-0.5 pr-1 max-md:flex-row max-md:overflow-x-auto max-md:py-1 max-md:px-1"
+        >
+          {navItems.map(renderItem)}
+        </nav>
       </div>
     </aside>
   );

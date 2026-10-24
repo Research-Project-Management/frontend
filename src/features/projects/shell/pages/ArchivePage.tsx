@@ -20,6 +20,10 @@ import {
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Skeleton } from '@/shared/components/ui/skeleton';
+import {
+  WorkspaceRowListSkeleton,
+  WorkspaceCardGridSkeleton,
+} from '@/shared/components/layout/WorkspaceSkeleton';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
@@ -166,6 +170,7 @@ export function ArchivePage() {
     queryKey: ['archived-views', currentProjectId],
     queryFn: async () => {
       if (!currentProjectId) return [] as WorkItemViewItem[];
+      if (activeTab !== 'views') return [] as WorkItemViewItem[];
       const res = await ViewService.getViews(currentProjectId);
       return (res || []).filter((v: WorkItemViewItem) => { const item = v as unknown as { archivedAt?: string; isArchived?: boolean }; return Boolean(item.archivedAt || item.isArchived); });
     },
@@ -409,6 +414,8 @@ export function ArchivePage() {
         {activeTab === 'work-items' && (
           <div className="space-y-4">
             {isArchivedItemsLoading ? (
+              <WorkspaceRowListSkeleton variant="work-items" rows={6} className="p-0" />
+            ) : false ? (
               <div className="space-y-2">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Skeleton key={i} className="h-12 w-full rounded-md" />
@@ -536,6 +543,8 @@ export function ArchivePage() {
         {activeTab === 'projects' && (
           <div>
             {isProjectsLoading ? (
+              <WorkspaceCardGridSkeleton variant="projects" count={4} />
+            ) : false ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {Array.from({ length: 4 }).map((_, i) => (
                   <div key={i} className="flex flex-col rounded-lg border border-border bg-card p-4 space-y-3">

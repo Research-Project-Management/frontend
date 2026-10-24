@@ -272,7 +272,10 @@ export function useRevertFileVersion() {
 // ── Query Params & Infinite Scroll Sentinel Hooks ────────────────────────────
 
 export function useStorageQueryParams() {
-  const { selectedTypes, sortBy, searchQuery, setSearchQuery } = useStorageFilterStore();
+  const selectedTypes = useStorageFilterStore((s) => s.selectedTypes);
+  const sortBy = useStorageFilterStore((s) => s.sortBy);
+  const searchQuery = useStorageFilterStore((s) => s.searchQuery);
+  const setSearchQuery = useStorageFilterStore((s) => s.setSearchQuery);
   const debouncedSearch = useDebounce(searchQuery, 300);
 
   const queryParams: FileQueryParams = useMemo(

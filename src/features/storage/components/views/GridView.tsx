@@ -60,11 +60,9 @@ export const GridView = React.memo(function GridView({
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
   const sentinelRef = useInfiniteSentinel({ hasMore, isFetchingNextPage, onLoadMore });
 
-  const {
-    selectedIds,
-    toggleSelect,
-    selectRange,
-  } = useStorageSelectionStore();
+  const selectedIds = useStorageSelectionStore((s) => s.selectedIds);
+  const toggleSelect = useStorageSelectionStore((s) => s.toggleSelect);
+  const selectRange = useStorageSelectionStore((s) => s.selectRange);
 
   const allItemIds = useMemo(() => items.map((i) => i.id), [items]);
   const folders = useMemo(() => items.filter((i) => i.isFolder), [items]);

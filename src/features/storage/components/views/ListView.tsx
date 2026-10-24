@@ -79,14 +79,12 @@ export const ListView = React.memo(function ListView({
   const [dragOverFolderId, setDragOverFolderId] = useState<string | null>(null);
   const sentinelRef = useInfiniteSentinel({ hasMore, isFetchingNextPage, onLoadMore });
 
-  const {
-    selectedIds,
-    toggleSelect,
-    selectRange,
-    selectAll,
-    clearSelection,
-    isAllSelected,
-  } = useStorageSelectionStore();
+  const selectedIds = useStorageSelectionStore((s) => s.selectedIds);
+  const toggleSelect = useStorageSelectionStore((s) => s.toggleSelect);
+  const selectRange = useStorageSelectionStore((s) => s.selectRange);
+  const selectAll = useStorageSelectionStore((s) => s.selectAll);
+  const clearSelection = useStorageSelectionStore((s) => s.clearSelection);
+  const isAllSelected = useStorageSelectionStore((s) => s.isAllSelected);
 
   const allItemIds = useMemo(() => items.map((i) => i.id), [items]);
   const allSelected = isAllSelected(allItemIds);

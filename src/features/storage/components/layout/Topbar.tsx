@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+
 import { cn } from "@/shared/lib/utils";
 import {
   Search,
@@ -292,20 +292,20 @@ export default function Topbar({
                 <Tooltip key={v}>
                   <TooltipTrigger asChild>
                     <button
-                      onClick={() => setView(v)}
+                      onClick={() => React.startTransition(() => setView(v))}
                       className={cn(
                         "relative p-1 sm:p-1.5 rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary",
                         view === v
-                          ? "text-foreground font-medium"
+                          ? "bg-background border border-border text-foreground font-medium"
                           : "text-muted-foreground hover:text-foreground hover:bg-muted"
                       )}
                       aria-label={`${v} view`}
                     >
-                      {view === v && (
-                        <motion.div
-                          layoutId="view-toggle"
+                      {false && view === v && (
+                        <div
+
                           className="absolute inset-0 bg-background rounded-md border border-border"
-                          transition={{ type: "spring", bounce: 0.15, duration: 0.4 }}
+
                         />
                       )}
                       <span className="relative z-10 flex">

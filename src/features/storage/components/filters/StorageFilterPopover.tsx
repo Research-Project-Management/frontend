@@ -54,18 +54,14 @@ export function StorageFilterPopover() {
   const [isTypesOpen, setIsTypesOpen] = useState(true);
   const [isSortOpen, setIsSortOpen] = useState(false);
 
-  const {
-    selectedTypes,
-    sortBy,
-    toggleType,
-    setSortBy,
-    resetFilters,
-    isFilterActive,
-    getActiveFilterCount,
-  } = useStorageFilterStore();
+  const selectedTypes = useStorageFilterStore((s) => s.selectedTypes);
+  const sortBy = useStorageFilterStore((s) => s.sortBy);
+  const toggleType = useStorageFilterStore((s) => s.toggleType);
+  const setSortBy = useStorageFilterStore((s) => s.setSortBy);
+  const resetFilters = useStorageFilterStore((s) => s.resetFilters);
 
-  const isActive = isFilterActive();
-  const activeCount = getActiveFilterCount();
+  const isActive = selectedTypes.length > 0 || sortBy !== 'date-desc';
+  const activeCount = selectedTypes.length + (sortBy !== 'date-desc' ? 1 : 0);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

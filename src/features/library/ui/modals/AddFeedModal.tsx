@@ -299,4 +299,29 @@ export function AddFeedModal({ open, onOpenChange }: AddFeedModalProps) {
           </div>
 
           <DialogFooter className="flex items-center justify-end gap-2 pt-1 sm:space-x-0">
-  
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+              className="h-8 px-3 text-12 font-medium cursor-pointer text-foreground rounded-md hover:bg-muted"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              size="sm"
+              disabled={isSubmitting || !watchedUrl?.trim()}
+              className="h-8 px-3.5 text-12 font-medium cursor-pointer rounded-md shadow-none"
+            >
+              {isSubmitting && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
+              Save Feed
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export default AddFeedModal;

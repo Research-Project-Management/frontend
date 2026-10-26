@@ -1393,67 +1393,66 @@
 }
 
 /* --------------------------------------------------------------------------
-   CODEMIRROR 6 ACTIVE LINE & INSET TOP ALIGNMENT
-   Ensure gutters and content start flush at the top (0px) so the gutter border
-   connects seamlessly to the toolbar border and activeLineGutter aligns 1:1
-   with activeLine.
+   MANUSCRIPT LATEX EDITOR VIEW SPECIFIC STYLES
+   Scoped strictly to .manuscript-editor-view to prevent style leakage
+   into Stickies, AI Companion, inline diffs, or modal code editors.
    -------------------------------------------------------------------------- */
-.cm-editor {
+.manuscript-editor-view .cm-editor {
   padding-top: 0 !important;
 }
 
-.cm-editor .cm-scroller {
+.manuscript-editor-view .cm-editor .cm-scroller {
   overflow-x: auto !important;
   overflow-y: auto !important;
   overflow-y: overlay !important;
   scrollbar-gutter: auto !important;
 }
 
-.cm-editor .cm-scroller::-webkit-scrollbar-button {
+.manuscript-editor-view .cm-editor .cm-scroller::-webkit-scrollbar-button {
   display: none !important;
   width: 0 !important;
   height: 0 !important;
 }
 
-.cm-editor .cm-scroller::-webkit-scrollbar {
+.manuscript-editor-view .cm-editor .cm-scroller::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
-.cm-editor .cm-scroller::-webkit-scrollbar-track {
+.manuscript-editor-view .cm-editor .cm-scroller::-webkit-scrollbar-track {
   background: transparent !important;
 }
 
-.cm-editor .cm-scroller::-webkit-scrollbar-thumb {
+.manuscript-editor-view .cm-editor .cm-scroller::-webkit-scrollbar-thumb {
   background-color: transparent !important;
   border-radius: 9999px !important;
   transition: background-color 0.2s ease;
 }
 
-.cm-editor:hover .cm-scroller::-webkit-scrollbar-thumb,
-.cm-editor .cm-scroller:hover::-webkit-scrollbar-thumb {
+.manuscript-editor-view .cm-editor:hover .cm-scroller::-webkit-scrollbar-thumb,
+.manuscript-editor-view .cm-editor .cm-scroller:hover::-webkit-scrollbar-thumb {
   background-color: var(--border) !important;
 }
 
-.cm-editor .cm-scroller::-webkit-scrollbar-thumb:hover {
+.manuscript-editor-view .cm-editor .cm-scroller::-webkit-scrollbar-thumb:hover {
   background-color: var(--muted-foreground) !important;
 }
 
-.cm-editor .cm-scroller::-webkit-scrollbar-corner {
+.manuscript-editor-view .cm-editor .cm-scroller::-webkit-scrollbar-corner {
   background: transparent !important;
 }
 
 @supports not selector(::-webkit-scrollbar) {
-  .cm-editor .cm-scroller {
+  .manuscript-editor-view .cm-editor .cm-scroller {
     scrollbar-width: thin;
     scrollbar-color: transparent transparent;
   }
-  .cm-editor:hover .cm-scroller {
+  .manuscript-editor-view .cm-editor:hover .cm-scroller {
     scrollbar-color: var(--border) transparent;
   }
 }
 
-.cm-editor .cm-content {
+.manuscript-editor-view .cm-editor .cm-content {
   flex-grow: 1 !important;
   flex-shrink: 0 !important;
   min-width: 0 !important;
@@ -1462,25 +1461,25 @@
   padding-bottom: 32px !important;
 }
 
-.cm-editor .cm-gutters {
+.manuscript-editor-view .cm-editor .cm-gutters {
   padding-top: 0 !important;
   min-height: 100% !important;
   background-color: var(--editor-gutter, transparent) !important;
   border-right: none !important;
 }
 
-.cm-editor .cm-line {
+.manuscript-editor-view .cm-editor .cm-line {
   box-sizing: border-box !important;
   padding: 0 8px !important;
 }
 
-.cm-editor .cm-activeLine {
+.manuscript-editor-view .cm-editor .cm-activeLine {
   background-color: var(--editor-active-line, #e2f2ff) !important;
   box-sizing: border-box !important;
   padding: 0 8px !important;
 }
 
-.cm-editor .cm-activeLineGutter {
+.manuscript-editor-view .cm-editor .cm-activeLineGutter {
   background-color: var(--editor-active-line, #e2f2ff) !important;
   font-weight: 600 !important;
 }
@@ -1758,20 +1757,6 @@
   position: relative !important;
   animation: cm-error-pulse 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
   border-radius: 2px !important;
-}
-
-/* Impeccable Quality: Suppress accidental organic contour clip-paths on document elements */
-body *:not(.sr-only) {
-  clip-path: none;
-}
-
-/* Impeccable Quality: Suppress layout property transitions on height */
-[data-sonner-toaster] [data-sonner-toast],
-[data-sonner-toast],
-[data-sonner-toaster],
-[data-sonner-toaster] * {
-  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s !important;
-  transition-property: transform, opacity, box-shadow !important;
 }
 
 /* ── CSS Content-Visibility Utilities (Vercel rendering-content-visibility) ── */

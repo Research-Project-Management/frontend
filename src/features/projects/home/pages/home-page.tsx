@@ -119,7 +119,7 @@ export default function HomePage() {
         <div className="max-w-5xl mx-auto px-4 md:px-6 py-6 md:py-10 flex flex-col gap-10">
           {/* Greeting Section */}
           <div className="flex flex-col items-center justify-center text-center space-y-2 mt-6 mb-8">
-            {isUserLoading && !user ? (
+            {!mounted || (isUserLoading && !user) ? (
               <div className="flex flex-col items-center gap-3">
                 <Skeleton className="h-10 w-64 rounded-full motion-reduce:animate-none" />
                 <Skeleton className="h-5 w-40 rounded-full motion-reduce:animate-none" />

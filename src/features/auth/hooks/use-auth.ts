@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -49,14 +50,22 @@ function getCachedUserFallback(): AuthUser | undefined {
   }
 }
 
+let hasClientMountedAuth = false;
+
 export const useAuth = (): UseAuthReturn => {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const [isHydrated, setIsHydrated] = useState(() => hasClientMountedAuth);
+
+  useEffect(() => {
+    hasClientMountedAuth = true;
+    setIsHydrated(true);
+  }, []);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: authKeys.session(),
     queryFn: getUser,
-    placeholderData: () => getCachedUserFallback(),
+    placeholderData: () => (hasClientMountedAuth ? getCachedUserFallback() : undefined),
     staleTime: 5 * 60 * 1_000, // 5 minutes
     refetchOnWindowFocus: false,
     retry: (failureCount, err) => {
@@ -82,11 +91,13 @@ export const useAuth = (): UseAuthReturn => {
     },
   });
 
+  const cachedFallback = isHydrated ? getCachedUserFallback() : undefined;
+
   let state: AuthState;
-  if (isLoading) {
+  if (isLoading && !cachedFallback) {
     state = { status: 'loading', user: null, error: null };
-  } else if (data) {
-    state = { status: 'authenticated', user: data, error: null };
+  } else if (data || cachedFallback) {
+    state = { status: 'authenticated', user: (data ?? cachedFallback)!, error: null };
   } else if (hasAuthToken() && isTokenValid(getAuthToken())) {
     // Session query might have encountered transient network glitch while token still exists
     let fallbackUser: AuthUser | null = null;

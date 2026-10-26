@@ -29,7 +29,7 @@ const Toolbar = React.memo(function Toolbar({
   const isDeleteOpen = activeModal === 'delete';
 
   return (
-    <div className="h-10 px-2.5 flex items-center justify-between bg-transparent">
+    <div className="h-10 px-3.5 flex items-center justify-between bg-transparent">
       <div className="relative flex items-center gap-1">
         <ColorModal
           sticky={sticky}

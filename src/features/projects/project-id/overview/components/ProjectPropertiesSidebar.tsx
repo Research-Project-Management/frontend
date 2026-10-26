@@ -176,7 +176,7 @@ export function ProjectPropertiesSidebar({
             >
               {formatDate(project.targetDate)}
               {project.isOverdue && (
-                <span className="ml-1 text-11 uppercase tracking-wider font-sans font-bold">
+                <span className="ml-1 text-11 uppercase tracking-wider font-sans font-semibold">
                   (Overdue)
                 </span>
               )}

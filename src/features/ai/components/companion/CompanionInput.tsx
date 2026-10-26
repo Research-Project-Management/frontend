@@ -212,18 +212,17 @@ export function CompanionInput({
   // Track if user explicitly clicked "None" in the dropdown to avoid auto-selecting again in this session
   const hasUserExplicitlyClearedRef = useRef(false);
 
-  // Initialize selectedProject with resolution hierarchy:
+  const [isMounted, setIsMounted] = useState(false);
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Initialize selectedProject SSR-safe:
   // 1. currentProjectId (prop from route)
-  // 2. localStorage ('flux_active_project_id')
-  // 3. null (resolved to activeProjects[0] once activeProjects load)
-  const [selectedProject, setSelectedProject] = useState<string | null>(() => {
-    if (currentProjectId) return currentProjectId;
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('flux_active_project_id');
-      if (stored) return stored;
-    }
-    return null;
-  });
+  // 2. null (synced with localStorage & activeProjects in useEffect after mount)
+  const [selectedProject, setSelectedProject] = useState<string | null>(
+    currentProjectId || null
+  );
 
   // When route project ID changes, sync and reset explicit clear flag
   const prevRouteProjectIdRef = useRef(currentProjectId);
@@ -549,10 +548,11 @@ export function CompanionInput({
                 <PopoverTrigger asChild>
                   <button
                     type='button'
+                    suppressHydrationWarning
                     className='inline-flex h-6 max-w-[220px] items-center gap-1.5 rounded-md border border-border bg-background hover:bg-muted px-2 text-11 text-foreground transition-colors cursor-pointer outline-none shrink-0 relative before:absolute before:-inset-1.5 md:before:hidden'
                     aria-label='Project context scope'
                   >
-                    {currentProjectObj ? (
+                    {isMounted && currentProjectObj ? (
                       <ProjectAvatar
                         avatar={currentProjectObj.avatar}
                         name={currentProjectObj.name}
@@ -563,7 +563,9 @@ export function CompanionInput({
                     ) : (
                       <Folder className='size-3 text-foreground shrink-0' />
                     )}
-                    <span className='truncate font-medium'>{currentProjectName}</span>
+                    <span className='truncate font-medium'>
+                      {isMounted ? currentProjectName : (currentProjectId ? currentProjectName : 'None')}
+                    </span>
                     <ChevronDown className='size-2.5 text-foreground shrink-0 opacity-70 ml-0.5' />
                   </button>
                 </PopoverTrigger>

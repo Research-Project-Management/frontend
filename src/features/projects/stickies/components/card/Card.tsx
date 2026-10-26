@@ -64,13 +64,13 @@ const Card = memo(
         </div>
 
         {/* Content */}
-        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+        <div className="flex-1 min-h-0 min-w-0 overflow-hidden flex flex-col">
           <Content
             sticky={sticky}
             onUpdate={onUpdate}
             onReady={setEditor}
             isOverlay={isOverlay}
-            editorClassName="h-full min-h-[100px]"
+            editorClassName="h-full min-h-[100px] min-w-0"
           />
         </div>
 

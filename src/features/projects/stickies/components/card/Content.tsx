@@ -53,21 +53,32 @@ export default memo(function Content({
     const baseTheme = EditorView.theme({
       '&': {
         height: '100%',
+        width: '100%',
+        maxWidth: '100%',
         backgroundColor: 'transparent',
         color: 'inherit',
         fontSize: '0.8125rem',
       },
       '.cm-content': {
         fontFamily: 'inherit',
-        padding: '8px 16px 12px',
+        padding: '8px 14px 12px',
         lineHeight: '1.54',
         caretColor: 'currentColor',
         minHeight: '100px',
+        wordBreak: 'break-word',
+        overflowWrap: 'anywhere',
+        whiteSpace: 'pre-wrap',
+        maxWidth: '100%',
+        boxSizing: 'border-box',
       },
       '.cm-scroller': {
-        overflow: 'auto',
+        overflowX: 'hidden',
+        overflowY: 'auto',
         fontFamily: 'inherit',
         height: '100%',
+        width: '100%',
+        maxWidth: '100%',
+        boxSizing: 'border-box',
       },
       '&.cm-focused': {
         outline: 'none',
@@ -79,6 +90,8 @@ export default memo(function Content({
       },
       '.cm-line': {
         padding: '0',
+        wordBreak: 'break-word',
+        overflowWrap: 'anywhere',
       },
     });
 
@@ -243,7 +256,7 @@ export default memo(function Content({
     <div
       ref={containerRef}
       className={cn(
-        'w-full flex-1 min-h-0 overflow-y-auto overflow-x-hidden focus:outline-none',
+        'w-full flex-1 min-h-0 min-w-0 overflow-hidden focus:outline-none sticky-note-editor',
         editorClassName || 'min-h-[100px]',
         isOverlay ? 'pointer-events-none' : ''
       )}

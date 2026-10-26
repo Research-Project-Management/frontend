@@ -235,6 +235,7 @@ export async function* streamEditorChat(
     document_structure_summary: cleanOptions.documentStructureSummary ?? null,
     compile_errors: cleanOptions.compileErrors ?? null,
     user_selection: cleanOptions.userSelection ?? null,
+    web_search_sites: cleanOptions.webSearchSites ?? null,
   }, {
     headers: {
       Accept: 'text/event-stream',
@@ -369,7 +370,7 @@ export async function clearAiMemory(scopeId?: string): Promise<void> {
 export async function getPageChat(pageId: string, _options?: unknown): Promise<ChatMessage[]> {
   try {
     const data = await apiGet<ChatMessage[] | { messages?: ChatMessage[] }>(
-      `/api/ai/page-chats/${pageId}`,
+      `/api/ai/chats/page/${pageId}`,
     );
     return Array.isArray(data) ? data : (data.messages ?? []);
   } catch (err) {
@@ -379,7 +380,7 @@ export async function getPageChat(pageId: string, _options?: unknown): Promise<C
 }
 
 export async function clearPageChat(pageId: string): Promise<void> {
-  await apiDelete(`/api/ai/page-chats/${pageId}`);
+  await apiDelete(`/api/ai/chats/page/${pageId}`);
 }
 
 // ── Document RAG & Sources ────────────────────────────────────────────────────

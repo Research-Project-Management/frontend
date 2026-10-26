@@ -20,6 +20,7 @@ import {
 import {
   useAcademicFeedArticlesQuery,
   useFetchAcademicFeed,
+  useIngestMutation,
 } from '@/features/library/sdk/queries/ingestion.queries';
 import { useCreateLibraryItemMutation, useLibraryItemsQuery } from '@/features/library/sdk/queries/catalog.queries';
 import { useCollections } from '@/features/library/sdk/queries/collections.queries';
@@ -61,6 +62,7 @@ export function FeedViewContent({
   const searchParams = useSearchParams();
   const searchQuery = (searchParams.get('q') || '').trim();
   const { mutateAsync: createItem } = useCreateLibraryItemMutation(scopeId);
+  const { mutateAsync: ingestItem } = useIngestMutation(scopeId);
   const { collections = [] } = useCollections(scopeId);
   const collectionList: Collection[] = (collections as Collection[]) || [];
   
@@ -193,10 +195,21 @@ export function FeedViewContent({
     }
   }, [loadFeedEntries, refreshCounter]);
 
-  // Retention filter: filter out items older than activeFeed.retentionDays (if set and > 0)
+  // Per-user virtualized retention filter (cleanupUnreadAfter vs cleanupReadAfter)
   const retentionFilteredEntries = useMemo(
-    () => filterFeedEntriesByRetention(rawEntries, activeFeed?.retentionDays),
-    [rawEntries, activeFeed?.retentionDays],
+    () =>
+      filterFeedEntriesByRetention(rawEntries, activeFeed?.retentionDays, {
+        cleanupReadAfter: activeFeed?.cleanupReadAfter,
+        cleanupUnreadAfter: activeFeed?.cleanupUnreadAfter ?? activeFeed?.retentionDays,
+        readEntryIds,
+      }),
+    [
+      rawEntries,
+      activeFeed?.retentionDays,
+      activeFeed?.cleanupReadAfter,
+      activeFeed?.cleanupUnreadAfter,
+      readEntryIds,
+    ],
   );
 
   const filteredEntries = useMemo(
@@ -310,7 +323,39 @@ export function FeedViewContent({
         scopeId,
         collectionId: targetCollectionId,
       });
-      await createItem({ ...createPayload, silent: true });
+
+      // Safe 1-IP Academic Registry Enrichment:
+      // If the feed entry has a canonical DOI or arXiv ID, route through the identifier
+      // ingestion pipeline (Crossref / OpenAlex / Unpaywall / arXiv APIs — zero publisher scraping)
+      // while falling back to instant virtual creation if offline or non-identifier entry.
+      let savedViaPipeline = false;
+      if (entry.doi || entry.arxivId) {
+        try {
+          await ingestItem({
+            ...(entry.doi
+              ? { source: 'doi' as const, doi: entry.doi }
+              : { source: 'arxiv' as const, arxivId: entry.arxivId! }),
+            collectionId: targetCollectionId,
+            overrides: {
+              title: entry.title,
+              abstract: entry.abstract,
+              publicationTitle: entry.publicationTitle,
+              year: entry.year,
+              url: createPayload.url,
+              tags: entry.categories,
+              attachOaPdf: true,
+              saveSnapshot: false,
+            },
+          });
+          savedViaPipeline = true;
+        } catch {
+          savedViaPipeline = false;
+        }
+      }
+
+      if (!savedViaPipeline) {
+        await createItem({ ...createPayload, silent: true });
+      }
       markEntrySaved(entry.id);
 
       const colName = targetCollectionId

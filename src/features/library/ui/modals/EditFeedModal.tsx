@@ -25,7 +25,11 @@ import {
   editFeedSchema,
   type EditFeedFormValues,
 } from '@/features/library/domain/types/forms.types';
-import { RETENTION_OPTIONS } from '@/features/library/domain/types/feeds.types';
+import {
+  RETENTION_OPTIONS,
+  READ_RETENTION_OPTIONS,
+  type FeedRetentionDays,
+} from '@/features/library/domain/types/feeds.types';
 
 export interface EditFeedModalProps {
   open: boolean;
@@ -43,7 +47,9 @@ export function EditFeedModal({ open, onOpenChange, feed }: EditFeedModalProps) 
     defaultValues: {
       url: feed?.url || '',
       name: feed?.name || '',
-      retentionDays: (feed?.retentionDays as 0 | 7 | 14 | 30 | 90) ?? 30,
+      retentionDays: (feed?.cleanupUnreadAfter ?? feed?.retentionDays ?? 30) as FeedRetentionDays,
+      cleanupReadAfter: (feed?.cleanupReadAfter ?? 7) as FeedRetentionDays,
+      cleanupUnreadAfter: (feed?.cleanupUnreadAfter ?? feed?.retentionDays ?? 30) as FeedRetentionDays,
     },
     mode: 'onTouched',
   });
@@ -61,7 +67,9 @@ export function EditFeedModal({ open, onOpenChange, feed }: EditFeedModalProps) 
       reset({
         url: feed.url || '',
         name: feed.name || '',
-        retentionDays: (feed.retentionDays as 0 | 7 | 14 | 30 | 90) ?? 30,
+        retentionDays: (feed.cleanupUnreadAfter ?? feed.retentionDays ?? 30) as FeedRetentionDays,
+        cleanupReadAfter: (feed.cleanupReadAfter ?? 7) as FeedRetentionDays,
+        cleanupUnreadAfter: (feed.cleanupUnreadAfter ?? feed.retentionDays ?? 30) as FeedRetentionDays,
       });
       setIsSubmitting(false);
     }
@@ -78,6 +86,8 @@ export function EditFeedModal({ open, onOpenChange, feed }: EditFeedModalProps) 
           name: data.name.trim(),
           url: data.url.trim(),
           retentionDays: data.retentionDays,
+          cleanupReadAfter: data.cleanupReadAfter ?? 7,
+          cleanupUnreadAfter: data.retentionDays,
         },
       });
       toast.success(`Updated feed "${data.name.trim()}"`);
@@ -145,25 +155,41 @@ export function EditFeedModal({ open, onOpenChange, feed }: EditFeedModalProps) 
               {errors.name && <p className="text-11 text-destructive">{errors.name.message}</p>}
             </div>
 
-            {/* Retention Policy Field */}
-            <div className="space-y-1.5">
-              <Label htmlFor="edit-feed-retention" className="text-11 font-medium text-foreground">
-                Feed Retention (Clean older items)
-              </Label>
-              <select
-                id="edit-feed-retention"
-                {...register('retentionDays', { valueAsNumber: true })}
-                className="h-8 w-full text-13 rounded-md bg-background border border-border px-2 text-foreground focus-visible:outline-none focus-visible:border-primary cursor-pointer"
-              >
-                {RETENTION_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              {errors.retentionDays && (
-                <p className="text-11 text-destructive">{errors.retentionDays.message}</p>
-              )}
+            {/* Virtualized Retention Policy (Unread vs Read) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-feed-retention" className="text-11 font-medium text-foreground">
+                  Remove Unread Items
+                </Label>
+                <select
+                  id="edit-feed-retention"
+                  {...register('retentionDays', { valueAsNumber: true })}
+                  className="h-8 w-full text-12 rounded-md bg-background border border-border px-2 text-foreground focus-visible:outline-none focus-visible:border-primary cursor-pointer"
+                >
+                  {RETENTION_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-feed-read-retention" className="text-11 font-medium text-foreground">
+                  Remove Read Items
+                </Label>
+                <select
+                  id="edit-feed-read-retention"
+                  {...register('cleanupReadAfter', { valueAsNumber: true })}
+                  className="h-8 w-full text-12 rounded-md bg-background border border-border px-2 text-foreground focus-visible:outline-none focus-visible:border-primary cursor-pointer"
+                >
+                  {READ_RETENTION_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 

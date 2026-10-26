@@ -53,6 +53,8 @@ import {
   shouldUseRealtimePersistence,
   setActiveEditorEngine,
   getActiveEditorEngine,
+  registerEditorEngine,
+  unregisterEditorEngine,
   editorCommandBus,
   useSettingsStore,
   useConnectivityStore,
@@ -311,11 +313,31 @@ export function CodeMirrorView({
         const origin: 'local' | 'remote' = isRemote ? 'remote' : 'local';
 
         let hasStructuralChange = false;
-        update.changes.iterChanges((_fromA, _toA, _fromB, _toB, inserted) => {
+        update.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
           if (hasStructuralChange) return;
           if (inserted.length > 0) {
             const slice = inserted.sliceString(0, Math.min(inserted.length, 500));
-            if (slice.includes('\\')) {
+            if (
+              /\\(?:documentclass|input|include|subfile|import|bibliography|addbibresource)\b/.test(
+                slice
+              ) ||
+              slice.includes('{') ||
+              slice.includes('}')
+            ) {
+              hasStructuralChange = true;
+              return;
+            }
+          }
+          if (toA > fromA) {
+            const deletedSlice = update.startState.doc.sliceString(
+              fromA,
+              Math.min(toA, fromA + 500)
+            );
+            if (
+              deletedSlice.includes('\\') ||
+              deletedSlice.includes('{') ||
+              deletedSlice.includes('}')
+            ) {
               hasStructuralChange = true;
             }
           }
@@ -494,6 +516,7 @@ export function CodeMirrorView({
 
     const engineAdapter = new CodeMirrorEngineAdapter(view);
     adapterRef.current = engineAdapter;
+    registerEditorEngine(fileId, engineAdapter);
     if (isActiveRef.current) {
       setActiveEditorEngine(engineAdapter);
     }
@@ -575,6 +598,24 @@ export function CodeMirrorView({
         }
         if (yTextRef.current) {
           lruDocumentCache.updateContent(activeFileId, cmd.content, false);
+          const liveYText = yTextRef.current;
+          const currentYDocText = liveYText.toString();
+          const diff = findDiffRange(currentYDocText, cmd.content);
+          if (diff) {
+            const applyYjsDiff = () => {
+              if (diff.to > diff.from) {
+                liveYText.delete(diff.from, diff.to - diff.from);
+              }
+              if (diff.insert.length > 0) {
+                liveYText.insert(diff.from, diff.insert);
+              }
+            };
+            if (liveYText.doc) {
+              liveYText.doc.transact(applyYjsDiff, 'remote-content-updated');
+            } else {
+              applyYjsDiff();
+            }
+          }
           return;
         }
         const currentDoc = viewRef.current.state.doc.toString();
@@ -660,6 +701,7 @@ export function CodeMirrorView({
         flushViewState(viewRef.current, currentFileIdRef.current);
       }
       reviewCoordinator.unbindEditorView(view, currentFileIdRef.current);
+      unregisterEditorEngine(currentFileIdRef.current, engineAdapter);
       if (getActiveEditorEngine() === engineAdapter) {
         setActiveEditorEngine(null);
       }
@@ -692,6 +734,9 @@ export function CodeMirrorView({
     if (!isSameDoc) {
       flushViewState(view, prevFileId);
       reviewCoordinator.unbindEditorView(view, prevFileId);
+      if (adapterRef.current) {
+        unregisterEditorEngine(prevFileId, adapterRef.current);
+      }
     } else {
       const mainSel = view.state.selection.main;
       const scrollDOM = view.scrollDOM;
@@ -732,6 +777,7 @@ export function CodeMirrorView({
     // 7. Re-bind adapter view reference & active engine
     if (adapterRef.current) {
       adapterRef.current.setView(view);
+      registerEditorEngine(fileId, adapterRef.current);
       if (isActiveRef.current) {
         setActiveEditorEngine(adapterRef.current);
         navigationCoordinator.registerEditorView(fileId, filePath);
@@ -816,7 +862,10 @@ export function CodeMirrorView({
   return (
     <div
       ref={containerRef}
-      className={cn('h-full w-full overflow-hidden flex flex-col font-mono text-sm', className)}
+      className={cn(
+        'h-full w-full overflow-hidden flex flex-col font-mono text-sm manuscript-editor-view',
+        className
+      )}
     />
   );
 }

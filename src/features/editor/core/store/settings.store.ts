@@ -9,6 +9,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { CompilerEngine, CompileMode } from '@/features/editor/domain/types/compiler.types';
 import type { TrackChangesViewMode } from '@/features/editor/domain/types/suggestion.types';
+import { EDITOR_STORAGE_KEYS } from '@/features/editor/domain/constants/editor.constants';
 
 export type { CompilerEngine, CompileMode, TrackChangesViewMode };
 export type LayoutMode = 'split' | 'editor-only' | 'viewer-only';
@@ -286,7 +287,7 @@ export const useSettingsStore = create<DocumentSettingsState>()(
       setNotifyUpdates: (notifyUpdates) => set({ notifyUpdates }),
     }),
     {
-      name: 'flux-editor-settings',
+      name: EDITOR_STORAGE_KEYS.SETTINGS,
       version: 3,
       migrate: (persistedState: unknown, version: number) => {
         if (version < 3) {

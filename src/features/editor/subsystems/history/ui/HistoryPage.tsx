@@ -38,9 +38,21 @@ import { cn } from '@/shared/lib/utils';
 
 import { manuscriptService, historyService, historyKeys } from '@/features/editor/sdk/manuscript.service';
 import { exportVersionAsZip } from '@/features/editor/sdk/archive/archive-export';
-import { clearYjsProviderPool, updateActiveYjsDocContent } from '@/features/editor/sdk/realtime/yjs-socket-provider';
+import {
+  clearYjsProviderPool,
+  flushYjsProviders,
+  updateActiveYjsDocContent,
+} from '@/features/editor/sdk/realtime/yjs-socket-provider';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
-import { editorCommandBus, usePageStore, workspaceCoordinator, sessionCoordinator } from '@/features/editor/core';
+import {
+  editorCommandBus,
+  usePageStore,
+  workspaceCoordinator,
+  sessionCoordinator,
+  documentAuthority,
+  editorInvariantMonitor,
+} from '@/features/editor/core';
+import { useCompileStore } from '@/features/editor/subsystems/compiler';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { draftStorageService } from '@/features/editor/domain/document/draft-storage';
 import type {
@@ -240,8 +252,13 @@ export function HistoryPage({
   });
 
   const createSnapshotMutation = useMutation({
-    mutationFn: (summary: string) =>
-      historyService.createProjectSnapshot(effectiveProjectId, summary),
+    mutationFn: async (summary: string) => {
+      if (effectiveProjectId) {
+        flushYjsProviders(effectiveProjectId);
+      }
+      await sessionCoordinator.flushAllPending();
+      return await historyService.createProjectSnapshot(effectiveProjectId, summary);
+    },
     onSuccess: (newVersion) => {
       if (!newVersion) return;
       toast.success(`Created milestone snapshot v${newVersion.version}`, { id: 'history-snapshot' });
@@ -261,6 +278,7 @@ export function HistoryPage({
       return await historyService.restoreProjectVersion(effectiveProjectId, version);
     },
     onSuccess: (_, restoredVersion) => {
+      sessionCoordinator.resetSession();
       toast.success(`Project successfully restored to v${restoredVersion}`, { id: 'history-restore' });
       setConfirmingRestore(false);
       handleClose();
@@ -272,11 +290,14 @@ export function HistoryPage({
         void draftStorageService.clearDraft(m.fileId);
       }
       if (effectiveProjectId) {
+        documentAuthority.clearProjectCache(effectiveProjectId);
         void draftStorageService.clearProjectDrafts(effectiveProjectId);
       }
       draftStorageService.clearMemoryCaches();
       lruDocumentCache.clearAll();
+      useCompileStore.getState().clearAllDirty();
       clearYjsProviderPool();
+      editorInvariantMonitor.reconcileInvariants();
       queryClient.invalidateQueries({ queryKey: historyKeys.versions(effectiveProjectId) });
       queryClient.invalidateQueries({ queryKey: ['project-history-diff'] });
       queryClient.invalidateQueries({ queryKey: ['project-snapshot'] });
@@ -320,13 +341,28 @@ export function HistoryPage({
           : fileData.content ?? (fileData.lines ? fileData.lines.join('\n') : '');
 
       // 2. Resolve document ID for active file
-      let docId: string | undefined;
-      const currentPage = usePageStore.getState().currentPage;
-      if (
-        currentPage &&
-        (currentPage.title === activeFilePath || currentPage.id === activeFilePath)
-      ) {
-        docId = currentPage.id;
+      const activeFileDiff = diffData?.files?.find(
+        (f) =>
+          f.path === activeFilePath ||
+          f.path === `/${activeFilePath}` ||
+          f.path === activeFilePath.replace(/^\//, '')
+      );
+      const isFileDeleted = activeFileDiff?.status === 'deleted';
+      let docId: string | undefined =
+        !isFileDeleted && typeof fileData === 'object' && fileData !== null
+          ? (fileData as any).docId
+          : undefined;
+
+      if (!docId && !isFileDeleted) {
+        const currentPage = usePageStore.getState().currentPage;
+        if (
+          currentPage &&
+          (currentPage.title === activeFilePath ||
+            currentPage.id === activeFilePath ||
+            activeFilePath.endsWith(`/${currentPage.title}`))
+        ) {
+          docId = currentPage.id;
+        }
       }
       if (!docId) {
         const wsFiles = workspaceCoordinator.getProjectFiles() || [];
@@ -385,16 +421,23 @@ export function HistoryPage({
       toast.success(`File "${filePath}" restored from Version ${baseVersion}`, { id: `history-restore-${filePath}` });
       setConfirmingFileRestore(false);
       if (docId) {
-        lruDocumentCache.markClean(docId);
-        void draftStorageService.clearDraft(docId);
         lruDocumentCache.updateContent(docId, baseContent, false);
+        lruDocumentCache.markClean(docId);
+        useCompileStore.getState().clearDirty(docId);
+        void draftStorageService.clearDraft(docId);
+        const engine = documentAuthority.getEditorEngineForFile(docId);
+        if (engine) {
+          engine.setContent(baseContent);
+        }
       }
       const cachedByPath = lruDocumentCache.findByPath(filePath);
       if (cachedByPath && cachedByPath.fileId !== docId) {
-        lruDocumentCache.markClean(cachedByPath.fileId);
-        void draftStorageService.clearDraft(cachedByPath.fileId);
         lruDocumentCache.updateContent(cachedByPath.fileId, baseContent, false);
+        lruDocumentCache.markClean(cachedByPath.fileId);
+        useCompileStore.getState().clearDirty(cachedByPath.fileId);
+        void draftStorageService.clearDraft(cachedByPath.fileId);
       }
+      editorInvariantMonitor.reconcileInvariants();
       queryClient.invalidateQueries({ queryKey: historyKeys.versions(effectiveProjectId) });
       queryClient.invalidateQueries({ queryKey: ['project-history-diff'] });
       queryClient.invalidateQueries({ queryKey: ['project-snapshot'] });

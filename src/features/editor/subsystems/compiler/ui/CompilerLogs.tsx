@@ -264,7 +264,8 @@ export function CompilerLogs({
 
   // Listen for editor:suggest-fix command from editor CodeMirror gutter or tooltip
   useEffect(() => {
-    return editorCommandBus.subscribe('editor:suggest-fix', (cmd) => {
+    let scrollTimer: ReturnType<typeof setTimeout> | null = null;
+    const unsub = editorCommandBus.subscribe('editor:suggest-fix', (cmd) => {
       const { error } = cmd;
       setActiveTab('errors');
 
@@ -276,12 +277,17 @@ export function CompilerLogs({
 
       const targetIdx = idx !== -1 ? idx : parsed.errors.length > 0 ? 0 : -1;
       if (targetIdx !== -1) {
-        setTimeout(() => {
+        if (scrollTimer) clearTimeout(scrollTimer);
+        scrollTimer = setTimeout(() => {
           const el = document.getElementById(`log-entry-err-${targetIdx}`);
           el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }, 120);
       }
     });
+    return () => {
+      unsub();
+      if (scrollTimer) clearTimeout(scrollTimer);
+    };
   }, [parsed.errors]);
 
   const handleEntryClick = useCallback((entry: LogEntry) => {

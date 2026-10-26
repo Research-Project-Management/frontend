@@ -18,6 +18,8 @@ import {
   useWorkspaceStore,
   useDocumentCollaborationStore,
   useSettingsStore,
+  isMacPlatform,
+  isPrimaryModKey,
 } from '@/features/editor/core';
 import { gotoLine } from '@codemirror/search';
 import type { EditorView } from '@codemirror/view';
@@ -324,8 +326,7 @@ export class KeybindingCoordinatorRegistry {
   }
 
   private handleGlobalKeyDown(e: KeyboardEvent): void {
-    const isMac = typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
-    const mod = isMac ? e.metaKey : e.ctrlKey;
+    const mod = isPrimaryModKey(e);
     const shift = e.shiftKey;
     const alt = e.altKey;
     const keyLower = e.key.toLowerCase();

@@ -31,12 +31,14 @@ export function OfflineBanner() {
   // Sync UI state with browser online/offline events (sessionCoordinator handles flushing)
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
     const handleOnline = () => {
       recordOnline();
       setJustReconnected(true);
       toast.success('Connection restored. Syncing pending drafts...', { id: 'network-status' });
-      setTimeout(() => setJustReconnected(false), 3000);
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      reconnectTimer = setTimeout(() => setJustReconnected(false), 3000);
     };
 
     const handleOffline = () => {
@@ -48,21 +50,22 @@ export function OfflineBanner() {
     window.addEventListener('offline', handleOffline);
 
     // Initial check
-    if (!navigator.onLine && isOnline) {
+    if (!useConnectivityStore.getState().checkIsOnline() && isOnline) {
       recordOffline();
     }
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      if (reconnectTimer) clearTimeout(reconnectTimer);
     };
   }, [isOnline, recordOnline, recordOffline]);
 
   const handleRetryConnection = async () => {
     setIsChecking(true);
     try {
-      // Test connectivity by pinging an accessible endpoint
-      const isReachable = navigator.onLine;
+      // Test connectivity by checking online state
+      const isReachable = typeof navigator === 'undefined' || navigator.onLine;
       if (isReachable) {
         recordOnline();
         toast.success('Reconnected to server', { id: 'network-status' });

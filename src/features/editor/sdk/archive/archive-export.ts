@@ -17,6 +17,8 @@ import {
 import { resolveFileUrl } from '@/shared/lib/file-client';
 import { getAuthToken } from '@/shared/lib/api';
 import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
+import { ARXIV_ALLOWED_EXTENSIONS } from '@/features/editor/domain/constants/editor.constants';
+import { documentAuthority } from '@/features/editor/core';
 import { triggerFileDownload } from './document-download';
 
 export interface ArchiveExportOptions {
@@ -29,31 +31,6 @@ export interface ArchiveExportOptions {
 }
 
 export type ExportZipOptions = ArchiveExportOptions;
-
-const ARXIV_ALLOWED_EXTENSIONS = new Set([
-  'tex',
-  'ltx',
-  'sty',
-  'cls',
-  'bst',
-  'def',
-  'fd',
-  'cfg',
-  'bbx',
-  'cbx',
-  'bib',
-  'bbl',
-  'png',
-  'jpg',
-  'jpeg',
-  'pdf',
-  'eps',
-  'ps',
-  'svg',
-  'csv',
-  'dat',
-  'txt',
-]);
 
 function isArxivAllowed(filename: string): boolean {
   const clean = filename.trim().toLowerCase();
@@ -102,13 +79,16 @@ async function bundleAndDownloadZip({
 
     const filesMap = new Map<string, string>();
 
-    // 2. Filter & add child files to filesMap
+    // 2. Filter & add child files to filesMap (resolving live split-pane / LRU cache via documentAuthority)
     for (const f of childFiles) {
       const title = f.title.trim();
       if (!title) continue;
       if (isArxiv && !isArxivAllowed(title)) continue;
 
-      if (activeFileId === f.id && typeof currentContent === 'string') {
+      const authorityContent = f.id ? documentAuthority.getDocumentContent(f.id) : '';
+      if (authorityContent) {
+        filesMap.set(title, authorityContent);
+      } else if (activeFileId === f.id && typeof currentContent === 'string') {
         filesMap.set(title, currentContent);
       } else {
         const strContent = extractDocumentContentString(f.content);
@@ -131,10 +111,14 @@ async function bundleAndDownloadZip({
           ? rootPage.title
           : configuredMain;
 
+      const authorityRootContent = parentPageId
+        ? documentAuthority.getDocumentContent(parentPageId)
+        : '';
       const rootStr =
-        activeFileId === parentPageId && typeof currentContent === 'string'
+        authorityRootContent ||
+        (activeFileId === parentPageId && typeof currentContent === 'string'
           ? currentContent
-          : extractDocumentContentString(rootPage?.content) || currentContent || '';
+          : extractDocumentContentString(rootPage?.content) || currentContent || '');
 
       filesMap.set(rootTitle, rootStr);
     }

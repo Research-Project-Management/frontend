@@ -198,6 +198,68 @@ describe('Project Search & Replace (Overleaf Parity: Ctrl+Shift+F & Replace)', (
     expect(toast.success).toHaveBeenCalledWith(expect.stringContaining('active file'), expect.anything());
   });
 
+  it('handleReplaceAllEverywhere flushes pending sessions, reconciles split-pane engines, and evicts cache', async () => {
+    const { documentSearchService } = await import('@/features/editor/sdk/manuscript.service');
+    const { sessionCoordinator, documentAuthority, lruDocumentCache } = await import('@/features/editor/core');
+    const flushSpy = vi.spyOn(sessionCoordinator, 'flushAllPending').mockResolvedValue(undefined as any);
+    const batchReplaceSpy = vi.spyOn(documentSearchService, 'batchReplace').mockResolvedValue({
+      totalFilesAffected: 2,
+      totalOccurrencesReplaced: 3,
+      affectedFileIds: ['file-main', 'file-sec'],
+      failedFileIds: [],
+    } as any);
+
+    let secContent = 'Old text in sec';
+    const mockSecEngine: any = {
+      getContent: () => secContent,
+      setContent: (c: string) => {
+        secContent = c;
+      },
+    };
+    const getEngineSpy = vi.spyOn(documentAuthority, 'getEditorEngineForFile').mockImplementation((id: string) => {
+      if (id === 'file-sec') return mockSecEngine;
+      return null;
+    });
+    const evictSpy = vi.spyOn(lruDocumentCache, 'evictModel');
+
+    const queryClient = new QueryClient();
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+
+    const { result } = renderHook(
+      () =>
+        useProjectSearchActions({
+          engine: null,
+          effectiveQuery: 'Old',
+          replaceText: 'New',
+          useRegex: false,
+          wholeWord: false,
+          caseSensitive: false,
+          rootProjectId: 'proj-1',
+          rootPageId: 'page-1',
+          activeFileId: 'file-main',
+        }),
+      { wrapper }
+    );
+
+    await act(async () => {
+      await result.current.handleReplaceAllEverywhere();
+    });
+
+    expect(flushSpy).toHaveBeenCalled();
+    expect(batchReplaceSpy).toHaveBeenCalledWith('proj-1', 'Old', 'New', expect.anything());
+    // file-sec was mounted in split-pane -> content replaced directly
+    expect(secContent).toBe('New text in sec');
+    // file-main was not mounted in editor engine -> model evicted from cache
+    expect(evictSpy).toHaveBeenCalledWith('file-main');
+
+    flushSpy.mockRestore();
+    batchReplaceSpy.mockRestore();
+    getEngineSpy.mockRestore();
+    evictSpy.mockRestore();
+  });
+
   it('renders SearchTab header without close button (Overleaf parity)', () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
@@ -237,10 +299,10 @@ describe('Project Search & Replace (Overleaf Parity: Ctrl+Shift+F & Replace)', (
     expect(screen.getByRole('button', { name: 'Match Case' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Regular Expression' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Whole Word' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /toggle replace/i })).toBeInTheDocument();
 
     // Elements NOT in Overleaf Project Search sidebar
     expect(screen.queryByRole('button', { name: /find in selection/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /toggle replace/i })).not.toBeInTheDocument();
     expect(screen.queryByText('All project files')).not.toBeInTheDocument();
     expect(screen.queryByText('Current file')).not.toBeInTheDocument();
   });

@@ -27,6 +27,7 @@ import {
   usePageStore,
   useSearchStore,
   editorCommandBus,
+  documentAuthority,
 } from "@/features/editor/core";
 import { filesQuery } from "@/features/editor/ui/hooks/document.queries";
 import { useDebounce } from "@/shared/hooks/use-debounce";
@@ -176,9 +177,19 @@ export default function SearchTab() {
     enabled: !!rootPageId,
   });
 
-  // Assemble full searchable files list for client buffer sync
+  // Assemble full searchable files list for client buffer sync via centralized DocumentAuthority
   const searchableFiles = useMemo(() => {
-    const rawActive = getContent() || activeFilePage?.content || currentPage?.content || "";
+    const projectKey = rootProjectId || rootPageId;
+    if (projectFiles && projectFiles.length > 0 && projectKey) {
+      documentAuthority.hydrateServerProjectFiles(projectKey, projectFiles);
+    }
+
+    const rawActive =
+      getContent() ||
+      documentAuthority.getDocumentContent(activeFileId) ||
+      activeFilePage?.content ||
+      currentPage?.content ||
+      "";
     const activeContent = typeof rawActive === "string" ? rawActive : "";
 
     if (!projectFiles || projectFiles.length === 0) {
@@ -192,17 +203,17 @@ export default function SearchTab() {
       ];
     }
 
-    return projectFiles.map((file) => {
+    const overlayFiles = documentAuthority.getOverlayFiles(projectKey, projectFiles);
+    return overlayFiles.map((file) => {
       const isCurrent = file.id === activeFileId;
-      const fileContent = typeof file.content === "string" ? file.content : "";
       return {
         id: file.id,
         title: file.title || "untitled.tex",
-        content: isCurrent ? activeContent : fileContent,
+        content: isCurrent && activeContent ? activeContent : file.content,
         isCurrent,
       };
     });
-  }, [projectFiles, activeFileId, getContent, activeFilePage?.content, currentPage?.id, currentPage?.title, currentPage?.content]);
+  }, [projectFiles, rootProjectId, rootPageId, activeFileId, getContent, activeFilePage?.content, currentPage?.id, currentPage?.title, currentPage?.content]);
 
   // ─── BACKEND SEARCH QUERY ──────────────────────────────────────────────────
   const {
@@ -433,6 +444,22 @@ export default function SearchTab() {
             )}
           >
             W
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowReplace(!showReplace)}
+            title="Toggle Replace (Ctrl+H)"
+            aria-label="Toggle Replace"
+            aria-pressed={showReplace}
+            className={cn(
+              "ml-auto size-7 rounded-md text-xs font-medium transition-colors flex items-center justify-center cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-border relative after:absolute after:-inset-1.5 after:content-['']",
+              showReplace
+                ? "bg-muted text-foreground font-semibold"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted font-medium",
+            )}
+          >
+            <Replace className="size-3.5 shrink-0" strokeWidth={1.5} />
           </button>
         </div>
 

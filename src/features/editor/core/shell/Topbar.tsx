@@ -43,9 +43,11 @@ import EditMenu from './topbar/EditMenu';
 import InsertMenu from './topbar/InsertMenu';
 import ViewMenu from './topbar/ViewMenu';
 import FormatMenu from './topbar/FormatMenu';
+import HelpMenu from './topbar/HelpMenu';
 import LayoutSwitcher from './topbar/LayoutSwitcher';
 import ProjectTitleDropdown from './topbar/ProjectTitleDropdown';
 import CollaboratorAvatarStack from './topbar/CollaboratorAvatarStack';
+import { EditingModeDropdown } from './topbar/EditingModeDropdown';
 
 import { editorCommandBus, sessionCoordinator, useSettingsStore, usePageStore, useWorkspaceStore } from '@/features/editor/core';
 import { useCompileStore } from '@/features/editor/subsystems/compiler';
@@ -96,7 +98,7 @@ export function Topbar() {
   );
 
   const isPdfDetached = useWorkspaceStore((s) => s.isPdfDetached);
-  const hasDirtyFiles = useCompileStore((s) => s.dirtyContentMap.size > 0);
+  const hasDirtyFiles = useCompileStore((s) => s.dirtyFileIds.size > 0);
   const { updateTitle: updateTitleMutation } = usePageActions();
   const isSaving = hasDirtyFiles || updateTitleMutation.isPending;
 
@@ -191,6 +193,7 @@ export function Topbar() {
             <InsertMenu />
             <ViewMenu />
             <FormatMenu />
+            <HelpMenu />
           </Menubar>
         </div>
 
@@ -310,6 +313,9 @@ export function Topbar() {
 
           {/* Layout Switcher (Overleaf Parity: Top Right) */}
           <LayoutSwitcher />
+
+          {/* Editing Mode Dropdown (Overleaf Parity: Top Right) */}
+          <EditingModeDropdown />
 
           {/* Global Modals */}
           {isTemplateModalOpen && <TemplateGalleryModal />}

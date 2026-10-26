@@ -478,3 +478,176 @@ export function createLatexAutocompleteExtension() {
   });
 }
 
+// ── 7. Factory for Test & Subsystem Overrides ─────────────────────────────────
+
+export interface LatexBibEntryInput {
+  key?: string;
+  citationKey?: string;
+  title?: string;
+  author?: string;
+  year?: number | string;
+  [key: string]: unknown;
+}
+
+export interface LatexFileInput {
+  name: string;
+  path?: string;
+  type?: string;
+}
+
+export type FilesProvider = LatexFileInput[] | (() => LatexFileInput[]);
+
+export function createLatexCompletionSource(
+  bibEntries?: LatexBibEntryInput[],
+  filesProvider?: FilesProvider,
+) {
+  return (context: CompletionContext): CompletionResult | null => {
+    const docText = context.state.doc.toString();
+    const resolvedFiles: LatexFileInput[] =
+      typeof filesProvider === 'function' ? filesProvider() : (filesProvider || []);
+
+    // 1. Files & Images autocomplete if files provided
+    if (resolvedFiles.length > 0) {
+      const inputMatch = context.matchBefore(INPUT_MATCH_REGEX);
+      if (inputMatch) {
+        const lastBrace = inputMatch.text.lastIndexOf('{');
+        const from = inputMatch.from + lastBrace + 1;
+
+        const texFiles = resolvedFiles.filter((f) => {
+          const p = (f.path || f.name).toLowerCase();
+          return p.endsWith('.tex') || (!p.includes('.') && f.type !== 'image');
+        });
+
+        return {
+          from,
+          options: texFiles.map((file) => {
+            const p = file.path || file.name;
+            return {
+              label: p,
+              type: 'text',
+              detail: 'LaTeX File',
+              apply: p.replace(/\.tex$/, ''),
+              boost: 100,
+            };
+          }),
+          validFor: VALID_CLS_REGEX,
+        };
+      }
+
+      const imageMatch = context.matchBefore(IMAGE_MATCH_REGEX);
+      if (imageMatch) {
+        const lastBrace = imageMatch.text.lastIndexOf('{');
+        const from = imageMatch.from + lastBrace + 1;
+
+        const imgFiles = resolvedFiles.filter((f) => {
+          const p = (f.path || f.name).toLowerCase();
+          return /\.(png|jpe?g|pdf|eps|svg)$/i.test(p);
+        });
+
+        return {
+          from,
+          options: imgFiles.map((file) => {
+            const p = file.path || file.name;
+            return {
+              label: p,
+              type: 'file',
+              detail: 'Project Graphic',
+              apply: p,
+              boost: 110,
+            };
+          }),
+          validFor: VALID_CLS_REGEX,
+        };
+      }
+    }
+
+    // 2. Citations (provided bibEntries or inline \bibitem)
+    const citeMatch = context.matchBefore(CITE_MATCH_REGEX);
+    if (citeMatch) {
+      const lastDelim = Math.max(citeMatch.text.lastIndexOf('{'), citeMatch.text.lastIndexOf(','));
+      const textAfterDelim = citeMatch.text.slice(lastDelim + 1);
+      const leadingWs = textAfterDelim.match(/^\s*/)?.[0]?.length || 0;
+      const from = citeMatch.from + lastDelim + 1 + leadingWs;
+
+      const options: Completion[] = [];
+      const seen = new Set<string>();
+
+      if (bibEntries && bibEntries.length > 0) {
+        for (const b of bibEntries) {
+          const key = b.key || b.citationKey;
+          if (key && !seen.has(key)) {
+            seen.add(key);
+            options.push({
+              label: key,
+              type: 'constant',
+              detail: b.author ? String(b.author) : b.title ? String(b.title) : '[BIB]',
+              boost: 100,
+            });
+          }
+        }
+      }
+
+      // Inline \bibitem in document
+      const bibItemRegex = /\\bibitem(?:\[[^\]]*\])?\{([^}]+)\}/g;
+      let m: RegExpExecArray | null;
+      while ((m = bibItemRegex.exec(docText)) !== null) {
+        const key = m[1].trim();
+        if (key && !seen.has(key)) {
+          seen.add(key);
+          options.push({
+            label: key,
+            type: 'constant',
+            detail: 'Inline bibliography item',
+            boost: 90,
+          });
+        }
+      }
+
+      if (options.length > 0) {
+        return {
+          from,
+          options,
+          validFor: VALID_CITE_REGEX,
+        };
+      }
+    }
+
+    // 3. Document labels (\label{...})
+    const refMatch = context.matchBefore(REF_MATCH_REGEX);
+    if (refMatch) {
+      const lastDelim = Math.max(refMatch.text.lastIndexOf('{'), refMatch.text.lastIndexOf(','));
+      const textAfterDelim = refMatch.text.slice(lastDelim + 1);
+      const leadingWs = textAfterDelim.match(/^\s*/)?.[0]?.length || 0;
+      const from = refMatch.from + lastDelim + 1 + leadingWs;
+
+      const labelRegex = /\\label\{([^}]+)\}/g;
+      const options: Completion[] = [];
+      const seen = new Set<string>();
+      let m: RegExpExecArray | null;
+      while ((m = labelRegex.exec(docText)) !== null) {
+        const lbl = m[1].trim();
+        if (lbl && !seen.has(lbl)) {
+          seen.add(lbl);
+          options.push({
+            label: lbl,
+            type: 'variable',
+            detail: '[LABEL]',
+            boost: 100,
+          });
+        }
+      }
+
+      if (options.length > 0) {
+        return {
+          from,
+          options,
+          validFor: VALID_PKG_REGEX,
+        };
+      }
+    }
+
+    // 4. Default to core latexAutocompleteSource
+    return latexAutocompleteSource(context);
+  };
+}
+

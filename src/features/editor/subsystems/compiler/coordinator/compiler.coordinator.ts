@@ -29,12 +29,15 @@ import {
   editorCommandBus,
   workspaceCoordinator,
   sessionCoordinator,
+  documentAuthority,
   usePageStore,
   useSettingsStore,
   useConnectivityStore,
+  isNetworkError,
   getActiveEditorContent,
   getActiveEditorEngine,
   getEditorEngineForFile,
+  getAllRegisteredEngines,
   getActivePdfViewer,
 } from '@/features/editor/core';
 import { useCompileStore } from './compiler.store';
@@ -81,23 +84,62 @@ export class CompilationSnapshotProvider {
 
     const activeDoc = pageStore.getActiveDocument();
     const targetFileId = activeDoc?.id || options.rootFileId;
-    const targetEngine = targetFileId ? getEditorEngineForFile(targetFileId) : null;
-    const activeContent = options.activeContentOverride || targetEngine?.getContent?.() || (targetFileId === activeDoc?.id ? getActiveEditorContent() : null) || extractDocumentContentString(activeDoc?.content);
+    const targetEngine = targetFileId ? getEditorEngineForFile?.(targetFileId) : null;
+    const registeredCount = getAllRegisteredEngines?.()?.size ?? 0;
+    const fallbackActiveContent =
+      registeredCount === 0 && targetFileId === activeDoc?.id ? getActiveEditorContent() : null;
+    const activeContent =
+      options.activeContentOverride ||
+      targetEngine?.getContent?.() ||
+      fallbackActiveContent ||
+      (targetFileId ? lruDocumentCache.getContent(targetFileId) : undefined) ||
+      extractDocumentContentString(activeDoc?.content);
 
-    const baseFiles = options.projectFiles || workspaceCoordinator.getProjectFiles() || [];
+    const wsFiles = workspaceCoordinator.getProjectFiles();
+    const baseFiles =
+      options.projectFiles ||
+      (wsFiles && wsFiles.length > 0 ? wsFiles : documentAuthority.getOverlayFiles()) ||
+      [];
     const lruModels = lruDocumentCache.getAllModels();
     const dirtyFiles = compileStore.getDirtyFiles();
+    const filePathsById = buildPageStoreFilePaths(pageStore);
+
+    const liveEngineBuffers: Array<{ fileId: string; filePath: string; content: string }> = [];
+    const registeredEngines = getAllRegisteredEngines?.();
+    if (registeredEngines && registeredEngines.size > 0) {
+      for (const [fId, eng] of registeredEngines.entries()) {
+        if (!fId) continue;
+        const liveContent = eng?.getContent?.();
+        if (typeof liveContent === 'string') {
+          const model = lruDocumentCache.getModel(fId);
+          const wsFile = baseFiles.find((f) => f.id === fId);
+          const fPath =
+            model?.filePath ||
+            wsFile?.path ||
+            wsFile?.title ||
+            filePathsById[fId] ||
+            (fId === activeDoc?.id ? activeDoc?.path || activeDoc?.title : undefined) ||
+            fId;
+          liveEngineBuffers.push({
+            fileId: fId,
+            filePath: fPath,
+            content: liveContent,
+          });
+        }
+      }
+    }
 
     return assembleCompilationSnapshot({
       baseFiles,
       lruModels,
       dirtyFiles,
+      liveEngineBuffers,
       currentPage: pageStore.currentPage,
       activeDoc,
       activeContent,
       rootFileId: options.rootFileId,
       resolvedMainFile: options.resolvedMainFile,
-      filePathsById: buildPageStoreFilePaths(pageStore),
+      filePathsById,
     });
   }
 }
@@ -290,9 +332,7 @@ export class CompilerCoordinatorRegistry {
     }
 
     // 0. Guard against offline compilation: queue compile for reconnection and protect drafts
-    const isOnline =
-      useConnectivityStore.getState().isOnline &&
-      (typeof navigator === 'undefined' || navigator.onLine);
+    const isOnline = useConnectivityStore.getState().checkIsOnline();
 
     if (!isOnline) {
       useConnectivityStore.getState().setOfflinePendingCompile(true);
@@ -328,8 +368,15 @@ export class CompilerCoordinatorRegistry {
     this.compileAbortController = currentController;
     const effectiveActiveFileId = activeDoc?.id || rootPageId;
     const activeTitle = pageStore.getActiveDocumentTitle();
-    const activeEngine = effectiveActiveFileId ? getEditorEngineForFile(effectiveActiveFileId) : null;
-    const currentVal = activeEngine?.getContent?.() || (effectiveActiveFileId === activeDoc?.id ? getActiveEditorContent() : null) || extractDocumentContentString(activeDoc?.content);
+    const activeEngine = effectiveActiveFileId ? getEditorEngineForFile?.(effectiveActiveFileId) : null;
+    const registeredCount = getAllRegisteredEngines?.()?.size ?? 0;
+    const fallbackActiveContent =
+      registeredCount === 0 && effectiveActiveFileId === activeDoc?.id ? getActiveEditorContent() : null;
+    const currentVal =
+      activeEngine?.getContent?.() ||
+      fallbackActiveContent ||
+      (effectiveActiveFileId ? lruDocumentCache.getContent(effectiveActiveFileId) : undefined) ||
+      extractDocumentContentString(activeDoc?.content);
 
     // 2. Pre-compile atomic flush barrier: commit drafts, sync active buffer, trigger background save
     await CompilationFlushBarrier.execute(effectiveActiveFileId, currentVal);
@@ -338,7 +385,8 @@ export class CompilerCoordinatorRegistry {
     editorCommandBus.dispatch({ type: 'compiler:started' });
     compileStore.setCompileStatus('compiling');
 
-    // 4. Update LaTeX DAG with all active in-memory buffers
+    // 4. Update LaTeX DAG with all active in-memory buffers (including all mounted split-pane engines)
+    const allFilePathsById = buildPageStoreFilePaths(pageStore);
     const allModels = lruDocumentCache.getAllModels();
     for (const m of allModels) {
       latexDagEngine.updateFileNode(m.fileId, m.filePath || m.fileId, m.content);
@@ -347,6 +395,25 @@ export class CompilerCoordinatorRegistry {
       const cTitle = activeDoc.title || 'main.tex';
       const cContent = extractDocumentContentString(activeDoc.content);
       latexDagEngine.updateFileNode(activeDoc.id, cTitle, cContent);
+    }
+    const registeredEngines = getAllRegisteredEngines?.();
+    if (registeredEngines && registeredEngines.size > 0) {
+      const wsFiles = workspaceCoordinator.getProjectFiles() || [];
+      for (const [fId, eng] of registeredEngines.entries()) {
+        if (!fId) continue;
+        const liveText = eng?.getContent?.();
+        if (typeof liveText === 'string') {
+          const model = lruDocumentCache.getModel(fId);
+          const wsFile = wsFiles.find((f) => f.id === fId);
+          const fPath =
+            model?.filePath ||
+            wsFile?.path ||
+            wsFile?.title ||
+            allFilePathsById[fId] ||
+            (fId === effectiveActiveFileId ? activeTitle : fId);
+          latexDagEngine.updateFileNode(fId, fPath, liveText);
+        }
+      }
     }
     if (effectiveActiveFileId) {
       latexDagEngine.updateFileNode(effectiveActiveFileId, activeTitle, currentVal);
@@ -373,7 +440,6 @@ export class CompilerCoordinatorRegistry {
     if (resolvedMainFile && inferred.rootFileId) {
       diagnosticsCoordinator.registerAlias(resolvedMainFile, inferred.rootFileId);
     }
-    const allFilePathsById = buildPageStoreFilePaths(pageStore);
     for (const [fId, fPath] of Object.entries(allFilePathsById)) {
       if (fId && fPath) {
         diagnosticsCoordinator.registerAlias(fPath, fId);
@@ -450,12 +516,16 @@ export class CompilerCoordinatorRegistry {
 
         // Asynchronously update synctexMap when non-blocking parser resolves
         if (res.synctexPromise) {
-          res.synctexPromise.then((map: SyncTeXMap | null) => {
-            if (map) {
-              this.synctexMap = map;
-              editorCommandBus.dispatch({ type: 'synctex:map-updated', map });
-            }
-          });
+          res.synctexPromise
+            .then((map: SyncTeXMap | null) => {
+              if (map && !currentController.signal.aborted) {
+                this.synctexMap = map;
+                editorCommandBus.dispatch({ type: 'synctex:map-updated', map });
+              }
+            })
+            .catch(() => {
+              // Ignore SyncTeX decompression errors on superseded/aborted runs
+            });
         }
 
         const sanitizeDash = (s?: string) => (s ? s.replace(/[\u2014\u2013]/g, '-') : '');
@@ -553,11 +623,7 @@ export class CompilerCoordinatorRegistry {
         return false;
       }
     } catch (err) {
-      const isNetworkError =
-        (typeof navigator !== 'undefined' && !navigator.onLine) ||
-        (err instanceof Error && /network|fetch|failed to fetch|offline/i.test(err.message));
-
-      if (isNetworkError) {
+      if (isNetworkError(err)) {
         useConnectivityStore.getState().recordOffline();
         useConnectivityStore.getState().setOfflinePendingCompile(true);
         sessionCoordinator.flushPendingDrafts();

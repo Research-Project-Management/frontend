@@ -681,6 +681,63 @@ export {
   linkedFiles,
 };
 
+export const review = {
+  createCommentThread: async (
+    projectId: string,
+    docId: string,
+    payload: {
+      startLine?: number;
+      startCol?: number;
+      endLine?: number;
+      endCol?: number;
+      quote?: string;
+      content: string;
+      [key: string]: any;
+    },
+  ) => {
+    return await apiPost<any>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/comments`,
+      payload,
+    );
+  },
+
+  addCommentReply: async (
+    projectId: string,
+    docId: string,
+    threadId: string,
+    content: string,
+  ) => {
+    return await apiPost<any>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/comments/${threadId}/replies`,
+      { content },
+    );
+  },
+
+  resolveCommentThread: async (
+    projectId: string,
+    docId: string,
+    threadId: string,
+    resolved: boolean,
+  ) => {
+    return await apiPatch<any>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/comments/${threadId}`,
+      { resolved },
+    );
+  },
+
+  acceptChange: async (projectId: string, docId: string, changeId: string) => {
+    return await apiPost<any>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/suggestions/${changeId}/accept`,
+    );
+  },
+
+  rejectChange: async (projectId: string, docId: string, changeId: string) => {
+    return await apiPost<any>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/suggestions/${changeId}/reject`,
+    );
+  },
+};
+
 // ── Unified Manuscript Service Facade ─────────────────────────────────────────
 
 export const manuscriptService = {
@@ -689,6 +746,7 @@ export const manuscriptService = {
   synctex,
   comments,
   suggestions,
+  review,
   history,
   search,
   export: exportDocs,

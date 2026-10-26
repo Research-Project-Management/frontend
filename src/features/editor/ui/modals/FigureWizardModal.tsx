@@ -36,6 +36,7 @@ import { cn } from '@/shared/lib/utils';
 import { useEditorStorage } from '@/features/editor/ui/hooks/useStorage';
 import { resolveFileUrl } from '@/shared/lib/file-client';
 import { figureWizardSchema, type FigureWizardFormValues } from '@/features/editor/domain/types/forms.types';
+import { IMAGE_EXTENSIONS } from '@/features/editor/core';
 
 export interface FigureWizardModalProps {
   open: boolean;
@@ -43,8 +44,6 @@ export interface FigureWizardModalProps {
   parentPageId: string | null;
   onInsert: (latexCode: string) => void;
 }
-
-const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'pdf', 'svg', 'eps', 'webp', 'gif']);
 
 const WIDTH_PRESETS = [
   { id: '0.5\\linewidth', label: '50% (0.5\\linewidth)' },

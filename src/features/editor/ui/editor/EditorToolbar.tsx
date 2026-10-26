@@ -33,6 +33,7 @@ import {
   Search,
   Bookmark,
   MoreHorizontal,
+  Columns2,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { SourceVisualSwitcher } from './SourceVisualSwitcher';
@@ -45,7 +46,13 @@ import {
   DropdownMenuSeparator,
 } from '@/shared/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
-import { editorCommandBus, useSettingsStore } from '@/features/editor/core';
+import {
+  editorCommandBus,
+  useSettingsStore,
+  useDocumentCollaborationStore,
+  useWorkspaceStore,
+  getActiveEditorEngine,
+} from '@/features/editor/core';
 import { useContainerWidth } from './useContainerWidth';
 import { cn } from '@/shared/lib/utils';
 
@@ -100,7 +107,7 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
 
   const showUnderline = effectiveWidth >= 560;
   const showMath = effectiveWidth >= 600;
-  const showSymbol = effectiveWidth >= 640;
+  const showSymbol = effectiveWidth >= 580;
   const showLink = effectiveWidth >= 680;
   const showCrossRef = effectiveWidth >= 730;
   const showCitation = effectiveWidth >= 780;
@@ -108,7 +115,7 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
   const showTable = effectiveWidth >= 880;
   const showLists = effectiveWidth >= 940;
   const showCodeEnvs = effectiveWidth >= 1000;
-  const showComment = effectiveWidth >= 620;
+  const showComment = effectiveWidth >= 580;
 
   // ── History Handlers (Undo / Redo) ──
   const handleUndo = () => {
@@ -260,6 +267,23 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
   // ── Comment Handler ──
   const handleAddComment = React.useCallback(() => {
     if (readOnly) return;
+    const engine = getActiveEditorEngine();
+    const sel = engine?.getSelection?.();
+    const cursor = engine?.getCursorPosition?.();
+    const selectedText = engine?.getSelectedText?.() || '';
+
+    const selRec = sel as { fromLine?: number; startLine?: number; toLine?: number; endLine?: number } | null | undefined;
+    const startLine = selRec?.fromLine ?? selRec?.startLine ?? cursor?.line ?? 1;
+    const endLine = selRec?.toLine ?? selRec?.endLine ?? cursor?.line ?? 1;
+
+    useDocumentCollaborationStore.getState().setPendingComment({
+      startLine,
+      endLine,
+      selectedText,
+    });
+    useWorkspaceStore.getState().setActiveSidebarTab('review');
+    useWorkspaceStore.getState().setSidebarLeftOpen(true);
+
     editorCommandBus.dispatch({ type: 'review:create-comment' });
   }, [readOnly]);
 
@@ -824,6 +848,29 @@ export function EditorToolbar({ className, readOnly = false, onSplitRight }: Edi
 
         {/* Code / Visual Mode Switcher */}
         <SourceVisualSwitcher />
+
+        {onSplitRight && (
+          <>
+            <ToolbarSeparator />
+            <Tooltip delayDuration={300}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onSplitRight}
+                  className="size-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border focus-visible:bg-muted shrink-0"
+                  title="Split editor right"
+                  aria-label="Split editor right"
+                >
+                  <Columns2 className="size-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">
+                <span>Split editor right</span>
+              </TooltipContent>
+            </Tooltip>
+          </>
+        )}
       </div>
     </div>
   );

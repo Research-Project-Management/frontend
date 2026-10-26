@@ -86,7 +86,9 @@ export function usePageActions() {
         await sessionCoordinator.flushFile(pageId);
         return { id: pageId, content };
       }
-      return await manuscriptService.docs.updateContent(pageId, content);
+      const res = await manuscriptService.docs.updateContent(pageId, content);
+      lruDocumentCache.markClean(pageId);
+      return res;
     },
     onSuccess: (updated, variables) => {
       queryClient.invalidateQueries({ queryKey: pageKeys.detail(variables.pageId) });

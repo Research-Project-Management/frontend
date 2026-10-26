@@ -203,7 +203,8 @@ export function ModernWorkbenchLayout() {
       } else if (cmd.dialog === 'github-sync') {
         useSettingsStore.getState().openSettingsModal('github');
       } else if (cmd.dialog === 'project-settings') {
-        useSettingsStore.getState().openSettingsModal((cmd.payload?.tab as import('@/features/editor/core/store/settings.store').SettingsTab) || 'editor');
+        const targetTab = (cmd.payload?.tab || cmd.payload?.view || cmd.payload?.initialTab || 'editor') as import('@/features/editor/core/store/settings.store').SettingsTab;
+        useSettingsStore.getState().openSettingsModal(targetTab);
       }
     });
 

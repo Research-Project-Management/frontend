@@ -372,7 +372,7 @@ export const templates = {
     } else if (query?.offset !== undefined) {
       params.offset = String(query.offset);
     }
-    const res = await apiGet<ProjectTemplateItem[] | { templates?: ProjectTemplateItem[] }>(`${MANUSCRIPTS_API_BASE}/projects/templates`, { params });
+    const res = await apiGet<ProjectTemplateItem[] | { templates?: ProjectTemplateItem[] }>(`${MANUSCRIPTS_API_BASE}/templates`, { params });
     return Array.isArray(res) ? res : res?.templates || [];
   },
 
@@ -397,7 +397,7 @@ export const templates = {
   },
 
   scaffold: async (projectId: string, templateId: string): Promise<Record<string, unknown>> => {
-    return await apiPost<Record<string, unknown>>(`${MANUSCRIPTS_API_BASE}/templates/scaffold`, { projectId, templateId });
+    return await apiPost<Record<string, unknown>>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/templates/${templateId}/scaffold`, {});
   },
 };
 
@@ -595,6 +595,9 @@ export const linkedFiles = {
   },
 
   refreshAll: async (projectId?: string): Promise<{ refreshedCount: number }> => {
+    if (projectId) {
+      return await apiPost<{ refreshedCount: number }>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/linked-files/refresh-all`, {});
+    }
     return await apiPost<{ refreshedCount: number }>(`${MANUSCRIPTS_API_BASE}/linked-files/refresh-all`, { projectId });
   },
 };

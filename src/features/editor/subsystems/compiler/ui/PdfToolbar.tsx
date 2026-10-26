@@ -25,8 +25,10 @@ import {
   Link2Off,
   ExternalLink,
   Check,
+  ArrowLeft,
+  ArrowRight,
 } from 'lucide-react';
-import { editorCommandBus } from '@/features/editor/core';
+import { editorCommandBus, getActiveEditorEngine } from '@/features/editor/core';
 import {
   Tooltip,
   TooltipContent,
@@ -253,6 +255,52 @@ export const PdfToolbar = React.memo(function PdfToolbar({
 
       {/* 2. Right section (Overleaf Order): SyncTeX -> Pagination -> Zoom -> Search -> Viewer Options (•••) */}
       <div className="flex items-center gap-1 shrink-0 select-none">
+        {/* Symmetrical SyncTeX (Overleaf Parity: Backward & Forward) */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => {
+                editorCommandBus.dispatch({
+                  type: 'synctex:backward',
+                  page: pageNumber || 1,
+                });
+              }}
+              aria-label="Go to PDF location in code (Reverse Search)"
+              className="size-7 relative flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-border after:absolute after:-inset-1.5 after:content-['']"
+            >
+              <ArrowLeft className="size-3.5 shrink-0" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">
+            Go to PDF location in code (Reverse Search)
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={() => {
+                const engine = getActiveEditorEngine();
+                const cursor = engine?.getCursorPosition?.() || { line: 1, column: 1 };
+                editorCommandBus.dispatch({
+                  type: 'synctex:forward',
+                  line: cursor.line,
+                  column: cursor.column,
+                });
+              }}
+              aria-label="Go to code location in PDF (Forward Search)"
+              className="size-7 relative flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-border after:absolute after:-inset-1.5 after:content-['']"
+            >
+              <ArrowRight className="size-3.5 shrink-0" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">
+            Go to code location in PDF (Forward Search)
+          </TooltipContent>
+        </Tooltip>
+
         {/* 2.1 Synchronized Scrolling / SyncTeX Toggle */}
         {!isUltraCompact && onToggleSyncScroll && (
           <Tooltip>
@@ -332,6 +380,27 @@ export const PdfToolbar = React.memo(function PdfToolbar({
         )}
 
         {/* 2.5 Viewer Options Menu (•••): Centralizes secondary display modes & responsive fallbacks */}
+        {!isDetached && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => {
+                  editorCommandBus.dispatch({ type: 'preview:detach' });
+                }}
+                aria-label="Open PDF in separate window"
+                title="Open PDF in separate window"
+                className="size-7 relative flex items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-border after:absolute after:-inset-1.5 after:content-['']"
+              >
+                <ExternalLink className="size-3.5 shrink-0" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">
+              Open PDF in separate window
+            </TooltipContent>
+          </Tooltip>
+        )}
+
         <Popover open={isMenuOpen} onOpenChange={setIsMenuOpen}>
           <Tooltip open={isMenuOpen ? false : menuTooltipOpen} onOpenChange={setMenuTooltipOpen}>
             <TooltipTrigger asChild>

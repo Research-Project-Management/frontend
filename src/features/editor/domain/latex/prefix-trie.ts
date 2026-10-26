@@ -150,9 +150,12 @@ export class PrefixTrie<T> {
         }
       }
 
-      // Traverse children (in reverse insertion order so DFS explores forward)
-      for (const child of node.children.values()) {
-        stack.push(child);
+      // Traverse children in reverse insertion order so LIFO stack pops in forward insertion order
+      if (node.children.size > 0) {
+        const children = Array.from(node.children.values());
+        for (let i = children.length - 1; i >= 0; i--) {
+          stack.push(children[i]);
+        }
       }
     }
 

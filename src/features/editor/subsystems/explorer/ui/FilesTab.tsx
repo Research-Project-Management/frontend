@@ -36,7 +36,14 @@ import {
   usePageStore,
   useSettingsStore,
   useWorkspaceStore,
+  editorCommandBus,
+  workspaceCoordinator,
+  sessionCoordinator,
+  lruDocumentCache,
+  syncShallowUrlParams,
 } from '@/features/editor/core';
+import { latexDagEngine } from '@/features/editor/domain/latex/latex-dag-engine';
+import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 import type { AssetInfo } from '@/features/editor/domain/types/asset.types';
 import {
@@ -45,7 +52,6 @@ import {
   deletedFilesQuery,
 } from '@/features/editor/ui/hooks/document.queries';
 import { usePageActions } from '@/features/editor/ui/hooks/usePageActions';
-import { editorCommandBus, workspaceCoordinator, sessionCoordinator } from '@/features/editor/core';
 import type { EditorStorageItem as StorageItem } from '@/features/editor/domain/types/storage-item.types';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { type LinkedFileDto } from '@/features/editor/sdk/manuscript/types';
@@ -81,14 +87,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
   const searchParams = useSearchParams();
   const setSearchParams = useCallback(
     (newParams: Record<string, string>) => {
-      if (typeof window !== 'undefined') {
-        const url = new URL(window.location.href);
-        Object.entries(newParams).forEach(([k, v]) => {
-          if (!v) url.searchParams.delete(k);
-          else url.searchParams.set(k, v);
-        });
-        window.history.replaceState(window.history.state, '', url.pathname + url.search);
-      }
+      syncShallowUrlParams(newParams);
     },
     [],
   );
@@ -509,6 +508,13 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
     sessionCoordinator.evictDeletedFile(targetId);
     deletePageMutation.mutate(targetId, {
       onSuccess: () => {
+        const wsStore = useWorkspaceStore.getState();
+        if (wsStore.secondaryFileId === targetId) {
+          wsStore.setSecondaryFileId(null);
+        }
+        lruDocumentCache.evictModel(targetId);
+        latexDagEngine.removeFileNode(targetId);
+        latexSymbolsIndex.removeFile(targetId);
         navigationCoordinator.closeDocument(targetId);
         setFileToDelete(null);
       },

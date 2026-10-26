@@ -148,6 +148,29 @@ export class ErrorLensWidget extends WidgetType {
       fixBtn.onmousedown = (e) => e.stopPropagation();
       fixBtn.onclick = triggerFix;
       wrap.appendChild(fixBtn);
+
+      const askBtn = document.createElement('button');
+      askBtn.type = 'button';
+      askBtn.className = 'cm-error-lens-btn cm-error-lens-btn-ask';
+      askBtn.setAttribute('data-testid', 'error-lens-ask-btn');
+      askBtn.title = 'Ask AI about this error in sidebar';
+      askBtn.innerHTML = `<span>Ask AI</span>`;
+      const triggerAsk = (e: Event) => {
+        e.preventDefault();
+        e.stopPropagation();
+        editorCommandBus.dispatch({
+          type: 'editor:suggest-fix',
+          error: {
+            line: this.diagnostic.line,
+            file: this.diagnostic.file || this.filePath,
+            message: this.diagnostic.message,
+            context: this.diagnostic.context,
+          },
+        });
+      };
+      askBtn.onmousedown = (e) => e.stopPropagation();
+      askBtn.onclick = triggerAsk;
+      wrap.appendChild(askBtn);
     }
 
     return wrap;

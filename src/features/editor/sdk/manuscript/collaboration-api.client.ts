@@ -154,11 +154,16 @@ export const suggestions = {
 
   createSuggestion: async (payload: CreateSuggestionPayload): Promise<PageSuggestion> => {
     const { pageId, idempotencyKey, ...body } = payload;
-    const data = await apiPost<{ suggestion: PageSuggestion }>(
-      `${MANUSCRIPTS_API_BASE}/docs/${pageId}/suggestions`,
-      body,
-      idempotencyKey ? { idempotencyKey } : undefined,
-    );
+    const data = idempotencyKey
+      ? await apiPost<{ suggestion: PageSuggestion }>(
+          `${MANUSCRIPTS_API_BASE}/docs/${pageId}/suggestions`,
+          body,
+          { idempotencyKey },
+        )
+      : await apiPost<{ suggestion: PageSuggestion }>(
+          `${MANUSCRIPTS_API_BASE}/docs/${pageId}/suggestions`,
+          body,
+        );
     return data.suggestion;
   },
 

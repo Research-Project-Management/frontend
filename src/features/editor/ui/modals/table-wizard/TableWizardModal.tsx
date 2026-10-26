@@ -31,7 +31,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { apiPost } from '@/shared/lib/api';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import {
   Dialog,
   DialogContent,
@@ -132,24 +132,7 @@ export function TableWizardModal({
     if (!aiPrompt.trim() || isAiGenerating) return;
     setIsAiGenerating(true);
     try {
-      const systemPrompt = `You are an expert academic LaTeX assistant. Generate a clean LaTeX tabular or TSV table according to the user request.
-Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and ending with \\end{tabular} or TSV data with tabs and newlines. Do not wrap in markdown quotes or add conversational preamble.`;
-
-      const json = await apiPost<{
-        data?: { content?: string; message?: string };
-        content?: string;
-        message?: string;
-      } | null>('/ai/chat/sync', {
-        query: `Create an academic table based on: ${aiPrompt}`,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: aiPrompt },
-        ],
-        model: 'fast',
-      });
-
-      const rawText = json?.data?.content || json?.data?.message || json?.content || json?.message || '';
-      const clean = rawText.replace(/```latex\n?|```tsv\n?|```\n?/g, '').trim();
+      const clean = await manuscriptService.ai.generateLatexTable(aiPrompt);
 
       const imported = importRawText(clean);
       if (imported) {

@@ -34,8 +34,7 @@ import {
   MenubarShortcut,
 } from '@/shared/components/ui/menubar';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
-import { useSettingsStore } from '@/features/editor/core';
-import { editorCommandBus } from '@/features/editor/core';
+import { useSettingsStore, editorCommandBus, isMacPlatform } from '@/features/editor/core';
 import type { LatexFormatType } from '@/features/editor/domain/types/ports/editor-engine.port';
 
 export function FormatMenu({ value = 'format' }: { value?: string } = {}) {
@@ -43,10 +42,7 @@ export function FormatMenu({ value = 'format' }: { value?: string } = {}) {
   const editorMode = useSettingsStore((s) => s.editorMode);
 
   // Platform-aware modifier label
-  const isMac = useMemo(
-    () => typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform),
-    [],
-  );
+  const isMac = useMemo(() => isMacPlatform(), []);
   const modLabel = isMac ? '⌘' : 'Ctrl ';
 
   const handleFormat = useCallback(

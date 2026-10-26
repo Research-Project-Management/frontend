@@ -52,6 +52,7 @@ export function useFileUpload({
 
   const combinedUploadRef = useRef<HTMLInputElement>(null);
   const folderUploadRef = useRef<HTMLInputElement>(null);
+  const targetFolderIdRef = useRef<string | null>(null);
   const dragCounterRef = useRef(0);
 
   const [uploadingCount, setUploadingCount] = useState(0);
@@ -119,7 +120,13 @@ export function useFileUpload({
   const handleFilePicked = (e: React.ChangeEvent<HTMLInputElement>) => {
     const picked = Array.from(e.target.files ?? []);
     e.target.value = '';
+    const targetFolderId = targetFolderIdRef.current;
+    targetFolderIdRef.current = null;
     if (!picked.length) return;
+    if (targetFolderId) {
+      handleUploadToFolder(picked, targetFolderId);
+      return;
+    }
     setPendingUploads(markDuplicates(picked.map((f) => ({ file: f, name: f.name }))));
     setUploadDialogOpen(true);
   };
@@ -201,6 +208,11 @@ export function useFileUpload({
   const handleUploadToFolder = useCallback(
     (droppedFiles: File[], folderId: string) => {
       if (!parentPageId) return;
+      if (droppedFiles.length === 0) {
+        targetFolderIdRef.current = folderId;
+        combinedUploadRef.current?.click();
+        return;
+      }
       const tabProjectId = extractProjectId(parentPage) || projectId || '';
       setUploadingCount((prev) => prev + droppedFiles.length);
 
@@ -337,6 +349,12 @@ export function useFileUpload({
                 content,
               });
               lruDocumentCache.updateContent(existingPage.id, content, false);
+              lruDocumentCache.markClean(existingPage.id);
+              editorCommandBus.dispatch({
+                type: 'editor:set-content',
+                fileId: existingPage.id,
+                content,
+              });
               editorCommandBus.dispatch({
                 type: 'document:content-updated',
                 docId: existingPage.id,
@@ -457,6 +475,12 @@ export function useFileUpload({
                       content,
                     });
                     lruDocumentCache.updateContent(existingPage.id, content, false);
+                    lruDocumentCache.markClean(existingPage.id);
+                    editorCommandBus.dispatch({
+                      type: 'editor:set-content',
+                      fileId: existingPage.id,
+                      content,
+                    });
                     editorCommandBus.dispatch({
                       type: 'document:content-updated',
                       docId: existingPage.id,

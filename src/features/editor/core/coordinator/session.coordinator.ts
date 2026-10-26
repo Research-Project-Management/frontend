@@ -36,8 +36,11 @@ import {
   usePageStore,
   useSettingsStore,
   useConnectivityStore,
+  isNetworkError,
   editorCommandBus,
   getActiveEditorEngine,
+  getEditorEngineForFile,
+  getAllRegisteredEngines,
   getActiveEditorContent,
 } from '@/features/editor/core';
 import { visibilityCoordinator } from './visibility.coordinator';
@@ -259,6 +262,7 @@ export class SessionCoordinatorRegistry {
       // Preserve the local version as a recoverable draft before replacing it.
       this.draftRecovery.flushDraftNow(fileId, conflict.localContent, lruDocumentCache.getModel(fileId)?.projectId);
       lruDocumentCache.updateContent(fileId, conflict.remoteContent, false);
+      lruDocumentCache.markClean(fileId);
       useCompileStore.getState().clearDirty(fileId);
       this.reindex(fileId, conflict.remoteContent);
       editorCommandBus.dispatch({ type: 'editor:set-content', content: conflict.remoteContent, fileId });
@@ -330,6 +334,7 @@ export class SessionCoordinatorRegistry {
   public async handleOnline(): Promise<void> {
     useConnectivityStore.getState().recordOnline();
     await this.flushAllPending();
+    await this.replayPendingMutations();
     if (useConnectivityStore.getState().offlinePendingCompile) {
       useConnectivityStore.getState().setOfflinePendingCompile(false);
       editorCommandBus.dispatch({ type: 'compiler:trigger' });
@@ -368,6 +373,8 @@ export class SessionCoordinatorRegistry {
     const model = lruDocumentCache.getModel(fileId);
     if (!model?.isDirty) {
       lruDocumentCache.updateContent(fileId, remoteContent, false);
+      lruDocumentCache.markClean(fileId);
+      useCompileStore.getState().clearDirty(fileId);
       const v = lruDocumentCache.getContentVersion(fileId) || 0;
       this.transitionFsm(fileId, { type: 'REMOTE_EDIT', version: v });
       this.reindex(fileId, remoteContent);
@@ -513,11 +520,10 @@ export class SessionCoordinatorRegistry {
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        const res = await this.persistenceAdapter.updateContent(
-          fileId,
-          sentContent,
-          expectedRev !== undefined ? { expectedRev } : undefined
-        );
+        const res =
+          expectedRev !== undefined
+            ? await this.persistenceAdapter.updateContent(fileId, sentContent, { expectedRev })
+            : await this.persistenceAdapter.updateContent(fileId, sentContent);
         if (res && typeof res === 'object') {
           const r = res as { rev?: number; updatedAt?: string };
           if (r.rev !== undefined || r.updatedAt !== undefined) {
@@ -558,6 +564,17 @@ export class SessionCoordinatorRegistry {
     if (isConflict) {
       this.transitionFsm(fileId, { type: 'CONFLICT_DETECTED' });
       const details = (err as { details?: Record<string, unknown> })?.details;
+      const remoteRev =
+        typeof details?.rev === 'number'
+          ? details.rev
+          : typeof details?.version === 'number'
+            ? details.version
+            : typeof details?.remoteRev === 'number'
+              ? details.remoteRev
+              : undefined;
+      if (remoteRev !== undefined) {
+        lruDocumentCache.updateServerVersion(fileId, { rev: remoteRev });
+      }
       const remoteContent =
         typeof details?.remoteContent === 'string'
           ? details.remoteContent
@@ -571,10 +588,7 @@ export class SessionCoordinatorRegistry {
     }
 
     this.transitionFsm(fileId, { type: 'SAVE_FAILURE', error: err });
-    const isNetworkError =
-      (typeof navigator !== 'undefined' && !navigator.onLine) ||
-      (err instanceof Error && /network|fetch|failed to fetch|offline/i.test(err.message));
-    if (isNetworkError && model) {
+    if (isNetworkError(err) && model) {
       useConnectivityStore.getState().recordOffline();
       this.draftRecovery.persistOfflineDraft(model.projectId, fileId, model.content, model.filePath);
     } else {
@@ -623,12 +637,23 @@ export class SessionCoordinatorRegistry {
       return true;
     }
 
-    const isOnline =
-      useConnectivityStore.getState().isOnline &&
-      (typeof navigator === 'undefined' || navigator.onLine);
+    const isOnline = useConnectivityStore.getState().checkIsOnline();
     if (!isOnline) {
       useConnectivityStore.getState().setSyncStatus('offline');
       this.draftRecovery.persistOfflineDraft(model.projectId, fileId, model.content, model.filePath);
+      void draftStorageService.enqueueMutation({
+        fileId,
+        projectId: model.projectId,
+        type: 'update_content',
+        payload: { content: model.content },
+      });
+      void draftStorageService.saveProjectFileSnapshot({
+        id: fileId,
+        projectId: model.projectId || '',
+        title: model.filePath || fileId,
+        content: model.content,
+        updatedAt: Date.now(),
+      });
       return false;
     }
 
@@ -671,9 +696,7 @@ export class SessionCoordinatorRegistry {
     this.flushPendingDrafts();
 
     const dirtyModels = lruDocumentCache.getDirtyModels();
-    const isOnline =
-      useConnectivityStore.getState().isOnline &&
-      (typeof navigator === 'undefined' || navigator.onLine);
+    const isOnline = useConnectivityStore.getState().checkIsOnline();
 
     if (!isOnline) {
       useConnectivityStore.getState().setSyncStatus('offline');
@@ -710,6 +733,42 @@ export class SessionCoordinatorRegistry {
     return { total: dirtyModels.length, succeeded, failed, results };
   }
 
+  public async replayPendingMutations(): Promise<{ total: number; succeeded: number; failed: number }> {
+    const pending = await draftStorageService.getPendingMutations();
+    let succeeded = 0;
+    let failed = 0;
+
+    for (const mut of pending) {
+      if (mut.type === 'update_content' && mut.payload.content !== undefined) {
+        try {
+          if (this.persistenceAdapter?.updateContent) {
+            await this.persistenceAdapter.updateContent(mut.fileId, mut.payload.content as string);
+          } else {
+            await manuscriptService.docs.updateContent(mut.fileId, mut.payload.content as string);
+          }
+          if (mut.id) {
+            await draftStorageService.removeMutation(mut.id);
+          }
+          await draftStorageService.clearDraft(mut.fileId);
+          succeeded++;
+        } catch (err) {
+          const errMsg = err instanceof Error ? err.message : String(err);
+          if (mut.id) {
+            await draftStorageService.updateMutationStatus(mut.id, 'failed', errMsg);
+          }
+          failed++;
+        }
+      }
+    }
+
+    if (succeeded > 0 && failed === 0) {
+      useConnectivityStore.getState().setSyncStatus('synced');
+      useConnectivityStore.getState().setLastSavedAt(new Date());
+    }
+
+    return { total: pending.length, succeeded, failed };
+  }
+
   public flushPendingDrafts(): void {
     this.draftRecovery.flushPendingDrafts();
   }
@@ -738,13 +797,16 @@ export class SessionCoordinatorRegistry {
 
   public switchTab(fromFileId: string | null, toFileId: string): void {
     if (fromFileId && fromFileId !== toFileId) {
-      // Synchronize uncommitted active editor keystrokes into outgoing LRU model before deactivating
-      const activeEngine = getActiveEditorEngine();
-      const activeContent = activeEngine?.getContent();
+      // Synchronize uncommitted editor keystrokes for the specific outgoing fileId (Split-Pane safe)
+      const registeredCount = getAllRegisteredEngines?.()?.size ?? 0;
+      const fromEngine =
+        getEditorEngineForFile?.(fromFileId) ??
+        (registeredCount === 0 ? getActiveEditorEngine() : null);
+      const fromContent = fromEngine?.getContent();
       const fromModel = lruDocumentCache.getModel(fromFileId);
-      if (activeContent !== undefined && fromModel && fromModel.content !== activeContent) {
-        lruDocumentCache.updateContent(fromFileId, activeContent, true);
-        useCompileStore.getState().markDirty(fromFileId, activeContent);
+      if (fromContent !== undefined && fromModel && fromModel.content !== fromContent) {
+        lruDocumentCache.updateContent(fromFileId, fromContent, true);
+        useCompileStore.getState().markDirty(fromFileId, fromContent);
       }
 
       this.transitionFsm(fromFileId, { type: 'DEACTIVATE' });
@@ -771,7 +833,10 @@ export class SessionCoordinatorRegistry {
     }
     this.transitionFsm(fileId, { type: 'EVICT' });
     this.fsmContexts.delete(fileId);
+    lruDocumentCache.markClean(fileId);
     lruDocumentCache.evictModel(fileId);
+    useCompileStore.getState().clearDirty(fileId);
+    this.clearDraftSnapshot(fileId);
     this.lastCompiledContentMap.delete(fileId);
     this.realtimeConnected.delete(fileId);
     this.draftRecovery.evictFile(fileId);
@@ -779,6 +844,11 @@ export class SessionCoordinatorRegistry {
 
   public closeTab(fileId: string): void {
     this.transitionFsm(fileId, { type: 'EVICT' });
+    const model = lruDocumentCache.getModel(fileId);
+    if (model?.isDirty) {
+      this.saveDraftSnapshot(fileId, model.content, model.projectId);
+      this.flushPendingDrafts();
+    }
     void this.flushFile(fileId);
     lruDocumentCache.evictModel(fileId);
     this.lastCompiledContentMap.delete(fileId);
@@ -802,6 +872,7 @@ export class SessionCoordinatorRegistry {
     this.fsmContexts.clear();
     this.lastCompiledContentMap.clear();
     this.realtimeConnected.clear();
+    this.draftRecovery.clearAll();
   }
 
   private scheduleAutoSave(fileId: string, delayMs: number): void {

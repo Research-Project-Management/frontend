@@ -11,8 +11,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { integrationService } from '@/features/settings/services/integration.service';
 import { pageKeys } from '@/features/editor/ui/hooks/document.queries';
-import { editorCommandBus, sessionCoordinator } from '@/features/editor/core';
+import {
+  editorCommandBus,
+  sessionCoordinator,
+  documentAuthority,
+  editorInvariantMonitor,
+  getAllRegisteredEngines,
+} from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/subsystems/explorer';
+import { useCompileStore } from '@/features/editor/subsystems/compiler';
 import { clearYjsProviderPool, flushYjsProviders } from '@/features/editor/sdk/realtime/yjs-socket-provider';
 import { draftStorageService } from '@/features/editor/domain/document/draft-storage';
 
@@ -114,6 +121,18 @@ export function useGithubSync({
       branch: string;
     }) => {
       if (!projectId) throw new Error('Project ID is required');
+      const engines = getAllRegisteredEngines?.();
+      if (engines) {
+        for (const [fId, eng] of engines.entries()) {
+          const liveContent = eng?.getContent?.();
+          if (fId && typeof liveContent === 'string') {
+            const model = lruDocumentCache.getModel(fId);
+            if (model && model.content !== liveContent) {
+              lruDocumentCache.updateContent(fId, liveContent, true);
+            }
+          }
+        }
+      }
       flushYjsProviders(projectId);
       await sessionCoordinator.flushAllPending();
       return await integrationService.pushProjectGithub({
@@ -134,6 +153,7 @@ export function useGithubSync({
   const pullMutation = useMutation({
     mutationFn: async ({ branch }: { branch: string }) => {
       if (!projectId) throw new Error('Project ID is required');
+      sessionCoordinator.resetSession();
       return await integrationService.pullProjectGithub({
         projectId,
         branch,
@@ -142,11 +162,15 @@ export function useGithubSync({
     onSuccess: async (data) => {
       toast.success(`Pulled ${data.filesImported} files from GitHub!`, { id: 'github-pull' });
       linkQuery.refetch();
+      sessionCoordinator.resetSession();
       lruDocumentCache.discardAll();
+      useCompileStore.getState().clearAllDirty();
       clearYjsProviderPool();
       if (projectId) {
+        documentAuthority.clearProjectCache(projectId);
         await draftStorageService.clearProjectDrafts(projectId);
       }
+      editorInvariantMonitor.reconcileInvariants();
       queryClient.invalidateQueries({ queryKey: pageKeys.all });
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
       queryClient.invalidateQueries({ queryKey: ['projects'] });

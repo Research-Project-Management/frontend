@@ -3,7 +3,12 @@
 import { useState, useEffect, useMemo, useCallback, useRef, useDeferredValue } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { usePageStore, editorCommandBus, workspaceCoordinator } from '@/features/editor/core';
+import {
+  usePageStore,
+  editorCommandBus,
+  workspaceCoordinator,
+  documentAuthority,
+} from '@/features/editor/core';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
 import { useEditorCitations } from '@/features/editor/subsystems/citation/ui/hooks/useCitation';
 import { toast } from 'sonner';
@@ -148,8 +153,10 @@ export function useCitationTabState() {
     const registerCandidate = (id: string, fileName: string, rawContent: unknown) => {
       const normalizedName = fileName.trim();
       if (!normalizedName.toLowerCase().endsWith('.bib')) return;
+      const liveContent = id ? documentAuthority.getDocumentContent(id) : '';
       const cached = id ? lruDocumentCache.get(id) : undefined;
-      const resolvedContent = cached?.content ?? extractDocumentContentString(rawContent);
+      const resolvedContent =
+        liveContent || cached?.content || extractDocumentContentString(rawContent);
       if (!resolvedContent) return;
       const dedupeKey = id || normalizedName.toLowerCase();
       candidateMap.set(dedupeKey, {

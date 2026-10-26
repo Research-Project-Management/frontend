@@ -22,7 +22,6 @@ import type { PageSuggestion } from '@/features/editor/domain/types/suggestion.t
 import { CommentCard } from './ReviewComments';
 import { SuggestionCard } from './ReviewSuggestions';
 import { EmptyReviewState } from './ReviewNav';
-import { reviewCoordinator } from '@/features/editor/subsystems/review/coordinator/review.coordinator';
 
 // ── Overview File Group ─────────────────────────────────────────────────────
 
@@ -116,11 +115,9 @@ export const OverviewFileGroup = React.memo(function OverviewFileGroup({
             pageId={file.id}
             onNavigate={(line) => onNavigateToFile(file.id, line)}
             onAccept={(suggId) => {
-              reviewCoordinator.applySuggestionByIdLocally(suggId, 'accept');
               acceptMutation.mutate({ pageId: file.id, suggestionId: suggId });
             }}
             onReject={(suggId) => {
-              reviewCoordinator.applySuggestionByIdLocally(suggId, 'reject');
               rejectMutation.mutate({ pageId: file.id, suggestionId: suggId });
             }}
             isAccepting={acceptMutation.isPending}

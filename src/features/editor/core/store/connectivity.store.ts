@@ -26,15 +26,29 @@ export interface ConnectivityState {
   incrementPending: () => void;
   decrementPending: () => void;
   setPendingSaveCount: (count: number) => void;
+  checkIsOnline: () => boolean;
 }
 
-export const useConnectivityStore = create<ConnectivityState>((set) => ({
+/**
+ * Centralized network error detector for fetch/XHR/offline errors.
+ */
+export function isNetworkError(err: unknown): boolean {
+  return (
+    (typeof navigator !== 'undefined' && !navigator.onLine) ||
+    (err instanceof Error && /network|fetch|failed to fetch|offline/i.test(err.message))
+  );
+}
+
+export const useConnectivityStore = create<ConnectivityState>((set, get) => ({
   isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
   syncStatus: 'synced',
   lastSavedAt: null,
   offlineSince: null,
   pendingSaveCount: 0,
   offlinePendingCompile: false,
+
+  checkIsOnline: () =>
+    get().isOnline && (typeof navigator === 'undefined' || navigator.onLine),
 
   setIsOnline: (isOnline) =>
     set((s) => ({

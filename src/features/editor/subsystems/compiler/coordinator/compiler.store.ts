@@ -58,8 +58,19 @@ export const useCompileStore = create<DocumentCompilerState>()((set, get) => ({
   },
 
   markDirty(fileId, content) {
+    const state = get();
+    if (state.dirtyFileIds.has(fileId)) {
+      // Fast-path during 120fps typing: file is already marked dirty in dirtyFileIds.
+      // Update dirtyContentMap in-place without cloning Set/Map or triggering Zustand set() notifications
+      // so reactive UI subscribers (Topbar, EditorPane) do not re-render on every single keystroke.
+      if (state.dirtyContentMap.get(fileId) !== content) {
+        state.dirtyContentMap.set(fileId, content);
+      }
+      return;
+    }
     set((s) => {
-      if (s.dirtyFileIds.has(fileId) && s.dirtyContentMap.get(fileId) === content) {
+      if (s.dirtyFileIds.has(fileId)) {
+        s.dirtyContentMap.set(fileId, content);
         return s;
       }
       const nextDirtyFileIds = new Set(s.dirtyFileIds);

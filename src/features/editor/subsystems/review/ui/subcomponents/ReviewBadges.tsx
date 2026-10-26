@@ -56,6 +56,8 @@ export function OverleafReviewIcon({
   );
 }
 
+export const OverleafReviewSolidIcon = OverleafReviewIcon;
+
 export function OverleafResolvedCommentsIcon({
   className = 'size-4',
   ...props

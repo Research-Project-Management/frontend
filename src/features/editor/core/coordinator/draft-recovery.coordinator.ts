@@ -129,13 +129,20 @@ export class DraftRecoveryCoordinator {
     filePath?: string
   ): void {
     this.saveDraftSnapshot(fileId, content, projectId);
+    const effectiveProjectId = this.resolveEffectiveProjectId(projectId);
     void draftStorageService.saveProjectFileSnapshot({
       id: fileId,
-      projectId: this.resolveEffectiveProjectId(projectId),
+      projectId: effectiveProjectId,
       title: filePath || fileId,
       content,
       filePath,
       updatedAt: Date.now(),
+    });
+    void draftStorageService.enqueueMutation({
+      fileId,
+      projectId: effectiveProjectId,
+      type: 'update_content',
+      payload: { content, filePath },
     });
   }
 
@@ -233,5 +240,15 @@ export class DraftRecoveryCoordinator {
   public evictFile(fileId: string): void {
     this.conflicts.delete(fileId);
     this.draftDecisionPending.delete(fileId);
+  }
+
+  public clearAll(): void {
+    for (const timer of this.draftTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.draftTimers.clear();
+    this.pendingDrafts.clear();
+    this.draftDecisionPending.clear();
+    this.conflicts.clear();
   }
 }

@@ -14,6 +14,7 @@ import {
   getActiveEditorEngine,
   getEditorEngineForFile,
   getActiveEditorContent,
+  documentAuthority,
   editorCommandBus,
   usePageStore,
   useWorkspaceStore,
@@ -173,7 +174,10 @@ export class AiCoordinatorRegistry {
     const fileName = activeDoc?.title || fileId;
 
     const engine = getActiveEditorEngine();
-    const content = engine?.getContent() || extractDocumentContentString(activeDoc?.content);
+    const content =
+      documentAuthority.getDocumentContent(fileId) ||
+      engine?.getContent() ||
+      extractDocumentContentString(activeDoc?.content);
 
     // Extract surrounding code context (5 lines)
     const lines = content.split('\n');
@@ -398,11 +402,13 @@ export class AiCoordinatorRegistry {
   public applyDirect(fileId: string, line?: number, replacement?: string): boolean {
     if (!replacement) return false;
 
-    const engine = getActiveEditorEngine();
+    const engine =
+      documentAuthority.getEditorEngineForFile(fileId) ?? getActiveEditorEngine();
 
-    // If active document is open in CodeMirror, apply via engine
+    // If active document or split-pane is open in CodeMirror, apply via engine
     if (engine) {
       engine.insertText(replacement);
+      sessionCoordinator.notifyContentChange(fileId, engine.getContent());
       toast.success('Applied AI suggestion to editor', { id: 'ai-diff-status' });
       return true;
     }
@@ -410,7 +416,16 @@ export class AiCoordinatorRegistry {
     // Fallback: update in LRU cache and notify session coordinator
     const model = lruDocumentCache.getModel(fileId);
     if (model) {
-      sessionCoordinator.notifyContentChange(fileId, replacement);
+      let nextContent = model.content;
+      if (typeof line === 'number' && line > 0) {
+        const lines = model.content.split('\n');
+        const idx = Math.max(0, Math.min(line - 1, lines.length - 1));
+        lines[idx] = replacement;
+        nextContent = lines.join('\n');
+      } else {
+        nextContent = model.content ? `${model.content}\n${replacement}` : replacement;
+      }
+      sessionCoordinator.notifyContentChange(fileId, nextContent);
       toast.success('Updated document with AI suggestion', { id: 'ai-diff-status' });
       return true;
     }

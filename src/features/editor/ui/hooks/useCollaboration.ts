@@ -19,7 +19,7 @@ import {
 } from '@/features/editor/core';
 import { ProjectService } from '@/features/projects/shell/services/project.service';
 import { getCollaboratorColor } from '@/features/editor/ui/editor/CollaboratorCursors';
-import { getOrCreateYjsProvider, releaseYjsProvider, type YjsSocketIOProvider, type ConnectionStatus } from '@/features/editor/sdk/realtime/yjs-socket-provider';
+import { getOrCreateYjsProvider, releaseYjsProvider, subscribeYjsPoolCleared, type YjsSocketIOProvider, type ConnectionStatus } from '@/features/editor/sdk/realtime/yjs-socket-provider';
 import { getCachedUser } from '@/features/auth/services/auth.service';
 import { useSafeQueryClient } from '@/features/editor/subsystems/review/ui/hooks/safeQueryClient';
 
@@ -182,6 +182,7 @@ export function useEditorCollaboration({
   } | null>(null);
   const [isSynced, setIsSynced] = useState<boolean>(false);
   const [status, setStatus] = useState<ConnectionStatus>('connecting');
+  const [poolEpoch, setPoolEpoch] = useState(0);
   const [, setDocGeneration] = useState(0);
   const prevFileIdRef = useRef(fileId);
   const initialValueRef = useRef(initialValue);
@@ -191,6 +192,12 @@ export function useEditorCollaboration({
   } else if (!initialValueRef.current && initialValue) {
     initialValueRef.current = initialValue;
   }
+
+  useEffect(() => {
+    return subscribeYjsPoolCleared(() => {
+      setPoolEpoch((e) => e + 1);
+    });
+  }, []);
 
   useEffect(() => {
     if (!enabled || !projectId || !fileId) {
@@ -233,7 +240,7 @@ export function useEditorCollaboration({
       unsubscribeReplaced();
       releaseYjsProvider(projectId, fileId);
     };
-  }, [enabled, projectId, fileId]);
+  }, [enabled, projectId, fileId, poolEpoch]);
 
   const activeProvider =
     fileId && providerState?.fileId === fileId ? providerState.provider : null;

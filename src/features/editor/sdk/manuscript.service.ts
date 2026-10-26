@@ -54,6 +54,9 @@ export const pageService = {
   create: manuscriptService.docs.create,
 };
 
+/** @deprecated Use `manuscriptService.docs` or `pageService` instead */
+export const documentService = pageService;
+
 interface RawPageFileRecord {
   id: string;
   _id?: string;
@@ -171,6 +174,16 @@ export const downloadAuxFileUrl = manuscriptService.compiler.downloadAuxFileUrl;
 export const downloadAllArtifactsZipUrl = manuscriptService.compiler.downloadAllArtifactsZipUrl;
 export const cleanAuxFiles = manuscriptService.compiler.cleanAuxFiles;
 
+export const compileService = {
+  compile: manuscriptService.compiler.compile,
+  compileLatex: manuscriptService.compiler.compile,
+  fetchWordCount: manuscriptService.compiler.wordCount,
+  listAuxFiles: manuscriptService.compiler.listAuxFiles,
+  downloadAuxFileUrl: manuscriptService.compiler.downloadAuxFileUrl,
+  downloadAllArtifactsZipUrl: manuscriptService.compiler.downloadAllArtifactsZipUrl,
+  cleanAuxFiles: manuscriptService.compiler.cleanAuxFiles,
+};
+
 // ─── 3. SyncTeX Aliases ──────────────────────────────────────────────────────
 
 export const synctexService = {
@@ -277,5 +290,46 @@ export const documentSearchService = {
 
 export const AcademicAiService = manuscriptService.AcademicAiService;
 export const suggestLatexFix = manuscriptService.suggestLatexFix;
+
+// ─── 10. Storage & Collaboration Aliases ─────────────────────────────────────
+
+export const storageService = manuscriptService.storage;
+/** @deprecated Use `manuscriptService.storage` or `storageService` instead */
+export const StorageService = manuscriptService.storage;
+
+export interface CollaborationEvent {
+  pageId: string;
+  type: string;
+  timestamp: number;
+  suggestion?: any;
+  user?: any;
+  [key: string]: any;
+}
+
+export const collaborationService = {
+  createCollaborationStream: (
+    projectId: string | null | undefined,
+    pageId: string,
+    onEvent: (event: CollaborationEvent) => void,
+  ): (() => void) => {
+    const url = projectId
+      ? `/api/v1/manuscripts/projects/${projectId}/docs/${pageId}/collaboration/stream`
+      : `/api/v1/manuscripts/docs/${pageId}/collaboration/stream`;
+
+    const eventSource = new EventSource(url);
+    eventSource.onmessage = (e: { data: string }) => {
+      try {
+        const parsed = JSON.parse(e.data) as CollaborationEvent;
+        onEvent(parsed);
+      } catch (err) {
+        console.error('Failed to parse SSE collaboration event', err);
+      }
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  },
+};
 
 

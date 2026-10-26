@@ -66,6 +66,6 @@ describe('CodeMirror 6 Visual Mode Architecture (Lossless CM6 Widgets)', () => {
   it('should construct visual extensions array cleanly', () => {
     const visualExts = createVisualModeExtensions();
     expect(visualExts).toBeDefined();
-    expect(visualExts.length).toBe(3); // headings, math, citations
+    expect(visualExts.length).toBe(4); // theme, headings, math, citations
   });
 });

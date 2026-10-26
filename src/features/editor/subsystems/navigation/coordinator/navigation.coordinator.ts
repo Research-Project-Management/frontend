@@ -18,7 +18,11 @@ import {
   editorCommandBus,
   sessionCoordinator,
   workspaceCoordinator,
+  documentAuthority,
   getActiveEditorEngine,
+  getEditorEngineForFile,
+  SYNCTEX_BROADCAST_CHANNEL,
+  syncShallowFileUrlParam,
 } from '@/features/editor/core';
 import { extractDocumentContentString, extractProjectId } from '@/features/editor/domain/types/core.types';
 import type { NodeTreeItem } from '@/features/editor/domain/types/node.types';
@@ -113,7 +117,13 @@ export class NavigationCoordinatorRegistry {
   }
 
   private executeLineJump(target: PendingLineJump): void {
-    const { line, column, highlight = 'synctex' } = target;
+    const { fileId, line, column, highlight = 'synctex' } = target;
+    if (fileId) {
+      const targetEngine = getEditorEngineForFile?.(fileId);
+      if (targetEngine?.jumpToLine) {
+        targetEngine.jumpToLine(line, highlight);
+      }
+    }
     editorCommandBus.dispatch({
       type: 'editor:jump-to-line',
       line,
@@ -292,7 +302,7 @@ export class NavigationCoordinatorRegistry {
     // Cross-window BroadcastChannel for Detached PDF & SyncTeX
     if (!this.broadcastChannel && typeof window !== 'undefined' && 'BroadcastChannel' in window) {
       try {
-        this.broadcastChannel = new BroadcastChannel('flux-synctex-bus');
+        this.broadcastChannel = new BroadcastChannel(SYNCTEX_BROADCAST_CHANNEL);
         this.attachBroadcastChannelListeners();
       } catch (err) {
         console.warn('[NavigationCoordinator] BroadcastChannel initialization failed:', err);
@@ -438,6 +448,10 @@ export class NavigationCoordinatorRegistry {
       if (typeof optContent === 'string' && optContent.length > 0) {
         return optContent;
       }
+      const authorityContent = documentAuthority.getDocumentContent(fileId);
+      if (authorityContent) {
+        return authorityContent;
+      }
       const wsFiles = workspaceCoordinator.getProjectFiles() || [];
       const targetPathLower = (optPath || title || '').replace(/\\/g, '/').toLowerCase();
       const wsMatch = wsFiles.find((f) => {
@@ -516,18 +530,7 @@ export class NavigationCoordinatorRegistry {
    * Synchronizes or clears the shallow `?file=` query parameter without a page reload.
    */
   private syncFileUrlParam(fileId?: string): void {
-    if (typeof window === 'undefined') return;
-    try {
-      const url = new URL(window.location.href);
-      if (fileId) {
-        url.searchParams.set('file', fileId);
-      } else {
-        url.searchParams.delete('file');
-      }
-      window.history.replaceState(window.history.state, '', url.pathname + url.search);
-    } catch (err) {
-      console.debug('[NavigationCoordinator] Shallow URL replaceState skipped:', err);
-    }
+    syncShallowFileUrlParam(fileId);
   }
 
   /**
@@ -615,6 +618,18 @@ export class NavigationCoordinatorRegistry {
     let resolvedTitle = filePath || fileId || 'main.tex';
 
     if (!resolvedFileId && filePath) {
+      const normalizedTarget = filePath.replace(/\\/g, '/').replace(/^\.?\//, '').toLowerCase();
+      const matchesTargetPath = (candidate?: string): boolean => {
+        if (!candidate) return false;
+        const norm = candidate.replace(/\\/g, '/').replace(/^\.?\//, '').toLowerCase();
+        return Boolean(
+          norm &&
+            (norm === normalizedTarget ||
+              norm.endsWith(`/${normalizedTarget}`) ||
+              normalizedTarget.endsWith(`/${norm}`))
+        );
+      };
+
       const model = lruDocumentCache.findByPath(filePath);
       if (model) {
         resolvedFileId = model.fileId;
@@ -623,17 +638,57 @@ export class NavigationCoordinatorRegistry {
         const tabsByProject = useWorkspaceStore.getState().tabsByProject;
         const allTabs = Object.values(tabsByProject).flat();
         const matchingTab = allTabs.find(
-          (t: EditorTab) => t.path === filePath || t.title === filePath || t.id === filePath
+          (t: EditorTab) =>
+            t.path === filePath ||
+            t.title === filePath ||
+            t.id === filePath ||
+            matchesTargetPath(t.path || t.title)
         );
         if (matchingTab) {
           resolvedFileId = matchingTab.id;
           resolvedTitle = matchingTab.title;
+        } else {
+          const projectFiles = workspaceCoordinator.getProjectFiles() || [];
+          const matchingWsFile = projectFiles.find(
+            (f) => f.id === filePath || matchesTargetPath(f.path || f.title)
+          );
+          if (matchingWsFile) {
+            resolvedFileId = matchingWsFile.id;
+            resolvedTitle = matchingWsFile.title || matchingWsFile.path || filePath;
+          } else {
+            const overlayFiles = documentAuthority.getOverlayFiles() || [];
+            const matchingOverlay = overlayFiles.find(
+              (f) => f.id === filePath || matchesTargetPath(f.path)
+            );
+            if (matchingOverlay) {
+              resolvedFileId = matchingOverlay.id;
+              resolvedTitle = matchingOverlay.path || filePath;
+            }
+          }
         }
       }
     }
 
+    const layoutState = useWorkspaceStore.getState();
+    const isMountedInSecondaryPane =
+      Boolean(resolvedFileId) &&
+      layoutState.editorSplitMode !== 'none' &&
+      layoutState.secondaryFileId === resolvedFileId;
+
+    if (isMountedInSecondaryPane && resolvedFileId) {
+      layoutState.setActiveEditorPane('secondary');
+      this.executeLineJump({
+        fileId: resolvedFileId,
+        filePath,
+        line,
+        column,
+        highlight,
+      });
+      return;
+    }
+
     // If target file differs from currently active file, open it first
-    if (resolvedFileId && activePage && resolvedFileId !== activePage.id) {
+    if (resolvedFileId && (!activePage || resolvedFileId !== activePage.id)) {
       this.openDocument({
         fileId: resolvedFileId,
         title: resolvedTitle,

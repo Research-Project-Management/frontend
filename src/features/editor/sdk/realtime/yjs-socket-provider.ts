@@ -374,9 +374,14 @@ export class YjsSocketIOProvider {
 
     const reviewEvents: Array<[string, 'suggestion:recorded' | 'suggestion:resolved' | 'comment:created' | 'comment:replied' | 'comment:resolved']> = [
       ['track-changes:recorded', 'suggestion:recorded'],
+      ['track-changes:created', 'suggestion:recorded'],
       ['track-changes:resolved', 'suggestion:resolved'],
       ['comment:created', 'comment:created'],
       ['comment:replied', 'comment:replied'],
+      ['comment:reply-added', 'comment:replied'],
+      ['comment:reply-deleted', 'comment:replied'],
+      ['comment:updated', 'comment:created'],
+      ['comment:deleted', 'comment:resolved'],
       ['comment:resolved', 'comment:resolved'],
     ];
     for (const [socketEvent, reviewEvent] of reviewEvents) {
@@ -810,4 +815,5 @@ export {
   getActiveYjsProvider,
   updateActiveYjsDocContent,
   clearYjsProviderPool,
+  subscribeYjsPoolCleared,
 } from './yjs-provider-pool';

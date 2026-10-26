@@ -135,7 +135,7 @@ export function ActivityBar() {
             <TooltipTrigger asChild>
               <button
                 type="button"
-                aria-label="Settings"
+                aria-label="Project settings"
                 onClick={toggleSettingsPanel}
                 className={cn(
                   'relative flex size-9 items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border',
@@ -148,7 +148,7 @@ export function ActivityBar() {
               </button>
             </TooltipTrigger>
             <TooltipContent side="right" className="text-xs">
-              Settings
+              Project settings
             </TooltipContent>
           </Tooltip>
         </div>

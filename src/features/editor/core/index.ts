@@ -22,6 +22,7 @@ export {
   registerEditorEngine,
   unregisterEditorEngine,
   getEditorEngineForFile,
+  getAllRegisteredEngines,
   subscribeEditorEngineChanges,
 } from './bus/command-bus';
 
@@ -68,7 +69,10 @@ export type {
 
 export {
   useConnectivityStore,
+  isNetworkError,
 } from './store/connectivity.store';
+
+export * from '@/features/editor/domain/constants/editor.constants';
 
 export {
   useDocumentCollaborationStore,
@@ -119,6 +123,21 @@ export {
   visibilityCoordinator,
   type VisibilityLifecycleState,
 } from './coordinator/visibility.coordinator';
+
+export {
+  documentAuthority,
+  DocumentAuthorityRegistry,
+  type ProjectFileReadModel,
+  type ActiveDocumentDescriptor,
+} from './coordinator/document-authority.facade';
+
+export {
+  editorInvariantMonitor,
+  EditorStateInvariantMonitor,
+  type EditorInvariantViolation,
+  type EditorInvariantReport,
+} from './coordinator/editor-invariant-monitor';
+export { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 
 // 5. Manuscript Backend Services & API Contracts
 export {

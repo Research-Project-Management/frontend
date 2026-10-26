@@ -10,7 +10,7 @@
  * - expandAll / collapseAll support
  */
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
   buildFileTree,
   filterFileTree,
@@ -18,12 +18,28 @@ import {
   type BuildFileTreeParams,
 } from '@/features/editor/subsystems/explorer/model/document-tree';
 import { useSettingsStore } from '@/features/editor/core/store/settings.store';
+import { EDITOR_STORAGE_KEYS } from '@/features/editor/domain/constants/editor.constants';
 
 export interface UseFileTreeParams extends BuildFileTreeParams {
   fileFilter?: string;
 }
 
-const STORAGE_KEY_PREFIX = 'flux:expanded-folders:';
+const STORAGE_KEY_PREFIX = EDITOR_STORAGE_KEYS.EXPANDED_FOLDERS_PREFIX;
+
+function loadExpandedFolders(key: string): Set<string> {
+  if (typeof window !== 'undefined') {
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          return new Set(parsed);
+        }
+      }
+    } catch {}
+  }
+  return new Set(['sections', 'supplementary']);
+}
 
 export function useFileTree({
   projectFiles,
@@ -43,24 +59,19 @@ export function useFileTree({
     return `${STORAGE_KEY_PREFIX}${scopeId}`;
   }, [projectId, parentPageId]);
 
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const raw = localStorage.getItem(storageKey);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed)) {
-            return new Set(parsed);
-          }
-        }
-      } catch {}
-    }
-    return new Set(['sections', 'supplementary']);
-  });
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(() =>
+    loadExpandedFolders(storageKey),
+  );
+  const prevStorageKeyRef = useRef(storageKey);
 
-  // Keep localStorage synced whenever expandedFolders or storageKey changes
+  // Re-hydrate when project/page scope changes, and persist when expandedFolders changes
   useEffect(() => {
-    if (typeof window !== 'undefined') return;
+    if (typeof window === 'undefined') return;
+    if (prevStorageKeyRef.current !== storageKey) {
+      prevStorageKeyRef.current = storageKey;
+      setExpandedFolders(loadExpandedFolders(storageKey));
+      return;
+    }
     try {
       localStorage.setItem(storageKey, JSON.stringify(Array.from(expandedFolders)));
     } catch {}

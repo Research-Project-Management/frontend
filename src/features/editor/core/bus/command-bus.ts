@@ -15,7 +15,19 @@ import type {
   CommandDispatchMiddleware,
   CommandExecuteMiddleware,
 } from '@/features/editor/core/bus/command-bus.port';
-import type { IEditorEngine, LatexFormatType } from '@/features/editor/domain/types/ports/editor-engine.port';
+import type { LatexFormatType } from '@/features/editor/domain/types/ports/editor-engine.port';
+import {
+  subscribeEditorEngineChanges,
+  registerEditorEngine,
+  unregisterEditorEngine,
+  getEditorEngineForFile,
+  getAllRegisteredEngines,
+  setActiveEditorEngine,
+  getActiveEditorEngine,
+  getActiveEditorContent,
+  setActivePdfViewer,
+  getActivePdfViewer,
+} from './engine-registry';
 
 class EditorCommandBusImpl implements IEditorCommandBus {
   private handlers = new Map<string, Set<CommandHandler<EditorCommand, unknown>>>();
@@ -271,72 +283,20 @@ export type {
   CommandExecuteMiddleware,
 };
 
-// ── Active Engine & Viewer Registry (Context-Free Architecture) ──────────────
+// ── Active Engine & Viewer Registry (Extracted to ./engine-registry) ──────────
 
-let activeEngineInstance: IEditorEngine | null = null;
-let activeViewerInstance: unknown = null;
-const enginesByFileId = new Map<string, IEditorEngine>();
-const engineChangeListeners = new Set<() => void>();
-
-function notifyEngineListeners(): void {
-  for (const listener of engineChangeListeners) {
-    try {
-      listener();
-    } catch {
-      // Ignore listener error
-    }
-  }
-}
-
-export function subscribeEditorEngineChanges(listener: () => void): () => void {
-  engineChangeListeners.add(listener);
-  return () => {
-    engineChangeListeners.delete(listener);
-  };
-}
-
-export function registerEditorEngine(fileId: string, engine: IEditorEngine): void {
-  enginesByFileId.set(fileId, engine);
-  if (!activeEngineInstance) {
-    activeEngineInstance = engine;
-  }
-  notifyEngineListeners();
-}
-
-export function unregisterEditorEngine(fileId: string, engine: IEditorEngine): void {
-  if (enginesByFileId.get(fileId) === engine) {
-    enginesByFileId.delete(fileId);
-  }
-  if (activeEngineInstance === engine) {
-    activeEngineInstance = enginesByFileId.values().next().value ?? null;
-  }
-  notifyEngineListeners();
-}
-
-export function getEditorEngineForFile(fileId: string): IEditorEngine | null {
-  return enginesByFileId.get(fileId) ?? null;
-}
-
-export function setActiveEditorEngine(engine: IEditorEngine | null): void {
-  activeEngineInstance = engine;
-  notifyEngineListeners();
-}
-
-export function getActiveEditorEngine(): IEditorEngine | null {
-  return activeEngineInstance;
-}
-
-export function getActiveEditorContent(): string {
-  return activeEngineInstance?.getContent() ?? '';
-}
-
-export function setActivePdfViewer(viewer: unknown): void {
-  activeViewerInstance = viewer;
-}
-
-export function getActivePdfViewer(): unknown {
-  return activeViewerInstance;
-}
+export {
+  subscribeEditorEngineChanges,
+  registerEditorEngine,
+  unregisterEditorEngine,
+  getEditorEngineForFile,
+  getAllRegisteredEngines,
+  setActiveEditorEngine,
+  getActiveEditorEngine,
+  getActiveEditorContent,
+  setActivePdfViewer,
+  getActivePdfViewer,
+};
 
 let defaultBridgesUnsub: Array<() => void> = [];
 
@@ -349,49 +309,50 @@ export function registerDefaultBridges(): void {
 
   defaultBridgesUnsub.push(
     editorCommandBus.subscribe('editor:insert-text', (cmd) => {
-      activeEngineInstance?.insertText(cmd.text);
+      getActiveEditorEngine()?.insertText(cmd.text);
     }),
     editorCommandBus.subscribe('editor:focus', () => {
-      activeEngineInstance?.focus();
+      getActiveEditorEngine()?.focus();
     }),
     editorCommandBus.subscribe('editor:set-content', (cmd) => {
       if (cmd.fileId) {
-        const target = enginesByFileId.get(cmd.fileId);
+        const target = getEditorEngineForFile(cmd.fileId);
         if (target) {
           target.setContent?.(cmd.content);
           return;
         }
       }
-      activeEngineInstance?.setContent?.(cmd.content);
+      getActiveEditorEngine()?.setContent?.(cmd.content);
     }),
     editorCommandBus.subscribe('editor:undo', () => {
-      activeEngineInstance?.undo();
+      getActiveEditorEngine()?.undo();
     }),
     editorCommandBus.subscribe('editor:redo', () => {
-      activeEngineInstance?.redo();
+      getActiveEditorEngine()?.redo();
     }),
     editorCommandBus.subscribe('editor:wrap-selection', (cmd) => {
-      activeEngineInstance?.wrapSelection(cmd.prefix, cmd.suffix, cmd.placeholder);
+      getActiveEditorEngine()?.wrapSelection(cmd.prefix, cmd.suffix, cmd.placeholder);
     }),
     editorCommandBus.subscribe('editor:format', (cmd) => {
-      activeEngineInstance?.format(cmd.format);
+      getActiveEditorEngine()?.format(cmd.format);
     }),
     editorCommandBus.subscribe('editor:jump-to-line', (cmd) => {
-      activeEngineInstance?.jumpToLine(cmd.line, cmd.highlight, cmd.column, cmd.length);
+      getActiveEditorEngine()?.jumpToLine(cmd.line, cmd.highlight, cmd.column, cmd.length);
     }),
     editorCommandBus.subscribe('editor:scroll-to-line', (cmd) => {
-      activeEngineInstance?.scrollToLine?.(cmd.line, cmd.smooth);
+      getActiveEditorEngine()?.scrollToLine?.(cmd.line, cmd.smooth);
     }),
     editorCommandBus.subscribe('editor:find', () => {
-      activeEngineInstance?.openFind();
+      getActiveEditorEngine()?.openFind();
     }),
     editorCommandBus.subscribe('editor:insert-citation', (cmd) => {
       if (cmd.bibKey) {
-        activeEngineInstance?.insertText(`\\cite{${cmd.bibKey}}`);
+        getActiveEditorEngine()?.insertText(`\\cite{${cmd.bibKey}}`);
       }
     }),
     editorCommandBus.subscribe('editor:visual-command', (cmd) => {
-      if (!activeEngineInstance) return;
+      const engine = getActiveEditorEngine();
+      if (!engine) return;
       const formatCommands: Record<string, LatexFormatType> = {
         bold: 'bold',
         italic: 'italic',
@@ -409,15 +370,15 @@ export function registerDefaultBridges(): void {
       };
 
       if (cmd.command in formatCommands) {
-        activeEngineInstance.format(formatCommands[cmd.command]);
+        engine.format(formatCommands[cmd.command]);
       } else if (cmd.command === 'bulletList') {
-        activeEngineInstance.insertText('\\begin{itemize}\n  \\item \n\\end{itemize}\n');
+        engine.insertText('\\begin{itemize}\n  \\item \n\\end{itemize}\n');
       } else if (cmd.command === 'orderedList') {
-        activeEngineInstance.insertText('\\begin{enumerate}\n  \\item \n\\end{enumerate}\n');
+        engine.insertText('\\begin{enumerate}\n  \\item \n\\end{enumerate}\n');
       } else if (cmd.command === 'codeBlock') {
-        activeEngineInstance.insertText('\\begin{verbatim}\n\n\\end{verbatim}\n');
+        engine.insertText('\\begin{verbatim}\n\n\\end{verbatim}\n');
       } else if (cmd.contentHtml) {
-        activeEngineInstance.insertText(cmd.contentHtml);
+        engine.insertText(cmd.contentHtml);
       }
     })
   );

@@ -8,6 +8,14 @@ import { applyTextDiff, type YjsSocketIOProviderOptions } from './yjs-awareness-
 import { YjsSocketIOProvider } from './yjs-socket-provider';
 
 const providerPool = new Map<string, { provider: YjsSocketIOProvider; refCount: number }>();
+const poolClearedListeners = new Set<() => void>();
+
+export function subscribeYjsPoolCleared(listener: () => void): () => void {
+  poolClearedListeners.add(listener);
+  return () => {
+    poolClearedListeners.delete(listener);
+  };
+}
 
 export function getOrCreateYjsProvider(
   projectId: string,
@@ -120,4 +128,11 @@ export function clearYjsProviderPool(): void {
     item.provider.destroy();
   }
   providerPool.clear();
+  for (const listener of poolClearedListeners) {
+    try {
+      listener();
+    } catch {
+      // Ignore listener error
+    }
+  }
 }

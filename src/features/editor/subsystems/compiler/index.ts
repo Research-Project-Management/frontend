@@ -14,6 +14,7 @@
 export {
   compilerCoordinator,
   CompilerCoordinatorRegistry,
+  CompilationSnapshotProvider,
   buildPageStoreFilePaths,
   type CompileOptions,
   type SyncTeXForwardDetail,

@@ -303,11 +303,13 @@ export function ProjectSettingsModal() {
     setIsSavingTemplate(true);
     const toastId = toast.loading('Saving project as custom template...');
     try {
+      const mainContent = getContent() || (typeof parentPage?.content === 'string' ? parentPage.content : '') || `\\documentclass{article}\n\\begin{document}\n\\title{${projectTitle}}\n\\maketitle\n\\end{document}`;
       await manuscriptService.templates.createCustom({
-        projectId: effectiveProjectId,
         name: `${projectTitle} Template`,
         description: `Custom template saved from ${projectTitle}`,
         category: 'Academic',
+        mainFile: 'main.tex',
+        files: { 'main.tex': mainContent },
       });
       queryClient.invalidateQueries({ queryKey: ['manuscript-templates'] });
       toast.success('Project saved to Template Gallery!', { id: toastId });
@@ -481,8 +483,8 @@ export function ProjectSettingsModal() {
           </div>
         )}
 
-        {/* ── Sub-view: Personal Dictionary ──────────────────────────────────── */}
-        {currentView === 'dictionary' && <ProjectDictionaryTab />}
+        {/* ── Sub-view: Personal & Project Dictionary ────────────────────────── */}
+        {currentView === 'dictionary' && <ProjectDictionaryTab projectId={effectiveProjectId} />}
 
         {/* ── Primary Overleaf Menu Body ─────────────────────────────────────── */}
         {currentView === 'menu' && (
@@ -666,20 +668,35 @@ export function ProjectSettingsModal() {
                 </div>
               </div>
 
-              {/* Dropbox */}
-              <div className="flex items-center justify-between p-2.5 rounded-md border border-border bg-card/40">
+              {/* Dropbox (via Linked External Files) */}
+              <div className="flex items-center justify-between p-2.5 rounded-md border border-border bg-card/40 hover:bg-card transition-colors">
                 <div className="flex items-center gap-2.5">
                   <div className="size-7 rounded-md bg-muted text-foreground flex items-center justify-center shrink-0">
                     <Cloud className="size-4" />
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-foreground">Dropbox</p>
-                    <p className="text-[11px] text-muted-foreground">Two-way folder sync</p>
+                    <p className="text-xs font-medium text-foreground">External URL / Dropbox</p>
+                    <p className="text-[11px] text-muted-foreground">Sync external files via shared links</p>
                   </div>
                 </div>
-                <span className="text-[10px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-sm">
-                  Available
-                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSettingsPanelOpen(false);
+                    editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'Files' });
+                    setTimeout(() => {
+                      editorCommandBus.dispatch({
+                        type: 'dialog:open',
+                        dialog: 'add-files',
+                        payload: { initialTab: 'url' },
+                      });
+                    }, 50);
+                  }}
+                  className="h-7 text-xs px-2.5 cursor-pointer shrink-0"
+                >
+                  Link URL
+                </Button>
               </div>
             </section>
 

@@ -13,25 +13,62 @@ import { Input } from '@/shared/components/ui/input';
 import { Badge } from '@/shared/components/ui/badge';
 import { useSpellingDictionary } from '@/features/editor/ui/hooks/useSpelling';
 
-export function ProjectDictionaryTab() {
-  const { userWords, addWord, removeWord } = useSpellingDictionary(undefined, true);
+export interface ProjectDictionaryTabProps {
+  projectId?: string;
+}
+
+export function ProjectDictionaryTab({ projectId }: ProjectDictionaryTabProps = {}) {
+  const { userWords, projectWords, addWord, removeWord } = useSpellingDictionary(projectId, true);
   const [newDictionaryWord, setNewDictionaryWord] = useState('');
+  const [scope, setScope] = useState<'project' | 'user'>(projectId ? 'project' : 'user');
+
+  const activeWords = scope === 'project' && projectId ? projectWords : userWords;
 
   const handleAddDictionaryWord = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = newDictionaryWord.trim().toLowerCase();
     if (!trimmed) return;
-    addWord({ word: trimmed, isProject: false });
+    addWord({ word: trimmed, isProject: scope === 'project' && Boolean(projectId) });
     setNewDictionaryWord('');
   };
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-4">
-      <div>
-        <h3 className="text-sm font-semibold text-foreground">Learned Words</h3>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Words added to your personal spellcheck dictionary won't be flagged as spelling errors.
-        </p>
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground">Learned Words</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {scope === 'project' && projectId
+              ? "Words added to this project's dictionary won't be flagged for any collaborator."
+              : "Words added to your personal spellcheck dictionary won't be flagged across your projects."}
+          </p>
+        </div>
+        {projectId && (
+          <div className="flex items-center rounded-md bg-muted p-0.5 border border-border text-xs shrink-0">
+            <button
+              type="button"
+              onClick={() => setScope('project')}
+              className={`px-2 py-0.5 rounded-sm text-[11px] font-medium transition-colors cursor-pointer ${
+                scope === 'project'
+                  ? 'bg-background text-foreground font-semibold'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Project
+            </button>
+            <button
+              type="button"
+              onClick={() => setScope('user')}
+              className={`px-2 py-0.5 rounded-sm text-[11px] font-medium transition-colors cursor-pointer ${
+                scope === 'user'
+                  ? 'bg-background text-foreground font-semibold'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Personal
+            </button>
+          </div>
+        )}
       </div>
 
       <form onSubmit={handleAddDictionaryWord} className="flex gap-2">
@@ -39,7 +76,7 @@ export function ProjectDictionaryTab() {
           value={newDictionaryWord}
           onChange={(e) => setNewDictionaryWord(e.target.value)}
           aria-label="Add new word to dictionary"
-          placeholder="Add new word..."
+          placeholder={scope === 'project' && projectId ? 'Add word to project dictionary...' : 'Add new word...'}
           className="h-8 text-xs bg-background"
         />
         <Button type="submit" size="sm" className="h-8 px-3 text-xs shrink-0 cursor-pointer">
@@ -49,8 +86,8 @@ export function ProjectDictionaryTab() {
       </form>
 
       <div className="flex flex-wrap gap-1.5 pt-2 max-h-[300px] overflow-y-auto">
-        {userWords && userWords.length > 0 ? (
-          userWords.map((word) => (
+        {activeWords && activeWords.length > 0 ? (
+          activeWords.map((word) => (
             <Badge
               key={word}
               variant="secondary"
@@ -59,7 +96,7 @@ export function ProjectDictionaryTab() {
               <span>{word}</span>
               <button
                 type="button"
-                onClick={() => removeWord({ word, isProject: false })}
+                onClick={() => removeWord({ word, isProject: scope === 'project' && Boolean(projectId) })}
                 aria-label={`Remove ${word}`}
                 className="hover:text-destructive cursor-pointer ml-0.5"
               >

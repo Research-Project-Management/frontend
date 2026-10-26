@@ -9,7 +9,7 @@
  * - Triggers non-blocking remote autosave in background without delaying compilation pipeline.
  */
 
-import { sessionCoordinator } from '@/features/editor/core';
+import { sessionCoordinator, getAllRegisteredEngines } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { useCompileStore } from './compiler.store';
 import type { DirtyFileItem } from './compilation-pipeline';
@@ -33,7 +33,8 @@ export class CompilationFlushBarrier {
   /**
    * Pre-compilation flush barrier:
    * 1. Commits pending draft timers synchronously so local state is resilient.
-   * 2. Synchronizes active editor in-memory text with LRU cache and dirty store.
+   * 2. Synchronizes all mounted editor in-memory text buffers (primary & secondary split panes)
+   *    plus explicit active document content with LRU cache and dirty store.
    * 3. Awaits remote autosave flush (up to DEFAULT_BARRIER_TIMEOUT_MS = 1500ms) so normal
    *    network flushes complete before compileLatex starts without hanging indefinitely.
    */
@@ -45,8 +46,26 @@ export class CompilationFlushBarrier {
     // 1. Synchronously commit pending in-memory drafts to local persistent storage
     sessionCoordinator.flushPendingDrafts();
 
-    // 2. Synchronize active document content if provided
+    // 2. Synchronize all mounted editor engines (primary + secondary split panes)
     let activeFlushed = false;
+    const registeredEngines = getAllRegisteredEngines?.();
+    if (registeredEngines) {
+      for (const [fid, engine] of registeredEngines.entries()) {
+        const engineContent = engine?.getContent?.();
+        if (typeof engineContent === 'string') {
+          const model = lruDocumentCache.getModel(fid);
+          if (model && model.content !== engineContent) {
+            lruDocumentCache.updateContent(fid, engineContent, true);
+            useCompileStore.getState().markDirty(fid, engineContent);
+            if (fid === activeFileId) {
+              activeFlushed = true;
+            }
+          }
+        }
+      }
+    }
+
+    // 2b. Synchronize active document content if explicitly provided
     if (activeFileId && activeContent !== undefined) {
       const model = lruDocumentCache.getModel(activeFileId);
       if (model && model.content !== activeContent) {

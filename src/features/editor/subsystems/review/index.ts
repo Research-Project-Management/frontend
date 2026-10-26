@@ -87,6 +87,7 @@ export {
 } from './ui/subcomponents/ReviewNav';
 export {
   OverleafReviewIcon,
+  OverleafReviewSolidIcon,
   OverleafResolvedCommentsIcon,
   MentionBadge,
   MentionRenderer,

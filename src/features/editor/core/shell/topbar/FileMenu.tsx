@@ -62,7 +62,7 @@ export function FileMenu({ value = 'file' }: { value?: string } = {}) {
     editorCommandBus.dispatch({
       type: 'dialog:open',
       dialog: 'project-settings',
-      payload: { view: 'github' },
+      payload: { tab: 'github', view: 'github' },
     });
   };
 

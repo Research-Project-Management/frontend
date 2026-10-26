@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import { editorCommandBus, usePageStore } from '@/features/editor/core';
+import { editorCommandBus, usePageStore, documentAuthority } from '@/features/editor/core';
 import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
 import { parseDocumentOutline, OUTLINE_INDENT } from '@/features/editor/subsystems/compiler';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
@@ -35,7 +35,7 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
       return;
     }
     if (!isOutlineOpen) return;
-    const currentText = engine?.getContent();
+    const currentText = engine?.getContent() || documentAuthority.getDocumentContent();
     if (currentText) {
       setContent(currentText);
       return;
@@ -86,7 +86,7 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
       unsubCursor();
       unsubContent();
     };
-  }, [engine, isOutlineOpen]);
+  }, [engine, isOutlineOpen, docContent]);
 
   const startResizeOutline = useCallback(
     (e: React.MouseEvent) => {
@@ -149,6 +149,7 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
       } else {
         editorCommandBus.dispatch({ type: 'editor:jump-to-line', line, highlight: 'synctex' });
       }
+      editorCommandBus.dispatch({ type: 'synctex:forward', line });
     },
     [engine],
   );

@@ -14,7 +14,14 @@ import { useEffect, useMemo, useCallback } from 'react';
 import { useParams, useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
-import { workspaceCoordinator, usePageStore, useWorkspaceStore, useSettingsStore } from '@/features/editor/core';
+import {
+  workspaceCoordinator,
+  usePageStore,
+  useWorkspaceStore,
+  useSettingsStore,
+  DEFAULT_MAIN_FILE,
+  syncShallowFileUrlParam,
+} from '@/features/editor/core';
 import { pageQuery, filesQuery } from './document.queries';
 import { extractProjectId, type Page } from '@/features/editor/domain/types/core.types';
 import type { NodeTreeItem } from '@/features/editor/domain/types/node.types';
@@ -237,7 +244,7 @@ export function useActiveDocument() {
       ? parentPage
       : childFiles.find((f) => f.id === targetFileId || f.title === targetFileId);
 
-    const configuredMain = useSettingsStore.getState().mainFile || 'main.tex';
+    const configuredMain = useSettingsStore.getState().mainFile || DEFAULT_MAIN_FILE;
     const targetTitle = targetFile?.title || (isTargetMain ? configuredMain : targetFileId);
 
     syncWorkspaceTabs(
@@ -247,15 +254,7 @@ export function useActiveDocument() {
     );
 
     // Shallow history URL update: 0ms latency, eliminates Next.js router transitions
-    if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href);
-      if (isTargetMain) {
-        url.searchParams.delete('file');
-      } else {
-        url.searchParams.set('file', targetFileId);
-      }
-      window.history.replaceState(window.history.state, '', url.pathname + url.search);
-    }
+    syncShallowFileUrlParam(isTargetMain ? null : targetFileId);
   }, [pageId, parentPage, mainId, childFiles, openTab, setActive, projectId]);
 
   const selectedAsset = usePageStore((s) => s.selectedAsset);

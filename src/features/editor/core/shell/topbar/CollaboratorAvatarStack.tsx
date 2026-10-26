@@ -36,7 +36,7 @@ import {
 } from '@/features/editor/ui/hooks/useCollaboration';
 import { getCollaboratorColor } from '@/features/editor/ui/editor/CollaboratorCursors';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
-import { usePageStore } from '@/features/editor/core';
+import { usePageStore, editorCommandBus } from '@/features/editor/core';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
 
 export function getInitials(name?: string): string {
@@ -96,6 +96,15 @@ export function CollaboratorAvatarStack({
     const filePath = c.activeFile;
 
     navigationCoordinator.jumpToLine({
+      fileId,
+      filePath,
+      line,
+      column,
+      highlight: 'synctex',
+    });
+
+    editorCommandBus.dispatch({
+      type: 'navigation:jump-to-line',
       fileId,
       filePath,
       line,
@@ -238,6 +247,7 @@ export function CollaboratorAvatarStack({
                   <button
                     key={c.id}
                     type="button"
+                    aria-label={`Jump to ${c.name}`}
                     onClick={() => handleJump(c)}
                     className="w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-sm text-left hover:bg-muted/60 transition-colors cursor-pointer"
                   >

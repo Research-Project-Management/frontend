@@ -37,7 +37,7 @@ export function ReviewHeader({
   onClose,
 }: ReviewHeaderProps) {
   const handleToggle = () => {
-    if (activeResolvedCount === 0) return;
+    if (activeResolvedCount === 0 && !showResolved) return;
     onToggleResolved();
   };
 

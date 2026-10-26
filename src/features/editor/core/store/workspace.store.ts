@@ -14,6 +14,10 @@
 import { create } from 'zustand';
 import { persist, subscribeWithSelector } from 'zustand/middleware';
 import type { WorkspaceTab, EditorTab } from '@/features/editor/domain/types/workspace.types';
+import {
+  EDITOR_STORAGE_KEYS,
+  isMainTexTabOrFile,
+} from '@/features/editor/domain/constants/editor.constants';
 
 // ── Layout Enums & Types ──────────────────────────────────────────────────────
 
@@ -88,13 +92,7 @@ export interface WorkspaceStoreState extends LayoutState {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function isMainDocTab(tab: { id?: string; title?: string }, projectId: string): boolean {
-  if (!tab) return false;
-  const lowerTitle = tab.title?.toLowerCase() ?? '';
-  return (
-    tab.id === projectId ||
-    tab.id === `${projectId}-main` ||
-    lowerTitle === 'main.tex'
-  );
+  return isMainTexTabOrFile(tab, projectId);
 }
 
 const DEFAULT_LAYOUT = {
@@ -186,7 +184,21 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
             const idx = currentTabs.findIndex(
               (t) => t.id === tabId || (isClosingMain && isMainDocTab(t, projectId))
             );
-            if (idx === -1) return state;
+            if (idx === -1) {
+              if (state.secondaryFileId === tabId || state.secondaryActiveByProject[projectId] === tabId) {
+                return {
+                  secondaryFileId: state.secondaryFileId === tabId ? null : state.secondaryFileId,
+                  secondaryActiveByProject: {
+                    ...state.secondaryActiveByProject,
+                    [projectId]:
+                      state.secondaryActiveByProject[projectId] === tabId
+                        ? null
+                        : state.secondaryActiveByProject[projectId],
+                  },
+                };
+              }
+              return state;
+            }
 
             const remaining = currentTabs.filter(
               (t) => t.id !== tabId && (!isClosingMain || !isMainDocTab(t, projectId))
@@ -355,7 +367,7 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
         resetLayout: () => set(DEFAULT_LAYOUT),
       }),
       {
-        name: 'flux_editor_workbench_layout',
+        name: EDITOR_STORAGE_KEYS.WORKBENCH_LAYOUT,
         partialize: (state) => ({
           sidebarLeftOpen: state.sidebarLeftOpen,
           sidebarLeftWidth: state.sidebarLeftWidth,

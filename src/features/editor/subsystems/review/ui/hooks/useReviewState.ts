@@ -171,12 +171,14 @@ export function useReviewState() {
   const navLineTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    const scrollRetryTimer = scrollRetryTimerRef;
+    const navLineTimer = navLineTimerRef;
     return () => {
-      if (scrollRetryTimerRef.current) {
-        clearTimeout(scrollRetryTimerRef.current);
+      if (scrollRetryTimer.current) {
+        clearTimeout(scrollRetryTimer.current);
       }
-      if (navLineTimerRef.current) {
-        clearTimeout(navLineTimerRef.current);
+      if (navLineTimer.current) {
+        clearTimeout(navLineTimer.current);
       }
     };
   }, []);
@@ -325,7 +327,6 @@ export function useReviewState() {
           setLocalRev((r) => r + 1);
           return;
         }
-        reviewCoordinator.applySuggestionByIdLocally(suggestionId, 'accept');
         acceptMutation.mutate({ pageId, suggestionId });
       }
     },
@@ -340,7 +341,6 @@ export function useReviewState() {
           setLocalRev((r) => r + 1);
           return;
         }
-        reviewCoordinator.applySuggestionByIdLocally(suggestionId, 'reject');
         rejectMutation.mutate({ pageId, suggestionId });
       }
     },

@@ -13,6 +13,8 @@
  * - Conflict-Free Ordered Mutation Queue with write coalescing for seamless offline-to-online replay.
  */
 
+import { EDITOR_STORAGE_KEYS, EDITOR_LIMITS } from '@/features/editor/domain/constants/editor.constants';
+
 export interface DraftSnapshot {
   fileId: string;
   content: string;
@@ -31,6 +33,18 @@ export interface ProjectFileSnapshot {
   updatedAt: number;
 }
 
+export interface OfflineMutation {
+  id?: string;
+  fileId: string;
+  projectId?: string;
+  type: 'update_content' | 'create_file' | 'delete_file';
+  payload: { content?: string; [key: string]: unknown };
+  status?: 'pending' | 'processing' | 'failed' | 'completed';
+  retryCount?: number;
+  error?: string;
+  createdAt?: number;
+}
+
 export interface IDraftStorageSink {
   saveDraft(fileId: string, content: string, projectId?: string, title?: string): Promise<void>;
   getDraft(fileId: string): Promise<DraftSnapshot | null>;
@@ -39,18 +53,20 @@ export interface IDraftStorageSink {
   getProjectFileSnapshot?(fileId: string): Promise<ProjectFileSnapshot | null>;
 }
 
-const DB_NAME = 'flux_offline_drafts_v1';
+const DB_NAME = EDITOR_STORAGE_KEYS.OFFLINE_DRAFTS_DB;
 const STORE_DRAFTS = 'drafts';
 const STORE_PROJECT_FILES = 'project_files';
 const DB_VERSION = 2;
-const LOCAL_STORAGE_PREFIX = 'flux_draft:';
-const MAX_MEMORY_DRAFTS = 50;
-const MAX_PROJECT_FILES_CACHE = 50;
+const LOCAL_STORAGE_PREFIX = EDITOR_STORAGE_KEYS.DRAFT_PREFIX;
+const MUTATION_QUEUE_STORAGE_KEY = EDITOR_STORAGE_KEYS.OFFLINE_MUTATIONS_QUEUE;
+const MAX_MEMORY_DRAFTS = EDITOR_LIMITS.MAX_MEMORY_DRAFTS;
+const MAX_PROJECT_FILES_CACHE = EDITOR_LIMITS.MAX_PROJECT_FILES_CACHE;
 
 export class DraftStorageServiceRegistry implements IDraftStorageSink {
   private dbPromise: Promise<IDBDatabase | null> | null = null;
   private readonly memoryCache = new Map<string, DraftSnapshot>();
   private readonly projectFilesMemoryCache = new Map<string, ProjectFileSnapshot>();
+  private readonly mutationQueue: OfflineMutation[] = [];
   private isIndexedDbAvailable = false;
 
   private setMemoryDraftBounded(fileId: string, snapshot: DraftSnapshot): void {
@@ -544,6 +560,112 @@ export class DraftStorageServiceRegistry implements IDraftStorageSink {
   public clearMemoryCaches(): void {
     this.memoryCache.clear();
     this.projectFilesMemoryCache.clear();
+    this.mutationQueue.length = 0;
+    this.persistMutationQueue();
+  }
+
+  public clearMemory(): void {
+    this.clearMemoryCaches();
+  }
+
+  private persistMutationQueue(): void {
+    if (typeof window === 'undefined') return;
+    try {
+      if (this.mutationQueue.length === 0) {
+        localStorage.removeItem(MUTATION_QUEUE_STORAGE_KEY);
+      } else {
+        localStorage.setItem(MUTATION_QUEUE_STORAGE_KEY, JSON.stringify(this.mutationQueue));
+      }
+    } catch {
+      // Ignore storage quota errors
+    }
+  }
+
+  private hydrateMutationQueueIfEmpty(): void {
+    if (this.mutationQueue.length > 0 || typeof window === 'undefined') return;
+    try {
+      const raw = localStorage.getItem(MUTATION_QUEUE_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as OfflineMutation[];
+        if (Array.isArray(parsed)) {
+          this.mutationQueue.push(...parsed);
+        }
+      }
+    } catch {
+      // Ignore corrupt JSON
+    }
+  }
+
+  public async enqueueMutation(
+    mutation: Omit<OfflineMutation, 'id' | 'createdAt'> & { id?: string }
+  ): Promise<OfflineMutation> {
+    this.hydrateMutationQueueIfEmpty();
+    const id = mutation.id || `mut-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const createdAt = Date.now();
+
+    // Coalesce multiple consecutive update_content mutations on the same file if pending
+    if (mutation.type === 'update_content') {
+      const existingIdx = this.mutationQueue.findIndex(
+        (m) => m.fileId === mutation.fileId && m.type === 'update_content' && (m.status === 'pending' || !m.status)
+      );
+      if (existingIdx !== -1) {
+        this.mutationQueue[existingIdx] = {
+          ...this.mutationQueue[existingIdx],
+          payload: { ...this.mutationQueue[existingIdx].payload, ...mutation.payload },
+          status: 'pending',
+        };
+        this.persistMutationQueue();
+        return this.mutationQueue[existingIdx];
+      }
+    }
+
+    const item: OfflineMutation = {
+      ...mutation,
+      id,
+      status: mutation.status || 'pending',
+      retryCount: mutation.retryCount || 0,
+      createdAt,
+    };
+    this.mutationQueue.push(item);
+    this.persistMutationQueue();
+    return item;
+  }
+
+  public async getPendingMutations(): Promise<OfflineMutation[]> {
+    this.hydrateMutationQueueIfEmpty();
+    return this.mutationQueue.filter((m) => m.status === 'pending' || m.status === 'failed');
+  }
+
+  public async updateMutationStatus(
+    id: string,
+    status: 'pending' | 'processing' | 'failed' | 'completed',
+    error?: string
+  ): Promise<void> {
+    this.hydrateMutationQueueIfEmpty();
+    const item = this.mutationQueue.find((m) => m.id === id);
+    if (!item) return;
+    item.status = status;
+    if (error !== undefined) {
+      item.error = error;
+    }
+    if (status === 'failed') {
+      item.retryCount = (item.retryCount || 0) + 1;
+    }
+    this.persistMutationQueue();
+  }
+
+  public async removeMutation(id: string): Promise<void> {
+    this.hydrateMutationQueueIfEmpty();
+    const idx = this.mutationQueue.findIndex((m) => m.id === id);
+    if (idx !== -1) {
+      this.mutationQueue.splice(idx, 1);
+      this.persistMutationQueue();
+    }
+  }
+
+  public async clearMutations(): Promise<void> {
+    this.mutationQueue.length = 0;
+    this.persistMutationQueue();
   }
 }
 

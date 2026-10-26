@@ -64,6 +64,8 @@ export interface AssembleSnapshotParams {
   baseFiles?: SnapshotProjectFile[];
   lruModels?: SnapshotLRUModel[];
   dirtyFiles?: SnapshotDirtyItem[];
+  /** Live CodeMirror engine buffers for all mounted panes (primary + secondary split-pane). */
+  liveEngineBuffers?: SnapshotDirtyItem[];
   currentPage?: SnapshotActiveDoc | null;
   activeDoc?: SnapshotActiveDoc | null;
   activeContent?: string | null;
@@ -131,7 +133,11 @@ export function assembleCompilationSnapshot(params: AssembleSnapshotParams): Pro
   if (params.baseFiles && params.baseFiles.length > 0) {
     for (const file of params.baseFiles) {
       const path = resolveSnapshotFilePath(file.id, file.path || file.title || file.name, pathIndex);
-      filesMap[path] = extractDocumentContentString(file.content);
+      const content = extractDocumentContentString(file.content);
+      filesMap[path] = content;
+      if (file.id && file.id !== path) {
+        filesMap[file.id] = content;
+      }
     }
   }
 
@@ -142,7 +148,11 @@ export function assembleCompilationSnapshot(params: AssembleSnapshotParams): Pro
       params.currentPage.path || params.currentPage.title || params.currentPage.name,
       pathIndex,
     );
-    filesMap[fallbackPath] = extractDocumentContentString(params.currentPage.content);
+    const content = extractDocumentContentString(params.currentPage.content);
+    filesMap[fallbackPath] = content;
+    if (params.currentPage.id && params.currentPage.id !== fallbackPath) {
+      filesMap[params.currentPage.id] = content;
+    }
   }
 
   // 3. Overlay LRU cache models (in-memory buffers for recently edited tabs)
@@ -151,6 +161,9 @@ export function assembleCompilationSnapshot(params: AssembleSnapshotParams): Pro
       if (typeof model.content === 'string') {
         const path = resolveSnapshotFilePath(model.fileId, model.filePath, pathIndex);
         filesMap[path] = model.content;
+        if (model.fileId && model.fileId !== path) {
+          filesMap[model.fileId] = model.content;
+        }
         if (model.isDirty) {
           dirtyFileIdsSet.add(model.fileId);
         }
@@ -166,6 +179,7 @@ export function assembleCompilationSnapshot(params: AssembleSnapshotParams): Pro
       if (mappedPath) {
         const normPath = normalizeLatexPath(mappedPath);
         filesMap[normPath] = dirty.content;
+        filesMap[dirty.fileId] = dirty.content;
       } else if (
         params.activeDoc &&
         dirty.fileId === params.activeDoc.id &&
@@ -177,6 +191,21 @@ export function assembleCompilationSnapshot(params: AssembleSnapshotParams): Pro
           pathIndex,
         );
         filesMap[normPath] = dirty.content;
+        filesMap[dirty.fileId] = dirty.content;
+      }
+    }
+  }
+
+  // 4b. Overlay all mounted CodeMirror engine buffers (handles multi-pane split editors)
+  if (params.liveEngineBuffers && params.liveEngineBuffers.length > 0) {
+    for (const liveBuf of params.liveEngineBuffers) {
+      if (typeof liveBuf.content === 'string') {
+        const mappedPath = pathIndex.get(liveBuf.fileId);
+        if (mappedPath) {
+          const normPath = normalizeLatexPath(mappedPath);
+          filesMap[normPath] = liveBuf.content;
+        }
+        filesMap[liveBuf.fileId] = liveBuf.content;
       }
     }
   }

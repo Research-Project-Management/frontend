@@ -44,8 +44,12 @@ import { useActiveDocument } from '@/features/editor/ui/hooks/useActiveDocument'
 import {
   useSettingsStore,
   useWorkspaceStore,
+  useDocumentCollaborationStore,
+  getActiveEditorEngine,
   editorCommandBus,
   sessionCoordinator,
+  isPrimaryModKey,
+  DEFAULT_MAIN_FILE,
   type DraftSnapshot,
   type DocumentConflict,
 } from '@/features/editor/core';
@@ -58,7 +62,7 @@ interface EmptyEditorStateProps {
   fileName?: string;
 }
 
-function EmptyEditorState({ onOpenDefaultFile, fileName = 'main.tex' }: EmptyEditorStateProps) {
+function EmptyEditorState({ onOpenDefaultFile, fileName = DEFAULT_MAIN_FILE }: EmptyEditorStateProps) {
   return (
     <PlaneEmptyState
       variant="document"
@@ -262,12 +266,30 @@ export function EditorArea() {
   // Global shortcut (Ctrl+Alt+M / Cmd+Alt+M) -> Add Comment / Open Review in both modes
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const isMac =
-        typeof navigator !== 'undefined' &&
-        (/Mac|iPod|iPhone|iPad/.test(navigator.userAgent) ||
-          (typeof (navigator as { userAgentData?: { platform?: string } }).userAgentData?.platform === 'string' &&
-            /mac/i.test((navigator as { userAgentData?: { platform?: string } }).userAgentData!.platform!)));
-      const modKey = isMac ? e.metaKey : e.ctrlKey;
+      const modKey = isPrimaryModKey(e);
+
+      if (modKey && e.altKey && (e.key === 'm' || e.key === 'M' || e.code === 'KeyM')) {
+        e.preventDefault();
+        const engine = getActiveEditorEngine();
+        const sel = engine?.getSelection?.() as
+          | { fromLine?: number; startLine?: number; toLine?: number; endLine?: number }
+          | null
+          | undefined;
+        const cursor = engine?.getCursorPosition?.();
+        const selectedText = engine?.getSelectedText?.() || '';
+        const startLine = sel?.fromLine ?? sel?.startLine ?? cursor?.line ?? 1;
+        const endLine = sel?.toLine ?? sel?.endLine ?? cursor?.line ?? 1;
+
+        useDocumentCollaborationStore.getState().setPendingComment({
+          startLine,
+          endLine,
+          selectedText,
+        });
+        useWorkspaceStore.getState().setActiveSidebarTab('review');
+        useWorkspaceStore.getState().setSidebarLeftOpen(true);
+        editorCommandBus.dispatch({ type: 'review:create-comment' });
+        return;
+      }
 
       if (modKey && (e.key === '\\' || e.code === 'Backslash')) {
         e.preventDefault();

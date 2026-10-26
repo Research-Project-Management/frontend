@@ -16,6 +16,7 @@ import {
   editorCommandBus,
   useCompileStore,
   useWorkspaceStore,
+  SYNCTEX_BROADCAST_CHANNEL,
 } from '@/features/editor/core';
 import { compilerCoordinator } from '@/features/editor/subsystems/compiler';
 
@@ -33,7 +34,7 @@ export function DetachedPdfViewer() {
 
     let channel: BroadcastChannel | null = null;
     try {
-      channel = new BroadcastChannel('flux-synctex-bus');
+      channel = new BroadcastChannel(SYNCTEX_BROADCAST_CHANNEL);
       channel.onmessage = (event) => {
         const { type, payload } = event.data || {};
         if (type === 'preview:attached') {

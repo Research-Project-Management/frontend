@@ -12,6 +12,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { filesQuery } from '@/features/editor/ui/hooks/document.queries';
 import { documentSearchService } from '@/features/editor/sdk/manuscript.service';
+import {
+  sessionCoordinator,
+  documentAuthority,
+  lruDocumentCache,
+  editorInvariantMonitor,
+} from '@/features/editor/core';
 import type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
 
 export function buildSearchRegex(
@@ -78,6 +84,9 @@ export function useProjectSearchActions({
     if (!effectiveQuery || !rootProjectId) return;
     setIsReplacingAll(true);
     try {
+      // 1. Flush pending debounced writes across all sessions so server has latest content
+      await sessionCoordinator.flushAllPending();
+
       const res = await documentSearchService.batchReplace(
         rootProjectId,
         effectiveQuery,
@@ -98,9 +107,27 @@ export function useProjectSearchActions({
       await queryClient.invalidateQueries({
         queryKey: filesQuery(rootPageId).queryKey,
       });
-      if (res.affectedFileIds.includes(activeFileId || '')) {
-        handleReplaceAllCurrentFile();
+
+      // 2. Reconcile all affected files across mounted engines (active & split-pane) and LRU cache
+      const re = buildSearchRegex(effectiveQuery, { useRegex, wholeWord, caseSensitive });
+      if (re) {
+        for (const affectedId of res.affectedFileIds) {
+          const mountedEngine = documentAuthority.getEditorEngineForFile(affectedId);
+          if (mountedEngine) {
+            const currentContent = mountedEngine.getContent();
+            const replaced = currentContent.replace(re, replaceText);
+            if (replaced !== currentContent) {
+              mountedEngine.setContent(replaced);
+            }
+          } else {
+            // Evict model from cache so opening it fetches fresh content from server/store
+            lruDocumentCache.evictModel(affectedId);
+          }
+        }
       }
+
+      // 3. Reconcile editor state invariants
+      editorInvariantMonitor.reconcileInvariants();
     } catch (err: unknown) {
       toast.error((err as Error)?.message || 'Failed to replace across project', { id: 'search-replace-status' });
     } finally {
@@ -115,8 +142,6 @@ export function useProjectSearchActions({
     useRegex,
     queryClient,
     rootPageId,
-    activeFileId,
-    handleReplaceAllCurrentFile,
   ]);
 
   const handleReplaceSingleMatch = useCallback(

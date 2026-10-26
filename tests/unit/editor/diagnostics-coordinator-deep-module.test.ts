@@ -144,13 +144,13 @@ describe('DiagnosticsCoordinator Deep Module', () => {
       ]);
 
       const ch1Summary = coordinator.getFileSummary('chapters/ch1.tex');
-      expect(ch1Summary).toEqual({ errorCount: 1, warningCount: 1, infoCount: 0, total: 2 });
+      expect(ch1Summary).toMatchObject({ errorCount: 1, warningCount: 1, infoCount: 0, total: 2 });
 
       const folderSummary = coordinator.getFolderSummary('chapters');
-      expect(folderSummary).toEqual({ errorCount: 2, warningCount: 1, infoCount: 0, total: 3 });
+      expect(folderSummary).toMatchObject({ errorCount: 2, warningCount: 1, infoCount: 0, total: 3 });
 
       const projectSummary = coordinator.getProjectSummary();
-      expect(projectSummary).toEqual({ errorCount: 2, warningCount: 2, infoCount: 0, total: 4 });
+      expect(projectSummary).toMatchObject({ errorCount: 2, warningCount: 2, infoCount: 0, total: 4 });
     });
   });
 

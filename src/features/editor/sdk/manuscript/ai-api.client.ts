@@ -197,8 +197,33 @@ export async function suggestLatexFix(params: AiErrorFixParams): Promise<AiError
   return heuristicLatexErrorFix(params);
 }
 
+/**
+ * Generate a clean LaTeX tabular or TSV table from an AI prompt.
+ */
+export async function generateLatexTable(prompt: string): Promise<string> {
+  const systemPrompt = `You are an expert academic LaTeX assistant. Generate a clean LaTeX tabular or TSV table according to the user request.
+Output ONLY the clean LaTeX tabular code starting with \\begin{tabular} and ending with \\end{tabular} or TSV data with tabs and newlines. Do not wrap in markdown quotes or add conversational preamble.`;
+
+  const json = await apiPost<{
+    data?: { content?: string; message?: string };
+    content?: string;
+    message?: string;
+  } | null>('/api/ai/chat/sync', {
+    query: `Create an academic table based on: ${prompt}`,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: prompt },
+    ],
+    model: 'fast',
+  });
+
+  const rawText = json?.data?.content || json?.data?.message || json?.content || json?.message || '';
+  return rawText.replace(/```latex\n?|```tsv\n?|```\n?/g, '').trim();
+}
+
 export const ai = {
   executeAcademicAction: AcademicAiService.executeAction,
   suggestLatexFix,
+  generateLatexTable,
   AcademicAiService,
 };

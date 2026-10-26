@@ -32,6 +32,8 @@ import {
   useWorkspaceStore,
   usePageStore,
   useSettingsStore,
+  documentAuthority,
+  editorInvariantMonitor,
 } from '@/features/editor/core';
 import { toast } from 'sonner';
 
@@ -89,6 +91,9 @@ const defaultStorePort: WorkspaceStorePort = {
     null,
   closeTab: (fileId: string) => {
     const wsStore = useWorkspaceStore.getState();
+    if (wsStore.secondaryFileId === fileId) {
+      wsStore.setSecondaryFileId(null);
+    }
     for (const projId of Object.keys(wsStore.tabsByProject)) {
       wsStore.closeTab(projId, fileId);
     }
@@ -181,6 +186,50 @@ export class WorkspaceCoordinatorRegistry {
 
     editorCommandBus.registerExecutor('workspace:set-main-file', async (cmd) => {
       return this.setMainFile(cmd.fileId, cmd.projectId);
+    });
+
+    editorCommandBus.registerExecutor('workspace:move-file', async (cmd) => {
+      return this.moveItem({
+        itemId: cmd.fileId,
+        targetFolderId: cmd.targetFolderId,
+      });
+    });
+
+    editorCommandBus.subscribe('workspace:open-file', (cmd) => {
+      editorCommandBus.dispatch({
+        type: 'navigation:open-tab',
+        fileId: cmd.fileId,
+        title: cmd.filePath || cmd.fileId,
+        path: cmd.filePath,
+      });
+    });
+
+    editorCommandBus.subscribe('history:open-modal', () => {
+      useSettingsStore.getState().setIsHistoryOpen(true);
+    });
+
+    editorCommandBus.subscribe('history:open', () => {
+      useSettingsStore.getState().setIsHistoryOpen(true);
+    });
+
+    editorCommandBus.subscribe('citation:open-picker', (cmd) => {
+      editorCommandBus.dispatch({
+        type: 'dialog:open',
+        dialog: 'citation-picker',
+        payload: cmd.initialQuery ? { initialQuery: cmd.initialQuery } : undefined,
+      });
+    });
+
+    editorCommandBus.subscribe('citation:insert', (cmd) => {
+      editorCommandBus.dispatch({
+        type: 'editor:insert-citation',
+        bibKey: cmd.bibKey,
+        entry: cmd.entry,
+      });
+    });
+
+    editorCommandBus.subscribe('diagnostics:clear', () => {
+      diagnosticsCoordinator.clearDiagnostics();
     });
 
     editorCommandBus.registerExecutor('editor:rename-citekey', async (cmd) => {
@@ -297,9 +346,15 @@ export class WorkspaceCoordinatorRegistry {
         pageStore.setCurrentPage((prev) => (prev ? { ...prev, title: newName } : prev));
       }
 
-      // 2. Cascade rename to LRU Cache
+      // 2. Cascade rename to LRU Cache & Project Files cache
       lruDocumentCache.renameFile(itemId, newName);
       const model = lruDocumentCache.getModel(itemId);
+      if (this.projectFiles.length > 0) {
+        this.projectFiles = this.projectFiles.map((f) =>
+          f.id === itemId ? { ...f, title: newName, path: newName } : f
+        );
+        documentAuthority.hydrateServerProjectFiles(effectiveProjectId, this.projectFiles);
+      }
 
       // 3. Cascade rename to Diagnostics Coordinator (alias old path to new path)
       diagnosticsCoordinator.registerAlias(newName, oldName);
@@ -310,6 +365,8 @@ export class WorkspaceCoordinatorRegistry {
         latexDagEngine.parseAndRegister(newName, model.content, itemId);
         latexSymbolsIndex.indexFile(itemId, newName, model.content);
       }
+
+      editorInvariantMonitor.reconcileInvariants();
 
       // 5. Notify FileTree
       editorCommandBus.dispatch({
@@ -344,10 +401,15 @@ export class WorkspaceCoordinatorRegistry {
       this.closeTabInStore(fileId);
       editorCommandBus.dispatch({ type: 'navigation:close-tab', fileId });
 
-      // 2. Evict from LRU Cache, DAG, & Symbol Index
+      // 2. Evict from LRU Cache, DAG, Symbol Index, and Project Files cache
       lruDocumentCache.evictModel(fileId);
       latexDagEngine.removeFileNode(fileId);
       latexSymbolsIndex.removeFile(fileId);
+      if (this.projectFiles.length > 0) {
+        this.projectFiles = this.projectFiles.filter((f) => f.id !== fileId);
+        documentAuthority.hydrateServerProjectFiles(effectiveProjectId, this.projectFiles);
+      }
+      editorInvariantMonitor.reconcileInvariants();
 
       // 3. Notify CommandBus
       editorCommandBus.dispatch({
@@ -473,9 +535,11 @@ export class WorkspaceCoordinatorRegistry {
    */
   public initProjectSymbols(files: Array<{ id: string; title?: string; name?: string; path?: string; content?: unknown }>): void {
     this.projectFiles = [...files];
+    const projectKey = this.getActiveProjectId() || 'default';
     latexSymbolsIndex.clear();
     latexDagEngine.clear();
     diagnosticsCoordinator.clearDiagnostics();
+    documentAuthority.hydrateServerProjectFiles(projectKey, files);
     for (const file of files) {
       const path = file.path || file.title || file.name || file.id;
       const content = extractDocumentContentString(file.content);

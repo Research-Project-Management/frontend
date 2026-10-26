@@ -247,6 +247,7 @@ export interface CitekeyRefactorContext {
   notification?: WorkspaceNotificationPort;
   store?: WorkspaceStorePort;
   projectFiles?: Array<{ id: string; title?: string; name?: string; path?: string; content?: unknown }>;
+  projectId?: string;
 }
 
 /**
@@ -256,16 +257,21 @@ export interface CitekeyRefactorContext {
 export async function executeProjectCitekeyRefactor(
   oldKey: string,
   newKey: string,
-  optProjectId?: string,
+  optProjectId?: string | null | CitekeyRefactorContext,
   ctx?: CitekeyRefactorContext
 ): Promise<{ success: boolean; modifiedCount: number; replacedCount: number }> {
+  const effectiveCtx: CitekeyRefactorContext | undefined =
+    typeof optProjectId === 'object' && optProjectId !== null ? optProjectId : ctx;
+  const rawProjectId: string | null =
+    typeof optProjectId === 'string' ? optProjectId : null;
+
   const { toast } = await import('sonner');
   const notifyError = (msg: string, id?: string) =>
-    ctx?.notification ? ctx.notification.notifyError(msg, id) : toast.error(msg, id ? { id } : undefined);
+    effectiveCtx?.notification ? effectiveCtx.notification.notifyError(msg, id) : toast.error(msg, id ? { id } : undefined);
   const notifyInfo = (msg: string, id?: string) =>
-    ctx?.notification ? ctx.notification.notifyInfo(msg, id) : toast.info(msg, id ? { id } : undefined);
+    effectiveCtx?.notification ? effectiveCtx.notification.notifyInfo(msg, id) : toast.info(msg, id ? { id } : undefined);
   const notifySuccess = (msg: string, id?: string) =>
-    ctx?.notification ? ctx.notification.notifySuccess(msg, id) : toast.success(msg, id ? { id } : undefined);
+    effectiveCtx?.notification ? effectiveCtx.notification.notifySuccess(msg, id) : toast.success(msg, id ? { id } : undefined);
 
   const validation = validateCitationKey(newKey, oldKey);
   if (!validation.isValid) {
@@ -277,6 +283,7 @@ export async function executeProjectCitekeyRefactor(
     usePageStore,
     editorCommandBus,
     getActiveEditorEngine,
+    documentAuthority,
     workspaceCoordinator,
     sessionCoordinator,
   } = await import('@/features/editor/core');
@@ -289,10 +296,11 @@ export async function executeProjectCitekeyRefactor(
 
   const pageState = usePageStore.getState();
   const activeDoc = pageState.getActiveDocument();
-  const activeDocId = ctx?.store ? ctx.store.getActiveDocumentId() : (activeDoc?.id ?? null);
+  const activeDocId = effectiveCtx?.store ? effectiveCtx.store.getActiveDocumentId() : (activeDoc?.id ?? null);
   const effectiveProjectId =
-    optProjectId ||
-    (ctx?.store ? ctx.store.getActiveProjectId() : null) ||
+    rawProjectId ||
+    (effectiveCtx?.store ? effectiveCtx.store.getActiveProjectId() : null) ||
+    effectiveCtx?.projectId ||
     pageState.projectId ||
     pageState.parentPageId ||
     activeDoc?.id ||
@@ -306,7 +314,7 @@ export async function executeProjectCitekeyRefactor(
   const fileMap = new Map<string, { id: string; path: string; content: string }>();
 
   // 1. Include files registered in workspaceCoordinator
-  const wsFiles = ctx?.projectFiles ?? workspaceCoordinator.getProjectFiles() ?? [];
+  const wsFiles = effectiveCtx?.projectFiles ?? workspaceCoordinator.getProjectFiles() ?? [];
   for (const wf of wsFiles) {
     if (wf.id) {
       const cached = lruDocumentCache.get(wf.id);
@@ -320,8 +328,8 @@ export async function executeProjectCitekeyRefactor(
 
   // 2. Fetch backend files and merge (preferring unsaved local edits in lruDocumentCache)
   try {
-    const files = ctx?.service
-      ? await ctx.service.getFilesByProjectId(effectiveProjectId)
+    const files = effectiveCtx?.service
+      ? await effectiveCtx.service.getFilesByProjectId(effectiveProjectId)
       : await fileService.getByPageId(effectiveProjectId);
     for (const f of files) {
       if (f.id) {
@@ -339,8 +347,8 @@ export async function executeProjectCitekeyRefactor(
 
   if (fileMap.size === 0 && activeDoc?.id && activeDoc.id !== effectiveProjectId) {
     try {
-      const pageFiles = ctx?.service
-        ? await ctx.service.getFilesByProjectId(activeDoc.id)
+      const pageFiles = effectiveCtx?.service
+        ? await effectiveCtx.service.getFilesByProjectId(activeDoc.id)
         : await fileService.getByPageId(activeDoc.id);
       for (const f of pageFiles) {
         if (f.id) {
@@ -369,11 +377,20 @@ export async function executeProjectCitekeyRefactor(
     }
   }
 
+  // Ensure all live files (active tab or split-pane) are up to date via DocumentAuthority
+  for (const [fId, item] of fileMap.entries()) {
+    const liveContent = documentAuthority?.getDocumentContent(fId);
+    if (liveContent) {
+      item.content = liveContent;
+    }
+  }
+
   const liveEngine = getActiveEditorEngine();
   if (activeDocId) {
     const activeDocMatches = activeDoc?.id === activeDocId;
     const cachedActive = lruDocumentCache.get(activeDocId);
     const liveContent =
+      documentAuthority?.getDocumentContent(activeDocId) ||
       liveEngine?.getContent?.() ||
       cachedActive?.content ||
       (activeDocMatches ? extractDocumentContentString(activeDoc) : '') ||
@@ -438,6 +455,13 @@ export async function executeProjectCitekeyRefactor(
       console.warn(`[CitationRefactor] Failed to save updated file ${mod.path} to backend:`, err);
     }
 
+    const targetEngine =
+      documentAuthority?.getEditorEngineForFile(mod.id) ??
+      (activeDocId === mod.id ? liveEngine : null);
+    if (targetEngine) {
+      targetEngine.setContent(mod.newContent);
+    }
+
     if (activeDocId && activeDocId === mod.id) {
       const store = usePageStore.getState();
       if (store.activeFilePage?.id === mod.id) {
@@ -449,8 +473,8 @@ export async function executeProjectCitekeyRefactor(
       store.setCurrentPage((prev) =>
         prev && prev.id === mod.id ? { ...prev, content: mod.newContent, docContent: mod.newContent } : prev
       );
-      editorCommandBus.dispatch({ type: 'editor:set-content', content: mod.newContent, fileId: mod.id });
     }
+    editorCommandBus.dispatch({ type: 'editor:set-content', content: mod.newContent, fileId: mod.id });
   }
 
   editorCommandBus.dispatch({

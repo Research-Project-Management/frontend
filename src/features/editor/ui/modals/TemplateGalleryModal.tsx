@@ -399,12 +399,13 @@ export default function TemplateGalleryModal() {
                     onClick={async () => {
                       const toastId = toast.loading('Saving current project as template...');
                       try {
+                        const mainContent = engine?.getContent() || selectedTemplate.mainTex;
                         await manuscriptService.templates.createCustom({
-                          projectId,
                           name: `${activeFileTitle?.replace(/\.tex$/i, '') || 'Custom'} Template`,
                           description: 'Saved from active manuscript project',
                           category: 'Academic',
-                          mainTex: engine?.getContent(),
+                          mainFile: 'main.tex',
+                          files: { 'main.tex': mainContent },
                         });
                         queryClient.invalidateQueries({ queryKey: ['manuscript-templates'] });
                         toast.success('Saved project as custom template!', { id: toastId });

@@ -34,7 +34,11 @@ import { cn } from '@/shared/lib/utils';
 import { useEditorStorageMutations } from '@/features/editor/ui/hooks/useStorage';
 import type { EditorStorageItem as StorageItem } from '@/features/editor/domain/types/storage-item.types';
 import { useFileDiagnosticsSummary } from '@/features/editor/ui/hooks/useDiagnosticsSummary';
-import { workspaceCoordinator } from '@/features/editor/core';
+import {
+  workspaceCoordinator,
+  RASTER_AND_VECTOR_IMAGE_EXTENSIONS,
+  CODE_EXTENSIONS,
+} from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 
 const ICON_IMAGE = { icon: Image, color: 'text-foreground' };
@@ -44,8 +48,8 @@ const ICON_CLS = { icon: Braces, color: 'text-foreground' };
 const ICON_CODE = { icon: FileCode2, color: 'text-foreground' };
 const ICON_ATTACHMENT = { icon: Paperclip, color: 'text-foreground' };
 
-const IMAGE_EXT_SET = new Set(['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'eps']);
-const CODE_EXT_SET = new Set(['tex', 'ltx', 'dtx', 'py', 'r', 'm', 'c', 'cpp', 'java', 'js', 'ts', 'json', 'csv']);
+const IMAGE_EXT_SET = RASTER_AND_VECTOR_IMAGE_EXTENSIONS;
+const CODE_EXT_SET = CODE_EXTENSIONS;
 
 export function getStorageIcon(item: StorageItem) {
   const mime = item.mimeType ?? '';

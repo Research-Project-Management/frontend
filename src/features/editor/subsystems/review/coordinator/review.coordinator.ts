@@ -16,6 +16,8 @@ import { type EditorView } from '@codemirror/view';
 import {
   editorCommandBus,
   getActiveEditorEngine,
+  lruDocumentCache,
+  sessionCoordinator,
   useDocumentCollaborationStore,
   useWorkspaceStore,
 } from '@/features/editor/core';
@@ -299,11 +301,14 @@ export class ReviewCoordinatorRegistry {
    */
   public initiateComment(optLine?: number, optSelectedText?: string): void {
     const engine = getActiveEditorEngine();
-    const sel = engine?.getSelection?.();
+    const sel = engine?.getSelection?.() as
+      | { startLine?: number; endLine?: number; fromLine?: number; toLine?: number }
+      | null
+      | undefined;
     const cursor = engine?.getCursorPosition?.();
 
-    const startLine = optLine ?? sel?.startLine ?? cursor?.line ?? 1;
-    const endLine = optLine ?? sel?.endLine ?? cursor?.line ?? 1;
+    const startLine = optLine ?? sel?.startLine ?? sel?.fromLine ?? cursor?.line ?? 1;
+    const endLine = optLine ?? sel?.endLine ?? sel?.toLine ?? cursor?.line ?? 1;
     const selectedText = optSelectedText ?? engine?.getSelectedText?.() ?? '';
 
     this.storePort.setPendingComment({
@@ -568,13 +573,22 @@ export class ReviewCoordinatorRegistry {
     };
     this.currentSuggestions.set(sug.id, updatedSug);
 
+    // Sync mutated view document back to LRU document cache and session coordinator if registered
+    const targetPageId = sug.pageId || this.activePageId;
+    if (targetPageId && lruDocumentCache.getModel(targetPageId)) {
+      const nextText = view.state.doc.toString();
+      lruDocumentCache.updateContent(targetPageId, nextText, true);
+      sessionCoordinator.notifyContentChange(targetPageId, nextText);
+    }
+
     // Update active view decorations immediately
     this.syncEditorDecorations(
       view,
       Array.from(this.currentSuggestions.values()),
       Array.from(this.currentComments.values()),
       this.currentViewMode,
-      this.currentReviewMode
+      this.currentReviewMode,
+      targetPageId
     );
   }
 
@@ -608,6 +622,13 @@ export class ReviewCoordinatorRegistry {
       });
     }
 
+    const targetPageId = sug.pageId || this.activePageId;
+    if (targetPageId && lruDocumentCache.getModel(targetPageId)) {
+      const revertedText = view.state.doc.toString();
+      lruDocumentCache.updateContent(targetPageId, revertedText, true);
+      sessionCoordinator.notifyContentChange(targetPageId, revertedText);
+    }
+
     const restoredSug: PageSuggestion = { ...sug, status: 'pending' };
     this.currentSuggestions.set(sug.id, restoredSug);
     this.syncEditorDecorations(
@@ -629,28 +650,38 @@ export class ReviewCoordinatorRegistry {
     }
   }
 
-  public applyAllLocally(action: 'accept' | 'reject'): void {
-    if (!this.activeView) return;
-    const doc = this.activeView.state.doc;
-    const stateSugs = this.activeView.state.field(trackChangesStateField, false)?.suggestions || [];
+  public applyAllLocally(action: 'accept' | 'reject', pageId?: string): void {
+    const targetViews = this.getViewsForFile(pageId, this.activeView);
+    if (targetViews.length === 0) return;
+    const primaryView = targetViews[0];
+    const doc = primaryView.state.doc;
+    const stateSugs = primaryView.state.field(trackChangesStateField, false)?.suggestions || [];
     for (const s of stateSugs) {
       if (!this.currentSuggestions.has(s.id)) {
         this.currentSuggestions.set(s.id, s);
       }
     }
     const pending = Array.from(this.currentSuggestions.values())
-      .filter((s) => s.status === 'pending')
+      .filter((s) => s.status === 'pending' && (!pageId || !s.pageId || s.pageId === pageId))
       .map((s) => ({ sug: s, range: resolveSuggestionRange(doc, s) }))
       .sort((a, b) => b.range.from - a.range.from);
 
     for (const item of pending) {
-      this.applySuggestionLocally(this.activeView, item.sug, action);
+      for (const view of targetViews) {
+        this.applySuggestionLocally(view, item.sug, action);
+      }
     }
   }
 
-  public applySelectedLocally(suggestionIds: string[], action: 'accept' | 'reject'): void {
-    if (!this.activeView || !suggestionIds.length) return;
-    const doc = this.activeView.state.doc;
+  public applySelectedLocally(
+    suggestionIds: string[],
+    action: 'accept' | 'reject',
+    pageId?: string
+  ): void {
+    const targetViews = this.getViewsForFile(pageId, this.activeView);
+    if (targetViews.length === 0 || !suggestionIds.length) return;
+    const primaryView = targetViews[0];
+    const doc = primaryView.state.doc;
     const resolved: { sug: PageSuggestion; range: { from: number; to: number } }[] = [];
     const seen = new Set<string>();
 
@@ -665,7 +696,9 @@ export class ReviewCoordinatorRegistry {
     resolved.sort((a, b) => b.range.from - a.range.from);
 
     for (const item of resolved) {
-      this.applySuggestionLocally(this.activeView, item.sug, action);
+      for (const view of targetViews) {
+        this.applySuggestionLocally(view, item.sug, action);
+      }
     }
   }
 
@@ -704,8 +737,11 @@ export class ReviewCoordinatorRegistry {
     }
 
     const sug = this.resolveKnownSuggestion(suggestionId);
-    if (this.activeView && sug) {
-      this.applySuggestionLocally(this.activeView, sug, action);
+    if (sug) {
+      const targetViews = this.getViewsForFile(pageId || sug.pageId, this.activeView);
+      for (const view of targetViews) {
+        this.applySuggestionLocally(view, sug, action);
+      }
     }
 
     const pastTense = action === 'accept' ? 'accepted' : 'rejected';
@@ -776,7 +812,7 @@ export class ReviewCoordinatorRegistry {
       this.pendingPersistTimers.delete(localId);
     }
 
-    this.applyAllLocally(action);
+    this.applyAllLocally(action, pageId);
 
     const pastTense = action === 'accept' ? 'accepted' : 'rejected';
     const event = action === 'accept' ? 'suggestion:accepted-all' : 'suggestion:rejected-all';
@@ -832,7 +868,7 @@ export class ReviewCoordinatorRegistry {
       }
     }
 
-    this.applySelectedLocally(suggestionIds, action);
+    this.applySelectedLocally(suggestionIds, action, pageId);
 
     const persistedIds = suggestionIds
       .map((id) => this.localToPersistedId.get(id) ?? id)

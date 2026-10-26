@@ -26,7 +26,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import type { Item } from "@/features/library/domain/types/items.types";
-import { formatAcademicAuthors } from "@/features/library/domain/academic-text";
+import { getItemAuthorsSummary } from "@/features/library/domain/creators";
 import { useDuplicateMergeState } from "@/features/library/core/coordinator/curation.coordinator";
 import {
   normalizeCompareValue,
@@ -163,11 +163,7 @@ export function MergeModal({
             >
               {items.map((item, idx) => {
                 const isMaster = item.id === selectedMasterId;
-                const authorList = formatAcademicAuthors(
-                  item.authors && item.authors.length > 0
-                    ? item.authors
-                    : item.creators,
-                );
+                const authorList = getItemAuthorsSummary(item);
 
                 return (
                   <div

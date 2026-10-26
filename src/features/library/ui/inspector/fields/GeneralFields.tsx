@@ -1,11 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import { Check } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import type { Item } from "@/features/library/domain/types/library.types";
-import { useLibraryCacheSynchronizer } from "@/features/library/sdk/queries/catalog.queries";
-import { type TypeConversionPreview } from "@/features/library/sdk/queries/saved-searches-relations.queries";
+import { useLibraryUIStore } from "@/features/library/core/store/library-ui.store";
 import {
   SchemaItemTypeDefinition,
   ALL_ITEM_TYPES_FLAT,
@@ -22,13 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
-import dynamic from "next/dynamic";
 import { InlineTextarea } from "./InlineTextarea";
-
-const TypeConversionModal = dynamic(
-  () => import("@/features/library/ui/modals/TypeConversionModal"),
-  { ssr: false },
-);
 
 export interface GeneralFieldsProps {
   item?: Item;
@@ -49,13 +41,7 @@ export function GeneralFields({
   canEdit = true,
   scopeId,
 }: GeneralFieldsProps) {
-  const { syncConvertedOrPatchedItem } = useLibraryCacheSynchronizer(scopeId);
-
-  const [isConversionDialogOpen, setIsConversionDialogOpen] = useState(false);
-  const [targetConversionType, setTargetConversionType] = useState<string>("");
-  const [previewData, setPreviewData] = useState<TypeConversionPreview | null>(
-    null,
-  );
+  const openModal = useLibraryUIStore((s) => s.openModal);
 
   if (!item) return null;
 
@@ -128,9 +114,14 @@ export function GeneralFields({
                       key={t.value}
                       onClick={() => {
                         if (t.value === currentItemType) return;
-                        setTargetConversionType(t.value);
-                        setPreviewData(null);
-                        setIsConversionDialogOpen(true);
+                        openModal("TYPE_CONVERSION", {
+                          item,
+                          itemId: item.id,
+                          currentType: currentItemType,
+                          targetType: t.value,
+                          itemTitle: item.title,
+                          scopeId,
+                        });
                       }}
                       className={cn(
                         "flex items-center justify-between h-7.5 px-2.5 text-13 font-normal rounded-md cursor-pointer text-foreground hover:bg-muted select-none transition-colors",
@@ -171,6 +162,7 @@ export function GeneralFields({
           {titleLabel}
         </span>
         <InlineTextarea
+          itemKey={item.id}
           value={displayTitleValue}
           ariaLabel="Item Title"
           onSave={handleTitleChange}
@@ -179,22 +171,6 @@ export function GeneralFields({
           readOnly={!canEdit}
         />
       </div>
-
-      {/* Item Type Conversion Modal */}
-      {isConversionDialogOpen && (
-        <TypeConversionModal
-          open={isConversionDialogOpen}
-          onOpenChange={setIsConversionDialogOpen}
-          item={item}
-          targetType={targetConversionType}
-          scopeId={scopeId}
-          initialPreview={previewData}
-          onSuccess={(updatedItem: Item) => {
-            const targetScope = scopeId || item.projectId || "user";
-            syncConvertedOrPatchedItem(item.id, updatedItem, targetScope);
-          }}
-        />
-      )}
     </>
   );
 }

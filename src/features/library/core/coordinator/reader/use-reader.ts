@@ -97,8 +97,9 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
 
   const {
     annotations = [],
+    createAnnotation,
     updateAnnotation,
-    deleteAnnotation,
+    deleteAnnotation: rawDeleteAnnotation,
     extractNotes,
     importExternal,
   } = useAnnotations(scopeId, effectiveAttachmentId);
@@ -122,6 +123,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     handleBatchChangeColor,
     handleBatchDelete,
     handleBatchAddToNote,
+    pruneDeletedFromHistory,
     undo: handleUndoAnnotation,
     redo: handleRedoAnnotation,
     canUndo,
@@ -132,6 +134,14 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     paper,
     setPendingNoteText,
   });
+
+  const deleteAnnotation = useCallback(
+    async (annotationId: string, expectedVersion?: number) => {
+      pruneDeletedFromHistory([annotationId]);
+      return rawDeleteAnnotation(annotationId, expectedVersion);
+    },
+    [rawDeleteAnnotation, pruneDeletedFromHistory],
+  );
 
   useEffect(() => {
     setBibtexOpen(false);
@@ -201,7 +211,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
       try {
         const pageIndex = pageNum !== undefined && pageNum > 0 ? pageNum - 1 : 0;
         const effectiveType = type === 'area' ? 'rect' : type;
-        const created = await readerService.annotations.create(scopeId, effectiveAttachmentId, {
+        const created = await createAnnotation({
           type: effectiveType as AnnotationType,
           pageIndex,
           color: colorHex,
@@ -210,18 +220,18 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
           rects,
           tags: [],
         });
-        qc.invalidateQueries({
-          queryKey: annotationKeys.byAttachment(scopeId, effectiveAttachmentId),
-        });
         return created;
       } catch (err) {
-        toast.error('Failed to save annotation', {
-          description: getErrorMessage(err) || 'Could not save annotation. Please try again.',
-          id: 'reader-annotation-toast',
-        });
+        // Error toast already handled in useAnnotations createMutation
+        if (!createAnnotation) {
+          toast.error('Failed to save annotation', {
+            description: getErrorMessage(err) || 'Could not save annotation. Please try again.',
+            id: 'reader-annotation-toast',
+          });
+        }
       }
     },
-    [effectiveAttachmentId, scopeId, qc],
+    [effectiveAttachmentId, createAnnotation],
   );
 
   const goBack = useCallback(() => {

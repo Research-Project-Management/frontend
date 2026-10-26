@@ -29,7 +29,7 @@ import type {
 } from "@/features/library/domain/types/saved-searches.types";
 import { ConditionRowEditor } from "./saved-search/ConditionRowEditor";
 import { SavedSearchPreviewTable } from "./saved-search/SavedSearchPreviewTable";
-import { useSavedSearchBuilder } from "./saved-search/useSavedSearchBuilder";
+import { useSavedSearchBuilder } from "@/features/library/core/coordinator/saved-search-builder.coordinator";
 
 export interface CreateSavedSearchModalProps {
   open: boolean;

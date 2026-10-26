@@ -212,13 +212,7 @@ const createLayoutSlice: StateCreator<
         : { activeInspectorTab, isInspectorOpen: true },
     ),
 
-  toggleInspectorTab: (tab) =>
-    set((state) => {
-      if (state.isInspectorOpen && state.activeInspectorTab === tab) {
-        return { isInspectorOpen: false };
-      }
-      return { activeInspectorTab: tab, isInspectorOpen: true };
-    }),
+  toggleInspectorTab: (tab) => set((state) => (state.activeInspectorTab === tab && state.isInspectorOpen ? state : { activeInspectorTab: tab, isInspectorOpen: true })),
 
   setViewMode: (viewMode) =>
     set((s) => (s.viewMode === viewMode ? s : { viewMode })),

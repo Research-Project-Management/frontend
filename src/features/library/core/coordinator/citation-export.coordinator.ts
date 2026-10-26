@@ -191,3 +191,106 @@ export async function executeDownloadBibFile(
 
   toast.error('Unable to generate BibTeX file for download', { id: 'library-clipboard' });
 }
+
+export async function executeDownloadFormatFile(
+  items: Item[],
+  scopeId: string,
+  format: 'bibtex' | 'ris' | 'csl_json' | 'csv' | 'markdown',
+  retractedCount: number = 0,
+): Promise<void> {
+  warnIfRetractedHelper(retractedCount, items.length, `${format.toUpperCase()} export`);
+  const itemIds = items.map((p) => p.id).filter(Boolean);
+  if (itemIds.length === 0) return;
+
+  const extMap: Record<typeof format, string> = {
+    bibtex: 'bib',
+    ris: 'ris',
+    csl_json: 'json',
+    csv: 'csv',
+    markdown: 'md',
+  };
+
+  try {
+    const res = await libraryServices.exports.exportLibrary(scopeId, {
+      format,
+      itemIds,
+    });
+    if (res?.content) {
+      const downloadFilename =
+        res.filename || `references-selected-${items.length}.${extMap[format]}`;
+      triggerBrowserTextDownload(res.content, downloadFilename, 'text/plain;charset=utf-8');
+      toast.success(`Exported ${items.length} item(s) as .${extMap[format]}`);
+      return;
+    }
+  } catch (err) {
+    logger.warn(`Backend ${format} export failed`, { error: err });
+  }
+
+  toast.error(`Unable to export ${format.toUpperCase()} file`, { id: 'library-clipboard' });
+}
+
+export async function executeExportCollectionFormat(
+  collectionId: string,
+  collectionName: string,
+  scopeId: string,
+  format: 'bibtex' | 'ris' | 'csl_json' | 'csv' | 'markdown',
+): Promise<void> {
+  const extMap: Record<typeof format, string> = {
+    bibtex: 'bib',
+    ris: 'ris',
+    csl_json: 'json',
+    csv: 'csv',
+    markdown: 'md',
+  };
+
+  try {
+    const res = await libraryServices.exports.exportLibrary(scopeId, {
+      format,
+      collectionId,
+    });
+    if (res?.content) {
+      const safeSlug = collectionName.toLowerCase().replace(/[^a-z0-9-_]+/g, '-') || 'collection';
+      const downloadFilename = res.filename || `${safeSlug}.${extMap[format]}`;
+      triggerBrowserTextDownload(res.content, downloadFilename, 'text/plain;charset=utf-8');
+      toast.success(`Exported "${collectionName}" as .${extMap[format]}`);
+      return;
+    }
+  } catch (err) {
+    logger.warn(`Collection ${format} export failed`, { error: err });
+  }
+
+  toast.error(`Unable to export collection as ${format.toUpperCase()}`, { id: 'library-clipboard' });
+}
+
+export async function executeExportScopeFormat(
+  scopeId: string,
+  format: 'bibtex' | 'ris' | 'csl_json' | 'csv' | 'markdown',
+  collectionId?: string,
+): Promise<void> {
+  const extMap: Record<typeof format, string> = {
+    bibtex: 'bib',
+    ris: 'ris',
+    csl_json: 'json',
+    csv: 'csv',
+    markdown: 'md',
+  };
+
+  try {
+    const res = await libraryServices.exports.exportLibrary(scopeId, {
+      format,
+      ...(collectionId ? { collectionId } : {}),
+    });
+    if (res?.content) {
+      const downloadFilename =
+        res.filename ||
+        `${collectionId ? 'collection-export' : 'library-export'}-${new Date().toISOString().slice(0, 10)}.${extMap[format]}`;
+      triggerBrowserTextDownload(res.content, downloadFilename, 'text/plain;charset=utf-8');
+      toast.success(`Exported library as .${extMap[format]}`);
+      return;
+    }
+  } catch (err) {
+    logger.warn(`Library ${format} export failed`, { error: err });
+  }
+
+  toast.error(`Unable to export library as ${format.toUpperCase()}`, { id: 'library-clipboard' });
+}

@@ -27,6 +27,8 @@ export const ALL_SCHEMA_PROMOTE_KEYS: readonly string[] = Array.from(
   ALL_SCHEMA_FIELD_KEYS,
 ).filter((k) => k !== "title" && k !== "extra");
 
+const ALL_SCHEMA_PROMOTE_KEY_SET = new Set<string>(ALL_SCHEMA_PROMOTE_KEYS);
+
 const PUBLISHER_CANDIDATE_KEYS = [
   "publisher",
   "university",
@@ -90,13 +92,17 @@ function mergeRawItemPartials(rec: Record<string, unknown>): {
   const ef: Record<string, unknown> = { ...rawMetadata, ...rawExtraFields };
   const mapped: Record<string, unknown> = { ...rawMetadata, ...rec };
 
-  if (Object.keys(ef).length > 0) {
+  const efKeys = Object.keys(ef);
+  if (efKeys.length > 0) {
     mapped.extraFields = { ...ef };
-  }
-
-  for (const k of ALL_SCHEMA_PROMOTE_KEYS) {
-    if (!isValidValue(mapped[k]) && isValidValue(ef[k])) {
-      mapped[k] = ef[k];
+    for (const k of efKeys) {
+      if (
+        ALL_SCHEMA_PROMOTE_KEY_SET.has(k) &&
+        !isValidValue(mapped[k]) &&
+        isValidValue(ef[k])
+      ) {
+        mapped[k] = ef[k];
+      }
     }
   }
 
@@ -154,6 +160,41 @@ function projectCanonicalBaseFields(
     mapped.authors = normalizedAuthors;
   }
 
+  const rawCreators = (rec.creators || ef.creators) as unknown;
+  if (Array.isArray(rawCreators)) {
+    mapped.creators = rawCreators.map((c, idx) => {
+      if (!c || typeof c !== "object") return c;
+      const cr = c as Record<string, unknown>;
+      const firstName =
+        typeof cr.firstName === "string"
+          ? cr.firstName
+          : typeof cr.given === "string"
+            ? cr.given
+            : undefined;
+      const lastName =
+        typeof cr.lastName === "string"
+          ? cr.lastName
+          : typeof cr.family === "string"
+            ? cr.family
+            : undefined;
+      const fullName =
+        typeof cr.fullName === "string" && cr.fullName.trim()
+          ? cr.fullName.trim()
+          : typeof cr.name === "string" && cr.name.trim()
+            ? cr.name.trim()
+            : [firstName, lastName].filter(Boolean).join(" ").trim();
+      return {
+        ...cr,
+        orderIndex: typeof cr.orderIndex === "number" ? cr.orderIndex : idx,
+        creatorType:
+          typeof cr.creatorType === "string" && cr.creatorType.trim()
+            ? cr.creatorType.trim()
+            : "author",
+        fullName,
+      };
+    });
+  }
+
   for (const [targetKey, sourceKeys] of CANONICAL_SCALAR_PROJECTIONS) {
     if (!isValidValue(mapped[targetKey])) {
       const val = pickFirstValidField(rec, ef, sourceKeys);
@@ -183,6 +224,50 @@ function projectCanonicalBaseFields(
       mapped.attachments = rec.files;
     }
   }
+
+  // Normalize tags/keywords from string[], { name: string }[], { tag: string }[], or itemTags
+  const rawTagCandidates = [
+    ...(Array.isArray(rec.tags) ? rec.tags : []),
+    ...(Array.isArray(rec.itemTags) ? rec.itemTags : []),
+    ...(Array.isArray(ef.tags) ? (ef.tags as unknown[]) : []),
+  ];
+  if (rawTagCandidates.length > 0) {
+    const seenTags = new Set<string>();
+    const cleanTags: string[] = [];
+    for (const entry of rawTagCandidates) {
+      let tagName = "";
+      if (typeof entry === "string") {
+        tagName = entry.trim();
+      } else if (entry && typeof entry === "object") {
+        const obj = entry as {
+          name?: unknown;
+          tag?: unknown;
+        };
+        if (typeof obj.name === "string") {
+          tagName = obj.name.trim();
+        } else if (typeof obj.tag === "string") {
+          tagName = obj.tag.trim();
+        } else if (
+          obj.tag &&
+          typeof obj.tag === "object" &&
+          typeof (obj.tag as { name?: unknown }).name === "string"
+        ) {
+          tagName = ((obj.tag as { name: string }).name || "").trim();
+        }
+      }
+      if (tagName) {
+        const lower = tagName.toLowerCase();
+        if (!seenTags.has(lower)) {
+          seenTags.add(lower);
+          cleanTags.push(tagName);
+        }
+      }
+    }
+    mapped.tags = cleanTags;
+    if (!Array.isArray(mapped.keywords) || mapped.keywords.length === 0) {
+      mapped.keywords = cleanTags;
+    }
+  }
   if (
     !Array.isArray(mapped.collectionIds) ||
     mapped.collectionIds.length === 0
@@ -191,13 +276,17 @@ function projectCanonicalBaseFields(
     if (typeof rec.collectionId === "string" && rec.collectionId.trim()) {
       derivedCollectionIds.add(rec.collectionId.trim());
     }
-    if (Array.isArray(rec.collections)) {
-      for (const c of rec.collections) {
-        if (c && typeof c === "object") {
-          const cid = (c as { id?: unknown }).id;
-          if (typeof cid === "string" && cid.trim()) {
-            derivedCollectionIds.add(cid.trim());
-          }
+    const rawCols = Array.isArray(mapped.collections)
+      ? mapped.collections
+      : Array.isArray(rec.collections)
+        ? rec.collections
+        : [];
+    for (const c of rawCols) {
+      if (c && typeof c === "object") {
+        const obj = c as { id?: unknown; collectionId?: unknown };
+        const cid = obj.collectionId ?? obj.id;
+        if (typeof cid === "string" && cid.trim()) {
+          derivedCollectionIds.add(cid.trim());
         }
       }
     }
@@ -219,6 +308,23 @@ function projectCanonicalBaseFields(
       mapped.collectionIds = Array.from(derivedCollectionIds);
     }
   }
+  const retractionDetails =
+    rec.retractionDetails &&
+    typeof rec.retractionDetails === "object" &&
+    !Array.isArray(rec.retractionDetails)
+      ? (rec.retractionDetails as Record<string, unknown>)
+      : ef.retractionDetails &&
+          typeof ef.retractionDetails === "object" &&
+          !Array.isArray(ef.retractionDetails)
+        ? (ef.retractionDetails as Record<string, unknown>)
+        : undefined;
+  const resolvedNoticeUrl =
+    (retractionDetails?.noticeUrl as string | undefined) ||
+    (rec.noticeUrl as string | undefined) ||
+    (ef.noticeUrl as string | undefined);
+  if (typeof resolvedNoticeUrl === "string" && resolvedNoticeUrl.trim()) {
+    mapped.noticeUrl = resolvedNoticeUrl.trim();
+  }
   if (mapped.isFavorite === undefined && typeof rec.isStarred === "boolean") {
     mapped.isFavorite = rec.isStarred;
   }
@@ -226,32 +332,40 @@ function projectCanonicalBaseFields(
     mapped.notesCount = rec.noteCount;
   }
 
-  const resolvedVenue = getPublicationVenue(mapped);
-  if (!isValidValue(mapped.publicationTitle) && isValidValue(resolvedVenue)) {
-    mapped.publicationTitle = resolvedVenue;
+  if (!isValidValue(mapped.publicationTitle)) {
+    const resolvedVenue = getPublicationVenue(mapped);
+    if (isValidValue(resolvedVenue)) {
+      mapped.publicationTitle = resolvedVenue;
+    }
   }
 
-  const rawPublisher = pickFirstValidField(rec, ef, PUBLISHER_CANDIDATE_KEYS);
-  if (!isValidValue(rec.publisher) && isValidValue(rawPublisher)) {
-    mapped.publisher = stripLatexMarkup(String(rawPublisher).trim());
+  if (!isValidValue(rec.publisher)) {
+    const rawPublisher = pickFirstValidField(rec, ef, PUBLISHER_CANDIDATE_KEYS);
+    if (isValidValue(rawPublisher)) {
+      mapped.publisher = stripLatexMarkup(String(rawPublisher).trim());
+    }
   }
 
-  const displayDate = getItemDisplayDate(mapped);
-  const resolvedYear =
-    typeof displayDate === "number"
-      ? displayDate
-      : typeof rec.year === "number" && rec.year > 0
-        ? rec.year
-        : undefined;
-  if (!isValidValue(rec.year) && resolvedYear !== undefined) {
-    mapped.year = resolvedYear;
+  if (!isValidValue(rec.year)) {
+    const displayDate = getItemDisplayDate(mapped);
+    const resolvedYear =
+      typeof displayDate === "number"
+        ? displayDate
+        : typeof rec.year === "number" && rec.year > 0
+          ? rec.year
+          : undefined;
+    if (resolvedYear !== undefined) {
+      mapped.year = resolvedYear;
+    }
   }
 
-  const rawDateStr = pickFirstValidField(rec, ef, DATE_CANDIDATE_KEYS);
-  if (isValidValue(rawDateStr)) {
-    const cleanDate = String(rawDateStr).trim();
-    if (!isValidValue(rec.publicationDate)) mapped.publicationDate = cleanDate;
-    if (!isValidValue(rec.date)) mapped.date = cleanDate;
+  if (!isValidValue(rec.publicationDate) || !isValidValue(rec.date)) {
+    const rawDateStr = pickFirstValidField(rec, ef, DATE_CANDIDATE_KEYS);
+    if (isValidValue(rawDateStr)) {
+      const cleanDate = String(rawDateStr).trim();
+      if (!isValidValue(rec.publicationDate)) mapped.publicationDate = cleanDate;
+      if (!isValidValue(rec.date)) mapped.date = cleanDate;
+    }
   }
 
   if (!isValidValue(rec.place) && !isValidValue(ef.place)) {
@@ -337,9 +451,30 @@ export function mapBackendItem(
   const rec = raw as Record<string, unknown>;
   const { mapped, ef } = mergeRawItemPartials(rec);
   projectCanonicalBaseFields(mapped, rec, ef);
+
+  const normalizedCollections = Array.isArray(mapped.collections)
+    ? (mapped.collections as Array<{ id?: string; collectionId?: string }>)
+    : [];
+  const normalizedCollectionIds =
+    Array.isArray(mapped.collectionIds) && mapped.collectionIds.length > 0
+      ? (mapped.collectionIds as string[])
+      : normalizedCollections
+          .map((c) => c?.collectionId || c?.id)
+          .filter((id): id is string => Boolean(id));
+
+  const retractionDetails =
+    (mapped.retractionDetails as Record<string, unknown> | undefined) ??
+    (rec.retractionDetails as Record<string, unknown> | undefined);
+  const noticeUrl =
+    (retractionDetails?.noticeUrl as string | undefined) ||
+    (rec.noticeUrl as string | undefined) ||
+    (mapped.noticeUrl as string | undefined);
+
   return {
     ...EMPTY_BACKEND_ITEM_DEFAULTS,
     ...(mapped as Partial<Item>),
+    collectionIds: normalizedCollectionIds,
+    ...(noticeUrl ? { noticeUrl } : {}),
     createdAt:
       typeof mapped.createdAt === "string" && mapped.createdAt.trim()
         ? mapped.createdAt
@@ -349,6 +484,37 @@ export function mapBackendItem(
         ? mapped.updatedAt
         : EMPTY_BACKEND_ITEM_DEFAULTS.updatedAt,
   };
+}
+
+/**
+ * Pure domain selector that returns all unique collection IDs assigned to a `LibraryItem`
+ * from both `item.collectionIds` and `item.collections`.
+ */
+export function getAssignedCollectionIds(
+  item: Partial<Item> | null | undefined,
+): string[] {
+  if (!item) return [];
+  const ids = new Set<string>();
+  if (Array.isArray(item.collectionIds)) {
+    for (const id of item.collectionIds) {
+      if (typeof id === "string" && id.trim()) {
+        ids.add(id.trim());
+      }
+    }
+  }
+  if (Array.isArray(item.collections)) {
+    for (const c of item.collections) {
+      if (c && typeof c === "object") {
+        const cid =
+          (c as { collectionId?: string; id?: string }).collectionId ||
+          (c as { id?: string }).id;
+        if (typeof cid === "string" && cid.trim()) {
+          ids.add(cid.trim());
+        }
+      }
+    }
+  }
+  return Array.from(ids);
 }
 
 export interface ProvisionalUploadItemInput {

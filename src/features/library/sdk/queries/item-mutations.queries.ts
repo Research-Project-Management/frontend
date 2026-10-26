@@ -3,7 +3,7 @@
 import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { ItemsService, StateService } from '../library.client';
-import type { Item, UpdateItemDTO } from '@/features/library/domain/types/library.types';
+import type { Item, CreateItemDTO, UpdateItemDTO } from '@/features/library/domain/types/library.types';
 import {
   itemKeys,
   libraryKeys,
@@ -14,6 +14,7 @@ import {
   patchItemAcrossScopeCaches,
   resolveCachedItemFromScope,
   chunkUniqueIds,
+  invalidateLibraryCatalogDependencies,
 } from './cache-patcher';
 
 export function resolveCachedItemVersion(
@@ -63,6 +64,9 @@ export function useUpdateLibraryItemMutation(scopeId?: string) {
       await queryClient.cancelQueries({ queryKey: itemKeys.all(effectiveScope) });
       await queryClient.cancelQueries({ queryKey: itemKeys.byId(effectiveScope, itemId) });
 
+      const previousDetail = queryClient.getQueryData(
+        itemKeys.byId(effectiveScope, itemId),
+      );
       const previousItemSnapshot = resolveCachedItemFromScope(
         queryClient,
         effectiveScope,
@@ -82,7 +86,7 @@ export function useUpdateLibraryItemMutation(scopeId?: string) {
         }),
       );
 
-      return { previousItemSnapshot };
+      return { previousDetail, previousItemSnapshot };
     },
     onSuccess: (updatedItem, variables) => {
       const targetId = variables.itemId;
@@ -100,7 +104,6 @@ export function useUpdateLibraryItemMutation(scopeId?: string) {
         patchItemAcrossScopeCaches(queryClient, effectiveScope, targetId, patchData);
       }
 
-      queryClient.invalidateQueries({ queryKey: itemKeys.counts(effectiveScope) });
       if (rawData.tags !== undefined) {
         queryClient.invalidateQueries({ queryKey: libraryKeys.tags(effectiveScope) });
       }
@@ -115,8 +118,13 @@ export function useUpdateLibraryItemMutation(scopeId?: string) {
     },
     onError: (err: Error, variables, context) => {
       const targetId = variables?.itemId;
-      const isLastMutation = queryClient.isMutating({ mutationKey }) <= 1;
-      if (targetId && context?.previousItemSnapshot && isLastMutation) {
+      if (targetId && context?.previousDetail !== undefined) {
+        queryClient.setQueryData(
+          itemKeys.byId(effectiveScope, targetId),
+          context.previousDetail,
+        );
+      }
+      if (targetId && context?.previousItemSnapshot) {
         patchItemAcrossScopeCaches(
           queryClient,
           effectiveScope,
@@ -124,18 +132,28 @@ export function useUpdateLibraryItemMutation(scopeId?: string) {
           context.previousItemSnapshot,
         );
       }
-      queryClient.invalidateQueries({
-        queryKey: itemKeys.all(effectiveScope),
-      });
+      if (!variables?.silent && !variables?.data?.silent) {
+        toast.error('Failed to update item', {
+          description: err.message || 'Please try again.',
+          id: 'item-update',
+        });
+      }
+    },
+    onSettled: (_data, _error, variables) => {
+      const targetId = variables?.itemId;
       if (targetId) {
         queryClient.invalidateQueries({
           queryKey: itemKeys.byId(effectiveScope, targetId),
         });
       }
-      toast.error('Failed to update item', {
-        description: err.message || 'Please try again.',
-        id: 'item-update',
-      });
+      if (queryClient.isMutating({ mutationKey }) <= 1) {
+        queryClient.invalidateQueries({
+          queryKey: itemKeys.all(effectiveScope),
+        });
+        queryClient.invalidateQueries({
+          queryKey: itemKeys.counts(effectiveScope),
+        });
+      }
     },
   });
 }
@@ -252,40 +270,153 @@ export function useImportFromUserMutation(scopeId?: string) {
   });
 }
 
-export function useCreateLibraryItemMutation(scopeId?: string) {
+export type CreateLibraryItemMutationInput =
+  | (Partial<Item> & Partial<CreateItemDTO> & { collectionId?: string; silent?: boolean })
+  | {
+      collectionId?: string;
+      silent?: boolean;
+      data: (Partial<Item> & Partial<CreateItemDTO> & { silent?: boolean }) | Record<string, unknown>;
+    };
+
+export function useCreateLibraryItemMutation(
+  scopeId?: string,
+  defaultCollectionId?: string,
+) {
   const queryClient = useQueryClient();
   const effectiveScope = normalizeScopeId(scopeId);
 
   return useMutation({
-    mutationFn: (
-      input:
-        | (Partial<Item> & { collectionId?: string })
-        | { collectionId?: string; data: Partial<Item> | Record<string, unknown> },
-    ) => {
+    mutationFn: (input: CreateLibraryItemMutationInput) => {
       const hasNestedData =
         input &&
         typeof input === 'object' &&
         'data' in input &&
         input.data &&
         typeof input.data === 'object';
-      const collectionId = (input as { collectionId?: string })?.collectionId || '';
-      const payload = hasNestedData
-        ? (input as { data: Partial<Item> | Record<string, unknown> }).data
-        : (input as Partial<Item>);
-      return ItemsService.create(effectiveScope, collectionId, payload);
+      const collectionId =
+        (input as { collectionId?: string })?.collectionId ||
+        defaultCollectionId ||
+        '';
+      const rawPayload = hasNestedData
+        ? (input as { data: Record<string, unknown> }).data
+        : (input as Record<string, unknown>);
+      const { silent: _silent, collectionId: _cid, ...payload } = rawPayload;
+      return ItemsService.create(effectiveScope, collectionId, payload as CreateItemDTO);
     },
     onSuccess: (newItem, variables) => {
       const targetCollection =
         newItem?.collectionIds?.[0] ||
-        (variables as { collectionId?: string })?.collectionId;
+        (variables as { collectionId?: string })?.collectionId ||
+        defaultCollectionId;
       if (targetCollection) {
         queryClient.invalidateQueries({
           queryKey: itemKeys.byCollection(effectiveScope, targetCollection),
         });
       }
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
-      queryClient.invalidateQueries({ queryKey: libraryKeys.tags(effectiveScope) });
-      invalidateCollections(queryClient, effectiveScope);
+      invalidateLibraryCatalogDependencies(queryClient, effectiveScope, {
+        itemsList: true,
+        tags: true,
+        collections: true,
+        counts: true,
+      });
+      const isSilent = Boolean(
+        (variables as { silent?: boolean })?.silent ||
+          ((variables as { data?: { silent?: boolean } })?.data?.silent),
+      );
+      if (!isSilent) {
+        toast.success('Document added', {
+          description: 'Added to your library.',
+          id: 'library-item-create',
+        });
+      }
+    },
+    onError: (error: Error | { message?: string }, variables) => {
+      const isSilent = Boolean(
+        (variables as { silent?: boolean })?.silent ||
+          ((variables as { data?: { silent?: boolean } })?.data?.silent),
+      );
+      if (!isSilent) {
+        toast.error('Failed to add document', {
+          description: error?.message || 'Please check your inputs and try again.',
+          id: 'library-item-create',
+        });
+      }
+    },
+  });
+}
+
+export function useReResolveItemMetadataMutation(scopeId?: string) {
+  const queryClient = useQueryClient();
+  const effectiveScope = normalizeScopeId(scopeId);
+
+  return useMutation({
+    mutationFn: ({
+      itemId,
+      attachOaPdf = true,
+      forceRefresh = false,
+    }: {
+      itemId: string;
+      attachOaPdf?: boolean;
+      forceRefresh?: boolean;
+    }) => ItemsService.reResolve(effectiveScope, itemId, { attachOaPdf, forceRefresh }),
+    onSuccess: (res, variables) => {
+      invalidateLibraryCatalogDependencies(queryClient, effectiveScope, {
+        itemId: variables.itemId,
+        itemsList: true,
+        counts: true,
+      });
+      if (res?.oaPdfAttached) {
+        toast.success('Metadata refreshed & Open Access PDF attached', {
+          id: 'item-re-resolve',
+        });
+      } else {
+        toast.success('Metadata refreshed from academic mirrors', {
+          id: 'item-re-resolve',
+        });
+      }
+    },
+    onError: (err: Error) => {
+      toast.error('Could not re-resolve metadata', {
+        description: err.message || 'Make sure the item has a DOI, PMID, or arXiv ID.',
+        id: 'item-re-resolve',
+      });
+    },
+  });
+}
+
+export function useSetMyPublicationMutation(scopeId?: string) {
+  const queryClient = useQueryClient();
+  const effectiveScope = normalizeScopeId(scopeId);
+
+  return useMutation({
+    mutationFn: ({
+      itemId,
+      isMyPublication,
+    }: {
+      itemId: string;
+      isMyPublication: boolean;
+    }) => ItemsService.setMyPublication(effectiveScope, itemId, isMyPublication),
+    onSuccess: (_updated, variables) => {
+      patchItemAcrossScopeCaches(queryClient, effectiveScope, variables.itemId, {
+        isMyPublication: variables.isMyPublication,
+      });
+      invalidateLibraryCatalogDependencies(queryClient, effectiveScope, {
+        itemId: variables.itemId,
+        itemsList: true,
+        counts: true,
+      });
+      toast.success(
+        variables.isMyPublication
+          ? 'Added to My Publications'
+          : 'Removed from My Publications',
+        { id: 'item-my-publication' },
+      );
+    },
+    onError: (err: Error) => {
+      toast.error('Failed to update My Publications status', {
+        description: err.message || 'Please try again.',
+        id: 'item-my-publication',
+      });
     },
   });
 }

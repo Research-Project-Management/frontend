@@ -20,12 +20,21 @@ const FeedItemInspector = dynamic(
   { ssr: false }
 );
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
-import { useFeedsStore } from '@/features/library/core/store/feeds.store';
+import { useLibraryCommandStore } from '@/features/library/core/manager/library-command.manager';
+import { useFeedsStore, isFeedEntryInLibrary } from '@/features/library/core/store/feeds.store';
 import { useLibraryPermissions } from '@/features/library/core/coordinator/permissions.coordinator';
 import { useProcessModalStore } from '@/features/library/core/store/process-modal.store';
 import { useCollectionsQuery } from '@/features/library/sdk/queries/collections.queries';
 import { useSavedSearches } from '@/features/library/sdk/queries/saved-searches-relations.queries';
-import { useTrash, useLibraryCountsQuery, useItemTypes, useItems, useLibraryDeltaSync, useLibraryCacheSynchronizer } from '@/features/library/sdk/queries/catalog.queries';
+import {
+  useTrash,
+  useLibraryCountsQuery,
+  useItemTypes,
+  useCreateLibraryItemMutation,
+  useLibraryItemsQuery,
+  useLibraryDeltaSync,
+  useLibraryCacheSynchronizer,
+} from '@/features/library/sdk/queries/catalog.queries';
 import { useMergeDuplicates, useDuplicateGroups } from '@/features/library/sdk/queries/ingestion.queries';
 import { formatItemTypeLabel } from '@/features/library/domain/metadata';
 import { parseEmojiPrefix } from '@/features/library/domain/academic-text';
@@ -96,6 +105,10 @@ export function ModernLibraryPage({
   const toggleEntryRead = useFeedsStore((s) => s.toggleEntryRead);
   const markEntryAsRead = useFeedsStore((s) => s.markEntryAsRead);
   const markAllEntriesAsRead = useFeedsStore((s) => s.markAllEntriesAsRead);
+  const savedEntryIds = useFeedsStore((s) => s.savedEntryIds);
+  const savingEntryIds = useFeedsStore((s) => s.savingEntryIds);
+  const markEntrySaved = useFeedsStore((s) => s.markEntrySaved);
+  const setEntrySaving = useFeedsStore((s) => s.setEntrySaving);
 
   const isSavedSearchView = nav.isSavedSearchView;
   const effectiveView = view || (nav.filterParam && nav.filterParam !== 'saved-search' ? nav.filterParam : undefined);
@@ -286,11 +299,10 @@ export function ModernLibraryPage({
   const handleDirectFilesUpload = processUpload;
   const handleDirectFolderUpload = (files: File[], _folderName: string) => processUpload(files);
 
-  const { createItem } = useItems({
-    scopeId: effectiveScopeId,
-    collectionId: effectiveCollectionId,
-    enabled: false,
-  });
+  const { mutateAsync: createItem } = useCreateLibraryItemMutation(
+    effectiveScopeId,
+    effectiveCollectionId,
+  );
 
   // Manual reference creation handler
   const handleNewManualItem = async (itemType: string) => {
@@ -335,6 +347,7 @@ export function ModernLibraryPage({
     openModal('DELETE_CONFIRM', {
       onConfirm: async () => {
         try {
+          useLibraryCommandStore.getState().clear();
           await emptyTrash();
           clearSelection();
         } catch (err: unknown) {
@@ -405,6 +418,7 @@ export function ModernLibraryPage({
       mergedFields: Partial<Item>,
       duplicateIdsToDelete: string[],
     ) => {
+      useLibraryCommandStore.getState().clear();
       await mergeMutation.mutateAsync({
         primaryItemId: masterPaper.id,
         duplicateItemIds: duplicateIdsToDelete,
@@ -414,20 +428,22 @@ export function ModernLibraryPage({
     [mergeMutation],
   );
 
-  // Feed save handler for FeedItemInspector
-  const [isFeedItemSaving, setIsFeedItemSaving] = useState(false);
-  const [savedFeedItemIds, setSavedFeedItemIds] = useState<Set<string>>(() => new Set());
+  const { data: feedLibraryData } = useLibraryItemsQuery(
+    effectiveScopeId,
+    { limit: 100, fields: ['id', 'title', 'doi', 'url'] },
+    { enabled: effectiveView === 'feed' },
+  );
 
   const handleSaveFeedItemFromInspector = async (entry: ParsedFeedEntry, targetColId?: string) => {
     markEntryAsRead(entry.id);
-    setIsFeedItemSaving(true);
+    setEntrySaving(entry.id, true);
     try {
       const payload = mapFeedEntryToCreateItemPayload(entry, {
         scopeId: effectiveScopeId,
         collectionId: targetColId,
       });
       await createItem({ ...payload, silent: true } as Parameters<typeof createItem>[0]);
-      setSavedFeedItemIds((prev) => new Set(prev).add(entry.id));
+      markEntrySaved(entry.id);
       const colName = targetColId
         ? collectionList.find((c) => c.id === targetColId)?.name
         : undefined;
@@ -439,7 +455,7 @@ export function ModernLibraryPage({
         description: err instanceof Error ? err.message : 'Please try again.',
       });
     } finally {
-      setIsFeedItemSaving(false);
+      setEntrySaving(entry.id, false);
     }
   };
 
@@ -561,8 +577,8 @@ export function ModernLibraryPage({
                 feedTitle={currentFeed?.name}
                 collections={collectionList}
                 isRead={selectedFeedEntry ? readEntryIds.has(selectedFeedEntry.id) : false}
-                isSaving={isFeedItemSaving}
-                isSaved={selectedFeedEntry ? savedFeedItemIds.has(selectedFeedEntry.id) : false}
+                isSaving={selectedFeedEntry ? savingEntryIds.includes(selectedFeedEntry.id) : false}
+                isSaved={isFeedEntryInLibrary(selectedFeedEntry, savedEntryIds, feedLibraryData?.items)}
                 onToggleRead={toggleEntryRead}
                 onSave={handleSaveFeedItemFromInspector}
                 onClose={() => setIsInspectorOpen(false)}

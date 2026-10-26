@@ -5,7 +5,7 @@ import { Check, Copy, Download, FileJson } from "lucide-react";
 import {
   useReaderClipboard,
   useReaderFileDownload,
-} from "@/features/library/ui/reader/hooks/use-reader-feedback";
+} from "@/features/library/core/coordinator/reader/use-reader-feedback";
 import {
   Dialog,
   DialogContent,

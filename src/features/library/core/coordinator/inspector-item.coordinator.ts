@@ -7,7 +7,7 @@ import {
   useUpdateLibraryItemMutation,
   useLibraryCacheSynchronizer,
 } from '@/features/library/sdk/queries/catalog.queries';
-import { normalizeTags } from '@/features/library/domain/metadata';
+import { normalizeTags, getAssignedCollectionIds } from '@/features/library/domain/metadata';
 import type { Item } from '@/features/library/domain/types/library.types';
 
 export interface UseInspectorItemResolverParams {
@@ -76,17 +76,10 @@ export function useInspectorItemResolver({
 
   const tagsList = useMemo(() => normalizeTags(effectiveItem), [effectiveItem]);
 
-  const itemCollectionIds = useMemo(() => {
-    if (!effectiveItem) return [];
-    const ids = new Set<string>();
-    if (Array.isArray(effectiveItem.collectionIds)) {
-      effectiveItem.collectionIds.forEach((id: string) => id && ids.add(id));
-    }
-    if (Array.isArray(effectiveItem.collections)) {
-      effectiveItem.collections.forEach((c: { id?: string }) => c?.id && ids.add(c.id));
-    }
-    return Array.from(ids);
-  }, [effectiveItem]);
+  const itemCollectionIds = useMemo(
+    () => getAssignedCollectionIds(effectiveItem),
+    [effectiveItem],
+  );
 
   const updateMutation = useUpdateLibraryItemMutation(targetScope);
   const latestVersionRef = useRef<Map<string, number>>(new Map());

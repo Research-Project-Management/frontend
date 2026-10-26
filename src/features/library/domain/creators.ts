@@ -11,6 +11,8 @@
  */
 
 import { stripLatexMarkup } from './metadata';
+import { cleanAcademicText } from './academic-text';
+import type { Item } from './types/library.types';
 
 export interface ParsedCreator {
   firstName: string;
@@ -545,4 +547,34 @@ export function formatCreatorCompact(authors?: string[] | null): string {
   if (clean.length === 2) return `${clean[0]} & ${clean[1]}`;
   return `${clean[0]} et al.`;
 }
+
+/**
+ * Canonical helper to extract and format authors summary from a `LibraryItem`,
+ * uniformly handling `creators`, `contributors`, and `authors`.
+ */
+export function getItemAuthorsSummary(
+  item: Partial<Item> | null | undefined,
+  maxAuthors = 3,
+): string {
+  if (!item) return '—';
+  const rawList = normalizeAuthors(item);
+  if (!rawList || rawList.length === 0) return '—';
+
+  const cleaned = rawList
+    .map((name) => {
+      const clean = cleanAcademicText(name);
+      if (!clean) return '';
+      if (clean.includes(',')) {
+        const parsed = parseCreatorName(clean);
+        return parsed.fullName || clean;
+      }
+      return clean;
+    })
+    .filter((a) => a && a.length >= 2);
+
+  if (cleaned.length === 0) return '—';
+  if (cleaned.length <= maxAuthors) return cleaned.join(', ');
+  return `${cleaned.slice(0, maxAuthors).join(', ')} et al.`;
+}
+
 

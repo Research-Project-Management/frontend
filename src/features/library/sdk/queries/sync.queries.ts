@@ -84,8 +84,10 @@ export function useLibraryDeltaSync(
       let shouldInvalidateTags = false;
       const noteItemIdsToInvalidate = new Set<string>();
       let pagesFetched = 0;
+      const MAX_SYNC_PAGES = 10;
+      let hasMore = true;
 
-      while (pagesFetched < 10) {
+      while (hasMore && pagesFetched < MAX_SYNC_PAGES) {
         pagesFetched++;
         const changesRes = (await SyncService.getChanges(effectiveScope, {
           since: currentSince,
@@ -113,7 +115,10 @@ export function useLibraryDeltaSync(
           };
         }
         const changes = Array.isArray(changesRes?.changes) ? changesRes.changes : [];
-        if (changes.length === 0) break;
+        if (changes.length === 0) {
+          hasMore = false;
+          break;
+        }
 
         for (const change of changes) {
           if (!change || typeof change !== 'object') continue;
@@ -164,7 +169,7 @@ export function useLibraryDeltaSync(
           ) {
             deletedItemIds.push(itemId);
           } else {
-            if (action === 'CREATE' || action === 'CREATED') {
+            if (action === 'CREATE' || action === 'CREATED' || action === 'RESTORE' || action === 'RESTORED') {
               hasCreatedItems = true;
             }
             const patch: Partial<Item> = {
@@ -184,9 +189,11 @@ export function useLibraryDeltaSync(
           changesRes?.nextSince ||
           (lastChangeSeq !== undefined ? String(lastChangeSeq) : null);
 
-        if (changesRes?.hasMore && nextCursor && nextCursor !== currentSince) {
+        hasMore = Boolean(changesRes?.hasMore && nextCursor && nextCursor !== currentSince);
+        if (hasMore && nextCursor) {
           currentSince = nextCursor;
         } else {
+          hasMore = false;
           break;
         }
       }
@@ -195,17 +202,26 @@ export function useLibraryDeltaSync(
         removeItemsFromScopeCaches(queryClient, effectiveScope, deletedItemIds);
       }
 
-      lastSyncSeqRef.current = remoteVersion;
+      lastSyncSeqRef.current = hasMore ? currentSince : remoteVersion;
 
       const postSyncInvalidations: Promise<unknown>[] = [
         queryClient.invalidateQueries({
           queryKey: itemKeys.counts(effectiveScope),
         }),
       ];
+      if (hasCreatedItems || patchedCount > 0 || deletedItemIds.length > 0) {
+        postSyncInvalidations.push(
+          queryClient.invalidateQueries({
+            queryKey: itemKeys.trash(effectiveScope),
+            refetchType: 'active',
+          }),
+        );
+      }
       if (hasCreatedItems) {
         postSyncInvalidations.push(
           queryClient.invalidateQueries({
             queryKey: itemKeys.all(effectiveScope),
+            refetchType: 'active',
           }),
         );
       }

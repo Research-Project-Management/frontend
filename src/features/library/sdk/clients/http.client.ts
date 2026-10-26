@@ -549,6 +549,31 @@ export function toIngestionSubmission(payload: UnifiedIngestionPayload): Record<
       content: p.content || p.ris,
     };
   }
+  if (source === 'csl_json') {
+    return {
+      ...base,
+      kind: 'RECORD',
+      format: 'CSL_JSON',
+      recordFormat: 'CSL_JSON',
+      content: p.content || p.cslJson,
+    };
+  }
+  if (
+    source === 'endnote_xml' ||
+    source === 'mods' ||
+    source === 'zotero_rdf' ||
+    source === 'medline' ||
+    source === 'csv'
+  ) {
+    const upperFormat = source.toUpperCase();
+    return {
+      ...base,
+      kind: 'RECORD',
+      format: upperFormat,
+      recordFormat: upperFormat,
+      content: p.content,
+    };
+  }
   if (source === 'url') {
     return {
       ...base,

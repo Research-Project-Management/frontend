@@ -14,6 +14,8 @@ export const CreatorOverrideSchema = z.object({
   firstName: z.string().optional(),
   lastName: z.string().optional(),
   fullName: z.string().optional(),
+  name: z.string().optional(),
+  fieldMode: z.number().optional(),
 });
 
 export const UrlIngestionPayloadSchema = z.object({
@@ -31,7 +33,10 @@ export const UrlIngestionPayloadSchema = z.object({
       itemType: z.string().optional(),
       creators: z.array(CreatorOverrideSchema).optional(),
       tags: z.array(z.string()).optional(),
+      attachOaPdf: z.boolean().optional(),
+      saveSnapshot: z.boolean().optional(),
     })
+    .passthrough()
     .optional(),
   idempotencyKey: z.string().optional(),
   silent: z.boolean().optional(),
@@ -92,6 +97,55 @@ export const RisIngestionPayloadSchema = z.object({
   silent: z.boolean().optional(),
 });
 
+export const CslJsonIngestionPayloadSchema = z.object({
+  source: z.literal('csl_json'),
+  content: z.string().optional(),
+  cslJson: z.string().optional(),
+  collectionId: z.string().optional(),
+  idempotencyKey: z.string().optional(),
+  silent: z.boolean().optional(),
+});
+
+export const EndnoteXmlIngestionPayloadSchema = z.object({
+  source: z.literal('endnote_xml'),
+  content: z.string().optional(),
+  collectionId: z.string().optional(),
+  idempotencyKey: z.string().optional(),
+  silent: z.boolean().optional(),
+});
+
+export const ModsIngestionPayloadSchema = z.object({
+  source: z.literal('mods'),
+  content: z.string().optional(),
+  collectionId: z.string().optional(),
+  idempotencyKey: z.string().optional(),
+  silent: z.boolean().optional(),
+});
+
+export const ZoteroRdfIngestionPayloadSchema = z.object({
+  source: z.literal('zotero_rdf'),
+  content: z.string().optional(),
+  collectionId: z.string().optional(),
+  idempotencyKey: z.string().optional(),
+  silent: z.boolean().optional(),
+});
+
+export const MedlineIngestionPayloadSchema = z.object({
+  source: z.literal('medline'),
+  content: z.string().optional(),
+  collectionId: z.string().optional(),
+  idempotencyKey: z.string().optional(),
+  silent: z.boolean().optional(),
+});
+
+export const CsvIngestionPayloadSchema = z.object({
+  source: z.literal('csv'),
+  content: z.string().optional(),
+  collectionId: z.string().optional(),
+  idempotencyKey: z.string().optional(),
+  silent: z.boolean().optional(),
+});
+
 export const ZoteroIngestionPayloadSchema = z.object({
   source: z.literal('zotero'),
   connectionId: z.string().min(1),
@@ -110,6 +164,12 @@ export const UnifiedIngestionPayloadSchema = z.discriminatedUnion('source', [
   UrlIngestionPayloadSchema,
   BibtexIngestionPayloadSchema,
   RisIngestionPayloadSchema,
+  CslJsonIngestionPayloadSchema,
+  EndnoteXmlIngestionPayloadSchema,
+  ModsIngestionPayloadSchema,
+  ZoteroRdfIngestionPayloadSchema,
+  MedlineIngestionPayloadSchema,
+  CsvIngestionPayloadSchema,
   PdfIngestionPayloadSchema,
   ZoteroIngestionPayloadSchema,
 ]);
@@ -121,12 +181,12 @@ export type UnifiedIngestionPayload = z.infer<
 export const UnifiedIngestionDataSchema = z.object({
   runId: z.string(),
   status: z.enum(['completed', 'processing', 'failed']).or(z.string()),
-  itemId: z.string().optional(),
+  itemId: z.string().nullable().optional(),
   attachmentIds: z.array(z.string()).optional().default([]),
   deduplicated: z.boolean().optional().default(false),
   item: z.unknown().optional(),
-  errorCategory: z.string().optional(),
-  errorMessage: z.string().optional(),
+  errorCategory: z.string().nullable().optional(),
+  errorMessage: z.string().nullable().optional(),
 });
 
 export type UnifiedIngestionData = z.infer<typeof UnifiedIngestionDataSchema>;
@@ -205,4 +265,3 @@ export type RisIngestionPayload = z.infer<typeof RisIngestionPayloadSchema>;
 export type ZoteroIngestionPayload = z.infer<typeof ZoteroIngestionPayloadSchema>;
 
 export type { IngestionProgressItem, IngestionProgressResponse } from './batch-upload.types';
-

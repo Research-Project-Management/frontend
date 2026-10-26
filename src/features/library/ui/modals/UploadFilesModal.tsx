@@ -182,7 +182,7 @@ export default function UploadFilesModal({
               ref={fileInputRef}
               type="file"
               multiple
-              accept=".pdf,.bib,.bibtex,.ris"
+              accept=".pdf,.bib,.bibtex,.ris,.json,.csl.json,.xml,.mods,.rdf,.nbib,.medline,.csv"
               className="hidden"
               onChange={handleFileInputChange}
             />
@@ -196,7 +196,7 @@ export default function UploadFilesModal({
                   Drag and drop files here, or <span className="text-primary underline-offset-2 hover:underline">browse</span>
                 </p>
                 <p className="text-11 text-foreground pt-0.5">
-                  Supported formats: PDF, BibTeX, RIS • max 100MB
+                  Supported formats: PDF, BibTeX, RIS, CSL-JSON, EndNote XML, MODS, Zotero RDF, PubMed (.nbib), CSV • max 100MB
                 </p>
               </div>
             </div>

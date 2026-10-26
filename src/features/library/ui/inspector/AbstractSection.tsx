@@ -30,7 +30,7 @@ export default function AbstractSection({
   // On item change, initialize draft directly from backend canonical abstract
   useEffect(() => {
     setDraft(currentAbstract || "");
-  }, [currentAbstract]);
+  }, [item?.id, currentAbstract]);
 
   // Auto-resize textarea to fit content naturally without jump
   const adjustHeight = useCallback(() => {

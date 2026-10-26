@@ -19,6 +19,7 @@ import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 
 import { useFeedsStore } from '@/features/library/core/store/feeds.store';
+import { useUpdateFeedSubscriptionMutation } from '@/features/library/sdk/queries/ingestion.queries';
 import type { SavedFeedSubscription } from '@/features/library/domain/types/feeds.types';
 import {
   editFeedSchema,
@@ -34,6 +35,7 @@ export interface EditFeedModalProps {
 
 export function EditFeedModal({ open, onOpenChange, feed }: EditFeedModalProps) {
   const updateFeed = useFeedsStore((s) => s.updateFeed);
+  const { mutateAsync: updateFeedSubscription } = useUpdateFeedSubscriptionMutation();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<EditFeedFormValues>({
@@ -65,15 +67,18 @@ export function EditFeedModal({ open, onOpenChange, feed }: EditFeedModalProps) 
     }
   }, [feed, open, reset]);
 
-  const onValidSubmit = (data: EditFeedFormValues) => {
+  const onValidSubmit = async (data: EditFeedFormValues) => {
     if (!feed) return;
 
     setIsSubmitting(true);
     try {
-      updateFeed(feed.id, {
-        name: data.name.trim(),
-        url: data.url.trim(),
-        retentionDays: data.retentionDays,
+      await updateFeedSubscription({
+        id: feed.id,
+        updates: {
+          name: data.name.trim(),
+          url: data.url.trim(),
+          retentionDays: data.retentionDays,
+        },
       });
       toast.success(`Updated feed "${data.name.trim()}"`);
       onOpenChange(false);

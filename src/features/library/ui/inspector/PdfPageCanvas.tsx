@@ -9,7 +9,7 @@ import {
   getCappedDevicePixelRatio,
   releaseCanvasMemory,
 } from "@/shared/lib/pdfjs-worker";
-import { usePdf } from "@/features/library/ui/reader/hooks/use-pdf";
+import { usePdf } from "@/features/library/core/coordinator/reader/use-pdf";
 import type { Item } from "@/features/library/domain/types/library.types";
 
 import "react-pdf/dist/Page/TextLayer.css";

@@ -175,6 +175,18 @@ export const libraryKeys = {
       normalizeScopeId(scopeId),
       runId || "none",
     ] as const,
+
+  // Feeds
+  feeds: () => [...libraryKeys.all, "feeds"] as const,
+  feedSubscriptions: () => [...libraryKeys.all, "feeds", "subscriptions"] as const,
+  feedArticles: (scopeId?: string, feedUrl?: string) =>
+    [
+      ...libraryKeys.all,
+      "feeds",
+      normalizeScopeId(scopeId),
+      "articles",
+      feedUrl || "none",
+    ] as const,
 };
 
 /**
@@ -248,6 +260,13 @@ export const ingestKeys = {
   all: (scopeId?: string) => libraryKeys.ingestion(scopeId),
   status: (scopeId?: string, runId?: string) =>
     libraryKeys.ingestionRun(scopeId, runId),
+};
+
+export const feedKeys = {
+  all: libraryKeys.feeds(),
+  subscriptions: () => libraryKeys.feedSubscriptions(),
+  articles: (scopeId?: string, feedUrl?: string) =>
+    libraryKeys.feedArticles(scopeId, feedUrl),
 };
 
 export const curationKeys = {

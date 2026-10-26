@@ -19,6 +19,7 @@ import {
   RotateCw,
   Check,
   Undo2,
+  Redo2,
   Lock,
   Unlock,
   Columns2,
@@ -54,6 +55,8 @@ export interface ReaderToolbarProps {
   onNavigateToPage: (page: number) => void;
   canNavigateBack?: boolean;
   onNavigateBack?: () => void;
+  canNavigateForward?: boolean;
+  onNavigateForward?: () => void;
   interactionMode?: "select" | "hand";
   onSelectInteractionMode?: (mode: "select" | "hand") => void;
   activeTool?: ReaderAnnotationTool;
@@ -74,7 +77,8 @@ export interface ReaderToolbarProps {
   fitMode?: "fit-width" | "fit-page" | "auto";
   onSelectFitMode?: (mode: "fit-width" | "fit-page" | "auto") => void;
   themeMode?: "normal" | "dark" | "sepia" | "invert";
-  onToggleThemeMode?: () => void;
+  onToggleThemeMode?: (mode?: "normal" | "dark" | "sepia" | "invert") => void;
+  onSelectThemeMode?: (mode: "normal" | "dark" | "sepia" | "invert") => void;
   splitMode?: "none" | "horizontal" | "vertical";
   onSelectSplitMode?: (mode: "none" | "horizontal" | "vertical") => void;
   onToggleSearch?: () => void;
@@ -178,6 +182,8 @@ export const ReaderToolbar = memo(function ReaderToolbar({
   onNavigateToPage,
   canNavigateBack = false,
   onNavigateBack,
+  canNavigateForward = false,
+  onNavigateForward,
   interactionMode = "select",
   onSelectInteractionMode,
   activeTool = "highlight",
@@ -199,6 +205,7 @@ export const ReaderToolbar = memo(function ReaderToolbar({
   onSelectFitMode,
   themeMode = "normal",
   onToggleThemeMode,
+  onSelectThemeMode,
   splitMode = "none",
   onSelectSplitMode,
   onToggleSearch,
@@ -319,18 +326,30 @@ export const ReaderToolbar = memo(function ReaderToolbar({
           </ToolbarIconButton>
         )}
 
-        {/* Back in History (Zotero navigateBack) */}
-        {onNavigateBack && (
+        {/* Back & Forward in History (Zotero navigateBack / navigateForward) */}
+        {(onNavigateBack || onNavigateForward) && (
           <>
             <div className="w-px h-3.5 bg-border mx-0.5" />
-            <ToolbarIconButton
-              onClick={onNavigateBack}
-              disabled={!canNavigateBack}
-              ariaLabel="Navigate back in document"
-              tooltip="Back (Alt+Left)"
-            >
-              <Undo2 className="size-3.5 shrink-0" strokeWidth={1.5} />
-            </ToolbarIconButton>
+            {onNavigateBack && (
+              <ToolbarIconButton
+                onClick={onNavigateBack}
+                disabled={!canNavigateBack}
+                ariaLabel="Navigate back in document"
+                tooltip="Back (Alt+Left)"
+              >
+                <Undo2 className="size-3.5 shrink-0" strokeWidth={1.5} />
+              </ToolbarIconButton>
+            )}
+            {onNavigateForward && (
+              <ToolbarIconButton
+                onClick={onNavigateForward}
+                disabled={!canNavigateForward}
+                ariaLabel="Navigate forward in document"
+                tooltip="Forward (Alt+Right)"
+              >
+                <Redo2 className="size-3.5 shrink-0" strokeWidth={1.5} />
+              </ToolbarIconButton>
+            )}
           </>
         )}
 
@@ -643,9 +662,13 @@ export const ReaderToolbar = memo(function ReaderToolbar({
                     type="button"
                     role="radio"
                     aria-checked={themeMode === "normal"}
-                    onClick={() =>
-                      themeMode !== "normal" && onToggleThemeMode()
-                    }
+                    onClick={() => {
+                      if (onSelectThemeMode) {
+                        onSelectThemeMode("normal");
+                      } else if (onToggleThemeMode) {
+                        onToggleThemeMode("normal");
+                      }
+                    }}
                     className={cn(
                       "flex-1 py-1 text-center text-11 rounded-sm border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                       themeMode === "normal"
@@ -659,7 +682,13 @@ export const ReaderToolbar = memo(function ReaderToolbar({
                     type="button"
                     role="radio"
                     aria-checked={themeMode === "sepia"}
-                    onClick={() => themeMode !== "sepia" && onToggleThemeMode()}
+                    onClick={() => {
+                      if (onSelectThemeMode) {
+                        onSelectThemeMode("sepia");
+                      } else if (onToggleThemeMode) {
+                        onToggleThemeMode("sepia");
+                      }
+                    }}
                     className={cn(
                       "flex-1 py-1 text-center text-11 rounded-sm border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                       themeMode === "sepia"
@@ -673,7 +702,13 @@ export const ReaderToolbar = memo(function ReaderToolbar({
                     type="button"
                     role="radio"
                     aria-checked={themeMode === "dark"}
-                    onClick={() => themeMode !== "dark" && onToggleThemeMode()}
+                    onClick={() => {
+                      if (onSelectThemeMode) {
+                        onSelectThemeMode("dark");
+                      } else if (onToggleThemeMode) {
+                        onToggleThemeMode("dark");
+                      }
+                    }}
                     className={cn(
                       "flex-1 py-1 text-center text-11 rounded-sm border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                       themeMode === "dark"

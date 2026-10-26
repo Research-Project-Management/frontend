@@ -22,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
 import type { ParsedFeedEntry } from '@/features/library/domain/feed-parser.domain';
+import { safeHttpUrl } from '@/features/library/domain/retraction';
 import type { Collection } from '@/features/library/domain/types/library.types';
 import { cn } from '@/shared/lib/utils';
 
@@ -176,7 +177,7 @@ export function FeedItemInspector({
             )}
           </Button>
 
-          {collections.length > 0 && (
+          {!isSaved && collections.length > 0 && (
             <DropdownMenu>
               <Tooltip delayDuration={300}>
                 <TooltipTrigger asChild>
@@ -299,11 +300,11 @@ export function FeedItemInspector({
               </>
             )}
 
-            {entry.url && (
+            {safeHttpUrl(entry.url) && (
               <>
                 <span className="text-muted-foreground">URL:</span>
                 <a
-                  href={entry.url}
+                  href={safeHttpUrl(entry.url)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-foreground hover:underline truncate min-w-0 block"
@@ -314,11 +315,11 @@ export function FeedItemInspector({
               </>
             )}
 
-            {entry.pdfUrl && entry.pdfUrl !== entry.url && (
+            {safeHttpUrl(entry.pdfUrl) && entry.pdfUrl !== entry.url && (
               <>
                 <span className="text-muted-foreground">PDF:</span>
                 <a
-                  href={entry.pdfUrl}
+                  href={safeHttpUrl(entry.pdfUrl)}
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={() => {

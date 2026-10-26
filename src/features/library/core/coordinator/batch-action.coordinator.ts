@@ -3,11 +3,21 @@
 import { useMemo, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
-import { useBatchRestoreItemsMutation } from '@/features/library/sdk/queries/catalog.queries';
+import {
+  useBatchRestoreItemsMutation,
+  useDeleteLibraryItemsMutation,
+} from '@/features/library/sdk/queries/catalog.queries';
 import {
   useBatchDetachItemsMutation,
   useMoveCollectionItemsMutation,
+  useAssignCollectionItemsMutation,
 } from '@/features/library/sdk/queries/collections.queries';
+import {
+  useLibraryCommandStore,
+  createTrashCommand,
+  createRestoreCommand,
+  createMoveItemsCommand,
+} from '@/features/library/core/manager/library-command.manager';
 import { isItemRetracted } from '@/features/library/domain/retraction';
 import type { Item, CslStyle } from '@/features/library/domain/types/library.types';
 import {
@@ -79,9 +89,11 @@ export function useLibraryBatchCoordinator({
   const openModal = useLibraryUIStore((s) => s.openModal);
 
   // Batch Mutations
+  const deleteMutation = useDeleteLibraryItemsMutation(effectiveScope);
   const restoreMutation = useBatchRestoreItemsMutation(effectiveScope);
   const batchDetachMutation = useBatchDetachItemsMutation(effectiveScope);
   const moveMutation = useMoveCollectionItemsMutation(effectiveScope);
+  const assignMutation = useAssignCollectionItemsMutation(effectiveScope);
 
   // Selected Items Resolution
   const selectedItems = useMemo(() => {
@@ -168,30 +180,44 @@ export function useLibraryBatchCoordinator({
       }
       if (movableIds.length === 0) return;
 
-      const toastId = toast.loading(`Moving ${movableIds.length} item(s)...`, { id: 'batch-move' });
+      const previousCollectionsByItem = new Map<string, string[]>();
+      for (const item of selectedItems) {
+        if (movableIds.includes(item.id) && Array.isArray(item.collectionIds)) {
+          previousCollectionsByItem.set(item.id, [...item.collectionIds]);
+        }
+      }
+
       try {
-        await moveMutation.mutateAsync({
-          targetCollectionId,
-          itemIds: movableIds,
-          sourceCollectionId: collectionId,
-        });
-        toast.success(`Moved ${movableIds.length} item(s)`, { id: toastId });
-        clearSelection();
-      } catch (err: unknown) {
-        toast.error('Failed to move items', {
-          description:
-            err instanceof Error ? err.message : 'Could not move documents to collection.',
-          id: toastId,
-        });
+        await useLibraryCommandStore.getState().executeCommand(
+          createMoveItemsCommand({
+            itemIds: movableIds,
+            sourceCollectionId: collectionId || null,
+            targetCollectionId,
+            previousCollectionsByItem,
+            moveMutation,
+            detachMutation: batchDetachMutation,
+            assignMutation,
+            scopeId: effectiveScope,
+            onExecuted: () => {
+              clearSelection();
+            },
+          }),
+        );
+      } catch {
+        // Error toast handled by useLibraryCommandStore
       }
     },
     [
       canEdit,
       isTrash,
       selectedIds,
+      selectedItems,
       processingIds,
       collectionId,
       moveMutation,
+      batchDetachMutation,
+      assignMutation,
+      effectiveScope,
       clearSelection,
     ],
   );
@@ -219,9 +245,17 @@ export function useLibraryBatchCoordinator({
     if (!canEdit || !isTrash) return;
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
-    await restoreMutation.mutateAsync(ids);
-    clearSelection();
-  }, [canEdit, isTrash, selectedIds, restoreMutation, clearSelection]);
+    await useLibraryCommandStore.getState().executeCommand(
+      createRestoreCommand({
+        itemIds: ids,
+        restoreMutation: { mutateAsync: restoreMutation.mutateAsync },
+        deleteMutation: { mutateAsync: deleteMutation.mutateAsync },
+        onExecuted: () => {
+          clearSelection();
+        },
+      }),
+    );
+  }, [canEdit, isTrash, selectedIds, restoreMutation, deleteMutation, clearSelection]);
 
   // Action: Batch Detach from Collection
   const batchDetach = useCallback(

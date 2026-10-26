@@ -2,15 +2,21 @@
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown, ChevronRight, Plus, X, FileText, Loader2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, X, FileText, Loader2, Upload, Link2 } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/shared/components/ui/dropdown-menu';
 import { useLibraryUIStore, type InspectorSectionId } from '@/features/library/core/store/library-ui.store';
 import { useRelations } from '@/features/library/sdk/queries/saved-searches-relations.queries';
-import { useInspectorItemResolver } from './useInspectorItemResolver';
+import { useInspectorItemResolver } from '@/features/library/core/coordinator/inspector-item.coordinator';
 
 import {
   InspectorTabs,
@@ -55,6 +61,7 @@ interface InspectorSectionProps {
   children: React.ReactNode;
   contentClassName?: string;
   canEdit?: boolean;
+  keepMounted?: boolean;
 }
 
 function InspectorSection({
@@ -68,6 +75,7 @@ function InspectorSection({
   children,
   contentClassName = 'px-3 pt-1.5 pb-2.5',
   canEdit = true,
+  keepMounted = false,
 }: InspectorSectionProps) {
   return (
     <div id={`inspector-section-${id}`} className="group/section border-b border-border last:border-b-0 w-full">
@@ -106,9 +114,6 @@ function InspectorSection({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (!isExpanded) {
-                      onToggleExpand();
-                    }
                     onAdd();
                   }}
                   className="size-5 rounded flex items-center justify-center text-foreground hover:bg-muted cursor-pointer transition-colors relative before:absolute before:-inset-2.5 md:before:hidden"
@@ -151,8 +156,11 @@ function InspectorSection({
       </div>
 
       {/* Section Content (collapsible) */}
-      {isExpanded && (
-        <div id={`section-content-${id}`} className={cn('bg-background', contentClassName)}>
+      {(isExpanded || keepMounted) && (
+        <div
+          id={`section-content-${id}`}
+          className={cn('bg-background', isExpanded ? contentClassName : 'hidden')}
+        >
           {children}
         </div>
       )}
@@ -184,8 +192,12 @@ export interface LibraryInspectorProps {
  * Replaces the previous 1,300-line monolithic Panel.tsx.
  */
 export function LibraryInspector(props: LibraryInspectorProps) {
-  const isInspectorOpen = useLibraryUIStore((s) => s.isInspectorOpen);
-  if (!isInspectorOpen && !props.defaultOpen) {
+  const storeIsInspectorOpen = useLibraryUIStore((s) => s.isInspectorOpen);
+  const effectiveIsOpen =
+    props.defaultOpen !== undefined
+      ? Boolean(props.defaultOpen)
+      : storeIsInspectorOpen;
+  if (!effectiveIsOpen) {
     return null;
   }
   return <LibraryInspectorContent {...props} />;
@@ -201,18 +213,18 @@ function LibraryInspectorContent({
   onClearPendingText,
   onNavigateToAnnotation,
   hideRailToggle = false,
-  defaultOpen = false,
+  defaultOpen,
   isReader = false,
   isLibrary,
   hideHeader,
   hideTabs,
 }: LibraryInspectorProps) {
-  const isLibraryMode = isLibrary ?? !isReader;
-  const shouldHideHeader = hideHeader ?? isLibraryMode;
-  const shouldHideTabs = hideTabs ?? isLibraryMode;
+  const shouldHideHeader = hideHeader ?? false;
+  const shouldHideTabs = hideTabs ?? false;
   // Sidebar & View store state
   const storeIsInspectorOpen = useLibraryUIStore((s) => s.isInspectorOpen);
-  const isInspectorOpen = storeIsInspectorOpen || defaultOpen;
+  const isInspectorOpen =
+    defaultOpen !== undefined ? Boolean(defaultOpen) : storeIsInspectorOpen;
   const setIsInspectorOpen = useLibraryUIStore((s) => s.setIsInspectorOpen);
   const toggleInspector = useLibraryUIStore((s) => s.toggleInspector);
   const activeInspectorTab = useLibraryUIStore((s) => s.activeInspectorTab);
@@ -290,6 +302,7 @@ function LibraryInspectorContent({
 
   // Add / action states for configured sections
   const attachmentsAddRef = useRef<(() => void) | null>(null);
+  const attachmentsAddLinkRef = useRef<(() => void) | null>(null);
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [isAddingTag, setIsAddingTag] = useState(false);
 
@@ -330,7 +343,8 @@ function LibraryInspectorContent({
   const hasFiles = Boolean(
     effectiveItem?.filename ||
     (effectiveItem?.attachments && effectiveItem.attachments.length > 0) ||
-    effectiveItem?.openAccessPdfUrl
+    effectiveItem?.openAccessPdfUrl ||
+    effectiveItem?.url
   );
   const hasAbstract = Boolean(
     effectiveItem?.abstractNote
@@ -386,6 +400,7 @@ function LibraryInspectorContent({
                   canEdit={effectiveCanEdit}
                 >
                   <InfoSection
+                    key={effectiveItem.id}
                     item={effectiveItem}
                     onUpdateItem={handleUpdateItem}
                     canEdit={effectiveCanEdit}
@@ -410,6 +425,7 @@ function LibraryInspectorContent({
                   canEdit={effectiveCanEdit}
                 >
                   <AbstractSection
+                    key={effectiveItem.id}
                     item={effectiveItem}
                     onUpdateItem={handleUpdateItem}
                     canEdit={effectiveCanEdit}
@@ -424,12 +440,46 @@ function LibraryInspectorContent({
                   count={attachmentCount}
                   isExpanded={expandedSections.files}
                   onToggleExpand={() => toggleSection('files')}
-                  onAdd={() => {
-                    setExpandedSections((prev) => ({ ...prev, files: true }));
-                    attachmentsAddRef.current?.();
-                  }}
+                  actionSlot={
+                    effectiveCanEdit ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            className="size-5 rounded flex items-center justify-center text-foreground hover:bg-muted cursor-pointer transition-colors relative before:absolute before:-inset-2.5 md:before:hidden"
+                            aria-label="Add attachment"
+                          >
+                            <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48 text-12">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setExpandedSections((prev) => ({ ...prev, files: true }));
+                              attachmentsAddRef.current?.();
+                            }}
+                            className="cursor-pointer gap-2"
+                          >
+                            <Upload className="size-3.5 shrink-0 text-muted-foreground" />
+                            <span>Attach Stored File...</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setExpandedSections((prev) => ({ ...prev, files: true }));
+                              attachmentsAddLinkRef.current?.();
+                            }}
+                            className="cursor-pointer gap-2"
+                          >
+                            <Link2 className="size-3.5 shrink-0 text-muted-foreground" />
+                            <span>Attach Link to URI...</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : undefined
+                  }
                   contentClassName={hasFiles ? 'px-3 pt-1.5 pb-2.5 flex flex-col gap-2' : 'p-0'}
                   canEdit={effectiveCanEdit}
+                  keepMounted
                 >
                   <AttachmentsSection
                     item={effectiveItem}
@@ -438,6 +488,9 @@ function LibraryInspectorContent({
                     canEdit={effectiveCanEdit}
                     onRegisterAdd={(fn) => {
                       attachmentsAddRef.current = fn;
+                    }}
+                    onRegisterAddLink={(fn) => {
+                      attachmentsAddLinkRef.current = fn;
                     }}
                   />
                 </InspectorSection>

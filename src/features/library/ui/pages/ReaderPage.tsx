@@ -1,13 +1,17 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { ReaderRetractionBanner } from '@/features/library/ui/reader/ReaderRetractionBanner';
+import { resolveEpubOrSnapshot } from '@/features/library/ui/reader/reader-attachment.utils';
+
+import { useState, useEffect, useCallback, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/shared/lib/utils";
 import { Loader2, ChevronLeft, ShieldAlert, ExternalLink } from "lucide-react";
+import { safeHttpUrl } from "@/features/library/domain/retraction";
 import { Button } from "@/shared/components/ui/button";
 import { PlaneEmptyState } from "@/shared/components/ui/PlaneEmptyState";
-import { useReader } from "@/features/library/ui/reader/hooks/use-reader";
+import { useReader } from "@/features/library/core/coordinator/reader/use-reader";
 import { useShallow } from "zustand/react/shallow";
 import { useReaderStore } from "@/features/library/core/store/reader.store";
 import { useLibraryUIStore } from "@/features/library/core/store/library-ui.store";
@@ -54,7 +58,7 @@ const Viewer = dynamic(
   },
 );
 
-const EpubAndSnapshotViewer = dynamic(
+const EpubAndSnapshotViewer = dynamic<import("@/features/library/ui/reader/viewer/EpubAndSnapshotViewer").EpubAndSnapshotViewerProps>(
   () => import("@/features/library/ui/reader/viewer/EpubAndSnapshotViewer"),
   { ssr: false },
 );
@@ -134,6 +138,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     openReader,
     closeTab,
     setActiveTab,
+    updateTabState,
     activeColor,
     setActiveColor,
     activeTool,
@@ -145,6 +150,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
       openReader: s.openReader,
       closeTab: s.closeTab,
       setActiveTab: s.setActiveTab,
+      updateTabState: s.updateTabState,
       activeColor: s.activeColor,
       setActiveColor: s.setActiveColor,
       activeTool: s.activeTool,
@@ -152,14 +158,32 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     })),
   );
 
+  const effectiveTabId = paper?.id || activeTabId;
+  const activeTab = tabs.find((t) => t.id === effectiveTabId);
+
   // Reader-specific local inspector toggle
+  const isGlobalInspectorOpen = useLibraryUIStore((s) => s.isInspectorOpen);
+  const setIsGlobalInspectorOpen = useLibraryUIStore((s) => s.setIsInspectorOpen);
   const [isReaderInspectorOpen, setIsReaderInspectorOpen] = useState(false);
+
+  useEffect(() => {
+    if (isGlobalInspectorOpen) {
+      setIsReaderInspectorOpen(true);
+    }
+  }, [isGlobalInspectorOpen]);
+
   const handleToggleInspector = useCallback(() => {
-    setIsReaderInspectorOpen((prev) => !prev);
-  }, []);
+    setIsReaderInspectorOpen((prev) => {
+      const next = !prev;
+      setIsGlobalInspectorOpen(next);
+      return next;
+    });
+  }, [setIsGlobalInspectorOpen]);
+
   const handleCloseInspector = useCallback(() => {
     setIsReaderInspectorOpen(false);
-  }, []);
+    setIsGlobalInspectorOpen(false);
+  }, [setIsGlobalInspectorOpen]);
 
   // In-Document Search
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(
@@ -170,8 +194,13 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
   const [viewMode, setViewMode] = useState<"single" | "continuous" | "spread">(
     "continuous",
   );
-  const [fitMode, setFitMode] = useState<"fit-width" | "fit-page" | "auto">(
-    "fit-width",
+  const [fitMode, setFitModeState] = useState<"fit-width" | "fit-page" | "auto">(
+    () =>
+      activeTab?.fitMode === "page-fit"
+        ? "fit-page"
+        : activeTab?.fitMode === "auto"
+          ? "auto"
+          : "fit-width",
   );
 
   // Global keyboard shortcut: Ctrl+F / Cmd+F to toggle document search
@@ -216,36 +245,178 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
   };
 
   // Academic Reader States (Pan/Select, Rotation, Reading Theme, Split View, Reading Mode, Lock Tool)
-  const [interactionMode, setInteractionMode] = useState<"select" | "hand">(
-    "select",
+  const [interactionMode, setInteractionMode] = useState<"select" | "hand">("select");
+  const [rotation, setRotationState] = useState<number>(() => activeTab?.rotation ?? 0);
+  const [themeMode, setThemeModeState] = useState<"normal" | "sepia" | "dark">(
+    () =>
+      activeTab?.theme === "sepia"
+        ? "sepia"
+        : activeTab?.theme === "dark"
+          ? "dark"
+          : "normal",
   );
-  const [rotation, setRotation] = useState<number>(0);
-  const [themeMode, setThemeMode] = useState<"normal" | "sepia" | "dark">(
-    "normal",
-  );
-  const [splitMode, setSplitMode] = useState<
-    "none" | "horizontal" | "vertical"
-  >("none");
+  const [splitMode, setSplitMode] = useState<"none" | "horizontal" | "vertical">("none");
   const [isReadingMode, setIsReadingMode] = useState<boolean>(false);
   const [isToolLocked, setIsToolLocked] = useState<boolean>(false);
-  const [pageHistory, setPageHistory] = useState<number[]>([]);
+  const [tabHistoryByTabId, setTabHistoryByTabId] = useState<
+    Record<string, { pageHistory: number[]; forwardHistory: number[] }>
+  >({});
+
+  const tabKey = effectiveTabId || "default";
+  const pageHistory = tabHistoryByTabId[tabKey]?.pageHistory ?? [];
+  const forwardHistory = tabHistoryByTabId[tabKey]?.forwardHistory ?? [];
+
+  // Sync local fitMode, zoom, rotation, and themeMode when switching tabs
+  useEffect(() => {
+    if (!activeTab) return;
+    const mappedFit: "fit-width" | "fit-page" | "auto" =
+      activeTab.fitMode === "page-fit"
+        ? "fit-page"
+        : activeTab.fitMode === "auto"
+          ? "auto"
+          : "fit-width";
+    setFitModeState(mappedFit);
+    setRotationState(activeTab.rotation ?? 0);
+    if (typeof activeTab.zoom === "number") {
+      setZoom(activeTab.zoom);
+    }
+    const mappedTheme: "normal" | "sepia" | "dark" =
+      activeTab.theme === "sepia"
+        ? "sepia"
+        : activeTab.theme === "dark"
+          ? "dark"
+          : "normal";
+    setThemeModeState(mappedTheme);
+  }, [effectiveTabId, activeTab?.id, setZoom]);
+
+  const setTabZoom = useCallback(
+    (nextOrUpdater: number | ((prev: number) => number)) => {
+      setZoom((prev) => {
+        const resolved =
+          typeof nextOrUpdater === "function" ? nextOrUpdater(prev) : nextOrUpdater;
+        if (effectiveTabId && effectiveTabId !== "library") {
+          updateTabState(effectiveTabId, { zoom: resolved });
+        }
+        return resolved;
+      });
+    },
+    [effectiveTabId, setZoom, updateTabState],
+  );
+
+  const setFitMode = useCallback(
+    (next: "fit-width" | "fit-page" | "auto") => {
+      setFitModeState(next);
+      if (effectiveTabId && effectiveTabId !== "library") {
+        updateTabState(effectiveTabId, {
+          fitMode:
+            next === "fit-page"
+              ? "page-fit"
+              : next === "auto"
+                ? "auto"
+                : "page-width",
+        });
+      }
+    },
+    [effectiveTabId, updateTabState],
+  );
+
+  const setRotation = useCallback(
+    (nextOrUpdater: number | ((prev: number) => number)) => {
+      setRotationState((prev) => {
+        const resolved =
+          typeof nextOrUpdater === "function" ? nextOrUpdater(prev) : nextOrUpdater;
+        if (effectiveTabId && effectiveTabId !== "library") {
+          updateTabState(effectiveTabId, { rotation: resolved });
+        }
+        return resolved;
+      });
+    },
+    [effectiveTabId, updateTabState],
+  );
+
+  const setThemeMode = useCallback(
+    (
+      nextOrUpdater:
+        | ("normal" | "sepia" | "dark" | "invert")
+        | ((prev: "normal" | "sepia" | "dark") => "normal" | "sepia" | "dark" | "invert"),
+    ) => {
+      setThemeModeState((prev) => {
+        const raw =
+          typeof nextOrUpdater === "function" ? nextOrUpdater(prev) : nextOrUpdater;
+        const resolved: "normal" | "sepia" | "dark" =
+          raw === "invert" ? "dark" : raw;
+        if (effectiveTabId && effectiveTabId !== "library") {
+          updateTabState(effectiveTabId, {
+            theme:
+              resolved === "sepia"
+                ? "sepia"
+                : resolved === "dark"
+                  ? "dark"
+                  : "light",
+          });
+        }
+        return resolved;
+      });
+    },
+    [effectiveTabId, updateTabState],
+  );
 
   const handleNavigateToPageWithHistory = useCallback(
     (newPage: number, annotationId?: string) => {
       if (visiblePage && visiblePage !== newPage) {
-        setPageHistory((prev) => [...prev.slice(-30), visiblePage]);
+        setTabHistoryByTabId((prev) => {
+          const current = prev[tabKey] ?? { pageHistory: [], forwardHistory: [] };
+          return {
+            ...prev,
+            [tabKey]: {
+              pageHistory: [...current.pageHistory.slice(-30), visiblePage],
+              forwardHistory: [],
+            },
+          };
+        });
       }
       actions.handleNavigateToAnnotation(newPage, annotationId);
     },
-    [visiblePage, actions],
+    [visiblePage, actions, tabKey],
   );
 
   const handleNavigateBack = useCallback(() => {
     if (pageHistory.length === 0) return;
     const prevPage = pageHistory[pageHistory.length - 1];
-    setPageHistory((prev) => prev.slice(0, prev.length - 1));
+    setTabHistoryByTabId((prev) => {
+      const current = prev[tabKey] ?? { pageHistory: [], forwardHistory: [] };
+      return {
+        ...prev,
+        [tabKey]: {
+          pageHistory: current.pageHistory.slice(0, current.pageHistory.length - 1),
+          forwardHistory:
+            visiblePage && visiblePage !== prevPage
+              ? [...current.forwardHistory.slice(-30), visiblePage]
+              : current.forwardHistory,
+        },
+      };
+    });
     handleNavigateToPage(prevPage);
-  }, [pageHistory, handleNavigateToPage]);
+  }, [pageHistory, visiblePage, handleNavigateToPage, tabKey]);
+
+  const handleNavigateForward = useCallback(() => {
+    if (forwardHistory.length === 0) return;
+    const nextPage = forwardHistory[forwardHistory.length - 1];
+    setTabHistoryByTabId((prev) => {
+      const current = prev[tabKey] ?? { pageHistory: [], forwardHistory: [] };
+      return {
+        ...prev,
+        [tabKey]: {
+          pageHistory:
+            visiblePage && visiblePage !== nextPage
+              ? [...current.pageHistory.slice(-30), visiblePage]
+              : current.pageHistory,
+          forwardHistory: current.forwardHistory.slice(0, current.forwardHistory.length - 1),
+        },
+      };
+    });
+    handleNavigateToPage(nextPage);
+  }, [forwardHistory, visiblePage, handleNavigateToPage, tabKey]);
 
   // Escape key exits distraction-free reading mode
   useEffect(() => {
@@ -260,10 +431,14 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
 
   const handleRotate = () => setRotation((r) => (r + 90) % 360);
 
-  const handleToggleThemeMode = () => {
-    setThemeMode((m) =>
-      m === "normal" ? "sepia" : m === "sepia" ? "dark" : "normal",
-    );
+  const handleToggleThemeMode = (mode?: "normal" | "dark" | "sepia" | "invert") => {
+    if (mode) {
+      setThemeMode(mode);
+    } else {
+      setThemeMode((m) =>
+        m === "normal" ? "sepia" : m === "sepia" ? "dark" : "normal",
+      );
+    }
   };
 
   const { triggerOcr } = useOcrExtraction(scopeId);
@@ -393,17 +568,17 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
   }, []);
 
   const handleZoomIn = useCallback(() => {
-    setZoom((z) => Math.min(2.5, +(z + 0.15).toFixed(2)));
-  }, [setZoom]);
+    setTabZoom((z) => Math.min(2.5, +(z + 0.15).toFixed(2)));
+  }, [setTabZoom]);
 
   const handleZoomOut = useCallback(() => {
-    setZoom((z) => Math.max(0.5, +(z - 0.15).toFixed(2)));
-  }, [setZoom]);
+    setTabZoom((z) => Math.max(0.5, +(z - 0.15).toFixed(2)));
+  }, [setTabZoom]);
 
   const handleFitWidth = useCallback(() => {
     setFitMode("fit-width");
-    setZoom(1.0);
-  }, [setZoom]);
+    setTabZoom(1.0);
+  }, [setFitMode, setTabZoom]);
 
   const handleToggleSearch = useCallback(() => {
     setIsSearchOpen((v) => !v);
@@ -456,99 +631,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
   const retractionDetails = paper?.retractionDetails as
     { reason?: string; noticeUrl?: string } | undefined;
 
-  // Detect EPUB or Web Snapshot attachment when primary file is .epub / .html or when requested attachment is selected
-  const epubOrSnapshotInfo = (() => {
-    if (!paper) return null;
-    type RawAttItem = {
-      id?: string;
-      url?: string;
-      fileUrl?: string;
-      mimeType?: string;
-      filename?: string;
-      attachmentType?: string;
-      linkMode?: string;
-    };
-    const rawAtts: RawAttItem[] = Array.isArray(paper.attachments)
-      ? (paper.attachments as RawAttItem[])
-      : [];
-
-    const requestedAttId = searchParams.get("attachmentId");
-    const activeAtt = requestedAttId
-      ? rawAtts.find((a: RawAttItem) => a.id === requestedAttId)
-      : (state.selectedAttachment as RawAttItem | undefined);
-
-    if (activeAtt) {
-      const attMime = activeAtt.mimeType?.toLowerCase() || "";
-      const attName = (activeAtt.filename || "").toLowerCase();
-      const attUrl = (activeAtt.fileUrl || activeAtt.url || paperUrl || "") as string;
-      const isSnapshot =
-        activeAtt.attachmentType === "snapshot" ||
-        activeAtt.attachmentType === "web_snapshot" ||
-        activeAtt.linkMode === "imported_url" ||
-        attMime === "text/html" ||
-        attName.endsWith(".html");
-      const isEpub =
-        attMime.includes("epub") ||
-        attName.endsWith(".epub") ||
-        /\.epub(?:$|\?)/i.test(attUrl);
-
-      if (isEpub) {
-        return { mode: "epub" as const, url: attUrl };
-      }
-      if (isSnapshot) {
-        return { mode: "snapshot" as const, url: attUrl };
-      }
-    }
-
-    const primaryMime = paper.primaryFile?.mimeType?.toLowerCase() || "";
-    const primaryName = (
-      paper.filename ||
-      paper.primaryFile?.filename ||
-      ""
-    ).toLowerCase();
-
-    if (
-      primaryMime.includes("epub") ||
-      primaryName.endsWith(".epub") ||
-      (paperUrl && /\.epub(?:$|\?)/i.test(paperUrl))
-    ) {
-      return {
-        mode: "epub" as const,
-        url: paperUrl || paper.primaryFile?.url || "",
-      };
-    }
-
-    const epubAtt = rawAtts.find(
-      (a: RawAttItem) =>
-        a.mimeType?.toLowerCase().includes("epub") ||
-        a.filename?.toLowerCase().endsWith(".epub"),
-    );
-    if (epubAtt && (epubAtt.url || epubAtt.fileUrl)) {
-      return {
-        mode: "epub" as const,
-        url: (epubAtt.fileUrl || epubAtt.url) as string,
-      };
-    }
-
-    if (!paperUrl) {
-      const snapshotAtt = rawAtts.find(
-        (a: RawAttItem) =>
-          a.attachmentType === "snapshot" ||
-          a.attachmentType === "web_snapshot" ||
-          a.linkMode === "imported_url" ||
-          a.mimeType === "text/html" ||
-          a.filename?.toLowerCase().endsWith(".html"),
-      );
-      if (snapshotAtt && (snapshotAtt.url || snapshotAtt.fileUrl)) {
-        return {
-          mode: "snapshot" as const,
-          url: (snapshotAtt.fileUrl || snapshotAtt.url) as string,
-        };
-      }
-    }
-
-    return null;
-  })();
+  const epubOrSnapshotInfo = useMemo(() => resolveEpubOrSnapshot(paper, paperUrl, searchParams.get('attachmentId'), state.selectedAttachment), [paper, paperUrl, searchParams, state.selectedAttachment]);
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background">
@@ -577,6 +660,8 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
           onNavigateToPage={handleNavigateToPageWithHistory}
           canNavigateBack={pageHistory.length > 0}
           onNavigateBack={handleNavigateBack}
+          canNavigateForward={forwardHistory.length > 0}
+          onNavigateForward={handleNavigateForward}
           splitMode={splitMode}
           onSelectSplitMode={setSplitMode}
           interactionMode={interactionMode}
@@ -590,12 +675,13 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
           zoom={zoom}
           onZoomIn={handleZoomIn}
           onZoomOut={handleZoomOut}
-          onSetZoom={setZoom}
+          onSetZoom={setTabZoom}
           onFitWidth={handleFitWidth}
           rotation={rotation}
           onRotate={handleRotate}
           themeMode={themeMode}
           onToggleThemeMode={handleToggleThemeMode}
+          onSelectThemeMode={setThemeMode}
           viewMode={viewMode}
           onSelectViewMode={setViewMode}
           fitMode={fitMode}
@@ -609,36 +695,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
         />
       )}
 
-      {/* 2.1 RETRACTION WARNING BANNER */}
-      {paper?.isRetracted && (
-        <div className="bg-destructive text-destructive-foreground px-4 py-2 flex items-center justify-between text-12 z-30 shrink-0 border-b border-destructive/20 select-none">
-          <div className="flex items-center gap-2 min-w-0">
-            <ShieldAlert className="size-4 shrink-0 text-destructive-foreground" />
-            <span className="font-semibold tracking-normal">
-              {paper.retractionNature === "expression_of_concern"
-                ? "Expression of Concern"
-                : paper.retractionNature === "correction"
-                  ? "Publisher Correction"
-                  : "Retracted Publication"}
-            </span>
-            <span className="text-destructive-foreground/90 truncate max-w-xl">
-              -{" "}
-              {retractionDetails?.reason ||
-                "This publication has been flagged as retracted or unreliable."}
-            </span>
-          </div>
-          {retractionDetails?.noticeUrl && (
-            <a
-              href={retractionDetails.noticeUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-12 text-destructive-foreground underline font-medium hover:text-destructive-foreground/80 shrink-0 ml-4 relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            >
-              Notice <ExternalLink className="size-3 shrink-0" />
-            </a>
-          )}
-        </div>
-      )}
+      <ReaderRetractionBanner paper={paper} retractionDetails={retractionDetails} />
 
       {/* WORKSPACE VIEWPORT */}
       <div className="relative flex flex-1 min-w-0 min-h-0 w-full overflow-hidden bg-background">
@@ -672,67 +729,35 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
         <main className="flex h-full min-w-0 flex-1 flex-col overflow-hidden relative">
           {isLoadingPapers ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-2.5">
-              <Loader2
-                className="size-5 animate-spin text-muted-foreground"
-                strokeWidth={1.5}
-              />
-              <p className="text-12 text-muted-foreground font-sans">
-                Loading document...
-              </p>
+              <Loader2 className="size-5 animate-spin text-muted-foreground" strokeWidth={1.5} />
+              <p className="text-12 text-muted-foreground font-sans">Loading document...</p>
             </div>
           ) : !paper ? (
-            <PlaneEmptyState
-              variant="document"
-              title="Document not found"
-              description="The document could not be found or you do not have permission."
-            />
+            <PlaneEmptyState variant="document" title="Document not found" description="The document could not be found or you do not have permission." />
           ) : epubOrSnapshotInfo ? (
             <EpubAndSnapshotViewer
-              url={epubOrSnapshotInfo.url}
-              mode={epubOrSnapshotInfo.mode}
-              title={paper.title}
-              sourceUrl={paper.url ?? undefined}
-              themeMode={themeMode}
-              zoom={zoom}
-              activeColor={activeColor}
+              url={epubOrSnapshotInfo.url} mode={epubOrSnapshotInfo.mode}
+              title={paper.title} sourceUrl={paper.url ?? undefined}
+              themeMode={themeMode} zoom={zoom} activeColor={activeColor}
               onAddToNote={handleAddToNote}
-              onAnnotate={(text, pageNum, colorHex) =>
-                handleAnnotateWithLock(text, pageNum, colorHex)
-              }
-              onPageChange={(curr, total) => {
-                actions.setVisiblePage(curr);
-                actions.setNumPages(total);
-              }}
+              onAnnotate={(text, pageNum, colorHex) => handleAnnotateWithLock(text, pageNum, colorHex)}
+              onPageChange={(curr, total) => { actions.setVisiblePage(curr); actions.setNumPages(total); }}
+              isSearchOpen={isSearchOpen} onCloseSearch={handleCloseSearch} initialSearchQuery={initialSearchQuery}
             />
           ) : paperUrl ? (
             splitMode === "none" ? (
               <Viewer
-                {...sharedViewerProps}
-                targetPage={targetPage}
-                onVisiblePageChange={actions.setVisiblePage}
-                onTotalPagesChange={actions.setNumPages}
-                isSearchOpen={isSearchOpen}
-                onCloseSearch={handleCloseSearch}
-                initialSearchQuery={initialSearchQuery}
+                {...sharedViewerProps} targetPage={targetPage}
+                onVisiblePageChange={actions.setVisiblePage} onTotalPagesChange={actions.setNumPages}
+                isSearchOpen={isSearchOpen} onCloseSearch={handleCloseSearch} initialSearchQuery={initialSearchQuery}
               />
             ) : (
-              <div
-                className={cn(
-                  "flex-1 flex min-w-0 min-h-0 overflow-hidden",
-                  splitMode === "vertical"
-                    ? "flex-row divide-x divide-border"
-                    : "flex-col divide-y divide-border",
-                )}
-              >
+              <div className={cn("flex-1 flex min-w-0 min-h-0 overflow-hidden", splitMode === "vertical" ? "flex-row divide-x divide-border" : "flex-col divide-y divide-border")}>
                 <div className="flex-1 min-w-0 min-h-0 overflow-hidden relative">
                   <Viewer
-                    {...sharedViewerProps}
-                    targetPage={targetPage}
-                    onVisiblePageChange={actions.setVisiblePage}
-                    onTotalPagesChange={actions.setNumPages}
-                    isSearchOpen={isSearchOpen}
-                    onCloseSearch={handleCloseSearch}
-                    initialSearchQuery={initialSearchQuery}
+                    {...sharedViewerProps} targetPage={targetPage}
+                    onVisiblePageChange={actions.setVisiblePage} onTotalPagesChange={actions.setNumPages}
+                    isSearchOpen={isSearchOpen} onCloseSearch={handleCloseSearch} initialSearchQuery={initialSearchQuery}
                   />
                 </div>
                 <div className="flex-1 min-w-0 min-h-0 h-full overflow-hidden relative">
@@ -742,8 +767,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
             )
           ) : (
             <PlaneEmptyState
-              variant="document"
-              title={paper.title || "Paper Reference"}
+              variant="document" title={paper.title || "Paper Reference"}
               description="No PDF, EPUB, or Web Snapshot attached to this entry. You can review metadata or notes using the side panel."
             />
           )}
@@ -752,26 +776,18 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
         {/* 5. UNIFIED INSPECTOR PANEL */}
         {!isReadingMode && (
           <ReaderInspector
-            item={paper}
-            scopeId={scopeId}
-            canEdit={canEdit}
-            defaultOpen={isReaderInspectorOpen}
-            onClose={handleCloseInspector}
-            onSelectItem={handleSelectItem}
+            item={paper} scopeId={scopeId} canEdit={canEdit}
+            defaultOpen={isReaderInspectorOpen} hideHeader={true} hideTabs={true}
+            onClose={handleCloseInspector} onSelectItem={handleSelectItem}
             onNavigateToAnnotation={handleNavigateToPageWithHistory}
-            pendingNoteText={pendingNoteText}
-            onClearPendingText={handleClearPendingText}
+            pendingNoteText={pendingNoteText} onClearPendingText={handleClearPendingText}
           />
         )}
       </div>
 
       {/* BibTeX / RIS Export Modal */}
       {paper && bibtexOpen && (
-        <BibtexModal
-          paper={paper}
-          open={bibtexOpen}
-          onOpenChange={setBibtexOpen}
-        />
+        <BibtexModal paper={paper} open={bibtexOpen} onOpenChange={setBibtexOpen} />
       )}
     </div>
   );

@@ -90,6 +90,19 @@ export function useAnnotationBatch({
     setSelectedAnnotationIds(new Set());
   }, []);
 
+  const pruneDeletedFromHistory = useCallback((deletedIds: string[]) => {
+    if (!deletedIds || deletedIds.length === 0) return;
+    const deletedSet = new Set(deletedIds);
+    const filterAction = (action: UndoAction): UndoAction | null => {
+      if (action.type === 'delete') return action;
+      const remaining = action.items.filter((it) => !deletedSet.has(it.id));
+      if (remaining.length === 0) return null;
+      return { ...action, items: remaining } as UndoAction;
+    };
+    setUndoStack((prev) => prev.map(filterAction).filter((a): a is UndoAction => a !== null));
+    setRedoStack((prev) => prev.map(filterAction).filter((a): a is UndoAction => a !== null));
+  }, []);
+
   // Undo function
   const undo = useCallback(async () => {
     if (!effectiveAttachmentId || undoStack.length === 0 || isProcessingRef.current || isBatchProcessing) return;
@@ -129,34 +142,31 @@ export function useAnnotationBatch({
             annotationKeys.byAttachment(scopeId, effectiveAttachmentId),
           ) || [];
         const existingMap = new Map(existing.map((a) => [a.id, a]));
+        const liveItems = action.items.filter((item) => existingMap.has(item.id));
+        if (liveItems.length === 0) {
+          setUndoStack((prev) => prev.slice(0, prev.length - 1));
+          return;
+        }
 
-        const upserts = action.items.map((item) => {
-          const found = existingMap.get(item.id);
-          const prev = item.previousData;
-          return {
-            id: item.id,
-            pageIndex: prev?.pageIndex ?? found?.pageIndex ?? 0,
-            type: prev?.type ?? found?.type,
-            rects: prev?.rects ?? found?.rects,
-            quoteText: prev?.quoteText ?? found?.quoteText,
-            comment: prev?.comment ?? found?.comment,
-            color: item.prevColor,
-            tags: prev?.tags ?? found?.tags,
-            expectedVersion: found?.version ?? prev?.version ?? 1,
-          };
-        });
-
-        await readerService.annotations.batch(scopeId, effectiveAttachmentId, {
-          upserts,
-          deletes: [],
-        });
+        await Promise.all(
+          liveItems.map((item) => {
+            const found = existingMap.get(item.id);
+            return readerService.annotations.update(
+              scopeId,
+              effectiveAttachmentId,
+              item.id,
+              found?.version ?? item.version,
+              { color: item.prevColor },
+            );
+          }),
+        );
 
         qc.invalidateQueries({
           queryKey: annotationKeys.byAttachment(scopeId, effectiveAttachmentId),
         });
 
         setUndoStack((prev) => prev.slice(0, prev.length - 1));
-        setRedoStack((prev) => [...prev.slice(-19), action]);
+        setRedoStack((prev) => [...prev.slice(-19), { ...action, items: liveItems }]);
         toast.success(`Reverted color change`);
       } else if (action.type === 'tag') {
         const existing =
@@ -164,34 +174,31 @@ export function useAnnotationBatch({
             annotationKeys.byAttachment(scopeId, effectiveAttachmentId),
           ) || [];
         const existingMap = new Map(existing.map((a) => [a.id, a]));
+        const liveItems = action.items.filter((item) => existingMap.has(item.id));
+        if (liveItems.length === 0) {
+          setUndoStack((prev) => prev.slice(0, prev.length - 1));
+          return;
+        }
 
-        const upserts = action.items.map((item) => {
-          const found = existingMap.get(item.id);
-          const prev = item.previousData;
-          return {
-            id: item.id,
-            pageIndex: prev?.pageIndex ?? found?.pageIndex ?? 0,
-            type: prev?.type ?? found?.type,
-            rects: prev?.rects ?? found?.rects,
-            quoteText: prev?.quoteText ?? found?.quoteText,
-            comment: prev?.comment ?? found?.comment,
-            color: prev?.color ?? found?.color,
-            tags: item.prevTags,
-            expectedVersion: found?.version ?? prev?.version ?? 1,
-          };
-        });
-
-        await readerService.annotations.batch(scopeId, effectiveAttachmentId, {
-          upserts,
-          deletes: [],
-        });
+        await Promise.all(
+          liveItems.map((item) => {
+            const found = existingMap.get(item.id);
+            return readerService.annotations.update(
+              scopeId,
+              effectiveAttachmentId,
+              item.id,
+              found?.version ?? item.version,
+              { tags: item.prevTags },
+            );
+          }),
+        );
 
         qc.invalidateQueries({
           queryKey: annotationKeys.byAttachment(scopeId, effectiveAttachmentId),
         });
 
         setUndoStack((prev) => prev.slice(0, prev.length - 1));
-        setRedoStack((prev) => [...prev.slice(-19), action]);
+        setRedoStack((prev) => [...prev.slice(-19), { ...action, items: liveItems }]);
         toast.success(`Reverted tag change`);
       }
     } catch (err) {
@@ -230,34 +237,31 @@ export function useAnnotationBatch({
             annotationKeys.byAttachment(scopeId, effectiveAttachmentId),
           ) || [];
         const existingMap = new Map(existing.map((a) => [a.id, a]));
+        const liveItems = action.items.filter((item) => existingMap.has(item.id));
+        if (liveItems.length === 0) {
+          setRedoStack((prev) => prev.slice(0, prev.length - 1));
+          return;
+        }
 
-        const upserts = action.items.map((item) => {
-          const found = existingMap.get(item.id);
-          const prev = item.previousData;
-          return {
-            id: item.id,
-            pageIndex: found?.pageIndex ?? prev?.pageIndex ?? 0,
-            type: found?.type ?? prev?.type,
-            rects: found?.rects ?? prev?.rects,
-            quoteText: found?.quoteText ?? prev?.quoteText,
-            comment: found?.comment ?? prev?.comment,
-            color: item.newColor,
-            tags: found?.tags ?? prev?.tags,
-            expectedVersion: found?.version ?? 1,
-          };
-        });
-
-        await readerService.annotations.batch(scopeId, effectiveAttachmentId, {
-          upserts,
-          deletes: [],
-        });
+        await Promise.all(
+          liveItems.map((item) => {
+            const found = existingMap.get(item.id);
+            return readerService.annotations.update(
+              scopeId,
+              effectiveAttachmentId,
+              item.id,
+              found?.version ?? item.version,
+              { color: item.newColor },
+            );
+          }),
+        );
 
         qc.invalidateQueries({
           queryKey: annotationKeys.byAttachment(scopeId, effectiveAttachmentId),
         });
 
         setRedoStack((prev) => prev.slice(0, prev.length - 1));
-        setUndoStack((prev) => [...prev.slice(-19), action]);
+        setUndoStack((prev) => [...prev.slice(-19), { ...action, items: liveItems }]);
         toast.success(`Re-applied color change`);
       } else if (action.type === 'tag') {
         const existing =
@@ -265,34 +269,31 @@ export function useAnnotationBatch({
             annotationKeys.byAttachment(scopeId, effectiveAttachmentId),
           ) || [];
         const existingMap = new Map(existing.map((a) => [a.id, a]));
+        const liveItems = action.items.filter((item) => existingMap.has(item.id));
+        if (liveItems.length === 0) {
+          setRedoStack((prev) => prev.slice(0, prev.length - 1));
+          return;
+        }
 
-        const upserts = action.items.map((item) => {
-          const found = existingMap.get(item.id);
-          const prev = item.previousData;
-          return {
-            id: item.id,
-            pageIndex: found?.pageIndex ?? prev?.pageIndex ?? 0,
-            type: found?.type ?? prev?.type,
-            rects: found?.rects ?? prev?.rects,
-            quoteText: found?.quoteText ?? prev?.quoteText,
-            comment: found?.comment ?? prev?.comment,
-            color: found?.color ?? prev?.color,
-            tags: item.newTags,
-            expectedVersion: found?.version ?? 1,
-          };
-        });
-
-        await readerService.annotations.batch(scopeId, effectiveAttachmentId, {
-          upserts,
-          deletes: [],
-        });
+        await Promise.all(
+          liveItems.map((item) => {
+            const found = existingMap.get(item.id);
+            return readerService.annotations.update(
+              scopeId,
+              effectiveAttachmentId,
+              item.id,
+              found?.version ?? item.version,
+              { tags: item.newTags },
+            );
+          }),
+        );
 
         qc.invalidateQueries({
           queryKey: annotationKeys.byAttachment(scopeId, effectiveAttachmentId),
         });
 
         setRedoStack((prev) => prev.slice(0, prev.length - 1));
-        setUndoStack((prev) => [...prev.slice(-19), action]);
+        setUndoStack((prev) => [...prev.slice(-19), { ...action, items: liveItems }]);
         toast.success(`Re-applied tag change`);
       }
     } catch (err) {
@@ -440,6 +441,7 @@ export function useAnnotationBatch({
           queryKey: annotationKeys.byAttachment(scopeId, effectiveAttachmentId),
         });
 
+        pruneDeletedFromHistory(ids);
         setUndoStack((prev) => [...prev.slice(-19), { type: 'delete', items: deletedItems }]);
         setRedoStack([]);
 
@@ -466,7 +468,7 @@ export function useAnnotationBatch({
         setIsBatchProcessing(false);
       }
     },
-    [effectiveAttachmentId, selectedAnnotationIds, qc, scopeId, undo, isBatchProcessing],
+    [effectiveAttachmentId, selectedAnnotationIds, qc, scopeId, undo, isBatchProcessing, pruneDeletedFromHistory],
   );
 
   const handleBatchAddToNote = useCallback(
@@ -508,6 +510,7 @@ export function useAnnotationBatch({
     handleBatchChangeColor,
     handleBatchDelete,
     handleBatchAddToNote,
+    pruneDeletedFromHistory,
     undo,
     redo,
     canUndo: undoStack.length > 0,

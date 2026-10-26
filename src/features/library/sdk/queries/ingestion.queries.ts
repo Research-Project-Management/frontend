@@ -4,41 +4,27 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tansta
 import { toast } from 'sonner';
 import { libraryServices, IngestionService } from '../library.client';
 import type { UnifiedIngestionPayload, FlagRetractionInput } from '@/features/library/domain/types/library.types';
+import { useFeedsStore } from '@/features/library/core/store/feeds.store';
+import type { SavedFeedSubscription } from '@/features/library/domain/types/feeds.types';
 import {
-  itemKeys,
-  ingestKeys,
-  curationKeys,
-  retractionKeys,
-  invalidateCollections,
-  normalizeScopeId,
+  itemKeys, ingestKeys, feedKeys, curationKeys, retractionKeys,
+  invalidateCollections, normalizeScopeId,
 } from '@/features/library/sdk/query-keys';
 import {
-  cleanDoi,
-  extractArxivId,
-  extractPmid,
-  cleanIsbn,
+  cleanDoi, extractArxivId, extractPmid, extractPmcId, cleanIsbn,
 } from '@/features/library/domain/identifiers';
+import { invalidateLibraryCatalogDependencies } from './cache-patcher';
 
-export { ingestKeys, curationKeys, retractionKeys };
-
-// ── Ingestion Run Polling (Pure SDK Helper) ───────────────────────────────────
+export { ingestKeys, feedKeys, curationKeys, retractionKeys };
 
 export interface PollRunOutcome {
-  ok: boolean;
-  timedOut?: boolean;
-  title?: string;
-  itemId?: string;
-  error?: string;
+  ok: boolean; timedOut?: boolean; title?: string; itemId?: string; error?: string;
 }
 
 export interface PollIngestionRunOptions {
-  fallbackTitle: string;
-  initialItemId?: string;
-  pollIntervalMs?: number;
-  maxWaitMs?: number;
-  slowPollThresholdMs?: number;
-  onSlowPollThreshold?: () => void;
-  signal?: AbortSignal;
+  fallbackTitle: string; initialItemId?: string; pollIntervalMs?: number;
+  maxWaitMs?: number; slowPollThresholdMs?: number;
+  onSlowPollThreshold?: () => void; signal?: AbortSignal;
 }
 
 function abortableSleep(ms: number, signal?: AbortSignal): Promise<void> {
@@ -137,7 +123,12 @@ export async function pollIngestionRunCompletion(
           error: statusData?.lastError || statusData?.errorMessage || 'Extraction failed',
         };
       }
-    } catch {
+    } catch (err: unknown) {
+      const errObj = err as { status?: number; statusCode?: number; response?: { status?: number } } | null;
+      const status = errObj?.status ?? errObj?.statusCode ?? errObj?.response?.status;
+      if (status === 401 || status === 403 || status === 404) {
+        throw err;
+      }
       // Retry on transient poll network glitch
     }
   }
@@ -150,14 +141,27 @@ export async function pollIngestionRunCompletion(
 
 export function buildIdentifierIngestionPayload(
   rawInput: string,
-  options?: { collectionId?: string; title?: string },
+  options?: {
+    collectionId?: string;
+    title?: string;
+    attachOaPdf?: boolean;
+    saveSnapshot?: boolean;
+  },
 ): UnifiedIngestionPayload {
   const raw = rawInput.trim();
   const targetCollectionId = options?.collectionId || undefined;
   const userTitle = options?.title?.trim() || undefined;
-  const overrides = userTitle ? { title: userTitle } : undefined;
+  const overridesObj: Record<string, unknown> = {
+    ...(userTitle ? { title: userTitle } : {}),
+    ...(options?.attachOaPdf !== undefined ? { attachOaPdf: options.attachOaPdf } : {}),
+    ...(options?.saveSnapshot !== undefined ? { saveSnapshot: options.saveSnapshot } : {}),
+  };
+  const overrides = Object.keys(overridesObj).length > 0 ? overridesObj : undefined;
 
-  if (raw.startsWith('@')) {
+  if (
+    raw.startsWith('@') ||
+    /^(?:%[^\r\n]*[\r\n]+\s*)*@[a-zA-Z]+\s*\{/.test(raw)
+  ) {
     return {
       source: 'bibtex',
       content: raw,
@@ -165,9 +169,20 @@ export function buildIdentifierIngestionPayload(
       ...(overrides ? { overrides } : {}),
     } as UnifiedIngestionPayload;
   }
-  if (raw.startsWith('TY  -')) {
+  if (raw.startsWith('TY  -') || /^(?:\uFEFF)?\s*TY\s+-/m.test(raw)) {
     return {
       source: 'ris',
+      content: raw,
+      collectionId: targetCollectionId,
+      ...(overrides ? { overrides } : {}),
+    } as UnifiedIngestionPayload;
+  }
+  if (
+    (raw.startsWith('[') && raw.endsWith(']')) ||
+    (raw.startsWith('{') && raw.endsWith('}') && /"(?:title|type|author|DOI|issued)"/i.test(raw))
+  ) {
+    return {
+      source: 'csl_json',
       content: raw,
       collectionId: targetCollectionId,
       ...(overrides ? { overrides } : {}),
@@ -183,7 +198,11 @@ export function buildIdentifierIngestionPayload(
     return { source: 'arxiv', arxivId: arxivCandidate, collectionId: targetCollectionId, overrides };
   }
 
-  // 2. Check PubMed URL or PMID string
+  // 2. Check PubMed URL, PMID, or PMCID string
+  const pmcCandidate = extractPmcId(raw);
+  if (pmcCandidate) {
+    return { source: 'pmid', pmid: pmcCandidate, collectionId: targetCollectionId, overrides };
+  }
   const pmidCandidate = extractPmid(raw);
   if (pmidCandidate) {
     return { source: 'pmid', pmid: pmidCandidate, collectionId: targetCollectionId, overrides };
@@ -208,6 +227,8 @@ export interface TrackedIdentifierIngestionOptions {
   scopeId: string;
   rawInput: string;
   title?: string;
+  attachOaPdf?: boolean;
+  saveSnapshot?: boolean;
   collectionId?: string;
   queryClient: QueryClient;
   onCloseModal: () => void;
@@ -234,6 +255,8 @@ export async function executeTrackedIdentifierIngestion({
   scopeId,
   rawInput,
   title,
+  attachOaPdf,
+  saveSnapshot,
   collectionId,
   queryClient,
   onCloseModal,
@@ -248,6 +271,8 @@ export async function executeTrackedIdentifierIngestion({
   const ingestionPayload = buildIdentifierIngestionPayload(raw, {
     collectionId: targetCollectionId,
     title: userTitle,
+    attachOaPdf,
+    saveSnapshot,
   });
 
   const toastId = toast.loading('Adding reference...', { id: 'add-identifier' });
@@ -297,14 +322,18 @@ export async function executeTrackedIdentifierIngestion({
     }
 
     let modalClosed = false;
+    let handedOffToBackground = false;
     const pollOutcome = await pollIngestionRunCompletion(scopeId, runId, {
       fallbackTitle: finalTitle,
       pollIntervalMs: 700,
       maxWaitMs: 60000,
       slowPollThresholdMs: 3500,
       onSlowPollThreshold: () => {
-        modalClosed = true;
-        onCloseModal();
+        handedOffToBackground = true;
+        if (!modalClosed) {
+          modalClosed = true;
+          onCloseModal();
+        }
         provisionalAdded = true;
         onAddProvisionalItem({
           id: provisionalId,
@@ -334,7 +363,8 @@ export async function executeTrackedIdentifierIngestion({
     if (provisionalAdded) {
       onDismissProvisionalItem(provisionalId);
     }
-    if (!modalClosed) {
+    if (!handedOffToBackground && !modalClosed) {
+      modalClosed = true;
       onCloseModal();
     }
 
@@ -379,7 +409,7 @@ export function useDuplicateGroups(
 
 export function useMergeDuplicates(scopeId?: string) {
   const queryClient = useQueryClient();
-  const effectiveScope = scopeId || 'user';
+  const effectiveScope = normalizeScopeId(scopeId);
 
   return useMutation({
     mutationFn: ({
@@ -401,7 +431,11 @@ export function useMergeDuplicates(scopeId?: string) {
     onSuccess: (response: Awaited<ReturnType<typeof libraryServices.curation.mergeDuplicates>>) => {
       queryClient.invalidateQueries({ queryKey: curationKeys.duplicates(effectiveScope) });
       queryClient.invalidateQueries({ queryKey: curationKeys.integrity(effectiveScope) });
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
+      invalidateLibraryCatalogDependencies(queryClient, effectiveScope, {
+        itemsList: true,
+        counts: true,
+        collections: true,
+      });
       const count = response.mergedCount ?? 1;
       toast.success('Duplicates merged', {
         description: `Consolidated ${count} duplicate record(s) into master. Notes and citations preserved.`,
@@ -417,6 +451,20 @@ export function useMergeDuplicates(scopeId?: string) {
   });
 }
 
+export function useAcademicFeedArticlesQuery(
+  scopeId: string,
+  feedUrl: string | undefined,
+  options?: { enabled?: boolean },
+) {
+  const effectiveScope = normalizeScopeId(scopeId);
+  return useQuery({
+    queryKey: feedKeys.articles(effectiveScope, feedUrl),
+    queryFn: () => libraryServices.ingestion.fetchFeed(feedUrl!, false),
+    enabled: Boolean((options?.enabled ?? true) && feedUrl),
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
 export function useFetchAcademicFeed() {
   return useMutation({
     mutationFn: (param: string | { url: string; forceRefresh?: boolean }) => {
@@ -429,6 +477,82 @@ export function useFetchAcademicFeed() {
         description: error.message || 'Could not load feed from URL.',
         id: 'feed-fetch',
       });
+    },
+  });
+}
+
+// ── Feed Subscriptions Queries & Mutations (TanStack Query + Store Sync) ─────
+
+export function useFeedSubscriptionsQuery(options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: feedKeys.subscriptions(),
+    queryFn: async () => {
+      await useFeedsStore.getState().loadFeeds();
+      return useFeedsStore.getState().feeds;
+    },
+    enabled: options?.enabled ?? true,
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+export function useSubscribeFeedMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      name,
+      url,
+      retentionDays,
+      cleanupReadAfter,
+      cleanupUnreadAfter,
+    }: {
+      name: string;
+      url: string;
+      retentionDays?: SavedFeedSubscription['retentionDays'];
+      cleanupReadAfter?: SavedFeedSubscription['cleanupReadAfter'];
+      cleanupUnreadAfter?: SavedFeedSubscription['cleanupUnreadAfter'];
+    }): Promise<SavedFeedSubscription> =>
+      useFeedsStore.getState().addFeed(name, url, retentionDays, {
+        cleanupReadAfter,
+        cleanupUnreadAfter,
+      }),
+    onSuccess: () => {
+      queryClient.setQueryData(feedKeys.subscriptions(), useFeedsStore.getState().feeds);
+    },
+  });
+}
+
+export function useUpdateFeedSubscriptionMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      updates,
+    }: {
+      id: string;
+      updates: {
+        name?: string;
+        url?: string;
+        retentionDays?: SavedFeedSubscription['retentionDays'];
+        cleanupReadAfter?: SavedFeedSubscription['cleanupReadAfter'];
+        cleanupUnreadAfter?: SavedFeedSubscription['cleanupUnreadAfter'];
+      };
+    }): Promise<void> => {
+      useFeedsStore.getState().updateFeed(id, updates);
+    },
+    onSuccess: () => {
+      queryClient.setQueryData(feedKeys.subscriptions(), useFeedsStore.getState().feeds);
+    },
+  });
+}
+
+export function useUnsubscribeFeedMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string): Promise<void> => {
+      useFeedsStore.getState().removeFeed(id);
+    },
+    onSuccess: () => {
+      queryClient.setQueryData(feedKeys.subscriptions(), useFeedsStore.getState().feeds);
     },
   });
 }
@@ -521,7 +645,6 @@ export function useIngestMutation(scopeId?: string) {
 export function useDismissDuplicatesMutation(scopeId?: string) {
   const queryClient = useQueryClient();
   const effectiveScope = normalizeScopeId(scopeId);
-
   return useMutation({
     mutationFn: (itemIds: string[]) =>
       libraryServices.curation.dismissDuplicates(effectiveScope, itemIds),
@@ -532,8 +655,6 @@ export function useDismissDuplicatesMutation(scopeId?: string) {
   });
 }
 
-// ── Retraction Queries ────────────────────────────────────────────────────────
-
 export const invalidateRetraction = (qc: QueryClient, scopeId?: string) => {
   const effectiveScope = normalizeScopeId(scopeId);
   qc.invalidateQueries({ queryKey: retractionKeys.all(effectiveScope) });
@@ -541,10 +662,6 @@ export const invalidateRetraction = (qc: QueryClient, scopeId?: string) => {
   qc.invalidateQueries({ queryKey: itemKeys.counts(effectiveScope) });
 };
 
-/**
- * Lean read-only hook for consumers that only need the retracted item list
- * (e.g. the editor linter and citation picker), without stats or mutations.
- */
 export function useRetractedItems(scopeId?: string, enabled = true) {
   const effectiveScope = normalizeScopeId(scopeId);
   return useQuery({
@@ -558,27 +675,23 @@ export function useRetractedItems(scopeId?: string, enabled = true) {
 export function useRetraction(scopeId?: string, options?: { includeItems?: boolean }) {
   const queryClient = useQueryClient();
   const effectiveScope = normalizeScopeId(scopeId);
-
   const statsQuery = useQuery({
     queryKey: retractionKeys.stats(effectiveScope),
     queryFn: () => libraryServices.retraction.getStats(effectiveScope),
     enabled: true,
     staleTime: 1000 * 60 * 60,
   });
-
   const itemsQuery = useRetractedItems(
     effectiveScope,
     (options?.includeItems ?? true) && Boolean(effectiveScope),
   );
-
   const checkItemMutation = useMutation({
     mutationFn: (itemId: string) => libraryServices.retraction.checkItem(effectiveScope, itemId),
     onSuccess: (data) => {
       invalidateRetraction(queryClient, scopeId);
       if (data.status === 'unknown') {
         toast.info('Could not verify this item', {
-          description:
-            'Retraction status needs a DOI or PMID, or the lookup was unavailable. The stored status was not changed.',
+          description: 'Retraction status needs a DOI or PMID, or the lookup was unavailable. The stored status was not changed.',
           id: 'retraction-check',
         });
       } else if (data.isRetracted) {
@@ -593,11 +706,8 @@ export function useRetraction(scopeId?: string, options?: { includeItems?: boole
         });
       }
     },
-    onError: (err: Error) => {
-      toast.error('Check failed', { description: err.message, id: 'retraction-check' });
-    },
+    onError: (err: Error) => toast.error('Check failed', { description: err.message, id: 'retraction-check' }),
   });
-
   const checkLibraryMutation = useMutation({
     mutationFn: (itemIds?: string[]) => libraryServices.retraction.checkLibrary(effectiveScope, itemIds),
     onSuccess: (res) => {
@@ -614,11 +724,8 @@ export function useRetraction(scopeId?: string, options?: { includeItems?: boole
         });
       }
     },
-    onError: (err: Error) => {
-      toast.error('Library scan failed', { description: err.message, id: 'retraction-scan' });
-    },
+    onError: (err: Error) => toast.error('Library scan failed', { description: err.message, id: 'retraction-scan' }),
   });
-
   const flagMutation = useMutation({
     mutationFn: ({ itemId, data }: { itemId: string; data: FlagRetractionInput }) =>
       libraryServices.retraction.flagItem(effectiveScope, itemId, data),
@@ -626,22 +733,16 @@ export function useRetraction(scopeId?: string, options?: { includeItems?: boole
       invalidateRetraction(queryClient, scopeId);
       toast.warning('Item flagged as retracted', { id: 'retraction-flag' });
     },
-    onError: (err: Error) => {
-      toast.error('Failed to flag item', { description: err.message, id: 'retraction-flag' });
-    },
+    onError: (err: Error) => toast.error('Failed to flag item', { description: err.message, id: 'retraction-flag' }),
   });
-
   const unflagMutation = useMutation({
     mutationFn: (itemId: string) => libraryServices.retraction.unflagItem(effectiveScope, itemId),
     onSuccess: () => {
       invalidateRetraction(queryClient, scopeId);
       toast.success('Retraction flag removed', { id: 'retraction-flag' });
     },
-    onError: (err: Error) => {
-      toast.error('Failed to remove flag', { description: err.message, id: 'retraction-flag' });
-    },
+    onError: (err: Error) => toast.error('Failed to remove flag', { description: err.message, id: 'retraction-flag' }),
   });
-
   return {
     stats: statsQuery.data,
     retractedItems: itemsQuery.data || [],
@@ -658,36 +759,17 @@ export function useRetraction(scopeId?: string, options?: { includeItems?: boole
   };
 }
 
-
 export function useSyncExternalBibtexMutation(scopeId?: string) {
   const queryClient = useQueryClient();
   const effectiveScope = normalizeScopeId(scopeId);
-
   return useMutation({
-    mutationFn: async ({
-      bibtex,
-      collectionId,
-      remoteCollectionName,
-    }: {
-      bibtex: string;
-      collectionId?: string;
-      remoteCollectionName: string;
-    }) => {
-      const res = await IngestionService.ingest(effectiveScope, {
-        source: 'bibtex',
-        content: bibtex,
-        collectionId,
-      });
+    mutationFn: async ({ bibtex, collectionId, remoteCollectionName }: { bibtex: string; collectionId?: string; remoteCollectionName: string }) => {
+      const res = await IngestionService.ingest(effectiveScope, { source: 'bibtex', content: bibtex, collectionId });
       const resRecord = res as { data?: { runId?: string }; runId?: string } | null;
       const runId = resRecord?.data?.runId || resRecord?.runId;
       if (runId) {
-        const pollOutcome = await pollIngestionRunCompletion(effectiveScope, runId, {
-          fallbackTitle: remoteCollectionName,
-          maxWaitMs: 90000,
-        });
-        if (!pollOutcome.ok) {
-          throw new Error(pollOutcome.error || 'Ingestion run failed to complete');
-        }
+        const pollOutcome = await pollIngestionRunCompletion(effectiveScope, runId, { fallbackTitle: remoteCollectionName, maxWaitMs: 90000 });
+        if (!pollOutcome.ok) throw new Error(pollOutcome.error || 'Ingestion run failed to complete');
       }
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) }),

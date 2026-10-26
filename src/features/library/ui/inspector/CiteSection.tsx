@@ -11,6 +11,7 @@ import {
   Search,
 } from "lucide-react";
 import { toast } from "sonner";
+import { safeHttpUrl } from "@/features/library/domain/retraction";
 import { cn, copyToClipboard } from "@/shared/lib/utils";
 import {
   DropdownMenu,
@@ -34,7 +35,7 @@ import type {
 } from "@/features/library/domain/types/library.types";
 import { getCleanStyleLabel } from "@/features/library/domain/citations";
 import { triggerBrowserTextDownload } from "@/features/library/core/coordinator/citation-export.coordinator";
-import CslStyleSearchModal from "@/features/library/ui/modals/CslStyleSearchModal";
+import { useLibraryUIStore } from "@/features/library/core/store/library-ui.store";
 import DOMPurify from "dompurify";
 
 export interface CiteSectionProps {
@@ -68,20 +69,18 @@ function sanitizeCslHtml(html?: string): string {
       ],
       ALLOWED_ATTR: ["href", "class", "target", "rel"],
     });
-    if (sanitized) return sanitized;
+    return sanitized;
   } catch {
-    // If sanitization fails, return original html/text rather than blanking out citation
+    return "";
   }
-
-  return html;
 }
 
 // ─── CiteSection Component ───────────────────────────────────────────────────
 export default function CiteSection({ item, scopeId }: CiteSectionProps) {
+  const openModal = useLibraryUIStore((s) => s.openModal);
   const [activeFormat, setActiveFormat] = useState<CitationFormat>("apa-7th");
   const [copied, setCopied] = useState(false);
   const [copiedInText, setCopiedInText] = useState(false);
-  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [searchedStyle, setSearchedStyle] = useState<{
     id: string;
     label: string;
@@ -164,8 +163,12 @@ export default function CiteSection({ item, scopeId }: CiteSectionProps) {
   const inTextPreview = cslData?.inText || "";
 
   const getContentToCopy = useCallback(() => {
-    return cslData?.bibliography || "";
-  }, [cslData?.bibliography]);
+    const rawBib = cslData?.bibliography || "";
+    if (!rawBib) return "";
+    if (isExportFormat) return rawBib;
+    // Strip any raw HTML tags when building plain-text representation
+    return rawBib.replace(/<[^>]*>/g, "").trim();
+  }, [cslData?.bibliography, isExportFormat]);
 
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copyInTextTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -178,9 +181,34 @@ export default function CiteSection({ item, scopeId }: CiteSectionProps) {
   }, []);
 
   const handleCopy = useCallback(async () => {
-    const text = getContentToCopy();
-    if (!text) return;
-    const success = await copyToClipboard(text);
+    const plainText = getContentToCopy();
+    if (!plainText) return;
+
+    let success = false;
+    if (
+      !isExportFormat &&
+      sanitizedHtml &&
+      typeof navigator !== "undefined" &&
+      navigator.clipboard?.write &&
+      typeof ClipboardItem !== "undefined"
+    ) {
+      try {
+        const htmlBlob = new Blob([sanitizedHtml], { type: "text/html" });
+        const textBlob = new Blob([plainText], { type: "text/plain" });
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            "text/html": htmlBlob,
+            "text/plain": textBlob,
+          }),
+        ]);
+        success = true;
+      } catch {
+        success = await copyToClipboard(plainText);
+      }
+    } else {
+      success = await copyToClipboard(plainText);
+    }
+
     if (success) {
       setCopied(true);
       toast.success("Copied citation to clipboard", {
@@ -191,7 +219,7 @@ export default function CiteSection({ item, scopeId }: CiteSectionProps) {
     } else {
       toast.error("Failed to copy", { id: "library-clipboard" });
     }
-  }, [getContentToCopy]);
+  }, [getContentToCopy, isExportFormat, sanitizedHtml]);
 
   const handleCopyInText = useCallback(async () => {
     const text = inTextPreview;
@@ -244,16 +272,18 @@ export default function CiteSection({ item, scopeId }: CiteSectionProps) {
                 This publication has been flagged as retracted in academic
                 databases. Citing this paper may compromise academic rigor.
               </p>
-              {((item?.retractionDetails?.noticeUrl as string | undefined) ||
-                item?.noticeUrl ||
-                (item?.doi ? `https://doi.org/${item.doi}` : undefined)) && (
+              {safeHttpUrl(
+                (item?.retractionDetails?.noticeUrl as string | undefined) ||
+                  item?.noticeUrl ||
+                  (item?.doi ? `https://doi.org/${item.doi}` : undefined),
+              ) && (
                 <a
-                  href={
+                  href={safeHttpUrl(
                     (item?.retractionDetails?.noticeUrl as
                       string | undefined) ||
-                    item?.noticeUrl ||
-                    `https://doi.org/${item?.doi}`
-                  }
+                      item?.noticeUrl ||
+                      (item?.doi ? `https://doi.org/${item?.doi}` : undefined),
+                  )}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 text-11 font-medium text-destructive hover:underline mt-0.5"
@@ -331,8 +361,18 @@ export default function CiteSection({ item, scopeId }: CiteSectionProps) {
               <DropdownMenuSeparator className="my-1 bg-border" />
 
               <DropdownMenuItem
-                onSelect={() => setIsSearchModalOpen(true)}
-                onClick={() => setIsSearchModalOpen(true)}
+                onSelect={() =>
+                  openModal("CSL_STYLE_MANAGER", {
+                    currentStyleId: activeFormat,
+                    onSelectStyle: handleSelectSearchedStyle,
+                  })
+                }
+                onClick={() =>
+                  openModal("CSL_STYLE_MANAGER", {
+                    currentStyleId: activeFormat,
+                    onSelectStyle: handleSelectSearchedStyle,
+                  })
+                }
                 className="h-7.5 px-2 text-xs cursor-pointer rounded-md hover:bg-muted text-foreground font-medium flex items-center gap-1.5"
               >
                 <Search
@@ -474,13 +514,6 @@ export default function CiteSection({ item, scopeId }: CiteSectionProps) {
             )}
           </div>
         </div>
-
-        <CslStyleSearchModal
-          open={isSearchModalOpen}
-          onOpenChange={setIsSearchModalOpen}
-          onSelectStyle={handleSelectSearchedStyle}
-          currentStyleId={activeFormat}
-        />
       </div>
     </>
   );

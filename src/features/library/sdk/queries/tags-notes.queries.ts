@@ -9,7 +9,8 @@ import {
   type UpdateNoteDTO,
 } from '../library.client';
 import type { Note } from '@/features/library/domain/types/library.types';
-import { itemKeys, tagKeys, noteKeys } from '@/features/library/sdk/query-keys';
+import { itemKeys, tagKeys, noteKeys, normalizeScopeId } from '@/features/library/sdk/query-keys';
+import { invalidateLibraryCatalogDependencies } from './cache-patcher';
 
 export { tagKeys, noteKeys };
 
@@ -17,7 +18,7 @@ export { tagKeys, noteKeys };
 
 export function useTags(scopeId?: string, options?: { enabled?: boolean }) {
   const queryClient = useQueryClient();
-  const effectiveScope = scopeId || 'user';
+  const effectiveScope = normalizeScopeId(scopeId);
 
   const tagsQuery = useQuery({
     queryKey: tagKeys.list(effectiveScope),
@@ -123,19 +124,20 @@ export function useTags(scopeId?: string, options?: { enabled?: boolean }) {
 
 export function useNotes(scopeId?: string, itemId?: string) {
   const queryClient = useQueryClient();
+  const effectiveScope = normalizeScopeId(scopeId);
 
   const notesQuery = useQuery({
-    queryKey: noteKeys.list(scopeId, itemId),
+    queryKey: noteKeys.list(effectiveScope, itemId),
     queryFn: () => {
       if (!itemId) return [];
-      return NotesService.list(scopeId, itemId);
+      return NotesService.list(effectiveScope, itemId);
     },
     enabled: !!itemId,
   });
 
   const createMutation = useMutation({
     mutationFn: (dto: CreateNoteDTO) =>
-      NotesService.create(scopeId, {
+      NotesService.create(effectiveScope, {
         ...dto,
         itemId: dto.itemId !== undefined ? dto.itemId : itemId,
       }),
@@ -143,14 +145,14 @@ export function useNotes(scopeId?: string, itemId?: string) {
       const targetItemId =
         (dto.itemId !== undefined ? dto.itemId : itemId) ?? undefined;
       queryClient.invalidateQueries({
-        queryKey: noteKeys.list(scopeId, targetItemId),
+        queryKey: noteKeys.list(effectiveScope, targetItemId),
       });
-      queryClient.invalidateQueries({ queryKey: noteKeys.all(scopeId) });
-      if (targetItemId) {
-        queryClient.invalidateQueries({
-          queryKey: itemKeys.byId(scopeId, targetItemId),
-        });
-      }
+      queryClient.invalidateQueries({ queryKey: noteKeys.all(effectiveScope) });
+      void invalidateLibraryCatalogDependencies(queryClient, effectiveScope, {
+        itemId: targetItemId,
+        itemsList: true,
+        counts: true,
+      });
       toast.success('Note saved', { id: 'note-mutation-toast' });
     },
     onError: (err: Error) => {
@@ -170,13 +172,13 @@ export function useNotes(scopeId?: string, itemId?: string) {
       id: string;
       version: number;
       dto: UpdateNoteDTO;
-    }) => NotesService.update(scopeId, id, version, dto),
+    }) => NotesService.update(effectiveScope, id, version, dto),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: noteKeys.list(scopeId, itemId) });
-      queryClient.invalidateQueries({ queryKey: noteKeys.all(scopeId) });
+      queryClient.invalidateQueries({ queryKey: noteKeys.list(effectiveScope, itemId) });
+      queryClient.invalidateQueries({ queryKey: noteKeys.all(effectiveScope) });
       if (itemId) {
         queryClient.invalidateQueries({
-          queryKey: itemKeys.byId(scopeId, itemId),
+          queryKey: itemKeys.byId(effectiveScope, itemId),
         });
       }
       toast.success('Note updated', { id: 'note-mutation-toast' });
@@ -191,13 +193,15 @@ export function useNotes(scopeId?: string, itemId?: string) {
 
   const deleteMutation = useMutation({
     mutationFn: ({ id, version }: { id: string; version?: number }) =>
-      NotesService.delete(scopeId, id, version),
+      NotesService.delete(effectiveScope, id, version),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: noteKeys.list(scopeId, itemId) });
-      queryClient.invalidateQueries({ queryKey: noteKeys.all(scopeId) });
-      if (itemId) {
-        queryClient.invalidateQueries({ queryKey: itemKeys.byId(scopeId, itemId) });
-      }
+      queryClient.invalidateQueries({ queryKey: noteKeys.list(effectiveScope, itemId) });
+      queryClient.invalidateQueries({ queryKey: noteKeys.all(effectiveScope) });
+      void invalidateLibraryCatalogDependencies(queryClient, effectiveScope, {
+        itemId,
+        itemsList: true,
+        counts: true,
+      });
       toast.success('Note deleted', { id: 'note-mutation-toast' });
     },
     onError: (err: Error) => {
@@ -217,14 +221,16 @@ export function useNotes(scopeId?: string, itemId?: string) {
       if (!itemId) {
         throw new Error('itemId is required to extract annotations');
       }
-      return NotesService.extractFromAnnotations(scopeId, itemId, options);
+      return NotesService.extractFromAnnotations(effectiveScope, itemId, options);
     },
     onSuccess: (res: unknown) => {
-      queryClient.invalidateQueries({ queryKey: noteKeys.list(scopeId, itemId) });
-      queryClient.invalidateQueries({ queryKey: noteKeys.all(scopeId) });
-      if (itemId) {
-        queryClient.invalidateQueries({ queryKey: itemKeys.byId(scopeId, itemId) });
-      }
+      queryClient.invalidateQueries({ queryKey: noteKeys.list(effectiveScope, itemId) });
+      queryClient.invalidateQueries({ queryKey: noteKeys.all(effectiveScope) });
+      void invalidateLibraryCatalogDependencies(queryClient, effectiveScope, {
+        itemId,
+        itemsList: true,
+        counts: true,
+      });
       const extractedInfo = res as { totalExtracted?: number; message?: string } | null;
       if (extractedInfo && extractedInfo.totalExtracted === 0) {
         toast.info('No PDF annotations found', {

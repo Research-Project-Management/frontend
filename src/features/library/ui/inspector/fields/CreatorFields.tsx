@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { Plus, Minus, Check, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Minus, Check, ChevronDown, ChevronUp, ArrowUp, ArrowDown, Building2, User } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/shared/lib/utils";
 import type {
@@ -247,6 +247,32 @@ export function CreatorFields({
     syncCreatorsToParent(updatedCreators);
   };
 
+  const handleToggleFieldMode = (targetIndex: number) => {
+    toast.dismiss("item-update");
+    const current = localCreators[targetIndex];
+    if (!current) return;
+    const nextMode = current.fieldMode === 1 ? 0 : 1;
+    const updatedCreators = [...localCreators];
+    updatedCreators[targetIndex] = {
+      ...current,
+      fieldMode: nextMode,
+    };
+    setLocalCreators(updatedCreators);
+    syncCreatorsToParent(updatedCreators);
+  };
+
+  const handleMoveCreator = (targetIndex: number, direction: -1 | 1) => {
+    toast.dismiss("item-update");
+    const swapIndex = targetIndex + direction;
+    if (swapIndex < 0 || swapIndex >= localCreators.length) return;
+    const updatedCreators = [...localCreators];
+    const temp = updatedCreators[targetIndex];
+    updatedCreators[targetIndex] = updatedCreators[swapIndex];
+    updatedCreators[swapIndex] = temp;
+    setLocalCreators(updatedCreators);
+    syncCreatorsToParent(updatedCreators);
+  };
+
   const renderCreatorRow = (
     creatorEntry: CreatorEntry,
     originalIndex: number,
@@ -433,8 +459,72 @@ export function CreatorFields({
                 </Tooltip>
               )}
 
-              {/* Action Buttons (Add, Remove) - visible on hover on desktop, always visible on mobile */}
+              {/* Action Buttons (Mode Toggle, Move Up/Down, Add, Remove) */}
               <div className="invisible group-hover:visible max-md:visible flex items-center gap-0.5 shrink-0">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleFieldMode(originalIndex)}
+                      className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:outline-none"
+                      aria-label={
+                        isSingleField
+                          ? "Switch to two fields (Last, First)"
+                          : "Switch to single field (Institution)"
+                      }
+                    >
+                      {isSingleField ? (
+                        <Building2 className="size-3.5 shrink-0" strokeWidth={1.5} />
+                      ) : (
+                        <User className="size-3.5 shrink-0" strokeWidth={1.5} />
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" align="start" sideOffset={6}>
+                    {isSingleField
+                      ? "Switch to two fields (Last, First)"
+                      : "Switch to single field (Institution)"}
+                  </TooltipContent>
+                </Tooltip>
+
+                {localCreators.length > 1 && (
+                  <>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          disabled={originalIndex === 0}
+                          onClick={() => handleMoveCreator(originalIndex, -1)}
+                          className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 transition-colors cursor-pointer focus-visible:outline-none"
+                          aria-label="Move creator up"
+                        >
+                          <ArrowUp className="size-3 shrink-0" strokeWidth={1.5} />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" align="start" sideOffset={6}>
+                        Move up
+                      </TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          disabled={originalIndex === localCreators.length - 1}
+                          onClick={() => handleMoveCreator(originalIndex, 1)}
+                          className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 transition-colors cursor-pointer focus-visible:outline-none"
+                          aria-label="Move creator down"
+                        >
+                          <ArrowDown className="size-3 shrink-0" strokeWidth={1.5} />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" align="start" sideOffset={6}>
+                        Move down
+                      </TooltipContent>
+                    </Tooltip>
+                  </>
+                )}
+
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button

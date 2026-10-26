@@ -6,21 +6,30 @@ export const savedSearchFieldSchema = z.string();
 export const savedSearchOperatorSchema = z.enum([
   'is',
   'isNot',
+  'is_not',
   'contains',
   'doesNotContain',
+  'does_not_contain',
   'beginsWith',
+  'begins_with',
   'endsWith',
+  'ends_with',
   'isGreaterThan',
-  'isLessThan',
-  'isBetween',
-  'isInTheLast',
-  'isPresent',
-  'isAbsent',
   'greater_than',
+  'gt',
+  'isLessThan',
   'less_than',
+  'lt',
+  'isBetween',
+  'between',
+  'isInTheLast',
+  'in_the_last',
+  'isPresent',
+  'is_present',
+  'isAbsent',
+  'is_absent',
   'equals',
   'not_equals',
-  'between',
 ]);
 
 export const savedSearchScopeOptionsSchema = z.object({
@@ -61,6 +70,16 @@ export const savedSearchConditionGroupSchema: z.ZodType<SavedSearchConditionGrou
   }),
 );
 
+export const savedSearchSortBySchema = z.enum([
+  'dateAdded',
+  'createdAt',
+  'year',
+  'title',
+  'creator',
+  'authors',
+  'updatedAt',
+]);
+
 export const savedSearchSchema = z.object({
   id: z.string(),
   name: z.string().min(1),
@@ -70,7 +89,7 @@ export const savedSearchSchema = z.object({
   conditions: savedSearchConditionGroupSchema,
   scopeOptions: savedSearchScopeOptionsSchema.optional(),
   conjunction: z.enum(['AND', 'OR']).default('AND'),
-  sortBy: z.enum(['dateAdded', 'year', 'title', 'creator']).optional().default('dateAdded'),
+  sortBy: savedSearchSortBySchema.optional().default('dateAdded'),
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
   isPinned: z.boolean().optional().default(false),
   cachedCount: z.number().nullable().optional().default(0),
@@ -97,7 +116,7 @@ export const createSavedSearchSchema = z.object({
   conditions: savedSearchConditionGroupSchema,
   scopeOptions: savedSearchScopeOptionsSchema.optional(),
   conjunction: z.enum(['AND', 'OR']).optional().default('AND'),
-  sortBy: z.enum(['dateAdded', 'year', 'title', 'creator']).optional(),
+  sortBy: savedSearchSortBySchema.optional(),
   sortOrder: z.enum(['asc', 'desc']).optional(),
   isPinned: z.boolean().optional(),
   targetScope: z.string().optional(),
@@ -215,13 +234,13 @@ export function compileSavedSearchCondition(
   const op = condition.operator;
   const target = condition.value;
 
-  if (op === 'isPresent') {
+  if (op === 'isPresent' || op === 'is_present') {
     return (item) => {
       const values = extractNormalizedFieldValues(item, normalizedField);
       return values.some((v) => v !== null && v !== undefined && String(v).trim() !== '');
     };
   }
-  if (op === 'isAbsent') {
+  if (op === 'isAbsent' || op === 'is_absent') {
     return (item) => {
       const values = extractNormalizedFieldValues(item, normalizedField);
       return (
@@ -243,6 +262,7 @@ export function compileSavedSearchCondition(
           (v) => String(v).trim().toLowerCase() === targetStr,
         );
     case 'isNot':
+    case 'is_not':
     case 'not_equals':
       return (item) =>
         extractNormalizedFieldValues(item, normalizedField).every(
@@ -254,22 +274,26 @@ export function compileSavedSearchCondition(
           String(v).toLowerCase().includes(targetStr),
         );
     case 'doesNotContain':
+    case 'does_not_contain':
       return (item) =>
         extractNormalizedFieldValues(item, normalizedField).every(
           (v) => !String(v).toLowerCase().includes(targetStr),
         );
     case 'beginsWith':
+    case 'begins_with':
       return (item) =>
         extractNormalizedFieldValues(item, normalizedField).some((v) =>
           String(v).trim().toLowerCase().startsWith(targetStr),
         );
     case 'endsWith':
+    case 'ends_with':
       return (item) =>
         extractNormalizedFieldValues(item, normalizedField).some((v) =>
           String(v).trim().toLowerCase().endsWith(targetStr),
         );
     case 'isGreaterThan':
     case 'greater_than':
+    case 'gt':
       if (Number.isNaN(targetNum)) return () => false;
       return (item) =>
         extractNormalizedFieldValues(item, normalizedField).some((v) => {
@@ -278,6 +302,7 @@ export function compileSavedSearchCondition(
         });
     case 'isLessThan':
     case 'less_than':
+    case 'lt':
       if (Number.isNaN(targetNum)) return () => false;
       return (item) =>
         extractNormalizedFieldValues(item, normalizedField).some((v) => {
@@ -359,4 +384,3 @@ export function filterItemsBySavedSearch<T extends Record<string, unknown>>(
   const predicate = compileSavedSearch(group);
   return items.filter(predicate);
 }
-

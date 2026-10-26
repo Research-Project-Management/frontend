@@ -199,7 +199,7 @@ export default function TagsSection({
     saveTags(deduplicated);
   };
 
-  if (tags.length === 0 && !isAdding && hideHeader && !canEdit) {
+  if (tags.length === 0 && !isAdding && hideHeader) {
     return null;
   }
 

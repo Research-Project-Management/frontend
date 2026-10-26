@@ -117,6 +117,7 @@ export function LibraryContent({
       includeSubcollections: displayOptions?.includeSubcollections ?? true,
       view: effectiveView,
       search: nav.search,
+      searchMode: nav.searchMode,
       type: nav.type,
       fromYear: nav.fromYear,
       toYear: nav.toYear,
@@ -135,6 +136,7 @@ export function LibraryContent({
       displayOptions?.includeSubcollections,
       effectiveView,
       nav.search,
+      nav.searchMode,
       nav.type,
       nav.fromYear,
       nav.toYear,
@@ -223,15 +225,41 @@ export function LibraryContent({
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
   const clearSelection = useLibraryUIStore((s) => s.clearSelection);
+  const setActiveCollectionId = useLibraryUIStore((s) => s.setActiveCollectionId);
+  const setActiveSavedSearchId = useLibraryUIStore((s) => s.setActiveSavedSearchId);
 
-  const batchCoordinator = useLibraryBatchCoordinator({
-    items: displayedItems,
-    scopeId: scopeId || 'user',
+  const prevRouteContextRef = React.useRef<{
+    view?: string;
+    collectionId?: string;
+    savedSearchId?: string | null;
+  } | null>(null);
+
+  React.useEffect(() => {
+    setActiveCollectionId(collectionId ?? null);
+    setActiveSavedSearchId(effectiveSavedSearchId ?? null);
+
+    const prev = prevRouteContextRef.current;
+    if (
+      prev &&
+      (prev.view !== effectiveView ||
+        prev.collectionId !== collectionId ||
+        prev.savedSearchId !== effectiveSavedSearchId)
+    ) {
+      clearSelection();
+    }
+    prevRouteContextRef.current = {
+      view: effectiveView,
+      collectionId,
+      savedSearchId: effectiveSavedSearchId,
+    };
+  }, [
+    effectiveView,
     collectionId,
-    view: effectiveView,
-    isTrash,
-    canEdit,
-  });
+    effectiveSavedSearchId,
+    clearSelection,
+    setActiveCollectionId,
+    setActiveSavedSearchId,
+  ]);
 
   // Zotero 7 Quick Copy Coordinator (Ctrl+Shift+C: Bibliography, Ctrl+Shift+A: In-text Citation)
   useQuickCopyCoordinator({
@@ -293,6 +321,12 @@ export function LibraryContent({
   );
 
   const { setSorting } = nav;
+
+  const handleLoadMore = useCallback(() => {
+    if (nav.page < totalPages) {
+      nav.setPage(nav.page + 1);
+    }
+  }, [nav, totalPages]);
 
   const handleSortChange = useCallback(
     (columnKey: string, direction: 'asc' | 'desc') => {
@@ -376,12 +410,13 @@ export function LibraryContent({
             items={displayedItems}
             totalCount={totalCount}
             hasNextPage={nav.page < totalPages}
-            onLoadMore={nav.page < totalPages ? () => nav.setPage(nav.page + 1) : undefined}
+            onLoadMore={nav.page < totalPages ? handleLoadMore : undefined}
             onSortChange={handleSortChange}
             scopeId={scopeId}
             collectionId={collectionId}
             onDetachItem={canEdit && !isTrash && collectionId ? handleDetachItem : undefined}
             isTrash={isTrash}
+            canEdit={canEdit}
           />
         </ErrorBoundary>
       </div>
@@ -438,10 +473,13 @@ export function LibraryContent({
 
       {/* Floating Multi-Selection Action Bar */}
       <BatchBar
-        coordinator={batchCoordinator}
+        items={displayedItems}
+        collectionId={collectionId}
+        view={effectiveView}
         collections={collections as Collection[]}
         isTrash={isTrash}
         scopeId={scopeId}
+        canEdit={canEdit}
       />
     </div>
   );

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import JSZip from 'jszip';
 import DOMPurify from 'dompurify';
 import {
@@ -13,6 +13,8 @@ import {
   Loader2,
   Globe,
   ExternalLink,
+  Search,
+  X,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/lib/utils';
@@ -40,6 +42,9 @@ export interface EpubAndSnapshotViewerProps {
     colorHex?: string,
   ) => Promise<unknown> | void;
   onPageChange?: (current: number, total: number) => void;
+  isSearchOpen?: boolean;
+  onCloseSearch?: () => void;
+  initialSearchQuery?: string;
 }
 
 /**
@@ -80,9 +85,18 @@ export function EpubAndSnapshotViewer({
   onAddToNote,
   onAnnotate,
   onPageChange,
+  isSearchOpen = false,
+  onCloseSearch,
+  initialSearchQuery = '',
 }: EpubAndSnapshotViewerProps) {
   const [chapters, setChapters] = useState<EpubChapter[]>([]);
   const [currentChapterIndex, setCurrentChapterIndex] = useState(0);
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
+
+  const onPageChangeRef = useRef(onPageChange);
+  useEffect(() => {
+    onPageChangeRef.current = onPageChange;
+  }, [onPageChange]);
   const [snapshotHtml, setSnapshotHtml] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -211,7 +225,7 @@ export function EpubAndSnapshotViewer({
         if (cancelled || abortController.signal.aborted) return;
         setChapters(loadedChapters);
         setCurrentChapterIndex(0);
-        onPageChange?.(1, Math.max(1, loadedChapters.length));
+        onPageChangeRef.current?.(1, Math.max(1, loadedChapters.length));
       } catch (err) {
         if (!cancelled && !abortController.signal.aborted) {
           setError(
@@ -232,7 +246,7 @@ export function EpubAndSnapshotViewer({
       cancelled = true;
       abortController.abort();
     };
-  }, [url, mode, onPageChange]);
+  }, [url, mode]);
 
   const handleMouseUp = useCallback(() => {
     if (typeof window === 'undefined') return;
@@ -243,7 +257,7 @@ export function EpubAndSnapshotViewer({
   const handlePrevChapter = () => {
     setCurrentChapterIndex((prev) => {
       const next = Math.max(0, prev - 1);
-      onPageChange?.(next + 1, chapters.length);
+      onPageChangeRef.current?.(next + 1, chapters.length);
       return next;
     });
   };
@@ -251,7 +265,7 @@ export function EpubAndSnapshotViewer({
   const handleNextChapter = () => {
     setCurrentChapterIndex((prev) => {
       const next = Math.min(chapters.length - 1, prev + 1);
-      onPageChange?.(next + 1, chapters.length);
+      onPageChangeRef.current?.(next + 1, chapters.length);
       return next;
     });
   };
@@ -292,6 +306,20 @@ export function EpubAndSnapshotViewer({
   }
 
   const currentChapter = chapters[currentChapterIndex];
+
+  const highlightHtml = useCallback(
+    (html: string) => {
+      const q = searchQuery.trim();
+      if (!isSearchOpen || q.length < 2) return html;
+      const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`(>[^<]*?)(${escaped})`, 'gi');
+      return html.replace(
+        regex,
+        '$1<mark class="bg-amber-300/70 text-foreground rounded px-0.5">$2</mark>',
+      );
+    },
+    [isSearchOpen, searchQuery],
+  );
 
   return (
     <div
@@ -415,6 +443,29 @@ export function EpubAndSnapshotViewer({
 
       {/* Main Content Area with Collapsible EPUB Table of Contents */}
       <div className="flex-1 min-h-0 flex overflow-hidden relative">
+        {isSearchOpen && (
+          <div className="absolute top-3 right-5 z-30 flex items-center gap-1.5 rounded-lg border border-border bg-popover px-2.5 py-1.5 shadow-raised-200">
+            <Search className="size-3.5 text-muted-foreground shrink-0" />
+            <input
+              type="text"
+              autoFocus
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Find in document..."
+              className="w-44 bg-transparent text-12 text-foreground placeholder:text-muted-foreground outline-none"
+            />
+            {onCloseSearch && (
+              <button
+                type="button"
+                onClick={onCloseSearch}
+                aria-label="Close search"
+                className="size-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
+              >
+                <X className="size-3.5" />
+              </button>
+            )}
+          </div>
+        )}
         {mode === 'epub' && isTocOpen && (
           <aside className="w-64 border-r border-border bg-background/95 overflow-y-auto p-2 flex flex-col gap-0.5 shrink-0 z-10">
             <div className="px-2 py-1 text-11 font-semibold text-muted-foreground uppercase tracking-wider">
@@ -452,7 +503,7 @@ export function EpubAndSnapshotViewer({
               <article
                 style={{ fontSize: `${Math.round(zoom * 100)}%` }}
                 className="max-w-3xl mx-auto prose prose-sm md:prose-base dark:prose-invert leading-relaxed select-text"
-                dangerouslySetInnerHTML={{ __html: currentChapter.htmlContent }}
+                dangerouslySetInnerHTML={{ __html: highlightHtml(currentChapter.htmlContent) }}
               />
             ) : (
               <div className="text-center text-muted-foreground py-12 text-13">
@@ -464,7 +515,7 @@ export function EpubAndSnapshotViewer({
             <article
               style={{ fontSize: `${Math.round(zoom * 100)}%` }}
               className="max-w-4xl mx-auto prose prose-sm md:prose-base dark:prose-invert leading-relaxed select-text"
-              dangerouslySetInnerHTML={{ __html: snapshotHtml }}
+              dangerouslySetInnerHTML={{ __html: highlightHtml(snapshotHtml) }}
             />
           ) : (
             <iframe

@@ -151,10 +151,6 @@ export function InspectorTabs({
                 <button
                   type="button"
                   onClick={() => {
-                    if (isInspectorOpen && activeTab === tab.id) {
-                      onToggleInspector?.();
-                      return;
-                    }
                     if (!isInspectorOpen) {
                       onToggleInspector?.();
                     }

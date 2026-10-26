@@ -27,9 +27,11 @@ export interface LibraryCommandState {
 
 export interface LibraryCommandActions {
   executeCommand: <T>(command: LibraryCommand<T>, options?: { silentToast?: boolean }) => Promise<T>;
-  undo: () => Promise<boolean>;
-  redo: () => Promise<boolean>;
+  undo: (expectedCommandId?: string) => Promise<boolean>;
+  undoById: (commandId: string) => Promise<boolean>;
+  redo: (expectedCommandId?: string) => Promise<boolean>;
   clearHistory: () => void;
+  clear: () => void;
 }
 
 const MAX_HISTORY_LENGTH = 30;
@@ -47,10 +49,16 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
   epoch: 0,
 
   executeCommand: async <T>(command: LibraryCommand<T>, options: { silentToast?: boolean } = {}): Promise<T> => {
+    const ensuredCommand: LibraryCommand<T> = command.id
+      ? command
+      : {
+          ...command,
+          id: `cmd-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        };
     set({ isExecuting: true });
     const startEpoch = get().epoch;
     try {
-      const result = await command.execute();
+      const result = await ensuredCommand.execute();
 
       if (get().epoch !== startEpoch) {
         set({ isExecuting: false });
@@ -58,21 +66,21 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
       }
 
       set((s) => ({
-        undoStack: [command, ...s.undoStack.slice(0, MAX_HISTORY_LENGTH - 1)],
+        undoStack: [ensuredCommand, ...s.undoStack.slice(0, MAX_HISTORY_LENGTH - 1)],
         redoStack: [], // New command invalidates redo history
-        lastCommand: command,
+        lastCommand: ensuredCommand,
         isExecuting: false,
       }));
 
       if (!options.silentToast) {
-        const toastId = command.id.startsWith('trash-') ? 'item-delete' : `cmd-${command.id}`;
-        toast.success(command.description, {
+        const toastId = ensuredCommand.id.startsWith('trash-') ? 'item-delete' : `cmd-${ensuredCommand.id}`;
+        toast.success(ensuredCommand.description, {
           id: toastId,
           action: {
             label: 'Undo',
             onClick: () => {
               if (get().epoch === startEpoch) {
-                void get().undo();
+                void get().undoById(ensuredCommand.id);
               }
             },
           },
@@ -83,17 +91,20 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
     } catch (err: unknown) {
       set({ isExecuting: false });
       const message = err instanceof Error ? err.message : 'Operation failed';
-      toast.error(`Operation failed: ${message}`, { id: `cmd-err-${command.id}` });
+      toast.error(`Operation failed: ${message}`, { id: `cmd-err-${ensuredCommand.id}` });
       throw err;
     }
   },
 
-  undo: async (): Promise<boolean> => {
+  undo: async (expectedCommandId?: string): Promise<boolean> => {
     const { undoStack, isUndoing, isExecuting } = get();
     if (undoStack.length === 0 || isUndoing || isExecuting) return false;
 
     const commandToUndo = undoStack[0];
     if (!commandToUndo) return false;
+    if (expectedCommandId && commandToUndo.id !== expectedCommandId) {
+      return false;
+    }
 
     const startEpoch = get().epoch;
     set({ isUndoing: true });
@@ -118,7 +129,7 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
           label: 'Redo',
           onClick: () => {
             if (get().epoch === startEpoch) {
-              void get().redo();
+              void get().redo(commandToUndo.id);
             }
           },
         },
@@ -133,12 +144,19 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
     }
   },
 
-  redo: async (): Promise<boolean> => {
+  undoById: async (commandId: string): Promise<boolean> => {
+    return get().undo(commandId);
+  },
+
+  redo: async (expectedCommandId?: string): Promise<boolean> => {
     const { redoStack, isExecuting, isUndoing } = get();
     if (redoStack.length === 0 || isExecuting || isUndoing) return false;
 
     const commandToRedo = redoStack[0];
     if (!commandToRedo) return false;
+    if (expectedCommandId && commandToRedo.id !== expectedCommandId) {
+      return false;
+    }
 
     const startEpoch = get().epoch;
     set({ isExecuting: true });
@@ -167,7 +185,7 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
           label: 'Undo',
           onClick: () => {
             if (get().epoch === startEpoch) {
-              void get().undo();
+              void get().undoById(commandToRedo.id);
             }
           },
         },
@@ -190,6 +208,15 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
       epoch: s.epoch + 1,
     }));
   },
+
+  clear: () => {
+    set((s) => ({
+      undoStack: [],
+      redoStack: [],
+      lastCommand: null,
+      epoch: s.epoch + 1,
+    }));
+  },
 }));
 
 /**
@@ -199,8 +226,10 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
 export function useLibraryCommandManager() {
   const executeCommand = useLibraryCommandStore((s) => s.executeCommand);
   const undo = useLibraryCommandStore((s) => s.undo);
+  const undoById = useLibraryCommandStore((s) => s.undoById);
   const redo = useLibraryCommandStore((s) => s.redo);
   const clearHistory = useLibraryCommandStore((s) => s.clearHistory);
+  const clear = useLibraryCommandStore((s) => s.clear);
   const canUndo = useLibraryCommandStore((s) => s.undoStack.length > 0);
   const canRedo = useLibraryCommandStore((s) => s.redoStack.length > 0);
   const isExecuting = useLibraryCommandStore((s) => s.isExecuting);
@@ -209,8 +238,10 @@ export function useLibraryCommandManager() {
   return {
     executeCommand,
     undo,
+    undoById,
     redo,
     clearHistory,
+    clear,
     canUndo,
     canRedo,
     isExecuting,
@@ -253,6 +284,8 @@ export function createTrashCommand(options: TrashCommandOptions): LibraryCommand
   };
 }
 
+export const createDeleteItemsCommand = createTrashCommand;
+
 export interface RestoreCommandOptions {
   itemIds: string[];
   itemTitle?: string;
@@ -291,8 +324,21 @@ export interface MoveItemsCommandOptions {
   sourceCollectionId: string | null;
   targetCollectionId: string | null;
   targetCollectionName?: string;
+  previousCollectionsByItem?: Map<string, string[]>;
+  onUndoMove?: () => Promise<void>;
+  detachMutation?: {
+    mutateAsync: (args: { collectionId: string; itemIds: string[] }) => Promise<unknown>;
+  };
+  assignMutation?: {
+    mutateAsync: (args: { collectionId: string; itemIds: string[] }) => Promise<unknown>;
+  };
   moveMutation: {
-    mutateAsync: (args: { targetCollectionId: string | null; itemIds: string[]; scopeId?: string }) => Promise<unknown>;
+    mutateAsync: (args: {
+      targetCollectionId: string | null;
+      itemIds: string[];
+      sourceCollectionId?: string | null;
+      scopeId?: string;
+    }) => Promise<unknown>;
   };
   scopeId?: string;
   onExecuted?: () => void;
@@ -312,14 +358,78 @@ export function createMoveItemsCommand(options: MoveItemsCommandOptions): Librar
       await options.moveMutation.mutateAsync({
         targetCollectionId: options.targetCollectionId,
         itemIds: options.itemIds,
+        sourceCollectionId: options.sourceCollectionId,
         scopeId: options.scopeId,
       });
       options.onExecuted?.();
     },
     undo: async () => {
+      if (options.onUndoMove) {
+        await options.onUndoMove();
+        options.onUndone?.();
+        return;
+      }
+
+      if (options.sourceCollectionId && options.sourceCollectionId !== 'unfiled') {
+        await options.moveMutation.mutateAsync({
+          targetCollectionId: options.sourceCollectionId,
+          itemIds: options.itemIds,
+          sourceCollectionId: options.targetCollectionId,
+          scopeId: options.scopeId,
+        });
+        options.onUndone?.();
+        return;
+      }
+
+      // When moved from "All Papers" (sourceCollectionId = null), restore exact previous collections
+      // or detach from targetCollectionId without stripping unrelated collection memberships via 'unfiled'.
+      if (options.previousCollectionsByItem && options.previousCollectionsByItem.size > 0) {
+        if (options.targetCollectionId && options.detachMutation) {
+          const itemsNotPreviouslyInTarget = options.itemIds.filter((id) => {
+            const prevCols = options.previousCollectionsByItem?.get(id) || [];
+            return !prevCols.includes(options.targetCollectionId!);
+          });
+          if (itemsNotPreviouslyInTarget.length > 0) {
+            await options.detachMutation.mutateAsync({
+              collectionId: options.targetCollectionId,
+              itemIds: itemsNotPreviouslyInTarget,
+            });
+          }
+        }
+        if (options.assignMutation) {
+          const collectionToItems = new Map<string, string[]>();
+          for (const [id, prevCols] of options.previousCollectionsByItem.entries()) {
+            for (const colId of prevCols) {
+              if (!colId || colId === options.targetCollectionId) continue;
+              const list = collectionToItems.get(colId) || [];
+              list.push(id);
+              collectionToItems.set(colId, list);
+            }
+          }
+          for (const [colId, ids] of collectionToItems.entries()) {
+            await options.assignMutation.mutateAsync({
+              collectionId: colId,
+              itemIds: ids,
+            });
+          }
+        }
+        options.onUndone?.();
+        return;
+      }
+
+      if (options.targetCollectionId && options.detachMutation) {
+        await options.detachMutation.mutateAsync({
+          collectionId: options.targetCollectionId,
+          itemIds: options.itemIds,
+        });
+        options.onUndone?.();
+        return;
+      }
+
       await options.moveMutation.mutateAsync({
         targetCollectionId: options.sourceCollectionId,
         itemIds: options.itemIds,
+        sourceCollectionId: options.targetCollectionId,
         scopeId: options.scopeId,
       });
       options.onUndone?.();

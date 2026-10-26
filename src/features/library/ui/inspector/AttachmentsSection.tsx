@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import {
   FileText,
   BookOpen,
@@ -10,11 +10,11 @@ import {
   Loader2,
   Globe,
   Star,
-  FileDown,
   FolderSync,
   Plus,
   Upload,
   Link2,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import {
@@ -22,18 +22,16 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
 } from "@/shared/components/ui/dropdown-menu";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/shared/components/ui/tooltip";
-import { useAttachmentCoordinator } from "./useAttachmentCoordinator";
+import { useAttachmentCoordinator } from "@/features/library/core/coordinator/attachment.coordinator";
 import { PdfPagePreview } from "./PdfPagePreview";
-import type {
-  Item,
-  ItemAttachment,
-} from "@/features/library/domain/types/library.types";
+import type { Item } from "@/features/library/domain/types/library.types";
 
 interface AttachmentsSectionProps {
   item: Item;
@@ -44,9 +42,8 @@ interface AttachmentsSectionProps {
   hidePdfPreview?: boolean;
   canEdit?: boolean;
   onRegisterAdd?: (trigger: () => void) => void;
+  onRegisterAddLink?: (trigger: () => void) => void;
 }
-
-const EMPTY_ATTACHMENTS: ItemAttachment[] = [];
 
 export default function AttachmentsSection(props: AttachmentsSectionProps) {
   const {
@@ -56,6 +53,7 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
     hidePdfPreview = false,
     canEdit = true,
     onRegisterAdd,
+    onRegisterAddLink,
   } = props;
   const {
     rawScopeId,
@@ -71,31 +69,50 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
     handleOpenLinkForm,
     handleCancelLink,
     handleSubmitLinkAttachment,
+    allAttachments,
     primaryAttachment,
-    otherAttachments,
+    activePreviewAttachment,
+    activePreviewUrl,
+    setSelectedAttachmentId,
+    getAttachmentDownloadUrl,
     hasSnapshot,
-    paperUrl,
     handleOpenReader,
     handleDownload,
-    isDownloadingAnnotated,
-    handleDownloadAnnotatedPdf,
     isSettingPrimary,
     handleSetPrimary,
+    isDeleting,
+    handleDeleteAttachment,
     isCapturingSnapshot,
     handleCaptureSnapshot,
     renameAttachmentMutation,
+    reResolveMetadataMutation,
   } = useAttachmentCoordinator({
     item: paper,
     scopeId,
     onRegisterAdd,
   });
 
+  useEffect(() => {
+    if (onRegisterAddLink) {
+      onRegisterAddLink(handleOpenLinkForm);
+    }
+  }, [onRegisterAddLink, handleOpenLinkForm]);
+
   if (
-    !paperUrl &&
-    otherAttachments.length === 0 &&
+    allAttachments.length === 0 &&
     !paper.url &&
     !isAddingLink
   ) {
+    if (hideHeader) {
+      return (
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          onChange={handleFileSelect}
+        />
+      );
+    }
     return (
       <div className="py-2 px-1.5 text-center text-11 text-foreground flex flex-col items-center justify-center gap-1.5 font-sans">
         <input
@@ -133,6 +150,8 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
       </div>
     );
   }
+
+  const multipleAttachments = allAttachments.length > 1;
 
   return (
     <>
@@ -188,6 +207,21 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
                     <Link2 className="size-3.5 text-foreground shrink-0" />
                     <span>Attach Link to URI...</span>
                   </DropdownMenuItem>
+                  {paper.id && (
+                    <DropdownMenuItem
+                      disabled={reResolveMetadataMutation.isPending}
+                      onClick={() =>
+                        void reResolveMetadataMutation.mutateAsync({
+                          itemId: paper.id,
+                          attachOaPdf: true,
+                        })
+                      }
+                      className="gap-2 cursor-pointer"
+                    >
+                      <FolderSync className="size-3.5 text-foreground shrink-0" />
+                      <span>Find Available Open Access PDF...</span>
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
@@ -238,132 +272,28 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
           </form>
         )}
 
-        {/* PDF Page Preview Card */}
-        {!hidePdfPreview && paperUrl ? (
+        {/* PDF Page Preview Card (Zotero Inspector Top Preview) */}
+        {!hidePdfPreview && activePreviewUrl ? (
           <PdfPagePreview
             paper={paper}
-            paperUrl={paperUrl}
-            onOpenReader={() => handleOpenReader(primaryAttachment?.id)}
+            paperUrl={activePreviewUrl}
+            previewTitle={
+              activePreviewAttachment?.title ||
+              activePreviewAttachment?.filename ||
+              activePreviewAttachment?.name ||
+              paper.filename
+            }
+            onOpenReader={() => handleOpenReader(activePreviewAttachment?.id)}
           />
         ) : null}
 
-        {/* Attachments List */}
+        {/* Unified Attachments List (Zotero 7 Parity) */}
         <div className="flex flex-col gap-1.5 w-full">
-          {/* Primary PDF Row */}
-          {paperUrl ? (
-            <div className="flex items-center justify-between px-2.5 py-1.5 min-h-[32px] rounded-md bg-background hover:bg-muted border border-border transition-colors">
-              <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
-                <div className="size-4 shrink-0 flex items-center justify-center">
-                  <FileText className="size-4 text-foreground shrink-0" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <p className="text-xs font-medium text-foreground truncate leading-snug">
-                        {primaryAttachment?.title ||
-                          paper.filename ||
-                          (paper.openAccessPdfUrl ? "Open Access PDF" : "PDF")}
-                      </p>
-                    </TooltipTrigger>
-                    <TooltipContent side="top">
-                      {primaryAttachment?.title ||
-                        paper.filename ||
-                        (paper.openAccessPdfUrl ? "Open Access PDF" : "PDF")}
-                    </TooltipContent>
-                  </Tooltip>
-                  {primaryAttachment?.title &&
-                    paper.filename &&
-                    primaryAttachment.title !== paper.filename && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <p className="text-10 text-muted-foreground truncate">
-                            {paper.filename}
-                          </p>
-                        </TooltipTrigger>
-                        <TooltipContent side="top">
-                          {paper.filename}
-                        </TooltipContent>
-                      </Tooltip>
-                    )}
-                </div>
-              </div>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label="Attachment options"
-                    className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-muted cursor-pointer focus-visible:outline-none focus-visible:ring-0 relative before:absolute before:-inset-2 md:before:hidden"
-                  >
-                    <MoreVertical className="size-3.5 text-foreground shrink-0" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  className="w-64 p-1.5 text-xs font-sans rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 space-y-0.5"
-                >
-                  <DropdownMenuItem
-                    onClick={() => handleOpenReader(primaryAttachment?.id)}
-                    className="gap-2 cursor-pointer"
-                  >
-                    <BookOpen className="size-3.5 text-foreground shrink-0" />
-                    <span>Open in Reader</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() =>
-                      handleDownload(
-                        paperUrl,
-                        paper.filename || `${paper.title || "document"}.pdf`,
-                      )
-                    }
-                    className="gap-2 cursor-pointer"
-                  >
-                    <Download className="size-3.5 text-foreground shrink-0" />
-                    <span>Download</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={handleDownloadAnnotatedPdf}
-                    disabled={isDownloadingAnnotated}
-                    className="gap-2 cursor-pointer"
-                  >
-                    {isDownloadingAnnotated ? (
-                      <Loader2 className="size-3.5 animate-spin text-foreground shrink-0" />
-                    ) : (
-                      <FileDown className="size-3.5 text-foreground shrink-0" />
-                    )}
-                    <span>Download with Annotations</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() =>
-                      window.open(paperUrl, "_blank", "noopener,noreferrer")
-                    }
-                    className="gap-2 cursor-pointer"
-                  >
-                    <ExternalLink className="size-3.5 text-foreground shrink-0" />
-                    <span>Open in New Tab</span>
-                  </DropdownMenuItem>
-                  {canEdit && primaryAttachment && (
-                    <DropdownMenuItem
-                      onClick={() =>
-                        renameAttachmentMutation.mutate({
-                          attachmentId: primaryAttachment.id,
-                        })
-                      }
-                      disabled={renameAttachmentMutation.isPending}
-                      className="gap-2 cursor-pointer"
-                    >
-                      <FolderSync className="size-3.5 text-foreground shrink-0" />
-                      <span>Rename File from Parent Metadata</span>
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          ) : null}
-
-          {/* Other Attachments */}
-          {otherAttachments.map((att) => {
-            const downloadUrl = att.fileUrl || att.url;
+          {allAttachments.map((att, index) => {
+            const downloadUrl = getAttachmentDownloadUrl(att);
+            const isPrimary = att === primaryAttachment;
+            const isPreviewSelected =
+              multipleAttachments && att === activePreviewAttachment;
             const isSnapshot =
               att.attachmentType === "web_snapshot" ||
               att.attachmentType === "snapshot" ||
@@ -375,34 +305,61 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
               att.filename?.toLowerCase().endsWith(".epub");
             const isPdf =
               att.mimeType === "application/pdf" ||
-              att.filename?.toLowerCase().endsWith(".pdf");
+              att.filename?.toLowerCase().endsWith(".pdf") ||
+              att.attachmentType === "primary_pdf";
             const isLink =
               att.linkMode === "linked_url" ||
               (!att.fileId &&
                 att.url &&
                 /^https?:\/\//i.test(att.url) &&
                 !isSnapshot &&
-                !isEpub);
+                !isEpub &&
+                !isPdf);
+
+            const displayTitle =
+              att.title ||
+              att.filename ||
+              att.name ||
+              paper.filename ||
+              (paper.openAccessPdfUrl ? "Open Access PDF" : "Attachment");
+
+            const handleRowClick = () => {
+              if (isPdf) {
+                if (multipleAttachments && att.id && att !== activePreviewAttachment) {
+                  setSelectedAttachmentId(att.id);
+                } else {
+                  handleOpenReader(att.id);
+                }
+              } else if (isEpub || isSnapshot) {
+                handleOpenReader(att.id);
+              } else if (isLink && downloadUrl) {
+                window.open(downloadUrl, "_blank", "noopener,noreferrer");
+              }
+            };
+
+            const handleRowDoubleClick = () => {
+              if (isPdf || isEpub || isSnapshot) {
+                handleOpenReader(att.id);
+              } else if (isLink && downloadUrl) {
+                window.open(downloadUrl, "_blank", "noopener,noreferrer");
+              }
+            };
 
             return (
               <div
-                key={att.id}
-                className="flex items-center justify-between px-2.5 py-1.5 min-h-[32px] rounded-md bg-background hover:bg-muted border border-border transition-colors"
+                key={att.id || `${att.filename}-${index}`}
+                className={`flex items-center justify-between px-2.5 py-1.5 min-h-[32px] rounded-md border transition-colors ${
+                  isPreviewSelected
+                    ? "bg-muted/70 border-foreground/25"
+                    : "bg-background hover:bg-muted border-border"
+                }`}
               >
                 <div
-                  className={`flex items-center gap-2 min-w-0 flex-1 mr-2 ${isSnapshot || isEpub || isPdf || isLink ? "cursor-pointer" : ""}`}
-                  onClick={
-                    isEpub || isSnapshot || isPdf
-                      ? () => handleOpenReader(att.id)
-                      : isLink && downloadUrl
-                        ? () =>
-                            window.open(
-                              downloadUrl,
-                              "_blank",
-                              "noopener,noreferrer",
-                            )
-                        : undefined
-                  }
+                  className={`flex items-center gap-2 min-w-0 flex-1 mr-2 ${
+                    isSnapshot || isEpub || isPdf || isLink ? "cursor-pointer" : ""
+                  }`}
+                  onClick={handleRowClick}
+                  onDoubleClick={handleRowDoubleClick}
                 >
                   <div className="size-4 shrink-0 flex items-center justify-center">
                     {isSnapshot ? (
@@ -414,92 +371,82 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <p className="text-xs font-medium text-foreground break-all leading-snug">
-                          {att.title || att.filename || att.name}
-                        </p>
-                      </TooltipTrigger>
-                      <TooltipContent side="top">
-                        {att.title || att.filename || att.name}
-                      </TooltipContent>
-                    </Tooltip>
-                    <p className="text-10 text-foreground flex items-center gap-1.5 truncate">
-                      {att.title &&
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <p className="text-xs font-medium text-foreground truncate leading-snug">
+                            {displayTitle}
+                          </p>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                          {displayTitle}
+                        </TooltipContent>
+                      </Tooltip>
+                      {multipleAttachments && isPrimary && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Star className="size-3 text-foreground fill-foreground shrink-0" />
+                          </TooltipTrigger>
+                          <TooltipContent side="top">
+                            Primary Document
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
+                    {(att.size ||
+                      isSnapshot ||
+                      isLink ||
+                      (att.title &&
                         (att.filename || att.name) &&
-                        att.title !== (att.filename || att.name) && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="truncate max-w-[140px]">
-                                {att.filename || att.name} •
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent side="top">
+                        att.title !== (att.filename || att.name))) && (
+                      <p className="text-10 text-muted-foreground flex items-center gap-1.5 truncate">
+                        {att.title &&
+                          (att.filename || att.name) &&
+                          att.title !== (att.filename || att.name) && (
+                            <span className="truncate max-w-[140px]">
                               {att.filename || att.name}
-                            </TooltipContent>
-                          </Tooltip>
+                            </span>
+                          )}
+                        {isSnapshot && (
+                          <span className="font-medium">Snapshot</span>
                         )}
-                      {isSnapshot && (
-                        <span className="text-foreground font-medium">
-                          Snapshot •
-                        </span>
-                      )}
-                      {isLink && (
-                        <span className="text-foreground font-medium">
-                          Link •
-                        </span>
-                      )}
-                      {att.size ? <span>{formatSize(att.size)}</span> : null}
-                    </p>
+                        {isLink && <span className="font-medium">Link</span>}
+                        {att.size ? <span>{formatSize(att.size)}</span> : null}
+                      </p>
+                    )}
                   </div>
                 </div>
 
-                {downloadUrl && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        type="button"
-                        aria-label="Attachment options"
-                        className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-muted cursor-pointer focus-visible:outline-none focus-visible:ring-0 relative before:absolute before:-inset-2 md:before:hidden"
-                      >
-                        <MoreVertical className="size-3.5 text-foreground shrink-0" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      align="end"
-                      className="w-64 p-1.5 text-xs font-sans rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 space-y-0.5"
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="Attachment options"
+                      className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-muted cursor-pointer focus-visible:outline-none focus-visible:ring-0 relative before:absolute before:-inset-2 md:before:hidden"
                     >
-                      {(isSnapshot || isEpub || isPdf) && (
-                        <DropdownMenuItem
-                          onClick={() => handleOpenReader(att.id)}
-                          className="gap-2 cursor-pointer"
-                        >
-                          <BookOpen className="size-3.5 text-foreground shrink-0" />
-                          <span>
-                            {isEpub
-                              ? 'Open EPUB in Reader'
-                              : isSnapshot
-                                ? 'Open Snapshot in Reader'
-                                : 'Open in Reader'}
-                          </span>
-                        </DropdownMenuItem>
-                      )}
-                      {!isLink && (
-                        <DropdownMenuItem
-                          onClick={() =>
-                            handleDownload(
-                              downloadUrl,
-                              att.filename ||
-                                att.name ||
-                                (isSnapshot ? "snapshot.html" : "file"),
-                            )
-                          }
-                          className="gap-2 cursor-pointer"
-                        >
-                          <Download className="size-3.5 text-foreground shrink-0" />
-                          <span>Download</span>
-                        </DropdownMenuItem>
-                      )}
+                      <MoreVertical className="size-3.5 text-foreground shrink-0" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="end"
+                    className="w-60 p-1.5 text-xs font-sans rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 space-y-0.5"
+                  >
+                    {(isSnapshot || isEpub || isPdf) && (
+                      <DropdownMenuItem
+                        onClick={() => handleOpenReader(att.id || undefined)}
+                        className="gap-2 cursor-pointer"
+                      >
+                        <BookOpen className="size-3.5 text-foreground shrink-0" />
+                        <span>
+                          {isEpub
+                            ? "Open EPUB in Reader"
+                            : isSnapshot
+                              ? "Open Snapshot in Reader"
+                              : "Open in Reader"}
+                        </span>
+                      </DropdownMenuItem>
+                    )}
+                    {downloadUrl && (
                       <DropdownMenuItem
                         onClick={() =>
                           window.open(
@@ -513,40 +460,70 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
                         <ExternalLink className="size-3.5 text-foreground shrink-0" />
                         <span>Open in New Tab</span>
                       </DropdownMenuItem>
-                      {canEdit &&
-                        rawScopeId &&
-                        att.id &&
-                        !isSnapshot &&
-                        !isLink && (
-                          <DropdownMenuItem
-                            onClick={() => handleSetPrimary(att.id)}
-                            disabled={isSettingPrimary}
-                            className="gap-2 cursor-pointer"
-                          >
-                            <Star className="size-3.5 text-foreground shrink-0" />
-                            <span>Set as Primary Document</span>
-                          </DropdownMenuItem>
-                        )}
-                      {canEdit &&
-                        rawScopeId &&
-                        att.id &&
-                        !isLink && (
-                          <DropdownMenuItem
-                            onClick={() =>
-                              renameAttachmentMutation.mutate({
-                                attachmentId: att.id,
-                              })
-                            }
-                            disabled={renameAttachmentMutation.isPending}
-                            className="gap-2 cursor-pointer"
-                          >
-                            <FolderSync className="size-3.5 text-foreground shrink-0" />
-                            <span>Rename File from Parent Metadata</span>
-                          </DropdownMenuItem>
-                        )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
+                    )}
+                    {!isLink && downloadUrl && (
+                      <DropdownMenuItem
+                        onClick={() =>
+                          handleDownload(
+                            downloadUrl,
+                            att.filename ||
+                              att.name ||
+                              paper.filename ||
+                              (isSnapshot
+                                ? "snapshot.html"
+                                : `${paper.title || "document"}.pdf`),
+                          )
+                        }
+                        className="gap-2 cursor-pointer"
+                      >
+                        <Download className="size-3.5 text-foreground shrink-0" />
+                        <span>Download</span>
+                      </DropdownMenuItem>
+                    )}
+                    {canEdit &&
+                      rawScopeId &&
+                      att.id &&
+                      !isPrimary &&
+                      !isSnapshot &&
+                      !isLink && (
+                        <DropdownMenuItem
+                          onClick={() => handleSetPrimary(att.id)}
+                          disabled={isSettingPrimary}
+                          className="gap-2 cursor-pointer"
+                        >
+                          <Star className="size-3.5 text-foreground shrink-0" />
+                          <span>Set as Primary Document</span>
+                        </DropdownMenuItem>
+                      )}
+                    {canEdit && rawScopeId && att.id && !isLink && (
+                      <DropdownMenuItem
+                        onClick={() =>
+                          renameAttachmentMutation.mutate({
+                            attachmentId: att.id,
+                          })
+                        }
+                        disabled={renameAttachmentMutation.isPending}
+                        className="gap-2 cursor-pointer"
+                      >
+                        <FolderSync className="size-3.5 text-foreground shrink-0" />
+                        <span>Rename File from Parent Metadata</span>
+                      </DropdownMenuItem>
+                    )}
+                    {canEdit && att.id && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => handleDeleteAttachment(att.id)}
+                          disabled={isDeleting}
+                          className="gap-2 cursor-pointer text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="size-3.5 shrink-0" />
+                          <span>Delete Attachment</span>
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             );
           })}

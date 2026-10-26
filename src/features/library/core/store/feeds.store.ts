@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { toast } from 'sonner';
 import {
   SavedFeedSubscription,
   DEFAULT_ACADEMIC_FEEDS,
@@ -16,6 +17,8 @@ interface FeedsStore {
   readFilter: FeedReadFilterType;
   refreshCounter: number;
   readEntryIds: Set<string>;
+  savedEntryIds: string[];
+  savingEntryIds: string[];
   isLoadingFeeds: boolean;
   hasInitializedFeeds: boolean;
   loadFeeds: () => Promise<void>;
@@ -24,13 +27,53 @@ interface FeedsStore {
   setCurrentFeedEntries: (entries: ParsedFeedEntry[]) => void;
   setReadFilter: (filter: FeedReadFilterType) => void;
   triggerRefresh: () => void;
-  addFeed: (name: string, url: string, retentionDays?: FeedRetentionDays) => SavedFeedSubscription;
+  addFeed: (
+    name: string,
+    url: string,
+    retentionDays?: FeedRetentionDays,
+    options?: {
+      cleanupReadAfter?: FeedRetentionDays;
+      cleanupUnreadAfter?: FeedRetentionDays;
+    },
+  ) => SavedFeedSubscription;
   updateFeed: (id: string, updates: Partial<Omit<SavedFeedSubscription, 'id'>>) => void;
   removeFeed: (id: string) => Promise<void>;
   markEntryAsRead: (entryId: string) => void;
   toggleEntryRead: (entryId: string) => void;
   markAllEntriesAsRead: (entryIds?: string[]) => void;
   isEntryRead: (entryId: string) => boolean;
+  markEntrySaved: (id: string) => void;
+  setEntrySaving: (id: string, isSaving: boolean) => void;
+  isEntrySaved: (
+    entry: ParsedFeedEntry | null | undefined,
+    libraryItems?: Array<{ doi?: string | null; title?: string | null; url?: string | null }>,
+  ) => boolean;
+}
+
+export function isFeedEntryInLibrary(
+  entry: ParsedFeedEntry | null | undefined,
+  savedEntryIds: Iterable<string>,
+  libraryItems?: Array<{ doi?: string | null; title?: string | null; url?: string | null }>,
+): boolean {
+  if (!entry) return false;
+  const savedSet = savedEntryIds instanceof Set ? savedEntryIds : new Set(savedEntryIds);
+  if (savedSet.has(entry.id)) return true;
+  if (!libraryItems || libraryItems.length === 0) return false;
+  const normalizedDoi = entry.doi?.trim().toLowerCase();
+  const normalizedTitle = entry.title?.trim().toLowerCase();
+  const normalizedUrl = entry.url?.trim().toLowerCase();
+  for (const item of libraryItems) {
+    if (normalizedDoi && item.doi && item.doi.trim().toLowerCase() === normalizedDoi) {
+      return true;
+    }
+    if (normalizedTitle && item.title && item.title.trim().toLowerCase() === normalizedTitle) {
+      return true;
+    }
+    if (normalizedUrl && item.url && item.url.trim().toLowerCase() === normalizedUrl) {
+      return true;
+    }
+  }
+  return false;
 }
 
 export const useFeedsStore = create<FeedsStore>((set, get) => ({
@@ -41,6 +84,8 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
   readFilter: 'all',
   refreshCounter: 0,
   readEntryIds: new Set<string>(),
+  savedEntryIds: [],
+  savingEntryIds: [],
   isLoadingFeeds: false,
   hasInitializedFeeds: false,
 
@@ -53,12 +98,19 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
       const res = await FeedsService.getSubscriptions();
       if (res?.data && Array.isArray(res.data)) {
         if (res.data.length > 0) {
-          const mappedFeeds: SavedFeedSubscription[] = res.data.map((sub) => ({
-            id: sub.feedId || sub.id,
-            name: sub.customTitle || sub.feed?.title || 'Academic Feed',
-            url: sub.feed?.url || '',
-            retentionDays: (sub.cleanupReadAfter || 30) as FeedRetentionDays,
-          }));
+          const mappedFeeds: SavedFeedSubscription[] = res.data.map((sub) => {
+            const unreadDays = (sub.cleanupUnreadAfter ?? sub.cleanupReadAfter ?? 30) as FeedRetentionDays;
+            const readDays = (sub.cleanupReadAfter ?? 7) as FeedRetentionDays;
+            return {
+              id: sub.feedId || sub.id,
+              name: sub.customTitle || sub.feed?.title || 'Academic Feed',
+              url: sub.feed?.url || '',
+              lastRefreshed: sub.feed?.lastFetchedAt || undefined,
+              retentionDays: unreadDays,
+              cleanupReadAfter: readDays,
+              cleanupUnreadAfter: unreadDays,
+            };
+          });
           set({ feeds: mappedFeeds, isLoadingFeeds: false, hasInitializedFeeds: true });
           return;
         }
@@ -91,27 +143,33 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
 
   triggerRefresh: () => set((state) => ({ refreshCounter: state.refreshCounter + 1 })),
 
-  addFeed: (name, url, retentionDays = 30) => {
+  addFeed: (name, url, retentionDays = 30, options) => {
     const trimmedUrl = url.trim();
     const trimmedName =
       name.trim() || trimmedUrl.replace(/^https?:\/\/(www\.)?/i, '').slice(0, 42);
     const id = `feed-${Date.now()}`;
+    const unreadDays = (options?.cleanupUnreadAfter ?? retentionDays ?? 30) as FeedRetentionDays;
+    const readDays = (options?.cleanupReadAfter ?? 7) as FeedRetentionDays;
 
     const newFeed: SavedFeedSubscription = {
       id,
       name: trimmedName,
       url: trimmedUrl,
-      retentionDays,
+      retentionDays: unreadDays,
+      cleanupReadAfter: readDays,
+      cleanupUnreadAfter: unreadDays,
     };
-    const nextFeeds = [...get().feeds, newFeed];
+    const nextFeeds = [...get().feeds.filter((f) => f.id !== id), newFeed];
 
     set({ feeds: nextFeeds, activeFeedId: id });
 
-    // Server-authoritative subscription via Backend API
+    // Sync with backend asynchronously in background
     FeedsService.subscribe({
       url: trimmedUrl,
       customTitle: trimmedName,
-      cleanupDays: retentionDays,
+      cleanupDays: unreadDays,
+      cleanupReadAfter: readDays,
+      cleanupUnreadAfter: unreadDays,
     })
       .then((res) => {
         const sub = (res?.data as { feedId?: string; id?: string }) || {};
@@ -123,29 +181,34 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
           }));
         }
       })
-      .catch(() => {
-        set((state) => {
-          const remaining = state.feeds.filter((f) => f.id !== id);
-          return {
-            feeds: remaining,
-            activeFeedId: state.activeFeedId === id ? (remaining[0]?.id ?? null) : state.activeFeedId,
-          };
-        });
-      });
+      .catch(() => {});
 
     return newFeed;
   },
 
   updateFeed: (id, updates) => {
     const nextFeeds = get().feeds.map((f) =>
-      f.id === id ? { ...f, ...updates } : f
+      f.id === id
+        ? {
+            ...f,
+            ...updates,
+            ...(updates.cleanupUnreadAfter !== undefined
+              ? { retentionDays: updates.cleanupUnreadAfter }
+              : updates.retentionDays !== undefined
+                ? { cleanupUnreadAfter: updates.retentionDays }
+                : {}),
+          }
+        : f,
     );
     set({ feeds: nextFeeds });
 
     // Sync with backend API
     FeedsService.updateSubscription(id, {
       customTitle: updates.name,
-      cleanupDays: updates.retentionDays,
+      cleanupDays: updates.cleanupUnreadAfter ?? updates.retentionDays,
+      cleanupReadAfter: updates.cleanupReadAfter,
+      cleanupUnreadAfter: updates.cleanupUnreadAfter ?? updates.retentionDays,
+      url: updates.url,
     }).catch(() => {});
   },
 
@@ -207,4 +270,26 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
   isEntryRead: (entryId: string) => {
     return get().readEntryIds.has(entryId);
   },
+
+  markEntrySaved: (id: string) =>
+    set((state) =>
+      state.savedEntryIds.includes(id)
+        ? state
+        : { savedEntryIds: [...state.savedEntryIds, id] },
+    ),
+
+  setEntrySaving: (id: string, isSaving: boolean) =>
+    set((state) => {
+      const exists = state.savingEntryIds.includes(id);
+      if (isSaving && !exists) {
+        return { savingEntryIds: [...state.savingEntryIds, id] };
+      }
+      if (!isSaving && exists) {
+        return { savingEntryIds: state.savingEntryIds.filter((item) => item !== id) };
+      }
+      return state;
+    }),
+
+  isEntrySaved: (entry, libraryItems) =>
+    isFeedEntryInLibrary(entry, get().savedEntryIds, libraryItems),
 }));

@@ -2,6 +2,22 @@
  * Single source of truth for reading retraction state off a library item.
  */
 
+
+export function safeHttpUrl(raw?: string | null): string | undefined {
+  if (!raw || typeof raw !== 'string') return undefined;
+  const trimmed = raw.trim();
+  if (!trimmed) return undefined;
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return parsed.href;
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export interface RetractionInfo {
   nature?: string;
   reason?: string;
@@ -157,13 +173,14 @@ export function getRetractionInfo(item: unknown): RetractionInfo {
     str(m.retractionNoticeDoi) ??
     str(i.retractionNoticeDoi);
 
-  const noticeUrl =
+  const rawNoticeUrl =
     str(d.noticeUrl) ??
     str(r.noticeUrl) ??
     str(m.noticeUrl) ??
     str(i.noticeUrl) ??
     (noticeDoi ? `https://doi.org/${noticeDoi.replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, '')}` : undefined) ??
     (i.doi ? `https://doi.org/${i.doi}` : undefined);
+  const noticeUrl = safeHttpUrl(rawNoticeUrl);
 
   const date =
     str(d.date) ??

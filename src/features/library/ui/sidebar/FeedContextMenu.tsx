@@ -35,7 +35,7 @@ export function FeedContextMenu({
             e.preventDefault();
             e.stopPropagation();
           }}
-          className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground opacity-0 group-hover/item:opacity-100 data-[state=open]:opacity-100 data-[state=open]:bg-muted data-[state=open]:text-foreground focus-visible:opacity-100 hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground opacity-0 max-md:opacity-100 group-hover/item:opacity-100 data-[state=open]:opacity-100 data-[state=open]:bg-background data-[state=open]:border-border data-[state=open]:text-foreground focus-visible:opacity-100 border border-transparent hover:border-border/50 hover:bg-background transition-colors duration-150 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
           aria-label={`Options for ${feed.name}`}
         >
           <MoreVertical className="size-3.5 shrink-0" strokeWidth={1.5} />
@@ -77,7 +77,7 @@ export function FeedContextMenu({
           <span>Edit Feed...</span>
         </DropdownMenuItem>
 
-        <DropdownMenuSeparator className="mx-1 my-1" />
+        <DropdownMenuSeparator className="my-1" />
 
         <DropdownMenuItem
           onClick={() => onDelete(feed)}

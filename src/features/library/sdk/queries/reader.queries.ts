@@ -15,6 +15,7 @@ import { PdfAnnotationEngine } from '@/features/library/domain/reader.domain';
 import type {
   CreateAnnotationDto,
   UpdateAnnotationDto,
+  ReaderAnnotation,
 } from '@/features/library/domain/types/reader.types';
 
 export type CreateAnnotationDTO = CreateAnnotationDto;
@@ -69,13 +70,55 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
       if (!attachmentId) throw new Error('Attachment ID required to create annotation.');
       return readerService.annotations.create(scopeId, attachmentId, dto);
     },
-    onSuccess: () => {
+    onMutate: async (dto: CreateAnnotationDTO) => {
+      if (!attachmentId) return undefined;
+      const queryKey = annotationKeys.byAttachment(scopeId, attachmentId);
+      await queryClient.cancelQueries({ queryKey });
+      const previousAnnotations = queryClient.getQueryData<ReaderAnnotation[]>(queryKey);
+      const optimisticId = `temp-ann-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      const optimisticAnnotation: ReaderAnnotation = {
+        id: optimisticId,
+        attachmentId,
+        type: dto.type,
+        pageIndex: dto.pageIndex,
+        color: dto.color,
+        quoteText: dto.quoteText,
+        comment: dto.comment,
+        rects: dto.rects || [],
+        tags: dto.tags || [],
+        version: 1,
+        createdAt: new Date().toISOString(),
+      };
+      queryClient.setQueryData<ReaderAnnotation[]>(queryKey, (old = []) => [
+        ...old,
+        optimisticAnnotation,
+      ]);
+      return { previousAnnotations, optimisticId };
+    },
+    onSuccess: (created, _variables, context) => {
+      if (attachmentId) {
+        const queryKey = annotationKeys.byAttachment(scopeId, attachmentId);
+        queryClient.setQueryData<ReaderAnnotation[]>(queryKey, (old = []) => {
+          if (!created) return old;
+          const replaced = old.map((a) => (a.id === context?.optimisticId ? created : a));
+          if (context?.optimisticId && !old.some((a) => a.id === context.optimisticId)) {
+            return [...old, created];
+          }
+          return replaced;
+        });
+      }
       queryClient.invalidateQueries({
         queryKey: annotationKeys.byAttachment(scopeId, attachmentId),
       });
       toast.success('Annotation saved', { id: 'reader-annotation-toast' });
     },
-    onError: (err: unknown) => {
+    onError: (err: unknown, _variables, context) => {
+      if (attachmentId && context?.previousAnnotations !== undefined) {
+        queryClient.setQueryData(
+          annotationKeys.byAttachment(scopeId, attachmentId),
+          context.previousAnnotations,
+        );
+      }
       toast.error('Failed to create annotation', {
         description: getErrorMessage(err) || 'Please try again.',
         id: 'reader-annotation-toast',

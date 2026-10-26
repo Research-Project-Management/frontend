@@ -7,14 +7,31 @@ import { useProcessModalStore } from '@/features/library/core/store/process-moda
 import { useCreateCollectionMutation } from '@/features/library/sdk/queries/collections.queries';
 import { useCollectionsQuery } from '@/features/library/sdk/queries/collections.queries';
 import { toast } from 'sonner';
-import { useDeleteLibraryItemsMutation, useBatchPurgeItemsMutation, useUpdateLibraryItemMutation, useLibraryCacheSynchronizer } from '@/features/library/sdk/queries/catalog.queries';
+import {
+  useDeleteLibraryItemsMutation,
+  useBatchRestoreItemsMutation,
+  useBatchPurgeItemsMutation,
+  useUpdateLibraryItemMutation,
+  useLibraryCacheSynchronizer,
+  useViewItems,
+} from '@/features/library/sdk/queries/catalog.queries';
+import {
+  useLibraryCommandStore,
+  createTrashCommand,
+} from '@/features/library/core/manager/library-command.manager';
 import { useSavedSearches } from '@/features/library/sdk/queries/saved-searches-relations.queries';
 import {
   executeTrackedIdentifierIngestion,
   useMergeDuplicates,
   useDismissDuplicatesMutation,
 } from '@/features/library/sdk/queries/ingestion.queries';
-import type { CollectionFormValues, Item, CreateSavedSearchInput } from '@/features/library/domain/types/library.types';
+import { parseBatchIdentifiersInput } from '@/features/library/domain/identifiers';
+import type {
+  Collection,
+  CollectionFormValues,
+  Item,
+  CreateSavedSearchInput,
+} from '@/features/library/domain/types/library.types';
 import type { SavedSearch } from '@/features/library/domain/types/saved-searches.types';
 
 const CreateCollectionModal = dynamic(() => import('./CreateCollectionModal'), { ssr: false });
@@ -40,11 +57,19 @@ const CslStyleSearchModal = dynamic(() => import('./CslStyleSearchModal'), { ssr
  * Listens to `useLibraryUIStore` so no component has to drill modal props.
  */
 export function LibraryModals({ scopeId }: { scopeId?: string }) {
-  const { queryClient, invalidateScopeItemsAndCounts } = useLibraryCacheSynchronizer(scopeId);
+  const {
+    queryClient,
+    invalidateScopeItemsAndCounts,
+    resolveCachedItem,
+    syncConvertedOrPatchedItem,
+  } = useLibraryCacheSynchronizer(scopeId);
   const activeModal = useLibraryUIStore((s) => s.activeModal);
   const modalProps = useLibraryUIStore((s) => s.modalProps);
   const payload = modalProps as {
     item?: Item;
+    itemId?: string;
+    currentType?: string;
+    itemTitle?: string;
     items?: Item[];
     duplicates?: Item[];
     recommendedMasterId?: string;
@@ -52,6 +77,13 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
     collectionId?: string;
     parentId?: string | null;
     parentCollectionId?: string | null;
+    collections?: Collection[];
+    rootLabel?: string;
+    rootType?: 'user' | 'project';
+    onSubmit?: (data: CollectionFormValues) => void | Promise<void>;
+    title?: string;
+    description?: string;
+    confirmLabel?: string;
     itemIds?: string[];
     permanent?: boolean;
     files?: File[];
@@ -83,6 +115,20 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
   const isFeedsManagerOpen = activeModal === 'FEEDS_MANAGER';
   const isAddFeedOpen = activeModal === 'ADD_FEED';
 
+  const isImportFromUserOpen = activeModal === 'IMPORT_FROM_USER';
+  const { data: projectItemsData } = useViewItems(
+    isImportFromUserOpen ? effectiveScope : undefined,
+    'all',
+    { limit: 500 },
+    { enabled: isImportFromUserOpen },
+  );
+  const existingProjectTitles = React.useMemo(() => {
+    if (payload?.existingTitles && Array.isArray(payload.existingTitles)) {
+      return payload.existingTitles as string[];
+    }
+    return (projectItemsData?.items || []).map((it) => it.title).filter(Boolean);
+  }, [payload?.existingTitles, projectItemsData?.items]);
+
   // Collections & Queries (lazy enabled only when create collection, external sync, or feeds modal is open)
   const { data: collections = [] } = useCollectionsQuery(effectiveScope, {
     enabled: isCreateCollectionOpen || isExternalSyncOpen || isFeedsManagerOpen,
@@ -91,6 +137,7 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
   // Mutations & Sub-resources
   const createCollectionMutation = useCreateCollectionMutation(effectiveScope);
   const deleteItemsMutation = useDeleteLibraryItemsMutation(effectiveScope);
+  const restoreItemsMutation = useBatchRestoreItemsMutation(effectiveScope);
   const purgeItemsMutation = useBatchPurgeItemsMutation(effectiveScope);
   const mergeDuplicatesMutation = useMergeDuplicates(effectiveScope);
   const isSavedSearchModalOpen = activeModal === 'SAVED_SEARCH';
@@ -101,7 +148,19 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
     isUpdating: isUpdatingSS,
   } = useSavedSearches(effectiveScope, { enabled: isSavedSearchModalOpen });
   const updateItemMutation = useUpdateLibraryItemMutation(effectiveScope);
+  const [isCustomSubmitting, setIsCustomSubmitting] = React.useState(false);
+
   const handleCreateCollection = async (data: CollectionFormValues) => {
+    if (typeof payload?.onSubmit === 'function') {
+      setIsCustomSubmitting(true);
+      try {
+        await payload.onSubmit(data);
+        closeModal();
+      } finally {
+        setIsCustomSubmitting(false);
+      }
+      return;
+    }
     const res = await createCollectionMutation.mutateAsync({
       name: data.name,
       description: data.description,
@@ -125,22 +184,35 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
     closeModal();
   };
 
-  // 2. Delete Confirmation Modal (Items or Empty Trash)
+  // 2. Delete Confirmation Modal (Items, Collections, or Empty Trash)
   const isDeleteConfirmOpen = activeModal === 'DELETE_CONFIRM';
   const itemIdsToDelete: string[] = payload?.itemIds || [];
   const isPermanentDelete = Boolean(payload?.permanent);
   const customDeleteConfirmCallback = payload?.onConfirm;
   const handleDeleteConfirm = async () => {
     if (customDeleteConfirmCallback) {
-      await customDeleteConfirmCallback();
-      closeModal();
+      setIsCustomSubmitting(true);
+      try {
+        useLibraryCommandStore.getState().clear();
+        await customDeleteConfirmCallback();
+        closeModal();
+      } finally {
+        setIsCustomSubmitting(false);
+      }
       return;
     }
     if (itemIdsToDelete.length === 0) return;
     if (isPermanentDelete) {
+      useLibraryCommandStore.getState().clear();
       await purgeItemsMutation.mutateAsync(itemIdsToDelete);
     } else {
-      await deleteItemsMutation.mutateAsync(itemIdsToDelete);
+      await useLibraryCommandStore.getState().executeCommand(
+        createTrashCommand({
+          itemIds: itemIdsToDelete,
+          deleteMutation: { mutateAsync: deleteItemsMutation.mutateAsync },
+          restoreMutation: { mutateAsync: restoreItemsMutation.mutateAsync },
+        }),
+      );
     }
     clearSelection();
     if (activeItemId && itemIdsToDelete.includes(activeItemId)) {
@@ -153,29 +225,41 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
   const isAddLinkOpen = activeModal === 'ADD_BY_IDENTIFIER';
   const [isSubmittingLink, setIsSubmittingLink] = React.useState(false);
 
-  const handleAddLinkSubmit = async (data: { url: string; title?: string }) => {
+  const handleAddLinkSubmit = async (data: {
+    url: string;
+    title?: string;
+    attachOaPdf?: boolean;
+    saveSnapshot?: boolean;
+  }) => {
     const raw = (data.url || '').trim();
     if (!raw) return;
 
+    const batchItems = parseBatchIdentifiersInput(raw);
+    const inputsToIngest =
+      batchItems.length > 1 ? batchItems.map((entry) => entry.raw) : [raw];
+
     setIsSubmittingLink(true);
     try {
-      await executeTrackedIdentifierIngestion({
-        scopeId: effectiveScope,
-        rawInput: raw,
-        title: data.title,
-        collectionId: payload?.collectionId,
-        queryClient,
-        onCloseModal: closeModal,
-        onAddProvisionalItem: addProcessingItem,
-        onDismissProvisionalItem: dismissProcessingItem,
-      });
+      for (const singleInput of inputsToIngest) {
+        await executeTrackedIdentifierIngestion({
+          scopeId: effectiveScope,
+          rawInput: singleInput,
+          title: inputsToIngest.length === 1 ? data.title : undefined,
+          attachOaPdf: data.attachOaPdf,
+          saveSnapshot: data.saveSnapshot,
+          collectionId: payload?.collectionId,
+          queryClient,
+          onCloseModal: closeModal,
+          onAddProvisionalItem: addProcessingItem,
+          onDismissProvisionalItem: dismissProcessingItem,
+        });
+      }
     } finally {
       setIsSubmittingLink(false);
     }
   };
 
   // 4. Import from User Library Modal (When in Project Scope)
-  const isImportFromUserOpen = activeModal === 'IMPORT_FROM_USER';
 
   // 5. Convert Item Type Modal
   const isConvertOpen = activeModal === 'TYPE_CONVERSION';
@@ -188,6 +272,7 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
     mergedFields: Record<string, unknown>,
     duplicateIdsToDelete: string[],
   ) => {
+    useLibraryCommandStore.getState().clear();
     await mergeDuplicatesMutation.mutateAsync({
       primaryItemId: masterPaper.id,
       duplicateItemIds: duplicateIdsToDelete,
@@ -216,11 +301,17 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
           open={isCreateCollectionOpen}
           onOpenChange={(open) => !open && closeModal()}
           onSubmit={handleCreateCollection}
-          isPending={createCollectionMutation.isPending}
-          collections={collections}
+          isPending={createCollectionMutation.isPending || isCustomSubmitting}
+          collections={Array.isArray(payload?.collections) ? payload.collections : collections}
           defaultParentId={payload?.parentId || null}
-          rootLabel={activeScope.type === 'project' ? (activeScope.name || 'Project') : 'My Library'}
-          rootType={activeScope.type === 'project' ? 'project' : 'user'}
+          rootLabel={
+            payload?.rootLabel ||
+            (activeScope.type === 'project' ? (activeScope.name || 'Project') : 'My Library')
+          }
+          rootType={
+            payload?.rootType ||
+            (activeScope.type === 'project' ? 'project' : 'user')
+          }
         />
       )}
 
@@ -229,26 +320,32 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
           open={isDeleteConfirmOpen}
           onOpenChange={(open) => !open && closeModal()}
           title={
-            customDeleteConfirmCallback
+            payload?.title ||
+            (customDeleteConfirmCallback
               ? 'Empty Trash'
               : isPermanentDelete
                 ? 'Permanently Delete Items'
-                : 'Move to Trash'
+                : 'Move to Trash')
           }
           description={
-            customDeleteConfirmCallback
+            payload?.description ||
+            (customDeleteConfirmCallback
               ? 'Are you sure you want to permanently empty the trash? All items will be permanently deleted and cannot be recovered.'
               : isPermanentDelete
                 ? `Are you sure you want to permanently delete ${itemIdsToDelete.length} selected ${itemIdsToDelete.length === 1 ? 'item' : 'items'}? This action cannot be undone.`
-                : `Are you sure you want to move ${itemIdsToDelete.length} selected ${itemIdsToDelete.length === 1 ? 'item' : 'items'} to the trash?`
+                : `Are you sure you want to move ${itemIdsToDelete.length} selected ${itemIdsToDelete.length === 1 ? 'item' : 'items'} to the trash?`)
           }
           confirmLabel={
-            customDeleteConfirmCallback || isPermanentDelete
+            payload?.confirmLabel ||
+            (customDeleteConfirmCallback || isPermanentDelete
               ? 'Permanently Delete'
-              : 'Move to Trash'
+              : 'Move to Trash')
           }
           onConfirm={handleDeleteConfirm}
-          isDeleting={isPermanentDelete ? purgeItemsMutation.isPending : deleteItemsMutation.isPending}
+          isDeleting={
+            isCustomSubmitting ||
+            (isPermanentDelete ? purgeItemsMutation.isPending : deleteItemsMutation.isPending)
+          }
         />
       )}
 
@@ -267,6 +364,7 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
           onOpenChange={(open) => !open && closeModal()}
           scopeId={effectiveScope}
           projectName={activeScope?.name || 'Project'}
+          existingTitles={existingProjectTitles}
           onSuccess={() => {
             void invalidateScopeItemsAndCounts(effectiveScope);
             closeModal();
@@ -278,11 +376,25 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
         <TypeConversionModal
           open={isConvertOpen}
           onOpenChange={(open) => !open && closeModal()}
-          item={payload?.item}
+          item={
+            payload?.item ||
+            (payload?.itemId
+              ? resolveCachedItem(payload.itemId, effectiveScope) || {
+                  id: payload.itemId,
+                  itemType: payload.currentType || 'journalArticle',
+                  title: payload.itemTitle || '',
+                }
+              : undefined)
+          }
           targetType={payload?.targetType || 'journalArticle'}
           scopeId={effectiveScope}
-          onSuccess={() => {
-            void invalidateScopeItemsAndCounts(effectiveScope);
+          onSuccess={(updatedItem: Item) => {
+            const targetItemId = updatedItem?.id || payload?.item?.id || payload?.itemId;
+            if (targetItemId && updatedItem) {
+              syncConvertedOrPatchedItem(targetItemId, updatedItem, effectiveScope);
+            } else {
+              void invalidateScopeItemsAndCounts(effectiveScope);
+            }
             closeModal();
           }}
         />

@@ -11,7 +11,6 @@ import type {
 } from '@/features/library/domain/types/batch-upload.types';
 import { cleanFilenameToTitle } from '@/features/library/domain/metadata';
 import { BatchFlowManager } from '@/features/library/core/manager/batch-flow.manager';
-import { DocumentFlowStateMachine } from '@/features/library/core/manager/document-flow-state.machine';
 
 // Stage 1: Provisional Item Creation & Modal Initialization
 
@@ -43,42 +42,57 @@ function initializeBatchModalState(
   initialProcessingItems: ProcessingFileItem[],
 ): void {
   const title = files.length === 1 ? files[0].name : `${files.length} documents`;
-  store.setState((s) => ({
-    processingItems: [
-      ...s.processingItems.filter(
-        (p) =>
-          !initialProcessingItems.some(
-            (n) => n.fileName === p.fileName && n.fileSize === p.fileSize,
-          ),
-      ),
-      ...initialProcessingItems,
-    ],
-    state: {
-      isOpen: true,
-      isMinimized: false,
-      runId,
-      fileName: title,
-      isComplete: false,
-      error: null,
-      data: {
-        runId,
-        scopeId,
-        status: 'PROCESSING',
-        total: files.length,
-        processed: 0,
-        percentage: 0,
-        succeeded: 0,
-        duplicates: 0,
-        failed: 0,
-        currentTitle: files[0]?.name || title,
-        items: files.map((f, idx) => ({
-          title: f.name,
-          status: (idx === 0 ? 'UPLOADING' : 'PENDING') as IngestionProgressItem['status'],
-        })),
-        startedAt: new Date().toISOString(),
-      },
-    },
+  const newProgressItems: IngestionProgressItem[] = files.map((f, idx) => ({
+    id: initialProcessingItems[idx]!.id,
+    title: f.name,
+    status: (idx === 0 ? 'UPLOADING' : 'PENDING') as IngestionProgressItem['status'],
   }));
+
+  store.setState((s) => {
+    const hasActiveBatch = Boolean(!s.state.isComplete && s.state.data && s.state.data.items.length > 0);
+    const mergedItems = hasActiveBatch
+      ? [...s.state.data!.items, ...newProgressItems]
+      : newProgressItems;
+    const total = mergedItems.length;
+    const succeeded = mergedItems.filter((i) => i.status === 'SUCCEEDED').length;
+    const failed = mergedItems.filter((i) => i.status === 'FAILED').length;
+    const processed = succeeded + failed;
+    const percentage = total > 0 ? Math.round((processed / total) * 100) : 0;
+
+    return {
+      processingItems: [
+        ...s.processingItems.filter(
+          (p) =>
+            !initialProcessingItems.some(
+              (n) => n.fileName === p.fileName && n.fileSize === p.fileSize,
+            ),
+        ),
+        ...initialProcessingItems,
+      ],
+      state: {
+        isOpen: hasActiveBatch && s.state.isMinimized ? false : true,
+        isMinimized: hasActiveBatch ? s.state.isMinimized : false,
+        runId: hasActiveBatch ? s.state.runId || runId : runId,
+        fileName: total === 1 ? mergedItems[0]!.title : `${total} documents`,
+        isComplete: false,
+        error: null,
+        data: {
+          runId: hasActiveBatch ? s.state.data!.runId : runId,
+          scopeId,
+          status: 'PROCESSING',
+          total,
+          processed,
+          percentage,
+          succeeded,
+          duplicates: hasActiveBatch ? s.state.data!.duplicates : 0,
+          failed,
+          currentTitle: files[0]?.name || title,
+          items: mergedItems,
+          startedAt: hasActiveBatch ? s.state.data!.startedAt : new Date().toISOString(),
+        },
+      },
+    };
+  });
 }
 
 import {
@@ -140,13 +154,14 @@ export async function executeBatchUpload(
   let successCount = 0;
   let failCount = 0;
   const effectiveCollection = collectionId || undefined;
+  const uploadedCache = new Map<File, Awaited<ReturnType<typeof UploadService.uploadMultipart>>>();
 
-  const markFileFailed = (file: File, index: number, provisionalId: string, errorMsg: string) => {
+  const markFileFailed = (_file: File, _index: number, provisionalId: string, errorMsg: string) => {
     failCount++;
     completedCount++;
     store.setState((s) => {
-      const items = s.state.data?.items.map((i: IngestionProgressItem, idx: number) =>
-        idx === index
+      const items = (s.state.data?.items || []).map((i: IngestionProgressItem) =>
+        i.id === provisionalId
           ? {
               ...i,
               status: 'FAILED' as const,
@@ -154,7 +169,11 @@ export async function executeBatchUpload(
             }
           : i,
       );
-      const percentage = Math.round((completedCount / files.length) * 100);
+      const total = items.length || files.length;
+      const succeeded = items.filter((i) => i.status === 'SUCCEEDED').length;
+      const failed = items.filter((i) => i.status === 'FAILED').length;
+      const processed = succeeded + failed;
+      const percentage = total > 0 ? Math.round((processed / total) * 100) : 100;
       return {
         processingItems: s.processingItems.filter((p) => p.id !== provisionalId),
         state: s.state.data
@@ -162,9 +181,11 @@ export async function executeBatchUpload(
               ...s.state,
               data: {
                 ...s.state.data,
-                items: items || [],
-                processed: completedCount,
-                failed: failCount,
+                items,
+                total,
+                processed,
+                succeeded,
+                failed,
                 percentage,
               },
             }
@@ -174,8 +195,8 @@ export async function executeBatchUpload(
   };
 
   const markFileSucceeded = (
-    file: File,
-    index: number,
+    _file: File,
+    _index: number,
     provisionalId: string,
     extractedTitle: string,
     finalItemId?: string,
@@ -184,12 +205,16 @@ export async function executeBatchUpload(
     successCount++;
     completedCount++;
     store.setState((s) => {
-      const items = s.state.data?.items.map((i: IngestionProgressItem, idx: number) =>
-        idx === index
-          ? { ...i, status: 'SUCCEEDED' as const, itemName: extractedTitle }
+      const items = (s.state.data?.items || []).map((i: IngestionProgressItem) =>
+        i.id === provisionalId
+          ? { ...i, status: 'SUCCEEDED' as const, itemName: extractedTitle, itemId: finalItemId }
           : i,
       );
-      const percentage = Math.round((completedCount / files.length) * 100);
+      const total = items.length || files.length;
+      const succeeded = items.filter((i) => i.status === 'SUCCEEDED').length;
+      const failed = items.filter((i) => i.status === 'FAILED').length;
+      const processed = succeeded + failed;
+      const percentage = total > 0 ? Math.round((processed / total) * 100) : 100;
       return {
         ...(updateProvisional
           ? {
@@ -211,9 +236,11 @@ export async function executeBatchUpload(
               ...s.state,
               data: {
                 ...s.state.data,
-                items: items || [],
-                processed: completedCount,
-                succeeded: successCount,
+                items,
+                total,
+                processed,
+                succeeded,
+                failed,
                 percentage,
               },
             }
@@ -222,34 +249,15 @@ export async function executeBatchUpload(
     });
   };
 
-  const fsms = new Map<string, DocumentFlowStateMachine>();
-  files.forEach((file, idx) => {
-    const provisionalId = initialProcessingItems[idx]!.id;
-    const fsm = new DocumentFlowStateMachine(provisionalId, file.name, file.size);
-    fsm.transition({
-      type: 'QUEUE',
-      provisionalId,
-      fileName: file.name,
-      fileSize: file.size,
-    });
-    fsms.set(provisionalId, fsm);
-  });
-
   const processFile = async (entry: { file: File; index: number; provisionalId: string }) => {
     const { file, index, provisionalId } = entry;
     const lowerName = file.name.toLowerCase();
-    const fsm = fsms.get(provisionalId);
-
-    if (fsm?.state === 'FAILED' || fsm?.state === 'CANCELLED') {
-      fsm.transition({ type: 'RETRY' });
-    }
-    fsm?.transition({ type: 'START_UPLOAD' });
 
     // Set item to UPLOADING
     store.setState((s) => {
       if (!s.state.data) return s;
-      const items = s.state.data.items.map((i: IngestionProgressItem, idx: number) =>
-        idx === index ? { ...i, status: 'UPLOADING' as const, error: undefined } : i,
+      const items = s.state.data.items.map((i: IngestionProgressItem) =>
+        i.id === provisionalId ? { ...i, status: 'UPLOADING' as const, error: undefined } : i,
       );
       return {
         state: {
@@ -260,15 +268,20 @@ export async function executeBatchUpload(
     });
 
     try {
-      // Branch A: Textual Bibliography Files (.bib, .bibtex, .ris)
+      // Branch A: Textual Bibliography Files (.bib, .bibtex, .ris, .json, .csl.json, .xml, .mods, .rdf, .nbib, .medline, .csv)
       const isBib = lowerName.endsWith('.bib') || lowerName.endsWith('.bibtex');
       const isRis = lowerName.endsWith('.ris');
+      const isCslJson = lowerName.endsWith('.json') || lowerName.endsWith('.csl.json');
+      const isMods = lowerName.endsWith('.mods');
+      const isRdf = lowerName.endsWith('.rdf');
+      const isXml = lowerName.endsWith('.xml');
+      const isMedline = lowerName.endsWith('.nbib') || lowerName.endsWith('.medline');
+      const isCsv = lowerName.endsWith('.csv');
 
-      if (isBib || isRis) {
-        const source = isBib ? 'bibtex' : 'ris';
+      if (isBib || isRis || isCslJson || isMods || isRdf || isXml || isMedline || isCsv) {
         store.setState((s) => {
-          const items = (s.state.data?.items || []).map((i: IngestionProgressItem, idx: number) =>
-            idx === index ? { ...i, status: 'PROCESSING' as const } : i,
+          const items = (s.state.data?.items || []).map((i: IngestionProgressItem) =>
+            i.id === provisionalId ? { ...i, status: 'PROCESSING' as const } : i,
           );
           return {
             processingItems: s.processingItems.map((p) =>
@@ -279,6 +292,31 @@ export async function executeBatchUpload(
         });
 
         const content = await file.text();
+        let source:
+          | 'bibtex'
+          | 'ris'
+          | 'csl_json'
+          | 'endnote_xml'
+          | 'mods'
+          | 'zotero_rdf'
+          | 'medline'
+          | 'csv' = 'bibtex';
+        if (isBib) source = 'bibtex';
+        else if (isRis) source = 'ris';
+        else if (isCslJson) source = 'csl_json';
+        else if (isMods) source = 'mods';
+        else if (isRdf) source = 'zotero_rdf';
+        else if (isMedline) source = 'medline';
+        else if (isCsv) source = 'csv';
+        else if (isXml) {
+          if (/<(?:mods:)?mods(?:Collection)?[\s>]/i.test(content)) {
+            source = 'mods';
+          } else if (/<rdf:RDF[\s>]/i.test(content)) {
+            source = 'zotero_rdf';
+          } else {
+            source = 'endnote_xml';
+          }
+        }
         const res = await IngestionService.ingest(scopeId, {
           source,
           content,
@@ -303,7 +341,6 @@ export async function executeBatchUpload(
           itemPayload?.id || resRecord?.data?.itemId || resRecord?.itemId;
 
         if (bibRunId) {
-          fsm?.transition({ type: 'START_EXTRACTION', runId: bibRunId });
           const pollOutcome = await pollIngestionRunCompletion(
             scopeId,
             bibRunId,
@@ -319,37 +356,35 @@ export async function executeBatchUpload(
           resolvedItemId = pollOutcome.itemId || resolvedItemId;
         }
 
-        fsm?.transition({
-          type: 'COMPLETE',
-          itemId: resolvedItemId || provisionalId,
-          title: extractedTitle,
-        });
         markFileSucceeded(file, index, provisionalId, extractedTitle, resolvedItemId, true);
         return;
       }
 
       // Branch B: Binary / PDF Upload + Metadata Extraction
-      const uploadRes = await UploadService.uploadMultipart(scopeId, file, {
-        onProgress: (percent: number) => {
-          fsm?.transition({ type: 'UPLOAD_PROGRESS', progress: percent });
-          store.setState((s) => ({
-            processingItems: s.processingItems.map((p) =>
-              p.id === provisionalId ? { ...p, progress: percent } : p,
-            ),
-          }));
-        },
-      });
+      let uploadRes = uploadedCache.get(file);
+      if (!uploadRes) {
+        uploadRes = await UploadService.uploadMultipart(scopeId, file, {
+          onProgress: (percent: number) => {
+            store.setState((s) => ({
+              processingItems: s.processingItems.map((p) =>
+                p.id === provisionalId ? { ...p, progress: percent } : p,
+              ),
+            }));
+          },
+        });
+        if (uploadRes?.fileId) {
+          uploadedCache.set(file, uploadRes);
+        }
+      }
 
       if (!uploadRes?.fileId) {
         throw new Error('Upload succeeded without file identifier');
       }
 
-      fsm?.transition({ type: 'UPLOAD_COMPLETED', fileId: uploadRes.fileId });
-
       // Transition to PROCESSING
       store.setState((s) => {
-        const items = s.state.data?.items.map((i: IngestionProgressItem, idx: number) =>
-          idx === index ? { ...i, status: 'PROCESSING' as const } : i,
+        const items = s.state.data?.items.map((i: IngestionProgressItem) =>
+          i.id === provisionalId ? { ...i, status: 'PROCESSING' as const } : i,
         );
         return {
           processingItems: s.processingItems.map((p) =>
@@ -390,7 +425,6 @@ export async function executeBatchUpload(
       let finalItemId = completedItemId;
 
       if (runId) {
-        fsm?.transition({ type: 'START_EXTRACTION', runId });
         const pollOutcome = await pollIngestionRunCompletion(
           scopeId,
           runId,
@@ -403,15 +437,9 @@ export async function executeBatchUpload(
         finalItemId = pollOutcome.itemId || completedItemId;
       }
 
-      fsm?.transition({
-        type: 'COMPLETE',
-        itemId: finalItemId || provisionalId,
-        title: finalTitle,
-      });
       markFileSucceeded(file, index, provisionalId, finalTitle, finalItemId, true);
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Processing failed';
-      fsm?.transition({ type: 'FAIL', error: errorMsg });
       throw err instanceof Error ? err : new Error(errorMsg);
     }
   };
@@ -443,29 +471,44 @@ export async function executeBatchUpload(
   });
   await synchronizeBatchCaches(queryClient, scopeId, effectiveCollection);
 
-  // Ensure all provisional items for this batch are wiped
-  store.setState((s) => ({
-    processingItems: s.processingItems.filter((p) => !batchProvisionalIds.has(p.id)),
-    state: {
-      ...s.state,
-      isComplete: true,
-      error:
-        failCount === files.length && files.length > 0
-          ? 'All files failed to process'
+  // Ensure all provisional items for this batch are wiped and modal reflects aggregate status
+  store.setState((s) => {
+    const remainingProvisional = s.processingItems.filter((p) => !batchProvisionalIds.has(p.id));
+    const allItems = s.state.data?.items || [];
+    const total = allItems.length || files.length;
+    const totalSucceeded = allItems.filter((i) => i.status === 'SUCCEEDED').length;
+    const totalFailed = allItems.filter((i) => i.status === 'FAILED').length;
+    const totalProcessed = totalSucceeded + totalFailed;
+    const allDone = remainingProvisional.length === 0 && totalProcessed >= total;
+
+    return {
+      processingItems: remainingProvisional,
+      state: {
+        ...s.state,
+        isComplete: allDone,
+        error:
+          allDone && totalFailed === total && total > 0
+            ? 'All files failed to process'
+            : null,
+        data: s.state.data
+          ? {
+              ...s.state.data,
+              status: !allDone
+                ? 'PROCESSING'
+                : totalFailed === total
+                  ? 'FAILED_FINAL'
+                  : 'COMPLETED',
+              percentage: total > 0 ? Math.round((totalProcessed / total) * 100) : 100,
+              total,
+              processed: totalProcessed,
+              succeeded: totalSucceeded,
+              failed: totalFailed,
+              completedAt: allDone ? new Date().toISOString() : undefined,
+            }
           : null,
-      data: s.state.data
-        ? {
-            ...s.state.data,
-            status: failCount === files.length ? 'FAILED_FINAL' : 'COMPLETED',
-            percentage: 100,
-            processed: files.length,
-            succeeded: successCount,
-            failed: failCount,
-            completedAt: new Date().toISOString(),
-          }
-        : null,
-    },
-  }));
+      },
+    };
+  });
 
   if (successCount > 0) {
     toast.success(

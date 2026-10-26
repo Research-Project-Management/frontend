@@ -27,7 +27,9 @@ export {
 } from './metadata-extra';
 
 export {
+  ALL_SCHEMA_PROMOTE_KEYS,
   mapBackendItem,
+  getAssignedCollectionIds,
   type ProvisionalUploadItemInput,
   createProvisionalUploadItem,
 } from './metadata-mapper';

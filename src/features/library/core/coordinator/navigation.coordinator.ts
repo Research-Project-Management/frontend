@@ -6,6 +6,7 @@ import type { LibraryOrderBy } from '@/features/library/domain/types/display.typ
 
 export interface LibraryNavigationFilters {
   search?: string;
+  searchMode?: 'title_creator_year' | 'fields_tags' | 'everything';
   filter?: string;
   savedSearchId?: string;
   feedId?: string;
@@ -31,6 +32,13 @@ export function parseLibrarySearchParams(searchParams: {
   getAll?: (name: string) => string[];
 }): LibraryNavigationFilters {
   const search = searchParams.get('q') || undefined;
+  const rawSearchMode = searchParams.get('searchMode');
+  const searchMode =
+    rawSearchMode === 'title_creator_year' ||
+    rawSearchMode === 'fields_tags' ||
+    rawSearchMode === 'everything'
+      ? rawSearchMode
+      : undefined;
   const filter = searchParams.get('filter') || undefined;
   const savedSearchId = searchParams.get('savedSearchId') || undefined;
   const feedId = searchParams.get('feedId') || undefined;
@@ -92,6 +100,7 @@ export function parseLibrarySearchParams(searchParams: {
 
   return {
     search,
+    searchMode,
     filter,
     savedSearchId,
     feedId,
@@ -307,6 +316,7 @@ export function useLibraryNavigation() {
     () => ({
       filters,
       search: filters.search,
+      searchMode: filters.searchMode,
       fromYear: filters.fromYear,
       toYear: filters.toYear,
       type: filters.type,

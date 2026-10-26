@@ -163,7 +163,7 @@ ${outlines}
           )}
 
           {(onRefreshFeed || onMarkAllFeedRead) && (
-            <DropdownMenuSeparator className="my-1 mx-1" />
+            <DropdownMenuSeparator className="my-1" />
           )}
 
           <DropdownMenuItem
@@ -190,7 +190,7 @@ ${outlines}
             <span>Export Feeds to OPML</span>
           </DropdownMenuItem>
 
-          <DropdownMenuSeparator className="my-1 mx-1" />
+          <DropdownMenuSeparator className="my-1" />
 
           <DropdownMenuItem
             onClick={() => openModal('FEEDS_MANAGER')}

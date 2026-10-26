@@ -14,6 +14,7 @@ import {
   attachmentKeys,
   normalizeScopeId,
 } from "@/features/library/sdk/query-keys";
+import { invalidateLibraryCatalogDependencies } from "./cache-patcher";
 
 export { attachmentKeys };
 
@@ -115,8 +116,9 @@ export function useAttachments(
       queryClient.invalidateQueries({
         queryKey: attachmentKeys.byItem(scopeId, itemId),
       });
-      queryClient.invalidateQueries({
-        queryKey: itemKeys.all(scopeId),
+      invalidateLibraryCatalogDependencies(queryClient, scopeId, {
+        itemId,
+        itemsList: true,
       });
       toast.success("Web Snapshot captured", { id: "snapshot-mutation" });
     },
@@ -139,8 +141,9 @@ export function useAttachments(
       queryClient.invalidateQueries({
         queryKey: attachmentKeys.byItem(scopeId, itemId),
       });
-      queryClient.invalidateQueries({
-        queryKey: itemKeys.all(scopeId),
+      invalidateLibraryCatalogDependencies(queryClient, scopeId, {
+        itemId,
+        itemsList: true,
       });
       toast.success("Set as primary document", {
         id: "primary-attachment-mutation",
@@ -203,6 +206,36 @@ export function useRenameAttachment(scopeId?: string) {
       toast.error("Rename failed", {
         description: err.message || "Could not rename file.",
         id: "attachment-rename",
+      });
+    },
+  });
+}
+
+// useBatchRenameAttachmentsMutation
+export function useBatchRenameAttachmentsMutation(scopeId?: string) {
+  const queryClient = useQueryClient();
+  const effectiveScope = normalizeScopeId(scopeId);
+
+  return useMutation({
+    mutationFn: (dto: {
+      itemIds?: string[];
+      attachmentIds?: string[];
+      pattern?: string;
+    }) => libraryServices.attachments.batchRename(effectiveScope, dto),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({
+        queryKey: libraryKeys.attachments(effectiveScope),
+      });
+      queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
+      toast.success("Attachments renamed", {
+        description: `Renamed ${res.renamedCount ?? 0} attachment(s) from parent metadata.`,
+        id: "attachment-batch-rename",
+      });
+    },
+    onError: (err: Error) => {
+      toast.error("Batch rename failed", {
+        description: err.message || "Could not batch rename attachments.",
+        id: "attachment-batch-rename",
       });
     },
   });

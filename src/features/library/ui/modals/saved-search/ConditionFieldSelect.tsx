@@ -224,7 +224,7 @@ export function ConditionFieldSelect({
               )}
 
               {filteredAZ.length > 0 && (
-                <div className="space-y-0.5 pt-1 border-t border-border">
+                <div className="-mx-1 px-1 space-y-0.5 pt-1 border-t border-border">
                   <div className="px-2 pt-1 pb-0.5 text-10 font-semibold text-muted-foreground uppercase tracking-wider select-none">
                     All Fields (A–Z)
                   </div>

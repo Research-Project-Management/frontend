@@ -124,7 +124,7 @@ export function ProjectLibrariesSection({
           type="button"
           onClick={() => setIsProjectsExpanded((v) => !v)}
           className={cn(
-            "group/item relative flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 outline-none select-none pr-8 cursor-pointer text-left",
+            "group/item relative flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none select-none pr-8 cursor-pointer text-left",
             activeScope.type === 'project'
               ? "bg-muted text-foreground font-medium"
               : "text-foreground hover:bg-muted group-hover/root:bg-muted font-normal"
@@ -146,7 +146,7 @@ export function ProjectLibrariesSection({
                 setIsProjectsExpanded((v) => !v);
               }}
               aria-label={isProjectsExpanded ? 'Collapse Project Libraries' : 'Expand Project Libraries'}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 z-20 flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground border border-transparent hover:border-border/50 hover:bg-background cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 z-20 flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground border border-transparent hover:border-border/50 hover:bg-background cursor-pointer transition-colors duration-150 outline-none focus-visible:ring-1 focus-visible:ring-primary before:absolute before:-inset-2 md:before:hidden"
             >
               <ChevronRight
                 className={cn(
@@ -204,10 +204,10 @@ export function ProjectLibrariesSection({
                       });
                     }}
                     className={cn(
-                      "group/item relative flex h-8 w-full items-center gap-2.5 rounded-md pr-2.5 pl-6 text-13 leading-5 outline-none select-none text-left cursor-pointer",
+                      "group/item relative flex h-8 w-full items-center gap-2.5 rounded-md pr-2.5 pl-6 text-13 leading-5 transition-colors outline-none select-none text-left cursor-pointer",
                       isProjectActive
                         ? "bg-muted text-foreground font-medium"
-                        : "text-foreground hover:bg-muted group-hover/root:bg-muted has-[[data-state=open]]:bg-muted font-normal",
+                        : "text-foreground hover:bg-muted has-[[data-state=open]]:bg-muted font-normal",
                     )}
                   >
                     <Folder className="relative z-10 size-4 shrink-0 text-foreground" strokeWidth={1.5} />

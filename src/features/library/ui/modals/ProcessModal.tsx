@@ -257,7 +257,7 @@ export default function ProcessModal({
 
                     return (
                       <div
-                        key={item.title || idx}
+                        key={item.id || item.title || idx}
                         className="grid grid-cols-[40%_60%] px-3.5 py-2.5 items-center gap-3 hover:bg-muted transition-colors"
                       >
                         {/* Column 1: Attachment Name */}

@@ -1,7 +1,10 @@
 import { useCallback } from "react";
 import { toast } from "sonner";
 import { useLibraryUIStore } from "@/features/library/core/store/library-ui.store";
-import { useLibraryCommandStore } from "@/features/library/core/manager/library-command.manager";
+import {
+  useLibraryCommandStore,
+  createTrashCommand,
+} from "@/features/library/core/manager/library-command.manager";
 import { normalizeTags } from "@/features/library/domain/metadata";
 import type { Item } from "@/features/library/domain/types/library.types";
 
@@ -15,6 +18,8 @@ export interface UseLibraryKeyboardShortcutsOptions {
   onDetachItem?: (id: string) => void;
   handleOpenItem: (itemId: string) => void;
   deleteItems: (ids: string[]) => void;
+  deleteMutation?: { mutateAsync?: (ids: string[]) => Promise<unknown> };
+  restoreMutation?: { mutateAsync?: (ids: string[]) => Promise<unknown> };
   updateItemMutation: {
     mutateAsync: (args: { itemId: string; data: { tags: string[] }; silent?: boolean }) => Promise<unknown>;
   };
@@ -42,6 +47,8 @@ export function useLibraryKeyboardShortcuts({
   onDetachItem,
   handleOpenItem,
   deleteItems,
+  deleteMutation,
+  restoreMutation,
   updateItemMutation,
   lastSelectedIndexRef,
 }: UseLibraryKeyboardShortcutsOptions) {
@@ -53,6 +60,21 @@ export function useLibraryKeyboardShortcuts({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable ||
+          target.tagName === 'BUTTON' ||
+          target.closest('button') ||
+          target.closest('[role="menu"]') ||
+          target.closest('[role="menuitem"]') ||
+          target.closest('[role="dialog"]') ||
+          target.closest('[role="combobox"]'))
+      ) {
+        return;
+      }
       if (!sortedItems.length) return;
       const currentActiveId = useLibraryUIStore.getState().activeItemId;
       const currentIndex = sortedItems.findIndex((it) => it.id === currentActiveId);
@@ -118,6 +140,19 @@ export function useLibraryKeyboardShortcuts({
           } else if (onDetachItem && collectionId && !e.shiftKey) {
             ids.forEach((id) => onDetachItem(id));
             clearSelection();
+          } else if (deleteMutation?.mutateAsync && restoreMutation?.mutateAsync) {
+            const firstItem = ids.length === 1 ? itemsById.get(ids[0]!) : undefined;
+            void useLibraryCommandStore.getState().executeCommand(
+              createTrashCommand({
+                itemIds: ids,
+                itemTitle: firstItem?.title,
+                deleteMutation: { mutateAsync: deleteMutation.mutateAsync },
+                restoreMutation: { mutateAsync: restoreMutation.mutateAsync },
+                onExecuted: () => {
+                  clearSelection();
+                },
+              }),
+            );
           } else {
             deleteItems(ids);
             clearSelection();
@@ -206,6 +241,8 @@ export function useLibraryKeyboardShortcuts({
       onDetachItem,
       handleOpenItem,
       deleteItems,
+      deleteMutation,
+      restoreMutation,
       updateItemMutation,
       setActiveItem,
       toggleSelect,

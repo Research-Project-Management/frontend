@@ -19,6 +19,7 @@ import type { TreeNode } from './sidebar.types';
 import type { Collection } from '@/features/library/domain/types/library.types';
 import { getValidMoveTargets } from '@/features/library/domain/collection-tree.domain';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import { executeExportCollectionFormat } from '@/features/library/core/coordinator/citation-export.coordinator';
 
 interface CollectionContextMenuProps {
   node: TreeNode;
@@ -174,6 +175,67 @@ export function CollectionContextMenu({
           <FileJson className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
           <span>Export Bundle (.json)</span>
         </DropdownMenuItem>
+
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors">
+            <FileCode className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+            <span>More Export Formats</span>
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent className="w-56 p-1.5 rounded-md border border-border bg-popover text-popover-foreground text-13 shadow-raised-200 space-y-0.5 select-none">
+            <DropdownMenuItem
+              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted"
+              onClick={() =>
+                void executeExportCollectionFormat(
+                  node.id,
+                  node.name,
+                  isProjectScope ? activeScope.id : 'user',
+                  'ris',
+                )
+              }
+            >
+              <span>Export RIS (.ris)</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted"
+              onClick={() =>
+                void executeExportCollectionFormat(
+                  node.id,
+                  node.name,
+                  isProjectScope ? activeScope.id : 'user',
+                  'csl_json',
+                )
+              }
+            >
+              <span>Export CSL-JSON (.json)</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted"
+              onClick={() =>
+                void executeExportCollectionFormat(
+                  node.id,
+                  node.name,
+                  isProjectScope ? activeScope.id : 'user',
+                  'csv',
+                )
+              }
+            >
+              <span>Export CSV (.csv)</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted"
+              onClick={() =>
+                void executeExportCollectionFormat(
+                  node.id,
+                  node.name,
+                  isProjectScope ? activeScope.id : 'user',
+                  'markdown',
+                )
+              }
+            >
+              <span>Export Markdown (.md)</span>
+            </DropdownMenuItem>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
 
         {canManageCollections && (
           <>

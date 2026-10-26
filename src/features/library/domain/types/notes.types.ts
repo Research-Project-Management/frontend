@@ -29,20 +29,21 @@ export const noteListResponseSchema = z.object({
 });
 
 export const createNoteSchema = z.object({
-  projectId: z.string().optional(),
+  projectId: z.string().nullable().optional(),
   itemId: z.string().nullable().optional(),
   title: z.string().optional().default('Untitled Note'),
-  contentJson: z.record(z.string(), z.unknown()).optional(),
+  contentJson: z.record(z.string(), z.unknown()).nullable().optional(),
   contentMd: z.string().optional().default(''),
   tags: z.array(z.string()).optional().default([]),
 });
 
 export const updateNoteSchema = z.object({
   title: z.string().optional(),
-  contentJson: z.record(z.string(), z.unknown()).optional(),
+  contentJson: z.record(z.string(), z.unknown()).nullable().optional(),
   contentMd: z.string().optional(),
   tags: z.array(z.string()).optional(),
-  version: z.number().optional(),
+  version: z.number().int().optional(),
+  expectedVersion: z.number().int().optional(),
 });
 
 export type Note = z.infer<typeof noteSchema>;

@@ -312,6 +312,23 @@ export const ItemsService = {
       {},
     ).then((res) => res?.data || res || { success: true }),
 
+  reResolve: (
+    scopeId: string | undefined,
+    itemId: string,
+    options?: { attachOaPdf?: boolean; forceRefresh?: boolean },
+  ) =>
+    libraryClient.post<{
+      success: boolean;
+      updatedFields?: string[];
+      oaPdfAttached?: boolean;
+      oaPdfUrl?: string;
+      item?: Item;
+      data?: Item;
+    }>(
+      getCatalogUrl(scopeId || 'user', `${encodeURIComponent(itemId)}/re-resolve`),
+      { attachOaPdf: true, ...options },
+    ),
+
   getItemTypes: (_scopeId?: string) =>
     libraryClient.get<Record<string, unknown>>(
       `/api/v1/library/item-types`,

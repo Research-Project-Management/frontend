@@ -62,6 +62,10 @@ vi.mock('@/features/library/core/store/library-ui.store', () => ({
 }));
 
 vi.mock('@/features/library/sdk/queries/catalog.queries', () => ({
+  useLibraryCacheSynchronizer: vi.fn().mockReturnValue({
+    resolveCachedItem: vi.fn().mockReturnValue(null),
+    patchItemInAllQueries: vi.fn(),
+  }),
   useLibraryItemDetailQuery: vi.fn().mockReturnValue({
     data: {
       id: 'test-paper-1',

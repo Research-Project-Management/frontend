@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { retractionNatureSchema } from './retraction.types';
 import { feedRetentionDaysSchema } from './feeds.types';
+import { extractPmcId, parseBatchIdentifiersInput } from '../identifiers';
 
 // ── Collection Form ──────────────────────────────────────────────────────────
 export const collectionFormSchema = z.object({
@@ -35,8 +36,8 @@ const isValidIdentifierOrUrl = (val: string): boolean => {
     return true;
   }
 
-  // 4. PMID: digits (1-9 digits) or pmid:digits
-  if (/^(?:pmid:\s*)?\d{1,9}$/i.test(trimmed)) {
+  // 4. PMID or PMCID: digits (1-9 digits), pmid:digits, or PMCdigits
+  if (/^(?:pmid:\s*)?\d{1,9}$/i.test(trimmed) || Boolean(extractPmcId(trimmed))) {
     return true;
   }
 
@@ -46,6 +47,16 @@ const isValidIdentifierOrUrl = (val: string): boolean => {
     return true;
   }
   if ((cleanDigits.length === 10 || cleanDigits.length === 13) && /^\d+X?$/i.test(cleanDigits)) {
+    return true;
+  }
+
+  // 6. NASA ADS Bibcode (19-character bibliographic code)
+  if (/^(?:bibcode:\s*)?\d{4}[A-Za-z0-9.&]{5}[A-Za-z0-9.]{4}[A-Za-z0-9.][A-Za-z0-9.]{4}[A-Za-z]$/i.test(trimmed)) {
+    return true;
+  }
+
+  // 7. Multi-identifier batch paste or raw BibTeX / RIS
+  if (parseBatchIdentifiersInput(trimmed).length > 0) {
     return true;
   }
 
@@ -92,6 +103,8 @@ export const addFeedSchema = z.object({
     .url('Please enter a valid HTTP or HTTPS feed URL'),
   name: z.string().optional(),
   retentionDays: feedRetentionDaysSchema,
+  cleanupReadAfter: feedRetentionDaysSchema.optional(),
+  cleanupUnreadAfter: feedRetentionDaysSchema.optional(),
 });
 
 export type AddFeedFormValues = z.infer<typeof addFeedSchema>;
@@ -104,6 +117,8 @@ export const editFeedSchema = z.object({
     .url('Please enter a valid HTTP or HTTPS feed URL'),
   name: z.string().trim().min(1, 'Feed title is required'),
   retentionDays: feedRetentionDaysSchema,
+  cleanupReadAfter: feedRetentionDaysSchema.optional(),
+  cleanupUnreadAfter: feedRetentionDaysSchema.optional(),
 });
 
 export type EditFeedFormValues = z.infer<typeof editFeedSchema>;

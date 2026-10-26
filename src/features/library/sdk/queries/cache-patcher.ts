@@ -8,6 +8,7 @@ import type { Item } from '@/features/library/domain/types/library.types';
 import type { InvalidationClient } from '@/features/library/domain/types/batch-upload.types';
 import {
   itemKeys,
+  tagKeys,
   invalidateCollections,
   normalizeScopeId,
 } from '@/features/library/sdk/query-keys';
@@ -178,9 +179,81 @@ export function patchSingleItemCache<T>(
   return updatedItem as unknown as T;
 }
 
+function isTrashQueryKey(queryKey: readonly unknown[]): boolean {
+  if (queryKey[2] === 'trash' || queryKey[3] === 'trash') return true;
+  const params = queryKey[3];
+  if (params && typeof params === 'object' && (params as { view?: unknown }).view === 'trash') {
+    return true;
+  }
+  return false;
+}
+
+function doesItemMatchQueryFilter(
+  item: Item,
+  params: Record<string, unknown> | undefined,
+): boolean {
+  if (!params || typeof params !== 'object') return true;
+  const view = typeof params.view === 'string' ? params.view : undefined;
+  const starredParam = params.starred;
+  const collectionId = typeof params.collectionId === 'string' ? params.collectionId : undefined;
+  const unfiled = Boolean(params.unfiled) || view === 'unfiled';
+  const isStarredFilter = Boolean(starredParam) || view === 'starred';
+  const isMyPublicationsFilter = view === 'my-publications' || view === 'publications';
+  const isRetractedFilter = view === 'retracted';
+
+  if (item.deletedAt) {
+    return view === 'trash';
+  }
+  if (view === 'trash') {
+    return Boolean(item.deletedAt);
+  }
+  if (isStarredFilter && !(item.isStarred || item.isFavorite)) {
+    return false;
+  }
+  if (unfiled && Array.isArray(item.collectionIds) && item.collectionIds.length > 0) {
+    return false;
+  }
+  if (collectionId) {
+    const colIds = Array.isArray(item.collectionIds) ? item.collectionIds : [];
+    const singleColId = (item as { collectionId?: string }).collectionId;
+    if (!colIds.includes(collectionId) && singleColId !== collectionId) {
+      return false;
+    }
+  }
+  if (isMyPublicationsFilter && !item.isMyPublication) {
+    return false;
+  }
+  if (isRetractedFilter && !(item.isRetracted || item.retractionStatus === 'retracted')) {
+    return false;
+  }
+  return true;
+}
+
+function hasMembershipFieldsChanged(oldItem: Item | null, updatedItem: Item): boolean {
+  if (!oldItem) return true;
+  if (Boolean(oldItem.isStarred || oldItem.isFavorite) !== Boolean(updatedItem.isStarred || updatedItem.isFavorite)) {
+    return true;
+  }
+  if (Boolean(oldItem.deletedAt) !== Boolean(updatedItem.deletedAt)) {
+    return true;
+  }
+  if ((oldItem as { status?: string }).status !== (updatedItem as { status?: string }).status) {
+    return true;
+  }
+  if ((oldItem as { collectionId?: string }).collectionId !== (updatedItem as { collectionId?: string }).collectionId) {
+    return true;
+  }
+  const oldCols = Array.isArray(oldItem.collectionIds) ? oldItem.collectionIds : [];
+  const nextCols = Array.isArray(updatedItem.collectionIds) ? updatedItem.collectionIds : [];
+  if (oldCols.length !== nextCols.length || oldCols.some((c, i) => c !== nextCols[i])) {
+    return true;
+  }
+  return false;
+}
+
 /**
  * Deterministically patches both the item detail cache and all active item list caches
- * within a given scopeId.
+ * within a given scopeId, while maintaining Trash and filtered list cache integrity.
  */
 export function patchItemAcrossScopeCaches(
   queryClient: QueryClient,
@@ -189,17 +262,69 @@ export function patchItemAcrossScopeCaches(
   patch: Partial<Item> | ((item: Item) => Item),
 ): void {
   const effectiveScope = normalizeScopeId(scopeId);
+  const oldItem = resolveCachedItemFromScope(queryClient, effectiveScope, itemId);
+  const resolvedUpdatedItem: Item = oldItem
+    ? typeof patch === 'function'
+      ? patch(oldItem)
+      : { ...oldItem, ...patch }
+    : typeof patch === 'function'
+      ? patch({ id: itemId } as Item)
+      : ({ id: itemId, ...patch } as Item);
+
   queryClient.setQueryData(
     itemKeys.byId(effectiveScope, itemId),
     (old: unknown) => patchSingleItemCache(old, patch),
   );
-  queryClient.setQueriesData(
-    {
+
+  const isActiveItem = !resolvedUpdatedItem.deletedAt;
+  const membershipChanged = hasMembershipFieldsChanged(oldItem, resolvedUpdatedItem);
+  const targetIdSet = new Set([itemId]);
+
+  const listQueries = queryClient.getQueriesData({
+    queryKey: itemKeys.all(effectiveScope),
+    predicate: (query) => query.queryKey[3] !== 'detail',
+  });
+
+  for (const [queryKey, queryData] of listQueries) {
+    if (queryData === undefined) continue;
+
+    // 1. If item is active (!deletedAt) and this is a Trash cache, evict the restored item from Trash!
+    if (isActiveItem && isTrashQueryKey(queryKey)) {
+      const nextData = removeItemsFromCacheData(queryData, targetIdSet);
+      if (nextData !== queryData) {
+        queryClient.setQueryData(queryKey, nextData);
+      }
+      continue;
+    }
+
+    // 2. Check filtered list queries when membership-affecting fields changed
+    const rawParams =
+      queryKey[3] && typeof queryKey[3] === 'object'
+        ? (queryKey[3] as Record<string, unknown>)
+        : queryKey[2] === 'list' && queryKey[3] && typeof queryKey[3] === 'object'
+          ? (queryKey[3] as Record<string, unknown>)
+          : undefined;
+
+    if (rawParams && !doesItemMatchQueryFilter(resolvedUpdatedItem, rawParams)) {
+      const nextData = removeItemsFromCacheData(queryData, targetIdSet);
+      if (nextData !== queryData) {
+        queryClient.setQueryData(queryKey, nextData);
+      }
+      continue;
+    }
+
+    const nextData = patchItemInCacheData(queryData, itemId, patch);
+    if (nextData !== queryData) {
+      queryClient.setQueryData(queryKey, nextData);
+    }
+  }
+
+  if (membershipChanged) {
+    void queryClient.invalidateQueries({
       queryKey: itemKeys.all(effectiveScope),
-      predicate: (query) => query.queryKey[3] !== 'detail',
-    },
-    (old) => patchItemInCacheData(old, itemId, patch),
-  );
+      refetchType: 'active',
+    });
+  }
 }
 
 /**
@@ -264,11 +389,14 @@ export function removeItemsFromCacheData(
 /**
  * Deterministically removes deleted/purged items from both the item detail cache
  * and all active item list caches within a given scopeId.
+ * Soft-deleted items are NOT evicted from `itemKeys.trash(scopeId)`; instead,
+ * the trash cache is invalidated so opening Trash displays newly deleted items.
  */
 export function removeItemsFromScopeCaches(
   queryClient: QueryClient,
   scopeId: string,
   itemIds: string | string[],
+  options?: { permanent?: boolean },
 ): void {
   const effectiveScope = normalizeScopeId(scopeId);
   const ids = Array.isArray(itemIds) ? itemIds : [itemIds];
@@ -286,10 +414,69 @@ export function removeItemsFromScopeCaches(
   queryClient.setQueriesData(
     {
       queryKey: itemKeys.all(effectiveScope),
-      predicate: (query) => query.queryKey[3] !== 'detail',
+      predicate: (query) =>
+        query.queryKey[3] !== 'detail' &&
+        (Boolean(options?.permanent) || !isTrashQueryKey(query.queryKey)),
     },
     (old) => removeItemsFromCacheData(old, idSet),
   );
+
+  void queryClient.invalidateQueries({
+    queryKey: itemKeys.trash(effectiveScope),
+  });
+}
+
+export const evictItemFromScopeCaches = removeItemsFromScopeCaches;
+
+/**
+ * Reusable post-mutation invalidation helper that normalizes scopeId and
+ * invalidates requested catalog key families (item detail, items list, counts, collections, tags).
+ */
+export function invalidateLibraryCatalogDependencies(
+  queryClient: InvalidationClient,
+  scopeId?: string,
+  options: {
+    itemId?: string;
+    collections?: boolean;
+    tags?: boolean;
+    counts?: boolean;
+    itemsList?: boolean;
+  } = {},
+): Promise<unknown[]> {
+  const effectiveScope = normalizeScopeId(scopeId);
+  const {
+    itemId,
+    collections = false,
+    tags = false,
+    counts = false,
+    itemsList = true,
+  } = options;
+
+  const tasks: Array<Promise<unknown> | void> = [];
+  if (itemId) {
+    tasks.push(
+      queryClient.invalidateQueries({ queryKey: itemKeys.byId(effectiveScope, itemId) }),
+    );
+  }
+  if (itemsList) {
+    tasks.push(
+      queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) }),
+    );
+  }
+  if (counts && !collections) {
+    tasks.push(
+      queryClient.invalidateQueries({ queryKey: itemKeys.counts(effectiveScope) }),
+    );
+  }
+  if (collections) {
+    tasks.push(invalidateCollections(queryClient, effectiveScope));
+  }
+  if (tags) {
+    tasks.push(
+      queryClient.invalidateQueries({ queryKey: tagKeys.list(effectiveScope) }),
+    );
+  }
+  return Promise.all(tasks);
 }
 
 /**

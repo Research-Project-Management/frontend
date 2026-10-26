@@ -13,14 +13,13 @@ import {
   useCollections,
   useCollectionsQuery,
   useMoveCollectionItemsMutation,
+  useAssignCollectionItemsMutation,
 } from '@/features/library/sdk/queries/collections.queries';
 import { useSavedSearches } from '@/features/library/sdk/queries/saved-searches-relations.queries';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { useLibraryPermissions } from '@/features/library/core/coordinator/permissions.coordinator';
 import { useLibraryProjectContext } from '@/features/library/core/adapters/project-context.adapter';
 
-import CreateCollectionModal from '@/features/library/ui/modals/CreateCollectionModal';
-import DeleteModal from '@/features/library/ui/modals/DeleteModal';
 import type { SavedSearch } from '@/features/library/domain/types/saved-searches.types';
 
 import { buildTree, filterCollections } from '@/features/library/domain/collection-tree.domain';
@@ -58,6 +57,7 @@ export function LibrarySidebar() {
   const projectId = isInProjectContext ? activeScope.id : '';
   const effectiveScopeId = isInProjectContext ? activeScope.id : 'user';
   const moveMutation = useMoveCollectionItemsMutation(effectiveScopeId);
+  const assignMutation = useAssignCollectionItemsMutation(effectiveScopeId);
 
   const userCollectionsQuery = useCollectionsQuery('user');
   const projectCollectionsQuery = useCollectionsQuery(projectId, {
@@ -211,7 +211,11 @@ export function LibrarySidebar() {
   );
 
   const handleBatchMoveItems = useCallback(
-    async (ids: string[], targetCollectionId: string | null) => {
+    async (
+      ids: string[],
+      targetCollectionId: string | null,
+      options?: { copy?: boolean; move?: boolean },
+    ) => {
       if (!ids.length) return;
       let targetScopeId = effectiveScopeId;
       if (targetCollectionId) {
@@ -222,6 +226,31 @@ export function LibrarySidebar() {
         } else if (isProjCol && projectId) {
           targetScopeId = projectId;
         }
+      }
+
+      if (options?.copy && targetCollectionId) {
+        const toastId = toast.loading(`Adding ${ids.length} item(s) to collection...`, {
+          id: 'batch-move',
+        });
+        try {
+          await assignMutation.mutateAsync({
+            collectionId: targetCollectionId,
+            itemIds: ids,
+          });
+          toast.success('Documents added to collection', {
+            description: `Added ${ids.length} item(s) while keeping existing collections.`,
+            id: toastId,
+          });
+        } catch (err: unknown) {
+          toast.error('Failed to add items to collection', {
+            description:
+              err instanceof Error
+                ? err.message
+                : 'Could not add selected documents.',
+            id: toastId,
+          });
+        }
+        return;
       }
 
       const toastId = toast.loading(`Moving ${ids.length} item(s)...`, {
@@ -247,7 +276,7 @@ export function LibrarySidebar() {
         });
       }
     },
-    [effectiveScopeId, moveMutation, projectCollections, projectId, userCollections],
+    [assignMutation, effectiveScopeId, moveMutation, projectCollections, projectId, userCollections],
   );
 
   const userTree = useMemo(
@@ -269,7 +298,7 @@ export function LibrarySidebar() {
     [userCollections, projectCollections, projectId],
   );
 
-  const { modals, rename, handlers } = useCollectionCoordinator({
+  const { rename, handlers } = useCollectionCoordinator({
     collectionService,
     effectiveScopeId,
     collections,
@@ -514,73 +543,12 @@ export function LibrarySidebar() {
             </nav>
         </div>
 
-
         {/* Drag Handle for Resizing */}
         <SidebarResizer
           width={sidebarWidth}
           setWidth={setSidebarWidth}
           isDragging={isDragging}
           onMouseDown={handleMouseDown}
-        />
-
-        {/* Modals */}
-        <CreateCollectionModal
-          open={modals.createOpen}
-          onOpenChange={(v: boolean) => {
-            modals.setCreateOpen(v);
-            if (!v) {
-              modals.setCreateParentId(null);
-              modals.setCreateScopeId(null);
-            }
-          }}
-          onSubmit={handlers.handleCreate}
-          isPending={collectionService.isCreating}
-          collections={
-            modals.createScopeId === 'user'
-              ? userCollections
-              : modals.createScopeId && modals.createScopeId !== 'user'
-                ? projectCollections
-                : collections
-          }
-          defaultParentId={modals.createParentId}
-          rootLabel={
-            modals.createScopeId === 'user'
-              ? 'My Library'
-              : activeScope.type === 'project'
-                ? (activeScope.name || 'Project')
-                : 'My Library'
-          }
-          rootType={
-            modals.createScopeId === 'user'
-              ? 'user'
-              : activeScope.type === 'project'
-                ? 'project'
-                : 'user'
-          }
-        />
-
-        <DeleteModal
-          open={modals.isTrashOpen}
-          onOpenChange={modals.setIsTrashOpen}
-          title={
-            modals.trashTarget?.type === 'collection'
-              ? modals.trashTarget.withItems
-                ? 'Delete collection and items'
-                : 'Delete collection'
-              : 'Move to trash'
-          }
-          description={
-            modals.trashTarget?.type === 'collection'
-              ? modals.trashTarget.withItems
-                ? `Are you sure you want to delete collection "${modals.trashTarget.title || 'this collection'}" and move all of its items to the trash?`
-                : `Are you sure you want to delete collection "${modals.trashTarget.title || 'this collection'}"? Items inside this collection will not be deleted and will remain in your library.`
-              : 'Are you sure you want to move this item to the trash? You can restore it at any time.'
-          }
-          onConfirm={async () => {
-            await handlers.handleConfirmTrash();
-            modals.setIsTrashOpen(false);
-          }}
-          isDeleting={collectionService.isDeleting}
         />
       </>
     );

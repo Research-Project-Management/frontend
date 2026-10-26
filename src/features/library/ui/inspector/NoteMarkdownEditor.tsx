@@ -21,7 +21,11 @@ export function renderInlineMarkdown(text: string): React.ReactNode {
       const match = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
       if (match) {
         const linkText = match[1];
-        const linkUrl = match[2];
+        const linkUrl = match[2].trim();
+        const isSafeUrl = /^(https?:\/\/|mailto:)/i.test(linkUrl);
+        if (!isSafeUrl) {
+          return <span key={idx}>{renderInlineMarkdown(linkText)}</span>;
+        }
         return (
           <a
             key={idx}

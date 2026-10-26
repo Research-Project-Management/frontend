@@ -14,5 +14,9 @@ export interface CollectionActionHandlers {
   onExportBibtex?: (id: string, name: string) => void;
   onExportBundle?: (id: string, name: string) => void;
   onLinkClick?: () => void;
-  onDropItems?: (itemIds: string[], targetCollectionId: string | null) => void;
+  onDropItems?: (
+    itemIds: string[],
+    targetCollectionId: string | null,
+    options?: { copy?: boolean; move?: boolean },
+  ) => void;
 }

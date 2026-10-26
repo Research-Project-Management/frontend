@@ -4,6 +4,7 @@ import { itemSchema } from './items.types';
 export const searchSortBySchema = z.enum([
   'relevance',
   'dateAdded',
+  'createdAt',
   'year',
   'title',
 ]);

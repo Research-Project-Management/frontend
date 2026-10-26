@@ -11,6 +11,7 @@ import {
 } from "@/shared/components/ui/tooltip";
 import { SingleDatePopover } from "@/shared/components/ui/single-date-popover";
 import type { TagWithCount } from "@/features/library/domain/types/tags.types";
+import { FilterTagsSection } from "./FilterTagsSection";
 
 function FilterCheckbox({ checked }: { checked: boolean }) {
   return (
@@ -33,6 +34,25 @@ export interface FilterFacetSectionsProps {
   matchingTags: Array<{ tag: TagWithCount; score: number }>;
   activeTags: string[];
   onTagToggle: (name: string) => void;
+  showAutomaticTags?: boolean;
+  onToggleShowAutomaticTags?: (show: boolean) => void;
+  onCreateTag?: (params: {
+    name: string;
+    color?: string;
+    type?: string;
+  }) => Promise<unknown>;
+  onUpdateTag?: (params: {
+    tagId: string;
+    data: {
+      name?: string;
+      color?: string;
+      type?: string;
+      shortcut?: number | null;
+    };
+  }) => Promise<unknown>;
+  onDeleteTag?: (tagId: string) => Promise<unknown>;
+  onDeleteAutomaticTags?: () => Promise<unknown>;
+  isDeletingAutomatic?: boolean;
   matchingFileItems: Array<{
     id: "has-pdf" | "missing-pdf" | "has-notes";
     label: string;
@@ -64,6 +84,13 @@ export function FilterFacetSections({
   matchingTags,
   activeTags,
   onTagToggle,
+  showAutomaticTags,
+  onToggleShowAutomaticTags,
+  onCreateTag,
+  onUpdateTag,
+  onDeleteTag,
+  onDeleteAutomaticTags,
+  isDeletingAutomatic,
   matchingFileItems,
   fileStatus,
   onFileStatusToggle,
@@ -82,7 +109,6 @@ export function FilterFacetSections({
   const [readingOpen, setReadingOpen] = useState(true);
   const [typesOpen, setTypesOpen] = useState(true);
   const [yearOpen, setYearOpen] = useState(true);
-  const [tagsOpen, setTagsOpen] = useState(true);
   const [startDateOpen, setStartDateOpen] = useState(false);
   const [endDateOpen, setEndDateOpen] = useState(false);
 
@@ -107,7 +133,7 @@ export function FilterFacetSections({
 
       {/* Type Section */}
       {matchingTypeItems.length > 0 && (
-        <div className="border-t border-border pt-1.5 mt-0.5 first:border-t-0 first:pt-0.5 first:mt-0 shrink-0">
+        <div className="-mx-2 px-2 border-t border-border pt-1.5 mt-0.5 first:border-t-0 first:pt-0.5 first:mt-0 shrink-0">
           <button
             type="button"
             onClick={() => setTypesOpen(!typesOpen)}
@@ -160,72 +186,22 @@ export function FilterFacetSections({
       )}
 
       {/* Tags Section */}
-      {matchingTags.length > 0 && (
-        <div className="border-t border-border pt-1.5 mt-0.5 first:border-t-0 first:pt-0.5 first:mt-0 shrink-0">
-          <button
-            type="button"
-            onClick={() => setTagsOpen(!tagsOpen)}
-            className="flex w-full items-center justify-between py-1 px-1 text-12 font-medium text-foreground cursor-pointer select-none"
-          >
-            <span>Tags</span>
-            {tagsOpen ? (
-              <ChevronUp className="size-3.5 text-foreground shrink-0" />
-            ) : (
-              <ChevronDown className="size-3.5 text-foreground shrink-0" />
-            )}
-          </button>
-
-          {tagsOpen && (
-            <div className="pt-1 select-none">
-              <div className="max-h-40 overflow-y-auto space-y-0.5 no-scrollbar">
-                {matchingTags.map(({ tag }) => {
-                  const isSelected = activeTags.some(
-                    (t) => t.toLowerCase() === tag.name.toLowerCase(),
-                  );
-                  const tagCount = tag._count?.itemTags ?? tag.itemCount ?? 0;
-                  return (
-                    <div
-                      key={tag.id}
-                      role="checkbox"
-                      tabIndex={0}
-                      aria-checked={isSelected}
-                      onClick={() => onTagToggle(tag.name)}
-                      onKeyDown={(e) => {
-                        if (e.key === " " || e.key === "Enter") {
-                          e.preventDefault();
-                          onTagToggle(tag.name);
-                        }
-                      }}
-                      className={cn(
-                        "flex items-start gap-2 py-0.5 px-1.5 rounded-md text-12 text-foreground cursor-pointer select-none transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary",
-                        isSelected
-                          ? "bg-muted font-medium"
-                          : "hover:bg-muted font-normal",
-                      )}
-                    >
-                      <div className="pt-0.5 shrink-0">
-                        <FilterCheckbox checked={isSelected} />
-                      </div>
-                      <span className="flex-1 min-w-0 break-words whitespace-normal leading-snug tracking-tight text-12">
-                        {tag.name}
-                      </span>
-                      {tagCount > 0 && (
-                        <span className="shrink-0 text-11 font-mono text-muted-foreground pt-0.5">
-                          {tagCount}
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      <FilterTagsSection
+        matchingTags={matchingTags}
+        activeTags={activeTags}
+        onTagToggle={onTagToggle}
+        showAutomaticTags={showAutomaticTags}
+        onToggleShowAutomaticTags={onToggleShowAutomaticTags}
+        onCreateTag={onCreateTag}
+        onUpdateTag={onUpdateTag}
+        onDeleteTag={onDeleteTag}
+        onDeleteAutomaticTags={onDeleteAutomaticTags}
+        isDeletingAutomatic={isDeletingAutomatic}
+      />
 
       {/* Files Section */}
       {matchingFileItems.length > 0 && (
-        <div className="border-t border-border pt-1.5 mt-0.5 first:border-t-0 first:pt-0.5 first:mt-0 shrink-0">
+        <div className="-mx-2 px-2 border-t border-border pt-1.5 mt-0.5 first:border-t-0 first:pt-0.5 first:mt-0 shrink-0">
           <button
             type="button"
             onClick={() => setFilesOpen(!filesOpen)}
@@ -275,7 +251,7 @@ export function FilterFacetSections({
 
       {/* Progress Section */}
       {matchingReadingItems.length > 0 && (
-        <div className="border-t border-border pt-1.5 mt-0.5 first:border-t-0 first:pt-0.5 first:mt-0 shrink-0">
+        <div className="-mx-2 px-2 border-t border-border pt-1.5 mt-0.5 first:border-t-0 first:pt-0.5 first:mt-0 shrink-0">
           <button
             type="button"
             onClick={() => setReadingOpen(!readingOpen)}
@@ -325,7 +301,7 @@ export function FilterFacetSections({
 
       {/* Date Section */}
       {showDateSection && (
-        <div className="border-t border-border pt-1.5 mt-0.5 first:border-t-0 first:pt-0.5 first:mt-0 shrink-0">
+        <div className="-mx-2 px-2 border-t border-border pt-1.5 mt-0.5 first:border-t-0 first:pt-0.5 first:mt-0 shrink-0">
           <button
             type="button"
             onClick={() => setYearOpen(!yearOpen)}

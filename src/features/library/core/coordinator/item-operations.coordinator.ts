@@ -32,7 +32,18 @@ export interface UseLibraryItemOperationsOptions {
     mutate: (ids: string[]) => void;
   };
   moveMutation: {
-    mutateAsync: (args: { targetCollectionId: string | null; itemIds: string[]; scopeId?: string }) => Promise<unknown>;
+    mutateAsync: (args: {
+      targetCollectionId: string | null;
+      itemIds: string[];
+      sourceCollectionId?: string | null;
+      scopeId?: string;
+    }) => Promise<unknown>;
+  };
+  detachMutation?: {
+    mutateAsync: (args: { collectionId: string; itemIds: string[] }) => Promise<unknown>;
+  };
+  assignMutation?: {
+    mutateAsync: (args: { collectionId: string; itemIds: string[] }) => Promise<unknown>;
   };
 }
 
@@ -158,8 +169,10 @@ export function useLibraryItemOperations(options: UseLibraryItemOperationsOption
         state.toggleSelect(id);
       }
       if (opts.onPermanentDeleteItems) {
+        useLibraryCommandStore.getState().clear();
         opts.onPermanentDeleteItems([id]);
       } else {
+        useLibraryCommandStore.getState().clear();
         opts.purgeMutation.mutate([id]);
       }
     },
@@ -173,12 +186,20 @@ export function useLibraryItemOperations(options: UseLibraryItemOperationsOption
         opts.propOnMoveToCollection(itemId, targetCollectionId);
         return;
       }
+      const targetItem = opts.itemsById.get(itemId);
+      const previousCollectionsByItem = new Map<string, string[]>();
+      if (targetItem && Array.isArray(targetItem.collectionIds)) {
+        previousCollectionsByItem.set(itemId, [...targetItem.collectionIds]);
+      }
       void useLibraryCommandStore.getState().executeCommand(
         createMoveItemsCommand({
           itemIds: [itemId],
           sourceCollectionId: opts.collectionId || null,
           targetCollectionId,
+          previousCollectionsByItem,
           moveMutation: opts.moveMutation,
+          detachMutation: opts.detachMutation,
+          assignMutation: opts.assignMutation,
         }),
       );
     },

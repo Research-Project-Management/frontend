@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useMemo } from "react";
+import { toast } from "sonner";
 import {
   Loader2,
   AlertTriangle,
@@ -26,8 +27,11 @@ import {
   REVERSE_BASE_FIELD_MAPPINGS,
   humanizeFieldName,
 } from "@/features/library/domain/types/library.types";
-import { useItemTypeConversion } from "@/features/library/sdk/queries/saved-searches-relations.queries";
-import { type TypeConversionPreview } from "@/features/library/sdk/queries/saved-searches-relations.queries";
+import {
+  useItemTypeConversion,
+  useItemTypeConversionPreviewQuery,
+  type TypeConversionPreview,
+} from "@/features/library/sdk/queries/saved-searches-relations.queries";
 import { useLibraryCacheSynchronizer } from "@/features/library/sdk/queries/catalog.queries";
 
 export type TypeConversionItemLike = {
@@ -79,18 +83,39 @@ export function TypeConversionModal({
 }: TypeConversionModalProps) {
   const itemId = currentItem?.id || "";
   const sourceType = currentItem?.itemType || "journalArticle";
+  const currentType = sourceType;
+  const isOpen = open;
   const scopeId = propScopeId || currentItem?.projectId || "user";
 
-  // ── State ──────────────────────────────────────────────────────────────────
-  const [preview, setPreview] = useState<TypeConversionPreview | null>(
-    initialPreview || null,
-  );
-  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
-  const [previewError, setPreviewError] = useState<string | null>(null);
+  // ── State & Preview Query ──────────────────────────────────────────────────
   const [retainUnmapped, setRetainUnmapped] = useState(true);
 
-  const { previewAsync, convertAsync, isConverting } =
-    useItemTypeConversion(scopeId);
+  const hasInitialPreview = Boolean(
+    initialPreview && initialPreview.targetType === targetType,
+  );
+  const previewQuery = useItemTypeConversionPreviewQuery(
+    scopeId,
+    currentItem?.id,
+    targetType,
+    isOpen &&
+      !!currentItem?.id &&
+      !!targetType &&
+      targetType !== currentType &&
+      !hasInitialPreview,
+  );
+
+  const preview: TypeConversionPreview | null = hasInitialPreview
+    ? (initialPreview ?? null)
+    : (previewQuery.data ?? null);
+  const isLoadingPreview = !hasInitialPreview && previewQuery.isLoading;
+  const previewError =
+    !hasInitialPreview && previewQuery.error
+      ? previewQuery.error instanceof Error
+        ? previewQuery.error.message
+        : "Failed to preview type conversion"
+      : null;
+
+  const { convertAsync, isConverting } = useItemTypeConversion(scopeId);
   const { invalidateItemById } = useLibraryCacheSynchronizer(scopeId);
 
   const sourceTypeName = useMemo(() => {
@@ -107,36 +132,9 @@ export function TypeConversionModal({
     );
   }, [targetType]);
 
-  // ── Preview Loading ────────────────────────────────────────────────────────
-  const loadPreview = useCallback(async () => {
-    if (!open || !itemId || !targetType || sourceType === targetType) return;
-    setIsLoadingPreview(true);
-    setPreviewError(null);
-    try {
-      const data = await previewAsync({
-        itemId,
-        targetType,
-        retainUnmappedInExtra: retainUnmapped,
-      });
-      setPreview(data as TypeConversionPreview);
-    } catch (err: unknown) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : "Failed to preview type conversion";
-      setPreviewError(msg);
-    } finally {
-      setIsLoadingPreview(false);
-    }
-  }, [open, itemId, targetType, sourceType, retainUnmapped, previewAsync]);
-
-  useEffect(() => {
-    if (initialPreview && initialPreview.targetType === targetType) {
-      setPreview(initialPreview);
-      return;
-    }
-    loadPreview();
-  }, [loadPreview, initialPreview, targetType]);
+  const loadPreview = () => {
+    void previewQuery.refetch();
+  };
 
   // Fields that actually have content and will be dropped/lost in this specific item
   const droppedWithValues = useMemo(() => {
@@ -216,21 +214,12 @@ export function TypeConversionModal({
         (err as { statusCode?: number })?.statusCode === 409;
 
       if (isVersionConflict) {
-        try {
-          // Retry without stale expectedVersion to seamlessly execute user's explicit conversion intent
-          const retryResult = await convertAsync({
-            itemId,
-            targetType,
-            expectedVersion: undefined,
-            retainUnmappedInExtra: retainUnmapped,
-          });
-          if (retryResult?.item) {
-            onSuccess?.(retryResult.item);
-          }
-          onOpenChange(false);
-        } catch {
-          // Toast handled by mutation hook
-        }
+        toast.warning(
+          "Item was modified elsewhere. Refreshed to latest version — please review and try again.",
+          { id: "type-conversion-conflict" },
+        );
+        void previewQuery.refetch();
+        return;
       }
     }
   };

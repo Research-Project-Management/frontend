@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
@@ -16,6 +16,7 @@ import { Form } from "@/shared/components/ui/form";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Label } from "@/shared/components/ui/label";
+import { Checkbox } from "@/shared/components/ui/checkbox";
 import {
   addLinkSchema,
   type AddLinkFormValues,
@@ -24,6 +25,8 @@ import {
 export interface AddLinkData {
   url: string;
   title?: string;
+  attachOaPdf?: boolean;
+  saveSnapshot?: boolean;
   fileUrl?: string;
   filename?: string;
   mimeType?: string;
@@ -60,9 +63,14 @@ export default function AddLinkModal({
     formState: { errors },
   } = form;
 
+  const [attachOaPdf, setAttachOaPdf] = useState(true);
+  const [saveSnapshot, setSaveSnapshot] = useState(true);
+
   useEffect(() => {
     if (open) {
       reset({ url: "", title: "" });
+      setAttachOaPdf(true);
+      setSaveSnapshot(true);
     }
   }, [open, reset]);
 
@@ -78,12 +86,14 @@ export default function AddLinkModal({
     const trimmedTitle = data.title?.trim();
 
     try {
-      reset({ url: "", title: "" });
-      onOpenChange(false);
       await onSubmit({
         url: trimmedUrl,
         title: trimmedTitle || undefined,
+        attachOaPdf,
+        saveSnapshot,
       });
+      reset({ url: "", title: "" });
+      onOpenChange(false);
     } catch {
       // Handled by parent
     }
@@ -146,6 +156,24 @@ export default function AddLinkModal({
                 {...register("title")}
                 className="h-8 text-13 text-foreground placeholder:text-muted-foreground rounded-md border-border hover:border-border-hover focus-visible:border-primary focus-visible:ring-ring"
               />
+            </div>
+
+            {/* Zotero Web Capture & OA PDF Options */}
+            <div className="flex flex-col gap-2 pt-1">
+              <label className="flex items-center gap-2 text-12 text-foreground cursor-pointer select-none">
+                <Checkbox
+                  checked={attachOaPdf}
+                  onCheckedChange={(checked) => setAttachOaPdf(Boolean(checked))}
+                />
+                <span>Automatically attach associated Open-Access PDFs</span>
+              </label>
+              <label className="flex items-center gap-2 text-12 text-foreground cursor-pointer select-none">
+                <Checkbox
+                  checked={saveSnapshot}
+                  onCheckedChange={(checked) => setSaveSnapshot(Boolean(checked))}
+                />
+                <span>Automatically save Web Snapshot (.html) for web pages</span>
+              </label>
             </div>
 
             {/* Footer */}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import {
   MinusCircle,
   Plus,
@@ -104,6 +104,10 @@ function NotesSectionContent({
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState("");
 
+  // Preserve drafts per paperId across item switches to prevent data loss
+  const noteDraftsByPaperRef = useRef<Record<string, { newNote: string; editingNoteId: string | null; editingContent: string }>>({});
+  const prevPaperIdRef = useRef(paperId);
+
   const {
     notes: canonicalNotes,
     createNote,
@@ -113,14 +117,32 @@ function NotesSectionContent({
     isExtractingFromAnnotations,
   } = useNotes(activeScopeId, paper.id);
 
-  // Reset internal interactive state when switching papers to avoid state leakage
+  // Safely persist draft of previous paper and restore draft of active paper
   useEffect(() => {
-    setIsAdding(false);
-    setNewNoteContent("");
-    setEditingNoteId(null);
-    setEditingContent("");
-    setExpandedNoteIds(new Set());
-  }, [paperId]);
+    if (prevPaperIdRef.current !== paperId) {
+      if (prevPaperIdRef.current) {
+        noteDraftsByPaperRef.current[prevPaperIdRef.current] = {
+          newNote: newNoteContent,
+          editingNoteId,
+          editingContent,
+        };
+      }
+      const restored = noteDraftsByPaperRef.current[paperId];
+      if (restored) {
+        setNewNoteContent(restored.newNote || "");
+        setEditingNoteId(restored.editingNoteId || null);
+        setEditingContent(restored.editingContent || "");
+        setIsAdding(Boolean(restored.newNote?.trim()));
+      } else {
+        setIsAdding(false);
+        setNewNoteContent("");
+        setEditingNoteId(null);
+        setEditingContent("");
+      }
+      setExpandedNoteIds(new Set());
+      prevPaperIdRef.current = paperId;
+    }
+  }, [paperId, newNoteContent, editingNoteId, editingContent]);
 
   const notes: NormalizedNote[] = useMemo(() => {
     if (canonicalNotes && canonicalNotes.length > 0) {

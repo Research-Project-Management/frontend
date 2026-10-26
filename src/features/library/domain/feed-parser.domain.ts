@@ -11,6 +11,7 @@
  */
 
 import type { CreatorCredit } from '@/features/library/domain/types/library.types';
+import { safeHttpUrl } from '@/features/library/domain/retraction';
 
 export type FeedFormat = 'rss2' | 'rdf' | 'atom' | 'unknown';
 
@@ -134,7 +135,7 @@ export function mapFeedEntryToCreateItemPayload(
     creators,
     doi: entry.doi,
     arxivId: entry.arxivId,
-    url: entry.url || entry.pdfUrl,
+    url: safeHttpUrl(entry.url) || safeHttpUrl(entry.pdfUrl),
     publicationTitle: entry.publicationTitle,
     volume: entry.volume,
     issue: entry.issue,
@@ -201,8 +202,8 @@ export function normalizeFetchedFeedEntries(entries: FeedEntryApiItem[]): Parsed
     doi: e.doi,
     arxivId: e.arxivId,
     primaryCategory: e.primaryCategory || e.keywords?.[0],
-    url: e.url || e.link,
-    pdfUrl: e.pdfUrl,
+    url: safeHttpUrl(e.url || e.link),
+    pdfUrl: safeHttpUrl(e.pdfUrl),
     publishedAt: e.publicationDate || e.published || e.updated,
     updatedAt: e.updated,
     year: e.year ?? undefined,
@@ -221,15 +222,30 @@ export function normalizeFetchedFeedEntries(entries: FeedEntryApiItem[]): Parsed
 export function filterFeedEntriesByRetention(
   entries: ParsedFeedEntry[],
   retentionDays?: number | null,
+  options?: {
+    cleanupReadAfter?: number | null;
+    cleanupUnreadAfter?: number | null;
+    readEntryIds?: ReadonlySet<string>;
+  },
 ): ParsedFeedEntry[] {
-  const days = retentionDays ?? 30;
-  if (!days || days <= 0) return entries;
-  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  const defaultUnreadDays = retentionDays ?? 30;
+  const unreadDays = options?.cleanupUnreadAfter ?? defaultUnreadDays;
+  const readDays =
+    options?.cleanupReadAfter !== undefined && options?.cleanupReadAfter !== null
+      ? options.cleanupReadAfter
+      : unreadDays;
+  const readSet = options?.readEntryIds;
+  const now = Date.now();
+  const dayMs = 24 * 60 * 60 * 1000;
+
   return entries.filter((e) => {
+    const isRead = Boolean(readSet?.has(e.id));
+    const activeDays = isRead ? readDays : unreadDays;
+    if (!activeDays || activeDays <= 0) return true;
     if (!e.publishedAt) return true;
     const t = Date.parse(e.publishedAt);
     if (isNaN(t)) return true;
-    return t >= cutoff;
+    return t >= now - activeDays * dayMs;
   });
 }
 

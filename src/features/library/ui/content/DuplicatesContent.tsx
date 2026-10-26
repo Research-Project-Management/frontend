@@ -17,6 +17,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { formatAcademicAuthors } from '@/features/library/domain/academic-text';
+import { getItemAuthorsSummary } from '@/features/library/domain/creators';
 import { ContentSkeleton } from '@/features/library/ui/content/ContentSkeleton';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import {
@@ -134,6 +135,16 @@ function InlineDiffView({
   );
 }
 
+function getDeterministicGroupKey(group: DuplicateGroup): string {
+  if (group.key) return group.key;
+  const sortedIds = (group.items || [])
+    .map((item) => item.id)
+    .filter((id): id is string => Boolean(id))
+    .sort()
+    .join('|');
+  return sortedIds ? `cluster-${sortedIds}` : 'cluster-empty';
+}
+
 export interface DuplicatesContentProps {
   scopeId?: string;
   canEdit?: boolean;
@@ -163,6 +174,7 @@ export function DuplicatesContent({
   // Local state
   const [dismissedGroupKeys, setDismissedGroupKeys] = useState<Set<string>>(new Set());
   const [selectedGroupKey, setSelectedGroupKey] = useState<string | null>(null);
+  const [selectedGroupKeys, setSelectedGroupKeys] = useState<Set<string>>(new Set());
   const [expandedDiffGroupKeys, setExpandedDiffGroupKeys] = useState<Set<string>>(new Set());
 
   const rawGroups: DuplicateGroup[] = useMemo(() => {
@@ -170,16 +182,16 @@ export function DuplicatesContent({
   }, [data]);
 
   const activeGroups = useMemo(() => {
-    return rawGroups.filter((g, idx) => {
-      const key = g.key || `cluster-${idx}`;
+    return rawGroups.filter((g) => {
+      const key = getDeterministicGroupKey(g);
       return !dismissedGroupKeys.has(key);
     });
   }, [rawGroups, dismissedGroupKeys]);
 
   const activeGroupByKey = useMemo(() => {
     const map = new Map<string, DuplicateGroup>();
-    activeGroups.forEach((g, idx) => {
-      map.set(g.key || `cluster-${idx}`, g);
+    activeGroups.forEach((g) => {
+      map.set(getDeterministicGroupKey(g), g);
     });
     return map;
   }, [activeGroups]);
@@ -192,6 +204,25 @@ export function DuplicatesContent({
     }
     return activeGroups[0] || null;
   }, [activeGroups, activeGroupByKey, selectedGroupKey]);
+
+  const toggleGroupSelect = React.useCallback((groupKey: string) => {
+    setSelectedGroupKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupKey)) {
+        next.delete(groupKey);
+      } else {
+        next.add(groupKey);
+      }
+      return next;
+    });
+  }, []);
+
+  const selectAllHighConfidence = React.useCallback(() => {
+    const highConfKeys = activeGroups
+      .filter((g) => g.confidence === 'high')
+      .map((g) => getDeterministicGroupKey(g));
+    setSelectedGroupKeys(new Set(highConfKeys));
+  }, [activeGroups]);
 
   const toggleInlineDiff = (groupKey: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -247,7 +278,7 @@ export function DuplicatesContent({
         toast.info('This group has only one item', { id: 'duplicate-group-action' });
         return;
       }
-      const targetKey = explicitKey || group.key || selectedGroupKey || '';
+      const targetKey = explicitKey || getDeterministicGroupKey(group) || selectedGroupKey || '';
       openModal('MERGE_DUPLICATES', {
         duplicates: items,
         recommendedMasterId: group.recommendedMasterId,
@@ -265,9 +296,7 @@ export function DuplicatesContent({
 
   React.useEffect(() => {
     if (!onSelectedGroupChange) return;
-    const effectiveKey =
-      selectedGroup?.key ||
-      (selectedGroup ? `cluster-${activeGroups.indexOf(selectedGroup)}` : null);
+    const effectiveKey = selectedGroup ? getDeterministicGroupKey(selectedGroup) : null;
     onSelectedGroupChange(selectedGroup, effectiveKey, handleDismissGroup, handleOpenMerge);
   }, [activeGroups, handleDismissGroup, handleOpenMerge, onSelectedGroupChange, selectedGroup]);
 
@@ -329,10 +358,16 @@ export function DuplicatesContent({
         {/* Duplicate Groups List */}
         <div className="space-y-4">
           {activeGroups.map((group, groupIdx) => {
-            const groupKey = group.key || `cluster-${groupIdx}`;
+            const groupKey = getDeterministicGroupKey(group);
             const items = (group.items || []) as Item[];
             const isHighConfidence = group.confidence === 'high';
-            const isSelectedGroup = (selectedGroup?.key || activeGroups[0]?.key || 'cluster-0') === groupKey;
+            const currentSelectedKey = selectedGroup
+              ? getDeterministicGroupKey(selectedGroup)
+              : activeGroups[0]
+                ? getDeterministicGroupKey(activeGroups[0])
+                : '';
+            const isSelectedGroup =
+              currentSelectedKey === groupKey || selectedGroupKeys.has(groupKey);
             const isDiffExpanded = expandedDiffGroupKeys.has(groupKey);
             const itemTypes = Array.from(new Set(items.map((it) => it.itemType).filter(Boolean)));
             const hasMismatchedTypes = itemTypes.length > 1;
@@ -340,7 +375,14 @@ export function DuplicatesContent({
             return (
               <div
                 key={groupKey}
-                onClick={() => setSelectedGroupKey(groupKey)}
+                onClick={(e) => {
+                  if (e.metaKey || e.ctrlKey) {
+                    toggleGroupSelect(groupKey);
+                  } else if (e.shiftKey) {
+                    selectAllHighConfidence();
+                  }
+                  setSelectedGroupKey(groupKey);
+                }}
                 style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 140px' }}
                 className={cn(
                   'rounded-md border bg-card overflow-hidden transition-colors cursor-pointer',
@@ -449,12 +491,8 @@ export function DuplicatesContent({
                 <div className="divide-y divide-border-subtle">
                   {items.map((item, itemIdx) => {
                     const isSelected = activeItemId === item.id;
-                    const authorFormatted = formatAcademicAuthors(
-                      item.authors && item.authors.length > 0
-                        ? item.authors
-                        : item.creators,
-                    );
-                    const authorStr = authorFormatted !== '-' ? authorFormatted : '';
+                    const authorFormatted = getItemAuthorsSummary(item);
+                    const authorStr = authorFormatted !== '-' && authorFormatted !== '—' ? authorFormatted : '';
 
                     return (
                       <div

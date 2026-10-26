@@ -33,11 +33,13 @@ import { LibraryFilterPopover } from "./LibraryFilterPopover";
 import {
   LibraryDisplayPopover,
   type LibraryDisplayOptions,
+  type LibraryOrderBy,
 } from "./LibraryDisplayPopover";
 import { TopbarSearch } from "./TopbarSearch";
 import { TopbarNewItemDropdown } from "./TopbarNewItemDropdown";
 import { TopbarNewFeedDropdown } from "./TopbarNewFeedDropdown";
 import { useLibraryUIStore } from "@/features/library/core/store/library-ui.store";
+import { useLibraryNavigation } from "@/features/library/core/coordinator/navigation.coordinator";
 import { useLibraryPermissions } from "@/features/library/core/coordinator/permissions.coordinator";
 import type { Item } from "@/features/library/domain/types/library.types";
 
@@ -178,6 +180,7 @@ export interface TopbarProps {
   showDisplay?: boolean;
   displayOptions?: LibraryDisplayOptions;
   onDisplayOptionsChange?: (options: LibraryDisplayOptions) => void;
+  onSortChange?: (orderBy: LibraryOrderBy, orderDirection: "asc" | "desc") => void;
   scopeId?: string;
   items?: Item[];
   onAddPaper?: (mode?: "file" | "folder" | "link") => void;
@@ -223,6 +226,7 @@ export function LibraryTopbar({
   showDisplay = true,
   displayOptions: propDisplayOptions,
   onDisplayOptionsChange: propOnDisplayOptionsChange,
+  onSortChange,
   scopeId: propScopeId,
   items,
   onAddPaper,
@@ -256,10 +260,27 @@ export function LibraryTopbar({
   const openModal = useLibraryUIStore((s) => s.openModal);
   const storeDisplayOptions = useLibraryUIStore((s) => s.displayOptions);
   const setStoreDisplayOptions = useLibraryUIStore((s) => s.setDisplayOptions);
+  const clearSelection = useLibraryUIStore((s) => s.clearSelection);
+  const nav = useLibraryNavigation();
 
   const effectiveDisplayOptions = propDisplayOptions ?? storeDisplayOptions;
   const effectiveOnDisplayOptionsChange =
     propOnDisplayOptionsChange ?? setStoreDisplayOptions;
+
+  const handleDisplayOptionsChange = (next: LibraryDisplayOptions) => {
+    effectiveOnDisplayOptionsChange(next);
+    if (
+      next.orderBy !== effectiveDisplayOptions.orderBy ||
+      next.orderDirection !== effectiveDisplayOptions.orderDirection
+    ) {
+      if (onSortChange) {
+        onSortChange(next.orderBy, next.orderDirection);
+      } else {
+        nav.setSorting(next.orderBy, next.orderDirection);
+        clearSelection();
+      }
+    }
+  };
 
   const params = useParams() as { collectionId?: string };
   const activeCollectionId = params?.collectionId;
@@ -489,11 +510,10 @@ export function LibraryTopbar({
         {/* Academic Library Display Options */}
         {showDisplay &&
           !isFeed &&
-          effectiveDisplayOptions &&
-          effectiveOnDisplayOptionsChange && (
+          effectiveDisplayOptions && (
             <LibraryDisplayPopover
               options={effectiveDisplayOptions}
-              onOptionsChange={effectiveOnDisplayOptionsChange}
+              onOptionsChange={handleDisplayOptionsChange}
               isTrash={isTrash}
             />
           )}
@@ -542,8 +562,8 @@ export function LibraryTopbar({
           />
         ) : null}
 
-        {/* Inspector Toggle Button with preceding divider line */}
-        {showInspectorToggle && (
+        {/* Inspector Toggle Button with preceding divider line (only visible when Inspector is collapsed; when open, InspectorTabs renders the top-right toggle) */}
+        {showInspectorToggle && !isInspectorOpen && (
           <div className="flex items-center gap-1 ml-0.5 -mr-1 sm:-mr-2">
             <div className="h-4 w-px bg-border shrink-0" aria-hidden="true" />
             <Tooltip>
@@ -553,11 +573,8 @@ export function LibraryTopbar({
                   variant="ghost"
                   size="icon"
                   onClick={onToggleInspector || toggleInspector}
-                  className={cn(
-                    "size-8 rounded-md text-foreground hover:bg-muted cursor-pointer transition-colors select-none shrink-0",
-                    isInspectorOpen && "bg-muted text-foreground"
-                  )}
-                  aria-label={isInspectorOpen ? "Close inspector" : "Open inspector"}
+                  className="size-8 rounded-md text-foreground hover:bg-muted cursor-pointer transition-colors select-none shrink-0"
+                  aria-label="Expand inspector"
                 >
                   <PanelRight
                     className="size-4 text-foreground shrink-0"
@@ -566,7 +583,7 @@ export function LibraryTopbar({
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom" align="end" sideOffset={6}>
-                {isInspectorOpen ? "Collapse panel" : "Expand panel"}
+                Expand inspector
               </TooltipContent>
             </Tooltip>
           </div>
@@ -576,7 +593,7 @@ export function LibraryTopbar({
         <input
           ref={directFileInputRef}
           type="file"
-          accept=".pdf,application/pdf,.bib,.bibtex,.ris,text/plain"
+          accept=".pdf,application/pdf,.bib,.bibtex,.ris,.json,.csl.json,.xml,.mods,.rdf,.nbib,.medline,.csv,text/plain"
           multiple
           className="hidden"
           onChange={(e) => {

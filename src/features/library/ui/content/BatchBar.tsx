@@ -16,6 +16,7 @@ import {
   RotateCcw,
   GitMerge,
   ShieldAlert,
+  FolderSync,
 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import {
@@ -44,28 +45,49 @@ import {
   executeCopyInTextCite,
   executeExportAllBibtex,
   executeDownloadBibFile,
+  executeDownloadFormatFile,
 } from "@/features/library/core/coordinator/citation-export.coordinator";
+import { useBatchRenameAttachmentsMutation } from "@/features/library/sdk/queries/extraction.queries";
 import { useCitationStyles } from "@/features/library/sdk/queries/citation.queries";
 import { formatCitationStyleLabel } from "@/features/library/domain/citations";
 
 export type BatchActionCoordinator = ReturnType<typeof useLibraryBatchCoordinator>;
 
 export interface BatchBarProps {
-  coordinator: BatchActionCoordinator;
+  coordinator?: BatchActionCoordinator;
+  items?: import('@/features/library/domain/types/library.types').Item[];
+  collectionId?: string | null;
+  view?: string;
   collections: Collection[];
   isTrash?: boolean;
   scopeId?: string;
+  canEdit?: boolean;
 }
 
 export function BatchBar({
-  coordinator,
+  coordinator: externalCoordinator,
+  items = [],
+  collectionId,
+  view,
   collections,
   isTrash = false,
   scopeId: propsScopeId,
+  canEdit = true,
 }: BatchBarProps) {
   const params = useParams() as { projectId?: string };
   const effectiveScopeId =
     propsScopeId || params?.projectId || "user";
+
+  const internalCoordinator = useLibraryBatchCoordinator({
+    items,
+    scopeId: effectiveScopeId,
+    collectionId: collectionId || undefined,
+    view,
+    isTrash,
+    canEdit,
+  });
+
+  const coordinator = externalCoordinator || internalCoordinator;
 
   const activeScope = useLibraryUIStore((s) => s.activeScope);
   const isProjectScope = activeScope.type === "project";
@@ -92,6 +114,7 @@ export function BatchBar({
   } = coordinator;
 
   const { data: serverStyles = [] } = useCitationStyles(effectiveScopeId);
+  const batchRenameMutation = useBatchRenameAttachmentsMutation(effectiveScopeId);
 
   const citationStyles = React.useMemo(() => {
     return (serverStyles || [])
@@ -300,7 +323,7 @@ export function BatchBar({
                 </DropdownMenuItem>
               ))}
 
-              <div className="h-px my-1 bg-border" />
+              <div className="-mx-1.5 h-px my-1 bg-border" />
 
               <DropdownMenuItem
                 onClick={() => handleCopyMultiCite("latex")}
@@ -336,23 +359,118 @@ export function BatchBar({
             </TooltipContent>
           </Tooltip>
 
-          {/* Download .bib */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
+          {/* Export Dropdown (.bib, .ris, .json, .csv, .md) */}
+          <DropdownMenu>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
+                  >
+                    <Download className="size-3.5 shrink-0 text-foreground" />
+                    <span>Export</span>
+                  </Button>
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={8}>
+                Export selected references
+              </TooltipContent>
+            </Tooltip>
+            <DropdownMenuContent
+              align="center"
+              side="top"
+              sideOffset={8}
+              className="w-48 p-1.5 space-y-0.5 bg-popover border border-border rounded-md shadow-raised-200"
+            >
+              <DropdownMenuItem
                 onClick={handleDownloadBibFile}
-                className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
+                className="h-8 gap-2 px-2.5 text-12 cursor-pointer text-foreground rounded-md hover:bg-muted"
               >
-                <Download className="size-3.5 shrink-0 text-foreground" />
-                <span>Download .bib</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="top" sideOffset={8}>
-              Download BibTeX
-            </TooltipContent>
-          </Tooltip>
+                <span>BibTeX (.bib)</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() =>
+                  void executeDownloadFormatFile(
+                    resolvedItems,
+                    effectiveScopeId,
+                    "ris",
+                    retractedSelected.length,
+                  )
+                }
+                className="h-8 gap-2 px-2.5 text-12 cursor-pointer text-foreground rounded-md hover:bg-muted"
+              >
+                <span>RIS (.ris)</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() =>
+                  void executeDownloadFormatFile(
+                    resolvedItems,
+                    effectiveScopeId,
+                    "csl_json",
+                    retractedSelected.length,
+                  )
+                }
+                className="h-8 gap-2 px-2.5 text-12 cursor-pointer text-foreground rounded-md hover:bg-muted"
+              >
+                <span>CSL-JSON (.json)</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() =>
+                  void executeDownloadFormatFile(
+                    resolvedItems,
+                    effectiveScopeId,
+                    "csv",
+                    retractedSelected.length,
+                  )
+                }
+                className="h-8 gap-2 px-2.5 text-12 cursor-pointer text-foreground rounded-md hover:bg-muted"
+              >
+                <span>CSV Table (.csv)</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() =>
+                  void executeDownloadFormatFile(
+                    resolvedItems,
+                    effectiveScopeId,
+                    "markdown",
+                    retractedSelected.length,
+                  )
+                }
+                className="h-8 gap-2 px-2.5 text-12 cursor-pointer text-foreground rounded-md hover:bg-muted"
+              >
+                <span>Markdown (.md)</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Batch Rename Attachments from Parent Metadata */}
+          {!isTrash && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={
+                    isAllProcessingSelected || batchRenameMutation.isPending
+                  }
+                  onClick={() =>
+                    void batchRenameMutation.mutateAsync({
+                      itemIds: resolvedItems.map((it) => it.id).filter(Boolean),
+                    })
+                  }
+                  className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
+                >
+                  <FolderSync className="size-3.5 shrink-0 text-foreground" />
+                  <span>Rename PDFs</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={8}>
+                Rename attached files from parent metadata
+              </TooltipContent>
+            </Tooltip>
+          )}
 
           {/* Batch Restore / Batch Move to Trash / Batch Purge */}
           {isTrash ? (

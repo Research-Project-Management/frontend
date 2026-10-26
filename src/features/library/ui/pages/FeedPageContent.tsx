@@ -8,10 +8,10 @@ import { FeedViewContent } from '@/features/library/ui/content/FeedViewContent';
 import { FeedItemInspector } from '@/features/library/ui/inspector/FeedItemInspector';
 import { ErrorBoundary } from '@/shared/components/ui/error-boundary';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
-import { useFeedsStore } from '@/features/library/core/store/feeds.store';
+import { useFeedsStore, isFeedEntryInLibrary } from '@/features/library/core/store/feeds.store';
 import { useLibraryPermissions } from '@/features/library/core/coordinator/permissions.coordinator';
 import { useCollectionsQuery } from '@/features/library/sdk/queries/collections.queries';
-import { useItems } from '@/features/library/sdk/queries/catalog.queries';
+import { useCreateLibraryItemMutation, useLibraryItemsQuery } from '@/features/library/sdk/queries/catalog.queries';
 import { mapFeedEntryToCreateItemPayload, type ParsedFeedEntry } from '@/features/library/domain/feed-parser.domain';
 import type { Collection } from '@/features/library/domain/types/library.types';
 import { toast } from 'sonner';
@@ -39,6 +39,10 @@ export function FeedPageContent({
   const toggleEntryRead = useFeedsStore((s) => s.toggleEntryRead);
   const markEntryAsRead = useFeedsStore((s) => s.markEntryAsRead);
   const markAllEntriesAsRead = useFeedsStore((s) => s.markAllEntriesAsRead);
+  const savedEntryIds = useFeedsStore((s) => s.savedEntryIds);
+  const savingEntryIds = useFeedsStore((s) => s.savingEntryIds);
+  const markEntrySaved = useFeedsStore((s) => s.markEntrySaved);
+  const setEntrySaving = useFeedsStore((s) => s.setEntrySaving);
 
   React.useEffect(() => {
     loadFeeds();
@@ -58,24 +62,23 @@ export function FeedPageContent({
   const { data: collections = [] } = useCollectionsQuery(effectiveScopeId);
   const collectionList: Collection[] = (collections as Collection[]) || [];
 
-  const { createItem } = useItems({
-    scopeId: effectiveScopeId,
-    enabled: false,
-  });
-
-  const [isFeedItemSaving, setIsFeedItemSaving] = React.useState(false);
-  const [savedFeedItemIds, setSavedFeedItemIds] = React.useState<Set<string>>(() => new Set());
+  const { mutateAsync: createItem } = useCreateLibraryItemMutation(effectiveScopeId);
+  const { data: libraryData } = useLibraryItemsQuery(
+    effectiveScopeId,
+    { limit: 100, fields: ['id', 'title', 'doi', 'url'] },
+    { enabled: true },
+  );
 
   const handleSaveFeedItemFromInspector = async (entry: ParsedFeedEntry, targetColId?: string) => {
     markEntryAsRead(entry.id);
-    setIsFeedItemSaving(true);
+    setEntrySaving(entry.id, true);
     try {
       const payload = mapFeedEntryToCreateItemPayload(entry, {
         scopeId: effectiveScopeId,
         collectionId: targetColId,
       });
       await createItem({ ...payload, silent: true });
-      setSavedFeedItemIds((prev) => new Set(prev).add(entry.id));
+      markEntrySaved(entry.id);
       const colName = targetColId
         ? collectionList.find((c) => c.id === targetColId)?.name
         : undefined;
@@ -87,7 +90,7 @@ export function FeedPageContent({
         description: err instanceof Error ? err.message : 'Please try again.',
       });
     } finally {
-      setIsFeedItemSaving(false);
+      setEntrySaving(entry.id, false);
     }
   };
 
@@ -166,8 +169,8 @@ export function FeedPageContent({
               feedTitle={currentFeed?.name}
               collections={collectionList}
               isRead={selectedFeedEntry ? readEntryIds.has(selectedFeedEntry.id) : false}
-              isSaving={isFeedItemSaving}
-              isSaved={selectedFeedEntry ? savedFeedItemIds.has(selectedFeedEntry.id) : false}
+              isSaving={selectedFeedEntry ? savingEntryIds.includes(selectedFeedEntry.id) : false}
+              isSaved={isFeedEntryInLibrary(selectedFeedEntry, savedEntryIds, libraryData?.items)}
               onToggleRead={toggleEntryRead}
               onSave={handleSaveFeedItemFromInspector}
               onClose={() => setIsInspectorOpen(false)}

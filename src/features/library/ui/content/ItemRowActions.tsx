@@ -26,7 +26,13 @@ import {
   DropdownMenuSubTrigger,
 } from '@/shared/components/ui/dropdown-menu';
 import { useCitationStyles } from '@/features/library/sdk/queries/citation.queries';
-import { useMoveCollectionItemsMutation } from '@/features/library/sdk/queries/collections.queries';
+import { useAssignCollectionItemsMutation } from '@/features/library/sdk/queries/collections.queries';
+import {
+  useReResolveItemMetadataMutation,
+  useSetMyPublicationMutation,
+} from '@/features/library/sdk/queries/catalog.queries';
+import { useRetraction } from '@/features/library/sdk/queries/ingestion.queries';
+import { RefreshCw, Award, ShieldAlert } from 'lucide-react';
 import {
   executeCopyMultiCite,
   executeCopyInTextCite,
@@ -40,10 +46,12 @@ export interface ItemRowActionsProps {
   scopeId?: string;
   isTrash?: boolean;
   collections?: Collection[];
+  canEdit?: boolean;
   onToggleStar?: () => void;
   onDelete?: () => void;
   onRestore?: () => void;
   onPurge?: () => void;
+  onAddToCollection?: (collectionId: string) => void;
   onMoveToCollection?: (collectionId: string) => void;
   onDetachFromCollection?: () => void;
   onOpenItem?: (id: string) => void;
@@ -54,17 +62,22 @@ export const ItemRowActions = React.memo(function ItemRowActions({
   scopeId,
   isTrash = false,
   collections = [],
+  canEdit = true,
   onToggleStar,
   onDelete,
   onRestore,
   onPurge,
+  onAddToCollection,
   onMoveToCollection,
   onDetachFromCollection,
   onOpenItem,
 }: ItemRowActionsProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
-  const moveCollectionItemsMutation = useMoveCollectionItemsMutation(scopeId);
+  const assignCollectionItemsMutation = useAssignCollectionItemsMutation(scopeId);
+  const reResolveMutation = useReResolveItemMetadataMutation(scopeId);
+  const setMyPublicationMutation = useSetMyPublicationMutation(scopeId);
+  const { flagItem, unflagItem } = useRetraction(scopeId, { includeItems: false });
   const { data: serverStyles = [] } = useCitationStyles(scopeId, { enabled: isOpen });
   const availableStyles = serverStyles.length > 0
     ? serverStyles.map((s) => ({ id: s.id, label: s.shortTitle || s.name || getCleanStyleLabel(s.id) }))
@@ -148,7 +161,7 @@ export const ItemRowActions = React.memo(function ItemRowActions({
           >
             {isTrash ? (
               <>
-                {onRestore && (
+                {canEdit && onRestore && (
                   <DropdownMenuItem
                     onClick={() => {
                       setIsOpen(false);
@@ -161,9 +174,9 @@ export const ItemRowActions = React.memo(function ItemRowActions({
                   </DropdownMenuItem>
                 )}
 
-                {onPurge && onRestore && <DropdownMenuSeparator className="my-1" />}
+                {canEdit && onPurge && onRestore && <DropdownMenuSeparator className="my-1" />}
 
-                {onPurge && (
+                {canEdit && onPurge && (
                   <DropdownMenuItem
                     variant="destructive"
                     onClick={() => {
@@ -187,7 +200,7 @@ export const ItemRowActions = React.memo(function ItemRowActions({
                   <span>Open in Reader</span>
                 </DropdownMenuItem>
 
-                {onToggleStar && (
+                {canEdit && onToggleStar && (
                   <DropdownMenuItem
                     onClick={() => {
                       setIsOpen(false);
@@ -206,7 +219,7 @@ export const ItemRowActions = React.memo(function ItemRowActions({
                   </DropdownMenuItem>
                 )}
 
-                <DropdownMenuSeparator className="mx-1 my-1" />
+                <DropdownMenuSeparator className="my-1" />
 
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors">
@@ -256,9 +269,71 @@ export const ItemRowActions = React.memo(function ItemRowActions({
                   <span>Copy Citation Key</span>
                 </DropdownMenuItem>
 
-                {(collections.length > 0 || onDetachFromCollection) && (
+                {canEdit && (
                   <>
-                    <DropdownMenuSeparator className="mx-1 my-1" />
+                    <DropdownMenuSeparator className="my-1" />
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setIsOpen(false);
+                        void reResolveMutation.mutateAsync({
+                          itemId: item.id,
+                          attachOaPdf: true,
+                        });
+                      }}
+                      className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+                    >
+                      <RefreshCw className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                      <span>Re-resolve Metadata / Find PDF</span>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setIsOpen(false);
+                        void setMyPublicationMutation.mutateAsync({
+                          itemId: item.id,
+                          isMyPublication: !item.isMyPublication,
+                        });
+                      }}
+                      className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+                    >
+                      <Award className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                      <span>
+                        {item.isMyPublication
+                          ? 'Remove from My Publications'
+                          : 'Add to My Publications'}
+                      </span>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setIsOpen(false);
+                        if (item.isRetracted) {
+                          void unflagItem(item.id);
+                        } else {
+                          void flagItem({
+                            itemId: item.id,
+                            data: {
+                              nature: 'retraction',
+                              reason: 'Manually flagged as retracted by user',
+                            },
+                          });
+                        }
+                      }}
+                      className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+                    >
+                      <ShieldAlert className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                      <span>
+                        {item.isRetracted
+                          ? 'Clear Retraction Flag'
+                          : 'Flag as Retracted'}
+                      </span>
+                    </DropdownMenuItem>
+                  </>
+                )}
+
+                {canEdit && (collections.length > 0 || onDetachFromCollection) && (
+                  <>
+                    <DropdownMenuSeparator className="my-1" />
 
                     {collections.length > 0 && (
                       <DropdownMenuSub>
@@ -272,12 +347,13 @@ export const ItemRowActions = React.memo(function ItemRowActions({
                               key={col.id}
                               onClick={async () => {
                                 setIsOpen(false);
+                                if (onAddToCollection) { onAddToCollection(col.id); return; }
                                 if (onMoveToCollection) {
                                   onMoveToCollection(col.id);
                                 } else {
                                   try {
-                                    await moveCollectionItemsMutation.mutateAsync({
-                                      targetCollectionId: col.id,
+                                    await assignCollectionItemsMutation.mutateAsync({
+                                      collectionId: col.id,
                                       itemIds: [item.id],
                                     });
                                     toast.success(`Added to "${col.name}"`);
@@ -312,9 +388,9 @@ export const ItemRowActions = React.memo(function ItemRowActions({
                   </>
                 )}
 
-                {onDelete && (
+                {canEdit && onDelete && (
                   <>
-                    <DropdownMenuSeparator className="mx-1 my-1" />
+                    <DropdownMenuSeparator className="my-1" />
                     <DropdownMenuItem
                       variant="destructive"
                       onClick={() => {

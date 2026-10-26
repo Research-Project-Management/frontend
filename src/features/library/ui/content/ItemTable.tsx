@@ -14,7 +14,10 @@ import {
 import {
   useCollectionsQuery,
   useMoveCollectionItemsMutation,
+  useAssignCollectionItemsMutation,
+  useBatchDetachItemsMutation,
 } from "@/features/library/sdk/queries/collections.queries";
+import { toast } from "sonner";
 import { useTags } from "@/features/library/sdk/queries/tags-notes.queries";
 import {
   DEFAULT_LIBRARY_DISPLAY_OPTIONS,
@@ -25,7 +28,7 @@ import { sortLibraryItems } from "@/features/library/domain/sort-items.domain";
 import { ItemTableHeader } from "./ItemTableHeader";
 import { ItemTableRow } from "./ItemTableRow";
 import { useLibraryKeyboardShortcuts } from "./useLibraryKeyboardShortcuts";
-import { useLibraryItemOperations } from "./useLibraryItemOperations";
+import { useLibraryItemOperations } from "@/features/library/core/coordinator/item-operations.coordinator";
 import type { Item, Collection } from "@/features/library/domain/types/library.types";
 
 export interface ItemTableProps {
@@ -34,10 +37,12 @@ export interface ItemTableProps {
   hasNextPage?: boolean;
   isLoadingMore?: boolean;
   onLoadMore?: () => void;
+  enableInfiniteScroll?: boolean;
   displayOptions?: LibraryDisplayOptions;
   isTrash?: boolean;
   scopeId?: string;
   collectionId?: string;
+  canEdit?: boolean;
   onRestoreItems?: (ids: string[]) => void;
   onPermanentDeleteItems?: (ids: string[]) => void;
   onMoveToCollection?: (itemId: string, collectionId: string) => void;
@@ -64,6 +69,7 @@ export const ItemTable = React.memo(function ItemTable({
   onLoadMore,
   displayOptions: propDisplayOptions,
   isTrash = false,
+  canEdit = true,
   scopeId,
   collectionId,
   onRestoreItems,
@@ -104,6 +110,8 @@ export const ItemTable = React.memo(function ItemTable({
   const restoreMutation = useBatchRestoreItemsMutation(scopeId);
   const purgeMutation = useBatchPurgeItemsMutation(scopeId);
   const moveMutation = useMoveCollectionItemsMutation(scopeId);
+  const assignMutation = useAssignCollectionItemsMutation(scopeId);
+  const batchDetachMutation = useBatchDetachItemsMutation(scopeId);
   const { data: rawCollections } = useCollectionsQuery(scopeId);
   const collections = rawCollections ?? EMPTY_COLLECTIONS;
   const { tags: rawScopeTags } = useTags(scopeId);
@@ -301,6 +309,8 @@ export const ItemTable = React.memo(function ItemTable({
     onDetachItem,
     handleOpenItem,
     deleteItems: (ids) => deleteMutation.mutate(ids),
+    deleteMutation,
+    restoreMutation,
     updateItemMutation,
     lastSelectedIndexRef,
   });
@@ -324,7 +334,27 @@ export const ItemTable = React.memo(function ItemTable({
     restoreMutation,
     purgeMutation,
     moveMutation,
+    detachMutation: batchDetachMutation,
+    assignMutation,
   });
+
+  const handleAddToCollection = useCallback(
+    async (itemId: string, targetCollectionId: string) => {
+      try {
+        await assignMutation.mutateAsync({
+          collectionId: targetCollectionId,
+          itemIds: [itemId],
+        });
+        const targetCol = collections.find((c) => c.id === targetCollectionId);
+        toast.success(`Added to "${targetCol?.name || 'collection'}"`);
+      } catch (err) {
+        toast.error('Failed to add to collection', {
+          description: err instanceof Error ? err.message : String(err),
+        });
+      }
+    },
+    [assignMutation, collections],
+  );
 
   // Dynamically compute table minimum width to prevent column squashing when fields are toggled
   const tableMinWidth = useMemo(() => {
@@ -469,14 +499,16 @@ export const ItemTable = React.memo(function ItemTable({
                   columns={columns}
                   isTrash={isTrash}
                   collections={collections}
+                  canEdit={canEdit}
                   onRowClick={handleRowClick}
                   onToggleSelect={handleToggleSelect}
-                  onToggleStar={handleToggleStar}
-                  onDelete={handleDelete}
-                  onRestore={handleRestore}
-                  onPurge={handlePurge}
-                  onMoveToCollection={handleMoveToCollection}
-                  onDetachFromCollection={onDetachItem}
+                  onToggleStar={canEdit ? handleToggleStar : undefined}
+                  onDelete={canEdit ? handleDelete : undefined}
+                  onRestore={canEdit ? handleRestore : undefined}
+                  onPurge={canEdit ? handlePurge : undefined}
+                  onAddToCollection={canEdit ? handleAddToCollection : undefined}
+                  onMoveToCollection={canEdit ? handleMoveToCollection : undefined}
+                  onDetachFromCollection={canEdit ? onDetachItem : undefined}
                   onOpenItem={handleOpenItem}
                 />
               );

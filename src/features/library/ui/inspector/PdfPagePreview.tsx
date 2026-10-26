@@ -21,12 +21,14 @@ const PdfPageCanvas = dynamic(
 export interface PdfPagePreviewProps {
   paper: Item;
   paperUrl: string;
+  previewTitle?: string;
   onOpenReader: () => void;
 }
 
 export function PdfPagePreview({
   paper,
   paperUrl,
+  previewTitle,
   onOpenReader,
 }: PdfPagePreviewProps) {
   const [previewRequested, setPreviewRequested] = useState(false);
@@ -47,7 +49,7 @@ export function PdfPagePreview({
           </div>
           <div className="space-y-0.5 max-w-[220px]">
             <p className="text-12 font-medium text-foreground truncate">
-              {paper.filename || paper.title || "PDF Document"}
+              {previewTitle || paper.filename || paper.title || "PDF Document"}
             </p>
             <p className="text-11 text-muted-foreground">
               Click to open in Reader or load page preview

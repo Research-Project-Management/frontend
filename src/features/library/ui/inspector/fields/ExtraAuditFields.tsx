@@ -67,6 +67,7 @@ export function ExtraAuditFields({
             Extra
           </span>
           <InlineTextarea
+            itemKey={item.id}
             value={formattedExtraMetadata}
             ariaLabel="Extra"
             rows={Math.min(

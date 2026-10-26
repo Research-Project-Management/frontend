@@ -11,10 +11,11 @@ import {
 import { Button } from '@/shared/components/ui/button';
 import { RefreshCw, Plus, Rss, Trash2, Loader2, ExternalLink, Check, CheckCircle2, BookPlus, FileText } from 'lucide-react';
 import { toast } from 'sonner';
+import { safeHttpUrl } from '@/features/library/domain/retraction';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { FeedStackIllustration } from '@/features/library/ui/content/LibraryIllustrations';
 import { useFetchAcademicFeed } from '@/features/library/sdk/queries/ingestion.queries';
-import { useItems } from '@/features/library/sdk/queries/catalog.queries';
+import { useCreateLibraryItemMutation, useLibraryItemsQuery } from '@/features/library/sdk/queries/catalog.queries';
 import {
   mapFeedEntryToCreateItemPayload,
   type ParsedFeedEntry,
@@ -24,7 +25,7 @@ import {
 } from '@/features/library/domain/feed-parser.domain';
 import type { Collection } from '@/features/library/domain/types/library.types';
 import { cn } from '@/shared/lib/utils';
-import { useFeedsStore } from '@/features/library/core/store/feeds.store';
+import { useFeedsStore, isFeedEntryInLibrary } from '@/features/library/core/store/feeds.store';
 import type { SavedFeedSubscription } from '@/features/library/domain/types/feeds.types';
 
 export type { SavedFeedSubscription };
@@ -45,15 +46,22 @@ export default function FeedsManagerModal({
   defaultCollectionId = null,
 }: FeedsManagerModalProps) {
   const { mutateAsync: fetchAcademicFeed } = useFetchAcademicFeed();
-  const { createItem } = useItems({ scopeId, enabled: false });
-  const {
-    feeds,
-    activeFeedId,
-    loadFeeds,
-    setActiveFeedId,
-    addFeed,
-    removeFeed,
-  } = useFeedsStore();
+  const { mutateAsync: createItem } = useCreateLibraryItemMutation(scopeId);
+  const { data: libraryData } = useLibraryItemsQuery(
+    scopeId,
+    { limit: 100, fields: ['id', 'title', 'doi', 'url'] },
+    { enabled: open },
+  );
+  const feeds = useFeedsStore((s) => s.feeds);
+  const activeFeedId = useFeedsStore((s) => s.activeFeedId);
+  const loadFeeds = useFeedsStore((s) => s.loadFeeds);
+  const setActiveFeedId = useFeedsStore((s) => s.setActiveFeedId);
+  const addFeed = useFeedsStore((s) => s.addFeed);
+  const removeFeed = useFeedsStore((s) => s.removeFeed);
+  const savedEntryIds = useFeedsStore((s) => s.savedEntryIds);
+  const savingEntryIds = useFeedsStore((s) => s.savingEntryIds);
+  const markEntrySaved = useFeedsStore((s) => s.markEntrySaved);
+  const setEntrySaving = useFeedsStore((s) => s.setEntrySaving);
 
   const [isAddingFeed, setIsAddingFeed] = useState(false);
   const [newFeedName, setNewFeedName] = useState('');
@@ -65,12 +73,6 @@ export default function FeedsManagerModal({
   const [entries, setEntries] = useState<ParsedFeedEntry[]>([]);
   const [feedTitle, setFeedTitle] = useState<string>('');
   const [isLoadingEntries, setIsLoadingEntries] = useState(false);
-  const [savingEntryIds, setSavingEntryIds] = useState<Set<string>>(
-    () => new Set(),
-  );
-  const [savedEntryIds, setSavedEntryIds] = useState<Set<string>>(
-    () => new Set(),
-  );
 
   useEffect(() => {
     if (open) {
@@ -80,14 +82,14 @@ export default function FeedsManagerModal({
 
   const activeFeed = feeds.find((f) => f.id === activeFeedId) || feeds[0];
 
-  const loadFeedEntries = useCallback(async (feed: SavedFeedSubscription | undefined) => {
+  const loadFeedEntries = useCallback(async (feed: SavedFeedSubscription | undefined, forceRefresh = false) => {
     if (!feed?.url) {
       setEntries([]);
       return;
     }
     setIsLoadingEntries(true);
     try {
-      const res: FeedFetchApiResponse = await fetchAcademicFeed(feed.url);
+      const res: FeedFetchApiResponse = await fetchAcademicFeed({ url: feed.url, forceRefresh });
       const payload = res?.data ?? res;
       if (payload && Array.isArray(payload.entries)) {
         setFeedTitle(payload.feedTitle || feed.name);
@@ -152,7 +154,7 @@ export default function FeedsManagerModal({
   };
 
   const handleSaveEntryToLibrary = async (entry: ParsedFeedEntry) => {
-    setSavingEntryIds((prev) => new Set(prev).add(entry.id));
+    setEntrySaving(entry.id, true);
     try {
       const createPayload = mapFeedEntryToCreateItemPayload(entry, {
         scopeId,
@@ -165,7 +167,7 @@ export default function FeedsManagerModal({
         collectionIds: targetCollectionId ? [targetCollectionId] : undefined,
         silent: true,
       });
-      setSavedEntryIds((prev) => new Set(prev).add(entry.id));
+      markEntrySaved(entry.id);
       toast.success('Saved article to Library', {
         description: entry.title,
       });
@@ -174,11 +176,7 @@ export default function FeedsManagerModal({
         description: err instanceof Error ? err.message : 'Please try again.',
       });
     } finally {
-      setSavingEntryIds((prev) => {
-        const next = new Set(prev);
-        next.delete(entry.id);
-        return next;
-      });
+      setEntrySaving(entry.id, false);
     }
   };
 
@@ -221,7 +219,7 @@ export default function FeedsManagerModal({
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => activeFeed && loadFeedEntries(activeFeed)}
+              onClick={() => activeFeed && loadFeedEntries(activeFeed, true)}
               disabled={isLoadingEntries || !activeFeed}
               className="h-7 px-2.5 text-11 gap-1.5 cursor-pointer"
             >
@@ -307,19 +305,17 @@ export default function FeedsManagerModal({
                       <Rss className="size-3.5 shrink-0" />
                       <span className="truncate">{f.name}</span>
                     </div>
-                    {feeds.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemoveFeed(f.id);
-                        }}
-                        className="opacity-0 group-hover:opacity-100 size-5 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive cursor-pointer transition-opacity"
-                        aria-label={`Remove feed ${f.name}`}
-                      >
-                        <Trash2 className="size-3" />
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveFeed(f.id);
+                      }}
+                      className="opacity-0 group-hover:opacity-100 size-5 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive cursor-pointer transition-opacity"
+                      aria-label={`Remove feed ${f.name}`}
+                    >
+                      <Trash2 className="size-3" />
+                    </button>
                   </div>
                 );
               })}
@@ -350,8 +346,8 @@ export default function FeedsManagerModal({
             ) : (
               <div className="flex-1 overflow-y-auto divide-y divide-border">
                 {entries.map((entry) => {
-                  const isSaving = savingEntryIds.has(entry.id);
-                  const isSaved = savedEntryIds.has(entry.id);
+                  const isSaving = savingEntryIds.includes(entry.id);
+                  const isSaved = isFeedEntryInLibrary(entry, savedEntryIds, libraryData?.items);
 
                   return (
                     <div
@@ -376,13 +372,10 @@ export default function FeedsManagerModal({
                               type="button"
                               variant="ghost"
                               size="sm"
-                              onClick={() =>
-                                window.open(
-                                  entry.url,
-                                  '_blank',
-                                  'noopener,noreferrer',
-                                )
-                              }
+                              onClick={() => {
+                                const safe = safeHttpUrl(entry.url);
+                                if (safe) window.open(safe, '_blank', 'noopener,noreferrer');
+                              }}
                               className="h-7 px-2 text-11 gap-1 text-muted-foreground hover:text-foreground cursor-pointer"
                             >
                               <ExternalLink className="size-3" />

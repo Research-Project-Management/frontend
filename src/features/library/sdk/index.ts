@@ -7,6 +7,7 @@ export {
   patchItemAcrossScopeCaches,
   removeItemsFromCacheData,
   removeItemsFromScopeCaches,
+  invalidateLibraryCatalogDependencies,
   invalidateLibraryScopeCatalog,
 } from './queries/cache-patcher';
 export {
@@ -60,7 +61,12 @@ export {
   executeTrackedIdentifierIngestion,
   useDuplicateGroups,
   useMergeDuplicates,
+  useAcademicFeedArticlesQuery,
   useFetchAcademicFeed,
+  useFeedSubscriptionsQuery,
+  useSubscribeFeedMutation,
+  useUpdateFeedSubscriptionMutation,
+  useUnsubscribeFeedMutation,
   usePreviewCaptureUrlMutation,
   type ConfirmCaptureUrlInput,
   useConfirmCaptureUrlMutation,
@@ -88,6 +94,7 @@ export {
   type FieldMappingChange,
   type CreatorRoleChange,
   type TypeConversionPreview,
+  useItemTypeConversionPreviewQuery,
   useItemTypeConversion,
 } from './queries/saved-searches-relations.queries';
 export {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTags } from '@/features/library/sdk/queries/tags-notes.queries';
 import type { TagWithCount } from '@/features/library/domain/types/tags.types';
 import { useLibraryCountsQuery, useItemTypes } from '@/features/library/sdk/queries/catalog.queries';
@@ -16,6 +16,19 @@ import {
   KNOWN_TYPE_ALIASES,
 } from '@/features/library/domain/filter-matcher.domain';
 import { useLibraryNavigation } from '@/features/library/core/coordinator/navigation.coordinator';
+
+/** Standard Zotero 7 9-Color Tag Palette */
+export const TAG_PALETTE_COLORS = [
+  { label: 'Red', value: '#ff6666' },
+  { label: 'Orange', value: '#fb923c' },
+  { label: 'Yellow', value: '#facc15' },
+  { label: 'Green', value: '#4ade80' },
+  { label: 'Cyan', value: '#22d3ee' },
+  { label: 'Blue', value: '#60a5fa' },
+  { label: 'Purple', value: '#a78bfa' },
+  { label: 'Magenta', value: '#f472b6' },
+  { label: 'Gray', value: '#94a3b8' },
+] as const;
 
 export const FILE_STATUS_OPTIONS = [
   {
@@ -55,7 +68,15 @@ export function useLibraryFacetCounts({
 }: UseLibraryFacetCountsParams) {
   const { searchParams, updateQuery } = useLibraryNavigation();
   const { data: counts } = useLibraryCountsQuery(scopeId, { enabled: isOpen });
-  const { tags } = useTags(scopeId, { enabled: isOpen });
+  const {
+    tags,
+    createTag,
+    updateTag,
+    deleteTag,
+    deleteAutomaticTags,
+    isDeletingAutomatic,
+  } = useTags(scopeId, { enabled: isOpen });
+  const [showAutomaticTags, setShowAutomaticTags] = useState(true);
 
   const rawFileStatus = searchParams.get('fileStatus');
   const hasFileParam = searchParams.get('hasFile');
@@ -361,13 +382,39 @@ export function useLibraryFacetCounts({
   const matchingTags = useMemo(() => {
     if (!isOpen) return [];
     const list = tags.filter((t: TagWithCount) => {
-      const count = t._count?.itemTags ?? 0;
+      const isAuto = (t.type || 'manual').toLowerCase() === 'automatic';
+      if (!showAutomaticTags && isAuto && !activeTagsSet.has(t.name.toLowerCase())) {
+        return false;
+      }
+      const count = t._count?.itemTags ?? t.itemCount ?? 0;
       if (count > 0) return true;
-      return activeTagsSet.has(t.name.toLowerCase());
+      if (activeTagsSet.has(t.name.toLowerCase())) return true;
+      if (!isAuto) return true;
+      if (typeof t.shortcut === 'number' || Boolean(t.color)) return true;
+      return false;
     });
 
+    const sortPinnedFirst = (a: TagWithCount, b: TagWithCount) => {
+      const aHasShortcut = typeof a.shortcut === 'number' && a.shortcut >= 1;
+      const bHasShortcut = typeof b.shortcut === 'number' && b.shortcut >= 1;
+      if (aHasShortcut && bHasShortcut) {
+        return (a.shortcut || 99) - (b.shortcut || 99);
+      }
+      if (aHasShortcut) return -1;
+      if (bHasShortcut) return 1;
+
+      const aHasColor = Boolean(a.color && a.color !== '#3b82f6');
+      const bHasColor = Boolean(b.color && b.color !== '#3b82f6');
+      if (aHasColor && !bHasColor) return -1;
+      if (!aHasColor && bHasColor) return 1;
+
+      return a.name.localeCompare(b.name);
+    };
+
     if (!searchQuery.trim()) {
-      return list.map((tag) => ({ tag, score: 0 }));
+      return [...list]
+        .sort(sortPinnedFirst)
+        .map((tag) => ({ tag, score: 0 }));
     }
 
     return list
@@ -380,8 +427,8 @@ export function useLibraryFacetCounts({
         };
       })
       .filter((item) => item.matches)
-      .sort((a, b) => b.score - a.score);
-  }, [tags, searchQuery, activeTagsSet, isOpen]);
+      .sort((a, b) => b.score - a.score || sortPinnedFirst(a.tag, b.tag));
+  }, [tags, searchQuery, activeTagsSet, isOpen, showAutomaticTags]);
 
   const totalMatchesCount =
     matchingFileItems.length +
@@ -405,6 +452,13 @@ export function useLibraryFacetCounts({
     dateSectionMatch,
     matchingTags,
     totalMatchesCount,
+    showAutomaticTags,
+    setShowAutomaticTags,
+    createTag,
+    updateTag,
+    deleteTag,
+    deleteAutomaticTags,
+    isDeletingAutomatic,
     handleFileStatusToggle,
     handleReadStatusToggle,
     handleTypeToggle,

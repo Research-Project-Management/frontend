@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type {
+  IngestionProgressItem,
   ProcessingFileItem,
   ProcessModalState,
   ProcessBatchUploadOptions,
@@ -16,6 +17,8 @@ export interface ProcessModalStore {
   addProcessingItem: (item: ProcessingFileItem) => void;
   updateProcessingItem: (id: string, updates: Partial<ProcessingFileItem>) => void;
   dismissProcessingItem: (id: string) => void;
+  updateItemById: (taskId: string, patch: Partial<IngestionProgressItem>) => void;
+  updateItem: (index: number, patch: Partial<IngestionProgressItem>) => void;
   startBatchUpload: (
     files: File[],
     options: ProcessBatchUploadOptions,
@@ -65,6 +68,42 @@ export const useProcessModalStore = create<ProcessModalStore>((set, get) => ({
     set((s) => ({
       processingItems: s.processingItems.filter((p) => p.id !== id),
     }));
+  },
+
+  updateItemById: (taskId: string, patch: Partial<IngestionProgressItem>) => {
+    set((s) => {
+      if (!s.state.data) return s;
+      const items = s.state.data.items.map((item) =>
+        item.id === taskId ? { ...item, ...patch } : item,
+      );
+      return {
+        state: {
+          ...s.state,
+          data: {
+            ...s.state.data,
+            items,
+          },
+        },
+      };
+    });
+  },
+
+  updateItem: (index: number, patch: Partial<IngestionProgressItem>) => {
+    set((s) => {
+      if (!s.state.data) return s;
+      const items = s.state.data.items.map((item, idx) =>
+        idx === index ? { ...item, ...patch } : item,
+      );
+      return {
+        state: {
+          ...s.state,
+          data: {
+            ...s.state.data,
+            items,
+          },
+        },
+      };
+    });
   },
 
   closeModal: () => {

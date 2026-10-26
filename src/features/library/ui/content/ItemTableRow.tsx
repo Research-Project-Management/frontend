@@ -41,12 +41,14 @@ export interface ItemTableRowProps {
   columns: Record<string, boolean>;
   isTrash?: boolean;
   collections?: Collection[];
+  canEdit?: boolean;
   onRowClick: (e: React.MouseEvent, item: Item, index: number) => void;
   onToggleSelect?: (id: string, e: React.MouseEvent | React.KeyboardEvent, index: number) => void;
   onToggleStar?: (item: Item, isStarred: boolean) => void;
   onDelete?: (id: string) => void;
   onRestore?: (id: string) => void;
   onPurge?: (id: string) => void;
+  onAddToCollection?: (itemId: string, collectionId: string) => void;
   onMoveToCollection?: (itemId: string, collectionId: string) => void;
   onDetachFromCollection?: (id: string) => void;
   onOpenItem?: (id: string) => void;
@@ -69,12 +71,14 @@ export const ItemTableRow = React.memo(function ItemTableRow({
   columns,
   isTrash = false,
   collections = EMPTY_COLLECTIONS,
+  canEdit = true,
   onRowClick,
   onToggleSelect,
   onToggleStar,
   onDelete,
   onRestore,
   onPurge,
+  onAddToCollection,
   onMoveToCollection,
   onDetachFromCollection,
   onOpenItem,
@@ -132,9 +136,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
     return def?.label || item.itemType;
   }, [item.itemType]);
 
-  const isStarred =
-    Boolean(item.isStarred) ||
-    Boolean(typeof item.rating === 'number' && item.rating > 0);
+  const isStarred = Boolean(item.isStarred);
 
   const isProcessing = Boolean(item._isProcessing);
   const processingStatus = item._processingStatus;
@@ -158,6 +160,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
     item.noteCount ||
     (Array.isArray(item.notes) ? item.notes.length : 1);
 
+  const handleAddToCollection = useCallback((colId: string) => { onAddToCollection?.(item.id, colId); }, [onAddToCollection, item.id]);
   const handleMoveToCollection = useCallback(
     (colId: string) => {
       onMoveToCollection?.(item.id, colId);
@@ -187,6 +190,8 @@ export const ItemTableRow = React.memo(function ItemTableRow({
       scopeId={scopeId}
       isTrash={isTrash}
       collections={collections}
+      canEdit={canEdit}
+      onAddToCollection={!isProcessing && onAddToCollection ? handleAddToCollection : undefined}
       onToggleStar={!isProcessing && onToggleStar ? handleToggleStarContextMenu : undefined}
       onDelete={!isProcessing && onDelete ? handleDeleteContextMenu : undefined}
       onRestore={!isProcessing && onRestore ? handleRestoreContextMenu : undefined}
@@ -491,6 +496,8 @@ export const ItemTableRow = React.memo(function ItemTableRow({
             scopeId={scopeId}
             isTrash={isTrash}
             collections={collections}
+      canEdit={canEdit}
+      onAddToCollection={!isProcessing && onAddToCollection ? handleAddToCollection : undefined}
             onToggleStar={!isProcessing && onToggleStar ? handleToggleStarContextMenu : undefined}
             onDelete={!isProcessing && onDelete ? handleDeleteContextMenu : undefined}
             onRestore={!isProcessing && onRestore ? handleRestoreContextMenu : undefined}

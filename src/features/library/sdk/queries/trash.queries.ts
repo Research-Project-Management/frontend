@@ -10,7 +10,10 @@ import {
   invalidateCollections,
   normalizeScopeId,
 } from '@/features/library/sdk/query-keys';
-import { chunkUniqueIds } from './cache-patcher';
+import {
+  chunkUniqueIds,
+  invalidateLibraryCatalogDependencies,
+} from './cache-patcher';
 
 export function useTrash(
   scopeId: string = 'user',
@@ -40,7 +43,12 @@ export function useTrash(
         description: 'Item has been returned to your library.',
         id: 'trash-mutation-toast',
       });
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
+      invalidateLibraryCatalogDependencies(queryClient, effectiveScope, {
+        itemsList: true,
+        collections: true,
+        tags: true,
+        counts: true,
+      });
     },
     onError: (err: Error) => {
       toast.error('Failed to restore item', {
@@ -57,7 +65,12 @@ export function useTrash(
         description: 'The item and its attachments were permanently removed.',
         id: 'trash-mutation-toast',
       });
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
+      invalidateLibraryCatalogDependencies(queryClient, effectiveScope, {
+        itemsList: true,
+        collections: true,
+        tags: true,
+        counts: true,
+      });
     },
     onError: (err: Error) => {
       toast.error('Failed to delete item', {

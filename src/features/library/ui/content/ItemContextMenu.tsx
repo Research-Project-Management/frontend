@@ -9,7 +9,13 @@ import { cn, copyToClipboard } from '@/shared/lib/utils';
 import {
   ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger, ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger, ContextMenuShortcut, } from '@/shared/components/ui/context-menu';
 import { useCitationStyles } from '@/features/library/sdk/queries/citation.queries';
-import { useMoveCollectionItemsMutation } from '@/features/library/sdk/queries/collections.queries';
+import {
+  useReResolveItemMetadataMutation,
+  useSetMyPublicationMutation,
+} from '@/features/library/sdk/queries/catalog.queries';
+import { useRetraction } from '@/features/library/sdk/queries/ingestion.queries';
+import { RefreshCw, Award, ShieldAlert } from 'lucide-react';
+import { useAssignCollectionItemsMutation } from '@/features/library/sdk/queries/collections.queries';
 import {
   executeCopyMultiCite,
   executeCopyInTextCite,
@@ -23,10 +29,12 @@ export interface ItemContextMenuProps {
   item: Item;
   isTrash?: boolean;
   collections?: Collection[];
+  canEdit?: boolean;
   onToggleStar?: () => void;
   onDelete?: () => void;
   onRestore?: () => void;
   onPurge?: () => void;
+  onAddToCollection?: (collectionId: string) => void;
   onMoveToCollection?: (collectionId: string) => void;
   onDetachFromCollection?: () => void;
   onOpenItem?: (id: string) => void;
@@ -39,10 +47,12 @@ export function ItemContextMenu({
   item,
   isTrash = false,
   collections = [],
+  canEdit = true,
   onToggleStar,
   onDelete,
   onRestore,
   onPurge,
+  onAddToCollection,
   onMoveToCollection,
   onDetachFromCollection,
   onOpenItem,
@@ -50,7 +60,10 @@ export function ItemContextMenu({
 }: ItemContextMenuProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
-  const moveCollectionItemsMutation = useMoveCollectionItemsMutation(scopeId);
+  const assignCollectionItemsMutation = useAssignCollectionItemsMutation(scopeId);
+  const reResolveMutation = useReResolveItemMetadataMutation(scopeId);
+  const setMyPublicationMutation = useSetMyPublicationMutation(scopeId);
+  const { flagItem, unflagItem } = useRetraction(scopeId, { includeItems: false });
   const { data: serverStyles = [] } = useCitationStyles(scopeId, { enabled: isOpen });
   const availableStyles = serverStyles.length > 0
     ? serverStyles.map((s) => ({ id: s.id, label: s.shortTitle || s.name || getCleanStyleLabel(s.id) }))
@@ -95,7 +108,7 @@ export function ItemContextMenu({
                 Open in Reader
               </ContextMenuItem>
 
-              {onToggleStar && (
+              {canEdit && onToggleStar && (
                 <ContextMenuItem
                   onClick={onToggleStar}
                   className="gap-2 text-12 py-1.5 px-2 cursor-pointer"
@@ -110,7 +123,7 @@ export function ItemContextMenu({
                 </ContextMenuItem>
               )}
 
-              <ContextMenuSeparator className="mx-1.5 my-1" />
+              <ContextMenuSeparator className="my-1" />
 
               <ContextMenuSub>
                 <ContextMenuSubTrigger className="gap-2 text-12 py-1.5 px-2 cursor-pointer">
@@ -168,9 +181,64 @@ export function ItemContextMenu({
                 Copy Citation Key
               </ContextMenuItem>
 
-              {(collections.length > 0 || onDetachFromCollection) && (
+              {canEdit && (
                 <>
-                  <ContextMenuSeparator className="mx-1.5 my-1" />
+                  <ContextMenuSeparator className="my-1" />
+                  <ContextMenuItem
+                    onClick={() => {
+                      void reResolveMutation.mutateAsync({
+                        itemId: item.id,
+                        attachOaPdf: true,
+                      });
+                    }}
+                    className="gap-2 text-12 py-1.5 px-2 cursor-pointer"
+                  >
+                    <RefreshCw className="size-3.5 text-foreground" />
+                    Re-resolve Metadata / Find PDF
+                  </ContextMenuItem>
+
+                  <ContextMenuItem
+                    onClick={() => {
+                      void setMyPublicationMutation.mutateAsync({
+                        itemId: item.id,
+                        isMyPublication: !item.isMyPublication,
+                      });
+                    }}
+                    className="gap-2 text-12 py-1.5 px-2 cursor-pointer"
+                  >
+                    <Award className="size-3.5 text-foreground" />
+                    {item.isMyPublication
+                      ? 'Remove from My Publications'
+                      : 'Add to My Publications'}
+                  </ContextMenuItem>
+
+                  <ContextMenuItem
+                    onClick={() => {
+                      if (item.isRetracted) {
+                        void unflagItem(item.id);
+                      } else {
+                        void flagItem({
+                          itemId: item.id,
+                          data: {
+                            nature: 'retraction',
+                            reason: 'Manually flagged as retracted by user',
+                          },
+                        });
+                      }
+                    }}
+                    className="gap-2 text-12 py-1.5 px-2 cursor-pointer"
+                  >
+                    <ShieldAlert className="size-3.5 text-foreground" />
+                    {item.isRetracted
+                      ? 'Clear Retraction Flag'
+                      : 'Flag as Retracted'}
+                  </ContextMenuItem>
+                </>
+              )}
+
+              {canEdit && (collections.length > 0 || onDetachFromCollection) && (
+                <>
+                  <ContextMenuSeparator className="my-1" />
 
                   {collections.length > 0 && (
                     <ContextMenuSub>
@@ -183,12 +251,12 @@ export function ItemContextMenu({
                           <ContextMenuItem
                             key={col.id}
                             onClick={async () => {
-                              if (onMoveToCollection) {
+                              if (onAddToCollection) { onAddToCollection(col.id); } else if (onMoveToCollection) {
                                 onMoveToCollection(col.id);
                               } else {
                                 try {
-                                  await moveCollectionItemsMutation.mutateAsync({
-                                    targetCollectionId: col.id,
+                                  await assignCollectionItemsMutation.mutateAsync({
+                                    collectionId: col.id,
                                     itemIds: [item.id],
                                   });
                                   toast.success(`Added to "${col.name}"`);
@@ -221,9 +289,9 @@ export function ItemContextMenu({
                 </>
               )}
 
-              {onDelete && (
+              {canEdit && onDelete && (
                 <>
-                  <ContextMenuSeparator className="mx-1.5 my-1" />
+                  <ContextMenuSeparator className="my-1" />
                   <ContextMenuItem
                     onClick={onDelete}
                     className="gap-2 text-12 py-1.5 px-2 cursor-pointer text-destructive focus:text-destructive focus:bg-muted"
@@ -239,7 +307,7 @@ export function ItemContextMenu({
             </>
           ) : (
             <>
-              {onRestore && (
+              {canEdit && onRestore && (
                 <ContextMenuItem
                   onClick={onRestore}
                   className="gap-2 text-12 py-1.5 px-2 cursor-pointer text-foreground focus:text-foreground"
@@ -249,9 +317,9 @@ export function ItemContextMenu({
                 </ContextMenuItem>
               )}
 
-              {onPurge && (
+              {canEdit && onPurge && (
                 <>
-                  <ContextMenuSeparator className="mx-1.5 my-1" />
+                  <ContextMenuSeparator className="my-1" />
                   <ContextMenuItem
                     onClick={onPurge}
                     className="gap-2 text-12 py-1.5 px-2 cursor-pointer text-destructive focus:text-destructive focus:bg-muted"

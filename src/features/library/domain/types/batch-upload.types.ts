@@ -1,10 +1,13 @@
 export interface IngestionProgressItem {
+  id: string;
   title: string;
   status: 'SUCCEEDED' | 'DUPLICATE' | 'FAILED' | 'PROCESSING' | 'UPLOADING' | 'PENDING';
   itemId?: string;
   error?: string;
   itemName?: string;
 }
+
+export type ProcessItem = IngestionProgressItem;
 
 export interface IngestionProgressResponse {
   runId: string;

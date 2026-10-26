@@ -11,6 +11,7 @@ import type {
   SavedSearchResultsResponse,
   SavedSearchPreviewResponse,
   SavedSearchConditionGroup,
+  SavedSearchScopeOptions,
 } from '@/features/library/domain/types/library.types';
 import {
   libraryClient,
@@ -431,7 +432,7 @@ export const StateService = {
   ): Promise<Record<string, ItemStateData>> => {
     const res = await libraryClient.post<
       Record<string, ItemStateData> | { data: Record<string, ItemStateData> }
-    >(getCatalogUrl(scopeId, 'state/batch'), { itemIds: itemIds ?? [] });
+    >(resolveLibraryUrl('catalog', '/state/batch', scopeId), { itemIds: itemIds ?? [] });
     return unwrapState(res) ?? {};
   },
 };
@@ -450,31 +451,42 @@ export const SavedSearchesService = {
       resolveLibraryUrl('catalog', `/saved-searches/${encodeURIComponent(id)}`, scopeId),
     ),
 
-  create: (scopeId: string | undefined, data: CreateSavedSearchInput) =>
-    libraryClient.post<SavedSearch>(
+  create: (scopeId: string | undefined, data: CreateSavedSearchInput) => {
+    const { targetScope: _, scope: __, ...payload } = data;
+    return libraryClient.post<SavedSearch>(
       resolveLibraryUrl('catalog', '/saved-searches', scopeId),
       {
-        ...data,
+        ...payload,
         ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
       },
-    ),
+    );
+  },
 
-  update: (scopeId: string | undefined, id: string, data: UpdateSavedSearchInput) =>
-    libraryClient.patch<SavedSearch>(
+  update: (scopeId: string | undefined, id: string, data: UpdateSavedSearchInput) => {
+    const { targetScope: _, scope: __, ...payload } = data;
+    return libraryClient.patch<SavedSearch>(
       resolveLibraryUrl('catalog', `/saved-searches/${encodeURIComponent(id)}`, scopeId),
-      data,
-    ),
+      payload,
+    );
+  },
 
   delete: (scopeId: string | undefined, id: string) =>
     libraryClient.delete<{ success: boolean; id: string }>(
       resolveLibraryUrl('catalog', `/saved-searches/${encodeURIComponent(id)}`, scopeId),
     ),
 
-  preview: (scopeId: string | undefined, conditions: SavedSearchConditionGroup) =>
+  preview: (
+    scopeId: string | undefined,
+    conditions: SavedSearchConditionGroup,
+    options?: { sortBy?: string; sortOrder?: 'asc' | 'desc'; scopeOptions?: SavedSearchScopeOptions },
+  ) =>
     libraryClient.post<SavedSearchPreviewResponse>(
       resolveLibraryUrl('catalog', '/saved-searches/preview', scopeId),
       {
         conditions,
+        ...(options?.sortBy ? { sortBy: options.sortBy } : {}),
+        ...(options?.sortOrder ? { sortOrder: options.sortOrder } : {}),
+        ...(options?.scopeOptions || conditions.scopeOptions ? { scopeOptions: options?.scopeOptions || conditions.scopeOptions } : {}),
         ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
       },
     ),
@@ -498,4 +510,3 @@ export const SavedSearchesService = {
   execute: (scopeId: string | undefined, id: string, params?: { page?: number; limit?: number }) =>
     SavedSearchesService.getResults(scopeId, id, params),
 };
-

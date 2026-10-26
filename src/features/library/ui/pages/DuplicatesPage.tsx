@@ -10,6 +10,9 @@ import { useMergeDuplicates } from '@/features/library/sdk/queries/ingestion.que
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { useLibraryPermissions } from '@/features/library/core/coordinator/permissions.coordinator';
 import { LibraryModals } from '@/features/library/ui/modals/LibraryModals';
+import { toast } from 'sonner';
+import { useCreateLibraryItemMutation } from '@/features/library/sdk/queries/catalog.queries';
+import { getItemTypeDefinition } from '@/features/library/domain/types/item-types.types';
 import type { Item, DuplicateGroup } from '@/features/library/domain/types/library.types';
 
 /**
@@ -20,6 +23,33 @@ export function DuplicatesPage() {
   const effectiveScopeId = activeScope.type === 'project' ? activeScope.id : 'user';
   const { canEditItem: canEdit } = useLibraryPermissions();
   const mergeMutation = useMergeDuplicates(effectiveScopeId);
+
+  const openModal = useLibraryUIStore((s) => s.openModal);
+  const { mutateAsync: createItem } = useCreateLibraryItemMutation(effectiveScopeId);
+
+  const handleNewManualItem = useCallback(
+    async (itemType: string) => {
+      try {
+        const typeDef = getItemTypeDefinition(itemType);
+        const label = typeDef?.label || 'Item';
+        const res = (await createItem({
+          itemType,
+          title: `Untitled ${label}`,
+        })) as { id?: string; data?: { id?: string } } | undefined;
+        toast.success(`Created new ${label.toLowerCase()}`);
+        const createdId = res?.data?.id || res?.id;
+        if (createdId) {
+          useLibraryUIStore.getState().setActiveItem(createdId);
+          useLibraryUIStore.getState().setIsInspectorOpen(true);
+        }
+      } catch (err: unknown) {
+        toast.error('Failed to create manual item', {
+          description: err instanceof Error ? err.message : 'Unknown error',
+        });
+      }
+    },
+    [createItem],
+  );
 
   const [selectedGroup, setSelectedGroup] = useState<DuplicateGroup | null>(null);
   const [selectedGroupKey, setSelectedGroupKey] = useState<string | null>(null);
@@ -62,7 +92,18 @@ export function DuplicatesPage() {
     <div className="flex h-full w-full overflow-hidden bg-background">
       {/* Main Workspace Content */}
       <div className="flex flex-1 flex-col overflow-hidden min-w-0">
-        <LibraryTopbar title="Duplicate Items" icon={Files} showDisplay={false} canEdit={canEdit} />
+        <LibraryTopbar
+          title="Duplicate Items"
+          icon={Files}
+          showDisplay={false}
+          canEdit={canEdit}
+          onNewManualItem={canEdit ? handleNewManualItem : undefined}
+          onImportFromUser={
+            canEdit && activeScope.type === 'project'
+              ? () => openModal('IMPORT_FROM_USER')
+              : undefined
+          }
+        />
 
         <div className="flex-1 overflow-hidden min-h-0 bg-background">
           <DuplicatesContent

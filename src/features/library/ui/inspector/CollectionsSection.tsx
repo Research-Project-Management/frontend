@@ -32,7 +32,9 @@ import { cn } from "@/shared/lib/utils";
 import type {
   Item,
   Collection,
+  CreateCollectionDTO,
 } from "@/features/library/domain/types/library.types";
+import { getAssignedCollectionIds } from "@/features/library/domain/metadata-mapper";
 
 // ── Helper: compute ancestor breadcrumb path for a collection ────────────────
 function getCollectionAncestorPath(
@@ -66,6 +68,10 @@ function useItemCollectionsManager(
   item: Item,
   effectiveScope: string,
   canEdit: boolean,
+  externalCollections?: Collection[],
+  externalCreateCollection?: (
+    data: CreateCollectionDTO & { scopeId?: string },
+  ) => Promise<unknown>,
 ) {
   const updateItemMutation = useUpdateLibraryItemMutation(effectiveScope);
   const updateItem = useCallback(
@@ -83,7 +89,16 @@ function useItemCollectionsManager(
     },
     [updateItemMutation],
   );
-  const { collections = [], createCollection } = useCollections(effectiveScope);
+  const {
+    collections: queriedCollections = [],
+    createCollection: queriedCreateCollection,
+  } = useCollections({
+    scopeId: effectiveScope,
+    enabled: externalCollections === undefined,
+  });
+  const collections = externalCollections ?? queriedCollections;
+  const createCollection =
+    externalCreateCollection ?? queriedCreateCollection;
 
   // Map collections for O(1) lookup
   const colMap = useMemo(() => {
@@ -116,16 +131,10 @@ function useItemCollectionsManager(
   }, [colMap]);
 
   // Set of all currently assigned collection IDs
-  const assignedCollectionIdsSet = useMemo(() => {
-    const ids = new Set<string>();
-    if (Array.isArray(item?.collectionIds)) {
-      item.collectionIds.forEach((id) => id && ids.add(id));
-    }
-    if (Array.isArray(item?.collections)) {
-      item.collections.forEach((c) => c?.id && ids.add(c.id));
-    }
-    return ids;
-  }, [item?.collectionIds, item?.collections]);
+  const assignedCollectionIdsSet = useMemo(
+    () => new Set<string>(getAssignedCollectionIds(item)),
+    [item],
+  );
 
   // Toggle assigning or removing a collection with undo support
   const handleToggleCollection = useCallback(
@@ -220,6 +229,10 @@ interface CollectionPickerContentProps {
   scopeId?: string;
   canEdit?: boolean;
   align?: "start" | "center" | "end";
+  collections?: Collection[];
+  createCollection?: (
+    data: CreateCollectionDTO & { scopeId?: string },
+  ) => Promise<unknown>;
   onClose: () => void;
 }
 
@@ -228,6 +241,8 @@ function CollectionPickerContent({
   scopeId,
   canEdit = true,
   align = "end",
+  collections: externalCollections,
+  createCollection: externalCreateCollection,
   onClose,
 }: CollectionPickerContentProps) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -242,7 +257,13 @@ function CollectionPickerContent({
     updateItem,
     createCollection,
     handleToggleCollection,
-  } = useItemCollectionsManager(item, effectiveScope, canEdit);
+  } = useItemCollectionsManager(
+    item,
+    effectiveScope,
+    canEdit,
+    externalCollections,
+    externalCreateCollection,
+  );
   const openModal = useLibraryUIStore((s) => s.openModal);
 
   // Filter collections based on search query using O(1) pre-computed index
@@ -312,7 +333,7 @@ function CollectionPickerContent({
       onClick={(e) => e.stopPropagation()}
     >
       {/* Search Header */}
-      <div className="flex items-center gap-1.5 px-2.5 py-1.5">
+      <div className="flex items-center gap-1.5 px-2.5 py-1.5 border-b border-border">
         <Search
           className="size-3.5 text-muted-foreground shrink-0"
           strokeWidth={1.5}
@@ -445,11 +466,23 @@ export interface CollectionPickerPopoverProps {
   scopeId?: string;
   canEdit?: boolean;
   align?: "start" | "center" | "end";
+  collections?: Collection[];
+  createCollection?: (
+    data: CreateCollectionDTO & { scopeId?: string },
+  ) => Promise<unknown>;
   children: React.ReactNode;
 }
 
 export function CollectionPickerPopover(props: CollectionPickerPopoverProps) {
-  const { item, scopeId, canEdit = true, align = "end", children } = props;
+  const {
+    item,
+    scopeId,
+    canEdit = true,
+    align = "end",
+    collections,
+    createCollection,
+    children,
+  } = props;
   const [open, setOpen] = useState(false);
 
   return (
@@ -461,6 +494,8 @@ export function CollectionPickerPopover(props: CollectionPickerPopoverProps) {
           scopeId={scopeId}
           canEdit={canEdit}
           align={align}
+          collections={collections}
+          createCollection={createCollection}
           onClose={() => setOpen(false)}
         />
       )}
@@ -481,9 +516,11 @@ export default function CollectionsSection(props: CollectionsSectionProps) {
   const effectiveScope = scopeId || item?.projectId || "user";
   const openModal = useLibraryUIStore((s) => s.openModal);
   const {
+    collections,
     colMap,
     collectionSearchIndex,
     assignedCollectionIdsSet,
+    createCollection,
     handleToggleCollection: handleRemoveFromCollection,
   } = useItemCollectionsManager(item, effectiveScope, canEdit);
   const { projects = [] } = useLibraryProjectContext();
@@ -541,6 +578,8 @@ export default function CollectionsSection(props: CollectionsSectionProps) {
               scopeId={effectiveScope}
               canEdit={canEdit}
               align="end"
+              collections={collections}
+              createCollection={createCollection}
             >
               <button
                 type="button"

@@ -23,9 +23,22 @@ import {
   DialogDescription,
 } from '@/shared/components/ui/dialog';
 import { toast } from 'sonner';
-import type { Item, RelatedItem, Collection } from '@/features/library/domain/types/library.types';
+import type { Item, RelatedItem, Collection, RelationType } from '@/features/library/domain/types/library.types';
 import { cn } from '@/shared/lib/utils';
 import { cleanAcademicText } from '@/features/library/domain/academic-text';
+
+const RELATION_TYPES: Array<{ id: RelationType; label: string }> = [
+  { id: 'related', label: 'Related' },
+  { id: 'cites', label: 'Cites' },
+  { id: 'extends', label: 'Extends' },
+  { id: 'replicates', label: 'Replicates' },
+  { id: 'is_preprint_of', label: 'Preprint of' },
+  { id: 'uses_dataset', label: 'Uses dataset' },
+  { id: 'supplements', label: 'Supplements' },
+  { id: 'rebuts', label: 'Rebuts' },
+  { id: 'survey_of', label: 'Survey of' },
+  { id: 'is_translation_of', label: 'Translation of' },
+];
 
 interface RelatedSectionProps {
   item?: Item;
@@ -61,6 +74,7 @@ export default function RelatedSection(props: RelatedSectionProps) {
 
   // Modal State
   const [selectedTargetIds, setSelectedTargetIds] = useState<Set<string>>(new Set());
+  const [selectedRelationType, setSelectedRelationType] = useState<RelationType>('related');
   const [selectedCollectionFilter, setSelectedCollectionFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -164,10 +178,11 @@ export default function RelatedSection(props: RelatedSectionProps) {
     try {
       await link({
         targetItemIds: targets,
-        relationType: 'related',
+        relationType: selectedRelationType,
       });
 
       setSelectedTargetIds(new Set());
+      setSelectedRelationType('related');
       setSearchQuery('');
       setSelectedCollectionFilter('all');
       setModalOpen(false);
@@ -176,7 +191,7 @@ export default function RelatedSection(props: RelatedSectionProps) {
     } finally {
       isSubmittingRef.current = false;
     }
-  }, [selectedTargetIds, isLinking, link, setModalOpen]);
+  }, [selectedTargetIds, selectedRelationType, isLinking, link, setModalOpen]);
 
   const handleUnlink = async (targetItemId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -201,7 +216,7 @@ export default function RelatedSection(props: RelatedSectionProps) {
     }
   };
 
-  if (!isLoading && relatedList.length === 0 && !isModalOpen && !canEdit) {
+  if (!isLoading && relatedList.length === 0 && !isModalOpen && (hideHeader || !canEdit)) {
     return null;
   }
 
@@ -265,7 +280,7 @@ export default function RelatedSection(props: RelatedSectionProps) {
                   <FileText className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                 </div>
 
-                {/* Main reference info - paper title only */}
+                {/* Main reference info - paper title & semantic relation badge */}
                 <div className="min-w-0 flex-1 pr-1">
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -275,6 +290,12 @@ export default function RelatedSection(props: RelatedSectionProps) {
                     </TooltipTrigger>
                     <TooltipContent>{cleanTitle}</TooltipContent>
                   </Tooltip>
+                  {relItem.relationType && relItem.relationType !== 'related' && (
+                    <span className="mt-1 inline-flex items-center px-1.5 py-0.2 rounded text-10 font-mono bg-muted text-muted-foreground border border-border-subtle">
+                      {RELATION_TYPES.find((rt) => rt.id === relItem.relationType)?.label ||
+                        relItem.relationType.replace(/_/g, ' ')}
+                    </span>
+                  )}
                 </div>
 
                 {/* Top-right action controls - pushed to the right, clean neutral colors */}
@@ -461,7 +482,7 @@ export default function RelatedSection(props: RelatedSectionProps) {
               </div>
 
               {/* Inset non-touching divider line between search and list */}
-              <Separator className="mx-3.5 shrink-0" />
+              <Separator className="shrink-0" />
 
               {/* Scrollable References List with live region */}
               <div
@@ -506,7 +527,7 @@ export default function RelatedSection(props: RelatedSectionProps) {
 
                       return (
                         <React.Fragment key={targetItem.id}>
-                          {index > 0 && <div className="mx-3 my-0.5 border-b border-border-subtle" />}
+                          {index > 0 && <div className="my-0.5 border-b border-border-subtle" />}
                           <label
                             className={cn(
                               'group relative w-full text-left px-3 py-2 rounded-md text-13 flex items-center gap-2.5 cursor-pointer transition-colors duration-150 select-none focus-within:ring-1 focus-within:ring-ring',
@@ -561,7 +582,25 @@ export default function RelatedSection(props: RelatedSectionProps) {
           </div>
 
           {/* Footer Actions across full modal width */}
-          <div className="px-5 py-3 border-t border-border bg-background flex items-center justify-end gap-2 shrink-0 select-none">
+          <div className="px-5 py-3 border-t border-border bg-background flex items-center justify-between gap-2 shrink-0 select-none">
+            <div className="flex items-center gap-2">
+              <label htmlFor="relation-type-select" className="text-11 text-muted-foreground">
+                Relation:
+              </label>
+              <select
+                id="relation-type-select"
+                value={selectedRelationType}
+                onChange={(e) => setSelectedRelationType(e.target.value as RelationType)}
+                className="h-8 px-2.5 rounded-md border border-border bg-background text-12 text-foreground outline-none focus:ring-1 focus:ring-ring cursor-pointer"
+              >
+                {RELATION_TYPES.map((rt) => (
+                  <option key={rt.id} value={rt.id}>
+                    {rt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
             <Button
               size="sm"
               variant="outline"
@@ -569,6 +608,7 @@ export default function RelatedSection(props: RelatedSectionProps) {
               onClick={() => {
                 setModalOpen(false);
                 setSelectedTargetIds(new Set());
+                setSelectedRelationType('related');
                 setSearchQuery('');
                 setSelectedCollectionFilter('all');
               }}
@@ -591,6 +631,7 @@ export default function RelatedSection(props: RelatedSectionProps) {
                   : 'Link References'}
               </span>
             </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

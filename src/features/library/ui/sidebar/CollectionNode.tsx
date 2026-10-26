@@ -22,6 +22,7 @@ export interface CollectionNodeProps extends CollectionActionHandlers {
   allCollections: Collection[];
   isSearching: boolean;
   canManageCollections?: boolean;
+  highlightedCollectionIds?: Set<string>;
 }
 
 export const CollectionNode = memo(function CollectionNode({
@@ -35,6 +36,7 @@ export const CollectionNode = memo(function CollectionNode({
   allCollections,
   isSearching,
   canManageCollections = true,
+  highlightedCollectionIds,
   onStartRename,
   onSubmitRename,
   onRenameValueChange,
@@ -51,6 +53,7 @@ export const CollectionNode = memo(function CollectionNode({
   const { prefetchCollection } = useLibraryCacheSynchronizer(node.projectId || undefined);
   const to = `${basePath}/${node.id}`;
   const isActive = activeId === node.id;
+  const isHighlightedContainer = Boolean(highlightedCollectionIds?.has(node.id));
   const hasChildren = node.children.length > 0;
   const [isOpen, setIsOpen] = useState(true);
   const [isDragOverTarget, setIsDragOverTarget] = useState(false);
@@ -60,7 +63,7 @@ export const CollectionNode = memo(function CollectionNode({
     if (e.dataTransfer.types.includes('application/x-flux-items')) {
       e.preventDefault();
       e.stopPropagation();
-      e.dataTransfer.dropEffect = 'move';
+      e.dataTransfer.dropEffect = e.altKey || e.ctrlKey ? 'copy' : 'move';
       if (!isDragOverTarget) setIsDragOverTarget(true);
     }
   };
@@ -83,7 +86,10 @@ export const CollectionNode = memo(function CollectionNode({
           const parsed = JSON.parse(raw) as string[] | { ids?: string[] };
           const ids = Array.isArray(parsed) ? parsed : (parsed?.ids || []);
           if (ids.length > 0) {
-            onDropItems?.(ids, node.id);
+            onDropItems?.(ids, node.id, {
+              copy: e.altKey || e.ctrlKey,
+              move: e.shiftKey || e.metaKey,
+            });
           }
         }
       } catch (err) {
@@ -133,6 +139,8 @@ export const CollectionNode = memo(function CollectionNode({
               isActive
                 ? "bg-muted text-foreground font-medium"
                 : "text-foreground hover:bg-muted group-hover/node:bg-muted has-[[data-state=open]]:bg-muted font-normal",
+              isHighlightedContainer &&
+                "bg-amber-500/15 ring-1 ring-amber-500/60 ring-inset font-medium",
               isDragOverTarget && "bg-primary/10 text-primary font-medium ring-1 ring-primary ring-inset"
             )}
             style={{ paddingLeft: `${paddingLeft}px` }}
@@ -221,6 +229,7 @@ export const CollectionNode = memo(function CollectionNode({
               allCollections={allCollections}
               isSearching={isSearching}
               canManageCollections={canManageCollections}
+              highlightedCollectionIds={highlightedCollectionIds}
               onStartRename={onStartRename}
               onSubmitRename={onSubmitRename}
               onRenameValueChange={onRenameValueChange}

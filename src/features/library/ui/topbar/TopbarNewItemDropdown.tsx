@@ -32,6 +32,7 @@ import {
   UserCheck,
   Map,
   Palette,
+  Download,
 } from "lucide-react";
 import { ZoteroLineIcon, MendeleyLineIcon } from "@/shared/components/icons";
 import { Button } from "@/shared/components/ui/button";
@@ -48,6 +49,7 @@ import {
 import type { LibraryModalType } from "@/features/library/core/store/library-ui.store";
 import { useItemTypes } from "@/features/library/sdk/queries/catalog.queries";
 import { mapRegistryItemTypes } from "@/features/library/domain/types/library.types";
+import { executeExportScopeFormat } from "@/features/library/core/coordinator/citation-export.coordinator";
 
 const PRIMARY_TYPE_KEYS = new Set([
   "journalArticle",
@@ -220,7 +222,7 @@ export function TopbarNewItemDropdown({
 
             {moreTypes.length > 0 && (
               <>
-                <DropdownMenuSeparator className="mx-1 my-1" />
+                <DropdownMenuSeparator className="my-1" />
 
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted">
@@ -250,7 +252,7 @@ export function TopbarNewItemDropdown({
           </DropdownMenuSubContent>
         </DropdownMenuSub>
 
-        <DropdownMenuSeparator className="mx-1 my-1" />
+        <DropdownMenuSeparator className="my-1" />
 
         <DropdownMenuItem
           onClick={onCreateCollectionClick}
@@ -272,7 +274,7 @@ export function TopbarNewItemDropdown({
           </DropdownMenuItem>
         )}
 
-        <DropdownMenuSeparator className="mx-1 my-1" />
+        <DropdownMenuSeparator className="my-1" />
 
         <DropdownMenuItem
           onClick={() =>
@@ -311,6 +313,46 @@ export function TopbarNewItemDropdown({
           <Rss className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
           <span className="text-foreground">New RSS Feed...</span>
         </DropdownMenuItem>
+
+        <DropdownMenuSeparator className="my-1" />
+
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors">
+            <Download className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+            <span className="text-foreground">Export Library</span>
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent
+            collisionPadding={16}
+            sideOffset={4}
+            alignOffset={-4}
+            className="w-48 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
+          >
+            {(
+              [
+                { format: "bibtex" as const, label: "BibTeX (.bib)" },
+                { format: "ris" as const, label: "RIS (.ris)" },
+                { format: "csl_json" as const, label: "CSL-JSON (.json)" },
+                { format: "csv" as const, label: "CSV (.csv)" },
+                { format: "markdown" as const, label: "Markdown (.md)" },
+              ]
+            ).map(({ format, label }) => (
+              <DropdownMenuItem
+                key={format}
+                onClick={() =>
+                  void executeExportScopeFormat(
+                    scopeId || "user",
+                    format,
+                    activeCollectionId,
+                  )
+                }
+                className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+              >
+                <FileText className="size-3.5 text-foreground shrink-0" />
+                <span>{label}</span>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
       </DropdownMenuContent>
     </DropdownMenu>
   );

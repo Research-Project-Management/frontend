@@ -12,7 +12,7 @@ import {
 } from "@/shared/components/ui/dialog";
 import { Button } from "@/shared/components/ui/button";
 import type { Item } from "@/features/library/domain/types/library.types";
-import { getRetractionInfo } from "@/features/library/domain/retraction";
+import { getRetractionInfo, safeHttpUrl } from "@/features/library/domain/retraction";
 
 export interface RetractionNoticeModalProps {
   open: boolean;
@@ -27,11 +27,15 @@ export function RetractionNoticeModal({
   open,
   onOpenChange,
   item,
+  canEdit = false,
+  onDismiss,
+  isDismissing = false,
 }: RetractionNoticeModalProps) {
   const retractionInfo = getRetractionInfo(item);
-  const noticeUrl =
+  const noticeUrl = safeHttpUrl(
     retractionInfo.noticeUrl ||
-    (item.doi ? `https://doi.org/${item.doi}` : undefined);
+      (item.doi ? `https://doi.org/${item.doi}` : undefined),
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -139,8 +143,23 @@ export function RetractionNoticeModal({
           </div>
         </div>
 
-        {/* ── Footer: Clean & simple, no divider line, right-aligned Close button only ── */}
-        <DialogFooter className="p-0 pt-2 flex items-center justify-end sm:justify-end border-0">
+        {/* ── Footer: Left-aligned remove flag (if canEdit), right-aligned Close button ── */}
+        <DialogFooter className="p-0 pt-2 flex items-center justify-between sm:justify-between border-0">
+          {canEdit && onDismiss ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={isDismissing}
+              onClick={async () => {
+                await onDismiss();
+                onOpenChange(false);
+              }}
+              className="text-12 font-medium h-8 px-3 text-destructive hover:bg-destructive/10 hover:text-destructive cursor-pointer"
+            >
+              {isDismissing ? "Removing flag..." : "Remove retraction flag"}
+            </Button>
+          ) : <div />}
           <Button
             type="button"
             variant="outline"

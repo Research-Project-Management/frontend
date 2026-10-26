@@ -13,24 +13,28 @@ export const annotationRectSchema = z.object({
   height: z.number(),
 });
 
-// Standard academic annotation types (no 'strike' — strikethrough does not exist)
 export const annotationTypeSchema = z.enum([
   'highlight',
   'underline',
+  'strike',
+  'strikethrough',
   'note',
   'rect',
   'box',
   'area',
   'image',
   'text',
+  'ink',
 ]);
 
 const baseAnnotationFields = {
-  color: z.string().default('yellow'),
+  color: z.string().default('#ffd400'),
   type: annotationTypeSchema.default('highlight'),
   text: z.string().optional(),
   quoteText: z.string().optional(),
   comment: z.string().optional(),
+  x: z.number().min(0).max(1).optional(),
+  y: z.number().min(0).max(1).optional(),
   rects: z.array(annotationRectSchema).optional(),
   boundingRect: annotationRectSchema.optional(),
   rectCoords: z.unknown().optional(),
@@ -69,6 +73,8 @@ export const updateAnnotationSchema = z.object({
   tags: z.array(z.string()).optional(),
   rects: z.array(annotationRectSchema).optional(),
   boundingRect: annotationRectSchema.optional(),
+  rectCoords: z.unknown().optional(),
+  expectedVersion: z.number().int().positive().optional(),
 });
 
 export const readerPanelSchema = z.enum(['ai', 'details', 'notes', 'annotations', 'cite']);
@@ -205,7 +211,8 @@ export const readerDocumentSchema = z.object({
   citationKey: z.string().nullable().optional(),
   bibtex: z.string().nullable().optional(),
   url: z.string().nullable().optional(),
-  filename: z.string().nullable().optional(),  readingState: documentReadingStateSchema.optional(),
+  filename: z.string().nullable().optional(),
+  readingState: documentReadingStateSchema.optional(),
   attachments: z.array(documentAttachmentSchema).optional(),
   primaryFile: primaryFileSchema.nullable().optional(),
   notes: z.array(readerNoteSchema).optional(),
@@ -303,6 +310,9 @@ export const documentReferenceSchema = z.object({
 export const documentFulltextSchema = z.object({
   title: z.string().optional(),
   abstract: z.string().optional(),
+  markdown: z.string().optional(),
+  plainText: z.string().optional(),
+  pageCount: z.number().optional(),
   sections: z.array(documentSectionSchema).default([]),
   figures: z.array(documentFigureSchema).default([]),
   tables: z.array(documentTableSchema).default([]),
@@ -313,5 +323,4 @@ export const documentFulltextSchema = z.object({
   tableCount: z.number().optional(),
   formulaCount: z.number().optional(),
   referenceCount: z.number().optional(),
-});
-
+}).passthrough();

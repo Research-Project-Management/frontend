@@ -11,14 +11,14 @@ export const userSchema = z.object({
 
 export const creatorCreditSchema = z.object({
   id: z.string().optional(),
-  orderIndex: z.number(),
-  creatorType: z.string(),
+  orderIndex: z.number().optional().default(0),
+  creatorType: z.string().optional().default('author'),
   fieldMode: z.number().optional().default(0),
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
-  fullName: z.string(),
+  firstName: z.string().nullable().optional(),
+  lastName: z.string().nullable().optional(),
+  fullName: z.string().optional().default(''),
   name: z.string().optional(),
-  shortName: z.string().optional(),
+  shortName: z.string().nullable().optional(),
 });
 
 export const contributorRelationSchema = z.object({
@@ -197,7 +197,8 @@ export const itemSchema = z.object({
   qualityIssues: z.array(z.string()).optional(),
   isMyPublication: z.boolean().optional().default(false),
   publicationConfirmedAt: z.string().nullish(),
-  crossrefEnriched: z.boolean().optional().default(false),  identifiers: z.array(identifierSchema).optional().default([]),
+  crossrefEnriched: z.boolean().optional().default(false),
+  identifiers: z.array(identifierSchema).optional().default([]),
   firstAuthor: z.string().nullish(),
   provenance: provenanceSchema.nullish(),
   version: z.number().optional().default(1),
@@ -214,7 +215,16 @@ export const itemSchema = z.object({
   isPending: z.boolean().optional(),
   silent: z.boolean().optional(),
 
-  // Zotero item-type specific fields
+  // Zotero item-type specific fields (complete Schema v42 coverage)
+  DOI: z.string().optional(),
+  ISBN: z.string().optional(),
+  ISSN: z.string().optional(),
+  PMID: z.string().optional(),
+  PMCID: z.string().optional(),
+  archiveID: z.string().optional(),
+  archiveId: z.string().optional(),
+  numPages: z.union([z.string(), z.number()]).nullish(),
+  rights: z.string().optional(),
   bookTitle: z.string().optional(),
   proceedingsTitle: z.string().optional(),
   conferenceName: z.string().optional(),
@@ -229,7 +239,9 @@ export const itemSchema = z.object({
   programTitle: z.string().optional(),
   university: z.string().optional(),
   institution: z.string().optional(),
+  organization: z.string().optional(),
   repository: z.string().optional(),
+  repositoryLocation: z.string().optional(),
   company: z.string().optional(),
   distributor: z.string().optional(),
   label: z.string().optional(),
@@ -241,17 +253,66 @@ export const itemSchema = z.object({
   authority: z.string().optional(),
   patentNumber: z.string().optional(),
   applicationNumber: z.string().optional(),
+  priorityNumbers: z.string().optional(),
+  references: z.string().optional(),
   reportNumber: z.string().optional(),
   reportType: z.string().optional(),
   thesisType: z.string().optional(),
   genre: z.string().optional(),
+  type: z.string().optional(),
+  medium: z.string().optional(),
+  format: z.string().optional(),
+  system: z.string().optional(),
+  identifier: z.string().optional(),
+  standardNumber: z.string().optional(),
   filingDate: z.string().optional(),
   issueDate: z.string().optional(),
   priorityDate: z.string().optional(),
+  dateDecided: z.string().optional(),
+  dateEnacted: z.string().optional(),
+  originalDate: z.string().optional(),
+  originalPlace: z.string().optional(),
+  originalPublisher: z.string().optional(),
   programmingLanguage: z.string().optional(),
   legalStatus: z.string().optional(),
+  status: z.string().optional(),
   versionNumber: z.string().optional(),
   number: z.string().optional(),
+  caseName: z.string().optional(),
+  court: z.string().optional(),
+  docketNumber: z.string().optional(),
+  reporter: z.string().optional(),
+  reporterVolume: z.string().optional(),
+  firstPage: z.string().optional(),
+  history: z.string().optional(),
+  nameOfAct: z.string().optional(),
+  code: z.string().optional(),
+  codeNumber: z.string().optional(),
+  codeVolume: z.string().optional(),
+  codePages: z.string().optional(),
+  publicLawNumber: z.string().optional(),
+  billNumber: z.string().optional(),
+  legislativeBody: z.string().optional(),
+  committee: z.string().optional(),
+  documentNumber: z.string().optional(),
+  session: z.string().optional(),
+  subject: z.string().optional(),
+  postType: z.string().optional(),
+  presentationType: z.string().optional(),
+  meetingName: z.string().optional(),
+  letterType: z.string().optional(),
+  manuscriptType: z.string().optional(),
+  mapType: z.string().optional(),
+  scale: z.string().optional(),
+  artworkMedium: z.string().optional(),
+  artworkSize: z.string().optional(),
+  videoRecordingFormat: z.string().optional(),
+  audioRecordingFormat: z.string().optional(),
+  audioFileType: z.string().optional(),
+  runningTime: z.string().optional(),
+  episodeNumber: z.string().optional(),
+  podcastType: z.string().optional(),
+  interviewMedium: z.string().optional(),
   bibtex: z.string().optional(),
 
   // Transient / Optimistic UI attributes
@@ -259,7 +320,7 @@ export const itemSchema = z.object({
   _processingStatus: z.string().optional(),
   _processingProgress: z.number().optional(),
   _processingError: z.string().optional(),
-});
+}).passthrough();
 
 // ── Mutation & Response Schemas ─────────────────────────────────────────────
 export const createItemSchema = itemSchema.partial().extend({
@@ -309,6 +370,7 @@ export interface ItemQueryParams {
   limit?: number;
   cursor?: string;
   search?: string;
+  searchMode?: 'title_creator_year' | 'fields_tags' | 'everything' | string;
   collectionId?: string;
   includeSubcollections?: boolean;
   tag?: string;
@@ -331,5 +393,3 @@ export interface ItemQueryParams {
   projectId?: string;
   fields?: readonly string[] | string[];
 }
-
-

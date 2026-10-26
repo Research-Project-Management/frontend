@@ -10,10 +10,12 @@ import {
   type UpdateSavedSearchInput,
   type SavedSearchConditionGroup,
 } from '../library.client';
+import type { SavedSearchScopeOptions } from '@/features/library/domain/types/library.types';
 import {
   itemKeys,
   savedSearchKeys,
   relationKeys,
+  normalizeScopeId,
 } from '@/features/library/sdk/query-keys';
 
 export { savedSearchKeys, relationKeys };
@@ -91,8 +93,18 @@ export function useSavedSearches(
   });
 
   const previewMutation = useMutation({
-    mutationFn: (conditions: SavedSearchConditionGroup) =>
-      SavedSearchesService.preview(effectiveScope, conditions),
+    mutationFn: (args: SavedSearchConditionGroup | { conditions: SavedSearchConditionGroup; sortBy?: string; sortOrder?: 'asc' | 'desc'; scopeOptions?: SavedSearchScopeOptions }) => {
+      const isWrapped = 'conditions' in args && !Array.isArray(args.conditions);
+      if (isWrapped) {
+        const wrapped = args as { conditions: SavedSearchConditionGroup; sortBy?: string; sortOrder?: 'asc' | 'desc'; scopeOptions?: SavedSearchScopeOptions };
+        return SavedSearchesService.preview(effectiveScope, wrapped.conditions, {
+          sortBy: wrapped.sortBy,
+          sortOrder: wrapped.sortOrder,
+          scopeOptions: wrapped.scopeOptions,
+        });
+      }
+      return SavedSearchesService.preview(effectiveScope, args as SavedSearchConditionGroup);
+    },
   });
 
   return {
@@ -268,6 +280,40 @@ export type {
   CreatorRoleChange,
   TypeConversionPreview,
 };
+
+export function useItemTypeConversionPreviewQuery(
+  scopeId: string,
+  itemId: string | undefined,
+  targetType: string | undefined,
+  enabled = true,
+) {
+  const effectiveScopeId = normalizeScopeId(scopeId);
+
+  return useQuery({
+    queryKey: [
+      'library',
+      'items',
+      effectiveScopeId,
+      'type-conversion-preview',
+      itemId,
+      targetType,
+    ] as const,
+    queryFn: () =>
+      ItemsService.previewConvertType(
+        effectiveScopeId,
+        itemId!,
+        targetType!,
+        true,
+      ).then(
+        (res: unknown): TypeConversionPreview =>
+          (res as { preview?: TypeConversionPreview; data?: TypeConversionPreview })
+            ?.preview ??
+          (res as { data?: TypeConversionPreview })?.data ??
+          (res as TypeConversionPreview),
+      ),
+    enabled: Boolean(enabled && itemId && targetType),
+  });
+}
 
 export function useItemTypeConversion(scopeId?: string) {
   const queryClient = useQueryClient();

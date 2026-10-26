@@ -122,7 +122,14 @@ export function useSavedSearchBuilder({
             : null;
         const conj = savedSearch.conjunction || condObj?.conjunction || 'AND';
         setConjunction(conj === 'OR' ? 'OR' : 'AND');
-        setSortBy(savedSearch.sortBy || 'dateAdded');
+        const rawSort = savedSearch.sortBy;
+        const normalizedSort: 'dateAdded' | 'year' | 'title' | 'creator' =
+          rawSort === 'year' || rawSort === 'title' || rawSort === 'creator'
+            ? rawSort
+            : rawSort === 'authors'
+              ? 'creator'
+              : 'dateAdded';
+        setSortBy(normalizedSort);
         setSortOrder(savedSearch.sortOrder || 'desc');
 
         const scopeOpts = savedSearch.scopeOptions || condObj?.scopeOptions || {};
@@ -227,7 +234,12 @@ export function useSavedSearchBuilder({
           },
         };
 
-        const res = await previewConditions(conditionGroup);
+        const res = await previewConditions({
+          conditions: conditionGroup,
+          sortBy,
+          sortOrder: sortOrder as 'asc' | 'desc',
+          scopeOptions: conditionGroup.scopeOptions,
+        });
         if (!cancelled) {
           setPreviewCount(res.count ?? 0);
           setPreviewSamples(res.sampleItems || []);
@@ -253,6 +265,8 @@ export function useSavedSearchBuilder({
     searchSubcollections,
     showOnlyTopLevel,
     includeParentAndChild,
+    sortBy,
+    sortOrder,
     previewConditions,
   ]);
 

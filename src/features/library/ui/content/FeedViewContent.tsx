@@ -3,21 +3,11 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import {
-  Rss,
-  EyeOff,
-  Eye,
-  ExternalLink,
-  Loader2,
-  Check,
-  BookPlus,
-  ChevronDown,
-  Folder,
-  ChevronUp,
-  Calendar,
-  Bookmark,
-  RefreshCw,
+  Rss, EyeOff, Eye, ExternalLink, Loader2, Check, BookPlus,
+  ChevronDown, Folder, ChevronUp, Calendar, Bookmark, RefreshCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { safeHttpUrl } from '@/features/library/domain/retraction';
 import { Button } from '@/shared/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import {
@@ -27,8 +17,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
-import { useFetchAcademicFeed } from '@/features/library/sdk/queries/ingestion.queries';
-import { useItems, useLibraryItemsQuery } from '@/features/library/sdk/queries/catalog.queries';
+import {
+  useAcademicFeedArticlesQuery,
+  useFetchAcademicFeed,
+} from '@/features/library/sdk/queries/ingestion.queries';
+import { useCreateLibraryItemMutation, useLibraryItemsQuery } from '@/features/library/sdk/queries/catalog.queries';
 import { useCollections } from '@/features/library/sdk/queries/collections.queries';
 import type { Collection } from '@/features/library/domain/types/library.types';
 import {
@@ -39,7 +32,7 @@ import {
   type ParsedFeedEntry,
   type FeedFetchApiResponse,
 } from '@/features/library/domain/feed-parser.domain';
-import { useFeedsStore } from '@/features/library/core/store/feeds.store';
+import { useFeedsStore, isFeedEntryInLibrary } from '@/features/library/core/store/feeds.store';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { ContentSkeleton } from '@/features/library/ui/content/ContentSkeleton';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
@@ -67,24 +60,28 @@ export function FeedViewContent({
 }: FeedViewContentProps) {
   const searchParams = useSearchParams();
   const searchQuery = (searchParams.get('q') || '').trim();
-  const { createItem } = useItems({ scopeId, enabled: false });
+  const { mutateAsync: createItem } = useCreateLibraryItemMutation(scopeId);
   const { collections = [] } = useCollections(scopeId);
   const collectionList: Collection[] = (collections as Collection[]) || [];
-  const {
-    feeds,
-    loadFeeds,
-    refreshCounter,
-    readEntryIds,
-    selectedFeedEntry,
-    setSelectedFeedEntry,
-    setCurrentFeedEntries,
-    readFilter,
-    setReadFilter,
-    markEntryAsRead,
-    toggleEntryRead,
-    markAllEntriesAsRead,
-    isEntryRead,
-  } = useFeedsStore();
+  
+  const feeds = useFeedsStore((s) => s.feeds);
+  const loadFeeds = useFeedsStore((s) => s.loadFeeds);
+  const refreshCounter = useFeedsStore((s) => s.refreshCounter);
+  const readEntryIds = useFeedsStore((s) => s.readEntryIds);
+  const savedEntryIds = useFeedsStore((s) => s.savedEntryIds);
+  const savingEntryIds = useFeedsStore((s) => s.savingEntryIds);
+  const selectedFeedEntry = useFeedsStore((s) => s.selectedFeedEntry);
+  const setSelectedFeedEntry = useFeedsStore((s) => s.setSelectedFeedEntry);
+  const setCurrentFeedEntries = useFeedsStore((s) => s.setCurrentFeedEntries);
+  const readFilter = useFeedsStore((s) => s.readFilter);
+  const setReadFilter = useFeedsStore((s) => s.setReadFilter);
+  const markEntryAsRead = useFeedsStore((s) => s.markEntryAsRead);
+  const toggleEntryRead = useFeedsStore((s) => s.toggleEntryRead);
+  const markAllEntriesAsRead = useFeedsStore((s) => s.markAllEntriesAsRead);
+  const isEntryRead = useFeedsStore((s) => s.isEntryRead);
+  const markEntrySaved = useFeedsStore((s) => s.markEntrySaved);
+  const setEntrySaving = useFeedsStore((s) => s.setEntrySaving);
+
   const openModal = useLibraryUIStore((s) => s.openModal);
   const isInspectorOpen = useLibraryUIStore((s) => s.isInspectorOpen);
   const setIsInspectorOpen = useLibraryUIStore((s) => s.setIsInspectorOpen);
@@ -101,7 +98,11 @@ export function FeedViewContent({
     return feeds.find((f) => f.id === feedId) || feeds[0];
   }, [feeds, feedId]);
 
-  const { mutateAsync: fetchAcademicFeed, isPending: isFetching } = useFetchAcademicFeed();
+  const { mutateAsync: fetchAcademicFeed, isPending: isRefreshingFeed } = useFetchAcademicFeed();
+  const feedArticlesQuery = useAcademicFeedArticlesQuery(scopeId, activeFeed?.url, {
+    enabled: Boolean(activeFeed?.url),
+  });
+  const isFetching = feedArticlesQuery.isLoading || isRefreshingFeed;
 
   // Query library items to cross-reference if an article is already saved in library
   const { data: libraryData } = useLibraryItemsQuery(
@@ -110,22 +111,40 @@ export function FeedViewContent({
     { enabled: true },
   );
 
-  const libraryItemLookup = useMemo(() => {
-    const doiMap = new Set<string>();
-    const titleMap = new Set<string>();
-    const items = libraryData?.items || [];
-    for (const item of items) {
-      if (item.doi) doiMap.add(item.doi.trim().toLowerCase());
-      if (item.title) titleMap.add(item.title.trim().toLowerCase());
-    }
-    return { doiMap, titleMap };
-  }, [libraryData?.items]);
+  const [manualEntries, setManualEntries] = useState<ParsedFeedEntry[] | null>(null);
+  const [manualFeedTitle, setManualFeedTitle] = useState<string>('');
+  const [manualError, setManualError] = useState<Error | null>(null);
 
-  const [rawEntries, setRawEntries] = useState<ParsedFeedEntry[]>([]);
-  const [feedTitle, setFeedTitle] = useState<string>('');
-  const [savingEntryIds, setSavingEntryIds] = useState<Set<string>>(() => new Set());
-  const [savedEntryIds, setSavedEntryIds] = useState<Set<string>>(() => new Set());
-  const [fetchError, setFetchError] = useState<Error | null>(null);
+  useEffect(() => {
+    setManualEntries(null);
+    setManualFeedTitle('');
+    setManualError(null);
+  }, [activeFeed?.url]);
+
+  const rawEntries = useMemo(() => {
+    if (manualEntries !== null) return manualEntries;
+    const res = feedArticlesQuery.data as FeedFetchApiResponse | undefined;
+    const payload = res && typeof res === 'object' && 'data' in res && res.data ? res.data : res;
+    if (payload && typeof payload === 'object' && Array.isArray(payload.entries)) {
+      return normalizeFetchedFeedEntries(payload.entries);
+    }
+    return [];
+  }, [manualEntries, feedArticlesQuery.data]);
+
+  const feedTitle = useMemo(() => {
+    if (manualFeedTitle) return manualFeedTitle;
+    const res = feedArticlesQuery.data as FeedFetchApiResponse | undefined;
+    const payload = res && typeof res === 'object' && 'data' in res && res.data ? res.data : res;
+    return (payload && typeof payload === 'object' && payload.feedTitle) || activeFeed?.name || '';
+  }, [manualFeedTitle, feedArticlesQuery.data, activeFeed?.name]);
+
+  const fetchError =
+    manualError ??
+    (feedArticlesQuery.error instanceof Error
+      ? feedArticlesQuery.error
+      : feedArticlesQuery.error
+        ? new Error('Failed to fetch feed')
+        : null);
 
   const toggleAbstract = (id: string) => {
     setExpandedEntryIds((prev) => {
@@ -138,33 +157,40 @@ export function FeedViewContent({
 
   const loadFeedEntries = useCallback(async (forceRefresh = false) => {
     if (!activeFeed?.url) {
-      setRawEntries([]);
+      setManualEntries([]);
       return;
     }
-    setFetchError(null);
+    if (!forceRefresh) {
+      setManualError(null);
+      setManualEntries(null);
+      await feedArticlesQuery.refetch();
+      return;
+    }
+    setManualError(null);
     try {
       const res: FeedFetchApiResponse | string = await fetchAcademicFeed({
         url: activeFeed.url,
-        forceRefresh,
+        forceRefresh: true,
       });
       const payload = typeof res === 'object' && res !== null && res.data ? res.data : res;
       if (payload && typeof payload === 'object' && Array.isArray(payload.entries)) {
-        setFeedTitle(payload.feedTitle || activeFeed.name);
-        setRawEntries(normalizeFetchedFeedEntries(payload.entries));
+        setManualFeedTitle(payload.feedTitle || activeFeed.name);
+        setManualEntries(normalizeFetchedFeedEntries(payload.entries));
       } else {
-        setRawEntries([]);
+        setManualEntries([]);
       }
     } catch (err: unknown) {
-      setFetchError(err instanceof Error ? err : new Error('Failed to fetch feed'));
-      setRawEntries([]);
+      setManualError(err instanceof Error ? err : new Error('Failed to fetch feed'));
+      setManualEntries([]);
     }
-  }, [activeFeed, fetchAcademicFeed]);
+  }, [activeFeed, fetchAcademicFeed, feedArticlesQuery]);
 
   const prevRefreshCounter = useRef(refreshCounter);
   useEffect(() => {
-    const isManualTrigger = refreshCounter > prevRefreshCounter.current;
-    prevRefreshCounter.current = refreshCounter;
-    void loadFeedEntries(isManualTrigger);
+    if (refreshCounter > prevRefreshCounter.current) {
+      prevRefreshCounter.current = refreshCounter;
+      void loadFeedEntries(true);
+    }
   }, [loadFeedEntries, refreshCounter]);
 
   // Retention filter: filter out items older than activeFeed.retentionDays (if set and > 0)
@@ -269,27 +295,23 @@ export function FeedViewContent({
     rowVirtualizer,
   ]);
 
-  // Check if article is already in library (via DOI or exact Title)
+  // Check if article is already in library (via DOI, URL, or exact Title)
   const isItemInLibrary = useCallback(
-    (entry: ParsedFeedEntry) => {
-      if (savedEntryIds.has(entry.id)) return true;
-      if (entry.doi && libraryItemLookup.doiMap.has(entry.doi.trim().toLowerCase())) return true;
-      if (entry.title && libraryItemLookup.titleMap.has(entry.title.trim().toLowerCase())) return true;
-      return false;
-    },
-    [savedEntryIds, libraryItemLookup],
+    (entry: ParsedFeedEntry) =>
+      isFeedEntryInLibrary(entry, savedEntryIds, libraryData?.items),
+    [savedEntryIds, libraryData?.items],
   );
 
   const handleSaveEntry = async (entry: ParsedFeedEntry, targetCollectionId?: string) => {
     markEntryAsRead(entry.id);
-    setSavingEntryIds((prev) => new Set(prev).add(entry.id));
+    setEntrySaving(entry.id, true);
     try {
       const createPayload = mapFeedEntryToCreateItemPayload(entry, {
         scopeId,
         collectionId: targetCollectionId,
       });
       await createItem({ ...createPayload, silent: true });
-      setSavedEntryIds((prev) => new Set(prev).add(entry.id));
+      markEntrySaved(entry.id);
 
       const colName = targetCollectionId
         ? collectionList.find((c: Collection) => c.id === targetCollectionId)?.name
@@ -302,11 +324,7 @@ export function FeedViewContent({
       const msg = err instanceof Error ? err.message : 'Could not add feed item.';
       toast.error('Failed to save to library', { description: msg });
     } finally {
-      setSavingEntryIds((prev) => {
-        const next = new Set(prev);
-        next.delete(entry.id);
-        return next;
-      });
+      setEntrySaving(entry.id, false);
     }
   };
 
@@ -441,7 +459,7 @@ export function FeedViewContent({
               const entry = filteredEntries[virtualRow.index];
               if (!entry) return null;
 
-              const isSaving = savingEntryIds.has(entry.id);
+              const isSaving = savingEntryIds.includes(entry.id);
               const isSaved = isItemInLibrary(entry);
               const isRead = isEntryRead(entry.id);
               const isExpanded = expandedEntryIds.has(entry.id);
@@ -517,7 +535,7 @@ export function FeedViewContent({
                                 type="button"
                                 variant="ghost"
                                 size="icon"
-                                onClick={() => window.open(entry.url, '_blank', 'noopener,noreferrer')}
+                                onClick={() => { const safe = safeHttpUrl(entry.url); if (safe) window.open(safe, '_blank', 'noopener,noreferrer'); }}
                                 className="size-7 rounded-md text-foreground cursor-pointer"
                                 aria-label="View source"
                               >
@@ -728,7 +746,7 @@ export function FeedViewContent({
 
                       {/* 4. Direct External Link / PDF Resource */}
                       {(() => {
-                        const targetUrl = entry.pdfUrl || entry.url;
+                        const targetUrl = safeHttpUrl(entry.pdfUrl) || safeHttpUrl(entry.url);
                         if (!targetUrl) return null;
                         let displayLabel = targetUrl;
                         try {

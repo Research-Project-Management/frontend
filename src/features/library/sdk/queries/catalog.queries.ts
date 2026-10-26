@@ -2,7 +2,6 @@
 
 import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { useLibraryCommandStore } from '@/features/library/core/manager/library-command.manager';
 import {
   ItemsService,
   CollectionsService,
@@ -46,6 +45,8 @@ import {
   useToggleStarItemMutation,
   useImportFromUserMutation,
   useCreateLibraryItemMutation,
+  useReResolveItemMetadataMutation,
+  useSetMyPublicationMutation,
 } from './item-mutations.queries';
 import {
   chunkUniqueIds,
@@ -55,6 +56,7 @@ import {
   patchItemAcrossScopeCaches,
   removeItemsFromCacheData,
   removeItemsFromScopeCaches,
+  invalidateLibraryCatalogDependencies,
   invalidateLibraryScopeCatalog,
   resolveCachedItemFromScope,
   useLibraryCacheSynchronizer,
@@ -68,6 +70,7 @@ export {
   patchItemAcrossScopeCaches,
   removeItemsFromCacheData,
   removeItemsFromScopeCaches,
+  invalidateLibraryCatalogDependencies,
   invalidateLibraryScopeCatalog,
   resolveCachedItemFromScope,
   useLibraryCacheSynchronizer,
@@ -179,133 +182,8 @@ export function useItems(optionsOrScope: string | UseItemsOptions = {}) {
     select: (data) => (data?.items || []) as Item[],
   });
 
-  const createMutation = useMutation({
-    mutationFn: (data: CreateItemDTO & { silent?: boolean }) =>
-      ItemsService.create(targetScope, collectionId || '', data),
-    onSuccess: (newItem, variables) => {
-      const targetCollection = newItem?.collectionIds?.[0] || collectionId;
-      if (targetCollection) {
-        queryClient.invalidateQueries({
-          queryKey: itemKeys.byCollection(targetScope, targetCollection),
-        });
-      }
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(targetScope) });
-      queryClient.invalidateQueries({ queryKey: libraryKeys.tags(targetScope) });
-      invalidateCollections(queryClient, targetScope);
-      if (!variables?.silent) {
-        toast.success('Document added', {
-          description: 'Added to your library.',
-          id: 'library-item-create',
-        });
-      }
-    },
-    onError: (error: Error | { message?: string }, variables) => {
-      if (!variables?.silent) {
-        toast.error('Failed to add document', {
-          description: error?.message || 'Please check your inputs and try again.',
-          id: 'library-item-create',
-        });
-      }
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationKey: ['use-items-update', effectiveScope],
-    mutationFn: async ({
-      id,
-      data,
-      expectedVersion,
-      silent,
-    }: {
-      id: string;
-      data: UpdateItemDTO;
-      expectedVersion?: number;
-      silent?: boolean;
-    }) => {
-      const cached = resolveCachedItemFromScope(queryClient, effectiveScope, id);
-      const cachedVersion = cached?.version;
-      const resolvedVersion =
-        expectedVersion ??
-        data.version ??
-        (typeof cachedVersion === 'number'
-          ? cachedVersion
-          : resolveCachedItemVersion(queryClient, effectiveScope, id));
-      const res = await ItemsService.update(targetScope, id, data, resolvedVersion);
-      return { res, silent, id, data };
-    },
-    onMutate: async ({ id, data }) => {
-      if (!id) return undefined;
-      await queryClient.cancelQueries({ queryKey: itemKeys.all(effectiveScope) });
-      await queryClient.cancelQueries({ queryKey: itemKeys.byId(effectiveScope, id) });
-
-      const previousItemSnapshot = resolveCachedItemFromScope(
-        queryClient,
-        effectiveScope,
-        id,
-      );
-
-      const { silent: _silent, ...optimisticPatch } = data;
-      patchItemAcrossScopeCaches(
-        queryClient,
-        effectiveScope,
-        id,
-        (old) => ({
-          ...old,
-          ...(optimisticPatch as Partial<Item>),
-          // Keep old.version during optimistic patch to prevent 409 Conflict if mutationFn reads cache
-          version: old.version,
-        }),
-      );
-
-      return { previousItemSnapshot };
-    },
-    onSuccess: ({ res: updatedItem, silent, id, data }) => {
-      const serverItem =
-        updatedItem && typeof updatedItem === 'object' && 'item' in updatedItem && updatedItem.item
-          ? (updatedItem.item as Partial<Item>)
-          : (updatedItem as Partial<Item> | undefined);
-      const patchData: Partial<Item> = {
-        ...data,
-        ...(serverItem && typeof serverItem === 'object' ? serverItem : {}),
-      };
-      if (id) {
-        patchItemAcrossScopeCaches(queryClient, effectiveScope, id, patchData);
-      }
-      queryClient.invalidateQueries({ queryKey: itemKeys.counts(effectiveScope) });
-      if (data.tags !== undefined) {
-        queryClient.invalidateQueries({ queryKey: tagKeys.list(effectiveScope) });
-      }
-      if (data.collectionIds !== undefined) {
-        invalidateCollections(queryClient, effectiveScope);
-      }
-      if (!silent) {
-        toast.success('Metadata updated', { id: 'item-mutation-toast' });
-      }
-    },
-    onError: (error: Error | { message?: string }, variables, context) => {
-      const isLastMutation = queryClient.isMutating({ mutationKey: ['use-items-update', effectiveScope] }) <= 1;
-      if (variables?.id && context?.previousItemSnapshot && isLastMutation) {
-        patchItemAcrossScopeCaches(
-          queryClient,
-          effectiveScope,
-          variables.id,
-          context.previousItemSnapshot,
-        );
-      }
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
-      if (variables?.id) {
-        queryClient.invalidateQueries({
-          queryKey: itemKeys.byId(effectiveScope, variables.id),
-        });
-      }
-      if (!variables?.silent) {
-        toast.error('Failed to update metadata', {
-          description: error?.message || 'Please check your connection and try again.',
-          id: 'item-mutation-toast',
-        });
-      }
-    },
-  });
+  const createMutation = useCreateLibraryItemMutation(targetScope, collectionId);
+  const updateMutation = useUpdateLibraryItemMutation(targetScope);
 
   const deleteMutation = useMutation({
     mutationFn: async ({
@@ -327,9 +205,12 @@ export function useItems(optionsOrScope: string | UseItemsOptions = {}) {
           queryKey: itemKeys.byCollection(targetScope, targetCollection),
         });
       }
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(targetScope) });
-      queryClient.invalidateQueries({ queryKey: tagKeys.list(targetScope) });
-      invalidateCollections(queryClient, targetScope);
+      invalidateLibraryCatalogDependencies(queryClient, targetScope, {
+        itemsList: true,
+        tags: true,
+        collections: true,
+        counts: true,
+      });
       if (!silent) {
         toast.success('Moved to trash', {
           description: 'You can restore this item from Trash at any time.',
@@ -364,7 +245,7 @@ export function useItems(optionsOrScope: string | UseItemsOptions = {}) {
   ) => {
     if (typeof idOrPayload === 'string') {
       return updateMutation.mutateAsync({
-        id: idOrPayload,
+        itemId: idOrPayload,
         data: maybeData || {},
         expectedVersion: maybeOptions?.expectedVersion,
         silent: maybeOptions?.silent,
@@ -374,7 +255,7 @@ export function useItems(optionsOrScope: string | UseItemsOptions = {}) {
     const targetItemId = id || payloadItemId || '';
     const targetData = (data || rest) as UpdateItemDTO;
     return updateMutation.mutateAsync({
-      id: targetItemId,
+      itemId: targetItemId,
       data: targetData,
       expectedVersion,
       silent,
@@ -419,9 +300,6 @@ export function useItems(optionsOrScope: string | UseItemsOptions = {}) {
           await ItemsService.bulkTrash(targetScope, chunk);
         }
       }
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(targetScope) });
-      queryClient.invalidateQueries({ queryKey: itemKeys.trash(targetScope) });
-      invalidateCollections(queryClient, targetScope);
       toast.success('Moved to trash', {
         description: `${totalCount} document(s) moved to trash.`,
         id: toastId,
@@ -434,6 +312,10 @@ export function useItems(optionsOrScope: string | UseItemsOptions = {}) {
             : 'Could not move selected documents to trash.',
         id: toastId,
       });
+    } finally {
+      queryClient.invalidateQueries({ queryKey: itemKeys.all(targetScope) });
+      queryClient.invalidateQueries({ queryKey: itemKeys.trash(targetScope) });
+      invalidateCollections(queryClient, targetScope);
     }
   };
 
@@ -452,6 +334,19 @@ export function useItems(optionsOrScope: string | UseItemsOptions = {}) {
           chunk,
         );
       }
+      toast.success('Documents moved', {
+        description: `Moved ${totalCount} item(s) to target collection.`,
+        id: toastId,
+      });
+    } catch (err: unknown) {
+      toast.error('Failed to move items', {
+        description:
+          err instanceof Error
+            ? err.message
+            : 'Could not move selected documents.',
+        id: toastId,
+      });
+    } finally {
       queryClient.invalidateQueries({ queryKey: itemKeys.all(targetScope) });
       queryClient.invalidateQueries({ queryKey: collectionKeys.all(targetScope) });
       if (targetCollectionId) {
@@ -465,18 +360,6 @@ export function useItems(optionsOrScope: string | UseItemsOptions = {}) {
         });
       }
       invalidateCollections(queryClient, targetScope);
-      toast.success('Documents moved', {
-        description: `Moved ${totalCount} item(s) to target collection.`,
-        id: toastId,
-      });
-    } catch (err: unknown) {
-      toast.error('Failed to move items', {
-        description:
-          err instanceof Error
-            ? err.message
-            : 'Could not move selected documents.',
-        id: toastId,
-      });
     }
   };
 
@@ -672,6 +555,8 @@ export {
   useToggleStarItemMutation,
   useImportFromUserMutation,
   useCreateLibraryItemMutation,
+  useReResolveItemMetadataMutation,
+  useSetMyPublicationMutation,
 };
 
 export {

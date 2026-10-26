@@ -4,6 +4,8 @@ export type FeedReadFilterType = 'all' | 'unread' | 'read';
 
 export const feedRetentionDaysSchema = z.union([
   z.literal(0),
+  z.literal(1),
+  z.literal(3),
   z.literal(7),
   z.literal(14),
   z.literal(30),
@@ -18,6 +20,8 @@ export const savedFeedSubscriptionSchema = z.object({
   url: z.string().url(),
   lastRefreshed: z.string().optional(),
   retentionDays: feedRetentionDaysSchema.optional().default(30),
+  cleanupReadAfter: feedRetentionDaysSchema.optional().default(7),
+  cleanupUnreadAfter: feedRetentionDaysSchema.optional().default(30),
 });
 
 export type SavedFeedSubscription = z.infer<typeof savedFeedSubscriptionSchema>;
@@ -27,13 +31,24 @@ export interface RetentionOption {
   label: string;
 }
 
-export const RETENTION_OPTIONS: RetentionOption[] = [
-  { value: 7, label: 'Keep items from last 7 days' },
-  { value: 14, label: 'Keep items from last 14 days' },
-  { value: 30, label: 'Keep items from last 30 days (Recommended)' },
-  { value: 90, label: 'Keep items from last 90 days' },
-  { value: 0, label: 'Never delete (Keep all)' },
+export const READ_RETENTION_OPTIONS: RetentionOption[] = [
+  { value: 1, label: 'After 1 day' },
+  { value: 3, label: 'After 3 days' },
+  { value: 7, label: 'After 7 days (Recommended)' },
+  { value: 14, label: 'After 14 days' },
+  { value: 30, label: 'After 30 days' },
+  { value: 0, label: 'Never hide read items' },
 ];
+
+export const UNREAD_RETENTION_OPTIONS: RetentionOption[] = [
+  { value: 7, label: 'Keep unread from last 7 days' },
+  { value: 14, label: 'Keep unread from last 14 days' },
+  { value: 30, label: 'Keep unread from last 30 days (Recommended)' },
+  { value: 90, label: 'Keep unread from last 90 days' },
+  { value: 0, label: 'Never hide unread items' },
+];
+
+export const RETENTION_OPTIONS: RetentionOption[] = UNREAD_RETENTION_OPTIONS;
 
 export const DEFAULT_ACADEMIC_FEEDS: SavedFeedSubscription[] = [
   {

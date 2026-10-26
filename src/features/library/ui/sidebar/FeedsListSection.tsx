@@ -7,6 +7,11 @@ import { Rss, ChevronRight, Plus } from 'lucide-react';
 import { SidebarNavItem } from './SidebarNavItem';
 import { FeedContextMenu } from './FeedContextMenu';
 import { useFeedsStore } from '@/features/library/core/store/feeds.store';
+import {
+  useFeedSubscriptionsQuery,
+  useUnsubscribeFeedMutation,
+} from '@/features/library/sdk/queries/ingestion.queries';
+import { FeedsService } from '@/features/library/sdk/clients/ingestion-sync.client';
 
 const EditFeedModal = dynamic(
   () => import('../modals/EditFeedModal').then((m) => m.EditFeedModal),
@@ -37,9 +42,12 @@ export function FeedsListSection({
 }: FeedsListSectionProps) {
   const router = useRouter();
   const pathname = usePathname();
+  useFeedSubscriptionsQuery({ enabled: isActiveScope });
   const feeds = useFeedsStore((s) => s.feeds);
-  const removeFeed = useFeedsStore((s) => s.removeFeed);
+  const { mutateAsync: unsubscribeFeed } = useUnsubscribeFeedMutation();
   const triggerRefresh = useFeedsStore((s) => s.triggerRefresh);
+  const markAllEntriesAsRead = useFeedsStore((s) => s.markAllEntriesAsRead);
+  const setActiveFeedId = useFeedsStore((s) => s.setActiveFeedId);
   const openModal = useLibraryUIStore((s) => s.openModal);
   const [isExpanded, setIsExpanded] = useState(true);
   const [editingFeed, setEditingFeed] = useState<SavedFeedSubscription | null>(null);
@@ -82,7 +90,7 @@ export function FeedsListSection({
                 e.stopPropagation();
                 openModal('ADD_FEED');
               }}
-              className="absolute right-7 top-1/2 -translate-y-1/2 z-20 flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted opacity-0 group-hover/root:opacity-100 focus-visible:opacity-100 cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="absolute right-7 top-1/2 -translate-y-1/2 z-20 flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground border border-transparent hover:border-border/50 hover:bg-background opacity-0 max-md:opacity-100 group-hover/root:opacity-100 focus-visible:opacity-100 cursor-pointer transition-colors duration-150 outline-none focus-visible:ring-1 focus-visible:ring-primary"
               aria-label="New feed"
             >
               <Plus className="size-3.5" strokeWidth={1.5} />
@@ -104,7 +112,7 @@ export function FeedsListSection({
                 setIsExpanded((v) => !v);
               }}
               aria-label={isExpanded ? 'Collapse Feeds' : 'Expand Feeds'}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 z-20 flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary before:absolute before:-inset-2 md:before:hidden"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 z-20 flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground border border-transparent hover:border-border/50 hover:bg-background cursor-pointer transition-colors duration-150 outline-none focus-visible:ring-1 focus-visible:ring-primary before:absolute before:-inset-2 md:before:hidden"
             >
               <ChevronRight
                 className={cn(
@@ -148,16 +156,28 @@ export function FeedsListSection({
                   <FeedContextMenu
                     feed={feed}
                     onRefresh={() => {
+                      setActiveFeedId(feed.id);
                       triggerRefresh();
                       toast.info(`Refreshing "${feed.name}"...`);
                     }}
-                    onMarkAllAsRead={() => {
-                      triggerRefresh();
+                    onMarkAllAsRead={async () => {
+                      try {
+                        const res = await FeedsService.getItems(feed.id);
+                        const items = (res?.data as Array<{ id?: string; guid?: string; url?: string }>) || [];
+                        const itemIds = items.map((it) => it.id || it.guid || it.url).filter(Boolean) as string[];
+                        if (itemIds.length > 0) {
+                          markAllEntriesAsRead(itemIds);
+                        } else {
+                          markAllEntriesAsRead();
+                        }
+                      } catch {
+                        markAllEntriesAsRead();
+                      }
                       toast.success(`Marked all articles in "${feed.name}" as read`);
                     }}
                     onEdit={(f) => setEditingFeed(f)}
                     onDelete={(f) => {
-                      removeFeed(f.id);
+                      void unsubscribeFeed(f.id);
                       toast.success(`Unsubscribed from "${f.name}"`);
                     }}
                   />

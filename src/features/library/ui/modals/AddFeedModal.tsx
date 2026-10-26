@@ -21,13 +21,19 @@ import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 
 import { useFeedsStore } from '@/features/library/core/store/feeds.store';
-import { useFetchAcademicFeed } from '@/features/library/sdk/queries/ingestion.queries';
+import {
+  useFetchAcademicFeed,
+  useSubscribeFeedMutation,
+} from '@/features/library/sdk/queries/ingestion.queries';
 import { parseOpmlFeeds } from '@/features/library/domain/feed-parser.domain';
 import {
   addFeedSchema,
   type AddFeedFormValues,
 } from '@/features/library/domain/types/forms.types';
-import { RETENTION_OPTIONS } from '@/features/library/domain/types/feeds.types';
+import {
+  RETENTION_OPTIONS,
+  READ_RETENTION_OPTIONS,
+} from '@/features/library/domain/types/feeds.types';
 
 export interface AddFeedModalProps {
   open: boolean;
@@ -37,6 +43,7 @@ export interface AddFeedModalProps {
 export function AddFeedModal({ open, onOpenChange }: AddFeedModalProps) {
   const router = useRouter();
   const addFeed = useFeedsStore((s) => s.addFeed);
+  const { mutateAsync: subscribeFeed } = useSubscribeFeedMutation();
   const { mutateAsync: fetchAcademicFeed } = useFetchAcademicFeed();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -49,6 +56,8 @@ export function AddFeedModal({ open, onOpenChange }: AddFeedModalProps) {
       url: '',
       name: '',
       retentionDays: 30,
+      cleanupReadAfter: 7,
+      cleanupUnreadAfter: 30,
     },
     mode: 'onTouched',
   });
@@ -69,6 +78,8 @@ export function AddFeedModal({ open, onOpenChange }: AddFeedModalProps) {
         url: '',
         name: '',
         retentionDays: 30,
+        cleanupReadAfter: 7,
+        cleanupUnreadAfter: 30,
       });
       setIsSubmitting(false);
       setIsAutoFetchingTitle(false);
@@ -123,7 +134,13 @@ export function AddFeedModal({ open, onOpenChange }: AddFeedModalProps) {
         }
       }
 
-      const newFeed = await addFeed(finalName, data.url, data.retentionDays);
+      const newFeed = await subscribeFeed({
+        name: finalName,
+        url: data.url,
+        retentionDays: data.cleanupUnreadAfter ?? data.retentionDays,
+        cleanupReadAfter: data.cleanupReadAfter ?? 7,
+        cleanupUnreadAfter: data.cleanupUnreadAfter ?? data.retentionDays,
+      });
       toast.success(`Subscribed to "${newFeed.name}"`);
       onOpenChange(false);
       router.push(`/library/feeds/${newFeed.id}`);
@@ -243,52 +260,43 @@ export function AddFeedModal({ open, onOpenChange }: AddFeedModalProps) {
               {errors.name && <p className="text-11 text-destructive">{errors.name.message}</p>}
             </div>
 
-            {/* Feed Retention Policy */}
-            <div className="space-y-1.5">
-              <Label htmlFor="feed-retention" className="text-11 font-medium text-foreground">
-                Feed Retention (Clean older items)
-              </Label>
-              <select
-                id="feed-retention"
-                {...register('retentionDays', { valueAsNumber: true })}
-                className="h-8 w-full text-13 rounded-md bg-background border border-border px-2 text-foreground focus-visible:outline-none focus-visible:border-primary cursor-pointer"
-              >
-                {RETENTION_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-              {errors.retentionDays && (
-                <p className="text-11 text-destructive">{errors.retentionDays.message}</p>
-              )}
+            {/* Feed Virtualized Retention Policy (Unread vs Read) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div className="space-y-1.5">
+                <Label htmlFor="feed-retention" className="text-11 font-medium text-foreground">
+                  Remove Unread Items
+                </Label>
+                <select
+                  id="feed-retention"
+                  {...register('retentionDays', { valueAsNumber: true })}
+                  className="h-8 w-full text-12 rounded-md bg-background border border-border px-2 text-foreground focus-visible:outline-none focus-visible:border-primary cursor-pointer"
+                >
+                  {RETENTION_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="feed-read-retention" className="text-11 font-medium text-foreground">
+                  Remove Read Items
+                </Label>
+                <select
+                  id="feed-read-retention"
+                  {...register('cleanupReadAfter', { valueAsNumber: true })}
+                  className="h-8 w-full text-12 rounded-md bg-background border border-border px-2 text-foreground focus-visible:outline-none focus-visible:border-primary cursor-pointer"
+                >
+                  {READ_RETENTION_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 
           <DialogFooter className="flex items-center justify-end gap-2 pt-1 sm:space-x-0">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => onOpenChange(false)}
-              className="h-8 px-3 text-12 font-medium cursor-pointer text-foreground rounded-md hover:bg-muted"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              size="sm"
-              disabled={isSubmitting || !watchedUrl?.trim()}
-              className="h-8 px-3.5 text-12 font-medium cursor-pointer rounded-md shadow-none"
-            >
-              {isSubmitting && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
-              Save Feed
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-export default AddFeedModal;
+  

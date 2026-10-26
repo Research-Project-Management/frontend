@@ -32,6 +32,7 @@ export default function LibraryLayout({
     return (
       <main className="h-full w-full flex-1 min-h-0 relative flex flex-col overflow-hidden">
         {children}
+        <LibraryModalsSlot />
       </main>
     );
   }

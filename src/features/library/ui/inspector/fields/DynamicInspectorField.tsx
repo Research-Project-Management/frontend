@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ExternalLink, Copy, CheckCircle2 } from "lucide-react";
+import { ExternalLink, Copy, CheckCircle2, RotateCcw } from "lucide-react";
 import { SchemaFieldDefinition } from "@/features/library/domain/types/library.types";
 import { isValidValue } from "@/features/library/domain/metadata";
 import { InlineField } from "./InlineField";
@@ -19,6 +19,7 @@ export interface DynamicInspectorFieldProps {
   canEdit?: boolean;
   onSave: (newVal: string) => void;
   onCopy: (text: string, label: string) => void;
+  onRegenerateCitationKey?: () => void;
 }
 
 /** Check if a string represents an external link / URL */
@@ -59,6 +60,7 @@ export function DynamicInspectorField({
   canEdit = true,
   onSave,
   onCopy,
+  onRegenerateCitationKey,
 }: DynamicInspectorFieldProps) {
   const [liveValue, setLiveValue] = useState(val);
 
@@ -68,6 +70,18 @@ export function DynamicInspectorField({
 
   const currentVal = liveValue ?? val;
   const isDoi = fieldDef.field.toLowerCase() === "doi";
+  const isDateField =
+    fieldDef.field.toLowerCase() === "date" ||
+    fieldDef.field.toLowerCase() === "publicationdate" ||
+    fieldDef.field.toLowerCase() === "year";
+  const datePrecisionBadge = (() => {
+    if (!isDateField || !currentVal) return null;
+    const trimmed = currentVal.trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) return "Y M D";
+    if (/^\d{4}-\d{2}$/.test(trimmed)) return "Y M";
+    if (/^\d{4}$/.test(trimmed) || /\b\d{4}\b/.test(trimmed)) return "Y";
+    return null;
+  })();
   const isUrlField =
     fieldDef.field.toLowerCase() === "url" || fieldDef.type === "url";
   const isCitationKey =
@@ -112,6 +126,7 @@ export function DynamicInspectorField({
       </Tooltip>
       <div className="flex items-center gap-1 min-w-0 w-full">
         <InlineField
+          itemKey={fieldDef.field}
           value={val}
           onChange={setLiveValue}
           ariaLabel={isCitationKey ? "BibTeX Citation Key" : fieldDef.label}
@@ -152,43 +167,72 @@ export function DynamicInspectorField({
           </div>
         )}
 
-        {/* Citation Key Quick Action */}
-        {isCitationKey && isValidValue(currentVal) && (
-          <div className="invisible group-hover:visible group-focus-within:visible max-md:visible flex items-center shrink-0">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() =>
-                    onCopy(`\\cite{${currentVal}}`, "Citation Key")
-                  }
-                  className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer focus-visible:outline-none transition-colors relative before:absolute before:-inset-2 md:before:hidden"
-                  aria-label="Copy citation key"
+        {/* Date Precision Badge (Zotero 7 Y / Y M / Y M D) */}
+        {datePrecisionBadge && (
+          <span
+            className="shrink-0 text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground select-none"
+            title={`Parsed date precision: ${datePrecisionBadge}`}
+          >
+            {datePrecisionBadge}
+          </span>
+        )}
+
+        {/* Citation Key Quick Actions (Copy + Regenerate) */}
+        {isCitationKey && (
+          <div className="invisible group-hover:visible group-focus-within:visible max-md:visible flex items-center gap-0.5 shrink-0">
+            {canEdit && onRegenerateCitationKey && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={onRegenerateCitationKey}
+                    className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer focus-visible:outline-none transition-colors"
+                    aria-label="Regenerate citation key"
+                  >
+                    <RotateCcw className="size-3.5 shrink-0" strokeWidth={1.5} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" align="start" sideOffset={6}>
+                  Regenerate citation key
+                </TooltipContent>
+              </Tooltip>
+            )}
+            {isValidValue(currentVal) && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onCopy(`\\cite{${currentVal}}`, "Citation Key")
+                    }
+                    className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer focus-visible:outline-none transition-colors relative before:absolute before:-inset-2 md:before:hidden"
+                    aria-label="Copy citation key"
+                  >
+                    {copiedKey === "Citation Key" ? (
+                      <CheckCircle2
+                        className="size-3.5 text-primary shrink-0"
+                        aria-hidden="true"
+                        strokeWidth={1.5}
+                      />
+                    ) : (
+                      <Copy
+                        className="size-3.5 shrink-0"
+                        aria-hidden="true"
+                        strokeWidth={1.5}
+                      />
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="bottom"
+                  align="start"
+                  sideOffset={6}
+                  alignOffset={2}
                 >
-                  {copiedKey === "Citation Key" ? (
-                    <CheckCircle2
-                      className="size-3.5 text-primary shrink-0"
-                      aria-hidden="true"
-                      strokeWidth={1.5}
-                    />
-                  ) : (
-                    <Copy
-                      className="size-3.5 shrink-0"
-                      aria-hidden="true"
-                      strokeWidth={1.5}
-                    />
-                  )}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent
-                side="bottom"
-                align="start"
-                sideOffset={6}
-                alignOffset={2}
-              >
-                Copy citation key
-              </TooltipContent>
-            </Tooltip>
+                  Copy citation key
+                </TooltipContent>
+              </Tooltip>
+            )}
           </div>
         )}
 

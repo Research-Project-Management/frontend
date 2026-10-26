@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback, useDeferredValue } from 'react';
 import { Search, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import type { DocumentFulltext } from '@/features/library/domain/types/reader.types';
 
@@ -34,6 +34,7 @@ export function useViewerSearch({
 }: UseViewerSearchOptions) {
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery || '');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(initialSearchQuery || '');
+  const deferredSearchQuery = useDeferredValue(debouncedSearchQuery);
   const [currentMatchIdx, setCurrentMatchIdx] = useState(0);
   const [extractedPageText, setExtractedPageText] = useState<Map<number, string> | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -131,7 +132,7 @@ export function useViewerSearch({
   }, [pdfDocument, numPages, isSearchOpen, debouncedSearchQuery]);
 
   const searchMatches = useMemo(() => {
-    const q = debouncedSearchQuery.trim().toLowerCase();
+    const q = deferredSearchQuery.trim().toLowerCase();
     if (!q || q.length < 2) return [];
 
     const list: { page: number; title?: string }[] = [];

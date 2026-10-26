@@ -44,12 +44,13 @@ export const IngestionService = {
       { timeout: 30000 },
     );
     const accepted = (res && typeof res === 'object' && 'data' in res && res.data ? res.data : res) as Record<string, unknown>;
+    const rawItemId = accepted.existingItemId ?? accepted.itemId;
     return UnifiedIngestionResponseSchema.parse({
       success: true,
       data: {
         runId: accepted.runId,
         status: accepted.status,
-        itemId: accepted.existingItemId,
+        itemId: typeof rawItemId === 'string' && rawItemId ? rawItemId : undefined,
         deduplicated: accepted.deduplicated,
       },
     });
@@ -381,23 +382,16 @@ export const RetractionService = {
       { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
     ),
 
-  flagItem: ((
+  flagItem: (
     scopeId: string | undefined,
-    itemIdOrInput: string | FlagRetractionInput,
+    itemId: string,
     data?: FlagRetractionInput,
-  ) => {
-    if (typeof itemIdOrInput === 'string') {
-      return libraryClient.post<Item>(
-        getRetractionUrl(scopeId, `items/${encodeURIComponent(itemIdOrInput)}/flag`),
-        data || {},
-        { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
-      );
-    }
-    return libraryClient.post<{ success: boolean }>(getRetractionUrl(scopeId, 'flag'), itemIdOrInput);
-  }) as {
-    (scopeId: string | undefined, itemId: string, data: FlagRetractionInput): Promise<Item>;
-    (scopeId: string | undefined, input: FlagRetractionInput): Promise<{ success: boolean }>;
-  },
+  ): Promise<Item> =>
+    libraryClient.post<Item>(
+      getRetractionUrl(scopeId, `items/${encodeURIComponent(itemId)}/flag`),
+      data || {},
+      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
+    ),
 
   unflagItem: (scopeId: string | undefined, itemId: string) =>
     libraryClient.delete<Item>(
@@ -420,6 +414,7 @@ export const SearchService = {
     yearTo?: number;
     sortBy?: SearchSortBy;
     sortOrder?: SearchSortOrder;
+    includeFacets?: boolean;
   }, scopeId?: string) => {
     const effectiveQuery = params.query ?? params.q ?? '';
     const queryParams: Record<string, string> = { query: effectiveQuery };
@@ -432,6 +427,7 @@ export const SearchService = {
     if (params.yearTo !== undefined) queryParams.yearTo = String(params.yearTo);
     if (params.sortBy) queryParams.sortBy = params.sortBy;
     if (params.sortOrder) queryParams.sortOrder = params.sortOrder;
+    if (params.includeFacets !== undefined) queryParams.includeFacets = String(params.includeFacets);
 
     return libraryClient.get<SearchResponse>(
       resolveLibraryUrl('search', '/search', scopeId),
@@ -510,10 +506,25 @@ export const FeedsService = {
       };
     }> }>(resolveLibraryUrl('ingestion', '/feeds/subscriptions')),
 
-  subscribe: (data: { url: string; customTitle?: string; cleanupDays?: number }) =>
+  subscribe: (data: {
+    url: string;
+    customTitle?: string;
+    cleanupDays?: number;
+    cleanupReadAfter?: number;
+    cleanupUnreadAfter?: number;
+  }) =>
     libraryClient.post<{ data: unknown }>(resolveLibraryUrl('ingestion', '/feeds/subscriptions'), data),
 
-  updateSubscription: (feedId: string, data: { customTitle?: string; cleanupDays?: number }) =>
+  updateSubscription: (
+    feedId: string,
+    data: {
+      customTitle?: string;
+      cleanupDays?: number;
+      cleanupReadAfter?: number;
+      cleanupUnreadAfter?: number;
+      url?: string;
+    },
+  ) =>
     libraryClient.patch<{ data: unknown }>(resolveLibraryUrl('ingestion', `/feeds/subscriptions/${encodeURIComponent(feedId)}`), data),
 
   unsubscribe: (feedId: string) =>
@@ -528,4 +539,3 @@ export const FeedsService = {
   markAllRead: (itemIds: string[]) =>
     libraryClient.post<{ success: boolean }>(resolveLibraryUrl('ingestion', '/feeds/items/mark-all-read'), { itemIds }),
 };
-

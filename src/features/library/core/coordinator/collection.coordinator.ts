@@ -113,21 +113,90 @@ export function useCollectionCoordinator({
     [collectionService, createParentId, createScopeId, effectiveScopeId, findCollectionAndScope],
   );
 
+  const openModal = useLibraryUIStore((s) => s.openModal);
+  const activeScope = useLibraryUIStore((s) => s.activeScope);
+
+  const openCreateModalForScope = useCallback(
+    (targetScopeId: string, defaultParentId: string | null) => {
+      setCreateScopeId(targetScopeId);
+      setCreateParentId(defaultParentId);
+      const scopedCollections =
+        targetScopeId === 'user'
+          ? (allCollectionsByScope?.user ?? collections)
+          : targetScopeId && targetScopeId !== 'user'
+            ? (allCollectionsByScope?.project ?? collections)
+            : collections;
+      const rootLabel =
+        targetScopeId === 'user'
+          ? 'My Library'
+          : activeScope.type === 'project'
+            ? (activeScope.name || 'Project')
+            : 'My Library';
+      const rootType: 'user' | 'project' =
+        targetScopeId === 'user'
+          ? 'user'
+          : activeScope.type === 'project'
+            ? 'project'
+            : 'user';
+
+      openModal('CREATE_COLLECTION', {
+        parentId: defaultParentId,
+        collections: scopedCollections,
+        rootLabel,
+        rootType,
+        onSubmit: async (data: CollectionInput) => {
+          const rawParent = data.parentId ?? defaultParentId ?? null;
+          const cleanParentId = rawParent === 'root' || !rawParent ? null : rawParent;
+          const resolvedScope =
+            targetScopeId ||
+            (cleanParentId ? findCollectionAndScope(cleanParentId).scopeId : effectiveScopeId);
+          await new Promise<void>((resolve, reject) => {
+            collectionService.createCollection(
+              {
+                name: data.name?.trim() || 'Untitled',
+                description: data.description?.trim() || '',
+                color: data.color || '#2563eb',
+                icon: data.icon || '',
+                parentId: cleanParentId,
+                scopeId: resolvedScope,
+              },
+              {
+                onSuccess: () => {
+                  setCreateOpen(false);
+                  setCreateParentId(null);
+                  setCreateScopeId(null);
+                  resolve();
+                },
+                onError: (err) => reject(err),
+              },
+            );
+          });
+        },
+      });
+    },
+    [
+      activeScope.name,
+      activeScope.type,
+      allCollectionsByScope,
+      collectionService,
+      collections,
+      effectiveScopeId,
+      findCollectionAndScope,
+      openModal,
+    ],
+  );
+
   const openCreateSub = useCallback(
     (parentId: string) => {
       const { scopeId } = findCollectionAndScope(parentId);
-      setCreateScopeId(scopeId);
-      setCreateParentId(parentId);
-      setCreateOpen(true);
+      openCreateModalForScope(scopeId, parentId);
     },
-    [findCollectionAndScope],
+    [findCollectionAndScope, openCreateModalForScope],
   );
 
   const openCreateRoot = useCallback(() => {
-    setCreateScopeId(effectiveScopeId);
-    setCreateParentId(null);
-    setCreateOpen(true);
-  }, [effectiveScopeId]);
+    openCreateModalForScope(effectiveScopeId, null);
+  }, [effectiveScopeId, openCreateModalForScope]);
 
   const startRename = useCallback((collectionId: string, name: string) => {
     setRenamingId(collectionId);
@@ -153,34 +222,65 @@ export function useCollectionCoordinator({
     [collectionService, findCollectionAndScope, renameValue],
   );
 
-  const handleDelete = useCallback(
-    (collectionId: string) => {
+  const openDeleteCollectionModal = useCallback(
+    (collectionId: string, withItems: boolean) => {
       const { collection: target, scopeId } = findCollectionAndScope(collectionId);
+      const collectionTitle = target?.name || 'Untitled Collection';
       setTrashTarget({
         type: 'collection',
         id: collectionId,
-        title: target?.name || 'Untitled Collection',
-        withItems: false,
+        title: collectionTitle,
+        withItems,
         scopeId,
       });
-      setIsTrashOpen(true);
+
+      openModal('DELETE_CONFIRM', {
+        title: withItems ? 'Delete collection and items' : 'Delete collection',
+        description: withItems
+          ? `Are you sure you want to delete collection "${collectionTitle}" and move all of its items to the trash?`
+          : `Are you sure you want to delete collection "${collectionTitle}"? Items inside this collection will not be deleted and will remain in your library.`,
+        confirmLabel: 'Move to Trash',
+        onConfirm: async () => {
+          await collectionService.deleteCollection({
+            collectionId,
+            strategy: withItems ? 'cascade' : 'orphan',
+            scopeId: scopeId || effectiveScopeId,
+          });
+          if (resolvedActiveCollectionId === collectionId) {
+            setActiveCollectionId(null);
+            if (onNavigate) {
+              onNavigate('/library');
+            } else {
+              router.push('/library');
+            }
+          }
+        },
+      });
     },
-    [findCollectionAndScope],
+    [
+      collectionService,
+      effectiveScopeId,
+      findCollectionAndScope,
+      onNavigate,
+      openModal,
+      resolvedActiveCollectionId,
+      router,
+      setActiveCollectionId,
+    ],
+  );
+
+  const handleDelete = useCallback(
+    (collectionId: string) => {
+      openDeleteCollectionModal(collectionId, false);
+    },
+    [openDeleteCollectionModal],
   );
 
   const handleDeleteWithItems = useCallback(
     (collectionId: string) => {
-      const { collection: target, scopeId } = findCollectionAndScope(collectionId);
-      setTrashTarget({
-        type: 'collection',
-        id: collectionId,
-        title: target?.name || 'Untitled Collection',
-        withItems: true,
-        scopeId,
-      });
-      setIsTrashOpen(true);
+      openDeleteCollectionModal(collectionId, true);
     },
-    [findCollectionAndScope],
+    [openDeleteCollectionModal],
   );
 
   const handleConfirmTrash = useCallback(async () => {

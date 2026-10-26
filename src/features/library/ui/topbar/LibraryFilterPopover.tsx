@@ -17,7 +17,7 @@ import {
 } from "@/shared/components/ui/tooltip";
 import { FilterFunnelIcon } from "@/shared/components/icons";
 import type { Item } from "@/features/library/domain/types/library.types";
-import { useLibraryFacetCounts } from "./filter-popover/useLibraryFacetCounts";
+import { useLibraryFacetCounts } from "@/features/library/core/coordinator/facet-filter.coordinator";
 import { FilterFacetSections } from "./filter-popover/FilterFacetSections";
 
 export interface LibraryFilterPopoverProps {
@@ -134,6 +134,13 @@ export function LibraryFilterPopover({
           matchingTags={facets.matchingTags}
           activeTags={facets.activeTags}
           onTagToggle={facets.handleTagToggle}
+          showAutomaticTags={facets.showAutomaticTags}
+          onToggleShowAutomaticTags={facets.setShowAutomaticTags}
+          onCreateTag={facets.createTag}
+          onUpdateTag={facets.updateTag}
+          onDeleteTag={facets.deleteTag}
+          onDeleteAutomaticTags={facets.deleteAutomaticTags}
+          isDeletingAutomatic={facets.isDeletingAutomatic}
           matchingFileItems={facets.matchingFileItems}
           fileStatus={facets.fileStatus}
           onFileStatusToggle={facets.handleFileStatusToggle}

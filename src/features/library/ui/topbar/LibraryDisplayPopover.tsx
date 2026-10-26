@@ -191,7 +191,7 @@ export function LibraryDisplayPopover({
           )}
         </div>
 
-        <div className="border-t border-border my-0.5" />
+        <div className="-mx-2 border-t border-border my-0.5" />
 
         {/* 2. Order by */}
         <div>
@@ -267,7 +267,7 @@ export function LibraryDisplayPopover({
           )}
         </div>
 
-        <div className="border-t border-border my-0.5" />
+        <div className="-mx-2 border-t border-border my-0.5" />
 
         {/* 3. Density */}
         <div>
@@ -312,7 +312,7 @@ export function LibraryDisplayPopover({
           )}
         </div>
 
-        <div className="border-t border-border my-0.5" />
+        <div className="-mx-2 border-t border-border my-0.5" />
 
         {/* 4. Subcollection Items */}
         <div className="pt-0.5">

@@ -12,7 +12,7 @@ import {
   Loader2,
   FolderKanban,
   Globe,
-  MoreHorizontal,
+  MoreVertical,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
@@ -135,7 +135,7 @@ export function CompanionHistory({
               <SquarePen className='size-3.5 text-foreground/80' />
             </button>
 
-            <div className='flex-1 relative flex items-center h-7.5 rounded-none border border-border bg-background focus-within:border-border px-2 transition-all'>
+            <div className='flex-1 relative flex items-center h-7.5 rounded-md border border-border bg-background px-2 transition-colors'>
               <Search className='size-3.5 text-foreground/70 shrink-0 mr-1.5' />
               <input
                 type='text'
@@ -313,7 +313,7 @@ export function CompanionHistory({
                               e.stopPropagation();
                               setEditingId(null);
                             }}
-                            className='size-6 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ai'
+                            className='size-6 flex items-center justify-center rounded-md hover:bg-background/80 hover:text-foreground text-muted-foreground cursor-pointer transition-all outline-none focus-visible:ring-1 focus-visible:ring-ai shadow-none hover:shadow-2xs active:scale-95'
                             title='Cancel'
                             aria-label='Cancel rename'
                           >
@@ -330,7 +330,7 @@ export function CompanionHistory({
                               title='More actions'
                               aria-label='More actions'
                             >
-                              <MoreHorizontal className='size-3.5' />
+                              <MoreVertical className='size-3.5' />
                             </button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align='end' className='w-36 p-1'>

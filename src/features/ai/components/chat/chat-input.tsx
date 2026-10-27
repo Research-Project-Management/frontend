@@ -13,6 +13,7 @@ import {
   Globe,
   GlobeOff,
   Plus,
+  Paperclip,
   ChevronDown,
   Check,
   Loader2,
@@ -21,7 +22,6 @@ import {
   Folder,
   FileUp,
   Upload,
-  PanelRightOpen,
   BookOpen,
   HardDrive,
   FileImage,
@@ -29,6 +29,7 @@ import {
   FileCode,
   File,
   Database,
+  PanelRightOpen,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from "@/shared/lib/utils";
@@ -720,12 +721,12 @@ export function ChatInput({
                       type="button"
                       className={cn(
                         "relative size-8 flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none text-foreground hover:bg-muted focus-visible:ring-1 focus-visible:ring-ai",
-                        (sources.length > 0 || isSourcesOpen) && "bg-muted"
+                        sources.length > 0 && "bg-muted"
                       )}
                       aria-label="Add sources or toggle features"
                       title="Add attachment or toggle features"
                     >
-                      <Plus className="size-4 shrink-0 text-foreground" />
+                      <Paperclip className="size-4 shrink-0 text-foreground" />
                       {sources.length > 0 && (
                         <span className="absolute -top-1 -right-1 size-3.5 rounded-full bg-ai text-white text-9 font-medium flex items-center justify-center">
                           {sources.length}
@@ -735,7 +736,7 @@ export function ChatInput({
                   </DropdownMenuTrigger>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="text-xs">
-                  Add attachment or toggle features
+                  Phần đính kèm & tài liệu
                 </TooltipContent>
               </Tooltip>
 
@@ -785,18 +786,6 @@ export function ChatInput({
                 >
                   <Database className="size-4 text-foreground shrink-0" />
                   <span>Uploaded documents</span>
-                </DropdownMenuItem>
-
-                {/* 4. Sources Panel */}
-                <DropdownMenuItem
-                  onClick={toggleSources}
-                  className="flex items-center justify-between px-2.5 py-1.5 rounded-md text-13 font-normal cursor-pointer hover:bg-muted focus:bg-muted text-foreground"
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <PanelRightOpen className="size-4 text-foreground shrink-0" />
-                    <span>Sources panel</span>
-                  </div>
-                  {isSourcesOpen && <Check className="size-3 text-foreground shrink-0" />}
                 </DropdownMenuItem>
 
                 <DropdownMenuSeparator className="my-1 border-border/50" />

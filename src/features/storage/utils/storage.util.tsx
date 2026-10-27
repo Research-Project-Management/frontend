@@ -149,6 +149,27 @@ export function getFileColor(type: FileType): string {
   }
 }
 
+export function getFileColorClass(type: FileType): string {
+  switch (type) {
+    case 'folder':
+      return 'text-amber-500';
+    case 'document':
+      return 'text-rose-500';
+    case 'spreadsheet':
+      return 'text-emerald-500';
+    case 'image':
+      return 'text-teal-500';
+    case 'video':
+      return 'text-purple-500';
+    case 'audio':
+      return 'text-pink-500';
+    case 'archive':
+      return 'text-orange-500';
+    default:
+      return 'text-slate-500';
+  }
+}
+
 export function formatFileSize(bytes?: number): string {
   if (bytes === undefined || bytes === null || Number.isNaN(bytes)) return '-';
   return formatBytes(bytes);
@@ -160,7 +181,8 @@ export function formatMimeType(item: StorageItem): string {
   if (ext) {
     if (ext === 'PDF') return 'PDF Document';
     if (ext === 'DOCX' || ext === 'DOC') return 'Word Document';
-    if (ext === 'XLSX' || ext === 'XLS' || ext === 'CSV' || ext === 'TSV' || ext === 'ODS') return 'Spreadsheet';
+    if (ext === 'XLSX' || ext === 'XLS') return 'Excel Spreadsheet';
+    if (ext === 'CSV' || ext === 'TSV' || ext === 'ODS') return 'Spreadsheet';
     if (ext === 'PPTX' || ext === 'PPT') return 'PowerPoint Presentation';
     if (['JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG'].includes(ext)) return `${ext} Image`;
     if (['MP4', 'MOV', 'AVI', 'MKV'].includes(ext)) return `${ext} Video`;

@@ -797,12 +797,12 @@ export function CompanionInput({
                       )}
                       aria-label='Add attachment or toggle features'
                     >
-                      <Plus className='size-4 shrink-0 text-foreground' />
+                      <Paperclip className='size-4 shrink-0 text-foreground' />
                     </button>
                   </DropdownMenuTrigger>
                 </TooltipTrigger>
                 <TooltipContent side='top' sideOffset={4}>
-                  Add documents or tools
+                  Phần đính kèm & tài liệu
                 </TooltipContent>
               </Tooltip>
               <DropdownMenuContent

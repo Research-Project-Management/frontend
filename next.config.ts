@@ -80,7 +80,7 @@ const nextConfig: NextConfig = {
 
   experimental: {
     turbopackRustReactCompiler: true,
-    turbopackFileSystemCacheForDev: true,
+    turbopackFileSystemCacheForDev: false,
     turbopackFileSystemCacheForBuild: false,
     proxyClientMaxBodySize: '100mb',
     optimizePackageImports: [
@@ -192,7 +192,7 @@ const nextConfig: NextConfig = {
 
   async redirects() {
     const excludedPrefixes =
-      'api|auth|health|projects|library|storage|settings|stickies|your-work|ai|dashboard|editor|invite|workspace-invites|login|register|forgot-password|reset-password|pages';
+      'api|auth|health|projects|library|storage|settings|stickies|your-work|ai|chat|friends|dashboard|editor|invite|workspace-invites|login|register|forgot-password|reset-password|pages';
     return [
       {
         source: `/:workspaceId((?!${excludedPrefixes}).+)/projects/:projectId/:path*`,
@@ -327,6 +327,18 @@ const nextConfig: NextConfig = {
       {
         source: '/notifications/:path*',
         destination: `${backendUrl}/notifications/:path*`,
+      },
+      {
+        source: '/chat/:path+',
+        destination: `${backendUrl}/api/chat/:path+`,
+      },
+      {
+        source: '/friends',
+        destination: `${backendUrl}/api/friends`,
+      },
+      {
+        source: '/friends/:path*',
+        destination: `${backendUrl}/api/friends/:path*`,
       },
       {
         source: '/:path*/pdf.worker.mjs',

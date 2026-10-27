@@ -10,7 +10,7 @@ import { isProjectScope } from '@/features/library/domain/item-url';
 import type { Item, Collection } from '@/features/library/domain/types/library.types';
 import { LibraryEmptyState } from '@/features/library/ui/content/LibraryEmptyState';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
-import { buildTree } from '@/features/library/domain/collection-tree.domain';
+import { buildTree } from '@/features/library/domain/collection-tree';
 import type { TreeNode } from '@/features/library/ui/sidebar/sidebar.types';
 import { cn } from '@/shared/lib/utils';
 import { toast } from 'sonner';

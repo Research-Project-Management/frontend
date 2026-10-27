@@ -133,10 +133,22 @@ export function ChatModeProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+const fallbackChatModeContext: ChatModeContextType = {
+  mode: 'chat',
+  setMode: () => {},
+  sources: [],
+  enabledDocumentIds: [],
+  fluxDataEnabled: false,
+  setFluxDataEnabled: () => {},
+  addSource: () => {},
+  removeSource: () => {},
+  toggleSource: () => {},
+  restoreSourceIds: () => {},
+  updateSourceName: () => {},
+  clearSources: () => {},
+};
+
 export function useChatMode() {
   const context = useContext(ChatModeContext);
-  if (context === undefined) {
-    throw new Error("useChatMode must be used within a ChatModeProvider");
-  }
-  return context;
+  return context ?? fallbackChatModeContext;
 }

@@ -3,6 +3,7 @@
 /**
  * Toast notification system inspired by Plane.so (@plane/propel) design tokens
  * Flat SaaS Elevation, solid semantic circular badges, and 1px neutral border.
+ * Strictly ephemeral notifications — no inline interactive action buttons or clutter.
  */
 
 import * as React from 'react';
@@ -14,7 +15,6 @@ import {
   ToastWarningIcon,
   ToastInfoIcon,
   ToastLoadingIcon,
-  ToastCloseIcon,
 } from './toast-icons';
 
 type ToasterProps = React.ComponentProps<typeof SonnerToaster>;
@@ -71,24 +71,22 @@ export function Toaster({ ...props }: ToasterProps) {
       duration={2400}
       gap={10}
       offset="16px"
-      closeButton
+      closeButton={false}
       icons={{
         success: TOAST_ICONS.success,
         error: TOAST_ICONS.error,
         warning: TOAST_ICONS.warning,
         info: TOAST_ICONS.info,
         loading: TOAST_ICONS.loading,
-        close: TOAST_ICONS.close,
       }}
       toastOptions={{
         classNames: {
           toast: 'group toast font-sans',
           title: 'font-medium',
           description: 'text-muted-foreground',
-          actionButton:
-            'bg-foreground text-background hover:bg-foreground/90 font-medium text-xs rounded-md px-2.5 py-1 transition-colors',
-          cancelButton:
-            'border border-border bg-background text-foreground hover:bg-muted font-medium text-xs rounded-md px-2.5 py-1 transition-colors',
+          actionButton: '!hidden',
+          cancelButton: '!hidden',
+          closeButton: '!hidden',
         },
       }}
       {...props}

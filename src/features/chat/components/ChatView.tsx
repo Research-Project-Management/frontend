@@ -38,6 +38,7 @@ function ChatModalsSlot() {
 export function ChatView() {
   const { data: conversationsData, isLoading, isError, error } = useConversations();
   const {
+    isSidebarOpen,
     activeConversation,
     activeConversationId,
     setActiveConversation,
@@ -134,7 +135,7 @@ export function ChatView() {
   return (
     <div className="size-full flex overflow-hidden">
       {/* Unified Messenger Sidebar */}
-      <ChatSidebar conversations={conversations} isLoading={isLoading} />
+      {isSidebarOpen && <ChatSidebar conversations={conversations} isLoading={isLoading} />}
 
       {/* Main Chat Workbench */}
       <ChatWindow conversation={activeConversation} />

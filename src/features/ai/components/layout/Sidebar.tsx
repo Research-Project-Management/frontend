@@ -12,11 +12,10 @@ import {
   SquarePen,
   Search,
   ChevronDown,
-  MessageSquare,
   Pencil,
   Trash2,
   X,
-  MoreHorizontal,
+  MoreVertical,
 } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { cn, getErrorMessage } from '@/shared/lib/utils';
@@ -219,7 +218,7 @@ export function Sidebar() {
             </Tooltip>
 
             {/* Expanded Search input */}
-            <div className="flex-1 flex items-center gap-2 h-8 px-2.5 rounded-none border border-border bg-background focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20 transition-colors">
+            <div className="flex-1 flex items-center gap-2 h-8 px-2.5 rounded-md border border-border bg-background transition-colors">
               <Search className="size-4 text-muted-foreground shrink-0 pointer-events-none" />
               <input
                 ref={searchInputRef}
@@ -299,15 +298,7 @@ export function Sidebar() {
                         : 'text-muted-foreground hover:text-foreground hover:bg-muted font-normal',
                     )}
                   >
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <MessageSquare
-                        className={cn(
-                          'size-3.5 shrink-0 transition-colors',
-                          isActive
-                            ? 'text-foreground'
-                            : 'text-muted-foreground group-hover:text-foreground',
-                        )}
-                      />
+                    <div className="flex items-center min-w-0 flex-1">
                       {isEditing ? (
                         <input
                           ref={editInputRef}
@@ -330,17 +321,17 @@ export function Sidebar() {
 
                     {/* Actions on hover and keyboard focus */}
                     {!isEditing && (
-                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-within:opacity-100 has-[[data-state=open]]:opacity-100 transition-opacity shrink-0">
+                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-within:opacity-100 has-[[data-state=open]]:opacity-100 transition-opacity duration-150 shrink-0">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <button
                               type="button"
                               onClick={(e) => e.stopPropagation()}
-                              className="size-6 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                              title="More actions"
-                              aria-label="More actions"
+                              className="size-6 rounded-md hover:bg-background/80 hover:text-foreground text-muted-foreground flex items-center justify-center cursor-pointer transition-all outline-none focus-visible:ring-1 focus-visible:ring-primary shadow-none hover:shadow-2xs active:scale-95"
+                              title="Tùy chọn khác"
+                              aria-label="Tùy chọn khác"
                             >
-                              <MoreHorizontal className="size-3.5 shrink-0" />
+                              <MoreVertical className="size-3.5 shrink-0" />
                             </button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-36 p-1">

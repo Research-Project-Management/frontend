@@ -2,12 +2,15 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import {
   SquarePen,
   History,
   X,
   ChevronRight,
+  Maximize2,
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import {
   Tooltip,
   TooltipContent,
@@ -28,6 +31,7 @@ function AiCompanionSidebarInner() {
     isHistoryView,
     toggleHistoryView,
     setHistoryView,
+    activeChatId,
   } = useAiCompanionStore();
 
   const {
@@ -254,6 +258,11 @@ function AiCompanionSidebarInner() {
         <header className='flex h-11 items-center justify-between px-2.5 sm:px-3 border-b border-border bg-transparent shrink-0 select-none'>
           {/* Left: Title */}
           <div className='flex items-center gap-2 min-w-0 flex-1 mr-2'>
+            <img
+              src="/Chat.svg"
+              alt="AI Assistant"
+              className="size-4 shrink-0 rounded-full object-contain"
+            />
             <span
               className='font-semibold text-13 text-foreground tracking-tight truncate'
               title={displayTitle}
@@ -304,6 +313,23 @@ function AiCompanionSidebarInner() {
               </TooltipContent>
             </Tooltip>
 
+            {/* Open Full Chat */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  href={activeChatId ? `/ai/${activeChatId}` : '/ai'}
+                  onClick={() => setOpen(false)}
+                  className="relative flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai before:absolute before:-inset-1.5 md:before:hidden"
+                  aria-label="Toàn màn hình"
+                >
+                  <Maximize2 className="size-3.5 shrink-0 text-foreground" />
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" sideOffset={4}>
+                Toàn màn hình
+              </TooltipContent>
+            </Tooltip>
+
             {/* Close Sidebar */}
             <Tooltip>
               <TooltipTrigger asChild>
@@ -311,13 +337,13 @@ function AiCompanionSidebarInner() {
                   type='button'
                   onClick={() => setOpen(false)}
                   className='relative flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai before:absolute before:-inset-1.5 md:before:hidden'
-                  aria-label='Collapse (Ctrl+J)'
+                  aria-label='Thu gọn (Ctrl+J)'
                 >
                   <X className='size-3.5 shrink-0 text-foreground' />
                 </button>
               </TooltipTrigger>
               <TooltipContent side='bottom' sideOffset={4}>
-                Collapse (Ctrl+J)
+                Thu gọn (Ctrl+J)
               </TooltipContent>
             </Tooltip>
           </div>
@@ -360,6 +386,7 @@ function AiCompanionSidebarInner() {
         </>
       )}
         </div>
+
     </aside>
   </>
   );

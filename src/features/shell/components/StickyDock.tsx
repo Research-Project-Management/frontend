@@ -2,7 +2,10 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Plus, Search, X, Loader2 } from 'lucide-react';
+import { Plus, Search, X, Loader2, Command, MessageSquare, Sparkles } from 'lucide-react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useChatBadgeCounts } from '@/features/chat/hooks/use-chat-queries';
 import { useSticky } from '@/features/projects/stickies/hooks/use-sticky';
 import { getStickyColorConfig, type Sticky, type StickyColor } from '@/features/projects/stickies/types/sticky.types';
 import Content from '@/features/projects/stickies/components/card/Content';
@@ -21,6 +24,9 @@ import {
 } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 import { stripHtml } from '@/features/projects/stickies/utils/sticky.utils';
+import { useAiCompanionStore } from '@/features/ai/store/ai-companion.store';
+import FloatingChatWidget from '@/features/chat/components/FloatingChatWidget';
+import { useChatStore } from '@/features/chat/store/chat.store';
 import type { StickiesEditorHandle } from '@/features/projects/stickies/components/card/Content';
 
 // ── 1. Single Sticky Rail Icon (Folded bottom-right corner) ───────────────────
@@ -40,6 +46,29 @@ export function StickyRailIcon({ className, size = 18, ...props }: React.SVGProp
     >
       <path d="M16 21H6a2.5 2.5 0 0 1-2.5-2.5V5.5A2.5 2.5 0 0 1 6 3h12a2.5 2.5 0 0 1 2.5 2.5v10.5L15.5 21H16Z" />
       <path d="M15 21v-4.5a1 1 0 0 1 1-1h4.5" />
+    </svg>
+  );
+}
+
+// ── 1b. Quick Tools Hub Icon (Sticky Note with folded corner + Sparkle) ──────
+export function QuickToolsHubIcon({ className, size = 18, ...props }: React.SVGProps<SVGSVGElement> & { size?: number | string }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      {...props}
+    >
+      <rect x="3" y="3" width="7" height="7" rx="2" />
+      <rect x="3" y="14" width="7" height="7" rx="2" />
+      <rect x="14" y="14" width="7" height="7" rx="2" />
+      <path d="M17.5 2.5L18.7 5.3L21.5 6.5L18.7 7.7L17.5 10.5L16.3 7.7L13.5 6.5L16.3 5.3L17.5 2.5Z" />
     </svg>
   );
 }
@@ -148,14 +177,32 @@ const ModalStickyCard = React.memo(function ModalStickyCard({
 export interface StickyDockProps {
   className?: string;
   buttonClassName?: string;
+  mode?: 'sidebar' | 'floating';
 }
 
-export default function StickyDock({ className, buttonClassName }: StickyDockProps = {}) {
+export default function StickyDock({
+  className,
+  buttonClassName,
+  mode = 'sidebar',
+}: StickyDockProps = {}) {
   const [isPillOpen, setIsPillOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeStickyId, setActiveStickyId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  const isAiOpen = useAiCompanionStore((s) => s.isOpen);
+  const aiWidth = useAiCompanionStore((s) => s.width);
+  const toggleAiOpen = useAiCompanionStore((s) => s.toggleOpen);
+
+  const pathname = usePathname();
+  const { totalBadgeCount } = useChatBadgeCounts();
+  const isChatActive = pathname === '/chat' || pathname.startsWith('/chat/');
+  const isFloatingChatOpen = useChatStore((s) => s.isFloatingChatOpen);
+  const toggleFloatingChat = useChatStore((s) => s.toggleFloatingChat);
+
+  const isFloating = mode === 'floating';
+  const tooltipSide = isFloating ? 'left' : 'right';
 
   // Active floating note editor state
   const [editor, setEditor] = useState<StickiesEditorHandle | null>(null);
@@ -197,11 +244,12 @@ export default function StickyDock({ className, buttonClassName }: StickyDockPro
     );
   }, [stickies, searchQuery]);
 
-  // Quick create new sticky note
+
+  // Create sticky from modal
   const handleCreateSticky = async () => {
     try {
       const created = await mutations.create.mutateAsync({});
-      if (created?.id && !isModalOpen) {
+      if (created?.id) {
         setActiveStickyId(created.id);
       }
     } catch (e) {
@@ -209,39 +257,64 @@ export default function StickyDock({ className, buttonClassName }: StickyDockPro
     }
   };
 
-  const colorConfig = getStickyColorConfig(activeSticky?.color || 'pink-1');
+    const colorConfig = getStickyColorConfig(activeSticky?.color || 'pink-1');
+
+  const floatingRightPx = isAiOpen ? aiWidth + 24 : 20;
+  const stickyNoteRightPx = isAiOpen ? aiWidth + 76 : 72;
 
   return (
     <>
-      <div ref={dockRef} className={cn("relative flex items-center justify-center size-8", className)}>
-        {/* ── A. Rail Icon Button at Bottom of Sidebar (Single sticky note) ──── */}
+      <div
+        ref={dockRef}
+        style={isFloating ? { right: `${floatingRightPx}px` } : undefined}
+        className={cn(
+          isFloating
+            ? cn(
+                'hidden md:flex fixed bottom-5 z-40 items-center justify-center size-10 transition-all duration-200',
+                isAiOpen && 'opacity-0 pointer-events-none scale-90 translate-y-2'
+              )
+            : 'relative flex items-center justify-center size-8',
+          className
+        )}
+      >
+        {/* ── A. Trigger Button (Floating Bottom-Right or Sidebar Rail) ──── */}
         <Tooltip>
           <TooltipTrigger asChild>
             <button
               type="button"
               onClick={() => setIsPillOpen(true)}
-              aria-label="Stickies"
+              aria-label={isFloating ? 'Quick Tools (AI & Stickies)' : 'Stickies'}
               className={cn(
-                'relative flex size-8 shrink-0 items-center justify-center rounded-md text-foreground transition-colors duration-200 outline-none select-none cursor-pointer focus-visible:ring-2 focus-visible:ring-primary before:absolute before:-inset-1.5 md:before:hidden',
+                isFloating
+                  ? 'relative flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-background text-foreground shadow-md transition-colors duration-200 outline-none select-none cursor-pointer hover:bg-muted'
+                  : 'relative flex size-8 shrink-0 items-center justify-center rounded-md text-foreground transition-colors duration-200 outline-none select-none cursor-pointer focus-visible:ring-2 focus-visible:ring-primary before:absolute before:-inset-1.5 md:before:hidden',
                 isPillOpen
                   ? 'opacity-0 pointer-events-none'
+                  : isFloating
+                  ? isAiOpen || activeStickyId
+                    ? 'bg-muted'
+                    : ''
                   : activeStickyId
                   ? 'bg-sidebar-accent'
                   : 'hover:bg-sidebar-hover',
                 buttonClassName
               )}
             >
-              <StickyRailIcon className="size-4.5 shrink-0" />
+              {isFloating ? (
+                <QuickToolsHubIcon className="size-4.5 shrink-0 text-foreground" />
+              ) : (
+                <StickyRailIcon className="size-4.5 shrink-0" />
+              )}
             </button>
           </TooltipTrigger>
           {!isPillOpen && (
-            <TooltipContent side="right" sideOffset={10}>
-              Stickies
+            <TooltipContent side={tooltipSide} sideOffset={10}>
+              {isFloating ? 'Quick Tools (AI & Stickies)' : 'Stickies'}
             </TooltipContent>
           )}
         </Tooltip>
 
-        {/* ── B. Action Pill Aligned IN Sidebar (Matching Reference Image) ──── */}
+        {/* ── B. Speed-Dial Action Pill ──── */}
         <AnimatePresence>
           {isPillOpen && (
             <motion.div
@@ -249,9 +322,71 @@ export default function StickyDock({ className, buttonClassName }: StickyDockPro
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.88, y: 10 }}
               transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-              className="absolute bottom-11 md:bottom-0 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-1.5 py-1.5 px-[2px] w-[38px] rounded-full border border-border bg-background shadow-md select-none"
+              className={cn(
+                'absolute bottom-0 left-1/2 -translate-x-1/2 z-40 flex flex-col items-center gap-1.5 py-1.5 px-[3px] rounded-full border border-border bg-background shadow-xl select-none',
+                isFloating ? 'w-[42px]' : 'bottom-11 md:bottom-0 w-[38px]'
+              )}
             >
-              {/* 1. Stickies List (Top) */}
+              {/* 1. AI Assistant Toggle Button */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      toggleAiOpen();
+                      setIsPillOpen(false);
+                    }}
+                    aria-label="AI Assistant"
+                    className={cn(
+                      'size-8 flex items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted cursor-pointer outline-none',
+                      isAiOpen && 'bg-muted'
+                    )}
+                  >
+                    <img
+                      src="/Chat.svg"
+                      alt="AI Assistant"
+                      className="size-4.5 rounded-full object-cover block shrink-0"
+                    />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side={tooltipSide} sideOffset={12}>
+                  AI Assistant (Ctrl+J)
+                </TooltipContent>
+              </Tooltip>
+
+              {/* 2. Floating Chat Toggle */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (pathname === '/chat' || pathname.startsWith('/chat/')) {
+                        setIsPillOpen(false);
+                      } else {
+                        toggleFloatingChat();
+                        setIsPillOpen(false);
+                      }
+                    }}
+                    className={cn(
+                      'relative size-8 flex items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted cursor-pointer outline-none',
+                      (isFloatingChatOpen || isChatActive) && 'bg-muted text-primary'
+                    )}
+                    aria-label="Chat"
+                  >
+                    <MessageSquare className="size-4.5 text-foreground shrink-0" strokeWidth={1.75} />
+                    {totalBadgeCount > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 flex h-3.5 min-w-3.5 px-0.5 items-center justify-center rounded-full bg-primary text-primary-foreground font-mono text-[9px] font-semibold leading-none pointer-events-none">
+                        {totalBadgeCount > 99 ? '99+' : totalBadgeCount}
+                      </span>
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side={tooltipSide} sideOffset={12}>
+                  Chat
+                </TooltipContent>
+              </Tooltip>
+
+              {/* 3. Stickies List */}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
@@ -269,37 +404,12 @@ export default function StickyDock({ className, buttonClassName }: StickyDockPro
                     <StickiesIcon className="size-4.5" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="right" sideOffset={12}>
+                <TooltipContent side={tooltipSide} sideOffset={12}>
                   Your stickies
                 </TooltipContent>
               </Tooltip>
 
-              {/* 2. Add Sticky (+) (Middle) */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      await handleCreateSticky();
-                      setIsPillOpen(false);
-                    }}
-                    disabled={mutations.create.isPending}
-                    className="size-8 flex items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted cursor-pointer outline-none disabled:opacity-50"
-                    aria-label="Add sticky"
-                  >
-                    {mutations.create.isPending ? (
-                      <Loader2 className="size-4 animate-spin text-primary" />
-                    ) : (
-                      <Plus className="size-4.5 text-foreground" strokeWidth={2} />
-                    )}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="right" sideOffset={12}>
-                  Add sticky
-                </TooltipContent>
-              </Tooltip>
-
-              {/* 3. Close Pill (X) (Bottom) */}
+              {/* 4. Close Pill (X) */}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
@@ -311,7 +421,7 @@ export default function StickyDock({ className, buttonClassName }: StickyDockPro
                     <X className="size-4" strokeWidth={2} />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="right" sideOffset={12}>
+                <TooltipContent side={tooltipSide} sideOffset={12}>
                   Close
                 </TooltipContent>
               </Tooltip>
@@ -452,10 +562,16 @@ export default function StickyDock({ className, buttonClassName }: StickyDockPro
       {/* ── D. Floating Sticky Note (Image 4) ─────────────────────────────── */}
       {activeSticky && (
         <div
-          className="fixed left-4 bottom-14 md:left-[54px] md:bottom-12 z-50 w-72 rounded-md shadow-raised-200 border border-border/40 overflow-hidden flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-200"
+          className={cn(
+            'fixed z-50 w-72 rounded-md shadow-raised-200 border border-border/40 overflow-hidden flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-200',
+            isFloating
+              ? 'right-4 bottom-16 md:bottom-5 transition-[right] duration-200'
+              : 'left-4 bottom-14 md:left-[54px] md:bottom-12'
+          )}
           style={{
             backgroundColor: colorConfig.bg,
             color: colorConfig.text,
+            ...(isFloating ? { right: `${stickyNoteRightPx}px` } : {}),
           }}
         >
           {/* Header with Close X */}
@@ -496,6 +612,8 @@ export default function StickyDock({ className, buttonClassName }: StickyDockPro
           </div>
         </div>
       )}
+      {/* ── D. Floating Messenger Chat Widget ── */}
+      <FloatingChatWidget />
     </>
   );
 }

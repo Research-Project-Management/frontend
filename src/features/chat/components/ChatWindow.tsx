@@ -6,6 +6,9 @@ import {
   Info,
   MoreVertical,
   Loader2,
+  ChevronRight,
+  PanelLeft,
+  MessageSquare,
 } from 'lucide-react';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useChatStore } from '../store/chat.store';
@@ -31,7 +34,7 @@ interface ChatWindowProps {
 
 export function ChatWindow({ conversation }: ChatWindowProps) {
   const { user } = useAuth();
-  const { typingUsers, setReplyingToMessage } = useChatStore();
+  const { typingUsers, setReplyingToMessage, isSidebarOpen, toggleSidebar } = useChatStore();
 
   const conversationId = conversation?.id || null;
 
@@ -174,70 +177,142 @@ export function ChatWindow({ conversation }: ChatWindowProps) {
 
   if (!conversation) {
     return (
-      <div className="flex-1 flex items-center justify-center p-8 bg-background select-none">
-        <PlaneEmptyState
-          variant="chat"
-          title="Select a conversation to start"
-          description="Choose a project channel, direct message, or group from the left panel to begin collaborating."
-        />
+      <div className="flex-1 flex flex-col h-full overflow-hidden select-none">
+        {/* Topbar: Standard height h-11 with border-b matching LibraryTopbar & ProjectTopbar */}
+        <header className="h-11 shrink-0 border-b border-border px-3 sm:px-4 flex items-center justify-between bg-transparent select-none">
+          <div className="flex items-center gap-2 min-w-0">
+            {!isSidebarOpen && (
+              <div className="flex items-center gap-1.5 -ml-1 mr-0.5 shrink-0">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={toggleSidebar}
+                      className="size-8 rounded-md text-foreground hover:bg-muted cursor-pointer transition-colors select-none shrink-0"
+                      aria-label="Expand sidebar"
+                    >
+                      <PanelLeft className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" align="start" sideOffset={6}>
+                    Expand sidebar
+                  </TooltipContent>
+                </Tooltip>
+                <div className="h-4 w-px bg-border shrink-0" aria-hidden="true" />
+              </div>
+            )}
+
+            <nav aria-label="Breadcrumbs" className="flex items-center gap-1.5 text-13 font-medium">
+              <span className="text-foreground flex items-center gap-1.5 font-heading font-semibold">
+                <MessageSquare className="size-4 shrink-0 text-foreground" />
+                <span>Messages</span>
+              </span>
+            </nav>
+          </div>
+        </header>
+
+        {/* Empty State */}
+        <div className="flex-1 flex items-center justify-center p-8 bg-background">
+          <PlaneEmptyState
+            variant="chat"
+            title="Select a conversation to start"
+            description="Choose a project channel, direct message, or group from the left panel to begin collaborating."
+          />
+        </div>
       </div>
     );
   }
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
-      {/* Header (Standard height: h-11, seamless bg-transparent to eliminate nested card) */}
-      <header className="h-11 shrink-0 border-b border-border px-4 flex items-center justify-between bg-transparent select-none">
-        <div className="flex items-center gap-2.5 truncate">
-          {conversation.type === 'project_channel' ? (
-            <Hash className="size-4 text-foreground shrink-0" />
-          ) : conversation.type === 'group' ? (
-            <Avatar className="size-7 rounded-md shrink-0">
-              <AvatarImage src={conversation.avatar || undefined} />
-              <AvatarFallback className="rounded-md text-11 font-medium bg-muted text-foreground">
-                {conversation.name.slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-          ) : (
-            <div className="relative shrink-0">
-              <Avatar className="size-7 rounded-full">
-                <AvatarImage src={conversation.avatar || conversation.otherUser?.avatar || undefined} />
-                <AvatarFallback className="text-11 font-medium bg-muted text-foreground">
-                  {conversation.name.slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <span className="absolute bottom-0 right-0 size-2 rounded-full bg-emerald-500 ring-2 ring-background" />
+      {/* Topbar: Standard height h-11 with border-b matching LibraryTopbar & ProjectTopbar */}
+      <header className="h-11 shrink-0 border-b border-border px-3 sm:px-4 flex items-center justify-between bg-transparent select-none">
+        <div className="flex items-center gap-2 truncate min-w-0 mr-2">
+          {/* Sidebar Toggle when collapsed */}
+          {!isSidebarOpen && (
+            <div className="flex items-center gap-1.5 -ml-1 mr-0.5 shrink-0">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={toggleSidebar}
+                    className="size-8 rounded-md text-foreground hover:bg-muted cursor-pointer transition-colors select-none shrink-0"
+                    aria-label="Expand sidebar"
+                  >
+                    <PanelLeft className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" align="start" sideOffset={6}>
+                  Expand sidebar
+                </TooltipContent>
+              </Tooltip>
+              <div className="h-4 w-px bg-border shrink-0" aria-hidden="true" />
             </div>
           )}
 
-          <div className="flex items-center gap-2 truncate">
-            <span className="font-heading font-semibold text-13 text-foreground truncate">
+          {/* Breadcrumbs Navigation matching Flux style */}
+          <nav aria-label="Breadcrumbs" className="flex items-center gap-1.5 text-13 font-medium min-w-0 truncate">
+            <span className="text-muted-foreground flex items-center gap-1.5 shrink-0">
+              <MessageSquare className="size-4 shrink-0 text-muted-foreground" />
+              <span>Messages</span>
+            </span>
+
+            <ChevronRight className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.5} />
+
+            {conversation.type === 'project_channel' && conversation.projectName && (
+              <>
+                <span className="text-muted-foreground truncate max-w-[140px] shrink-0">
+                  {conversation.projectName}
+                </span>
+                <ChevronRight className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.5} />
+              </>
+            )}
+
+            <div className="flex items-center gap-1.5 font-heading font-semibold text-13 text-foreground truncate min-w-0">
               {conversation.type === 'project_channel' ? (
                 <>
-                  <span className="font-mono text-muted-foreground mr-0.5">#</span>
-                  {conversation.name}
+                  <Hash className="size-3.5 text-muted-foreground shrink-0" />
+                  <span className="truncate">{conversation.name}</span>
+                </>
+              ) : conversation.type === 'group' ? (
+                <>
+                  <Avatar className="size-5 rounded-md shrink-0">
+                    <AvatarImage src={conversation.avatar || undefined} />
+                    <AvatarFallback className="rounded-md text-[10px] font-medium bg-muted text-foreground">
+                      {conversation.name.slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="truncate">{conversation.name}</span>
                 </>
               ) : (
-                conversation.name
+                <>
+                  <div className="relative shrink-0">
+                    <Avatar className="size-5 rounded-full">
+                      <AvatarImage src={conversation.avatar || conversation.otherUser?.avatar || undefined} />
+                      <AvatarFallback className="text-[10px] font-medium bg-muted text-foreground">
+                        {conversation.name.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="absolute bottom-0 right-0 size-1.5 rounded-full bg-emerald-500 ring-1 ring-background" />
+                  </div>
+                  <span className="truncate">{conversation.name}</span>
+                </>
               )}
-            </span>
-            {conversation.type === 'project_channel' && conversation.projectName && (
-              <Badge
-                variant="outline"
-                className="px-1.5 py-0 text-11 font-mono font-medium tracking-tight bg-muted text-muted-foreground border-border rounded-sm"
-              >
-                {conversation.projectName}
-              </Badge>
-            )}
+            </div>
+
             {conversation.topic && (
-              <span className="text-12 text-muted-foreground truncate hidden md:inline">
+              <span className="text-12 font-normal text-muted-foreground truncate hidden lg:inline ml-1">
                 - {conversation.topic}
               </span>
             )}
-          </div>
+          </nav>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 shrink-0">
           <Tooltip delayDuration={150}>
             <TooltipTrigger asChild>
               <Button

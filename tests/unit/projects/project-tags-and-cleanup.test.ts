@@ -3,15 +3,16 @@ import { ProjectSchema, ProjectLabelItemSchema } from '@/features/projects/shell
 import * as coreServiceExports from '@/features/editor/sdk/manuscript.service';
 
 describe('Option B: Cleanup Verification', () => {
-  it('should verify dead aliases PageDocumentService and PageFileService are removed from core.service', () => {
+  it('should verify dead aliases PageDocumentService, PageFileService, pageService, and documentService are removed from core.service', () => {
     // Assert that the dead aliases are no longer exported
     expect((coreServiceExports as any).PageDocumentService).toBeUndefined();
     expect((coreServiceExports as any).PageFileService).toBeUndefined();
+    expect((coreServiceExports as any).pageService).toBeUndefined();
+    expect((coreServiceExports as any).documentService).toBeUndefined();
 
-    // Verify canonical services exist
-    expect(coreServiceExports.pageService).toBeDefined();
-    expect(coreServiceExports.documentService).toBeDefined();
-    expect(coreServiceExports.documentService).toBe(coreServiceExports.pageService);
+    // Verify canonical deep module facade exists
+    expect(coreServiceExports.manuscriptService).toBeDefined();
+    expect(coreServiceExports.manuscriptService.docs).toBeDefined();
   });
 });
 

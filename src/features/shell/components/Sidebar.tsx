@@ -36,6 +36,12 @@ const NAV_ITEMS_RIGHT = [
   { label: 'Settings', icon: Settings, to: '/settings' },
 ] as const;
 
+const DESKTOP_NAV_ITEMS = [
+  ...NAV_ITEMS_LEFT,
+  { label: 'Storage', icon: StorageIcon, to: '/storage' },
+  { label: 'Settings', icon: Settings, to: '/settings' },
+] as const;
+
 const ALL_NAV_ITEMS = [...NAV_ITEMS_LEFT, ...NAV_ITEMS_RIGHT] as const;
 
 export default function Sidebar() {
@@ -161,38 +167,13 @@ export default function Sidebar() {
         {NAV_ITEMS_RIGHT.map(renderNavLink)}
       </div>
 
-      {/* ── Desktop Layout (>= md): Vertical Nav list on Left Rail + AI Chat Button at bottom ── */}
+      {/* ── Desktop Layout (>= md): Vertical Nav list on Left Rail ── */}
       <div className="hidden md:flex flex-col items-center justify-start gap-3 w-full">
-        {ALL_NAV_ITEMS.map(renderNavLink)}
+        {DESKTOP_NAV_ITEMS.map(renderNavLink)}
       </div>
 
-      {/* Desktop Tool Support Cluster at bottom of Left Rail: Sticky Dock + Chat AI */}
-      <div className="hidden md:flex w-full mt-auto flex-col items-center gap-2 relative shrink-0 pt-2 pb-1">
-        <StickyDock />
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              onClick={toggleOpen}
-              className={cn(
-                'group relative flex size-8 shrink-0 items-center justify-center rounded-md outline-none select-none cursor-pointer focus-visible:ring-2 focus-visible:ring-ai text-foreground hover:bg-sidebar-hover',
-                isOpen && 'bg-sidebar-accent text-ai'
-              )}
-              aria-label="AI Assistant (Ctrl+J)"
-            >
-              <img
-                src="/Chat.svg"
-                alt="AI Assistant"
-                className="size-4.5 shrink-0 rounded-full block object-contain"
-              />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="right" sideOffset={10}>
-            AI Assistant (Ctrl+J)
-          </TooltipContent>
-        </Tooltip>
-      </div>
+      {/* Floating Bottom-Right Speed-Dial (AI Assistant + Stickies) */}
+      <StickyDock mode="floating" />
     </nav>
   );
 }

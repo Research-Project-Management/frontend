@@ -2,11 +2,11 @@
 
 import React, { useMemo } from 'react';
 import {
+  PanelLeft,
   Hash,
   Search,
   Plus,
   Users,
-  MessageSquare,
   FolderGit2,
   ChevronDown,
   UserPlus,
@@ -16,6 +16,8 @@ import { cn } from '@/shared/lib/utils';
 import { useChatStore } from '../store/chat.store';
 import { useFriendRequests } from '../hooks/use-chat-queries';
 import { ConversationItem, FilterTab } from '../types/chat.types';
+import { usePanelResize } from '@/features/library/ui/hooks/usePanelResize';
+import { SidebarResizer } from '@/features/library/ui/sidebar/SidebarResizer';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -53,7 +55,18 @@ export function ChatSidebar({ conversations, isLoading }: ChatSidebarProps) {
     openCreateChannelModal,
     openCreateGroupModal,
     openFriendManagerModal,
+    toggleSidebar,
+    sidebarWidth,
+    setSidebarWidth,
   } = useChatStore();
+
+  const { isDragging, handleMouseDown } = usePanelResize({
+    width: sidebarWidth,
+    setWidth: setSidebarWidth,
+    direction: 'right',
+    minWidth: 200,
+    maxWidth: 400,
+  });
 
   const { data: friendRequests } = useFriendRequests();
   const pendingFriendRequests = friendRequests?.incoming?.length || 0;
@@ -152,7 +165,15 @@ export function ChatSidebar({ conversations, isLoading }: ChatSidebarProps) {
   ];
 
   return (
-    <aside className="w-60 shrink-0 border-r border-border flex flex-col h-full select-none">
+    <aside
+      aria-label="Messages navigation"
+      style={{
+        width: `${sidebarWidth}px`,
+        minWidth: '200px',
+        maxWidth: '400px',
+      }}
+      className="relative z-20 shrink-0 border-r border-border flex flex-col h-full select-none"
+    >
       {/* 1. Header Row (Fixed height h-11, matching Topbar & LibrarySidebar, without border-b) */}
       <div className="h-11 px-2.5 flex items-center shrink-0 select-none">
         <div
@@ -209,12 +230,9 @@ export function ChatSidebar({ conversations, isLoading }: ChatSidebarProps) {
             </div>
           ) : (
             <>
-              <div className="flex items-center gap-2">
-                <MessageSquare className="size-4 text-foreground shrink-0" />
-                <span className="text-13 font-heading font-semibold tracking-tight text-foreground">
-                  Messages
-                </span>
-              </div>
+              <span className="shrink-0 font-semibold text-15 tracking-tight text-foreground">
+                Messages
+              </span>
               <div className="flex items-center gap-0.5 shrink-0">
                 {/* Search toggle button */}
                 <Tooltip>
@@ -290,6 +308,21 @@ export function ChatSidebar({ conversations, isLoading }: ChatSidebarProps) {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+                {/* Collapse sidebar button */}
+                <Tooltip delayDuration={150}>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer hidden md:flex"
+                      aria-label="Collapse sidebar"
+                      onClick={toggleSidebar}
+                    >
+                      <PanelLeft className="size-4 text-foreground" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">Collapse sidebar</TooltipContent>
+                </Tooltip>
               </div>
             </>
           )}
@@ -305,7 +338,7 @@ export function ChatSidebar({ conversations, isLoading }: ChatSidebarProps) {
             className={cn(
               'w-full py-2 text-center text-12 transition-colors cursor-pointer relative outline-none truncate',
               filterTab === tab.id
-                ? 'text-foreground font-medium border-b-2 border-foreground -mb-[1px]'
+                ? 'text-primary font-medium border-b-2 border-primary -mb-[1px]'
                 : 'text-muted-foreground hover:text-foreground font-normal border-b-2 border-transparent -mb-[1px]',
             )}
           >
@@ -532,34 +565,18 @@ export function ChatSidebar({ conversations, isLoading }: ChatSidebarProps) {
                     ? 'No channels, direct messages, or groups match your query.'
                     : 'Start by adding friends or creating a group.'
                 }
-                action={
-                  !searchQuery ? (
-                    <div className="flex flex-col gap-1.5 w-full mt-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-11 px-2.5 shadow-2xs justify-start cursor-pointer"
-                        onClick={openFriendManagerModal}
-                      >
-                        <UserPlus className="size-3.5 mr-2 shrink-0" />
-                        <span>Find & Add Friends</span>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-11 px-2.5 shadow-2xs justify-start cursor-pointer"
-                        onClick={openCreateGroupModal}
-                      >
-                        <Users className="size-3.5 mr-2 shrink-0" />
-                        <span>Create New Group</span>
-                      </Button>
-                    </div>
-                  ) : undefined
-                }
               />
             </div>
           )}
       </div>
+
+      {/* Drag Handle for Resizing (synchronized with LibrarySidebar) */}
+      <SidebarResizer
+        width={sidebarWidth}
+        setWidth={setSidebarWidth}
+        isDragging={isDragging}
+        onMouseDown={handleMouseDown}
+      />
     </aside>
   );
 }

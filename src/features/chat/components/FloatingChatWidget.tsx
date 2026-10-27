@@ -15,7 +15,9 @@ import {
   FolderGit2,
   Loader2,
   UserPlus,
+  Paperclip,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useConversations, useInfiniteMessages, useSendMessage, useChatBadgeCounts } from '../hooks/use-chat-queries';
@@ -26,16 +28,34 @@ import { Button } from '@/shared/components/ui/button';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import { useChatStore } from '../store/chat.store';
 
 export default function FloatingChatWidget() {
   const pathname = usePathname();
   const { user } = useAuth();
 
-  const [isOpen, setIsOpen] = useState(false);
+  const { isFloatingChatOpen, setFloatingChatOpen } = useChatStore();
+  const isOpen = isFloatingChatOpen;
+  const setIsOpen = setFloatingChatOpen;
   const [selectedConversation, setSelectedConversation] = useState<ConversationItem | null>(null);
   const [filterTab, setFilterTab] = useState<FilterTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [messageInput, setMessageInput] = useState('');
+
+  const expandSearch = () => {
+    if (!isSearchExpanded) {
+      setIsSearchExpanded(true);
+      setTimeout(() => searchInputRef.current?.focus(), 50);
+    }
+  };
+
+  const handleClearSearch = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSearchQuery('');
+    setIsSearchExpanded(false);
+  };
 
   const { data: conversationsData } = useConversations();
   const { totalUnreadMessages, pendingFriendRequests, totalBadgeCount } = useChatBadgeCounts();
@@ -99,7 +119,10 @@ export default function FloatingChatWidget() {
           className="fixed bottom-[72px] right-4 md:bottom-[76px] md:right-5 z-50 w-80 sm:w-[350px] h-[480px] max-h-[calc(100vh-6rem)] rounded-lg border border-border bg-background shadow-raised-200 flex flex-col overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-150"
         >
           {/* Header */}
-          <div className="h-11 px-3 border-b border-border bg-background flex items-center justify-between shrink-0 select-none">
+          <div className={cn(
+            "h-11 px-2.5 bg-background flex items-center justify-between shrink-0 select-none",
+            selectedConversation ? "border-b border-border px-3" : ""
+          )}>
             {selectedConversation ? (
               <div className="flex items-center gap-2 min-w-0">
                 <Tooltip delayDuration={150}>
@@ -132,6 +155,50 @@ export default function FloatingChatWidget() {
                   </span>
                 </div>
               </div>
+            ) : isSearchExpanded || searchQuery ? (
+              <div className="relative flex items-center w-full h-8 rounded-md border border-border bg-background overflow-hidden font-normal text-13">
+                <Search
+                  className="absolute top-1/2 -translate-y-1/2 size-3.5 z-10 left-2.5 text-muted-foreground pointer-events-none shrink-0"
+                  strokeWidth={1.5}
+                />
+                <input
+                  ref={searchInputRef}
+                  autoFocus
+                  placeholder="Search conversations..."
+                  aria-label="Search conversations"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                      setSearchQuery('');
+                      setIsSearchExpanded(false);
+                    }
+                  }}
+                  onBlur={() => {
+                    if (!searchQuery) {
+                      setIsSearchExpanded(false);
+                    }
+                  }}
+                  className="h-full text-12 font-normal py-0 leading-none border-none bg-transparent focus:outline-none outline-none shadow-none w-full placeholder:text-muted-foreground pl-8 pr-7 text-foreground"
+                />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                      onClick={handleClearSearch}
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center justify-center size-5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer rounded-md outline-none"
+                      aria-label="Clear search"
+                    >
+                      <X className="size-3 shrink-0" strokeWidth={1.5} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">Clear search</TooltipContent>
+                </Tooltip>
+              </div>
             ) : (
               <div className="flex items-center gap-2">
                 <MessageSquare className="size-4 text-foreground shrink-0" />
@@ -147,53 +214,72 @@ export default function FloatingChatWidget() {
               </div>
             )}
 
-            <div className="flex items-center gap-1">
-              {pendingFriendRequests > 0 && (
+            {(!isSearchExpanded && !searchQuery || selectedConversation) && (
+              <div className="flex items-center gap-1">
+                {!selectedConversation && (
+                  <Tooltip delayDuration={150}>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
+                        onClick={expandSearch}
+                        aria-label="Search conversations"
+                      >
+                        <Search className="size-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">Search conversations</TooltipContent>
+                  </Tooltip>
+                )}
+
+                {pendingFriendRequests > 0 && (
+                  <Tooltip delayDuration={150}>
+                    <TooltipTrigger asChild>
+                      <Link
+                        href="/chat"
+                        onClick={() => setIsOpen(false)}
+                        aria-label={`${pendingFriendRequests} pending friend request${pendingFriendRequests > 1 ? 's' : ''}`}
+                        className="h-6 px-1.5 rounded-md text-11 font-medium bg-muted text-foreground hover:bg-muted/80 flex items-center gap-1 border border-border transition-colors"
+                      >
+                        <UserPlus className="size-3 text-foreground" />
+                        <span className="font-mono text-11 font-bold tabular-nums">{pendingFriendRequests}</span>
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      {pendingFriendRequests} pending friend request{pendingFriendRequests > 1 ? 's' : ''}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
                 <Tooltip delayDuration={150}>
                   <TooltipTrigger asChild>
                     <Link
-                      href="/chat"
+                      href={selectedConversation ? `/chat?id=${selectedConversation.id}` : '/chat'}
                       onClick={() => setIsOpen(false)}
-                      aria-label={`${pendingFriendRequests} pending friend request${pendingFriendRequests > 1 ? 's' : ''}`}
-                      className="h-6 px-1.5 rounded-md text-11 font-medium bg-muted text-foreground hover:bg-muted/80 flex items-center gap-1 border border-border transition-colors"
+                      aria-label="Toàn màn hình"
+                      className="size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted flex items-center justify-center transition-colors"
                     >
-                      <UserPlus className="size-3 text-foreground" />
-                      <span className="font-mono text-11 font-bold tabular-nums">{pendingFriendRequests}</span>
+                      <Maximize2 className="size-3.5" />
                     </Link>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom">
-                    {pendingFriendRequests} pending friend request{pendingFriendRequests > 1 ? 's' : ''}
-                  </TooltipContent>
+                  <TooltipContent side="bottom">Toàn màn hình</TooltipContent>
                 </Tooltip>
-              )}
-              <Tooltip delayDuration={150}>
-                <TooltipTrigger asChild>
-                  <Link
-                    href={selectedConversation ? `/chat?id=${selectedConversation.id}` : '/chat'}
-                    onClick={() => setIsOpen(false)}
-                    aria-label="Open full messenger"
-                    className="size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted flex items-center justify-center transition-colors"
-                  >
-                    <Maximize2 className="size-3.5" />
-                  </Link>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">Open full messenger</TooltipContent>
-              </Tooltip>
-              <Tooltip delayDuration={150}>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
-                    onClick={() => setIsOpen(false)}
-                    aria-label="Close chat"
-                  >
-                    <X className="size-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">Close chat</TooltipContent>
-              </Tooltip>
-            </div>
+                <Tooltip delayDuration={150}>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
+                      onClick={() => setIsOpen(false)}
+                      aria-label="Thu gọn"
+                    >
+                      <X className="size-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">Thu gọn</TooltipContent>
+                </Tooltip>
+              </div>
+            )}
           </div>
 
           {/* Body */}
@@ -204,19 +290,6 @@ export default function FloatingChatWidget() {
             />
           ) : (
             <div className="flex-1 flex flex-col min-h-0 bg-background">
-              {/* Search */}
-              <div className="p-2 pb-1.5 border-b border-border bg-background">
-                <div className="relative flex items-center">
-                  <Search className="absolute left-2.5 size-3 text-muted-foreground pointer-events-none" />
-                  <input
-                    type="text"
-                    placeholder="Search conversations..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full h-7 pl-7 pr-2.5 text-12 font-normal rounded-md bg-background border border-border shadow-2xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-                  />
-                </div>
-              </div>
 
               {/* Tabs */}
               <div className="px-2 shrink-0 grid grid-cols-4 border-b border-border bg-background">
@@ -227,7 +300,7 @@ export default function FloatingChatWidget() {
                     className={cn(
                       'py-1.5 text-center text-11 transition-colors cursor-pointer capitalize outline-none truncate',
                       filterTab === tab
-                        ? 'text-foreground font-medium border-b-2 border-foreground -mb-[1px]'
+                        ? 'text-primary font-medium border-b-2 border-primary -mb-[1px]'
                         : 'text-muted-foreground hover:text-foreground font-normal border-b-2 border-transparent -mb-[1px]',
                     )}
                   >
@@ -295,50 +368,6 @@ export default function FloatingChatWidget() {
           )}
         </div>
       )}
-
-      {/* ── 2. Floating Action Button Trigger ── */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            onClick={() => setIsOpen(!isOpen)}
-            aria-label="Messages"
-            className={cn(
-              'fixed bottom-4 right-4 md:bottom-5 md:right-5 z-40 flex items-center justify-center size-[52px] rounded-full bg-background border border-border shadow-raised-200 hover:bg-muted text-foreground transition-[transform,background-color,border-color,box-shadow] duration-200 hover:scale-105 active:scale-95 cursor-pointer outline-none select-none',
-              isOpen && 'bg-muted ring-2 ring-primary/30',
-            )}
-          >
-            {isOpen ? (
-              <X className="size-6 text-foreground shrink-0" />
-            ) : (
-              <MessageSquare className="size-6 text-foreground shrink-0" />
-            )}
-            {!isOpen && totalBadgeCount > 0 && (
-              <span
-                className="absolute -top-1 -right-1 min-w-5 h-5 px-1.5 rounded-full bg-primary text-primary-foreground font-mono text-11 font-semibold flex items-center justify-center ring-2 ring-background shadow-xs pointer-events-none"
-                title={`${totalUnreadMessages} unread messages, ${pendingFriendRequests} pending requests`}
-              >
-                {totalBadgeCount > 99 ? '99+' : totalBadgeCount}
-              </span>
-            )}
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="left" sideOffset={8}>
-          {totalBadgeCount > 0 ? (
-            <div className="flex flex-col gap-0.5 text-11">
-              <span className="font-semibold text-foreground">Messages</span>
-              {totalUnreadMessages > 0 && (
-                <span className="text-muted-foreground">{totalUnreadMessages} unread message{totalUnreadMessages > 1 ? 's' : ''}</span>
-              )}
-              {pendingFriendRequests > 0 && (
-                <span className="text-muted-foreground">{pendingFriendRequests} friend request{pendingFriendRequests > 1 ? 's' : ''}</span>
-              )}
-            </div>
-          ) : (
-            'Messages'
-          )}
-        </TooltipContent>
-      </Tooltip>
     </>
   );
 }
@@ -484,6 +513,21 @@ function FloatingConversationView({
 
       {/* Input */}
       <div className="p-2 border-t border-border bg-background flex items-center gap-1.5 shrink-0">
+        <Tooltip delayDuration={150}>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => toast.info('Tính năng đính kèm tệp tin đang được phát triển')}
+              className="size-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer shrink-0"
+              aria-label="Phần đính kèm"
+            >
+              <Paperclip className="size-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top">Đính kèm tệp</TooltipContent>
+        </Tooltip>
         <input
           type="text"
           value={content}

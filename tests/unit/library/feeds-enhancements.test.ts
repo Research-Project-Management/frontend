@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useFeedsStore } from '@/features/library/core/store/feeds.store';
-import { mapFeedEntryToCreateItemPayload, type ParsedFeedEntry } from '@/features/library/domain/feed-parser.domain';
+import {
+  mapFeedEntryToCreateItemPayload,
+  filterFeedEntriesByRetention,
+  type ParsedFeedEntry,
+} from '@/features/library/domain/feed-parser.domain';
 
 describe('Feeds Enhancements: Read Tracking, Abstract Expand, Direct PDF, Save to Collection, Retention', () => {
   beforeEach(() => {
@@ -184,6 +188,40 @@ describe('Feeds Enhancements: Read Tracking, Abstract Expand, Direct PDF, Save t
 
       expect(filtered).toHaveLength(1);
       expect(filtered[0]?.id).toBe('ancient');
+    });
+
+    it('virtualizes per-user read vs unread retention windows independently', () => {
+      const now = Date.now();
+      const dayMs = 24 * 60 * 60 * 1000;
+
+      const entries: ParsedFeedEntry[] = [
+        {
+          id: 'read-5d-ago',
+          title: 'Read article from 5 days ago',
+          authors: ['Author A'],
+          feedFormat: 'rss2',
+          categories: [],
+          publishedAt: new Date(now - 5 * dayMs).toISOString(),
+        },
+        {
+          id: 'unread-12d-ago',
+          title: 'Unread article from 12 days ago',
+          authors: ['Author B'],
+          feedFormat: 'rss2',
+          categories: [],
+          publishedAt: new Date(now - 12 * dayMs).toISOString(),
+        },
+      ];
+
+      // Read items hidden after 3 days, Unread items kept for 30 days
+      const readSet = new Set(['read-5d-ago']);
+      const virtualized = filterFeedEntriesByRetention(entries, 30, {
+        cleanupReadAfter: 3,
+        cleanupUnreadAfter: 30,
+        readEntryIds: readSet,
+      });
+
+      expect(virtualized.map((e) => e.id)).toEqual(['unread-12d-ago']);
     });
   });
 });

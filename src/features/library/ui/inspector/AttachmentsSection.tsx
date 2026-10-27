@@ -75,15 +75,12 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
     activePreviewUrl,
     setSelectedAttachmentId,
     getAttachmentDownloadUrl,
-    hasSnapshot,
     handleOpenReader,
     handleDownload,
     isSettingPrimary,
     handleSetPrimary,
     isDeleting,
     handleDeleteAttachment,
-    isCapturingSnapshot,
-    handleCaptureSnapshot,
     renameAttachmentMutation,
     reResolveMetadataMutation,
   } = useAttachmentCoordinator({
@@ -100,7 +97,6 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
 
   if (
     allAttachments.length === 0 &&
-    !paper.url &&
     !isAddingLink
   ) {
     if (hideHeader) {
@@ -528,30 +524,6 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
             );
           })}
         </div>
-
-        {/* Capture Snapshot Action for Web URLs */}
-        {canEdit && paper.url && (
-          <button
-            type="button"
-            disabled={isCapturingSnapshot}
-            onClick={handleCaptureSnapshot}
-            className="w-full mt-1.5 min-h-[32px] py-1.5 flex items-center justify-center gap-1.5 px-3 rounded-md border border-dashed border-border bg-background hover:bg-muted text-12 font-medium text-foreground transition-colors disabled:opacity-50 cursor-pointer overflow-hidden box-border"
-          >
-            {isCapturingSnapshot ? (
-              <>
-                <Loader2 className="size-3.5 animate-spin text-foreground shrink-0" />
-                <span className="truncate">Capturing Web Snapshot...</span>
-              </>
-            ) : (
-              <>
-                <Globe className="size-3.5 text-foreground shrink-0" />
-                <span className="truncate">
-                  {hasSnapshot ? "Update Web Snapshot" : "Capture Web Snapshot"}
-                </span>
-              </>
-            )}
-          </button>
-        )}
       </div>
     </>
   );

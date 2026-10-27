@@ -4,7 +4,12 @@ import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/shared/lib/utils';
-import { libraryServices, readerService } from '../library.client';
+import {
+  ItemsService,
+  AnnotationsService,
+  ExportsService,
+  AttachmentsService,
+} from '../library.client';
 import {
   itemKeys,
   readerQueryKeys,
@@ -16,6 +21,7 @@ import type {
   CreateAnnotationDto,
   UpdateAnnotationDto,
   ReaderAnnotation,
+  ReaderDocument,
 } from '@/features/library/domain/types/reader.types';
 
 export type CreateAnnotationDTO = CreateAnnotationDto;
@@ -27,9 +33,9 @@ export type UpdateAnnotationDTO = UpdateAnnotationDto;
 export function useReaderItem(scopeId?: string, itemId?: string) {
   return useQuery({
     queryKey: readerQueryKeys.item(scopeId, itemId),
-    queryFn: () => {
+    queryFn: async () => {
       if (!itemId) return null;
-      return libraryServices.reader.getDocument(scopeId, itemId);
+      return (await ItemsService.getById(scopeId || 'user', itemId)) as ReaderDocument;
     },
     enabled: Boolean(itemId),
     staleTime: 1000 * 60 * 5,
@@ -42,7 +48,7 @@ export function useReaderFulltext(scopeId?: string, itemId?: string) {
     queryKey: readerQueryKeys.fulltext(scopeId, itemId),
     queryFn: () => {
       if (!itemId) return null;
-      return libraryServices.items.getFulltext(scopeId, itemId);
+      return ItemsService.getFulltext(scopeId, itemId);
     },
     enabled: Boolean(itemId),
     staleTime: 1000 * 60 * 10,
@@ -59,7 +65,7 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
     queryKey: annotationKeys.byAttachment(scopeId, attachmentId),
     queryFn: () => {
       if (!attachmentId) return [];
-      return readerService.annotations.getByAttachment(scopeId, attachmentId);
+      return AnnotationsService.getByAttachment(scopeId, attachmentId);
     },
     enabled: Boolean(attachmentId),
     gcTime: 3 * 60 * 1000,
@@ -68,7 +74,7 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
   const createMutation = useMutation({
     mutationFn: (dto: CreateAnnotationDTO) => {
       if (!attachmentId) throw new Error('Attachment ID required to create annotation.');
-      return readerService.annotations.create(scopeId, attachmentId, dto);
+      return AnnotationsService.create(scopeId, attachmentId, dto);
     },
     onMutate: async (dto: CreateAnnotationDTO) => {
       if (!attachmentId) return undefined;
@@ -113,11 +119,15 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
       toast.success('Annotation saved', { id: 'reader-annotation-toast' });
     },
     onError: (err: unknown, _variables, context) => {
-      if (attachmentId && context?.previousAnnotations !== undefined) {
-        queryClient.setQueryData(
-          annotationKeys.byAttachment(scopeId, attachmentId),
-          context.previousAnnotations,
-        );
+      if (attachmentId) {
+        const queryKey = annotationKeys.byAttachment(scopeId, attachmentId);
+        if (context?.optimisticId) {
+          queryClient.setQueryData<ReaderAnnotation[]>(queryKey, (old = []) =>
+            old.filter((a) => a.id !== context.optimisticId),
+          );
+        } else if (context?.previousAnnotations !== undefined) {
+          queryClient.setQueryData(queryKey, context.previousAnnotations);
+        }
       }
       toast.error('Failed to create annotation', {
         description: getErrorMessage(err) || 'Please try again.',
@@ -127,7 +137,7 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       annotationId,
       expectedVersion,
       dto,
@@ -137,7 +147,14 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
       dto: UpdateAnnotationDTO;
     }) => {
       if (!attachmentId) throw new Error('Attachment ID required to update annotation.');
-      return readerService.annotations.update(
+      if (annotationId.startsWith('temp-ann-')) {
+        const queryKey = annotationKeys.byAttachment(scopeId, attachmentId);
+        queryClient.setQueryData<ReaderAnnotation[]>(queryKey, (old = []) =>
+          old.map((a) => (a.id === annotationId ? { ...a, ...dto } : a)),
+        );
+        return null;
+      }
+      return AnnotationsService.update(
         scopeId,
         attachmentId,
         annotationId,
@@ -145,10 +162,12 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
         dto,
       );
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: annotationKeys.byAttachment(scopeId, attachmentId),
-      });
+    onSuccess: (_res, variables) => {
+      if (!variables.annotationId.startsWith('temp-ann-')) {
+        queryClient.invalidateQueries({
+          queryKey: annotationKeys.byAttachment(scopeId, attachmentId),
+        });
+      }
       toast.success('Annotation updated', { id: 'reader-annotation-toast' });
     },
     onError: (err: unknown) => {
@@ -160,7 +179,7 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       annotationId,
       expectedVersion,
     }: {
@@ -168,17 +187,26 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
       expectedVersion?: number;
     }) => {
       if (!attachmentId) throw new Error('Attachment ID required to delete annotation.');
-      return readerService.annotations.delete(
+      if (annotationId.startsWith('temp-ann-')) {
+        const queryKey = annotationKeys.byAttachment(scopeId, attachmentId);
+        queryClient.setQueryData<ReaderAnnotation[]>(queryKey, (old = []) =>
+          old.filter((a) => a.id !== annotationId),
+        );
+        return;
+      }
+      return AnnotationsService.delete(
         scopeId,
         attachmentId,
         annotationId,
         expectedVersion,
       );
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: annotationKeys.byAttachment(scopeId, attachmentId),
-      });
+    onSuccess: (_res, variables) => {
+      if (!variables.annotationId.startsWith('temp-ann-')) {
+        queryClient.invalidateQueries({
+          queryKey: annotationKeys.byAttachment(scopeId, attachmentId),
+        });
+      }
       toast.success('Annotation deleted', { id: 'reader-annotation-toast' });
     },
     onError: (err: unknown) => {
@@ -190,7 +218,7 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
   });
 
   const extractNotesMutation = useMutation({
-    mutationFn: (paperId: string) => readerService.annotations.extractNotes(scopeId, paperId),
+    mutationFn: (paperId: string) => AnnotationsService.extractNotes(scopeId, paperId),
     onSuccess: (res, paperId) => {
       if (paperId) {
         queryClient.invalidateQueries({ queryKey: noteKeys.list(scopeId, paperId) });
@@ -220,7 +248,7 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
   const importExternalMutation = useMutation({
     mutationFn: () => {
       if (!attachmentId) throw new Error('Attachment ID required to import annotations.');
-      return readerService.annotations.importExternal(scopeId, attachmentId);
+      return AnnotationsService.importExternal(scopeId, attachmentId);
     },
     onSuccess: (res) => {
       queryClient.invalidateQueries({
@@ -284,7 +312,7 @@ export function useExportAnnotatedPdf(scopeId?: string) {
     }) => {
       const targetFilename = filename || 'annotated-document.pdf';
       toast.loading('Exporting PDF with annotations...', { id: 'reader-export-annotated-pdf' });
-      await libraryServices.exports.downloadAnnotatedPdf(scopeId, itemId, targetFilename);
+      await ExportsService.downloadAnnotatedPdf(scopeId, itemId, targetFilename);
       return targetFilename;
     },
     onSuccess: (filename) => {
@@ -311,7 +339,7 @@ export function useOcrExtraction(scopeId?: string, itemId?: string) {
     mutationFn: async (attachmentId: string) => {
       if (!attachmentId) throw new Error('No attachment available to run OCR');
       toast.loading('Submitting OCR re-extraction job...', { id: 'reader-ocr-trigger' });
-      await libraryServices.attachments.reExtract(scopeId, attachmentId);
+      await AttachmentsService.reExtract(scopeId, attachmentId);
       return attachmentId;
     },
     onSuccess: (attachmentId) => {
@@ -336,5 +364,3 @@ export function useOcrExtraction(scopeId?: string, itemId?: string) {
     isTriggeringOcr: mutation.isPending,
   };
 }
-
-

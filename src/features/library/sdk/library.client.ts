@@ -34,6 +34,7 @@ export {
   type ItemMetadataSourceItem,
   type ItemMetadataSourcesResponse,
   type ItemTypesResponse,
+  type LibraryBootstrapResponse,
   ItemsService,
   RelationsService,
 } from './clients/items.client';
@@ -51,13 +52,14 @@ export {
 export {
   CitationService,
   ExportsService,
-  downloadAnnotatedPdf,
   AttachmentsService,
   UploadService,
-  readerService,
+  ExtractionTelemetryService,
+  AnnotationsService,
 } from './clients/citation-extraction.client';
 
 export {
+  type FeedSubscriptionResponse,
   IngestionService,
   CurationService,
   RetractionService,
@@ -79,7 +81,8 @@ import {
   ExportsService,
   AttachmentsService,
   UploadService,
-  readerService,
+  ExtractionTelemetryService,
+  AnnotationsService,
 } from './clients/citation-extraction.client';
 import {
   IngestionService,
@@ -89,10 +92,6 @@ import {
   SyncService,
   FeedsService,
 } from './clients/ingestion-sync.client';
-
-export const ItemService = ItemsService;
-export const QualityService = CurationService;
-export const fetchReferenceByDoi = CitationService.resolveDoi;
 
 export const libraryServices = {
   items: ItemsService,
@@ -106,13 +105,14 @@ export const libraryServices = {
   exports: ExportsService,
   attachments: AttachmentsService,
   upload: UploadService,
+  telemetry: ExtractionTelemetryService,
+  annotations: AnnotationsService,
   ingestion: IngestionService,
   curation: CurationService,
   retraction: RetractionService,
   search: SearchService,
   sync: SyncService,
   feeds: FeedsService,
-  reader: readerService,
 };
 
 export default libraryServices;

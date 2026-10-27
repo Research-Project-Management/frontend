@@ -6,17 +6,21 @@ import { useLibraryUIStore } from '@/features/library/core/store/library-ui.stor
 import {
   useBatchRestoreItemsMutation,
   useDeleteLibraryItemsMutation,
+  useToggleStarItemMutation,
+  useSetMyPublicationMutation,
 } from '@/features/library/sdk/queries/catalog.queries';
 import {
   useBatchDetachItemsMutation,
   useMoveCollectionItemsMutation,
   useAssignCollectionItemsMutation,
 } from '@/features/library/sdk/queries/collections.queries';
+import { useRetraction } from '@/features/library/sdk/queries/ingestion.queries';
 import {
   useLibraryCommandStore,
   createTrashCommand,
   createRestoreCommand,
   createMoveItemsCommand,
+  createBatchDetachCommand,
 } from '@/features/library/core/manager/library-command.manager';
 import { isItemRetracted } from '@/features/library/domain/retraction';
 import type { Item, CslStyle } from '@/features/library/domain/types/library.types';
@@ -60,6 +64,15 @@ function isProvisionalOrProcessingItem(item: Item & { _isProcessing?: boolean })
   );
 }
 
+export function hasItemPdfOrAttachment(item: Item): boolean {
+  return Boolean(
+    item.hasFile ||
+      (typeof item.attachmentCount === 'number' && item.attachmentCount > 0) ||
+      item.fileUrl ||
+      (Array.isArray(item.attachments) && item.attachments.length > 0),
+  );
+}
+
 /**
  * Headless Coordinator for Library Selection and Batch Operations
  *
@@ -67,18 +80,26 @@ function isProvisionalOrProcessingItem(item: Item & { _isProcessing?: boolean })
  * 1. Multi-selection state management (select, deselect, range-select, select-all).
  * 2. Processing item guards (prevents moving/deleting provisional or actively uploading files).
  * 3. Retraction warnings when formatting or exporting citations.
- * 4. High-level batch business actions: move, delete, restore, detach, merge, export, cite.
+ * 4. High-level page/view-aware batch business actions: move, delete, restore, detach, merge,
+ *    star/unstar, my-publications, retraction scan/unflag, export, cite.
  * 5. Global Escape key handling for closing active selections.
  */
 export function useLibraryBatchCoordinator({
   items = EMPTY_ITEMS,
   scopeId,
   collectionId,
+  view,
   isTrash = false,
   canEdit = true,
   enableKeydownListener = true,
 }: UseLibraryBatchCoordinatorOptions = {}) {
   const effectiveScope = scopeId || 'user';
+  const effectiveIsTrash = isTrash || view === 'trash';
+  const isDuplicatesView = view === 'duplicates';
+  const isUnfiledView = view === 'unfiled';
+  const isStarredView = view === 'starred';
+  const isMyPublicationsView = view === 'my-publications' || view === 'publications';
+  const isRetractedView = view === 'retracted';
 
   // Store Selection Actions
   const selectedIds = useLibraryUIStore((s) => s.selectedIds);
@@ -94,6 +115,14 @@ export function useLibraryBatchCoordinator({
   const batchDetachMutation = useBatchDetachItemsMutation(effectiveScope);
   const moveMutation = useMoveCollectionItemsMutation(effectiveScope);
   const assignMutation = useAssignCollectionItemsMutation(effectiveScope);
+  const toggleStarMutation = useToggleStarItemMutation(effectiveScope);
+  const setMyPublicationMutation = useSetMyPublicationMutation(effectiveScope);
+  const {
+    checkLibrary: checkRetractionLibrary,
+    unflagItem: unflagRetractionItem,
+    isCheckingLibrary: isCheckingRetraction,
+    isUnflagging: isUnflaggingRetraction,
+  } = useRetraction(effectiveScope, { includeItems: false });
 
   // Selected Items Resolution
   const selectedItems = useMemo(() => {
@@ -127,6 +156,12 @@ export function useLibraryBatchCoordinator({
   const retractedSelected = useMemo(
     () => selectedItems.filter((i) => isItemRetracted(i)),
     [selectedItems],
+  );
+
+  // Selected Items with PDFs / Attachments
+  const selectedWithAttachmentsCount = useMemo(
+    () => selectedItems.filter((i) => !processingIds.has(i.id) && hasItemPdfOrAttachment(i)).length,
+    [selectedItems, processingIds],
   );
 
   // Keyboard Shortcuts (Escape to clear)
@@ -171,7 +206,9 @@ export function useLibraryBatchCoordinator({
   // Action: Batch Move to Collection
   const batchMove = useCallback(
     async (targetCollectionId: string | null) => {
-      if (!canEdit || isTrash) return;
+      if (!canEdit || effectiveIsTrash || isDuplicatesView) return;
+      if (isUnfiledView && targetCollectionId === null) return;
+
       const movableIds = Array.from(selectedIds).filter((id) => !processingIds.has(id));
       if (processingIds.size > 0) {
         toast.warning('Cannot move files that are currently uploading or processing', {
@@ -209,7 +246,9 @@ export function useLibraryBatchCoordinator({
     },
     [
       canEdit,
-      isTrash,
+      effectiveIsTrash,
+      isDuplicatesView,
+      isUnfiledView,
       selectedIds,
       selectedItems,
       processingIds,
@@ -233,16 +272,16 @@ export function useLibraryBatchCoordinator({
     }
     if (deletableIds.length === 0) return;
 
-    if (isTrash) {
+    if (effectiveIsTrash) {
       openModal('DELETE_CONFIRM', { itemIds: deletableIds, permanent: true });
       return;
     }
     openModal('DELETE_CONFIRM', { itemIds: deletableIds });
-  }, [canEdit, selectedIds, processingIds, isTrash, openModal]);
+  }, [canEdit, selectedIds, processingIds, effectiveIsTrash, openModal]);
 
   // Action: Batch Restore from Trash
   const batchRestore = useCallback(async () => {
-    if (!canEdit || !isTrash) return;
+    if (!canEdit || !effectiveIsTrash) return;
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
     await useLibraryCommandStore.getState().executeCommand(
@@ -255,13 +294,13 @@ export function useLibraryBatchCoordinator({
         },
       }),
     );
-  }, [canEdit, isTrash, selectedIds, restoreMutation, deleteMutation, clearSelection]);
+  }, [canEdit, effectiveIsTrash, selectedIds, restoreMutation, deleteMutation, clearSelection]);
 
   // Action: Batch Detach from Collection
   const batchDetach = useCallback(
     async (targetColId?: string) => {
       const activeColId = targetColId || collectionId;
-      if (!canEdit || isTrash || !activeColId) return;
+      if (!canEdit || effectiveIsTrash || !activeColId) return;
 
       const detachableIds = Array.from(selectedIds).filter((id) => !processingIds.has(id));
       if (processingIds.size > 0) {
@@ -271,32 +310,109 @@ export function useLibraryBatchCoordinator({
       }
       if (detachableIds.length === 0) return;
 
-      await batchDetachMutation.mutateAsync({
-        collectionId: activeColId,
-        itemIds: detachableIds,
-      });
-      clearSelection();
+      try {
+        await useLibraryCommandStore.getState().executeCommand(
+          createBatchDetachCommand({
+            collectionId: activeColId,
+            itemIds: detachableIds,
+            detachMutation: batchDetachMutation,
+            assignMutation,
+            onExecuted: () => {
+              clearSelection();
+            },
+          }),
+        );
+      } catch {
+        // Error toast handled by useLibraryCommandStore
+      }
     },
     [
       canEdit,
-      isTrash,
+      effectiveIsTrash,
       collectionId,
       selectedIds,
       processingIds,
       batchDetachMutation,
+      assignMutation,
       clearSelection,
     ],
   );
 
-  // Action: Batch Merge Duplicates
+  // Action: Batch Merge Duplicates (Strictly available ONLY in Duplicates view)
   const batchMerge = useCallback(() => {
-    if (!canEdit || selectedItems.length < 2) return;
+    if (!canEdit || !isDuplicatesView || selectedItems.length < 2) return;
     openModal('MERGE_DUPLICATES', {
       itemIds: Array.from(selectedIds),
       items: selectedItems,
       duplicates: selectedItems,
     });
-  }, [canEdit, selectedItems, openModal, selectedIds]);
+  }, [canEdit, isDuplicatesView, selectedItems, openModal, selectedIds]);
+
+  // Action: Batch Unstar Items (Contextual for Starred Items view)
+  const batchUnstar = useCallback(async () => {
+    if (!canEdit || effectiveIsTrash || !isStarredView) return;
+    const ids = Array.from(selectedIds).filter((id) => !processingIds.has(id));
+    if (ids.length === 0) return;
+    try {
+      await Promise.all(
+        ids.map((id) => toggleStarMutation.mutateAsync({ id, isStarred: false })),
+      );
+      clearSelection();
+    } catch {
+      // Error toast handled by mutation
+    }
+  }, [canEdit, effectiveIsTrash, isStarredView, selectedIds, processingIds, toggleStarMutation, clearSelection]);
+
+  // Action: Batch Remove from My Publications (Contextual for My Publications view)
+  const batchRemoveFromMyPublications = useCallback(async () => {
+    if (!canEdit || effectiveIsTrash || !isMyPublicationsView) return;
+    const ids = Array.from(selectedIds).filter((id) => !processingIds.has(id));
+    if (ids.length === 0) return;
+    try {
+      await Promise.all(
+        ids.map((itemId) =>
+          setMyPublicationMutation.mutateAsync({ itemId, isMyPublication: false }),
+        ),
+      );
+      clearSelection();
+    } catch {
+      // Error toast handled by mutation
+    }
+  }, [
+    canEdit,
+    effectiveIsTrash,
+    isMyPublicationsView,
+    selectedIds,
+    processingIds,
+    setMyPublicationMutation,
+    clearSelection,
+  ]);
+
+  // Action: Batch Re-check Retraction Status (Contextual for Retracted Items view)
+  const batchRecheckRetraction = useCallback(async () => {
+    if (!canEdit || effectiveIsTrash || !isRetractedView) return;
+    const ids = Array.from(selectedIds).filter((id) => !processingIds.has(id));
+    if (ids.length === 0) return;
+    try {
+      await checkRetractionLibrary(ids);
+      clearSelection();
+    } catch {
+      // Error toast handled by mutation
+    }
+  }, [canEdit, effectiveIsTrash, isRetractedView, selectedIds, processingIds, checkRetractionLibrary, clearSelection]);
+
+  // Action: Batch Clear Retraction Flags (Contextual for Retracted Items view)
+  const batchClearRetractionFlags = useCallback(async () => {
+    if (!canEdit || effectiveIsTrash || !isRetractedView) return;
+    const ids = Array.from(selectedIds).filter((id) => !processingIds.has(id));
+    if (ids.length === 0) return;
+    try {
+      await Promise.all(ids.map((id) => unflagRetractionItem(id)));
+      clearSelection();
+    } catch {
+      // Error toast handled by mutation
+    }
+  }, [canEdit, effectiveIsTrash, isRetractedView, selectedIds, processingIds, unflagRetractionItem, clearSelection]);
 
   // Action: Copy Multi Citation
   const copyMultiCite = useCallback(
@@ -346,6 +462,16 @@ export function useLibraryBatchCoordinator({
       processingIds,
       isAllProcessingSelected,
       retractedSelected,
+      selectedWithAttachmentsCount,
+
+      // View / Page Context Flags
+      view,
+      isTrash: effectiveIsTrash,
+      isDuplicatesView,
+      isUnfiledView,
+      isStarredView,
+      isMyPublicationsView,
+      isRetractedView,
 
       // Selection controls
       toggleSelect,
@@ -354,16 +480,27 @@ export function useLibraryBatchCoordinator({
       clearSelection,
       rangeSelect,
 
-      // Batch operations
-      batchMove,
-      batchDelete,
-      batchRestore,
-      batchDetach: collectionId ? batchDetach : undefined,
-      batchMerge,
-      copyMultiCite,
-      copyInTextCite,
-      exportAllBibtex,
-      downloadBibFile,
+      // Page-Aware Batch Operations
+      batchMove: canEdit && !effectiveIsTrash && !isDuplicatesView ? batchMove : undefined,
+      batchDelete: canEdit ? batchDelete : undefined,
+      batchRestore: canEdit && effectiveIsTrash ? batchRestore : undefined,
+      batchDetach: canEdit && !effectiveIsTrash && Boolean(collectionId) ? batchDetach : undefined,
+      batchMerge: canEdit && !effectiveIsTrash && isDuplicatesView ? batchMerge : undefined,
+      batchUnstar: canEdit && !effectiveIsTrash && isStarredView ? batchUnstar : undefined,
+      batchRemoveFromMyPublications:
+        canEdit && !effectiveIsTrash && isMyPublicationsView
+          ? batchRemoveFromMyPublications
+          : undefined,
+      batchRecheckRetraction:
+        canEdit && !effectiveIsTrash && isRetractedView ? batchRecheckRetraction : undefined,
+      batchClearRetractionFlags:
+        canEdit && !effectiveIsTrash && isRetractedView ? batchClearRetractionFlags : undefined,
+      isCheckingRetraction,
+      isUnflaggingRetraction,
+      copyMultiCite: !effectiveIsTrash ? copyMultiCite : undefined,
+      copyInTextCite: !effectiveIsTrash ? copyInTextCite : undefined,
+      exportAllBibtex: !effectiveIsTrash ? exportAllBibtex : undefined,
+      downloadBibFile: !effectiveIsTrash ? downloadBibFile : undefined,
     }),
     [
       selectedIds,
@@ -373,16 +510,32 @@ export function useLibraryBatchCoordinator({
       processingIds,
       isAllProcessingSelected,
       retractedSelected,
+      selectedWithAttachmentsCount,
+      view,
+      effectiveIsTrash,
+      isDuplicatesView,
+      isUnfiledView,
+      isStarredView,
+      isMyPublicationsView,
+      isRetractedView,
       toggleSelect,
       selectOnly,
       selectAll,
       clearSelection,
       rangeSelect,
+      canEdit,
+      collectionId,
       batchMove,
       batchDelete,
       batchRestore,
       batchDetach,
       batchMerge,
+      batchUnstar,
+      batchRemoveFromMyPublications,
+      batchRecheckRetraction,
+      batchClearRetractionFlags,
+      isCheckingRetraction,
+      isUnflaggingRetraction,
       copyMultiCite,
       copyInTextCite,
       exportAllBibtex,

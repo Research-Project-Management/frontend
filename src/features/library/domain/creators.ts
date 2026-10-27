@@ -112,8 +112,6 @@ export const NOISE_AUTHOR_WORDS = new Set([
   'none',
   'null',
   'undefined',
-  'na',
-  'nil',
   'etal',
   'andothers',
   'visualgeometrygroup',
@@ -128,12 +126,14 @@ export function isNoiseAuthorName(raw?: string | null): boolean {
   const trimmed = raw.trim();
   if (!trimmed) return true;
 
-  if (trimmed.length <= 1 && !/[a-zA-Z]/.test(trimmed)) return true;
-
-  const collapsed = trimmed.toLowerCase().replace(/[^a-z]/g, '');
-  if (NOISE_AUTHOR_WORDS.has(collapsed)) return true;
+  if (trimmed.length <= 1 && !/\p{L}/u.test(trimmed)) return true;
 
   const lower = trimmed.toLowerCase();
+  if (lower === 'n/a' || lower === 'n.a.' || lower === 'n.a') return true;
+
+  const collapsed = lower.replace(/[^a-z]/g, '');
+  if (collapsed && NOISE_AUTHOR_WORDS.has(collapsed)) return true;
+
   if (
     /^(?:department|faculty|school|division|college)\s+of\s+/i.test(lower) ||
     /^(?:lab|laboratory)\s+of\s+/i.test(lower) ||
@@ -209,6 +209,59 @@ export function cleanAuthorName(raw?: string | null): string {
 }
 
 const GENERATIONAL_SUFFIX_REGEX = /^(?:Jr\.?|Sr\.?|II|III|IV|V|Esq\.?)$/i;
+
+const VIETNAMESE_DIACRITICS_REGEX =
+  /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ]/u;
+
+const VIETNAMESE_FAMILY_NAMES = new Set([
+  'nguyễn', 'trần', 'lê', 'phạm', 'hoàng', 'huỳnh', 'phan', 'vũ', 'võ', 'đặng',
+  'bùi', 'đỗ', 'hồ', 'ngô', 'dương', 'lý', 'đinh', 'đoàn', 'lâm', 'trịnh',
+  'mai', 'đào', 'cao', 'hà', 'lưu', 'lương', 'thái', 'phùng', 'tô', 'vương',
+  'tạ', 'tống', 'quách', 'nông', 'diệp', 'triệu', 'tiêu', 'khổng', 'nghiêm',
+  'la', 'tăng', 'trương', 'chu', 'châu', 'tôn', 'vi', 'lục', 'ma', 'bành',
+  'cù', 'cấn', 'thạch', 'bạch', 'sầm', 'lại', 'hứa', 'kiều', 'mạc', 'cáp',
+  'thân', 'tào', 'nhan', 'mã', 'chử', 'doãn', 'ân', 'bàng', 'quản', 'đậu', 'phí',
+  'nguyen', 'tran', 'le', 'pham', 'hoang', 'huynh', 'phan', 'vu', 'vo', 'dang',
+  'bui', 'do', 'ho', 'ngo', 'duong', 'ly', 'dinh', 'doan', 'lam', 'trinh',
+  'dao', 'ha', 'luu', 'luong', 'thai', 'phung', 'to', 'vuong', 'ta', 'tong',
+  'quach', 'nong', 'diep', 'trieu', 'tieu', 'khong', 'nghiem', 'tang', 'truong',
+  'chau', 'ton', 'luc', 'banh', 'cu', 'can', 'thach', 'bach', 'sam', 'lai',
+  'hua', 'kieu', 'mac', 'cap', 'than', 'tao', 'quan', 'dau', 'phi',
+]);
+
+const VIETNAMESE_MIDDLE_NAMES = new Set([
+  'văn', 'thị', 'hữu', 'đình', 'đức', 'ngọc', 'xuân', 'thanh', 'quang', 'trọng',
+  'minh', 'hoàng', 'anh', 'hải', 'quốc', 'công', 'kim', 'bảo', 'thu', 'phương',
+  'hồng', 'thùy', 'thảo', 'mạnh', 'tiến', 'đắc', 'tuấn', 'hùng', 'bá', 'chí',
+  'van', 'thi', 'huu', 'dinh', 'duc', 'ngoc', 'xuan', 'trong', 'hoang', 'hai',
+  'quoc', 'cong', 'bao', 'phuong', 'hong', 'thuy', 'thao', 'manh', 'tien',
+  'dac', 'tuan', 'hung', 'ba', 'chi',
+]);
+
+export function isVietnameseName(raw?: string | null): boolean {
+  if (!raw || typeof raw !== 'string') return false;
+  const normalized = raw.trim().normalize('NFC');
+  if (normalized.includes(',')) return false;
+
+  const tokens = normalized.split(/\s+/).filter(Boolean);
+  if (tokens.length < 2 || tokens.length > 5) return false;
+
+  const firstLower = tokens[0]!.toLowerCase();
+  if (!VIETNAMESE_FAMILY_NAMES.has(firstLower)) return false;
+
+  if (VIETNAMESE_DIACRITICS_REGEX.test(normalized)) {
+    return true;
+  }
+
+  if (['le', 'mai', 'ha', 'do', 'la', 'to'].includes(firstLower)) {
+    return VIETNAMESE_MIDDLE_NAMES.has(tokens[1]!.toLowerCase());
+  }
+
+  const isPlausibleVnSyllable = (tok: string) =>
+    /^[A-Za-z]{2,8}$/.test(tok) && !/[bcdfghjklmnpqrstvwxyz]{3,}/i.test(tok);
+
+  return tokens.every(isPlausibleVnSyllable);
+}
 
 export const SURNAME_PARTICLES = new Set([
   'van',
@@ -372,6 +425,42 @@ export function parseCreatorName(rawName: string): ParsedCreator {
       lastName: '',
       fullName: trimmed,
       isInstitution: true,
+    };
+  }
+
+  // Vancouver / Medline style: "Smith JA" -> lastName: "Smith", firstName: "J. A."
+  const vTokens = trimmed.split(/\s+/);
+  if (
+    !trimmed.includes(',') &&
+    vTokens.length >= 2 &&
+    /^[A-Z]{1,3}$/.test(vTokens[vTokens.length - 1]!) &&
+    !/^(?:II|III|IV)$/.test(vTokens[vTokens.length - 1]!) &&
+    vTokens.slice(0, -1).some((t) => !SURNAME_PARTICLES.has(t.toLowerCase()) && /^\p{Lu}[\p{L}'’-]*$/u.test(t) && /\p{Ll}/u.test(t))
+  ) {
+    const initials = vTokens[vTokens.length - 1]!;
+    const lastName = vTokens.slice(0, -1).join(' ');
+    const firstName = initials
+      .split('')
+      .map((c) => `${c}.`)
+      .join(' ');
+    return {
+      firstName,
+      lastName,
+      fullName: `${firstName} ${lastName}`,
+      isInstitution: false,
+    };
+  }
+
+  // Vietnamese naming order (Family Name First): e.g. "Nguyễn Văn An" -> lastName: "Nguyễn", firstName: "Văn An"
+  if (!trimmed.includes(',') && isVietnameseName(trimmed)) {
+    const vnTokens = trimmed.split(/\s+/).filter(Boolean);
+    const lastName = vnTokens[0] || '';
+    const firstName = vnTokens.slice(1).join(' ');
+    return {
+      firstName,
+      lastName,
+      fullName: trimmed,
+      isInstitution: false,
     };
   }
 
@@ -570,7 +659,7 @@ export function getItemAuthorsSummary(
       }
       return clean;
     })
-    .filter((a) => a && a.length >= 2);
+    .filter((a) => Boolean(a));
 
   if (cleaned.length === 0) return '—';
   if (cleaned.length <= maxAuthors) return cleaned.join(', ');

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ShieldAlert, X, RotateCcw } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import {
@@ -12,6 +12,9 @@ import { useUpdateLibraryItemMutation } from "@/features/library/sdk/queries/cat
 import { useRetraction } from "@/features/library/sdk/queries/ingestion.queries";
 import { useBatchRestoreItemsMutation } from "@/features/library/sdk/queries/catalog.queries";
 import type { Item } from "@/features/library/domain/types/library.types";
+import { getTitleFieldForType } from "@/features/library/domain/types/item-types.types";
+import { getItemDisplayTitle } from "@/features/library/domain/metadata";
+import { buildInspectorFieldPatch } from "@/features/library/domain/item-field-schema";
 import dynamic from "next/dynamic";
 import {
   isItemRetracted,
@@ -31,6 +34,7 @@ interface InspectorHeaderProps {
   item: Item;
   scopeId?: string;
   canEdit?: boolean;
+  onUpdateItem?: (data: Partial<Item>, options?: { silent?: boolean }) => void;
   onClose?: () => void;
 }
 
@@ -38,9 +42,12 @@ export function InspectorHeader({
   item,
   scopeId,
   canEdit = true,
+  onUpdateItem,
   onClose,
 }: InspectorHeaderProps) {
-  const [titleDraft, setTitleDraft] = useState(item.title || "");
+  const displayTitle = getItemDisplayTitle(item) || item.title || "";
+  const [titleDraft, setTitleDraft] = useState(displayTitle);
+  const focusedItemIdRef = useRef<string | null>(null);
   const [isRetractionModalOpen, setIsRetractionModalOpen] = useState(false);
   const [isRestoreModalOpen, setIsRestoreModalOpen] = useState(false);
 
@@ -56,20 +63,31 @@ export function InspectorHeader({
     getRetractionInfo(item);
 
   useEffect(() => {
-    setTitleDraft(item.title || "");
-  }, [item.title]);
+    setTitleDraft(displayTitle);
+  }, [item.id, item.itemType, displayTitle]);
 
   const handleCommitTitle = () => {
     if (!effectiveCanEdit) return;
+    if (focusedItemIdRef.current && focusedItemIdRef.current !== item.id) {
+      return;
+    }
     const cleanTitle = titleDraft.replace(/\r?\n+/g, " ").trim();
-    if (cleanTitle && cleanTitle !== item.title) {
+    if (cleanTitle && cleanTitle !== displayTitle) {
       setTitleDraft(cleanTitle);
-      updateMutation.mutate({
-        itemId: item.id,
-        data: { title: cleanTitle },
-      });
-    } else if (!cleanTitle && item.title) {
-      setTitleDraft(item.title);
+      const titleField = getTitleFieldForType(item.itemType);
+      const patch = buildInspectorFieldPatch(item, titleField, cleanTitle);
+      patch.title = cleanTitle;
+      if (onUpdateItem) {
+        onUpdateItem(patch, { silent: true });
+      } else {
+        updateMutation.mutate({
+          itemId: item.id,
+          data: patch,
+          silent: true,
+        });
+      }
+    } else if (!cleanTitle && displayTitle) {
+      setTitleDraft(displayTitle);
     }
   };
 
@@ -86,6 +104,9 @@ export function InspectorHeader({
               aria-label="Document Title"
               readOnly={!effectiveCanEdit}
               onChange={(e) => setTitleDraft(e.target.value)}
+              onFocus={() => {
+                focusedItemIdRef.current = item.id;
+              }}
               onBlur={handleCommitTitle}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
@@ -94,7 +115,7 @@ export function InspectorHeader({
                   (e.target as HTMLInputElement).blur();
                 } else if (e.key === "Escape") {
                   e.preventDefault();
-                  setTitleDraft(item.title || "");
+                  setTitleDraft(displayTitle);
                   (e.target as HTMLInputElement).blur();
                 }
               }}

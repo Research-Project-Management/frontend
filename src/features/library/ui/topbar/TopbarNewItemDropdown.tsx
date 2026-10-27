@@ -33,6 +33,7 @@ import {
   Map,
   Palette,
   Download,
+  Loader2,
 } from "lucide-react";
 import { ZoteroLineIcon, MendeleyLineIcon } from "@/shared/components/icons";
 import { Button } from "@/shared/components/ui/button";
@@ -124,10 +125,11 @@ export function TopbarNewItemDropdown({
   onImportFromUser,
   openModal,
 }: TopbarNewItemDropdownProps) {
-  const { types: registryItemTypes } = useItemTypes(scopeId);
+  const { types: registryItemTypes, isLoading, isError } = useItemTypes(scopeId);
 
   const { primaryTypes, moreTypes } = React.useMemo(() => {
-    const definitions = mapRegistryItemTypes(registryItemTypes).filter(
+    const rawDefinitions = mapRegistryItemTypes(registryItemTypes);
+    const definitions = rawDefinitions.filter(
       (t) =>
         t.isBibliographic !== false &&
         !t.isSpecial &&
@@ -135,6 +137,7 @@ export function TopbarNewItemDropdown({
         t.itemType !== "note" &&
         t.itemType !== "annotation",
     );
+
     const primary = definitions
       .filter((t) => PRIMARY_TYPE_KEYS.has(t.itemType))
       .map((t) => ({
@@ -209,18 +212,29 @@ export function TopbarNewItemDropdown({
             alignOffset={-4}
             className="w-52 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
           >
-            {primaryTypes.map(({ type, label, icon: TypeIcon }) => (
-              <DropdownMenuItem
-                key={type}
-                onClick={() => handleManualTypeSelect(type)}
-                className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
-              >
-                <TypeIcon className="size-3.5 text-foreground shrink-0" />
-                <span>{label}</span>
-              </DropdownMenuItem>
-            ))}
+            {isLoading ? (
+              <div className="py-2.5 px-3 flex items-center justify-center gap-2 text-12 text-muted-foreground">
+                <Loader2 className="size-3.5 animate-spin text-muted-foreground" />
+                <span>Loading types...</span>
+              </div>
+            ) : primaryTypes.length === 0 ? (
+              <div className="py-2.5 px-3 text-12 text-muted-foreground text-center">
+                {isError ? "Unable to load types" : "No types available"}
+              </div>
+            ) : (
+              primaryTypes.map(({ type, label, icon: TypeIcon }) => (
+                <DropdownMenuItem
+                  key={type}
+                  onClick={() => handleManualTypeSelect(type)}
+                  className="h-8 gap-2.5 px-2.5 text-12 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted"
+                >
+                  <TypeIcon className="size-3.5 text-foreground shrink-0" />
+                  <span>{label}</span>
+                </DropdownMenuItem>
+              ))
+            )}
 
-            {moreTypes.length > 0 && (
+            {!isLoading && moreTypes.length > 0 && (
               <>
                 <DropdownMenuSeparator className="my-1" />
 

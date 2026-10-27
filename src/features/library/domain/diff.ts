@@ -1,12 +1,25 @@
 import type { Item } from './types/library.types';
-import { isValidValue, normalizeTags } from './metadata';
+import {
+  isValidValue,
+  normalizeTags,
+  ALL_SCHEMA_PROMOTE_KEYS,
+} from './metadata';
+import {
+  parseCreatorName,
+  splitAuthorString,
+} from './creators';
 import {
   prepareInspectorFieldContext,
+  FIELD_CANDIDATE_SCORERS,
+  MULTI_KEY_SYNC_SETTERS,
+  FIRST_CLASS_ITEM_COLUMNS,
   type PreparedInspectorFieldContext,
+  type FieldCandidateScorer,
 } from './item-field-schema';
 import {
   type MergeFieldDefinition,
   MERGEABLE_FIELDS,
+  getMergeableFieldsForTypes,
   type DiffStatus,
   type FieldOptionValue,
   type ItemFieldDiff,
@@ -24,6 +37,7 @@ import {
 export {
   type MergeFieldDefinition,
   MERGEABLE_FIELDS,
+  getMergeableFieldsForTypes,
   type DiffStatus,
   type FieldOptionValue,
   type ItemFieldDiff,
@@ -38,34 +52,24 @@ export {
   mergeItemExtraFields,
 };
 
+export { FIELD_CANDIDATE_SCORERS, type FieldCandidateScorer };
 
 /**
- * Scores a field option value for "Recommend Best" resolution.
- * - For `itemType`, peer-reviewed published types (`journalArticle`, `conferencePaper`, `book`, `bookSection`)
- *   score higher than unpublished `preprint` / `document` types.
- * - For `doi`, canonical publisher DOIs score higher than arXiv DOIs (`10.48550/arXiv.*`).
- * - For text fields, longer non-empty values score higher; for arrays (e.g. `authors`), more entries score higher.
+ * Scores a field option value for "Recommend Best" resolution via `FIELD_CANDIDATE_SCORERS`.
+ * - Delegates field-specific quality heuristics (`itemType`, `doi`, `date`, `year`, `publicationTitle`, `abstractNote`)
+ *   to the declarative strategy registry in `item-field-schema.ts`.
+ * - Falls back to completeness/length scoring for general text and array fields.
  */
 export function scoreFieldCandidate(fieldKey: string, rawValue: unknown): number {
   if (isFieldEmpty(rawValue)) return -1;
-  if (fieldKey === 'itemType') {
-    const t = String(rawValue || '').trim();
-    if (
-      t === 'journalArticle' ||
-      t === 'conferencePaper' ||
-      t === 'book' ||
-      t === 'bookSection'
-    ) {
-      return 100;
-    }
-    if (t === 'preprint' || t === 'document') {
-      return 20;
-    }
-    return 50;
-  }
-  if (fieldKey === 'doi') {
-    const d = String(rawValue || '').trim();
-    return /10\.48550\/arxiv/i.test(d) ? 10 : d.length + 50;
+  const strategy = FIELD_CANDIDATE_SCORERS[fieldKey];
+  if (strategy) {
+    return strategy(
+      Array.isArray(rawValue)
+        ? formatFieldValueDisplay(fieldKey, rawValue)
+        : String(rawValue ?? ''),
+      rawValue,
+    );
   }
   if (typeof rawValue === 'string') {
     return rawValue.trim().length;
@@ -85,8 +89,10 @@ export function scoreFieldCandidate(fieldKey: string, rawValue: unknown): number
 export function inspectItemDifferences(
   items: Item[],
   masterId: string,
-  customFields: MergeFieldDefinition[] = MERGEABLE_FIELDS
+  customFields?: MergeFieldDefinition[],
 ): MergeInspectionResult {
+  const effectiveFields =
+    customFields ?? getMergeableFieldsForTypes(items.map((i) => i.itemType));
   const masterItem = items.find((p) => p.id === masterId) || items[0];
 
   // Pre-compute InspectorFieldContext once per item (O(N) instead of O(N * F))
@@ -104,13 +110,13 @@ export function inspectItemDifferences(
   let identicalCount = 0;
   let missingInMasterCount = 0;
 
-  const fields: ItemFieldDiff[] = customFields.map((field) => {
+  const fields: ItemFieldDiff[] = effectiveFields.map((field) => {
     const rawMaster = resolveItemFieldValue(
       masterItem as Record<string, unknown>,
       field.key,
       masterCtx,
     );
-    const normMaster = normalizeCompareValue(rawMaster);
+    const normMaster = normalizeCompareValue(rawMaster, field.key);
 
     const uniqueNormalized = new Set<string>();
     let anyEmptyCandidate = false;
@@ -126,7 +132,7 @@ export function inspectItemDifferences(
       const effectiveRawVal = isEmpty ? (Array.isArray(rawVal) ? [] : undefined) : rawVal;
       const displayVal = formatFieldValueDisplay(field.key, effectiveRawVal);
       const isMaster = item.id === masterItem.id;
-      const normVal = normalizeCompareValue(effectiveRawVal);
+      const normVal = normalizeCompareValue(effectiveRawVal, field.key);
 
       if (normVal) {
         uniqueNormalized.add(normVal);
@@ -227,6 +233,200 @@ export interface MergedItemPayload {
   totalAnnotationCount: number;
 }
 
+const PROMOTE_KEYS_SET = new Set<string>(ALL_SCHEMA_PROMOTE_KEYS);
+const SKIP_SYNC_KEYS = new Set([
+  'extraFields',
+  'extra',
+  'authors',
+  'creators',
+  'contributors',
+  'tags',
+  'collections',
+  'collectionIds',
+]);
+
+function buildStructuredCreatorsFromAuthors(rawAuthors: unknown): Array<Record<string, unknown>> {
+  if (isFieldEmpty(rawAuthors)) return [];
+  const rawList = Array.isArray(rawAuthors)
+    ? rawAuthors
+    : typeof rawAuthors === 'string'
+      ? splitAuthorString(rawAuthors)
+      : [];
+  const structured: Array<Record<string, unknown>> = [];
+  rawList.forEach((entry, idx) => {
+    if (!entry) return;
+    if (typeof entry === 'string') {
+      const parsed = parseCreatorName(entry);
+      const fullName = (parsed.fullName || entry).trim();
+      if (!fullName) return;
+      structured.push({
+        firstName: parsed.firstName || '',
+        lastName: parsed.lastName || fullName,
+        fullName,
+        creatorType: 'author',
+        orderIndex: idx,
+      });
+    } else if (typeof entry === 'object') {
+      const rec = entry as Record<string, unknown>;
+      const firstName = String(rec.firstName ?? rec.given ?? '').trim();
+      const lastName = String(rec.lastName ?? rec.family ?? '').trim();
+      const fullName = String(rec.fullName ?? rec.name ?? [firstName, lastName].filter(Boolean).join(' ')).trim();
+      structured.push({
+        ...rec,
+        firstName,
+        lastName,
+        fullName,
+        creatorType: String(rec.creatorType ?? rec.role ?? 'author').trim() || 'author',
+        orderIndex: typeof rec.orderIndex === 'number' ? rec.orderIndex : idx,
+      });
+    }
+  });
+  return structured;
+}
+
+/**
+ * Single Source of Truth helper that resolves effective merge field overrides for a duplicate cluster.
+ * Synchronizes `authors`/`creators`/`contributors`, multi-key aliases (`MULTI_KEY_SYNC_SETTERS`),
+ * `extraFields` (`ALL_SCHEMA_PROMOTE_KEYS`), and non-destructively merged `extra` lines.
+ */
+export function resolveDuplicateMergeFieldOverrides(
+  items: readonly Item[],
+  masterId: string,
+  fieldOverrides: Record<string, unknown> = {},
+  options?: {
+    inspection?: MergeInspectionResult;
+    includeUnchangedMasterFields?: boolean;
+    customFieldTexts?: Record<string, string>;
+  },
+): Record<string, unknown> {
+  const masterItem = items.find((i) => i.id === masterId) || items[0];
+  const orderedItems = masterItem ? [masterItem, ...items.filter((i) => i.id !== masterItem.id)] : [...items];
+  const inspection = options?.inspection ?? inspectItemDifferences([...items], masterId);
+  const includeMasterDefaults = Boolean(options?.includeUnchangedMasterFields);
+
+  const itemTypes = Array.from(new Set(items.map((i) => i.itemType).filter(Boolean)));
+  const hasTypeMismatch = itemTypes.length > 1;
+  const effectiveItemType = (fieldOverrides.itemType as string | undefined) || masterItem?.itemType || 'journalArticle';
+
+  const out: Record<string, unknown> = {};
+
+  for (const field of inspection.fields) {
+    if (field.status === 'MISSING_IN_MASTER' && field.recommendedValue !== undefined && !(field.key in fieldOverrides)) {
+      out[field.key] = field.recommendedValue;
+    } else if (includeMasterDefaults && !(field.key in fieldOverrides) && field.masterValue?.rawValue !== undefined) {
+      out[field.key] = field.masterValue.rawValue;
+    }
+  }
+
+  for (const [k, v] of Object.entries(fieldOverrides)) {
+    if (v === null) {
+      const fieldDiff = inspection.fields.find((f) => f.key === k);
+      if (fieldDiff?.status === 'MISSING_IN_MASTER') {
+        delete out[k];
+      } else {
+        out[k] = '';
+      }
+    } else if (v !== undefined) {
+      out[k] = v;
+    }
+  }
+
+  if (options?.customFieldTexts) {
+    for (const [k, v] of Object.entries(options.customFieldTexts)) {
+      if (v !== undefined) out[k] = v;
+    }
+  }
+
+  // Synchronize authors, creators, and contributors when authors is overridden
+  if ('authors' in out) {
+    const rawAuthorsVal = out.authors;
+    if (isFieldEmpty(rawAuthorsVal)) {
+      out.authors = [];
+      if (!('creators' in fieldOverrides)) out.creators = [];
+      if (!('contributors' in fieldOverrides)) out.contributors = [];
+    } else {
+      const chosenAuthorsNorm = normalizeCompareValue(rawAuthorsVal, 'authors');
+      const donorItem = orderedItems.find((it) => {
+        const itAuthors = Array.isArray(it.authors) && it.authors.length > 0 ? it.authors : it.creators;
+        return normalizeCompareValue(itAuthors, 'authors') === chosenAuthorsNorm;
+      });
+      const donorEf = donorItem?.extraFields && typeof donorItem.extraFields === 'object'
+        ? (donorItem.extraFields as Record<string, unknown>)
+        : undefined;
+      const donorCreators = donorItem && Array.isArray(donorItem.creators) && donorItem.creators.length > 0
+        ? donorItem.creators
+        : Array.isArray(donorEf?.creators) && (donorEf.creators as unknown[]).length > 0
+          ? (donorEf.creators as unknown[])
+          : undefined;
+      const donorContributors = donorItem && Array.isArray(donorItem.contributors) && donorItem.contributors.length > 0
+        ? donorItem.contributors
+        : undefined;
+      const structuredCreators = donorCreators ?? buildStructuredCreatorsFromAuthors(rawAuthorsVal);
+      if (!('creators' in fieldOverrides)) out.creators = structuredCreators;
+      if (!('contributors' in fieldOverrides)) out.contributors = donorContributors ?? structuredCreators;
+      if (typeof rawAuthorsVal === 'string') out.authors = splitAuthorString(rawAuthorsVal);
+    }
+  }
+
+  // Synchronize multi-key aliases and extraFields for overridden schema fields
+  const masterEf = masterItem?.extraFields && typeof masterItem.extraFields === 'object'
+    ? (masterItem.extraFields as Record<string, unknown>)
+    : {};
+  const nextExtraFields: Record<string, unknown> = {
+    ...masterEf,
+    ...(out.extraFields && typeof out.extraFields === 'object' ? (out.extraFields as Record<string, unknown>) : {}),
+  };
+  let extraFieldsMutated = Boolean(out.extraFields);
+
+  for (const [key, val] of Object.entries({ ...out })) {
+    if (SKIP_SYNC_KEYS.has(key)) continue;
+    const keyLower = key.toLowerCase();
+    const isCleared = val === '' || val === null;
+    const syncTargets = MULTI_KEY_SYNC_SETTERS[keyLower];
+
+    if (syncTargets) {
+      for (const targetKey of syncTargets) {
+        if (keyLower === 'conferencename' && targetKey === 'publicationTitle' && effectiveItemType === 'conferencePaper') {
+          continue;
+        }
+        if (!(targetKey in out)) out[targetKey] = isCleared ? '' : val;
+        if (isCleared || targetKey in masterEf || PROMOTE_KEYS_SET.has(targetKey) || !FIRST_CLASS_ITEM_COLUMNS.has(targetKey)) {
+          nextExtraFields[targetKey] = isCleared ? null : val;
+          extraFieldsMutated = true;
+        }
+      }
+    }
+
+    if (isCleared || key in masterEf || PROMOTE_KEYS_SET.has(key) || !FIRST_CLASS_ITEM_COLUMNS.has(key)) {
+      nextExtraFields[key] = isCleared ? null : val;
+      extraFieldsMutated = true;
+    }
+  }
+
+  if ('abstract' in out && out.abstract !== undefined && !('abstractNote' in out)) {
+    out.abstractNote = out.abstract;
+  }
+  if ('abstractNote' in out && out.abstractNote !== undefined && !('abstract' in out)) {
+    out.abstract = out.abstractNote;
+  }
+  if (extraFieldsMutated) out.extraFields = nextExtraFields;
+  if ((hasTypeMismatch || includeMasterDefaults) && !out.itemType) out.itemType = effectiveItemType;
+
+  if (!('extra' in fieldOverrides) && !(options?.customFieldTexts && 'extra' in options.customFieldTexts)) {
+    const mergedExtra = mergeItemExtraFields(items, masterItem?.id || masterId, out, options?.customFieldTexts);
+    const masterExtra = typeof masterItem?.extra === 'string'
+      ? masterItem.extra.trim()
+      : typeof masterEf.extra === 'string'
+        ? String(masterEf.extra).trim()
+        : '';
+    if (mergedExtra && (includeMasterDefaults || mergedExtra !== masterExtra)) {
+      out.extra = mergedExtra;
+    }
+  }
+
+  return out;
+}
+
 /**
  * Builds the final resolved metadata & asset payload for a duplicate cluster merge,
  * combining the master item's fields, any missing fields auto-filled from candidates,
@@ -236,6 +436,7 @@ export function buildMergedItemPayload(
   items: Item[],
   masterId: string,
   fieldOverrides: Record<string, unknown> = {},
+  customFieldTexts?: Record<string, string>,
 ): MergedItemPayload {
   const masterItem = items.find((i) => i.id === masterId) || items[0];
   const orderedItems = masterItem
@@ -243,33 +444,21 @@ export function buildMergedItemPayload(
     : items;
   const inspection = inspectItemDifferences(items, masterId);
   const assets = aggregateItemAssets(orderedItems);
+  const resolvedOverrides = resolveDuplicateMergeFieldOverrides(
+    items,
+    masterId,
+    fieldOverrides,
+    {
+      inspection,
+      includeUnchangedMasterFields: true,
+      customFieldTexts,
+    },
+  );
   const resolvedFields: Record<string, unknown> = {
     tags: assets.combinedTags,
     collections: assets.combinedCollectionIds,
+    ...resolvedOverrides,
   };
-
-  for (const field of inspection.fields) {
-    if (field.key in fieldOverrides && fieldOverrides[field.key] !== undefined) {
-      resolvedFields[field.key] = fieldOverrides[field.key];
-    } else if (field.status === 'MISSING_IN_MASTER' && field.recommendedValue !== undefined) {
-      resolvedFields[field.key] = field.recommendedValue;
-    } else if (field.masterValue?.rawValue !== undefined) {
-      resolvedFields[field.key] = field.masterValue.rawValue;
-    }
-  }
-
-  // Always guarantee canonical itemType is present in fieldSelections when unifying cross-type records
-  if (!resolvedFields.itemType) {
-    resolvedFields.itemType =
-      (fieldOverrides.itemType as string | undefined) ||
-      masterItem?.itemType ||
-      'journalArticle';
-  }
-
-  const mergedExtra = mergeItemExtraFields(items, masterId);
-  if (mergedExtra && !('extra' in fieldOverrides)) {
-    resolvedFields.extra = mergedExtra;
-  }
 
   const duplicateIds = items.filter((i) => i.id !== masterId).map((i) => i.id);
 

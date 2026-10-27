@@ -3,9 +3,15 @@
 import { useMemo, useRef, useCallback } from 'react';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import {
+  useLibraryCommandStore,
+  buildInverseMetadataPatch,
+  createUpdateItemMetadataCommand,
+} from '@/features/library/core/manager/library-command.manager';
+import {
   useLibraryItemDetailQuery,
   useUpdateLibraryItemMutation,
   useLibraryCacheSynchronizer,
+  mergeCachedItemWithPatch,
 } from '@/features/library/sdk/queries/catalog.queries';
 import { normalizeTags, getAssignedCollectionIds } from '@/features/library/domain/metadata';
 import type { Item } from '@/features/library/domain/types/library.types';
@@ -14,6 +20,7 @@ export interface UseInspectorItemResolverParams {
   propItem?: Item | null;
   scopeId?: string;
   canEdit?: boolean;
+  needsFullDetail?: boolean;
 }
 
 export interface UseInspectorItemResolverResult {
@@ -26,28 +33,45 @@ export interface UseInspectorItemResolverResult {
   noteCount: number;
   tagsList: string[];
   itemCollectionIds: string[];
-  handleUpdateItem: (payload: Partial<Item>, options?: { silent?: boolean }) => void;
+  handleUpdateItem: (
+    payload: Partial<Item>,
+    options?: { silent?: boolean; skipHistory?: boolean },
+  ) => void;
 }
 
 export function useInspectorItemResolver({
   propItem,
   scopeId,
   canEdit = true,
+  needsFullDetail = false,
 }: UseInspectorItemResolverParams = {}): UseInspectorItemResolverResult {
   const activeItemId = useLibraryUIStore((s) => s.activeItemId);
   const targetScope = scopeId || 'user';
   const incomingItem = propItem || null;
 
   const queryItemId = !incomingItem && activeItemId ? activeItemId : undefined;
-  const { data: queriedItem, isLoading } = useLibraryItemDetailQuery(
-    targetScope,
-    queryItemId,
-  );
-
   const { resolveCachedItem } = useLibraryCacheSynchronizer(targetScope);
   const cachedListItem = useMemo(
     () => resolveCachedItem(queryItemId, targetScope),
     [resolveCachedItem, queryItemId, targetScope],
+  );
+
+  // Branch lazy-loading: only fetch full item detail when cachedListItem is missing
+  // or when detail-only sections (notes/attachments/abstract) or full detail is needed.
+  const hasCachedCoreMetadata = Boolean(
+    cachedListItem &&
+      cachedListItem.title !== undefined &&
+      Array.isArray(cachedListItem.contributors) &&
+      cachedListItem.abstractNote !== undefined,
+  );
+  const shouldFetchFullDetail = Boolean(
+    queryItemId && (needsFullDetail || !hasCachedCoreMetadata),
+  );
+
+  const { data: queriedItem, isLoading } = useLibraryItemDetailQuery(
+    targetScope,
+    queryItemId,
+    { enabled: shouldFetchFullDetail },
   );
 
   const lastItemRef = useRef<Item | null>(null);
@@ -83,27 +107,40 @@ export function useInspectorItemResolver({
 
   const updateMutation = useUpdateLibraryItemMutation(targetScope);
   const latestVersionRef = useRef<Map<string, number>>(new Map());
+  const latestItemSnapshotRef = useRef<Map<string, Item>>(new Map());
   const pendingMutationPromiseRef = useRef<Map<string, Promise<unknown>>>(new Map());
 
-  if (effectiveItem?.id && typeof effectiveItem.version === 'number') {
-    const tracked = latestVersionRef.current.get(effectiveItem.id);
-    if (tracked === undefined || (!pendingMutationPromiseRef.current.has(effectiveItem.id) && effectiveItem.version > tracked)) {
-      latestVersionRef.current.set(effectiveItem.id, effectiveItem.version);
+  if (effectiveItem?.id) {
+    if (!pendingMutationPromiseRef.current.has(effectiveItem.id) || !latestItemSnapshotRef.current.has(effectiveItem.id)) {
+      latestItemSnapshotRef.current.set(effectiveItem.id, effectiveItem);
+    }
+    if (typeof effectiveItem.version === 'number') {
+      const tracked = latestVersionRef.current.get(effectiveItem.id);
+      if (tracked === undefined || (!pendingMutationPromiseRef.current.has(effectiveItem.id) && effectiveItem.version > tracked)) {
+        latestVersionRef.current.set(effectiveItem.id, effectiveItem.version);
+      }
     }
   }
 
-  const handleUpdateItem = useCallback(
-    (payload: Partial<Item>, options?: { silent?: boolean }) => {
-      if (!effectiveItem || !effectiveCanEdit) return;
-      const itemId = effectiveItem.id;
-      const fallbackVersion = payload.version ?? effectiveItem.version;
-      const isSilent = Boolean(options?.silent || payload.silent);
-
-      const prevPromise = pendingMutationPromiseRef.current.get(itemId) ?? Promise.resolve();
+  const enqueueItemPatch = useCallback(
+    (
+      targetItemId: string,
+      patch: Partial<Item>,
+      fallbackVersion?: number,
+      isSilent = false,
+    ): Promise<unknown> => {
+      const currentSnapshot = latestItemSnapshotRef.current.get(targetItemId);
+      if (currentSnapshot) {
+        latestItemSnapshotRef.current.set(
+          targetItemId,
+          mergeCachedItemWithPatch(currentSnapshot, patch),
+        );
+      }
+      const prevPromise = pendingMutationPromiseRef.current.get(targetItemId) ?? Promise.resolve();
       const nextPromise = prevPromise
         .catch(() => undefined)
         .then(async () => {
-          const trackedVersion = latestVersionRef.current.get(itemId);
+          const trackedVersion = latestVersionRef.current.get(targetItemId);
           const expectedVersion =
             typeof trackedVersion === 'number'
               ? trackedVersion
@@ -112,8 +149,8 @@ export function useInspectorItemResolver({
                 : undefined;
 
           const res = await updateMutation.mutateAsync({
-            itemId,
-            data: payload,
+            itemId: targetItemId,
+            data: patch,
             expectedVersion,
             silent: isSilent,
           });
@@ -124,24 +161,67 @@ export function useInspectorItemResolver({
               : (res as Partial<Item> | undefined);
 
           if (typeof returnedItem?.version === 'number') {
-            latestVersionRef.current.set(itemId, returnedItem.version);
+            latestVersionRef.current.set(targetItemId, returnedItem.version);
           } else if (typeof expectedVersion === 'number') {
-            latestVersionRef.current.set(itemId, expectedVersion + 1);
+            latestVersionRef.current.set(targetItemId, expectedVersion + 1);
+          }
+          if (returnedItem && typeof returnedItem === 'object') {
+            const snap = latestItemSnapshotRef.current.get(targetItemId);
+            if (snap) {
+              latestItemSnapshotRef.current.set(
+                targetItemId,
+                mergeCachedItemWithPatch(snap, returnedItem),
+              );
+            }
           }
           return res;
         })
-        .catch(() => {
-          latestVersionRef.current.delete(itemId);
+        .catch((err) => {
+          latestVersionRef.current.delete(targetItemId);
+          latestItemSnapshotRef.current.delete(targetItemId);
+          throw err;
         })
         .finally(() => {
-          if (pendingMutationPromiseRef.current.get(itemId) === nextPromise) {
-            pendingMutationPromiseRef.current.delete(itemId);
+          if (pendingMutationPromiseRef.current.get(targetItemId) === nextPromise) {
+            pendingMutationPromiseRef.current.delete(targetItemId);
           }
         });
 
-      pendingMutationPromiseRef.current.set(itemId, nextPromise);
+      pendingMutationPromiseRef.current.set(targetItemId, nextPromise);
+      return nextPromise;
     },
-    [effectiveItem, effectiveCanEdit, updateMutation],
+    [updateMutation],
+  );
+
+  const handleUpdateItem = useCallback(
+    (payload: Partial<Item>, options?: { silent?: boolean; skipHistory?: boolean }) => {
+      if (!effectiveItem || !effectiveCanEdit) return;
+      const itemId = effectiveItem.id;
+      const fallbackVersion = payload.version ?? effectiveItem.version;
+      const isSilent = options?.silent !== undefined ? Boolean(options.silent) : (payload.silent !== undefined ? Boolean(payload.silent) : true);
+      const skipHistory = Boolean(options?.skipHistory);
+
+      const baseSnapshot = latestItemSnapshotRef.current.get(itemId) ?? effectiveItem;
+      const inversePatch = buildInverseMetadataPatch(baseSnapshot, payload);
+      const command = createUpdateItemMetadataCommand({
+        itemId,
+        description: baseSnapshot.title
+          ? `Updated "${baseSnapshot.title}"`
+          : 'Updated item metadata',
+        forwardPatch: payload,
+        inversePatch,
+        applyPatch: (targetId, patch) => enqueueItemPatch(targetId, patch, undefined, true),
+      });
+
+      void enqueueItemPatch(itemId, payload, fallbackVersion, isSilent)
+        .then(() => {
+          if (!skipHistory) {
+            useLibraryCommandStore.getState().pushExecutedCommand(command, { silentToast: true });
+          }
+        })
+        .catch(() => undefined);
+    },
+    [effectiveItem, effectiveCanEdit, enqueueItemPatch],
   );
 
   return {

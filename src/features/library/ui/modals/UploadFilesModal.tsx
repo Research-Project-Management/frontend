@@ -87,8 +87,14 @@ export default function UploadFilesModal({
   );
 
   // If initial files were provided when opening modal, immediately upload them
+  const autoUploadedRef = useRef<File[] | null>(null);
   useEffect(() => {
-    if (open && initialFiles.length > 0) {
+    if (!open) {
+      autoUploadedRef.current = null;
+      return;
+    }
+    if (initialFiles.length > 0 && autoUploadedRef.current !== initialFiles) {
+      autoUploadedRef.current = initialFiles;
       handleUploadFiles(initialFiles);
     }
   }, [open, initialFiles, handleUploadFiles]);
@@ -102,7 +108,9 @@ export default function UploadFilesModal({
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDragging(false);
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragging(false);
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -167,12 +175,20 @@ export default function UploadFilesModal({
 
           {/* Dropzone */}
           <div
+            role="button"
+            tabIndex={0}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                fileInputRef.current?.click();
+              }
+            }}
             className={cn(
-              'border border-dashed rounded-lg transition-all text-center cursor-pointer select-none py-10 px-6',
+              'border border-dashed rounded-lg transition-all text-center cursor-pointer select-none py-10 px-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
               isDragging
                 ? 'border-primary bg-primary/10 ring-2 ring-primary scale-[0.99]'
                 : 'border-border hover:border-border-hover hover:bg-muted',

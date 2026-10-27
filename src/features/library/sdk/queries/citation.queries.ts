@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { libraryServices } from '../library.client';
 import type { CslStyle } from '@/features/library/domain/types/library.types';
 import { citationKeys, exportKeys, normalizeScopeId } from '@/features/library/sdk/query-keys';
@@ -66,12 +66,28 @@ export function useFormatCitationMutation(scopeId?: string) {
 export function useSearchCslStyles(
   query: string = '',
   limit: number = 30,
-  options?: { enabled?: boolean },
+  options?: { enabled?: boolean; scopeId?: string },
 ) {
+  const effectiveScope = normalizeScopeId(options?.scopeId);
   return useQuery({
-    queryKey: [...citationKeys.all, 'styles-search', query, limit] as const,
-    queryFn: () => libraryServices.citations.searchStyles(query, limit),
+    queryKey: [...citationKeys.all, 'styles-search', effectiveScope, query, limit] as const,
+    queryFn: () => libraryServices.citations.searchStyles(query, limit, effectiveScope),
     enabled: options?.enabled ?? true,
     staleTime: 1000 * 60 * 60,
+  });
+}
+
+export function useUploadCustomCslStyleMutation(scopeId?: string) {
+  const queryClient = useQueryClient();
+  const effectiveScope = normalizeScopeId(scopeId);
+  return useMutation({
+    mutationFn: ({ xml, title }: { xml: string; title?: string }) =>
+      libraryServices.citations.uploadCustomStyle(xml, title, effectiveScope),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: citationKeys.styles(effectiveScope) });
+      void queryClient.invalidateQueries({
+        queryKey: [...citationKeys.all, 'styles-search', effectiveScope],
+      });
+    },
   });
 }

@@ -113,16 +113,18 @@ export function EpubAndSnapshotViewer({
       setError(null);
       try {
         if (mode === 'snapshot') {
-          const blob = await fetchPdfBlob(url, abortController.signal);
+          const blob = await fetchPdfBlob(url, abortController.signal, { allowHtml: true });
           if (cancelled || abortController.signal.aborted) return;
           const rawHtml = await blob.text();
           if (cancelled || abortController.signal.aborted) return;
           const sanitized = DOMPurify.sanitize(rawHtml, {
             WHOLE_DOCUMENT: false,
             ADD_TAGS: ['article', 'section', 'header', 'footer', 'figure', 'figcaption'],
+            FORBID_TAGS: ['style', 'form', 'input', 'button', 'iframe', 'object', 'embed', 'link', 'meta', 'base'],
+            FORBID_ATTR: ['onerror', 'onload'],
           });
           setSnapshotHtml(sanitized);
-          onPageChange?.(1, 1);
+          onPageChangeRef.current?.(1, 1);
           setIsLoading(false);
           return;
         }
@@ -193,9 +195,15 @@ export function EpubAndSnapshotViewer({
           if (!manifestEntry) continue;
 
           const resolvedPath = resolveEpubPath(opfDir, manifestEntry.href);
+          let decodedPath = resolvedPath;
+          try {
+            decodedPath = decodeURIComponent(resolvedPath);
+          } catch {
+            decodedPath = resolvedPath;
+          }
           const chapterFile =
             zip.file(resolvedPath) ||
-            zip.file(decodeURIComponent(resolvedPath));
+            zip.file(decodedPath);
           if (!chapterFile) continue;
 
           const rawChapterHtml = await chapterFile.async('text');
@@ -211,7 +219,10 @@ export function EpubAndSnapshotViewer({
             ? chapterDoc.body.innerHTML
             : rawChapterHtml;
 
-          const sanitizedHtml = DOMPurify.sanitize(bodyHtml);
+          const sanitizedHtml = DOMPurify.sanitize(bodyHtml, {
+            FORBID_TAGS: ['style', 'form', 'input', 'button', 'iframe', 'object', 'embed', 'link', 'meta', 'base'],
+            FORBID_ATTR: ['onerror', 'onload'],
+          });
           if (sanitizedHtml.trim()) {
             loadedChapters.push({
               id: idref,
@@ -255,20 +266,44 @@ export function EpubAndSnapshotViewer({
   }, []);
 
   const handlePrevChapter = () => {
-    setCurrentChapterIndex((prev) => {
-      const next = Math.max(0, prev - 1);
-      onPageChangeRef.current?.(next + 1, chapters.length);
-      return next;
-    });
+    const next = Math.max(0, currentChapterIndex - 1);
+    setCurrentChapterIndex(next);
+    onPageChangeRef.current?.(next + 1, chapters.length);
   };
 
   const handleNextChapter = () => {
-    setCurrentChapterIndex((prev) => {
-      const next = Math.min(chapters.length - 1, prev + 1);
-      onPageChangeRef.current?.(next + 1, chapters.length);
-      return next;
-    });
+    const next = Math.min(chapters.length - 1, currentChapterIndex + 1);
+    setCurrentChapterIndex(next);
+    onPageChangeRef.current?.(next + 1, chapters.length);
   };
+
+  const currentChapter = chapters[currentChapterIndex];
+
+  const highlightHtml = useCallback(
+    (html: string) => {
+      const q = searchQuery.trim().slice(0, 120);
+      if (!isSearchOpen || q.length < 2) return html;
+      const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`(${escaped})`, 'gi');
+      let matchCount = 0;
+      const MAX_MATCHES = 500;
+      return html
+        .split(/(<[^>]+>)/g)
+        .map((segment) => {
+          if (segment.startsWith('<') && segment.endsWith('>')) {
+            return segment;
+          }
+          if (matchCount >= MAX_MATCHES) return segment;
+          return segment.replace(regex, (match) => {
+            if (matchCount >= MAX_MATCHES) return match;
+            matchCount++;
+            return `<mark class="bg-amber-300/70 text-foreground rounded px-0.5">${match}</mark>`;
+          });
+        })
+        .join('');
+    },
+    [isSearchOpen, searchQuery],
+  );
 
   const themeClasses =
     themeMode === 'dark'
@@ -290,36 +325,20 @@ export function EpubAndSnapshotViewer({
     );
   }
 
-  if (error && mode === 'epub') {
+  if (error) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6 text-center">
         <p className="text-13 font-medium text-foreground">{error}</p>
         <Button
           variant="outline"
           size="sm"
-          onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}
+          onClick={() => window.open(sourceUrl || url, '_blank', 'noopener,noreferrer')}
         >
-          Download File Instead
+          {mode === 'snapshot' && sourceUrl ? 'Open Original Page' : 'Download File Instead'}
         </Button>
       </div>
     );
   }
-
-  const currentChapter = chapters[currentChapterIndex];
-
-  const highlightHtml = useCallback(
-    (html: string) => {
-      const q = searchQuery.trim();
-      if (!isSearchOpen || q.length < 2) return html;
-      const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const regex = new RegExp(`(>[^<]*?)(${escaped})`, 'gi');
-      return html.replace(
-        regex,
-        '$1<mark class="bg-amber-300/70 text-foreground rounded px-0.5">$2</mark>',
-      );
-    },
-    [isSearchOpen, searchQuery],
-  );
 
   return (
     <div

@@ -2,6 +2,33 @@
 
 import { create } from 'zustand';
 import { toast } from 'sonner';
+import { clearGroupMergeDraft } from '@/features/library/core/coordinator/curation.coordinator';
+
+export {
+  type TrashCommandOptions,
+  createTrashCommand,
+  createDeleteItemsCommand,
+  type RestoreCommandOptions,
+  createRestoreCommand,
+  type MoveItemsCommandOptions,
+  createMoveItemsCommand,
+  type ToggleStarCommandOptions,
+  createToggleStarCommand,
+  buildInverseMetadataPatch,
+  type UpdateItemMetadataCommandParams,
+  createUpdateItemMetadataCommand,
+  PRE_CONVERSION_BIBLIOGRAPHIC_SCALAR_KEYS,
+  buildPreConversionSnapshot,
+  type ConvertItemTypeCommandParams,
+  createConvertItemTypeCommand,
+  type MergeDuplicatesCommandParams,
+  createMergeDuplicatesCommand,
+  type BatchDetachCommandOptions,
+  createBatchDetachCommand,
+  type BatchTagToggleItemSnapshot,
+  type BatchTagToggleCommandOptions,
+  createBatchTagToggleCommand,
+} from './library-commands.catalog';
 
 /**
  * Universal Library Command Contract.
@@ -23,18 +50,22 @@ export interface LibraryCommandState {
   isUndoing: boolean;
   lastCommand: LibraryCommand | null;
   epoch: number;
+  currentScopeId: string | null;
 }
 
 export interface LibraryCommandActions {
   executeCommand: <T>(command: LibraryCommand<T>, options?: { silentToast?: boolean }) => Promise<T>;
+  pushExecutedCommand: <T>(command: LibraryCommand<T>, options?: { silentToast?: boolean }) => void;
   undo: (expectedCommandId?: string) => Promise<boolean>;
   undoById: (commandId: string) => Promise<boolean>;
   redo: (expectedCommandId?: string) => Promise<boolean>;
   clearHistory: () => void;
   clear: () => void;
+  setScope: (scopeId?: string | null) => void;
 }
 
 const MAX_HISTORY_LENGTH = 30;
+let activeExecutionsCount = 0;
 
 /**
  * LibraryCommandStore
@@ -47,6 +78,7 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
   isUndoing: false,
   lastCommand: null,
   epoch: 0,
+  currentScopeId: null,
 
   executeCommand: async <T>(command: LibraryCommand<T>, options: { silentToast?: boolean } = {}): Promise<T> => {
     const ensuredCommand: LibraryCommand<T> = command.id
@@ -55,44 +87,65 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
           ...command,
           id: `cmd-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         };
+    activeExecutionsCount += 1;
     set({ isExecuting: true });
     const startEpoch = get().epoch;
     try {
       const result = await ensuredCommand.execute();
 
+      activeExecutionsCount = Math.max(0, activeExecutionsCount - 1);
+      const stillExecuting = activeExecutionsCount > 0;
+
       if (get().epoch !== startEpoch) {
-        set({ isExecuting: false });
+        set({ isExecuting: stillExecuting });
         return result;
       }
 
       set((s) => ({
-        undoStack: [ensuredCommand, ...s.undoStack.slice(0, MAX_HISTORY_LENGTH - 1)],
+        undoStack: [
+          ensuredCommand,
+          ...s.undoStack.filter((c) => c.id !== ensuredCommand.id).slice(0, MAX_HISTORY_LENGTH - 1),
+        ],
         redoStack: [], // New command invalidates redo history
         lastCommand: ensuredCommand,
-        isExecuting: false,
+        isExecuting: stillExecuting,
       }));
 
       if (!options.silentToast) {
         const toastId = ensuredCommand.id.startsWith('trash-') ? 'item-delete' : `cmd-${ensuredCommand.id}`;
-        toast.success(ensuredCommand.description, {
-          id: toastId,
-          action: {
-            label: 'Undo',
-            onClick: () => {
-              if (get().epoch === startEpoch) {
-                void get().undoById(ensuredCommand.id);
-              }
-            },
-          },
-        });
+        toast.success(ensuredCommand.description, { id: toastId });
       }
 
       return result;
     } catch (err: unknown) {
-      set({ isExecuting: false });
+      activeExecutionsCount = Math.max(0, activeExecutionsCount - 1);
+      set({ isExecuting: activeExecutionsCount > 0 });
       const message = err instanceof Error ? err.message : 'Operation failed';
       toast.error(`Operation failed: ${message}`, { id: `cmd-err-${ensuredCommand.id}` });
       throw err;
+    }
+  },
+
+  pushExecutedCommand: <T>(command: LibraryCommand<T>, options: { silentToast?: boolean } = {}): void => {
+    const ensuredCommand: LibraryCommand<T> = command.id
+      ? command
+      : {
+          ...command,
+          id: `cmd-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        };
+    const startEpoch = get().epoch;
+    set((s) => ({
+      undoStack: [
+        ensuredCommand,
+        ...s.undoStack.filter((c) => c.id !== ensuredCommand.id).slice(0, MAX_HISTORY_LENGTH - 1),
+      ],
+      redoStack: [],
+      lastCommand: ensuredCommand,
+    }));
+
+    if (!options.silentToast) {
+      const toastId = ensuredCommand.id.startsWith('trash-') ? 'item-delete' : `cmd-${ensuredCommand.id}`;
+      toast.success(ensuredCommand.description, { id: toastId });
     }
   },
 
@@ -100,11 +153,10 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
     const { undoStack, isUndoing, isExecuting } = get();
     if (undoStack.length === 0 || isUndoing || isExecuting) return false;
 
-    const commandToUndo = undoStack[0];
+    const commandToUndo = expectedCommandId
+      ? undoStack.find((c) => c.id === expectedCommandId)
+      : undoStack[0];
     if (!commandToUndo) return false;
-    if (expectedCommandId && commandToUndo.id !== expectedCommandId) {
-      return false;
-    }
 
     const startEpoch = get().epoch;
     set({ isUndoing: true });
@@ -123,17 +175,7 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
         isUndoing: false,
       }));
 
-      toast.info(`Undone: ${commandToUndo.description}`, {
-        id: `undo-${commandToUndo.id}`,
-        action: {
-          label: 'Redo',
-          onClick: () => {
-            if (get().epoch === startEpoch) {
-              void get().redo(commandToUndo.id);
-            }
-          },
-        },
-      });
+      toast.info(`Undone: ${commandToUndo.description}`, { id: `undo-${commandToUndo.id}` });
 
       return true;
     } catch (err: unknown) {
@@ -179,17 +221,7 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
         isExecuting: false,
       }));
 
-      toast.success(`Redone: ${commandToRedo.description}`, {
-        id: `redo-${commandToRedo.id}`,
-        action: {
-          label: 'Undo',
-          onClick: () => {
-            if (get().epoch === startEpoch) {
-              void get().undoById(commandToRedo.id);
-            }
-          },
-        },
-      });
+      toast.success(`Redone: ${commandToRedo.description}`, { id: `redo-${commandToRedo.id}` });
 
       return true;
     } catch (err: unknown) {
@@ -201,21 +233,22 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
   },
 
   clearHistory: () => {
-    set((s) => ({
-      undoStack: [],
-      redoStack: [],
-      lastCommand: null,
-      epoch: s.epoch + 1,
-    }));
+    activeExecutionsCount = 0;
+    set((s) => ({ undoStack: [], redoStack: [], lastCommand: null, isExecuting: false, isUndoing: false, epoch: s.epoch + 1 }));
   },
 
+  setScope: (scopeId?: string | null) => {
+    const normalized = scopeId || 'user';
+    if (get().currentScopeId && get().currentScopeId !== normalized) {
+      get().clearHistory();
+      clearGroupMergeDraft();
+    }
+    set({ currentScopeId: normalized });
+  },
   clear: () => {
-    set((s) => ({
-      undoStack: [],
-      redoStack: [],
-      lastCommand: null,
-      epoch: s.epoch + 1,
-    }));
+    activeExecutionsCount = 0;
+    clearGroupMergeDraft();
+    set((s) => ({ undoStack: [], redoStack: [], lastCommand: null, isExecuting: false, isUndoing: false, epoch: s.epoch + 1 }));
   },
 }));
 
@@ -225,6 +258,7 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
  */
 export function useLibraryCommandManager() {
   const executeCommand = useLibraryCommandStore((s) => s.executeCommand);
+  const pushExecutedCommand = useLibraryCommandStore((s) => s.pushExecutedCommand);
   const undo = useLibraryCommandStore((s) => s.undo);
   const undoById = useLibraryCommandStore((s) => s.undoById);
   const redo = useLibraryCommandStore((s) => s.redo);
@@ -237,6 +271,7 @@ export function useLibraryCommandManager() {
 
   return {
     executeCommand,
+    pushExecutedCommand,
     undo,
     undoById,
     redo,
@@ -246,229 +281,5 @@ export function useLibraryCommandManager() {
     canRedo,
     isExecuting,
     isUndoing,
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Concrete Command Factories
-// ---------------------------------------------------------------------------
-
-export interface TrashCommandOptions {
-  itemIds: string[];
-  itemTitle?: string;
-  deleteMutation: { mutateAsync: (ids: string[]) => Promise<unknown> };
-  restoreMutation: { mutateAsync: (ids: string[]) => Promise<unknown> };
-  onExecuted?: () => void;
-  onUndone?: () => void;
-}
-
-export function createTrashCommand(options: TrashCommandOptions): LibraryCommand {
-  const count = options.itemIds.length;
-  const description =
-    count === 1
-      ? 'Item moved to trash'
-      : `Moved ${count} items to trash`;
-
-  return {
-    id: `trash-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-    description,
-    timestamp: Date.now(),
-    execute: async () => {
-      await options.deleteMutation.mutateAsync(options.itemIds);
-      options.onExecuted?.();
-    },
-    undo: async () => {
-      await options.restoreMutation.mutateAsync(options.itemIds);
-      options.onUndone?.();
-    },
-  };
-}
-
-export const createDeleteItemsCommand = createTrashCommand;
-
-export interface RestoreCommandOptions {
-  itemIds: string[];
-  itemTitle?: string;
-  restoreMutation: { mutateAsync: (ids: string[]) => Promise<unknown> };
-  deleteMutation: { mutateAsync: (ids: string[]) => Promise<unknown> };
-  onExecuted?: () => void;
-  onUndone?: () => void;
-}
-
-export function createRestoreCommand(options: RestoreCommandOptions): LibraryCommand {
-  const count = options.itemIds.length;
-  const description =
-    count === 1 && options.itemTitle
-      ? `Restored "${options.itemTitle}"`
-      : count === 1
-        ? 'Restored 1 item'
-        : `Restored ${count} items`;
-
-  return {
-    id: `restore-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-    description,
-    timestamp: Date.now(),
-    execute: async () => {
-      await options.restoreMutation.mutateAsync(options.itemIds);
-      options.onExecuted?.();
-    },
-    undo: async () => {
-      await options.deleteMutation.mutateAsync(options.itemIds);
-      options.onUndone?.();
-    },
-  };
-}
-
-export interface MoveItemsCommandOptions {
-  itemIds: string[];
-  sourceCollectionId: string | null;
-  targetCollectionId: string | null;
-  targetCollectionName?: string;
-  previousCollectionsByItem?: Map<string, string[]>;
-  onUndoMove?: () => Promise<void>;
-  detachMutation?: {
-    mutateAsync: (args: { collectionId: string; itemIds: string[] }) => Promise<unknown>;
-  };
-  assignMutation?: {
-    mutateAsync: (args: { collectionId: string; itemIds: string[] }) => Promise<unknown>;
-  };
-  moveMutation: {
-    mutateAsync: (args: {
-      targetCollectionId: string | null;
-      itemIds: string[];
-      sourceCollectionId?: string | null;
-      scopeId?: string;
-    }) => Promise<unknown>;
-  };
-  scopeId?: string;
-  onExecuted?: () => void;
-  onUndone?: () => void;
-}
-
-export function createMoveItemsCommand(options: MoveItemsCommandOptions): LibraryCommand {
-  const count = options.itemIds.length;
-  const destName = options.targetCollectionName || 'collection';
-  const description = `Moved ${count} ${count === 1 ? 'item' : 'items'} to ${destName}`;
-
-  return {
-    id: `move-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-    description,
-    timestamp: Date.now(),
-    execute: async () => {
-      await options.moveMutation.mutateAsync({
-        targetCollectionId: options.targetCollectionId,
-        itemIds: options.itemIds,
-        sourceCollectionId: options.sourceCollectionId,
-        scopeId: options.scopeId,
-      });
-      options.onExecuted?.();
-    },
-    undo: async () => {
-      if (options.onUndoMove) {
-        await options.onUndoMove();
-        options.onUndone?.();
-        return;
-      }
-
-      if (options.sourceCollectionId && options.sourceCollectionId !== 'unfiled') {
-        await options.moveMutation.mutateAsync({
-          targetCollectionId: options.sourceCollectionId,
-          itemIds: options.itemIds,
-          sourceCollectionId: options.targetCollectionId,
-          scopeId: options.scopeId,
-        });
-        options.onUndone?.();
-        return;
-      }
-
-      // When moved from "All Papers" (sourceCollectionId = null), restore exact previous collections
-      // or detach from targetCollectionId without stripping unrelated collection memberships via 'unfiled'.
-      if (options.previousCollectionsByItem && options.previousCollectionsByItem.size > 0) {
-        if (options.targetCollectionId && options.detachMutation) {
-          const itemsNotPreviouslyInTarget = options.itemIds.filter((id) => {
-            const prevCols = options.previousCollectionsByItem?.get(id) || [];
-            return !prevCols.includes(options.targetCollectionId!);
-          });
-          if (itemsNotPreviouslyInTarget.length > 0) {
-            await options.detachMutation.mutateAsync({
-              collectionId: options.targetCollectionId,
-              itemIds: itemsNotPreviouslyInTarget,
-            });
-          }
-        }
-        if (options.assignMutation) {
-          const collectionToItems = new Map<string, string[]>();
-          for (const [id, prevCols] of options.previousCollectionsByItem.entries()) {
-            for (const colId of prevCols) {
-              if (!colId || colId === options.targetCollectionId) continue;
-              const list = collectionToItems.get(colId) || [];
-              list.push(id);
-              collectionToItems.set(colId, list);
-            }
-          }
-          for (const [colId, ids] of collectionToItems.entries()) {
-            await options.assignMutation.mutateAsync({
-              collectionId: colId,
-              itemIds: ids,
-            });
-          }
-        }
-        options.onUndone?.();
-        return;
-      }
-
-      if (options.targetCollectionId && options.detachMutation) {
-        await options.detachMutation.mutateAsync({
-          collectionId: options.targetCollectionId,
-          itemIds: options.itemIds,
-        });
-        options.onUndone?.();
-        return;
-      }
-
-      await options.moveMutation.mutateAsync({
-        targetCollectionId: options.sourceCollectionId,
-        itemIds: options.itemIds,
-        sourceCollectionId: options.targetCollectionId,
-        scopeId: options.scopeId,
-      });
-      options.onUndone?.();
-    },
-  };
-}
-
-export interface ToggleStarCommandOptions {
-  itemId: string;
-  itemTitle?: string;
-  newStarred: boolean;
-  toggleStarMutation: {
-    mutateAsync: (args: { id: string; isStarred: boolean }) => Promise<unknown>;
-  };
-  onExecuted?: () => void;
-  onUndone?: () => void;
-}
-
-export function createToggleStarCommand(options: ToggleStarCommandOptions): LibraryCommand {
-  const actionText = options.newStarred ? 'Starred' : 'Unstarred';
-  const description = options.itemTitle ? `${actionText} "${options.itemTitle}"` : actionText;
-
-  return {
-    id: `star-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-    description,
-    timestamp: Date.now(),
-    execute: async () => {
-      await options.toggleStarMutation.mutateAsync({
-        id: options.itemId,
-        isStarred: options.newStarred,
-      });
-      options.onExecuted?.();
-    },
-    undo: async () => {
-      await options.toggleStarMutation.mutateAsync({
-        id: options.itemId,
-        isStarred: !options.newStarred,
-      });
-      options.onUndone?.();
-    },
   };
 }

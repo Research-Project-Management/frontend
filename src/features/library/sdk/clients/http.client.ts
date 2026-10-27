@@ -283,7 +283,13 @@ export function sanitizeItemPayload(data: Record<string, unknown>): Record<strin
   return cleaned;
 }
 
-const inFlightPdfBlobRequests = new Map<string, Promise<Blob>>();
+interface InFlightPdfBlobEntry {
+  promise: Promise<Blob>;
+  controller: AbortController;
+  subscribers: number;
+}
+
+const inFlightPdfBlobRequests = new Map<string, InFlightPdfBlobEntry>();
 const MAX_CACHED_PDF_BLOBS = 3;
 const MAX_CACHED_PDF_BLOB_BYTES = 30 * 1024 * 1024;
 const PDF_BLOB_CACHE_TTL_MS = 2 * 60 * 1000;
@@ -320,13 +326,19 @@ function setCachedPdfBlob(url: string, blob: Blob): void {
   pdfBlobLruCache.set(url, { blob, cachedAt: Date.now() });
 }
 
-function awaitWithSignal<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+function awaitWithSignal<T>(
+  promise: Promise<T>,
+  signal?: AbortSignal,
+  onCallerAbort?: () => void,
+): Promise<T> {
   if (!signal) return promise;
   if (signal.aborted) {
+    onCallerAbort?.();
     return Promise.reject(new DOMException('The operation was aborted.', 'AbortError'));
   }
   return new Promise<T>((resolve, reject) => {
     const onAbort = () => {
+      onCallerAbort?.();
       reject(new DOMException('The operation was aborted.', 'AbortError'));
     };
     signal.addEventListener('abort', onAbort, { once: true });
@@ -343,7 +355,11 @@ function awaitWithSignal<T>(promise: Promise<T>, signal?: AbortSignal): Promise<
   });
 }
 
-export const fetchPdfBlob = async (url: string, signal?: AbortSignal): Promise<Blob> => {
+export const fetchPdfBlob = async (
+  url: string,
+  signal?: AbortSignal,
+  options?: { allowHtml?: boolean },
+): Promise<Blob> => {
   if (!url || typeof url !== 'string') {
     throw new Error('Invalid document URL provided.');
   }
@@ -360,9 +376,16 @@ export const fetchPdfBlob = async (url: string, signal?: AbortSignal): Promise<B
 
   const existingInFlight = inFlightPdfBlobRequests.get(targetUrl);
   if (existingInFlight) {
-    return awaitWithSignal(existingInFlight, signal);
+    existingInFlight.subscribers += 1;
+    return awaitWithSignal(existingInFlight.promise, signal, () => {
+      existingInFlight.subscribers = Math.max(0, existingInFlight.subscribers - 1);
+      if (existingInFlight.subscribers === 0) {
+        existingInFlight.controller.abort();
+      }
+    });
   }
 
+  const fetchTimeoutController = new AbortController();
   const executeFetch = async (): Promise<Blob> => {
     let normalizedTarget = targetUrl.trim();
     // Special handling for arXiv URLs: /pdf/<id>.pdf redirects to /pdf/<id> which causes CORS in browsers
@@ -417,18 +440,30 @@ export const fetchPdfBlob = async (url: string, signal?: AbortSignal): Promise<B
     }
 
     const headers: Record<string, string> = {};
-    const token = api.getAuthToken();
+    const token =
+      typeof api.getAuthToken === 'function'
+        ? api.getAuthToken()
+        : getAuthToken();
     if (token && isTrustedOrigin && !isLocalStatic) {
       headers.Authorization = `Bearer ${token}`;
     }
 
+    const fetchTimeoutId = setTimeout(
+      () => fetchTimeoutController.abort(),
+      60_000,
+    );
     let response: Response;
     try {
       response = await fetch(resolvedUrl, {
         credentials: isTrustedOrigin && !isLocalStatic ? 'include' : 'same-origin',
         headers,
+        signal: fetchTimeoutController.signal,
       });
     } catch (networkErr: unknown) {
+      clearTimeout(fetchTimeoutId);
+      if (networkErr instanceof DOMException && networkErr.name === 'AbortError') {
+        throw networkErr;
+      }
       const msg = networkErr instanceof Error ? networkErr.message : String(networkErr);
       if (resolvedUrl.startsWith('http://') || resolvedUrl.startsWith('https://')) {
         throw new Error(
@@ -437,6 +472,7 @@ export const fetchPdfBlob = async (url: string, signal?: AbortSignal): Promise<B
       }
       throw new Error(`Network error while downloading PDF: ${msg}`);
     }
+    clearTimeout(fetchTimeoutId);
 
     if (!response.ok) {
       if (response.status === 401) throw new Error('Unauthorized: Session expired or invalid authentication.');
@@ -446,7 +482,8 @@ export const fetchPdfBlob = async (url: string, signal?: AbortSignal): Promise<B
     }
 
     const contentType = response.headers.get('content-type') || '';
-    if (contentType.includes('application/json') || contentType.includes('text/html')) {
+    const isRejectedHtml = contentType.includes('text/html') && !options?.allowHtml;
+    if (contentType.includes('application/json') || isRejectedHtml) {
       let errorDetail = '';
       try {
         const text = typeof response.text === 'function' ? await response.text() : '';
@@ -474,11 +511,22 @@ export const fetchPdfBlob = async (url: string, signal?: AbortSignal): Promise<B
     return blob;
   };
 
+  const entry: InFlightPdfBlobEntry = {
+    promise: Promise.resolve(null as unknown as Blob),
+    controller: fetchTimeoutController,
+    subscribers: 1,
+  };
   const promise = executeFetch().finally(() => {
     inFlightPdfBlobRequests.delete(targetUrl);
   });
-  inFlightPdfBlobRequests.set(targetUrl, promise);
-  return awaitWithSignal(promise, signal);
+  entry.promise = promise;
+  inFlightPdfBlobRequests.set(targetUrl, entry);
+  return awaitWithSignal(promise, signal, () => {
+    entry.subscribers = Math.max(0, entry.subscribers - 1);
+    if (entry.subscribers === 0) {
+      entry.controller.abort();
+    }
+  });
 };
 
 export function toIngestionSubmission(payload: UnifiedIngestionPayload): Record<string, unknown> {

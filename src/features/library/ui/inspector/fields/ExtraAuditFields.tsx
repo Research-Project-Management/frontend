@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import type { Item } from "@/features/library/domain/types/library.types";
 import {
+  buildExtraMetadataPatch,
   formatAndSanitizeExtraMetadata,
   isValidValue,
 } from "@/features/library/domain/metadata";
@@ -47,10 +48,7 @@ export function ExtraAuditFields({
 
   const handleExtraSave = (savedValue: string) => {
     if (!item) return;
-    onUpdateItem?.({
-      ...(item.itemType ? { itemType: item.itemType } : {}),
-      extra: savedValue || undefined,
-    });
+    onUpdateItem?.(buildExtraMetadataPatch(item, savedValue));
   };
 
   if (!item) return null;
@@ -67,7 +65,7 @@ export function ExtraAuditFields({
             Extra
           </span>
           <InlineTextarea
-            itemKey={item.id}
+            itemKey={`${item.id}-extra`}
             value={formattedExtraMetadata}
             ariaLabel="Extra"
             rows={Math.min(

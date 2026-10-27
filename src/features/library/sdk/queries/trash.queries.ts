@@ -13,6 +13,7 @@ import {
 import {
   chunkUniqueIds,
   invalidateLibraryCatalogDependencies,
+  removeItemsFromScopeCaches,
 } from './cache-patcher';
 
 export function useTrash(
@@ -144,10 +145,15 @@ export function useDeleteLibraryItemsMutation(scopeId?: string) {
       return rawIds;
     },
     onSuccess: (ids) => {
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
-      queryClient.invalidateQueries({ queryKey: itemKeys.trash(effectiveScope) });
-      queryClient.invalidateQueries({ queryKey: tagKeys.list(effectiveScope) });
-      invalidateCollections(queryClient, effectiveScope);
+      removeItemsFromScopeCaches(queryClient, effectiveScope, ids);
+      void invalidateLibraryCatalogDependencies(queryClient, effectiveScope, {
+        itemsList: true,
+        collections: true,
+        tags: true,
+        counts: true,
+        smartCollections: true,
+      });
+      void queryClient.invalidateQueries({ queryKey: itemKeys.trash(effectiveScope) });
       toast.success(
         ids.length === 1 ? 'Item moved to trash' : `Moved ${ids.length} items to trash`,
         { id: 'item-delete' },
@@ -181,10 +187,14 @@ export function useBatchRestoreItemsMutation(scopeId?: string) {
       return rawIds;
     },
     onSuccess: (ids) => {
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
-      queryClient.invalidateQueries({ queryKey: itemKeys.trash(effectiveScope) });
-      queryClient.invalidateQueries({ queryKey: tagKeys.list(effectiveScope) });
-      invalidateCollections(queryClient, effectiveScope);
+      void invalidateLibraryCatalogDependencies(queryClient, effectiveScope, {
+        itemsList: true,
+        collections: true,
+        tags: true,
+        counts: true,
+        smartCollections: true,
+      });
+      void queryClient.invalidateQueries({ queryKey: itemKeys.trash(effectiveScope) });
       toast.success(
         `Restored ${ids.length} ${ids.length === 1 ? 'item' : 'items'}`,
         { id: 'item-restore' },
@@ -216,10 +226,15 @@ export function useBatchPurgeItemsMutation(scopeId?: string) {
       return rawIds;
     },
     onSuccess: (ids) => {
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
-      queryClient.invalidateQueries({ queryKey: itemKeys.trash(effectiveScope) });
-      queryClient.invalidateQueries({ queryKey: tagKeys.list(effectiveScope) });
-      invalidateCollections(queryClient, effectiveScope);
+      removeItemsFromScopeCaches(queryClient, effectiveScope, ids);
+      void invalidateLibraryCatalogDependencies(queryClient, effectiveScope, {
+        itemsList: true,
+        collections: true,
+        tags: true,
+        counts: true,
+        smartCollections: true,
+      });
+      void queryClient.invalidateQueries({ queryKey: itemKeys.trash(effectiveScope) });
       toast.success(
         `Permanently deleted ${ids.length} ${ids.length === 1 ? 'item' : 'items'}`,
         { id: 'item-purge' },

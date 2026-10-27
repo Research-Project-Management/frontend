@@ -1,134 +1,47 @@
 import type { Item } from './types/library.types';
-import { ALL_SCHEMA_FIELD_KEYS } from './types/item-fields.constants';
+import { normalizeCanonicalItemType } from './types/item-types.types';
 import { normalizeAuthors } from './creators';
 import {
   isValidValue,
-  cleanValue,
   stripLatexMarkup,
-  cleanAbstractText,
-  normalizeTags,
-  normalizeNotes,
-  cleanFilenameToTitle,
 } from './metadata-sanitizers';
 import {
   getItemDisplayTitle,
-  getPublicationVenue,
   getItemDisplayDate,
-  isAllowedItemExtraKey,
-  parseItemExtraField,
 } from './metadata-extra';
+import {
+  ALL_SCHEMA_PROMOTE_KEYS,
+  CONTAINER_TITLE_CANDIDATE_KEYS,
+  SUBTYPE_CANDIDATE_KEYS,
+  PLACE_CANDIDATE_KEYS,
+  PUBLISHER_CANDIDATE_KEYS,
+  DATE_CANDIDATE_KEYS,
+  CANONICAL_SCALAR_PROJECTIONS,
+  EMPTY_BACKEND_ITEM_DEFAULTS,
+  pickFirstValidField,
+  mergeRawItemPartials,
+  hasExplicitUserStateInPayload,
+  getAssignedCollectionIds,
+  type ProvisionalUploadItemInput,
+  createProvisionalUploadItem,
+} from './metadata-mapper.helpers';
 
-/**
-/**
- * All Zotero Schema v42 field keys promoted from `extraFields` / `metadata` onto top-level `Item`
- * during `mapBackendItem`. Automatically derived from `ALL_SCHEMA_FIELD_KEYS`.
- */
-export const ALL_SCHEMA_PROMOTE_KEYS: readonly string[] = Array.from(
-  ALL_SCHEMA_FIELD_KEYS,
-).filter((k) => k !== "title" && k !== "extra");
-
-const ALL_SCHEMA_PROMOTE_KEY_SET = new Set<string>(ALL_SCHEMA_PROMOTE_KEYS);
-
-const PUBLISHER_CANDIDATE_KEYS = [
-  "publisher",
-  "university",
-  "institution",
-  "issuingAuthority",
-  "authority",
-  "court",
-  "legislativeBody",
-  "company",
-  "organization",
-  "repository",
-  "distributor",
-  "studio",
-  "network",
-  "label",
-] as const;
-
-const DATE_CANDIDATE_KEYS = [
-  "publicationDate",
-  "date",
-  "issueDate",
-  "dateDecided",
-  "dateEnacted",
-  "filingDate",
-] as const;
-
-function pickFirstValidField(
-  rec: Record<string, unknown>,
-  ef: Record<string, unknown>,
-  keys: readonly string[],
-): unknown {
-  for (const k of keys) {
-    if (isValidValue(rec[k])) return rec[k];
-  }
-  for (const k of keys) {
-    if (isValidValue(ef[k])) return ef[k];
-  }
-  return undefined;
-}
-
-/**
- * Step 1 of `mapBackendItem`: Merges `raw.metadata`, `raw.extraFields`, and top-level `raw`
- * into a single normalized partial record while promoting all Zotero Schema v42 keys.
- */
-function mergeRawItemPartials(rec: Record<string, unknown>): {
-  mapped: Record<string, unknown>;
-  ef: Record<string, unknown>;
-} {
-  const rawMetadata =
-    rec.metadata &&
-    typeof rec.metadata === "object" &&
-    !Array.isArray(rec.metadata)
-      ? (rec.metadata as Record<string, unknown>)
-      : {};
-  const rawExtraFields =
-    rec.extraFields &&
-    typeof rec.extraFields === "object" &&
-    !Array.isArray(rec.extraFields)
-      ? (rec.extraFields as Record<string, unknown>)
-      : {};
-  const ef: Record<string, unknown> = { ...rawMetadata, ...rawExtraFields };
-  const mapped: Record<string, unknown> = { ...rawMetadata, ...rec };
-
-  const efKeys = Object.keys(ef);
-  if (efKeys.length > 0) {
-    mapped.extraFields = { ...ef };
-    for (const k of efKeys) {
-      if (
-        ALL_SCHEMA_PROMOTE_KEY_SET.has(k) &&
-        !isValidValue(mapped[k]) &&
-        isValidValue(ef[k])
-      ) {
-        mapped[k] = ef[k];
-      }
-    }
-  }
-
-  return { mapped, ef };
-}
-
-const CANONICAL_SCALAR_PROJECTIONS: ReadonlyArray<
-  readonly [string, readonly string[]]
-> = [
-  ["abstractNote", ["abstractNote", "abstract"]],
-  ["publicationTitle", ["publicationTitle", "journal"]],
-  ["journalAbbreviation", ["journalAbbreviation", "journalAbbr"]],
-  ["doi", ["doi", "DOI"]],
-  ["issn", ["issn", "ISSN"]],
-  ["isbn", ["isbn", "ISBN"]],
-  ["pmid", ["pmid", "PMID"]],
-  ["pmcid", ["pmcid", "PMCID"]],
-  ["arxivId", ["arxivId", "archiveID", "archiveId"]],
-  ["license", ["license", "rights"]],
-  ["accessDate", ["accessDate", "accessedAt"]],
-  ["citationKey", ["citationKey", "key"]],
-  ["retractionReason", ["retractionReason", "reason"]],
-  ["itemType", ["itemType", "type"]],
-  ["volume", ["volume", "reporterVolume", "codeVolume"]],
-  ["pages", ["pages", "firstPage", "codePages"]],
-];
+export {
+  ALL_SCHEMA_PROMOTE_KEYS,
+  CONTAINER_TITLE_CANDIDATE_KEYS,
+  SUBTYPE_CANDIDATE_KEYS,
+  PLACE_CANDIDATE_KEYS,
+  PUBLISHER_CANDIDATE_KEYS,
+  DATE_CANDIDATE_KEYS,
+  CANONICAL_SCALAR_PROJECTIONS,
+  EMPTY_BACKEND_ITEM_DEFAULTS,
+  pickFirstValidField,
+  mergeRawItemPartials,
+  hasExplicitUserStateInPayload,
+  getAssignedCollectionIds,
+  type ProvisionalUploadItemInput,
+  createProvisionalUploadItem,
+};
 
 /**
  * Step 2 of `mapBackendItem`: Projects Zotero Schema v42 base fields and legacy backend aliases
@@ -141,18 +54,43 @@ function projectCanonicalBaseFields(
 ): void {
   mapped.title =
     getItemDisplayTitle(mapped) ||
-    (typeof rec.title === "string" ? rec.title : "");
+    (typeof rec.title === 'string' ? rec.title : '');
 
-  const normalizedAuthors = normalizeAuthors(
-    rec.authors as unknown[],
-    (rec.creators || ef.creators) as Array<{
-      firstName?: string;
-      lastName?: string;
-      name?: string;
-      fullName?: string;
-      creatorType?: string;
-    }>,
-  );
+  const hasExplicitEmptyCreators =
+    (Array.isArray(rec.creators) &&
+      rec.creators.length === 0 &&
+      (!Array.isArray(rec.authors) || rec.authors.length === 0) &&
+      (!Array.isArray(rec.contributors) ||
+        rec.contributors.length === 0 ||
+        ef.creators === null)) ||
+    ef.creators === null;
+
+  const normalizedAuthors = hasExplicitEmptyCreators
+    ? []
+    : normalizeAuthors(
+        rec.authors as unknown[],
+        (Array.isArray(rec.creators) && rec.creators.length > 0
+          ? rec.creators
+          : ef.creators) as Array<{
+          firstName?: string;
+          lastName?: string;
+          name?: string;
+          fullName?: string;
+          creatorType?: string;
+        }>,
+        (Array.isArray(rec.creators) &&
+        rec.creators.length === 0 &&
+        Array.isArray(rec.authors) &&
+        rec.authors.length === 0
+          ? undefined
+          : rec.contributors) as Array<{
+          firstName?: string;
+          lastName?: string;
+          name?: string;
+          fullName?: string;
+          creatorType?: string;
+        }>,
+      );
   if (
     normalizedAuthors.length > 0 &&
     (!Array.isArray(rec.authors) || rec.authors.length === 0)
@@ -160,36 +98,60 @@ function projectCanonicalBaseFields(
     mapped.authors = normalizedAuthors;
   }
 
-  const rawCreators = (rec.creators || ef.creators) as unknown;
+  const rawCreators = hasExplicitEmptyCreators
+    ? []
+    : ((Array.isArray(rec.creators) && rec.creators.length > 0
+        ? rec.creators
+        : ef.creators || rec.contributors) as unknown);
   if (Array.isArray(rawCreators)) {
     mapped.creators = rawCreators.map((c, idx) => {
-      if (!c || typeof c !== "object") return c;
+      if (!c || typeof c !== 'object') return c;
       const cr = c as Record<string, unknown>;
+      const nested =
+        cr.contributor && typeof cr.contributor === 'object'
+          ? (cr.contributor as Record<string, unknown>)
+          : undefined;
       const firstName =
-        typeof cr.firstName === "string"
+        typeof cr.firstName === 'string'
           ? cr.firstName
-          : typeof cr.given === "string"
-            ? cr.given
-            : undefined;
+          : typeof nested?.firstName === 'string'
+            ? nested.firstName
+            : typeof cr.given === 'string'
+              ? cr.given
+              : typeof nested?.given === 'string'
+                ? nested.given
+                : undefined;
       const lastName =
-        typeof cr.lastName === "string"
+        typeof cr.lastName === 'string'
           ? cr.lastName
-          : typeof cr.family === "string"
-            ? cr.family
-            : undefined;
+          : typeof nested?.lastName === 'string'
+            ? nested.lastName
+            : typeof cr.family === 'string'
+              ? cr.family
+              : typeof nested?.family === 'string'
+                ? nested.family
+                : undefined;
       const fullName =
-        typeof cr.fullName === "string" && cr.fullName.trim()
+        typeof cr.fullName === 'string' && cr.fullName.trim()
           ? cr.fullName.trim()
-          : typeof cr.name === "string" && cr.name.trim()
-            ? cr.name.trim()
-            : [firstName, lastName].filter(Boolean).join(" ").trim();
+          : typeof nested?.fullName === 'string' && nested.fullName.trim()
+            ? nested.fullName.trim()
+            : typeof cr.name === 'string' && cr.name.trim()
+              ? cr.name.trim()
+              : typeof nested?.name === 'string' && nested.name.trim()
+                ? nested.name.trim()
+                : [firstName, lastName].filter(Boolean).join(' ').trim();
       return {
         ...cr,
-        orderIndex: typeof cr.orderIndex === "number" ? cr.orderIndex : idx,
+        ...(firstName !== undefined ? { firstName } : {}),
+        ...(lastName !== undefined ? { lastName } : {}),
+        orderIndex: typeof cr.orderIndex === 'number' ? cr.orderIndex : idx,
         creatorType:
-          typeof cr.creatorType === "string" && cr.creatorType.trim()
+          typeof cr.creatorType === 'string' && cr.creatorType.trim()
             ? cr.creatorType.trim()
-            : "author",
+            : typeof cr.role === 'string' && cr.role.trim()
+              ? cr.role.trim().toLowerCase()
+              : 'author',
         fullName,
       };
     });
@@ -204,10 +166,53 @@ function projectCanonicalBaseFields(
     }
   }
 
+  const resolvedItemTypeLower =
+    typeof mapped.itemType === 'string'
+      ? mapped.itemType.trim().toLowerCase()
+      : '';
+  const canonicalItemTypeLower = resolvedItemTypeLower
+    ? normalizeCanonicalItemType(resolvedItemTypeLower).toLowerCase()
+    : '';
+  const subtypeCandidates = [
+    ef.type,
+    rec.type,
+    ...SUBTYPE_CANDIDATE_KEYS.filter((k) => k !== 'type').flatMap((k) => [
+      rec[k],
+      ef[k],
+    ]),
+  ];
+  let resolvedSubtype: string | undefined;
+  for (const cand of subtypeCandidates) {
+    if (typeof cand === 'string' && isValidValue(cand)) {
+      const trimmed = cand.trim();
+      const lower = trimmed.toLowerCase();
+      if (
+        lower &&
+        lower !== resolvedItemTypeLower &&
+        lower !== canonicalItemTypeLower
+      ) {
+        resolvedSubtype = trimmed;
+        break;
+      }
+    }
+  }
+  if (resolvedSubtype) {
+    mapped.type = resolvedSubtype;
+    if (mapped.extraFields && typeof mapped.extraFields === 'object') {
+      (mapped.extraFields as Record<string, unknown>).type = resolvedSubtype;
+    }
+  } else if (
+    typeof mapped.type === 'string' &&
+    (mapped.type.trim().toLowerCase() === resolvedItemTypeLower ||
+      mapped.type.trim().toLowerCase() === canonicalItemTypeLower)
+  ) {
+    delete mapped.type;
+  }
+
   if (!isValidValue(mapped.numberOfPages)) {
     const numPagesVal = pickFirstValidField(rec, ef, [
-      "numberOfPages",
-      "numPages",
+      'numberOfPages',
+      'numPages',
     ]);
     if (isValidValue(numPagesVal)) {
       mapped.numberOfPages = numPagesVal;
@@ -225,7 +230,6 @@ function projectCanonicalBaseFields(
     }
   }
 
-  // Normalize tags/keywords from string[], { name: string }[], { tag: string }[], or itemTags
   const rawTagCandidates = [
     ...(Array.isArray(rec.tags) ? rec.tags : []),
     ...(Array.isArray(rec.itemTags) ? rec.itemTags : []),
@@ -235,24 +239,24 @@ function projectCanonicalBaseFields(
     const seenTags = new Set<string>();
     const cleanTags: string[] = [];
     for (const entry of rawTagCandidates) {
-      let tagName = "";
-      if (typeof entry === "string") {
+      let tagName = '';
+      if (typeof entry === 'string') {
         tagName = entry.trim();
-      } else if (entry && typeof entry === "object") {
+      } else if (entry && typeof entry === 'object') {
         const obj = entry as {
           name?: unknown;
           tag?: unknown;
         };
-        if (typeof obj.name === "string") {
+        if (typeof obj.name === 'string') {
           tagName = obj.name.trim();
-        } else if (typeof obj.tag === "string") {
+        } else if (typeof obj.tag === 'string') {
           tagName = obj.tag.trim();
         } else if (
           obj.tag &&
-          typeof obj.tag === "object" &&
-          typeof (obj.tag as { name?: unknown }).name === "string"
+          typeof obj.tag === 'object' &&
+          typeof (obj.tag as { name?: unknown }).name === 'string'
         ) {
-          tagName = ((obj.tag as { name: string }).name || "").trim();
+          tagName = ((obj.tag as { name: string }).name || '').trim();
         }
       }
       if (tagName) {
@@ -273,7 +277,7 @@ function projectCanonicalBaseFields(
     mapped.collectionIds.length === 0
   ) {
     const derivedCollectionIds = new Set<string>();
-    if (typeof rec.collectionId === "string" && rec.collectionId.trim()) {
+    if (typeof rec.collectionId === 'string' && rec.collectionId.trim()) {
       derivedCollectionIds.add(rec.collectionId.trim());
     }
     const rawCols = Array.isArray(mapped.collections)
@@ -282,23 +286,23 @@ function projectCanonicalBaseFields(
         ? rec.collections
         : [];
     for (const c of rawCols) {
-      if (c && typeof c === "object") {
+      if (c && typeof c === 'object') {
         const obj = c as { id?: unknown; collectionId?: unknown };
         const cid = obj.collectionId ?? obj.id;
-        if (typeof cid === "string" && cid.trim()) {
+        if (typeof cid === 'string' && cid.trim()) {
           derivedCollectionIds.add(cid.trim());
         }
       }
     }
     if (Array.isArray(rec.collectionItems)) {
       for (const ci of rec.collectionItems) {
-        if (ci && typeof ci === "object") {
+        if (ci && typeof ci === 'object') {
           const obj = ci as {
             collectionId?: unknown;
             collection?: { id?: unknown };
           };
           const cid = obj.collectionId ?? obj.collection?.id;
-          if (typeof cid === "string" && cid.trim()) {
+          if (typeof cid === 'string' && cid.trim()) {
             derivedCollectionIds.add(cid.trim());
           }
         }
@@ -310,11 +314,11 @@ function projectCanonicalBaseFields(
   }
   const retractionDetails =
     rec.retractionDetails &&
-    typeof rec.retractionDetails === "object" &&
+    typeof rec.retractionDetails === 'object' &&
     !Array.isArray(rec.retractionDetails)
       ? (rec.retractionDetails as Record<string, unknown>)
       : ef.retractionDetails &&
-          typeof ef.retractionDetails === "object" &&
+          typeof ef.retractionDetails === 'object' &&
           !Array.isArray(ef.retractionDetails)
         ? (ef.retractionDetails as Record<string, unknown>)
         : undefined;
@@ -322,20 +326,24 @@ function projectCanonicalBaseFields(
     (retractionDetails?.noticeUrl as string | undefined) ||
     (rec.noticeUrl as string | undefined) ||
     (ef.noticeUrl as string | undefined);
-  if (typeof resolvedNoticeUrl === "string" && resolvedNoticeUrl.trim()) {
+  if (typeof resolvedNoticeUrl === 'string' && resolvedNoticeUrl.trim()) {
     mapped.noticeUrl = resolvedNoticeUrl.trim();
   }
-  if (mapped.isFavorite === undefined && typeof rec.isStarred === "boolean") {
+  if (mapped.isFavorite === undefined && typeof rec.isStarred === 'boolean') {
     mapped.isFavorite = rec.isStarred;
   }
-  if (mapped.notesCount === undefined && typeof rec.noteCount === "number") {
+  if (mapped.notesCount === undefined && typeof rec.noteCount === 'number') {
     mapped.notesCount = rec.noteCount;
   }
 
   if (!isValidValue(mapped.publicationTitle)) {
-    const resolvedVenue = getPublicationVenue(mapped);
-    if (isValidValue(resolvedVenue)) {
-      mapped.publicationTitle = resolvedVenue;
+    const containerTitle = pickFirstValidField(
+      rec,
+      ef,
+      CONTAINER_TITLE_CANDIDATE_KEYS,
+    );
+    if (isValidValue(containerTitle)) {
+      mapped.publicationTitle = stripLatexMarkup(String(containerTitle).trim());
     }
   }
 
@@ -349,9 +357,9 @@ function projectCanonicalBaseFields(
   if (!isValidValue(rec.year)) {
     const displayDate = getItemDisplayDate(mapped);
     const resolvedYear =
-      typeof displayDate === "number"
+      typeof displayDate === 'number'
         ? displayDate
-        : typeof rec.year === "number" && rec.year > 0
+        : typeof rec.year === 'number' && rec.year > 0
           ? rec.year
           : undefined;
     if (resolvedYear !== undefined) {
@@ -369,73 +377,12 @@ function projectCanonicalBaseFields(
   }
 
   if (!isValidValue(rec.place) && !isValidValue(ef.place)) {
-    const fallbackPlace = pickFirstValidField(rec, ef, [
-      "repositoryLocation",
-      "country",
-    ]);
+    const fallbackPlace = pickFirstValidField(rec, ef, PLACE_CANDIDATE_KEYS);
     if (isValidValue(fallbackPlace)) {
       mapped.place = String(fallbackPlace).trim();
     }
   }
 }
-
-const EMPTY_BACKEND_ITEM_DEFAULTS: Item = {
-  id: "",
-  title: "Untitled",
-  itemType: "journalArticle",
-  authors: [],
-  editors: [],
-  creators: [],
-  contributors: [],
-  year: 0,
-  publicationTitle: "",
-  journalAbbreviation: "",
-  publisher: "",
-  volume: "",
-  issue: "",
-  pages: "",
-  isbn: "",
-  issn: "",
-  doi: "",
-  url: "",
-  abstractNote: "",
-  keywords: [],
-  language: "",
-  shortTitle: "",
-  license: "",
-  citationKey: "",
-  extra: "",
-  extraFields: {},
-  fields: {},
-  tags: [],
-  itemTags: [],
-  collections: [],
-  collectionIds: [],
-  attachments: [],
-  notes: [],
-  fileUrl: "",
-  filename: "",
-  mimeType: "",
-  size: 0,
-  hasFile: false,
-  fileCount: 0,
-  notesCount: 0,
-  noteCount: 0,
-  attachmentCount: 0,
-  isFavorite: false,
-  isStarred: false,
-  isRead: false,
-  readStatus: "unread",
-  rating: 0,
-  isRetracted: false,
-  isMyPublication: false,
-  crossrefEnriched: false,
-  identifiers: [],
-  version: 1,
-  isDeleted: false,
-  createdAt: "1970-01-01T00:00:00.000Z",
-  updatedAt: "1970-01-01T00:00:00.000Z",
-};
 
 /**
  * Declaratively normalizes a raw backend item or Zotero Schema v42 record into a canonical UI `Item`,
@@ -444,12 +391,39 @@ const EMPTY_BACKEND_ITEM_DEFAULTS: Item = {
 export function mapBackendItem(
   raw?: Partial<Item> | Record<string, unknown> | null,
 ): Item {
-  if (!raw || typeof raw !== "object") {
+  if (!raw || typeof raw !== 'object') {
     return { ...EMPTY_BACKEND_ITEM_DEFAULTS };
   }
 
   const rec = raw as Record<string, unknown>;
+  const hasExplicitUserState = hasExplicitUserStateInPayload(rec);
+  const rawStates = Array.isArray(rec.states)
+    ? rec.states
+    : Array.isArray(rec.userStates)
+      ? rec.userStates
+      : undefined;
+  const firstState =
+    rawStates && rawStates.length > 0 && rawStates[0] && typeof rawStates[0] === 'object'
+      ? (rawStates[0] as Record<string, unknown>)
+      : undefined;
+
   const { mapped, ef } = mergeRawItemPartials(rec);
+  if (firstState) {
+    if (mapped.isStarred === undefined && typeof firstState.isStarred === 'boolean') {
+      mapped.isStarred = firstState.isStarred;
+      mapped.isFavorite = firstState.isStarred;
+    }
+    if (mapped.readStatus === undefined && typeof firstState.readStatus === 'string') {
+      mapped.readStatus = firstState.readStatus;
+      mapped.isRead = firstState.readStatus === 'completed';
+    }
+    if (mapped.rating === undefined && typeof firstState.rating === 'number') {
+      mapped.rating = firstState.rating;
+    }
+    if (mapped.lastReadAt === undefined && firstState.lastReadAt !== undefined) {
+      mapped.lastReadAt = firstState.lastReadAt;
+    }
+  }
   projectCanonicalBaseFields(mapped, rec, ef);
 
   const normalizedCollections = Array.isArray(mapped.collections)
@@ -470,106 +444,65 @@ export function mapBackendItem(
     (rec.noticeUrl as string | undefined) ||
     (mapped.noticeUrl as string | undefined);
 
-  return {
+  const result: Item = {
     ...EMPTY_BACKEND_ITEM_DEFAULTS,
     ...(mapped as Partial<Item>),
     collectionIds: normalizedCollectionIds,
     ...(noticeUrl ? { noticeUrl } : {}),
     createdAt:
-      typeof mapped.createdAt === "string" && mapped.createdAt.trim()
+      typeof mapped.createdAt === 'string' && mapped.createdAt.trim()
         ? mapped.createdAt
         : EMPTY_BACKEND_ITEM_DEFAULTS.createdAt,
     updatedAt:
-      typeof mapped.updatedAt === "string" && mapped.updatedAt.trim()
+      typeof mapped.updatedAt === 'string' && mapped.updatedAt.trim()
         ? mapped.updatedAt
         : EMPTY_BACKEND_ITEM_DEFAULTS.updatedAt,
   };
+
+  Object.defineProperty(result, '_hasExplicitUserState', {
+    value: hasExplicitUserState,
+    enumerable: false,
+    configurable: true,
+    writable: true,
+  });
+
+  Object.defineProperty(result, '_isFullBackendItem', {
+    value: true,
+    enumerable: false,
+    configurable: true,
+    writable: true,
+  });
+
+  return result;
 }
 
 /**
- * Pure domain selector that returns all unique collection IDs assigned to a `LibraryItem`
- * from both `item.collectionIds` and `item.collections`.
+ * Copies non-enumerable `_isFullBackendItem` and `_hasExplicitUserState` metadata flags
+ * from a mapped backend item onto a cloned/spread target object.
  */
-export function getAssignedCollectionIds(
-  item: Partial<Item> | null | undefined,
-): string[] {
-  if (!item) return [];
-  const ids = new Set<string>();
-  if (Array.isArray(item.collectionIds)) {
-    for (const id of item.collectionIds) {
-      if (typeof id === "string" && id.trim()) {
-        ids.add(id.trim());
-      }
-    }
+export function preserveMappedItemFlags<T extends object>(
+  source: unknown,
+  target: T,
+): T {
+  if (!source || typeof source !== 'object' || !target || typeof target !== 'object') {
+    return target;
   }
-  if (Array.isArray(item.collections)) {
-    for (const c of item.collections) {
-      if (c && typeof c === "object") {
-        const cid =
-          (c as { collectionId?: string; id?: string }).collectionId ||
-          (c as { id?: string }).id;
-        if (typeof cid === "string" && cid.trim()) {
-          ids.add(cid.trim());
-        }
-      }
-    }
+  const srcRec = source as Record<string, unknown>;
+  if ('_isFullBackendItem' in srcRec) {
+    Object.defineProperty(target, '_isFullBackendItem', {
+      value: Boolean(srcRec._isFullBackendItem),
+      enumerable: false,
+      configurable: true,
+      writable: true,
+    });
   }
-  return Array.from(ids);
-}
-
-export interface ProvisionalUploadItemInput {
-  id: string;
-  filename?: string;
-  fileName?: string;
-  extractedTitle?: string;
-  fileSize?: number;
-  mimeType?: string;
-  fileUrl?: string;
-  status: "uploading" | "extracting" | "completed" | "error" | "UPLOADING" | "PROCESSING" | "SUCCEEDED" | "FAILED";
-  progress: number;
-  error?: string;
-  createdAt: string;
-}
-
-/**
- * Creates a canonical provisional `Item` representing an active background file upload/extraction.
- */
-export function createProvisionalUploadItem(
-  p: ProvisionalUploadItemInput,
-  scopeId?: string,
-  collectionId?: string | null,
-): Item {
-  const rawName = p.filename ?? p.fileName ?? "";
-  const title = p.extractedTitle || cleanFilenameToTitle(rawName);
-  const isExtracting = p.status === "extracting" || p.status === "PROCESSING";
-  return {
-    ...EMPTY_BACKEND_ITEM_DEFAULTS,
-    id: p.id,
-    title,
-    itemType: "journalArticle",
-    authors: isExtracting ? ["Processing metadata..."] : ["Uploading raw file..."],
-    year: null,
-    scopeId: scopeId ?? null,
-    collectionIds: collectionId ? [collectionId] : [],
-    attachments: [
-      {
-        id: `att-${p.id}`,
-        filename: rawName,
-        size: p.fileSize ?? 0,
-        mimeType: p.mimeType || "application/pdf",
-        url: p.fileUrl || "",
-        linkMode: "imported_file",
-        attachmentType: "supplementary",
-      },
-    ],
-    hasFile: true,
-    fileCount: 1,
-    attachmentCount: 1,
-    createdAt: p.createdAt,
-    dateAdded: p.createdAt,
-    _isProcessing: true,
-    _processingStatus: p.status,
-    _processingProgress: p.progress,
-    _processingError: p.error,
-  };
+  if ('_hasExplicitUserState' in srcRec) {
+    Object.defineProperty(target, '_hasExplicitUserState', {
+      value: Boolean(srcRec._hasExplicitUserState),
+      enumerable: false,
+      configurable: true,
+      writable: true,
+    });
+  }
+  return target;
 }

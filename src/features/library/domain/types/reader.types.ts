@@ -124,12 +124,17 @@ export interface TypeConversionPreview {
 export interface ItemMetadataSourceItem {
   id: string;
   sourceProvider: string;
+  sourceUri?: string | null;
+  format?: string | null;
   fetchedAt: string;
+  createdAt?: string;
   doi?: string;
-  rawPayload?: Record<string, unknown>;
+  rawPayload?: Record<string, unknown> | unknown;
 }
 
 export interface ItemMetadataSourcesResponse {
+  itemId?: string;
+  count?: number;
   sources: ItemMetadataSourceItem[];
 }
 

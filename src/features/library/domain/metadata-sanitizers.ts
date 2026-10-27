@@ -439,7 +439,7 @@ export function cleanAbstractText(text?: string | null): string {
 export function isValidValue(val?: unknown): boolean {
   if (val === undefined || val === null) return false;
   if (typeof val === "number")
-    return !isNaN(val) && Number.isFinite(val) && val !== 0;
+    return !isNaN(val) && Number.isFinite(val);
   if (typeof val === "boolean") return true;
   if (Array.isArray(val)) return val.some((item) => isValidValue(item));
   if (typeof val === "object")
@@ -448,7 +448,6 @@ export function isValidValue(val?: unknown): boolean {
   if (!s) return false;
   const lower = s.toLowerCase();
   if (
-    lower === "0" ||
     lower === "0000" ||
     lower === "n/a" ||
     lower === "na" ||
@@ -459,8 +458,7 @@ export function isValidValue(val?: unknown): boolean {
     lower === "{}" ||
     lower === "[]" ||
     lower === "[object object]" ||
-    lower === "unknown" ||
-    lower.startsWith("unknown ")
+    lower === "unknown"
   ) {
     return false;
   }

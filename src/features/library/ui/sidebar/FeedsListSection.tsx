@@ -12,11 +12,6 @@ import {
   useUnsubscribeFeedMutation,
 } from '@/features/library/sdk/queries/ingestion.queries';
 import { FeedsService } from '@/features/library/sdk/clients/ingestion-sync.client';
-
-const EditFeedModal = dynamic(
-  () => import('../modals/EditFeedModal').then((m) => m.EditFeedModal),
-  { ssr: false },
-);
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
@@ -50,7 +45,6 @@ export function FeedsListSection({
   const setActiveFeedId = useFeedsStore((s) => s.setActiveFeedId);
   const openModal = useLibraryUIStore((s) => s.openModal);
   const [isExpanded, setIsExpanded] = useState(true);
-  const [editingFeed, setEditingFeed] = useState<SavedFeedSubscription | null>(null);
 
   if (!isActiveScope) {
     return null;
@@ -175,7 +169,7 @@ export function FeedsListSection({
                       }
                       toast.success(`Marked all articles in "${feed.name}" as read`);
                     }}
-                    onEdit={(f) => setEditingFeed(f)}
+                    onEdit={(f) => openModal('EDIT_FEED', { feed: f })}
                     onDelete={(f) => {
                       void unsubscribeFeed(f.id);
                       toast.success(`Unsubscribed from "${f.name}"`);
@@ -187,15 +181,6 @@ export function FeedsListSection({
           })}
         </div>
       )}
-
-      {/* Edit Feed Modal */}
-      <EditFeedModal
-        open={Boolean(editingFeed)}
-        onOpenChange={(open) => {
-          if (!open) setEditingFeed(null);
-        }}
-        feed={editingFeed}
-      />
     </div>
   );
 }

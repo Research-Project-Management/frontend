@@ -12,6 +12,7 @@
 
 import type { CreatorCredit } from '@/features/library/domain/types/library.types';
 import { safeHttpUrl } from '@/features/library/domain/retraction';
+import { parseCreatorName } from '@/features/library/domain/creators';
 
 export type FeedFormat = 'rss2' | 'rdf' | 'atom' | 'unknown';
 
@@ -121,12 +122,17 @@ export function mapFeedEntryToCreateItemPayload(
         orderIndex: idx,
         fieldMode: 0,
       }))
-    : (entry.authors || []).map((author, idx) => ({
-        creatorType: 'author',
-        fullName: author,
-        orderIndex: idx,
-        fieldMode: 0,
-      }));
+    : (entry.authors || []).map((author, idx) => {
+        const parsed = parseCreatorName(author);
+        return {
+          creatorType: 'author',
+          firstName: parsed.firstName || undefined,
+          lastName: parsed.lastName || undefined,
+          fullName: parsed.fullName || author,
+          orderIndex: idx,
+          fieldMode: parsed.isInstitution ? 1 : 0,
+        };
+      });
 
   return {
     title: entry.title,
@@ -272,3 +278,68 @@ export function filterFeedEntriesByReadAndQuery(
       (e.arxivId && e.arxivId.toLowerCase().includes(q)),
   );
 }
+
+/**
+ * Centralized domain orchestrator for saving an RSS/Atom feed entry to the Library:
+ * 1. Marks the entry as read and enters the saving state.
+ * 2. When the entry has an authoritative identifier (DOI or arXiv ID) and an `ingestItem`
+ *    executor is provided, attempts full pipeline ingestion first (enriching metadata & OA PDF).
+ * 3. Falls back to `createItem` with `mapFeedEntryToCreateItemPayload`.
+ */
+export async function executeSaveFeedEntryToLibrary<TCreatePayload extends Record<string, unknown>>(params: {
+  entry: ParsedFeedEntry;
+  scopeId: string;
+  targetCollectionId?: string;
+  createItem: (payload: TCreatePayload) => Promise<unknown>;
+  ingestItem?: (
+    payload:
+      | {
+          source: 'doi';
+          doi: string;
+          collectionId?: string;
+          overrides?: Record<string, unknown>;
+        }
+      | {
+          source: 'arxiv';
+          arxivId: string;
+          collectionId?: string;
+          overrides?: Record<string, unknown>;
+        },
+  ) => Promise<unknown>;
+}): Promise<void> {
+  const { entry, scopeId, targetCollectionId, createItem, ingestItem } = params;
+  const createPayload = mapFeedEntryToCreateItemPayload(entry, {
+    scopeId,
+    collectionId: targetCollectionId,
+  });
+
+  let savedViaPipeline = false;
+  if (ingestItem && (entry.doi || entry.arxivId)) {
+    try {
+      await ingestItem({
+        ...(entry.doi
+          ? { source: 'doi' as const, doi: entry.doi }
+          : { source: 'arxiv' as const, arxivId: entry.arxivId! }),
+        collectionId: targetCollectionId,
+        overrides: {
+          title: entry.title,
+          abstract: entry.abstract,
+          publicationTitle: entry.publicationTitle,
+          year: entry.year,
+          url: createPayload.url,
+          tags: entry.categories,
+          attachOaPdf: true,
+          saveSnapshot: false,
+        },
+      });
+      savedViaPipeline = true;
+    } catch {
+      savedViaPipeline = false;
+    }
+  }
+
+  if (!savedViaPipeline) {
+    await createItem({ ...createPayload, silent: true } as unknown as TCreatePayload);
+  }
+}
+

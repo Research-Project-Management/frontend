@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import React, { useState, useEffect } from 'react';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRouter } from 'next/navigation';
-import { Loader2, UploadCloud } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import {
@@ -19,36 +19,66 @@ import {
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/shared/components/ui/select';
+import { cn } from '@/shared/lib/utils';
 
 import { useFeedsStore } from '@/features/library/core/store/feeds.store';
 import {
   useFetchAcademicFeed,
   useSubscribeFeedMutation,
 } from '@/features/library/sdk/queries/ingestion.queries';
-import { parseOpmlFeeds } from '@/features/library/domain/feed-parser.domain';
 import {
   addFeedSchema,
   type AddFeedFormValues,
 } from '@/features/library/domain/types/forms.types';
-import {
-  RETENTION_OPTIONS,
-  READ_RETENTION_OPTIONS,
-} from '@/features/library/domain/types/feeds.types';
+import type { FeedRetentionDays } from '@/features/library/domain/types/feeds.types';
+
+const UNREAD_RETENTION_CHOICES: Array<{ value: FeedRetentionDays; label: string }> = [
+  { value: 30, label: '30 days' },
+  { value: 7, label: '7 days' },
+  { value: 14, label: '14 days' },
+  { value: 90, label: '90 days' },
+  { value: 0, label: 'Never' },
+];
+
+const READ_CLEANUP_CHOICES: Array<{ value: FeedRetentionDays; label: string }> = [
+  { value: 7, label: 'After 7 days' },
+  { value: 1, label: 'After 1 day' },
+  { value: 3, label: 'After 3 days' },
+  { value: 14, label: 'After 14 days' },
+  { value: 30, label: 'After 30 days' },
+  { value: 0, label: 'Never' },
+];
 
 export interface AddFeedModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSubmit?: (data: AddFeedFormValues) => Promise<unknown> | void;
+  onImportOpml?: (content: string) => Promise<unknown> | void;
+  isPending?: boolean;
 }
 
-export function AddFeedModal({ open, onOpenChange }: AddFeedModalProps) {
+export function AddFeedModal({
+  open,
+  onOpenChange,
+  onSubmit,
+  isPending: externalPending,
+}: AddFeedModalProps) {
   const router = useRouter();
   const addFeed = useFeedsStore((s) => s.addFeed);
   const { mutateAsync: subscribeFeed } = useSubscribeFeedMutation();
   const { mutateAsync: fetchAcademicFeed } = useFetchAcademicFeed();
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [internalSubmitting, setInternalSubmitting] = useState(false);
   const [isAutoFetchingTitle, setIsAutoFetchingTitle] = useState(false);
-  const opmlInputRef = useRef<HTMLInputElement>(null);
+
+  const isSubmitting = externalPending ?? internalSubmitting;
 
   const form = useForm<AddFeedFormValues>({
     resolver: zodResolver(addFeedSchema),
@@ -59,16 +89,17 @@ export function AddFeedModal({ open, onOpenChange }: AddFeedModalProps) {
       cleanupReadAfter: 7,
       cleanupUnreadAfter: 30,
     },
-    mode: 'onTouched',
+    mode: 'onSubmit',
+    reValidateMode: 'onChange',
   });
 
   const {
     register,
     handleSubmit,
     reset,
+    control,
     setValue,
     getValues,
-    watch,
     formState: { errors },
   } = form;
 
@@ -81,7 +112,7 @@ export function AddFeedModal({ open, onOpenChange }: AddFeedModalProps) {
         cleanupReadAfter: 7,
         cleanupUnreadAfter: 30,
       });
-      setIsSubmitting(false);
+      setInternalSubmitting(false);
       setIsAutoFetchingTitle(false);
     }
   }, [open, reset]);
@@ -102,7 +133,11 @@ export function AddFeedModal({ open, onOpenChange }: AddFeedModalProps) {
           ? (res as { data?: { feedTitle?: string } }).data
           : (res as { feedTitle?: string });
       const detectedTitle = payload?.feedTitle;
-      if (detectedTitle && typeof detectedTitle === 'string' && !(getValues('name') || '').trim()) {
+      if (
+        detectedTitle &&
+        typeof detectedTitle === 'string' &&
+        !(getValues('name') || '').trim()
+      ) {
         setValue('name', detectedTitle.trim(), {
           shouldValidate: true,
           shouldDirty: true,
@@ -116,7 +151,12 @@ export function AddFeedModal({ open, onOpenChange }: AddFeedModalProps) {
   };
 
   const onValidSubmit = async (data: AddFeedFormValues) => {
-    setIsSubmitting(true);
+    if (onSubmit) {
+      await onSubmit(data);
+      return;
+    }
+
+    setInternalSubmitting(true);
     try {
       let finalName = (data.name || '').trim();
       if (!finalName) {
@@ -135,7 +175,7 @@ export function AddFeedModal({ open, onOpenChange }: AddFeedModalProps) {
       }
 
       const newFeed = await subscribeFeed({
-        name: finalName,
+        name: finalName || 'Academic Feed',
         url: data.url,
         retentionDays: data.cleanupUnreadAfter ?? data.retentionDays,
         cleanupReadAfter: data.cleanupReadAfter ?? 7,
@@ -143,88 +183,41 @@ export function AddFeedModal({ open, onOpenChange }: AddFeedModalProps) {
       });
       toast.success(`Subscribed to "${newFeed.name}"`);
       onOpenChange(false);
-      router.push(`/library/feeds/${newFeed.id}`);
+      if (newFeed.id) {
+        router.push(`/library/feeds/${newFeed.id}`);
+      }
     } catch {
       toast.error('Failed to subscribe to feed');
     } finally {
-      setIsSubmitting(false);
+      setInternalSubmitting(false);
     }
   };
-
-  const handleOpmlFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = event.target?.result;
-      if (typeof content !== 'string') return;
-
-      try {
-        const parsed = parseOpmlFeeds(content);
-        if (parsed.length > 0) {
-          const currentRetention = getValues('retentionDays');
-          for (const item of parsed) {
-            addFeed(item.name, item.url, currentRetention);
-          }
-          toast.success(`Imported ${parsed.length} feeds from OPML`);
-          onOpenChange(false);
-        } else {
-          toast.error('No valid RSS/Atom feeds found in OPML file');
-        }
-      } catch {
-        toast.error('Failed to parse OPML file');
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
-  };
-
-  const watchedUrl = watch('url');
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="sm:max-w-[420px] p-5 bg-background border border-border shadow-raised-200 rounded-lg gap-0"
+        className="sm:max-w-[460px] p-6 bg-background border border-border shadow-raised-200 rounded-lg gap-0"
       >
         <form onSubmit={handleSubmit(onValidSubmit)} className="space-y-4">
-          <DialogHeader className="p-0 space-y-0 text-left">
-            <div className="flex items-center justify-between">
-              <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
-                New RSS Feed
-              </DialogTitle>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => opmlInputRef.current?.click()}
-                className="h-7 px-2 text-11 text-muted-foreground hover:text-foreground cursor-pointer gap-1"
-              >
-                <UploadCloud className="size-3.5" />
-                <span>Import OPML</span>
-              </Button>
-              <input
-                ref={opmlInputRef}
-                type="file"
-                accept=".opml,.xml"
-                className="hidden"
-                onChange={handleOpmlFileChange}
-              />
-            </div>
+          <DialogHeader className="text-left pb-0">
+            <DialogTitle className="text-15 font-semibold text-foreground tracking-tight">
+              New RSS Feed
+            </DialogTitle>
             <DialogDescription className="sr-only">
-              Subscribe to an academic journal or preprint RSS feed.
+              Subscribe to an RSS or Atom feed.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-3">
-            {/* Feed URL Field */}
+          <div className="space-y-3.5 pt-1">
+            {/* URL Field */}
             <div className="space-y-1.5">
-              <Label htmlFor="feed-url" className="text-11 font-medium text-foreground inline-flex items-center">
+              <Label
+                htmlFor="feed-url"
+                className="text-12 font-medium text-foreground inline-flex items-center gap-0.5"
+              >
                 <span>URL</span>
-                <span className="text-destructive ml-0.5" aria-hidden="true">
-                  *
-                </span>
+                <span className="text-destructive" aria-hidden="true">*</span>
               </Label>
               <Input
                 id="feed-url"
@@ -234,20 +227,27 @@ export function AddFeedModal({ open, onOpenChange }: AddFeedModalProps) {
                 {...register('url', {
                   onBlur: handleUrlBlur,
                 })}
-                className="h-8 text-13 rounded-md bg-background border-border hover:border-border-hover focus-visible:border-primary focus-visible:ring-ring placeholder:text-muted-foreground text-foreground shadow-none"
+                className={cn(
+                  "h-8 text-13 rounded-md bg-background border-border hover:border-border-hover focus-visible:border-primary focus-visible:ring-ring placeholder:text-muted-foreground text-foreground shadow-none transition-colors",
+                  errors.url && "border-destructive focus-visible:border-destructive focus-visible:ring-destructive/20"
+                )}
               />
-              {errors.url && <p className="text-11 text-destructive">{errors.url.message}</p>}
+              {errors.url && (
+                <p className="text-11 text-destructive font-medium mt-1">
+                  {errors.url.message}
+                </p>
+              )}
             </div>
 
-            {/* Feed Title Field */}
+            {/* Title Field */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <Label htmlFor="feed-name" className="text-11 font-medium text-foreground">
+                <Label htmlFor="feed-name" className="text-12 font-medium text-foreground">
                   Title
                 </Label>
                 {isAutoFetchingTitle && (
                   <span className="text-11 text-muted-foreground flex items-center gap-1">
-                    <Loader2 className="size-2.5 animate-spin" /> Fetching title...
+                    <Loader2 className="size-3 animate-spin text-primary" /> Auto-detecting...
                   </span>
                 )}
               </div>
@@ -255,50 +255,94 @@ export function AddFeedModal({ open, onOpenChange }: AddFeedModalProps) {
                 id="feed-name"
                 placeholder="Leave blank to auto-detect from feed"
                 {...register('name')}
-                className="h-8 text-13 rounded-md bg-background border-border hover:border-border-hover focus-visible:border-primary focus-visible:ring-ring placeholder:text-muted-foreground text-foreground shadow-none"
+                className="h-8 text-13 rounded-md bg-background border-border hover:border-border-hover focus-visible:border-primary focus-visible:ring-ring placeholder:text-muted-foreground text-foreground shadow-none transition-colors"
               />
-              {errors.name && <p className="text-11 text-destructive">{errors.name.message}</p>}
+              {errors.name && (
+                <p className="text-11 text-destructive font-medium mt-1">
+                  {errors.name.message}
+                </p>
+              )}
             </div>
 
-            {/* Feed Virtualized Retention Policy (Unread vs Read) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {/* Retention Policy (Unread vs Read) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
               <div className="space-y-1.5">
-                <Label htmlFor="feed-retention" className="text-11 font-medium text-foreground">
+                <Label htmlFor="feed-retention" className="text-12 font-medium text-foreground">
                   Remove Unread Items
                 </Label>
-                <select
-                  id="feed-retention"
-                  {...register('retentionDays', { valueAsNumber: true })}
-                  className="h-8 w-full text-12 rounded-md bg-background border border-border px-2 text-foreground focus-visible:outline-none focus-visible:border-primary cursor-pointer"
-                >
-                  {RETENTION_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                <Controller
+                  name="retentionDays"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={String(field.value ?? 30)}
+                      onValueChange={(val) => {
+                        const num = Number(val) as FeedRetentionDays;
+                        field.onChange(num);
+                        setValue('cleanupUnreadAfter', num);
+                      }}
+                    >
+                      <SelectTrigger
+                        id="feed-retention"
+                        className="w-full h-8 text-12 text-foreground justify-between rounded-md border-border bg-background hover:border-border-hover focus-visible:border-primary cursor-pointer"
+                      >
+                        <SelectValue placeholder="Select retention" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60 bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md">
+                        {UNREAD_RETENTION_CHOICES.map((option) => (
+                          <SelectItem
+                            key={option.value}
+                            value={String(option.value)}
+                            className="text-12 py-1.5 px-2"
+                          >
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="feed-read-retention" className="text-11 font-medium text-foreground">
+                <Label htmlFor="feed-read-retention" className="text-12 font-medium text-foreground">
                   Remove Read Items
                 </Label>
-                <select
-                  id="feed-read-retention"
-                  {...register('cleanupReadAfter', { valueAsNumber: true })}
-                  className="h-8 w-full text-12 rounded-md bg-background border border-border px-2 text-foreground focus-visible:outline-none focus-visible:border-primary cursor-pointer"
-                >
-                  {READ_RETENTION_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                <Controller
+                  name="cleanupReadAfter"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={String(field.value ?? 7)}
+                      onValueChange={(val) =>
+                        field.onChange(Number(val) as FeedRetentionDays)
+                      }
+                    >
+                      <SelectTrigger
+                        id="feed-read-retention"
+                        className="w-full h-8 text-12 text-foreground justify-between rounded-md border-border bg-background hover:border-border-hover focus-visible:border-primary cursor-pointer"
+                      >
+                        <SelectValue placeholder="Select cleanup time" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60 bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md">
+                        {READ_CLEANUP_CHOICES.map((option) => (
+                          <SelectItem
+                            key={option.value}
+                            value={String(option.value)}
+                            className="text-12 py-1.5 px-2"
+                          >
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </div>
             </div>
           </div>
 
-          <DialogFooter className="flex items-center justify-end gap-2 pt-1 sm:space-x-0">
+          <DialogFooter className="flex items-center justify-end gap-2 pt-3 sm:space-x-0">
             <Button
               type="button"
               variant="ghost"
@@ -311,8 +355,8 @@ export function AddFeedModal({ open, onOpenChange }: AddFeedModalProps) {
             <Button
               type="submit"
               size="sm"
-              disabled={isSubmitting || !watchedUrl?.trim()}
-              className="h-8 px-3.5 text-12 font-medium cursor-pointer rounded-md shadow-none"
+              disabled={isSubmitting}
+              className="h-8 px-4 text-12 font-medium cursor-pointer rounded-md shadow-none"
             >
               {isSubmitting && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
               Save Feed

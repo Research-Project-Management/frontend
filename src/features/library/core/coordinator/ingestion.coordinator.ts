@@ -1,7 +1,7 @@
 import { toast } from 'sonner';
-import {
-  IngestionService, UploadService } from '@/features/library/sdk/library.client';
-import { itemKeys, collectionKeys } from '@/features/library/sdk/query-keys';
+import { UploadService } from '@/features/library/sdk/library.client';
+import { itemKeys } from '@/features/library/sdk/query-keys';
+import { invalidateLibraryCatalogDependencies } from '@/features/library/sdk/queries/cache-patcher';
 import type {
   IngestionProgressItem,
   ProcessingFileItem,
@@ -9,8 +9,26 @@ import type {
   ProcessModalStoreApi,
   InvalidationClient,
 } from '@/features/library/domain/types/batch-upload.types';
-import { cleanFilenameToTitle } from '@/features/library/domain/metadata';
 import { BatchFlowManager } from '@/features/library/core/manager/batch-flow.manager';
+import {
+  resolveFileIngestionStrategy,
+  detectBibliographyFileFormat,
+  TextBibliographyFileStrategy,
+  BinaryAttachmentFileStrategy,
+  type IFileIngestionStrategy,
+  type FileIngestionStrategyContext,
+  type BibliographyTextFormat,
+} from './file-ingestion.strategies';
+
+export {
+  resolveFileIngestionStrategy,
+  detectBibliographyFileFormat,
+  TextBibliographyFileStrategy,
+  BinaryAttachmentFileStrategy,
+  type IFileIngestionStrategy,
+  type FileIngestionStrategyContext,
+  type BibliographyTextFormat,
+};
 
 // Stage 1: Provisional Item Creation & Modal Initialization
 
@@ -111,9 +129,13 @@ async function synchronizeBatchCaches(
   effectiveCollection?: string,
 ): Promise<void> {
   await Promise.all([
-    queryClient.invalidateQueries({ queryKey: itemKeys.all(scopeId) }),
-    queryClient.invalidateQueries({ queryKey: itemKeys.counts(scopeId) }),
-    queryClient.invalidateQueries({ queryKey: collectionKeys.all(scopeId) }),
+    invalidateLibraryCatalogDependencies(queryClient, scopeId, {
+      itemsList: true,
+      collections: true,
+      tags: true,
+      counts: true,
+      smartCollections: true,
+    }),
     effectiveCollection
       ? queryClient.invalidateQueries({
           queryKey: itemKeys.byCollection(scopeId, effectiveCollection),
@@ -131,6 +153,8 @@ async function synchronizeBatchCaches(
  * TanStack query cache invalidation, and user notifications cleanly outside
  * of UI state stores.
  */
+const MAX_UPLOAD_FILE_SIZE_BYTES = 100 * 1024 * 1024; // 100MB
+
 export async function executeBatchUpload(
   files: File[],
   options: ProcessBatchUploadOptions,
@@ -139,7 +163,10 @@ export async function executeBatchUpload(
   if (!files || files.length === 0) return;
   const { scopeId = 'user', collectionId, queryClient, onSuccess } = options;
 
-  const batchRunId = `batch-${Date.now()}`;
+  const batchRunId =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? `batch-${crypto.randomUUID()}`
+      : `batch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const initialProcessingItems = createProvisionalBatchItems(files, scopeId, collectionId);
   initializeBatchModalState(store, files, scopeId, batchRunId, initialProcessingItems);
 
@@ -249,9 +276,9 @@ export async function executeBatchUpload(
     });
   };
 
-  const processFile = async (entry: { file: File; index: number; provisionalId: string }) => {
+  const processFile = async (entry: { file: File; index: number; provisionalId: string }, signal?: AbortSignal) => {
+    if (signal?.aborted) throw new Error('Processing cancelled');
     const { file, index, provisionalId } = entry;
-    const lowerName = file.name.toLowerCase();
 
     // Set item to UPLOADING
     store.setState((s) => {
@@ -268,176 +295,21 @@ export async function executeBatchUpload(
     });
 
     try {
-      // Branch A: Textual Bibliography Files (.bib, .bibtex, .ris, .json, .csl.json, .xml, .mods, .rdf, .nbib, .medline, .csv)
-      const isBib = lowerName.endsWith('.bib') || lowerName.endsWith('.bibtex');
-      const isRis = lowerName.endsWith('.ris');
-      const isCslJson = lowerName.endsWith('.json') || lowerName.endsWith('.csl.json');
-      const isMods = lowerName.endsWith('.mods');
-      const isRdf = lowerName.endsWith('.rdf');
-      const isXml = lowerName.endsWith('.xml');
-      const isMedline = lowerName.endsWith('.nbib') || lowerName.endsWith('.medline');
-      const isCsv = lowerName.endsWith('.csv');
-
-      if (isBib || isRis || isCslJson || isMods || isRdf || isXml || isMedline || isCsv) {
-        store.setState((s) => {
-          const items = (s.state.data?.items || []).map((i: IngestionProgressItem) =>
-            i.id === provisionalId ? { ...i, status: 'PROCESSING' as const } : i,
-          );
-          return {
-            processingItems: s.processingItems.map((p) =>
-              p.id === provisionalId ? { ...p, status: 'PROCESSING' } : p,
-            ),
-            state: s.state.data ? { ...s.state, data: { ...s.state.data, items } } : s.state,
-          };
-        });
-
-        const content = await file.text();
-        let source:
-          | 'bibtex'
-          | 'ris'
-          | 'csl_json'
-          | 'endnote_xml'
-          | 'mods'
-          | 'zotero_rdf'
-          | 'medline'
-          | 'csv' = 'bibtex';
-        if (isBib) source = 'bibtex';
-        else if (isRis) source = 'ris';
-        else if (isCslJson) source = 'csl_json';
-        else if (isMods) source = 'mods';
-        else if (isRdf) source = 'zotero_rdf';
-        else if (isMedline) source = 'medline';
-        else if (isCsv) source = 'csv';
-        else if (isXml) {
-          if (/<(?:mods:)?mods(?:Collection)?[\s>]/i.test(content)) {
-            source = 'mods';
-          } else if (/<rdf:RDF[\s>]/i.test(content)) {
-            source = 'zotero_rdf';
-          } else {
-            source = 'endnote_xml';
-          }
-        }
-        const res = await IngestionService.ingest(scopeId, {
-          source,
-          content,
-          collectionId: effectiveCollection,
-        });
-
-        const resRecord = res as {
-          data?: {
-            runId?: string;
-            itemId?: string;
-            item?: { title?: string; id?: string };
-          };
-          runId?: string;
-          itemId?: string;
-          item?: { title?: string; id?: string };
-        } | null;
-
-        const bibRunId = resRecord?.data?.runId || resRecord?.runId;
-        const itemPayload = resRecord?.data?.item || resRecord?.item;
-        let extractedTitle = itemPayload?.title || file.name;
-        let resolvedItemId =
-          itemPayload?.id || resRecord?.data?.itemId || resRecord?.itemId;
-
-        if (bibRunId) {
-          const pollOutcome = await pollIngestionRunCompletion(
-            scopeId,
-            bibRunId,
-            {
-              fallbackTitle: extractedTitle,
-              initialItemId: resolvedItemId,
-            },
-          );
-          if (!pollOutcome.ok) {
-            throw new Error(pollOutcome.error || 'Bibliography import failed');
-          }
-          extractedTitle = pollOutcome.title || extractedTitle;
-          resolvedItemId = pollOutcome.itemId || resolvedItemId;
-        }
-
-        markFileSucceeded(file, index, provisionalId, extractedTitle, resolvedItemId, true);
-        return;
+      if (file.size > MAX_UPLOAD_FILE_SIZE_BYTES) {
+        throw new Error('File exceeds the 100MB maximum upload size limit.');
       }
 
-      // Branch B: Binary / PDF Upload + Metadata Extraction
-      let uploadRes = uploadedCache.get(file);
-      if (!uploadRes) {
-        uploadRes = await UploadService.uploadMultipart(scopeId, file, {
-          onProgress: (percent: number) => {
-            store.setState((s) => ({
-              processingItems: s.processingItems.map((p) =>
-                p.id === provisionalId ? { ...p, progress: percent } : p,
-              ),
-            }));
-          },
-        });
-        if (uploadRes?.fileId) {
-          uploadedCache.set(file, uploadRes);
-        }
-      }
-
-      if (!uploadRes?.fileId) {
-        throw new Error('Upload succeeded without file identifier');
-      }
-
-      // Transition to PROCESSING
-      store.setState((s) => {
-        const items = s.state.data?.items.map((i: IngestionProgressItem) =>
-          i.id === provisionalId ? { ...i, status: 'PROCESSING' as const } : i,
-        );
-        return {
-          processingItems: s.processingItems.map((p) =>
-            p.id === provisionalId
-              ? {
-                  ...p,
-                  status: 'PROCESSING',
-                  fileId: uploadRes?.fileId,
-                  fileUrl: uploadRes?.url,
-                  progress: 100,
-                }
-              : p,
-          ),
-          state: s.state.data
-            ? { ...s.state, data: { ...s.state.data, items: items || [] } }
-            : s.state,
-        };
+      const strategy = resolveFileIngestionStrategy(file);
+      await strategy.execute(file, {
+        scopeId,
+        index,
+        provisionalId,
+        effectiveCollection,
+        store,
+        uploadedCache,
+        signal,
+        markFileSucceeded,
       });
-
-      const identifiedTitle = cleanFilenameToTitle(file.name);
-      const ingestRes = await IngestionService.ingest(scopeId, {
-        source: 'pdf',
-        fileId: uploadRes.fileId,
-        filename: file.name,
-        collectionId: effectiveCollection,
-      });
-
-      const ingestPayload = ingestRes as {
-        data?: { runId?: string; itemId?: string; status?: string };
-        runId?: string;
-        itemId?: string;
-        status?: string;
-      } | null;
-      const runId = ingestPayload?.data?.runId || ingestPayload?.runId;
-      const completedItemId = ingestPayload?.data?.itemId || ingestPayload?.itemId;
-
-      let finalTitle = identifiedTitle;
-      let finalItemId = completedItemId;
-
-      if (runId) {
-        const pollOutcome = await pollIngestionRunCompletion(
-          scopeId,
-          runId,
-          { fallbackTitle: identifiedTitle, initialItemId: completedItemId },
-        );
-        if (!pollOutcome.ok) {
-          throw new Error(pollOutcome.error || 'Extraction failed');
-        }
-        finalTitle = pollOutcome.title || identifiedTitle;
-        finalItemId = pollOutcome.itemId || completedItemId;
-      }
-
-      markFileSucceeded(file, index, provisionalId, finalTitle, finalItemId, true);
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Processing failed';
       throw err instanceof Error ? err : new Error(errorMsg);
@@ -449,11 +321,13 @@ export async function executeBatchUpload(
     id: initialProcessingItems[index]!.id,
     name: file.name,
     data: { file, index, provisionalId: initialProcessingItems[index]!.id },
-    execute: (entry: { file: File; index: number; provisionalId: string }) => processFile(entry),
+    execute: (entry: { file: File; index: number; provisionalId: string }, signal: AbortSignal) => processFile(entry, signal),
   }));
 
   const flowManager = new BatchFlowManager<{ file: File; index: number; provisionalId: string }>({
     concurrency,
+    maxRetries: 0,
+    abortSignal: options.abortSignal,
   });
   const batchProgress = await flowManager.execute(tasks);
 

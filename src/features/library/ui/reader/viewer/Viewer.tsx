@@ -129,11 +129,8 @@ export default function Viewer({
       setDocError(null);
     }
     return () => {
-      const doc = pdfDocRef.current;
       pdfDocRef.current = null;
       setPdfDocument(null);
-      void doc?.cleanup?.();
-      void doc?.destroy?.();
     };
   }, [blobUrl]);
 
@@ -299,8 +296,12 @@ export default function Viewer({
 
       const attemptFocus = (retries = 8) => {
         if (cancelled) return;
+        const safeAnnId =
+          typeof CSS !== "undefined" && typeof CSS.escape === "function"
+            ? CSS.escape(annId)
+            : annId.replace(/(["\\])/g, "\\$1");
         const el = document.querySelector(
-          `[data-annotation-id="${annId}"]`,
+          `[data-annotation-id="${safeAnnId}"]`,
         ) as HTMLElement | null;
         if (el) {
           el.scrollIntoView({ behavior: "smooth", block: "center" });

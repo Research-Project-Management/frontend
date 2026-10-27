@@ -14,7 +14,12 @@ import { Progress } from "@/shared/components/ui/progress";
 import { Badge } from "@/shared/components/ui/badge";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { CheckCircle2, AlertCircle, RefreshCw, Loader2, X } from "lucide-react";
-import type { ProcessModalState } from "@/features/library/core/store/process-modal.store";
+import {
+  deriveProcessModalPhase,
+  deriveProcessModalDisplayMode,
+  classifyProcessItemStage,
+  type ProcessModalState,
+} from "@/features/library/core/store/process-modal.store";
 import { cn } from "@/shared/lib/utils";
 
 interface ProcessModalProps {
@@ -23,6 +28,7 @@ interface ProcessModalProps {
   onMinimize?: () => void;
   onRestore?: () => void;
   onViewLibrary?: () => void;
+  onCancel?: () => void;
 }
 
 function formatSourceLabel(raw?: string): string {
@@ -57,6 +63,7 @@ export default function ProcessModal({
   onClose,
   onMinimize,
   onRestore,
+  onCancel,
 }: ProcessModalProps) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -70,27 +77,24 @@ export default function ProcessModal({
     data?.percentage ??
     (state.isComplete ? 100 : Math.round((processed / total) * 100));
   const items = data?.items || [];
-  const isRunning = !state.isComplete && !state.error;
 
-  // Terminal statuses: both frontend conventions and backend IngestionStatus
-  const isTerminalStatus = (status: string) =>
-    [
-      "SUCCEEDED",
-      "COMPLETED",
-      "READY",
-      "FAILED",
-      "FAILED_FINAL",
-      "FAILED_RETRYABLE",
-      "CANCELLED",
-    ].includes(status);
+  const batchPhase = deriveProcessModalPhase(state);
+  const displayMode = deriveProcessModalDisplayMode(state);
+  const isRunning = batchPhase === "RUNNING";
+  const isErroredPhase = batchPhase === "FAILED" || batchPhase === "ABORTED";
+  const isCompletedPhase =
+    batchPhase === "COMPLETED" || batchPhase === "PARTIAL_FAILURE";
 
-  // Compute active item index: the first item that is not yet completed
-  const activeIndex = state.isComplete
+  // Compute active item index: the first item that is not yet in a terminal stage
+  const activeIndex = !isRunning
     ? -1
-    : items.findIndex((item) => !isTerminalStatus(item.status));
+    : items.findIndex((item) => {
+        const stage = classifyProcessItemStage(item, batchPhase, false);
+        return stage !== "SUCCEEDED" && stage !== "FAILED";
+      });
 
   // ── Floating Minimized Widget ──────────────────────────────────────────────
-  if (state.isMinimized && !state.isOpen) {
+  if (displayMode === "MINIMIZED_PILL") {
     if (!mounted || typeof document === "undefined") return null;
 
     return createPortal(
@@ -110,9 +114,9 @@ export default function ProcessModal({
         )}
 
         {/* Status Icon */}
-        {state.error ? (
+        {isErroredPhase ? (
           <AlertCircle className="size-3.5 text-destructive shrink-0" />
-        ) : state.isComplete ? (
+        ) : isCompletedPhase ? (
           <CheckCircle2 className="size-3.5 text-success shrink-0" />
         ) : (
           <Loader2 className="size-3.5 animate-spin text-foreground shrink-0 motion-reduce:animate-none" />
@@ -121,9 +125,9 @@ export default function ProcessModal({
         {/* Status Label & Metrics */}
         <div className="flex items-center gap-1.5 leading-none">
           <span>
-            {state.error
+            {isErroredPhase
               ? "Processing failed"
-              : state.isComplete
+              : isCompletedPhase
                 ? "Processing complete"
                 : total > 1
                   ? `Processing ${processed}/${total}`
@@ -137,7 +141,7 @@ export default function ProcessModal({
         </div>
 
         {/* Dismiss Button when Complete or Errored */}
-        {(state.isComplete || state.error) && (
+        {(isCompletedPhase || isErroredPhase) && (
           <button
             type="button"
             onClick={(e) => {
@@ -156,12 +160,12 @@ export default function ProcessModal({
     );
   }
 
-  if (!state.isOpen) return null;
+  if (displayMode === "HIDDEN") return null;
 
   // ── Main Process Modal ──────────────────────────────────────────────────────
   return (
     <Dialog
-      open={state.isOpen}
+      open={displayMode === "EXPANDED"}
       onOpenChange={(open) => {
         if (!open) {
           if (isRunning && onMinimize) {
@@ -180,7 +184,7 @@ export default function ProcessModal({
               <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
                 Metadata Retrieval
               </DialogTitle>
-              {state.isComplete && !state.error && (
+              {isCompletedPhase && !state.error && (
                 <Badge variant="completed" className="text-11 gap-1 py-0.5">
                   <CheckCircle2 className="size-3" />
                   Completed
@@ -201,7 +205,7 @@ export default function ProcessModal({
               <span className="text-foreground">
                 {isRunning
                   ? "Processing files..."
-                  : state.error
+                  : isErroredPhase
                     ? "Processing failed"
                     : "All files processed"}
               </span>
@@ -213,7 +217,10 @@ export default function ProcessModal({
             {/* Global Progress Component */}
             <Progress
               value={percentage}
-              className={cn("h-1.5 w-full bg-muted", state.error && "[&>[data-slot=progress-indicator]]:bg-destructive")}
+              className={cn(
+                "h-1.5 w-full bg-muted",
+                isErroredPhase && "[&>[data-slot=progress-indicator]]:bg-destructive",
+              )}
             />
           </div>
 
@@ -238,22 +245,14 @@ export default function ProcessModal({
                 <ScrollArea className="max-h-[300px]">
                   <div className="divide-y divide-border-subtle">
                     {items.map((item, idx) => {
-                    const status = String(item.status);
-                    const isItemFailed = [
-                      "FAILED",
-                      "FAILED_FINAL",
-                      "FAILED_RETRYABLE",
-                    ].includes(status);
-                    const isItemSuccess =
-                      ["SUCCEEDED", "COMPLETED", "READY"].includes(status) ||
-                      (state.isComplete && !isItemFailed && !state.error);
-                    const isItemProcessing =
-                      !isItemSuccess &&
-                      !isItemFailed &&
-                      (["PROCESSING", "RUNNING", "UPLOADING"].includes(
-                        status,
-                      ) ||
-                        idx === activeIndex);
+                      const itemStage = classifyProcessItemStage(
+                        item,
+                        batchPhase,
+                        idx === activeIndex,
+                      );
+                      const isItemSuccess = itemStage === "SUCCEEDED";
+                      const isItemFailed = itemStage === "FAILED";
+                      const isItemProcessing = itemStage === "ACTIVE";
 
                     return (
                       <div
@@ -318,15 +317,26 @@ export default function ProcessModal({
         </div>
 
         {/* Modal Footer */}
-        <div className="pt-2 flex items-center justify-end">
+        <div className="pt-2 flex items-center justify-end gap-2">
+          {isRunning && onMinimize ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onMinimize}
+              className="h-8 px-4 text-13 font-medium rounded-md cursor-pointer"
+            >
+              Minimize
+            </Button>
+          ) : null}
           <Button
             type="button"
             variant={isRunning ? "outline" : "default"}
             size="sm"
-            onClick={isRunning ? onMinimize || onClose : onClose}
+            onClick={onClose}
             className="h-8 px-4 text-13 font-medium rounded-md cursor-pointer"
           >
-            {isRunning ? "Minimize" : "Close"}
+            Close
           </Button>
         </div>
       </DialogContent>

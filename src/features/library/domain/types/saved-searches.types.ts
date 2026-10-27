@@ -94,6 +94,7 @@ export const savedSearchSchema = z.object({
   isPinned: z.boolean().optional().default(false),
   cachedCount: z.number().nullable().optional().default(0),
   lastEvaluatedAt: z.string().datetime().nullable().optional(),
+  scope: z.string().optional(),
   scopeId: z.string().optional(),
   projectId: z.string().nullable().optional(),
   userId: z.string(),

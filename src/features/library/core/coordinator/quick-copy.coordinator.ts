@@ -178,13 +178,15 @@ export function useQuickCopyCoordinator({
         : false;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (useLibraryUIStore.getState().activeModal !== null) return;
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName?.toLowerCase();
       if (
         tag === 'input' ||
         tag === 'textarea' ||
         tag === 'select' ||
-        target?.isContentEditable
+        target?.isContentEditable ||
+        target?.closest('[role="dialog"], [role="menu"], [role="combobox"]')
       ) {
         return;
       }

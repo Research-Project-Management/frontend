@@ -25,16 +25,25 @@ export type LibraryModalType =
   | 'ADD_BY_IDENTIFIER'
   | 'CREATE_COLLECTION'
   | 'RENAME_COLLECTION'
+  | 'DELETE_COLLECTION'
   | 'SAVED_SEARCH'
   | 'DELETE_CONFIRM'
+  | 'CONFIRM_DELETE'
+  | 'CONFIRM_RESTORE'
+  | 'EMPTY_TRASH'
   | 'MERGE_DUPLICATES'
+  | 'RESOLVE_CONFLICT'
   | 'EXPORT_LIBRARY'
   | 'IMPORT_FROM_USER'
   | 'SHORTCUTS_HELP'
   | 'TYPE_CONVERSION'
+  | 'CONVERT_ITEM_TYPE'
   | 'CSL_STYLE_MANAGER'
   | 'FEEDS_MANAGER'
-  | 'ADD_FEED';
+  | 'ADD_FEED'
+  | 'EDIT_FEED';
+
+export type ModalType = LibraryModalType;
 
 // 1. Scope & Navigation Context Slice
 export interface LibraryScopeSlice {
@@ -179,7 +188,7 @@ const createLayoutSlice: StateCreator<
 > = (set) => ({
   isSidebarOpen: true,
   sidebarWidth: 260,
-  inspectorWidth: 360,
+  inspectorWidth: 320,
   isInspectorOpen: false,
   activeInspectorTab: 'info',
   viewMode: 'table',
@@ -196,7 +205,7 @@ const createLayoutSlice: StateCreator<
   },
 
   setInspectorWidth: (inspectorWidth) => {
-    const clamped = Math.min(Math.max(inspectorWidth, 300), 640);
+    const clamped = Math.min(Math.max(inspectorWidth, 260), 640);
     set((s) => (s.inspectorWidth === clamped ? s : { inspectorWidth: clamped }));
   },
 

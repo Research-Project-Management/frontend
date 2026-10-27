@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -17,6 +17,13 @@ import {
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from '@/shared/components/ui/select';
 
 import { useFeedsStore } from '@/features/library/core/store/feeds.store';
 import { useUpdateFeedSubscriptionMutation } from '@/features/library/sdk/queries/ingestion.queries';
@@ -26,8 +33,8 @@ import {
   type EditFeedFormValues,
 } from '@/features/library/domain/types/forms.types';
 import {
-  RETENTION_OPTIONS,
   READ_RETENTION_OPTIONS,
+  UNREAD_RETENTION_OPTIONS,
   type FeedRetentionDays,
 } from '@/features/library/domain/types/feeds.types';
 
@@ -38,7 +45,6 @@ export interface EditFeedModalProps {
 }
 
 export function EditFeedModal({ open, onOpenChange, feed }: EditFeedModalProps) {
-  const updateFeed = useFeedsStore((s) => s.updateFeed);
   const { mutateAsync: updateFeedSubscription } = useUpdateFeedSubscriptionMutation();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -51,14 +57,16 @@ export function EditFeedModal({ open, onOpenChange, feed }: EditFeedModalProps) 
       cleanupReadAfter: (feed?.cleanupReadAfter ?? 7) as FeedRetentionDays,
       cleanupUnreadAfter: (feed?.cleanupUnreadAfter ?? feed?.retentionDays ?? 30) as FeedRetentionDays,
     },
-    mode: 'onTouched',
+    mode: 'onSubmit',
+    reValidateMode: 'onChange',
   });
 
   const {
     register,
     handleSubmit,
     reset,
-    watch,
+    control,
+    setValue,
     formState: { errors },
   } = form;
 
@@ -99,9 +107,6 @@ export function EditFeedModal({ open, onOpenChange, feed }: EditFeedModalProps) 
     }
   };
 
-  const watchedUrl = watch('url');
-  const watchedName = watch('name');
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -121,8 +126,8 @@ export function EditFeedModal({ open, onOpenChange, feed }: EditFeedModalProps) 
           <div className="space-y-3">
             {/* URL Field */}
             <div className="space-y-1.5">
-              <Label htmlFor="edit-feed-url" className="text-11 font-medium text-foreground inline-flex items-center">
-                <span>URL</span>
+              <Label htmlFor="edit-feed-url" className="text-12 font-medium text-foreground inline-flex items-center">
+                <span>Feed URL</span>
                 <span className="text-destructive ml-0.5" aria-hidden="true">
                   *
                 </span>
@@ -133,14 +138,14 @@ export function EditFeedModal({ open, onOpenChange, feed }: EditFeedModalProps) 
                 placeholder="https://rss.arxiv.org/rss/cs.AI"
                 autoFocus
                 {...register('url')}
-                className="h-8 text-13 rounded-md bg-background border-border hover:border-border-hover focus-visible:border-primary focus-visible:ring-ring placeholder:text-muted-foreground text-foreground shadow-none"
+                className="h-8 text-12 rounded-md bg-background border-border hover:border-border-hover focus-visible:border-primary focus-visible:ring-ring placeholder:text-muted-foreground text-foreground shadow-none"
               />
               {errors.url && <p className="text-11 text-destructive">{errors.url.message}</p>}
             </div>
 
             {/* Title Field */}
             <div className="space-y-1.5">
-              <Label htmlFor="edit-feed-name" className="text-11 font-medium text-foreground inline-flex items-center">
+              <Label htmlFor="edit-feed-name" className="text-12 font-medium text-foreground inline-flex items-center">
                 <span>Title</span>
                 <span className="text-destructive ml-0.5" aria-hidden="true">
                   *
@@ -148,66 +153,106 @@ export function EditFeedModal({ open, onOpenChange, feed }: EditFeedModalProps) 
               </Label>
               <Input
                 id="edit-feed-name"
-                placeholder="e.g. arXiv Artificial Intelligence"
+                placeholder="Feed title"
                 {...register('name')}
-                className="h-8 text-13 rounded-md bg-background border-border hover:border-border-hover focus-visible:border-primary focus-visible:ring-ring placeholder:text-muted-foreground text-foreground shadow-none"
+                className="h-8 text-12 rounded-md bg-background border-border hover:border-border-hover focus-visible:border-primary focus-visible:ring-ring placeholder:text-muted-foreground text-foreground shadow-none"
               />
               {errors.name && <p className="text-11 text-destructive">{errors.name.message}</p>}
             </div>
 
-            {/* Virtualized Retention Policy (Unread vs Read) */}
+            {/* Retention Policy (Unread vs Read) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div className="space-y-1.5">
-                <Label htmlFor="edit-feed-retention" className="text-11 font-medium text-foreground">
+                <Label htmlFor="edit-feed-retention" className="text-12 font-medium text-foreground">
                   Remove Unread Items
                 </Label>
-                <select
-                  id="edit-feed-retention"
-                  {...register('retentionDays', { valueAsNumber: true })}
-                  className="h-8 w-full text-12 rounded-md bg-background border border-border px-2 text-foreground focus-visible:outline-none focus-visible:border-primary cursor-pointer"
-                >
-                  {RETENTION_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                <Controller
+                  name="retentionDays"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={String(field.value ?? 30)}
+                      onValueChange={(val) => {
+                        const num = Number(val) as FeedRetentionDays;
+                        field.onChange(num);
+                        setValue('cleanupUnreadAfter', num);
+                      }}
+                    >
+                      <SelectTrigger
+                        id="edit-feed-retention"
+                        className="w-full h-8 text-12 text-foreground justify-between rounded-md border-border bg-background hover:border-border-hover focus-visible:border-primary cursor-pointer"
+                      >
+                        <SelectValue placeholder="Select retention" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60 bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md">
+                        {UNREAD_RETENTION_OPTIONS.map((option) => (
+                          <SelectItem
+                            key={option.value}
+                            value={String(option.value)}
+                            className="text-12 py-1.5 px-2"
+                          >
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="edit-feed-read-retention" className="text-11 font-medium text-foreground">
+                <Label htmlFor="edit-feed-read-retention" className="text-12 font-medium text-foreground">
                   Remove Read Items
                 </Label>
-                <select
-                  id="edit-feed-read-retention"
-                  {...register('cleanupReadAfter', { valueAsNumber: true })}
-                  className="h-8 w-full text-12 rounded-md bg-background border border-border px-2 text-foreground focus-visible:outline-none focus-visible:border-primary cursor-pointer"
-                >
-                  {READ_RETENTION_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                <Controller
+                  name="cleanupReadAfter"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={String(field.value ?? 7)}
+                      onValueChange={(val) =>
+                        field.onChange(Number(val) as FeedRetentionDays)
+                      }
+                    >
+                      <SelectTrigger
+                        id="edit-feed-read-retention"
+                        className="w-full h-8 text-12 text-foreground justify-between rounded-md border-border bg-background hover:border-border-hover focus-visible:border-primary cursor-pointer"
+                      >
+                        <SelectValue placeholder="Select cleanup time" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60 bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md">
+                        {READ_RETENTION_OPTIONS.map((option) => (
+                          <SelectItem
+                            key={option.value}
+                            value={String(option.value)}
+                            className="text-12 py-1.5 px-2"
+                          >
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </div>
             </div>
           </div>
 
-          <DialogFooter className="flex items-center justify-end gap-2 pt-1 sm:space-x-0">
+          <DialogFooter className="flex items-center justify-end gap-2 pt-3 sm:space-x-0">
             <Button
               type="button"
               variant="ghost"
               size="sm"
               onClick={() => onOpenChange(false)}
-              className="h-8 px-3 text-12 text-foreground cursor-pointer rounded-md hover:bg-muted font-medium"
+              className="h-8 px-3 text-12 font-medium cursor-pointer text-foreground rounded-md hover:bg-muted"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               size="sm"
-              disabled={isSubmitting || !watchedUrl?.trim() || !watchedName?.trim()}
-              className="h-8 px-3.5 text-12 font-medium cursor-pointer rounded-md shadow-none"
+              disabled={isSubmitting}
+              className="h-8 px-4 text-12 font-medium cursor-pointer rounded-md shadow-none"
             >
               {isSubmitting && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
               Save Changes

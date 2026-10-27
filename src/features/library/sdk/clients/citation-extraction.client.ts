@@ -6,12 +6,9 @@ import type {
   ItemAttachment,
 } from '@/features/library/domain/types/library.types';
 import type {
-  ReaderDocument,
   ReaderAnnotation,
   CreateAnnotationDto,
   UpdateAnnotationDto,
-  DocumentReadingState,
-  DocumentFulltext,
 } from '@/features/library/domain/types/reader.types';
 import {
   libraryClient,
@@ -21,14 +18,10 @@ import {
   getItemAttachmentUrl,
   getAttachmentUrl,
   unwrapList,
-  unwrapRecord,
   unwrapResolvedReference,
-  fetchPdfBlob,
-  getItemFileUrl,
   isProjectScope,
 } from './http.client';
-import { ItemsService } from './items.client';
-import { NotesService, StateService } from './catalog-entities.client';
+import { NotesService } from './catalog-entities.client';
 
 // 8. Citations & Exports Services
 export const CitationService = {
@@ -62,14 +55,14 @@ export const CitationService = {
     );
   },
 
-  searchStyles: (query = '', limit = 30) =>
+  searchStyles: (query = '', limit = 30, scopeId?: string) =>
     libraryClient.get<{ styles: CslStyleMetadata[]; total: number }>(
-      `/api/v1/library/citation/styles/search?q=${encodeURIComponent(query)}&limit=${limit}`,
+      `${getCitationUrl(scopeId, 'styles/search')}?q=${encodeURIComponent(query)}&limit=${limit}`,
     ),
 
-  uploadCustomStyle: (xml: string, title?: string) =>
+  uploadCustomStyle: (xml: string, title?: string, scopeId?: string) =>
     libraryClient.post<{ styleId?: string; id?: string; title: string; message: string }>(
-      `/api/v1/library/citation/styles/custom`,
+      getCitationUrl(scopeId, 'styles/custom'),
       { xml, title },
     ).then((res) => ({
       ...res,
@@ -77,12 +70,41 @@ export const CitationService = {
       styleId: res.styleId || res.id || '',
     })),
 
-  resolveDoi: async (doi: string, _scopeId?: string): Promise<ReferenceData | null> => {
+  formatRawItem: (
+    item: Record<string, unknown>,
+    styleId: CslStyle = 'apa-7th',
+    index = 1,
+    scopeId?: string,
+  ) =>
+    libraryClient.post<FormattedCitation>(getCitationUrl(scopeId, 'format'), {
+      item,
+      styleId,
+      index,
+    }),
+
+  formatRawBatch: (
+    items: Array<Record<string, unknown>>,
+    styleId: CslStyle = 'apa-7th',
+    scopeId?: string,
+  ) =>
+    libraryClient.post<{
+      style: CslStyle;
+      total: number;
+      combinedInText?: string;
+      bibliographyText?: string;
+      bibliographyHtml?: string;
+      citations: Array<{ itemId?: string; citation: FormattedCitation }>;
+    }>(getCitationUrl(scopeId, 'batch'), {
+      items,
+      styleId,
+    }),
+
+  resolveDoi: async (doi: string, scopeId?: string): Promise<ReferenceData | null> => {
     const rawDoi = typeof doi === 'string' ? doi.trim() : '';
     if (!rawDoi) throw new Error('Invalid DOI provided');
     try {
       const referenceResponse = await libraryClient.post<unknown>(
-        `/api/v1/library/citation/resolve`,
+        getCitationUrl(scopeId, 'resolve'),
         { doi: rawDoi, query: rawDoi },
         { silent: true },
       );
@@ -96,7 +118,7 @@ export const CitationService = {
 
   fetchByDoi: (doi: string, scopeId?: string) => CitationService.resolveDoi(doi, scopeId),
 
-  search: async (query: string, _scopeId?: string): Promise<ReferenceData[]> => {
+  search: async (query: string, scopeId?: string): Promise<ReferenceData[]> => {
     if (!query || !query.trim()) return [];
     const trimmedQuery = query.trim();
     try {
@@ -104,7 +126,10 @@ export const CitationService = {
         works?: ReferenceData[];
         results?: ReferenceData[];
         data?: ReferenceData[];
-      }>(`/api/v1/library/citation/crossref/search?query=${encodeURIComponent(trimmedQuery)}&rows=10`, { silent: true });
+      }>(
+        `${getCitationUrl(scopeId, 'crossref/search')}?query=${encodeURIComponent(trimmedQuery)}&rows=10`,
+        { silent: true },
+      );
       if (response?.works && Array.isArray(response.works)) return response.works;
       if (response?.results && Array.isArray(response.results)) return response.results;
       if (response?.data && Array.isArray(response.data)) return response.data;
@@ -120,7 +145,7 @@ export const CitationService = {
     if (!trimmed) return null;
     try {
       const referenceResponse = await libraryClient.post<unknown>(
-        `/api/v1/library/citation/resolve`,
+        getCitationUrl(scopeId, 'resolve'),
         { query: trimmed },
         { silent: true },
       );
@@ -152,11 +177,18 @@ export const ExportsService = {
     );
   },
 
-  exportByCitationKeys: (scopeId: string, keys: string[]) =>
-    libraryClient.post<{ content: string; filename: string; itemCount: number }>(
+  exportByCitationKeys: (scopeId: string, keys: string[]) => {
+    const projectId = isProjectScope(scopeId) ? scopeId : undefined;
+    return libraryClient.post<{
+      content: string;
+      bibtex?: string;
+      filename: string;
+      itemCount: number;
+    }>(
       `${getExportsUrl(scopeId)}/by-keys`,
-      { keys, format: 'bibtex' },
-    ),
+      { keys, ...(projectId ? { projectId } : {}) },
+    );
+  },
 
   exportAnnotatedPdf: (scopeId?: string, itemId?: string) => {
     const pQuery = isProjectScope(scopeId) ? `?projectId=${encodeURIComponent(scopeId!)}` : '';
@@ -208,8 +240,6 @@ export const ExportsService = {
     return { filename: resolvedFilename, mimeType: 'application/pdf' };
   },
 };
-
-export const downloadAnnotatedPdf = ExportsService.downloadAnnotatedPdf;
 
 // 9. Extraction, Attachments & Upload Services
 export const AttachmentsService = {
@@ -270,6 +300,17 @@ export const AttachmentsService = {
       getItemAttachmentUrl(scopeId, itemId, `${encodeURIComponent(attachmentId)}/set-primary`),
       {},
     ),
+
+  getPresignedUrl: (scopeId: string | undefined, attachmentId: string) =>
+    libraryClient.get<{
+      url: string;
+      expiresIn: number;
+      filename: string;
+      mimeType: string;
+    }>(getAttachmentUrl(scopeId, attachmentId, 'presigned-url')),
+
+  getThumbnailUrl: (scopeId: string | undefined, attachmentId: string) =>
+    getAttachmentUrl(scopeId, attachmentId, 'thumbnail'),
 };
 
 export const UploadService = {
@@ -301,44 +342,152 @@ export const UploadService = {
       mimeType: res.mimeType || file.type || 'application/pdf',
     };
   },
+
+  presignUpload: (
+    scopeId: string | undefined,
+    dto: {
+      filename: string;
+      mimeType?: string;
+      sizeBytes?: number;
+      contentHash?: string;
+    },
+  ) =>
+    libraryClient.post<{
+      uploadUrl: string;
+      storageKey: string;
+      fileId?: string;
+      expiresIn?: number;
+      headers?: Record<string, string>;
+    }>(resolveLibraryUrl('extraction', '/attachments/presign', scopeId), dto),
+
+  completePresignedUpload: (
+    scopeId: string | undefined,
+    dto: {
+      storageKey: string;
+      filename: string;
+      mimeType?: string;
+      sizeBytes?: number;
+      contentHash?: string;
+    },
+  ) =>
+    libraryClient.post<{
+      success?: boolean;
+      fileId?: string;
+      storageKey: string;
+      url?: string;
+      filename?: string;
+      size?: number;
+      mimeType?: string;
+    }>(resolveLibraryUrl('extraction', '/attachments/presign/complete', scopeId), dto),
+
+  initiateMultipartSession: (
+    scopeId: string | undefined,
+    dto: {
+      filename: string;
+      mimeType?: string;
+      totalSize: number;
+      expectedHash?: string;
+    },
+  ) =>
+    libraryClient.post<{
+      sessionId: string;
+      storageKey?: string;
+      partSize?: number;
+      totalParts?: number;
+    }>(resolveLibraryUrl('extraction', '/attachments/multipart/initiate', scopeId), dto),
+
+  getMultipartPartUrl: (
+    scopeId: string | undefined,
+    sessionId: string,
+    partNumber: number,
+  ) =>
+    libraryClient.get<{ partNumber: number; partUrl: string }>(
+      resolveLibraryUrl(
+        'extraction',
+        `/attachments/multipart/${encodeURIComponent(sessionId)}/part-url`,
+        scopeId,
+      ),
+      { params: { partNumber } },
+    ),
+
+  completeMultipartSession: (
+    scopeId: string | undefined,
+    dto: {
+      sessionId: string;
+      parts: Array<{ partNumber: number; eTag: string }>;
+    },
+  ) =>
+    libraryClient.post<{
+      fileId?: string;
+      storageKey?: string;
+      url?: string;
+      size?: number;
+    }>(resolveLibraryUrl('extraction', '/attachments/multipart/complete', scopeId), dto),
+
+  abortMultipartSession: (scopeId: string | undefined, sessionId: string) =>
+    libraryClient.delete<{ success: boolean }>(
+      resolveLibraryUrl(
+        'extraction',
+        `/attachments/multipart/${encodeURIComponent(sessionId)}`,
+        scopeId,
+      ),
+    ),
+};
+
+export const ExtractionTelemetryService = {
+  getTelemetry: () =>
+    libraryClient.get<{
+      status: string;
+      architecture: string;
+      version: string;
+      flags: {
+        enabled: boolean;
+        zeroDocker: boolean;
+        fallbackMode: string;
+        pipelineMode: string;
+      };
+      metrics: {
+        latencyTarget: string;
+        supportedFormats: string[];
+        cascades: string[];
+      };
+    }>('/api/v1/library/extraction/telemetry'),
+
+  benchmark: (payload: { base64Pdf?: string; filename?: string } | File) => {
+    if (typeof File !== 'undefined' && payload instanceof File) {
+      const formData = new FormData();
+      formData.append('file', payload);
+      return libraryClient.post<{
+        success: boolean;
+        benchmark: {
+          executionLatencyMs: number;
+          engineUsed: string;
+          isSelfSufficient: boolean;
+          qualityScore: number;
+          breakdown: Record<string, unknown>;
+          missingFields: string[];
+        };
+        extractedMetadata: Record<string, unknown>;
+      }>('/api/v1/library/extraction/benchmark', formData);
+    }
+    return libraryClient.post<{
+      success: boolean;
+      benchmark: {
+        executionLatencyMs: number;
+        engineUsed: string;
+        isSelfSufficient: boolean;
+        qualityScore: number;
+        breakdown: Record<string, unknown>;
+        missingFields: string[];
+      };
+      extractedMetadata: Record<string, unknown>;
+    }>('/api/v1/library/extraction/benchmark', payload);
+  },
 };
 
 
-// 12. Reader Services
-const ReaderDocumentsService = {
-  get: async (scopeId: string | undefined, itemId: string): Promise<ReaderDocument> => {
-    const item = await ItemsService.getById(scopeId || 'user', itemId);
-    return item as ReaderDocument;
-  },
-
-  update: async (
-    scopeId: string | undefined,
-    itemId: string,
-    data: Partial<ReaderDocument>,
-  ): Promise<ReaderDocument> => {
-    const updated = await ItemsService.updateItem(
-      scopeId,
-      itemId,
-      data as Parameters<typeof ItemsService.updateItem>[2],
-    );
-    return updated as ReaderDocument;
-  },
-
-  reindex: ItemsService.reindex,
-
-  getFulltext: async (
-    scopeId: string | undefined,
-    itemId: string,
-  ): Promise<DocumentFulltext | null> => {
-    const res = await ItemsService.getFulltext(scopeId, itemId);
-    if (!res) return null;
-    return unwrapRecord<DocumentFulltext>(res, 'data') ?? (res as DocumentFulltext);
-  },
-
-  getMetadataSources: ItemsService.getMetadataSources,
-};
-
-const ReaderAnnotationsService = {
+// 12. Annotations & Reader Services
+export const AnnotationsService = {
   getByAttachment: async (scopeId: string | undefined, attachmentId: string): Promise<ReaderAnnotation[]> => {
     if (!attachmentId) return [];
     const url = resolveLibraryUrl('reader', `/attachments/${encodeURIComponent(attachmentId)}/annotations`, scopeId);
@@ -377,10 +526,10 @@ const ReaderAnnotationsService = {
       `/attachments/${encodeURIComponent(attachmentId)}/annotations/${encodeURIComponent(annotationId)}`,
       scopeId,
     );
-    const res = await libraryClient.delete<{ success?: boolean } | boolean>(url, {
+    const res = await libraryClient.delete<{ deleted?: boolean; success?: boolean } | boolean>(url, {
       params: expectedVersion !== undefined ? { expectedVersion } : undefined,
     });
-    return typeof res === 'boolean' ? res : Boolean(res?.success);
+    return typeof res === 'boolean' ? res : Boolean(res?.deleted ?? res?.success);
   },
 
   batch: async (
@@ -423,57 +572,4 @@ const ReaderAnnotationsService = {
   },
 };
 
-const ReaderStateService = {
-  getState: async (scopeId: string | undefined, itemId: string): Promise<DocumentReadingState | null> => {
-    try {
-      const state = await StateService.getState(scopeId, itemId);
-      return (state as DocumentReadingState | null) ?? null;
-    } catch {
-      return null;
-    }
-  },
-
-  updateState: async (
-    scopeId: string | undefined,
-    itemId: string,
-    patch: Partial<DocumentReadingState>,
-  ): Promise<DocumentReadingState> => {
-    const updated = await StateService.updateState(scopeId, itemId, patch);
-    return updated as DocumentReadingState;
-  },
-
-  markAsRead: (scopeId: string | undefined, itemId: string) =>
-    StateService.markAsRead(scopeId, itemId),
-};
-
-const ReaderAttachmentsService = {
-  reExtract: AttachmentsService.reExtract,
-};
-
-const ReaderCitationsService = {
-  exportLibrary: ExportsService.exportLibrary,
-  downloadAnnotatedPdf: ExportsService.downloadAnnotatedPdf,
-};
-
-export const readerService = {
-  getDocument: ReaderDocumentsService.get,
-  getAnnotations: ReaderAnnotationsService.getByAttachment,
-  createAnnotation: ReaderAnnotationsService.create,
-  updateAnnotation: ReaderAnnotationsService.update,
-  deleteAnnotation: ReaderAnnotationsService.delete,
-  batchAnnotations: ReaderAnnotationsService.batch,
-  getState: ReaderStateService.getState,
-  updateState: ReaderStateService.updateState,
-  markAsRead: ReaderStateService.markAsRead,
-  documents: ReaderDocumentsService,
-  items: ReaderDocumentsService,
-  annotations: ReaderAnnotationsService,
-  state: ReaderStateService,
-  attachments: ReaderAttachmentsService,
-  citations: ReaderCitationsService,
-  exports: ReaderCitationsService,
-  fetchPdfBlob,
-  getItemFileUrl,
-  isProjectScope,
-};
 

@@ -15,53 +15,20 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 import type { InspectorSectionId } from '@/features/library/core/store/library-ui.store';
+import {
+  type InspectorTabKey,
+  INSPECTOR_LEVELS_FROM_BOTTOM,
+  INSPECTOR_LEVELS,
+  SECTION_TO_LEVEL,
+  LEVEL_TO_SECTION,
+} from './inspector-levels.constants';
 
-export type InspectorTabKey = InspectorSectionId;
-
-/**
- * Inspector Levels counted from bottom icon to top icon:
- * Level 1: 'cite' (1 bar/tab: Citation)
- * Level 2: 'relations' (2 bars/tabs: Related, Citation)
- * Level 3: 'tags' (3 bars/tabs: Tags, Related, Citation)
- * Level 4: 'collections' (4 bars/tabs: Collections, Tags, Related, Citation)
- * Level 5: 'notes' (5 bars/tabs: Notes, Collections, Tags, Related, Citation)
- * Level 6: 'files' (6 bars/tabs: Attachments, Notes, Collections, Tags, Related, Citation)
- * Level 7: 'abstract' (7 bars/tabs: Abstract, Attachments, Notes, Collections, Tags, Related, Citation)
- * Level 8: 'info' (8 bars/tabs: Details, Abstract, Attachments, Notes, Collections, Tags, Related, Citation)
- */
-export const INSPECTOR_LEVELS_FROM_BOTTOM: InspectorSectionId[] = [
-  'cite',
-  'relations',
-  'tags',
-  'collections',
-  'notes',
-  'files',
-  'abstract',
-  'info',
-];
-
-export const INSPECTOR_LEVELS = INSPECTOR_LEVELS_FROM_BOTTOM;
-
-export const SECTION_TO_LEVEL: Record<InspectorSectionId, number> = {
-  cite: 1,
-  relations: 2,
-  tags: 3,
-  collections: 4,
-  notes: 5,
-  files: 6,
-  abstract: 7,
-  info: 8,
-};
-
-export const LEVEL_TO_SECTION: Record<number, InspectorSectionId> = {
-  1: 'cite',
-  2: 'relations',
-  3: 'tags',
-  4: 'collections',
-  5: 'notes',
-  6: 'files',
-  7: 'abstract',
-  8: 'info',
+export {
+  type InspectorTabKey,
+  INSPECTOR_LEVELS_FROM_BOTTOM,
+  INSPECTOR_LEVELS,
+  SECTION_TO_LEVEL,
+  LEVEL_TO_SECTION,
 };
 
 interface TabItem {
@@ -110,6 +77,7 @@ export function InspectorTabs({
     { id: 'cite', label: 'Citation', icon: Quote },
   ];
 
+
   return (
     <aside
       aria-label="Inspector panel bar"
@@ -143,7 +111,7 @@ export function InspectorTabs({
       <div className={cn("flex flex-col items-center gap-1 w-full px-1", hideRailToggle ? "pt-2" : "pt-1.5")}>
         {tabs.map((tab) => {
           const Icon = tab.icon;
-          const isSelected = isInspectorOpen && activeTab === tab.id;
+          const isActive = isInspectorOpen && activeTab === tab.id;
 
           return (
             <Tooltip key={tab.id}>
@@ -158,12 +126,12 @@ export function InspectorTabs({
                   }}
                   className={cn(
                     'relative size-8 flex items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary transition-all cursor-pointer before:absolute before:-inset-1.5 md:before:hidden',
-                    isSelected
-                      ? 'bg-muted text-foreground font-semibold ring-1 ring-border'
+                    isActive
+                      ? 'bg-muted text-foreground font-semibold ring-1 ring-border shadow-xs'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
                   )}
                   aria-label={tab.label}
-                  aria-current={isSelected ? 'true' : undefined}
+                  aria-current={isActive ? 'true' : undefined}
                 >
                   <Icon className="size-4 shrink-0" strokeWidth={1.5} />
                 </button>

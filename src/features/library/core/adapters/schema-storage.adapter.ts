@@ -73,3 +73,19 @@ export function loadSchemaCache(): unknown | null {
     return null;
   }
 }
+
+import {
+  updateLibrarySchemaRegistry,
+  setSchemaPersistenceListener,
+} from '@/features/library/domain/types/library.types';
+
+// Register storage persistence listener with domain layer
+setSchemaPersistenceListener(saveSchemaCache);
+
+// Immediately hydrate domain registry from cached schema if available
+if (isBrowser()) {
+  const cached = loadSchemaCache();
+  if (cached) {
+    updateLibrarySchemaRegistry(cached, { persist: false });
+  }
+}

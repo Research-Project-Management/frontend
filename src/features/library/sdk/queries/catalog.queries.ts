@@ -1,5 +1,7 @@
 'use client';
 
+import '@/features/library/core/adapters/schema-storage.adapter';
+
 import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
@@ -17,6 +19,7 @@ import type {
   ItemQueryParams,
 } from '@/features/library/domain/types/library.types';
 import { updateLibrarySchemaRegistry } from '@/features/library/domain/types/library.types';
+import { ALL_ITEM_TYPES_FLAT } from '@/features/library/domain/types/item-type-mappings.constants';
 import {
   itemKeys,
   libraryKeys,
@@ -25,9 +28,14 @@ import {
   noteKeys,
   savedSearchKeys,
   relationKeys,
+  feedKeys,
   invalidateCollections,
   normalizeScopeId,
 } from '@/features/library/sdk/query-keys';
+import {
+  useFeedsStore,
+  mapServerFeedSubscriptions,
+} from '@/features/library/core/store/feeds.store';
 
 export {
   itemKeys,
@@ -51,6 +59,7 @@ import {
 import {
   chunkUniqueIds,
   extractItemFromCacheData,
+  mergeCachedItemWithPatch,
   patchItemInCacheData,
   patchSingleItemCache,
   patchItemAcrossScopeCaches,
@@ -65,6 +74,7 @@ import {
 export {
   chunkUniqueIds,
   extractItemFromCacheData,
+  mergeCachedItemWithPatch,
   patchItemInCacheData,
   patchSingleItemCache,
   patchItemAcrossScopeCaches,
@@ -78,6 +88,82 @@ export {
 
 // ITEMS QUERY HOOKS
 
+export function useLibraryBootstrapQuery(
+  scopeId?: string,
+  itemParams?: ItemQueryParams,
+  options?: { enabled?: boolean; includeItems?: boolean },
+) {
+  const queryClient = useQueryClient();
+  const targetScope = normalizeScopeId(scopeId);
+  const includeItems = options?.includeItems ?? true;
+
+  return useQuery({
+    queryKey: libraryKeys.bootstrap(targetScope, includeItems ? itemParams : { includeItems: false }),
+    enabled: options?.enabled ?? true,
+    staleTime: 1000 * 60,
+    gcTime: 5 * 60 * 1000,
+    queryFn: async ({ signal }) => {
+      const res = await ItemsService.getBootstrap(
+        targetScope,
+        {
+          ...(includeItems ? itemParams : {}),
+          includeItems,
+        },
+        { signal },
+      );
+      if (!res || typeof res !== 'object') return res;
+
+      if (res.counts) {
+        queryClient.setQueryData(itemKeys.counts(targetScope), res.counts);
+      }
+      if (Array.isArray(res.collections)) {
+        queryClient.setQueryData(collectionKeys.all(targetScope), res.collections);
+      }
+      if (Array.isArray(res.savedSearches)) {
+        queryClient.setQueryData(savedSearchKeys.all(targetScope), res.savedSearches);
+      }
+      if (res.itemTypes && typeof res.itemTypes === 'object') {
+        updateLibrarySchemaRegistry(res.itemTypes);
+        queryClient.setQueryData(itemKeys.types(targetScope), res.itemTypes);
+        if (targetScope !== 'user') {
+          queryClient.setQueryData(itemKeys.types('user'), res.itemTypes);
+        }
+      }
+      if (res.syncVersion && typeof res.syncVersion === 'object') {
+        queryClient.setQueryData(libraryKeys.syncVersion(targetScope), {
+          version: String(res.syncVersion.version ?? '0'),
+          scopeId: targetScope,
+          syncedCount: 0,
+        });
+      }
+      if (targetScope === 'user' && Array.isArray(res.feedSubscriptions)) {
+        const mappedFeeds = mapServerFeedSubscriptions(res.feedSubscriptions);
+        useFeedsStore.getState().hydrateFeeds(mappedFeeds);
+        queryClient.setQueryData(feedKeys.subscriptions(), mappedFeeds);
+      }
+      if (includeItems && Array.isArray(res.items)) {
+        const items: Item[] = res.items;
+        const meta = (res.meta || res.pagination || null) as CursorPaginationMeta | null;
+        const total = meta?.totalCount ?? items.length;
+        const hasNextPage = Boolean(meta?.hasNextPage);
+        const nextCursor = meta?.nextCursor || meta?.cursor || null;
+        queryClient.setQueryData<LibraryItemsQueryResult>(
+          libraryKeys.items(targetScope, itemParams),
+          {
+            items,
+            total,
+            meta,
+            hasNextPage,
+            nextCursor,
+          },
+        );
+      }
+
+      return res;
+    },
+  });
+}
+
 export function useLibraryCountsQuery(
   scopeId?: string,
   options?: { enabled?: boolean },
@@ -87,8 +173,20 @@ export function useLibraryCountsQuery(
     queryKey: itemKeys.counts(targetScope),
     queryFn: () => ItemsService.getCounts(targetScope),
     enabled: options?.enabled ?? true,
-    staleTime: 1000 * 30,
+    staleTime: 1000 * 60,
   });
+}
+
+const EMPTY_VIEW_ITEMS: Item[] = [];
+
+function selectViewItemsPayload(data: { items?: Item[]; meta?: CursorPaginationMeta | null; total?: number } | null | undefined) {
+  const items: Item[] = data?.items && data.items.length > 0 ? data.items : EMPTY_VIEW_ITEMS;
+  const meta = (data?.meta || null) as CursorPaginationMeta | null;
+  const total: number =
+    meta?.totalCount ??
+    data?.total ??
+    items.length;
+  return { items, meta, total, hasNextPage: meta?.hasNextPage ?? false, nextCursor: meta?.cursor };
 }
 
 export function useViewItems(
@@ -122,15 +220,7 @@ export function useViewItems(
     enabled,
     gcTime: 5 * 60 * 1000,
     placeholderData: (previousData) => previousData,
-    select: (data) => {
-      const items: Item[] = data?.items || [];
-      const meta = (data?.meta || null) as CursorPaginationMeta | null;
-      const total: number =
-        meta?.totalCount ??
-        data?.total ??
-        items.length;
-      return { items, meta, total, hasNextPage: meta?.hasNextPage ?? false, nextCursor: meta?.cursor };
-    },
+    select: selectViewItemsPayload,
   });
 }
 
@@ -409,7 +499,7 @@ export function useItemTypes(
   const enabled =
     typeof scopeIdOrOptions === 'object' ? (scopeIdOrOptions?.enabled ?? true) : true;
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: itemKeys.types(sid),
     queryFn: async () => {
       const res = await ItemsService.getItemTypes(sid);
@@ -422,15 +512,32 @@ export function useItemTypes(
     staleTime: 1000 * 60 * 60,
   });
 
-  const types = Array.isArray(data)
+  const rawTypes = Array.isArray(data)
     ? data
     : ((data as ItemTypesResponse | undefined)?.itemTypes ||
         (data as ItemTypesResponse | undefined)?.data ||
         []);
 
+  // Architectural Separation:
+  // - Backend is the Single Source of Truth for item types.
+  // - Frontend only activates static ALL_ITEM_TYPES_FLAT fallback when Backend query fails (isError).
+  const isFallback = Boolean(isError && rawTypes.length === 0);
+  const types = rawTypes.length > 0
+    ? rawTypes
+    : isFallback
+      ? ALL_ITEM_TYPES_FLAT.map((t) => ({
+          itemType: t.value,
+          label: t.label,
+          isBibliographic: true,
+        }))
+      : [];
+
   return {
     types,
     isLoading,
+    isError,
+    error,
+    isFallback,
   };
 }
 

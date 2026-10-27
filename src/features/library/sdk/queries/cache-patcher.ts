@@ -9,20 +9,13 @@ import type { InvalidationClient } from '@/features/library/domain/types/batch-u
 import {
   itemKeys,
   tagKeys,
+  savedSearchKeys,
   invalidateCollections,
   normalizeScopeId,
 } from '@/features/library/sdk/query-keys';
 
 export type { InvalidationClient };
-
-/**
- * Helper to deduplicate and partition IDs into chunks of at most chunkSize (default 100).
- * Prevents exceeding URL/HTTP payload limits during batch operations.
- */
-export function chunkUniqueIds(
-  ids: readonly string[],
-  chunkSize = 100,
-): string[][] {
+export function chunkUniqueIds(ids: readonly string[], chunkSize = 100): string[][] {
   const unique = Array.from(new Set(ids.filter(Boolean)));
   if (unique.length === 0) return [];
   const safeChunkSize = Math.max(1, chunkSize);
@@ -33,40 +26,18 @@ export function chunkUniqueIds(
   return chunks;
 }
 
-/**
- * Extracts a target Item from arbitrary TanStack Query cache data.
- * Supports:
- * 1. Detail envelope: { item: Item }
- * 2. Direct item: Item (record.id === itemId)
- * 3. Paginated list: { items: Item[] }
- * 4. InfiniteQuery pages: { pages: Array<{ items?: Item[] }> }
- * 5. Raw Item[] array
- */
-export function extractItemFromCacheData(
-  data: unknown,
-  itemId: string,
-): Item | undefined {
+export function extractItemFromCacheData(data: unknown, itemId: string): Item | undefined {
   if (!data || typeof data !== 'object' || !itemId) return undefined;
-
-  // 1. Detail envelope: { item: Item }
   const record = data as Record<string, unknown>;
   if ('item' in record && record.item && typeof record.item === 'object') {
     const it = record.item as Item;
     if (it.id === itemId) return it;
   }
-
-  // 2. Direct Item: { id: itemId, ... }
-  if ('id' in record && record.id === itemId) {
-    return record as unknown as Item;
-  }
-
-  // 3. Paginated list: { items: Item[] }
+  if ('id' in record && record.id === itemId) return record as unknown as Item;
   if (Array.isArray(record.items)) {
     const found = (record.items as Item[]).find((it) => it && it.id === itemId);
     if (found) return found;
   }
-
-  // 4. InfiniteQuery pages: { pages: Array<{ items?: Item[] }> }
   if (Array.isArray(record.pages)) {
     for (const page of record.pages as Array<{ items?: Item[] }>) {
       if (page && Array.isArray(page.items)) {
@@ -75,13 +46,135 @@ export function extractItemFromCacheData(
       }
     }
   }
+  if (Array.isArray(data)) return (data as Item[]).find((it) => it && it.id === itemId);
+  return undefined;
+}
 
-  // 5. Raw Item[] array
-  if (Array.isArray(data)) {
-    return (data as Item[]).find((it) => it && it.id === itemId);
+export function hasFullBackendItemFlag(patch?: Partial<Item> | Record<string, unknown> | null): boolean {
+  return Boolean(
+    patch &&
+      typeof patch === "object" &&
+      "_isFullBackendItem" in patch &&
+      (patch as { _isFullBackendItem?: boolean })._isFullBackendItem === true,
+  );
+}
+
+function stripNullOrUndefinedKeys(record?: Record<string, unknown> | null): Record<string, unknown> {
+  if (!record || typeof record !== "object") return {};
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(record)) {
+    if (v !== null && v !== undefined) out[k] = v;
+  }
+  return out;
+}
+
+/**
+ * Merges a partial item patch onto an existing cached Item while preserving user-state fields
+ * (`isStarred`, `isFavorite`, `isRead`, `readStatus`, `rating`, `lastReadAt`) when `patch` came
+ * from `mapBackendItem(raw)` without explicit user-state data (`_hasExplicitUserState === false`),
+ * and cleanly merging `extraFields` and `metadata` (or replacing them on full backend responses).
+ */
+export function mergeCachedItemWithPatch(current: Item, patch: Partial<Item>): Item {
+  const preserveUserState =
+    "_hasExplicitUserState" in patch &&
+    (patch as { _hasExplicitUserState?: boolean })._hasExplicitUserState === false;
+
+  const isFullBackendReplace = hasFullBackendItemFlag(patch);
+
+  const rawMergedExtraFields = isFullBackendReplace
+    ? patch.extraFields && typeof patch.extraFields === "object"
+      ? { ...patch.extraFields }
+      : {}
+    : patch.extraFields && typeof patch.extraFields === "object"
+      ? {
+          ...(current.extraFields && typeof current.extraFields === "object"
+            ? current.extraFields
+            : {}),
+          ...patch.extraFields,
+        }
+      : current.extraFields;
+
+  const mergedExtraFields =
+    rawMergedExtraFields && typeof rawMergedExtraFields === "object"
+      ? stripNullOrUndefinedKeys(rawMergedExtraFields as Record<string, unknown>)
+      : rawMergedExtraFields;
+
+  const rawMergedMetadata = isFullBackendReplace
+    ? patch.metadata !== undefined
+      ? patch.metadata
+      : undefined
+    : patch.metadata && typeof patch.metadata === "object"
+      ? {
+          ...(current.metadata && typeof current.metadata === "object"
+            ? current.metadata
+            : {}),
+          ...patch.metadata,
+        }
+      : current.metadata;
+
+  let mergedMetadata = rawMergedMetadata;
+  if (mergedMetadata && typeof mergedMetadata === "object" && !Array.isArray(mergedMetadata)) {
+    const cleanedMeta = stripNullOrUndefinedKeys(mergedMetadata as Record<string, unknown>);
+    if (
+      cleanedMeta.extraFields &&
+      typeof cleanedMeta.extraFields === "object" &&
+      !Array.isArray(cleanedMeta.extraFields)
+    ) {
+      cleanedMeta.extraFields = stripNullOrUndefinedKeys(
+        cleanedMeta.extraFields as Record<string, unknown>,
+      );
+    }
+    mergedMetadata = cleanedMeta;
   }
 
-  return undefined;
+  const baseRecord: Item = isFullBackendReplace
+    ? ({ ...patch, id: patch.id || current.id } as Item)
+    : { ...current, ...patch };
+
+  const mergedResult: Item = {
+    ...baseRecord,
+    ...(mergedExtraFields !== undefined ? { extraFields: mergedExtraFields } : {}),
+    ...(mergedMetadata !== undefined ? { metadata: mergedMetadata } : {}),
+    ...(preserveUserState
+      ? {
+          isStarred: current.isStarred ?? patch.isStarred ?? false,
+          isFavorite: current.isFavorite ?? current.isStarred ?? patch.isFavorite ?? false,
+          isRead: current.isRead ?? patch.isRead ?? false,
+          readStatus: current.readStatus ?? patch.readStatus ?? "unread",
+          rating: current.rating ?? patch.rating ?? 0,
+          ...(current.lastReadAt !== undefined ? { lastReadAt: current.lastReadAt } : {}),
+        }
+      : {}),
+  };
+
+  if (
+    hasFullBackendItemFlag(patch) ||
+    hasFullBackendItemFlag(current as unknown as Record<string, unknown>)
+  ) {
+    Object.defineProperty(mergedResult, "_isFullBackendItem", {
+      value: true,
+      enumerable: false,
+      configurable: true,
+      writable: true,
+    });
+  }
+  if ("_hasExplicitUserState" in patch) {
+    Object.defineProperty(mergedResult, "_hasExplicitUserState", {
+      value: Boolean((patch as { _hasExplicitUserState?: boolean })._hasExplicitUserState),
+      enumerable: false,
+      configurable: true,
+      writable: true,
+    });
+  } else if ("_hasExplicitUserState" in current) {
+    Object.defineProperty(mergedResult, "_hasExplicitUserState", {
+      value: Boolean((current as { _hasExplicitUserState?: boolean })._hasExplicitUserState),
+      enumerable: false,
+      configurable: true,
+      writable: true,
+    });
+  }
+
+  return mergedResult;
 }
 
 /**
@@ -104,7 +197,7 @@ export function patchItemInCacheData(
     const updated =
       typeof patchOrUpdater === 'function'
         ? patchOrUpdater(current)
-        : { ...current, ...patchOrUpdater };
+        : mergeCachedItemWithPatch(current, patchOrUpdater);
     if (updated === current) return items;
     const next = items.slice();
     next[idx] = updated;
@@ -165,7 +258,7 @@ export function patchSingleItemCache<T>(
     const updatedItem =
       typeof patchOrUpdater === 'function'
         ? patchOrUpdater(currentItem)
-        : { ...currentItem, ...patchOrUpdater };
+        : mergeCachedItemWithPatch(currentItem, patchOrUpdater);
     return {
       ...record,
       item: updatedItem,
@@ -175,7 +268,7 @@ export function patchSingleItemCache<T>(
   const updatedItem =
     typeof patchOrUpdater === 'function'
       ? patchOrUpdater(currentItem)
-      : { ...currentItem, ...patchOrUpdater };
+      : mergeCachedItemWithPatch(currentItem, patchOrUpdater);
   return updatedItem as unknown as T;
 }
 
@@ -229,25 +322,74 @@ function doesItemMatchQueryFilter(
   return true;
 }
 
-function hasMembershipFieldsChanged(oldItem: Item | null, updatedItem: Item): boolean {
-  if (!oldItem) return true;
-  if (Boolean(oldItem.isStarred || oldItem.isFavorite) !== Boolean(updatedItem.isStarred || updatedItem.isFavorite)) {
+export const MEMBERSHIP_MUTATION_KEYS = new Set([
+  'isStarred',
+  'isFavorite',
+  'deletedAt',
+  'status',
+  'collectionId',
+  'collectionIds',
+]);
+
+export function doesPatchAffectMembership(patch?: Record<string, unknown> | null): boolean {
+  if (!patch || typeof patch !== 'object') return false;
+  for (const key of Object.keys(patch)) {
+    if (MEMBERSHIP_MUTATION_KEYS.has(key)) return true;
+  }
+  return false;
+}
+
+export function isMetadataOnlyPatch(patch?: Record<string, unknown> | null): boolean {
+  if (!patch || typeof patch !== 'object') return false;
+  const keys = Object.keys(patch);
+  if (keys.length === 0) return true;
+  return !keys.some((k) => MEMBERSHIP_MUTATION_KEYS.has(k) || k === 'tags');
+}
+
+function hasMembershipFieldsChanged(
+  oldItem: Item | null,
+  updatedItem: Item,
+  membershipPatch?: Record<string, unknown>,
+): boolean {
+  if (membershipPatch && !doesPatchAffectMembership(membershipPatch)) {
+    return false;
+  }
+  if (!oldItem) return false;
+
+  const oldStarred = Boolean(oldItem.isStarred || oldItem.isFavorite);
+  const nextStarred = Boolean(updatedItem.isStarred || updatedItem.isFavorite);
+  if (oldStarred !== nextStarred) {
     return true;
   }
-  if (Boolean(oldItem.deletedAt) !== Boolean(updatedItem.deletedAt)) {
+
+  const oldDeleted = Boolean(oldItem.deletedAt);
+  const nextDeleted = Boolean(updatedItem.deletedAt);
+  if (oldDeleted !== nextDeleted) {
     return true;
   }
-  if ((oldItem as { status?: string }).status !== (updatedItem as { status?: string }).status) {
+
+  const oldStatus = (oldItem as { status?: string }).status ?? null;
+  const nextStatus = (updatedItem as { status?: string }).status ?? null;
+  if (oldStatus !== nextStatus) {
     return true;
   }
-  if ((oldItem as { collectionId?: string }).collectionId !== (updatedItem as { collectionId?: string }).collectionId) {
+
+  const oldColId = (oldItem as { collectionId?: string }).collectionId ?? null;
+  const nextColId = (updatedItem as { collectionId?: string }).collectionId ?? null;
+  if (oldColId !== nextColId) {
     return true;
   }
+
   const oldCols = Array.isArray(oldItem.collectionIds) ? oldItem.collectionIds : [];
   const nextCols = Array.isArray(updatedItem.collectionIds) ? updatedItem.collectionIds : [];
-  if (oldCols.length !== nextCols.length || oldCols.some((c, i) => c !== nextCols[i])) {
+  if (oldCols.length !== nextCols.length) {
     return true;
   }
+  const oldSet = new Set(oldCols);
+  for (const c of nextCols) {
+    if (!oldSet.has(c)) return true;
+  }
+
   return false;
 }
 
@@ -260,13 +402,17 @@ export function patchItemAcrossScopeCaches(
   scopeId: string,
   itemId: string,
   patch: Partial<Item> | ((item: Item) => Item),
+  options?: {
+    membershipPatch?: Record<string, unknown>;
+    forceSkipMembershipInvalidation?: boolean;
+  },
 ): void {
   const effectiveScope = normalizeScopeId(scopeId);
   const oldItem = resolveCachedItemFromScope(queryClient, effectiveScope, itemId);
   const resolvedUpdatedItem: Item = oldItem
     ? typeof patch === 'function'
       ? patch(oldItem)
-      : { ...oldItem, ...patch }
+      : mergeCachedItemWithPatch(oldItem, patch)
     : typeof patch === 'function'
       ? patch({ id: itemId } as Item)
       : ({ id: itemId, ...patch } as Item);
@@ -277,7 +423,16 @@ export function patchItemAcrossScopeCaches(
   );
 
   const isActiveItem = !resolvedUpdatedItem.deletedAt;
-  const membershipChanged = hasMembershipFieldsChanged(oldItem, resolvedUpdatedItem);
+  const isMetadataOnly = options?.membershipPatch
+    ? isMetadataOnlyPatch(options.membershipPatch as Partial<Item>)
+    : typeof patch === 'object' && patch !== null
+      ? isMetadataOnlyPatch(patch as Partial<Item>)
+      : false;
+
+  const membershipChanged =
+    !isMetadataOnly &&
+    !options?.forceSkipMembershipInvalidation &&
+    hasMembershipFieldsChanged(oldItem, resolvedUpdatedItem, options?.membershipPatch);
   const targetIdSet = new Set([itemId]);
 
   const listQueries = queryClient.getQueriesData({
@@ -405,10 +560,7 @@ export function removeItemsFromScopeCaches(
 
   for (const id of idSet) {
     queryClient.setQueryData(itemKeys.byId(effectiveScope, id), null);
-    queryClient.removeQueries({
-      queryKey: itemKeys.byId(effectiveScope, id),
-      exact: true,
-    });
+    queryClient.removeQueries({ queryKey: itemKeys.byId(effectiveScope, id), exact: true });
   }
 
   queryClient.setQueriesData(
@@ -421,9 +573,7 @@ export function removeItemsFromScopeCaches(
     (old) => removeItemsFromCacheData(old, idSet),
   );
 
-  void queryClient.invalidateQueries({
-    queryKey: itemKeys.trash(effectiveScope),
-  });
+  void queryClient.invalidateQueries({ queryKey: itemKeys.trash(effectiveScope) });
 }
 
 export const evictItemFromScopeCaches = removeItemsFromScopeCaches;
@@ -438,6 +588,7 @@ export function invalidateLibraryCatalogDependencies(
   options: {
     itemId?: string;
     collections?: boolean;
+    smartCollections?: boolean;
     tags?: boolean;
     counts?: boolean;
     itemsList?: boolean;
@@ -447,35 +598,19 @@ export function invalidateLibraryCatalogDependencies(
   const {
     itemId,
     collections = false,
+    smartCollections = false,
     tags = false,
     counts = false,
     itemsList = true,
   } = options;
 
   const tasks: Array<Promise<unknown> | void> = [];
-  if (itemId) {
-    tasks.push(
-      queryClient.invalidateQueries({ queryKey: itemKeys.byId(effectiveScope, itemId) }),
-    );
-  }
-  if (itemsList) {
-    tasks.push(
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) }),
-    );
-  }
-  if (counts && !collections) {
-    tasks.push(
-      queryClient.invalidateQueries({ queryKey: itemKeys.counts(effectiveScope) }),
-    );
-  }
-  if (collections) {
-    tasks.push(invalidateCollections(queryClient, effectiveScope));
-  }
-  if (tags) {
-    tasks.push(
-      queryClient.invalidateQueries({ queryKey: tagKeys.list(effectiveScope) }),
-    );
-  }
+  if (itemId) tasks.push(queryClient.invalidateQueries({ queryKey: itemKeys.byId(effectiveScope, itemId) }));
+  if (itemsList) tasks.push(queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) }));
+  if (counts && !collections) tasks.push(queryClient.invalidateQueries({ queryKey: itemKeys.counts(effectiveScope) }));
+  if (collections) tasks.push(invalidateCollections(queryClient, effectiveScope));
+  if (smartCollections) tasks.push(queryClient.invalidateQueries({ queryKey: savedSearchKeys.all(effectiveScope) }));
+  if (tags) tasks.push(queryClient.invalidateQueries({ queryKey: tagKeys.list(effectiveScope) }));
   return Promise.all(tasks);
 }
 
@@ -506,15 +641,11 @@ export function resolveCachedItemFromScope(
   if (!itemId) return null;
   const effectiveScope = normalizeScopeId(scopeId);
 
-  // 1. Direct byId query check
   const directCached = queryClient.getQueryData(itemKeys.byId(effectiveScope, itemId));
   const directFound = extractItemFromCacheData(directCached, itemId);
   if (directFound) return directFound;
 
-  // 2. Scan all queries matching itemKeys.all(effectiveScope)
-  const queries = queryClient.getQueriesData({
-    queryKey: itemKeys.all(effectiveScope),
-  });
+  const queries = queryClient.getQueriesData({ queryKey: itemKeys.all(effectiveScope) });
   for (const [, data] of queries) {
     const found = extractItemFromCacheData(data, itemId);
     if (found) return found;

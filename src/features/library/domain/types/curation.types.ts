@@ -24,12 +24,21 @@ export const flaggedItemIssueSchema = z.object({
 export const libraryIntegrityReportSchema = z.object({
   totalItems: z.number().optional().default(0),
   healthyItems: z.number().optional().default(0),
+  averageQualityScore: z.number().default(100),
   healthScorePercentage: z.number().default(100),
   missingDoiCount: z.number().default(0),
   missingYearCount: z.number().default(0),
   missingAuthorsCount: z.number().default(0),
+  missingAbstractCount: z.number().default(0),
   missingPdfCount: z.number().default(0),
   flaggedItems: z.array(flaggedItemIssueSchema).default([]),
+  healthReport: z
+    .object({
+      missingDoi: z.number().default(0),
+      missingAbstract: z.number().default(0),
+      missingYear: z.number().default(0),
+    })
+    .optional(),
 });
 
 export type DuplicateGroup = z.infer<typeof duplicateGroupSchema>;

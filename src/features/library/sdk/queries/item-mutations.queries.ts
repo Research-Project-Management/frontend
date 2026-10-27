@@ -3,6 +3,10 @@
 import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { ItemsService, StateService } from '../library.client';
+import {
+  hasExplicitUserStateInPayload,
+  preserveMappedItemFlags,
+} from '@/features/library/domain/metadata';
 import type { Item, CreateItemDTO, UpdateItemDTO } from '@/features/library/domain/types/library.types';
 import {
   itemKeys,
@@ -11,10 +15,12 @@ import {
   normalizeScopeId,
 } from '@/features/library/sdk/query-keys';
 import {
+  mergeCachedItemWithPatch,
   patchItemAcrossScopeCaches,
   resolveCachedItemFromScope,
   chunkUniqueIds,
   invalidateLibraryCatalogDependencies,
+  isMetadataOnlyPatch,
 } from './cache-patcher';
 
 export function resolveCachedItemVersion(
@@ -79,18 +85,18 @@ export function useUpdateLibraryItemMutation(scopeId?: string) {
         effectiveScope,
         itemId,
         (old) => ({
-          ...old,
-          ...(optimisticPatch as Partial<Item>),
+          ...mergeCachedItemWithPatch(old, optimisticPatch as Partial<Item>),
           // Keep old.version during optimistic patch to prevent 409 Conflict if mutationFn reads cache
           version: old.version,
         }),
+        { membershipPatch: optimisticPatch },
       );
 
       return { previousDetail, previousItemSnapshot };
     },
     onSuccess: (updatedItem, variables) => {
       const targetId = variables.itemId;
-      const rawData = variables.data || {};
+      const { silent: _silent, ...rawData } = variables.data || {};
       const serverItem =
         updatedItem && typeof updatedItem === 'object' && 'item' in updatedItem && updatedItem.item
           ? (updatedItem.item as Partial<Item>)
@@ -99,19 +105,78 @@ export function useUpdateLibraryItemMutation(scopeId?: string) {
         ...rawData,
         ...(serverItem && typeof serverItem === 'object' ? serverItem : {}),
       };
+      if (serverItem && typeof serverItem === 'object') {
+        preserveMappedItemFlags(serverItem, patchData);
+        if (!('_isFullBackendItem' in patchData)) {
+          Object.defineProperty(patchData, '_isFullBackendItem', {
+            value: true,
+            enumerable: false,
+            configurable: true,
+            writable: true,
+          });
+        }
+        if (!('_hasExplicitUserState' in patchData)) {
+          Object.defineProperty(patchData, '_hasExplicitUserState', {
+            value: Boolean((serverItem as Record<string, unknown>)._hasExplicitUserState),
+            enumerable: false,
+            configurable: true,
+            writable: true,
+          });
+        }
+      }
 
       if (targetId) {
-        patchItemAcrossScopeCaches(queryClient, effectiveScope, targetId, patchData);
+        const existingCached = resolveCachedItemFromScope(
+          queryClient,
+          effectiveScope,
+          targetId,
+        );
+        const serverHasExplicitState = hasExplicitUserStateInPayload(
+          serverItem as Record<string, unknown> | undefined,
+        );
+        const inputHasExplicitState = hasExplicitUserStateInPayload(
+          rawData as Record<string, unknown>,
+        );
+        if (
+          existingCached &&
+          !serverHasExplicitState &&
+          !inputHasExplicitState
+        ) {
+          patchData.isStarred = existingCached.isStarred;
+          patchData.isFavorite = existingCached.isFavorite;
+          patchData.isRead = existingCached.isRead;
+          patchData.readStatus = existingCached.readStatus;
+          patchData.rating = existingCached.rating;
+          if (existingCached.lastReadAt !== undefined) {
+            patchData.lastReadAt = existingCached.lastReadAt;
+          }
+          Object.defineProperty(patchData, '_hasExplicitUserState', {
+            value: false,
+            enumerable: false,
+            configurable: true,
+            writable: true,
+          });
+        }
+        patchItemAcrossScopeCaches(queryClient, effectiveScope, targetId, patchData, {
+          membershipPatch: rawData,
+        });
       }
 
       if (rawData.tags !== undefined) {
         queryClient.invalidateQueries({ queryKey: libraryKeys.tags(effectiveScope) });
       }
-      if (patchData.collectionIds !== undefined) {
+      if (rawData.collectionIds !== undefined || (rawData as Record<string, unknown>).collectionId !== undefined) {
         invalidateCollections(queryClient, effectiveScope);
       }
 
-      const isSilent = Boolean(variables.silent || variables.data?.silent);
+      const isMetadataOnly = isMetadataOnlyPatch(rawData);
+      const isSilent =
+        variables.silent !== undefined
+          ? Boolean(variables.silent)
+          : variables.data?.silent !== undefined
+            ? Boolean(variables.data.silent)
+            : isMetadataOnly;
+
       if (!isSilent) {
         toast.success('Item updated', { id: 'item-update' });
       }
@@ -171,15 +236,14 @@ export function useToggleStarItemMutation(scopeId?: string) {
       await queryClient.cancelQueries({ queryKey: itemKeys.byId(effectiveScope, id) });
       await queryClient.cancelQueries({ queryKey: itemKeys.state(effectiveScope, id) });
 
-      const previousLists = queryClient.getQueriesData({
-        queryKey: itemKeys.all(effectiveScope),
-      });
       const previousItem = queryClient.getQueryData(
         itemKeys.byId(effectiveScope, id),
       );
       const previousState = queryClient.getQueryData(
         itemKeys.state(effectiveScope, id),
       );
+      const cachedItem = resolveCachedItemFromScope(queryClient, effectiveScope, id);
+      const previousIsStarred = cachedItem?.isStarred ?? cachedItem?.isFavorite ?? !isStarred;
 
       patchItemAcrossScopeCaches(queryClient, effectiveScope, id, {
         isStarred,
@@ -195,16 +259,14 @@ export function useToggleStarItemMutation(scopeId?: string) {
         },
       );
 
-      return { previousLists, previousItem, previousState };
+      return { previousIsStarred, previousItem, previousState };
     },
     onError: (err: Error, variables, context) => {
-      if (context?.previousLists) {
-        for (const [key, data] of context.previousLists) {
-          queryClient.setQueryData(key, data);
-        }
-      } else {
-        queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
-      }
+      const rollbackStarred = context?.previousIsStarred ?? !variables.isStarred;
+      patchItemAcrossScopeCaches(queryClient, effectiveScope, variables.id, {
+        isStarred: rollbackStarred,
+        isFavorite: rollbackStarred,
+      });
       if (context?.previousItem !== undefined) {
         queryClient.setQueryData(
           itemKeys.byId(effectiveScope, variables.id),
@@ -227,13 +289,23 @@ export function useToggleStarItemMutation(scopeId?: string) {
         isStarred: variables.isStarred,
         isFavorite: variables.isStarred,
       });
-      queryClient.invalidateQueries({ queryKey: itemKeys.counts(effectiveScope) });
       toast.success(
         variables.isStarred ? 'Added to Starred' : 'Removed from Starred',
         {
           id: 'item-star-toggle',
         },
       );
+    },
+    onSettled: (_data, _error, variables) => {
+      if (variables?.id) {
+        queryClient.invalidateQueries({
+          queryKey: itemKeys.byId(effectiveScope, variables.id),
+        });
+        queryClient.invalidateQueries({
+          queryKey: itemKeys.state(effectiveScope, variables.id),
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: itemKeys.counts(effectiveScope) });
     },
   });
 }
@@ -360,6 +432,14 @@ export function useReResolveItemMetadataMutation(scopeId?: string) {
       forceRefresh?: boolean;
     }) => ItemsService.reResolve(effectiveScope, itemId, { attachOaPdf, forceRefresh }),
     onSuccess: (res, variables) => {
+      if (res?.item?.id) {
+        patchItemAcrossScopeCaches(
+          queryClient,
+          effectiveScope,
+          variables.itemId,
+          res.item,
+        );
+      }
       invalidateLibraryCatalogDependencies(queryClient, effectiveScope, {
         itemId: variables.itemId,
         itemsList: true,
@@ -392,10 +472,19 @@ export function useSetMyPublicationMutation(scopeId?: string) {
     mutationFn: ({
       itemId,
       isMyPublication,
+      options,
     }: {
       itemId: string;
       isMyPublication: boolean;
-    }) => ItemsService.setMyPublication(effectiveScope, itemId, isMyPublication),
+      options?: {
+        contributorId?: string | null;
+        isPublic?: boolean;
+        openAccessLicense?: string | null;
+        includeAttachments?: boolean;
+        includeNotes?: boolean;
+        authorshipConfirmed?: boolean;
+      };
+    }) => ItemsService.setMyPublication(effectiveScope, itemId, isMyPublication, options),
     onSuccess: (_updated, variables) => {
       patchItemAcrossScopeCaches(queryClient, effectiveScope, variables.itemId, {
         isMyPublication: variables.isMyPublication,

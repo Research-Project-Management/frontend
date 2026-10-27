@@ -2,7 +2,10 @@
 
 import { useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { readerService } from '@/features/library/sdk/library.client';
+import { useQueryClient } from '@tanstack/react-query';
+import { StateService } from '@/features/library/sdk/library.client';
+import { itemKeys, normalizeScopeId } from '@/features/library/sdk/query-keys';
+import { patchItemAcrossScopeCaches } from '@/features/library/sdk/queries/cache-patcher';
 import type {
   ReaderDocument,
   ReaderNavigationTarget,
@@ -31,27 +34,36 @@ export function useReadingProgress({
   setTargetPage,
 }: UseReadingProgressOptions): void {
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
+  const effectiveScope = normalizeScopeId(scopeId);
   const hasExplicitDeepLink = Boolean(
     searchParams?.get('page') || searchParams?.get('annotation'),
   );
 
   // 1. Restore reading state on paper load
   const restoredPaperIdRef = useRef<string | null>(null);
+  const isRestoredRef = useRef<boolean>(false);
   useEffect(() => {
     if (!paper?.id || restoredPaperIdRef.current === paper.id) return;
     restoredPaperIdRef.current = paper.id;
+    isRestoredRef.current = false;
     let isCancelled = false;
 
-    readerService.state
+    StateService
       .getState(scopeId, paper.id)
       .then((stateData) => {
-        if (isCancelled || hasExplicitDeepLink) return;
-        if (stateData?.currentPage && stateData.currentPage > 1) {
+        if (isCancelled) return;
+        if (!hasExplicitDeepLink && stateData?.currentPage && stateData.currentPage > 1) {
           setTargetPage({ pageNumber: stateData.currentPage, timestamp: Date.now() });
           setVisiblePage(stateData.currentPage);
         }
+        isRestoredRef.current = true;
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (!isCancelled) {
+          isRestoredRef.current = true;
+        }
+      });
 
     return () => {
       isCancelled = true;
@@ -60,23 +72,42 @@ export function useReadingProgress({
 
   // 3. Debounced update reading state when page changes (supports saving when returning to page 1)
   useEffect(() => {
-    if (!paper?.id || visiblePage < 1) return;
+    if (!paper?.id || visiblePage < 1 || !isRestoredRef.current) return;
+    const paperId = paper.id;
     const timeout = setTimeout(() => {
-      readerService.state
-        .updateState(scopeId, paper.id, {
+      StateService
+        .updateState(effectiveScope, paperId, {
           currentPage: visiblePage,
+        })
+        .then(() => {
+          void queryClient.invalidateQueries({
+            queryKey: itemKeys.state(effectiveScope, paperId),
+          });
         })
         .catch(() => undefined);
     }, 800);
     return () => clearTimeout(timeout);
-  }, [visiblePage, paper?.id, scopeId]);
+  }, [visiblePage, paper?.id, effectiveScope, queryClient]);
 
   // 4. Mark paper as read once per paper load
   const markedPaperIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (paper?.id && markedPaperIdRef.current !== paper.id) {
-      markedPaperIdRef.current = paper.id;
-      readerService.state.markAsRead(scopeId || 'user', paper.id).catch(() => undefined);
+      const paperId = paper.id;
+      markedPaperIdRef.current = paperId;
+      StateService
+        .markAsRead(effectiveScope, paperId)
+        .then(() => {
+          patchItemAcrossScopeCaches(queryClient, effectiveScope, paperId, {
+            isRead: true,
+            readStatus: 'reading',
+            lastReadAt: new Date().toISOString(),
+          });
+          void queryClient.invalidateQueries({
+            queryKey: itemKeys.state(effectiveScope, paperId),
+          });
+        })
+        .catch(() => undefined);
     }
-  }, [scopeId, paper?.id]);
+  }, [effectiveScope, paper?.id, queryClient]);
 }

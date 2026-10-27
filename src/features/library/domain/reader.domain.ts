@@ -1,5 +1,5 @@
 /**
- * reader.util.ts
+ * reader.domain.ts
  *
  * Pure domain & citation utilities for the PDF/EPUB Reader.
  */
@@ -8,8 +8,39 @@ import type {
   ReaderAnnotation,
   AnnotationRect,
   ReaderDocument,
-  DocumentCreator,
 } from '@/features/library/domain/types/reader.types';
+import { isValidValue } from '@/features/library/domain/metadata';
+import {
+  normalizeReaderAuthors,
+  getSurnameForCitation,
+  generateReaderCitationKey,
+  formatInTextCitation,
+  formatAnnotationCitation,
+  searchPdfPages,
+  cyclePdfSearchMatch,
+  filterPdfOutlineTree,
+  readReaderPreference,
+  writeReaderPreference,
+  type PdfTextMatch,
+  type PdfSearchCycleResult,
+  type PdfOutlineNode,
+} from './reader-persistence.helpers';
+
+export {
+  normalizeReaderAuthors,
+  getSurnameForCitation,
+  generateReaderCitationKey,
+  formatInTextCitation,
+  formatAnnotationCitation,
+  searchPdfPages,
+  cyclePdfSearchMatch,
+  filterPdfOutlineTree,
+  readReaderPreference,
+  writeReaderPreference,
+  type PdfTextMatch,
+  type PdfSearchCycleResult,
+  type PdfOutlineNode,
+};
 
 export const ANNOTATION_COLORS = {
   yellow: {
@@ -79,7 +110,6 @@ export const ANNOTATION_PALETTE_COLORS = Object.values(ANNOTATION_COLORS).map((c
   hex: c.border,
 }));
 
-
 const HEX_TO_COLOR_ID_MAP = new Map<string, AnnotationColorId>(
   Object.values(ANNOTATION_COLORS).map((c) => [c.border.toLowerCase(), c.id]),
 );
@@ -95,26 +125,10 @@ export interface AnnotationFilterCriteria {
   pageRange?: [number, number] | null;
 }
 
-export interface PdfTextMatch {
-  matchIndex: number;
-  pageNumber: number;
-  matchedText: string;
-  snippet: string;
-  charOffset: number;
-}
-
-export interface PdfSearchCycleResult {
-  activeMatchIndex: number;
-  displayPosition: string;
-  targetPageNumber: number | null;
-  activeMatch: PdfTextMatch | null;
-}
-
 export const PdfAnnotationEngine = {
   sortAnnotations(annotations: ReaderAnnotation[]): ReaderAnnotation[] {
     if (annotations.length <= 1) return [...annotations];
 
-    // Pre-cache parsed timestamps only when needed (lazy WeakMap / Map memoization)
     let timestampCache: Map<string, number> | null = null;
     const getTimestamp = (iso?: string | null): number => {
       if (!iso) return 0;
@@ -127,17 +141,14 @@ export const PdfAnnotationEngine = {
     };
 
     return [...annotations].sort((a, b) => {
-      // 1. Canonical spatial sort index (PPPP|YYYYY|XXXXX) from backend SSOT
       if (a.annotationSortIndex && b.annotationSortIndex && a.annotationSortIndex !== b.annotationSortIndex) {
         return a.annotationSortIndex < b.annotationSortIndex ? -1 : 1;
       }
 
-      // 2. Page index / page number
       const pageA = a.pageIndex ?? (a.pageNumber !== undefined ? a.pageNumber - 1 : 0);
       const pageB = b.pageIndex ?? (b.pageNumber !== undefined ? b.pageNumber - 1 : 0);
       if (pageA !== pageB) return pageA - pageB;
 
-      // 3. Fallback coordinates (normalized 0..1)
       const rectA = (a.rects?.[0] || a.boundingRect) as (AnnotationRect & { x?: number; y?: number }) | undefined;
       const rectB = (b.rects?.[0] || b.boundingRect) as (AnnotationRect & { x?: number; y?: number }) | undefined;
       const topA = rectA?.y1 ?? rectA?.y ?? 0;
@@ -148,7 +159,6 @@ export const PdfAnnotationEngine = {
       const leftB = rectB?.x1 ?? rectB?.x ?? 0;
       if (Math.abs(leftA - leftB) > 0.005) return leftA - leftB;
 
-      // 4. Fallback creation timestamp
       return getTimestamp(a.createdAt) - getTimestamp(b.createdAt);
     });
   },
@@ -290,7 +300,6 @@ export const PdfAnnotationEngine = {
     const pageRange = isCriteriaObject ? queryOrCriteria.pageRange : options?.pageRange;
     const hasPageRange = Boolean(pageRange && pageRange.length === 2);
 
-    // Fast-path when no filter criteria are active
     if (!q && rawColors.length === 0 && rawTypes.length === 0 && rawTags.length === 0 && !hasPageRange) {
       return [...annotations];
     }
@@ -310,7 +319,6 @@ export const PdfAnnotationEngine = {
     const needTags = Boolean(q || rawTags.length > 0);
 
     return annotations.filter((a) => {
-      // 1. Cheap O(1) checks first (pageRange, type, color) before string/tag allocations
       if (hasPageRange && pageRange) {
         const pageNum = a.pageNumber ?? (a.pageIndex !== undefined ? a.pageIndex + 1 : 1);
         if (pageNum < pageRange[0] || pageNum > pageRange[1]) return false;
@@ -328,7 +336,6 @@ export const PdfAnnotationEngine = {
         if (!matchesColor) return false;
       }
 
-      // 2. Lazily extract tag names only when query or tag filter is active
       const itemTagNames = needTags && Array.isArray((a as Record<string, unknown>).tags)
         ? ((a as Record<string, unknown>).tags as unknown[])
             .map((t) =>
@@ -379,7 +386,6 @@ export const PdfAnnotationEngine = {
     const endX = r.x2 !== undefined ? r.x2 : r.width !== undefined ? startX + r.width : startX;
     const endY = r.y2 !== undefined ? r.y2 : r.height !== undefined ? startY + r.height : startY;
 
-    // Support inverted drag coordinates (bottom-right to top-left) by ordering min/max before clamping
     const minX = Math.min(startX, endX);
     const maxX = Math.max(startX, endX);
     const minY = Math.min(startY, endY);
@@ -402,10 +408,6 @@ export const PdfAnnotationEngine = {
     };
   },
 
-  /**
-   * Clamps percentage-based `[0, 100]` or custom bounds `[0, maxBound]` area/image selection rectangles,
-   * supporting inverted drag coordinates so out-of-bounds drags never break rendering.
-   */
   clampAreaSelectionBounds(
     rect: { x1?: number; y1?: number; x2?: number; y2?: number; x?: number; y?: number; width?: number; height?: number },
     maxBound = 100,
@@ -468,267 +470,6 @@ export const PdfAnnotationEngine = {
   },
 };
 
-import { normalizeAuthors, parseCreatorName } from '@/features/library/domain/creators';
-import { isValidValue, stripLatexMarkup } from '@/features/library/domain/metadata';
-import { foldDiacritics } from '@/features/library/domain/academic-text';
-import { toAsciiKeyPart } from '@/features/library/domain/citations';
-
-function normalizeReaderAuthors(
-  rawAuthors?: unknown,
-  creators?: DocumentCreator[] | null,
-): string[] {
-  if (Array.isArray(creators) && creators.length > 0) {
-    const fromCreators = normalizeAuthors(undefined, creators);
-    if (fromCreators.length > 0) return fromCreators;
-  }
-  return normalizeAuthors(rawAuthors, creators);
+function rEnd(start: number, length?: number): number {
+  return length !== undefined ? start + length : start;
 }
-
-function getSurnameForCitation(rawAuthor: string): string {
-  const parsed = parseCreatorName(rawAuthor);
-  return parsed.lastName || parsed.fullName || 'Unknown';
-}
-
-const STOPWORDS = new Set([
-  'a', 'an', 'the', 'and', 'or', 'of', 'in', 'on', 'for', 'with', 'at', 'by', 'to', 'from',
-]);
-
-export function generateReaderCitationKey(
-  paper?: Partial<ReaderDocument> | null,
-  existingKeys?: Set<string> | string[],
-): string {
-  if (!paper) return 'refpaper';
-  if (paper.citationKey && isValidValue(paper.citationKey)) {
-    return paper.citationKey.trim().replace(/\s+/g, '');
-  }
-
-  const authors = normalizeReaderAuthors(paper.authors, paper.creators);
-  let authorPart = 'unknown';
-  if (authors.length > 0) {
-    const parsed = parseCreatorName(authors[0]!);
-    authorPart = toAsciiKeyPart(parsed.lastName || parsed.fullName || 'author');
-  }
-
-  const yearPart = paper.year && isValidValue(paper.year) ? String(paper.year) : '';
-
-  let titlePart = '';
-  if (paper.title && isValidValue(paper.title)) {
-    const cleanTitle = foldDiacritics(stripLatexMarkup(paper.title));
-    for (const word of cleanTitle.trim().split(/\s+/)) {
-      const clean = word.replace(/[^a-z0-9]/gi, '');
-      if (clean && !STOPWORDS.has(clean)) {
-        titlePart = clean;
-        break;
-      }
-    }
-  }
-
-  const baseKey = `${authorPart || 'ref'}${yearPart}${titlePart || 'paper'}`;
-  if (!existingKeys) return baseKey;
-
-  const keySet = existingKeys instanceof Set ? existingKeys : new Set(existingKeys);
-  if (!keySet.has(baseKey)) return baseKey;
-
-  const letters = 'abcdefghijklmnopqrstuvwxyz';
-  for (let i = 0; i < letters.length; i++) {
-    const candidate = `${baseKey}${letters[i]}`;
-    if (!keySet.has(candidate)) return candidate;
-  }
-  let counter = 2;
-  while (keySet.has(`${baseKey}_${counter}`)) {
-    counter++;
-  }
-  return `${baseKey}_${counter}`;
-}
-
-export function formatInTextCitation(paper: ReaderDocument, pageNumber?: number): string {
-  const authors = normalizeReaderAuthors(paper.authors, paper.creators);
-  let authorStr = 'Unknown';
-  if (authors.length === 1) {
-    authorStr = getSurnameForCitation(authors[0]!);
-  } else if (authors.length === 2) {
-    const s1 = getSurnameForCitation(authors[0]!);
-    const s2 = getSurnameForCitation(authors[1]!);
-    authorStr = `${s1} & ${s2}`;
-  } else if (authors.length > 2) {
-    const s1 = getSurnameForCitation(authors[0]!);
-    authorStr = `${s1} et al.`;
-  }
-  const yearStr = paper.year && isValidValue(paper.year) ? String(paper.year) : 'n.d.';
-  const pageStr = pageNumber ? `, p. ${pageNumber}` : '';
-  return `(${authorStr}, ${yearStr}${pageStr})`;
-}
-
-export function formatAnnotationCitation(
-  paper?: ReaderDocument | null,
-  attachmentId?: string,
-  pageNumber?: number,
-  annotationId?: string,
-): { label: string; url: string; markdown: string } {
-  const authors = paper ? normalizeReaderAuthors(paper.authors, paper.creators) : [];
-  const firstAuthor = authors.length > 0 ? getSurnameForCitation(authors[0]!) : 'Unknown';
-  const hasMultipleAuthors = authors.length > 1;
-  const year = paper?.year && isValidValue(paper.year) ? paper.year : 'n.d.';
-  const authorCitation = hasMultipleAuthors ? `${firstAuthor} et al., ${year}` : `${firstAuthor}, ${year}`;
-  const pageStr = pageNumber ? `, p. ${pageNumber}` : '';
-  const label = `(${authorCitation}${pageStr})`;
-
-  const pageParam = pageNumber ? `page=${pageNumber}` : '';
-  const annotParam = annotationId ? `annotation=${annotationId}` : '';
-  const queryStr = [pageParam, annotParam].filter(Boolean).join('&');
-  const qs = queryStr ? `?${queryStr}` : '';
-
-  const url = attachmentId
-    ? `flux://open-pdf/library/items/${attachmentId}${qs}`
-    : `flux://open-pdf/library/items${qs}`;
-
-  const markdown = `[${label}](${url})`;
-
-  return { label, url, markdown };
-}
-
-const FOLDED_PAGE_TEXT_CACHE = new WeakMap<
-  { pageNumber: number; text: string },
-  { rawText: string; foldedText: string }
->();
-
-/**
- * Searches extracted PDF pages (`{ pageNumber, text }`) with diacritic & case insensitivity,
- * returning ordered `PdfTextMatch` items with surrounding snippet context.
- */
-export function searchPdfPages(
-  pages: ReadonlyArray<{ pageNumber: number; text: string }>,
-  query?: string | null,
-  snippetRadius = 35,
-): PdfTextMatch[] {
-  if (!query || typeof query !== 'string') return [];
-  const cleanQuery = query.trim().normalize('NFC');
-  if (!cleanQuery) return [];
-
-  const foldedQuery = foldDiacritics(cleanQuery);
-  if (!foldedQuery) return [];
-
-  const matches: PdfTextMatch[] = [];
-  let matchIndex = 0;
-
-  for (const page of pages) {
-    if (!page.text) continue;
-    let cached = FOLDED_PAGE_TEXT_CACHE.get(page);
-    if (!cached) {
-      const rawText = page.text.normalize('NFC');
-      cached = {
-        rawText,
-        foldedText: foldDiacritics(rawText),
-      };
-      FOLDED_PAGE_TEXT_CACHE.set(page, cached);
-    }
-    const { rawText, foldedText } = cached;
-
-    let searchPos = 0;
-    while (searchPos <= foldedText.length - foldedQuery.length) {
-      const idx = foldedText.indexOf(foldedQuery, searchPos);
-      if (idx === -1) break;
-
-      const matchedText = rawText.slice(idx, idx + foldedQuery.length);
-      const snippetStart = Math.max(0, idx - snippetRadius);
-      const snippetEnd = Math.min(rawText.length, idx + foldedQuery.length + snippetRadius);
-      const prefix = snippetStart > 0 ? '...' : '';
-      const suffix = snippetEnd < rawText.length ? '...' : '';
-      const snippet = `${prefix}${rawText.slice(snippetStart, snippetEnd).trim()}${suffix}`;
-
-      matches.push({
-        matchIndex: matchIndex++,
-        pageNumber: page.pageNumber,
-        matchedText,
-        snippet,
-        charOffset: idx,
-      });
-
-      searchPos = idx + Math.max(1, foldedQuery.length);
-    }
-  }
-
-  return matches;
-}
-
-/**
- * Cycles the active match index (`'next'` or `'prev'`) with wrap-around
- * (`Next` on the last match wraps to index `0`; `Prev` on index `0` wraps to `matches.length - 1`)
- * and resolves the 1-based display string (`"3 of 14"`) and target `pageNumber`.
- */
-export function cyclePdfSearchMatch(
-  matches: ReadonlyArray<PdfTextMatch>,
-  currentIndex: number,
-  direction: 'next' | 'prev',
-): PdfSearchCycleResult {
-  const total = matches.length;
-  if (total === 0) {
-    return {
-      activeMatchIndex: -1,
-      displayPosition: '0 of 0',
-      targetPageNumber: null,
-      activeMatch: null,
-    };
-  }
-
-  const normalizedCurrent = ((currentIndex % total) + total) % total;
-  const nextIndex =
-    direction === 'next'
-      ? (normalizedCurrent + 1) % total
-      : (normalizedCurrent - 1 + total) % total;
-
-  const activeMatch = matches[nextIndex] ?? null;
-  return {
-    activeMatchIndex: nextIndex,
-    displayPosition: `${nextIndex + 1} of ${total}`,
-    targetPageNumber: activeMatch ? activeMatch.pageNumber : null,
-    activeMatch,
-  };
-}
-
-export interface PdfOutlineNode {
-  title: string;
-  pageNumber: number;
-  items?: PdfOutlineNode[];
-  children?: PdfOutlineNode[];
-}
-
-/**
- * Filters a nested PDF Document Outline tree (`PdfOutlineNode[]`) by keyword,
- * preserving parent ancestor branches whenever a nested child/grandchild chapter matches.
- */
-export function filterPdfOutlineTree(
-  nodes: ReadonlyArray<PdfOutlineNode>,
-  query?: string | null,
-): PdfOutlineNode[] {
-  if (!query || typeof query !== 'string' || !query.trim()) {
-    return [...nodes];
-  }
-  const foldedQuery = foldDiacritics(query.trim());
-
-  const filterRecursive = (list: ReadonlyArray<PdfOutlineNode>): PdfOutlineNode[] => {
-    const out: PdfOutlineNode[] = [];
-    for (const node of list) {
-      const childList = node.items ?? node.children ?? [];
-      const filteredChildren = childList.length > 0 ? filterRecursive(childList) : [];
-      const selfMatches = foldDiacritics(node.title || '').includes(foldedQuery);
-
-      if (selfMatches || filteredChildren.length > 0) {
-        const cloned: PdfOutlineNode = {
-          ...node,
-          ...(node.items !== undefined
-            ? { items: selfMatches && filteredChildren.length === 0 ? node.items : filteredChildren }
-            : {}),
-          ...(node.children !== undefined
-            ? { children: selfMatches && filteredChildren.length === 0 ? node.children : filteredChildren }
-            : {}),
-        };
-        out.push(cloned);
-      }
-    }
-    return out;
-  };
-
-  return filterRecursive(nodes);
-}
-

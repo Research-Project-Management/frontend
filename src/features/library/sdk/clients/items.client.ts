@@ -86,8 +86,80 @@ export interface ItemTypesResponse {
   cslFieldMap?: Record<string, string>;
 }
 
+export interface LibraryBootstrapResponse {
+  scope: 'user' | 'project';
+  scopeId: string;
+  counts?: {
+    total: number;
+    unfiled: number;
+    starred: number;
+    trash: number;
+    itemTypes?: Record<string, number>;
+    byItemType?: Record<string, number>;
+    role?: import('@/features/library/domain/types/core.types').ProjectRole;
+    yourRole?: import('@/features/library/domain/types/core.types').ProjectRole;
+    permissions?: Partial<import('@/features/library/domain/types/core.types').LibraryPermissions> | string[];
+    effectivePermissions?: string[];
+    permissionOverrides?: Record<string, boolean>;
+  };
+  collections?: import('@/features/library/domain/types/library.types').Collection[];
+  savedSearches?: import('@/features/library/domain/types/library.types').SavedSearch[];
+  syncVersion?: {
+    version: string;
+    scope: 'user' | 'project';
+    scopeId: string;
+  };
+  itemTypes?: Record<string, unknown>;
+  feedSubscriptions?: import('./ingestion-sync.client').FeedSubscriptionResponse[];
+  items?: Item[];
+  meta?: CursorPaginationMeta;
+  pagination?: CursorPaginationMeta;
+}
+
 // 1. ItemsService
 export const ItemsService = {
+  getBootstrap: (
+    scopeId?: string,
+    params?: ItemQueryParams & { includeItems?: boolean },
+    options?: { signal?: AbortSignal },
+  ) => {
+    const rawParams = params as Record<string, unknown> | undefined;
+    const rawTag = rawParams?.tag;
+    const rawCollectionIds = rawParams?.collectionIds;
+    const formattedParams: Record<string, string | number | boolean | null | undefined> | undefined = params
+      ? {
+          ...(params as Record<string, string | number | boolean | null | undefined>),
+          collectionIds: Array.isArray(rawCollectionIds)
+            ? rawCollectionIds.join(',')
+            : (rawCollectionIds as string | undefined),
+          fields: Array.isArray(params.fields)
+            ? params.fields.join(',')
+            : (params.fields as string | undefined),
+          tag: Array.isArray(rawTag)
+            ? rawTag.join(',')
+            : (rawTag as string | undefined) ||
+              (Array.isArray(rawParams?.tags) ? (rawParams.tags as string[]).join(',') : (rawParams?.tags as string | undefined)),
+        }
+      : undefined;
+    return libraryClient
+      .get<LibraryBootstrapResponse>(
+        resolveLibraryUrl('catalog', '/bootstrap', scopeId),
+        {
+          params: formattedParams,
+          signal: options?.signal,
+        },
+        scopeId,
+      )
+      .then((res) => {
+        if (!res || typeof res !== 'object') return res;
+        const rawItems: Item[] = Array.isArray(res.items) ? res.items : [];
+        return {
+          ...res,
+          items: Array.isArray(res.items) ? rawItems.map((it) => mapBackendItem(it)) : undefined,
+        };
+      });
+  },
+
   importFromUser: (projectId: string, itemIds: string[]) => {
     if (!projectId || projectId === 'user') {
       throw new Error('Valid target projectId is required for user library import');
@@ -112,6 +184,17 @@ export const ItemsService = {
       effectivePermissions?: string[];
       permissionOverrides?: Record<string, boolean>;
     }>(getCatalogUrl(scopeId, 'counts')),
+
+  getPermissions: (scopeId?: string) =>
+    libraryClient.get<{
+      scope: 'user' | 'project';
+      projectId: string | null;
+      role: import('@/features/library/domain/types/core.types').ProjectRole;
+      yourRole: import('@/features/library/domain/types/core.types').ProjectRole;
+      permissions: import('@/features/library/domain/types/core.types').LibraryPermissions;
+      effectivePermissions: string[];
+      permissionOverrides: Record<string, boolean>;
+    }>(resolveLibraryUrl('catalog', '/permissions', scopeId)),
 
   getAll: (
     scopeId?: string,
@@ -317,17 +400,25 @@ export const ItemsService = {
     itemId: string,
     options?: { attachOaPdf?: boolean; forceRefresh?: boolean },
   ) =>
-    libraryClient.post<{
-      success: boolean;
-      updatedFields?: string[];
-      oaPdfAttached?: boolean;
-      oaPdfUrl?: string;
-      item?: Item;
-      data?: Item;
-    }>(
-      getCatalogUrl(scopeId || 'user', `${encodeURIComponent(itemId)}/re-resolve`),
-      { attachOaPdf: true, ...options },
-    ),
+    libraryClient
+      .post<{
+        success: boolean;
+        updatedFields?: string[];
+        oaPdfAttached?: boolean;
+        oaPdfUrl?: string;
+        item?: Item;
+        data?: Item;
+      }>(
+        getCatalogUrl(scopeId || 'user', `${encodeURIComponent(itemId)}/re-resolve`),
+        { attachOaPdf: true, ...options },
+      )
+      .then((res) => ({
+        ...res,
+        item:
+          res?.item || res?.data
+            ? unwrapItemResponse(res.item || res.data)
+            : undefined,
+      })),
 
   getItemTypes: (_scopeId?: string) =>
     libraryClient.get<Record<string, unknown>>(
@@ -339,6 +430,20 @@ export const ItemsService = {
     libraryClient.get<{ success: boolean; itemType: unknown; data: unknown }>(
       `/api/v1/library/item-types/${encodeURIComponent(itemType)}`,
     ),
+
+  getSchemaSnapshot: () =>
+    libraryClient.get<{ success: boolean; data: Record<string, unknown> }>(
+      '/api/v1/library/types/schema',
+    ),
+
+  validateItemPayload: (itemType: string, data: Record<string, unknown>) =>
+    libraryClient.post<{
+      success: boolean;
+      valid: boolean;
+      errors?: Array<{ field: string; message: string }>;
+      warnings?: Array<{ field: string; message: string }>;
+      sanitized?: Record<string, unknown>;
+    }>('/api/v1/library/types/validate', { itemType, data }),
 
   previewConvertType: (
     scopeId: string | undefined,
@@ -379,8 +484,18 @@ export const ItemsService = {
 
   fetchPdfBlob,
 
-  markMyPublication: (scopeId: string | undefined, itemId: string) =>
-    ItemsService.setMyPublication(scopeId, itemId, true),
+  markMyPublication: (
+    scopeId: string | undefined,
+    itemId: string,
+    options?: {
+      contributorId?: string | null;
+      isPublic?: boolean;
+      openAccessLicense?: string | null;
+      includeAttachments?: boolean;
+      includeNotes?: boolean;
+      authorshipConfirmed?: boolean;
+    },
+  ) => ItemsService.setMyPublication(scopeId, itemId, true, options),
 
   unmarkMyPublication: (scopeId: string | undefined, itemId: string) =>
     ItemsService.setMyPublication(scopeId, itemId, false),
@@ -412,11 +527,23 @@ export const ItemsService = {
     targetItemId: string,
   ) => RelationsService.unlink(scopeId, itemId, targetItemId),
 
-  setMyPublication: (scopeId: string | undefined, itemId: string, isMyPublication: boolean) =>
+  setMyPublication: (
+    scopeId: string | undefined,
+    itemId: string,
+    isMyPublication: boolean,
+    options?: {
+      contributorId?: string | null;
+      isPublic?: boolean;
+      openAccessLicense?: string | null;
+      includeAttachments?: boolean;
+      includeNotes?: boolean;
+      authorshipConfirmed?: boolean;
+    },
+  ) =>
     isMyPublication
       ? libraryClient.post<{ success: boolean; data: Item; item: Item }>(
           getCatalogUrl(scopeId || 'user', `${encodeURIComponent(itemId)}/my-publication`),
-          {},
+          options || {},
         ).then((res) => unwrapItemResponse(res?.item || res?.data || res))
       : libraryClient.delete<{ success: boolean; data: Item; item: Item }>(
           getCatalogUrl(scopeId || 'user', `${encodeURIComponent(itemId)}/my-publication`),

@@ -2,6 +2,10 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { Item } from "@/features/library/domain/types/library.types";
+import {
+  buildInspectorFieldPatch,
+  resolveInspectorFieldValue,
+} from "@/features/library/domain/item-field-schema";
 
 import { cn } from "@/shared/lib/utils";
 
@@ -13,7 +17,7 @@ interface AbstractSectionProps {
 }
 
 function getAbstractValue(item: Item): string {
-  return item.abstractNote || "";
+  return resolveInspectorFieldValue(item, "abstractNote") || item.abstractNote || "";
 }
 
 export default function AbstractSection({
@@ -25,11 +29,24 @@ export default function AbstractSection({
   const currentAbstract = item ? getAbstractValue(item) : "";
   const [draft, setDraft] = useState(currentAbstract);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const focusedItemIdRef = useRef<string | null>(null);
+  const prevItemIdRef = useRef<string | undefined>(item?.id);
   const handleUpdate = onUpdateItem;
 
-  // On item change, initialize draft directly from backend canonical abstract
+  // On item change or background abstract update, synchronize draft cleanly
   useEffect(() => {
-    setDraft(currentAbstract || "");
+    const itemChanged = prevItemIdRef.current !== item?.id;
+    prevItemIdRef.current = item?.id;
+    const isFocused =
+      typeof document !== "undefined" && document.activeElement === textareaRef.current;
+    if (itemChanged) {
+      focusedItemIdRef.current = isFocused ? (item?.id ?? null) : null;
+      setDraft(currentAbstract || "");
+      return;
+    }
+    if (!isFocused) {
+      setDraft(currentAbstract || "");
+    }
   }, [item?.id, currentAbstract]);
 
   // Auto-resize textarea to fit content naturally without jump
@@ -55,14 +72,14 @@ export default function AbstractSection({
   }, [adjustHeight]);
 
   const commit = useCallback(() => {
-    if (!item) return;
+    if (!item || (focusedItemIdRef.current && focusedItemIdRef.current !== item.id)) {
+      return;
+    }
     const trimmed = draft.trim();
     const existing = getAbstractValue(item).trim();
     if (trimmed !== existing) {
       if (handleUpdate) {
-        handleUpdate({
-          abstractNote: trimmed || undefined,
-        });
+        handleUpdate(buildInspectorFieldPatch(item, "abstractNote", trimmed));
       }
     }
   }, [draft, item, handleUpdate]);
@@ -93,6 +110,9 @@ export default function AbstractSection({
           aria-label="Item abstract summary"
           readOnly={!canEdit}
           onChange={(e) => setDraft(e.target.value)}
+          onFocus={() => {
+            focusedItemIdRef.current = item?.id ?? null;
+          }}
           onBlur={commit}
           onKeyDown={(e) => {
             if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {

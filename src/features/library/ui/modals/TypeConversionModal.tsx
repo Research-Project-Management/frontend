@@ -50,7 +50,7 @@ export interface TypeConversionModalProps {
   targetType: string;
   scopeId?: string;
   initialPreview?: TypeConversionPreview | null;
-  onSuccess?: (updatedItem: Item) => void;
+  onSuccess?: (updatedItem: Item, retainUnmapped?: boolean) => void;
 }
 
 function formatValue(value: unknown): string {
@@ -150,19 +150,19 @@ export function TypeConversionModal({
     const sourceFields = ITEM_TYPE_FIELDS_MAP[sourceType] || [];
     const targetFields = new Set(ITEM_TYPE_FIELDS_MAP[targetType] || []);
 
-    const sourceBase = BASE_FIELD_MAPPINGS[sourceType] || {};
-    const targetReverseBase = REVERSE_BASE_FIELD_MAPPINGS[targetType] || {};
+    const sourceReverseBase = REVERSE_BASE_FIELD_MAPPINGS[sourceType] || {};
+    const targetBase = BASE_FIELD_MAPPINGS[targetType] || {};
 
     const unsupported = sourceFields.filter((sf) => {
       // Direct field match in target
       if (targetFields.has(sf)) return false;
 
-      // Base semantic mapping match (e.g. publicationTitle -> bookTitle)
-      const baseSemantic = sourceBase[sf];
-      if (baseSemantic) {
-        const mappedTarget = targetReverseBase[baseSemantic];
-        if (mappedTarget && targetFields.has(mappedTarget)) return false;
-      }
+      // Base semantic mapping match (e.g. proceedingsTitle -> publicationTitle -> bookTitle)
+      const baseSemantic = sourceReverseBase[sf] || sf;
+      const mappedTarget =
+        targetBase[baseSemantic] ||
+        (targetFields.has(baseSemantic) ? baseSemantic : undefined);
+      if (mappedTarget && targetFields.has(mappedTarget)) return false;
 
       // Always preserved system/metadata fields
       if (
@@ -197,7 +197,7 @@ export function TypeConversionModal({
       });
       const updatedItem = result?.item;
       if (updatedItem) {
-        onSuccess?.(updatedItem);
+        onSuccess?.(updatedItem, retainUnmapped);
       }
       onOpenChange(false);
     } catch (err: unknown) {

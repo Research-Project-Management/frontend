@@ -32,20 +32,20 @@ export interface RetentionOption {
 }
 
 export const READ_RETENTION_OPTIONS: RetentionOption[] = [
+  { value: 7, label: 'After 7 days' },
   { value: 1, label: 'After 1 day' },
   { value: 3, label: 'After 3 days' },
-  { value: 7, label: 'After 7 days (Recommended)' },
   { value: 14, label: 'After 14 days' },
   { value: 30, label: 'After 30 days' },
-  { value: 0, label: 'Never hide read items' },
+  { value: 0, label: 'Never' },
 ];
 
 export const UNREAD_RETENTION_OPTIONS: RetentionOption[] = [
-  { value: 7, label: 'Keep unread from last 7 days' },
-  { value: 14, label: 'Keep unread from last 14 days' },
-  { value: 30, label: 'Keep unread from last 30 days (Recommended)' },
-  { value: 90, label: 'Keep unread from last 90 days' },
-  { value: 0, label: 'Never hide unread items' },
+  { value: 30, label: '30 days' },
+  { value: 7, label: '7 days' },
+  { value: 14, label: '14 days' },
+  { value: 90, label: '90 days' },
+  { value: 0, label: 'Never' },
 ];
 
 export const RETENTION_OPTIONS: RetentionOption[] = UNREAD_RETENTION_OPTIONS;
@@ -56,17 +56,23 @@ export const DEFAULT_ACADEMIC_FEEDS: SavedFeedSubscription[] = [
     name: 'arXiv: Artificial Intelligence (cs.AI)',
     url: 'https://rss.arxiv.org/rss/cs.AI',
     retentionDays: 30,
+    cleanupReadAfter: 7,
+    cleanupUnreadAfter: 30,
   },
   {
     id: 'arxiv-cs-cl',
     name: 'arXiv: Computation and Language (cs.CL)',
     url: 'https://rss.arxiv.org/rss/cs.CL',
     retentionDays: 30,
+    cleanupReadAfter: 7,
+    cleanupUnreadAfter: 30,
   },
   {
     id: 'nature-main',
     name: 'Nature — Current Issue Research',
     url: 'https://www.nature.com/nature.rss',
     retentionDays: 30,
+    cleanupReadAfter: 7,
+    cleanupUnreadAfter: 30,
   },
 ];

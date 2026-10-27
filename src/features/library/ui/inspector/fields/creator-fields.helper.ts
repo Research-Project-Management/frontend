@@ -31,10 +31,14 @@ export const MAX_COLLAPSED_AUTHORS = 3;
 
 /** Parse & sanitize creators array into structured list */
 export function parseCreators(item: Item): CreatorEntry[] {
-  const rawCreators =
-    item.creators && item.creators.length > 0
+  const hasExplicitCreatorsArray = Array.isArray(item.creators);
+  const rawCreators = hasExplicitCreatorsArray
+    ? item.creators!.length > 0
       ? item.creators
-      : item.contributors;
+      : Array.isArray(item.authors) && item.authors.length === 0
+        ? []
+        : item.contributors
+    : item.contributors;
   if (Array.isArray(rawCreators) && rawCreators.length > 0) {
     const parsedCreators: CreatorEntry[] = [];
     for (const rawCreatorItem of rawCreators) {
@@ -53,6 +57,14 @@ export function parseCreators(item: Item): CreatorEntry[] {
       );
       if (!creatorName && (firstName || lastName)) {
         creatorName = [lastName, firstName].filter(Boolean).join(", ");
+      } else if (
+        rawCreatorItem.fieldMode !== 1 &&
+        firstName &&
+        lastName &&
+        lastName.includes(" ") &&
+        !creatorName.includes(",")
+      ) {
+        creatorName = `${lastName}, ${firstName}`;
       }
 
       const isSingleFieldInstitution =
@@ -65,10 +77,21 @@ export function parseCreators(item: Item): CreatorEntry[] {
         ? 1
         : (rawCreatorItem.fieldMode ?? 0);
 
+      const hasStructuredName = Boolean(
+        rawCreatorItem.firstName ||
+          rawCreatorItem.lastName ||
+          (rawCreatorItem as Record<string, unknown>).given ||
+          (rawCreatorItem as Record<string, unknown>).family ||
+          rawCreatorItem.fieldMode === 1,
+      );
+
       if (creatorName) {
-        // If creator is marked as institution (fieldMode === 1), do NOT split by 'and', '&', or commas
+        // If creator is already structured (has firstName/lastName) or marked as institution (fieldMode === 1),
+        // do NOT split by 'and', '&', or commas on load
         const splitNameParts =
-          fieldMode === 1 ? [creatorName] : splitAuthorString(creatorName);
+          fieldMode === 1 || hasStructuredName
+            ? [creatorName]
+            : splitAuthorString(creatorName);
         if (splitNameParts.length > 1) {
           for (const authorPart of splitNameParts) {
             const parsed = parseCreatorName(authorPart);
@@ -109,18 +132,32 @@ export function parseCreators(item: Item): CreatorEntry[] {
     if (parsedCreators.length > 0) return parsedCreators;
   }
 
+  if (
+    hasExplicitCreatorsArray &&
+    item.creators!.length === 0 &&
+    Array.isArray(item.authors) &&
+    item.authors.length === 0
+  ) {
+    return [];
+  }
+
   const normalizedAuthorList = normalizeAuthors(
     item.authors,
     item.creators,
-    item.contributors,
+    hasExplicitCreatorsArray ? undefined : item.contributors,
   );
   if (normalizedAuthorList.length > 0) {
     const defaultRole = getPrimaryCreatorType(item.itemType) || "author";
-    return normalizedAuthorList.map((authorName) => ({
-      creatorType: defaultRole,
-      name: authorName || "",
-      fieldMode: 0,
-    }));
+    return normalizedAuthorList.map((authorName) => {
+      const parsed = parseCreatorName(authorName || "");
+      return {
+        creatorType: defaultRole,
+        name: authorName || "",
+        fieldMode: parsed.isInstitution ? 1 : 0,
+        firstName: parsed.isInstitution ? undefined : parsed.firstName || undefined,
+        lastName: parsed.isInstitution ? authorName || undefined : parsed.lastName || undefined,
+      };
+    });
   }
 
   return [];
@@ -187,12 +224,17 @@ export function toItemCreators(
     if (creatorEntry.fieldMode === 1) {
       firstName = "";
       lastName = trimmedName;
-    } else if (firstName || lastName) {
-      // Explicit 2-field mode inputs preserved directly
     } else if (trimmedName) {
-      const parsed = parseCreatorName(trimmedName);
-      firstName = parsed.firstName;
-      lastName = parsed.lastName;
+      const combinedForward = [firstName, lastName].filter(Boolean).join(" ").trim();
+      const combinedInverted = [lastName, firstName].filter(Boolean).join(", ").trim();
+      const matchesExisting =
+        Boolean(firstName || lastName) &&
+        (trimmedName === combinedForward || trimmedName === combinedInverted);
+      if (!matchesExisting) {
+        const parsed = parseCreatorName(trimmedName);
+        firstName = parsed.firstName;
+        lastName = parsed.lastName;
+      }
     }
 
     return {

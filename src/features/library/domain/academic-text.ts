@@ -27,7 +27,7 @@ const SPECIAL_LATIN_MAP: Readonly<Record<string, string>> = {
   œ: 'oe',
 };
 
-const BROKEN_HYPHEN_RE = /(\b[A-Za-z0-9]+)\s*[-‐‑‒–—−]\s*([A-Za-z0-9]+\b)/g;
+const BROKEN_HYPHEN_RE = /(\b[A-Za-z0-9]+)-\s*\r?\n\s*([A-Za-z0-9]+\b)/g;
 const MULTI_WHITESPACE_RE = /\s+/g;
 const LEADING_EMOJI_RE = /^(\p{Extended_Pictographic}|\p{Emoji_Presentation}|[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}])\s*(.*)$/u;
 
@@ -84,7 +84,7 @@ export function formatAcademicAuthors(
       }
       return clean;
     })
-    .filter((a) => a && a.length >= 2);
+    .filter((a) => Boolean(a));
 
   if (cleaned.length === 0) return '—';
   if (cleaned.length <= maxAuthors) return cleaned.join(', ');

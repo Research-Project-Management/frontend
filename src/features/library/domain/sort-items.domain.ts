@@ -16,6 +16,13 @@ import { isValidValue, stripLatexMarkup, getPublicationVenue } from '@/features/
 import { parseCreatorName } from '@/features/library/domain/creators';
 
 function extractSortableAuthor(item: Item): string | null {
+  if (Array.isArray(item.creators) && item.creators.length > 0) {
+    const first = item.creators[0];
+    if (first) {
+      const last = first.lastName || first.name || first.fullName || '';
+      if (isValidValue(last)) return stripLatexMarkup(last);
+    }
+  }
   if (Array.isArray(item.authors) && item.authors.length > 0) {
     const first = item.authors[0];
     if (typeof first === 'string' && isValidValue(first)) {
@@ -30,13 +37,6 @@ function extractSortableAuthor(item: Item): string | null {
       const obj = first as Record<string, unknown>;
       const name = String(obj.lastName || obj.family || obj.name || obj.fullName || '');
       if (isValidValue(name)) return stripLatexMarkup(name);
-    }
-  }
-  if (Array.isArray(item.creators) && item.creators.length > 0) {
-    const first = item.creators[0];
-    if (first) {
-      const last = first.lastName || first.name || first.fullName || '';
-      if (isValidValue(last)) return stripLatexMarkup(last);
     }
   }
   if (typeof item.firstAuthor === 'string' && isValidValue(item.firstAuthor)) {

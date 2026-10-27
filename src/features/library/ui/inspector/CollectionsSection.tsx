@@ -158,6 +158,7 @@ function useItemCollectionsManager(
       const targetCol = colMap.get(targetColId);
       const colName = targetCol?.name || "Collection";
       if (isAssigned) {
+        void mutationPromise.catch(() => undefined);
         const remainingCount = remainingIds.length;
         const description =
           remainingCount === 0
@@ -167,35 +168,7 @@ function useItemCollectionsManager(
         toast.success(`Removed from "${colName}"`, {
           description,
           id: "col-assign",
-          duration: 5000,
-          action: {
-            label: "Undo",
-            onClick: () => {
-              void mutationPromise
-                .catch(() => undefined)
-                .then((res) => {
-                  const returnedItem =
-                    res && typeof res === "object" && "item" in res && res.item
-                      ? (res.item as Partial<Item>)
-                      : (res as Partial<Item> | undefined);
-                  const latestVersion =
-                    typeof returnedItem?.version === "number"
-                      ? returnedItem.version
-                      : undefined;
-                  return updateItem(
-                    targetItemId,
-                    {
-                      collectionIds: prevIds,
-                    },
-                    { expectedVersion: latestVersion },
-                  );
-                })
-                .then(() => {
-                  toast.success(`Restored to "${colName}"`, { id: "col-assign" });
-                })
-                .catch(() => undefined);
-            },
-          },
+          duration: 3000,
         });
       } else {
         void mutationPromise.catch(() => undefined);

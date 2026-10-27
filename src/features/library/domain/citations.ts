@@ -23,8 +23,8 @@ import { foldDiacritics } from './academic-text';
 
 export interface CitationKeyInput {
   title?: string | null;
-  authors?: Array<string | { name?: string; fullName?: string; lastName?: string; [key: string]: unknown }> | null;
-  creators?: Array<{ firstName?: string; lastName?: string; fullName?: string; name?: string; creatorType?: string; [key: string]: unknown }> | null;
+  authors?: Array<string | { name?: string | null; fullName?: string | null; lastName?: string | null; [key: string]: unknown }> | null;
+  creators?: Array<{ firstName?: string | null; lastName?: string | null; fullName?: string | null; name?: string | null; creatorType?: string | null; [key: string]: unknown }> | null;
   year?: number | string | null;
   doi?: string | null;
   citationKey?: string | null;
@@ -85,10 +85,10 @@ export function generateCitationKey(
 
   let authorPart = '';
   const rawAuthors =
-    Array.isArray(item.authors) && item.authors.length > 0
-      ? item.authors
-      : Array.isArray((item as CitationKeyInput).creators) && (item as CitationKeyInput).creators!.length > 0
-        ? (item as CitationKeyInput).creators
+    Array.isArray((item as CitationKeyInput).creators) && (item as CitationKeyInput).creators!.length > 0
+      ? (item as CitationKeyInput).creators
+      : Array.isArray(item.authors) && item.authors.length > 0
+        ? item.authors
         : null;
 
   if (Array.isArray(rawAuthors) && rawAuthors.length > 0) {
@@ -169,7 +169,11 @@ export function generateCitationKey(
     }
   }
 
-  return `${baseKey}_${Date.now()}`;
+  let counter = 2;
+  while (keySet.has(`${baseKey}_${counter}`)) {
+    counter++;
+  }
+  return `${baseKey}_${counter}`;
 }
 
 /**

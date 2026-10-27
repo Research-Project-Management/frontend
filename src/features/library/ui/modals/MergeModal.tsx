@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -73,16 +73,10 @@ export function MergeModal({
     handleSelectMaster,
     handleSelectFieldValue,
     handleAutoRecommend,
-    resetMergeState,
   } = useDuplicateMergeState(items, recommendedMasterId);
 
   // Action pending states
   const [isMerging, setIsMerging] = useState<boolean>(false);
-
-  useEffect(() => {
-    if (!open || !duplicates || duplicates.length === 0) return;
-    resetMergeState(recommendedMasterId || "");
-  }, [open, duplicates, recommendedMasterId, resetMergeState]);
 
   // ── 2. Action Handlers ──────────────────────────────────────────────────────
   const handleConfirmMerge = async () => {
@@ -378,11 +372,17 @@ export function MergeModal({
                           (opt: ItemFieldDiff["options"][number]) => {
                             const isExplicitOverride =
                               activeOverrideValue !== undefined &&
+                              activeOverrideValue !== null &&
                               (opt.rawValue === activeOverrideValue ||
-                                normalizeCompareValue(opt.rawValue) ===
-                                  normalizeCompareValue(activeOverrideValue));
+                                (opt.isEmpty &&
+                                  (activeOverrideValue === "" ||
+                                    (Array.isArray(activeOverrideValue) &&
+                                      activeOverrideValue.length === 0))) ||
+                                normalizeCompareValue(opt.rawValue, field.key) ===
+                                  normalizeCompareValue(activeOverrideValue, field.key));
                             const isMasterDefault =
-                              activeOverrideValue === undefined &&
+                              (activeOverrideValue === undefined ||
+                                activeOverrideValue === null) &&
                               opt.isMaster &&
                               opt.rawValue === masterValue;
 

@@ -1,31 +1,17 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { Plus, Minus, Check, ChevronDown, ChevronUp, ArrowUp, ArrowDown, Building2, User } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/shared/lib/utils";
-import type {
-  Item,
-  CreatorCredit,
-} from "@/features/library/domain/types/library.types";
 import {
   normalizeAuthors,
   splitAuthorString,
   parseCreatorName,
-  isInstitutionName,
 } from "@/features/library/domain/creators";
-import { cleanValue } from "@/features/library/domain/metadata";
 import {
   ALL_CREATOR_TYPES,
   getPrimaryCreatorType,
-  type SchemaItemTypeDefinition,
 } from "@/features/library/domain/types/item-types.types";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
 import {
   Tooltip,
   TooltipContent,
@@ -39,10 +25,11 @@ import {
   parseCreators,
   areCreatorsEqual,
   toItemCreators,
-} from './creator-fields.helper';
+} from "./creator-fields.helper";
+import { CreatorRowItem, type CreatorRowItemProps } from "./CreatorRowItem";
 
-export type { CreatorEntry, CreatorFieldsProps };
-export { parseCreators, areCreatorsEqual, toItemCreators };
+export type { CreatorEntry, CreatorFieldsProps, CreatorRowItemProps };
+export { parseCreators, areCreatorsEqual, toItemCreators, CreatorRowItem };
 
 export function CreatorFields({
   item,
@@ -50,9 +37,10 @@ export function CreatorFields({
   typeDefinition,
   canEdit = true,
 }: CreatorFieldsProps) {
-
   const [isAuthorsExpanded, setIsAuthorsExpanded] = useState(false);
   const [focusAuthorIndex, setFocusAuthorIndex] = useState<number | null>(null);
+  const [emptyAuthorDraft, setEmptyAuthorDraft] = useState("");
+  const emptyInputFocusedItemIdRef = useRef<string | undefined>(undefined);
   const authorInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const currentItemType = item?.itemType || "journalArticle";
@@ -97,12 +85,20 @@ export function CreatorFields({
 
   useEffect(() => {
     if (item) {
-      setLocalCreators(parseCreators(item));
+      const incoming = parseCreators(item);
+      const isAnyInputFocused = authorInputRefs.current.some(
+        (el) => el && typeof document !== "undefined" && document.activeElement === el,
+      );
+      if (!isAnyInputFocused && !areCreatorsEqual(localCreators, incoming)) {
+        setLocalCreators(incoming);
+      }
     }
-  }, [item, itemId, itemCreators, itemContributors, itemAuthors]);
+  }, [itemId, itemCreators, itemContributors, itemAuthors]);
 
   useEffect(() => {
     setIsAuthorsExpanded(false);
+    setEmptyAuthorDraft("");
+    emptyInputFocusedItemIdRef.current = undefined;
   }, [itemId]);
 
   useEffect(() => {
@@ -159,38 +155,65 @@ export function CreatorFields({
       if (areCreatorsEqual(updatedCreators, originalCreators)) {
         return;
       }
+      const nextCreators = updatedCreators.filter((c) => c.name.trim().length > 0);
       const primaryRoleDef =
         typeDefinition.primaryCreatorType ||
         getPrimaryCreatorType(currentItemType) ||
         "author";
-      const allCreatorNames = updatedCreators
-        .map((creatorItem) => creatorItem.name.trim())
-        .filter(Boolean);
-      const primaryCreatorNames = updatedCreators
-        .filter(
-          (creatorItem) =>
-            (creatorItem.creatorType || primaryRoleDef) === primaryRoleDef,
+      const primaryCreatorNames = nextCreators
+        .filter((creatorItem) =>
+          isAuthorRole(creatorItem.creatorType || primaryRoleDef),
         )
         .map((creatorItem) => creatorItem.name.trim())
         .filter(Boolean);
-      const finalAuthors = primaryCreatorNames.length
-        ? primaryCreatorNames
-        : allCreatorNames;
+      const editorNames = nextCreators
+        .filter(
+          (creatorItem) =>
+            (creatorItem.creatorType || "").toLowerCase() === "editor",
+        )
+        .map((creatorItem) => creatorItem.name.trim())
+        .filter(Boolean);
+      const finalAuthors = primaryCreatorNames;
+      const structuredCreators = nextCreators.length
+        ? toItemCreators(nextCreators)
+        : [];
+      const currentExtraFields =
+        item.extraFields && typeof item.extraFields === "object"
+          ? (item.extraFields as Record<string, unknown>)
+          : {};
       if (onUpdateItem) {
         onUpdateItem(
           {
             ...(item.itemType ? { itemType: item.itemType } : {}),
-            authors: finalAuthors.length ? finalAuthors : undefined,
-            creators: updatedCreators.length
-              ? toItemCreators(updatedCreators)
-              : undefined,
+            authors: nextCreators.length ? finalAuthors : [],
+            editors: nextCreators.length ? editorNames : [],
+            creators: structuredCreators,
+            contributors: structuredCreators,
+            ...(structuredCreators.length === 0
+              ? {
+                  extraFields: {
+                    ...currentExtraFields,
+                    creators: null,
+                    contributors: null,
+                  },
+                }
+              : "creators" in currentExtraFields ||
+                  "contributors" in currentExtraFields
+                ? {
+                    extraFields: {
+                      ...currentExtraFields,
+                      creators: structuredCreators,
+                      contributors: structuredCreators,
+                    },
+                  }
+                : {}),
             silent: true,
           },
           { silent: true },
         );
       }
     },
-    [item, typeDefinition.primaryCreatorType, currentItemType, onUpdateItem],
+    [item, typeDefinition.primaryCreatorType, currentItemType, isAuthorRole, onUpdateItem],
   );
 
   const handleUpdateCreatorType = (
@@ -247,349 +270,42 @@ export function CreatorFields({
     syncCreatorsToParent(updatedCreators);
   };
 
-  const handleToggleFieldMode = (targetIndex: number) => {
-    toast.dismiss("item-update");
-    const current = localCreators[targetIndex];
-    if (!current) return;
-    const nextMode = current.fieldMode === 1 ? 0 : 1;
-    const updatedCreators = [...localCreators];
-    updatedCreators[targetIndex] = {
-      ...current,
-      fieldMode: nextMode,
-    };
-    setLocalCreators(updatedCreators);
-    syncCreatorsToParent(updatedCreators);
-  };
+  const handleAssignInputRef = useCallback(
+    (index: number, el: HTMLInputElement | null) => {
+      authorInputRefs.current[index] = el;
+    },
+    [],
+  );
 
-  const handleMoveCreator = (targetIndex: number, direction: -1 | 1) => {
-    toast.dismiss("item-update");
-    const swapIndex = targetIndex + direction;
-    if (swapIndex < 0 || swapIndex >= localCreators.length) return;
-    const updatedCreators = [...localCreators];
-    const temp = updatedCreators[targetIndex];
-    updatedCreators[targetIndex] = updatedCreators[swapIndex];
-    updatedCreators[swapIndex] = temp;
-    setLocalCreators(updatedCreators);
-    syncCreatorsToParent(updatedCreators);
-  };
+  const handleUpdateLocalCreators = useCallback(
+    (nextCreators: CreatorEntry[], syncImmediately = false) => {
+      setLocalCreators(nextCreators);
+      if (syncImmediately) {
+        syncCreatorsToParent(nextCreators);
+      }
+    },
+    [syncCreatorsToParent],
+  );
 
   const renderCreatorRow = (
     creatorEntry: CreatorEntry,
     originalIndex: number,
   ) => {
-    const roleLabel =
-      ALL_CREATOR_TYPES[creatorEntry.creatorType] ||
-      creatorEntry.creatorType ||
-      "Author";
-    const isSingleField = creatorEntry.fieldMode === 1;
-
     return (
-      <div
+      <CreatorRowItem
         key={originalIndex}
-        className="grid grid-cols-[84px_1fr] gap-2 items-center py-0.5 group"
-      >
-        {/* Left Role Column */}
-        <div className="flex items-center justify-end min-w-0 pr-1">
-          {canEdit ? (
-            <DropdownMenu>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      type="button"
-                      className="w-full min-h-7 h-auto flex items-center justify-end pr-1 rounded-md text-11 leading-normal font-medium text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring select-none text-right truncate"
-                      aria-label={`Change role for ${roleLabel.toLowerCase()} ${originalIndex + 1}`}
-                    >
-                      <span className="truncate whitespace-nowrap leading-normal">
-                        {roleLabel}
-                      </span>
-                    </button>
-                  </DropdownMenuTrigger>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" align="start" sideOffset={6}>
-                  {roleLabel}
-                </TooltipContent>
-              </Tooltip>
-              <DropdownMenuContent
-                align="start"
-                className="min-w-[170px] p-1.5 rounded-md shadow-raised-200 border border-border bg-popover text-popover-foreground space-y-0.5"
-              >
-                {creatorTypesList.map((creatorTypeItem) => (
-                  <DropdownMenuItem
-                    key={creatorTypeItem.creatorType}
-                    onClick={() =>
-                      handleUpdateCreatorType(
-                        originalIndex,
-                        creatorTypeItem.creatorType,
-                      )
-                    }
-                    className={cn(
-                      "flex items-center justify-between h-7 px-2 text-xs font-normal rounded-md cursor-pointer text-foreground hover:bg-muted",
-                      creatorEntry.creatorType ===
-                        creatorTypeItem.creatorType &&
-                        "bg-muted text-foreground font-medium",
-                    )}
-                  >
-                    <span className="text-foreground">
-                      {creatorTypeItem.label}
-                    </span>
-                    {creatorEntry.creatorType ===
-                      creatorTypeItem.creatorType && (
-                      <Check
-                        className="size-3 text-primary shrink-0"
-                        aria-hidden="true"
-                      />
-                    )}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <div className="w-full min-h-7 h-auto flex items-center justify-end pr-1 text-11 leading-normal font-medium text-muted-foreground select-text text-right truncate">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="truncate whitespace-nowrap leading-normal">
-                    {roleLabel}
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" align="start" sideOffset={6}>
-                  {roleLabel}
-                </TooltipContent>
-              </Tooltip>
-            </div>
-          )}
-        </div>
-
-        {/* Right Input Column */}
-        <div className="flex items-center gap-1 min-w-0">
-          {canEdit ? (
-            <>
-              <input
-                ref={(inputElement) => {
-                  authorInputRefs.current[originalIndex] = inputElement;
-                }}
-                type="text"
-                value={creatorEntry.name}
-                placeholder={
-                  isSingleField
-                    ? "Institution or organization name"
-                    : `${roleLabel} name`
-                }
-                aria-label={`${roleLabel} ${originalIndex + 1}`}
-                onChange={(changeEvent) => {
-                  const inputValue = changeEvent.target.value;
-                  // Only split multi-authors if NOT in institutional single-field mode
-                  if (
-                    !isSingleField &&
-                    (inputValue.includes(";") ||
-                      /\s+and\s+/i.test(inputValue) ||
-                      inputValue.includes("\n"))
-                  ) {
-                    const splitParts = splitAuthorString(inputValue);
-                    if (splitParts.length > 1) {
-                      const updatedCreators = [...localCreators];
-                      const currentEntry = updatedCreators[originalIndex];
-                      const newCreatorEntries = splitParts.map(
-                        (authorNamePart) => {
-                          const parsed = parseCreatorName(authorNamePart);
-                          return {
-                            creatorType: currentEntry?.creatorType || "author",
-                            fieldMode: 0,
-                            name: authorNamePart,
-                            firstName: parsed.firstName || undefined,
-                            lastName: parsed.lastName || undefined,
-                          };
-                        },
-                      );
-                      updatedCreators.splice(
-                        originalIndex,
-                        1,
-                        ...newCreatorEntries,
-                      );
-                      setLocalCreators(updatedCreators);
-                      return;
-                    }
-                  }
-                  const updatedCreators = [...localCreators];
-                  updatedCreators[originalIndex] = {
-                    ...updatedCreators[originalIndex],
-                    name: inputValue,
-                  };
-                  setLocalCreators(updatedCreators);
-                }}
-                onBlur={() => syncCreatorsToParent(localCreators)}
-                onKeyDown={(keyboardEvent) => {
-                  if (keyboardEvent.key === "Enter") {
-                    keyboardEvent.preventDefault();
-                    handleAddCreator(originalIndex);
-                  }
-                }}
-                className="flex-1 min-w-0 h-7 bg-transparent px-2 py-1 rounded-md border border-transparent hover:bg-muted focus:border-primary focus:ring-1 focus:ring-ring focus:bg-background text-foreground text-13 leading-normal outline-none font-normal font-sans placeholder:text-muted-foreground"
-              />
-
-              {/* Optional Short Name / Acronym when in single-field institutional mode */}
-              {isSingleField && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <input
-                      type="text"
-                      value={creatorEntry.shortName || ""}
-                      placeholder="Acronym"
-                      aria-label={`Short name or acronym for ${roleLabel.toLowerCase()} ${originalIndex + 1}`}
-                      onChange={(changeEvent) => {
-                        const updatedCreators = [...localCreators];
-                        updatedCreators[originalIndex] = {
-                          ...updatedCreators[originalIndex],
-                          shortName: changeEvent.target.value,
-                        };
-                        setLocalCreators(updatedCreators);
-                      }}
-                      onBlur={() => syncCreatorsToParent(localCreators)}
-                      className="w-24 sm:w-28 h-7 bg-transparent px-2 py-1 rounded-md border border-border hover:border-border-hover focus:border-primary focus:ring-1 focus:ring-ring focus:bg-background text-foreground text-12 placeholder:text-muted-foreground leading-normal outline-none font-normal font-sans shrink-0"
-                    />
-                  </TooltipTrigger>
-                  <TooltipContent
-                    side="bottom"
-                    align="start"
-                    sideOffset={6}
-                    alignOffset={2}
-                  >
-                    Short name
-                  </TooltipContent>
-                </Tooltip>
-              )}
-
-              {/* Action Buttons (Mode Toggle, Move Up/Down, Add, Remove) */}
-              <div className="invisible group-hover:visible max-md:visible flex items-center gap-0.5 shrink-0">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={() => handleToggleFieldMode(originalIndex)}
-                      className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:outline-none"
-                      aria-label={
-                        isSingleField
-                          ? "Switch to two fields (Last, First)"
-                          : "Switch to single field (Institution)"
-                      }
-                    >
-                      {isSingleField ? (
-                        <Building2 className="size-3.5 shrink-0" strokeWidth={1.5} />
-                      ) : (
-                        <User className="size-3.5 shrink-0" strokeWidth={1.5} />
-                      )}
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" align="start" sideOffset={6}>
-                    {isSingleField
-                      ? "Switch to two fields (Last, First)"
-                      : "Switch to single field (Institution)"}
-                  </TooltipContent>
-                </Tooltip>
-
-                {localCreators.length > 1 && (
-                  <>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          disabled={originalIndex === 0}
-                          onClick={() => handleMoveCreator(originalIndex, -1)}
-                          className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 transition-colors cursor-pointer focus-visible:outline-none"
-                          aria-label="Move creator up"
-                        >
-                          <ArrowUp className="size-3 shrink-0" strokeWidth={1.5} />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" align="start" sideOffset={6}>
-                        Move up
-                      </TooltipContent>
-                    </Tooltip>
-
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          disabled={originalIndex === localCreators.length - 1}
-                          onClick={() => handleMoveCreator(originalIndex, 1)}
-                          className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 transition-colors cursor-pointer focus-visible:outline-none"
-                          aria-label="Move creator down"
-                        >
-                          <ArrowDown className="size-3 shrink-0" strokeWidth={1.5} />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" align="start" sideOffset={6}>
-                        Move down
-                      </TooltipContent>
-                    </Tooltip>
-                  </>
-                )}
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={() => handleAddCreator(originalIndex)}
-                      className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:outline-none relative before:absolute before:-inset-2 md:before:hidden"
-                      aria-label={`Add ${roleLabel.toLowerCase()}`}
-                    >
-                      <Plus
-                        className="size-3.5 shrink-0"
-                        aria-hidden="true"
-                        strokeWidth={1.5}
-                      />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent
-                    side="bottom"
-                    align="start"
-                    sideOffset={6}
-                    alignOffset={2}
-                  >
-                    Add {roleLabel.toLowerCase()}
-                  </TooltipContent>
-                </Tooltip>
-
-                {localCreators.length > 1 && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveCreator(originalIndex)}
-                        className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer focus-visible:outline-none relative before:absolute before:-inset-2 md:before:hidden"
-                        aria-label={`Remove ${roleLabel.toLowerCase()}`}
-                      >
-                        <Minus
-                          className="size-3.5 shrink-0"
-                          aria-hidden="true"
-                          strokeWidth={1.5}
-                        />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent
-                      side="bottom"
-                      align="start"
-                      sideOffset={6}
-                      alignOffset={2}
-                    >
-                      Remove {roleLabel.toLowerCase()}
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-              </div>
-            </>
-          ) : (
-            <div className="flex-1 min-h-7 h-auto px-2 py-1 text-foreground text-12 leading-snug min-w-0 font-normal font-sans break-words select-text flex items-center gap-1.5">
-              <span>{creatorEntry.name}</span>
-              {creatorEntry.shortName && (
-                <span className="text-11 text-foreground font-mono">
-                  ({creatorEntry.shortName})
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+        creatorEntry={creatorEntry}
+        originalIndex={originalIndex}
+        canEdit={canEdit}
+        creatorTypesList={creatorTypesList}
+        localCreators={localCreators}
+        onAssignInputRef={handleAssignInputRef}
+        onUpdateCreatorType={handleUpdateCreatorType}
+        onUpdateLocalCreators={handleUpdateLocalCreators}
+        onSyncCreators={syncCreatorsToParent}
+        onAddCreator={handleAddCreator}
+        onRemoveCreator={handleRemoveCreator}
+      />
     );
   };
 
@@ -611,8 +327,19 @@ export function CreatorFields({
             <input
               type="text"
               aria-label="Author"
-              onBlur={(blurEvent) => {
-                const trimmedValue = blurEvent.target.value.trim();
+              value={emptyAuthorDraft}
+              onFocus={() => {
+                emptyInputFocusedItemIdRef.current = itemId;
+              }}
+              onChange={(e) => setEmptyAuthorDraft(e.target.value)}
+              onBlur={() => {
+                if (
+                  emptyInputFocusedItemIdRef.current &&
+                  emptyInputFocusedItemIdRef.current !== itemId
+                ) {
+                  return;
+                }
+                const trimmedValue = emptyAuthorDraft.trim();
                 const existingAuthors = normalizeAuthors(
                   item?.authors,
                   item?.creators,
@@ -623,28 +350,30 @@ export function CreatorFields({
                   (!existingAuthors.length ||
                     existingAuthors[0] !== trimmedValue)
                 ) {
-                  if (onUpdateItem) {
-                    const primaryRoleDef =
-                      typeDefinition.primaryCreatorType ||
-                      getPrimaryCreatorType(currentItemType) ||
-                      "author";
-                    onUpdateItem(
-                      {
-                        authors: [trimmedValue],
-                        creators: [
-                          {
-                            orderIndex: 0,
-                            creatorType: primaryRoleDef,
-                            fieldMode: 0,
-                            fullName: trimmedValue,
-                            name: trimmedValue,
-                          },
-                        ],
-                        silent: true,
-                      },
-                      { silent: true },
-                    );
-                  }
+                  const primaryRoleDef =
+                    typeDefinition.primaryCreatorType ||
+                    getPrimaryCreatorType(currentItemType) ||
+                    "author";
+                  const splitParts = splitAuthorString(trimmedValue);
+                  const rawParts =
+                    splitParts.length > 0 ? splitParts : [trimmedValue];
+                  const newEntries: CreatorEntry[] = rawParts.map((part) => {
+                    const parsed = parseCreatorName(part);
+                    return {
+                      creatorType: primaryRoleDef,
+                      fieldMode: parsed.isInstitution ? 1 : 0,
+                      name: part,
+                      firstName: parsed.isInstitution
+                        ? undefined
+                        : parsed.firstName || undefined,
+                      lastName: parsed.isInstitution
+                        ? part
+                        : parsed.lastName || undefined,
+                    };
+                  });
+                  setEmptyAuthorDraft("");
+                  setLocalCreators(newEntries);
+                  syncCreatorsToParent(newEntries);
                 }
               }}
               onKeyDown={(keyboardEvent) => {

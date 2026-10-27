@@ -111,7 +111,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
     if (typeof rawDate === 'number') {
       year = String(rawDate);
     } else if (typeof rawDate === 'string') {
-      year = rawDate.match(/\b(1[7-9]\d{2}|20\d{2})\b/)?.[1] || rawDate || '-';
+      year = rawDate.match(/\b(1\d{3}|20\d{2})\b/)?.[1] || rawDate || '-';
     }
 
     const venue = cleanAcademicText(
@@ -235,10 +235,6 @@ export const ItemTableRow = React.memo(function ItemTableRow({
           } else {
             toast.info('Restore this reference to open in reader', {
               id: 'trash-restore-prompt',
-              action: onRestore ? {
-                label: 'Restore',
-                onClick: () => onRestore(item.id),
-              } : undefined,
             });
           }
         }}
@@ -246,7 +242,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
           'cursor-pointer group text-13 h-8',
           !isLast && 'border-b border-border',
           isSelected
-            ? 'bg-primary/10 ring-1 ring-inset ring-primary/30 font-medium'
+            ? 'bg-primary/10 font-medium'
             : isRowActive
               ? 'bg-muted'
             : isProcessing

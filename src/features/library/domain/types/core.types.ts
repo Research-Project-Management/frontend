@@ -16,6 +16,7 @@ export interface LibraryPermissions {
   readonly canManageCollections: boolean;
   readonly canImport: boolean;
   readonly canExport: boolean;
+  readonly canAnnotate?: boolean;
 }
 
 /**

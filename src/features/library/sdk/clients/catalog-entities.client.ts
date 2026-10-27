@@ -84,7 +84,7 @@ export const CollectionsService = {
     collectionId: string,
     itemIds: string[],
   ) =>
-    libraryClient.post<{ count: number; collectionId: string }>(
+    libraryClient.post<{ success?: boolean; count: number; collectionId?: string }>(
       resolveLibraryUrl('catalog', `/collections/${encodeURIComponent(collectionId)}/items`, scopeId),
       { itemIds },
     ),
@@ -100,7 +100,7 @@ export const CollectionsService = {
     collectionId: string,
     itemId: string,
   ) =>
-    libraryClient.delete<{ detached: boolean }>(
+    libraryClient.delete<{ success?: boolean; detached?: boolean }>(
       resolveLibraryUrl('catalog', `/collections/${encodeURIComponent(collectionId)}/items/${encodeURIComponent(itemId)}`, scopeId),
     ),
 
@@ -452,20 +452,28 @@ export const SavedSearchesService = {
     ),
 
   create: (scopeId: string | undefined, data: CreateSavedSearchInput) => {
+    const effectiveScope =
+      (data as { targetScope?: string; scope?: string })?.targetScope ||
+      (data as { scope?: string })?.scope ||
+      scopeId;
     const { targetScope: _, scope: __, ...payload } = data;
     return libraryClient.post<SavedSearch>(
-      resolveLibraryUrl('catalog', '/saved-searches', scopeId),
+      resolveLibraryUrl('catalog', '/saved-searches', effectiveScope),
       {
         ...payload,
-        ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
+        ...(isProjectScope(effectiveScope) ? { projectId: effectiveScope } : {}),
       },
     );
   },
 
   update: (scopeId: string | undefined, id: string, data: UpdateSavedSearchInput) => {
+    const effectiveScope =
+      (data as { targetScope?: string; scope?: string })?.targetScope ||
+      (data as { scope?: string })?.scope ||
+      scopeId;
     const { targetScope: _, scope: __, ...payload } = data;
     return libraryClient.patch<SavedSearch>(
-      resolveLibraryUrl('catalog', `/saved-searches/${encodeURIComponent(id)}`, scopeId),
+      resolveLibraryUrl('catalog', `/saved-searches/${encodeURIComponent(id)}`, effectiveScope),
       payload,
     );
   },

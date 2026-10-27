@@ -7,7 +7,6 @@ import { useTags } from '@/features/library/sdk/queries/tags-notes.queries';
 import { useSavedSearches } from '@/features/library/sdk/queries/saved-searches-relations.queries';
 import {
   mapRegistryItemTypes,
-  type Collection,
 } from '@/features/library/domain/types/library.types';
 import type {
   CreateSavedSearchInput,
@@ -17,11 +16,8 @@ import type {
   SavedSearch,
 } from '@/features/library/domain/types/saved-searches.types';
 import type { Item } from '@/features/library/domain/types/items.types';
-import {
-  type ConditionRow,
-  getFieldConfig,
-  formatConditionValue,
-} from '@/features/library/domain/saved-search-schema.domain';
+import type { ConditionRow } from '@/features/library/domain/saved-search-schema.domain';
+import { SavedSearchAstEngine } from '@/features/library/domain/saved-search-ast.domain';
 
 export interface UseSavedSearchBuilderParams {
   open: boolean;
@@ -38,15 +34,19 @@ export function useSavedSearchBuilder({
   onSubmit,
   onOpenChange,
 }: UseSavedSearchBuilderParams) {
-  const [targetScope, setTargetScope] = useState<string>(scopeId || 'user');
+  const resolveDefaultScope = (
+    search?: SavedSearch | null,
+    rawScopeId?: string,
+  ): string =>
+    search?.scope ||
+    search?.scopeId ||
+    (rawScopeId && !['all', 'trash', 'duplicates', 'unfiled'].includes(rawScopeId)
+      ? rawScopeId
+      : 'user');
 
-  useEffect(() => {
-    if (savedSearch?.scopeId) {
-      setTargetScope(savedSearch.scopeId);
-    } else if (scopeId) {
-      setTargetScope(scopeId);
-    }
-  }, [savedSearch, scopeId]);
+  const [targetScope, setTargetScope] = useState<string>(() =>
+    resolveDefaultScope(savedSearch, scopeId),
+  );
 
   const { types: registryItemTypes } = useItemTypes(targetScope);
   const itemTypeOptions = useMemo(() => {
@@ -89,96 +89,79 @@ export function useSavedSearchBuilder({
   const [showOnlyTopLevel, setShowOnlyTopLevel] = useState(false);
   const [includeParentAndChild, setIncludeParentAndChild] = useState(true);
 
-  const [conditions, setConditions] = useState<ConditionRow[]>([
-    {
-      id: 'row-1',
-      field: 'title',
-      operator: 'contains',
-      value: '',
-    },
-  ]);
+  const [conditions, setConditions] = useState<ConditionRow[]>(
+    () => SavedSearchAstEngine.hydrate(null).rows,
+  );
   const [error, setError] = useState<string | null>(null);
 
   const [previewCount, setPreviewCount] = useState<number | null>(null);
   const [previewSamples, setPreviewSamples] = useState<Item[]>([]);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const previewRequestSeqRef = useRef(0);
+  const preservedNestedGroupsRef = useRef<SavedSearchConditionGroup[]>([]);
 
   useEffect(() => {
-    if (open) {
-      if (savedSearch) {
-        setName(savedSearch.name || '');
-        const condObj =
-          typeof savedSearch.conditions === 'object' && savedSearch.conditions !== null
-            ? (savedSearch.conditions as {
-                conjunction?: string;
-                scopeOptions?: {
-                  searchSubcollections?: boolean;
-                  showOnlyTopLevel?: boolean;
-                  includeParentsAndChildren?: boolean;
-                };
-                conditions?: Array<{ field?: string; operator?: string; value?: unknown }>;
-              })
-            : null;
-        const conj = savedSearch.conjunction || condObj?.conjunction || 'AND';
-        setConjunction(conj === 'OR' ? 'OR' : 'AND');
-        const rawSort = savedSearch.sortBy;
-        const normalizedSort: 'dateAdded' | 'year' | 'title' | 'creator' =
-          rawSort === 'year' || rawSort === 'title' || rawSort === 'creator'
-            ? rawSort
-            : rawSort === 'authors'
-              ? 'creator'
-              : 'dateAdded';
-        setSortBy(normalizedSort);
-        setSortOrder(savedSearch.sortOrder || 'desc');
-
-        const scopeOpts = savedSearch.scopeOptions || condObj?.scopeOptions || {};
-        setSearchSubcollections(scopeOpts.searchSubcollections !== false);
-        setShowOnlyTopLevel(Boolean(scopeOpts.showOnlyTopLevel));
-        setIncludeParentAndChild(scopeOpts.includeParentsAndChildren !== false);
-
-        const rawConds = condObj?.conditions;
-        if (Array.isArray(rawConds) && rawConds.length > 0) {
-          setConditions(
-            rawConds.map((c, idx: number) => ({
-              id: `row-${idx}-${Date.now()}`,
-              field: (c.field || 'title') as SavedSearchField,
-              operator: (c.operator || 'contains') as SavedSearchOperator,
-              value: c.value !== undefined && c.value !== null ? String(c.value) : '',
-            })),
-          );
-        } else {
-          setConditions([
-            {
-              id: `row-${Date.now()}`,
-              field: 'title',
-              operator: 'contains',
-              value: '',
-            },
-          ]);
-        }
-      } else {
-        setName('');
-        setConjunction('AND');
-        setSortBy('dateAdded');
-        setSortOrder('desc');
-        setSearchSubcollections(true);
-        setShowOnlyTopLevel(false);
-        setIncludeParentAndChild(true);
-        setConditions([
-          {
-            id: `row-${Date.now()}`,
-            field: 'title',
-            operator: 'contains',
-            value: '',
-          },
-        ]);
+    if (!open) {
+      previewRequestSeqRef.current += 1;
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
       }
-      setError(null);
-      setPreviewCount(null);
-      setPreviewSamples([]);
+      setIsPreviewLoading(false);
+      return;
     }
-  }, [open, savedSearch]);
+
+    setTargetScope(
+      savedSearch?.scope ||
+        savedSearch?.scopeId ||
+        (scopeId && !['all', 'trash', 'duplicates', 'unfiled'].includes(scopeId)
+          ? scopeId
+          : 'user'),
+    );
+
+    if (savedSearch) {
+      setName(savedSearch.name || '');
+      const rawGroup =
+        typeof savedSearch.conditions === 'object' && savedSearch.conditions !== null
+          ? (savedSearch.conditions as SavedSearchConditionGroup)
+          : null;
+      const hydrated = SavedSearchAstEngine.hydrate(rawGroup);
+      const conj = savedSearch.conjunction || hydrated.conjunction;
+      setConjunction(conj === 'OR' ? 'OR' : 'AND');
+
+      const rawSort = savedSearch.sortBy;
+      const normalizedSort: 'dateAdded' | 'year' | 'title' | 'creator' =
+        rawSort === 'year' || rawSort === 'title' || rawSort === 'creator'
+          ? rawSort
+          : rawSort === 'authors'
+            ? 'creator'
+            : 'dateAdded';
+      setSortBy(normalizedSort);
+      setSortOrder(savedSearch.sortOrder || 'desc');
+
+      const scopeOpts = savedSearch.scopeOptions || hydrated.scopeOptions;
+      setSearchSubcollections(scopeOpts.searchSubcollections !== false);
+      setShowOnlyTopLevel(Boolean(scopeOpts.showOnlyTopLevel));
+      setIncludeParentAndChild(scopeOpts.includeParentsAndChildren !== false);
+
+      preservedNestedGroupsRef.current = hydrated.preservedGroups;
+      setConditions(hydrated.rows);
+    } else {
+      const hydrated = SavedSearchAstEngine.hydrate(null);
+      preservedNestedGroupsRef.current = [];
+      setName('');
+      setConjunction(hydrated.conjunction);
+      setSortBy('dateAdded');
+      setSortOrder('desc');
+      setSearchSubcollections(hydrated.scopeOptions.searchSubcollections);
+      setShowOnlyTopLevel(hydrated.scopeOptions.showOnlyTopLevel);
+      setIncludeParentAndChild(hydrated.scopeOptions.includeParentsAndChildren);
+      setConditions(hydrated.rows);
+    }
+    setError(null);
+    setPreviewCount(null);
+    setPreviewSamples([]);
+  }, [open, savedSearch, scopeId]);
 
   useEffect(() => {
     if (!open) return;
@@ -187,13 +170,21 @@ export function useSavedSearchBuilder({
       clearTimeout(debounceRef.current);
     }
 
-    const hasValidCondition = conditions.some((c) => {
-      if (c.operator === 'isPresent' || c.operator === 'isAbsent') return true;
-      return c.value.trim().length > 0;
-    });
+    const previewResult = SavedSearchAstEngine.validate(
+      conditions,
+      conjunction,
+      preservedNestedGroupsRef.current,
+      'preview',
+      {
+        searchSubcollections,
+        showOnlyTopLevel,
+        includeParentsAndChildren: includeParentAndChild,
+      },
+    );
 
-    if (!hasValidCondition) {
-      setPreviewCount(null);
+    if (!previewResult.hasActiveConditions) {
+      previewRequestSeqRef.current += 1;
+      setPreviewCount(0);
       setPreviewSamples([]);
       setIsPreviewLoading(false);
       return;
@@ -203,51 +194,22 @@ export function useSavedSearchBuilder({
     setIsPreviewLoading(true);
 
     debounceRef.current = setTimeout(async () => {
+      const seq = ++previewRequestSeqRef.current;
       try {
-        const payloadConditions = conditions
-          .filter((c) => {
-            if (c.operator === 'isPresent' || c.operator === 'isAbsent') return true;
-            return c.value.trim().length > 0;
-          })
-          .map((c) => ({
-            field: c.field,
-            operator: c.operator,
-            value: formatConditionValue(c.field, c.value),
-          }));
-
-        if (payloadConditions.length === 0) {
-          if (!cancelled) {
-            setPreviewCount(null);
-            setPreviewSamples([]);
-            setIsPreviewLoading(false);
-          }
-          return;
-        }
-
-        const conditionGroup: SavedSearchConditionGroup = {
-          conjunction,
-          conditions: payloadConditions,
-          scopeOptions: {
-            searchSubcollections,
-            showOnlyTopLevel,
-            includeParentsAndChildren: includeParentAndChild,
-          },
-        };
-
         const res = await previewConditions({
-          conditions: conditionGroup,
+          conditions: previewResult.payload,
           sortBy,
           sortOrder: sortOrder as 'asc' | 'desc',
-          scopeOptions: conditionGroup.scopeOptions,
+          scopeOptions: previewResult.payload.scopeOptions,
         });
-        if (!cancelled) {
+        if (!cancelled && seq === previewRequestSeqRef.current) {
           setPreviewCount(res.count ?? 0);
           setPreviewSamples(res.sampleItems || []);
         }
       } catch {
         // Silently ignore preview errors during active typing
       } finally {
-        if (!cancelled) {
+        if (!cancelled && seq === previewRequestSeqRef.current) {
           setIsPreviewLoading(false);
         }
       }
@@ -293,34 +255,14 @@ export function useSavedSearchBuilder({
   };
 
   const handleFieldChange = (id: string, newField: SavedSearchField) => {
-    const config = getFieldConfig(newField);
-    const defaultOp = config.operators[0]?.value || 'contains';
-    let defaultValue = '';
-    if (newField === 'itemType') {
-      defaultValue = itemTypeOptions[0]?.value || 'journalArticle';
-    } else if (newField === 'collection') {
-      defaultValue = collections[0]?.id || '';
-    } else if (newField === 'readStatus') {
-      defaultValue = 'unread';
-    } else if (newField === 'rating') {
-      defaultValue = '3';
-    } else if (newField === 'hasAttachment') {
-      defaultValue = 'true';
-    } else if (defaultOp === 'isInTheLast') {
-      defaultValue = '30 days';
-    } else if (config.defaultValue) {
-      defaultValue = config.defaultValue;
-    }
-
     setConditions((prev) =>
       prev.map((c) =>
         c.id === id
-          ? {
-              ...c,
-              field: newField,
-              operator: defaultOp,
-              value: defaultValue,
-            }
+          ? SavedSearchAstEngine.transitionCondition(
+              c,
+              { field: newField },
+              { itemTypeOptions, collections },
+            )
           : c,
       ),
     );
@@ -328,81 +270,57 @@ export function useSavedSearchBuilder({
 
   const handleOperatorChange = (id: string, newOperator: SavedSearchOperator) => {
     setConditions((prev) =>
-      prev.map((c) => {
-        if (c.id !== id) return c;
-        let nextVal = c.value;
-        if (newOperator === 'isInTheLast' && (!c.value || !c.value.includes(' '))) {
-          nextVal = '30 days';
-        }
-        return { ...c, operator: newOperator, value: nextVal };
-      }),
+      prev.map((c) =>
+        c.id === id
+          ? SavedSearchAstEngine.transitionCondition(c, { operator: newOperator })
+          : c,
+      ),
     );
   };
 
   const handleValueChange = (id: string, newValue: string) => {
     setConditions((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, value: newValue } : c)),
+      prev.map((c) =>
+        c.id === id
+          ? SavedSearchAstEngine.transitionCondition(c, { value: newValue })
+          : c,
+      ),
     );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const invalidRow = conditions.find((c) => {
-      if (c.operator === 'isPresent' || c.operator === 'isAbsent') return false;
-      return !c.value.trim();
-    });
-
-    if (invalidRow) {
-      setError('Please enter or select a search value for every condition.');
-      return;
-    }
-
-    let resolvedName = name.trim();
-    if (!resolvedName) {
-      const firstCond = conditions[0];
-      if (firstCond) {
-        const config = getFieldConfig(firstCond.field);
-        const fieldLabel = config.label || firstCond.field;
-        if (firstCond.operator === 'isPresent') {
-          resolvedName = `Has ${fieldLabel}`;
-        } else if (firstCond.operator === 'isAbsent') {
-          resolvedName = `No ${fieldLabel}`;
-        } else if (firstCond.value.trim()) {
-          if (firstCond.field === 'collection') {
-            const found = collections.find((c: Collection) => c.id === firstCond.value);
-            resolvedName = found ? `Collection: ${found.name}` : `Collection search`;
-          } else {
-            resolvedName = `${fieldLabel}: ${firstCond.value.trim()}`;
-          }
-        } else {
-          resolvedName = `Search (${new Date().toLocaleDateString()})`;
-        }
-      } else {
-        resolvedName = 'Untitled Search';
-      }
-    }
-
-    setError(null);
-
-    const conditionGroup: SavedSearchConditionGroup = {
+    const validation = SavedSearchAstEngine.validate(
+      conditions,
       conjunction,
-      conditions: conditions.map((c) => ({
-        field: c.field,
-        operator: c.operator,
-        value: formatConditionValue(c.field, c.value),
-      })),
-      scopeOptions: {
+      preservedNestedGroupsRef.current,
+      'submit',
+      {
         searchSubcollections,
         showOnlyTopLevel,
         includeParentsAndChildren: includeParentAndChild,
       },
-    };
+    );
+
+    if (!validation.valid) {
+      setError(
+        validation.errors[0] ||
+          'Please enter or select a search value for every condition.',
+      );
+      return;
+    }
+
+    const resolvedName =
+      name.trim() ||
+      SavedSearchAstEngine.synthesizeAutoName(conditions, { collections });
+
+    setError(null);
 
     const payload: CreateSavedSearchInput = {
       name: resolvedName,
       conjunction,
-      conditions: conditionGroup,
+      conditions: validation.payload,
       sortBy,
       sortOrder,
       targetScope,

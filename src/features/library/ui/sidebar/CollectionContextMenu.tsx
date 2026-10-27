@@ -17,7 +17,7 @@ import {
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/shared/components/ui/dropdown-menu';
 import type { TreeNode } from './sidebar.types';
 import type { Collection } from '@/features/library/domain/types/library.types';
-import { getValidMoveTargets } from '@/features/library/domain/collection-tree.domain';
+import { getValidMoveTargets } from '@/features/library/domain/collection-tree';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { executeExportCollectionFormat } from '@/features/library/core/coordinator/citation-export.coordinator';
 

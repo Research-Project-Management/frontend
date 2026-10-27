@@ -29,6 +29,10 @@ import {
   useDismissDuplicatesMutation,
 } from '@/features/library/sdk/queries/ingestion.queries';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import {
+  clearGroupMergeDraft,
+  computeDuplicateSetKey,
+} from '@/features/library/core/coordinator/curation.coordinator';
 import { inspectItemDifferences } from '@/features/library/domain/diff';
 import type { Item, DuplicateGroup } from '@/features/library/domain/types/library.types';
 
@@ -241,6 +245,10 @@ export function DuplicatesContent({
     return activeGroups.reduce((acc, g) => acc + (g.items?.length || 0), 0);
   }, [activeGroups]);
 
+  React.useEffect(() => {
+    clearGroupMergeDraft();
+  }, [scopeId]);
+
   const handleDismissGroup = React.useCallback(
     (groupKey: string) => {
       const targetGroup = activeGroupByKey.get(groupKey);
@@ -248,6 +256,10 @@ export function DuplicatesContent({
         .map((it) => it.id)
         .filter((id): id is string => Boolean(id));
 
+      clearGroupMergeDraft(groupKey);
+      if (targetGroup?.items) {
+        clearGroupMergeDraft(computeDuplicateSetKey(targetGroup.items));
+      }
       setDismissedGroupKeys((prev) => new Set([...Array.from(prev), groupKey]));
 
       if (itemIds.length >= 2) {

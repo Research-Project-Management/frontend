@@ -90,11 +90,19 @@ export const ItemTable = React.memo(function ItemTable({
   const setStoreDisplayOptions = useLibraryUIStore((s) => s.setDisplayOptions);
   const openModal = useLibraryUIStore((s) => s.openModal);
 
+  const selectableItems = useMemo(
+    () => items.filter((it) => !it._isProcessing),
+    [items],
+  );
+
   // Granular Boolean Selector: Does NOT re-render ItemTable when selectedIds count increments (O(1) row isolation)
   const isAllSelected = useLibraryUIStore(
     useCallback(
-      (s) => items.length > 0 && s.selectedIds.size === items.length,
-      [items.length],
+      (s) =>
+        selectableItems.length > 0 &&
+        s.selectedIds.size >= selectableItems.length &&
+        selectableItems.every((it) => s.selectedIds.has(it.id)),
+      [selectableItems],
     ),
   );
 
@@ -221,7 +229,7 @@ export const ItemTable = React.memo(function ItemTable({
     if (isAllSelected) {
       clearSelection();
     } else {
-      selectAll(items.map((it) => it.id));
+      selectAll(items.filter((i) => !i._isProcessing).map((it) => it.id));
     }
   };
 
@@ -259,7 +267,10 @@ export const ItemTable = React.memo(function ItemTable({
         const currentSelectedIds = useLibraryUIStore.getState().selectedIds;
         const start = Math.min(lastSelectedIndexRef.current, index);
         const end = Math.max(lastSelectedIndexRef.current, index);
-        const rangeIds = sortedItemsRef.current.slice(start, end + 1).map((it) => it.id);
+        const rangeIds = sortedItemsRef.current
+          .slice(start, end + 1)
+          .filter((it) => !it._isProcessing)
+          .map((it) => it.id);
         selectAll(
           Array.from(new Set([...Array.from(currentSelectedIds), ...rangeIds])),
         );

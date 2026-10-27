@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import {
   LibraryInspector,
   type LibraryInspectorProps,
+} from "./LibraryInspector";
+import {
   INSPECTOR_LEVELS_FROM_BOTTOM,
   INSPECTOR_LEVELS,
-} from "./LibraryInspector";
+} from "./inspector-levels.constants";
 import type { Item } from "@/features/library/domain/types/library.types";
 import type { ReaderDocument } from "@/features/library/domain/types/reader.types";
 
@@ -46,7 +48,7 @@ export function ReaderInspector({
       {...rest}
       item={effectiveItem}
       onSelectItem={effectiveOnSelect}
-      hideRailToggle={false}
+      hideRailToggle={rest.hideRailToggle ?? false}
       defaultOpen={rest.defaultOpen}
       isReader={true}
     />

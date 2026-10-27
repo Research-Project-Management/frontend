@@ -35,8 +35,12 @@ export function InlineField({
   const focusedInitialValueRef = useRef(value);
 
   useEffect(() => {
+    const isFocused =
+      typeof document !== 'undefined' && document.activeElement === inputRef.current;
     activeItemKeyRef.current = itemKey;
-    setDraft(value);
+    if (!isFocused) {
+      setDraft(value);
+    }
   }, [value, itemKey]);
 
   const handleFocus = () => {

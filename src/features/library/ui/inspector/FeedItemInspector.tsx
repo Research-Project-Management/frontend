@@ -337,7 +337,7 @@ export function FeedItemInspector({
               <>
                 <span className="text-muted-foreground">DOI:</span>
                 <a
-                  href={`https://doi.org/${entry.doi}`}
+                  href={`https://doi.org/${encodeURI(entry.doi.trim())}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-foreground hover:underline truncate min-w-0 block"
@@ -352,7 +352,7 @@ export function FeedItemInspector({
               <>
                 <span className="text-muted-foreground">arXiv:</span>
                 <a
-                  href={`https://arxiv.org/abs/${entry.arxivId}`}
+                  href={`https://arxiv.org/abs/${encodeURI(entry.arxivId.trim())}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-foreground hover:underline truncate min-w-0 block"

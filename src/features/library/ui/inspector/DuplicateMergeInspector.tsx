@@ -396,11 +396,17 @@ export function DuplicateMergeInspector({
                       (opt: ItemFieldDiff["options"][number]) => {
                         const isExplicitOverride =
                           activeOverrideValue !== undefined &&
+                          activeOverrideValue !== null &&
                           (opt.rawValue === activeOverrideValue ||
-                            normalizeCompareValue(opt.rawValue) ===
-                              normalizeCompareValue(activeOverrideValue));
+                            (opt.isEmpty &&
+                              (activeOverrideValue === "" ||
+                                (Array.isArray(activeOverrideValue) &&
+                                  activeOverrideValue.length === 0))) ||
+                            normalizeCompareValue(opt.rawValue, field.key) ===
+                              normalizeCompareValue(activeOverrideValue, field.key));
                         const isMasterDefault =
-                          activeOverrideValue === undefined &&
+                          (activeOverrideValue === undefined ||
+                            activeOverrideValue === null) &&
                           opt.isMaster &&
                           opt.rawValue === masterValue;
 

@@ -1,305 +1,40 @@
 /**
  * Single Source of Truth for Zotero Schema v42 Field Resolution, Alias Fallback Chains,
  * First-Class Column Mapping, and Atomic Inspector Patch Construction.
- *
- *
- * Embodying KISS, DRY, and SOLID:
- * - `ALL_SCHEMA_FIELD_KEYS` is derived automatically from `INITIAL_ITEM_TYPE_FIELDS_MAP`.
- * - `FIELD_FALLBACK_CHAINS` and `MULTI_KEY_SYNC_SETTERS` are derived automatically from
- *   `BASE_FIELD_MAPPINGS` (`item-types.types.ts`) + `CANONICAL_FIELD_ALIASES`, eliminating
- *   hundreds of lines of manual per-field repetition and guaranteeing automatic co-occurring
- *   field isolation (`place` vs `eventPlace` on `conferencePaper`, `place` vs `country` on `patent`,
- *   `publisher` vs `organization` on `standard`).
  */
 
 import type { Item } from "@/features/library/domain/types/library.types";
 import { ALL_SCHEMA_FIELD_KEYS } from "@/features/library/domain/types/item-fields.constants";
 import {
-  BASE_FIELD_MAPPINGS,
   normalizeCanonicalItemType,
+  registerSchemaRegistryUpdateListener,
   type SchemaFieldDefinition,
 } from "@/features/library/domain/types/item-types.types";
 import { cleanDoi, extractArxivId } from "./identifiers";
 import { generateCitationKey } from "./citations";
-import { isValidValue, cleanValue, parseItemExtraField } from "./metadata";
+import {
+  isValidValue,
+  cleanValue,
+  parseItemExtraField,
+  stripOrUpdateExtraKeyLine,
+} from "./metadata";
+import {
+  FIRST_CLASS_ITEM_COLUMNS,
+  CANONICAL_FIELD_ALIASES,
+  buildDerivedFieldMappings,
+  parseValidYear,
+  getDirectExtraAliases,
+  type FieldCandidateScorer,
+  FIELD_CANDIDATE_SCORERS,
+} from "./item-field-scorers.strategy";
 
-export { ALL_SCHEMA_FIELD_KEYS };
-
-/**
- * First-class columns on the backend Prisma `Item` table.
- */
-export const FIRST_CLASS_ITEM_COLUMNS: ReadonlySet<string> = new Set([
-  "title",
-  "abstractNote",
-  "publicationTitle",
-  "journalAbbreviation",
-  "volume",
-  "issue",
-  "pages",
-  "numberOfPages",
-  "publisher",
-  "place",
-  "edition",
-  "series",
-  "seriesTitle",
-  "seriesNumber",
-  "doi",
-  "isbn",
-  "issn",
-  "pmid",
-  "pmcid",
-  "arxivId",
-  "url",
-  "openAccessPdfUrl",
-  "year",
-  "publicationDate",
-  "date",
-  "accessDate",
-  "itemType",
-  "language",
-  "license",
-  "archive",
-  "archiveLocation",
-  "callNumber",
-  "libraryCatalog",
-  "citationKey",
-  "shortTitle",
-  "citationCount",
-  "referenceCount",
-]);
-
-/**
- * Universal bidirectional field aliases between Zotero Schema v42 field keys and
- * canonical `Item` columns.
- */
-export const CANONICAL_FIELD_ALIASES: Record<string, readonly string[]> = {
-  abstractNote: ["abstractNote", "abstract"],
-  abstract: ["abstractNote", "abstract"],
-  journalAbbreviation: ["journalAbbreviation", "journalAbbr"],
-  journalAbbr: ["journalAbbreviation", "journalAbbr"],
-  publicationTitle: ["publicationTitle", "journal"],
-  journal: ["publicationTitle", "journal"],
-  accessDate: ["accessDate", "accessedAt"],
-  accessedAt: ["accessDate", "accessedAt"],
-  rights: ["license", "rights"],
-  license: ["license", "rights"],
-  ISBN: ["isbn", "ISBN"],
-  isbn: ["isbn", "ISBN"],
-  ISSN: ["issn", "ISSN"],
-  issn: ["issn", "ISSN"],
-  PMID: ["pmid", "PMID"],
-  pmid: ["pmid", "PMID"],
-  PMCID: ["pmcid", "PMCID"],
-  pmcid: ["pmcid", "PMCID"],
-  DOI: ["doi", "DOI"],
-  doi: ["doi", "DOI"],
-  archiveID: ["archiveID", "archiveId", "arxivId"],
-  archiveId: ["archiveID", "archiveId", "arxivId"],
-  arxivId: ["archiveID", "archiveId", "arxivId"],
-  citationKey: ["citationKey"],
-  citeKey: ["citationKey"],
-  numPages: ["numberOfPages", "numPages"],
-  numberOfPages: ["numberOfPages", "numPages"],
-  versionNumber: ["versionNumber", "version"],
-  version: ["versionNumber", "version"],
-  meetingName: ["meetingName", "conferenceName"],
-  reporter: ["reporter", "publicationTitle"],
+export {
+  ALL_SCHEMA_FIELD_KEYS,
+  FIRST_CLASS_ITEM_COLUMNS,
+  CANONICAL_FIELD_ALIASES,
+  type FieldCandidateScorer,
+  FIELD_CANDIDATE_SCORERS,
 };
-
-/**
- * Base field -> Prisma column expansions when projecting Zotero `BASE_FIELD_MAPPINGS`
- * (e.g. `authority` also maps to `publisher` unless `publisher` is a separate co-occurring field on the item type;
- * `number` also maps to `issue`; `type` also maps to `genre` and `type`).
- */
-const BASE_FIELD_SYNC_EXPANSIONS: Record<string, readonly string[]> = {
-  title: ["title"],
-  publicationTitle: ["publicationTitle"],
-  publisher: ["publisher"],
-  authority: ["authority", "publisher"],
-  place: ["place"],
-  date: ["publicationDate", "date"],
-  volume: ["volume"],
-  pages: ["pages"],
-  number: ["number", "issue"],
-  type: ["genre", "type"],
-  status: ["status"],
-};
-
-/**
- * Fields that co-occur with a base field on at least one Zotero Schema v42 item type
- * and therefore must not overwrite that base field on write:
- * - `conferencePaper` has both `place` and `eventPlace`
- * - `patent` has both `place` and `country`
- * - `standard` has both `publisher` and `organization`
- * - `report` has `reportNumber` -> `number` (without overwriting `issue`)
- * - `webpage` / `blogPost` has `websiteType` -> `type`
- */
-const WRITE_SYNC_OVERRIDES: Record<string, readonly string[]> = {
-  eventplace: ["eventPlace"],
-  country: ["country"],
-  organization: ["organization", "authority"],
-  reportnumber: ["reportNumber", "number"],
-  websitetype: ["websiteType"],
-};
-
-/**
- * Automatically derives `MULTI_KEY_SYNC_SETTERS` and `FIELD_FALLBACK_CHAINS` from
- * `BASE_FIELD_MAPPINGS` (`item-types.types.ts`) and `CANONICAL_FIELD_ALIASES`.
- */
-function buildDerivedFieldMappings(): {
-  syncSetters: Record<string, readonly string[]>;
-  fallbackChains: Record<string, ReadonlyArray<readonly ["p" | "ef", string]>>;
-} {
-  const syncSetters: Record<string, readonly string[]> = {};
-  const concreteToBaseField = new Map<string, string>();
-
-  for (const mapping of Object.values(BASE_FIELD_MAPPINGS)) {
-    for (const [baseField, concreteField] of Object.entries(mapping)) {
-      if (concreteField && !concreteToBaseField.has(concreteField)) {
-        concreteToBaseField.set(concreteField, baseField);
-      }
-    }
-  }
-
-  // 1. Project every concrete mapped field -> [concreteField, ...baseFieldExpansions]
-  for (const [concreteField, baseField] of concreteToBaseField.entries()) {
-    const lower = concreteField.toLowerCase();
-    if (WRITE_SYNC_OVERRIDES[lower]) {
-      syncSetters[lower] = WRITE_SYNC_OVERRIDES[lower]!;
-      continue;
-    }
-    const expansions = BASE_FIELD_SYNC_EXPANSIONS[baseField] || [baseField];
-    const targets = Array.from(new Set([concreteField, ...expansions]));
-    syncSetters[lower] = targets;
-  }
-
-  // 2. Apply universal bidirectional aliases
-  for (const [fieldKey, aliases] of Object.entries(CANONICAL_FIELD_ALIASES)) {
-    syncSetters[fieldKey.toLowerCase()] = aliases;
-  }
-  for (const [lowerKey, overrideTargets] of Object.entries(
-    WRITE_SYNC_OVERRIDES,
-  )) {
-    syncSetters[lowerKey] = overrideTargets;
-  }
-  syncSetters.authority = ["issuingAuthority", "authority", "publisher"];
-
-  // 3. Build read fallback chains automatically from all schema fields + concrete fields + base fields + aliases
-  const fallbackChains: Record<
-    string,
-    ReadonlyArray<readonly ["p" | "ef", string]>
-  > = {};
-
-  const addChain = (
-    key: string,
-    entries: ReadonlyArray<readonly ["p" | "ef", string]>,
-  ) => {
-    const seen = new Set<string>();
-    const deduped: Array<readonly ["p" | "ef", string]> = [];
-    for (const [src, prop] of entries) {
-      const id = `${src}:${prop}`;
-      if (!seen.has(id)) {
-        seen.add(id);
-        deduped.push([src, prop]);
-      }
-    }
-    fallbackChains[key.toLowerCase()] = deduped;
-  };
-
-  for (const schemaField of ALL_SCHEMA_FIELD_KEYS) {
-    addChain(schemaField, [
-      ["p", schemaField],
-      ["ef", schemaField],
-    ]);
-  }
-
-  for (const [concreteField, baseField] of concreteToBaseField.entries()) {
-    const expansions = BASE_FIELD_SYNC_EXPANSIONS[baseField] || [baseField];
-    addChain(concreteField, [
-      ["p", concreteField],
-      ["ef", concreteField],
-      ...expansions.map((b): readonly ["p" | "ef", string] => ["p", b]),
-      ...expansions.map((b): readonly ["p" | "ef", string] => ["ef", b]),
-    ]);
-  }
-
-  for (const [fieldKey, aliases] of Object.entries(CANONICAL_FIELD_ALIASES)) {
-    addChain(fieldKey, [
-      ...aliases.map((a): readonly ["p" | "ef", string] => ["p", a]),
-      ...aliases.map((a): readonly ["p" | "ef", string] => ["ef", a]),
-    ]);
-  }
-
-  // Specialized multi-source read chains for container/venue/place/date fields
-  addChain("booktitle", [
-    ["p", "bookTitle"],
-    ["p", "publicationTitle"],
-    ["p", "containerTitle"],
-    ["p", "proceedingsTitle"],
-    ["ef", "bookTitle"],
-  ]);
-  addChain("proceedingstitle", [
-    ["p", "proceedingsTitle"],
-    ["p", "publicationTitle"],
-    ["p", "containerTitle"],
-    ["p", "bookTitle"],
-    ["ef", "proceedingsTitle"],
-  ]);
-  addChain("sessiontitle", [
-    ["p", "sessionTitle"],
-    ["ef", "sessionTitle"],
-  ]);
-  addChain("publisher", [
-    ["p", "publisher"],
-    ["p", "university"],
-    ["p", "institution"],
-    ["ef", "publisher"],
-  ]);
-  addChain("university", [
-    ["p", "university"],
-    ["p", "publisher"],
-    ["p", "institution"],
-    ["ef", "university"],
-  ]);
-  addChain("institution", [
-    ["p", "institution"],
-    ["p", "publisher"],
-    ["p", "university"],
-    ["ef", "institution"],
-  ]);
-  addChain("authority", [
-    ["p", "issuingAuthority"],
-    ["ef", "issuingAuthority"],
-    ["p", "authority"],
-    ["p", "publisher"],
-  ]);
-  addChain("place", [
-    ["p", "place"],
-    ["ef", "place"],
-    ["p", "eventPlace"],
-  ]);
-  addChain("eventplace", [
-    ["p", "eventPlace"],
-    ["ef", "eventPlace"],
-    ["p", "place"],
-  ]);
-  addChain("country", [
-    ["p", "country"],
-    ["ef", "country"],
-    ["p", "place"],
-  ]);
-  addChain("filingdate", [
-    ["p", "filingDate"],
-    ["ef", "filingDate"],
-    ["p", "date"],
-  ]);
-  addChain("prioritydate", [
-    ["p", "priorityDate"],
-    ["ef", "priorityDate"],
-  ]);
-
-  return { syncSetters, fallbackChains };
-}
 
 const DERIVED_FIELD_MAPPINGS = buildDerivedFieldMappings();
 
@@ -311,22 +46,28 @@ export const FIELD_FALLBACK_CHAINS: Record<
 export const MULTI_KEY_SYNC_SETTERS: Record<string, readonly string[]> =
   DERIVED_FIELD_MAPPINGS.syncSetters;
 
-/**
- * Fields backed by first-class Item columns or standard Zotero Schema v42 fields.
- * Derived automatically from `ALL_SCHEMA_FIELD_KEYS` + `FIRST_CLASS_ITEM_COLUMNS` + common backend aliases.
- */
 export const DIRECT_METADATA_FIELDS: Set<string> = new Set<string>([
-  ...Array.from(ALL_SCHEMA_FIELD_KEYS).filter(
-    (k) => k !== "title" && k !== "extra",
-  ),
-  ...Array.from(FIRST_CLASS_ITEM_COLUMNS).filter(
-    (k) => k !== "title" && k !== "itemType" && k !== "year",
-  ),
+  ...Array.from(ALL_SCHEMA_FIELD_KEYS).filter((k) => k !== "title" && k !== "extra"),
+  ...Array.from(FIRST_CLASS_ITEM_COLUMNS).filter((k) => k !== "title" && k !== "itemType" && k !== "year"),
   ...Object.keys(CANONICAL_FIELD_ALIASES),
+  "version",
   "chapter",
   "chapterNumber",
   "statuteNumber",
 ]);
+
+function refreshDerivedFieldMappings(): void {
+  const next = buildDerivedFieldMappings();
+  for (const k of Object.keys(FIELD_FALLBACK_CHAINS)) delete FIELD_FALLBACK_CHAINS[k];
+  Object.assign(FIELD_FALLBACK_CHAINS, next.fallbackChains);
+  for (const k of Object.keys(MULTI_KEY_SYNC_SETTERS)) delete MULTI_KEY_SYNC_SETTERS[k];
+  Object.assign(MULTI_KEY_SYNC_SETTERS, next.syncSetters);
+  for (const k of ALL_SCHEMA_FIELD_KEYS) {
+    if (k !== "title" && k !== "extra") DIRECT_METADATA_FIELDS.add(k);
+  }
+}
+
+registerSchemaRegistryUpdateListener(refreshDerivedFieldMappings);
 
 export type FieldLookupSource = {
   p: Record<string, unknown>;
@@ -335,26 +76,63 @@ export type FieldLookupSource = {
   fieldKey: string;
 };
 
+const SUBTYPE_FIELD_KEYS: ReadonlySet<string> = new Set([
+  "reporttype",
+  "thesistype",
+  "manuscripttype",
+  "websitetype",
+  "lettertype",
+  "maptype",
+  "presentationtype",
+  "posttype",
+  "genre",
+  "type",
+]);
+
 function pickFirst(
   p: Record<string, unknown>,
   ef: Record<string, unknown>,
   entries: ReadonlyArray<readonly ["p" | "ef", string]>,
+  fieldKeyLower?: string,
 ): unknown {
+  const isSubtypeField = Boolean(
+    fieldKeyLower && SUBTYPE_FIELD_KEYS.has(fieldKeyLower),
+  );
+  const rawItemType =
+    typeof p.itemType === "string" ? p.itemType.trim().toLowerCase() : "";
+  const canonicalItemType = rawItemType
+    ? normalizeCanonicalItemType(rawItemType).toLowerCase()
+    : "";
+  const rawConferenceName =
+    fieldKeyLower === "proceedingstitle" && canonicalItemType === "conferencepaper"
+      ? String(p.conferenceName || ef.conferenceName || "").trim().toLowerCase()
+      : "";
+
   for (const [src, k] of entries) {
     const v = src === "p" ? p[k] : ef[k];
-    if (isValidValue(v)) return v;
+    if (!isValidValue(v)) continue;
+    if (isSubtypeField && typeof v === "string") {
+      const candidateLower = v.trim().toLowerCase();
+      if (
+        candidateLower &&
+        (candidateLower === rawItemType || candidateLower === canonicalItemType)
+      ) {
+        continue;
+      }
+    }
+    if (
+      rawConferenceName &&
+      k === "publicationTitle" &&
+      typeof v === "string" &&
+      v.trim().toLowerCase() === rawConferenceName &&
+      !isValidValue(p.proceedingsTitle) &&
+      !isValidValue(ef.proceedingsTitle)
+    ) {
+      continue;
+    }
+    return v;
   }
   return undefined;
-}
-
-function parseValidYear(val: string): number | undefined {
-  const yearMatch = val.match(/(?:^|[^\d])(1[7-9]\d{2}|20\d{2})(?:[^\d]|$)/);
-  const parsedYear = yearMatch
-    ? parseInt(yearMatch[1]!, 10)
-    : parseInt(val, 10);
-  return !isNaN(parsedYear) && parsedYear >= 1000 && parsedYear <= 2999
-    ? parsedYear
-    : undefined;
 }
 
 export interface InspectorFieldDescriptor {
@@ -389,38 +167,59 @@ const buildCountPatch =
     };
   };
 
+const stripIsoDateSuffix = (rawDate: unknown): string => {
+  if (!rawDate || !isValidValue(rawDate)) return "";
+  const str = String(rawDate).trim();
+  const isoMatch = str.match(/^(\d{4}-\d{2}-\d{2})T/);
+  return isoMatch ? isoMatch[1]! : cleanValue(str);
+};
+
 const getDateValue = ({ p, ef }: FieldLookupSource): string => {
   const rawDate =
     p.publicationDate ||
-    (p.year && Number(p.year) > 0 ? String(p.year) : "") ||
     p.date ||
     ef.date ||
-    ef.publicationDate;
-  if (!rawDate) return "";
-  const isoMatch = String(rawDate).match(/^(\d{4}-\d{2}-\d{2})T/);
-  return isoMatch ? isoMatch[1]! : cleanValue(rawDate);
+    ef.publicationDate ||
+    (p.year && Number(p.year) > 0 ? String(p.year) : "");
+  return stripIsoDateSuffix(rawDate);
 };
+
+const buildMappedDateGetter =
+  (
+    dateKey: "issueDate" | "dateDecided" | "dateEnacted" | "filingDate",
+    fallbackToPubDate = true,
+  ) =>
+  ({ p, ef }: FieldLookupSource): string => {
+    const raw =
+      p[dateKey] ||
+      ef[dateKey] ||
+      (fallbackToPubDate
+        ? p.publicationDate ||
+          p.date ||
+          ef.date ||
+          ef.publicationDate ||
+          (p.year && Number(p.year) > 0 ? String(p.year) : "")
+        : p.date || ef.date);
+    return stripIsoDateSuffix(raw);
+  };
 
 const buildDatePatch = (
   val: string,
+  _item: Item | Partial<Item>,
+  currentExtraFields: Record<string, unknown>,
 ): Partial<Item> & Record<string, unknown> => {
   const finalYear = parseValidYear(val);
   return {
     year: finalYear !== undefined ? finalYear : null,
     publicationDate: val || "",
     date: val || "",
+    extraFields: { ...currentExtraFields, date: val || null, publicationDate: val || null },
   };
 };
 
 const getPublicationTitleValue = ({ p, ef }: FieldLookupSource): string =>
   cleanValue(
-    p.publicationTitle ||
-      p.containerTitle ||
-      p.journal ||
-      p.proceedingsTitle ||
-      p.bookTitle ||
-      ef.publicationTitle ||
-      ef.containerTitle,
+    p.publicationTitle || p.containerTitle || p.journal || p.proceedingsTitle || p.bookTitle || ef.publicationTitle || ef.containerTitle,
   );
 
 const getAccessDateValue = ({ p, ef }: FieldLookupSource): string => {
@@ -431,7 +230,7 @@ const getAccessDateValue = ({ p, ef }: FieldLookupSource): string => {
   return isoDateMatch ? isoDateMatch[1]! : cleanValue(str);
 };
 
-const getArchiveIdValue = ({ p, ef }: FieldLookupSource): string => {
+const getArchiveIdValue = ({ p, ef, fieldKey }: FieldLookupSource): string => {
   const raw = cleanValue(
     p.archiveId ||
       p.archiveID ||
@@ -447,10 +246,8 @@ const getArchiveIdValue = ({ p, ef }: FieldLookupSource): string => {
     .replace(/^arxiv:\s*/i, "")
     .replace(/\s*\[.*?\]\s*$/, "")
     .trim();
-  return normalizeCanonicalItemType(p.itemType as string) === "preprint" &&
-    clean
-    ? `arXiv:${clean}`
-    : clean;
+  const isPreprint = normalizeCanonicalItemType(p.itemType as string) === "preprint";
+  return isPreprint && clean ? `arXiv:${clean}` : clean;
 };
 
 const buildArchiveIdPatch = (
@@ -504,9 +301,22 @@ const buildMappedDatePatch =
     const finalYear = parseValidYear(val);
     return {
       [dateKey]: val || "",
-      ...(syncPubDate ? { publicationDate: val || "", date: val || "" } : {}),
-      ...(finalYear ? { year: finalYear } : {}),
-      extraFields: { ...currentExtraFields, [dateKey]: val || null },
+      ...(syncPubDate
+        ? {
+            publicationDate: val || "",
+            date: val || "",
+            year: finalYear !== undefined ? finalYear : null,
+          }
+        : finalYear !== undefined
+          ? { year: finalYear }
+          : {}),
+      extraFields: {
+        ...currentExtraFields,
+        [dateKey]: val || null,
+        ...(syncPubDate
+          ? { date: val || null, publicationDate: val || null }
+          : {}),
+      },
     };
   };
 
@@ -514,21 +324,44 @@ export const INSPECTOR_FIELD_DESCRIPTORS: Record<
   string,
   InspectorFieldDescriptor
 > = {
-  pages: {
-    get: ({ p, ef }) => {
-      const raw = ((p.pages || ef.pages || '') as string).trim();
-      return raw
-        ? raw.replace(/\s*(?:--+|[\u2010-\u2015\u2212])\s*/g, '-').replace(/\s*-\s*/g, '-')
-        : '';
-    },
-    patch: (val) => {
-      const cleaned = typeof val === 'string'
-        ? val.trim().replace(/\s*(?:--+|[\u2010-\u2015\u2212])\s*/g, '-').replace(/\s*-\s*/g, '-')
-        : val;
-      return { pages: cleaned || '' };
+  abstractnote: {
+    patch: (val, _item, currentExtraFields) => {
+      const cleaned = val.trim();
+      return {
+        abstractNote: cleaned || "",
+        abstract: cleaned || null,
+        extraFields: { ...currentExtraFields, abstractNote: cleaned || null, abstract: cleaned || null },
+      };
     },
   },
-    date: { get: getDateValue, patch: buildDatePatch },
+  abstract: {
+    patch: (val, _item, currentExtraFields) => {
+      const cleaned = val.trim();
+      return {
+        abstractNote: cleaned || "",
+        abstract: cleaned || null,
+        extraFields: { ...currentExtraFields, abstractNote: cleaned || null, abstract: cleaned || null },
+      };
+    },
+  },
+  pages: {
+    get: ({ p, ef }) => {
+      const raw = ((p.pages || ef.pages || "") as string).trim();
+      return raw
+        ? raw.replace(/\s*(?:--+|[\u2010-\u2015\u2212])\s*/g, "-").replace(/\s*-\s*/g, "-")
+        : "";
+    },
+    patch: (val, _item, currentExtraFields) => {
+      const cleaned = typeof val === "string"
+        ? val.trim().replace(/\s*(?:--+|[\u2010-\u2015\u2212])\s*/g, "-").replace(/\s*-\s*/g, "-")
+        : val;
+      return {
+        pages: cleaned || "",
+        extraFields: { ...currentExtraFields, pages: cleaned || null },
+      };
+    },
+  },
+  date: { get: getDateValue, patch: buildDatePatch },
   publicationdate: { get: getDateValue, patch: buildDatePatch },
   publicationtitle: { get: getPublicationTitleValue },
   journal: { get: getPublicationTitleValue },
@@ -537,9 +370,16 @@ export const INSPECTOR_FIELD_DESCRIPTORS: Record<
   doi: {
     get: ({ p, ef, displayDoi }) =>
       cleanValue(displayDoi || p.doi || p.DOI || ef.doi),
-    patch: (val) => {
+    patch: (val, _item, currentExtraFields) => {
       const cleaned = cleanDoi(val);
-      return { doi: cleaned || "" };
+      return {
+        doi: cleaned || "",
+        extraFields: {
+          ...currentExtraFields,
+          doi: cleaned || null,
+          DOI: null,
+        },
+      };
     },
   },
   archiveid: { get: getArchiveIdValue, patch: buildArchiveIdPatch },
@@ -592,10 +432,22 @@ export const INSPECTOR_FIELD_DESCRIPTORS: Record<
   },
   numpages: { patch: buildNumPagesPatch },
   numberofpages: { patch: buildNumPagesPatch },
-  issuedate: { patch: buildMappedDatePatch("issueDate", true) },
-  datedecided: { patch: buildMappedDatePatch("dateDecided", true) },
-  dateenacted: { patch: buildMappedDatePatch("dateEnacted", true) },
-  filingdate: { patch: buildMappedDatePatch("filingDate", false) },
+  issuedate: {
+    get: buildMappedDateGetter("issueDate", true),
+    patch: buildMappedDatePatch("issueDate", true),
+  },
+  datedecided: {
+    get: buildMappedDateGetter("dateDecided", true),
+    patch: buildMappedDatePatch("dateDecided", true),
+  },
+  dateenacted: {
+    get: buildMappedDateGetter("dateEnacted", true),
+    patch: buildMappedDatePatch("dateEnacted", true),
+  },
+  filingdate: {
+    get: buildMappedDateGetter("filingDate", false),
+    patch: buildMappedDatePatch("filingDate", false),
+  },
 };
 
 export interface PreparedInspectorFieldContext {
@@ -620,9 +472,7 @@ export function prepareInspectorFieldContext(
 ): PreparedInspectorFieldContext | null {
   if (!item) return null;
   const canUseWeakCache =
-    typeof item === "object" &&
-    preParsedExtraMap === undefined &&
-    preCleanedDoi === undefined;
+    typeof item === "object" && preParsedExtraMap === undefined && preCleanedDoi === undefined;
   if (canUseWeakCache) {
     const cached = PREPARED_ITEM_CONTEXT_CACHE.get(item);
     if (cached) return cached;
@@ -631,11 +481,22 @@ export function prepareInspectorFieldContext(
   const parsedExtraMap = preParsedExtraMap ?? parseItemExtraField(item.extra);
   const rawEf = (item.extraFields as Record<string, unknown>) || {};
   const ef: Record<string, unknown> =
-    Object.keys(parsedExtraMap).length > 0
-      ? { ...parsedExtraMap, ...rawEf }
-      : rawEf;
-  const displayDoi =
-    preCleanedDoi ?? cleanDoi(item.doi || (p.DOI as string | undefined) || parsedExtraMap.doi);
+    Object.keys(parsedExtraMap).length > 0 ? { ...parsedExtraMap, ...rawEf } : { ...rawEf };
+
+  for (const [k, v] of Object.entries(rawEf)) {
+    if (v === null) {
+      for (const alias of getDirectExtraAliases(k)) {
+        ef[alias] = null;
+        ef[alias.toLowerCase()] = null;
+      }
+    }
+  }
+
+  const isDoiCleared = item.doi === "" && (rawEf.doi === null || rawEf.DOI === null);
+  const fallbackDoi = isDoiCleared
+    ? ""
+    : item.doi || (p.DOI as string | undefined) || (typeof ef.doi === "string" ? ef.doi : undefined);
+  const displayDoi = preCleanedDoi !== undefined ? preCleanedDoi : cleanDoi(fallbackDoi);
   const ctx: PreparedInspectorFieldContext = { p, ef, displayDoi };
   if (canUseWeakCache) {
     PREPARED_ITEM_CONTEXT_CACHE.set(item, ctx);
@@ -664,7 +525,7 @@ export function resolveInspectorFieldValue(
 
   const fallbackChain = FIELD_FALLBACK_CHAINS[keyLower];
   if (fallbackChain) {
-    return cleanValue(pickFirst(p, ef, fallbackChain));
+    return cleanValue(pickFirst(p, ef, fallbackChain, keyLower));
   }
 
   return cleanValue(
@@ -688,6 +549,7 @@ export function buildInspectorFieldPatch(
   const key =
     typeof fieldDefOrKey === "string" ? fieldDefOrKey : fieldDefOrKey.field;
   const keyLower = key.toLowerCase();
+  const isClearing = !val.trim();
   const currentExtraFields =
     (item.extraFields as Record<string, unknown> | undefined) || {};
 
@@ -701,8 +563,17 @@ export function buildInspectorFieldPatch(
     const updatedEf: Record<string, unknown> = { ...currentExtraFields };
     let shouldSyncExtraFields = false;
     for (const targetKey of syncTargets) {
+      if (
+        keyLower === "conferencename" &&
+        targetKey === "publicationTitle" &&
+        item.itemType === "conferencePaper"
+      ) {
+        continue;
+      }
       patch[targetKey] = val || "";
       if (
+        isClearing ||
+        SUBTYPE_FIELD_KEYS.has(keyLower) ||
         targetKey in currentExtraFields ||
         !FIRST_CLASS_ITEM_COLUMNS.has(targetKey)
       ) {
@@ -715,8 +586,98 @@ export function buildInspectorFieldPatch(
     }
   } else {
     patch = { [key]: val || "" };
-    if (key in currentExtraFields || !FIRST_CLASS_ITEM_COLUMNS.has(key)) {
-      patch.extraFields = { ...currentExtraFields, [key]: val || null };
+    const isSubtype = SUBTYPE_FIELD_KEYS.has(keyLower);
+    if (isSubtype) {
+      patch.type = val || "";
+      patch.genre = val || "";
+    }
+    if (
+      isClearing ||
+      isSubtype ||
+      key in currentExtraFields ||
+      !FIRST_CLASS_ITEM_COLUMNS.has(key)
+    ) {
+      patch.extraFields = {
+        ...currentExtraFields,
+        [key]: val || null,
+        ...(isSubtype ? { type: val || null, genre: val || null } : {}),
+      };
+    }
+  }
+
+  const directAliases = getDirectExtraAliases(key);
+  if (directAliases.length > 0 || patch.extraFields) {
+    const nextEf: Record<string, unknown> = {
+      ...currentExtraFields,
+      ...((patch.extraFields as Record<string, unknown> | undefined) || {}),
+    };
+    const collapsedKey = keyLower.replace(/[\s_-]+/g, "");
+    const effectiveValForEf =
+      keyLower === "doi"
+        ? cleanDoi(val) || null
+        : collapsedKey === "arxivid" ||
+            collapsedKey === "archiveid" ||
+            collapsedKey === "arxiv"
+          ? val.replace(/\s*\[.*?\]\s*$/, "").trim().replace(/^arxiv:\s*/i, "") || null
+          : val.trim() || null;
+
+    let aliasMutated = Boolean(patch.extraFields);
+    for (const alias of directAliases) {
+      if (alias === "DOI" && effectiveValForEf !== null && keyLower === "doi") {
+        nextEf.DOI = null;
+      } else {
+        nextEf[alias] = effectiveValForEf;
+      }
+      aliasMutated = true;
+    }
+    for (const existingKey of Object.keys(currentExtraFields)) {
+      if (existingKey.toLowerCase().replace(/[\s_-]+/g, "") === collapsedKey) {
+        nextEf[existingKey] = effectiveValForEf;
+        aliasMutated = true;
+      }
+    }
+    if (aliasMutated) {
+      patch.extraFields = nextEf;
+    }
+  }
+
+  const collapsedKeyForExtra = keyLower.replace(/[\s_-]+/g, "");
+  const effectiveExtraLineVal =
+    keyLower === "doi"
+      ? cleanDoi(val)
+      : collapsedKeyForExtra === "arxivid" ||
+          collapsedKeyForExtra === "archiveid" ||
+          collapsedKeyForExtra === "arxiv"
+        ? val.replace(/\s*\[.*?\]\s*$/, "").trim().replace(/^arxiv:\s*/i, "")
+        : val.trim();
+  const updatedExtraText = stripOrUpdateExtraKeyLine(
+    item.extra,
+    key,
+    effectiveExtraLineVal,
+  );
+  if (updatedExtraText !== undefined) {
+    patch.extra = updatedExtraText;
+  }
+
+  if (isClearing && item.metadata && typeof item.metadata === "object" && !Array.isArray(item.metadata)) {
+    const clonedMeta: Record<string, unknown> = {
+      ...(item.metadata as Record<string, unknown>),
+    };
+    const keysToClear = new Set<string>([
+      key,
+      ...(syncTargets || []),
+      ...directAliases,
+      ...Object.keys(patch).filter((k) => k !== "extraFields" && k !== "metadata" && k !== "itemType" && k !== "extra"),
+    ]);
+    let metaMutated = false;
+    for (const k of keysToClear) {
+      if (k in clonedMeta && clonedMeta[k] !== null) {
+        clonedMeta[k] = null;
+        metaMutated = true;
+      }
+    }
+    if (metaMutated) {
+      patch.metadata = clonedMeta;
     }
   }
 

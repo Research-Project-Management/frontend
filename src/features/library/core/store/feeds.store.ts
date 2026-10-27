@@ -2,12 +2,30 @@ import { create } from 'zustand';
 import { toast } from 'sonner';
 import {
   SavedFeedSubscription,
-  DEFAULT_ACADEMIC_FEEDS,
   FeedReadFilterType,
   FeedRetentionDays,
 } from '@/features/library/domain/types/feeds.types';
 import type { ParsedFeedEntry } from '@/features/library/domain/feed-parser.domain';
-import { FeedsService } from '@/features/library/sdk/library.client';
+import { FeedsService, type FeedSubscriptionResponse } from '@/features/library/sdk/library.client';
+
+export function mapServerFeedSubscriptions(
+  subs: FeedSubscriptionResponse[] | undefined | null,
+): SavedFeedSubscription[] {
+  if (!Array.isArray(subs) || subs.length === 0) return [];
+  return subs.map((sub) => {
+    const unreadDays = (sub.cleanupUnreadAfter ?? sub.cleanupReadAfter ?? 30) as FeedRetentionDays;
+    const readDays = (sub.cleanupReadAfter ?? 7) as FeedRetentionDays;
+    return {
+      id: sub.feedId || sub.id,
+      name: sub.customTitle || sub.feed?.title || 'Academic Feed',
+      url: sub.feed?.url || '',
+      lastRefreshed: sub.feed?.lastFetchedAt || undefined,
+      retentionDays: unreadDays,
+      cleanupReadAfter: readDays,
+      cleanupUnreadAfter: unreadDays,
+    };
+  });
+}
 
 interface FeedsStore {
   feeds: SavedFeedSubscription[];
@@ -21,7 +39,8 @@ interface FeedsStore {
   savingEntryIds: string[];
   isLoadingFeeds: boolean;
   hasInitializedFeeds: boolean;
-  loadFeeds: () => Promise<void>;
+  hydrateFeeds: (feeds: SavedFeedSubscription[]) => void;
+  loadFeeds: (options?: { force?: boolean }) => Promise<void>;
   setActiveFeedId: (id: string | null) => void;
   setSelectedFeedEntry: (entry: ParsedFeedEntry | null) => void;
   setCurrentFeedEntries: (entries: ParsedFeedEntry[]) => void;
@@ -35,8 +54,11 @@ interface FeedsStore {
       cleanupReadAfter?: FeedRetentionDays;
       cleanupUnreadAfter?: FeedRetentionDays;
     },
-  ) => SavedFeedSubscription;
-  updateFeed: (id: string, updates: Partial<Omit<SavedFeedSubscription, 'id'>>) => void;
+  ) => Promise<SavedFeedSubscription> & SavedFeedSubscription;
+  updateFeed: (
+    id: string,
+    updates: Partial<Omit<SavedFeedSubscription, 'id'>>,
+  ) => Promise<void>;
   removeFeed: (id: string) => Promise<void>;
   markEntryAsRead: (entryId: string) => void;
   toggleEntryRead: (entryId: string) => void;
@@ -77,7 +99,7 @@ export function isFeedEntryInLibrary(
 }
 
 export const useFeedsStore = create<FeedsStore>((set, get) => ({
-  feeds: DEFAULT_ACADEMIC_FEEDS,
+  feeds: [],
   activeFeedId: null,
   selectedFeedEntry: null,
   currentFeedEntries: [],
@@ -89,48 +111,34 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
   isLoadingFeeds: false,
   hasInitializedFeeds: false,
 
-  loadFeeds: async () => {
-    if (get().isLoadingFeeds || get().hasInitializedFeeds) {
+  hydrateFeeds: (feeds) => {
+    set({
+      feeds: Array.isArray(feeds) ? feeds : [],
+      isLoadingFeeds: false,
+      hasInitializedFeeds: true,
+    });
+  },
+
+  loadFeeds: async (options) => {
+    if (get().isLoadingFeeds || (!options?.force && get().hasInitializedFeeds)) {
       return;
     }
     set({ isLoadingFeeds: true });
     try {
       const res = await FeedsService.getSubscriptions();
       if (res?.data && Array.isArray(res.data)) {
-        if (res.data.length > 0) {
-          const mappedFeeds: SavedFeedSubscription[] = res.data.map((sub) => {
-            const unreadDays = (sub.cleanupUnreadAfter ?? sub.cleanupReadAfter ?? 30) as FeedRetentionDays;
-            const readDays = (sub.cleanupReadAfter ?? 7) as FeedRetentionDays;
-            return {
-              id: sub.feedId || sub.id,
-              name: sub.customTitle || sub.feed?.title || 'Academic Feed',
-              url: sub.feed?.url || '',
-              lastRefreshed: sub.feed?.lastFetchedAt || undefined,
-              retentionDays: unreadDays,
-              cleanupReadAfter: readDays,
-              cleanupUnreadAfter: unreadDays,
-            };
-          });
-          set({ feeds: mappedFeeds, isLoadingFeeds: false, hasInitializedFeeds: true });
-          return;
-        }
-        // Server returned an empty subscription list: if already initialized, preserve empty list;
-        // otherwise keep defaults and mark initialized so subsequent empty checks don't overwrite user deletions.
-        if (get().hasInitializedFeeds) {
-          set({ feeds: [], isLoadingFeeds: false });
-          return;
-        }
-        set({ isLoadingFeeds: false, hasInitializedFeeds: true });
+        const mappedFeeds = mapServerFeedSubscriptions(res.data);
+        set({
+          feeds: mappedFeeds,
+          isLoadingFeeds: false,
+          hasInitializedFeeds: true,
+        });
         return;
       }
     } catch {
-      // Backend offline or error: use defaults if not yet initialized
+      // Backend offline or error: keep current state
     }
-    if (!get().hasInitializedFeeds) {
-      set({ feeds: DEFAULT_ACADEMIC_FEEDS, isLoadingFeeds: false, hasInitializedFeeds: true });
-    } else {
-      set({ isLoadingFeeds: false });
-    }
+    set({ isLoadingFeeds: false, hasInitializedFeeds: true });
   },
 
   setActiveFeedId: (id) => set({ activeFeedId: id, selectedFeedEntry: null }),
@@ -147,46 +155,53 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
     const trimmedUrl = url.trim();
     const trimmedName =
       name.trim() || trimmedUrl.replace(/^https?:\/\/(www\.)?/i, '').slice(0, 42);
-    const id = `feed-${Date.now()}`;
     const unreadDays = (options?.cleanupUnreadAfter ?? retentionDays ?? 30) as FeedRetentionDays;
     const readDays = (options?.cleanupReadAfter ?? 7) as FeedRetentionDays;
 
+    const localId = `feed-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const newFeed: SavedFeedSubscription = {
-      id,
+      id: localId,
       name: trimmedName,
       url: trimmedUrl,
       retentionDays: unreadDays,
       cleanupReadAfter: readDays,
       cleanupUnreadAfter: unreadDays,
     };
-    const nextFeeds = [...get().feeds.filter((f) => f.id !== id), newFeed];
+    const nextFeeds = [...get().feeds.filter((f) => f.id !== localId), newFeed];
+    set({ feeds: nextFeeds, activeFeedId: localId });
 
-    set({ feeds: nextFeeds, activeFeedId: id });
-
-    // Sync with backend asynchronously in background
-    FeedsService.subscribe({
-      url: trimmedUrl,
-      customTitle: trimmedName,
-      cleanupDays: unreadDays,
-      cleanupReadAfter: readDays,
-      cleanupUnreadAfter: unreadDays,
-    })
-      .then((res) => {
+    const syncPromise = (async (): Promise<SavedFeedSubscription> => {
+      try {
+        const res = await FeedsService.subscribe({
+          url: trimmedUrl,
+          customTitle: trimmedName,
+          cleanupDays: unreadDays,
+          cleanupReadAfter: readDays,
+          cleanupUnreadAfter: unreadDays,
+        });
         const sub = (res?.data as { feedId?: string; id?: string }) || {};
         const serverId = sub.feedId || sub.id;
-        if (serverId && serverId !== id) {
-          set((state) => ({
-            feeds: state.feeds.map((f) => (f.id === id ? { ...f, id: serverId } : f)),
-            activeFeedId: state.activeFeedId === id ? serverId : state.activeFeedId,
-          }));
+        if (serverId && serverId !== localId) {
+          const updatedFeed: SavedFeedSubscription = {
+            ...(get().feeds.find((f) => f.id === localId) ?? newFeed),
+            id: serverId,
+          };
+          set({
+            feeds: get().feeds.map((f) => (f.id === localId ? updatedFeed : f)),
+            activeFeedId: get().activeFeedId === localId ? serverId : get().activeFeedId,
+          });
+          return updatedFeed;
         }
-      })
-      .catch(() => {});
+      } catch {
+        // Fallback to local feed state
+      }
+      return get().feeds.find((f) => f.id === localId) ?? newFeed;
+    })();
 
-    return newFeed;
+    return Object.assign(syncPromise, newFeed);
   },
 
-  updateFeed: (id, updates) => {
+  updateFeed: async (id, updates) => {
     const nextFeeds = get().feeds.map((f) =>
       f.id === id
         ? {
@@ -203,7 +218,7 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
     set({ feeds: nextFeeds });
 
     // Sync with backend API
-    FeedsService.updateSubscription(id, {
+    await FeedsService.updateSubscription(id, {
       customTitle: updates.name,
       cleanupDays: updates.cleanupUnreadAfter ?? updates.retentionDays,
       cleanupReadAfter: updates.cleanupReadAfter,

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -17,6 +17,9 @@ import {
   GitMerge,
   ShieldAlert,
   FolderSync,
+  Star,
+  Award,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import {
@@ -36,9 +39,11 @@ import {
 import type {
   Collection,
   CslStyle,
+  Item,
 } from "@/features/library/domain/types/library.types";
 import {
   useLibraryBatchCoordinator,
+  hasItemPdfOrAttachment,
 } from "@/features/library/core/coordinator/batch-action.coordinator";
 import {
   executeCopyMultiCite,
@@ -55,7 +60,7 @@ export type BatchActionCoordinator = ReturnType<typeof useLibraryBatchCoordinato
 
 export interface BatchBarProps {
   coordinator?: BatchActionCoordinator;
-  items?: import('@/features/library/domain/types/library.types').Item[];
+  items?: Item[];
   collectionId?: string | null;
   view?: string;
   collections: Collection[];
@@ -109,14 +114,76 @@ export function BatchBar({
     batchRestore: onBatchRestore,
     batchDetach: onBatchDetach,
     batchMerge: onBatchMerge,
+    batchUnstar: onBatchUnstar,
+    batchRemoveFromMyPublications: onBatchRemoveFromMyPublications,
+    batchRecheckRetraction: onBatchRecheckRetraction,
+    batchClearRetractionFlags: onBatchClearRetractionFlags,
+    isCheckingRetraction,
+    isUnflaggingRetraction,
     isAllProcessingSelected,
     retractedSelected,
   } = coordinator;
 
-  const { data: serverStyles = [] } = useCitationStyles(effectiveScopeId);
+  const effectiveView = view ?? coordinator.view;
+  const effectiveIsTrash = Boolean(isTrash || effectiveView === "trash" || coordinator.isTrash);
+  const isDuplicatesView = effectiveView === "duplicates";
+  const isUnfiledView = effectiveView === "unfiled";
+  const isStarredView = effectiveView === "starred";
+  const isMyPublicationsView =
+    effectiveView === "my-publications" || effectiveView === "publications";
+  const isRetractedView = effectiveView === "retracted";
+
+  // Target collections available for Move To in the current page context:
+  // - Inside a collection: exclude the current collection itself.
+  // - Root / Smart views: all collections.
+  const targetableCollections = useMemo(
+    () =>
+      collectionId
+        ? collections.filter((c) => c.id !== collectionId)
+        : collections,
+    [collections, collectionId],
+  );
+
+  // Whether "Move to > Root (My Library / Unfile)" is meaningful on the current page:
+  // - Not shown in Unfiled Items view (items are already unfiled).
+  // - Shown when inside a collection, or when at least one selected item belongs to a collection.
+  const canMoveToRootUnfiled = useMemo(() => {
+    if (isUnfiledView || isDuplicatesView || effectiveIsTrash) return false;
+    if (collectionId) return true;
+    return resolvedItems.some(
+      (it) => Array.isArray(it.collectionIds) && it.collectionIds.length > 0,
+    );
+  }, [isUnfiledView, isDuplicatesView, effectiveIsTrash, collectionId, resolvedItems]);
+
+  const showMoveDropdown =
+    canEdit &&
+    !effectiveIsTrash &&
+    !isDuplicatesView &&
+    Boolean(onBatchMove) &&
+    (targetableCollections.length > 0 || canMoveToRootUnfiled);
+
+  // Only show "Rename PDFs" when editable, not in Trash or Duplicates view, and at least 1 selected item has a PDF/attachment
+  const selectedItemsWithFilesIds = useMemo(
+    () =>
+      resolvedItems
+        .filter((it) => !it._isProcessing && hasItemPdfOrAttachment(it))
+        .map((it) => it.id)
+        .filter(Boolean),
+    [resolvedItems],
+  );
+
+  const showRenamePdfs =
+    canEdit &&
+    !effectiveIsTrash &&
+    !isDuplicatesView &&
+    selectedItemsWithFilesIds.length > 0;
+
+  const { data: serverStyles = [] } = useCitationStyles(effectiveScopeId, {
+    enabled: !effectiveIsTrash && selectedCount > 0,
+  });
   const batchRenameMutation = useBatchRenameAttachmentsMutation(effectiveScopeId);
 
-  const citationStyles = React.useMemo(() => {
+  const citationStyles = useMemo(() => {
     return (serverStyles || [])
       .filter(
         (s) =>
@@ -186,7 +253,7 @@ export function BatchBar({
               <span className="font-mono tabular-nums">{selectedCount}</span>{" "}
               selected
             </span>
-            {retractedSelected.length > 0 && (
+            {!effectiveIsTrash && retractedSelected.length > 0 && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-10 font-medium bg-destructive/10 text-destructive rounded-md border border-destructive/30 cursor-help">
@@ -205,8 +272,8 @@ export function BatchBar({
             )}
           </div>
 
-          {/* Move To Collection Dropdown */}
-          {!isTrash && onBatchMove && (
+          {/* Move To Collection Dropdown (Non-Trash, Non-Duplicates, Editable) */}
+          {showMoveDropdown && onBatchMove && (
             <DropdownMenu>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -218,38 +285,40 @@ export function BatchBar({
                       className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none relative before:absolute before:-inset-1 md:before:hidden"
                     >
                       <FolderInput className="size-3.5 text-foreground shrink-0" />
-                      <span>Move to</span>
+                      <span>{isUnfiledView ? "Assign to" : "Move to"}</span>
                     </Button>
                   </DropdownMenuTrigger>
                 </TooltipTrigger>
                 <TooltipContent side="top" sideOffset={8}>
-                  Move to
+                  {isUnfiledView ? "Assign to collection" : "Move to collection"}
                 </TooltipContent>
               </Tooltip>
               <DropdownMenuContent
                 align="center"
                 sideOffset={8}
                 onCloseAutoFocus={(e) => e.preventDefault()}
-                className="w-60 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5"
+                className="w-60 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 max-h-64 overflow-y-auto"
               >
-                <DropdownMenuItem
-                  onClick={() => onBatchMove(null)}
-                  className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-                >
-                  {isProjectScope ? (
-                    <Folder
-                      className="size-4 text-foreground shrink-0"
-                      strokeWidth={1.5}
-                    />
-                  ) : (
-                    <Library
-                      className="size-4 text-foreground shrink-0"
-                      strokeWidth={1.5}
-                    />
-                  )}
-                  <span>{rootLibraryName}</span>
-                </DropdownMenuItem>
-                {collections.map((c) => (
+                {canMoveToRootUnfiled && (
+                  <DropdownMenuItem
+                    onClick={() => onBatchMove(null)}
+                    className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+                  >
+                    {isProjectScope ? (
+                      <Folder
+                        className="size-4 text-foreground shrink-0"
+                        strokeWidth={1.5}
+                      />
+                    ) : (
+                      <Library
+                        className="size-4 text-foreground shrink-0"
+                        strokeWidth={1.5}
+                      />
+                    )}
+                    <span>{rootLibraryName} (Unfile)</span>
+                  </DropdownMenuItem>
+                )}
+                {targetableCollections.map((c) => (
                   <DropdownMenuItem
                     key={c.id}
                     onClick={() => onBatchMove(c.id)}
@@ -266,187 +335,285 @@ export function BatchBar({
             </DropdownMenu>
           )}
 
-          {/* Merge Duplicates Button - Contextual: only visible when onBatchMerge is provided and selectedCount >= 2 */}
-          {!isTrash && onBatchMerge && selectedCount >= 2 && (
+          {/* Merge Duplicates Button — Strictly ONLY on Duplicate Items page */}
+          {!effectiveIsTrash &&
+            isDuplicatesView &&
+            canEdit &&
+            onBatchMerge &&
+            selectedCount >= 2 && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={isAllProcessingSelected}
+                    onClick={onBatchMerge}
+                    className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
+                  >
+                    <GitMerge className="size-3.5 shrink-0 text-foreground" />
+                    <span>Merge {selectedCount} items</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={8}>
+                  Merge duplicate items
+                </TooltipContent>
+              </Tooltip>
+            )}
+
+          {/* Starred Items Page Action: Remove from Starred */}
+          {!effectiveIsTrash && isStarredView && canEdit && onBatchUnstar && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
                   size="sm"
                   disabled={isAllProcessingSelected}
-                  onClick={onBatchMerge}
+                  onClick={() => void onBatchUnstar()}
                   className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
                 >
-                  <GitMerge className="size-3.5 shrink-0 text-foreground" />
-                  <span>Merge {selectedCount} items</span>
+                  <Star className="size-3.5 shrink-0 text-foreground" />
+                  <span>Unstar</span>
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="top" sideOffset={8}>
-                Merge items
+                Remove selected items from Starred
               </TooltipContent>
             </Tooltip>
           )}
 
-          {/* Copy Multi Citation Dropdown */}
-          <DropdownMenu>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <DropdownMenuTrigger asChild>
+          {/* My Publications Page Action: Remove from My Publications */}
+          {!effectiveIsTrash &&
+            isMyPublicationsView &&
+            canEdit &&
+            onBatchRemoveFromMyPublications && (
+              <Tooltip>
+                <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
                     size="sm"
+                    disabled={isAllProcessingSelected}
+                    onClick={() => void onBatchRemoveFromMyPublications()}
                     className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
-                    aria-label="Copy citation"
                   >
-                    <Quote className="size-3.5 shrink-0 text-foreground" />
-                    <span>Copy citation</span>
+                    <Award className="size-3.5 shrink-0 text-foreground" />
+                    <span>Remove from Publications</span>
                   </Button>
-                </DropdownMenuTrigger>
-              </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={8}>
-                Copy citation
-              </TooltipContent>
-            </Tooltip>
-            <DropdownMenuContent
-              align="center"
-              side="top"
-              sideOffset={8}
-              className="w-auto min-w-[240px] max-w-[320px] p-1.5 space-y-0.5 bg-popover border border-border rounded-md shadow-raised-200"
-            >
-              {citationStyles.map((style) => (
-                <DropdownMenuItem
-                  key={style.id}
-                  onClick={() => handleCopyMultiCite(style.id as CslStyle)}
-                  className="h-8 gap-2 px-2.5 text-13 cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors whitespace-nowrap"
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={8}>
+                  Remove selected items from My Publications
+                </TooltipContent>
+              </Tooltip>
+            )}
+
+          {/* Retracted Items Page Actions: Re-verify & Clear Flag */}
+          {!effectiveIsTrash && isRetractedView && canEdit && (
+            <>
+              {onBatchRecheckRetraction && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={isAllProcessingSelected || isCheckingRetraction}
+                      onClick={() => void onBatchRecheckRetraction()}
+                      className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
+                    >
+                      <RefreshCw className="size-3.5 shrink-0 text-foreground" />
+                      <span>Re-check retraction</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={8}>
+                    Re-verify retraction status for selected items
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              {onBatchClearRetractionFlags && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={isAllProcessingSelected || isUnflaggingRetraction}
+                      onClick={() => void onBatchClearRetractionFlags()}
+                      className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
+                    >
+                      <ShieldAlert className="size-3.5 shrink-0 text-foreground" />
+                      <span>Clear flag</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={8}>
+                    Clear retraction flag on selected items
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </>
+          )}
+
+          {/* Citation & Export Actions — Hidden on Trash page */}
+          {!effectiveIsTrash && (
+            <>
+              {/* Copy Multi Citation Dropdown */}
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
+                        aria-label="Copy citation"
+                      >
+                        <Quote className="size-3.5 shrink-0 text-foreground" />
+                        <span>Copy citation</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={8}>
+                    Copy citation
+                  </TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent
+                  align="center"
+                  side="top"
+                  sideOffset={8}
+                  className="w-auto min-w-[240px] max-w-[320px] p-1.5 space-y-0.5 bg-popover border border-border rounded-md shadow-raised-200"
                 >
-                  <span>{style.label}</span>
-                </DropdownMenuItem>
-              ))}
+                  {citationStyles.map((style) => (
+                    <DropdownMenuItem
+                      key={style.id}
+                      onClick={() => handleCopyMultiCite(style.id as CslStyle)}
+                      className="h-8 gap-2 px-2.5 text-13 cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors whitespace-nowrap"
+                    >
+                      <span>{style.label}</span>
+                    </DropdownMenuItem>
+                  ))}
 
-              <div className="-mx-1.5 h-px my-1 bg-border" />
+                  <div className="-mx-1.5 h-px my-1 bg-border" />
 
-              <DropdownMenuItem
-                onClick={() => handleCopyMultiCite("latex")}
-                className="h-8 gap-2 px-2.5 text-13 cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors whitespace-nowrap font-mono text-11"
-              >
-                <span>LaTeX \cite</span>
-              </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleCopyMultiCite("latex")}
+                    className="h-8 gap-2 px-2.5 text-13 cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors whitespace-nowrap font-mono text-11"
+                  >
+                    <span>LaTeX \cite</span>
+                  </DropdownMenuItem>
 
-              <DropdownMenuItem
-                onClick={() => handleCopyInTextCite("apa")}
-                className="h-8 gap-2 px-2.5 text-13 cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors whitespace-nowrap"
-              >
-                <span>In-Text Citation</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                  <DropdownMenuItem
+                    onClick={() => handleCopyInTextCite("apa")}
+                    className="h-8 gap-2 px-2.5 text-13 cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors whitespace-nowrap"
+                  >
+                    <span>In-Text Citation</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-          {/* Copy All BibTeX */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleExportAllBibtex}
-                className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
-              >
-                <Copy className="size-3.5 shrink-0 text-foreground" />
-                <span>Copy BibTeX</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="top" sideOffset={8}>
-              Copy BibTeX
-            </TooltipContent>
-          </Tooltip>
-
-          {/* Export Dropdown (.bib, .ris, .json, .csv, .md) */}
-          <DropdownMenu>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <DropdownMenuTrigger asChild>
+              {/* Copy All BibTeX */}
+              <Tooltip>
+                <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
                     size="sm"
+                    onClick={handleExportAllBibtex}
                     className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
                   >
-                    <Download className="size-3.5 shrink-0 text-foreground" />
-                    <span>Export</span>
+                    <Copy className="size-3.5 shrink-0 text-foreground" />
+                    <span>Copy BibTeX</span>
                   </Button>
-                </DropdownMenuTrigger>
-              </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={8}>
-                Export selected references
-              </TooltipContent>
-            </Tooltip>
-            <DropdownMenuContent
-              align="center"
-              side="top"
-              sideOffset={8}
-              className="w-48 p-1.5 space-y-0.5 bg-popover border border-border rounded-md shadow-raised-200"
-            >
-              <DropdownMenuItem
-                onClick={handleDownloadBibFile}
-                className="h-8 gap-2 px-2.5 text-12 cursor-pointer text-foreground rounded-md hover:bg-muted"
-              >
-                <span>BibTeX (.bib)</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() =>
-                  void executeDownloadFormatFile(
-                    resolvedItems,
-                    effectiveScopeId,
-                    "ris",
-                    retractedSelected.length,
-                  )
-                }
-                className="h-8 gap-2 px-2.5 text-12 cursor-pointer text-foreground rounded-md hover:bg-muted"
-              >
-                <span>RIS (.ris)</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() =>
-                  void executeDownloadFormatFile(
-                    resolvedItems,
-                    effectiveScopeId,
-                    "csl_json",
-                    retractedSelected.length,
-                  )
-                }
-                className="h-8 gap-2 px-2.5 text-12 cursor-pointer text-foreground rounded-md hover:bg-muted"
-              >
-                <span>CSL-JSON (.json)</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() =>
-                  void executeDownloadFormatFile(
-                    resolvedItems,
-                    effectiveScopeId,
-                    "csv",
-                    retractedSelected.length,
-                  )
-                }
-                className="h-8 gap-2 px-2.5 text-12 cursor-pointer text-foreground rounded-md hover:bg-muted"
-              >
-                <span>CSV Table (.csv)</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() =>
-                  void executeDownloadFormatFile(
-                    resolvedItems,
-                    effectiveScopeId,
-                    "markdown",
-                    retractedSelected.length,
-                  )
-                }
-                className="h-8 gap-2 px-2.5 text-12 cursor-pointer text-foreground rounded-md hover:bg-muted"
-              >
-                <span>Markdown (.md)</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={8}>
+                  Copy BibTeX
+                </TooltipContent>
+              </Tooltip>
 
-          {/* Batch Rename Attachments from Parent Metadata */}
-          {!isTrash && (
+              {/* Export Dropdown (.bib, .ris, .json, .csv, .md) */}
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
+                      >
+                        <Download className="size-3.5 shrink-0 text-foreground" />
+                        <span>Export</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={8}>
+                    Export selected references
+                  </TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent
+                  align="center"
+                  side="top"
+                  sideOffset={8}
+                  className="w-48 p-1.5 space-y-0.5 bg-popover border border-border rounded-md shadow-raised-200"
+                >
+                  <DropdownMenuItem
+                    onClick={handleDownloadBibFile}
+                    className="h-8 gap-2 px-2.5 text-12 cursor-pointer text-foreground rounded-md hover:bg-muted"
+                  >
+                    <span>BibTeX (.bib)</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() =>
+                      void executeDownloadFormatFile(
+                        resolvedItems,
+                        effectiveScopeId,
+                        "ris",
+                        retractedSelected.length,
+                      )
+                    }
+                    className="h-8 gap-2 px-2.5 text-12 cursor-pointer text-foreground rounded-md hover:bg-muted"
+                  >
+                    <span>RIS (.ris)</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() =>
+                      void executeDownloadFormatFile(
+                        resolvedItems,
+                        effectiveScopeId,
+                        "csl_json",
+                        retractedSelected.length,
+                      )
+                    }
+                    className="h-8 gap-2 px-2.5 text-12 cursor-pointer text-foreground rounded-md hover:bg-muted"
+                  >
+                    <span>CSL-JSON (.json)</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() =>
+                      void executeDownloadFormatFile(
+                        resolvedItems,
+                        effectiveScopeId,
+                        "csv",
+                        retractedSelected.length,
+                      )
+                    }
+                    className="h-8 gap-2 px-2.5 text-12 cursor-pointer text-foreground rounded-md hover:bg-muted"
+                  >
+                    <span>CSV Table (.csv)</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() =>
+                      void executeDownloadFormatFile(
+                        resolvedItems,
+                        effectiveScopeId,
+                        "markdown",
+                        retractedSelected.length,
+                      )
+                    }
+                    className="h-8 gap-2 px-2.5 text-12 cursor-pointer text-foreground rounded-md hover:bg-muted"
+                  >
+                    <span>Markdown (.md)</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          )}
+
+          {/* Batch Rename Attachments from Parent Metadata — Only when selected items actually have PDF/file attachments */}
+          {showRenamePdfs && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -457,7 +624,7 @@ export function BatchBar({
                   }
                   onClick={() =>
                     void batchRenameMutation.mutateAsync({
-                      itemIds: resolvedItems.map((it) => it.id).filter(Boolean),
+                      itemIds: selectedItemsWithFilesIds,
                     })
                   }
                   className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
@@ -467,15 +634,15 @@ export function BatchBar({
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="top" sideOffset={8}>
-                Rename attached files from parent metadata
+                Rename attached files from parent metadata ({selectedItemsWithFilesIds.length} with files)
               </TooltipContent>
             </Tooltip>
           )}
 
           {/* Batch Restore / Batch Move to Trash / Batch Purge */}
-          {isTrash ? (
+          {effectiveIsTrash ? (
             <>
-              {onBatchRestore && (
+              {canEdit && onBatchRestore && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -490,11 +657,11 @@ export function BatchBar({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="top" sideOffset={8}>
-                    Restore
+                    Restore selected items
                   </TooltipContent>
                 </Tooltip>
               )}
-              {onBatchDelete && (
+              {canEdit && onBatchDelete && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -502,9 +669,9 @@ export function BatchBar({
                       size="sm"
                       disabled={isAllProcessingSelected}
                       onClick={onBatchDelete}
-                      className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
+                      className="h-8 px-2.5 gap-1.5 text-12 font-medium text-destructive hover:bg-destructive/10 hover:text-destructive rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
                     >
-                      <Trash2 className="size-3.5 shrink-0 text-foreground" />
+                      <Trash2 className="size-3.5 shrink-0 text-destructive" />
                       <span>Delete permanently</span>
                     </Button>
                   </TooltipTrigger>
@@ -516,7 +683,7 @@ export function BatchBar({
             </>
           ) : (
             <>
-              {onBatchDetach && (
+              {canEdit && onBatchDetach && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -535,7 +702,7 @@ export function BatchBar({
                   </TooltipContent>
                 </Tooltip>
               )}
-              {onBatchDelete && (
+              {canEdit && onBatchDelete && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button

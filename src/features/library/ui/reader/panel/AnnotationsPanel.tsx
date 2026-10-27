@@ -2,8 +2,6 @@
 
 import React, { useState, useMemo } from 'react';
 import {
-  StickyNote,
-  Trash2,
   X,
   Loader2,
   AlertTriangle,
@@ -11,9 +9,7 @@ import {
   Search,
   RotateCcw,
   Check,
-  Edit3,
   FileText,
-  Palette,
   Download,
   User,
   ArrowUpDown,
@@ -25,17 +21,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from '@/shared/components/ui/dropdown-menu';
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuShortcut,
-  ContextMenuSub,
-  ContextMenuSubContent,
-  ContextMenuSubTrigger,
-  ContextMenuTrigger,
-} from '@/shared/components/ui/context-menu';
 import { cn } from '@/shared/lib/utils';
 import { useAnnotations } from '@/features/library/sdk/queries/reader.queries';
 import type {
@@ -44,16 +29,17 @@ import type {
   AnnotationFormData,
 } from '@/features/library/domain/types/reader.types';
 import {
-  PdfAnnotationEngine,
-  ANNOTATION_PALETTE_COLORS,
-} from '@/features/library/domain/reader.domain';
-import {
-  AnnotationEditForm,
-  ANNOTATION_COLOR_BY_HEX_MAP,
   extractAnnotationFacets,
   computeRangeSelectedAnnotationIds,
   filterAndSortAnnotations,
 } from './AnnotationEditForm';
+import {
+  AnnotationsPanelCard,
+  AnnotationsBottomSelectorDock,
+} from './AnnotationsPanelParts';
+
+export { AnnotationsPanelCard, AnnotationsBottomSelectorDock };
+
 export interface AnnotationsPanelProps {
   paper: ReaderDocument;
   scopeId?: string;
@@ -142,7 +128,9 @@ export function AnnotationsPanel({
         tags: data.tags,
       });
       setEditingId(null);
-    } catch { /* Handled in hook */ }
+    } catch {
+      /* Handled in hook */
+    }
   };
 
   const handleDelete = async (annotation: ReaderAnnotation) => {
@@ -151,7 +139,9 @@ export function AnnotationsPanel({
       if (onBatchDelete) await onBatchDelete([annotation.id]);
       else await deleteAnnotation(annotation.id, annotation.version);
       setDeletingId(null);
-    } catch { /* Handled in hook */ }
+    } catch {
+      /* Handled in hook */
+    }
   };
 
   const handleJumpToPage = (pageIndex?: number, annotationId?: string) => {
@@ -170,12 +160,24 @@ export function AnnotationsPanel({
       }
       setLastSelectedId(annotation.id);
     } else if (e.shiftKey && lastSelectedId && onSelectIds) {
-      const next = computeRangeSelectedAnnotationIds(filteredAnnotations, selectedIds, lastSelectedId, annotation.id);
+      const next = computeRangeSelectedAnnotationIds(
+        filteredAnnotations,
+        selectedIds,
+        lastSelectedId,
+        annotation.id,
+      );
       if (next) onSelectIds(next);
     } else {
       onSelectIds?.(new Set([annotation.id]));
       setLastSelectedId(annotation.id);
       handleJumpToPage(annotation.pageIndex, annotation.id);
+    }
+  };
+
+  const handleCardContextMenu = (annotation: ReaderAnnotation) => {
+    if (!selectedIds.has(annotation.id) && onSelectIds) {
+      onSelectIds(new Set([annotation.id]));
+      setLastSelectedId(annotation.id);
     }
   };
 
@@ -195,7 +197,10 @@ export function AnnotationsPanel({
   };
 
   const hasActiveFilters =
-    selectedColor !== 'all' || selectedTag !== null || authorFilter !== 'all' || searchQuery.trim() !== '';
+    selectedColor !== 'all' ||
+    selectedTag !== null ||
+    authorFilter !== 'all' ||
+    searchQuery.trim() !== '';
 
   const handleResetFilters = () => {
     setSelectedColor('all');
@@ -284,11 +289,11 @@ export function AnnotationsPanel({
           {/* Sub-bar: Sort Menu & Count */}
           <div className="flex items-center justify-between gap-1 text-10 text-muted-foreground px-0.5">
             <span>
-              {filteredAnnotations.length} of {annotations.length} highlight{annotations.length !== 1 ? 's' : ''}
+              {filteredAnnotations.length} of {annotations.length} highlight
+              {annotations.length !== 1 ? 's' : ''}
             </span>
 
             <div className="flex items-center gap-1">
-              {/* Author Filter Dropdown (if multiple authors exist) */}
               {availableAuthors.length > 1 && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -333,7 +338,6 @@ export function AnnotationsPanel({
                 </DropdownMenu>
               )}
 
-              {/* Sort Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
@@ -349,42 +353,25 @@ export function AnnotationsPanel({
                   align="end"
                   className="w-36 text-xs p-1 bg-popover border border-border shadow-raised-200 rounded-md z-50 font-sans"
                 >
-                  <DropdownMenuItem
-                    onClick={() => setSortBy('position')}
-                    className="cursor-pointer text-11 flex items-center justify-between text-foreground"
-                  >
-                    <span>Document Order</span>
-                    {sortBy === 'position' && (
-                      <Check className="size-3 text-primary shrink-0" strokeWidth={1.5} />
-                    )}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setSortBy('newest')}
-                    className="cursor-pointer text-11 flex items-center justify-between text-foreground"
-                  >
-                    <span>Newest First</span>
-                    {sortBy === 'newest' && (
-                      <Check className="size-3 text-primary shrink-0" strokeWidth={1.5} />
-                    )}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setSortBy('oldest')}
-                    className="cursor-pointer text-11 flex items-center justify-between text-foreground"
-                  >
-                    <span>Oldest First</span>
-                    {sortBy === 'oldest' && (
-                      <Check className="size-3 text-primary shrink-0" strokeWidth={1.5} />
-                    )}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setSortBy('color')}
-                    className="cursor-pointer text-11 flex items-center justify-between text-foreground"
-                  >
-                    <span>By Color</span>
-                    {sortBy === 'color' && (
-                      <Check className="size-3 text-primary shrink-0" strokeWidth={1.5} />
-                    )}
-                  </DropdownMenuItem>
+                  {(
+                    [
+                      ['position', 'Document Order'],
+                      ['newest', 'Newest First'],
+                      ['oldest', 'Oldest First'],
+                      ['color', 'By Color'],
+                    ] as const
+                  ).map(([val, label]) => (
+                    <DropdownMenuItem
+                      key={val}
+                      onClick={() => setSortBy(val)}
+                      className="cursor-pointer text-11 flex items-center justify-between text-foreground"
+                    >
+                      <span>{label}</span>
+                      {sortBy === val && (
+                        <Check className="size-3 text-primary shrink-0" strokeWidth={1.5} />
+                      )}
+                    </DropdownMenuItem>
+                  ))}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -392,7 +379,7 @@ export function AnnotationsPanel({
         </div>
       )}
 
-      {/* Selection Status Bar (shown when >= 1 selected) */}
+      {/* Selection Status Bar */}
       {selectedIds.size > 0 && (
         <div className="flex items-center justify-between px-3 py-1.5 bg-muted border-b border-border text-11 text-foreground shrink-0">
           <div className="flex items-center gap-1.5 font-medium">
@@ -475,217 +462,35 @@ export function AnnotationsPanel({
         ) : (
           <div className="space-y-1.5">
             {filteredAnnotations.map((annotation) => {
-              const isEditing = editingId === annotation.id;
-              const isDeletingCurrent = deletingId === annotation.id;
               const isSelected = selectedIds.has(annotation.id);
-              const safeColor = annotation.color || '#ffd400';
-
-              // Target items for context menu actions
               const targetIds =
                 isSelected && selectedIdsArray.length > 0
                   ? selectedIdsArray
                   : [annotation.id];
 
               return (
-                <ContextMenu key={annotation.id}>
-                  <ContextMenuTrigger asChild>
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      onClick={(e) => handleCardClick(e, annotation)}
-                      onContextMenu={() => {
-                        // Desktop behavior: If right-clicking an unselected item, select it
-                        if (!selectedIds.has(annotation.id) && onSelectIds) {
-                          onSelectIds(new Set([annotation.id]));
-                          setLastSelectedId(annotation.id);
-                        }
-                      }}
-                      className={cn(
-                        'group rounded-md border p-2 text-12 transition-all relative cursor-pointer select-none outline-none',
-                        isSelected
-                          ? 'border-primary bg-primary/10 ring-1 ring-primary'
-                          : 'border-border hover:border-border-hover bg-background',
-                      )}
-                    >
-                      {isEditing ? (
-                        <AnnotationEditForm
-                          initialQuote={annotation.quoteText}
-                          initialComment={annotation.comment}
-                          initialColor={annotation.color}
-                          initialTags={annotation.tags}
-                          isSaving={isUpdating}
-                          onSave={(data) => handleSaveEdit(annotation, data)}
-                          onCancel={() => setEditingId(null)}
-                        />
-                      ) : (
-                        <div className="space-y-1.5">
-                          {/* Top row: Page tag, actions */}
-                          <div className="flex items-center justify-between gap-1 text-11">
-                            <div className="flex items-center gap-1.5">
-                              <span
-                                className="font-mono text-foreground hover:underline cursor-pointer tabular-nums font-medium"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleJumpToPage(annotation.pageIndex, annotation.id);
-                                }}
-                              >
-                                P. {(annotation.pageIndex ?? 0) + 1}
-                              </span>
-                            </div>
-
-                            {/* Hover actions */}
-                            <div
-                              onClick={(e) => e.stopPropagation()}
-                              className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 max-md:opacity-100 transition-opacity"
-                            >
-                              {isDeletingCurrent ? (
-                                <div className="flex items-center gap-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDelete(annotation)}
-                                    aria-label="Confirm delete"
-                                    className="size-6 sm:size-5 rounded-md text-destructive hover:bg-destructive/10 flex items-center justify-center cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                                  >
-                                    <Check className="size-3" strokeWidth={1.5} />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => setDeletingId(null)}
-                                    aria-label="Cancel"
-                                    className="size-6 sm:size-5 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                                  >
-                                    <X className="size-3" strokeWidth={1.5} />
-                                  </button>
-                                </div>
-                              ) : (
-                                <>
-                                  {onAddToNote && (
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        onAddToNote(
-                                          annotation.quoteText || annotation.comment || '',
-                                          (annotation.pageIndex ?? 0) + 1,
-                                        )
-                                      }
-                                      aria-label="Add to Note"
-                                      className="size-6 sm:size-5 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                                      title="Add to Note"
-                                    >
-                                      <StickyNote className="size-3" strokeWidth={1.5} />
-                                    </button>
-                                  )}
-                                  <button
-                                    type="button"
-                                    onClick={() => setEditingId(annotation.id)}
-                                    aria-label="Edit annotation"
-                                    className="size-6 sm:size-5 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                                  >
-                                    <Edit3 className="size-3" strokeWidth={1.5} />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => setDeletingId(annotation.id)}
-                                    aria-label="Delete annotation"
-                                    className="size-6 sm:size-5 rounded-md text-foreground hover:text-destructive hover:bg-destructive/10 flex items-center justify-center cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                                  >
-                                    <Trash2 className="size-3" strokeWidth={1.5} />
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Quote Text */}
-                          {annotation.quoteText && (
-                            <div className="text-left w-full select-text">
-                              <p
-                                className="text-12 leading-snug text-foreground border-l-2 pl-2 italic"
-                                style={{ borderColor: safeColor }}
-                              >
-                                &ldquo;{annotation.quoteText}&rdquo;
-                              </p>
-                            </div>
-                          )}
-
-                          {/* Comment */}
-                          {annotation.comment && (
-                            <p className="text-11 text-foreground pl-2 leading-relaxed select-text">
-                              {annotation.comment}
-                            </p>
-                          )}
-
-                          {/* Tags */}
-                          {annotation.tags && annotation.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1 pl-2 pt-0.5">
-                              {annotation.tags.map((tag) => (
-                                <span
-                                  key={tag}
-                                  className="inline-flex items-center px-1.5 py-0.5 rounded-sm text-10 font-mono bg-background text-foreground border border-border"
-                                >
-                                  #{tag}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </ContextMenuTrigger>
-
-                  {/* Zotero-native Context Menu on Annotation Card */}
-                  <ContextMenuContent className="w-52 text-12 bg-popover border border-border shadow-raised-200 rounded-md p-1 z-50 font-sans">
-                    <ContextMenuItem
-                      onClick={() => onBatchAddToNote?.(targetIds)}
-                      className="flex items-center gap-2 cursor-pointer text-foreground px-2 py-1.5 rounded-sm hover:bg-muted"
-                    >
-                      <FileText className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                      <span>
-                        {targetIds.length > 1
-                          ? `Add to Note (${targetIds.length})`
-                          : 'Add to Note'}
-                      </span>
-                    </ContextMenuItem>
-
-                    <ContextMenuSub>
-                      <ContextMenuSubTrigger className="flex items-center gap-2 cursor-pointer text-foreground px-2 py-1.5 rounded-sm hover:bg-muted">
-                        <Palette className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                        <span>Change Color</span>
-                      </ContextMenuSubTrigger>
-                      <ContextMenuSubContent className="w-36 bg-popover border border-border shadow-raised-200 rounded-md p-1 z-50 font-sans">
-                        {ANNOTATION_PALETTE_COLORS.map((c) => (
-                          <ContextMenuItem
-                            key={c.id}
-                            onClick={() => onBatchChangeColor?.(c.hex, targetIds)}
-                            className="flex items-center gap-2 cursor-pointer text-foreground px-2 py-1 rounded-sm hover:bg-muted text-11"
-                          >
-                            <span
-                              className="size-3 rounded-full border border-border shrink-0"
-                              style={{ backgroundColor: c.hex }}
-                            />
-                            <span>{c.label}</span>
-                          </ContextMenuItem>
-                        ))}
-                      </ContextMenuSubContent>
-                    </ContextMenuSub>
-
-                    <ContextMenuSeparator className="my-1 border-t border-border" />
-
-                    <ContextMenuItem
-                      onClick={() => onBatchDelete?.(targetIds)}
-                      variant="destructive"
-                      className="flex items-center gap-2 cursor-pointer text-destructive hover:bg-destructive/10 px-2 py-1.5 rounded-sm text-12"
-                    >
-                      <Trash2 className="size-3.5 shrink-0 text-destructive" strokeWidth={1.5} />
-                      <span className="flex-1">
-                        {targetIds.length > 1
-                          ? `Delete ${targetIds.length} Annotations`
-                          : 'Delete Annotation'}
-                      </span>
-                      <ContextMenuShortcut>Del</ContextMenuShortcut>
-                    </ContextMenuItem>
-                  </ContextMenuContent>
-                </ContextMenu>
+                <AnnotationsPanelCard
+                  key={annotation.id}
+                  annotation={annotation}
+                  isEditing={editingId === annotation.id}
+                  isDeletingCurrent={deletingId === annotation.id}
+                  isSelected={isSelected}
+                  isUpdating={isUpdating}
+                  targetIds={targetIds}
+                  onCardClick={handleCardClick}
+                  onCardContextMenu={handleCardContextMenu}
+                  onJumpToPage={handleJumpToPage}
+                  onStartEdit={setEditingId}
+                  onCancelEdit={() => setEditingId(null)}
+                  onSaveEdit={handleSaveEdit}
+                  onStartDelete={setDeletingId}
+                  onCancelDelete={() => setDeletingId(null)}
+                  onConfirmDelete={handleDelete}
+                  onAddToNote={onAddToNote}
+                  onBatchAddToNote={onBatchAddToNote}
+                  onBatchChangeColor={onBatchChangeColor}
+                  onBatchDelete={onBatchDelete}
+                />
               );
             })}
           </div>
@@ -693,83 +498,14 @@ export function AnnotationsPanel({
       </div>
 
       {/* ── ZOTERO BOTTOM SELECTOR DOCK (#selector) ── */}
-      {(existingColors.length > 1 || existingTags.length > 0) && (
-        <div className="border-t border-border bg-muted p-2 space-y-1.5 shrink-0 text-11 font-sans">
-          {/* Colors row: only show colors actually present in this document's annotations */}
-          {existingColors.length > 1 && (
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-10 font-semibold text-muted-foreground uppercase tracking-wider">
-                Colors:
-              </span>
-              <div className="flex items-center gap-1">
-                {existingColors.map((c) => {
-                  const active = selectedColor.toLowerCase() === c.hex.toLowerCase();
-                  return (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => setSelectedColor(active ? 'all' : c.hex)}
-                      className={cn(
-                        'size-4 rounded-full border border-border transition-colors cursor-pointer relative',
-                        active && 'ring-2 ring-primary ring-offset-1',
-                      )}
-                      style={{ backgroundColor: c.hex }}
-                      title={`${c.label} (${active ? 'Active' : 'Filter by this color'})`}
-                    />
-                  );
-                })}
-                {selectedColor !== 'all' && (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedColor('all')}
-                    className="text-10 text-muted-foreground hover:text-foreground cursor-pointer underline ml-1"
-                  >
-                    Clear
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Tags row: only show tags actually attached to annotations in this document */}
-          {existingTags.length > 0 && (
-            <div className="flex items-center gap-1 flex-wrap">
-              <span className="text-10 font-semibold text-muted-foreground uppercase tracking-wider">
-                Tags:
-              </span>
-              <div className="flex items-center gap-1 flex-wrap">
-                {existingTags.map((tag) => {
-                  const active = selectedTag === tag;
-                  return (
-                    <button
-                      key={tag}
-                      type="button"
-                      onClick={() => setSelectedTag(active ? null : tag)}
-                      className={cn(
-                        'px-1.5 py-0.5 rounded text-10 font-mono transition-colors cursor-pointer border',
-                        active
-                          ? 'bg-primary text-primary-foreground border-primary font-medium'
-                          : 'bg-background border-border text-foreground hover:bg-muted',
-                      )}
-                    >
-                      #{tag}
-                    </button>
-                  );
-                })}
-                {selectedTag && (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedTag(null)}
-                    className="text-10 text-muted-foreground hover:text-foreground cursor-pointer underline ml-1"
-                  >
-                    Clear
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      <AnnotationsBottomSelectorDock
+        existingColors={existingColors}
+        existingTags={existingTags}
+        selectedColor={selectedColor}
+        selectedTag={selectedTag}
+        onSelectColor={setSelectedColor}
+        onSelectTag={setSelectedTag}
+      />
     </div>
   );
 }

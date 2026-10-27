@@ -13,6 +13,15 @@ export function normalizeScopeId(scopeId?: string | null): string {
 export const libraryKeys = {
   all: ["library"] as const,
 
+  // Workspace Bootstrap
+  bootstrap: (scopeId?: string, params?: unknown) =>
+    [
+      ...libraryKeys.all,
+      "bootstrap",
+      normalizeScopeId(scopeId),
+      (params ?? {}) as Record<string, unknown>,
+    ] as const,
+
   // Items
   items: (scopeId?: string, params?: unknown) =>
     [
@@ -47,6 +56,19 @@ export const libraryKeys = {
     ] as const,
   itemTypes: (scopeId?: string) =>
     [...libraryKeys.all, "item-types", normalizeScopeId(scopeId)] as const,
+  typeConversionPreview: (
+    scopeId?: string,
+    itemId?: string,
+    targetType?: string,
+  ) =>
+    [
+      ...libraryKeys.all,
+      "items",
+      normalizeScopeId(scopeId),
+      "type-conversion-preview",
+      itemId || "none",
+      targetType || "none",
+    ] as const,
 
   // Collections (Folder Tree & Flat List)
   collections: (scopeId?: string) =>
@@ -205,6 +227,11 @@ export const itemKeys = {
   state: (scopeId?: string, itemId?: string) =>
     libraryKeys.itemState(scopeId, itemId),
   types: (scopeId?: string) => libraryKeys.itemTypes(scopeId),
+  typeConversionPreview: (
+    scopeId?: string,
+    itemId?: string,
+    targetType?: string,
+  ) => libraryKeys.typeConversionPreview(scopeId, itemId, targetType),
   counts: (scopeId?: string) => libraryKeys.counts(scopeId),
 };
 

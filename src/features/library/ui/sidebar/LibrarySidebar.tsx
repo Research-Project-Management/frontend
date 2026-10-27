@@ -22,7 +22,7 @@ import { useLibraryProjectContext } from '@/features/library/core/adapters/proje
 
 import type { SavedSearch } from '@/features/library/domain/types/saved-searches.types';
 
-import { buildTree, filterCollections } from '@/features/library/domain/collection-tree.domain';
+import { buildTree, filterCollections } from '@/features/library/domain/collection-tree';
 import { usePanelResize } from '@/features/library/ui/hooks/usePanelResize';
 import { useCollectionCoordinator } from '@/features/library/core/coordinator/collection.coordinator';
 import { SidebarHeader } from './SidebarHeader';

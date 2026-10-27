@@ -1,9 +1,10 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { useLibraryUIStore } from "@/features/library/core/store/library-ui.store";
 import {
   useLibraryCommandStore,
   createTrashCommand,
+  createBatchTagToggleCommand,
 } from "@/features/library/core/manager/library-command.manager";
 import { normalizeTags } from "@/features/library/domain/metadata";
 import type { Item } from "@/features/library/domain/types/library.types";
@@ -57,6 +58,47 @@ export function useLibraryKeyboardShortcuts({
   const clearSelection = useLibraryUIStore((s) => s.clearSelection);
   const selectAll = useLibraryUIStore((s) => s.selectAll);
   const openModal = useLibraryUIStore((s) => s.openModal);
+
+  // Global Workbench Keymap for Undo (Ctrl+Z) / Redo (Ctrl+Y / Ctrl+Shift+Z)
+  // Fires even when DOM focus is on document.body, toolbar, or inspector container
+  // (after blurring an input), while respecting native input undo/redo and open dialogs.
+  useEffect(() => {
+    const handleWindowKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
+      if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
+      const key = e.key.toLowerCase();
+      if (key !== "z" && key !== "y") return;
+      if (useLibraryUIStore.getState().activeModal !== null) return;
+
+      const target =
+        (e.target as HTMLElement | null) ??
+        (typeof document !== "undefined"
+          ? (document.activeElement as HTMLElement | null)
+          : null);
+      if (target) {
+        const tag = target.tagName;
+        if (
+          tag === "INPUT" ||
+          tag === "TEXTAREA" ||
+          tag === "SELECT" ||
+          target.isContentEditable ||
+          target.closest('[role="dialog"], [role="menu"], [role="combobox"]')
+        ) {
+          return;
+        }
+      }
+
+      e.preventDefault();
+      if (key === "y" || (key === "z" && e.shiftKey)) {
+        void useLibraryCommandStore.getState().redo();
+      } else {
+        void useLibraryCommandStore.getState().undo();
+      }
+    };
+
+    window.addEventListener("keydown", handleWindowKeyDown);
+    return () => window.removeEventListener("keydown", handleWindowKeyDown);
+  }, []);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -170,7 +212,7 @@ export function useLibraryKeyboardShortcuts({
         void useLibraryCommandStore.getState().redo();
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a") {
         e.preventDefault();
-        selectAll(items.map((it) => it.id));
+        selectAll(items.filter((it) => !it._isProcessing).map((it) => it.id));
       } else if (
         !e.ctrlKey &&
         !e.metaKey &&
@@ -202,33 +244,31 @@ export function useLibraryKeyboardShortcuts({
           normalizeTags(it).some((t) => t.toLowerCase() === tagLower),
         );
 
-        void (async () => {
-          try {
-            await Promise.all(
-              targetItems.map((it) => {
-                const currentTags = normalizeTags(it);
-                const nextTags = allHaveTag
-                  ? currentTags.filter((t) => t.toLowerCase() !== tagLower)
-                  : currentTags.some((t) => t.toLowerCase() === tagLower)
-                    ? currentTags
-                    : [...currentTags, matchedTag.name];
-                return updateItemMutation.mutateAsync({
-                  itemId: it.id,
-                  data: { tags: nextTags },
-                  silent: true,
-                });
-              }),
-            );
-            toast.success(
-              allHaveTag
-                ? `Removed tag "${matchedTag.name}"`
-                : `Applied tag "${matchedTag.name}"`,
-              { id: "shortcut-tag" },
-            );
-          } catch {
-            toast.error("Failed to update tags");
-          }
-        })();
+        const snapshots = targetItems.map((it) => {
+          const currentTags = normalizeTags(it);
+          const nextTags = allHaveTag
+            ? currentTags.filter((t) => t.toLowerCase() !== tagLower)
+            : currentTags.some((t) => t.toLowerCase() === tagLower)
+              ? currentTags
+              : [...currentTags, matchedTag.name];
+          return {
+            itemId: it.id,
+            previousTags: currentTags,
+            nextTags,
+          };
+        });
+
+        void useLibraryCommandStore
+          .getState()
+          .executeCommand(
+            createBatchTagToggleCommand({
+              tagName: matchedTag.name,
+              action: allHaveTag ? "remove" : "add",
+              snapshots,
+              updateItemMutation,
+            }),
+          )
+          .catch(() => undefined);
       }
     },
     [

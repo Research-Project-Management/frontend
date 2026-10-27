@@ -10,20 +10,25 @@ import {
   type UpdateSavedSearchInput,
   type SavedSearchConditionGroup,
 } from '../library.client';
-import type { SavedSearchScopeOptions } from '@/features/library/domain/types/library.types';
+import type { Item, SavedSearchScopeOptions } from '@/features/library/domain/types/library.types';
+import { mapBackendItem } from '@/features/library/domain/metadata';
 import {
   itemKeys,
   savedSearchKeys,
   relationKeys,
   normalizeScopeId,
 } from '@/features/library/sdk/query-keys';
+import {
+  patchItemAcrossScopeCaches,
+  invalidateLibraryCatalogDependencies,
+} from './cache-patcher';
 
 export { savedSearchKeys, relationKeys };
 
 // SAVED SEARCHES QUERY HOOKS
 
 export const invalidateSavedSearches = (qc: QueryClient, scopeId?: string) => {
-  qc.invalidateQueries({ queryKey: savedSearchKeys.all(scopeId) });
+  qc.invalidateQueries({ queryKey: savedSearchKeys.all(normalizeScopeId(scopeId)) });
 };
 
 export function useSavedSearches(
@@ -31,24 +36,29 @@ export function useSavedSearches(
   options?: { enabled?: boolean },
 ) {
   const queryClient = useQueryClient();
-  const effectiveScope = scopeId || 'user';
+  const effectiveScope = normalizeScopeId(scopeId);
 
   const savedSearchesQuery = useQuery({
     queryKey: savedSearchKeys.all(effectiveScope),
     queryFn: () => SavedSearchesService.getAll(effectiveScope),
     enabled: options?.enabled ?? true,
+    staleTime: 1000 * 60,
   });
 
   const createMutation = useMutation({
     mutationFn: async (data: CreateSavedSearchInput) => {
-      const targetScope = data.targetScope || data.scope || effectiveScope;
+      const targetScope = normalizeScopeId(data.targetScope || data.scope || effectiveScope);
       const created = await SavedSearchesService.create(targetScope, data);
       return { created, targetScope };
     },
-    onSuccess: ({ targetScope }) => {
+    onSuccess: ({ targetScope }, variables) => {
       invalidateSavedSearches(queryClient, targetScope);
       if (targetScope !== effectiveScope) {
         invalidateSavedSearches(queryClient, effectiveScope);
+      }
+      const varScope = variables.targetScope ? normalizeScopeId(variables.targetScope) : undefined;
+      if (varScope && varScope !== effectiveScope && varScope !== targetScope) {
+        invalidateSavedSearches(queryClient, varScope);
       }
       toast.success('Smart collection created', { id: 'saved-search-mutation' });
     },
@@ -61,13 +71,29 @@ export function useSavedSearches(
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateSavedSearchInput }) =>
-      SavedSearchesService.update(effectiveScope, id, data),
-    onSuccess: (_, variables) => {
+    mutationFn: async ({ id, data }: { id: string; data: UpdateSavedSearchInput }) => {
+      const targetScope = normalizeScopeId(data.targetScope || data.scope || effectiveScope);
+      const updated = await SavedSearchesService.update(targetScope, id, data);
+      return { updated, targetScope };
+    },
+    onSuccess: ({ targetScope }, variables) => {
       invalidateSavedSearches(queryClient, effectiveScope);
       queryClient.invalidateQueries({
         queryKey: savedSearchKeys.byId(effectiveScope, variables.id),
       });
+      if (targetScope && targetScope !== effectiveScope) {
+        invalidateSavedSearches(queryClient, targetScope);
+        queryClient.invalidateQueries({
+          queryKey: savedSearchKeys.byId(targetScope, variables.id),
+        });
+      }
+      const varTargetScope = variables.data.targetScope || variables.data.scope;
+      if (varTargetScope && varTargetScope !== effectiveScope && varTargetScope !== targetScope) {
+        invalidateSavedSearches(queryClient, varTargetScope);
+        queryClient.invalidateQueries({
+          queryKey: savedSearchKeys.byId(varTargetScope, variables.id),
+        });
+      }
       toast.success('Smart collection updated', { id: 'saved-search-mutation' });
     },
     onError: (err: Error) => {
@@ -290,14 +316,7 @@ export function useItemTypeConversionPreviewQuery(
   const effectiveScopeId = normalizeScopeId(scopeId);
 
   return useQuery({
-    queryKey: [
-      'library',
-      'items',
-      effectiveScopeId,
-      'type-conversion-preview',
-      itemId,
-      targetType,
-    ] as const,
+    queryKey: itemKeys.typeConversionPreview(effectiveScopeId, itemId, targetType),
     queryFn: () =>
       ItemsService.previewConvertType(
         effectiveScopeId,
@@ -370,11 +389,21 @@ export function useItemTypeConversion(scopeId?: string) {
         expectedVersion,
         retainUnmappedInExtra,
       ),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: itemKeys.byId(effectiveScopeId, variables.itemId),
+    onSuccess: (data, variables) => {
+      const rawUpdated =
+        (data as { item?: unknown; data?: unknown })?.item ??
+        (data as { data?: unknown })?.data ??
+        data;
+      if (rawUpdated && typeof rawUpdated === 'object' && 'id' in rawUpdated) {
+        const mapped = mapBackendItem(rawUpdated as Record<string, unknown>) as Item;
+        patchItemAcrossScopeCaches(queryClient, effectiveScopeId, variables.itemId, mapped);
+      }
+      void invalidateLibraryCatalogDependencies(queryClient, effectiveScopeId, {
+        itemId: variables.itemId,
+        itemsList: true,
+        counts: true,
+        smartCollections: true,
       });
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScopeId) });
       if (!variables.silent) {
         toast.success('Item type converted', {
           description: variables.retainUnmappedInExtra

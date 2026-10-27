@@ -17,6 +17,7 @@ import {
   IngestionRunSnapshotResponseSchema,
   itemSchema,
 } from '@/features/library/domain/types/library.types';
+import { preserveMappedItemFlags } from '@/features/library/domain/metadata';
 import {
   libraryClient,
   resolveLibraryUrl,
@@ -32,7 +33,11 @@ import { ItemsService } from './items.client';
 
 // 10. Ingestion, Curation & Retraction Services
 export const IngestionService = {
-  ingest: async (scopeId: string | undefined, payload: UnifiedIngestionPayload): Promise<UnifiedIngestionResponse> => {
+  ingest: async (
+    scopeId: string | undefined,
+    payload: UnifiedIngestionPayload,
+    options?: { signal?: AbortSignal },
+  ): Promise<UnifiedIngestionResponse> => {
     const validated = UnifiedIngestionPayloadSchema.parse(payload);
     const submission = {
       ...toIngestionSubmission(validated),
@@ -41,7 +46,7 @@ export const IngestionService = {
     const res = await libraryClient.post<Record<string, unknown>>(
       getIngestionUrl(scopeId, 'submit'),
       submission,
-      { timeout: 30000 },
+      { timeout: 30000, signal: options?.signal },
     );
     const accepted = (res && typeof res === 'object' && 'data' in res && res.data ? res.data : res) as Record<string, unknown>;
     const rawItemId = accepted.existingItemId ?? accepted.itemId;
@@ -84,7 +89,7 @@ export const IngestionService = {
     scopeId: string | undefined,
     payload: {
       url: string;
-      previewToken?: string;
+      previewToken: string;
       title?: string;
       abstract?: string;
       doi?: string;
@@ -192,7 +197,7 @@ export const CurationService = {
         for (const g of groups) {
           g.items = (g.items || []).map((it) => {
             const fetched = it.id ? fetchedMap.get(it.id) : undefined;
-            return fetched ? { ...it, ...fetched } : it;
+            return fetched ? preserveMappedItemFlags(fetched, { ...it, ...fetched }) : it;
           });
         }
       }
@@ -258,15 +263,16 @@ export const CurationService = {
               )
               .filter(Boolean)
           : undefined;
+        const baseMapped = mapBackendItem(sourceObj);
         const mapped = {
-          ...mapBackendItem(sourceObj),
+          ...baseMapped,
           ...(rawTags ? { tags: rawTags } : {}),
         };
         const parseRes = itemSchema.safeParse(mapped);
-        return {
+        return preserveMappedItemFlags(baseMapped, {
           ...mapped,
           ...(parseRes.success ? parseRes.data : {}),
-        };
+        });
       });
       return {
         matchType: c.matchReason === 'EXACT_DOI' ? 'DOI' : 'TITLE_AUTHOR_YEAR',
@@ -332,9 +338,45 @@ export const CurationService = {
     };
   },
 
+  undoMerge: async (
+    scopeId: string | undefined,
+    primaryItemId: string,
+  ): Promise<{ restoredPrimaryId: string; restoredDuplicateIds: string[] }> => {
+    interface UndoMergeApiResponse {
+      restoredPrimaryId?: string;
+      restoredDuplicateIds?: string[];
+      data?: {
+        restoredPrimaryId?: string;
+        restoredDuplicateIds?: string[];
+      };
+    }
+    const res = await libraryClient.post<UndoMergeApiResponse>(
+      getCurationUrl(scopeId, 'undo-merge'),
+      {
+        primaryItemId,
+        ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
+      },
+    );
+    const payload = res?.data ?? res;
+    return {
+      restoredPrimaryId: payload?.restoredPrimaryId ?? primaryItemId,
+      restoredDuplicateIds: Array.isArray(payload?.restoredDuplicateIds)
+        ? payload.restoredDuplicateIds
+        : [],
+    };
+  },
+
   getIntegrityReport: async (scopeId?: string): Promise<LibraryIntegrityReport> => {
     const pQuery = isProjectScope(scopeId) ? `?projectId=${encodeURIComponent(scopeId!)}` : '';
-    return libraryClient.get<LibraryIntegrityReport>(`${getCurationUrl(scopeId, 'integrity')}${pQuery}`);
+    const res = await libraryClient.get<LibraryIntegrityReport & { averageQualityScore?: number; healthScorePercentage?: number }>(
+      `${getCurationUrl(scopeId, 'integrity')}${pQuery}`,
+    );
+    const score = res?.averageQualityScore ?? res?.healthScorePercentage ?? 100;
+    return {
+      ...res,
+      averageQualityScore: score,
+      healthScorePercentage: res?.healthScorePercentage ?? score,
+    };
   },
 
   dismissDuplicate: (scopeId: string | undefined, itemAId: string, itemBId: string) =>
@@ -355,6 +397,22 @@ export const CurationService = {
 export const RetractionService = {
   getStats: (scopeId?: string) =>
     libraryClient.get<RetractionStats>(getRetractionUrl(scopeId, 'stats')),
+
+  getDatabaseStats: (scopeId?: string) =>
+    libraryClient.get<{
+      totalRecords?: number;
+      lastSeededAt?: string | null;
+      status?: string;
+      [key: string]: unknown;
+    }>(getRetractionUrl(scopeId, 'database/stats')),
+
+  seedDatabase: (force = false, scopeId?: string) =>
+    libraryClient.post<{
+      seeded?: boolean;
+      insertedCount?: number;
+      totalRecords?: number;
+      [key: string]: unknown;
+    }>(getRetractionUrl(scopeId, 'database/seed'), { force }),
 
   getRetractedItems: (scopeId?: string) =>
     libraryClient.get<Item[]>(
@@ -379,6 +437,21 @@ export const RetractionService = {
     libraryClient.post<{ scanned: number; newlyRetracted: number }>(
       getRetractionUrl(scopeId, 'check-all'),
       { itemIds },
+      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
+    ),
+
+  syncLibrary: (
+    scopeId: string | undefined,
+    options?: { maxDays?: number; limit?: number },
+  ) =>
+    libraryClient.post<{
+      scanned: number;
+      newlyRetracted: number;
+      checkedCount?: number;
+      [key: string]: unknown;
+    }>(
+      getRetractionUrl(scopeId, 'sync'),
+      options || {},
       { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
     ),
 
@@ -463,7 +536,15 @@ export const SyncService = {
     libraryClient.get<{ version: string; scope: 'user' | 'project'; scopeId: string }>(getSyncUrl(scopeId, 'version')),
 
   getChanges: (scopeId?: string, params?: { since?: string; limit?: number; compact?: boolean }) =>
-    libraryClient.get<{ since: string; count: number; hasMore: boolean; changes: Array<Record<string, unknown>> }>(
+    libraryClient.get<{
+      since: string;
+      count: number;
+      compacted?: boolean;
+      hasMore: boolean;
+      nextCursor?: string | null;
+      nextSince?: string | null;
+      changes: Array<Record<string, unknown>>;
+    }>(
       getSyncUrl(scopeId, 'changes'),
       {
         params: {
@@ -487,24 +568,28 @@ export const SyncService = {
 };
 
 
+export interface FeedSubscriptionResponse {
+  id: string;
+  userId?: string;
+  feedId?: string;
+  customTitle?: string | null;
+  cleanupReadAfter?: number;
+  cleanupUnreadAfter?: number;
+  feed?: {
+    id: string;
+    url: string;
+    title: string;
+    siteUrl?: string | null;
+    description?: string | null;
+    lastFetchedAt?: string | null;
+  };
+}
+
 export const FeedsService = {
   getSubscriptions: () =>
-    libraryClient.get<{ data: Array<{
-      id: string;
-      userId: string;
-      feedId: string;
-      customTitle: string | null;
-      cleanupReadAfter: number;
-      cleanupUnreadAfter: number;
-      feed: {
-        id: string;
-        url: string;
-        title: string;
-        siteUrl: string | null;
-        description: string | null;
-        lastFetchedAt: string | null;
-      };
-    }> }>(resolveLibraryUrl('ingestion', '/feeds/subscriptions')),
+    libraryClient.get<{ data: FeedSubscriptionResponse[] }>(
+      resolveLibraryUrl('ingestion', '/feeds/subscriptions'),
+    ),
 
   subscribe: (data: {
     url: string;

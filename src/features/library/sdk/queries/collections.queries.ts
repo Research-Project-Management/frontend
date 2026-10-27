@@ -73,6 +73,7 @@ export function useCollections(scopeIdOrOptions?: UseCollectionsScopeInput) {
     queryKey: collectionKeys.all(scopeId),
     queryFn: () => CollectionsService.getAll(scopeId),
     enabled: (explicitEnabled ?? true) && Boolean(scopeId),
+    staleTime: 1000 * 60,
     select: (data) => (Array.isArray(data) ? data : (data?.collections || [])),
   });
 
@@ -391,7 +392,6 @@ export function useMoveCollectionItemsMutation(scopeId?: string) {
     onSuccess: (_data, variables) => {
       const targetScope = normalizeScopeId(variables.scopeId || effectiveScopeId);
       queryClient.invalidateQueries({ queryKey: itemKeys.all(targetScope) });
-      queryClient.invalidateQueries({ queryKey: collectionKeys.all(targetScope) });
       if (variables.targetCollectionId) {
         queryClient.invalidateQueries({
           queryKey: itemKeys.byCollection(targetScope, variables.targetCollectionId),
@@ -431,7 +431,6 @@ export function useAssignCollectionItemsMutation(scopeId?: string) {
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScopeId) });
-      queryClient.invalidateQueries({ queryKey: collectionKeys.all(effectiveScopeId) });
       queryClient.invalidateQueries({
         queryKey: itemKeys.byCollection(effectiveScopeId, variables.collectionId),
       });

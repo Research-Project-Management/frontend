@@ -2,11 +2,7 @@
 
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import type { Item } from "@/features/library/domain/types/library.types";
-import { cleanDoi } from "@/features/library/domain/identifiers";
-import {
-  cleanValue,
-  parseItemExtraField,
-} from "@/features/library/domain/metadata";
+import { cleanValue } from "@/features/library/domain/metadata";
 import {
   getItemTypeDefinition,
   normalizeCanonicalItemType,
@@ -89,20 +85,12 @@ export default function InfoSection({
     [currentItemType, itemTypeDefinitions],
   );
 
-  const parsedExtraMap = useMemo(
-    () => parseItemExtraField(item?.extra),
-    [item?.extra],
-  );
-
-  const displayDoi = useMemo(
-    () => cleanDoi(item?.doi || parsedExtraMap.doi),
-    [item?.doi, parsedExtraMap.doi],
-  );
-
   const preparedFieldContext = useMemo(
-    () => prepareInspectorFieldContext(item, parsedExtraMap, displayDoi),
-    [item, parsedExtraMap, displayDoi],
+    () => prepareInspectorFieldContext(item),
+    [item],
   );
+
+  const displayDoi = preparedFieldContext?.displayDoi || "";
 
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -153,53 +141,6 @@ export default function InfoSection({
     if (!onUpdateItem || !item) return;
     onUpdateItem(buildInspectorFieldPatch(item, fieldDef, val));
   };
-
-  const handleRegenerateCitationKey = useCallback(() => {
-    if (!item || !onUpdateItem) return;
-    const firstCreator = item.creators?.[0];
-    const firstAuthor = item.authors?.[0];
-    let family = "anon";
-    if (firstCreator?.lastName) {
-      family = firstCreator.lastName;
-    } else if (firstCreator?.fullName || firstCreator?.name) {
-      const parts = (firstCreator.fullName || firstCreator.name || "").trim().split(/\s+/);
-      family = parts[parts.length - 1] || "anon";
-    } else if (typeof firstAuthor === "string" && firstAuthor.trim()) {
-      const raw = firstAuthor.trim();
-      family = raw.includes(",")
-        ? raw.split(",")[0].trim()
-        : raw.split(/\s+/).pop() || "anon";
-    }
-    const cleanFamily =
-      family
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, "") || "anon";
-    const yearStr = item.year
-      ? String(item.year)
-      : (item.publicationDate || item.date)?.match(/\b(\d{4})\b/)?.[1] || "nd";
-    const words =
-      (item.title || "")
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .toLowerCase()
-        .match(/[a-z0-9]{3,}/g) || [];
-    const stopwords = new Set([
-      "the",
-      "and",
-      "for",
-      "with",
-      "from",
-      "into",
-      "using",
-      "towards",
-      "via",
-    ]);
-    const titleWord = words.find((w) => !stopwords.has(w)) || words[0] || "work";
-    const generated = `${cleanFamily}${yearStr}${titleWord}`;
-    onUpdateItem({ citationKey: generated });
-  }, [item, onUpdateItem]);
 
   // Render all schema fields for the selected item type in registry order
   const dynamicFields = useMemo(() => {
@@ -272,7 +213,6 @@ export default function InfoSection({
           canEdit={canEdit}
           onSave={(newVal) => saveFieldValue(fieldDef, newVal)}
           onCopy={copyToClipboard}
-          onRegenerateCitationKey={handleRegenerateCitationKey}
         />
       ))}
 

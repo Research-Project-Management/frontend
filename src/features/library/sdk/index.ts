@@ -2,6 +2,9 @@ export * from './query-keys';
 export * from './library.client';
 export {
   type InvalidationClient,
+  chunkUniqueIds,
+  extractItemFromCacheData,
+  mergeCachedItemWithPatch,
   patchItemInCacheData,
   patchSingleItemCache,
   patchItemAcrossScopeCaches,
@@ -9,32 +12,45 @@ export {
   removeItemsFromScopeCaches,
   invalidateLibraryCatalogDependencies,
   invalidateLibraryScopeCatalog,
+  resolveCachedItemFromScope,
+  useLibraryCacheSynchronizer,
 } from './queries/cache-patcher';
 export {
+  resolveCachedItemVersion,
+  useUpdateLibraryItemMutation,
+  useToggleStarItemMutation,
+  useImportFromUserMutation,
+  useCreateLibraryItemMutation,
+  useReResolveItemMetadataMutation,
+  useSetMyPublicationMutation,
+} from './queries/item-mutations.queries';
+export {
+  useTrash,
+  useDeleteLibraryItemsMutation,
+  useBatchRestoreItemsMutation,
+  useBatchPurgeItemsMutation,
+} from './queries/trash.queries';
+export {
+  useLibraryDeltaSync,
+} from './queries/sync.queries';
+export {
+  useLibraryBootstrapQuery,
   useLibraryCountsQuery,
   useViewItems,
   type UseItemsOptions,
   useItems,
   useItemTypes,
-  useTrash,
   useItem,
   type LibraryItemsQueryResult,
   useLibraryItemsQuery,
   useLibraryItemDetailQuery,
-  useUpdateLibraryItemMutation,
-  useToggleStarItemMutation,
-  useDeleteLibraryItemsMutation,
-  useBatchRestoreItemsMutation,
-  useBatchPurgeItemsMutation,
-  useImportFromUserMutation,
-  useCreateLibraryItemMutation,
-  useLibraryDeltaSync,
 } from './queries/catalog.queries';
 export {
   useCitationStyles,
   useCslCitation,
   useFormatCitationMutation,
   useSearchCslStyles,
+  useUploadCustomCslStyleMutation,
 } from './queries/citation.queries';
 export {
   type UseCollectionsScopeInput,
@@ -49,6 +65,7 @@ export {
 export {
   useAttachments,
   useRenameAttachment,
+  useBatchRenameAttachmentsMutation,
   useUploadAttachmentMutation,
   useDownloadAnnotatedPdfMutation,
 } from './queries/extraction.queries';
@@ -59,8 +76,13 @@ export {
   buildIdentifierIngestionPayload,
   type TrackedIdentifierIngestionOptions,
   executeTrackedIdentifierIngestion,
+  useTrackedIdentifierIngestion,
   useDuplicateGroups,
+  useLibraryIntegrityReport,
+  useQualityAudit,
   useMergeDuplicates,
+  useUndoMergeDuplicatesMutation,
+  useUndoMergeDuplicates,
   useAcademicFeedArticlesQuery,
   useFetchAcademicFeed,
   useFeedSubscriptionsQuery,
@@ -75,6 +97,7 @@ export {
   invalidateRetraction,
   useRetractedItems,
   useRetraction,
+  useSyncExternalBibtexMutation,
 } from './queries/ingestion.queries';
 export {
   type CreateAnnotationDTO,

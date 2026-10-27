@@ -6,7 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/shared/lib/utils';
 import { usePdf } from './use-pdf';
-import { readerService, getItemFileUrl } from '@/features/library/sdk/library.client';
+import { getItemFileUrl } from '@/features/library/sdk/library.client';
 import {
   useReaderItem,
   useReaderFulltext,
@@ -22,6 +22,7 @@ import { useReaderStore } from '@/features/library/core/store/reader.store';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import type {
   ReaderDocument,
+  ReaderAnnotation,
   AnnotationRect,
   ReaderNavigationTarget,
   AnnotationType,
@@ -42,7 +43,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
 
   const storeReadingId = useReaderStore((s) => s.readingPaperId);
   const closeReader = useReaderStore((s) => s.closeReader);
-  const effectivePaperId = overridePaperId || storeReadingId || params?.paperId || '';
+  const effectivePaperId = overridePaperId || params?.paperId || storeReadingId || '';
 
   const paperQuery = useReaderItem(scopeId, effectivePaperId);
   const paper = (paperQuery.data ?? null) as ReaderDocument | null;
@@ -98,7 +99,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
   const {
     annotations = [],
     createAnnotation,
-    updateAnnotation,
+    updateAnnotation: rawUpdateAnnotation,
     deleteAnnotation: rawDeleteAnnotation,
     extractNotes,
     importExternal,
@@ -124,6 +125,10 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     handleBatchDelete,
     handleBatchAddToNote,
     pruneDeletedFromHistory,
+    recordCreateAnnotation,
+    recordUpdateAnnotation,
+    recordSingleDeleteAnnotation,
+    recordDeletedAnnotations,
     undo: handleUndoAnnotation,
     redo: handleRedoAnnotation,
     canUndo,
@@ -135,12 +140,46 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     setPendingNoteText,
   });
 
+  const updateAnnotation = useCallback(
+    async (
+      annotationId: string,
+      expectedVersion: number | undefined,
+      dto: { color?: string; comment?: string; quoteText?: string; tags?: string[] },
+    ) => {
+      const target = (annotations || []).find((a) => a.id === annotationId);
+      const before: Partial<ReaderAnnotation> = target
+        ? {
+            ...(dto.color !== undefined ? { color: target.color } : {}),
+            ...(dto.comment !== undefined ? { comment: target.comment ?? '' } : {}),
+            ...(dto.quoteText !== undefined ? { quoteText: target.quoteText } : {}),
+            ...(dto.tags !== undefined ? { tags: target.tags ?? [] } : {}),
+          }
+        : {};
+      const res = await rawUpdateAnnotation(annotationId, expectedVersion, dto);
+      if (target && effectiveAttachmentId) {
+        recordUpdateAnnotation({
+          annotationId,
+          attachmentId: effectiveAttachmentId,
+          before,
+          after: dto,
+          version: (res as { version?: number } | undefined)?.version ?? target.version,
+        });
+      }
+      return res;
+    },
+    [annotations, effectiveAttachmentId, rawUpdateAnnotation, recordUpdateAnnotation],
+  );
+
   const deleteAnnotation = useCallback(
     async (annotationId: string, expectedVersion?: number) => {
+      const target = (annotations || []).find((a) => a.id === annotationId);
       pruneDeletedFromHistory([annotationId]);
+      if (target) {
+        recordSingleDeleteAnnotation(target);
+      }
       return rawDeleteAnnotation(annotationId, expectedVersion);
     },
-    [rawDeleteAnnotation, pruneDeletedFromHistory],
+    [annotations, recordSingleDeleteAnnotation, rawDeleteAnnotation, pruneDeletedFromHistory],
   );
 
   useEffect(() => {
@@ -220,6 +259,9 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
           rects,
           tags: [],
         });
+        if (created && typeof created === 'object' && 'id' in created) {
+          recordCreateAnnotation(created as ReaderAnnotation, effectiveAttachmentId);
+        }
         return created;
       } catch (err) {
         // Error toast already handled in useAnnotations createMutation
@@ -231,7 +273,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
         }
       }
     },
-    [effectiveAttachmentId, createAnnotation],
+    [effectiveAttachmentId, createAnnotation, recordCreateAnnotation],
   );
 
   const goBack = useCallback(() => {
@@ -247,6 +289,8 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     () => ({
       scopeId,
       projectId: isProject ? rawProjectId : undefined,
+      isProject,
+      rawProjectId,
       paperId: effectivePaperId,
       isLoadingPapers,
       paper,
@@ -324,6 +368,10 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
       handleBatchAddToNote,
       handleUndoAnnotation,
       handleRedoAnnotation,
+      recordCreateAnnotation,
+      recordUpdateAnnotation,
+      recordSingleDeleteAnnotation,
+      recordDeletedAnnotations,
       updateAnnotation,
       deleteAnnotation,
       extractNotes,
@@ -345,6 +393,10 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
       handleBatchAddToNote,
       handleUndoAnnotation,
       handleRedoAnnotation,
+      recordCreateAnnotation,
+      recordUpdateAnnotation,
+      recordSingleDeleteAnnotation,
+      recordDeletedAnnotations,
       updateAnnotation,
       deleteAnnotation,
       extractNotes,

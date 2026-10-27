@@ -8,6 +8,9 @@
 
 import type { Item } from '@/features/library/domain/types/library.types';
 import {
+  getItemTypeDefinition,
+} from '@/features/library/domain/types/item-types.types';
+import {
   isValidValue,
   normalizeTags,
   getItemDisplayTitle,
@@ -15,7 +18,6 @@ import {
   getPublicationVenue,
 } from './metadata';
 import {
-  FIELD_FALLBACK_CHAINS,
   prepareInspectorFieldContext,
   resolveInspectorFieldValue,
   type PreparedInspectorFieldContext,
@@ -63,6 +65,90 @@ export const MERGEABLE_FIELDS: MergeFieldDefinition[] = [
   { key: 'rights', label: 'Rights / License', category: 'publishing' },
   { key: 'extra', label: 'Extra Notes / BibTeX Extra', category: 'publishing' },
 ];
+
+const IDENTIFIER_SCHEMA_KEYS = new Set<string>([
+  'doi',
+  'isbn',
+  'issn',
+  'pmid',
+  'pmcid',
+  'arxivid',
+  'archiveid',
+  'url',
+  'openaccesspdfurl',
+  'citationkey',
+  'callnumber',
+  'patentnumber',
+  'applicationnumber',
+  'docketnumber',
+  'publiclawnumber',
+  'reportnumber',
+  'billnumber',
+  'documentnumber',
+]);
+
+function inferMergeFieldCategory(
+  fieldKey: string,
+): 'core' | 'details' | 'identifiers' | 'publishing' {
+  const lower = fieldKey.toLowerCase();
+  if (IDENTIFIER_SCHEMA_KEYS.has(lower)) return 'identifiers';
+  if (
+    lower.includes('series') ||
+    lower.includes('archive') ||
+    lower.includes('catalog') ||
+    lower === 'language' ||
+    lower === 'rights' ||
+    lower === 'license'
+  ) {
+    return 'publishing';
+  }
+  return 'details';
+}
+
+/**
+ * Dynamically derives the complete set of mergeable fields for a cluster's item types,
+ * combining `MERGEABLE_FIELDS` with all type-specific Zotero Schema v42 fields (`proceedingsTitle`,
+ * `conferenceName`, `bookTitle`, `university`, `thesisType`, `patentNumber`, `court`, `repository`, etc.).
+ */
+export function getMergeableFieldsForTypes(
+  itemTypes?: readonly (string | undefined | null)[],
+): MergeFieldDefinition[] {
+  if (!itemTypes || itemTypes.length === 0) return MERGEABLE_FIELDS;
+  const seenKeys = new Set<string>(
+    MERGEABLE_FIELDS.map((f) => f.key.toLowerCase()),
+  );
+  seenKeys.add('abstractnote');
+  seenKeys.add('date');
+
+  const extraFieldDefs: MergeFieldDefinition[] = [];
+  for (const rawType of itemTypes) {
+    if (!rawType) continue;
+    const def = getItemTypeDefinition(rawType);
+    if (!def || !def.fields) continue;
+    for (const f of def.fields) {
+      const key = f.field;
+      const lower = key.toLowerCase();
+      if (!key || seenKeys.has(lower) || lower === 'title' || lower === 'extra') {
+        continue;
+      }
+      seenKeys.add(lower);
+      extraFieldDefs.push({
+        key,
+        label: f.label || key,
+        category: inferMergeFieldCategory(key),
+      });
+    }
+  }
+
+  if (extraFieldDefs.length === 0) return MERGEABLE_FIELDS;
+  const baseWithoutExtra = MERGEABLE_FIELDS.filter((f) => f.key !== 'extra');
+  const extraField = MERGEABLE_FIELDS.find((f) => f.key === 'extra');
+  return [
+    ...baseWithoutExtra,
+    ...extraFieldDefs,
+    ...(extraField ? [extraField] : []),
+  ];
+}
 
 export type DiffStatus =
   | 'IDENTICAL'
@@ -146,9 +232,8 @@ const EXTRA_FIELD_FALLBACKS: Record<string, readonly string[]> = {
 };
 
 /**
- * Resolves a field value from an item, delegating to canonical domain resolvers (`getItemDisplayTitle`,
- * `getItemDisplayDate`, `getPublicationVenue`, `FIELD_FALLBACK_CHAINS`, `resolveInspectorFieldValue`)
- * and `extraFields` when the primary key is empty.
+ * Resolves a field value from an item, delegating to `resolveInspectorFieldValue` (`item-field-schema.ts`)
+ * as the Single Source of Truth for scalar Zotero fields so Table, Inspector, and Merge Diff never disagree.
  */
 export function resolveItemFieldValue(
   item: Record<string, unknown> | undefined,
@@ -157,25 +242,22 @@ export function resolveItemFieldValue(
 ): unknown {
   if (!item) return undefined;
   const direct = item[key];
-  if (!isFieldEmpty(direct)) return direct;
-
   const ef = item.extraFields as Record<string, unknown> | undefined;
-  if (ef && !isFieldEmpty(ef[key])) return ef[key];
 
   if (key === 'authors') {
     const rawAuthors = item.authors;
-    if (!isFieldEmpty(rawAuthors)) {
-      return rawAuthors;
-    }
-
+    if (!isFieldEmpty(rawAuthors)) return rawAuthors;
     const creators = item.creators ?? ef?.creators;
-    if (!isFieldEmpty(creators)) {
-      return creators;
-    }
+    if (!isFieldEmpty(creators)) return creators;
     return direct;
   }
 
+  if (key === 'creators') {
+    return !isFieldEmpty(direct) ? direct : ef?.creators;
+  }
+
   if (key === 'year') {
+    if (!isFieldEmpty(direct)) return direct;
     const derivedDate = getItemDisplayDate(item);
     return typeof derivedDate === 'number' ? derivedDate : direct;
   }
@@ -186,17 +268,39 @@ export function resolveItemFieldValue(
   }
 
   if (key === 'publicationTitle') {
+    if (!isFieldEmpty(direct)) return direct;
     const derivedVenue = getPublicationVenue(item);
     if (derivedVenue) return derivedVenue;
   }
 
-  const fallbackChain = FIELD_FALLBACK_CHAINS[key.toLowerCase()];
-  if (fallbackChain) {
-    for (const [src, prop] of fallbackChain) {
-      const candidate = src === 'p' ? item[prop] : ef?.[prop];
-      if (!isFieldEmpty(candidate)) return candidate;
+  if (key === 'extra') {
+    return !isFieldEmpty(direct) ? direct : ef?.extra;
+  }
+
+  if (key === 'arxivId') {
+    const rawArxiv =
+      direct ||
+      ef?.arxivId ||
+      ef?.archiveID ||
+      ef?.archiveId ||
+      resolveInspectorFieldValue(item as Partial<Item>, 'arxivId', precomputedContext);
+    if (!isFieldEmpty(rawArxiv)) {
+      return String(rawArxiv)
+        .replace(/^arxiv:\s*/i, '')
+        .replace(/\s*\[.*?\]\s*$/, '')
+        .trim();
     }
   }
+
+  const inspectorResolved = resolveInspectorFieldValue(
+    item as Partial<Item>,
+    key === 'abstract' ? 'abstractNote' : key,
+    precomputedContext,
+  );
+  if (!isFieldEmpty(inspectorResolved)) return inspectorResolved;
+
+  if (!isFieldEmpty(direct)) return direct;
+  if (ef && !isFieldEmpty(ef[key])) return ef[key];
 
   const aliases = EXTRA_FIELD_FALLBACKS[key];
   if (aliases) {
@@ -204,15 +308,6 @@ export function resolveItemFieldValue(
       if (!isFieldEmpty(item[alias])) return item[alias];
       if (ef && !isFieldEmpty(ef[alias])) return ef[alias];
     }
-  }
-
-  if (key !== 'creators' && key !== 'extra') {
-    const inspectorResolved = resolveInspectorFieldValue(
-      item as Partial<Item>,
-      key,
-      precomputedContext,
-    );
-    if (!isFieldEmpty(inspectorResolved)) return inspectorResolved;
   }
 
   return direct;
@@ -234,19 +329,23 @@ function extractCreatorObjectName(obj: Record<string, unknown>, fallback: unknow
   return JSON.stringify(fallback);
 }
 
-export function normalizeCompareValue(val: unknown): string {
+const UNORDERED_SET_FIELD_KEYS = new Set<string>(['tags', 'collections', 'collectionIds', 'keywords']);
+
+export function normalizeCompareValue(val: unknown, fieldKey?: string): string {
   if (isFieldEmpty(val)) return '';
   if (Array.isArray(val)) {
-    return val
+    const normalizedItems = val
       .filter((x) => isValidValue(x))
       .map((x) => {
         if (typeof x === 'object' && x !== null) {
           return extractCreatorObjectName(x as Record<string, unknown>, x).trim().toLowerCase();
         }
         return String(x).trim().toLowerCase();
-      })
-      .sort()
-      .join(';');
+      });
+    if (fieldKey && UNORDERED_SET_FIELD_KEYS.has(fieldKey)) {
+      normalizedItems.sort();
+    }
+    return normalizedItems.join(';');
   }
   return String(val).trim().toLowerCase();
 }
@@ -396,6 +495,8 @@ export function selectBestMasterItemId(
 export function mergeItemExtraFields(
   items: readonly Item[],
   masterItemId: string,
+  fieldOverrides?: Record<string, unknown>,
+  customFieldTexts?: Record<string, string>,
 ): string {
   if (items.length === 0) return '';
   const master = items.find((i) => i.id === masterItemId) || items[0]!;
@@ -406,11 +507,58 @@ export function mergeItemExtraFields(
   const existingTexIds = new Set<string>();
 
   const masterCtx = prepareInspectorFieldContext(master);
-  const masterCiteKey = String(
-    resolveItemFieldValue(master as Record<string, unknown>, 'citationKey', masterCtx) || '',
+  const masterRec = master as Record<string, unknown>;
+  const masterEf =
+    masterRec.extraFields && typeof masterRec.extraFields === 'object'
+      ? (masterRec.extraFields as Record<string, unknown>)
+      : {};
+
+  const resolveEffectiveTopLevelOrOverride = (
+    key: string,
+    fallbackVal: unknown,
+  ): unknown => {
+    if (customFieldTexts && key in customFieldTexts && customFieldTexts[key] !== undefined) {
+      return customFieldTexts[key];
+    }
+    if (fieldOverrides && key in fieldOverrides && fieldOverrides[key] !== undefined) {
+      return fieldOverrides[key];
+    }
+    return fallbackVal;
+  };
+
+  const rawMasterCiteKey = String(
+    resolveItemFieldValue(masterRec, 'citationKey', masterCtx) || '',
+  ).trim();
+  const effectiveMasterCiteKey = String(
+    resolveEffectiveTopLevelOrOverride('citationKey', rawMasterCiteKey) ?? '',
   ).trim();
 
-  const addLine = (rawLine: string) => {
+  if (rawMasterCiteKey && rawMasterCiteKey !== effectiveMasterCiteKey) {
+    existingTexIds.add(rawMasterCiteKey);
+  }
+
+  let hasPmid = isValidValue(
+    resolveEffectiveTopLevelOrOverride(
+      'pmid',
+      resolveItemFieldValue(masterRec, 'pmid', masterCtx),
+    ),
+  );
+  let hasPmcid = isValidValue(
+    resolveEffectiveTopLevelOrOverride(
+      'pmcid',
+      masterRec.pmcid ?? masterEf.pmcid ?? resolveItemFieldValue(masterRec, 'pmcid', masterCtx),
+    ),
+  );
+  let hasOrigDate = isValidValue(
+    resolveEffectiveTopLevelOrOverride(
+      'originalDate',
+      masterRec.originalDate ??
+        masterEf.originalDate ??
+        resolveItemFieldValue(masterRec, 'originalDate', masterCtx),
+    ),
+  );
+
+  const addLine = (rawLine: string, isMasterItem = true) => {
     const trimmed = rawLine.trim();
     if (!trimmed) return;
 
@@ -419,11 +567,28 @@ export function mergeItemExtraFields(
     if (texIdsMatch && texIdsMatch[1]) {
       for (const token of texIdsMatch[1].split(/[,;\s]+/)) {
         const cleanToken = token.trim();
-        if (cleanToken && cleanToken !== masterCiteKey) {
+        if (cleanToken && cleanToken !== effectiveMasterCiteKey) {
           existingTexIds.add(cleanToken);
         }
       }
       return;
+    }
+
+    if (!isMasterItem) {
+      const kvMatch = trimmed.match(/^([A-Za-z_][A-Za-z0-9._\s-]{0,40}?)\s*:\s*(.+)$/);
+      if (kvMatch) {
+        const keyNorm = kvMatch[1]!.trim().toLowerCase().replace(/[\s_-]+/g, '');
+        if (keyNorm === 'pmid') {
+          if (hasPmid) return;
+          hasPmid = true;
+        } else if (keyNorm === 'pmcid') {
+          if (hasPmcid) return;
+          hasPmcid = true;
+        } else if (keyNorm === 'originaldate') {
+          if (hasOrigDate) return;
+          hasOrigDate = true;
+        }
+      }
     }
 
     const norm = trimmed
@@ -437,9 +602,9 @@ export function mergeItemExtraFields(
   };
 
   for (const item of orderedItems) {
+    const isMasterItem = item.id === master.id;
     const rec = item as Record<string, unknown>;
-    const itemCtx =
-      item.id === master.id ? masterCtx : prepareInspectorFieldContext(item);
+    const itemCtx = isMasterItem ? masterCtx : prepareInspectorFieldContext(item);
     const ef =
       rec.extraFields && typeof rec.extraFields === 'object'
         ? (rec.extraFields as Record<string, unknown>)
@@ -454,22 +619,37 @@ export function mergeItemExtraFields(
 
     if (rawExtra) {
       for (const line of rawExtra.split(/\r?\n/)) {
-        addLine(line);
+        addLine(line, isMasterItem);
       }
     }
 
-    // Also harvest explicit PMID / PMCID / arXiv from item or extraFields if not yet in Extra lines
-    const pmid = resolveItemFieldValue(rec, 'pmid', itemCtx);
-    if (typeof pmid === 'string' && isValidValue(pmid)) {
-      addLine(`PMID: ${pmid.trim()}`);
+    // Back-fill explicit PMID / PMCID / Original Date from a duplicate only when the master lacks that identifier/date
+    if (isMasterItem || !hasPmid) {
+      const pmid = isMasterItem
+        ? resolveEffectiveTopLevelOrOverride('pmid', resolveItemFieldValue(rec, 'pmid', itemCtx))
+        : resolveItemFieldValue(rec, 'pmid', itemCtx);
+      if (typeof pmid === 'string' && isValidValue(pmid)) {
+        addLine(`PMID: ${pmid.trim()}`, true);
+        hasPmid = true;
+      }
     }
-    const pmcid = rec.pmcid ?? ef.pmcid;
-    if (typeof pmcid === 'string' && isValidValue(pmcid)) {
-      addLine(`PMCID: ${pmcid.trim()}`);
+    if (isMasterItem || !hasPmcid) {
+      const pmcid = isMasterItem
+        ? resolveEffectiveTopLevelOrOverride('pmcid', rec.pmcid ?? ef.pmcid)
+        : (rec.pmcid ?? ef.pmcid);
+      if (typeof pmcid === 'string' && isValidValue(pmcid)) {
+        addLine(`PMCID: ${pmcid.trim()}`, true);
+        hasPmcid = true;
+      }
     }
-    const origDate = rec.originalDate ?? ef.originalDate;
-    if (typeof origDate === 'string' && isValidValue(origDate)) {
-      addLine(`Original Date: ${origDate.trim()}`);
+    if (isMasterItem || !hasOrigDate) {
+      const origDate = isMasterItem
+        ? resolveEffectiveTopLevelOrOverride('originalDate', rec.originalDate ?? ef.originalDate)
+        : (rec.originalDate ?? ef.originalDate);
+      if (typeof origDate === 'string' && isValidValue(origDate)) {
+        addLine(`Original Date: ${origDate.trim()}`, true);
+        hasOrigDate = true;
+      }
     }
 
     // Collect alternate citationKey from non-master items into tex.ids
@@ -477,7 +657,7 @@ export function mergeItemExtraFields(
       const altCiteKey = String(
         resolveItemFieldValue(rec, 'citationKey', itemCtx) || '',
       ).trim();
-      if (altCiteKey && altCiteKey !== masterCiteKey) {
+      if (altCiteKey && altCiteKey !== effectiveMasterCiteKey) {
         existingTexIds.add(altCiteKey);
       }
     }

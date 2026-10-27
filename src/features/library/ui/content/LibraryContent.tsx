@@ -30,15 +30,16 @@ import {
 import type { LibraryOrderBy } from '@/features/library/ui/topbar/LibraryDisplayPopover';
 
 /** Fields requested from the server for the list view — kept at module scope to avoid inline array allocation. */
-const ITEM_LIST_FIELDS = [
+export const ITEM_LIST_FIELDS = [
   'id', 'title', 'itemType', 'type', 'year', 'publicationTitle',
   'authors', 'creators', 'contributors', 'firstAuthor', 'doi', 'citationKey',
   'hasFile', 'attachmentCount', 'noteCount', 'readStatus', 'rating', 'isStarred',
+  'isMyPublication', 'isRetracted', 'retractionInfo',
   'version', 'createdAt', 'updatedAt', 'deletedAt', 'collectionIds',
   'tags', 'labels', 'url',
 ] as const;
 
-const PAGE_SIZE = 50;
+export const PAGE_SIZE = 50;
 
 
 /** Maps generic library order-by fields to the saved search results API sortBy contract. */
@@ -66,6 +67,7 @@ interface LibraryContentProps {
   scopeId?: string;
   collectionId?: string;
   savedSearchId?: string | null;
+  feedId?: string;
   view?: string;
   canEdit?: boolean;
   onDirectFilesUpload?: (files: File[]) => void;
@@ -82,6 +84,7 @@ export function LibraryContent({
   scopeId,
   collectionId,
   savedSearchId: propSavedSearchId,
+  feedId,
   view,
   canEdit = true,
   onDirectFilesUpload,
@@ -354,7 +357,7 @@ export function LibraryContent({
   if (isFeed) {
     return (
       <FeedViewContent
-        feedId={nav.feedId}
+        feedId={feedId || nav.feedId}
         scopeId={scopeId}
         canEdit={canEdit}
       />
@@ -475,7 +478,7 @@ export function LibraryContent({
       <BatchBar
         items={displayedItems}
         collectionId={collectionId}
-        view={effectiveView}
+        view={isSavedSearchView ? 'saved-search' : effectiveView}
         collections={collections as Collection[]}
         isTrash={isTrash}
         scopeId={scopeId}

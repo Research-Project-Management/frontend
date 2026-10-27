@@ -16,7 +16,7 @@ import {
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/lib/utils";
 import { logger } from "@/shared/lib/logger";
-import { readerService } from "@/features/library/sdk/library.client";
+import { ExportsService } from "@/features/library/sdk/library.client";
 import type { ReaderDocument } from "@/features/library/domain/types/reader.types";
 
 export interface PaperBibtexDialogProps {
@@ -44,7 +44,7 @@ export default function PaperBibtexDialog({
     }
     let cancelled = false;
     setIsLoading(true);
-    readerService.citations
+    ExportsService
       .exportLibrary(paper.projectId, {
         format,
         itemIds: [paper.id],

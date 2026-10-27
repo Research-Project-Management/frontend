@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { libraryServices } from '@/features/library/sdk/library.client';
 import { useCollections, invalidateCollections } from '@/features/library/sdk/queries/collections.queries';
 import { triggerBrowserTextDownload } from '@/features/library/core/coordinator/citation-export.coordinator';
-import { canMoveCollection } from '@/features/library/domain/collection-tree.domain';
+import { canMoveCollection } from '@/features/library/domain/collection-tree';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import type {
   Collection,

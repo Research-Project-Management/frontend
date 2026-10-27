@@ -12,7 +12,6 @@ import {
   Pencil,
   Trash2,
   Scissors,
-  Sparkles,
 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { Checkbox } from "@/shared/components/ui/checkbox";
@@ -195,7 +194,7 @@ export function FilterTagsSection({
             </button>
           )}
 
-          {(onToggleShowAutomaticTags || onDeleteAutomaticTags) && (
+          {(onToggleShowAutomaticTags || onCreateTag) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
@@ -235,19 +234,6 @@ export function FilterTagsSection({
                     <Plus className="size-3.5" />
                     <span>Create New Tag...</span>
                   </DropdownMenuItem>
-                )}
-                {onDeleteAutomaticTags && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      disabled={isDeletingAutomatic}
-                      onClick={() => void onDeleteAutomaticTags()}
-                      className="gap-2 text-xs text-destructive focus:text-destructive cursor-pointer"
-                    >
-                      <Sparkles className="size-3.5" />
-                      <span>Delete Automatic Tags in Library</span>
-                    </DropdownMenuItem>
-                  </>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>

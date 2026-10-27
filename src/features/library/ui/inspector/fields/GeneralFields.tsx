@@ -59,14 +59,17 @@ export function GeneralFields({
 
   const handleTitleChange = (val: string) => {
     const trimmed = val.replace(/\r?\n+/g, " ").trim();
+    if (!trimmed) {
+      return;
+    }
     const patch = buildInspectorFieldPatch(
       item,
       mappedTitleKey || "title",
       trimmed,
     );
-    patch.title = trimmed || undefined;
+    patch.title = trimmed;
     if (mappedTitleKey && mappedTitleKey !== "title") {
-      patch[mappedTitleKey] = trimmed || undefined;
+      patch[mappedTitleKey] = trimmed;
     }
     onUpdateItem?.(patch);
   };
@@ -162,7 +165,7 @@ export function GeneralFields({
           {titleLabel}
         </span>
         <InlineTextarea
-          itemKey={item.id}
+          itemKey={`${item.id}-title`}
           value={displayTitleValue}
           ariaLabel="Item Title"
           onSave={handleTitleChange}

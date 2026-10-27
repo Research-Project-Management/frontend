@@ -4,14 +4,7 @@
  * Provides 0ms instant bootstrap with persistent client-side cache and runtime reactivity.
  */
 
-import {
-  SCHEMA_CACHE_KEY,
-  isBrowser,
-  saveSchemaCache,
-  loadSchemaCache,
-} from '@/features/library/core/adapters/schema-storage.adapter';
 
-export { SCHEMA_CACHE_KEY, isBrowser, saveSchemaCache, loadSchemaCache };
 
 /**
  * Converts a camelCase field identifier into a human-readable title.
@@ -293,12 +286,28 @@ export const ITEM_TYPE_FIELDS_MAP: Record<string, string[]> = {
 };
 
 /**
- * All 121 canonical Zotero Schema v42 field names derived automatically from the
- * 37 bibliographic item types in `INITIAL_ITEM_TYPE_FIELDS_MAP`.
+ * All canonical Zotero Schema v42 field names derived automatically from the
+ * bibliographic item types in `ITEM_TYPE_FIELDS_MAP`.
+ * Mutated in place by `updateCachedFields` whenever the dynamic schema registry hydrates.
  */
-export const ALL_SCHEMA_FIELD_KEYS: ReadonlySet<string> = new Set<string>(
+const MUTABLE_ALL_SCHEMA_FIELD_KEYS = new Set<string>(
   Object.values(INITIAL_ITEM_TYPE_FIELDS_MAP).flat(),
 );
+
+export const ALL_SCHEMA_FIELD_KEYS: ReadonlySet<string> =
+  MUTABLE_ALL_SCHEMA_FIELD_KEYS;
+
+export function rebuildAllSchemaFieldKeys(): void {
+  for (const fields of Object.values(ITEM_TYPE_FIELDS_MAP)) {
+    if (Array.isArray(fields)) {
+      for (const f of fields) {
+        if (typeof f === 'string' && f.trim()) {
+          MUTABLE_ALL_SCHEMA_FIELD_KEYS.add(f.trim());
+        }
+      }
+    }
+  }
+}
 
 export interface SchemaFieldEntry {
   field?: string;
@@ -337,6 +346,7 @@ export function updateCachedFields(types: unknown[]): void {
         const fieldName = f.field || f.key;
         if (typeof fieldName === 'string' && fieldName.trim()) {
           fieldKeys.push(fieldName);
+          MUTABLE_ALL_SCHEMA_FIELD_KEYS.add(fieldName);
           if (f.label && typeof f.label === 'string') {
             FIELD_LABELS[fieldName] = f.label;
           } else if (!FIELD_LABELS[fieldName]) {

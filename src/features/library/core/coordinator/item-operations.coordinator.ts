@@ -6,6 +6,7 @@ import {
   createTrashCommand,
   createRestoreCommand,
   createMoveItemsCommand,
+  createToggleStarCommand,
 } from "@/features/library/core/manager/library-command.manager";
 import type { Item } from "@/features/library/domain/types/library.types";
 
@@ -65,7 +66,19 @@ export function useLibraryItemOperations(options: UseLibraryItemOperationsOption
         item.id.startsWith('temp-') ||
         item.id.startsWith('provisional-')
       ) return;
-      optionsRef.current.toggleStarMutation.mutate({
+      const toggleStarMutation = optionsRef.current.toggleStarMutation;
+      if (toggleStarMutation.mutateAsync) {
+        void useLibraryCommandStore.getState().executeCommand(
+          createToggleStarCommand({
+            itemId: item.id,
+            itemTitle: item.title,
+            newStarred: !isStarred,
+            toggleStarMutation: { mutateAsync: toggleStarMutation.mutateAsync },
+          }),
+        );
+        return;
+      }
+      toggleStarMutation.mutate({
         id: item.id,
         isStarred: !isStarred,
       });

@@ -63,6 +63,7 @@ export interface ProcessBatchUploadOptions {
   collectionId?: string;
   queryClient: InvalidationClient;
   onSuccess?: () => void;
+  abortSignal?: AbortSignal;
 }
 
 export interface ProcessModalStoreApi {

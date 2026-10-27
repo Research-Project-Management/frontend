@@ -65,6 +65,9 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
     handleNavigateToLine,
     handleNavigateToFileAndLine,
     setOverviewResolvedCount,
+    reviewInfo,
+    updateReviewStatus,
+    isUpdatingReviewStatus,
   } = useReviewState();
 
 
@@ -75,6 +78,10 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
         showResolved={showResolved}
         onToggleResolved={handleToggleResolved}
         activeResolvedCount={activeResolvedCount}
+        reviewStatus={reviewInfo.status}
+        roundNumber={reviewInfo.roundNumber}
+        onUpdateReviewStatus={(status) => updateReviewStatus({ status })}
+        isUpdatingReviewStatus={isUpdatingReviewStatus}
         onClose={onClose}
       />
 
@@ -103,7 +110,6 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
               if (pageId) {
                 const hasServerPending = pendingSuggestions.some((s) => !s.id.startsWith('sug-local-'));
                 if (hasServerPending) {
-                  reviewCoordinator.applyAllLocally('reject');
                   rejectAllMutation.mutate({ pageId });
                 } else {
                   void reviewCoordinator.rejectAll(pageId);
@@ -114,7 +120,6 @@ export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: 
               if (pageId) {
                 const hasServerPending = pendingSuggestions.some((s) => !s.id.startsWith('sug-local-'));
                 if (hasServerPending) {
-                  reviewCoordinator.applyAllLocally('accept');
                   acceptAllMutation.mutate({ pageId });
                 } else {
                   void reviewCoordinator.acceptAll(pageId);

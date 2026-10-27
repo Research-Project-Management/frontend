@@ -11,16 +11,13 @@
 
 import {
   manuscriptService,
-  flushPageContent,
-  syncIncremental,
-  compileLatex,
-  synctexService,
   type CompileLatexPayload,
   type CompilerDiagnostic,
   type ForwardSyncResult,
 } from '@/features/editor/sdk/manuscript.service';
 import { parseCompileErrors, type ParsedCompileError } from '@/features/editor/domain/latex/latex-structure';
 import { sessionCoordinator } from '@/features/editor/core';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { logger } from '@/shared/lib/utils';
 import {
   type SyncTeXNode,
@@ -188,6 +185,7 @@ export const LatexCompilerEngine = {
    * Cancels any ongoing compilation request to free server resources.
    */
   cancelInFlightCompile(projectId?: string): void {
+    const wasCompiling = Boolean(activeCompileController);
     const targetProjectId = projectId || activeCompileProjectId;
     if (activeCompileController) {
       activeCompileController.abort();
@@ -220,6 +218,13 @@ export const LatexCompilerEngine = {
       }
     }
     const controller = new AbortController();
+    if (opts.signal) {
+      if (opts.signal.aborted) {
+        controller.abort();
+      } else {
+        opts.signal.addEventListener('abort', () => controller.abort(), { once: true });
+      }
+    }
     activeCompileController = controller;
     activeCompileProjectId = projectId || null;
     const currentSignal = controller.signal;
@@ -234,15 +239,24 @@ export const LatexCompilerEngine = {
       if (projectId) {
         flushTasks.push(manuscriptService.updater.flushProject(projectId).catch(() => {}));
       }
-      for (const { fileId, content } of dirtyFiles) {
+      for (const { fileId } of dirtyFiles) {
         if (sessionCoordinator.isRealtimeConnected(fileId)) {
           flushedFileIds.push(fileId);
           continue;
         }
+        // If sessionCoordinator already flushed this file (via CompilationFlushBarrier)
+        // and its LRU model is now clean, skip redundant flush.
+        if (!lruDocumentCache.isDirty(fileId)) {
+          flushedFileIds.push(fileId);
+          continue;
+        }
         flushTasks.push(
-          flushPageContent(fileId, content)
-            .then(() => {
-              flushedFileIds.push(fileId);
+          sessionCoordinator
+            .flushFile(fileId)
+            .then((ok) => {
+              if (ok) {
+                flushedFileIds.push(fileId);
+              }
             })
             .catch((err: unknown) => {
               flushErrors.push({ fileId, error: err });
@@ -250,7 +264,9 @@ export const LatexCompilerEngine = {
             }),
         );
       }
-      await Promise.allSettled(flushTasks);
+      if (flushTasks.length > 0) {
+        await Promise.allSettled(flushTasks);
+      }
     }
 
     // 3. Compile: Enter compiling phase
@@ -264,7 +280,12 @@ export const LatexCompilerEngine = {
       if (!sourceContent && (item.fileId === pageId || item.fileId === mainFile)) {
         sourceContent = item.content;
       }
-      filesMap[item.fileId] = item.content;
+      const resolvedPath = item.path || lruDocumentCache.getModel(item.fileId)?.filePath;
+      if (resolvedPath) {
+        filesMap[resolvedPath] = item.content;
+      } else if (!(item.fileId in filesMap) && Object.keys(filesMap).length === 0) {
+        filesMap[item.fileId] = item.content;
+      }
     }
 
     const payload: CompileLatexPayload = {
@@ -296,7 +317,7 @@ export const LatexCompilerEngine = {
         };
       }
 
-      const data = await compileLatex(payload, currentSignal);
+      const data = await manuscriptService.compiler.compile(payload, currentSignal);
 
       if (currentSignal.aborted || data?.error?.toLowerCase().includes('aborted')) {
         logger.debug('[LatexCompilerEngine] Compile request aborted or superseded.');
@@ -434,7 +455,7 @@ export const LatexCompilerEngine = {
   },
 
   forceSync(projectId: string): Promise<{ synced: string[] }> {
-    return syncIncremental(projectId, [], true);
+    return manuscriptService.docs.syncIncremental(projectId, [], true);
   },
 
   /**
@@ -447,7 +468,7 @@ export const LatexCompilerEngine = {
     column: number = 0,
   ): Promise<ForwardSyncResult | null> {
     try {
-      const res = await synctexService.forwardSync({
+      const res = await manuscriptService.synctex.forwardSync({
         projectId,
         file,
         line,
@@ -470,7 +491,7 @@ export const LatexCompilerEngine = {
     y: number,
   ): Promise<{ sourcePath: string | null; line: number } | null> {
     try {
-      const res = await synctexService.reverseSync({
+      const res = await manuscriptService.synctex.reverseSync({
         projectId,
         page,
         x,

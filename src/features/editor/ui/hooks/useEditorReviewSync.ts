@@ -22,6 +22,9 @@ import {
 } from '@/features/editor/subsystems/review';
 import { useSettingsStore, editorCommandBus } from '@/features/editor/core';
 
+const EMPTY_SUGGESTIONS: never[] = [];
+const EMPTY_COMMENTS: never[] = [];
+
 export function useEditorReviewSync(
   fileId: string | null | undefined,
   view: EditorView | null
@@ -32,8 +35,10 @@ export function useEditorReviewSync(
   const trackChangesViewMode = useSettingsStore((s) => s.trackChangesViewMode);
   const reviewMode = useSettingsStore((s) => s.reviewMode);
 
-  const { data: suggestions = [] } = usePageSuggestions(fileId ?? null, undefined, effectiveClient);
-  const { data: comments = [] } = usePageComments(fileId ?? null, undefined, effectiveClient);
+  const { data: suggestionsData } = usePageSuggestions(fileId ?? null, undefined, effectiveClient);
+  const { data: commentsData } = usePageComments(fileId ?? null, undefined, effectiveClient);
+  const suggestions = suggestionsData ?? EMPTY_SUGGESTIONS;
+  const comments = commentsData ?? EMPTY_COMMENTS;
 
   // Synchronize decorations whenever suggestions, comments, or settings change
   useEffect(() => {

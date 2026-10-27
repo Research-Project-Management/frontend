@@ -94,32 +94,19 @@ export function maskLatexEntities(text: string): { maskedText: string; unmask: (
   return { maskedText: masked, unmask };
 }
 
-/**
- * System Prompts tailored for LaTeX academic writing.
- */
-export function getAcademicSystemPrompt(action: AcademicAiActionType, customPrompt?: string): string {
-  switch (action) {
-    case 'academic-tone':
-      return 'You are an expert scientific editor for top-tier peer-reviewed journals (Nature, IEEE, ACM, Science). Rewrite the provided text to elevate its academic tone, scholarly vocabulary, clarity, and precision. Maintain third-person or formal academic voice. Do NOT add preamble or meta-commentary, return ONLY the rewritten text.';
-    case 'make-concise':
-      return 'You are an expert scientific editor. Rewrite the provided text to make it significantly more concise and direct. Eliminate redundant modifiers, passive fluff, and wordiness while strictly preserving all technical nuance and factual points. Return ONLY the rewritten text.';
-    case 'fix-grammar':
-      return 'You are an expert academic proofreader. Fix all grammatical, typographical, punctuation, and structural flow errors in the following text. Improve transition phrases. Return ONLY the corrected text.';
-    case 'translate-english':
-      return 'You are an expert academic translator. Translate the provided text into formal, publication-ready academic English suitable for high-impact research papers. Return ONLY the translated English text.';
-    case 'custom':
-      return `You are an expert scientific writing assistant. Follow this instruction carefully: ${customPrompt || 'Improve the text'}. Return ONLY the resulting text without conversational commentary.`;
-  }
+export interface AcademicAiActionStrategy {
+  readonly buildSystemPrompt: (customPrompt?: string) => string;
+  readonly applyHeuristic: (text: string) => string;
 }
 
-/**
- * Heuristic fallback transformation when offline or AI backend is unreachable.
- */
-export function applyHeuristicTransformation(text: string, action: AcademicAiActionType): string {
-  let result = text;
-  switch (action) {
-    case 'academic-tone':
-      result = result
+export const ACADEMIC_AI_STRATEGIES: Readonly<
+  Record<AcademicAiActionType, AcademicAiActionStrategy>
+> = {
+  'academic-tone': {
+    buildSystemPrompt: () =>
+      'You are an expert scientific editor for top-tier peer-reviewed journals (Nature, IEEE, ACM, Science). Rewrite the provided text to elevate its academic tone, scholarly vocabulary, clarity, and precision. Maintain third-person or formal academic voice. Do NOT add preamble or meta-commentary, return ONLY the rewritten text.',
+    applyHeuristic: (text) =>
+      text
         .replace(/\ba lot of\b/gi, 'a substantial volume of')
         .replace(/\bvery good\b/gi, 'superior')
         .replace(/\bshow that\b/gi, 'demonstrate that')
@@ -129,10 +116,13 @@ export function applyHeuristicTransformation(text: string, action: AcademicAiAct
         .replace(/\bget\b/gi, 'obtain')
         .replace(/\bfind out\b/gi, 'determine')
         .replace(/\buse\b/gi, 'utilize')
-        .replace(/\babout\b(?=\s+\d+)/gi, 'approximately');
-      break;
-    case 'make-concise':
-      result = result
+        .replace(/\babout\b(?=\s+\d+)/gi, 'approximately'),
+  },
+  'make-concise': {
+    buildSystemPrompt: () =>
+      'You are an expert scientific editor. Rewrite the provided text to make it significantly more concise and direct. Eliminate redundant modifiers, passive fluff, and wordiness while strictly preserving all technical nuance and factual points. Return ONLY the rewritten text.',
+    applyHeuristic: (text) =>
+      text
         .replace(/\bin order to\b/gi, 'to')
         .replace(/\bdue to the fact that\b/gi, 'because')
         .replace(/\bat the present time\b/gi, 'currently')
@@ -140,19 +130,44 @@ export function applyHeuristicTransformation(text: string, action: AcademicAiAct
         .replace(/\bin spite of the fact that\b/gi, 'although')
         .replace(/\ba large number of\b/gi, 'many')
         .replace(/\bis able to\b/gi, 'can')
-        .replace(/\bit is important to note that\b/gi, 'notably,');
-      break;
-    case 'fix-grammar':
-      result = result.trim();
-      if (result.length > 0) {
-        result = result.charAt(0).toUpperCase() + result.slice(1);
-      }
-      break;
-    case 'translate-english':
-      break;
-    case 'custom':
-      break;
-  }
+        .replace(/\bit is important to note that\b/gi, 'notably,'),
+  },
+  'fix-grammar': {
+    buildSystemPrompt: () =>
+      'You are an expert academic proofreader. Fix all grammatical, typographical, punctuation, and structural flow errors in the following text. Improve transition phrases. Return ONLY the corrected text.',
+    applyHeuristic: (text) => {
+      const trimmed = text.trim();
+      return trimmed.length > 0
+        ? trimmed.charAt(0).toUpperCase() + trimmed.slice(1)
+        : trimmed;
+    },
+  },
+  'translate-english': {
+    buildSystemPrompt: () =>
+      'You are an expert academic translator. Translate the provided text into formal, publication-ready academic English suitable for high-impact research papers. Return ONLY the translated English text.',
+    applyHeuristic: (text) => text,
+  },
+  custom: {
+    buildSystemPrompt: (customPrompt) =>
+      `You are an expert scientific writing assistant. Follow this instruction carefully: ${customPrompt || 'Improve the text'}. Return ONLY the resulting text without conversational commentary.`,
+    applyHeuristic: (text) => text,
+  },
+};
+
+/**
+ * System Prompts tailored for LaTeX academic writing.
+ */
+export function getAcademicSystemPrompt(action: AcademicAiActionType, customPrompt?: string): string {
+  const strategy = ACADEMIC_AI_STRATEGIES[action] ?? ACADEMIC_AI_STRATEGIES.custom;
+  return strategy.buildSystemPrompt(customPrompt);
+}
+
+/**
+ * Heuristic fallback transformation when offline or AI backend is unreachable.
+ */
+export function applyHeuristicTransformation(text: string, action: AcademicAiActionType): string {
+  const strategy = ACADEMIC_AI_STRATEGIES[action] ?? ACADEMIC_AI_STRATEGIES.custom;
+  let result = strategy.applyHeuristic(text);
   if (result.length > 0 && text.length > 0 && text[0] === text[0].toUpperCase()) {
     result = result.charAt(0).toUpperCase() + result.slice(1);
   }

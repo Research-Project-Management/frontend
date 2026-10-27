@@ -8,7 +8,7 @@
  * - Generic file download triggers
  */
 
-import { exportService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 
 export interface ExportSingleDocOptions {
   pageId: string;
@@ -40,7 +40,7 @@ export async function exportDocumentAsWord({
   projectTitle,
   includeChildren = true,
 }: ExportSingleDocOptions): Promise<string> {
-  const res = await exportService.exportDocument(pageId, 'docx', includeChildren);
+  const res = await manuscriptService.export.exportDocument(pageId, 'docx', includeChildren);
 
   const binaryStr = window.atob(res.content);
   const len = binaryStr.length;
@@ -73,7 +73,7 @@ export async function exportDocumentAsMarkdown({
   fallbackContent,
 }: ExportSingleDocOptions): Promise<string> {
   try {
-    const res = await exportService.exportDocument(pageId, 'md', includeChildren);
+    const res = await manuscriptService.export.exportDocument(pageId, 'md', includeChildren);
 
     const blob = new Blob([res.content], {
       type: 'text/markdown;charset=utf-8',

@@ -9,7 +9,7 @@
 
 import { useQuery, useMutation, type QueryClient } from '@tanstack/react-query';
 import type { SuggestionStatus, PageSuggestion } from '@/features/editor/domain/types/suggestion.types';
-import { suggestionService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { type CreateSuggestionPayload } from '@/features/editor/sdk/manuscript/types';
 import { reviewCoordinator } from '@/features/editor/subsystems/review/coordinator/review.coordinator';
 import { toast } from 'sonner';
@@ -32,7 +32,7 @@ export const usePageSuggestions = (
       queryKey: suggestionKeys.byPage(pageId, status),
       queryFn: async (): Promise<PageSuggestion[]> => {
         if (!pageId) return [];
-        const suggestions = await suggestionService.getSuggestions(pageId, status);
+        const suggestions = await manuscriptService.suggestions.getSuggestions(pageId, status);
         return suggestions || [];
       },
       enabled: Boolean(pageId),
@@ -45,7 +45,7 @@ export const useCreateSuggestion = (customClient?: QueryClient) => {
   const queryClient = useSafeQueryClient(customClient);
   return useMutation({
     mutationFn: async (payload: CreateSuggestionPayload) => {
-      return await suggestionService.createSuggestion(payload);
+      return await manuscriptService.suggestions.createSuggestion(payload);
     },
     onSuccess: (_newSug, variables) => {
       queryClient.invalidateQueries({ queryKey: ['page-suggestions', variables.pageId] });
@@ -64,8 +64,8 @@ export const useAcceptSuggestion = (customClient?: QueryClient) => {
   const queryClient = useSafeQueryClient(customClient);
   return useMutation({
     mutationFn: async ({ pageId, suggestionId }: { pageId: string; suggestionId: string }) => {
-      reviewCoordinator.applySuggestionByIdLocally(suggestionId, 'accept');
-      return await suggestionService.acceptSuggestion(pageId, suggestionId);
+      reviewCoordinator.applySuggestionByIdLocally(suggestionId, 'accept', pageId);
+      return await manuscriptService.suggestions.acceptSuggestion(pageId, suggestionId);
     },
     onMutate: async ({ pageId, suggestionId }) => {
       await queryClient.cancelQueries({ queryKey: ['page-suggestions', pageId] });
@@ -102,8 +102,8 @@ export const useRejectSuggestion = (customClient?: QueryClient) => {
   const queryClient = useSafeQueryClient(customClient);
   return useMutation({
     mutationFn: async ({ pageId, suggestionId }: { pageId: string; suggestionId: string }) => {
-      reviewCoordinator.applySuggestionByIdLocally(suggestionId, 'reject');
-      return await suggestionService.rejectSuggestion(pageId, suggestionId);
+      reviewCoordinator.applySuggestionByIdLocally(suggestionId, 'reject', pageId);
+      return await manuscriptService.suggestions.rejectSuggestion(pageId, suggestionId);
     },
     onMutate: async ({ pageId, suggestionId }) => {
       await queryClient.cancelQueries({ queryKey: ['page-suggestions', pageId] });
@@ -138,9 +138,13 @@ export const useRejectSuggestion = (customClient?: QueryClient) => {
 export const useAcceptAllSuggestions = (customClient?: QueryClient) => {
   const queryClient = useSafeQueryClient(customClient);
   return useMutation({
+    onMutate: ({ pageId }: { pageId: string }) => {
+      const snapshot = reviewCoordinator.getRollbackSnapshot(pageId);
+      return { snapshot };
+    },
     mutationFn: async ({ pageId }: { pageId: string }) => {
-      reviewCoordinator.applyAllLocally('accept');
-      return await suggestionService.acceptAllSuggestions(pageId);
+      reviewCoordinator.applyAllLocally('accept', pageId);
+      return await manuscriptService.suggestions.acceptAllSuggestions(pageId);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['page-suggestions', variables.pageId] });
@@ -148,7 +152,10 @@ export const useAcceptAllSuggestions = (customClient?: QueryClient) => {
       queryClient.invalidateQueries({ queryKey: ['pages', 'detail', variables.pageId] });
       toast.success('All suggestions accepted', { id: 'sug-bulk' });
     },
-    onError: (err: unknown) => {
+    onError: (err: unknown, _variables, context) => {
+      if (context?.snapshot) {
+        reviewCoordinator.restoreSnapshot(context.snapshot);
+      }
       toast.error((err as Error)?.message || 'Failed to accept all suggestions', { id: 'sug-bulk' });
     },
   }, queryClient);
@@ -157,16 +164,23 @@ export const useAcceptAllSuggestions = (customClient?: QueryClient) => {
 export const useRejectAllSuggestions = (customClient?: QueryClient) => {
   const queryClient = useSafeQueryClient(customClient);
   return useMutation({
+    onMutate: ({ pageId }: { pageId: string }) => {
+      const snapshot = reviewCoordinator.getRollbackSnapshot(pageId);
+      return { snapshot };
+    },
     mutationFn: async ({ pageId }: { pageId: string }) => {
-      reviewCoordinator.applyAllLocally('reject');
-      return await suggestionService.rejectAllSuggestions(pageId);
+      reviewCoordinator.applyAllLocally('reject', pageId);
+      return await manuscriptService.suggestions.rejectAllSuggestions(pageId);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['page-suggestions', variables.pageId] });
       queryClient.invalidateQueries({ queryKey: ['page-suggestions'] });
       toast.info('All suggestions rejected', { id: 'sug-bulk' });
     },
-    onError: (err: unknown) => {
+    onError: (err: unknown, _variables, context) => {
+      if (context?.snapshot) {
+        reviewCoordinator.restoreSnapshot(context.snapshot);
+      }
       toast.error((err as Error)?.message || 'Failed to reject all suggestions', { id: 'sug-bulk' });
     },
   }, queryClient);

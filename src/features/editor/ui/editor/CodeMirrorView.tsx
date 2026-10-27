@@ -42,6 +42,7 @@ import { useEditorReviewSync } from '@/features/editor/ui/hooks/useEditorReviewS
 import {
   setErrorLensDiagnosticsEffect,
   createDiagnosticsGutter,
+  createLatexLinterExtension,
   diagnosticsCoordinator,
 } from '@/features/editor/subsystems/diagnostics';
 import { CodeMirrorEngineAdapter } from '@/features/editor/core/engine/adapters/codemirror.adapter';
@@ -122,7 +123,7 @@ export function buildEditorState(options: BuildEditorStateOptions): EditorState 
     autoCloseBrackets: options.autoCloseBrackets ?? true,
     enableMathPreview: options.enableMathPreview ?? true,
     enableAutocomplete: options.enableAutocomplete ?? true,
-    enableLinter: options.enableLinter ?? true,
+    enableLinter: false,
     enableErrorLens: options.errorLensEnabled,
     enableSpellCheck: options.spellCheck,
     spellCheckLanguage: options.spellCheckLanguage,
@@ -133,6 +134,9 @@ export function buildEditorState(options: BuildEditorStateOptions): EditorState 
     lineHeight: options.lineHeight,
     enableVisualMode: options.editorMode === 'visual',
   });
+
+  const linterExtension =
+    options.enableLinter ?? true ? createLatexLinterExtension(options.filePath) : [];
 
   const diagnosticsExtension = createDiagnosticsGutter({
     filePath: options.filePath,
@@ -159,6 +163,7 @@ export function buildEditorState(options: BuildEditorStateOptions): EditorState 
     doc: options.initialText,
     extensions: [
       ...presetExtensions,
+      linterExtension,
       diagnosticsExtension,
       collabExtension,
       trackChangesExtension,
@@ -384,8 +389,19 @@ export function CodeMirrorView({
         cachedModel?.content !== undefined && (cachedModel.content.length > 0 || !docValue)
           ? cachedModel.content
           : docValue;
-      const initialText =
-        yText && yText.length > 0 ? yText.toString() : cachedContent;
+      let effectiveYText = yText ?? null;
+      if (effectiveYText && effectiveYText.length === 0 && cachedContent) {
+        if (effectiveYText.doc) {
+          effectiveYText.doc.transact(() => {
+            if (effectiveYText && effectiveYText.length === 0) {
+              effectiveYText.insert(0, cachedContent);
+            }
+          }, 'local-init');
+        } else {
+          effectiveYText.insert(0, cachedContent);
+        }
+      }
+      const initialText = effectiveYText ? effectiveYText.toString() : cachedContent;
 
       return buildEditorState({
         fileId: docFileId,
@@ -536,11 +552,17 @@ export function CodeMirrorView({
     }
 
     let diagSyncTimerId: ReturnType<typeof setTimeout> | null = null;
-    const unsubDiagnostics = diagnosticsCoordinator.subscribe(() => {
+    const unsubDiagnostics = diagnosticsCoordinator.subscribe((_fileKey, source) => {
+      // Only re-trigger forceLinting when filter options change ('filter').
+      // Never call forceLinting on 'linter', 'shift', 'clear', or 'compiler' notifications,
+      // preventing coordinator -> forceLinting -> ingestLinterDiagnostics feedback loops.
+      const shouldForceLint = source === 'filter';
       const runSync = () => {
         if (viewRef.current) {
           try {
-            forceLinting(viewRef.current);
+            if (shouldForceLint) {
+              forceLinting(viewRef.current);
+            }
             syncErrorLens(viewRef.current, currentFilePathRef.current);
           } catch {
             // Defer if called mid-transaction
@@ -548,7 +570,9 @@ export function CodeMirrorView({
             diagSyncTimerId = setTimeout(() => {
               diagSyncTimerId = null;
               if (viewRef.current) {
-                forceLinting(viewRef.current);
+                if (shouldForceLint) {
+                  forceLinting(viewRef.current);
+                }
                 syncErrorLens(viewRef.current, currentFilePathRef.current);
               }
             }, 0);
@@ -723,28 +747,28 @@ export function CodeMirrorView({
 
     const prevFileId = currentFileIdRef.current;
     const prevFilePath = currentFilePathRef.current;
-    const isSameDoc = prevFileId === fileId && prevFilePath === filePath;
-    const yTextBecameReady =
-      isSameDoc && Boolean(yText) && boundYTextRef.current !== yText;
+    const prevDocKey = prevFileId || prevFilePath;
+    const nextDocKey = (fileId || '') || (filePath || '');
+    const isSameDoc = prevDocKey !== '' && prevDocKey === nextDocKey;
 
-    // Skip if target document matches currently loaded document and yText binding is already current
-    if (isSameDoc && !yTextBecameReady) return;
+    // Skip full EditorState rebuild when staying on the same document;
+    // Yjs collab binding changes are reconfigured in-place via collabAdapter below.
+    if (isSameDoc) {
+      if (prevFilePath !== filePath) {
+        currentFilePathRef.current = filePath;
+        syncErrorLens(view, filePath);
+        if (isActiveRef.current) {
+          navigationCoordinator.registerEditorView(fileId, filePath);
+        }
+      }
+      return;
+    }
 
     // 1. Flush previous document content & viewState to LRU Cache
-    if (!isSameDoc) {
-      flushViewState(view, prevFileId);
-      reviewCoordinator.unbindEditorView(view, prevFileId);
-      if (adapterRef.current) {
-        unregisterEditorEngine(prevFileId, adapterRef.current);
-      }
-    } else {
-      const mainSel = view.state.selection.main;
-      const scrollDOM = view.scrollDOM;
-      lruDocumentCache.updateViewState(
-        fileId,
-        { anchor: mainSel.anchor, head: mainSel.head },
-        { top: scrollDOM.scrollTop, left: scrollDOM.scrollLeft }
-      );
+    flushViewState(view, prevFileId);
+    reviewCoordinator.unbindEditorView(view, prevFileId);
+    if (adapterRef.current) {
+      unregisterEditorEngine(prevFileId, adapterRef.current);
     }
 
     // 2. Build new EditorState for the target document (bound to current yText & awareness)
@@ -752,9 +776,7 @@ export function CodeMirrorView({
 
     // 3. 0ms Zero-Remount State Swap (Preserves DOM container & event listeners)
     view.setState(nextState);
-    if (!isSameDoc) {
-      view.dispatch({ effects: clearDiffEffect.of() });
-    }
+    view.dispatch({ effects: clearDiffEffect.of() });
     boundYTextRef.current = yText ?? null;
     prevConfigRef.current = {
       runtime: currentRuntimeConfig,
@@ -783,7 +805,8 @@ export function CodeMirrorView({
         navigationCoordinator.registerEditorView(fileId, filePath);
       }
     }
-  }, [fileId, filePath, value, yText, awareness, createStateForDocument, currentRuntimeConfig, reviewMode, trackChangesViewMode, syncErrorLens]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fileId, filePath]);
 
   // Sync active engine when pane active status updates
   useEffect(() => {
@@ -848,15 +871,47 @@ export function CodeMirrorView({
 
   // Reconfigure Yjs collab extension on prop change
   useEffect(() => {
-    if (viewRef.current && boundYTextRef.current !== (yText ?? null)) {
-      boundYTextRef.current = yText ?? null;
-      viewRef.current.dispatch({
-        effects: collabAdapter.reconfigure({
-          yText: yText ?? null,
-          awareness,
-        }),
-      });
+    const view = viewRef.current;
+    const nextYText = yText ?? null;
+    if (!view || boundYTextRef.current === nextYText) return;
+
+    boundYTextRef.current = nextYText;
+
+    if (nextYText) {
+      const currentDocText = view.state.doc.toString();
+      const yTextContent = nextYText.toString();
+      if (nextYText.length === 0 && currentDocText.length > 0) {
+        if (nextYText.doc) {
+          nextYText.doc.transact(() => {
+            if (nextYText.length === 0) {
+              nextYText.insert(0, currentDocText);
+            }
+          }, 'local-init');
+        } else {
+          nextYText.insert(0, currentDocText);
+        }
+      } else if (nextYText.length > 0 && currentDocText !== yTextContent) {
+        const diff = findDiffRange(currentDocText, yTextContent);
+        if (diff) {
+          const sel = view.state.selection.main;
+          const newLen = yTextContent.length;
+          view.dispatch({
+            changes: diff,
+            selection: {
+              anchor: Math.min(sel.anchor, newLen),
+              head: Math.min(sel.head, newLen),
+            },
+          });
+        }
+      }
     }
+
+    view.dispatch({
+      effects: collabAdapter.reconfigure({
+        yText: nextYText,
+        awareness,
+      }),
+    });
   }, [yText, awareness, collabAdapter]);
 
   return (

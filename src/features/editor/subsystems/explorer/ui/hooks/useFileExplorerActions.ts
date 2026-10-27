@@ -16,7 +16,7 @@
 import { useCallback } from 'react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
-import { manuscriptService, pageService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { filesQuery } from '@/features/editor/ui/hooks/document.queries';
 import type { Page, PageFile } from '@/features/editor/domain/types/core.types';
 import type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
@@ -34,6 +34,16 @@ export interface UseFileExplorerActionsOptions {
   engine?: IEditorEngine | null;
 }
 
+export function copyTexCommandToClipboard(title: string): void {
+  const full = displayName(title);
+  const base = full.replace(/\.[a-z0-9]+$/i, '');
+  const ext = full.split('.').pop()?.toLowerCase();
+  const snippet = ext === 'bib' ? `\\bibliography{${base}}` : `\\input{${base}}`;
+
+  navigator.clipboard.writeText(snippet);
+  toast.success(`Copied ${snippet} to clipboard`, { id: 'copy-tex-snippet' });
+}
+
 export function useFileExplorerActions(options?: UseFileExplorerActionsOptions) {
   const queryClient = useQueryClient();
   const { projectId, parentPageId, currentPage, engine } = options || {};
@@ -46,7 +56,7 @@ export function useFileExplorerActions(options?: UseFileExplorerActionsOptions) 
         if (latestPage && latestPage.id === file.id && latestPage.content) {
           rawContent = latestPage.content;
         } else {
-          const doc = await pageService.getById(file.id);
+          const doc = await manuscriptService.docs.getById(file.id);
           rawContent = doc?.content ?? '';
         }
 
@@ -80,13 +90,7 @@ export function useFileExplorerActions(options?: UseFileExplorerActionsOptions) 
   );
 
   const copyTexCommand = useCallback((title: string) => {
-    const full = displayName(title);
-    const base = full.replace(/\.[a-z0-9]+$/i, '');
-    const ext = full.split('.').pop()?.toLowerCase();
-    const snippet = ext === 'bib' ? `\\bibliography{${base}}` : `\\input{${base}}`;
-
-    navigator.clipboard.writeText(snippet);
-    toast.success(`Copied ${snippet} to clipboard`, { id: 'copy-tex-snippet' });
+    copyTexCommandToClipboard(title);
   }, []);
 
   const refreshLinkedFile = useCallback(
@@ -149,11 +153,30 @@ export function useFileExplorerActions(options?: UseFileExplorerActionsOptions) 
   const insertAsset = useCallback(
     (name: string) => {
       if (!engine) return;
-      const { snippet, newDocSource } = prepareAssetInsertion(name, engine.getContent());
+      const currentContent = engine.getContent();
+      const { snippet, newDocSource } = prepareAssetInsertion(name, currentContent);
       if (newDocSource) {
-        engine.setContent(newDocSource);
+        const offsets = engine.getSelectionOffsets?.();
+        if (offsets) {
+          const beginDocIdx = currentContent.indexOf('\\begin{document}');
+          const delta = newDocSource.length - currentContent.length;
+          const shift = beginDocIdx !== -1 && offsets.from >= beginDocIdx ? delta : 0;
+          const from = offsets.from + shift;
+          const to = offsets.to + shift;
+          const combined = newDocSource.slice(0, from) + snippet + newDocSource.slice(to);
+          engine.setContent(combined);
+        } else if (typeof engine.replaceRange === 'function') {
+          const beginDocIdx = currentContent.indexOf('\\begin{document}');
+          if (beginDocIdx !== -1) {
+            engine.replaceRange('\\usepackage{graphicx}\n', beginDocIdx, beginDocIdx);
+          }
+          engine.insertText(snippet);
+        } else {
+          engine.setContent(`${newDocSource}\n${snippet}`);
+        }
+      } else {
+        engine.insertText(snippet);
       }
-      engine.insertText(snippet);
       engine.focus();
     },
     [engine],

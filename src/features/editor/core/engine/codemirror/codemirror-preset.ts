@@ -11,7 +11,7 @@
  * - Overleaf-compatible keymap presets.
  */
 
-import { type Extension, type StateEffect, Compartment, EditorState, EditorSelection, Prec } from '@codemirror/state';
+import { type Extension, type StateEffect, Compartment, EditorState, EditorSelection, Facet, Prec } from '@codemirror/state';
 import {
   EditorView,
   lineNumbers,
@@ -59,7 +59,7 @@ import { createLatexSpellingExtension } from '@/features/editor/core/engine/exte
 import { latexVisualHeadings } from '@/features/editor/core/engine/extensions/latex-visual-headings';
 import { latexVisualMath } from '@/features/editor/core/engine/extensions/latex-visual-math';
 import { latexVisualCitations } from '@/features/editor/core/engine/extensions/latex-visual-citations';
-import { editorCommandBus } from '@/features/editor/core';
+import { editorCommandBus } from '../../bus/command-bus';
 import { useDocumentCollaborationStore } from '@/features/editor/core/store/collaboration.store';
 import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store';
 import { useSettingsStore } from '@/features/editor/core/store/settings.store';
@@ -366,6 +366,7 @@ export interface CodeMirrorPresetOptions {
   fontFamily?: string;
   lineHeight?: number;
   enableVisualMode?: boolean;
+  compartments?: EditorCompartmentMap;
 }
 
 declare global {
@@ -382,27 +383,42 @@ if (typeof window !== 'undefined') {
 /**
  * Isolated Compartments for 0ms Dynamic Reconfiguration.
  * Allows toggling editor features without unmounting EditorView or losing undo history.
+ * Use `createEditorCompartments()` for per-instance compartments across split panes.
  */
-export const editorCompartments = {
-  readOnly: new Compartment(),
-  lineNumbers: new Compartment(),
-  lineWrapping: new Compartment(),
-  keybinding: new Compartment(),
-  bracketMatching: new Compartment(),
-  highlightActiveLine: new Compartment(),
-  autocomplete: new Compartment(),
-  linter: new Compartment(),
-  mathPreview: new Compartment(),
-  citationHover: new Compartment(),
-  inlineDiff: new Compartment(),
-  folding: new Compartment(),
-  errorLens: new Compartment(),
-  spellCheck: new Compartment(),
-  smartPaste: new Compartment(),
-  theme: new Compartment(),
-  typography: new Compartment(),
-  visualMode: new Compartment(),
-};
+export function createEditorCompartments() {
+  return {
+    readOnly: new Compartment(),
+    lineNumbers: new Compartment(),
+    lineWrapping: new Compartment(),
+    keybinding: new Compartment(),
+    bracketMatching: new Compartment(),
+    highlightActiveLine: new Compartment(),
+    autocomplete: new Compartment(),
+    linter: new Compartment(),
+    mathPreview: new Compartment(),
+    citationHover: new Compartment(),
+    inlineDiff: new Compartment(),
+    folding: new Compartment(),
+    errorLens: new Compartment(),
+    spellCheck: new Compartment(),
+    smartPaste: new Compartment(),
+    theme: new Compartment(),
+    typography: new Compartment(),
+    visualMode: new Compartment(),
+  };
+}
+
+export type EditorCompartmentMap = ReturnType<typeof createEditorCompartments>;
+
+export const editorCompartments: EditorCompartmentMap = createEditorCompartments();
+
+export const editorCompartmentsFacet = Facet.define<EditorCompartmentMap, EditorCompartmentMap>({
+  combine: (values) => values[0] ?? editorCompartments,
+});
+
+export function getViewCompartments(view?: EditorView | null): EditorCompartmentMap {
+  return view?.state.facet(editorCompartmentsFacet) ?? editorCompartments;
+}
 
 import {
   wrapFormatting,
@@ -450,11 +466,13 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
     fontFamily,
     lineHeight,
     enableVisualMode = false,
+    compartments = createEditorCompartments(),
   } = options;
 
   const showLineNumbers = !enableVisualMode && Boolean(showLineNumbersOption);
 
   const extensions: Extension[] = [
+    editorCompartmentsFacet.of(compartments),
     // 0. Base Editor Layout & Typography Theme
     editorBaseTheme,
 
@@ -481,61 +499,61 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
       ...closeBracketsKeymap,
     ]),
 
-    // 4. Dynamic Compartments (Zero-cost reconfiguration)
-    editorCompartments.readOnly.of(EditorState.readOnly.of(readOnly)),
-    editorCompartments.keybinding.of(
+    // 4. Dynamic Compartments (Zero-cost per-instance reconfiguration)
+    compartments.readOnly.of(EditorState.readOnly.of(readOnly)),
+    compartments.keybinding.of(
       keybinding === 'vim' || (vimMode && keybinding !== 'emacs')
         ? vim()
         : keybinding === 'emacs'
         ? Prec.highest(keymap.of(emacsStyleKeymap))
         : []
     ),
-    editorCompartments.lineNumbers.of(
+    compartments.lineNumbers.of(
       showLineNumbers ? [createModernFoldGutter(), createConfiguredLineNumbers(), highlightActiveLineGutter()] : []
     ),
-    editorCompartments.lineWrapping.of(lineWrapping ? EditorView.lineWrapping : []),
-    editorCompartments.bracketMatching.of(
+    compartments.lineWrapping.of(lineWrapping ? EditorView.lineWrapping : []),
+    compartments.bracketMatching.of(
       enableBracketMatching
         ? enableAutoCloseBrackets
           ? [bracketMatching(), closeBrackets()]
           : [bracketMatching()]
         : []
     ),
-    editorCompartments.highlightActiveLine.of(
+    compartments.highlightActiveLine.of(
       enableHighlightActive ? highlightActiveLine() : []
     ),
-    editorCompartments.autocomplete.of(
+    compartments.autocomplete.of(
       enableAutocomplete ? createLatexAutocompleteExtension() : []
     ),
-    editorCompartments.linter.of(
+    compartments.linter.of(
       enableLinter ? createLatexLinterExtension() : []
     ),
-    editorCompartments.mathPreview.of(
+    compartments.mathPreview.of(
       enableMathPreview ? latexMathHoverTooltip : []
     ),
-    editorCompartments.citationHover.of(
+    compartments.citationHover.of(
       enableCitationHover ? latexCitationHoverTooltip : []
     ),
-    editorCompartments.inlineDiff.of(
+    compartments.inlineDiff.of(
       enableInlineDiff ? createInlineDiffExtension() : []
     ),
-    editorCompartments.folding.of(
+    compartments.folding.of(
       enableFolding ? createLatexFoldExtension() : []
     ),
-    editorCompartments.errorLens.of(
+    compartments.errorLens.of(
       enableErrorLens ? createLatexErrorLensExtension() : []
     ),
-    editorCompartments.spellCheck.of(
+    compartments.spellCheck.of(
       enableSpellCheck
         ? createLatexSpellingExtension({ projectId, language: spellCheckLanguage, enabled: true })
         : []
     ),
-    editorCompartments.smartPaste.of(
+    compartments.smartPaste.of(
       enableSmartPaste ? createLatexSmartPasteExtension({ projectId, enableSmartPaste: true }) : []
     ),
-    editorCompartments.theme.of(getThemeExtension(editorTheme)),
-    editorCompartments.typography.of(createTypographyExtension(fontSize, fontFamily, lineHeight)),
-    editorCompartments.visualMode.of(
+    compartments.theme.of(getThemeExtension(editorTheme)),
+    compartments.typography.of(createTypographyExtension(fontSize, fontFamily, lineHeight)),
+    compartments.visualMode.of(
       enableVisualMode ? createVisualModeExtensions() : []
     ),
   ];
@@ -564,22 +582,30 @@ export function createVisualModeExtensions(): Extension[] {
   ];
 }
 
-export function reconfigureVisualMode(view: EditorView, enabled: boolean): void {
+export function reconfigureVisualMode(
+  view: EditorView,
+  enabled: boolean,
+  compartments: EditorCompartmentMap = getViewCompartments(view),
+): void {
   view.dispatch({
     effects: [
-      editorCompartments.visualMode.reconfigure(
+      compartments.visualMode.reconfigure(
         enabled ? createVisualModeExtensions() : []
       ),
-      editorCompartments.lineNumbers.reconfigure(
+      compartments.lineNumbers.reconfigure(
         enabled ? [] : [createModernFoldGutter(), createConfiguredLineNumbers(), highlightActiveLineGutter()]
       ),
     ],
   });
 }
 
-export function reconfigureTheme(view: EditorView, themeId: string): void {
+export function reconfigureTheme(
+  view: EditorView,
+  themeId: string,
+  compartments: EditorCompartmentMap = getViewCompartments(view),
+): void {
   view.dispatch({
-    effects: editorCompartments.theme.reconfigure(getThemeExtension(themeId)),
+    effects: compartments.theme.reconfigure(getThemeExtension(themeId)),
   });
 }
 
@@ -587,18 +613,23 @@ export function reconfigureTypography(
   view: EditorView,
   fontSize: number,
   fontFamily?: string,
-  lineHeight?: number
+  lineHeight?: number,
+  compartments: EditorCompartmentMap = getViewCompartments(view),
 ): void {
   view.dispatch({
-    effects: editorCompartments.typography.reconfigure(
+    effects: compartments.typography.reconfigure(
       createTypographyExtension(fontSize, fontFamily, lineHeight)
     ),
   });
 }
 
-export function reconfigureErrorLens(view: EditorView, enabled: boolean): void {
+export function reconfigureErrorLens(
+  view: EditorView,
+  enabled: boolean,
+  compartments: EditorCompartmentMap = getViewCompartments(view),
+): void {
   view.dispatch({
-    effects: editorCompartments.errorLens.reconfigure(
+    effects: compartments.errorLens.reconfigure(
       enabled ? createLatexErrorLensExtension() : []
     ),
   });
@@ -633,13 +664,14 @@ export interface EditorRuntimeConfig {
  */
 export function computeCompartmentReconfigEffects(
   prev: EditorRuntimeConfig,
-  next: EditorRuntimeConfig
+  next: EditorRuntimeConfig,
+  compartments: EditorCompartmentMap = editorCompartments,
 ): StateEffect<unknown>[] {
   const effects: StateEffect<unknown>[] = [];
 
   if (prev.readOnly !== next.readOnly) {
     effects.push(
-      editorCompartments.readOnly.reconfigure(EditorState.readOnly.of(next.readOnly))
+      compartments.readOnly.reconfigure(EditorState.readOnly.of(next.readOnly))
     );
   }
 
@@ -648,7 +680,7 @@ export function computeCompartmentReconfigEffects(
 
   if (prev.visualMode !== next.visualMode) {
     effects.push(
-      editorCompartments.visualMode.reconfigure(
+      compartments.visualMode.reconfigure(
         next.visualMode ? createVisualModeExtensions() : []
       )
     );
@@ -656,7 +688,7 @@ export function computeCompartmentReconfigEffects(
 
   if (prevEffectiveLineNumbers !== nextEffectiveLineNumbers) {
     effects.push(
-      editorCompartments.lineNumbers.reconfigure(
+      compartments.lineNumbers.reconfigure(
         nextEffectiveLineNumbers ? [createModernFoldGutter(), createConfiguredLineNumbers(), highlightActiveLineGutter()] : []
       )
     );
@@ -664,7 +696,7 @@ export function computeCompartmentReconfigEffects(
 
   if (prev.lineWrapping !== next.lineWrapping) {
     effects.push(
-      editorCompartments.lineWrapping.reconfigure(
+      compartments.lineWrapping.reconfigure(
         next.lineWrapping ? EditorView.lineWrapping : []
       )
     );
@@ -677,7 +709,7 @@ export function computeCompartmentReconfigEffects(
         : next.keybinding === 'emacs'
           ? Prec.highest(keymap.of(emacsStyleKeymap))
           : [];
-    effects.push(editorCompartments.keybinding.reconfigure(ext));
+    effects.push(compartments.keybinding.reconfigure(ext));
   }
 
   if (
@@ -686,7 +718,7 @@ export function computeCompartmentReconfigEffects(
     prev.projectId !== next.projectId
   ) {
     effects.push(
-      editorCompartments.spellCheck.reconfigure(
+      compartments.spellCheck.reconfigure(
         next.spellCheck
           ? createLatexSpellingExtension({
               projectId: next.projectId,
@@ -699,7 +731,7 @@ export function computeCompartmentReconfigEffects(
   }
 
   if (prev.editorTheme !== next.editorTheme) {
-    effects.push(editorCompartments.theme.reconfigure(getThemeExtension(next.editorTheme)));
+    effects.push(compartments.theme.reconfigure(getThemeExtension(next.editorTheme)));
   }
 
   if (
@@ -708,7 +740,7 @@ export function computeCompartmentReconfigEffects(
     prev.lineHeight !== next.lineHeight
   ) {
     effects.push(
-      editorCompartments.typography.reconfigure(
+      compartments.typography.reconfigure(
         createTypographyExtension(next.fontSize, next.fontFamily, next.lineHeight)
       )
     );
@@ -716,7 +748,7 @@ export function computeCompartmentReconfigEffects(
 
   if (prev.errorLensEnabled !== next.errorLensEnabled) {
     effects.push(
-      editorCompartments.errorLens.reconfigure(
+      compartments.errorLens.reconfigure(
         next.errorLensEnabled ? createLatexErrorLensExtension() : []
       )
     );
@@ -724,7 +756,7 @@ export function computeCompartmentReconfigEffects(
 
   if ((prev.autoCloseBrackets ?? true) !== (next.autoCloseBrackets ?? true)) {
     effects.push(
-      editorCompartments.bracketMatching.reconfigure(
+      compartments.bracketMatching.reconfigure(
         next.autoCloseBrackets ?? true ? [bracketMatching(), closeBrackets()] : [bracketMatching()]
       )
     );
@@ -732,7 +764,7 @@ export function computeCompartmentReconfigEffects(
 
   if ((prev.enableMathPreview ?? true) !== (next.enableMathPreview ?? true)) {
     effects.push(
-      editorCompartments.mathPreview.reconfigure(
+      compartments.mathPreview.reconfigure(
         next.enableMathPreview ?? true ? latexMathHoverTooltip : []
       )
     );
@@ -740,7 +772,7 @@ export function computeCompartmentReconfigEffects(
 
   if ((prev.enableAutocomplete ?? true) !== (next.enableAutocomplete ?? true)) {
     effects.push(
-      editorCompartments.autocomplete.reconfigure(
+      compartments.autocomplete.reconfigure(
         next.enableAutocomplete ?? true ? createLatexAutocompleteExtension() : []
       )
     );
@@ -748,7 +780,7 @@ export function computeCompartmentReconfigEffects(
 
   if ((prev.enableLinter ?? true) !== (next.enableLinter ?? true)) {
     effects.push(
-      editorCompartments.linter.reconfigure(
+      compartments.linter.reconfigure(
         next.enableLinter ?? true ? createLatexLinterExtension() : []
       )
     );
@@ -759,18 +791,20 @@ export function computeCompartmentReconfigEffects(
 
 /**
  * Atomic Batched Compartment Reconfiguration Seam (Deep Module).
- * Computes differential compartment effects between `prev` and `next`, merges any
- * `additionalEffects`, and dispatches at most ONE CodeMirror transaction.
+ * Computes differential compartment effects between `prev` and `next` using the
+ * EditorView's per-instance compartments, merges any `additionalEffects`, and dispatches
+ * at most ONE CodeMirror transaction.
  * Returns the total number of StateEffects dispatched (0 if no changes).
  */
 export function reconfigureEditorCompartments(
   view: EditorView,
   prev: EditorRuntimeConfig,
   next: EditorRuntimeConfig,
-  additionalEffects: StateEffect<unknown>[] = []
+  additionalEffects: StateEffect<unknown>[] = [],
+  compartments: EditorCompartmentMap = getViewCompartments(view),
 ): number {
   const effects = [
-    ...computeCompartmentReconfigEffects(prev, next),
+    ...computeCompartmentReconfigEffects(prev, next, compartments),
     ...additionalEffects,
   ];
   if (effects.length === 0) {

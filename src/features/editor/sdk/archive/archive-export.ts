@@ -8,17 +8,12 @@
  */
 
 import JSZip from 'jszip';
-import {
-  fileService,
-  pageService,
-  versionService,
-  manuscriptService,
-} from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { resolveFileUrl } from '@/shared/lib/file-client';
 import { getAuthToken } from '@/shared/lib/api';
 import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
 import { ARXIV_ALLOWED_EXTENSIONS } from '@/features/editor/domain/constants/editor.constants';
-import { documentAuthority } from '@/features/editor/core';
+import { documentAuthority } from '@/features/editor/core/coordinator/document-authority.facade';
 import { triggerFileDownload } from './document-download';
 
 export interface ArchiveExportOptions {
@@ -28,6 +23,7 @@ export interface ArchiveExportOptions {
   activeFileId?: string;
   activeFileTitle?: string;
   mainFile?: string;
+  getDocumentContent?: (fileId: string) => string;
 }
 
 export type ExportZipOptions = ArchiveExportOptions;
@@ -56,6 +52,7 @@ async function bundleAndDownloadZip({
   activeFileId,
   mainFile = 'main.tex',
   isArxiv = false,
+  getDocumentContent = (fileId: string) => documentAuthority.getDocumentContent(fileId),
 }: BundleZipOptions): Promise<string> {
   const baseTitle = isArxiv
     ? (projectTitle || 'manuscript')
@@ -72,9 +69,9 @@ async function bundleAndDownloadZip({
 
     // 1. Fetch root page & child pages (files) and storage assets concurrently
     const [rootPage, childFiles, storageFiles] = await Promise.all([
-      pageService.getById(parentPageId).catch(() => null),
-      fileService.getByPageId(parentPageId).catch(() => []),
-      manuscriptService.storage.getPageFiles(parentPageId).catch(() => []),
+      manuscriptService.docs.getById(parentPageId).catch(() => null),
+      manuscriptService.docs.getFiles(parentPageId).catch(() => []),
+      manuscriptService.structure.getPageFiles(parentPageId).catch(() => []),
     ]);
 
     const filesMap = new Map<string, string>();
@@ -85,7 +82,7 @@ async function bundleAndDownloadZip({
       if (!title) continue;
       if (isArxiv && !isArxivAllowed(title)) continue;
 
-      const authorityContent = f.id ? documentAuthority.getDocumentContent(f.id) : '';
+      const authorityContent = f.id ? getDocumentContent(f.id) : '';
       if (authorityContent) {
         filesMap.set(title, authorityContent);
       } else if (activeFileId === f.id && typeof currentContent === 'string') {
@@ -112,7 +109,7 @@ async function bundleAndDownloadZip({
           : configuredMain;
 
       const authorityRootContent = parentPageId
-        ? documentAuthority.getDocumentContent(parentPageId)
+        ? getDocumentContent(parentPageId)
         : '';
       const rootStr =
         authorityRootContent ||
@@ -272,12 +269,12 @@ export async function exportVersionAsZip(options: ExportVersionZipOptions): Prom
 
     // 1. Fetch root page, active child files, deleted files, and storage files concurrently
     const [rootPage, childFiles, storageFiles] = await Promise.all([
-      parentPageId ? pageService.getById(parentPageId).catch(() => null) : null,
-      parentPageId ? fileService.getByPageId(parentPageId).catch(() => []) : [],
-      parentPageId ? manuscriptService.storage.getPageFiles(parentPageId).catch(() => []) : [],
+      parentPageId ? manuscriptService.docs.getById(parentPageId).catch(() => null) : null,
+      parentPageId ? manuscriptService.docs.getFiles(parentPageId).catch(() => []) : [],
+      parentPageId ? manuscriptService.structure.getPageFiles(parentPageId).catch(() => []) : [],
     ]);
 
-    const deletedFiles = await fileService.getDeletedByPageId(parentPageId).catch(() => []);
+    const deletedFiles = await manuscriptService.docs.getDeletedFiles(parentPageId).catch(() => []);
     const allFiles = [...childFiles, ...deletedFiles];
 
     const targetDate = revisionDate ? new Date(revisionDate).getTime() : Date.now();
@@ -291,19 +288,19 @@ export async function exportVersionAsZip(options: ExportVersionZipOptions): Prom
 
         // Fetch versions of this file
         try {
-          const versions = await versionService.getByPageId(f.id).catch(() => []);
+          const versions = await ((manuscriptService.history as any).getByDocId || (manuscriptService.history as any).getByPageId).call(manuscriptService.history, f.id).catch(() => []);
           if (versions && versions.length > 0) {
-            let matchingVer = versions.find((v) => v.id === versionId);
+            let matchingVer = versions.find((v: any) => v.id === versionId);
             if (!matchingVer && revisionDate) {
               const beforeVers = versions.filter(
-                (v) => new Date(v.createdAt).getTime() <= targetDate + 1000,
+                (v: any) => new Date(v.createdAt).getTime() <= targetDate + 1000,
               );
               matchingVer = beforeVers[0] || versions[versions.length - 1];
             }
             if (!matchingVer) matchingVer = versions[0];
 
             if (matchingVer) {
-              const fullVer = await versionService.getById(f.id, matchingVer.id).catch(() => null);
+              const fullVer = await manuscriptService.history.getById(f.id, matchingVer.id).catch(() => null);
               if (fullVer && typeof fullVer.content === 'string') {
                 filesMap.set(title, fullVer.content);
                 return;
@@ -332,13 +329,13 @@ export async function exportVersionAsZip(options: ExportVersionZipOptions): Prom
 
       let rootStr = typeof rootPage?.content === 'string' ? rootPage.content : '';
       try {
-        const rootVersions = await versionService.getByPageId(parentPageId).catch(() => []);
+        const rootVersions = await ((manuscriptService.history as any).getByDocId || (manuscriptService.history as any).getByPageId).call(manuscriptService.history, parentPageId).catch(() => []);
         const matchingRoot =
-          rootVersions.find((v) => v.id === versionId) ||
-          rootVersions.find((v) => new Date(v.createdAt).getTime() <= targetDate + 1000) ||
+          rootVersions.find((v: any) => v.id === versionId) ||
+          rootVersions.find((v: any) => new Date(v.createdAt).getTime() <= targetDate + 1000) ||
           rootVersions[0];
         if (matchingRoot) {
-          const fullRoot = await versionService.getById(parentPageId, matchingRoot.id).catch(() => null);
+          const fullRoot = await manuscriptService.history.getById(parentPageId, matchingRoot.id).catch(() => null);
           if (fullRoot && typeof fullRoot.content === 'string') {
             rootStr = fullRoot.content;
           }

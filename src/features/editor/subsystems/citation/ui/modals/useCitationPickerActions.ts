@@ -85,6 +85,32 @@ export function useCitationPickerActions() {
     [],
   );
 
+  const syncLibraryToProject = useCallback(
+    async (projectId: string, collectionId?: string | null, targetFilename?: string) => {
+      if (!projectId) return null;
+      try {
+        const res = await manuscriptService.citations.syncLibrary(projectId, {
+          collectionId: collectionId ?? '',
+          targetFilename,
+        });
+        if (res?.conflicts && res.conflicts.length > 0) {
+          toast.warning(
+            `Synced ${res.syncedCount} references (${res.conflicts.length} conflicting citekey(s) skipped: ${res.conflicts.slice(0, 3).join(', ')})`,
+          );
+        } else if (res) {
+          toast.success(`Synced ${res.syncedCount} references to ${res.filePath}`);
+        }
+        return res;
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error ? err.message : 'Failed to sync library references';
+        toast.error(message);
+        return null;
+      }
+    },
+    [],
+  );
+
   return {
     isResolving,
     copyCitationSnippet,
@@ -93,5 +119,6 @@ export function useCitationPickerActions() {
     copyDoi,
     copyCiteKey,
     resolveAcademicIdentifier,
+    syncLibraryToProject,
   };
 }

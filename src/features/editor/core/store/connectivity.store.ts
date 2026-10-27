@@ -15,6 +15,8 @@ export interface ConnectivityState {
   lastSavedAt: Date | null;
   offlineSince: Date | null;
   pendingSaveCount: number;
+  pendingMutationsCount: number;
+  isSyncingOfflineQueue: boolean;
   offlinePendingCompile: boolean;
 
   setIsOnline: (isOnline: boolean) => void;
@@ -26,6 +28,8 @@ export interface ConnectivityState {
   incrementPending: () => void;
   decrementPending: () => void;
   setPendingSaveCount: (count: number) => void;
+  setPendingMutationsCount: (count: number) => void;
+  setIsSyncingOfflineQueue: (syncing: boolean) => void;
   checkIsOnline: () => boolean;
 }
 
@@ -45,6 +49,8 @@ export const useConnectivityStore = create<ConnectivityState>((set, get) => ({
   lastSavedAt: null,
   offlineSince: null,
   pendingSaveCount: 0,
+  pendingMutationsCount: 0,
+  isSyncingOfflineQueue: false,
   offlinePendingCompile: false,
 
   checkIsOnline: () =>
@@ -109,8 +115,21 @@ export const useConnectivityStore = create<ConnectivityState>((set, get) => ({
       pendingSaveCount,
       syncStatus: !s.isOnline
         ? 'offline'
-        : pendingSaveCount === 0
+        : pendingSaveCount === 0 && !s.isSyncingOfflineQueue
         ? 'synced'
         : 'saving',
+    })),
+
+  setPendingMutationsCount: (pendingMutationsCount) =>
+    set({ pendingMutationsCount: Math.max(0, pendingMutationsCount) }),
+
+  setIsSyncingOfflineQueue: (isSyncingOfflineQueue) =>
+    set((s) => ({
+      isSyncingOfflineQueue,
+      syncStatus: !s.isOnline
+        ? 'offline'
+        : isSyncingOfflineQueue || s.pendingSaveCount > 0
+        ? 'saving'
+        : 'synced',
     })),
 }));

@@ -10,7 +10,7 @@
 import dynamic from 'next/dynamic';
 import React, { useEffect } from 'react';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
-import { sessionCoordinator } from '@/features/editor/core';
+import { sessionCoordinator } from '../coordinator/session.coordinator';
 import EditorSkeleton from './EditorSkeleton';
 
 const ModernWorkbenchLayout = dynamic(

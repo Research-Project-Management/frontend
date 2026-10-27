@@ -3,7 +3,7 @@ import {
   exportDocumentSchema,
   documentExportFormatSchema,
 } from '@/features/editor/domain/types/export.types';
-import { exportService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import {
   exportDocumentAsWord,
   exportDocumentAsMarkdown,
@@ -35,7 +35,7 @@ describe('Document Export Unit Tests (Word .docx and Markdown .md)', () => {
       // Sample base64 representing mock docx file
       const mockBase64 = btoa('PK\x03\x04mock-docx-bytes');
 
-      vi.spyOn(exportService, 'exportDocument').mockResolvedValue({
+      vi.spyOn(manuscriptService.export, 'exportDocument').mockResolvedValue({
         filename: 'quantum_paper.docx',
         mimeType:
           'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -68,7 +68,7 @@ describe('Document Export Unit Tests (Word .docx and Markdown .md)', () => {
         projectTitle: 'Quantum Paper',
       });
 
-      expect(exportService.exportDocument).toHaveBeenCalledWith(
+      expect(manuscriptService.export.exportDocument).toHaveBeenCalledWith(
         'page-123',
         'docx',
         true,
@@ -90,7 +90,7 @@ describe('Document Export Unit Tests (Word .docx and Markdown .md)', () => {
     it('calls export service with md format and triggers client download', async () => {
       const mockMarkdown = '# Quantum Paper\n\nIntroduction paragraph.';
 
-      vi.spyOn(exportService, 'exportDocument').mockResolvedValue({
+      vi.spyOn(manuscriptService.export, 'exportDocument').mockResolvedValue({
         filename: 'quantum_paper.md',
         mimeType: 'text/markdown; charset=utf-8',
         content: mockMarkdown,
@@ -122,7 +122,7 @@ describe('Document Export Unit Tests (Word .docx and Markdown .md)', () => {
         projectTitle: 'Quantum Paper',
       });
 
-      expect(exportService.exportDocument).toHaveBeenCalledWith(
+      expect(manuscriptService.export.exportDocument).toHaveBeenCalledWith(
         'page-123',
         'md',
         true,

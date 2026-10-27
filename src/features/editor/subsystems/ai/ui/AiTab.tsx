@@ -98,6 +98,7 @@ export default function AiTab({ onClose }: AiTabProps) {
 
   useEffect(() => {
     return () => {
+      abortControllerRef.current?.abort();
       if (copyTimerRef.current) {
         clearTimeout(copyTimerRef.current);
       }

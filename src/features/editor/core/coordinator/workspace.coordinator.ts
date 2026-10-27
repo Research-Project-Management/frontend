@@ -13,7 +13,7 @@
  * - Deep Module architecture with ports for Service, Notification, and Store isolation.
  */
 
-import { manuscriptService, fileService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { type LinkedFileDto } from '@/features/editor/sdk/manuscript/types';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
@@ -26,15 +26,13 @@ import type {
   WorkspaceServicePort,
   WorkspaceStorePort,
 } from '@/features/editor/domain/workspace/workspace-service-port';
-import {
-  editorCommandBus,
-  sessionCoordinator,
-  useWorkspaceStore,
-  usePageStore,
-  useSettingsStore,
-  documentAuthority,
-  editorInvariantMonitor,
-} from '@/features/editor/core';
+import { editorCommandBus, getEditorEngineForFile } from '../bus/command-bus';
+import { sessionCoordinator } from './session.coordinator';
+import { useWorkspaceStore } from '../store/workspace.store';
+import { usePageStore } from '../store/editor.store';
+import { useSettingsStore } from '../store/settings.store';
+import { documentAuthority } from './document-authority.facade';
+import { editorInvariantMonitor } from './editor-invariant-monitor';
 import { toast } from 'sonner';
 
 export interface CreateFileOptions {
@@ -67,7 +65,7 @@ const defaultServicePort: WorkspaceServicePort = {
   moveNode: (projectId, itemId, data) => manuscriptService.structure.moveNode(projectId, itemId, data),
   restoreFile: (fileId) => manuscriptService.docs.restore(fileId),
   setRootDoc: (projectId, fileId) => manuscriptService.structure.setRootDoc(projectId, fileId),
-  getFilesByProjectId: (projectId) => fileService.getByPageId(projectId),
+  getFilesByProjectId: (projectId) => manuscriptService.docs.getFiles(projectId),
   updateFileContent: (fileId, content) => manuscriptService.docs.updateContent(fileId, content),
 };
 
@@ -263,16 +261,13 @@ export class WorkspaceCoordinatorRegistry {
       const resolvedTitle = newFile.title || newFile.name || name;
       const resolvedContent = newFile.content || content;
 
-      // 1. Warm LRU cache
-      lruDocumentCache.warm(newFile.id, {
-        filePath: resolvedTitle,
-        content: resolvedContent,
-        projectId: effectiveProjectId,
-      });
-
-      // 2. Register in LaTeX DAG Engine & Symbol Index
-      latexDagEngine.parseAndRegister(resolvedTitle, resolvedContent, newFile.id);
-      latexSymbolsIndex.indexFile(newFile.id, resolvedTitle, resolvedContent);
+      // 1 & 2. Warm LRU cache + Register in LaTeX DAG Engine & Symbol Index
+      this.indexDocumentInWorkspace(
+        effectiveProjectId,
+        newFile.id,
+        resolvedTitle,
+        resolvedContent,
+      );
 
       // 3. Notify FileTree & CommandBus
       editorCommandBus.dispatch({ type: 'filetree:updated', payload: { action: 'create', file: newFile } });
@@ -361,9 +356,10 @@ export class WorkspaceCoordinatorRegistry {
 
       // 4. Re-index in LaTeX DAG & Symbols
       latexDagEngine.removeFileNode(oldName);
-      if (model?.content) {
-        latexDagEngine.parseAndRegister(newName, model.content, itemId);
-        latexSymbolsIndex.indexFile(itemId, newName, model.content);
+      const contentToIndex = model?.content || documentAuthority.getDocumentContent(itemId);
+      if (contentToIndex) {
+        latexDagEngine.parseAndRegister(newName, contentToIndex, itemId);
+        latexSymbolsIndex.indexFile(itemId, newName, contentToIndex);
       }
 
       editorInvariantMonitor.reconcileInvariants();
@@ -394,6 +390,10 @@ export class WorkspaceCoordinatorRegistry {
     if (!effectiveProjectId) return false;
 
     try {
+      const cachedModel = lruDocumentCache.getModel(fileId);
+      const fileObj = this.projectFiles.find((f) => f.id === fileId);
+      const filePath = cachedModel?.filePath || fileObj?.path || fileObj?.title || fileObj?.name;
+
       await this.servicePort.deleteNode(effectiveProjectId, fileId);
 
       // 1. Evict and close open tab if present
@@ -401,10 +401,9 @@ export class WorkspaceCoordinatorRegistry {
       this.closeTabInStore(fileId);
       editorCommandBus.dispatch({ type: 'navigation:close-tab', fileId });
 
-      // 2. Evict from LRU Cache, DAG, Symbol Index, and Project Files cache
-      lruDocumentCache.evictModel(fileId);
-      latexDagEngine.removeFileNode(fileId);
-      latexSymbolsIndex.removeFile(fileId);
+      // 2. Evict from DAG, Symbol Index, and Project Files cache
+      latexDagEngine.removeFileNode(filePath || fileId);
+      latexSymbolsIndex.removeFile(fileId, filePath);
       if (this.projectFiles.length > 0) {
         this.projectFiles = this.projectFiles.filter((f) => f.id !== fileId);
         documentAuthority.hydrateServerProjectFiles(effectiveProjectId, this.projectFiles);
@@ -439,6 +438,8 @@ export class WorkspaceCoordinatorRegistry {
         destParentId: targetFolderId,
       });
 
+      editorInvariantMonitor.reconcileInvariants();
+
       editorCommandBus.dispatch({
         type: 'filetree:updated',
         payload: { action: 'move', itemId, targetFolderId },
@@ -472,19 +473,14 @@ export class WorkspaceCoordinatorRegistry {
 
       if (page) {
         const docId = page.id || fileId;
-        // 1. Warm LRU cache
-        lruDocumentCache.warm(docId, {
-          filePath: page.title || page.name || 'restored.tex',
-          content: typeof page.content === 'string' ? page.content : '',
-          projectId: page.projectId || effectiveProjectId || '',
-        });
-
-        // 2. Re-index in DAG & Symbols
         const docTitle = page.title || page.name || 'restored.tex';
-        if (typeof page.content === 'string') {
-          latexDagEngine.parseAndRegister(docTitle, page.content, docId);
-          latexSymbolsIndex.indexFile(docId, docTitle, page.content);
-        }
+        const docContent = typeof page.content === 'string' ? page.content : '';
+        this.indexDocumentInWorkspace(
+          page.projectId || effectiveProjectId || '',
+          docId,
+          docTitle,
+          docContent,
+        );
       }
 
       // 3. Notify CommandBus & filetree
@@ -531,21 +527,57 @@ export class WorkspaceCoordinatorRegistry {
   }
 
   /**
+   * Shared indexing pipeline step: warms the LRU document model cache and
+   * registers the document in the LaTeX DAG and Symbol Index.
+   */
+  private indexDocumentInWorkspace(
+    projectId: string,
+    fileId: string,
+    filePath: string,
+    content: string,
+  ): void {
+    lruDocumentCache.warm(fileId, {
+      filePath,
+      content,
+      projectId,
+    });
+    if (content) {
+      latexDagEngine.parseAndRegister(filePath, content, fileId);
+      latexSymbolsIndex.indexFile(fileId, filePath, content);
+    }
+  }
+
+  private lastIndexedProjectKey = '';
+  private lastIndexedFingerprint = '';
+
+  /**
    * High-speed initial bulk indexing of all project files for cross-referencing and DAG
    */
   public initProjectSymbols(files: Array<{ id: string; title?: string; name?: string; path?: string; content?: unknown }>): void {
-    this.projectFiles = [...files];
     const projectKey = this.getActiveProjectId() || 'default';
+    const fingerprint = `${projectKey}::${files
+      .map((f) => {
+        const path = f.path || f.title || f.name || f.id;
+        const contentLen = extractDocumentContentString(f.content).length;
+        return `${f.id}:${path}:${contentLen}`;
+      })
+      .join('|')}`;
+
+    if (fingerprint === this.lastIndexedFingerprint && this.projectFiles.length === files.length) {
+      return;
+    }
+
+    const projectChanged = this.lastIndexedProjectKey !== '' && this.lastIndexedProjectKey !== projectKey;
+    this.lastIndexedProjectKey = projectKey;
+    this.lastIndexedFingerprint = fingerprint;
+    this.projectFiles = [...files];
+
     latexSymbolsIndex.clear();
     latexDagEngine.clear();
-    diagnosticsCoordinator.clearDiagnostics();
-    documentAuthority.hydrateServerProjectFiles(projectKey, files);
-    for (const file of files) {
-      const path = file.path || file.title || file.name || file.id;
-      const content = extractDocumentContentString(file.content);
-      latexSymbolsIndex.indexFile(file.id, path, content);
-      latexDagEngine.parseAndRegister(path, content, file.id);
+    if (projectChanged) {
+      diagnosticsCoordinator.clearDiagnostics();
     }
+    documentAuthority.hydrateServerProjectFiles(projectKey, files);
   }
 
   /**
@@ -566,12 +598,31 @@ export class WorkspaceCoordinatorRegistry {
     const { executeProjectCitekeyRefactor } = await import(
       '@/features/editor/subsystems/citation/model/citation-refactor'
     );
-    return executeProjectCitekeyRefactor(oldKey, newKey, optProjectId || this.getActiveProjectId() || undefined, {
-      service: this.servicePort,
-      notification: this.notificationPort,
-      store: this.storePort,
-      projectFiles: this.projectFiles,
+    const activeDocId = this.storePort.getActiveDocumentId();
+    const unsubFilter = editorCommandBus.use({
+      onDispatch: (cmd, next) => {
+        if (
+          cmd.type === 'editor:set-content' &&
+          cmd.fileId &&
+          activeDocId &&
+          cmd.fileId !== activeDocId &&
+          !getEditorEngineForFile(cmd.fileId)
+        ) {
+          return;
+        }
+        next(cmd);
+      },
     });
+    try {
+      return await executeProjectCitekeyRefactor(oldKey, newKey, optProjectId || this.getActiveProjectId() || undefined, {
+        service: this.servicePort,
+        notification: this.notificationPort,
+        store: this.storePort,
+        projectFiles: this.projectFiles,
+      });
+    } finally {
+      unsubFilter();
+    }
   }
 }
 

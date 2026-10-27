@@ -13,7 +13,7 @@ import * as decoding from 'lib0/decoding';
 import { Awareness, removeAwarenessStates } from 'y-protocols/awareness';
 import type { Socket } from 'socket.io-client';
 import type { IEditorCommandBus } from '@/features/editor/core/bus/command-bus.port';
-import type { CollaborationPresence } from '@/features/editor/sdk/manuscript.service';
+import type { CollaborationPresence } from '../manuscript/types';
 
 export interface CollaboratorUser {
   id: string;
@@ -76,6 +76,7 @@ export interface YjsSocketIOProviderOptions {
   user?: CollaboratorUser;
   baseUrl?: string;
   token?: string;
+  getToken?: () => string | undefined;
   initialContent?: string;
   commandBus?: IEditorCommandBus;
   onStatusChange?: (status: ConnectionStatus) => void;

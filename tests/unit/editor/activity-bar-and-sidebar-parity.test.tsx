@@ -10,9 +10,9 @@ import { useWorkspaceStore } from '@/features/editor/core';
 vi.mock('@/features/editor/sdk/manuscript.service', () => ({
   manuscriptService: {
     linkedFiles: { refresh: vi.fn() },
-  },
-  pageService: {
-    getById: vi.fn().mockResolvedValue({ content: 'Mock content' }),
+    docs: {
+      getById: vi.fn().mockResolvedValue({ content: 'Mock content' }),
+    },
   },
 }));
 

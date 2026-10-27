@@ -17,8 +17,6 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as api from '@/shared/lib/api';
 import {
   manuscriptService,
-  fileService,
-  pageService,
   downloadAuxFileUrl,
   downloadAllArtifactsZipUrl,
 } from '@/features/editor/sdk/manuscript.service';
@@ -234,11 +232,11 @@ describe('User-Driven Overleaf End-to-End Journeys (Phases 1 -> 14)', () => {
         page: { id: 'file-ch3', title: 'chapters/methodology.tex', deletedAt: null },
       } as never);
 
-      const deletedList = await fileService.getDeletedByPageId('root-page-1');
+      const deletedList = await manuscriptService.docs.getDeletedFiles('root-page-1');
       expect(deletedList).toHaveLength(1);
       expect(deletedList[0]?.title).toBe('chapters/methodology.tex');
 
-      const restored = await pageService.restorePage('file-ch3');
+      const restored = await manuscriptService.docs.restore('file-ch3');
       expect(restored.id).toBe('file-ch3');
       expect(restored.deletedAt).toBeNull();
     });
@@ -582,15 +580,15 @@ describe('User-Driven Overleaf End-to-End Journeys (Phases 1 -> 14)', () => {
   describe('Journey 7: User-Expectation Verification (ZIP Server Sync, Compiler Quick Fix & Smart Paste)', () => {
     it('U3.4: Uploading a .zip project with zipFile triggers server-side manuscriptService.export.importProjectZip before completing import', async () => {
       const { extractAndImportZipToProject } = await import('@/features/editor/sdk/archive/archive-import');
-      const { pageService, fileService } = await import('@/features/editor/sdk/manuscript.service');
+      const { manuscriptService } = await import('@/features/editor/sdk/manuscript.service');
       const importZipSpy = vi
         .spyOn(manuscriptService.export, 'importProjectZip')
         .mockResolvedValueOnce({ importedCount: 2 });
-      vi.spyOn(pageService, 'create').mockResolvedValueOnce({
+      vi.spyOn(manuscriptService.docs, 'create').mockResolvedValueOnce({
         id: 'root-page-ieee',
         title: 'main.tex',
       } as never);
-      vi.spyOn(fileService, 'create').mockResolvedValueOnce({
+      vi.spyOn(manuscriptService.docs, 'createChildFile').mockResolvedValueOnce({
         id: 'file-refs-bib',
         title: 'refs.bib',
       } as never);

@@ -31,6 +31,11 @@ self.onmessage = (event: MessageEvent<SymbolsWorkerMessageIn>) => {
       case 'indexFile':
         core.indexFile(msg.fileId, msg.filePath, msg.content);
         break;
+      case 'indexBatch':
+        for (const f of msg.files) {
+          core.indexFile(f.fileId, f.filePath, f.content);
+        }
+        break;
       case 'removeFile':
         core.removeFile(msg.fileId, msg.filePath);
         break;

@@ -31,7 +31,7 @@ import {
 } from "@/features/editor/core";
 import { filesQuery } from "@/features/editor/ui/hooks/document.queries";
 import { useDebounce } from "@/shared/hooks/use-debounce";
-import { documentSearchService } from "@/features/editor/sdk/manuscript.service";
+import { manuscriptService } from "@/features/editor/sdk/manuscript.service";
 import { useEditorInstance } from "@/features/editor/ui/hooks/useEditorInstance";
 import { extractProjectId } from "@/features/editor/domain/types/core.types";
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
@@ -234,7 +234,7 @@ export default function SearchTab() {
       if (!effectiveQuery.trim() || !rootProjectId) {
         return null;
       }
-      return documentSearchService.search(rootProjectId, effectiveQuery, {
+      return manuscriptService.search.search(rootProjectId, effectiveQuery, {
         caseSensitive,
         wholeWord,
         useRegex,

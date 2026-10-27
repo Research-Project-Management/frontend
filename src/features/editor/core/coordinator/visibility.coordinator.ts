@@ -12,7 +12,7 @@
  * - Coordinates gentle re-awakening upon tab return (re-sync checks, selective linting).
  */
 
-import { editorCommandBus } from '@/features/editor/core';
+import { editorCommandBus } from '../bus/command-bus';
 
 export type VisibilityLifecycleState = 'active' | 'hibernated';
 

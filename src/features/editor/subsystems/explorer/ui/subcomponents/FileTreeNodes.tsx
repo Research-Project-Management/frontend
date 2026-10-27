@@ -33,9 +33,8 @@ import {
 import { cn } from '@/shared/lib/utils';
 import { useEditorStorageMutations } from '@/features/editor/ui/hooks/useStorage';
 import type { EditorStorageItem as StorageItem } from '@/features/editor/domain/types/storage-item.types';
-import { useFileDiagnosticsSummary } from '@/features/editor/ui/hooks/useDiagnosticsSummary';
 import {
-  workspaceCoordinator,
+  sessionCoordinator,
   RASTER_AND_VECTOR_IMAGE_EXTENSIONS,
   CODE_EXTENSIONS,
 } from '@/features/editor/core';
@@ -103,7 +102,6 @@ export const StorageFileRow = React.memo(function StorageFileRow({
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const { copyStorageSnippet, downloadStorageItem } = useStorageItemActions();
-  const diagSummary = useFileDiagnosticsSummary(item.filename || item.id);
 
   const handleCopySnippet = useCallback(
     (e?: React.MouseEvent) => {
@@ -142,14 +140,8 @@ export const StorageFileRow = React.memo(function StorageFileRow({
             if (existingModel) {
               existingModel.filePath = n;
             }
-            void workspaceCoordinator.renameItem({
-              itemId: item.id,
-              oldName: item.filename || n,
-              newName: n,
-              projectId: projectId || undefined,
-            });
             renameFile.mutate(
-              { fileId: item.id, name: n },
+              { fileId: item.id, name: n, oldName: item.filename || n },
               { onSuccess: () => setRenamingId(null) },
             );
           }}
@@ -245,7 +237,11 @@ export const StorageFileRow = React.memo(function StorageFileRow({
           variant="destructive"
           onClick={(e) => {
             e.stopPropagation();
-            deleteFile.mutate(item.id);
+            deleteFile.mutate(item.id, {
+              onSuccess: () => {
+                sessionCoordinator.evictDeletedFile(item.id);
+              },
+            });
           }}
           className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer rounded-md outline-none focus:bg-destructive/10 focus:text-destructive focus-visible:ring-1 focus-visible:ring-destructive transition-colors"
         >
@@ -302,7 +298,11 @@ export const StorageFileRow = React.memo(function StorageFileRow({
           variant="destructive"
           onClick={(e) => {
             e.stopPropagation();
-            deleteFile.mutate(item.id);
+            deleteFile.mutate(item.id, {
+              onSuccess: () => {
+                sessionCoordinator.evictDeletedFile(item.id);
+              },
+            });
           }}
           className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer rounded-md outline-none focus:bg-destructive/10 focus:text-destructive focus-visible:ring-1 focus-visible:ring-destructive transition-colors"
         >

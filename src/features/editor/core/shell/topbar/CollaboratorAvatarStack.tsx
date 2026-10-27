@@ -35,8 +35,8 @@ import {
   type CollaboratorPresenceInfo,
 } from '@/features/editor/ui/hooks/useCollaboration';
 import { getCollaboratorColor } from '@/features/editor/ui/editor/CollaboratorCursors';
-import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
-import { usePageStore, editorCommandBus } from '@/features/editor/core';
+import { editorCommandBus } from '../../bus/command-bus';
+import { usePageStore } from '../../store/editor.store';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
 
 export function getInitials(name?: string): string {
@@ -94,14 +94,6 @@ export function CollaboratorAvatarStack({
     const column = c.cursor?.column ?? 1;
     const fileId = c.activeFileId;
     const filePath = c.activeFile;
-
-    navigationCoordinator.jumpToLine({
-      fileId,
-      filePath,
-      line,
-      column,
-      highlight: 'synctex',
-    });
 
     editorCommandBus.dispatch({
       type: 'navigation:jump-to-line',

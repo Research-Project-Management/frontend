@@ -107,43 +107,43 @@ describe('DocumentAuthorityFacade & EditorStateInvariantMonitor Deep Module', ()
     expect(lruDocumentCache.getActiveFileId()).toBe('file-main');
   });
 
-  it('detects and self-heals cross-store dirty state and active file drift via EditorStateInvariantMonitor', () => {
+  it('guarantees single source of truth across LRU and compile store with no-op EditorStateInvariantMonitor', () => {
     lruDocumentCache.registerModel('file-main', {
       content: 'Initial',
       filePath: 'main.tex',
       projectId,
     });
-    // Mutate LRU model to dirty without updating useCompileStore
+    // Mutate LRU model to dirty -> compileStore immediately reflects it by derivation
     lruDocumentCache.updateContent('file-main', 'Edited in LRU only', true);
-    // Set an orphan dirty entry in useCompileStore for a clean file
+    expect(useCompileStore.getState().isDirtyFile('file-main')).toBe(true);
+    expect(useCompileStore.getState().dirtyContentMap.get('file-main')).toBe('Edited in LRU only');
+    expect(useCompileStore.getState().getDirtyFiles()).toEqual(
+      expect.arrayContaining([{ fileId: 'file-main', content: 'Edited in LRU only' }]),
+    );
+
+    // Marking dirty via useCompileStore delegates to lruDocumentCache
     lruDocumentCache.registerModel('file-sec', {
       content: 'Clean sec',
       filePath: 'sec.tex',
       projectId,
     });
-    useCompileStore.getState().markDirty('file-sec', 'Stale dirty');
-    // Force activeFileId drift
-    lruDocumentCache.setActiveFileId('file-sec');
+    useCompileStore.getState().markDirty('file-sec', 'New dirty content');
+    expect(lruDocumentCache.isDirty('file-sec')).toBe(true);
+    expect(lruDocumentCache.getContent('file-sec')).toBe('New dirty content');
 
-    const beforeReport = editorInvariantMonitor.checkInvariants();
-    expect(beforeReport.valid).toBe(false);
-    expect(beforeReport.violations.map((v) => v.code)).toEqual(
-      expect.arrayContaining([
-        'DIRTY_FLAG_MISMATCH_MISSING_IN_COMPILE_STORE',
-        'DIRTY_FLAG_MISMATCH_ORPHAN_IN_COMPILE_STORE',
-        'ACTIVE_FILE_DRIFT',
-      ]),
-    );
-
-    // Self-heal
-    editorInvariantMonitor.reconcileInvariants();
-
-    const afterReport = editorInvariantMonitor.checkInvariants();
-    expect(afterReport.valid).toBe(true);
-    expect(afterReport.violations).toHaveLength(0);
-    expect(useCompileStore.getState().dirtyContentMap.get('file-main')).toBe('Edited in LRU only');
+    // Clearing dirty via useCompileStore delegates to lruDocumentCache
+    useCompileStore.getState().clearDirty('file-sec');
+    expect(lruDocumentCache.isDirty('file-sec')).toBe(false);
     expect(useCompileStore.getState().isDirtyFile('file-sec')).toBe(false);
-    expect(lruDocumentCache.getActiveFileId()).toBe('file-main');
+
+    // EditorStateInvariantMonitor is a trivial no-op pass-through
+    const beforeReport = editorInvariantMonitor.checkInvariants();
+    expect(beforeReport.valid).toBe(true);
+    expect(beforeReport.violations).toHaveLength(0);
+
+    const reconcileReport = editorInvariantMonitor.reconcileInvariants();
+    expect(reconcileReport.valid).toBe(true);
+    expect(reconcileReport.violations).toHaveLength(0);
   });
 
   it('applies direct AI insertion to the specific split-pane engine for fileId instead of active engine', () => {

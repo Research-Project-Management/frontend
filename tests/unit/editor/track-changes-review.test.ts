@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { suggestionService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { EditorEventBus } from '@/features/editor/core/bus/event-bus';
 import type { PageSuggestion, SuggestionType, SuggestionStatus } from '@/features/editor/domain/types/suggestion.types';
 
@@ -70,7 +70,7 @@ describe('Track Changes & Review System (Overleaf Parity)', () => {
         suggestions: mockSuggestions.slice(0, 2),
       } as any);
 
-      const result = await suggestionService.getSuggestions('page-1', 'pending');
+      const result = await manuscriptService.suggestions.getSuggestions('page-1', 'pending');
       expect(apiGetSpy).toHaveBeenCalledWith(
         '/api/v1/manuscripts/docs/page-1/suggestions?status=pending',
         expect.anything(),
@@ -85,7 +85,7 @@ describe('Track Changes & Review System (Overleaf Parity)', () => {
         suggestion: newSugg,
       } as any);
 
-      const result = await suggestionService.createSuggestion({
+      const result = await manuscriptService.suggestions.createSuggestion({
         pageId: 'page-1',
         type: 'insert',
         suggestedText: '\\usepackage{amsmath}\n',
@@ -111,7 +111,7 @@ describe('Track Changes & Review System (Overleaf Parity)', () => {
         page: { id: 'page-1', content: 'Updated LaTeX document text' },
       } as any);
 
-      const res = await suggestionService.acceptSuggestion('page-1', 'sugg-2');
+      const res = await manuscriptService.suggestions.acceptSuggestion('page-1', 'sugg-2');
       expect(apiPostSpy).toHaveBeenCalledWith('/api/v1/manuscripts/docs/page-1/suggestions/sugg-2/accept', {});
       expect(res.ok).toBe(true);
       expect(res.suggestion.status).toBe('accepted');
@@ -124,7 +124,7 @@ describe('Track Changes & Review System (Overleaf Parity)', () => {
         suggestion: { ...mockSuggestions[1], status: 'rejected' },
       } as any);
 
-      const res = await suggestionService.rejectSuggestion('page-1', 'sugg-2');
+      const res = await manuscriptService.suggestions.rejectSuggestion('page-1', 'sugg-2');
       expect(apiPostSpy).toHaveBeenCalledWith('/api/v1/manuscripts/docs/page-1/suggestions/sugg-2/reject', {});
       expect(res.ok).toBe(true);
       expect(res.suggestion.status).toBe('rejected');
@@ -137,7 +137,7 @@ describe('Track Changes & Review System (Overleaf Parity)', () => {
         page: { id: 'page-1', content: 'Fully accepted document' },
       } as any);
 
-      const res = await suggestionService.acceptAllSuggestions('page-1');
+      const res = await manuscriptService.suggestions.acceptAllSuggestions('page-1');
       expect(apiPostSpy).toHaveBeenCalledWith('/api/v1/manuscripts/docs/page-1/suggestions/accept-all', {});
       expect(res.ok).toBe(true);
       expect(res.acceptedCount).toBe(2);
@@ -150,7 +150,7 @@ describe('Track Changes & Review System (Overleaf Parity)', () => {
         rejectedCount: 2,
       } as any);
 
-      const res = await suggestionService.rejectAllSuggestions('page-1');
+      const res = await manuscriptService.suggestions.rejectAllSuggestions('page-1');
       expect(apiPostSpy).toHaveBeenCalledWith('/api/v1/manuscripts/docs/page-1/suggestions/reject-all', {});
       expect(res.ok).toBe(true);
       expect(res.rejectedCount).toBe(2);

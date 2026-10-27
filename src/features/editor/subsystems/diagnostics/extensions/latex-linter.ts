@@ -25,7 +25,10 @@ class LatexLinterWorkerClient {
   private worker: Worker | null = null;
   private isWorkerFailed = false;
   private currentRequestId = 0;
-  private pendingRequests = new Map<number, (diagnostics: Diagnostic[]) => void>();
+  private pendingRequests = new Map<
+    number,
+    { resolve: (diagnostics: Diagnostic[]) => void; timer: ReturnType<typeof setTimeout> }
+  >();
 
   constructor() {
     this.initWorker();
@@ -41,11 +44,11 @@ class LatexLinterWorkerClient {
       this.worker = new Worker(new URL('../linter/latex-linter.worker.ts', import.meta.url));
       this.worker.onmessage = (event: MessageEvent<LinterWorkerMessageOut>) => {
         const { id, diagnostics } = event.data;
-        const resolver = this.pendingRequests.get(id);
-        if (resolver) {
+        const pending = this.pendingRequests.get(id);
+        if (pending) {
+          clearTimeout(pending.timer);
           this.pendingRequests.delete(id);
-          // Only resolve if this is still the freshest request or not superseded
-          resolver(diagnostics as Diagnostic[]);
+          pending.resolve(diagnostics as Diagnostic[]);
         }
       };
 
@@ -54,6 +57,11 @@ class LatexLinterWorkerClient {
         this.isWorkerFailed = true;
         this.worker?.terminate();
         this.worker = null;
+        for (const [, pending] of this.pendingRequests.entries()) {
+          clearTimeout(pending.timer);
+          pending.resolve([]);
+        }
+        this.pendingRequests.clear();
       };
     } catch (e) {
       console.warn('[LatexLinter] Worker could not be instantiated, using in-process engine:', e);
@@ -79,13 +87,15 @@ class LatexLinterWorkerClient {
     const requestId = ++this.currentRequestId;
 
     return new Promise<Diagnostic[]>((resolve) => {
-      // Clean up previous pending requests (superseded by new typing keystroke)
-      for (const [oldId, oldResolve] of this.pendingRequests.entries()) {
-        oldResolve([]); // Resolve empty for cancelled jobs
-        this.pendingRequests.delete(oldId);
-      }
+      const timer = setTimeout(() => {
+        const pending = this.pendingRequests.get(requestId);
+        if (pending) {
+          this.pendingRequests.delete(requestId);
+          pending.resolve([]);
+        }
+      }, 10_000);
 
-      this.pendingRequests.set(requestId, resolve);
+      this.pendingRequests.set(requestId, { resolve, timer });
 
       const message: LinterWorkerMessageIn = {
         id: requestId,
@@ -100,18 +110,60 @@ class LatexLinterWorkerClient {
   public destroy(): void {
     this.worker?.terminate();
     this.worker = null;
+    for (const [, pending] of this.pendingRequests.entries()) {
+      clearTimeout(pending.timer);
+      pending.resolve([]);
+    }
     this.pendingRequests.clear();
   }
 }
 
 export const latexLinterWorkerClient = new LatexLinterWorkerClient();
 
-let lastDocText: string | null = null;
-let lastDiagnostics: Diagnostic[] = [];
+interface ViewLinterCacheEntry {
+  text: string;
+  diagnostics: Diagnostic[];
+  epoch: number;
+}
+
+let cacheEpoch = 0;
+const viewLinterCache = new WeakMap<EditorView, ViewLinterCacheEntry>();
 
 export function resetLatexLinterCache(): void {
-  lastDocText = null;
-  lastDiagnostics = [];
+  cacheEpoch++;
+}
+
+export function createLatexLinterIncrementalPlugin(boundFilePath?: string) {
+  return ViewPlugin.fromClass(
+    class {
+      update(update: ViewUpdate) {
+        if (!update.docChanged) {
+          return;
+        }
+
+        let deltaLines = 0;
+        let fromLine = 1;
+        update.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
+          fromLine = update.startState.doc.lineAt(fromA).number;
+          const linesBefore = update.startState.doc.lineAt(toA).number - fromLine;
+          const linesAfter = inserted.lines - 1;
+          deltaLines += linesAfter - linesBefore;
+        });
+
+        if (deltaLines !== 0) {
+          const activeDoc = boundFilePath ? null : usePageStore.getState().getActiveDocument();
+          const fileKey = boundFilePath || activeDoc?.path || activeDoc?.title || activeDoc?.id;
+          if (fileKey) {
+            const capturedFromLine = fromLine;
+            const capturedDelta = deltaLines;
+            queueMicrotask(() => {
+              diagnosticsCoordinator.shiftDiagnostics(fileKey, capturedFromLine, capturedDelta);
+            });
+          }
+        }
+      }
+    }
+  );
 }
 
 /**
@@ -120,96 +172,85 @@ export function resetLatexLinterCache(): void {
  * - On line additions / deletions (Enter / Backspace), immediately calls diagnosticsCoordinator.shiftDiagnostics
  *   to adjust existing error line numbers with zero latency before asynchronous worker re-runs.
  */
-export const latexLinterIncrementalPlugin = ViewPlugin.fromClass(
-  class {
-    update(update: ViewUpdate) {
-      if (!update.docChanged) {
-        return;
-      }
+export const latexLinterIncrementalPlugin = createLatexLinterIncrementalPlugin();
 
-      let deltaLines = 0;
-      let fromLine = 1;
-      update.changes.iterChanges((fromA, toA, _fromB, _toB, inserted) => {
-        fromLine = update.startState.doc.lineAt(fromA).number;
-        const linesBefore = update.startState.doc.lineAt(toA).number - fromLine;
-        const linesAfter = inserted.lines - 1;
-        deltaLines += (linesAfter - linesBefore);
-      });
+export function createLatexLinterSource(boundFilePath?: string): (view: EditorView) => Promise<Diagnostic[]> {
+  let instanceLastDocText: string | null = null;
+  let instanceLastDiagnostics: Diagnostic[] = [];
+  let instanceEpoch = cacheEpoch;
 
-      if (deltaLines !== 0) {
-        const activeDoc = usePageStore.getState().getActiveDocument();
-        const fileKey = activeDoc?.title || activeDoc?.id;
-        if (fileKey) {
-          const capturedFromLine = fromLine;
-          const capturedDelta = deltaLines;
-          queueMicrotask(() => {
-            diagnosticsCoordinator.shiftDiagnostics(fileKey, capturedFromLine, capturedDelta);
-          });
-        }
-      }
+  return async (view: EditorView): Promise<Diagnostic[]> => {
+    const text = view.state.doc.toString();
+    const cachedForView = viewLinterCache.get(view);
+    if (cachedForView && cachedForView.epoch === cacheEpoch && cachedForView.text === text) {
+      return cachedForView.diagnostics;
     }
-  }
-);
+    if (!cachedForView && instanceEpoch === cacheEpoch && instanceLastDocText !== null && text === instanceLastDocText) {
+      return instanceLastDiagnostics;
+    }
+
+    const knownCitations = latexSymbolsIndex.getCitations();
+    const knownBibKeys = knownCitations.length > 0 ? knownCitations.map((c: { key: string }) => c.key) : [];
+    const knownLabels = latexSymbolsIndex.getLabels().map((l: { name: string }) => l.name);
+    const retractedCitationsMap = latexSymbolsIndex.getRetractedCitationsMap();
+
+    const results = await latexLinterWorkerClient.lint(text, {
+      knownBibKeys,
+      knownLabels,
+      retractedCitationsMap,
+    });
+
+    instanceLastDocText = text;
+    instanceLastDiagnostics = results;
+    instanceEpoch = cacheEpoch;
+    viewLinterCache.set(view, {
+      text,
+      diagnostics: results,
+      epoch: cacheEpoch,
+    });
+
+    // Sync linter results into diagnosticsCoordinator so Gutter, Lens, and Panels have unified state
+    const activeDoc = boundFilePath ? null : usePageStore.getState().getActiveDocument();
+    const fileKey = boundFilePath || activeDoc?.path || activeDoc?.title || activeDoc?.id;
+    if (fileKey) {
+      const doc = view.state.doc;
+      const normKey = fileKey.replace(/\\/g, '/').replace(/^\.\//, '').toLowerCase();
+      diagnosticsCoordinator.ingestLinterDiagnostics(
+        fileKey,
+        results.map((d, idx) => {
+          const line = doc.lineAt(d.from);
+          return {
+            id: `lint-${idx}-${line.number}`,
+            file: fileKey,
+            normalizedPath: normKey,
+            line: line.number,
+            column: d.from - line.from + 1,
+            message: d.message,
+            severity: d.severity === 'error' ? 'error' : 'warning',
+            source: 'LaTeX Linter',
+          };
+        })
+      );
+    }
+
+    return results;
+  };
+}
 
 /**
  * Async CodeMirror 6 Lint Source:
  * Checks cached document text first; if content has not changed, returns cached diagnostics
  * without triggering postMessage serialization or worker tokenization.
  */
-export async function latexLinterSource(view: EditorView): Promise<Diagnostic[]> {
-  const text = view.state.doc.toString();
-  if (lastDocText !== null && text === lastDocText) {
-    return lastDiagnostics;
-  }
-
-  const knownCitations = latexSymbolsIndex.getCitations();
-  const knownBibKeys = knownCitations.length > 0 ? knownCitations.map((c: { key: string }) => c.key) : [];
-  const knownLabels = latexSymbolsIndex.getLabels().map((l: { name: string }) => l.name);
-  const retractedCitationsMap = latexSymbolsIndex.getRetractedCitationsMap();
-
-  const results = await latexLinterWorkerClient.lint(text, {
-    knownBibKeys,
-    knownLabels,
-    retractedCitationsMap,
-  });
-
-  lastDocText = text;
-  lastDiagnostics = results;
-
-  // Sync linter results into diagnosticsCoordinator so Gutter, Lens, and Panels have unified state
-  const activeDoc = usePageStore.getState().getActiveDocument();
-  const fileKey = activeDoc?.path || activeDoc?.title || activeDoc?.id;
-  if (fileKey) {
-    const doc = view.state.doc;
-    const normKey = fileKey.replace(/\\/g, '/').replace(/^\.\//, '').toLowerCase();
-    diagnosticsCoordinator.ingestLinterDiagnostics(
-      fileKey,
-      results.map((d, idx) => {
-        const line = doc.lineAt(d.from);
-        return {
-          id: `lint-${idx}-${line.number}`,
-          file: fileKey,
-          normalizedPath: normKey,
-          line: line.number,
-          column: d.from - line.from + 1,
-          message: d.message,
-          severity: d.severity === 'error' ? 'error' : 'warning',
-          source: 'LaTeX Linter',
-        };
-      })
-    );
-  }
-
-  return results;
-}
+export const latexLinterSource = createLatexLinterSource();
 
 /**
  * Creates the CodeMirror 6 Linter Extension for LaTeX with incremental delta tracking
  */
-export function createLatexLinterExtension(): Extension {
+export function createLatexLinterExtension(filePath?: string): Extension {
   return [
-    latexLinterIncrementalPlugin,
-    linter(latexLinterSource, {
+    createLatexLinterIncrementalPlugin(filePath),
+    linter(createLatexLinterSource(filePath), {
       delay: 350, // 350ms debounced execution for smooth typing
     }),
   ];

@@ -408,6 +408,10 @@ export const exportDocs = {
 // ── Sub-domain: history.api.ts ──────────────────────────────────────
 
 export const history = {
+  getByPageId: async (docId: string): Promise<PageVersion[]> => {
+    return history.getByDocId(docId);
+  },
+
   getByDocId: async (docId: string): Promise<PageVersion[]> => {
     if (!docId) return [];
     try {

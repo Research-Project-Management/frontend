@@ -80,11 +80,14 @@ const sanitizeTitle = (raw: string) => {
   return trimmed.replace(/\.$/, '');
 };
 
+const EMPTY_LINKED_FILES: LinkedFileDto[] = [];
+
 // ── Main FilesTab ───────────────────────────────────────────────────────────
 
 const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => void }) {
   const { pageId, projectId: routeProjectId } = useParams<{ pageId?: string; projectId?: string }>();
   const searchParams = useSearchParams();
+  const fileParam = searchParams.get('file');
   const setSearchParams = useCallback(
     (newParams: Record<string, string>) => {
       syncShallowUrlParams(newParams);
@@ -228,7 +231,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
   }, [queryClient, parentPageId]);
 
   // Query external linked files (Zotero, Mendeley, remote URL)
-  const { data: linkedFiles = [] } = useQuery<LinkedFileDto[]>({
+  const { data: linkedFilesData } = useQuery<LinkedFileDto[]>({
     queryKey: ['project-linked-files', projectId],
     queryFn: async () => {
       if (!projectId) return [];
@@ -240,6 +243,8 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
     },
     enabled: Boolean(projectId),
   });
+
+  const linkedFiles = linkedFilesData ?? EMPTY_LINKED_FILES;
 
   const linkedFileMap = useMemo(() => {
     const map = new Map<string, LinkedFileDto>();
@@ -352,7 +357,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
         fileId === parentPageId ||
         fileId === mainFileId ||
         (configuredMainFile && (title.toLowerCase() === configuredMainFile.toLowerCase() || displayName(title).toLowerCase() === configuredMainFile.toLowerCase()));
-      const currentParam = searchParams.get('file');
+      const currentParam = fileParam;
       if (isTargetMain && !currentParam) return;
       if (!isTargetMain && fileId === currentParam) return;
 
@@ -361,7 +366,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
         title,
       });
     },
-    [searchParams, pageId, parentPageId, mainFileId, configuredMainFile],
+    [fileParam, pageId, parentPageId, mainFileId, configuredMainFile],
   );
 
   const folderFocusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -505,9 +510,9 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
     if (!fileToDelete || !parentPageId) return;
     const targetId = fileToDelete.id;
 
-    sessionCoordinator.evictDeletedFile(targetId);
     deletePageMutation.mutate(targetId, {
       onSuccess: () => {
+        sessionCoordinator.evictDeletedFile(targetId);
         const wsStore = useWorkspaceStore.getState();
         if (wsStore.secondaryFileId === targetId) {
           wsStore.setSecondaryFileId(null);
@@ -585,7 +590,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
       }
 
       // TeX file node
-      const activeId = activeTabId || activeFileId || searchParams.get('file') || pageId;
+      const activeId = activeTabId || activeFileId || fileParam || pageId;
       const isMain = Boolean(
         mainFileId
           ? node.id === mainFileId
@@ -642,7 +647,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
       projectId,
       activeFileId,
       activeTabId,
-      searchParams,
+      fileParam,
       pageId,
       mainFileId,
       configuredMainFile,

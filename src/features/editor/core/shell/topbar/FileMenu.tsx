@@ -10,12 +10,12 @@
 import React from 'react';
 import { useParams } from 'next/navigation';
 import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSub, MenubarSubTrigger, MenubarSubContent, MenubarSeparator } from '@/shared/components/ui/menubar';
-import { usePageStore } from '@/features/editor/core';
+import { usePageStore } from '../../store/editor.store';
+import { useSettingsStore } from '../../store/settings.store';
 import { useCompileStore } from '@/features/editor/subsystems/compiler';
-import { useSettingsStore } from '@/features/editor/core';
-import { useWorkspaceStore } from '@/features/editor/core';
+import { useWorkspaceStore } from '../../store/workspace.store';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
-import { editorCommandBus } from '@/features/editor/core';
+import { editorCommandBus } from '../../bus/command-bus';
 import { Download, FileArchive, FileText, FileCode, Archive, Calculator, Settings, History } from 'lucide-react';
 import { GitHubIcon } from '@/shared/components/icons';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
@@ -25,7 +25,6 @@ export function FileMenu({ value = 'file' }: { value?: string } = {}) {
   const params = useParams<{ pageId?: string; projectId?: string }>();
   const { getContent } = useEditorInstance();
   const pdfUrl = useCompileStore((s) => s.pdfUrl);
-  const setIsTemplateModalOpen = useSettingsStore((s) => s.setIsTemplateModalOpen);
   const currentPage = usePageStore((s) => s.currentPage);
   const activeFilePage = usePageStore((s) => s.activeFilePage);
   const storeProjectId = usePageStore((s) => s.projectId);
@@ -57,8 +56,6 @@ export function FileMenu({ value = 'file' }: { value?: string } = {}) {
   });
 
   const handleGithubSync = () => {
-    useSettingsStore.getState().setSettingsActiveTab('github');
-    useSettingsStore.getState().setSettingsPanelOpen(true);
     editorCommandBus.dispatch({
       type: 'dialog:open',
       dialog: 'project-settings',
@@ -85,7 +82,6 @@ export function FileMenu({ value = 'file' }: { value?: string } = {}) {
   };
 
   const handleTemplateGallery = () => {
-    setIsTemplateModalOpen(true);
     editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'template-gallery' });
   };
 
@@ -94,7 +90,6 @@ export function FileMenu({ value = 'file' }: { value?: string } = {}) {
   };
 
   const handleProjectSettings = () => {
-    useSettingsStore.getState().setSettingsPanelOpen(true);
     editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'project-settings' });
   };
 

@@ -8,7 +8,7 @@
  * Guarantees zero unhandled network errors and zero polling spam when offline / disconnected.
  */
 
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef, useSyncExternalStore } from 'react';
 import type * as Y from 'yjs';
 import type { Awareness } from 'y-protocols/awareness';
 import { useQuery } from '@tanstack/react-query';
@@ -19,7 +19,13 @@ import {
 } from '@/features/editor/core';
 import { ProjectService } from '@/features/projects/shell/services/project.service';
 import { getCollaboratorColor } from '@/features/editor/ui/editor/CollaboratorCursors';
-import { getOrCreateYjsProvider, releaseYjsProvider, subscribeYjsPoolCleared, type YjsSocketIOProvider, type ConnectionStatus } from '@/features/editor/sdk/realtime/yjs-socket-provider';
+import {
+  acquireYjsProvider,
+  subscribeYjsPoolCleared,
+  getYjsPoolEpoch,
+  type YjsSocketIOProvider,
+  type ConnectionStatus,
+} from '@/features/editor/sdk/realtime/yjs-socket-provider';
 import { getCachedUser } from '@/features/auth/services/auth.service';
 import { useSafeQueryClient } from '@/features/editor/subsystems/review/ui/hooks/safeQueryClient';
 
@@ -182,7 +188,11 @@ export function useEditorCollaboration({
   } | null>(null);
   const [isSynced, setIsSynced] = useState<boolean>(false);
   const [status, setStatus] = useState<ConnectionStatus>('connecting');
-  const [poolEpoch, setPoolEpoch] = useState(0);
+  const poolEpoch = useSyncExternalStore(
+    subscribeYjsPoolCleared,
+    getYjsPoolEpoch,
+    getYjsPoolEpoch,
+  );
   const [, setDocGeneration] = useState(0);
   const prevFileIdRef = useRef(fileId);
   const initialValueRef = useRef(initialValue);
@@ -192,12 +202,6 @@ export function useEditorCollaboration({
   } else if (!initialValueRef.current && initialValue) {
     initialValueRef.current = initialValue;
   }
-
-  useEffect(() => {
-    return subscribeYjsPoolCleared(() => {
-      setPoolEpoch((e) => e + 1);
-    });
-  }, []);
 
   useEffect(() => {
     if (!enabled || !projectId || !fileId) {
@@ -217,7 +221,7 @@ export function useEditorCollaboration({
         }
       : undefined;
 
-    const instance = getOrCreateYjsProvider(projectId, fileId, {
+    const { provider: instance, release } = acquireYjsProvider(projectId, fileId, {
       user,
       initialContent: initialValueRef.current,
       commandBus: editorCommandBus,
@@ -228,28 +232,43 @@ export function useEditorCollaboration({
     setProviderState({ fileId, provider: instance });
     setIsSynced(instance.isSynced);
     setStatus(instance.status);
-    // Pooled providers keep the first caller's onStatusChange; subscribe explicitly so this
-    // hook instance always reflects the real socket status.
+    // Pooled providers keep the first caller's onStatusChange/onSynced; subscribe explicitly so this
+    // hook instance always reflects the real socket status and sync readiness.
     const unsubscribeStatus = instance.subscribeStatus((s) => setStatus(s));
+    const unsubscribeSynced = instance.subscribeSynced(() => setIsSynced(true));
     // After a rebuild-from-server the provider swaps doc/yText/awareness; re-render so the
     // editor binding reconfigures onto the new instances.
     const unsubscribeReplaced = instance.onDocReplaced(() => setDocGeneration((g) => g + 1));
 
     return () => {
       unsubscribeStatus();
+      unsubscribeSynced();
       unsubscribeReplaced();
-      releaseYjsProvider(projectId, fileId);
+      release();
     };
   }, [enabled, projectId, fileId, poolEpoch]);
 
+  useEffect(() => {
+    if (initialValue && providerState && providerState.fileId === fileId) {
+      providerState.provider.setInitialContent(initialValue);
+    }
+  }, [initialValue, fileId, providerState]);
+
   const activeProvider =
     fileId && providerState?.fileId === fileId ? providerState.provider : null;
+  const activeSynced = activeProvider ? isSynced : false;
 
   return {
-    yText: activeProvider ? activeProvider.yText : null,
+    // Only bind yText into CodeMirror once the initial Yjs sync step completes
+    // (or when yText already holds content). Binding an empty unsynced yText to a
+    // non-empty CodeMirror doc causes yCollab to duplicate insertions on sync.
+    yText:
+      activeProvider && (activeSynced || activeProvider.yText.length > 0)
+        ? activeProvider.yText
+        : null,
     awareness: activeProvider ? activeProvider.awareness : null,
     provider: activeProvider,
-    isSynced: activeProvider ? isSynced : false,
+    isSynced: activeSynced,
     status: activeProvider ? status : 'connecting',
   };
 }

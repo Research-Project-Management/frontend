@@ -6,7 +6,7 @@
  */
 
 import { queryOptions } from '@tanstack/react-query';
-import { pageService, fileService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 
 // ── 1. Query Keys ────────────────────────────────────────────────────────────
 
@@ -24,7 +24,7 @@ export const pageQuery = (pageId: string) =>
     queryKey: pageKeys.detail(pageId),
     queryFn: async () => {
       if (!pageId) throw new Error('Missing pageId');
-      return await pageService.getById(pageId);
+      return await manuscriptService.docs.getById(pageId);
     },
   });
 
@@ -33,7 +33,7 @@ export const filesQuery = (pageId: string) =>
     queryKey: pageKeys.files(pageId),
     queryFn: async () => {
       if (!pageId) return [];
-      return await fileService.getByPageId(pageId);
+      return await manuscriptService.docs.getFiles(pageId);
     },
   });
 
@@ -42,7 +42,7 @@ export const deletedFilesQuery = (pageId: string) =>
     queryKey: pageKeys.deletedFiles(pageId),
     queryFn: async () => {
       if (!pageId) return [];
-      return await fileService.getDeletedByPageId(pageId);
+      return await manuscriptService.docs.getDeletedFiles(pageId);
     },
   });
 

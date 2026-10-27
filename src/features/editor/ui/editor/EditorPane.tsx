@@ -13,7 +13,7 @@
  * - Collaboration presence and awareness scoped to this pane.
  */
 
-import React from 'react';
+import React, { useSyncExternalStore } from 'react';
 import { ArrowLeftRight, X, FileCode2, ChevronDown, Check } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import {
@@ -89,6 +89,11 @@ export function EditorPane({
   const isLocked = useSettingsStore((s) => s.isLocked);
 
   const fileId = file?.id;
+  const filePath =
+    (file && 'path' in file && typeof file.path === 'string' && file.path) ||
+    (file && 'title' in file && file.title) ||
+    (file && 'filename' in file && file.filename) ||
+    'main.tex';
   const fileName =
     (file && 'title' in file && file.title) ||
     (file && 'filename' in file && file.filename) ||
@@ -104,16 +109,13 @@ export function EditorPane({
         !/\.(tex|bib|sty|cls|md|txt)$/i.test(fileName)),
   );
 
-  // Content resolution with LRU cache & reactive dirty tracking
+  // Content resolution with LRU cache as single source of truth & reactive dirty tracking
   const cachedModel = fileId ? lruDocumentCache.getModel(fileId) : null;
-  const isDirtyInCompileStore = useCompileStore((s) => (fileId ? s.dirtyFileIds.has(fileId) : false));
-  const isDirtyInWorkspaceStore = useWorkspaceStore((s) => {
-    if (!fileId) return false;
-    const scopeKey = rootPageId || projectId;
-    const tabs = scopeKey ? s.tabsByProject[scopeKey] : undefined;
-    return Boolean(tabs?.some((t) => t.id === fileId && t.isDirty));
-  });
-  const isDirty = Boolean(cachedModel?.isDirty || isDirtyInCompileStore || isDirtyInWorkspaceStore);
+  const isDirty = useSyncExternalStore(
+    lruDocumentCache.subscribe,
+    () => (fileId ? lruDocumentCache.isDirty(fileId) : false),
+    () => false,
+  );
   const fileContent = file && 'content' in file ? (file as { content?: unknown }).content : undefined;
   const fallbackContent = extractDocumentContentString(fileContent);
   const rawContent =
@@ -281,7 +283,7 @@ export function EditorPane({
                 <CodeMirrorView
                   key={paneId || 'primary'}
                   fileId={fileId}
-                  filePath={fileName}
+                  filePath={filePath}
                   value={rawContent}
                   readOnly={isLocked}
                   yText={yText}

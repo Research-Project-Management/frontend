@@ -23,10 +23,9 @@ import {
   unfoldAll,
 } from '@codemirror/language';
 import { gotoLine, selectNextOccurrence } from '@codemirror/search';
-import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
-import { useDocumentCollaborationStore } from '@/features/editor/core/store/collaboration.store';
-import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store';
-import { useSettingsStore } from '@/features/editor/core/store/settings.store';
+import { editorCommandBus } from '../../bus/command-bus';
+import { useDocumentCollaborationStore } from '../../store/collaboration.store';
+import { useSettingsStore } from '../../store/settings.store';
 
 /**
  * Wraps selection with LaTeX formatting command (Overleaf parity).
@@ -266,8 +265,6 @@ export const latexFormattingKeymap: readonly KeyBinding[] = [
     run: (view) => {
       const { from, to } = view.state.selection.main;
       const selectedText = from < to ? view.state.sliceDoc(from, to) : undefined;
-      useWorkspaceStore.getState().setSidebarLeftOpen(true);
-      useWorkspaceStore.getState().setActiveSidebarTab('search');
       editorCommandBus.dispatch({
         type: 'sidebar:open-panel',
         panel: 'Search',
@@ -281,8 +278,6 @@ export const latexFormattingKeymap: readonly KeyBinding[] = [
     run: (view) => {
       const { from, to } = view.state.selection.main;
       const selectedText = from < to ? view.state.sliceDoc(from, to) : undefined;
-      useWorkspaceStore.getState().setSidebarLeftOpen(true);
-      useWorkspaceStore.getState().setActiveSidebarTab('search');
       editorCommandBus.dispatch({
         type: 'sidebar:open-panel',
         panel: 'Search',
@@ -306,8 +301,6 @@ export const latexFormattingKeymap: readonly KeyBinding[] = [
         selectedText: selectedText || '',
       });
 
-      useWorkspaceStore.getState().setSidebarLeftOpen(true);
-      useWorkspaceStore.getState().setActiveSidebarTab('review');
       editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'Review' });
       return true;
     },

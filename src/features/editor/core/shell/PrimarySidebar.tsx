@@ -17,7 +17,7 @@
 import React from 'react';
 import dynamic from 'next/dynamic';
 import { Loader2 } from 'lucide-react';
-import { useWorkspaceStore } from '@/features/editor/core';
+import { useWorkspaceStore } from '../store/workspace.store';
 import { FilesTab } from '@/features/editor/subsystems/explorer';
 
 const PanelLoadingFallback = () => (

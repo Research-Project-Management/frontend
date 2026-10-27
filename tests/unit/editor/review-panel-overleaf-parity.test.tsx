@@ -28,7 +28,7 @@ import { reviewCoordinator } from '@/features/editor/subsystems/review';
 import { keybindingCoordinator } from '@/features/editor/subsystems/keybinding';
 import { jumpToEditorLine } from '@/features/editor/subsystems/navigation';
 import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/core';
-import { suggestionService, commentService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import type { PageSuggestion } from '@/features/editor/domain/types/suggestion.types';
 
 // Mock next/navigation
@@ -71,8 +71,8 @@ describe('Track Changes & Review Panel (Overleaf Parity)', () => {
     vi.clearAllMocks();
     mockComments.length = 0;
     mockSuggestions.length = 0;
-    vi.spyOn(suggestionService, 'getSuggestions').mockImplementation(async () => [...mockSuggestions]);
-    vi.spyOn(commentService, 'getComments').mockImplementation(async () => [...mockComments]);
+    vi.spyOn(manuscriptService.suggestions, 'getSuggestions').mockImplementation(async () => [...mockSuggestions]);
+    vi.spyOn(manuscriptService.comments, 'getComments').mockImplementation(async () => [...mockComments]);
     document.body.removeAttribute('data-scroll-locked');
     document.body.style.pointerEvents = '';
     document.querySelectorAll('[aria-hidden]').forEach((el) => {

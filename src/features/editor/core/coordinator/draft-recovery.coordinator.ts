@@ -126,9 +126,12 @@ export class DraftRecoveryCoordinator {
     projectId: string | undefined,
     fileId: string,
     content: string,
-    filePath?: string
+    filePath?: string,
+    saveSnapshot = true,
   ): void {
-    this.saveDraftSnapshot(fileId, content, projectId);
+    if (saveSnapshot) {
+      this.saveDraftSnapshot(fileId, content, projectId);
+    }
     const effectiveProjectId = this.resolveEffectiveProjectId(projectId);
     void draftStorageService.saveProjectFileSnapshot({
       id: fileId,

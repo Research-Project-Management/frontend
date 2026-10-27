@@ -68,6 +68,39 @@ export type CitationStyle =
   | 'markdown-bracket'
   | 'markdown-inline';
 
+/**
+ * Specification Pattern predicates for CitationPickerModal filtering & nav badge counting.
+ * Guarantees a single source of truth between tree badge counts and list filtering.
+ */
+export type CitationPredicate = (entry: BibEntry) => boolean;
+
+export const CitationSpecs = {
+  all: (): CitationPredicate => () => true,
+  isLibrarySource: (): CitationPredicate => (item) =>
+    item.source === 'library' || item.sourceFile === 'workspace-library',
+  isBibSource: (): CitationPredicate => (item) =>
+    item.source === 'bib' ||
+    Boolean(item.sourceFile && item.sourceFile !== 'workspace-library'),
+  isCitedInDoc: (citedKeysSet: ReadonlySet<string>): CitationPredicate => (item) =>
+    Boolean(item.key && citedKeysSet.has(item.key.toLowerCase())),
+  matchesQuery: (rawQuery: string): CitationPredicate => {
+    const query = rawQuery.trim().toLowerCase();
+    if (!query) return () => true;
+    return (entry) => {
+      const keyMatch = entry.key?.toLowerCase().includes(query);
+      const titleMatch = entry.title?.toLowerCase().includes(query);
+      const authorMatch = entry.authors?.some((a) => a.toLowerCase().includes(query));
+      const yearMatch = entry.year?.toString().includes(query);
+      const doiMatch = entry.doi?.toLowerCase().includes(query);
+      const venueMatch =
+        entry.journal?.toLowerCase().includes(query) ||
+        entry.booktitle?.toLowerCase().includes(query) ||
+        entry.publisher?.toLowerCase().includes(query);
+      return Boolean(keyMatch || titleMatch || authorMatch || yearMatch || doiMatch || venueMatch);
+    };
+  },
+} as const;
+
 export interface CitationPickerModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -381,80 +414,52 @@ export default function CitationPickerModal({
     [],
   );
 
-  // Nav counts
-  const navCounts = useMemo(() => {
-    let lib = 0;
-    let bib = 0;
-    let cited = 0;
-    for (const item of allMergedItems) {
-      if (item.source === 'library' || item.sourceFile === 'workspace-library') lib++;
-      if (item.source === 'bib' || (item.sourceFile && item.sourceFile !== 'workspace-library'))
-        bib++;
-      if (item.key && citedKeysSet.has(item.key.toLowerCase())) cited++;
-    }
-
-    const counts: Record<string, number> = {
-      all: allMergedItems.length,
-      library: lib,
-      bib,
-      cited,
+  // Nav counts + nav scope predicates (shared Specification source of truth)
+  const navSpecMap = useMemo<Record<string, CitationPredicate>>(() => {
+    const specs: Record<string, CitationPredicate> = {
+      all: CitationSpecs.all(),
+      library: CitationSpecs.isLibrarySource(),
+      bib: CitationSpecs.isBibSource(),
+      cited: CitationSpecs.isCitedInDoc(citedKeysSet),
     };
-
     for (const [id, node] of collectionNodeMap.entries()) {
-      counts[id] = allMergedItems.filter((entry) => entryMatchesCollection(entry, node)).length;
+      specs[id] = (entry) => entryMatchesCollection(entry, node);
     }
+    return specs;
+  }, [citedKeysSet, collectionNodeMap, entryMatchesCollection]);
 
+  const navCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const [navId, predicate] of Object.entries(navSpecMap)) {
+      counts[navId] = allMergedItems.filter(predicate).length;
+    }
     return counts;
-  }, [allMergedItems, citedKeysSet, collectionNodeMap, entryMatchesCollection]);
+  }, [allMergedItems, navSpecMap]);
 
-  // Filtered by selected tree navigation
+  // Filtered by selected tree navigation using shared Specification
   const navFilteredItems = useMemo(() => {
-    switch (selectedNav) {
-      case 'all':
-        return allMergedItems;
-      case 'library':
-        return allMergedItems.filter(
-          (item) => item.source === 'library' || item.sourceFile === 'workspace-library',
-        );
-      case 'bib':
-        return allMergedItems.filter(
-          (item) =>
-            item.source === 'bib' || (item.sourceFile && item.sourceFile !== 'workspace-library'),
-        );
-      case 'cited':
-        return allMergedItems.filter(
-          (item) => item.key && citedKeysSet.has(item.key.toLowerCase()),
-        );
-      default: {
-        const node = collectionNodeMap.get(selectedNav);
-        if (node) {
-          const matched = allMergedItems.filter((entry) => entryMatchesCollection(entry, node));
-          return matched.length > 0 ? matched : allMergedItems;
-        }
-        return allMergedItems;
-      }
+    const spec = navSpecMap[selectedNav];
+    if (!spec) return allMergedItems;
+    const matched = allMergedItems.filter(spec);
+    if (
+      matched.length === 0 &&
+      selectedNav !== 'all' &&
+      selectedNav !== 'library' &&
+      selectedNav !== 'bib' &&
+      selectedNav !== 'cited'
+    ) {
+      return allMergedItems;
     }
-  }, [allMergedItems, selectedNav, citedKeysSet, collectionNodeMap, entryMatchesCollection]);
+    return matched;
+  }, [allMergedItems, selectedNav, navSpecMap]);
 
   // Defer search to keep typing at 60 FPS without UI freezes
   const deferredSearch = useDeferredValue(search);
 
-  // Filtered by search query across fields
+  // Filtered by search query across fields using CitationSpecs.matchesQuery
   const filteredItems = useMemo(() => {
-    const query = deferredSearch.trim().toLowerCase();
-    if (!query) return navFilteredItems;
-    return navFilteredItems.filter((entry) => {
-      const keyMatch = entry.key?.toLowerCase().includes(query);
-      const titleMatch = entry.title?.toLowerCase().includes(query);
-      const authorMatch = entry.authors?.some((a) => a.toLowerCase().includes(query));
-      const yearMatch = entry.year?.toString().includes(query);
-      const doiMatch = entry.doi?.toLowerCase().includes(query);
-      const venueMatch =
-        entry.journal?.toLowerCase().includes(query) ||
-        entry.booktitle?.toLowerCase().includes(query) ||
-        entry.publisher?.toLowerCase().includes(query);
-      return Boolean(keyMatch || titleMatch || authorMatch || yearMatch || doiMatch || venueMatch);
-    });
+    const querySpec = CitationSpecs.matchesQuery(deferredSearch);
+    return navFilteredItems.filter(querySpec);
   }, [navFilteredItems, deferredSearch]);
 
   // Keep a valid selected entry

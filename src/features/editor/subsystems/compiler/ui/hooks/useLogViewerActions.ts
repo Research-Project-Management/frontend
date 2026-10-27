@@ -20,7 +20,7 @@ import type { AiErrorFixResult } from '@/features/editor/domain/ai/ai-error-assi
 import { manuscriptService, downloadAuxFileUrl, downloadAllArtifactsZipUrl } from '@/features/editor/sdk/manuscript.service';
 import { aiCoordinator } from '@/features/editor/subsystems/ai';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
-import { usePageStore, workspaceCoordinator } from '@/features/editor/core';
+import { usePageStore, workspaceCoordinator, editorCommandBus } from '@/features/editor/core';
 
 export function copySnippetToClipboard(snippet?: string): void {
   if (!snippet) return;
@@ -83,6 +83,17 @@ export function useLogViewerActions({
           const isPreambleFix =
             trimmedFix.startsWith('\\usepackage') || descLower.includes('preamble');
 
+          const applyUpdatedContent = (newContent: string, fromOffset?: number, toOffset?: number, insertStr?: string) => {
+            const anyEng = engine as Partial<Pick<IEditorEngine, 'replaceRange' | 'setContent'>>;
+            if (typeof anyEng.replaceRange === 'function' && fromOffset !== undefined && toOffset !== undefined && insertStr !== undefined) {
+              anyEng.replaceRange(insertStr, fromOffset, toOffset);
+            } else if (typeof anyEng.setContent === 'function') {
+              anyEng.setContent(newContent);
+            } else {
+              editorCommandBus.dispatch({ type: 'editor:set-content', content: newContent });
+            }
+          };
+
           if (isPreambleFix) {
             if (!content.includes(trimmedFix)) {
               const beginDocIdx = content.indexOf('\\begin{document}');
@@ -91,7 +102,7 @@ export function useLogViewerActions({
                   content.slice(0, beginDocIdx) +
                   `${trimmedFix}\n` +
                   content.slice(beginDocIdx);
-                engine.setContent(updated);
+                applyUpdatedContent(updated, beginDocIdx, beginDocIdx, `${trimmedFix}\n`);
               } else {
                 const docClassMatch = content.match(/^.*\\documentclass(?:\[[^\]]*\])?\{[^}]+\}.*$/m);
                 if (docClassMatch && docClassMatch.index !== undefined) {
@@ -100,9 +111,9 @@ export function useLogViewerActions({
                     content.slice(0, insertPos) +
                     `\n${trimmedFix}` +
                     content.slice(insertPos);
-                  engine.setContent(updated);
+                  applyUpdatedContent(updated, insertPos, insertPos, `\n${trimmedFix}`);
                 } else {
-                  engine.setContent(`${trimmedFix}\n${content}`);
+                  applyUpdatedContent(`${trimmedFix}\n${content}`, 0, 0, `${trimmedFix}\n`);
                 }
               }
             }
@@ -114,12 +125,18 @@ export function useLogViewerActions({
               descLower.includes('insert') ||
               descLower.includes('add ') ||
               descLower.includes('append');
+            let lineStartOffset = 0;
+            for (let i = 0; i < targetIdx; i++) {
+              lineStartOffset += lines[i].length + 1;
+            }
+            const lineEndOffset = lineStartOffset + lines[targetIdx].length;
             if (isInsertion) {
               lines[targetIdx] = `${lines[targetIdx]}\n${replacement}`;
+              applyUpdatedContent(lines.join('\n'), lineEndOffset, lineEndOffset, `\n${replacement}`);
             } else {
               lines[targetIdx] = replacement;
+              applyUpdatedContent(lines.join('\n'), lineStartOffset, lineEndOffset, replacement);
             }
-            engine.setContent(lines.join('\n'));
           } else if (typeof engine.insertText === 'function') {
             engine.insertText(replacement);
           }

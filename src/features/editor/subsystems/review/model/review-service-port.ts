@@ -2,7 +2,7 @@
  * review-service-port.ts
  *
  * Ports & Seams for the ReviewCoordinator Deep Module (Matt Pocock Codebase Design).
- * Allows production adapters (suggestionService, sonner toast, Zustand stores) and
+ * Allows production adapters (manuscriptService.suggestions, sonner toast, Zustand stores) and
  * in-memory test stand-ins to be swapped cleanly across the boundary.
  */
 

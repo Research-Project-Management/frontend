@@ -66,6 +66,27 @@ export interface DiagnosticsSnapshot {
   telemetry?: DiagnosticsTelemetry;
 }
 
+export type DiagnosticsChangeSource = 'linter' | 'compiler' | 'shift' | 'filter' | 'clear';
+
+export const EMPTY_DIAGNOSTICS_SUMMARY: FileDiagnosticsSummary = Object.freeze({
+  errorCount: 0,
+  warningCount: 0,
+  infoCount: 0,
+  total: 0,
+  totalCount: 0,
+});
+
+function areSummariesEqual(a: FileDiagnosticsSummary | undefined, b: FileDiagnosticsSummary): boolean {
+  if (!a) return false;
+  return (
+    a.errorCount === b.errorCount &&
+    a.warningCount === b.warningCount &&
+    a.infoCount === b.infoCount &&
+    a.total === b.total &&
+    a.totalCount === b.totalCount
+  );
+}
+
 export class DiagnosticsCoordinatorRegistry {
   private static readonly MAX_ALIAS_MAP_SIZE = 500;
   private fileIndex = new Map<string, IndexedDiagnosticItem[]>();
@@ -73,11 +94,14 @@ export class DiagnosticsCoordinatorRegistry {
   private unmappedDiagnostics: IndexedDiagnosticItem[] = [];
   private aliasMap = new Map<string, string>();
   private filterOptions: WarningFilterOptions = {};
-  private listeners = new Set<(fileKey?: string) => void>();
+  private listeners = new Set<(fileKey?: string, source?: DiagnosticsChangeSource) => void>();
   private combinedFileIndexCache = new Map<string, IndexedDiagnosticItem[]>();
   private fileSummaryCache = new Map<string, FileDiagnosticsSummary>();
+  private prevFileSummaryCache = new Map<string, FileDiagnosticsSummary>();
   private folderSummaryCache = new Map<string, FileDiagnosticsSummary>();
+  private prevFolderSummaryCache = new Map<string, FileDiagnosticsSummary>();
   private projectSummaryCache = new Map<boolean, FileDiagnosticsSummary>();
+  private prevProjectSummaryCache = new Map<boolean, FileDiagnosticsSummary>();
   private telemetry: DiagnosticsTelemetry = {
     totalIngested: 0,
     linterIngested: 0,
@@ -87,42 +111,93 @@ export class DiagnosticsCoordinatorRegistry {
   };
 
   public clear(): void {
+    const wasEmpty =
+      this.fileIndex.size === 0 &&
+      this.linterIndex.size === 0 &&
+      this.unmappedDiagnostics.length === 0;
     this.fileIndex.clear();
     this.linterIndex.clear();
     this.unmappedDiagnostics = [];
     this.aliasMap.clear();
-    this.notify();
+    if (!wasEmpty) {
+      this.notify(undefined, 'clear');
+    }
   }
 
   public clearDiagnostics(): void {
     this.clear();
   }
 
-  public setFilterOptions(options: WarningFilterOptions): void {
-    this.filterOptions = { ...options };
-    this.notify();
+  public setFilterOptions(options: WarningFilterOptions & { enableLinter?: boolean; enableSpellcheck?: boolean }): void {
+    const prev = this.filterOptions as WarningFilterOptions & { enableLinter?: boolean; enableSpellcheck?: boolean };
+    const prevPatterns = prev.customPatterns ?? [];
+    const nextPatterns = options.customPatterns ?? [];
+    const samePatterns =
+      prevPatterns.length === nextPatterns.length &&
+      prevPatterns.every((p, idx) => p === nextPatterns[idx]);
+    const sameWarningFilters =
+      prev.suppressBadBoxes === options.suppressBadBoxes &&
+      prev.suppressFontWarnings === options.suppressFontWarnings &&
+      prev.suppressPackageWarnings === options.suppressPackageWarnings &&
+      samePatterns;
+    const sameLinterAndSpellcheck =
+      (options.enableLinter === undefined || options.enableLinter === prev.enableLinter) &&
+      (options.enableSpellcheck === undefined || options.enableSpellcheck === prev.enableSpellcheck);
+
+    if (sameWarningFilters && sameLinterAndSpellcheck) {
+      return;
+    }
+
+    this.filterOptions = { ...this.filterOptions, ...options };
+    this.notify(undefined, 'filter');
   }
 
   public getFilterOptions(): WarningFilterOptions {
     return { ...this.filterOptions };
   }
 
+  private areDiagnosticsEqual(
+    prev: IndexedDiagnosticItem[] | undefined,
+    next: IndexedDiagnosticItem[],
+  ): boolean {
+    if (!prev) return next.length === 0;
+    if (prev.length !== next.length) return false;
+    for (let i = 0; i < prev.length; i++) {
+      const a = prev[i];
+      const b = next[i];
+      if (
+        a.line !== b.line ||
+        a.column !== b.column ||
+        a.severity !== b.severity ||
+        a.message !== b.message ||
+        a.source !== b.source
+      ) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   public ingestLinterDiagnostics(fileIdOrPath: string, diagnostics: IndexedDiagnosticItem[]): void {
     if (!fileIdOrPath) return;
     this.telemetry.linterIngested += diagnostics.length;
     const canonicalKey = this.resolveCanonicalKey(fileIdOrPath);
+    const prev = this.linterIndex.get(canonicalKey);
+    if (this.areDiagnosticsEqual(prev, diagnostics)) {
+      return;
+    }
     this.linterIndex.set(canonicalKey, [...diagnostics]);
-    this.notify(canonicalKey);
+    this.notify(canonicalKey, 'linter');
   }
 
   public clearLinterDiagnostics(fileIdOrPath?: string): void {
     if (fileIdOrPath) {
       const canonicalKey = this.resolveCanonicalKey(fileIdOrPath);
       this.linterIndex.delete(canonicalKey);
-      this.notify(canonicalKey);
+      this.notify(canonicalKey, 'linter');
     } else {
       this.linterIndex.clear();
-      this.notify();
+      this.notify(undefined, 'linter');
     }
   }
 
@@ -182,7 +257,7 @@ export class DiagnosticsCoordinatorRegistry {
     }
 
     if (changed) {
-      this.notify(canonicalKey);
+      this.notify(canonicalKey, 'shift');
     }
   }
 
@@ -289,7 +364,7 @@ export class DiagnosticsCoordinatorRegistry {
       list.sort((a, b) => a.line - b.line || (a.column ?? 0) - (b.column ?? 0));
     }
 
-    this.notify();
+    this.notify(undefined, 'compiler');
   }
 
   public getDiagnosticsForFile(fileIdOrPath: string, applyFilter = true): IndexedDiagnosticItem[] {
@@ -457,8 +532,15 @@ export class DiagnosticsCoordinatorRegistry {
     }
 
     const total = items.length;
-    const summary: FileDiagnosticsSummary = { errorCount, warningCount, infoCount, total, totalCount: total };
+    if (total === 0 && errorCount === 0 && warningCount === 0 && infoCount === 0) {
+      this.fileSummaryCache.set(cacheKey, EMPTY_DIAGNOSTICS_SUMMARY);
+      return EMPTY_DIAGNOSTICS_SUMMARY;
+    }
+    const nextSummary: FileDiagnosticsSummary = { errorCount, warningCount, infoCount, total, totalCount: total };
+    const prevSummary = this.prevFileSummaryCache.get(cacheKey);
+    const summary = areSummariesEqual(prevSummary, nextSummary) ? prevSummary! : nextSummary;
     this.fileSummaryCache.set(cacheKey, summary);
+    this.prevFileSummaryCache.set(cacheKey, summary);
     return summary;
   }
 
@@ -492,8 +574,15 @@ export class DiagnosticsCoordinatorRegistry {
       }
     }
 
-    const summary: FileDiagnosticsSummary = { errorCount, warningCount, infoCount, total, totalCount: total };
+    if (total === 0 && errorCount === 0 && warningCount === 0 && infoCount === 0) {
+      this.folderSummaryCache.set(cacheKey, EMPTY_DIAGNOSTICS_SUMMARY);
+      return EMPTY_DIAGNOSTICS_SUMMARY;
+    }
+    const nextSummary: FileDiagnosticsSummary = { errorCount, warningCount, infoCount, total, totalCount: total };
+    const prevSummary = this.prevFolderSummaryCache.get(cacheKey);
+    const summary = areSummariesEqual(prevSummary, nextSummary) ? prevSummary! : nextSummary;
     this.folderSummaryCache.set(cacheKey, summary);
+    this.prevFolderSummaryCache.set(cacheKey, summary);
     return summary;
   }
 
@@ -518,8 +607,15 @@ export class DiagnosticsCoordinatorRegistry {
       total += summary.total;
     }
 
-    const summary: FileDiagnosticsSummary = { errorCount, warningCount, infoCount, total, totalCount: total };
+    if (total === 0 && errorCount === 0 && warningCount === 0 && infoCount === 0) {
+      this.projectSummaryCache.set(applyFilter, EMPTY_DIAGNOSTICS_SUMMARY);
+      return EMPTY_DIAGNOSTICS_SUMMARY;
+    }
+    const nextSummary: FileDiagnosticsSummary = { errorCount, warningCount, infoCount, total, totalCount: total };
+    const prevSummary = this.prevProjectSummaryCache.get(applyFilter);
+    const summary = areSummariesEqual(prevSummary, nextSummary) ? prevSummary! : nextSummary;
     this.projectSummaryCache.set(applyFilter, summary);
+    this.prevProjectSummaryCache.set(applyFilter, summary);
     return summary;
   }
 
@@ -551,7 +647,7 @@ export class DiagnosticsCoordinatorRegistry {
     return all.filter((d) => d.severity === severity).length;
   }
 
-  public subscribe(callback: (fileKey?: string) => void): () => void {
+  public subscribe(callback: (fileKey?: string, source?: DiagnosticsChangeSource) => void): () => void {
     this.listeners.add(callback);
     return () => {
       this.listeners.delete(callback);
@@ -585,14 +681,14 @@ export class DiagnosticsCoordinatorRegistry {
     };
   }
 
-  private notify(fileKey?: string): void {
+  private notify(fileKey?: string, source?: DiagnosticsChangeSource): void {
     this.combinedFileIndexCache.clear();
     this.fileSummaryCache.clear();
     this.folderSummaryCache.clear();
     this.projectSummaryCache.clear();
     for (const listener of this.listeners) {
       try {
-        listener(fileKey);
+        listener(fileKey, source);
       } catch (err) {
         console.error('[DiagnosticsCoordinator] Listener error:', err);
       }

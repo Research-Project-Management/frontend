@@ -58,63 +58,93 @@ export const useViewerStore = create<DocumentViewerState>((set) => ({
   setPageNumber: (pageOrFn) =>
     set((s) => {
       const pageNumber = typeof pageOrFn === 'function' ? pageOrFn(s.pageNumber) : pageOrFn;
+      const next = Math.max(1, Math.min(pageNumber, s.numPages || 1));
+      if (s.pageNumber === next) return s;
       return {
-        pageNumber: Math.max(1, Math.min(pageNumber, s.numPages || 1)),
+        pageNumber: next,
       };
     }),
 
   nextPage: () =>
-    set((s) => ({
-      pageNumber: Math.min(s.pageNumber + 1, s.numPages || 1),
-    })),
+    set((s) => {
+      const next = Math.min(s.pageNumber + 1, s.numPages || 1);
+      if (s.pageNumber === next) return s;
+      return { pageNumber: next };
+    }),
 
   prevPage: () =>
-    set((s) => ({
-      pageNumber: Math.max(s.pageNumber - 1, 1),
-    })),
+    set((s) => {
+      const next = Math.max(s.pageNumber - 1, 1);
+      if (s.pageNumber === next) return s;
+      return { pageNumber: next };
+    }),
 
   setNumPages: (numPages) =>
     set((s) => {
       const safeTotal = Math.max(1, numPages);
+      const nextPageNumber = Math.min(s.pageNumber, safeTotal);
+      if (s.numPages === safeTotal && s.pageNumber === nextPageNumber) return s;
       return {
         numPages: safeTotal,
-        pageNumber: Math.min(s.pageNumber, safeTotal),
+        pageNumber: nextPageNumber,
       };
     }),
 
   setScale: (scale, disableAutoFit = true) =>
-    set({
-      scale: Math.max(0.25, Math.min(scale, 4.0)),
-      ...(disableAutoFit ? { autoFit: false } : {}),
+    set((s) => {
+      const nextScale = Math.max(0.25, Math.min(scale, 4.0));
+      const nextAutoFit = disableAutoFit ? false : s.autoFit;
+      if (Math.abs(s.scale - nextScale) < 0.0001 && s.autoFit === nextAutoFit) {
+        return s;
+      }
+      return {
+        scale: nextScale,
+        ...(disableAutoFit ? { autoFit: false } : {}),
+      };
     }),
 
   zoomIn: () =>
-    set((s) => ({
-      scale: Math.min(Number((s.scale + 0.15).toFixed(2)), 4.0),
-      autoFit: false,
-    })),
-
-  zoomOut: () =>
-    set((s) => ({
-      scale: Math.max(Number((s.scale - 0.15).toFixed(2)), 0.25),
-      autoFit: false,
-    })),
-
-  resetZoom: () =>
-    set({
-      scale: 1.0,
-      autoFit: true,
-      fitMode: 'width',
+    set((s) => {
+      const nextScale = Math.min(Number((s.scale + 0.15).toFixed(2)), 4.0);
+      if (s.scale === nextScale && !s.autoFit) return s;
+      return {
+        scale: nextScale,
+        autoFit: false,
+      };
     }),
 
-  setAutoFit: (autoFit) => set({ autoFit }),
-  setFitMode: (fitMode) => set({ fitMode, autoFit: true }),
+  zoomOut: () =>
+    set((s) => {
+      const nextScale = Math.max(Number((s.scale - 0.15).toFixed(2)), 0.25);
+      if (s.scale === nextScale && !s.autoFit) return s;
+      return {
+        scale: nextScale,
+        autoFit: false,
+      };
+    }),
+
+  resetZoom: () =>
+    set((s) => {
+      if (s.scale === 1.0 && s.autoFit && s.fitMode === 'width') return s;
+      return {
+        scale: 1.0,
+        autoFit: true,
+        fitMode: 'width',
+      };
+    }),
+
+  setAutoFit: (autoFit) =>
+    set((s) => (s.autoFit === autoFit ? s : { autoFit })),
+  setFitMode: (fitMode) =>
+    set((s) => (s.fitMode === fitMode && s.autoFit ? s : { fitMode, autoFit: true })),
 
   toggleInvertColors: () => set((s) => ({ invertColors: !s.invertColors })),
-  setInvertColors: (invertColors) => set({ invertColors }),
+  setInvertColors: (invertColors) =>
+    set((s) => (s.invertColors === invertColors ? s : { invertColors })),
 
   toggleSpreadView: () => set((s) => ({ isSpreadView: !s.isSpreadView })),
-  setSpreadView: (isSpreadView) => set({ isSpreadView }),
+  setSpreadView: (isSpreadView) =>
+    set((s) => (s.isSpreadView === isSpreadView ? s : { isSpreadView })),
 
   resetViewerState: () =>
     set({

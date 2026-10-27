@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import {
   X,
   FileText,
@@ -18,7 +17,7 @@ import {
 } from '@/shared/components/ui/dialog';
 import { usePageActions } from '@/features/editor/ui/hooks/usePageActions';
 import { useEditorStorage } from '@/features/editor/ui/hooks/useStorage';
-import { usePageStore } from '@/features/editor/core';
+import { usePageStore, syncShallowUrlParams } from '@/features/editor/core';
 
 import type {
   AddFilesTab,
@@ -50,23 +49,15 @@ export default function AddFilesModal({
   projectId = '',
   onPickItems,
 }: AddFilesModalProps) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
   const storeParentPageId = usePageStore((s) => s.parentPageId);
   const currentPageId = usePageStore((s) => s.currentPage?.id);
   const parentPageId = propParentPageId || storeParentPageId || currentPageId || null;
 
   const setSearchParams = useCallback(
     (newParams: Record<string, string>) => {
-      const params = new URLSearchParams(searchParams.toString());
-      Object.entries(newParams).forEach(([k, v]) => {
-        if (!v) params.delete(k);
-        else params.set(k, v);
-      });
-      router.push(`${pathname}?${params.toString()}`);
+      syncShallowUrlParams(newParams);
     },
-    [searchParams, router, pathname],
+    [],
   );
 
   const [activeTab, setActiveTab] = useState<AddFilesTab>(defaultTab);

@@ -28,7 +28,7 @@ import {
 } from '@/features/editor/subsystems/review/extensions/track-changes.extension';
 import { reviewCoordinator } from '@/features/editor/subsystems/review';
 import { editorCommandBus } from '@/features/editor/core';
-import { suggestionService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import type { PageSuggestion } from '@/features/editor/domain/types/suggestion.types';
 import type { PageComment } from '@/features/editor/domain/types/comment.types';
 
@@ -282,7 +282,7 @@ describe('Track Changes & In-Editor Inline Suggestion Widget', () => {
       reviewCoordinator.bindEditorView(editor, 'doc-1');
       reviewCoordinator.syncEditorDecorations(editor, mockSuggestions, mockComments);
 
-      vi.spyOn(suggestionService, 'acceptSuggestion').mockResolvedValueOnce({
+      vi.spyOn(manuscriptService.suggestions, 'acceptSuggestion').mockResolvedValueOnce({
         ok: true,
         suggestion: { ...mockSuggestions[1], status: 'accepted' },
         page: {},
@@ -305,7 +305,7 @@ describe('Track Changes & In-Editor Inline Suggestion Widget', () => {
       reviewCoordinator.bindEditorView(editor, 'doc-1');
       reviewCoordinator.syncEditorDecorations(editor, mockSuggestions, mockComments);
 
-      vi.spyOn(suggestionService, 'rejectSuggestion').mockResolvedValueOnce({
+      vi.spyOn(manuscriptService.suggestions, 'rejectSuggestion').mockResolvedValueOnce({
         ok: true,
         suggestion: { ...mockSuggestions[0], status: 'rejected' },
       } as any);

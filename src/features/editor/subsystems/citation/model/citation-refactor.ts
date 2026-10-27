@@ -287,7 +287,7 @@ export async function executeProjectCitekeyRefactor(
     workspaceCoordinator,
     sessionCoordinator,
   } = await import('@/features/editor/core');
-  const { manuscriptService, fileService } = await import('@/features/editor/sdk/manuscript.service');
+  const { manuscriptService } = await import('@/features/editor/sdk/manuscript.service');
   const { lruDocumentCache } = await import('@/features/editor/domain/document/lru-document-cache');
   const { extractDocumentContentString } = await import('@/features/editor/domain/types/core.types');
   const { latexSymbolsIndex } = await import('@/features/editor/domain/latex/latex-symbols-index');
@@ -330,7 +330,7 @@ export async function executeProjectCitekeyRefactor(
   try {
     const files = effectiveCtx?.service
       ? await effectiveCtx.service.getFilesByProjectId(effectiveProjectId)
-      : await fileService.getByPageId(effectiveProjectId);
+      : await manuscriptService.docs.getFiles(effectiveProjectId);
     for (const f of files) {
       if (f.id) {
         const cached = lruDocumentCache.get(f.id);
@@ -349,7 +349,7 @@ export async function executeProjectCitekeyRefactor(
     try {
       const pageFiles = effectiveCtx?.service
         ? await effectiveCtx.service.getFilesByProjectId(activeDoc.id)
-        : await fileService.getByPageId(activeDoc.id);
+        : await manuscriptService.docs.getFiles(activeDoc.id);
       for (const f of pageFiles) {
         if (f.id) {
           const cached = lruDocumentCache.get(f.id);
@@ -440,6 +440,15 @@ export async function executeProjectCitekeyRefactor(
       }
     }
 
+    const targetEngine =
+      documentAuthority?.getEditorEngineForFile(mod.id) ??
+      (activeDocId === mod.id ? liveEngine : null);
+    if (targetEngine && !yText) {
+      targetEngine.setContent(mod.newContent);
+    } else if (!targetEngine && !yText) {
+      editorCommandBus.dispatch({ type: 'editor:set-content', content: mod.newContent, fileId: mod.id });
+    }
+
     lruDocumentCache.updateContent(mod.id, mod.newContent, true);
     sessionCoordinator.notifyContentChange(mod.id, mod.newContent);
     latexSymbolsIndex.indexFile(mod.id, mod.path, mod.newContent, true);
@@ -449,17 +458,10 @@ export async function executeProjectCitekeyRefactor(
       if (ctx?.service) {
         await ctx.service.updateFileContent(mod.id, mod.newContent);
       } else {
-        await manuscriptService.docs.updateContent(mod.id, mod.newContent);
+        await sessionCoordinator.flushFile(mod.id);
       }
     } catch (err) {
       console.warn(`[CitationRefactor] Failed to save updated file ${mod.path} to backend:`, err);
-    }
-
-    const targetEngine =
-      documentAuthority?.getEditorEngineForFile(mod.id) ??
-      (activeDocId === mod.id ? liveEngine : null);
-    if (targetEngine) {
-      targetEngine.setContent(mod.newContent);
     }
 
     if (activeDocId && activeDocId === mod.id) {
@@ -474,7 +476,6 @@ export async function executeProjectCitekeyRefactor(
         prev && prev.id === mod.id ? { ...prev, content: mod.newContent, docContent: mod.newContent } : prev
       );
     }
-    editorCommandBus.dispatch({ type: 'editor:set-content', content: mod.newContent, fileId: mod.id });
   }
 
   editorCommandBus.dispatch({

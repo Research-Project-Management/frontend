@@ -489,7 +489,11 @@ export class CompilerCoordinatorRegistry {
         useCache: options?.forceClean ? false : settingsStore.useCache,
         forceClean: options?.forceClean,
         stopOnFirstError: settingsStore.stopOnFirstError,
-        dirtyFiles: snapshot.dirtyFileIds.map((id: string) => ({ fileId: id, content: snapshot.files[id] || '' })),
+        dirtyFiles: snapshot.dirtyFileIds.map((id: string) => ({
+          fileId: id,
+          content: lruDocumentCache.getContent(id) ?? compileStore.dirtyContentMap.get(id) ?? snapshot.files[id] ?? '',
+        })),
+        signal: currentController.signal,
         onPhaseChange: (phase: string) => {
           compileStore.setCompileStatus(phase as CompileStatus);
           editorCommandBus.dispatch({ type: 'compiler:progress', status: phase });
@@ -553,9 +557,17 @@ export class CompilerCoordinatorRegistry {
         diagnosticsCoordinator.ingestCompilerErrors(successDiagnostics, resolvedMainFile);
 
         if (res.flushedFileIds && res.flushedFileIds.length > 0) {
-          res.flushedFileIds.forEach((fid: string) => compileStore.clearDirty(fid));
+          res.flushedFileIds.forEach((fid: string) => {
+            if (!lruDocumentCache.isDirty(fid)) {
+              compileStore.clearDirty(fid);
+            }
+          });
         } else if (!res.flushErrors || res.flushErrors.length === 0) {
-          compileStore.clearAllDirty();
+          for (const fid of Array.from(compileStore.dirtyFileIds)) {
+            if (!lruDocumentCache.isDirty(fid)) {
+              compileStore.clearDirty(fid);
+            }
+          }
         }
 
         editorCommandBus.dispatch({ type: 'compiler:finished', success: true });
@@ -673,6 +685,8 @@ export class CompilerCoordinatorRegistry {
 
   public stop(): void {
     const pageStore = usePageStore.getState();
+    const compileStore = useCompileStore.getState();
+    const wasCompiling = this.isCompiling || compileStore.compileStatus === 'compiling';
     const activeDoc = pageStore.getActiveDocument();
     const targetProjectId =
       (this.options.getProjectId ? this.options.getProjectId() : undefined) ||
@@ -680,12 +694,14 @@ export class CompilerCoordinatorRegistry {
       pageStore.projectId ||
       undefined;
     this.pendingCompileOptions = undefined;
-    useCompileStore.getState().setPendingCompile(false);
+    compileStore.setPendingCompile(false);
     this.compileAbortController?.abort();
     this.compileAbortController = null;
-    this.compilerEngine.cancelInFlightCompile(targetProjectId);
+    if (targetProjectId) {
+      this.compilerEngine.cancelInFlightCompile(targetProjectId);
+    }
     this.isCompiling = false;
-    useCompileStore.getState().setCompileStatus('idle');
+    compileStore.setCompileStatus('idle');
   }
 
   public resolveForwardDetail(

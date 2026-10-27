@@ -155,6 +155,39 @@ export class LatexSymbolsIndex {
   }
 
   /**
+   * Batch indexes multiple files in a single pass, exporting the snapshot and
+   * rebuilding the PrefixTrie catalog only ONCE instead of N times.
+   */
+  public indexFilesBatch(
+    files: Array<{ fileId: string; filePath: string; content: string }>,
+  ): void {
+    if (!files || files.length === 0) return;
+
+    for (const f of files) {
+      const existingTimer = this.debounceTimers.get(f.fileId);
+      if (existingTimer) {
+        clearTimeout(existingTimer);
+        this.debounceTimers.delete(f.fileId);
+      }
+    }
+
+    if (this.worker && !this.isWorkerFailed) {
+      this.worker.postMessage({
+        type: 'indexBatch',
+        files,
+        id: ++this.requestIdCounter,
+      } as SymbolsWorkerMessageIn);
+    } else {
+      for (const f of files) {
+        this.fallbackCore.indexFile(f.fileId, f.filePath, f.content);
+      }
+      this.snapshot = this.fallbackCore.exportSnapshot();
+      this.rebuildCatalog(this.snapshot);
+      this.notifyListeners();
+    }
+  }
+
+  /**
    * Removes all indexed symbols for a deleted file
    */
   public removeFile(fileId: string, filePath?: string): void {
@@ -503,8 +536,6 @@ export class LatexSymbolsIndex {
       };
       this.rebuildCatalog(this.snapshot);
       this.notifyListeners();
-    } else {
-      this.rebuildCatalog(this.snapshot);
     }
   }
 

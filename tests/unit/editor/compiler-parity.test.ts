@@ -1,9 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import {
-  downloadAuxFileUrl,
-  downloadAllArtifactsZipUrl,
-  compileService,
-} from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { parseLatexLog } from '@/features/editor/domain/latex/latex-structure';
 import { createPdfBlobAndUrl } from '@/features/editor/subsystems/compiler/synctex/pdf-resolver';
 
@@ -14,31 +10,31 @@ describe('Phase 2: Compiler & Artifacts Overleaf Parity', () => {
 
   describe('Auxiliary & Output Artifacts Download Endpoints', () => {
     it('should generate correct download URL for individual auxiliary file', () => {
-      const url = downloadAuxFileUrl('proj-123', 'output.aux');
+      const url = manuscriptService.compiler.downloadAuxFileUrl('proj-123', 'output.aux');
       expect(url).toContain('/projects/proj-123/artifacts/output.aux');
     });
 
     it('should properly encode special characters in auxiliary filename', () => {
-      const url = downloadAuxFileUrl('proj-123', 'subfolder/chapter 1.aux');
+      const url = manuscriptService.compiler.downloadAuxFileUrl('proj-123', 'subfolder/chapter 1.aux');
       expect(url).toContain(encodeURIComponent('subfolder/chapter 1.aux'));
     });
 
     it('should generate correct download URL for all artifacts ZIP package', () => {
-      const url = downloadAllArtifactsZipUrl('proj-123');
+      const url = manuscriptService.compiler.downloadAllArtifactsZipUrl('proj-123');
       expect(url).toContain('/projects/proj-123/artifacts-zip');
     });
 
-    it('should expose both aux URL helpers on the compileService object', () => {
-      expect(compileService.downloadAuxFileUrl).toBeDefined();
-      expect(compileService.downloadAllArtifactsZipUrl).toBeDefined();
-      expect(typeof compileService.downloadAuxFileUrl).toBe('function');
-      expect(typeof compileService.downloadAllArtifactsZipUrl).toBe('function');
+    it('should expose both aux URL helpers on manuscriptService.compiler object', () => {
+      expect(manuscriptService.compiler.downloadAuxFileUrl).toBeDefined();
+      expect(manuscriptService.compiler.downloadAllArtifactsZipUrl).toBeDefined();
+      expect(typeof manuscriptService.compiler.downloadAuxFileUrl).toBe('function');
+      expect(typeof manuscriptService.compiler.downloadAllArtifactsZipUrl).toBe('function');
     });
   });
 
   describe('Compiler Payload & Configuration Parity', () => {
     it('supports 240,000ms timeout, draft mode, and stop_on_first_error in payload typing', () => {
-      const payload: Parameters<typeof compileService.compileLatex>[0] = {
+      const payload: Parameters<typeof manuscriptService.compiler.compile>[0] = {
         main_file: 'main.tex',
         engine: 'pdflatex',
         draft: true,

@@ -27,6 +27,10 @@ import { extractProjectId, type Page } from '@/features/editor/domain/types/core
 import type { NodeTreeItem } from '@/features/editor/domain/types/node.types';
 
 import type { WorkspaceTab } from '@/features/editor/domain/types/workspace.types';
+import type { PageFile } from '@/features/editor/domain/types/core.types';
+
+const EMPTY_PAGE_ARRAY: Page[] = [];
+const EMPTY_FILE_ARRAY: PageFile[] = [];
 
 /**
  * Canonical helper to synchronize a tab across both pageId and projectId scopes
@@ -82,12 +86,13 @@ export function useActiveDocument() {
   const projectId = rawProjectId || undefined;
 
   // Canonical Overleaf project route resolution: when visiting /projects/:projectId directly
-  const { data: projectDocs = [], isLoading: projectDocsLoading } = useQuery({
+  const { data: projectDocsData, isLoading: projectDocsLoading } = useQuery({
     queryKey: ['projects', projectId, 'docs'],
     queryFn: () => manuscriptService.docs.getProjectDocs(projectId!),
     enabled: !!projectId && !directPageId,
   });
 
+  const projectDocs = projectDocsData ?? EMPTY_PAGE_ARRAY;
   const pageId = directPageId || projectDocs[0]?.id || '';
 
   const searchParams = useSearchParams();
@@ -98,13 +103,14 @@ export function useActiveDocument() {
     enabled: !!pageId,
   });
 
-  const { data: serverFiles = [], isLoading: filesLoading } = useQuery({
+  const { data: serverFilesData, isLoading: filesLoading } = useQuery({
     ...filesQuery(pageId || ''),
     enabled: !!pageId,
   });
 
+  const serverFiles = serverFilesData ?? EMPTY_FILE_ARRAY;
   const parentPage = serverPage || (projectDocs.length > 0 ? projectDocs[0] : null);
-  const childFiles = useMemo(() => serverFiles || [], [serverFiles]);
+  const childFiles = serverFiles;
 
   const parentProjectId = extractProjectId(parentPage?.projectId) || null;
   const effectiveProjectId = projectId || parentProjectId || null;

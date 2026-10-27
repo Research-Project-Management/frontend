@@ -21,7 +21,7 @@ import {
   useDocumentCollaborationStore,
   useWorkspaceStore,
 } from '@/features/editor/core';
-import { suggestionService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { toast } from 'sonner';
 import {
   trackChangesStateField,
@@ -41,7 +41,7 @@ import type {
   ReviewCoordinatorPorts,
 } from '@/features/editor/subsystems/review/model/review-service-port';
 
-const defaultServicePort: ReviewServicePort = suggestionService;
+const defaultServicePort: ReviewServicePort = manuscriptService.suggestions;
 
 const defaultNotificationPort: ReviewNotificationPort = {
   notifySuccess: (message: string, id?: string) => {
@@ -62,6 +62,20 @@ const defaultStorePort: ReviewStorePort = {
     editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'Review' });
   },
 };
+
+export interface SuggestionMemento {
+  readonly view: EditorView;
+  readonly range: { from: number; to: number };
+  readonly postMutationTo: number;
+  readonly originalText: string;
+  readonly sug: PageSuggestion;
+}
+
+export interface ReviewRollbackSnapshot {
+  readonly pageId: string | null;
+  readonly viewDocs: Array<{ view: EditorView; text: string }>;
+  readonly suggestions: Array<[string, PageSuggestion]>;
+}
 
 export class ReviewCoordinatorRegistry {
   private servicePort: ReviewServicePort = defaultServicePort;
@@ -109,12 +123,19 @@ export class ReviewCoordinatorRegistry {
   private currentComments = new Map<string, PageComment>();
   private localToPersistedId = new Map<string, string>();
   private pendingPersistTimers = new Map<string, ReturnType<typeof setTimeout>>();
-  private rollbackSnapshots = new Map<string, { view: EditorView; range: { from: number; to: number }; postMutationTo: number; originalText: string; sug: PageSuggestion }>();
+  private rollbackSnapshots = new Map<string, SuggestionMemento>();
   private readonly inFlightSuggestionCreates = new Set<string>();
   private pendingConcurrentSuggestionUpdates = new Map<string, { pageId: string; sug: PageSuggestion }>();
   private currentViewMode: TrackChangesViewMode = 'changes';
   private currentReviewMode = false;
+  private currentReviewStatuses = new Map<string, string>();
   private initialized = false;
+
+  public getReviewStatus(pageId?: string | null): string {
+    const targetId = pageId || this.activePageId;
+    if (!targetId) return 'draft';
+    return this.currentReviewStatuses.get(targetId) || 'draft';
+  }
 
   constructor(ports?: ReviewCoordinatorPorts) {
     if (ports) {
@@ -172,16 +193,31 @@ export class ReviewCoordinatorRegistry {
       this.initiateComment(cmd.line, cmd.selectedText);
     });
 
-    // 6. Sync locally recorded suggestions from Suggesting Mode keystrokes and persist to backend
-    editorCommandBus.subscribe('editor:review-event', (cmd) => {
-      if (cmd.event === 'suggestion:rollback') {
+    // 6. Dispatch table for `editor:review-event` notifications
+    const reviewEventHandlers: Record<
+      string,
+      (cmd: { pageId?: string; payload?: unknown }) => void
+    > = {
+      'review:status-changed': (cmd) => {
+        const payload = cmd.payload as
+          | {
+              docId?: string;
+              review?: { status?: string; roundNumber?: number };
+            }
+          | undefined;
+        const targetId = payload?.docId || cmd.pageId || this.activePageId;
+        const nextStatus = payload?.review?.status;
+        if (targetId && nextStatus) {
+          this.currentReviewStatuses.set(targetId, nextStatus);
+        }
+      },
+      'suggestion:rollback': (cmd) => {
         const payload = cmd.payload as { suggestionId?: string } | undefined;
         if (payload?.suggestionId) {
           this.rollbackSuggestionLocally(payload.suggestionId);
         }
-        return;
-      }
-      if (cmd.event === 'suggestion:local-recorded') {
+      },
+      'suggestion:local-recorded': (cmd) => {
         const sug = (cmd.payload as { suggestion?: PageSuggestion })?.suggestion;
         if (sug) {
           const targetPageId = sug.pageId || cmd.pageId || this.activePageId || '';
@@ -194,6 +230,13 @@ export class ReviewCoordinatorRegistry {
             this.scheduleLocalSuggestionPersist(targetPageId, normalizedSug);
           }
         }
+      },
+    };
+
+    editorCommandBus.subscribe('editor:review-event', (cmd) => {
+      const handler = reviewEventHandlers[cmd.event];
+      if (handler) {
+        handler(cmd);
       }
     });
   }
@@ -236,7 +279,7 @@ export class ReviewCoordinatorRegistry {
 
       const createPromise = this.servicePort.createSuggestion
         ? this.servicePort.createSuggestion(createPayload)
-        : suggestionService.createSuggestion(createPayload);
+        : manuscriptService.suggestions.createSuggestion(createPayload);
       void createPromise.then((created) => {
           this.inFlightSuggestionCreates.delete(sug.id);
           this.pendingConcurrentSuggestionUpdates.delete(sug.id);
@@ -438,16 +481,21 @@ export class ReviewCoordinatorRegistry {
   ): void {
     const targetPageId = pageId ?? this.activePageId;
     const preservedLocal: PageSuggestion[] = [];
-    for (const s of this.currentSuggestions.values()) {
-      if (s.id.startsWith('sug-local-') && (!targetPageId || !s.pageId || s.pageId === targetPageId)) {
-        preservedLocal.push(s);
+    for (const [id, s] of Array.from(this.currentSuggestions.entries())) {
+      const matchesTarget = !targetPageId || !s.pageId || s.pageId === targetPageId;
+      if (matchesTarget) {
+        if (s.id.startsWith('sug-local-')) {
+          preservedLocal.push(s);
+        }
+        this.currentSuggestions.delete(id);
       }
     }
 
-    this.currentSuggestions.clear();
+    const scopedSuggestions: PageSuggestion[] = [];
     for (const s of suggestions) {
       if (!targetPageId || !s.pageId || s.pageId === targetPageId) {
         this.currentSuggestions.set(s.id, s);
+        scopedSuggestions.push(s);
       }
     }
     for (const localSug of preservedLocal) {
@@ -457,12 +505,20 @@ export class ReviewCoordinatorRegistry {
       }
       if (!this.currentSuggestions.has(localSug.id)) {
         this.currentSuggestions.set(localSug.id, localSug);
+        scopedSuggestions.push(localSug);
       }
     }
 
-    const mergedSuggestions = Array.from(this.currentSuggestions.values());
+    const mergedSuggestions = targetPageId
+      ? scopedSuggestions
+      : Array.from(this.currentSuggestions.values());
 
-    this.currentComments.clear();
+    for (const [id, c] of Array.from(this.currentComments.entries())) {
+      const commentPageId = c.page || c.projectPageId;
+      if (!targetPageId || !commentPageId || commentPageId === targetPageId) {
+        this.currentComments.delete(id);
+      }
+    }
     const scopedComments: PageComment[] = [];
     for (const c of comments) {
       const commentPageId = c.page || c.projectPageId;
@@ -640,13 +696,84 @@ export class ReviewCoordinatorRegistry {
     );
   }
 
-  public applySuggestionByIdLocally(suggestionId: string, action: 'accept' | 'reject'): void {
-    const sug = this.resolveKnownSuggestion(suggestionId);
-    if (sug) {
-      const targetViews = this.getViewsForFile(sug.pageId, this.activeView);
-      for (const view of targetViews) {
-        this.applySuggestionLocally(view, sug, action);
+  public getRollbackSnapshot(pageId?: string): ReviewRollbackSnapshot {
+    const targetPageId = pageId || this.activePageId;
+    const targetViews = this.getViewsForFile(targetPageId, this.activeView);
+    return {
+      pageId: targetPageId,
+      viewDocs: targetViews.map((view) => ({
+        view,
+        text: view.state.doc.toString(),
+      })),
+      suggestions: Array.from(this.currentSuggestions.entries()).map(([id, sug]) => [
+        id,
+        { ...sug },
+      ]),
+    };
+  }
+
+  public restoreSnapshot(snapshot: ReviewRollbackSnapshot): void {
+    for (const { view, text } of snapshot.viewDocs) {
+      const currentText = view.state.doc.toString();
+      if (currentText !== text) {
+        view.dispatch({
+          changes: { from: 0, to: currentText.length, insert: text },
+        });
       }
+    }
+
+    if (snapshot.pageId && snapshot.viewDocs.length > 0 && lruDocumentCache.getModel(snapshot.pageId)) {
+      const restoredText = snapshot.viewDocs[0].text;
+      lruDocumentCache.updateContent(snapshot.pageId, restoredText, true);
+      sessionCoordinator.notifyContentChange(snapshot.pageId, restoredText);
+    }
+
+    this.currentSuggestions.clear();
+    for (const [id, sug] of snapshot.suggestions) {
+      this.currentSuggestions.set(id, { ...sug });
+    }
+
+    for (const { view } of snapshot.viewDocs) {
+      this.syncEditorDecorations(
+        view,
+        Array.from(this.currentSuggestions.values()),
+        Array.from(this.currentComments.values()),
+        this.currentViewMode,
+        this.currentReviewMode,
+        snapshot.pageId
+      );
+    }
+  }
+
+  public applySuggestionByIdLocally(
+    suggestionId: string,
+    action: 'accept' | 'reject',
+    targetPageId?: string
+  ): void {
+    const sug = this.resolveKnownSuggestion(suggestionId);
+    if (!sug) return;
+
+    const effectivePageId = targetPageId || sug.pageId;
+    if (effectivePageId && this.activePageId && effectivePageId !== this.activePageId) {
+      // Only splice views specifically registered for effectivePageId (never fall back to this.activeView)
+      const registeredViews = this.viewsByFileId.get(effectivePageId);
+      if (registeredViews && registeredViews.size > 0) {
+        for (const view of registeredViews) {
+          this.applySuggestionLocally(view, sug, action);
+        }
+      } else {
+        const updatedSug = {
+          ...sug,
+          status: action === 'accept' ? ('accepted' as const) : ('rejected' as const),
+        };
+        this.currentSuggestions.set(sug.id, updatedSug);
+      }
+      return;
+    }
+
+    const targetViews = this.getViewsForFile(effectivePageId, this.activeView);
+    for (const view of targetViews) {
+      this.applySuggestionLocally(view, sug, action);
     }
   }
 

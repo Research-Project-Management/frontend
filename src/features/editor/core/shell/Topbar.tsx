@@ -49,7 +49,11 @@ import ProjectTitleDropdown from './topbar/ProjectTitleDropdown';
 import CollaboratorAvatarStack from './topbar/CollaboratorAvatarStack';
 import { EditingModeDropdown } from './topbar/EditingModeDropdown';
 
-import { editorCommandBus, sessionCoordinator, useSettingsStore, usePageStore, useWorkspaceStore } from '@/features/editor/core';
+import { editorCommandBus } from '../bus/command-bus';
+import { sessionCoordinator } from '../coordinator/session.coordinator';
+import { useSettingsStore } from '../store/settings.store';
+import { usePageStore } from '../store/editor.store';
+import { useWorkspaceStore } from '../store/workspace.store';
 import { useCompileStore } from '@/features/editor/subsystems/compiler';
 import { usePageActions } from '@/features/editor/ui/hooks/usePageActions';
 import { useGithubSync } from '@/features/editor/ui/hooks/useGithubSync';
@@ -125,6 +129,8 @@ export function Topbar() {
         } else {
           toggleShortcuts();
         }
+      } else if (cmd.dialog === 'template-gallery') {
+        useSettingsStore.getState().setIsTemplateModalOpen(true);
       }
     });
 

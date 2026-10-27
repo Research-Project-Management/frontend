@@ -303,6 +303,21 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
     };
   }, [pageNum, pageElemRefs]);
 
+  const handlePageLoadSuccess = useCallback(
+    (page: {
+      getViewport?: (params: { scale: number }) => { width?: number; height?: number };
+      view?: number[];
+      originalWidth?: number;
+      originalHeight?: number;
+    }) => {
+      if (onPageDimensionsResolved) {
+        const dims = extractPageDimensionsPt(page);
+        onPageDimensionsResolved(pageNum, dims);
+      }
+    },
+    [onPageDimensionsResolved, pageNum],
+  );
+
   return (
     <div
       ref={(el) => {
@@ -334,12 +349,7 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
           renderTextLayer
           renderAnnotationLayer
           customTextRenderer={normalizePdfTextItem}
-          onLoadSuccess={(page) => {
-            if (onPageDimensionsResolved) {
-              const dims = extractPageDimensionsPt(page);
-              onPageDimensionsResolved(pageNum, dims);
-            }
-          }}
+          onLoadSuccess={handlePageLoadSuccess}
           onRenderTextLayerSuccess={onRenderTextLayer}
           devicePixelRatio={getCappedDevicePixelRatio(2)}
           loading={
@@ -446,15 +456,16 @@ export const PdfSurface = React.memo(forwardRef<PdfSurfaceHandle, PdfSurfaceProp
   });
   const [perPageDimensions, setPerPageDimensions] = useState<Record<number, PdfPageDimensions>>({});
 
+  const extWidthPt = externalPageDimensions?.widthPt;
+  const extHeightPt = externalPageDimensions?.heightPt;
+  const defWidthPt = defaultPageDimensions.widthPt;
+  const defHeightPt = defaultPageDimensions.heightPt;
+
   const effectiveDefaultDimensions = useMemo<PdfPageDimensions>(() => {
-    const w = externalPageDimensions?.widthPt && externalPageDimensions.widthPt > 0
-      ? externalPageDimensions.widthPt
-      : defaultPageDimensions.widthPt;
-    const h = externalPageDimensions?.heightPt && externalPageDimensions.heightPt > 0
-      ? externalPageDimensions.heightPt
-      : defaultPageDimensions.heightPt;
+    const w = extWidthPt && extWidthPt > 0 ? extWidthPt : defWidthPt;
+    const h = extHeightPt && extHeightPt > 0 ? extHeightPt : defHeightPt;
     return { widthPt: w, heightPt: h };
-  }, [externalPageDimensions, defaultPageDimensions]);
+  }, [extWidthPt, extHeightPt, defWidthPt, defHeightPt]);
 
   const handlePageDimensionsResolved = useCallback(
     (pageNum: number, dims: PdfPageDimensions) => {

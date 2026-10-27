@@ -66,7 +66,7 @@ export const clearSpellErrorsEffect = StateEffect.define<void>();
 
 // ── Shared Session Dictionaries & Caches ───────────────────────────────────────
 
-const sessionIgnoredWords = new Set<string>([
+const DEFAULT_SESSION_IGNORED_WORDS = [
   'overleaf', 'latex', 'pdflatex', 'xelatex', 'lualatex', 'bibtex', 'biber',
   'et', 'al', 'arxiv', 'doi', 'rgb', 'rgba', 'cpu', 'gpu', 'api', 'url',
   'fig', 'tab', 'eq', 'sec', 'algo', 'auth', 'init', 'impl', 'repo',
@@ -75,7 +75,9 @@ const sessionIgnoredWords = new Set<string>([
   'august', 'september', 'october', 'november', 'december',
   'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
   'today', 'date', 'dated', 'maketitle', 'documentclass', 'usepackage', 'author', 'title',
-]);
+] as const;
+
+const sessionIgnoredWords = new Set<string>(DEFAULT_SESSION_IGNORED_WORDS);
 
 const MAX_WORD_VALIDITY_CACHE_SIZE = 5000;
 const MAX_WORD_SUGGESTIONS_CACHE_SIZE = 1000;
@@ -104,6 +106,14 @@ export function clearSpellingCaches(): void {
   wordSuggestionsCache.clear();
 }
 
+export function resetSpellingSessionCache(): void {
+  clearSpellingCaches();
+  sessionIgnoredWords.clear();
+  for (const w of DEFAULT_SESSION_IGNORED_WORDS) {
+    sessionIgnoredWords.add(w);
+  }
+}
+
 // Reusable Uint8Array buffer pool to eliminate high-frequency allocations during typing
 let sharedMaskBuffer = new Uint8Array(65536);
 
@@ -119,13 +129,13 @@ function getMaskBuffer(len: number): Uint8Array {
 
 // ── LaTeX Word Filter & Tokenizer ─────────────────────────────────────────────
 
-const SPELL_MATH_REGEX = /(?<!\\)\$\$[\s\S]*?(?<!\\)\$\$|(?<!\\)\$[^$\n]+(?<!\\)\$|\\\(.*?\\\)|\s*\\\[[\s\S]*?\\\]/g;
+const SPELL_MATH_REGEX = /(?<!\\)\$\$[\s\S]*?(?<!\\)\$\$|(?<!\\)\$[^$\n]+(?<!\\)\$|\\\([\s\S]*?\\\)|(?<!\\)\\\[[\s\S]*?(?<!\\)\\\]/g;
 const SPELL_ENV_REGEX = /\\begin\{(equation\*?|align\*?|gather\*?|multline\*?|verbatim|lstlisting|minted)\}[\s\S]*?\\end\{\1\}/g;
 const SPELL_CMD_ARG_REGEX = /\\(?:cite[a-z]*|ref|eqref|label|input|include|usepackage|documentclass|bibliographystyle|bibliography)\*?(?:\[[^\]]*\])*\{([^}]+)\}/gi;
 const SPELL_GENERIC_CMD_REGEX = /\\[a-zA-Z@]+(?:\*?)/g;
 const SPELL_BIB_ENTRY_REGEX = /@[a-zA-Z]+\s*\{[^,\s]+,/g;
 const SPELL_BIB_FIELD_KEY_REGEX = /(?:^|[\n,])\s*([a-zA-Z_][a-zA-Z0-9_-]*)\s*=/g;
-const SPELL_BIB_IGNORED_FIELD_REGEX = /(?:author|editor|doi|url|eprint|isbn|issn|biburl|file|archiveprefix|primaryclass)\s*=\s*(?:\{[\s\S]*?\}|"[^"]*")/gi;
+const SPELL_BIB_IGNORED_FIELD_REGEX = /(?:author|editor|doi|url|eprint|isbn|issn|biburl|file|archiveprefix|primaryclass)\s*=\s*(?:\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}|"[^"]*")/gi;
 const SPELL_WORD_REGEX = /[\p{L}]{2,}(?:['’][\p{L}]+)?/gu;
 
 /**
@@ -141,6 +151,9 @@ export function extractLatexWords(text: string): Array<{ word: string; from: num
   const mask = getMaskBuffer(len); // 1 = skip
 
   // 1. Mask comments: % until end of line (unless escaped as \%)
+  // Also build a comment-blanked string so unmatched $ or \[ inside comments cannot
+  // hijack multi-line math regexes across the remainder of the document.
+  let hasComments = false;
   let i = 0;
   while (i < len) {
     if (text[i] === '%') {
@@ -151,6 +164,7 @@ export function extractLatexWords(text: string): Array<{ word: string; from: num
         k--;
       }
       if (backslashes % 2 === 0) {
+        hasComments = true;
         while (i < len && text[i] !== '\n') {
           mask[i] = 1;
           i++;
@@ -163,10 +177,21 @@ export function extractLatexWords(text: string): Array<{ word: string; from: num
     }
   }
 
+  let cleanText = text;
+  if (hasComments) {
+    const chars = text.split('');
+    for (let idx = 0; idx < len; idx++) {
+      if (mask[idx] === 1) {
+        chars[idx] = ' ';
+      }
+    }
+    cleanText = chars.join('');
+  }
+
   // 2. Mask display math ($$ ... $$) and inline math ($ ... $) (ignoring escaped \$)
   SPELL_MATH_REGEX.lastIndex = 0;
   let m: RegExpExecArray | null;
-  while ((m = SPELL_MATH_REGEX.exec(text)) !== null) {
+  while ((m = SPELL_MATH_REGEX.exec(cleanText)) !== null) {
     for (let k = m.index; k < m.index + m[0].length; k++) {
       if (k < len) mask[k] = 1;
     }
@@ -174,7 +199,7 @@ export function extractLatexWords(text: string): Array<{ word: string; from: num
 
   // 3. Mask math & code environments: \begin{equation}... \end{equation}, etc.
   SPELL_ENV_REGEX.lastIndex = 0;
-  while ((m = SPELL_ENV_REGEX.exec(text)) !== null) {
+  while ((m = SPELL_ENV_REGEX.exec(cleanText)) !== null) {
     for (let k = m.index; k < m.index + m[0].length; k++) {
       if (k < len) mask[k] = 1;
     }
@@ -182,7 +207,7 @@ export function extractLatexWords(text: string): Array<{ word: string; from: num
 
   // 4. Mask commands and their macro arguments: \cite{...}, \ref{...}, \label{...}, \input{...}, \usepackage{...}
   SPELL_CMD_ARG_REGEX.lastIndex = 0;
-  while ((m = SPELL_CMD_ARG_REGEX.exec(text)) !== null) {
+  while ((m = SPELL_CMD_ARG_REGEX.exec(cleanText)) !== null) {
     for (let k = m.index; k < m.index + m[0].length; k++) {
       if (k < len) mask[k] = 1;
     }
@@ -190,7 +215,7 @@ export function extractLatexWords(text: string): Array<{ word: string; from: num
 
   // 5. Mask generic commands: \textbf, \section, \item, etc.
   SPELL_GENERIC_CMD_REGEX.lastIndex = 0;
-  while ((m = SPELL_GENERIC_CMD_REGEX.exec(text)) !== null) {
+  while ((m = SPELL_GENERIC_CMD_REGEX.exec(cleanText)) !== null) {
     for (let k = m.index; k < m.index + m[0].length; k++) {
       if (k < len) mask[k] = 1;
     }
@@ -198,7 +223,7 @@ export function extractLatexWords(text: string): Array<{ word: string; from: num
 
   // 5b. Mask BibTeX entry declarations and citation keys: @article{loshchilov2017decoupled, etc.
   SPELL_BIB_ENTRY_REGEX.lastIndex = 0;
-  while ((m = SPELL_BIB_ENTRY_REGEX.exec(text)) !== null) {
+  while ((m = SPELL_BIB_ENTRY_REGEX.exec(cleanText)) !== null) {
     for (let k = m.index; k < m.index + m[0].length; k++) {
       if (k < len) mask[k] = 1;
     }
@@ -206,7 +231,7 @@ export function extractLatexWords(text: string): Array<{ word: string; from: num
 
   // 5c. Mask BibTeX field names: author =, title =, journal =, etc.
   SPELL_BIB_FIELD_KEY_REGEX.lastIndex = 0;
-  while ((m = SPELL_BIB_FIELD_KEY_REGEX.exec(text)) !== null) {
+  while ((m = SPELL_BIB_FIELD_KEY_REGEX.exec(cleanText)) !== null) {
     for (let k = m.index; k < m.index + m[0].length; k++) {
       if (k < len) mask[k] = 1;
     }
@@ -214,7 +239,7 @@ export function extractLatexWords(text: string): Array<{ word: string; from: num
 
   // 5d. Mask BibTeX identifier/metadata field contents (authors, URLs, DOIs, eprints, etc.)
   SPELL_BIB_IGNORED_FIELD_REGEX.lastIndex = 0;
-  while ((m = SPELL_BIB_IGNORED_FIELD_REGEX.exec(text)) !== null) {
+  while ((m = SPELL_BIB_IGNORED_FIELD_REGEX.exec(cleanText)) !== null) {
     for (let k = m.index; k < m.index + m[0].length; k++) {
       if (k < len) mask[k] = 1;
     }
@@ -443,6 +468,7 @@ export interface LatexSpellingOptions {
 }
 
 let lastSpellingLanguage: string | null = null;
+let lastSpellingProjectId: string | null = null;
 
 export function createSpellingViewPlugin(options: LatexSpellingOptions = {}) {
   const { projectId, language = 'en_US', enabled = true, spellingService: customService } = options;
@@ -454,10 +480,15 @@ export function createSpellingViewPlugin(options: LatexSpellingOptions = {}) {
 
       constructor(readonly view: EditorView) {
         if (enabled) {
-          if (lastSpellingLanguage !== null && lastSpellingLanguage !== language) {
-            clearSpellingCaches();
+          const targetProjectKey = projectId || 'default';
+          if (
+            (lastSpellingLanguage !== null && lastSpellingLanguage !== language) ||
+            (lastSpellingProjectId !== null && lastSpellingProjectId !== targetProjectKey)
+          ) {
+            resetSpellingSessionCache();
           }
           lastSpellingLanguage = language;
+          lastSpellingProjectId = targetProjectKey;
 
           const svc = resolveSpellingService(view, customService);
           // Pre-hydrate project and user custom dictionaries into session caches

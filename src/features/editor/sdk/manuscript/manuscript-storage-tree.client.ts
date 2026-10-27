@@ -27,6 +27,14 @@ import { uploadBlobWithPresigned } from '@/features/storage';
 
 export type { EditorStorageItem };
 
+/** Result of POST citations/sync-library. `conflicts` lists citekeys that already existed and were overwritten. */
+export interface SyncLibraryResult {
+  collectionId: string;
+  syncedCount: number;
+  filePath: string;
+  conflicts?: string[];
+}
+
 // ── Sub-domain: structure.api.ts ──────────────────────────────────────
 /**
  * structure.api.ts
@@ -35,131 +43,82 @@ export type { EditorStorageItem };
  */
 
 export const structure = {
-  getTree: async (projectId: string) => {
-    return await apiGet(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/tree`);
+  getTree: async (pageId: string) => {
+    return await apiGet(`${MANUSCRIPTS_API_BASE}/pages/${pageId}/structure/tree`);
   },
 
-  getAllNodes: async (projectId: string): Promise<StructureNodeDto[]> => {
-    if (!projectId) return [];
+  getAllNodes: async (pageId: string): Promise<StructureNodeDto[]> => {
+    if (!pageId) return [];
     try {
-      return await apiGet<StructureNodeDto[]>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes`, { silent: true });
+      return await apiGet<StructureNodeDto[]>(`${MANUSCRIPTS_API_BASE}/pages/${pageId}/structure/nodes`, { silent: true });
     } catch {
       return [];
     }
   },
 
-  getNodeById: async (projectId: string, nodeId: string): Promise<StructureNodeDto | null> => {
-    if (!projectId || !nodeId) return null;
+  getNodeById: async (pageId: string, nodeId: string): Promise<StructureNodeDto | null> => {
+    if (!pageId || !nodeId) return null;
     try {
-      return await apiGet<StructureNodeDto>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${nodeId}`, { silent: true });
+      return await apiGet<StructureNodeDto>(`${MANUSCRIPTS_API_BASE}/pages/${pageId}/structure/nodes/${nodeId}`, { silent: true });
     } catch {
       return null;
     }
   },
 
-  createNode: async (projectId: string, dto: Partial<StructureNodeDto> & { name: string; content?: string }) => {
-    return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes`, {
+  createNode: async (pageId: string, dto: Partial<StructureNodeDto> & { name: string; content?: string }) => {
+    return await apiPost(`${MANUSCRIPTS_API_BASE}/pages/${pageId}/structure/nodes`, {
       ...dto,
       type: typeof dto?.type === 'string' ? dto.type.toUpperCase() : (dto?.type || 'DOC'),
     });
   },
 
-  moveNode: async (projectId: string, nodeId: string, dto: { parentId?: string | null; destParentId?: string | null; destPath?: string; sortOrder?: number; [key: string]: unknown }) => {
+  moveNode: async (pageId: string, nodeId: string, dto: { parentId?: string | null; destParentId?: string | null; destPath?: string; sortOrder?: number; [key: string]: unknown }) => {
     const payload = {
       ...dto,
       ...(dto.destParentId === undefined && dto.parentId !== undefined
         ? { destParentId: dto.parentId }
         : {}),
     };
-    return await apiPatch(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${nodeId}/move`, payload);
+    return await apiPatch(`${MANUSCRIPTS_API_BASE}/pages/${pageId}/structure/nodes/${nodeId}/move`, payload);
   },
 
-  renameNode: async (projectId: string, nodeId: string, dto: { name: string; [key: string]: unknown }) => {
-    return await apiPatch(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${nodeId}/rename`, dto);
+  renameNode: async (pageId: string, nodeId: string, dto: { name: string; [key: string]: unknown }) => {
+    return await apiPatch(`${MANUSCRIPTS_API_BASE}/pages/${pageId}/structure/nodes/${nodeId}/rename`, dto);
   },
 
-  deleteNode: async (projectId: string, nodeId: string) => {
-    return await apiDelete(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${nodeId}`);
+  deleteNode: async (pageId: string, nodeId: string) => {
+    return await apiDelete(`${MANUSCRIPTS_API_BASE}/pages/${pageId}/structure/nodes/${nodeId}`);
   },
 
-  getRootDoc: async (projectId: string): Promise<StructureNodeDto | null> => {
-    if (!projectId) return null;
+  getRootDoc: async (pageId: string): Promise<StructureNodeDto | null> => {
+    if (!pageId) return null;
     try {
-      return await apiGet<StructureNodeDto>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/root-doc`, { silent: true });
+      return await apiGet<StructureNodeDto>(`${MANUSCRIPTS_API_BASE}/pages/${pageId}/structure/root-doc`, { silent: true });
     } catch {
       return null;
     }
   },
 
-  setRootDoc: async (projectId: string, nodeId: string): Promise<StructureNodeDto> => {
+  setRootDoc: async (pageId: string, nodeId: string): Promise<StructureNodeDto> => {
     return await apiPost<StructureNodeDto>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/root-doc/${nodeId}`,
+      `${MANUSCRIPTS_API_BASE}/pages/${pageId}/structure/root-doc/${nodeId}`,
       {},
     );
   },
 
-  reorderNode: async (projectId: string, nodeId: string, sortOrder: number): Promise<void> => {
+  reorderNode: async (pageId: string, nodeId: string, sortOrder: number): Promise<void> => {
     await apiPost(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${nodeId}/reorder`,
+      `${MANUSCRIPTS_API_BASE}/pages/${pageId}/structure/nodes/${nodeId}/reorder`,
       { sortOrder },
     );
   },
-};
 
-// ── Sub-domain: filestore.api.ts ──────────────────────────────────────
-/**
- * filestore.api.ts
- *
- * Filestore binary assets sub-API: Stream URLs, multipart uploads, signed URLs, deletion.
- */
-
-export const filestore = {
-  getStreamUrl: (projectId: string, fileId: string): string => {
-    return `${MANUSCRIPTS_API_BASE}/projects/${projectId}/files/${fileId}`;
-  },
-
-  upload: async (projectId: string, file: File | Blob, filename?: string): Promise<FileMetadataDto> => {
-    const name = filename || (file instanceof File ? file.name : 'unnamed.bin');
-    const formData = new FormData();
-    formData.append('file', file, name);
-    const res = await rawFetch(
-      `${getManuscriptsBaseUrl()}/projects/${projectId}/files?name=${encodeURIComponent(name)}`,
-      'POST',
-      formData,
-    );
-    if (!res.ok) throw new Error(`File upload failed: ${res.statusText}`);
-    return (await res.json()) as FileMetadataDto;
-  },
-
-  getSignedUrl: async (projectId: string, fileId: string, expiresIn = 3600): Promise<{ signedUrl: string | null }> => {
-    try {
-      return await apiGet<{ signedUrl: string | null }>(
-        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/files/${fileId}/signed-url?expiresIn=${expiresIn}`,
-      );
-    } catch {
-      return { signedUrl: null };
-    }
-  },
-
-  delete: async (projectId: string, fileId: string): Promise<void> => {
-    return await apiDelete(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/files/${fileId}`);
-  },
-};
-
-// ── Sub-domain: storage.api.ts ──────────────────────────────────────
-/**
- * storage.api.ts
- *
- * Manuscripts Storage & File Hierarchy Sub-API (Part of manuscriptService SDK).
- */
-
-export const storage = {
-  getProjectFiles: async (projectId: string, parentId?: string | null): Promise<EditorStorageItem[]> => {
-    if (!projectId) return [];
+  getProjectFiles: async (pageId: string, parentId?: string | null): Promise<EditorStorageItem[]> => {
+    if (!pageId) return [];
     try {
       const endpoint = parentId
-        ? `${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes?parentId=${parentId}`
-        : `${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes`;
+        ? `${MANUSCRIPTS_API_BASE}/pages/${pageId}/structure/nodes?parentId=${parentId}`
+        : `${MANUSCRIPTS_API_BASE}/pages/${pageId}/structure/nodes`;
       const nodes = await apiGet<StructureNodeDto[]>(endpoint, { silent: true });
       if (Array.isArray(nodes)) {
         return nodes.map((n) => ({
@@ -179,33 +138,7 @@ export const storage = {
   },
 
   getPageFiles: async (pageId: string, parentId?: string | null): Promise<EditorStorageItem[]> => {
-    return storage.getProjectFiles(pageId, parentId);
-  },
-
-  uploadPageFile: async (
-    pageId: string,
-    file: File,
-    parentId?: string | null,
-    onProgress?: (progress: number) => void,
-    projectId?: string,
-  ): Promise<EditorStorageItem> => {
-    const targetProjectId = projectId || pageId;
-    const completed = await uploadBlobWithPresigned(file, file.name, {
-      projectId: targetProjectId,
-      parentId: parentId || null,
-      onProgress,
-    });
-
-    const id = completed.fileId || '';
-    return {
-      id,
-      filename: file.name,
-      size: file.size,
-      mimeType: file.type,
-      isFolder: false,
-      parentId: parentId || null,
-      url: completed.url || `/api/v1/storage/files/${id}/content`,
-    };
+    return structure.getProjectFiles(pageId, parentId);
   },
 
   createFileRecord: async (
@@ -220,8 +153,8 @@ export const storage = {
     },
     projectId?: string,
   ) => {
-    const targetProjectId = projectId || pageId;
-    return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${targetProjectId}/structure/nodes`, {
+    const targetPageId = pageId || projectId || '';
+    return await apiPost(`${MANUSCRIPTS_API_BASE}/pages/${targetPageId}/structure/nodes`, {
       name: params.filename,
       type: 'FILE',
       parentId: params.parentId ?? null,
@@ -232,12 +165,12 @@ export const storage = {
   },
 
   createFile: async (
-    projectId: string,
+    pageId: string,
     name: string,
     parentId?: string | null,
     content?: string,
   ) => {
-    return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes`, {
+    return await apiPost(`${MANUSCRIPTS_API_BASE}/pages/${pageId}/structure/nodes`, {
       name,
       type: 'DOC',
       parentId: parentId ?? null,
@@ -245,8 +178,8 @@ export const storage = {
     });
   },
 
-  createFolder: async (projectId: string, name: string, parentId?: string | null) => {
-    return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes`, {
+  createFolder: async (pageId: string, name: string, parentId?: string | null) => {
+    return await apiPost(`${MANUSCRIPTS_API_BASE}/pages/${pageId}/structure/nodes`, {
       name,
       type: 'FOLDER',
       parentId: parentId ?? null,
@@ -254,49 +187,102 @@ export const storage = {
   },
 
   createPageFolder: async (pageId: string, name: string, parentId?: string | null) => {
-    return storage.createFolder(pageId, name, parentId);
+    return structure.createFolder(pageId, name, parentId);
   },
 
-  createProjectFolder: async (projectId: string, name: string, parentId?: string | null) => {
-    return storage.createFolder(projectId, name, parentId);
+  createProjectFolder: async (pageId: string, name: string, parentId?: string | null) => {
+    return structure.createFolder(pageId, name, parentId);
   },
 
-  renameItem: async (itemId: string, name: string, projectId?: string) => {
-    return await apiPatch(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${itemId}/rename`, { name });
+  renameItem: async (itemId: string, name: string, pageId?: string) => {
+    return await apiPatch(`${MANUSCRIPTS_API_BASE}/pages/${pageId || ''}/structure/nodes/${itemId}/rename`, { name });
   },
 
-  deleteItem: async (itemId: string, projectId?: string) => {
-    return await apiDelete(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${itemId}`);
+  deleteItem: async (itemId: string, pageId?: string) => {
+    return await apiDelete(`${MANUSCRIPTS_API_BASE}/pages/${pageId || ''}/structure/nodes/${itemId}`);
   },
 
-  permanentlyDeleteItem: async (itemId: string, projectId?: string) => {
-    return storage.deleteItem(itemId, projectId);
+  permanentlyDeleteItem: async (itemId: string, pageId?: string) => {
+    return structure.deleteItem(itemId, pageId);
   },
 
-  moveItem: async (itemId: string, targetFolderId: string | null, projectId?: string) => {
-    return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${itemId}/move`, {
+  moveItem: async (itemId: string, targetFolderId: string | null, pageId?: string) => {
+    return await apiPatch(`${MANUSCRIPTS_API_BASE}/pages/${pageId || ''}/structure/nodes/${itemId}/move`, {
       destParentId: targetFolderId,
     });
   },
 
-  reorderItem: async (itemId: string, sortOrder: number, projectId?: string) => {
-    if (!projectId) return null;
-    return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/nodes/${itemId}/reorder`, {
+  reorderItem: async (itemId: string, sortOrder: number, pageId?: string) => {
+    if (!pageId) return null;
+    return await apiPost(`${MANUSCRIPTS_API_BASE}/pages/${pageId}/structure/nodes/${itemId}/reorder`, {
       sortOrder,
     });
   },
+};
 
-  setRootDoc: async (nodeId: string, projectId: string) => {
-    return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/root-doc/${nodeId}`, {});
+// ── Sub-domain: filestore.api.ts ──────────────────────────────────────
+/**
+ * filestore.api.ts
+ *
+ * Filestore binary assets sub-API: Stream URLs, multipart uploads, signed URLs, deletion.
+ */
+
+export const filestore = {
+  getStreamUrl: (projectIdOrPageId: string, fileId: string): string => {
+    return `${MANUSCRIPTS_API_BASE}/projects/${projectIdOrPageId}/files/${fileId}`;
   },
 
-  getRootDoc: async (projectId: string): Promise<StructureNodeDto | null> => {
-    if (!projectId) return null;
+  upload: async (projectIdOrPageId: string, file: File | Blob, filename?: string): Promise<FileMetadataDto> => {
+    const name = filename || (file instanceof File ? file.name : 'unnamed.bin');
+    const formData = new FormData();
+    formData.append('file', file, name);
+    const res = await rawFetch(
+      `${getManuscriptsBaseUrl()}/projects/${projectIdOrPageId}/files?name=${encodeURIComponent(name)}`,
+      'POST',
+      formData,
+    );
+    if (!res.ok) throw new Error(`File upload failed: ${res.statusText}`);
+    return (await res.json()) as FileMetadataDto;
+  },
+
+  getSignedUrl: async (projectIdOrPageId: string, fileId: string, expiresIn = 3600): Promise<{ signedUrl: string | null }> => {
     try {
-      return await apiGet<StructureNodeDto>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/root-doc`, { silent: true });
+      return await apiGet<{ signedUrl: string | null }>(
+        `${MANUSCRIPTS_API_BASE}/projects/${projectIdOrPageId}/files/${fileId}/signed-url?expiresIn=${expiresIn}`,
+      );
     } catch {
-      return null;
+      return { signedUrl: null };
     }
+  },
+
+  delete: async (projectIdOrPageId: string, fileId: string): Promise<void> => {
+    return await apiDelete(`${MANUSCRIPTS_API_BASE}/projects/${projectIdOrPageId}/files/${fileId}`);
+  },
+
+  uploadPageFile: async (
+    pageId: string,
+    file: File,
+    parentId?: string | null,
+    onProgress?: (progress: number) => void,
+    projectId?: string,
+  ): Promise<EditorStorageItem> => {
+    const targetPageId = pageId || projectId || '';
+    const completed = await uploadBlobWithPresigned(file, file.name, {
+      projectId: targetPageId,
+      parentId: parentId || null,
+      onProgress,
+    });
+
+    const id = completed.fileId || '';
+    return {
+      id,
+      filename: file.name,
+      size: file.size,
+      mimeType: file.type,
+      isFolder: false,
+      parentId: parentId || null,
+      url: completed.url || `/api/v1/storage/files/${id}/content`,
+    };
   },
 };
 
@@ -328,12 +314,12 @@ export const citations = {
   syncLibrary: async (
     projectId: string,
     dto: { provider?: string; collectionId: string; collectionName?: string; targetBibFile?: string; targetFilename?: string },
-  ) => {
+  ): Promise<SyncLibraryResult> => {
     const payload = {
       ...dto,
       ...(dto.targetBibFile && !dto.targetFilename ? { targetFilename: dto.targetBibFile } : {}),
     };
-    return await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/citations/sync-library`, payload);
+    return await apiPost<SyncLibraryResult>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/citations/sync-library`, payload);
   },
 
   listLibraryCollections: async (): Promise<Array<Record<string, unknown>>> => {

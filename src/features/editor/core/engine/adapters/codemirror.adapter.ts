@@ -196,100 +196,64 @@ export class CodeMirrorEngineAdapter implements IEditorEngine {
     });
   }
 
-  format(type: LatexFormatType): void {
-    switch (type) {
-      case 'bold':
-        this.wrapSelection('\\textbf{', '}');
-        break;
-      case 'italic':
-        this.wrapSelection('\\textit{', '}');
-        break;
-      case 'underline':
-        this.wrapSelection('\\underline{', '}');
-        break;
-      case 'inlineMath':
-        this.wrapSelection('$', '$');
-        break;
-      case 'displayMath':
-        this.wrapSelection('$$\n', '\n$$');
-        break;
-      case 'equation':
-        this.wrapSelection('\\begin{equation}\n  ', '\n\\end{equation}');
-        break;
-      case 'code':
-        this.wrapSelection('\\texttt{', '}');
-        break;
-      case 'strikethrough':
-        this.wrapSelection('\\sout{', '}');
-        break;
-      case 'superscript':
-        this.wrapSelection('^{', '}');
-        break;
-      case 'subscript':
-        this.wrapSelection('_{', '}');
-        break;
-      case 'section':
-        this.wrapSelection('\\section{', '}\n');
-        break;
-      case 'subsection':
-        this.wrapSelection('\\subsection{', '}\n');
-        break;
-      case 'subsubsection':
-        this.wrapSelection('\\subsubsection{', '}\n');
-        break;
-      case 'paragraph':
-        this.wrapSelection('\\paragraph{', '}\n');
-        break;
-      case 'subparagraph':
-        this.wrapSelection('\\subparagraph{', '}\n');
-        break;
-      case 'normal': {
-        const { from, to } = this.view.state.selection.main;
-        const hasSelection = from !== to;
-        const range = hasSelection ? { from, to } : this.view.state.doc.lineAt(from);
-        const sourceText = hasSelection ? this.view.state.sliceDoc(from, to) : (range as { text: string }).text;
-        const unformatted = sourceText
-          .replace(/\\(?:sub){0,2}section\*?\{([^}]*)\}/g, '$1')
-          .replace(/\\(?:sub)?paragraph\*?\{([^}]*)\}/g, '$1');
-        if (hasSelection || unformatted !== sourceText) {
-          this.view.dispatch({
-            changes: { from: range.from, to: range.to, insert: unformatted },
-          });
-        }
-        break;
-      }
-      case 'itemize':
-        this.wrapSelection('\\begin{itemize}\n  \\item ', '\n\\end{itemize}');
-        break;
-      case 'enumerate':
-        this.wrapSelection('\\begin{enumerate}\n  \\item ', '\n\\end{enumerate}');
-        break;
-      case 'table':
-        this.wrapSelection(
-          '\\begin{table}[h]\n  \\centering\n  \\begin{tabular}{|c|c|}\n    \\hline\n    A & B \\\\\n    \\hline\n    1 & 2 \\\\\n    \\hline\n  \\end{tabular}\n  \\caption{Caption}\n  \\label{tab:my_label}\n\\end{table}',
-          ''
-        );
-        break;
-      case 'figure':
-        this.wrapSelection(
-          '\\begin{figure}[h]\n  \\centering\n  \\includegraphics[width=0.8\\linewidth]{filename}\n  \\caption{Caption}\n  \\label{fig:my_label}\n\\end{figure}',
-          ''
-        );
-        break;
-      case 'cite':
-        this.wrapSelection('\\cite{', '}');
-        break;
-      case 'ref':
-        this.wrapSelection('\\ref{', '}');
-        break;
-      case 'align':
-        this.wrapSelection('\\begin{align}\n  ', '\n\\end{align}');
-        break;
-      default:
-        this.wrapSelection(`\\${type}{`, '}');
-    }
-  }
+  private static readonly LATEX_WRAP_FORMAT_SPECS: Readonly<
+    Partial<Record<LatexFormatType, readonly [prefix: string, suffix: string]>>
+  > = {
+    bold: ['\\textbf{', '}'],
+    italic: ['\\textit{', '}'],
+    underline: ['\\underline{', '}'],
+    inlineMath: ['$', '$'],
+    displayMath: ['\n', '\n'],
+    equation: ['\\begin{equation}\n  ', '\n\\end{equation}'],
+    code: ['\\texttt{', '}'],
+    strikethrough: ['\\sout{', '}'],
+    superscript: ['^{', '}'],
+    subscript: ['_{', '}'],
+    section: ['\\section{', '}\n'],
+    subsection: ['\\subsection{', '}\n'],
+    subsubsection: ['\\subsubsection{', '}\n'],
+    paragraph: ['\\paragraph{', '}\n'],
+    subparagraph: ['\\subparagraph{', '}\n'],
+    itemize: ['\\begin{itemize}\n  \\item ', '\n\\end{itemize}'],
+    enumerate: ['\\begin{enumerate}\n  \\item ', '\n\\end{enumerate}'],
+    table: [
+      '\\begin{table}[h]\n  \\centering\n  \\begin{tabular}{|c|c|}\n    \\hline\n    A & B \\\\\n    \\hline\n    1 & 2 \\\\\n    \\hline\n  \\end{tabular}\n  \\caption{Caption}\n  \\label{tab:my_label}\n\\end{table}',
+      '',
+    ],
+    figure: [
+      '\\begin{figure}[h]\n  \\centering\n  \\includegraphics[width=0.8\\linewidth]{filename}\n  \\caption{Caption}\n  \\label{fig:my_label}\n\\end{figure}',
+      '',
+    ],
+    cite: ['\\cite{', '}'],
+    ref: ['\\ref{', '}'],
+    align: ['\\begin{align}\n  ', '\n\\end{align}'],
+  };
 
+  format(type: LatexFormatType): void {
+    if (type === 'normal') {
+      const { from, to } = this.view.state.selection.main;
+      const hasSelection = from !== to;
+      const range = hasSelection ? { from, to } : this.view.state.doc.lineAt(from);
+      const sourceText = hasSelection ? this.view.state.sliceDoc(from, to) : (range as { text: string }).text;
+      const unformatted = sourceText
+        .replace(/\\(?:sub){0,2}section\*?\{([^}]*)\}/g, '')
+        .replace(/\\(?:sub)?paragraph\*?\{([^}]*)\}/g, '');
+      if (hasSelection || unformatted !== sourceText) {
+        this.view.dispatch({
+          changes: { from: range.from, to: range.to, insert: unformatted },
+        });
+      }
+      return;
+    }
+
+    const spec = CodeMirrorEngineAdapter.LATEX_WRAP_FORMAT_SPECS[type];
+    if (spec) {
+      this.wrapSelection(spec[0], spec[1]);
+      return;
+    }
+
+    this.wrapSelection(`\\${type}{`, '}');
+  }
   jumpToLine(line: number, highlight?: 'error' | 'synctex', column?: number, length?: number): void {
     const totalLines = this.view.state.doc.lines;
     const targetLineNum = Math.max(1, Math.min(line, totalLines));

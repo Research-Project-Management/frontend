@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/re
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import HistoryPage from '@/features/editor/subsystems/history/ui/HistoryPage';
-import { manuscriptService, historyService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { editorCommandBus } from '@/features/editor/core';
 import { usePageStore } from '@/features/editor/core';
 import type { ProjectVersionListItem, ProjectDiffResponse } from '@/features/editor/domain/types/history.types';

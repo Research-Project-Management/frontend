@@ -199,10 +199,10 @@ describe('Project Search & Replace (Overleaf Parity: Ctrl+Shift+F & Replace)', (
   });
 
   it('handleReplaceAllEverywhere flushes pending sessions, reconciles split-pane engines, and evicts cache', async () => {
-    const { documentSearchService } = await import('@/features/editor/sdk/manuscript.service');
+    const { manuscriptService } = await import('@/features/editor/sdk/manuscript.service');
     const { sessionCoordinator, documentAuthority, lruDocumentCache } = await import('@/features/editor/core');
     const flushSpy = vi.spyOn(sessionCoordinator, 'flushAllPending').mockResolvedValue(undefined as any);
-    const batchReplaceSpy = vi.spyOn(documentSearchService, 'batchReplace').mockResolvedValue({
+    const batchReplaceSpy = vi.spyOn(manuscriptService.search, 'batchReplace').mockResolvedValue({
       totalFilesAffected: 2,
       totalOccurrencesReplaced: 3,
       affectedFileIds: ['file-main', 'file-sec'],

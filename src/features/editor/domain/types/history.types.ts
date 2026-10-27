@@ -81,9 +81,15 @@ export interface PageEvent {
 export type ProjectEvent = PageEvent;
 
 export interface DiffChunk {
-  type: 'added' | 'deleted' | 'unchanged';
-  value: string;
-  linesCount: number;
+  type: 'added' | 'deleted' | 'removed' | 'unchanged' | 'change';
+  value?: string;
+  content?: string;
+  linesCount?: number;
+  lines?: string[];
+  oldStart?: number;
+  oldLines?: number;
+  newStart?: number;
+  newLines?: number;
 }
 
 export interface VersionDiffResult {

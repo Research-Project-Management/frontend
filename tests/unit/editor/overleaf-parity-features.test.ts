@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useSettingsStore } from '@/features/editor/core';
 import { EDITOR_THEMES, type EditorThemeDefinition } from '@/features/editor/core/engine/codemirror/editor-themes';
 import { pageKeys } from '@/features/editor/ui/hooks/document.queries';
-import { fileService, pageService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import * as api from '@/shared/lib/api';
 
 describe('Overleaf Parity Features Suite', () => {
@@ -20,7 +20,7 @@ describe('Overleaf Parity Features Suite', () => {
       expect(key).toEqual(['pages', 'detail', 'test-page-456', 'deleted-files']);
     });
 
-    it('queries /api/pages/:pageId/deleted-files via fileService.getDeletedByPageId', async () => {
+    it('queries /api/pages/:pageId/deleted-files via manuscriptService.docs.getDeletedFiles', async () => {
       const mockDeletedFiles = [
         { id: 'del-1', title: 'chapter2.tex', deletedAt: new Date().toISOString() },
         { id: 'del-2', title: 'figures.tex', deletedAt: new Date().toISOString() },
@@ -30,7 +30,7 @@ describe('Overleaf Parity Features Suite', () => {
         files: mockDeletedFiles,
       } as any);
 
-      const files = await fileService.getDeletedByPageId('test-page-456');
+      const files = await manuscriptService.docs.getDeletedFiles('test-page-456');
 
       expect(apiGetSpy).toHaveBeenCalledWith(
         expect.stringMatching(/test-page-456\/deleted-files/),
@@ -40,7 +40,7 @@ describe('Overleaf Parity Features Suite', () => {
       expect(files[0].title).toBe('chapter2.tex');
     });
 
-    it('calls /api/pages/:pageId/restore via pageService.restorePage', async () => {
+    it('calls /api/pages/:pageId/restore via manuscriptService.docs.restore', async () => {
       const mockRestored = {
         id: 'del-1',
         title: 'chapter2.tex',
@@ -51,7 +51,7 @@ describe('Overleaf Parity Features Suite', () => {
         page: mockRestored,
       } as any);
 
-      const res = await pageService.restorePage('del-1');
+      const res = await manuscriptService.docs.restore('del-1');
 
       expect(apiPostSpy).toHaveBeenCalledWith(
         expect.stringMatching(/del-1\/restore/),

@@ -30,11 +30,11 @@ import { PrimarySidebar } from './PrimarySidebar';
 import { EditorArea } from '@/features/editor/ui/editor/EditorArea';
 
 import { filesQuery } from '@/features/editor/ui/hooks/document.queries';
-import { usePageStore } from '@/features/editor/core';
-import { useSettingsStore } from '@/features/editor/core';
-import { useWorkspaceStore, type ActivityBarTab } from '@/features/editor/core';
+import { usePageStore } from '../store/editor.store';
+import { useSettingsStore } from '../store/settings.store';
+import { useWorkspaceStore, type ActivityBarTab } from '../store/workspace.store';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
-import { editorCommandBus, getActiveEditorEngine } from '@/features/editor/core';
+import { editorCommandBus, getActiveEditorEngine } from '../bus/command-bus';
 import { keybindingCoordinator } from '@/features/editor/subsystems/keybinding';
 import { useViewItems } from '@/features/library/sdk/queries/catalog.queries';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';

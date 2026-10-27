@@ -35,6 +35,7 @@ import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/lib/utils';
 import { useSettingsStore, usePageStore, editorCommandBus, sessionCoordinator } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/subsystems/explorer';
+import { clearYjsProviderPool } from '@/features/editor/sdk/realtime/yjs-socket-provider';
 import { pageKeys } from '@/features/editor/ui/hooks/document.queries';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
@@ -191,13 +192,11 @@ export default function TemplateGalleryModal() {
     setIsScaffolding(true);
     try {
       await manuscriptService.templates.scaffold(projectId, selectedTemplate.id);
+      sessionCoordinator.resetSession();
+      clearYjsProviderPool();
       lruDocumentCache.clearAll();
       if (engine) {
         engine.setContent(selectedTemplate.mainTex);
-      }
-      const targetDocId = activeFileId || currentPageId;
-      if (targetDocId) {
-        sessionCoordinator.notifyContentChange(targetDocId, selectedTemplate.mainTex);
       }
       queryClient.invalidateQueries({ queryKey: pageKeys.all });
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
@@ -211,7 +210,7 @@ export default function TemplateGalleryModal() {
     } finally {
       setIsScaffolding(false);
     }
-  }, [selectedTemplate, projectId, applyTemplate, engine, activeFileId, currentPageId, queryClient, setIsTemplateModalOpen]);
+  }, [selectedTemplate, projectId, applyTemplate, engine, queryClient, setIsTemplateModalOpen]);
 
   const copyCode = useCallback(() => {
     if (!selectedTemplate) return;

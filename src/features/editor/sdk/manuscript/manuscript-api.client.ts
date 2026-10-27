@@ -20,7 +20,11 @@ import {
   getAuthToken,
 } from '@/shared/lib/api';
 import { MANUSCRIPTS_API_BASE, getManuscriptsBaseUrl } from './base';
+
 import type {
+  ReviewStatus,
+  ReviewRoundInfo,
+  ReviewStatusResponse,
   DocstoreDocDto,
   QueueUpdatePayload,
   FlushResultDto,
@@ -37,6 +41,8 @@ import type {
   ReverseSyncPayload,
   ReverseSyncResult,
 } from './types';
+
+export type { ReviewStatus, ReviewRoundInfo, ReviewStatusResponse };
 import type { Page, PageFile } from '@/features/editor/domain/types/core.types';
 import type { EditorStorageItem } from '@/features/editor/domain/types/storage-item.types';
 import type {
@@ -48,6 +54,7 @@ import type {
   AiErrorFixResult,
 } from '@/features/editor/domain/ai/ai-error-assist';
 import { countLatexWords } from '../../domain/document/word-count';
+import { PageFileMapper, type RawPageFileRecord } from './page-file-mapper';
 import type {
   PendingBundleInfo,
   NotificationDigest,
@@ -153,12 +160,96 @@ export const docs = {
   },
 
   getFiles: async (docId: string): Promise<PageFile[]> => {
+    if (!docId) return [];
     try {
-      const res = await apiGet<{ files: PageFile[] }>(`${MANUSCRIPTS_API_BASE}/docs/${docId}/files`);
-      return res.files || [];
+      const res = await apiGet<{ files: RawPageFileRecord[] }>(
+        `${MANUSCRIPTS_API_BASE}/docs/${docId}/files`,
+        { silent: true },
+      );
+      return PageFileMapper.toDomainList(res?.files, {
+        defaultPageId: docId,
+        defaultTitle: 'untitled.tex',
+        includePath: true,
+      });
     } catch {
       return [];
     }
+  },
+
+  getDeletedFiles: async (pageId: string): Promise<PageFile[]> => {
+    if (!pageId) return [];
+    try {
+      const res = await apiGet<{ files: RawPageFileRecord[] }>(
+        `${MANUSCRIPTS_API_BASE}/docs/${pageId}/deleted-files`,
+        { silent: true },
+      );
+      return PageFileMapper.toDomainList(res?.files, {
+        defaultPageId: pageId,
+        defaultTitle: 'deleted.tex',
+        includePath: false,
+      });
+    } catch {
+      return [];
+    }
+  },
+
+  createChildFile: async ({
+    parentPageId,
+    title,
+    content,
+  }: {
+    parentPageId: string;
+    title: string;
+    content?: string;
+  }): Promise<PageFile> => {
+    const res = await apiPost<
+      { file?: RawPageFileRecord; files?: RawPageFileRecord[] } & Partial<RawPageFileRecord>
+    >(`${MANUSCRIPTS_API_BASE}/docs/${parentPageId}/files`, { title, content: content || '' });
+    const node = res.file || (Array.isArray(res.files) ? res.files[0] : res);
+    return PageFileMapper.toDomain(node, {
+      defaultPageId: parentPageId,
+      defaultTitle: title,
+      fallbackContent: content || '',
+    });
+  },
+
+  createFile: async (params: {
+    parentPageId: string;
+    title: string;
+    content?: string;
+  }): Promise<PageFile> => {
+    return docs.createChildFile(params);
+  },
+
+  setMain: async (
+    params: string | { pageId: string; fileId: string; projectId?: string },
+  ): Promise<{ id: string; mainFileId: string }> => {
+    let effectiveProjectId: string;
+    let fileId: string;
+    let pageId: string;
+
+    if (typeof params === 'string') {
+      fileId = params;
+      pageId = params;
+      effectiveProjectId = params;
+    } else {
+      fileId = params.fileId;
+      pageId = params.pageId;
+      effectiveProjectId = params.projectId || params.pageId;
+    }
+
+    try {
+      await structure.setRootDoc(effectiveProjectId, fileId);
+    } catch {
+      // Non-fatal if rootDoc already synced
+    }
+    return { id: pageId, mainFileId: fileId };
+  },
+
+  setMainFile: async (
+    params: string | { pageId: string; fileId: string; projectId?: string },
+  ): Promise<{ id: string; mainFileId: string }> => {
+    return docs.setMain(params);
   },
 
   syncIncremental: async (
@@ -184,55 +275,6 @@ export const docs = {
     }
   },
 
-  getAllDocs: async (projectId: string): Promise<DocstoreDocDto[]> => {
-    try {
-      return await apiGet<DocstoreDocDto[]>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/doc`);
-    } catch {
-      return [];
-    }
-  },
-
-  getAllDeletedDocs: async (projectId: string): Promise<DocstoreDocDto[]> => {
-    try {
-      return await apiGet<DocstoreDocDto[]>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/doc-deleted`);
-    } catch {
-      return [];
-    }
-  },
-
-  getAllRanges: async (projectId: string): Promise<Record<string, unknown>> => {
-    try {
-      return await apiGet<Record<string, unknown>>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/ranges`);
-    } catch {
-      return {};
-    }
-  },
-
-  getDoc: async (projectId: string, docId: string, includeDeleted = false): Promise<DocstoreDocDto | null> => {
-    try {
-      return await apiGet<DocstoreDocDto>(
-        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/doc/${docId}?include_deleted=${includeDeleted}`,
-      );
-    } catch {
-      return null;
-    }
-  },
-
-  getRawDoc: async (projectId: string, docId: string): Promise<string> => {
-    try {
-      const res = await rawFetch(
-        `${getManuscriptsBaseUrl()}/projects/${projectId}/docs/doc/${docId}/raw`,
-        'GET',
-        undefined,
-        { silent: true },
-      );
-      if (!res.ok) return '';
-      return await res.text();
-    } catch {
-      return '';
-    }
-  },
-
   updateDocLines: async (
     projectId: string,
     docId: string,
@@ -254,19 +296,10 @@ export const docs = {
       ...dto,
       ...(dto.path && !dto.name ? { name: dto.path } : {}),
     };
-    return await apiPatch<DocstoreDocDto | Record<string, unknown>>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/doc/${docId}`, payload);
-  },
-
-  archiveDoc: async (projectId: string, docId: string): Promise<void> => {
-    await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/doc/${docId}/archive`, {});
-  },
-
-  archiveAllDocs: async (projectId: string): Promise<void> => {
-    await apiPost(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/archive`, {});
-  },
-
-  unarchiveAllDocs: async (projectId: string): Promise<{ unarchived: number }> => {
-    return await apiPost<{ unarchived: number }>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/unarchive`, {});
+    return await apiPatch<DocstoreDocDto | Record<string, unknown>>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/doc/${docId}`,
+      payload,
+    );
   },
 };
 
@@ -274,7 +307,7 @@ export const docs = {
 /**
  * updater.api.ts
  *
- * Document updater service for batch updates, buffer flushing, and state eviction.
+ * Document updater service for batch updates and buffer flushing.
  */
 
 export const updater = {
@@ -306,34 +339,6 @@ export const updater = {
       `${MANUSCRIPTS_API_BASE}/projects/${projectId}/updater/flush`,
       { force },
       { silent: true },
-    );
-  },
-
-  flushDoc: async (
-    projectId: string,
-    docId: string,
-  ): Promise<{ flushed: boolean; docId: string; version: number }> => {
-    return await apiPost<{ flushed: boolean; docId: string; version: number }>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/updater/doc/${docId}/flush`,
-      {},
-    );
-  },
-
-  getDocState: async (
-    projectId: string,
-    docId: string,
-  ): Promise<Record<string, unknown>> => {
-    return await apiGet<Record<string, unknown>>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/updater/doc/${docId}/state`,
-    );
-  },
-
-  evictDoc: async (
-    projectId: string,
-    docId: string,
-  ): Promise<void> => {
-    await apiDelete(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/updater/doc/${docId}/buffer`,
     );
   },
 };
@@ -559,7 +564,6 @@ export const synctex = {
   },
 };
 
-export const synctexService = synctex;
 
 // ── Sub-domain: diagnostics.api.ts ──────────────────────────────────────
 /**
@@ -600,7 +604,7 @@ export const diagnostics = {
   },
 
   lintProject: async (projectId: string): Promise<DiagnosticReportDto> => {
-    return await apiPost<DiagnosticReportDto>(`${MANUSCRIPTS_API_BASE}/diagnostics/${projectId}/lint`, {});
+    return await apiPost<DiagnosticReportDto>(`${MANUSCRIPTS_API_BASE}/diagnostics/projects/${projectId}/lint`, {});
   },
 
   autoFix: async (source: string): Promise<AutoFixResultDto> => {
@@ -632,9 +636,7 @@ import {
 } from './ai-api.client';
 import {
   structure,
-  filestore,
-  storage,
-  citations,
+  filestore,  citations,
   templates,
   spelling,
   spellingService,
@@ -671,9 +673,7 @@ export {
   AcademicAiService,
   suggestLatexFix,
   structure,
-  filestore,
-  storage,
-  citations,
+  filestore,  citations,
   templates,
   spelling,
   spellingService,
@@ -682,6 +682,57 @@ export {
 };
 
 export const review = {
+  getReviews: async (projectId: string, docId: string) => {
+    return await apiGet<{ changes: unknown[]; threads: unknown[] }>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review`,
+    );
+  },
+
+  getThreads: async (projectId: string, docId: string) => {
+    return await apiGet<unknown[]>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review/threads`,
+    );
+  },
+
+  getChanges: async (projectId: string, docId: string) => {
+    return await apiGet<unknown[]>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review/changes`,
+    );
+  },
+
+  recordChange: async (
+    projectId: string,
+    docId: string,
+    payload: {
+      type: 'insert' | 'delete';
+      text: string;
+      startLine?: number;
+      startCol?: number;
+      endLine?: number;
+      endCol?: number;
+      range?: { startLine: number; startCol: number; endLine: number; endCol: number };
+    },
+  ) => {
+    return await apiPost<Record<string, unknown>>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review/changes`,
+      payload,
+    );
+  },
+
+  batchResolveChanges: async (
+    projectId: string,
+    docId: string,
+    payload: {
+      action: 'accept_all' | 'reject_all' | 'accept_selected' | 'reject_selected';
+      changeIds?: string[];
+    },
+  ) => {
+    return await apiPost<{ resolvedCount: number; action: string }>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review/changes/batch`,
+      payload,
+    );
+  },
+
   createCommentThread: async (
     projectId: string,
     docId: string,
@@ -692,11 +743,12 @@ export const review = {
       endCol?: number;
       quote?: string;
       content: string;
-      [key: string]: any;
+      range?: { startLine: number; startCol: number; endLine: number; endCol: number };
+      [key: string]: unknown;
     },
   ) => {
-    return await apiPost<any>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/comments`,
+    return await apiPost<Record<string, unknown>>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review/threads`,
       payload,
     );
   },
@@ -707,8 +759,8 @@ export const review = {
     threadId: string,
     content: string,
   ) => {
-    return await apiPost<any>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/comments/${threadId}/replies`,
+    return await apiPost<Record<string, unknown>>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review/threads/${threadId}/replies`,
       { content },
     );
   },
@@ -719,21 +771,40 @@ export const review = {
     threadId: string,
     resolved: boolean,
   ) => {
-    return await apiPatch<any>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/comments/${threadId}`,
-      { resolved },
+    return await apiPatch<Record<string, unknown>>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review/threads/${threadId}/resolve`,
+      { resolve: Boolean(resolved) },
     );
   },
 
   acceptChange: async (projectId: string, docId: string, changeId: string) => {
-    return await apiPost<any>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/suggestions/${changeId}/accept`,
+    return await apiPost<Record<string, unknown>>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review/changes/${changeId}/accept`,
+      {},
     );
   },
 
   rejectChange: async (projectId: string, docId: string, changeId: string) => {
-    return await apiPost<any>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/suggestions/${changeId}/reject`,
+    return await apiPost<Record<string, unknown>>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review/changes/${changeId}/reject`,
+      {},
+    );
+  },
+
+  getReviewStatus: async (projectId: string, docId: string): Promise<ReviewStatusResponse> => {
+    return await apiGet<ReviewStatusResponse>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review-status`,
+    );
+  },
+
+  updateReviewStatus: async (
+    projectId: string,
+    docId: string,
+    payload: { status: ReviewStatus; notes?: string; deadline?: string },
+  ): Promise<ReviewStatusResponse> => {
+    return await apiPost<ReviewStatusResponse>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review-status`,
+      payload,
     );
   },
 };
@@ -757,9 +828,7 @@ export const manuscriptService = {
   templates,
   filestore,
   updater,
-  spelling: spellingService,
-  storage,
-  notifications,
+  spelling: spellingService,  notifications,
   notificationBundlerService,
   ai,
   AcademicAiService,

@@ -44,7 +44,8 @@ export interface LRUNode {
   next: LRUNode | null;
 }
 
-export type ModelChangeListener = (fileId: string, model: DocumentModelState) => void;
+export type ModelChangeListener = (fileId?: string, model?: DocumentModelState) => void;
+export type CacheSubscriber = () => void;
 export type ModelEvictionListener = (fileId: string, model: DocumentModelState) => void;
 
 export interface DocumentModelStats {
@@ -64,7 +65,8 @@ export class LRUDocumentCache {
   private tail: LRUNode | null = null; // Least Recently Used (LRU)
   private capacity = DEFAULT_CAPACITY;
   private activeFileId: string | null = null;
-  private readonly listeners = new Set<ModelChangeListener>();
+  private version = 0;
+  private readonly listeners = new Set<ModelChangeListener | CacheSubscriber>();
   private readonly evictionListeners = new Set<ModelEvictionListener>();
   private persistenceSink: IDraftStorageSink | null = draftStorageService;
 
@@ -311,6 +313,14 @@ export class LRUDocumentCache {
     this.notify(fileId, model);
   }
 
+  public setServerRev(fileId: string, rev: number): void {
+    const model = this.models.get(fileId);
+    if (model) {
+      model.serverRev = rev;
+      this.notify(fileId, model);
+    }
+  }
+
   /**
    * Applies content that originated from a remote collaborator (e.g. Yjs sync).
    * Never marks the model dirty, and never clears an existing local dirty flag —
@@ -399,6 +409,18 @@ export class LRUDocumentCache {
   }
 
   /**
+   * Returns a monotonic snapshot version counter bumped on every cache mutation.
+   * Compatible with React 18/19 useSyncExternalStore.
+   */
+  public getSnapshot = (): number => {
+    return this.version;
+  };
+
+  public getVersion(): number {
+    return this.version;
+  }
+
+  /**
    * Returns all currently dirty models.
    */
   public getDirtyModels(): DocumentModelState[] {
@@ -407,6 +429,35 @@ export class LRUDocumentCache {
       if (model.isDirty) dirty.push(model);
     }
     return dirty;
+  }
+
+  /**
+   * Returns file IDs for all currently dirty models.
+   * Single source of truth for unsaved state.
+   */
+  public getDirtyFileIds(): string[] {
+    const dirtyIds: string[] = [];
+    for (const model of this.models.values()) {
+      if (model.isDirty) dirtyIds.push(model.fileId);
+    }
+    return dirtyIds;
+  }
+
+  /**
+   * Marks all models clean.
+   */
+  public clearAllDirty(): void {
+    let changed = false;
+    for (const model of this.models.values()) {
+      if (model.isDirty) {
+        model.isDirty = false;
+        model.lastSavedAt = Date.now();
+        changed = true;
+      }
+    }
+    if (changed) {
+      this.notify();
+    }
   }
 
   /**
@@ -438,6 +489,7 @@ export class LRUDocumentCache {
     this.head = null;
     this.tail = null;
     this.activeFileId = null;
+    this.notify();
   }
 
   /**
@@ -453,6 +505,7 @@ export class LRUDocumentCache {
     this.head = null;
     this.tail = null;
     this.activeFileId = null;
+    this.notify();
   }
 
   public clear(): void {
@@ -464,24 +517,33 @@ export class LRUDocumentCache {
   }
 
   public getContent(fileId: string): string | undefined {
-    return this.getModel(fileId)?.content;
+    return this.models.get(fileId)?.content;
   }
 
   public isDirty(fileId: string): boolean {
-    return this.getModel(fileId)?.isDirty ?? false;
+    return this.models.get(fileId)?.isDirty ?? false;
   }
 
   public markDirty(fileId: string): void {
     const model = this.models.get(fileId);
     if (!model) return;
-    model.isDirty = true;
-    this.notify(fileId, model);
+    if (!model.isDirty) {
+      model.isDirty = true;
+      this.notify(fileId, model);
+    }
   }
 
-  public subscribe(listener: ModelChangeListener): () => void {
+  /**
+   * Subscribes to document cache changes.
+   * Supports zero-argument subscriber callbacks (compatible with React `useSyncExternalStore`)
+   * as well as legacy `(fileId, model)` listeners.
+   */
+  public subscribe = (listener: CacheSubscriber | ModelChangeListener): (() => void) => {
     this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
-  }
+    return () => {
+      this.listeners.delete(listener);
+    };
+  };
 
   public onEvict(listener: ModelEvictionListener): () => void {
     this.evictionListeners.add(listener);
@@ -566,10 +628,12 @@ export class LRUDocumentCache {
         } catch {}
       }
       model.yText = null;
+      this.notify(fileId, undefined);
     }
   }
 
-  private notify(fileId: string, model: DocumentModelState): void {
+  private notify(fileId?: string, model?: DocumentModelState): void {
+    this.version++;
     for (const listener of this.listeners) {
       try {
         listener(fileId, model);

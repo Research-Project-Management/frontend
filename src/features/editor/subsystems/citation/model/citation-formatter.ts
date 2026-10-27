@@ -197,6 +197,24 @@ export function detectCitationTrigger(lineBeforeCursor: string): CitationTrigger
 }
 
 /**
+ * Strategy Lookup Table for Citation Snippet Formatting.
+ * Maps canonical and alias citation styles to pure formatting functions.
+ */
+export const CITATION_SNIPPET_FORMATTERS: Readonly<Record<string, (key: string) => string>> = {
+  'latex-cite': (key) => `\\cite{${key}}`,
+  cite: (key) => `\\cite{${key}}`,
+  'latex-citep': (key) => `\\citep{${key}}`,
+  citep: (key) => `\\citep{${key}}`,
+  'latex-citet': (key) => `\\citet{${key}}`,
+  citet: (key) => `\\citet{${key}}`,
+  'latex-autocite': (key) => `\\autocite{${key}}`,
+  autocite: (key) => `\\autocite{${key}}`,
+  'markdown-bracket': (key) => `[@${key}]`,
+  markdown: (key) => `[@${key}]`,
+  'markdown-inline': (key) => `@${key}`,
+};
+
+/**
  * Formats a citation string ready for insertion into the editor.
  */
 export function formatCitationSnippet(
@@ -215,27 +233,9 @@ export function formatCitationSnippet(
     | 'markdown'
     | string = 'latex-cite',
 ): string {
-  switch (style) {
-    case 'latex-cite':
-    case 'cite':
-      return `\\cite{${citationKey}}`;
-    case 'latex-citep':
-    case 'citep':
-      return `\\citep{${citationKey}}`;
-    case 'latex-citet':
-    case 'citet':
-      return `\\citet{${citationKey}}`;
-    case 'latex-autocite':
-    case 'autocite':
-      return `\\autocite{${citationKey}}`;
-    case 'markdown-bracket':
-    case 'markdown':
-      return `[@${citationKey}]`;
-    case 'markdown-inline':
-      return `@${citationKey}`;
-    default:
-      return `\\cite{${citationKey}}`;
-  }
+  const formatter =
+    CITATION_SNIPPET_FORMATTERS[style] ?? CITATION_SNIPPET_FORMATTERS['latex-cite'];
+  return formatter(citationKey);
 }
 
 interface ContributorNameInput {

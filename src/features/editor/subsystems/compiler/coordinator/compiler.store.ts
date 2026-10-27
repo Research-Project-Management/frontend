@@ -7,6 +7,7 @@
 import { create } from 'zustand';
 import type { CompileStatus, CompileError } from '@/features/editor/domain/types/compiler.types';
 import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 
 export interface DocumentCompilerState {
   // ── Dirty content tracking ─────────────────────────────────────────────
@@ -49,66 +50,31 @@ export interface DocumentCompilerState {
 }
 
 export const useCompileStore = create<DocumentCompilerState>()((set, get) => ({
-  // ── Dirty tracking ────────────────────────────────────────────────────
+  // ── Dirty tracking (Derived directly from lruDocumentCache) ───────────
   dirtyContentMap: new Map(),
   dirtyFileIds: new Set(),
 
   isDirtyFile(fileId: string) {
-    return get().dirtyFileIds.has(fileId);
+    return lruDocumentCache.isDirty(fileId);
   },
 
   markDirty(fileId, content) {
-    const state = get();
-    if (state.dirtyFileIds.has(fileId)) {
-      // Fast-path during 120fps typing: file is already marked dirty in dirtyFileIds.
-      // Update dirtyContentMap in-place without cloning Set/Map or triggering Zustand set() notifications
-      // so reactive UI subscribers (Topbar, EditorPane) do not re-render on every single keystroke.
-      if (state.dirtyContentMap.get(fileId) !== content) {
-        state.dirtyContentMap.set(fileId, content);
-      }
-      return;
-    }
-    set((s) => {
-      if (s.dirtyFileIds.has(fileId)) {
-        s.dirtyContentMap.set(fileId, content);
-        return s;
-      }
-      const nextDirtyFileIds = new Set(s.dirtyFileIds);
-      nextDirtyFileIds.add(fileId);
-      const nextMap = new Map(s.dirtyContentMap);
-      nextMap.set(fileId, content);
-      return {
-        dirtyContentMap: nextMap,
-        dirtyFileIds: nextDirtyFileIds,
-      };
-    });
+    lruDocumentCache.updateContent(fileId, content, true);
   },
 
   clearDirty(fileId) {
-    set((s) => {
-      if (!s.dirtyFileIds.has(fileId) && !s.dirtyContentMap.has(fileId)) return s;
-      const nextDirtyFileIds = new Set(s.dirtyFileIds);
-      nextDirtyFileIds.delete(fileId);
-      const nextMap = new Map(s.dirtyContentMap);
-      nextMap.delete(fileId);
-      return {
-        dirtyContentMap: nextMap,
-        dirtyFileIds: nextDirtyFileIds,
-      };
-    });
+    lruDocumentCache.markClean(fileId);
   },
 
   clearAllDirty() {
-    set({
-      dirtyContentMap: new Map(),
-      dirtyFileIds: new Set(),
-    });
+    lruDocumentCache.clearAllDirty();
   },
 
   getDirtyFiles() {
-    return Array.from(get().dirtyContentMap.entries()).map(
-      ([fileId, content]) => ({ fileId, content }),
-    );
+    return lruDocumentCache.getDirtyModels().map((m) => ({
+      fileId: m.fileId,
+      content: m.content,
+    }));
   },
 
   // ── Sync tracking ─────────────────────────────────────────────────────
@@ -140,7 +106,13 @@ export const useCompileStore = create<DocumentCompilerState>()((set, get) => ({
   },
 
   setCompileLog(log) {
-    set({ compileLog: log });
+    if (!log) {
+      set({ compileLog: null });
+      return;
+    }
+    const MAX_LOG_LENGTH = 500_000;
+    const trimmed = log.length > MAX_LOG_LENGTH ? '... [truncated previous logs]\n' + log.slice(log.length - MAX_LOG_LENGTH) : log;
+    set({ compileLog: trimmed });
   },
 
   setCompileErrors(errors) {
@@ -210,5 +182,42 @@ useWorkspaceStore.subscribe(
     }
   },
 );
+
+// Keep useCompileStore.dirtyFileIds and dirtyContentMap reactively synchronized from lruDocumentCache
+function syncCompilerDirtyState() {
+  const dirtyModels = lruDocumentCache.getDirtyModels();
+  const nextDirtyIds = new Set(dirtyModels.map((m) => m.fileId));
+  const nextContentMap = new Map(dirtyModels.map((m) => [m.fileId, m.content]));
+  const currentState = useCompileStore.getState();
+
+  let idsChanged = nextDirtyIds.size !== currentState.dirtyFileIds.size;
+  if (!idsChanged) {
+    for (const id of nextDirtyIds) {
+      if (!currentState.dirtyFileIds.has(id)) {
+        idsChanged = true;
+        break;
+      }
+    }
+  }
+
+  let contentChanged = nextContentMap.size !== currentState.dirtyContentMap.size;
+  if (!contentChanged) {
+    for (const [id, content] of nextContentMap) {
+      if (currentState.dirtyContentMap.get(id) !== content) {
+        contentChanged = true;
+        break;
+      }
+    }
+  }
+
+  if (idsChanged || contentChanged) {
+    useCompileStore.setState({
+      dirtyFileIds: nextDirtyIds,
+      dirtyContentMap: nextContentMap,
+    });
+  }
+}
+
+lruDocumentCache.subscribe(syncCompilerDirtyState);
 
 export type { CompileStatus, CompileError };

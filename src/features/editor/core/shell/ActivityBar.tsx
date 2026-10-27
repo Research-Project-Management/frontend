@@ -30,9 +30,10 @@ import {
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
-import { useWorkspaceStore, type ActivityBarTab, editorCommandBus } from '@/features/editor/core';
-import { useSettingsStore } from '@/features/editor/core';
-import { usePageStore } from '@/features/editor/core';
+import { useWorkspaceStore, type ActivityBarTab } from '../store/workspace.store';
+import { editorCommandBus } from '../bus/command-bus';
+import { useSettingsStore } from '../store/settings.store';
+import { usePageStore } from '../store/editor.store';
 import { useReviewPendingCount } from '@/features/editor/subsystems/review';
 
 const StickyDock = dynamic(() => import('@/features/shell/components/StickyDock'), {

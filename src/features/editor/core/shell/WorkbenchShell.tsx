@@ -19,7 +19,7 @@
 
 import React, { useRef, useCallback } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { useWorkspaceStore } from '@/features/editor/core';
+import { useWorkspaceStore } from '../store/workspace.store';
 import { ResizeHandle } from './ResizeHandle';
 import { OfflineBanner } from './OfflineBanner';
 import { cn } from '@/shared/lib/utils';

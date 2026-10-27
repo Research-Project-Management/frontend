@@ -11,8 +11,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, MessageSquare } from 'lucide-react';
 import {
-  getOrCreateYjsProvider,
+  acquireYjsProvider,
   releaseYjsProvider,
+  type YjsSocketIOProvider,
   type ProjectChatMessage,
 } from '@/features/editor/sdk/realtime/yjs-socket-provider';
 import { Button } from '@/shared/components/ui/button';
@@ -32,18 +33,18 @@ export function ProjectChatView({
   currentUserId,
 }: ProjectChatViewProps) {
   const effectiveProjectId = projectId || pageId || '';
-  const effectivePageId = pageId || projectId || '';
+  const chatRoomId = effectiveProjectId ? `chat:${effectiveProjectId}` : '';
 
   const [messages, setMessages] = useState<ProjectChatMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [isSending, setIsSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const providerRef = useRef<ReturnType<typeof getOrCreateYjsProvider> | null>(null);
+  const providerRef = useRef<YjsSocketIOProvider | null>(null);
 
   useEffect(() => {
-    if (!effectiveProjectId || !effectivePageId) return;
+    if (!effectiveProjectId || !chatRoomId) return;
 
-    const provider = getOrCreateYjsProvider(effectiveProjectId, effectivePageId);
+    const { provider } = acquireYjsProvider(effectiveProjectId, chatRoomId);
     providerRef.current = provider;
 
     void provider.getChatHistory().then((history) => {
@@ -62,9 +63,9 @@ export function ProjectChatView({
     return () => {
       unsub();
       providerRef.current = null;
-      releaseYjsProvider(effectiveProjectId, effectivePageId);
+      releaseYjsProvider(effectiveProjectId, chatRoomId);
     };
-  }, [effectiveProjectId, effectivePageId]);
+  }, [effectiveProjectId, chatRoomId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -73,7 +74,7 @@ export function ProjectChatView({
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     const text = draft.trim();
-    if (!text || !effectiveProjectId || !effectivePageId || isSending) return;
+    if (!text || !effectiveProjectId || !chatRoomId || isSending) return;
 
     setIsSending(true);
     setDraft('');

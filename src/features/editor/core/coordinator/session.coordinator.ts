@@ -30,19 +30,20 @@ import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import {
   markHttpSavedWhileDisconnected,
   flushYjsProvider,
+  getActiveYjsProvider,
 } from '@/features/editor/sdk/realtime/yjs-socket-provider';
 import { useCompileStore } from '@/features/editor/subsystems/compiler';
+import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store';
+import { usePageStore } from '../store/editor.store';
+import { useSettingsStore } from '../store/settings.store';
+import { useConnectivityStore, isNetworkError } from '../store/connectivity.store';
 import {
-  usePageStore,
-  useSettingsStore,
-  useConnectivityStore,
-  isNetworkError,
   editorCommandBus,
   getActiveEditorEngine,
   getEditorEngineForFile,
   getAllRegisteredEngines,
   getActiveEditorContent,
-} from '@/features/editor/core';
+} from '../bus/command-bus';
 import { visibilityCoordinator } from './visibility.coordinator';
 import {
   DraftRecoveryCoordinator,
@@ -198,7 +199,14 @@ export class SessionCoordinatorRegistry {
   }
 
   public isRealtimeConnected(fileId: string): boolean {
-    return this.realtimeConnected.get(fileId) === true;
+    if (this.realtimeConnected.get(fileId) !== true) {
+      return false;
+    }
+    const activeProvider = getActiveYjsProvider(fileId);
+    if (activeProvider) {
+      return activeProvider.status === 'connected' && activeProvider.isSynced;
+    }
+    return true;
   }
 
   // ── Draft recovery decision gate ───────────────────────────────────────────
@@ -314,6 +322,7 @@ export class SessionCoordinatorRegistry {
       const draft = await draftStorageService.getDraft(fileId).catch(() => null);
       if (!draft || draft.content === sentContent) {
         useCompileStore.getState().clearDirty(fileId);
+        this.clearWorkspaceTabDirty(fileId);
         this.clearDraftSnapshot(fileId);
         return true;
       }
@@ -321,6 +330,7 @@ export class SessionCoordinatorRegistry {
     }
     if (lruDocumentCache.markCleanIfUnchanged(fileId, sentContent, sentVersion)) {
       useCompileStore.getState().clearDirty(fileId);
+      this.clearWorkspaceTabDirty(fileId, model.projectId);
       this.clearDraftSnapshot(fileId);
       return true;
     }
@@ -332,12 +342,18 @@ export class SessionCoordinatorRegistry {
   }
 
   public async handleOnline(): Promise<void> {
-    useConnectivityStore.getState().recordOnline();
-    await this.flushAllPending();
-    await this.replayPendingMutations();
-    if (useConnectivityStore.getState().offlinePendingCompile) {
-      useConnectivityStore.getState().setOfflinePendingCompile(false);
-      editorCommandBus.dispatch({ type: 'compiler:trigger' });
+    const connStore = useConnectivityStore.getState();
+    connStore.recordOnline();
+    connStore.setIsSyncingOfflineQueue(true);
+    try {
+      await this.flushAllPending();
+      await this.replayPendingMutations();
+      if (useConnectivityStore.getState().offlinePendingCompile) {
+        useConnectivityStore.getState().setOfflinePendingCompile(false);
+        editorCommandBus.dispatch({ type: 'compiler:trigger' });
+      }
+    } finally {
+      useConnectivityStore.getState().setIsSyncingOfflineQueue(false);
     }
   }
 
@@ -346,14 +362,29 @@ export class SessionCoordinatorRegistry {
     this.flushPendingDrafts();
   }
 
+  private onlineHandler: (() => void) | null = null;
+  private offlineHandler: (() => void) | null = null;
+
   private initOnlineListener(): void {
     if (typeof window === 'undefined') return;
-    window.addEventListener('online', () => {
+    this.disposeOnlineListener();
+    this.onlineHandler = () => {
       void this.handleOnline();
-    });
-    window.addEventListener('offline', () => {
+    };
+    this.offlineHandler = () => {
       this.handleOffline();
-    });
+    };
+    window.addEventListener('online', this.onlineHandler);
+    window.addEventListener('offline', this.offlineHandler);
+  }
+
+  /** Removes window online/offline listeners (HMR, tests, coordinator re-instantiation). */
+  public disposeOnlineListener(): void {
+    if (typeof window === 'undefined') return;
+    if (this.onlineHandler) window.removeEventListener('online', this.onlineHandler);
+    if (this.offlineHandler) window.removeEventListener('offline', this.offlineHandler);
+    this.onlineHandler = null;
+    this.offlineHandler = null;
   }
 
   private initCommandSubscriptions(): void {
@@ -590,7 +621,8 @@ export class SessionCoordinatorRegistry {
     this.transitionFsm(fileId, { type: 'SAVE_FAILURE', error: err });
     if (isNetworkError(err) && model) {
       useConnectivityStore.getState().recordOffline();
-      this.draftRecovery.persistOfflineDraft(model.projectId, fileId, model.content, model.filePath);
+      this.saveDraftSnapshot(fileId, model.content, model.projectId);
+      this.draftRecovery.persistOfflineDraft(model.projectId, fileId, model.content, model.filePath, false);
     } else {
       useConnectivityStore.getState().setSyncStatus('error');
     }
@@ -621,53 +653,116 @@ export class SessionCoordinatorRegistry {
       return true;
     }
 
+    const mode = this.selectFlushStrategyMode(fileId);
+    if (mode === 'realtime-yjs') {
+      return this.flushViaRealtimeYjsStrategy(fileId, model.projectId);
+    }
+    if (mode === 'offline-queue') {
+      return this.flushViaOfflineQueueStrategy(fileId, model);
+    }
+    return this.flushViaRestCasStrategy(fileId, model);
+  }
+
+  /**
+   * Strategy Selector: Determines which persistence strategy applies to the document flush.
+   */
+  public selectFlushStrategyMode(
+    fileId: string,
+  ): 'realtime-yjs' | 'offline-queue' | 'rest-cas' {
     if (this.isRealtimeConnected(fileId)) {
-      const effectiveProjectId = this.resolveEffectiveProjectId(model.projectId);
-      flushYjsProvider(effectiveProjectId, fileId);
-      lruDocumentCache.markSaved(fileId);
-      useCompileStore.getState().clearDirty(fileId);
-      this.clearDraftSnapshot(fileId);
-      const currentVersion = lruDocumentCache.getContentVersion(fileId) || 0;
-      this.transitionFsm(fileId, {
-        type: 'SAVE_SUCCESS',
-        savedVersion: currentVersion,
-        currentVersion,
-      });
-      useConnectivityStore.getState().setLastSavedAt(new Date());
-      return true;
+      return 'realtime-yjs';
     }
-
-    const isOnline = useConnectivityStore.getState().checkIsOnline();
-    if (!isOnline) {
-      useConnectivityStore.getState().setSyncStatus('offline');
-      this.draftRecovery.persistOfflineDraft(model.projectId, fileId, model.content, model.filePath);
-      void draftStorageService.enqueueMutation({
-        fileId,
-        projectId: model.projectId,
-        type: 'update_content',
-        payload: { content: model.content },
-      });
-      void draftStorageService.saveProjectFileSnapshot({
-        id: fileId,
-        projectId: model.projectId || '',
-        title: model.filePath || fileId,
-        content: model.content,
-        updatedAt: Date.now(),
-      });
-      return false;
+    if (!useConnectivityStore.getState().checkIsOnline()) {
+      return 'offline-queue';
     }
+    return 'rest-cas';
+  }
 
-    // Transition FSM to SAVING
+  private clearWorkspaceTabDirty(fileId: string, projectId?: string): void {
+    const wsState = useWorkspaceStore.getState();
+    const targetScopes = projectId
+      ? [projectId, ...Object.keys(wsState.tabsByProject)]
+      : Object.keys(wsState.tabsByProject);
+    const visited = new Set<string>();
+    for (const scope of targetScopes) {
+      if (!scope || visited.has(scope)) continue;
+      visited.add(scope);
+      const tabs = wsState.tabsByProject[scope];
+      if (tabs?.some((t) => t.id === fileId && t.isDirty)) {
+        wsState.markTabDirty(scope, fileId, false);
+      }
+    }
+  }
+
+  /**
+   * Strategy 1: Realtime Yjs Persistence Strategy
+   */
+  private flushViaRealtimeYjsStrategy(
+    fileId: string,
+    projectId?: string,
+  ): boolean {
+    const effectiveProjectId = this.resolveEffectiveProjectId(projectId);
+    flushYjsProvider(effectiveProjectId, fileId);
+    const model = lruDocumentCache.getModel(fileId);
+    if (model) {
+      this.saveDraftSnapshot(fileId, model.content, effectiveProjectId);
+    }
+    lruDocumentCache.markSaved(fileId);
+    useCompileStore.getState().clearDirty(fileId);
+    this.clearWorkspaceTabDirty(fileId, effectiveProjectId);
+    const currentVersion = lruDocumentCache.getContentVersion(fileId) || 0;
+    this.transitionFsm(fileId, {
+      type: 'SAVE_SUCCESS',
+      savedVersion: currentVersion,
+      currentVersion,
+    });
+    useConnectivityStore.getState().setLastSavedAt(new Date());
+    return true;
+  }
+
+  /**
+   * Strategy 2: Offline Queue & Local Snapshot Persistence Decorator/Strategy
+   */
+  private flushViaOfflineQueueStrategy(
+    fileId: string,
+    model: { projectId?: string; content: string; filePath?: string },
+  ): boolean {
+    useConnectivityStore.getState().setSyncStatus('offline');
+    this.saveDraftSnapshot(fileId, model.content, model.projectId);
+    this.draftRecovery.persistOfflineDraft(
+      model.projectId,
+      fileId,
+      model.content,
+      model.filePath,
+      false,
+    );
+    void draftStorageService
+      .getPendingMutations()
+      .then((m) => useConnectivityStore.getState().setPendingMutationsCount(m.length))
+      .catch(() => {});
+    return false;
+  }
+
+  /**
+   * Strategy 3: Online REST Optimistic-Concurrency (CAS) Persistence Strategy
+   */
+  private async flushViaRestCasStrategy(
+    fileId: string,
+    model: { content: string; serverRev?: number },
+  ): Promise<boolean> {
     this.transitionFsm(fileId, { type: 'SAVE_START' });
 
-    // Snapshot what is being sent: the live model may change while the request is in flight.
     const sentContent = model.content;
     const sentVersion = lruDocumentCache.getContentVersion(fileId);
     const expectedRev = model.serverRev;
     try {
       useConnectivityStore.getState().incrementPending();
       await this.persistWithRetry(fileId, sentContent, expectedRev);
-      const clean = await this.finalizeSuccessfulSave(fileId, sentContent, sentVersion);
+      const clean = await this.finalizeSuccessfulSave(
+        fileId,
+        sentContent,
+        sentVersion,
+      );
       useConnectivityStore.getState().decrementPending();
       useConnectivityStore.getState().setLastSavedAt(new Date());
       return clean;
@@ -735,23 +830,26 @@ export class SessionCoordinatorRegistry {
 
   public async replayPendingMutations(): Promise<{ total: number; succeeded: number; failed: number }> {
     const pending = await draftStorageService.getPendingMutations();
+    useConnectivityStore.getState().setPendingMutationsCount(pending.length);
     let succeeded = 0;
     let failed = 0;
 
     for (const mut of pending) {
       if (mut.type === 'update_content' && mut.payload.content !== undefined) {
+        const content = mut.payload.content as string;
+        const cachedModel = lruDocumentCache.getModel(mut.fileId);
+        const expectedRev =
+          (mut.payload.expectedRev as number | undefined) ?? cachedModel?.serverRev;
         try {
-          if (this.persistenceAdapter?.updateContent) {
-            await this.persistenceAdapter.updateContent(mut.fileId, mut.payload.content as string);
-          } else {
-            await manuscriptService.docs.updateContent(mut.fileId, mut.payload.content as string);
-          }
+          await this.persistWithRetry(mut.fileId, content, expectedRev);
+          await this.finalizeSuccessfulSave(mut.fileId, content);
           if (mut.id) {
             await draftStorageService.removeMutation(mut.id);
           }
           await draftStorageService.clearDraft(mut.fileId);
           succeeded++;
         } catch (err) {
+          this.handleSaveConflictOrError(mut.fileId, content, err);
           const errMsg = err instanceof Error ? err.message : String(err);
           if (mut.id) {
             await draftStorageService.updateMutationStatus(mut.id, 'failed', errMsg);
@@ -760,6 +858,9 @@ export class SessionCoordinatorRegistry {
         }
       }
     }
+
+    const remaining = await draftStorageService.getPendingMutations().catch(() => []);
+    useConnectivityStore.getState().setPendingMutationsCount(remaining.length);
 
     if (succeeded > 0 && failed === 0) {
       useConnectivityStore.getState().setSyncStatus('synced');
@@ -849,11 +950,26 @@ export class SessionCoordinatorRegistry {
       this.saveDraftSnapshot(fileId, model.content, model.projectId);
       this.flushPendingDrafts();
     }
-    void this.flushFile(fileId);
-    lruDocumentCache.evictModel(fileId);
     this.lastCompiledContentMap.delete(fileId);
     this.realtimeConnected.delete(fileId);
-    this.draftRecovery.evictFile(fileId);
+
+    const finalizeEviction = () => {
+      const wsState = useWorkspaceStore.getState();
+      const stillOpenInAnyTab = Object.values(wsState.tabsByProject).some((tabs) =>
+        tabs?.some((t) => t.id === fileId),
+      );
+      if (!stillOpenInAnyTab && !lruDocumentCache.isDirty(fileId)) {
+        lruDocumentCache.evictModel(fileId);
+        this.draftRecovery.evictFile(fileId);
+      }
+    };
+
+    if (model?.isDirty || this.inFlightFileFlushes.has(fileId)) {
+      void this.flushFile(fileId).finally(finalizeEviction);
+    } else {
+      lruDocumentCache.evictModel(fileId);
+      this.draftRecovery.evictFile(fileId);
+    }
   }
 
   public resetSession(): void {
@@ -901,6 +1017,13 @@ export class SessionCoordinatorRegistry {
       ? this.options.isAutoCompileEnabled()
       : useSettingsStore.getState().autoCompile;
     if (!isAutoCompile) return;
+
+    const currentModel = lruDocumentCache.getModel(fileId);
+    const currentContent = currentModel?.content;
+    const prevCompiled = this.lastCompiledContentMap.get(fileId);
+    if (prevCompiled !== undefined && currentContent !== undefined && prevCompiled === currentContent) {
+      return;
+    }
 
     if (this.compileTimer) {
       clearTimeout(this.compileTimer);

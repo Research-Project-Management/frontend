@@ -15,12 +15,15 @@
 import React, { useEffect, useState } from 'react';
 import { WifiOff, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
-import { useConnectivityStore, sessionCoordinator } from '@/features/editor/core';
+import { useConnectivityStore } from '../store/connectivity.store';
+import { sessionCoordinator } from '../coordinator/session.coordinator';
 import { toast } from 'sonner';
 
 export function OfflineBanner() {
   const isOnline = useConnectivityStore((s) => s.isOnline);
   const pendingSaveCount = useConnectivityStore((s) => s.pendingSaveCount);
+  const pendingMutationsCount = useConnectivityStore((s) => s.pendingMutationsCount);
+  const isSyncingOfflineQueue = useConnectivityStore((s) => s.isSyncingOfflineQueue);
   const offlinePendingCompile = useConnectivityStore((s) => s.offlinePendingCompile);
   const recordOnline = useConnectivityStore((s) => s.recordOnline);
   const recordOffline = useConnectivityStore((s) => s.recordOffline);
@@ -32,16 +35,28 @@ export function OfflineBanner() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
 
-    const handleOnline = () => {
+    const handleOnline = async () => {
       recordOnline();
-      setJustReconnected(true);
-      toast.success('Connection restored. Syncing pending drafts...', { id: 'network-status' });
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      reconnectTimer = setTimeout(() => setJustReconnected(false), 3000);
+      toast.info('Connection restored. Syncing pending drafts...', { id: 'network-status' });
+      try {
+        await sessionCoordinator.handleOnline();
+      } catch {
+        // Ignore; connectivity store tracks sync errors
+      }
+      if (cancelled) return;
+      const state = useConnectivityStore.getState();
+      if (state.isOnline && !state.isSyncingOfflineQueue && state.pendingMutationsCount === 0 && state.pendingSaveCount === 0) {
+        setJustReconnected(true);
+        toast.success('Connection restored! All pending changes have been synchronized.', { id: 'network-status' });
+        if (reconnectTimer) clearTimeout(reconnectTimer);
+        reconnectTimer = setTimeout(() => setJustReconnected(false), 3000);
+      }
     };
 
     const handleOffline = () => {
+      setJustReconnected(false);
       recordOffline();
       toast.warning('You are offline. Changes will be saved locally.', { id: 'network-status' });
     };
@@ -55,6 +70,7 @@ export function OfflineBanner() {
     }
 
     return () => {
+      cancelled = true;
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       if (reconnectTimer) clearTimeout(reconnectTimer);
@@ -67,9 +83,13 @@ export function OfflineBanner() {
       // Test connectivity by checking online state
       const isReachable = typeof navigator === 'undefined' || navigator.onLine;
       if (isReachable) {
-        recordOnline();
-        toast.success('Reconnected to server', { id: 'network-status' });
-        await sessionCoordinator.flushAllPending();
+        await sessionCoordinator.handleOnline();
+        const state = useConnectivityStore.getState();
+        if (state.isOnline && !state.isSyncingOfflineQueue && state.pendingMutationsCount === 0 && state.pendingSaveCount === 0) {
+          setJustReconnected(true);
+          toast.success('Reconnected to server', { id: 'network-status' });
+          setTimeout(() => setJustReconnected(false), 3000);
+        }
       } else {
         toast.error('Network still unreachable', { id: 'network-status' });
       }
@@ -80,8 +100,22 @@ export function OfflineBanner() {
     }
   };
 
-  if (isOnline && !justReconnected) {
+  if (isOnline && !justReconnected && !isSyncingOfflineQueue) {
     return null;
+  }
+
+  if (isOnline && isSyncingOfflineQueue) {
+    return (
+      <div className="w-full bg-info text-info-foreground border-b border-info/30 px-4 py-1.5 flex items-center justify-between text-xs font-medium z-30 transition-colors">
+        <div className="flex items-center gap-2">
+          <RefreshCw className="size-4 shrink-0 animate-spin" />
+          <span>
+            Connection restored. Synchronizing pending offline changes
+            {pendingMutationsCount + pendingSaveCount > 0 ? ` (${pendingMutationsCount + pendingSaveCount} remaining)...` : '...'}
+          </span>
+        </div>
+      </div>
+    );
   }
 
   if (justReconnected) {

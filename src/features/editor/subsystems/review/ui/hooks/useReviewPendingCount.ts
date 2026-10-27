@@ -12,13 +12,18 @@ export interface ReviewPendingCountResult {
   totalPendingCount: number;
 }
 
+const EMPTY_SUGGESTIONS: never[] = [];
+const EMPTY_COMMENTS: never[] = [];
+
 /**
  * Hook to retrieve real-time count of pending suggestions and open comments
  * for a specific page/document. Used by Topbar and ActivityBar review badges.
  */
 export function useReviewPendingCount(pageId?: string | null): ReviewPendingCountResult {
-  const { data: suggestions = [] } = usePageSuggestions(pageId ?? null);
-  const { data: comments = [] } = usePageComments(pageId ?? null);
+  const { data: suggestionsData } = usePageSuggestions(pageId ?? null);
+  const { data: commentsData } = usePageComments(pageId ?? null);
+  const suggestions = suggestionsData ?? EMPTY_SUGGESTIONS;
+  const comments = commentsData ?? EMPTY_COMMENTS;
   const [localRev, setLocalRev] = useState(0);
 
   useEffect(() => {

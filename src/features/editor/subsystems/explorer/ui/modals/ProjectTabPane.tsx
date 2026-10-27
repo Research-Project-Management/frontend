@@ -14,7 +14,7 @@ import {
 } from '@/shared/components/ui/select';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import { PageService } from '@/features/projects/project-id/pages/services/page.service';
-import { pageService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 
 interface ProjectOption {
@@ -74,7 +74,7 @@ export function ProjectTabPane({
     if (!parentPageId || !selectedFileId || !projectTargetName.trim()) return;
     setIsCopyingFromProject(true);
     try {
-      const sourcePage = await pageService.getById(selectedFileId);
+      const sourcePage = await manuscriptService.docs.getById(selectedFileId);
       const rawContent = sourcePage?.content;
       let contentStr = '';
       if (typeof rawContent === 'string') {

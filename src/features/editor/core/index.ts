@@ -25,6 +25,7 @@ export {
   getAllRegisteredEngines,
   subscribeEditorEngineChanges,
 } from './bus/command-bus';
+export { useEditorCommand } from './bus/use-editor-command';
 
 export type {
   IEditorCommandBus,
@@ -142,7 +143,6 @@ export { lruDocumentCache } from '@/features/editor/domain/document/lru-document
 // 5. Manuscript Backend Services & API Contracts
 export {
   manuscriptService,
-  pageService,
 } from '@/features/editor/sdk/manuscript.service';
 export {
   MANUSCRIPTS_API_BASE,

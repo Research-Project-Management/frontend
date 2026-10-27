@@ -20,6 +20,7 @@ import {
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { SidebarPanelHeader } from '@/features/editor/core';
 import { OverleafResolvedCommentsIcon } from './ReviewBadges';
+import type { ReviewStatus } from '@/features/editor/sdk/manuscript.service';
 
 // ── Review Header ───────────────────────────────────────────────────────────
 
@@ -27,6 +28,10 @@ export interface ReviewHeaderProps {
   showResolved: boolean;
   onToggleResolved: () => void;
   activeResolvedCount: number;
+  reviewStatus?: ReviewStatus;
+  roundNumber?: number;
+  onUpdateReviewStatus?: (status: ReviewStatus) => void;
+  isUpdatingReviewStatus?: boolean;
   onClose?: () => void;
 }
 
@@ -34,6 +39,10 @@ export function ReviewHeader({
   showResolved,
   onToggleResolved,
   activeResolvedCount,
+  reviewStatus = 'draft',
+  roundNumber = 1,
+  onUpdateReviewStatus,
+  isUpdatingReviewStatus = false,
   onClose,
 }: ReviewHeaderProps) {
   const handleToggle = () => {
@@ -54,6 +63,23 @@ export function ReviewHeader({
       closeAriaLabel="Close review panel"
       onClose={onClose}
     >
+      {onUpdateReviewStatus && (
+        <select
+          aria-label="Document review status"
+          disabled={isUpdatingReviewStatus}
+          value={reviewStatus}
+          onChange={(e) => onUpdateReviewStatus(e.target.value as ReviewStatus)}
+          className="h-6 px-1.5 rounded border border-border bg-muted/40 text-[11px] font-medium text-foreground outline-none focus-visible:ring-1 focus-visible:ring-border cursor-pointer disabled:opacity-50"
+          title={`Review Round #${roundNumber}`}
+        >
+          <option value="draft">Draft</option>
+          <option value="in_review">In Review (R{roundNumber})</option>
+          <option value="changes_requested">Changes Requested</option>
+          <option value="approved">Approved</option>
+          <option value="submitted">Submitted</option>
+          <option value="locked">Locked</option>
+        </select>
+      )}
       {/* Resolved comments toggle */}
       <Tooltip>
         <TooltipTrigger asChild>

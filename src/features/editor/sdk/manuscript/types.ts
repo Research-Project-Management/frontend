@@ -218,6 +218,32 @@ export interface DocReviewsResponseDto {
   threads: CommentThreadDto[];
 }
 
+export type ReviewStatus =
+  | 'draft'
+  | 'in_review'
+  | 'changes_requested'
+  | 'approved'
+  | 'submitted'
+  | 'locked';
+
+export interface ReviewRoundInfo {
+  status: ReviewStatus;
+  roundNumber?: number;
+  requestedById?: string;
+  requestedAt?: string;
+  verdictById?: string;
+  verdictAt?: string;
+  notes?: string;
+  deadline?: string;
+}
+
+export interface ReviewStatusResponse {
+  ok: boolean;
+  docId: string;
+  projectId: string;
+  review: ReviewRoundInfo;
+}
+
 export interface QueueUpdatePayload {
   lines?: string[];
   splice?: {
@@ -232,6 +258,18 @@ export interface QueueUpdatePayload {
   docLines?: string[];
   docOps?: unknown[];
   version?: number;
+}
+
+export interface DocstoreDocDto {
+  _id: string;
+  projectId: string;
+  path: string;
+  lines: string[];
+  version: number;
+  rev: number;
+  deleted?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface FlushResultDto {
@@ -258,18 +296,6 @@ export interface StructureNodeDto {
   createdAt: string;
   updatedAt: string;
   children?: StructureNodeDto[];
-}
-
-export interface DocstoreDocDto {
-  _id: string;
-  projectId: string;
-  path: string;
-  lines: string[];
-  version: number;
-  rev: number;
-  deleted?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
 }
 
 export interface CompilerDiagnostic {
@@ -397,10 +423,15 @@ export interface CreateSuggestionPayload {
 }
 
 export interface DiffChunk {
-  type: 'added' | 'removed' | 'unchanged';
-  lines: string[];
+  type: 'added' | 'removed' | 'deleted' | 'unchanged' | 'change';
+  lines?: string[];
   oldStart?: number;
+  oldLines?: number;
   newStart?: number;
+  newLines?: number;
+  content?: string;
+  value?: string;
+  linesCount?: number;
 }
 
 export interface VersionDiffResponse {

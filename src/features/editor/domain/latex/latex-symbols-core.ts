@@ -120,6 +120,11 @@ export interface SymbolSnapshot {
 
 export type SymbolsWorkerMessageIn =
   | { type: 'indexFile'; fileId: string; filePath: string; content: string; id: number }
+  | {
+      type: 'indexBatch';
+      files: Array<{ fileId: string; filePath: string; content: string }>;
+      id: number;
+    }
   | { type: 'removeFile'; fileId: string; filePath?: string; id: number }
   | { type: 'clear'; id: number }
   | { type: 'getSnapshot'; id: number };

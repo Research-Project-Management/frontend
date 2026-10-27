@@ -15,7 +15,10 @@ import type {
   CommandDispatchMiddleware,
   CommandExecuteMiddleware,
 } from '@/features/editor/core/bus/command-bus.port';
-import type { LatexFormatType } from '@/features/editor/domain/types/ports/editor-engine.port';
+import type {
+  LatexFormatType,
+  IEditorEngine,
+} from '@/features/editor/domain/types/ports/editor-engine.port';
 import {
   subscribeEditorEngineChanges,
   registerEditorEngine,
@@ -24,9 +27,11 @@ import {
   getAllRegisteredEngines,
   setActiveEditorEngine,
   getActiveEditorEngine,
+  getEditorEngineOrNoop,
   getActiveEditorContent,
   setActivePdfViewer,
   getActivePdfViewer,
+  NOOP_EDITOR_ENGINE,
 } from './engine-registry';
 
 class EditorCommandBusImpl implements IEditorCommandBus {
@@ -37,7 +42,8 @@ class EditorCommandBusImpl implements IEditorCommandBus {
   private traceHistory: CommandTraceEntry[] = [];
   private maxHistorySize = 100;
   private tracingEnabled = true;
-  private bufferedCommands = new Map<string, { command: EditorCommand; expiresAt: number }>();
+  private bufferedCommands = new Map<string, Array<{ command: EditorCommand; expiresAt: number }>>();
+  private maxBufferedPerType = 10;
   private errorReporter: (error: unknown, command: EditorCommand) => void = (err, cmd) => {
     console.error(`[CommandBus] Error handling command "${cmd.type}":`, err);
   };
@@ -79,6 +85,52 @@ class EditorCommandBusImpl implements IEditorCommandBus {
     }
   }
 
+  private notifySubscribers(cmd: EditorCommand): unknown {
+    let dispatchError: unknown = undefined;
+
+    // 1. Dispatch to type-specific handlers
+    const typeHandlers = this.handlers.get(cmd.type);
+    if (typeHandlers && typeHandlers.size > 0) {
+      for (const handler of typeHandlers) {
+        try {
+          void handler(cmd);
+        } catch (err) {
+          dispatchError = err;
+          this.errorReporter(err, cmd);
+        }
+      }
+    } else if (
+      cmd.type === 'sidebar:open-ai-panel' ||
+      cmd.type === 'sidebar:open-panel'
+    ) {
+      // Buffer replayable viewlet commands (capped array per type) for up to 3000ms until component mounts
+      const now = Date.now();
+      const queue = (this.bufferedCommands.get(cmd.type) ?? []).filter(
+        (entry) => now <= entry.expiresAt,
+      );
+      queue.push({
+        command: cmd,
+        expiresAt: now + 3000,
+      });
+      if (queue.length > this.maxBufferedPerType) {
+        queue.shift();
+      }
+      this.bufferedCommands.set(cmd.type, queue);
+    }
+
+    // 2. Dispatch to global observers
+    for (const handler of this.globalHandlers) {
+      try {
+        void handler(cmd);
+      } catch (err) {
+        if (!dispatchError) dispatchError = err;
+        this.errorReporter(err, cmd);
+      }
+    }
+
+    return dispatchError;
+  }
+
   public dispatch(command: EditorCommand): void {
     const dispatchMiddlewares = this.middlewares
       .map((m) => m.onDispatch)
@@ -86,39 +138,7 @@ class EditorCommandBusImpl implements IEditorCommandBus {
 
     const invokeFinalDispatch = (cmd: EditorCommand) => {
       const startTime = performance.now();
-      let dispatchError: unknown = undefined;
-
-      // 1. Dispatch to type-specific handlers
-      const typeHandlers = this.handlers.get(cmd.type);
-      if (typeHandlers && typeHandlers.size > 0) {
-        for (const handler of typeHandlers) {
-          try {
-            void handler(cmd);
-          } catch (err) {
-            dispatchError = err;
-            this.errorReporter(err, cmd);
-          }
-        }
-      } else if (
-        cmd.type === 'sidebar:open-ai-panel' ||
-        cmd.type === 'sidebar:open-panel'
-      ) {
-        // Buffer replayable viewlet command for up to 3000ms until component mounts
-        this.bufferedCommands.set(cmd.type, {
-          command: cmd,
-          expiresAt: Date.now() + 3000,
-        });
-      }
-
-      // 2. Dispatch to global observers
-      for (const handler of this.globalHandlers) {
-        try {
-          void handler(cmd);
-        } catch (err) {
-          if (!dispatchError) dispatchError = err;
-          this.errorReporter(err, cmd);
-        }
-      }
+      const dispatchError = this.notifySubscribers(cmd);
 
       this.recordTrace({
         command: cmd,
@@ -180,8 +200,8 @@ class EditorCommandBusImpl implements IEditorCommandBus {
         durationMs: Math.round((performance.now() - startTime) * 100) / 100,
       });
 
-      // Still notify regular subscribers about the executed command
-      this.dispatch(cmd);
+      // Notify regular subscribers about the executed command without double-tracing
+      this.notifySubscribers(cmd);
 
       return result as T;
     };
@@ -224,17 +244,20 @@ class EditorCommandBusImpl implements IEditorCommandBus {
     const set = this.handlers.get(type)!;
     set.add(handler as unknown as CommandHandler<EditorCommand, unknown>);
 
-    // If there is a freshly buffered command for this type, replay it immediately
-    const buffered = this.bufferedCommands.get(type);
-    if (buffered) {
-      if (Date.now() <= buffered.expiresAt) {
-        try {
-          void handler(buffered.command as Extract<EditorCommand, { type: K }>);
-        } catch (err) {
-          this.errorReporter(err, buffered.command);
+    // If there are freshly buffered commands for this type, replay all non-expired in FIFO order
+    const bufferedQueue = this.bufferedCommands.get(type);
+    if (bufferedQueue && bufferedQueue.length > 0) {
+      const now = Date.now();
+      this.bufferedCommands.delete(type);
+      for (const entry of bufferedQueue) {
+        if (now <= entry.expiresAt) {
+          try {
+            void handler(entry.command as Extract<EditorCommand, { type: K }>);
+          } catch (err) {
+            this.errorReporter(err, entry.command);
+          }
         }
       }
-      this.bufferedCommands.delete(type);
     }
 
     return () => {
@@ -293,10 +316,39 @@ export {
   getAllRegisteredEngines,
   setActiveEditorEngine,
   getActiveEditorEngine,
+  getEditorEngineOrNoop,
   getActiveEditorContent,
   setActivePdfViewer,
   getActivePdfViewer,
+  NOOP_EDITOR_ENGINE,
 };
+
+/**
+ * Strategy Lookup Table Pattern: Visual Command -> Engine Execution Strategy
+ */
+export const VISUAL_COMMAND_STRATEGIES: Readonly<
+  Record<string, (engine: IEditorEngine) => void>
+> = Object.freeze({
+  bold: (engine) => engine.format('bold'),
+  italic: (engine) => engine.format('italic'),
+  underline: (engine) => engine.format('underline'),
+  strikethrough: (engine) => engine.format('strikethrough'),
+  strike: (engine) => engine.format('strikethrough'),
+  code: (engine) => engine.format('code'),
+  math: (engine) => engine.format('inlineMath'),
+  inlineMath: (engine) => engine.format('inlineMath'),
+  section: (engine) => engine.format('section'),
+  subsection: (engine) => engine.format('subsection'),
+  subsubsection: (engine) => engine.format('subsubsection'),
+  paragraph: (engine) => engine.format('paragraph'),
+  subparagraph: (engine) => engine.format('subparagraph'),
+  bulletList: (engine) =>
+    engine.insertText('\\begin{itemize}\n  \\item \n\\end{itemize}\n'),
+  orderedList: (engine) =>
+    engine.insertText('\\begin{enumerate}\n  \\item \n\\end{enumerate}\n'),
+  codeBlock: (engine) =>
+    engine.insertText('\\begin{verbatim}\n\n\\end{verbatim}\n'),
+});
 
 let defaultBridgesUnsub: Array<() => void> = [];
 
@@ -309,10 +361,10 @@ export function registerDefaultBridges(): void {
 
   defaultBridgesUnsub.push(
     editorCommandBus.subscribe('editor:insert-text', (cmd) => {
-      getActiveEditorEngine()?.insertText(cmd.text);
+      getEditorEngineOrNoop().insertText(cmd.text);
     }),
     editorCommandBus.subscribe('editor:focus', () => {
-      getActiveEditorEngine()?.focus();
+      getEditorEngineOrNoop().focus();
     }),
     editorCommandBus.subscribe('editor:set-content', (cmd) => {
       if (cmd.fileId) {
@@ -322,61 +374,48 @@ export function registerDefaultBridges(): void {
           return;
         }
       }
-      getActiveEditorEngine()?.setContent?.(cmd.content);
+      getEditorEngineOrNoop().setContent?.(cmd.content);
     }),
     editorCommandBus.subscribe('editor:undo', () => {
-      getActiveEditorEngine()?.undo();
+      getEditorEngineOrNoop().undo();
     }),
     editorCommandBus.subscribe('editor:redo', () => {
-      getActiveEditorEngine()?.redo();
+      getEditorEngineOrNoop().redo();
     }),
     editorCommandBus.subscribe('editor:wrap-selection', (cmd) => {
-      getActiveEditorEngine()?.wrapSelection(cmd.prefix, cmd.suffix, cmd.placeholder);
+      getEditorEngineOrNoop().wrapSelection(
+        cmd.prefix,
+        cmd.suffix,
+        cmd.placeholder,
+      );
     }),
     editorCommandBus.subscribe('editor:format', (cmd) => {
-      getActiveEditorEngine()?.format(cmd.format);
+      getEditorEngineOrNoop().format(cmd.format);
     }),
     editorCommandBus.subscribe('editor:jump-to-line', (cmd) => {
-      getActiveEditorEngine()?.jumpToLine(cmd.line, cmd.highlight, cmd.column, cmd.length);
+      getEditorEngineOrNoop().jumpToLine(
+        cmd.line,
+        cmd.highlight,
+        cmd.column,
+        cmd.length,
+      );
     }),
     editorCommandBus.subscribe('editor:scroll-to-line', (cmd) => {
-      getActiveEditorEngine()?.scrollToLine?.(cmd.line, cmd.smooth);
+      getEditorEngineOrNoop().scrollToLine?.(cmd.line, cmd.smooth);
     }),
     editorCommandBus.subscribe('editor:find', () => {
-      getActiveEditorEngine()?.openFind();
+      getEditorEngineOrNoop().openFind();
     }),
     editorCommandBus.subscribe('editor:insert-citation', (cmd) => {
       if (cmd.bibKey) {
-        getActiveEditorEngine()?.insertText(`\\cite{${cmd.bibKey}}`);
+        getEditorEngineOrNoop().insertText(`\\cite{${cmd.bibKey}}`);
       }
     }),
     editorCommandBus.subscribe('editor:visual-command', (cmd) => {
-      const engine = getActiveEditorEngine();
-      if (!engine) return;
-      const formatCommands: Record<string, LatexFormatType> = {
-        bold: 'bold',
-        italic: 'italic',
-        underline: 'underline',
-        strikethrough: 'strikethrough',
-        strike: 'strikethrough',
-        code: 'code',
-        math: 'inlineMath',
-        inlineMath: 'inlineMath',
-        section: 'section',
-        subsection: 'subsection',
-        subsubsection: 'subsubsection',
-        paragraph: 'paragraph',
-        subparagraph: 'subparagraph',
-      };
-
-      if (cmd.command in formatCommands) {
-        engine.format(formatCommands[cmd.command]);
-      } else if (cmd.command === 'bulletList') {
-        engine.insertText('\\begin{itemize}\n  \\item \n\\end{itemize}\n');
-      } else if (cmd.command === 'orderedList') {
-        engine.insertText('\\begin{enumerate}\n  \\item \n\\end{enumerate}\n');
-      } else if (cmd.command === 'codeBlock') {
-        engine.insertText('\\begin{verbatim}\n\n\\end{verbatim}\n');
+      const engine = getEditorEngineOrNoop();
+      const strategy = VISUAL_COMMAND_STRATEGIES[cmd.command];
+      if (strategy) {
+        strategy(engine);
       } else if (cmd.contentHtml) {
         engine.insertText(cmd.contentHtml);
       }

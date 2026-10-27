@@ -9,8 +9,7 @@ import {
   exportDocumentAsMarkdown,
   exportDocumentAsHtml,
 } from '@/features/editor/sdk/archive/document-download';
-import { documentService, fileService, exportService } from '@/features/editor/sdk/manuscript.service';
-import { StorageService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 
 describe('Export Pipeline & Inline Suggestion Unit Tests', () => {
   beforeEach(() => {
@@ -19,18 +18,18 @@ describe('Export Pipeline & Inline Suggestion Unit Tests', () => {
 
   describe('1. Project Source ZIP Export (Overleaf 1:1 Package)', () => {
     it('should bundle main.tex and subfiles into a downloadable zip', async () => {
-      vi.spyOn(documentService, 'getById').mockResolvedValue({
+      vi.spyOn(manuscriptService.docs, 'getById').mockResolvedValue({
         id: 'doc-1',
         title: 'Project Manuscript',
         content: '\\documentclass{article}\n\\begin{document}\nHello World\n\\end{document}',
       } as any);
 
-      vi.spyOn(fileService, 'getByPageId').mockResolvedValue([
+      vi.spyOn(manuscriptService.docs, 'getFiles').mockResolvedValue([
         { id: 'f-1', title: 'intro.tex', content: '\\section{Introduction}' },
         { id: 'f-2', title: 'references.bib', content: '@article{test, title={Test}}' },
       ] as any);
 
-      vi.spyOn(StorageService, 'getPageFiles').mockResolvedValue([]);
+      vi.spyOn(manuscriptService.structure, 'getPageFiles').mockResolvedValue([]);
 
       let createdBlob: Blob | null = null;
       let downloadedFilename = '';
@@ -76,13 +75,13 @@ describe('Export Pipeline & Inline Suggestion Unit Tests', () => {
     });
 
     it('should filter out auxiliary files in arXiv submission package', async () => {
-      vi.spyOn(documentService, 'getById').mockResolvedValue({
+      vi.spyOn(manuscriptService.docs, 'getById').mockResolvedValue({
         id: 'doc-arxiv',
         title: 'Main',
         content: '\\documentclass{article}\n\\begin{document}\nPaper\n\\end{document}',
       } as any);
 
-      vi.spyOn(fileService, 'getByPageId').mockResolvedValue([
+      vi.spyOn(manuscriptService.docs, 'getFiles').mockResolvedValue([
         { id: 'f-1', title: 'paper.tex', content: '\\section{Paper}' },
         { id: 'f-2', title: 'paper.aux', content: '\\relax' },
         { id: 'f-3', title: 'paper.log', content: 'Compile log' },
@@ -90,7 +89,7 @@ describe('Export Pipeline & Inline Suggestion Unit Tests', () => {
         { id: 'f-5', title: 'refs.bib', content: '@article{a}' },
       ] as any);
 
-      vi.spyOn(StorageService, 'getPageFiles').mockResolvedValue([]);
+      vi.spyOn(manuscriptService.structure, 'getPageFiles').mockResolvedValue([]);
 
       let createdBlob: Blob | null = null;
       globalThis.URL.createObjectURL = vi.fn((blob: any) => {
@@ -120,7 +119,7 @@ describe('Export Pipeline & Inline Suggestion Unit Tests', () => {
   describe('2. Multi-Format Document Export (Word, Markdown, HTML)', () => {
     it('should export document as Word .docx with base64 decoding', async () => {
       const mockBase64 = Buffer.from('mock-docx-zip-content').toString('base64');
-      vi.spyOn(exportService, 'exportDocument').mockResolvedValue({
+      vi.spyOn(manuscriptService.export, 'exportDocument').mockResolvedValue({
         filename: 'report.docx',
         mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         content: mockBase64,
@@ -150,7 +149,7 @@ describe('Export Pipeline & Inline Suggestion Unit Tests', () => {
     });
 
     it('should export document as Markdown .md and handle offline fallback', async () => {
-      vi.spyOn(exportService, 'exportDocument').mockResolvedValue({
+      vi.spyOn(manuscriptService.export, 'exportDocument').mockResolvedValue({
         filename: 'draft.md',
         mimeType: 'text/markdown',
         content: '# Draft Title\nParagraph text.',
@@ -176,7 +175,7 @@ describe('Export Pipeline & Inline Suggestion Unit Tests', () => {
       expect(downloadedFilename).toBe('draft.md');
 
       // Test fallback when remote endpoint errors
-      vi.spyOn(exportService, 'exportDocument').mockRejectedValue(new Error('Backend offline'));
+      vi.spyOn(manuscriptService.export, 'exportDocument').mockRejectedValue(new Error('Backend offline'));
 
       const fallbackResult = await exportDocumentAsMarkdown({
         pageId: 'doc-draft-offline',

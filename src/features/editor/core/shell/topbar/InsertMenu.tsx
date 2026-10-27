@@ -20,7 +20,8 @@ import {
   MenubarSeparator,
 } from '@/shared/components/ui/menubar';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
-import { editorCommandBus, useWorkspaceStore } from '@/features/editor/core';
+import { editorCommandBus } from '../../bus/command-bus';
+import { useWorkspaceStore } from '../../store/workspace.store';
 
 export function InsertMenu({ value = 'insert' }: { value?: string } = {}) {
   const { engine } = useEditorInstance();

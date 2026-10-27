@@ -68,7 +68,7 @@ describe('Manuscript FE ↔ BE DTO Contract Alignment', () => {
     await structure.moveNode('proj-1', 'node-1', { parentId: 'folder-2', sortOrder: 1 });
 
     expect(apiPatchMock).toHaveBeenCalledWith(
-      '/api/v1/manuscripts/projects/proj-1/structure/nodes/node-1/move',
+      '/api/v1/manuscripts/pages/proj-1/structure/nodes/node-1/move',
       {
         parentId: 'folder-2',
         destParentId: 'folder-2',
@@ -154,7 +154,7 @@ describe('Manuscript FE ↔ BE DTO Contract Alignment', () => {
     const items = await templates.list({ category: 'academic_journal', search: 'IEEE', limit: 10, skip: 20 });
 
     expect(apiGetMock).toHaveBeenCalledWith(
-      '/api/v1/manuscripts/projects/templates',
+      '/api/v1/manuscripts/templates',
       {
         params: {
           category: 'academic_journal',

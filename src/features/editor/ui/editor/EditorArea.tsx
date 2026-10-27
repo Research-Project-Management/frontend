@@ -186,10 +186,6 @@ export function EditorArea() {
         id: `doc-conflict-${conflict.fileId}`,
         duration: 15000,
         description: 'The document was updated on the server while you have unsaved local changes.',
-        action: {
-          label: 'Review & Resolve',
-          onClick: () => setActiveConflict(conflict),
-        },
       });
     });
   }, []);
@@ -263,30 +259,13 @@ export function EditorArea() {
     toast.info('Kept server version', { id: 'draft-recovery-status' });
   }, [displayPage?.id]);
 
-  // Global shortcut (Ctrl+Alt+M / Cmd+Alt+M) -> Add Comment / Open Review in both modes
+  // Global shortcut (Ctrl+\ / Cmd+\) -> Split Editor Pane
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const modKey = isPrimaryModKey(e);
 
       if (modKey && e.altKey && (e.key === 'm' || e.key === 'M' || e.code === 'KeyM')) {
         e.preventDefault();
-        const engine = getActiveEditorEngine();
-        const sel = engine?.getSelection?.() as
-          | { fromLine?: number; startLine?: number; toLine?: number; endLine?: number }
-          | null
-          | undefined;
-        const cursor = engine?.getCursorPosition?.();
-        const selectedText = engine?.getSelectedText?.() || '';
-        const startLine = sel?.fromLine ?? sel?.startLine ?? cursor?.line ?? 1;
-        const endLine = sel?.toLine ?? sel?.endLine ?? cursor?.line ?? 1;
-
-        useDocumentCollaborationStore.getState().setPendingComment({
-          startLine,
-          endLine,
-          selectedText,
-        });
-        useWorkspaceStore.getState().setActiveSidebarTab('review');
-        useWorkspaceStore.getState().setSidebarLeftOpen(true);
         editorCommandBus.dispatch({ type: 'review:create-comment' });
         return;
       }

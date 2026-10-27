@@ -16,10 +16,10 @@
 import {
   getActiveEditorEngine,
   getEditorEngineForFile,
-} from '@/features/editor/core/bus/command-bus';
+} from '../bus/command-bus';
 import type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
-import { usePageStore } from '@/features/editor/core/store/editor.store';
-import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store';
+import { usePageStore } from '../store/editor.store';
+import { useWorkspaceStore } from '../store/workspace.store';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { latexDagEngine } from '@/features/editor/domain/latex/latex-dag-engine';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
@@ -143,10 +143,9 @@ export class DocumentAuthorityRegistry {
    * Authoritative content resolution for a specific fileId:
    * Priority:
    * 1. Mounted CodeMirror Engine for `fileId` (`getEditorEngineForFile(fileId)`)
-   * 2. Active CodeMirror Engine if `fileId` is the active document
-   * 3. In-memory LRU Document Cache (`lruDocumentCache.getModel(fileId)`)
-   * 4. `usePageStore` (`activeFilePage` / `currentPage`)
-   * 5. Hydrated Server Read Model (`serverFilesByProject`)
+   * 2. In-memory LRU Document Cache (`lruDocumentCache.getModel(fileId)`)
+   * 3. `usePageStore` (`activeFilePage` / `currentPage`)
+   * 4. Hydrated Server Read Model (`serverFilesByProject`)
    */
   public getDocumentContent(fileId?: string | null): string {
     const { activeFileId, projectId, rootPageId } = this.resolveProjectContext();
@@ -157,30 +156,21 @@ export class DocumentAuthorityRegistry {
     }
 
     // 1. Per-file mounted CodeMirror instance (handles both primary & secondary split panes)
-    const fileEngine = getEditorEngineForFile(targetId);
-    if (fileEngine) {
-      const liveText = fileEngine.getContent();
+    const targetEngine = this.getEditorEngineForFile(targetId);
+    if (targetEngine) {
+      const liveText = targetEngine.getContent();
       if (typeof liveText === 'string') {
         return liveText;
       }
     }
 
-    // 2. Active CodeMirror instance if targetId matches activeFileId
-    if (targetId === activeFileId) {
-      const activeEngine = getActiveEditorEngine();
-      const activeText = activeEngine?.getContent();
-      if (typeof activeText === 'string' && activeText.length > 0) {
-        return activeText;
-      }
-    }
-
-    // 3. In-Memory LRU Document Cache
+    // 2. In-Memory LRU Document Cache
     const cachedModel = lruDocumentCache.getModel(targetId);
     if (cachedModel && typeof cachedModel.content === 'string') {
       return cachedModel.content;
     }
 
-    // 4. Page Store fallback
+    // 3. Page Store fallback
     const pageState = usePageStore.getState();
     if (pageState.activeFilePage?.id === targetId) {
       return extractDocumentContentString(pageState.activeFilePage.content);
@@ -189,7 +179,7 @@ export class DocumentAuthorityRegistry {
       return extractDocumentContentString(pageState.currentPage.content);
     }
 
-    // 5. Server Project Files Read Model
+    // 4. Server Project Files Read Model
     for (const key of [projectId, rootPageId]) {
       if (!key) continue;
       const list = this.serverFilesByProject.get(key);
@@ -233,7 +223,7 @@ export class DocumentAuthorityRegistry {
     if (!projectKey || !Array.isArray(rawFiles)) return [];
 
     const normalized: Array<{ id: string; title: string; path: string; content: string }> = [];
-    const indexPayload: Array<{ id: string; path: string; content: string }> = [];
+    const indexPayload: Array<{ fileId: string; filePath: string; content: string }> = [];
 
     for (const f of rawFiles) {
       if (!f || !f.id) continue;
@@ -266,18 +256,16 @@ export class DocumentAuthorityRegistry {
       }
 
       const effectiveContent = existing?.isDirty ? existing.content : serverContent;
-      if (/\.(tex|bib|sty|cls)$/i.test(path)) {
-        indexPayload.push({ id: rawRecord.id, path, content: effectiveContent });
-      }
+      indexPayload.push({ fileId: rawRecord.id, filePath: path, content: effectiveContent });
     }
 
     this.serverFilesByProject.set(projectKey, normalized);
 
     if (indexPayload.length > 0) {
       for (const item of indexPayload) {
-        latexDagEngine.parseAndRegister(item.path, item.content, item.id);
-        latexSymbolsIndex.indexFile(item.id, item.path, item.content);
+        latexDagEngine.parseAndRegister(item.filePath, item.content, item.fileId);
       }
+      latexSymbolsIndex.indexFilesBatch(indexPayload);
     }
 
     return this.getOverlayFiles(projectKey, rawFiles);
@@ -330,10 +318,9 @@ export class DocumentAuthorityRegistry {
     return baseList.map((file) => {
       const isCurrent = file.id === activeFileId;
       const cached = lruDocumentCache.getModel(file.id);
-      const fileEngine = getEditorEngineForFile(file.id);
+      const fileEngine = this.getEditorEngineForFile(file.id);
       const liveContent =
         fileEngine?.getContent() ??
-        (isCurrent ? getActiveEditorEngine()?.getContent() : undefined) ??
         cached?.content ??
         file.content;
 

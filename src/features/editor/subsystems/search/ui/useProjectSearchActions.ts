@@ -11,7 +11,7 @@ import { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { filesQuery } from '@/features/editor/ui/hooks/document.queries';
-import { documentSearchService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import {
   sessionCoordinator,
   documentAuthority,
@@ -87,7 +87,7 @@ export function useProjectSearchActions({
       // 1. Flush pending debounced writes across all sessions so server has latest content
       await sessionCoordinator.flushAllPending();
 
-      const res = await documentSearchService.batchReplace(
+      const res = await manuscriptService.search.batchReplace(
         rootProjectId,
         effectiveQuery,
         replaceText,
@@ -107,6 +107,9 @@ export function useProjectSearchActions({
       await queryClient.invalidateQueries({
         queryKey: filesQuery(rootPageId).queryKey,
       });
+      await queryClient.invalidateQueries({
+        queryKey: ['pages'],
+      });
 
       // 2. Reconcile all affected files across mounted engines (active & split-pane) and LRU cache
       const re = buildSearchRegex(effectiveQuery, { useRegex, wholeWord, caseSensitive });
@@ -119,8 +122,15 @@ export function useProjectSearchActions({
             if (replaced !== currentContent) {
               mountedEngine.setContent(replaced);
             }
+            lruDocumentCache.updateContent(affectedId, replaced, false);
+            lruDocumentCache.markClean(affectedId);
           } else {
-            // Evict model from cache so opening it fetches fresh content from server/store
+            const cachedModel = lruDocumentCache.getModel(affectedId);
+            if (cachedModel) {
+              const replaced = cachedModel.content.replace(re, replaceText);
+              lruDocumentCache.updateContent(affectedId, replaced, false);
+              lruDocumentCache.markClean(affectedId);
+            }
             lruDocumentCache.evictModel(affectedId);
           }
         }

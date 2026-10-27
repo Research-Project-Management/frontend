@@ -11,7 +11,7 @@ import { Awareness, removeAwarenessStates } from 'y-protocols/awareness';
 import { io, type Socket } from 'socket.io-client';
 import { getEffectiveBaseUrl, getAuthToken } from '@/shared/lib/api';
 import type { IEditorCommandBus } from '@/features/editor/core/bus/command-bus.port';
-import type { CollaborationPresence } from '@/features/editor/sdk/manuscript.service';
+import type { CollaborationPresence } from '../manuscript/types';
 import {
   buildLineStartsIndex,
   getOffsetFromRowCol,
@@ -117,6 +117,7 @@ export class YjsSocketIOProvider {
   }
 
   private statusListeners = new Set<(status: ConnectionStatus) => void>();
+  private syncedListeners = new Set<() => void>();
   private chatListeners = new Set<(message: ProjectChatMessage) => void>();
 
   /** Subscribe to connection status changes (safe across pooled provider reuse). */
@@ -125,6 +126,36 @@ export class YjsSocketIOProvider {
     return () => {
       this.statusListeners.delete(listener);
     };
+  }
+
+  /** Subscribe to Yjs initial sync completion (safe across pooled provider reuse). */
+  public subscribeSynced(listener: () => void): () => void {
+    this.syncedListeners.add(listener);
+    return () => {
+      this.syncedListeners.delete(listener);
+    };
+  }
+
+  /** Updates fallback initialContent if the provider has not yet seeded an empty Y.Text. */
+  public setInitialContent(content?: string): void {
+    if (!content) return;
+    this.options.initialContent = content;
+    if (this.isSynced && this.yText.length === 0) {
+      this.doc.transact(() => {
+        this.yText.insert(0, content);
+      }, 'local-init');
+    }
+  }
+
+  private emitSynced(): void {
+    this.options.onSynced?.();
+    for (const listener of this.syncedListeners) {
+      try {
+        listener();
+      } catch (err) {
+        console.warn('[YjsSocketIOProvider] synced listener error:', err);
+      }
+    }
   }
 
   /** Subscribe to real-time project chat messages (project:chat:new). */
@@ -200,12 +231,15 @@ export class YjsSocketIOProvider {
       this.socket = fakeSocket ?? io(socketUrl, {
         path: '/socket.io',
         transports: ['polling', 'websocket'],
-        auth: {
-          token,
-          userId: user?.id,
-          name: user?.name,
-          avatar: user?.avatar,
-          color: user?.color,
+        auth: (cb: (data: Record<string, unknown>) => void) => {
+          const currentToken = this.options.getToken?.() || this.options.token || getAuthToken() || undefined;
+          cb({
+            token: currentToken,
+            userId: user?.id,
+            name: user?.name,
+            avatar: user?.avatar,
+            color: user?.color,
+          });
         },
         reconnection: true,
         reconnectionAttempts: Infinity,
@@ -372,7 +406,8 @@ export class YjsSocketIOProvider {
       }
     });
 
-    const reviewEvents: Array<[string, 'suggestion:recorded' | 'suggestion:resolved' | 'comment:created' | 'comment:replied' | 'comment:resolved']> = [
+    const reviewEvents: Array<[string, 'suggestion:recorded' | 'suggestion:resolved' | 'comment:created' | 'comment:replied' | 'comment:resolved' | 'review:status-changed']> = [
+      ['review:status-changed', 'review:status-changed'],
       ['track-changes:recorded', 'suggestion:recorded'],
       ['track-changes:created', 'suggestion:recorded'],
       ['track-changes:resolved', 'suggestion:resolved'],
@@ -417,13 +452,18 @@ export class YjsSocketIOProvider {
     return { text: this.cachedText, lineStarts: this.cachedLineStarts };
   }
 
+  private localDocUpdateHandler: ((update: Uint8Array, origin: unknown) => void) | null = null;
+
   private setupLocalDocListener(): void {
     const doc = this.doc;
-    doc.on('update', (update: Uint8Array, origin: unknown) => {
+    if (this.localDocUpdateHandler) {
+      doc.off('update', this.localDocUpdateHandler);
+    }
+    this.localDocUpdateHandler = (update: Uint8Array, origin: unknown) => {
       if (doc !== this.doc) return;
       this.cachedText = null;
       this.cachedLineStarts = null;
-      if (origin === 'socket.io' || this.destroyed) return;
+      if (origin === 'socket.io' || origin === 'local-init' || this.destroyed) return;
 
       this.pendingUpdates.push(update);
       if (this.pendingUpdates.length > 256) {
@@ -436,7 +476,8 @@ export class YjsSocketIOProvider {
         this.updateBatchTimer = null;
         this.flushPendingUpdates();
       }, 20);
-    });
+    };
+    doc.on('update', this.localDocUpdateHandler);
   }
 
   // ── HTTP-save-while-disconnected handling ──────────────────────────────────
@@ -505,6 +546,10 @@ export class YjsSocketIOProvider {
           clearTimeout(this.updateBatchTimer);
           this.updateBatchTimer = null;
         }
+        if (this.localDocUpdateHandler) {
+          oldDoc.off('update', this.localDocUpdateHandler);
+          this.localDocUpdateHandler = null;
+        }
         this.doc = freshDoc;
         this.yText = freshDoc.getText('latex');
         this.cachedText = null;
@@ -516,7 +561,10 @@ export class YjsSocketIOProvider {
         this.setupLocalDocListener();
         this.httpSavedWhileDisconnected = false;
 
-        applyTextDiff(this.yText, localText, 'local-resync');
+        // If localText diverged from the server doc after the HTTP save, reconcile the delta so unsaved keystrokes are preserved
+        if (localText.length > 0 && this.yText.toString() !== localText) {
+          applyTextDiff(this.yText, localText, 'local-resync');
+        }
         this.flushPendingUpdates();
 
         this.isSynced = true;
@@ -527,7 +575,7 @@ export class YjsSocketIOProvider {
             console.warn('[YjsSocketIOProvider] doc-replaced listener error:', err);
           }
         }
-        this.options.onSynced?.();
+        this.emitSynced();
         setTimeout(() => {
           oldAwareness.destroy();
           oldDoc.destroy();
@@ -560,11 +608,21 @@ export class YjsSocketIOProvider {
     const updatesToEmit = this.pendingUpdates;
     this.pendingUpdates = [];
 
-    this.socket.emit('doc:sync:update', {
-      projectId: this.projectId,
-      docId: this.pageId,
-      data: encodeMergedYjsUpdates(updatesToEmit),
-    });
+    const mergedData = encodeMergedYjsUpdates(updatesToEmit);
+    this.socket.emit(
+      'doc:sync:update',
+      {
+        projectId: this.projectId,
+        docId: this.pageId,
+        data: mergedData,
+      },
+      (res?: { success?: boolean; error?: string }) => {
+        if (!res?.success && !this.destroyed) {
+          console.warn('[YjsSocketIOProvider] Server rejected doc:sync:update or timed out:', res?.error);
+          this.pendingUpdates = [mergedData, ...this.pendingUpdates];
+        }
+      },
+    );
     return true;
   }
 
@@ -601,7 +659,7 @@ export class YjsSocketIOProvider {
         }
         this.flushPendingUpdates();
         this.isSynced = true;
-        this.options.onSynced?.();
+        this.emitSynced();
       },
     );
   }
@@ -801,12 +859,17 @@ export class YjsSocketIOProvider {
       this.socket = null;
     }
 
+    if (this.localDocUpdateHandler) {
+      this.doc.off('update', this.localDocUpdateHandler);
+      this.localDocUpdateHandler = null;
+    }
     this.awareness.destroy();
     this.doc.destroy();
   }
 }
 
 export {
+  acquireYjsProvider,
   getOrCreateYjsProvider,
   releaseYjsProvider,
   markHttpSavedWhileDisconnected,
@@ -816,4 +879,5 @@ export {
   updateActiveYjsDocContent,
   clearYjsProviderPool,
   subscribeYjsPoolCleared,
+  getYjsPoolEpoch,
 } from './yjs-provider-pool';

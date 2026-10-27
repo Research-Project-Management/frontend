@@ -36,7 +36,7 @@ import { Input } from '@/shared/components/ui/input';
 import { Badge } from '@/shared/components/ui/badge';
 import { cn } from '@/shared/lib/utils';
 
-import { manuscriptService, historyService, historyKeys } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService, historyKeys } from '@/features/editor/sdk/manuscript.service';
 import { exportVersionAsZip } from '@/features/editor/sdk/archive/archive-export';
 import {
   clearYjsProviderPool,
@@ -158,7 +158,7 @@ export function HistoryPage({
     refetch: refetchVersions,
   } = useQuery({
     queryKey: historyKeys.versions(effectiveProjectId),
-    queryFn: () => historyService.getProjectVersions(effectiveProjectId),
+    queryFn: () => manuscriptService.history.getProjectVersions(effectiveProjectId),
     enabled: !!effectiveProjectId && open,
   });
 
@@ -199,7 +199,7 @@ export function HistoryPage({
       selectedTargetVersion,
     ],
     queryFn: () =>
-      historyService.compareProjectVersions(
+      manuscriptService.history.compareProjectVersions(
         effectiveProjectId,
         selectedBaseVersion!,
         selectedTargetVersion!
@@ -212,7 +212,7 @@ export function HistoryPage({
     queryKey: ['project-snapshot', effectiveProjectId, selectedBaseVersion],
     queryFn: () =>
       selectedBaseVersion
-        ? historyService.getProjectSnapshot(effectiveProjectId, selectedBaseVersion)
+        ? manuscriptService.history.getProjectSnapshot(effectiveProjectId, selectedBaseVersion)
         : null,
     enabled: canCompare && open,
   });
@@ -229,7 +229,7 @@ export function HistoryPage({
   // ── Mutations ──
   const addLabelMutation = useMutation({
     mutationFn: ({ version, label }: { version: number; label: string }) =>
-      historyService.labelProjectVersion(effectiveProjectId, version, label),
+      manuscriptService.history.labelProjectVersion(effectiveProjectId, version, label),
     onSuccess: (_, vars) => {
       toast.success(`Attached label "${vars.label}" to v${vars.version}`, { id: `history-label-${vars.version}` });
       refetchVersions();
@@ -241,7 +241,7 @@ export function HistoryPage({
 
   const deleteLabelMutation = useMutation({
     mutationFn: (labelId: string) =>
-      historyService.deleteProjectLabel(effectiveProjectId, labelId),
+      manuscriptService.history.deleteProjectLabel(effectiveProjectId, labelId),
     onSuccess: (_data, labelId) => {
       toast.success('Label removed', { id: `history-label-${labelId}` });
       refetchVersions();
@@ -257,7 +257,7 @@ export function HistoryPage({
         flushYjsProviders(effectiveProjectId);
       }
       await sessionCoordinator.flushAllPending();
-      return await historyService.createProjectSnapshot(effectiveProjectId, summary);
+      return await manuscriptService.history.createProjectSnapshot(effectiveProjectId, { summary });
     },
     onSuccess: (newVersion) => {
       if (!newVersion) return;
@@ -274,8 +274,9 @@ export function HistoryPage({
 
   const restoreMutation = useMutation({
     mutationFn: async (version: number) => {
+      const res = await manuscriptService.history.restoreProjectVersion(effectiveProjectId, version);
       sessionCoordinator.resetSession();
-      return await historyService.restoreProjectVersion(effectiveProjectId, version);
+      return res;
     },
     onSuccess: (_, restoredVersion) => {
       sessionCoordinator.resetSession();
@@ -389,14 +390,16 @@ export function HistoryPage({
           updateActiveYjsDocContent(docId, baseContent, effectiveProjectId, 'history-restore') ||
           sessionCoordinator.isRealtimeConnected(docId);
         if (isYjsActive) {
-          editorCommandBus.dispatch({
-            type: 'editor:set-content',
-            content: baseContent,
-            fileId: docId,
-          });
           await sessionCoordinator.flushFile(docId);
         } else {
-          await manuscriptService.docs.updateContent(docId, baseContent);
+          const updated = await manuscriptService.docs.updateContent(docId, baseContent);
+          const nextRev =
+            updated && typeof updated === 'object' && 'rev' in updated && typeof updated.rev === 'number'
+              ? updated.rev
+              : undefined;
+          if (nextRev !== undefined) {
+            lruDocumentCache.setServerRev(docId, nextRev);
+          }
         }
       } else {
         const created = await manuscriptService.docs.create({
@@ -420,6 +423,7 @@ export function HistoryPage({
     onSuccess: ({ filePath, docId, baseVersion, baseContent }) => {
       toast.success(`File "${filePath}" restored from Version ${baseVersion}`, { id: `history-restore-${filePath}` });
       setConfirmingFileRestore(false);
+      let updatedMountedEngine = false;
       if (docId) {
         lruDocumentCache.updateContent(docId, baseContent, false);
         lruDocumentCache.markClean(docId);
@@ -428,6 +432,7 @@ export function HistoryPage({
         const engine = documentAuthority.getEditorEngineForFile(docId);
         if (engine) {
           engine.setContent(baseContent);
+          updatedMountedEngine = true;
         }
       }
       const cachedByPath = lruDocumentCache.findByPath(filePath);
@@ -445,16 +450,11 @@ export function HistoryPage({
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       editorCommandBus.dispatch({ type: 'filetree:updated' });
-      editorCommandBus.dispatch({
-        type: 'document:content-updated',
-        docId: docId || filePath,
-        content: baseContent,
-      });
-      if (docId) {
+      if (!updatedMountedEngine) {
         editorCommandBus.dispatch({
-          type: 'editor:set-content',
+          type: 'document:content-updated',
+          docId: docId || filePath,
           content: baseContent,
-          fileId: docId,
         });
       }
     },

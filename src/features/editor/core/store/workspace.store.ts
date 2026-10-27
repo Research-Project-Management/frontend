@@ -18,6 +18,7 @@ import {
   EDITOR_STORAGE_KEYS,
   isMainTexTabOrFile,
 } from '@/features/editor/domain/constants/editor.constants';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 
 // ── Layout Enums & Types ──────────────────────────────────────────────────────
 
@@ -87,12 +88,40 @@ export interface WorkspaceStoreState extends LayoutState {
   setSecondaryActiveTab: (projectId: string, tabId: string | null) => void;
   markTabDirty: (projectId: string, tabId: string, isDirty: boolean) => void;
   updateTabTitle: (projectId: string, tabId: string, title: string) => void;
+
+  // ── Clean Hierarchy: projectId -> pageId (rootPageId) -> activeDocId ──────
+  getActiveDocId: (projectId: string, rootPageId?: string | null) => string | null;
+  setActiveDocId: (projectId: string, activeDocId: string, rootPageId?: string | null) => void;
+  getTabsForHierarchy: (projectId: string, rootPageId?: string | null) => readonly WorkspaceTab[];
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function isMainDocTab(tab: { id?: string; title?: string }, projectId: string): boolean {
   return isMainTexTabOrFile(tab, projectId);
+}
+
+function decorateTabWithDirtyGetter(
+  tab: Omit<WorkspaceTab, 'lastAccessedAt'> & { isDirty?: boolean },
+  now = Date.now(),
+): WorkspaceTab {
+  const result: WorkspaceTab = {
+    id: tab.id,
+    title: tab.title,
+    path: tab.path,
+    fileUrl: tab.fileUrl,
+    isPinned: tab.isPinned,
+    isRoot: tab.isRoot,
+    lastAccessedAt: now,
+  };
+
+  Object.defineProperty(result, 'isDirty', {
+    get: () => lruDocumentCache.isDirty(tab.id),
+    enumerable: true,
+    configurable: true,
+  });
+
+  return result;
 }
 
 const DEFAULT_LAYOUT = {
@@ -113,7 +142,7 @@ const DEFAULT_LAYOUT = {
 export const useWorkspaceStore = create<WorkspaceStoreState>()(
   subscribeWithSelector(
     persist(
-      (set) => ({
+      (set, get) => ({
         // ── Tabs Initial State ────────────────────────────────────────────────
         tabsByProject: {},
         activeByProject: {},
@@ -136,20 +165,42 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
               return false;
             });
 
+            if (existingIndex !== -1) {
+              const currentTab = existing[existingIndex];
+              const resolvedId =
+                isIncomingMain && currentTab.id.endsWith('-main') ? currentTab.id : tab.id;
+              const isUnchanged =
+                currentTab.id === resolvedId &&
+                currentTab.title === tab.title &&
+                (currentTab.path ?? undefined) === (tab.path ?? undefined) &&
+                Boolean(currentTab.isDirty) === Boolean(tab.isDirty ?? currentTab.isDirty) &&
+                Boolean(currentTab.isPinned) === Boolean(tab.isPinned ?? currentTab.isPinned);
+
+              if (isUnchanged && state.activeByProject[projectId] === tab.id) {
+                return state;
+              }
+            }
+
+            if (tab.isDirty) {
+              lruDocumentCache.markDirty(tab.id);
+            }
+
             let updatedTabs: WorkspaceTab[];
             if (existingIndex !== -1) {
               updatedTabs = existing.map((t, idx) =>
                 idx === existingIndex
-                  ? {
-                      ...t,
-                      ...tab,
-                      id: isIncomingMain && t.id.endsWith('-main') ? t.id : tab.id,
-                      lastAccessedAt: now,
-                    }
+                  ? decorateTabWithDirtyGetter(
+                      {
+                        ...t,
+                        ...tab,
+                        id: isIncomingMain && t.id.endsWith('-main') ? t.id : tab.id,
+                      },
+                      now,
+                    )
                   : t
               );
             } else {
-              updatedTabs = [...existing, { ...tab, lastAccessedAt: now }];
+              updatedTabs = [...existing, decorateTabWithDirtyGetter(tab, now)];
             }
 
             // Deduplicate
@@ -264,6 +315,9 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
 
         setActiveTab: (projectId, tabId) => {
           set((state) => {
+            if (state.activeByProject[projectId] === tabId) {
+              return state;
+            }
             const now = Date.now();
             const current = state.tabsByProject[projectId] ?? [];
             const updated = current.map((t) =>
@@ -283,21 +337,35 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
         },
 
         setSecondaryActiveTab: (projectId, tabId) => {
-          set((state) => ({
-            secondaryActiveByProject: {
-              ...state.secondaryActiveByProject,
-              [projectId]: tabId,
-            },
-          }));
+          set((state) => {
+            if (state.secondaryActiveByProject[projectId] === tabId) {
+              return state;
+            }
+            return {
+              secondaryActiveByProject: {
+                ...state.secondaryActiveByProject,
+                [projectId]: tabId,
+              },
+            };
+          });
         },
 
         markTabDirty: (projectId, tabId, isDirty) => {
+          if (isDirty) {
+            lruDocumentCache.markDirty(tabId);
+          } else {
+            lruDocumentCache.markClean(tabId);
+          }
           set((state) => {
             const current = state.tabsByProject[projectId] ?? [];
+            const target = current.find((t) => t.id === tabId);
+            if (!target) {
+              return state;
+            }
             return {
               tabsByProject: {
                 ...state.tabsByProject,
-                [projectId]: current.map((t) => (t.id === tabId ? { ...t, isDirty } : t)),
+                [projectId]: current.map((t) => (t.id === tabId ? decorateTabWithDirtyGetter(t) : t)),
               },
             };
           });
@@ -306,6 +374,10 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
         updateTabTitle: (projectId, tabId, title) => {
           set((state) => {
             const current = state.tabsByProject[projectId] ?? [];
+            const target = current.find((t) => t.id === tabId);
+            if (!target || target.title === title) {
+              return state;
+            }
             return {
               tabsByProject: {
                 ...state.tabsByProject,
@@ -315,21 +387,61 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
           });
         },
 
+        // ── Clean Hierarchy Accessors ─────────────────────────────────────────
+        getActiveDocId: (projectId, rootPageId) => {
+          const s = get();
+          return (
+            s.activeByProject[projectId] ??
+            (rootPageId ? s.activeByProject[rootPageId] : null) ??
+            null
+          );
+        },
+
+        setActiveDocId: (projectId, activeDocId, rootPageId) => {
+          set((state) => {
+            const nextActive: Record<string, string | null> = {
+              ...state.activeByProject,
+              [projectId]: activeDocId,
+            };
+            if (rootPageId && rootPageId !== projectId) {
+              nextActive[rootPageId] = activeDocId;
+            }
+            return { activeByProject: nextActive };
+          });
+        },
+
+        getTabsForHierarchy: (projectId, rootPageId) => {
+          const s = get();
+          return (
+            s.tabsByProject[projectId] ??
+            (rootPageId ? s.tabsByProject[rootPageId] : undefined) ??
+            []
+          );
+        },
+
         // ── Layout Actions ────────────────────────────────────────────────────
         toggleSidebarLeft: () =>
           set((state) => ({ sidebarLeftOpen: !state.sidebarLeftOpen })),
 
-        setSidebarLeftOpen: (open) => set({ sidebarLeftOpen: open }),
+        setSidebarLeftOpen: (open) =>
+          set((state) => (state.sidebarLeftOpen === open ? state : { sidebarLeftOpen: open })),
 
         setSidebarLeftWidth: (width) =>
-          set({ sidebarLeftWidth: Math.max(180, Math.min(width, 480)) }),
+          set((state) => {
+            const clamped = Math.max(180, Math.min(width, 480));
+            return state.sidebarLeftWidth === clamped ? state : { sidebarLeftWidth: clamped };
+          }),
 
-        setActiveSidebarTab: (tab) => set({ activeSidebarTab: tab }),
+        setActiveSidebarTab: (tab) =>
+          set((state) => (state.activeSidebarTab === tab ? state : { activeSidebarTab: tab })),
 
         selectActivityTab: (tab) =>
           set((state) => {
             if (state.activeSidebarTab === tab && state.sidebarLeftOpen) {
               return { sidebarLeftOpen: false };
+            }
+            if (state.activeSidebarTab === tab && state.sidebarLeftOpen) {
+              return state;
             }
             return {
               activeSidebarTab: tab,
@@ -340,12 +452,17 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
         toggleFileOutline: () =>
           set((state) => ({ fileOutlineOpen: !state.fileOutlineOpen })),
 
-        setFileOutlineOpen: (open) => set({ fileOutlineOpen: open }),
+        setFileOutlineOpen: (open) =>
+          set((state) => (state.fileOutlineOpen === open ? state : { fileOutlineOpen: open })),
 
         setSplitRatio: (ratio) =>
-          set({ splitRatio: Math.max(0.15, Math.min(ratio, 0.85)) }),
+          set((state) => {
+            const clamped = Math.max(0.15, Math.min(ratio, 0.85));
+            return state.splitRatio === clamped ? state : { splitRatio: clamped };
+          }),
 
-        setEditorSplitMode: (mode) => set({ editorSplitMode: mode }),
+        setEditorSplitMode: (mode) =>
+          set((state) => (state.editorSplitMode === mode ? state : { editorSplitMode: mode })),
 
         toggleEditorSplit: (direction = 'vertical') =>
           set((state) => ({
@@ -353,13 +470,19 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
           })),
 
         setEditorSplitRatio: (ratio) =>
-          set({ editorSplitRatio: Math.max(0.2, Math.min(ratio, 0.8)) }),
+          set((state) => {
+            const clamped = Math.max(0.2, Math.min(ratio, 0.8));
+            return state.editorSplitRatio === clamped ? state : { editorSplitRatio: clamped };
+          }),
 
-        setActiveEditorPane: (pane) => set({ activeEditorPane: pane }),
+        setActiveEditorPane: (pane) =>
+          set((state) => (state.activeEditorPane === pane ? state : { activeEditorPane: pane })),
 
-        setSecondaryFileId: (fileId) => set({ secondaryFileId: fileId }),
+        setSecondaryFileId: (fileId) =>
+          set((state) => (state.secondaryFileId === fileId ? state : { secondaryFileId: fileId })),
 
-        setPdfDetached: (detached) => set({ isPdfDetached: detached }),
+        setPdfDetached: (detached) =>
+          set((state) => (state.isPdfDetached === detached ? state : { isPdfDetached: detached })),
 
         togglePdfDetached: () =>
           set((state) => ({ isPdfDetached: !state.isPdfDetached })),

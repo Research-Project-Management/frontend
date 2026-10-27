@@ -33,7 +33,7 @@ import {
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
-import { useFileExplorerActions } from '@/features/editor/subsystems/explorer/ui/hooks/useFileExplorerActions';
+import { copyTexCommandToClipboard } from '@/features/editor/subsystems/explorer/ui/hooks/useFileExplorerActions';
 import { IndentGuides, RenameInput, RowActions } from './FileTreePrimitives';
 import { useFileDiagnosticsSummary } from '@/features/editor/ui/hooks/useDiagnosticsSummary';
 
@@ -131,18 +131,16 @@ export const TexFileRow = React.memo(function TexFileRow({
   const idSummary = useFileDiagnosticsSummary(file.id);
   const diagSummary = fileSummary.total > 0 ? fileSummary : idSummary;
 
-  const { copyTexCommand } = useFileExplorerActions();
-
   const handleCopyInput = useCallback(
     (e?: React.MouseEvent) => {
       e?.stopPropagation();
       if (onCopyCommand) {
         onCopyCommand(fullName);
       } else {
-        copyTexCommand(fullName);
+        copyTexCommandToClipboard(fullName);
       }
     },
-    [fullName, onCopyCommand, copyTexCommand],
+    [fullName, onCopyCommand],
   );
 
   const handleDownload = useCallback(

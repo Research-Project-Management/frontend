@@ -34,7 +34,9 @@ import {
   MenubarShortcut,
 } from '@/shared/components/ui/menubar';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
-import { useSettingsStore, editorCommandBus, isMacPlatform } from '@/features/editor/core';
+import { useSettingsStore } from '../../store/settings.store';
+import { editorCommandBus } from '../../bus/command-bus';
+import { isMacPlatform } from '@/features/editor/domain/constants/editor.constants';
 import type { LatexFormatType } from '@/features/editor/domain/types/ports/editor-engine.port';
 
 export function FormatMenu({ value = 'format' }: { value?: string } = {}) {

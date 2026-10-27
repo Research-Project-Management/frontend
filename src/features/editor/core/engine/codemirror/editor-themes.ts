@@ -436,34 +436,28 @@ export const eclipseTheme: Extension = [
 ];
 
 /**
+ * Registry Lookup Map of CodeMirror 6 Theme Extensions.
+ * Eliminates multi-branch switch statements and enables O(1) theme resolution.
+ */
+export const THEME_EXTENSION_REGISTRY: Readonly<Record<string, Extension>> = {
+  auto: autoTheme,
+  'latex-light': latexLightTheme,
+  light: latexLightTheme,
+  'latex-dark': latexDarkTheme,
+  dark: latexDarkTheme,
+  dracula: draculaTheme,
+  monokai: monokaiTheme,
+  'solarized-light': solarizedLightTheme,
+  'solarized-dark': solarizedDarkTheme,
+  'github-light': githubLightTheme,
+  'github-dark': githubDarkTheme,
+  cobalt: cobaltTheme,
+  eclipse: eclipseTheme,
+};
+
+/**
  * Resolves a CodeMirror 6 Extension corresponding to a user theme setting.
  */
 export function getThemeExtension(themeId: string): Extension {
-  switch (themeId) {
-    case 'latex-light':
-    case 'light':
-      return latexLightTheme;
-    case 'latex-dark':
-    case 'dark':
-      return latexDarkTheme;
-    case 'dracula':
-      return draculaTheme;
-    case 'monokai':
-      return monokaiTheme;
-    case 'solarized-light':
-      return solarizedLightTheme;
-    case 'solarized-dark':
-      return solarizedDarkTheme;
-    case 'github-light':
-      return githubLightTheme;
-    case 'github-dark':
-      return githubDarkTheme;
-    case 'cobalt':
-      return cobaltTheme;
-    case 'eclipse':
-      return eclipseTheme;
-    case 'auto':
-    default:
-      return autoTheme;
-  }
+  return THEME_EXTENSION_REGISTRY[themeId] ?? autoTheme;
 }

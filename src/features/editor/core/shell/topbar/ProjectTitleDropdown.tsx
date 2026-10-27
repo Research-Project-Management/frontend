@@ -47,12 +47,12 @@ import {
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 
-import { usePageStore } from '@/features/editor/core';
-import { useSettingsStore } from '@/features/editor/core';
+import { usePageStore } from '../../store/editor.store';
+import { useSettingsStore } from '../../store/settings.store';
 import { useCompileStore } from '@/features/editor/subsystems/compiler';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
 import { useProject } from '@/features/projects/shell/hooks/use-project';
-import { editorCommandBus } from '@/features/editor/core';
+import { editorCommandBus } from '../../bus/command-bus';
 
 import { projectRenameSchema, type ProjectRenameInput } from '@/features/editor/domain/types/forms.types';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';

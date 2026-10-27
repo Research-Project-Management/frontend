@@ -16,7 +16,7 @@ import {
   MenubarItem,
   MenubarSeparator,
 } from '@/shared/components/ui/menubar';
-import { editorCommandBus } from '@/features/editor/core';
+import { editorCommandBus } from '../../bus/command-bus';
 
 export function HelpMenu({ value = 'help' }: { value?: string } = {}) {
   const handleOpenShortcuts = () => {

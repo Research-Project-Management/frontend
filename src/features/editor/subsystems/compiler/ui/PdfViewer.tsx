@@ -31,12 +31,6 @@ import {
   DEFAULT_PDF_PAGE_HEIGHT_PT,
   type PdfPageDimensions,
 } from '@/features/editor/subsystems/compiler/synctex/synctex-index';
-import {
-  extractPdfBookmarks,
-  extractOutlineFromContent,
-  type PdfOutlineItem,
-} from '@/features/editor/subsystems/compiler/synctex/pdf-outline';
-import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
 import { editorCommandBus, setActivePdfViewer } from '@/features/editor/core';
 
 import { PdfToolbar } from './PdfToolbar';
@@ -47,11 +41,12 @@ import { filterDiagnostics } from '@/features/editor/domain/latex/warning-filter
 
 import { usePdfZoom } from './hooks/usePdfZoom';
 import { usePdfCompiler } from './hooks/usePdfCompiler';
-import { useViewerSyncTeX } from './hooks/useViewerSyncTeX';
+import { useViewerSyncTeX, type ViewerPageFileEntry } from './hooks/useViewerSyncTeX';
 import { useSynchronizedScroll } from './hooks/useSynchronizedScroll';
 import { usePdfSearch, type PdfDocumentProxyLike } from './hooks/usePdfSearch';
 
 const TRANSIENT_WARNING_REGEX = /(?:^|Warning:\s*)(?:Reference|Citation)\s+.+undefined\s+on\s+input\s+line/i;
+const EMPTY_PAGE_FILES: ViewerPageFileEntry[] = [];
 
 export interface PdfViewerProps {
   isDetached?: boolean;
@@ -77,7 +72,6 @@ export function PdfViewer({ isDetached = false }: PdfViewerProps = {}) {
   const rootPageId = urlPageId ?? urlId ?? draftId ?? currentPageId ?? null;
 
   const documentTitle = usePageStore((s) => s.currentPage?.title);
-  const { engine: editorEngine } = useEditorInstance();
   const pdfDocRef = useRef<PdfDocumentProxyLike | null>(null);
 
   const pdfSpreadView = useSettingsStore((s) => s.pdfSpreadView);
@@ -95,7 +89,7 @@ export function PdfViewer({ isDetached = false }: PdfViewerProps = {}) {
 
   const { updateThumbnail: saveThumbnailMutation } = usePageActions();
 
-  const { data: pageFiles = [] } = useQuery({
+  const { data: pageFiles = EMPTY_PAGE_FILES } = useQuery({
     ...filesQuery(rootPageId || ''),
     enabled: !!rootPageId,
   });
@@ -112,11 +106,16 @@ export function PdfViewer({ isDetached = false }: PdfViewerProps = {}) {
   const handlePrevPage = useViewerStore((s: DocumentViewerState) => s.prevPage);
   const handleNextPage = useViewerStore((s: DocumentViewerState) => s.nextPage);
 
-  const [, setPdfOutline] = useState<PdfOutlineItem[]>([]);
   const [pageDimensions, setPageDimensions] = useState<PdfPageDimensions>({
     widthPt: DEFAULT_PDF_PAGE_WIDTH_PT,
     heightPt: DEFAULT_PDF_PAGE_HEIGHT_PT,
   });
+
+  const handlePageDimensionsChange = useCallback((dims: PdfPageDimensions) => {
+    setPageDimensions((prev) =>
+      prev.widthPt === dims.widthPt && prev.heightPt === dims.heightPt ? prev : dims,
+    );
+  }, []);
 
   const [showLogsOverlay, setShowLogsOverlay] = useState<boolean>(false);
 
@@ -228,6 +227,10 @@ export function PdfViewer({ isDetached = false }: PdfViewerProps = {}) {
     };
   }, [handleJumpToPage]);
 
+  const handleSearchScrollToPage = useCallback((p: number) => {
+    pdfSurfaceRef.current?.scrollToPage(p);
+  }, []);
+
   // 4. In-Document PDF Search Controller
   const {
     isOpen: isSearchOpen,
@@ -251,7 +254,7 @@ export function PdfViewer({ isDetached = false }: PdfViewerProps = {}) {
   } = usePdfSearch({
     pdfDocRef,
     pdfContainerRef,
-    onScrollToPage: (p: number) => pdfSurfaceRef.current?.scrollToPage(p),
+    onScrollToPage: handleSearchScrollToPage,
   });
 
 
@@ -274,25 +277,9 @@ export function PdfViewer({ isDetached = false }: PdfViewerProps = {}) {
   }, [compileStatus, pdfUrl, parsedLog]);
 
 
-  const onDocumentLoadSuccess = useCallback(async (pdf: { numPages: number } & Partial<PdfDocumentProxyLike>) => {
+  const onDocumentLoadSuccess = useCallback((pdf: { numPages: number } & Partial<PdfDocumentProxyLike>) => {
     pdfDocRef.current = pdf as PdfDocumentProxyLike;
-
-    try {
-      const bookmarks = await extractPdfBookmarks(pdf as unknown as Parameters<typeof extractPdfBookmarks>[0]);
-      if (bookmarks && bookmarks.length > 0) {
-        setPdfOutline(bookmarks);
-        return;
-      }
-    } catch {
-      // fallback
-    }
-
-    const rawContent = editorEngine?.getContent() || usePageStore.getState().activeFilePage?.content || '';
-    const record = typeof rawContent === 'object' && rawContent !== null ? (rawContent as Record<string, unknown>) : null;
-    const content = typeof rawContent === 'string' ? rawContent : typeof record?.source === 'string' ? record.source : typeof record?.text === 'string' ? record.text : '';
-    const fallback = extractOutlineFromContent(content, pdf.numPages || 1, synctexMapRef.current);
-    setPdfOutline(fallback);
-  }, [editorEngine, synctexMapRef]);
+  }, []);
 
   const handleDownload = useCallback(() => {
     if (!pdfUrl) return;
@@ -398,7 +385,7 @@ export function PdfViewer({ isDetached = false }: PdfViewerProps = {}) {
                 autoFit={autoFit}
                 containerWidth={containerWidth}
                 pageDimensions={pageDimensions}
-                onPageDimensionsChange={setPageDimensions}
+                onPageDimensionsChange={handlePageDimensionsChange}
                 scrollMode={true}
                 numPages={numPages}
                 compileStatus={compileStatus}

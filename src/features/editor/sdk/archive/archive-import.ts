@@ -10,7 +10,7 @@
  */
 
 import JSZip from 'jszip';
-import { fileService, pageService, manuscriptService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { ProjectService } from '@/features/projects/shell/services/project.service';
 
 export const TEXT_EXTENSIONS = new Set([
@@ -386,6 +386,21 @@ export async function extractAndImportZipToProject({
   let effectiveProjectId = existingProjectId;
   let effectiveRootPageId = existingParentPageId;
 
+  if (zipFile && effectiveProjectId) {
+    try {
+      const serverImportRes = await manuscriptService.export.importProjectZip(effectiveProjectId, zipFile);
+      if (serverImportRes?.rootDocId || serverImportRes?.projectId) {
+        return {
+          projectId: serverImportRes.projectId || effectiveProjectId,
+          rootPageId: serverImportRes.rootDocId || effectiveRootPageId || '',
+          mainFileId: serverImportRes.rootDocId || undefined,
+        };
+      }
+    } catch {
+      // Fallback to client-side unpacking
+    }
+  }
+
   const totalItems = extracted.items.length;
   let processedItems = 0;
 
@@ -433,7 +448,7 @@ export async function extractAndImportZipToProject({
 
   if (!effectiveRootPageId) {
     report('creating_root', `Initializing root document (${rootTitle})...`);
-    const createdRoot = await pageService.create({
+    const createdRoot = await manuscriptService.docs.create({
       projectId: effectiveProjectId,
       title: rootTitle,
       content: rootContent,
@@ -469,7 +484,7 @@ export async function extractAndImportZipToProject({
       const parentFolderId = parentPath ? folderIdMap[parentPath] : null;
 
       try {
-        const created = await manuscriptService.storage.createPageFolder(
+        const created = await manuscriptService.structure.createPageFolder(
           effectiveRootPageId,
           folderName,
           parentFolderId,
@@ -493,7 +508,7 @@ export async function extractAndImportZipToProject({
       });
 
       try {
-        await manuscriptService.storage.uploadPageFile(
+        await manuscriptService.filestore.uploadPageFile(
           effectiveRootPageId,
           file,
           parentFolderId,
@@ -518,7 +533,7 @@ export async function extractAndImportZipToProject({
     }
 
     try {
-      const createdChild = await fileService.create({
+      const createdChild = await manuscriptService.docs.createChildFile({
         parentPageId: effectiveRootPageId,
         title: textFile.path,
         content: textFile.textContent,
@@ -538,7 +553,7 @@ export async function extractAndImportZipToProject({
   // ── Step 6: Finalize Main Document ───────────────────────────────────────
   if (rootPageFileId) {
     try {
-      await fileService.setMain({
+      await manuscriptService.docs.setMainFile({
         pageId: effectiveRootPageId,
         fileId: rootPageFileId,
       });
@@ -547,8 +562,8 @@ export async function extractAndImportZipToProject({
     }
   }
 
-  // Server-side ZIP import sync if projectId is active
-  if (effectiveProjectId && zipFile) {
+  // Only fall back to server-side ZIP import if no client-side items were extracted/created
+  if (effectiveProjectId && zipFile && totalItems === 0) {
     try {
       await manuscriptService.export.importProjectZip(effectiveProjectId, zipFile);
     } catch {

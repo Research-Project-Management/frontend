@@ -24,11 +24,16 @@ import type { MentionMember } from '@/features/editor/domain/collaboration/menti
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
 import { useReviewRealtimeNotifications } from './useReviewRealtimeNotifications';
 import { jumpToEditorLine } from '@/features/editor/subsystems/navigation';
+import { manuscriptService, type ReviewStatus, type ReviewRoundInfo } from '@/features/editor/sdk/manuscript.service';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 export type { ReviewPendingCountResult } from './useReviewPendingCount';
 export { useReviewPendingCount } from './useReviewPendingCount';
 import type { ReviewScope } from '../subcomponents/ReviewNav';
 export type { ReviewScope };
+
+const EMPTY_ARRAY: never[] = [];
 
 function scrollToReviewItem(
   targetId: string,
@@ -84,6 +89,42 @@ export function useReviewState() {
 
   const { user } = useAuth();
   const { selectFile } = useActiveDocument();
+  const queryClient = useQueryClient();
+
+  const { data: reviewStatusData } = useQuery({
+    queryKey: ['manuscript-review-status', projectId, pageId],
+    queryFn: async () => {
+      if (!projectId || !pageId) return null;
+      return await manuscriptService.review.getReviewStatus(projectId, pageId);
+    },
+    enabled: Boolean(projectId && pageId),
+    staleTime: 30_000,
+  });
+
+  const reviewInfo: ReviewRoundInfo = useMemo(
+    () =>
+      reviewStatusData?.review || {
+        status: (reviewCoordinator.getReviewStatus(pageId) as ReviewStatus) || 'draft',
+        roundNumber: 1,
+      },
+    [reviewStatusData, pageId],
+  );
+
+  const updateReviewStatusMutation = useMutation({
+    mutationFn: async (payload: { status: ReviewStatus; notes?: string; deadline?: string }) => {
+      if (!projectId || !pageId) throw new Error('No active document');
+      return await manuscriptService.review.updateReviewStatus(projectId, pageId, payload);
+    },
+    onSuccess: (res) => {
+      if (pageId) {
+        queryClient.setQueryData(['manuscript-review-status', projectId, pageId], res);
+      }
+      toast.success(`Review status updated to ${res.review.status.replace('_', ' ')}`);
+    },
+    onError: (err: unknown) => {
+      toast.error((err as Error)?.message || 'Failed to update review status');
+    },
+  });
 
   // Navigation Scope: 'current' | 'overview'
   const [scope, setScope] = useState<ReviewScope>('current');
@@ -211,18 +252,20 @@ export function useReviewState() {
 
   // Queries for current document
   const {
-    data: comments = [],
+    data: commentsData,
     isLoading: isCommentsLoading,
     isError: isCommentsError,
     error: commentsError,
   } = usePageComments(pageId ?? null);
+  const comments = commentsData ?? EMPTY_ARRAY;
 
   const {
-    data: serverSuggestions = [],
+    data: serverSuggestionsData,
     isLoading: isSuggestionsLoading,
     isError: isSuggestionsError,
     error: suggestionsError,
   } = usePageSuggestions(pageId ?? null);
+  const serverSuggestions = serverSuggestionsData ?? EMPTY_ARRAY;
 
   const [localRev, setLocalRev] = useState(0);
 
@@ -230,10 +273,13 @@ export function useReviewState() {
     const unsub = editorCommandBus.subscribe('editor:review-event', (cmd) => {
       if (!cmd.pageId || cmd.pageId === pageId) {
         setLocalRev((r) => r + 1);
+        if (cmd.event === 'review:status-changed' && pageId) {
+          void queryClient.invalidateQueries({ queryKey: ['manuscript-review-status', projectId, pageId] });
+        }
       }
     });
     return () => unsub();
-  }, [pageId]);
+  }, [pageId, projectId, queryClient]);
 
   const suggestions = useMemo(() => {
     void localRev;
@@ -253,7 +299,8 @@ export function useReviewState() {
   const rejectAllMutation = useRejectAllSuggestions();
 
   // Project files query for Overview tab
-  const { data: projectFiles = [] } = useQuery(filesQuery(rootPageId || pageId || ''));
+  const { data: projectFilesData } = useQuery(filesQuery(rootPageId || pageId || ''));
+  const projectFiles = projectFilesData ?? EMPTY_ARRAY;
   const allProjectFiles = useMemo<Array<{ id: string; title: string }>>(() => {
     const list: Array<{ id: string; title: string }> = (projectFiles || []).map((f) => ({
       id: f.id,
@@ -389,6 +436,9 @@ export function useReviewState() {
     handleNavigateToLine,
     handleNavigateToFileAndLine,
     setOverviewResolvedCount,
+    reviewInfo,
+    updateReviewStatus: updateReviewStatusMutation.mutate,
+    isUpdatingReviewStatus: updateReviewStatusMutation.isPending,
   };
 }
 

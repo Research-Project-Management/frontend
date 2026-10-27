@@ -13,7 +13,7 @@
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { manuscriptService, fileService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import {
   workspaceCoordinator,
   sessionCoordinator,
@@ -35,7 +35,7 @@ export function usePageActions() {
   const createFileMutation = useMutation({
     mutationFn: async ({ parentPageId, title, content }: { parentPageId: string; title: string; content?: string }) => {
       if (isLocked) throw new Error('Document is locked');
-      return await fileService.create({ parentPageId, title, content });
+      return await manuscriptService.docs.createChildFile({ parentPageId, title, content });
     },
     onSuccess: (newFile, variables) => {
       queryClient.invalidateQueries({ queryKey: pageKeys.files(variables.parentPageId) });
@@ -77,11 +77,12 @@ export function usePageActions() {
       if (isLocked) throw new Error('Document is locked');
       setCurrentPage((prev) => (prev && prev.id === pageId ? { ...prev, content } : prev));
       lruDocumentCache.updateContent(pageId, content, true);
-      const isYjsActive =
-        updateActiveYjsDocContent(pageId, content) ||
-        sessionCoordinator.isRealtimeConnected(pageId);
+      const updatedYjs = updateActiveYjsDocContent(pageId, content);
+      const isYjsActive = updatedYjs || sessionCoordinator.isRealtimeConnected(pageId);
       if (isYjsActive) {
-        editorCommandBus.dispatch({ type: 'editor:set-content', content, fileId: pageId });
+        if (!updatedYjs) {
+          editorCommandBus.dispatch({ type: 'editor:set-content', content, fileId: pageId });
+        }
         sessionCoordinator.notifyContentChange(pageId, content, { isRealtimeActive: true });
         await sessionCoordinator.flushFile(pageId);
         return { id: pageId, content };

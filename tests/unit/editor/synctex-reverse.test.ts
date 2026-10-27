@@ -4,7 +4,7 @@ import {
   type SyncTeXMap,
 } from '@/features/editor/subsystems/compiler/synctex/synctex-index';
 import { LatexCompilerEngine } from '@/features/editor/subsystems/compiler';
-import { synctexService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 
 describe('Reverse SyncTeX (PDF Double-Click -> LaTeX Source Jump)', () => {
   beforeEach(() => {
@@ -145,14 +145,14 @@ x2,55:6553600,13107200
   });
 
   describe('LatexCompilerEngine.resolveReverseRemote (Backend Fallback)', () => {
-    it('should successfully query synctexService when called', async () => {
+    it('should successfully query manuscriptService.synctex when called', async () => {
       const mockResult = {
         file: 'chapters/abstract.tex',
         line: 23,
         column: 4,
       };
 
-      vi.spyOn(synctexService, 'reverseSync').mockResolvedValueOnce(mockResult);
+      vi.spyOn(manuscriptService.synctex, 'reverseSync').mockResolvedValueOnce(mockResult);
 
       const res = await LatexCompilerEngine.resolveReverseRemote(
         'proj-123',
@@ -161,7 +161,7 @@ x2,55:6553600,13107200
         220,
       );
 
-      expect(synctexService.reverseSync).toHaveBeenCalledWith({
+      expect(manuscriptService.synctex.reverseSync).toHaveBeenCalledWith({
         projectId: 'proj-123',
         page: 1,
         x: 150,
@@ -174,8 +174,8 @@ x2,55:6553600,13107200
       });
     });
 
-    it('should return null gracefully if synctexService returns null or throws', async () => {
-      vi.spyOn(synctexService, 'reverseSync').mockRejectedValueOnce(new Error('Network error'));
+    it('should return null gracefully if manuscriptService.synctex returns null or throws', async () => {
+      vi.spyOn(manuscriptService.synctex, 'reverseSync').mockRejectedValueOnce(new Error('Network error'));
 
       const res = await LatexCompilerEngine.resolveReverseRemote(
         'proj-123',

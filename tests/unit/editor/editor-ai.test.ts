@@ -95,7 +95,7 @@ describe('Editor AI Assistant (Copilot) Subsystem Tests', () => {
       const result = await getPageChat('page-abc-123');
 
       expect(fetchSpy).toHaveBeenCalledWith(
-        expect.stringContaining('/api/ai/page-chats/page-abc-123'),
+        expect.stringContaining('/api/ai/chats/page/page-abc-123'),
         expect.objectContaining({
           credentials: 'include',
         }),
@@ -112,7 +112,7 @@ describe('Editor AI Assistant (Copilot) Subsystem Tests', () => {
       await clearPageChat('page-abc-123');
 
       expect(fetchSpy).toHaveBeenCalledWith(
-        expect.stringContaining('/api/ai/page-chats/page-abc-123'),
+        expect.stringContaining('/api/ai/chats/page/page-abc-123'),
         expect.objectContaining({
           method: 'DELETE',
         }),

@@ -5,7 +5,7 @@
  * Location: `features/editor/domain/workspace/workspace-service-port.ts`
  *
  * Isolates file-system lifecycle orchestration from:
- * 1. Backend HTTP SDK (`manuscriptService` / `fileService`)
+ * 1. Backend HTTP SDK (`manuscriptService`)
  * 2. UI Toast Notifications (`sonner`)
  * 3. Zustand Store singletons (`useWorkspaceStore`, `usePageStore`, `useSettingsStore`)
  */

@@ -53,7 +53,7 @@ export const STATE_GROUP_CONFIG: Record<
   cancelled: {
     label: 'Cancelled',
     color: 'bg-state-cancelled',
-    hex: '#9CA3AF',
+    hex: '#EF4444',
     description: 'Items abandoned or rejected',
   },
 };

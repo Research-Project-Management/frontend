@@ -73,7 +73,7 @@ export {
 
 export function StateGroupCancelledIcon({ className }: { className?: string }) {
   return (
-    <svg className={cn('size-3.5 text-foreground shrink-0', className)} viewBox="0 0 24 24" fill="currentColor">
+    <svg className={cn('size-3.5 text-state-cancelled shrink-0', className)} viewBox="0 0 24 24" fill="currentColor">
       <circle cx="12" cy="12" r="10" />
       <path
         d="M8.5 8.5l7 7M15.5 8.5l-7 7"

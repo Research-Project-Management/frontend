@@ -21,7 +21,12 @@ export function StateIcon({
 }: StateIconProps) {
   // Resolve icon type: prioritize icon from backend, then group
   const resolvedIcon = icon || (group ? getDefaultIconForGroup(group) : 'circle');
-  const resolvedColor = color || getDefaultColorForIcon(resolvedIcon);
+  const isCancelledIcon = resolvedIcon === 'x-circle' || resolvedIcon === 'cancelled' || group === 'cancelled';
+  const isLegacyGray =
+    isCancelledIcon &&
+    color &&
+    ['#9ca3af', '#6b7280', '#94a3b8', '#8a9093', '#71717a'].includes(color.toLowerCase().trim());
+  const resolvedColor = (isLegacyGray ? undefined : color) || getDefaultColorForIcon(resolvedIcon);
 
   switch (resolvedIcon) {
     case 'circle-dashed':

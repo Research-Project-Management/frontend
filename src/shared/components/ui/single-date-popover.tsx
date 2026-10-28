@@ -59,15 +59,15 @@ export function SingleDatePopover({
             size="sm"
             className={cn(
               variant === 'ghost'
-                ? 'h-7 px-2 text-xs font-normal rounded-md bg-transparent hover:bg-muted/50 text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0 border-0 relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring'
-                : 'h-7 px-2.5 text-xs font-medium rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0 relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring',
+                ? 'h-7 px-2 text-xs font-normal rounded-md bg-transparent hover:bg-muted/50 text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0 border-0 whitespace-nowrap relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring'
+                : 'h-7 px-2.5 text-xs font-medium rounded-md border border-border bg-background hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer transition-colors shadow-none shrink-0 whitespace-nowrap relative before:absolute before:-inset-1 md:before:hidden focus-visible:ring-1 focus-visible:ring-ring',
               actionBtnClass,
               open && (variant === 'ghost' ? 'bg-muted/60' : 'bg-muted border-border'),
               date && 'text-foreground font-medium'
             )}
           >
             <DateCalendarIcon />
-            <span className={cn(date && 'font-mono tabular-nums')}>{formattedLabel}</span>
+            <span className={cn('truncate', date && 'font-mono tabular-nums')}>{formattedLabel}</span>
           </Button>
         )}
       </PopoverTrigger>

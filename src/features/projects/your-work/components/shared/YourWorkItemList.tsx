@@ -22,7 +22,7 @@ import {
   Inbox,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
-import { ProjectAvatar } from "@/shared/components/icons";
+import { ProjectAvatar, StatusIcon } from "@/shared/components/icons";
 import { Input } from '@/shared/components/ui/input';
 import { cn } from "@/shared/lib/utils";
 import { getWorkItemProject, type ProjectMap } from '../../utils/your-work.util';
@@ -525,7 +525,7 @@ const WorkItemRow = React.memo(function WorkItemRow({
         {isDone ? (
           <CheckCircle2 className="size-3.5 text-state-completed shrink-0" />
         ) : isCancelled ? (
-          <Circle className="size-3.5 text-state-cancelled opacity-60 shrink-0" />
+          <StatusIcon group="cancelled" className="size-3.5 shrink-0" />
         ) : stateGroup === 'started' ? (
           <Clock3 className="size-3.5 text-state-started shrink-0" />
         ) : stateGroup === 'backlog' ? (

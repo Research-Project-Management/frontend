@@ -56,8 +56,8 @@ export function TableInlineAddRow({
         className="flex items-center h-9 border-b border-border bg-background hover:bg-muted/40 transition-colors duration-0 w-full cursor-pointer select-none group/table-add-bottom shrink-0"
       >
         <div
-          className="sticky left-0 flex items-center h-full px-2.5 transition-colors border-r border-border"
-          style={{ width: `${titleWidth}px`, minWidth: `${titleWidth}px` }}
+          className="sticky left-0 flex items-center h-full px-3 transition-colors"
+          style={{ minWidth: `${titleWidth}px` }}
         >
           <button
             type="button"

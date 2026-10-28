@@ -83,7 +83,7 @@ export const STATE_GROUP_CONFIG: Record<
   },
   cancelled: {
     label: "Cancelled",
-    defaultColor: "#9CA3AF",
+    defaultColor: "#EF4444",
     defaultIcon: "x-circle",
     description: "Work items that are abandoned, rejected, or won’t be done.",
   },
@@ -94,7 +94,7 @@ export const DEFAULT_WORK_ITEM_STATES: WorkItemState[] = [
   { id: 'todo', name: 'Todo', title: 'Todo', group: 'unstarted', color: '#94A3B8', accentColor: '#94A3B8', icon: 'circle', sequence: 1, isDefault: false },
   { id: 'in_progress', name: 'In Progress', title: 'In Progress', group: 'started', color: '#D97706', accentColor: '#D97706', icon: 'circle-dot', sequence: 2, isDefault: false },
   { id: 'done', name: 'Done', title: 'Done', group: 'completed', color: '#1A7F37', accentColor: '#1A7F37', icon: 'check-circle', sequence: 3, isDefault: false },
-  { id: 'cancelled', name: 'Cancelled', title: 'Cancelled', group: 'cancelled', color: '#9CA3AF', accentColor: '#9CA3AF', icon: 'x-circle', sequence: 4, isDefault: false },
+  { id: 'cancelled', name: 'Cancelled', title: 'Cancelled', group: 'cancelled', color: '#EF4444', accentColor: '#EF4444', icon: 'x-circle', sequence: 4, isDefault: false },
 ];
 
 export function resolveStateTitle(state?: Partial<WorkItemState> | null): string {
@@ -107,5 +107,13 @@ export function resolveStateColor(stateOrId?: Partial<WorkItemState> | string | 
   if (typeof stateOrId === 'string') {
     return customColor || '#94a3b8';
   }
-  return stateOrId.color || stateOrId.accentColor || customColor || '#94a3b8';
+  const rawColor = stateOrId.color || stateOrId.accentColor || customColor;
+  if (
+    stateOrId.group === 'cancelled' &&
+    rawColor &&
+    ['#9ca3af', '#6b7280', '#94a3b8', '#8a9093'].includes(rawColor.toLowerCase().trim())
+  ) {
+    return '#EF4444';
+  }
+  return rawColor || '#94a3b8';
 }

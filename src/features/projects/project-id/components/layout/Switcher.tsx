@@ -184,7 +184,7 @@ export function Switcher({
       {/* 1. Project Breadcrumb Item */}
       <div className="flex items-center gap-1.5 sm:gap-2 h-7 px-1 -ml-1 text-13 font-medium text-foreground shrink-0 select-none">
         <ProjectAvatar avatar={currentProject.avatar} name={currentProject.name} id={currentProject.id} size="xs" />
-        <span className="truncate max-w-[110px] sm:max-w-[170px] text-13 font-medium text-foreground">
+        <span suppressHydrationWarning className="truncate max-w-[110px] sm:max-w-[170px] text-13 font-medium text-foreground">
           {displayName}
         </span>
       </div>

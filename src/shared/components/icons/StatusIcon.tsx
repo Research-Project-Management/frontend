@@ -91,17 +91,22 @@ export function DoneStatusIcon({ className, color }: { className?: string; color
 }
 
 /**
- * Cancelled: Solid muted gray circle with white cross ('x') per DESIGN.md (never red)
+ * Cancelled: Solid red circle with white cross ('x')
  */
 export function CancelledStatusIcon({ className, color }: { className?: string; color?: string }) {
+  const isLegacyGray =
+    color &&
+    ['#9ca3af', '#6b7280', '#94a3b8', '#8a9093', '#71717a'].includes(color.toLowerCase().trim());
+  const resolvedColor = isLegacyGray ? undefined : color;
+
   return (
     <svg
       viewBox="0 0 16 16"
       fill="none"
-      className={cn("size-3.5 shrink-0", !color && "text-muted-foreground", className)}
+      className={cn("size-3.5 shrink-0", !resolvedColor && "text-state-cancelled", className)}
       aria-label="Cancelled"
     >
-      <circle cx="8" cy="8" r="7" fill={color || "currentColor"} />
+      <circle cx="8" cy="8" r="7" fill={resolvedColor || "currentColor"} />
       <path
         d="M5.5 5.5L10.5 10.5M10.5 5.5L5.5 10.5"
         stroke="#ffffff"

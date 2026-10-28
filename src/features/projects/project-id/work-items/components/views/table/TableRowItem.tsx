@@ -213,12 +213,16 @@ export const TableRowItem = React.memo(function TableRowItem({
         isSelected && 'bg-muted ring-1 ring-inset ring-border font-medium'
       )}
     >
-      {/* 1. Identifier + Title Column (Frozen / Sticky Left) */}
+      {/* 1. Identifier + Title Column (Frozen / Sticky Left, Expands Responsively) */}
       <div
         role="cell"
-        style={{ width: `${titleWidth}px`, minWidth: `${titleWidth}px`, left: 0 }}
+        style={{
+          minWidth: `${titleWidth}px`,
+          flex: `2.4 1 ${titleWidth}px`,
+          left: 0,
+        }}
         className={cn(
-          'sticky left-0 z-10 flex items-center px-2.5 h-full shrink-0 border-r border-border transition-colors bg-background group-hover/row:bg-muted/40',
+          'sticky left-0 z-10 flex items-center px-3 h-full border-r border-border transition-colors bg-background group-hover/row:bg-muted min-w-0',
           isSelected && 'bg-muted group-hover/row:bg-muted',
           isSubItem && 'pl-5'
         )}
@@ -296,6 +300,7 @@ export const TableRowItem = React.memo(function TableRowItem({
                 'truncate font-normal text-xs',
                 isCancelled ? 'line-through text-muted-foreground' : item.completed ? 'text-muted-foreground' : 'text-foreground'
               )}
+              title={item.title}
             >
               {item.title}
             </span>
@@ -317,25 +322,28 @@ export const TableRowItem = React.memo(function TableRowItem({
       </div>
 
       {/* ── 2. Dynamic Property Cells ────────────────────────────────────────── */}
-      <div className="flex items-center h-full">
-        {activeProperties.map((p) => {
-          const propWidth = columnWidths?.[p.key] || DEFAULT_COLUMN_WIDTHS[p.key] || p.minWidth || 144;
+      {activeProperties.map((p) => {
+        const propWidth = columnWidths?.[p.key] || DEFAULT_COLUMN_WIDTHS[p.key] || p.minWidth || 144;
+        const isLabels = p.key === 'labels';
 
-          return (
-            <div
-              key={p.key}
-              role="cell"
-              style={{ width: `${propWidth}px`, minWidth: `${propWidth}px` }}
-              className="flex items-center h-full px-2 overflow-hidden shrink-0 border-r border-border"
-              onClick={(e) => e.stopPropagation()}
-            >
+        return (
+          <div
+            key={p.key}
+            role="cell"
+            style={{
+              minWidth: `${propWidth}px`,
+              flex: isLabels ? `1.6 1 ${propWidth}px` : `1 1 ${propWidth}px`,
+            }}
+            className="flex items-center h-full px-2 overflow-hidden border-r border-border whitespace-nowrap"
+            onClick={(e) => e.stopPropagation()}
+          >
               {/* STATE CELL */}
               {p.key === 'state' && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild disabled={isReadOnly}>
                     <button
                       type="button"
-                      className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs hover:bg-muted/80 text-foreground transition-colors w-full text-left truncate cursor-pointer focus-visible:ring-1 focus-visible:ring-ring outline-none"
+                      className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs hover:bg-muted/80 text-foreground transition-colors w-full text-left truncate whitespace-nowrap cursor-pointer focus-visible:ring-1 focus-visible:ring-ring outline-none"
                     >
                       <StatusIcon
                         id={item.columnId}
@@ -483,7 +491,7 @@ export const TableRowItem = React.memo(function TableRowItem({
                     label={formattedDue || 'Due date'}
                     isReadOnly={isReadOnly}
                     actionBtnClass={cn(
-                      'h-7 px-2 text-11 font-mono tabular-nums border-0 shadow-none justify-start w-full cursor-pointer text-foreground hover:bg-muted/80',
+                      'h-7 px-2 text-11 font-mono tabular-nums border-0 shadow-none justify-start w-full cursor-pointer text-foreground hover:bg-muted/80 whitespace-nowrap',
                       formattedDue
                         ? isOverdue
                           ? 'bg-muted/60 font-medium'
@@ -504,7 +512,7 @@ export const TableRowItem = React.memo(function TableRowItem({
                     className="flex items-center gap-1 px-1.5 py-1 rounded-md text-xs hover:bg-muted/80 transition-colors w-full text-left truncate cursor-pointer focus-visible:ring-1 focus-visible:ring-ring outline-none"
                   >
                     {Array.isArray(item.labels) && item.labels.length > 0 ? (
-                      <div className="flex items-center gap-1 overflow-hidden">
+                      <div className="flex items-center gap-1 overflow-hidden w-full">
                         {item.labels.slice(0, 2).map((labelItem: string | { id?: string; name?: string; color?: string; title?: string }, idx: number) => {
                           const labelText =
                             typeof labelItem === 'string'
@@ -517,7 +525,8 @@ export const TableRowItem = React.memo(function TableRowItem({
                             <span
                               key={(typeof labelItem === 'object' ? labelItem?.id : labelItem) || idx}
                               style={labelColor ? { borderColor: `${labelColor}40` } : undefined}
-                              className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-md text-11 font-normal bg-muted/60 text-foreground border border-border truncate max-w-[80px]"
+                              className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-md text-11 font-normal bg-muted/60 text-foreground border border-border truncate max-w-[130px]"
+                              title={labelText}
                             >
                               {labelColor && (
                                 <span
@@ -530,7 +539,7 @@ export const TableRowItem = React.memo(function TableRowItem({
                           );
                         })}
                         {item.labels.length > 2 && (
-                          <span className="text-11 font-mono text-foreground tabular-nums">
+                          <span className="text-11 font-mono text-foreground tabular-nums shrink-0">
                             +{item.labels.length - 2}
                           </span>
                         )}
@@ -576,7 +585,7 @@ export const TableRowItem = React.memo(function TableRowItem({
                     }
                     label={formattedStart || 'Start date'}
                     isReadOnly={isReadOnly}
-                    actionBtnClass="h-7 px-2 text-11 font-mono tabular-nums border-0 shadow-none justify-start w-full bg-transparent hover:bg-muted/80 text-foreground cursor-pointer"
+                    actionBtnClass="h-7 px-2 text-11 font-mono tabular-nums border-0 shadow-none justify-start w-full bg-transparent hover:bg-muted/80 text-foreground cursor-pointer whitespace-nowrap"
                   />
                 </div>
               )}
@@ -633,13 +642,12 @@ export const TableRowItem = React.memo(function TableRowItem({
             </div>
           );
         })}
-      </div>
 
-      {/* ── 3. Actions Column Cell ────────────────────────────────────────── */}
+      {/* ── 3. Actions Column Cell (Flush right edge, no trailing spacer) ────── */}
       <div
         role="cell"
         style={{ width: '48px', minWidth: '48px' }}
-        className="flex items-center justify-center h-full shrink-0 border-r border-border"
+        className="flex items-center justify-center h-full shrink-0"
         onClick={(e) => e.stopPropagation()}
       >
         <DropdownMenu>
@@ -690,7 +698,6 @@ export const TableRowItem = React.memo(function TableRowItem({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <div className="flex-1 h-full min-w-0" />
     </div>
   );
 });

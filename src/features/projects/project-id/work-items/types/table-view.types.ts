@@ -87,18 +87,18 @@ export const TABLE_STORAGE_KEY = 'flux:table_view:columns_v5';
 export const TABLE_WIDTHS_STORAGE_KEY = 'flux:table_view:column_widths_v4';
 
 export const TABLE_PROPERTIES: TablePropertyConfig[] = [
-  { key: 'state', label: 'State', icon: StatusIcon, defaultVisible: true, minWidth: 115 },
-  { key: 'priority', label: 'Priority', icon: MediumPriorityBoxIcon, defaultVisible: true, minWidth: 95 },
-  { key: 'assignees', label: 'Assignees', icon: Users, defaultVisible: true, minWidth: 120 },
-  { key: 'startDate', label: 'Start date', icon: CalendarClock, defaultVisible: false, minWidth: 110 },
-  { key: 'dueDate', label: 'Due date', icon: Calendar, defaultVisible: true, minWidth: 110 },
-  { key: 'labels', label: 'Labels', icon: Tag, defaultVisible: true, minWidth: 120 },
-  { key: 'subItemCount', label: 'Sub-items', icon: Layers, defaultVisible: false, minWidth: 95 },
-  { key: 'attachment', label: 'Attachments', icon: Paperclip, defaultVisible: false, minWidth: 95 },
-  { key: 'link', label: 'Links', icon: Link2, defaultVisible: false, minWidth: 90 },
-  { key: 'createdOn', label: 'Created on', icon: Calendar, defaultVisible: false, minWidth: 110 },
-  { key: 'createdBy', label: 'Created by', icon: User, defaultVisible: false, minWidth: 115 },
-  { key: 'updatedOn', label: 'Updated on', icon: Calendar, defaultVisible: false, minWidth: 110 },
+  { key: 'state', label: 'State', icon: StatusIcon, defaultVisible: true, minWidth: 140 },
+  { key: 'priority', label: 'Priority', icon: MediumPriorityBoxIcon, defaultVisible: true, minWidth: 110 },
+  { key: 'assignees', label: 'Assignees', icon: Users, defaultVisible: true, minWidth: 145 },
+  { key: 'startDate', label: 'Start date', icon: CalendarClock, defaultVisible: false, minWidth: 135 },
+  { key: 'dueDate', label: 'Due date', icon: Calendar, defaultVisible: true, minWidth: 135 },
+  { key: 'labels', label: 'Labels', icon: Tag, defaultVisible: true, minWidth: 190 },
+  { key: 'subItemCount', label: 'Sub-items', icon: Layers, defaultVisible: false, minWidth: 115 },
+  { key: 'attachment', label: 'Attachments', icon: Paperclip, defaultVisible: false, minWidth: 115 },
+  { key: 'link', label: 'Links', icon: Link2, defaultVisible: false, minWidth: 100 },
+  { key: 'createdOn', label: 'Created on', icon: Calendar, defaultVisible: false, minWidth: 135 },
+  { key: 'createdBy', label: 'Created by', icon: User, defaultVisible: false, minWidth: 135 },
+  { key: 'updatedOn', label: 'Updated on', icon: Calendar, defaultVisible: false, minWidth: 135 },
 ];
 
 export const DEFAULT_VISIBLE_PROPERTIES: Record<TablePropertyKey, boolean> = {
@@ -117,17 +117,17 @@ export const DEFAULT_VISIBLE_PROPERTIES: Record<TablePropertyKey, boolean> = {
 };
 
 export const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
-  title: 320,
-  state: 115,
-  priority: 95,
-  assignees: 120,
-  startDate: 110,
-  dueDate: 110,
-  labels: 120,
-  subItemCount: 95,
-  attachment: 95,
-  link: 90,
-  createdOn: 110,
-  createdBy: 115,
-  updatedOn: 110,
+  title: 380,
+  state: 140,
+  priority: 110,
+  assignees: 145,
+  startDate: 135,
+  dueDate: 135,
+  labels: 190,
+  subItemCount: 115,
+  attachment: 115,
+  link: 100,
+  createdOn: 135,
+  createdBy: 135,
+  updatedOn: 135,
 };

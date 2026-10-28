@@ -344,7 +344,7 @@
   --state-unstarted: #94A3B8;
   --state-started: #D97706;
   --state-completed: #1A7F37;
-  --state-cancelled: #9CA3AF;
+  --state-cancelled: #EF4444;
 
   /* Semantic Feedback */
   --success: #1A7F37;
@@ -492,7 +492,7 @@
   --state-unstarted: #94A3B8;
   --state-started: #FBBF24;
   --state-completed: #3FB950;
-  --state-cancelled: #6B7280;
+  --state-cancelled: #F85149;
 
   /* Semantic Feedback */
   --success: #3FB950;

@@ -81,27 +81,19 @@ import { renderPriorityIcon } from '@/features/projects/project-id/work-items/ut
 // ============================================================================
 
 interface TimelineTopControlsProps {
-  totalCount: number;
   zoom: TimelineZoom;
   onZoomChange: (zoom: TimelineZoom) => void;
   onTodayClick: () => void;
   isFullscreen: boolean;
   onToggleFullscreen: () => void;
-  showCriticalPath?: boolean;
-  onToggleCriticalPath?: () => void;
-  criticalCount?: number;
 }
 
 const TimelineTopControls = memo(function TimelineTopControls({
-  totalCount,
   zoom,
   onZoomChange,
   onTodayClick,
   isFullscreen,
   onToggleFullscreen,
-  showCriticalPath = false,
-  onToggleCriticalPath,
-  criticalCount = 0,
 }: TimelineTopControlsProps) {
   const zoomOptions: Array<{ id: TimelineZoom; label: string }> = [
     { id: 'week', label: 'Week' },
@@ -111,35 +103,7 @@ const TimelineTopControls = memo(function TimelineTopControls({
 
   return (
     <div className="flex items-center justify-end gap-3 px-4 py-2 border-b border-border bg-background select-none shrink-0">
-      {/* 1. Work items Count */}
-      <span className="text-xs text-foreground font-normal">
-        <span className="font-mono tabular-nums">{totalCount}</span> {totalCount === 1 ? 'Work item' : 'Work items'}
-      </span>
-
-      {/* 2. Critical Path Toggle */}
-      {onToggleCriticalPath && (
-        <button
-          type="button"
-          onClick={onToggleCriticalPath}
-          className={cn(
-            'px-2 py-1 text-xs font-medium rounded-md border transition-colors cursor-pointer select-none outline-none flex items-center gap-1.5 focus-visible:ring-1 focus-visible:ring-ring',
-            showCriticalPath
-              ? 'bg-rose-500/10 text-rose-500 border-rose-500/30 font-semibold'
-              : 'text-foreground/70 hover:text-foreground border-border hover:bg-muted'
-          )}
-          title="Toggle Critical Path analysis"
-        >
-          <span className="size-1.5 rounded-full bg-rose-500" />
-          <span>Critical path</span>
-          {criticalCount > 0 && (
-            <span className="px-1 py-0.2 rounded text-10 font-mono bg-rose-500/20 text-rose-500">
-              {criticalCount}
-            </span>
-          )}
-        </button>
-      )}
-
-      {/* 3. Zoom Options (Plane segmented style) */}
+      {/* 1. Zoom Options (Plane segmented style) */}
       <div className="inline-flex items-center gap-0.5 text-xs bg-muted p-0.5 rounded-md">
         {zoomOptions.map((option) => {
           const isActive = zoom === option.id;
@@ -308,8 +272,9 @@ const TimelineBar = memo(function TimelineBar({
 
   const showText = visualWidth >= 60;
   const accentColor = resolveColumnColor(stateColumn, item.state?.color || '#0969DA');
-
   const identifier = ItemHelpers.resolveIdentifier(item, 'TASK');
+  const compactLabel = identifier || item.title.slice(0, 6);
+
   const startFormatted = formatTimelineDisplayDate(item.startDate);
   const dueFormatted = formatTimelineDisplayDate(item.dueDate);
   const dateRangeStr =
@@ -396,20 +361,24 @@ const TimelineBar = memo(function TimelineBar({
       {/* Main Bar Content */}
       <div
         className={cn(
-          'flex items-center min-w-0 flex-1 h-full cursor-pointer',
-          showText ? 'gap-1.5 px-1 justify-start' : 'justify-center px-0.5'
+          'flex items-center min-w-0 flex-1 h-full cursor-pointer overflow-hidden',
+          showText ? 'gap-1.5 px-1 justify-start' : 'gap-1 px-0.5 justify-center'
         )}
         onPointerDown={(event) => handlePointerDown(event, 'move')}
       >
         <StatusIcon
           title={stateColumn?.title || 'Backlog'}
           group={stateColumn?.group || stateColumn?.slug || stateColumn?.title || 'backlog'}
-          color={stateColumn?.color || stateColumn?.accentColor}
+          color="#FFFFFF"
           className="size-3 shrink-0 text-white"
         />
-        {showText && (
+        {showText ? (
           <span className="text-11 font-medium truncate text-white">
             {item.title}
+          </span>
+        ) : (
+          <span className="text-[10px] font-mono font-medium truncate text-white leading-none">
+            {compactLabel}
           </span>
         )}
         {isCritical && showText && (
@@ -1030,15 +999,11 @@ export const TimelineView = memo(function TimelineView({
     >
       {/* 1. Top Controls Bar */}
       <TimelineTopControls
-        totalCount={items.length}
         zoom={zoom}
         onZoomChange={handleZoomChange}
         onTodayClick={scrollToToday}
         onToggleFullscreen={handleToggleFullscreen}
         isFullscreen={isFullscreen}
-        showCriticalPath={showCriticalPath}
-        onToggleCriticalPath={() => setShowCriticalPath((prev) => !prev)}
-        criticalCount={cpmAnalysis.criticalPathItemIds.size}
       />
 
       {/* 2. Unified Master Scroll Container (Native 60/120fps sync) */}
@@ -1317,7 +1282,7 @@ export const TimelineView = memo(function TimelineView({
                     <div
                       style={{ width: `${sidebarWidth}px`, minWidth: `${sidebarWidth}px`, left: 0 }}
                       className={cn(
-                        'sticky left-0 z-20 flex items-center justify-between px-3 h-full shrink-0 bg-background group-hover/row:bg-muted/30 transition-colors cursor-pointer border-r border-border',
+                        'sticky left-0 z-20 flex items-center justify-between px-3 h-full shrink-0 bg-background group-hover/row:bg-muted transition-colors cursor-pointer border-r border-border',
                         isSubItem && 'pl-7'
                       )}
                       onClick={() => onEditCard(item)}

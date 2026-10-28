@@ -669,7 +669,7 @@ export const STATE_GROUP_CONFIG: Record<
   },
   cancelled: {
     label: "Cancelled",
-    defaultColor: "#9CA3AF",
+    defaultColor: "#EF4444",
     description: "Abandoned, duplicate, or rejected items",
   },
 };
@@ -724,8 +724,8 @@ export const DEFAULT_STATES: State[] = [
     name: "Cancelled",
     title: "Cancelled",
     group: "cancelled",
-    color: "#9CA3AF",
-    accentColor: "#9CA3AF",
+    color: "#EF4444",
+    accentColor: "#EF4444",
     sequence: 5000,
     isDefault: false,
     description: "Items abandoned, duplicate, or rejected",
@@ -759,7 +759,10 @@ export type DisplayPropertyKey =
   | 'attachment'
   | 'link'
   | 'dependencies'
-  | 'attach';
+  | 'attach'
+  | 'createdOn'
+  | 'createdBy'
+  | 'updatedOn';
 
 export type GroupByOption =
   | 'state'
@@ -806,7 +809,7 @@ export const DEFAULT_DISPLAY_OPTIONS: DisplayOptions = {
     id: true,
     assignee: true,
     startDate: false,
-    dueDate: false,
+    dueDate: true,
     labels: true,
     priority: true,
     state: true,
@@ -818,6 +821,9 @@ export const DEFAULT_DISPLAY_OPTIONS: DisplayOptions = {
     link: false,
     dependencies: true,
     attach: false,
+    createdOn: false,
+    createdBy: false,
+    updatedOn: false,
   },
   groupBy: 'state',
   subGroupBy: 'none',

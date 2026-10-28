@@ -120,6 +120,9 @@ export function TableView({
           subItemCount: 'childWorkItemCount',
           attachment: 'attachmentCount',
           link: 'link',
+          createdOn: 'createdOn',
+          createdBy: 'createdBy',
+          updatedOn: 'updatedOn',
         };
         const displayKey = keyMap[key];
         if (displayKey) {
@@ -445,7 +448,7 @@ export function TableView({
         ref={tableScrollRef}
         className="flex-1 overflow-auto select-none bg-background relative min-h-0 interactive-scrollbar"
       >
-        <div role="table" aria-label="Work items table" className="min-w-full w-max flex flex-col">
+        <div role="table" aria-label="Work items table" className="w-full min-w-max flex flex-col">
           {/* Main Sticky Header */}
           <div role="rowgroup">
             <TableHeaderRow

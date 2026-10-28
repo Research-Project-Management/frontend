@@ -125,12 +125,16 @@ export function normalizeStates(raw: unknown): Column[] {
       unstarted: "#94A3B8",
       started: "#D97706",
       completed: "#1A7F37",
-      cancelled: "#9CA3AF",
+      cancelled: "#EF4444",
     };
     const rawCustom =
       (typeof rawObj.color === "string" && rawObj.color.trim() ? rawObj.color.trim() : undefined) ||
       (typeof rawObj.accentColor === "string" && rawObj.accentColor.trim() ? rawObj.accentColor.trim() : undefined);
-    const color = rawCustom || groupColorMap[group] || "#6B7280";
+    const isLegacyCancelledGray =
+      group === "cancelled" &&
+      rawCustom &&
+      ["#9ca3af", "#6b7280", "#94a3b8", "#8a9093"].includes(rawCustom.toLowerCase());
+    const color = (!isLegacyCancelledGray ? rawCustom : undefined) || groupColorMap[group] || "#6B7280";
     return {
       id: rawId,
       name: rawName,

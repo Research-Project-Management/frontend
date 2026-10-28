@@ -40,6 +40,7 @@ import {
 import type { PageSuggestion, TrackChangesViewMode } from '@/features/editor/domain/types/suggestion.types';
 import type { PageComment } from '@/features/editor/domain/types/comment.types';
 import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
+import { getCachedUser } from '@/features/auth/services/auth.service';
 import {
   CleanReplacePreviewWidget,
   CommentGutterMarker,
@@ -709,6 +710,14 @@ export const trackChangesReviewModeFilter = EditorState.transactionFilter.of((tr
     }
     return cachedFullText;
   };
+  const cachedUser = getCachedUser();
+  const localAuthorId = cachedUser?.id || 'current-user';
+  const localAuthorName = cachedUser?.name || cachedUser?.email || 'You';
+  const isLocalSuggestionAuthor = (s: PageSuggestion) =>
+    s.authorId === localAuthorId ||
+    s.author?.id === localAuthorId ||
+    s.authorId === 'current-user' ||
+    s.author?.id === 'current-user';
 
   // Case 1: Pure insertion in Suggesting Mode
   if (fromA === toA && insertedText.length > 0) {
@@ -724,7 +733,7 @@ export const trackChangesReviewModeFilter = EditorState.transactionFilter.of((tr
         !coalescedSug &&
         s.status === 'pending' &&
         s.type === 'insert' &&
-        (s.authorId === 'current-user' || s.author?.id === 'current-user') &&
+        isLocalSuggestionAuthor(s) &&
         range.to === fromA
       ) {
         const updated: PageSuggestion = {
@@ -763,8 +772,8 @@ export const trackChangesReviewModeFilter = EditorState.transactionFilter.of((tr
         toLine: endLineObj.number,
         toColumn: toB - endLineObj.from + 1,
         status: 'pending',
-        authorId: 'current-user',
-        author: { id: 'current-user', name: 'You' },
+        authorId: localAuthorId,
+        author: { id: localAuthorId, name: localAuthorName },
         createdAt: nowIso,
         updatedAt: nowIso,
       };
@@ -797,7 +806,7 @@ export const trackChangesReviewModeFilter = EditorState.transactionFilter.of((tr
         !coalescedSug &&
         s.status === 'pending' &&
         s.type === 'delete' &&
-        (s.authorId === 'current-user' || s.author?.id === 'current-user') &&
+        isLocalSuggestionAuthor(s) &&
         (range.from === toA || range.to === fromA)
       ) {
         const mergedFrom = Math.min(range.from, fromA);
@@ -835,8 +844,8 @@ export const trackChangesReviewModeFilter = EditorState.transactionFilter.of((tr
         toLine: endLineObj.number,
         toColumn: toA - endLineObj.from + 1,
         status: 'pending',
-        authorId: 'current-user',
-        author: { id: 'current-user', name: 'You' },
+        authorId: localAuthorId,
+        author: { id: localAuthorId, name: localAuthorName },
         createdAt: nowIso,
         updatedAt: nowIso,
       };
@@ -878,8 +887,8 @@ export const trackChangesReviewModeFilter = EditorState.transactionFilter.of((tr
       toLine: endLineObj.number,
       toColumn: toA - endLineObj.from + 1,
       status: 'pending',
-      authorId: 'current-user',
-      author: { id: 'current-user', name: 'You' },
+      authorId: localAuthorId,
+      author: { id: localAuthorId, name: localAuthorName },
       createdAt: nowIso,
       updatedAt: nowIso,
     };

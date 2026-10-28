@@ -13,6 +13,8 @@ import { useIntegrations, useRemoteCollections, useSyncCollection } from '@/feat
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { ZoteroIcon, MendeleyIcon } from '@/shared/components/icons/IntegrationIcons';
+import { useSettingsStore } from '@/features/editor/core/store/settings.store';
+import { DEFAULT_BIB_FILE } from '@/features/editor/domain/constants/editor.constants';
 import {
   Select,
   SelectContent,
@@ -44,9 +46,10 @@ export function ProjectReferencesTab({ projectId, bibFiles }: ProjectReferencesT
     Boolean(isMendeleyConnected),
   );
 
+  const configuredBibFile = useSettingsStore((s) => s.mainBibFile) || DEFAULT_BIB_FILE;
   const [selectedZoteroCollection, setSelectedZoteroCollection] = useState<string>('');
   const [selectedMendeleyCollection, setSelectedMendeleyCollection] = useState<string>('');
-  const [targetBibFile, setTargetBibFile] = useState<string>(bibFiles[0] || 'references.bib');
+  const [targetBibFile, setTargetBibFile] = useState<string>(bibFiles[0] || configuredBibFile);
 
   const syncMutation = useSyncCollection();
 

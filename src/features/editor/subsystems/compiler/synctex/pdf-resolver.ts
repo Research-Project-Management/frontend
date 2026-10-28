@@ -61,16 +61,27 @@ export function createPdfBlobAndUrl(input: string | null | undefined): PdfBlobRe
       }
     }
 
+    const toBase64DataUrl = (bytes: Uint8Array): string => {
+      if (typeof Buffer !== 'undefined') {
+        return `data:application/pdf;base64,${Buffer.from(bytes).toString('base64')}`;
+      }
+      let binary = '';
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return `data:application/pdf;base64,${btoa(binary)}`;
+    };
+
     const blob = new Blob([uint8Array.buffer as ArrayBuffer], { type: 'application/pdf' });
     let url: string;
     try {
       if (typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function') {
         url = URL.createObjectURL(blob);
       } else {
-        url = `blob:http://localhost/${Math.random().toString(36).slice(2)}`;
+        url = toBase64DataUrl(uint8Array);
       }
     } catch {
-      url = `blob:http://localhost/${Math.random().toString(36).slice(2)}`;
+      url = toBase64DataUrl(uint8Array);
     }
 
     return { url, blob };

@@ -54,6 +54,7 @@ import type {
   AiErrorFixResult,
 } from '@/features/editor/domain/ai/ai-error-assist';
 import { countLatexWords } from '../../domain/document/word-count';
+import { flushYjsProviders } from '../realtime/yjs-provider-pool';
 import { PageFileMapper, type RawPageFileRecord } from './page-file-mapper';
 import type {
   PendingBundleInfo,
@@ -316,18 +317,16 @@ export const updater = {
     docId: string,
     dto: QueueUpdatePayload,
   ): Promise<Record<string, unknown>> => {
-    const payload: QueueUpdatePayload = {
-      ...dto,
-      ...(dto.lines === undefined && dto.docLines !== undefined
-        ? { lines: dto.docLines }
-        : {}),
-      ...(dto.clientRev === undefined && dto.version !== undefined
-        ? { clientRev: dto.version }
-        : {}),
-    };
+    const lines = dto.lines ?? dto.docLines ?? [];
+    const clientRev = dto.clientRev ?? dto.version;
     return await apiPost<Record<string, unknown>>(
       `${MANUSCRIPTS_API_BASE}/projects/${projectId}/updater/doc/${docId}/update`,
-      payload,
+      {
+        ...dto,
+        docLines: dto.docLines ?? lines,
+        lines,
+        ...(clientRev !== undefined ? { version: dto.version ?? clientRev, clientRev } : {}),
+      },
     );
   },
 
@@ -335,11 +334,27 @@ export const updater = {
     projectId: string,
     force = false,
   ): Promise<FlushResultDto> => {
-    return await apiPost<FlushResultDto>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/updater/flush`,
-      { force },
-      { silent: true },
-    );
+    const localFlushedCount = flushYjsProviders(projectId);
+    try {
+      const serverFlush = await apiPost<FlushResultDto & { flushedDocsCount?: number; flushedDocs?: number }>(
+        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/updater/flush`,
+        { force },
+      );
+      const serverCount = serverFlush?.flushedDocsCount ?? serverFlush?.flushedDocCount ?? serverFlush?.flushedDocs ?? 0;
+      const totalCount = Math.max(localFlushedCount, serverCount);
+      return {
+        ...serverFlush,
+        flushed: true,
+        flushedDocCount: totalCount,
+        flushedDocsCount: totalCount,
+      };
+    } catch {
+      return {
+        flushed: true,
+        flushedDocCount: localFlushedCount,
+        flushedDocsCount: localFlushedCount,
+      };
+    }
   },
 };
 
@@ -380,18 +395,22 @@ export const compiler = {
         throw abortErr;
       }
 
+      const errorMessage = (err as Error)?.message || 'Failed to reach compiler service';
       return {
         success: false,
         pdf: '',
-        logs: (err as Error)?.message || 'Compilation service is initializing. Ready for CLSI module.',
-        error: (err as Error)?.message || 'Failed to reach compiler service',
+        logs: errorMessage,
+        error: errorMessage,
       };
     }
   },
 
-  wordCount: async (source: string): Promise<WordCountResponse> => {
+  wordCount: async (source: string, projectId?: string): Promise<WordCountResponse> => {
     try {
-      return await apiPost<WordCountResponse>(`${MANUSCRIPTS_API_BASE}/word-count`, { source });
+      const endpoint = projectId
+        ? `${MANUSCRIPTS_API_BASE}/projects/${projectId}/word-count`
+        : `${MANUSCRIPTS_API_BASE}/word-count`;
+      return await apiPost<WordCountResponse>(endpoint, { source, ...(projectId ? { projectId } : {}) });
     } catch {
       const stats = countLatexWords(source);
       return {

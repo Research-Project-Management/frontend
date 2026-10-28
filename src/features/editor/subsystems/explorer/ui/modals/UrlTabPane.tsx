@@ -30,9 +30,6 @@ export interface UrlTabPaneProps {
 export function UrlTabPane({
   parentPageId,
   effectiveProjectId,
-  createFile,
-  uploadFile,
-  setSearchParams,
   onClose,
 }: UrlTabPaneProps) {
   const [isFetchingUrl, setIsFetchingUrl] = useState(false);
@@ -53,66 +50,21 @@ export function UrlTabPane({
       };
 
       try {
-        // 1. Primary path: Use backend Linked Files service (SSRF-protected)
-        try {
-          await manuscriptService.linkedFiles.create(effectiveProjectId, {
-            name: targetName,
-            url: rawUrl,
-            providerType: 'URL',
-            provider: 'url',
-          });
-          toast.success(`Linked and imported ${targetName} from URL`, { id: `url-import-${targetName}` });
-          notifyTreeUpdated();
-          onClose();
-          return;
-        } catch (backendErr: unknown) {
-          console.warn('Backend linked-file create failed, falling back to direct browser fetch:', backendErr);
-          // 2. Fallback path: Direct browser fetch
-          const response = await fetch(rawUrl);
-          if (!response.ok) {
-            throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
-          }
-
-          const contentType = response.headers.get('content-type') || '';
-          const isText =
-            contentType.includes('text/') ||
-            contentType.includes('json') ||
-            contentType.includes('javascript') ||
-            /\.(tex|bib|sty|cls|dtx|ltx|txt|md|csv|tsv|json)$/i.test(targetName);
-
-          if (isText) {
-            const textContent = await response.text();
-            const created = await createFile.mutateAsync({
-              parentPageId,
-              title: targetName,
-              content: textContent,
-            });
-            navigationCoordinator.openDocument({
-              fileId: created.id,
-              title: targetName,
-              content: textContent,
-            });
-            setSearchParams({ file: created.id });
-          } else {
-            const blob = await response.blob();
-            const file = new File([blob], targetName, {
-              type: blob.type || 'application/octet-stream',
-            });
-            await uploadFile.mutateAsync({
-              file,
-              projectId: effectiveProjectId,
-              pageId: parentPageId,
-            });
-          }
-          notifyTreeUpdated();
-          toast.success(`Imported ${targetName} from URL`, { id: `url-import-${targetName}` });
-          onClose();
-        }
+        // Authoritative path: Use backend Linked Files service (SSRF-protected)
+        await manuscriptService.linkedFiles.create(effectiveProjectId, {
+          name: targetName,
+          url: rawUrl,
+          providerType: 'URL',
+          provider: 'url',
+        });
+        toast.success(`Linked and imported ${targetName} from URL`, { id: `url-import-${targetName}` });
+        notifyTreeUpdated();
+        onClose();
       } catch (err: unknown) {
-        console.error('External URL fetch error:', err);
+        console.error('External URL import error:', err);
         toast.error(
           (err as Error)?.message ||
-            'Could not fetch file directly. If this domain blocks cross-origin requests (CORS), please download the file to your computer and upload it via the Upload tab.',
+            'Could not import file from URL. Please verify the URL is publicly accessible or upload the file via the Upload tab.',
           { id: 'url-import-error' }
         );
       } finally {
@@ -122,10 +74,7 @@ export function UrlTabPane({
     [
       parentPageId,
       effectiveProjectId,
-      createFile,
-      uploadFile,
       queryClient,
-      setSearchParams,
       onClose,
     ],
   );

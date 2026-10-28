@@ -18,7 +18,13 @@ import type { Extension } from '@codemirror/state';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics/coordinator/diagnostics.coordinator';
 import { usePageStore } from '@/features/editor/core';
-import { runLatexLinter, type LinterDiagnostic, type LinterOptions } from './latex-linter-core';
+import {
+  runLatexLinter,
+  registerLatexLinterCacheReset,
+  clearLatexLinterCache,
+  type LinterDiagnostic,
+  type LinterOptions,
+} from './latex-linter-core';
 import type { LinterWorkerMessageIn, LinterWorkerMessageOut } from '@/features/editor/subsystems/diagnostics/linter/latex-linter.worker';
 
 class LatexLinterWorkerClient {
@@ -129,8 +135,12 @@ interface ViewLinterCacheEntry {
 let cacheEpoch = 0;
 const viewLinterCache = new WeakMap<EditorView, ViewLinterCacheEntry>();
 
-export function resetLatexLinterCache(): void {
+registerLatexLinterCacheReset(() => {
   cacheEpoch++;
+});
+
+export function resetLatexLinterCache(): void {
+  clearLatexLinterCache();
 }
 
 export function createLatexLinterIncrementalPlugin(boundFilePath?: string) {

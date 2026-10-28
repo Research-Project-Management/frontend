@@ -20,6 +20,13 @@ export const SYNCTEX_BROADCAST_CHANNEL = 'flux-synctex-bus';
 export const DEFAULT_MAIN_FILE = 'main.tex';
 export const DEFAULT_BIB_FILE = 'references.bib';
 
+export const EDITOR_DOCS_URLS = {
+  DOCUMENTATION_HOME:
+    process.env.NEXT_PUBLIC_LATEX_DOCS_URL || 'https://latexref.xyz/dev/latex2e.html',
+  LATEX_INTRO_GUIDE:
+    process.env.NEXT_PUBLIC_LATEX_GUIDE_URL || 'https://en.wikibooks.org/wiki/LaTeX',
+} as const;
+
 export const EDITOR_TIMING = {
   DEFAULT_AUTOSAVE_DELAY_MS: 800,
   DEFAULT_AUTOCOMPILE_DELAY_MS: 1500,

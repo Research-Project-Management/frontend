@@ -440,9 +440,6 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
             if (state.activeSidebarTab === tab && state.sidebarLeftOpen) {
               return { sidebarLeftOpen: false };
             }
-            if (state.activeSidebarTab === tab && state.sidebarLeftOpen) {
-              return state;
-            }
             return {
               activeSidebarTab: tab,
               sidebarLeftOpen: true,

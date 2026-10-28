@@ -13,7 +13,6 @@
  */
 
 import React, {
-  useRef,
   useState,
   useCallback,
   useEffect,
@@ -21,17 +20,12 @@ import React, {
 } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  FileCode2,
-  Folder,
-  Loader2,
-  Upload,
-} from 'lucide-react';
 import dynamic from 'next/dynamic';
 
 import { useEditorStorage } from '@/features/editor/ui/hooks/useStorage';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
 import { createFileSchema, createFolderSchema, renameItemSchema, extractProjectId, extractDocumentContentString } from '@/features/editor/domain/types/core.types';
+import { DEFAULT_MAIN_FILE } from '@/features/editor/domain/constants/editor.constants';
 import {
   usePageStore,
   useSettingsStore,
@@ -139,9 +133,6 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
   const [newFolderName, setNewFolderName] = useState('');
   const [fileToDelete, setFileToDelete] = useState<{ id: string; title: string } | null>(null);
 
-  const newFileInputRef = useRef<HTMLInputElement>(null);
-  const newFolderInputRef = useRef<HTMLInputElement>(null);
-
   const mainFileId =
     parentPage?.mainFile && typeof parentPage.mainFile === 'object'
       ? parentPage.mainFile.id
@@ -156,31 +147,6 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
     ...filesQuery(parentPageId ?? ''),
     enabled: !!parentPageId,
   });
-
-  useEffect(() => {
-    if (!files && !parentPage) return;
-    const allFiles: Array<{ id: string; title?: string; name?: string; content?: string }> = [];
-    if (parentPage?.id) {
-      const pageText = typeof parentPage.content === 'string'
-        ? parentPage.content
-        : (parentPage.content?.text || parentPage.content?.source || parentPage.content?.content || '');
-      allFiles.push({
-        id: parentPage.id,
-        title: parentPage.title || 'main.tex',
-        content: pageText,
-      });
-    }
-    if (files && Array.isArray(files)) {
-      for (const f of files) {
-        allFiles.push({
-          id: f.id,
-          title: f.title || (f as { name?: string }).name,
-          content: typeof f.content === 'string' ? f.content : undefined,
-        });
-      }
-    }
-    workspaceCoordinator.initProjectSymbols(allFiles);
-  }, [files, parentPage]);
 
   const {
     createFile: createFileMutation,
@@ -323,6 +289,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
 
   const handleOpenPreview = useCallback(
     (item: StorageItem) => {
+      const assetTabId = item.id.startsWith('asset:') ? item.id : `asset:${item.id}`;
       const asset: AssetInfo = {
         id: item.id,
         filename: item.filename,
@@ -333,13 +300,13 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
       setSelectedAsset(asset);
       if (parentPageId)
         openTab(parentPageId, {
-          id: item.id,
+          id: assetTabId,
           title: item.filename,
           path: item.filename,
           isDirty: false,
           isPinned: false,
         });
-      setSearchParams({ file: item.id });
+      setSearchParams({ file: assetTabId });
     },
     [parentPageId, openTab, setSearchParams, setSelectedAsset],
   );
@@ -369,26 +336,9 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
     [fileParam, pageId, parentPageId, mainFileId, configuredMainFile],
   );
 
-  const folderFocusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (folderFocusTimerRef.current) {
-        clearTimeout(folderFocusTimerRef.current);
-      }
-    };
-  }, []);
-
   const handleStartCreateFolder = useCallback(() => {
     setIsCreatingFolder(true);
     setNewFolderName('');
-    if (folderFocusTimerRef.current) {
-      clearTimeout(folderFocusTimerRef.current);
-    }
-    folderFocusTimerRef.current = setTimeout(() => {
-      folderFocusTimerRef.current = null;
-      newFolderInputRef.current?.focus();
-    }, 0);
   }, []);
 
   const handleCancelCreate = useCallback(() => {
@@ -749,7 +699,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
               ? displayName(activeFileTitle)
               : currentPageTitle
                 ? displayName(currentPageTitle)
-                : 'main.tex'
+                : (configuredMainFile || DEFAULT_MAIN_FILE)
           }
         />
       </div>

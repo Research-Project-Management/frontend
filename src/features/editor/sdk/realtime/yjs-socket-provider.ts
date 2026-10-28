@@ -11,6 +11,7 @@ import { Awareness, removeAwarenessStates } from 'y-protocols/awareness';
 import { io, type Socket } from 'socket.io-client';
 import { getEffectiveBaseUrl, getAuthToken } from '@/shared/lib/api';
 import type { IEditorCommandBus } from '@/features/editor/core/bus/command-bus.port';
+import { getAuthorColor } from '@/features/editor/domain/collaboration/author-display';
 import type { CollaborationPresence } from '../manuscript/types';
 import {
   buildLineStartsIndex,
@@ -223,12 +224,10 @@ export class YjsSocketIOProvider {
   private connect(): void {
     const rawBase = (this.options.baseUrl || getEffectiveBaseUrl() || '').replace(/\/$/, '');
     const socketUrl = rawBase ? `${rawBase}/manuscripts` : '/manuscripts';
-    const token = this.options.token || getAuthToken() || undefined;
     const user = this.options.user;
 
     try {
-      const fakeSocket = (globalThis as { __fluxFakeSocket?: Socket }).__fluxFakeSocket;
-      this.socket = fakeSocket ?? io(socketUrl, {
+      const socketOpts = {
         path: '/socket.io',
         transports: ['polling', 'websocket'],
         auth: (cb: (data: Record<string, unknown>) => void) => {
@@ -246,7 +245,12 @@ export class YjsSocketIOProvider {
         reconnectionDelay: 1000,
         reconnectionDelayMax: 10000,
         timeout: 10000,
-      });
+      };
+      const fakeSocket = (globalThis as { __fluxFakeSocket?: Socket }).__fluxFakeSocket;
+      this.socket =
+        this.options.socketFactory?.(socketUrl, socketOpts) ??
+        fakeSocket ??
+        io(socketUrl, socketOpts);
 
       this.registerSocketEvents();
 
@@ -810,7 +814,7 @@ export class YjsSocketIOProvider {
       id: user.id,
       name: user.name || 'Anonymous Researcher',
       avatar: user.avatar,
-      color: user.color || '#3B82F6',
+      color: user.color || getAuthorColor(user.id || user.name || 'Anonymous Researcher'),
       role: user.role || 'contributor',
     });
   }

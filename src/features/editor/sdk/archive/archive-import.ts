@@ -386,21 +386,6 @@ export async function extractAndImportZipToProject({
   let effectiveProjectId = existingProjectId;
   let effectiveRootPageId = existingParentPageId;
 
-  if (zipFile && effectiveProjectId) {
-    try {
-      const serverImportRes = await manuscriptService.export.importProjectZip(effectiveProjectId, zipFile);
-      if (serverImportRes?.rootDocId || serverImportRes?.projectId) {
-        return {
-          projectId: serverImportRes.projectId || effectiveProjectId,
-          rootPageId: serverImportRes.rootDocId || effectiveRootPageId || '',
-          mainFileId: serverImportRes.rootDocId || undefined,
-        };
-      }
-    } catch {
-      // Fallback to client-side unpacking
-    }
-  }
-
   const totalItems = extracted.items.length;
   let processedItems = 0;
 
@@ -436,6 +421,28 @@ export async function extractAndImportZipToProject({
 
   if (!effectiveProjectId) {
     throw new Error('Could not initialize project container.');
+  }
+
+  // ── Step 1.5: Primary Authority — Delegate atomic ZIP unpacking to Backend Manuscript ExportImportService ──
+  if (zipFile && effectiveProjectId) {
+    try {
+      report('uploading_assets', `Importing archive "${finalProjectName}" on server...`);
+      const serverImportRes = await manuscriptService.export.importProjectZip(
+        effectiveProjectId,
+        zipFile,
+      );
+      if (serverImportRes?.rootDocId || serverImportRes?.projectId) {
+        processedItems = totalItems;
+        report('done', 'Imported project archive successfully.');
+        return {
+          projectId: serverImportRes.projectId || effectiveProjectId,
+          rootPageId: serverImportRes.rootDocId || effectiveRootPageId || '',
+          mainFileId: serverImportRes.rootDocId || undefined,
+        };
+      }
+    } catch {
+      // Fallback to client-side unpacking if backend import endpoint is unavailable
+    }
   }
 
   // ── Step 2: Create Root Page if needed ───────────────────────────────────

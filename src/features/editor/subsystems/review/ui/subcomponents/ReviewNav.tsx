@@ -10,7 +10,7 @@
  */
 
 import React from 'react';
-import { FileText, List, MessageSquare } from 'lucide-react';
+import { FileText, List } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import {
   Tooltip,

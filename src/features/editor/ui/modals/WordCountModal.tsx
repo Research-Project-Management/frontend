@@ -68,7 +68,6 @@ export function WordCountModal({
   selectedText = '',
   activeFileName = 'main.tex',
   projectFiles = [],
-  onInsertSnippet,
 }: WordCountModalProps) {
   const hasSelection = Boolean(selectedText && selectedText.trim().length > 0);
 

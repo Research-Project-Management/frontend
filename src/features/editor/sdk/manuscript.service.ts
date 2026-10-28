@@ -76,7 +76,6 @@ export const listAuxFiles = (projectId: string) => manuscriptService.compiler.li
 export const downloadAuxFileUrl = (projectId: string, filename: string) => manuscriptService.compiler.downloadAuxFileUrl(projectId, filename);
 export const downloadAllArtifactsZipUrl = (projectId: string) => manuscriptService.compiler.downloadAllArtifactsZipUrl(projectId);
 export { suggestLatexFix } from './manuscript/ai-api.client';
-export const fetchWordCount = async (sourceOrProjectId: string) => {
-  return await manuscriptService.compiler.wordCount(sourceOrProjectId);
+export const fetchWordCount = async (source: string, projectId?: string) => {
+  return await manuscriptService.compiler.wordCount(source, projectId);
 };
-export type WordCountResponse = any;

@@ -10,7 +10,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import {
   BookOpen,
-  Check,
   Copy,
   FileCode,
   FileText,
@@ -39,6 +38,7 @@ import { clearYjsProviderPool } from '@/features/editor/sdk/realtime/yjs-socket-
 import { pageKeys } from '@/features/editor/ui/hooks/document.queries';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
+import { DEFAULT_MAIN_FILE } from '@/features/editor/domain/constants/editor.constants';
 
 import {
   type AcademicTemplate,
@@ -91,15 +91,6 @@ export default function TemplateGalleryModal() {
 
   const combinedTemplates = useMemo(() => {
     const list: AcademicTemplate[] = [...ACADEMIC_TEMPLATES];
-    type RawServerTemplate = {
-      id: string;
-      name: string;
-      category?: string;
-      publisher?: string;
-      description?: string;
-      badge?: string;
-      mainTex?: string;
-    };
     const validCategories: AcademicTemplate['category'][] = [
       'Conference',
       'Journal',
@@ -399,12 +390,13 @@ export default function TemplateGalleryModal() {
                       const toastId = toast.loading('Saving current project as template...');
                       try {
                         const mainContent = engine?.getContent() || selectedTemplate.mainTex;
+                        const targetMainFile = useSettingsStore.getState().mainFile || DEFAULT_MAIN_FILE;
                         await manuscriptService.templates.createCustom({
                           name: `${activeFileTitle?.replace(/\.tex$/i, '') || 'Custom'} Template`,
                           description: 'Saved from active manuscript project',
                           category: 'Academic',
-                          mainFile: 'main.tex',
-                          files: { 'main.tex': mainContent },
+                          mainFile: targetMainFile,
+                          files: { [targetMainFile]: mainContent },
                         });
                         queryClient.invalidateQueries({ queryKey: ['manuscript-templates'] });
                         toast.success('Saved project as custom template!', { id: toastId });

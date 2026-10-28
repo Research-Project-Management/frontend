@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useMemo, useCallback } from 'react';
-import { useParams, useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import {
@@ -24,7 +24,6 @@ import {
 } from '@/features/editor/core';
 import { pageQuery, filesQuery } from './document.queries';
 import { extractProjectId, type Page } from '@/features/editor/domain/types/core.types';
-import type { NodeTreeItem } from '@/features/editor/domain/types/node.types';
 
 import type { WorkspaceTab } from '@/features/editor/domain/types/workspace.types';
 import type { PageFile } from '@/features/editor/domain/types/core.types';
@@ -46,7 +45,9 @@ function syncWorkspaceTabs(
   },
 ): void {
   const seen = new Set<string>();
-  const tabsByProject = useWorkspaceStore.getState().tabsByProject;
+  const wsState = useWorkspaceStore.getState();
+  const tabsByProject = wsState.tabsByProject;
+  const activeByProject = wsState.activeByProject;
 
   for (const rawScope of scopes) {
     if (!rawScope || seen.has(rawScope)) continue;
@@ -63,13 +64,14 @@ function syncWorkspaceTabs(
       isDirty: tab.isDirty ?? false,
       isPinned: tab.isPinned ?? true,
     });
-    options.setActive(rawScope, tab.id);
+
+    if (activeByProject[rawScope] !== tab.id) {
+      options.setActive(rawScope, tab.id);
+    }
   }
 }
 
 export function useActiveDocument() {
-  const router = useRouter();
-  const pathname = usePathname();
   const {
     id: rawId,
     projectId: rawProjectId,
@@ -195,12 +197,21 @@ export function useActiveDocument() {
   useEffect(() => {
     if (!parentPage) return;
 
-    setCurrentPage?.(parentPage);
-    if (pageId) setParentPageId?.(pageId);
+    const pageStore = usePageStore.getState();
+    if (pageStore.currentPage !== parentPage) {
+      setCurrentPage?.(parentPage);
+    }
+    if (pageId && pageStore.parentPageId !== pageId) {
+      setParentPageId?.(pageId);
+    }
 
     if (isMainFile) {
-      setActiveFilePage?.(parentPage);
-      setActivePageId?.(parentPage.id);
+      if (pageStore.activeFilePage !== parentPage) {
+        setActiveFilePage?.(parentPage);
+      }
+      if (pageStore.activePageId !== parentPage.id) {
+        setActivePageId?.(parentPage.id);
+      }
 
       const configuredMain = useSettingsStore.getState().mainFile || 'main.tex';
       const rawTitle = (parentPage.title || '').trim();
@@ -215,8 +226,12 @@ export function useActiveDocument() {
         { onlyIfUninitialized: true, openTab, setActive },
       );
     } else if (activeFile) {
-      setActiveFilePage?.(activeFile);
-      setActivePageId?.(activeFile.id);
+      if (pageStore.activeFilePage !== activeFile) {
+        setActiveFilePage?.(activeFile);
+      }
+      if (pageStore.activePageId !== activeFile.id) {
+        setActivePageId?.(activeFile.id);
+      }
 
       syncWorkspaceTabs(
         [pageId, projectId],

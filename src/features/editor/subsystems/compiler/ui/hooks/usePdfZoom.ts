@@ -47,7 +47,6 @@ export function usePdfZoom({
     const el = containerRef.current;
     if (!el) return;
 
-    let isInitial = true;
     let rafId: number | null = null;
     const observer = new ResizeObserver((entries) => {
       if (rafId !== null) cancelAnimationFrame(rafId);
@@ -57,7 +56,6 @@ export function usePdfZoom({
           const h = Math.round(entry.contentRect.height);
           if (w > 0) {
             setContainerWidth((prevWidth) => (Math.abs(prevWidth - w) < 4 ? prevWidth : w));
-            isInitial = false;
           }
           if (h > 0) {
             setContainerHeight((prevHeight) => (Math.abs(prevHeight - h) < 4 ? prevHeight : h));

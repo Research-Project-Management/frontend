@@ -153,7 +153,6 @@ export function useGithubSync({
   const pullMutation = useMutation({
     mutationFn: async ({ branch }: { branch: string }) => {
       if (!projectId) throw new Error('Project ID is required');
-      sessionCoordinator.resetSession();
       return await integrationService.pullProjectGithub({
         projectId,
         branch,

@@ -185,7 +185,6 @@ export const LatexCompilerEngine = {
    * Cancels any ongoing compilation request to free server resources.
    */
   cancelInFlightCompile(projectId?: string): void {
-    const wasCompiling = Boolean(activeCompileController);
     const targetProjectId = projectId || activeCompileProjectId;
     if (activeCompileController) {
       activeCompileController.abort();
@@ -229,16 +228,13 @@ export const LatexCompilerEngine = {
     activeCompileProjectId = projectId || null;
     const currentSignal = controller.signal;
 
-    // 2. Pre-compile dirty-file sync: await non-realtime dirty file flushes before compileLatex
-    //    so POST /manuscripts/compiler/compile never races against in-flight PUT /manuscripts/docs/:id requests.
+    // 2. Pre-compile dirty-file sync: await non-realtime dirty file flushes if not already flushed
+    //    by CompilationFlushBarrier so POST /manuscripts/compile never races against in-flight PUTs.
     const flushedFileIds: string[] = [];
     const flushErrors: Array<{ fileId: string; error: unknown }> = [];
 
-    if (dirtyFiles.length > 0 || projectId) {
+    if (dirtyFiles.length > 0) {
       const flushTasks: Promise<unknown>[] = [];
-      if (projectId) {
-        flushTasks.push(manuscriptService.updater.flushProject(projectId).catch(() => {}));
-      }
       for (const { fileId } of dirtyFiles) {
         if (sessionCoordinator.isRealtimeConnected(fileId)) {
           flushedFileIds.push(fileId);

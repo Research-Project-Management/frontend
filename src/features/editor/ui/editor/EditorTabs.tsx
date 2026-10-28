@@ -33,9 +33,7 @@ interface TabItemProps {
   onCloseTab: (id: string) => void;
 }
 
-const TabItem = React.memo(function TabItem({ tab, isActive, rootPageId, canClose = true, onActivate, onCloseTab }: TabItemProps) {
-  const isRoot = tab.id === rootPageId || tab.id === `${rootPageId}-main` || Boolean(tab.isRoot);
-
+const TabItem = React.memo(function TabItem({ tab, isActive, canClose = true, onActivate, onCloseTab }: TabItemProps) {
   const handleActivate = useCallback(() => {
     onActivate(tab.id);
   }, [onActivate, tab.id]);
@@ -169,18 +167,27 @@ export function EditorTabs({ rootPageId, activeFileId, availableFiles, rightSlot
   const currentParam = searchParams.get('file');
 
   // Single source of truth for the active tab: exactly ONE tab can be active
+  // Prioritize explicit activeFileId prop (reactive in-memory state) over Next.js searchParams
+  // because shallow history.replaceState updates do not trigger useSearchParams() re-renders.
   const resolvedActiveTabId = useMemo(() => {
     if (tabs.length === 0) return null;
 
-    // 1. If URL has a specific file param that matches a non-root tab:
-    if (currentParam && currentParam !== rootPageId && currentParam !== `${rootPageId}-main`) {
-      const match = tabs.find((t) => t.id === currentParam || t.title === currentParam);
-      if (match) return match.id;
+    // 1. If activeFileId passed from props is explicitly resolved:
+    if (activeFileId) {
+      if (activeFileId === rootPageId || activeFileId === `${rootPageId}-main`) {
+        const rootTab = tabs.find(
+          (t) => t.id === rootPageId || t.id === `${rootPageId}-main`
+        );
+        if (rootTab) return rootTab.id;
+      } else {
+        const match = tabs.find((t) => t.id === activeFileId || t.title === activeFileId);
+        if (match) return match.id;
+      }
     }
 
-    // 2. If activeFileId passed from props matches a non-root tab:
-    if (activeFileId && activeFileId !== rootPageId && activeFileId !== `${rootPageId}-main`) {
-      const match = tabs.find((t) => t.id === activeFileId);
+    // 2. Fallback to initial URL ?file= param on first load before activeFileId hydrates:
+    if (currentParam && currentParam !== rootPageId && currentParam !== `${rootPageId}-main`) {
+      const match = tabs.find((t) => t.id === currentParam || t.title === currentParam);
       if (match) return match.id;
     }
 
@@ -190,7 +197,11 @@ export function EditorTabs({ rootPageId, activeFileId, availableFiles, rightSlot
     );
     if (rootTab) return rootTab.id;
 
-    // 4. Fallback to the first tab
+    // 4. Fallback to tab matching rootPageId by title or first tab
+    const configuredMain = useSettingsStore.getState().mainFile || 'main.tex';
+    const fallbackRoot = tabs.find((t) => t.title === configuredMain || t.title.toLowerCase() === 'main.tex');
+    if (fallbackRoot) return fallbackRoot.id;
+
     return tabs[0]?.id ?? null;
   }, [tabs, currentParam, activeFileId, rootPageId]);
 

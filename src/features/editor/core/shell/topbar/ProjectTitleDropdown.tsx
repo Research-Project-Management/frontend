@@ -98,8 +98,8 @@ export function ProjectTitleDropdown() {
   } = useProjectTitleActions({
     effectiveProjectId,
     displayTitle,
-    currentPage: currentPageId ? ({ id: currentPageId, title: currentPageTitle || '' } as never) : null,
-    activeFilePage: activeFileId ? ({ id: activeFileId, title: activeFileTitle || '' } as never) : null,
+    currentPage: currentPageId ? { id: currentPageId, title: currentPageTitle || '' } : null,
+    activeFilePage: activeFileId ? { id: activeFileId, title: activeFileTitle || '' } : null,
     getContent,
     pdfUrl,
     fallbackRootId: params?.pageId,

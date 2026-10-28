@@ -7,7 +7,7 @@ import {
   filterMentionMembers,
   type MentionMember,
 } from '@/features/editor/domain/collaboration/mention';
-import { EditorEventBus } from '@/features/editor/core/bus/event-bus';
+import { editorCommandBus } from '@/features/editor/core';
 
 describe('@mention Autocomplete & Parsing (Overleaf Parity S)', () => {
   const mockMembers: MentionMember[] = [
@@ -196,10 +196,10 @@ describe('@mention Autocomplete & Parsing (Overleaf Parity S)', () => {
     });
   });
 
-  describe('EditorEventBus Mention Notifications', () => {
+  describe('editorCommandBus Mention Notifications', () => {
     it('dispatches and receives comment:mention review events', () => {
       const listener = vi.fn();
-      const unsubscribe = EditorEventBus.on('flux:review-event', listener);
+      const unsubscribe = editorCommandBus.subscribe('editor:review-event', listener);
 
       const payload = {
         pageId: 'page-101',
@@ -208,7 +208,8 @@ describe('@mention Autocomplete & Parsing (Overleaf Parity S)', () => {
         content: 'Hey @[Alice](u-1) and @[An](u-2) take a look!',
       };
 
-      EditorEventBus.emit('flux:review-event', {
+      editorCommandBus.dispatch({
+        type: 'editor:review-event',
         pageId: 'page-101',
         event: 'comment:mention',
         payload,
@@ -216,6 +217,7 @@ describe('@mention Autocomplete & Parsing (Overleaf Parity S)', () => {
 
       expect(listener).toHaveBeenCalledTimes(1);
       expect(listener).toHaveBeenCalledWith({
+        type: 'editor:review-event',
         pageId: 'page-101',
         event: 'comment:mention',
         payload,

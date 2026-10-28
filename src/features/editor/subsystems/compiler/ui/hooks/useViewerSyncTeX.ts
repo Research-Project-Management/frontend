@@ -8,8 +8,8 @@
  */
 
 import { useCallback, useEffect } from 'react';
-import { usePageStore, useWorkspaceStore, type EditorTab, editorCommandBus, getActiveEditorEngine, workspaceCoordinator } from '@/features/editor/core';
-import type { NodeTreeItem } from '@/features/editor/domain/types/node.types';
+import { usePageStore, useSettingsStore, useWorkspaceStore, type EditorTab, editorCommandBus, getActiveEditorEngine, workspaceCoordinator } from '@/features/editor/core';
+import { DEFAULT_MAIN_FILE } from '@/features/editor/domain/constants/editor.constants';
 import { useViewerStore } from '@/features/editor/subsystems/compiler/coordinator/viewer.store';
 import {
   DEFAULT_PDF_PAGE_WIDTH_PT,
@@ -117,10 +117,11 @@ export function useViewerSyncTeX({
         };
       }
 
-      // 3. Match root document (main.tex) from currentPage
+      // 3. Match root document from currentPage
       const currentPage = usePageStore.getState().currentPage;
       if (currentPage) {
-        const rootTitle = (currentPage.title || 'main.tex').replace(/\\/g, '/').toLowerCase();
+        const configuredMainFile = useSettingsStore.getState().mainFile || DEFAULT_MAIN_FILE;
+        const rootTitle = (currentPage.title || configuredMainFile).replace(/\\/g, '/').toLowerCase();
         const rootBase = rootTitle.split('/').pop() || rootTitle;
         if (
           rootTitle === cleanName ||
@@ -131,8 +132,8 @@ export function useViewerSyncTeX({
         ) {
           return {
             id: currentPage.id,
-            title: currentPage.title || 'main.tex',
-            path: currentPage.title || 'main.tex',
+            title: currentPage.title || configuredMainFile,
+            path: currentPage.title || configuredMainFile,
           };
         }
       }
@@ -257,28 +258,22 @@ export function useViewerSyncTeX({
 
       const rootId = projectId || pageId;
       if (!rootId) return;
-      const filename = overrideFilePath || activeFilePath || 'main.tex';
+      const filename = overrideFilePath || activeFilePath || useSettingsStore.getState().mainFile || DEFAULT_MAIN_FILE;
 
       const effectiveScale =
         autoFit && containerWidth && containerWidth > 0
           ? containerWidth / widthPt
           : (scale > 0 ? scale : 1);
 
-      // 1. Try Backend Single Source of Truth
-      const remoteRes = await compilerCoordinator.resolveForwardRemote(
-        rootId,
-        filename,
-        targetLine,
-      );
+      let targetPage: number | null = null;
+      let targetX: number | undefined;
+      let targetY: number | undefined;
+      let targetW: number | undefined;
+      let targetH: number | undefined;
 
-      let targetPage = remoteRes?.page ?? null;
-      let targetX = remoteRes ? remoteRes.x * effectiveScale : undefined;
-      let targetY = remoteRes ? remoteRes.y * effectiveScale : undefined;
-      let targetW = remoteRes && remoteRes.w !== undefined ? remoteRes.w * effectiveScale : undefined;
-      let targetH = remoteRes && remoteRes.h !== undefined ? remoteRes.h * effectiveScale : undefined;
-
-      if (!targetPage) {
-        const effectiveMap = synctexMapRef.current || compilerCoordinator.getSynctexMap();
+      // 1. Fast-path: 0ms Local In-Memory SyncTeX Map Lookup
+      const effectiveMap = synctexMapRef.current || compilerCoordinator.getSynctexMap();
+      if (effectiveMap) {
         const localDetail = compilerCoordinator.resolveForwardDetail(
           targetLine,
           filename,
@@ -294,16 +289,30 @@ export function useViewerSyncTeX({
             targetH = localDetail.h !== undefined ? localDetail.h * effectiveScale : undefined;
           }
         }
+        if (!targetPage) {
+          targetPage = compilerCoordinator.resolveForward(
+            targetLine,
+            filename,
+            numPages || 1,
+            effectiveMap,
+          );
+        }
       }
 
+      // 2. Fallback: Backend Remote SyncTeX Resolution when local map is absent or misses
       if (!targetPage) {
-        const effectiveMap = synctexMapRef.current || compilerCoordinator.getSynctexMap();
-        targetPage = compilerCoordinator.resolveForward(
-          targetLine,
+        const remoteRes = await compilerCoordinator.resolveForwardRemote(
+          rootId,
           filename,
-          numPages || 1,
-          effectiveMap,
+          targetLine,
         );
+        if (remoteRes) {
+          targetPage = remoteRes.page ?? null;
+          targetX = remoteRes.x * effectiveScale;
+          targetY = remoteRes.y * effectiveScale;
+          targetW = remoteRes.w !== undefined ? remoteRes.w * effectiveScale : undefined;
+          targetH = remoteRes.h !== undefined ? remoteRes.h * effectiveScale : undefined;
+        }
       }
 
       if (targetPage) {

@@ -42,10 +42,7 @@ const DocumentConflictDialog = dynamic(
 
 import { useActiveDocument } from '@/features/editor/ui/hooks/useActiveDocument';
 import {
-  useSettingsStore,
   useWorkspaceStore,
-  useDocumentCollaborationStore,
-  getActiveEditorEngine,
   editorCommandBus,
   sessionCoordinator,
   isPrimaryModKey,
@@ -53,7 +50,6 @@ import {
   type DraftSnapshot,
   type DocumentConflict,
 } from '@/features/editor/core';
-import { reviewCoordinator } from '@/features/editor/subsystems/review';
 import { lruDocumentCache } from '@/features/editor/subsystems/explorer';
 import { extractProjectId, extractDocumentContentString } from '@/features/editor/domain/types/core.types';
 

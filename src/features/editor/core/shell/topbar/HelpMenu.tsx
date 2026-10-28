@@ -17,6 +17,7 @@ import {
   MenubarSeparator,
 } from '@/shared/components/ui/menubar';
 import { editorCommandBus } from '../../bus/command-bus';
+import { EDITOR_DOCS_URLS } from '@/features/editor/domain/constants/editor.constants';
 
 export function HelpMenu({ value = 'help' }: { value?: string } = {}) {
   const handleOpenShortcuts = () => {
@@ -24,11 +25,11 @@ export function HelpMenu({ value = 'help' }: { value?: string } = {}) {
   };
 
   const handleOpenDocumentation = () => {
-    window.open('https://www.overleaf.com/learn', '_blank', 'noopener,noreferrer');
+    window.open(EDITOR_DOCS_URLS.DOCUMENTATION_HOME, '_blank', 'noopener,noreferrer');
   };
 
   const handleOpenLatexGuide = () => {
-    window.open('https://www.overleaf.com/learn/latex/Free_online_introduction_to_LaTeX_(part_1)', '_blank', 'noopener,noreferrer');
+    window.open(EDITOR_DOCS_URLS.LATEX_INTRO_GUIDE, '_blank', 'noopener,noreferrer');
   };
 
   return (

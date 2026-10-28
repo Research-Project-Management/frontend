@@ -12,7 +12,8 @@ import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { resolveFileUrl } from '@/shared/lib/file-client';
 import { getAuthToken } from '@/shared/lib/api';
 import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
-import { ARXIV_ALLOWED_EXTENSIONS } from '@/features/editor/domain/constants/editor.constants';
+import { ARXIV_ALLOWED_EXTENSIONS, DEFAULT_MAIN_FILE } from '@/features/editor/domain/constants/editor.constants';
+import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 import { documentAuthority } from '@/features/editor/core/coordinator/document-authority.facade';
 import { triggerFileDownload } from './document-download';
 
@@ -63,6 +64,29 @@ async function bundleAndDownloadZip({
       .replace(/[^\w\s-]/g, '')
       .trim()
       .replace(/\s+/g, '_') || (isArxiv ? 'manuscript' : 'flux-project');
+
+  // 0. Primary Authority: Flush active edits and request authoritative ZIP bundle from Backend Manuscript Export service
+  try {
+    if (parentPageId) {
+      await manuscriptService.updater.flushProject(parentPageId).catch(() => null);
+      const serverBlob = await manuscriptService.export.exportProjectZip(parentPageId, {
+        cleanArxiv: isArxiv,
+        includePdf: !isArxiv,
+        projectName: cleanTitle,
+      });
+      if (serverBlob && serverBlob.size >= 4) {
+        const header = new Uint8Array(await serverBlob.slice(0, 4).arrayBuffer());
+        const isZipArchive = header[0] === 0x50 && header[1] === 0x4b; // 'PK' signature
+        if (isZipArchive) {
+          const filename = isArxiv ? `arxiv-${cleanTitle}.zip` : `${cleanTitle}.zip`;
+          triggerFileDownload(serverBlob, filename);
+          return filename;
+        }
+      }
+    }
+  } catch {
+    // Offline or backend unavailable — gracefully fall back to client-side JSZip assembly below
+  }
 
   try {
     const zip = new JSZip();
@@ -175,9 +199,10 @@ async function bundleAndDownloadZip({
             const res = await fetch(resolvedUrl, { credentials: 'include', headers: authHeaders });
             if (res.ok) {
               const blob = await res.blob();
-              // Don't overwrite if text file with the same name exists
-              if (!filesMap.has(item.filename)) {
-                zip.file(item.filename, blob);
+              const archivePath = (item.path || item.filename).replace(/^\/+/, '');
+              // Don't overwrite if text file with the same path exists
+              if (!filesMap.has(archivePath) && !filesMap.has(item.filename)) {
+                zip.file(archivePath, blob);
               }
             }
           } catch (fetchErr) {
@@ -288,12 +313,12 @@ export async function exportVersionAsZip(options: ExportVersionZipOptions): Prom
 
         // Fetch versions of this file
         try {
-          const versions = await ((manuscriptService.history as any).getByDocId || (manuscriptService.history as any).getByPageId).call(manuscriptService.history, f.id).catch(() => []);
+          const versions = await manuscriptService.history.getByDocId(f.id).catch(() => []);
           if (versions && versions.length > 0) {
-            let matchingVer = versions.find((v: any) => v.id === versionId);
+            let matchingVer = versions.find((v) => v.id === versionId);
             if (!matchingVer && revisionDate) {
               const beforeVers = versions.filter(
-                (v: any) => new Date(v.createdAt).getTime() <= targetDate + 1000,
+                (v) => new Date(v.createdAt).getTime() <= targetDate + 1000,
               );
               matchingVer = beforeVers[0] || versions[versions.length - 1];
             }
@@ -317,22 +342,23 @@ export async function exportVersionAsZip(options: ExportVersionZipOptions): Prom
     );
 
     // 3. Ensure the main LaTeX document is included
+    const configuredMain = (useSettingsStore.getState().mainFile || DEFAULT_MAIN_FILE).toLowerCase();
     const hasMain = Array.from(filesMap.keys()).some(
-      (k) => k.toLowerCase() === 'main.tex',
+      (k) => k.toLowerCase() === configuredMain || k.toLowerCase() === DEFAULT_MAIN_FILE,
     );
 
     if (!hasMain) {
       const rootTitle =
         rootPage?.title && rootPage.title.endsWith('.tex')
           ? rootPage.title
-          : 'main.tex';
+          : (useSettingsStore.getState().mainFile || DEFAULT_MAIN_FILE);
 
       let rootStr = typeof rootPage?.content === 'string' ? rootPage.content : '';
       try {
-        const rootVersions = await ((manuscriptService.history as any).getByDocId || (manuscriptService.history as any).getByPageId).call(manuscriptService.history, parentPageId).catch(() => []);
+        const rootVersions = await manuscriptService.history.getByDocId(parentPageId).catch(() => []);
         const matchingRoot =
-          rootVersions.find((v: any) => v.id === versionId) ||
-          rootVersions.find((v: any) => new Date(v.createdAt).getTime() <= targetDate + 1000) ||
+          rootVersions.find((v) => v.id === versionId) ||
+          rootVersions.find((v) => new Date(v.createdAt).getTime() <= targetDate + 1000) ||
           rootVersions[0];
         if (matchingRoot) {
           const fullRoot = await manuscriptService.history.getById(parentPageId, matchingRoot.id).catch(() => null);
@@ -384,8 +410,9 @@ export async function exportVersionAsZip(options: ExportVersionZipOptions): Prom
             const res = await fetch(resolvedUrl, { credentials: 'include', headers: authHeaders });
             if (res.ok) {
               const blob = await res.blob();
-              if (!filesMap.has(item.filename)) {
-                zip.file(item.filename, blob);
+              const archivePath = (item.path || item.filename).replace(/^\/+/, '');
+              if (!filesMap.has(archivePath) && !filesMap.has(item.filename)) {
+                zip.file(archivePath, blob);
               }
             }
           } catch (fetchErr) {

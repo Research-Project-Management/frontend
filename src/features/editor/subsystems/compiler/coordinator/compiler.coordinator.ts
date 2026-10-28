@@ -68,6 +68,10 @@ export function buildPageStoreFilePaths(pageStore: {
   };
   add(pageStore.activeFilePage?.id, pageStore.activeFilePage?.path || pageStore.activeFilePage?.title);
   add(pageStore.currentPage?.id, pageStore.currentPage?.path || pageStore.currentPage?.title);
+  const wsFiles = workspaceCoordinator.getProjectFiles() || [];
+  for (const wf of wsFiles) {
+    add(wf.id, wf.path || wf.title || wf.name);
+  }
   const stack: NodeTreeItem[] = [...(pageStore.fileHierarchy ?? [])];
   while (stack.length > 0) {
     const node = stack.pop()!;
@@ -325,7 +329,13 @@ export class CompilerCoordinatorRegistry {
     const compileStore = useCompileStore.getState();
 
     const activeDoc = pageStore.getActiveDocument();
-    const rootPageId = activeDoc?.id || pageStore.projectId || null;
+    // Overleaf Parity: Root page resolution must prioritize project/parent root document over current active subfile
+    const rootPageId =
+      pageStore.parentPageId ||
+      pageStore.currentPage?.id ||
+      pageStore.projectId ||
+      activeDoc?.id ||
+      null;
 
     if (!rootPageId) {
       return false;
@@ -464,10 +474,12 @@ export class CompilerCoordinatorRegistry {
       '';
 
     // 6. Create an atomic in-memory snapshot across open tabs & editor buffer (0ms latency)
-    // Guard: never use .bib file ID as the rootFileId for LaTeX compiler
+    // Guard: never use .bib file ID or sub-document ID as rootFileId when parentPage/inferred root exists
     const isBibFile = activeTitle.toLowerCase().endsWith('.bib');
     const safeRootFileId =
       inferred.rootFileId ||
+      pageStore.parentPageId ||
+      pageStore.currentPage?.id ||
       (!isBibFile ? activeDoc?.id : undefined) ||
       pageStore.projectId;
 
@@ -686,7 +698,6 @@ export class CompilerCoordinatorRegistry {
   public stop(): void {
     const pageStore = usePageStore.getState();
     const compileStore = useCompileStore.getState();
-    const wasCompiling = this.isCompiling || compileStore.compileStatus === 'compiling';
     const activeDoc = pageStore.getActiveDocument();
     const targetProjectId =
       (this.options.getProjectId ? this.options.getProjectId() : undefined) ||

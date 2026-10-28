@@ -22,9 +22,13 @@ import {
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
 import { editorCommandBus } from '../../bus/command-bus';
 import { useWorkspaceStore } from '../../store/workspace.store';
+import { useSettingsStore } from '../../store/settings.store';
+import { DEFAULT_BIB_FILE } from '@/features/editor/domain/constants/editor.constants';
 
 export function InsertMenu({ value = 'insert' }: { value?: string } = {}) {
   const { engine } = useEditorInstance();
+  const mainBibFile = useSettingsStore((s) => s.mainBibFile) || DEFAULT_BIB_FILE;
+  const bibStem = mainBibFile.replace(/\.bib$/i, '') || 'references';
 
   const insertSnippet = (snippet: string) => {
     engine?.insertText(snippet);
@@ -32,9 +36,9 @@ export function InsertMenu({ value = 'insert' }: { value?: string } = {}) {
   };
 
   const handleInsertFigureUrl = () => {
-    insertSnippet(
-      '\\begin{figure}[htbp]\n  \\centering\n  \\includegraphics[width=0.8\\linewidth]{https://example.com/image.png}\n  \\caption{Figure caption}\n  \\label{fig:my_figure}\n\\end{figure}\n'
-    );
+    useWorkspaceStore.getState().setActiveSidebarTab('files');
+    useWorkspaceStore.getState().setSidebarLeftOpen(true);
+    editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'add-files', payload: { initialTab: 'url' } });
   };
 
   const handleComment = () => {
@@ -178,10 +182,10 @@ export function InsertMenu({ value = 'insert' }: { value?: string } = {}) {
               <span className="whitespace-nowrap">\\printbibliography (biblatex)</span>
             </MenubarItem>
             <MenubarItem
-              onClick={() => insertSnippet('\\bibliography{references}\n')}
+              onClick={() => insertSnippet(`\\bibliography{${bibStem}}\n`)}
               className="cursor-pointer"
             >
-              <span className="whitespace-nowrap">\\bibliography&#123;references&#125; (BibTeX)</span>
+              <span className="whitespace-nowrap">\bibliography&#123;{bibStem}&#125; (BibTeX)</span>
             </MenubarItem>
             <MenubarSub>
               <MenubarSubTrigger className="cursor-pointer">

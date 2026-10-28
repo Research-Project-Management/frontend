@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
-import { EditorEventBus } from '@/features/editor/core/bus/event-bus';
+import { editorCommandBus } from '@/features/editor/core';
 import type { PageSuggestion, SuggestionType, SuggestionStatus } from '@/features/editor/domain/types/suggestion.types';
 
 import * as api from '@/shared/lib/api';
@@ -157,12 +157,13 @@ describe('Track Changes & Review System (Overleaf Parity)', () => {
     });
   });
 
-  describe('2. Review Event Bus & Realtime Sync', () => {
-    it('should broadcast and receive suggestion events via EditorEventBus', () => {
+  describe('2. Review Command Bus & Realtime Sync', () => {
+    it('should broadcast and receive suggestion events via editorCommandBus', () => {
       const listener = vi.fn();
-      const unsub = EditorEventBus.on('flux:review-event', listener);
+      const unsub = editorCommandBus.subscribe('editor:review-event', listener);
 
-      EditorEventBus.emit('flux:review-event', {
+      editorCommandBus.dispatch({
+        type: 'editor:review-event',
         pageId: 'page-1',
         event: 'suggestion:accepted',
         payload: {
@@ -172,6 +173,7 @@ describe('Track Changes & Review System (Overleaf Parity)', () => {
       });
 
       expect(listener).toHaveBeenCalledWith({
+        type: 'editor:review-event',
         pageId: 'page-1',
         event: 'suggestion:accepted',
         payload: {

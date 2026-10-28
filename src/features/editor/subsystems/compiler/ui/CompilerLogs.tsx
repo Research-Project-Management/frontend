@@ -38,6 +38,7 @@ import {
   parseLatexLog,
   DEFAULT_OUTPUT_FILES,
 } from '@/features/editor/domain/latex/compiler-logs-parser';
+import { DEFAULT_MAIN_FILE } from '@/features/editor/domain/constants/editor.constants';
 import { filterDiagnostics } from '@/features/editor/domain/latex/warning-filter';
 import { CompilerLogEntryRow } from './logs/CompilerLogEntryRow';
 import { CompilerLogsHeader } from './logs/CompilerLogsHeader';
@@ -115,8 +116,6 @@ export function CompilerLogs({
     return hiddenWarnings + hiddenBadBoxes;
   }, [nonTransientWarnings, parsed.badBoxes, filterOptions]);
 
-  const enrichEntry = useCallback((e: LogEntry): LogEntry => e, []);
-
   const handleClearCacheAndCompile = useCallback(() => {
     if (onClearCacheAndCompile) {
       onClearCacheAndCompile();
@@ -168,10 +167,10 @@ export function CompilerLogs({
   const outputFiles = useMemo(() => {
     if (auxFiles && auxFiles.length > 0) {
       const names = auxFiles.map((f) => f.name);
-      return Array.from(new Set([...names, ...DEFAULT_OUTPUT_FILES]));
+      return Array.from(new Set([...names, ...(log && log.trim() ? ['output.log'] : [])]));
     }
     return DEFAULT_OUTPUT_FILES;
-  }, [auxFiles]);
+  }, [auxFiles, log]);
 
   const handleDownloadRawLog = useCallback(() => {
     if (!log || !log.trim()) {
@@ -292,9 +291,10 @@ export function CompilerLogs({
 
   const handleEntryClick = useCallback((entry: LogEntry) => {
     if (entry.line) {
+      const targetFile = entry.file || useSettingsStore.getState().mainFile || DEFAULT_MAIN_FILE;
       if (onJumpToError) {
-        onJumpToError(entry.file || 'main.tex', entry.line);
-        toast.info(`Jumped to ${entry.file || 'main.tex'} line ${entry.line}`);
+        onJumpToError(targetFile, entry.line);
+        toast.info(`Jumped to ${targetFile} line ${entry.line}`);
       } else {
         editorCommandBus.dispatch({
           type: 'editor:jump-to-line',
@@ -359,7 +359,6 @@ export function CompilerLogs({
   }, []);
 
   const totalLogsCount = parsed.errors.length + displayedWarnings.length + displayedBadBoxes.length;
-  const effectiveTotalLogsCount = totalLogsCount;
 
   return (
     <div className="h-full w-full flex flex-col bg-canvas text-foreground overflow-hidden font-sans">
@@ -379,7 +378,7 @@ export function CompilerLogs({
       <CompilerLogsFilterTabs
         activeTab={activeTab}
         onSelectTab={setActiveTab}
-        totalLogsCount={effectiveTotalLogsCount}
+        totalLogsCount={totalLogsCount}
         errorsCount={parsed.errors.length}
         warningsCount={displayedWarnings.length}
         badBoxesCount={displayedBadBoxes.length}
@@ -447,21 +446,20 @@ export function CompilerLogs({
             {/* Errors */}
             {(activeTab === 'all' || activeTab === 'errors') &&
               parsed.errors.map((e: LogEntry, i: number) => {
-                const enriched = enrichEntry(e);
-                const key = getEntryKey(enriched, i);
+                const key = getEntryKey(e, i);
                 const state = fixState[key];
                 return (
                   <CompilerLogEntryRow
                     key={`err-${i}`}
                     id={`log-entry-err-${i}`}
                     type="error"
-                    entry={enriched}
-                    onClick={() => handleEntryClick(enriched)}
-                    onSuggestFix={() => handleSuggestFix(enriched, i)}
+                    entry={e}
+                    onClick={() => handleEntryClick(e)}
+                    onSuggestFix={() => handleSuggestFix(e, i)}
                     isFixLoading={state?.loading}
                     fixResult={state?.result}
                     isFixApplied={state?.applied}
-                    onApplyFix={(_entry, fix) => handleApplyFix(enriched, fix, i)}
+                    onApplyFix={(_entry, fix) => handleApplyFix(e, fix, i)}
                     onApplyQuickFix={handleApplyQuickFix}
                   />
                 );
@@ -470,14 +468,13 @@ export function CompilerLogs({
             {/* Warnings */}
             {(activeTab === 'all' || activeTab === 'warnings') &&
               displayedWarnings.map((e: LogEntry, i: number) => {
-                const enriched = enrichEntry(e);
                 return (
                   <CompilerLogEntryRow
                     key={`warn-${i}`}
                     id={`log-entry-warn-${i}`}
                     type="warning"
-                    entry={enriched}
-                    onClick={() => handleEntryClick(enriched)}
+                    entry={e}
+                    onClick={() => handleEntryClick(e)}
                     onApplyQuickFix={handleApplyQuickFix}
                   />
                 );
@@ -486,14 +483,13 @@ export function CompilerLogs({
             {/* Info / Bad boxes */}
             {(activeTab === 'all' || activeTab === 'info') &&
               displayedBadBoxes.map((e: LogEntry, i: number) => {
-                const enriched = enrichEntry(e);
                 return (
                   <CompilerLogEntryRow
                     key={`info-${i}`}
                     id={`log-entry-info-${i}`}
                     type="badbox"
-                    entry={enriched}
-                    onClick={() => handleEntryClick(enriched)}
+                    entry={e}
+                    onClick={() => handleEntryClick(e)}
                     onApplyQuickFix={handleApplyQuickFix}
                   />
                 );

@@ -11,7 +11,6 @@
 
 import React, { useRef, useEffect, useMemo, useCallback } from 'react';
 import {
-  Image as ImageIcon,
   Upload,
   Check,
   Copy,

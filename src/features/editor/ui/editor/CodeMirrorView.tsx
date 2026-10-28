@@ -16,8 +16,10 @@
 'use client';
 
 import React, { useEffect, useRef, useMemo, useCallback } from 'react';
-import { EditorState, type Extension, type StateEffect } from '@codemirror/state';
+import { Annotation, EditorState, type Extension, type StateEffect } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
+
+const programmaticSyncAnnotation = Annotation.define<boolean>();
 import { forceLinting } from '@codemirror/lint';
 import { ySyncAnnotation } from 'y-codemirror.next';
 import type * as Y from 'yjs';
@@ -201,7 +203,10 @@ function findDiffRange(
 
 function flushViewState(view: EditorView, targetFileId: string): void {
   const latestDoc = view.state.doc.toString();
-  if (lruDocumentCache.getModel(targetFileId)?.content !== latestDoc) {
+  const existingModel = lruDocumentCache.getModel(targetFileId);
+  if (!existingModel) {
+    lruDocumentCache.registerModel(targetFileId, { content: latestDoc });
+  } else if (existingModel.content !== latestDoc) {
     lruDocumentCache.updateContent(targetFileId, latestDoc, true);
   }
   const mainSel = view.state.selection.main;
@@ -314,7 +319,9 @@ export function CodeMirrorView({
       }
 
       if (update.docChanged) {
-        const isRemote = update.transactions.some((tr) => Boolean(tr.annotation(ySyncAnnotation)));
+        const isRemote = update.transactions.some(
+          (tr) => Boolean(tr.annotation(ySyncAnnotation)) || Boolean(tr.annotation(programmaticSyncAnnotation)),
+        );
         const origin: 'local' | 'remote' = isRemote ? 'remote' : 'local';
 
         let hasStructuralChange = false;
@@ -649,6 +656,7 @@ export function CodeMirrorView({
           const newLen = cmd.content.length;
           viewRef.current.dispatch({
             changes: diff,
+            annotations: programmaticSyncAnnotation.of(true),
             selection: {
               anchor: Math.min(sel.anchor, newLen),
               head: Math.min(sel.head, newLen),
@@ -694,6 +702,7 @@ export function CodeMirrorView({
           const newLen = anyCmd.content.length;
           viewRef.current.dispatch({
             changes: diff,
+            annotations: programmaticSyncAnnotation.of(true),
             selection: {
               anchor: Math.min(sel.anchor, newLen),
               head: Math.min(sel.head, newLen),
@@ -831,6 +840,7 @@ export function CodeMirrorView({
       const newLen = value.length;
       viewRef.current.dispatch({
         changes: diff,
+        annotations: programmaticSyncAnnotation.of(true),
         selection: {
           anchor: Math.min(sel.anchor, newLen),
           head: Math.min(sel.head, newLen),
@@ -901,6 +911,7 @@ export function CodeMirrorView({
               anchor: Math.min(sel.anchor, newLen),
               head: Math.min(sel.head, newLen),
             },
+            annotations: programmaticSyncAnnotation.of(true),
           });
         }
       }

@@ -16,9 +16,7 @@ import {
   getActiveEditorEngine,
   sessionCoordinator,
   useWorkspaceStore,
-  useDocumentCollaborationStore,
   useSettingsStore,
-  isMacPlatform,
   isPrimaryModKey,
 } from '@/features/editor/core';
 import { gotoLine } from '@codemirror/search';

@@ -13,6 +13,7 @@ import * as decoding from 'lib0/decoding';
 import { Awareness, removeAwarenessStates } from 'y-protocols/awareness';
 import type { Socket } from 'socket.io-client';
 import type { IEditorCommandBus } from '@/features/editor/core/bus/command-bus.port';
+import { getAuthorColor } from '@/features/editor/domain/collaboration/author-display';
 import type { CollaborationPresence } from '../manuscript/types';
 
 export interface CollaboratorUser {
@@ -79,6 +80,7 @@ export interface YjsSocketIOProviderOptions {
   getToken?: () => string | undefined;
   initialContent?: string;
   commandBus?: IEditorCommandBus;
+  socketFactory?: (url: string, opts: Record<string, unknown>) => Socket;
   onStatusChange?: (status: ConnectionStatus) => void;
   onSynced?: () => void;
   onCollaboratorsChange?: (collaborators: CollaborationPresence[]) => void;
@@ -318,7 +320,7 @@ export function toCollaborationPresence(
     socketId: data.socketId ?? existing?.socketId,
     name: data.name || existing?.name || 'Collaborator',
     avatar: data.avatar !== undefined ? data.avatar : existing?.avatar,
-    color: data.color || existing?.color || '#3b82f6',
+    color: data.color || existing?.color || getAuthorColor(data.userId || data.name || 'Collaborator'),
     role: data.role ?? existing?.role,
     cursor: data.cursor
       ? {
@@ -404,7 +406,7 @@ export function applyRemoteCursorAwareness(params: {
     user: {
       id: data.userId,
       name: data.name || 'Collaborator',
-      color: data.color || '#3b82f6',
+      color: data.color || getAuthorColor(data.userId || data.name || 'Collaborator'),
       avatar: data.avatar,
     },
     cursor: { anchor, head },

@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useSettingsStore } from '@/features/editor/core';
-import { EditorEventBus } from '@/features/editor/core/bus/event-bus';
+import { useSettingsStore, editorCommandBus } from '@/features/editor/core';
 
 describe('Source vs Visual Editor Mode (Overleaf 1:1 Parity)', () => {
   beforeEach(() => {
@@ -29,35 +28,35 @@ describe('Source vs Visual Editor Mode (Overleaf 1:1 Parity)', () => {
     });
   });
 
-  describe('Visual Editor Command Bus (EditorEventBus delegation)', () => {
-    it('should dispatch and receive flux:visual-command events for formatting', () => {
+  describe('Visual Editor Command Bus (editorCommandBus delegation)', () => {
+    it('should dispatch and receive editor:visual-command events for formatting', () => {
       const listener = vi.fn();
-      const unsub = EditorEventBus.on('flux:visual-command', listener);
+      const unsub = editorCommandBus.subscribe('editor:visual-command', listener);
 
-      EditorEventBus.emit('flux:visual-command', { command: 'bold' });
-      expect(listener).toHaveBeenCalledWith({ command: 'bold' });
+      editorCommandBus.dispatch({ type: 'editor:visual-command', command: 'bold' });
+      expect(listener).toHaveBeenCalledWith({ type: 'editor:visual-command', command: 'bold' });
 
-      EditorEventBus.emit('flux:visual-command', { command: 'italic' });
-      expect(listener).toHaveBeenCalledWith({ command: 'italic' });
+      editorCommandBus.dispatch({ type: 'editor:visual-command', command: 'italic' });
+      expect(listener).toHaveBeenCalledWith({ type: 'editor:visual-command', command: 'italic' });
 
-      EditorEventBus.emit('flux:visual-command', { command: 'heading', level: 2 });
-      expect(listener).toHaveBeenCalledWith({ command: 'heading', level: 2 });
+      editorCommandBus.dispatch({ type: 'editor:visual-command', command: 'heading', level: 2 });
+      expect(listener).toHaveBeenCalledWith({ type: 'editor:visual-command', command: 'heading', level: 2 });
 
-      EditorEventBus.emit('flux:visual-command', { command: 'insertMath' });
-      expect(listener).toHaveBeenCalledWith({ command: 'insertMath' });
+      editorCommandBus.dispatch({ type: 'editor:visual-command', command: 'insertMath' });
+      expect(listener).toHaveBeenCalledWith({ type: 'editor:visual-command', command: 'insertMath' });
 
       unsub();
 
-      EditorEventBus.emit('flux:visual-command', { command: 'strike' });
+      editorCommandBus.dispatch({ type: 'editor:visual-command', command: 'strike' });
       expect(listener).toHaveBeenCalledTimes(4); // Did not trigger after unsub
     });
 
-    it('should dispatch and receive flux:insert-citation event', () => {
+    it('should dispatch and receive editor:insert-citation event', () => {
       const listener = vi.fn();
-      const unsub = EditorEventBus.on('flux:insert-citation', listener);
+      const unsub = editorCommandBus.subscribe('editor:insert-citation', listener);
 
-      EditorEventBus.emit('flux:insert-citation', { bibKey: 'knuth1984' });
-      expect(listener).toHaveBeenCalledWith({ bibKey: 'knuth1984' });
+      editorCommandBus.dispatch({ type: 'editor:insert-citation', bibKey: 'knuth1984' });
+      expect(listener).toHaveBeenCalledWith({ type: 'editor:insert-citation', bibKey: 'knuth1984' });
 
       unsub();
     });

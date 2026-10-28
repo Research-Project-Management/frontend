@@ -116,7 +116,6 @@ export function computeDraftDiffSummary(
   } else {
     const counts = new Map<string, number>();
     for (const line of midA) counts.set(line, (counts.get(line) ?? 0) + 1);
-    const remaining = new Map(counts);
     for (let idx = 0; idx < midB.length; idx++) {
       const line = midB[idx];
       const c = counts.get(line) ?? 0;
@@ -141,7 +140,6 @@ export function computeDraftDiffSummary(
         }
       }
     }
-    void remaining;
   }
 
   return {

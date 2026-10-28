@@ -8,6 +8,7 @@
 export interface EditorStorageItem {
   id: string;
   filename: string;
+  path?: string;
   size?: number;
   mimeType?: string;
   isFolder: boolean;

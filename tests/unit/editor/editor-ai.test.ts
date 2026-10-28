@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
-import { EditorEventBus } from '@/features/editor/core/bus/event-bus';
-import { usePageStore } from '@/features/editor/core';
+import { usePageStore, editorCommandBus } from '@/features/editor/core';
 import { CodeMirrorEngineAdapter } from '@/features/editor/core/engine/adapters/codemirror.adapter';
 import { getPageChat, clearPageChat, streamEditorChat } from '@/features/ai/services/chat.service';
 
@@ -12,18 +11,20 @@ describe('Editor AI Assistant (Copilot) Subsystem Tests', () => {
     usePageStore.getState().resetPageState();
   });
 
-  describe('1. Editor Event Bus & Selection Context Bridge', () => {
-    it('should emit and receive flux:open-ai-panel with selectedText context', () => {
+  describe('1. Editor Command Bus & Selection Context Bridge', () => {
+    it('should emit and receive sidebar:open-ai-panel with selectedText context', () => {
       const handler = vi.fn();
-      const unsubscribe = EditorEventBus.on('flux:open-ai-panel', handler);
+      const unsubscribe = editorCommandBus.subscribe('sidebar:open-ai-panel', handler);
 
-      EditorEventBus.emit('flux:open-ai-panel', {
+      editorCommandBus.dispatch({
+        type: 'sidebar:open-ai-panel',
         selectedText: '\\begin{equation}\nE = mc^2\n\\end{equation}',
         initialPrompt: 'Explain this formula',
       });
 
       expect(handler).toHaveBeenCalledTimes(1);
       expect(handler).toHaveBeenCalledWith({
+        type: 'sidebar:open-ai-panel',
         selectedText: '\\begin{equation}\nE = mc^2\n\\end{equation}',
         initialPrompt: 'Explain this formula',
       });
@@ -31,11 +32,11 @@ describe('Editor AI Assistant (Copilot) Subsystem Tests', () => {
       unsubscribe();
     });
 
-    it('should emit and receive flux:toggle-ai-panel correctly', () => {
+    it('should emit and receive sidebar:toggle-ai-panel correctly', () => {
       const handler = vi.fn();
-      const unsubscribe = EditorEventBus.on('flux:toggle-ai-panel', handler);
+      const unsubscribe = editorCommandBus.subscribe('sidebar:toggle-ai-panel', handler);
 
-      EditorEventBus.emit('flux:toggle-ai-panel');
+      editorCommandBus.dispatch({ type: 'sidebar:toggle-ai-panel' });
 
       expect(handler).toHaveBeenCalledTimes(1);
       unsubscribe();

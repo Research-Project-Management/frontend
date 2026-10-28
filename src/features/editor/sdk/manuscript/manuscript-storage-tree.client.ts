@@ -266,23 +266,38 @@ export const filestore = {
     onProgress?: (progress: number) => void,
     projectId?: string,
   ): Promise<EditorStorageItem> => {
-    const targetPageId = pageId || projectId || '';
-    const completed = await uploadBlobWithPresigned(file, file.name, {
-      projectId: targetPageId,
-      parentId: parentId || null,
-      onProgress,
-    });
+    const targetPageId = projectId || pageId || '';
+    try {
+      const uploaded = await filestore.upload(targetPageId, file, file.name);
+      onProgress?.(100);
+      const id = uploaded.id || '';
+      return {
+        id,
+        filename: uploaded.name || file.name,
+        size: uploaded.sizeBytes ?? file.size,
+        mimeType: uploaded.mimeType || file.type,
+        isFolder: false,
+        parentId: parentId || null,
+        url: filestore.getStreamUrl(targetPageId, id),
+      };
+    } catch {
+      const completed = await uploadBlobWithPresigned(file, file.name, {
+        projectId: targetPageId,
+        parentId: parentId || null,
+        onProgress,
+      });
 
-    const id = completed.fileId || '';
-    return {
-      id,
-      filename: file.name,
-      size: file.size,
-      mimeType: file.type,
-      isFolder: false,
-      parentId: parentId || null,
-      url: completed.url || `/api/v1/storage/files/${id}/content`,
-    };
+      const id = completed.fileId || '';
+      return {
+        id,
+        filename: file.name,
+        size: file.size,
+        mimeType: file.type,
+        isFolder: false,
+        parentId: parentId || null,
+        url: completed.url || `/api/v1/storage/files/${id}/content`,
+      };
+    }
   },
 };
 

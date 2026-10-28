@@ -214,12 +214,15 @@ export class YjsProviderPool {
     return provider ? provider.flushPendingUpdates() : false;
   }
 
-  public flushAll(projectId?: string): void {
+  public flushAll(projectId?: string): number {
+    let count = 0;
     for (const { provider } of this.byKey.values()) {
       if (!provider.isDestroyed && (!projectId || provider.projectId === projectId)) {
         provider.flushPendingUpdates();
+        count++;
       }
     }
+    return count;
   }
 
   public clear(): void {
@@ -304,8 +307,8 @@ export function flushYjsProvider(projectId: string | undefined, pageId: string):
 /**
  * Flushes pending Yjs updates across all active pooled providers (optionally scoped to projectId).
  */
-export function flushYjsProviders(projectId?: string): void {
-  yjsProviderPool.flushAll(projectId);
+export function flushYjsProviders(projectId?: string): number {
+  return yjsProviderPool.flushAll(projectId);
 }
 
 /**

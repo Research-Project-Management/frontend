@@ -12,7 +12,6 @@
 
 import React, { useState, useMemo, useCallback } from 'react';
 import {
-  Sigma,
   Search,
   Info,
   X,

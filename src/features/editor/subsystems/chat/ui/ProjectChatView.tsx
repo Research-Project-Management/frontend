@@ -9,7 +9,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, MessageSquare } from 'lucide-react';
+import { Send } from 'lucide-react';
 import {
   acquireYjsProvider,
   releaseYjsProvider,

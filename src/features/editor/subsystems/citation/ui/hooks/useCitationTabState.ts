@@ -49,7 +49,6 @@ interface CachedBibFile {
 }
 const MAX_BIB_PARSE_CACHE_SIZE = 50;
 const bibParseCache = new Map<string, CachedBibFile>();
-const BIBITEM_REGEX = /\\bibitem(?:\[[^\]]*\])?\{([^}]+)\}/g;
 
 function setBibParseCache(key: string, value: CachedBibFile): void {
   if (bibParseCache.has(key)) {

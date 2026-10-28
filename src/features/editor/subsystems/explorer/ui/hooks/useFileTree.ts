@@ -38,7 +38,7 @@ function loadExpandedFolders(key: string): Set<string> {
       }
     } catch {}
   }
-  return new Set(['sections', 'supplementary']);
+  return new Set<string>();
 }
 
 export function useFileTree({

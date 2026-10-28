@@ -777,7 +777,11 @@ export function createSpellingContextMenu(
             await svc.learnProjectWord(projectId, word);
             notif.success(`Added "${word}" to project dictionary`, { id: `spell-dict-${word}` });
           } catch {
-            notif.success(`Learned "${word}" in project`, { id: `spell-dict-${word}` });
+            if (notif.error) {
+              notif.error(`Failed to save "${word}" to project dictionary (ignored for this session)`, {
+                id: `spell-dict-${word}`,
+              });
+            }
           }
         } else {
           notif.success(`Learned "${word}" in session`, { id: `spell-dict-${word}` });

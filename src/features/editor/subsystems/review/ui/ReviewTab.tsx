@@ -22,7 +22,6 @@ import {
 } from './subcomponents/ReviewSuggestions';
 import { OverviewView } from './subcomponents/ReviewOverview';
 import { reviewCoordinator } from '@/features/editor/subsystems/review/coordinator/review.coordinator';
-import { useSettingsStore } from '@/features/editor/core';
 
 export const ReviewTab = React.memo(function ReviewTab({ onClose }: { onClose?: () => void }) {
   const {

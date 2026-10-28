@@ -115,6 +115,7 @@ export default function SearchTab() {
     isReplacingAll,
     handleReplaceAllCurrentFile,
     handleReplaceAllEverywhere,
+    handleReplaceSingleMatch,
   } = useProjectSearchActions({
     engine,
     effectiveQuery,
@@ -609,6 +610,25 @@ export default function SearchTab() {
                                   {match.text.slice(match.matchEnd)}
                                 </span>
                               </button>
+                              {showReplace && (
+                                <button
+                                  type="button"
+                                  title="Replace this occurrence"
+                                  aria-label="Replace this occurrence"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleReplaceSingleMatch(
+                                      file.fileId,
+                                      match.line,
+                                      match.matchStart,
+                                      match.matchEnd,
+                                    );
+                                  }}
+                                  className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 mr-2 px-1.5 py-0.5 rounded text-10 font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-opacity cursor-pointer"
+                                >
+                                  Replace
+                                </button>
+                              )}
                             </li>
                           ))}
                         </ul>

@@ -60,9 +60,6 @@ import { latexVisualHeadings } from '@/features/editor/core/engine/extensions/la
 import { latexVisualMath } from '@/features/editor/core/engine/extensions/latex-visual-math';
 import { latexVisualCitations } from '@/features/editor/core/engine/extensions/latex-visual-citations';
 import { editorCommandBus } from '../../bus/command-bus';
-import { useDocumentCollaborationStore } from '@/features/editor/core/store/collaboration.store';
-import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store';
-import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 import { getThemeExtension } from './editor-themes';
 
 export const editorBaseTheme = EditorView.theme({
@@ -294,7 +291,7 @@ export function createTypographyExtension(
  */
 export function createFoldMarkerDOM(open: boolean): HTMLElement {
   if (typeof document === 'undefined') {
-    return {} as HTMLElement;
+    throw new Error('createFoldMarkerDOM requires a browser DOM environment');
   }
   const marker = document.createElement('span');
   marker.className = `cm-fold-marker ${open ? 'cm-fold-open' : 'cm-fold-closed'}`;

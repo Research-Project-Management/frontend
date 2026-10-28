@@ -34,10 +34,13 @@ import { usePageStore } from '../store/editor.store';
 import { useSettingsStore } from '../store/settings.store';
 import { useWorkspaceStore, type ActivityBarTab } from '../store/workspace.store';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
+import { useActiveDocument } from '@/features/editor/ui/hooks/useActiveDocument';
 import { editorCommandBus, getActiveEditorEngine } from '../bus/command-bus';
 import { keybindingCoordinator } from '@/features/editor/subsystems/keybinding';
 import { useViewItems } from '@/features/library/sdk/queries/catalog.queries';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
+import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
+import { DEFAULT_MAIN_FILE } from '@/features/editor/domain/constants/editor.constants';
 
 const PdfViewer = dynamic(() => import('@/features/editor/subsystems/compiler').then(m => m.PdfViewer), { ssr: false });
 const DetachedPdfPlaceholder = dynamic(() => import('@/features/editor/subsystems/compiler').then(m => m.DetachedPdfPlaceholder), { ssr: false });
@@ -50,23 +53,13 @@ const HistoryPage = dynamic(() => import('@/features/editor/subsystems/history/u
 const TableWizardModal = dynamic(() => import('@/features/editor/ui/modals/table-wizard/TableWizardModal'), { ssr: false });
 const FigureWizardModal = dynamic(() => import('@/features/editor/ui/modals/FigureWizardModal'), { ssr: false });
 const SymbolPaletteModal = dynamic(() => import('@/features/editor/ui/modals/SymbolPaletteModal'), { ssr: false });
+const TemplateGalleryModal = dynamic(() => import('@/features/editor/ui/modals/TemplateGalleryModal'), { ssr: false });
+const KeyboardShortcutsModal = dynamic(() => import('@/features/editor/ui/modals/KeyboardShortcutsModal'), { ssr: false });
+const QuickOpenModal = dynamic(() => import('@/features/editor/ui/modals/QuickOpenModal'), { ssr: false });
 
 /** Safely extracts LaTeX string content from active engine or document entity */
 function getDocContent(doc: unknown, fallbackEngineContent?: string): string {
-  if (fallbackEngineContent) return fallbackEngineContent;
-  if (!doc || typeof doc !== 'object') return '';
-  const d = doc as { content?: unknown; docContent?: unknown };
-  if (typeof d.content === 'string') return d.content;
-  if (
-    d.content &&
-    typeof d.content === 'object' &&
-    'source' in d.content &&
-    typeof (d.content as { source?: unknown }).source === 'string'
-  ) {
-    return (d.content as { source: string }).source;
-  }
-  if (typeof d.docContent === 'string') return d.docContent;
-  return '';
+  return fallbackEngineContent || extractDocumentContentString(doc);
 }
 
 interface ConnectedWordCountModalProps {
@@ -77,6 +70,7 @@ interface ConnectedWordCountModalProps {
 
 function ConnectedWordCountModal({ open, rootPageId, engine }: ConnectedWordCountModalProps) {
   const currentDoc = usePageStore((s) => s.activeFilePage || s.currentPage);
+  const configuredMainFile = useSettingsStore((s) => s.mainFile) || DEFAULT_MAIN_FILE;
   const { data: serverFiles = [] } = useQuery({
     ...filesQuery(rootPageId || ''),
     enabled: Boolean(rootPageId) && open,
@@ -89,7 +83,7 @@ function ConnectedWordCountModal({ open, rootPageId, engine }: ConnectedWordCoun
 
     const currentDocItem = {
       id: currentDoc?.id || 'current',
-      title: currentDoc?.title || 'main.tex',
+      title: currentDoc?.title || configuredMainFile,
       content: currentDocContent,
     };
 
@@ -105,7 +99,7 @@ function ConnectedWordCountModal({ open, rootPageId, engine }: ConnectedWordCoun
       list.unshift(currentDocItem);
     }
     return list;
-  }, [serverFiles, currentDoc, engine, open]);
+  }, [serverFiles, currentDoc, engine, open, configuredMainFile]);
 
   return (
     <WordCountModal
@@ -113,7 +107,7 @@ function ConnectedWordCountModal({ open, rootPageId, engine }: ConnectedWordCoun
       onClose={() => editorCommandBus.dispatch({ type: 'dialog:close', dialog: 'word-count' })}
       content={getDocContent(currentDoc, engine?.getContent())}
       selectedText={engine?.getSelectedText() || ''}
-      activeFileName={currentDoc?.title || 'main.tex'}
+      activeFileName={currentDoc?.title || configuredMainFile}
       projectFiles={combinedProjectFiles}
       onInsertSnippet={(snippet) => {
         editorCommandBus.dispatch({ type: 'editor:insert-text', text: snippet });
@@ -134,17 +128,17 @@ export function ModernWorkbenchLayout() {
   const rawProjectId = routeProjectId || storeProjectId || undefined;
   const rootPageId = pageId ?? draftId ?? null;
 
+  // Ensure active document and workspace store are always hydrated even in viewer-only or history modes
+  useActiveDocument();
   const { engine } = useEditorInstance();
 
   const {
     layout,
-    settingsPanelOpen,
     isHistoryOpen,
     setIsHistoryOpen,
   } = useSettingsStore(
     useShallow((s) => ({
       layout: s.layout,
-      settingsPanelOpen: s.settingsPanelOpen,
       isHistoryOpen: s.isHistoryOpen,
       setIsHistoryOpen: s.setIsHistoryOpen,
     }))
@@ -161,6 +155,8 @@ export function ModernWorkbenchLayout() {
   const [tableWizardInitialLatex, setTableWizardInitialLatex] = useState('');
   const [figureWizardOpen, setFigureWizardOpen] = useState(false);
   const [symbolPaletteOpen, setSymbolPaletteOpen] = useState(false);
+  const [keyboardShortcutsOpen, setKeyboardShortcutsOpen] = useState(false);
+  const [quickOpenOpen, setQuickOpenOpen] = useState(false);
 
   // Sync workspace library references into latexSymbolsIndex for instant autocomplete & hover
   const { data: libraryData } = useViewItems(rawProjectId || 'user', 'all');
@@ -200,6 +196,12 @@ export function ModernWorkbenchLayout() {
         setFigureWizardOpen(true);
       } else if (cmd.dialog === 'symbol-palette') {
         setSymbolPaletteOpen(true);
+      } else if (cmd.dialog === 'template-gallery') {
+        useSettingsStore.getState().setIsTemplateModalOpen(true);
+      } else if (cmd.dialog === 'keyboard-shortcuts' || cmd.dialog === 'shortcuts') {
+        setKeyboardShortcutsOpen(true);
+      } else if (cmd.dialog === 'quick-open') {
+        setQuickOpenOpen(true);
       } else if (cmd.dialog === 'github-sync') {
         useSettingsStore.getState().openSettingsModal('github');
       } else if (cmd.dialog === 'project-settings') {
@@ -229,6 +231,15 @@ export function ModernWorkbenchLayout() {
       }
       if (!cmd.dialog || cmd.dialog === 'symbol-palette') {
         setSymbolPaletteOpen(false);
+      }
+      if (!cmd.dialog || cmd.dialog === 'template-gallery') {
+        useSettingsStore.getState().setIsTemplateModalOpen(false);
+      }
+      if (!cmd.dialog || cmd.dialog === 'keyboard-shortcuts' || cmd.dialog === 'shortcuts') {
+        setKeyboardShortcutsOpen(false);
+      }
+      if (!cmd.dialog || cmd.dialog === 'quick-open') {
+        setQuickOpenOpen(false);
       }
     });
 
@@ -404,6 +415,32 @@ export function ModernWorkbenchLayout() {
           onInsert={(symbol) => {
             editorCommandBus.dispatch({ type: 'editor:insert-text', text: symbol });
             editorCommandBus.dispatch({ type: 'editor:focus' });
+          }}
+        />
+      )}
+
+      <TemplateGalleryModal />
+
+      {keyboardShortcutsOpen && (
+        <KeyboardShortcutsModal
+          open={keyboardShortcutsOpen}
+          onOpenChange={(open) => {
+            setKeyboardShortcutsOpen(open);
+            if (!open) {
+              editorCommandBus.dispatch({ type: 'dialog:close', dialog: 'keyboard-shortcuts' });
+            }
+          }}
+        />
+      )}
+
+      {quickOpenOpen && (
+        <QuickOpenModal
+          open={quickOpenOpen}
+          onOpenChange={(open) => {
+            setQuickOpenOpen(open);
+            if (!open) {
+              editorCommandBus.dispatch({ type: 'dialog:close', dialog: 'quick-open' });
+            }
           }}
         />
       )}

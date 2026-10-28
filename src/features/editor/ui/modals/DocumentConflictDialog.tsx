@@ -23,7 +23,6 @@ import {
   DialogTitle,
 } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 import { Badge } from '@/shared/components/ui/badge';
 import { AlertTriangle, GitMerge, FileText, CheckCircle2 } from 'lucide-react';
 import { computeDraftDiffSummary, type DraftDiffSummary } from '@/features/editor/domain/document/draft-diff';

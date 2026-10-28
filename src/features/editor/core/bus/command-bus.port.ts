@@ -39,6 +39,7 @@ export type DialogName =
   | 'history'
   | 'quick-open'
   | 'shortcuts'
+  | 'keyboard-shortcuts'
   | 'github-sync'
   | 'project-settings';
 

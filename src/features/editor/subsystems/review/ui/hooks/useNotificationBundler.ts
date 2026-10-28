@@ -6,7 +6,6 @@
  * React Query hooks for Overleaf-style 10-minute review notification bundling.
  */
 
-import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 const notificationBundlerService = manuscriptService.notifications;
@@ -19,31 +18,31 @@ export const notificationBundlerKeys = {
   settings: () => [...notificationBundlerKeys.all, 'settings'] as const,
 };
 
-export function usePendingBundles() {
+export function usePendingBundles(options?: { enabled?: boolean; refetchInterval?: number | false }) {
   return useQuery({
     queryKey: notificationBundlerKeys.bundles(),
     queryFn: () => notificationBundlerService.getPendingBundles(),
-    enabled: false,
-    refetchInterval: false,
-    initialData: [],
+    enabled: options?.enabled ?? false,
+    refetchInterval: options?.refetchInterval ?? false,
+    placeholderData: [],
   });
 }
 
-export function useDigestHistory(limit = 20) {
+export function useDigestHistory(limit = 20, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: [...notificationBundlerKeys.digests(), limit],
     queryFn: () => notificationBundlerService.getDigestHistory(limit),
-    enabled: false,
-    initialData: [],
+    enabled: options?.enabled ?? false,
+    placeholderData: [],
   });
 }
 
-export function useNotificationSettings() {
+export function useNotificationSettings(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: notificationBundlerKeys.settings(),
     queryFn: () => notificationBundlerService.getSettings(),
-    enabled: false,
-    initialData: { enabled: false, windowMinutes: 10 },
+    enabled: options?.enabled ?? false,
+    placeholderData: { enabled: false, windowMinutes: 10 },
   });
 }
 

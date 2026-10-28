@@ -48,7 +48,10 @@ import {
   releaseCanvasMemory,
 } from '@/shared/lib/pdfjs-worker';
 
-// Ensure PDF.js worker is registered with absolute origin URL
+// Ensure PDF.js worker is registered synchronously and with absolute origin URL
+if (typeof window !== 'undefined' && pdfjs?.GlobalWorkerOptions) {
+  pdfjs.GlobalWorkerOptions.workerSrc = `${window.location.origin}/pdf.worker.min.mjs`;
+}
 setupPdfWorker();
 
 export type { PdfPageDimensions };

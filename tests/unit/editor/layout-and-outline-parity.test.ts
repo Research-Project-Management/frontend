@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { parseDocumentOutline, type OutlineEntry } from '@/features/editor/subsystems/compiler/synctex/pdf-outline';
-import { EditorEventBus } from '@/features/editor/core/bus/event-bus';
+import { editorCommandBus } from '@/features/editor/core';
 
 describe('Phase 1 Parity: Document Outline Parsing (OutlineTab)', () => {
   const sampleLatex = `\\documentclass{article}
@@ -168,18 +168,15 @@ describe('Phase 1 Parity: OutlineTab Live Search Filtering', () => {
   });
 });
 
-describe('Phase 1 Parity: EventBus Integration & Sidebar Tab Routing', () => {
-  it('dispatches flux:open-panel with Outline tab name', () => {
+describe('Phase 1 Parity: CommandBus Integration & Sidebar Tab Routing', () => {
+  it('dispatches sidebar:open-panel with Outline tab name', () => {
     let receivedPanel: string | null = null;
 
-    const unsub = EditorEventBus.on('flux:open-panel', (detail) => {
-      receivedPanel = typeof detail === 'string' ? detail : detail.panel;
+    const unsub = editorCommandBus.subscribe('sidebar:open-panel', (cmd) => {
+      receivedPanel = cmd.panel;
     });
 
-    EditorEventBus.emit('flux:open-panel', 'Outline');
-    expect(receivedPanel).toBe('Outline');
-
-    EditorEventBus.emit('flux:open-panel', { panel: 'Outline' });
+    editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'Outline' });
     expect(receivedPanel).toBe('Outline');
 
     unsub();

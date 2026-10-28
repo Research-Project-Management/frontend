@@ -10,6 +10,7 @@
 import { useQuery, useMutation, type QueryClient } from '@tanstack/react-query';
 import type { PageComment, CommentStatus } from '@/features/editor/domain/types/comment.types';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
+import { getCachedUser } from '@/features/auth/services/auth.service';
 import { toast } from 'sonner';
 import { useSafeQueryClient } from './safeQueryClient';
 
@@ -64,11 +65,15 @@ export const useCreateComment = (customClient?: QueryClient) => {
       await queryClient.cancelQueries({ queryKey: ['page-comments', pageId] });
       const previousData = queryClient.getQueriesData<PageComment[]>({ queryKey: ['page-comments', pageId] });
 
+      const cachedUser = getCachedUser();
       const optimisticComment: PageComment = {
         id: `temp-${Date.now()}`,
         page: pageId,
         projectPageId: pageId,
-        author: { id: 'current-user', name: 'You' },
+        author: {
+          id: cachedUser?.id || 'current-user',
+          name: cachedUser?.name || cachedUser?.email || 'You',
+        },
         content,
         line: line ?? null,
         lineEnd: lineEnd ?? null,

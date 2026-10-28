@@ -26,8 +26,8 @@ import type { Page, PageFile } from '@/features/editor/domain/types/core.types';
 export interface UseProjectTitleActionsOptions {
   effectiveProjectId: string;
   displayTitle: string;
-  currentPage?: Page | PageFile | null;
-  activeFilePage?: Page | PageFile | null;
+  currentPage?: Pick<Page | PageFile, 'id' | 'title'> | null;
+  activeFilePage?: Pick<Page | PageFile, 'id' | 'title'> | null;
   getContent: () => string;
   pdfUrl?: string | null;
   fallbackRootId?: string;

@@ -43,8 +43,23 @@ export interface LinterOptions {
 
 export type LatexLinterOptions = LinterOptions;
 
+const cacheResetCallbacks = new Set<() => void>();
+
+export function registerLatexLinterCacheReset(callback: () => void): () => void {
+  cacheResetCallbacks.add(callback);
+  return () => {
+    cacheResetCallbacks.delete(callback);
+  };
+}
+
 export function clearLatexLinterCache(): void {
-  // No-op: single-pass state machine tokenizer runs directly without stale cache state
+  for (const cb of cacheResetCallbacks) {
+    try {
+      cb();
+    } catch {
+      // Ignore callback error
+    }
+  }
 }
 
 interface OpenEnv {

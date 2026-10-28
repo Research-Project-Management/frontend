@@ -38,8 +38,6 @@ import { EditorToolbar } from './EditorToolbar';
 import { EditorContextMenu } from './EditorContextMenu';
 import {
   useSettingsStore,
-  useWorkspaceStore,
-  useCompileStore,
   sessionCoordinator,
   setActiveEditorEngine,
   getEditorEngineForFile,

@@ -353,7 +353,7 @@ export const errorLensTheme = EditorView.baseTheme({
       borderColor: 'var(--ai, #8250DF)',
     },
   },
-  '.cm-error-lens-btn-chat': {
+  '.cm-error-lens-btn-ask': {
     justifyContent: 'center',
     width: '18px',
     height: '18px',

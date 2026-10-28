@@ -14,6 +14,9 @@ import { formatItemToBibtex } from '@/features/editor/subsystems/citation';
 import { useViewItems } from '@/features/library/sdk/queries/catalog.queries';
 import type { Item } from '@/features/library/domain/types/library.types';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
+import { useSettingsStore } from '@/features/editor/core/store/settings.store';
+import { DEFAULT_BIB_FILE } from '@/features/editor/domain/constants/editor.constants';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 
 export interface LibraryTabPaneProps {
   parentPageId: string | null;
@@ -46,7 +49,7 @@ export function LibraryTabPane({
     formState: { errors: libraryBibtexErrors },
   } = useForm<LibraryBibtexModalFormValues>({
     resolver: zodResolver(libraryBibtexModalSchema),
-    defaultValues: { fileName: 'references.bib' },
+    defaultValues: { fileName: useSettingsStore.getState().mainBibFile || DEFAULT_BIB_FILE },
   });
 
   const { data: libraryData, isLoading: isLoadingLibrary } = useViewItems(
@@ -82,13 +85,15 @@ export function LibraryTabPane({
 
   const handleExportFromLibrary = (data: LibraryBibtexModalFormValues) => {
     if (!parentPageId || selectedItemIds.size === 0) return;
-    const targetName = data.fileName.trim() || 'references.bib';
+    const targetName = data.fileName.trim() || useSettingsStore.getState().mainBibFile || DEFAULT_BIB_FILE;
     const chosenItems = libraryItems.filter((i) => selectedItemIds.has(i.id));
 
     setIsExportingBib(true);
     const bibEntries = chosenItems
       .map((item) => formatItemToBibtex(item))
       .join('\n\n');
+
+    void manuscriptService.citations.parseRaw(bibEntries).catch(() => null);
 
     createFile.mutate(
       {

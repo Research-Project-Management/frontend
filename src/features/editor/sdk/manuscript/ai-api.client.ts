@@ -191,7 +191,36 @@ export async function suggestLatexFix(params: AiErrorFixParams): Promise<AiError
       };
     }
   } catch {
-    // If AI network or parsing fails, seamlessly return heuristic fix
+    // If AI network or parsing fails, consult backend manuscript diagnostics autoFix before local heuristic fallback
+  }
+
+  if (params.surroundingCode) {
+    try {
+      const autoFixRes = await apiPost<{ fixedSource?: string; changesApplied?: number; summary?: string[] }>(
+        '/api/v1/manuscripts/diagnostics/autofix',
+        { source: params.surroundingCode },
+        { silent: true },
+      );
+      if (
+        autoFixRes &&
+        typeof autoFixRes.fixedSource === 'string' &&
+        (autoFixRes.changesApplied ?? 0) > 0 &&
+        autoFixRes.fixedSource !== params.surroundingCode
+      ) {
+        return {
+          explanation: (autoFixRes.summary && autoFixRes.summary.length > 0)
+            ? autoFixRes.summary.join('; ')
+            : 'Applied automated LaTeX syntax repair via Manuscript Diagnostics.',
+          originalSnippet: params.surroundingCode,
+          fixedSnippet: autoFixRes.fixedSource,
+          startLine: params.errorLine || 1,
+          endLine: params.errorLine || 1,
+          confidence: 'medium',
+        };
+      }
+    } catch {
+      // Fall through to local heuristic
+    }
   }
 
   return heuristicLatexErrorFix(params);

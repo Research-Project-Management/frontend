@@ -51,6 +51,7 @@ import { useProjectExport } from '@/features/editor/ui/hooks/useExport';
 import { useGithubSync } from '@/features/editor/ui/hooks/useGithubSync';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
+import { DEFAULT_MAIN_FILE } from '@/features/editor/domain/constants/editor.constants';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 
 import {
@@ -304,12 +305,13 @@ export function ProjectSettingsModal() {
     const toastId = toast.loading('Saving project as custom template...');
     try {
       const mainContent = getContent() || (typeof parentPage?.content === 'string' ? parentPage.content : '') || `\\documentclass{article}\n\\begin{document}\n\\title{${projectTitle}}\n\\maketitle\n\\end{document}`;
+      const targetMainFile = useSettingsStore.getState().mainFile || DEFAULT_MAIN_FILE;
       await manuscriptService.templates.createCustom({
         name: `${projectTitle} Template`,
         description: `Custom template saved from ${projectTitle}`,
         category: 'Academic',
-        mainFile: 'main.tex',
-        files: { 'main.tex': mainContent },
+        mainFile: targetMainFile,
+        files: { [targetMainFile]: mainContent },
       });
       queryClient.invalidateQueries({ queryKey: ['manuscript-templates'] });
       toast.success('Project saved to Template Gallery!', { id: toastId });
@@ -857,5 +859,4 @@ export function ProjectSettingsModal() {
   );
 }
 
-export const OverleafMenuDrawer = ProjectSettingsModal;
 export default ProjectSettingsModal;

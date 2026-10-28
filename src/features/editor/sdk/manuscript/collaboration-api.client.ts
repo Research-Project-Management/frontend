@@ -14,6 +14,7 @@ import {
   getAuthToken,
 } from '@/shared/lib/api';
 import { MANUSCRIPTS_API_BASE, getManuscriptsBaseUrl } from './base';
+import { getCachedUser } from '@/features/auth/services/auth.service';
 import type {
   ExportFileResult,
   CreateSuggestionPayload,
@@ -510,7 +511,7 @@ export const history = {
           fileName: s.fileName || s.label || 'Project Snapshot',
           createdAt: s.createdAt,
           savedBy: {
-            id: s.author?.id || s.createdBy?.id || s.createdById || 'user-1',
+            id: s.author?.id || s.createdBy?.id || s.createdById || getCachedUser()?.id || 'current-user',
             name: s.author?.name || s.createdBy?.name || (s.createdById ? 'Collaborator' : 'You'),
           },
           sizeBytes: s.sizeBytes ?? 0,

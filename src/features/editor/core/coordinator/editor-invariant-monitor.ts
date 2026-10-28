@@ -13,6 +13,9 @@
  * backward compatibility across existing coordinators and consumers.
  */
 
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
+import { useCompileStore } from '@/features/editor/subsystems/compiler/coordinator/compiler.store';
+
 export interface EditorInvariantViolation {
   code:
     | 'DIRTY_FLAG_MISMATCH_MISSING_IN_COMPILE_STORE'
@@ -31,25 +34,54 @@ export interface EditorInvariantReport {
 
 export class EditorStateInvariantMonitor {
   /**
-   * Trivial pass-through: always reports valid since invariants are guaranteed by design.
+   * Verifies that useCompileStore.dirtyFileIds matches lruDocumentCache.getDirtyModels().
    */
   public checkInvariants(): EditorInvariantReport {
+    const violations: EditorInvariantViolation[] = [];
+    const dirtyModels = lruDocumentCache.getDirtyModels();
+    const lruDirtyIds = new Set(dirtyModels.map((m) => m.fileId));
+    const compileDirtyIds = useCompileStore.getState().dirtyFileIds;
+
+    for (const fileId of lruDirtyIds) {
+      if (!compileDirtyIds.has(fileId)) {
+        violations.push({
+          code: 'DIRTY_FLAG_MISMATCH_MISSING_IN_COMPILE_STORE',
+          fileId,
+          details: `File ${fileId} is dirty in lruDocumentCache but missing from useCompileStore.dirtyFileIds`,
+        });
+      }
+    }
+
+    for (const fileId of compileDirtyIds) {
+      if (!lruDirtyIds.has(fileId)) {
+        violations.push({
+          code: 'DIRTY_FLAG_MISMATCH_ORPHAN_IN_COMPILE_STORE',
+          fileId,
+          details: `File ${fileId} is marked dirty in useCompileStore.dirtyFileIds but clean/absent in lruDocumentCache`,
+        });
+      }
+    }
+
     return {
-      valid: true,
+      valid: violations.length === 0,
       checkedAt: Date.now(),
-      violations: [],
+      violations,
     };
   }
 
   /**
-   * Trivial pass-through: no-op since state drift is eliminated by design.
+   * Checks invariants and reconciles useCompileStore dirty state with lruDocumentCache if needed.
    */
   public reconcileInvariants(): EditorInvariantReport {
-    return {
-      valid: true,
-      checkedAt: Date.now(),
-      violations: [],
-    };
+    const report = this.checkInvariants();
+    if (!report.valid) {
+      const dirtyModels = lruDocumentCache.getDirtyModels();
+      useCompileStore.setState({
+        dirtyFileIds: new Set(dirtyModels.map((m) => m.fileId)),
+        dirtyContentMap: new Map(dirtyModels.map((m) => [m.fileId, m.content])),
+      });
+    }
+    return report;
   }
 }
 

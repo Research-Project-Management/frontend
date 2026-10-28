@@ -274,9 +274,7 @@ export function HistoryPage({
 
   const restoreMutation = useMutation({
     mutationFn: async (version: number) => {
-      const res = await manuscriptService.history.restoreProjectVersion(effectiveProjectId, version);
-      sessionCoordinator.resetSession();
-      return res;
+      return await manuscriptService.history.restoreProjectVersion(effectiveProjectId, version);
     },
     onSuccess: (_, restoredVersion) => {
       sessionCoordinator.resetSession();
@@ -351,7 +349,7 @@ export function HistoryPage({
       const isFileDeleted = activeFileDiff?.status === 'deleted';
       let docId: string | undefined =
         !isFileDeleted && typeof fileData === 'object' && fileData !== null
-          ? (fileData as any).docId
+          ? fileData.docId
           : undefined;
 
       if (!docId && !isFileDeleted) {

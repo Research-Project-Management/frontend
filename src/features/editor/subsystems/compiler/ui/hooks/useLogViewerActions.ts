@@ -20,7 +20,8 @@ import type { AiErrorFixResult } from '@/features/editor/domain/ai/ai-error-assi
 import { manuscriptService, downloadAuxFileUrl, downloadAllArtifactsZipUrl } from '@/features/editor/sdk/manuscript.service';
 import { aiCoordinator } from '@/features/editor/subsystems/ai';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
-import { usePageStore, workspaceCoordinator, editorCommandBus } from '@/features/editor/core';
+import { usePageStore, useSettingsStore, workspaceCoordinator, editorCommandBus } from '@/features/editor/core';
+import { DEFAULT_MAIN_FILE } from '@/features/editor/domain/constants/editor.constants';
 
 export function copySnippetToClipboard(snippet?: string): void {
   if (!snippet) return;
@@ -154,8 +155,9 @@ export function useLogViewerActions({
   const applyAiFix = useCallback(
     (entry: LogEntry, fix: AiErrorFixResult, onApplied?: () => void) => {
       const pageStore = usePageStore.getState();
-      let targetFileId = pageStore.activeFilePage?.id || pageStore.currentPage?.id || 'main.tex';
-      let targetFileName = pageStore.activeFilePage?.title || 'main.tex';
+      const configuredMainFile = useSettingsStore.getState().mainFile || DEFAULT_MAIN_FILE;
+      let targetFileId = pageStore.activeFilePage?.id || pageStore.currentPage?.id || configuredMainFile;
+      let targetFileName = pageStore.activeFilePage?.title || configuredMainFile;
 
       if (entry.file) {
         const cleanEntryFile = entry.file.replace(/^\/+/, '');

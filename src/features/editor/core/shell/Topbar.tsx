@@ -14,7 +14,7 @@
  * (Note: Settings is hosted in the left ActivityBar icon; Mode switcher is located at top-left of Editor Pane).
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import {
@@ -25,9 +25,7 @@ import {
   Cloud,
   ExternalLink,
 } from 'lucide-react';
-import dynamic from 'next/dynamic';
 import { useShallow } from 'zustand/react/shallow';
-import { toast } from 'sonner';
 
 import { Menubar } from "@/shared/components/ui/menubar";
 import {
@@ -60,19 +58,6 @@ import { useGithubSync } from '@/features/editor/ui/hooks/useGithubSync';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
 import { GitHubIcon } from '@/shared/components/icons/IntegrationIcons';
 
-const TemplateGalleryModal = dynamic(
-  () => import('@/features/editor/ui/modals/TemplateGalleryModal'),
-  { ssr: false }
-);
-const KeyboardShortcutsModal = dynamic(
-  () => import('@/features/editor/ui/modals/KeyboardShortcutsModal'),
-  { ssr: false }
-);
-const QuickOpenModal = dynamic(
-  () => import('@/features/editor/ui/modals/QuickOpenModal'),
-  { ssr: false }
-);
-
 export function Topbar() {
   const params = useParams<{ projectId?: string; pageId?: string }>();
   const storeProjectId = usePageStore(
@@ -86,18 +71,10 @@ export function Topbar() {
   const {
     toggleHistory,
     isHistoryOpen,
-    isTemplateModalOpen,
-    isShortcutsOpen,
-    setIsShortcutsOpen,
-    toggleShortcuts,
   } = useSettingsStore(
     useShallow((s) => ({
       toggleHistory: s.toggleHistory,
       isHistoryOpen: s.isHistoryOpen,
-      isTemplateModalOpen: s.isTemplateModalOpen,
-      isShortcutsOpen: s.isShortcutsOpen,
-      setIsShortcutsOpen: s.setIsShortcutsOpen,
-      toggleShortcuts: s.toggleShortcuts,
     }))
   );
 
@@ -110,44 +87,12 @@ export function Topbar() {
     projectId: effectiveProjectId,
   });
 
-  const [isQuickOpenOpen, setIsQuickOpenOpen] = useState(false);
-
   const handleToggleHistory = useCallback(async () => {
     if (!isHistoryOpen) {
       await sessionCoordinator.flushAllPending();
     }
     toggleHistory();
   }, [isHistoryOpen, toggleHistory]);
-
-  useEffect(() => {
-    const unsubOpen = editorCommandBus.subscribe('dialog:open', (cmd) => {
-      if (cmd.dialog === 'quick-open') {
-        setIsQuickOpenOpen((prev) => (cmd.payload?.forceOpen ? true : !prev));
-      } else if (cmd.dialog === 'shortcuts') {
-        if (cmd.payload?.forceOpen) {
-          setIsShortcutsOpen(true);
-        } else {
-          toggleShortcuts();
-        }
-      } else if (cmd.dialog === 'template-gallery') {
-        useSettingsStore.getState().setIsTemplateModalOpen(true);
-      }
-    });
-
-    const unsubClose = editorCommandBus.subscribe('dialog:close', (cmd) => {
-      if (!cmd.dialog || cmd.dialog === 'quick-open') {
-        setIsQuickOpenOpen(false);
-      }
-      if (!cmd.dialog || cmd.dialog === 'shortcuts') {
-        setIsShortcutsOpen(false);
-      }
-    });
-
-    return () => {
-      unsubOpen();
-      unsubClose();
-    };
-  }, [setIsShortcutsOpen, toggleShortcuts]);
 
   return (
     <TooltipProvider delayDuration={150}>
@@ -322,21 +267,6 @@ export function Topbar() {
 
           {/* Editing Mode Dropdown (Overleaf Parity: Top Right) */}
           <EditingModeDropdown />
-
-          {/* Global Modals */}
-          {isTemplateModalOpen && <TemplateGalleryModal />}
-          {isShortcutsOpen && (
-            <KeyboardShortcutsModal
-              open={isShortcutsOpen}
-              onOpenChange={setIsShortcutsOpen}
-            />
-          )}
-          {isQuickOpenOpen && (
-            <QuickOpenModal
-              open={isQuickOpenOpen}
-              onOpenChange={setIsQuickOpenOpen}
-            />
-          )}
         </div>
       </nav>
     </TooltipProvider>

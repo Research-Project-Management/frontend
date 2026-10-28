@@ -12,7 +12,7 @@
 
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { WifiOff, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { useConnectivityStore } from '../store/connectivity.store';
@@ -25,57 +25,35 @@ export function OfflineBanner() {
   const pendingMutationsCount = useConnectivityStore((s) => s.pendingMutationsCount);
   const isSyncingOfflineQueue = useConnectivityStore((s) => s.isSyncingOfflineQueue);
   const offlinePendingCompile = useConnectivityStore((s) => s.offlinePendingCompile);
-  const recordOnline = useConnectivityStore((s) => s.recordOnline);
   const recordOffline = useConnectivityStore((s) => s.recordOffline);
 
   const [isChecking, setIsChecking] = useState(false);
   const [justReconnected, setJustReconnected] = useState(false);
+  const wasOfflineRef = useRef(!isOnline);
 
-  // Sync UI state with browser online/offline events (sessionCoordinator handles flushing)
+  // Observe connectivity store transitions (sessionCoordinator owns window online/offline listeners & flushing)
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-    let cancelled = false;
-
-    const handleOnline = async () => {
-      recordOnline();
-      toast.info('Connection restored. Syncing pending drafts...', { id: 'network-status' });
-      try {
-        await sessionCoordinator.handleOnline();
-      } catch {
-        // Ignore; connectivity store tracks sync errors
-      }
-      if (cancelled) return;
-      const state = useConnectivityStore.getState();
-      if (state.isOnline && !state.isSyncingOfflineQueue && state.pendingMutationsCount === 0 && state.pendingSaveCount === 0) {
-        setJustReconnected(true);
-        toast.success('Connection restored! All pending changes have been synchronized.', { id: 'network-status' });
-        if (reconnectTimer) clearTimeout(reconnectTimer);
-        reconnectTimer = setTimeout(() => setJustReconnected(false), 3000);
-      }
-    };
-
-    const handleOffline = () => {
-      setJustReconnected(false);
-      recordOffline();
-      toast.warning('You are offline. Changes will be saved locally.', { id: 'network-status' });
-    };
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    // Initial check
     if (!useConnectivityStore.getState().checkIsOnline() && isOnline) {
       recordOffline();
+      return;
     }
 
-    return () => {
-      cancelled = true;
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-    };
-  }, [isOnline, recordOnline, recordOffline]);
+    if (!isOnline) {
+      wasOfflineRef.current = true;
+      setJustReconnected(false);
+      toast.warning('You are offline. Changes will be saved locally.', { id: 'network-status' });
+      return;
+    }
+
+    if (wasOfflineRef.current && isOnline && !isSyncingOfflineQueue) {
+      wasOfflineRef.current = false;
+      setJustReconnected(true);
+      toast.success('Connection restored! All pending changes have been synchronized.', { id: 'network-status' });
+      const timer = setTimeout(() => setJustReconnected(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isOnline, isSyncingOfflineQueue, recordOffline]);
 
   const handleRetryConnection = async () => {
     setIsChecking(true);

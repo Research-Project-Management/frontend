@@ -6,6 +6,7 @@
  */
 
 import { create } from 'zustand';
+import { getAuthorColor } from '@/features/editor/domain/collaboration/author-display';
 
 export interface PendingComment {
   startLine: number;
@@ -84,7 +85,7 @@ export const useDocumentCollaborationStore = create<DocumentCollaborationState>(
           ...state.collaborators,
           {
             name: 'Collaborator',
-            color: '#3b82f6',
+            color: collaborator.color || getAuthorColor(collaborator.id || collaborator.name || 'Collaborator'),
             lastActiveAt,
             ...collaborator,
             isOnline,

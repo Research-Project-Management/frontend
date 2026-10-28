@@ -745,13 +745,26 @@ export class ReviewCoordinatorRegistry {
     }
   }
 
+  private clearPendingPersistTimer(suggestionId: string): void {
+    const timer = this.pendingPersistTimers.get(suggestionId);
+    if (timer) {
+      clearTimeout(timer);
+      this.pendingPersistTimers.delete(suggestionId);
+    }
+    this.pendingConcurrentSuggestionUpdates.delete(suggestionId);
+  }
+
   public applySuggestionByIdLocally(
     suggestionId: string,
     action: 'accept' | 'reject',
     targetPageId?: string
   ): void {
+    this.clearPendingPersistTimer(suggestionId);
     const sug = this.resolveKnownSuggestion(suggestionId);
     if (!sug) return;
+    if (sug.id !== suggestionId) {
+      this.clearPendingPersistTimer(sug.id);
+    }
 
     const effectivePageId = targetPageId || sug.pageId;
     if (effectivePageId && this.activePageId && effectivePageId !== this.activePageId) {
@@ -778,6 +791,14 @@ export class ReviewCoordinatorRegistry {
   }
 
   public applyAllLocally(action: 'accept' | 'reject', pageId?: string): void {
+    for (const [localId, timer] of this.pendingPersistTimers.entries()) {
+      const localSug = this.currentSuggestions.get(localId);
+      if (!pageId || !localSug?.pageId || localSug.pageId === pageId) {
+        clearTimeout(timer);
+        this.pendingPersistTimers.delete(localId);
+        this.pendingConcurrentSuggestionUpdates.delete(localId);
+      }
+    }
     const targetViews = this.getViewsForFile(pageId, this.activeView);
     if (targetViews.length === 0) return;
     const primaryView = targetViews[0];
@@ -805,6 +826,9 @@ export class ReviewCoordinatorRegistry {
     action: 'accept' | 'reject',
     pageId?: string
   ): void {
+    for (const rawId of suggestionIds) {
+      this.clearPendingPersistTimer(rawId);
+    }
     const targetViews = this.getViewsForFile(pageId, this.activeView);
     if (targetViews.length === 0 || !suggestionIds.length) return;
     const primaryView = targetViews[0];
@@ -887,10 +911,13 @@ export class ReviewCoordinatorRegistry {
     }
 
     try {
-      if (action === 'accept') {
-        await this.servicePort.acceptSuggestion(pageId, effectiveId);
-      } else {
-        await this.servicePort.rejectSuggestion(pageId, effectiveId);
+      const res =
+        action === 'accept'
+          ? await this.servicePort.acceptSuggestion(pageId, effectiveId)
+          : await this.servicePort.rejectSuggestion(pageId, effectiveId);
+      const serverRev = (res as { page?: { rev?: number } } | undefined)?.page?.rev;
+      if (typeof serverRev === 'number' && pageId) {
+        lruDocumentCache.setServerRev(pageId, serverRev);
       }
       this.notificationPort.notifySuccess(`Change ${pastTense}`, `sug-${suggestionId}`);
       editorCommandBus.dispatch({

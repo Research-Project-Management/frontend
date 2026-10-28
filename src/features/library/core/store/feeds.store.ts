@@ -1,31 +1,17 @@
 import { create } from 'zustand';
-import { toast } from 'sonner';
 import {
   SavedFeedSubscription,
   FeedReadFilterType,
   FeedRetentionDays,
 } from '@/features/library/domain/types/feeds.types';
-import type { ParsedFeedEntry } from '@/features/library/domain/feed-parser.domain';
-import { FeedsService, type FeedSubscriptionResponse } from '@/features/library/sdk/library.client';
+import { cleanDoi } from '@/features/library/domain/identifiers';
+import {
+  mapServerFeedSubscriptions,
+  type ParsedFeedEntry,
+} from '@/features/library/domain/feed-parser.domain';
+import { FeedsService } from '@/features/library/sdk/library.client';
 
-export function mapServerFeedSubscriptions(
-  subs: FeedSubscriptionResponse[] | undefined | null,
-): SavedFeedSubscription[] {
-  if (!Array.isArray(subs) || subs.length === 0) return [];
-  return subs.map((sub) => {
-    const unreadDays = (sub.cleanupUnreadAfter ?? sub.cleanupReadAfter ?? 30) as FeedRetentionDays;
-    const readDays = (sub.cleanupReadAfter ?? 7) as FeedRetentionDays;
-    return {
-      id: sub.feedId || sub.id,
-      name: sub.customTitle || sub.feed?.title || 'Academic Feed',
-      url: sub.feed?.url || '',
-      lastRefreshed: sub.feed?.lastFetchedAt || undefined,
-      retentionDays: unreadDays,
-      cleanupReadAfter: readDays,
-      cleanupUnreadAfter: unreadDays,
-    };
-  });
-}
+export { mapServerFeedSubscriptions };
 
 interface FeedsStore {
   feeds: SavedFeedSubscription[];
@@ -40,6 +26,7 @@ interface FeedsStore {
   isLoadingFeeds: boolean;
   hasInitializedFeeds: boolean;
   hydrateFeeds: (feeds: SavedFeedSubscription[]) => void;
+  hydrateReadEntries: (entryIds: Iterable<string>) => void;
   loadFeeds: (options?: { force?: boolean }) => Promise<void>;
   setActiveFeedId: (id: string | null) => void;
   setSelectedFeedEntry: (entry: ParsedFeedEntry | null) => void;
@@ -78,14 +65,18 @@ export function isFeedEntryInLibrary(
   libraryItems?: Array<{ doi?: string | null; title?: string | null; url?: string | null }>,
 ): boolean {
   if (!entry) return false;
+  const serverFlags = entry as { isSaved?: boolean; savedItemId?: string | null };
+  if (serverFlags.isSaved === true || Boolean(serverFlags.savedItemId)) {
+    return true;
+  }
   const savedSet = savedEntryIds instanceof Set ? savedEntryIds : new Set(savedEntryIds);
   if (savedSet.has(entry.id)) return true;
   if (!libraryItems || libraryItems.length === 0) return false;
-  const normalizedDoi = entry.doi?.trim().toLowerCase();
+  const normalizedDoi = cleanDoi(entry.doi).toLowerCase();
   const normalizedTitle = entry.title?.trim().toLowerCase();
   const normalizedUrl = entry.url?.trim().toLowerCase();
   for (const item of libraryItems) {
-    if (normalizedDoi && item.doi && item.doi.trim().toLowerCase() === normalizedDoi) {
+    if (normalizedDoi && item.doi && cleanDoi(item.doi).toLowerCase() === normalizedDoi) {
       return true;
     }
     if (normalizedTitle && item.title && item.title.trim().toLowerCase() === normalizedTitle) {
@@ -96,6 +87,11 @@ export function isFeedEntryInLibrary(
     }
   }
   return false;
+}
+
+function shouldRollbackOptimisticReadUpdate(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : '';
+  return Boolean(msg && !msg.includes('Network Error') && !msg.includes('fetch'));
 }
 
 export const useFeedsStore = create<FeedsStore>((set, get) => ({
@@ -117,6 +113,21 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
       isLoadingFeeds: false,
       hasInitializedFeeds: true,
     });
+  },
+
+  hydrateReadEntries: (entryIds) => {
+    const current = get().readEntryIds;
+    let changed = false;
+    const next = new Set(current);
+    for (const id of entryIds) {
+      if (id && !next.has(id)) {
+        next.add(id);
+        changed = true;
+      }
+    }
+    if (changed) {
+      set({ readEntryIds: next });
+    }
   },
 
   loadFeeds: async (options) => {
@@ -145,7 +156,21 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
 
   setSelectedFeedEntry: (entry) => set({ selectedFeedEntry: entry }),
 
-  setCurrentFeedEntries: (entries) => set({ currentFeedEntries: entries }),
+  setCurrentFeedEntries: (entries) => {
+    const serverReadIds: string[] = [];
+    for (const entry of entries || []) {
+      if (entry?.id && entry.isRead === true && !get().readEntryIds.has(entry.id)) {
+        serverReadIds.push(entry.id);
+      }
+    }
+    if (serverReadIds.length > 0) {
+      const nextRead = new Set(get().readEntryIds);
+      for (const id of serverReadIds) nextRead.add(id);
+      set({ currentFeedEntries: entries, readEntryIds: nextRead });
+      return;
+    }
+    set({ currentFeedEntries: entries });
+  },
 
   setReadFilter: (filter) => set({ readFilter: filter }),
 
@@ -202,7 +227,8 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
   },
 
   updateFeed: async (id, updates) => {
-    const nextFeeds = get().feeds.map((f) =>
+    const previousFeeds = get().feeds;
+    const nextFeeds = previousFeeds.map((f) =>
       f.id === id
         ? {
             ...f,
@@ -218,40 +244,72 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
     set({ feeds: nextFeeds });
 
     // Sync with backend API
-    await FeedsService.updateSubscription(id, {
-      customTitle: updates.name,
-      cleanupDays: updates.cleanupUnreadAfter ?? updates.retentionDays,
-      cleanupReadAfter: updates.cleanupReadAfter,
-      cleanupUnreadAfter: updates.cleanupUnreadAfter ?? updates.retentionDays,
-      url: updates.url,
-    }).catch(() => {});
+    try {
+      const req = FeedsService?.updateSubscription?.(id, {
+        customTitle: updates.name,
+        cleanupDays: updates.cleanupUnreadAfter ?? updates.retentionDays,
+        cleanupReadAfter: updates.cleanupReadAfter,
+        cleanupUnreadAfter: updates.cleanupUnreadAfter ?? updates.retentionDays,
+        url: updates.url,
+      });
+      if (req && typeof req.then === 'function') {
+        await req;
+      }
+    } catch (err) {
+      if (!id.startsWith('feed-')) {
+        set({ feeds: previousFeeds });
+        throw err;
+      }
+    }
   },
 
   removeFeed: async (id) => {
-    try {
-      await FeedsService.unsubscribe(id);
-    } catch {}
-
-    const nextFeeds = get().feeds.filter((f) => f.id !== id);
+    const previousFeeds = get().feeds;
+    const previousActiveId = get().activeFeedId;
+    const nextFeeds = previousFeeds.filter((f) => f.id !== id);
     const nextActiveId =
-      get().activeFeedId === id ? nextFeeds[0]?.id ?? null : get().activeFeedId;
+      previousActiveId === id ? nextFeeds[0]?.id ?? null : previousActiveId;
 
     set({ feeds: nextFeeds, activeFeedId: nextActiveId });
+
+    try {
+      const req = FeedsService?.unsubscribe?.(id);
+      if (req && typeof req.then === 'function') {
+        await req;
+      }
+    } catch (err) {
+      if (!id.startsWith('feed-')) {
+        set({ feeds: previousFeeds, activeFeedId: previousActiveId });
+        throw err;
+      }
+    }
   },
 
   markEntryAsRead: (entryId: string) => {
     const current = get().readEntryIds;
     if (current.has(entryId)) return;
+    const previous = new Set(current);
     const next = new Set(current);
     next.add(entryId);
     set({ readEntryIds: next });
 
-    // Server-authoritative state sync
-    FeedsService.markItemRead(entryId, true).catch(() => {});
+    try {
+      const req = FeedsService?.markItemRead?.(entryId, true);
+      if (req && typeof req.catch === 'function') {
+        req.catch((err: unknown) => {
+          if (shouldRollbackOptimisticReadUpdate(err)) {
+            set({ readEntryIds: previous });
+          }
+        });
+      }
+    } catch {
+      // Offline / unmocked test fallback
+    }
   },
 
   toggleEntryRead: (entryId: string) => {
     const current = get().readEntryIds;
+    const previous = new Set(current);
     const isNowRead = !current.has(entryId);
     const next = new Set(current);
     if (!isNowRead) {
@@ -261,8 +319,18 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
     }
     set({ readEntryIds: next });
 
-    // Server-authoritative state sync
-    FeedsService.markItemRead(entryId, isNowRead).catch(() => {});
+    try {
+      const req = FeedsService?.markItemRead?.(entryId, isNowRead);
+      if (req && typeof req.catch === 'function') {
+        req.catch((err: unknown) => {
+          if (shouldRollbackOptimisticReadUpdate(err)) {
+            set({ readEntryIds: previous });
+          }
+        });
+      }
+    } catch {
+      // Offline / unmocked test fallback
+    }
   },
 
   markAllEntriesAsRead: (entryIds?: string[]) => {
@@ -272,14 +340,25 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
         : get().currentFeedEntries.map((e) => e.id);
     if (resolvedIds.length === 0) return;
 
-    const next = new Set(get().readEntryIds);
+    const previous = new Set(get().readEntryIds);
+    const next = new Set(previous);
     for (const id of resolvedIds) {
       if (id) next.add(id);
     }
     set({ readEntryIds: next });
 
-    // Server-authoritative state sync
-    FeedsService.markAllRead(resolvedIds).catch(() => {});
+    try {
+      const req = FeedsService?.markAllRead?.(resolvedIds);
+      if (req && typeof req.catch === 'function') {
+        req.catch((err: unknown) => {
+          if (shouldRollbackOptimisticReadUpdate(err)) {
+            set({ readEntryIds: previous });
+          }
+        });
+      }
+    } catch {
+      // Offline / unmocked test fallback
+    }
   },
 
   isEntryRead: (entryId: string) => {

@@ -7,6 +7,7 @@ import { getErrorMessage } from '@/shared/lib/utils';
 import {
   ItemsService,
   AnnotationsService,
+  NotesService,
   ExportsService,
   AttachmentsService,
 } from '../library.client';
@@ -218,7 +219,7 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
   });
 
   const extractNotesMutation = useMutation({
-    mutationFn: (paperId: string) => AnnotationsService.extractNotes(scopeId, paperId),
+    mutationFn: (paperId: string) => NotesService.extractFromAnnotations(scopeId, paperId),
     onSuccess: (res, paperId) => {
       if (paperId) {
         queryClient.invalidateQueries({ queryKey: noteKeys.list(scopeId, paperId) });

@@ -21,6 +21,11 @@ export const ANNOTATION_COLOR_BY_HEX_MAP: ReadonlyMap<
   (typeof ANNOTATION_PALETTE_COLORS)[number]
 > = new Map(ANNOTATION_PALETTE_COLORS.map((c) => [c.hex.toLowerCase(), c]));
 
+export const ANNOTATION_COLOR_BY_ID_MAP: ReadonlyMap<
+  string,
+  (typeof ANNOTATION_PALETTE_COLORS)[number]
+> = new Map(ANNOTATION_PALETTE_COLORS.map((c) => [c.id.toLowerCase(), c]));
+
 export function extractAnnotationFacets(annotations: ReaderAnnotation[]): {
   existingColors: Array<(typeof ANNOTATION_PALETTE_COLORS)[number]>;
   existingTags: string[];
@@ -31,8 +36,10 @@ export function extractAnnotationFacets(annotations: ReaderAnnotation[]): {
   const authorSet = new Set<string>();
 
   for (const a of annotations) {
-    const hex = (a.color || '#ffd400').toLowerCase();
-    const match = ANNOTATION_COLOR_BY_HEX_MAP.get(hex);
+    const resolvedId = PdfAnnotationEngine.resolveColorId(a.color);
+    const match =
+      ANNOTATION_COLOR_BY_ID_MAP.get(resolvedId) ??
+      ANNOTATION_COLOR_BY_HEX_MAP.get((a.color || '#ffd400').toLowerCase());
     if (match && !colorMap.has(match.id)) {
       colorMap.set(match.id, match);
     }
@@ -81,21 +88,15 @@ export function filterAndSortAnnotations(
     sortBy: 'position' | 'newest' | 'oldest' | 'color';
   },
 ): ReaderAnnotation[] {
-  const qLower = params.searchQuery.trim().toLowerCase();
-  const colorLower = params.selectedColor === 'all' ? null : params.selectedColor.toLowerCase();
+  const authorFiltered =
+    params.authorFilter && params.authorFilter !== 'all'
+      ? annotations.filter((a) => a.authorId === params.authorFilter)
+      : annotations;
 
-  const list = annotations.filter((a) => {
-    if (params.authorFilter !== 'all' && a.authorId !== params.authorFilter) return false;
-    if (params.selectedTag && (!a.tags || !a.tags.includes(params.selectedTag))) return false;
-    if (colorLower !== null && (a.color || '#ffd400').toLowerCase() !== colorLower) {
-      return false;
-    }
-    if (!qLower) return true;
-    return Boolean(
-      (a.quoteText && a.quoteText.toLowerCase().includes(qLower)) ||
-        (a.comment && a.comment.toLowerCase().includes(qLower)) ||
-        (a.tags && a.tags.some((t) => t.toLowerCase().includes(qLower))),
-    );
+  const list = PdfAnnotationEngine.filterAnnotations(authorFiltered, {
+    query: params.searchQuery,
+    color: params.selectedColor,
+    tag: params.selectedTag,
   });
 
   if (params.sortBy === 'position') {
@@ -112,7 +113,11 @@ export function filterAndSortAnnotations(
     return list.sort((a, b) => ((tsMap.get(a.id) ?? 0) - (tsMap.get(b.id) ?? 0)) * dir);
   }
 
-  return list.sort((a, b) => (a.color || '').localeCompare(b.color || ''));
+  return list.sort((a, b) =>
+    PdfAnnotationEngine.resolveColorId(a.color).localeCompare(
+      PdfAnnotationEngine.resolveColorId(b.color),
+    ),
+  );
 }
 
 export function AnnotationEditForm({

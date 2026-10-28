@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { UploadCloud, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { useLibraryItemsQuery } from '@/features/library/sdk/queries/catalog.queries';
+import { normalizeScopeId } from '@/features/library/sdk/query-keys';
 import { useDetachItemFromCollectionMutation } from '@/features/library/sdk/queries/collections.queries';
 import { useCollectionsQuery } from '@/features/library/sdk/queries/collections.queries';
 import { useSavedSearchResults, useSavedSearches } from '@/features/library/sdk/queries/saved-searches-relations.queries';
@@ -198,9 +199,9 @@ export function LibraryContent({
     if (isTrash) return [];
     if (isSavedSearchView) return [];
 
-    const targetScope = scopeId || 'user';
+    const targetScope = normalizeScopeId(scopeId);
     const activeProcessing = processingItems.filter((p) => {
-      const pScope = p.scopeId || 'user';
+      const pScope = normalizeScopeId(p.scopeId);
       if (pScope !== targetScope) return false;
       if (collectionId && p.collectionId && p.collectionId !== collectionId) return false;
       return true;

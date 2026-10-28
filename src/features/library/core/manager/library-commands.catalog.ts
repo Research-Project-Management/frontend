@@ -1,6 +1,7 @@
 'use client';
 
 import type { Item } from '@/features/library/domain/types/library.types';
+import { extractExplicitUserMergeOverrides } from '@/features/library/domain/diff';
 import type { LibraryCommand } from './library-command.manager';
 
 // ---------------------------------------------------------------------------
@@ -236,13 +237,27 @@ export function createToggleStarCommand(options: ToggleStarCommandOptions): Libr
 import {
   buildInverseMetadataPatch,
   PRE_CONVERSION_BIBLIOGRAPHIC_SCALAR_KEYS,
-  buildPreConversionSnapshot,
+  buildPreConversionSnapshot as buildRawPreConversionSnapshot,
 } from './library-command-snapshots.helpers';
+
+export function buildPreConversionSnapshot(sourceItem: Partial<Item>): Partial<Item> {
+  const raw = buildRawPreConversionSnapshot(sourceItem) as Record<string, unknown>;
+  const srcRecord = sourceItem as Record<string, unknown>;
+  for (const key of Object.keys(raw)) {
+    if (key === 'extraFields' || key === 'creators' || key === 'contributors' || key === 'authors') {
+      continue;
+    }
+    const orig = srcRecord[key];
+    if (typeof orig === 'string' || typeof orig === 'number' || typeof orig === 'boolean') {
+      raw[key] = orig;
+    }
+  }
+  return raw as Partial<Item>;
+}
 
 export {
   buildInverseMetadataPatch,
   PRE_CONVERSION_BIBLIOGRAPHIC_SCALAR_KEYS,
-  buildPreConversionSnapshot,
 };
 
 export interface UpdateItemMetadataCommandParams {
@@ -383,6 +398,8 @@ export interface MergeDuplicatesCommandParams {
   primaryItem: Item;
   duplicateIdsToDelete: string[];
   mergedFields?: Record<string, unknown>;
+  items?: readonly Item[];
+  fieldOverrides?: Record<string, unknown>;
   mergeMutation: {
     mutateAsync: (args: {
       primaryItemId: string;
@@ -404,23 +421,9 @@ export interface MergeDuplicatesCommandParams {
 export function createMergeDuplicatesCommand(params: MergeDuplicatesCommandParams): LibraryCommand {
   const { primaryItem: p } = params;
   const preMergeSnapshot: Partial<Item> = {
-    title: p.title,
-    itemType: p.itemType,
-    abstract: p.abstract,
-    publicationTitle: p.publicationTitle,
-    venue: p.venue,
-    publisher: p.publisher,
-    year: p.year,
-    date: p.date,
-    doi: p.doi,
-    url: p.url,
-    volume: p.volume,
-    issue: p.issue,
-    pages: p.pages,
-    extra: p.extra,
-    ...(p.extraFields ? { extraFields: { ...p.extraFields } } : {}),
-    ...(Array.isArray(p.creators) ? { creators: p.creators.map((c) => ({ ...c })) } : {}),
-    ...(Array.isArray(p.authors) ? { authors: [...p.authors] } : {}),
+    ...buildPreConversionSnapshot(p),
+    ...(p.venue !== undefined ? { venue: p.venue } : {}),
+    ...(p.openAccessPdfUrl !== undefined ? { openAccessPdfUrl: p.openAccessPdfUrl } : {}),
     ...(Array.isArray(p.collectionIds) ? { collectionIds: [...p.collectionIds] } : {}),
     ...(Array.isArray(p.tags) ? { tags: [...p.tags] } : {}),
   };
@@ -435,12 +438,20 @@ export function createMergeDuplicatesCommand(params: MergeDuplicatesCommandParam
     description,
     timestamp: Date.now(),
     execute: async () => {
+      const effectiveOverrides =
+        params.items && params.items.length > 0
+          ? extractExplicitUserMergeOverrides(
+              params.items,
+              p.id,
+              params.fieldOverrides ?? params.mergedFields ?? {},
+            )
+          : params.mergedFields;
       await params.mergeMutation.mutateAsync({
         primaryItemId: p.id,
         duplicateItemIds: params.duplicateIdsToDelete,
         overrides:
-          params.mergedFields && Object.keys(params.mergedFields).length > 0
-            ? params.mergedFields
+          effectiveOverrides && Object.keys(effectiveOverrides).length > 0
+            ? effectiveOverrides
             : undefined,
       });
       params.onExecuted?.();
@@ -565,6 +576,128 @@ export function createBatchTagToggleCommand(
         ),
       );
       options.onUndone?.();
+    },
+  };
+}
+
+export interface AddNoteCommandOptions {
+  itemId?: string | null;
+  contentMd: string;
+  title?: string;
+  createNote: (dto: { itemId?: string | null; contentMd: string; title?: string }) => Promise<{ id?: string; version?: number } | null | undefined>;
+  deleteNote: (id: string, version?: number) => Promise<unknown>;
+  onExecuted?: (createdNoteId?: string) => void;
+  onUndone?: () => void;
+}
+
+export function createAddNoteCommand(options: AddNoteCommandOptions): LibraryCommand {
+  let activeNoteId: string | undefined;
+  let activeNoteVersion: number | undefined;
+
+  return {
+    id: `note-add-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    description: 'Added note',
+    timestamp: Date.now(),
+    execute: async () => {
+      const created = await options.createNote({
+        itemId: options.itemId,
+        contentMd: options.contentMd,
+        title: options.title,
+      });
+      activeNoteId = created?.id;
+      activeNoteVersion = created?.version;
+      options.onExecuted?.(activeNoteId);
+    },
+    undo: async () => {
+      if (activeNoteId) {
+        await options.deleteNote(activeNoteId, activeNoteVersion);
+        options.onUndone?.();
+      }
+    },
+  };
+}
+
+export interface UpdateNoteCommandOptions {
+  noteId: string;
+  initialVersion?: number;
+  previousContentMd: string;
+  nextContentMd: string;
+  updateNote: (
+    id: string,
+    version: number,
+    dto: { contentMd: string },
+  ) => Promise<{ version?: number } | null | undefined>;
+  onExecuted?: () => void;
+  onUndone?: () => void;
+}
+
+export function createUpdateNoteCommand(options: UpdateNoteCommandOptions): LibraryCommand {
+  let currentVersion = options.initialVersion || 1;
+
+  return {
+    id: `note-update-${options.noteId}-${Date.now()}`,
+    description: 'Updated note',
+    timestamp: Date.now(),
+    execute: async () => {
+      const updated = await options.updateNote(options.noteId, currentVersion, {
+        contentMd: options.nextContentMd,
+      });
+      if (typeof updated?.version === 'number') {
+        currentVersion = updated.version;
+      } else {
+        currentVersion += 1;
+      }
+      options.onExecuted?.();
+    },
+    undo: async () => {
+      const reverted = await options.updateNote(options.noteId, currentVersion, {
+        contentMd: options.previousContentMd,
+      });
+      if (typeof reverted?.version === 'number') {
+        currentVersion = reverted.version;
+      } else {
+        currentVersion += 1;
+      }
+      options.onUndone?.();
+    },
+  };
+}
+
+export interface DeleteNoteCommandOptions {
+  noteId: string;
+  version?: number;
+  itemId?: string | null;
+  contentMd: string;
+  title?: string;
+  deleteNote: (id: string, version?: number) => Promise<unknown>;
+  createNote: (dto: { itemId?: string | null; contentMd: string; title?: string }) => Promise<{ id?: string; version?: number } | null | undefined>;
+  onExecuted?: () => void;
+  onUndone?: (recreatedNoteId?: string) => void;
+}
+
+export function createDeleteNoteCommand(options: DeleteNoteCommandOptions): LibraryCommand {
+  let currentNoteId = options.noteId;
+  let currentVersion = options.version;
+
+  return {
+    id: `note-delete-${options.noteId}-${Date.now()}`,
+    description: 'Deleted note',
+    timestamp: Date.now(),
+    execute: async () => {
+      await options.deleteNote(currentNoteId, currentVersion);
+      options.onExecuted?.();
+    },
+    undo: async () => {
+      const recreated = await options.createNote({
+        itemId: options.itemId,
+        contentMd: options.contentMd,
+        title: options.title,
+      });
+      if (recreated?.id) {
+        currentNoteId = recreated.id;
+        currentVersion = recreated.version;
+      }
+      options.onUndone?.(recreated?.id);
     },
   };
 }

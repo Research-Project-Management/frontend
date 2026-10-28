@@ -6,6 +6,7 @@ import { SyncService } from '../library.client';
 import {
   mapBackendItem,
   hasExplicitUserStateInPayload,
+  setMappedItemMeta,
 } from '@/features/library/domain/metadata';
 import type { Item } from '@/features/library/domain/types/library.types';
 import {
@@ -67,6 +68,32 @@ export function useLibraryDeltaSync(
         lastScopeRef.current = effectiveScope;
         lastSyncSeqRef.current = null;
       }
+
+      if (lastSyncSeqRef.current === null) {
+        const cachedSync = queryClient.getQueryData<{
+          version?: string;
+          scopeId?: string;
+        }>(libraryKeys.syncVersion(effectiveScope));
+        if (cachedSync?.version && cachedSync.version !== '0') {
+          lastSyncSeqRef.current = String(cachedSync.version);
+        }
+      }
+
+      const bootstrapQueries = queryClient.getQueriesData({
+        queryKey: [...libraryKeys.all, 'bootstrap', effectiveScope],
+      });
+      const isBootstrapping = bootstrapQueries.some(([key]) => {
+        const state = queryClient.getQueryState(key);
+        return state?.fetchStatus === 'fetching' && state?.status === 'pending';
+      });
+      if (isBootstrapping && lastSyncSeqRef.current === null) {
+        return {
+          version: '0',
+          scopeId: effectiveScope,
+          syncedCount: 0,
+        };
+      }
+
       const versionRes = await SyncService.getVersion(effectiveScope);
       const remoteVersion = String(versionRes?.version ?? '0');
 
@@ -87,6 +114,15 @@ export function useLibraryDeltaSync(
         };
       }
 
+      if (queryClient.isMutating() > 0) {
+        return {
+          version: lastSyncSeqRef.current,
+          scopeId: effectiveScope,
+          syncedCount: 0,
+          deferredForMutation: true,
+        };
+      }
+
       let currentSince = lastSyncSeqRef.current;
       const deletedItemIds: string[] = [];
       let patchedCount = 0;
@@ -95,6 +131,10 @@ export function useLibraryDeltaSync(
       let shouldInvalidateTags = false;
       let shouldInvalidateSavedSearches = false;
       let shouldInvalidateAnnotations = false;
+      let shouldInvalidateAllAttachments = false;
+      let shouldInvalidateAllRelations = false;
+      let shouldInvalidateAllNotes = false;
+      const annotationAttachmentIdsToInvalidate = new Set<string>();
       const noteItemIdsToInvalidate = new Set<string>();
       const attachmentItemIdsToInvalidate = new Set<string>();
       const relationItemIdsToInvalidate = new Set<string>();
@@ -209,6 +249,15 @@ export function useLibraryDeltaSync(
           }
 
           if (entityType === 'annotation') {
+            const attachmentId = String(
+              (change.data as Record<string, unknown> | null)?.attachmentId ??
+                rawData.attachmentId ??
+                change.attachmentId ??
+                '',
+            );
+            if (attachmentId) {
+              annotationAttachmentIdsToInvalidate.add(attachmentId);
+            }
             shouldInvalidateAnnotations = true;
             continue;
           }
@@ -217,6 +266,8 @@ export function useLibraryDeltaSync(
             const parentItemId = String(rawData.itemId ?? change.itemId ?? '');
             if (parentItemId) {
               attachmentItemIdsToInvalidate.add(parentItemId);
+            } else {
+              shouldInvalidateAllAttachments = true;
             }
             continue;
           }
@@ -225,6 +276,8 @@ export function useLibraryDeltaSync(
             const parentItemId = String(rawData.itemId ?? change.itemId ?? '');
             if (parentItemId) {
               relationItemIdsToInvalidate.add(parentItemId);
+            } else {
+              shouldInvalidateAllRelations = true;
             }
             continue;
           }
@@ -234,6 +287,8 @@ export function useLibraryDeltaSync(
             );
             if (parentItemId) {
               noteItemIdsToInvalidate.add(parentItemId);
+            } else {
+              shouldInvalidateAllNotes = true;
             }
             continue;
           }
@@ -275,18 +330,27 @@ export function useLibraryDeltaSync(
                     ...(existingCached.lastReadAt !== undefined
                       ? { lastReadAt: existingCached.lastReadAt }
                       : {}),
+                    ...(existingCached.currentPage !== undefined
+                      ? { currentPage: existingCached.currentPage }
+                      : {}),
+                    ...(existingCached.lastReadPage !== undefined
+                      ? { lastReadPage: existingCached.lastReadPage }
+                      : {}),
+                    ...(existingCached.scrollPosition !== undefined
+                      ? { scrollPosition: existingCached.scrollPosition }
+                      : {}),
+                    ...(existingCached.lastOpenedAt !== undefined
+                      ? { lastOpenedAt: existingCached.lastOpenedAt }
+                      : {}),
                   }
                 : {}),
             };
             if (!rawHasExplicitState) {
-              Object.defineProperty(patch, '_hasExplicitUserState', {
-                value: false,
-                enumerable: false,
-                configurable: true,
-                writable: true,
-              });
+              setMappedItemMeta(patch, { hasExplicitUserState: false });
             }
-            patchItemAcrossScopeCaches(queryClient, effectiveScope, itemId, patch);
+            if (queryClient.isMutating() === 0) {
+              patchItemAcrossScopeCaches(queryClient, effectiveScope, itemId, patch);
+            }
             patchedItemIdsToInvalidate.add(itemId);
             patchedCount++;
           }
@@ -363,10 +427,24 @@ export function useLibraryDeltaSync(
           }),
         );
       }
+      for (const attachmentId of annotationAttachmentIdsToInvalidate) {
+        postSyncInvalidations.push(
+          queryClient.invalidateQueries({
+            queryKey: libraryKeys.annotations(effectiveScope, attachmentId),
+          }),
+        );
+      }
       if (shouldInvalidateAnnotations) {
         postSyncInvalidations.push(
           queryClient.invalidateQueries({
-            queryKey: libraryKeys.annotations(effectiveScope),
+            queryKey: libraryKeys.annotationsAll(effectiveScope),
+          }),
+        );
+      }
+      if (shouldInvalidateAllAttachments) {
+        postSyncInvalidations.push(
+          queryClient.invalidateQueries({
+            queryKey: libraryKeys.attachmentsAll(effectiveScope),
           }),
         );
       }
@@ -381,10 +459,27 @@ export function useLibraryDeltaSync(
           }),
         );
       }
+      if (shouldInvalidateAllRelations) {
+        postSyncInvalidations.push(
+          queryClient.invalidateQueries({
+            queryKey: libraryKeys.relationsAll(effectiveScope),
+          }),
+        );
+      }
       for (const parentItemId of relationItemIdsToInvalidate) {
         postSyncInvalidations.push(
           queryClient.invalidateQueries({
             queryKey: libraryKeys.relations(effectiveScope, parentItemId),
+          }),
+        );
+      }
+      if (shouldInvalidateAllNotes) {
+        postSyncInvalidations.push(
+          queryClient.invalidateQueries({
+            queryKey: noteKeys.lists(),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: noteKeys.all(effectiveScope),
           }),
         );
       }

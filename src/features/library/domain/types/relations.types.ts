@@ -3,17 +3,48 @@ import { z } from 'zod';
 export const relationTypeSchema = z.enum([
   'related',
   'cites',
+  'citedBy',
+  'isCitedBy',
   'cited_by',
+  'supplementTo',
+  'supplement_to',
+  'isSupplementedBy',
+  'supplements',
+  'partOf',
+  'part_of',
+  'continues',
+  'isContinuedBy',
+  'continued_by',
   'replicates',
   'extends',
   'is_preprint_of',
   'is_published_version_of',
   'is_translation_of',
-  'supplements',
   'rebuts',
   'uses_dataset',
   'survey_of',
 ]);
+
+export const RelationTypeSchema = relationTypeSchema;
+
+const LEGACY_RELATION_TYPE_MAP: Record<string, z.infer<typeof relationTypeSchema>> = {
+  cited_by: 'isCitedBy',
+  supplement_to: 'supplementTo',
+  part_of: 'partOf',
+  continued_by: 'isContinuedBy',
+};
+
+export function normalizeRelationType(
+  raw?: unknown,
+): z.infer<typeof relationTypeSchema> {
+  if (typeof raw !== 'string' || !raw.trim()) return 'related';
+  const trimmed = raw.trim();
+  if (trimmed in LEGACY_RELATION_TYPE_MAP) {
+    return LEGACY_RELATION_TYPE_MAP[trimmed];
+  }
+  const parsed = relationTypeSchema.safeParse(trimmed);
+  return parsed.success ? parsed.data : 'related';
+}
 
 export const relatedItemSchema = z.object({
   id: z.string(),

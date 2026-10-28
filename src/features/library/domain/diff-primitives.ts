@@ -424,6 +424,7 @@ export function selectBestMasterItemId(
   let bestId = items[0]!.id;
   let bestScore = -Infinity;
   let bestTs: number | null = null;
+  const effectiveFields = getMergeableFieldsForTypes(items.map((i) => i.itemType));
 
   for (const item of items) {
     let score = 0;
@@ -456,8 +457,8 @@ export function selectBestMasterItemId(
       score += 10;
     }
 
-    // Count populated canonical fields
-    for (const field of MERGEABLE_FIELDS) {
+    // Count populated canonical & type-specific fields
+    for (const field of effectiveFields) {
       const val = resolveItemFieldValue(rec, field.key, itemCtx);
       if (!isFieldEmpty(val)) {
         score += 5;
@@ -557,6 +558,36 @@ export function mergeItemExtraFields(
         resolveItemFieldValue(masterRec, 'originalDate', masterCtx),
     ),
   );
+  let hasDoi = isValidValue(
+    resolveEffectiveTopLevelOrOverride(
+      'doi',
+      resolveItemFieldValue(masterRec, 'doi', masterCtx),
+    ),
+  );
+  let hasIsbn = isValidValue(
+    resolveEffectiveTopLevelOrOverride(
+      'isbn',
+      resolveItemFieldValue(masterRec, 'isbn', masterCtx),
+    ),
+  );
+  let hasIssn = isValidValue(
+    resolveEffectiveTopLevelOrOverride(
+      'issn',
+      resolveItemFieldValue(masterRec, 'issn', masterCtx),
+    ),
+  );
+  const effectiveArxivId = String(
+    resolveEffectiveTopLevelOrOverride(
+      'arxivId',
+      resolveItemFieldValue(masterRec, 'arxivId', masterCtx),
+    ) || '',
+  )
+    .replace(/^arxiv:\s*/i, '')
+    .replace(/\s*\[.*?\]\s*$/, '')
+    .replace(/v\d+$/i, '')
+    .trim()
+    .toLowerCase();
+  const seenKeys = new Set<string>();
 
   const addLine = (rawLine: string, isMasterItem = true) => {
     const trimmed = rawLine.trim();
@@ -574,21 +605,63 @@ export function mergeItemExtraFields(
       return;
     }
 
-    if (!isMasterItem) {
-      const kvMatch = trimmed.match(/^([A-Za-z_][A-Za-z0-9._\s-]{0,40}?)\s*:\s*(.+)$/);
-      if (kvMatch) {
-        const keyNorm = kvMatch[1]!.trim().toLowerCase().replace(/[\s_-]+/g, '');
-        if (keyNorm === 'pmid') {
+    const kvMatch = trimmed.match(/^([A-Za-z_][A-Za-z0-9._\s-]{0,40}?)\s*:\s*(.+)$/);
+    if (kvMatch) {
+      const rawKey = kvMatch[1]!.trim().toLowerCase().replace(/[\s_-]+/g, '');
+      const canonicalKey =
+        rawKey === 'arxivid' || rawKey === 'archiveid' ? 'arxiv' : rawKey;
+      const lineVal = kvMatch[2]!.trim();
+
+      if (!isMasterItem) {
+        if (
+          (canonicalKey === 'pmid' ||
+            canonicalKey === 'pmcid' ||
+            canonicalKey === 'originaldate' ||
+            canonicalKey === 'doi' ||
+            canonicalKey === 'isbn' ||
+            canonicalKey === 'issn' ||
+            canonicalKey === 'arxiv') &&
+          (seenKeys.has(rawKey) || seenKeys.has(canonicalKey))
+        ) {
+          return;
+        }
+        if (canonicalKey === 'pmid') {
           if (hasPmid) return;
           hasPmid = true;
-        } else if (keyNorm === 'pmcid') {
+        } else if (canonicalKey === 'pmcid') {
           if (hasPmcid) return;
           hasPmcid = true;
-        } else if (keyNorm === 'originaldate') {
+        } else if (canonicalKey === 'originaldate') {
           if (hasOrigDate) return;
           hasOrigDate = true;
+        } else if (canonicalKey === 'doi') {
+          if (hasDoi) return;
+          hasDoi = true;
+        } else if (canonicalKey === 'isbn') {
+          if (hasIsbn) return;
+          hasIsbn = true;
+        } else if (canonicalKey === 'issn') {
+          if (hasIssn) return;
+          hasIssn = true;
+        } else if (canonicalKey === 'arxiv') {
+          const cleanLineArxiv = lineVal
+            .replace(/^arxiv:\s*/i, '')
+            .replace(/\s*\[.*?\]\s*$/, '')
+            .replace(/v\d+$/i, '')
+            .trim()
+            .toLowerCase();
+          if (
+            effectiveArxivId &&
+            cleanLineArxiv &&
+            cleanLineArxiv !== effectiveArxivId
+          ) {
+            return;
+          }
         }
       }
+
+      seenKeys.add(rawKey);
+      seenKeys.add(canonicalKey);
     }
 
     const norm = trimmed

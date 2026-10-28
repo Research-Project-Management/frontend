@@ -73,7 +73,7 @@ const BASE_FIELD_SYNC_EXPANSIONS: Record<string, readonly string[]> = {
   title: ["title"],
   publicationTitle: ["publicationTitle"],
   publisher: ["publisher"],
-  authority: ["authority", "publisher"],
+  authority: ["authority", "issuingAuthority"],
   place: ["place"],
   date: ["publicationDate", "date"],
   volume: ["volume"],
@@ -122,7 +122,7 @@ export function buildDerivedFieldMappings(): {
   for (const [lowerKey, overrideTargets] of Object.entries(WRITE_SYNC_OVERRIDES)) {
     syncSetters[lowerKey] = overrideTargets;
   }
-  syncSetters.authority = ["issuingAuthority", "authority", "publisher"];
+  syncSetters.authority = ["issuingAuthority", "authority"];
 
   const fallbackChains: Record<string, ReadonlyArray<readonly ["p" | "ef", string]>> = {};
 
@@ -162,7 +162,10 @@ export function buildDerivedFieldMappings(): {
 
   addChain("booktitle", [["p", "bookTitle"], ["p", "publicationTitle"], ["p", "containerTitle"], ["p", "proceedingsTitle"], ["ef", "bookTitle"]]);
   addChain("proceedingstitle", [["p", "proceedingsTitle"], ["p", "publicationTitle"], ["p", "containerTitle"], ["p", "bookTitle"], ["ef", "proceedingsTitle"]]);
-  addChain("sessiontitle", [["p", "sessionTitle"], ["ef", "sessionTitle"]]);
+  addChain("sessiontitle", [["p", "sessionTitle"], ["ef", "sessionTitle"], ["p", "meetingName"], ["ef", "meetingName"], ["p", "publicationTitle"]]);
+  addChain("meetingname", [["p", "meetingName"], ["ef", "meetingName"], ["p", "conferenceName"], ["ef", "conferenceName"], ["p", "sessionTitle"], ["ef", "sessionTitle"], ["p", "publicationTitle"]]);
+  addChain("codenumber", [["p", "codeNumber"], ["ef", "codeNumber"], ["p", "volume"], ["ef", "volume"], ["p", "codeVolume"], ["ef", "codeVolume"]]);
+  addChain("volume", [["p", "volume"], ["ef", "volume"], ["p", "reporterVolume"], ["ef", "reporterVolume"], ["p", "codeNumber"], ["ef", "codeNumber"], ["p", "codeVolume"], ["ef", "codeVolume"]]);
   addChain("publisher", [["p", "publisher"], ["p", "university"], ["p", "institution"], ["ef", "publisher"]]);
   addChain("university", [["p", "university"], ["p", "publisher"], ["p", "institution"], ["ef", "university"]]);
   addChain("institution", [["p", "institution"], ["p", "publisher"], ["p", "university"], ["ef", "institution"]]);
@@ -246,6 +249,25 @@ const scoreAuthorsCompleteness: FieldCandidateScorer = (value: string, rawValue?
   return tokens.reduce((acc, tok) => acc + scoreAuthorSingleToken(tok), 0);
 };
 
+const SUSPICIOUS_TITLE_FILE_EXT_RE = /\.(pdf|docx?|txt|pptx?|xlsx?)$/i;
+const SUSPICIOUS_TITLE_PREFIX_RE =
+  /^(untitled|unknown|new item|document|uploaded document|microsoft word|pii:|doi:|arxiv:|https?:\/\/|10\.\d{4,9}\/)/i;
+
+export const scoreTitleCandidate: FieldCandidateScorer = (value: string): number => {
+  const s = value.trim();
+  if (!s) return -1;
+  const underscoreCount = (s.match(/_/g) || []).length;
+  const isSuspicious =
+    SUSPICIOUS_TITLE_FILE_EXT_RE.test(s) ||
+    SUSPICIOUS_TITLE_PREFIX_RE.test(s) ||
+    (underscoreCount >= 3 && !s.includes(" ")) ||
+    (!s.includes(" ") && /\d{4}\.\d{4,5}(?:v\d+)?/i.test(s));
+  if (isSuspicious) {
+    return 1;
+  }
+  return scoreVenueCompleteness(s);
+};
+
 export const FIELD_CANDIDATE_SCORERS: Readonly<Record<string, FieldCandidateScorer>> = {
   itemType: (value: string) => {
     const t = value.trim();
@@ -262,6 +284,11 @@ export const FIELD_CANDIDATE_SCORERS: Readonly<Record<string, FieldCandidateScor
     }
     return 50;
   },
+  title: scoreTitleCandidate,
+  shortTitle: scoreTitleCandidate,
+  bookTitle: scoreTitleCandidate,
+  proceedingsTitle: scoreTitleCandidate,
+  conferenceName: scoreTitleCandidate,
   authors: scoreAuthorsCompleteness,
   creators: scoreAuthorsCompleteness,
   doi: (value: string) => {

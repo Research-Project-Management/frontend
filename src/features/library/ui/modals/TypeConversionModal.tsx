@@ -143,9 +143,16 @@ export function TypeConversionModal({
     );
   }, [preview?.droppedFields]);
 
-  // Schema-level unsupported fields: Fields present in source type schema that are not supported by target type
+  // Schema-level unsupported fields: Prefer authoritative Backend preview response; fall back to local schema map while loading
   const schemaUnsupportedFieldLabels = useMemo(() => {
     if (!sourceType || !targetType || sourceType === targetType) return [];
+
+    if (Array.isArray(preview?.schemaUnsupportedFieldLabels)) {
+      return preview.schemaUnsupportedFieldLabels;
+    }
+    if (Array.isArray(preview?.schemaUnsupportedFields)) {
+      return preview.schemaUnsupportedFields.map((f) => resolveFieldLabel(f));
+    }
 
     const sourceFields = ITEM_TYPE_FIELDS_MAP[sourceType] || [];
     const targetFields = new Set(ITEM_TYPE_FIELDS_MAP[targetType] || []);
@@ -183,7 +190,12 @@ export function TypeConversionModal({
     });
 
     return unsupported.map((f) => resolveFieldLabel(f));
-  }, [sourceType, targetType]);
+  }, [
+    sourceType,
+    targetType,
+    preview?.schemaUnsupportedFieldLabels,
+    preview?.schemaUnsupportedFields,
+  ]);
 
   // ── Confirm Handler ────────────────────────────────────────────────────────
   const handleConfirm = async () => {
@@ -281,9 +293,13 @@ export function TypeConversionModal({
               {/* Case 1: Item has populated fields that will be dropped */}
               {droppedWithValues.length > 0 ? (
                 <div className="space-y-2.5">
-                  <p className="text-foreground font-medium">
-                    The following fields will be lost:
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-foreground font-medium">
+                      {retainUnmapped
+                        ? "Unmapped Fields — Moved to Extra"
+                        : "Unmapped Fields — Will Be Discarded"}
+                    </p>
+                  </div>
 
                   <div className="rounded-md border border-border bg-muted/30 p-2.5 max-h-[160px] overflow-y-auto thin-scrollbar">
                     <ul className="space-y-1.5 text-12">
@@ -296,12 +312,17 @@ export function TypeConversionModal({
                             className="flex items-start justify-between gap-3 text-foreground"
                           >
                             <span className="font-medium shrink-0">{label}:</span>
-                            <span
-                              className="text-muted-foreground truncate text-right font-normal"
-                              title={valStr}
-                            >
-                              {valStr}
-                            </span>
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span
+                                className="text-muted-foreground truncate text-right font-normal"
+                                title={valStr}
+                              >
+                                {valStr}
+                              </span>
+                              <span className="text-11 font-medium px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
+                                {retainUnmapped ? "→ Extra" : "→ Discard"}
+                              </span>
+                            </div>
                           </li>
                         );
                       })}

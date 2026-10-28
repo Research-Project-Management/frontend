@@ -3,6 +3,10 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback, useDeferredValue } from 'react';
 import { Search, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import type { DocumentFulltext } from '@/features/library/domain/types/reader.types';
+import {
+  foldDiacritics,
+  searchPdfPages,
+} from '@/features/library/domain/reader-persistence.helpers';
 
 export interface PdfSearchDocumentProxy {
   numPages: number;
@@ -36,9 +40,14 @@ export function useViewerSearch({
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(initialSearchQuery || '');
   const deferredSearchQuery = useDeferredValue(debouncedSearchQuery);
   const [currentMatchIdx, setCurrentMatchIdx] = useState(0);
-  const [extractedPageText, setExtractedPageText] = useState<Map<number, string> | null>(null);
+  const [extractedPageList, setExtractedPageList] = useState<
+    ReadonlyArray<{ pageNumber: number; text: string }> | null
+  >(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const extractedForDocRef = useRef<PdfSearchDocumentProxy | null>(null);
+  const domPageObjectCacheRef = useRef<Map<number, { pageNumber: number; text: string }>>(
+    new Map(),
+  );
 
   useEffect(() => {
     if (initialSearchQuery) {
@@ -72,20 +81,24 @@ export function useViewerSearch({
 
   const indexedSections = useMemo(() => {
     if (!fulltext?.sections) return null;
-    return fulltext.sections.map((sec) => ({
-      page: sec.page || 1,
-      title: sec.title,
-      lowerCorpus: [
+    return fulltext.sections.map((sec) => {
+      const lowerCorpus = [
         sec.title ? sec.title.toLowerCase() : '',
         ...(sec.paragraphs ? sec.paragraphs.map((p) => p.toLowerCase()) : []),
-      ].join('\n'),
-    }));
+      ].join('\n');
+      return {
+        page: sec.page || 1,
+        title: sec.title,
+        lowerCorpus,
+        foldedCorpus: foldDiacritics(lowerCorpus),
+      };
+    });
   }, [fulltext?.sections]);
 
   useEffect(() => {
     if (!pdfDocument) {
       extractedForDocRef.current = null;
-      setExtractedPageText(null);
+      setExtractedPageList(null);
       return;
     }
     const q = debouncedSearchQuery.trim();
@@ -97,7 +110,7 @@ export function useViewerSearch({
     extractedForDocRef.current = pdfDocument;
 
     async function extractAllPagesText() {
-      const map = new Map<number, string>();
+      const pages: Array<{ pageNumber: number; text: string }> = [];
       for (let p = 1; p <= numPages; p++) {
         if (cancelled) return;
         try {
@@ -113,15 +126,14 @@ export function useViewerSearch({
               }
               return '';
             })
-            .join(' ')
-            .toLowerCase();
-          map.set(p, pageStr);
+            .join(' ');
+          pages.push({ pageNumber: p, text: pageStr });
         } catch {
           // Ignore individual page extraction failure
         }
       }
       if (!cancelled) {
-        setExtractedPageText(map);
+        setExtractedPageList(pages);
       }
     }
 
@@ -134,32 +146,63 @@ export function useViewerSearch({
   const searchMatches = useMemo(() => {
     const q = deferredSearchQuery.trim().toLowerCase();
     if (!q || q.length < 2) return [];
+    const qFolded = foldDiacritics(q);
 
     const list: { page: number; title?: string }[] = [];
+    const matchedPages = new Set<number>();
     if (indexedSections) {
       for (const sec of indexedSections) {
-        if (sec.lowerCorpus.includes(q)) {
+        if (
+          sec.lowerCorpus.includes(q) ||
+          (qFolded && sec.foldedCorpus.includes(qFolded))
+        ) {
           list.push({ page: sec.page, title: sec.title });
+          matchedPages.add(sec.page);
         }
       }
     }
-    if (list.length === 0 && numPages > 0) {
+    if (numPages > 0) {
+      const extractedByPage = new Map<number, { pageNumber: number; text: string }>();
+      if (extractedPageList) {
+        for (const pageObj of extractedPageList) {
+          extractedByPage.set(pageObj.pageNumber, pageObj);
+        }
+      }
+
+      const candidatePages: Array<{ pageNumber: number; text: string }> = [];
       for (let p = 1; p <= numPages; p++) {
-        const cachedText = extractedPageText?.get(p);
-        if (cachedText !== undefined) {
-          if (cachedText.includes(q)) {
-            list.push({ page: p });
-          }
+        if (matchedPages.has(p)) continue;
+        const extractedObj = extractedByPage.get(p);
+        if (extractedObj) {
+          candidatePages.push(extractedObj);
           continue;
         }
         const pEl = pageRefs.current.get(p);
-        if (pEl && pEl.textContent?.toLowerCase().includes(q)) {
-          list.push({ page: p });
+        const domText = pEl?.textContent || '';
+        if (domText) {
+          const existingDomObj = domPageObjectCacheRef.current.get(p);
+          if (existingDomObj && existingDomObj.text === domText) {
+            candidatePages.push(existingDomObj);
+          } else {
+            const nextDomObj = { pageNumber: p, text: domText };
+            domPageObjectCacheRef.current.set(p, nextDomObj);
+            candidatePages.push(nextDomObj);
+          }
+        }
+      }
+
+      if (candidatePages.length > 0) {
+        const pdfMatches = searchPdfPages(candidatePages, deferredSearchQuery);
+        for (const match of pdfMatches) {
+          if (!matchedPages.has(match.pageNumber)) {
+            list.push({ page: match.pageNumber });
+            matchedPages.add(match.pageNumber);
+          }
         }
       }
     }
-    return list;
-  }, [debouncedSearchQuery, indexedSections, numPages, pageRefs, extractedPageText]);
+    return list.sort((a, b) => a.page - b.page);
+  }, [deferredSearchQuery, indexedSections, numPages, pageRefs, extractedPageList]);
 
   const handleNextMatch = useCallback(() => {
     if (searchMatches.length === 0) return;

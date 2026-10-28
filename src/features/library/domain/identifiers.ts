@@ -92,12 +92,29 @@ export function cleanDoi(doi?: string | null): string {
   );
   if (plosMatch && plosMatch[1]) return stripTrailingJunk(decodeURIComponent(plosMatch[1]));
 
-  // Embedded /doi/ or /article/ in publisher URLs
+  // ACL Anthology URL: aclanthology.org/<id> -> 10.18653/v1/<id>
+  const aclMatch = clean.match(
+    /^https?:\/\/(?:www\.)?aclanthology\.org\/([a-zA-Z0-9.-]+?)(?:\.pdf)?\/?(?:[?#].*)?$/i,
+  );
+  if (
+    aclMatch &&
+    aclMatch[1] &&
+    !['anthology', 'events', 'venues', 'sigs', 'people', 'info'].includes(
+      aclMatch[1].toLowerCase(),
+    )
+  ) {
+    return `10.18653/v1/${stripTrailingJunk(aclMatch[1])}`;
+  }
+
+  // Embedded /doi/, /article/, /chapter/, or /book/ in publisher URLs
   const embeddedMatch = clean.match(
-    /^https?:\/\/[^/]+(?:\/[^/]+)*\/(?:doi\/|article\/)(?:abs\/|full\/|epdf\/|pdf\/)?(10\.\d{4,9}\/[-._;()/:A-Za-z0-9<>+=[\]~]+)(?:[?#].*)?$/i,
+    /^https?:\/\/[^/]+(?:\/[^/]+)*\/(?:doi|article|chapter|book)\/(?:abs\/|full\/|epdf\/|pdf\/)?(10\.\d{4,9}\/[-._;()/:A-Za-z0-9<>+=[\]~]+)(?:[?#].*)?$/i,
   );
   if (embeddedMatch && embeddedMatch[1]) {
-    clean = embeddedMatch[1];
+    clean = embeddedMatch[1]
+      .replace(/\/+$/, '')
+      .replace(/\.(?:pdf|html)$/i, '')
+      .replace(/\/(?:full|abstract|pdf|epdf|html|fulltext|meta)\/?$/i, '');
   }
 
   // Strip standard resolver prefixes (doi.org, dx.doi.org, http, https)
@@ -114,10 +131,16 @@ export function cleanDoi(doi?: string | null): string {
   const doiRegex = /\b(10\.\d{4,9}\/[-._;()/:A-Za-z0-9<>+=[\]~]+)/;
   const match = clean.match(doiRegex);
   if (match) {
-    return stripTrailingJunk(match[1]);
+    return stripTrailingJunk(match[1])
+      .replace(/\/(?:full|abstract|pdf|epdf|html|fulltext|meta)\/?$/i, '')
+      .replace(/\.(?:pdf|html)$/i, '');
   }
 
-  return clean.startsWith('10.') ? clean : '';
+  return clean.startsWith('10.')
+    ? clean
+        .replace(/\/(?:full|abstract|pdf|epdf|html|fulltext|meta)\/?$/i, '')
+        .replace(/\.(?:pdf|html)$/i, '')
+    : '';
 }
 
 export function isValidDoi(doi?: string | null): boolean {
@@ -133,7 +156,9 @@ export function extractArxivId(input?: string | null): string | null {
   const clean = input
     .trim()
     .replace(/^[([\s<"']+/, '')
-    .replace(/[.,;:\s"')\]>]+$/, '');
+    .replace(/\s*\[.*?\]\s*$/, '')
+    .replace(/[.,;:\s"')\]>]+$/, '')
+    .replace(/\.pdf$/i, '');
 
   const match =
     clean.match(/arxiv\.org\/(?:abs|pdf|html)\/([a-z-]+\/\d{7}(?:v\d+)?|\d{4}\.\d{4,5}(?:v\d+)?)/i) ||
@@ -143,6 +168,19 @@ export function extractArxivId(input?: string | null): string | null {
     clean.match(/\b(\d{4}\.\d{4,5}(?:v\d+)?)\b/);
 
   return match ? match[1] : null;
+}
+
+/**
+ * Normalizes an arXiv identifier from URLs, DOIs (`10.48550/arXiv.NNNN.NNNNN`),
+ * `arXiv:` prefixes, or category suffixes (`[cs.CL]`).
+ */
+export function normalizeArxivId(
+  input?: string | null,
+  options?: { stripVersion?: boolean },
+): string {
+  const extracted = extractArxivId(input);
+  if (!extracted) return '';
+  return options?.stripVersion ? extracted.replace(/v\d+$/i, '') : extracted;
 }
 
 export function getArxivPdfUrl(arxivId?: string | null): string {

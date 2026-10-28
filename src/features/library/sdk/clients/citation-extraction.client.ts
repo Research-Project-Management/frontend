@@ -4,15 +4,18 @@ import type {
   ReferenceData,
   CslStyleMetadata,
   ItemAttachment,
+  Note,
 } from '@/features/library/domain/types/library.types';
 import type {
   ReaderAnnotation,
   CreateAnnotationDto,
   UpdateAnnotationDto,
 } from '@/features/library/domain/types/reader.types';
+import { normalizeCitationStyleId } from '@/features/library/domain/citations';
 import {
   libraryClient,
   resolveLibraryUrl,
+  resolveLibraryRawPath,
   getCitationUrl,
   getExportsUrl,
   getItemAttachmentUrl,
@@ -25,14 +28,16 @@ import { NotesService } from './catalog-entities.client';
 
 // 8. Citations & Exports Services
 export const CitationService = {
-  formatCitation: (scopeId: string | undefined, itemId: string, style: CslStyle = 'apa', index = 1) => {
+  formatCitation: (scopeId: string | undefined, itemId: string, style: CslStyle = 'apa-7th', index = 1) => {
+    const resolvedStyle = normalizeCitationStyleId(style);
     const pQuery = isProjectScope(scopeId) ? `&projectId=${encodeURIComponent(scopeId!)}` : '';
     return libraryClient.get<FormattedCitation>(
-      `${getCitationUrl(scopeId, 'items')}/${encodeURIComponent(itemId)}/citation?style=${encodeURIComponent(style)}&index=${index}${pQuery}`,
+      `${getCitationUrl(scopeId, 'items')}/${encodeURIComponent(itemId)}/citation?style=${encodeURIComponent(resolvedStyle)}&index=${index}${pQuery}`,
     );
   },
 
-  batchFormat: (scopeId: string | undefined, itemIds: string[], style: CslStyle = 'apa') => {
+  batchFormat: (scopeId: string | undefined, itemIds: string[], style: CslStyle = 'apa-7th') => {
+    const resolvedStyle = normalizeCitationStyleId(style);
     const projectId = isProjectScope(scopeId) ? scopeId : undefined;
     return libraryClient.post<{
       style: CslStyle;
@@ -43,7 +48,7 @@ export const CitationService = {
       citations: Array<{ itemId?: string; citation: FormattedCitation }>;
     }>(getCitationUrl(scopeId, 'batch-items'), {
       itemIds,
-      style,
+      style: resolvedStyle,
       ...(projectId ? { projectId } : {}),
     });
   },
@@ -78,7 +83,7 @@ export const CitationService = {
   ) =>
     libraryClient.post<FormattedCitation>(getCitationUrl(scopeId, 'format'), {
       item,
-      styleId,
+      styleId: normalizeCitationStyleId(styleId),
       index,
     }),
 
@@ -96,7 +101,7 @@ export const CitationService = {
       citations: Array<{ itemId?: string; citation: FormattedCitation }>;
     }>(getCitationUrl(scopeId, 'batch'), {
       items,
-      styleId,
+      styleId: normalizeCitationStyleId(styleId),
     }),
 
   resolveDoi: async (doi: string, scopeId?: string): Promise<ReferenceData | null> => {
@@ -177,17 +182,30 @@ export const ExportsService = {
     );
   },
 
-  exportByCitationKeys: (scopeId: string, keys: string[]) => {
+  exportByCitationKeys: async (scopeId: string, keys: string[]) => {
     const projectId = isProjectScope(scopeId) ? scopeId : undefined;
-    return libraryClient.post<{
-      content: string;
+    const res = await libraryClient.post<{
+      content?: string;
       bibtex?: string;
-      filename: string;
-      itemCount: number;
+      filename?: string;
+      itemCount?: number;
+      count?: number;
+      foundKeys?: string[];
+      missingKeys?: string[];
     }>(
       `${getExportsUrl(scopeId)}/by-keys`,
       { keys, ...(projectId ? { projectId } : {}) },
     );
+    const content = res?.content ?? res?.bibtex ?? '';
+    return {
+      ...res,
+      content,
+      bibtex: res?.bibtex ?? content,
+      itemCount: res?.itemCount ?? res?.count ?? 0,
+      filename: res?.filename ?? 'references.bib',
+      foundKeys: Array.isArray(res?.foundKeys) ? res.foundKeys : [],
+      missingKeys: Array.isArray(res?.missingKeys) ? res.missingKeys : [],
+    };
   },
 
   exportAnnotatedPdf: (scopeId?: string, itemId?: string) => {
@@ -451,9 +469,10 @@ export const ExtractionTelemetryService = {
         supportedFormats: string[];
         cascades: string[];
       };
-    }>('/api/v1/library/extraction/telemetry'),
+    }>(resolveLibraryRawPath('/api/v1/library/extraction/telemetry', 'extraction')),
 
   benchmark: (payload: { base64Pdf?: string; filename?: string } | File) => {
+    const benchmarkUrl = resolveLibraryRawPath('/api/v1/library/extraction/benchmark', 'extraction');
     if (typeof File !== 'undefined' && payload instanceof File) {
       const formData = new FormData();
       formData.append('file', payload);
@@ -468,7 +487,7 @@ export const ExtractionTelemetryService = {
           missingFields: string[];
         };
         extractedMetadata: Record<string, unknown>;
-      }>('/api/v1/library/extraction/benchmark', formData);
+      }>(benchmarkUrl, formData);
     }
     return libraryClient.post<{
       success: boolean;
@@ -481,7 +500,7 @@ export const ExtractionTelemetryService = {
         missingFields: string[];
       };
       extractedMetadata: Record<string, unknown>;
-    }>('/api/v1/library/extraction/benchmark', payload);
+    }>(benchmarkUrl, payload);
   },
 };
 
@@ -548,15 +567,16 @@ export const AnnotationsService = {
   extractNotes: async (
     scopeId: string | undefined,
     itemId: string,
-  ): Promise<{ totalExtracted: number; note?: unknown }> => {
-    const res = await NotesService.extractNotes(scopeId, itemId);
+    options?: { noteId?: string; tagColor?: boolean; tagColorName?: string; includeComments?: boolean },
+  ): Promise<{ totalExtracted: number; note?: Note }> => {
+    const res = await NotesService.extractFromAnnotations(scopeId, itemId, options);
     const count =
-      res && typeof res === 'object' && 'totalExtracted' in res
-        ? Number((res as { totalExtracted?: number }).totalExtracted ?? 1)
-        : res
+      res && typeof res === 'object' && 'totalExtracted' in res && typeof res.totalExtracted === 'number'
+        ? res.totalExtracted
+        : res && (res as { id?: string }).id
           ? 1
           : 0;
-    return { totalExtracted: count, note: res };
+    return { totalExtracted: count, note: res?.note ?? res };
   },
 
   importExternal: async (

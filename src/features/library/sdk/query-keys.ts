@@ -86,6 +86,8 @@ export const libraryKeys = {
     [...libraryKeys.all, "tags", normalizeScopeId(scopeId)] as const,
 
   // Attachments & Annotations
+  attachmentsAll: (scopeId?: string) =>
+    [...libraryKeys.all, "attachments", normalizeScopeId(scopeId)] as const,
   attachments: (scopeId?: string, itemId?: string) =>
     [
       ...libraryKeys.all,
@@ -93,6 +95,8 @@ export const libraryKeys = {
       normalizeScopeId(scopeId),
       itemId || "none",
     ] as const,
+  annotationsAll: (scopeId?: string) =>
+    [...libraryKeys.all, "annotations", normalizeScopeId(scopeId)] as const,
   annotations: (scopeId?: string, attachmentId?: string) =>
     [
       ...libraryKeys.all,
@@ -111,6 +115,8 @@ export const libraryKeys = {
     ] as const,
 
   // Relations
+  relationsAll: (scopeId?: string) =>
+    [...libraryKeys.all, "relations", normalizeScopeId(scopeId)] as const,
   relations: (scopeId?: string, itemId?: string) =>
     [
       ...libraryKeys.all,
@@ -274,11 +280,13 @@ export const savedSearchKeys = {
 };
 
 export const relationKeys = {
+  allByScope: (scopeId?: string) => libraryKeys.relationsAll(scopeId),
   all: (scopeId?: string, itemId?: string) =>
     libraryKeys.relations(scopeId, itemId),
 };
 
 export const attachmentKeys = {
+  all: (scopeId?: string) => libraryKeys.attachmentsAll(scopeId),
   byItem: (scopeId?: string, itemId?: string) =>
     libraryKeys.attachments(scopeId, itemId),
 };
@@ -418,6 +426,7 @@ export const readerQueryKeys = {
 
 export const annotationKeys = {
   all: [...libraryKeys.all, "annotations"] as const,
+  allByScope: (scopeId?: string) => libraryKeys.annotationsAll(scopeId),
   byAttachment: (scopeId?: string, attachmentId?: string) =>
     libraryKeys.annotations(scopeId, attachmentId),
 };

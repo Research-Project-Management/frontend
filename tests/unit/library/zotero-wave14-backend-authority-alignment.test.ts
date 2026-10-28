@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   resolveEffectiveLibraryPermissions, PROJECT_ROLE_PERMISSIONS, getLibraryPermissions, } from '@/features/library/domain/library-permissions.policy';
 import { duplicateGroupSchema } from '@/features/library/domain/types/curation.types';
-import { QualityService, CitationService, fetchReferenceByDoi, sanitizeItemPayload } from '@/features/library/sdk/library.client';
+import { CurationService as QualityService, CitationService, sanitizeItemPayload } from '@/features/library/sdk/library.client';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { resolveProjectRole } from '@/features/library/ui/sidebar/ProjectLibrariesSection';
 import * as api from '@/shared/lib/api';
@@ -180,7 +180,7 @@ describe('Wave 14: Backend-Authority Alignment', () => {
       });
 
       const rawInput = 'https://doi.org/10.48550/arXiv.1706.03762';
-      const result = await fetchReferenceByDoi(rawInput);
+      const result = await CitationService.fetchByDoi(rawInput);
 
       expect(api.apiPost).toHaveBeenCalledWith(
         '/api/v1/library/citation/resolve',

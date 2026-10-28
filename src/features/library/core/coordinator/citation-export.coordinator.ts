@@ -1,8 +1,20 @@
 import { toast } from 'sonner';
-import { copyToClipboard } from '@/shared/lib/utils';
 import { logger } from '@/shared/lib/logger';
 import { libraryServices } from '@/features/library/sdk/library.client';
 import type { Item, CslStyle } from '@/features/library/domain/types/library.types';
+import {
+  copyWithToastHelper,
+  triggerBrowserBlobDownload,
+  triggerBrowserTextDownload,
+  triggerBrowserUrlDownload,
+} from './browser-io.helpers';
+
+export {
+  copyWithToastHelper,
+  triggerBrowserBlobDownload,
+  triggerBrowserTextDownload,
+  triggerBrowserUrlDownload,
+};
 
 /**
  * Stateless Citation & Bibliography Export Application Service.
@@ -12,24 +24,6 @@ import type { Item, CslStyle } from '@/features/library/domain/types/library.typ
  * `libraryServices.exports`), handling retraction safety alerts, clipboard
  * feedback, and browser file downloads on the client.
  */
-
-export async function copyWithToastHelper(
-  text: string,
-  label: string = 'Copied to clipboard',
-  toastId: string = 'library-clipboard',
-): Promise<boolean> {
-  if (!text || !text.trim()) {
-    toast.error('Nothing to copy', { id: toastId });
-    return false;
-  }
-  const ok = await copyToClipboard(text);
-  if (ok) {
-    toast.success(label, { id: toastId });
-    return true;
-  }
-  toast.error('Failed to copy to clipboard', { id: toastId });
-  return false;
-}
 
 export function warnIfRetractedHelper(
   retractedCount: number,
@@ -44,25 +38,6 @@ export function warnIfRetractedHelper(
         duration: 6000,
       },
     );
-  }
-}
-
-export function triggerBrowserTextDownload(
-  content: string,
-  filename: string,
-  mimeType: string = 'text/plain;charset=utf-8',
-): void {
-  const blob = new Blob([content], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  try {
-    link.click();
-  } finally {
-    document.body.removeChild(link);
-    setTimeout(() => URL.revokeObjectURL(url), 10_000);
   }
 }
 

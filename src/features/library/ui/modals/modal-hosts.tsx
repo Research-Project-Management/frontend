@@ -55,6 +55,12 @@ export interface LibraryModalPayload {
   recommendedMasterId?: string;
   targetType?: string;
   collectionId?: string;
+  collection?: Collection;
+  name?: string;
+  color?: string;
+  initialName?: string;
+  initialDescription?: string;
+  initialColor?: string;
   parentId?: string | null;
   parentCollectionId?: string | null;
   collections?: Collection[];
@@ -183,6 +189,16 @@ export function CollectionModalsHost({
   };
 
   if (isCreateCollectionOpen) {
+    const resolvedCollectionList = Array.isArray(payload?.collections)
+      ? payload.collections
+      : collections;
+    const targetCollection =
+      payload?.collection ||
+      (payload?.collectionId
+        ? resolvedCollectionList.find((c) => c.id === payload.collectionId)
+        : undefined);
+    const isRenameMode = activeModal === 'RENAME_COLLECTION';
+
     return (
       <CreateCollectionModal
         open={isCreateCollectionOpen}
@@ -193,8 +209,25 @@ export function CollectionModalsHost({
           collectionService.isUpdating ||
           isCustomSubmitting
         }
-        collections={Array.isArray(payload?.collections) ? payload.collections : collections}
-        defaultParentId={payload?.parentId || null}
+        collections={resolvedCollectionList}
+        defaultParentId={
+          payload?.parentId !== undefined
+            ? payload.parentId
+            : (targetCollection?.parentId ?? null)
+        }
+        mode={isRenameMode ? 'rename' : 'create'}
+        initialName={
+          payload?.initialName ?? payload?.name ?? targetCollection?.name ?? ''
+        }
+        initialDescription={
+          payload?.initialDescription ??
+          payload?.description ??
+          targetCollection?.description ??
+          ''
+        }
+        initialColor={
+          payload?.initialColor ?? payload?.color ?? targetCollection?.color ?? ''
+        }
         rootLabel={
           payload?.rootLabel ||
           (activeScope.type === 'project' ? (activeScope.name || 'Project') : 'My Library')
@@ -280,10 +313,10 @@ export function DestructiveItemModalsHost({
     if (customConfirmCallback) {
       setIsCustomSubmitting(true);
       try {
+        await customConfirmCallback();
         if (isPermanentDelete) {
           useLibraryCommandStore.getState().clear();
         }
-        await customConfirmCallback();
         closeModal();
       } finally {
         setIsCustomSubmitting(false);
@@ -302,8 +335,8 @@ export function DestructiveItemModalsHost({
         }),
       );
     } else if (isPermanentDelete) {
-      useLibraryCommandStore.getState().clear();
       await purgeItemsMutation.mutateAsync(itemIds);
+      useLibraryCommandStore.getState().clear();
     } else {
       await useLibraryCommandStore.getState().executeCommand(
         createTrashCommand({

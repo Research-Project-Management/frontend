@@ -4,8 +4,10 @@ import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-q
 import { toast } from 'sonner';
 import { ItemsService, StateService } from '../library.client';
 import {
+  getMappedItemMeta,
   hasExplicitUserStateInPayload,
   preserveMappedItemFlags,
+  setMappedItemMeta,
 } from '@/features/library/domain/metadata';
 import type { Item, CreateItemDTO, UpdateItemDTO } from '@/features/library/domain/types/library.types';
 import {
@@ -35,6 +37,59 @@ export function resolveCachedItemVersion(
 
   const cached = resolveCachedItemFromScope(queryClient, effectiveScope, itemId);
   return typeof cached?.version === 'number' ? cached.version : undefined;
+}
+
+export function buildServerSuccessCachePatch(
+  serverItem: Partial<Item> | undefined,
+  rawData: Partial<UpdateItemDTO>,
+  existingCached: Item | null | undefined,
+): Partial<Item> {
+  const patchData: Partial<Item> = {
+    ...rawData,
+    ...(serverItem && typeof serverItem === 'object' ? serverItem : {}),
+  };
+
+  if (serverItem && typeof serverItem === 'object') {
+    preserveMappedItemFlags(serverItem, patchData);
+    const serverMeta = getMappedItemMeta(serverItem);
+    setMappedItemMeta(patchData, {
+      isFullBackendItem: serverMeta?.isFullBackendItem ?? true,
+      hasExplicitUserState: Boolean(serverMeta?.hasExplicitUserState),
+    });
+  }
+
+  const serverHasExplicitState = hasExplicitUserStateInPayload(
+    serverItem as Record<string, unknown> | undefined,
+  );
+  const inputHasExplicitState = hasExplicitUserStateInPayload(
+    rawData as Record<string, unknown>,
+  );
+
+  if (existingCached && !serverHasExplicitState && !inputHasExplicitState) {
+    patchData.isStarred = existingCached.isStarred;
+    patchData.isFavorite = existingCached.isFavorite;
+    patchData.isRead = existingCached.isRead;
+    patchData.readStatus = existingCached.readStatus;
+    patchData.rating = existingCached.rating;
+    if (existingCached.lastReadAt !== undefined) {
+      patchData.lastReadAt = existingCached.lastReadAt;
+    }
+    if (existingCached.currentPage !== undefined) {
+      patchData.currentPage = existingCached.currentPage;
+    }
+    if (existingCached.lastReadPage !== undefined) {
+      patchData.lastReadPage = existingCached.lastReadPage;
+    }
+    if (existingCached.scrollPosition !== undefined) {
+      patchData.scrollPosition = existingCached.scrollPosition;
+    }
+    if (existingCached.lastOpenedAt !== undefined) {
+      patchData.lastOpenedAt = existingCached.lastOpenedAt;
+    }
+    setMappedItemMeta(patchData, { hasExplicitUserState: false });
+  }
+
+  return patchData;
 }
 
 export function useUpdateLibraryItemMutation(scopeId?: string) {
@@ -101,29 +156,6 @@ export function useUpdateLibraryItemMutation(scopeId?: string) {
         updatedItem && typeof updatedItem === 'object' && 'item' in updatedItem && updatedItem.item
           ? (updatedItem.item as Partial<Item>)
           : (updatedItem as Partial<Item> | undefined);
-      const patchData: Partial<Item> = {
-        ...rawData,
-        ...(serverItem && typeof serverItem === 'object' ? serverItem : {}),
-      };
-      if (serverItem && typeof serverItem === 'object') {
-        preserveMappedItemFlags(serverItem, patchData);
-        if (!('_isFullBackendItem' in patchData)) {
-          Object.defineProperty(patchData, '_isFullBackendItem', {
-            value: true,
-            enumerable: false,
-            configurable: true,
-            writable: true,
-          });
-        }
-        if (!('_hasExplicitUserState' in patchData)) {
-          Object.defineProperty(patchData, '_hasExplicitUserState', {
-            value: Boolean((serverItem as Record<string, unknown>)._hasExplicitUserState),
-            enumerable: false,
-            configurable: true,
-            writable: true,
-          });
-        }
-      }
 
       if (targetId) {
         const existingCached = resolveCachedItemFromScope(
@@ -131,32 +163,11 @@ export function useUpdateLibraryItemMutation(scopeId?: string) {
           effectiveScope,
           targetId,
         );
-        const serverHasExplicitState = hasExplicitUserStateInPayload(
-          serverItem as Record<string, unknown> | undefined,
+        const patchData = buildServerSuccessCachePatch(
+          serverItem,
+          rawData,
+          existingCached,
         );
-        const inputHasExplicitState = hasExplicitUserStateInPayload(
-          rawData as Record<string, unknown>,
-        );
-        if (
-          existingCached &&
-          !serverHasExplicitState &&
-          !inputHasExplicitState
-        ) {
-          patchData.isStarred = existingCached.isStarred;
-          patchData.isFavorite = existingCached.isFavorite;
-          patchData.isRead = existingCached.isRead;
-          patchData.readStatus = existingCached.readStatus;
-          patchData.rating = existingCached.rating;
-          if (existingCached.lastReadAt !== undefined) {
-            patchData.lastReadAt = existingCached.lastReadAt;
-          }
-          Object.defineProperty(patchData, '_hasExplicitUserState', {
-            value: false,
-            enumerable: false,
-            configurable: true,
-            writable: true,
-          });
-        }
         patchItemAcrossScopeCaches(queryClient, effectiveScope, targetId, patchData, {
           membershipPatch: rawData,
         });

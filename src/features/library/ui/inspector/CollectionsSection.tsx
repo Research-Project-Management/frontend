@@ -15,6 +15,10 @@ import {
 import { useUpdateLibraryItemMutation } from "@/features/library/sdk/queries/catalog.queries";
 import { useCollections } from "@/features/library/sdk/queries/collections.queries";
 import { useLibraryUIStore } from "@/features/library/core/store/library-ui.store";
+import {
+  useLibraryCommandStore,
+  createUpdateItemMetadataCommand,
+} from "@/features/library/core/manager/library-command.manager";
 import { useLibraryProjectContext } from "@/features/library/core/adapters/project-context.adapter";
 import {
   Popover,
@@ -138,7 +142,7 @@ function useItemCollectionsManager(
 
   // Toggle assigning or removing a collection with undo support
   const handleToggleCollection = useCallback(
-    (targetColId: string) => {
+    async (targetColId: string) => {
       if (!item?.id || !canEdit) return;
       const isAssigned = assignedCollectionIdsSet.has(targetColId);
       const prevIds = Array.from(assignedCollectionIdsSet);
@@ -147,32 +151,64 @@ function useItemCollectionsManager(
         : [...prevIds, targetColId];
 
       const targetItemId = item.id;
-      const mutationPromise = updateItem(
-        targetItemId,
-        {
-          collectionIds: remainingIds,
-        },
-        { expectedVersion: item.version },
-      );
-
       const targetCol = colMap.get(targetColId);
       const colName = targetCol?.name || "Collection";
-      if (isAssigned) {
-        void mutationPromise.catch(() => undefined);
-        const remainingCount = remainingIds.length;
-        const description =
-          remainingCount === 0
-            ? "Item is now in Unfiled Items (remains safely in your library)."
-            : `Item remains in ${remainingCount} other ${remainingCount === 1 ? "collection" : "collections"}.`;
+      const commandDescription = isAssigned
+        ? `Removed from "${colName}"`
+        : `Added to "${colName}"`;
 
-        toast.success(`Removed from "${colName}"`, {
-          description,
+      const command = createUpdateItemMetadataCommand({
+        itemId: targetItemId,
+        description: commandDescription,
+        forwardPatch: { collectionIds: remainingIds },
+        inversePatch: { collectionIds: prevIds },
+        applyPatch: (id, patch) => updateItem(id, patch, { silent: true }),
+      });
+
+      try {
+        await updateItem(
+          targetItemId,
+          {
+            collectionIds: remainingIds,
+          },
+          { expectedVersion: item.version },
+        );
+
+        useLibraryCommandStore
+          .getState()
+          .pushExecutedCommand(command, { silentToast: true });
+
+        const undoAction = {
+          label: "Undo",
+          onClick: () => {
+            void useLibraryCommandStore.getState().undo(command.id);
+          },
+        };
+
+        if (isAssigned) {
+          const remainingCount = remainingIds.length;
+          const description =
+            remainingCount === 0
+              ? "Item is now in Unfiled Items (remains safely in your library)."
+              : `Item remains in ${remainingCount} other ${remainingCount === 1 ? "collection" : "collections"}.`;
+
+          toast.success(`Removed from "${colName}"`, {
+            description,
+            id: "col-assign",
+            duration: 3000,
+            action: undoAction,
+          });
+        } else {
+          toast.success(`Added to "${colName}"`, {
+            id: "col-assign",
+            action: undoAction,
+          });
+        }
+      } catch (err: unknown) {
+        toast.error(`Failed to update "${colName}"`, {
+          description: err instanceof Error ? err.message : "Please try again.",
           id: "col-assign",
-          duration: 3000,
         });
-      } else {
-        void mutationPromise.catch(() => undefined);
-        toast.success(`Added to "${colName}"`, { id: "col-assign" });
       }
     },
     [
@@ -270,7 +306,7 @@ function CollectionPickerContent({
         (res as { id?: string })?.id;
       if (createdId) {
         const nextIds = [...Array.from(assignedCollectionIdsSet), createdId];
-        updateItem(
+        await updateItem(
           item.id,
           {
             collectionIds: nextIds,

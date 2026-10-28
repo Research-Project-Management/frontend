@@ -10,8 +10,9 @@ import { useLibraryUIStore } from '@/features/library/core/store/library-ui.stor
 import type {
   Collection,
   CollectionInput,
-  MoveToTrashTarget,
 } from '@/features/library/domain/types/library.types';
+
+export const DEFAULT_COLLECTION_COLOR = '#2563eb';
 
 export interface UseCollectionCoordinatorParams {
   collectionService: ReturnType<typeof useCollections>;
@@ -52,12 +53,6 @@ export function useCollectionCoordinator({
 
   const resolvedActiveCollectionId =
     propActiveCollectionId ?? params?.collectionId ?? storeCollectionId;
-  // Modal states
-  const [createOpen, setCreateOpen] = useState(false);
-  const [createParentId, setCreateParentId] = useState<string | null>(null);
-  const [createScopeId, setCreateScopeId] = useState<string | null>(null);
-  const [trashTarget, setTrashTarget] = useState<MoveToTrashTarget | null>(null);
-  const [isTrashOpen, setIsTrashOpen] = useState(false);
 
   // Inline rename states
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -85,41 +80,11 @@ export function useCollectionCoordinator({
     [allCollectionsByScope, collections, effectiveScopeId],
   );
 
-  const handleCreate = useCallback(
-    (data: CollectionInput) => {
-      const rawParent = data.parentId ?? createParentId ?? null;
-      const cleanParentId = rawParent === 'root' || !rawParent ? null : rawParent;
-      const targetScope =
-        createScopeId ||
-        (cleanParentId ? findCollectionAndScope(cleanParentId).scopeId : effectiveScopeId);
-      collectionService.createCollection(
-        {
-          name: data.name?.trim() || 'Untitled',
-          description: data.description?.trim() || '',
-          color: data.color || '#2563eb',
-          icon: data.icon || '',
-          parentId: cleanParentId,
-          scopeId: targetScope,
-        },
-        {
-          onSuccess: () => {
-            setCreateOpen(false);
-            setCreateParentId(null);
-            setCreateScopeId(null);
-          },
-        },
-      );
-    },
-    [collectionService, createParentId, createScopeId, effectiveScopeId, findCollectionAndScope],
-  );
-
   const openModal = useLibraryUIStore((s) => s.openModal);
   const activeScope = useLibraryUIStore((s) => s.activeScope);
 
   const openCreateModalForScope = useCallback(
     (targetScopeId: string, defaultParentId: string | null) => {
-      setCreateScopeId(targetScopeId);
-      setCreateParentId(defaultParentId);
       const scopedCollections =
         targetScopeId === 'user'
           ? (allCollectionsByScope?.user ?? collections)
@@ -155,16 +120,13 @@ export function useCollectionCoordinator({
               {
                 name: data.name?.trim() || 'Untitled',
                 description: data.description?.trim() || '',
-                color: data.color || '#2563eb',
+                color: data.color || DEFAULT_COLLECTION_COLOR,
                 icon: data.icon || '',
                 parentId: cleanParentId,
                 scopeId: resolvedScope,
               },
               {
                 onSuccess: () => {
-                  setCreateOpen(false);
-                  setCreateParentId(null);
-                  setCreateScopeId(null);
                   resolve();
                 },
                 onError: (err) => reject(err),
@@ -226,13 +188,6 @@ export function useCollectionCoordinator({
     (collectionId: string, withItems: boolean) => {
       const { collection: target, scopeId } = findCollectionAndScope(collectionId);
       const collectionTitle = target?.name || 'Untitled Collection';
-      setTrashTarget({
-        type: 'collection',
-        id: collectionId,
-        title: collectionTitle,
-        withItems,
-        scopeId,
-      });
 
       openModal('DELETE_CONFIRM', {
         title: withItems ? 'Delete collection and items' : 'Delete collection',
@@ -282,24 +237,6 @@ export function useCollectionCoordinator({
     },
     [openDeleteCollectionModal],
   );
-
-  const handleConfirmTrash = useCallback(async () => {
-    if (!trashTarget?.id) return;
-    const targetId = trashTarget.id;
-    await collectionService.deleteCollection({
-      collectionId: targetId,
-      strategy: trashTarget.withItems ? 'cascade' : 'orphan',
-      scopeId: trashTarget.scopeId || effectiveScopeId,
-    });
-    if (resolvedActiveCollectionId === targetId) {
-      setActiveCollectionId(null);
-      if (onNavigate) {
-        onNavigate('/library');
-      } else {
-        router.push('/library');
-      }
-    }
-  }, [trashTarget, collectionService, effectiveScopeId, resolvedActiveCollectionId, setActiveCollectionId, onNavigate, router]);
 
   const handleMove = useCallback(
     (collectionId: string, newParentId: string | null) => {
@@ -458,21 +395,6 @@ export function useCollectionCoordinator({
     [findCollectionAndScope],
   );
 
-  const modals = useMemo(
-    () => ({
-      createOpen,
-      setCreateOpen,
-      createParentId,
-      setCreateParentId,
-      createScopeId,
-      setCreateScopeId,
-      trashTarget,
-      isTrashOpen,
-      setIsTrashOpen,
-    }),
-    [createOpen, createParentId, createScopeId, trashTarget, isTrashOpen],
-  );
-
   const rename = useMemo(
     () => ({
       renamingId,
@@ -484,28 +406,24 @@ export function useCollectionCoordinator({
 
   const handlers = useMemo(
     () => ({
-      handleCreate,
       openCreateSub,
       openCreateRoot,
       startRename,
       submitRename,
       handleDelete,
       handleDeleteWithItems,
-      handleConfirmTrash,
       handleMove,
       handleCopy,
       handleExportBibtex,
       handleExportBundle,
     }),
     [
-      handleCreate,
       openCreateSub,
       openCreateRoot,
       startRename,
       submitRename,
       handleDelete,
       handleDeleteWithItems,
-      handleConfirmTrash,
       handleMove,
       handleCopy,
       handleExportBibtex,
@@ -515,11 +433,10 @@ export function useCollectionCoordinator({
 
   return useMemo(
     () => ({
-      modals,
       rename,
       handlers,
     }),
-    [modals, rename, handlers],
+    [rename, handlers],
   );
 }
 

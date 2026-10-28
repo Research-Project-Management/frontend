@@ -21,6 +21,12 @@ import {
   type NormalizedNote,
 } from "@/features/library/domain/metadata";
 import { useNotes } from "@/features/library/sdk/queries/tags-notes.queries";
+import {
+  useLibraryCommandStore,
+  createAddNoteCommand,
+  createUpdateNoteCommand,
+  createDeleteNoteCommand,
+} from "@/features/library/core/manager/library-command.manager";
 import { cn } from "@/shared/lib/utils";
 import { logger } from "@/shared/lib/logger";
 import { toast } from "sonner";
@@ -189,7 +195,15 @@ function NotesSectionContent({
     if (!trimmedContent) return;
 
     try {
-      await createNote({ itemId: paper.id, contentMd: trimmedContent });
+      await useLibraryCommandStore.getState().executeCommand(
+        createAddNoteCommand({
+          itemId: paper.id,
+          contentMd: trimmedContent,
+          createNote,
+          deleteNote,
+        }),
+        { silentToast: true },
+      );
       setNewNoteContent("");
       setIsAdding(false);
       onCancelAdding?.();
@@ -210,11 +224,22 @@ function NotesSectionContent({
     const targetNote = canonicalNotes.find(
       (singleNote) => singleNote.id === noteId,
     );
-    if (targetNote) {
+    const existingNormalized = notes.find((n) => n.id === noteId);
+    const previousContentMd =
+      targetNote?.contentMd || existingNormalized?.content || "";
+
+    if (targetNote && trimmedContent !== previousContentMd) {
       try {
-        await updateNote(noteId, targetNote.version || 1, {
-          contentMd: trimmedContent,
-        });
+        await useLibraryCommandStore.getState().executeCommand(
+          createUpdateNoteCommand({
+            noteId,
+            initialVersion: targetNote.version || 1,
+            previousContentMd,
+            nextContentMd: trimmedContent,
+            updateNote,
+          }),
+          { silentToast: true },
+        );
       } catch (caughtError) {
         logger.error("Failed to update note", caughtError);
       }
@@ -396,12 +421,21 @@ function NotesSectionContent({
                           <button
                             type="button"
                             onClick={() => {
-                              if (deleteNote) {
-                                const target = canonicalNotes.find(
-                                  (cn) => cn.id === n.id,
-                                );
-                                deleteNote(n.id, target?.version);
-                              }
+                              const target = canonicalNotes.find(
+                                (cn) => cn.id === n.id,
+                              );
+                              void useLibraryCommandStore.getState().executeCommand(
+                                createDeleteNoteCommand({
+                                  noteId: n.id,
+                                  version: target?.version,
+                                  itemId: paper.id,
+                                  contentMd: target?.contentMd || n.content,
+                                  title: target?.title,
+                                  deleteNote,
+                                  createNote,
+                                }),
+                                { silentToast: true },
+                              );
                             }}
                             className="opacity-0 group-hover/note:opacity-100 max-md:opacity-100 size-6 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-opacity"
                             aria-label="Delete note"

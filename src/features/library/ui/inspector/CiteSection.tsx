@@ -33,7 +33,10 @@ import type {
   Item,
   CslStyle,
 } from "@/features/library/domain/types/library.types";
-import { getCleanStyleLabel } from "@/features/library/domain/citations";
+import {
+  getCleanStyleLabel,
+  normalizeCitationStyleId,
+} from "@/features/library/domain/citations";
 import { triggerBrowserTextDownload } from "@/features/library/core/coordinator/citation-export.coordinator";
 import { useLibraryUIStore } from "@/features/library/core/store/library-ui.store";
 import DOMPurify from "dompurify";
@@ -99,16 +102,23 @@ export default function CiteSection({ item, scopeId }: CiteSectionProps) {
 
   const handleSelectSearchedStyle = useCallback(
     (style: { id: string; label: string }) => {
-      setSearchedStyle(style);
-      setActiveFormat(style.id);
+      const normalizedId = normalizeCitationStyleId(style.id);
+      setSearchedStyle({ id: normalizedId, label: style.label });
+      setActiveFormat(normalizedId);
     },
     [],
   );
 
-  const isExportFormat = activeFormat === "bibtex" || activeFormat === "ris";
+  const normalizedActiveFormat = useMemo(
+    () => normalizeCitationStyleId(activeFormat),
+    [activeFormat],
+  );
+
+  const isExportFormat =
+    normalizedActiveFormat === "bibtex" || normalizedActiveFormat === "ris";
 
   // 2. Backend CSL engine is the single source of truth for formatted output
-  const currentCslStyle = activeFormat as CslStyle;
+  const currentCslStyle = normalizedActiveFormat as CslStyle;
 
   const { data: cslData, isLoading } = useCslCitation(
     activeScopeId,
@@ -133,28 +143,28 @@ export default function CiteSection({ item, scopeId }: CiteSectionProps) {
   );
 
   const isCoreSelected = coreStyles.some(
-    (s) =>
-      s.id === activeFormat ||
-      (s.id.startsWith("apa") && activeFormat.startsWith("apa")) ||
-      (s.id.startsWith("mla") && activeFormat.startsWith("mla")),
+    (s) => s.id === normalizedActiveFormat,
   );
 
   const moreButtonLabel = useMemo(() => {
     if (isCoreSelected) return "More";
-    if (searchedStyle?.id === activeFormat) return searchedStyle.label;
-    const found = serverStyles.find((s) => s.id === activeFormat);
-    return found?.shortTitle || found?.name || getCleanStyleLabel(activeFormat);
-  }, [isCoreSelected, searchedStyle, activeFormat, serverStyles]);
+    if (searchedStyle && normalizeCitationStyleId(searchedStyle.id) === normalizedActiveFormat) {
+      return searchedStyle.label;
+    }
+    const found = serverStyles.find(
+      (s) => normalizeCitationStyleId(s.id) === normalizedActiveFormat,
+    );
+    return (
+      found?.shortTitle ||
+      found?.name ||
+      getCleanStyleLabel(normalizedActiveFormat)
+    );
+  }, [isCoreSelected, searchedStyle, normalizedActiveFormat, serverStyles]);
 
   const barItems = coreStyles.map((s) => ({
     id: s.id,
     label: s.label,
-    isSelected:
-      s.id === "bibtex"
-        ? activeFormat === "bibtex"
-        : activeFormat === s.id ||
-          (s.id.startsWith("apa") && activeFormat.startsWith("apa")) ||
-          (s.id.startsWith("mla") && activeFormat.startsWith("mla")),
+    isSelected: s.id === normalizedActiveFormat,
   }));
 
   const rawHtml =
@@ -335,12 +345,17 @@ export default function CiteSection({ item, scopeId }: CiteSectionProps) {
               className="w-52 p-1.5 space-y-0.5 bg-popover border border-border rounded-md shadow-raised-200 text-xs z-50 max-h-72 overflow-y-auto"
             >
               {dropdownStyles.map((fmt) => {
-                const isSelected = activeFormat === fmt.id;
+                const isSelected =
+                  normalizeCitationStyleId(fmt.id) === normalizedActiveFormat;
                 return (
                   <DropdownMenuItem
                     key={fmt.id}
-                    onSelect={() => setActiveFormat(fmt.id)}
-                    onClick={() => setActiveFormat(fmt.id)}
+                    onSelect={() =>
+                      setActiveFormat(normalizeCitationStyleId(fmt.id))
+                    }
+                    onClick={() =>
+                      setActiveFormat(normalizeCitationStyleId(fmt.id))
+                    }
                     className={cn(
                       "h-7.5 px-2 text-xs cursor-pointer rounded-md hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary flex items-center justify-between",
                       isSelected
@@ -363,13 +378,13 @@ export default function CiteSection({ item, scopeId }: CiteSectionProps) {
               <DropdownMenuItem
                 onSelect={() =>
                   openModal("CSL_STYLE_MANAGER", {
-                    currentStyleId: activeFormat,
+                    currentStyleId: normalizedActiveFormat,
                     onSelectStyle: handleSelectSearchedStyle,
                   })
                 }
                 onClick={() =>
                   openModal("CSL_STYLE_MANAGER", {
-                    currentStyleId: activeFormat,
+                    currentStyleId: normalizedActiveFormat,
                     onSelectStyle: handleSelectSearchedStyle,
                   })
                 }

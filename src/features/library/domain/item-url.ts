@@ -5,7 +5,13 @@
 export function isProjectScope(scopeId?: string): scopeId is string {
   if (!scopeId) return false;
   const s = scopeId.trim().toLowerCase();
-  return s !== "user" && s !== "me" && s !== "global" && s !== "default";
+  return (
+    s !== "user" &&
+    s !== "me" &&
+    s !== "personal" &&
+    s !== "global" &&
+    s !== "default"
+  );
 }
 
 export type ItemFileSource = {

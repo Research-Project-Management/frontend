@@ -121,6 +121,9 @@ export const IngestionService = {
       doi?: string;
       arxivId?: string;
       link?: string;
+      isRead?: boolean;
+      isSaved?: boolean;
+      savedItemId?: string | null;
     }>;
   }> => {
     const res = await libraryClient.post<{
@@ -134,6 +137,9 @@ export const IngestionService = {
         doi?: string;
         arxivId?: string;
         link?: string;
+        isRead?: boolean;
+        isSaved?: boolean;
+        savedItemId?: string | null;
       }>;
       data?: {
         feedTitle?: string;
@@ -146,6 +152,9 @@ export const IngestionService = {
           doi?: string;
           arxivId?: string;
           link?: string;
+          isRead?: boolean;
+          isSaved?: boolean;
+          savedItemId?: string | null;
         }>;
       };
     }>(getIngestionUrl(undefined, 'fetch-feed'), { url, forceRefresh });
@@ -157,19 +166,116 @@ export const IngestionService = {
   },
 };
 
+interface RawDuplicateCluster {
+  clusterId: string;
+  matchReason: string;
+  confidence: number;
+  recommendedMasterId?: string;
+  items: Array<Record<string, unknown> | string>;
+}
+
+function extractRawDuplicateItemId(raw: unknown): string | undefined {
+  if (typeof raw === 'string' && raw.trim()) return raw.trim();
+  if (raw && typeof raw === 'object') {
+    const rec = raw as { id?: unknown; itemId?: unknown };
+    const id = String(rec.id || rec.itemId || '').trim();
+    return id || undefined;
+  }
+  return undefined;
+}
+
+function hasDuplicateItemTitle(raw: unknown): boolean {
+  return Boolean(
+    raw &&
+      typeof raw === 'object' &&
+      'title' in raw &&
+      typeof (raw as { title: unknown }).title === 'string' &&
+      (raw as { title: string }).title.trim().length > 0,
+  );
+}
+
+function normalizeDuplicateClusterItem(
+  rawItem: Record<string, unknown> | string,
+  hydratedMap: ReadonlyMap<string, Item>,
+): Item {
+  const id = extractRawDuplicateItemId(rawItem);
+  const hydrated = id ? hydratedMap.get(id) : undefined;
+  const sourceObj: Record<string, unknown> = {
+    ...(typeof rawItem === 'object' && rawItem !== null ? rawItem : { id }),
+    ...(hydrated ? (hydrated as unknown as Record<string, unknown>) : {}),
+  };
+
+  const rawTags = Array.isArray(sourceObj.tags)
+    ? sourceObj.tags
+        .map((t: unknown) =>
+          typeof t === 'string'
+            ? t
+            : t && typeof t === 'object' && 'name' in t
+              ? String((t as { name: unknown }).name)
+              : '',
+        )
+        .filter(Boolean)
+    : undefined;
+  const baseMapped = mapBackendItem(sourceObj);
+  const mapped = {
+    ...baseMapped,
+    ...(rawTags ? { tags: rawTags } : {}),
+  };
+  const parseRes = itemSchema.safeParse(mapped);
+  return preserveMappedItemFlags(baseMapped, {
+    ...mapped,
+    ...(parseRes.success ? parseRes.data : {}),
+  });
+}
+
+async function batchHydrateMissingDuplicateItems(
+  scopeId: string | undefined,
+  missingIds: ReadonlySet<string>,
+  seedItems?: ReadonlyMap<string, Item>,
+): Promise<Map<string, Item>> {
+  const hydratedMap = new Map<string, Item>(seedItems);
+  const unresolvedIds = Array.from(missingIds).filter((id) => !hydratedMap.has(id));
+  if (unresolvedIds.length === 0) return hydratedMap;
+
+  if (unresolvedIds.length === 1) {
+    const singleId = unresolvedIds[0]!;
+    try {
+      const fetched = await ItemsService.getById(scopeId, singleId);
+      if (fetched) hydratedMap.set(singleId, fetched);
+    } catch {
+      // fallback: keep existing stub if lookup fails
+    }
+    return hydratedMap;
+  }
+
+  try {
+    const listRes = await ItemsService.getAll(scopeId, {
+      limit: Math.max(250, unresolvedIds.length * 2),
+    });
+    for (const item of listRes?.items || []) {
+      if (item?.id && missingIds.has(item.id)) {
+        hydratedMap.set(item.id, item);
+      }
+    }
+  } catch {
+    // fallback: keep existing data if batch list fails
+  }
+
+  return hydratedMap;
+}
+
 export const CurationService = {
   getDuplicates: async (
     scopeId?: string,
+    options?: { cachedItemsById?: ReadonlyMap<string, Item> },
   ): Promise<{ duplicateGroups: DuplicateGroup[]; totalDuplicates: number }> => {
-    interface RawDuplicateCluster {
-      clusterId: string;
-      matchReason: string;
-      confidence: number;
-      recommendedMasterId?: string;
-      items: Array<Record<string, unknown>>;
-    }
     const res = await libraryClient.get<
-      RawDuplicateCluster[] | { data?: RawDuplicateCluster[]; clusters?: RawDuplicateCluster[]; duplicates?: DuplicateGroup[] }
+      | RawDuplicateCluster[]
+      | {
+          data?: RawDuplicateCluster[];
+          clusters?: RawDuplicateCluster[];
+          duplicates?: DuplicateGroup[];
+        }
     >(getCurationUrl(scopeId, 'duplicates'));
 
     if (res && typeof res === 'object' && 'duplicates' in res && Array.isArray(res.duplicates)) {
@@ -177,27 +283,19 @@ export const CurationService = {
       const missingIds = new Set<string>();
       for (const g of groups) {
         for (const it of g.items || []) {
-          if (it.id && !it.title) {
-            missingIds.add(it.id);
-          }
+          if (it.id && !it.title) missingIds.add(it.id);
         }
       }
       if (missingIds.size > 0) {
-        const fetchedMap = new Map<string, Item>();
-        await Promise.all(
-          Array.from(missingIds).map(async (id) => {
-            try {
-              const fetched = await ItemsService.getById(scopeId, id);
-              if (fetched) fetchedMap.set(id, fetched);
-            } catch {
-              // ignore fetch error
-            }
-          }),
+        const hydratedMap = await batchHydrateMissingDuplicateItems(
+          scopeId,
+          missingIds,
+          options?.cachedItemsById,
         );
         for (const g of groups) {
           g.items = (g.items || []).map((it) => {
-            const fetched = it.id ? fetchedMap.get(it.id) : undefined;
-            return fetched ? preserveMappedItemFlags(fetched, { ...it, ...fetched }) : it;
+            const hydrated = it.id ? hydratedMap.get(it.id) : undefined;
+            return hydrated ? preserveMappedItemFlags(hydrated, { ...it, ...hydrated }) : it;
           });
         }
       }
@@ -209,86 +307,39 @@ export const CurationService = {
 
     const clusters: RawDuplicateCluster[] = Array.isArray(res)
       ? res
-      : (res && 'data' in res && Array.isArray(res.data)
-          ? res.data
-          : res && 'clusters' in res && Array.isArray(res.clusters)
-            ? res.clusters
-            : []);
+      : res && 'data' in res && Array.isArray(res.data)
+        ? res.data
+        : res && 'clusters' in res && Array.isArray(res.clusters)
+          ? res.clusters
+          : [];
 
-    // Hydrate any items missing complete bibliographic details (e.g. ID stubs or missing titles)
     const missingItemIds = new Set<string>();
     for (const c of clusters) {
       for (const it of c.items || []) {
-        const id = typeof it === 'string' ? it : (typeof it === 'object' && it !== null && 'id' in it ? String((it as { id: unknown }).id) : undefined);
-        const hasTitle = typeof it === 'object' && it !== null && 'title' in it && Boolean((it as { title: unknown }).title);
-        if (id && !hasTitle) {
+        const id = extractRawDuplicateItemId(it);
+        if (id && !hasDuplicateItemTitle(it)) {
           missingItemIds.add(id);
         }
       }
     }
 
-    const fetchedItemsMap = new Map<string, Item>();
-    if (missingItemIds.size > 0) {
-      await Promise.all(
-        Array.from(missingItemIds).map(async (id) => {
-          try {
-            const fetched = await ItemsService.getById(scopeId, id);
-            if (fetched) {
-              fetchedItemsMap.set(id, fetched);
-            }
-          } catch {
-            // fallback: keep existing data if fetch fails
-          }
-        }),
-      );
-    }
+    const hydratedItemsMap = await batchHydrateMissingDuplicateItems(
+      scopeId,
+      missingItemIds,
+      options?.cachedItemsById,
+    );
 
-    const duplicateGroups: DuplicateGroup[] = clusters.map((c) => {
-      const parsedItems = (c.items || []).map((it) => {
-        const id = typeof it === 'string' ? it : (typeof it === 'object' && it !== null && 'id' in it ? String((it as { id: unknown }).id) : undefined);
-        const fetched = id ? fetchedItemsMap.get(id) : undefined;
-        const sourceObj: Record<string, unknown> = {
-          ...(typeof it === 'object' && it !== null ? (it as Record<string, unknown>) : { id }),
-          ...(fetched ? (fetched as unknown as Record<string, unknown>) : {}),
-        };
-
-        const rawTags = Array.isArray(sourceObj.tags)
-          ? sourceObj.tags
-              .map((t: unknown) =>
-                typeof t === 'string'
-                  ? t
-                  : t && typeof t === 'object' && 'name' in t
-                    ? String((t as { name: unknown }).name)
-                    : '',
-              )
-              .filter(Boolean)
-          : undefined;
-        const baseMapped = mapBackendItem(sourceObj);
-        const mapped = {
-          ...baseMapped,
-          ...(rawTags ? { tags: rawTags } : {}),
-        };
-        const parseRes = itemSchema.safeParse(mapped);
-        return preserveMappedItemFlags(baseMapped, {
-          ...mapped,
-          ...(parseRes.success ? parseRes.data : {}),
-        });
-      });
-      return {
-        matchType: c.matchReason === 'EXACT_DOI' ? 'DOI' : 'TITLE_AUTHOR_YEAR',
-        confidence: c.confidence >= 1 ? 'high' : 'medium',
-        key: c.clusterId,
-        ...(c.recommendedMasterId ? { recommendedMasterId: c.recommendedMasterId } : {}),
-        items: parsedItems,
-      };
-    });
+    const duplicateGroups: DuplicateGroup[] = clusters.map((c) => ({
+      matchType: c.matchReason === 'EXACT_DOI' ? 'DOI' : 'TITLE_AUTHOR_YEAR',
+      confidence: c.confidence >= 1 ? 'high' : 'medium',
+      key: c.clusterId,
+      ...(c.recommendedMasterId ? { recommendedMasterId: c.recommendedMasterId } : {}),
+      items: (c.items || []).map((it) => normalizeDuplicateClusterItem(it, hydratedItemsMap)),
+    }));
 
     return {
       duplicateGroups,
-      totalDuplicates: duplicateGroups.reduce(
-        (acc, g) => acc + (g.items?.length || 0),
-        0,
-      ),
+      totalDuplicates: duplicateGroups.reduce((acc, g) => acc + (g.items?.length || 0), 0),
     };
   },
 
@@ -414,11 +465,18 @@ export const RetractionService = {
       [key: string]: unknown;
     }>(getRetractionUrl(scopeId, 'database/seed'), { force }),
 
-  getRetractedItems: (scopeId?: string) =>
-    libraryClient.get<Item[]>(
-      getRetractionUrl(scopeId, 'items'),
-      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
-    ),
+  getRetractedItems: (scopeId?: string): Promise<Item[]> =>
+    libraryClient
+      .get<Item[] | { items?: Item[]; data?: Item[] }>(
+        getRetractionUrl(scopeId, 'items'),
+        { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
+      )
+      .then((res) => {
+        const list = Array.isArray(res)
+          ? res
+          : res?.items ?? res?.data ?? [];
+        return list.map((it) => mapBackendItem(it));
+      }),
 
   checkItem: (scopeId: string | undefined, itemId: string) =>
     libraryClient.post<{
@@ -460,17 +518,33 @@ export const RetractionService = {
     itemId: string,
     data?: FlagRetractionInput,
   ): Promise<Item> =>
-    libraryClient.post<Item>(
-      getRetractionUrl(scopeId, `items/${encodeURIComponent(itemId)}/flag`),
-      data || {},
-      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
-    ),
+    libraryClient
+      .post<Item | { item: Item }>(
+        getRetractionUrl(scopeId, `items/${encodeURIComponent(itemId)}/flag`),
+        data || {},
+        { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
+      )
+      .then((res) =>
+        mapBackendItem(
+          (res && typeof res === 'object' && 'item' in res
+            ? (res as { item: Item }).item
+            : res) as Partial<Item>,
+        ),
+      ),
 
-  unflagItem: (scopeId: string | undefined, itemId: string) =>
-    libraryClient.delete<Item>(
-      getRetractionUrl(scopeId, `items/${encodeURIComponent(itemId)}/flag`),
-      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
-    ),
+  unflagItem: (scopeId: string | undefined, itemId: string): Promise<Item> =>
+    libraryClient
+      .delete<Item | { item: Item }>(
+        getRetractionUrl(scopeId, `items/${encodeURIComponent(itemId)}/flag`),
+        { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
+      )
+      .then((res) =>
+        mapBackendItem(
+          (res && typeof res === 'object' && 'item' in res
+            ? (res as { item: Item }).item
+            : res) as Partial<Item>,
+        ),
+      ),
 };
 
 // 11. Search & Sync Services
@@ -488,7 +562,7 @@ export const SearchService = {
     sortBy?: SearchSortBy;
     sortOrder?: SearchSortOrder;
     includeFacets?: boolean;
-  }, scopeId?: string) => {
+  }, scopeId?: string): Promise<SearchResponse> => {
     const effectiveQuery = params.query ?? params.q ?? '';
     const queryParams: Record<string, string> = { query: effectiveQuery };
     if (params.limit !== undefined) queryParams.limit = String(params.limit);
@@ -502,10 +576,17 @@ export const SearchService = {
     if (params.sortOrder) queryParams.sortOrder = params.sortOrder;
     if (params.includeFacets !== undefined) queryParams.includeFacets = String(params.includeFacets);
 
-    return libraryClient.get<SearchResponse>(
-      resolveLibraryUrl('search', '/search', scopeId),
-      { params: queryParams },
-    );
+    return libraryClient
+      .get<SearchResponse>(
+        resolveLibraryUrl('search', '/search', scopeId),
+        { params: queryParams },
+      )
+      .then((res) => ({
+        ...res,
+        items: Array.isArray(res?.items)
+          ? res.items.map((it) => mapBackendItem(it))
+          : [],
+      }));
   },
 
   searchAnchors: (attachmentId: string, term: string, pageIndex?: number, scopeId?: string) => {

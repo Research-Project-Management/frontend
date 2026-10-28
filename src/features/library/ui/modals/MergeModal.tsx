@@ -61,7 +61,7 @@ export function MergeModal({
     selectedMasterId,
     fieldOverrides,
     effectiveItemType,
-    getEffectiveMergeSelections,
+    getExplicitMergeSelections,
     showConflictsOnly,
     setShowConflictsOnly,
     masterPaper,
@@ -89,7 +89,7 @@ export function MergeModal({
 
       await onMerge(
         masterPaper,
-        getEffectiveMergeSelections(),
+        getExplicitMergeSelections(),
         duplicateIdsToDelete,
       );
       onOpenChange(false);

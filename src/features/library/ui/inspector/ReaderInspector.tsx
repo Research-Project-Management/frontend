@@ -7,13 +7,12 @@ import {
   type LibraryInspectorProps,
 } from "./LibraryInspector";
 import {
-  INSPECTOR_LEVELS_FROM_BOTTOM,
   INSPECTOR_LEVELS,
 } from "./inspector-levels.constants";
 import type { Item } from "@/features/library/domain/types/library.types";
 import type { ReaderDocument } from "@/features/library/domain/types/reader.types";
 
-export { INSPECTOR_LEVELS_FROM_BOTTOM, INSPECTOR_LEVELS };
+export { INSPECTOR_LEVELS };
 
 export interface ReaderInspectorProps extends Omit<
   LibraryInspectorProps,

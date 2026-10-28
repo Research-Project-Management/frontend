@@ -53,6 +53,7 @@ import {
 } from '@/features/library/sdk/queries/ingestion.queries';
 import { formatItemTypeLabel } from '@/features/library/domain/metadata';
 import { parseEmojiPrefix } from '@/features/library/domain/academic-text';
+import { getCollectionBreadcrumbPath } from '@/features/library/domain/collection-tree';
 import { executeSaveFeedEntryToLibrary, type ParsedFeedEntry } from '@/features/library/domain/feed-parser.domain';
 import type { Item, DuplicateGroup, Collection } from '@/features/library/domain/types/library.types';
 
@@ -239,9 +240,24 @@ export function ModernLibraryPage({
     enabled: effectiveView === 'duplicates',
   });
 
-  // Deep linking: auto-select item and open inspector if ?item=... or ?selected=... is in URL
+  const [selectedDuplicateGroup, setSelectedDuplicateGroup] = useState<DuplicateGroup | null>(null);
+  const [selectedDuplicateGroupKey, setSelectedDuplicateGroupKey] = useState<string | null>(null);
+  const dismissDuplicateGroupRef = useRef<((groupKey: string) => void) | null>(null);
+  const openMergeModalRef = useRef<((group: DuplicateGroup, groupKey?: string) => void) | null>(null);
+
+  // Deep linking & Scope transition guard: prevent old scope's URL ?item= or duplicate group from leaking into new scope
+  const prevScopeIdRef = React.useRef<string>(effectiveScopeId);
   const lastConsumedItemIdRef = React.useRef<string | null>(null);
   React.useEffect(() => {
+    useLibraryCommandStore.getState().setScope(effectiveScopeId);
+    const scopeChanged = prevScopeIdRef.current !== effectiveScopeId;
+    if (scopeChanged) {
+      prevScopeIdRef.current = effectiveScopeId;
+      setSelectedDuplicateGroup(null);
+      setSelectedDuplicateGroupKey(null);
+      lastConsumedItemIdRef.current = nav.selectedItemId ?? null;
+      return;
+    }
     const selectedId = nav.selectedItemId;
     if (selectedId && selectedId !== lastConsumedItemIdRef.current) {
       lastConsumedItemIdRef.current = selectedId;
@@ -249,7 +265,7 @@ export function ModernLibraryPage({
       selectOnly(selectedId);
       setIsInspectorOpen(true);
     }
-  }, [nav.selectedItemId, setActiveItem, selectOnly, setIsInspectorOpen]);
+  }, [effectiveScopeId, nav.selectedItemId, setActiveItem, selectOnly, setIsInspectorOpen]);
 
   // Breadcrumb navigation with full ancestor chain
   const breadcrumbs = useMemo<BreadcrumbItem[] | undefined>(() => {
@@ -294,20 +310,8 @@ export function ModernLibraryPage({
     if (!currentCollection) return undefined;
 
     const crumbs: BreadcrumbItem[] = [{ id: '__root__', name: rootName, clickable: false }];
-    const chain: NonNullable<typeof currentCollection>[] = [];
-    let curr: typeof currentCollection | undefined = currentCollection;
-    const visited = new Set<string>();
-    while (curr && !visited.has(curr.id)) {
-      visited.add(curr.id);
-      chain.push(curr);
-      if (curr.parentId) {
-        curr = collectionMap.get(curr.parentId);
-      } else {
-        break;
-      }
-    }
-    for (let i = chain.length - 1; i >= 0; i--) {
-      const c = chain[i]!;
+    const chain = getCollectionBreadcrumbPath(collections, currentCollection.id);
+    for (const c of chain) {
       const siblings = collections.filter(
         (col) => (col.parentId || null) === (c.parentId || null),
       );
@@ -326,7 +330,7 @@ export function ModernLibraryPage({
       });
     }
     return crumbs;
-  }, [isSavedSearchView, currentSavedSearch, currentCollection, collectionMap, collections, activeScope.name, activeScope.type, resolvedTitle, effectiveView, currentFeed, feeds, router, nav]);
+  }, [isSavedSearchView, currentSavedSearch, currentCollection, collections, activeScope.name, activeScope.type, resolvedTitle, effectiveView, currentFeed, feeds, router, nav]);
 
   const handleNavigateCrumb = (crumbId?: string) => {
     if (!crumbId || crumbId === '__root__') {
@@ -409,8 +413,8 @@ export function ModernLibraryPage({
       permanent: true,
       onConfirm: async () => {
         try {
-          useLibraryCommandStore.getState().clear();
           await emptyTrash();
+          useLibraryCommandStore.getState().clear();
           clearSelection();
         } catch (err: unknown) {
           toast.error('Failed to empty trash', { id: 'empty-trash-error' });
@@ -452,10 +456,6 @@ export function ModernLibraryPage({
   const undoMergeMutation = useUndoMergeDuplicatesMutation(effectiveScopeId);
   const restoreItemsMutation = useBatchRestoreItemsMutation(effectiveScopeId);
   const updateItemMutation = useUpdateLibraryItemMutation(effectiveScopeId);
-  const [selectedDuplicateGroup, setSelectedDuplicateGroup] = useState<DuplicateGroup | null>(null);
-  const [selectedDuplicateGroupKey, setSelectedDuplicateGroupKey] = useState<string | null>(null);
-  const dismissDuplicateGroupRef = useRef<((groupKey: string) => void) | null>(null);
-  const openMergeModalRef = useRef<((group: DuplicateGroup, groupKey?: string) => void) | null>(null);
 
   const handleSelectedDuplicateGroupChange = useCallback(
     (

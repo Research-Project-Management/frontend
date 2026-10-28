@@ -10,13 +10,14 @@ import {
   ExternalLink,
   ChevronRight,
   Columns,
+  CheckSquare,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
-import { formatAcademicAuthors } from '@/features/library/domain/academic-text';
 import { getItemAuthorsSummary } from '@/features/library/domain/creators';
 import { ContentSkeleton } from '@/features/library/ui/content/ContentSkeleton';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
@@ -27,13 +28,17 @@ import {
 import {
   useDuplicateGroups,
   useDismissDuplicatesMutation,
+  useMergeDuplicates,
 } from '@/features/library/sdk/queries/ingestion.queries';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import {
   clearGroupMergeDraft,
   computeDuplicateSetKey,
 } from '@/features/library/core/coordinator/curation.coordinator';
-import { inspectItemDifferences } from '@/features/library/domain/diff';
+import {
+  inspectItemDifferences,
+  selectBestMasterItemId,
+} from '@/features/library/domain/diff';
 import type { Item, DuplicateGroup } from '@/features/library/domain/types/library.types';
 
 function InlineDiffView({
@@ -152,6 +157,8 @@ function getDeterministicGroupKey(group: DuplicateGroup): string {
 export interface DuplicatesContentProps {
   scopeId?: string;
   canEdit?: boolean;
+  onMergeGroup?: (group: DuplicateGroup, groupKey: string) => Promise<void> | void;
+  onDismissGroup?: (groupKey: string) => Promise<void> | void;
   onSelectedGroupChange?: (
     group: DuplicateGroup | null,
     groupKey: string | null,
@@ -163,6 +170,8 @@ export interface DuplicatesContentProps {
 export function DuplicatesContent({
   scopeId = 'user',
   canEdit = true,
+  onMergeGroup,
+  onDismissGroup,
   onSelectedGroupChange,
 }: DuplicatesContentProps) {
   const router = useRouter();
@@ -174,12 +183,14 @@ export function DuplicatesContent({
   // Curation Queries
   const { data, isLoading, isError, error } = useDuplicateGroups(scopeId);
   const dismissMutation = useDismissDuplicatesMutation(scopeId);
+  const mergeMutation = useMergeDuplicates(scopeId);
 
   // Local state
   const [dismissedGroupKeys, setDismissedGroupKeys] = useState<Set<string>>(new Set());
   const [selectedGroupKey, setSelectedGroupKey] = useState<string | null>(null);
   const [selectedGroupKeys, setSelectedGroupKeys] = useState<Set<string>>(new Set());
   const [expandedDiffGroupKeys, setExpandedDiffGroupKeys] = useState<Set<string>>(new Set());
+  const [isBatchProcessing, setIsBatchProcessing] = useState(false);
 
   const rawGroups: DuplicateGroup[] = useMemo(() => {
     return data?.duplicateGroups || [];
@@ -250,7 +261,7 @@ export function DuplicatesContent({
   }, [scopeId]);
 
   const handleDismissGroup = React.useCallback(
-    (groupKey: string) => {
+    async (groupKey: string) => {
       const targetGroup = activeGroupByKey.get(groupKey);
       const itemIds = (targetGroup?.items || [])
         .map((it) => it.id)
@@ -260,27 +271,22 @@ export function DuplicatesContent({
       if (targetGroup?.items) {
         clearGroupMergeDraft(computeDuplicateSetKey(targetGroup.items));
       }
-      setDismissedGroupKeys((prev) => new Set([...Array.from(prev), groupKey]));
 
-      if (itemIds.length >= 2) {
-        dismissMutation.mutate(itemIds, {
-          onSuccess: () => {
-            toast.success('Dismissed duplicate group', { id: 'duplicate-group-action' });
-          },
-          onError: () => {
-            setDismissedGroupKeys((prev) => {
-              const next = new Set(prev);
-              next.delete(groupKey);
-              return next;
-            });
-            toast.error('Failed to dismiss duplicate group', { id: 'duplicate-group-action' });
-          },
-        });
-      } else {
-        toast.success('Dismissed duplicate group', { id: 'duplicate-group-action' });
+      try {
+        if (onDismissGroup) {
+          await onDismissGroup(groupKey);
+        } else if (itemIds.length >= 2) {
+          await dismissMutation.mutateAsync(itemIds);
+          toast.success('Dismissed duplicate group', { id: 'duplicate-group-action' });
+        } else {
+          toast.success('Dismissed duplicate group', { id: 'duplicate-group-action' });
+        }
+        setDismissedGroupKeys((prev) => new Set([...Array.from(prev), groupKey]));
+      } catch {
+        toast.error('Failed to dismiss duplicate group', { id: 'duplicate-group-action' });
       }
     },
-    [activeGroupByKey, dismissMutation],
+    [activeGroupByKey, dismissMutation, onDismissGroup],
   );
 
   const handleOpenMerge = React.useCallback(
@@ -305,6 +311,89 @@ export function DuplicatesContent({
     },
     [activeGroupByKey, handleDismissGroup, openModal, selectedGroupKey],
   );
+
+  const handleClearGroupSelection = React.useCallback(() => {
+    setSelectedGroupKeys(new Set());
+  }, []);
+
+  const handleBatchDismissSelected = React.useCallback(async () => {
+    const keys = Array.from(selectedGroupKeys);
+    if (keys.length === 0 || isBatchProcessing) return;
+
+    setIsBatchProcessing(true);
+    try {
+      for (const key of keys) {
+        await handleDismissGroup(key);
+      }
+      setSelectedGroupKeys(new Set());
+    } finally {
+      setIsBatchProcessing(false);
+    }
+  }, [selectedGroupKeys, isBatchProcessing, handleDismissGroup]);
+
+  const handleBatchMergeSelected = React.useCallback(async () => {
+    const keys = Array.from(selectedGroupKeys);
+    if (keys.length === 0 || !canEdit || isBatchProcessing) return;
+
+    if (keys.length === 1 && !onMergeGroup) {
+      const singleGroup = activeGroupByKey.get(keys[0]);
+      if (singleGroup) {
+        handleOpenMerge(singleGroup, keys[0]);
+        setSelectedGroupKeys(new Set());
+        return;
+      }
+    }
+
+    setIsBatchProcessing(true);
+    try {
+      let mergedGroupsCount = 0;
+      for (const key of keys) {
+        const group = activeGroupByKey.get(key);
+        if (!group) continue;
+
+        if (onMergeGroup) {
+          await onMergeGroup(group, key);
+          mergedGroupsCount++;
+          continue;
+        }
+
+        const items = (group.items || []) as Item[];
+        if (items.length < 2) continue;
+
+        const masterId =
+          group.recommendedMasterId || selectBestMasterItemId(items) || items[0]?.id;
+        if (!masterId) continue;
+
+        const duplicateItemIds = items
+          .map((it) => it.id)
+          .filter((id): id is string => Boolean(id && id !== masterId));
+        if (duplicateItemIds.length === 0) continue;
+
+        await mergeMutation.mutateAsync({
+          primaryItemId: masterId,
+          duplicateItemIds,
+        });
+        clearGroupMergeDraft(key);
+        clearGroupMergeDraft(computeDuplicateSetKey(items));
+        setDismissedGroupKeys((prev) => new Set([...Array.from(prev), key]));
+        mergedGroupsCount++;
+      }
+
+      if (mergedGroupsCount > 0) {
+        setSelectedGroupKeys(new Set());
+      }
+    } finally {
+      setIsBatchProcessing(false);
+    }
+  }, [
+    selectedGroupKeys,
+    canEdit,
+    isBatchProcessing,
+    onMergeGroup,
+    activeGroupByKey,
+    handleOpenMerge,
+    mergeMutation,
+  ]);
 
   React.useEffect(() => {
     if (!onSelectedGroupChange) return;
@@ -365,7 +454,78 @@ export function DuplicatesContent({
               </p>
             </div>
           </div>
+
+          {activeGroups.some((g) => g.confidence === 'high') && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={selectAllHighConfidence}
+              className="h-8 px-2.5 text-12 gap-1.5 cursor-pointer"
+            >
+              <CheckSquare className="size-3.5" />
+              <span>Select High Confidence</span>
+            </Button>
+          )}
         </div>
+
+        {/* Contextual Batch Action Bar for Selected Duplicate Groups */}
+        {selectedGroupKeys.size > 0 && (
+          <div
+            role="region"
+            aria-label="Selected duplicate groups batch actions"
+            className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 rounded-md border border-primary/40 bg-primary/5"
+          >
+            <div className="flex items-center gap-2 text-12 font-medium text-foreground">
+              <Badge variant="default" className="h-5 px-2 text-11 font-mono">
+                {selectedGroupKeys.size}
+              </Badge>
+              <span>
+                {selectedGroupKeys.size === 1
+                  ? '1 duplicate group selected'
+                  : `${selectedGroupKeys.size} duplicate groups selected`}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {canEdit && (
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={isBatchProcessing || mergeMutation.isPending}
+                  onClick={() => void handleBatchMergeSelected()}
+                  className="h-8 px-3 text-12 gap-1.5 font-medium cursor-pointer"
+                >
+                  <GitMerge className="size-3.5" />
+                  <span>Merge Selected</span>
+                </Button>
+              )}
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isBatchProcessing || dismissMutation.isPending}
+                onClick={() => void handleBatchDismissSelected()}
+                className="h-8 px-2.5 text-12 cursor-pointer"
+              >
+                Dismiss Selected
+              </Button>
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={isBatchProcessing}
+                onClick={handleClearGroupSelection}
+                className="h-8 px-2 text-12 gap-1 text-foreground hover:bg-muted cursor-pointer"
+              >
+                <X className="size-3.5" />
+                <span>Clear Selection</span>
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Duplicate Groups List */}
         <div className="space-y-4">

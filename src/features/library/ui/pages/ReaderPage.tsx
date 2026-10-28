@@ -1,7 +1,7 @@
 "use client";
 
 import { ReaderRetractionBanner } from "@/features/library/ui/reader/ReaderRetractionBanner";
-import { resolveEpubOrSnapshot } from "@/features/library/ui/reader/reader-attachment.utils";
+import { resolveEpubOrSnapshot } from "@/features/library/domain/reader.domain";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import dynamic from "next/dynamic";

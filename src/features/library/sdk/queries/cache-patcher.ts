@@ -5,6 +5,10 @@ import {
   prefetchLibraryProjectScope,
 } from '@/features/shell/lib/navigation-prefetch';
 import type { Item } from '@/features/library/domain/types/library.types';
+import {
+  getMappedItemMeta,
+  setMappedItemMeta,
+} from '@/features/library/domain/metadata';
 import type { InvalidationClient } from '@/features/library/domain/types/batch-upload.types';
 import {
   itemKeys,
@@ -51,12 +55,8 @@ export function extractItemFromCacheData(data: unknown, itemId: string): Item | 
 }
 
 export function hasFullBackendItemFlag(patch?: Partial<Item> | Record<string, unknown> | null): boolean {
-  return Boolean(
-    patch &&
-      typeof patch === "object" &&
-      "_isFullBackendItem" in patch &&
-      (patch as { _isFullBackendItem?: boolean })._isFullBackendItem === true,
-  );
+  if (!patch || typeof patch !== "object") return false;
+  return getMappedItemMeta(patch)?.isFullBackendItem === true;
 }
 
 function stripNullOrUndefinedKeys(record?: Record<string, unknown> | null): Record<string, unknown> {
@@ -68,6 +68,25 @@ function stripNullOrUndefinedKeys(record?: Record<string, unknown> | null): Reco
   return out;
 }
 
+function stripUndefinedKeys(record?: Record<string, unknown> | null): Record<string, unknown> {
+  if (!record || typeof record !== "object") return {};
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(record)) {
+    if (v !== undefined) out[k] = v;
+  }
+  return out;
+}
+
+const IDENTIFIER_FIELD_TO_TYPES: Record<string, readonly string[]> = {
+  doi: ["doi"],
+  isbn: ["isbn"],
+  issn: ["issn"],
+  pmid: ["pmid"],
+  pmcid: ["pmcid"],
+  arxivid: ["arxiv", "arxivid", "archiveid"],
+  archiveid: ["arxiv", "arxivid", "archiveid"],
+};
+
 /**
  * Merges a partial item patch onto an existing cached Item while preserving user-state fields
  * (`isStarred`, `isFavorite`, `isRead`, `readStatus`, `rating`, `lastReadAt`) when `patch` came
@@ -75,9 +94,9 @@ function stripNullOrUndefinedKeys(record?: Record<string, unknown> | null): Reco
  * and cleanly merging `extraFields` and `metadata` (or replacing them on full backend responses).
  */
 export function mergeCachedItemWithPatch(current: Item, patch: Partial<Item>): Item {
-  const preserveUserState =
-    "_hasExplicitUserState" in patch &&
-    (patch as { _hasExplicitUserState?: boolean })._hasExplicitUserState === false;
+  const patchMeta = getMappedItemMeta(patch);
+  const currentMeta = getMappedItemMeta(current);
+  const preserveUserState = patchMeta?.hasExplicitUserState === false;
 
   const isFullBackendReplace = hasFullBackendItemFlag(patch);
 
@@ -96,7 +115,9 @@ export function mergeCachedItemWithPatch(current: Item, patch: Partial<Item>): I
 
   const mergedExtraFields =
     rawMergedExtraFields && typeof rawMergedExtraFields === "object"
-      ? stripNullOrUndefinedKeys(rawMergedExtraFields as Record<string, unknown>)
+      ? isFullBackendReplace
+        ? stripNullOrUndefinedKeys(rawMergedExtraFields as Record<string, unknown>)
+        : stripUndefinedKeys(rawMergedExtraFields as Record<string, unknown>)
       : rawMergedExtraFields;
 
   const rawMergedMetadata = isFullBackendReplace
@@ -143,34 +164,60 @@ export function mergeCachedItemWithPatch(current: Item, patch: Partial<Item>): I
           readStatus: current.readStatus ?? patch.readStatus ?? "unread",
           rating: current.rating ?? patch.rating ?? 0,
           ...(current.lastReadAt !== undefined ? { lastReadAt: current.lastReadAt } : {}),
+          ...(current.currentPage !== undefined ? { currentPage: current.currentPage } : {}),
+          ...(current.lastReadPage !== undefined ? { lastReadPage: current.lastReadPage } : {}),
+          ...(current.scrollPosition !== undefined ? { scrollPosition: current.scrollPosition } : {}),
+          ...(current.lastOpenedAt !== undefined ? { lastOpenedAt: current.lastOpenedAt } : {}),
         }
       : {}),
   };
 
-  if (
-    hasFullBackendItemFlag(patch) ||
-    hasFullBackendItemFlag(current as unknown as Record<string, unknown>)
-  ) {
-    Object.defineProperty(mergedResult, "_isFullBackendItem", {
-      value: true,
-      enumerable: false,
-      configurable: true,
-      writable: true,
-    });
+  if (!("identifiers" in patch) && Array.isArray(mergedResult.identifiers) && mergedResult.identifiers.length > 0) {
+    const clearedIdTypes = new Set<string>();
+    const patchRec = patch as Record<string, unknown>;
+    const patchEf =
+      patch.extraFields && typeof patch.extraFields === "object"
+        ? (patch.extraFields as Record<string, unknown>)
+        : undefined;
+    for (const k of Object.keys(patchRec)) {
+      if (patchRec[k] === "" || patchRec[k] === null) {
+        const types = IDENTIFIER_FIELD_TO_TYPES[k.toLowerCase()];
+        if (types) types.forEach((t) => clearedIdTypes.add(t));
+      }
+    }
+    if (patchEf) {
+      for (const k of Object.keys(patchEf)) {
+        if (patchEf[k] === "" || patchEf[k] === null) {
+          const types = IDENTIFIER_FIELD_TO_TYPES[k.toLowerCase()];
+          if (types) types.forEach((t) => clearedIdTypes.add(t));
+        }
+      }
+    }
+    if (clearedIdTypes.size > 0) {
+      mergedResult.identifiers = mergedResult.identifiers.filter((entry) => {
+        const entryType =
+          entry && typeof entry === "object" && typeof entry.type === "string"
+            ? entry.type.trim().toLowerCase()
+            : "";
+        return !clearedIdTypes.has(entryType);
+      });
+    }
   }
-  if ("_hasExplicitUserState" in patch) {
-    Object.defineProperty(mergedResult, "_hasExplicitUserState", {
-      value: Boolean((patch as { _hasExplicitUserState?: boolean })._hasExplicitUserState),
-      enumerable: false,
-      configurable: true,
-      writable: true,
-    });
-  } else if ("_hasExplicitUserState" in current) {
-    Object.defineProperty(mergedResult, "_hasExplicitUserState", {
-      value: Boolean((current as { _hasExplicitUserState?: boolean })._hasExplicitUserState),
-      enumerable: false,
-      configurable: true,
-      writable: true,
+
+  const isFullResult =
+    hasFullBackendItemFlag(patch) ||
+    hasFullBackendItemFlag(current as unknown as Record<string, unknown>);
+  const explicitUserStateFlag =
+    patchMeta?.hasExplicitUserState !== undefined
+      ? patchMeta.hasExplicitUserState
+      : currentMeta?.hasExplicitUserState;
+
+  if (isFullResult || explicitUserStateFlag !== undefined) {
+    setMappedItemMeta(mergedResult, {
+      ...(isFullResult ? { isFullBackendItem: true } : {}),
+      ...(explicitUserStateFlag !== undefined
+        ? { hasExplicitUserState: explicitUserStateFlag }
+        : {}),
     });
   }
 
@@ -627,6 +674,27 @@ export async function invalidateLibraryScopeCatalog(
     queryClient.invalidateQueries({ queryKey: itemKeys.trash(effectiveScope) }),
     invalidateCollections(queryClient, effectiveScope),
   ]);
+}
+
+/**
+ * Builds a Map of all cached items in a given scope from both detail and list queries.
+ */
+export function getCachedItemsMapFromScope(queryClient: QueryClient, scopeId?: string): Map<string, Item> {
+  const map = new Map<string, Item>();
+  const addItems = (list?: Item[]) => {
+    if (!Array.isArray(list)) return;
+    for (const it of list) if (it?.id) map.set(it.id, it);
+  };
+  for (const [, data] of queryClient.getQueriesData({ queryKey: itemKeys.all(normalizeScopeId(scopeId)) })) {
+    if (!data || typeof data !== 'object') continue;
+    if (Array.isArray(data)) { addItems(data as Item[]); continue; }
+    const rec = data as Record<string, unknown>;
+    if (typeof rec.id === 'string' && rec.id) map.set(rec.id, rec as unknown as Item);
+    else if (rec.item && typeof rec.item === 'object' && (rec.item as Item).id) map.set((rec.item as Item).id, rec.item as Item);
+    else if (Array.isArray(rec.items)) addItems(rec.items as Item[]);
+    else if (Array.isArray(rec.pages)) for (const p of rec.pages as Array<{ items?: Item[] }>) addItems(p?.items);
+  }
+  return map;
 }
 
 /**

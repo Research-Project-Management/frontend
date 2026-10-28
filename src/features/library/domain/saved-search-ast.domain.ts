@@ -10,11 +10,11 @@ import {
   formatConditionValue,
 } from '@/features/library/domain/saved-search-schema.domain';
 import {
-  getItemDisplayTitle,
-  getPublicationVenue,
-  getItemDisplayDate,
-} from '@/features/library/domain/metadata';
-import { resolveItemFieldValue } from '@/features/library/domain/diff-primitives';
+  parseBetweenBounds,
+  extractItemFieldValues,
+  evaluateLeafCondition,
+  SEARCH_FIELD_ALIASES,
+} from '@/features/library/domain/saved-search-evaluator.domain';
 import type {
   SavedSearchCondition,
   SavedSearchConditionGroup,
@@ -22,6 +22,13 @@ import type {
   SavedSearchOperator,
   SavedSearchScopeOptions,
 } from '@/features/library/domain/types/saved-searches.types';
+
+export {
+  parseBetweenBounds,
+  extractItemFieldValues,
+  evaluateLeafCondition,
+  SEARCH_FIELD_ALIASES,
+};
 
 export interface HydratedSavedSearchAst {
   rows: ConditionRow[];
@@ -87,34 +94,6 @@ function serializeConditionValueToRowString(val: unknown): string {
   return String(val);
 }
 
-export function parseBetweenBounds(raw: unknown): [string, string] | null {
-  if (Array.isArray(raw)) {
-    if (raw.length < 2) return null;
-    const a = String(raw[0] ?? '').trim();
-    const b = String(raw[1] ?? '').trim();
-    return a && b ? [a, b] : null;
-  }
-  if (raw && typeof raw === 'object') {
-    const rec = raw as Record<string, unknown>;
-    const a = String(rec.min ?? rec.from ?? rec.start ?? '').trim();
-    const b = String(rec.max ?? rec.to ?? rec.end ?? '').trim();
-    return a && b ? [a, b] : null;
-  }
-  if (typeof raw !== 'string') return null;
-  const trimmed = raw.trim();
-  if (!trimmed) return null;
-
-  const parts = trimmed.includes('..')
-    ? trimmed.split('..')
-    : trimmed.includes(',')
-      ? trimmed.split(',')
-      : trimmed.split(/\s+to\s+|\s*;\s*/i);
-  if (parts.length < 2) return null;
-  const start = (parts[0] ?? '').trim();
-  const end = (parts[1] ?? '').trim();
-  return start && end ? [start, end] : null;
-}
-
 function formatRowConditionPayloadValue(row: ConditionRow): SavedSearchCondition['value'] {
   if (isNoValueOperator(row.operator)) return '';
   if (row.operator === 'isBetween' || row.operator === 'between') {
@@ -138,268 +117,6 @@ function createDefaultConditionRow(suffix?: string | number): ConditionRow {
       ? String(suffix)
       : `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
   return { id: `row-${idSuffix}`, field: 'title', operator: 'contains', value: '' };
-}
-
-function extractItemFieldValues(item: Record<string, unknown>, field: string): unknown[] {
-  const normalizedField = field.trim();
-  const extraFields =
-    item.extraFields && typeof item.extraFields === 'object' && !Array.isArray(item.extraFields)
-      ? (item.extraFields as Record<string, unknown>)
-      : {};
-
-  if (normalizedField === 'anyField') {
-    const candidates: unknown[] = [
-      getItemDisplayTitle(item) || item.title,
-      resolveItemFieldValue(item, 'abstractNote'),
-      item.abstractNote,
-      item.abstract,
-      getPublicationVenue(item) || item.publicationTitle,
-      item.journal,
-      resolveItemFieldValue(item, 'publisher') || item.publisher,
-      resolveItemFieldValue(item, 'doi') || item.doi,
-      resolveItemFieldValue(item, 'isbn') || item.isbn,
-      resolveItemFieldValue(item, 'url') || item.url,
-      getItemDisplayDate(item) ?? item.year,
-      ...extractItemFieldValues(item, 'creator'),
-      ...extractItemFieldValues(item, 'tag'),
-    ];
-    return candidates.filter((v) => v !== undefined && v !== null && String(v).trim() !== '');
-  }
-
-  if (normalizedField === 'title') {
-    const canonicalTitle = getItemDisplayTitle(item);
-    const rawTitle = item.title ?? extraFields.title;
-    return [canonicalTitle, rawTitle].filter(
-      (v) => v !== undefined && v !== null && String(v).trim() !== '',
-    );
-  }
-
-  if (
-    normalizedField === 'publicationTitle' ||
-    normalizedField === 'journal' ||
-    normalizedField === 'venue'
-  ) {
-    const canonicalVenue = getPublicationVenue(item);
-    const resolved = resolveItemFieldValue(item, normalizedField);
-    return [canonicalVenue, resolved, item[normalizedField], extraFields[normalizedField]].filter(
-      (v) => v !== undefined && v !== null && String(v).trim() !== '',
-    );
-  }
-
-  if (normalizedField === 'year' || normalizedField === 'date' || normalizedField === 'publicationDate') {
-    const canonicalDate = getItemDisplayDate(item);
-    const resolved = resolveItemFieldValue(item, normalizedField);
-    return [canonicalDate, resolved, item[normalizedField], extraFields[normalizedField]].filter(
-      (v) => v !== undefined && v !== null && String(v).trim() !== '',
-    );
-  }
-
-  if (normalizedField === 'hasAttachment' || normalizedField === 'hasFile') {
-    const fileCount =
-      typeof item.fileCount === 'number'
-        ? item.fileCount
-        : Array.isArray(item.attachments)
-          ? item.attachments.length
-          : 0;
-    const hasFile = Boolean(item.hasFile || item.pdfUrl || fileCount > 0);
-    return [hasFile, String(hasFile)];
-  }
-
-  if (normalizedField === 'hasNotes') {
-    const noteCount =
-      typeof item.noteCount === 'number'
-        ? item.noteCount
-        : Array.isArray(item.notes)
-          ? item.notes.length
-          : 0;
-    const hasNotes = Boolean(item.hasNotes || noteCount > 0);
-    return [hasNotes, String(hasNotes)];
-  }
-
-  if (normalizedField === 'collection') {
-    const ids: string[] = [];
-    if (Array.isArray(item.collectionIds)) {
-      for (const id of item.collectionIds) {
-        if (typeof id === 'string' && id.trim()) ids.push(id.trim());
-      }
-    }
-    if (Array.isArray(item.collections)) {
-      for (const col of item.collections) {
-        if (typeof col === 'string' && col.trim()) {
-          ids.push(col.trim());
-        } else if (col && typeof col === 'object') {
-          const cid =
-            (col as { collectionId?: unknown; id?: unknown }).collectionId ??
-            (col as { id?: unknown }).id;
-          if (typeof cid === 'string' && cid.trim()) ids.push(cid.trim());
-        }
-      }
-    }
-    return ids;
-  }
-
-  if (normalizedField === 'tag' || normalizedField === 'tags') {
-    const tags = Array.isArray(item.tags) ? item.tags : [];
-    const out: string[] = [];
-    for (const t of tags) {
-      if (typeof t === 'string' && t.trim()) {
-        out.push(t.trim());
-      } else if (t && typeof t === 'object' && 'name' in t) {
-        const name = String((t as { name?: unknown }).name ?? '').trim();
-        if (name) out.push(name);
-      }
-    }
-    return out;
-  }
-
-  if (normalizedField === 'authors' || normalizedField === 'creator' || normalizedField === 'creators') {
-    const creators = Array.isArray(item.creators) ? item.creators : [];
-    const authors = Array.isArray(item.authors) ? item.authors : [];
-    const extracted: string[] = [];
-    const pushEntry = (c: unknown) => {
-      if (typeof c === 'string' && c.trim()) {
-        extracted.push(c.trim());
-      } else if (c && typeof colObj(c)) {
-        const obj = c as Record<string, unknown>;
-        const full = [obj.firstName, obj.lastName, obj.fullName, obj.name]
-          .filter((v) => typeof v === 'string' && v.trim())
-          .join(' ');
-        if (full) extracted.push(full);
-      }
-    };
-    for (const c of creators) pushEntry(c);
-    for (const a of authors) pushEntry(a);
-    return extracted;
-  }
-
-  const canonicalResolved = resolveItemFieldValue(item, normalizedField);
-  if (canonicalResolved !== undefined && canonicalResolved !== null && String(canonicalResolved).trim() !== '') {
-    return Array.isArray(canonicalResolved) ? canonicalResolved : [canonicalResolved];
-  }
-
-  const raw = item[normalizedField] ?? extraFields[normalizedField];
-  if (Array.isArray(raw)) return raw;
-  return raw === undefined || raw === null ? [] : [raw];
-}
-
-function colObj(val: unknown): boolean {
-  return Boolean(val) && typeof val === 'object';
-}
-
-function evaluateLeafCondition(
-  item: Record<string, unknown>,
-  condition: SavedSearchCondition,
-): boolean {
-  const field = condition.field.trim();
-  const op = condition.operator as string;
-  const target = condition.value;
-  const values = extractItemFieldValues(item, field);
-
-  if (op === 'isPresent' || op === 'is_present' || op === 'isNotEmpty' || op === 'is_not_empty') {
-    return values.some((v) => v !== null && v !== undefined && String(v).trim() !== '');
-  }
-
-  if (op === 'isAbsent' || op === 'is_absent' || op === 'isEmpty' || op === 'is_empty') {
-    return (
-      values.length === 0 ||
-      values.every((v) => v === null || v === undefined || String(v).trim() === '')
-    );
-  }
-
-  if (op === 'isBetween' || op === 'between') {
-    const bounds = parseBetweenBounds(target);
-    if (!bounds) return false;
-    const minNum = Number(bounds[0]);
-    const maxNum = Number(bounds[1]);
-    if (!Number.isNaN(minNum) && !Number.isNaN(maxNum)) {
-      return values.some((v) => {
-        const num = typeof v === 'number' ? v : Number(v);
-        return !Number.isNaN(num) && num >= minNum && num <= maxNum;
-      });
-    }
-    const minTime = Date.parse(bounds[0]);
-    const maxTime = Date.parse(bounds[1]);
-    if (!Number.isNaN(minTime) && !Number.isNaN(maxTime)) {
-      return values.some((v) => {
-        const t = Date.parse(String(v));
-        return !Number.isNaN(t) && t >= minTime && t <= maxTime;
-      });
-    }
-    const minStr = bounds[0].toLowerCase();
-    const maxStr = bounds[1].toLowerCase();
-    return values.some((v) => {
-      const s = String(v).trim().toLowerCase();
-      return s >= minStr && s <= maxStr;
-    });
-  }
-
-  if (op === 'isInTheLast' || op === 'in_the_last') {
-    const rawStr = String(target ?? '').trim();
-    const m = rawStr.match(/^(\d+)\s*([a-zA-Z]+)?$/);
-    if (!m) return false;
-    const count = Number(m[1]);
-    if (Number.isNaN(count) || count <= 0) return false;
-    const unit = (m[2] || 'days').toLowerCase();
-    const daysMultiplier = unit.startsWith('y')
-      ? 365
-      : unit.startsWith('m')
-        ? 30
-        : unit.startsWith('w')
-          ? 7
-          : 1;
-    const cutoffMs = Date.now() - count * daysMultiplier * 86_400_000;
-    return values.some((v) => {
-      const ts = Date.parse(String(v));
-      return !Number.isNaN(ts) && ts >= cutoffMs;
-    });
-  }
-
-  const targetStr =
-    target !== undefined && target !== null ? String(target).trim().toLowerCase() : '';
-  const targetNum = typeof target === 'number' ? target : Number(target);
-
-  switch (op) {
-    case 'is':
-    case 'equals':
-      return values.some((v) => String(v).trim().toLowerCase() === targetStr);
-    case 'isNot':
-    case 'is_not':
-    case 'not_equals':
-      return values.every((v) => String(v).trim().toLowerCase() !== targetStr);
-    case 'contains':
-      return values.some((v) => String(v).toLowerCase().includes(targetStr));
-    case 'doesNotContain':
-    case 'does_not_contain':
-      return values.every((v) => !String(v).toLowerCase().includes(targetStr));
-    case 'beginsWith':
-    case 'begins_with':
-      return values.some((v) => String(v).trim().toLowerCase().startsWith(targetStr));
-    case 'endsWith':
-    case 'ends_with':
-      return values.some((v) => String(v).trim().toLowerCase().endsWith(targetStr));
-    case 'isGreaterThan':
-    case 'greater_than':
-    case 'gt':
-      if (!Number.isNaN(targetNum) && targetStr !== '') {
-        return values.some((v) => {
-          const num = typeof v === 'number' ? v : Number(v);
-          return !Number.isNaN(num) && num > targetNum;
-        });
-      }
-      return values.some((v) => String(v).trim() > String(target ?? '').trim());
-    case 'isLessThan':
-    case 'less_than':
-    case 'lt':
-      if (!Number.isNaN(targetNum) && targetStr !== '') {
-        return values.some((v) => {
-          const num = typeof v === 'number' ? v : Number(v);
-          return !Number.isNaN(num) && num < targetNum;
-        });
-      }
-      return values.some((v) => String(v).trim() < String(target ?? '').trim());
-    default:
-      return false;
-  }
 }
 
 export const SavedSearchAstEngine = {

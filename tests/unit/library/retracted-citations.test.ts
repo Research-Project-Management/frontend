@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildRetractedCitationMap } from '@/features/editor/subsystems/citation/model/retracted-citations';
-import { runLatexLinter } from '@/features/editor/subsystems/diagnostics/linter/latex-linter.rules';
+import { runLatexLinter } from '@/features/editor/subsystems/diagnostics/extensions/latex-linter-core';
 import {
   isItemRetracted,
   getRetractionInfo,
@@ -67,9 +67,9 @@ describe('buildRetractedCitationMap', () => {
   it('drives a RETRACTED_CITATION lint warning on \\cite', () => {
     const map = buildRetractedCitationMap([], [retractedItem]);
     const diags = runLatexLinter('See \\cite{wakefield1998}.', {
-      retractedItemsMap: map,
+      retractedCitationsMap: map,
     });
-    expect(diags.some((d) => d.code === 'RETRACTED_CITATION')).toBe(true);
+    expect(diags.some((d) => d.message.includes('Retracted Paper'))).toBe(true);
   });
 });
 

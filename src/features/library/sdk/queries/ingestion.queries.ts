@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { libraryServices, IngestionService } from '../library.client';
 import type { UnifiedIngestionPayload, FlagRetractionInput } from '@/features/library/domain/types/library.types';
 import { useFeedsStore } from '@/features/library/core/store/feeds.store';
+import { mapServerFeedSubscriptions } from '@/features/library/domain/feeds.domain';
 import type { SavedFeedSubscription } from '@/features/library/domain/types/feeds.types';
 import {
   libraryKeys,
@@ -20,8 +21,9 @@ import {
   invalidateLibraryCatalogDependencies,
   patchItemAcrossScopeCaches,
   removeItemsFromScopeCaches,
+  getCachedItemsMapFromScope,
 } from './cache-patcher';
-import { clearGroupMergeDraft } from '@/features/library/core/coordinator/curation.coordinator';
+import { clearGroupMergeDraft } from '@/features/library/domain/curation-draft.domain';
 import {
   type PollRunOutcome,
   type PollIngestionRunOptions,
@@ -60,9 +62,13 @@ export function useDuplicateGroups(
   scopeId?: string,
   options?: { enabled?: boolean },
 ) {
+  const queryClient = useQueryClient();
   return useQuery({
     queryKey: curationKeys.duplicates(scopeId),
-    queryFn: () => libraryServices.curation.getDuplicates(scopeId),
+    queryFn: () =>
+      libraryServices.curation.getDuplicates(scopeId, {
+        cachedItemsById: getCachedItemsMapFromScope(queryClient, scopeId),
+      }),
     enabled: options?.enabled ?? true,
     gcTime: 3 * 60 * 1000,
   });
@@ -195,7 +201,21 @@ export function useAcademicFeedArticlesQuery(
   const effectiveScope = normalizeScopeId(scopeId);
   return useQuery({
     queryKey: feedKeys.articles(effectiveScope, feedUrl),
-    queryFn: () => libraryServices.ingestion.fetchFeed(feedUrl!, false),
+    queryFn: async () => {
+      const res = await libraryServices.ingestion.fetchFeed(feedUrl!, false);
+      const entries = Array.isArray(res?.entries) ? res.entries : [];
+      const readIds: string[] = [];
+      entries.forEach((entry, idx) => {
+        if (entry?.isRead === true) {
+          const entryId = entry.id || (entry as { url?: string }).url || entry.link || `feed-item-${idx}`;
+          if (entryId) readIds.push(entryId);
+        }
+      });
+      if (readIds.length > 0) {
+        useFeedsStore.getState().hydrateReadEntries(readIds);
+      }
+      return res;
+    },
     enabled: Boolean((options?.enabled ?? true) && feedUrl),
     staleTime: 2 * 60 * 1000,
   });
@@ -203,10 +223,22 @@ export function useAcademicFeedArticlesQuery(
 
 export function useFetchAcademicFeed() {
   return useMutation({
-    mutationFn: (param: string | { url: string; forceRefresh?: boolean }) => {
+    mutationFn: async (param: string | { url: string; forceRefresh?: boolean }) => {
       const url = typeof param === 'string' ? param : param.url;
       const forceRefresh = typeof param === 'object' ? param.forceRefresh : false;
-      return libraryServices.ingestion.fetchFeed(url, forceRefresh);
+      const res = await libraryServices.ingestion.fetchFeed(url, forceRefresh);
+      const entries = Array.isArray(res?.entries) ? res.entries : [];
+      const readIds: string[] = [];
+      entries.forEach((entry, idx) => {
+        if (entry?.isRead === true) {
+          const entryId = entry.id || (entry as { url?: string }).url || entry.link || `feed-item-${idx}`;
+          if (entryId) readIds.push(entryId);
+        }
+      });
+      if (readIds.length > 0) {
+        useFeedsStore.getState().hydrateReadEntries(readIds);
+      }
+      return res;
     },
     onError: (error: Error) => {
       toast.error('Failed to fetch feed', {
@@ -223,6 +255,12 @@ export function useFeedSubscriptionsQuery(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: feedKeys.subscriptions(),
     queryFn: async () => {
+      const res = await libraryServices.feeds.getSubscriptions();
+      if (res?.data && Array.isArray(res.data)) {
+        const mappedFeeds = mapServerFeedSubscriptions(res.data);
+        useFeedsStore.getState().hydrateFeeds(mappedFeeds);
+        return mappedFeeds;
+      }
       await useFeedsStore.getState().loadFeeds({ force: true });
       return useFeedsStore.getState().feeds;
     },

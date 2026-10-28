@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useCallback } from 'react';
+import { useMemo, useRef, useCallback, useEffect } from 'react';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import {
   useLibraryCommandStore,
@@ -75,22 +75,24 @@ export function useInspectorItemResolver({
   );
 
   const lastItemRef = useRef<Item | null>(null);
-  if (!activeItemId || (lastItemRef.current && lastItemRef.current.id !== activeItemId)) {
-    lastItemRef.current = null;
-  }
-  if (queriedItem && (!activeItemId || queriedItem.id === activeItemId)) {
-    lastItemRef.current = queriedItem;
-  } else if (cachedListItem && (!activeItemId || cachedListItem.id === activeItemId)) {
-    lastItemRef.current = cachedListItem;
-  } else if (!isLoading && !queriedItem && !cachedListItem) {
-    lastItemRef.current = null;
-  }
-
   const effectiveItem =
     incomingItem ||
     (queriedItem && (!activeItemId || queriedItem.id === activeItemId) ? queriedItem : null) ||
     (cachedListItem && (!activeItemId || cachedListItem.id === activeItemId) ? cachedListItem : null) ||
     (activeItemId && lastItemRef.current?.id === activeItemId ? lastItemRef.current : null);
+
+  useEffect(() => {
+    if (!activeItemId || (lastItemRef.current && lastItemRef.current.id !== activeItemId)) {
+      lastItemRef.current = null;
+    }
+    if (queriedItem && (!activeItemId || queriedItem.id === activeItemId)) {
+      lastItemRef.current = queriedItem;
+    } else if (cachedListItem && (!activeItemId || cachedListItem.id === activeItemId)) {
+      lastItemRef.current = cachedListItem;
+    } else if (!isLoading && !queriedItem && !cachedListItem) {
+      lastItemRef.current = null;
+    }
+  }, [activeItemId, queriedItem, cachedListItem, isLoading]);
 
   const isItemInTrash = Boolean(effectiveItem?.deletedAt);
   const effectiveCanEdit = canEdit && !isItemInTrash;
@@ -110,17 +112,25 @@ export function useInspectorItemResolver({
   const latestItemSnapshotRef = useRef<Map<string, Item>>(new Map());
   const pendingMutationPromiseRef = useRef<Map<string, Promise<unknown>>>(new Map());
 
-  if (effectiveItem?.id) {
-    if (!pendingMutationPromiseRef.current.has(effectiveItem.id) || !latestItemSnapshotRef.current.has(effectiveItem.id)) {
+  useEffect(() => {
+    if (!effectiveItem?.id) return;
+    if (
+      !pendingMutationPromiseRef.current.has(effectiveItem.id) ||
+      !latestItemSnapshotRef.current.has(effectiveItem.id)
+    ) {
       latestItemSnapshotRef.current.set(effectiveItem.id, effectiveItem);
     }
     if (typeof effectiveItem.version === 'number') {
       const tracked = latestVersionRef.current.get(effectiveItem.id);
-      if (tracked === undefined || (!pendingMutationPromiseRef.current.has(effectiveItem.id) && effectiveItem.version > tracked)) {
+      if (
+        tracked === undefined ||
+        (!pendingMutationPromiseRef.current.has(effectiveItem.id) &&
+          effectiveItem.version > tracked)
+      ) {
         latestVersionRef.current.set(effectiveItem.id, effectiveItem.version);
       }
     }
-  }
+  }, [effectiveItem]);
 
   const enqueueItemPatch = useCallback(
     (
@@ -202,6 +212,15 @@ export function useInspectorItemResolver({
       const skipHistory = Boolean(options?.skipHistory);
 
       const baseSnapshot = latestItemSnapshotRef.current.get(itemId) ?? effectiveItem;
+      if (!latestItemSnapshotRef.current.has(itemId)) {
+        latestItemSnapshotRef.current.set(itemId, effectiveItem);
+      }
+      if (
+        typeof effectiveItem.version === 'number' &&
+        !latestVersionRef.current.has(itemId)
+      ) {
+        latestVersionRef.current.set(itemId, effectiveItem.version);
+      }
       const inversePatch = buildInverseMetadataPatch(baseSnapshot, payload);
       const command = createUpdateItemMetadataCommand({
         itemId,

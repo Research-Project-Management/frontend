@@ -42,11 +42,11 @@ export function useReadingProgress({
 
   // 1. Restore reading state on paper load
   const restoredPaperIdRef = useRef<string | null>(null);
-  const isRestoredRef = useRef<boolean>(false);
+  const isInitialStateLoadedRef = useRef<boolean>(false);
   useEffect(() => {
     if (!paper?.id || restoredPaperIdRef.current === paper.id) return;
     restoredPaperIdRef.current = paper.id;
-    isRestoredRef.current = false;
+    isInitialStateLoadedRef.current = false;
     let isCancelled = false;
 
     StateService
@@ -57,11 +57,11 @@ export function useReadingProgress({
           setTargetPage({ pageNumber: stateData.currentPage, timestamp: Date.now() });
           setVisiblePage(stateData.currentPage);
         }
-        isRestoredRef.current = true;
       })
-      .catch(() => {
+      .catch(() => undefined)
+      .finally(() => {
         if (!isCancelled) {
-          isRestoredRef.current = true;
+          isInitialStateLoadedRef.current = true;
         }
       });
 
@@ -72,7 +72,7 @@ export function useReadingProgress({
 
   // 3. Debounced update reading state when page changes (supports saving when returning to page 1)
   useEffect(() => {
-    if (!paper?.id || visiblePage < 1 || !isRestoredRef.current) return;
+    if (!paper?.id || visiblePage < 1 || !isInitialStateLoadedRef.current) return;
     const paperId = paper.id;
     const timeout = setTimeout(() => {
       StateService

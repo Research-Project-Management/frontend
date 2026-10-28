@@ -28,6 +28,12 @@ export {
   type BatchTagToggleItemSnapshot,
   type BatchTagToggleCommandOptions,
   createBatchTagToggleCommand,
+  type AddNoteCommandOptions,
+  createAddNoteCommand,
+  type UpdateNoteCommandOptions,
+  createUpdateNoteCommand,
+  type DeleteNoteCommandOptions,
+  createDeleteNoteCommand,
 } from './library-commands.catalog';
 
 /**
@@ -134,6 +140,7 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
           id: `cmd-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         };
     const startEpoch = get().epoch;
+    if (get().epoch !== startEpoch) return;
     set((s) => ({
       undoStack: [
         ensuredCommand,

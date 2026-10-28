@@ -8,9 +8,16 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/shared/components/ui/tooltip";
-import { useUpdateLibraryItemMutation } from "@/features/library/sdk/queries/catalog.queries";
+import {
+  useUpdateLibraryItemMutation,
+  useBatchRestoreItemsMutation,
+  useDeleteLibraryItemsMutation,
+} from "@/features/library/sdk/queries/catalog.queries";
 import { useRetraction } from "@/features/library/sdk/queries/ingestion.queries";
-import { useBatchRestoreItemsMutation } from "@/features/library/sdk/queries/catalog.queries";
+import {
+  useLibraryCommandStore,
+  createRestoreCommand,
+} from "@/features/library/core/manager/library-command.manager";
 import type { Item } from "@/features/library/domain/types/library.types";
 import { getTitleFieldForType } from "@/features/library/domain/types/item-types.types";
 import { getItemDisplayTitle } from "@/features/library/domain/metadata";
@@ -56,6 +63,7 @@ export function InspectorHeader({
 
   const updateMutation = useUpdateLibraryItemMutation(scopeId);
   const restoreMutation = useBatchRestoreItemsMutation(scopeId);
+  const deleteMutation = useDeleteLibraryItemsMutation(scopeId);
   const { unflagItem, isUnflagging } = useRetraction(scopeId);
 
   const isRetracted = isItemRetracted(item);
@@ -211,7 +219,14 @@ export function InspectorHeader({
           icon={<RotateCcw className="size-4 shrink-0 text-primary" strokeWidth={1.5} />}
           isDeleting={restoreMutation.isPending}
           onConfirm={async () => {
-            await restoreMutation.mutateAsync([item.id]);
+            await useLibraryCommandStore.getState().executeCommand(
+              createRestoreCommand({
+                itemIds: [item.id],
+                restoreMutation: { mutateAsync: restoreMutation.mutateAsync },
+                deleteMutation: { mutateAsync: deleteMutation.mutateAsync },
+              }),
+              { silentToast: true },
+            );
             setIsRestoreModalOpen(false);
           }}
         />

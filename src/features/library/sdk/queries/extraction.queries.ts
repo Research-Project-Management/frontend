@@ -194,8 +194,13 @@ export function useRenameAttachment(scopeId?: string) {
       }),
     onSuccess: (res) => {
       queryClient.invalidateQueries({
-        queryKey: libraryKeys.attachments(effectiveScope),
+        queryKey: libraryKeys.attachmentsAll(effectiveScope),
       });
+      if (res?.attachment?.itemId) {
+        queryClient.invalidateQueries({
+          queryKey: libraryKeys.attachments(effectiveScope, res.attachment.itemId),
+        });
+      }
       queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
       toast.success("File renamed", {
         description: `Renamed to "${res.newFilename}"`,
@@ -224,7 +229,7 @@ export function useBatchRenameAttachmentsMutation(scopeId?: string) {
     }) => libraryServices.attachments.batchRename(effectiveScope, dto),
     onSuccess: (res) => {
       queryClient.invalidateQueries({
-        queryKey: libraryKeys.attachments(effectiveScope),
+        queryKey: libraryKeys.attachmentsAll(effectiveScope),
       });
       queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
       toast.success("Attachments renamed", {

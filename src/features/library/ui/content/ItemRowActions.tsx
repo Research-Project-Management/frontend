@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useCallback } from 'react';
 import {
   MoreVertical,
   ExternalLink,
@@ -12,9 +11,11 @@ import {
   FolderMinus,
   Trash2,
   RotateCcw,
+  RefreshCw,
+  Award,
+  ShieldAlert,
 } from 'lucide-react';
-import { toast } from 'sonner';
-import { cn, copyToClipboard } from '@/shared/lib/utils';
+import { cn } from '@/shared/lib/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,20 +26,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
 } from '@/shared/components/ui/dropdown-menu';
-import { useCitationStyles } from '@/features/library/sdk/queries/citation.queries';
-import { useAssignCollectionItemsMutation } from '@/features/library/sdk/queries/collections.queries';
-import {
-  useReResolveItemMetadataMutation,
-  useSetMyPublicationMutation,
-} from '@/features/library/sdk/queries/catalog.queries';
-import { useRetraction } from '@/features/library/sdk/queries/ingestion.queries';
-import { RefreshCw, Award, ShieldAlert } from 'lucide-react';
-import {
-  executeCopyMultiCite,
-  executeCopyInTextCite,
-  executeExportAllBibtex,
-} from '@/features/library/core/coordinator/citation-export.coordinator';
-import { getCleanStyleLabel } from '@/features/library/domain/citations';
+import { useItemActionHandlers } from '@/features/library/core/coordinator/item-action.coordinator';
 import type { Item, Collection, CslStyle } from '@/features/library/domain/types/library.types';
 
 export interface ItemRowActionsProps {
@@ -72,55 +60,28 @@ export const ItemRowActions = React.memo(function ItemRowActions({
   onDetachFromCollection,
   onOpenItem,
 }: ItemRowActionsProps) {
-  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
-  const assignCollectionItemsMutation = useAssignCollectionItemsMutation(scopeId);
-  const reResolveMutation = useReResolveItemMetadataMutation(scopeId);
-  const setMyPublicationMutation = useSetMyPublicationMutation(scopeId);
-  const { flagItem, unflagItem } = useRetraction(scopeId, { includeItems: false });
-  const { data: serverStyles = [] } = useCitationStyles(scopeId, { enabled: isOpen });
-  const availableStyles = serverStyles.length > 0
-    ? serverStyles.map((s) => ({ id: s.id, label: s.shortTitle || s.name || getCleanStyleLabel(s.id) }))
-    : ['apa', 'ieee', 'mla', 'chicago', 'harvard', 'vancouver'].map((id) => ({ id, label: getCleanStyleLabel(id) }));
+  const closeMenu = useCallback(() => setIsOpen(false), []);
 
-  const isStarred =
-    Boolean(item.isStarred) ||
-    Boolean(typeof item.rating === 'number' && item.rating > 0);
-
-  const handleOpen = () => {
-    setIsOpen(false);
-    if (onOpenItem) {
-      onOpenItem(item.id);
-    } else {
-      router.push(`/library/papers/${item.id}`);
-    }
-  };
-
-  const handleCopyBibliography = async (style: CslStyle = 'apa') => {
-    setIsOpen(false);
-    const effectiveScope = scopeId || 'user';
-    if (style === 'bibtex') {
-      await executeExportAllBibtex([item], effectiveScope, 1);
-      return;
-    }
-    await executeCopyMultiCite([item], effectiveScope, style);
-  };
-
-  const handleCopyInTextCitation = async (style: CslStyle = 'apa') => {
-    setIsOpen(false);
-    await executeCopyInTextCite([item], scopeId || 'user', style);
-  };
-
-  const handleCopyCitationKey = () => {
-    setIsOpen(false);
-    const effectiveCiteKey = item.citationKey?.trim();
-    if (effectiveCiteKey) {
-      copyToClipboard(effectiveCiteKey);
-      toast.success(`Copied citation key: ${effectiveCiteKey}`, { id: 'library-clipboard' });
-    } else {
-      toast.info('Item does not have a citation key', { id: 'library-clipboard' });
-    }
-  };
+  const {
+    availableStyles,
+    isStarred,
+    handleOpen,
+    handleCopyBibliography,
+    handleCopyInTextCitation,
+    handleCopyCitationKey,
+    handleRefreshMetadata,
+    handleToggleMyPublications,
+    handleToggleRetraction,
+    handleSelectCollection,
+  } = useItemActionHandlers(item, {
+    scopeId,
+    isMenuOpen: isOpen,
+    onOpenItem,
+    onAddToCollection,
+    onMoveToCollection,
+    onAfterAction: closeMenu,
+  });
 
   return (
     <div
@@ -262,7 +223,7 @@ export const ItemRowActions = React.memo(function ItemRowActions({
                 </DropdownMenuSub>
 
                 <DropdownMenuItem
-                  onClick={handleCopyCitationKey}
+                  onClick={() => handleCopyCitationKey('Copied citation key')}
                   className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
                 >
                   <Quote className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
@@ -273,13 +234,7 @@ export const ItemRowActions = React.memo(function ItemRowActions({
                   <>
                     <DropdownMenuSeparator className="my-1" />
                     <DropdownMenuItem
-                      onClick={() => {
-                        setIsOpen(false);
-                        void reResolveMutation.mutateAsync({
-                          itemId: item.id,
-                          attachOaPdf: true,
-                        });
-                      }}
+                      onClick={handleRefreshMetadata}
                       className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
                     >
                       <RefreshCw className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
@@ -287,13 +242,7 @@ export const ItemRowActions = React.memo(function ItemRowActions({
                     </DropdownMenuItem>
 
                     <DropdownMenuItem
-                      onClick={() => {
-                        setIsOpen(false);
-                        void setMyPublicationMutation.mutateAsync({
-                          itemId: item.id,
-                          isMyPublication: !item.isMyPublication,
-                        });
-                      }}
+                      onClick={handleToggleMyPublications}
                       className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
                     >
                       <Award className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
@@ -305,20 +254,7 @@ export const ItemRowActions = React.memo(function ItemRowActions({
                     </DropdownMenuItem>
 
                     <DropdownMenuItem
-                      onClick={() => {
-                        setIsOpen(false);
-                        if (item.isRetracted) {
-                          void unflagItem(item.id);
-                        } else {
-                          void flagItem({
-                            itemId: item.id,
-                            data: {
-                              nature: 'retraction',
-                              reason: 'Manually flagged as retracted by user',
-                            },
-                          });
-                        }
-                      }}
+                      onClick={handleToggleRetraction}
                       className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
                     >
                       <ShieldAlert className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
@@ -345,25 +281,7 @@ export const ItemRowActions = React.memo(function ItemRowActions({
                           {collections.map((col: Collection) => (
                             <DropdownMenuItem
                               key={col.id}
-                              onClick={async () => {
-                                setIsOpen(false);
-                                if (onAddToCollection) { onAddToCollection(col.id); return; }
-                                if (onMoveToCollection) {
-                                  onMoveToCollection(col.id);
-                                } else {
-                                  try {
-                                    await assignCollectionItemsMutation.mutateAsync({
-                                      collectionId: col.id,
-                                      itemIds: [item.id],
-                                    });
-                                    toast.success(`Added to "${col.name}"`);
-                                  } catch (err) {
-                                    toast.error('Failed to add to collection', {
-                                      description: err instanceof Error ? err.message : String(err),
-                                    });
-                                  }
-                                }
-                              }}
+                              onClick={() => void handleSelectCollection(col)}
                               className="cursor-pointer truncate text-12 py-1.5 px-2"
                             >
                               {col.name}

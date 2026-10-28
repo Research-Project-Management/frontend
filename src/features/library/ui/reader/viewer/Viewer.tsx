@@ -291,34 +291,54 @@ export default function Viewer({
       const annId = targetPage.annotationId;
       setPulsingAnnotationId(annId);
 
-      let activeTimerId: ReturnType<typeof setTimeout> | null = null;
       let cancelled = false;
+      let observer: MutationObserver | null = null;
+      const safeAnnId =
+        typeof CSS !== "undefined" && typeof CSS.escape === "function"
+          ? CSS.escape(annId)
+          : annId.replace(/(["\\])/g, "\\$1");
+      const selector = `[data-annotation-id="${safeAnnId}"]`;
 
-      const attemptFocus = (retries = 8) => {
-        if (cancelled) return;
-        const safeAnnId =
-          typeof CSS !== "undefined" && typeof CSS.escape === "function"
-            ? CSS.escape(annId)
-            : annId.replace(/(["\\])/g, "\\$1");
-        const el = document.querySelector(
-          `[data-annotation-id="${safeAnnId}"]`,
-        ) as HTMLElement | null;
+      const tryFocusAnnotation = (): boolean => {
+        if (cancelled) return false;
+        const rootNode: ParentNode = scrollContainerRef.current ?? document;
+        const el = (rootNode.querySelector(selector) ??
+          document.querySelector(selector)) as HTMLElement | null;
         if (el) {
           el.scrollIntoView({ behavior: "smooth", block: "center" });
-        } else if (retries > 0) {
-          activeTimerId = setTimeout(() => attemptFocus(retries - 1), 120);
+          observer?.disconnect();
+          observer = null;
+          return true;
         }
+        return false;
       };
 
-      activeTimerId = setTimeout(() => attemptFocus(), 80);
-      const clearTimer = setTimeout(() => {
-        if (!cancelled) setPulsingAnnotationId(null);
-      }, 2500);
+      if (!tryFocusAnnotation() && typeof MutationObserver !== "undefined") {
+        const observeTarget = scrollContainerRef.current ?? document.body;
+        if (observeTarget) {
+          observer = new MutationObserver(() => {
+            tryFocusAnnotation();
+          });
+          observer.observe(observeTarget, {
+            childList: true,
+            subtree: true,
+          });
+        }
+      }
+
+      const safetyTimeoutId = setTimeout(() => {
+        observer?.disconnect();
+        observer = null;
+        if (!cancelled) {
+          setPulsingAnnotationId(null);
+        }
+      }, 3000);
 
       return () => {
         cancelled = true;
-        if (activeTimerId) clearTimeout(activeTimerId);
-        clearTimeout(clearTimer);
+        observer?.disconnect();
+        observer = null;
+        clearTimeout(safetyTimeoutId);
       };
     }
   }, [targetPage, scrollToPage]);

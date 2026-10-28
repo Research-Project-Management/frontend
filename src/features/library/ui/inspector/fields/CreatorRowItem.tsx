@@ -6,6 +6,7 @@ import { cn } from "@/shared/lib/utils";
 import {
   splitAuthorString,
   parseCreatorName,
+  isInstitutionName,
 } from "@/features/library/domain/creators";
 import { ALL_CREATOR_TYPES } from "@/features/library/domain/types/item-types.types";
 import {
@@ -147,24 +148,29 @@ export function CreatorRowItem({
               aria-label={`${roleLabel} ${originalIndex + 1}`}
               onChange={(changeEvent: React.ChangeEvent<HTMLInputElement>) => {
                 const inputValue = changeEvent.target.value;
+                const currentEntry = localCreators[originalIndex];
+                const isSingleFieldMode =
+                  currentEntry?.fieldMode === 1 || isInstitutionName(inputValue);
                 if (
-                  inputValue.includes(";") ||
-                  /\s+and\s+/i.test(inputValue) ||
-                  inputValue.includes("\n")
+                  !isSingleFieldMode &&
+                  (inputValue.includes(";") || inputValue.includes("\n"))
                 ) {
                   const splitParts = splitAuthorString(inputValue);
                   if (splitParts.length > 1) {
                     const updatedCreators = [...localCreators];
-                    const currentEntry = updatedCreators[originalIndex];
                     const newCreatorEntries: CreatorEntry[] = splitParts.map(
                       (authorNamePart) => {
                         const parsed = parseCreatorName(authorNamePart);
                         return {
                           creatorType: currentEntry?.creatorType || "author",
-                          fieldMode: 0,
+                          fieldMode: parsed.isInstitution ? 1 : 0,
                           name: authorNamePart,
-                          firstName: parsed.firstName || undefined,
-                          lastName: parsed.lastName || undefined,
+                          firstName: parsed.isInstitution
+                            ? undefined
+                            : parsed.firstName || undefined,
+                          lastName: parsed.isInstitution
+                            ? authorNamePart
+                            : parsed.lastName || undefined,
                         };
                       },
                     );
@@ -179,6 +185,18 @@ export function CreatorRowItem({
                 }
                 const updatedCreators = [...localCreators];
                 const current = updatedCreators[originalIndex];
+                if (current?.fieldMode === 1) {
+                  updatedCreators[originalIndex] = {
+                    ...current,
+                    creatorType: current?.creatorType || "author",
+                    fieldMode: 1,
+                    name: inputValue,
+                    firstName: undefined,
+                    lastName: inputValue,
+                  };
+                  onUpdateLocalCreators(updatedCreators, false);
+                  return;
+                }
                 const trimmedInput = inputValue.trim();
                 const combinedForward = [current?.firstName, current?.lastName]
                   .filter(Boolean)
@@ -195,16 +213,22 @@ export function CreatorRowItem({
                 const parsed = matchesExisting
                   ? undefined
                   : parseCreatorName(inputValue);
+                const isInst = Boolean(parsed?.isInstitution);
                 updatedCreators[originalIndex] = {
                   ...current,
                   creatorType: current?.creatorType || "author",
+                  fieldMode: isInst ? 1 : (current?.fieldMode ?? 0),
                   name: inputValue,
-                  firstName: matchesExisting
-                    ? current?.firstName
-                    : parsed?.firstName || undefined,
-                  lastName: matchesExisting
-                    ? current?.lastName
-                    : parsed?.lastName || undefined,
+                  firstName: isInst
+                    ? undefined
+                    : matchesExisting
+                      ? current?.firstName
+                      : parsed?.firstName || undefined,
+                  lastName: isInst
+                    ? inputValue
+                    : matchesExisting
+                      ? current?.lastName
+                      : parsed?.lastName || undefined,
                 };
                 onUpdateLocalCreators(updatedCreators, false);
               }}

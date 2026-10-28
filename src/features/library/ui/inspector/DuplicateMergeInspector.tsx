@@ -62,7 +62,7 @@ export function DuplicateMergeInspector({
     selectedMasterId,
     fieldOverrides,
     effectiveItemType,
-    getEffectiveMergeSelections,
+    getExplicitMergeSelections,
     showConflictsOnly,
     setShowConflictsOnly,
     masterPaper,
@@ -90,7 +90,7 @@ export function DuplicateMergeInspector({
 
       await onMerge(
         masterPaper,
-        getEffectiveMergeSelections(),
+        getExplicitMergeSelections(),
         duplicateIdsToDelete,
       );
     } finally {
@@ -194,7 +194,6 @@ export function DuplicateMergeInspector({
             onClick={handleConfirmMerge}
             disabled={isMerging || !masterPaper}
             className="w-full h-8 text-12 font-medium gap-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-            {...{}}
           >
             {isMerging ? (
               <Loader2 className="size-3.5 animate-spin shrink-0" />

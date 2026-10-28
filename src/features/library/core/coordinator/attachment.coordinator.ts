@@ -3,7 +3,9 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { getItemFileUrl, isProjectScope } from '@/features/library/domain/item-url';
+import { getItemFileUrl } from '@/features/library/domain/item-url';
+import { resolveLibraryUrl, resolveLibraryRawPath } from '@/features/library/sdk/library.client';
+import { triggerBrowserUrlDownload } from '@/features/library/core/coordinator/browser-io.helpers';
 import {
   useAttachments,
   useRenameAttachment,
@@ -32,20 +34,21 @@ const EMPTY_ATTACHMENTS: ItemAttachment[] = [];
 
 function resolveAttachmentUrl(att: AttachmentLike, scopeId?: string): string {
   if (att.fileId) {
-    return isProjectScope(scopeId)
-      ? `/api/v1/projects/${encodeURIComponent(scopeId)}/library/files/${encodeURIComponent(att.fileId)}/content`
-      : `/api/v1/library/files/${encodeURIComponent(att.fileId)}/content`;
+    return resolveLibraryUrl(
+      'extraction',
+      `/files/${encodeURIComponent(att.fileId)}/content`,
+      scopeId,
+    );
   }
-  const raw = (att.fileUrl || att.url || '').trim();
-  if (!raw) return '';
-  if (
-    raw.startsWith('/api/v1/storage/files/') &&
-    !raw.includes('/r2/') &&
-    !raw.endsWith('/content')
-  ) {
-    return `${raw}/content`;
-  }
-  return raw;
+  const raw = getItemFileUrl(
+    {
+      fileUrl: att.fileUrl || att.url,
+      url: att.url,
+      fileId: att.fileId,
+    },
+    scopeId,
+  );
+  return raw ? resolveLibraryRawPath(raw, 'extraction') : '';
 }
 
 export function useAttachmentCoordinator({
@@ -304,14 +307,7 @@ export function useAttachmentCoordinator({
   );
 
   const handleDownload = useCallback((url: string, filename: string) => {
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.target = '_blank';
-    a.rel = 'noopener noreferrer';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    triggerBrowserUrlDownload(url, filename);
   }, []);
 
   const handleSetPrimary = useCallback(

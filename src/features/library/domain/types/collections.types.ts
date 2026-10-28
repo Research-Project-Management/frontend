@@ -14,6 +14,8 @@ export const collectionSchema = z.object({
   createdBy: userSchema.optional(),
   itemCount: z.number().optional().default(0),
   recursiveItemCount: z.number().optional(),
+  sortOrder: z.number().int().optional(),
+  orderIndex: z.number().int().optional(),
   version: z.number().optional().default(1),
   createdAt: z.string().optional().default(''),
   updatedAt: z.string().optional().default(''),

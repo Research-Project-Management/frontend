@@ -32,10 +32,8 @@ import {
   invalidateCollections,
   normalizeScopeId,
 } from '@/features/library/sdk/query-keys';
-import {
-  useFeedsStore,
-  mapServerFeedSubscriptions,
-} from '@/features/library/core/store/feeds.store';
+import { useFeedsStore } from '@/features/library/core/store/feeds.store';
+import { mapServerFeedSubscriptions } from '@/features/library/domain/feeds.domain';
 
 export {
   itemKeys,

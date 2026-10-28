@@ -2,6 +2,10 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
+import {
+  copyToClipboard,
+  triggerBrowserTextDownload,
+} from '@/features/library/core/coordinator/browser-io.helpers';
 
 export const READER_TOAST_IDS = {
   clipboard: 'reader-clipboard',
@@ -40,19 +44,9 @@ export function useReaderClipboard(resetDelay = 2000) {
       }
 
       try {
-        if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-          await navigator.clipboard.writeText(clean);
-        } else if (typeof document !== 'undefined') {
-          const textarea = document.createElement('textarea');
-          textarea.value = clean;
-          textarea.style.position = 'fixed';
-          textarea.style.opacity = '0';
-          document.body.appendChild(textarea);
-          textarea.select();
-          document.execCommand('copy');
-          document.body.removeChild(textarea);
-        } else {
-          throw new Error('Clipboard API not available');
+        const ok = await copyToClipboard(clean);
+        if (!ok) {
+          throw new Error('Could not copy to clipboard');
         }
 
         const successMessage = label ? `Copied ${label} to clipboard` : 'Copied to clipboard';
@@ -96,19 +90,7 @@ export function useReaderFileDownload() {
       }
 
       try {
-        const blob = new Blob([content], { type: mimeType });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-
-        setTimeout(() => {
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
-        }, 200);
-
+        triggerBrowserTextDownload(content, filename, mimeType);
         toast.success(`Downloaded ${filename}`, { id: READER_TOAST_IDS.download });
         return true;
       } catch (err: unknown) {

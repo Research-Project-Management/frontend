@@ -10,8 +10,7 @@ import {
   registerSchemaRegistryUpdateListener,
   type SchemaFieldDefinition,
 } from "@/features/library/domain/types/item-types.types";
-import { cleanDoi, extractArxivId } from "./identifiers";
-import { generateCitationKey } from "./citations";
+import { cleanDoi } from "./identifiers";
 import {
   isValidValue,
   cleanValue,
@@ -22,11 +21,16 @@ import {
   FIRST_CLASS_ITEM_COLUMNS,
   CANONICAL_FIELD_ALIASES,
   buildDerivedFieldMappings,
-  parseValidYear,
   getDirectExtraAliases,
   type FieldCandidateScorer,
   FIELD_CANDIDATE_SCORERS,
 } from "./item-field-scorers.strategy";
+import { applyCoupledFieldSynchronization } from "./item-field-coupling.domain";
+import {
+  type FieldLookupSource,
+  type InspectorFieldDescriptor,
+  INSPECTOR_FIELD_DESCRIPTORS,
+} from "./item-field-descriptors.domain";
 
 export {
   ALL_SCHEMA_FIELD_KEYS,
@@ -34,6 +38,10 @@ export {
   CANONICAL_FIELD_ALIASES,
   type FieldCandidateScorer,
   FIELD_CANDIDATE_SCORERS,
+  applyCoupledFieldSynchronization,
+  type FieldLookupSource,
+  type InspectorFieldDescriptor,
+  INSPECTOR_FIELD_DESCRIPTORS,
 };
 
 const DERIVED_FIELD_MAPPINGS = buildDerivedFieldMappings();
@@ -68,13 +76,6 @@ function refreshDerivedFieldMappings(): void {
 }
 
 registerSchemaRegistryUpdateListener(refreshDerivedFieldMappings);
-
-export type FieldLookupSource = {
-  p: Record<string, unknown>;
-  ef: Record<string, unknown>;
-  displayDoi: string;
-  fieldKey: string;
-};
 
 const SUBTYPE_FIELD_KEYS: ReadonlySet<string> = new Set([
   "reporttype",
@@ -134,321 +135,6 @@ function pickFirst(
   }
   return undefined;
 }
-
-export interface InspectorFieldDescriptor {
-  get?: (ctx: FieldLookupSource) => string;
-  patch?: (
-    val: string,
-    item: Item | Partial<Item>,
-    currentExtraFields: Record<string, unknown>,
-  ) => Partial<Item> & Record<string, unknown>;
-  formatDisplay?: (rawVal: string) => string;
-}
-
-const formatCountDisplay = (rawVal: string): string => {
-  if (!rawVal || isNaN(Number(rawVal))) return rawVal;
-  return Number(rawVal) > 0
-    ? new Intl.NumberFormat("en-US").format(Number(rawVal))
-    : "";
-};
-
-const buildCountPatch =
-  (propKey: "citationCount" | "referenceCount") =>
-  (
-    val: string,
-    _item: Item | Partial<Item>,
-    currentExtraFields: Record<string, unknown>,
-  ): Partial<Item> & Record<string, unknown> => {
-    const parsedCount = parseInt(val.replace(/,/g, ""), 10);
-    const validCount = isNaN(parsedCount) ? null : parsedCount;
-    return {
-      [propKey]: validCount,
-      extraFields: { ...currentExtraFields, [propKey]: validCount },
-    };
-  };
-
-const stripIsoDateSuffix = (rawDate: unknown): string => {
-  if (!rawDate || !isValidValue(rawDate)) return "";
-  const str = String(rawDate).trim();
-  const isoMatch = str.match(/^(\d{4}-\d{2}-\d{2})T/);
-  return isoMatch ? isoMatch[1]! : cleanValue(str);
-};
-
-const getDateValue = ({ p, ef }: FieldLookupSource): string => {
-  const rawDate =
-    p.publicationDate ||
-    p.date ||
-    ef.date ||
-    ef.publicationDate ||
-    (p.year && Number(p.year) > 0 ? String(p.year) : "");
-  return stripIsoDateSuffix(rawDate);
-};
-
-const buildMappedDateGetter =
-  (
-    dateKey: "issueDate" | "dateDecided" | "dateEnacted" | "filingDate",
-    fallbackToPubDate = true,
-  ) =>
-  ({ p, ef }: FieldLookupSource): string => {
-    const raw =
-      p[dateKey] ||
-      ef[dateKey] ||
-      (fallbackToPubDate
-        ? p.publicationDate ||
-          p.date ||
-          ef.date ||
-          ef.publicationDate ||
-          (p.year && Number(p.year) > 0 ? String(p.year) : "")
-        : p.date || ef.date);
-    return stripIsoDateSuffix(raw);
-  };
-
-const buildDatePatch = (
-  val: string,
-  _item: Item | Partial<Item>,
-  currentExtraFields: Record<string, unknown>,
-): Partial<Item> & Record<string, unknown> => {
-  const finalYear = parseValidYear(val);
-  return {
-    year: finalYear !== undefined ? finalYear : null,
-    publicationDate: val || "",
-    date: val || "",
-    extraFields: { ...currentExtraFields, date: val || null, publicationDate: val || null },
-  };
-};
-
-const getPublicationTitleValue = ({ p, ef }: FieldLookupSource): string =>
-  cleanValue(
-    p.publicationTitle || p.containerTitle || p.journal || p.proceedingsTitle || p.bookTitle || ef.publicationTitle || ef.containerTitle,
-  );
-
-const getAccessDateValue = ({ p, ef }: FieldLookupSource): string => {
-  const raw = p.accessDate || p.accessedAt || ef.accessDate || ef.accessedAt;
-  if (!raw || !isValidValue(raw)) return "";
-  const str = String(raw).trim();
-  const isoDateMatch = str.match(/^(\d{4}-\d{2}-\d{2})(?:T.*)?$/);
-  return isoDateMatch ? isoDateMatch[1]! : cleanValue(str);
-};
-
-const getArchiveIdValue = ({ p, ef, fieldKey }: FieldLookupSource): string => {
-  const raw = cleanValue(
-    p.archiveId ||
-      p.archiveID ||
-      p.arxivId ||
-      ef.archiveId ||
-      ef.archiveID ||
-      ef.arxivId ||
-      extractArxivId(p.url as string) ||
-      extractArxivId(p.callNumber as string),
-  );
-  if (!raw) return "";
-  const clean = raw
-    .replace(/^arxiv:\s*/i, "")
-    .replace(/\s*\[.*?\]\s*$/, "")
-    .trim();
-  const isPreprint = normalizeCanonicalItemType(p.itemType as string) === "preprint";
-  return isPreprint && clean ? `arXiv:${clean}` : clean;
-};
-
-const buildArchiveIdPatch = (
-  val: string,
-  _item: Item | Partial<Item>,
-  currentExtraFields: Record<string, unknown>,
-): Partial<Item> & Record<string, unknown> => {
-  const cleanVal = val.replace(/\s*\[.*?\]\s*$/, "").trim();
-  const rawArxiv = cleanVal.replace(/^arxiv:\s*/i, "");
-  return {
-    arxivId: rawArxiv || "",
-    archiveID: cleanVal || "",
-    extraFields: {
-      ...currentExtraFields,
-      arxivId: rawArxiv || null,
-      archiveID: cleanVal || null,
-    },
-  };
-};
-
-const getCitationKeyValue = ({ p }: FieldLookupSource): string =>
-  cleanValue(p.citationKey || generateCitationKey(p));
-
-const buildNumPagesPatch = (
-  val: string,
-  _item: Item | Partial<Item>,
-  currentExtraFields: Record<string, unknown>,
-): Partial<Item> & Record<string, unknown> => {
-  const parsed = parseInt(val, 10);
-  const validNum = isNaN(parsed) ? val || null : parsed;
-  return {
-    numberOfPages: validNum,
-    extraFields: {
-      ...currentExtraFields,
-      numPages: validNum,
-      numberOfPages: validNum,
-    },
-  };
-};
-
-const buildMappedDatePatch =
-  (
-    dateKey: "issueDate" | "dateDecided" | "dateEnacted" | "filingDate",
-    syncPubDate = true,
-  ) =>
-  (
-    val: string,
-    _item: Item | Partial<Item>,
-    currentExtraFields: Record<string, unknown>,
-  ): Partial<Item> & Record<string, unknown> => {
-    const finalYear = parseValidYear(val);
-    return {
-      [dateKey]: val || "",
-      ...(syncPubDate
-        ? {
-            publicationDate: val || "",
-            date: val || "",
-            year: finalYear !== undefined ? finalYear : null,
-          }
-        : finalYear !== undefined
-          ? { year: finalYear }
-          : {}),
-      extraFields: {
-        ...currentExtraFields,
-        [dateKey]: val || null,
-        ...(syncPubDate
-          ? { date: val || null, publicationDate: val || null }
-          : {}),
-      },
-    };
-  };
-
-export const INSPECTOR_FIELD_DESCRIPTORS: Record<
-  string,
-  InspectorFieldDescriptor
-> = {
-  abstractnote: {
-    patch: (val, _item, currentExtraFields) => {
-      const cleaned = val.trim();
-      return {
-        abstractNote: cleaned || "",
-        abstract: cleaned || null,
-        extraFields: { ...currentExtraFields, abstractNote: cleaned || null, abstract: cleaned || null },
-      };
-    },
-  },
-  abstract: {
-    patch: (val, _item, currentExtraFields) => {
-      const cleaned = val.trim();
-      return {
-        abstractNote: cleaned || "",
-        abstract: cleaned || null,
-        extraFields: { ...currentExtraFields, abstractNote: cleaned || null, abstract: cleaned || null },
-      };
-    },
-  },
-  pages: {
-    get: ({ p, ef }) => {
-      const raw = ((p.pages || ef.pages || "") as string).trim();
-      return raw
-        ? raw.replace(/\s*(?:--+|[\u2010-\u2015\u2212])\s*/g, "-").replace(/\s*-\s*/g, "-")
-        : "";
-    },
-    patch: (val, _item, currentExtraFields) => {
-      const cleaned = typeof val === "string"
-        ? val.trim().replace(/\s*(?:--+|[\u2010-\u2015\u2212])\s*/g, "-").replace(/\s*-\s*/g, "-")
-        : val;
-      return {
-        pages: cleaned || "",
-        extraFields: { ...currentExtraFields, pages: cleaned || null },
-      };
-    },
-  },
-  date: { get: getDateValue, patch: buildDatePatch },
-  publicationdate: { get: getDateValue, patch: buildDatePatch },
-  publicationtitle: { get: getPublicationTitleValue },
-  journal: { get: getPublicationTitleValue },
-  accessdate: { get: getAccessDateValue },
-  accessedat: { get: getAccessDateValue },
-  doi: {
-    get: ({ p, ef, displayDoi }) =>
-      cleanValue(displayDoi || p.doi || p.DOI || ef.doi),
-    patch: (val, _item, currentExtraFields) => {
-      const cleaned = cleanDoi(val);
-      return {
-        doi: cleaned || "",
-        extraFields: {
-          ...currentExtraFields,
-          doi: cleaned || null,
-          DOI: null,
-        },
-      };
-    },
-  },
-  archiveid: { get: getArchiveIdValue, patch: buildArchiveIdPatch },
-  arxivid: { get: getArchiveIdValue, patch: buildArchiveIdPatch },
-  arxiv: { get: getArchiveIdValue, patch: buildArchiveIdPatch },
-  citationkey: { get: getCitationKeyValue },
-  citekey: { get: getCitationKeyValue },
-  repository: {
-    get: ({ p, ef }) =>
-      cleanValue(
-        p.repository ||
-          ef.repository ||
-          (normalizeCanonicalItemType(p.itemType as string) === "preprint"
-            ? p.publisher || p.publicationTitle
-            : ""),
-      ),
-    patch: (val, item, currentExtraFields) => ({
-      repository: val || "",
-      ...(item?.itemType === "preprint" ? {} : { publisher: val || "" }),
-      extraFields: { ...currentExtraFields, repository: val || null },
-    }),
-  },
-  websitetitle: {
-    get: ({ p, ef, fieldKey }) =>
-      cleanValue(
-        p[fieldKey] || ef[fieldKey] || p.publicationTitle || p.containerTitle,
-      ),
-  },
-  blogtitle: {
-    get: ({ p, ef, fieldKey }) =>
-      cleanValue(
-        p[fieldKey] || ef[fieldKey] || p.publicationTitle || p.containerTitle,
-      ),
-  },
-  citationcount: {
-    get: ({ p, ef }) => {
-      const count = p.citationCount ?? ef.citationCount;
-      return count != null && Number(count) > 0 ? String(count) : "";
-    },
-    patch: buildCountPatch("citationCount"),
-    formatDisplay: formatCountDisplay,
-  },
-  referencecount: {
-    get: ({ p, ef }) => {
-      const count = p.referenceCount ?? ef.referenceCount;
-      return count != null && Number(count) > 0 ? String(count) : "";
-    },
-    patch: buildCountPatch("referenceCount"),
-    formatDisplay: formatCountDisplay,
-  },
-  numpages: { patch: buildNumPagesPatch },
-  numberofpages: { patch: buildNumPagesPatch },
-  issuedate: {
-    get: buildMappedDateGetter("issueDate", true),
-    patch: buildMappedDatePatch("issueDate", true),
-  },
-  datedecided: {
-    get: buildMappedDateGetter("dateDecided", true),
-    patch: buildMappedDatePatch("dateDecided", true),
-  },
-  dateenacted: {
-    get: buildMappedDateGetter("dateEnacted", true),
-    patch: buildMappedDatePatch("dateEnacted", true),
-  },
-  filingdate: {
-    get: buildMappedDateGetter("filingDate", false),
-    patch: buildMappedDatePatch("filingDate", false),
-  },
-};
 
 export interface PreparedInspectorFieldContext {
   p: Record<string, unknown>;
@@ -538,14 +224,19 @@ export function resolveInspectorFieldValue(
 
 /**
  * Pure helper to construct an atomic update patch for an Item when a dynamic Inspector field is saved.
- * Synchronizes both top-level properties and `extraFields` so non-column Zotero fields and
- * existing `extraFields` entries stay 100% consistent.
+ * Synchronizes both top-level properties, coupled Zotero type-specific fields, and `extraFields`
+ * so non-column Zotero fields and existing `extraFields` entries stay 100% consistent.
  */
 export function buildInspectorFieldPatch(
-  item: Item | Partial<Item>,
+  itemOrType: Item | Partial<Item> | Record<string, unknown> | string,
   fieldDefOrKey: SchemaFieldDefinition | { field: string } | string,
   val: string,
+  maybeItem?: Item | Partial<Item> | Record<string, unknown>,
 ): Partial<Item> & Record<string, unknown> {
+  const item: Partial<Item> & Record<string, unknown> =
+    typeof itemOrType === "string"
+      ? { ...(maybeItem || {}), itemType: itemOrType }
+      : ((itemOrType || {}) as Partial<Item> & Record<string, unknown>);
   const key =
     typeof fieldDefOrKey === "string" ? fieldDefOrKey : fieldDefOrKey.field;
   const keyLower = key.toLowerCase();
@@ -605,6 +296,8 @@ export function buildInspectorFieldPatch(
     }
   }
 
+  applyCoupledFieldSynchronization(item, key, val, patch);
+
   const directAliases = getDirectExtraAliases(key);
   if (directAliases.length > 0 || patch.extraFields) {
     const nextEf: Record<string, unknown> = {
@@ -631,7 +324,10 @@ export function buildInspectorFieldPatch(
       aliasMutated = true;
     }
     for (const existingKey of Object.keys(currentExtraFields)) {
-      if (existingKey.toLowerCase().replace(/[\s_-]+/g, "") === collapsedKey) {
+      if (
+        existingKey.toLowerCase().replace(/[\s_-]+/g, "") === collapsedKey &&
+        !(existingKey in ((patch.extraFields as Record<string, unknown> | undefined) || {}))
+      ) {
         nextEf[existingKey] = effectiveValForEf;
         aliasMutated = true;
       }
@@ -660,9 +356,8 @@ export function buildInspectorFieldPatch(
   }
 
   if (isClearing && item.metadata && typeof item.metadata === "object" && !Array.isArray(item.metadata)) {
-    const clonedMeta: Record<string, unknown> = {
-      ...(item.metadata as Record<string, unknown>),
-    };
+    const currentMeta = item.metadata as Record<string, unknown>;
+    const clearedMetaTombstones: Record<string, unknown> = {};
     const keysToClear = new Set<string>([
       key,
       ...(syncTargets || []),
@@ -671,13 +366,13 @@ export function buildInspectorFieldPatch(
     ]);
     let metaMutated = false;
     for (const k of keysToClear) {
-      if (k in clonedMeta && clonedMeta[k] !== null) {
-        clonedMeta[k] = null;
+      if (k in currentMeta && currentMeta[k] !== null) {
+        clearedMetaTombstones[k] = null;
         metaMutated = true;
       }
     }
     if (metaMutated) {
-      patch.metadata = clonedMeta;
+      patch.metadata = clearedMetaTombstones;
     }
   }
 
@@ -686,4 +381,15 @@ export function buildInspectorFieldPatch(
   }
 
   return patch;
+}
+
+/**
+ * Canonical coupled-field update builder for Inspector edits (alias for `buildInspectorFieldPatch`).
+ */
+export function buildCoupledFieldUpdates(
+  item: Partial<Item> | Record<string, unknown>,
+  fieldKey: string,
+  value: string,
+): Partial<Item> & Record<string, unknown> {
+  return buildInspectorFieldPatch(item, fieldKey, value);
 }

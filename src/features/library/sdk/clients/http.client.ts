@@ -219,6 +219,10 @@ export const libraryClient = {
 
 // Scope URL Helpers
 
+export function getBasePath(scopeId?: string, suffix = ''): string {
+  return resolveLibraryUrl('catalog', '', scopeId, suffix);
+}
+
 export function getCatalogUrl(scopeId?: string, suffix = ''): string {
   if (!suffix) {
     return resolveLibraryUrl('catalog', '/items', scopeId);
@@ -529,6 +533,28 @@ export const fetchPdfBlob = async (
   });
 };
 
+const IDENTIFIER_SUBMISSION_CONFIG: Readonly<
+  Record<string, { identifierType: string; valueKey: string }>
+> = {
+  doi: { identifierType: 'DOI', valueKey: 'doi' },
+  arxiv: { identifierType: 'ARXIV', valueKey: 'arxivId' },
+  isbn: { identifierType: 'ISBN', valueKey: 'isbn' },
+  pmid: { identifierType: 'PMID', valueKey: 'pmid' },
+};
+
+const RECORD_SUBMISSION_CONFIG: Readonly<
+  Record<string, { format: string; fallbackKey?: string }>
+> = {
+  bibtex: { format: 'BIBTEX', fallbackKey: 'bibtex' },
+  ris: { format: 'RIS', fallbackKey: 'ris' },
+  csl_json: { format: 'CSL_JSON', fallbackKey: 'cslJson' },
+  endnote_xml: { format: 'ENDNOTE_XML' },
+  mods: { format: 'MODS' },
+  zotero_rdf: { format: 'ZOTERO_RDF' },
+  medline: { format: 'MEDLINE' },
+  csv: { format: 'CSV' },
+};
+
 export function toIngestionSubmission(payload: UnifiedIngestionPayload): Record<string, unknown> {
   const p = payload as Record<string, unknown>;
   const source = p.source as string;
@@ -539,89 +565,31 @@ export function toIngestionSubmission(payload: UnifiedIngestionPayload): Record<
     overrides: p.overrides,
     idempotencyKey: p.idempotencyKey,
   };
-  if (source === 'doi') {
+
+  const identCfg = IDENTIFIER_SUBMISSION_CONFIG[source];
+  if (identCfg) {
+    const val = p[identCfg.valueKey];
     return {
       ...base,
       kind: 'IDENTIFIER',
-      identifierType: 'DOI',
-      value: p.doi,
-      identifierValue: p.doi,
-      doi: p.doi,
+      identifierType: identCfg.identifierType,
+      value: val,
+      identifierValue: val,
+      [identCfg.valueKey]: val,
     };
   }
-  if (source === 'arxiv') {
-    return {
-      ...base,
-      kind: 'IDENTIFIER',
-      identifierType: 'ARXIV',
-      value: p.arxivId,
-      identifierValue: p.arxivId,
-      arxivId: p.arxivId,
-    };
-  }
-  if (source === 'isbn') {
-    return {
-      ...base,
-      kind: 'IDENTIFIER',
-      identifierType: 'ISBN',
-      value: p.isbn,
-      identifierValue: p.isbn,
-      isbn: p.isbn,
-    };
-  }
-  if (source === 'pmid') {
-    return {
-      ...base,
-      kind: 'IDENTIFIER',
-      identifierType: 'PMID',
-      value: p.pmid,
-      identifierValue: p.pmid,
-      pmid: p.pmid,
-    };
-  }
-  if (source === 'bibtex') {
+
+  const recordCfg = RECORD_SUBMISSION_CONFIG[source];
+  if (recordCfg) {
     return {
       ...base,
       kind: 'RECORD',
-      format: 'BIBTEX',
-      recordFormat: 'BIBTEX',
-      content: p.content || p.bibtex,
+      format: recordCfg.format,
+      recordFormat: recordCfg.format,
+      content: p.content || (recordCfg.fallbackKey ? p[recordCfg.fallbackKey] : undefined),
     };
   }
-  if (source === 'ris') {
-    return {
-      ...base,
-      kind: 'RECORD',
-      format: 'RIS',
-      recordFormat: 'RIS',
-      content: p.content || p.ris,
-    };
-  }
-  if (source === 'csl_json') {
-    return {
-      ...base,
-      kind: 'RECORD',
-      format: 'CSL_JSON',
-      recordFormat: 'CSL_JSON',
-      content: p.content || p.cslJson,
-    };
-  }
-  if (
-    source === 'endnote_xml' ||
-    source === 'mods' ||
-    source === 'zotero_rdf' ||
-    source === 'medline' ||
-    source === 'csv'
-  ) {
-    const upperFormat = source.toUpperCase();
-    return {
-      ...base,
-      kind: 'RECORD',
-      format: upperFormat,
-      recordFormat: upperFormat,
-      content: p.content,
-    };
-  }
+
   if (source === 'url') {
     return {
       ...base,
@@ -649,7 +617,15 @@ export function toIngestionSubmission(payload: UnifiedIngestionPayload): Record<
       externalVersion: p.externalVersion,
     };
   }
-  if (source === 'manual') return { ...base, kind: 'RECORD', item: p.item };
+  if (source === 'manual') {
+    return {
+      ...base,
+      kind: 'RECORD',
+      format: 'CSL_JSON',
+      recordFormat: 'CSL_JSON',
+      content: JSON.stringify([p.item]),
+    };
+  }
   return {
     ...base,
     kind: p.kind || (p.fileId ? 'FILE' : 'URL'),

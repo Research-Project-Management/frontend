@@ -14,13 +14,15 @@ import { toast } from 'sonner';
 import { safeHttpUrl } from '@/features/library/domain/retraction';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { FeedStackIllustration } from '@/features/library/ui/content/LibraryIllustrations';
-import { useFetchAcademicFeed } from '@/features/library/sdk/queries/ingestion.queries';
+import {
+  useFetchAcademicFeed,
+  useIngestMutation,
+} from '@/features/library/sdk/queries/ingestion.queries';
 import { useCreateLibraryItemMutation, useLibraryItemsQuery } from '@/features/library/sdk/queries/catalog.queries';
 import {
-  mapFeedEntryToCreateItemPayload,
+  normalizeFetchedFeedEntries,
+  executeSaveFeedEntryToLibrary,
   type ParsedFeedEntry,
-  type FeedCreatorApiItem,
-  type FeedEntryApiItem,
   type FeedFetchApiResponse,
 } from '@/features/library/domain/feed-parser.domain';
 import type { Collection } from '@/features/library/domain/types/library.types';
@@ -47,6 +49,7 @@ export default function FeedsManagerModal({
 }: FeedsManagerModalProps) {
   const { mutateAsync: fetchAcademicFeed } = useFetchAcademicFeed();
   const { mutateAsync: createItem } = useCreateLibraryItemMutation(scopeId);
+  const { mutateAsync: ingestItem } = useIngestMutation(scopeId);
   const { data: libraryData } = useLibraryItemsQuery(
     scopeId,
     { limit: 100, fields: ['id', 'title', 'doi', 'url'] },
@@ -55,9 +58,11 @@ export default function FeedsManagerModal({
   const feeds = useFeedsStore((s) => s.feeds);
   const activeFeedId = useFeedsStore((s) => s.activeFeedId);
   const loadFeeds = useFeedsStore((s) => s.loadFeeds);
+  const hydrateReadEntries = useFeedsStore((s) => s.hydrateReadEntries);
   const setActiveFeedId = useFeedsStore((s) => s.setActiveFeedId);
   const addFeed = useFeedsStore((s) => s.addFeed);
   const removeFeed = useFeedsStore((s) => s.removeFeed);
+  const markEntryAsRead = useFeedsStore((s) => s.markEntryAsRead);
   const savedEntryIds = useFeedsStore((s) => s.savedEntryIds);
   const savingEntryIds = useFeedsStore((s) => s.savingEntryIds);
   const markEntrySaved = useFeedsStore((s) => s.markEntrySaved);
@@ -93,31 +98,12 @@ export default function FeedsManagerModal({
       const payload = res?.data ?? res;
       if (payload && Array.isArray(payload.entries)) {
         setFeedTitle(payload.feedTitle || feed.name);
-        setEntries(
-          payload.entries.map((e: FeedEntryApiItem, idx: number) => ({
-            id: e.id || e.url || e.link || `feed-item-${idx}`,
-            title: e.title,
-            authors: e.authors || [],
-            creators: (e.creators || []).map((c: FeedCreatorApiItem) => ({
-              firstName: c.firstName || '',
-              lastName: c.lastName || '',
-              creatorType: 'author' as const,
-            })),
-            doi: e.doi,
-            arxivId: e.arxivId,
-            url: e.url || e.link,
-            pdfUrl: e.pdfUrl,
-            publishedAt: e.publicationDate || e.published,
-            year: e.year ?? undefined,
-            publicationTitle: e.publicationTitle,
-            volume: e.volume,
-            issue: e.issue,
-            pages: e.pages,
-            abstract: e.abstract || e.summary,
-            categories: e.keywords || [],
-            feedFormat: 'rss2',
-          })),
-        );
+        const normalized = normalizeFetchedFeedEntries(payload.entries);
+        setEntries(normalized);
+        const readIds = normalized.filter((e) => e.isRead === true).map((e) => e.id);
+        if (readIds.length > 0) {
+          hydrateReadEntries(readIds);
+        }
       } else {
         setEntries([]);
       }
@@ -126,7 +112,7 @@ export default function FeedsManagerModal({
     } finally {
       setIsLoadingEntries(false);
     }
-  }, [fetchAcademicFeed]);
+  }, [fetchAcademicFeed, hydrateReadEntries]);
 
   useEffect(() => {
     if (open && activeFeed) {
@@ -154,18 +140,15 @@ export default function FeedsManagerModal({
   };
 
   const handleSaveEntryToLibrary = async (entry: ParsedFeedEntry) => {
+    markEntryAsRead(entry.id);
     setEntrySaving(entry.id, true);
     try {
-      const createPayload = mapFeedEntryToCreateItemPayload(entry, {
+      await executeSaveFeedEntryToLibrary({
+        entry,
         scopeId,
-        collectionId: targetCollectionId || undefined,
-      });
-      const { collectionId: _unusedCollectionId, ...itemData } = createPayload;
-      void _unusedCollectionId;
-      await createItem({
-        ...itemData,
-        collectionIds: targetCollectionId ? [targetCollectionId] : undefined,
-        silent: true,
+        targetCollectionId: targetCollectionId || undefined,
+        createItem,
+        ingestItem,
       });
       markEntrySaved(entry.id);
       toast.success('Saved article to Library', {

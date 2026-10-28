@@ -1,15 +1,17 @@
-import type {
-  Item,
-  PaginatedItemsResponse,
-  CursorPaginationMeta,
-  ItemQueryParams,
-  RelatedItem,
-  SchemaItemTypeDefinition,
+import {
+  type Item,
+  type PaginatedItemsResponse,
+  type CursorPaginationMeta,
+  type ItemQueryParams,
+  type RelatedItem,
+  type SchemaItemTypeDefinition,
+  normalizeRelationType,
 } from '@/features/library/domain/types/library.types';
 import type { DocumentFulltext } from '@/features/library/domain/types/reader.types';
 import {
   libraryClient,
   resolveLibraryUrl,
+  resolveLibraryRawPath,
   getCatalogUrl,
   sanitizeItemPayload,
   unwrapItemResponse,
@@ -24,7 +26,10 @@ export const RelationsService = {
     libraryClient.get<{ relatedItems?: RelatedItem[]; total?: number }>(
       getCatalogUrl(scopeId, `${encodeURIComponent(itemId)}/relations`),
     ).then((res) => {
-      const items = res?.relatedItems ?? [];
+      const items = (res?.relatedItems ?? []).map((rel) => ({
+        ...rel,
+        relationType: normalizeRelationType(rel?.relationType),
+      }));
       return {
         relatedItems: items,
         total: res?.total ?? items.length,
@@ -40,9 +45,10 @@ export const RelationsService = {
     targetItemId: string | string[],
     relationType: string = 'related',
   ) => {
+    const normalizedRelationType = normalizeRelationType(relationType);
     const payload = Array.isArray(targetItemId)
-      ? { targetItemIds: targetItemId, relationType }
-      : { targetItemId, relationType };
+      ? { targetItemIds: targetItemId, relationType: normalizedRelationType }
+      : { targetItemId, relationType: normalizedRelationType };
     return libraryClient.post<{ message: string; relationType?: string; totalLinked?: number }>(
       getCatalogUrl(scopeId, `${encodeURIComponent(itemId)}/relations`),
       payload,
@@ -422,18 +428,18 @@ export const ItemsService = {
 
   getItemTypes: (_scopeId?: string) =>
     libraryClient.get<Record<string, unknown>>(
-      `/api/v1/library/item-types`,
+      resolveLibraryRawPath('/api/v1/library/item-types', 'catalog'),
       { rawEnvelope: true },
     ),
 
   getItemType: (_scopeId: string | undefined, itemType: string) =>
     libraryClient.get<{ success: boolean; itemType: unknown; data: unknown }>(
-      `/api/v1/library/item-types/${encodeURIComponent(itemType)}`,
+      resolveLibraryRawPath(`/api/v1/library/item-types/${encodeURIComponent(itemType)}`, 'catalog'),
     ),
 
   getSchemaSnapshot: () =>
     libraryClient.get<{ success: boolean; data: Record<string, unknown> }>(
-      '/api/v1/library/types/schema',
+      resolveLibraryRawPath('/api/v1/library/types/schema', 'catalog'),
     ),
 
   validateItemPayload: (itemType: string, data: Record<string, unknown>) =>
@@ -443,7 +449,7 @@ export const ItemsService = {
       errors?: Array<{ field: string; message: string }>;
       warnings?: Array<{ field: string; message: string }>;
       sanitized?: Record<string, unknown>;
-    }>('/api/v1/library/types/validate', { itemType, data }),
+    }>(resolveLibraryRawPath('/api/v1/library/types/validate', 'catalog'), { itemType, data }),
 
   previewConvertType: (
     scopeId: string | undefined,

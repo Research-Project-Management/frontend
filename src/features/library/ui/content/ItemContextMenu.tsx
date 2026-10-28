@@ -1,27 +1,32 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import {
-  ExternalLink, Star, Copy, Quote, FolderPlus, FolderMinus, Trash2, RotateCcw, } from 'lucide-react';
-import { toast } from 'sonner';
-import { cn, copyToClipboard } from '@/shared/lib/utils';
+  ExternalLink,
+  Star,
+  Copy,
+  Quote,
+  FolderPlus,
+  FolderMinus,
+  Trash2,
+  RotateCcw,
+  RefreshCw,
+  Award,
+  ShieldAlert,
+} from 'lucide-react';
+import { cn } from '@/shared/lib/utils';
 import {
-  ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger, ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger, ContextMenuShortcut, } from '@/shared/components/ui/context-menu';
-import { useCitationStyles } from '@/features/library/sdk/queries/citation.queries';
-import {
-  useReResolveItemMetadataMutation,
-  useSetMyPublicationMutation,
-} from '@/features/library/sdk/queries/catalog.queries';
-import { useRetraction } from '@/features/library/sdk/queries/ingestion.queries';
-import { RefreshCw, Award, ShieldAlert } from 'lucide-react';
-import { useAssignCollectionItemsMutation } from '@/features/library/sdk/queries/collections.queries';
-import {
-  executeCopyMultiCite,
-  executeCopyInTextCite,
-  executeExportAllBibtex,
-} from '@/features/library/core/coordinator/citation-export.coordinator';
-import { getCleanStyleLabel } from '@/features/library/domain/citations';
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuShortcut,
+} from '@/shared/components/ui/context-menu';
+import { useItemActionHandlers } from '@/features/library/core/coordinator/item-action.coordinator';
 import type { Item, Collection, CslStyle } from '@/features/library/domain/types/library.types';
 
 export interface ItemContextMenuProps {
@@ -58,33 +63,26 @@ export function ItemContextMenu({
   onOpenItem,
   scopeId,
 }: ItemContextMenuProps) {
-  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
-  const assignCollectionItemsMutation = useAssignCollectionItemsMutation(scopeId);
-  const reResolveMutation = useReResolveItemMetadataMutation(scopeId);
-  const setMyPublicationMutation = useSetMyPublicationMutation(scopeId);
-  const { flagItem, unflagItem } = useRetraction(scopeId, { includeItems: false });
-  const { data: serverStyles = [] } = useCitationStyles(scopeId, { enabled: isOpen });
-  const availableStyles = serverStyles.length > 0
-    ? serverStyles.map((s) => ({ id: s.id, label: s.shortTitle || s.name || getCleanStyleLabel(s.id) }))
-    : ['apa', 'ieee', 'mla', 'chicago', 'harvard', 'vancouver'].map((id) => ({ id, label: getCleanStyleLabel(id) }));
 
-  const isStarred =
-    Boolean(item.isStarred) ||
-    Boolean(typeof item.rating === 'number' && item.rating > 0);
-
-  const handleCopyBibliography = async (style: CslStyle = 'apa') => {
-    const effectiveScope = scopeId || 'user';
-    if (style === 'bibtex') {
-      await executeExportAllBibtex([item], effectiveScope, 1);
-      return;
-    }
-    await executeCopyMultiCite([item], effectiveScope, style);
-  };
-
-  const handleCopyInTextCitation = async (style: CslStyle = 'apa') => {
-    await executeCopyInTextCite([item], scopeId || 'user', style);
-  };
+  const {
+    availableStyles,
+    isStarred,
+    handleOpen,
+    handleCopyBibliography,
+    handleCopyInTextCitation,
+    handleCopyCitationKey,
+    handleRefreshMetadata,
+    handleToggleMyPublications,
+    handleToggleRetraction,
+    handleSelectCollection,
+  } = useItemActionHandlers(item, {
+    scopeId,
+    isMenuOpen: isOpen,
+    onOpenItem,
+    onAddToCollection,
+    onMoveToCollection,
+  });
 
   return (
     <ContextMenu onOpenChange={setIsOpen}>
@@ -95,13 +93,7 @@ export function ItemContextMenu({
           {!isTrash ? (
             <>
               <ContextMenuItem
-                onClick={() => {
-                  if (onOpenItem) {
-                    onOpenItem(item.id);
-                  } else {
-                    router.push(`/library/papers/${item.id}`);
-                  }
-                }}
+                onClick={handleOpen}
                 className="gap-2 text-12 py-1.5 px-2 cursor-pointer"
               >
                 <ExternalLink className="size-3.5 text-foreground" />
@@ -141,7 +133,10 @@ export function ItemContextMenu({
                     </ContextMenuItem>
                   ))}
                   <ContextMenuSeparator className="my-1" />
-                  <ContextMenuItem onClick={() => handleCopyBibliography('bibtex')} className="cursor-pointer text-12 py-1.5 px-2 font-mono text-11">
+                  <ContextMenuItem
+                    onClick={() => handleCopyBibliography('bibtex')}
+                    className="cursor-pointer text-12 py-1.5 px-2 font-mono text-11"
+                  >
                     BibTeX
                   </ContextMenuItem>
                 </ContextMenuSubContent>
@@ -166,15 +161,7 @@ export function ItemContextMenu({
               </ContextMenuSub>
 
               <ContextMenuItem
-                onClick={() => {
-                  const effectiveCiteKey = item.citationKey?.trim();
-                  if (effectiveCiteKey) {
-                    copyToClipboard(effectiveCiteKey);
-                    toast.success(`Copied: ${effectiveCiteKey}`, { id: 'library-clipboard' });
-                  } else {
-                    toast.info('Item does not have a citation key', { id: 'library-clipboard' });
-                  }
-                }}
+                onClick={() => handleCopyCitationKey('Copied')}
                 className="gap-2 text-12 py-1.5 px-2 cursor-pointer"
               >
                 <Copy className="size-3.5 text-foreground" />
@@ -185,12 +172,7 @@ export function ItemContextMenu({
                 <>
                   <ContextMenuSeparator className="my-1" />
                   <ContextMenuItem
-                    onClick={() => {
-                      void reResolveMutation.mutateAsync({
-                        itemId: item.id,
-                        attachOaPdf: true,
-                      });
-                    }}
+                    onClick={handleRefreshMetadata}
                     className="gap-2 text-12 py-1.5 px-2 cursor-pointer"
                   >
                     <RefreshCw className="size-3.5 text-foreground" />
@@ -198,12 +180,7 @@ export function ItemContextMenu({
                   </ContextMenuItem>
 
                   <ContextMenuItem
-                    onClick={() => {
-                      void setMyPublicationMutation.mutateAsync({
-                        itemId: item.id,
-                        isMyPublication: !item.isMyPublication,
-                      });
-                    }}
+                    onClick={handleToggleMyPublications}
                     className="gap-2 text-12 py-1.5 px-2 cursor-pointer"
                   >
                     <Award className="size-3.5 text-foreground" />
@@ -213,19 +190,7 @@ export function ItemContextMenu({
                   </ContextMenuItem>
 
                   <ContextMenuItem
-                    onClick={() => {
-                      if (item.isRetracted) {
-                        void unflagItem(item.id);
-                      } else {
-                        void flagItem({
-                          itemId: item.id,
-                          data: {
-                            nature: 'retraction',
-                            reason: 'Manually flagged as retracted by user',
-                          },
-                        });
-                      }
-                    }}
+                    onClick={handleToggleRetraction}
                     className="gap-2 text-12 py-1.5 px-2 cursor-pointer"
                   >
                     <ShieldAlert className="size-3.5 text-foreground" />
@@ -250,23 +215,7 @@ export function ItemContextMenu({
                         {collections.map((col: Collection) => (
                           <ContextMenuItem
                             key={col.id}
-                            onClick={async () => {
-                              if (onAddToCollection) { onAddToCollection(col.id); } else if (onMoveToCollection) {
-                                onMoveToCollection(col.id);
-                              } else {
-                                try {
-                                  await assignCollectionItemsMutation.mutateAsync({
-                                    collectionId: col.id,
-                                    itemIds: [item.id],
-                                  });
-                                  toast.success(`Added to "${col.name}"`);
-                                } catch (err) {
-                                  toast.error('Failed to add to collection', {
-                                    description: err instanceof Error ? err.message : String(err),
-                                  });
-                                }
-                              }
-                            }}
+                            onClick={() => void handleSelectCollection(col)}
                             className="cursor-pointer truncate text-12 py-1.5 px-2"
                           >
                             {col.name}
@@ -338,5 +287,3 @@ export function ItemContextMenu({
 }
 
 export default ItemContextMenu;
-
-

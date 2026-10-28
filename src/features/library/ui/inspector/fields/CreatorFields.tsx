@@ -173,7 +173,16 @@ export function CreatorFields({
         )
         .map((creatorItem) => creatorItem.name.trim())
         .filter(Boolean);
-      const finalAuthors = primaryCreatorNames;
+      const finalAuthors =
+        primaryCreatorNames.length > 0
+          ? primaryCreatorNames
+          : nextCreators
+              .filter(
+                (creatorItem) =>
+                  !creatorItem.creatorType || !creatorItem.creatorType.trim(),
+              )
+              .map((creatorItem) => creatorItem.name.trim())
+              .filter(Boolean);
       const structuredCreators = nextCreators.length
         ? toItemCreators(nextCreators)
         : [];

@@ -4,10 +4,12 @@
  * Pure domain & citation utilities for the PDF/EPUB Reader.
  */
 
+import type { Item } from '@/features/library/domain/types/library.types';
 import type {
   ReaderAnnotation,
   AnnotationRect,
   ReaderDocument,
+  DocumentFulltext,
 } from '@/features/library/domain/types/reader.types';
 import { isValidValue } from '@/features/library/domain/metadata';
 import {
@@ -470,6 +472,175 @@ export const PdfAnnotationEngine = {
   },
 };
 
-function rEnd(start: number, length?: number): number {
-  return length !== undefined ? start + length : start;
+export interface EpubOrSnapshotInfo {
+  mode: 'epub' | 'snapshot';
+  url: string;
+}
+
+export interface RawAttachmentItem {
+  id?: string;
+  url?: string;
+  fileUrl?: string;
+  mimeType?: string;
+  filename?: string;
+  attachmentType?: string;
+  linkMode?: string;
+}
+
+export function resolveEpubOrSnapshot(
+  paper?: Partial<Item> | Record<string, unknown> | null,
+  paperUrl?: string | null,
+  requestedAttId?: string | null,
+  selectedAttachment?: RawAttachmentItem | null,
+): EpubOrSnapshotInfo | null {
+  if (!paper) return null;
+  const itemLike = paper as Partial<Item>;
+  const rawAtts: RawAttachmentItem[] = Array.isArray(itemLike.attachments)
+    ? (itemLike.attachments as RawAttachmentItem[])
+    : [];
+
+  const activeAtt = requestedAttId
+    ? rawAtts.find((a: RawAttachmentItem) => a.id === requestedAttId)
+    : selectedAttachment;
+
+  if (activeAtt) {
+    const attMime = activeAtt.mimeType?.toLowerCase() || '';
+    const attName = (activeAtt.filename || '').toLowerCase();
+    const attUrl = (activeAtt.fileUrl || activeAtt.url || paperUrl || '') as string;
+    const isSnapshot =
+      activeAtt.attachmentType === 'snapshot' ||
+      activeAtt.attachmentType === 'web_snapshot' ||
+      activeAtt.linkMode === 'imported_url' ||
+      attMime === 'text/html' ||
+      attName.endsWith('.html');
+    const isEpub =
+      attMime.includes('epub') ||
+      attName.endsWith('.epub') ||
+      /\.epub(?:$|\?)/i.test(attUrl);
+
+    if (isEpub) {
+      return { mode: 'epub', url: attUrl };
+    }
+    if (isSnapshot) {
+      return { mode: 'snapshot', url: attUrl };
+    }
+  }
+
+  const primaryMime = itemLike.primaryFile?.mimeType?.toLowerCase() || '';
+  const primaryName = String(
+    itemLike.filename ||
+    itemLike.primaryFile?.filename ||
+    ''
+  ).toLowerCase();
+
+  if (
+    primaryMime.includes('epub') ||
+    primaryName.endsWith('.epub') ||
+    (paperUrl && /\.epub(?:$|\?)/i.test(paperUrl))
+  ) {
+    return {
+      mode: 'epub',
+      url: paperUrl || itemLike.primaryFile?.url || '',
+    };
+  }
+
+  const epubAtt = rawAtts.find(
+    (a: RawAttachmentItem) =>
+      a.mimeType?.toLowerCase().includes('epub') ||
+      a.filename?.toLowerCase().endsWith('.epub'),
+  );
+  if (epubAtt && (epubAtt.url || epubAtt.fileUrl)) {
+    return {
+      mode: 'epub',
+      url: (epubAtt.fileUrl || epubAtt.url) as string,
+    };
+  }
+
+  if (!paperUrl) {
+    const snapshotAtt = rawAtts.find(
+      (a: RawAttachmentItem) =>
+        a.attachmentType === 'snapshot' ||
+        a.attachmentType === 'web_snapshot' ||
+        a.linkMode === 'imported_url' ||
+        a.mimeType === 'text/html' ||
+        a.filename?.toLowerCase().endsWith('.html'),
+    );
+    if (snapshotAtt && (snapshotAtt.url || snapshotAtt.fileUrl)) {
+      return {
+        mode: 'snapshot',
+        url: (snapshotAtt.fileUrl || snapshotAtt.url) as string,
+      };
+    }
+  }
+
+  return null;
+}
+
+export const resolveEpubOrSnapshotAttachment = resolveEpubOrSnapshot;
+
+export type OcrStatus = 'pending' | 'processing' | 'ready' | 'completed' | 'none';
+
+export interface DocumentOcrState {
+  isScanned: boolean;
+  ocrStatus: OcrStatus;
+}
+
+export function resolveDocumentOcrState(
+  paper:
+    | {
+        attachments?: Array<{ id?: string; [key: string]: unknown }>;
+        [key: string]: unknown;
+      }
+    | null
+    | undefined,
+  effectiveAttachmentId: string | undefined,
+  fulltext: DocumentFulltext | null | undefined,
+  numPages: number,
+): DocumentOcrState {
+  const primaryAttachment =
+    paper?.attachments?.find((a) => a.id === effectiveAttachmentId) ||
+    paper?.attachments?.[0];
+
+  const primaryAttachmentRecord = primaryAttachment as
+    | Record<string, unknown>
+    | undefined;
+  const attachmentMeta = primaryAttachmentRecord?.metadata as
+    | Record<string, unknown>
+    | undefined;
+  const paperRecord = paper as Record<string, unknown> | null | undefined;
+  const paperMeta = paperRecord?.metadata as
+    | Record<string, unknown>
+    | undefined;
+
+  const isScanned = Boolean(
+    attachmentMeta?.isScanned ||
+      paperMeta?.isScanned ||
+      (fulltext &&
+        (!fulltext.sections || fulltext.sections.length === 0) &&
+        (!fulltext.abstract || fulltext.abstract.length === 0) &&
+        numPages > 0),
+  );
+
+  const rawExtractionStatus = (
+    primaryAttachment as Record<string, unknown> | undefined
+  )?.extractionStatus;
+  const rawOcrStatus =
+    (typeof rawExtractionStatus === 'string'
+      ? rawExtractionStatus.toLowerCase()
+      : null) ||
+    (typeof attachmentMeta?.ocrStatus === 'string'
+      ? attachmentMeta.ocrStatus
+      : null) ||
+    (typeof paperMeta?.ocrStatus === 'string' ? paperMeta.ocrStatus : null) ||
+    'none';
+
+  const ocrStatus = (
+    ['pending', 'processing', 'ready', 'completed', 'none'].includes(
+      rawOcrStatus,
+    )
+  )
+    ? (rawOcrStatus as OcrStatus)
+    : 'none';
+
+  return { isScanned, ocrStatus };
 }

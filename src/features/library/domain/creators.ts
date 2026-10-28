@@ -184,11 +184,22 @@ export function cleanAuthorName(raw?: string | null): string {
     '',
   );
 
-  // Strip trailing comma-delimited professional degrees: e.g. ", PhD", ", MD"
-  cleaned = cleaned.replace(
-    /,\s*(?:Ph\.?\s?D\.?|PHD|M\.?D\.?|M\.?Sc\.?|MSc|M\.?S\.?|B\.?Sc\.?|BSc|B\.?S\.?|MBA|MPH|D\.?Phil\.?|DPhil|FRS|FRSE|FIEEE|OBE|CBE)\s*$/i,
-    '',
-  );
+  // Strip trailing comma-delimited professional degrees / fellowships:
+  // e.g. "John Smith, PhD", "Smith, J. A., MD". Only stripped when the text
+  // before the comma already contains a full name (space or comma) or when the
+  // degree token is unambiguously a degree (never a 2-letter initial like "M.D."),
+  // so that inverted initials like "Wong, M.D." are NOT mistaken for a degree.
+  const TRAILING_DEGREE_REGEX =
+    /,\s*(?:Ph\.?\s?D\.?|PHD|Pharm\.?\s?D\.?|M\.?D\.?|M\.?Sc\.?|MSc|M\.?S\.?|M\.?A\.?|B\.?Sc\.?|BSc|B\.?S\.?|B\.?A\.?|MBA|MPH|D\.?Phil\.?|DPhil|F\.?R\.?C\.?S\.?|FAAN|FACP|FRS|FRSE|FIEEE|OBE|CBE)\s*$/i;
+  const UNAMBIGUOUS_DEGREE_REGEX =
+    /^,\s*(?:Ph\.?\s?D\.?|PHD|Pharm\.?\s?D\.?|M\.?Sc\.?|MSc|B\.?Sc\.?|BSc|MBA|MPH|D\.?Phil\.?|DPhil|F\.?R\.?C\.?S\.?|FAAN|FACP|FRS|FRSE|FIEEE|OBE|CBE)\s*$/i;
+  for (let guard = 0; guard < 4; guard++) {
+    const m = cleaned.match(TRAILING_DEGREE_REGEX);
+    if (!m || m.index === undefined) break;
+    const prefix = cleaned.slice(0, m.index).trim();
+    if (!/[\s,]/.test(prefix) && !UNAMBIGUOUS_DEGREE_REGEX.test(m[0])) break;
+    cleaned = prefix;
+  }
 
   // Strip trailing footnote markers, superscripts, affiliation numbers:
   // e.g. " 1,2*", " *†", " 1", " 1,2", " *"
@@ -238,6 +249,30 @@ const VIETNAMESE_MIDDLE_NAMES = new Set([
   'dac', 'tuan', 'hung', 'ba', 'chi',
 ]);
 
+const VIETNAMESE_COMPOUND_SURNAMES = new Set([
+  'nguyễn phúc', 'nguyen phuc',
+  'tôn thất', 'ton that',
+  'tôn nữ', 'ton nu',
+  'âu dương', 'au duong',
+  'hoàng lê', 'hoang le',
+  'trần đình', 'tran dinh',
+  'đặng trần', 'dang tran',
+  'hồ đắc', 'ho dac',
+  'lương thế', 'luong the',
+  'nguyễn đình', 'nguyen dinh',
+  'nguyễn khoa', 'nguyen khoa',
+  'phan huy', 'trần huy', 'tran huy',
+  'vũ đình', 'vu dinh',
+]);
+
+export const AMBIGUOUS_UNACCENTED_VN_SURNAMES = new Set([
+  'le', 'mai', 'ha', 'do', 'la', 'to', 'ma', 'ho', 'ly', 'chu', 'can', 'vi',
+  'an', 'ta', 'cu', 'ba', 'ca', 'vo', 'vu', 'au', 'lo', 'no', 'ro', 'so', 'po',
+]);
+
+export const VN_SYLLABLE_REGEX =
+  /^(?:ng|nh|tr|ch|gh|gi|kh|ph|qu|th|[bcdghklmnpstvx])?[aeiouy]+(?:ng|nh|ch|[cmnpt])?$/i;
+
 export function isVietnameseName(raw?: string | null): boolean {
   if (!raw || typeof raw !== 'string') return false;
   const normalized = raw.trim().normalize('NFC');
@@ -253,14 +288,23 @@ export function isVietnameseName(raw?: string | null): boolean {
     return true;
   }
 
-  if (['le', 'mai', 'ha', 'do', 'la', 'to'].includes(firstLower)) {
-    return VIETNAMESE_MIDDLE_NAMES.has(tokens[1]!.toLowerCase());
+  // Unaccented 2-token names: reject ambiguous 2-3 letter non-diacritic surnames (e.g. "Ma Smith", "Can Yaman", "Ho Lee", "Vi Kim", "An Lee")
+  // and require both tokens to follow valid Vietnamese syllable phonotactics
+  if (tokens.length === 2) {
+    if (AMBIGUOUS_UNACCENTED_VN_SURNAMES.has(firstLower)) {
+      return false;
+    }
+    return VN_SYLLABLE_REGEX.test(tokens[0]!) && VN_SYLLABLE_REGEX.test(tokens[1]!);
   }
 
-  const isPlausibleVnSyllable = (tok: string) =>
-    /^[A-Za-z]{2,8}$/.test(tok) && !/[bcdfghjklmnpqrstvwxyz]{3,}/i.test(tok);
+  // If unaccented >= 3 tokens with an ambiguous short surname, require a known Vietnamese middle name
+  if (AMBIGUOUS_UNACCENTED_VN_SURNAMES.has(firstLower)) {
+    if (!VIETNAMESE_MIDDLE_NAMES.has(tokens[1]!.toLowerCase())) {
+      return false;
+    }
+  }
 
-  return tokens.every(isPlausibleVnSyllable);
+  return tokens.every((tok) => VN_SYLLABLE_REGEX.test(tok));
 }
 
 export const SURNAME_PARTICLES = new Set([
@@ -454,6 +498,17 @@ export function parseCreatorName(rawName: string): ParsedCreator {
   // Vietnamese naming order (Family Name First): e.g. "Nguyễn Văn An" -> lastName: "Nguyễn", firstName: "Văn An"
   if (!trimmed.includes(',') && isVietnameseName(trimmed)) {
     const vnTokens = trimmed.split(/\s+/).filter(Boolean);
+    if (vnTokens.length >= 3) {
+      const potentialCompound = `${vnTokens[0]} ${vnTokens[1]}`.toLowerCase();
+      if (VIETNAMESE_COMPOUND_SURNAMES.has(potentialCompound)) {
+        return {
+          firstName: vnTokens.slice(2).join(' '),
+          lastName: `${vnTokens[0]} ${vnTokens[1]}`,
+          fullName: trimmed,
+          isInstitution: false,
+        };
+      }
+    }
     const lastName = vnTokens[0] || '';
     const firstName = vnTokens.slice(1).join(' ');
     return {
@@ -535,6 +590,19 @@ function extractCreatorDisplayName(c: RawCreatorLike): string {
   if (c.firstName || c.lastName || c.given || c.family) {
     const first = stripLatexMarkup((c.firstName || c.given || '').trim());
     const last = stripLatexMarkup((c.lastName || c.family || '').trim());
+    const explicitFull = stripLatexMarkup((c.fullName || c.name || '').trim());
+    if (explicitFull && !explicitFull.includes(',') && first && last && explicitFull.includes(first) && explicitFull.includes(last)) {
+      return explicitFull;
+    }
+    const vnCandidate = [last, first].filter(Boolean).join(' ');
+    if (
+      first &&
+      last &&
+      (VIETNAMESE_DIACRITICS_REGEX.test(vnCandidate) || isVietnameseName(vnCandidate)) &&
+      VIETNAMESE_FAMILY_NAMES.has(last.split(/\s+/)[0]?.toLowerCase() || '')
+    ) {
+      return vnCandidate;
+    }
     return [first, last].filter(Boolean).join(' ');
   }
   return stripLatexMarkup((c.fullName || c.name || '').trim());
@@ -665,5 +733,14 @@ export function getItemAuthorsSummary(
   if (cleaned.length <= maxAuthors) return cleaned.join(', ');
   return `${cleaned.slice(0, maxAuthors).join(', ')} et al.`;
 }
+
+export {
+  type CreatorEntry,
+  type CreatorDraft,
+  parseCreators,
+  areCreatorsEqual,
+  toItemCreators,
+} from './creator-entries.domain';
+
 
 

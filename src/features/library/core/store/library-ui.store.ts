@@ -106,6 +106,10 @@ export type LibraryUIState = LibraryScopeSlice &
 
 const EMPTY_SELECTED_IDS = new Set<string>();
 const EMPTY_MODAL_PROPS: Record<string, unknown> = {};
+export const MIN_SIDEBAR_WIDTH = 200;
+export const MAX_SIDEBAR_WIDTH = 400;
+export const MIN_INSPECTOR_WIDTH = 260;
+export const MAX_INSPECTOR_WIDTH = 640;
 
 const createScopeSlice: StateCreator<
   LibraryUIState,
@@ -140,6 +144,7 @@ const createScopeSlice: StateCreator<
         activeScope,
         selectedIds: state.selectedIds.size === 0 ? state.selectedIds : new Set<string>(),
         activeItemId: null,
+        isInspectorOpen: false,
         activeCollectionId: null,
         activeSavedSearchId: null,
       };
@@ -200,12 +205,12 @@ const createLayoutSlice: StateCreator<
   toggleSidebar: () => set((s) => ({ isSidebarOpen: !s.isSidebarOpen })),
 
   setSidebarWidth: (width) => {
-    const clamped = Math.min(Math.max(width, 200), 400);
+    const clamped = Math.min(Math.max(width, MIN_SIDEBAR_WIDTH), MAX_SIDEBAR_WIDTH);
     set((s) => (s.sidebarWidth === clamped ? s : { sidebarWidth: clamped }));
   },
 
   setInspectorWidth: (inspectorWidth) => {
-    const clamped = Math.min(Math.max(inspectorWidth, 260), 640);
+    const clamped = Math.min(Math.max(inspectorWidth, MIN_INSPECTOR_WIDTH), MAX_INSPECTOR_WIDTH);
     set((s) => (s.inspectorWidth === clamped ? s : { inspectorWidth: clamped }));
   },
 
@@ -221,7 +226,12 @@ const createLayoutSlice: StateCreator<
         : { activeInspectorTab, isInspectorOpen: true },
     ),
 
-  toggleInspectorTab: (tab) => set((state) => (state.activeInspectorTab === tab && state.isInspectorOpen ? state : { activeInspectorTab: tab, isInspectorOpen: true })),
+  toggleInspectorTab: (tab) =>
+    set((state) =>
+      state.isInspectorOpen && state.activeInspectorTab === tab
+        ? { isInspectorOpen: false }
+        : { activeInspectorTab: tab, isInspectorOpen: true },
+    ),
 
   setViewMode: (viewMode) =>
     set((s) => (s.viewMode === viewMode ? s : { viewMode })),
@@ -350,8 +360,8 @@ export const useLibraryUIStore = create<LibraryUIState>()(
           return Math.min(Math.max(val, min), max);
         };
 
-        const sidebarWidth = clamp(persisted.sidebarWidth, 200, 400, currentState.sidebarWidth);
-        const inspectorWidth = clamp(persisted.inspectorWidth, 300, 640, currentState.inspectorWidth);
+        const sidebarWidth = clamp(persisted.sidebarWidth, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH, currentState.sidebarWidth);
+        const inspectorWidth = clamp(persisted.inspectorWidth, MIN_INSPECTOR_WIDTH, MAX_INSPECTOR_WIDTH, currentState.inspectorWidth);
 
         const rawScope = persisted.activeScope;
         const isValidScope =

@@ -32,11 +32,13 @@ export function useTags(scopeId?: string, options?: { enabled?: boolean }) {
       name,
       color,
       type,
+      shortcut,
     }: {
       name: string;
       color?: string;
       type?: string;
-    }) => TagsService.create(effectiveScope, name, color, type),
+      shortcut?: number | null;
+    }) => TagsService.create(effectiveScope, name, color, type, shortcut),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: tagKeys.list(effectiveScope) });
       queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
@@ -216,10 +218,11 @@ export function useNotes(scopeId?: string, itemId?: string) {
     mutationFn: (options?: {
       noteId?: string;
       tagColor?: boolean;
+      tagColorName?: string;
       includeComments?: boolean;
     }) => {
       if (!itemId) {
-        throw new Error('itemId is required to extract annotations');
+        return Promise.reject(new DOMException('itemId is required to extract annotations', 'InvalidStateError'));
       }
       return NotesService.extractFromAnnotations(effectiveScope, itemId, options);
     },
@@ -231,8 +234,13 @@ export function useNotes(scopeId?: string, itemId?: string) {
         itemsList: true,
         counts: true,
       });
-      const extractedInfo = res as { totalExtracted?: number; message?: string } | null;
-      if (extractedInfo && extractedInfo.totalExtracted === 0) {
+      const extractedInfo = res as { totalExtracted?: number; id?: string; note?: { id?: string }; message?: string } | null;
+      const hasExtracted =
+        extractedInfo &&
+        (typeof extractedInfo.totalExtracted === 'number'
+          ? extractedInfo.totalExtracted > 0
+          : Boolean(extractedInfo.id || extractedInfo.note?.id));
+      if (!hasExtracted) {
         toast.info('No PDF annotations found', {
           description: 'Highlight text or add annotations in the PDF reader first.',
           id: 'note-mutation-toast',
@@ -269,5 +277,16 @@ export function useNotes(scopeId?: string, itemId?: string) {
     deleteNote: (id: string, version?: number) =>
       deleteMutation.mutateAsync({ id, version }),
     extractFromAnnotations: extractFromAnnotationsMutation.mutateAsync,
+  };
+}
+
+export function useExtractNotesFromAnnotationsMutation(
+  scopeId?: string,
+  itemId?: string,
+) {
+  const { extractFromAnnotations, isExtractingFromAnnotations } = useNotes(scopeId, itemId);
+  return {
+    mutateAsync: extractFromAnnotations,
+    isPending: isExtractingFromAnnotations,
   };
 }

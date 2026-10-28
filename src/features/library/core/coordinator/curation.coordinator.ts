@@ -6,94 +6,33 @@ import {
   aggregateItemAssets,
   selectBestMasterItemId,
   resolveDuplicateMergeFieldOverrides,
+  extractExplicitUserMergeOverrides,
   normalizeCompareValue,
   getMergeableFieldsForTypes,
   isFieldEmpty,
   type FieldOptionValue,
 } from '@/features/library/domain/diff';
 import type { Item } from '@/features/library/domain/types/library.types';
+import {
+  type DuplicateGroupMergeDraft,
+  groupMergeDraftCache,
+  getGroupMergeDraft,
+  setGroupMergeDraft,
+  clearGroupMergeDraft,
+  computeDuplicateSetKey,
+  getOrInitDraft,
+  updateGroupDraft,
+  subscribeToDrafts,
+} from '@/features/library/core/store/curation-draft.store';
 
-export interface DuplicateGroupMergeDraft {
-  selectedMasterId: string;
-  fieldOverrides: Record<string, unknown>;
-  showConflictsOnly: boolean;
-}
-
-const groupMergeDrafts = new Map<string, DuplicateGroupMergeDraft>();
-const draftListeners = new Set<() => void>();
-
-function notifyDraftListeners() {
-  draftListeners.forEach((listener) => listener());
-}
-
-function subscribeToDrafts(listener: () => void): () => void {
-  draftListeners.add(listener);
-  return () => {
-    draftListeners.delete(listener);
-  };
-}
-
-export function computeDuplicateSetKey(items: readonly Item[]): string {
-  if (!items || items.length === 0) return '__empty__';
-  return items
-    .map((i) => i.id)
-    .filter(Boolean)
-    .sort()
-    .join('::');
-}
-
-/**
- * Clears persisted duplicate merge drafts either for a specific groupKey / item set,
- * or clears all drafts when no key is provided (e.g., on merge/dismiss completion or scope change).
- */
-export function clearGroupMergeDraft(groupKey?: string): void {
-  if (!groupKey) {
-    if (groupMergeDrafts.size === 0) return;
-    groupMergeDrafts.clear();
-    notifyDraftListeners();
-    return;
-  }
-  let deleted = groupMergeDrafts.delete(groupKey);
-  for (const key of Array.from(groupMergeDrafts.keys())) {
-    const parts = key.split('::');
-    if (parts.includes(groupKey)) {
-      groupMergeDrafts.delete(key);
-      deleted = true;
-    }
-  }
-  if (deleted) {
-    notifyDraftListeners();
-  }
-}
-
-function getOrInitDraft(
-  setKey: string,
-  recommendedMasterId: string,
-): DuplicateGroupMergeDraft {
-  const existing = groupMergeDrafts.get(setKey);
-  if (existing) return existing;
-  const initialDraft: DuplicateGroupMergeDraft = {
-    selectedMasterId: recommendedMasterId,
-    fieldOverrides: {},
-    showConflictsOnly: false,
-  };
-  if (setKey && setKey !== '__empty__') {
-    groupMergeDrafts.set(setKey, initialDraft);
-  }
-  return initialDraft;
-}
-
-function updateGroupDraft(
-  setKey: string,
-  updater: (prev: DuplicateGroupMergeDraft) => DuplicateGroupMergeDraft,
-  fallbackMasterId: string,
-) {
-  if (!setKey || setKey === '__empty__') return;
-  const current = getOrInitDraft(setKey, fallbackMasterId);
-  const next = updater(current);
-  groupMergeDrafts.set(setKey, next);
-  notifyDraftListeners();
-}
+export {
+  type DuplicateGroupMergeDraft,
+  groupMergeDraftCache,
+  getGroupMergeDraft,
+  setGroupMergeDraft,
+  clearGroupMergeDraft,
+  computeDuplicateSetKey,
+};
 
 /**
  * Shared state and diff computation hook for duplicate merging
@@ -237,9 +176,27 @@ export function useDuplicateMergeState(
     [items, masterPaper?.id, selectedMasterId, fieldOverrides, inspection],
   );
 
+  const explicitMergeOverrides = useMemo(
+    () =>
+      extractExplicitUserMergeOverrides(
+        items,
+        masterPaper?.id || selectedMasterId,
+        fieldOverrides,
+        {
+          inspection,
+        },
+      ),
+    [items, masterPaper?.id, selectedMasterId, fieldOverrides, inspection],
+  );
+
   const getEffectiveMergeSelections = useCallback(
     () => ({ ...resolvedFieldOverrides }),
     [resolvedFieldOverrides],
+  );
+
+  const getExplicitMergeSelections = useCallback(
+    () => ({ ...explicitMergeOverrides }),
+    [explicitMergeOverrides],
   );
 
   const visibleFields = useMemo(() => {
@@ -328,7 +285,9 @@ export function useDuplicateMergeState(
     setSelectedMasterId,
     fieldOverrides,
     resolvedFieldOverrides,
+    explicitMergeOverrides,
     getEffectiveMergeSelections,
+    getExplicitMergeSelections,
     effectiveItemType,
     setFieldOverrides,
     showConflictsOnly,

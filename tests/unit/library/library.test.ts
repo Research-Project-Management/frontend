@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   sanitizeItemPayload,
-  ItemService,
-  QualityService,
+  ItemsService as ItemService,
+  CurationService as QualityService,
   SyncService,
   FeedsService,
 } from '@/features/library/sdk/library.client';
@@ -346,6 +346,108 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
         '/api/v1/library/feeds/items/feed-item-1/read',
         { isRead: true },
       );
+    });
+  });
+
+  describe('LDE3 Domain, Store & SDK Architectural Invariants', () => {
+    it('recognizes item.isMyPublication in isItemInMyPublications and projects it in mapBackendItem', async () => {
+      const { isItemInMyPublications } = await import('@/features/library/domain/system-views.policy');
+      const { mapBackendItem } = await import('@/features/library/domain/metadata-mapper');
+
+      expect(isItemInMyPublications({ id: '1', title: 'A', isMyPublication: true })).toBe(true);
+      expect(isItemInMyPublications({ id: '2', title: 'B', isInMyPublications: true })).toBe(true);
+      expect(isItemInMyPublications({ id: '3', title: 'C', isMyPublication: false })).toBe(false);
+
+      const mapped = mapBackendItem({
+        id: 'pub-1',
+        title: 'My Authored Paper',
+        itemType: 'journalArticle',
+        isMyPublication: true,
+      });
+      expect(mapped.isMyPublication).toBe(true);
+      expect(mapped.isInMyPublications).toBe(true);
+      expect(isItemInMyPublications(mapped)).toBe(true);
+    });
+
+    it('normalizes canonical CSL citation style IDs across domain and CitationService', async () => {
+      const { normalizeCitationStyleId, CANONICAL_CSL_STYLE_IDS } = await import(
+        '@/features/library/domain/citations'
+      );
+      const { CitationService } = await import(
+        '@/features/library/sdk/clients/citation-extraction.client'
+      );
+
+      expect(CANONICAL_CSL_STYLE_IDS).toContain('apa-7th');
+      expect(CANONICAL_CSL_STYLE_IDS).toContain('chicago-author-date');
+      expect(normalizeCitationStyleId('apa')).toBe('apa-7th');
+      expect(normalizeCitationStyleId('chicago')).toBe('chicago-author-date');
+      expect(normalizeCitationStyleId(undefined)).toBe('apa-7th');
+
+      vi.mocked(api.apiGet).mockResolvedValueOnce({
+        itemId: 'item-1',
+        style: 'apa-7th',
+        citation: 'Formatted APA 7th',
+      });
+      await CitationService.formatCitation('user', 'item-1', 'apa');
+      expect(api.apiGet).toHaveBeenCalledWith(
+        '/api/v1/library/citation/items/item-1/citation?style=apa-7th&index=1',
+      );
+    });
+
+    it('toggles inspector closed when toggleInspectorTab is called with the already-open tab and enforces unified width bounds', async () => {
+      const {
+        useLibraryUIStore,
+        MIN_INSPECTOR_WIDTH,
+        MAX_INSPECTOR_WIDTH,
+      } = await import('@/features/library/core/store/library-ui.store');
+
+      expect(MIN_INSPECTOR_WIDTH).toBe(260);
+      expect(MAX_INSPECTOR_WIDTH).toBe(640);
+
+      useLibraryUIStore.setState({ isInspectorOpen: true, activeInspectorTab: 'info' });
+      useLibraryUIStore.getState().toggleInspectorTab('info');
+      expect(useLibraryUIStore.getState().isInspectorOpen).toBe(false);
+
+      useLibraryUIStore.getState().toggleInspectorTab('info');
+      expect(useLibraryUIStore.getState().isInspectorOpen).toBe(true);
+      expect(useLibraryUIStore.getState().activeInspectorTab).toBe('info');
+
+      useLibraryUIStore.getState().toggleInspectorTab('notes');
+      expect(useLibraryUIStore.getState().isInspectorOpen).toBe(true);
+      expect(useLibraryUIStore.getState().activeInspectorTab).toBe('notes');
+
+      useLibraryUIStore.getState().setInspectorWidth(100);
+      expect(useLibraryUIStore.getState().inspectorWidth).toBe(260);
+      useLibraryUIStore.getState().setInspectorWidth(900);
+      expect(useLibraryUIStore.getState().inspectorWidth).toBe(640);
+    });
+
+    it('eliminates N+1 getById calls in CurationService.getDuplicates by hydrating from cachedItemsById or batch getAll', async () => {
+      const cachedMap = new Map<string, any>([
+        ['item-a', { id: 'item-a', title: 'Cached Paper A', itemType: 'journalArticle' }],
+        ['item-b', { id: 'item-b', title: 'Cached Paper B', itemType: 'journalArticle' }],
+      ]);
+
+      vi.mocked(api.apiGet).mockResolvedValueOnce({
+        clusters: [
+          {
+            clusterId: 'dup-1',
+            matchReason: 'EXACT_DOI',
+            confidence: 0.99,
+            items: [{ itemId: 'item-a' }, { itemId: 'item-b' }],
+          },
+        ],
+      });
+
+      const res = await QualityService.getDuplicates('user', { cachedItemsById: cachedMap });
+      expect(res.duplicateGroups).toHaveLength(1);
+      expect(res.duplicateGroups[0].items.map((i) => i.id)).toEqual(['item-a', 'item-b']);
+      expect(res.duplicateGroups[0].items.map((i) => i.title)).toEqual([
+        'Cached Paper A',
+        'Cached Paper B',
+      ]);
+      // Only 1 GET call to /duplicates, zero N+1 /items/:id calls
+      expect(api.apiGet).toHaveBeenCalledTimes(1);
     });
   });
 });

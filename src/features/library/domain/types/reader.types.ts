@@ -110,12 +110,17 @@ export interface TypeConversionPreview {
   mappedFields: FieldMappingChange[];
   droppedFields: DroppedField[];
   creatorChanges: CreatorRoleChange[];
-  newAvailableFields?: Array<{
-    field: string;
-    label: string;
-    category?: string;
-    type?: string;
-  }>;
+  newAvailableFields?: Array<
+    | string
+    | {
+        field: string;
+        label: string;
+        category?: string;
+        type?: string;
+      }
+  >;
+  schemaUnsupportedFields?: string[];
+  schemaUnsupportedFieldLabels?: string[];
   projectedItem: Record<string, unknown>;
   unmappedRetained: Record<string, unknown>;
   hasLoss: boolean;
@@ -137,5 +142,3 @@ export interface ItemMetadataSourcesResponse {
   count?: number;
   sources: ItemMetadataSourceItem[];
 }
-
-

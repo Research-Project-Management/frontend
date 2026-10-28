@@ -1,18 +1,10 @@
 import type { Item } from './types/library.types';
-import {
-  isValidValue,
-  normalizeTags,
-  ALL_SCHEMA_PROMOTE_KEYS,
-} from './metadata';
-import {
-  parseCreatorName,
-  splitAuthorString,
-} from './creators';
+import { getPrimaryCreatorType } from './types/item-types.types';
+import { splitAuthorString } from './creators';
 import {
   prepareInspectorFieldContext,
   FIELD_CANDIDATE_SCORERS,
   MULTI_KEY_SYNC_SETTERS,
-  FIRST_CLASS_ITEM_COLUMNS,
   type PreparedInspectorFieldContext,
   type FieldCandidateScorer,
 } from './item-field-schema';
@@ -33,6 +25,13 @@ import {
   selectBestMasterItemId,
   mergeItemExtraFields,
 } from './diff-primitives';
+import {
+  type MergedItemPayload,
+  type AggregatedAssetsSummary,
+  type AggregatedAssetsResult,
+  buildStructuredCreatorsFromAuthors,
+  aggregateItemAssets,
+} from './duplicate-merge-assets.domain';
 
 export {
   type MergeFieldDefinition,
@@ -50,6 +49,11 @@ export {
   type MasterSelectionStrategy,
   selectBestMasterItemId,
   mergeItemExtraFields,
+  type MergedItemPayload,
+  type AggregatedAssetsSummary,
+  type AggregatedAssetsResult,
+  buildStructuredCreatorsFromAuthors,
+  aggregateItemAssets,
 };
 
 export { FIELD_CANDIDATE_SCORERS, type FieldCandidateScorer };
@@ -179,7 +183,6 @@ export function inspectItemDifferences(
     if (status === 'IDENTICAL') identicalCount++;
     if (status === 'MISSING_IN_MASTER') missingInMasterCount++;
 
-    // Determine recommended item
     let recommendedItemId = masterItem.id;
     if (hasConflict || status === 'MISSING_IN_MASTER') {
       let bestScore = -1;
@@ -219,21 +222,6 @@ export function inspectItemDifferences(
   };
 }
 
-export interface MergedItemPayload {
-  masterId: string;
-  sourceIds: string[];
-  duplicateIds: string[];
-  fieldSelections: Record<string, unknown>;
-  resolvedFields: Record<string, unknown>;
-  tags: string[];
-  collectionIds: string[];
-  attachments: unknown[];
-  uniqueAttachmentCount: number;
-  duplicateAttachmentCount: number;
-  totalAnnotationCount: number;
-}
-
-const PROMOTE_KEYS_SET = new Set<string>(ALL_SCHEMA_PROMOTE_KEYS);
 const SKIP_SYNC_KEYS = new Set([
   'extraFields',
   'extra',
@@ -244,45 +232,6 @@ const SKIP_SYNC_KEYS = new Set([
   'collections',
   'collectionIds',
 ]);
-
-function buildStructuredCreatorsFromAuthors(rawAuthors: unknown): Array<Record<string, unknown>> {
-  if (isFieldEmpty(rawAuthors)) return [];
-  const rawList = Array.isArray(rawAuthors)
-    ? rawAuthors
-    : typeof rawAuthors === 'string'
-      ? splitAuthorString(rawAuthors)
-      : [];
-  const structured: Array<Record<string, unknown>> = [];
-  rawList.forEach((entry, idx) => {
-    if (!entry) return;
-    if (typeof entry === 'string') {
-      const parsed = parseCreatorName(entry);
-      const fullName = (parsed.fullName || entry).trim();
-      if (!fullName) return;
-      structured.push({
-        firstName: parsed.firstName || '',
-        lastName: parsed.lastName || fullName,
-        fullName,
-        creatorType: 'author',
-        orderIndex: idx,
-      });
-    } else if (typeof entry === 'object') {
-      const rec = entry as Record<string, unknown>;
-      const firstName = String(rec.firstName ?? rec.given ?? '').trim();
-      const lastName = String(rec.lastName ?? rec.family ?? '').trim();
-      const fullName = String(rec.fullName ?? rec.name ?? [firstName, lastName].filter(Boolean).join(' ')).trim();
-      structured.push({
-        ...rec,
-        firstName,
-        lastName,
-        fullName,
-        creatorType: String(rec.creatorType ?? rec.role ?? 'author').trim() || 'author',
-        orderIndex: typeof rec.orderIndex === 'number' ? rec.orderIndex : idx,
-      });
-    }
-  });
-  return structured;
-}
 
 /**
  * Single Source of Truth helper that resolves effective merge field overrides for a duplicate cluster.
@@ -297,12 +246,14 @@ export function resolveDuplicateMergeFieldOverrides(
     inspection?: MergeInspectionResult;
     includeUnchangedMasterFields?: boolean;
     customFieldTexts?: Record<string, string>;
+    explicitUserSelectionsOnly?: boolean;
   },
 ): Record<string, unknown> {
   const masterItem = items.find((i) => i.id === masterId) || items[0];
   const orderedItems = masterItem ? [masterItem, ...items.filter((i) => i.id !== masterItem.id)] : [...items];
   const inspection = options?.inspection ?? inspectItemDifferences([...items], masterId);
   const includeMasterDefaults = Boolean(options?.includeUnchangedMasterFields);
+  const explicitOnly = Boolean(options?.explicitUserSelectionsOnly);
 
   const itemTypes = Array.from(new Set(items.map((i) => i.itemType).filter(Boolean)));
   const hasTypeMismatch = itemTypes.length > 1;
@@ -310,11 +261,34 @@ export function resolveDuplicateMergeFieldOverrides(
 
   const out: Record<string, unknown> = {};
 
-  for (const field of inspection.fields) {
-    if (field.status === 'MISSING_IN_MASTER' && field.recommendedValue !== undefined && !(field.key in fieldOverrides)) {
-      out[field.key] = field.recommendedValue;
-    } else if (includeMasterDefaults && !(field.key in fieldOverrides) && field.masterValue?.rawValue !== undefined) {
-      out[field.key] = field.masterValue.rawValue;
+  if (!explicitOnly) {
+    for (const field of inspection.fields) {
+      if (field.status === 'MISSING_IN_MASTER' && field.recommendedValue !== undefined && !(field.key in fieldOverrides)) {
+        out[field.key] = field.recommendedValue;
+      } else if (includeMasterDefaults && !(field.key in fieldOverrides) && field.masterValue?.rawValue !== undefined) {
+        out[field.key] = field.masterValue.rawValue;
+      }
+    }
+
+    for (const candidateKey of ['pmcid', 'arxivId', 'university', 'institution'] as const) {
+      if (candidateKey in out || candidateKey in fieldOverrides) continue;
+      const masterVal = masterItem
+        ? resolveItemFieldValue(masterItem as Record<string, unknown>, candidateKey)
+        : undefined;
+      if (!isFieldEmpty(masterVal)) {
+        if (includeMasterDefaults) {
+          out[candidateKey] = masterVal;
+        }
+        continue;
+      }
+      for (const it of orderedItems) {
+        if (it.id === masterItem?.id) continue;
+        const val = resolveItemFieldValue(it as Record<string, unknown>, candidateKey);
+        if (!isFieldEmpty(val)) {
+          out[candidateKey] = val;
+          break;
+        }
+      }
     }
   }
 
@@ -324,20 +298,52 @@ export function resolveDuplicateMergeFieldOverrides(
       if (fieldDiff?.status === 'MISSING_IN_MASTER') {
         delete out[k];
       } else {
-        out[k] = '';
+        out[k] = k === 'year' ? null : '';
       }
     } else if (v !== undefined) {
-      out[k] = v;
+      out[k] = k === 'year' && typeof v === 'string' && v.trim() === '' ? null : v;
     }
   }
 
   if (options?.customFieldTexts) {
     for (const [k, v] of Object.entries(options.customFieldTexts)) {
-      if (v !== undefined) out[k] = v;
+      if (v !== undefined) {
+        out[k] = k === 'year' && typeof v === 'string' && v.trim() === '' ? null : v;
+      }
     }
   }
 
-  // Synchronize authors, creators, and contributors when authors is overridden
+  const primaryRole = (getPrimaryCreatorType(effectiveItemType) || 'author').toLowerCase();
+  const extractItemRawCreators = (it?: Item): Array<Record<string, unknown>> => {
+    if (!it) return [];
+    const itEf =
+      it.extraFields && typeof it.extraFields === 'object'
+        ? (it.extraFields as Record<string, unknown>)
+        : undefined;
+    const raw =
+      Array.isArray(it.creators) && it.creators.length > 0
+        ? it.creators
+        : Array.isArray(itEf?.creators) && (itEf.creators as unknown[]).length > 0
+          ? (itEf.creators as unknown[])
+          : Array.isArray(it.contributors) && it.contributors.length > 0
+            ? it.contributors
+            : [];
+    return raw.filter((c): c is Record<string, unknown> => Boolean(c && typeof c === 'object'));
+  };
+  const getCreatorDedupKey = (c: Record<string, unknown>): string => {
+    const role = String(c.creatorType ?? c.role ?? 'author').trim().toLowerCase();
+    const first = String(c.firstName ?? c.given ?? '').trim();
+    const last = String(c.lastName ?? c.family ?? '').trim();
+    const full = String(c.fullName ?? c.name ?? [first, last].filter(Boolean).join(' '))
+      .trim()
+      .toLowerCase();
+    return `${role}:${full}`;
+  };
+  const isSecondaryCreator = (c: Record<string, unknown>): boolean => {
+    const role = String(c.creatorType ?? c.role ?? 'author').trim().toLowerCase();
+    return Boolean(role && role !== 'author' && role !== primaryRole);
+  };
+
   if ('authors' in out) {
     const rawAuthorsVal = out.authors;
     if (isFieldEmpty(rawAuthorsVal)) {
@@ -350,28 +356,60 @@ export function resolveDuplicateMergeFieldOverrides(
         const itAuthors = Array.isArray(it.authors) && it.authors.length > 0 ? it.authors : it.creators;
         return normalizeCompareValue(itAuthors, 'authors') === chosenAuthorsNorm;
       });
-      const donorEf = donorItem?.extraFields && typeof donorItem.extraFields === 'object'
-        ? (donorItem.extraFields as Record<string, unknown>)
-        : undefined;
-      const donorCreators = donorItem && Array.isArray(donorItem.creators) && donorItem.creators.length > 0
-        ? donorItem.creators
-        : Array.isArray(donorEf?.creators) && (donorEf.creators as unknown[]).length > 0
-          ? (donorEf.creators as unknown[])
-          : undefined;
-      const donorContributors = donorItem && Array.isArray(donorItem.contributors) && donorItem.contributors.length > 0
-        ? donorItem.contributors
-        : undefined;
-      const structuredCreators = donorCreators ?? buildStructuredCreatorsFromAuthors(rawAuthorsVal);
+      const donorCreators = extractItemRawCreators(donorItem);
+      const baseCreators =
+        donorCreators.length > 0
+          ? donorCreators.map((c) => ({ ...c }))
+          : buildStructuredCreatorsFromAuthors(rawAuthorsVal);
+      const seenKeys = new Set<string>(baseCreators.map(getCreatorDedupKey));
+      for (const it of orderedItems) {
+        for (const cr of extractItemRawCreators(it)) {
+          if (isSecondaryCreator(cr)) {
+            const key = getCreatorDedupKey(cr);
+            if (!seenKeys.has(key)) {
+              seenKeys.add(key);
+              baseCreators.push({ ...cr });
+            }
+          }
+        }
+      }
+      const structuredCreators = baseCreators.map((c, idx) => ({ ...c, orderIndex: idx }));
       if (!('creators' in fieldOverrides)) out.creators = structuredCreators;
-      if (!('contributors' in fieldOverrides)) out.contributors = donorContributors ?? structuredCreators;
+      if (!('contributors' in fieldOverrides)) out.contributors = structuredCreators;
       if (typeof rawAuthorsVal === 'string') out.authors = splitAuthorString(rawAuthorsVal);
+    }
+  } else if (!explicitOnly && !('creators' in fieldOverrides)) {
+    const masterBaseCreators = extractItemRawCreators(masterItem);
+    const baseCreators =
+      masterBaseCreators.length > 0
+        ? masterBaseCreators.map((c) => ({ ...c }))
+        : buildStructuredCreatorsFromAuthors(masterItem?.authors);
+    const seenKeys = new Set<string>(baseCreators.map(getCreatorDedupKey));
+    let addedSecondary = false;
+    for (const it of orderedItems) {
+      if (it.id === masterItem?.id) continue;
+      for (const cr of extractItemRawCreators(it)) {
+        if (isSecondaryCreator(cr)) {
+          const key = getCreatorDedupKey(cr);
+          if (!seenKeys.has(key)) {
+            seenKeys.add(key);
+            baseCreators.push({ ...cr });
+            addedSecondary = true;
+          }
+        }
+      }
+    }
+    if (addedSecondary) {
+      const mergedCreators = baseCreators.map((c, idx) => ({ ...c, orderIndex: idx }));
+      out.creators = mergedCreators;
+      if (!('contributors' in fieldOverrides)) out.contributors = mergedCreators;
     }
   }
 
-  // Synchronize multi-key aliases and extraFields for overridden schema fields
-  const masterEf = masterItem?.extraFields && typeof masterItem.extraFields === 'object'
-    ? (masterItem.extraFields as Record<string, unknown>)
-    : {};
+  const masterEf =
+    !explicitOnly && masterItem?.extraFields && typeof masterItem.extraFields === 'object'
+      ? (masterItem.extraFields as Record<string, unknown>)
+      : {};
   const nextExtraFields: Record<string, unknown> = {
     ...masterEf,
     ...(out.extraFields && typeof out.extraFields === 'object' ? (out.extraFields as Record<string, unknown>) : {}),
@@ -382,6 +420,7 @@ export function resolveDuplicateMergeFieldOverrides(
     if (SKIP_SYNC_KEYS.has(key)) continue;
     const keyLower = key.toLowerCase();
     const isCleared = val === '' || val === null;
+    if (key === 'year' && isCleared) out.year = null;
     const syncTargets = MULTI_KEY_SYNC_SETTERS[keyLower];
 
     if (syncTargets) {
@@ -389,42 +428,66 @@ export function resolveDuplicateMergeFieldOverrides(
         if (keyLower === 'conferencename' && targetKey === 'publicationTitle' && effectiveItemType === 'conferencePaper') {
           continue;
         }
-        if (!(targetKey in out)) out[targetKey] = isCleared ? '' : val;
-        if (isCleared || targetKey in masterEf || PROMOTE_KEYS_SET.has(targetKey) || !FIRST_CLASS_ITEM_COLUMNS.has(targetKey)) {
-          nextExtraFields[targetKey] = isCleared ? null : val;
-          extraFieldsMutated = true;
+        if (!(targetKey in out)) {
+          out[targetKey] = isCleared ? (targetKey === 'year' ? null : '') : val;
+        } else if (targetKey === 'year' && out[targetKey] === '') {
+          out[targetKey] = null;
         }
+        nextExtraFields[targetKey] = isCleared ? null : val;
+        extraFieldsMutated = true;
       }
     }
 
-    if (isCleared || key in masterEf || PROMOTE_KEYS_SET.has(key) || !FIRST_CLASS_ITEM_COLUMNS.has(key)) {
-      nextExtraFields[key] = isCleared ? null : val;
-      extraFieldsMutated = true;
+    nextExtraFields[key] = isCleared ? null : val;
+    extraFieldsMutated = true;
+  }
+
+  if (out.extraFields && typeof out.extraFields === 'object') {
+    for (const [efKey, efVal] of Object.entries(out.extraFields as Record<string, unknown>)) {
+      if (SKIP_SYNC_KEYS.has(efKey) || efVal === undefined) continue;
+      const isEfCleared = efVal === '' || efVal === null;
+      if (!(efKey in out)) out[efKey] = isEfCleared ? (efKey === 'year' ? null : '') : efVal;
     }
   }
 
-  if ('abstract' in out && out.abstract !== undefined && !('abstractNote' in out)) {
-    out.abstractNote = out.abstract;
-  }
-  if ('abstractNote' in out && out.abstractNote !== undefined && !('abstract' in out)) {
-    out.abstract = out.abstractNote;
-  }
+  if ('abstract' in out && out.abstract !== undefined && !('abstractNote' in out)) out.abstractNote = out.abstract;
+  if ('abstractNote' in out && out.abstractNote !== undefined && !('abstract' in out)) out.abstract = out.abstractNote;
   if (extraFieldsMutated) out.extraFields = nextExtraFields;
-  if ((hasTypeMismatch || includeMasterDefaults) && !out.itemType) out.itemType = effectiveItemType;
+  if (((hasTypeMismatch && !explicitOnly) || includeMasterDefaults) && !out.itemType) out.itemType = effectiveItemType;
 
-  if (!('extra' in fieldOverrides) && !(options?.customFieldTexts && 'extra' in options.customFieldTexts)) {
+  if (!explicitOnly && !('extra' in fieldOverrides) && !(options?.customFieldTexts && 'extra' in options.customFieldTexts)) {
     const mergedExtra = mergeItemExtraFields(items, masterItem?.id || masterId, out, options?.customFieldTexts);
-    const masterExtra = typeof masterItem?.extra === 'string'
-      ? masterItem.extra.trim()
-      : typeof masterEf.extra === 'string'
-        ? String(masterEf.extra).trim()
-        : '';
-    if (mergedExtra && (includeMasterDefaults || mergedExtra !== masterExtra)) {
-      out.extra = mergedExtra;
-    }
+    const masterExtra =
+      typeof masterItem?.extra === 'string'
+        ? masterItem.extra.trim()
+        : typeof masterEf.extra === 'string'
+          ? String(masterEf.extra).trim()
+          : '';
+    if (mergedExtra && (includeMasterDefaults || mergedExtra !== masterExtra)) out.extra = mergedExtra;
   }
 
   return out;
+}
+
+/**
+ * Extracts only the fields explicitly selected or edited by the user in `fieldOverrides`
+ * (or `customFieldTexts`) so that Backend's `ItemProvenancePolicy` authority engine is not
+ * overwritten by client-side auto-scored heuristics for unclicked fields.
+ */
+export function extractExplicitUserMergeOverrides(
+  items: readonly Item[],
+  masterId: string,
+  fieldOverrides: Record<string, unknown> = {},
+  options?: {
+    inspection?: MergeInspectionResult;
+    customFieldTexts?: Record<string, string>;
+  },
+): Record<string, unknown> {
+  return resolveDuplicateMergeFieldOverrides(items, masterId, fieldOverrides, {
+    ...options,
+    includeUnchangedMasterFields: false,
+    explicitUserSelectionsOnly: true,
+  });
 }
 
 /**
@@ -476,162 +539,3 @@ export function buildMergedItemPayload(
     totalAnnotationCount: assets.totalAnnotationCount,
   };
 }
-
-export interface AggregatedAssetsSummary {
-  totalFiles: number;
-  fileList: unknown[];
-  attachments: unknown[];
-  uniqueAttachmentCount: number;
-  duplicateAttachmentCount: number;
-  totalAnnotationCount: number;
-  totalNotes: number;
-  noteCount: number;
-  notes: unknown[];
-  totalTags: number;
-  tags: string[];
-  totalCollections: number;
-  collectionCount: number;
-  collections: string[];
-  combinedTags: string[];
-  combinedCollectionIds: string[];
-  attachmentCount: number;
-  notesCount: number;
-}
-
-export type AggregatedAssetsResult = AggregatedAssetsSummary;
-
-/**
- * Calculates non-destructive asset union across multiple duplicate records,
- * deduplicating identical PDF/file attachments that share the same non-empty `fileHash`
- * (or identical non-empty `url` when `fileHash` is absent) while preserving annotation counts.
- */
-export function aggregateItemAssets(items: readonly Item[]): AggregatedAssetsSummary {
-  const rawTags: unknown[] = [];
-  const colSet = new Set<string>();
-  const uniqueAttachments: unknown[] = [];
-  const seenAttachmentKeys = new Set<string>();
-  const notesList: unknown[] = [];
-  let duplicateAttachmentCount = 0;
-  let totalAnnotationCount = 0;
-
-  const registerAttachment = (att: unknown) => {
-    if (!att) return;
-    if (typeof att === 'string') {
-      const cleanUrl = att.trim();
-      if (!isValidValue(cleanUrl)) return;
-      const key = `url:${cleanUrl.toLowerCase()}`;
-      if (seenAttachmentKeys.has(key)) {
-        duplicateAttachmentCount++;
-        return;
-      }
-      seenAttachmentKeys.add(key);
-      uniqueAttachments.push(cleanUrl);
-      return;
-    }
-
-    if (typeof att === 'object') {
-      const obj = att as Record<string, unknown>;
-      // Count annotations on every attachment copy (even if binary PDF is a duplicate copy, its annotations are preserved during merge!)
-      if (typeof obj.annotationCount === 'number' && obj.annotationCount > 0) {
-        totalAnnotationCount += obj.annotationCount;
-      } else if (Array.isArray(obj.annotations)) {
-        totalAnnotationCount += obj.annotations.length;
-      }
-
-      const fileHash =
-        typeof obj.fileHash === 'string' && obj.fileHash.trim()
-          ? obj.fileHash.trim().toLowerCase()
-          : typeof obj.sha256 === 'string' && obj.sha256.trim()
-            ? obj.sha256.trim().toLowerCase()
-            : '';
-      const fileUrl =
-        typeof obj.url === 'string' && obj.url.trim()
-          ? obj.url.trim().toLowerCase()
-          : typeof obj.fileUrl === 'string' && obj.fileUrl.trim()
-            ? obj.fileUrl.trim().toLowerCase()
-            : '';
-
-      const dedupKey = fileHash
-        ? `hash:${fileHash}`
-        : fileUrl
-          ? `url:${fileUrl}`
-          : '';
-
-      if (dedupKey) {
-        if (seenAttachmentKeys.has(dedupKey)) {
-          duplicateAttachmentCount++;
-          return;
-        }
-        seenAttachmentKeys.add(dedupKey);
-      }
-      uniqueAttachments.push(att);
-    }
-  };
-
-  for (const it of items) {
-    if (Array.isArray(it.tags)) {
-      rawTags.push(...it.tags);
-    } else if (typeof it.tags === 'string') {
-      rawTags.push(it.tags);
-    }
-
-    const singleColId = (it as Record<string, unknown>).collectionId;
-    if (typeof singleColId === 'string' && isValidValue(singleColId)) {
-      colSet.add(singleColId.trim());
-    }
-    if (Array.isArray(it.collectionIds)) {
-      it.collectionIds.forEach((c: unknown) => {
-        if (typeof c === 'string' && isValidValue(c)) colSet.add(c.trim());
-      });
-    }
-    if (Array.isArray(it.collections)) {
-      it.collections.forEach((c) => {
-        if (c && typeof c === 'object' && typeof c.id === 'string' && isValidValue(c.id)) {
-          colSet.add(c.id.trim());
-        } else if (typeof c === 'string' && isValidValue(c)) {
-          colSet.add((c as string).trim());
-        }
-      });
-    }
-
-    if (Array.isArray(it.attachments)) {
-      it.attachments.forEach((att) => registerAttachment(att));
-    } else {
-      const pdfUrl = (it as Record<string, unknown>).pdfUrl || (it as Record<string, unknown>).fileUrl;
-      if (pdfUrl && isValidValue(pdfUrl)) {
-        registerAttachment(pdfUrl);
-      }
-    }
-
-    if (Array.isArray(it.notes)) {
-      for (const n of it.notes) {
-        notesList.push(n);
-      }
-    }
-  }
-
-  const tags = normalizeTags(rawTags);
-  const collections = Array.from(colSet);
-
-  return {
-    totalFiles: uniqueAttachments.length,
-    fileList: uniqueAttachments,
-    attachments: uniqueAttachments,
-    uniqueAttachmentCount: uniqueAttachments.length,
-    duplicateAttachmentCount,
-    totalAnnotationCount,
-    totalNotes: notesList.length,
-    noteCount: notesList.length,
-    notes: notesList,
-    totalTags: tags.length,
-    tags,
-    totalCollections: collections.length,
-    collectionCount: collections.length,
-    collections,
-    combinedTags: tags,
-    combinedCollectionIds: collections,
-    attachmentCount: uniqueAttachments.length,
-    notesCount: notesList.length,
-  };
-}
-

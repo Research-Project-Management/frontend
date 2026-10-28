@@ -18,26 +18,27 @@ export const CreatorOverrideSchema = z.object({
   fieldMode: z.number().optional(),
 });
 
+export const IngestionOverridesSchema = z
+  .object({
+    title: z.string().optional(),
+    abstract: z.string().optional(),
+    doi: z.string().optional(),
+    year: z.number().int().optional(),
+    publicationTitle: z.string().optional(),
+    itemType: z.string().optional(),
+    creators: z.array(CreatorOverrideSchema).optional(),
+    tags: z.array(z.string()).optional(),
+    attachOaPdf: z.boolean().optional(),
+    saveSnapshot: z.boolean().optional(),
+  })
+  .passthrough();
+
 export const UrlIngestionPayloadSchema = z.object({
   source: z.literal('url'),
   url: z.string().url('A valid URL is required'),
   previewToken: z.string().optional(),
   collectionId: z.string().optional(),
-  overrides: z
-    .object({
-      title: z.string().optional(),
-      abstract: z.string().optional(),
-      doi: z.string().optional(),
-      year: z.number().int().optional(),
-      publicationTitle: z.string().optional(),
-      itemType: z.string().optional(),
-      creators: z.array(CreatorOverrideSchema).optional(),
-      tags: z.array(z.string()).optional(),
-      attachOaPdf: z.boolean().optional(),
-      saveSnapshot: z.boolean().optional(),
-    })
-    .passthrough()
-    .optional(),
+  overrides: IngestionOverridesSchema.optional(),
   idempotencyKey: z.string().optional(),
   silent: z.boolean().optional(),
 });
@@ -47,6 +48,7 @@ export const BibtexIngestionPayloadSchema = z.object({
   content: z.string().optional(),
   bibtex: z.string().optional(),
   collectionId: z.string().optional(),
+  overrides: IngestionOverridesSchema.optional(),
   idempotencyKey: z.string().optional(),
   silent: z.boolean().optional(),
 });
@@ -93,6 +95,7 @@ export const RisIngestionPayloadSchema = z.object({
   content: z.string().optional(),
   ris: z.string().optional(),
   collectionId: z.string().optional(),
+  overrides: IngestionOverridesSchema.optional(),
   idempotencyKey: z.string().optional(),
   silent: z.boolean().optional(),
 });
@@ -102,6 +105,7 @@ export const CslJsonIngestionPayloadSchema = z.object({
   content: z.string().optional(),
   cslJson: z.string().optional(),
   collectionId: z.string().optional(),
+  overrides: IngestionOverridesSchema.optional(),
   idempotencyKey: z.string().optional(),
   silent: z.boolean().optional(),
 });

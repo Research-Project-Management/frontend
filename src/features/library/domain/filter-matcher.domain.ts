@@ -14,7 +14,7 @@ export const KNOWN_TYPE_ALIASES: Record<string, string[]> = {
   webpage: ['trang web', 'website'],
 };
 
-const NON_WORD_WHITESPACE_RE = /[^\w\s]/gi;
+const NON_WORD_WHITESPACE_RE = /[^\p{L}\p{N}\s]/gu;
 const MULTI_WHITESPACE_RE = /\s+/g;
 const CAMEL_CASE_BOUNDARY_RE = /([A-Z])/g;
 const HYPHEN_UNDERSCORE_RE = /[-_]/g;

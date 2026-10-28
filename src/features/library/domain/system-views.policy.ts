@@ -131,13 +131,22 @@ export function isItemTrashed(item: Record<string, unknown>): boolean {
 }
 
 export function isItemInMyPublications(item: Record<string, unknown>): boolean {
+  const extra =
+    item.extraFields && typeof item.extraFields === 'object'
+      ? (item.extraFields as Record<string, unknown>)
+      : {};
   const meta =
     item.metadata && typeof item.metadata === 'object'
       ? (item.metadata as Record<string, unknown>)
       : {};
   return Boolean(
-    item.isInMyPublications === true ||
+    item.isMyPublication === true ||
+      item.isInMyPublications === true ||
       item.inPublications === true ||
+      extra.isMyPublication === true ||
+      extra.isInMyPublications === true ||
+      extra.inPublications === true ||
+      meta.isMyPublication === true ||
       meta.isInMyPublications === true ||
       meta.inPublications === true,
   );

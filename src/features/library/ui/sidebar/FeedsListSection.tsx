@@ -164,15 +164,19 @@ export function FeedsListSection({
                         } else {
                           markAllEntriesAsRead();
                         }
+                        toast.success(`Marked all articles in "${feed.name}" as read`);
                       } catch {
-                        markAllEntriesAsRead();
+                        toast.error(`Failed to mark articles in "${feed.name}" as read`);
                       }
-                      toast.success(`Marked all articles in "${feed.name}" as read`);
                     }}
                     onEdit={(f) => openModal('EDIT_FEED', { feed: f })}
-                    onDelete={(f) => {
-                      void unsubscribeFeed(f.id);
-                      toast.success(`Unsubscribed from "${f.name}"`);
+                    onDelete={async (f) => {
+                      try {
+                        await unsubscribeFeed(f.id);
+                        toast.success(`Unsubscribed from "${f.name}"`);
+                      } catch {
+                        // Error toast handled by mutation or caller
+                      }
                     }}
                   />
                 }

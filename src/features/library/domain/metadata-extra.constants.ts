@@ -1,9 +1,12 @@
 import {
   ALL_SCHEMA_FIELD_KEYS,
+  FIELD_LABELS,
   INITIAL_ITEM_TYPE_FIELDS_MAP,
   ITEM_TYPE_FIELDS_MAP,
+  humanizeFieldName,
 } from './types/item-fields.constants';
 import { registerSchemaRegistryUpdateListener } from './types/item-types.types';
+import type { Item } from './types/library.types';
 
 /**
  * Genuine Zotero 7 `Extra` keys that are also valid schema fields on specific item types
@@ -104,11 +107,6 @@ export const SYSTEM_INTERNAL_METADATA_KEYS = new Set<string>([
   'itemmetadata',
   'publications',
   'abstract',
-  'journal',
-  'journalabbr',
-  'numberofpages',
-  'arxiv',
-  'arxivid',
   'openaccesspdfurl',
   'pdfurl',
   'fileurl',
@@ -116,11 +114,8 @@ export const SYSTEM_INTERNAL_METADATA_KEYS = new Set<string>([
   'publicationdate',
   'accessedat',
   'itemtype',
-  'license',
-  'citekey',
   'citationcount',
   'referencecount',
-  'authority',
   'authors',
   'creators',
   'contributors',
@@ -249,3 +244,80 @@ export function getMatchingExtraKeyNorms(canonicalKey: string): Set<string> {
   }
   return norms;
 }
+
+export function getCandidateNormsForUnmappedField(field: string): string[] {
+  const norms = new Set<string>();
+  const cleanField = field.trim();
+  const fieldNorm = cleanField.toLowerCase().replace(/[\s_-]+/g, '');
+  if (fieldNorm) norms.add(fieldNorm);
+  const label = FIELD_LABELS[cleanField] || humanizeFieldName(cleanField);
+  if (label) {
+    const labelNorm = label.trim().toLowerCase().replace(/[\s_-]+/g, '');
+    if (labelNorm) norms.add(labelNorm);
+  }
+  const aliases = EXTRA_KEY_ALIASES[fieldNorm];
+  if (aliases) {
+    for (const alias of aliases) {
+      const aliasNorm = alias.toLowerCase().replace(/[\s_-]+/g, '');
+      if (aliasNorm === fieldNorm || !CROSS_FIELD_FALLBACK_NORMS.has(aliasNorm)) {
+        norms.add(aliasNorm);
+      }
+    }
+  }
+  return Array.from(norms);
+}
+
+export function collectUnmappedFieldsSet(
+  associatedPaperItem?: Partial<Item> | null,
+  additionalExtraFields?: Record<string, unknown> | null,
+): Set<string> {
+  const unmapped = new Set<string>();
+  const sources = [
+    associatedPaperItem?.metadata as Record<string, unknown> | undefined,
+    associatedPaperItem?.extraFields as Record<string, unknown> | undefined,
+    additionalExtraFields ?? undefined,
+  ];
+  for (const src of sources) {
+    if (!src || typeof src !== 'object') continue;
+    for (const k of Object.keys(src)) {
+      const m = k.match(/^__unmapped_[^_]+_(.+)$/i);
+      if (m && m[1]) {
+        for (const norm of getCandidateNormsForUnmappedField(m[1])) {
+          unmapped.add(norm);
+        }
+      }
+    }
+  }
+  return unmapped;
+}
+
+export const FALLBACK_VENUE_FIELDS_BASE = [
+  'publicationTitle',
+  'journal',
+  'proceedingsTitle',
+  'bookTitle',
+  'repository',
+  'publisher',
+  'court',
+  'issuingAuthority',
+  'authority',
+  'company',
+  'organization',
+  'institution',
+  'university',
+  'distributor',
+  'studio',
+  'network',
+  'label',
+  'programTitle',
+  'websiteTitle',
+  'blogTitle',
+  'forumTitle',
+  'dictionaryTitle',
+  'encyclopediaTitle',
+  'sessionTitle',
+  'legislativeBody',
+  'committee',
+  'code',
+  'reporter',
+] as const;

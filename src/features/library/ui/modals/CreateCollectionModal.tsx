@@ -32,12 +32,16 @@ import type { Collection } from "@/features/library/domain/types/library.types";
 interface CreateCollectionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: CollectionFormValues) => void;
+  onSubmit: (data: CollectionFormValues) => Promise<void> | void;
   isPending?: boolean;
   collections?: Collection[];
   defaultParentId?: string | null;
   rootLabel?: string;
   rootType?: "user" | "project";
+  mode?: "create" | "rename";
+  initialName?: string;
+  initialDescription?: string;
+  initialColor?: string;
 }
 
 export default function CreateCollectionModal({
@@ -49,13 +53,17 @@ export default function CreateCollectionModal({
   defaultParentId = null,
   rootLabel = "My Library",
   rootType = "user",
+  mode = "create",
+  initialName = "",
+  initialDescription = "",
+  initialColor = "",
 }: CreateCollectionModalProps) {
   const form = useForm<CollectionFormValues>({
     resolver: zodResolver(collectionFormSchema),
     defaultValues: {
-      name: "",
-      description: "",
-      color: "",
+      name: initialName,
+      description: initialDescription,
+      color: initialColor,
       parentId: defaultParentId ?? null,
     },
   });
@@ -71,18 +79,18 @@ export default function CreateCollectionModal({
   useEffect(() => {
     if (open) {
       reset({
-        name: "",
-        description: "",
-        color: "",
+        name: initialName,
+        description: initialDescription,
+        color: initialColor,
         parentId: defaultParentId ?? null,
       });
     }
-  }, [open, defaultParentId, reset]);
+  }, [open, defaultParentId, initialName, initialDescription, initialColor, reset]);
 
-  const onValidSubmit = (data: CollectionFormValues) => {
+  const onValidSubmit = async (data: CollectionFormValues) => {
     const rawParent =
       data.parentId === "root" || !data.parentId ? null : data.parentId;
-    onSubmit({
+    await onSubmit({
       name: data.name.trim() || "Untitled",
       description: data.description?.trim() || "",
       color: data.color || "",
@@ -91,6 +99,8 @@ export default function CreateCollectionModal({
     onOpenChange(false);
     reset();
   };
+
+  const isRename = mode === "rename";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -101,10 +111,12 @@ export default function CreateCollectionModal({
       >
         <DialogHeader>
           <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
-            New Collection
+            {isRename ? "Rename Collection" : "New Collection"}
           </DialogTitle>
           <DialogDescription className="sr-only">
-            Create a new collection to organize your library items.
+            {isRename
+              ? "Rename or update this collection."
+              : "Create a new collection to organize your library items."}
           </DialogDescription>
         </DialogHeader>
 
@@ -213,7 +225,13 @@ export default function CreateCollectionModal({
                 disabled={isPending}
                 className="h-8 px-3 text-13 font-medium cursor-pointer rounded-md shadow-none"
               >
-                {isPending ? "Creating..." : "Create Collection"}
+                {isPending
+                  ? isRename
+                    ? "Saving..."
+                    : "Creating..."
+                  : isRename
+                    ? "Save Changes"
+                    : "Create Collection"}
               </Button>
             </DialogFooter>
           </form>

@@ -148,7 +148,7 @@ describe('Wave 12: Multi-Type Scholarly, Legal & Technical Datasets & Base Field
       expect(getDateFieldForType('statute')).toBe('dateEnacted');
       expect(getItemDisplayTitle(statuteRaw)).toBe('Artificial Intelligence Act');
       expect(getItemDisplayDate(statuteRaw)).toBe(2024);
-      expect(generateCitationKey(statuteRaw)).toBe('ref2024artificial');
+      expect(generateCitationKey(statuteRaw)).toBe('anon2024artificial');
     });
   });
 

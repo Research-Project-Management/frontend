@@ -1,12 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { ItemRowActions } from '@/features/library/ui/content/ItemRowActions';
 import { ItemTableHeader } from '@/features/library/ui/content/ItemTableHeader';
 import { ItemTableRow } from '@/features/library/ui/content/ItemTableRow';
 import { BatchBar } from '@/features/library/ui/content/BatchBar';
+import { DuplicatesContent } from '@/features/library/ui/content/DuplicatesContent';
+import { DEFAULT_COLLECTION_COLOR } from '@/features/library/core/coordinator/collection.coordinator';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
-import type { Item, Collection } from '@/features/library/domain/types/library.types';
+import type { Item, Collection, DuplicateGroup } from '@/features/library/domain/types/library.types';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -22,6 +24,75 @@ vi.mock('@/features/library/sdk/queries/citation.queries', () => ({
     isLoading: false,
   }),
 }));
+
+const mockDuplicateGroups: DuplicateGroup[] = [
+  {
+    key: 'group-1',
+    matchType: 'DOI',
+    confidence: 'high',
+    recommendedMasterId: 'item-123',
+    items: [
+      {
+        id: 'item-123',
+        title: 'Faster R-CNN: Towards Real-Time Object Detection',
+        itemType: 'journalArticle',
+      },
+      {
+        id: 'item-456',
+        title: 'Faster R-CNN (Duplicate)',
+        itemType: 'journalArticle',
+      },
+    ],
+  },
+  {
+    key: 'group-2',
+    matchType: 'TITLE_AUTHOR',
+    confidence: 'high',
+    recommendedMasterId: 'item-789',
+    items: [
+      {
+        id: 'item-789',
+        title: 'Attention Is All You Need',
+        itemType: 'conferencePaper',
+      },
+      {
+        id: 'item-790',
+        title: 'Attention Is All You Need (Preprint)',
+        itemType: 'preprint',
+      },
+    ],
+  },
+];
+
+vi.mock('@/features/library/sdk/queries/ingestion.queries', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/library/sdk/queries/ingestion.queries')>();
+  return {
+    ...actual,
+    useDuplicateGroups: () => ({
+      data: { duplicateGroups: mockDuplicateGroups },
+      isLoading: false,
+      isError: false,
+      error: null,
+    }),
+    useDismissDuplicatesMutation: () => ({
+      mutate: vi.fn(),
+      mutateAsync: vi.fn().mockResolvedValue({}),
+      isPending: false,
+    }),
+    useMergeDuplicates: () => ({
+      mutate: vi.fn(),
+      mutateAsync: vi.fn().mockResolvedValue({ mergedCount: 1 }),
+      isPending: false,
+    }),
+    useRetraction: () => ({
+      flagItem: vi.fn(),
+      unflagItem: vi.fn(),
+      checkLibrary: vi.fn(),
+      isCheckingLibrary: false,
+      isUnflagging: false,
+    }),
+  };
+});
 
 const mockItem: Item = {
   id: 'item-123',
@@ -270,5 +341,44 @@ describe('ItemRowActions & Actions Column Parity', () => {
     );
     expect(screen.getByText(/^Assign to$/i)).toBeDefined();
     unmountUnfiled();
+  });
+
+  it('DuplicatesContent renders contextual batch action bar when duplicate groups are selected and supports Merge/Dismiss/Clear', async () => {
+    const onMergeGroup = vi.fn().mockResolvedValue(undefined);
+    const onDismissGroup = vi.fn().mockResolvedValue(undefined);
+
+    renderWithProviders(
+      <DuplicatesContent
+        scopeId="user"
+        canEdit={true}
+        onMergeGroup={onMergeGroup}
+        onDismissGroup={onDismissGroup}
+      />
+    );
+
+    expect(screen.queryByRole('region', { name: /selected duplicate groups batch actions/i })).toBeNull();
+
+    const selectHighConfBtn = screen.getByRole('button', { name: /select high confidence/i });
+    fireEvent.click(selectHighConfBtn);
+
+    expect(screen.getByRole('region', { name: /selected duplicate groups batch actions/i })).toBeDefined();
+    expect(screen.getByText(/2 duplicate groups selected/i)).toBeDefined();
+
+    const mergeSelectedBtn = screen.getByRole('button', { name: /merge selected/i });
+    await act(async () => {
+      fireEvent.click(mergeSelectedBtn);
+    });
+    expect(onMergeGroup).toHaveBeenCalledTimes(2);
+
+    // Re-select and test Clear Selection
+    fireEvent.click(selectHighConfBtn);
+    expect(screen.getByText(/2 duplicate groups selected/i)).toBeDefined();
+    const clearBtn = screen.getByRole('button', { name: /clear selection/i });
+    fireEvent.click(clearBtn);
+    expect(screen.queryByRole('region', { name: /selected duplicate groups batch actions/i })).toBeNull();
+  });
+
+  it('exports canonical DEFAULT_COLLECTION_COLOR from collection.coordinator', () => {
+    expect(DEFAULT_COLLECTION_COLOR).toBe('#2563eb');
   });
 });

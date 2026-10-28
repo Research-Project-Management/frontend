@@ -17,18 +17,12 @@ import { cn } from '@/shared/lib/utils';
 import type { InspectorSectionId } from '@/features/library/core/store/library-ui.store';
 import {
   type InspectorTabKey,
-  INSPECTOR_LEVELS_FROM_BOTTOM,
   INSPECTOR_LEVELS,
-  SECTION_TO_LEVEL,
-  LEVEL_TO_SECTION,
 } from './inspector-levels.constants';
 
 export {
   type InspectorTabKey,
-  INSPECTOR_LEVELS_FROM_BOTTOM,
   INSPECTOR_LEVELS,
-  SECTION_TO_LEVEL,
-  LEVEL_TO_SECTION,
 };
 
 interface TabItem {

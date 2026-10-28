@@ -17,6 +17,8 @@ import {
   toAsciiKeyPart,
 } from '@/features/library/domain/citations';
 
+export { foldDiacritics };
+
 export interface PdfTextMatch {
   matchIndex: number;
   pageNumber: number;

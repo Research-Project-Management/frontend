@@ -14,9 +14,14 @@ import {
   useCollectionsQuery,
   useMoveCollectionItemsMutation,
   useAssignCollectionItemsMutation,
+  useBatchDetachItemsMutation,
 } from '@/features/library/sdk/queries/collections.queries';
 import { useSavedSearches } from '@/features/library/sdk/queries/saved-searches-relations.queries';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import {
+  useLibraryCommandStore,
+  createMoveItemsCommand,
+} from '@/features/library/core/manager/library-command.manager';
 import { useLibraryPermissions } from '@/features/library/core/coordinator/permissions.coordinator';
 import { useLibraryProjectContext } from '@/features/library/core/adapters/project-context.adapter';
 
@@ -58,6 +63,7 @@ export function LibrarySidebar() {
   const effectiveScopeId = isInProjectContext ? activeScope.id : 'user';
   const moveMutation = useMoveCollectionItemsMutation(effectiveScopeId);
   const assignMutation = useAssignCollectionItemsMutation(effectiveScopeId);
+  const detachMutation = useBatchDetachItemsMutation(effectiveScopeId);
 
   const userCollectionsQuery = useCollectionsQuery('user');
   const projectCollectionsQuery = useCollectionsQuery(projectId, {
@@ -257,11 +263,23 @@ export function LibrarySidebar() {
         id: 'batch-move',
       });
       try {
-        await moveMutation.mutateAsync({
-          targetCollectionId,
-          itemIds: ids,
-          scopeId: targetScopeId,
-        });
+        const targetCollection =
+          userCollections.find((c) => c.id === targetCollectionId) ??
+          projectCollections.find((c) => c.id === targetCollectionId);
+        const targetCollectionName = targetCollection?.name ?? 'Library';
+        await useLibraryCommandStore.getState().executeCommand(
+          createMoveItemsCommand({
+            itemIds: ids,
+            sourceCollectionId: activeId || null,
+            targetCollectionId,
+            targetCollectionName,
+            moveMutation,
+            detachMutation,
+            assignMutation,
+            scopeId: targetScopeId,
+          }),
+          { silentToast: true },
+        );
         toast.success('Documents moved', {
           description: `Moved ${ids.length} item(s) to target collection.`,
           id: toastId,
@@ -276,7 +294,16 @@ export function LibrarySidebar() {
         });
       }
     },
-    [assignMutation, effectiveScopeId, moveMutation, projectCollections, projectId, userCollections],
+    [
+      activeId,
+      assignMutation,
+      detachMutation,
+      effectiveScopeId,
+      moveMutation,
+      projectCollections,
+      projectId,
+      userCollections,
+    ],
   );
 
   const userTree = useMemo(

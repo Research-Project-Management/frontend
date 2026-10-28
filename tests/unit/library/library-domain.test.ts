@@ -1,4 +1,4 @@
-﻿import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "vitest";
 import {
   normalizeAuthors,
   parseAuthorName,
@@ -16,7 +16,6 @@ import {
   normalizeAcademicTitleCase,
 } from "@/features/library/domain/identifiers";
 import { generateCitationKey, toAsciiKeyPart, getCleanStyleLabel, formatCitationStyleLabel } from "@/features/library/domain/citations";
-import { resolveArxivCategory } from "@/features/library/domain/categories";
 import {
   inspectItemDifferences,
   aggregateItemAssets,
@@ -251,12 +250,6 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
     });
   });
 
-  describe("Categories Domain (categories.ts)", () => {
-    it("should resolve arXiv category names", () => {
-      expect(resolveArxivCategory("cs.AI")).toBe("cs.AI");
-    });
-  });
-
   describe("Deep Metadata Diff & Asset Aggregation (diff.ts)", () => {
     it("should inspect differences and flag conflicts correctly", () => {
       const master: any = {
@@ -317,7 +310,7 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
   describe("Tree Structure & Cycle Guard (tree-helpers.ts)", () => {
     it("should build a nested tree from a flat collection array", async () => {
       const { buildTree } =
-        await import("@/features/library/domain/collection-tree.domain");
+        await import("@/features/library/domain/collection-tree");
       const collections: any[] = [
         { id: "c1", name: "Root 1", parentId: null },
         { id: "c2", name: "Child 1.1", parentId: "c1" },
@@ -336,7 +329,7 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
 
     it("should break circular parent cycles gracefully without stack overflow", async () => {
       const { buildTree } =
-        await import("@/features/library/domain/collection-tree.domain");
+        await import("@/features/library/domain/collection-tree");
       // Create a circular dependency: A -> B -> A and self-reference: C -> C
       const collections: any[] = [
         { id: "cA", name: "Cyclic A", parentId: "cB" },
@@ -360,7 +353,7 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
 
     it("should accurately compute valid move targets excluding self and all descendants", async () => {
       const { getValidMoveTargets } =
-        await import("@/features/library/domain/collection-tree.domain");
+        await import("@/features/library/domain/collection-tree");
       const collections: any[] = [
         { id: "root", name: "Root", parentId: null },
         { id: "child", name: "Child", parentId: "root" },
@@ -378,7 +371,7 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
 
     it("should filter collections preserving ancestor chain", async () => {
       const { filterCollections } =
-        await import("@/features/library/domain/collection-tree.domain");
+        await import("@/features/library/domain/collection-tree");
       const collections: any[] = [
         { id: "root", name: "Physics Department", parentId: null },
         { id: "child", name: "Quantum Optics Lab", parentId: "root" },
@@ -742,6 +735,51 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
         arxivId: "2301.12345",
       };
       expect(getItemFileUrl(item)).toBe("https://arxiv.org/pdf/2301.12345.pdf");
+    });
+  });
+
+  describe("Loop 2 Frontend-Backend Metadata Contract Invariants", () => {
+    it("should parse compound Vietnamese surnames and preserve family-first order in normalizeAuthors", () => {
+      const compound = parseAuthorName("Nguyễn Phúc Bảo An");
+      expect(compound.lastName).toBe("Nguyễn Phúc");
+      expect(compound.firstName).toBe("Bảo An");
+      expect(compound.fullName).toBe("Nguyễn Phúc Bảo An");
+
+      const normalized = normalizeAuthors({
+        creators: [
+          { firstName: "Văn An", lastName: "Nguyễn", creatorType: "author" },
+        ],
+      } as any);
+      expect(normalized).toEqual(["Nguyễn Văn An"]);
+    });
+
+    it("should emit only tombstone keys in patch.metadata when clearing fields and not sync authority into publisher", async () => {
+      const { buildInspectorFieldPatch } = await import(
+        "@/features/library/domain/item-field-schema"
+      );
+      const { buildDerivedFieldMappings } = await import(
+        "@/features/library/domain/item-field-scorers.strategy"
+      );
+
+      const { syncSetters } = buildDerivedFieldMappings();
+      expect(syncSetters.authority).not.toContain("publisher");
+
+      const patch = buildInspectorFieldPatch(
+        {
+          id: "item-1",
+          title: "Test Item",
+          itemType: "journalArticle",
+          doi: "10.1000/old",
+          metadata: {
+            doi: "10.1000/old",
+            publicationTitle: "Unrelated Journal That Must Not Be Cloned",
+          },
+        } as any,
+        "doi",
+        "",
+      );
+      expect(patch.doi).toBe("");
+      expect(patch.metadata).toEqual({ doi: null });
     });
   });
 });

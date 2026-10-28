@@ -45,6 +45,9 @@ export const CONTAINER_TITLE_CANDIDATE_KEYS = [
   'blogTitle',
   'forumTitle',
   'programTitle',
+  'seriesTitle',
+  'sessionTitle',
+  'meetingName',
 ] as const;
 
 export const SUBTYPE_CANDIDATE_KEYS = [
@@ -111,7 +114,7 @@ export const CANONICAL_SCALAR_PROJECTIONS: ReadonlyArray<
   ['citationKey', ['citationKey', 'key']],
   ['retractionReason', ['retractionReason', 'reason']],
   ['itemType', ['itemType', 'type']],
-  ['volume', ['volume', 'reporterVolume', 'codeVolume']],
+  ['volume', ['volume', 'reporterVolume', 'codeNumber', 'codeVolume']],
   ['pages', ['pages', 'firstPage', 'codePages']],
 ];
 
@@ -182,9 +185,87 @@ export function pickFirstValidField(
     if (isValidValue(rec[k])) return rec[k];
   }
   for (const k of keys) {
+    if (k in rec && (rec[k] === '' || rec[k] === null)) continue;
+    if (ef[k] === null) continue;
     if (isValidValue(ef[k])) return ef[k];
   }
   return undefined;
+}
+
+const RELATIONAL_IDENTIFIER_KEY_MAP: Readonly<Record<string, string>> = {
+  doi: 'doi',
+  arxiv: 'arxivId',
+  arxivid: 'arxivId',
+  archiveid: 'arxivId',
+  pmid: 'pmid',
+  pmcid: 'pmcid',
+  isbn: 'isbn',
+  issn: 'issn',
+};
+
+const IDENTIFIER_UPPER_ALIAS_MAP: Readonly<Record<string, readonly string[]>> = {
+  doi: ['DOI'],
+  arxivId: ['archiveID', 'archiveId'],
+  pmid: ['PMID'],
+  pmcid: ['PMCID'],
+  isbn: ['ISBN'],
+  issn: ['ISSN'],
+};
+
+/**
+ * Hydrates canonical identifier fields (`doi`, `arxivId`, `pmid`, `pmcid`, `isbn`, `issn`)
+ * from the relational `rec.identifiers` array onto `ef` and `rec` whenever the target field
+ * is not already explicitly populated or tombstoned (`null` / `""`).
+ */
+export function hydrateIdentifiersFromRelationalArray(
+  rec: Record<string, unknown>,
+  ef: Record<string, unknown>,
+): void {
+  const identifiers = Array.isArray(rec.identifiers) ? rec.identifiers : [];
+  if (identifiers.length === 0) return;
+
+  for (const rawIdent of identifiers) {
+    if (!rawIdent || typeof rawIdent !== 'object') continue;
+    const ident = rawIdent as {
+      type?: unknown;
+      identifierType?: unknown;
+      value?: unknown;
+    };
+    const rawType =
+      typeof ident.type === 'string'
+        ? ident.type
+        : typeof ident.identifierType === 'string'
+          ? ident.identifierType
+          : '';
+    const normType = rawType.trim().toLowerCase().replace(/[\s_-]+/g, '');
+    const targetKey = RELATIONAL_IDENTIFIER_KEY_MAP[normType];
+    if (!targetKey) continue;
+
+    const rawValue = typeof ident.value === 'string' ? ident.value.trim() : '';
+    if (!isValidValue(rawValue)) continue;
+
+    const aliases = IDENTIFIER_UPPER_ALIAS_MAP[targetKey] ?? [];
+    const isTombstoned =
+      (targetKey in rec && (rec[targetKey] === null || rec[targetKey] === '')) ||
+      (targetKey in ef && (ef[targetKey] === null || ef[targetKey] === '')) ||
+      aliases.some(
+        (alias) =>
+          (alias in rec && (rec[alias] === null || rec[alias] === '')) ||
+          (alias in ef && (ef[alias] === null || ef[alias] === '')),
+      );
+    if (isTombstoned) continue;
+
+    const hasExisting =
+      isValidValue(rec[targetKey]) ||
+      isValidValue(ef[targetKey]) ||
+      aliases.some(
+        (alias) => isValidValue(rec[alias]) || isValidValue(ef[alias]),
+      );
+    if (hasExisting) continue;
+
+    ef[targetKey] = rawValue;
+    rec[targetKey] = rawValue;
+  }
 }
 
 /**
@@ -207,8 +288,28 @@ export function mergeRawItemPartials(rec: Record<string, unknown>): {
     !Array.isArray(rec.extraFields)
       ? (rec.extraFields as Record<string, unknown>)
       : {};
-  const ef: Record<string, unknown> = { ...rawMetadata, ...rawExtraFields };
-  const mapped: Record<string, unknown> = { ...rawMetadata, ...rec };
+
+  const clearedOrTombstonedKeys = new Set<string>();
+  for (const k of Object.keys(rec)) {
+    if (rec[k] === '' || rec[k] === null) {
+      clearedOrTombstonedKeys.add(k);
+    }
+  }
+  for (const k of Object.keys(rawExtraFields)) {
+    if (rawExtraFields[k] === null) {
+      clearedOrTombstonedKeys.add(k);
+    }
+  }
+
+  const filteredMetadata: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(rawMetadata)) {
+    if (!clearedOrTombstonedKeys.has(k)) {
+      filteredMetadata[k] = v;
+    }
+  }
+
+  const ef: Record<string, unknown> = { ...filteredMetadata, ...rawExtraFields };
+  const mapped: Record<string, unknown> = { ...filteredMetadata, ...rec };
 
   const unmappedFieldsLower = new Set<string>();
   for (const k of Object.keys(ef)) {
@@ -223,7 +324,7 @@ export function mergeRawItemPartials(rec: Record<string, unknown>): {
     mapped.extraFields = { ...ef };
     for (const k of efKeys) {
       const normKey = k.toLowerCase().replace(/[\s_-]+/g, '');
-      if (unmappedFieldsLower.has(normKey)) {
+      if (unmappedFieldsLower.has(normKey) || clearedOrTombstonedKeys.has(k)) {
         continue;
       }
       if (
@@ -254,7 +355,11 @@ export function hasExplicitUserStateInPayload(
     rec.isFavorite !== undefined ||
     rec.isRead !== undefined ||
     rec.readStatus !== undefined ||
-    rec.rating !== undefined
+    rec.rating !== undefined ||
+    rec.currentPage !== undefined ||
+    rec.lastReadPage !== undefined ||
+    rec.scrollPosition !== undefined ||
+    rec.lastOpenedAt !== undefined
   );
 }
 

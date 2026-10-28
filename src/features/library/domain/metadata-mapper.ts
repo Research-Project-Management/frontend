@@ -19,6 +19,7 @@ import {
   CANONICAL_SCALAR_PROJECTIONS,
   EMPTY_BACKEND_ITEM_DEFAULTS,
   pickFirstValidField,
+  hydrateIdentifiersFromRelationalArray,
   mergeRawItemPartials,
   hasExplicitUserStateInPayload,
   getAssignedCollectionIds,
@@ -36,12 +37,115 @@ export {
   CANONICAL_SCALAR_PROJECTIONS,
   EMPTY_BACKEND_ITEM_DEFAULTS,
   pickFirstValidField,
+  hydrateIdentifiersFromRelationalArray,
   mergeRawItemPartials,
   hasExplicitUserStateInPayload,
   getAssignedCollectionIds,
   type ProvisionalUploadItemInput,
   createProvisionalUploadItem,
 };
+
+const CONTAINER_VENUE_FIELD_BY_TYPE: Readonly<Record<string, string>> = {
+  conferencePaper: 'proceedingsTitle',
+  bookSection: 'bookTitle',
+  webpage: 'websiteTitle',
+  blogPost: 'blogTitle',
+  forumPost: 'forumTitle',
+  dictionaryEntry: 'dictionaryTitle',
+  encyclopediaArticle: 'encyclopediaTitle',
+  presentation: 'sessionTitle',
+  case: 'reporter',
+  statute: 'code',
+  tvBroadcast: 'programTitle',
+  radioBroadcast: 'programTitle',
+  podcast: 'seriesTitle',
+  audioRecording: 'seriesTitle',
+};
+
+/**
+ * Bidirectionally projects `publicationTitle` and type-specific container/venue titles
+ * (including `programTitle` for `tvBroadcast`/`radioBroadcast` and `seriesTitle` for `podcast`/`audioRecording`)
+ * whenever the target field is not already populated or explicitly tombstoned (`null` / `""`).
+ */
+export function projectContainerAndVenueTitles(
+  mapped: Record<string, unknown>,
+  rec: Record<string, unknown>,
+  ef: Record<string, unknown>,
+): void {
+  if (!isValidValue(mapped.publicationTitle)) {
+    const isPubTitleTombstoned =
+      ('publicationTitle' in rec &&
+        (rec.publicationTitle === '' || rec.publicationTitle === null)) ||
+      ef.publicationTitle === null;
+    if (!isPubTitleTombstoned) {
+      const containerTitle = pickFirstValidField(
+        rec,
+        ef,
+        CONTAINER_TITLE_CANDIDATE_KEYS,
+      );
+      if (isValidValue(containerTitle)) {
+        mapped.publicationTitle = stripLatexMarkup(
+          String(containerTitle).trim(),
+        );
+      }
+    }
+  }
+
+  const rawItemType =
+    typeof mapped.itemType === 'string'
+      ? mapped.itemType.trim()
+      : typeof rec.itemType === 'string'
+        ? rec.itemType.trim()
+        : '';
+  const canonicalType = rawItemType
+    ? normalizeCanonicalItemType(rawItemType)
+    : '';
+  const targetVenueField =
+    CONTAINER_VENUE_FIELD_BY_TYPE[canonicalType] ||
+    CONTAINER_VENUE_FIELD_BY_TYPE[rawItemType];
+  if (!targetVenueField) return;
+
+  const targetVenueFields =
+    canonicalType === 'presentation' || rawItemType === 'presentation'
+      ? ['sessionTitle', 'meetingName']
+      : [targetVenueField];
+
+  for (const venueField of targetVenueFields) {
+    const isTargetTombstoned =
+      (venueField in rec &&
+        (rec[venueField] === '' || rec[venueField] === null)) ||
+      ef[venueField] === null;
+    if (isTargetTombstoned) continue;
+
+    if (!isValidValue(mapped[venueField])) {
+      const pubTitle = pickFirstValidField(rec, ef, [
+        venueField,
+        ...(canonicalType === 'presentation' || rawItemType === 'presentation'
+          ? ['sessionTitle', 'meetingName']
+          : []),
+        'publicationTitle',
+        'containerTitle',
+        'journal',
+      ]);
+      const effectiveVal = isValidValue(pubTitle)
+        ? pubTitle
+        : mapped.publicationTitle;
+      if (isValidValue(effectiveVal)) {
+        const cleanVal = stripLatexMarkup(String(effectiveVal).trim());
+        mapped[venueField] = cleanVal;
+        ef[venueField] = cleanVal;
+        const currentEfObj =
+          mapped.extraFields && typeof mapped.extraFields === 'object'
+            ? (mapped.extraFields as Record<string, unknown>)
+            : {};
+        mapped.extraFields = {
+          ...currentEfObj,
+          [venueField]: cleanVal,
+        };
+      }
+    }
+  }
+}
 
 /**
  * Step 2 of `mapBackendItem`: Projects Zotero Schema v42 base fields and legacy backend aliases
@@ -91,7 +195,11 @@ function projectCanonicalBaseFields(
           creatorType?: string;
         }>,
       );
-  if (
+  if (hasExplicitEmptyCreators) {
+    mapped.authors = [];
+    mapped.creators = [];
+    mapped.contributors = [];
+  } else if (
     normalizedAuthors.length > 0 &&
     (!Array.isArray(rec.authors) || rec.authors.length === 0)
   ) {
@@ -335,17 +443,21 @@ function projectCanonicalBaseFields(
   if (mapped.notesCount === undefined && typeof rec.noteCount === 'number') {
     mapped.notesCount = rec.noteCount;
   }
+  const resolvedIsMyPublication = Boolean(
+    rec.isMyPublication === true ||
+      rec.isInMyPublications === true ||
+      rec.inPublications === true ||
+      ef.isMyPublication === true ||
+      ef.isInMyPublications === true ||
+      ef.inPublications === true ||
+      mapped.isMyPublication === true ||
+      mapped.isInMyPublications === true ||
+      mapped.inPublications === true,
+  );
+  mapped.isMyPublication = resolvedIsMyPublication;
+  mapped.isInMyPublications = resolvedIsMyPublication;
 
-  if (!isValidValue(mapped.publicationTitle)) {
-    const containerTitle = pickFirstValidField(
-      rec,
-      ef,
-      CONTAINER_TITLE_CANDIDATE_KEYS,
-    );
-    if (isValidValue(containerTitle)) {
-      mapped.publicationTitle = stripLatexMarkup(String(containerTitle).trim());
-    }
-  }
+  projectContainerAndVenueTitles(mapped, rec, ef);
 
   if (!isValidValue(rec.publisher)) {
     const rawPublisher = pickFirstValidField(rec, ef, PUBLISHER_CANDIDATE_KEYS);
@@ -395,7 +507,7 @@ export function mapBackendItem(
     return { ...EMPTY_BACKEND_ITEM_DEFAULTS };
   }
 
-  const rec = raw as Record<string, unknown>;
+  const rec = { ...(raw as Record<string, unknown>) };
   const hasExplicitUserState = hasExplicitUserStateInPayload(rec);
   const rawStates = Array.isArray(rec.states)
     ? rec.states
@@ -408,21 +520,67 @@ export function mapBackendItem(
       : undefined;
 
   const { mapped, ef } = mergeRawItemPartials(rec);
-  if (firstState) {
-    if (mapped.isStarred === undefined && typeof firstState.isStarred === 'boolean') {
-      mapped.isStarred = firstState.isStarred;
-      mapped.isFavorite = firstState.isStarred;
+  hydrateIdentifiersFromRelationalArray(rec, ef);
+  if (Object.keys(ef).length > 0) {
+    mapped.extraFields = {
+      ...(mapped.extraFields && typeof mapped.extraFields === 'object'
+        ? (mapped.extraFields as Record<string, unknown>)
+        : {}),
+      ...ef,
+    };
+  }
+  const rawReadingState =
+    rec.readingState && typeof rec.readingState === 'object'
+      ? (rec.readingState as Record<string, unknown>)
+      : rec.state && typeof rec.state === 'object'
+        ? (rec.state as Record<string, unknown>)
+        : undefined;
+  const stateSource = firstState ?? rawReadingState;
+  if (stateSource) {
+    if (mapped.isStarred === undefined && typeof stateSource.isStarred === 'boolean') {
+      mapped.isStarred = stateSource.isStarred;
+      mapped.isFavorite = stateSource.isStarred;
     }
-    if (mapped.readStatus === undefined && typeof firstState.readStatus === 'string') {
-      mapped.readStatus = firstState.readStatus;
-      mapped.isRead = firstState.readStatus === 'completed';
+    if (mapped.readStatus === undefined && typeof stateSource.readStatus === 'string') {
+      mapped.readStatus = stateSource.readStatus;
+      mapped.isRead = stateSource.readStatus === 'completed';
     }
-    if (mapped.rating === undefined && typeof firstState.rating === 'number') {
-      mapped.rating = firstState.rating;
+    if (mapped.rating === undefined && typeof stateSource.rating === 'number') {
+      mapped.rating = stateSource.rating;
     }
-    if (mapped.lastReadAt === undefined && firstState.lastReadAt !== undefined) {
-      mapped.lastReadAt = firstState.lastReadAt;
+    if (mapped.lastReadAt === undefined && stateSource.lastReadAt !== undefined) {
+      mapped.lastReadAt = stateSource.lastReadAt;
     }
+  }
+  const resolvedCurrentPage =
+    typeof rec.currentPage === 'number'
+      ? rec.currentPage
+      : typeof stateSource?.currentPage === 'number'
+        ? stateSource.currentPage
+        : typeof rec.lastReadPage === 'number'
+          ? rec.lastReadPage
+          : typeof stateSource?.lastReadPage === 'number'
+            ? stateSource.lastReadPage
+            : undefined;
+  if (resolvedCurrentPage !== undefined) {
+    if (mapped.currentPage === undefined) mapped.currentPage = resolvedCurrentPage;
+    if (mapped.lastReadPage === undefined) mapped.lastReadPage = resolvedCurrentPage;
+  }
+  const resolvedScrollPosition =
+    rec.scrollPosition !== undefined
+      ? rec.scrollPosition
+      : stateSource?.scrollPosition;
+  if (resolvedScrollPosition !== undefined && mapped.scrollPosition === undefined) {
+    mapped.scrollPosition = resolvedScrollPosition;
+  }
+  const resolvedLastOpenedAt =
+    typeof rec.lastOpenedAt === 'string' || rec.lastOpenedAt === null
+      ? rec.lastOpenedAt
+      : typeof stateSource?.lastOpenedAt === 'string' || stateSource?.lastOpenedAt === null
+        ? stateSource.lastOpenedAt
+        : undefined;
+  if (resolvedLastOpenedAt !== undefined && mapped.lastOpenedAt === undefined) {
+    mapped.lastOpenedAt = resolvedLastOpenedAt;
   }
   projectCanonicalBaseFields(mapped, rec, ef);
 
@@ -459,26 +617,79 @@ export function mapBackendItem(
         : EMPTY_BACKEND_ITEM_DEFAULTS.updatedAt,
   };
 
-  Object.defineProperty(result, '_hasExplicitUserState', {
-    value: hasExplicitUserState,
-    enumerable: false,
-    configurable: true,
-    writable: true,
-  });
-
-  Object.defineProperty(result, '_isFullBackendItem', {
-    value: true,
-    enumerable: false,
-    configurable: true,
-    writable: true,
+  setMappedItemMeta(result, {
+    isFullBackendItem: true,
+    hasExplicitUserState,
   });
 
   return result;
 }
 
+export interface MappedItemMeta {
+  isFullBackendItem?: boolean;
+  hasExplicitUserState?: boolean;
+}
+
+const MAPPED_ITEM_META = new WeakMap<object, MappedItemMeta>();
+
+export function setMappedItemMeta<T extends object>(
+  target: T | null | undefined,
+  meta: MappedItemMeta,
+): T {
+  if (!target || typeof target !== 'object') return target as unknown as T;
+  const current = MAPPED_ITEM_META.get(target) || {};
+  const next: MappedItemMeta = {
+    ...current,
+    ...(meta.isFullBackendItem !== undefined
+      ? { isFullBackendItem: meta.isFullBackendItem }
+      : {}),
+    ...(meta.hasExplicitUserState !== undefined
+      ? { hasExplicitUserState: meta.hasExplicitUserState }
+      : {}),
+  };
+  MAPPED_ITEM_META.set(target, next);
+
+  if (meta.isFullBackendItem !== undefined) {
+    Object.defineProperty(target, '_isFullBackendItem', {
+      value: Boolean(meta.isFullBackendItem),
+      enumerable: false,
+      configurable: true,
+      writable: true,
+    });
+  }
+  if (meta.hasExplicitUserState !== undefined) {
+    Object.defineProperty(target, '_hasExplicitUserState', {
+      value: Boolean(meta.hasExplicitUserState),
+      enumerable: false,
+      configurable: true,
+      writable: true,
+    });
+  }
+  return target;
+}
+
+export function getMappedItemMeta(
+  source: unknown,
+): MappedItemMeta | undefined {
+  if (!source || typeof source !== 'object') return undefined;
+  const fromMap = MAPPED_ITEM_META.get(source);
+  const srcRec = source as Record<string, unknown>;
+  const hasFullProp = '_isFullBackendItem' in srcRec;
+  const hasExplicitProp = '_hasExplicitUserState' in srcRec;
+  if (!fromMap && !hasFullProp && !hasExplicitProp) return undefined;
+  return {
+    isFullBackendItem: hasFullProp
+      ? Boolean(srcRec._isFullBackendItem)
+      : fromMap?.isFullBackendItem,
+    hasExplicitUserState: hasExplicitProp
+      ? Boolean(srcRec._hasExplicitUserState)
+      : fromMap?.hasExplicitUserState,
+  };
+}
+
 /**
- * Copies non-enumerable `_isFullBackendItem` and `_hasExplicitUserState` metadata flags
- * from a mapped backend item onto a cloned/spread target object.
+ * Copies `_isFullBackendItem` and `_hasExplicitUserState` metadata flags
+ * from a mapped backend item onto a cloned/spread target object via WeakMap + property descriptors.
  */
 export function preserveMappedItemFlags<T extends object>(
   source: unknown,
@@ -487,22 +698,9 @@ export function preserveMappedItemFlags<T extends object>(
   if (!source || typeof source !== 'object' || !target || typeof target !== 'object') {
     return target;
   }
-  const srcRec = source as Record<string, unknown>;
-  if ('_isFullBackendItem' in srcRec) {
-    Object.defineProperty(target, '_isFullBackendItem', {
-      value: Boolean(srcRec._isFullBackendItem),
-      enumerable: false,
-      configurable: true,
-      writable: true,
-    });
-  }
-  if ('_hasExplicitUserState' in srcRec) {
-    Object.defineProperty(target, '_hasExplicitUserState', {
-      value: Boolean(srcRec._hasExplicitUserState),
-      enumerable: false,
-      configurable: true,
-      writable: true,
-    });
+  const meta = getMappedItemMeta(source);
+  if (meta) {
+    setMappedItemMeta(target, meta);
   }
   return target;
 }

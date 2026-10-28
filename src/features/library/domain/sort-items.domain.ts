@@ -12,15 +12,57 @@
  */
 
 import type { Item } from '@/features/library/domain/types/library.types';
-import { isValidValue, stripLatexMarkup, getPublicationVenue } from '@/features/library/domain/metadata';
+import {
+  isValidValue,
+  stripLatexMarkup,
+  getPublicationVenue,
+  getItemDisplayTitle,
+  getItemDisplayDate,
+} from '@/features/library/domain/metadata';
 import { parseCreatorName } from '@/features/library/domain/creators';
+
+const FOUR_DIGIT_YEAR_RE = /\b(1[4-9]\d{2}|20\d{2}|2100)\b/;
+
+function extractFallbackYear(item: Item): number | null {
+  const candidates: unknown[] = [
+    item.publicationDate,
+    item.date,
+    item.issueDate,
+    getItemDisplayDate(item),
+  ];
+  for (const cand of candidates) {
+    if (typeof cand === 'string' && isValidValue(cand)) {
+      const m = FOUR_DIGIT_YEAR_RE.exec(cand);
+      if (m) {
+        const num = Number(m[1]);
+        if (!Number.isNaN(num) && num > 0) return num;
+      }
+    }
+  }
+  return null;
+}
 
 function extractSortableAuthor(item: Item): string | null {
   if (Array.isArray(item.creators) && item.creators.length > 0) {
     const first = item.creators[0];
     if (first) {
-      const last = first.lastName || first.name || first.fullName || '';
-      if (isValidValue(last)) return stripLatexMarkup(last);
+      if (first.fieldMode === 1) {
+        const inst = first.lastName || first.fullName || first.name || '';
+        if (isValidValue(inst)) return stripLatexMarkup(inst);
+      }
+      if (isValidValue(first.lastName)) {
+        const firstPart = isValidValue(first.firstName) ? ` ${first.firstName}` : '';
+        return stripLatexMarkup(`${first.lastName}${firstPart}`.trim());
+      }
+      const rawFull = first.fullName || first.name || '';
+      if (isValidValue(rawFull)) {
+        const parsed = parseCreatorName(rawFull);
+        if (parsed.isInstitution) {
+          return stripLatexMarkup(parsed.fullName || parsed.lastName);
+        }
+        const firstPart = parsed.firstName ? ` ${parsed.firstName}` : '';
+        return stripLatexMarkup(`${parsed.lastName || parsed.fullName}${firstPart}`.trim());
+      }
     }
   }
   if (Array.isArray(item.authors) && item.authors.length > 0) {
@@ -28,20 +70,36 @@ function extractSortableAuthor(item: Item): string | null {
     if (typeof first === 'string' && isValidValue(first)) {
       const commaIdx = first.indexOf(',');
       if (commaIdx > 0 && !first.includes('\\') && !first.includes('{')) {
-        return first.slice(0, commaIdx).trim();
+        const last = first.slice(0, commaIdx).trim();
+        const firstPart = first.slice(commaIdx + 1).trim();
+        return firstPart ? `${last} ${firstPart}` : last;
       }
       const parsed = parseCreatorName(first);
-      return parsed.lastName || parsed.fullName;
+      if (parsed.isInstitution) return parsed.fullName || parsed.lastName;
+      const firstPart = parsed.firstName ? ` ${parsed.firstName}` : '';
+      return `${parsed.lastName || parsed.fullName}${firstPart}`.trim();
     }
     if (typeof first === 'object' && first !== null) {
       const obj = first as Record<string, unknown>;
-      const name = String(obj.lastName || obj.family || obj.name || obj.fullName || '');
-      if (isValidValue(name)) return stripLatexMarkup(name);
+      const last = String(obj.lastName || obj.family || '');
+      const given = String(obj.firstName || obj.given || '');
+      if (isValidValue(last)) {
+        return stripLatexMarkup(isValidValue(given) ? `${last} ${given}`.trim() : last);
+      }
+      const rawFull = String(obj.name || obj.fullName || '');
+      if (isValidValue(rawFull)) {
+        const parsed = parseCreatorName(rawFull);
+        if (parsed.isInstitution) return stripLatexMarkup(parsed.fullName || parsed.lastName);
+        const firstPart = parsed.firstName ? ` ${parsed.firstName}` : '';
+        return stripLatexMarkup(`${parsed.lastName || parsed.fullName}${firstPart}`.trim());
+      }
     }
   }
   if (typeof item.firstAuthor === 'string' && isValidValue(item.firstAuthor)) {
     const parsed = parseCreatorName(item.firstAuthor);
-    return parsed.lastName || parsed.fullName;
+    if (parsed.isInstitution) return parsed.fullName || parsed.lastName;
+    const firstPart = parsed.firstName ? ` ${parsed.firstName}` : '';
+    return `${parsed.lastName || parsed.fullName}${firstPart}`.trim();
   }
   return null;
 }
@@ -59,12 +117,18 @@ function normalizeSortString(raw: string): string {
 // Fields that map to different internal property names
 const SORT_FIELD_ALIASES: Partial<Record<string, (item: Item) => unknown>> = {
   authors: (item) => extractSortableAuthor(item),
-  title: (item) => (item.title && isValidValue(item.title) ? item.title : null),
+  title: (item) => {
+    const displayTitle = getItemDisplayTitle(item);
+    if (displayTitle && isValidValue(displayTitle)) return displayTitle;
+    return item.title && isValidValue(item.title) ? item.title : null;
+  },
   year: (item) => {
     const y = item.year;
-    if (!isValidValue(y)) return null;
-    const num = Number(y);
-    return !isNaN(num) && num > 0 ? num : null;
+    if (isValidValue(y)) {
+      const num = Number(y);
+      if (!isNaN(num) && num > 0) return num;
+    }
+    return extractFallbackYear(item);
   },
   dateAdded: (item) => item.createdAt,
   dateModified: (item) => item.updatedAt,
@@ -201,4 +265,3 @@ export function sortLibraryItems(
   const sortedRegular = decorated.map((d) => d.item);
   return processing.length > 0 ? [...processing, ...sortedRegular] : sortedRegular;
 }
-

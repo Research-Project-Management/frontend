@@ -112,31 +112,36 @@ export async function pollIngestionRunCompletion(
       const statusPayload = runStatus as {
         data?: {
           status?: string;
+          resolutionStatus?: string;
           title?: string;
           itemId?: string;
           lastError?: string;
           errorMessage?: string;
         };
         status?: string;
+        resolutionStatus?: string;
         title?: string;
         itemId?: string;
         lastError?: string;
         errorMessage?: string;
       } | null;
-      const statusData = statusPayload?.data || statusPayload;
-      const currentStatus = (statusData?.status || '').toUpperCase();
+      const currentRun = statusPayload?.data || statusPayload;
+      const currentStatus = (currentRun?.status || '').toUpperCase();
+      const currentResolutionStatus = (currentRun?.resolutionStatus || '').toUpperCase();
 
       if (
         currentStatus === 'COMPLETED' ||
         currentStatus === 'READY' ||
         currentStatus === 'SUCCEEDED' ||
+        currentRun?.resolutionStatus === 'NEEDS_REVIEW' ||
+        currentResolutionStatus === 'NEEDS_REVIEW' ||
         currentStatus === 'NEEDS_REVIEW'
       ) {
-        if (statusData?.title && statusData.title !== 'Uploaded Document') {
-          finalTitle = statusData.title;
+        if (currentRun?.title && currentRun.title !== 'Uploaded Document') {
+          finalTitle = currentRun.title;
         }
-        if (statusData?.itemId) {
-          finalItemId = statusData.itemId;
+        if (currentRun?.itemId) {
+          finalItemId = currentRun.itemId;
         }
         return { ok: true, title: finalTitle, itemId: finalItemId };
       }
@@ -149,7 +154,7 @@ export async function pollIngestionRunCompletion(
       ) {
         return {
           ok: false,
-          error: statusData?.lastError || statusData?.errorMessage || 'Extraction failed',
+          error: currentRun?.lastError || currentRun?.errorMessage || 'Extraction failed',
         };
       }
     } catch (err: unknown) {

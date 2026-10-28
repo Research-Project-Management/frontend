@@ -10,7 +10,7 @@ import {
 import {
   getLibraryPermissions,
 } from '@/features/library/domain/library-permissions.policy';
-import { buildCollectionTree, getDescendantCollectionIds, getCollectionBreadcrumbPath, canMoveCollection } from '@/features/library/domain/collection-tree.domain';
+import { buildCollectionTree, getDescendantCollectionIds, getCollectionBreadcrumbPath, canMoveCollection } from '@/features/library/domain/collection-tree';
 import {
   filterItemsBySavedSearch,
   type SavedSearchConditionGroup,

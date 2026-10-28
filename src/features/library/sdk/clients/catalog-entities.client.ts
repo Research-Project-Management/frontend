@@ -16,9 +16,11 @@ import type {
 import {
   libraryClient,
   resolveLibraryUrl,
+  getBasePath,
   getCatalogUrl,
   getExportsUrl,
   isProjectScope,
+  mapBackendItem,
 } from './http.client';
 
 // 2. CollectionsService
@@ -166,6 +168,7 @@ export const TagsService = {
     name: string,
     color?: string,
     type: string = 'manual',
+    shortcut?: number | null,
   ): Promise<TagWithCount> => {
     const raw = await libraryClient.post<
       TagWithCount | { data?: TagWithCount; tag?: TagWithCount }
@@ -175,6 +178,7 @@ export const TagsService = {
         name,
         color,
         type,
+        ...(shortcut !== undefined ? { shortcut } : {}),
         ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
       },
     );
@@ -371,19 +375,47 @@ export const NotesService = {
     scopeId: string | undefined,
     itemId: string,
     options?: { noteId?: string; tagColor?: boolean; tagColorName?: string; includeComments?: boolean },
-  ): Promise<Note> => {
-    const raw = await libraryClient.post<Note | { success?: boolean; data?: Note; note?: Note }>(
-      getNotesUrl(scopeId, `items/${encodeURIComponent(itemId)}/from-annotations`),
-      options || {},
-    );
-    return unwrapNoteResponse(raw);
+  ): Promise<Note & { totalExtracted?: number; note?: Note }> => {
+    try {
+      const endpoint = `${getBasePath(scopeId)}/notes/items/${encodeURIComponent(itemId)}/from-annotations`;
+      const raw = await libraryClient.post<
+        | Note
+        | {
+            success?: boolean;
+            data?: Note;
+            note?: Note;
+            literatureNote?: Note;
+            totalExtracted?: number;
+          }
+      >(endpoint, options || {});
+      const note = unwrapNoteResponse(raw);
+      const rawObj = raw && typeof raw === 'object' ? (raw as { totalExtracted?: number }) : undefined;
+      const totalExtracted =
+        typeof rawObj?.totalExtracted === 'number'
+          ? rawObj.totalExtracted
+          : note && (note as { id?: string }).id
+            ? 1
+            : 0;
+      return {
+        ...note,
+        totalExtracted,
+        note,
+      };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err ?? '');
+      if (/no.*annotations|empty.*annotations/i.test(msg)) {
+        return { totalExtracted: 0 } as unknown as Note & { totalExtracted?: number; note?: Note };
+      }
+      return Promise.reject(err);
+    }
   },
 
   extractNotes: (
     scopeId: string | undefined,
     itemId: string,
-    options?: { noteId?: string; tagColor?: boolean; includeComments?: boolean },
-  ): Promise<Note> => NotesService.extractFromAnnotations(scopeId, itemId, options),
+    options?: { noteId?: string; tagColor?: boolean; tagColorName?: string; includeComments?: boolean },
+  ): Promise<Note & { totalExtracted?: number; note?: Note }> =>
+    NotesService.extractFromAnnotations(scopeId, itemId, options),
 };
 
 // 5. StateService
@@ -487,17 +519,24 @@ export const SavedSearchesService = {
     scopeId: string | undefined,
     conditions: SavedSearchConditionGroup,
     options?: { sortBy?: string; sortOrder?: 'asc' | 'desc'; scopeOptions?: SavedSearchScopeOptions },
-  ) =>
-    libraryClient.post<SavedSearchPreviewResponse>(
-      resolveLibraryUrl('catalog', '/saved-searches/preview', scopeId),
-      {
-        conditions,
-        ...(options?.sortBy ? { sortBy: options.sortBy } : {}),
-        ...(options?.sortOrder ? { sortOrder: options.sortOrder } : {}),
-        ...(options?.scopeOptions || conditions.scopeOptions ? { scopeOptions: options?.scopeOptions || conditions.scopeOptions } : {}),
-        ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
-      },
-    ),
+  ): Promise<SavedSearchPreviewResponse> =>
+    libraryClient
+      .post<SavedSearchPreviewResponse>(
+        resolveLibraryUrl('catalog', '/saved-searches/preview', scopeId),
+        {
+          conditions,
+          ...(options?.sortBy ? { sortBy: options.sortBy } : {}),
+          ...(options?.sortOrder ? { sortOrder: options.sortOrder } : {}),
+          ...(options?.scopeOptions || conditions.scopeOptions ? { scopeOptions: options?.scopeOptions || conditions.scopeOptions } : {}),
+          ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
+        },
+      )
+      .then((res) => ({
+        ...res,
+        sampleItems: Array.isArray(res?.sampleItems)
+          ? res.sampleItems.map((it) => mapBackendItem(it))
+          : [],
+      })),
 
   getResults: (
     scopeId: string | undefined,
@@ -509,11 +548,18 @@ export const SavedSearchesService = {
       sortBy?: string;
       sortOrder?: string;
     },
-  ) =>
-    libraryClient.get<SavedSearchResultsResponse>(
-      resolveLibraryUrl('catalog', `/saved-searches/${encodeURIComponent(id)}/execute`, scopeId),
-      params ? { params } : undefined,
-    ),
+  ): Promise<SavedSearchResultsResponse> =>
+    libraryClient
+      .get<SavedSearchResultsResponse>(
+        resolveLibraryUrl('catalog', `/saved-searches/${encodeURIComponent(id)}/execute`, scopeId),
+        params ? { params } : undefined,
+      )
+      .then((res) => ({
+        ...res,
+        items: Array.isArray(res?.items)
+          ? res.items.map((it) => mapBackendItem(it))
+          : [],
+      })),
 
   execute: (scopeId: string | undefined, id: string, params?: { page?: number; limit?: number }) =>
     SavedSearchesService.getResults(scopeId, id, params),

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import type { DocumentFulltext } from "@/features/library/domain/types/reader.types";
 import type { ReaderTab } from "@/features/library/core/store/reader.store";
 
 export interface UseReaderTabHistoryOptions {
@@ -233,65 +232,9 @@ export function useReaderTabPresentation({
   };
 }
 
-export function resolveDocumentOcrState(
-  paper:
-    | {
-        attachments?: Array<{ id?: string; [key: string]: unknown }>;
-        [key: string]: unknown;
-      }
-    | null
-    | undefined,
-  effectiveAttachmentId: string | undefined,
-  fulltext: DocumentFulltext | null | undefined,
-  numPages: number,
-): {
-  isScanned: boolean;
-  ocrStatus: "pending" | "processing" | "ready" | "completed" | "none";
-} {
-  const primaryAttachment =
-    paper?.attachments?.find((a) => a.id === effectiveAttachmentId) ||
-    paper?.attachments?.[0];
+export {
+  type OcrStatus,
+  type DocumentOcrState,
+  resolveDocumentOcrState,
+} from "@/features/library/domain/reader.domain";
 
-  const primaryAttachmentRecord = primaryAttachment as
-    | Record<string, unknown>
-    | undefined;
-  const attachmentMeta = primaryAttachmentRecord?.metadata as
-    | Record<string, unknown>
-    | undefined;
-  const paperRecord = paper as Record<string, unknown> | null | undefined;
-  const paperMeta = paperRecord?.metadata as
-    | Record<string, unknown>
-    | undefined;
-
-  const isScanned = Boolean(
-    attachmentMeta?.isScanned ||
-      paperMeta?.isScanned ||
-      (fulltext &&
-        (!fulltext.sections || fulltext.sections.length === 0) &&
-        (!fulltext.abstract || fulltext.abstract.length === 0) &&
-        numPages > 0),
-  );
-
-  const rawExtractionStatus = (
-    primaryAttachment as Record<string, unknown> | undefined
-  )?.extractionStatus;
-  const rawOcrStatus =
-    (typeof rawExtractionStatus === "string"
-      ? rawExtractionStatus.toLowerCase()
-      : null) ||
-    (typeof attachmentMeta?.ocrStatus === "string"
-      ? attachmentMeta.ocrStatus
-      : null) ||
-    (typeof paperMeta?.ocrStatus === "string" ? paperMeta.ocrStatus : null) ||
-    "none";
-
-  const ocrStatus = (
-    ["pending", "processing", "ready", "completed", "none"].includes(
-      rawOcrStatus,
-    )
-      ? rawOcrStatus
-      : "none"
-  ) as "pending" | "processing" | "ready" | "completed" | "none";
-
-  return { isScanned, ocrStatus };
-}

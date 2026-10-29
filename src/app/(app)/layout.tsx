@@ -14,6 +14,10 @@ import ProjectLayout from '@/features/projects/shell/components/ProjectLayout';
 
 import { useAiCompanionStore } from '@/features/ai/store/ai-companion.store';
 
+const StickyDock = dynamic(() => import('@/features/shell/components/StickyDock'), {
+  ssr: false,
+});
+
 const AiCompanionSidebar = dynamic(
   () => import('@/features/ai/components/companion/AiCompanionSidebar'),
   { ssr: false, loading: () => null }
@@ -68,11 +72,14 @@ export default function AppLayout({
 
   if (isPaperReader) {
     return (
-      <div className='h-dvh w-full flex flex-col overflow-hidden bg-background' suppressHydrationWarning>
+      <div className='h-dvh w-full flex flex-col overflow-hidden bg-background relative' suppressHydrationWarning>
         <ErrorBoundary resetKeys={[pathname]} variant="full" featureName="Document Reader">
           <Suspense fallback={<AppLoading />}>
             {children}
           </Suspense>
+        </ErrorBoundary>
+        <ErrorBoundary fallback={null} featureName="Quick Tools Hub">
+          <StickyDock mode="floating" />
         </ErrorBoundary>
       </div>
     );

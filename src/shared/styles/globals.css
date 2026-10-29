@@ -1009,11 +1009,12 @@
 .react-pdf__Page {
   position: relative !important;
   margin: 0 auto;
-  background-color: var(--canvas) !important;
+  background-color: #ffffff !important;
 }
 
-:root:not(.dark) .react-pdf__Page__canvas {
-  mix-blend-mode: multiply;
+.react-pdf__Page__canvas {
+  display: block !important;
+  user-select: none;
 }
 
 .react-pdf__Page__textLayer,

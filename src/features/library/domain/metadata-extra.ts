@@ -20,6 +20,7 @@ import {
   FALLBACK_VENUE_FIELDS_BASE,
   getCandidateNormsForUnmappedField,
   collectUnmappedFieldsSet,
+  isDedicatedFieldForType,
 } from './metadata-extra.constants';
 import {
   isSystemInternalExtraKey,
@@ -176,10 +177,14 @@ export function buildExtraMetadataPatch(
 
   const isDedicated = (rawKey: string): boolean => {
     const norm = rawKey.trim().toLowerCase().replace(/[\s_-]+/g, '');
-    if (norm === 'extra' || ALLOWED_ITEM_EXTRA_LINE_KEYS.has(norm) || unmappedFields.has(norm)) {
+    if (ALLOWED_ITEM_EXTRA_LINE_KEYS.has(norm)) {
       return false;
     }
-    return dedicatedFieldsForType.has(norm);
+    return isDedicatedFieldForType(
+      rawKey,
+      dedicatedFieldsForType,
+      unmappedFields,
+    );
   };
 
   const resolveCanonicalKey = (norm: string, fallbackKey: string): string => {

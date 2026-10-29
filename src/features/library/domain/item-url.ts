@@ -48,13 +48,19 @@ export function getItemFileUrl(
 ): string {
   if (!item) return "";
 
+  const effectiveScope = isProjectScope(scopeId)
+    ? scopeId
+    : typeof item.projectId === "string" && isProjectScope(item.projectId)
+      ? item.projectId
+      : undefined;
+
   const normalizeUrl = (
     url?: string | null,
     fileId?: string | null,
   ): string => {
     if (fileId) {
-      return isProjectScope(scopeId)
-        ? `/api/v1/projects/${encodeURIComponent(scopeId)}/library/files/${encodeURIComponent(fileId)}/content`
+      return isProjectScope(effectiveScope)
+        ? `/api/v1/projects/${encodeURIComponent(effectiveScope)}/library/files/${encodeURIComponent(fileId)}/content`
         : `/api/v1/library/files/${encodeURIComponent(fileId)}/content`;
     }
     if (!url || typeof url !== "string") return "";
@@ -101,8 +107,8 @@ export function getItemFileUrl(
     (typeof metaObj?.fileId === "string" ? metaObj.fileId : undefined) ||
     (typeof metaObj?.file_id === "string" ? metaObj.file_id : undefined);
   if (resolvedDirectFileId) {
-    return isProjectScope(scopeId)
-      ? `/api/v1/projects/${encodeURIComponent(scopeId)}/library/files/${encodeURIComponent(resolvedDirectFileId)}/content`
+    return isProjectScope(effectiveScope)
+      ? `/api/v1/projects/${encodeURIComponent(effectiveScope)}/library/files/${encodeURIComponent(resolvedDirectFileId)}/content`
       : `/api/v1/library/files/${encodeURIComponent(resolvedDirectFileId)}/content`;
   }
 
@@ -118,13 +124,7 @@ export function getItemFileUrl(
     if (url) return url;
   }
 
-  // 5. Direct openAccessPdfUrl on item
-  if (item.openAccessPdfUrl) {
-    const oaUrl = normalizeUrl(item.openAccessPdfUrl);
-    if (oaUrl) return oaUrl;
-  }
-
-  // 6. arXiv fallback (use direct PDF download link without HTML redirect)
+  // 5. arXiv fallback (use direct PDF download link without HTML redirect)
   const arxivMatch =
     item.arxivId ||
     item.doi?.match(/arxiv\.(\d{4}\.\d{4,5}(?:v\d+)?)/i)?.[1] ||

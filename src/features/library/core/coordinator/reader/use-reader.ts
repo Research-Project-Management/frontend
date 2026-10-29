@@ -6,7 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/shared/lib/utils';
 import { usePdf } from './use-pdf';
-import { getItemFileUrl } from '@/features/library/sdk/library.client';
+import { getItemFileUrl, isProjectScope } from '@/features/library/domain/item-url';
 import {
   useReaderItem,
   useReaderFulltext,
@@ -34,10 +34,13 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
   const router = useRouter();
   const qc = useQueryClient();
   const activeScope = useLibraryUIStore((s) => s.activeScope);
+  const searchParams = useSearchParams();
+  const queryProjectId = searchParams?.get('projectId') || undefined;
   const isProject =
-    activeScope.type === 'project' || Boolean(params?.projectId);
+    activeScope.type === 'project' || Boolean(params?.projectId) || Boolean(queryProjectId);
   const rawProjectId =
     params?.projectId ||
+    queryProjectId ||
     (activeScope.type === 'project' ? activeScope.projectId || activeScope.id : undefined);
   const scopeId = normalizeScopeId(rawProjectId);
 
@@ -49,11 +52,18 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
   const paper = (paperQuery.data ?? null) as ReaderDocument | null;
   const isLoadingPapers = paperQuery.isLoading;
 
-  const fulltextQuery = useReaderFulltext(scopeId, effectivePaperId);
+  const effectiveScopeId = useMemo(() => {
+    if (isProjectScope(scopeId)) return scopeId;
+    if (paper?.projectId && isProjectScope(String(paper.projectId))) {
+      return String(paper.projectId);
+    }
+    return scopeId;
+  }, [scopeId, paper?.projectId]);
+
+  const fulltextQuery = useReaderFulltext(effectiveScopeId, effectivePaperId);
   const fulltext = fulltextQuery.data ?? null;
   const isLoadingFulltext = fulltextQuery.isLoading;
 
-  const searchParams = useSearchParams();
   const requestedAttachmentId = searchParams?.get('attachmentId') || undefined;
 
   const selectedAttachment = useMemo(() => {
@@ -78,15 +88,15 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
         selectedAttachment.url;
       if (downloadUrl) return downloadUrl;
     }
-    return getItemFileUrl(paper, scopeId);
-  }, [selectedAttachment, paper, scopeId]);
+    return getItemFileUrl(paper, effectiveScopeId);
+  }, [selectedAttachment, paper, effectiveScopeId]);
 
   const {
     blobUrl: pdfBlobUrl,
     isLoading: pdfLoading,
     error: pdfError,
     retry: handleRetryPdf,
-  } = usePdf(paperUrl || null);
+  } = usePdf(paperUrl || null, effectiveScopeId);
 
   const [pendingNoteText, setPendingNoteText] = useState('');
   const [bibtexOpen, setBibtexOpen] = useState(false);

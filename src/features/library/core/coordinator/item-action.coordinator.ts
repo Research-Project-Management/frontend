@@ -1,9 +1,10 @@
 'use client';
 
 import { useMemo, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { copyToClipboard } from '@/shared/lib/utils';
+import { openInNewTab } from '@/features/library/core/coordinator/browser-io.helpers';
+import { isProjectScope } from '@/features/library/domain/item-url';
 import { useCitationStyles } from '@/features/library/sdk/queries/citation.queries';
 import { useAssignCollectionItemsMutation } from '@/features/library/sdk/queries/collections.queries';
 import {
@@ -56,7 +57,6 @@ export function useItemActionHandlers(
     onAfterAction,
   } = options;
 
-  const router = useRouter();
   const effectiveScope = scopeId || item.projectId || 'user';
 
   const assignCollectionItemsMutation = useAssignCollectionItemsMutation(scopeId);
@@ -88,9 +88,11 @@ export function useItemActionHandlers(
     if (onOpenItem) {
       onOpenItem(item.id);
     } else {
-      router.push(`/library/papers/${item.id}`);
+      const projectId = item.projectId || (isProjectScope(effectiveScope) ? effectiveScope : undefined);
+      const qs = projectId ? `?projectId=${encodeURIComponent(String(projectId))}` : '';
+      openInNewTab(`/library/papers/${item.id}${qs}`);
     }
-  }, [item.id, onAfterAction, onOpenItem, router]);
+  }, [item.id, item.projectId, effectiveScope, onAfterAction, onOpenItem]);
 
   const handleCopyBibliography = useCallback(
     async (style: CslStyle = 'apa-7th') => {

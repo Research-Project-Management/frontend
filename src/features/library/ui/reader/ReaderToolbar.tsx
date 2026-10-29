@@ -186,10 +186,10 @@ export const ReaderToolbar = memo(function ReaderToolbar({
     <div
       role="toolbar"
       aria-label="Reader tools and navigation"
-      className="h-10 shrink-0 border-b border-border bg-background px-2 flex items-center justify-between gap-2 select-none z-20 text-12 font-sans"
+      className="relative h-10 shrink-0 border-b border-border bg-background px-2 flex items-center justify-between gap-2 select-none z-20 text-12 font-sans"
     >
       {/* ── 1. LEFT CLUSTER (.start): Sidebar | Zoom | Back | Page Nav ── */}
-      <div className="flex items-center gap-1 shrink-0">
+      <div className="flex items-center gap-1 shrink-0 z-10">
         <ToolbarIconButton
           onClick={onToggleSidebar}
           active={false}
@@ -309,7 +309,7 @@ export const ReaderToolbar = memo(function ReaderToolbar({
       </div>
 
       {/* ── 2. CENTER CLUSTER (.center.tools): Annotation Tools + Color + Tool Lock ── */}
-      <div className="flex items-center gap-1 bg-muted px-1.5 py-0.5 rounded-md border border-border shrink-0">
+      <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1 bg-muted px-1.5 py-0.5 rounded-md border border-border shrink-0 z-0">
         <ToolbarIconButton
           onClick={() => onSelectInteractionMode?.("select")}
           active={interactionMode === "select"}
@@ -402,7 +402,7 @@ export const ReaderToolbar = memo(function ReaderToolbar({
       </div>
 
       {/* ── 3. RIGHT CLUSTER (.end): Appearance (Aa) | Find (Ctrl+F) | Inspector Toggle ── */}
-      <div className="flex items-center gap-1 shrink-0">
+      <div className="flex items-center gap-1 shrink-0 z-10">
         <ReaderAppearanceMenu
           viewMode={viewMode}
           onSelectViewMode={onSelectViewMode}

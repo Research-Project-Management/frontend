@@ -44,7 +44,6 @@ interface ViewerProps {
   blobUrl: string | null;
   isLoading: boolean;
   error: string | null;
-  onRetry?: () => void;
   onAddToNote?: (
     selectedText: string,
     pageNumber?: number,
@@ -103,7 +102,7 @@ export default function Viewer({
   themeMode = "normal",
   interactionMode = "select",
   activeColor,
-  activeTool = "highlight",
+  activeTool = "select",
   isSearchOpen = false,
   onCloseSearch,
   initialSearchQuery,
@@ -463,7 +462,7 @@ export default function Viewer({
         )}
 
         {error || docError ? (
-          <div className="flex-1 flex items-center justify-center p-8">
+          <div className="flex-1 flex flex-col items-center justify-center p-8 gap-4">
             <PlaneErrorState
               title="Unable to load document"
               error={

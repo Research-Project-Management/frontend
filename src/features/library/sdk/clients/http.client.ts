@@ -362,7 +362,7 @@ function awaitWithSignal<T>(
 export const fetchPdfBlob = async (
   url: string,
   signal?: AbortSignal,
-  options?: { allowHtml?: boolean },
+  options?: { allowHtml?: boolean; scopeId?: string },
 ): Promise<Blob> => {
   if (!url || typeof url !== 'string') {
     throw new Error('Invalid document URL provided.');
@@ -452,6 +452,16 @@ export const fetchPdfBlob = async (
       headers.Authorization = `Bearer ${token}`;
     }
 
+    const effectiveScope = isProjectScope(options?.scopeId)
+      ? options?.scopeId
+      : (() => {
+          const match = normalizedTarget.match(/\/projects\/([^/?#]+)\//);
+          return match?.[1] && isProjectScope(match[1]) ? match[1] : undefined;
+        })();
+    if (effectiveScope && isTrustedOrigin && !isLocalStatic) {
+      headers['X-Project-Id'] = effectiveScope;
+    }
+
     const fetchTimeoutId = setTimeout(
       () => fetchTimeoutController.abort(),
       60_000,
@@ -464,23 +474,57 @@ export const fetchPdfBlob = async (
         signal: fetchTimeoutController.signal,
       });
     } catch (networkErr: unknown) {
-      clearTimeout(fetchTimeoutId);
       if (networkErr instanceof DOMException && networkErr.name === 'AbortError') {
+        clearTimeout(fetchTimeoutId);
         throw networkErr;
       }
-      const msg = networkErr instanceof Error ? networkErr.message : String(networkErr);
-      if (resolvedUrl.startsWith('http://') || resolvedUrl.startsWith('https://')) {
-        throw new Error(
-          `Unable to load PDF from external source due to browser security (CORS) or network error: ${msg}. You can open the original document directly in a new tab.`
-        );
+
+      // If direct fetch to an external URL failed (CORS or network error), fallback to internal proxy route
+      if (
+        (resolvedUrl.startsWith('http://') || resolvedUrl.startsWith('https://')) &&
+        !isTrustedOrigin
+      ) {
+        try {
+          const proxyUrl = `/api/library/pdf-proxy?url=${encodeURIComponent(resolvedUrl)}`;
+          response = await fetch(proxyUrl, {
+            credentials: 'same-origin',
+            signal: fetchTimeoutController.signal,
+          });
+        } catch {
+          clearTimeout(fetchTimeoutId);
+          const msg = networkErr instanceof Error ? networkErr.message : String(networkErr);
+          throw new Error(
+            `Unable to load PDF from external source due to browser security (CORS) or network error: ${msg}. You can open the original document directly in a new tab.`
+          );
+        }
+      } else {
+        clearTimeout(fetchTimeoutId);
+        const msg = networkErr instanceof Error ? networkErr.message : String(networkErr);
+        throw new Error(`Network error while downloading PDF: ${msg}`);
       }
-      throw new Error(`Network error while downloading PDF: ${msg}`);
     }
     clearTimeout(fetchTimeoutId);
 
     if (!response.ok) {
+      let errorDetail = '';
+      try {
+        const text = typeof response.text === 'function' ? await response.text() : '';
+        if (text.trim().startsWith('{')) {
+          const parsed = JSON.parse(text) as Record<string, unknown>;
+          errorDetail = (parsed?.message || parsed?.error || '') as string;
+        } else if (text.trim().length > 0 && !text.includes('<!DOCTYPE') && !text.includes('<html')) {
+          errorDetail = text.slice(0, 140);
+        }
+      } catch {
+        // Ignore parse failure
+      }
+
+      if (errorDetail) {
+        throw new Error(errorDetail);
+      }
+
       if (response.status === 401) throw new Error('Unauthorized: Session expired or invalid authentication.');
-      if (response.status === 403) throw new Error('Forbidden: You do not have permission to view this document.');
+      if (response.status === 403) throw new Error('Forbidden: Access to this document was blocked or not permitted.');
       if (response.status === 404) throw new Error('Not Found: The requested document could not be found.');
       throw new Error(`Failed to fetch PDF (${response.status}): ${response.statusText}`);
     }

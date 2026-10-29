@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { openInNewTab } from '@/features/library/core/coordinator/browser-io.helpers';
 import {
   GitMerge,
   Layers,
@@ -174,8 +174,6 @@ export function DuplicatesContent({
   onDismissGroup,
   onSelectedGroupChange,
 }: DuplicatesContentProps) {
-  const router = useRouter();
-
   const activeItemId = useLibraryUIStore((s) => s.activeItemId);
   const setActiveItem = useLibraryUIStore((s) => s.setActiveItem);
   const openModal = useLibraryUIStore((s) => s.openModal);
@@ -674,7 +672,7 @@ export function DuplicatesContent({
                           setSelectedGroupKey(groupKey);
                           setActiveItem(item.id);
                         }}
-                        onDoubleClick={() => router.push(`/library/papers/${item.id}`)}
+                        onDoubleClick={() => openInNewTab(`/library/papers/${item.id}${item.projectId ? `?projectId=${encodeURIComponent(String(item.projectId))}` : ""}`)}
                         className={cn(
                           'flex items-center justify-between gap-4 px-5 py-3 cursor-pointer transition-colors text-13',
                           isSelected
@@ -714,7 +712,7 @@ export function DuplicatesContent({
                                 size="icon"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  router.push(`/library/papers/${item.id}`);
+                                  openInNewTab(`/library/papers/${item.id}${item.projectId ? `?projectId=${encodeURIComponent(String(item.projectId))}` : ""}`);
                                 }}
                                 className="size-7 text-foreground hover:bg-muted cursor-pointer"
                                 aria-label="Open in Reader"

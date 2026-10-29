@@ -115,7 +115,7 @@ export const ViewerPageCanvas = React.memo(function ViewerPageCanvas({
       onMouseMove={(e) => onPageMouseMove(e, pageNum)}
       onMouseUp={(e) => onPageMouseUp(e, pageNum)}
       className={cn(
-        'bg-background overflow-hidden transition-all relative shrink-0 mx-auto',
+        'bg-white overflow-hidden transition-all relative shrink-0 mx-auto shadow-xs',
         themeMode === 'dark' && 'invert-[0.9] hue-rotate-180 contrast-90 brightness-95',
         themeMode === 'sepia' && 'sepia-[0.3] contrast-95 brightness-95',
         (activeTool === 'area' || activeTool === 'note') && 'cursor-crosshair select-none',

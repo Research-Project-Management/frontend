@@ -6,6 +6,7 @@ import { resolveEpubOrSnapshot } from "@/features/library/domain/reader.domain";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
+import { openInNewTab } from "@/features/library/core/coordinator/browser-io.helpers";
 import { cn } from "@/shared/lib/utils";
 import { Loader2 } from "lucide-react";
 import { PlaneEmptyState } from "@/shared/components/ui/PlaneEmptyState";
@@ -433,16 +434,15 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
 
   const handleSelectItem = useCallback(
     (id: string) => {
-      router.push(getPaperUrl(id));
+      openInNewTab(getPaperUrl(id));
     },
-    [router, getPaperUrl],
+    [getPaperUrl],
   );
 
   const sharedViewerProps = {
     blobUrl: pdfBlobUrl,
     isLoading: pdfLoading,
     error: pdfError,
-    onRetry: handleRetryPdf,
     onAddToNote: handleAddToNote,
     onAnnotate: handleAnnotateWithLock,
     annotations,
@@ -615,8 +615,9 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
             )
           ) : (
             <PlaneEmptyState
-              variant="document" title={paper.title || "Paper Reference"}
-              description="No PDF, EPUB, or Web Snapshot attached to this entry. You can review metadata or notes using the side panel."
+              variant="document"
+              title={paper.title || "Paper Reference"}
+              description="No local PDF, EPUB, or Web Snapshot attached to this entry. You can review metadata and notes in the inspector panel, or upload a PDF file."
             />
           )}
         </main>

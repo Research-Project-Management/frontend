@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { useRouter, useParams, useSearchParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { getItemFileUrl } from '@/features/library/domain/item-url';
+import { getItemFileUrl, isProjectScope } from '@/features/library/domain/item-url';
 import { resolveLibraryUrl, resolveLibraryRawPath } from '@/features/library/sdk/library.client';
-import { triggerBrowserUrlDownload } from '@/features/library/core/coordinator/browser-io.helpers';
+import { triggerBrowserUrlDownload, openInNewTab } from '@/features/library/core/coordinator/browser-io.helpers';
 import {
   useAttachments,
   useRenameAttachment,
@@ -56,7 +56,6 @@ export function useAttachmentCoordinator({
   scopeId,
   onRegisterAdd,
 }: UseAttachmentCoordinatorParams) {
-  const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
   const routeProjectId = typeof params?.projectId === 'string' ? params.projectId : undefined;
@@ -132,23 +131,8 @@ export function useAttachmentCoordinator({
       deduped.push(att);
     }
 
-    // Fallback synthetic entry only when item has a direct file/openAccessPdfUrl without an attachment row
-    if (deduped.length === 0 && paperUrl) {
-      deduped.push({
-        id: '',
-        itemId: paper.id || '',
-        filename: paperFilename || (paper.openAccessPdfUrl ? 'Open Access PDF' : 'PDF'),
-        url: paperUrl,
-        fileUrl: paperUrl,
-        size: 0,
-        mimeType: 'application/pdf',
-        linkMode: 'imported_file',
-        attachmentType: 'primary_pdf',
-      });
-    }
-
     return deduped;
-  }, [rawAttachments, paperUrl, paper.id, paperFilename, paper.openAccessPdfUrl]);
+  }, [rawAttachments]);
 
   const primaryAttachment = useMemo(() => {
     return (
@@ -191,7 +175,8 @@ export function useAttachmentCoordinator({
       const resolved = resolveAttachmentUrl(activePreviewAttachment, rawScopeId);
       if (resolved) return resolved;
     }
-    return paperUrl;
+    // Only return paperUrl if paper actually has a direct file attachment / resolved file URL
+    return paperUrl || '';
   }, [activePreviewAttachment, rawScopeId, paperUrl]);
 
   const hasSnapshot = useMemo(() => {
@@ -300,10 +285,17 @@ export function useAttachmentCoordinator({
       } else {
         urlParams.delete('attachmentId');
       }
+      const projectParam =
+        urlParams.get('projectId') ||
+        (paper.projectId ? String(paper.projectId) : undefined) ||
+        (rawScopeId && isProjectScope(rawScopeId) ? rawScopeId : undefined);
+      if (projectParam && !urlParams.has('projectId')) {
+        urlParams.set('projectId', projectParam);
+      }
       const qs = urlParams.toString();
-      router.push(`/library/papers/${paper.id}${qs ? `?${qs}` : ''}`);
+      openInNewTab(`/library/papers/${paper.id}${qs ? `?${qs}` : ''}`);
     },
-    [paper.id, allAttachments.length, router, searchParams],
+    [paper.id, paper.projectId, rawScopeId, allAttachments.length, searchParams],
   );
 
   const handleDownload = useCallback((url: string, filename: string) => {

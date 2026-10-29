@@ -99,51 +99,13 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
     allAttachments.length === 0 &&
     !isAddingLink
   ) {
-    if (hideHeader) {
-      return (
-        <input
-          ref={fileInputRef}
-          type="file"
-          className="hidden"
-          onChange={handleFileSelect}
-        />
-      );
-    }
     return (
-      <div className="py-2 px-1.5 text-center text-11 text-foreground flex flex-col items-center justify-center gap-1.5 font-sans">
-        <input
-          ref={fileInputRef}
-          type="file"
-          className="hidden"
-          onChange={handleFileSelect}
-        />
-        <span>No attached files or snapshots.</span>
-        {canEdit && (
-          <div className="flex items-center gap-1.5">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => fileInputRef.current?.click()}
-              className="h-6 text-11 text-foreground hover:bg-muted px-2 gap-1 cursor-pointer font-normal"
-              disabled={isUploadingFile}
-            >
-              <Plus className="size-3 text-foreground" strokeWidth={1.5} />
-              <span>Upload file</span>
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={handleOpenLinkForm}
-              className="h-6 text-11 text-foreground hover:bg-muted px-2 gap-1 cursor-pointer font-normal"
-            >
-              <Link2 className="size-3 text-foreground" strokeWidth={1.5} />
-              <span>Attach link</span>
-            </Button>
-          </div>
-        )}
-      </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        onChange={handleFileSelect}
+      />
     );
   }
 
@@ -317,7 +279,7 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
               att.filename ||
               att.name ||
               paper.filename ||
-              (paper.openAccessPdfUrl ? "Open Access PDF" : "Attachment");
+              "Attachment";
 
             const handleRowClick = () => {
               if (isPdf) {

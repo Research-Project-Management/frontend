@@ -138,6 +138,9 @@ export const INTERNAL_AND_DEDICATED_METADATA_KEYS = new Set<string>([
     .map((f) => f.toLowerCase().replace(/[\s_-]+/g, ''))
     .filter((k) => !ALLOWED_ITEM_EXTRA_LINE_KEYS.has(k)),
   ...SYSTEM_INTERNAL_METADATA_KEYS,
+  'license',
+  'journalabbr',
+  'abstract',
 ]);
 
 export const DEDICATED_FIELDS_BY_TYPE_MAP = new Map<string, ReadonlySet<string>>(
@@ -162,6 +165,9 @@ function refreshMetadataExtraSchemaCaches(): void {
       INTERNAL_AND_DEDICATED_METADATA_KEYS.add(norm);
     }
   }
+  for (const alias of ['license', 'journalabbr', 'abstract']) {
+    INTERNAL_AND_DEDICATED_METADATA_KEYS.add(alias);
+  }
 }
 
 registerSchemaRegistryUpdateListener(refreshMetadataExtraSchemaCaches);
@@ -177,6 +183,14 @@ export const EXTRA_KEY_ALIASES: Record<string, readonly string[]> = {
   pmcid: ['pmcid', 'PMCID'],
   isbn: ['isbn', 'ISBN'],
   issn: ['issn', 'ISSN'],
+  rights: ['rights', 'license'],
+  license: ['rights', 'license'],
+  journalabbr: ['journalAbbreviation', 'journalAbbr'],
+  journalabbreviation: ['journalAbbreviation', 'journalAbbr'],
+  librarycatalog: ['libraryCatalog', 'catalog'],
+  callnumber: ['callNumber'],
+  abstract: ['abstractNote', 'abstract'],
+  abstractnote: ['abstractNote', 'abstract'],
   eventplace: ['eventPlace', 'event-place', 'place'],
   originaldate: ['originalDate', 'original-date'],
   publisher: ['publisher'],
@@ -198,6 +212,33 @@ export const EXTRA_KEY_ALIASES: Record<string, readonly string[]> = {
   publiclawnumber: ['publicLawNumber', 'number'],
   reportnumber: ['reportNumber', 'number'],
 };
+
+/**
+ * Determines whether a given raw key represents a dedicated first-class field
+ * for the specified item type (e.g. `journalAbbr` on `journalArticle`, `license` / `rights`).
+ * Inspects both exact normalized field names and any bidirectional aliases.
+ */
+export function isDedicatedFieldForType(
+  rawKey: string,
+  dedicatedFieldsForType: ReadonlySet<string>,
+  unmappedFields?: ReadonlySet<string>,
+): boolean {
+  const normKey = rawKey.trim().toLowerCase().replace(/[\s_-]+/g, '');
+  if (!normKey || normKey === 'extra') return false;
+  if (unmappedFields && unmappedFields.has(normKey)) return false;
+  if (dedicatedFieldsForType.has(normKey)) return true;
+
+  const aliases = EXTRA_KEY_ALIASES[normKey];
+  if (aliases) {
+    for (const alias of aliases) {
+      const aliasNorm = alias.toLowerCase().replace(/[\s_-]+/g, '');
+      if (dedicatedFieldsForType.has(aliasNorm)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
 
 export const CROSS_FIELD_FALLBACK_NORMS = new Set<string>([
   'publisher',

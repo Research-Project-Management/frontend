@@ -74,7 +74,7 @@ export const useReaderStore = create<ReaderStoreState>((set, get) => ({
   activeTabId: initial.activeTabId,
   readingPaperId: initial.activeTabId !== 'library' ? initial.activeTabId : null,
   activeColor: '#ffd400',
-  activeTool: 'highlight',
+  activeTool: 'select',
   bookmarks: initial.bookmarks,
 
   openReader: (paperId: string, title?: string) => {

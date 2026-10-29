@@ -9,6 +9,7 @@ import {
   EXTRA_KEY_ALIASES,
   getMatchingExtraKeyNorms,
   collectUnmappedFieldsSet,
+  isDedicatedFieldForType,
 } from './metadata-extra.constants';
 
 export function isSystemInternalExtraKey(rawKey: string): boolean {
@@ -71,12 +72,11 @@ export function formatAndSanitizeExtraMetadata(
   );
 
   const isDedicatedFieldOnCurrentType = (rawKey: string): boolean => {
-    const normKey = rawKey.trim().toLowerCase().replace(/[\s_-]+/g, '');
-    if (normKey === 'extra') {
-      return false;
-    }
-    if (unmappedFields.has(normKey)) return false;
-    return dedicatedFieldsForType.has(normKey);
+    return isDedicatedFieldForType(
+      rawKey,
+      dedicatedFieldsForType,
+      unmappedFields,
+    );
   };
 
   const canRenderExtraFieldKey = (

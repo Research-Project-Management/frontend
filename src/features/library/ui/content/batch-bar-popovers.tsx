@@ -177,7 +177,7 @@ export function BatchCitationExportPopovers({
             </DropdownMenuItem>
           ))}
 
-          <div className="-mx-1.5 h-px my-1 bg-border" />
+          <div className="mx-1 h-px my-1 bg-border" />
 
           <DropdownMenuItem
             onClick={() => onCopyMultiCite('latex')}

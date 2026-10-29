@@ -16,7 +16,7 @@ export interface UsePdfReturn {
  * Fetches a PDF via authenticated blob request and manages
  * the resulting object URL lifecycle (create + revoke on unmount or retry).
  */
-export function usePdf(url: string | null): UsePdfReturn {
+export function usePdf(url: string | null, scopeId?: string): UsePdfReturn {
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +59,11 @@ export function usePdf(url: string | null): UsePdfReturn {
         setError(null);
         setBlobUrl(null);
 
-        const blob = await libraryServices.items.fetchPdfBlob(url!, controller.signal);
+        const blob = await libraryServices.items.fetchPdfBlob(
+          url!,
+          controller.signal,
+          { scopeId },
+        );
 
         if (active) {
           const newObjectUrl = URL.createObjectURL(blob);
@@ -90,7 +94,7 @@ export function usePdf(url: string | null): UsePdfReturn {
         currentBlobUrlRef.current = null;
       }
     };
-  }, [url, retryCount]);
+  }, [url, retryCount, scopeId]);
 
   return { blobUrl, isLoading, error, retry };
 }

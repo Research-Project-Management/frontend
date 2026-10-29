@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useMemo, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { openInNewTab } from "@/features/library/core/coordinator/browser-io.helpers";
 import { useLibraryUIStore } from "@/features/library/core/store/library-ui.store";
 import {
   useToggleStarItemMutation,
@@ -78,8 +78,6 @@ export const ItemTable = React.memo(function ItemTable({
   onDetachItem,
   onSortChange,
 }: ItemTableProps) {
-  const router = useRouter();
-
   // Store actions
   const selectAll = useLibraryUIStore((s) => s.selectAll);
   const clearSelection = useLibraryUIStore((s) => s.clearSelection);
@@ -302,9 +300,9 @@ export const ItemTable = React.memo(function ItemTable({
         currentQuery ? `q=${encodeURIComponent(currentQuery)}` : "",
       ].filter(Boolean);
       const qParam = queryParts.length ? `?${queryParts.join("&")}` : "";
-      router.push(`/library/papers/${itemId}${qParam}`);
+      openInNewTab(`/library/papers/${itemId}${qParam}`);
     },
-    [router, isTrash, itemsById],
+    [isTrash, itemsById],
   );
 
 

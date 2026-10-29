@@ -17,7 +17,9 @@ interface AbstractSectionProps {
 }
 
 function getAbstractValue(item: Item): string {
-  return resolveInspectorFieldValue(item, "abstractNote") || item.abstractNote || "";
+  const raw =
+    resolveInspectorFieldValue(item, "abstractNote") || item.abstractNote || "";
+  return raw.replace(/\*\*([A-Za-z0-9\s_-]+?):\*\*/g, "$1:");
 }
 
 export default function AbstractSection({

@@ -48,9 +48,9 @@ export function ItemTableHeader({
         {/* Title (Primary Column: Checkbox + Title) */}
         <th
           scope="col"
-          className="px-3 h-8 py-0 align-middle font-medium select-none text-left bg-background border-b border-border"
+          className="pl-1.5 pr-3 h-8 py-0 align-middle font-medium select-none text-left bg-background border-b border-border"
         >
-          <div className="flex items-center gap-2 w-full">
+          <div className="flex items-center gap-1.5 w-full">
             <Tooltip>
               <TooltipTrigger asChild>
                 <div

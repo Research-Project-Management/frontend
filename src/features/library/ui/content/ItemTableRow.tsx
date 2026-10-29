@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { openInNewTab } from '@/features/library/core/coordinator/browser-io.helpers';
 import {
   Paperclip,
   StickyNote,
@@ -83,7 +83,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
   onDetachFromCollection,
   onOpenItem,
 }: ItemTableRowProps) {
-  const router = useRouter();
+
 
   // Granular Selectors - 60 FPS Re-render Barrier (True O(1))
   const isSelected = useIsItemSelected(item.id);
@@ -230,7 +230,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
             if (onOpenItem) {
               onOpenItem(item.id);
             } else {
-              router.push(`/library/papers/${item.id}`);
+              openInNewTab(`/library/papers/${item.id}`);
             }
           } else {
             toast.info('Restore this reference to open in reader', {
@@ -251,8 +251,8 @@ export const ItemTableRow = React.memo(function ItemTableRow({
         )}
       >
         {/* Title with Checkbox & Status Indicators */}
-        <td className="px-3 h-8 py-0 align-middle min-w-0">
-          <div className="flex items-center gap-2 min-w-0 h-full">
+        <td className="pl-1.5 pr-3 h-8 py-0 align-middle min-w-0">
+          <div className="flex items-center gap-1.5 min-w-0 h-full">
             <div
               role="checkbox"
               aria-checked={isSelected}
@@ -337,7 +337,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
                           if (onOpenItem) {
                             onOpenItem(item.id);
                           } else {
-                            router.push(`/library/papers/${item.id}`);
+                            openInNewTab(`/library/papers/${item.id}`);
                           }
                         }}
                         className="inline-flex items-center justify-center size-5 rounded-sm text-muted-foreground hover:text-foreground hover:bg-background/80 transition-colors cursor-pointer shrink-0 outline-none"

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { openInNewTab } from "@/features/library/core/coordinator/browser-io.helpers";
 import {
   LibraryInspector,
   type LibraryInspectorProps,
@@ -30,13 +30,11 @@ export function ReaderInspector({
   onSelectItem,
   ...rest
 }: ReaderInspectorProps) {
-  const router = useRouter();
-
   const defaultSelectItem = useCallback(
     (itemId: string) => {
-      router.push(`/library/papers/${itemId}`);
+      openInNewTab(`/library/papers/${itemId}`);
     },
-    [router],
+    [],
   );
 
   const effectiveItem = (item || null) as Item | null;

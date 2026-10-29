@@ -371,7 +371,7 @@ function LibraryInspectorContent({
                       </DropdownMenu>
                     ) : undefined
                   }
-                  contentClassName={hasFiles ? 'px-2.5 pt-1.5 pb-2.5 flex flex-col gap-2' : 'p-0'}
+                  contentClassName={attachmentCount > 0 ? 'px-2.5 pt-1.5 pb-2.5 flex flex-col gap-2' : 'p-0'}
                   canEdit={effectiveCanEdit}
                   keepMounted
                 >
@@ -473,7 +473,7 @@ function LibraryInspectorContent({
                       </CollectionPickerPopover>
                     ) : null
                   }
-                  contentClassName="px-2.5 pt-1.5 pb-2.5 flex flex-col gap-1"
+                  contentClassName={hasTags || isAddingTag ? 'px-2.5 pt-1.5 pb-2.5 flex flex-col gap-1' : 'p-0'}
                   canEdit={effectiveCanEdit}
                 >
                   <CollectionsSection

@@ -180,14 +180,26 @@ export function useAttachmentCoordinator({
   }, [activePreviewAttachment, rawScopeId, paperUrl]);
 
   const hasSnapshot = useMemo(() => {
-    return allAttachments.some(
-      (att) =>
-        att.linkMode === 'imported_url' ||
+    return allAttachments.some((att) => {
+      const mime = att.mimeType?.toLowerCase() || '';
+      const name = (att.filename || '').toLowerCase();
+      const url = (att.url || '').toLowerCase();
+      const isPdf =
+        att.attachmentType === 'primary_pdf' ||
+        mime.includes('pdf') ||
+        name.endsWith('.pdf') ||
+        /\.pdf(?:$|[?#])/i.test(url);
+      if (isPdf) return false;
+
+      return (
         att.attachmentType === 'snapshot' ||
         att.attachmentType === 'web_snapshot' ||
-        att.mimeType === 'text/html' ||
-        att.filename?.toLowerCase().endsWith('.html'),
-    );
+        mime === 'text/html' ||
+        mime === 'application/xhtml+xml' ||
+        name.endsWith('.html') ||
+        name.endsWith('.htm')
+      );
+    });
   }, [allAttachments]);
 
   const handleFileSelect = useCallback(

@@ -507,20 +507,37 @@ export function resolveEpubOrSnapshot(
     const attMime = activeAtt.mimeType?.toLowerCase() || '';
     const attName = (activeAtt.filename || '').toLowerCase();
     const attUrl = (activeAtt.fileUrl || activeAtt.url || paperUrl || '') as string;
-    const isSnapshot =
-      activeAtt.attachmentType === 'snapshot' ||
-      activeAtt.attachmentType === 'web_snapshot' ||
-      activeAtt.linkMode === 'imported_url' ||
-      attMime === 'text/html' ||
-      attName.endsWith('.html');
+
+    const isPdf =
+      activeAtt.attachmentType === 'primary_pdf' ||
+      attMime === 'application/pdf' ||
+      attMime.includes('pdf') ||
+      attName.endsWith('.pdf') ||
+      /\.pdf(?:$|[?#])/i.test(attUrl);
+
+    if (isPdf) {
+      return null;
+    }
+
     const isEpub =
       attMime.includes('epub') ||
       attName.endsWith('.epub') ||
-      /\.epub(?:$|\?)/i.test(attUrl);
+      /\.epub(?:$|[?#])/i.test(attUrl);
 
     if (isEpub) {
       return { mode: 'epub', url: attUrl };
     }
+
+    const isSnapshot =
+      (activeAtt.attachmentType === 'snapshot' ||
+        activeAtt.attachmentType === 'web_snapshot' ||
+        attMime === 'text/html' ||
+        attMime === 'application/xhtml+xml' ||
+        attName.endsWith('.html') ||
+        attName.endsWith('.htm') ||
+        attName.endsWith('.xhtml') ||
+        attName.endsWith('.mhtml'));
+
     if (isSnapshot) {
       return { mode: 'snapshot', url: attUrl };
     }
@@ -533,10 +550,17 @@ export function resolveEpubOrSnapshot(
     ''
   ).toLowerCase();
 
+  const primaryIsPdf =
+    primaryMime === 'application/pdf' ||
+    primaryMime.includes('pdf') ||
+    primaryName.endsWith('.pdf') ||
+    (paperUrl ? /\.pdf(?:$|[?#])/i.test(paperUrl) : false);
+
   if (
-    primaryMime.includes('epub') ||
-    primaryName.endsWith('.epub') ||
-    (paperUrl && /\.epub(?:$|\?)/i.test(paperUrl))
+    !primaryIsPdf &&
+    (primaryMime.includes('epub') ||
+      primaryName.endsWith('.epub') ||
+      (paperUrl && /\.epub(?:$|[?#])/i.test(paperUrl)))
   ) {
     return {
       mode: 'epub',
@@ -544,11 +568,18 @@ export function resolveEpubOrSnapshot(
     };
   }
 
-  const epubAtt = rawAtts.find(
-    (a: RawAttachmentItem) =>
-      a.mimeType?.toLowerCase().includes('epub') ||
-      a.filename?.toLowerCase().endsWith('.epub'),
-  );
+  const epubAtt = rawAtts.find((a: RawAttachmentItem) => {
+    const mime = a.mimeType?.toLowerCase() || '';
+    const name = (a.filename || '').toLowerCase();
+    const url = (a.fileUrl || a.url || '') as string;
+    const isPdf =
+      a.attachmentType === 'primary_pdf' ||
+      mime.includes('pdf') ||
+      name.endsWith('.pdf') ||
+      /\.pdf(?:$|[?#])/i.test(url);
+    if (isPdf) return false;
+    return mime.includes('epub') || name.endsWith('.epub') || /\.epub(?:$|[?#])/i.test(url);
+  });
   if (epubAtt && (epubAtt.url || epubAtt.fileUrl)) {
     return {
       mode: 'epub',
@@ -556,15 +587,29 @@ export function resolveEpubOrSnapshot(
     };
   }
 
-  if (!paperUrl) {
-    const snapshotAtt = rawAtts.find(
-      (a: RawAttachmentItem) =>
+  if (!paperUrl && !primaryIsPdf) {
+    const snapshotAtt = rawAtts.find((a: RawAttachmentItem) => {
+      const mime = a.mimeType?.toLowerCase() || '';
+      const name = (a.filename || '').toLowerCase();
+      const url = (a.fileUrl || a.url || '') as string;
+      const isPdf =
+        a.attachmentType === 'primary_pdf' ||
+        mime.includes('pdf') ||
+        name.endsWith('.pdf') ||
+        /\.pdf(?:$|[?#])/i.test(url);
+      if (isPdf) return false;
+
+      return (
         a.attachmentType === 'snapshot' ||
         a.attachmentType === 'web_snapshot' ||
-        a.linkMode === 'imported_url' ||
-        a.mimeType === 'text/html' ||
-        a.filename?.toLowerCase().endsWith('.html'),
-    );
+        mime === 'text/html' ||
+        mime === 'application/xhtml+xml' ||
+        name.endsWith('.html') ||
+        name.endsWith('.htm') ||
+        name.endsWith('.xhtml') ||
+        name.endsWith('.mhtml')
+      );
+    });
     if (snapshotAtt && (snapshotAtt.url || snapshotAtt.fileUrl)) {
       return {
         mode: 'snapshot',

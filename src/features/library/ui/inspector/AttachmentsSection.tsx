@@ -252,19 +252,33 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
             const isPrimary = att === primaryAttachment;
             const isPreviewSelected =
               multipleAttachments && att === activePreviewAttachment;
-            const isSnapshot =
-              att.attachmentType === "web_snapshot" ||
-              att.attachmentType === "snapshot" ||
-              att.linkMode === "imported_url" ||
-              att.mimeType === "text/html" ||
-              att.filename?.toLowerCase().endsWith(".html");
-            const isEpub =
-              att.mimeType?.toLowerCase().includes("epub") ||
-              att.filename?.toLowerCase().endsWith(".epub");
+            const attMime = att.mimeType?.toLowerCase() || "";
+            const attName = (att.filename || "").toLowerCase();
+            const attUrl = (att.url || "").toLowerCase();
+
             const isPdf =
-              att.mimeType === "application/pdf" ||
-              att.filename?.toLowerCase().endsWith(".pdf") ||
-              att.attachmentType === "primary_pdf";
+              att.attachmentType === "primary_pdf" ||
+              attMime === "application/pdf" ||
+              attMime.includes("pdf") ||
+              attName.endsWith(".pdf") ||
+              /\.pdf(?:$|[?#])/i.test(attUrl);
+
+            const isEpub =
+              !isPdf &&
+              (attMime.includes("epub") ||
+                attName.endsWith(".epub") ||
+                /\.epub(?:$|[?#])/i.test(attUrl));
+
+            const isSnapshot =
+              !isPdf &&
+              !isEpub &&
+              (att.attachmentType === "web_snapshot" ||
+                att.attachmentType === "snapshot" ||
+                attMime === "text/html" ||
+                attMime === "application/xhtml+xml" ||
+                attName.endsWith(".html") ||
+                attName.endsWith(".htm"));
+
             const isLink =
               att.linkMode === "linked_url" ||
               (!att.fileId &&

@@ -81,8 +81,6 @@ export {
   useLibraryIntegrityReport,
   useQualityAudit,
   useMergeDuplicates,
-  useUndoMergeDuplicatesMutation,
-  useUndoMergeDuplicates,
   useAcademicFeedArticlesQuery,
   useFetchAcademicFeed,
   useFeedSubscriptionsQuery,

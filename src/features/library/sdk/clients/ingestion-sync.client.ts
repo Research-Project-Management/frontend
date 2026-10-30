@@ -389,34 +389,6 @@ export const CurationService = {
     };
   },
 
-  undoMerge: async (
-    scopeId: string | undefined,
-    primaryItemId: string,
-  ): Promise<{ restoredPrimaryId: string; restoredDuplicateIds: string[] }> => {
-    interface UndoMergeApiResponse {
-      restoredPrimaryId?: string;
-      restoredDuplicateIds?: string[];
-      data?: {
-        restoredPrimaryId?: string;
-        restoredDuplicateIds?: string[];
-      };
-    }
-    const res = await libraryClient.post<UndoMergeApiResponse>(
-      getCurationUrl(scopeId, 'undo-merge'),
-      {
-        primaryItemId,
-        ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
-      },
-    );
-    const payload = res?.data ?? res;
-    return {
-      restoredPrimaryId: payload?.restoredPrimaryId ?? primaryItemId,
-      restoredDuplicateIds: Array.isArray(payload?.restoredDuplicateIds)
-        ? payload.restoredDuplicateIds
-        : [],
-    };
-  },
-
   getIntegrityReport: async (scopeId?: string): Promise<LibraryIntegrityReport> => {
     const pQuery = isProjectScope(scopeId) ? `?projectId=${encodeURIComponent(scopeId!)}` : '';
     const res = await libraryClient.get<LibraryIntegrityReport & { averageQualityScore?: number; healthScorePercentage?: number }>(

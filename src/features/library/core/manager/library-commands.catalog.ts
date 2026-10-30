@@ -407,9 +407,6 @@ export interface MergeDuplicatesCommandParams {
       overrides?: Record<string, unknown>;
     }) => Promise<unknown>;
   };
-  undoMergeMutation?: {
-    mutateAsync: (primaryItemId: string) => Promise<unknown>;
-  };
   restoreMutation?: { mutateAsync: (itemIds: string[]) => Promise<unknown> };
   updateItemMutation?: {
     mutateAsync: (args: { itemId: string; data: Partial<Item>; silent?: boolean }) => Promise<unknown>;
@@ -457,11 +454,6 @@ export function createMergeDuplicatesCommand(params: MergeDuplicatesCommandParam
       params.onExecuted?.();
     },
     undo: async () => {
-      if (params.undoMergeMutation) {
-        await params.undoMergeMutation.mutateAsync(p.id);
-        params.onUndone?.();
-        return;
-      }
       if (params.duplicateIdsToDelete.length > 0 && params.restoreMutation) {
         await params.restoreMutation.mutateAsync(params.duplicateIdsToDelete);
       }

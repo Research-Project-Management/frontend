@@ -155,44 +155,6 @@ export function useMergeDuplicates(scopeId?: string) {
   });
 }
 
-export function useUndoMergeDuplicatesMutation(scopeId?: string) {
-  const queryClient = useQueryClient();
-  const effectiveScope = normalizeScopeId(scopeId);
-
-  return useMutation({
-    mutationFn: (input: string | { primaryItemId: string }) => {
-      const primaryItemId = typeof input === 'string' ? input : input.primaryItemId;
-      return libraryServices.curation.undoMerge(effectiveScope, primaryItemId);
-    },
-    onSuccess: (data, variables) => {
-      const primaryItemId = typeof variables === 'string' ? variables : variables.primaryItemId;
-      const restoredPrimaryId = data?.restoredPrimaryId ?? primaryItemId;
-      void queryClient.invalidateQueries({ queryKey: curationKeys.duplicates(effectiveScope) });
-      void queryClient.invalidateQueries({ queryKey: curationKeys.integrity(effectiveScope) });
-      void queryClient.invalidateQueries({ queryKey: itemKeys.trash(effectiveScope) });
-      void queryClient.invalidateQueries({ queryKey: libraryKeys.items(effectiveScope) });
-      void queryClient.invalidateQueries({ queryKey: libraryKeys.collections(effectiveScope) });
-      void queryClient.invalidateQueries({ queryKey: libraryKeys.tags(effectiveScope) });
-      void invalidateLibraryCatalogDependencies(queryClient, effectiveScope, {
-        itemId: restoredPrimaryId,
-        itemsList: true,
-        counts: true,
-        collections: true,
-        tags: true,
-        smartCollections: true,
-      });
-    },
-    onError: (error: Error) => {
-      toast.error('Failed to undo merge', {
-        description: error.message || 'Unable to restore merged duplicate records.',
-        id: 'library-undo-merge',
-      });
-    },
-  });
-}
-
-export const useUndoMergeDuplicates = useUndoMergeDuplicatesMutation;
-
 export function useAcademicFeedArticlesQuery(
   scopeId: string,
   feedUrl: string | undefined,

@@ -115,6 +115,13 @@ export function EpubAndSnapshotViewer({
         if (mode === 'snapshot') {
           const blob = await fetchPdfBlob(url, abortController.signal, { allowHtml: true });
           if (cancelled || abortController.signal.aborted) return;
+
+          // Guard against binary PDF streams mistakenly routed to snapshot viewer
+          const magicBytes = await blob.slice(0, 5).text();
+          if (magicBytes === '%PDF-' || blob.type === 'application/pdf') {
+            throw new Error('This document is a PDF document, not an HTML web snapshot. Please open it with the PDF viewer.');
+          }
+
           const rawHtml = await blob.text();
           if (cancelled || abortController.signal.aborted) return;
           const sanitized = DOMPurify.sanitize(rawHtml, {
@@ -132,6 +139,13 @@ export function EpubAndSnapshotViewer({
         // Mode === 'epub': Unpack with JSZip
         const blob = await fetchPdfBlob(url, abortController.signal);
         if (cancelled || abortController.signal.aborted) return;
+
+        // Guard against PDF streams mistakenly routed to epub viewer
+        const epubMagic = await blob.slice(0, 5).text();
+        if (epubMagic === '%PDF-' || blob.type === 'application/pdf') {
+          throw new Error('This document is a PDF document, not an EPUB eBook. Please open it with the PDF viewer.');
+        }
+
         const buffer = await blob.arrayBuffer();
         if (cancelled || abortController.signal.aborted) return;
         const zip = await JSZip.loadAsync(buffer);

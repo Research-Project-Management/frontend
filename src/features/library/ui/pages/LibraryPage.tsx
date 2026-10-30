@@ -47,7 +47,6 @@ import {
 } from '@/features/library/sdk/queries/catalog.queries';
 import {
   useMergeDuplicates,
-  useUndoMergeDuplicatesMutation,
   useDuplicateGroups,
   useIngestMutation,
 } from '@/features/library/sdk/queries/ingestion.queries';
@@ -453,7 +452,6 @@ export function ModernLibraryPage({
   ]);
 
   const mergeMutation = useMergeDuplicates(effectiveScopeId);
-  const undoMergeMutation = useUndoMergeDuplicatesMutation(effectiveScopeId);
   const restoreItemsMutation = useBatchRestoreItemsMutation(effectiveScopeId);
   const updateItemMutation = useUpdateLibraryItemMutation(effectiveScopeId);
 
@@ -494,7 +492,6 @@ export function ModernLibraryPage({
           duplicateIdsToDelete,
           mergedFields: mergedFields as Record<string, unknown>,
           mergeMutation: { mutateAsync: mergeMutation.mutateAsync },
-          undoMergeMutation: { mutateAsync: undoMergeMutation.mutateAsync },
           restoreMutation: { mutateAsync: restoreItemsMutation.mutateAsync },
           updateItemMutation: {
             mutateAsync: ({ itemId, data, silent }) =>
@@ -513,7 +510,6 @@ export function ModernLibraryPage({
       mergeMutation.mutateAsync,
       resolveCachedItem,
       restoreItemsMutation.mutateAsync,
-      undoMergeMutation.mutateAsync,
       updateItemMutation,
     ],
   );

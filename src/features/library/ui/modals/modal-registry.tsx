@@ -25,7 +25,6 @@ import { useItemTypeConversion } from '@/features/library/sdk/queries/saved-sear
 import {
   useTrackedIdentifierIngestion,
   useMergeDuplicates,
-  useUndoMergeDuplicatesMutation,
   useDismissDuplicatesMutation,
   useFetchAcademicFeed,
   useSubscribeFeedMutation,
@@ -89,7 +88,6 @@ export function CurationModalsHost({
   } = useLibraryCacheSynchronizer(effectiveScope);
 
   const mergeDuplicatesMutation = useMergeDuplicates(effectiveScope);
-  const undoMergeDuplicatesMutation = useUndoMergeDuplicatesMutation(effectiveScope);
   const dismissDuplicatesMutation = useDismissDuplicatesMutation(effectiveScope);
   const restoreItemsMutation = useBatchRestoreItemsMutation(effectiveScope);
   const updateItemMutation = useUpdateLibraryItemMutation(effectiveScope);
@@ -143,7 +141,6 @@ export function CurationModalsHost({
         duplicateIdsToDelete,
         mergedFields,
         mergeMutation: { mutateAsync: mergeDuplicatesMutation.mutateAsync },
-        undoMergeMutation: { mutateAsync: undoMergeDuplicatesMutation.mutateAsync },
         restoreMutation: { mutateAsync: restoreItemsMutation.mutateAsync },
         updateItemMutation: {
           mutateAsync: ({ itemId, data, silent }) =>

@@ -67,7 +67,6 @@ export function buildServerSuccessCachePatch(
 
   if (existingCached && !serverHasExplicitState && !inputHasExplicitState) {
     patchData.isStarred = existingCached.isStarred;
-    patchData.isFavorite = existingCached.isFavorite;
     patchData.isRead = existingCached.isRead;
     patchData.readStatus = existingCached.readStatus;
     patchData.rating = existingCached.rating;
@@ -254,11 +253,10 @@ export function useToggleStarItemMutation(scopeId?: string) {
         itemKeys.state(effectiveScope, id),
       );
       const cachedItem = resolveCachedItemFromScope(queryClient, effectiveScope, id);
-      const previousIsStarred = cachedItem?.isStarred ?? cachedItem?.isFavorite ?? !isStarred;
+      const previousIsStarred = cachedItem?.isStarred ?? !isStarred;
 
       patchItemAcrossScopeCaches(queryClient, effectiveScope, id, {
         isStarred,
-        isFavorite: isStarred,
       });
 
       queryClient.setQueryData(
@@ -276,7 +274,6 @@ export function useToggleStarItemMutation(scopeId?: string) {
       const rollbackStarred = context?.previousIsStarred ?? !variables.isStarred;
       patchItemAcrossScopeCaches(queryClient, effectiveScope, variables.id, {
         isStarred: rollbackStarred,
-        isFavorite: rollbackStarred,
       });
       if (context?.previousItem !== undefined) {
         queryClient.setQueryData(
@@ -298,7 +295,6 @@ export function useToggleStarItemMutation(scopeId?: string) {
     onSuccess: (_updated, variables) => {
       patchItemAcrossScopeCaches(queryClient, effectiveScope, variables.id, {
         isStarred: variables.isStarred,
-        isFavorite: variables.isStarred,
       });
       toast.success(
         variables.isStarred ? 'Added to Starred' : 'Removed from Starred',

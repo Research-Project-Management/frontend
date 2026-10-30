@@ -408,7 +408,7 @@ export function ModernLibraryPage({
       toast.info('Trash is already empty', { id: 'empty-trash' });
       return;
     }
-    openModal('DELETE_CONFIRM', {
+    openModal('EMPTY_TRASH', {
       permanent: true,
       onConfirm: async () => {
         try {

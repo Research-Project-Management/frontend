@@ -323,7 +323,6 @@ export function useLibraryDeltaSync(
               ...(existingCached && !rawHasExplicitState
                 ? {
                     isStarred: existingCached.isStarred,
-                    isFavorite: existingCached.isFavorite,
                     isRead: existingCached.isRead,
                     readStatus: existingCached.readStatus,
                     rating: existingCached.rating,

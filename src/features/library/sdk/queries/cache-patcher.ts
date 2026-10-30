@@ -89,7 +89,7 @@ const IDENTIFIER_FIELD_TO_TYPES: Record<string, readonly string[]> = {
 
 /**
  * Merges a partial item patch onto an existing cached Item while preserving user-state fields
- * (`isStarred`, `isFavorite`, `isRead`, `readStatus`, `rating`, `lastReadAt`) when `patch` came
+ * (`isStarred`, `isRead`, `readStatus`, `rating`, `lastReadAt`) when `patch` came
  * from `mapBackendItem(raw)` without explicit user-state data (`_hasExplicitUserState === false`),
  * and cleanly merging `extraFields` and `metadata` (or replacing them on full backend responses).
  */
@@ -159,7 +159,6 @@ export function mergeCachedItemWithPatch(current: Item, patch: Partial<Item>): I
     ...(preserveUserState
       ? {
           isStarred: current.isStarred ?? patch.isStarred ?? false,
-          isFavorite: current.isFavorite ?? current.isStarred ?? patch.isFavorite ?? false,
           isRead: current.isRead ?? patch.isRead ?? false,
           readStatus: current.readStatus ?? patch.readStatus ?? "unread",
           rating: current.rating ?? patch.rating ?? 0,
@@ -347,7 +346,7 @@ function doesItemMatchQueryFilter(
   if (view === 'trash') {
     return Boolean(item.deletedAt);
   }
-  if (isStarredFilter && !(item.isStarred || item.isFavorite)) {
+  if (isStarredFilter && !item.isStarred) {
     return false;
   }
   if (unfiled && Array.isArray(item.collectionIds) && item.collectionIds.length > 0) {
@@ -371,7 +370,6 @@ function doesItemMatchQueryFilter(
 
 export const MEMBERSHIP_MUTATION_KEYS = new Set([
   'isStarred',
-  'isFavorite',
   'deletedAt',
   'status',
   'collectionId',
@@ -403,8 +401,8 @@ function hasMembershipFieldsChanged(
   }
   if (!oldItem) return false;
 
-  const oldStarred = Boolean(oldItem.isStarred || oldItem.isFavorite);
-  const nextStarred = Boolean(updatedItem.isStarred || updatedItem.isFavorite);
+  const oldStarred = Boolean(oldItem.isStarred);
+  const nextStarred = Boolean(updatedItem.isStarred);
   if (oldStarred !== nextStarred) {
     return true;
   }

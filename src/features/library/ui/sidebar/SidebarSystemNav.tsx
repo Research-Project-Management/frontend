@@ -5,6 +5,10 @@ import { History } from 'lucide-react';
 import { SidebarNavItem } from './SidebarNavItem';
 import { SYSTEM_BOTTOM_NAV_ITEMS, type SystemNavStats } from './sidebar-nav.config';
 import { SavedSearchListSection } from './SavedSearchListSection';
+import {
+  TrashContextMenuAction,
+  TrashContextMenuContent,
+} from './TrashContextMenu';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import type { SavedSearch } from '@/features/library/domain/types/saved-searches.types';
 
@@ -27,6 +31,11 @@ interface SidebarSystemNavProps {
   onSubmitRenameSavedSearch?: (id: string) => void;
   onRenameSavedSearchValueChange?: (value: string) => void;
   onDuplicateSavedSearch?: (savedSearch: SavedSearch) => void;
+  onEmptyTrash?: () => void;
+  trashCount?: number;
+  canEmptyTrash?: boolean;
+  onDropToTrash?: (ids: string[]) => void;
+  onDropToMyPublications?: (ids: string[]) => void;
   renamingSavedSearchId?: string | null;
   renameSavedSearchValue?: string;
   children?: React.ReactNode;
@@ -49,6 +58,11 @@ export function SidebarSystemNav({
   onSubmitRenameSavedSearch,
   onRenameSavedSearchValueChange,
   onDuplicateSavedSearch,
+  onEmptyTrash,
+  trashCount = 0,
+  canEmptyTrash = true,
+  onDropToTrash,
+  onDropToMyPublications,
   renamingSavedSearchId,
   renameSavedSearchValue = '',
   children,
@@ -98,6 +112,8 @@ export function SidebarSystemNav({
       <div className="flex flex-col gap-0.5 w-full">
         {SYSTEM_BOTTOM_NAV_ITEMS.map((item) => {
           const isActive = item.isActive(pathname, currentFilter, isUserScope, basePath);
+          const isTrash = item.id === 'trash';
+          const isTrashEmpty = trashCount === 0;
 
           return (
             <SidebarNavItem
@@ -108,7 +124,33 @@ export function SidebarSystemNav({
               isActive={isActive}
               navId={navId}
               onClick={onSelectUserScope}
-              onDropItems={item.id === 'unfiled' ? (ids) => onDropItems?.(ids, null) : undefined}
+              action={
+                isTrash && onEmptyTrash ? (
+                  <TrashContextMenuAction
+                    onEmptyTrash={onEmptyTrash}
+                    isEmpty={isTrashEmpty}
+                    canEmpty={canEmptyTrash}
+                  />
+                ) : undefined
+              }
+              contextMenu={
+                isTrash && onEmptyTrash ? (
+                  <TrashContextMenuContent
+                    onEmptyTrash={onEmptyTrash}
+                    isEmpty={isTrashEmpty}
+                    canEmpty={canEmptyTrash}
+                  />
+                ) : undefined
+              }
+              onDropItems={
+                item.id === 'unfiled'
+                  ? (ids) => onDropItems?.(ids, null)
+                  : item.id === 'trash'
+                    ? onDropToTrash
+                    : item.id === 'my-publications'
+                      ? onDropToMyPublications
+                      : undefined
+              }
             />
           );
         })}

@@ -17,10 +17,16 @@ import {
   useBatchDetachItemsMutation,
 } from '@/features/library/sdk/queries/collections.queries';
 import { useSavedSearches } from '@/features/library/sdk/queries/saved-searches-relations.queries';
+import {
+  useTrash,
+  useDeleteLibraryItemsMutation,
+} from '@/features/library/sdk/queries/trash.queries';
+import { useBatchRestoreItemsMutation } from '@/features/library/sdk/queries/catalog.queries';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import {
   useLibraryCommandStore,
   createMoveItemsCommand,
+  createTrashCommand,
 } from '@/features/library/core/manager/library-command.manager';
 import { useLibraryPermissions } from '@/features/library/core/coordinator/permissions.coordinator';
 import { useLibraryProjectContext } from '@/features/library/core/adapters/project-context.adapter';
@@ -30,6 +36,7 @@ import type { SavedSearch } from '@/features/library/domain/types/saved-searches
 import { buildTree, filterCollections } from '@/features/library/domain/collection-tree';
 import { usePanelResize } from '@/features/library/ui/hooks/usePanelResize';
 import { useCollectionCoordinator } from '@/features/library/core/coordinator/collection.coordinator';
+import { useDropToMyPublications } from '@/features/library/core/coordinator/item-action.coordinator';
 import { SidebarHeader } from './SidebarHeader';
 import { SidebarResizer } from './SidebarResizer';
 import { CollectionTree } from './CollectionTree';
@@ -144,6 +151,47 @@ export function LibrarySidebar() {
     updateSavedSearch: updateProjectSavedSearch,
     deleteSavedSearch: deleteProjectSavedSearch,
   } = useSavedSearches(projectId, { enabled: isInProjectContext });
+
+  const { trashItems, emptyTrash } = useTrash('user');
+  const deleteMutation = useDeleteLibraryItemsMutation('user');
+  const restoreMutation = useBatchRestoreItemsMutation('user');
+
+  const handleEmptyTrash = useCallback(() => {
+    if (trashItems.length === 0) {
+      toast.info('Trash is already empty', { id: 'empty-trash' });
+      return;
+    }
+    openModal('EMPTY_TRASH', {
+      onConfirm: async () => {
+        try {
+          await emptyTrash();
+        } catch {
+          toast.error('Failed to empty trash', { id: 'empty-trash-error' });
+        }
+      },
+    });
+  }, [trashItems.length, openModal, emptyTrash]);
+
+  const handleDropToTrash = useCallback(
+    async (ids: string[]) => {
+      if (!ids.length) return;
+      try {
+        await useLibraryCommandStore.getState().executeCommand(
+          createTrashCommand({
+            itemIds: ids,
+            deleteMutation: { mutateAsync: deleteMutation.mutateAsync },
+            restoreMutation: { mutateAsync: restoreMutation.mutateAsync },
+          }),
+        );
+        toast.success(`Moved ${ids.length} item(s) to trash`, { id: 'drop-to-trash' });
+      } catch {
+        toast.error('Failed to move items to trash', { id: 'drop-to-trash-error' });
+      }
+    },
+    [deleteMutation, restoreMutation],
+  );
+
+  const handleDropToMyPublications = useDropToMyPublications(effectiveScopeId);
 
   const handleEditSavedSearch = (ss: SavedSearch) => {
     openModal('SAVED_SEARCH', { savedSearch: ss });
@@ -470,6 +518,11 @@ export function LibrarySidebar() {
                     onSubmitRenameSavedSearch={handleSubmitRenameSavedSearch}
                     onRenameSavedSearchValueChange={setRenameSavedSearchValue}
                     onDuplicateSavedSearch={handleDuplicateSavedSearch}
+                    onEmptyTrash={handleEmptyTrash}
+                    trashCount={trashItems.length}
+                    canEmptyTrash={canManageCollections}
+                    onDropToTrash={handleDropToTrash}
+                    onDropToMyPublications={handleDropToMyPublications}
                     renamingSavedSearchId={renamingSavedSearchId}
                     renameSavedSearchValue={renameSavedSearchValue}
                   >

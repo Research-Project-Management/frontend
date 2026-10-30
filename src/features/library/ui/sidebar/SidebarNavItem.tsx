@@ -5,6 +5,10 @@ import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { logger } from '@/shared/lib/logger';
+import {
+  ContextMenu,
+  ContextMenuTrigger,
+} from '@/shared/components/ui/context-menu';
 
 export interface SidebarNavItemProps {
   href: string;
@@ -15,6 +19,7 @@ export interface SidebarNavItemProps {
   navId?: string;
   badge?: React.ReactNode;
   action?: React.ReactNode;
+  contextMenu?: React.ReactNode;
   onClick?: () => void;
   onDropItems?: (itemIds: string[]) => void;
 }
@@ -27,6 +32,7 @@ export function SidebarNavItem({
   isActive,
   badge,
   action,
+  contextMenu,
   onClick,
   onDropItems,
 }: SidebarNavItemProps) {
@@ -70,43 +76,54 @@ export function SidebarNavItem({
     }
   };
 
-  return (
-    <div className="group/item relative flex items-center w-full">
-      <Link
-        href={href}
-        onClick={onClick}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
+  const linkContent = (
+    <Link
+      href={href}
+      onClick={onClick}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={cn(
+        'relative flex h-8 w-full items-center gap-2.5 rounded-md pr-2.5 text-13 leading-5 outline-none select-none pl-6',
+        action && 'pr-8',
+        isActive
+          ? 'bg-muted text-foreground font-medium'
+          : 'text-foreground hover:bg-muted group-hover/item:bg-muted has-[[data-state=open]]:bg-muted font-normal',
+        isDragOverTarget && 'bg-primary/10 text-primary font-medium ring-1 ring-primary ring-inset'
+      )}
+    >
+      {customIcon ? (
+        <span className="relative z-10 flex size-4 shrink-0 items-center justify-center text-13 leading-none select-none">
+          {customIcon}
+        </span>
+      ) : Icon ? (
+        <Icon
+          className="relative z-10 size-4 shrink-0 text-foreground"
+          strokeWidth={1.5}
+        />
+      ) : null}
+      <span
         className={cn(
-          'relative flex h-8 w-full items-center gap-2.5 rounded-md pr-2.5 text-13 leading-5 outline-none select-none pl-6',
-          action && 'pr-8',
-          isActive
-            ? 'bg-muted text-foreground font-medium'
-            : 'text-foreground hover:bg-muted group-hover/item:bg-muted has-[[data-state=open]]:bg-muted font-normal',
-          isDragOverTarget && 'bg-primary/10 text-primary font-medium ring-1 ring-primary ring-inset'
+          'relative z-10 min-w-0 truncate flex-1 tracking-tight text-foreground',
+          isActive ? 'font-medium' : 'font-normal'
         )}
       >
-        {customIcon ? (
-          <span className="relative z-10 flex size-4 shrink-0 items-center justify-center text-13 leading-none select-none">
-            {customIcon}
-          </span>
-        ) : Icon ? (
-          <Icon
-            className="relative z-10 size-4 shrink-0 text-foreground"
-            strokeWidth={1.5}
-          />
-        ) : null}
-        <span
-          className={cn(
-            'relative z-10 min-w-0 truncate flex-1 tracking-tight text-foreground',
-            isActive ? 'font-medium' : 'font-normal'
-          )}
-        >
-          {label}
-        </span>
-        {badge}
-      </Link>
+        {label}
+      </span>
+      {badge}
+    </Link>
+  );
+
+  return (
+    <div className="group/item relative flex items-center w-full">
+      {contextMenu ? (
+        <ContextMenu>
+          <ContextMenuTrigger asChild>{linkContent}</ContextMenuTrigger>
+          {contextMenu}
+        </ContextMenu>
+      ) : (
+        linkContent
+      )}
       {action && (
         <div className="absolute right-1.5 z-20 flex items-center">
           {action}

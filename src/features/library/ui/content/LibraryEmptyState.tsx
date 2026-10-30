@@ -258,7 +258,7 @@ export function LibraryEmptyState(props: LibraryEmptyStateProps) {
     if (isSearchActive) return 'search';
     if (isRecent) return 'recent';
     if (activeFilter === 'trash' || activeFilter === 'bin') return 'trash';
-    if (activeFilter === 'starred' || activeFilter === 'favorites') return 'starred';
+    if (activeFilter === 'starred') return 'starred';
     if (activeFilter === 'retracted') return 'retracted';
     if (activeFilter === 'unfiled') return 'unfiled';
     if (activeFilter === 'my-publications' || activeFilter === 'publications') return 'publications';

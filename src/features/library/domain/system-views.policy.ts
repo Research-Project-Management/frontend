@@ -203,7 +203,7 @@ export function filterItemsBySystemView<T extends Record<string, unknown>>(
       return activeItems.filter((item) => isItemRetracted(item));
 
     case 'starred':
-      return activeItems.filter((item) => Boolean(item.isStarred || item.isFavorite));
+      return activeItems.filter((item) => Boolean(item.isStarred));
 
     case 'duplicates': {
       const doiCounts = new Map<string, number>();

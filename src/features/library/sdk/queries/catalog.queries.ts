@@ -620,7 +620,7 @@ export function useLibraryItemsQuery(
             it.collectionIds?.includes(params.collectionId!),
           );
         } else if (params?.view === 'starred') {
-          filtered = listData.items.filter((it) => Boolean(it.isStarred || it.isFavorite));
+          filtered = listData.items.filter((it) => Boolean(it.isStarred));
         } else if (params?.view === 'unfiled') {
           filtered = listData.items.filter(
             (it) => !it.collectionIds || it.collectionIds.length === 0,

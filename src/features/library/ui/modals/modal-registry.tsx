@@ -29,6 +29,7 @@ import {
   useFetchAcademicFeed,
   useSubscribeFeedMutation,
 } from '@/features/library/sdk/queries/ingestion.queries';
+import { useSetMyPublicationMutation } from '@/features/library/sdk/queries/item-mutations.queries';
 import { useFeedsStore } from '@/features/library/core/store/feeds.store';
 import type { SavedFeedSubscription } from '@/features/library/domain/types/feeds.types';
 import { parseOpmlFeeds } from '@/features/library/domain/feed-parser.domain';
@@ -68,6 +69,7 @@ const EditFeedModal = dynamic(
   { ssr: false },
 );
 const CslStyleSearchModal = dynamic(() => import('./CslStyleSearchModal'), { ssr: false });
+const MyPublicationModal = dynamic(() => import('./MyPublicationModal'), { ssr: false });
 
 /**
  * 4. CurationModalsHost
@@ -279,6 +281,7 @@ export function IngestionAndUtilityModalsHost({
 
   const [isSubmittingLink, setIsSubmittingLink] = React.useState(false);
   const router = useRouter();
+  const setMyPublicationMutation = useSetMyPublicationMutation(effectiveScope);
   const { mutateAsync: subscribeFeed } = useSubscribeFeedMutation();
   const { mutateAsync: fetchAcademicFeed } = useFetchAcademicFeed();
   const addFeedToStore = useFeedsStore((s) => s.addFeed);
@@ -474,6 +477,38 @@ export function IngestionAndUtilityModalsHost({
     );
   }
 
+  if (activeModal === 'MY_PUBLICATION_CONFIRM') {
+    const targetItem = payload?.item as Item | undefined;
+    const customOnConfirm = payload?.onConfirm as
+      | ((opts: {
+          contributorId?: string | null;
+          isPublic?: boolean;
+          openAccessLicense?: string | null;
+          includeAttachments?: boolean;
+        }) => Promise<void> | void)
+      | undefined;
+
+    return (
+      <MyPublicationModal
+        open={true}
+        onOpenChange={(open) => !open && closeModal()}
+        item={targetItem}
+        onConfirm={async (options) => {
+          if (typeof customOnConfirm === 'function') {
+            await customOnConfirm(options);
+          } else if (targetItem) {
+            await setMyPublicationMutation.mutateAsync({
+              itemId: targetItem.id,
+              isMyPublication: true,
+              options,
+            });
+          }
+          closeModal();
+        }}
+      />
+    );
+  }
+
   return null;
 }
 
@@ -504,4 +539,5 @@ export const ACTIVE_MODAL_REGISTRY: Partial<
   ADD_FEED: IngestionAndUtilityModalsHost,
   EDIT_FEED: IngestionAndUtilityModalsHost,
   CSL_STYLE_MANAGER: IngestionAndUtilityModalsHost,
+  MY_PUBLICATION_CONFIRM: IngestionAndUtilityModalsHost,
 };

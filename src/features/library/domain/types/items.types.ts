@@ -176,7 +176,6 @@ export const itemSchema = z.object({
   notesCount: z.number().optional().default(0),
   noteCount: z.number().optional().default(0),
   attachmentCount: z.number().optional().default(0),
-  isFavorite: z.boolean().optional().default(false),
   isStarred: z.boolean().optional().default(false),
   isRead: z.boolean().optional().default(false),
   readStatus: z.enum(['unread', 'reading', 'completed']).optional().default('unread'),
@@ -385,7 +384,7 @@ export interface ItemQueryParams {
   toYear?: number;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
-  isFavorite?: boolean;
+  isStarred?: boolean;
   isRead?: boolean;
   readStatus?: 'unread' | 'reading' | 'completed' | string;
   isRetracted?: boolean;

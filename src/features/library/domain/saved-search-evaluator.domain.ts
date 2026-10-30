@@ -53,7 +53,6 @@ export const SEARCH_FIELD_ALIASES: Readonly<Record<string, string>> = {
   read_status: 'readStatus',
   is_starred: 'isStarred',
   starred: 'isStarred',
-  isFavorite: 'isStarred',
   item_type: 'itemType',
   publication_title: 'publicationTitle',
   journal: 'publicationTitle',
@@ -326,7 +325,7 @@ export function extractItemFieldValues(item: Record<string, unknown>, field: str
   }
 
   if (normalizedField === 'isStarred') {
-    const starred = Boolean(item.isStarred || item.starred || item.isFavorite);
+    const starred = Boolean(item.isStarred || item.starred);
     return [starred, String(starred)];
   }
 

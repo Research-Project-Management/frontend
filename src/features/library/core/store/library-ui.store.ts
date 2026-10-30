@@ -41,7 +41,8 @@ export type LibraryModalType =
   | 'CSL_STYLE_MANAGER'
   | 'FEEDS_MANAGER'
   | 'ADD_FEED'
-  | 'EDIT_FEED';
+  | 'EDIT_FEED'
+  | 'MY_PUBLICATION_CONFIRM';
 
 export type ModalType = LibraryModalType;
 

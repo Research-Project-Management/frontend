@@ -161,7 +161,6 @@ export const EMPTY_BACKEND_ITEM_DEFAULTS: Item = {
   notesCount: 0,
   noteCount: 0,
   attachmentCount: 0,
-  isFavorite: false,
   isStarred: false,
   isRead: false,
   readStatus: 'unread',
@@ -352,7 +351,6 @@ export function hasExplicitUserStateInPayload(
     Array.isArray(rec.states) ||
     Array.isArray(rec.userStates) ||
     rec.isStarred !== undefined ||
-    rec.isFavorite !== undefined ||
     rec.isRead !== undefined ||
     rec.readStatus !== undefined ||
     rec.rating !== undefined ||

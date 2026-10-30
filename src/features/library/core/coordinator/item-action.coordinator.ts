@@ -1,16 +1,20 @@
 'use client';
 
 import { useMemo, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { copyToClipboard } from '@/shared/lib/utils';
 import { openInNewTab } from '@/features/library/core/coordinator/browser-io.helpers';
 import { isProjectScope } from '@/features/library/domain/item-url';
+import { ItemsService } from '@/features/library/sdk/library.client';
+import { libraryKeys, itemKeys } from '@/features/library/sdk/query-keys';
 import { useCitationStyles } from '@/features/library/sdk/queries/citation.queries';
 import { useAssignCollectionItemsMutation } from '@/features/library/sdk/queries/collections.queries';
 import {
   useReResolveItemMetadataMutation,
   useSetMyPublicationMutation,
 } from '@/features/library/sdk/queries/catalog.queries';
+import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { useRetraction } from '@/features/library/sdk/queries/ingestion.queries';
 import { useItemTypeConversion } from '@/features/library/sdk/queries/saved-searches-relations.queries';
 import {
@@ -145,13 +149,19 @@ export function useItemActionHandlers(
     });
   }, [item.id, onAfterAction, reResolveMutation]);
 
+  const openModal = useLibraryUIStore((s) => s.openModal);
+
   const handleToggleMyPublications = useCallback(() => {
     onAfterAction?.();
-    void setMyPublicationMutation.mutateAsync({
-      itemId: item.id,
-      isMyPublication: !item.isMyPublication,
-    });
-  }, [item.id, item.isMyPublication, onAfterAction, setMyPublicationMutation]);
+    if (item.isMyPublication) {
+      void setMyPublicationMutation.mutateAsync({
+        itemId: item.id,
+        isMyPublication: false,
+      });
+    } else {
+      openModal('MY_PUBLICATION_CONFIRM', { item });
+    }
+  }, [item, onAfterAction, openModal, setMyPublicationMutation]);
 
   const handleToggleRetraction = useCallback(() => {
     onAfterAction?.();
@@ -229,4 +239,48 @@ export function useItemActionHandlers(
     handleConvertType,
     itemTypeConversion,
   };
+}
+
+/**
+ * Hook to handle dragging and dropping items directly into the "My Publications" system collection.
+ * Conforms to SC-009 by abstracting queryClient/ItemsService lookup into a coordinator hook.
+ */
+export function useDropToMyPublications(effectiveScopeId: string = 'user') {
+  const queryClient = useQueryClient();
+  const openModal = useLibraryUIStore((s) => s.openModal);
+
+  return useCallback(
+    async (ids: string[]) => {
+      if (!ids || ids.length === 0) return;
+      const targetId = ids[0];
+      try {
+        let item: Item | undefined =
+          queryClient.getQueryData<Item>(itemKeys.byId(effectiveScopeId, targetId));
+        if (!item) {
+          const cachedQueries = queryClient.getQueriesData<unknown>({ queryKey: libraryKeys.all });
+          for (const [_, data] of cachedQueries) {
+            const list = Array.isArray(data)
+              ? data
+              : (data as { items?: unknown[] })?.items;
+            if (Array.isArray(list)) {
+              const found = list.find((it) => (it as { id?: string })?.id === targetId);
+              if (found) {
+                item = found as Item;
+                break;
+              }
+            }
+          }
+        }
+        if (!item) {
+          item = ((await ItemsService.getById(effectiveScopeId, targetId)) ?? undefined) as Item | undefined;
+        }
+        if (item) {
+          openModal('MY_PUBLICATION_CONFIRM', { item });
+        }
+      } catch {
+        toast.error('Failed to prepare item for My Publications', { id: 'drop-to-my-pub-error' });
+      }
+    },
+    [queryClient, effectiveScopeId, openModal],
+  );
 }

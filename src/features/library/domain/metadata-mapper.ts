@@ -437,9 +437,6 @@ function projectCanonicalBaseFields(
   if (typeof resolvedNoticeUrl === 'string' && resolvedNoticeUrl.trim()) {
     mapped.noticeUrl = resolvedNoticeUrl.trim();
   }
-  if (mapped.isFavorite === undefined && typeof rec.isStarred === 'boolean') {
-    mapped.isFavorite = rec.isStarred;
-  }
   if (mapped.notesCount === undefined && typeof rec.noteCount === 'number') {
     mapped.notesCount = rec.noteCount;
   }
@@ -539,7 +536,6 @@ export function mapBackendItem(
   if (stateSource) {
     if (mapped.isStarred === undefined && typeof stateSource.isStarred === 'boolean') {
       mapped.isStarred = stateSource.isStarred;
-      mapped.isFavorite = stateSource.isStarred;
     }
     if (mapped.readStatus === undefined && typeof stateSource.readStatus === 'string') {
       mapped.readStatus = stateSource.readStatus;

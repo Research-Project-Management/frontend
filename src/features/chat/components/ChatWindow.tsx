@@ -256,16 +256,9 @@ export function ChatWindow({ conversation }: ChatWindowProps) {
 
           {/* Breadcrumbs Navigation matching Flux style */}
           <nav aria-label="Breadcrumbs" className="flex items-center gap-1.5 text-13 font-medium min-w-0 truncate">
-            <span className="text-muted-foreground flex items-center gap-1.5 shrink-0">
-              <MessageSquare className="size-4 shrink-0 text-muted-foreground" />
-              <span>Messages</span>
-            </span>
-
-            <ChevronRight className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.5} />
-
             {conversation.type === 'project_channel' && conversation.projectName && (
               <>
-                <span className="text-muted-foreground truncate max-w-[140px] shrink-0">
+                <span className="text-muted-foreground truncate max-w-[140px] shrink-0 font-medium">
                   {conversation.projectName}
                 </span>
                 <ChevronRight className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.5} />

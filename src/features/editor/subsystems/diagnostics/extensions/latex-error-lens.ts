@@ -199,7 +199,12 @@ function buildDecorations(
   // Group diagnostics by line to avoid multiple widgets cluttering one line
   const lineMap = new Map<number, IndexedDiagnosticItem>();
   for (const d of diagnostics) {
-    const l = Math.max(1, Math.min(d.line, doc.lines));
+    // Skip diagnostics without a valid source line (e.g. global compile warnings like "Reference undefined on page 2")
+    // These belong in the Compiler Logs panel, not forced onto Line 1
+    if (!d.line || typeof d.line !== 'number' || d.line < 1 || isNaN(d.line)) {
+      continue;
+    }
+    const l = Math.min(d.line, doc.lines);
     // Prioritize errors over warnings
     const existing = lineMap.get(l);
     if (!existing || (existing.severity !== 'error' && d.severity === 'error')) {

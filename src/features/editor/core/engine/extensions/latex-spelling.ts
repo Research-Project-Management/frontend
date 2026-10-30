@@ -68,8 +68,10 @@ export const clearSpellErrorsEffect = StateEffect.define<void>();
 
 const DEFAULT_SESSION_IGNORED_WORDS = [
   'overleaf', 'latex', 'pdflatex', 'xelatex', 'lualatex', 'bibtex', 'biber',
+  'natbib', 'biblatex', 'nips', 'neurips', 'icml', 'iclr', 'cvpr',
   'et', 'al', 'arxiv', 'doi', 'rgb', 'rgba', 'cpu', 'gpu', 'api', 'url',
   'fig', 'tab', 'eq', 'sec', 'algo', 'auth', 'init', 'impl', 'repo',
+  'amsmath', 'amssymb', 'amsfonts', 'graphicx', 'hyperref', 'xcolor', 'booktabs', 'microtype',
   // Months & calendar dates (Overleaf parity)
   'january', 'february', 'march', 'april', 'may', 'june', 'july',
   'august', 'september', 'october', 'november', 'december',
@@ -131,7 +133,7 @@ function getMaskBuffer(len: number): Uint8Array {
 
 const SPELL_MATH_REGEX = /(?<!\\)\$\$[\s\S]*?(?<!\\)\$\$|(?<!\\)\$[^$\n]+(?<!\\)\$|\\\([\s\S]*?\\\)|(?<!\\)\\\[[\s\S]*?(?<!\\)\\\]/g;
 const SPELL_ENV_REGEX = /\\begin\{(equation\*?|align\*?|gather\*?|multline\*?|verbatim|lstlisting|minted)\}[\s\S]*?\\end\{\1\}/g;
-const SPELL_CMD_ARG_REGEX = /\\(?:cite[a-z]*|ref|eqref|label|input|include|usepackage|documentclass|bibliographystyle|bibliography)\*?(?:\[[^\]]*\])*\{([^}]+)\}/gi;
+const SPELL_CMD_ARG_REGEX = /\\(?:cite[a-z]*|ref|eqref|label|input|include|usepackage|PassOptionsToPackage|documentclass|bibliographystyle|bibliography)\*?(?:\[[^\]]*\])*(?:\{[^}]*\})+/gi;
 const SPELL_GENERIC_CMD_REGEX = /\\[a-zA-Z@]+(?:\*?)/g;
 const SPELL_BIB_ENTRY_REGEX = /@[a-zA-Z]+\s*\{[^,\s]+,/g;
 const SPELL_BIB_FIELD_KEY_REGEX = /(?:^|[\n,])\s*([a-zA-Z_][a-zA-Z0-9_-]*)\s*=/g;

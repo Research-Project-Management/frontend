@@ -30,9 +30,16 @@ import {
 
 interface ChatWindowProps {
   conversation: ConversationItem | null;
+  backHref?: string;
+  showSidebarToggle?: boolean;
 }
 
-export function ChatWindow({ conversation }: ChatWindowProps) {
+export function ChatWindow({ conversation, backHref, showSidebarToggle = true }: ChatWindowProps) {
+  const effectiveBackHref =
+    backHref ||
+    (conversation?.type === 'project_channel' && conversation?.projectId
+      ? `/projects/${conversation.projectId}/work-items`
+      : undefined);
   const { user } = useAuth();
   const { typingUsers, setReplyingToMessage, isSidebarOpen, toggleSidebar } = useChatStore();
 
@@ -256,15 +263,6 @@ export function ChatWindow({ conversation }: ChatWindowProps) {
 
           {/* Breadcrumbs Navigation matching Flux style */}
           <nav aria-label="Breadcrumbs" className="flex items-center gap-1.5 text-13 font-medium min-w-0 truncate">
-            {conversation.type === 'project_channel' && conversation.projectName && (
-              <>
-                <span className="text-muted-foreground truncate max-w-[140px] shrink-0 font-medium">
-                  {conversation.projectName}
-                </span>
-                <ChevronRight className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.5} />
-              </>
-            )}
-
             <div className="flex items-center gap-1.5 font-heading font-semibold text-13 text-foreground truncate min-w-0">
               {conversation.type === 'project_channel' ? (
                 <>
@@ -296,12 +294,6 @@ export function ChatWindow({ conversation }: ChatWindowProps) {
                 </>
               )}
             </div>
-
-            {conversation.topic && (
-              <span className="text-12 font-normal text-muted-foreground truncate hidden lg:inline ml-1">
-                - {conversation.topic}
-              </span>
-            )}
           </nav>
         </div>
 

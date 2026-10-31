@@ -168,6 +168,9 @@ export interface SendMessageOptions {
 
 interface CompanionInputProps {
   currentProjectId?: string;
+  isReaderContext?: boolean;
+  readerPaper?: { id: string; title: string } | null;
+  openReaderPapers?: Array<{ id: string; title: string }>;
   onSend: (text: string, options?: SendMessageOptions) => void;
   onStop?: () => void;
   isStreaming?: boolean;
@@ -179,6 +182,9 @@ interface CompanionInputProps {
 
 export function CompanionInput({
   currentProjectId,
+  isReaderContext = false,
+  readerPaper = null,
+  openReaderPapers = [],
   onSend,
   onStop = () => {},
   isStreaming = false,
@@ -193,10 +199,18 @@ export function CompanionInput({
   const [isStorageModalOpen, setIsStorageModalOpen] = useState(false);
   const [isUploadedDocsModalOpen, setIsUploadedDocsModalOpen] = useState(false);
   const [scopeOpen, setScopeOpen] = useState(false);
+  const [readerScopeOpen, setReaderScopeOpen] = useState(false);
   const [projectSearch, setProjectSearch] = useState('');
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFileItem[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [readerDocScope, setReaderDocScope] = useState<'current' | 'open-tabs' | 'all'>('current');
+  const quotedPassage = useAiCompanionStore((s) => s.quotedPassage);
+  const setQuotedPassage = useAiCompanionStore((s) => s.setQuotedPassage);
+
+  useEffect(() => {
+    setReaderDocScope('current');
+  }, [readerPaper?.id]);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -327,6 +341,12 @@ export function CompanionInput({
       textareaRef.current?.focus();
     }
   }, [initialText]);
+
+  useEffect(() => {
+    if (quotedPassage) {
+      textareaRef.current?.focus();
+    }
+  }, [quotedPassage]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -471,21 +491,64 @@ export function CompanionInput({
       );
       return;
     }
-    if ((!text.trim() && attachedFiles.length === 0) || isStreaming) return;
+    if ((!text.trim() && !quotedPassage && attachedFiles.length === 0) || isStreaming) return;
 
     const finalProjectId = currentProjectObj ? currentProjectObj.id : selectedProject;
     const finalWebSearch = webSearchEnabled ? ['*'] : undefined;
+    const effectiveAttachments: AttachedFile[] = [...attachedFiles];
+    if (isReaderContext) {
+      if (
+        readerDocScope === 'current' &&
+        readerPaper?.id &&
+        !effectiveAttachments.some((f) => f.id === readerPaper.id)
+      ) {
+        effectiveAttachments.unshift({
+          id: readerPaper.id,
+          name: readerPaper.title || 'Current Paper',
+        });
+      } else if (readerDocScope === 'open-tabs') {
+        const tabsToAdd =
+          openReaderPapers.length > 0
+            ? openReaderPapers
+            : readerPaper
+              ? [readerPaper]
+              : [];
+        for (const tab of [...tabsToAdd].reverse()) {
+          if (!effectiveAttachments.some((f) => f.id === tab.id)) {
+            effectiveAttachments.unshift({
+              id: tab.id,
+              name: tab.title || 'Open Paper',
+            });
+          }
+        }
+      }
+    } else if (quotedPassage?.paperId && !effectiveAttachments.some((f) => f.id === quotedPassage.paperId)) {
+      effectiveAttachments.unshift({
+        id: quotedPassage.paperId,
+        name: quotedPassage.paperTitle || 'Quoted Paper',
+      });
+    }
     const finalDocIds =
-      attachedFiles.length > 0 ? attachedFiles.map((f) => f.id) : undefined;
+      effectiveAttachments.length > 0 ? effectiveAttachments.map((f) => f.id) : undefined;
 
-    onSend(text.trim(), {
+    let finalMessageText = text.trim();
+    if (quotedPassage?.text) {
+      const pageBadge = quotedPassage.pageNumber ? ` (p. ${quotedPassage.pageNumber})` : '';
+      const quoteBlock = `> "${quotedPassage.text.trim()}"${pageBadge}`;
+      finalMessageText = finalMessageText
+        ? `${quoteBlock}\n\n${finalMessageText}`
+        : `${quoteBlock}\n\nExplain this passage, its methodology or context, and why it is important in the paper.`;
+    }
+
+    onSend(finalMessageText, {
       projectId: finalProjectId,
       webSearchSites: finalWebSearch,
       documentIds: finalDocIds,
-      attachedFiles: attachedFiles.length > 0 ? [...attachedFiles] : undefined,
+      attachedFiles: effectiveAttachments.length > 0 ? effectiveAttachments : undefined,
     });
 
     setText('');
+    setQuotedPassage(null);
     setAttachedFiles([]);
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -689,6 +752,160 @@ export function CompanionInput({
             </PopoverContent>
           </Popover>
 
+          {/* Reader Document Context Scope Selector (This paper / Open tabs / Entire Library) */}
+          {isReaderContext && (
+            <Popover open={readerScopeOpen} onOpenChange={setReaderScopeOpen}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <PopoverTrigger asChild>
+                    <button
+                      type='button'
+                      className='inline-flex h-6 max-w-[210px] items-center gap-1.5 rounded-md border border-border bg-background hover:bg-muted px-2 text-11 text-foreground transition-colors cursor-pointer outline-none shrink-0'
+                      aria-label='Paper & library context scope'
+                    >
+                      {readerDocScope === 'current' ? (
+                        <FileText className='size-3 shrink-0 text-foreground' strokeWidth={1.5} />
+                      ) : (
+                        <BookOpen className='size-3 shrink-0 text-foreground' strokeWidth={1.5} />
+                      )}
+                      <span className='truncate font-medium'>
+                        {readerDocScope === 'current'
+                          ? readerPaper?.title || 'This paper'
+                          : readerDocScope === 'open-tabs'
+                            ? `Open tabs (${openReaderPapers.length || 1})`
+                            : 'Entire library'}
+                      </span>
+                      <ChevronDown className='size-2.5 text-foreground shrink-0 opacity-70 ml-0.5' />
+                    </button>
+                  </PopoverTrigger>
+                </TooltipTrigger>
+                <TooltipContent side='top' sideOffset={4} className='max-w-xs'>
+                  <p className='font-medium truncate'>
+                    {readerDocScope === 'current'
+                      ? readerPaper?.title || 'This paper'
+                      : readerDocScope === 'open-tabs'
+                        ? `All ${openReaderPapers.length || 1} open reader tabs`
+                        : 'Search across entire project library'}
+                  </p>
+                  <p className='text-10 text-muted-foreground'>Click to switch single-paper or multi-paper Q&A</p>
+                </TooltipContent>
+              </Tooltip>
+              <PopoverContent
+                align='start'
+                side='top'
+                sideOffset={6}
+                className='w-64 p-1.5 rounded-md shadow-md z-50 border border-border bg-popover flex flex-col gap-0.5 select-none'
+              >
+                <div className='px-2 py-1 text-10 font-medium text-muted-foreground'>
+                  Document scope
+                </div>
+
+                {/* 1. Current Paper */}
+                {readerPaper?.id && (
+                  <button
+                    type='button'
+                    onClick={() => {
+                      setReaderDocScope('current');
+                      setReaderScopeOpen(false);
+                    }}
+                    className={cn(
+                      'w-full flex items-center justify-between px-2 py-1.5 rounded-md text-11 text-left cursor-pointer transition-colors',
+                      readerDocScope === 'current'
+                        ? 'bg-muted text-foreground font-medium'
+                        : 'hover:bg-muted text-foreground font-normal'
+                    )}
+                  >
+                    <div className='flex items-center gap-2 min-w-0 flex-1'>
+                      <FileText className='size-3.5 shrink-0 text-foreground' strokeWidth={1.5} />
+                      <div className='flex flex-col min-w-0 flex-1'>
+                        <span className='truncate'>This paper only</span>
+                        <span className='text-10 text-muted-foreground truncate'>
+                          {readerPaper.title}
+                        </span>
+                      </div>
+                    </div>
+                    {readerDocScope === 'current' && (
+                      <Check className='size-3 text-foreground shrink-0 ml-1.5' />
+                    )}
+                  </button>
+                )}
+
+                {/* 2. All Open Reader Tabs */}
+                {openReaderPapers.length > 1 && (
+                  <button
+                    type='button'
+                    onClick={() => {
+                      setReaderDocScope('open-tabs');
+                      setReaderScopeOpen(false);
+                    }}
+                    className={cn(
+                      'w-full flex items-center justify-between px-2 py-1.5 rounded-md text-11 text-left cursor-pointer transition-colors',
+                      readerDocScope === 'open-tabs'
+                        ? 'bg-muted text-foreground font-medium'
+                        : 'hover:bg-muted text-foreground font-normal'
+                    )}
+                  >
+                    <div className='flex items-center gap-2 min-w-0 flex-1'>
+                      <BookOpen className='size-3.5 shrink-0 text-foreground' strokeWidth={1.5} />
+                      <div className='flex flex-col min-w-0 flex-1'>
+                        <span className='truncate'>All open tabs ({openReaderPapers.length} papers)</span>
+                        <span className='text-10 text-muted-foreground truncate'>
+                          Compare & synthesize open papers
+                        </span>
+                      </div>
+                    </div>
+                    {readerDocScope === 'open-tabs' && (
+                      <Check className='size-3 text-foreground shrink-0 ml-1.5' />
+                    )}
+                  </button>
+                )}
+
+                {/* 3. Entire Project Library */}
+                <button
+                  type='button'
+                  onClick={() => {
+                    setReaderDocScope('all');
+                    setReaderScopeOpen(false);
+                  }}
+                  className={cn(
+                    'w-full flex items-center justify-between px-2 py-1.5 rounded-md text-11 text-left cursor-pointer transition-colors',
+                    readerDocScope === 'all'
+                      ? 'bg-muted text-foreground font-medium'
+                      : 'hover:bg-muted text-foreground font-normal'
+                  )}
+                >
+                  <div className='flex items-center gap-2 min-w-0 flex-1'>
+                    <Database className='size-3.5 shrink-0 text-foreground' strokeWidth={1.5} />
+                    <div className='flex flex-col min-w-0 flex-1'>
+                      <span className='truncate'>Entire project library</span>
+                      <span className='text-10 text-muted-foreground truncate'>
+                        Query across all indexed papers
+                      </span>
+                    </div>
+                  </div>
+                  {readerDocScope === 'all' && (
+                    <Check className='size-3 text-foreground shrink-0 ml-1.5' />
+                  )}
+                </button>
+
+                <div className='my-1 border-t border-border/60' />
+
+                {/* 4. Select specific papers from Library */}
+                <button
+                  type='button'
+                  onClick={() => {
+                    setReaderScopeOpen(false);
+                    setIsLibraryModalOpen(true);
+                  }}
+                  className='w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-11 text-left cursor-pointer hover:bg-muted text-foreground font-normal transition-colors'
+                >
+                  <Plus className='size-3.5 shrink-0 text-foreground' strokeWidth={1.5} />
+                  <span>Select multiple papers from Library...</span>
+                </button>
+              </PopoverContent>
+            </Popover>
+          )}
+
           {/* Uploading files */}
           {uploadingFiles.map((up) => {
             const isProcessing = up.stage === 'processing';
@@ -767,6 +984,31 @@ export function CompanionInput({
             );
           })}
         </div>
+
+        {/* ── Quoted Passage Chip (from Reader "Ask AI") ─────────────────────── */}
+        {quotedPassage && (
+          <div className='flex items-start justify-between gap-2 mb-2 px-2.5 py-1.5 rounded-md bg-muted/60 border border-border text-11'>
+            <div className='flex flex-col min-w-0 flex-1 border-l-2 border-foreground/40 pl-2'>
+              <div className='flex items-center gap-1.5 text-10 text-muted-foreground font-medium'>
+                <span className='truncate'>
+                  Selected passage{quotedPassage.pageNumber ? ` • p. ${quotedPassage.pageNumber}` : ''}
+                </span>
+              </div>
+              <p className='text-11 text-foreground line-clamp-2 italic leading-snug mt-0.5 select-text'>
+                &ldquo;{quotedPassage.text}&rdquo;
+              </p>
+            </div>
+            <button
+              type='button'
+              onClick={() => setQuotedPassage(null)}
+              className='size-5 shrink-0 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer'
+              aria-label='Remove quoted passage'
+              title='Remove quoted passage'
+            >
+              <X className='size-3' />
+            </button>
+          </div>
+        )}
 
         {/* ── Textarea ───────────────────────────────────────────────────────── */}
         <textarea
@@ -933,12 +1175,12 @@ export function CompanionInput({
                   <button
                     type='button'
                     onClick={handleSubmit}
-                    disabled={(!text.trim() && attachedFiles.length === 0) || isUploading}
+                    disabled={(!text.trim() && !quotedPassage && attachedFiles.length === 0) || isUploading}
                     className={cn(
                       'relative flex size-7 items-center justify-center rounded-md p-0 transition-all select-none before:absolute before:-inset-2 md:before:hidden',
                       isUploading
                         ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-60'
-                        : (!text.trim() && attachedFiles.length === 0)
+                        : (!text.trim() && !quotedPassage && attachedFiles.length === 0)
                           ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-40'
                           : 'bg-ai text-white hover:bg-ai-hover active:scale-95 cursor-pointer'
                     )}

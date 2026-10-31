@@ -72,12 +72,14 @@ export default function AppLayout({
 
   if (isPaperReader) {
     return (
-      <div className='h-dvh w-full flex flex-col overflow-hidden bg-background relative' suppressHydrationWarning>
-        <ErrorBoundary resetKeys={[pathname]} variant="full" featureName="Document Reader">
-          <Suspense fallback={<AppLoading />}>
-            {children}
-          </Suspense>
-        </ErrorBoundary>
+      <div className='h-dvh w-full flex flex-row overflow-hidden bg-background relative' suppressHydrationWarning>
+        <div className='flex-1 min-w-0 h-full flex flex-col overflow-hidden relative'>
+          <ErrorBoundary resetKeys={[pathname]} variant="full" featureName="Document Reader">
+            <Suspense fallback={<AppLoading />}>
+              {children}
+            </Suspense>
+          </ErrorBoundary>
+        </div>
         <ErrorBoundary fallback={null} featureName="Quick Tools Hub">
           <StickyDock mode="floating" />
         </ErrorBoundary>

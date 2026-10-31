@@ -35,6 +35,19 @@ export const integrationService = {
   },
 
   /**
+   * Connects Zotero directly using Personal API Key & User ID.
+   */
+  async connectZoteroApiKey(payload: {
+    zoteroUserId: string;
+    apiKey: string;
+  }): Promise<{ success: boolean; accountName: string }> {
+    return apiPost<{ success: boolean; accountName: string }>(
+      '/api/v1/integrations/zotero/api-key',
+      payload,
+    );
+  },
+
+  /**
    * Lists remote collections for a connected provider.
    */
   async getCollections(provider: IntegrationProvider): Promise<RemoteCollection[]> {

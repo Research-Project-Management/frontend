@@ -103,6 +103,20 @@ export function useIntegrations() {
     },
   });
 
+  const connectZoteroApiKeyMutation = useMutation({
+    mutationFn: async (payload: { zoteroUserId: string; apiKey: string }) => {
+      return await integrationService.connectZoteroApiKey(payload);
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: INTEGRATIONS_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: ['remote-collections', 'zotero'] });
+      toast.success(result.accountName ? `Connected to ${result.accountName}` : 'Successfully connected to Zotero!');
+    },
+    onError: (err: unknown) => {
+      toast.error(`Connection failed: ${getErrorMessage(err) || 'Unknown error'}`);
+    },
+  });
+
   return {
     data: query.data,
     isLoading: query.isLoading,
@@ -112,6 +126,8 @@ export function useIntegrations() {
     integrations: (query.data && query.data.length > 0) ? query.data : FALLBACK_INTEGRATIONS,
     connect: connectMutation.mutateAsync,
     isConnecting: connectMutation.isPending,
+    connectZoteroApiKey: connectZoteroApiKeyMutation.mutateAsync,
+    isConnectingZoteroApiKey: connectZoteroApiKeyMutation.isPending,
     disconnect: disconnectMutation.mutateAsync,
     isDisconnecting: disconnectMutation.isPending,
   };

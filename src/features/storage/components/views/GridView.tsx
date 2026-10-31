@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Star, Folder, CheckSquare, Square, Loader2 } from 'lucide-react';
+import { Star, Folder, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { resolveFileUrl } from '@/shared/lib/file-client';
+import { Checkbox } from '@/shared/components/ui/checkbox';
 import { useInfiniteSentinel } from '../../hooks/use-storage';
 import type { StorageItem, StorageViewProps } from '@/features/storage/types/storage.types';
-import { getFileType, getFileIcon, getFileColor, formatFileSize, createFolderDropHandlers } from '../../utils/storage.util';
+import { getFileType, getFileIcon, formatFileSize, createFolderDropHandlers } from '../../utils/storage.util';
 import { ItemActions } from './StorageItemActions';
 import { useStorageSelectionStore } from '../../store/storage-ui.store';
 
@@ -29,11 +30,8 @@ const GridFileIconItem = React.memo(function GridFileIconItem({ item }: { item: 
   }
 
   return (
-    <div
-      className="transition-transform duration-300 group-hover:scale-110 flex items-center justify-center"
-      style={{ color: getFileColor(fileType) }}
-    >
-      {getFileIcon(fileType, 12)}
+    <div className="transition-transform duration-300 group-hover:scale-110 flex items-center justify-center text-foreground">
+      {getFileIcon(fileType, 10)}
     </div>
   );
 });
@@ -116,9 +114,12 @@ export const GridView = React.memo(function GridView({
                         : 'border-border'
                     } ${dragOverFolderId === folder.id ? 'border-primary bg-muted ring-1 ring-primary' : ''}`}
                   >
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       {!isReadOnly && (
-                        <button
+                        <div
+                          role="checkbox"
+                          aria-checked={isMultiSelected}
+                          tabIndex={0}
                           onClick={(e) => {
                             e.stopPropagation();
                             if (e.shiftKey) {
@@ -127,23 +128,29 @@ export const GridView = React.memo(function GridView({
                               toggleSelect(folder.id);
                             }
                           }}
-                          className={`size-5 rounded flex items-center justify-center transition-opacity cursor-pointer shrink-0 ${
-                            isMultiSelected
-                              ? 'opacity-100 text-primary'
-                              : 'opacity-0 group-hover:opacity-60 hover:opacity-100 text-muted-foreground'
-                          }`}
+                          onKeyDown={(e) => {
+                            if (e.key === ' ' || e.key === 'Enter') {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              toggleSelect(folder.id);
+                            }
+                          }}
+                          className="flex items-center justify-center shrink-0 cursor-pointer rounded-xs"
                           title={isMultiSelected ? 'Deselect' : 'Select'}
                         >
-                          {isMultiSelected ? (
-                            <CheckSquare className="size-4 text-primary shrink-0" />
-                          ) : (
-                            <Square className="size-4 shrink-0" />
-                          )}
-                        </button>
+                          <Checkbox
+                            checked={isMultiSelected}
+                            tabIndex={-1}
+                            aria-hidden="true"
+                            className={`size-3.5 border-border data-[state=checked]:border-primary transition-opacity duration-150 pointer-events-none ${
+                              !isMultiSelected ? 'opacity-0 group-hover:opacity-100' : ''
+                            }`}
+                          />
+                        </div>
                       )}
 
-                      <div className="size-8 rounded-md bg-warning/15 text-warning flex items-center justify-center shrink-0">
-                        <Folder className="size-4.5 fill-current shrink-0" />
+                      <div className="size-7 rounded bg-muted/60 text-foreground flex items-center justify-center shrink-0">
+                        <Folder className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
                       </div>
 
                       <div className="min-w-0 flex-1">
@@ -232,9 +239,12 @@ export const GridView = React.memo(function GridView({
                     }}
                   >
                     {/* Thumbnail Area */}
-                    <div className="h-28 sm:h-32 flex items-center justify-center bg-muted overflow-hidden relative border-b border-border">
+                    <div className="h-28 sm:h-32 flex items-center justify-center bg-muted/40 overflow-hidden relative border-b border-border">
                       {!isReadOnly && (
-                        <button
+                        <div
+                          role="checkbox"
+                          aria-checked={isMultiSelected}
+                          tabIndex={0}
                           onClick={(e) => {
                             e.stopPropagation();
                             if (e.shiftKey) {
@@ -243,19 +253,27 @@ export const GridView = React.memo(function GridView({
                               toggleSelect(file.id);
                             }
                           }}
-                          className={`absolute top-1.5 left-1.5 z-10 size-6 rounded-md flex items-center justify-center bg-background/80 backdrop-blur-sm transition-opacity cursor-pointer ${
+                          onKeyDown={(e) => {
+                            if (e.key === ' ' || e.key === 'Enter') {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              toggleSelect(file.id);
+                            }
+                          }}
+                          className={`absolute top-1.5 left-1.5 z-10 size-6 rounded flex items-center justify-center bg-background/80 backdrop-blur-sm transition-opacity cursor-pointer ${
                             isMultiSelected
                               ? 'opacity-100 text-primary'
-                              : 'opacity-0 md:group-hover:opacity-100 text-foreground'
+                              : 'opacity-0 md:group-hover:opacity-100'
                           }`}
                           title={isMultiSelected ? 'Deselect' : 'Select'}
                         >
-                          {isMultiSelected ? (
-                            <CheckSquare className="size-4 text-primary shrink-0" />
-                          ) : (
-                            <Square className="size-4 shrink-0" />
-                          )}
-                        </button>
+                          <Checkbox
+                            checked={isMultiSelected}
+                            tabIndex={-1}
+                            aria-hidden="true"
+                            className="size-3.5 border-border data-[state=checked]:border-primary pointer-events-none"
+                          />
+                        </div>
                       )}
 
                       <GridFileIconItem item={file} />

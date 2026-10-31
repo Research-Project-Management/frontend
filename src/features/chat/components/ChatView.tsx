@@ -133,7 +133,7 @@ export function ChatView() {
   }
 
   return (
-    <div className="size-full flex overflow-hidden">
+    <div className="size-full flex overflow-hidden" suppressHydrationWarning>
       {/* Unified Messenger Sidebar */}
       {isSidebarOpen && <ChatSidebar conversations={conversations} isLoading={isLoading} />}
 

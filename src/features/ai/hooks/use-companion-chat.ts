@@ -229,13 +229,14 @@ export function useCompanionChat() {
     }
   }, []);
 
-  // Listen for pendingPrompt sent from other components (e.g. Home page ChatAi)
+  // Listen for pendingPrompt sent from other components (e.g. Home page ChatAi or Reader Ask AI)
   useEffect(() => {
     if (pendingPrompt && pendingPrompt.text && !isStreaming) {
       const prompt = { ...pendingPrompt };
       setPendingPrompt(null);
       sendMessage(prompt.text, {
         projectId: prompt.projectId,
+        documentIds: prompt.documentIds,
         attachedFiles: prompt.attachedFiles,
         webSearchSites:
           prompt.webSearchSites || (prompt.webSearch ? ['*'] : undefined),

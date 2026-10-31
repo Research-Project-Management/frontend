@@ -6,9 +6,10 @@ import { usePathname } from 'next/navigation';
 import {
   Settings,
   MessageSquare,
+  FlaskConical,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { ProjectsIcon, LibraryIcon, StorageIcon } from '@/shared/components/icons';
+import { ProjectsIcon, LibraryIcon } from '@/shared/components/icons';
 import { cn } from '@/shared/lib/utils';
 import { useAiCompanionStore } from '@/features/ai/store/ai-companion.store';
 import { useChatBadgeCounts } from '@/features/chat/hooks/use-chat-queries';
@@ -32,13 +33,13 @@ const NAV_ITEMS_LEFT = [
 
 const NAV_ITEMS_RIGHT = [
   { label: 'Chat', icon: MessageSquare, to: '/chat' },
-  { label: 'Storage', icon: StorageIcon, to: '/storage' },
+  { label: 'Lab', icon: FlaskConical, to: '/experiments' },
   { label: 'Settings', icon: Settings, to: '/settings' },
 ] as const;
 
 const DESKTOP_NAV_ITEMS = [
   ...NAV_ITEMS_LEFT,
-  { label: 'Storage', icon: StorageIcon, to: '/storage' },
+  { label: 'Lab', icon: FlaskConical, to: '/experiments' },
   { label: 'Settings', icon: Settings, to: '/settings' },
 ] as const;
 

@@ -100,7 +100,7 @@ export function ChatInput({ onSendMessage, onTyping, isSending }: ChatInputProps
   };
 
   return (
-    <div className="border-t border-border bg-background p-3 space-y-2">
+    <div className="bg-background p-3 space-y-2">
       {/* Replying Banner */}
       {replyingToMessage && (
         <div className="flex items-center justify-between px-2.5 py-1 rounded-md bg-muted text-11 border border-border">

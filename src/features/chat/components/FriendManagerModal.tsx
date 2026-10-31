@@ -73,14 +73,14 @@ export function FriendManagerModal() {
     if (isFriendManagerModalOpen && friendRequests?.incoming && friendRequests.incoming.length > 0) {
       setActiveTab('requests');
     }
-  }, [isFriendManagerModalOpen, friendRequests?.incoming?.length]);
+  }, [isFriendManagerModalOpen, friendRequests?.incoming]);
 
   // Facebook-style: Load suggested connections immediately when modal opens on search tab
   useEffect(() => {
     if (isFriendManagerModalOpen && activeTab === 'search' && !searchQuery.trim()) {
       executeSearch('');
     }
-  }, [isFriendManagerModalOpen, activeTab, executeSearch]);
+  }, [isFriendManagerModalOpen, activeTab, executeSearch, searchQuery]);
 
   // Snappy real-time typeahead (150ms debounce)
   useEffect(() => {

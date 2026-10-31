@@ -60,11 +60,6 @@ export default function FloatingChatWidget() {
   const { data: conversationsData } = useConversations();
   const { totalUnreadMessages, pendingFriendRequests, totalBadgeCount } = useChatBadgeCounts();
 
-  // If on the full /chat page, do not render the floating widget
-  if (pathname === '/chat' || pathname.startsWith('/chat/')) {
-    return null;
-  }
-
   // Group conversations
   const allConversations = useMemo(() => {
     const directs = conversationsData?.directs || [];
@@ -108,6 +103,11 @@ export default function FloatingChatWidget() {
         (c.projectName && c.projectName.toLowerCase().includes(q)),
     );
   }, [allConversations, filterTab, searchQuery]);
+
+  // If on the full /chat page, do not render the floating widget
+  if (pathname === '/chat' || pathname.startsWith('/chat/')) {
+    return null;
+  }
 
   return (
     <>
@@ -243,7 +243,7 @@ export default function FloatingChatWidget() {
                         className="h-6 px-1.5 rounded-md text-11 font-medium bg-muted text-foreground hover:bg-muted/80 flex items-center gap-1 border border-border transition-colors"
                       >
                         <UserPlus className="size-3 text-foreground" />
-                        <span className="font-mono text-11 font-bold tabular-nums">{pendingFriendRequests}</span>
+                        <span className="font-mono text-11 font-semibold tabular-nums">{pendingFriendRequests}</span>
                       </Link>
                     </TooltipTrigger>
                     <TooltipContent side="bottom">
@@ -519,14 +519,14 @@ function FloatingConversationView({
               type="button"
               variant="ghost"
               size="icon"
-              onClick={() => toast.info('Tính năng đính kèm tệp tin đang được phát triển')}
+              onClick={() => toast.info('File attachment feature is currently in development')}
               className="size-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer shrink-0"
-              aria-label="Phần đính kèm"
+              aria-label="Attachments"
             >
               <Paperclip className="size-4" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent side="top">Đính kèm tệp</TooltipContent>
+          <TooltipContent side="top">Attach file</TooltipContent>
         </Tooltip>
         <input
           type="text"

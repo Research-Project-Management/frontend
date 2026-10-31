@@ -1,4 +1,5 @@
 'use client';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 
 import React, { useMemo } from 'react';
 import {
@@ -69,7 +70,9 @@ export function ChatSidebar({ conversations, isLoading }: ChatSidebarProps) {
   });
 
   const { data: friendRequests } = useFriendRequests();
-  const pendingFriendRequests = friendRequests?.incoming?.length || 0;
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => { setMounted(true); }, []);
+  const pendingFriendRequests = mounted ? (friendRequests?.incoming?.length || 0) : 0;
   const [isSearchExpanded, setIsSearchExpanded] = React.useState(false);
   const searchInputRef = React.useRef<HTMLInputElement>(null);
 

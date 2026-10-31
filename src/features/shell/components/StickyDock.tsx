@@ -271,7 +271,7 @@ export default function StickyDock({
           isFloating
             ? cn(
                 'hidden md:flex fixed bottom-5 z-40 items-center justify-center size-10 transition-all duration-200',
-                isAiOpen && 'opacity-0 pointer-events-none scale-90 translate-y-2'
+                (isAiOpen || isChatActive) && 'opacity-0 pointer-events-none scale-90 translate-y-2'
               )
             : 'relative flex items-center justify-center size-8',
           className
@@ -613,7 +613,7 @@ export default function StickyDock({
         </div>
       )}
       {/* ── D. Floating Messenger Chat Widget ── */}
-      <FloatingChatWidget />
+      {isFloating && <FloatingChatWidget />}
     </>
   );
 }

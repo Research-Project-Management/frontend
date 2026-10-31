@@ -106,68 +106,34 @@ const ICON_SIZE_CLASSES: Record<number, string> = {
   12: 'size-12',
 };
 
-export function getFileIcon(type: FileType, size: number = 5) {
-  const className = ICON_SIZE_CLASSES[size] || 'size-5';
+export function getFileIcon(type: FileType, size: number = 4) {
+  const className = ICON_SIZE_CLASSES[size] || 'size-4';
   switch (type) {
     case 'folder':
-      return <Folder className={cn('shrink-0', className)} />;
+      return <Folder className={cn('shrink-0 text-foreground', className)} strokeWidth={1.5} />;
     case 'document':
-      return <FileText className={cn('shrink-0', className)} />;
+      return <FileText className={cn('shrink-0 text-foreground', className)} strokeWidth={1.5} />;
     case 'spreadsheet':
-      return <FileSpreadsheet className={cn('shrink-0', className)} />;
+      return <FileSpreadsheet className={cn('shrink-0 text-foreground', className)} strokeWidth={1.5} />;
     case 'image':
-      return <ImageIcon className={cn('shrink-0', className)} />;
+      return <ImageIcon className={cn('shrink-0 text-foreground', className)} strokeWidth={1.5} />;
     case 'video':
-      return <Video className={cn('shrink-0', className)} />;
+      return <Video className={cn('shrink-0 text-foreground', className)} strokeWidth={1.5} />;
     case 'audio':
-      return <Music className={cn('shrink-0', className)} />;
+      return <Music className={cn('shrink-0 text-foreground', className)} strokeWidth={1.5} />;
     case 'archive':
-      return <Archive className={cn('shrink-0', className)} />;
+      return <Archive className={cn('shrink-0 text-foreground', className)} strokeWidth={1.5} />;
     default:
-      return <FileIcon className={cn('shrink-0', className)} />;
+      return <FileIcon className={cn('shrink-0 text-foreground', className)} strokeWidth={1.5} />;
   }
 }
 
-export function getFileColor(type: FileType): string {
-  switch (type) {
-    case 'folder':
-      return 'oklch(60% 0.04 255)';
-    case 'document':
-      return 'oklch(63% 0.20 18)';
-    case 'spreadsheet':
-      return 'oklch(62% 0.18 145)';
-    case 'image':
-      return 'oklch(65% 0.17 152)';
-    case 'video':
-      return 'oklch(63% 0.20 290)';
-    case 'audio':
-      return 'oklch(65% 0.20 340)';
-    case 'archive':
-      return 'oklch(72% 0.17 65)';
-    default:
-      return 'oklch(60% 0.04 255)';
-  }
+export function getFileColor(_type: FileType): string {
+  return 'currentColor';
 }
 
-export function getFileColorClass(type: FileType): string {
-  switch (type) {
-    case 'folder':
-      return 'text-amber-500';
-    case 'document':
-      return 'text-rose-500';
-    case 'spreadsheet':
-      return 'text-emerald-500';
-    case 'image':
-      return 'text-teal-500';
-    case 'video':
-      return 'text-purple-500';
-    case 'audio':
-      return 'text-pink-500';
-    case 'archive':
-      return 'text-orange-500';
-    default:
-      return 'text-slate-500';
-  }
+export function getFileColorClass(_type: FileType): string {
+  return 'text-foreground';
 }
 
 export function formatFileSize(bytes?: number): string {

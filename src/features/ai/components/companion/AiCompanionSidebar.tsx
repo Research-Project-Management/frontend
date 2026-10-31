@@ -19,11 +19,28 @@ import {
 import { cn } from '@/shared/lib/utils';
 import { useAiCompanionStore } from '../../store/ai-companion.store';
 import { useCompanionChat } from '../../hooks/use-companion-chat';
+import { useReaderStore } from '@/features/library/core/store/reader.store';
 import { CompanionMessages } from './CompanionMessages';
 import { CompanionInput } from './CompanionInput';
 import { CompanionHistory } from './CompanionHistory';
 
 function AiCompanionSidebarInner() {
+  const pathname = usePathname();
+  const isPaperReader = Boolean(pathname?.includes('/library/papers/'));
+  const readerTabs = useReaderStore((s) => s.tabs);
+  const readerActiveTabId = useReaderStore((s) => s.activeTabId);
+  const openReaderPapers = React.useMemo(
+    () =>
+      readerTabs
+        .filter((t) => t.type === 'paper' && t.id && t.id !== 'library')
+        .map((t) => ({ id: t.id, title: t.title || 'Untitled Document' })),
+    [readerTabs]
+  );
+  const readerPaper = React.useMemo(() => {
+    const active = openReaderPapers.find((p) => p.id === readerActiveTabId);
+    return active ?? openReaderPapers[0] ?? null;
+  }, [openReaderPapers, readerActiveTabId]);
+
   const {
     setOpen,
     width,
@@ -179,7 +196,9 @@ function AiCompanionSidebarInner() {
           // Mobile: slide-over sheet drawer
           "fixed inset-y-0 right-0 z-50 w-full sm:max-w-md shadow-lg border-l border-border animate-in slide-in-from-right duration-200 motion-reduce:animate-none motion-reduce:transform-none overflow-hidden",
           // Desktop: in-flow resizable column with visible overflow so edge resize and collapse controls aren't clipped
-          "md:relative md:inset-auto md:z-auto md:order-3 md:h-full md:shrink-0 md:rounded-md md:border md:border-border md:shadow-none md:animate-none md:overflow-visible",
+          isPaperReader
+            ? "md:relative md:inset-auto md:z-auto md:order-3 md:h-full md:shrink-0 md:rounded-none md:border-y-0 md:border-r-0 md:border-l md:border-border md:shadow-none md:animate-none md:overflow-visible"
+            : "md:relative md:inset-auto md:z-auto md:order-3 md:h-full md:shrink-0 md:rounded-md md:border md:border-border md:shadow-none md:animate-none md:overflow-visible",
           isResizing && "transition-none select-none"
         )}
       >
@@ -234,8 +253,18 @@ function AiCompanionSidebarInner() {
 
       {/* Header */}
       {isHistoryView ? (
-        <header className='flex h-11 items-center justify-between px-2.5 sm:px-3 border-b border-border bg-transparent shrink-0 select-none'>
-          <span className='font-semibold text-13 text-foreground tracking-tight'>
+        <header
+          className={cn(
+            'flex items-center justify-between px-2.5 sm:px-3 border-b border-border bg-transparent shrink-0 select-none',
+            isPaperReader ? 'h-10 text-12' : 'h-11 text-13'
+          )}
+        >
+          <span
+            className={cn(
+              'font-semibold text-foreground tracking-tight',
+              isPaperReader ? 'text-12' : 'text-13'
+            )}
+          >
             Chat history
           </span>
           <Tooltip>
@@ -255,7 +284,12 @@ function AiCompanionSidebarInner() {
           </Tooltip>
         </header>
       ) : (
-        <header className='flex h-11 items-center justify-between px-2.5 sm:px-3 border-b border-border bg-transparent shrink-0 select-none'>
+        <header
+          className={cn(
+            'flex items-center justify-between px-2.5 sm:px-3 border-b border-border bg-transparent shrink-0 select-none',
+            isPaperReader ? 'h-10 text-12' : 'h-11 text-13'
+          )}
+        >
           {/* Left: Title */}
           <div className='flex items-center gap-2 min-w-0 flex-1 mr-2'>
             <img
@@ -264,7 +298,10 @@ function AiCompanionSidebarInner() {
               className="size-4 shrink-0 rounded-full object-contain"
             />
             <span
-              className='font-semibold text-13 text-foreground tracking-tight truncate'
+              className={cn(
+                'font-semibold text-foreground tracking-tight truncate',
+                isPaperReader ? 'text-12' : 'text-13'
+              )}
               title={displayTitle}
             >
               {displayTitle}
@@ -371,10 +408,25 @@ function AiCompanionSidebarInner() {
             messagesEndRef={messagesEndRef}
             scrollContainerRef={scrollContainerRef}
             onSelectPrompt={setPromptToFill}
+            isReaderContext={isPaperReader}
+            readerPaperTitle={readerPaper?.title}
           />
 
           <CompanionInput
             currentProjectId={currentProjectId}
+            isReaderContext={isPaperReader}
+            readerPaper={isPaperReader ? readerPaper : null}
+            openReaderPapers={isPaperReader ? openReaderPapers : []}
+            className={
+              isPaperReader
+                ? 'px-3 pb-2.5 pt-1.5 bg-background'
+                : 'px-3.5 pb-3 pt-2 bg-background'
+            }
+            placeholder={
+              isPaperReader
+                ? 'Ask about this paper, methods, or findings...'
+                : 'How can I help you today?'
+            }
             onSend={(text, options) => {
               sendMessage(text, options);
               setPromptToFill('');

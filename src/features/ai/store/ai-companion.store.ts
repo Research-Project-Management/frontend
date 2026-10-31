@@ -6,9 +6,17 @@ import { persist } from 'zustand/middleware';
 export interface PendingPromptData {
   text: string;
   projectId?: string | null;
+  documentIds?: string[] | null;
   attachedFiles?: Array<{ id: string; name: string; size?: number }>;
   webSearch?: boolean;
   webSearchSites?: string[] | null;
+}
+
+export interface QuotedPassageData {
+  text: string;
+  pageNumber?: number;
+  paperId?: string;
+  paperTitle?: string;
 }
 
 export interface AiCompanionState {
@@ -19,6 +27,7 @@ export interface AiCompanionState {
   isDocumentsView: boolean;
   selectedModel: string;
   pendingPrompt: PendingPromptData | null;
+  quotedPassage: QuotedPassageData | null;
 
   toggleOpen: () => void;
   setOpen: (open: boolean) => void;
@@ -30,6 +39,7 @@ export interface AiCompanionState {
   setDocumentsView: (open: boolean) => void;
   setSelectedModel: (model: string) => void;
   setPendingPrompt: (prompt: PendingPromptData | null) => void;
+  setQuotedPassage: (passage: QuotedPassageData | null) => void;
 }
 
 export const useAiCompanionStore = create<AiCompanionState>()(
@@ -42,6 +52,7 @@ export const useAiCompanionStore = create<AiCompanionState>()(
       isDocumentsView: false,
       selectedModel: 'Claude Sonnet 3.7',
       pendingPrompt: null,
+      quotedPassage: null,
 
       toggleOpen: () => set((state) => ({ isOpen: !state.isOpen })),
       setOpen: (open: boolean) => set({ isOpen: open }),
@@ -60,6 +71,13 @@ export const useAiCompanionStore = create<AiCompanionState>()(
         set((state) => ({
           pendingPrompt: prompt,
           isOpen: prompt ? true : state.isOpen,
+          isHistoryView: prompt ? false : state.isHistoryView,
+        })),
+      setQuotedPassage: (passage: QuotedPassageData | null) =>
+        set((state) => ({
+          quotedPassage: passage,
+          isOpen: passage ? true : state.isOpen,
+          isHistoryView: passage ? false : state.isHistoryView,
         })),
     }),
     {

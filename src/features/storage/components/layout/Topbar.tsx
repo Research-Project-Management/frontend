@@ -325,44 +325,43 @@ export default function Topbar({
           </TooltipProvider>
         </div>
 
-        {/* New Button / Popover */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button size="sm" className="h-8 gap-1.5 px-2.5 sm:px-3 rounded-md cursor-pointer shrink-0">
-              <Plus className="size-3.5 text-primary-foreground shrink-0" />
-              <span className="text-xs font-medium">New</span>
+        {/* New Button / DropdownMenu */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm" className="h-8 px-3 rounded-lg cursor-pointer shrink-0 font-medium text-13 shadow-none inline-flex items-center justify-center">
+              <span>New</span>
             </Button>
-          </PopoverTrigger>
-          <PopoverContent
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
             align="end"
             sideOffset={8}
             onCloseAutoFocus={(e) => e.preventDefault()}
-            className="w-48 p-1.5 rounded-xl border border-border bg-popover shadow-xl z-50"
+            className="w-48 p-1.5 rounded-lg border border-border bg-popover text-popover-foreground shadow-raised-200 z-50 select-none space-y-0.5"
           >
-            <button
+            <DropdownMenuItem
               onClick={handleUploadFile}
-              className="w-full flex items-center gap-2 px-2.5 py-2 text-xs sm:text-sm rounded-lg hover:bg-muted transition-colors text-left text-foreground cursor-pointer"
+              className="h-8 gap-2.5 px-2.5 text-13 font-normal cursor-pointer text-foreground rounded-lg hover:bg-muted focus:bg-muted transition-colors"
             >
-              <Upload className="size-4 text-foreground shrink-0" />
+              <Upload className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
               <span>Upload file</span>
-            </button>
-            <button
+            </DropdownMenuItem>
+            <DropdownMenuItem
               onClick={handleUploadFolder}
-              className="w-full flex items-center gap-2 px-2.5 py-2 text-xs sm:text-sm rounded-lg hover:bg-muted transition-colors text-left text-foreground cursor-pointer"
+              className="h-8 gap-2.5 px-2.5 text-13 font-normal cursor-pointer text-foreground rounded-lg hover:bg-muted focus:bg-muted transition-colors"
             >
-              <FolderUp className="size-4 text-foreground shrink-0" />
+              <FolderUp className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
               <span>Upload folder</span>
-            </button>
+            </DropdownMenuItem>
             <div className="h-px bg-border my-1" />
-            <button
+            <DropdownMenuItem
               onClick={handleCreateFolder}
-              className="w-full flex items-center gap-2 px-2.5 py-2 text-xs sm:text-sm rounded-lg hover:bg-muted transition-colors text-left text-foreground cursor-pointer"
+              className="h-8 gap-2.5 px-2.5 text-13 font-normal cursor-pointer text-foreground rounded-lg hover:bg-muted focus:bg-muted transition-colors"
             >
-              <FolderPlus className="size-4 text-foreground shrink-0" />
+              <FolderPlus className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
               <span>New folder</span>
-            </button>
-          </PopoverContent>
-        </Popover>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {children}
       </div>

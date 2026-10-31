@@ -7,6 +7,7 @@ const PROTECTED_PREFIXES = [
   '/projects',
   '/library',
   '/storage',
+  '/experiments',
   '/settings',
   '/drafts',
   '/ai',
@@ -14,6 +15,8 @@ const PROTECTED_PREFIXES = [
   '/your-work',
   '/stickies',
   '/pages',
+  '/chat',
+  '/inbox',
 ];
 
 export function proxy(request: NextRequest) {

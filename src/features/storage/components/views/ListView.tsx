@@ -2,20 +2,17 @@ import React, { useState, useMemo } from 'react';
 import {
   Star,
   Folder,
-  CheckSquare,
-  Square,
-  MinusSquare,
   Loader2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { resolveFileUrl } from '@/shared/lib/file-client';
+import { Checkbox } from '@/shared/components/ui/checkbox';
 import { useInfiniteSentinel } from '../../hooks/use-storage';
 import type { StorageItem, StorageViewProps } from '@/features/storage/types/storage.types';
 import { useStorageSelectionStore } from '@/features/storage/store/storage-ui.store';
 import {
   getFileType,
   getFileIcon,
-  getFileColor,
   formatFileSize,
   formatDate,
   createFolderDropHandlers,
@@ -37,21 +34,18 @@ const FileIconItem = React.memo(function FileIconItem({ item }: { item: StorageI
       <img
         src={imageUrl}
         alt={item.filename}
-        className="size-5 rounded object-cover shrink-0"
+        className="size-4 rounded object-cover shrink-0"
         onError={() => setHasError(true)}
       />
     );
   }
 
   return (
-    <div
-      className="flex items-center justify-center shrink-0"
-      style={{ color: getFileColor(fileType) }}
-    >
+    <div className="flex items-center justify-center shrink-0">
       {item.isFolder ? (
-        <Folder className="size-5 fill-warning/20 text-warning shrink-0" />
+        <Folder className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
       ) : (
-        getFileIcon(fileType, 5)
+        getFileIcon(fileType, 4)
       )}
     </div>
   );
@@ -100,30 +94,37 @@ export const ListView = React.memo(function ListView({
   };
 
   return (
-    <div className="rounded-lg overflow-hidden select-none">
+    <div className="w-full overflow-hidden select-none">
       {/* Desktop Header */}
-      <div className="hidden md:grid grid-cols-12 gap-3 px-4 py-2 type-dense font-medium text-foreground border-b border-border select-none">
-        <div className="col-span-5 flex items-center gap-3">
+      <div className="hidden md:grid grid-cols-12 gap-3 pl-1.5 pr-3 h-8 items-center type-dense font-medium text-foreground border-b border-border select-none">
+        <div className="col-span-5 flex items-center gap-1.5 min-w-0">
           {!isReadOnly && (
-            <button
+            <div
+              role="button"
+              tabIndex={0}
               onClick={handleHeaderCheckboxClick}
-              className="size-4 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              onKeyDown={(e) => {
+                if (e.key === ' ' || e.key === 'Enter') {
+                  e.preventDefault();
+                  handleHeaderCheckboxClick(e as unknown as React.MouseEvent);
+                }
+              }}
+              className="flex items-center justify-center shrink-0 cursor-pointer rounded-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
               title={allSelected ? 'Deselect all' : 'Select all'}
             >
-              {allSelected ? (
-                <CheckSquare className="size-4 text-primary shrink-0" />
-              ) : hasSomeSelected ? (
-                <MinusSquare className="size-4 text-primary shrink-0" />
-              ) : (
-                <Square className="size-4 opacity-50 hover:opacity-100 shrink-0" />
-              )}
-            </button>
+              <Checkbox
+                checked={allSelected ? true : hasSomeSelected ? 'indeterminate' : false}
+                tabIndex={-1}
+                aria-hidden="true"
+                className="size-3.5 border-border data-[state=checked]:border-primary data-[state=indeterminate]:border-primary pointer-events-none"
+              />
+            </div>
           )}
-          <span>Name</span>
+          <span className="text-12 font-medium">Name</span>
         </div>
-        <div className="col-span-2">Owner</div>
-        <div className="col-span-2">Last modified</div>
-        <div className="col-span-1">Size</div>
+        <div className="col-span-2 text-12 font-medium">Owner</div>
+        <div className="col-span-2 text-12 font-medium">Last modified</div>
+        <div className="col-span-1 text-12 font-medium">Size</div>
         <div className="col-span-2"></div>
       </div>
 
@@ -151,7 +152,7 @@ export const ListView = React.memo(function ListView({
                 }}
                 {...createFolderDropHandlers(item, isReadOnly || isTrash, onDropOnFolder, setDragOverFolderId)}
                 className={`hover:bg-muted cursor-pointer group transition-colors select-none ${
-                  isSelected ? 'bg-muted font-medium text-foreground' : ''
+                  isSelected ? 'bg-primary/10 font-medium text-foreground' : ''
                 } ${dragOverFolderId === item.id ? 'bg-muted ring-1 ring-muted-foreground/30' : ''}`}
                 onClick={(e: React.MouseEvent) => {
                   if (!isReadOnly && (e.shiftKey || e.ctrlKey || e.metaKey)) {
@@ -172,10 +173,13 @@ export const ListView = React.memo(function ListView({
                 }}
               >
                 {/* Desktop 12-column grid layout */}
-                <div className="hidden md:grid grid-cols-12 gap-3 items-center px-4 py-2">
-                  <div className="col-span-5 flex items-center gap-3 min-w-0 overflow-hidden">
+                <div className="hidden md:grid grid-cols-12 gap-3 items-center pl-1.5 pr-3 h-8">
+                  <div className="col-span-5 flex items-center gap-1.5 min-w-0 overflow-hidden">
                     {!isReadOnly && (
-                      <button
+                      <div
+                        role="checkbox"
+                        aria-checked={isSelected}
+                        tabIndex={0}
                         onClick={(e) => {
                           e.stopPropagation();
                           if (e.shiftKey) {
@@ -184,23 +188,28 @@ export const ListView = React.memo(function ListView({
                             toggleSelect(item.id);
                           }
                         }}
-                        className={`size-4 flex items-center justify-center transition-opacity cursor-pointer shrink-0 ${
-                          isMultiSelected
-                            ? 'opacity-100 text-primary'
-                            : 'opacity-0 group-hover:opacity-60 hover:opacity-100 text-muted-foreground'
-                        }`}
-                        title={isMultiSelected ? 'Deselect' : 'Select'}
+                        onKeyDown={(e) => {
+                          if (e.key === ' ' || e.key === 'Enter') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            toggleSelect(item.id);
+                          }
+                        }}
+                        className="flex items-center justify-center shrink-0 cursor-pointer rounded-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
                       >
-                        {isMultiSelected ? (
-                          <CheckSquare className="size-4 text-primary shrink-0" />
-                        ) : (
-                          <Square className="size-4 shrink-0" />
-                        )}
-                      </button>
+                        <Checkbox
+                          checked={isMultiSelected}
+                          tabIndex={-1}
+                          aria-hidden="true"
+                          className={`size-3.5 border-border data-[state=checked]:border-primary transition-opacity duration-150 pointer-events-none ${
+                            !isMultiSelected ? 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100' : ''
+                          }`}
+                        />
+                      </div>
                     )}
 
                     <FileIconItem item={item} />
-                    <span className="text-sm truncate font-medium text-foreground" title={item.filename}>
+                    <span className="text-13 truncate font-normal text-foreground" title={item.filename}>
                       {item.filename}
                     </span>
                     {item.starred && (
@@ -217,11 +226,11 @@ export const ListView = React.memo(function ListView({
                           <img
                             src={resolveFileUrl(item.author.avatar) || ''}
                             alt=""
-                            className="size-5 rounded-full shrink-0 object-cover"
+                            className="size-4 rounded-full shrink-0 object-cover"
                           />
                         ) : (
-                          <div className="size-5 rounded-full bg-muted flex items-center justify-center shrink-0">
-                            <span className="text-xs font-medium text-muted-foreground">
+                          <div className="size-4 rounded-full bg-muted flex items-center justify-center shrink-0">
+                            <span className="text-[10px] font-medium text-muted-foreground">
                               {item.author?.name?.charAt(0)?.toUpperCase() || '?'}
                             </span>
                           </div>
@@ -257,28 +266,29 @@ export const ListView = React.memo(function ListView({
                 </div>
 
                 {/* Mobile High-Density List Item Card */}
-                <div className="flex md:hidden items-center justify-between px-3 py-2.5">
-                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                <div className="flex md:hidden items-center justify-between pl-1.5 pr-3 py-2">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
                     {!isReadOnly && (
-                      <button
+                      <div
+                        role="checkbox"
+                        aria-checked={isMultiSelected}
+                        tabIndex={0}
                         onClick={(e) => {
                           e.stopPropagation();
                           toggleSelect(item.id);
                         }}
-                        className={`size-6 rounded flex items-center justify-center shrink-0 cursor-pointer ${
-                          isMultiSelected ? 'text-primary' : 'text-muted-foreground/50 hover:text-foreground'
-                        }`}
-                        title={isMultiSelected ? 'Deselect' : 'Select'}
+                        className="flex items-center justify-center shrink-0 cursor-pointer rounded-xs"
                       >
-                        {isMultiSelected ? (
-                          <CheckSquare className="size-4.5 text-primary shrink-0" />
-                        ) : (
-                          <Square className="size-4.5 shrink-0" />
-                        )}
-                      </button>
+                        <Checkbox
+                          checked={isMultiSelected}
+                          tabIndex={-1}
+                          aria-hidden="true"
+                          className="size-3.5 border-border data-[state=checked]:border-primary pointer-events-none"
+                        />
+                      </div>
                     )}
 
-                    <div className="size-9 rounded-lg bg-muted/60 flex items-center justify-center shrink-0">
+                    <div className="size-7 rounded bg-muted/60 flex items-center justify-center shrink-0">
                       <FileIconItem item={item} />
                     </div>
 

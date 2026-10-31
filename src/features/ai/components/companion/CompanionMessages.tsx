@@ -5,11 +5,7 @@ import {
   Brain,
   ChevronDown,
   FileText,
-  ExternalLink,
   Loader2,
-  Search,
-  Code2,
-  ListTodo,
   CornerDownRight,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
@@ -18,7 +14,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
-import type { ChatMessage, SourceItem, AgentAction } from '../../types/chat.types';
+import type { ChatMessage, AgentAction } from '../../types/chat.types';
 import { renderMarkdown } from '../../utils/render-markdown';
 import { ActionCardsGroup } from '../chat/action-card';
 import { ResponseWidgets } from '../chat/response-widgets';
@@ -34,6 +30,8 @@ interface CompanionMessagesProps {
   messagesEndRef: React.RefObject<HTMLDivElement | null>;
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
   onSelectPrompt: (prompt: string) => void;
+  isReaderContext?: boolean;
+  readerPaperTitle?: string;
 }
 
 function parseThinkingContent(raw: string): {
@@ -96,7 +94,6 @@ function ThinkingBlock({ content, isOpen }: { content: string; isOpen: boolean }
 
 const MessageBubble = React.memo(function MessageBubble({
   message,
-  isLast,
 }: {
   message: ChatMessage;
   isLast: boolean;
@@ -190,6 +187,29 @@ const SUGGESTIONS = [
   },
 ];
 
+const READER_SUGGESTIONS = [
+  {
+    id: 'r1',
+    text: 'Summarize the core methodology, architecture, and key contributions of this paper',
+    prompt: 'Summarize the core methodology, architecture, and key contributions of this paper',
+  },
+  {
+    id: 'r2',
+    text: 'Extract experimental setup, datasets, baselines, and main quantitative results',
+    prompt: 'Extract experimental setup, datasets, baselines, and main quantitative results from this paper',
+  },
+  {
+    id: 'r3',
+    text: 'Analyze limitations, failure modes, and open research questions discussed by the authors',
+    prompt: 'Analyze the limitations, failure modes, and open research questions discussed in this paper',
+  },
+  {
+    id: 'r4',
+    text: 'Synthesize my highlights and annotations on this paper into structured literature notes',
+    prompt: 'Synthesize my highlights and annotations on this paper into structured literature notes',
+  },
+];
+
 export const CompanionMessages = React.memo(function CompanionMessages({
   messages,
   streamContent,
@@ -200,6 +220,7 @@ export const CompanionMessages = React.memo(function CompanionMessages({
   messagesEndRef,
   scrollContainerRef,
   onSelectPrompt,
+  isReaderContext = false,
 }: CompanionMessagesProps) {
   if (isLoadingHistory) {
     return (
@@ -211,41 +232,61 @@ export const CompanionMessages = React.memo(function CompanionMessages({
   }
 
   const isEmpty = messages.length === 0 && !streamContent;
+  const activeSuggestions = isReaderContext ? READER_SUGGESTIONS : SUGGESTIONS;
 
   return (
     <div
       ref={scrollContainerRef}
       className={cn(
-        'flex-1 min-h-0 px-3.5 select-text',
+        'flex-1 min-h-0 select-text',
+        isReaderContext ? 'px-3' : 'px-3.5',
         isEmpty
-          ? 'overflow-hidden flex flex-col justify-center py-1'
+          ? 'overflow-y-auto flex flex-col justify-center py-2 custom-scrollbar'
           : 'overflow-y-auto py-2.5 space-y-3 custom-scrollbar'
       )}
     >
       {isEmpty ? (
-        <div className='flex flex-col justify-center select-none py-1 gap-2.5'>
+        <div
+          className={cn(
+            'flex flex-col justify-center select-none my-auto',
+            isReaderContext ? 'py-1 gap-2' : 'py-1 gap-2.5'
+          )}
+        >
           {/* 3D Animated AI Hero with background aura, floating levitation, and title */}
-          <CompanionHero />
+          <CompanionHero compact={isReaderContext} />
 
           {/* Suggestions Section */}
-          <div className='mt-1'>
-            <div className='mb-1.5 px-2'>
-              <span className='text-12 font-medium text-muted-foreground'>
-                Suggestions
+          <div className='mt-0.5'>
+            <div className='mb-1 px-2 flex items-center justify-between'>
+              <span className='text-11 font-medium text-muted-foreground'>
+                {isReaderContext ? 'Paper actions & analysis' : 'Suggestions'}
               </span>
             </div>
 
             {/* Suggestions List */}
             <div className='space-y-0.5'>
-              {SUGGESTIONS.map((item) => (
+              {activeSuggestions.map((item) => (
                 <button
                   key={item.id}
                   type='button'
                   onClick={() => onSelectPrompt(item.prompt)}
-                  className='w-full flex items-start gap-2.5 py-2 px-2.5 text-left text-13 text-foreground hover:bg-muted/60 rounded-lg transition-colors cursor-pointer group'
+                  className={cn(
+                    'w-full flex items-start gap-2 px-2.5 text-left text-foreground hover:bg-muted/60 rounded-md transition-colors cursor-pointer group',
+                    isReaderContext ? 'py-1.5 text-12' : 'py-2 text-13 rounded-lg gap-2.5'
+                  )}
                 >
-                  <CornerDownRight className='size-3.5 text-muted-foreground group-hover:text-foreground shrink-0 mt-0.5 transition-colors' />
-                  <span className='leading-snug text-13 font-normal text-foreground'>
+                  <CornerDownRight
+                    className={cn(
+                      'text-muted-foreground group-hover:text-foreground shrink-0 mt-0.5 transition-colors',
+                      isReaderContext ? 'size-3' : 'size-3.5'
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      'leading-snug font-normal text-foreground',
+                      isReaderContext ? 'text-12' : 'text-13'
+                    )}
+                  >
                     {item.text}
                   </span>
                 </button>

@@ -19,7 +19,7 @@ let isWorkerConfigured = false;
 
 /**
  * Configure PDF.js worker source to point to local static assets in /public with full origin URL.
- * Sets workerSrc on both react-pdf and pdfjs-dist instances to prevent fake-worker fallback.
+ * Sets workerSrc synchronously on react-pdf and global window.pdfjsLib, and pdfjs-dist.
  */
 export function setupPdfWorker(): void {
   if (typeof window === 'undefined' || isWorkerConfigured) return;
@@ -27,29 +27,44 @@ export function setupPdfWorker(): void {
 
   const workerUrl = getPdfWorkerUrl();
 
-  // Configure react-pdf asynchronously on client
-  import('react-pdf')
-    .then(({ pdfjs }) => {
-      if (pdfjs?.GlobalWorkerOptions) {
-        pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
-      }
-    })
-    .catch(() => {});
+  // Try to configure synchronously if react-pdf or pdfjs-dist has already been required/imported
+  try {
+    const reactPdf = require('react-pdf');
+    if (reactPdf?.pdfjs?.GlobalWorkerOptions) {
+      reactPdf.pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+    }
+  } catch {
+    // Fall back to async import
+    import('react-pdf')
+      .then(({ pdfjs }) => {
+        if (pdfjs?.GlobalWorkerOptions) {
+          pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+        }
+      })
+      .catch(() => {});
+  }
 
-  // Configure pdfjs-dist asynchronously on client
-  import('pdfjs-dist')
-    .then((dist) => {
-      const gwo = (dist as unknown as { GlobalWorkerOptions?: { workerSrc?: string } })?.GlobalWorkerOptions;
-      if (gwo) {
-        gwo.workerSrc = workerUrl;
-      }
-    })
-    .catch(() => {});
+  try {
+    const pdfjsDist = require('pdfjs-dist');
+    const gwo = (pdfjsDist as unknown as { GlobalWorkerOptions?: { workerSrc?: string } })?.GlobalWorkerOptions;
+    if (gwo) {
+      gwo.workerSrc = workerUrl;
+    }
+  } catch {
+    import('pdfjs-dist')
+      .then((dist) => {
+        const gwo = (dist as unknown as { GlobalWorkerOptions?: { workerSrc?: string } })?.GlobalWorkerOptions;
+        if (gwo) {
+          gwo.workerSrc = workerUrl;
+        }
+      })
+      .catch(() => {});
+  }
 
   // Configure global window.pdfjsLib if present
   if (
     (window as unknown as { pdfjsLib?: { GlobalWorkerOptions?: { workerSrc?: string } } })
-      .pdfjsLib?.GlobalWorkerOptions
+      ?.pdfjsLib?.GlobalWorkerOptions
   ) {
     (
       window as unknown as { pdfjsLib: { GlobalWorkerOptions: { workerSrc: string } } }

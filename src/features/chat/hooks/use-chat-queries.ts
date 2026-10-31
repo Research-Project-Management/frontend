@@ -6,6 +6,7 @@ import { useAuth } from '@/features/auth/hooks/use-auth';
 
 export const CHAT_QUERY_KEYS = {
   conversations: ['chat-conversations'] as const,
+  projectChannels: (projectId: string | null) => ['chat-project-channels', projectId] as const,
   messages: (convId: string | null) => ['chat-messages', convId] as const,
   friends: ['chat-friends'] as const,
   friendRequests: ['chat-friend-requests'] as const,
@@ -17,6 +18,18 @@ export function useConversations() {
     queryFn: () => chatService.getConversations(),
     staleTime: 1000 * 60 * 2, // 2 minutes (real-time updates arrive via WebSocket)
     refetchOnWindowFocus: false,
+  });
+}
+
+export function useProjectChannels(projectId: string | null) {
+  return useQuery({
+    queryKey: CHAT_QUERY_KEYS.projectChannels(projectId),
+    queryFn: async () => {
+      if (!projectId) return [];
+      return chatService.getProjectChannels(projectId);
+    },
+    enabled: Boolean(projectId),
+    staleTime: 1000 * 60,
   });
 }
 
@@ -189,6 +202,7 @@ export function useSendMessage(conversationId: string | null) {
         },
       );
       queryClient.invalidateQueries({ queryKey: CHAT_QUERY_KEYS.conversations });
+      queryClient.invalidateQueries({ queryKey: ['chat-project-channels'] });
     },
   });
 }

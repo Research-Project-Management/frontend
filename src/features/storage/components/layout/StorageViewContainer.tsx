@@ -27,9 +27,9 @@ export function StorageViewContainer({
   const view = useViewStore((s) => s.view);
 
   return (
-    <div className="flex-1 overflow-auto p-2.5 sm:p-4 md:p-6 bg-background">
+    <div className="flex-1 overflow-auto px-0 py-0 bg-background">
       {isLoading ? (
-        <div className="space-y-4">
+        <div className="space-y-4 p-4 sm:p-6">
           <Skeleton className="h-9 w-full rounded-md" />
           <div className="space-y-2">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -38,20 +38,26 @@ export function StorageViewContainer({
           </div>
         </div>
       ) : isError ? (
-        <PlaneErrorState
-          title="Unable to load files"
-          description="An issue occurred while loading files from storage. Other features remain unaffected."
-          error={error || new Error('Internal Server Error')}
-        />
+        <div className="p-4 sm:p-6">
+          <PlaneErrorState
+            title="Unable to load files"
+            description="An issue occurred while loading files from storage. Other features remain unaffected."
+            error={error || new Error('Internal Server Error')}
+          />
+        </div>
       ) : viewProps.items.length === 0 ? (
-        <StorageEmptyState
-          searchQuery={searchQuery}
-          isTrash={viewProps.isTrash}
-        />
+        <div className="p-4 sm:p-6">
+          <StorageEmptyState
+            searchQuery={searchQuery}
+            isTrash={viewProps.isTrash}
+          />
+        </div>
       ) : view === 'list' ? (
         <ListView {...viewProps} />
       ) : (
-        <GridView {...viewProps} />
+        <div className="p-4 sm:p-6">
+          <GridView {...viewProps} />
+        </div>
       )}
     </div>
   );

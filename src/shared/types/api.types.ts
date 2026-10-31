@@ -82,4 +82,5 @@ export type RequestOptions = Omit<RequestInit, 'method' | 'body'> & {
   skipAuth?: boolean;
   rawEnvelope?: boolean;
   responseType?: 'json' | 'blob' | 'arrayBuffer' | 'text';
+  onUploadProgress?: (event: { loaded: number; total?: number }) => void;
 };

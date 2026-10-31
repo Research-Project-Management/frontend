@@ -1,12 +1,23 @@
 'use client';
 
 import React from 'react';
+import { cn } from '@/shared/lib/utils';
 
-export function CompanionHero() {
+export function CompanionHero({ compact = false }: { compact?: boolean }) {
   return (
-    <div className='flex flex-col items-center justify-center py-4 select-none pointer-events-none'>
+    <div
+      className={cn(
+        'flex flex-col items-center justify-center select-none pointer-events-none',
+        compact ? 'py-2' : 'py-4'
+      )}
+    >
       {/* Central Luminous 3D AI Orb */}
-      <div className='relative flex items-center justify-center size-24 sm:size-26 pointer-events-none'>
+      <div
+        className={cn(
+          'relative flex items-center justify-center pointer-events-none',
+          compact ? 'size-16 sm:size-18' : 'size-24 sm:size-26'
+        )}
+      >
         {/* Soft, vibrant colored bloom hugging the sphere (Tight optical caustics) */}
         <div
           className='absolute inset-1 rounded-full blur-xl opacity-40 dark:opacity-30 pointer-events-none'
@@ -38,7 +49,10 @@ export function CompanionHero() {
 
         {/* Natural Floor Contact Shadow */}
         <div
-          className='absolute -bottom-2 w-16 h-2 rounded-[100%] bg-foreground/10 dark:bg-black/35 blur-xs pointer-events-none'
+          className={cn(
+            'absolute -bottom-2 rounded-[100%] bg-foreground/10 dark:bg-black/35 blur-xs pointer-events-none',
+            compact ? 'w-11 h-1.5' : 'w-16 h-2'
+          )}
           aria-hidden='true'
         />
       </div>

@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { itemSchema } from './items.types';
 
 export const duplicateGroupSchema = z.object({
-  matchType: z.enum(['DOI', 'TITLE_AUTHOR_YEAR']),
+  matchType: z.enum(['DOI', 'TITLE_AUTHOR_YEAR', 'TITLE_AUTHOR']),
   confidence: z.enum(['high', 'medium']),
   key: z.string(),
   recommendedMasterId: z.string().optional(),

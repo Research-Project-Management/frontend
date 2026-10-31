@@ -18,6 +18,7 @@ import {
 import { FilterFunnelIcon } from "@/shared/components/icons";
 import type { Item } from "@/features/library/domain/types/library.types";
 import { useLibraryFacetCounts } from "@/features/library/core/coordinator/facet-filter.coordinator";
+import { useLibraryPermissions } from "@/features/library/core/coordinator/permissions.coordinator";
 import { FilterFacetSections } from "./filter-popover/FilterFacetSections";
 
 export interface LibraryFilterPopoverProps {
@@ -35,6 +36,7 @@ export function LibraryFilterPopover({
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const { canEditItem } = useLibraryPermissions();
 
   const facets = useLibraryFacetCounts({
     scopeId,
@@ -109,7 +111,9 @@ export function LibraryFilterPopover({
             onChange={(e) => setSearchQuery(e.target.value)}
             className="h-8 w-full pl-8 pr-7 text-13 bg-background border-border hover:border-border-hover rounded-md focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-ring text-foreground placeholder:text-muted-foreground shadow-none"
             onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key !== "Escape") e.stopPropagation();
+            }}
           />
           {searchQuery && (
             <button
@@ -136,10 +140,10 @@ export function LibraryFilterPopover({
           onTagToggle={facets.handleTagToggle}
           showAutomaticTags={facets.showAutomaticTags}
           onToggleShowAutomaticTags={facets.setShowAutomaticTags}
-          onCreateTag={facets.createTag}
-          onUpdateTag={facets.updateTag}
-          onDeleteTag={facets.deleteTag}
-          onDeleteAutomaticTags={facets.deleteAutomaticTags}
+          onCreateTag={canEditItem ? facets.createTag : undefined}
+          onUpdateTag={canEditItem ? facets.updateTag : undefined}
+          onDeleteTag={canEditItem ? facets.deleteTag : undefined}
+          onDeleteAutomaticTags={canEditItem ? facets.deleteAutomaticTags : undefined}
           isDeletingAutomatic={facets.isDeletingAutomatic}
           matchingFileItems={facets.matchingFileItems}
           fileStatus={facets.fileStatus}

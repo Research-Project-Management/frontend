@@ -7,7 +7,6 @@ import { clearGroupMergeDraft } from '@/features/library/core/coordinator/curati
 export {
   type TrashCommandOptions,
   createTrashCommand,
-  createDeleteItemsCommand,
   type RestoreCommandOptions,
   createRestoreCommand,
   type MoveItemsCommandOptions,
@@ -208,6 +207,7 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
     }
 
     const startEpoch = get().epoch;
+    activeExecutionsCount += 1;
     set({ isExecuting: true });
     try {
       if (commandToRedo.redo) {
@@ -217,22 +217,25 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
       }
 
       if (get().epoch !== startEpoch) {
-        set({ isExecuting: false });
+        activeExecutionsCount = Math.max(0, activeExecutionsCount - 1);
+        set({ isExecuting: activeExecutionsCount > 0 });
         return false;
       }
 
+      activeExecutionsCount = Math.max(0, activeExecutionsCount - 1);
       set((s) => ({
         redoStack: s.redoStack.filter((c) => c.id !== commandToRedo.id),
         undoStack: [commandToRedo, ...s.undoStack.slice(0, MAX_HISTORY_LENGTH - 1)],
         lastCommand: commandToRedo,
-        isExecuting: false,
+        isExecuting: activeExecutionsCount > 0,
       }));
 
       toast.success(`Redone: ${commandToRedo.description}`, { id: `redo-${commandToRedo.id}` });
 
       return true;
     } catch (err: unknown) {
-      set({ isExecuting: false });
+      activeExecutionsCount = Math.max(0, activeExecutionsCount - 1);
+      set({ isExecuting: activeExecutionsCount > 0 });
       const message = err instanceof Error ? err.message : 'Redo failed';
       toast.error(`Redo failed: ${message}`);
       return false;
@@ -241,7 +244,12 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
 
   clearHistory: () => {
     activeExecutionsCount = 0;
+    clearGroupMergeDraft();
     set((s) => ({ undoStack: [], redoStack: [], lastCommand: null, isExecuting: false, isUndoing: false, epoch: s.epoch + 1 }));
+  },
+
+  clear: () => {
+    get().clearHistory();
   },
 
   setScope: (scopeId?: string | null) => {
@@ -251,11 +259,6 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
       clearGroupMergeDraft();
     }
     set({ currentScopeId: normalized });
-  },
-  clear: () => {
-    activeExecutionsCount = 0;
-    clearGroupMergeDraft();
-    set((s) => ({ undoStack: [], redoStack: [], lastCommand: null, isExecuting: false, isUndoing: false, epoch: s.epoch + 1 }));
   },
 }));
 
@@ -270,7 +273,6 @@ export function useLibraryCommandManager() {
   const undoById = useLibraryCommandStore((s) => s.undoById);
   const redo = useLibraryCommandStore((s) => s.redo);
   const clearHistory = useLibraryCommandStore((s) => s.clearHistory);
-  const clear = useLibraryCommandStore((s) => s.clear);
   const canUndo = useLibraryCommandStore((s) => s.undoStack.length > 0);
   const canRedo = useLibraryCommandStore((s) => s.redoStack.length > 0);
   const isExecuting = useLibraryCommandStore((s) => s.isExecuting);
@@ -283,7 +285,6 @@ export function useLibraryCommandManager() {
     undoById,
     redo,
     clearHistory,
-    clear,
     canUndo,
     canRedo,
     isExecuting,

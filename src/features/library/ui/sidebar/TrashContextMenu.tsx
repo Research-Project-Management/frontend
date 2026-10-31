@@ -28,7 +28,7 @@ export function TrashContextMenuAction({
   canEmpty = true,
 }: TrashContextMenuProps) {
   return (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <button
           type="button"

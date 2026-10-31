@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import {
   Loader2,
@@ -89,6 +89,12 @@ export function TypeConversionModal({
 
   // ── State & Preview Query ──────────────────────────────────────────────────
   const [retainUnmapped, setRetainUnmapped] = useState(true);
+
+  useEffect(() => {
+    if (isOpen) {
+      setRetainUnmapped(true);
+    }
+  }, [isOpen, currentItem?.id, targetType]);
 
   const hasInitialPreview = Boolean(
     initialPreview && initialPreview.targetType === targetType,
@@ -239,7 +245,7 @@ export function TypeConversionModal({
   if (!currentItem) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => { if (isConverting) return; onOpenChange(v); }}>
       <DialogContent
         onCloseAutoFocus={(e) => e.preventDefault()}
         className="w-full sm:max-w-[480px] p-6 bg-background border border-border shadow-raised-200 rounded-md gap-4 overflow-hidden"

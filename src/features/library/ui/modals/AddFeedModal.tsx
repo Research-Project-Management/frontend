@@ -28,7 +28,6 @@ import {
 } from '@/shared/components/ui/select';
 import { cn } from '@/shared/lib/utils';
 
-import { useFeedsStore } from '@/features/library/core/store/feeds.store';
 import {
   useFetchAcademicFeed,
   useSubscribeFeedMutation,
@@ -37,30 +36,16 @@ import {
   addFeedSchema,
   type AddFeedFormValues,
 } from '@/features/library/domain/types/forms.types';
-import type { FeedRetentionDays } from '@/features/library/domain/types/feeds.types';
-
-const UNREAD_RETENTION_CHOICES: Array<{ value: FeedRetentionDays; label: string }> = [
-  { value: 30, label: '30 days' },
-  { value: 7, label: '7 days' },
-  { value: 14, label: '14 days' },
-  { value: 90, label: '90 days' },
-  { value: 0, label: 'Never' },
-];
-
-const READ_CLEANUP_CHOICES: Array<{ value: FeedRetentionDays; label: string }> = [
-  { value: 7, label: 'After 7 days' },
-  { value: 1, label: 'After 1 day' },
-  { value: 3, label: 'After 3 days' },
-  { value: 14, label: 'After 14 days' },
-  { value: 30, label: 'After 30 days' },
-  { value: 0, label: 'Never' },
-];
+import {
+  READ_RETENTION_OPTIONS,
+  UNREAD_RETENTION_OPTIONS,
+  type FeedRetentionDays,
+} from '@/features/library/domain/types/feeds.types';
 
 export interface AddFeedModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit?: (data: AddFeedFormValues) => Promise<unknown> | void;
-  onImportOpml?: (content: string) => Promise<unknown> | void;
   isPending?: boolean;
 }
 
@@ -71,7 +56,6 @@ export function AddFeedModal({
   isPending: externalPending,
 }: AddFeedModalProps) {
   const router = useRouter();
-  const addFeed = useFeedsStore((s) => s.addFeed);
   const { mutateAsync: subscribeFeed } = useSubscribeFeedMutation();
   const { mutateAsync: fetchAcademicFeed } = useFetchAcademicFeed();
 
@@ -118,6 +102,7 @@ export function AddFeedModal({
   }, [open, reset]);
 
   const handleUrlBlur = async () => {
+    if (!open || isSubmitting) return;
     const currentUrl = (getValues('url') || '').trim();
     const currentName = (getValues('name') || '').trim();
     if (!currentUrl || currentName) return;
@@ -127,7 +112,7 @@ export function AddFeedModal({
 
     setIsAutoFetchingTitle(true);
     try {
-      const res = await fetchAcademicFeed(currentUrl);
+      const res = await fetchAcademicFeed({ url: currentUrl, silent: true });
       const payload =
         typeof res === 'object' && res !== null && 'data' in res
           ? (res as { data?: { feedTitle?: string } }).data
@@ -161,7 +146,7 @@ export function AddFeedModal({
       let finalName = (data.name || '').trim();
       if (!finalName) {
         try {
-          const res = await fetchAcademicFeed(data.url);
+          const res = await fetchAcademicFeed({ url: data.url, silent: true });
           const payload =
             typeof res === 'object' && res !== null && 'data' in res
               ? (res as { data?: { feedTitle?: string } }).data
@@ -194,7 +179,7 @@ export function AddFeedModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => { if (isSubmitting) return; onOpenChange(v); }}>
       <DialogContent
         onCloseAutoFocus={(e) => e.preventDefault()}
         className="sm:max-w-[460px] p-6 bg-background border border-border shadow-raised-200 rounded-lg gap-0"
@@ -289,7 +274,7 @@ export function AddFeedModal({
                         <SelectValue placeholder="Select retention" />
                       </SelectTrigger>
                       <SelectContent className="max-h-60 bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md">
-                        {UNREAD_RETENTION_CHOICES.map((option) => (
+                        {UNREAD_RETENTION_OPTIONS.map((option) => (
                           <SelectItem
                             key={option.value}
                             value={String(option.value)}
@@ -325,7 +310,7 @@ export function AddFeedModal({
                         <SelectValue placeholder="Select cleanup time" />
                       </SelectTrigger>
                       <SelectContent className="max-h-60 bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md">
-                        {READ_CLEANUP_CHOICES.map((option) => (
+                        {READ_RETENTION_OPTIONS.map((option) => (
                           <SelectItem
                             key={option.value}
                             value={String(option.value)}
@@ -347,6 +332,7 @@ export function AddFeedModal({
               type="button"
               variant="ghost"
               size="sm"
+              disabled={isSubmitting}
               onClick={() => onOpenChange(false)}
               className="h-8 px-3 text-12 font-medium cursor-pointer text-foreground rounded-md hover:bg-muted"
             >

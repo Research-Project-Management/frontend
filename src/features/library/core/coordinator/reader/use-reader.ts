@@ -108,16 +108,23 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
 
   const {
     annotations = [],
+    isLoading: isLoadingAnnotations,
+    isError: isAnnotationsError,
+    refetch: refetchAnnotations,
     createAnnotation,
     updateAnnotation: rawUpdateAnnotation,
     deleteAnnotation: rawDeleteAnnotation,
     extractNotes,
     importExternal,
-  } = useAnnotations(scopeId, effectiveAttachmentId);
+    isUpdating: isUpdatingAnnotation,
+    isDeleting: isDeletingAnnotation,
+    isExtracting: isExtractingNotes,
+    isImporting: isImportingAnnotations,
+  } = useAnnotations(effectiveScopeId, effectiveAttachmentId);
 
   // Sub-hook 1: Reading progress restoration, debounced sync & markAsRead
   useReadingProgress({
-    scopeId,
+    scopeId: effectiveScopeId,
     paper,
     effectivePaperId,
     visiblePage,
@@ -144,17 +151,25 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     canUndo,
     canRedo,
   } = useAnnotationBatch({
-    scopeId,
+    scopeId: effectiveScopeId,
     effectiveAttachmentId,
     paper,
     setPendingNoteText,
+    extractNotes,
   });
 
   const updateAnnotation = useCallback(
     async (
       annotationId: string,
       expectedVersion: number | undefined,
-      dto: { color?: string; comment?: string; quoteText?: string; tags?: string[] },
+      dto: {
+        color?: string;
+        comment?: string;
+        quoteText?: string;
+        tags?: string[];
+        rects?: AnnotationRect[];
+        boundingRect?: AnnotationRect;
+      },
     ) => {
       const target = (annotations || []).find((a) => a.id === annotationId);
       const before: Partial<ReaderAnnotation> = target
@@ -163,6 +178,8 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
             ...(dto.comment !== undefined ? { comment: target.comment ?? '' } : {}),
             ...(dto.quoteText !== undefined ? { quoteText: target.quoteText } : {}),
             ...(dto.tags !== undefined ? { tags: target.tags ?? [] } : {}),
+            ...(dto.rects !== undefined ? { rects: target.rects } : {}),
+            ...(dto.boundingRect !== undefined ? { boundingRect: target.boundingRect } : {}),
           }
         : {};
       const res = await rawUpdateAnnotation(annotationId, expectedVersion, dto);
@@ -219,6 +236,16 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
 
   const handleAddToNote = useCallback(
     (text: string, pageNumber?: number, annotationId?: string) => {
+      if (annotationId && paper?.id && effectiveAttachmentId) {
+        useLibraryUIStore.getState().setIsInspectorOpen(true);
+        useLibraryUIStore.getState().setActiveInspectorTab('notes');
+        void extractNotes(paper.id, {
+          attachmentId: effectiveAttachmentId,
+          annotationIds: [annotationId],
+        });
+        return;
+      }
+
       const trimmed = text.trim();
       if (!trimmed) return;
 
@@ -229,6 +256,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
           effectiveAttachmentId,
           pageNumber,
           annotationId,
+          effectiveScopeId,
         );
         citationLink = `\n> - ${cit.markdown}`;
       }
@@ -238,7 +266,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
       useLibraryUIStore.getState().setIsInspectorOpen(true);
       useLibraryUIStore.getState().setActiveInspectorTab('notes');
     },
-    [paper, effectiveAttachmentId],
+    [paper, effectiveAttachmentId, effectiveScopeId, extractNotes],
   );
 
   const handleAnnotate = useCallback(
@@ -297,7 +325,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
 
   const state = useMemo(
     () => ({
-      scopeId,
+      scopeId: effectiveScopeId,
       projectId: isProject ? rawProjectId : undefined,
       isProject,
       rawProjectId,
@@ -320,13 +348,19 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
       selectedAnnotationIds,
       isBatchProcessing,
       annotations: annotations || [],
+      isLoadingAnnotations,
+      isAnnotationsError,
+      isUpdatingAnnotation,
+      isDeletingAnnotation,
+      isExtractingNotes,
+      isImportingAnnotations,
       effectiveAttachmentId,
       selectedAttachment,
       canUndo,
       canRedo,
     }),
     [
-      scopeId,
+      effectiveScopeId,
       isProject,
       rawProjectId,
       effectivePaperId,
@@ -348,6 +382,12 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
       selectedAnnotationIds,
       isBatchProcessing,
       annotations,
+      isLoadingAnnotations,
+      isAnnotationsError,
+      isUpdatingAnnotation,
+      isDeletingAnnotation,
+      isExtractingNotes,
+      isImportingAnnotations,
       effectiveAttachmentId,
       selectedAttachment,
       canUndo,
@@ -386,6 +426,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
       deleteAnnotation,
       extractNotes,
       importExternal,
+      refetchAnnotations,
     }),
     [
       handleAddToNote,
@@ -411,6 +452,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
       deleteAnnotation,
       extractNotes,
       importExternal,
+      refetchAnnotations,
     ],
   );
 

@@ -19,8 +19,8 @@ import {
   useLibraryCommandStore,
   buildPreConversionSnapshot,
   createConvertItemTypeCommand,
-  createMergeDuplicatesCommand,
 } from '@/features/library/core/manager/library-command.manager';
+import { executeDuplicateMergeWithCommand } from '@/features/library/core/coordinator/curation.coordinator';
 import { useItemTypeConversion } from '@/features/library/sdk/queries/saved-searches-relations.queries';
 import {
   useTrackedIdentifierIngestion,
@@ -30,9 +30,7 @@ import {
   useSubscribeFeedMutation,
 } from '@/features/library/sdk/queries/ingestion.queries';
 import { useSetMyPublicationMutation } from '@/features/library/sdk/queries/item-mutations.queries';
-import { useFeedsStore } from '@/features/library/core/store/feeds.store';
 import type { SavedFeedSubscription } from '@/features/library/domain/types/feeds.types';
-import { parseOpmlFeeds } from '@/features/library/domain/feed-parser.domain';
 import type { AddFeedFormValues } from '@/features/library/domain/types/forms.types';
 import { parseBatchIdentifiersInput } from '@/features/library/domain/identifiers';
 import {
@@ -94,6 +92,8 @@ export function CurationModalsHost({
   const restoreItemsMutation = useBatchRestoreItemsMutation(effectiveScope);
   const updateItemMutation = useUpdateLibraryItemMutation(effectiveScope);
   const { convertAsync } = useItemTypeConversion(effectiveScope);
+  const executeCommand = useLibraryCommandStore((s) => s.executeCommand);
+  const pushExecutedCommand = useLibraryCommandStore((s) => s.pushExecutedCommand);
 
   const isConvertOpen =
     activeModal === 'TYPE_CONVERSION' || activeModal === 'CONVERT_ITEM_TYPE';
@@ -132,28 +132,18 @@ export function CurationModalsHost({
     mergedFields: Record<string, unknown>,
     duplicateIdsToDelete: string[],
   ) => {
-    const cachedPrimary = resolveCachedItem(masterPaper.id, effectiveScope);
-    const snapshotPrimary: Item = cachedPrimary
-      ? { ...masterPaper, ...cachedPrimary }
-      : masterPaper;
-
-    await useLibraryCommandStore.getState().executeCommand(
-      createMergeDuplicatesCommand({
-        primaryItem: snapshotPrimary,
-        duplicateIdsToDelete,
-        mergedFields,
-        mergeMutation: { mutateAsync: mergeDuplicatesMutation.mutateAsync },
-        restoreMutation: { mutateAsync: restoreItemsMutation.mutateAsync },
-        updateItemMutation: {
-          mutateAsync: ({ itemId, data, silent }) =>
-            updateItemMutation.mutateAsync({ itemId, data, silent }),
-        },
-        onUndone: () => {
-          void invalidateScopeItemsAndCounts(effectiveScope);
-        },
-      }),
-      { silentToast: false },
-    );
+    await executeDuplicateMergeWithCommand({
+      masterPaper,
+      mergedFields,
+      duplicateIdsToDelete,
+      effectiveScopeId: effectiveScope,
+      resolveCachedItem,
+      executeCommand,
+      mergeMutation: mergeDuplicatesMutation,
+      restoreMutation: restoreItemsMutation,
+      updateItemMutation,
+      invalidateScopeItemsAndCounts,
+    });
 
     clearSelection();
     closeModal();
@@ -200,7 +190,7 @@ export function CurationModalsHost({
             preConversionSnapshot.itemType &&
             preConversionSnapshot.itemType !== targetType
           ) {
-            useLibraryCommandStore.getState().pushExecutedCommand(
+            pushExecutedCommand(
               createConvertItemTypeCommand({
                 itemId: targetItemId,
                 itemTitle: preConversionSnapshot.title || updatedItem?.title,
@@ -239,7 +229,6 @@ export function CurationModalsHost({
         onOpenChange={(open) => !open && closeModal()}
         duplicates={mergeDuplicates}
         recommendedMasterId={payload?.recommendedMasterId}
-        scopeId={effectiveScope}
         onMerge={handleMergeDuplicates}
         onDismissDuplicate={handleDismissDuplicates}
       />
@@ -284,7 +273,6 @@ export function IngestionAndUtilityModalsHost({
   const setMyPublicationMutation = useSetMyPublicationMutation(effectiveScope);
   const { mutateAsync: subscribeFeed } = useSubscribeFeedMutation();
   const { mutateAsync: fetchAcademicFeed } = useFetchAcademicFeed();
-  const addFeedToStore = useFeedsStore((s) => s.addFeed);
   const [isSubmittingFeed, setIsSubmittingFeed] = React.useState(false);
 
   const handleAddFeedSubmit = async (data: AddFeedFormValues) => {
@@ -293,7 +281,7 @@ export function IngestionAndUtilityModalsHost({
       let finalName = (data.name || '').trim();
       if (!finalName) {
         try {
-          const res = await fetchAcademicFeed(data.url);
+          const res = await fetchAcademicFeed({ url: data.url, silent: true });
           const payload =
             typeof res === 'object' && res !== null && 'data' in res
               ? (res as { data?: { feedTitle?: string } }).data
@@ -323,24 +311,6 @@ export function IngestionAndUtilityModalsHost({
       toast.error('Failed to subscribe to feed');
     } finally {
       setIsSubmittingFeed(false);
-    }
-  };
-
-  const handleImportOpml = async (content: string) => {
-    try {
-      const parsed = parseOpmlFeeds(content);
-      if (parsed.length > 0) {
-        for (const item of parsed) {
-          addFeedToStore(item.name, item.url, 30);
-        }
-        toast.success(`Imported ${parsed.length} feeds from OPML`);
-        await invalidateScopeItemsAndCounts(effectiveScope);
-        closeModal();
-      } else {
-        toast.error('No valid RSS/Atom feeds found in OPML file');
-      }
-    } catch {
-      toast.error('Failed to parse OPML file');
     }
   };
 
@@ -441,7 +411,6 @@ export function IngestionAndUtilityModalsHost({
         open={true}
         onOpenChange={(open) => !open && closeModal()}
         onSubmit={handleAddFeedSubmit}
-        onImportOpml={handleImportOpml}
         isPending={isSubmittingFeed}
       />
     );

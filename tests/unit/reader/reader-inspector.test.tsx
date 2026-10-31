@@ -83,6 +83,10 @@ vi.mock('@/features/library/sdk/queries/catalog.queries', () => ({
     mutate: vi.fn(),
     isPending: false,
   }),
+  useDeleteLibraryItemsMutation: vi.fn().mockReturnValue({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
 }));
 
 vi.mock('@/features/library/sdk/queries/collections.queries', () => ({

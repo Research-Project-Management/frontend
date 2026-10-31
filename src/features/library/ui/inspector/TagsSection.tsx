@@ -199,10 +199,6 @@ export default function TagsSection({
     saveTags(deduplicated);
   };
 
-  if (tags.length === 0 && !isAdding && hideHeader) {
-    return null;
-  }
-
   return (
     <div className="flex flex-col gap-1 text-xs select-none font-sans">
       {!hideHeader && (
@@ -225,6 +221,21 @@ export default function TagsSection({
               </TooltipTrigger>
               <TooltipContent side="top">Add tag</TooltipContent>
             </Tooltip>
+          )}
+        </div>
+      )}
+
+      {tags.length === 0 && !isAdding && (
+        <div className="flex items-center justify-between px-1.5 py-1 text-12 text-muted-foreground select-none">
+          <span>No tags assigned</span>
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => setIsAdding(true)}
+              className="text-11 font-medium text-foreground hover:underline cursor-pointer"
+            >
+              Add tag
+            </button>
           )}
         </div>
       )}

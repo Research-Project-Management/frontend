@@ -22,6 +22,8 @@ import {
 import { toast } from 'sonner';
 import { useFeedsStore } from '@/features/library/core/store/feeds.store';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import { triggerBrowserTextDownload } from '@/features/library/core/coordinator/citation-export.coordinator';
+import { parseOpmlFeeds } from '@/features/library/domain/feed-parser.domain';
 
 export interface TopbarNewFeedDropdownProps {
   onRefreshFeed?: () => void;
@@ -64,15 +66,8 @@ ${outlines}
   </body>
 </opml>`;
 
-    const blob = new Blob([opmlContent], { type: 'text/xml;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `flux-feeds-${new Date().toISOString().slice(0, 10)}.opml`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    const filename = `flux-feeds-${new Date().toISOString().slice(0, 10)}.opml`;
+    triggerBrowserTextDownload(opmlContent, filename, 'text/x-opml');
 
     toast.success(`Exported ${feeds.length} feeds to OPML file`);
   };
@@ -83,31 +78,31 @@ ${outlines}
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const content = event.target?.result;
       if (typeof content !== 'string') return;
 
       try {
-        const outlineRegex = /<outline\b([^>]*?)\/?>/gi;
-        let match: RegExpExecArray | null;
-        let importedCount = 0;
+        const parsedFeeds = parseOpmlFeeds(content);
+        if (parsedFeeds.length === 0) {
+          toast.error('No valid RSS/Atom feeds found in OPML file');
+          return;
+        }
 
-        while ((match = outlineRegex.exec(content)) !== null) {
-          const attrs = match[1] || '';
-          const xmlUrlMatch = attrs.match(/\bxmlUrl=["']([^"']+)["']/i);
-          if (xmlUrlMatch?.[1]) {
-            const feedUrl = xmlUrlMatch[1].trim();
-            const titleMatch = attrs.match(/\b(?:title|text)=["']([^"']+)["']/i);
-            const feedName = titleMatch?.[1]?.trim() || '';
-            addFeed(feedName, feedUrl, 30);
+        let importedCount = 0;
+        for (const feed of parsedFeeds) {
+          try {
+            await addFeed(feed.name, feed.url, 30);
             importedCount++;
+          } catch {
+            // Continue importing remaining feeds
           }
         }
 
         if (importedCount > 0) {
           toast.success(`Imported ${importedCount} feeds from OPML`);
         } else {
-          toast.error('No valid RSS/Atom feeds found in OPML file');
+          toast.error('Failed to import feeds from OPML');
         }
       } catch {
         toast.error('Failed to parse OPML file');
@@ -127,11 +122,11 @@ ${outlines}
         onChange={handleImportOPML}
       />
 
-      <DropdownMenu>
+      <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           <Button
             size="sm"
-            className="h-8 px-3 rounded-md font-medium text-13 inline-flex items-center cursor-pointer shadow-none select-none transition-colors"
+            className="h-8 px-3 rounded-lg font-medium text-13 inline-flex items-center cursor-pointer shadow-none select-none transition-colors"
           >
             <span>New Feed</span>
           </Button>
@@ -140,7 +135,7 @@ ${outlines}
         <DropdownMenuContent
           align="end"
           sideOffset={6}
-          className="w-56 p-1.5 text-13 rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 z-50 select-none space-y-0.5"
+          className="w-56 p-1.5 text-13 rounded-lg border border-border bg-popover text-popover-foreground shadow-raised-200 z-50 select-none space-y-0.5"
         >
           {onRefreshFeed && (
             <DropdownMenuItem

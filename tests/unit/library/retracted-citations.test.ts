@@ -39,7 +39,7 @@ describe('isItemRetracted / getRetractionInfo', () => {
 describe('buildRetractedCitationMap', () => {
   it('matches project bib entries to retracted library items by DOI (case/URL-insensitive)', () => {
     const map = buildRetractedCitationMap(
-      [{ key: 'myKey', type: 'article', doi: 'https://doi.org/10.1016/s0140-6736(97)11096-0' }],
+      [{ key: 'myKey', type: 'article', doi: 'https://doi.org/10.1016/s0140-6736(97)11096-0', sourceFile: 'refs.bib' }],
       [retractedItem],
     );
     expect(map.get('myKey')?.reason).toBe('Data falsification');

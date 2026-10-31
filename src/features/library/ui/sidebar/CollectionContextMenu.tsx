@@ -53,7 +53,11 @@ export function CollectionContextMenu({
   const [isOpen, setIsOpen] = useState(false);
   const activeScope = useLibraryUIStore((s) => s.activeScope);
   const isProjectScope = activeScope.type === 'project';
-  const rootLibraryName = isProjectScope ? (activeScope.name || 'Project') : 'My Library';
+  const isNodeProjectScope =
+    Boolean(node.projectId) || (node.projectId === undefined && isProjectScope);
+  const nodeScopeId: string =
+    node.projectId || (isNodeProjectScope && activeScope.id ? activeScope.id : 'user');
+  const rootLibraryName = isNodeProjectScope ? (activeScope.name || 'Project') : 'My Library';
 
   const validMoveTargets = useMemo(() => {
     if (propValidMoveTargets) return propValidMoveTargets;
@@ -61,7 +65,7 @@ export function CollectionContextMenu({
     return getValidMoveTargets(allCollections, node.id);
   }, [isOpen, propValidMoveTargets, allCollections, node.id]);
   return (
-    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen} modal={false}>
       <DropdownMenuTrigger asChild>
         <button
           type="button"
@@ -108,7 +112,7 @@ export function CollectionContextMenu({
                   onClick={() => onMove(node.id, null)}
                   className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
                 >
-                  {isProjectScope ? (
+                  {isNodeProjectScope ? (
                     <Folder className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
                   ) : (
                     <Library className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
@@ -138,7 +142,7 @@ export function CollectionContextMenu({
                   onClick={() => onCopy(node.id, null)}
                   className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
                 >
-                  {isProjectScope ? (
+                  {isNodeProjectScope ? (
                     <Folder className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
                   ) : (
                     <Library className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
@@ -188,7 +192,7 @@ export function CollectionContextMenu({
                 void executeExportCollectionFormat(
                   node.id,
                   node.name,
-                  isProjectScope ? activeScope.id : 'user',
+                  nodeScopeId,
                   'ris',
                 )
               }
@@ -201,7 +205,7 @@ export function CollectionContextMenu({
                 void executeExportCollectionFormat(
                   node.id,
                   node.name,
-                  isProjectScope ? activeScope.id : 'user',
+                  nodeScopeId,
                   'csl_json',
                 )
               }
@@ -214,7 +218,7 @@ export function CollectionContextMenu({
                 void executeExportCollectionFormat(
                   node.id,
                   node.name,
-                  isProjectScope ? activeScope.id : 'user',
+                  nodeScopeId,
                   'csv',
                 )
               }
@@ -227,7 +231,7 @@ export function CollectionContextMenu({
                 void executeExportCollectionFormat(
                   node.id,
                   node.name,
-                  isProjectScope ? activeScope.id : 'user',
+                  nodeScopeId,
                   'markdown',
                 )
               }
@@ -240,18 +244,18 @@ export function CollectionContextMenu({
         {canManageCollections && (
           <>
             <DropdownMenuItem
-              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-destructive focus:text-destructive hover:bg-destructive/10 focus:bg-destructive/10 rounded-md outline-none transition-colors"
               onClick={() => onDelete(node.id)}
             >
-              <FolderMinus className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+              <FolderMinus className="size-4 text-destructive shrink-0" strokeWidth={1.5} />
               <span>Delete Collection</span>
             </DropdownMenuItem>
 
             <DropdownMenuItem
-              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-destructive focus:text-destructive hover:bg-destructive/10 focus:bg-destructive/10 rounded-md outline-none transition-colors"
               onClick={() => onDeleteWithItems(node.id)}
             >
-              <Trash2 className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+              <Trash2 className="size-4 text-destructive shrink-0" strokeWidth={1.5} />
               <span>Delete Collection and Items</span>
             </DropdownMenuItem>
           </>

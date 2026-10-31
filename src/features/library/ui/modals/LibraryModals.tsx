@@ -4,6 +4,7 @@ import React from 'react';
 import dynamic from 'next/dynamic';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { useProcessModalStore } from '@/features/library/core/store/process-modal.store';
+import { useResumeBatchIngestionPolling } from '@/features/library/core/coordinator/ingestion.coordinator';
 import {
   ACTIVE_MODAL_REGISTRY,
   type LibraryModalPayload,
@@ -29,7 +30,13 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
   const closeProcessModal = useProcessModalStore((s) => s.closeModal);
   const minimizeProcessModal = useProcessModalStore((s) => s.minimizeModal);
   const restoreProcessModal = useProcessModalStore((s) => s.restoreModal);
-  const abortProcessModal = useProcessModalStore((s) => s.abortBatch);
+
+  // Resume polling on reload if there is an in-progress batch run
+  useResumeBatchIngestionPolling(
+    effectiveScope,
+    processModalState.runId,
+    processModalState.isComplete,
+  );
 
   const ActiveModalHost = activeModal
     ? ACTIVE_MODAL_REGISTRY[activeModal]
@@ -52,7 +59,6 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
           onClose={closeProcessModal}
           onMinimize={minimizeProcessModal}
           onRestore={restoreProcessModal}
-          onCancel={abortProcessModal}
         />
       )}
     </>

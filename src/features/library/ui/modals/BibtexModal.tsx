@@ -15,8 +15,7 @@ import {
 } from "@/shared/components/ui/dialog";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/lib/utils";
-import { logger } from "@/shared/lib/logger";
-import { ExportsService } from "@/features/library/sdk/library.client";
+import { useExportItemCitationQuery } from "@/features/library/sdk/queries/citation.queries";
 import type { ReaderDocument } from "@/features/library/domain/types/reader.types";
 
 export interface PaperBibtexDialogProps {
@@ -31,39 +30,16 @@ export default function PaperBibtexDialog({
   onOpenChange,
 }: PaperBibtexDialogProps) {
   const [format, setFormat] = useState<"bibtex" | "ris">("bibtex");
-  const [remoteContent, setRemoteContent] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const { copy, isCopied } = useReaderClipboard();
   const { download } = useReaderFileDownload();
 
-  React.useEffect(() => {
-    if (!open || !paper?.id) {
-      setRemoteContent(null);
-      setIsLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setIsLoading(true);
-    ExportsService
-      .exportLibrary(paper.projectId, {
-        format,
-        itemIds: [paper.id],
-      })
-      .then((res) => {
-        if (!cancelled && res?.content) {
-          setRemoteContent(res.content);
-        }
-      })
-      .catch((err) => {
-        logger.warn("Backend export failed", { error: err });
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [open, paper?.id, paper?.projectId, format]);
+  const { data: exportRes, isLoading } = useExportItemCitationQuery(
+    paper?.projectId || "user",
+    paper?.id,
+    format,
+    { enabled: open && Boolean(paper?.id) },
+  );
+  const remoteContent = exportRes?.content ?? null;
 
   const citationKey = paper?.citationKey || paper?.id || "citation";
   const fallbackString = format === "bibtex" ? paper?.bibtex || "" : "";
@@ -181,6 +157,7 @@ export default function PaperBibtexDialog({
             <Button
               variant="outline"
               size="sm"
+              disabled={isLoading || (!remoteContent && !fallbackString)}
               onClick={handleCopy}
               className="h-8 px-3 text-12 font-medium gap-1.5 border-border bg-background text-foreground hover:bg-muted cursor-pointer rounded-md focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none relative before:absolute before:-inset-1 md:before:hidden"
             >
@@ -199,6 +176,7 @@ export default function PaperBibtexDialog({
             </Button>
             <Button
               size="sm"
+              disabled={isLoading || (!remoteContent && !fallbackString)}
               onClick={handleDownload}
               className="h-8 px-3 text-12 font-medium gap-1.5 cursor-pointer rounded-md focus-visible:ring-1 focus-visible:ring-primary focus-visible:outline-none relative before:absolute before:-inset-1 md:before:hidden"
             >

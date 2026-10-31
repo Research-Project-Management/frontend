@@ -11,12 +11,12 @@ export const userSchema = z.object({
 
 export const creatorCreditSchema = z.object({
   id: z.string().optional(),
-  orderIndex: z.number().optional().default(0),
-  creatorType: z.string().optional().default('author'),
-  fieldMode: z.number().optional().default(0),
+  orderIndex: z.number().optional(),
+  creatorType: z.string().optional(),
+  fieldMode: z.number().optional(),
   firstName: z.string().nullable().optional(),
   lastName: z.string().nullable().optional(),
-  fullName: z.string().optional().default(''),
+  fullName: z.string().optional(),
   name: z.string().optional(),
   shortName: z.string().nullable().optional(),
 });
@@ -24,14 +24,14 @@ export const creatorCreditSchema = z.object({
 export const contributorRelationSchema = z.object({
   id: z.string().optional(),
   itemId: z.string().optional(),
-  creatorType: z.string().optional().default('author'),
-  fieldMode: z.number().optional().default(0),
+  creatorType: z.string().optional(),
+  fieldMode: z.number().optional(),
   firstName: z.string().nullable().optional(),
   lastName: z.string().nullable().optional(),
-  fullName: z.string().optional().default(''),
+  fullName: z.string().optional(),
   name: z.string().optional(),
   shortName: z.string().nullable().optional(),
-  orderIndex: z.number().optional().default(0),
+  orderIndex: z.number().optional(),
   createdAt: z.string().optional(),
 });
 
@@ -104,7 +104,7 @@ export const itemMetaSchema = z.object({
   numTags: z.number().optional(),
 });
 
-export const itemSchema = z.object({
+export const baseItemSchema = z.object({
   id: z.string().optional().default(''),
   title: z.string().optional().default('Untitled Item'),
   itemType: z.string().optional().default('journalArticle'),
@@ -178,7 +178,7 @@ export const itemSchema = z.object({
   attachmentCount: z.number().optional().default(0),
   isStarred: z.boolean().optional().default(false),
   isRead: z.boolean().optional().default(false),
-  readStatus: z.enum(['unread', 'reading', 'completed']).optional().default('unread'),
+  readStatus: z.enum(['unread', 'reading', 'completed', 'read']).optional().default('unread'),
   readProgress: z.number().optional(),
   currentPage: z.number().optional(),
   lastReadPage: z.number().optional(),
@@ -318,20 +318,23 @@ export const itemSchema = z.object({
   podcastType: z.string().optional(),
   interviewMedium: z.string().optional(),
   bibtex: z.string().optional(),
+  venue: z.string().optional(),
 
   // Transient / Optimistic UI attributes
   _isProcessing: z.boolean().optional(),
   _processingStatus: z.string().optional(),
   _processingProgress: z.number().optional(),
   _processingError: z.string().optional(),
-}).passthrough();
+});
+
+export const itemSchema = baseItemSchema.passthrough();
 
 // ── Mutation & Response Schemas ─────────────────────────────────────────────
-export const createItemSchema = itemSchema.partial().extend({
+export const createItemSchema = baseItemSchema.partial().extend({
   title: z.string().min(1, 'Title is required'),
 });
 
-export const updateItemSchema = itemSchema.partial().extend({
+export const updateItemSchema = baseItemSchema.partial().extend({
   expectedVersion: z.number().optional(),
   silent: z.boolean().optional(),
 });
@@ -362,7 +365,7 @@ export type Provenance = z.infer<typeof provenanceSchema>;
 export type CollectionRelation = z.infer<typeof collectionRelationSchema>;
 export type ItemTagRelation = z.infer<typeof itemTagRelationSchema>;
 
-export type Item = z.infer<typeof itemSchema>;
+export type Item = z.infer<typeof baseItemSchema>;
 export type CreateItemDTO = z.infer<typeof createItemSchema>;
 export type UpdateItemDTO = z.infer<typeof updateItemSchema>;
 

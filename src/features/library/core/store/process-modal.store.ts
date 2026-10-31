@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import type {
   IngestionProgressItem,
   ProcessingFileItem,
@@ -141,7 +142,9 @@ const initialModalState: ProcessModalState = {
  */
 let activeBatchAbortController: AbortController | null = null;
 
-export const useProcessModalStore = create<ProcessModalStore>((set, get) => ({
+export const useProcessModalStore = create<ProcessModalStore>()(
+  persist(
+    (set, get) => ({
   state: initialModalState,
   processingItems: [],
 
@@ -271,5 +274,15 @@ export const useProcessModalStore = create<ProcessModalStore>((set, get) => ({
       },
     }));
   },
-}));
+}),
+    {
+      name: 'flux_process_modal_storage',
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        state: state.state,
+        processingItems: state.processingItems,
+      }),
+    },
+  ),
+);
 

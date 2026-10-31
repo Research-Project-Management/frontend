@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { openInNewTab } from "@/features/library/core/coordinator/browser-io.helpers";
+import { openInNewTab, buildReaderPaperUrl } from "@/features/library/core/coordinator/browser-io.helpers";
 import {
   LibraryInspector,
   type LibraryInspectorProps,
@@ -32,9 +32,13 @@ export function ReaderInspector({
 }: ReaderInspectorProps) {
   const defaultSelectItem = useCallback(
     (itemId: string) => {
-      openInNewTab(`/library/papers/${itemId}`);
+      const projectId =
+        item && "projectId" in item && item.projectId
+          ? String(item.projectId)
+          : rest.scopeId;
+      openInNewTab(buildReaderPaperUrl(itemId, { projectId }));
     },
-    [],
+    [item, rest.scopeId],
   );
 
   const effectiveItem = (item || null) as Item | null;

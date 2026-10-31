@@ -10,7 +10,6 @@ import {
   releaseCanvasMemory,
 } from "@/shared/lib/pdfjs-worker";
 import { usePdf } from "@/features/library/core/coordinator/reader/use-pdf";
-import type { Item } from "@/features/library/domain/types/library.types";
 
 import "react-pdf/dist/Page/TextLayer.css";
 import "react-pdf/dist/Page/AnnotationLayer.css";
@@ -19,22 +18,20 @@ setupPdfWorker();
 const SHARED_PDF_OPTIONS = getSharedPdfDocumentOptions();
 
 export interface PdfPageCanvasProps {
-  paper: Item;
   paperUrl: string;
-  onOpenReader: () => void;
+  scopeId?: string;
 }
 
 export function PdfPageCanvas({
-  paper: _paper,
   paperUrl,
-  onOpenReader: _onOpenReader,
+  scopeId,
 }: PdfPageCanvasProps) {
   const {
     blobUrl: pdfBlobUrl,
     isLoading: pdfLoading,
     error: pdfError,
     retry: retryPdf,
-  } = usePdf(paperUrl || null);
+  } = usePdf(paperUrl || null, scopeId);
 
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [numPages, setNumPages] = useState<number>(0);

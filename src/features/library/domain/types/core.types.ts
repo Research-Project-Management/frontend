@@ -28,7 +28,7 @@ export interface LibraryPermissions {
 export interface UserLibraryScope {
   type: 'user';
   id?: string; // Optional identifier ('user')
-  name: string; // "Library"
+  name?: string; // "Library"
   role?: 'owner';
   permissions?: Partial<LibraryPermissions> | string[] | Record<string, unknown>;
   effectivePermissions?: string[];
@@ -44,7 +44,7 @@ export interface ProjectLibraryScope {
   type: 'project';
   id: string; // Project UUID
   projectId?: string; // Canonical alias for Project UUID
-  name: string; // Project title
+  name?: string; // Project title
   role?: ProjectRole;
   permissions?: Partial<LibraryPermissions> | string[] | Record<string, unknown>;
   effectivePermissions?: string[];

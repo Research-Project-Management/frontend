@@ -539,3 +539,45 @@ export function buildMergedItemPayload(
     totalAnnotationCount: assets.totalAnnotationCount,
   };
 }
+
+export interface MergeFieldOptionState {
+  isExplicitOverride: boolean;
+  isMasterDefault: boolean;
+  isSelected: boolean;
+  isRecommended: boolean;
+}
+
+/**
+ * Pure domain helper to compute selection and recommendation state for a candidate field option
+ * in duplicate merge UI (`DuplicateMergeInspector` and `MergeModal`).
+ */
+export function resolveMergeFieldOptionState(
+  field: ItemFieldDiff,
+  opt: FieldOptionValue,
+  activeOverrideValue: unknown,
+): MergeFieldOptionState {
+  const masterValue = field.masterValue?.rawValue;
+  const isExplicitOverride =
+    activeOverrideValue !== undefined &&
+    activeOverrideValue !== null &&
+    (opt.rawValue === activeOverrideValue ||
+      (opt.isEmpty &&
+        (activeOverrideValue === '' ||
+          (Array.isArray(activeOverrideValue) && activeOverrideValue.length === 0))) ||
+      normalizeCompareValue(opt.rawValue, field.key) ===
+        normalizeCompareValue(activeOverrideValue, field.key));
+  const isMasterDefault =
+    (activeOverrideValue === undefined || activeOverrideValue === null) &&
+    opt.isMaster &&
+    opt.rawValue === masterValue;
+  const isSelected = isExplicitOverride || isMasterDefault;
+  const isRecommended =
+    field.hasConflict && opt.itemId === field.recommendedItemId && !isSelected;
+
+  return {
+    isExplicitOverride,
+    isMasterDefault,
+    isSelected,
+    isRecommended,
+  };
+}

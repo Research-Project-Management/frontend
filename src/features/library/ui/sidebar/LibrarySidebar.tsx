@@ -153,8 +153,11 @@ export function LibrarySidebar() {
   } = useSavedSearches(projectId, { enabled: isInProjectContext });
 
   const { trashItems, emptyTrash } = useTrash('user');
-  const deleteMutation = useDeleteLibraryItemsMutation('user');
-  const restoreMutation = useBatchRestoreItemsMutation('user');
+  const deleteMutation = useDeleteLibraryItemsMutation(effectiveScopeId);
+  const restoreMutation = useBatchRestoreItemsMutation(effectiveScopeId);
+  const executeCommand = useLibraryCommandStore((s) => s.executeCommand);
+  const clearCommandHistory = useLibraryCommandStore((s) => s.clearHistory);
+  const clearSelection = useLibraryUIStore((s) => s.clearSelection);
 
   const handleEmptyTrash = useCallback(() => {
     if (trashItems.length === 0) {
@@ -162,21 +165,24 @@ export function LibrarySidebar() {
       return;
     }
     openModal('EMPTY_TRASH', {
+      permanent: true,
       onConfirm: async () => {
         try {
           await emptyTrash();
+          clearCommandHistory();
+          clearSelection();
         } catch {
           toast.error('Failed to empty trash', { id: 'empty-trash-error' });
         }
       },
     });
-  }, [trashItems.length, openModal, emptyTrash]);
+  }, [trashItems.length, openModal, emptyTrash, clearCommandHistory, clearSelection]);
 
   const handleDropToTrash = useCallback(
     async (ids: string[]) => {
       if (!ids.length) return;
       try {
-        await useLibraryCommandStore.getState().executeCommand(
+        await executeCommand(
           createTrashCommand({
             itemIds: ids,
             deleteMutation: { mutateAsync: deleteMutation.mutateAsync },
@@ -188,7 +194,7 @@ export function LibrarySidebar() {
         toast.error('Failed to move items to trash', { id: 'drop-to-trash-error' });
       }
     },
-    [deleteMutation, restoreMutation],
+    [deleteMutation, executeCommand, restoreMutation],
   );
 
   const handleDropToMyPublications = useDropToMyPublications(effectiveScopeId);
@@ -315,7 +321,7 @@ export function LibrarySidebar() {
           userCollections.find((c) => c.id === targetCollectionId) ??
           projectCollections.find((c) => c.id === targetCollectionId);
         const targetCollectionName = targetCollection?.name ?? 'Library';
-        await useLibraryCommandStore.getState().executeCommand(
+        await executeCommand(
           createMoveItemsCommand({
             itemIds: ids,
             sourceCollectionId: activeId || null,
@@ -347,6 +353,7 @@ export function LibrarySidebar() {
       assignMutation,
       detachMutation,
       effectiveScopeId,
+      executeCommand,
       moveMutation,
       projectCollections,
       projectId,

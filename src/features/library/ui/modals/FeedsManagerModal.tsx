@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
-import { RefreshCw, Plus, Rss, Trash2, Loader2, ExternalLink, Check, CheckCircle2, BookPlus, FileText } from 'lucide-react';
+import { RefreshCw, Plus, Rss, Trash2, Loader2, ExternalLink, Check, BookPlus, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { safeHttpUrl } from '@/features/library/domain/retraction';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
@@ -69,6 +69,7 @@ export default function FeedsManagerModal({
   const setEntrySaving = useFeedsStore((s) => s.setEntrySaving);
 
   const [isAddingFeed, setIsAddingFeed] = useState(false);
+  const [isSubmittingNewFeed, setIsSubmittingNewFeed] = useState(false);
   const [newFeedName, setNewFeedName] = useState('');
   const [newFeedUrl, setNewFeedUrl] = useState('');
   const [targetCollectionId, setTargetCollectionId] = useState<string>(
@@ -80,8 +81,16 @@ export default function FeedsManagerModal({
   const [isLoadingEntries, setIsLoadingEntries] = useState(false);
 
   useEffect(() => {
+    setTargetCollectionId(defaultCollectionId || '');
+  }, [defaultCollectionId]);
+
+  useEffect(() => {
     if (open) {
       loadFeeds();
+    } else {
+      setIsAddingFeed(false);
+      setNewFeedName('');
+      setNewFeedUrl('');
     }
   }, [open, loadFeeds]);
 
@@ -123,19 +132,30 @@ export default function FeedsManagerModal({
   const handleAddFeedSubscription = async (e: React.FormEvent) => {
     e.preventDefault();
     const url = newFeedUrl.trim();
-    if (!url) return;
-    const newFeed = await addFeed(newFeedName, url);
-    setNewFeedName('');
-    setNewFeedUrl('');
-    setIsAddingFeed(false);
-    toast.success(`Subscribed to "${newFeed.name}"`);
+    if (!url || isSubmittingNewFeed) return;
+    setIsSubmittingNewFeed(true);
+    try {
+      const newFeed = await addFeed(newFeedName, url);
+      setNewFeedName('');
+      setNewFeedUrl('');
+      setIsAddingFeed(false);
+      toast.success(`Subscribed to "${newFeed.name}"`);
+    } catch {
+      toast.error('Failed to subscribe to feed');
+    } finally {
+      setIsSubmittingNewFeed(false);
+    }
   };
 
-  const handleRemoveFeed = (id: string) => {
-    removeFeed(id);
-    if (activeFeedId === id) {
-      const remaining = feeds.filter((f) => f.id !== id);
-      setActiveFeedId(remaining[0]?.id || null);
+  const handleRemoveFeed = async (id: string) => {
+    try {
+      await removeFeed(id);
+      if (activeFeedId === id) {
+        const remaining = feeds.filter((f) => f.id !== id);
+        setActiveFeedId(remaining[0]?.id || null);
+      }
+    } catch {
+      toast.error('Failed to remove feed');
     }
   };
 
@@ -258,13 +278,19 @@ export default function FeedsManagerModal({
                     type="button"
                     variant="ghost"
                     size="sm"
+                    disabled={isSubmittingNewFeed}
                     onClick={() => setIsAddingFeed(false)}
                     className="h-7 px-2.5 text-12 cursor-pointer"
                   >
                     Cancel
                   </Button>
-                  <Button type="submit" size="sm" className="h-7 px-3 text-12 cursor-pointer">
-                    Add Feed
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={isSubmittingNewFeed}
+                    className="h-7 px-3 text-12 cursor-pointer"
+                  >
+                    {isSubmittingNewFeed ? 'Adding...' : 'Add Feed'}
                   </Button>
                 </div>
               </form>
@@ -276,9 +302,17 @@ export default function FeedsManagerModal({
                 return (
                   <div
                     key={f.id}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setActiveFeedId(f.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setActiveFeedId(f.id);
+                      }
+                    }}
                     className={cn(
-                      'group flex items-center justify-between gap-2 px-2.5 py-2 rounded-md text-xs cursor-pointer transition-colors',
+                      'group flex items-center justify-between gap-2 px-2.5 py-2 rounded-md text-xs cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
                       isActive
                         ? 'bg-primary/10 text-primary font-medium'
                         : 'text-foreground hover:bg-muted',
@@ -292,9 +326,9 @@ export default function FeedsManagerModal({
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleRemoveFeed(f.id);
+                        void handleRemoveFeed(f.id);
                       }}
-                      className="opacity-0 group-hover:opacity-100 size-5 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive cursor-pointer transition-opacity"
+                      className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 size-5 flex items-center justify-center rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive cursor-pointer transition-opacity focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                       aria-label={`Remove feed ${f.name}`}
                     >
                       <Trash2 className="size-3" />

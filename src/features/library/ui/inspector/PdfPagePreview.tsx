@@ -21,6 +21,7 @@ const PdfPageCanvas = dynamic(
 export interface PdfPagePreviewProps {
   paper: Item;
   paperUrl: string;
+  scopeId?: string | null;
   previewTitle?: string;
   onOpenReader: () => void;
 }
@@ -28,6 +29,7 @@ export interface PdfPagePreviewProps {
 export function PdfPagePreview({
   paper,
   paperUrl,
+  scopeId,
   previewTitle,
   onOpenReader,
 }: PdfPagePreviewProps) {
@@ -68,11 +70,7 @@ export function PdfPagePreview({
           </button>
         </div>
       ) : (
-        <PdfPageCanvas
-          paper={paper}
-          paperUrl={paperUrl}
-          onOpenReader={onOpenReader}
-        />
+        <PdfPageCanvas paperUrl={paperUrl} scopeId={scopeId || paper.projectId || undefined} />
       )}
     </div>
   );

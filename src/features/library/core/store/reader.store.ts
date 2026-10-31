@@ -14,8 +14,8 @@ import {
 
 export { normalizeReaderZoom, MAX_READER_TABS, MAX_BOOKMARKED_ITEMS };
 
-export type ReaderFitMode = 'page-width' | 'page-fit' | 'auto' | 'custom';
-export type ReaderTheme = 'light' | 'sepia' | 'dark';
+export type ReaderFitMode = 'fit-width' | 'fit-page' | 'auto' | 'custom';
+export type ReaderTheme = 'normal' | 'sepia' | 'dark' | 'invert';
 
 export interface ReaderTab {
   id: string; // 'library' or paperId
@@ -63,6 +63,7 @@ export interface ReaderStoreState {
     >,
   ) => void;
   toggleBookmark: (paperId: string, pageNumber: number) => boolean;
+  setBookmarks: (paperId: string, pages: number[]) => void;
   getBookmarks: (paperId: string) => number[];
 }
 
@@ -91,9 +92,9 @@ export const useReaderStore = create<ReaderStoreState>((set, get) => ({
             type: 'paper',
             currentPage: 1,
             zoom: 1.0,
-            fitMode: 'page-width',
+            fitMode: 'fit-width',
             rotation: 0,
-            theme: 'light',
+            theme: 'normal',
           }),
         ],
         paperId,
@@ -254,6 +255,35 @@ export const useReaderStore = create<ReaderStoreState>((set, get) => ({
     saveReaderBookmarksToStorage(nextBookmarks);
     set({ bookmarks: nextBookmarks });
     return !exists;
+  },
+
+  setBookmarks: (paperId: string, pages: number[]) => {
+    if (!paperId || paperId === 'library') return;
+    const normalizedPages = Array.from(
+      new Set(
+        pages
+          .filter((p): p is number => typeof p === 'number' && Number.isFinite(p) && p >= 1)
+          .map((p) => Math.max(1, Math.floor(p))),
+      ),
+    ).sort((a, b) => a - b);
+
+    const prevBookmarks = get().bookmarks;
+    const current = prevBookmarks[paperId] || EMPTY_BOOKMARKS;
+    if (
+      current.length === normalizedPages.length &&
+      current.every((val, idx) => val === normalizedPages[idx])
+    ) {
+      return;
+    }
+
+    const updated: Record<string, number[]> = { ...prevBookmarks };
+    delete updated[paperId];
+    if (normalizedPages.length > 0) {
+      updated[paperId] = normalizedPages;
+    }
+    const nextBookmarks = enforceMaxBookmarkedItems(updated);
+    saveReaderBookmarksToStorage(nextBookmarks);
+    set({ bookmarks: nextBookmarks });
   },
 
   getBookmarks: (paperId: string) => {

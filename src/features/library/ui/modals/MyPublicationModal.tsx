@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useId } from 'react';
+import React, { useState, useId, useEffect } from 'react';
 import { Award, ShieldCheck, FileText, Globe, Lock, Loader2 } from 'lucide-react';
 import {
   Dialog,
@@ -49,6 +49,16 @@ export function MyPublicationModal({
   const [openAccessLicense, setOpenAccessLicense] = useState<string>('CC-BY-4.0');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
+  useEffect(() => {
+    if (open) {
+      setSelectedContributorId('unlinked');
+      setIsPublic(true);
+      setIncludeAttachments(true);
+      setOpenAccessLicense('CC-BY-4.0');
+      setIsSubmitting(false);
+    }
+  }, [open, item?.id]);
+
   const contributors = Array.isArray(item?.contributors)
     ? item.contributors
     : [];
@@ -64,7 +74,7 @@ export function MyPublicationModal({
             ? selectedContributorId
             : null,
         isPublic,
-        includeAttachments,
+        includeAttachments: isPublic ? includeAttachments : false,
         openAccessLicense: isPublic ? openAccessLicense : null,
       });
       onOpenChange(false);

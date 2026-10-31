@@ -207,11 +207,15 @@ export function usePdfViewerInteraction({
 
     try {
       const range = selection.getRangeAt(0);
+      const clientRects = Array.from(range.getClientRects()).filter(
+        (cr) => cr.width > 1 && cr.height > 1,
+      );
       const rect = range.getBoundingClientRect();
+      const firstLineRect = clientRects[0] || rect;
       const containerRect = container.getBoundingClientRect();
       const menuHeight = 40;
       const menuGap = 10;
-      const menuHalfWidth = 110;
+      const menuHalfWidth = 220;
       const selectionTop = rect.top - containerRect.top + container.scrollTop;
       const selectionBottom = rect.bottom - containerRect.top + container.scrollTop;
       const visibleTop = container.scrollTop + menuGap;
@@ -222,10 +226,12 @@ export function usePdfViewerInteraction({
         visibleTop,
         Math.min(preferredTop >= visibleTop ? preferredTop : fallbackTop, visibleBottom),
       );
+      const anchorCenterX =
+        firstLineRect.left - containerRect.left + firstLineRect.width / 2;
       const left = Math.max(
         menuHalfWidth + menuGap,
         Math.min(
-          rect.left - containerRect.left + rect.width / 2,
+          anchorCenterX,
           container.clientWidth - menuHalfWidth - menuGap,
         ),
       );

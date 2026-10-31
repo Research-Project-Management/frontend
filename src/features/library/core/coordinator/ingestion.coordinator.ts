@@ -1,7 +1,12 @@
+import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
-import { UploadService } from '@/features/library/sdk/library.client';
+import { UploadService, IngestionService } from '@/features/library/sdk/library.client';
 import { itemKeys } from '@/features/library/sdk/query-keys';
-import { invalidateLibraryCatalogDependencies } from '@/features/library/sdk/queries/cache-patcher';
+import {
+  invalidateLibraryCatalogDependencies,
+  useLibraryCacheSynchronizer,
+} from '@/features/library/sdk/queries/cache-patcher';
+import { useProcessModalStore } from '@/features/library/core/store/process-modal.store';
 import type {
   IngestionProgressItem,
   ProcessingFileItem,
@@ -401,4 +406,112 @@ export async function executeBatchUpload(
       id: 'process-modal-import',
     });
   }
+}
+
+export function useResumeBatchIngestionPolling(
+  effectiveScope: string,
+  activeRunId: string | null | undefined,
+  isComplete: boolean,
+): void {
+  const { queryClient } = useLibraryCacheSynchronizer(effectiveScope);
+  const pollingRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    if (!activeRunId || isComplete || pollingRef.current) return;
+    pollingRef.current = true;
+
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
+
+    async function pollBatchRunProgress() {
+      try {
+        const snapshot = await IngestionService.getRunStatus(effectiveScope, activeRunId!);
+        if (cancelled) return;
+
+        const rawData =
+          (snapshot as { data?: Record<string, unknown> })?.data ??
+          (snapshot as Record<string, unknown>);
+        const status = (typeof rawData?.status === 'string' ? rawData.status : '').toUpperCase();
+
+        if (
+          status === 'COMPLETED' ||
+          status === 'READY' ||
+          status === 'SUCCEEDED' ||
+          status === 'FAILED_FINAL'
+        ) {
+          useProcessModalStore.setState((s) => ({
+            state: {
+              ...s.state,
+              isComplete: true,
+              data: s.state.data
+                ? {
+                    ...s.state.data,
+                    status: status === 'FAILED_FINAL' ? 'FAILED_FINAL' : 'COMPLETED',
+                    percentage: 100,
+                  }
+                : null,
+            },
+          }));
+          void queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
+          return;
+        }
+
+        try {
+          const progressRes = await IngestionService.getRunProgress(effectiveScope, activeRunId!);
+          if (!cancelled && progressRes && typeof progressRes === 'object') {
+            const pr = progressRes as {
+              items?: Array<{ id: string; status: string; title?: string }>;
+            };
+            if (Array.isArray(pr.items) && pr.items.length > 0) {
+              useProcessModalStore.setState((s) => {
+                if (!s.state.data) return s;
+                const updatedItems = s.state.data.items.map((it) => {
+                  const match = pr.items!.find(
+                    (pi) =>
+                      pi.id === it.id ||
+                      (pi.title && it.title && pi.title.includes(it.title)),
+                  );
+                  if (match) {
+                    return {
+                      ...it,
+                      status: (match.status || it.status) as IngestionProgressItem['status'],
+                      title: match.title || it.title,
+                    };
+                  }
+                  return it;
+                });
+                return {
+                  state: {
+                    ...s.state,
+                    data: {
+                      ...s.state.data,
+                      items: updatedItems,
+                    },
+                  },
+                };
+              });
+            }
+          }
+        } catch {
+          // Progress endpoint optional
+        }
+
+        if (!cancelled) {
+          timer = setTimeout(pollBatchRunProgress, 2500);
+        }
+      } catch {
+        if (!cancelled) {
+          timer = setTimeout(pollBatchRunProgress, 4000);
+        }
+      }
+    }
+
+    void pollBatchRunProgress();
+
+    return () => {
+      cancelled = true;
+      pollingRef.current = false;
+      if (timer) clearTimeout(timer);
+    };
+  }, [activeRunId, isComplete, effectiveScope, queryClient]);
 }

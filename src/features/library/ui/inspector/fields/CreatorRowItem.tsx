@@ -4,6 +4,7 @@ import type React from "react";
 import { Plus, Minus, Check } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import {
+  type CreatorEntry,
   splitAuthorString,
   parseCreatorName,
   isInstitutionName,
@@ -20,7 +21,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/shared/components/ui/tooltip";
-import type { CreatorEntry } from "./creator-fields.helper";
 
 export interface CreatorTypeOption {
   creatorType: string;

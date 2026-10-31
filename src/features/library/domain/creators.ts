@@ -710,7 +710,7 @@ export function formatCreatorCompact(authors?: string[] | null): string {
  * uniformly handling `creators`, `contributors`, and `authors`.
  */
 export function getItemAuthorsSummary(
-  item: Partial<Item> | null | undefined,
+  item: Partial<Item> | unknown | null | undefined,
   maxAuthors = 3,
 ): string {
   if (!item) return '—';

@@ -223,6 +223,17 @@ export function getBasePath(scopeId?: string, suffix = ''): string {
   return resolveLibraryUrl('catalog', '', scopeId, suffix);
 }
 
+export function buildLibraryUrl(scopeId: string | undefined, resourcePath: string): string {
+  const cleanResource = resourcePath.startsWith('/') ? resourcePath : `/${resourcePath}`;
+  if (cleanResource.startsWith('/pdf-proxy')) {
+    const scopeQuery = isProjectScope(scopeId)
+      ? `${cleanResource.includes('?') ? '&' : '?'}projectId=${encodeURIComponent(scopeId!)}`
+      : '';
+    return `/api/library${cleanResource}${scopeQuery}`;
+  }
+  return resolveLibraryUrl('reader', cleanResource, scopeId);
+}
+
 export function getCatalogUrl(scopeId?: string, suffix = ''): string {
   if (!suffix) {
     return resolveLibraryUrl('catalog', '/items', scopeId);
@@ -462,10 +473,11 @@ export const fetchPdfBlob = async (
       headers['X-Project-Id'] = effectiveScope;
     }
 
-    const fetchTimeoutId = setTimeout(
-      () => fetchTimeoutController.abort(),
-      60_000,
-    );
+    let timedOut = false;
+    const fetchTimeoutId = setTimeout(() => {
+      timedOut = true;
+      fetchTimeoutController.abort();
+    }, 60_000);
     let response: Response;
     try {
       response = await fetch(resolvedUrl, {
@@ -474,29 +486,47 @@ export const fetchPdfBlob = async (
         signal: fetchTimeoutController.signal,
       });
     } catch (networkErr: unknown) {
-      if (networkErr instanceof DOMException && networkErr.name === 'AbortError') {
+      if (
+        networkErr instanceof DOMException &&
+        networkErr.name === 'AbortError' &&
+        !timedOut
+      ) {
         clearTimeout(fetchTimeoutId);
         throw networkErr;
       }
 
-      // If direct fetch to an external URL failed (CORS or network error), fallback to internal proxy route
+      // If direct fetch to an external URL failed (CORS, network error, or timeout), fallback to internal proxy route
       if (
         (resolvedUrl.startsWith('http://') || resolvedUrl.startsWith('https://')) &&
         !isTrustedOrigin
       ) {
+        const proxyController = new AbortController();
+        const onCallerAbort = () => proxyController.abort();
+        signal?.addEventListener('abort', onCallerAbort, { once: true });
+        const proxyTimeoutId = setTimeout(() => proxyController.abort(), 60_000);
         try {
-          const proxyUrl = `/api/library/pdf-proxy?url=${encodeURIComponent(resolvedUrl)}`;
+          const proxyBase = buildLibraryUrl(effectiveScope, '/pdf-proxy');
+          const sep = proxyBase.includes('?') ? '&' : '?';
+          const proxyUrl = `${proxyBase}${sep}url=${encodeURIComponent(resolvedUrl)}`;
+          const proxyHeaders: Record<string, string> = {};
+          if (token) proxyHeaders.Authorization = `Bearer ${token}`;
+          if (effectiveScope) proxyHeaders['X-Project-Id'] = effectiveScope;
           response = await fetch(proxyUrl, {
             credentials: 'same-origin',
-            signal: fetchTimeoutController.signal,
+            headers: proxyHeaders,
+            signal: proxyController.signal,
           });
         } catch {
           clearTimeout(fetchTimeoutId);
+          clearTimeout(proxyTimeoutId);
+          signal?.removeEventListener('abort', onCallerAbort);
           const msg = networkErr instanceof Error ? networkErr.message : String(networkErr);
           throw new Error(
             `Unable to load PDF from external source due to browser security (CORS) or network error: ${msg}. You can open the original document directly in a new tab.`
           );
         }
+        clearTimeout(proxyTimeoutId);
+        signal?.removeEventListener('abort', onCallerAbort);
       } else {
         clearTimeout(fetchTimeoutId);
         const msg = networkErr instanceof Error ? networkErr.message : String(networkErr);

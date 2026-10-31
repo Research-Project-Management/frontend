@@ -81,21 +81,39 @@ export function useViewerSearch({
 
   const indexedSections = useMemo(() => {
     if (!fulltext?.sections) return null;
-    return fulltext.sections.map((sec) => {
-      const lowerCorpus = [
-        sec.title ? sec.title.toLowerCase() : '',
-        ...(sec.paragraphs ? sec.paragraphs.map((p) => p.toLowerCase()) : []),
-      ].join('\n');
-      return {
-        page: sec.page || 1,
-        title: sec.title,
-        lowerCorpus,
-        foldedCorpus: foldDiacritics(lowerCorpus),
-      };
-    });
+    return fulltext.sections
+      .filter((sec) => typeof sec.page === 'number' && Number.isFinite(sec.page) && sec.page >= 1)
+      .map((sec) => {
+        const lowerCorpus = [
+          sec.title ? sec.title.toLowerCase() : '',
+          ...(sec.paragraphs ? sec.paragraphs.map((p) => p.toLowerCase()) : []),
+        ].join('\n');
+        return {
+          page: sec.page,
+          title: sec.title,
+          lowerCorpus,
+          foldedCorpus: foldDiacritics(lowerCorpus),
+        };
+      });
   }, [fulltext?.sections]);
 
+  const backendFulltextPages = useMemo(() => {
+    const rawPages = (fulltext as { pages?: Array<{ pageNumber: number; text: string }> } | null | undefined)?.pages;
+    if (!Array.isArray(rawPages) || rawPages.length === 0) return null;
+    return rawPages.filter(
+      (p) =>
+        p &&
+        typeof p.pageNumber === 'number' &&
+        p.pageNumber >= 1 &&
+        typeof p.text === 'string',
+    );
+  }, [fulltext]);
+
   useEffect(() => {
+    if (backendFulltextPages && backendFulltextPages.length > 0) {
+      setExtractedPageList(backendFulltextPages);
+      return;
+    }
     if (!pdfDocument) {
       extractedForDocRef.current = null;
       setExtractedPageList(null);
@@ -141,7 +159,7 @@ export function useViewerSearch({
     return () => {
       cancelled = true;
     };
-  }, [pdfDocument, numPages, isSearchOpen, debouncedSearchQuery]);
+  }, [backendFulltextPages, pdfDocument, numPages, isSearchOpen, debouncedSearchQuery]);
 
   const searchMatches = useMemo(() => {
     const q = deferredSearchQuery.trim().toLowerCase();
@@ -150,17 +168,7 @@ export function useViewerSearch({
 
     const list: { page: number; title?: string }[] = [];
     const matchedPages = new Set<number>();
-    if (indexedSections) {
-      for (const sec of indexedSections) {
-        if (
-          sec.lowerCorpus.includes(q) ||
-          (qFolded && sec.foldedCorpus.includes(qFolded))
-        ) {
-          list.push({ page: sec.page, title: sec.title });
-          matchedPages.add(sec.page);
-        }
-      }
-    }
+
     if (numPages > 0) {
       const extractedByPage = new Map<number, { pageNumber: number; text: string }>();
       if (extractedPageList) {
@@ -171,7 +179,6 @@ export function useViewerSearch({
 
       const candidatePages: Array<{ pageNumber: number; text: string }> = [];
       for (let p = 1; p <= numPages; p++) {
-        if (matchedPages.has(p)) continue;
         const extractedObj = extractedByPage.get(p);
         if (extractedObj) {
           candidatePages.push(extractedObj);
@@ -201,6 +208,20 @@ export function useViewerSearch({
         }
       }
     }
+
+    if (indexedSections) {
+      for (const sec of indexedSections) {
+        if (matchedPages.has(sec.page)) continue;
+        if (
+          sec.lowerCorpus.includes(q) ||
+          (qFolded && sec.foldedCorpus.includes(qFolded))
+        ) {
+          list.push({ page: sec.page, title: sec.title });
+          matchedPages.add(sec.page);
+        }
+      }
+    }
+
     return list.sort((a, b) => a.page - b.page);
   }, [deferredSearchQuery, indexedSections, numPages, pageRefs, extractedPageList]);
 
@@ -250,22 +271,55 @@ export function useViewerSearch({
   const customTextRenderer = useMemo(() => {
     const q = debouncedSearchQuery.trim();
     if (!q || q.length < 2) return undefined;
-    const escaped = escapeRegExp(q);
-    const regex = new RegExp(`(${escaped})`, 'gi');
+    const foldedQuery = foldDiacritics(q.normalize('NFC'));
+    if (!foldedQuery) return undefined;
 
     return ({ str }: { str: string }) => {
       if (!str) return '';
-      const parts = str.split(regex);
-      if (parts.length === 1) return escapeHtml(str);
-      return parts
-        .map((part, idx) =>
-          idx % 2 === 1
-            ? `<mark class="bg-yellow-300/60 dark:bg-yellow-400/60 text-transparent rounded-[1px]" style="background-color: rgba(250, 204, 21, 0.45); color: transparent; border-radius: 2px;">${escapeHtml(part)}</mark>`
-            : escapeHtml(part),
-        )
-        .join('');
+      const normStr = str.normalize('NFC');
+      let foldedStr = '';
+      const foldedToRawStart: number[] = [];
+      const foldedToRawEnd: number[] = [];
+
+      for (let i = 0; i < normStr.length; ) {
+        const cp = normStr.codePointAt(i)!;
+        const charLen = cp > 0xffff ? 2 : 1;
+        const rawChar = normStr.slice(i, i + charLen);
+        const foldedChar = foldDiacritics(rawChar);
+        for (let k = 0; k < foldedChar.length; k++) {
+          foldedToRawStart.push(i);
+          foldedToRawEnd.push(i + charLen);
+        }
+        foldedStr += foldedChar;
+        i += charLen;
+      }
+
+      if (!foldedStr.includes(foldedQuery)) {
+        return escapeHtml(normStr);
+      }
+
+      let out = '';
+      let rawCursor = 0;
+      let searchPos = 0;
+      while (searchPos <= foldedStr.length - foldedQuery.length) {
+        const idx = foldedStr.indexOf(foldedQuery, searchPos);
+        if (idx === -1) break;
+        const matchEndFolded = idx + foldedQuery.length - 1;
+        const rawStart = foldedToRawStart[idx] ?? 0;
+        const rawEnd = foldedToRawEnd[matchEndFolded] ?? normStr.length;
+
+        if (rawStart >= rawCursor && rawEnd > rawStart) {
+          out += escapeHtml(normStr.slice(rawCursor, rawStart));
+          out += `<mark class="bg-yellow-300/60 dark:bg-yellow-400/60 text-transparent rounded-[1px]" style="background-color: rgba(250, 204, 21, 0.45); color: transparent; border-radius: 2px;">${escapeHtml(normStr.slice(rawStart, rawEnd))}</mark>`;
+          rawCursor = rawEnd;
+        }
+        searchPos = idx + Math.max(1, foldedQuery.length);
+      }
+
+      out += escapeHtml(normStr.slice(rawCursor));
+      return out;
     };
-  }, [debouncedSearchQuery, escapeRegExp, escapeHtml]);
+  }, [debouncedSearchQuery, escapeHtml]);
 
   return {
     searchQuery,

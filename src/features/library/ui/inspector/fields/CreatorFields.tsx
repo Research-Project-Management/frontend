@@ -4,11 +4,17 @@ import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 import {
+  type CreatorEntry,
   normalizeAuthors,
   splitAuthorString,
   parseCreatorName,
+  parseCreators,
+  areCreatorsEqual,
+  toItemCreators,
 } from "@/features/library/domain/creators";
+import type { Item } from "@/features/library/domain/types/library.types";
 import {
+  type SchemaItemTypeDefinition,
   ALL_CREATOR_TYPES,
   getPrimaryCreatorType,
 } from "@/features/library/domain/types/item-types.types";
@@ -17,18 +23,18 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/shared/components/ui/tooltip";
-
-import {
-  type CreatorEntry,
-  type CreatorFieldsProps,
-  MAX_COLLAPSED_AUTHORS,
-  parseCreators,
-  areCreatorsEqual,
-  toItemCreators,
-} from "./creator-fields.helper";
 import { CreatorRowItem, type CreatorRowItemProps } from "./CreatorRowItem";
 
-export type { CreatorEntry, CreatorFieldsProps, CreatorRowItemProps };
+export interface CreatorFieldsProps {
+  item?: Item;
+  typeDefinition: SchemaItemTypeDefinition;
+  canEdit?: boolean;
+  onUpdateItem?: (data: Partial<Item>, options?: { silent?: boolean }) => void;
+}
+
+const MAX_COLLAPSED_AUTHORS = 3;
+
+export type { CreatorEntry, CreatorRowItemProps };
 export { parseCreators, areCreatorsEqual, toItemCreators, CreatorRowItem };
 
 export function CreatorFields({
@@ -82,14 +88,17 @@ export function CreatorFields({
   const itemCreators = item?.creators;
   const itemContributors = item?.contributors;
   const itemAuthors = item?.authors;
+  const lastSyncedItemIdRef = useRef<string | undefined>(itemId);
 
   useEffect(() => {
     if (item) {
       const incoming = parseCreators(item);
+      const isItemSwitched = lastSyncedItemIdRef.current !== itemId;
+      lastSyncedItemIdRef.current = itemId;
       const isAnyInputFocused = authorInputRefs.current.some(
         (el) => el && typeof document !== "undefined" && document.activeElement === el,
       );
-      if (!isAnyInputFocused && !areCreatorsEqual(localCreators, incoming)) {
+      if ((isItemSwitched || !isAnyInputFocused) && !areCreatorsEqual(localCreators, incoming)) {
         setLocalCreators(incoming);
       }
     }

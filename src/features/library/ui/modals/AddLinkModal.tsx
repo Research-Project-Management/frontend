@@ -75,6 +75,7 @@ export default function AddLinkModal({
   }, [open, reset]);
 
   const handleOpenChange = (v: boolean) => {
+    if (isPending) return;
     if (!v) reset({ url: "", title: "" });
     onOpenChange(v);
   };

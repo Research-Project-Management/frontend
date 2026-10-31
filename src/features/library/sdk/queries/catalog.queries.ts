@@ -1,7 +1,5 @@
 'use client';
 
-import '@/features/library/core/adapters/schema-storage.adapter';
-
 import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
@@ -32,8 +30,8 @@ import {
   invalidateCollections,
   normalizeScopeId,
 } from '@/features/library/sdk/query-keys';
-import { useFeedsStore } from '@/features/library/core/store/feeds.store';
-import { mapServerFeedSubscriptions } from '@/features/library/domain/feeds.domain';
+import { notifyServerFeedsHydrated } from './feed-hydration.port';
+import { mapServerFeedSubscriptions } from '@/features/library/domain/feed-parser.domain';
 
 export {
   itemKeys,
@@ -136,7 +134,7 @@ export function useLibraryBootstrapQuery(
       }
       if (targetScope === 'user' && Array.isArray(res.feedSubscriptions)) {
         const mappedFeeds = mapServerFeedSubscriptions(res.feedSubscriptions);
-        useFeedsStore.getState().hydrateFeeds(mappedFeeds);
+        notifyServerFeedsHydrated(mappedFeeds);
         queryClient.setQueryData(feedKeys.subscriptions(), mappedFeeds);
       }
       if (includeItems && Array.isArray(res.items)) {
@@ -629,7 +627,7 @@ export function useLibraryItemsQuery(
           filtered = listData.items;
         }
 
-        if (filtered && (filtered.length > 0 || !listData.hasNextPage)) {
+        if (filtered && !listData.hasNextPage) {
           return {
             items: filtered,
             total: filtered.length,

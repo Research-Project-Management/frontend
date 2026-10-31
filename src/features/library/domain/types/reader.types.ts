@@ -7,6 +7,7 @@ import {
   updateAnnotationSchema,
   readerPanelSchema,
   readerFitModeSchema,
+  readerThemeSchema,
   creatorTypeSchema,
   documentCreatorSchema,
   documentAttachmentSchema,
@@ -37,6 +38,7 @@ export type UpdateAnnotationDto = z.infer<typeof updateAnnotationSchema>;
 
 export type ReaderPanel = z.infer<typeof readerPanelSchema>;
 export type ReaderFitMode = z.infer<typeof readerFitModeSchema>;
+export type ReaderTheme = z.infer<typeof readerThemeSchema>;
 
 export type CreatorType = z.infer<typeof creatorTypeSchema>;
 export type DocumentCreator = z.infer<typeof documentCreatorSchema>;
@@ -107,9 +109,12 @@ export interface TypeConversionPreview {
   sourceType: string;
   targetType: string;
   preservedFields: string[];
-  mappedFields: FieldMappingChange[];
+  mappedFields?: FieldMappingChange[];
+  remappedFields?: unknown[];
   droppedFields: DroppedField[];
-  creatorChanges: CreatorRoleChange[];
+  creatorChanges?: CreatorRoleChange[];
+  preservedCreators?: unknown[];
+  remappedCreators?: unknown[];
   newAvailableFields?: Array<
     | string
     | {
@@ -121,9 +126,9 @@ export interface TypeConversionPreview {
   >;
   schemaUnsupportedFields?: string[];
   schemaUnsupportedFieldLabels?: string[];
-  projectedItem: Record<string, unknown>;
-  unmappedRetained: Record<string, unknown>;
-  hasLoss: boolean;
+  projectedItem?: Record<string, unknown>;
+  unmappedRetained?: Record<string, unknown>;
+  hasLoss?: boolean;
 }
 
 export interface ItemMetadataSourceItem {

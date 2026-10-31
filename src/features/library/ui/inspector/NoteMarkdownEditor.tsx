@@ -10,10 +10,62 @@ import {
 import { Textarea } from "@/shared/components/ui/textarea";
 import { cn } from "@/shared/lib/utils";
 
+export interface ParsedAnnotationDeepLink {
+  pageNumber: number;
+  annotationId?: string;
+}
+
+/**
+ * Extracts structured page and annotation deep-link parameters from a markdown URL
+ * (`/library/papers/...?page=X&annotation=Y` or `flux://...?page=X&annotation=Y`).
+ */
+export function parseAnnotationDeepLinkUrl(rawUrl: string): ParsedAnnotationDeepLink | null {
+  if (!rawUrl) return null;
+  const trimmed = rawUrl.trim();
+  if (
+    !trimmed.startsWith("/library/papers") &&
+    !trimmed.startsWith("flux://") &&
+    !trimmed.includes("/library/papers/")
+  ) {
+    return null;
+  }
+  const qIdx = trimmed.indexOf("?");
+  if (qIdx === -1) return null;
+  const search = new URLSearchParams(trimmed.slice(qIdx + 1));
+  const rawPage = search.get("page");
+  if (!rawPage) return null;
+  const pageNumber = parseInt(rawPage, 10);
+  if (!Number.isFinite(pageNumber) || pageNumber < 1) return null;
+  const annotationId = search.get("annotation") || undefined;
+  return { pageNumber, annotationId };
+}
+
+/**
+ * Scans markdown content for structured citation deep-links (`[...](url?page=X&annotation=Y)`).
+ */
+export function extractStructuredDeepLinksFromMarkdown(
+  content: string,
+): ParsedAnnotationDeepLink[] {
+  if (!content) return [];
+  const results: ParsedAnnotationDeepLink[] = [];
+  const linkRegex = /\[[^\]]+\]\(([^)]+)\)/g;
+  let match: RegExpExecArray | null;
+  while ((match = linkRegex.exec(content)) !== null) {
+    const parsed = parseAnnotationDeepLinkUrl(match[1]);
+    if (parsed) {
+      results.push(parsed);
+    }
+  }
+  return results;
+}
+
 /**
  * Renders inline Markdown tokens (**bold**, *italic*, `code`) cleanly.
  */
-export function renderInlineMarkdown(text: string): React.ReactNode {
+export function renderInlineMarkdown(
+  text: string,
+  onNavigateToAnnotation?: (pageNumber: number, annotationId?: string) => void,
+): React.ReactNode {
   // Supports markdown links [text](url) as well as **bold**, *italic*, `code`
   const parts = text.split(/(\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g);
   return parts.map((part, idx) => {
@@ -22,20 +74,36 @@ export function renderInlineMarkdown(text: string): React.ReactNode {
       if (match) {
         const linkText = match[1];
         const linkUrl = match[2].trim();
-        const isSafeUrl = /^(https?:\/\/|mailto:)/i.test(linkUrl);
+        const deepLink = parseAnnotationDeepLinkUrl(linkUrl);
+        if (deepLink && onNavigateToAnnotation) {
+          return (
+            <button
+              key={idx}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onNavigateToAnnotation(deepLink.pageNumber, deepLink.annotationId);
+              }}
+              className="text-primary hover:underline font-medium inline-flex items-center gap-0.5 cursor-pointer bg-transparent border-0 p-0 text-left"
+            >
+              {renderInlineMarkdown(linkText, onNavigateToAnnotation)}
+            </button>
+          );
+        }
+        const isSafeUrl = /^(https?:\/\/|mailto:|(\/projects\/[^/]+)?\/library\/papers)/i.test(linkUrl);
         if (!isSafeUrl) {
-          return <span key={idx}>{renderInlineMarkdown(linkText)}</span>;
+          return <span key={idx}>{renderInlineMarkdown(linkText, onNavigateToAnnotation)}</span>;
         }
         return (
           <a
             key={idx}
             href={linkUrl}
-            target="_blank"
-            rel="noopener noreferrer"
+            target={linkUrl.startsWith("/") ? undefined : "_blank"}
+            rel={linkUrl.startsWith("/") ? undefined : "noopener noreferrer"}
             onClick={(e) => e.stopPropagation()}
             className="text-primary hover:underline font-medium inline-flex items-center gap-0.5 break-all"
           >
-            {renderInlineMarkdown(linkText)}
+            {renderInlineMarkdown(linkText, onNavigateToAnnotation)}
           </a>
         );
       }
@@ -75,10 +143,12 @@ export function FormattedNoteBody({
   content,
   isExpanded,
   omitFirstHeading = false,
+  onNavigateToAnnotation,
 }: {
   content: string;
   isExpanded: boolean;
   omitFirstHeading?: boolean;
+  onNavigateToAnnotation?: (pageNumber: number, annotationId?: string) => void;
 }) {
   let lines = content.split("\n");
 
@@ -109,7 +179,7 @@ export function FormattedNoteBody({
               key={idx}
               className="text-11 font-semibold text-foreground pt-0.5"
             >
-              {renderInlineMarkdown(line.slice(4))}
+              {renderInlineMarkdown(line.slice(4), onNavigateToAnnotation)}
             </h4>
           );
         }
@@ -120,7 +190,7 @@ export function FormattedNoteBody({
               key={idx}
               className="text-xs font-semibold text-foreground pt-0.5"
             >
-              {renderInlineMarkdown(cleanHeading)}
+              {renderInlineMarkdown(cleanHeading, onNavigateToAnnotation)}
             </h3>
           );
         }
@@ -130,7 +200,7 @@ export function FormattedNoteBody({
               key={idx}
               className="border-l border-border pl-2.5 my-1 text-muted-foreground bg-muted/20 py-0.5 rounded-r"
             >
-              {renderInlineMarkdown(line.slice(2))}
+              {renderInlineMarkdown(line.slice(2), onNavigateToAnnotation)}
             </blockquote>
           );
         }
@@ -139,7 +209,7 @@ export function FormattedNoteBody({
             <div key={idx} className="flex items-start gap-1.5 pl-1">
               <span className="text-muted-foreground select-none">•</span>
               <span className="flex-1">
-                {renderInlineMarkdown(line.slice(2))}
+                {renderInlineMarkdown(line.slice(2), onNavigateToAnnotation)}
               </span>
             </div>
           );
@@ -147,7 +217,7 @@ export function FormattedNoteBody({
         if (line === "---") {
           return <hr key={idx} className="border-border my-1" />;
         }
-        return <p key={idx}>{renderInlineMarkdown(rawLine)}</p>;
+        return <p key={idx}>{renderInlineMarkdown(rawLine, onNavigateToAnnotation)}</p>;
       })}
     </div>
   );

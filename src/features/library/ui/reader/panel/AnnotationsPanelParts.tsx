@@ -45,7 +45,8 @@ export interface AnnotationsPanelCardProps {
   onStartDelete: (annotationId: string) => void;
   onCancelDelete: () => void;
   onConfirmDelete: (annotation: ReaderAnnotation) => void;
-  onAddToNote?: (text: string, pageNumber?: number) => void;
+  onAddToNote?: (text: string, pageNumber?: number, annotationId?: string) => void;
+  onAskAi?: (text: string, pageNumber?: number) => void;
   onBatchAddToNote?: (targetIds?: string[]) => void;
   onBatchChangeColor?: (colorHex: string, targetIds?: string[]) => Promise<void>;
   onBatchDelete?: (targetIds?: string[]) => Promise<void>;
@@ -68,6 +69,7 @@ export function AnnotationsPanelCard({
   onCancelDelete,
   onConfirmDelete,
   onAddToNote,
+  onAskAi,
   onBatchAddToNote,
   onBatchChangeColor,
   onBatchDelete,
@@ -143,15 +145,41 @@ export function AnnotationsPanelCard({
                     </div>
                   ) : (
                     <>
-                      {onAddToNote && (
+                      {onAskAi && (annotation.quoteText || annotation.comment) && (
                         <button
                           type="button"
-                          onClick={() =>
-                            onAddToNote(
+                          onClick={() => {
+                            onAskAi(
                               annotation.quoteText || annotation.comment || '',
                               (annotation.pageIndex ?? 0) + 1,
-                            )
-                          }
+                            );
+                          }}
+                          aria-label="Ask AI"
+                          className="size-6 sm:size-5 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                          title="Ask AI"
+                        >
+                          <img
+                            src="/Chat.svg"
+                            alt=""
+                            aria-hidden="true"
+                            className="size-3 rounded-full object-contain shrink-0"
+                          />
+                        </button>
+                      )}
+                      {(onAddToNote || onBatchAddToNote) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (onAddToNote) {
+                              onAddToNote(
+                                annotation.quoteText || annotation.comment || '',
+                                (annotation.pageIndex ?? 0) + 1,
+                                annotation.id,
+                              );
+                            } else if (onBatchAddToNote) {
+                              onBatchAddToNote([annotation.id]);
+                            }
+                          }}
                           aria-label="Add to Note"
                           className="size-6 sm:size-5 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
                           title="Add to Note"
@@ -219,6 +247,25 @@ export function AnnotationsPanelCard({
 
       {/* Zotero-native Context Menu on Annotation Card */}
       <ContextMenuContent className="w-52 text-12 bg-popover border border-border shadow-raised-200 rounded-md p-1 z-50 font-sans">
+        {onAskAi && (annotation.quoteText || annotation.comment) && (
+          <ContextMenuItem
+            onClick={() =>
+              onAskAi(
+                annotation.quoteText || annotation.comment || '',
+                (annotation.pageIndex ?? 0) + 1,
+              )
+            }
+            className="flex items-center gap-2 cursor-pointer text-foreground px-2 py-1.5 rounded-sm hover:bg-muted"
+          >
+            <img
+              src="/Chat.svg"
+              alt=""
+              aria-hidden="true"
+              className="size-3.5 rounded-full object-contain shrink-0"
+            />
+            <span>Ask AI</span>
+          </ContextMenuItem>
+        )}
         <ContextMenuItem
           onClick={() => onBatchAddToNote?.(targetIds)}
           className="flex items-center gap-2 cursor-pointer text-foreground px-2 py-1.5 rounded-sm hover:bg-muted"

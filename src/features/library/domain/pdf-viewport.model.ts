@@ -44,10 +44,12 @@ export function computeEffectivePdfPageWidth(params: ViewportParams): number {
     fitMode = 'fit-width',
     viewMode = 'continuous',
   } = params;
+  const clampedZoom = Math.min(3.0, Math.max(0.25, zoom));
   const containerH = containerHeight || 800;
-  const fitPageWidth = Math.max(260, Math.round(((containerH - 72) / 1.414) * zoom));
-  const fitWidthWidth = Math.max(320, Math.round(containerWidth * zoom));
-  const spreadPageWidth = Math.max(260, Math.round((containerWidth / 2) * zoom));
+
+  const fitPageWidth = Math.max(260, Math.round(((containerH - 72) / 1.414) * clampedZoom));
+  const fitWidthWidth = Math.max(320, Math.round(containerWidth * clampedZoom));
+  const spreadPageWidth = Math.max(260, Math.round((containerWidth / 2) * clampedZoom));
 
   const isFitPage = fitMode === 'fit-page' || fitMode === 'page-fit';
   const standardPageWidth = isFitPage ? fitPageWidth : fitWidthWidth;

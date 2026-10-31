@@ -58,6 +58,12 @@ export function useLibraryKeyboardShortcuts({
   const clearSelection = useLibraryUIStore((s) => s.clearSelection);
   const selectAll = useLibraryUIStore((s) => s.selectAll);
   const openModal = useLibraryUIStore((s) => s.openModal);
+  const activeModal = useLibraryUIStore((s) => s.activeModal);
+  const currentActiveId = useLibraryUIStore((s) => s.activeItemId);
+  const currentSelectedIds = useLibraryUIStore((s) => s.selectedIds);
+  const executeCommand = useLibraryCommandStore((s) => s.executeCommand);
+  const undoCommand = useLibraryCommandStore((s) => s.undo);
+  const redoCommand = useLibraryCommandStore((s) => s.redo);
 
   // Global Workbench Keymap for Undo (Ctrl+Z) / Redo (Ctrl+Y / Ctrl+Shift+Z)
   // Fires even when DOM focus is on document.body, toolbar, or inspector container
@@ -68,7 +74,7 @@ export function useLibraryKeyboardShortcuts({
       if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
       const key = e.key.toLowerCase();
       if (key !== "z" && key !== "y") return;
-      if (useLibraryUIStore.getState().activeModal !== null) return;
+      if (activeModal !== null) return;
 
       const target =
         (e.target as HTMLElement | null) ??
@@ -90,15 +96,15 @@ export function useLibraryKeyboardShortcuts({
 
       e.preventDefault();
       if (key === "y" || (key === "z" && e.shiftKey)) {
-        void useLibraryCommandStore.getState().redo();
+        void redoCommand();
       } else {
-        void useLibraryCommandStore.getState().undo();
+        void undoCommand();
       }
     };
 
     window.addEventListener("keydown", handleWindowKeyDown);
     return () => window.removeEventListener("keydown", handleWindowKeyDown);
-  }, []);
+  }, [activeModal, redoCommand, undoCommand]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -118,7 +124,6 @@ export function useLibraryKeyboardShortcuts({
         return;
       }
       if (!sortedItems.length) return;
-      const currentActiveId = useLibraryUIStore.getState().activeItemId;
       const currentIndex = sortedItems.findIndex((it) => it.id === currentActiveId);
 
       if (e.key === "ArrowDown") {
@@ -153,7 +158,6 @@ export function useLibraryKeyboardShortcuts({
         }
       } else if (e.key === "Delete" || e.key === "Backspace") {
         e.preventDefault();
-        const currentSelectedIds = useLibraryUIStore.getState().selectedIds;
         const rawIds =
           currentSelectedIds.size > 0
             ? Array.from(currentSelectedIds)
@@ -184,7 +188,7 @@ export function useLibraryKeyboardShortcuts({
             clearSelection();
           } else if (deleteMutation?.mutateAsync && restoreMutation?.mutateAsync) {
             const firstItem = ids.length === 1 ? itemsById.get(ids[0]!) : undefined;
-            void useLibraryCommandStore.getState().executeCommand(
+            void executeCommand(
               createTrashCommand({
                 itemIds: ids,
                 itemTitle: firstItem?.title,
@@ -203,13 +207,13 @@ export function useLibraryKeyboardShortcuts({
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
         e.preventDefault();
         if (e.shiftKey) {
-          void useLibraryCommandStore.getState().redo();
+          void redoCommand();
         } else {
-          void useLibraryCommandStore.getState().undo();
+          void undoCommand();
         }
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "y") {
         e.preventDefault();
-        void useLibraryCommandStore.getState().redo();
+        void redoCommand();
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a") {
         e.preventDefault();
         selectAll(items.filter((it) => !it._isProcessing).map((it) => it.id));
@@ -224,7 +228,6 @@ export function useLibraryKeyboardShortcuts({
         const matchedTag = scopeTags.find((t) => t.shortcut === shortcutNum);
         if (!matchedTag) return;
 
-        const currentSelectedIds = useLibraryUIStore.getState().selectedIds;
         const targetIds =
           currentSelectedIds.size > 0
             ? Array.from(currentSelectedIds)
@@ -258,17 +261,14 @@ export function useLibraryKeyboardShortcuts({
           };
         });
 
-        void useLibraryCommandStore
-          .getState()
-          .executeCommand(
-            createBatchTagToggleCommand({
-              tagName: matchedTag.name,
-              action: allHaveTag ? "remove" : "add",
-              snapshots,
-              updateItemMutation,
-            }),
-          )
-          .catch(() => undefined);
+        void executeCommand(
+          createBatchTagToggleCommand({
+            tagName: matchedTag.name,
+            action: allHaveTag ? "remove" : "add",
+            snapshots,
+            updateItemMutation,
+          }),
+        ).catch(() => undefined);
       }
     },
     [
@@ -289,6 +289,11 @@ export function useLibraryKeyboardShortcuts({
       clearSelection,
       selectAll,
       openModal,
+      currentActiveId,
+      currentSelectedIds,
+      executeCommand,
+      undoCommand,
+      redoCommand,
       lastSelectedIndexRef,
     ],
   );

@@ -29,7 +29,7 @@ import type { Item } from "@/features/library/domain/types/items.types";
 import { getItemAuthorsSummary } from "@/features/library/domain/creators";
 import { useDuplicateMergeState } from "@/features/library/core/coordinator/curation.coordinator";
 import {
-  normalizeCompareValue,
+  resolveMergeFieldOptionState,
   type ItemFieldDiff,
 } from "@/features/library/domain/diff";
 
@@ -38,7 +38,6 @@ export interface MergeModalProps {
   onOpenChange: (open: boolean) => void;
   duplicates: Item[];
   recommendedMasterId?: string;
-  scopeId?: string;
   onMerge: (
     masterPaper: Item,
     mergedFields: Partial<Item>,
@@ -77,6 +76,8 @@ export function MergeModal({
 
   // Action pending states
   const [isMerging, setIsMerging] = useState<boolean>(false);
+  const [isDismissing, setIsDismissing] = useState<boolean>(false);
+  const isBusy = isMerging || isDismissing;
 
   // ── 2. Action Handlers ──────────────────────────────────────────────────────
   const handleConfirmMerge = async () => {
@@ -104,7 +105,7 @@ export function MergeModal({
     <Dialog
       open={open}
       onOpenChange={(v) => {
-        if (isMerging) return;
+        if (isBusy) return;
         onOpenChange(v);
       }}
     >
@@ -162,8 +163,16 @@ export function MergeModal({
                 return (
                   <div
                     key={item.id}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => handleSelectMaster(item.id)}
-                    className={`group relative p-3 rounded-md border transition-all cursor-pointer select-none flex flex-col justify-between gap-2 ${
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handleSelectMaster(item.id);
+                      }
+                    }}
+                    className={`group relative p-3 rounded-md border transition-all cursor-pointer select-none flex flex-col justify-between gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                       isMaster
                         ? "border-primary bg-primary/10 ring-1 ring-primary"
                         : "border-border bg-background hover:bg-muted hover:border-border-hover"
@@ -335,7 +344,6 @@ export function MergeModal({
                 <tbody className="divide-y divide-border text-12">
                   {visibleFields.map((field: ItemFieldDiff) => {
                     const activeOverrideValue = fieldOverrides[field.key];
-                    const masterValue = field.masterValue?.rawValue;
 
                     return (
                       <tr
@@ -370,36 +378,28 @@ export function MergeModal({
                         {/* Value Cells for each Duplicate Version */}
                         {field.options.map(
                           (opt: ItemFieldDiff["options"][number]) => {
-                            const isExplicitOverride =
-                              activeOverrideValue !== undefined &&
-                              activeOverrideValue !== null &&
-                              (opt.rawValue === activeOverrideValue ||
-                                (opt.isEmpty &&
-                                  (activeOverrideValue === "" ||
-                                    (Array.isArray(activeOverrideValue) &&
-                                      activeOverrideValue.length === 0))) ||
-                                normalizeCompareValue(opt.rawValue, field.key) ===
-                                  normalizeCompareValue(activeOverrideValue, field.key));
-                            const isMasterDefault =
-                              (activeOverrideValue === undefined ||
-                                activeOverrideValue === null) &&
-                              opt.isMaster &&
-                              opt.rawValue === masterValue;
-
-                            const isSelected =
-                              isExplicitOverride || isMasterDefault;
-                            const isRecommended =
-                              field.hasConflict &&
-                              opt.itemId === field.recommendedItemId &&
-                              !isSelected;
+                            const { isSelected, isRecommended } =
+                              resolveMergeFieldOptionState(
+                                field,
+                                opt,
+                                activeOverrideValue,
+                              );
 
                             return (
                               <td
                                 key={opt.itemId}
+                                role="button"
+                                tabIndex={0}
                                 onClick={() =>
                                   handleSelectFieldValue(field.key, opt)
                                 }
-                                className="px-3.5 py-2.5 align-top cursor-pointer select-none"
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    handleSelectFieldValue(field.key, opt);
+                                  }
+                                }}
+                                className="px-3.5 py-2.5 align-top cursor-pointer select-none focus-visible:outline-none"
                               >
                                 <div
                                   className={`p-2.5 rounded-md border text-12 transition-all flex flex-col justify-between gap-1.5 min-h-[48px] ${
@@ -460,13 +460,18 @@ export function MergeModal({
                 size="sm"
                 onClick={async () => {
                   const ids = items.map((p) => p.id).filter(Boolean);
-                  await onDismissDuplicate(ids);
-                  onOpenChange(false);
+                  setIsDismissing(true);
+                  try {
+                    await onDismissDuplicate(ids);
+                    onOpenChange(false);
+                  } finally {
+                    setIsDismissing(false);
+                  }
                 }}
-                disabled={isMerging}
+                disabled={isBusy}
                 className="h-8 px-3 text-12 font-medium text-foreground rounded-md hover:bg-muted cursor-pointer"
               >
-                Not Duplicates
+                {isDismissing ? "Dismissing..." : "Not Duplicates"}
               </Button>
             )}
           </div>
@@ -477,7 +482,7 @@ export function MergeModal({
               variant="outline"
               size="sm"
               onClick={() => onOpenChange(false)}
-              disabled={isMerging}
+              disabled={isBusy}
               className="h-8 px-3 text-12 font-medium text-foreground rounded-md border-border hover:bg-muted"
             >
               Cancel
@@ -487,7 +492,7 @@ export function MergeModal({
               type="button"
               size="sm"
               onClick={handleConfirmMerge}
-              disabled={isMerging || !masterPaper}
+              disabled={isBusy || !masterPaper}
               className="h-8 px-3 text-12 font-medium gap-1.5 rounded-md bg-primary text-primary-foreground shadow-none hover:bg-primary/90 disabled:opacity-50"
             >
               {isMerging ? (
@@ -505,4 +510,3 @@ export function MergeModal({
 }
 
 export default MergeModal;
-export { MergeModal as MergeDialog };

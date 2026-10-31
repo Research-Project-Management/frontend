@@ -118,24 +118,21 @@ export function getItemFileUrl(
     if (url) return url;
   }
 
-  // 4. Direct fileUrl on item
-  if (item.fileUrl) {
-    const url = normalizeUrl(item.fileUrl, item.fileId);
+  // 4. Direct fileUrl / pdfUrl / openAccessPdfUrl on item
+  const fallbackDirectUrl = item.fileUrl || item.pdfUrl || item.openAccessPdfUrl;
+  if (fallbackDirectUrl) {
+    const url = normalizeUrl(fallbackDirectUrl, item.fileId);
     if (url) return url;
   }
 
-  // 5. arXiv fallback (use direct PDF download link without HTML redirect)
-  const arxivMatch =
+  // 5. Fallback to ArXiv canonical PDF URL when arxivId is present
+  const arxivId =
     item.arxivId ||
-    item.doi?.match(/arxiv\.(\d{4}\.\d{4,5}(?:v\d+)?)/i)?.[1] ||
-    item.url?.match(
-      /arxiv\.org\/(?:abs|pdf)\/(\d{4}\.\d{4,5}(?:v\d+)?)/i,
-    )?.[1] ||
-    item.filename?.match(/^(\d{4}\.\d{4,5}(?:v\d+)?)(?:\.pdf)?$/i)?.[1];
-
-  if (arxivMatch) {
-    const cleanId = arxivMatch.replace(/\.pdf$/i, "");
-    return `https://arxiv.org/pdf/${cleanId}.pdf`;
+    (typeof metaObj?.arxivId === "string" ? metaObj.arxivId : undefined) ||
+    (typeof metaObj?.arxiv_id === "string" ? metaObj.arxiv_id : undefined);
+  if (typeof arxivId === "string" && arxivId.trim()) {
+    const cleanArxiv = arxivId.trim().replace(/^arxiv:/i, "");
+    return `https://arxiv.org/pdf/${cleanArxiv}.pdf`;
   }
 
   return "";

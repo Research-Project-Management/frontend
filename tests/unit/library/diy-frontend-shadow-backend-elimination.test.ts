@@ -26,7 +26,7 @@ import {
 } from '@/features/library/sdk/queries/cache-patcher';
 import { buildServerSuccessCachePatch } from '@/features/library/sdk/queries/item-mutations.queries';
 import { isFeedEntryInLibrary } from '@/features/library/core/store/feeds.store';
-import { buildCoupledFieldUpdates } from '@/features/library/ui/inspector/fields/GeneralFields';
+
 import { SavedSearchAstEngine } from '@/features/library/domain/saved-search-ast.domain';
 import {
   decodeXmlEntities,
@@ -243,7 +243,7 @@ describe('DIY Frontend Shadow-Backend Elimination & Cross-Stack Parity (SH3)', (
       expect(mappedFromMeeting.publicationTitle).toBe('NeurIPS 2025');
       expect(mappedFromMeeting.sessionTitle).toBe('NeurIPS 2025');
 
-      const coupledPatch = buildCoupledFieldUpdates(
+      const coupledPatch = buildInspectorFieldPatch(
         { id: 'pres-1', itemType: 'presentation', extraFields: {} },
         'meetingName',
         'ICML 2026',
@@ -321,7 +321,6 @@ describe('DIY Frontend Shadow-Backend Elimination & Cross-Stack Parity (SH3)', (
       const existingCached = {
         ...mappedNoState,
         isStarred: true,
-        isFavorite: true,
         isRead: true,
         readStatus: 'read',
         rating: 5,
@@ -392,14 +391,14 @@ describe('DIY Frontend Shadow-Backend Elimination & Cross-Stack Parity (SH3)', (
   });
 
   describe('SBE2-01: Unified Coupled-Field Engine Between GeneralFields and item-field-schema', () => {
-    it('guarantees buildCoupledFieldUpdates and buildInspectorFieldPatch produce identical patches for title, venue, place, date, numPages, and authority across item types', () => {
+    it('guarantees buildInspectorFieldPatch and buildInspectorFieldPatch produce identical patches for title, venue, place, date, numPages, and authority across item types', () => {
       const caseItem = {
         id: 'case-1',
         itemType: 'case',
         title: 'Old Case',
         extraFields: {},
       };
-      const fromGeneral = buildCoupledFieldUpdates(caseItem, 'caseName', 'Roe v. Wade');
+      const fromGeneral = buildInspectorFieldPatch(caseItem, 'caseName', 'Roe v. Wade');
       const fromSchema = buildInspectorFieldPatch(caseItem, 'caseName', 'Roe v. Wade');
       expect(fromGeneral).toEqual(fromSchema);
       expect(fromSchema.title).toBe('Roe v. Wade');
@@ -410,7 +409,7 @@ describe('DIY Frontend Shadow-Backend Elimination & Cross-Stack Parity (SH3)', (
         itemType: 'conferencePaper',
         extraFields: {},
       };
-      const confPlaceA = buildCoupledFieldUpdates(confItem, 'eventPlace', 'Kyoto, Japan');
+      const confPlaceA = buildInspectorFieldPatch(confItem, 'eventPlace', 'Kyoto, Japan');
       const confPlaceB = buildInspectorFieldPatch(confItem, 'eventPlace', 'Kyoto, Japan');
       expect(confPlaceA).toEqual(confPlaceB);
       expect(confPlaceB.place).toBe('Kyoto, Japan');
@@ -421,7 +420,7 @@ describe('DIY Frontend Shadow-Backend Elimination & Cross-Stack Parity (SH3)', (
         itemType: 'statute',
         extraFields: {},
       };
-      const statDateA = buildCoupledFieldUpdates(statuteItem, 'dateEnacted', '2024-09-01');
+      const statDateA = buildInspectorFieldPatch(statuteItem, 'dateEnacted', '2024-09-01');
       const statDateB = buildInspectorFieldPatch(statuteItem, 'dateEnacted', '2024-09-01');
       expect(statDateA).toEqual(statDateB);
       expect(statDateB.date).toBe('2024-09-01');

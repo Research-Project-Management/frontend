@@ -150,7 +150,6 @@ describe('Horizontal Frond 4 — Full-Stack Metadata Contract, Diff, Cache Patch
             volume: null,
           } as unknown as Record<string, unknown>,
         },
-        false,
       );
 
       expect(optimisticMerged.doi).toBe('');

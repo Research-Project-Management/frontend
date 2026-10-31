@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Library, Folder } from "lucide-react";
@@ -39,6 +39,7 @@ interface CreateCollectionModalProps {
   rootLabel?: string;
   rootType?: "user" | "project";
   mode?: "create" | "rename";
+  editingCollectionId?: string;
   initialName?: string;
   initialDescription?: string;
   initialColor?: string;
@@ -54,6 +55,7 @@ export default function CreateCollectionModal({
   rootLabel = "My Library",
   rootType = "user",
   mode = "create",
+  editingCollectionId,
   initialName = "",
   initialDescription = "",
   initialColor = "",
@@ -90,24 +92,44 @@ export default function CreateCollectionModal({
   const onValidSubmit = async (data: CollectionFormValues) => {
     const rawParent =
       data.parentId === "root" || !data.parentId ? null : data.parentId;
-    await onSubmit({
-      name: data.name.trim() || "Untitled",
-      description: data.description?.trim() || "",
-      color: data.color || "",
-      parentId: rawParent,
-    });
-    onOpenChange(false);
-    reset();
+    try {
+      await onSubmit({
+        name: data.name.trim() || "Untitled",
+        description: data.description?.trim() || "",
+        color: data.color || "",
+        parentId: rawParent,
+      });
+      onOpenChange(false);
+      reset();
+    } catch {
+      // Handled by parent mutation error toast
+    }
   };
 
   const isRename = mode === "rename";
 
+  // Filter out the collection being edited and any of its descendants so it cannot be moved into itself
+  const eligibleParentCollections = useMemo(() => {
+    if (!editingCollectionId) return collections;
+    const forbiddenIds = new Set<string>([editingCollectionId]);
+    let added = true;
+    while (added) {
+      added = false;
+      for (const col of collections) {
+        if (col.parentId && forbiddenIds.has(col.parentId) && !forbiddenIds.has(col.id)) {
+          forbiddenIds.add(col.id);
+          added = true;
+        }
+      }
+    }
+    return collections.filter((col) => !forbiddenIds.has(col.id));
+  }, [collections, editingCollectionId]);
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => { if (isPending) return; onOpenChange(v); }}>
       <DialogContent
         onCloseAutoFocus={(e) => e.preventDefault()}
         className="sm:max-w-[520px] p-6 bg-background border border-border shadow-raised-200 rounded-md"
-        showCloseButton={false}
       >
         <DialogHeader>
           <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
@@ -186,7 +208,7 @@ export default function CreateCollectionModal({
                       </SelectItem>
 
                       {/* Existing Collections */}
-                      {collections.map((col) => (
+                      {eligibleParentCollections.map((col) => (
                         <SelectItem
                           key={col.id}
                           value={col.id}

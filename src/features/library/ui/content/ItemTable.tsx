@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useMemo, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { openInNewTab } from "@/features/library/core/coordinator/browser-io.helpers";
+import { openInNewTab, buildReaderPaperUrl } from "@/features/library/core/coordinator/browser-io.helpers";
 import { useLibraryUIStore } from "@/features/library/core/store/library-ui.store";
 import {
   useToggleStarItemMutation,
@@ -80,13 +81,14 @@ export const ItemTable = React.memo(function ItemTable({
 }: ItemTableProps) {
   // Store actions
   const selectAll = useLibraryUIStore((s) => s.selectAll);
+  const selectRange = useLibraryUIStore((s) => s.selectRange);
   const clearSelection = useLibraryUIStore((s) => s.clearSelection);
   const toggleSelect = useLibraryUIStore((s) => s.toggleSelect);
   const setActiveItem = useLibraryUIStore((s) => s.setActiveItem);
-  const setIsInspectorOpen = useLibraryUIStore((s) => s.setIsInspectorOpen);
+  const toggleActiveItem = useLibraryUIStore((s) => s.toggleActiveItem);
+  const activeScope = useLibraryUIStore((s) => s.activeScope);
   const storeDisplayOptions = useLibraryUIStore((s) => s.displayOptions);
   const setStoreDisplayOptions = useLibraryUIStore((s) => s.setDisplayOptions);
-  const openModal = useLibraryUIStore((s) => s.openModal);
 
   const selectableItems = useMemo(
     () => items.filter((it) => !it._isProcessing),
@@ -241,44 +243,32 @@ export const ItemTable = React.memo(function ItemTable({
   // NEVER checks or shows the checkbox automatically (checkbox must be explicitly clicked by user).
   const handleRowClick = useCallback(
     (_e: React.MouseEvent, item: Item, index: number) => {
-      const currentActiveId = useLibraryUIStore.getState().activeItemId;
-
-      // If clicking the currently active item, toggle it off!
-      if (currentActiveId === item.id) {
-        setActiveItem(null);
-        lastSelectedIndexRef.current = null;
-        return;
-      }
-
-      // Otherwise, activate this item and ensure inspector is open to give immediate feedback
-      setActiveItem(item.id);
-      setIsInspectorOpen(true);
-      lastSelectedIndexRef.current = index;
+      const nowActive = toggleActiveItem(item.id);
+      lastSelectedIndexRef.current = nowActive ? index : null;
     },
-    [setActiveItem, setIsInspectorOpen],
+    [toggleActiveItem],
   );
 
   // Checkbox toggle handler: explicit user choice with Shift + Click range support
   const handleToggleSelect = useCallback(
     (id: string, e: React.MouseEvent | React.KeyboardEvent, index: number) => {
       if (e.shiftKey && lastSelectedIndexRef.current !== null) {
-        const currentSelectedIds = useLibraryUIStore.getState().selectedIds;
         const start = Math.min(lastSelectedIndexRef.current, index);
         const end = Math.max(lastSelectedIndexRef.current, index);
         const rangeIds = sortedItemsRef.current
           .slice(start, end + 1)
           .filter((it) => !it._isProcessing)
           .map((it) => it.id);
-        selectAll(
-          Array.from(new Set([...Array.from(currentSelectedIds), ...rangeIds])),
-        );
+        selectRange(rangeIds);
       } else {
         toggleSelect(id);
       }
       lastSelectedIndexRef.current = index;
     },
-    [selectAll, toggleSelect],
+    [selectRange, toggleSelect],
   );
+
+  const router = useRouter();
 
   const handleOpenItem = useCallback(
     (itemId: string) => {
@@ -287,22 +277,41 @@ export const ItemTable = React.memo(function ItemTable({
         typeof window !== "undefined"
           ? new URLSearchParams(window.location.search).get("q")
           : null;
-      const activeScope = useLibraryUIStore.getState().activeScope;
       const targetItem = itemsById.get(itemId);
       const effectiveProjectId =
         targetItem?.projectId ||
         (activeScope.type === "project" ? activeScope.id : null);
 
-      const queryParts = [
-        effectiveProjectId
-          ? `projectId=${encodeURIComponent(effectiveProjectId)}`
-          : "",
-        currentQuery ? `q=${encodeURIComponent(currentQuery)}` : "",
-      ].filter(Boolean);
-      const qParam = queryParts.length ? `?${queryParts.join("&")}` : "";
-      openInNewTab(`/library/papers/${itemId}${qParam}`);
+      router.push(
+        buildReaderPaperUrl(itemId, {
+          projectId: effectiveProjectId,
+          query: currentQuery,
+        }),
+      );
     },
-    [isTrash, itemsById],
+    [activeScope.id, activeScope.type, isTrash, itemsById, router],
+  );
+
+  const handleOpenInNewTab = useCallback(
+    (itemId: string) => {
+      if (isTrash) return;
+      const currentQuery =
+        typeof window !== "undefined"
+          ? new URLSearchParams(window.location.search).get("q")
+          : null;
+      const targetItem = itemsById.get(itemId);
+      const effectiveProjectId =
+        targetItem?.projectId ||
+        (activeScope.type === "project" ? activeScope.id : null);
+
+      openInNewTab(
+        buildReaderPaperUrl(itemId, {
+          projectId: effectiveProjectId,
+          query: currentQuery,
+        }),
+      );
+    },
+    [activeScope.id, activeScope.type, isTrash, itemsById],
   );
 
 
@@ -519,6 +528,7 @@ export const ItemTable = React.memo(function ItemTable({
                   onMoveToCollection={canEdit ? handleMoveToCollection : undefined}
                   onDetachFromCollection={canEdit ? onDetachItem : undefined}
                   onOpenItem={handleOpenItem}
+                  onOpenInNewTab={handleOpenInNewTab}
                 />
               );
             })}

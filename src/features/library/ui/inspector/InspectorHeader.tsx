@@ -64,11 +64,11 @@ export function InspectorHeader({
   const updateMutation = useUpdateLibraryItemMutation(scopeId);
   const restoreMutation = useBatchRestoreItemsMutation(scopeId);
   const deleteMutation = useDeleteLibraryItemsMutation(scopeId);
+  const executeCommand = useLibraryCommandStore((s) => s.executeCommand);
   const { unflagItem, isUnflagging } = useRetraction(scopeId);
 
   const isRetracted = isItemRetracted(item);
-  const { nature: retractionNature, title: retractionTitle } =
-    getRetractionInfo(item);
+  const { title: retractionTitle } = getRetractionInfo(item);
 
   useEffect(() => {
     setTitleDraft(displayTitle);
@@ -219,7 +219,7 @@ export function InspectorHeader({
           icon={<RotateCcw className="size-4 shrink-0 text-primary" strokeWidth={1.5} />}
           isDeleting={restoreMutation.isPending}
           onConfirm={async () => {
-            await useLibraryCommandStore.getState().executeCommand(
+            await executeCommand(
               createRestoreCommand({
                 itemIds: [item.id],
                 restoreMutation: { mutateAsync: restoreMutation.mutateAsync },

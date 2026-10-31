@@ -3,9 +3,6 @@
 import React, { useState, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/shared/lib/utils';
-import { Button } from '@/shared/components/ui/button';
-import { Upload, Plus } from 'lucide-react';
-import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { RecentlyReadEmptyState } from './RecentlyReadEmptyState';
 import {
   libraryIllustrationStyles,
@@ -31,18 +28,17 @@ export interface LibraryEmptyStateProps {
   className?: string;
   title?: string;
   description?: string;
-  action?: React.ReactNode;
   illustration?: React.ComponentType<{ className?: string }>;
 }
 
 type EmptyStateVariant =
-  | 'recent'
+  | 'recently-read'
   | 'search'
   | 'trash'
   | 'starred'
   | 'retracted'
   | 'unfiled'
-  | 'publications'
+  | 'my-publications'
   | 'saved-search'
   | 'collection'
   | 'feed'
@@ -69,12 +65,10 @@ function DefaultLibraryEmptyState({
   variant,
   title,
   description,
-  action,
   illustration,
   className,
 }: DefaultLibraryEmptyStateProps) {
   const [isDragOver, setIsDragOver] = useState(false);
-  const openModal = useLibraryUIStore((s) => s.openModal);
 
   const getConfig = (): EmptyStateConfig => {
     if (title) {
@@ -143,7 +137,7 @@ function DefaultLibraryEmptyState({
           description: 'All references in your library are neatly organized into collections.',
           showDropzone: false,
         };
-      case 'publications':
+      case 'my-publications':
         return {
           illustration: PublicationsStackIllustration,
           title: 'No publications yet',
@@ -256,12 +250,12 @@ export function LibraryEmptyState(props: LibraryEmptyStateProps) {
   // Determine current context variant
   const variant: EmptyStateVariant = (() => {
     if (isSearchActive) return 'search';
-    if (isRecent) return 'recent';
-    if (activeFilter === 'trash' || activeFilter === 'bin') return 'trash';
+    if (isRecent) return 'recently-read';
+    if (activeFilter === 'trash') return 'trash';
     if (activeFilter === 'starred') return 'starred';
     if (activeFilter === 'retracted') return 'retracted';
     if (activeFilter === 'unfiled') return 'unfiled';
-    if (activeFilter === 'my-publications' || activeFilter === 'publications') return 'publications';
+    if (activeFilter === 'my-publications') return 'my-publications';
     if (activeFilter === 'saved-search') return 'saved-search';
     if (activeFilter === 'feed' || activeFilter === 'feeds') return 'feed';
     if (activeFilter === 'feed-unread') return 'feed-unread';

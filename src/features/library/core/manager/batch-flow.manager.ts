@@ -141,7 +141,21 @@ export class BatchFlowManager<TInput = unknown, TOutput = unknown> {
             attempt++;
             if (attempt <= taskMaxRetries && !this.isCancelled) {
               const delay = this.retryBaseDelayMs * Math.pow(2, attempt - 1) + Math.random() * 100;
-              await new Promise((r) => setTimeout(r, delay));
+              await new Promise<void>((resolve) => {
+                if (this.abortController.signal.aborted) {
+                  resolve();
+                  return;
+                }
+                const onAbort = () => {
+                  clearTimeout(timer);
+                  resolve();
+                };
+                const timer = setTimeout(() => {
+                  this.abortController.signal.removeEventListener('abort', onAbort);
+                  resolve();
+                }, delay);
+                this.abortController.signal.addEventListener('abort', onAbort, { once: true });
+              });
             }
           }
         }

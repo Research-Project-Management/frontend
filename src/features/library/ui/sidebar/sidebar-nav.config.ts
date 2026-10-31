@@ -64,7 +64,7 @@ export const SYSTEM_BOTTOM_NAV_ITEMS: SystemNavItemConfig[] = [
     isActive: (pathname, currentFilter, isUserScope, basePath) =>
       isUserScope &&
       pathname === basePath &&
-      (currentFilter === 'my-publications' || currentFilter === 'publications'),
+      currentFilter === 'my-publications',
   },
   {
     id: 'retracted',

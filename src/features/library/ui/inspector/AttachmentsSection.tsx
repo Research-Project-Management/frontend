@@ -36,13 +36,12 @@ import type { Item } from "@/features/library/domain/types/library.types";
 interface AttachmentsSectionProps {
   item: Item;
   scopeId?: string;
-  onAddAttachment?: () => void;
-  isUploading?: boolean;
   hideHeader?: boolean;
   hidePdfPreview?: boolean;
   canEdit?: boolean;
   onRegisterAdd?: (trigger: () => void) => void;
   onRegisterAddLink?: (trigger: () => void) => void;
+  onRegisterFindOaPdf?: (trigger: () => void) => void;
 }
 
 export default function AttachmentsSection(props: AttachmentsSectionProps) {
@@ -54,6 +53,7 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
     canEdit = true,
     onRegisterAdd,
     onRegisterAddLink,
+    onRegisterFindOaPdf,
   } = props;
   const {
     rawScopeId,
@@ -95,17 +95,42 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
     }
   }, [onRegisterAddLink, handleOpenLinkForm]);
 
+  useEffect(() => {
+    if (onRegisterFindOaPdf && paper.id) {
+      onRegisterFindOaPdf(() => {
+        void reResolveMetadataMutation.mutateAsync({
+          itemId: paper.id,
+          attachOaPdf: true,
+        });
+      });
+    }
+  }, [onRegisterFindOaPdf, paper.id, reResolveMetadataMutation]);
+
   if (
     allAttachments.length === 0 &&
     !isAddingLink
   ) {
     return (
-      <input
-        ref={fileInputRef}
-        type="file"
-        className="hidden"
-        onChange={handleFileSelect}
-      />
+      <>
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          onChange={handleFileSelect}
+        />
+        <div className="flex items-center justify-between px-1.5 py-1 text-12 text-muted-foreground select-none">
+          <span>No attachments</span>
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="text-11 font-medium text-foreground hover:underline cursor-pointer"
+            >
+              Attach file
+            </button>
+          )}
+        </div>
+      </>
     );
   }
 
@@ -235,6 +260,7 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
           <PdfPagePreview
             paper={paper}
             paperUrl={activePreviewUrl}
+            scopeId={rawScopeId}
             previewTitle={
               activePreviewAttachment?.title ||
               activePreviewAttachment?.filename ||
@@ -389,11 +415,12 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
                   </div>
                 </div>
 
-                <DropdownMenu>
+                <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
                       aria-label="Attachment options"
+                      onClick={(e) => e.stopPropagation()}
                       className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-muted cursor-pointer focus-visible:outline-none focus-visible:ring-0 relative before:absolute before:-inset-2 md:before:hidden"
                     >
                       <MoreVertical className="size-3.5 text-foreground shrink-0" />
@@ -401,6 +428,7 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
                     align="end"
+                    onClick={(e) => e.stopPropagation()}
                     className="w-60 p-1.5 text-xs font-sans rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 space-y-0.5"
                   >
                     {(isSnapshot || isEpub || isPdf) && (

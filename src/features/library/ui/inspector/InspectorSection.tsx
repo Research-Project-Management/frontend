@@ -15,6 +15,7 @@ export interface InspectorSectionProps {
   title: string;
   count?: number;
   isExpanded: boolean;
+  isHighlighted?: boolean;
   onToggleExpand: () => void;
   onAdd?: () => void;
   actionSlot?: React.ReactNode;
@@ -29,6 +30,7 @@ export function InspectorSection({
   title,
   count,
   isExpanded,
+  isHighlighted = false,
   onToggleExpand,
   onAdd,
   actionSlot,
@@ -38,11 +40,20 @@ export function InspectorSection({
   keepMounted = false,
 }: InspectorSectionProps) {
   return (
-    <div id={`inspector-section-${id}`} className="group/section border-b border-border last:border-b-0 w-full">
+    <div
+      id={`inspector-section-${id}`}
+      className={cn(
+        'group/section border-b border-border last:border-b-0 w-full transition-colors duration-300',
+        isHighlighted && 'bg-muted/60',
+      )}
+    >
       {/* Section Header Bar: Standard h-8 height to synchronize with Table Rows */}
       <div
         onClick={onToggleExpand}
-        className="flex items-center justify-between px-2.5 h-8 box-border select-none transition-colors w-full cursor-pointer hover:bg-muted/50"
+        className={cn(
+          'flex items-center justify-between px-2.5 h-8 box-border select-none transition-colors w-full cursor-pointer hover:bg-muted/50',
+          isHighlighted && 'bg-muted/80',
+        )}
       >
         <button
           type="button"

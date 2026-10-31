@@ -99,21 +99,35 @@ export function FilterTagsSection({
   };
 
   const handleSplitTag = async (tag: TagWithCount) => {
-    if (!onCreateTag || !onDeleteTag) return;
+    if (!onCreateTag) return;
     const parts = tag.name
       .split(/[;,]/)
       .map((p) => p.trim())
       .filter(Boolean);
     if (parts.length <= 1) return;
     try {
-      for (const part of parts) {
-        await onCreateTag({
-          name: part,
-          color: tag.color,
-          type: "manual",
+      if (onUpdateTag) {
+        await onUpdateTag({
+          tagId: tag.id,
+          data: { name: parts[0] },
         });
+        for (const part of parts.slice(1)) {
+          await onCreateTag({
+            name: part,
+            color: tag.color,
+            type: "manual",
+          });
+        }
+      } else if (onDeleteTag) {
+        for (const part of parts) {
+          await onCreateTag({
+            name: part,
+            color: tag.color,
+            type: "manual",
+          });
+        }
+        await onDeleteTag(tag.id);
       }
-      await onDeleteTag(tag.id);
     } catch {
       // Handled by mutation toast
     }
@@ -194,7 +208,7 @@ export function FilterTagsSection({
             </button>
           )}
 
-          {(onToggleShowAutomaticTags || onCreateTag) && (
+          {(onToggleShowAutomaticTags || onCreateTag || onDeleteAutomaticTags) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
@@ -234,6 +248,27 @@ export function FilterTagsSection({
                     <Plus className="size-3.5" />
                     <span>Create New Tag...</span>
                   </DropdownMenuItem>
+                )}
+                {onDeleteAutomaticTags && (
+                  <>
+                    {(onToggleShowAutomaticTags || onCreateTag) && (
+                      <DropdownMenuSeparator />
+                    )}
+                    <DropdownMenuItem
+                      disabled={isDeletingAutomatic}
+                      onClick={() => {
+                        void onDeleteAutomaticTags();
+                      }}
+                      className="gap-2 text-xs cursor-pointer text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="size-3.5" />
+                      <span>
+                        {isDeletingAutomatic
+                          ? "Deleting Automatic Tags..."
+                          : "Delete Automatic Tags"}
+                      </span>
+                    </DropdownMenuItem>
+                  </>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>

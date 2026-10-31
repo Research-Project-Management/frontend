@@ -216,10 +216,6 @@ export default function RelatedSection(props: RelatedSectionProps) {
     }
   };
 
-  if (!isLoading && relatedList.length === 0 && !isModalOpen && (hideHeader || !canEdit)) {
-    return null;
-  }
-
   if (!item) {
     return null;
   }
@@ -252,6 +248,22 @@ export default function RelatedSection(props: RelatedSectionProps) {
         <div className="p-3 text-center text-foreground flex items-center justify-center gap-2">
           <Loader2 className="size-3.5 animate-spin shrink-0" strokeWidth={1.5} />
           <span className="text-11">Loading related items...</span>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!isLoading && relatedList.length === 0 && (
+        <div className="flex items-center justify-between px-1.5 py-1 text-12 text-muted-foreground select-none">
+          <span>No related items linked</span>
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => setModalOpen(true)}
+              className="text-11 font-medium text-foreground hover:underline cursor-pointer"
+            >
+              Link item
+            </button>
+          )}
         </div>
       )}
 
@@ -291,7 +303,7 @@ export default function RelatedSection(props: RelatedSectionProps) {
                     <TooltipContent>{cleanTitle}</TooltipContent>
                   </Tooltip>
                   {relItem.relationType && relItem.relationType !== 'related' && (
-                    <span className="mt-1 inline-flex items-center px-1.5 py-0.2 rounded text-10 font-mono bg-muted text-muted-foreground border border-border-subtle">
+                    <span className="mt-1 inline-flex items-center px-1.5 py-0.5 rounded text-10 font-mono bg-muted text-muted-foreground border border-border-subtle">
                       {RELATION_TYPES.find((rt) => rt.id === relItem.relationType)?.label ||
                         relItem.relationType.replace(/_/g, ' ')}
                     </span>
@@ -349,7 +361,13 @@ export default function RelatedSection(props: RelatedSectionProps) {
       )}
 
       {/* Two-Column Master-Detail "Add Related Items" Dialog */}
-      <Dialog open={isModalOpen} onOpenChange={setModalOpen}>
+      <Dialog
+        open={isModalOpen}
+        onOpenChange={(v) => {
+          if (isLinking) return;
+          setModalOpen(v);
+        }}
+      >
         <DialogContent
           onKeyDown={handleDialogKeyDown}
           className="sm:max-w-[780px] w-full sm:w-[95vw] h-[92vh] sm:h-[580px] max-h-[92vh] sm:max-h-[85vh] bg-background text-foreground p-0 gap-0 border border-border rounded-xl shadow-raised-200 overflow-hidden flex flex-col"
@@ -604,8 +622,10 @@ export default function RelatedSection(props: RelatedSectionProps) {
             <Button
               size="sm"
               variant="outline"
+              disabled={isLinking}
               className="h-8 px-3 text-12 font-medium rounded-md border-border bg-background hover:bg-muted text-foreground transition-colors cursor-pointer shadow-none"
               onClick={() => {
+                if (isLinking) return;
                 setModalOpen(false);
                 setSelectedTargetIds(new Set());
                 setSelectedRelationType('related');

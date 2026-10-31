@@ -71,7 +71,7 @@ export type CreatorTypeDefinition = SchemaCreatorTypeDefinition;
 export interface SchemaItemTypeDefinition {
   itemType: string;
   label: string;
-  category: 'academic' | 'books' | 'articles' | 'legal' | 'media' | 'documents' | 'special';
+  category?: 'academic' | 'books' | 'articles' | 'legal' | 'media' | 'documents' | 'special';
   primaryCreatorType: string;
   creatorTypes: SchemaCreatorTypeDefinition[];
   fields: SchemaFieldDefinition[];

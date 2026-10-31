@@ -25,7 +25,6 @@ import {
   SelectItem,
 } from '@/shared/components/ui/select';
 
-import { useFeedsStore } from '@/features/library/core/store/feeds.store';
 import { useUpdateFeedSubscriptionMutation } from '@/features/library/sdk/queries/ingestion.queries';
 import type { SavedFeedSubscription } from '@/features/library/domain/types/feeds.types';
 import {
@@ -108,7 +107,7 @@ export function EditFeedModal({ open, onOpenChange, feed }: EditFeedModalProps) 
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => { if (isSubmitting) return; onOpenChange(v); }}>
       <DialogContent
         onCloseAutoFocus={(e) => e.preventDefault()}
         className="sm:max-w-[420px] p-5 bg-background border border-border shadow-raised-200 rounded-lg gap-0"
@@ -243,6 +242,7 @@ export function EditFeedModal({ open, onOpenChange, feed }: EditFeedModalProps) 
               type="button"
               variant="ghost"
               size="sm"
+              disabled={isSubmitting}
               onClick={() => onOpenChange(false)}
               className="h-8 px-3 text-12 font-medium cursor-pointer text-foreground rounded-md hover:bg-muted"
             >

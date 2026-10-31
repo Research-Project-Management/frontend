@@ -182,10 +182,10 @@ export function useLibraryItemOperations(options: UseLibraryItemOperationsOption
         state.toggleSelect(id);
       }
       if (opts.onPermanentDeleteItems) {
-        useLibraryCommandStore.getState().clear();
+        useLibraryCommandStore.getState().clearHistory();
         opts.onPermanentDeleteItems([id]);
       } else {
-        useLibraryCommandStore.getState().clear();
+        useLibraryCommandStore.getState().clearHistory();
         opts.purgeMutation.mutate([id]);
       }
     },

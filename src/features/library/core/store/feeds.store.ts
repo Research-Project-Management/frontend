@@ -10,6 +10,7 @@ import {
   type ParsedFeedEntry,
 } from '@/features/library/domain/feed-parser.domain';
 import { FeedsService } from '@/features/library/sdk/library.client';
+import { registerFeedHydrationObserver } from '@/features/library/sdk/queries/feed-hydration.port';
 
 export { mapServerFeedSubscriptions };
 
@@ -50,6 +51,7 @@ interface FeedsStore {
   markEntryAsRead: (entryId: string) => void;
   toggleEntryRead: (entryId: string) => void;
   markAllEntriesAsRead: (entryIds?: string[]) => void;
+  markFeedAsRead: (feedId: string) => Promise<void>;
   isEntryRead: (entryId: string) => boolean;
   markEntrySaved: (id: string) => void;
   setEntrySaving: (id: string, isSaving: boolean) => void;
@@ -361,6 +363,19 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
     }
   },
 
+  markFeedAsRead: async (feedId: string) => {
+    const res = await FeedsService.getItems(feedId);
+    const items = (res?.data as Array<{ id?: string; guid?: string; url?: string }>) || [];
+    const itemIds = items
+      .map((it) => it.id || it.guid || it.url)
+      .filter(Boolean) as string[];
+    if (itemIds.length > 0) {
+      get().markAllEntriesAsRead(itemIds);
+    } else {
+      get().markAllEntriesAsRead();
+    }
+  },
+
   isEntryRead: (entryId: string) => {
     return get().readEntryIds.has(entryId);
   },
@@ -387,3 +402,17 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
   isEntrySaved: (entry, libraryItems) =>
     isFeedEntryInLibrary(entry, get().savedEntryIds, libraryItems),
 }));
+
+registerFeedHydrationObserver({
+  onServerFeedsHydrated: (feeds) => useFeedsStore.getState().hydrateFeeds(feeds),
+  onReadEntriesHydrated: (entryIds) => useFeedsStore.getState().hydrateReadEntries(entryIds),
+  onLoadFeedsFallback: async (options) => {
+    await useFeedsStore.getState().loadFeeds(options);
+    return useFeedsStore.getState().feeds;
+  },
+  onAddFeed: (name, url, retentionDays, options) =>
+    useFeedsStore.getState().addFeed(name, url, retentionDays, options),
+  onUpdateFeed: (id, updates) => useFeedsStore.getState().updateFeed(id, updates),
+  onRemoveFeed: (id) => useFeedsStore.getState().removeFeed(id),
+  getFeeds: () => useFeedsStore.getState().feeds,
+});

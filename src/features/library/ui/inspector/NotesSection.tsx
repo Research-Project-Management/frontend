@@ -36,6 +36,7 @@ import {
   NoteEditorBox,
   getNoteDisplayTitle,
   getNotePreviewSnippet,
+  extractStructuredDeepLinksFromMarkdown,
 } from "./NoteMarkdownEditor";
 
 export interface NotesSectionProps {
@@ -122,6 +123,7 @@ function NotesSectionContent({
     extractFromAnnotations,
     isExtractingFromAnnotations,
   } = useNotes(activeScopeId, paper.id);
+  const executeCommand = useLibraryCommandStore((s) => s.executeCommand);
 
   // Safely persist draft of previous paper and restore draft of active paper
   useEffect(() => {
@@ -195,7 +197,7 @@ function NotesSectionContent({
     if (!trimmedContent) return;
 
     try {
-      await useLibraryCommandStore.getState().executeCommand(
+      await executeCommand(
         createAddNoteCommand({
           itemId: paper.id,
           contentMd: trimmedContent,
@@ -230,7 +232,7 @@ function NotesSectionContent({
 
     if (targetNote && trimmedContent !== previousContentMd) {
       try {
-        await useLibraryCommandStore.getState().executeCommand(
+        await executeCommand(
           createUpdateNoteCommand({
             noteId,
             initialVersion: targetNote.version || 1,
@@ -252,10 +254,6 @@ function NotesSectionContent({
     setEditingNoteId(null);
     setEditingContent("");
   };
-
-  if (notes.length === 0 && !isAdding && hideHeader) {
-    return null;
-  }
 
   return (
     <div className="flex flex-col gap-2 min-w-0 font-sans">
@@ -324,6 +322,22 @@ function NotesSectionContent({
         />
       )}
 
+      {/* Empty State */}
+      {notes.length === 0 && !isAdding && (
+        <div className="flex items-center justify-between px-1.5 py-1 text-12 text-muted-foreground select-none">
+          <span>No notes yet</span>
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => setIsAdding(true)}
+              className="text-11 font-medium text-foreground hover:underline cursor-pointer"
+            >
+              Add note
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Notes List */}
       {notes.length > 0 && (
         <div className="flex flex-col gap-1.5 min-w-0">
@@ -349,11 +363,11 @@ function NotesSectionContent({
               );
             }
 
-            const pageMatches = Array.from(
-              n.content.matchAll(/(?:p\.|page)\s*(\d+)/gi),
+            const structuredLinks = extractStructuredDeepLinksFromMarkdown(
+              n.content,
             );
-            const firstPageNum =
-              pageMatches.length > 0 ? parseInt(pageMatches[0][1], 10) : null;
+            const firstDeepLink =
+              structuredLinks.length > 0 ? structuredLinks[0] : null;
 
             return (
               <div
@@ -384,18 +398,23 @@ function NotesSectionContent({
                     className="flex items-center gap-0.5 shrink-0"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    {onNavigateToAnnotation && firstPageNum !== null && (
+                    {onNavigateToAnnotation && firstDeepLink !== null && (
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            onClick={() => onNavigateToAnnotation(firstPageNum)}
+                            onClick={() =>
+                              onNavigateToAnnotation(
+                                firstDeepLink.pageNumber,
+                                firstDeepLink.annotationId,
+                              )
+                            }
                             className="text-10 font-medium text-primary hover:underline px-1.5 py-0.5 rounded bg-primary/10 hover:bg-primary/20 shrink-0 cursor-pointer transition-colors mr-0.5"
                           >
-                            p. {firstPageNum}
+                            p. {firstDeepLink.pageNumber}
                           </button>
                         </TooltipTrigger>
-                        <TooltipContent side="top">{`Jump to page ${firstPageNum}`}</TooltipContent>
+                        <TooltipContent side="top">{`Jump to page ${firstDeepLink.pageNumber}`}</TooltipContent>
                       </Tooltip>
                     )}
 
@@ -424,13 +443,15 @@ function NotesSectionContent({
                               const target = canonicalNotes.find(
                                 (cn) => cn.id === n.id,
                               );
-                              void useLibraryCommandStore.getState().executeCommand(
+                              void executeCommand(
                                 createDeleteNoteCommand({
                                   noteId: n.id,
                                   version: target?.version,
                                   itemId: paper.id,
                                   contentMd: target?.contentMd || n.content,
+                                  contentJson: target?.contentJson,
                                   title: target?.title,
+                                  tags: target?.tags,
                                   deleteNote,
                                   createNote,
                                 }),
@@ -480,6 +501,7 @@ function NotesSectionContent({
                       content={n.content}
                       isExpanded={true}
                       omitFirstHeading={hasMatchingHeader}
+                      onNavigateToAnnotation={onNavigateToAnnotation}
                     />
                   </div>
                 ) : snippet ? (

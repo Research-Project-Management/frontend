@@ -37,7 +37,7 @@ export function SavedSearchContextMenu({
   onDelete,
 }: SavedSearchContextMenuProps) {
   return (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <button
           type="button"
@@ -96,10 +96,10 @@ export function SavedSearchContextMenu({
 
         <DropdownMenuItem
           onClick={() => onDelete(savedSearch.id)}
-          className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+          className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-destructive focus:text-destructive hover:bg-destructive/10 focus:bg-destructive/10 rounded-md outline-none transition-colors"
         >
           <Trash2
-            className="size-4 text-foreground shrink-0"
+            className="size-4 text-destructive shrink-0"
             strokeWidth={1.5}
           />
           <span>Delete Saved Search</span>

@@ -16,13 +16,17 @@ import {
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/shared/components/ui/tooltip';
+import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
 } from '@/shared/components/ui/dropdown-menu';
 import { cn } from '@/shared/lib/utils';
-import { useAnnotations } from '@/features/library/sdk/queries/reader.queries';
 import type {
   ReaderDocument,
   ReaderAnnotation,
@@ -45,8 +49,26 @@ export interface AnnotationsPanelProps {
   scopeId?: string;
   attachmentId?: string;
   annotations?: ReaderAnnotation[];
+  searchQuery?: string;
+  onSearchQueryChange?: (query: string) => void;
+  hideSearchBar?: boolean;
+  isLoading?: boolean;
+  isError?: boolean;
+  refetch?: () => Promise<unknown> | void;
+  isUpdating?: boolean;
+  isExtracting?: boolean;
+  isImporting?: boolean;
+  onImportExternal?: () => Promise<unknown> | void;
   onNavigateToPage?: (pageNumber: number, annotationId?: string) => void;
-  onAddToNote?: (text: string, pageNumber?: number) => void;
+  onAddToNote?: (text: string, pageNumber?: number, annotationId?: string) => void;
+  onAskAi?: (text: string, pageNumber?: number) => void;
+  onUpdateAnnotation?: (
+    annotationId: string,
+    expectedVersion: number | undefined,
+    dto: { color?: string; comment?: string; quoteText?: string; tags?: string[] },
+  ) => Promise<unknown>;
+  onDeleteAnnotation?: (annotationId: string, expectedVersion?: number) => Promise<unknown>;
+  onExtractNotes?: (itemId: string) => Promise<unknown> | void;
   selectedIds?: Set<string>;
   onSelectIds?: (ids: Set<string>) => void;
   onToggleSelect?: (id: string) => void;
@@ -56,14 +78,28 @@ export interface AnnotationsPanelProps {
 }
 
 const EMPTY_SELECTED_IDS = new Set<string>();
+const EMPTY_ANNOTATIONS: ReaderAnnotation[] = [];
 
 export function AnnotationsPanel({
   paper,
-  scopeId,
   attachmentId,
   annotations: propAnnotations,
+  searchQuery: propSearchQuery,
+  onSearchQueryChange,
+  hideSearchBar = false,
+  isLoading = false,
+  isError = false,
+  refetch,
+  isUpdating = false,
+  isExtracting = false,
+  isImporting = false,
+  onImportExternal,
   onNavigateToPage,
   onAddToNote,
+  onAskAi,
+  onUpdateAnnotation,
+  onDeleteAnnotation,
+  onExtractNotes,
   selectedIds = EMPTY_SELECTED_IDS,
   onSelectIds,
   onToggleSelect,
@@ -72,25 +108,17 @@ export function AnnotationsPanel({
   onBatchAddToNote,
 }: AnnotationsPanelProps) {
   const effectiveAttachmentId =
-    attachmentId || paper.attachments?.[0]?.id || paper.primaryFile?.fileId || undefined;
+    attachmentId ||
+    (paper.primaryFile as { attachmentId?: string } | null | undefined)?.attachmentId ||
+    paper.attachments?.find((a) => a.attachmentType === 'primary_pdf')?.id ||
+    paper.attachments?.[0]?.id ||
+    undefined;
 
-  const {
-    annotations: queriedAnnotations,
-    isLoading,
-    isError,
-    refetch,
-    updateAnnotation,
-    deleteAnnotation,
-    extractNotes,
-    importExternal,
-    isUpdating,
-    isExtracting,
-    isImporting,
-  } = useAnnotations(scopeId, effectiveAttachmentId);
+  const annotations = propAnnotations ?? EMPTY_ANNOTATIONS;
 
-  const annotations = propAnnotations ?? queriedAnnotations;
-
-  const [searchQuery, setSearchQuery] = useState('');
+  const [internalSearchQuery, setInternalSearchQuery] = useState('');
+  const searchQuery = propSearchQuery !== undefined ? propSearchQuery : internalSearchQuery;
+  const setSearchQuery = onSearchQueryChange ?? setInternalSearchQuery;
   const [selectedColor, setSelectedColor] = useState<string>('all');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'position' | 'newest' | 'oldest' | 'color'>('position');
@@ -119,9 +147,9 @@ export function AnnotationsPanel({
   );
 
   const handleSaveEdit = async (annotation: ReaderAnnotation, data: AnnotationFormData) => {
-    if (!effectiveAttachmentId) return;
+    if (!effectiveAttachmentId || !onUpdateAnnotation) return;
     try {
-      await updateAnnotation(annotation.id, annotation.version, {
+      await onUpdateAnnotation(annotation.id, annotation.version, {
         comment: data.comment?.trim(),
         quoteText: data.quoteText?.trim(),
         color: data.color || annotation.color,
@@ -136,8 +164,8 @@ export function AnnotationsPanel({
   const handleDelete = async (annotation: ReaderAnnotation) => {
     if (!effectiveAttachmentId) return;
     try {
-      if (onBatchDelete) await onBatchDelete([annotation.id]);
-      else await deleteAnnotation(annotation.id, annotation.version);
+      if (onDeleteAnnotation) await onDeleteAnnotation(annotation.id, annotation.version);
+      else if (onBatchDelete) await onBatchDelete([annotation.id]);
       setDeletingId(null);
     } catch {
       /* Handled in hook */
@@ -218,73 +246,89 @@ export function AnnotationsPanel({
       {/* ── TOP HEADER: Search Bar & Actions (.sidebar-toolbar) ── */}
       {annotations.length > 0 && (
         <div className="border-b border-border p-2 bg-background space-y-1.5 shrink-0">
-          <div className="flex items-center gap-1.5">
-            <div className="relative flex-1 flex items-center">
-              <Search
-                className="absolute left-2 size-3 text-muted-foreground pointer-events-none shrink-0"
-                strokeWidth={1.5}
-              />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search highlights..."
-                className="h-7 w-full rounded-md border border-border bg-background pl-6 pr-6 text-11 text-foreground placeholder:text-muted-foreground outline-none focus:border-primary transition-colors font-sans"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-1.5 flex size-4 items-center justify-center text-muted-foreground hover:text-foreground rounded cursor-pointer"
-                  aria-label="Clear search"
-                >
-                  <X className="size-3" strokeWidth={1.5} />
-                </button>
+          {!hideSearchBar && (
+            <div className="flex items-center gap-1">
+              <div className="relative flex-1 flex items-center min-w-0">
+                <Search
+                  className="absolute left-2.5 size-3.5 text-muted-foreground pointer-events-none shrink-0"
+                  strokeWidth={1.5}
+                />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search highlights..."
+                  className="h-7 w-full rounded-md border border-border bg-background pl-8 pr-7 text-11 text-foreground placeholder:text-muted-foreground outline-none focus:border-primary transition-colors font-sans"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-1.5 flex size-4 items-center justify-center text-muted-foreground hover:text-foreground rounded cursor-pointer transition-colors"
+                    aria-label="Clear search"
+                  >
+                    <X className="size-3" strokeWidth={1.5} />
+                  </button>
+                )}
+              </div>
+
+              {onImportExternal && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => void onImportExternal()}
+                      disabled={isImporting}
+                      className="size-7 flex items-center justify-center rounded-md border border-border bg-background text-foreground hover:bg-muted active:bg-muted/80 disabled:opacity-50 disabled:pointer-events-none cursor-pointer transition-colors shrink-0 outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                      aria-label="Import embedded annotations"
+                    >
+                      {isImporting ? (
+                        <Loader2 className="size-3.5 animate-spin text-foreground shrink-0" strokeWidth={1.5} />
+                      ) : (
+                        <Download className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" sideOffset={4} className="text-11">
+                    Import embedded annotations from PDF
+                  </TooltipContent>
+                </Tooltip>
               )}
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedIds.size > 0 && onBatchAddToNote) {
+                        onBatchAddToNote(Array.from(selectedIds));
+                      } else if (onExtractNotes) {
+                        void onExtractNotes(paper.id);
+                      }
+                    }}
+                    disabled={isExtracting || annotations.length === 0}
+                    className="size-7 flex items-center justify-center rounded-md border border-border bg-background text-foreground hover:bg-muted active:bg-muted/80 disabled:opacity-50 disabled:pointer-events-none cursor-pointer transition-colors shrink-0 outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    aria-label={
+                      selectedIds.size > 0
+                        ? `Add ${selectedIds.size} selected highlights to Note`
+                        : 'Extract all highlights into a Literature Note'
+                    }
+                  >
+                    {isExtracting ? (
+                      <Loader2 className="size-3.5 animate-spin text-foreground shrink-0" strokeWidth={1.5} />
+                    ) : (
+                      <FileText className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" sideOffset={4} className="text-11">
+                  {selectedIds.size > 0
+                    ? `Add ${selectedIds.size} selected highlights to Note`
+                    : 'Add all highlights to Notes'}
+                </TooltipContent>
+              </Tooltip>
             </div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => importExternal()}
-              disabled={isImporting}
-              className="h-7 gap-1 px-2 text-11 font-medium rounded-md shrink-0 cursor-pointer border border-border bg-background text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
-              title="Import embedded annotations from PDF (/Annots dictionary)"
-            >
-              {isImporting ? (
-                <Loader2 className="size-3 animate-spin shrink-0" strokeWidth={1.5} />
-              ) : (
-                <Download className="size-3 text-foreground shrink-0" strokeWidth={1.5} />
-              )}
-              <span>Import</span>
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                if (selectedIds.size > 0 && onBatchAddToNote) {
-                  onBatchAddToNote(Array.from(selectedIds));
-                } else {
-                  extractNotes(paper.id);
-                }
-              }}
-              disabled={isExtracting || annotations.length === 0}
-              className="h-7 gap-1 px-2 text-11 font-medium rounded-md shrink-0 cursor-pointer border border-border bg-background text-foreground hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary"
-              title={
-                selectedIds.size > 0
-                  ? `Add ${selectedIds.size} selected highlights to Note`
-                  : 'Extract all highlights into a Literature Note'
-              }
-            >
-              {isExtracting ? (
-                <Loader2 className="size-3 animate-spin shrink-0" strokeWidth={1.5} />
-              ) : (
-                <FileText className="size-3 text-foreground shrink-0" strokeWidth={1.5} />
-              )}
-              <span>{selectedIds.size > 0 ? `Add (${selectedIds.size})` : 'Add to Notes'}</span>
-            </Button>
-          </div>
+          )}
 
           {/* Sub-bar: Sort Menu & Count */}
           <div className="flex items-center justify-between gap-1 text-10 text-muted-foreground px-0.5">
@@ -342,16 +386,15 @@ export function AnnotationsPanel({
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className="h-5 px-1.5 flex items-center gap-1 rounded text-10 font-sans border border-border bg-background text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                    className="size-5 flex items-center justify-center text-10 font-sans text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
                     title="Sort annotations"
                   >
                     <ArrowUpDown className="size-2.5 text-foreground shrink-0" strokeWidth={1.5} />
-                    <span className="capitalize">{sortBy}</span>
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   align="end"
-                  className="w-36 text-xs p-1 bg-popover border border-border shadow-raised-200 rounded-md z-50 font-sans"
+                  className="w-36 text-xs p-1 bg-popover border border-border shadow-raised-200 rounded-lg z-50 font-sans"
                 >
                   {(
                     [
@@ -487,6 +530,7 @@ export function AnnotationsPanel({
                   onCancelDelete={() => setDeletingId(null)}
                   onConfirmDelete={handleDelete}
                   onAddToNote={onAddToNote}
+                  onAskAi={onAskAi}
                   onBatchAddToNote={onBatchAddToNote}
                   onBatchChangeColor={onBatchChangeColor}
                   onBatchDelete={onBatchDelete}

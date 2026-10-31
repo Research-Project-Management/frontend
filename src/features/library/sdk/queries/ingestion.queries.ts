@@ -4,8 +4,7 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tansta
 import { toast } from 'sonner';
 import { libraryServices, IngestionService } from '../library.client';
 import type { UnifiedIngestionPayload, FlagRetractionInput } from '@/features/library/domain/types/library.types';
-import { useFeedsStore } from '@/features/library/core/store/feeds.store';
-import { mapServerFeedSubscriptions } from '@/features/library/domain/feeds.domain';
+import { mapServerFeedSubscriptions } from '@/features/library/domain/feed-parser.domain';
 import type { SavedFeedSubscription } from '@/features/library/domain/types/feeds.types';
 import {
   libraryKeys,
@@ -23,7 +22,16 @@ import {
   removeItemsFromScopeCaches,
   getCachedItemsMapFromScope,
 } from './cache-patcher';
-import { clearGroupMergeDraft } from '@/features/library/domain/curation-draft.domain';
+import {
+  notifyServerFeedsHydrated,
+  notifyReadEntriesHydrated,
+  invokeLoadFeedsFallback,
+  invokeAddFeed,
+  invokeUpdateFeed,
+  invokeRemoveFeed,
+  getRegisteredFeedsSnapshot,
+  notifyDraftCacheCleared,
+} from './feed-hydration.port';
 import {
   type PollRunOutcome,
   type PollIngestionRunOptions,
@@ -128,7 +136,7 @@ export function useMergeDuplicates(scopeId?: string) {
           ? data.softDeletedItemIds
           : variables.duplicateItemIds;
       removeItemsFromScopeCaches(queryClient, effectiveScope, deletedIds);
-      clearGroupMergeDraft(variables.primaryItemId);
+      notifyDraftCacheCleared(variables.primaryItemId);
       void invalidateLibraryCatalogDependencies(queryClient, effectiveScope, {
         itemId: variables.primaryItemId,
         itemsList: true,
@@ -174,7 +182,7 @@ export function useAcademicFeedArticlesQuery(
         }
       });
       if (readIds.length > 0) {
-        useFeedsStore.getState().hydrateReadEntries(readIds);
+        notifyReadEntriesHydrated(readIds);
       }
       return res;
     },
@@ -185,7 +193,9 @@ export function useAcademicFeedArticlesQuery(
 
 export function useFetchAcademicFeed() {
   return useMutation({
-    mutationFn: async (param: string | { url: string; forceRefresh?: boolean }) => {
+    mutationFn: async (
+      param: string | { url: string; forceRefresh?: boolean; silent?: boolean },
+    ) => {
       const url = typeof param === 'string' ? param : param.url;
       const forceRefresh = typeof param === 'object' ? param.forceRefresh : false;
       const res = await libraryServices.ingestion.fetchFeed(url, forceRefresh);
@@ -198,11 +208,12 @@ export function useFetchAcademicFeed() {
         }
       });
       if (readIds.length > 0) {
-        useFeedsStore.getState().hydrateReadEntries(readIds);
+        notifyReadEntriesHydrated(readIds);
       }
       return res;
     },
-    onError: (error: Error) => {
+    onError: (error: Error, variables) => {
+      if (typeof variables === 'object' && variables?.silent) return;
       toast.error('Failed to fetch feed', {
         description: error.message || 'Could not load feed from URL.',
         id: 'feed-fetch',
@@ -220,11 +231,10 @@ export function useFeedSubscriptionsQuery(options?: { enabled?: boolean }) {
       const res = await libraryServices.feeds.getSubscriptions();
       if (res?.data && Array.isArray(res.data)) {
         const mappedFeeds = mapServerFeedSubscriptions(res.data);
-        useFeedsStore.getState().hydrateFeeds(mappedFeeds);
+        notifyServerFeedsHydrated(mappedFeeds);
         return mappedFeeds;
       }
-      await useFeedsStore.getState().loadFeeds({ force: true });
-      return useFeedsStore.getState().feeds;
+      return invokeLoadFeedsFallback({ force: true });
     },
     enabled: options?.enabled ?? true,
     staleTime: 2 * 60 * 1000,
@@ -247,7 +257,7 @@ export function useSubscribeFeedMutation() {
       cleanupReadAfter?: SavedFeedSubscription['cleanupReadAfter'];
       cleanupUnreadAfter?: SavedFeedSubscription['cleanupUnreadAfter'];
     }): Promise<SavedFeedSubscription> =>
-      await useFeedsStore.getState().addFeed(name, url, retentionDays, {
+      await invokeAddFeed(name, url, retentionDays, {
         cleanupReadAfter,
         cleanupUnreadAfter,
       }),
@@ -273,10 +283,10 @@ export function useUpdateFeedSubscriptionMutation() {
         cleanupUnreadAfter?: SavedFeedSubscription['cleanupUnreadAfter'];
       };
     }): Promise<void> => {
-      await useFeedsStore.getState().updateFeed(id, updates);
+      await invokeUpdateFeed(id, updates);
     },
     onSuccess: () => {
-      queryClient.setQueryData(feedKeys.subscriptions(), useFeedsStore.getState().feeds);
+      queryClient.setQueryData(feedKeys.subscriptions(), getRegisteredFeedsSnapshot());
     },
   });
 }
@@ -285,10 +295,10 @@ export function useUnsubscribeFeedMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string): Promise<void> => {
-      await useFeedsStore.getState().removeFeed(id);
+      await invokeRemoveFeed(id);
     },
     onSuccess: () => {
-      queryClient.setQueryData(feedKeys.subscriptions(), useFeedsStore.getState().feeds);
+      queryClient.setQueryData(feedKeys.subscriptions(), getRegisteredFeedsSnapshot());
     },
   });
 }
@@ -386,9 +396,9 @@ export function useDismissDuplicatesMutation(scopeId?: string) {
       libraryServices.curation.dismissDuplicates(effectiveScope, itemIds),
     onSuccess: (_data, itemIds) => {
       if (Array.isArray(itemIds) && itemIds.length > 0) {
-        clearGroupMergeDraft(itemIds[0]);
+        notifyDraftCacheCleared(itemIds[0]);
       } else {
-        clearGroupMergeDraft();
+        notifyDraftCacheCleared();
       }
       queryClient.invalidateQueries({ queryKey: curationKeys.duplicates(effectiveScope) });
       queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });

@@ -35,7 +35,7 @@ import {
   Download,
   Loader2,
 } from "lucide-react";
-import { ZoteroLineIcon, MendeleyLineIcon } from "@/shared/components/icons";
+import { ZoteroLineIcon } from "@/shared/components/icons";
 import { Button } from "@/shared/components/ui/button";
 import {
   DropdownMenu,
@@ -162,11 +162,11 @@ export function TopbarNewItemDropdown({
   };
 
   return (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <Button
           size="sm"
-          className="h-8 px-3 rounded-md cursor-pointer font-medium text-13 shadow-none inline-flex items-center justify-center"
+          className="h-8 px-3 rounded-lg cursor-pointer font-medium text-13 shadow-none inline-flex items-center justify-center"
         >
           <span>New</span>
         </Button>
@@ -175,7 +175,7 @@ export function TopbarNewItemDropdown({
         align="end"
         sideOffset={4}
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="w-56 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 select-none space-y-0.5"
+        className="w-56 p-1.5 rounded-lg border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 select-none space-y-0.5"
       >
         <DropdownMenuItem
           onClick={onAddLinkClick}
@@ -210,7 +210,7 @@ export function TopbarNewItemDropdown({
             collisionPadding={16}
             sideOffset={4}
             alignOffset={-4}
-            className="w-52 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
+            className="w-52 p-1.5 rounded-lg border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
           >
             {isLoading ? (
               <div className="py-2.5 px-3 flex items-center justify-center gap-2 text-12 text-muted-foreground">
@@ -247,7 +247,7 @@ export function TopbarNewItemDropdown({
                     collisionPadding={16}
                     sideOffset={4}
                     alignOffset={-4}
-                    className="w-56 max-h-[min(380px,var(--radix-dropdown-menu-content-available-height,calc(100vh-64px)))] overflow-y-auto overflow-x-hidden p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
+                    className="w-56 max-h-[min(380px,var(--radix-dropdown-menu-content-available-height,calc(100vh-64px)))] overflow-y-auto overflow-x-hidden p-1.5 rounded-lg border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
                   >
                     {moreTypes.map(({ type, label, icon: MoreIcon }) => (
                       <DropdownMenuItem
@@ -301,19 +301,6 @@ export function TopbarNewItemDropdown({
         >
           <ZoteroLineIcon className="size-4 text-foreground shrink-0" />
           <span className="text-foreground">Zotero Sync...</span>
-        </DropdownMenuItem>
-
-        <DropdownMenuItem
-          onClick={() =>
-            openModal("EXPORT_LIBRARY", {
-              provider: "mendeley",
-              collectionId: activeCollectionId,
-            })
-          }
-          className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-        >
-          <MendeleyLineIcon className="size-4 text-foreground shrink-0" />
-          <span className="text-foreground">Mendeley Sync...</span>
         </DropdownMenuItem>
 
         <DropdownMenuItem

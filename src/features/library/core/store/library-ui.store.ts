@@ -86,10 +86,13 @@ export interface LibrarySelectionSlice {
   selectedIds: Set<string>;
   activeItemId: string | null;
   toggleSelect: (id: string) => void;
+  selectRange: (ids: string[]) => void;
+  resolveDragItemIds: (itemId: string) => string[];
   selectOnly: (id: string) => void;
   selectAll: (ids: string[]) => void;
   clearSelection: () => void;
   setActiveItem: (id: string | null) => void;
+  toggleActiveItem: (id: string) => boolean;
 }
 
 // 4. Centralized Modal Dialog Bus Slice
@@ -148,6 +151,8 @@ const createScopeSlice: StateCreator<
         isInspectorOpen: false,
         activeCollectionId: null,
         activeSavedSearchId: null,
+        activeModal: null,
+        modalProps: EMPTY_MODAL_PROPS,
       };
     }),
 
@@ -250,7 +255,7 @@ const createSelectionSlice: StateCreator<
   [],
   [],
   LibrarySelectionSlice
-> = (set) => ({
+> = (set, get) => ({
   selectedIds: EMPTY_SELECTED_IDS,
   activeItemId: null,
 
@@ -264,6 +269,21 @@ const createSelectionSlice: StateCreator<
       }
       return { selectedIds: next };
     }),
+
+  selectRange: (ids) =>
+    set((state) => {
+      if (ids.length === 0) return state;
+      const next = new Set(state.selectedIds);
+      for (const id of ids) {
+        next.add(id);
+      }
+      return { selectedIds: next };
+    }),
+
+  resolveDragItemIds: (itemId) => {
+    const current = get().selectedIds;
+    return current.has(itemId) ? Array.from(current) : [itemId];
+  },
 
   selectOnly: (id) =>
     set((state) => {
@@ -305,6 +325,16 @@ const createSelectionSlice: StateCreator<
 
   setActiveItem: (id) =>
     set((state) => (state.activeItemId === id ? state : { activeItemId: id })),
+
+  toggleActiveItem: (id) => {
+    const isCurrentlyActive = get().activeItemId === id;
+    if (isCurrentlyActive) {
+      set({ activeItemId: null });
+      return false;
+    }
+    set({ activeItemId: id, isInspectorOpen: true });
+    return true;
+  },
 });
 
 const createModalSlice: StateCreator<

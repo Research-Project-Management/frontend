@@ -23,6 +23,22 @@ import {
   mapBackendItem,
 } from './http.client';
 
+export interface ExtractNotesOptions {
+  protocol?: 'flux' | 'web' | 'zotero';
+  webBaseUrl?: string;
+  projectId?: string;
+  noteId?: string;
+  targetNoteId?: string;
+  title?: string;
+  attachmentId?: string;
+  annotationIds?: string[];
+  groupBy?: 'page' | 'color' | 'tag' | 'chronological';
+  tagColor?: boolean | string;
+  tagColorName?: string;
+  includeComments?: boolean;
+  includeTags?: boolean;
+}
+
 // 2. CollectionsService
 export const CollectionsService = {
   getAll: (scopeId?: string) =>
@@ -64,6 +80,16 @@ export const CollectionsService = {
     libraryClient.delete(
       resolveLibraryUrl('catalog', `/collections/${encodeURIComponent(collectionId)}`, scopeId),
       strategy ? { params: { strategy } } : undefined,
+    ),
+
+  copy: (
+    scopeId: string | undefined,
+    collectionId: string,
+    data?: { parentId?: string | null },
+  ) =>
+    libraryClient.post<{ collection: Collection; copiedCount?: number }>(
+      resolveLibraryUrl('catalog', `/collections/${encodeURIComponent(collectionId)}/copy`, scopeId),
+      data ?? {},
     ),
 
   moveItems: (scopeId: string | undefined, collectionId: string, itemIds: string[]) =>
@@ -374,47 +400,41 @@ export const NotesService = {
   extractFromAnnotations: async (
     scopeId: string | undefined,
     itemId: string,
-    options?: { noteId?: string; tagColor?: boolean; tagColorName?: string; includeComments?: boolean },
-  ): Promise<Note & { totalExtracted?: number; note?: Note }> => {
-    try {
-      const endpoint = `${getBasePath(scopeId)}/notes/items/${encodeURIComponent(itemId)}/from-annotations`;
-      const raw = await libraryClient.post<
-        | Note
-        | {
-            success?: boolean;
-            data?: Note;
-            note?: Note;
-            literatureNote?: Note;
-            totalExtracted?: number;
-          }
-      >(endpoint, options || {});
-      const note = unwrapNoteResponse(raw);
-      const rawObj = raw && typeof raw === 'object' ? (raw as { totalExtracted?: number }) : undefined;
-      const totalExtracted =
-        typeof rawObj?.totalExtracted === 'number'
-          ? rawObj.totalExtracted
-          : note && (note as { id?: string }).id
-            ? 1
-            : 0;
-      return {
-        ...note,
-        totalExtracted,
-        note,
-      };
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err ?? '');
-      if (/no.*annotations|empty.*annotations/i.test(msg)) {
-        return { totalExtracted: 0 } as unknown as Note & { totalExtracted?: number; note?: Note };
-      }
-      return Promise.reject(err);
-    }
+    options?: ExtractNotesOptions,
+  ): Promise<Partial<Note> & { totalExtracted: number; note?: Note; message?: string }> => {
+    const endpoint = `${getBasePath(scopeId)}/notes/items/${encodeURIComponent(itemId)}/from-annotations`;
+    const raw = await libraryClient.post<
+      | Note
+      | {
+          success?: boolean;
+          data?: Note;
+          note?: Note;
+          literatureNote?: Note;
+          totalExtracted?: number;
+          message?: string;
+        }
+    >(endpoint, options || {});
+    const note = unwrapNoteResponse(raw);
+    const rawObj = raw && typeof raw === 'object' ? (raw as { totalExtracted?: number; message?: string }) : undefined;
+    const totalExtracted =
+      typeof rawObj?.totalExtracted === 'number'
+        ? rawObj.totalExtracted
+        : note && (note as { id?: string }).id
+          ? 1
+          : 0;
+    return {
+      ...(note || {}),
+      totalExtracted,
+      note: note && (note as { id?: string }).id ? note : undefined,
+      message: rawObj?.message,
+    };
   },
 
   extractNotes: (
     scopeId: string | undefined,
     itemId: string,
-    options?: { noteId?: string; tagColor?: boolean; tagColorName?: string; includeComments?: boolean },
-  ): Promise<Note & { totalExtracted?: number; note?: Note }> =>
+    options?: ExtractNotesOptions,
+  ): Promise<Partial<Note> & { totalExtracted: number; note?: Note; message?: string }> =>
     NotesService.extractFromAnnotations(scopeId, itemId, options),
 };
 

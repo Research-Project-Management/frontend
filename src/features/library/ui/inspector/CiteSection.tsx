@@ -324,7 +324,7 @@ export default function CiteSection({ item, scopeId }: CiteSectionProps) {
             </button>
           ))}
 
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
@@ -353,9 +353,6 @@ export default function CiteSection({ item, scopeId }: CiteSectionProps) {
                     onSelect={() =>
                       setActiveFormat(normalizeCitationStyleId(fmt.id))
                     }
-                    onClick={() =>
-                      setActiveFormat(normalizeCitationStyleId(fmt.id))
-                    }
                     className={cn(
                       "h-7.5 px-2 text-xs cursor-pointer rounded-md hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary flex items-center justify-between",
                       isSelected
@@ -377,12 +374,6 @@ export default function CiteSection({ item, scopeId }: CiteSectionProps) {
 
               <DropdownMenuItem
                 onSelect={() =>
-                  openModal("CSL_STYLE_MANAGER", {
-                    currentStyleId: normalizedActiveFormat,
-                    onSelectStyle: handleSelectSearchedStyle,
-                  })
-                }
-                onClick={() =>
                   openModal("CSL_STYLE_MANAGER", {
                     currentStyleId: normalizedActiveFormat,
                     onSelectStyle: handleSelectSearchedStyle,

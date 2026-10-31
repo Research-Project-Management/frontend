@@ -9,8 +9,8 @@ export const annotationRectSchema = z.object({
   y1: z.number(),
   x2: z.number(),
   y2: z.number(),
-  width: z.number(),
-  height: z.number(),
+  width: z.number().optional(),
+  height: z.number().optional(),
 });
 
 export const annotationTypeSchema = z.enum([
@@ -32,17 +32,19 @@ const baseAnnotationFields = {
   type: annotationTypeSchema.default('highlight'),
   text: z.string().optional(),
   quoteText: z.string().optional(),
+  selectedText: z.string().optional(),
   comment: z.string().optional(),
   x: z.number().min(0).max(1).optional(),
   y: z.number().min(0).max(1).optional(),
   rects: z.array(annotationRectSchema).optional(),
   boundingRect: annotationRectSchema.optional(),
   rectCoords: z.unknown().optional(),
-  tags: z.array(z.string()).default([]),
+  tags: z.array(z.string()).default([]).optional(),
 };
 
 export const readerAnnotationSchema = z.object({
   id: z.string(),
+  documentId: z.string().optional(),
   itemId: z.string().optional(),
   paperId: z.string().optional(),
   attachmentId: z.string().optional(),
@@ -52,11 +54,13 @@ export const readerAnnotationSchema = z.object({
   ...baseAnnotationFields,
   version: z.number().optional(),
   authorId: z.string().optional(),
-  createdAt: z.string(),
+  authorName: z.string().optional(),
+  createdAt: z.string().default('').optional(),
   updatedAt: z.string().optional(),
 });
 
 export const createAnnotationSchema = z.object({
+  id: z.string().uuid().optional(),
   itemId: z.string().optional(),
   paperId: z.string().optional(),
   attachmentId: z.string().optional(),
@@ -79,6 +83,7 @@ export const updateAnnotationSchema = z.object({
 
 export const readerPanelSchema = z.enum(['ai', 'details', 'notes', 'annotations', 'cite']);
 export const readerFitModeSchema = z.enum(['fit-width', 'fit-page', 'auto', 'custom']);
+export const readerThemeSchema = z.enum(['normal', 'sepia', 'dark', 'invert']);
 
 export const creatorTypeSchema = z.enum([
   'author',
@@ -110,6 +115,7 @@ export const documentAttachmentSchema = z.object({
   id: z.string(),
   itemId: z.string().optional(),
   attachmentType: z.string().optional(),
+  viewerFormat: z.enum(['pdf', 'epub', 'snapshot']).or(z.string()).optional(),
   isPrimary: z.boolean().optional(),
   mimeType: z.string().optional(),
   contentType: z.string().optional(),
@@ -307,12 +313,19 @@ export const documentReferenceSchema = z.object({
   rawCitation: z.string().optional(),
 });
 
+export const documentFulltextPageSchema = z.object({
+  pageNumber: z.number(),
+  text: z.string(),
+});
+
 export const documentFulltextSchema = z.object({
   title: z.string().optional(),
   abstract: z.string().optional(),
   markdown: z.string().optional(),
   plainText: z.string().optional(),
   pageCount: z.number().optional(),
+  isScanned: z.boolean().optional(),
+  pages: z.array(documentFulltextPageSchema).optional(),
   sections: z.array(documentSectionSchema).default([]),
   figures: z.array(documentFigureSchema).default([]),
   tables: z.array(documentTableSchema).default([]),

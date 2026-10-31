@@ -62,6 +62,15 @@ export default function ImportFromPersonalModal({
   );
 
   useEffect(() => {
+    if (!open) {
+      setSearch("");
+      setDebouncedSearch("");
+      setSelectedScope("all");
+      setSelectedIdsSet(new Set());
+    }
+  }, [open, scopeId]);
+
+  useEffect(() => {
     const trimmed = search.trim();
     if (!trimmed) {
       setDebouncedSearch("");
@@ -202,7 +211,7 @@ export default function ImportFromPersonalModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => { if (isImporting) return; onOpenChange(v); }}>
       <DialogContent className="max-w-5xl w-[92vw] h-[660px] max-h-[88vh] flex flex-col p-0 gap-0 overflow-hidden border border-border bg-background shadow-raised-200 rounded-lg font-sans select-none">
         {/* Header */}
         <DialogHeader className="px-5 py-3.5 border-b border-border flex flex-row items-center justify-between shrink-0 bg-background">
@@ -419,6 +428,7 @@ export default function ImportFromPersonalModal({
                       <Checkbox
                         checked={isSelected}
                         disabled={isAlreadyInProject}
+                        onClick={(e) => e.stopPropagation()}
                         onCheckedChange={() =>
                           toggleSelect(item.id, isAlreadyInProject)
                         }
@@ -430,12 +440,12 @@ export default function ImportFromPersonalModal({
                             {item.title || "Untitled Reference"}
                           </p>
                           {isAlreadyInProject && (
-                            <span className="text-10 font-mono text-foreground bg-muted border border-border px-1.5 py-0.2 rounded-sm shrink-0">
+                            <span className="text-10 font-mono text-foreground bg-muted border border-border px-1.5 py-0.5 rounded-sm shrink-0">
                               Already in project
                             </span>
                           )}
                           {colName && (
-                            <span className="text-10 font-mono text-foreground bg-muted border border-border px-1.5 py-0.2 rounded-sm shrink-0 truncate max-w-[120px]">
+                            <span className="text-10 font-mono text-foreground bg-muted border border-border px-1.5 py-0.5 rounded-sm shrink-0 truncate max-w-[120px]">
                               {colName}
                             </span>
                           )}
@@ -467,6 +477,7 @@ export default function ImportFromPersonalModal({
               type="button"
               variant="outline"
               size="sm"
+              disabled={isImporting}
               onClick={() => onOpenChange(false)}
               className="h-8 text-13 font-medium cursor-pointer hover:bg-muted rounded-md"
             >

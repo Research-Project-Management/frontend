@@ -47,7 +47,11 @@ describe('Wave 14: Backend-Authority Alignment', () => {
       const persistedRaw = localStorage.getItem('flux_library_sidebar_v1');
       expect(persistedRaw).toBeTruthy();
 
-      const persisted = JSON.parse(persistedRaw!);
+      const persisted = JSON.parse(persistedRaw!) as {
+        state: {
+          activeScope: Record<string, unknown>;
+        };
+      };
       expect(persisted.state.activeScope).toEqual({
         type: 'project',
         id: 'project:proj-123',

@@ -38,7 +38,6 @@ describe('Silent Metadata Auto-save & Cache Stability', () => {
   it('correctly identifies membership/state affecting patches', () => {
     const membershipPatches = [
       { isStarred: true },
-      { isFavorite: false },
       { deletedAt: new Date().toISOString() },
       { collectionId: 'col-123' },
       { collectionIds: ['col-1', 'col-2'] },
@@ -58,7 +57,6 @@ describe('Silent Metadata Auto-save & Cache Stability', () => {
 
   it('verifies MEMBERSHIP_MUTATION_KEYS contains all critical lifecycle fields', () => {
     expect(MEMBERSHIP_MUTATION_KEYS.has('isStarred')).toBe(true);
-    expect(MEMBERSHIP_MUTATION_KEYS.has('isFavorite')).toBe(true);
     expect(MEMBERSHIP_MUTATION_KEYS.has('deletedAt')).toBe(true);
     expect(MEMBERSHIP_MUTATION_KEYS.has('status')).toBe(true);
     expect(MEMBERSHIP_MUTATION_KEYS.has('collectionId')).toBe(true);

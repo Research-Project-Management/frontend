@@ -142,7 +142,7 @@ export function ConditionFieldSelect({
       <PopoverContent
         align="start"
         sideOffset={4}
-        className="w-[230px] p-0 rounded-lg border border-border shadow-raised-300 bg-popover text-popover-foreground overflow-hidden z-50"
+        className="w-[230px] p-0 rounded-lg border border-border shadow-raised-300 bg-popover text-popover-foreground overflow-hidden z-[60]"
       >
         <div className="p-1.5 border-b border-border">
           <div className="flex items-center gap-1.5 h-8 px-2 rounded-md bg-background border border-border text-13 focus-within:ring-1 focus-within:ring-ring focus-within:border-primary transition-colors hover:border-border-hover">

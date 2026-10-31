@@ -376,9 +376,9 @@ export function FeedArticleRow({
           (entry.categories && entry.categories.length > 0)) && (
           <span
             className="inline-flex items-center font-normal text-muted-foreground shrink-0 min-w-0 max-w-full truncate"
-            title={entry.primaryCategory || entry.categories[0]}
+            title={entry.primaryCategory || entry.categories?.[0]}
           >
-            {entry.primaryCategory || entry.categories[0]}
+            {entry.primaryCategory || entry.categories?.[0]}
           </span>
         )}
 

@@ -1,10 +1,11 @@
 'use client';
 
 import { useMemo, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { copyToClipboard } from '@/shared/lib/utils';
-import { openInNewTab } from '@/features/library/core/coordinator/browser-io.helpers';
+import { openInNewTab, buildReaderPaperUrl } from '@/features/library/core/coordinator/browser-io.helpers';
 import { isProjectScope } from '@/features/library/domain/item-url';
 import { ItemsService } from '@/features/library/sdk/library.client';
 import { libraryKeys, itemKeys } from '@/features/library/sdk/query-keys';
@@ -32,6 +33,7 @@ export interface UseItemActionHandlersOptions {
   scopeId?: string;
   isMenuOpen?: boolean;
   onOpenItem?: (id: string) => void;
+  onOpenInNewTab?: (id: string) => void;
   onAddToCollection?: (collectionId: string) => void;
   onMoveToCollection?: (collectionId: string) => void;
   onAfterAction?: () => void;
@@ -56,23 +58,28 @@ export function useItemActionHandlers(
     scopeId,
     isMenuOpen = false,
     onOpenItem,
+    onOpenInNewTab,
     onAddToCollection,
     onMoveToCollection,
     onAfterAction,
   } = options;
 
+  const router = useRouter();
   const effectiveScope = scopeId || item.projectId || 'user';
 
-  const assignCollectionItemsMutation = useAssignCollectionItemsMutation(scopeId);
-  const reResolveMutation = useReResolveItemMetadataMutation(scopeId);
-  const setMyPublicationMutation = useSetMyPublicationMutation(scopeId);
-  const { flagItem, unflagItem } = useRetraction(scopeId, { includeItems: false });
+  const assignCollectionItemsMutation = useAssignCollectionItemsMutation(effectiveScope);
+  const reResolveMutation = useReResolveItemMetadataMutation(effectiveScope);
+  const setMyPublicationMutation = useSetMyPublicationMutation(effectiveScope);
+  const { flagItem, unflagItem } = useRetraction(effectiveScope, { includeItems: false });
   const itemTypeConversion = useItemTypeConversion(effectiveScope);
-  const { data: serverStyles = [] } = useCitationStyles(scopeId, { enabled: isMenuOpen });
+  const { data: serverStyles = [] } = useCitationStyles(effectiveScope, { enabled: isMenuOpen });
 
   const availableStyles = useMemo<CitationStyleOption[]>(() => {
-    if (serverStyles.length > 0) {
-      return serverStyles.map((s) => ({
+    const filteredServerStyles = serverStyles.filter(
+      (s) => s.id !== 'bibtex' && s.id !== 'ris' && s.id !== 'auto' && s.id !== 'auto-numeric',
+    );
+    if (filteredServerStyles.length > 0) {
+      return filteredServerStyles.map((s) => ({
         id: s.id,
         label: s.shortTitle || s.name || getCleanStyleLabel(s.id),
       }));
@@ -92,11 +99,20 @@ export function useItemActionHandlers(
     if (onOpenItem) {
       onOpenItem(item.id);
     } else {
-      const projectId = item.projectId || (isProjectScope(effectiveScope) ? effectiveScope : undefined);
-      const qs = projectId ? `?projectId=${encodeURIComponent(String(projectId))}` : '';
-      openInNewTab(`/library/papers/${item.id}${qs}`);
+      const projectId = item.projectId ? String(item.projectId) : (isProjectScope(effectiveScope) ? effectiveScope : undefined);
+      router.push(buildReaderPaperUrl(item.id, { projectId }));
     }
-  }, [item.id, item.projectId, effectiveScope, onAfterAction, onOpenItem]);
+  }, [item.id, item.projectId, effectiveScope, onAfterAction, onOpenItem, router]);
+
+  const handleOpenInNewTab = useCallback(() => {
+    onAfterAction?.();
+    if (onOpenInNewTab) {
+      onOpenInNewTab(item.id);
+    } else {
+      const projectId = item.projectId ? String(item.projectId) : (isProjectScope(effectiveScope) ? effectiveScope : undefined);
+      openInNewTab(buildReaderPaperUrl(item.id, { projectId }));
+    }
+  }, [item.id, item.projectId, effectiveScope, onAfterAction, onOpenInNewTab]);
 
   const handleCopyBibliography = useCallback(
     async (style: CslStyle = 'apa-7th') => {
@@ -227,7 +243,7 @@ export function useItemActionHandlers(
     availableStyles,
     isStarred,
     handleOpen,
-    handleCopyCitation: handleCopyBibliography,
+    handleOpenInNewTab,
     handleCopyBibliography,
     handleCopyBibtex,
     handleCopyInTextCitation,

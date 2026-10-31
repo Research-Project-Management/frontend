@@ -21,7 +21,7 @@ import {
   TooltipTrigger,
 } from "@/shared/components/ui/tooltip";
 import {
-  normalizeCompareValue,
+  resolveMergeFieldOptionState,
   type ItemFieldDiff,
 } from "@/features/library/domain/diff";
 import {
@@ -36,7 +36,6 @@ import { cn } from "@/shared/lib/utils";
 export interface DuplicateMergeInspectorProps {
   items: Item[];
   recommendedMasterId?: string;
-  scopeId?: string;
   canEdit?: boolean;
   onClose?: () => void;
   onOpenModal?: () => void;
@@ -51,7 +50,6 @@ export interface DuplicateMergeInspectorProps {
 export function DuplicateMergeInspector({
   items = [],
   recommendedMasterId,
-  scopeId,
   canEdit = true,
   onClose,
   onOpenModal,
@@ -359,7 +357,6 @@ export function DuplicateMergeInspector({
           <div className="space-y-3">
             {visibleFields.map((field: ItemFieldDiff) => {
               const activeOverrideValue = fieldOverrides[field.key];
-              const masterValue = field.masterValue?.rawValue;
 
               return (
                 <div
@@ -393,28 +390,12 @@ export function DuplicateMergeInspector({
                   <div className="space-y-1.5">
                     {field.options.map(
                       (opt: ItemFieldDiff["options"][number]) => {
-                        const isExplicitOverride =
-                          activeOverrideValue !== undefined &&
-                          activeOverrideValue !== null &&
-                          (opt.rawValue === activeOverrideValue ||
-                            (opt.isEmpty &&
-                              (activeOverrideValue === "" ||
-                                (Array.isArray(activeOverrideValue) &&
-                                  activeOverrideValue.length === 0))) ||
-                            normalizeCompareValue(opt.rawValue, field.key) ===
-                              normalizeCompareValue(activeOverrideValue, field.key));
-                        const isMasterDefault =
-                          (activeOverrideValue === undefined ||
-                            activeOverrideValue === null) &&
-                          opt.isMaster &&
-                          opt.rawValue === masterValue;
-
-                        const isSelected =
-                          isExplicitOverride || isMasterDefault;
-                        const isRecommended =
-                          field.hasConflict &&
-                          opt.itemId === field.recommendedItemId &&
-                          !isSelected;
+                        const { isSelected, isRecommended } =
+                          resolveMergeFieldOptionState(
+                            field,
+                            opt,
+                            activeOverrideValue,
+                          );
 
                         return (
                           <div

@@ -6,16 +6,15 @@
 
 import type { Item } from '@/features/library/domain/types/library.types';
 import type {
+  ReaderDocument,
   ReaderAnnotation,
   AnnotationRect,
-  ReaderDocument,
   DocumentFulltext,
 } from '@/features/library/domain/types/reader.types';
-import { isValidValue } from '@/features/library/domain/metadata';
+import { generateCitationKey } from './citations';
 import {
   normalizeReaderAuthors,
   getSurnameForCitation,
-  generateReaderCitationKey,
   formatInTextCitation,
   formatAnnotationCitation,
   searchPdfPages,
@@ -28,10 +27,11 @@ import {
   type PdfOutlineNode,
 } from './reader-persistence.helpers';
 
+export const generateReaderCitationKey = generateCitationKey;
+
 export {
   normalizeReaderAuthors,
   getSurnameForCitation,
-  generateReaderCitationKey,
   formatInTextCitation,
   formatAnnotationCitation,
   searchPdfPages,
@@ -112,9 +112,12 @@ export const ANNOTATION_PALETTE_COLORS = Object.values(ANNOTATION_COLORS).map((c
   hex: c.border,
 }));
 
-const HEX_TO_COLOR_ID_MAP = new Map<string, AnnotationColorId>(
-  Object.values(ANNOTATION_COLORS).map((c) => [c.border.toLowerCase(), c.id]),
-);
+const HEX_TO_COLOR_ID_MAP = new Map<string, AnnotationColorId>([
+  ...Object.values(ANNOTATION_COLORS).map(
+    (c): [string, AnnotationColorId] => [c.border.toLowerCase(), c.id],
+  ),
+  ['#ffeb3b', 'yellow'],
+]);
 
 export interface AnnotationFilterCriteria {
   query?: string | null;
@@ -124,6 +127,7 @@ export interface AnnotationFilterCriteria {
   types?: string[] | null;
   tag?: string | null;
   tags?: string[] | null;
+  authorId?: string | null;
   pageRange?: [number, number] | null;
 }
 
@@ -143,13 +147,13 @@ export const PdfAnnotationEngine = {
     };
 
     return [...annotations].sort((a, b) => {
-      if (a.annotationSortIndex && b.annotationSortIndex && a.annotationSortIndex !== b.annotationSortIndex) {
-        return a.annotationSortIndex < b.annotationSortIndex ? -1 : 1;
-      }
-
       const pageA = a.pageIndex ?? (a.pageNumber !== undefined ? a.pageNumber - 1 : 0);
       const pageB = b.pageIndex ?? (b.pageNumber !== undefined ? b.pageNumber - 1 : 0);
       if (pageA !== pageB) return pageA - pageB;
+
+      if (a.annotationSortIndex && b.annotationSortIndex && a.annotationSortIndex !== b.annotationSortIndex) {
+        return a.annotationSortIndex < b.annotationSortIndex ? -1 : 1;
+      }
 
       const rectA = (a.rects?.[0] || a.boundingRect) as (AnnotationRect & { x?: number; y?: number }) | undefined;
       const rectB = (b.rects?.[0] || b.boundingRect) as (AnnotationRect & { x?: number; y?: number }) | undefined;
@@ -169,53 +173,28 @@ export const PdfAnnotationEngine = {
     return this.sortAnnotations(annotations);
   },
 
-  synthesizeMarkdownNote(
+  sortAnnotationsByMode(
     annotations: ReaderAnnotation[],
-    paper?: ReaderDocument | null,
-    attachmentId?: string,
-  ): string {
-    const sorted = this.sortAnnotations(annotations);
-    const authors = paper ? normalizeReaderAuthors(paper.authors, paper.creators) : [];
-    const firstAuthor = authors.length > 0 ? getSurnameForCitation(authors[0]!) : 'Unknown';
-    const hasMultipleAuthors = authors.length > 1;
-    const year = paper?.year && isValidValue(paper.year) ? paper.year : 'n.d.';
-    const authorCitation = hasMultipleAuthors
-      ? `${firstAuthor} et al., ${year}`
-      : `${firstAuthor}, ${year}`;
-    const baseUrl = attachmentId
-      ? `flux://open-pdf/library/items/${attachmentId}`
-      : `flux://open-pdf/library/items`;
+    sortBy: 'position' | 'newest' | 'oldest' | 'color' = 'position',
+  ): ReaderAnnotation[] {
+    if (sortBy === 'position') {
+      return this.sortAnnotations(annotations);
+    }
 
-    return sorted
-      .map((a) => {
-        const pageNum =
-          a.pageNumber !== undefined
-            ? a.pageNumber
-            : a.pageIndex !== undefined
-              ? a.pageIndex + 1
-              : undefined;
-        const pageStr = pageNum ? `, p. ${pageNum}` : '';
-        const label = `(${authorCitation}${pageStr})`;
-        const pageParam = pageNum ? `page=${pageNum}` : '';
-        const annotParam = a.id ? `annotation=${a.id}` : '';
-        const qs =
-          pageParam && annotParam
-            ? `?${pageParam}&${annotParam}`
-            : pageParam || annotParam
-              ? `?${pageParam || annotParam}`
-              : '';
-        const markdown = `[${label}](${baseUrl}${qs})`;
+    const list = [...annotations];
+    if (sortBy === 'newest' || sortBy === 'oldest') {
+      const tsMap = new Map<string, number>();
+      for (const a of list) {
+        const ts = Date.parse(a.createdAt || '');
+        tsMap.set(a.id, Number.isNaN(ts) ? 0 : ts);
+      }
+      const dir = sortBy === 'newest' ? -1 : 1;
+      return list.sort((a, b) => ((tsMap.get(a.id) ?? 0) - (tsMap.get(b.id) ?? 0)) * dir);
+    }
 
-        const rawQuote = a.quoteText || a.text || '';
-        const quotePart = rawQuote
-          ? `> "${rawQuote.trim().replace(/\n+/g, '\n> ')}"`
-          : '';
-        const citPart = pageNum ? `\n> - ${markdown}` : '';
-        const commentPart = a.comment ? `\n\n**Note:** ${a.comment.trim()}` : '';
-        return `${quotePart}${citPart}${commentPart}`.trim();
-      })
-      .filter(Boolean)
-      .join('\n\n---\n\n');
+    return list.sort((a, b) =>
+      this.resolveColorId(a.color).localeCompare(this.resolveColorId(b.color)),
+    );
   },
 
   resolveColorId(colorInput?: string | null): AnnotationColorId {
@@ -301,8 +280,12 @@ export const PdfAnnotationEngine = {
 
     const pageRange = isCriteriaObject ? queryOrCriteria.pageRange : options?.pageRange;
     const hasPageRange = Boolean(pageRange && pageRange.length === 2);
+    const authorIdFilter =
+      isCriteriaObject && queryOrCriteria.authorId && queryOrCriteria.authorId !== 'all'
+        ? queryOrCriteria.authorId
+        : null;
 
-    if (!q && rawColors.length === 0 && rawTypes.length === 0 && rawTags.length === 0 && !hasPageRange) {
+    if (!q && rawColors.length === 0 && rawTypes.length === 0 && rawTags.length === 0 && !hasPageRange && !authorIdFilter) {
       return [...annotations];
     }
 
@@ -321,6 +304,10 @@ export const PdfAnnotationEngine = {
     const needTags = Boolean(q || rawTags.length > 0);
 
     return annotations.filter((a) => {
+      if (authorIdFilter && a.authorId !== authorIdFilter) {
+        return false;
+      }
+
       if (hasPageRange && pageRange) {
         const pageNum = a.pageNumber ?? (a.pageIndex !== undefined ? a.pageIndex + 1 : 1);
         if (pageNum < pageRange[0] || pageNum > pageRange[1]) return false;
@@ -371,7 +358,9 @@ export const PdfAnnotationEngine = {
   },
 
   normalizeRect(
-    rect: AnnotationRect | { x: number; y: number; width: number; height: number },
+    rect:
+      | (Omit<AnnotationRect, 'width' | 'height'> & { width?: number; height?: number })
+      | { x: number; y: number; width: number; height: number },
   ): AnnotationRect {
     const r = rect as {
       x1?: number;
@@ -470,6 +459,33 @@ export const PdfAnnotationEngine = {
       semanticLabel: ANNOTATION_COLORS.yellow.semanticLabel,
     };
   },
+
+  synthesizeMarkdownNote(
+    annotations: ReaderAnnotation[],
+    paper?: ReaderDocument | null,
+    attachmentId?: string,
+    scopeId?: string,
+  ): string {
+    const sorted = this.sortAnnotationsInReadingOrder(annotations);
+    return sorted
+      .map((a) => {
+        const pageNum = a.pageNumber ?? (a.pageIndex !== undefined ? a.pageIndex + 1 : 1);
+        const effAttId = attachmentId || a.attachmentId;
+        const citation = formatAnnotationCitation(paper, effAttId, pageNum, a.id, scopeId);
+        const lines: string[] = [];
+        const quote = (a.quoteText || a.text || '').trim();
+        if (quote) {
+          lines.push(`> "${quote}" ${citation.markdown}`);
+        } else {
+          lines.push(citation.markdown);
+        }
+        if (a.comment && a.comment.trim()) {
+          lines.push(`\n**Note:** ${a.comment.trim()}`);
+        }
+        return lines.join('\n');
+      })
+      .join('\n\n---\n\n');
+  },
 };
 
 export interface EpubOrSnapshotInfo {
@@ -484,6 +500,7 @@ export interface RawAttachmentItem {
   mimeType?: string;
   filename?: string;
   attachmentType?: string;
+  viewerFormat?: 'pdf' | 'epub' | 'snapshot' | string;
   linkMode?: string;
 }
 
@@ -499,122 +516,51 @@ export function resolveEpubOrSnapshot(
     ? (itemLike.attachments as RawAttachmentItem[])
     : [];
 
+  const classifyTarget = (
+    target?: { viewerFormat?: string | null; mimeType?: string | null } | null,
+  ): 'pdf' | 'epub' | 'snapshot' | null => {
+    if (!target) return null;
+    if (
+      target.viewerFormat === 'pdf' ||
+      target.viewerFormat === 'epub' ||
+      target.viewerFormat === 'snapshot'
+    ) {
+      return target.viewerFormat;
+    }
+    const mime = target.mimeType?.toLowerCase() || '';
+    if (mime === 'application/pdf') return 'pdf';
+    if (mime === 'application/epub+zip') return 'epub';
+    if (mime === 'text/html' || mime === 'application/xhtml+xml') return 'snapshot';
+    return null;
+  };
+
   const activeAtt = requestedAttId
     ? rawAtts.find((a: RawAttachmentItem) => a.id === requestedAttId)
     : selectedAttachment;
 
   if (activeAtt) {
-    const attMime = activeAtt.mimeType?.toLowerCase() || '';
-    const attName = (activeAtt.filename || '').toLowerCase();
-    const attUrl = (activeAtt.fileUrl || activeAtt.url || paperUrl || '') as string;
-
-    const isPdf =
-      activeAtt.attachmentType === 'primary_pdf' ||
-      attMime === 'application/pdf' ||
-      attMime.includes('pdf') ||
-      attName.endsWith('.pdf') ||
-      /\.pdf(?:$|[?#])/i.test(attUrl);
-
-    if (isPdf) {
-      return null;
-    }
-
-    const isEpub =
-      attMime.includes('epub') ||
-      attName.endsWith('.epub') ||
-      /\.epub(?:$|[?#])/i.test(attUrl);
-
-    if (isEpub) {
-      return { mode: 'epub', url: attUrl };
-    }
-
-    const isSnapshot =
-      (activeAtt.attachmentType === 'snapshot' ||
-        activeAtt.attachmentType === 'web_snapshot' ||
-        attMime === 'text/html' ||
-        attMime === 'application/xhtml+xml' ||
-        attName.endsWith('.html') ||
-        attName.endsWith('.htm') ||
-        attName.endsWith('.xhtml') ||
-        attName.endsWith('.mhtml'));
-
-    if (isSnapshot) {
-      return { mode: 'snapshot', url: attUrl };
+    const format = classifyTarget(activeAtt);
+    if (format === 'pdf') return null;
+    if (format === 'epub' || format === 'snapshot') {
+      const attUrl = (activeAtt.fileUrl || activeAtt.url || paperUrl || '') as string;
+      return attUrl ? { mode: format, url: attUrl } : null;
     }
   }
 
-  const primaryMime = itemLike.primaryFile?.mimeType?.toLowerCase() || '';
-  const primaryName = String(
-    itemLike.filename ||
-    itemLike.primaryFile?.filename ||
-    ''
-  ).toLowerCase();
-
-  const primaryIsPdf =
-    primaryMime === 'application/pdf' ||
-    primaryMime.includes('pdf') ||
-    primaryName.endsWith('.pdf') ||
-    (paperUrl ? /\.pdf(?:$|[?#])/i.test(paperUrl) : false);
-
-  if (
-    !primaryIsPdf &&
-    (primaryMime.includes('epub') ||
-      primaryName.endsWith('.epub') ||
-      (paperUrl && /\.epub(?:$|[?#])/i.test(paperUrl)))
-  ) {
-    return {
-      mode: 'epub',
-      url: paperUrl || itemLike.primaryFile?.url || '',
-    };
+  const primaryFormat = classifyTarget(
+    itemLike.primaryFile as { viewerFormat?: string | null; mimeType?: string | null } | null,
+  );
+  if (primaryFormat === 'pdf') return null;
+  if (primaryFormat === 'epub' || primaryFormat === 'snapshot') {
+    const primaryUrl = (paperUrl || itemLike.primaryFile?.url || '') as string;
+    if (primaryUrl) return { mode: primaryFormat, url: primaryUrl };
   }
 
-  const epubAtt = rawAtts.find((a: RawAttachmentItem) => {
-    const mime = a.mimeType?.toLowerCase() || '';
-    const name = (a.filename || '').toLowerCase();
-    const url = (a.fileUrl || a.url || '') as string;
-    const isPdf =
-      a.attachmentType === 'primary_pdf' ||
-      mime.includes('pdf') ||
-      name.endsWith('.pdf') ||
-      /\.pdf(?:$|[?#])/i.test(url);
-    if (isPdf) return false;
-    return mime.includes('epub') || name.endsWith('.epub') || /\.epub(?:$|[?#])/i.test(url);
-  });
-  if (epubAtt && (epubAtt.url || epubAtt.fileUrl)) {
-    return {
-      mode: 'epub',
-      url: (epubAtt.fileUrl || epubAtt.url) as string,
-    };
-  }
-
-  if (!paperUrl && !primaryIsPdf) {
-    const snapshotAtt = rawAtts.find((a: RawAttachmentItem) => {
-      const mime = a.mimeType?.toLowerCase() || '';
-      const name = (a.filename || '').toLowerCase();
-      const url = (a.fileUrl || a.url || '') as string;
-      const isPdf =
-        a.attachmentType === 'primary_pdf' ||
-        mime.includes('pdf') ||
-        name.endsWith('.pdf') ||
-        /\.pdf(?:$|[?#])/i.test(url);
-      if (isPdf) return false;
-
-      return (
-        a.attachmentType === 'snapshot' ||
-        a.attachmentType === 'web_snapshot' ||
-        mime === 'text/html' ||
-        mime === 'application/xhtml+xml' ||
-        name.endsWith('.html') ||
-        name.endsWith('.htm') ||
-        name.endsWith('.xhtml') ||
-        name.endsWith('.mhtml')
-      );
-    });
-    if (snapshotAtt && (snapshotAtt.url || snapshotAtt.fileUrl)) {
-      return {
-        mode: 'snapshot',
-        url: (snapshotAtt.fileUrl || snapshotAtt.url) as string,
-      };
+  for (const att of rawAtts) {
+    const format = classifyTarget(att);
+    if (format === 'epub' || format === 'snapshot') {
+      const url = (att.fileUrl || att.url || '') as string;
+      if (url) return { mode: format, url };
     }
   }
 
@@ -622,6 +568,36 @@ export function resolveEpubOrSnapshot(
 }
 
 export const resolveEpubOrSnapshotAttachment = resolveEpubOrSnapshot;
+
+export function buildReaderPaperUrl(
+  itemId: string,
+  options?: {
+    projectId?: string | null;
+    query?: string | null;
+    attachmentId?: string | null;
+  },
+): string {
+  const safeId = encodeURIComponent(itemId);
+  const queryParts: string[] = [];
+  if (
+    options?.projectId &&
+    options.projectId !== 'user' &&
+    options.projectId !== 'me' &&
+    options.projectId !== 'personal' &&
+    options.projectId !== 'global' &&
+    options.projectId !== 'default'
+  ) {
+    queryParts.push(`projectId=${encodeURIComponent(String(options.projectId))}`);
+  }
+  if (options?.query) {
+    queryParts.push(`q=${encodeURIComponent(String(options.query))}`);
+  }
+  if (options?.attachmentId) {
+    queryParts.push(`attachmentId=${encodeURIComponent(String(options.attachmentId))}`);
+  }
+  const qs = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
+  return `/library/papers/${safeId}${qs}`;
+}
 
 export type OcrStatus = 'pending' | 'processing' | 'ready' | 'completed' | 'none';
 
@@ -640,7 +616,7 @@ export function resolveDocumentOcrState(
     | undefined,
   effectiveAttachmentId: string | undefined,
   fulltext: DocumentFulltext | null | undefined,
-  numPages: number,
+  _numPages?: number,
 ): DocumentOcrState {
   const primaryAttachment =
     paper?.attachments?.find((a) => a.id === effectiveAttachmentId) ||
@@ -660,10 +636,7 @@ export function resolveDocumentOcrState(
   const isScanned = Boolean(
     attachmentMeta?.isScanned ||
       paperMeta?.isScanned ||
-      (fulltext &&
-        (!fulltext.sections || fulltext.sections.length === 0) &&
-        (!fulltext.abstract || fulltext.abstract.length === 0) &&
-        numPages > 0),
+      (fulltext as { isScanned?: boolean } | null | undefined)?.isScanned,
   );
 
   const rawExtractionStatus = (

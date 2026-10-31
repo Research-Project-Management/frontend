@@ -26,6 +26,8 @@ export const attachmentTypeSchema = z.enum([
   'code',
   'figure',
   'snapshot',
+  'web_snapshot',
+  'imported_file',
   'other',
   'preview',
 ]);
@@ -45,6 +47,7 @@ export const attachmentSchema = z.object({
   itemId: z.string().optional(),
   fileId: z.string().nullable().optional(),
   title: z.string().optional(),
+  name: z.string().optional(),
   filename: z.string().optional().default(''),
   url: z.string().optional().default(''),
   fileHash: z.string().nullable().optional(),
@@ -65,7 +68,9 @@ export const attachmentSchema = z.object({
   annotations: z.array(z.record(z.string(), z.unknown())).optional(),
 });
 
-export type ItemAttachment = z.infer<typeof attachmentSchema>;
+export type ItemAttachment = z.input<typeof attachmentSchema> & {
+  id: string;
+};
 export type AttachmentRevision = z.infer<typeof attachmentRevisionSchema>;
 export type LinkMode = z.infer<typeof linkModeSchema>;
 export type AttachmentType = z.infer<typeof attachmentTypeSchema>;

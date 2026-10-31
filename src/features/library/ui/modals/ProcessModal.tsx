@@ -27,8 +27,6 @@ interface ProcessModalProps {
   onClose: () => void;
   onMinimize?: () => void;
   onRestore?: () => void;
-  onViewLibrary?: () => void;
-  onCancel?: () => void;
 }
 
 function formatSourceLabel(raw?: string): string {
@@ -63,7 +61,6 @@ export default function ProcessModal({
   onClose,
   onMinimize,
   onRestore,
-  onCancel,
 }: ProcessModalProps) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -100,9 +97,16 @@ export default function ProcessModal({
     return createPortal(
       <div
         onClick={onRestore}
-        role="status"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onRestore?.();
+          }
+        }}
+        role="button"
+        tabIndex={0}
         aria-live="polite"
-        className="fixed bottom-4 right-4 z-50 flex items-center gap-2.5 h-8 px-2.5 rounded-md border border-border bg-background shadow-raised-200 cursor-pointer hover:bg-muted transition-colors text-12 font-medium text-foreground select-none overflow-hidden group"
+        className="fixed bottom-4 right-4 z-50 flex items-center gap-2.5 h-8 px-2.5 rounded-md border border-border bg-background shadow-raised-200 cursor-pointer hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors text-12 font-medium text-foreground select-none overflow-hidden group"
         title="Click to view details"
       >
         {/* Subtle Progress Bar Underline */}
@@ -333,7 +337,7 @@ export default function ProcessModal({
             type="button"
             variant={isRunning ? "outline" : "default"}
             size="sm"
-            onClick={onClose}
+            onClick={isRunning && onMinimize ? onMinimize : onClose}
             className="h-8 px-4 text-13 font-medium rounded-md cursor-pointer"
           >
             Close

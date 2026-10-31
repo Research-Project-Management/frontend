@@ -37,9 +37,10 @@ export function extractAnnotationFacets(annotations: ReaderAnnotation[]): {
 
   for (const a of annotations) {
     const resolvedId = PdfAnnotationEngine.resolveColorId(a.color);
+    const canonicalColorHex = PdfAnnotationEngine.getColorConfig(resolvedId).border.toLowerCase();
     const match =
       ANNOTATION_COLOR_BY_ID_MAP.get(resolvedId) ??
-      ANNOTATION_COLOR_BY_HEX_MAP.get((a.color || '#ffd400').toLowerCase());
+      ANNOTATION_COLOR_BY_HEX_MAP.get(canonicalColorHex);
     if (match && !colorMap.has(match.id)) {
       colorMap.set(match.id, match);
     }
@@ -88,36 +89,18 @@ export function filterAndSortAnnotations(
     sortBy: 'position' | 'newest' | 'oldest' | 'color';
   },
 ): ReaderAnnotation[] {
-  const authorFiltered =
-    params.authorFilter && params.authorFilter !== 'all'
-      ? annotations.filter((a) => a.authorId === params.authorFilter)
-      : annotations;
-
-  const list = PdfAnnotationEngine.filterAnnotations(authorFiltered, {
+  const filtered = PdfAnnotationEngine.filterAnnotations(annotations, {
     query: params.searchQuery,
     color: params.selectedColor,
     tag: params.selectedTag,
+    authorId: params.authorFilter,
   });
 
   if (params.sortBy === 'position') {
-    return PdfAnnotationEngine.sortAnnotationsInReadingOrder(list);
+    return PdfAnnotationEngine.sortAnnotations(filtered);
   }
 
-  if (params.sortBy === 'newest' || params.sortBy === 'oldest') {
-    const tsMap = new Map<string, number>();
-    for (const a of list) {
-      const ts = Date.parse(a.createdAt);
-      tsMap.set(a.id, Number.isNaN(ts) ? 0 : ts);
-    }
-    const dir = params.sortBy === 'newest' ? -1 : 1;
-    return list.sort((a, b) => ((tsMap.get(a.id) ?? 0) - (tsMap.get(b.id) ?? 0)) * dir);
-  }
-
-  return list.sort((a, b) =>
-    PdfAnnotationEngine.resolveColorId(a.color).localeCompare(
-      PdfAnnotationEngine.resolveColorId(b.color),
-    ),
-  );
+  return PdfAnnotationEngine.sortAnnotationsByMode(filtered, params.sortBy);
 }
 
 export function AnnotationEditForm({

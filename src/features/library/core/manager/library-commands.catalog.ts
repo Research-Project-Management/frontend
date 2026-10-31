@@ -39,8 +39,6 @@ export function createTrashCommand(options: TrashCommandOptions): LibraryCommand
   };
 }
 
-export const createDeleteItemsCommand = createTrashCommand;
-
 export interface RestoreCommandOptions {
   itemIds: string[];
   itemTitle?: string;
@@ -660,9 +658,17 @@ export interface DeleteNoteCommandOptions {
   version?: number;
   itemId?: string | null;
   contentMd: string;
+  contentJson?: Record<string, unknown> | null;
   title?: string;
+  tags?: string[];
   deleteNote: (id: string, version?: number) => Promise<unknown>;
-  createNote: (dto: { itemId?: string | null; contentMd: string; title?: string }) => Promise<{ id?: string; version?: number } | null | undefined>;
+  createNote: (dto: {
+    itemId?: string | null;
+    contentMd: string;
+    contentJson?: Record<string, unknown> | null;
+    title?: string;
+    tags?: string[];
+  }) => Promise<{ id?: string; version?: number } | null | undefined>;
   onExecuted?: () => void;
   onUndone?: (recreatedNoteId?: string) => void;
 }
@@ -683,7 +689,9 @@ export function createDeleteNoteCommand(options: DeleteNoteCommandOptions): Libr
       const recreated = await options.createNote({
         itemId: options.itemId,
         contentMd: options.contentMd,
+        ...(options.contentJson !== undefined ? { contentJson: options.contentJson } : {}),
         title: options.title,
+        ...(options.tags !== undefined ? { tags: options.tags } : {}),
       });
       if (recreated?.id) {
         currentNoteId = recreated.id;

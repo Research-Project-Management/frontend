@@ -58,7 +58,7 @@ export function ReaderLeftRail({
       )}
     >
       {/* Middle: Icon Tabs */}
-      <div className="flex flex-col items-center gap-1 w-full pt-2 px-1">
+      <div className="flex flex-col items-center gap-1 w-full pt-1 px-1">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = isOpen && activeTab === tab.id;
@@ -69,10 +69,6 @@ export function ReaderLeftRail({
                 <button
                   type="button"
                   onClick={() => {
-                    if (isOpen && activeTab === tab.id) {
-                      onToggleOpen();
-                      return;
-                    }
                     if (!isOpen) {
                       onToggleOpen();
                     }
@@ -81,13 +77,13 @@ export function ReaderLeftRail({
                   className={cn(
                     "relative size-8 flex items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors cursor-pointer text-foreground before:absolute before:-inset-1.5 md:before:hidden",
                     isActive
-                      ? "bg-muted text-foreground font-medium"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+                      ? "bg-muted text-foreground font-semibold"
+                      : "text-foreground hover:bg-muted font-normal",
                   )}
                   aria-label={tab.label}
                   aria-current={isActive ? "true" : undefined}
                 >
-                  <Icon className="size-4 shrink-0" strokeWidth={1.5} />
+                  <Icon className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={6} className="text-xs">

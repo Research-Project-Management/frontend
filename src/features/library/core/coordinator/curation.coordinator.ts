@@ -14,12 +14,17 @@ import {
 } from '@/features/library/domain/diff';
 import type { Item } from '@/features/library/domain/types/library.types';
 import {
+  useLibraryCommandStore,
+  createMergeDuplicatesCommand,
+} from '@/features/library/core/manager/library-command.manager';
+import {
   type DuplicateGroupMergeDraft,
   groupMergeDraftCache,
   getGroupMergeDraft,
   setGroupMergeDraft,
   clearGroupMergeDraft,
   computeDuplicateSetKey,
+  getDeterministicDuplicateGroupKey,
   getOrInitDraft,
   updateGroupDraft,
   subscribeToDrafts,
@@ -32,7 +37,71 @@ export {
   setGroupMergeDraft,
   clearGroupMergeDraft,
   computeDuplicateSetKey,
+  getDeterministicDuplicateGroupKey,
 };
+
+export interface ExecuteDuplicateMergeWithCommandOptions {
+  masterPaper: Item;
+  mergedFields: Record<string, unknown>;
+  duplicateIdsToDelete: string[];
+  effectiveScopeId: string;
+  resolveCachedItem: (itemId: string, scopeId?: string) => Item | null | undefined;
+  executeCommand: ReturnType<typeof useLibraryCommandStore.getState>['executeCommand'];
+  mergeMutation: {
+    mutateAsync: (payload: {
+      primaryItemId: string;
+      duplicateItemIds: string[];
+      mergedFields?: Record<string, unknown>;
+    }) => Promise<unknown>;
+  };
+  restoreMutation: {
+    mutateAsync: (ids: string[]) => Promise<unknown>;
+  };
+  updateItemMutation: {
+    mutateAsync: (payload: {
+      itemId: string;
+      data: Record<string, unknown>;
+      silent?: boolean;
+    }) => Promise<unknown>;
+  };
+  invalidateScopeItemsAndCounts: (scopeId?: string) => Promise<void> | void;
+}
+
+export async function executeDuplicateMergeWithCommand({
+  masterPaper,
+  mergedFields,
+  duplicateIdsToDelete,
+  effectiveScopeId,
+  resolveCachedItem,
+  executeCommand,
+  mergeMutation,
+  restoreMutation,
+  updateItemMutation,
+  invalidateScopeItemsAndCounts,
+}: ExecuteDuplicateMergeWithCommandOptions): Promise<void> {
+  const cachedPrimary = resolveCachedItem(masterPaper.id, effectiveScopeId);
+  const snapshotPrimary: Item = cachedPrimary
+    ? { ...masterPaper, ...cachedPrimary }
+    : masterPaper;
+
+  await executeCommand(
+    createMergeDuplicatesCommand({
+      primaryItem: snapshotPrimary,
+      duplicateIdsToDelete,
+      mergedFields,
+      mergeMutation: { mutateAsync: mergeMutation.mutateAsync },
+      restoreMutation: { mutateAsync: restoreMutation.mutateAsync },
+      updateItemMutation: {
+        mutateAsync: ({ itemId, data, silent }) =>
+          updateItemMutation.mutateAsync({ itemId, data, silent }),
+      },
+      onUndone: () => {
+        void invalidateScopeItemsAndCounts(effectiveScopeId);
+      },
+    }),
+    { silentToast: false },
+  );
+}
 
 /**
  * Shared state and diff computation hook for duplicate merging

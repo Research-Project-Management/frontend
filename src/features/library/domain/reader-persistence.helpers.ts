@@ -12,10 +12,7 @@ import type {
 import { normalizeAuthors, parseCreatorName } from '@/features/library/domain/creators';
 import { isValidValue, stripLatexMarkup } from '@/features/library/domain/metadata';
 import { foldDiacritics } from '@/features/library/domain/academic-text';
-import {
-  generateCitationKey,
-  toAsciiKeyPart,
-} from '@/features/library/domain/citations';
+import { isProjectScope } from '@/features/library/domain/item-url';
 
 export { foldDiacritics };
 
@@ -41,6 +38,129 @@ export interface PdfOutlineNode {
   children?: PdfOutlineNode[];
 }
 
+export interface FlattenedOutlineSection {
+  id: string;
+  num: string;
+  title: string;
+  page?: number;
+  level: number;
+  hasChildren: boolean;
+  parentId: string | null;
+}
+
+export function buildOutlineSections(
+  fulltextSections?: ReadonlyArray<{ id?: string; num?: string; title: string; page?: number }> | null,
+  pdfOutline?: ReadonlyArray<PdfOutlineNode> | null,
+  outlineFilter = '',
+): FlattenedOutlineSection[] {
+  if (fulltextSections && fulltextSections.length > 0) {
+    const raw = fulltextSections.map((s, idx) => ({
+      id: s.id || `sec-${idx}-${s.num || ''}-${s.page || 1}`,
+      num: s.num || '',
+      title: s.title,
+      page: s.page,
+      level: s.num ? Math.min(4, s.num.split('.').filter(Boolean).length) : 1,
+    }));
+    return raw.map((item, idx) => {
+      const next = raw[idx + 1];
+      const hasChildren = Boolean(next && next.level > item.level);
+      let parentId: string | null = null;
+      for (let j = idx - 1; j >= 0; j--) {
+        if (raw[j]!.level < item.level) {
+          parentId = raw[j]!.id;
+          break;
+        }
+      }
+      return { ...item, hasChildren, parentId };
+    });
+  }
+
+  if (pdfOutline && pdfOutline.length > 0) {
+    const flattened: FlattenedOutlineSection[] = [];
+    const walk = (
+      items: ReadonlyArray<PdfOutlineNode>,
+      level: number,
+      parentId: string | null,
+    ) => {
+      items.forEach((item, idx) => {
+        const id = `${parentId || 'root'}-${level}-${idx}-${item.pageNumber}`;
+        const childItems = item.items ?? item.children;
+        const hasChildren = Boolean(childItems && childItems.length > 0);
+        flattened.push({
+          id,
+          num: '',
+          title: item.title,
+          page: item.pageNumber,
+          level: Math.min(4, level),
+          hasChildren,
+          parentId,
+        });
+        if (hasChildren && childItems) {
+          walk(childItems, level + 1, id);
+        }
+      });
+    };
+    const filteredTree = outlineFilter.trim()
+      ? filterPdfOutlineTree(pdfOutline, outlineFilter)
+      : pdfOutline;
+    walk(filteredTree, 1, null);
+    return flattened;
+  }
+
+  return [];
+}
+
+export function filterVisibleOutlineSections(
+  sections: ReadonlyArray<FlattenedOutlineSection>,
+  outlineFilter: string,
+  hasFulltextSections: boolean,
+  collapsedOutlineIds: ReadonlySet<string>,
+): FlattenedOutlineSection[] {
+  const isSearching = Boolean(outlineFilter.trim());
+  if (isSearching) {
+    if (!hasFulltextSections) return [...sections];
+    const q = outlineFilter.toLowerCase().trim();
+    return sections.filter(
+      (s) =>
+        (s.title && s.title.toLowerCase().includes(q)) ||
+        (s.num && s.num.toLowerCase().includes(q)),
+    );
+  }
+  if (collapsedOutlineIds.size === 0) return [...sections];
+  const byId = new Map(sections.map((s) => [s.id, s]));
+  return sections.filter((s) => {
+    let currParent = s.parentId;
+    while (currParent) {
+      if (collapsedOutlineIds.has(currParent)) return false;
+      currParent = byId.get(currParent)?.parentId ?? null;
+    }
+    return true;
+  });
+}
+
+export function resolveActiveOutlineSectionId(
+  filteredSections: ReadonlyArray<FlattenedOutlineSection>,
+  selectedOutlineId: string | null,
+  currentPage: number,
+): string | null {
+  if (filteredSections.length === 0) return null;
+  if (selectedOutlineId) {
+    const selected = filteredSections.find((s) => s.id === selectedOutlineId);
+    if (selected && selected.page === currentPage) {
+      return selected.id;
+    }
+  }
+  const exactMatch = filteredSections.find((s) => s.page === currentPage);
+  if (exactMatch) return exactMatch.id;
+  let bestPreceding: FlattenedOutlineSection | null = null;
+  for (const s of filteredSections) {
+    if (s.page && s.page <= currentPage) {
+      bestPreceding = s;
+    }
+  }
+  return bestPreceding?.id ?? null;
+}
+
 export function normalizeReaderAuthors(
   rawAuthors?: unknown,
   creators?: DocumentCreator[] | null,
@@ -55,35 +175,6 @@ export function normalizeReaderAuthors(
 export function getSurnameForCitation(rawAuthor: string): string {
   const parsed = parseCreatorName(rawAuthor);
   return parsed.lastName || parsed.fullName || 'Unknown';
-}
-
-export function generateReaderCitationKey(
-  paper?: Partial<ReaderDocument> | null,
-  existingKeys?: Set<string> | string[],
-): string {
-  if (!paper) return 'refpaper';
-  if (paper.citationKey && isValidValue(paper.citationKey)) {
-    return paper.citationKey.trim().replace(/\s+/g, '');
-  }
-  const hasAnyBibliographicField = Boolean(
-    (Array.isArray(paper.authors) && paper.authors.length > 0) ||
-      (Array.isArray(paper.creators) && paper.creators.length > 0) ||
-      (paper.year && isValidValue(paper.year)) ||
-      (paper.title && isValidValue(paper.title)),
-  );
-  if (!hasAnyBibliographicField) {
-    return 'refpaper';
-  }
-  const generated = generateCitationKey(
-    {
-      ...paper,
-      authors: normalizeReaderAuthors(paper.authors, paper.creators),
-      title:
-        paper.title && isValidValue(paper.title) ? paper.title : 'paper',
-    },
-    existingKeys,
-  );
-  return generated === 'ref' ? 'refpaper' : generated;
 }
 
 export function formatInTextCitation(paper: ReaderDocument, pageNumber?: number): string {
@@ -109,6 +200,7 @@ export function formatAnnotationCitation(
   attachmentId?: string,
   pageNumber?: number,
   annotationId?: string,
+  scopeId?: string,
 ): { label: string; url: string; markdown: string } {
   const authors = paper ? normalizeReaderAuthors(paper.authors, paper.creators) : [];
   const firstAuthor = authors.length > 0 ? getSurnameForCitation(authors[0]!) : 'Unknown';
@@ -118,14 +210,24 @@ export function formatAnnotationCitation(
   const pageStr = pageNumber ? `, p. ${pageNumber}` : '';
   const label = `(${authorCitation}${pageStr})`;
 
+  const itemId = paper?.id;
+  const effectiveProjectId = isProjectScope(scopeId)
+    ? scopeId
+    : paper?.projectId && isProjectScope(String(paper.projectId))
+      ? String(paper.projectId)
+      : undefined;
+  const attParam = attachmentId ? `attachmentId=${encodeURIComponent(attachmentId)}` : '';
   const pageParam = pageNumber ? `page=${pageNumber}` : '';
-  const annotParam = annotationId ? `annotation=${annotationId}` : '';
-  const queryStr = [pageParam, annotParam].filter(Boolean).join('&');
+  const annotParam = annotationId ? `annotation=${encodeURIComponent(annotationId)}` : '';
+  const queryStr = [attParam, pageParam, annotParam].filter(Boolean).join('&');
   const qs = queryStr ? `?${queryStr}` : '';
 
-  const url = attachmentId
-    ? `flux://open-pdf/library/items/${attachmentId}${qs}`
-    : `flux://open-pdf/library/items${qs}`;
+  const basePath = effectiveProjectId
+    ? `/projects/${encodeURIComponent(effectiveProjectId)}/library/papers`
+    : `/library/papers`;
+  const url = itemId
+    ? `${basePath}/${encodeURIComponent(itemId)}${qs}`
+    : `${basePath}${qs}`;
 
   const markdown = `[${label}](${url})`;
 

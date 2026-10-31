@@ -27,7 +27,7 @@ export function FeedContextMenu({
   onDelete,
 }: FeedContextMenuProps) {
   return (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <button
           type="button"

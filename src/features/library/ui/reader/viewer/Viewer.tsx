@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { Document } from "react-pdf";
+import { Document, pdfjs } from "react-pdf";
 import { PlaneEmptyState } from "@/shared/components/ui/PlaneEmptyState";
 import { PlaneErrorState } from "@/shared/components/ui/PlaneErrorState";
 import type {
@@ -10,6 +10,7 @@ import type {
   ReaderAnnotation,
   AnnotationRect,
   ReaderNavigationTarget,
+  PdfOutlineItem,
 } from "@/features/library/domain/types/reader.types";
 import type { ReaderAnnotationTool } from "@/features/library/core/store/reader.store";
 import { ANNOTATION_PALETTE_COLORS } from "@/features/library/ui/reader/ReaderToolbar";
@@ -36,6 +37,10 @@ import { setupPdfWorker, getSharedPdfDocumentOptions } from "@/shared/lib/pdfjs-
 
 export { ANNOTATION_PALETTE_COLORS, DocumentPageSkeleton };
 
+// Register PDF.js worker synchronously before Document mounts
+if (typeof window !== "undefined" && pdfjs?.GlobalWorkerOptions) {
+  pdfjs.GlobalWorkerOptions.workerSrc = `${window.location.origin}/pdf.worker.min.mjs`;
+}
 setupPdfWorker();
 const SHARED_PDF_OPTIONS = getSharedPdfDocumentOptions();
 const EMPTY_ANNOTATIONS: ReaderAnnotation[] = [];
@@ -49,6 +54,7 @@ interface ViewerProps {
     pageNumber?: number,
     annotationId?: string,
   ) => void;
+  onAskAi?: (selectedText: string, pageNumber?: number) => void;
   onAnnotate?: (
     selectedText: string,
     pageNumber: number,
@@ -65,14 +71,16 @@ interface ViewerProps {
   annotations?: ReaderAnnotation[];
   onDeleteAnnotation?: (annotation: ReaderAnnotation) => void;
   fulltext?: DocumentFulltext | null;
-  isLoadingFulltext?: boolean;
   targetPage?: ReaderNavigationTarget | null;
   paper?: ReaderDocument;
   onVisiblePageChange?: (page: number) => void;
   onTotalPagesChange?: (total: number) => void;
+  onOutlineLoad?: (outline: PdfOutlineItem[]) => void;
   zoom?: number;
+  onZoomChange?: (nextZoom: number) => void;
+  onSelectFitMode?: (mode: "fit-width" | "fit-page" | "auto" | "custom") => void;
   rotation?: number;
-  themeMode?: "normal" | "sepia" | "dark";
+  themeMode?: "normal" | "sepia" | "dark" | "invert";
   interactionMode?: "select" | "hand";
   activeColor?: string;
   activeTool?: ReaderAnnotationTool;
@@ -80,7 +88,7 @@ interface ViewerProps {
   onCloseSearch?: () => void;
   initialSearchQuery?: string;
   viewMode?: "single" | "continuous" | "spread";
-  fitMode?: "fit-width" | "fit-page" | "auto";
+  fitMode?: "fit-width" | "fit-page" | "auto" | "custom";
 }
 
 export default function Viewer({
@@ -88,6 +96,7 @@ export default function Viewer({
   isLoading,
   error,
   onAddToNote,
+  onAskAi,
   onAnnotate,
   onUpdateAnnotation,
   annotations = [],
@@ -97,7 +106,10 @@ export default function Viewer({
   paper,
   onVisiblePageChange,
   onTotalPagesChange,
+  onOutlineLoad,
   zoom: zoomProp,
+  onZoomChange,
+  onSelectFitMode,
   rotation = 0,
   themeMode = "normal",
   interactionMode = "select",
@@ -168,11 +180,28 @@ export default function Viewer({
     return 800;
   });
   const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+  const visiblePageRef = useRef<number>(1);
+  const programmaticScrollTargetRef = useRef<{
+    page: number;
+    expiresAt: number;
+  } | null>(null);
 
-  const scrollToPage = useCallback((page: number) => {
-    const el = pageRefs.current.get(page);
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, []);
+  const scrollToPage = useCallback(
+    (page: number) => {
+      programmaticScrollTargetRef.current = {
+        page,
+        expiresAt: Date.now() + 700,
+      };
+      if (page !== visiblePageRef.current) {
+        visiblePageRef.current = page;
+        setVisiblePage(page);
+        onVisiblePageChange?.(page);
+      }
+      const el = pageRefs.current.get(page);
+      if (el) el.scrollIntoView({ behavior: "auto", block: "start" });
+    },
+    [onVisiblePageChange],
+  );
 
   const {
     searchQuery,
@@ -235,7 +264,6 @@ export default function Viewer({
     };
   }, []);
 
-  const visiblePageRef = useRef<number>(1);
   useEffect(() => {
     if (numPages === 0) return;
     const container = scrollContainerRef.current;
@@ -251,10 +279,20 @@ export default function Viewer({
             best = { page, ratio: entry.intersectionRatio };
           }
         }
-        if (best && best.ratio > 0 && best.page !== visiblePageRef.current) {
-          visiblePageRef.current = best.page;
-          setVisiblePage(best.page);
-          onVisiblePageChange?.(best.page);
+        if (best && best.ratio > 0) {
+          const pendingScroll = programmaticScrollTargetRef.current;
+          if (pendingScroll) {
+            if (best.page === pendingScroll.page || Date.now() >= pendingScroll.expiresAt) {
+              programmaticScrollTargetRef.current = null;
+            } else {
+              return;
+            }
+          }
+          if (best.page !== visiblePageRef.current) {
+            visiblePageRef.current = best.page;
+            setVisiblePage(best.page);
+            onVisiblePageChange?.(best.page);
+          }
         }
       },
       { root: container, threshold: [0, 0.25, 0.5, 0.75, 1] },
@@ -262,7 +300,7 @@ export default function Viewer({
 
     pageRefs.current.forEach((el) => obs.observe(el));
     return () => obs.disconnect();
-  }, [numPages, onVisiblePageChange]);
+  }, [numPages, onVisiblePageChange, viewMode]);
 
   const onDocumentLoadSuccess = (
     doc: PdfSearchDocumentProxy & {
@@ -275,6 +313,94 @@ export default function Viewer({
     setNumPages(doc.numPages);
     onTotalPagesChange?.(doc.numPages);
     setDocError(null);
+
+    const outlineDoc = doc as unknown as {
+      getOutline?: () => Promise<
+        Array<{
+          title?: string;
+          dest?: string | Array<unknown> | null;
+          items?: Array<unknown>;
+        }> | null
+      >;
+      getDestination?: (dest: string) => Promise<Array<unknown> | null>;
+      getPageIndex?: (ref: unknown) => Promise<number>;
+    };
+
+    if (onOutlineLoad && typeof outlineDoc.getOutline === "function") {
+      void (async () => {
+        try {
+          const rawOutline = await outlineDoc.getOutline!();
+          if (!Array.isArray(rawOutline) || rawOutline.length === 0) {
+            onOutlineLoad([]);
+            return;
+          }
+          const resolvePageNum = async (
+            dest: string | Array<unknown> | null | undefined,
+          ): Promise<number> => {
+            if (!dest) return 1;
+            try {
+              const destArray =
+                typeof dest === "string"
+                  ? typeof outlineDoc.getDestination === "function"
+                    ? await outlineDoc.getDestination(dest)
+                    : null
+                  : Array.isArray(dest)
+                    ? dest
+                    : null;
+              if (!destArray || destArray.length === 0) return 1;
+              const pageRef = destArray[0];
+              if (typeof pageRef === "number") {
+                return Math.max(1, pageRef + 1);
+              }
+              if (pageRef && typeof outlineDoc.getPageIndex === "function") {
+                const idx = await outlineDoc.getPageIndex(pageRef);
+                return Math.max(1, idx + 1);
+              }
+            } catch {
+              // Ignore destination resolution error
+            }
+            return 1;
+          };
+
+          const mapNodes = async (
+            nodes: Array<{
+              title?: string;
+              dest?: string | Array<unknown> | null;
+              items?: Array<unknown>;
+            }>,
+          ): Promise<PdfOutlineItem[]> => {
+            const mapped: PdfOutlineItem[] = [];
+            for (const node of nodes) {
+              const title = (node.title || "").trim();
+              if (!title) continue;
+              const pageNumber = await resolvePageNum(node.dest);
+              const children =
+                Array.isArray(node.items) && node.items.length > 0
+                  ? await mapNodes(
+                      node.items as Array<{
+                        title?: string;
+                        dest?: string | Array<unknown> | null;
+                        items?: Array<unknown>;
+                      }>,
+                    )
+                  : undefined;
+              mapped.push({
+                title,
+                pageNumber,
+                dest: node.dest,
+                items: children,
+              });
+            }
+            return mapped;
+          };
+
+          const resolvedOutline = await mapNodes(rawOutline);
+          onOutlineLoad(resolvedOutline);
+        } catch {
+          onOutlineLoad([]);
+        }
+      })();
+    }
   };
 
   const onDocumentLoadError = () => {
@@ -300,9 +426,9 @@ export default function Viewer({
 
       const tryFocusAnnotation = (): boolean => {
         if (cancelled) return false;
-        const rootNode: ParentNode = scrollContainerRef.current ?? document;
-        const el = (rootNode.querySelector(selector) ??
-          document.querySelector(selector)) as HTMLElement | null;
+        const container = scrollContainerRef.current;
+        if (!container) return false;
+        const el = container.querySelector(selector) as HTMLElement | null;
         if (el) {
           el.scrollIntoView({ behavior: "smooth", block: "center" });
           observer?.disconnect();
@@ -313,7 +439,7 @@ export default function Viewer({
       };
 
       if (!tryFocusAnnotation() && typeof MutationObserver !== "undefined") {
-        const observeTarget = scrollContainerRef.current ?? document.body;
+        const observeTarget = scrollContainerRef.current;
         if (observeTarget) {
           observer = new MutationObserver(() => {
             tryFocusAnnotation();
@@ -342,14 +468,35 @@ export default function Viewer({
     }
   }, [targetPage, scrollToPage]);
 
-  const currentZoom = zoomProp ?? 1.0;
+  const currentZoom = Math.min(3.0, Math.max(0.25, zoomProp ?? 1.0));
+  const normalizedFitMode =
+    fitMode === "fit-page" || fitMode === "auto" || fitMode === "custom"
+      ? fitMode
+      : "fit-width";
   const effectivePageWidth = computeEffectivePdfPageWidth({
     containerWidth,
     containerHeight,
     zoom: currentZoom,
-    fitMode,
+    fitMode: normalizedFitMode,
     viewMode,
   });
+
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el || !onZoomChange) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      const delta = e.deltaY < 0 ? 0.15 : -0.15;
+      const nextZoom = Math.min(3.0, Math.max(0.25, +(currentZoom + delta).toFixed(2)));
+      onSelectFitMode?.("custom");
+      onZoomChange(nextZoom);
+    };
+
+    el.addEventListener("wheel", handleWheel, { passive: false });
+    return () => el.removeEventListener("wheel", handleWheel);
+  }, [currentZoom, onZoomChange, onSelectFitMode]);
 
   const spreadPairs = useMemo(() => computeSpreadPairs(numPages), [numPages]);
 
@@ -432,14 +579,14 @@ export default function Viewer({
   };
 
   return (
-    <div className="relative flex-1 flex flex-col min-w-0 h-full overflow-hidden transition-colors bg-background">
+    <div className="relative flex-1 flex flex-col min-w-0 h-full overflow-hidden transition-colors bg-white dark:bg-background">
       <div
         ref={scrollContainerRef}
         onMouseUp={interaction.handleMouseUpCombined}
         onMouseDown={interaction.handleMouseDown}
         onMouseMove={interaction.handleMouseMove}
         className={cn(
-          "flex-1 w-full relative",
+          "flex-1 w-full relative bg-white dark:bg-background",
           currentZoom > 1.0
             ? "overflow-auto"
             : "overflow-y-auto overflow-x-hidden",
@@ -490,6 +637,13 @@ export default function Viewer({
           <Document
             file={blobUrl}
             options={SHARED_PDF_OPTIONS}
+            externalLinkTarget="_blank"
+            externalLinkRel="noopener noreferrer"
+            onItemClick={({ pageNumber }) => {
+              if (pageNumber >= 1) {
+                scrollToPage(pageNumber);
+              }
+            }}
             className="w-full min-w-full flex flex-col items-center"
             onLoadSuccess={onDocumentLoadSuccess}
             onLoadError={onDocumentLoadError}
@@ -534,6 +688,7 @@ export default function Viewer({
             onUpdateAnnotation={onUpdateAnnotation}
             onDeleteAnnotation={onDeleteAnnotation}
             onAddToNote={onAddToNote}
+            onAskAi={onAskAi}
             onUpdateTooltip={interaction.setActiveHighlightTooltip}
             onClose={() => interaction.setActiveHighlightTooltip(null)}
           />
@@ -551,6 +706,7 @@ export default function Viewer({
             visiblePage={visiblePage}
             onAnnotate={onAnnotate}
             onAddToNote={onAddToNote}
+            onAskAi={onAskAi}
             onClose={() => interaction.setShowFloatingMenu(false)}
           />
         )}

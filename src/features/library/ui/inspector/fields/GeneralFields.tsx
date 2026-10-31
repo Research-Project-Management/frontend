@@ -32,18 +32,6 @@ export interface GeneralFieldsProps {
   onUpdateItem?: (data: Partial<Item>) => void;
 }
 
-/**
- * Builds coupled top-level and `extraFields` updates for Inspector field edits and clears (`""`),
- * delegating directly to the canonical `buildInspectorFieldPatch` engine in `item-field-schema.ts`.
- */
-export function buildCoupledFieldUpdates(
-  item: Partial<Item> | Record<string, unknown>,
-  fieldKey: string,
-  value: string,
-): Partial<Item> & Record<string, unknown> {
-  return buildInspectorFieldPatch(item as Partial<Item>, fieldKey, value);
-}
-
 export function GeneralFields({
   item,
   onUpdateItem,
@@ -74,7 +62,7 @@ export function GeneralFields({
     if (!trimmed) {
       return;
     }
-    const patch = buildCoupledFieldUpdates(
+    const patch = buildInspectorFieldPatch(
       item,
       mappedTitleKey || "title",
       trimmed,

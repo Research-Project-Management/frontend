@@ -212,8 +212,8 @@ function prepareSortKey(item: Item, column: string, isDateColumn: boolean): Prep
 export function sortLibraryItems(
   items: Item[],
   column: string | null,
-  direction: 'asc' | 'desc',
-  serverSorted: boolean,
+  direction: 'asc' | 'desc' = 'asc',
+  serverSorted = false,
 ): Item[] {
   if (items.length <= 1) return items;
 

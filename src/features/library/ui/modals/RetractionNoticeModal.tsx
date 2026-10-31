@@ -38,7 +38,7 @@ export function RetractionNoticeModal({
   );
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => { if (isDismissing) return; onOpenChange(v); }}>
       <DialogContent className="sm:max-w-[480px] p-6 gap-4">
         {/* ── Header: Clean & focused, modal title & X icon only, no border line ── */}
         <DialogHeader className="p-0 pb-0.5 text-left">
@@ -152,8 +152,12 @@ export function RetractionNoticeModal({
               size="sm"
               disabled={isDismissing}
               onClick={async () => {
-                await onDismiss();
-                onOpenChange(false);
+                try {
+                  await onDismiss();
+                  onOpenChange(false);
+                } catch {
+                  // Handled by caller mutation error toast
+                }
               }}
               className="text-12 font-medium h-8 px-3 text-destructive hover:bg-destructive/10 hover:text-destructive cursor-pointer"
             >
@@ -164,6 +168,7 @@ export function RetractionNoticeModal({
             type="button"
             variant="outline"
             size="sm"
+            disabled={isDismissing}
             onClick={() => onOpenChange(false)}
             className="text-12 font-medium h-8 px-4 cursor-pointer"
           >

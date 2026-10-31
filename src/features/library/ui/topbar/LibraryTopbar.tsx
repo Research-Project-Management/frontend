@@ -111,7 +111,11 @@ function BreadcrumbChevronSwitcher({
       >
         <div
           className="flex items-center gap-2 px-2 h-8 mb-1 rounded-md bg-muted/60 border border-border/60"
-          onKeyDown={(e) => e.stopPropagation()}
+          onKeyDown={(e) => {
+            if (e.key !== "Escape" && e.key !== "ArrowDown" && e.key !== "ArrowUp") {
+              e.stopPropagation();
+            }
+          }}
         >
           <Search className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.5} />
           <input
@@ -298,7 +302,6 @@ export function LibraryTopbar({
   const Icon =
     propIcon !== undefined ? propIcon : isTrash ? Trash2 : LibraryIcon;
 
-  const directFileInputRef = useRef<HTMLInputElement>(null);
   const directFolderInputRef = useRef<HTMLInputElement>(null);
 
   const handleAddFileClick = () => {
@@ -589,22 +592,6 @@ export function LibraryTopbar({
           </div>
         )}
 
-        {/* Hidden Direct File Input */}
-        <input
-          ref={directFileInputRef}
-          type="file"
-          accept=".pdf,application/pdf,.bib,.bibtex,.ris,.json,.csl.json,.xml,.mods,.rdf,.nbib,.medline,.csv,text/plain"
-          multiple
-          className="hidden"
-          onChange={(e) => {
-            const files = Array.from(e.target.files || []);
-            if (files.length > 0) {
-              onDirectFilesUpload?.(files);
-            }
-            e.target.value = "";
-          }}
-        />
-
         {/* Hidden Direct Folder Input */}
         <input
           ref={directFolderInputRef}
@@ -631,6 +618,3 @@ export function LibraryTopbar({
     </header>
   );
 }
-
-export { LibraryTopbar as Topbar };
-export default LibraryTopbar;

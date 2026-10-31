@@ -217,9 +217,13 @@ export function useNotes(scopeId?: string, itemId?: string) {
   const extractFromAnnotationsMutation = useMutation({
     mutationFn: (options?: {
       noteId?: string;
-      tagColor?: boolean;
+      attachmentId?: string;
+      annotationIds?: string[];
+      tagColor?: boolean | string;
       tagColorName?: string;
       includeComments?: boolean;
+      protocol?: 'flux' | 'web';
+      webBaseUrl?: string;
     }) => {
       if (!itemId) {
         return Promise.reject(new DOMException('itemId is required to extract annotations', 'InvalidStateError'));

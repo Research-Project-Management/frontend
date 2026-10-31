@@ -33,6 +33,7 @@ export interface TextSelectionToolbarProps {
     pageNumber?: number,
     annotationId?: string,
   ) => void;
+  onAskAi?: (selectedText: string, pageNumber?: number) => void;
   onClose: () => void;
 }
 
@@ -47,6 +48,7 @@ export function TextSelectionToolbar({
   visiblePage,
   onAnnotate,
   onAddToNote,
+  onAskAi,
   onClose,
 }: TextSelectionToolbarProps) {
   const [copiedSelection, setCopiedSelection] = useState(false);
@@ -75,7 +77,7 @@ export function TextSelectionToolbar({
 
   const handleCopyCitation = async () => {
     if (!paper || !selectedText) return;
-    const citation = formatInTextCitation(paper, visiblePage);
+    const citation = formatInTextCitation(paper, selectedPageNum || visiblePage);
     const citeText = `${citation} "${selectedText}"`;
     const ok = await copyToClipboard(citeText);
     if (ok) {
@@ -90,7 +92,7 @@ export function TextSelectionToolbar({
 
   return (
     <div
-      className="pdf-floating-selection-menu absolute z-50 flex items-center gap-1.5 bg-background text-foreground px-2 py-1 rounded-md border border-border shadow-raised-200 duration-150 select-none"
+      className="pdf-floating-selection-menu absolute z-50 flex items-center gap-1 whitespace-nowrap w-max bg-background text-foreground px-2 py-1 rounded-md border border-border shadow-raised-200 duration-150 select-none"
       style={{
         top: `${menuPosition.top}px`,
         left: `${menuPosition.left}px`,
@@ -100,7 +102,7 @@ export function TextSelectionToolbar({
     >
       {/* 8 Standard Highlight Color Dots */}
       {onAnnotate && (
-        <div className="flex items-center gap-1 pr-1.5 border-r border-border">
+        <div className="flex items-center gap-1 pr-1.5 border-r border-border shrink-0">
           {ANNOTATION_PALETTE_COLORS.map((c) => {
             const isSelected = activeColor === c.hex;
             return (
@@ -143,7 +145,7 @@ export function TextSelectionToolbar({
             onClose();
             window.getSelection()?.removeAllRanges();
           }}
-          className="flex items-center gap-1 h-7 px-2 rounded-md text-12 font-medium hover:bg-muted text-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-1.5 md:before:hidden"
+          className="flex items-center gap-1 h-7 px-2 rounded-md text-12 font-medium whitespace-nowrap shrink-0 hover:bg-muted text-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-1.5 md:before:hidden"
           title="Add selected text to Note"
         >
           <StickyNote
@@ -160,7 +162,7 @@ export function TextSelectionToolbar({
           type="button"
           aria-label="Copy in-text citation"
           onClick={handleCopyCitation}
-          className="flex items-center gap-1 h-7 px-2 rounded-md text-12 font-medium hover:bg-muted text-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-1.5 md:before:hidden"
+          className="flex items-center gap-1 h-7 px-2 rounded-md text-12 font-medium whitespace-nowrap shrink-0 hover:bg-muted text-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-1.5 md:before:hidden"
           title="Copy in-text citation: (Author, Year, p. X)"
         >
           {copiedCitation ? (
@@ -183,7 +185,7 @@ export function TextSelectionToolbar({
         type="button"
         aria-label="Copy selected text"
         onClick={handleCopySelection}
-        className="flex items-center gap-1 h-7 px-2 rounded-md text-12 font-medium hover:bg-muted text-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-1.5 md:before:hidden"
+        className="flex items-center gap-1 h-7 px-2 rounded-md text-12 font-medium whitespace-nowrap shrink-0 hover:bg-muted text-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-1.5 md:before:hidden"
         title="Copy text"
       >
         {copiedSelection ? (
@@ -196,6 +198,29 @@ export function TextSelectionToolbar({
         )}
         <span>{copiedSelection ? "Copied" : "Copy"}</span>
       </button>
+
+      {/* Ask AI Action */}
+      {onAskAi && (
+        <button
+          type="button"
+          aria-label="Ask AI about selected text"
+          onClick={() => {
+            onAskAi(selectedText, selectedPageNum || visiblePage);
+            onClose();
+            window.getSelection()?.removeAllRanges();
+          }}
+          className="flex items-center gap-1.5 h-7 px-2 rounded-md text-12 font-medium whitespace-nowrap shrink-0 hover:bg-muted text-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-1.5 md:before:hidden"
+          title="Ask AI about selected text"
+        >
+          <img
+            src="/Chat.svg"
+            alt=""
+            aria-hidden="true"
+            className="size-3.5 rounded-full object-contain shrink-0"
+          />
+          <span>Ask AI</span>
+        </button>
+      )}
     </div>
   );
 }

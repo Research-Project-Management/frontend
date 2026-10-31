@@ -21,7 +21,10 @@ export const collectionSchema = z.object({
   updatedAt: z.string().optional().default(''),
 });
 
-export type Collection = z.infer<typeof collectionSchema>;
+export type Collection = z.input<typeof collectionSchema> & {
+  id: string;
+  name: string;
+};
 
 export interface CollectionInput {
   name: string;

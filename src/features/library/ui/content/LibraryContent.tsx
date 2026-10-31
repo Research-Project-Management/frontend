@@ -21,7 +21,6 @@ import { useLibraryUIStore } from '@/features/library/core/store/library-ui.stor
 import { useProcessModalStore } from '@/features/library/core/store/process-modal.store';
 import { createProvisionalUploadItem } from '@/features/library/domain/metadata';
 import { useQuickCopyCoordinator } from '@/features/library/core/coordinator/quick-copy.coordinator';
-import { useLibraryBatchCoordinator } from '@/features/library/core/coordinator/batch-action.coordinator';
 import { useLibraryNavigation } from '@/features/library/core/coordinator/navigation.coordinator';
 import {
   type Item,
@@ -76,7 +75,7 @@ interface LibraryContentProps {
   onSelectedDuplicateGroupChange?: (
     group: DuplicateGroup | null,
     groupKey: string | null,
-    dismissGroup: (groupKey: string) => void,
+    dismissGroup: (groupKey: string) => Promise<void> | void,
     openMerge: (group: DuplicateGroup, groupKey?: string) => void,
   ) => void;
 }

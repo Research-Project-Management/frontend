@@ -102,7 +102,7 @@ export function InspectorTabs({
       )}
 
       {/* Middle: Vertical Section Icons with Tooltips */}
-      <div className={cn("flex flex-col items-center gap-1 w-full px-1", hideRailToggle ? "pt-2" : "pt-1.5")}>
+      <div className={cn("flex flex-col items-center gap-1 w-full px-1", hideRailToggle ? "pt-1" : "pt-1.5")}>
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = isInspectorOpen && activeTab === tab.id;
@@ -119,15 +119,15 @@ export function InspectorTabs({
                     onTabChange(tab.id);
                   }}
                   className={cn(
-                    'relative size-8 flex items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary transition-all cursor-pointer before:absolute before:-inset-1.5 md:before:hidden',
+                    'relative size-8 flex items-center justify-center rounded-md outline-none focus-visible:ring-1 focus-visible:ring-primary transition-colors cursor-pointer before:absolute before:-inset-1.5 md:before:hidden',
                     isActive
-                      ? 'bg-muted text-foreground font-semibold ring-1 ring-border shadow-xs'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+                      ? 'bg-muted text-foreground font-semibold'
+                      : 'text-foreground hover:bg-muted font-normal',
                   )}
                   aria-label={tab.label}
                   aria-current={isActive ? 'true' : undefined}
                 >
-                  <Icon className="size-4 shrink-0" strokeWidth={1.5} />
+                  <Icon className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="left" sideOffset={6} className="text-11">

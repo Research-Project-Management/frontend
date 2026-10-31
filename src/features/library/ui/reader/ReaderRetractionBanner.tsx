@@ -3,7 +3,6 @@
 import React from 'react';
 import { ShieldAlert, ExternalLink } from 'lucide-react';
 import { safeHttpUrl } from '@/features/library/domain/retraction';
-import type { Item, RetractionDetails } from '@/features/library/domain/types/library.types';
 
 export interface ReaderRetractionBannerProps {
   paper?: {

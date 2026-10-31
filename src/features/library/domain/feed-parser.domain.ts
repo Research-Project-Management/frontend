@@ -124,7 +124,7 @@ export interface ParsedFeedEntry {
   issue?: string;
   pages?: string;
   abstract?: string;
-  categories: string[];
+  categories?: string[];
   comment?: string;
   rights?: string;
   isRead?: boolean;

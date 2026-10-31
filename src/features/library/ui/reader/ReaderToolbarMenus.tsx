@@ -210,7 +210,7 @@ export function ReaderAppearanceMenu({
   rotation = 0,
   onRotate,
 }: ReaderAppearanceMenuProps) {
-  const applyTheme = (mode: "normal" | "sepia" | "dark") => {
+  const applyTheme = (mode: "normal" | "sepia" | "dark" | "invert") => {
     if (onSelectThemeMode) {
       onSelectThemeMode(mode);
     } else if (onToggleThemeMode) {
@@ -307,7 +307,7 @@ export function ReaderAppearanceMenu({
         )}
 
         {/* Group 3: Reading Theme */}
-        {onToggleThemeMode && (
+        {(onToggleThemeMode || onSelectThemeMode) && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="text-10 font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">
@@ -323,6 +323,7 @@ export function ReaderAppearanceMenu({
                   ["normal", "Light"],
                   ["sepia", "Sepia"],
                   ["dark", "Dark"],
+                  ["invert", "Invert"],
                 ] as const
               ).map(([mode, label]) => (
                 <button

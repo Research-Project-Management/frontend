@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback } from 'react';
-import { openInNewTab } from '@/features/library/core/coordinator/browser-io.helpers';
+import { openInNewTab, buildReaderPaperUrl } from '@/features/library/core/coordinator/browser-io.helpers';
 import {
   Paperclip,
   StickyNote,
@@ -52,6 +52,7 @@ export interface ItemTableRowProps {
   onMoveToCollection?: (itemId: string, collectionId: string) => void;
   onDetachFromCollection?: (id: string) => void;
   onOpenItem?: (id: string) => void;
+  onOpenInNewTab?: (id: string) => void;
   isLast?: boolean;
 }
 
@@ -82,6 +83,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
   onMoveToCollection,
   onDetachFromCollection,
   onOpenItem,
+  onOpenInNewTab,
 }: ItemTableRowProps) {
 
 
@@ -89,7 +91,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
   const isSelected = useIsItemSelected(item.id);
   const isRowActive = useIsActiveItem(item.id);
   const toggleSelect = useLibraryUIStore((s) => s.toggleSelect);
-  const openModal = useLibraryUIStore((s) => s.openModal);
+  const resolveDragItemIds = useLibraryUIStore((s) => s.resolveDragItemIds);
 
   const { cleanTitle, formattedAuthors, authorTooltip, displayYear, venueText } = React.useMemo(() => {
     const title = cleanAcademicText(getItemDisplayTitle(item) || item.title) || 'Untitled';
@@ -199,6 +201,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
       onMoveToCollection={!isProcessing && onMoveToCollection ? handleMoveToCollection : undefined}
       onDetachFromCollection={!isProcessing && onDetachFromCollection ? () => onDetachFromCollection(item.id) : undefined}
       onOpenItem={onOpenItem}
+      onOpenInNewTab={onOpenInNewTab}
     >
       <tr
         draggable={!isProcessing}
@@ -207,10 +210,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
         onDragStart={(e) => {
           if (isProcessing) return;
           // Defer reads: read snapshot only on drag event, avoiding re-renders during selection
-          const currentSelectedIds = useLibraryUIStore.getState().selectedIds;
-          const idsToDrag = currentSelectedIds.has(item.id)
-            ? Array.from(currentSelectedIds)
-            : [item.id];
+          const idsToDrag = resolveDragItemIds(item.id);
           e.dataTransfer.setData(
             'application/x-flux-items',
             JSON.stringify({ ids: idsToDrag }),
@@ -230,7 +230,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
             if (onOpenItem) {
               onOpenItem(item.id);
             } else {
-              openInNewTab(`/library/papers/${item.id}`);
+              openInNewTab(buildReaderPaperUrl(item.id, { projectId: item.projectId ? String(item.projectId) : scopeId }));
             }
           } else {
             toast.info('Restore this reference to open in reader', {
@@ -337,7 +337,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
                           if (onOpenItem) {
                             onOpenItem(item.id);
                           } else {
-                            openInNewTab(`/library/papers/${item.id}`);
+                            openInNewTab(buildReaderPaperUrl(item.id, { projectId: item.projectId ? String(item.projectId) : scopeId }));
                           }
                         }}
                         className="inline-flex items-center justify-center size-5 rounded-sm text-muted-foreground hover:text-foreground hover:bg-background/80 transition-colors cursor-pointer shrink-0 outline-none"
@@ -501,6 +501,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
             onMoveToCollection={!isProcessing && onMoveToCollection ? handleMoveToCollection : undefined}
             onDetachFromCollection={!isProcessing && onDetachFromCollection ? () => onDetachFromCollection(item.id) : undefined}
             onOpenItem={onOpenItem}
+            onOpenInNewTab={onOpenInNewTab}
           />
         </td>
       </tr>

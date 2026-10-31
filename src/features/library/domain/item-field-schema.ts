@@ -382,14 +382,3 @@ export function buildInspectorFieldPatch(
 
   return patch;
 }
-
-/**
- * Canonical coupled-field update builder for Inspector edits (alias for `buildInspectorFieldPatch`).
- */
-export function buildCoupledFieldUpdates(
-  item: Partial<Item> | Record<string, unknown>,
-  fieldKey: string,
-  value: string,
-): Partial<Item> & Record<string, unknown> {
-  return buildInspectorFieldPatch(item, fieldKey, value);
-}

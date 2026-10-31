@@ -48,8 +48,6 @@ export const UNREAD_RETENTION_OPTIONS: RetentionOption[] = [
   { value: 0, label: 'Never' },
 ];
 
-export const RETENTION_OPTIONS: RetentionOption[] = UNREAD_RETENTION_OPTIONS;
-
 export const DEFAULT_ACADEMIC_FEEDS: SavedFeedSubscription[] = [
   {
     id: 'arxiv-cs-ai',

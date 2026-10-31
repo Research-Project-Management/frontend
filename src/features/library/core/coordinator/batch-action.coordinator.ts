@@ -98,7 +98,7 @@ export function useLibraryBatchCoordinator({
   const isDuplicatesView = view === 'duplicates';
   const isUnfiledView = view === 'unfiled';
   const isStarredView = view === 'starred';
-  const isMyPublicationsView = view === 'my-publications' || view === 'publications';
+  const isMyPublicationsView = view === 'my-publications';
   const isRetractedView = view === 'retracted';
 
   // Store Selection Actions

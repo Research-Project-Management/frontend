@@ -24,10 +24,11 @@ const FeedItemInspector = dynamic(
   { ssr: false }
 );
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import '@/features/library/core/adapters/schema-storage.adapter';
 import {
   useLibraryCommandStore,
-  createMergeDuplicatesCommand,
 } from '@/features/library/core/manager/library-command.manager';
+import { executeDuplicateMergeWithCommand } from '@/features/library/core/coordinator/curation.coordinator';
 import { useFeedsStore, isFeedEntryInLibrary } from '@/features/library/core/store/feeds.store';
 import { useLibraryPermissions } from '@/features/library/core/coordinator/permissions.coordinator';
 import { useProcessModalStore } from '@/features/library/core/store/process-modal.store';
@@ -41,7 +42,6 @@ import {
   useCreateLibraryItemMutation,
   useBatchRestoreItemsMutation,
   useUpdateLibraryItemMutation,
-  useLibraryItemsQuery,
   useLibraryDeltaSync,
   useLibraryCacheSynchronizer,
 } from '@/features/library/sdk/queries/catalog.queries';
@@ -53,7 +53,8 @@ import {
 import { formatItemTypeLabel } from '@/features/library/domain/metadata';
 import { parseEmojiPrefix } from '@/features/library/domain/academic-text';
 import { getCollectionBreadcrumbPath } from '@/features/library/domain/collection-tree';
-import { executeSaveFeedEntryToLibrary, type ParsedFeedEntry } from '@/features/library/domain/feed-parser.domain';
+import { type ParsedFeedEntry } from '@/features/library/domain/feed-parser.domain';
+import { executeSaveFeedEntryWithFeedback } from '@/features/library/core/coordinator/feed-item.coordinator';
 import type { Item, DuplicateGroup, Collection } from '@/features/library/domain/types/library.types';
 
 interface LibraryPageProps {
@@ -66,13 +67,11 @@ interface LibraryPageProps {
 
 const FILTER_TITLE_MAP: Record<string, string> = {
   'my-publications': 'My Publications',
-  publications: 'My Publications',
   retracted: 'Retracted Items',
   starred: 'Starred Items',
   unfiled: 'Unfiled Items',
   trash: 'Trash',
   duplicates: 'Duplicate Items',
-  recent: 'Recently Read',
   'recently-read': 'Recently Read',
   feed: 'Feeds',
 };
@@ -82,10 +81,8 @@ const FILTER_ICON_MAP: Record<string, React.ComponentType<{ className?: string; 
   unfiled: Inbox,
   duplicates: Files,
   'my-publications': Award,
-  publications: Award,
   retracted: ShieldAlert,
   trash: Trash2,
-  recent: History,
   'recently-read': History,
   feed: Rss,
 };
@@ -113,6 +110,9 @@ export function ModernLibraryPage({
   const isInspectorOpen = useLibraryUIStore((s) => s.isInspectorOpen);
   const setIsInspectorOpen = useLibraryUIStore((s) => s.setIsInspectorOpen);
   const displayOptions = useLibraryUIStore((s) => s.displayOptions);
+  const setCommandScope = useLibraryCommandStore((s) => s.setScope);
+  const clearCommandHistory = useLibraryCommandStore((s) => s.clearHistory);
+  const executeCommand = useLibraryCommandStore((s) => s.executeCommand);
   const startBatchUpload = useProcessModalStore((s) => s.startBatchUpload);
   const feeds = useFeedsStore((s) => s.feeds);
   const loadFeeds = useFeedsStore((s) => s.loadFeeds);
@@ -241,14 +241,14 @@ export function ModernLibraryPage({
 
   const [selectedDuplicateGroup, setSelectedDuplicateGroup] = useState<DuplicateGroup | null>(null);
   const [selectedDuplicateGroupKey, setSelectedDuplicateGroupKey] = useState<string | null>(null);
-  const dismissDuplicateGroupRef = useRef<((groupKey: string) => void) | null>(null);
+  const dismissDuplicateGroupRef = useRef<((groupKey: string) => Promise<void> | void) | null>(null);
   const openMergeModalRef = useRef<((group: DuplicateGroup, groupKey?: string) => void) | null>(null);
 
   // Deep linking & Scope transition guard: prevent old scope's URL ?item= or duplicate group from leaking into new scope
   const prevScopeIdRef = React.useRef<string>(effectiveScopeId);
   const lastConsumedItemIdRef = React.useRef<string | null>(null);
   React.useEffect(() => {
-    useLibraryCommandStore.getState().setScope(effectiveScopeId);
+    setCommandScope(effectiveScopeId);
     const scopeChanged = prevScopeIdRef.current !== effectiveScopeId;
     if (scopeChanged) {
       prevScopeIdRef.current = effectiveScopeId;
@@ -264,7 +264,7 @@ export function ModernLibraryPage({
       selectOnly(selectedId);
       setIsInspectorOpen(true);
     }
-  }, [effectiveScopeId, nav.selectedItemId, setActiveItem, selectOnly, setIsInspectorOpen]);
+  }, [effectiveScopeId, nav.selectedItemId, setActiveItem, selectOnly, setIsInspectorOpen, setCommandScope]);
 
   // Breadcrumb navigation with full ancestor chain
   const breadcrumbs = useMemo<BreadcrumbItem[] | undefined>(() => {
@@ -413,7 +413,7 @@ export function ModernLibraryPage({
       onConfirm: async () => {
         try {
           await emptyTrash();
-          useLibraryCommandStore.getState().clear();
+          clearCommandHistory();
           clearSelection();
         } catch (err: unknown) {
           toast.error('Failed to empty trash', { id: 'empty-trash-error' });
@@ -459,7 +459,7 @@ export function ModernLibraryPage({
     (
       group: DuplicateGroup | null,
       groupKey: string | null,
-      dismissGroup: (groupKey: string) => void,
+      dismissGroup: (groupKey: string) => Promise<void> | void,
       openMerge: (group: DuplicateGroup, groupKey?: string) => void,
     ) => {
       setSelectedDuplicateGroup(group);
@@ -481,72 +481,44 @@ export function ModernLibraryPage({
       mergedFields: Partial<Item>,
       duplicateIdsToDelete: string[],
     ) => {
-      const cachedPrimary = resolveCachedItem(masterPaper.id, effectiveScopeId);
-      const snapshotPrimary: Item = cachedPrimary
-        ? { ...masterPaper, ...cachedPrimary }
-        : masterPaper;
-
-      await useLibraryCommandStore.getState().executeCommand(
-        createMergeDuplicatesCommand({
-          primaryItem: snapshotPrimary,
-          duplicateIdsToDelete,
-          mergedFields: mergedFields as Record<string, unknown>,
-          mergeMutation: { mutateAsync: mergeMutation.mutateAsync },
-          restoreMutation: { mutateAsync: restoreItemsMutation.mutateAsync },
-          updateItemMutation: {
-            mutateAsync: ({ itemId, data, silent }) =>
-              updateItemMutation.mutateAsync({ itemId, data, silent }),
-          },
-          onUndone: () => {
-            void invalidateScopeItemsAndCounts(effectiveScopeId);
-          },
-        }),
-        { silentToast: false },
-      );
+      await executeDuplicateMergeWithCommand({
+        masterPaper,
+        mergedFields: mergedFields as Record<string, unknown>,
+        duplicateIdsToDelete,
+        effectiveScopeId,
+        resolveCachedItem,
+        executeCommand,
+        mergeMutation,
+        restoreMutation: restoreItemsMutation,
+        updateItemMutation,
+        invalidateScopeItemsAndCounts,
+      });
     },
     [
       effectiveScopeId,
+      executeCommand,
       invalidateScopeItemsAndCounts,
-      mergeMutation.mutateAsync,
+      mergeMutation,
       resolveCachedItem,
-      restoreItemsMutation.mutateAsync,
+      restoreItemsMutation,
       updateItemMutation,
     ],
-  );
-
-  const { data: feedLibraryData } = useLibraryItemsQuery(
-    effectiveScopeId,
-    { limit: 100, fields: ['id', 'title', 'doi', 'url'] },
-    { enabled: effectiveView === 'feed' },
   );
 
   const { mutateAsync: ingestFeedItem } = useIngestMutation(effectiveScopeId);
 
   const handleSaveFeedItemFromInspector = async (entry: ParsedFeedEntry, targetColId?: string) => {
-    markEntryAsRead(entry.id);
-    setEntrySaving(entry.id, true);
-    try {
-      await executeSaveFeedEntryToLibrary({
-        entry,
-        scopeId: effectiveScopeId,
-        targetCollectionId: targetColId,
-        createItem,
-        ingestItem: ingestFeedItem,
-      });
-      markEntrySaved(entry.id);
-      const colName = targetColId
-        ? collectionList.find((c) => c.id === targetColId)?.name
-        : undefined;
-      toast.success(colName ? `Saved to "${colName}"` : 'Saved to Library', {
-        description: `"${entry.title.slice(0, 48)}..." added to your collection.`,
-      });
-    } catch (err: unknown) {
-      toast.error('Failed to save to library', {
-        description: err instanceof Error ? err.message : 'Please try again.',
-      });
-    } finally {
-      setEntrySaving(entry.id, false);
-    }
+    await executeSaveFeedEntryWithFeedback({
+      entry,
+      scopeId: effectiveScopeId,
+      targetCollectionId: targetColId,
+      createItem,
+      ingestItem: ingestFeedItem,
+      collections: collectionList,
+      markEntryAsRead,
+      setEntrySaving,
+      markEntrySaved,
+    });
   };
 
   const savedSearchTitle = currentSavedSearch
@@ -640,7 +612,6 @@ export function ModernLibraryPage({
             <DuplicateMergeInspector
               items={selectedDuplicateGroupItems}
               recommendedMasterId={selectedDuplicateGroup?.recommendedMasterId}
-              scopeId={effectiveScopeId}
               canEdit={canEdit}
               onOpenModal={() => {
                 if (selectedDuplicateGroup) {
@@ -651,9 +622,9 @@ export function ModernLibraryPage({
                 }
               }}
               onMerge={handleExecuteDuplicateMerge}
-              onDismiss={() => {
+              onDismiss={async () => {
                 if (selectedDuplicateGroupKey) {
-                  dismissDuplicateGroupRef.current?.(selectedDuplicateGroupKey);
+                  await dismissDuplicateGroupRef.current?.(selectedDuplicateGroupKey);
                 }
                 setSelectedDuplicateGroup(null);
                 setSelectedDuplicateGroupKey(null);
@@ -669,7 +640,7 @@ export function ModernLibraryPage({
                 collections={collectionList}
                 isRead={selectedFeedEntry ? readEntryIds.has(selectedFeedEntry.id) : false}
                 isSaving={selectedFeedEntry ? savingEntryIds.includes(selectedFeedEntry.id) : false}
-                isSaved={isFeedEntryInLibrary(selectedFeedEntry, savedEntryIds, feedLibraryData?.items)}
+                isSaved={isFeedEntryInLibrary(selectedFeedEntry, savedEntryIds)}
                 onToggleRead={toggleEntryRead}
                 onSave={handleSaveFeedItemFromInspector}
                 onClose={() => setIsInspectorOpen(false)}
@@ -677,7 +648,7 @@ export function ModernLibraryPage({
             </div>
           ) : null
         ) : (
-          <LibraryInspector scopeId={effectiveScopeId} canEdit={canEdit} isLibrary={true} />
+          <LibraryInspector scopeId={effectiveScopeId} canEdit={canEdit} />
         )}
       </ErrorBoundary>
 

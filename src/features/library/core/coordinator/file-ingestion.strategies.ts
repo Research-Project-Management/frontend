@@ -1,7 +1,6 @@
 import { IngestionService, UploadService } from '@/features/library/sdk/library.client';
 import { pollIngestionRunCompletion } from '@/features/library/sdk/queries/ingestion.queries';
 import { cleanFilenameToTitle } from '@/features/library/domain/metadata';
-import { ClientMetadataResolverService } from '@/features/library/core/services/client-metadata-resolver.service';
 import type {
   IngestionProgressItem,
   ProcessModalStoreApi,
@@ -267,30 +266,6 @@ export const BinaryAttachmentFileStrategy: IFileIngestionStrategy = {
 
     const identifiedTitle = cleanFilenameToTitle(file.name);
 
-    // Tier 2: Attempt Client-Side Identifier Sniff & Resolve via User IP
-    let preResolvedMetadata: Record<string, unknown> | undefined;
-    let resolvedTitle = identifiedTitle;
-
-    try {
-      const detectedDoi = await ClientMetadataResolverService.sniffFileForIdentifier(file);
-      if (detectedDoi) {
-        const clientRes = await ClientMetadataResolverService.resolveDoi(detectedDoi);
-        if (clientRes?.success && clientRes.cslJson) {
-          preResolvedMetadata = {
-            ...clientRes.cslJson,
-            doi: clientRes.doi,
-            resolutionSource: 'client',
-            primaryProvider: clientRes.provider,
-          };
-          if (clientRes.title) {
-            resolvedTitle = clientRes.title;
-          }
-        }
-      }
-    } catch {
-      // Non-blocking fallback to server extraction
-    }
-
     const ingestRes = await IngestionService.ingest(
       ctx.scopeId,
       {
@@ -298,7 +273,6 @@ export const BinaryAttachmentFileStrategy: IFileIngestionStrategy = {
         fileId: uploadRes.fileId,
         filename: file.name,
         collectionId: ctx.effectiveCollection,
-        overrides: preResolvedMetadata ? { preResolvedMetadata, resolutionSource: 'client' } : undefined,
       },
       { signal: ctx.signal },
     );
@@ -312,12 +286,12 @@ export const BinaryAttachmentFileStrategy: IFileIngestionStrategy = {
     const runId = ingestPayload?.data?.runId || ingestPayload?.runId;
     const completedItemId = ingestPayload?.data?.itemId || ingestPayload?.itemId;
 
-    let finalTitle = resolvedTitle;
+    let finalTitle = identifiedTitle;
     let finalItemId = completedItemId;
 
     if (runId) {
       const pollOutcome = await pollIngestionRunCompletion(ctx.scopeId, runId, {
-        fallbackTitle: resolvedTitle,
+        fallbackTitle: identifiedTitle,
         initialItemId: completedItemId,
         signal: ctx.signal,
       });

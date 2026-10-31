@@ -103,6 +103,8 @@ function useItemCollectionsManager(
   const collections = externalCollections ?? queriedCollections;
   const createCollection =
     externalCreateCollection ?? queriedCreateCollection;
+  const pushExecutedCommand = useLibraryCommandStore((s) => s.pushExecutedCommand);
+  const undoCommand = useLibraryCommandStore((s) => s.undo);
 
   // Map collections for O(1) lookup
   const colMap = useMemo(() => {
@@ -174,14 +176,12 @@ function useItemCollectionsManager(
           { expectedVersion: item.version },
         );
 
-        useLibraryCommandStore
-          .getState()
-          .pushExecutedCommand(command, { silentToast: true });
+        pushExecutedCommand(command, { silentToast: true });
 
         const undoAction = {
           label: "Undo",
           onClick: () => {
-            void useLibraryCommandStore.getState().undo(command.id);
+            void undoCommand(command.id);
           },
         };
 
@@ -218,6 +218,8 @@ function useItemCollectionsManager(
       canEdit,
       updateItem,
       colMap,
+      pushExecutedCommand,
+      undoCommand,
     ],
   );
 
@@ -523,7 +525,6 @@ interface CollectionsSectionProps {
 export default function CollectionsSection(props: CollectionsSectionProps) {
   const { item, scopeId, hideHeader = false, canEdit = true } = props;
   const effectiveScope = scopeId || item?.projectId || "user";
-  const openModal = useLibraryUIStore((s) => s.openModal);
   const {
     collections,
     colMap,
@@ -685,7 +686,7 @@ export default function CollectionsSection(props: CollectionsSectionProps) {
                       e.stopPropagation();
                       handleRemoveFromCollection(col.id);
                     }}
-                    className="invisible group-hover:visible max-md:visible size-5 flex items-center justify-center rounded hover:bg-muted text-foreground cursor-pointer shrink-0 transition-colors"
+                    className="invisible group-hover:visible group-focus-within:visible focus-visible:visible max-md:visible size-5 flex items-center justify-center rounded hover:bg-muted text-foreground cursor-pointer shrink-0 transition-colors"
                     aria-label={`Remove from collection ${col.name}, item will remain in library`}
                   >
                     <X className="size-3.5 shrink-0" strokeWidth={1.5} />

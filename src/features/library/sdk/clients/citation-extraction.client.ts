@@ -208,10 +208,13 @@ export const ExportsService = {
     };
   },
 
-  exportAnnotatedPdf: (scopeId?: string, itemId?: string) => {
-    const pQuery = isProjectScope(scopeId) ? `?projectId=${encodeURIComponent(scopeId!)}` : '';
+  exportAnnotatedPdf: (scopeId?: string, itemId?: string, attachmentId?: string) => {
+    const params = new URLSearchParams();
+    if (isProjectScope(scopeId)) params.set('projectId', scopeId!);
+    if (attachmentId) params.set('attachmentId', attachmentId);
+    const qs = params.toString() ? `?${params.toString()}` : '';
     return libraryClient.get<{ filename: string; mimeType: string; base64: string }>(
-      `${getExportsUrl(scopeId)}/items/${encodeURIComponent(itemId || '')}/annotated-pdf${pQuery}`,
+      `${getExportsUrl(scopeId)}/items/${encodeURIComponent(itemId || '')}/annotated-pdf${qs}`,
     );
   },
 
@@ -219,9 +222,13 @@ export const ExportsService = {
     scopeId: string | undefined,
     itemId: string,
     fallbackFilename = `annotated_${itemId}.pdf`,
+    attachmentId?: string,
   ): Promise<{ filename: string; mimeType: string }> => {
-    const pQuery = isProjectScope(scopeId) ? `?projectId=${encodeURIComponent(scopeId!)}` : '';
-    const endpoint = `${getExportsUrl(scopeId)}/items/${encodeURIComponent(itemId)}/annotated-pdf${pQuery}`;
+    const params = new URLSearchParams();
+    if (isProjectScope(scopeId)) params.set('projectId', scopeId!);
+    if (attachmentId) params.set('attachmentId', attachmentId);
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    const endpoint = `${getExportsUrl(scopeId)}/items/${encodeURIComponent(itemId)}/annotated-pdf${qs}`;
     let resolvedFilename = fallbackFilename;
     const res = await libraryClient.get<{ filename: string; mimeType: string; base64: string }>(endpoint);
     if (!res || !res.base64) {
@@ -349,9 +356,21 @@ export const UploadService = {
       filename?: string;
       size?: number;
       mimeType?: string;
-    }>(uploadUrl, formData, {
-      signal: options?.signal,
-    }, scopeId);
+    }>(
+      uploadUrl,
+      formData,
+      {
+        signal: options?.signal,
+        onUploadProgress: options?.onProgress
+          ? (evt) => {
+              if (evt.total && evt.total > 0) {
+                options.onProgress?.(Math.round((evt.loaded * 100) / evt.total));
+              }
+            }
+          : undefined,
+      },
+      scopeId,
+    );
     return {
       fileId: res.fileId,
       url: res.url,
@@ -506,17 +525,52 @@ export const ExtractionTelemetryService = {
 
 
 // 12. Annotations & Reader Services
+function normalizeAnnotationEntity(raw: ReaderAnnotation & { rectCoords?: unknown; quoteText?: string }): ReaderAnnotation {
+  const rawRects = Array.isArray(raw.rects) && raw.rects.length > 0 ? raw.rects : raw.rectCoords;
+  const rects: Array<{ x1: number; y1: number; x2: number; y2: number; width: number; height: number }> = [];
+  if (Array.isArray(rawRects)) {
+    if (rawRects.length === 4 && rawRects.every((n) => typeof n === 'number')) {
+      const [x1, y1, x2, y2] = rawRects as [number, number, number, number];
+      rects.push({ x1, y1, x2, y2, width: Math.max(0, x2 - x1), height: Math.max(0, y2 - y1) });
+    } else {
+      for (const entry of rawRects) {
+        if (Array.isArray(entry) && entry.length === 4 && entry.every((n) => typeof n === 'number')) {
+          const [x1, y1, x2, y2] = entry as [number, number, number, number];
+          rects.push({ x1, y1, x2, y2, width: Math.max(0, x2 - x1), height: Math.max(0, y2 - y1) });
+        } else if (entry && typeof entry === 'object') {
+          const r = entry as Record<string, unknown>;
+          const x1 = typeof r.x1 === 'number' ? r.x1 : typeof r.x === 'number' ? r.x : 0;
+          const y1 = typeof r.y1 === 'number' ? r.y1 : typeof r.y === 'number' ? r.y : 0;
+          const w = typeof r.width === 'number' ? r.width : undefined;
+          const h = typeof r.height === 'number' ? r.height : undefined;
+          const x2 = typeof r.x2 === 'number' ? r.x2 : w !== undefined ? x1 + w : x1;
+          const y2 = typeof r.y2 === 'number' ? r.y2 : h !== undefined ? y1 + h : y1;
+          rects.push({ x1, y1, x2, y2, width: w ?? Math.max(0, x2 - x1), height: h ?? Math.max(0, y2 - y1) });
+        }
+      }
+    }
+  }
+  const textVal = raw.text ?? raw.quoteText ?? '';
+  return {
+    ...raw,
+    text: textVal,
+    quoteText: raw.quoteText ?? textVal,
+    rects,
+  };
+}
+
 export const AnnotationsService = {
   getByAttachment: async (scopeId: string | undefined, attachmentId: string): Promise<ReaderAnnotation[]> => {
     if (!attachmentId) return [];
     const url = resolveLibraryUrl('reader', `/attachments/${encodeURIComponent(attachmentId)}/annotations`, scopeId);
     const res = await libraryClient.get<ReaderAnnotation[] | { data?: ReaderAnnotation[]; annotations?: ReaderAnnotation[] }>(url);
-    return unwrapList<ReaderAnnotation>(res, 'annotations');
+    return unwrapList<ReaderAnnotation>(res, 'annotations').map(normalizeAnnotationEntity);
   },
 
   create: async (scopeId: string | undefined, attachmentId: string, dto: CreateAnnotationDto): Promise<ReaderAnnotation> => {
     const url = resolveLibraryUrl('reader', `/attachments/${encodeURIComponent(attachmentId)}/annotations`, scopeId);
-    return libraryClient.post<ReaderAnnotation>(url, dto);
+    const res = await libraryClient.post<ReaderAnnotation>(url, dto);
+    return normalizeAnnotationEntity(res);
   },
 
   update: async (
@@ -531,7 +585,8 @@ export const AnnotationsService = {
       `/attachments/${encodeURIComponent(attachmentId)}/annotations/${encodeURIComponent(annotationId)}`,
       scopeId,
     );
-    return libraryClient.patch<ReaderAnnotation>(url, { ...dto, expectedVersion });
+    const res = await libraryClient.patch<ReaderAnnotation>(url, { ...dto, expectedVersion });
+    return normalizeAnnotationEntity(res);
   },
 
   delete: async (
@@ -567,8 +622,17 @@ export const AnnotationsService = {
   extractNotes: async (
     scopeId: string | undefined,
     itemId: string,
-    options?: { noteId?: string; tagColor?: boolean; tagColorName?: string; includeComments?: boolean },
-  ): Promise<{ totalExtracted: number; note?: Note }> => {
+    options?: {
+      noteId?: string;
+      attachmentId?: string;
+      annotationIds?: string[];
+      tagColor?: boolean | string;
+      tagColorName?: string;
+      includeComments?: boolean;
+      protocol?: 'flux' | 'web';
+      webBaseUrl?: string;
+    },
+  ): Promise<{ totalExtracted: number; note?: Note; message?: string }> => {
     const res = await NotesService.extractFromAnnotations(scopeId, itemId, options);
     const count =
       res && typeof res === 'object' && 'totalExtracted' in res && typeof res.totalExtracted === 'number'
@@ -576,7 +640,7 @@ export const AnnotationsService = {
         : res && (res as { id?: string }).id
           ? 1
           : 0;
-    return { totalExtracted: count, note: res?.note ?? res };
+    return { totalExtracted: count, note: res?.note, message: res?.message };
   },
 
   importExternal: async (

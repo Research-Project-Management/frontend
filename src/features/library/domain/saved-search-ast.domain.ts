@@ -385,3 +385,18 @@ export const SavedSearchAstEngine = {
     return isNotGroup ? !matchedAll : matchedAll;
   },
 };
+
+export function evaluateSavedSearch(
+  item: Record<string, unknown>,
+  group: SavedSearchConditionGroup,
+): boolean {
+  return SavedSearchAstEngine.matchesItem(item, group);
+}
+
+export function filterItemsBySavedSearch<T extends Record<string, unknown>>(
+  items: ReadonlyArray<T>,
+  group: SavedSearchConditionGroup,
+): T[] {
+  if (!Array.isArray(items) || items.length === 0) return [];
+  return items.filter((item) => SavedSearchAstEngine.matchesItem(item, group));
+}

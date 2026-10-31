@@ -3,8 +3,9 @@
 import { ReaderRetractionBanner } from "@/features/library/ui/reader/ReaderRetractionBanner";
 import { resolveEpubOrSnapshot } from "@/features/library/domain/reader.domain";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from "react";
 import dynamic from "next/dynamic";
+import { ErrorBoundary } from "@/shared/components/ui/error-boundary";
 import { useRouter, useSearchParams } from "next/navigation";
 import { openInNewTab } from "@/features/library/core/coordinator/browser-io.helpers";
 import { cn } from "@/shared/lib/utils";
@@ -14,6 +15,7 @@ import { useReader } from "@/features/library/core/coordinator/reader/use-reader
 import { useShallow } from "zustand/react/shallow";
 import { useReaderStore } from "@/features/library/core/store/reader.store";
 import { useLibraryUIStore } from "@/features/library/core/store/library-ui.store";
+import { useAiCompanionStore } from "@/features/ai/store/ai-companion.store";
 import { useLibraryPermissions } from "@/features/library/core/coordinator/permissions.coordinator";
 import {
   useOcrExtraction,
@@ -25,6 +27,7 @@ import ReaderToolbar from "@/features/library/ui/reader/ReaderToolbar";
 import type {
   AnnotationRect,
   ReaderNavigationTarget,
+  PdfOutlineItem,
 } from "@/features/library/domain/types/reader.types";
 import {
   useReaderTabHistory,
@@ -37,6 +40,10 @@ const Sidebar = dynamic(() => import("@/features/library/ui/reader/ReaderSidebar
 });
 
 const BibtexModal = dynamic(() => import("@/features/library/ui/modals/BibtexModal"), { ssr: false });
+const AiCompanionSidebar = dynamic(
+  () => import("@/features/ai/components/companion/AiCompanionSidebar"),
+  { ssr: false, loading: () => null },
+);
 
 const Viewer = dynamic(
   () => import("@/features/library/ui/reader/viewer/Viewer"),
@@ -89,7 +96,6 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     pendingNoteText,
     bibtexOpen,
     fulltext,
-    isLoadingFulltext,
     targetPage,
     isSidebarOpen,
     visiblePage,
@@ -97,6 +103,11 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     zoom,
     selectedAnnotationIds,
     annotations = [],
+    isLoadingAnnotations,
+    isAnnotationsError,
+    isUpdatingAnnotation,
+    isExtractingNotes,
+    isImportingAnnotations,
     effectiveAttachmentId,
   } = state;
 
@@ -105,6 +116,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     handleAddToNote,
     handleAnnotate,
     handleNavigateToPage,
+    handleNavigateToAnnotation,
     setPendingNoteText,
     handleRetryPdf,
     goBack,
@@ -117,19 +129,27 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     handleBatchAddToNote,
     deleteAnnotation,
     updateAnnotation,
+    extractNotes,
+    importExternal,
+    refetchAnnotations,
   } = actions;
 
-  // Standard URL citation jumping: ?page=X&annotation=Y
+  // Standard URL citation jumping: ?page=X&annotation=Y (only fires when URL params change)
+  const lastHandledDeepLinkRef = useRef<string>("");
   useEffect(() => {
     const pageParam = searchParams.get("page");
     const annParam = searchParams.get("annotation") || undefined;
+    const linkKey = `${paper?.id || ""}:${pageParam || ""}:${annParam || ""}`;
+    if (lastHandledDeepLinkRef.current === linkKey) return;
+    lastHandledDeepLinkRef.current = linkKey;
+
     if (pageParam) {
       const p = parseInt(pageParam, 10);
       if (!isNaN(p) && p >= 1) {
-        actions.handleNavigateToAnnotation(p, annParam);
+        handleNavigateToAnnotation(p, annParam);
       }
     }
-  }, [searchParams, actions]);
+  }, [searchParams, paper?.id, handleNavigateToAnnotation]);
 
   // Multi-Tab Store
   const {
@@ -166,8 +186,8 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
   const setIsGlobalInspectorOpen = useLibraryUIStore((s) => s.setIsInspectorOpen);
 
   const handleToggleInspector = useCallback(() => {
-    setIsGlobalInspectorOpen(!useLibraryUIStore.getState().isInspectorOpen);
-  }, [setIsGlobalInspectorOpen]);
+    setIsGlobalInspectorOpen(!isGlobalInspectorOpen);
+  }, [isGlobalInspectorOpen, setIsGlobalInspectorOpen]);
 
   const handleCloseInspector = useCallback(() => {
     setIsGlobalInspectorOpen(false);
@@ -194,6 +214,8 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
   } = useReaderTabPresentation({
     effectiveTabId,
     activeTab,
+    zoom,
+    visiblePage,
     setZoom,
     updateTabState,
   });
@@ -251,18 +273,21 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
   const [interactionMode, setInteractionMode] = useState<"select" | "hand">("select");
   const [splitMode, setSplitMode] = useState<"none" | "horizontal" | "vertical">("none");
   const [secondaryPage, setSecondaryPage] = useState<number>(1);
-  const [secondaryZoom, setSecondaryZoom] = useState<number>(1.0);
   const [secondaryScrollRequest, setSecondaryScrollRequest] =
     useState<ReaderNavigationTarget | null>(null);
   const [isReadingMode, setIsReadingMode] = useState<boolean>(false);
   const [isToolLocked, setIsToolLocked] = useState<boolean>(false);
+  const [pdfOutline, setPdfOutline] = useState<PdfOutlineItem[]>([]);
+
+  useEffect(() => {
+    setPdfOutline([]);
+  }, [paper?.id, effectiveAttachmentId]);
 
   const handleSelectSplitMode = useCallback(
     (nextMode: "none" | "horizontal" | "vertical") => {
       setSplitMode((prev) => {
         if (prev === "none" && nextMode !== "none") {
           setSecondaryPage(visiblePage);
-          setSecondaryZoom(zoom);
           setSecondaryScrollRequest({
             pageNumber: visiblePage,
             timestamp: Date.now(),
@@ -271,7 +296,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
         return nextMode;
       });
     },
-    [visiblePage, zoom],
+    [visiblePage],
   );
 
   const {
@@ -287,16 +312,25 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     onNavigateToAnnotation: actions.handleNavigateToAnnotation,
   });
 
-  // Escape key exits distraction-free reading mode
+  // Escape key exits distraction-free reading mode or resets active annotation tool to 'select'
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isReadingMode) {
+      if (e.key !== "Escape") return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName?.toLowerCase();
+      if (tag === "input" || tag === "textarea" || target?.isContentEditable) return;
+
+      if (isReadingMode) {
         setIsReadingMode(false);
+        return;
+      }
+      if (activeTool && activeTool !== "select") {
+        setActiveTool("select");
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isReadingMode]);
+  }, [isReadingMode, activeTool, setActiveTool]);
 
   const handleRotate = () => setRotation((r) => (r + 90) % 360);
 
@@ -310,7 +344,36 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     }
   };
 
-  const { triggerOcr } = useOcrExtraction(scopeId);
+  const { triggerOcr } = useOcrExtraction(scopeId, paper?.id);
+
+  const handleAddToNoteAndExitReadingMode = useCallback(
+    (text: string, pageNumber?: number, annotationId?: string) => {
+      if (isReadingMode) {
+        setIsReadingMode(false);
+      }
+      handleAddToNote(text, pageNumber, annotationId);
+    },
+    [isReadingMode, handleAddToNote],
+  );
+
+  const setQuotedPassage = useAiCompanionStore((s) => s.setQuotedPassage);
+
+  const handleAskAiWithSelection = useCallback(
+    (selectedText: string, pageNumber?: number) => {
+      const cleaned = selectedText.trim();
+      if (!cleaned) return;
+      if (isReadingMode) {
+        setIsReadingMode(false);
+      }
+      setQuotedPassage({
+        text: cleaned,
+        pageNumber: pageNumber || visiblePage,
+        paperId: paper?.id,
+        paperTitle: paper?.title || "Current Paper",
+      });
+    },
+    [isReadingMode, setQuotedPassage, visiblePage, paper?.id, paper?.title],
+  );
 
   // Zotero 7 behavior: If tool is not locked and is not 'select', revert back to 'select' after creating annotation
   const handleAnnotateWithLock = useCallback(
@@ -364,17 +427,12 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
       await exportAnnotatedPdf(
         currentPaperId,
         `${paper?.title || "document"}-annotated.pdf`,
+        effectiveAttachmentId,
       );
     } catch {
       // Handled in useExportAnnotatedPdf hook toast
     }
-  }, [paper, activeTabId, exportAnnotatedPdf]);
-
-  const handlePrint = useCallback(() => {
-    if (typeof window !== "undefined") {
-      window.print();
-    }
-  }, []);
+  }, [paper, activeTabId, effectiveAttachmentId, exportAnnotatedPdf]);
 
   const handleDeleteAnnotationProp = useCallback(
     (ann: { id: string; version?: number }) => {
@@ -387,7 +445,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     (
       id: string,
       version: number | undefined,
-      dto: { color?: string; comment?: string; tags?: string[] },
+      dto: { color?: string; comment?: string; quoteText?: string; tags?: string[] },
     ) => {
       if (updateAnnotation) return updateAnnotation(id, version, dto);
       return Promise.resolve();
@@ -404,16 +462,26 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
   }, []);
 
   const handleZoomIn = useCallback(() => {
-    setTabZoom((z) => Math.min(2.5, +(z + 0.15).toFixed(2)));
-  }, [setTabZoom]);
+    setFitMode("custom");
+    setTabZoom((z) => Math.min(3.0, +(z + 0.15).toFixed(2)), "custom");
+  }, [setFitMode, setTabZoom]);
 
   const handleZoomOut = useCallback(() => {
-    setTabZoom((z) => Math.max(0.5, +(z - 0.15).toFixed(2)));
-  }, [setTabZoom]);
+    setFitMode("custom");
+    setTabZoom((z) => Math.max(0.25, +(z - 0.15).toFixed(2)), "custom");
+  }, [setFitMode, setTabZoom]);
+
+  const handleSetCustomZoom = useCallback(
+    (nextZoom: number) => {
+      setFitMode("custom");
+      setTabZoom(Math.min(3.0, Math.max(0.25, nextZoom)), "custom");
+    },
+    [setFitMode, setTabZoom],
+  );
 
   const handleFitWidth = useCallback(() => {
     setFitMode("fit-width");
-    setTabZoom(1.0);
+    setTabZoom(1.0, "fit-width");
   }, [setFitMode, setTabZoom]);
 
   const handleToggleSearch = useCallback(() => {
@@ -443,15 +511,17 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     blobUrl: pdfBlobUrl,
     isLoading: pdfLoading,
     error: pdfError,
-    onAddToNote: handleAddToNote,
+    onAddToNote: handleAddToNoteAndExitReadingMode,
+    onAskAi: handleAskAiWithSelection,
     onAnnotate: handleAnnotateWithLock,
     annotations,
     onDeleteAnnotation: handleDeleteAnnotationProp,
     onUpdateAnnotation: handleUpdateAnnotationProp,
     fulltext,
-    isLoadingFulltext,
     paper: paper || undefined,
     zoom,
+    onZoomChange: handleSetCustomZoom,
+    onSelectFitMode: setFitMode,
     rotation,
     themeMode,
     interactionMode,
@@ -478,7 +548,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background">
-      {/* 1. MULTI-PAPER TAB BAR (Row 1) */}
+      {/* 1. MULTI-PAPER TAB BAR (Row 1 - Full Width Across Screen) */}
       {!isReadingMode && (
         <Topbar
           paper={paper}
@@ -489,11 +559,10 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
           onCloseTab={handleCloseTab}
           onBack={goBack}
           onExportAnnotatedPdf={handleExportAnnotatedPdf}
-          onPrint={handlePrint}
         />
       )}
 
-      {/* 2. DEDICATED READER TOOLBAR (Row 2) */}
+      {/* 2. DEDICATED READER TOOLBAR (Row 2 - Full Width Across Screen) */}
       {(paperUrl || epubOrSnapshotInfo) && (
         <ReaderToolbar
           isSidebarOpen={isSidebarOpen}
@@ -518,7 +587,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
           zoom={zoom}
           onZoomIn={handleZoomIn}
           onZoomOut={handleZoomOut}
-          onSetZoom={setTabZoom}
+          onSetZoom={handleSetCustomZoom}
           onFitWidth={handleFitWidth}
           rotation={rotation}
           onRotate={handleRotate}
@@ -540,7 +609,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
 
       <ReaderRetractionBanner paper={paper} retractionDetails={retractionDetails} />
 
-      {/* WORKSPACE VIEWPORT */}
+      {/* WORKSPACE VIEWPORT (Below both Topbar & ReaderToolbar: Sidebar | Canvas | Inspector | AI Companion) */}
       <div className="relative flex flex-1 min-w-0 min-h-0 w-full overflow-hidden bg-background">
         {/* 3. SIDEBAR (Activity Rail + Collapsible Resizable Panel) */}
         {!isReadingMode && isSidebarOpen && (
@@ -564,7 +633,19 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
             onBatchAddToNote={handleBatchAddToNote}
             annotations={annotations}
             annotationsCount={annotations.length}
-            onAddToNote={handleAddToNote}
+            isLoadingAnnotations={isLoadingAnnotations}
+            isAnnotationsError={isAnnotationsError}
+            onRefetchAnnotations={refetchAnnotations}
+            isUpdatingAnnotation={isUpdatingAnnotation}
+            isExtractingNotes={isExtractingNotes}
+            isImportingAnnotations={isImportingAnnotations}
+            onImportExternalAnnotations={importExternal}
+            pdfOutline={pdfOutline}
+            onAddToNote={handleAddToNoteAndExitReadingMode}
+            onAskAi={handleAskAiWithSelection}
+            onUpdateAnnotation={handleUpdateAnnotationProp}
+            onDeleteAnnotation={deleteAnnotation}
+            onExtractNotes={extractNotes}
           />
         )}
 
@@ -579,36 +660,60 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
             <PlaneEmptyState variant="document" title="Document not found" description="The document could not be found or you do not have permission." />
           ) : epubOrSnapshotInfo ? (
             <EpubAndSnapshotViewer
-              url={epubOrSnapshotInfo.url} mode={epubOrSnapshotInfo.mode}
-              title={paper.title} sourceUrl={paper.url ?? undefined}
-              themeMode={themeMode} zoom={zoom} activeColor={activeColor}
-              onAddToNote={handleAddToNote}
+              url={epubOrSnapshotInfo.url}
+              mode={epubOrSnapshotInfo.mode}
+              scopeId={scopeId}
+              title={paper.title}
+              sourceUrl={paper.url ?? undefined}
+              themeMode={themeMode}
+              zoom={zoom}
+              activeColor={activeColor}
+              targetPage={targetPage}
+              onVisiblePageChange={actions.setVisiblePage}
+              onAddToNote={handleAddToNoteAndExitReadingMode}
+              onAskAi={handleAskAiWithSelection}
               onAnnotate={(text, pageNum, colorHex) => handleAnnotateWithLock(text, pageNum, colorHex)}
-              onPageChange={(curr, total) => { actions.setVisiblePage(curr); actions.setNumPages(total); }}
-              isSearchOpen={isSearchOpen} onCloseSearch={handleCloseSearch} initialSearchQuery={initialSearchQuery}
+              onPageChange={(curr, total) => {
+                actions.setVisiblePage(curr);
+                actions.setNumPages(total);
+              }}
+              isSearchOpen={isSearchOpen}
+              onCloseSearch={handleCloseSearch}
+              initialSearchQuery={initialSearchQuery}
             />
           ) : paperUrl ? (
             splitMode === "none" ? (
               <Viewer
-                {...sharedViewerProps} targetPage={targetPage}
-                onVisiblePageChange={actions.setVisiblePage} onTotalPagesChange={actions.setNumPages}
-                isSearchOpen={isSearchOpen} onCloseSearch={handleCloseSearch} initialSearchQuery={initialSearchQuery}
+                {...sharedViewerProps}
+                targetPage={targetPage}
+                onVisiblePageChange={actions.setVisiblePage}
+                onTotalPagesChange={actions.setNumPages}
+                onOutlineLoad={setPdfOutline}
+                isSearchOpen={isSearchOpen}
+                onCloseSearch={handleCloseSearch}
+                initialSearchQuery={initialSearchQuery}
               />
             ) : (
               <div className={cn("flex-1 flex min-w-0 min-h-0 overflow-hidden", splitMode === "vertical" ? "flex-row divide-x divide-border" : "flex-col divide-y divide-border")}>
                 <div className="flex-1 min-w-0 min-h-0 overflow-hidden relative">
                   <Viewer
-                    {...sharedViewerProps} targetPage={targetPage}
-                    onVisiblePageChange={actions.setVisiblePage} onTotalPagesChange={actions.setNumPages}
-                    isSearchOpen={isSearchOpen} onCloseSearch={handleCloseSearch} initialSearchQuery={initialSearchQuery}
+                    {...sharedViewerProps}
+                    targetPage={targetPage}
+                    onVisiblePageChange={actions.setVisiblePage}
+                    onTotalPagesChange={actions.setNumPages}
+                    onOutlineLoad={setPdfOutline}
+                    isSearchOpen={isSearchOpen}
+                    onCloseSearch={handleCloseSearch}
+                    initialSearchQuery={initialSearchQuery}
                   />
                 </div>
                 <div className="flex-1 min-w-0 min-h-0 h-full overflow-hidden relative" data-secondary-page={secondaryPage}>
                   <Viewer
                     {...sharedViewerProps}
-                    zoom={secondaryZoom}
                     targetPage={secondaryScrollRequest}
                     onVisiblePageChange={setSecondaryPage}
+                    onTotalPagesChange={actions.setNumPages}
+                    isSearchOpen={false}
                   />
                 </div>
               </div>
@@ -632,6 +737,13 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
             pendingNoteText={pendingNoteText} onClearPendingText={handleClearPendingText}
           />
         )}
+
+        {/* 6. AI COMPANION SIDEBAR (Inside Workspace Viewport — same level as Sidebar & Inspector) */}
+        <ErrorBoundary fallback={null} featureName="AI Companion">
+          <Suspense fallback={null}>
+            <AiCompanionSidebar />
+          </Suspense>
+        </ErrorBoundary>
       </div>
 
       {/* BibTeX / RIS Export Modal */}

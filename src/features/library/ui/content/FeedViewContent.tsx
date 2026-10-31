@@ -10,19 +10,17 @@ import {
 } from '@/features/library/sdk/queries/ingestion.queries';
 import {
   useCreateLibraryItemMutation,
-  useLibraryItemsQuery,
 } from '@/features/library/sdk/queries/catalog.queries';
 import { useCollections } from '@/features/library/sdk/queries/collections.queries';
 import type { Collection } from '@/features/library/domain/types/library.types';
 import {
-  mapFeedEntryToCreateItemPayload,
-  executeSaveFeedEntryToLibrary,
   normalizeFetchedFeedEntries,
   filterFeedEntriesByRetention,
   filterFeedEntriesByReadAndQuery,
   type ParsedFeedEntry,
   type FeedFetchApiResponse,
 } from '@/features/library/domain/feed-parser.domain';
+import { executeSaveFeedEntryWithFeedback } from '@/features/library/core/coordinator/feed-item.coordinator';
 import {
   useFeedsStore,
   isFeedEntryInLibrary,
@@ -103,12 +101,6 @@ export function FeedViewContent({
     },
   );
   const isFetching = feedArticlesQuery.isLoading || isRefreshingFeed;
-
-  const { data: libraryData } = useLibraryItemsQuery(
-    scopeId,
-    { limit: 100, fields: ['id', 'title', 'doi', 'url'] },
-    { enabled: true },
-  );
 
   const [manualEntries, setManualEntries] = useState<ParsedFeedEntry[] | null>(
     null,
@@ -272,39 +264,23 @@ export function FeedViewContent({
 
   const isItemInLibrary = useCallback(
     (entry: ParsedFeedEntry) =>
-      isFeedEntryInLibrary(entry, savedEntryIds, libraryData?.items),
-    [savedEntryIds, libraryData?.items],
+      isFeedEntryInLibrary(entry, savedEntryIds),
+    [savedEntryIds],
   );
 
   const handleSaveEntry = useCallback(
     async (entry: ParsedFeedEntry, targetCollectionId?: string) => {
-      markEntryAsRead(entry.id);
-      setEntrySaving(entry.id, true);
-      try {
-        await executeSaveFeedEntryToLibrary({
-          entry,
-          scopeId,
-          targetCollectionId,
-          createItem,
-          ingestItem,
-        });
-        markEntrySaved(entry.id);
-
-        const colName = targetCollectionId
-          ? collectionList.find((c: Collection) => c.id === targetCollectionId)
-              ?.name
-          : undefined;
-
-        toast.success(colName ? `Saved to "${colName}"` : 'Saved to Library', {
-          description: `"${entry.title.slice(0, 48)}..." added to your collection.`,
-        });
-      } catch (err: unknown) {
-        const msg =
-          err instanceof Error ? err.message : 'Could not add feed item.';
-        toast.error('Failed to save to library', { description: msg });
-      } finally {
-        setEntrySaving(entry.id, false);
-      }
+      await executeSaveFeedEntryWithFeedback({
+        entry,
+        scopeId,
+        targetCollectionId,
+        createItem,
+        ingestItem,
+        collections: collectionList,
+        markEntryAsRead,
+        setEntrySaving,
+        markEntrySaved,
+      });
     },
     [
       collectionList,

@@ -1,7 +1,8 @@
 import { toast } from 'sonner';
 import { copyToClipboard } from '@/shared/lib/utils';
+import { buildReaderPaperUrl } from '@/features/library/domain/reader.domain';
 
-export { copyToClipboard };
+export { copyToClipboard, buildReaderPaperUrl };
 
 /**
  * Shared Browser IO & Clipboard Utilities for Library Coordinators and Reader.
@@ -78,5 +79,18 @@ export function triggerBrowserUrlDownload(url: string, filename: string): void {
 
 export function openInNewTab(url: string): void {
   if (typeof window === 'undefined' || !url) return;
-  window.open(url, '_blank', 'noopener,noreferrer');
+  if (typeof window.open === 'function') {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  } else if (window.location && typeof window.location.assign === 'function') {
+    window.location.assign(url);
+  }
+}
+
+export function navigateToUrl(url: string): void {
+  if (typeof window === 'undefined' || !url) return;
+  if (window.location && typeof window.location.assign === 'function') {
+    window.location.assign(url);
+  } else if (typeof window.open === 'function') {
+    window.open(url, '_self');
+  }
 }

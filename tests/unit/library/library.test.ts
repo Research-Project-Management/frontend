@@ -449,6 +449,149 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
       // Only 1 GET call to /duplicates, zero N+1 /items/:id calls
       expect(api.apiGet).toHaveBeenCalledTimes(1);
     });
+
+    it('standardizes Reader URL building via buildReaderPaperUrl and opens new tabs via window.open', async () => {
+      const { buildReaderPaperUrl, openInNewTab } = await import(
+        '@/features/library/core/coordinator/browser-io.helpers'
+      );
+
+      expect(buildReaderPaperUrl('paper-1')).toBe('/library/papers/paper-1');
+      expect(
+        buildReaderPaperUrl('paper-1', { projectId: 'proj-42', query: 'transformer' }),
+      ).toBe('/library/papers/paper-1?projectId=proj-42&q=transformer');
+      expect(
+        buildReaderPaperUrl('paper-1', { projectId: 'user' }),
+      ).toBe('/library/papers/paper-1');
+
+      const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+      openInNewTab('/library/papers/paper-1');
+      expect(openSpy).toHaveBeenCalledWith(
+        '/library/papers/paper-1',
+        '_blank',
+        'noopener,noreferrer',
+      );
+    });
+
+    it('forwards onProgress as onUploadProgress in UploadService.uploadMultipart', async () => {
+      const { UploadService } = await import(
+        '@/features/library/sdk/clients/citation-extraction.client'
+      );
+      vi.mocked(api.apiPost).mockImplementationOnce(async (_url, _body, options) => {
+        options?.onUploadProgress?.({ loaded: 50, total: 100 });
+        return {
+          fileId: 'file-1',
+          url: '/files/file-1',
+          filename: 'paper.pdf',
+          size: 100,
+          mimeType: 'application/pdf',
+        };
+      });
+
+      const onProgress = vi.fn();
+      const file = new File(['dummy'], 'paper.pdf', { type: 'application/pdf' });
+      await UploadService.uploadMultipart('user', file, { onProgress });
+
+      expect(onProgress).toHaveBeenCalledWith(50);
+    });
+
+    it('unifies duplicate group key generation and deduplicates getItemAuthorsSummary / formatAcademicAuthors', async () => {
+      const {
+        computeDuplicateSetKey,
+        getDeterministicDuplicateGroupKey,
+      } = await import('@/features/library/domain/curation-draft.domain');
+      const { getItemAuthorsSummary } = await import('@/features/library/domain/creators');
+      const { formatAcademicAuthors } = await import('@/features/library/domain/academic-text');
+
+      const items = [
+        { id: 'item-b', title: 'B', itemType: 'journalArticle' },
+        { id: 'item-a', title: 'A', itemType: 'journalArticle' },
+      ] as any[];
+      expect(getDeterministicDuplicateGroupKey({ key: 'legacy-key', items })).toBe(
+        computeDuplicateSetKey(items),
+      );
+      expect(computeDuplicateSetKey(items)).toBe('item-a::item-b');
+
+      const sampleItem = {
+        authors: ['Vaswani, Ashish', 'Shazeer, Noam'],
+      };
+      expect(formatAcademicAuthors(sampleItem)).toBe(getItemAuthorsSummary(sampleItem));
+      expect(getItemAuthorsSummary(sampleItem)).toBe('Ashish Vaswani, Noam Shazeer');
+    });
+
+    it('computes field candidate selection and recommendation state via resolveMergeFieldOptionState', async () => {
+      const { resolveMergeFieldOptionState } = await import('@/features/library/domain/diff');
+      const field = {
+        key: 'title',
+        label: 'Title',
+        hasConflict: true,
+        status: 'CONFLICT' as const,
+        recommendedItemId: 'item-2',
+        masterValue: {
+          itemId: 'item-1',
+          itemTitle: 'Master Title',
+          rawValue: 'Master Title',
+          displayValue: 'Master Title',
+          isEmpty: false,
+          isMaster: true,
+        },
+        options: [
+          {
+            itemId: 'item-1',
+            itemTitle: 'Master Title',
+            rawValue: 'Master Title',
+            displayValue: 'Master Title',
+            isEmpty: false,
+            isMaster: true,
+          },
+          {
+            itemId: 'item-2',
+            itemTitle: 'Candidate Title',
+            rawValue: 'Candidate Title',
+            displayValue: 'Candidate Title',
+            isEmpty: false,
+            isMaster: false,
+          },
+        ],
+      };
+
+      const defaultMasterState = resolveMergeFieldOptionState(field, field.options[0], undefined);
+      expect(defaultMasterState.isMasterDefault).toBe(true);
+      expect(defaultMasterState.isSelected).toBe(true);
+      expect(defaultMasterState.isRecommended).toBe(false);
+
+      const defaultCandidateState = resolveMergeFieldOptionState(field, field.options[1], undefined);
+      expect(defaultCandidateState.isMasterDefault).toBe(false);
+      expect(defaultCandidateState.isSelected).toBe(false);
+      expect(defaultCandidateState.isRecommended).toBe(true);
+
+      const overriddenCandidateState = resolveMergeFieldOptionState(
+        field,
+        field.options[1],
+        'Candidate Title',
+      );
+      expect(overriddenCandidateState.isExplicitOverride).toBe(true);
+      expect(overriddenCandidateState.isSelected).toBe(true);
+      expect(overriddenCandidateState.isRecommended).toBe(false);
+    });
+
+    it('synchronizes feed hydration and draft cache invalidation via feed-hydration.port and curation-draft.store', async () => {
+      const {
+        getOrInitDraft,
+        getGroupMergeDraft,
+        clearAllGroupMergeDrafts,
+      } = await import('@/features/library/core/store/curation-draft.store');
+      const { notifyDraftCacheCleared } = await import(
+        '@/features/library/sdk/queries/feed-hydration.port'
+      );
+
+      clearAllGroupMergeDrafts();
+      const draft = getOrInitDraft('item-1::item-2', 'item-1');
+      expect(draft.selectedMasterId).toBe('item-1');
+      expect(getGroupMergeDraft('item-1::item-2')).toBeDefined();
+
+      notifyDraftCacheCleared('item-1');
+      expect(getGroupMergeDraft('item-1::item-2')).toBeUndefined();
+    });
   });
 });
 

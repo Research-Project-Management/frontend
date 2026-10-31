@@ -1,3 +1,4 @@
+import { evaluateSavedSearch, filterItemsBySavedSearch } from '@/features/library/domain/saved-search-ast.domain';
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   useReaderStore,
@@ -6,8 +7,7 @@ import {
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import {
   savedSearchConditionGroupSchema,
-  evaluateSavedSearch,
-  filterItemsBySavedSearch,
+  
   type SavedSearchConditionGroup,
 } from '@/features/library/domain/types/saved-searches.types';
 import {
@@ -364,7 +364,7 @@ describe('Zotero 7 Wave 3 — Advanced Researcher Workflows & Edge-Case Verifica
         '> "The Transformer is the first transduction model relying entirely on self-attention."',
       );
       expect(blocks[0]).toContain(
-        '[(Vaswani et al., 2017, p. 1)](flux://open-pdf/library/items/att-pdf-1?page=1&annotation=ann-p1-middle)',
+        '[(Vaswani et al., 2017, p. 1)](/library/papers/paper-vaswani?attachmentId=att-pdf-1&page=1&annotation=ann-p1-middle)',
       );
       expect(blocks[0]).toContain('**Note:** Key abstract claim on Page 1');
 
@@ -373,7 +373,7 @@ describe('Zotero 7 Wave 3 — Advanced Researcher Workflows & Edge-Case Verifica
         '> "An attention function can be described as mapping a query and a set of key-value pairs to an output."',
       );
       expect(blocks[1]).toContain(
-        '[(Vaswani et al., 2017, p. 3)](flux://open-pdf/library/items/att-pdf-1?page=3&annotation=ann-p3-top)',
+        '[(Vaswani et al., 2017, p. 3)](/library/papers/paper-vaswani?attachmentId=att-pdf-1&page=3&annotation=ann-p3-top)',
       );
 
       // Block 2: Page 3 bottom (y = 0.8)
@@ -381,13 +381,13 @@ describe('Zotero 7 Wave 3 — Advanced Researcher Workflows & Edge-Case Verifica
         '> "We call our particular attention "Scaled Dot-Product Attention"."',
       );
       expect(blocks[2]).toContain(
-        '[(Vaswani et al., 2017, p. 3)](flux://open-pdf/library/items/att-pdf-1?page=3&annotation=ann-p3-bottom)',
+        '[(Vaswani et al., 2017, p. 3)](/library/papers/paper-vaswani?attachmentId=att-pdf-1&page=3&annotation=ann-p3-bottom)',
       );
 
       // Verify formatAnnotationCitation standalone contract
       const cit = formatAnnotationCitation(paper, 'att-pdf-1', 3, 'ann-p3-top');
       expect(cit.label).toBe('(Vaswani et al., 2017, p. 3)');
-      expect(cit.url).toBe('flux://open-pdf/library/items/att-pdf-1?page=3&annotation=ann-p3-top');
+      expect(cit.url).toBe('/library/papers/paper-vaswani?attachmentId=att-pdf-1&page=3&annotation=ann-p3-top');
     });
   });
 

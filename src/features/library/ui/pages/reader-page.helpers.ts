@@ -93,53 +93,71 @@ export function useReaderTabHistory({
 export interface UseReaderTabPresentationOptions {
   effectiveTabId: string | null | undefined;
   activeTab: ReaderTab | undefined;
+  zoom: number;
+  visiblePage: number;
   setZoom: (updater: number | ((prev: number) => number)) => void;
   updateTabState: (
     tabId: string,
-    updates: Partial<Pick<ReaderTab, "zoom" | "rotation" | "fitMode" | "theme">>,
+    updates: Partial<
+      Pick<ReaderTab, "currentPage" | "zoom" | "rotation" | "fitMode" | "theme">
+    >,
   ) => void;
 }
 
 export function useReaderTabPresentation({
   effectiveTabId,
   activeTab,
+  zoom,
+  visiblePage,
   setZoom,
   updateTabState,
 }: UseReaderTabPresentationOptions) {
-  const [fallbackFitMode, setFitModeState] = useState<"fit-width" | "fit-page" | "auto">(
-    () =>
-      activeTab?.fitMode === "page-fit"
-        ? "fit-page"
-        : activeTab?.fitMode === "auto"
-          ? "auto"
+  const [fallbackFitMode, setFitModeState] = useState<
+    "fit-width" | "fit-page" | "auto" | "custom"
+  >(() =>
+    activeTab?.fitMode === "fit-page"
+      ? "fit-page"
+      : activeTab?.fitMode === "auto"
+        ? "auto"
+        : activeTab?.fitMode === "custom"
+          ? "custom"
           : "fit-width",
   );
-  const [fallbackRotation, setRotationState] = useState<number>(() => activeTab?.rotation ?? 0);
-  const [fallbackThemeMode, setThemeModeState] = useState<"normal" | "sepia" | "dark">(
-    () =>
-      activeTab?.theme === "sepia"
-        ? "sepia"
-        : activeTab?.theme === "dark"
-          ? "dark"
+  const [fallbackRotation, setRotationState] = useState<number>(
+    () => activeTab?.rotation ?? 0,
+  );
+  const [fallbackThemeMode, setThemeModeState] = useState<
+    "normal" | "sepia" | "dark" | "invert"
+  >(() =>
+    activeTab?.theme === "sepia"
+      ? "sepia"
+      : activeTab?.theme === "dark"
+        ? "dark"
+        : activeTab?.theme === "invert"
+          ? "invert"
           : "normal",
   );
 
-  const fitMode: "fit-width" | "fit-page" | "auto" = activeTab
-    ? activeTab.fitMode === "page-fit"
+  const fitMode: "fit-width" | "fit-page" | "auto" | "custom" = activeTab
+    ? activeTab.fitMode === "fit-page"
       ? "fit-page"
       : activeTab.fitMode === "auto"
         ? "auto"
-        : "fit-width"
+        : activeTab.fitMode === "custom"
+          ? "custom"
+          : "fit-width"
     : fallbackFitMode;
 
   const rotation: number = activeTab ? (activeTab.rotation ?? 0) : fallbackRotation;
 
-  const themeMode: "normal" | "sepia" | "dark" = activeTab
+  const themeMode: "normal" | "sepia" | "dark" | "invert" = activeTab
     ? activeTab.theme === "sepia"
       ? "sepia"
       : activeTab.theme === "dark"
         ? "dark"
-        : "normal"
+        : activeTab.theme === "invert"
+          ? "invert"
+          : "normal"
     : fallbackThemeMode;
 
   useEffect(() => {
@@ -149,31 +167,37 @@ export function useReaderTabPresentation({
     }
   }, [effectiveTabId, activeTab?.id, setZoom]);
 
+  useEffect(() => {
+    if (!effectiveTabId || effectiveTabId === "library" || visiblePage < 1) return;
+    updateTabState(effectiveTabId, { currentPage: visiblePage });
+  }, [effectiveTabId, visiblePage, updateTabState]);
+
   const setTabZoom = useCallback(
-    (nextOrUpdater: number | ((prev: number) => number)) => {
-      setZoom((prev) => {
-        const resolved =
-          typeof nextOrUpdater === "function" ? nextOrUpdater(prev) : nextOrUpdater;
-        if (effectiveTabId && effectiveTabId !== "library") {
-          updateTabState(effectiveTabId, { zoom: resolved });
-        }
-        return resolved;
-      });
+    (
+      nextOrUpdater: number | ((prev: number) => number),
+      nextFitMode: "fit-width" | "fit-page" | "auto" | "custom" = "custom",
+    ) => {
+      const currentZoom = activeTab?.zoom ?? zoom;
+      const rawResolved =
+        typeof nextOrUpdater === "function"
+          ? nextOrUpdater(currentZoom)
+          : nextOrUpdater;
+      const resolved = Math.min(3.0, Math.max(0.25, Number(rawResolved.toFixed(4))));
+      setZoom(resolved);
+      setFitModeState(nextFitMode);
+      if (effectiveTabId && effectiveTabId !== "library") {
+        updateTabState(effectiveTabId, { zoom: resolved, fitMode: nextFitMode });
+      }
     },
-    [effectiveTabId, setZoom, updateTabState],
+    [effectiveTabId, activeTab?.zoom, zoom, setZoom, updateTabState],
   );
 
   const setFitMode = useCallback(
-    (next: "fit-width" | "fit-page" | "auto") => {
+    (next: "fit-width" | "fit-page" | "auto" | "custom") => {
       setFitModeState(next);
       if (effectiveTabId && effectiveTabId !== "library") {
         updateTabState(effectiveTabId, {
-          fitMode:
-            next === "fit-page"
-              ? "page-fit"
-              : next === "auto"
-                ? "auto"
-                : "page-width",
+          fitMode: next,
         });
       }
     },
@@ -182,43 +206,38 @@ export function useReaderTabPresentation({
 
   const setRotation = useCallback(
     (nextOrUpdater: number | ((prev: number) => number)) => {
-      setRotationState((prev) => {
-        const resolved =
-          typeof nextOrUpdater === "function" ? nextOrUpdater(prev) : nextOrUpdater;
-        if (effectiveTabId && effectiveTabId !== "library") {
-          updateTabState(effectiveTabId, { rotation: resolved });
-        }
-        return resolved;
-      });
+      const resolved =
+        typeof nextOrUpdater === "function"
+          ? nextOrUpdater(rotation)
+          : nextOrUpdater;
+      setRotationState(resolved);
+      if (effectiveTabId && effectiveTabId !== "library") {
+        updateTabState(effectiveTabId, { rotation: resolved });
+      }
     },
-    [effectiveTabId, updateTabState],
+    [effectiveTabId, rotation, updateTabState],
   );
 
   const setThemeMode = useCallback(
     (
       nextOrUpdater:
         | ("normal" | "sepia" | "dark" | "invert")
-        | ((prev: "normal" | "sepia" | "dark") => "normal" | "sepia" | "dark" | "invert"),
+        | ((
+            prev: "normal" | "sepia" | "dark" | "invert",
+          ) => "normal" | "sepia" | "dark" | "invert"),
     ) => {
-      setThemeModeState((prev) => {
-        const raw =
-          typeof nextOrUpdater === "function" ? nextOrUpdater(prev) : nextOrUpdater;
-        const resolved: "normal" | "sepia" | "dark" =
-          raw === "invert" ? "dark" : raw;
-        if (effectiveTabId && effectiveTabId !== "library") {
-          updateTabState(effectiveTabId, {
-            theme:
-              resolved === "sepia"
-                ? "sepia"
-                : resolved === "dark"
-                  ? "dark"
-                  : "light",
-          });
-        }
-        return resolved;
-      });
+      const resolved =
+        typeof nextOrUpdater === "function"
+          ? nextOrUpdater(themeMode)
+          : nextOrUpdater;
+      setThemeModeState(resolved);
+      if (effectiveTabId && effectiveTabId !== "library") {
+        updateTabState(effectiveTabId, {
+          theme: resolved,
+        });
+      }
     },
-    [effectiveTabId, updateTabState],
+    [effectiveTabId, themeMode, updateTabState],
   );
 
   return {

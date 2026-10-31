@@ -47,11 +47,6 @@ import {
 } from '@/features/library/ui/inspector/fields/CreatorFields';
 import {
   generateCitationKey,
-  toBibTeXEntry,
-  formatRis,
-  formatCslJson,
-  formatCitation,
-  resolveExportSpec,
 } from '@/features/library/domain/citations';
 import { itemSchema } from '@/features/library/domain/types/items.types';
 import {
@@ -457,9 +452,10 @@ describe('Wave 12: Exhaustive All-37 Zotero Item Types & All-121 Fields Round-Tr
     it('hydrates, validates via itemSchema, and sorts a 500-item multi-disciplinary dataset across all 37 Zotero item types in < 500ms without data loss', () => {
       const startMs = performance.now();
       const rawDataset = Array.from({ length: 500 }, (_, idx) => {
-        const typeDef = ALL_ITEM_TYPES_FLAT[idx % ALL_ITEM_TYPES_FLAT.length];
-        const itemType = typeDef.itemType;
-        const primaryCreator = typeDef.primaryCreatorType || 'author';
+        const typeEntry = ALL_ITEM_TYPES_FLAT[idx % ALL_ITEM_TYPES_FLAT.length];
+        const itemType = typeEntry.value;
+        const typeDef = getItemTypeDefinition(itemType);
+        const primaryCreator = typeDef?.primaryCreatorType || getPrimaryCreatorType(itemType) || 'author';
         const isInstitutional = idx % 7 === 0;
         const isRetracted = idx % 25 === 0;
 
@@ -471,7 +467,7 @@ describe('Wave 12: Exhaustive All-37 Zotero Item Types & All-121 Fields Round-Tr
           title: `Multi-Disciplinary Research Study #${idx}: Nguyễn & $\\mathcal{O}(N)$ (${itemType})`,
           year: 1995 + (idx % 32),
           publicationDate: `${1995 + (idx % 32)}-0${(idx % 9) + 1}-15`,
-          publicationTitle: `International Venue of ${typeDef.label}`,
+          publicationTitle: `International Venue of ${typeEntry.label}`,
           publisher: `Academic Press #${idx % 15}`,
           doi: `10.1000/scale.${itemType}.${idx}`,
           isRetracted,
@@ -488,7 +484,7 @@ describe('Wave 12: Exhaustive All-37 Zotero Item Types & All-121 Fields Round-Tr
             ? [
                 {
                   creatorType: primaryCreator,
-                  name: `Global Consortium for ${typeDef.label} #${idx}`,
+                  name: `Global Consortium for ${typeEntry.label} #${idx}`,
                   fieldMode: 1,
                 },
               ]

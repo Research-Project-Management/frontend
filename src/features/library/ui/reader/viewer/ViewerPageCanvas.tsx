@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef } from 'react';
 import { Page } from 'react-pdf';
 import { Check, X } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import { getCappedDevicePixelRatio, releaseCanvasMemory } from '@/shared/lib/pdfjs-worker';
+import { getCappedDevicePixelRatio } from '@/shared/lib/pdfjs-worker';
 import type { ReaderAnnotation } from '@/features/library/domain/types/reader.types';
 import type { ReaderAnnotationTool } from '@/features/library/core/store/reader.store';
 import { calculatePageAspectRatio } from '@/features/library/domain/pdf-viewport.model';
@@ -32,7 +32,7 @@ export interface ViewerPageCanvasProps {
   inWindow: boolean;
   effectivePageWidth: number;
   rotation: number;
-  themeMode: 'normal' | 'sepia' | 'dark';
+  themeMode: 'normal' | 'sepia' | 'dark' | 'invert';
   activeTool: ReaderAnnotationTool;
   activeColor?: string;
   cachedDim?: { width: number; height: number };
@@ -77,25 +77,6 @@ export const ViewerPageCanvas = React.memo(function ViewerPageCanvas({
   onOpenAnnotationCard,
 }: ViewerPageCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const pageCanvasRef = useRef<HTMLCanvasElement | null>(null);
-
-  useEffect(() => {
-    if (!inWindow && containerRef.current) {
-      releaseCanvasMemory(containerRef.current);
-    }
-  }, [inWindow]);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    return () => {
-      if (pageCanvasRef.current) {
-        pageCanvasRef.current.width = 0;
-        pageCanvasRef.current.height = 0;
-        pageCanvasRef.current = null;
-      }
-      releaseCanvasMemory(container);
-    };
-  }, []);
 
   const aspectRatio = cachedDim
     ? calculatePageAspectRatio(cachedDim, rotation)
@@ -115,8 +96,9 @@ export const ViewerPageCanvas = React.memo(function ViewerPageCanvas({
       onMouseMove={(e) => onPageMouseMove(e, pageNum)}
       onMouseUp={(e) => onPageMouseUp(e, pageNum)}
       className={cn(
-        'bg-white overflow-hidden transition-all relative shrink-0 mx-auto shadow-xs',
-        themeMode === 'dark' && 'invert-[0.9] hue-rotate-180 contrast-90 brightness-95',
+        'bg-white overflow-hidden transition-all relative shrink-0 mx-auto min-h-[400px]',
+        themeMode === 'dark' && 'brightness-90 contrast-95',
+        themeMode === 'invert' && 'invert-[0.92] hue-rotate-180 contrast-90 brightness-95',
         themeMode === 'sepia' && 'sepia-[0.3] contrast-95 brightness-95',
         (activeTool === 'area' || activeTool === 'note') && 'cursor-crosshair select-none',
         activeTool === 'text' && 'cursor-text',
@@ -127,18 +109,10 @@ export const ViewerPageCanvas = React.memo(function ViewerPageCanvas({
           pageNumber={pageNum}
           width={effectivePageWidth}
           rotate={rotation}
+          canvasBackground="#ffffff"
           renderTextLayer={true}
           renderAnnotationLayer={true}
           devicePixelRatio={getCappedDevicePixelRatio(2)}
-          canvasRef={(node) => {
-            if (node) {
-              pageCanvasRef.current = node;
-            } else if (pageCanvasRef.current) {
-              pageCanvasRef.current.width = 0;
-              pageCanvasRef.current.height = 0;
-              pageCanvasRef.current = null;
-            }
-          }}
           onLoadSuccess={(page) => {
             const origW =
               (page as { originalWidth?: number; width?: number }).originalWidth ||

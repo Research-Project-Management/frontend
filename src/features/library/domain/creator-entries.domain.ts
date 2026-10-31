@@ -20,7 +20,7 @@ export interface CreatorEntry {
 export type CreatorDraft = CreatorEntry;
 
 /** Parse & sanitize creators array into structured list */
-export function parseCreators(item: Item): CreatorEntry[] {
+export function parseCreators(item: Item, defaultRoleOverride?: string): CreatorEntry[] {
   const hasExplicitCreatorsArray = Array.isArray(item.creators);
   const rawCreators = hasExplicitCreatorsArray
     ? item.creators!.length > 0
@@ -32,7 +32,7 @@ export function parseCreators(item: Item): CreatorEntry[] {
   if (Array.isArray(rawCreators) && rawCreators.length > 0) {
     const parsedCreators: CreatorEntry[] = [];
     for (const rawCreatorItem of rawCreators) {
-      const creatorType = rawCreatorItem.creatorType || 'author';
+      const creatorType = rawCreatorItem.creatorType || defaultRoleOverride || 'author';
       const firstName = cleanValue(
         rawCreatorItem.firstName ||
           (rawCreatorItem as Record<string, unknown>).given,
@@ -137,7 +137,7 @@ export function parseCreators(item: Item): CreatorEntry[] {
     hasExplicitCreatorsArray ? undefined : item.contributors,
   );
   if (normalizedAuthorList.length > 0) {
-    const defaultRole = getPrimaryCreatorType(item.itemType) || 'author';
+    const defaultRole = defaultRoleOverride || getPrimaryCreatorType(item.itemType) || 'author';
     return normalizedAuthorList.map((authorName) => {
       const parsed = parseCreatorName(authorName || '');
       return {
@@ -205,7 +205,14 @@ export function areCreatorsEqual(
 /** Convert CreatorEntry items into strongly typed CreatorCredit items for Item */
 export function toItemCreators(
   creatorEntries: CreatorEntry[],
-): CreatorCredit[] {
+): Array<
+  CreatorCredit & {
+    orderIndex: number;
+    creatorType: string;
+    fieldMode: number;
+    fullName: string;
+  }
+> {
   return creatorEntries.map((creatorEntry, indexPosition) => {
     const trimmedName = creatorEntry.name.trim();
     let firstName = creatorEntry.firstName;

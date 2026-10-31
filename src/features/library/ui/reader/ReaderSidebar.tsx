@@ -6,12 +6,23 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   setupPdfWorker,
   getSharedPdfDocumentOptions,
-  releaseCanvasMemory,
 } from "@/shared/lib/pdfjs-worker";
 
 setupPdfWorker();
 const SHARED_PDF_OPTIONS = getSharedPdfDocumentOptions();
-import { ChevronRight, Search, X, Loader2 } from "lucide-react";
+import {
+  ChevronRight,
+  Search,
+  X,
+  Loader2,
+  Download,
+  FileText,
+} from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/shared/components/ui/tooltip";
 import { cn } from "@/shared/lib/utils";
 import { PlaneEmptyState } from "@/shared/components/ui/PlaneEmptyState";
 import { PlaneErrorState } from "@/shared/components/ui/PlaneErrorState";
@@ -19,15 +30,104 @@ import { Input } from "@/shared/components/ui/input";
 import type {
   DocumentFulltext,
   ReaderDocument,
+  PdfOutlineItem,
 } from "@/features/library/domain/types/reader.types";
+import {
+  buildOutlineSections,
+  filterVisibleOutlineSections,
+  resolveActiveOutlineSectionId,
+} from "@/features/library/domain/reader-persistence.helpers";
 import AnnotationsPanel from "./panel/AnnotationsPanel";
 import { ReaderLeftRail, type ReaderSidebarTab } from "./ReaderLeftRail";
 import { usePanelResize } from "@/features/library/ui/hooks/usePanelResize";
 
-interface PdfDocumentHandle {
-  cleanup?: () => Promise<void> | void;
-  destroy?: () => Promise<void> | void;
-}
+const HeaderIconButton = ({
+  onClick,
+  disabled,
+  label,
+  children,
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  label: string;
+  children: React.ReactNode;
+}) => (
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled}
+        className="size-7 flex items-center justify-center rounded-md text-foreground hover:bg-muted disabled:opacity-50 cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
+        aria-label={label}
+      >
+        {children}
+      </button>
+    </TooltipTrigger>
+    <TooltipContent side="bottom" align="end" sideOffset={6} className="text-11">
+      {label}
+    </TooltipContent>
+  </Tooltip>
+);
+
+const HeaderSearchBar = ({
+  inputRef,
+  value,
+  onChange,
+  onClear,
+  onCollapseIfEmpty,
+  placeholder,
+  clearLabel,
+}: {
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  value: string;
+  onChange: (val: string) => void;
+  onClear: () => void;
+  onCollapseIfEmpty: () => void;
+  placeholder: string;
+  clearLabel: string;
+}) => (
+  <div className="relative flex items-center w-full h-7 rounded-md border border-border bg-background overflow-hidden">
+    <Search
+      className="size-3.5 absolute left-2 text-muted-foreground pointer-events-none shrink-0"
+      strokeWidth={1.5}
+    />
+    <Input
+      ref={inputRef}
+      type="text"
+      autoFocus
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") onClear();
+      }}
+      onBlur={() => {
+        if (!value) onCollapseIfEmpty();
+      }}
+      placeholder={placeholder}
+      className="h-full pl-7 pr-6 text-11 border-none bg-transparent shadow-none focus-visible:ring-0 font-sans"
+    />
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onClick={onClear}
+          className="size-5 absolute right-1 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer"
+          aria-label={clearLabel}
+        >
+          <X className="size-3" strokeWidth={1.5} />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" sideOffset={4} className="text-11">
+        {clearLabel}
+      </TooltipContent>
+    </Tooltip>
+  </div>
+);
 
 const LazyThumbnailPage = React.memo(function LazyThumbnailPage({
   pageNum,
@@ -40,24 +140,8 @@ const LazyThumbnailPage = React.memo(function LazyThumbnailPage({
   showPdfCanvas?: boolean;
   onJumpToPage: (page: number) => void;
 }) {
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const pageCanvasRef = useRef<HTMLCanvasElement | null>(null);
-
-  useEffect(() => {
-    const el = buttonRef.current;
-    return () => {
-      if (pageCanvasRef.current) {
-        pageCanvasRef.current.width = 0;
-        pageCanvasRef.current.height = 0;
-        pageCanvasRef.current = null;
-      }
-      releaseCanvasMemory(el);
-    };
-  }, []);
-
   return (
     <button
-      ref={buttonRef}
       type="button"
       onClick={() => onJumpToPage(pageNum)}
       className={cn(
@@ -73,17 +157,9 @@ const LazyThumbnailPage = React.memo(function LazyThumbnailPage({
             pageNumber={pageNum}
             width={100}
             devicePixelRatio={1}
+            canvasBackground="#ffffff"
             renderTextLayer={false}
             renderAnnotationLayer={false}
-            canvasRef={(node) => {
-              if (node) {
-                pageCanvasRef.current = node;
-              } else if (pageCanvasRef.current) {
-                pageCanvasRef.current.width = 0;
-                pageCanvasRef.current.height = 0;
-                pageCanvasRef.current = null;
-              }
-            }}
             loading={
               <div className="size-full flex items-center justify-center text-foreground text-11 font-mono">
                 {pageNum}
@@ -131,10 +207,24 @@ export interface ReaderSidebarProps {
   onBatchAddToNote?: (targetIds?: string[]) => void;
   annotations?: import("@/features/library/domain/types/reader.types").ReaderAnnotation[];
   annotationsCount?: number;
-  onAddToNote?: (text: string, pageNumber?: number) => void;
+  isLoadingAnnotations?: boolean;
+  isAnnotationsError?: boolean;
+  onRefetchAnnotations?: () => Promise<unknown> | void;
+  isUpdatingAnnotation?: boolean;
+  isExtractingNotes?: boolean;
+  isImportingAnnotations?: boolean;
+  onImportExternalAnnotations?: () => Promise<unknown> | void;
+  pdfOutline?: PdfOutlineItem[];
+  onAddToNote?: (text: string, pageNumber?: number, annotationId?: string) => void;
+  onAskAi?: (text: string, pageNumber?: number) => void;
+  onUpdateAnnotation?: (
+    annotationId: string,
+    expectedVersion: number | undefined,
+    dto: { color?: string; comment?: string; quoteText?: string; tags?: string[] },
+  ) => Promise<unknown>;
+  onDeleteAnnotation?: (annotationId: string, expectedVersion?: number) => Promise<unknown>;
+  onExtractNotes?: (itemId: string) => Promise<unknown> | void;
 }
-
-export type SidebarProps = ReaderSidebarProps;
 
 export function ReaderSidebar({
   isOpen,
@@ -156,22 +246,41 @@ export function ReaderSidebar({
   onBatchAddToNote,
   annotations,
   annotationsCount = 0,
+  isLoadingAnnotations = false,
+  isAnnotationsError = false,
+  onRefetchAnnotations,
+  isUpdatingAnnotation = false,
+  isExtractingNotes = false,
+  isImportingAnnotations = false,
+  onImportExternalAnnotations,
+  pdfOutline = [],
   onAddToNote,
-}: SidebarProps) {
+  onAskAi,
+  onUpdateAnnotation,
+  onDeleteAnnotation,
+  onExtractNotes,
+}: ReaderSidebarProps) {
   const [activeTab, setActiveTab] = useState<ReaderSidebarTab>("outline");
   const [outlineFilter, setOutlineFilter] = useState("");
+  const [isOutlineSearchExpanded, setIsOutlineSearchExpanded] = useState(false);
+  const [annotationsSearchQuery, setAnnotationsSearchQuery] = useState("");
+  const [isAnnotationsSearchExpanded, setIsAnnotationsSearchExpanded] =
+    useState(false);
+  const [selectedOutlineId, setSelectedOutlineId] = useState<string | null>(
+    null,
+  );
+  const [collapsedOutlineIds, setCollapsedOutlineIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const outlineSearchInputRef = useRef<HTMLInputElement | null>(null);
+  const annotationsSearchInputRef = useRef<HTMLInputElement | null>(null);
   const [width, setWidth] = useState(288);
   const thumbContainerRef = useRef<HTMLDivElement | null>(null);
-  const pdfDocRef = useRef<PdfDocumentHandle | null>(null);
 
   useEffect(() => {
-    return () => {
-      const doc = pdfDocRef.current;
-      pdfDocRef.current = null;
-      void doc?.cleanup?.();
-      void doc?.destroy?.();
-    };
-  }, [pdfBlobUrl]);
+    setSelectedOutlineId(null);
+    setCollapsedOutlineIds(new Set());
+  }, [paper?.id, attachmentId]);
 
   const numRows = Math.ceil(Math.max(0, totalPages) / 2);
   const thumbVirtualizer = useVirtualizer({
@@ -190,19 +299,46 @@ export function ReaderSidebar({
   });
 
   const sections = useMemo(
-    () => fulltext?.sections || [],
-    [fulltext?.sections],
+    () => buildOutlineSections(fulltext?.sections, pdfOutline, outlineFilter),
+    [fulltext?.sections, pdfOutline, outlineFilter],
   );
 
-  const filteredSections = useMemo(() => {
-    if (!outlineFilter.trim()) return sections;
-    const q = outlineFilter.toLowerCase().trim();
-    return sections.filter(
-      (s) =>
-        (s.title && s.title.toLowerCase().includes(q)) ||
-        (s.num && s.num.toLowerCase().includes(q)),
-    );
-  }, [sections, outlineFilter]);
+  const hasAnyOutline = Boolean(
+    (fulltext?.sections && fulltext.sections.length > 0) ||
+      (pdfOutline && pdfOutline.length > 0),
+  );
+
+  const filteredSections = useMemo(
+    () =>
+      filterVisibleOutlineSections(
+        sections,
+        outlineFilter,
+        Boolean(fulltext?.sections && fulltext.sections.length > 0),
+        collapsedOutlineIds,
+      ),
+    [sections, outlineFilter, fulltext?.sections, collapsedOutlineIds],
+  );
+
+  const activeOutlineSectionId = useMemo(
+    () =>
+      resolveActiveOutlineSectionId(
+        filteredSections,
+        selectedOutlineId,
+        currentPage,
+      ),
+    [filteredSections, selectedOutlineId, currentPage],
+  );
+
+  const toggleOutlineCollapse = (sectionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setCollapsedOutlineIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(sectionId)) next.delete(sectionId);
+      else next.add(sectionId);
+      return next;
+    });
+  };
 
   const panelTitle = useMemo(() => {
     switch (activeTab) {
@@ -216,6 +352,14 @@ export function ReaderSidebar({
   }, [activeTab]);
 
   const handleToggle = onToggleOpen || onClose;
+  const isOutlineSearchOpen =
+    activeTab === "outline" &&
+    (isOutlineSearchExpanded || Boolean(outlineFilter));
+  const isAnnotationsSearchOpen =
+    activeTab === "annotations" &&
+    (isAnnotationsSearchExpanded || Boolean(annotationsSearchQuery));
+
+  if (!isOpen) return null;
 
   return (
     <div className="flex h-full min-h-full self-stretch shrink-0 select-none z-20">
@@ -231,8 +375,7 @@ export function ReaderSidebar({
       />
 
       {/* ── Expandable Content Panel (w-72 or resized) ── */}
-      {isOpen && (
-        <aside
+      <aside
           aria-label="Document navigation panel"
           style={{ width: `${width}px` }}
           className={cn(
@@ -240,41 +383,146 @@ export function ReaderSidebar({
             isDragging && "select-none transition-none",
           )}
         >
-          {/* Header with Title */}
-          <div className="h-10 shrink-0 border-b border-border px-3 flex items-center bg-background">
-            <h2 className="text-12 font-semibold text-foreground truncate">
-              {panelTitle}
-            </h2>
-          </div>
+          {/* Header with Title & Right-Aligned Actions */}
+          <div
+            className={cn(
+              "h-10 shrink-0 border-b border-border flex items-center bg-background select-none",
+              isOutlineSearchOpen || isAnnotationsSearchOpen
+                ? "px-2"
+                : "justify-between px-3",
+            )}
+          >
+            {isOutlineSearchOpen ? (
+              <HeaderSearchBar
+                inputRef={outlineSearchInputRef}
+                value={outlineFilter}
+                onChange={setOutlineFilter}
+                onClear={() => {
+                  setOutlineFilter("");
+                  setIsOutlineSearchExpanded(false);
+                }}
+                onCollapseIfEmpty={() => setIsOutlineSearchExpanded(false)}
+                placeholder="Filter headings in outline..."
+                clearLabel="Clear filter"
+              />
+            ) : isAnnotationsSearchOpen ? (
+              <HeaderSearchBar
+                inputRef={annotationsSearchInputRef}
+                value={annotationsSearchQuery}
+                onChange={setAnnotationsSearchQuery}
+                onClear={() => {
+                  setAnnotationsSearchQuery("");
+                  setIsAnnotationsSearchExpanded(false);
+                }}
+                onCollapseIfEmpty={() => setIsAnnotationsSearchExpanded(false)}
+                placeholder="Search highlights..."
+                clearLabel="Clear search"
+              />
+            ) : (
+              <>
+                <h2 className="text-12 font-semibold text-foreground truncate">
+                  {panelTitle}
+                </h2>
 
-          {/* Outline Search Filter */}
-          {activeTab === "outline" && sections.length > 0 && (
-            <div className="p-1.5 border-b border-border bg-background shrink-0">
-              <div className="relative flex items-center">
-                <Search
-                  className="size-3.5 absolute left-2 text-muted-foreground pointer-events-none shrink-0"
-                  strokeWidth={1.5}
-                />
-                <Input
-                  type="text"
-                  value={outlineFilter}
-                  onChange={(e) => setOutlineFilter(e.target.value)}
-                  placeholder="Filter headings in outline..."
-                  className="h-7 pl-7 pr-6 text-11 bg-background font-sans"
-                />
-                {outlineFilter && (
-                  <button
-                    type="button"
-                    onClick={() => setOutlineFilter("")}
-                    className="size-5 absolute right-1 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer"
-                    aria-label="Clear filter"
-                  >
-                    <X className="size-3" strokeWidth={1.5} />
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
+                <div className="flex items-center gap-0.5 shrink-0">
+                  {activeTab === "outline" && (
+                    <HeaderIconButton
+                      onClick={() => {
+                        setIsOutlineSearchExpanded(true);
+                        setTimeout(
+                          () => outlineSearchInputRef.current?.focus(),
+                          50,
+                        );
+                      }}
+                      disabled={!hasAnyOutline}
+                      label="Filter headings in outline"
+                    >
+                      <Search
+                        className="size-3.5 shrink-0 text-foreground"
+                        strokeWidth={1.5}
+                      />
+                    </HeaderIconButton>
+                  )}
+
+                  {activeTab === "annotations" && (
+                    <>
+                      <HeaderIconButton
+                        onClick={() => {
+                          setIsAnnotationsSearchExpanded(true);
+                          setTimeout(
+                            () => annotationsSearchInputRef.current?.focus(),
+                            50,
+                          );
+                        }}
+                        disabled={(annotations?.length ?? 0) === 0}
+                        label="Search highlights"
+                      >
+                        <Search
+                          className="size-3.5 shrink-0 text-foreground"
+                          strokeWidth={1.5}
+                        />
+                      </HeaderIconButton>
+
+                      {onImportExternalAnnotations && (
+                        <HeaderIconButton
+                          onClick={() => void onImportExternalAnnotations()}
+                          disabled={isImportingAnnotations}
+                          label="Import embedded annotations from PDF"
+                        >
+                          {isImportingAnnotations ? (
+                            <Loader2
+                              className="size-3.5 animate-spin text-foreground shrink-0"
+                              strokeWidth={1.5}
+                            />
+                          ) : (
+                            <Download
+                              className="size-3.5 text-foreground shrink-0"
+                              strokeWidth={1.5}
+                            />
+                          )}
+                        </HeaderIconButton>
+                      )}
+
+                      {paper && (
+                        <HeaderIconButton
+                          onClick={() => {
+                            if (
+                              (selectedIds?.size ?? 0) > 0 &&
+                              onBatchAddToNote
+                            ) {
+                              onBatchAddToNote(Array.from(selectedIds!));
+                            } else if (onExtractNotes) {
+                              void onExtractNotes(paper.id);
+                            }
+                          }}
+                          disabled={
+                            isExtractingNotes || (annotations?.length ?? 0) === 0
+                          }
+                          label={
+                            (selectedIds?.size ?? 0) > 0
+                              ? `Add ${selectedIds!.size} selected highlights to Note`
+                              : "Add all highlights to Notes"
+                          }
+                        >
+                          {isExtractingNotes ? (
+                            <Loader2
+                              className="size-3.5 animate-spin text-foreground shrink-0"
+                              strokeWidth={1.5}
+                            />
+                          ) : (
+                            <FileText
+                              className="size-3.5 text-foreground shrink-0"
+                              strokeWidth={1.5}
+                            />
+                          )}
+                        </HeaderIconButton>
+                      )}
+                    </>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
 
           {/* Content Body */}
           <div
@@ -290,37 +538,71 @@ export function ReaderSidebar({
               filteredSections.length > 0 ? (
                 <div className="space-y-0.5">
                   {filteredSections.map((s, idx) => {
-                    const isCurrent = s.page === currentPage;
-                    const level = s.num
-                      ? Math.min(4, s.num.split(".").filter(Boolean).length)
-                      : 1;
+                    const isCurrent = s.id === activeOutlineSectionId;
+                    const isCollapsed = collapsedOutlineIds.has(s.id);
+                    const isSearchingOutline = Boolean(outlineFilter.trim());
+                    const level = s.level ?? 1;
+                    const indentPx = Math.max(8, (level - 1) * 14 + 8);
                     return (
-                      <button
+                      <div
                         key={s.id || idx}
-                        type="button"
-                        onClick={() => onJumpToPage(s.page || 1)}
                         className={cn(
-                          "w-full flex items-start gap-1.5 px-2 py-1.5 text-left rounded-md text-12 leading-snug transition-colors cursor-pointer group",
+                          "w-full flex items-center gap-1 pr-2 py-1 text-left rounded-md text-12 leading-snug transition-colors group",
                           isCurrent
                             ? "bg-muted text-foreground font-medium"
-                            : "text-foreground hover:bg-muted text-muted-foreground hover:text-foreground",
+                            : "text-foreground/85 hover:bg-muted/70 hover:text-foreground font-normal",
                         )}
-                        style={{ paddingLeft: `${Math.max(8, level * 10)}px` }}
+                        style={{ paddingLeft: `${indentPx}px` }}
                       >
-                        <ChevronRight
-                          className="size-3 shrink-0 mt-0.5 text-muted-foreground group-hover:text-foreground"
-                          strokeWidth={1.5}
-                        />
-                        <span className="truncate flex-1">
-                          {s.num ? `${s.num} ` : ""}
-                          {s.title}
-                        </span>
-                        {s.page && (
-                          <span className="text-11 font-mono tabular-nums text-muted-foreground group-hover:text-foreground shrink-0 ml-1">
-                            {s.page}
-                          </span>
+                        {s.hasChildren && !isSearchingOutline ? (
+                          <button
+                            type="button"
+                            onClick={(e) => toggleOutlineCollapse(s.id, e)}
+                            aria-label={
+                              isCollapsed
+                                ? `Expand ${s.title}`
+                                : `Collapse ${s.title}`
+                            }
+                            aria-expanded={!isCollapsed}
+                            className="size-4 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-background/80 shrink-0 cursor-pointer transition-colors"
+                          >
+                            <ChevronRight
+                              className={cn(
+                                "size-3 shrink-0 transition-transform duration-150",
+                                !isCollapsed && "rotate-90",
+                              )}
+                              strokeWidth={1.5}
+                            />
+                          </button>
+                        ) : (
+                          <span className="size-4 shrink-0" aria-hidden="true" />
                         )}
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedOutlineId(s.id);
+                            onJumpToPage(s.page || 1);
+                          }}
+                          className="flex-1 min-w-0 flex items-center justify-between gap-2 text-left cursor-pointer outline-none py-0.5"
+                        >
+                          <span className="truncate flex-1">
+                            {s.num ? `${s.num} ` : ""}
+                            {s.title}
+                          </span>
+                          {s.page && (
+                            <span
+                              className={cn(
+                                "text-11 font-mono tabular-nums shrink-0",
+                                isCurrent
+                                  ? "text-foreground font-medium"
+                                  : "text-muted-foreground group-hover:text-foreground",
+                              )}
+                            >
+                              {s.page}
+                            </span>
+                          )}
+                        </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -346,6 +628,16 @@ export function ReaderSidebar({
                   scopeId={scopeId || "user"}
                   attachmentId={attachmentId}
                   annotations={annotations}
+                  searchQuery={annotationsSearchQuery}
+                  onSearchQueryChange={setAnnotationsSearchQuery}
+                  hideSearchBar={true}
+                  isLoading={isLoadingAnnotations}
+                  isError={isAnnotationsError}
+                  refetch={onRefetchAnnotations}
+                  isUpdating={isUpdatingAnnotation}
+                  isExtracting={isExtractingNotes}
+                  isImporting={isImportingAnnotations}
+                  onImportExternal={onImportExternalAnnotations}
                   onNavigateToPage={onJumpToPage}
                   selectedIds={selectedIds}
                   onSelectIds={onSelectIds}
@@ -354,6 +646,10 @@ export function ReaderSidebar({
                   onBatchDelete={onBatchDelete}
                   onBatchAddToNote={onBatchAddToNote}
                   onAddToNote={onAddToNote}
+                  onAskAi={onAskAi}
+                  onUpdateAnnotation={onUpdateAnnotation}
+                  onDeleteAnnotation={onDeleteAnnotation}
+                  onExtractNotes={onExtractNotes}
                 />
               ) : (
                 <PlaneEmptyState
@@ -375,9 +671,6 @@ export function ReaderSidebar({
               <Document
                 file={pdfBlobUrl}
                 options={SHARED_PDF_OPTIONS}
-                onLoadSuccess={(doc) => {
-                  pdfDocRef.current = doc as unknown as PdfDocumentHandle;
-                }}
                 loading={
                   <div className="flex flex-col items-center justify-center p-8 text-center gap-2">
                     <Loader2
@@ -493,10 +786,8 @@ export function ReaderSidebar({
             />
           </div>
         </aside>
-      )}
     </div>
   );
 }
 
-export { ReaderSidebar as Sidebar };
 export default ReaderSidebar;

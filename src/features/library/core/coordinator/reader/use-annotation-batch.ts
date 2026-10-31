@@ -4,10 +4,9 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/shared/lib/utils';
-import { AnnotationsService } from '@/features/library/sdk/library.client';
+import { AnnotationsService, type ExtractNotesOptions } from '@/features/library/sdk/library.client';
 import { annotationKeys } from '@/features/library/sdk/query-keys';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
-import { PdfAnnotationEngine } from '@/features/library/domain/reader.domain';
 import type {
   ReaderAnnotation,
   ReaderDocument,
@@ -18,6 +17,7 @@ export interface UseAnnotationBatchOptions {
   effectiveAttachmentId?: string;
   paper: ReaderDocument | null;
   setPendingNoteText: (text: string) => void;
+  extractNotes?: (paperId: string, options?: ExtractNotesOptions) => Promise<unknown>;
 }
 
 export type UndoAction =
@@ -67,7 +67,8 @@ export function useAnnotationBatch({
   scopeId,
   effectiveAttachmentId,
   paper,
-  setPendingNoteText,
+  setPendingNoteText: _setPendingNoteText,
+  extractNotes,
 }: UseAnnotationBatchOptions) {
   const qc = useQueryClient();
   const [selectedAnnotationIds, setSelectedAnnotationIds] = useState<Set<string>>(new Set());
@@ -197,7 +198,6 @@ export function useAnnotationBatch({
           comment: item.comment,
           tags: item.tags,
           type: item.type,
-          expectedVersion: 0,
         }));
         await AnnotationsService.batch(scopeId, effectiveAttachmentId, {
           upserts,
@@ -275,7 +275,6 @@ export function useAnnotationBatch({
               comment: item.comment,
               tags: item.tags,
               type: item.type,
-              expectedVersion: 0,
             },
           ],
           deletes: [],
@@ -373,12 +372,19 @@ export function useAnnotationBatch({
 
       if ((e.ctrlKey || e.metaKey) && !e.altKey) {
         if (e.key.toLowerCase() === 'z') {
-          e.preventDefault();
-          if (e.shiftKey) redo();
-          else undo();
+          if (e.shiftKey) {
+            if (redoStackRef.current.length === 0) return;
+            e.preventDefault();
+            void redo();
+          } else {
+            if (undoStackRef.current.length === 0) return;
+            e.preventDefault();
+            void undo();
+          }
         } else if (e.key.toLowerCase() === 'y') {
+          if (redoStackRef.current.length === 0) return;
           e.preventDefault();
-          redo();
+          void redo();
         }
       }
     };
@@ -550,25 +556,26 @@ export function useAnnotationBatch({
   );
 
   const handleBatchAddToNote = useCallback(
-    (targetIds?: string[]) => {
+    async (targetIds?: string[]) => {
       const ids = targetIds && targetIds.length > 0 ? targetIds : Array.from(selectedAnnotationIds);
-      if (!effectiveAttachmentId || ids.length === 0) return;
-      const idSet = new Set(ids);
-      const existing =
-        qc.getQueryData<ReaderAnnotation[]>(annotationKeys.byAttachment(scopeId, effectiveAttachmentId)) || [];
-      const selected = PdfAnnotationEngine.sortAnnotationsInReadingOrder(
-        existing.filter((a) => idSet.has(a.id)),
-      );
-      const quotes = PdfAnnotationEngine.synthesizeMarkdownNote(selected, paper, effectiveAttachmentId);
+      if (!effectiveAttachmentId || ids.length === 0 || !paper?.id) return;
 
-      setPendingNoteText(quotes);
       useLibraryUIStore.getState().setIsInspectorOpen(true);
       useLibraryUIStore.getState().setActiveInspectorTab('notes');
-      toast.success(`Added ${selected.length} highlight${selected.length > 1 ? 's' : ''} to Note draft`, {
-        id: 'reader-note-toast',
-      });
+
+      if (extractNotes) {
+        await extractNotes(paper.id, {
+          attachmentId: effectiveAttachmentId,
+          annotationIds: ids,
+        });
+      } else {
+        await AnnotationsService.extractNotes(scopeId, paper.id, {
+          attachmentId: effectiveAttachmentId,
+          annotationIds: ids,
+        });
+      }
     },
-    [effectiveAttachmentId, selectedAnnotationIds, qc, scopeId, paper, setPendingNoteText],
+    [effectiveAttachmentId, selectedAnnotationIds, scopeId, paper?.id, extractNotes],
   );
 
   return {

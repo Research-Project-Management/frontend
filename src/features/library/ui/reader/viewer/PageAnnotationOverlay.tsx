@@ -112,7 +112,7 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
           return rects.map((r, rIdx) => (
             <div
               key={`${ann.id}-${rIdx}`}
-              id={`annotation-${ann.id}`}
+              id={rIdx === 0 ? `annotation-${ann.id}` : undefined}
               data-annotation-id={ann.id}
               className={cn(
                 'absolute pointer-events-auto transition-all cursor-pointer',
@@ -124,8 +124,8 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
               style={{
                 left: `${r.x1 * 100}%`,
                 top: `${r.y1 * 100}%`,
-                width: `${r.width * 100}%`,
-                height: `${r.height * 100}%`,
+                width: `${(r.width ?? (r.x2 ?? r.x1) - r.x1) * 100}%`,
+                height: `${(r.height ?? (r.y2 ?? r.y1) - r.y1) * 100}%`,
                 borderColor: isRect || isUnderline ? colorHex : undefined,
                 backgroundColor: isUnderline
                   ? 'transparent'
@@ -142,7 +142,7 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
             >
               {isRect && (
                 <span
-                  className="absolute -top-3.5 left-0 px-1 py-0.2 text-9 font-mono rounded text-white font-semibold pointer-events-none"
+                  className="absolute -top-3.5 left-0 px-1 py-0.5 text-[9px] font-mono rounded text-white font-semibold pointer-events-none"
                   style={{ backgroundColor: colorHex }}
                 >
                   Area
@@ -189,6 +189,7 @@ export interface AnnotationQuickEditCardProps {
   ) => Promise<unknown>;
   onDeleteAnnotation?: (annotation: ReaderAnnotation) => void;
   onAddToNote?: (selectedText: string, pageNumber?: number, annotationId?: string) => void;
+  onAskAi?: (selectedText: string, pageNumber?: number) => void;
   onUpdateTooltip: React.Dispatch<React.SetStateAction<ActiveHighlightTooltipState | null>>;
   onClose: () => void;
 }
@@ -199,6 +200,7 @@ export function AnnotationQuickEditCard({
   onUpdateAnnotation,
   onDeleteAnnotation,
   onAddToNote,
+  onAskAi,
   onUpdateTooltip,
   onClose,
 }: AnnotationQuickEditCardProps) {
@@ -266,6 +268,28 @@ export function AnnotationQuickEditCard({
           <span className="text-10 text-muted-foreground font-mono">p. {pageLabel}</span>
         </div>
         <div className="flex items-center gap-0.5">
+          {onAskAi && (tooltip.quote || tooltipComment || tooltip.comment) && (
+            <button
+              type="button"
+              onClick={() => {
+                onAskAi(
+                  tooltip.quote || tooltipComment || tooltip.comment || '',
+                  pageLabel,
+                );
+                onClose();
+              }}
+              className="size-6 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              title="Ask AI"
+              aria-label="Ask AI"
+            >
+              <img
+                src="/Chat.svg"
+                alt=""
+                aria-hidden="true"
+                className="size-3.5 rounded-full object-contain shrink-0"
+              />
+            </button>
+          )}
           {onAddToNote && (
             <button
               type="button"
@@ -377,7 +401,7 @@ export function AnnotationQuickEditCard({
           {tooltip.ann.tags.map((t, tIdx) => (
             <span
               key={tIdx}
-              className="text-10 font-mono px-1 py-0.2 rounded bg-muted text-foreground border border-border-subtle"
+              className="text-10 font-mono px-1 py-0.5 rounded bg-muted text-foreground border border-border-subtle"
             >
               #{t}
             </span>

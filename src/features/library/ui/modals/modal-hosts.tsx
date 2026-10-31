@@ -139,6 +139,7 @@ export function CollectionModalsHost({
         name: data.name,
         description: data.description,
         color: data.color,
+        parentId: data.parentId,
         scopeId: effectiveScope,
       });
       closeModal();
@@ -158,12 +159,18 @@ export function CollectionModalsHost({
       const currentIds = Array.isArray(payload.currentCollectionIds)
         ? payload.currentCollectionIds
         : [];
-      updateItemMutation.mutate({
-        itemId: payload.assignToItemId,
-        data: { collectionIds: [...currentIds, createdId] },
-        silent: true,
-      });
-      toast.success(`Created & added to "${data.name}"`, { id: 'col-assign' });
+      try {
+        await updateItemMutation.mutateAsync({
+          itemId: payload.assignToItemId,
+          data: { collectionIds: [...currentIds, createdId] },
+          silent: true,
+        });
+        toast.success(`Created & added to "${data.name}"`, { id: 'col-assign' });
+      } catch {
+        toast.warning(`Collection "${data.name}" created, but could not assign item.`, {
+          id: 'col-assign',
+        });
+      }
     }
     closeModal();
   };
@@ -216,6 +223,7 @@ export function CollectionModalsHost({
             : (targetCollection?.parentId ?? null)
         }
         mode={isRenameMode ? 'rename' : 'create'}
+        editingCollectionId={isRenameMode ? (payload?.collectionId ?? targetCollection?.id) : undefined}
         initialName={
           payload?.initialName ?? payload?.name ?? targetCollection?.name ?? ''
         }
@@ -301,6 +309,8 @@ export function DestructiveItemModalsHost({
   const deleteItemsMutation = useDeleteLibraryItemsMutation(effectiveScope);
   const restoreItemsMutation = useBatchRestoreItemsMutation(effectiveScope);
   const purgeItemsMutation = useBatchPurgeItemsMutation(effectiveScope);
+  const executeCommand = useLibraryCommandStore((s) => s.executeCommand);
+  const clearCommandHistory = useLibraryCommandStore((s) => s.clearHistory);
   const [isCustomSubmitting, setIsCustomSubmitting] = React.useState(false);
 
   const itemIds: string[] = payload?.itemIds || [];
@@ -315,7 +325,7 @@ export function DestructiveItemModalsHost({
       try {
         await customConfirmCallback();
         if (isPermanentDelete) {
-          useLibraryCommandStore.getState().clear();
+          clearCommandHistory();
         }
         closeModal();
       } finally {
@@ -327,7 +337,7 @@ export function DestructiveItemModalsHost({
     if (itemIds.length === 0) return;
 
     if (isRestoreMode) {
-      await useLibraryCommandStore.getState().executeCommand(
+      await executeCommand(
         createRestoreCommand({
           itemIds,
           restoreMutation: { mutateAsync: restoreItemsMutation.mutateAsync },
@@ -336,9 +346,9 @@ export function DestructiveItemModalsHost({
       );
     } else if (isPermanentDelete) {
       await purgeItemsMutation.mutateAsync(itemIds);
-      useLibraryCommandStore.getState().clear();
+      clearCommandHistory();
     } else {
-      await useLibraryCommandStore.getState().executeCommand(
+      await executeCommand(
         createTrashCommand({
           itemIds,
           deleteMutation: { mutateAsync: deleteItemsMutation.mutateAsync },
@@ -362,7 +372,7 @@ export function DestructiveItemModalsHost({
         payload?.title ||
         (isRestoreMode
           ? 'Restore Items'
-          : customConfirmCallback || isEmptyTrashMode
+          : isEmptyTrashMode
             ? 'Empty Trash'
             : isPermanentDelete
               ? 'Permanently Delete Items'
@@ -372,7 +382,7 @@ export function DestructiveItemModalsHost({
         payload?.description ||
         (isRestoreMode
           ? `Are you sure you want to restore ${itemIds.length} selected ${itemIds.length === 1 ? 'item' : 'items'} from the trash?`
-          : customConfirmCallback || isEmptyTrashMode
+          : isEmptyTrashMode
             ? 'Are you sure you want to permanently empty the trash? All items will be permanently deleted and cannot be recovered.'
             : isPermanentDelete
               ? `Are you sure you want to permanently delete ${itemIds.length} selected ${itemIds.length === 1 ? 'item' : 'items'}? This action cannot be undone.`
@@ -382,10 +392,13 @@ export function DestructiveItemModalsHost({
         payload?.confirmLabel ||
         (isRestoreMode
           ? 'Restore'
-          : customConfirmCallback || isPermanentDelete
-            ? 'Permanently Delete'
-            : 'Move to Trash')
+          : isEmptyTrashMode
+            ? 'Empty Trash'
+            : isPermanentDelete
+              ? 'Permanently Delete'
+              : 'Move to Trash')
       }
+      buttonVariant={isRestoreMode ? 'primary' : 'destructive'}
       onConfirm={handleConfirm}
       isDeleting={
         isCustomSubmitting ||

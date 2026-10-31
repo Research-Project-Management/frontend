@@ -27,13 +27,8 @@ export interface ReaderTopbarProps {
   onSelectTab?: (id: string) => void;
   onCloseTab?: (id: string) => void;
   onBack?: () => void;
-  onSync?: () => void;
-  isSyncing?: boolean;
   onExportAnnotatedPdf?: () => void;
-  onPrint?: () => void;
 }
-
-export type TopbarProps = ReaderTopbarProps;
 
 export const ReaderTopbar = memo(function ReaderTopbar({
   paper,
@@ -44,8 +39,7 @@ export const ReaderTopbar = memo(function ReaderTopbar({
   onCloseTab,
   onBack,
   onExportAnnotatedPdf,
-  onPrint,
-}: TopbarProps) {
+}: ReaderTopbarProps) {
   const libraryTitle = scopeTitle || "My Library";
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
@@ -251,5 +245,4 @@ export const ReaderTopbar = memo(function ReaderTopbar({
   );
 });
 
-export { ReaderTopbar as Topbar };
 export default ReaderTopbar;

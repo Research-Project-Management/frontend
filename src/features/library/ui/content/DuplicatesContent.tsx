@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { openInNewTab } from '@/features/library/core/coordinator/browser-io.helpers';
+import { openInNewTab, buildReaderPaperUrl } from '@/features/library/core/coordinator/browser-io.helpers';
 import {
   GitMerge,
   Layers,
@@ -33,7 +33,7 @@ import {
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import {
   clearGroupMergeDraft,
-  computeDuplicateSetKey,
+  getDeterministicDuplicateGroupKey,
 } from '@/features/library/core/coordinator/curation.coordinator';
 import {
   inspectItemDifferences,
@@ -145,13 +145,7 @@ function InlineDiffView({
 }
 
 function getDeterministicGroupKey(group: DuplicateGroup): string {
-  if (group.key) return group.key;
-  const sortedIds = (group.items || [])
-    .map((item) => item.id)
-    .filter((id): id is string => Boolean(id))
-    .sort()
-    .join('|');
-  return sortedIds ? `cluster-${sortedIds}` : 'cluster-empty';
+  return getDeterministicDuplicateGroupKey(group);
 }
 
 export interface DuplicatesContentProps {
@@ -162,7 +156,7 @@ export interface DuplicatesContentProps {
   onSelectedGroupChange?: (
     group: DuplicateGroup | null,
     groupKey: string | null,
-    dismissGroup: (groupKey: string) => void,
+    dismissGroup: (groupKey: string) => Promise<void> | void,
     openMerge: (group: DuplicateGroup, groupKey?: string) => void,
   ) => void;
 }
@@ -266,9 +260,6 @@ export function DuplicatesContent({
         .filter((id): id is string => Boolean(id));
 
       clearGroupMergeDraft(groupKey);
-      if (targetGroup?.items) {
-        clearGroupMergeDraft(computeDuplicateSetKey(targetGroup.items));
-      }
 
       try {
         if (onDismissGroup) {
@@ -372,7 +363,6 @@ export function DuplicatesContent({
           duplicateItemIds,
         });
         clearGroupMergeDraft(key);
-        clearGroupMergeDraft(computeDuplicateSetKey(items));
         setDismissedGroupKeys((prev) => new Set([...Array.from(prev), key]));
         mergedGroupsCount++;
       }
@@ -672,7 +662,7 @@ export function DuplicatesContent({
                           setSelectedGroupKey(groupKey);
                           setActiveItem(item.id);
                         }}
-                        onDoubleClick={() => openInNewTab(`/library/papers/${item.id}${item.projectId ? `?projectId=${encodeURIComponent(String(item.projectId))}` : ""}`)}
+                        onDoubleClick={() => openInNewTab(buildReaderPaperUrl(item.id, { projectId: item.projectId ? String(item.projectId) : scopeId }))}
                         className={cn(
                           'flex items-center justify-between gap-4 px-5 py-3 cursor-pointer transition-colors text-13',
                           isSelected
@@ -712,7 +702,7 @@ export function DuplicatesContent({
                                 size="icon"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  openInNewTab(`/library/papers/${item.id}${item.projectId ? `?projectId=${encodeURIComponent(String(item.projectId))}` : ""}`);
+                                  openInNewTab(buildReaderPaperUrl(item.id, { projectId: item.projectId ? String(item.projectId) : scopeId }));
                                 }}
                                 className="size-7 text-foreground hover:bg-muted cursor-pointer"
                                 aria-label="Open in Reader"

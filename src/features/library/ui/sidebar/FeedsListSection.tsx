@@ -11,12 +11,10 @@ import {
   useFeedSubscriptionsQuery,
   useUnsubscribeFeedMutation,
 } from '@/features/library/sdk/queries/ingestion.queries';
-import { FeedsService } from '@/features/library/sdk/clients/ingestion-sync.client';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 import { toast } from 'sonner';
-import type { SavedFeedSubscription } from '@/features/library/domain/types/feeds.types';
 
 export interface FeedsListSectionProps {
   basePath: string;
@@ -41,7 +39,7 @@ export function FeedsListSection({
   const feeds = useFeedsStore((s) => s.feeds);
   const { mutateAsync: unsubscribeFeed } = useUnsubscribeFeedMutation();
   const triggerRefresh = useFeedsStore((s) => s.triggerRefresh);
-  const markAllEntriesAsRead = useFeedsStore((s) => s.markAllEntriesAsRead);
+  const markFeedAsRead = useFeedsStore((s) => s.markFeedAsRead);
   const setActiveFeedId = useFeedsStore((s) => s.setActiveFeedId);
   const openModal = useLibraryUIStore((s) => s.openModal);
   const [isExpanded, setIsExpanded] = useState(true);
@@ -156,14 +154,7 @@ export function FeedsListSection({
                     }}
                     onMarkAllAsRead={async () => {
                       try {
-                        const res = await FeedsService.getItems(feed.id);
-                        const items = (res?.data as Array<{ id?: string; guid?: string; url?: string }>) || [];
-                        const itemIds = items.map((it) => it.id || it.guid || it.url).filter(Boolean) as string[];
-                        if (itemIds.length > 0) {
-                          markAllEntriesAsRead(itemIds);
-                        } else {
-                          markAllEntriesAsRead();
-                        }
+                        await markFeedAsRead(feed.id);
                         toast.success(`Marked all articles in "${feed.name}" as read`);
                       } catch {
                         toast.error(`Failed to mark articles in "${feed.name}" as read`);

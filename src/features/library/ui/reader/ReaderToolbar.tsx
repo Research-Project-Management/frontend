@@ -9,14 +9,14 @@ import {
   Maximize2,
   ChevronLeft,
   ChevronRight,
+  ArrowLeft,
+  ArrowRight,
   Highlighter,
   Underline,
   StickyNote,
   Type,
   Scan,
   Search,
-  Undo2,
-  Redo2,
   Lock,
   Unlock,
   Hand,
@@ -70,8 +70,8 @@ export interface ReaderToolbarProps {
   onRotate?: () => void;
   viewMode?: "single" | "continuous" | "spread";
   onSelectViewMode?: (mode: "single" | "continuous" | "spread") => void;
-  fitMode?: "fit-width" | "fit-page" | "auto";
-  onSelectFitMode?: (mode: "fit-width" | "fit-page" | "auto") => void;
+  fitMode?: "fit-width" | "fit-page" | "auto" | "custom";
+  onSelectFitMode?: (mode: "fit-width" | "fit-page" | "auto" | "custom") => void;
   themeMode?: "normal" | "dark" | "sepia" | "invert";
   onToggleThemeMode?: (mode?: "normal" | "dark" | "sepia" | "invert") => void;
   onSelectThemeMode?: (mode: "normal" | "dark" | "sepia" | "invert") => void;
@@ -175,6 +175,7 @@ export const ReaderToolbar = memo(function ReaderToolbar({
 
   const handleToolClick = (toolId: ReaderAnnotationTool) => {
     if (activeTool === toolId && interactionMode === "select") {
+      onSelectTool?.("select");
       onSelectInteractionMode?.("select");
     } else {
       onSelectInteractionMode?.("select");
@@ -186,13 +187,13 @@ export const ReaderToolbar = memo(function ReaderToolbar({
     <div
       role="toolbar"
       aria-label="Reader tools and navigation"
-      className="relative h-10 shrink-0 border-b border-border bg-background px-2 flex items-center justify-between gap-2 select-none z-20 text-12 font-sans"
+      className="@container/toolbar relative h-10 shrink-0 border-b border-border bg-background px-2 grid grid-cols-[1fr_auto_1fr] items-center gap-2 select-none z-20 text-12 font-sans overflow-x-auto no-scrollbar"
     >
       {/* ── 1. LEFT CLUSTER (.start): Sidebar | Zoom | Back | Page Nav ── */}
-      <div className="flex items-center gap-1 shrink-0 z-10">
+      <div className="flex items-center gap-1 shrink-0 justify-self-start">
         <ToolbarIconButton
           onClick={onToggleSidebar}
-          active={false}
+          active={isSidebarOpen}
           ariaLabel={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
           tooltip={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
         >
@@ -203,6 +204,7 @@ export const ReaderToolbar = memo(function ReaderToolbar({
           onClick={onZoomOut}
           ariaLabel="Zoom out"
           tooltip="Zoom Out (Ctrl+-)"
+          className="hidden @[620px]/toolbar:flex"
         >
           <ZoomOut className="size-3.5 shrink-0" strokeWidth={1.5} />
         </ToolbarIconButton>
@@ -213,6 +215,7 @@ export const ReaderToolbar = memo(function ReaderToolbar({
           onClick={onZoomIn}
           ariaLabel="Zoom in"
           tooltip="Zoom In (Ctrl++)"
+          className="hidden @[620px]/toolbar:flex"
         >
           <ZoomIn className="size-3.5 shrink-0" strokeWidth={1.5} />
         </ToolbarIconButton>
@@ -225,13 +228,14 @@ export const ReaderToolbar = memo(function ReaderToolbar({
             }}
             ariaLabel="Fit to width"
             tooltip="Fit to Width (Auto)"
+            className="hidden @[740px]/toolbar:flex"
           >
             <Maximize2 className="size-3.5 shrink-0" strokeWidth={1.5} />
           </ToolbarIconButton>
         )}
 
         {(onNavigateBack || onNavigateForward) && (
-          <>
+          <div className="hidden @[860px]/toolbar:flex items-center gap-1">
             <div className="w-px h-3.5 bg-border mx-0.5" />
             {onNavigateBack && (
               <ToolbarIconButton
@@ -240,7 +244,7 @@ export const ReaderToolbar = memo(function ReaderToolbar({
                 ariaLabel="Navigate back in document"
                 tooltip="Back (Alt+Left)"
               >
-                <Undo2 className="size-3.5 shrink-0" strokeWidth={1.5} />
+                <ArrowLeft className="size-3.5 shrink-0" strokeWidth={1.5} />
               </ToolbarIconButton>
             )}
             {onNavigateForward && (
@@ -250,10 +254,10 @@ export const ReaderToolbar = memo(function ReaderToolbar({
                 ariaLabel="Navigate forward in document"
                 tooltip="Forward (Alt+Right)"
               >
-                <Redo2 className="size-3.5 shrink-0" strokeWidth={1.5} />
+                <ArrowRight className="size-3.5 shrink-0" strokeWidth={1.5} />
               </ToolbarIconButton>
             )}
-          </>
+          </div>
         )}
 
         <div className="w-px h-3.5 bg-border mx-0.5" />
@@ -263,6 +267,7 @@ export const ReaderToolbar = memo(function ReaderToolbar({
           disabled={visiblePage <= 1}
           ariaLabel="Previous page"
           tooltip="Previous page (PageUp)"
+          className="hidden @[680px]/toolbar:flex"
         >
           <ChevronLeft className="size-3.5 shrink-0" strokeWidth={1.5} />
         </ToolbarIconButton>
@@ -274,6 +279,7 @@ export const ReaderToolbar = memo(function ReaderToolbar({
           disabled={visiblePage >= (numPages || 1)}
           ariaLabel="Next page"
           tooltip="Next page (PageDown)"
+          className="hidden @[680px]/toolbar:flex"
         >
           <ChevronRight className="size-3.5 shrink-0" strokeWidth={1.5} />
         </ToolbarIconButton>
@@ -283,7 +289,7 @@ export const ReaderToolbar = memo(function ReaderToolbar({
             e.preventDefault();
             commitPageInput();
           }}
-          className="flex items-center gap-1 font-mono text-11 ml-0.5"
+          className="flex items-center gap-1 font-mono text-11 ml-0.5 shrink-0"
         >
           <input
             type="number"
@@ -309,10 +315,13 @@ export const ReaderToolbar = memo(function ReaderToolbar({
       </div>
 
       {/* ── 2. CENTER CLUSTER (.center.tools): Annotation Tools + Color + Tool Lock ── */}
-      <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-1 bg-muted px-1.5 py-0.5 rounded-md border border-border shrink-0 z-0">
+      <div className="flex items-center gap-1 bg-muted px-1.5 py-0.5 rounded-md border border-border shrink-0 justify-self-center">
         <ToolbarIconButton
-          onClick={() => onSelectInteractionMode?.("select")}
-          active={interactionMode === "select"}
+          onClick={() => {
+            onSelectTool?.("select");
+            onSelectInteractionMode?.("select");
+          }}
+          active={interactionMode === "select" && (!activeTool || activeTool === "select")}
           ariaLabel="Text selection mode"
           tooltip="Select (S)"
         >
@@ -402,7 +411,7 @@ export const ReaderToolbar = memo(function ReaderToolbar({
       </div>
 
       {/* ── 3. RIGHT CLUSTER (.end): Appearance (Aa) | Find (Ctrl+F) | Inspector Toggle ── */}
-      <div className="flex items-center gap-1 shrink-0 z-10">
+      <div className="flex items-center gap-1 shrink-0 justify-self-end">
         <ReaderAppearanceMenu
           viewMode={viewMode}
           onSelectViewMode={onSelectViewMode}

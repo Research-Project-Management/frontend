@@ -4,6 +4,7 @@ import React, { useState, useCallback } from 'react';
 import {
   MoreVertical,
   ExternalLink,
+  BookOpen,
   Star,
   Copy,
   Quote,
@@ -43,6 +44,7 @@ export interface ItemRowActionsProps {
   onMoveToCollection?: (collectionId: string) => void;
   onDetachFromCollection?: () => void;
   onOpenItem?: (id: string) => void;
+  onOpenInNewTab?: (id: string) => void;
 }
 
 export const ItemRowActions = React.memo(function ItemRowActions({
@@ -59,6 +61,7 @@ export const ItemRowActions = React.memo(function ItemRowActions({
   onMoveToCollection,
   onDetachFromCollection,
   onOpenItem,
+  onOpenInNewTab,
 }: ItemRowActionsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const closeMenu = useCallback(() => setIsOpen(false), []);
@@ -67,6 +70,7 @@ export const ItemRowActions = React.memo(function ItemRowActions({
     availableStyles,
     isStarred,
     handleOpen,
+    handleOpenInNewTab,
     handleCopyBibliography,
     handleCopyInTextCitation,
     handleCopyCitationKey,
@@ -78,10 +82,15 @@ export const ItemRowActions = React.memo(function ItemRowActions({
     scopeId,
     isMenuOpen: isOpen,
     onOpenItem,
+    onOpenInNewTab,
     onAddToCollection,
     onMoveToCollection,
     onAfterAction: closeMenu,
   });
+
+  if (isTrash && !canEdit) {
+    return null;
+  }
 
   return (
     <div
@@ -92,7 +101,7 @@ export const ItemRowActions = React.memo(function ItemRowActions({
           : 'opacity-0 max-md:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100',
       )}
     >
-      <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+      <DropdownMenu open={isOpen} onOpenChange={setIsOpen} modal={false}>
         <DropdownMenuTrigger asChild>
           <button
             type="button"
@@ -110,16 +119,15 @@ export const ItemRowActions = React.memo(function ItemRowActions({
           </button>
         </DropdownMenuTrigger>
 
-        {isOpen && (
-          <DropdownMenuContent
-            side="bottom"
-            align="end"
-            sideOffset={4}
-            collisionPadding={12}
-            onCloseAutoFocus={(e) => e.preventDefault()}
-            className="w-52 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <DropdownMenuContent
+          side="bottom"
+          align="end"
+          sideOffset={4}
+          collisionPadding={12}
+          onCloseAutoFocus={(e) => e.preventDefault()}
+          className="min-w-[14.5rem] w-max max-w-xs p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
+          onClick={(e) => e.stopPropagation()}
+        >
             {isTrash ? (
               <>
                 {canEdit && onRestore && (
@@ -157,8 +165,16 @@ export const ItemRowActions = React.memo(function ItemRowActions({
                   onClick={handleOpen}
                   className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
                 >
-                  <ExternalLink className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                  <BookOpen className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                   <span>Open in Reader</span>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  onClick={handleOpenInNewTab}
+                  className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+                >
+                  <ExternalLink className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                  <span>Open in New Tab</span>
                 </DropdownMenuItem>
 
                 {canEdit && onToggleStar && (
@@ -238,7 +254,7 @@ export const ItemRowActions = React.memo(function ItemRowActions({
                       className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
                     >
                       <RefreshCw className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                      <span>Re-resolve Metadata / Find PDF</span>
+                      <span>Update Metadata & PDF</span>
                     </DropdownMenuItem>
 
                     <DropdownMenuItem
@@ -324,8 +340,7 @@ export const ItemRowActions = React.memo(function ItemRowActions({
                 )}
               </>
             )}
-          </DropdownMenuContent>
-        )}
+        </DropdownMenuContent>
       </DropdownMenu>
     </div>
   );

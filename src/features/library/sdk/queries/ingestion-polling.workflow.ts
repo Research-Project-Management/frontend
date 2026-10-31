@@ -12,7 +12,6 @@ import {
   extractPmcId,
   cleanIsbn,
 } from '@/features/library/domain/identifiers';
-import { ClientMetadataResolverService } from '@/features/library/core/services/client-metadata-resolver.service';
 
 export interface PollRunOutcome {
   ok: boolean;
@@ -303,49 +302,13 @@ export async function executeTrackedIdentifierIngestion({
 
   const targetCollectionId = collectionId || undefined;
   const userTitle = title?.trim() || undefined;
-
-  // Tier 2: Attempt Client-Assisted Ingestion via User Browser IP
-  let ingestionPayload: UnifiedIngestionPayload;
-  let resolvedDisplayTitle = userTitle || raw;
-
-  try {
-    const clientRes = await ClientMetadataResolverService.resolveIdentifier(raw);
-    if (clientRes?.success && clientRes.cslJson) {
-      if (clientRes.title && !userTitle) {
-        resolvedDisplayTitle = clientRes.title;
-      }
-      ingestionPayload = {
-        source: 'csl_json',
-        content: JSON.stringify(clientRes.cslJson),
-        collectionId: targetCollectionId,
-        overrides: {
-          ...(userTitle ? { title: userTitle } : clientRes.title ? { title: clientRes.title } : {}),
-          doi: clientRes.doi,
-          pmid: clientRes.pmid,
-          resolutionSource: 'client',
-          primaryProvider: clientRes.provider,
-          ...(attachOaPdf !== undefined ? { attachOaPdf } : {}),
-          ...(saveSnapshot !== undefined ? { saveSnapshot } : {}),
-        },
-      } as UnifiedIngestionPayload;
-    } else {
-      // Tier 3 Fallback: Standard identifier resolution on server
-      ingestionPayload = buildIdentifierIngestionPayload(raw, {
-        collectionId: targetCollectionId,
-        title: userTitle,
-        attachOaPdf,
-        saveSnapshot,
-      });
-    }
-  } catch {
-    // Tier 3 Fallback on any client exception
-    ingestionPayload = buildIdentifierIngestionPayload(raw, {
-      collectionId: targetCollectionId,
-      title: userTitle,
-      attachOaPdf,
-      saveSnapshot,
-    });
-  }
+  const resolvedDisplayTitle = userTitle || raw;
+  const ingestionPayload = buildIdentifierIngestionPayload(raw, {
+    collectionId: targetCollectionId,
+    title: userTitle,
+    attachOaPdf,
+    saveSnapshot,
+  });
 
   const provisionalId = `provisional-link-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
   const toastId = `add-identifier-${provisionalId}`;

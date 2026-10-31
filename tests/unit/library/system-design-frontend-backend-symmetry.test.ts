@@ -1,3 +1,4 @@
+import { buildInspectorFieldPatch } from '@/features/library/domain/item-field-schema';
 import { describe, it, expect, vi } from 'vitest';
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
@@ -14,7 +15,7 @@ import {
   resolveDuplicateMergeFieldOverrides,
   buildMergedItemPayload,
 } from '@/features/library/domain/diff';
-import { buildCoupledFieldUpdates } from '@/features/library/ui/inspector/fields/GeneralFields';
+
 import { CreatorFields } from '@/features/library/ui/inspector/fields/CreatorFields';
 import { TypeConversionModal } from '@/features/library/ui/modals/TypeConversionModal';
 import type { Item, SchemaItemTypeDefinition } from '@/features/library/domain/types/library.types';
@@ -173,9 +174,9 @@ describe('System Design Loop 2 — Frontend-Backend Symmetry (SD3-01, SD3-02, SD
       expect(mappedTomb.programTitle).toBeUndefined();
     });
 
-    it('buildCoupledFieldUpdates couples title, publicationTitle, place, date, numPages, and authority on edit and clear', () => {
+    it('buildInspectorFieldPatch couples title, publicationTitle, place, date, numPages, and authority on edit and clear', () => {
       // 1. Title coupling: caseName (case), nameOfAct (statute), subject (email)
-      const caseTitlePatch = buildCoupledFieldUpdates(
+      const caseTitlePatch = buildInspectorFieldPatch(
         { id: 'c1', itemType: 'case' },
         'caseName',
         'Roe v. Wade',
@@ -184,7 +185,7 @@ describe('System Design Loop 2 — Frontend-Backend Symmetry (SD3-01, SD3-02, SD
       expect(caseTitlePatch.caseName).toBe('Roe v. Wade');
       expect((caseTitlePatch.extraFields as Record<string, unknown>).caseName).toBe('Roe v. Wade');
 
-      const statuteClearPatch = buildCoupledFieldUpdates(
+      const statuteClearPatch = buildInspectorFieldPatch(
         { id: 's1', itemType: 'statute', title: 'Old Act', extraFields: { nameOfAct: 'Old Act' } },
         'nameOfAct',
         '',
@@ -193,7 +194,7 @@ describe('System Design Loop 2 — Frontend-Backend Symmetry (SD3-01, SD3-02, SD
       expect(statuteClearPatch.nameOfAct).toBe('');
       expect((statuteClearPatch.extraFields as Record<string, unknown>).nameOfAct).toBeNull();
 
-      const emailTitlePatch = buildCoupledFieldUpdates(
+      const emailTitlePatch = buildInspectorFieldPatch(
         { id: 'e1', itemType: 'email' },
         'subject',
         'Project Milestone Update',
@@ -202,7 +203,7 @@ describe('System Design Loop 2 — Frontend-Backend Symmetry (SD3-01, SD3-02, SD
       expect(emailTitlePatch.subject).toBe('Project Milestone Update');
 
       // 2. publicationTitle coupling: reporter, code, blogTitle, forumTitle, dictionaryTitle, encyclopediaTitle, programTitle
-      const blogPatch = buildCoupledFieldUpdates(
+      const blogPatch = buildInspectorFieldPatch(
         { id: 'b1', itemType: 'blogPost' },
         'blogTitle',
         'Engineering Blog',
@@ -210,7 +211,7 @@ describe('System Design Loop 2 — Frontend-Backend Symmetry (SD3-01, SD3-02, SD
       expect(blogPatch.publicationTitle).toBe('Engineering Blog');
       expect(blogPatch.blogTitle).toBe('Engineering Blog');
 
-      const tvClearPatch = buildCoupledFieldUpdates(
+      const tvClearPatch = buildInspectorFieldPatch(
         { id: 'tv1', itemType: 'tvBroadcast', publicationTitle: 'Show', extraFields: { programTitle: 'Show' } },
         'programTitle',
         '',
@@ -221,7 +222,7 @@ describe('System Design Loop 2 — Frontend-Backend Symmetry (SD3-01, SD3-02, SD
       expect((tvClearPatch.extraFields as Record<string, unknown>).publicationTitle).toBeNull();
 
       // 3. place coupling: eventPlace (conferencePaper, presentation, artwork, letter) and country (patent)
-      const confPlacePatch = buildCoupledFieldUpdates(
+      const confPlacePatch = buildInspectorFieldPatch(
         { id: 'cp1', itemType: 'conferencePaper' },
         'eventPlace',
         'Vancouver, Canada',
@@ -231,7 +232,7 @@ describe('System Design Loop 2 — Frontend-Backend Symmetry (SD3-01, SD3-02, SD
       expect((confPlacePatch.extraFields as Record<string, unknown>).place).toBe('Vancouver, Canada');
       expect((confPlacePatch.extraFields as Record<string, unknown>).eventPlace).toBe('Vancouver, Canada');
 
-      const patentCountryPatch = buildCoupledFieldUpdates(
+      const patentCountryPatch = buildInspectorFieldPatch(
         { id: 'pat1', itemType: 'patent' },
         'country',
         'United States',
@@ -240,7 +241,7 @@ describe('System Design Loop 2 — Frontend-Backend Symmetry (SD3-01, SD3-02, SD
       expect(patentCountryPatch.country).toBe('United States');
 
       // 4. date coupling: dateDecided, dateEnacted, issueDate, filingDate
-      const caseDatePatch = buildCoupledFieldUpdates(
+      const caseDatePatch = buildInspectorFieldPatch(
         { id: 'c1', itemType: 'case' },
         'dateDecided',
         '2024-05-15',
@@ -250,7 +251,7 @@ describe('System Design Loop 2 — Frontend-Backend Symmetry (SD3-01, SD3-02, SD
       expect(caseDatePatch.dateDecided).toBe('2024-05-15');
       expect(caseDatePatch.year).toBe(2024);
 
-      const patentFilingClear = buildCoupledFieldUpdates(
+      const patentFilingClear = buildInspectorFieldPatch(
         { id: 'pat1', itemType: 'patent', year: 2023 },
         'filingDate',
         '',
@@ -261,7 +262,7 @@ describe('System Design Loop 2 — Frontend-Backend Symmetry (SD3-01, SD3-02, SD
       expect(patentFilingClear.year).toBeNull();
 
       // 5. numPages <-> numberOfPages and authority <-> issuingAuthority
-      const pagesPatch = buildCoupledFieldUpdates(
+      const pagesPatch = buildInspectorFieldPatch(
         { id: 'bk1', itemType: 'book' },
         'numPages',
         '420',
@@ -269,7 +270,7 @@ describe('System Design Loop 2 — Frontend-Backend Symmetry (SD3-01, SD3-02, SD
       expect(pagesPatch.numPages).toBe('420');
       expect(pagesPatch.numberOfPages).toBe('420');
 
-      const authPatch = buildCoupledFieldUpdates(
+      const authPatch = buildInspectorFieldPatch(
         { id: 'pat2', itemType: 'patent' },
         'authority',
         'USPTO',

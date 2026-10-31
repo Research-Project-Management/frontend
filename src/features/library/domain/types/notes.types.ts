@@ -46,7 +46,9 @@ export const updateNoteSchema = z.object({
   expectedVersion: z.number().int().optional(),
 });
 
-export type Note = z.infer<typeof noteSchema>;
+export type Note = z.input<typeof noteSchema> & {
+  id: string;
+};
 export type CreateNoteInput = z.infer<typeof createNoteSchema>;
 export type UpdateNoteInput = z.infer<typeof updateNoteSchema>;
 export type NoteResponse = z.infer<typeof noteResponseSchema>;

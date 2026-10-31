@@ -42,6 +42,7 @@ export {
 export {
   type CreateNoteDTO,
   type UpdateNoteDTO,
+  type ExtractNotesOptions,
   CollectionsService,
   TagsService,
   NotesService,

@@ -65,8 +65,12 @@ export function BatchBar({
   canEdit = true,
 }: BatchBarProps) {
   const params = useParams() as { projectId?: string };
+  const activeScope = useLibraryUIStore((s) => s.activeScope);
+  const isProjectScope = activeScope.type === "project";
   const effectiveScopeId =
-    propsScopeId || params?.projectId || "user";
+    propsScopeId ||
+    params?.projectId ||
+    (isProjectScope && activeScope.id ? activeScope.id : "user");
 
   const internalCoordinator = useLibraryBatchCoordinator({
     items,
@@ -79,8 +83,6 @@ export function BatchBar({
 
   const coordinator = externalCoordinator || internalCoordinator;
 
-  const activeScope = useLibraryUIStore((s) => s.activeScope);
-  const isProjectScope = activeScope.type === "project";
   const rootLibraryName = isProjectScope
     ? activeScope.name || "Project"
     : "My Library";
@@ -114,8 +116,7 @@ export function BatchBar({
   const isDuplicatesView = effectiveView === "duplicates";
   const isUnfiledView = effectiveView === "unfiled";
   const isStarredView = effectiveView === "starred";
-  const isMyPublicationsView =
-    effectiveView === "my-publications" || effectiveView === "publications";
+  const isMyPublicationsView = effectiveView === "my-publications";
   const isRetractedView = effectiveView === "retracted";
 
   // Target collections available for Move To in the current page context:

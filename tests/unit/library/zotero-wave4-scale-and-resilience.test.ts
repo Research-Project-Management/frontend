@@ -1,3 +1,4 @@
+import { evaluateSavedSearch, filterItemsBySavedSearch } from '@/features/library/domain/saved-search-ast.domain';
 import { describe, it, expect } from 'vitest';
 import { parseBatchIdentifiersInput, cleanDoi } from '@/features/library/domain/identifiers';
 import {
@@ -12,7 +13,7 @@ import {
 } from '@/features/library/domain/library-permissions.policy';
 import { buildCollectionTree, getDescendantCollectionIds, getCollectionBreadcrumbPath, canMoveCollection } from '@/features/library/domain/collection-tree';
 import {
-  filterItemsBySavedSearch,
+  
   type SavedSearchConditionGroup,
 } from '@/features/library/domain/types/saved-searches.types';
 import {

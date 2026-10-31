@@ -8,7 +8,8 @@
  * titles and formatting multi-author strings for display.
  */
 
-import { normalizeAuthors, parseCreatorName } from '@/features/library/domain/creators';
+import { getItemAuthorsSummary } from '@/features/library/domain/creators';
+import type { Item } from '@/features/library/domain/types/library.types';
 
 const ASCII_ONLY_RE = /^[\x00-\x7F]*$/;
 const SPECIAL_LATIN_FOLD_RE = /[ĐđŁłØøßÆæŒœ]/g;
@@ -256,27 +257,7 @@ export function formatAcademicAuthors(
   authors: unknown,
   maxAuthors = 3,
 ): string {
-  if (!authors) return '—';
-
-  const rawList = normalizeAuthors(authors);
-  if (!rawList || rawList.length === 0) return '—';
-
-  const cleaned = rawList
-    .map((name) => {
-      const clean = cleanAcademicText(name);
-      if (!clean) return '';
-      // Format "LastName, FirstName" to "FirstName LastName" for display readability
-      if (clean.includes(',')) {
-        const parsed = parseCreatorName(clean);
-        return parsed.fullName || clean;
-      }
-      return clean;
-    })
-    .filter((a) => Boolean(a));
-
-  if (cleaned.length === 0) return '—';
-  if (cleaned.length <= maxAuthors) return cleaned.join(', ');
-  return `${cleaned.slice(0, maxAuthors).join(', ')} et al.`;
+  return getItemAuthorsSummary(authors as Partial<Item> | null | undefined, maxAuthors);
 }
 
 /**

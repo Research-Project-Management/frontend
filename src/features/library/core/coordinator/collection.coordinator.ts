@@ -265,51 +265,9 @@ export function useCollectionCoordinator({
 
       const toastId = toast.loading(`Copying "${target.name}"...`, { id: 'collection-copy' });
       try {
-        const allCols = allCollectionsByScope
-          ? [...allCollectionsByScope.user, ...allCollectionsByScope.project]
-          : collections;
-        const sourceCols = allCols.length > 0 ? allCols : collections;
-
-        const copySubtree = async (
-          srcId: string,
-          destParentId: string | null,
-          isRoot: boolean,
-        ): Promise<void> => {
-          const { collection: src } = findCollectionAndScope(srcId);
-          if (!src) return;
-          const copyName = isRoot ? `${src.name} (Copy)` : src.name;
-          const res = await libraryServices.collections.create(scopeId, {
-            name: copyName,
-            description: src.description,
-            color: src.color,
-            icon: src.icon,
-            parentId: destParentId,
-          });
-          const newCol = (res as { collection?: Collection })?.collection;
-          if (!newCol?.id) return;
-
-          // Copy items in this collection
-          try {
-            const { items } = await libraryServices.items.getByCollection(scopeId, srcId);
-            if (items && items.length > 0) {
-              await libraryServices.collections.assignItems(
-                scopeId,
-                newCol.id,
-                items.map((i) => i.id),
-              );
-            }
-          } catch {
-            // Best-effort item assignment when duplicating collection tree
-          }
-
-          // Recursively copy subcollections in parallel
-          const childCollections = sourceCols.filter((c) => c.parentId === srcId);
-          await Promise.all(
-            childCollections.map((child) => copySubtree(child.id, newCol.id, false)),
-          );
-        };
-
-        await copySubtree(collectionId, targetParentId, true);
+        await libraryServices.collections.copy(scopeId, collectionId, {
+          parentId: targetParentId,
+        });
         invalidateCollections(queryClient, scopeId);
         toast.success(`Successfully copied "${target.name}"`, { id: toastId });
       } catch (err: unknown) {
@@ -319,7 +277,7 @@ export function useCollectionCoordinator({
         });
       }
     },
-    [allCollectionsByScope, collections, findCollectionAndScope, queryClient],
+    [findCollectionAndScope, queryClient],
   );
 
   const handleExportBibtex = useCallback(

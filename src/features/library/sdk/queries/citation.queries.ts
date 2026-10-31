@@ -91,3 +91,22 @@ export function useUploadCustomCslStyleMutation(scopeId?: string) {
     },
   });
 }
+
+export function useExportItemCitationQuery(
+  scopeId: string | undefined,
+  itemId: string | undefined,
+  format: 'bibtex' | 'ris',
+  options?: { enabled?: boolean },
+) {
+  const effectiveScope = normalizeScopeId(scopeId);
+  return useQuery({
+    queryKey: [...exportKeys.all, 'item-citation', effectiveScope, itemId || '', format] as const,
+    queryFn: () =>
+      libraryServices.exports.exportLibrary(effectiveScope, {
+        format,
+        itemIds: itemId ? [itemId] : [],
+      }),
+    enabled: (options?.enabled ?? true) && Boolean(itemId),
+    staleTime: 1000 * 60 * 5,
+  });
+}

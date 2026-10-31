@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Real-World Zotero & Mendeley Datasets + User Case-Study Stress Test Suite
  *
  * Tests the Frontend Library & Reader domain, utilities, hooks, and inspector components
@@ -35,7 +35,6 @@ import {
 } from '@/features/library/domain/creators';
 import {
   generateCitationKey,
-  toBibTeXEntry,
 } from '@/features/library/domain/citations';
 import {
   inspectItemDifferences,
@@ -529,8 +528,8 @@ describe('Real-World Zotero & Mendeley Datasets & User Case-Study Stress Tests',
       const annotCit = formatAnnotationCitation(docCompound, 'att-99', 12, 'ann-42');
       expect(annotCit).toEqual({
         label: '(van der Maaten et al., 2008, p. 12)',
-        url: 'flux://open-pdf/library/items/att-99?page=12&annotation=ann-42',
-        markdown: '[(van der Maaten et al., 2008, p. 12)](flux://open-pdf/library/items/att-99?page=12&annotation=ann-42)',
+        url: '/library/papers/doc-2?attachmentId=att-99&page=12&annotation=ann-42',
+        markdown: '[(van der Maaten et al., 2008, p. 12)](/library/papers/doc-2?attachmentId=att-99&page=12&annotation=ann-42)',
       });
     });
 

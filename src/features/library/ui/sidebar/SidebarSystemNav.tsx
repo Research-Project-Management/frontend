@@ -9,7 +9,6 @@ import {
   TrashContextMenuAction,
   TrashContextMenuContent,
 } from './TrashContextMenu';
-import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import type { SavedSearch } from '@/features/library/domain/types/saved-searches.types';
 
 interface SidebarSystemNavProps {
@@ -21,7 +20,6 @@ interface SidebarSystemNavProps {
   savedSearches?: SavedSearch[] | Array<{ id: string; name: string }>;
   currentSavedSearchId?: string | null;
   currentFeedId?: string | null;
-  retractedCount?: number;
   stats?: SystemNavStats;
   onDropItems?: (itemIds: string[], targetCollectionId: string | null) => void;
   onSelectUserScope?: () => void;
@@ -67,12 +65,10 @@ export function SidebarSystemNav({
   renameSavedSearchValue = '',
   children,
 }: SidebarSystemNavProps) {
-  const openModal = useLibraryUIStore((s) => s.openModal);
-
   const isRecentReadActive =
     isUserScope &&
     pathname === basePath &&
-    (currentFilter === 'recently-read' || currentFilter === 'recent-read' || currentFilter === 'recent');
+    currentFilter === 'recently-read';
 
   return (
     <>

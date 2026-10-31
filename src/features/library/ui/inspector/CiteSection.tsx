@@ -11,7 +11,7 @@ import {
   Search,
 } from "lucide-react";
 import { toast } from "sonner";
-import { safeHttpUrl } from "@/features/library/domain/retraction";
+import { safeHttpUrl } from "@/features/library/domain/system-views.policy";
 import { cn, copyToClipboard } from "@/shared/lib/utils";
 import {
   DropdownMenu,
@@ -28,11 +28,11 @@ import {
 import {
   useCslCitation,
   useCitationStyles,
-} from "@/features/library/sdk/queries/citation.queries";
+} from "@/features/library/sdk/queries/extraction.queries";
 import type {
   Item,
   CslStyle,
-} from "@/features/library/domain/types/library.types";
+} from "@/features/library/domain/types/core.types";
 import {
   getCleanStyleLabel,
   normalizeCitationStyleId,

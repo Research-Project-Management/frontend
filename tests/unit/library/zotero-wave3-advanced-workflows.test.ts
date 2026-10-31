@@ -18,7 +18,7 @@ import {
   getLibraryPermissions,
   getScopeTarget,
 } from '@/features/library/domain/library-permissions.policy';
-import type { ReaderAnnotation, ReaderDocument } from '@/features/library/domain/types/reader.types';
+import type { ReaderAnnotation, ReaderDocument } from '@/features/library/domain/types/reader.schema';
 import type { LibraryScope } from '@/features/library/domain/types/core.types';
 
 describe('Zotero 7 Wave 3 — Advanced Researcher Workflows & Edge-Case Verification', () => {

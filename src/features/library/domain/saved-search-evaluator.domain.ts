@@ -15,8 +15,8 @@ import {
   getItemDisplayTitle,
   getPublicationVenue,
   getItemDisplayDate,
-} from '@/features/library/domain/metadata';
-import { resolveItemFieldValue } from '@/features/library/domain/diff-primitives';
+} from '@/features/library/domain/metadata-mapper';
+import { resolveItemFieldValue } from '@/features/library/domain/diff';
 import { foldDiacritics } from '@/features/library/domain/academic-text';
 import {
   cleanDoi,
@@ -524,6 +524,158 @@ function normalizeSearchMatchString(val: unknown, field: string): string {
   return foldDiacritics(rawStr).toLowerCase();
 }
 
+export interface OperatorEvaluationContext {
+  normalizedField: string;
+  values: unknown[];
+  target: unknown;
+  targetFolded: string;
+  targetNum: number;
+}
+
+export type OperatorEvaluator = (ctx: OperatorEvaluationContext) => boolean;
+
+const complement =
+  (fn: OperatorEvaluator): OperatorEvaluator =>
+  (ctx) =>
+    !fn(ctx);
+
+const evalPresent: OperatorEvaluator = ({ normalizedField, values }) =>
+  BOOLEAN_PRESENCE_FIELDS.has(normalizedField)
+    ? values.some((v) => v === true || v === 'true')
+    : values.some((v) => v !== null && v !== undefined && String(v).trim() !== '');
+
+const evalAbsent: OperatorEvaluator = complement(evalPresent);
+
+const evalBetween: OperatorEvaluator = ({ values, target }) => {
+  const bounds = parseBetweenBounds(target);
+  if (!bounds) return false;
+  const minNum = Number(bounds[0]);
+  const maxNum = Number(bounds[1]);
+  if (!Number.isNaN(minNum) && !Number.isNaN(maxNum)) {
+    return values.some((v) => {
+      const num = typeof v === 'number' ? v : Number(v);
+      return !Number.isNaN(num) && num >= minNum && num <= maxNum;
+    });
+  }
+  const minTime = Date.parse(bounds[0]);
+  const maxTime = Date.parse(bounds[1]);
+  if (!Number.isNaN(minTime) && !Number.isNaN(maxTime)) {
+    return values.some((v) => {
+      const t = Date.parse(String(v));
+      return !Number.isNaN(t) && t >= minTime && t <= maxTime;
+    });
+  }
+  const minStr = foldDiacritics(bounds[0]).toLowerCase();
+  const maxStr = foldDiacritics(bounds[1]).toLowerCase();
+  return values.some((v) => {
+    const s = foldDiacritics(String(v).trim()).toLowerCase();
+    return s >= minStr && s <= maxStr;
+  });
+};
+
+const evalInTheLast: OperatorEvaluator = ({ values, target }) => {
+  const rawStr = String(target ?? '').trim();
+  const m = rawStr.match(/^(\d+)\s*([a-zA-Z]+)?$/);
+  if (!m) return false;
+  const count = Number(m[1]);
+  if (Number.isNaN(count) || count <= 0) return false;
+  const unit = (m[2] || 'days').toLowerCase();
+  const daysMultiplier = unit.startsWith('y')
+    ? 365
+    : unit.startsWith('m')
+      ? 30
+      : unit.startsWith('w')
+        ? 7
+        : 1;
+  const cutoffMs = Date.now() - count * daysMultiplier * 86_400_000;
+  return values.some((v) => {
+    const ts = Date.parse(String(v));
+    return !Number.isNaN(ts) && ts >= cutoffMs;
+  });
+};
+
+const evalEquals: OperatorEvaluator = ({ normalizedField, values, targetFolded }) =>
+  values.some((v) => {
+    const candFolded = foldDiacritics(String(v).trim()).toLowerCase();
+    return (
+      candFolded === targetFolded ||
+      ((normalizedField === 'creator' || normalizedField === 'tag') &&
+        candFolded.includes(targetFolded))
+    );
+  });
+
+const evalNotEquals: OperatorEvaluator = complement(evalEquals);
+
+const evalContains: OperatorEvaluator = ({ values, targetFolded }) =>
+  values.some((v) =>
+    foldDiacritics(String(v)).toLowerCase().includes(targetFolded),
+  );
+
+const evalDoesNotContain: OperatorEvaluator = complement(evalContains);
+
+const evalBeginsWith: OperatorEvaluator = ({ values, targetFolded }) =>
+  values.some((v) =>
+    foldDiacritics(String(v).trim()).toLowerCase().startsWith(targetFolded),
+  );
+
+const evalEndsWith: OperatorEvaluator = ({ values, targetFolded }) =>
+  values.some((v) =>
+    foldDiacritics(String(v).trim()).toLowerCase().endsWith(targetFolded),
+  );
+
+const evalGreaterThan: OperatorEvaluator = ({ values, target, targetFolded, targetNum }) => {
+  if (!Number.isNaN(targetNum) && targetFolded !== '') {
+    return values.some((v) => {
+      const num = typeof v === 'number' ? v : Number(v);
+      return !Number.isNaN(num) && num > targetNum;
+    });
+  }
+  return values.some((v) => String(v).trim() > String(target ?? '').trim());
+};
+
+const evalLessThan: OperatorEvaluator = ({ values, target, targetFolded, targetNum }) => {
+  if (!Number.isNaN(targetNum) && targetFolded !== '') {
+    return values.some((v) => {
+      const num = typeof v === 'number' ? v : Number(v);
+      return !Number.isNaN(num) && num < targetNum;
+    });
+  }
+  return values.some((v) => String(v).trim() < String(target ?? '').trim());
+};
+
+export const OPERATOR_EVALUATOR_REGISTRY: Readonly<Record<string, OperatorEvaluator>> = {
+  isPresent: evalPresent,
+  is_present: evalPresent,
+  isNotEmpty: evalPresent,
+  is_not_empty: evalPresent,
+  isAbsent: evalAbsent,
+  is_absent: evalAbsent,
+  isEmpty: evalAbsent,
+  is_empty: evalAbsent,
+  isBetween: evalBetween,
+  between: evalBetween,
+  isInTheLast: evalInTheLast,
+  in_the_last: evalInTheLast,
+  is: evalEquals,
+  equals: evalEquals,
+  isNot: evalNotEquals,
+  is_not: evalNotEquals,
+  not_equals: evalNotEquals,
+  contains: evalContains,
+  doesNotContain: evalDoesNotContain,
+  does_not_contain: evalDoesNotContain,
+  beginsWith: evalBeginsWith,
+  begins_with: evalBeginsWith,
+  endsWith: evalEndsWith,
+  ends_with: evalEndsWith,
+  isGreaterThan: evalGreaterThan,
+  greater_than: evalGreaterThan,
+  gt: evalGreaterThan,
+  isLessThan: evalLessThan,
+  less_than: evalLessThan,
+  lt: evalLessThan,
+};
+
 export function evaluateLeafCondition(
   item: Record<string, unknown>,
   condition: SavedSearchCondition,
@@ -531,143 +683,19 @@ export function evaluateLeafCondition(
   const rawField = condition.field.trim();
   const normalizedField = SEARCH_FIELD_ALIASES[rawField] || rawField;
   const op = condition.operator as string;
+  const evaluator = OPERATOR_EVALUATOR_REGISTRY[op];
+  if (!evaluator) return false;
+
   const target = condition.value;
   const values = extractItemFieldValues(item, rawField);
-
-  if (BOOLEAN_PRESENCE_FIELDS.has(normalizedField)) {
-    const boolVal = values.some((v) => v === true || v === 'true');
-    if (op === 'isPresent' || op === 'is_present' || op === 'isNotEmpty' || op === 'is_not_empty') {
-      return boolVal;
-    }
-    if (op === 'isAbsent' || op === 'is_absent' || op === 'isEmpty' || op === 'is_empty') {
-      return !boolVal;
-    }
-  }
-
-  if (op === 'isPresent' || op === 'is_present' || op === 'isNotEmpty' || op === 'is_not_empty') {
-    return values.some((v) => v !== null && v !== undefined && String(v).trim() !== '');
-  }
-
-  if (op === 'isAbsent' || op === 'is_absent' || op === 'isEmpty' || op === 'is_empty') {
-    return (
-      values.length === 0 ||
-      values.every((v) => v === null || v === undefined || String(v).trim() === '')
-    );
-  }
-
-  if (op === 'isBetween' || op === 'between') {
-    const bounds = parseBetweenBounds(target);
-    if (!bounds) return false;
-    const minNum = Number(bounds[0]);
-    const maxNum = Number(bounds[1]);
-    if (!Number.isNaN(minNum) && !Number.isNaN(maxNum)) {
-      return values.some((v) => {
-        const num = typeof v === 'number' ? v : Number(v);
-        return !Number.isNaN(num) && num >= minNum && num <= maxNum;
-      });
-    }
-    const minTime = Date.parse(bounds[0]);
-    const maxTime = Date.parse(bounds[1]);
-    if (!Number.isNaN(minTime) && !Number.isNaN(maxTime)) {
-      return values.some((v) => {
-        const t = Date.parse(String(v));
-        return !Number.isNaN(t) && t >= minTime && t <= maxTime;
-      });
-    }
-    const minStr = foldDiacritics(bounds[0]).toLowerCase();
-    const maxStr = foldDiacritics(bounds[1]).toLowerCase();
-    return values.some((v) => {
-      const s = foldDiacritics(String(v).trim()).toLowerCase();
-      return s >= minStr && s <= maxStr;
-    });
-  }
-
-  if (op === 'isInTheLast' || op === 'in_the_last') {
-    const rawStr = String(target ?? '').trim();
-    const m = rawStr.match(/^(\d+)\s*([a-zA-Z]+)?$/);
-    if (!m) return false;
-    const count = Number(m[1]);
-    if (Number.isNaN(count) || count <= 0) return false;
-    const unit = (m[2] || 'days').toLowerCase();
-    const daysMultiplier = unit.startsWith('y')
-      ? 365
-      : unit.startsWith('m')
-        ? 30
-        : unit.startsWith('w')
-          ? 7
-          : 1;
-    const cutoffMs = Date.now() - count * daysMultiplier * 86_400_000;
-    return values.some((v) => {
-      const ts = Date.parse(String(v));
-      return !Number.isNaN(ts) && ts >= cutoffMs;
-    });
-  }
-
   const targetFolded = normalizeSearchMatchString(target, normalizedField);
   const targetNum = typeof target === 'number' ? target : Number(target);
 
-  switch (op) {
-    case 'is':
-    case 'equals':
-      return values.some((v) => {
-        const candFolded = foldDiacritics(String(v).trim()).toLowerCase();
-        if (candFolded === targetFolded) return true;
-        if (normalizedField === 'creator' || normalizedField === 'tag') {
-          return candFolded.includes(targetFolded);
-        }
-        return false;
-      });
-    case 'isNot':
-    case 'is_not':
-    case 'not_equals':
-      return values.every((v) => {
-        const candFolded = foldDiacritics(String(v).trim()).toLowerCase();
-        if (candFolded === targetFolded) return false;
-        if (normalizedField === 'creator' || normalizedField === 'tag') {
-          return !candFolded.includes(targetFolded);
-        }
-        return true;
-      });
-    case 'contains':
-      return values.some((v) =>
-        foldDiacritics(String(v)).toLowerCase().includes(targetFolded),
-      );
-    case 'doesNotContain':
-    case 'does_not_contain':
-      return values.every(
-        (v) => !foldDiacritics(String(v)).toLowerCase().includes(targetFolded),
-      );
-    case 'beginsWith':
-    case 'begins_with':
-      return values.some((v) =>
-        foldDiacritics(String(v).trim()).toLowerCase().startsWith(targetFolded),
-      );
-    case 'endsWith':
-    case 'ends_with':
-      return values.some((v) =>
-        foldDiacritics(String(v).trim()).toLowerCase().endsWith(targetFolded),
-      );
-    case 'isGreaterThan':
-    case 'greater_than':
-    case 'gt':
-      if (!Number.isNaN(targetNum) && targetFolded !== '') {
-        return values.some((v) => {
-          const num = typeof v === 'number' ? v : Number(v);
-          return !Number.isNaN(num) && num > targetNum;
-        });
-      }
-      return values.some((v) => String(v).trim() > String(target ?? '').trim());
-    case 'isLessThan':
-    case 'less_than':
-    case 'lt':
-      if (!Number.isNaN(targetNum) && targetFolded !== '') {
-        return values.some((v) => {
-          const num = typeof v === 'number' ? v : Number(v);
-          return !Number.isNaN(num) && num < targetNum;
-        });
-      }
-      return values.some((v) => String(v).trim() < String(target ?? '').trim());
-    default:
-      return false;
-  }
+  return evaluator({
+    normalizedField,
+    values,
+    target,
+    targetFolded,
+    targetNum,
+  });
 }

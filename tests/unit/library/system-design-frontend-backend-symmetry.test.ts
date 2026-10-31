@@ -18,7 +18,7 @@ import {
 
 import { CreatorFields } from '@/features/library/ui/inspector/fields/CreatorFields';
 import { TypeConversionModal } from '@/features/library/ui/modals/TypeConversionModal';
-import type { Item, SchemaItemTypeDefinition } from '@/features/library/domain/types/library.types';
+import type { Item, SchemaItemTypeDefinition } from '@/features/library/domain/types/core.types';
 
 vi.mock('@/features/library/sdk/queries/saved-searches-relations.queries', () => ({
   useItemTypeConversion: () => ({

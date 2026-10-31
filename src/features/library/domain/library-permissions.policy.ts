@@ -20,57 +20,168 @@ import type {
   ProjectRole,
 } from '@/features/library/domain/types/core.types';
 
-const USER_SOVEREIGN_PERMISSIONS: LibraryPermissions = {
-  canRead: true,
-  canCreateItem: true,
-  canEditItem: true,
-  canDeleteItem: true,
-  canManageCollections: true,
-  canImport: true,
-  canExport: true,
+export const CAP_PRIME = {
+  READ: 2,
+  CREATE: 3,
+  EDIT: 5,
+  DELETE: 7,
+  PURGE: 11,
+  COLLECTIONS: 13,
+  IMPORT: 17,
+  EXPORT: 19,
+} as const;
+
+export const CAP_BIT = {
+  READ: 1 << 0,
+  CREATE: 1 << 1,
+  EDIT: 1 << 2,
+  DELETE: 1 << 3,
+  PURGE: 1 << 4,
+  COLLECTIONS: 1 << 5,
+  IMPORT: 1 << 6,
+  EXPORT: 1 << 7,
+  ALL: 0xff,
+} as const;
+
+export const ROLE_PRIME_PRODUCT: Readonly<Record<ProjectRole, number>> = {
+  reviewer: CAP_PRIME.READ * CAP_PRIME.EXPORT,
+  contributor:
+    CAP_PRIME.READ *
+    CAP_PRIME.CREATE *
+    CAP_PRIME.EDIT *
+    CAP_PRIME.COLLECTIONS *
+    CAP_PRIME.IMPORT *
+    CAP_PRIME.EXPORT,
+  coordinator:
+    CAP_PRIME.READ *
+    CAP_PRIME.CREATE *
+    CAP_PRIME.EDIT *
+    CAP_PRIME.DELETE *
+    CAP_PRIME.COLLECTIONS *
+    CAP_PRIME.IMPORT *
+    CAP_PRIME.EXPORT,
+  owner:
+    CAP_PRIME.READ *
+    CAP_PRIME.CREATE *
+    CAP_PRIME.EDIT *
+    CAP_PRIME.DELETE *
+    CAP_PRIME.PURGE *
+    CAP_PRIME.COLLECTIONS *
+    CAP_PRIME.IMPORT *
+    CAP_PRIME.EXPORT,
 };
 
+export const ROLE_MASK: Readonly<Record<ProjectRole, number>> = {
+  reviewer: CAP_BIT.READ | CAP_BIT.EXPORT,
+  contributor:
+    CAP_BIT.READ |
+    CAP_BIT.CREATE |
+    CAP_BIT.EDIT |
+    CAP_BIT.COLLECTIONS |
+    CAP_BIT.IMPORT |
+    CAP_BIT.EXPORT,
+  coordinator:
+    CAP_BIT.READ |
+    CAP_BIT.CREATE |
+    CAP_BIT.EDIT |
+    CAP_BIT.DELETE |
+    CAP_BIT.COLLECTIONS |
+    CAP_BIT.IMPORT |
+    CAP_BIT.EXPORT,
+  owner: CAP_BIT.ALL,
+};
+
+const CAP_DESCRIPTORS: ReadonlyArray<readonly [keyof LibraryPermissions, number, number]> = [
+  ['canRead', CAP_BIT.READ, CAP_PRIME.READ],
+  ['canCreateItem', CAP_BIT.CREATE, CAP_PRIME.CREATE],
+  ['canEditItem', CAP_BIT.EDIT, CAP_PRIME.EDIT],
+  ['canDeleteItem', CAP_BIT.DELETE, CAP_PRIME.DELETE],
+  ['canPurgeItem', CAP_BIT.PURGE, CAP_PRIME.PURGE],
+  ['canManageCollections', CAP_BIT.COLLECTIONS, CAP_PRIME.COLLECTIONS],
+  ['canImport', CAP_BIT.IMPORT, CAP_PRIME.IMPORT],
+  ['canExport', CAP_BIT.EXPORT, CAP_PRIME.EXPORT],
+];
+
+function primeProductToPermissions(product: number, includePurge = true): LibraryPermissions {
+  return {
+    canRead: product % CAP_PRIME.READ === 0,
+    canCreateItem: product % CAP_PRIME.CREATE === 0,
+    canEditItem: product % CAP_PRIME.EDIT === 0,
+    canDeleteItem: product % CAP_PRIME.DELETE === 0,
+    ...(includePurge ? { canPurgeItem: product % CAP_PRIME.PURGE === 0 } : {}),
+    canManageCollections: product % CAP_PRIME.COLLECTIONS === 0,
+    canImport: product % CAP_PRIME.IMPORT === 0,
+    canExport: product % CAP_PRIME.EXPORT === 0,
+  };
+}
+
+function maskToPermissions(mask: number, includePurge = true): LibraryPermissions {
+  return {
+    canRead: (mask & CAP_BIT.READ) !== 0,
+    canCreateItem: (mask & CAP_BIT.CREATE) !== 0,
+    canEditItem: (mask & CAP_BIT.EDIT) !== 0,
+    canDeleteItem: (mask & CAP_BIT.DELETE) !== 0,
+    ...(includePurge ? { canPurgeItem: (mask & CAP_BIT.PURGE) !== 0 } : {}),
+    canManageCollections: (mask & CAP_BIT.COLLECTIONS) !== 0,
+    canImport: (mask & CAP_BIT.IMPORT) !== 0,
+    canExport: (mask & CAP_BIT.EXPORT) !== 0,
+  };
+}
+
+export const USER_SOVEREIGN_PERMISSIONS: LibraryPermissions = primeProductToPermissions(
+  ROLE_PRIME_PRODUCT.owner,
+  false,
+);
+
 export const PROJECT_ROLE_PERMISSIONS: Record<ProjectRole, LibraryPermissions> = {
-  owner: {
-    canRead: true,
-    canCreateItem: true,
-    canEditItem: true,
-    canDeleteItem: true,
-    canPurgeItem: true,
-    canManageCollections: true,
-    canImport: true,
-    canExport: true,
-  },
-  coordinator: {
-    canRead: true,
-    canCreateItem: true,
-    canEditItem: true,
-    canDeleteItem: true,
-    canPurgeItem: false,
-    canManageCollections: true,
-    canImport: true,
-    canExport: true,
-  },
-  contributor: {
-    canRead: true,
-    canCreateItem: true,
-    canEditItem: true,
-    canDeleteItem: false,
-    canPurgeItem: false,
-    canManageCollections: true,
-    canImport: true,
-    canExport: true,
-  },
-  reviewer: {
-    canRead: true,
-    canCreateItem: false,
-    canEditItem: false,
-    canDeleteItem: false,
-    canPurgeItem: false,
-    canManageCollections: false,
-    canImport: false,
-    canExport: true,
-  },
+  owner: primeProductToPermissions(ROLE_PRIME_PRODUCT.owner, true),
+  coordinator: primeProductToPermissions(ROLE_PRIME_PRODUCT.coordinator, true),
+  contributor: primeProductToPermissions(ROLE_PRIME_PRODUCT.contributor, true),
+  reviewer: primeProductToPermissions(ROLE_PRIME_PRODUCT.reviewer, true),
+};
+
+const TOKEN_GRANT_MASK: Readonly<Record<string, number>> = {
+  '*': CAP_BIT.ALL,
+  'library:*': CAP_BIT.ALL,
+  'project:*': CAP_BIT.ALL,
+  'library:read': CAP_BIT.READ | CAP_BIT.EXPORT,
+  'library:view': CAP_BIT.READ,
+  'project:read': CAP_BIT.READ,
+  'library:create': CAP_BIT.CREATE | CAP_BIT.IMPORT,
+  'library:add': CAP_BIT.CREATE,
+  'library:write': CAP_BIT.CREATE | CAP_BIT.EDIT | CAP_BIT.COLLECTIONS | CAP_BIT.IMPORT,
+  'library:edit': CAP_BIT.EDIT | CAP_BIT.COLLECTIONS,
+  'library:update': CAP_BIT.EDIT,
+  'library:delete': CAP_BIT.DELETE,
+  'library:remove': CAP_BIT.DELETE,
+  'library:trash': CAP_BIT.DELETE,
+  'library:purge': CAP_BIT.PURGE,
+  'library:manage_collections': CAP_BIT.COLLECTIONS,
+  'library:collections': CAP_BIT.COLLECTIONS,
+  'library:import': CAP_BIT.IMPORT,
+  'library:export': CAP_BIT.EXPORT,
+};
+
+const OVERRIDE_KEY_BIT: Readonly<Record<string, number>> = {
+  'library:read': CAP_BIT.READ,
+  canread: CAP_BIT.READ,
+  'library:create': CAP_BIT.CREATE,
+  cancreateitem: CAP_BIT.CREATE,
+  'library:edit': CAP_BIT.EDIT,
+  'library:update': CAP_BIT.EDIT,
+  canedititem: CAP_BIT.EDIT,
+  'library:delete': CAP_BIT.DELETE,
+  'library:trash': CAP_BIT.DELETE,
+  candeleteitem: CAP_BIT.DELETE,
+  'library:purge': CAP_BIT.PURGE,
+  canpurgeitem: CAP_BIT.PURGE,
+  'library:manage_collections': CAP_BIT.COLLECTIONS,
+  'library:collections': CAP_BIT.COLLECTIONS,
+  canmanagecollections: CAP_BIT.COLLECTIONS,
+  'library:import': CAP_BIT.IMPORT,
+  canimport: CAP_BIT.IMPORT,
+  'library:export': CAP_BIT.EXPORT,
+  canexport: CAP_BIT.EXPORT,
 };
 
 export interface ServerPermissionPayload {
@@ -114,7 +225,7 @@ export function resolveEffectiveLibraryPermissions(
           .toLowerCase();
 
   if (scopeType === 'user' || scopeType === 'personal') {
-    return { ...USER_SOVEREIGN_PERMISSIONS, canPurgeItem: true };
+    return maskToPermissions(CAP_BIT.ALL, true);
   }
 
   const rawRole =
@@ -130,9 +241,10 @@ export function resolveEffectiveLibraryPermissions(
     .trim()
     .toLowerCase() as ProjectRole;
 
-  const basePermissions: LibraryPermissions = {
-    ...(PROJECT_ROLE_PERMISSIONS[normalizedRole] ?? PROJECT_ROLE_PERMISSIONS.reviewer),
-  };
+  const baseMask = ROLE_MASK[normalizedRole] ?? ROLE_MASK.reviewer;
+
+  const hasPermKeys = (obj: object): boolean =>
+    CAP_DESCRIPTORS.some(([key]) => key in obj);
 
   // Extract any server-provided permissions from either effectiveServerData or scopeOrType
   const rawPerms =
@@ -145,14 +257,7 @@ export function resolveEffectiveLibraryPermissions(
         ? effectiveServerData.permissions
         : effectiveServerData &&
             typeof effectiveServerData === 'object' &&
-            ('canRead' in effectiveServerData ||
-              'canCreateItem' in effectiveServerData ||
-              'canEditItem' in effectiveServerData ||
-              'canDeleteItem' in effectiveServerData ||
-              'canPurgeItem' in effectiveServerData ||
-              'canManageCollections' in effectiveServerData ||
-              'canImport' in effectiveServerData ||
-              'canExport' in effectiveServerData)
+            hasPermKeys(effectiveServerData)
           ? (effectiveServerData as Partial<LibraryPermissions>)
           : isScopeObject && (scopeOrType as LibraryScope).permissions
             ? (scopeOrType as LibraryScope).permissions
@@ -172,73 +277,30 @@ export function resolveEffectiveLibraryPermissions(
             ? (scopeOrType as LibraryScope).effectivePermissions
             : null;
 
-  let resolved: LibraryPermissions = { ...basePermissions };
+  let mask = baseMask;
 
-  // 1. Apply Backend token array (`effectivePermissions` or `permissions: string[]`)
+  // 1. Apply Backend token array (`effectivePermissions` or `permissions: string[]`) via bitmask union
   if (Array.isArray(rawEffectiveTokens) && rawEffectiveTokens.length > 0) {
-    const tokenSet = new Set(rawEffectiveTokens.map((t) => String(t).trim().toLowerCase()));
-    const hasWildcard = tokenSet.has('*') || tokenSet.has('library:*') || tokenSet.has('project:*');
-    resolved = {
-      canRead:
-        hasWildcard ||
-        tokenSet.has('library:read') ||
-        tokenSet.has('library:view') ||
-        tokenSet.has('project:read') ||
-        basePermissions.canRead,
-      canCreateItem:
-        hasWildcard ||
-        tokenSet.has('library:create') ||
-        tokenSet.has('library:write') ||
-        tokenSet.has('library:add'),
-      canEditItem:
-        hasWildcard ||
-        tokenSet.has('library:edit') ||
-        tokenSet.has('library:update') ||
-        tokenSet.has('library:write'),
-      canDeleteItem:
-        hasWildcard ||
-        tokenSet.has('library:delete') ||
-        tokenSet.has('library:remove') ||
-        tokenSet.has('library:trash'),
-      canPurgeItem:
-        hasWildcard ||
-        tokenSet.has('library:purge') ||
-        (normalizedRole === 'owner' && tokenSet.has('library:delete')),
-      canManageCollections:
-        hasWildcard ||
-        tokenSet.has('library:manage_collections') ||
-        tokenSet.has('library:collections') ||
-        tokenSet.has('library:write') ||
-        tokenSet.has('library:edit'),
-      canImport:
-        hasWildcard ||
-        tokenSet.has('library:import') ||
-        tokenSet.has('library:create') ||
-        tokenSet.has('library:write'),
-      canExport:
-        hasWildcard ||
-        tokenSet.has('library:export') ||
-        tokenSet.has('library:read') ||
-        basePermissions.canExport,
-    };
+    let tokenMask = baseMask & (CAP_BIT.READ | CAP_BIT.EXPORT);
+    for (const rawToken of rawEffectiveTokens) {
+      const token = String(rawToken).trim().toLowerCase();
+      tokenMask |= TOKEN_GRANT_MASK[token] ?? 0;
+      if (normalizedRole === 'owner' && token === 'library:delete') {
+        tokenMask |= CAP_BIT.PURGE;
+      }
+    }
+    mask = tokenMask;
   }
 
   // 2. Apply explicit boolean object (`permissions: Partial<LibraryPermissions>`)
   if (rawPerms && !Array.isArray(rawPerms) && typeof rawPerms === 'object') {
     const permRecord = rawPerms as Partial<LibraryPermissions>;
-    resolved = {
-      canRead: typeof permRecord.canRead === 'boolean' ? permRecord.canRead : resolved.canRead,
-      canCreateItem: typeof permRecord.canCreateItem === 'boolean' ? permRecord.canCreateItem : resolved.canCreateItem,
-      canEditItem: typeof permRecord.canEditItem === 'boolean' ? permRecord.canEditItem : resolved.canEditItem,
-      canDeleteItem: typeof permRecord.canDeleteItem === 'boolean' ? permRecord.canDeleteItem : resolved.canDeleteItem,
-      canPurgeItem: typeof permRecord.canPurgeItem === 'boolean' ? permRecord.canPurgeItem : resolved.canPurgeItem,
-      canManageCollections:
-        typeof permRecord.canManageCollections === 'boolean'
-          ? permRecord.canManageCollections
-          : resolved.canManageCollections,
-      canImport: typeof permRecord.canImport === 'boolean' ? permRecord.canImport : resolved.canImport,
-      canExport: typeof permRecord.canExport === 'boolean' ? permRecord.canExport : resolved.canExport,
-    };
+    for (const [key, bit] of CAP_DESCRIPTORS) {
+      const flag = permRecord[key];
+      if (typeof flag === 'boolean') {
+        mask = flag ? mask | bit : mask & ~bit;
+      }
+    }
   }
 
   // 3. Apply explicit `permissionOverrides` map from Backend if provided
@@ -250,25 +312,15 @@ export function resolveEffectiveLibraryPermissions(
       ? effectiveServerData.permissionOverrides
       : null;
   if (overrides && typeof overrides === 'object') {
-    const next = { ...resolved };
     for (const [rawKey, allowed] of Object.entries(overrides)) {
-      if (typeof allowed !== 'boolean') continue;
-      const key = rawKey.trim().toLowerCase();
-      if (key === 'library:read' || key === 'canread') next.canRead = allowed;
-      if (key === 'library:create' || key === 'cancreateitem') next.canCreateItem = allowed;
-      if (key === 'library:edit' || key === 'library:update' || key === 'canedititem') next.canEditItem = allowed;
-      if (key === 'library:delete' || key === 'library:trash' || key === 'candeleteitem') next.canDeleteItem = allowed;
-      if (key === 'library:purge' || key === 'canpurgeitem') next.canPurgeItem = allowed;
-      if (key === 'library:manage_collections' || key === 'library:collections' || key === 'canmanagecollections') {
-        next.canManageCollections = allowed;
+      const bit = OVERRIDE_KEY_BIT[rawKey.trim().toLowerCase()];
+      if (bit && typeof allowed === 'boolean') {
+        mask = allowed ? mask | bit : mask & ~bit;
       }
-      if (key === 'library:import' || key === 'canimport') next.canImport = allowed;
-      if (key === 'library:export' || key === 'canexport') next.canExport = allowed;
     }
-    resolved = next;
   }
 
-  return resolved;
+  return maskToPermissions(mask, true);
 }
 
 export function getLibraryPermissions(
@@ -306,19 +358,11 @@ export function getLibraryPermissions(
   const normalizedRole = String(rawRole || 'reviewer')
     .trim()
     .toLowerCase() as ProjectRole;
-  const permissions =
-    PROJECT_ROLE_PERMISSIONS[normalizedRole] ?? PROJECT_ROLE_PERMISSIONS.reviewer;
 
-  const result: LibraryPermissions = {
-    canRead: permissions.canRead,
-    canCreateItem: permissions.canCreateItem,
-    canEditItem: permissions.canEditItem,
-    canDeleteItem: permissions.canDeleteItem,
-    canManageCollections: permissions.canManageCollections,
-    canImport: permissions.canImport,
-    canExport: permissions.canExport,
-  };
-  return result;
+  return primeProductToPermissions(
+    ROLE_PRIME_PRODUCT[normalizedRole] ?? ROLE_PRIME_PRODUCT.reviewer,
+    false,
+  );
 }
 
 export function getScopeTarget(scope: LibraryScope): {
@@ -340,3 +384,27 @@ export function getScopeTarget(scope: LibraryScope): {
     itemsApiUrl: `/api/v1/library/items`,
   };
 }
+
+/**
+ * Tell, Don't Ask Policy: Determines whether an item ID represents a persisted
+ * server-side library record rather than an optimistic/provisional upload placeholder.
+ */
+export function isPersistedItemId(id?: string | null): boolean {
+  if (!id || typeof id !== 'string') return false;
+  const trimmed = id.trim();
+  if (!trimmed) return false;
+  return !trimmed.startsWith('temp-') && !trimmed.startsWith('provisional-');
+}
+
+/**
+ * Tell, Don't Ask Policy: Determines whether a library item is fully persisted
+ * and ready for mutating operations (not actively uploading/processing or provisional).
+ */
+export function isPersistedLibraryItem(
+  item?: { id: string; _isProcessing?: boolean } | null,
+): boolean {
+  if (!item) return false;
+  if (item._isProcessing) return false;
+  return isPersistedItemId(item.id);
+}
+

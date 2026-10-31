@@ -11,14 +11,14 @@ import type {
   AnnotationRect,
   ReaderNavigationTarget,
   PdfOutlineItem,
-} from "@/features/library/domain/types/reader.types";
+} from "@/features/library/domain/types/reader.schema";
 import type { ReaderAnnotationTool } from "@/features/library/core/store/reader.store";
 import { ANNOTATION_PALETTE_COLORS } from "@/features/library/ui/reader/ReaderToolbar";
 import {
   computeEffectivePdfPageWidth,
   computeSpreadPairs,
   isPageInVirtualWindow,
-} from "@/features/library/domain/pdf-viewport.model";
+} from "@/features/library/domain/reader-search-outline";
 import {
   useViewerSearch,
   ViewerSearchBar,
@@ -26,9 +26,8 @@ import {
 } from "./ViewerSearchBar";
 import { TextSelectionToolbar } from "./TextSelectionToolbar";
 import { AnnotationQuickEditCard } from "./PageAnnotationOverlay";
-import { DocumentPageSkeleton } from "./DocumentPageSkeleton";
-import { ViewerPageCanvas } from "./ViewerPageCanvas";
-import { usePdfViewerInteraction } from "./usePdfViewerInteraction";
+import { ViewerPageCanvas, DocumentPageSkeleton } from "./ViewerPageCanvas";
+import { usePdfViewerInteraction } from "@/features/library/core/coordinator/reader/use-pdf-interaction";
 
 import "react-pdf/dist/Page/TextLayer.css";
 import "react-pdf/dist/Page/AnnotationLayer.css";

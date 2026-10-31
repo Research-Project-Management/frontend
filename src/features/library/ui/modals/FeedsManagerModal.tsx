@@ -11,7 +11,7 @@ import {
 import { Button } from '@/shared/components/ui/button';
 import { RefreshCw, Plus, Rss, Trash2, Loader2, ExternalLink, Check, BookPlus, FileText } from 'lucide-react';
 import { toast } from 'sonner';
-import { safeHttpUrl } from '@/features/library/domain/retraction';
+import { safeHttpUrl } from '@/features/library/domain/system-views.policy';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { FeedStackIllustration } from '@/features/library/ui/content/LibraryIllustrations';
 import {
@@ -25,10 +25,10 @@ import {
   type ParsedFeedEntry,
   type FeedFetchApiResponse,
 } from '@/features/library/domain/feed-parser.domain';
-import type { Collection } from '@/features/library/domain/types/library.types';
+import type { Collection } from '@/features/library/domain/types/core.types';
 import { cn } from '@/shared/lib/utils';
 import { useFeedsStore, isFeedEntryInLibrary } from '@/features/library/core/store/feeds.store';
-import type { SavedFeedSubscription } from '@/features/library/domain/types/feeds.types';
+import type { SavedFeedSubscription } from '@/features/library/domain/types/ingestion.types';
 
 export type { SavedFeedSubscription };
 

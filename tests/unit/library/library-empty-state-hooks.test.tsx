@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
 import { LibraryEmptyState } from '@/features/library/ui/content/LibraryEmptyState';
@@ -9,10 +9,6 @@ vi.mock('next/navigation', () => ({
 }));
 
 // Mock child illustration components to keep unit test light
-vi.mock('@/features/library/ui/content/RecentlyReadEmptyState', () => ({
-  RecentlyReadEmptyState: () => <div data-testid="recently-read-empty">Recently Read Empty</div>,
-}));
-
 vi.mock('@/features/library/ui/content/LibraryIllustrations', () => ({
   libraryIllustrationStyles: '',
   StarredStackIllustration: () => <div data-testid="starred-icon" />,
@@ -23,6 +19,9 @@ vi.mock('@/features/library/ui/content/LibraryIllustrations', () => ({
   CollectionStackIllustration: () => <div data-testid="collection-icon" />,
   AllReferencesStackIllustration: () => <div data-testid="all-icon" />,
   SearchStackIllustration: () => <div data-testid="search-icon" />,
+  FeedStackIllustration: () => <div data-testid="feed-icon" />,
+  FeedAllReadIllustration: () => <div data-testid="feed-all-read-icon" />,
+  RecentlyReadVerticalStackIllustration: () => <div data-testid="recently-read-icon" />,
 }));
 
 describe('LibraryEmptyState Rules of Hooks Invariants', () => {

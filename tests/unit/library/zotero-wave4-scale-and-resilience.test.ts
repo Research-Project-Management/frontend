@@ -7,7 +7,7 @@ import {
 import {
   isItemRetracted,
   getRetractionInfo,
-} from '@/features/library/domain/retraction';
+} from '@/features/library/domain/system-views.policy';
 import {
   getLibraryPermissions,
 } from '@/features/library/domain/library-permissions.policy';
@@ -22,8 +22,8 @@ import {
 import {
   PdfAnnotationEngine,
 } from '@/features/library/domain/reader.domain';
-import type { Collection, Item } from '@/features/library/domain/types/library.types';
-import type { ReaderAnnotation, ReaderDocument } from '@/features/library/domain/types/reader.types';
+import type { Collection, Item } from '@/features/library/domain/types/core.types';
+import type { ReaderAnnotation, ReaderDocument } from '@/features/library/domain/types/reader.schema';
 
 describe('Wave 4: Zotero 7 Web Translators & Identifier Input, Retraction Watch, Hierarchical Collections, and 1,000-Item Scale Benchmark', () => {
   // ===========================================================================

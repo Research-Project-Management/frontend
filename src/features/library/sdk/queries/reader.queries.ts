@@ -11,7 +11,7 @@ import {
   ExportsService,
   AttachmentsService,
   type ExtractNotesOptions,
-} from '../library.client';
+} from '@/features/library/sdk';
 import {
   itemKeys,
   readerQueryKeys,
@@ -25,7 +25,7 @@ import type {
   UpdateAnnotationDto,
   ReaderAnnotation,
   ReaderDocument,
-} from '@/features/library/domain/types/reader.types';
+} from '@/features/library/domain/types/reader.schema';
 
 export type CreateAnnotationDTO = CreateAnnotationDto;
 export type UpdateAnnotationDTO = UpdateAnnotationDto & {

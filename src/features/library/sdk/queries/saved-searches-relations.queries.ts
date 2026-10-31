@@ -9,9 +9,9 @@ import {
   type CreateSavedSearchInput,
   type UpdateSavedSearchInput,
   type SavedSearchConditionGroup,
-} from '../library.client';
-import type { Item, SavedSearchScopeOptions } from '@/features/library/domain/types/library.types';
-import { mapBackendItem } from '@/features/library/domain/metadata';
+} from '@/features/library/sdk';
+import type { Item, SavedSearchScopeOptions } from '@/features/library/domain/types/core.types';
+import { mapBackendItem } from '@/features/library/domain/metadata-mapper';
 import {
   itemKeys,
   savedSearchKeys,
@@ -298,7 +298,7 @@ import type {
   FieldMappingChange,
   CreatorRoleChange,
   TypeConversionPreview,
-} from '@/features/library/domain/types/library.types';
+} from '@/features/library/domain/types/core.types';
 
 export type {
   DroppedField,

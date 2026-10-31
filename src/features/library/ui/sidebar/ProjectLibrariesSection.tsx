@@ -5,11 +5,11 @@ import { Users, ChevronRight, Folder, Files } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { useLibraryCacheSynchronizer } from '@/features/library/sdk/queries/catalog.queries';
-import type { TreeNode, CollectionActionHandlers } from './sidebar.types';
-import type { Collection, LibraryScope, ProjectRole } from '@/features/library/domain/types/library.types';
+import type { TreeNode } from '@/features/library/domain/collection-tree';
+import type { Collection, CollectionActionHandlers, LibraryScope, ProjectRole } from '@/features/library/domain/types/core.types';
 import type { SavedSearch } from '@/features/library/domain/types/saved-searches.types';
 import { CollectionTree } from './CollectionTree';
-import { SidebarNavItem } from './SidebarNavItem';
+import { SidebarNavItem } from './SidebarSystemNav';
 import { SavedSearchListSection } from './SavedSearchListSection';
 import { getLibraryPermissions } from '@/features/library/domain/library-permissions.policy';
 
@@ -18,7 +18,7 @@ export interface ProjectLike {
   name?: string;
   role?: string;
   yourRole?: string;
-  permissions?: Partial<import('@/features/library/domain/types/library.types').LibraryPermissions> | string[] | Record<string, unknown>;
+  permissions?: Partial<import('@/features/library/domain/types/core.types').LibraryPermissions> | string[] | Record<string, unknown>;
   effectivePermissions?: string[];
   [key: string]: unknown;
 }

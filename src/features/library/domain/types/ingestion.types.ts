@@ -1,5 +1,166 @@
 import { z } from 'zod';
 
+// ── Batch Upload & Progress ──────────────────────────────────────────────────
+export interface IngestionProgressItem {
+  id: string;
+  title: string;
+  status: 'SUCCEEDED' | 'DUPLICATE' | 'FAILED' | 'PROCESSING' | 'UPLOADING' | 'PENDING';
+  itemId?: string;
+  error?: string;
+  itemName?: string;
+}
+
+export type ProcessItem = IngestionProgressItem;
+
+export interface IngestionProgressResponse {
+  runId: string;
+  scopeId?: string;
+  projectId?: string;
+  userId?: string;
+  status: string;
+  total: number;
+  processed: number;
+  percentage: number;
+  succeeded: number;
+  duplicates: number;
+  failed: number;
+  currentTitle?: string;
+  items: IngestionProgressItem[];
+  startedAt: string;
+  completedAt?: string;
+}
+
+export interface ProcessModalState {
+  isOpen: boolean;
+  isMinimized: boolean;
+  runId: string | null;
+  fileName: string;
+  data: IngestionProgressResponse | null;
+  isComplete: boolean;
+  error: string | null;
+}
+
+export interface ProcessingFileItem {
+  id: string;
+  fileName: string;
+  fileSize: number;
+  mimeType?: string;
+  scopeId: string;
+  collectionId?: string;
+  status: 'UPLOADING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED';
+  progress: number;
+  extractedTitle?: string;
+  itemId?: string;
+  fileId?: string;
+  fileUrl?: string;
+  createdAt: string;
+  error?: string;
+}
+
+export interface InvalidationClient {
+  invalidateQueries: (filters: { queryKey: readonly unknown[] }) => Promise<unknown> | void;
+}
+
+export interface ProcessBatchUploadOptions {
+  scopeId?: string;
+  collectionId?: string;
+  queryClient: InvalidationClient;
+  onSuccess?: () => void;
+  abortSignal?: AbortSignal;
+}
+
+export interface ProcessModalStoreApi {
+  getState: () => {
+    state: ProcessModalState;
+    processingItems: ProcessingFileItem[];
+  };
+  setState: (
+    partial:
+      | Partial<{ state: ProcessModalState; processingItems: ProcessingFileItem[] }>
+      | ((s: { state: ProcessModalState; processingItems: ProcessingFileItem[] }) => Partial<{
+          state: ProcessModalState;
+          processingItems: ProcessingFileItem[];
+        }>),
+  ) => void;
+}
+
+// ── Feeds ────────────────────────────────────────────────────────────────────
+export type FeedReadFilterType = 'all' | 'unread' | 'read';
+
+export const feedRetentionDaysSchema = z.union([
+  z.literal(0),
+  z.literal(1),
+  z.literal(3),
+  z.literal(7),
+  z.literal(14),
+  z.literal(30),
+  z.literal(90),
+]);
+
+export type FeedRetentionDays = z.infer<typeof feedRetentionDaysSchema>;
+
+export const savedFeedSubscriptionSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  url: z.string().url(),
+  lastRefreshed: z.string().optional(),
+  retentionDays: feedRetentionDaysSchema.optional().default(30),
+  cleanupReadAfter: feedRetentionDaysSchema.optional().default(7),
+  cleanupUnreadAfter: feedRetentionDaysSchema.optional().default(30),
+});
+
+export type SavedFeedSubscription = z.infer<typeof savedFeedSubscriptionSchema>;
+
+export interface RetentionOption {
+  value: FeedRetentionDays;
+  label: string;
+}
+
+export const READ_RETENTION_OPTIONS: RetentionOption[] = [
+  { value: 7, label: 'After 7 days' },
+  { value: 1, label: 'After 1 day' },
+  { value: 3, label: 'After 3 days' },
+  { value: 14, label: 'After 14 days' },
+  { value: 30, label: 'After 30 days' },
+  { value: 0, label: 'Never' },
+];
+
+export const UNREAD_RETENTION_OPTIONS: RetentionOption[] = [
+  { value: 30, label: '30 days' },
+  { value: 7, label: '7 days' },
+  { value: 14, label: '14 days' },
+  { value: 90, label: '90 days' },
+  { value: 0, label: 'Never' },
+];
+
+export const DEFAULT_ACADEMIC_FEEDS: SavedFeedSubscription[] = [
+  {
+    id: 'arxiv-cs-ai',
+    name: 'arXiv: Artificial Intelligence (cs.AI)',
+    url: 'https://rss.arxiv.org/rss/cs.AI',
+    retentionDays: 30,
+    cleanupReadAfter: 7,
+    cleanupUnreadAfter: 30,
+  },
+  {
+    id: 'arxiv-cs-cl',
+    name: 'arXiv: Computation and Language (cs.CL)',
+    url: 'https://rss.arxiv.org/rss/cs.CL',
+    retentionDays: 30,
+    cleanupReadAfter: 7,
+    cleanupUnreadAfter: 30,
+  },
+  {
+    id: 'nature-main',
+    name: 'Nature — Current Issue Research',
+    url: 'https://www.nature.com/nature.rss',
+    retentionDays: 30,
+    cleanupReadAfter: 7,
+    cleanupUnreadAfter: 30,
+  },
+];
+
+// ── Ingestion Payloads & Responses ───────────────────────────────────────────
 export const DoiIngestionPayloadSchema = z.object({
   source: z.literal('doi'),
   doi: z.string().min(1, 'DOI is required'),
@@ -267,5 +428,3 @@ export type PmidIngestionPayload = z.infer<typeof PmidIngestionPayloadSchema>;
 export type IsbnIngestionPayload = z.infer<typeof IsbnIngestionPayloadSchema>;
 export type RisIngestionPayload = z.infer<typeof RisIngestionPayloadSchema>;
 export type ZoteroIngestionPayload = z.infer<typeof ZoteroIngestionPayloadSchema>;
-
-export type { IngestionProgressItem, IngestionProgressResponse } from './batch-upload.types';

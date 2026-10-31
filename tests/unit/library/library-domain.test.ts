@@ -28,7 +28,7 @@ import { formatAcademicAuthors } from "@/features/library/domain/academic-text";
 import {
   getItemFileUrl,
   isProjectScope,
-} from "@/features/library/domain/item-url";
+} from "@/features/library/domain/identifiers";
 
 describe("Library Domain Layer — Pure Functional Logic", () => {
   describe("Creators Domain (creators.ts)", () => {
@@ -754,11 +754,8 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
     });
 
     it("should emit only tombstone keys in patch.metadata when clearing fields and not sync authority into publisher", async () => {
-      const { buildInspectorFieldPatch } = await import(
+      const { buildInspectorFieldPatch, buildDerivedFieldMappings } = await import(
         "@/features/library/domain/item-field-schema"
-      );
-      const { buildDerivedFieldMappings } = await import(
-        "@/features/library/domain/item-field-scorers.strategy"
       );
 
       const { syncSetters } = buildDerivedFieldMappings();

@@ -1,15 +1,26 @@
 'use client';
 
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { copyToClipboard } from '@/shared/lib/utils';
-import { openInNewTab, buildReaderPaperUrl } from '@/features/library/core/coordinator/browser-io.helpers';
-import { isProjectScope } from '@/features/library/domain/item-url';
-import { ItemsService } from '@/features/library/sdk/library.client';
+import { openInNewTab, buildReaderPaperUrl } from '@/features/library/core/coordinator/citation-export.coordinator';
+import { isProjectScope } from '@/features/library/domain/identifiers';
+import {
+  isPersistedItemId,
+  isPersistedLibraryItem,
+} from '@/features/library/domain/library-permissions.policy';
+import {
+  useLibraryCommandStore,
+  createTrashCommand,
+  createRestoreCommand,
+  createMoveItemsCommand,
+  createToggleStarCommand,
+} from '@/features/library/core/manager/library-command.manager';
+import { ItemsService } from '@/features/library/sdk';
 import { libraryKeys, itemKeys } from '@/features/library/sdk/query-keys';
-import { useCitationStyles } from '@/features/library/sdk/queries/citation.queries';
+import { useCitationStyles } from '@/features/library/sdk/queries/extraction.queries';
 import { useAssignCollectionItemsMutation } from '@/features/library/sdk/queries/collections.queries';
 import {
   useReResolveItemMetadataMutation,
@@ -27,7 +38,7 @@ import {
   DEFAULT_CITATION_STYLES,
   getCleanStyleLabel,
 } from '@/features/library/domain/citations';
-import type { Item, Collection, CslStyle } from '@/features/library/domain/types/library.types';
+import type { Item, Collection, CslStyle } from '@/features/library/domain/types/core.types';
 
 export interface UseItemActionHandlersOptions {
   scopeId?: string;
@@ -300,3 +311,216 @@ export function useDropToMyPublications(effectiveScopeId: string = 'user') {
     [queryClient, effectiveScopeId, openModal],
   );
 }
+
+export interface UseLibraryItemOperationsOptions {
+  itemsById: Map<string, Item>;
+  isTrash?: boolean;
+  collectionId?: string;
+  propOnMoveToCollection?: (itemId: string, collectionId: string) => void;
+  onRestoreItems?: (ids: string[]) => void;
+  onPermanentDeleteItems?: (ids: string[]) => void;
+  toggleStarMutation: {
+    mutate: (args: { id: string; isStarred: boolean }) => void;
+    mutateAsync?: (args: { id: string; isStarred: boolean }) => Promise<unknown>;
+  };
+  deleteMutation: {
+    mutate: (ids: string[]) => void;
+    mutateAsync?: (ids: string[]) => Promise<unknown>;
+  };
+  restoreMutation: {
+    mutate: (ids: string[]) => void;
+    mutateAsync?: (ids: string[]) => Promise<unknown>;
+  };
+  purgeMutation: {
+    mutate: (ids: string[]) => void;
+  };
+  moveMutation: {
+    mutateAsync: (args: {
+      targetCollectionId: string | null;
+      itemIds: string[];
+      sourceCollectionId?: string | null;
+      scopeId?: string;
+    }) => Promise<unknown>;
+  };
+  detachMutation?: {
+    mutateAsync: (args: { collectionId: string; itemIds: string[] }) => Promise<unknown>;
+  };
+  assignMutation?: {
+    mutateAsync: (args: { collectionId: string; itemIds: string[] }) => Promise<unknown>;
+  };
+}
+
+/**
+ * useLibraryItemOperations
+ * Centralizes granular document CRUD operations (Star, Delete, Restore, Permanent Purge, Move)
+ * with robust processing item guards, user-facing notifications, and stable references.
+ */
+export function useLibraryItemOperations(options: UseLibraryItemOperationsOptions) {
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
+
+  const openModal = useLibraryUIStore((s) => s.openModal);
+
+  const handleToggleStar = useCallback(
+    (item: Item, isStarred: boolean) => {
+      if (!isPersistedLibraryItem(item)) return;
+      const toggleStarMutation = optionsRef.current.toggleStarMutation;
+      if (toggleStarMutation.mutateAsync) {
+        void useLibraryCommandStore.getState().executeCommand(
+          createToggleStarCommand({
+            itemId: item.id,
+            itemTitle: item.title,
+            newStarred: !isStarred,
+            toggleStarMutation: { mutateAsync: toggleStarMutation.mutateAsync },
+          }),
+        );
+        return;
+      }
+      toggleStarMutation.mutate({
+        id: item.id,
+        isStarred: !isStarred,
+      });
+    },
+    [],
+  );
+
+  const handleDelete = useCallback(
+    (id: string) => {
+      const opts = optionsRef.current;
+      const targetItem = opts.itemsById.get(id);
+      const isProcessing =
+        !isPersistedItemId(id) ||
+        (targetItem ? !isPersistedLibraryItem(targetItem) : false);
+      if (isProcessing) {
+        toast.warning(
+          'Cannot delete an item that is currently uploading or processing',
+          { id: 'library-item-guard' },
+        );
+        return;
+      }
+
+      const clearSelectionIfAffected = () => {
+        const state = useLibraryUIStore.getState();
+        if (state.activeItemId === id) {
+          state.setActiveItem(null);
+        }
+        if (state.selectedIds.has(id)) {
+          state.toggleSelect(id);
+        }
+      };
+
+      if (opts.isTrash) {
+        clearSelectionIfAffected();
+        openModal('DELETE_CONFIRM', { itemIds: [id], permanent: true });
+      } else if (opts.deleteMutation.mutateAsync && opts.restoreMutation.mutateAsync) {
+        clearSelectionIfAffected();
+        void useLibraryCommandStore.getState().executeCommand(
+          createTrashCommand({
+            itemIds: [id],
+            itemTitle: targetItem?.title,
+            deleteMutation: { mutateAsync: opts.deleteMutation.mutateAsync },
+            restoreMutation: { mutateAsync: opts.restoreMutation.mutateAsync },
+            onExecuted: () => {
+              clearSelectionIfAffected();
+            },
+          }),
+        );
+      } else {
+        clearSelectionIfAffected();
+        opts.deleteMutation.mutate([id]);
+      }
+    },
+    [openModal],
+  );
+
+  const handleRestore = useCallback(
+    (id: string) => {
+      const opts = optionsRef.current;
+      const targetItem = opts.itemsById.get(id);
+      if (opts.restoreMutation.mutateAsync && opts.deleteMutation.mutateAsync) {
+        void useLibraryCommandStore.getState().executeCommand(
+          createRestoreCommand({
+            itemIds: [id],
+            itemTitle: targetItem?.title,
+            restoreMutation: { mutateAsync: opts.restoreMutation.mutateAsync },
+            deleteMutation: { mutateAsync: opts.deleteMutation.mutateAsync },
+            onExecuted: () => opts.onRestoreItems?.([id]),
+          }),
+        );
+      } else if (opts.onRestoreItems) {
+        opts.onRestoreItems([id]);
+      } else {
+        opts.restoreMutation.mutate([id]);
+      }
+    },
+    [],
+  );
+
+  const handlePurge = useCallback(
+    (id: string) => {
+      const opts = optionsRef.current;
+      const targetItem = opts.itemsById.get(id);
+      const isProcessing =
+        !isPersistedItemId(id) ||
+        (targetItem ? !isPersistedLibraryItem(targetItem) : false);
+      if (isProcessing) {
+        toast.warning(
+          'Cannot delete an item that is currently uploading or processing',
+          { id: 'library-item-guard' },
+        );
+        return;
+      }
+      const state = useLibraryUIStore.getState();
+      if (state.activeItemId === id) {
+        state.setActiveItem(null);
+      }
+      if (state.selectedIds.has(id)) {
+        state.toggleSelect(id);
+      }
+      if (opts.onPermanentDeleteItems) {
+        useLibraryCommandStore.getState().clearHistory();
+        opts.onPermanentDeleteItems([id]);
+      } else {
+        useLibraryCommandStore.getState().clearHistory();
+        opts.purgeMutation.mutate([id]);
+      }
+    },
+    [],
+  );
+
+  const handleMoveToCollection = useCallback(
+    async (itemId: string, targetCollectionId: string) => {
+      const opts = optionsRef.current;
+      if (opts.propOnMoveToCollection) {
+        opts.propOnMoveToCollection(itemId, targetCollectionId);
+        return;
+      }
+      const targetItem = opts.itemsById.get(itemId);
+      const previousCollectionsByItem = new Map<string, string[]>();
+      if (targetItem && Array.isArray(targetItem.collectionIds)) {
+        previousCollectionsByItem.set(itemId, [...targetItem.collectionIds]);
+      }
+      void useLibraryCommandStore.getState().executeCommand(
+        createMoveItemsCommand({
+          itemIds: [itemId],
+          sourceCollectionId: opts.collectionId || null,
+          targetCollectionId,
+          previousCollectionsByItem,
+          moveMutation: opts.moveMutation,
+          detachMutation: opts.detachMutation,
+          assignMutation: opts.assignMutation,
+        }),
+      );
+    },
+    [],
+  );
+
+  return {
+    handleToggleStar,
+    handleDelete,
+    handleRestore,
+    handlePurge,
+    handleMoveToCollection,
+  };
+}
+

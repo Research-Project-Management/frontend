@@ -7,7 +7,7 @@ import { useTags } from '@/features/library/sdk/queries/tags-notes.queries';
 import { useSavedSearches } from '@/features/library/sdk/queries/saved-searches-relations.queries';
 import {
   mapRegistryItemTypes,
-} from '@/features/library/domain/types/library.types';
+} from '@/features/library/domain/types/core.types';
 import type {
   CreateSavedSearchInput,
   SavedSearchField,

@@ -5,12 +5,12 @@ import type {
   CslStyleMetadata,
   ItemAttachment,
   Note,
-} from '@/features/library/domain/types/library.types';
+} from '@/features/library/domain/types/core.types';
 import type {
   ReaderAnnotation,
   CreateAnnotationDto,
   UpdateAnnotationDto,
-} from '@/features/library/domain/types/reader.types';
+} from '@/features/library/domain/types/reader.schema';
 import { normalizeCitationStyleId } from '@/features/library/domain/citations';
 import {
   libraryClient,
@@ -55,7 +55,7 @@ export const CitationService = {
 
   getStyles: (scopeId?: string) => {
     const pQuery = isProjectScope(scopeId) ? `?projectId=${encodeURIComponent(scopeId!)}` : '';
-    return libraryClient.get<import('@/features/library/domain/types/library.types').StyleSummary[]>(
+    return libraryClient.get<import('@/features/library/domain/types/core.types').StyleSummary[]>(
       `${getCitationUrl(scopeId, 'styles')}${pQuery}`,
     );
   },

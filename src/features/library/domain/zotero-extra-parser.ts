@@ -1,4 +1,4 @@
-import type { Item } from './types/library.types';
+import type { Item } from './types/core.types';
 import { isValidValue } from './metadata-sanitizers';
 import {
   ALLOWED_ITEM_EXTRA_LINE_KEYS,

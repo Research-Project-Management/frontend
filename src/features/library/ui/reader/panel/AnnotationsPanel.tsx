@@ -31,13 +31,11 @@ import type {
   ReaderDocument,
   ReaderAnnotation,
   AnnotationFormData,
-} from '@/features/library/domain/types/reader.types';
+} from '@/features/library/domain/types/reader.schema';
 import {
   extractAnnotationFacets,
   computeRangeSelectedAnnotationIds,
   filterAndSortAnnotations,
-} from './AnnotationEditForm';
-import {
   AnnotationsPanelCard,
   AnnotationsBottomSelectorDock,
 } from './AnnotationsPanelParts';

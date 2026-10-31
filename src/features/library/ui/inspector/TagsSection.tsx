@@ -9,11 +9,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/shared/components/ui/tooltip";
-import type { Item } from "@/features/library/domain/types/library.types";
+import type { Item } from "@/features/library/domain/types/core.types";
 import {
   normalizeTags,
   cleanSingleFrontendTag,
-} from "@/features/library/domain/metadata";
+} from "@/features/library/domain/metadata-mapper";
 
 interface TagsSectionProps {
   item?: Item;

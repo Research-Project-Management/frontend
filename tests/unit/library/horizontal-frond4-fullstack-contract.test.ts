@@ -1,25 +1,25 @@
 import { describe, it, expect, vi } from 'vitest';
-import type { Item } from '@/features/library/domain/types/library.types';
+import type { Item } from '@/features/library/domain/types/core.types';
 import {
   mapBackendItem,
   getPublicationVenue,
   buildExtraMetadataPatch,
-} from '@/features/library/domain/metadata';
-import { mergeRawItemPartials } from '@/features/library/domain/metadata-mapper.helpers';
+} from '@/features/library/domain/metadata-mapper';
+import { mergeRawItemPartials } from '@/features/library/domain/metadata-mapper';
 import { mergeCachedItemWithPatch } from '@/features/library/sdk/queries/cache-patcher';
 import { buildInspectorFieldPatch } from '@/features/library/domain/item-field-schema';
-import { FIELD_CANDIDATE_SCORERS } from '@/features/library/domain/item-field-scorers.strategy';
 import {
   buildStructuredCreatorsFromAuthors,
   resolveDuplicateMergeFieldOverrides,
   selectBestMasterItemId,
+  selectRecommendedFieldValue,
 } from '@/features/library/domain/diff';
-import { createMergeDuplicatesCommand } from '@/features/library/core/manager/library-commands.catalog';
+import { createMergeDuplicatesCommand } from '@/features/library/core/manager/library-command.manager';
 import { sortLibraryItems } from '@/features/library/domain/sort-items.domain';
 import {
   normalizeSearchStr,
   calculateFilterMatchScore,
-} from '@/features/library/domain/filter-matcher.domain';
+} from '@/features/library/domain/sort-items.domain';
 
 function makeBaseItem(overrides: Partial<Item> = {}): Item {
   return {
@@ -316,14 +316,21 @@ describe('Horizontal Frond 4 — Full-Stack Metadata Contract, Diff, Cache Patch
       expect(rolesB).toContain('translator');
     });
 
-    it('scoreTitleCandidate penalizes filename/placeholder/underscore titles to 1 and selectBestMasterItemId prefers real titles and type-specific fields', () => {
-      const titleScorer = FIELD_CANDIDATE_SCORERS.title!;
-      expect(titleScorer('2024_smith_final_draft.pdf')).toBe(1);
-      expect(titleScorer('Untitled Document')).toBe(1);
-      expect(titleScorer('a_b_c_d_paper')).toBe(1);
-      expect(
-        titleScorer('Attention Is All You Need: Transformer Architectures'),
-      ).toBeGreaterThan(20);
+    it('selectRecommendedFieldValue upgrades filename/placeholder/underscore titles to real titles and selectBestMasterItemId prefers real titles and type-specific fields', () => {
+      const realItem = makeBaseItem({
+        id: 'real-title-item',
+        title: 'Attention Is All You Need: Transformer Architectures',
+      });
+      for (const badTitle of [
+        '2024_smith_final_draft.pdf',
+        'Untitled Document',
+        'a_b_c_d_paper',
+      ]) {
+        const weakItem = makeBaseItem({ id: 'weak-title-item', title: badTitle });
+        expect(
+          selectRecommendedFieldValue('title', badTitle, [weakItem, realItem]),
+        ).toBe('Attention Is All You Need: Transformer Architectures');
+      }
 
       // Patent items with type-specific fields (patentNumber, assignee, issuingAuthority)
       const weakPatent = makeBaseItem({

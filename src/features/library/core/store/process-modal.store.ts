@@ -5,9 +5,9 @@ import type {
   ProcessingFileItem,
   ProcessModalState,
   ProcessBatchUploadOptions,
-} from '@/features/library/domain/types/batch-upload.types';
+} from '@/features/library/domain/types/ingestion.types';
 // executeBatchUpload is lazily imported inside startBatchUpload to prevent cyclic module initialization
-import { cleanFilenameToTitle } from '@/features/library/domain/metadata';
+import { cleanFilenameToTitle } from '@/features/library/domain/metadata-mapper';
 
 export { cleanFilenameToTitle };
 export type { ProcessModalState, ProcessingFileItem, ProcessBatchUploadOptions };

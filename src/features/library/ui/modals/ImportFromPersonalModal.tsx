@@ -35,7 +35,7 @@ import {
 } from "@/features/library/domain/creators";
 import type {
   Item,
-} from "@/features/library/domain/types/library.types";
+} from "@/features/library/domain/types/core.types";
 
 interface ImportFromPersonalModalProps {
   open: boolean;

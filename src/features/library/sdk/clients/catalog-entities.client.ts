@@ -12,7 +12,7 @@ import type {
   SavedSearchPreviewResponse,
   SavedSearchConditionGroup,
   SavedSearchScopeOptions,
-} from '@/features/library/domain/types/library.types';
+} from '@/features/library/domain/types/core.types';
 import {
   libraryClient,
   resolveLibraryUrl,

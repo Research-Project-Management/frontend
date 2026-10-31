@@ -1,20 +1,132 @@
 /**
- * reader-persistence.helpers.ts
+ * reader-search-outline.ts
  *
- * Extracted citation formatting, fulltext search, outline filtering,
+ * Extracted viewport math, citation formatting, fulltext search, outline filtering,
  * and local preference persistence helpers for the PDF/EPUB Reader.
  */
 
 import type {
   ReaderDocument,
   DocumentCreator,
-} from '@/features/library/domain/types/reader.types';
+} from '@/features/library/domain/types/reader.schema';
 import { normalizeAuthors, parseCreatorName } from '@/features/library/domain/creators';
-import { isValidValue, stripLatexMarkup } from '@/features/library/domain/metadata';
+import { isValidValue } from '@/features/library/domain/metadata-mapper';
 import { foldDiacritics } from '@/features/library/domain/academic-text';
-import { isProjectScope } from '@/features/library/domain/item-url';
+import { isProjectScope } from '@/features/library/domain/identifiers';
 
 export { foldDiacritics };
+
+// ── PDF Viewport Math and Geometric Calculations ────────────────────────────
+
+export interface ViewportParams {
+  containerWidth: number;
+  containerHeight: number;
+  zoom: number;
+  fitMode?: 'fit-width' | 'fit-page' | 'page-width' | 'page-fit' | 'auto' | 'custom';
+  viewMode?: 'continuous' | 'single' | 'spread';
+}
+
+const ISO_A4_ASPECT_RATIO = Math.SQRT2;
+const round4 = (n: number): number => Math.round(n * 1e4) / 1e4;
+
+export function calculateEffectiveViewportDimensions(params: ViewportParams): {
+  effectivePageWidth: number;
+  scale: number;
+} {
+  const { containerWidth, containerHeight, fitMode, viewMode } = params;
+  if (viewMode === 'spread') {
+    return {
+      effectivePageWidth: Math.round((containerWidth - 32) / 2),
+      scale: 1.0,
+    };
+  }
+
+  if (fitMode === 'fit-page' || fitMode === 'page-fit') {
+    return {
+      effectivePageWidth: Math.round((containerHeight - 72) / ISO_A4_ASPECT_RATIO),
+      scale: 1.0,
+    };
+  }
+
+  return {
+    effectivePageWidth: containerWidth - 16,
+    scale: 1.0,
+  };
+}
+
+export function computeEffectivePdfPageWidth(params: ViewportParams): number {
+  const {
+    containerWidth,
+    containerHeight,
+    zoom = 1.0,
+    fitMode = 'fit-width',
+    viewMode = 'continuous',
+  } = params;
+  const clampedZoom = Math.min(3.0, Math.max(0.25, zoom));
+
+  if (viewMode === 'spread') {
+    return Math.max(260, Math.round((containerWidth / 2) * clampedZoom));
+  }
+  if (fitMode === 'fit-page' || fitMode === 'page-fit') {
+    const containerH = containerHeight || 800;
+    return Math.max(260, Math.round(((containerH - 72) / ISO_A4_ASPECT_RATIO) * clampedZoom));
+  }
+  return Math.max(320, Math.round(containerWidth * clampedZoom));
+}
+
+export function computeSpreadPairs(totalPages: number): Array<[number, number | null]> {
+  if (totalPages <= 0) return [];
+  return Array.from({ length: Math.ceil(totalPages / 2) }, (_, i) => {
+    const p = 2 * i + 1;
+    return [p, p + 1 <= totalPages ? p + 1 : null];
+  });
+}
+
+export function isPageInVirtualWindow(params: {
+  pageNum: number;
+  visiblePage: number;
+  totalPages: number;
+  viewMode?: string;
+  pinnedPage?: number;
+}): boolean {
+  const { pageNum, visiblePage, pinnedPage } = params;
+  if (pinnedPage !== undefined && pageNum === pinnedPage) return true;
+  return Math.abs(pageNum - visiblePage) <= 2;
+}
+
+export function calculatePageAspectRatio(
+  dims: { width: number; height: number },
+  rotation = 0,
+): number {
+  const isRotated = (rotation / 90) % 2 !== 0;
+  const w = isRotated ? dims.height : dims.width;
+  const h = isRotated ? dims.width : dims.height;
+  return h / Math.max(1, w);
+}
+
+export function normalizeRectCoordinates(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  pageWidth: number,
+  pageHeight: number,
+): { x1: number; y1: number; width: number; height: number } | null {
+  if (pageWidth <= 0 || pageHeight <= 0) return null;
+  const left = Math.min(x1, x2);
+  const top = Math.min(y1, y2);
+  const width = Math.abs(x2 - x1);
+  const height = Math.abs(y2 - y1);
+
+  return {
+    x1: round4(left / pageWidth),
+    y1: round4(top / pageHeight),
+    width: round4(width / pageWidth),
+    height: round4(height / pageHeight),
+  };
+}
+
+// ── Fulltext Search, Outline Filtering & Citation Helpers ───────────────────
 
 export interface PdfTextMatch {
   matchIndex: number;

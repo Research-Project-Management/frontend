@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { resolveEpubOrSnapshot } from '@/features/library/domain/reader.domain';
-import type { Item } from '@/features/library/domain/types/library.types';
+import type { Item } from '@/features/library/domain/types/core.types';
 
 describe('resolveEpubOrSnapshot - Attachment and Format Resolution', () => {
   it('does NOT resolve PDF with linkMode="imported_url" as snapshot (prevents raw binary PDF rendering)', () => {

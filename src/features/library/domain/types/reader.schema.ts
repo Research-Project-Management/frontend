@@ -1,8 +1,13 @@
 import { z } from 'zod';
-import { primaryFileSchema } from './items.types';
-import { createNoteSchema, updateNoteSchema } from './notes.types';
+import { primaryFileSchema, createNoteSchema, updateNoteSchema } from './items.types';
 
 export { primaryFileSchema, createNoteSchema, updateNoteSchema };
+
+export type {
+  ItemFieldDefinition,
+  SchemaFieldDefinition,
+  SchemaItemTypeDefinition,
+} from './item-types.types';
 
 export const annotationRectSchema = z.object({
   x1: z.number(),
@@ -85,16 +90,18 @@ export const readerPanelSchema = z.enum(['ai', 'details', 'notes', 'annotations'
 export const readerFitModeSchema = z.enum(['fit-width', 'fit-page', 'auto', 'custom']);
 export const readerThemeSchema = z.enum(['normal', 'sepia', 'dark', 'invert']);
 
-export const creatorTypeSchema = z.enum([
-  'author',
-  'editor',
-  'translator',
-  'contributor',
-  'advisor',
-  'reviewer',
-  'seriesEditor',
-  'bookAuthor',
-]).or(z.string());
+export const creatorTypeSchema = z
+  .enum([
+    'author',
+    'editor',
+    'translator',
+    'contributor',
+    'advisor',
+    'reviewer',
+    'seriesEditor',
+    'bookAuthor',
+  ])
+  .or(z.string());
 
 export const documentCreatorSchema = z.object({
   id: z.string().optional(),
@@ -111,23 +118,25 @@ export const documentCreatorSchema = z.object({
   role: z.string().optional(),
 });
 
-export const documentAttachmentSchema = z.object({
-  id: z.string(),
-  itemId: z.string().optional(),
-  attachmentType: z.string().optional(),
-  viewerFormat: z.enum(['pdf', 'epub', 'snapshot']).or(z.string()).optional(),
-  isPrimary: z.boolean().optional(),
-  mimeType: z.string().optional(),
-  contentType: z.string().optional(),
-  filename: z.string().optional(),
-  fileId: z.string().optional(),
-  url: z.string().optional(),
-  size: z.number().optional(),
-  linkMode: z.string().optional(),
-  metadata: z.record(z.string(), z.unknown()).optional(),
-  createdAt: z.string().optional(),
-  updatedAt: z.string().optional(),
-}).passthrough();
+export const documentAttachmentSchema = z
+  .object({
+    id: z.string(),
+    itemId: z.string().optional(),
+    attachmentType: z.string().optional(),
+    viewerFormat: z.enum(['pdf', 'epub', 'snapshot']).or(z.string()).optional(),
+    isPrimary: z.boolean().optional(),
+    mimeType: z.string().optional(),
+    contentType: z.string().optional(),
+    filename: z.string().optional(),
+    fileId: z.string().optional(),
+    url: z.string().optional(),
+    size: z.number().optional(),
+    linkMode: z.string().optional(),
+    metadata: z.record(z.string(), z.unknown()).optional(),
+    createdAt: z.string().optional(),
+    updatedAt: z.string().optional(),
+  })
+  .passthrough();
 
 export const readerNoteSchema = z.object({
   id: z.string(),
@@ -201,41 +210,43 @@ const documentPublicationFields = {
   genre: z.string().nullable().optional(),
 };
 
-export const readerDocumentSchema = z.object({
-  id: z.string(),
-  projectId: z.string().optional(),
-  collectionIds: z.array(z.string()).optional(),
-  collections: z.array(readerCollectionSchema).optional(),
-  title: z.string(),
-  itemType: z.string().optional(),
-  ...documentPublicationFields,
-  authors: z.array(z.string()).optional(),
-  creators: z.array(documentCreatorSchema).optional(),
-  publicationDate: z.string().nullable().optional(),
-  citationCount: z.number().optional(),
-  referenceCount: z.number().nullable().optional(),
-  citationKey: z.string().nullable().optional(),
-  bibtex: z.string().nullable().optional(),
-  url: z.string().nullable().optional(),
-  filename: z.string().nullable().optional(),
-  readingState: documentReadingStateSchema.optional(),
-  attachments: z.array(documentAttachmentSchema).optional(),
-  primaryFile: primaryFileSchema.nullable().optional(),
-  notes: z.array(readerNoteSchema).optional(),
-  tags: z.array(documentTagSchema).optional(),
-  labels: z.array(z.string()).optional(),
-  contributors: z.array(z.unknown()).optional(),
-  extra: z.string().nullable().optional(),
-  extraFields: z.record(z.string(), z.unknown()).nullable().optional(),
-  isRetracted: z.boolean().optional(),
-  retractionDetails: z.unknown().optional(),
-  retractionNature: z.string().optional(),
-  openAccessPdfUrl: z.string().nullable().optional(),
-  version: z.number().optional(),
-  expectedVersion: z.number().optional(),
-  createdAt: z.string().optional(),
-  updatedAt: z.string().optional(),
-}).passthrough();
+export const readerDocumentSchema = z
+  .object({
+    id: z.string(),
+    projectId: z.string().optional(),
+    collectionIds: z.array(z.string()).optional(),
+    collections: z.array(readerCollectionSchema).optional(),
+    title: z.string(),
+    itemType: z.string().optional(),
+    ...documentPublicationFields,
+    authors: z.array(z.string()).optional(),
+    creators: z.array(documentCreatorSchema).optional(),
+    publicationDate: z.string().nullable().optional(),
+    citationCount: z.number().optional(),
+    referenceCount: z.number().nullable().optional(),
+    citationKey: z.string().nullable().optional(),
+    bibtex: z.string().nullable().optional(),
+    url: z.string().nullable().optional(),
+    filename: z.string().nullable().optional(),
+    readingState: documentReadingStateSchema.optional(),
+    attachments: z.array(documentAttachmentSchema).optional(),
+    primaryFile: primaryFileSchema.nullable().optional(),
+    notes: z.array(readerNoteSchema).optional(),
+    tags: z.array(documentTagSchema).optional(),
+    labels: z.array(z.string()).optional(),
+    contributors: z.array(z.unknown()).optional(),
+    extra: z.string().nullable().optional(),
+    extraFields: z.record(z.string(), z.unknown()).nullable().optional(),
+    isRetracted: z.boolean().optional(),
+    retractionDetails: z.unknown().optional(),
+    retractionNature: z.string().optional(),
+    openAccessPdfUrl: z.string().nullable().optional(),
+    version: z.number().optional(),
+    expectedVersion: z.number().optional(),
+    createdAt: z.string().optional(),
+    updatedAt: z.string().optional(),
+  })
+  .passthrough();
 
 export const updateDocumentSchema = z.object({
   title: z.string().optional(),
@@ -269,7 +280,9 @@ export const documentSectionSchema = z.object({
   paragraphs: z.array(z.string()),
   page: z.number(),
   coords: documentBoundingBoxSchema.optional(),
-  imradCategory: z.enum(['introduction', 'methods', 'results', 'discussion', 'conclusion', 'other']).default('other'),
+  imradCategory: z
+    .enum(['introduction', 'methods', 'results', 'discussion', 'conclusion', 'other'])
+    .default('other'),
 });
 
 export const documentFigureSchema = z.object({
@@ -318,22 +331,138 @@ export const documentFulltextPageSchema = z.object({
   text: z.string(),
 });
 
-export const documentFulltextSchema = z.object({
-  title: z.string().optional(),
-  abstract: z.string().optional(),
-  markdown: z.string().optional(),
-  plainText: z.string().optional(),
-  pageCount: z.number().optional(),
-  isScanned: z.boolean().optional(),
-  pages: z.array(documentFulltextPageSchema).optional(),
-  sections: z.array(documentSectionSchema).default([]),
-  figures: z.array(documentFigureSchema).default([]),
-  tables: z.array(documentTableSchema).default([]),
-  formulas: z.array(documentFormulaSchema).default([]),
-  references: z.array(documentReferenceSchema).default([]),
-  sectionCount: z.number().optional(),
-  figureCount: z.number().optional(),
-  tableCount: z.number().optional(),
-  formulaCount: z.number().optional(),
-  referenceCount: z.number().optional(),
-}).passthrough();
+export const documentFulltextSchema = z
+  .object({
+    title: z.string().optional(),
+    abstract: z.string().optional(),
+    markdown: z.string().optional(),
+    plainText: z.string().optional(),
+    pageCount: z.number().optional(),
+    isScanned: z.boolean().optional(),
+    pages: z.array(documentFulltextPageSchema).optional(),
+    sections: z.array(documentSectionSchema).default([]),
+    figures: z.array(documentFigureSchema).default([]),
+    tables: z.array(documentTableSchema).default([]),
+    formulas: z.array(documentFormulaSchema).default([]),
+    references: z.array(documentReferenceSchema).default([]),
+    sectionCount: z.number().optional(),
+    figureCount: z.number().optional(),
+    tableCount: z.number().optional(),
+    formulaCount: z.number().optional(),
+    referenceCount: z.number().optional(),
+  })
+  .passthrough();
+
+// ── Inferred Types & Interfaces ──────────────────────────────────────────────
+
+export type AnnotationRect = z.infer<typeof annotationRectSchema>;
+export type AnnotationType = z.infer<typeof annotationTypeSchema>;
+export type ReaderAnnotation = z.infer<typeof readerAnnotationSchema>;
+export type CreateAnnotationDto = z.infer<typeof createAnnotationSchema>;
+export type UpdateAnnotationDto = z.infer<typeof updateAnnotationSchema>;
+
+export type ReaderPanel = z.infer<typeof readerPanelSchema>;
+export type ReaderFitMode = z.infer<typeof readerFitModeSchema>;
+export type ReaderTheme = z.infer<typeof readerThemeSchema>;
+
+export type CreatorType = z.infer<typeof creatorTypeSchema>;
+export type DocumentCreator = z.infer<typeof documentCreatorSchema>;
+export type DocumentAttachment = z.infer<typeof documentAttachmentSchema>;
+export type PrimaryDocumentFile = z.infer<typeof primaryFileSchema>;
+
+export type ReaderNote = z.infer<typeof readerNoteSchema>;
+export type CreateNoteDto = z.infer<typeof createNoteSchema>;
+export type UpdateNoteDto = z.infer<typeof updateNoteSchema>;
+export type ReaderCollection = z.infer<typeof readerCollectionSchema>;
+
+export type DocumentReadingState = z.infer<typeof documentReadingStateSchema>;
+export type DocumentTag = z.infer<typeof documentTagSchema>;
+export type ReaderDocument = z.infer<typeof readerDocumentSchema>;
+export type UpdateDocumentDto = z.infer<typeof updateDocumentSchema>;
+
+export type AnnotationFormData = z.infer<typeof annotationFormSchema>;
+
+export type DocumentBoundingBox = z.infer<typeof documentBoundingBoxSchema>;
+export type DocumentSection = z.infer<typeof documentSectionSchema>;
+export type DocumentFigure = z.infer<typeof documentFigureSchema>;
+export type DocumentTable = z.infer<typeof documentTableSchema>;
+export type DocumentFormula = z.infer<typeof documentFormulaSchema>;
+export type DocumentReference = z.infer<typeof documentReferenceSchema>;
+export type DocumentFulltext = z.infer<typeof documentFulltextSchema>;
+
+export interface PdfOutlineItem {
+  title: string;
+  pageNumber: number;
+  dest?: unknown;
+  items?: PdfOutlineItem[];
+}
+
+export interface ReaderNavigationTarget {
+  pageNumber: number;
+  annotationId?: string;
+  coords?: AnnotationRect;
+  timestamp: number;
+}
+
+export interface DroppedField {
+  field: string;
+  label: string;
+  value: unknown;
+}
+
+export interface FieldMappingChange {
+  fromField: string;
+  toField: string;
+  value: unknown;
+  rule: 'direct' | 'base-semantic' | 'special-rule';
+}
+
+export interface CreatorRoleChange {
+  creator: Record<string, unknown>;
+  fromRole: string;
+  toRole: string;
+  reason: 'preserved' | 'primary-fallback' | 'secondary-fallback';
+}
+
+export interface TypeConversionPreview {
+  sourceType: string;
+  targetType: string;
+  preservedFields: string[];
+  mappedFields?: FieldMappingChange[];
+  remappedFields?: unknown[];
+  droppedFields: DroppedField[];
+  creatorChanges?: CreatorRoleChange[];
+  preservedCreators?: unknown[];
+  remappedCreators?: unknown[];
+  newAvailableFields?: Array<
+    | string
+    | {
+        field: string;
+        label: string;
+        category?: string;
+        type?: string;
+      }
+  >;
+  schemaUnsupportedFields?: string[];
+  schemaUnsupportedFieldLabels?: string[];
+  projectedItem?: Record<string, unknown>;
+  unmappedRetained?: Record<string, unknown>;
+  hasLoss?: boolean;
+}
+
+export interface ItemMetadataSourceItem {
+  id: string;
+  sourceProvider: string;
+  sourceUri?: string | null;
+  format?: string | null;
+  fetchedAt: string;
+  createdAt?: string;
+  doi?: string;
+  rawPayload?: Record<string, unknown> | unknown;
+}
+
+export interface ItemMetadataSourcesResponse {
+  itemId?: string;
+  count?: number;
+  sources: ItemMetadataSourceItem[];
+}

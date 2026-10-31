@@ -8,15 +8,15 @@ import {
   StateService,
   SyncService,
   type ItemTypesResponse,
-} from '../library.client';
+} from '@/features/library/sdk';
 import type {
   Item,
   CreateItemDTO,
   UpdateItemDTO,
   CursorPaginationMeta,
   ItemQueryParams,
-} from '@/features/library/domain/types/library.types';
-import { updateLibrarySchemaRegistry } from '@/features/library/domain/types/library.types';
+} from '@/features/library/domain/types/core.types';
+import { updateLibrarySchemaRegistry } from '@/features/library/domain/types/core.types';
 import { ALL_ITEM_TYPES_FLAT } from '@/features/library/domain/types/item-type-mappings.constants';
 import {
   itemKeys,
@@ -30,7 +30,7 @@ import {
   invalidateCollections,
   normalizeScopeId,
 } from '@/features/library/sdk/query-keys';
-import { notifyServerFeedsHydrated } from './feed-hydration.port';
+import { notifyServerFeedsHydrated } from '@/features/library/sdk';
 import { mapServerFeedSubscriptions } from '@/features/library/domain/feed-parser.domain';
 
 export {
@@ -539,7 +539,7 @@ export function useItemTypes(
 
 
 
-export { useTrash } from './trash.queries';
+export { useTrash } from './tags-notes.queries';
 
 export function useItem(
   id?: string,
@@ -666,6 +666,6 @@ export {
   useDeleteLibraryItemsMutation,
   useBatchRestoreItemsMutation,
   useBatchPurgeItemsMutation,
-} from './trash.queries';
+} from './tags-notes.queries';
 
 export { useLibraryDeltaSync } from './sync.queries';

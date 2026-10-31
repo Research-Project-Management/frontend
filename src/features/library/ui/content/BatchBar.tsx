@@ -20,7 +20,7 @@ import type {
   Collection,
   CslStyle,
   Item,
-} from "@/features/library/domain/types/library.types";
+} from "@/features/library/domain/types/core.types";
 import {
   useLibraryBatchCoordinator,
   hasItemPdfOrAttachment,
@@ -32,14 +32,14 @@ import {
   executeDownloadBibFile,
 } from "@/features/library/core/coordinator/citation-export.coordinator";
 import { useBatchRenameAttachmentsMutation } from "@/features/library/sdk/queries/extraction.queries";
-import { useCitationStyles } from "@/features/library/sdk/queries/citation.queries";
+import { useCitationStyles } from "@/features/library/sdk/queries/extraction.queries";
 import { formatCitationStyleLabel } from "@/features/library/domain/citations";
 import {
   BatchMoveCollectionPopover,
   BatchCitationExportPopovers,
   BatchSmartViewActions,
   BatchLifecycleActions,
-} from "@/features/library/ui/content/batch-bar-popovers";
+} from "@/features/library/ui/content/BatchBarPopovers";
 
 export type BatchActionCoordinator = ReturnType<typeof useLibraryBatchCoordinator>;
 
@@ -53,6 +53,13 @@ export interface BatchBarProps {
   scopeId?: string;
   canEdit?: boolean;
 }
+
+const EXCLUDED_CITATION_STYLE_IDS = new Set([
+  "bibtex",
+  "ris",
+  "auto",
+  "auto-numeric",
+]);
 
 export function BatchBar({
   coordinator: externalCoordinator,
@@ -95,6 +102,7 @@ export function BatchBar({
   const {
     selectedCount,
     selectedItems: resolvedItems,
+    selectedItemsWithFilesIds: coordinatorFileIds,
     clearSelection: onClearSelection,
     batchMove: onBatchMove,
     batchDelete: onBatchDelete,
@@ -131,58 +139,49 @@ export function BatchBar({
   );
 
   // Whether "Move to > Root (My Library / Unfile)" is meaningful on the current page:
-  // - Not shown in Unfiled Items view (items are already unfiled).
-  // - Shown when inside a collection, or when at least one selected item belongs to a collection.
-  const canMoveToRootUnfiled = useMemo(() => {
-    if (isUnfiledView || isDuplicatesView || effectiveIsTrash) return false;
-    if (collectionId) return true;
-    return resolvedItems.some(
-      (it) => Array.isArray(it.collectionIds) && it.collectionIds.length > 0,
-    );
-  }, [isUnfiledView, isDuplicatesView, effectiveIsTrash, collectionId, resolvedItems]);
+  const canMoveToRootUnfiled = useMemo(
+    () =>
+      Boolean(onBatchMove) &&
+      !isUnfiledView &&
+      (Boolean(collectionId) ||
+        resolvedItems.some(
+          (it) => Array.isArray(it.collectionIds) && it.collectionIds.length > 0,
+        )),
+    [onBatchMove, isUnfiledView, collectionId, resolvedItems],
+  );
 
   const showMoveDropdown =
-    canEdit &&
-    !effectiveIsTrash &&
-    !isDuplicatesView &&
     Boolean(onBatchMove) &&
     (targetableCollections.length > 0 || canMoveToRootUnfiled);
 
-  // Only show "Rename PDFs" when editable, not in Trash or Duplicates view, and at least 1 selected item has a PDF/attachment
   const selectedItemsWithFilesIds = useMemo(
     () =>
+      coordinatorFileIds ??
       resolvedItems
         .filter((it) => !it._isProcessing && hasItemPdfOrAttachment(it))
         .map((it) => it.id)
         .filter(Boolean),
-    [resolvedItems],
+    [coordinatorFileIds, resolvedItems],
   );
 
   const showRenamePdfs =
-    canEdit &&
-    !effectiveIsTrash &&
-    !isDuplicatesView &&
-    selectedItemsWithFilesIds.length > 0;
+    Boolean(onBatchMove) && selectedItemsWithFilesIds.length > 0;
 
   const { data: serverStyles = [] } = useCitationStyles(effectiveScopeId, {
     enabled: !effectiveIsTrash && selectedCount > 0,
   });
   const batchRenameMutation = useBatchRenameAttachmentsMutation(effectiveScopeId);
 
-  const citationStyles = useMemo(() => {
-    return (serverStyles || [])
-      .filter(
-        (s) =>
-          s.id !== "bibtex" &&
-          s.id !== "ris" &&
-          s.id !== "auto" &&
-          s.id !== "auto-numeric",
-      )
-      .map((s) => ({
-        id: s.id,
-        label: formatCitationStyleLabel(s),
-      }));
-  }, [serverStyles]);
+  const citationStyles = useMemo(
+    () =>
+      (serverStyles || [])
+        .filter((s) => !EXCLUDED_CITATION_STYLE_IDS.has(s.id))
+        .map((s) => ({
+          id: s.id,
+          label: formatCitationStyleLabel(s),
+        })),
+    [serverStyles],
+  );
 
   if (selectedCount === 0) return null;
 

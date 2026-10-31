@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   resolveEffectiveLibraryPermissions, PROJECT_ROLE_PERMISSIONS, getLibraryPermissions, } from '@/features/library/domain/library-permissions.policy';
-import { duplicateGroupSchema } from '@/features/library/domain/types/curation.types';
-import { CurationService as QualityService, CitationService, sanitizeItemPayload } from '@/features/library/sdk/library.client';
+import { duplicateGroupSchema } from '@/features/library/domain/types/core.types';
+import { CurationService as QualityService, CitationService, sanitizeItemPayload } from '@/features/library/sdk';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { resolveProjectRole } from '@/features/library/ui/sidebar/ProjectLibrariesSection';
 import * as api from '@/shared/lib/api';

@@ -6,13 +6,14 @@
  * OCR junk cleaning, institution detection, and creator mapping.
  *
  * This file provides lightweight presentation helpers for splitting user
- * input strings in forms, formatting compact names for tables/cards, and
- * standardizing author display.
+ * input strings in forms, formatting compact names for tables/cards,
+ * standardizing author display, and managing structured creator entries.
  */
 
-import { stripLatexMarkup } from './metadata';
+import { cleanValue, isValidValue, stripLatexMarkup } from './metadata-sanitizers';
 import { cleanAcademicText } from './academic-text';
-import type { Item } from './types/library.types';
+import type { CreatorCredit, Item } from './types/core.types';
+import { getPrimaryCreatorType } from './types/item-types.types';
 
 export interface ParsedCreator {
   firstName: string;
@@ -21,68 +22,30 @@ export interface ParsedCreator {
   isInstitution?: boolean;
 }
 
+export interface CreatorEntry {
+  creatorType: string;
+  name: string;
+  fieldMode?: number;
+  firstName?: string;
+  lastName?: string;
+  shortName?: string;
+}
+
+export type CreatorDraft = CreatorEntry;
+
 export const INSTITUTION_KEYWORDS = [
-  'university',
-  'universities',
-  'institute',
-  'institutes',
-  'institution',
-  'institutions',
-  'consortium',
-  'consortia',
-  'collaboration',
-  'collaborations',
-  'committee',
-  'committees',
-  'organization',
-  'organizations',
-  'organisation',
-  'organisations',
-  'association',
-  'associations',
-  'society',
-  'societies',
-  'foundation',
-  'group',
-  'groups',
-  'team',
-  'council',
-  'agency',
-  'agencies',
-  'department',
-  'departments',
-  'ministry',
-  'laboratory',
-  'laboratories',
-  'center',
-  'centers',
-  'centre',
-  'centres',
-  'network',
-  'initiative',
-  'working party',
-  'investigators',
-  'commission',
-  'corporation',
-  'hospital',
-  'hospitals',
-  'inc',
-  'llc',
-  'ltd',
-  'openai',
-  'deepmind',
-  'anthropic',
-  'google',
-  'microsoft',
-  'cern',
-  'nasa',
-  'ieee',
+  'university', 'universities', 'institute', 'institutes', 'institution', 'institutions',
+  'consortium', 'consortia', 'collaboration', 'collaborations', 'committee', 'committees',
+  'organization', 'organizations', 'organisation', 'organisations', 'association', 'associations',
+  'society', 'societies', 'foundation', 'group', 'groups', 'team', 'council', 'agency', 'agencies',
+  'department', 'departments', 'ministry', 'laboratory', 'laboratories', 'center', 'centers',
+  'centre', 'centres', 'network', 'initiative', 'working party', 'investigators', 'commission',
+  'corporation', 'hospital', 'hospitals', 'inc', 'llc', 'ltd', 'openai', 'deepmind', 'anthropic',
+  'google', 'microsoft', 'cern', 'nasa', 'ieee',
 ];
 
 const INSTITUTION_REGEX = new RegExp(
-  `(?:^|[^\\p{L}\\p{N}])(?:${INSTITUTION_KEYWORDS.map((kw) =>
-    kw.replace(/\s+/g, '\\s+'),
-  ).join('|')})(?=$|[^\\p{L}\\p{N}])`,
+  `(?:^|[^\\p{L}\\p{N}])(?:${INSTITUTION_KEYWORDS.map((kw) => kw.replace(/\s+/g, '\\s+')).join('|')})(?=$|[^\\p{L}\\p{N}])`,
   'iu',
 );
 
@@ -92,29 +55,10 @@ export function isInstitutionName(name?: string | null): boolean {
 }
 
 export const NOISE_AUTHOR_WORDS = new Set([
-  'abstract',
-  'introduction',
-  'indexterms',
-  'keywords',
-  'keyword',
-  'references',
-  'reference',
-  'bibliography',
-  'contents',
-  'tableofcontents',
-  'acknowledgments',
-  'acknowledgements',
-  'correspondence',
-  'correspondingauthor',
-  'allrightsreserved',
-  'copyright',
-  'unknown',
-  'none',
-  'null',
-  'undefined',
-  'etal',
-  'andothers',
-  'visualgeometrygroup',
+  'abstract', 'introduction', 'indexterms', 'keywords', 'keyword', 'references', 'reference',
+  'bibliography', 'contents', 'tableofcontents', 'acknowledgments', 'acknowledgements',
+  'correspondence', 'correspondingauthor', 'allrightsreserved', 'copyright', 'unknown',
+  'none', 'null', 'undefined', 'etal', 'andothers', 'visualgeometrygroup',
 ]);
 
 /**
@@ -125,7 +69,6 @@ export function isNoiseAuthorName(raw?: string | null): boolean {
   if (!raw || typeof raw !== 'string') return true;
   const trimmed = raw.trim();
   if (!trimmed) return true;
-
   if (trimmed.length <= 1 && !/\p{L}/u.test(trimmed)) return true;
 
   const lower = trimmed.toLowerCase();
@@ -140,18 +83,12 @@ export function isNoiseAuthorName(raw?: string | null): boolean {
     /^(?:centre|center)\s+for\s+/i.test(lower) ||
     /department of/i.test(lower) ||
     /university of .+, department of/i.test(lower) ||
-    /^(?:institute|university)\s+of\s+[a-z\s]+,\s*(?:department|faculty|school|division)/i.test(
-      lower,
-    )
+    /^(?:institute|university)\s+of\s+[a-z\s]+,\s*(?:department|faculty|school|division)/i.test(lower)
   ) {
     return true;
   }
 
-  if (/@/.test(trimmed) || /^https?:\/\//i.test(trimmed)) {
-    return true;
-  }
-
-  return false;
+  return /@/.test(trimmed) || /^https?:\/\//i.test(trimmed);
 }
 
 /**
@@ -162,33 +99,12 @@ export function cleanAuthorName(raw?: string | null): string {
   if (!raw || typeof raw !== 'string') return '';
   let cleaned = stripLatexMarkup(raw.trim());
 
-  // Strip emails: e.g. <user@domain.com>
   cleaned = cleaned.replace(/<[^>]+@[^>]+>/g, ' ');
-  cleaned = cleaned.replace(
-    /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g,
-    ' ',
-  );
-
-  // Strip leading list numbering, bullets, prefix: e.g. "1. ", "[1] ", "- ", "By: ", "Author: "
-  cleaned = cleaned.replace(
-    /^(?:(?:\[?\d+\]?[\.\)]?|[-•*])\s+|(?:by|author|authors):\s*)/i,
-    '',
-  );
-
-  // Strip parenthetical roles/annotations: e.g. "(corresponding author)"
+  cleaned = cleaned.replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g, ' ');
+  cleaned = cleaned.replace(/^(?:(?:\[?\d+\]?[\.\)]?|[-•*])\s+|(?:by|author|authors):\s*)/i, '');
   cleaned = cleaned.replace(/\s*\([^)]*\)/gi, '');
+  cleaned = cleaned.replace(/^(?:(?:Prof(?:essor)?|Dr|Doctor|Mr|Mrs|Ms)\.?\s+)+/i, '');
 
-  // Strip leading honorifics / academic titles: e.g. "Prof. Dr.", "Prof.", "Dr.", "Mr.", "Mrs.", "Ms."
-  cleaned = cleaned.replace(
-    /^(?:(?:Prof(?:essor)?|Dr|Doctor|Mr|Mrs|Ms)\.?\s+)+/i,
-    '',
-  );
-
-  // Strip trailing comma-delimited professional degrees / fellowships:
-  // e.g. "John Smith, PhD", "Smith, J. A., MD". Only stripped when the text
-  // before the comma already contains a full name (space or comma) or when the
-  // degree token is unambiguously a degree (never a 2-letter initial like "M.D."),
-  // so that inverted initials like "Wong, M.D." are NOT mistaken for a degree.
   const TRAILING_DEGREE_REGEX =
     /,\s*(?:Ph\.?\s?D\.?|PHD|Pharm\.?\s?D\.?|M\.?D\.?|M\.?Sc\.?|MSc|M\.?S\.?|M\.?A\.?|B\.?Sc\.?|BSc|B\.?S\.?|B\.?A\.?|MBA|MPH|D\.?Phil\.?|DPhil|F\.?R\.?C\.?S\.?|FAAN|FACP|FRS|FRSE|FIEEE|OBE|CBE)\s*$/i;
   const UNAMBIGUOUS_DEGREE_REGEX =
@@ -201,22 +117,11 @@ export function cleanAuthorName(raw?: string | null): string {
     cleaned = prefix;
   }
 
-  // Strip trailing footnote markers, superscripts, affiliation numbers:
-  // e.g. " 1,2*", " *†", " 1", " 1,2", " *"
-  cleaned = cleaned.replace(
-    /(?:[\s,]*[*†‡§^#~]+[\s,]*\d*|[\s,]*\d+[*†‡§^#~,\d]*)+$/,
-    '',
-  );
-
-  // Normalize excessive internal whitespace
+  cleaned = cleaned.replace(/(?:[\s,]*[*†‡§^#~]+[\s,]*\d*|[\s,]*\d+[*†‡§^#~,\d]*)+$/, '');
   cleaned = cleaned.replace(/\s+/g, ' ').trim();
   cleaned = cleaned.replace(/[,;]+$/, '').trim();
 
-  if (isNoiseAuthorName(cleaned)) {
-    return '';
-  }
-
-  return cleaned;
+  return isNoiseAuthorName(cleaned) ? '' : cleaned;
 }
 
 const GENERATIONAL_SUFFIX_REGEX = /^(?:Jr\.?|Sr\.?|II|III|IV|V|Esq\.?)$/i;
@@ -250,19 +155,11 @@ const VIETNAMESE_MIDDLE_NAMES = new Set([
 ]);
 
 const VIETNAMESE_COMPOUND_SURNAMES = new Set([
-  'nguyễn phúc', 'nguyen phuc',
-  'tôn thất', 'ton that',
-  'tôn nữ', 'ton nu',
-  'âu dương', 'au duong',
-  'hoàng lê', 'hoang le',
-  'trần đình', 'tran dinh',
-  'đặng trần', 'dang tran',
-  'hồ đắc', 'ho dac',
-  'lương thế', 'luong the',
-  'nguyễn đình', 'nguyen dinh',
-  'nguyễn khoa', 'nguyen khoa',
-  'phan huy', 'trần huy', 'tran huy',
-  'vũ đình', 'vu dinh',
+  'nguyễn phúc', 'nguyen phuc', 'tôn thất', 'ton that', 'tôn nữ', 'ton nu',
+  'âu dương', 'au duong', 'hoàng lê', 'hoang le', 'trần đình', 'tran dinh',
+  'đặng trần', 'dang tran', 'hồ đắc', 'ho dac', 'lương thế', 'luong the',
+  'nguyễn đình', 'nguyen dinh', 'nguyễn khoa', 'nguyen khoa',
+  'phan huy', 'trần huy', 'tran huy', 'vũ đình', 'vu dinh',
 ]);
 
 export const AMBIGUOUS_UNACCENTED_VN_SURNAMES = new Set([
@@ -283,59 +180,23 @@ export function isVietnameseName(raw?: string | null): boolean {
 
   const firstLower = tokens[0]!.toLowerCase();
   if (!VIETNAMESE_FAMILY_NAMES.has(firstLower)) return false;
+  if (VIETNAMESE_DIACRITICS_REGEX.test(normalized)) return true;
 
-  if (VIETNAMESE_DIACRITICS_REGEX.test(normalized)) {
-    return true;
-  }
-
-  // Unaccented 2-token names: reject ambiguous 2-3 letter non-diacritic surnames (e.g. "Ma Smith", "Can Yaman", "Ho Lee", "Vi Kim", "An Lee")
-  // and require both tokens to follow valid Vietnamese syllable phonotactics
   if (tokens.length === 2) {
-    if (AMBIGUOUS_UNACCENTED_VN_SURNAMES.has(firstLower)) {
-      return false;
-    }
+    if (AMBIGUOUS_UNACCENTED_VN_SURNAMES.has(firstLower)) return false;
     return VN_SYLLABLE_REGEX.test(tokens[0]!) && VN_SYLLABLE_REGEX.test(tokens[1]!);
   }
 
-  // If unaccented >= 3 tokens with an ambiguous short surname, require a known Vietnamese middle name
   if (AMBIGUOUS_UNACCENTED_VN_SURNAMES.has(firstLower)) {
-    if (!VIETNAMESE_MIDDLE_NAMES.has(tokens[1]!.toLowerCase())) {
-      return false;
-    }
+    if (!VIETNAMESE_MIDDLE_NAMES.has(tokens[1]!.toLowerCase())) return false;
   }
 
   return tokens.every((tok) => VN_SYLLABLE_REGEX.test(tok));
 }
 
 export const SURNAME_PARTICLES = new Set([
-  'van',
-  'von',
-  'zu',
-  'de',
-  'del',
-  'della',
-  'der',
-  'den',
-  'des',
-  'do',
-  'het',
-  'ter',
-  'ten',
-  'la',
-  'le',
-  'las',
-  'los',
-  'du',
-  'di',
-  'da',
-  'dos',
-  'das',
-  'bin',
-  'ibn',
-  'al',
-  'el',
-  'vander',
-  'vanden',
+  'van', 'von', 'zu', 'de', 'del', 'della', 'der', 'den', 'des', 'do', 'het', 'ter', 'ten',
+  'la', 'le', 'las', 'los', 'du', 'di', 'da', 'dos', 'das', 'bin', 'ibn', 'al', 'el', 'vander', 'vanden',
 ]);
 
 /**
@@ -347,46 +208,29 @@ export function splitAuthorString(rawInput?: string | null): string[] {
   const trimmed = rawInput.trim();
   if (!trimmed) return [];
 
-  const lines = trimmed
-    .split(/[\r\n]+/)
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const lines = trimmed.split(/[\r\n]+/).map((s) => s.trim()).filter(Boolean);
   const result: string[] = [];
 
   for (const line of lines) {
-    // 1. Semicolons
     if (line.includes(';')) {
-      const parts = line
-        .split(';')
-        .map((s) => s.trim())
-        .filter(Boolean);
-      for (const p of parts) {
+      for (const p of line.split(';').map((s) => s.trim()).filter(Boolean)) {
         result.push(...splitAuthorString(p));
       }
       continue;
     }
 
-    // 2. Conjunctions: ", and ", " and ", " & "
     if (
       (/\s+and\s+/i.test(line) || /\s*,\s*and\s+/i.test(line) || /\s+&\s+/.test(line)) &&
       !(isInstitutionName(line) && !line.includes(','))
     ) {
-      const parts = line
-        .split(/(?:,\s*and\s+|\s+and\s+|\s+&\s+)/i)
-        .map((s) => s.trim())
-        .filter(Boolean);
-      for (const p of parts) {
+      for (const p of line.split(/(?:,\s*and\s+|\s+and\s+|\s+&\s+)/i).map((s) => s.trim()).filter(Boolean)) {
         result.push(...splitAuthorString(p));
       }
       continue;
     }
 
-    // 3. Commas
     if (line.includes(',')) {
-      const rawTokens = line
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
+      const rawTokens = line.split(',').map((s) => s.trim()).filter(Boolean);
       if (rawTokens.length <= 1) {
         result.push(line.trim());
         continue;
@@ -397,34 +241,24 @@ export function splitAuthorString(rawInput?: string | null): string[] {
         const firstHasSpace = rawTokens[0].includes(' ');
         const secondHasSpace = rawTokens[1].includes(' ');
         const firstWords = rawTokens[0].split(/\s+/).filter(Boolean);
-        const startsWithParticle =
-          firstWords.length >= 2 && SURNAME_PARTICLES.has(firstWords[0]!.toLowerCase());
-        // Check if first token is a compound surname ("van der Maaten", "de la Fuente", "García Márquez", "Nguyễn Văn")
-        const secondIsSingleGivenOrInitials =
-          !secondHasSpace || /^[A-Z]\.?\s+[A-Z]\.?$/.test(rawTokens[1]);
+        const startsWithParticle = firstWords.length >= 2 && SURNAME_PARTICLES.has(firstWords[0]!.toLowerCase());
+        const secondIsSingleGivenOrInitials = !secondHasSpace || /^[A-Z]\.?\s+[A-Z]\.?$/.test(rawTokens[1]);
 
         if (isSuffix || startsWithParticle) {
           result.push(line.trim());
         } else if (firstHasSpace && secondHasSpace && !secondIsSingleGivenOrInitials) {
-          // "Karen Simonyan, Andrew Zisserman" -> two authors
           result.push(rawTokens[0], rawTokens[1]);
         } else {
-          // "Simonyan, Karen" or "van der Maaten, Laurens" -> single inverted author
           result.push(line.trim());
         }
         continue;
       }
 
-      // rawTokens.length >= 3
-      // Check for inverted pairs with initials: "Vaswani, A., Shazeer, N., Parmar, N."
       const isEven = rawTokens.length % 2 === 0;
       let looksLikeInvertedPairs = isEven;
-
       if (isEven) {
         for (let i = 0; i < rawTokens.length; i += 2) {
-          const surname = rawTokens[i];
-          const initial = rawTokens[i + 1];
-          if (surname.includes(' ') || !initial) {
+          if (rawTokens[i]!.includes(' ') || !rawTokens[i + 1]) {
             looksLikeInvertedPairs = false;
             break;
           }
@@ -436,9 +270,7 @@ export function splitAuthorString(rawInput?: string | null): string[] {
           result.push(`${rawTokens[i]}, ${rawTokens[i + 1]}`);
         }
       } else {
-        for (const t of rawTokens) {
-          result.push(t);
-        }
+        result.push(...rawTokens);
       }
       continue;
     }
@@ -464,15 +296,9 @@ export function parseCreatorName(rawName: string): ParsedCreator {
   }
 
   if (isInstitutionName(trimmed)) {
-    return {
-      firstName: '',
-      lastName: '',
-      fullName: trimmed,
-      isInstitution: true,
-    };
+    return { firstName: '', lastName: '', fullName: trimmed, isInstitution: true };
   }
 
-  // Vancouver / Medline style: "Smith JA" -> lastName: "Smith", firstName: "J. A."
   const vTokens = trimmed.split(/\s+/);
   if (
     !trimmed.includes(',') &&
@@ -483,19 +309,10 @@ export function parseCreatorName(rawName: string): ParsedCreator {
   ) {
     const initials = vTokens[vTokens.length - 1]!;
     const lastName = vTokens.slice(0, -1).join(' ');
-    const firstName = initials
-      .split('')
-      .map((c) => `${c}.`)
-      .join(' ');
-    return {
-      firstName,
-      lastName,
-      fullName: `${firstName} ${lastName}`,
-      isInstitution: false,
-    };
+    const firstName = initials.split('').map((c) => `${c}.`).join(' ');
+    return { firstName, lastName, fullName: `${firstName} ${lastName}`, isInstitution: false };
   }
 
-  // Vietnamese naming order (Family Name First): e.g. "Nguyễn Văn An" -> lastName: "Nguyễn", firstName: "Văn An"
   if (!trimmed.includes(',') && isVietnameseName(trimmed)) {
     const vnTokens = trimmed.split(/\s+/).filter(Boolean);
     if (vnTokens.length >= 3) {
@@ -509,34 +326,28 @@ export function parseCreatorName(rawName: string): ParsedCreator {
         };
       }
     }
-    const lastName = vnTokens[0] || '';
-    const firstName = vnTokens.slice(1).join(' ');
     return {
-      firstName,
-      lastName,
+      firstName: vnTokens.slice(1).join(' '),
+      lastName: vnTokens[0] || '',
       fullName: trimmed,
       isInstitution: false,
     };
   }
 
-  // Generational suffix: "Martin Luther King, Jr."
   const genMatch = trimmed.match(/^(.*?),\s*(Jr\.?|Sr\.?|II|III|IV|V|Esq\.?)$/i);
   if (genMatch) {
-    const coreName = genMatch[1].trim();
-    const suffix = genMatch[2].trim();
+    const coreName = genMatch[1]!.trim();
+    const suffix = genMatch[2]!.trim();
     const tokens = coreName.split(/\s+/);
     const lastToken = tokens.pop() || '';
-    const last = `${lastToken} ${suffix}`.trim();
-    const first = tokens.join(' ');
     return {
-      firstName: first,
-      lastName: last,
+      firstName: tokens.join(' '),
+      lastName: `${lastToken} ${suffix}`.trim(),
       fullName: `${coreName} ${suffix}`,
       isInstitution: false,
     };
   }
 
-  // If format is "LastName, FirstName"
   if (trimmed.includes(',')) {
     const parts = trimmed.split(',').map((p) => p.trim());
     const lastName = parts[0] || '';
@@ -549,24 +360,18 @@ export function parseCreatorName(rawName: string): ParsedCreator {
     };
   }
 
-  // If format is "FirstName LastName"
   const tokens = trimmed.split(/\s+/).filter(Boolean);
   if (tokens.length === 1) {
-    return { firstName: '', lastName: tokens[0], fullName: tokens[0], isInstitution: false };
+    return { firstName: '', lastName: tokens[0]!, fullName: tokens[0]!, isInstitution: false };
   }
 
   const lastParts = [tokens.pop() || ''];
-  while (tokens.length > 1 && SURNAME_PARTICLES.has(tokens[tokens.length - 1].toLowerCase())) {
+  while (tokens.length > 1 && SURNAME_PARTICLES.has(tokens[tokens.length - 1]!.toLowerCase())) {
     lastParts.unshift(tokens.pop()!);
   }
   const lastName = lastParts.join(' ');
   const firstName = tokens.join(' ');
-  return {
-    firstName,
-    lastName,
-    fullName: `${firstName} ${lastName}`,
-    isInstitution: false,
-  };
+  return { firstName, lastName, fullName: `${firstName} ${lastName}`, isInstitution: false };
 }
 
 export const parseAuthorName = parseCreatorName;
@@ -634,7 +439,6 @@ export function normalizeAuthors(
   creators?: Array<RawCreatorLike> | null,
   contributors?: Array<RawCreatorLike> | null,
 ): string[] {
-  // If passed an item-like object
   if (rawAuthors && typeof rawAuthors === 'object' && !Array.isArray(rawAuthors)) {
     const candidate = rawAuthors as {
       authors?: unknown;
@@ -650,7 +454,6 @@ export function normalizeAuthors(
     }
   }
 
-  // 1. Direct string or object array
   if (Array.isArray(rawAuthors) && rawAuthors.length > 0) {
     const list: string[] = [];
     appendNormalizedCreatorEntries(rawAuthors, list);
@@ -659,7 +462,6 @@ export function normalizeAuthors(
     return splitAuthorString(rawAuthors).map((s) => parseCreatorName(s).fullName || s);
   }
 
-  // 2. Structured creators / contributors
   const creatorList =
     Array.isArray(creators) && creators.length > 0
       ? creators
@@ -679,10 +481,7 @@ export function normalizeAuthors(
 /**
  * Formats authors into a display string with an optional maxAuthors truncation threshold.
  */
-export function formatAuthorsText(
-  rawAuthors?: unknown,
-  maxAuthors = 3,
-): string {
+export function formatAuthorsText(rawAuthors?: unknown, maxAuthors = 3): string {
   const list = normalizeAuthors(rawAuthors);
   if (list.length === 0) return '';
   if (list.length <= maxAuthors) return list.join(', ');
@@ -691,16 +490,12 @@ export function formatAuthorsText(
 
 /**
  * Formats authors into a standard compact academic display string.
- * - 0 authors: ""
- * - 1 author: "Author 1"
- * - 2 authors: "Author 1 & Author 2"
- * - 3+ authors: "Author 1 et al."
  */
 export function formatCreatorCompact(authors?: string[] | null): string {
   if (!authors || !Array.isArray(authors) || authors.length === 0) return '';
   const clean = authors.filter(Boolean);
   if (clean.length === 0) return '';
-  if (clean.length === 1) return clean[0];
+  if (clean.length === 1) return clean[0]!;
   if (clean.length === 2) return `${clean[0]} & ${clean[1]}`;
   return `${clean[0]} et al.`;
 }
@@ -727,20 +522,244 @@ export function getItemAuthorsSummary(
       }
       return clean;
     })
-    .filter((a) => Boolean(a));
+    .filter(Boolean);
 
   if (cleaned.length === 0) return '—';
   if (cleaned.length <= maxAuthors) return cleaned.join(', ');
   return `${cleaned.slice(0, maxAuthors).join(', ')} et al.`;
 }
 
-export {
-  type CreatorEntry,
-  type CreatorDraft,
-  parseCreators,
-  areCreatorsEqual,
-  toItemCreators,
-} from './creator-entries.domain';
+/** Parse & sanitize creators array into structured list */
+export function parseCreators(item: Item, defaultRoleOverride?: string): CreatorEntry[] {
+  const hasExplicitCreatorsArray = Array.isArray(item.creators);
+  const rawCreators = hasExplicitCreatorsArray
+    ? item.creators!.length > 0
+      ? item.creators
+      : Array.isArray(item.authors) && item.authors.length === 0
+        ? []
+        : item.contributors
+    : item.contributors;
+  if (Array.isArray(rawCreators) && rawCreators.length > 0) {
+    const parsedCreators: CreatorEntry[] = [];
+    for (const rawCreatorItem of rawCreators) {
+      const creatorType = rawCreatorItem.creatorType || defaultRoleOverride || 'author';
+      const firstName = cleanValue(rawCreatorItem.firstName || (rawCreatorItem as Record<string, unknown>).given);
+      const lastName = cleanValue(rawCreatorItem.lastName || (rawCreatorItem as Record<string, unknown>).family);
+      const shortName = cleanValue(rawCreatorItem.shortName || undefined);
+      let creatorName = cleanValue(rawCreatorItem.name || rawCreatorItem.fullName);
+      if (!creatorName && (firstName || lastName)) {
+        creatorName = [lastName, firstName].filter(Boolean).join(', ');
+      } else if (
+        rawCreatorItem.fieldMode !== 1 &&
+        firstName &&
+        lastName &&
+        lastName.includes(' ') &&
+        !creatorName.includes(',')
+      ) {
+        creatorName = `${lastName}, ${firstName}`;
+      }
 
+      const isSingleFieldInstitution =
+        rawCreatorItem.fieldMode === 1 ||
+        (rawCreatorItem.fieldMode === undefined &&
+          !firstName &&
+          Boolean(creatorName || lastName) &&
+          isInstitutionName(creatorName || lastName));
+      const fieldMode = isSingleFieldInstitution ? 1 : (rawCreatorItem.fieldMode ?? 0);
 
+      const hasStructuredName = Boolean(
+        rawCreatorItem.firstName ||
+          rawCreatorItem.lastName ||
+          (rawCreatorItem as Record<string, unknown>).given ||
+          (rawCreatorItem as Record<string, unknown>).family ||
+          rawCreatorItem.fieldMode === 1,
+      );
 
+      if (creatorName) {
+        const splitNameParts =
+          fieldMode === 1 || hasStructuredName ? [creatorName] : splitAuthorString(creatorName);
+        if (splitNameParts.length > 1) {
+          for (const authorPart of splitNameParts) {
+            const parsed = parseCreatorName(authorPart);
+            parsedCreators.push({
+              creatorType,
+              name: authorPart,
+              fieldMode: parsed.isInstitution ? 1 : 0,
+              firstName: parsed.isInstitution ? undefined : parsed.firstName || undefined,
+              lastName: parsed.isInstitution ? authorPart : parsed.lastName || undefined,
+            });
+          }
+        } else {
+          parsedCreators.push({
+            creatorType,
+            name: creatorName,
+            fieldMode,
+            firstName: fieldMode === 1 ? undefined : firstName || undefined,
+            lastName: fieldMode === 1 ? lastName || creatorName : lastName || undefined,
+            shortName: shortName || undefined,
+          });
+        }
+      } else {
+        parsedCreators.push({
+          creatorType,
+          name: '',
+          fieldMode,
+          firstName: fieldMode === 1 ? undefined : firstName || undefined,
+          lastName: lastName || undefined,
+          shortName: shortName || undefined,
+        });
+      }
+    }
+    if (parsedCreators.length > 0) return parsedCreators;
+  }
+
+  if (
+    hasExplicitCreatorsArray &&
+    item.creators!.length === 0 &&
+    Array.isArray(item.authors) &&
+    item.authors.length === 0
+  ) {
+    return [];
+  }
+
+  const normalizedAuthorList = normalizeAuthors(
+    item.authors,
+    item.creators,
+    hasExplicitCreatorsArray ? undefined : item.contributors,
+  );
+  if (normalizedAuthorList.length > 0) {
+    const defaultRole = defaultRoleOverride || getPrimaryCreatorType(item.itemType) || 'author';
+    return normalizedAuthorList.map((authorName) => {
+      const parsed = parseCreatorName(authorName || '');
+      return {
+        creatorType: defaultRole,
+        name: authorName || '',
+        fieldMode: parsed.isInstitution ? 1 : 0,
+        firstName: parsed.isInstitution ? undefined : parsed.firstName || undefined,
+        lastName: parsed.isInstitution ? authorName || undefined : parsed.lastName || undefined,
+      };
+    });
+  }
+
+  return [];
+}
+
+/** Compare two creator arrays for semantic equality to prevent redundant mutations */
+export function areCreatorsEqual(
+  firstCreators: CreatorEntry[],
+  secondCreators: CreatorEntry[],
+): boolean {
+  const normalizedFirst = firstCreators.filter((c) => c.name.trim().length > 0);
+  const normalizedSecond = secondCreators.filter((c) => c.name.trim().length > 0);
+  if (normalizedFirst.length !== normalizedSecond.length) return false;
+
+  for (let i = 0; i < normalizedFirst.length; i += 1) {
+    const first = normalizedFirst[i];
+    const second = normalizedSecond[i];
+    if (!first || !second) return false;
+    if ((first.creatorType || 'author') !== (second.creatorType || 'author')) return false;
+    if ((first.fieldMode ?? 0) !== (second.fieldMode ?? 0)) return false;
+    if (first.name.trim() !== second.name.trim()) return false;
+    if ((first.shortName || '').trim() !== (second.shortName || '').trim()) return false;
+  }
+
+  return true;
+}
+
+/** Convert CreatorEntry items into strongly typed CreatorCredit items for Item */
+export function toItemCreators(
+  creatorEntries: CreatorEntry[],
+): Array<
+  CreatorCredit & {
+    orderIndex: number;
+    creatorType: string;
+    fieldMode: number;
+    fullName: string;
+  }
+> {
+  return creatorEntries.map((creatorEntry, indexPosition) => {
+    const trimmedName = creatorEntry.name.trim();
+    let firstName = creatorEntry.firstName;
+    let lastName = creatorEntry.lastName;
+
+    if (creatorEntry.fieldMode === 1) {
+      firstName = '';
+      lastName = trimmedName;
+    } else if (trimmedName) {
+      const combinedForward = [firstName, lastName].filter(Boolean).join(' ').trim();
+      const combinedInverted = [lastName, firstName].filter(Boolean).join(', ').trim();
+      const matchesExisting =
+        Boolean(firstName || lastName) &&
+        (trimmedName === combinedForward || trimmedName === combinedInverted);
+      if (!matchesExisting) {
+        const parsed = parseCreatorName(trimmedName);
+        firstName = parsed.firstName;
+        lastName = parsed.lastName;
+      }
+    }
+
+    return {
+      orderIndex: indexPosition,
+      creatorType: creatorEntry.creatorType || 'author',
+      fieldMode: creatorEntry.fieldMode ?? 0,
+      fullName: trimmedName,
+      name: trimmedName,
+      firstName: firstName || undefined,
+      lastName: lastName || undefined,
+      shortName: creatorEntry.shortName?.trim() || undefined,
+    };
+  });
+}
+
+/**
+ * Converts a raw authors array or string into structured Creator objects,
+ * preserving `fieldMode: 1` for institutional creators.
+ */
+export function buildStructuredCreatorsFromAuthors(
+  rawAuthors: unknown,
+): Array<Record<string, unknown>> {
+  if (!isValidValue(rawAuthors) || (Array.isArray(rawAuthors) && !rawAuthors.some((v) => isValidValue(v)))) {
+    return [];
+  }
+  const rawList = Array.isArray(rawAuthors)
+    ? rawAuthors
+    : typeof rawAuthors === 'string'
+      ? splitAuthorString(rawAuthors)
+      : [];
+  const structured: Array<Record<string, unknown>> = [];
+  rawList.forEach((entry, idx) => {
+    if (!entry) return;
+    if (typeof entry === 'string') {
+      const parsed = parseCreatorName(entry);
+      const fullName = (parsed.fullName || entry).trim();
+      if (!fullName) return;
+      structured.push({
+        firstName: parsed.isInstitution ? '' : parsed.firstName || '',
+        lastName: parsed.isInstitution ? fullName : parsed.lastName || fullName,
+        fullName,
+        fieldMode: parsed.isInstitution ? 1 : 0,
+        creatorType: 'author',
+        orderIndex: idx,
+      });
+    } else if (typeof entry === 'object') {
+      const rec = entry as Record<string, unknown>;
+      const firstName = String(rec.firstName ?? rec.given ?? '').trim();
+      const lastName = String(rec.lastName ?? rec.family ?? '').trim();
+      const fullName = String(
+        rec.fullName ?? rec.name ?? [firstName, lastName].filter(Boolean).join(' '),
+      ).trim();
+      const isInst =
+        rec.fieldMode === 1 || (!firstName && isInstitutionName(fullName || lastName));
+      structured.push({
+        ...rec,
+        firstName: isInst ? '' : firstName,
+        lastName: isInst ? lastName || fullName : lastName,
+        fullName,
+        fieldMode: typeof rec.fieldMode === 'number' ? rec.fieldMode : isInst ? 1 : 0,
+        creatorType: String(rec.creatorType ?? rec.role ?? 'author').trim() || 'author',
+        orderIndex: typeof rec.orderIndex === 'number' ? rec.orderIndex : idx,
+      });
+    }
+  });
+  return structured;
+}

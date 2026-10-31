@@ -2,8 +2,8 @@
 
 import type { QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { libraryServices, IngestionService } from '../library.client';
-import type { UnifiedIngestionPayload } from '@/features/library/domain/types/library.types';
+import { libraryServices, IngestionService } from '@/features/library/sdk';
+import type { UnifiedIngestionPayload } from '@/features/library/domain/types/core.types';
 import { itemKeys, invalidateCollections } from '@/features/library/sdk/query-keys';
 import {
   cleanDoi,
@@ -173,6 +173,109 @@ export async function pollIngestionRunCompletion(
 
 // ── Identifier / Link Ingestion & Polling Orchestration ───────────────────────
 
+export interface IdentifierPayloadDetectionContext {
+  raw: string;
+  collectionId?: string;
+  overrides?: Record<string, unknown>;
+}
+
+export interface IdentifierPayloadStrategy {
+  matches(ctx: IdentifierPayloadDetectionContext): boolean;
+  build(ctx: IdentifierPayloadDetectionContext): Record<string, unknown>;
+}
+
+export const IDENTIFIER_PAYLOAD_STRATEGIES: readonly IdentifierPayloadStrategy[] = [
+  {
+    matches: ({ raw }) =>
+      raw.startsWith('@') ||
+      /^(?:%[^\r\n]*[\r\n]+\s*)*@[a-zA-Z]+\s*\{/.test(raw),
+    build: ({ raw, collectionId, overrides }) => ({
+      source: 'bibtex',
+      content: raw,
+      collectionId,
+      ...(overrides ? { overrides } : {}),
+    }),
+  },
+  {
+    matches: ({ raw }) =>
+      raw.startsWith('TY  -') || /^(?:\uFEFF)?\s*TY\s+-/m.test(raw),
+    build: ({ raw, collectionId, overrides }) => ({
+      source: 'ris',
+      content: raw,
+      collectionId,
+      ...(overrides ? { overrides } : {}),
+    }),
+  },
+  {
+    matches: ({ raw }) =>
+      (raw.startsWith('[') && raw.endsWith(']')) ||
+      (raw.startsWith('{') &&
+        raw.endsWith('}') &&
+        /"(?:title|type|author|DOI|issued)"/i.test(raw)),
+    build: ({ raw, collectionId, overrides }) => ({
+      source: 'csl_json',
+      content: raw,
+      collectionId,
+      ...(overrides ? { overrides } : {}),
+    }),
+  },
+  {
+    matches: ({ raw }) => {
+      const arxivCandidate = extractArxivId(raw);
+      return Boolean(
+        arxivCandidate &&
+          (/arxiv/i.test(raw) ||
+            /^\(?\[?(?:arxiv:\s*)?(\d{4}\.\d{4,5}|[a-z-]+\/\d{7})/i.test(raw)),
+      );
+    },
+    build: ({ raw, collectionId, overrides }) => ({
+      source: 'arxiv',
+      arxivId: extractArxivId(raw)!,
+      collectionId,
+      overrides,
+    }),
+  },
+  {
+    matches: ({ raw }) => Boolean(extractPmcId(raw)),
+    build: ({ raw, collectionId, overrides }) => ({
+      source: 'pmid',
+      pmid: extractPmcId(raw)!,
+      collectionId,
+      overrides,
+    }),
+  },
+  {
+    matches: ({ raw }) => Boolean(extractPmid(raw)),
+    build: ({ raw, collectionId, overrides }) => ({
+      source: 'pmid',
+      pmid: extractPmid(raw)!,
+      collectionId,
+      overrides,
+    }),
+  },
+  {
+    matches: ({ raw }) => {
+      const doiCandidate = cleanDoi(raw);
+      return Boolean(doiCandidate && /^10\.\d{4,9}\//.test(doiCandidate));
+    },
+    build: ({ raw, collectionId, overrides }) => ({
+      source: 'doi',
+      doi: cleanDoi(raw)!,
+      collectionId,
+      overrides,
+    }),
+  },
+  {
+    matches: ({ raw }) => Boolean(cleanIsbn(raw)),
+    build: ({ raw, collectionId, overrides }) => ({
+      source: 'isbn',
+      isbn: cleanIsbn(raw)!,
+      collectionId,
+      overrides,
+    }),
+  },
+];
+
 export function buildIdentifierIngestionPayload(
   rawInput: string,
   options?: {
@@ -192,66 +295,16 @@ export function buildIdentifierIngestionPayload(
   };
   const overrides = Object.keys(overridesObj).length > 0 ? overridesObj : undefined;
 
-  if (
-    raw.startsWith('@') ||
-    /^(?:%[^\r\n]*[\r\n]+\s*)*@[a-zA-Z]+\s*\{/.test(raw)
-  ) {
-    return {
-      source: 'bibtex',
-      content: raw,
-      collectionId: targetCollectionId,
-      ...(overrides ? { overrides } : {}),
-    } as UnifiedIngestionPayload;
-  }
-  if (raw.startsWith('TY  -') || /^(?:\uFEFF)?\s*TY\s+-/m.test(raw)) {
-    return {
-      source: 'ris',
-      content: raw,
-      collectionId: targetCollectionId,
-      ...(overrides ? { overrides } : {}),
-    } as UnifiedIngestionPayload;
-  }
-  if (
-    (raw.startsWith('[') && raw.endsWith(']')) ||
-    (raw.startsWith('{') && raw.endsWith('}') && /"(?:title|type|author|DOI|issued)"/i.test(raw))
-  ) {
-    return {
-      source: 'csl_json',
-      content: raw,
-      collectionId: targetCollectionId,
-      ...(overrides ? { overrides } : {}),
-    } as UnifiedIngestionPayload;
-  }
+  const ctx: IdentifierPayloadDetectionContext = {
+    raw,
+    collectionId: targetCollectionId,
+    overrides,
+  };
 
-  // 1. Check arXiv first (including arxiv.org/abs/..., arxiv.org/pdf/..., 10.48550/arXiv..., (arXiv:...))
-  const arxivCandidate = extractArxivId(raw);
-  if (
-    arxivCandidate &&
-    (/arxiv/i.test(raw) || /^\(?\[?(?:arxiv:\s*)?(\d{4}\.\d{4,5}|[a-z-]+\/\d{7})/i.test(raw))
-  ) {
-    return { source: 'arxiv', arxivId: arxivCandidate, collectionId: targetCollectionId, overrides };
-  }
-
-  // 2. Check PubMed URL, PMID, or PMCID string
-  const pmcCandidate = extractPmcId(raw);
-  if (pmcCandidate) {
-    return { source: 'pmid', pmid: pmcCandidate, collectionId: targetCollectionId, overrides };
-  }
-  const pmidCandidate = extractPmid(raw);
-  if (pmidCandidate) {
-    return { source: 'pmid', pmid: pmidCandidate, collectionId: targetCollectionId, overrides };
-  }
-
-  // 3. Check DOI (including doi.org, dx.doi.org, nature/zenodo/biorxiv/plos DOI URLs, or 10.NNNN/...)
-  const doiCandidate = cleanDoi(raw);
-  if (doiCandidate && /^10\.\d{4,9}\//.test(doiCandidate)) {
-    return { source: 'doi', doi: doiCandidate, collectionId: targetCollectionId, overrides };
-  }
-
-  // 4. Check ISBN-10 / ISBN-13 (including ISBN-10 ending with X and hyphenated/spaced formats)
-  const isbnCandidate = cleanIsbn(raw);
-  if (isbnCandidate) {
-    return { source: 'isbn', isbn: isbnCandidate, collectionId: targetCollectionId, overrides };
+  for (const strategy of IDENTIFIER_PAYLOAD_STRATEGIES) {
+    if (strategy.matches(ctx)) {
+      return strategy.build(ctx) as unknown as UnifiedIngestionPayload;
+    }
   }
 
   return { source: 'url', url: raw, collectionId: targetCollectionId, overrides };

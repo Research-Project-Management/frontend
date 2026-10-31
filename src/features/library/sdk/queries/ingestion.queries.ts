@@ -2,10 +2,11 @@
 
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { libraryServices, IngestionService } from '../library.client';
-import type { UnifiedIngestionPayload, FlagRetractionInput } from '@/features/library/domain/types/library.types';
+import { libraryServices, IngestionService } from '@/features/library/sdk';
+import { integrationService } from '@/features/settings/services/integration.service';
+import type { UnifiedIngestionPayload, FlagRetractionInput } from '@/features/library/domain/types/core.types';
 import { mapServerFeedSubscriptions } from '@/features/library/domain/feed-parser.domain';
-import type { SavedFeedSubscription } from '@/features/library/domain/types/feeds.types';
+import type { SavedFeedSubscription } from '@/features/library/domain/types/ingestion.types';
 import {
   libraryKeys,
   itemKeys,
@@ -31,7 +32,7 @@ import {
   invokeRemoveFeed,
   getRegisteredFeedsSnapshot,
   notifyDraftCacheCleared,
-} from './feed-hydration.port';
+} from '@/features/library/sdk';
 import {
   type PollRunOutcome,
   type PollIngestionRunOptions,
@@ -192,6 +193,7 @@ export function useAcademicFeedArticlesQuery(
 }
 
 export function useFetchAcademicFeed() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (
       param: string | { url: string; forceRefresh?: boolean; silent?: boolean },
@@ -211,6 +213,19 @@ export function useFetchAcademicFeed() {
         notifyReadEntriesHydrated(readIds);
       }
       return res;
+    },
+    onSuccess: (res, variables) => {
+      const url = typeof variables === 'string' ? variables : variables.url;
+      queryClient.setQueriesData(
+        {
+          predicate: (q) =>
+            Array.isArray(q.queryKey) &&
+            q.queryKey[1] === 'feeds' &&
+            q.queryKey[2] === 'articles' &&
+            q.queryKey[3] === (url || ''),
+        },
+        res,
+      );
     },
     onError: (error: Error, variables) => {
       if (typeof variables === 'object' && variables?.silent) return;
@@ -535,7 +550,27 @@ export function useSyncExternalBibtexMutation(scopeId?: string) {
   const queryClient = useQueryClient();
   const effectiveScope = normalizeScopeId(scopeId);
   return useMutation({
-    mutationFn: async ({ bibtex, collectionId, remoteCollectionName }: { bibtex: string; collectionId?: string; remoteCollectionName: string }) => {
+    mutationFn: async ({
+      bibtex: providedBibtex,
+      provider = 'zotero',
+      remoteCollectionId,
+      collectionId,
+      remoteCollectionName,
+    }: {
+      bibtex?: string;
+      provider?: 'zotero' | 'mendeley';
+      remoteCollectionId?: string;
+      collectionId?: string;
+      remoteCollectionName: string;
+    }) => {
+      let bibtex = providedBibtex;
+      if (!bibtex && remoteCollectionId) {
+        const fetched = await integrationService.getCollectionBibtex(provider, remoteCollectionId);
+        bibtex = fetched.bibtex;
+      }
+      if (!bibtex || !bibtex.trim()) {
+        return { empty: true };
+      }
       const res = await IngestionService.ingest(effectiveScope, { source: 'bibtex', content: bibtex, collectionId });
       const resRecord = res as { data?: { runId?: string }; runId?: string } | null;
       const runId = resRecord?.data?.runId || resRecord?.runId;

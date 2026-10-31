@@ -4,13 +4,13 @@
  * Pure domain & citation utilities for the PDF/EPUB Reader.
  */
 
-import type { Item } from '@/features/library/domain/types/library.types';
+import type { Item } from '@/features/library/domain/types/core.types';
 import type {
   ReaderDocument,
   ReaderAnnotation,
   AnnotationRect,
   DocumentFulltext,
-} from '@/features/library/domain/types/reader.types';
+} from '@/features/library/domain/types/reader.schema';
 import { generateCitationKey } from './citations';
 import {
   normalizeReaderAuthors,
@@ -22,10 +22,17 @@ import {
   filterPdfOutlineTree,
   readReaderPreference,
   writeReaderPreference,
+  calculateEffectiveViewportDimensions,
+  computeEffectivePdfPageWidth,
+  computeSpreadPairs,
+  isPageInVirtualWindow,
+  calculatePageAspectRatio,
+  normalizeRectCoordinates,
+  type ViewportParams,
   type PdfTextMatch,
   type PdfSearchCycleResult,
   type PdfOutlineNode,
-} from './reader-persistence.helpers';
+} from './reader-search-outline';
 
 export const generateReaderCitationKey = generateCitationKey;
 
@@ -39,6 +46,13 @@ export {
   filterPdfOutlineTree,
   readReaderPreference,
   writeReaderPreference,
+  calculateEffectiveViewportDimensions,
+  computeEffectivePdfPageWidth,
+  computeSpreadPairs,
+  isPageInVirtualWindow,
+  calculatePageAspectRatio,
+  normalizeRectCoordinates,
+  type ViewportParams,
   type PdfTextMatch,
   type PdfSearchCycleResult,
   type PdfOutlineNode,
@@ -131,6 +145,45 @@ export interface AnnotationFilterCriteria {
   pageRange?: [number, number] | null;
 }
 
+export const clamp = (v: number, min: number, max: number): number =>
+  Math.min(max, Math.max(min, v));
+
+export interface Box2DInput {
+  x1?: number;
+  y1?: number;
+  x2?: number;
+  y2?: number;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+}
+
+/**
+ * Projects an arbitrary 2D box into $[0, M_x] \times [0, M_y]$ with guaranteed
+ * ordered intervals $0 \le x_1 \le x_2 \le M_x$ and $0 \le y_1 \le y_2 \le M_y$.
+ */
+export function projectBox2D(
+  r: Box2DInput,
+  maxBoundX = 1,
+  maxBoundY = maxBoundX,
+): AnnotationRect {
+  const sx = r.x1 ?? r.x ?? 0;
+  const sy = r.y1 ?? r.y ?? 0;
+  const ex = r.x2 ?? (r.width !== undefined ? sx + r.width : sx);
+  const ey = r.y2 ?? (r.height !== undefined ? sy + r.height : sy);
+
+  const x1 = clamp(Math.min(sx, ex), 0, maxBoundX);
+  const y1 = clamp(Math.min(sy, ey), 0, maxBoundY);
+  const x2 = clamp(Math.max(sx, ex), x1, maxBoundX);
+  const y2 = clamp(Math.max(sy, ey), y1, maxBoundY);
+
+  return { x1, y1, x2, y2, width: x2 - x1, height: y2 - y1 };
+}
+
+const epsDiff = (a: number, b: number, eps = 0.005): number =>
+  Math.abs(a - b) > eps ? a - b : 0;
+
 export const PdfAnnotationEngine = {
   sortAnnotations(annotations: ReaderAnnotation[]): ReaderAnnotation[] {
     if (annotations.length <= 1) return [...annotations];
@@ -149,23 +202,22 @@ export const PdfAnnotationEngine = {
     return [...annotations].sort((a, b) => {
       const pageA = a.pageIndex ?? (a.pageNumber !== undefined ? a.pageNumber - 1 : 0);
       const pageB = b.pageIndex ?? (b.pageNumber !== undefined ? b.pageNumber - 1 : 0);
-      if (pageA !== pageB) return pageA - pageB;
-
-      if (a.annotationSortIndex && b.annotationSortIndex && a.annotationSortIndex !== b.annotationSortIndex) {
-        return a.annotationSortIndex < b.annotationSortIndex ? -1 : 1;
-      }
-
+      const sortIdxCmp =
+        a.annotationSortIndex && b.annotationSortIndex && a.annotationSortIndex !== b.annotationSortIndex
+          ? a.annotationSortIndex < b.annotationSortIndex
+            ? -1
+            : 1
+          : 0;
       const rectA = (a.rects?.[0] || a.boundingRect) as (AnnotationRect & { x?: number; y?: number }) | undefined;
       const rectB = (b.rects?.[0] || b.boundingRect) as (AnnotationRect & { x?: number; y?: number }) | undefined;
-      const topA = rectA?.y1 ?? rectA?.y ?? 0;
-      const topB = rectB?.y1 ?? rectB?.y ?? 0;
-      if (Math.abs(topA - topB) > 0.005) return topA - topB;
 
-      const leftA = rectA?.x1 ?? rectA?.x ?? 0;
-      const leftB = rectB?.x1 ?? rectB?.x ?? 0;
-      if (Math.abs(leftA - leftB) > 0.005) return leftA - leftB;
-
-      return getTimestamp(a.createdAt) - getTimestamp(b.createdAt);
+      return (
+        pageA - pageB ||
+        sortIdxCmp ||
+        epsDiff(rectA?.y1 ?? rectA?.y ?? 0, rectB?.y1 ?? rectB?.y ?? 0) ||
+        epsDiff(rectA?.x1 ?? rectA?.x ?? 0, rectB?.x1 ?? rectB?.x ?? 0) ||
+        getTimestamp(a.createdAt) - getTimestamp(b.createdAt)
+      );
     });
   },
 
@@ -337,7 +389,7 @@ export const PdfAnnotationEngine = {
 
       if (rawTags.length > 0) {
         const matchesAllTags = rawTags.every((reqTag) =>
-          itemTagNames.some((t) => t === reqTag || t.includes(reqTag)),
+          itemTagNames.some((t) => t.includes(reqTag)),
         );
         if (!matchesAllTags) return false;
       }
@@ -362,69 +414,14 @@ export const PdfAnnotationEngine = {
       | (Omit<AnnotationRect, 'width' | 'height'> & { width?: number; height?: number })
       | { x: number; y: number; width: number; height: number },
   ): AnnotationRect {
-    const r = rect as {
-      x1?: number;
-      y1?: number;
-      x2?: number;
-      y2?: number;
-      x?: number;
-      y?: number;
-      width?: number;
-      height?: number;
-    };
-    const startX = r.x1 ?? r.x ?? 0;
-    const startY = r.y1 ?? r.y ?? 0;
-    const endX = r.x2 !== undefined ? r.x2 : r.width !== undefined ? startX + r.width : startX;
-    const endY = r.y2 !== undefined ? r.y2 : r.height !== undefined ? startY + r.height : startY;
-
-    const minX = Math.min(startX, endX);
-    const maxX = Math.max(startX, endX);
-    const minY = Math.min(startY, endY);
-    const maxY = Math.max(startY, endY);
-
-    const x1 = Math.max(0, Math.min(1, minX));
-    const y1 = Math.max(0, Math.min(1, minY));
-    const x2 = Math.max(x1, Math.min(1, maxX));
-    const y2 = Math.max(y1, Math.min(1, maxY));
-    const width = x2 - x1;
-    const height = y2 - y1;
-
-    return {
-      x1,
-      y1,
-      x2,
-      y2,
-      width,
-      height,
-    };
+    return projectBox2D(rect as Box2DInput, 1);
   },
 
   clampAreaSelectionBounds(
-    rect: { x1?: number; y1?: number; x2?: number; y2?: number; x?: number; y?: number; width?: number; height?: number },
+    rect: Box2DInput,
     maxBound = 100,
   ): AnnotationRect {
-    const startX = rect.x1 ?? rect.x ?? 0;
-    const startY = rect.y1 ?? rect.y ?? 0;
-    const endX = rect.x2 !== undefined ? rect.x2 : rect.width !== undefined ? startX + rect.width : startX;
-    const endY = rect.y2 !== undefined ? rect.y2 : rect.height !== undefined ? startY + rect.height : startY;
-
-    const minX = Math.min(startX, endX);
-    const maxX = Math.max(startX, endX);
-    const minY = Math.min(startY, endY);
-    const maxY = Math.max(startY, endY);
-
-    const x1 = Math.max(0, Math.min(maxBound, minX));
-    const y1 = Math.max(0, Math.min(maxBound, minY));
-    const x2 = Math.max(x1, Math.min(maxBound, maxX));
-    const y2 = Math.max(y1, Math.min(maxBound, maxY));
-    return {
-      x1,
-      y1,
-      x2,
-      y2,
-      width: x2 - x1,
-      height: y2 - y1,
-    };
+    return projectBox2D(rect, maxBound);
   },
 
   denormalizeRect(
@@ -432,18 +429,22 @@ export const PdfAnnotationEngine = {
     pageWidth: number,
     pageHeight: number,
   ): { x: number; y: number; width: number; height: number; x1: number; y1: number; x2: number; y2: number } {
-    const norm = this.normalizeRect(rect);
+    const norm = projectBox2D(rect as Box2DInput, 1);
     const w = Math.max(0, pageWidth);
     const h = Math.max(0, pageHeight);
+    const x1 = norm.x1 * w;
+    const y1 = norm.y1 * h;
+    const x2 = norm.x2 * w;
+    const y2 = norm.y2 * h;
     return {
-      x: norm.x1 * w,
-      y: norm.y1 * h,
-      width: (norm.width ?? norm.x2 - norm.x1) * w,
-      height: (norm.height ?? norm.y2 - norm.y1) * h,
-      x1: norm.x1 * w,
-      y1: norm.y1 * h,
-      x2: norm.x2 * w,
-      y2: norm.y2 * h,
+      x: x1,
+      y: y1,
+      width: x2 - x1,
+      height: y2 - y1,
+      x1,
+      y1,
+      x2,
+      y2,
     };
   },
 
@@ -495,13 +496,114 @@ export interface EpubOrSnapshotInfo {
 
 export interface RawAttachmentItem {
   id?: string;
+  fileId?: string;
   url?: string;
   fileUrl?: string;
   mimeType?: string;
   filename?: string;
+  name?: string;
+  title?: string;
   attachmentType?: string;
+  type?: string;
   viewerFormat?: 'pdf' | 'epub' | 'snapshot' | string;
   linkMode?: string;
+}
+
+export type AttachmentCapabilityKind =
+  | 'pdf'
+  | 'epub'
+  | 'snapshot'
+  | 'external_link'
+  | 'file';
+
+export interface AttachmentCapabilityDescriptor {
+  kind: AttachmentCapabilityKind;
+  isPdf: boolean;
+  isEpub: boolean;
+  isSnapshot: boolean;
+  isExternalLink: boolean;
+  canOpenInReader: boolean;
+  targetUrl: string;
+}
+
+export function classifyAttachmentDescriptor(
+  att?: RawAttachmentItem | Record<string, unknown> | null,
+  resolvedDownloadUrl?: string,
+): AttachmentCapabilityDescriptor {
+  if (!att) {
+    return {
+      kind: 'file',
+      isPdf: false,
+      isEpub: false,
+      isSnapshot: false,
+      isExternalLink: false,
+      canOpenInReader: false,
+      targetUrl: resolvedDownloadUrl || '',
+    };
+  }
+  const rec = att as RawAttachmentItem;
+  const attMime = (rec.mimeType || '').toLowerCase();
+  const attName = (rec.filename || rec.name || '').toLowerCase();
+  const rawUrl = (rec.fileUrl || rec.url || '').trim();
+  const attUrlLower = rawUrl.toLowerCase();
+  const attType = (rec.attachmentType || rec.type || '').toLowerCase();
+  const viewerFmt = (rec.viewerFormat || '').toLowerCase();
+
+  const isPdf =
+    viewerFmt === 'pdf' ||
+    attType === 'primary_pdf' ||
+    attMime === 'application/pdf' ||
+    attMime.includes('pdf') ||
+    attName.endsWith('.pdf') ||
+    /\.pdf(?:$|[?#])/i.test(attUrlLower);
+
+  const isEpub =
+    !isPdf &&
+    (viewerFmt === 'epub' ||
+      attMime.includes('epub') ||
+      attName.endsWith('.epub') ||
+      /\.epub(?:$|[?#])/i.test(attUrlLower));
+
+  const isSnapshot =
+    !isPdf &&
+    !isEpub &&
+    (viewerFmt === 'snapshot' ||
+      attType === 'web_snapshot' ||
+      attType === 'snapshot' ||
+      attMime === 'text/html' ||
+      attMime === 'application/xhtml+xml' ||
+      attName.endsWith('.html') ||
+      attName.endsWith('.htm'));
+
+  const isExternalLink =
+    !isPdf &&
+    !isEpub &&
+    !isSnapshot &&
+    (rec.linkMode === 'linked_url' ||
+      (!rec.fileId && Boolean(rawUrl) && /^https?:\/\//i.test(rawUrl)));
+
+  const kind: AttachmentCapabilityKind = isPdf
+    ? 'pdf'
+    : isEpub
+      ? 'epub'
+      : isSnapshot
+        ? 'snapshot'
+        : isExternalLink
+          ? 'external_link'
+          : 'file';
+
+  const canOpenInReader = isPdf || isEpub || isSnapshot;
+  const targetUrl = resolvedDownloadUrl || rawUrl;
+
+  return {
+    kind,
+    isPdf,
+    isEpub,
+    isSnapshot,
+    isExternalLink,
+    canOpenInReader,
+    targetUrl,
+  };
 }
 
 export function resolveEpubOrSnapshot(
@@ -516,51 +618,35 @@ export function resolveEpubOrSnapshot(
     ? (itemLike.attachments as RawAttachmentItem[])
     : [];
 
-  const classifyTarget = (
-    target?: { viewerFormat?: string | null; mimeType?: string | null } | null,
-  ): 'pdf' | 'epub' | 'snapshot' | null => {
-    if (!target) return null;
-    if (
-      target.viewerFormat === 'pdf' ||
-      target.viewerFormat === 'epub' ||
-      target.viewerFormat === 'snapshot'
-    ) {
-      return target.viewerFormat;
-    }
-    const mime = target.mimeType?.toLowerCase() || '';
-    if (mime === 'application/pdf') return 'pdf';
-    if (mime === 'application/epub+zip') return 'epub';
-    if (mime === 'text/html' || mime === 'application/xhtml+xml') return 'snapshot';
-    return null;
-  };
-
   const activeAtt = requestedAttId
     ? rawAtts.find((a: RawAttachmentItem) => a.id === requestedAttId)
     : selectedAttachment;
 
   if (activeAtt) {
-    const format = classifyTarget(activeAtt);
-    if (format === 'pdf') return null;
-    if (format === 'epub' || format === 'snapshot') {
+    const desc = classifyAttachmentDescriptor(activeAtt);
+    if (desc.isPdf) return null;
+    if (desc.isEpub || desc.isSnapshot) {
       const attUrl = (activeAtt.fileUrl || activeAtt.url || paperUrl || '') as string;
-      return attUrl ? { mode: format, url: attUrl } : null;
+      return attUrl ? { mode: desc.isEpub ? 'epub' : 'snapshot', url: attUrl } : null;
     }
   }
 
-  const primaryFormat = classifyTarget(
-    itemLike.primaryFile as { viewerFormat?: string | null; mimeType?: string | null } | null,
+  const primaryDesc = classifyAttachmentDescriptor(
+    itemLike.primaryFile as RawAttachmentItem | null,
   );
-  if (primaryFormat === 'pdf') return null;
-  if (primaryFormat === 'epub' || primaryFormat === 'snapshot') {
+  if (primaryDesc.isPdf) return null;
+  if (primaryDesc.isEpub || primaryDesc.isSnapshot) {
     const primaryUrl = (paperUrl || itemLike.primaryFile?.url || '') as string;
-    if (primaryUrl) return { mode: primaryFormat, url: primaryUrl };
+    if (primaryUrl) {
+      return { mode: primaryDesc.isEpub ? 'epub' : 'snapshot', url: primaryUrl };
+    }
   }
 
   for (const att of rawAtts) {
-    const format = classifyTarget(att);
-    if (format === 'epub' || format === 'snapshot') {
+    const desc = classifyAttachmentDescriptor(att);
+    if (desc.isEpub || desc.isSnapshot) {
       const url = (att.fileUrl || att.url || '') as string;
-      if (url) return { mode: format, url };
+      if (url) return { mode: desc.isEpub ? 'epub' : 'snapshot', url };
     }
   }
 

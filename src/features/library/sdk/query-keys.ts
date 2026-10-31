@@ -1,4 +1,4 @@
-import type { CslStyle } from "@/features/library/domain/types/library.types";
+import type { CslStyle } from "@/features/library/domain/types/core.types";
 
 /**
  * Centralized TanStack Query Keys for features/library

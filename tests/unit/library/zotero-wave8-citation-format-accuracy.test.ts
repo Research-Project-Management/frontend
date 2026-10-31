@@ -3,14 +3,14 @@ import {
   formatAndSanitizeExtraMetadata,
   formatExtraDisplay,
   isAllowedItemExtraKey,
-} from '@/features/library/domain/metadata';
+} from '@/features/library/domain/metadata-mapper';
 import {
   generateCitationKey,
   getCleanStyleLabel,
   formatCitationStyleLabel,
   DEFAULT_CITATION_STYLES,
 } from '@/features/library/domain/citations';
-import type { Item } from '@/features/library/domain/types/library.types';
+import type { Item } from '@/features/library/domain/types/core.types';
 
 describe('Zotero Wave 8: Citation, Export & Metadata Format Grounding & Accuracy Remediation', () => {
   // ===========================================================================

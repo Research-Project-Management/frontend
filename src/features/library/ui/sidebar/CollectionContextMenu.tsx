@@ -15,8 +15,8 @@ import {
   FileJson,
 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/shared/components/ui/dropdown-menu';
-import type { TreeNode } from './sidebar.types';
-import type { Collection } from '@/features/library/domain/types/library.types';
+import type { TreeNode } from '@/features/library/domain/collection-tree';
+import type { Collection } from '@/features/library/domain/types/core.types';
 import { getValidMoveTargets } from '@/features/library/domain/collection-tree';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { executeExportCollectionFormat } from '@/features/library/core/coordinator/citation-export.coordinator';

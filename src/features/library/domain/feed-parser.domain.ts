@@ -10,12 +10,12 @@
  * - Pure OPML 1.0/2.0 XML parser for client-side OPML file uploads
  */
 
-import type { CreatorCredit } from '@/features/library/domain/types/library.types';
+import type { CreatorCredit } from '@/features/library/domain/types/core.types';
 import type {
   SavedFeedSubscription,
   FeedRetentionDays,
-} from '@/features/library/domain/types/feeds.types';
-import { safeHttpUrl } from '@/features/library/domain/retraction';
+} from '@/features/library/domain/types/ingestion.types';
+import { safeHttpUrl } from '@/features/library/domain/system-views.policy';
 import { parseCreatorName } from '@/features/library/domain/creators';
 import {
   decodeXmlEntities,

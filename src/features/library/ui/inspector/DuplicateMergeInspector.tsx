@@ -27,10 +27,10 @@ import {
 import {
   getItemDisplayTitle,
   getItemDisplayDate,
-} from "@/features/library/domain/metadata";
+} from "@/features/library/domain/metadata-mapper";
 import { normalizeAuthors } from "@/features/library/domain/creators";
 import { useDuplicateMergeState } from "@/features/library/core/coordinator/curation.coordinator";
-import type { Item } from "@/features/library/domain/types/library.types";
+import type { Item } from "@/features/library/domain/types/core.types";
 import { cn } from "@/shared/lib/utils";
 
 export interface DuplicateMergeInspectorProps {

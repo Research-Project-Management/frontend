@@ -9,7 +9,7 @@ import {
   humanizeFieldName,
   type SavedSearchField,
   type SavedSearchOperator,
-} from '@/features/library/domain/types/library.types';
+} from '@/features/library/domain/types/core.types';
 
 export interface SavedSearchOperatorConfig {
   value: SavedSearchOperator;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { stripLatexMarkup } from '@/features/library/domain/metadata';
+import { stripLatexMarkup } from '@/features/library/domain/metadata-mapper';
 import {
   parseCreatorName,
   splitAuthorString,

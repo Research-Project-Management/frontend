@@ -24,13 +24,13 @@ const FeedItemInspector = dynamic(
   { ssr: false }
 );
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
-import '@/features/library/core/adapters/schema-storage.adapter';
+import '@/features/library/core/adapters/project-context.adapter';
 import {
   useLibraryCommandStore,
 } from '@/features/library/core/manager/library-command.manager';
 import { executeDuplicateMergeWithCommand } from '@/features/library/core/coordinator/curation.coordinator';
 import { useFeedsStore, isFeedEntryInLibrary } from '@/features/library/core/store/feeds.store';
-import { useLibraryPermissions } from '@/features/library/core/coordinator/permissions.coordinator';
+import { useLibraryPermissions } from '@/features/library/core/adapters/project-context.adapter';
 import { useProcessModalStore } from '@/features/library/core/store/process-modal.store';
 import { useCollectionsQuery } from '@/features/library/sdk/queries/collections.queries';
 import { useSavedSearches } from '@/features/library/sdk/queries/saved-searches-relations.queries';
@@ -50,12 +50,12 @@ import {
   useDuplicateGroups,
   useIngestMutation,
 } from '@/features/library/sdk/queries/ingestion.queries';
-import { formatItemTypeLabel } from '@/features/library/domain/metadata';
+import { formatItemTypeLabel } from '@/features/library/domain/metadata-mapper';
 import { parseEmojiPrefix } from '@/features/library/domain/academic-text';
 import { getCollectionBreadcrumbPath } from '@/features/library/domain/collection-tree';
 import { type ParsedFeedEntry } from '@/features/library/domain/feed-parser.domain';
-import { executeSaveFeedEntryWithFeedback } from '@/features/library/core/coordinator/feed-item.coordinator';
-import type { Item, DuplicateGroup, Collection } from '@/features/library/domain/types/library.types';
+import { executeSaveFeedEntryWithFeedback } from '@/features/library/core/coordinator/ingestion.coordinator';
+import type { Item, DuplicateGroup, Collection } from '@/features/library/domain/types/core.types';
 
 interface LibraryPageProps {
   scopeId?: string;

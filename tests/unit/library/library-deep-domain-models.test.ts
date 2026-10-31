@@ -3,7 +3,7 @@ import {
   normalizeSearchStr,
   calculateFilterMatchScore,
   KNOWN_TYPE_ALIASES,
-} from '@/features/library/domain/filter-matcher.domain';
+} from '@/features/library/domain/sort-items.domain';
 import {
   getFieldConfig,
   parseDurationParts,
@@ -15,7 +15,7 @@ import {
   isPageInVirtualWindow,
   calculatePageAspectRatio,
   normalizeRectCoordinates,
-} from '@/features/library/domain/pdf-viewport.model';
+} from '@/features/library/domain/reader-search-outline';
 
 describe('Library Deep Domain Models (Pure In-Process)', () => {
   describe('filter-matcher.domain', () => {
@@ -154,7 +154,7 @@ describe('Library Deep Domain Models (Pure In-Process)', () => {
   describe('sdk/library.client (Standalone Microservice Routing & Transport)', () => {
     it('resolves relative Monolith/Gateway paths when no microservice env var is set', async () => {
       const { resolveLibraryUrl, resolveLibraryRawPath } = await import(
-        '@/features/library/sdk/library.client'
+        '@/features/library/sdk'
       );
 
       expect(resolveLibraryUrl('catalog', '/items')).toBe('/api/v1/library/items');
@@ -173,7 +173,7 @@ describe('Library Deep Domain Models (Pure In-Process)', () => {
 
       try {
         const { resolveLibraryUrl, resolveLibraryRawPath, getLibraryServiceHost } = await import(
-          '@/features/library/sdk/library.client'
+          '@/features/library/sdk'
         );
 
         expect(getLibraryServiceHost('catalog')).toBe('https://library-service.flux.io');

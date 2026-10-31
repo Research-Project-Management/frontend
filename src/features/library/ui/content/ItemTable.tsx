@@ -3,7 +3,7 @@
 import React, { useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { openInNewTab, buildReaderPaperUrl } from "@/features/library/core/coordinator/browser-io.helpers";
+import { openInNewTab, buildReaderPaperUrl } from "@/features/library/core/coordinator/citation-export.coordinator";
 import { useLibraryUIStore } from "@/features/library/core/store/library-ui.store";
 import {
   useToggleStarItemMutation,
@@ -26,11 +26,11 @@ import {
   type LibraryOrderBy,
 } from "@/features/library/ui/topbar/LibraryDisplayPopover";
 import { sortLibraryItems } from "@/features/library/domain/sort-items.domain";
-import { ItemTableHeader } from "./ItemTableHeader";
+import { ItemTableHeader } from "./ItemRowActions";
 import { ItemTableRow } from "./ItemTableRow";
-import { useLibraryKeyboardShortcuts } from "./useLibraryKeyboardShortcuts";
-import { useLibraryItemOperations } from "@/features/library/core/coordinator/item-operations.coordinator";
-import type { Item, Collection } from "@/features/library/domain/types/library.types";
+import { useLibraryKeyboardShortcuts } from "@/features/library/core/coordinator/keyboard-shortcuts.coordinator";
+import { useLibraryItemOperations } from "@/features/library/core/coordinator/item-action.coordinator";
+import type { Item, Collection } from "@/features/library/domain/types/core.types";
 
 export interface ItemTableProps {
   items: Item[];

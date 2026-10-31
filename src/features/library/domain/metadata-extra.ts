@@ -1,4 +1,4 @@
-import type { Item } from './types/library.types';
+import type { Item } from './types/core.types';
 import {
   getTitleFieldForType,
   getVenueFieldForType,

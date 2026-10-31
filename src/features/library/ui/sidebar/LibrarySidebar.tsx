@@ -20,7 +20,7 @@ import { useSavedSearches } from '@/features/library/sdk/queries/saved-searches-
 import {
   useTrash,
   useDeleteLibraryItemsMutation,
-} from '@/features/library/sdk/queries/trash.queries';
+} from '@/features/library/sdk/queries/tags-notes.queries';
 import { useBatchRestoreItemsMutation } from '@/features/library/sdk/queries/catalog.queries';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import {
@@ -28,19 +28,18 @@ import {
   createMoveItemsCommand,
   createTrashCommand,
 } from '@/features/library/core/manager/library-command.manager';
-import { useLibraryPermissions } from '@/features/library/core/coordinator/permissions.coordinator';
+import { useLibraryPermissions } from '@/features/library/core/adapters/project-context.adapter';
 import { useLibraryProjectContext } from '@/features/library/core/adapters/project-context.adapter';
 
 import type { SavedSearch } from '@/features/library/domain/types/saved-searches.types';
 
 import { buildTree, filterCollections } from '@/features/library/domain/collection-tree';
-import { usePanelResize } from '@/features/library/ui/hooks/usePanelResize';
+import { usePanelResize } from '@/features/library/core/coordinator/inspector-item.coordinator';
 import { useCollectionCoordinator } from '@/features/library/core/coordinator/collection.coordinator';
 import { useDropToMyPublications } from '@/features/library/core/coordinator/item-action.coordinator';
 import { SidebarHeader } from './SidebarHeader';
-import { SidebarResizer } from './SidebarResizer';
 import { CollectionTree } from './CollectionTree';
-import { SidebarSystemNav } from './SidebarSystemNav';
+import { SidebarSystemNav, SidebarResizer } from './SidebarSystemNav';
 import { FeedsListSection } from './FeedsListSection';
 import { ProjectLibrariesSection, resolveProjectRole, type ProjectLike } from './ProjectLibrariesSection';
 

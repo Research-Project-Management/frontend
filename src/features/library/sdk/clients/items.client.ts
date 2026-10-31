@@ -6,8 +6,8 @@ import {
   type RelatedItem,
   type SchemaItemTypeDefinition,
   normalizeRelationType,
-} from '@/features/library/domain/types/library.types';
-import type { DocumentFulltext } from '@/features/library/domain/types/reader.types';
+} from '@/features/library/domain/types/core.types';
+import type { DocumentFulltext } from '@/features/library/domain/types/reader.schema';
 import {
   libraryClient,
   resolveLibraryUrl,
@@ -108,8 +108,8 @@ export interface LibraryBootstrapResponse {
     effectivePermissions?: string[];
     permissionOverrides?: Record<string, boolean>;
   };
-  collections?: import('@/features/library/domain/types/library.types').Collection[];
-  savedSearches?: import('@/features/library/domain/types/library.types').SavedSearch[];
+  collections?: import('@/features/library/domain/types/core.types').Collection[];
+  savedSearches?: import('@/features/library/domain/types/core.types').SavedSearch[];
   syncVersion?: {
     version: string;
     scope: 'user' | 'project';

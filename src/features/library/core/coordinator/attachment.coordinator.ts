@@ -3,9 +3,10 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { getItemFileUrl, isProjectScope } from '@/features/library/domain/item-url';
-import { resolveLibraryUrl, resolveLibraryRawPath } from '@/features/library/sdk/library.client';
-import { triggerBrowserUrlDownload, openInNewTab } from '@/features/library/core/coordinator/browser-io.helpers';
+import { getItemFileUrl, isProjectScope } from '@/features/library/domain/identifiers';
+import { classifyAttachmentDescriptor } from '@/features/library/domain/reader.domain';
+import { resolveLibraryUrl, resolveLibraryRawPath } from '@/features/library/sdk';
+import { triggerBrowserUrlDownload, openInNewTab } from '@/features/library/core/coordinator/citation-export.coordinator';
 import {
   useAttachments,
   useRenameAttachment,
@@ -15,7 +16,7 @@ import { useReResolveItemMetadataMutation } from '@/features/library/sdk/queries
 import type {
   Item,
   ItemAttachment,
-} from '@/features/library/domain/types/library.types';
+} from '@/features/library/domain/types/core.types';
 
 export interface UseAttachmentCoordinatorParams {
   item: Item;
@@ -142,11 +143,7 @@ export function useAttachmentCoordinator({
           att.type === 'primary_pdf' ||
           (paperFilename && (att.filename === paperFilename || att.name === paperFilename)),
       ) ||
-      allAttachments.find(
-        (att) =>
-          att.mimeType === 'application/pdf' ||
-          att.filename?.toLowerCase().endsWith('.pdf'),
-      ) ||
+      allAttachments.find((att) => classifyAttachmentDescriptor(att).isPdf) ||
       null
     );
   }, [allAttachments, paperFilename]);
@@ -158,12 +155,7 @@ export function useAttachmentCoordinator({
   const activePreviewAttachment = useMemo(() => {
     if (selectedAttachmentId) {
       const found = allAttachments.find((att) => att.id === selectedAttachmentId);
-      if (
-        found &&
-        (found.mimeType === 'application/pdf' ||
-          found.filename?.toLowerCase().endsWith('.pdf') ||
-          found.attachmentType === 'primary_pdf')
-      ) {
+      if (found && classifyAttachmentDescriptor(found).isPdf) {
         return found;
       }
     }
@@ -180,26 +172,7 @@ export function useAttachmentCoordinator({
   }, [activePreviewAttachment, rawScopeId, paperUrl]);
 
   const hasSnapshot = useMemo(() => {
-    return allAttachments.some((att) => {
-      const mime = att.mimeType?.toLowerCase() || '';
-      const name = (att.filename || '').toLowerCase();
-      const url = (att.url || '').toLowerCase();
-      const isPdf =
-        att.attachmentType === 'primary_pdf' ||
-        mime.includes('pdf') ||
-        name.endsWith('.pdf') ||
-        /\.pdf(?:$|[?#])/i.test(url);
-      if (isPdf) return false;
-
-      return (
-        att.attachmentType === 'snapshot' ||
-        att.attachmentType === 'web_snapshot' ||
-        mime === 'text/html' ||
-        mime === 'application/xhtml+xml' ||
-        name.endsWith('.html') ||
-        name.endsWith('.htm')
-      );
-    });
+    return allAttachments.some((att) => classifyAttachmentDescriptor(att).isSnapshot);
   }, [allAttachments]);
 
   const handleFileSelect = useCallback(
@@ -213,11 +186,7 @@ export function useAttachmentCoordinator({
         if (!isMountedRef.current || paper.id !== targetItemId) return;
         const isFirstPdf =
           file.type === 'application/pdf' &&
-          !allAttachments.some(
-            (a) =>
-              a.attachmentType === 'primary_pdf' ||
-              a.mimeType === 'application/pdf',
-          );
+          !allAttachments.some((a) => classifyAttachmentDescriptor(a).isPdf);
         await addAttachment({
           itemId: targetItemId,
           fileId: uploaded.fileId,

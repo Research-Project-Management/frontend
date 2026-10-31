@@ -26,8 +26,8 @@ import {
 import {
   collectionFormSchema,
   type CollectionFormValues,
-} from "@/features/library/domain/types/library.types";
-import type { Collection } from "@/features/library/domain/types/library.types";
+} from "@/features/library/domain/types/core.types";
+import type { Collection } from "@/features/library/domain/types/core.types";
 
 interface CreateCollectionModalProps {
   open: boolean;

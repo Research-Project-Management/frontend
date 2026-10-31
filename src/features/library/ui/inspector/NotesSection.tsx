@@ -19,7 +19,7 @@ import {
 import {
   normalizeNotes,
   type NormalizedNote,
-} from "@/features/library/domain/metadata";
+} from "@/features/library/domain/metadata-mapper";
 import { useNotes } from "@/features/library/sdk/queries/tags-notes.queries";
 import {
   useLibraryCommandStore,
@@ -30,7 +30,7 @@ import {
 import { cn } from "@/shared/lib/utils";
 import { logger } from "@/shared/lib/logger";
 import { toast } from "sonner";
-import type { Item } from "@/features/library/domain/types/library.types";
+import type { Item } from "@/features/library/domain/types/core.types";
 import {
   FormattedNoteBody,
   NoteEditorBox,

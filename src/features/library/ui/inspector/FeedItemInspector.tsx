@@ -22,8 +22,8 @@ import {
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
 import type { ParsedFeedEntry } from '@/features/library/domain/feed-parser.domain';
-import { safeHttpUrl } from '@/features/library/domain/retraction';
-import type { Collection } from '@/features/library/domain/types/library.types';
+import { safeHttpUrl } from '@/features/library/domain/system-views.policy';
+import type { Collection } from '@/features/library/domain/types/core.types';
 import { cn } from '@/shared/lib/utils';
 
 export interface FeedItemInspectorProps {

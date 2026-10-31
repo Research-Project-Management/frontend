@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   ChevronDown,
   ChevronUp,
@@ -26,7 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
 import { TAG_PALETTE_COLORS } from "@/features/library/core/coordinator/facet-filter.coordinator";
-import type { TagWithCount } from "@/features/library/domain/types/tags.types";
+import type { TagWithCount } from "@/features/library/domain/types/core.types";
 
 export interface FilterTagsSectionProps {
   matchingTags: Array<{ tag: TagWithCount; score: number }>;
@@ -70,6 +70,11 @@ export function FilterTagsSection({
   const [newTagName, setNewTagName] = useState("");
   const [renamingTagId, setRenamingTagId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+
+  const activeTagSet = useMemo(
+    () => new Set(activeTags.map((t) => t.toLowerCase())),
+    [activeTags],
+  );
 
   const handleCreate = async () => {
     const trimmed = newTagName.trim();
@@ -317,9 +322,7 @@ export function FilterTagsSection({
 
           <div className="max-h-44 overflow-y-auto space-y-0.5 no-scrollbar">
             {matchingTags.map(({ tag }) => {
-              const isSelected = activeTags.some(
-                (t) => t.toLowerCase() === tag.name.toLowerCase(),
-              );
+              const isSelected = activeTagSet.has(tag.name.toLowerCase());
               const tagCount = tag._count?.itemTags ?? tag.itemCount ?? 0;
               const isAuto =
                 (tag.type || "manual").toLowerCase() === "automatic";

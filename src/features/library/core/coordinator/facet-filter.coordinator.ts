@@ -2,19 +2,19 @@
 
 import { useMemo, useState } from 'react';
 import { useTags } from '@/features/library/sdk/queries/tags-notes.queries';
-import type { TagWithCount } from '@/features/library/domain/types/tags.types';
+import type { TagWithCount } from '@/features/library/domain/types/items.types';
 import { useLibraryCountsQuery, useItemTypes } from '@/features/library/sdk/queries/catalog.queries';
-import type { Item } from '@/features/library/domain/types/library.types';
+import type { Item } from '@/features/library/domain/types/core.types';
 import {
   ALL_ITEM_TYPES_FLAT,
   LIBRARY_ITEM_TYPES,
   mapRegistryItemTypes,
-} from '@/features/library/domain/types/library.types';
+} from '@/features/library/domain/types/core.types';
 import {
   calculateFilterMatchScore,
   formatTypeFallback,
   KNOWN_TYPE_ALIASES,
-} from '@/features/library/domain/filter-matcher.domain';
+} from '@/features/library/domain/sort-items.domain';
 import { useLibraryNavigation } from '@/features/library/core/coordinator/navigation.coordinator';
 
 /** Standard Zotero 7 9-Color Tag Palette */
@@ -394,22 +394,15 @@ export function useLibraryFacetCounts({
       return false;
     });
 
-    const sortPinnedFirst = (a: TagWithCount, b: TagWithCount) => {
-      const aHasShortcut = typeof a.shortcut === 'number' && a.shortcut >= 1;
-      const bHasShortcut = typeof b.shortcut === 'number' && b.shortcut >= 1;
-      if (aHasShortcut && bHasShortcut) {
-        return (a.shortcut || 99) - (b.shortcut || 99);
-      }
-      if (aHasShortcut) return -1;
-      if (bHasShortcut) return 1;
+    const tagRank = (t: TagWithCount): number =>
+      typeof t.shortcut === 'number' && t.shortcut >= 1
+        ? t.shortcut
+        : t.color && t.color !== '#3b82f6'
+          ? 100
+          : 200;
 
-      const aHasColor = Boolean(a.color && a.color !== '#3b82f6');
-      const bHasColor = Boolean(b.color && b.color !== '#3b82f6');
-      if (aHasColor && !bHasColor) return -1;
-      if (!aHasColor && bHasColor) return 1;
-
-      return a.name.localeCompare(b.name);
-    };
+    const sortPinnedFirst = (a: TagWithCount, b: TagWithCount) =>
+      tagRank(a) - tagRank(b) || a.name.localeCompare(b.name);
 
     if (!searchQuery.trim()) {
       return [...list]

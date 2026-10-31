@@ -16,8 +16,8 @@ import {
   UrlCapturePreviewResponseSchema,
   IngestionRunSnapshotResponseSchema,
   itemSchema,
-} from '@/features/library/domain/types/library.types';
-import { preserveMappedItemFlags } from '@/features/library/domain/metadata';
+} from '@/features/library/domain/types/core.types';
+import { preserveMappedItemFlags } from '@/features/library/domain/metadata-mapper';
 import {
   libraryClient,
   resolveLibraryUrl,
@@ -73,7 +73,7 @@ export const IngestionService = {
     const res = await libraryClient.get<{ data?: unknown } | unknown>(
       getIngestionUrl(scopeId, `status/${encodeURIComponent(runId)}/progress`),
     );
-    return (res && typeof res === 'object' && 'data' in res && res.data ? res.data : res) as import('@/features/library/domain/types/batch-upload.types').IngestionProgressResponse;
+    return (res && typeof res === 'object' && 'data' in res && res.data ? res.data : res) as import('@/features/library/domain/types/ingestion.types').IngestionProgressResponse;
   },
 
   captureUrl: async (scopeId: string | undefined, url: string): Promise<UrlCapturePreviewResponse> => {
@@ -236,17 +236,6 @@ async function batchHydrateMissingDuplicateItems(
   const hydratedMap = new Map<string, Item>(seedItems);
   const unresolvedIds = Array.from(missingIds).filter((id) => !hydratedMap.has(id));
   if (unresolvedIds.length === 0) return hydratedMap;
-
-  if (unresolvedIds.length === 1) {
-    const singleId = unresolvedIds[0]!;
-    try {
-      const fetched = await ItemsService.getById(scopeId, singleId);
-      if (fetched) hydratedMap.set(singleId, fetched);
-    } catch {
-      // fallback: keep existing stub if lookup fails
-    }
-    return hydratedMap;
-  }
 
   try {
     const listRes = await ItemsService.getAll(scopeId, {

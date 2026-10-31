@@ -34,9 +34,8 @@ import {
   useIntegrations,
   useRemoteCollections,
 } from '@/features/settings/hooks/use-integrations';
-import { integrationService } from '@/features/settings/services/integration.service';
 import { useSyncExternalBibtexMutation } from '@/features/library/sdk/queries/ingestion.queries';
-import type { Collection } from '@/features/library/domain/types/library.types';
+import type { Collection } from '@/features/library/domain/types/core.types';
 
 export interface ExternalLibrarySyncModalProps {
   open: boolean;
@@ -134,18 +133,6 @@ export default function ExternalLibrarySyncModal({
     });
 
     try {
-      const { bibtex } = await integrationService.getCollectionBibtex(
-        'zotero',
-        selectedRemoteCollection,
-      );
-
-      if (!bibtex || !bibtex.trim()) {
-        toast.info('No references found in the selected collection.', {
-          id: toastId,
-        });
-        return;
-      }
-
       const destinationCollectionId =
         targetCollectionId && targetCollectionId !== '__root__'
           ? targetCollectionId
@@ -155,11 +142,19 @@ export default function ExternalLibrarySyncModal({
         remoteCollections.find((c) => c.id === selectedRemoteCollection)?.name ||
         'Zotero Collection';
 
-      await syncExternalBibtexMutation.mutateAsync({
-        bibtex,
+      const syncRes = await syncExternalBibtexMutation.mutateAsync({
+        provider: 'zotero',
+        remoteCollectionId: selectedRemoteCollection,
         collectionId: destinationCollectionId,
         remoteCollectionName: remoteColName,
       });
+
+      if (syncRes && typeof syncRes === 'object' && 'empty' in syncRes && syncRes.empty) {
+        toast.info('No references found in the selected collection.', {
+          id: toastId,
+        });
+        return;
+      }
 
       toast.success(
         `Successfully synced "${remoteColName}" into your Library!`,

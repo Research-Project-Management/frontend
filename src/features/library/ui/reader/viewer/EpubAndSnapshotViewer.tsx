@@ -19,8 +19,8 @@ import {
 import { Button } from '@/shared/components/ui/button';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { cn } from '@/shared/lib/utils';
-import { fetchPdfBlob } from '@/features/library/sdk/library.client';
-import type { ReaderNavigationTarget } from '@/features/library/domain/types/reader.types';
+import { fetchPdfBlob } from '@/features/library/sdk';
+import type { ReaderNavigationTarget } from '@/features/library/domain/types/reader.schema';
 
 export interface EpubChapter {
   id: string;

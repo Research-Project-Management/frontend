@@ -36,17 +36,17 @@ import {
 import {
   foldDiacritics,
   searchPdfPages,
-} from '@/features/library/domain/reader-persistence.helpers';
+} from '@/features/library/domain/reader-search-outline';
 import {
   extractAnnotationFacets,
   filterAndSortAnnotations,
-} from '@/features/library/ui/reader/panel/AnnotationEditForm';
+} from '@/features/library/ui/reader/panel/AnnotationsPanelParts';
 import {
   extractExplicitUserMergeOverrides,
   resolveDuplicateMergeFieldOverrides,
 } from '@/features/library/domain/diff';
-import type { Item } from '@/features/library/domain/types/library.types';
-import type { ReaderAnnotation } from '@/features/library/domain/types/reader.types';
+import type { Item } from '@/features/library/domain/types/core.types';
+import type { ReaderAnnotation } from '@/features/library/domain/types/reader.schema';
 
 describe('DIY Frontend Shadow-Backend Elimination & Cross-Stack Parity (SH3)', () => {
   describe('SH3-01: Author Initial Preservation & Ambiguous Unaccented Surname Guard', () => {

@@ -2,7 +2,7 @@
 
 import { useMemo, useCallback } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import type { LibraryOrderBy } from '@/features/library/domain/types/display.types';
+import type { LibraryOrderBy } from '@/features/library/domain/types/saved-searches.types';
 
 export interface LibraryNavigationFilters {
   search?: string;

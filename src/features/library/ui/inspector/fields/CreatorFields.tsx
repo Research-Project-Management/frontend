@@ -12,7 +12,7 @@ import {
   areCreatorsEqual,
   toItemCreators,
 } from "@/features/library/domain/creators";
-import type { Item } from "@/features/library/domain/types/library.types";
+import type { Item } from "@/features/library/domain/types/core.types";
 import {
   type SchemaItemTypeDefinition,
   ALL_CREATOR_TYPES,

@@ -28,7 +28,7 @@ import {
   ContextMenuShortcut,
 } from '@/shared/components/ui/context-menu';
 import { useItemActionHandlers } from '@/features/library/core/coordinator/item-action.coordinator';
-import type { Item, Collection, CslStyle } from '@/features/library/domain/types/library.types';
+import type { Item, Collection, CslStyle } from '@/features/library/domain/types/core.types';
 
 export interface ItemContextMenuProps {
   children: React.ReactNode;

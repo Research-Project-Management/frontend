@@ -8,7 +8,7 @@ import {
 } from '@/features/library/domain/identifiers';
 import {
   parseItemExtraField,
-} from '@/features/library/domain/metadata';
+} from '@/features/library/domain/metadata-mapper';
 import {
   generateCitationKey,
   getCleanStyleLabel,
@@ -23,8 +23,8 @@ import {
   formatInTextCitation,
   formatAnnotationCitation,
 } from '@/features/library/domain/reader.domain';
-import type { Item } from '@/features/library/domain/types/library.types';
-import type { ReaderAnnotation, ReaderDocument } from '@/features/library/domain/types/reader.types';
+import type { Item } from '@/features/library/domain/types/core.types';
+import type { ReaderAnnotation, ReaderDocument } from '@/features/library/domain/types/reader.schema';
 
 describe('Wave 2: Zotero 7 Official Documentation & Power-User User Stories', () => {
   // ===========================================================================

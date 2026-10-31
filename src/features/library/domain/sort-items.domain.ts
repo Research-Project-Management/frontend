@@ -1,25 +1,110 @@
 /**
- * Client-Side Sort Utility for Library Items
- *
- * Pure function extracted from ItemTable's `useMemo` sort block.
- * Applies only when server-side sorting (onSortChange) is not active.
- *
- * Strategy:
- * - Processing items (_isProcessing) are always pinned to the top.
- * - Regular items are sorted by the given column and direction.
- * - Handles field aliases: authors → first author, dateAdded → createdAt, dateModified → updatedAt.
- * - Nulls/undefined sort to the bottom regardless of direction.
+ * Client-Side Sort & Diacritic-Insensitive Filter Matcher for Library Items
  */
 
-import type { Item } from '@/features/library/domain/types/library.types';
+import type { Item } from '@/features/library/domain/types/core.types';
+import { isValidValue, stripLatexMarkup } from './metadata-sanitizers';
 import {
-  isValidValue,
-  stripLatexMarkup,
   getPublicationVenue,
   getItemDisplayTitle,
   getItemDisplayDate,
-} from '@/features/library/domain/metadata';
-import { parseCreatorName } from '@/features/library/domain/creators';
+} from './metadata-extra';
+import { parseCreatorName } from './creators';
+import { foldDiacritics } from './academic-text';
+
+export const KNOWN_TYPE_ALIASES: Record<string, string[]> = {
+  journalarticle: ['article', 'paper', 'journal', 'bai bao'],
+  book: ['sach', 'volume', 'monograph'],
+  conferencepaper: ['proceeding', 'hoi nghi', 'hoi thao'],
+  thesis: ['luan an', 'luan van', 'dissertation'],
+  preprint: ['ban thao', 'arxiv', 'prprnt'],
+  report: ['bao cao'],
+  webpage: ['trang web', 'website'],
+};
+
+const NON_WORD_WHITESPACE_RE = /[^\p{L}\p{N}\s]/gu;
+const MULTI_WHITESPACE_RE = /\s+/g;
+const CAMEL_CASE_BOUNDARY_RE = /([A-Z])/g;
+const HYPHEN_UNDERSCORE_RE = /[-_]/g;
+const FIRST_CHAR_RE = /^./;
+
+const NORMALIZE_CACHE_LIMIT = 512;
+const normalizeSearchCache = new Map<string, string>();
+
+export function normalizeSearchStr(str: string): string {
+  if (!str) return '';
+  const cached = normalizeSearchCache.get(str);
+  if (cached !== undefined) {
+    normalizeSearchCache.delete(str);
+    normalizeSearchCache.set(str, cached);
+    return cached;
+  }
+
+  const normalized = foldDiacritics(str)
+    .replace(NON_WORD_WHITESPACE_RE, ' ')
+    .replace(MULTI_WHITESPACE_RE, ' ')
+    .trim();
+
+  if (normalizeSearchCache.size >= NORMALIZE_CACHE_LIMIT) {
+    const oldest = normalizeSearchCache.keys().next().value;
+    if (oldest !== undefined) {
+      normalizeSearchCache.delete(oldest);
+    }
+  }
+  normalizeSearchCache.set(str, normalized);
+  return normalized;
+}
+
+export function formatTypeFallback(type: string): string {
+  if (!type) return '';
+  return type
+    .replace(CAMEL_CASE_BOUNDARY_RE, ' $1')
+    .replace(HYPHEN_UNDERSCORE_RE, ' ')
+    .replace(FIRST_CHAR_RE, (s) => s.toUpperCase())
+    .trim();
+}
+
+export function calculateFilterMatchScore(
+  text: string,
+  query: string,
+  aliases: string[] = [],
+): { matches: boolean; score: number } {
+  if (!query) return { matches: true, score: 100 };
+  const normQuery = normalizeSearchStr(query);
+  if (!normQuery) return { matches: false, score: 0 };
+
+  const normText = normalizeSearchStr(text);
+  if (!normText) return { matches: false, score: 0 };
+
+  if (normText === normQuery) return { matches: true, score: 100 };
+  if (normText.startsWith(normQuery)) return { matches: true, score: 90 };
+  if (normText.includes(normQuery)) return { matches: true, score: 85 };
+
+  for (let i = 0; i < aliases.length; i++) {
+    const normAlias = normalizeSearchStr(aliases[i]);
+    if (normAlias && (normText.includes(normAlias) || normAlias.includes(normQuery))) {
+      return { matches: true, score: 85 };
+    }
+  }
+
+  if (normText.length >= normQuery.length) {
+    let tIdx = 0;
+    let qIdx = 0;
+    while (tIdx < normText.length && qIdx < normQuery.length) {
+      if (normText.charCodeAt(tIdx) === normQuery.charCodeAt(qIdx)) {
+        qIdx++;
+      }
+      tIdx++;
+    }
+    if (qIdx === normQuery.length) {
+      return { matches: true, score: 60 };
+    }
+  }
+
+  return { matches: false, score: 0 };
+}
+
+// ── Client-Side Sort Engine ─────────────────────────────────────────────────
 
 const FOUR_DIGIT_YEAR_RE = /\b(1[4-9]\d{2}|20\d{2}|2100)\b/;
 
@@ -114,7 +199,6 @@ function normalizeSortString(raw: string): string {
     .trim();
 }
 
-// Fields that map to different internal property names
 const SORT_FIELD_ALIASES: Partial<Record<string, (item: Item) => unknown>> = {
   authors: (item) => extractSortableAuthor(item),
   title: (item) => {
@@ -202,12 +286,6 @@ function prepareSortKey(item: Item, column: string, isDateColumn: boolean): Prep
 /**
  * Sort library items client-side using a Schwartzian transform (decorate-sort-undecorate)
  * so LaTeX stripping, creator parsing, and string normalization happen O(N) times instead of O(N log N).
- *
- * @param items        - The full item list from the server.
- * @param column       - The sort column key (matches Item field or alias).
- * @param direction    - 'asc' | 'desc'
- * @param serverSorted - When true (i.e. onSortChange is present), skip client sort
- *                       and only pin processing items to the top.
  */
 export function sortLibraryItems(
   items: Item[],
@@ -217,7 +295,6 @@ export function sortLibraryItems(
 ): Item[] {
   if (items.length <= 1) return items;
 
-  // Fast-path for serverSorted when no items are currently processing: preserve array reference!
   if (serverSorted || !column) {
     let hasProcessing = false;
     for (let i = 0; i < items.length; i++) {
@@ -247,7 +324,6 @@ export function sortLibraryItems(
   const isDateColumn = DATE_COLUMNS.has(column);
   const decorated = regular.map((item) => prepareSortKey(item, column, isDateColumn));
   decorated.sort((a, b) => {
-    // Nullish or dirty placeholder values sort last regardless of direction
     if (a.isEmpty && b.isEmpty) return 0;
     if (a.isEmpty) return 1;
     if (b.isEmpty) return -1;

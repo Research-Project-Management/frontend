@@ -4,13 +4,14 @@
  * and nested folder hierarchies can be queried and traversed uniformly.
  */
 
-import type { Collection } from './types/library.types';
+import type { Collection } from './types/core.types';
 
 export interface CollectionHierarchyNode extends Collection {
   children: CollectionHierarchyNode[];
 }
 
 export type CollectionNode = CollectionHierarchyNode;
+export type TreeNode = CollectionHierarchyNode;
 
 /**
  * GoF Composite Pattern Contract for Collection Hierarchies.

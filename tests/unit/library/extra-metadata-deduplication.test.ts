@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { formatAndSanitizeExtraMetadata } from '@/features/library/domain/metadata';
+import { formatAndSanitizeExtraMetadata } from '@/features/library/domain/metadata-mapper';
 import {
   isDedicatedFieldForType,
   DEDICATED_FIELDS_BY_TYPE_MAP,
 } from '@/features/library/domain/metadata-extra.constants';
-import type { Item } from '@/features/library/domain/types/library.types';
+import type { Item } from '@/features/library/domain/types/core.types';
 
 describe('Extra metadata deduplication and dedicated field recognition', () => {
   it('correctly identifies license and journalAbbr as dedicated fields on journalArticle via aliases', () => {

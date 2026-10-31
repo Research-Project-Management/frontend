@@ -1,14 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
-import { ItemRowActions } from '@/features/library/ui/content/ItemRowActions';
-import { ItemTableHeader } from '@/features/library/ui/content/ItemTableHeader';
+import { ItemRowActions, ItemTableHeader } from '@/features/library/ui/content/ItemRowActions';
 import { ItemTableRow } from '@/features/library/ui/content/ItemTableRow';
 import { BatchBar } from '@/features/library/ui/content/BatchBar';
 import { DuplicatesContent } from '@/features/library/ui/content/DuplicatesContent';
 import { DEFAULT_COLLECTION_COLOR } from '@/features/library/core/coordinator/collection.coordinator';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
-import type { Item, Collection, DuplicateGroup } from '@/features/library/domain/types/library.types';
+import type { Item, Collection, DuplicateGroup } from '@/features/library/domain/types/core.types';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -17,11 +16,16 @@ vi.mock('next/navigation', () => ({
   useParams: () => ({}),
 }));
 
-vi.mock('@/features/library/sdk/queries/citation.queries', () => ({
+vi.mock('@/features/library/sdk/queries/extraction.queries', () => ({
   useCitationStyles: () => ({
     data: [],
     styles: [],
     isLoading: false,
+  }),
+  useBatchRenameAttachmentsMutation: () => ({
+    mutate: vi.fn(),
+    mutateAsync: vi.fn().mockResolvedValue({}),
+    isPending: false,
   }),
 }));
 

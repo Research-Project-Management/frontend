@@ -26,16 +26,16 @@ import {
 } from '@/shared/components/ui/select';
 
 import { useUpdateFeedSubscriptionMutation } from '@/features/library/sdk/queries/ingestion.queries';
-import type { SavedFeedSubscription } from '@/features/library/domain/types/feeds.types';
+import type { SavedFeedSubscription } from '@/features/library/domain/types/ingestion.types';
 import {
   editFeedSchema,
   type EditFeedFormValues,
-} from '@/features/library/domain/types/forms.types';
+} from '@/features/library/domain/types/core.types';
 import {
   READ_RETENTION_OPTIONS,
   UNREAD_RETENTION_OPTIONS,
   type FeedRetentionDays,
-} from '@/features/library/domain/types/feeds.types';
+} from '@/features/library/domain/types/ingestion.types';
 
 export interface EditFeedModalProps {
   open: boolean;

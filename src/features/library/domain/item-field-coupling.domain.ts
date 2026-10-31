@@ -12,13 +12,13 @@
  * `year`, `numberOfPages`, `authority`, `issue`, `number`, `volume`).
  */
 
-import type { Item } from "@/features/library/domain/types/library.types";
+import type { Item } from "@/features/library/domain/types/core.types";
 import {
   getTitleFieldForType,
   normalizeCanonicalItemType,
 } from "@/features/library/domain/types/item-types.types";
-import { isValidValue } from "./metadata";
-import { parseValidYear } from "./item-field-scorers.strategy";
+import { isValidValue } from "./metadata-mapper";
+import { parseValidYear } from "./metadata-extra.constants";
 
 export const TITLE_COUPLED_BY_TYPE: Readonly<Record<string, string>> = {
   case: "caseName",
@@ -57,6 +57,196 @@ export const DATE_COUPLED_FIELDS: ReadonlySet<string> = new Set<string>([
   "issueDate",
   "filingDate",
 ]);
+
+export interface FieldCouplingContext {
+  rec: Record<string, unknown>;
+  currentEf: Record<string, unknown>;
+  nextEf: Record<string, unknown>;
+  patch: Partial<Item> & Record<string, unknown>;
+  itemType: string;
+  fieldKey: string;
+  cleanVal: string;
+  isClearing: boolean;
+  setCoupled: (targetKey: string) => void;
+  setCoupledIfSynced: (targetKey: string) => void;
+}
+
+export interface FieldCouplingRule {
+  id: string;
+  matches(ctx: FieldCouplingContext): boolean;
+  apply(ctx: FieldCouplingContext): void;
+}
+
+const TITLE_COUPLING_KEYS: ReadonlySet<string> = new Set([
+  "title",
+  "caseName",
+  "nameOfAct",
+  "subject",
+]);
+
+const PUB_TITLE_COUPLING_KEYS: ReadonlySet<string> = new Set([
+  "publicationTitle",
+  "reporter",
+  "code",
+  "blogTitle",
+  "forumTitle",
+  "dictionaryTitle",
+  "encyclopediaTitle",
+  "programTitle",
+]);
+
+const PLACE_COUPLING_KEYS: ReadonlySet<string> = new Set([
+  "place",
+  "eventPlace",
+  "country",
+]);
+
+export const FIELD_COUPLING_RULES: readonly FieldCouplingRule[] = [
+  {
+    id: "title-coupling",
+    matches: ({ fieldKey }) => TITLE_COUPLING_KEYS.has(fieldKey),
+    apply: ({ itemType, fieldKey, setCoupled, setCoupledIfSynced }) => {
+      const typeTitleField =
+        TITLE_COUPLED_BY_TYPE[itemType] || getTitleFieldForType(itemType);
+      setCoupled("title");
+      if (fieldKey !== "title") {
+        setCoupled(fieldKey);
+      }
+      if (typeTitleField && typeTitleField !== "title") {
+        setCoupledIfSynced(typeTitleField);
+      }
+    },
+  },
+  {
+    id: "publication-title-coupling",
+    matches: ({ itemType, fieldKey }) => {
+      const typePubField = PUBLICATION_TITLE_COUPLED_BY_TYPE[itemType];
+      const isPresentationVenueField =
+        itemType === "presentation" &&
+        (fieldKey === "meetingName" || fieldKey === "sessionTitle");
+      return (
+        PUB_TITLE_COUPLING_KEYS.has(fieldKey) ||
+        isPresentationVenueField ||
+        (typePubField !== undefined && fieldKey === typePubField)
+      );
+    },
+    apply: ({ itemType, fieldKey, setCoupled, setCoupledIfSynced }) => {
+      const typePubField = PUBLICATION_TITLE_COUPLED_BY_TYPE[itemType];
+      setCoupled("publicationTitle");
+      if (fieldKey !== "publicationTitle") {
+        setCoupled(fieldKey);
+      }
+      if (typePubField && typePubField !== fieldKey) {
+        setCoupledIfSynced(typePubField);
+      }
+      if (itemType === "presentation") {
+        if (fieldKey !== "meetingName") setCoupledIfSynced("meetingName");
+        if (fieldKey !== "sessionTitle") setCoupledIfSynced("sessionTitle");
+      }
+    },
+  },
+  {
+    id: "place-coupling",
+    matches: ({ fieldKey }) => PLACE_COUPLING_KEYS.has(fieldKey),
+    apply: ({ itemType, fieldKey, setCoupled, setCoupledIfSynced }) => {
+      const typePlaceField = PLACE_COUPLED_BY_TYPE[itemType];
+      if (fieldKey === "place") {
+        setCoupled("place");
+        if (typePlaceField) {
+          setCoupledIfSynced(typePlaceField);
+        }
+      } else {
+        setCoupled(fieldKey);
+        setCoupledIfSynced("place");
+        if (typePlaceField && typePlaceField !== fieldKey) {
+          setCoupledIfSynced(typePlaceField);
+        }
+      }
+    },
+  },
+  {
+    id: "date-coupling",
+    matches: ({ fieldKey }) => DATE_COUPLED_FIELDS.has(fieldKey),
+    apply: ({
+      rec,
+      currentEf,
+      nextEf,
+      patch,
+      itemType,
+      fieldKey,
+      cleanVal,
+      isClearing,
+      setCoupled,
+    }) => {
+      const isFilingDateOnly =
+        fieldKey === "filingDate" &&
+        (isValidValue(rec.issueDate) || isValidValue(currentEf.issueDate));
+
+      if (!isFilingDateOnly) {
+        setCoupled("date");
+        setCoupled("publicationDate");
+      }
+      if (fieldKey !== "date" && fieldKey !== "publicationDate") {
+        setCoupled(fieldKey);
+      }
+      if (itemType === "case") setCoupled("dateDecided");
+      if (itemType === "statute") setCoupled("dateEnacted");
+      if (
+        itemType === "patent" &&
+        (fieldKey === "date" ||
+          fieldKey === "publicationDate" ||
+          fieldKey === "issueDate")
+      ) {
+        setCoupled("issueDate");
+      }
+
+      if (isClearing) {
+        if (!isFilingDateOnly) {
+          patch.year = null;
+          nextEf.year = null;
+        }
+      } else {
+        const parsedYear = parseValidYear(cleanVal);
+        if (
+          parsedYear !== undefined &&
+          (!isFilingDateOnly || !isValidValue(rec.year))
+        ) {
+          patch.year = parsedYear;
+          nextEf.year = parsedYear;
+        }
+      }
+    },
+  },
+  {
+    id: "num-pages-coupling",
+    matches: ({ fieldKey }) =>
+      fieldKey === "numPages" || fieldKey === "numberOfPages",
+    apply: ({ setCoupled }) => {
+      setCoupled("numPages");
+      setCoupled("numberOfPages");
+    },
+  },
+  {
+    id: "authority-coupling",
+    matches: ({ itemType, fieldKey }) =>
+      fieldKey === "authority" ||
+      fieldKey === "issuingAuthority" ||
+      (fieldKey === "court" && itemType === "case"),
+    apply: ({ itemType, fieldKey, setCoupled }) => {
+      if (fieldKey === "authority" || fieldKey === "issuingAuthority") {
+        setCoupled("authority");
+        setCoupled("issuingAuthority");
+        if (itemType === "case") {
+          setCoupled("court");
+        }
+      } else {
+        setCoupled("court");
+        setCoupled("authority");
+        setCoupled("issuingAuthority");
+      }
+    },
+  },
+];
 
 /**
  * Applies canonical coupled-field synchronization rules onto an Inspector patch object
@@ -108,134 +298,23 @@ export function applyCoupledFieldSynchronization(
     }
   };
 
-  // 1. Title <-> caseName (case), nameOfAct (statute), subject (email)
-  const typeTitleField =
-    TITLE_COUPLED_BY_TYPE[itemType] || getTitleFieldForType(itemType);
-  if (
-    fieldKey === "title" ||
-    fieldKey === "caseName" ||
-    fieldKey === "nameOfAct" ||
-    fieldKey === "subject"
-  ) {
-    setCoupled("title");
-    if (fieldKey !== "title") {
-      setCoupled(fieldKey);
-    }
-    if (typeTitleField && typeTitleField !== "title") {
-      setCoupledIfSynced(typeTitleField);
-    }
-  }
+  const ctx: FieldCouplingContext = {
+    rec,
+    currentEf,
+    nextEf,
+    patch,
+    itemType,
+    fieldKey,
+    cleanVal,
+    isClearing,
+    setCoupled,
+    setCoupledIfSynced,
+  };
 
-  // 2. publicationTitle <-> reporter (case), code (statute), blogTitle (blogPost),
-  //    forumTitle (forumPost), dictionaryTitle (dictionaryEntry),
-  //    encyclopediaTitle (encyclopediaArticle), programTitle (tvBroadcast, radioBroadcast),
-  //    proceedingsTitle (conferencePaper), bookTitle (bookSection), websiteTitle (webpage),
-  //    sessionTitle / meetingName (presentation)
-  const typePubField = PUBLICATION_TITLE_COUPLED_BY_TYPE[itemType];
-  const isPresentationVenueField =
-    itemType === "presentation" &&
-    (fieldKey === "meetingName" || fieldKey === "sessionTitle");
-  const isPubCoupledField =
-    fieldKey === "publicationTitle" ||
-    fieldKey === "reporter" ||
-    fieldKey === "code" ||
-    fieldKey === "blogTitle" ||
-    fieldKey === "forumTitle" ||
-    fieldKey === "dictionaryTitle" ||
-    fieldKey === "encyclopediaTitle" ||
-    fieldKey === "programTitle" ||
-    isPresentationVenueField ||
-    (typePubField !== undefined && fieldKey === typePubField);
-
-  if (isPubCoupledField) {
-    setCoupled("publicationTitle");
-    if (fieldKey !== "publicationTitle") {
-      setCoupled(fieldKey);
+  for (const rule of FIELD_COUPLING_RULES) {
+    if (rule.matches(ctx)) {
+      rule.apply(ctx);
     }
-    if (typePubField && typePubField !== fieldKey) {
-      setCoupledIfSynced(typePubField);
-    }
-    if (itemType === "presentation") {
-      if (fieldKey !== "meetingName") setCoupledIfSynced("meetingName");
-      if (fieldKey !== "sessionTitle") setCoupledIfSynced("sessionTitle");
-    }
-  }
-
-  // 3. place <-> eventPlace (conferencePaper, presentation, artwork, letter), country (patent)
-  const typePlaceField = PLACE_COUPLED_BY_TYPE[itemType];
-  if (
-    fieldKey === "place" ||
-    fieldKey === "eventPlace" ||
-    fieldKey === "country"
-  ) {
-    if (fieldKey === "place") {
-      setCoupled("place");
-      if (typePlaceField) {
-        setCoupledIfSynced(typePlaceField);
-      }
-    } else {
-      setCoupled(fieldKey);
-      setCoupledIfSynced("place");
-      if (typePlaceField && typePlaceField !== fieldKey) {
-        setCoupledIfSynced(typePlaceField);
-      }
-    }
-  }
-
-  // 4. date & publicationDate <-> dateDecided (case), dateEnacted (statute),
-  //    issueDate (patent), filingDate (patent)
-  if (DATE_COUPLED_FIELDS.has(fieldKey)) {
-    const isFilingDateOnly =
-      fieldKey === "filingDate" &&
-      (isValidValue(rec.issueDate) || isValidValue(currentEf.issueDate));
-
-    if (!isFilingDateOnly) {
-      setCoupled("date");
-      setCoupled("publicationDate");
-    }
-    if (fieldKey !== "date" && fieldKey !== "publicationDate") {
-      setCoupled(fieldKey);
-    }
-    if (itemType === "case") setCoupled("dateDecided");
-    if (itemType === "statute") setCoupled("dateEnacted");
-    if (
-      itemType === "patent" &&
-      (fieldKey === "date" || fieldKey === "publicationDate" || fieldKey === "issueDate")
-    ) {
-      setCoupled("issueDate");
-    }
-
-    if (isClearing) {
-      if (!isFilingDateOnly) {
-        patch.year = null;
-        nextEf.year = null;
-      }
-    } else {
-      const parsedYear = parseValidYear(cleanVal);
-      if (parsedYear !== undefined && (!isFilingDateOnly || !isValidValue(rec.year))) {
-        patch.year = parsedYear;
-        nextEf.year = parsedYear;
-      }
-    }
-  }
-
-  // 5. numPages <-> numberOfPages
-  if (fieldKey === "numPages" || fieldKey === "numberOfPages") {
-    setCoupled("numPages");
-    setCoupled("numberOfPages");
-  }
-
-  // 6. authority <-> issuingAuthority (and court for case)
-  if (fieldKey === "authority" || fieldKey === "issuingAuthority") {
-    setCoupled("authority");
-    setCoupled("issuingAuthority");
-    if (itemType === "case") {
-      setCoupled("court");
-    }
-  } else if (fieldKey === "court" && itemType === "case") {
-    setCoupled("court");
-    setCoupled("authority");
-    setCoupled("issuingAuthority");
   }
 
   patch.extraFields = nextEf;

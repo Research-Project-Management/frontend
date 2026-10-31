@@ -10,7 +10,7 @@
  * - Formatting citation style labels for toolbars, dropdowns, and badges
  */
 
-import type { Item, CslStyle } from '@/features/library/domain/types/library.types';
+import type { Item, CslStyle } from '@/features/library/domain/types/core.types';
 import { parseCreatorName } from './creators';
 import {
   stripLatexMarkup,
@@ -18,7 +18,7 @@ import {
   parseItemExtraField,
   getItemDisplayTitle,
   getItemDisplayDate,
-} from './metadata';
+} from './metadata-mapper';
 import { foldDiacritics } from './academic-text';
 
 export interface CitationKeyInput {
@@ -185,32 +185,6 @@ export function generateCitationKey(
   return `${baseKey}_${counter}`;
 }
 
-/**
- * Normalizes full academic journal or style names into clean, compact
- * toolbar button labels (<= 14 characters) that will not break container layout.
- */
-export function getCleanStyleLabel(id: string, fullTitle?: string): string {
-  if (fullTitle) {
-    const clean = fullTitle.replace(/\s*\([^)]*\)/g, '').trim();
-    if (clean.length <= 14) return clean;
-    const firstWord = clean.split(/\s+/)[0];
-    if (firstWord && firstWord.length <= 14) return firstWord;
-  }
-  const s = id.toLowerCase().trim();
-  if (s.startsWith('apa')) return 'APA';
-  if (s.startsWith('mla')) return 'MLA';
-  if (s === 'ieee') return 'IEEE';
-  if (s === 'bibtex') return 'BibTeX';
-  if (s === 'ris') return 'RIS';
-  if (s.startsWith('chicago')) return 'Chicago';
-  if (s.startsWith('harvard')) return 'Harvard';
-  if (s.startsWith('vancouver')) return 'Vancouver';
-  if (s.startsWith('nature')) return 'Nature';
-  if (s.startsWith('tcvn')) return 'TCVN';
-  const cleanId = id.toUpperCase();
-  return cleanId.length <= 10 ? cleanId : cleanId.slice(0, 10);
-}
-
 export const CANONICAL_CSL_STYLE_IDS = [
   'apa-7th',
   'ieee',
@@ -261,6 +235,25 @@ const CITATION_STYLE_ALIAS_MAP: Readonly<Record<string, string>> = {
   ris: 'ris',
 };
 
+const STYLE_SHORT_LABEL_MAP: Readonly<Record<string, string>> = Object.fromEntries(
+  CORE_CITATION_STYLES.map((s) => [s.id, s.shortLabel]),
+);
+
+const STYLE_FULL_LABEL_MAP: Readonly<Record<string, string>> = {
+  ...Object.fromEntries(CORE_CITATION_STYLES.map((s) => [s.id, s.label])),
+  'tcvn-numeric': 'TCVN (Đánh số)',
+};
+
+const STYLE_PREFIX_SHORT_LABELS: ReadonlyArray<readonly [string, string]> = [
+  ['apa', 'APA'],
+  ['mla', 'MLA'],
+  ['chicago', 'Chicago'],
+  ['harvard', 'Harvard'],
+  ['vancouver', 'Vancouver'],
+  ['nature', 'Nature'],
+  ['tcvn', 'TCVN'],
+];
+
 /**
  * Normalizes legacy or shorthand citation style identifiers (e.g. `'apa'`, `'mla'`, `'chicago'`, `'harvard1'`)
  * into their canonical style ID (`'apa-7th'`, `'mla-9th'`, `'chicago-author-date'`, `'harvard'`, etc.).
@@ -273,6 +266,29 @@ export function normalizeCitationStyleId(styleId?: string | null): CslStyle {
 }
 
 /**
+ * Normalizes full academic journal or style names into clean, compact
+ * toolbar button labels (<= 14 characters) that will not break container layout.
+ */
+export function getCleanStyleLabel(id: string, fullTitle?: string): string {
+  if (fullTitle) {
+    const clean = fullTitle.replace(/\s*\([^)]*\)/g, '').trim();
+    if (clean.length <= 14) return clean;
+    const firstWord = clean.split(/\s+/)[0];
+    if (firstWord && firstWord.length <= 14) return firstWord;
+  }
+  const canonical = normalizeCitationStyleId(id).toLowerCase();
+  const mappedShort = STYLE_SHORT_LABEL_MAP[canonical];
+  if (mappedShort) return mappedShort;
+
+  const s = id.toLowerCase().trim();
+  for (const [prefix, label] of STYLE_PREFIX_SHORT_LABELS) {
+    if (s.startsWith(prefix)) return label;
+  }
+  const cleanId = id.toUpperCase();
+  return cleanId.length <= 10 ? cleanId : cleanId.slice(0, 10);
+}
+
+/**
  * Formats a StyleSummary or style object into a standardized, human-friendly
  * citation style label for dropdown menus and pickers.
  */
@@ -282,17 +298,10 @@ export function formatCitationStyleLabel(style: {
   shortTitle?: string;
 } | string): string {
   const rawId = typeof style === 'string' ? style : style.id;
-  const id = (rawId || '').toLowerCase().trim();
-  if (id === 'apa-7th' || id === 'apa') return 'APA (7th Edition)';
-  if (id === 'mla-9th' || id === 'mla') return 'MLA (9th Edition)';
-  if (id === 'ieee') return 'IEEE Style';
-  if (id === 'chicago' || id === 'chicago-author-date') return 'Chicago (Author-Date)';
-  if (id === 'harvard' || id === 'harvard1') return 'Harvard';
-  if (id === 'nature') return 'Nature';
-  if (id === 'vancouver') return 'Vancouver';
-  if (id === 'tcvn' || id === 'tcvn-author-date') return 'TCVN (Tiêu chuẩn Việt Nam)';
-  if (id === 'tcvn-numeric') return 'TCVN (Đánh số)';
-
+  const canonical = normalizeCitationStyleId(rawId).toLowerCase();
+  if (canonical in STYLE_FULL_LABEL_MAP && canonical !== 'bibtex' && canonical !== 'ris') {
+    return STYLE_FULL_LABEL_MAP[canonical]!;
+  }
   if (typeof style === 'object' && style !== null) {
     return style.shortTitle || style.name || style.id;
   }

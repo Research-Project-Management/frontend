@@ -35,9 +35,9 @@ import type {
   CollectionFormValues,
   Item,
   CreateSavedSearchInput,
-} from '@/features/library/domain/types/library.types';
+} from '@/features/library/domain/types/core.types';
 import type { SavedSearch } from '@/features/library/domain/types/saved-searches.types';
-import type { SavedFeedSubscription } from '@/features/library/domain/types/feeds.types';
+import type { SavedFeedSubscription } from '@/features/library/domain/types/ingestion.types';
 
 const CreateCollectionModal = dynamic(() => import('./CreateCollectionModal'), { ssr: false });
 const CreateSavedSearchModal = dynamic(() => import('./CreateSavedSearchModal'), { ssr: false });
@@ -111,11 +111,11 @@ export function CollectionModalsHost({
   const isExternalSyncOpen = activeModal === 'EXPORT_LIBRARY';
   const isFeedsManagerOpen = activeModal === 'FEEDS_MANAGER';
 
-  const collectionService = useCollections({
+  const collectionsController = useCollections({
     scopeId: effectiveScope,
     enabled: isCreateCollectionOpen || isExternalSyncOpen || isFeedsManagerOpen,
   });
-  const collections = collectionService.collections;
+  const collections = collectionsController.collections;
 
   const createCollectionMutation = useCreateCollectionMutation(effectiveScope);
   const updateItemMutation = useUpdateLibraryItemMutation(effectiveScope);
@@ -134,7 +134,7 @@ export function CollectionModalsHost({
     }
 
     if (activeModal === 'RENAME_COLLECTION' && payload?.collectionId) {
-      await collectionService.updateCollection({
+      await collectionsController.updateCollection({
         collectionId: payload.collectionId,
         name: data.name,
         description: data.description,
@@ -187,7 +187,7 @@ export function CollectionModalsHost({
       return;
     }
     if (payload?.collectionId) {
-      await collectionService.deleteCollection({
+      await collectionsController.deleteCollection({
         collectionId: payload.collectionId,
         scopeId: effectiveScope,
       });
@@ -213,7 +213,7 @@ export function CollectionModalsHost({
         onSubmit={handleCreateOrRenameCollection}
         isPending={
           createCollectionMutation.isPending ||
-          collectionService.isUpdating ||
+          collectionsController.isUpdating ||
           isCustomSubmitting
         }
         collections={resolvedCollectionList}
@@ -259,7 +259,7 @@ export function CollectionModalsHost({
         }
         confirmLabel={payload?.confirmLabel || 'Delete Collection'}
         onConfirm={handleConfirmDeleteCollection}
-        isDeleting={collectionService.isDeleting || isCustomSubmitting}
+        isDeleting={collectionsController.isDeleting || isCustomSubmitting}
       />
     );
   }

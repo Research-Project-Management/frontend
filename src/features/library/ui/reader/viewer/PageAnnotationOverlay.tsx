@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { StickyNote, Trash2, X, Loader2 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import type { ReaderAnnotation, AnnotationRect } from '@/features/library/domain/types/reader.types';
+import type { ReaderAnnotation, AnnotationRect } from '@/features/library/domain/types/reader.schema';
 import { ANNOTATION_PALETTE_COLORS } from '@/features/library/ui/reader/ReaderToolbar';
 
 export interface ActiveHighlightTooltipState {

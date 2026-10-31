@@ -3,7 +3,7 @@
  * First-Class Column Mapping, and Atomic Inspector Patch Construction.
  */
 
-import type { Item } from "@/features/library/domain/types/library.types";
+import type { Item } from "@/features/library/domain/types/core.types";
 import { ALL_SCHEMA_FIELD_KEYS } from "@/features/library/domain/types/item-fields.constants";
 import {
   normalizeCanonicalItemType,
@@ -16,15 +16,14 @@ import {
   cleanValue,
   parseItemExtraField,
   stripOrUpdateExtraKeyLine,
-} from "./metadata";
+} from "./metadata-mapper";
 import {
   FIRST_CLASS_ITEM_COLUMNS,
   CANONICAL_FIELD_ALIASES,
   buildDerivedFieldMappings,
   getDirectExtraAliases,
-  type FieldCandidateScorer,
-  FIELD_CANDIDATE_SCORERS,
-} from "./item-field-scorers.strategy";
+  parseValidYear,
+} from "./metadata-extra.constants";
 import { applyCoupledFieldSynchronization } from "./item-field-coupling.domain";
 import {
   type FieldLookupSource,
@@ -36,8 +35,9 @@ export {
   ALL_SCHEMA_FIELD_KEYS,
   FIRST_CLASS_ITEM_COLUMNS,
   CANONICAL_FIELD_ALIASES,
-  type FieldCandidateScorer,
-  FIELD_CANDIDATE_SCORERS,
+  buildDerivedFieldMappings,
+  getDirectExtraAliases,
+  parseValidYear,
   applyCoupledFieldSynchronization,
   type FieldLookupSource,
   type InspectorFieldDescriptor,

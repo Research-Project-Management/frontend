@@ -5,7 +5,7 @@ import {
   isItemRetracted,
   getRetractionInfo,
   parseRetractionReasonParts,
-} from '@/features/library/domain/retraction';
+} from '@/features/library/domain/system-views.policy';
 
 const retractedItem = {
   title: 'Wakefield MMR',

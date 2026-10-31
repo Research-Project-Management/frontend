@@ -1,13 +1,12 @@
 "use client";
 
-import { ReaderRetractionBanner } from "@/features/library/ui/reader/ReaderRetractionBanner";
 import { resolveEpubOrSnapshot } from "@/features/library/domain/reader.domain";
 
 import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from "react";
 import dynamic from "next/dynamic";
 import { ErrorBoundary } from "@/shared/components/ui/error-boundary";
 import { useRouter, useSearchParams } from "next/navigation";
-import { openInNewTab } from "@/features/library/core/coordinator/browser-io.helpers";
+import { openInNewTab } from "@/features/library/core/coordinator/citation-export.coordinator";
 import { cn } from "@/shared/lib/utils";
 import { Loader2 } from "lucide-react";
 import { PlaneEmptyState } from "@/shared/components/ui/PlaneEmptyState";
@@ -16,30 +15,33 @@ import { useShallow } from "zustand/react/shallow";
 import { useReaderStore } from "@/features/library/core/store/reader.store";
 import { useLibraryUIStore } from "@/features/library/core/store/library-ui.store";
 import { useAiCompanionStore } from "@/features/ai/store/ai-companion.store";
-import { useLibraryPermissions } from "@/features/library/core/coordinator/permissions.coordinator";
+import { useLibraryPermissions } from "@/features/library/core/adapters/project-context.adapter";
 import {
   useOcrExtraction,
   useExportAnnotatedPdf,
 } from "@/features/library/sdk/queries/reader.queries";
-import { ReaderInspector } from "@/features/library/ui/inspector/ReaderInspector";
-import Topbar from "@/features/library/ui/reader/ReaderTopbar";
+import { ReaderInspector } from "@/features/library/ui/inspector/InfoSection";
+import Topbar, { ReaderRetractionBanner } from "@/features/library/ui/reader/ReaderTopbar";
 import ReaderToolbar from "@/features/library/ui/reader/ReaderToolbar";
 import type {
   AnnotationRect,
   ReaderNavigationTarget,
   PdfOutlineItem,
-} from "@/features/library/domain/types/reader.types";
+} from "@/features/library/domain/types/reader.schema";
 import {
   useReaderTabHistory,
   useReaderTabPresentation,
   resolveDocumentOcrState,
-} from "./reader-page.helpers";
+} from "@/features/library/core/coordinator/reader/use-reader-tabs";
 
 const Sidebar = dynamic(() => import("@/features/library/ui/reader/ReaderSidebar"), {
   ssr: false,
 });
 
-const BibtexModal = dynamic(() => import("@/features/library/ui/modals/BibtexModal"), { ssr: false });
+const BibtexModal = dynamic(
+  () => import("@/features/library/ui/modals/DeleteModal").then((m) => m.PaperBibtexDialog),
+  { ssr: false },
+);
 const AiCompanionSidebar = dynamic(
   () => import("@/features/ai/components/companion/AiCompanionSidebar"),
   { ssr: false, loading: () => null },

@@ -15,7 +15,7 @@ import {
   Bookmark,
   RefreshCw,
 } from 'lucide-react';
-import { safeHttpUrl } from '@/features/library/domain/retraction';
+import { safeHttpUrl } from '@/features/library/domain/system-views.policy';
 import { Button } from '@/shared/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import {
@@ -25,7 +25,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
-import type { Collection } from '@/features/library/domain/types/library.types';
+import type { Collection } from '@/features/library/domain/types/core.types';
 import type { ParsedFeedEntry } from '@/features/library/domain/feed-parser.domain';
 import { cn } from '@/shared/lib/utils';
 

@@ -1,12 +1,17 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/shared/lib/utils';
-import { usePdf } from './use-pdf';
-import { getItemFileUrl, isProjectScope } from '@/features/library/domain/item-url';
+import { logger } from '@/shared/lib/logger';
+import { libraryServices } from '@/features/library/sdk';
+import {
+  copyToClipboard,
+  triggerBrowserTextDownload,
+} from '@/features/library/core/coordinator/citation-export.coordinator';
+import { getItemFileUrl, isProjectScope } from '@/features/library/domain/identifiers';
 import {
   useReaderItem,
   useReaderFulltext,
@@ -16,7 +21,7 @@ import {
   annotationKeys,
   normalizeScopeId,
 } from '@/features/library/sdk/query-keys';
-import { useReadingProgress } from './use-reading-progress';
+import { useReadingProgress } from './use-reader-tabs';
 import { useAnnotationBatch } from './use-annotation-batch';
 import { useReaderStore } from '@/features/library/core/store/reader.store';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
@@ -26,8 +31,186 @@ import type {
   AnnotationRect,
   ReaderNavigationTarget,
   AnnotationType,
-} from '@/features/library/domain/types/reader.types';
+} from '@/features/library/domain/types/reader.schema';
 import { formatAnnotationCitation } from '@/features/library/domain/reader.domain';
+
+export const READER_TOAST_IDS = {
+  clipboard: 'reader-clipboard',
+  download: 'reader-download',
+  exportAnnotatedPdf: 'reader-export-annotated-pdf',
+  ocr: 'reader-ocr-trigger',
+  itemUpdate: 'reader-item-update',
+  note: 'reader-note-toast',
+  annotation: 'reader-annotation-toast',
+  conversion: 'reader-type-conversion',
+  retraction: 'reader-retraction-check',
+  batchAction: 'reader-batch-action',
+} as const;
+
+export function useReaderClipboard(resetDelay = 2000) {
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    },
+    [],
+  );
+
+  const copy = useCallback(
+    async (text: string | null | undefined, label?: string): Promise<boolean> => {
+      const clean = text?.trim();
+      if (!clean) {
+        toast.error('Nothing to copy', { id: READER_TOAST_IDS.clipboard });
+        return false;
+      }
+
+      try {
+        const ok = await copyToClipboard(clean);
+        if (!ok) {
+          throw new Error('Could not copy to clipboard');
+        }
+
+        const successMessage = label ? `Copied ${label} to clipboard` : 'Copied to clipboard';
+        toast.success(successMessage, { id: READER_TOAST_IDS.clipboard });
+
+        const activeKey = label || 'copied';
+        setCopiedKey(activeKey);
+
+        if (timerRef.current) clearTimeout(timerRef.current);
+        timerRef.current = setTimeout(() => {
+          setCopiedKey(null);
+        }, resetDelay);
+
+        return true;
+      } catch (err: unknown) {
+        const errorMsg = err instanceof Error ? err.message : 'Could not copy to clipboard';
+        toast.error(errorMsg, { id: READER_TOAST_IDS.clipboard });
+        return false;
+      }
+    },
+    [resetDelay],
+  );
+
+  return {
+    copy,
+    copiedKey,
+    isCopied: (key?: string) => (key ? copiedKey === key : Boolean(copiedKey)),
+  };
+}
+
+export function useReaderFileDownload() {
+  const download = useCallback(
+    (filename: string, content: string | null | undefined, mimeType = 'text/plain;charset=utf-8') => {
+      if (!content || !content.trim()) {
+        toast.error('No content available to download', { id: READER_TOAST_IDS.download });
+        return false;
+      }
+
+      try {
+        triggerBrowserTextDownload(content, filename, mimeType);
+        toast.success(`Downloaded ${filename}`, { id: READER_TOAST_IDS.download });
+        return true;
+      } catch (err: unknown) {
+        const errorMsg = err instanceof Error ? err.message : 'Download failed';
+        toast.error(errorMsg, { id: READER_TOAST_IDS.download });
+        return false;
+      }
+    },
+    [],
+  );
+
+  return { download };
+}
+
+export interface UsePdfReturn {
+  blobUrl: string | null;
+  isLoading: boolean;
+  error: string | null;
+  retry: () => void;
+}
+
+export function usePdf(url: string | null, scopeId?: string): UsePdfReturn {
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const currentBlobUrlRef = useRef<string | null>(null);
+
+  const retry = useCallback(() => {
+    setRetryCount((c) => c + 1);
+  }, []);
+
+  useEffect(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+
+    if (currentBlobUrlRef.current) {
+      URL.revokeObjectURL(currentBlobUrlRef.current);
+      currentBlobUrlRef.current = null;
+    }
+
+    if (!url) {
+      setBlobUrl(null);
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    let active = true;
+
+    async function loadPdf() {
+      try {
+        setIsLoading(true);
+        setError(null);
+        setBlobUrl(null);
+
+        const blob = await libraryServices.items.fetchPdfBlob(
+          url!,
+          controller.signal,
+          { scopeId },
+        );
+
+        if (active) {
+          const newObjectUrl = URL.createObjectURL(blob);
+          currentBlobUrlRef.current = newObjectUrl;
+          setBlobUrl(newObjectUrl);
+          setIsLoading(false);
+        }
+      } catch (err: unknown) {
+        if (controller.signal.aborted) {
+          return;
+        }
+        if (active) {
+          logger.error('[usePdf] PDF load error', err);
+          setError(getErrorMessage(err) || 'Unable to load PDF document.');
+          setBlobUrl(null);
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadPdf();
+
+    return () => {
+      active = false;
+      controller.abort();
+      if (currentBlobUrlRef.current) {
+        URL.revokeObjectURL(currentBlobUrlRef.current);
+        currentBlobUrlRef.current = null;
+      }
+    };
+  }, [url, retryCount, scopeId]);
+
+  return { blobUrl, isLoading, error, retry };
+}
 
 export function useReader(overridePaperId?: string | null, onBackOverride?: () => void) {
   const params = useParams() as { paperId?: string; projectId?: string };
@@ -122,7 +305,6 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     isImporting: isImportingAnnotations,
   } = useAnnotations(effectiveScopeId, effectiveAttachmentId);
 
-  // Sub-hook 1: Reading progress restoration, debounced sync & markAsRead
   useReadingProgress({
     scopeId: effectiveScopeId,
     paper,
@@ -132,7 +314,6 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     setTargetPage,
   });
 
-  // Sub-hook 2: Multi-annotation selection & batch mutations
   const {
     selectedAnnotationIds,
     setSelectedAnnotationIds,
@@ -302,7 +483,6 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
         }
         return created;
       } catch (err) {
-        // Error toast already handled in useAnnotations createMutation
         if (!createAnnotation) {
           toast.error('Failed to save annotation', {
             description: getErrorMessage(err) || 'Could not save annotation. Please try again.',

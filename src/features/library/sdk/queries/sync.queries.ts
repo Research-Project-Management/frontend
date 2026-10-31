@@ -2,13 +2,13 @@
 
 import { useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { SyncService } from '../library.client';
+import { SyncService } from '@/features/library/sdk';
 import {
   mapBackendItem,
   hasExplicitUserStateInPayload,
   setMappedItemMeta,
-} from '@/features/library/domain/metadata';
-import type { Item } from '@/features/library/domain/types/library.types';
+} from '@/features/library/domain/metadata-mapper';
+import type { Item } from '@/features/library/domain/types/core.types';
 import {
   itemKeys,
   libraryKeys,
@@ -32,6 +32,174 @@ function hasSyncVersionAdvanced(currentSeq: string, nextVersion: string): boolea
   }
   return nextVersion !== currentSeq;
 }
+
+export interface DeltaChangeRecord {
+  raw: Record<string, unknown>;
+  entityType: string;
+  action: string;
+  rawData: Record<string, unknown>;
+  itemId: string;
+  version?: number;
+}
+
+export interface DeltaSyncBatchContext {
+  queryClient: ReturnType<typeof useQueryClient>;
+  effectiveScope: string;
+  deletedItemIds: string[];
+  patchedCount: number;
+  hasCreatedItems: boolean;
+  shouldInvalidateCollections: boolean;
+  shouldInvalidateTags: boolean;
+  shouldInvalidateSavedSearches: boolean;
+  shouldInvalidateAnnotations: boolean;
+  shouldInvalidateAllAttachments: boolean;
+  shouldInvalidateAllRelations: boolean;
+  shouldInvalidateAllNotes: boolean;
+  annotationAttachmentIdsToInvalidate: Set<string>;
+  noteItemIdsToInvalidate: Set<string>;
+  attachmentItemIdsToInvalidate: Set<string>;
+  relationItemIdsToInvalidate: Set<string>;
+  patchedItemIdsToInvalidate: Set<string>;
+}
+
+const handleCollectionChange = (_change: DeltaChangeRecord, ctx: DeltaSyncBatchContext) => {
+  ctx.shouldInvalidateCollections = true;
+};
+
+const handleTagChange = (_change: DeltaChangeRecord, ctx: DeltaSyncBatchContext) => {
+  ctx.shouldInvalidateTags = true;
+};
+
+const handleSavedSearchChange = (_change: DeltaChangeRecord, ctx: DeltaSyncBatchContext) => {
+  ctx.shouldInvalidateSavedSearches = true;
+};
+
+const handleAnnotationChange = (change: DeltaChangeRecord, ctx: DeltaSyncBatchContext) => {
+  const attachmentId = String(
+    (change.raw.data as Record<string, unknown> | null)?.attachmentId ??
+      change.rawData.attachmentId ??
+      change.raw.attachmentId ??
+      '',
+  );
+  if (attachmentId) {
+    ctx.annotationAttachmentIdsToInvalidate.add(attachmentId);
+  }
+  ctx.shouldInvalidateAnnotations = true;
+};
+
+const handleAttachmentChange = (change: DeltaChangeRecord, ctx: DeltaSyncBatchContext) => {
+  const parentItemId = String(change.rawData.itemId ?? change.raw.itemId ?? '');
+  if (parentItemId) {
+    ctx.attachmentItemIdsToInvalidate.add(parentItemId);
+  } else {
+    ctx.shouldInvalidateAllAttachments = true;
+  }
+};
+
+const handleRelationChange = (change: DeltaChangeRecord, ctx: DeltaSyncBatchContext) => {
+  const parentItemId = String(change.rawData.itemId ?? change.raw.itemId ?? '');
+  if (parentItemId) {
+    ctx.relationItemIdsToInvalidate.add(parentItemId);
+  } else {
+    ctx.shouldInvalidateAllRelations = true;
+  }
+};
+
+const handleNoteChange = (change: DeltaChangeRecord, ctx: DeltaSyncBatchContext) => {
+  const parentItemId = String(change.rawData.itemId ?? change.raw.itemId ?? '');
+  if (parentItemId) {
+    ctx.noteItemIdsToInvalidate.add(parentItemId);
+  } else {
+    ctx.shouldInvalidateAllNotes = true;
+  }
+};
+
+const handleItemChange = (change: DeltaChangeRecord, ctx: DeltaSyncBatchContext) => {
+  const { itemId, action, rawData, version } = change;
+  if (!itemId) return;
+
+  if (
+    action === 'DELETE' ||
+    action === 'DELETED' ||
+    action === 'PURGE' ||
+    action === 'PURGED' ||
+    Boolean(rawData.deletedAt)
+  ) {
+    ctx.deletedItemIds.push(itemId);
+    return;
+  }
+
+  if (
+    action === 'CREATE' ||
+    action === 'CREATED' ||
+    action === 'RESTORE' ||
+    action === 'RESTORED'
+  ) {
+    ctx.hasCreatedItems = true;
+  }
+  const mapped = mapBackendItem(rawData);
+  const existingCached = resolveCachedItemFromScope(
+    ctx.queryClient,
+    ctx.effectiveScope,
+    itemId,
+  );
+  const rawHasExplicitState = hasExplicitUserStateInPayload(rawData);
+  const patch: Partial<Item> = {
+    ...mapped,
+    id: itemId,
+    ...(typeof version === 'number' ? { version } : {}),
+    ...(existingCached && !rawHasExplicitState
+      ? {
+          isStarred: existingCached.isStarred,
+          isRead: existingCached.isRead,
+          readStatus: existingCached.readStatus,
+          rating: existingCached.rating,
+          ...(existingCached.lastReadAt !== undefined
+            ? { lastReadAt: existingCached.lastReadAt }
+            : {}),
+          ...(existingCached.currentPage !== undefined
+            ? { currentPage: existingCached.currentPage }
+            : {}),
+          ...(existingCached.lastReadPage !== undefined
+            ? { lastReadPage: existingCached.lastReadPage }
+            : {}),
+          ...(existingCached.scrollPosition !== undefined
+            ? { scrollPosition: existingCached.scrollPosition }
+            : {}),
+          ...(existingCached.lastOpenedAt !== undefined
+            ? { lastOpenedAt: existingCached.lastOpenedAt }
+            : {}),
+        }
+      : {}),
+  };
+  if (!rawHasExplicitState) {
+    setMappedItemMeta(patch, { hasExplicitUserState: false });
+  }
+  if (ctx.queryClient.isMutating() === 0) {
+    patchItemAcrossScopeCaches(ctx.queryClient, ctx.effectiveScope, itemId, patch);
+  }
+  ctx.patchedItemIdsToInvalidate.add(itemId);
+  ctx.patchedCount++;
+};
+
+export const DELTA_ENTITY_HANDLERS: Record<
+  string,
+  (change: DeltaChangeRecord, ctx: DeltaSyncBatchContext) => void
+> = {
+  collection: handleCollectionChange,
+  collectionitem: handleCollectionChange,
+  item_collection: handleCollectionChange,
+  tag: handleTagChange,
+  itemtag: handleTagChange,
+  item_tag: handleTagChange,
+  saved_search: handleSavedSearchChange,
+  savedsearch: handleSavedSearchChange,
+  annotation: handleAnnotationChange,
+  attachment: handleAttachmentChange,
+  relation: handleRelationChange,
+  note: handleNoteChange,
+  item: handleItemChange,
+};
 
 /**
  * Lightweight CDC Delta Sync Hook for Library Scopes.
@@ -124,21 +292,25 @@ export function useLibraryDeltaSync(
       }
 
       let currentSince = lastSyncSeqRef.current;
-      const deletedItemIds: string[] = [];
-      let patchedCount = 0;
-      let hasCreatedItems = false;
-      let shouldInvalidateCollections = false;
-      let shouldInvalidateTags = false;
-      let shouldInvalidateSavedSearches = false;
-      let shouldInvalidateAnnotations = false;
-      let shouldInvalidateAllAttachments = false;
-      let shouldInvalidateAllRelations = false;
-      let shouldInvalidateAllNotes = false;
-      const annotationAttachmentIdsToInvalidate = new Set<string>();
-      const noteItemIdsToInvalidate = new Set<string>();
-      const attachmentItemIdsToInvalidate = new Set<string>();
-      const relationItemIdsToInvalidate = new Set<string>();
-      const patchedItemIdsToInvalidate = new Set<string>();
+      const batchCtx: DeltaSyncBatchContext = {
+        queryClient,
+        effectiveScope,
+        deletedItemIds: [],
+        patchedCount: 0,
+        hasCreatedItems: false,
+        shouldInvalidateCollections: false,
+        shouldInvalidateTags: false,
+        shouldInvalidateSavedSearches: false,
+        shouldInvalidateAnnotations: false,
+        shouldInvalidateAllAttachments: false,
+        shouldInvalidateAllRelations: false,
+        shouldInvalidateAllNotes: false,
+        annotationAttachmentIdsToInvalidate: new Set<string>(),
+        noteItemIdsToInvalidate: new Set<string>(),
+        attachmentItemIdsToInvalidate: new Set<string>(),
+        relationItemIdsToInvalidate: new Set<string>(),
+        patchedItemIdsToInvalidate: new Set<string>(),
+      };
       let pagesFetched = 0;
       const MAX_SYNC_PAGES = 10;
       let hasMore = true;
@@ -233,125 +405,19 @@ export function useLibraryDeltaSync(
             change.entityId ?? change.itemId ?? rawData.id ?? change.id ?? '',
           );
 
-          if (entityType === 'collection' || entityType === 'collectionitem') {
-            shouldInvalidateCollections = true;
-            continue;
-          }
-
-          if (entityType === 'tag' || entityType === 'itemtag') {
-            shouldInvalidateTags = true;
-            continue;
-          }
-
-                    if (entityType === 'saved_search' || entityType === 'savedsearch') {
-            shouldInvalidateSavedSearches = true;
-            continue;
-          }
-
-          if (entityType === 'annotation') {
-            const attachmentId = String(
-              (change.data as Record<string, unknown> | null)?.attachmentId ??
-                rawData.attachmentId ??
-                change.attachmentId ??
-                '',
+          const handler = DELTA_ENTITY_HANDLERS[entityType];
+          if (handler) {
+            handler(
+              {
+                raw: change,
+                entityType,
+                action,
+                rawData,
+                itemId,
+                version: typeof change.version === 'number' ? change.version : undefined,
+              },
+              batchCtx,
             );
-            if (attachmentId) {
-              annotationAttachmentIdsToInvalidate.add(attachmentId);
-            }
-            shouldInvalidateAnnotations = true;
-            continue;
-          }
-
-          if (entityType === 'attachment') {
-            const parentItemId = String(rawData.itemId ?? change.itemId ?? '');
-            if (parentItemId) {
-              attachmentItemIdsToInvalidate.add(parentItemId);
-            } else {
-              shouldInvalidateAllAttachments = true;
-            }
-            continue;
-          }
-
-          if (entityType === 'relation') {
-            const parentItemId = String(rawData.itemId ?? change.itemId ?? '');
-            if (parentItemId) {
-              relationItemIdsToInvalidate.add(parentItemId);
-            } else {
-              shouldInvalidateAllRelations = true;
-            }
-            continue;
-          }
-          if (entityType === 'note') {
-            const parentItemId = String(
-              rawData.itemId ?? change.itemId ?? '',
-            );
-            if (parentItemId) {
-              noteItemIdsToInvalidate.add(parentItemId);
-            } else {
-              shouldInvalidateAllNotes = true;
-            }
-            continue;
-          }
-
-          if (entityType !== 'item' || !itemId) continue;
-
-          if (
-            action === 'DELETE' ||
-            action === 'DELETED' ||
-            action === 'PURGE' ||
-            action === 'PURGED' ||
-            Boolean(rawData.deletedAt)
-          ) {
-            deletedItemIds.push(itemId);
-          } else {
-            if (action === 'CREATE' || action === 'CREATED' || action === 'RESTORE' || action === 'RESTORED') {
-              hasCreatedItems = true;
-            }
-            const mapped = mapBackendItem(rawData);
-            const existingCached = resolveCachedItemFromScope(
-              queryClient,
-              effectiveScope,
-              itemId,
-            );
-            const rawHasExplicitState = hasExplicitUserStateInPayload(rawData);
-            const patch: Partial<Item> = {
-              ...mapped,
-              id: itemId,
-              ...(typeof change.version === 'number'
-                ? { version: change.version }
-                : {}),
-              ...(existingCached && !rawHasExplicitState
-                ? {
-                    isStarred: existingCached.isStarred,
-                    isRead: existingCached.isRead,
-                    readStatus: existingCached.readStatus,
-                    rating: existingCached.rating,
-                    ...(existingCached.lastReadAt !== undefined
-                      ? { lastReadAt: existingCached.lastReadAt }
-                      : {}),
-                    ...(existingCached.currentPage !== undefined
-                      ? { currentPage: existingCached.currentPage }
-                      : {}),
-                    ...(existingCached.lastReadPage !== undefined
-                      ? { lastReadPage: existingCached.lastReadPage }
-                      : {}),
-                    ...(existingCached.scrollPosition !== undefined
-                      ? { scrollPosition: existingCached.scrollPosition }
-                      : {}),
-                    ...(existingCached.lastOpenedAt !== undefined
-                      ? { lastOpenedAt: existingCached.lastOpenedAt }
-                      : {}),
-                  }
-                : {}),
-            };
-            if (!rawHasExplicitState) {
-              setMappedItemMeta(patch, { hasExplicitUserState: false });
-            }
-            if (queryClient.isMutating() === 0) {
-              patchItemAcrossScopeCaches(queryClient, effectiveScope, itemId, patch);
-            }
-            patchedItemIdsToInvalidate.add(itemId);
-            patchedCount++;
           }
         }
 
@@ -370,8 +436,8 @@ export function useLibraryDeltaSync(
         }
       }
 
-      if (deletedItemIds.length > 0) {
-        removeItemsFromScopeCaches(queryClient, effectiveScope, deletedItemIds);
+      if (batchCtx.deletedItemIds.length > 0) {
+        removeItemsFromScopeCaches(queryClient, effectiveScope, batchCtx.deletedItemIds);
       }
 
       lastSyncSeqRef.current = hasMore ? currentSince : remoteVersion;
@@ -381,7 +447,7 @@ export function useLibraryDeltaSync(
           queryKey: itemKeys.counts(effectiveScope),
         }),
       ];
-      for (const patchedItemId of patchedItemIdsToInvalidate) {
+      for (const patchedItemId of batchCtx.patchedItemIdsToInvalidate) {
         postSyncInvalidations.push(
           queryClient.invalidateQueries({
             queryKey: itemKeys.byId(effectiveScope, patchedItemId),
@@ -389,7 +455,7 @@ export function useLibraryDeltaSync(
           }),
         );
       }
-      if (hasCreatedItems || patchedCount > 0 || deletedItemIds.length > 0) {
+      if (batchCtx.hasCreatedItems || batchCtx.patchedCount > 0 || batchCtx.deletedItemIds.length > 0) {
         postSyncInvalidations.push(
           queryClient.invalidateQueries({
             queryKey: itemKeys.trash(effectiveScope),
@@ -397,7 +463,7 @@ export function useLibraryDeltaSync(
           }),
         );
       }
-      if (hasCreatedItems) {
+      if (batchCtx.hasCreatedItems) {
         postSyncInvalidations.push(
           queryClient.invalidateQueries({
             queryKey: itemKeys.all(effectiveScope),
@@ -405,49 +471,49 @@ export function useLibraryDeltaSync(
           }),
         );
       }
-      if (shouldInvalidateCollections) {
+      if (batchCtx.shouldInvalidateCollections) {
         postSyncInvalidations.push(
           queryClient.invalidateQueries({
             queryKey: collectionKeys.all(effectiveScope),
           }),
         );
       }
-      if (shouldInvalidateTags) {
+      if (batchCtx.shouldInvalidateTags) {
         postSyncInvalidations.push(
           queryClient.invalidateQueries({
             queryKey: tagKeys.list(effectiveScope),
           }),
         );
       }
-      if (shouldInvalidateSavedSearches) {
+      if (batchCtx.shouldInvalidateSavedSearches) {
         postSyncInvalidations.push(
           queryClient.invalidateQueries({
             queryKey: libraryKeys.savedSearches(effectiveScope),
           }),
         );
       }
-      for (const attachmentId of annotationAttachmentIdsToInvalidate) {
+      for (const attachmentId of batchCtx.annotationAttachmentIdsToInvalidate) {
         postSyncInvalidations.push(
           queryClient.invalidateQueries({
             queryKey: libraryKeys.annotations(effectiveScope, attachmentId),
           }),
         );
       }
-      if (shouldInvalidateAnnotations) {
+      if (batchCtx.shouldInvalidateAnnotations) {
         postSyncInvalidations.push(
           queryClient.invalidateQueries({
             queryKey: libraryKeys.annotationsAll(effectiveScope),
           }),
         );
       }
-      if (shouldInvalidateAllAttachments) {
+      if (batchCtx.shouldInvalidateAllAttachments) {
         postSyncInvalidations.push(
           queryClient.invalidateQueries({
             queryKey: libraryKeys.attachmentsAll(effectiveScope),
           }),
         );
       }
-      for (const parentItemId of attachmentItemIdsToInvalidate) {
+      for (const parentItemId of batchCtx.attachmentItemIdsToInvalidate) {
         postSyncInvalidations.push(
           queryClient.invalidateQueries({
             queryKey: libraryKeys.attachments(effectiveScope, parentItemId),
@@ -458,21 +524,21 @@ export function useLibraryDeltaSync(
           }),
         );
       }
-      if (shouldInvalidateAllRelations) {
+      if (batchCtx.shouldInvalidateAllRelations) {
         postSyncInvalidations.push(
           queryClient.invalidateQueries({
             queryKey: libraryKeys.relationsAll(effectiveScope),
           }),
         );
       }
-      for (const parentItemId of relationItemIdsToInvalidate) {
+      for (const parentItemId of batchCtx.relationItemIdsToInvalidate) {
         postSyncInvalidations.push(
           queryClient.invalidateQueries({
             queryKey: libraryKeys.relations(effectiveScope, parentItemId),
           }),
         );
       }
-      if (shouldInvalidateAllNotes) {
+      if (batchCtx.shouldInvalidateAllNotes) {
         postSyncInvalidations.push(
           queryClient.invalidateQueries({
             queryKey: noteKeys.lists(),
@@ -482,7 +548,7 @@ export function useLibraryDeltaSync(
           }),
         );
       }
-      for (const parentItemId of noteItemIdsToInvalidate) {
+      for (const parentItemId of batchCtx.noteItemIdsToInvalidate) {
         postSyncInvalidations.push(
           queryClient.invalidateQueries({
             queryKey: noteKeys.list(effectiveScope, parentItemId),
@@ -494,7 +560,7 @@ export function useLibraryDeltaSync(
       return {
         version: remoteVersion,
         scopeId: effectiveScope,
-        syncedCount: patchedCount + deletedItemIds.length,
+        syncedCount: batchCtx.patchedCount + batchCtx.deletedItemIds.length,
       };
     },
   });

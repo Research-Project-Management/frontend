@@ -2,19 +2,114 @@
 
 import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import dynamic from 'next/dynamic';
-import { Rss, ChevronRight, Plus } from 'lucide-react';
-import { SidebarNavItem } from './SidebarNavItem';
-import { FeedContextMenu } from './FeedContextMenu';
+import {
+  Rss,
+  ChevronRight,
+  Plus,
+  CheckCheck,
+  MoreVertical,
+  Pencil,
+  RefreshCw,
+  Trash2,
+} from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/shared/components/ui/dropdown-menu';
+import { SidebarNavItem } from './SidebarSystemNav';
 import { useFeedsStore } from '@/features/library/core/store/feeds.store';
 import {
   useFeedSubscriptionsQuery,
   useUnsubscribeFeedMutation,
 } from '@/features/library/sdk/queries/ingestion.queries';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import type { SavedFeedSubscription } from '@/features/library/domain/types/ingestion.types';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 import { toast } from 'sonner';
+
+export interface FeedContextMenuProps {
+  feed: SavedFeedSubscription;
+  onRefresh?: (feed: SavedFeedSubscription) => void;
+  onMarkAllAsRead?: (feed: SavedFeedSubscription) => void;
+  onEdit: (feed: SavedFeedSubscription) => void;
+  onDelete: (feed: SavedFeedSubscription) => void;
+}
+
+export function FeedContextMenu({
+  feed,
+  onRefresh,
+  onMarkAllAsRead,
+  onEdit,
+  onDelete,
+}: FeedContextMenuProps) {
+  return (
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground opacity-0 max-md:opacity-100 group-hover/item:opacity-100 data-[state=open]:opacity-100 data-[state=open]:bg-background data-[state=open]:border-border data-[state=open]:text-foreground focus-visible:opacity-100 border border-transparent hover:border-border/50 hover:bg-background transition-colors duration-150 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+          aria-label={`Options for ${feed.name}`}
+        >
+          <MoreVertical className="size-3.5 shrink-0" strokeWidth={1.5} />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        side="bottom"
+        align="end"
+        sideOffset={4}
+        collisionPadding={12}
+        onCloseAutoFocus={(e) => e.preventDefault()}
+        className="w-48 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
+      >
+        {onRefresh && (
+          <DropdownMenuItem
+            onClick={() => onRefresh(feed)}
+            className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+          >
+            <RefreshCw className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+            <span>Refresh Feed</span>
+          </DropdownMenuItem>
+        )}
+
+        {onMarkAllAsRead && (
+          <DropdownMenuItem
+            onClick={() => onMarkAllAsRead(feed)}
+            className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+          >
+            <CheckCheck className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+            <span>Mark Feed as Read</span>
+          </DropdownMenuItem>
+        )}
+
+        <DropdownMenuItem
+          onClick={() => onEdit(feed)}
+          className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+        >
+          <Pencil className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+          <span>Edit Feed...</span>
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator className="my-1" />
+
+        <DropdownMenuItem
+          onClick={() => onDelete(feed)}
+          className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-destructive hover:bg-destructive/10 focus:bg-destructive/10 rounded-md outline-none transition-colors"
+        >
+          <Trash2 className="size-3.5 text-destructive shrink-0" strokeWidth={1.5} />
+          <span>Unsubscribe</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 export interface FeedsListSectionProps {
   basePath: string;
@@ -52,7 +147,6 @@ export function FeedsListSection({
 
   return (
     <div className="mt-1.5 flex flex-col gap-0.5 w-full">
-      {/* Root Section Item: Feeds */}
       <div className="relative group/root flex items-center w-full">
         <div
           onClick={() => {
@@ -61,10 +155,10 @@ export function FeedsListSection({
             onItemClick?.();
           }}
           className={cn(
-            "group/item relative flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none select-none pr-14 cursor-pointer text-left font-normal",
+            'group/item relative flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none select-none pr-14 cursor-pointer text-left font-normal',
             isFeedsRootActive
-              ? "bg-muted font-medium text-foreground"
-              : "text-foreground hover:bg-muted group-hover/root:bg-muted",
+              ? 'bg-muted font-medium text-foreground'
+              : 'text-foreground hover:bg-muted group-hover/root:bg-muted',
           )}
         >
           <Rss className="relative z-10 size-4 shrink-0 text-foreground" strokeWidth={1.5} />
@@ -73,7 +167,6 @@ export function FeedsListSection({
           </span>
         </div>
 
-        {/* Quick Add Feed Button - hidden by default, visible on root hover */}
         <Tooltip>
           <TooltipTrigger asChild>
             <button
@@ -93,7 +186,6 @@ export function FeedsListSection({
           </TooltipContent>
         </Tooltip>
 
-        {/* Collapse / Expand Toggle */}
         <Tooltip>
           <TooltipTrigger asChild>
             <button
@@ -121,7 +213,6 @@ export function FeedsListSection({
         </Tooltip>
       </div>
 
-      {/* Subscribed Feeds List (Child Items aligned with Sidebar items) */}
       {isExpanded && feeds.length === 0 && (
         <div className="px-3 py-1.5 text-11 text-muted-foreground/60 italic select-none">
           No feeds subscribed

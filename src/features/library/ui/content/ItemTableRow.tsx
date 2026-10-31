@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback } from 'react';
-import { openInNewTab, buildReaderPaperUrl } from '@/features/library/core/coordinator/browser-io.helpers';
+import { openInNewTab, buildReaderPaperUrl } from '@/features/library/core/coordinator/citation-export.coordinator';
 import {
   Paperclip,
   StickyNote,
@@ -16,7 +16,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
-import { isItemRetracted } from '@/features/library/domain/retraction';
+import { isItemRetracted } from '@/features/library/domain/system-views.policy';
+import { isPersistedLibraryItem } from '@/features/library/domain/library-permissions.policy';
 import { cn } from '@/shared/lib/utils';
 import {
   useLibraryUIStore,
@@ -25,13 +26,13 @@ import {
 } from '@/features/library/core/store/library-ui.store';
 import { ItemContextMenu } from './ItemContextMenu';
 import { ItemRowActions } from './ItemRowActions';
-import type { Item, Collection } from '@/features/library/domain/types/library.types';
+import type { Item, Collection } from '@/features/library/domain/types/core.types';
 import { cleanAcademicText, formatAcademicAuthors } from '@/features/library/domain/academic-text';
 import {
   getItemDisplayTitle,
   getItemDisplayDate,
   getPublicationVenue,
-} from '@/features/library/domain/metadata';
+} from '@/features/library/domain/metadata-mapper';
 import { getItemTypeDefinition } from '@/features/library/domain/types/item-types.types';
 
 export interface ItemTableRowProps {
@@ -140,7 +141,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
 
   const isStarred = Boolean(item.isStarred);
 
-  const isProcessing = Boolean(item._isProcessing);
+  const isProcessing = !isPersistedLibraryItem(item);
   const processingStatus = item._processingStatus;
   const processingError = item._processingError;
 

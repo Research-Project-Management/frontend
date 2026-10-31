@@ -34,7 +34,7 @@ import type {
   Collection,
   CslStyle,
   Item,
-} from '@/features/library/domain/types/library.types';
+} from '@/features/library/domain/types/core.types';
 
 export interface BatchMoveCollectionPopoverProps {
   isUnfiledView: boolean;

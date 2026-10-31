@@ -9,7 +9,7 @@ import { normalizeScopeId } from '@/features/library/sdk/query-keys';
 import { useDetachItemFromCollectionMutation } from '@/features/library/sdk/queries/collections.queries';
 import { useCollectionsQuery } from '@/features/library/sdk/queries/collections.queries';
 import { useSavedSearchResults, useSavedSearches } from '@/features/library/sdk/queries/saved-searches-relations.queries';
-import { ContentSkeleton } from './ContentSkeleton';
+import { WorkspaceRowListSkeleton } from '@/shared/components/layout/WorkspaceSkeleton';
 import { ItemTable } from './ItemTable';
 import { DuplicatesContent } from './DuplicatesContent';
 import { FeedViewContent } from './FeedViewContent';
@@ -19,15 +19,25 @@ import { ErrorBoundary } from '@/shared/components/ui/error-boundary';
 import { BatchBar } from './BatchBar';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { useProcessModalStore } from '@/features/library/core/store/process-modal.store';
-import { createProvisionalUploadItem } from '@/features/library/domain/metadata';
-import { useQuickCopyCoordinator } from '@/features/library/core/coordinator/quick-copy.coordinator';
+import { createProvisionalUploadItem } from '@/features/library/domain/metadata-mapper';
+import { useQuickCopyCoordinator } from '@/features/library/core/coordinator/citation-export.coordinator';
 import { useLibraryNavigation } from '@/features/library/core/coordinator/navigation.coordinator';
 import {
   type Item,
   type Collection,
   type DuplicateGroup,
-} from '@/features/library/domain/types/library.types';
+} from '@/features/library/domain/types/core.types';
 import type { LibraryOrderBy } from '@/features/library/ui/topbar/LibraryDisplayPopover';
+
+export function ContentSkeleton({ rowCount = 10 }: { rowCount?: number }) {
+  return (
+    <WorkspaceRowListSkeleton
+      rows={rowCount}
+      variant="library"
+      showTableHeader={true}
+    />
+  );
+}
 
 /** Fields requested from the server for the list view — kept at module scope to avoid inline array allocation. */
 export const ITEM_LIST_FIELDS = [

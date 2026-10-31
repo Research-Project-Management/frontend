@@ -5,7 +5,7 @@ import {
   getPublicationVenue,
   getItemDisplayDate,
   mapBackendItem,
-} from '@/features/library/domain/metadata';
+} from '@/features/library/domain/metadata-mapper';
 import {
   resolveItemFieldValue,
   inspectItemDifferences,
@@ -21,7 +21,7 @@ import {
   getVenueFieldForType,
   LIBRARY_ITEM_TYPES,
 } from '@/features/library/domain/types/item-types.types';
-import type { Item } from '@/features/library/domain/types/library.types';
+import type { Item } from '@/features/library/domain/types/core.types';
 
 describe('Wave 12: Multi-Type Scholarly, Legal & Technical Datasets & Base Field Mappings', () => {
   describe('1. Patent Dataset (patent)', () => {

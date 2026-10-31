@@ -1,28 +1,39 @@
 "use client";
 
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
-import type { Item } from "@/features/library/domain/types/library.types";
-import { cleanValue } from "@/features/library/domain/metadata";
+import type { Item } from "@/features/library/domain/types/core.types";
+import type { ReaderDocument } from "@/features/library/domain/types/reader.schema";
+import { cleanValue } from "@/features/library/domain/metadata-mapper";
 import {
   getItemTypeDefinition,
   normalizeCanonicalItemType,
   mapRegistryItemTypes,
   SchemaFieldDefinition,
   SchemaItemTypeDefinition,
-} from "@/features/library/domain/types/library.types";
+} from "@/features/library/domain/types/core.types";
 import { toast } from "sonner";
-import { copyToClipboard as copyText } from "@/shared/lib/utils";
+import { cn, copyToClipboard as copyText } from "@/shared/lib/utils";
 import { useItemTypes } from "@/features/library/sdk/queries/catalog.queries";
 import { CreatorFields } from "./fields/CreatorFields";
-import { GeneralFields } from "./fields/GeneralFields";
+import { GeneralFields, ExtraAuditFields } from "./fields/GeneralFields";
 import { DynamicInspectorField } from "./fields/DynamicInspectorField";
-import { ExtraAuditFields } from "./fields/ExtraAuditFields";
 import {
   INSPECTOR_FIELD_DESCRIPTORS,
   prepareInspectorFieldContext,
   resolveInspectorFieldValue,
   buildInspectorFieldPatch,
 } from "@/features/library/domain/item-field-schema";
+import {
+  openInNewTab,
+  buildReaderPaperUrl,
+} from "@/features/library/core/coordinator/citation-export.coordinator";
+import {
+  LibraryInspector,
+  INSPECTOR_LEVELS,
+  type LibraryInspectorProps,
+} from "./LibraryInspector";
+
+export { INSPECTOR_LEVELS };
 
 export interface InfoSectionProps {
   item?: Item;
@@ -43,7 +54,7 @@ const EXCLUDED_DYNAMIC_LOOP_FIELDS = new Set([
   "datemodified",
 ]);
 
-export default function InfoSection({
+export function InfoSection({
   item,
   onUpdateItem,
   canEdit = true,
@@ -225,3 +236,179 @@ export default function InfoSection({
     </div>
   );
 }
+
+export interface AbstractSectionProps {
+  item?: Item;
+  onUpdateItem?: (data: Partial<Item>) => void;
+  hideHeader?: boolean;
+  canEdit?: boolean;
+}
+
+function getAbstractValue(item: Item): string {
+  const raw =
+    resolveInspectorFieldValue(item, "abstractNote") || item.abstractNote || "";
+  return raw.replace(/\*\*([A-Za-z0-9\s_-]+?):\*\*/g, "$1:");
+}
+
+export function AbstractSection({
+  item,
+  onUpdateItem,
+  hideHeader = false,
+  canEdit = true,
+}: AbstractSectionProps) {
+  const currentAbstract = item ? getAbstractValue(item) : "";
+  const [draft, setDraft] = useState(currentAbstract);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const focusedItemIdRef = useRef<string | null>(null);
+  const prevItemIdRef = useRef<string | undefined>(item?.id);
+  const handleUpdate = onUpdateItem;
+
+  // On item change or background abstract update, synchronize draft cleanly
+  useEffect(() => {
+    const itemChanged = prevItemIdRef.current !== item?.id;
+    prevItemIdRef.current = item?.id;
+    const isFocused =
+      typeof document !== "undefined" && document.activeElement === textareaRef.current;
+    if (itemChanged) {
+      focusedItemIdRef.current = isFocused ? (item?.id ?? null) : null;
+      setDraft(currentAbstract || "");
+      return;
+    }
+    if (!isFocused) {
+      setDraft(currentAbstract || "");
+    }
+  }, [item?.id, currentAbstract]);
+
+  // Auto-resize textarea to fit content naturally without jump
+  const adjustHeight = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.max(48, el.scrollHeight)}px`;
+  }, []);
+
+  useEffect(() => {
+    adjustHeight();
+  }, [draft, adjustHeight]);
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => {
+      adjustHeight();
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [adjustHeight]);
+
+  const commit = useCallback(() => {
+    if (!item || (focusedItemIdRef.current && focusedItemIdRef.current !== item.id)) {
+      return;
+    }
+    const trimmed = draft.trim();
+    const existing = getAbstractValue(item).trim();
+    if (trimmed !== existing) {
+      if (handleUpdate) {
+        handleUpdate(buildInspectorFieldPatch(item, "abstractNote", trimmed));
+      }
+    }
+  }, [draft, item, handleUpdate]);
+
+  return (
+    <div className="space-y-1 text-xs min-w-0">
+      {!hideHeader && (
+        <div className="flex items-center justify-between px-1 pb-0.5">
+          <span className="font-sans font-medium text-foreground text-12">
+            Abstract
+          </span>
+        </div>
+      )}
+
+      {/* Abstract Content: Flat border without card shadow, scholarly serif font */}
+      <div
+        className={cn(
+          "rounded-md border border-border bg-background transition-colors",
+          canEdit &&
+            "focus-within:border-primary focus-within:ring-1 focus-within:ring-ring",
+        )}
+      >
+        <textarea
+          ref={textareaRef}
+          rows={2}
+          value={draft}
+          placeholder={canEdit ? "Add abstract..." : "No abstract"}
+          aria-label="Item abstract summary"
+          readOnly={!canEdit}
+          onChange={(e) => setDraft(e.target.value)}
+          onFocus={() => {
+            focusedItemIdRef.current = item?.id ?? null;
+          }}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+              e.preventDefault();
+              commit();
+              textareaRef.current?.blur();
+            } else if (e.key === "Escape") {
+              e.preventDefault();
+              setDraft(currentAbstract || "");
+              textareaRef.current?.blur();
+            }
+          }}
+          className={cn(
+            "w-full text-13 leading-normal text-foreground font-sans font-normal resize-none overflow-hidden outline-none break-words select-text rounded-md",
+            "p-2 bg-transparent border-0 focus:outline-none focus:ring-0",
+            canEdit && "cursor-text",
+            !canEdit && "cursor-default",
+            !draft &&
+              "placeholder:font-sans placeholder:text-12 placeholder:text-muted-foreground",
+          )}
+        />
+      </div>
+    </div>
+  );
+}
+
+export interface ReaderInspectorProps extends Omit<
+  LibraryInspectorProps,
+  "item"
+> {
+  item?: Item | ReaderDocument | null;
+}
+
+/**
+ * Autonomous Zone 4: ReaderInspector
+ * Thin wrapper around the shared LibraryInspector with reader-specific navigation fallbacks.
+ */
+export function ReaderInspector({
+  item,
+  onSelectItem,
+  ...rest
+}: ReaderInspectorProps) {
+  const defaultSelectItem = useCallback(
+    (itemId: string) => {
+      const projectId =
+        item && "projectId" in item && item.projectId
+          ? String(item.projectId)
+          : rest.scopeId;
+      openInNewTab(buildReaderPaperUrl(itemId, { projectId }));
+    },
+    [item, rest.scopeId],
+  );
+
+  const effectiveItem = (item || null) as Item | null;
+  const effectiveOnSelect = onSelectItem || defaultSelectItem;
+
+  return (
+    <LibraryInspector
+      {...rest}
+      item={effectiveItem}
+      onSelectItem={effectiveOnSelect}
+      hideRailToggle={rest.hideRailToggle ?? false}
+      defaultOpen={rest.defaultOpen}
+      isReader={true}
+    />
+  );
+}
+
+export default InfoSection;

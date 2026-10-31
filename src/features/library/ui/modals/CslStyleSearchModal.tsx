@@ -14,8 +14,8 @@ import { Button } from "@/shared/components/ui/button";
 import { Search, Check, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/shared/lib/utils";
-import { useSearchCslStyles } from "@/features/library/sdk/queries/citation.queries";
-import type { CslStyleMetadata } from "@/features/library/domain/types/library.types";
+import { useSearchCslStyles } from "@/features/library/sdk/queries/extraction.queries";
+import type { CslStyleMetadata } from "@/features/library/domain/types/core.types";
 import { getCleanStyleLabel } from "@/features/library/domain/citations";
 
 export interface CslStyleSearchModalProps {

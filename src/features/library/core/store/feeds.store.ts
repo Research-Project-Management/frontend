@@ -3,14 +3,14 @@ import {
   SavedFeedSubscription,
   FeedReadFilterType,
   FeedRetentionDays,
-} from '@/features/library/domain/types/feeds.types';
+} from '@/features/library/domain/types/ingestion.types';
 import { cleanDoi } from '@/features/library/domain/identifiers';
 import {
   mapServerFeedSubscriptions,
   type ParsedFeedEntry,
 } from '@/features/library/domain/feed-parser.domain';
-import { FeedsService } from '@/features/library/sdk/library.client';
-import { registerFeedHydrationObserver } from '@/features/library/sdk/queries/feed-hydration.port';
+import { FeedsService } from '@/features/library/sdk';
+import { registerFeedHydrationObserver } from '@/features/library/sdk';
 
 export { mapServerFeedSubscriptions };
 

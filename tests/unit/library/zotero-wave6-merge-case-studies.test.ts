@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import {
-  MERGEABLE_FIELDS, scoreFieldCandidate, selectBestMasterItemId, inspectItemDifferences, mergeItemExtraFields, buildMergedItemPayload, aggregateItemAssets, resolveItemFieldValue, normalizeCompareValue, } from '@/features/library/domain/diff';
+  MERGEABLE_FIELDS, selectRecommendedFieldValue, selectBestMasterItemId, inspectItemDifferences, mergeItemExtraFields, buildMergedItemPayload, aggregateItemAssets, resolveItemFieldValue, normalizeCompareValue, } from '@/features/library/domain/diff';
 import { useDuplicateMergeState } from '@/features/library/core/coordinator/curation.coordinator';
 import { getLibraryPermissions } from '@/features/library/domain/library-permissions.policy';
-import { CurationService as QualityService } from '@/features/library/sdk/library.client';
+import { CurationService as QualityService } from '@/features/library/sdk';
 import * as api from '@/shared/lib/api';
-import type { Item } from '@/features/library/domain/types/library.types';
+import type { Item } from '@/features/library/domain/types/core.types';
 
 function makeItem(overrides: Partial<Item> & { id: string; title: string }): Item {
   return {
@@ -448,12 +448,18 @@ describe('Zotero Wave 6: Comprehensive Duplicate Detection & Merge Case Studies 
     it('places itemType first in MERGEABLE_FIELDS, recommends journalArticle over preprint, and supplies itemType in fieldSelections without blocking merge', () => {
       // 1. itemType is the very first field in MERGEABLE_FIELDS
       expect(MERGEABLE_FIELDS[0]?.key).toBe('itemType');
-      expect(scoreFieldCandidate('itemType', 'journalArticle')).toBeGreaterThan(
-        scoreFieldCandidate('itemType', 'preprint'),
-      );
-      expect(scoreFieldCandidate('itemType', 'conferencePaper')).toBeGreaterThan(
-        scoreFieldCandidate('itemType', 'document'),
-      );
+      expect(
+        selectRecommendedFieldValue('itemType', 'preprint', [
+          makeItem({ id: 'p', title: 'T', itemType: 'preprint' }),
+          makeItem({ id: 'j', title: 'T', itemType: 'journalArticle' }),
+        ]),
+      ).toBe('journalArticle');
+      expect(
+        selectRecommendedFieldValue('itemType', 'document', [
+          makeItem({ id: 'd', title: 'T', itemType: 'document' }),
+          makeItem({ id: 'c', title: 'T', itemType: 'conferencePaper' }),
+        ]),
+      ).toBe('conferencePaper');
 
       const arxivPreprint = makeItem({
         id: 'preprint-llama',

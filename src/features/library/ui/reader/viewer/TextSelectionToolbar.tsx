@@ -7,7 +7,7 @@ import { formatInTextCitation } from "@/features/library/domain/reader.domain";
 import type {
   AnnotationRect,
   ReaderDocument,
-} from "@/features/library/domain/types/reader.types";
+} from "@/features/library/domain/types/reader.schema";
 import type { ReaderAnnotationTool } from "@/features/library/core/store/reader.store";
 import { ANNOTATION_PALETTE_COLORS } from "@/features/library/ui/reader/ReaderToolbar";
 

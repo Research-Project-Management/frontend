@@ -19,7 +19,7 @@ import {
   normalizeTags,
   getPublicationVenue,
   getItemDisplayDate,
-} from '@/features/library/domain/metadata';
+} from '@/features/library/domain/metadata-mapper';
 import {
   cleanDoi,
   extractArxivId,
@@ -55,8 +55,8 @@ import {
   formatAnnotationCitation,
   generateReaderCitationKey,
 } from '@/features/library/domain/reader.domain';
-import type { Item } from '@/features/library/domain/types/library.types';
-import type { ReaderDocument, ReaderAnnotation } from '@/features/library/domain/types/reader.types';
+import type { Item } from '@/features/library/domain/types/core.types';
+import type { ReaderDocument, ReaderAnnotation } from '@/features/library/domain/types/reader.schema';
 
 describe('Real-World Zotero & Mendeley Datasets & User Case-Study Stress Tests', () => {
   // ===========================================================================

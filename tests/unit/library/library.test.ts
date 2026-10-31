@@ -5,7 +5,7 @@ import {
   CurationService as QualityService,
   SyncService,
   FeedsService,
-} from '@/features/library/sdk/library.client';
+} from '@/features/library/sdk';
 import * as api from '@/shared/lib/api';
 
 describe('Library Module — Client Zero-Trust & Sanitization', () => {
@@ -452,7 +452,7 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
 
     it('standardizes Reader URL building via buildReaderPaperUrl and opens new tabs via window.open', async () => {
       const { buildReaderPaperUrl, openInNewTab } = await import(
-        '@/features/library/core/coordinator/browser-io.helpers'
+        '@/features/library/core/coordinator/citation-export.coordinator'
       );
 
       expect(buildReaderPaperUrl('paper-1')).toBe('/library/papers/paper-1');
@@ -498,7 +498,7 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
       const {
         computeDuplicateSetKey,
         getDeterministicDuplicateGroupKey,
-      } = await import('@/features/library/domain/curation-draft.domain');
+      } = await import('@/features/library/domain/diff');
       const { getItemAuthorsSummary } = await import('@/features/library/domain/creators');
       const { formatAcademicAuthors } = await import('@/features/library/domain/academic-text');
 
@@ -519,7 +519,27 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
     });
 
     it('computes field candidate selection and recommendation state via resolveMergeFieldOptionState', async () => {
-      const { resolveMergeFieldOptionState } = await import('@/features/library/domain/diff');
+      const { resolveMergeFieldOptionState, selectRecommendedFieldValue } = await import('@/features/library/domain/diff');
+
+      // Priority coalesce + 3 deterministic upgrade rules (DOI, Venue, Completeness)
+      expect(
+        selectRecommendedFieldValue('doi', '10.48550/arXiv.2301.00001', [
+          { id: '1', title: 'A', itemType: 'preprint', doi: '10.48550/arXiv.2301.00001' },
+          { id: '2', title: 'A', itemType: 'journalArticle', doi: '10.1038/s41586-024-00001-1' },
+        ] as any),
+      ).toBe('10.1038/s41586-024-00001-1');
+      expect(
+        selectRecommendedFieldValue('publicationTitle', 'arXiv', [
+          { id: '1', title: 'A', itemType: 'preprint', publicationTitle: 'arXiv' },
+          { id: '2', title: 'A', itemType: 'journalArticle', publicationTitle: 'Nature' },
+        ] as any),
+      ).toBe('Nature');
+      expect(
+        selectRecommendedFieldValue('publicationDate', '2024', [
+          { id: '1', title: 'A', itemType: 'journalArticle', publicationDate: '2024' },
+          { id: '2', title: 'A', itemType: 'journalArticle', publicationDate: '2024-05-15' },
+        ] as any),
+      ).toBe('2024-05-15');
       const field = {
         key: 'title',
         label: 'Title',
@@ -579,9 +599,9 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
         getOrInitDraft,
         getGroupMergeDraft,
         clearAllGroupMergeDrafts,
-      } = await import('@/features/library/core/store/curation-draft.store');
+      } = await import('@/features/library/core/coordinator/curation.coordinator');
       const { notifyDraftCacheCleared } = await import(
-        '@/features/library/sdk/queries/feed-hydration.port'
+        '@/features/library/sdk'
       );
 
       clearAllGroupMergeDrafts();

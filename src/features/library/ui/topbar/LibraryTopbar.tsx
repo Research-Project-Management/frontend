@@ -36,12 +36,14 @@ import {
   type LibraryOrderBy,
 } from "./LibraryDisplayPopover";
 import { TopbarSearch } from "./TopbarSearch";
-import { TopbarNewItemDropdown } from "./TopbarNewItemDropdown";
-import { TopbarNewFeedDropdown } from "./TopbarNewFeedDropdown";
+import {
+  TopbarNewItemDropdown,
+  TopbarNewFeedDropdown,
+} from "./TopbarNewItemDropdown";
 import { useLibraryUIStore } from "@/features/library/core/store/library-ui.store";
 import { useLibraryNavigation } from "@/features/library/core/coordinator/navigation.coordinator";
-import { useLibraryPermissions } from "@/features/library/core/coordinator/permissions.coordinator";
-import type { Item } from "@/features/library/domain/types/library.types";
+import { useLibraryPermissions } from "@/features/library/core/adapters/project-context.adapter";
+import type { Item } from "@/features/library/domain/types/core.types";
 
 export interface BreadcrumbSwitcherOption {
   id: string;

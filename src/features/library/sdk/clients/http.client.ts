@@ -20,8 +20,8 @@ import * as api from '@/shared/lib/api';
 import { API_BASE_URL } from '@/config/env';
 import { getAuthToken } from '@/shared/lib/token-storage';
 import type { RequestOptions } from '@/shared/types/api.types';
-import { isProjectScope, getItemFileUrl } from '@/features/library/domain/item-url';
-import { mapBackendItem } from '@/features/library/domain/metadata';
+import { isProjectScope, getItemFileUrl } from '@/features/library/domain/identifiers';
+import { mapBackendItem } from '@/features/library/domain/metadata-mapper';
 import type {
   Item,
   PaginatedItemsResponse,
@@ -53,7 +53,7 @@ import type {
   LibraryIntegrityReport,
   FlagRetractionInput,
   RetractionStats,
-} from '@/features/library/domain/types/library.types';
+} from '@/features/library/domain/types/core.types';
 import type {
   ReaderDocument,
   ReaderAnnotation,
@@ -61,7 +61,7 @@ import type {
   UpdateAnnotationDto,
   DocumentReadingState,
   DocumentFulltext,
-} from '@/features/library/domain/types/reader.types';
+} from '@/features/library/domain/types/reader.schema';
 import {
   type UnifiedIngestionPayload,
   type UnifiedIngestionResponse,
@@ -72,7 +72,7 @@ import {
   UrlCapturePreviewResponseSchema,
   IngestionRunSnapshotResponseSchema,
   itemSchema,
-} from '@/features/library/domain/types/library.types';
+} from '@/features/library/domain/types/core.types';
 
 export { isProjectScope, getItemFileUrl, mapBackendItem };
 export type {

@@ -31,15 +31,15 @@ import type {
   DocumentFulltext,
   ReaderDocument,
   PdfOutlineItem,
-} from "@/features/library/domain/types/reader.types";
+} from "@/features/library/domain/types/reader.schema";
 import {
   buildOutlineSections,
   filterVisibleOutlineSections,
   resolveActiveOutlineSectionId,
-} from "@/features/library/domain/reader-persistence.helpers";
+} from "@/features/library/domain/reader-search-outline";
 import AnnotationsPanel from "./panel/AnnotationsPanel";
-import { ReaderLeftRail, type ReaderSidebarTab } from "./ReaderLeftRail";
-import { usePanelResize } from "@/features/library/ui/hooks/usePanelResize";
+import { ReaderLeftRail, type ReaderSidebarTab } from "./ReaderTopbar";
+import { usePanelResize } from "@/features/library/core/coordinator/inspector-item.coordinator";
 
 const HeaderIconButton = ({
   onClick,
@@ -205,7 +205,7 @@ export interface ReaderSidebarProps {
   ) => Promise<void>;
   onBatchDelete?: (targetIds?: string[]) => Promise<void>;
   onBatchAddToNote?: (targetIds?: string[]) => void;
-  annotations?: import("@/features/library/domain/types/reader.types").ReaderAnnotation[];
+  annotations?: import("@/features/library/domain/types/reader.schema").ReaderAnnotation[];
   annotationsCount?: number;
   isLoadingAnnotations?: boolean;
   isAnnotationsError?: boolean;

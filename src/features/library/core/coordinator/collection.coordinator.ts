@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { libraryServices } from '@/features/library/sdk/library.client';
+import { libraryServices } from '@/features/library/sdk';
 import { useCollections, invalidateCollections } from '@/features/library/sdk/queries/collections.queries';
 import { triggerBrowserTextDownload } from '@/features/library/core/coordinator/citation-export.coordinator';
 import { canMoveCollection } from '@/features/library/domain/collection-tree';
@@ -10,7 +10,7 @@ import { useLibraryUIStore } from '@/features/library/core/store/library-ui.stor
 import type {
   Collection,
   CollectionInput,
-} from '@/features/library/domain/types/library.types';
+} from '@/features/library/domain/types/core.types';
 
 export const DEFAULT_COLLECTION_COLOR = '#2563eb';
 

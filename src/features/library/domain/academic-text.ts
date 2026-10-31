@@ -9,7 +9,7 @@
  */
 
 import { getItemAuthorsSummary } from '@/features/library/domain/creators';
-import type { Item } from '@/features/library/domain/types/library.types';
+import type { Item } from '@/features/library/domain/types/core.types';
 
 const ASCII_ONLY_RE = /^[\x00-\x7F]*$/;
 const SPECIAL_LATIN_FOLD_RE = /[ĐđŁłØøßÆæŒœ]/g;

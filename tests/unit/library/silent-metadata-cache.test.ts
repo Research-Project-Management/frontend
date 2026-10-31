@@ -7,7 +7,7 @@ import {
   patchItemAcrossScopeCaches,
 } from '@/features/library/sdk/queries/cache-patcher';
 import { itemKeys } from '@/features/library/sdk/query-keys';
-import type { Item } from '@/features/library/domain/types/library.types';
+import type { Item } from '@/features/library/domain/types/core.types';
 
 describe('Silent Metadata Auto-save & Cache Stability', () => {
   it('correctly classifies metadata-only patches as silent and non-membership affecting', () => {

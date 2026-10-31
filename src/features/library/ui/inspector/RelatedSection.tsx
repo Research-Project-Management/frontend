@@ -23,7 +23,7 @@ import {
   DialogDescription,
 } from '@/shared/components/ui/dialog';
 import { toast } from 'sonner';
-import type { Item, RelatedItem, Collection, RelationType } from '@/features/library/domain/types/library.types';
+import type { Item, RelatedItem, Collection, RelationType } from '@/features/library/domain/types/core.types';
 import { cn } from '@/shared/lib/utils';
 import { cleanAcademicText } from '@/features/library/domain/academic-text';
 

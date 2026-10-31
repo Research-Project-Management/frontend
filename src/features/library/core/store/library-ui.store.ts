@@ -5,7 +5,7 @@ import type { LibraryScope } from '@/features/library/domain/types/core.types';
 import {
   DEFAULT_LIBRARY_DISPLAY_OPTIONS,
   type LibraryDisplayOptions,
-} from '@/features/library/domain/types/display.types';
+} from '@/features/library/domain/types/saved-searches.types';
 import { useLibraryCommandStore } from '@/features/library/core/manager/library-command.manager';
 
 export type InspectorSectionId =

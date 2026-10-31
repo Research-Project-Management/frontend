@@ -2,14 +2,14 @@
 
 import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { ItemsService, StateService } from '../library.client';
+import { ItemsService, StateService } from '@/features/library/sdk';
 import {
   getMappedItemMeta,
   hasExplicitUserStateInPayload,
   preserveMappedItemFlags,
   setMappedItemMeta,
-} from '@/features/library/domain/metadata';
-import type { Item, CreateItemDTO, UpdateItemDTO } from '@/features/library/domain/types/library.types';
+} from '@/features/library/domain/metadata-mapper';
+import type { Item, CreateItemDTO, UpdateItemDTO } from '@/features/library/domain/types/core.types';
 import {
   itemKeys,
   libraryKeys,

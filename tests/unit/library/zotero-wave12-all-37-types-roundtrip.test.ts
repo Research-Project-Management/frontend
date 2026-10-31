@@ -35,7 +35,7 @@ import {
   getPublicationVenue,
   getItemDisplayDate,
   formatAndSanitizeExtraMetadata,
-} from '@/features/library/domain/metadata';
+} from '@/features/library/domain/metadata-mapper';
 import {
   resolveInspectorFieldValue,
   buildInspectorFieldPatch,

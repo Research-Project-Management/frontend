@@ -1,7 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
-import { ReaderInspector } from '@/features/library/ui/inspector/ReaderInspector';
+import { ReaderInspector } from '@/features/library/ui/inspector/InfoSection';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';

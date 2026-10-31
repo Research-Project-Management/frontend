@@ -364,3 +364,209 @@ export function FeedAllReadIllustration({ className }: TIllustrationAssetProps) 
     </svg>
   );
 }
+
+/**
+ * 12. RecentlyReadVerticalStackIllustration
+ * 3D isometric multi-layered illustration adhering strictly to the Plane.so / Flux Flat Precision standard.
+ */
+export function RecentlyReadVerticalStackIllustration({
+  className,
+}: TIllustrationAssetProps) {
+  return (
+    <svg
+      width="162"
+      height="180"
+      viewBox="0 0 162 180"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      <BaseSlabs />
+      <g>
+        <path
+          d="M141.5 35.2L118.5 21.8C117.2 21.0 115.8 21.0 114.8 21.6L116.8 20.3C117.8 19.7 119.2 19.7 120.5 20.5L143.5 33.9C146.8 35.8 149.2 40.5 149.2 44.5C149.2 46.8 148.4 48.4 147.1 49.0L145.1 50.3C146.4 49.7 147.2 48.1 147.2 45.8C147.2 41.8 144.8 37.1 141.5 35.2Z"
+          fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.secondary}
+          stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.primary}
+          strokeWidth="0.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M141.5 35.2C144.8 37.1 147.2 41.8 147.2 45.8C147.2 48.1 146.4 49.7 145.1 50.3C143.8 51.0 142.4 51.0 141.1 50.2L118.1 36.8C114.8 34.9 112.4 30.2 112.4 26.2C112.4 23.9 113.2 22.3 114.5 21.7C115.8 21.0 117.2 21.0 118.5 21.8L141.5 35.2Z"
+          fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.primary}
+          stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.primary}
+          strokeWidth="0.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <circle
+          cx="129.8"
+          cy="36.0"
+          r="1.5"
+          fill={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.secondary}
+        />
+        <path
+          d="M129.8 36.0L125.5 33.5"
+          stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.tertiary}
+          strokeWidth="0.8"
+          strokeLinecap="round"
+        />
+        <path
+          d="M129.8 36.0L133.5 30.5"
+          stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.secondary}
+          strokeWidth="0.7"
+          strokeLinecap="round"
+        />
+      </g>
+      <g>
+        <path
+          d="M18.5 31.0L20.5 36.0L25.5 37.0L21.5 40.5L22.5 45.5L18.5 42.5L14.5 45.5L15.5 40.5L11.5 37.0L16.5 36.0L18.5 31.0Z"
+          fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.quaternary}
+          opacity="0.6"
+        />
+      </g>
+      <g>
+        <path
+          d="M32.0 95.0L80.0 117.0L80.0 122.0L32.0 100.0V95.0Z"
+          fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.tertiary}
+          stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.primary}
+          strokeWidth="0.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M80.0 117.0L128.0 95.0V100.0L80.0 122.0V117.0Z"
+          fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.quaternary}
+          stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.primary}
+          strokeWidth="0.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </g>
+      <g>
+        <path
+          d="M33.0 93.0L80.0 115.0V118.0L33.0 96.0V93.0Z"
+          fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.secondary}
+          stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.primary}
+          strokeWidth="0.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M80.0 115.0L127.0 93.0V96.0L80.0 118.0V115.0Z"
+          fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.tertiary}
+          stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.primary}
+          strokeWidth="0.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </g>
+      <g>
+        <path
+          d="M34.0 46.0L79.0 66.0V114.0L34.0 92.0V46.0Z"
+          fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.primary}
+          stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.primary}
+          strokeWidth="0.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M81.0 66.0L126.0 46.0V92.0L81.0 114.0V66.0Z"
+          fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.primary}
+          stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.primary}
+          strokeWidth="0.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M79.0 66.0L81.0 66.0V114.0L79.0 114.0V66.0Z"
+          fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.secondary}
+          stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.secondary}
+          strokeWidth="0.4"
+        />
+      </g>
+      <g opacity="0.85">
+        <path
+          d="M40.0 54.0L62.0 64.0"
+          stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.secondary}
+          strokeWidth="1.2"
+          strokeLinecap="round"
+        />
+        <path
+          d="M40.0 62.0L73.0 77.0"
+          stroke={ILLUSTRATION_COLOR_TOKEN_MAP.fill.quaternary}
+          strokeWidth="0.7"
+          strokeLinecap="round"
+        />
+        <path
+          d="M40.0 67.0L73.0 82.0"
+          stroke={ILLUSTRATION_COLOR_TOKEN_MAP.fill.quaternary}
+          strokeWidth="0.7"
+          strokeLinecap="round"
+        />
+        <path
+          d="M40.0 72.0L68.0 85.0"
+          stroke={ILLUSTRATION_COLOR_TOKEN_MAP.fill.quaternary}
+          strokeWidth="0.7"
+          strokeLinecap="round"
+        />
+        <path
+          d="M40.0 79.0L73.0 94.0"
+          stroke={ILLUSTRATION_COLOR_TOKEN_MAP.fill.quaternary}
+          strokeWidth="0.7"
+          strokeLinecap="round"
+        />
+        <path
+          d="M40.0 84.0L58.0 92.0"
+          stroke={ILLUSTRATION_COLOR_TOKEN_MAP.fill.quaternary}
+          strokeWidth="0.7"
+          strokeLinecap="round"
+        />
+        <path
+          d="M87.0 68.0L115.0 56.0V72.0L87.0 84.0V68.0Z"
+          fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.secondary}
+          stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.primary}
+          strokeWidth="0.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M87.0 90.0L120.0 75.0"
+          stroke={ILLUSTRATION_COLOR_TOKEN_MAP.fill.quaternary}
+          strokeWidth="0.7"
+          strokeLinecap="round"
+        />
+        <path
+          d="M87.0 95.0L112.0 84.0"
+          stroke={ILLUSTRATION_COLOR_TOKEN_MAP.fill.quaternary}
+          strokeWidth="0.7"
+          strokeLinecap="round"
+        />
+        <path
+          d="M87.0 100.0L118.0 86.0"
+          stroke={ILLUSTRATION_COLOR_TOKEN_MAP.fill.quaternary}
+          strokeWidth="0.7"
+          strokeLinecap="round"
+        />
+      </g>
+      <g>
+        <path
+          d="M80.0 66.0L85.0 68.0L92.0 110.0L86.0 116.0L80.0 110.0L80.0 66.0Z"
+          fill={ILLUSTRATION_COLOR_TOKEN_MAP.fill.tertiary}
+          stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.secondary}
+          strokeWidth="0.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M86.0 116.0L92.0 125.0L86.0 122.0L80.0 125.0L86.0 116.0Z"
+          fill={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.tertiary}
+          stroke={ILLUSTRATION_COLOR_TOKEN_MAP.stroke.tertiary}
+          strokeWidth="0.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </g>
+    </svg>
+  );
+}

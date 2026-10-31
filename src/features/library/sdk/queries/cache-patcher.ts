@@ -4,12 +4,18 @@ import {
   prefetchLibraryCollection,
   prefetchLibraryProjectScope,
 } from '@/features/shell/lib/navigation-prefetch';
-import type { Item } from '@/features/library/domain/types/library.types';
+import type { Item } from '@/features/library/domain/types/core.types';
 import {
   getMappedItemMeta,
   setMappedItemMeta,
-} from '@/features/library/domain/metadata';
-import type { InvalidationClient } from '@/features/library/domain/types/batch-upload.types';
+} from '@/features/library/domain/metadata-mapper';
+import {
+  isItemTrashed,
+  isItemInMyPublications,
+  isItemUnfiled,
+} from '@/features/library/domain/system-views.policy';
+import { isItemRetracted } from '@/features/library/domain/system-views.policy';
+import type { InvalidationClient } from '@/features/library/domain/types/ingestion.types';
 import {
   itemKeys,
   tagKeys,
@@ -327,43 +333,36 @@ function isTrashQueryKey(queryKey: readonly unknown[]): boolean {
   return false;
 }
 
+const isItemStarred = (item: Record<string, unknown>): boolean =>
+  Boolean(item.isStarred || item.starred);
+
+const VIEW_PREDICATE: Readonly<Record<string, (item: Record<string, unknown>) => boolean>> = {
+  starred: isItemStarred,
+  unfiled: isItemUnfiled,
+  'my-publications': isItemInMyPublications,
+  publications: isItemInMyPublications,
+  retracted: isItemRetracted,
+};
+
 function doesItemMatchQueryFilter(
   item: Item,
   params: Record<string, unknown> | undefined,
 ): boolean {
   if (!params || typeof params !== 'object') return true;
   const view = typeof params.view === 'string' ? params.view : undefined;
-  const starredParam = params.starred;
-  const collectionId = typeof params.collectionId === 'string' ? params.collectionId : undefined;
-  const unfiled = Boolean(params.unfiled) || view === 'unfiled';
-  const isStarredFilter = Boolean(starredParam) || view === 'starred';
-  const isMyPublicationsFilter = view === 'my-publications' || view === 'publications';
-  const isRetractedFilter = view === 'retracted';
+  const rec = item as Record<string, unknown>;
 
-  if (item.deletedAt) {
-    return view === 'trash';
-  }
-  if (view === 'trash') {
-    return Boolean(item.deletedAt);
-  }
-  if (isStarredFilter && !item.isStarred) {
-    return false;
-  }
-  if (unfiled && Array.isArray(item.collectionIds) && item.collectionIds.length > 0) {
-    return false;
-  }
+  if (isItemTrashed(rec) !== (view === 'trash')) return false;
+  if (view === 'trash') return true;
+  if (view && VIEW_PREDICATE[view] && !VIEW_PREDICATE[view]!(rec)) return false;
+  if (Boolean(params.starred) && !isItemStarred(rec)) return false;
+  if (Boolean(params.unfiled) && !isItemUnfiled(rec)) return false;
+
+  const collectionId = typeof params.collectionId === 'string' ? params.collectionId : undefined;
   if (collectionId) {
     const colIds = Array.isArray(item.collectionIds) ? item.collectionIds : [];
     const singleColId = (item as { collectionId?: string }).collectionId;
-    if (!colIds.includes(collectionId) && singleColId !== collectionId) {
-      return false;
-    }
-  }
-  if (isMyPublicationsFilter && !item.isMyPublication) {
-    return false;
-  }
-  if (isRetractedFilter && !(item.isRetracted || item.retractionStatus === 'retracted')) {
-    return false;
+    if (!colIds.includes(collectionId) && singleColId !== collectionId) return false;
   }
   return true;
 }
@@ -391,51 +390,33 @@ export function isMetadataOnlyPatch(patch?: Record<string, unknown> | null): boo
   return !keys.some((k) => MEMBERSHIP_MUTATION_KEYS.has(k) || k === 'tags');
 }
 
+const MEMBERSHIP_STATE_EXTRACTORS: ReadonlyArray<(it: Record<string, unknown>) => unknown> = [
+  isItemStarred,
+  isItemTrashed,
+  isItemInMyPublications,
+  isItemRetracted,
+  (it) => (it as { status?: string }).status ?? null,
+  (it) => (it as { collectionId?: string }).collectionId ?? null,
+];
+
 function hasMembershipFieldsChanged(
   oldItem: Item | null,
   updatedItem: Item,
   membershipPatch?: Record<string, unknown>,
 ): boolean {
-  if (membershipPatch && !doesPatchAffectMembership(membershipPatch)) {
+  if ((membershipPatch && !doesPatchAffectMembership(membershipPatch)) || !oldItem) {
     return false;
   }
-  if (!oldItem) return false;
-
-  const oldStarred = Boolean(oldItem.isStarred);
-  const nextStarred = Boolean(updatedItem.isStarred);
-  if (oldStarred !== nextStarred) {
+  const oldRec = oldItem as Record<string, unknown>;
+  const nextRec = updatedItem as Record<string, unknown>;
+  if (MEMBERSHIP_STATE_EXTRACTORS.some((fn) => fn(oldRec) !== fn(nextRec))) {
     return true;
   }
-
-  const oldDeleted = Boolean(oldItem.deletedAt);
-  const nextDeleted = Boolean(updatedItem.deletedAt);
-  if (oldDeleted !== nextDeleted) {
-    return true;
-  }
-
-  const oldStatus = (oldItem as { status?: string }).status ?? null;
-  const nextStatus = (updatedItem as { status?: string }).status ?? null;
-  if (oldStatus !== nextStatus) {
-    return true;
-  }
-
-  const oldColId = (oldItem as { collectionId?: string }).collectionId ?? null;
-  const nextColId = (updatedItem as { collectionId?: string }).collectionId ?? null;
-  if (oldColId !== nextColId) {
-    return true;
-  }
-
   const oldCols = Array.isArray(oldItem.collectionIds) ? oldItem.collectionIds : [];
   const nextCols = Array.isArray(updatedItem.collectionIds) ? updatedItem.collectionIds : [];
-  if (oldCols.length !== nextCols.length) {
-    return true;
-  }
+  if (oldCols.length !== nextCols.length) return true;
   const oldSet = new Set(oldCols);
-  for (const c of nextCols) {
-    if (!oldSet.has(c)) return true;
-  }
-
-  return false;
+  return nextCols.some((c) => !oldSet.has(c));
 }
 
 /**

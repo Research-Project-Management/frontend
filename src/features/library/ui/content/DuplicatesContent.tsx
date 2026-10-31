@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { openInNewTab, buildReaderPaperUrl } from '@/features/library/core/coordinator/browser-io.helpers';
+import { openInNewTab, buildReaderPaperUrl } from '@/features/library/core/coordinator/citation-export.coordinator';
 import {
   GitMerge,
   Layers,
@@ -19,7 +19,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { getItemAuthorsSummary } from '@/features/library/domain/creators';
-import { ContentSkeleton } from '@/features/library/ui/content/ContentSkeleton';
+import { ContentSkeleton } from '@/features/library/ui/content/LibraryContent';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import {
   DuplicatesStackIllustration,
@@ -39,7 +39,7 @@ import {
   inspectItemDifferences,
   selectBestMasterItemId,
 } from '@/features/library/domain/diff';
-import type { Item, DuplicateGroup } from '@/features/library/domain/types/library.types';
+import type { Item, DuplicateGroup } from '@/features/library/domain/types/core.types';
 
 function InlineDiffView({
   items,
@@ -212,16 +212,14 @@ export function DuplicatesContent({
     return activeGroups[0] || null;
   }, [activeGroups, activeGroupByKey, selectedGroupKey]);
 
+  const toggleSetMember = (prev: Set<string>, key: string): Set<string> => {
+    const next = new Set(prev);
+    if (!next.delete(key)) next.add(key);
+    return next;
+  };
+
   const toggleGroupSelect = React.useCallback((groupKey: string) => {
-    setSelectedGroupKeys((prev) => {
-      const next = new Set(prev);
-      if (next.has(groupKey)) {
-        next.delete(groupKey);
-      } else {
-        next.add(groupKey);
-      }
-      return next;
-    });
+    setSelectedGroupKeys((prev) => toggleSetMember(prev, groupKey));
   }, []);
 
   const selectAllHighConfidence = React.useCallback(() => {
@@ -233,15 +231,7 @@ export function DuplicatesContent({
 
   const toggleInlineDiff = (groupKey: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setExpandedDiffGroupKeys((prev) => {
-      const next = new Set(prev);
-      if (next.has(groupKey)) {
-        next.delete(groupKey);
-      } else {
-        next.add(groupKey);
-      }
-      return next;
-    });
+    setExpandedDiffGroupKeys((prev) => toggleSetMember(prev, groupKey));
   };
 
   const totalDuplicateItems = useMemo(() => {
@@ -270,7 +260,7 @@ export function DuplicatesContent({
         } else {
           toast.success('Dismissed duplicate group', { id: 'duplicate-group-action' });
         }
-        setDismissedGroupKeys((prev) => new Set([...Array.from(prev), groupKey]));
+        setDismissedGroupKeys((prev) => new Set(prev).add(groupKey));
       } catch {
         toast.error('Failed to dismiss duplicate group', { id: 'duplicate-group-action' });
       }
@@ -290,15 +280,13 @@ export function DuplicatesContent({
         duplicates: items,
         recommendedMasterId: group.recommendedMasterId,
         onDismissDuplicate: () => {
-          if (targetKey && activeGroupByKey.has(targetKey)) {
-            handleDismissGroup(targetKey);
-          } else if (targetKey) {
-            handleDismissGroup(targetKey);
+          if (targetKey) {
+            void handleDismissGroup(targetKey);
           }
         },
       });
     },
-    [activeGroupByKey, handleDismissGroup, openModal, selectedGroupKey],
+    [handleDismissGroup, openModal, selectedGroupKey],
   );
 
   const handleClearGroupSelection = React.useCallback(() => {
@@ -363,7 +351,7 @@ export function DuplicatesContent({
           duplicateItemIds,
         });
         clearGroupMergeDraft(key);
-        setDismissedGroupKeys((prev) => new Set([...Array.from(prev), key]));
+        setDismissedGroupKeys((prev) => new Set(prev).add(key));
         mergedGroupsCount++;
       }
 

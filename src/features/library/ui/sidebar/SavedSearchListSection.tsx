@@ -1,10 +1,104 @@
 'use client';
 
-import { Search } from 'lucide-react';
-import { SidebarNavItem } from './SidebarNavItem';
-import { SavedSearchContextMenu } from './SavedSearchContextMenu';
+import React from 'react';
+import {
+  Search,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  Copy,
+  SlidersHorizontal,
+} from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/shared/components/ui/dropdown-menu';
+import { SidebarNavItem } from './SidebarSystemNav';
 import { parseEmojiPrefix } from '@/features/library/domain/academic-text';
 import type { SavedSearch } from '@/features/library/domain/types/saved-searches.types';
+
+export interface SavedSearchContextMenuProps {
+  savedSearch: SavedSearch;
+  onEdit: (savedSearch: SavedSearch) => void;
+  onRename: (id: string, name: string) => void;
+  onDuplicate: (savedSearch: SavedSearch) => void;
+  onDelete: (id: string) => void;
+}
+
+/**
+ * SavedSearchContextMenu (Smart Search Menu)
+ * Provides complete lifecycle management: Edit Criteria, Rename, Duplicate, Delete.
+ */
+export function SavedSearchContextMenu({
+  savedSearch,
+  onEdit,
+  onRename,
+  onDuplicate,
+  onDelete,
+}: SavedSearchContextMenuProps) {
+  return (
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground opacity-0 max-md:opacity-100 group-hover/item:opacity-100 data-[state=open]:opacity-100 data-[state=open]:bg-background data-[state=open]:border-border data-[state=open]:text-foreground focus-visible:opacity-100 border border-transparent hover:border-border/50 hover:bg-background transition-colors duration-150 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          aria-label={`Options for ${savedSearch.name}`}
+        >
+          <MoreVertical className="size-3.5 shrink-0" strokeWidth={1.5} />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        side="bottom"
+        align="end"
+        sideOffset={4}
+        collisionPadding={12}
+        onCloseAutoFocus={(e) => e.preventDefault()}
+        className="w-56 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
+      >
+        <DropdownMenuItem
+          onClick={() => onEdit(savedSearch)}
+          className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+        >
+          <SlidersHorizontal className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+          <span>Edit Saved Search...</span>
+        </DropdownMenuItem>
+
+        <DropdownMenuItem
+          onClick={() => onRename(savedSearch.id, savedSearch.name)}
+          className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+        >
+          <Pencil className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+          <span>Rename Saved Search</span>
+        </DropdownMenuItem>
+
+        <DropdownMenuItem
+          onClick={() => onDuplicate(savedSearch)}
+          className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+        >
+          <Copy className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+          <span>Duplicate Saved Search</span>
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator className="my-1" />
+
+        <DropdownMenuItem
+          onClick={() => onDelete(savedSearch.id)}
+          className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-destructive focus:text-destructive hover:bg-destructive/10 focus:bg-destructive/10 rounded-md outline-none transition-colors"
+        >
+          <Trash2 className="size-4 text-destructive shrink-0" strokeWidth={1.5} />
+          <span>Delete Saved Search</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 export interface SavedSearchListSectionProps {
   savedSearches?: SavedSearch[];

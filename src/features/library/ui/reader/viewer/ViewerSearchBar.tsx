@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect, useRef, useMemo, useCallback, useDeferredValue } from 'react';
 import { Search, ChevronLeft, ChevronRight, X } from 'lucide-react';
-import type { DocumentFulltext } from '@/features/library/domain/types/reader.types';
+import type { DocumentFulltext } from '@/features/library/domain/types/reader.schema';
 import {
   foldDiacritics,
   searchPdfPages,
-} from '@/features/library/domain/reader-persistence.helpers';
+} from '@/features/library/domain/reader-search-outline';
 
 export interface PdfSearchDocumentProxy {
   numPages: number;

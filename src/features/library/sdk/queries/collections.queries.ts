@@ -5,12 +5,12 @@ import { toast } from 'sonner';
 import {
   libraryServices,
   CollectionsService,
-} from '../library.client';
+} from '@/features/library/sdk';
 import type {
   Collection,
   CreateCollectionDTO,
   UpdateCollectionDTO,
-} from '@/features/library/domain/types/library.types';
+} from '@/features/library/domain/types/core.types';
 import {
   itemKeys,
   libraryKeys,

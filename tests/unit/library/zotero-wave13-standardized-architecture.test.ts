@@ -33,10 +33,10 @@ import {
   isAllowedItemExtraKey,
   mapBackendItem,
   getItemDisplayTitle,
-} from '@/features/library/domain/metadata';
+} from '@/features/library/domain/metadata-mapper';
 import { resolveItemFieldValue } from '@/features/library/domain/diff';
 import * as DomainExports from '@/features/library/domain/item-field-schema';
-import type { Item } from '@/features/library/domain/types/library.types';
+import type { Item } from '@/features/library/domain/types/core.types';
 
 describe('Wave 13: Architectural Flow Standardization & Single Source of Truth', () => {
   it('derives ALL_SCHEMA_FIELD_KEYS, DIRECT_METADATA_FIELDS, and ALL_SCHEMA_PROMOTE_KEYS automatically from the 37 Zotero item types with zero drift', () => {

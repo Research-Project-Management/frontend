@@ -35,12 +35,12 @@ import {
 import {
   addFeedSchema,
   type AddFeedFormValues,
-} from '@/features/library/domain/types/forms.types';
+} from '@/features/library/domain/types/core.types';
 import {
   READ_RETENTION_OPTIONS,
   UNREAD_RETENTION_OPTIONS,
   type FeedRetentionDays,
-} from '@/features/library/domain/types/feeds.types';
+} from '@/features/library/domain/types/ingestion.types';
 
 export interface AddFeedModalProps {
   open: boolean;

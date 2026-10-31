@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Item } from '@/features/library/domain/types/library.types';
+import type { Item } from '@/features/library/domain/types/core.types';
 import {
   DIRECT_METADATA_FIELDS,
   FIELD_FALLBACK_CHAINS,
@@ -14,7 +14,7 @@ import {
 import {
   formatAndSanitizeExtraMetadata,
   isAllowedItemExtraKey,
-} from '@/features/library/domain/metadata';
+} from '@/features/library/domain/metadata-mapper';
 
 function makeBaseItem(overrides: Partial<Item> & Record<string, unknown> = {}): Item {
   return {

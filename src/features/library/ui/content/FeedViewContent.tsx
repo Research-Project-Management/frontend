@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { toast } from 'sonner';
 import {
   useAcademicFeedArticlesQuery,
   useFetchAcademicFeed,
@@ -12,7 +11,7 @@ import {
   useCreateLibraryItemMutation,
 } from '@/features/library/sdk/queries/catalog.queries';
 import { useCollections } from '@/features/library/sdk/queries/collections.queries';
-import type { Collection } from '@/features/library/domain/types/library.types';
+import type { Collection } from '@/features/library/domain/types/core.types';
 import {
   normalizeFetchedFeedEntries,
   filterFeedEntriesByRetention,
@@ -20,12 +19,12 @@ import {
   type ParsedFeedEntry,
   type FeedFetchApiResponse,
 } from '@/features/library/domain/feed-parser.domain';
-import { executeSaveFeedEntryWithFeedback } from '@/features/library/core/coordinator/feed-item.coordinator';
+import { executeSaveFeedEntryWithFeedback } from '@/features/library/core/coordinator/ingestion.coordinator';
 import {
   useFeedsStore,
   isFeedEntryInLibrary,
 } from '@/features/library/core/store/feeds.store';
-import { ContentSkeleton } from '@/features/library/ui/content/ContentSkeleton';
+import { ContentSkeleton } from '@/features/library/ui/content/LibraryContent';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import {
@@ -37,7 +36,7 @@ import { useSearchParams } from 'next/navigation';
 import {
   FeedSubNavigationBar,
   FeedArticleRow,
-} from './FeedViewSubcomponents';
+} from './FeedViewCards';
 
 export { FeedSubNavigationBar, FeedArticleRow };
 
@@ -91,8 +90,11 @@ export function FeedViewContent({
     return feeds.find((f) => f.id === feedId) || feeds[0];
   }, [feeds, feedId]);
 
-  const { mutateAsync: fetchAcademicFeed, isPending: isRefreshingFeed } =
-    useFetchAcademicFeed();
+  const {
+    mutateAsync: fetchAcademicFeed,
+    isPending: isRefreshingFeed,
+    error: refreshError,
+  } = useFetchAcademicFeed();
   const feedArticlesQuery = useAcademicFeedArticlesQuery(
     scopeId,
     activeFeed?.url,
@@ -102,20 +104,7 @@ export function FeedViewContent({
   );
   const isFetching = feedArticlesQuery.isLoading || isRefreshingFeed;
 
-  const [manualEntries, setManualEntries] = useState<ParsedFeedEntry[] | null>(
-    null,
-  );
-  const [manualFeedTitle, setManualFeedTitle] = useState<string>('');
-  const [manualError, setManualError] = useState<Error | null>(null);
-
-  useEffect(() => {
-    setManualEntries(null);
-    setManualFeedTitle('');
-    setManualError(null);
-  }, [activeFeed?.url]);
-
   const rawEntries = useMemo(() => {
-    if (manualEntries !== null) return manualEntries;
     const res = feedArticlesQuery.data as FeedFetchApiResponse | undefined;
     const payload =
       res && typeof res === 'object' && 'data' in res && res.data
@@ -129,10 +118,9 @@ export function FeedViewContent({
       return normalizeFetchedFeedEntries(payload.entries);
     }
     return [];
-  }, [manualEntries, feedArticlesQuery.data]);
+  }, [feedArticlesQuery.data]);
 
   const feedTitle = useMemo(() => {
-    if (manualFeedTitle) return manualFeedTitle;
     const res = feedArticlesQuery.data as FeedFetchApiResponse | undefined;
     const payload =
       res && typeof res === 'object' && 'data' in res && res.data
@@ -143,10 +131,10 @@ export function FeedViewContent({
       activeFeed?.name ||
       ''
     );
-  }, [manualFeedTitle, feedArticlesQuery.data, activeFeed?.name]);
+  }, [feedArticlesQuery.data, activeFeed?.name]);
 
   const fetchError =
-    manualError ??
+    refreshError ??
     (feedArticlesQuery.error instanceof Error
       ? feedArticlesQuery.error
       : feedArticlesQuery.error
@@ -165,38 +153,19 @@ export function FeedViewContent({
   const loadFeedEntries = useCallback(
     async (forceRefresh = false) => {
       if (!activeFeed?.url) {
-        setManualEntries([]);
         return;
       }
       if (!forceRefresh) {
-        setManualError(null);
-        setManualEntries(null);
         await feedArticlesQuery.refetch();
         return;
       }
-      setManualError(null);
       try {
-        const res: FeedFetchApiResponse | string = await fetchAcademicFeed({
+        await fetchAcademicFeed({
           url: activeFeed.url,
           forceRefresh: true,
         });
-        const payload =
-          typeof res === 'object' && res !== null && res.data ? res.data : res;
-        if (
-          payload &&
-          typeof payload === 'object' &&
-          Array.isArray(payload.entries)
-        ) {
-          setManualFeedTitle(payload.feedTitle || activeFeed.name);
-          setManualEntries(normalizeFetchedFeedEntries(payload.entries));
-        } else {
-          setManualEntries([]);
-        }
-      } catch (err: unknown) {
-        setManualError(
-          err instanceof Error ? err : new Error('Failed to fetch feed'),
-        );
-        setManualEntries([]);
+      } catch {
+        // Mutation error state is captured by useFetchAcademicFeed
       }
     },
     [activeFeed, fetchAcademicFeed, feedArticlesQuery],

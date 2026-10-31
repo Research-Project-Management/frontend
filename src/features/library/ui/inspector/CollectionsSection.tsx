@@ -37,7 +37,7 @@ import type {
   Item,
   Collection,
   CreateCollectionDTO,
-} from "@/features/library/domain/types/library.types";
+} from "@/features/library/domain/types/core.types";
 import { getAssignedCollectionIds } from "@/features/library/domain/metadata-mapper";
 
 // ── Helper: compute ancestor breadcrumb path for a collection ────────────────

@@ -18,7 +18,7 @@ import {
 import { Button } from "@/shared/components/ui/button";
 import { Checkbox } from "@/shared/components/ui/checkbox";
 import { Label } from "@/shared/components/ui/label";
-import type { Item } from "@/features/library/domain/types/library.types";
+import type { Item } from "@/features/library/domain/types/core.types";
 import {
   ALL_ITEM_TYPES_FLAT,
   FIELD_LABELS,
@@ -26,7 +26,7 @@ import {
   BASE_FIELD_MAPPINGS,
   REVERSE_BASE_FIELD_MAPPINGS,
   humanizeFieldName,
-} from "@/features/library/domain/types/library.types";
+} from "@/features/library/domain/types/core.types";
 import {
   useItemTypeConversion,
   useItemTypeConversionPreviewQuery,

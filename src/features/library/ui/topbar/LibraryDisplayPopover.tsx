@@ -24,13 +24,13 @@ export type {
   LibraryColumnKey,
   LibraryOrderBy,
   LibraryDisplayOptions,
-} from "@/features/library/domain/types/display.types";
-export { DEFAULT_LIBRARY_DISPLAY_OPTIONS } from "@/features/library/domain/types/display.types";
+} from "@/features/library/domain/types/saved-searches.types";
+export { DEFAULT_LIBRARY_DISPLAY_OPTIONS } from "@/features/library/domain/types/saved-searches.types";
 import type {
   LibraryDisplayOptions,
   LibraryColumnKey,
   LibraryOrderBy,
-} from "@/features/library/domain/types/display.types";
+} from "@/features/library/domain/types/saved-searches.types";
 
 export interface LibraryDisplayPopoverProps {
   options: LibraryDisplayOptions;

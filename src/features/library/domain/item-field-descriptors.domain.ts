@@ -3,11 +3,11 @@
  * for Zotero Schema v42 Fields.
  */
 
-import type { Item } from "@/features/library/domain/types/library.types";
+import type { Item } from "@/features/library/domain/types/core.types";
 import { normalizeCanonicalItemType } from "@/features/library/domain/types/item-types.types";
 import { cleanDoi, extractArxivId } from "./identifiers";
-import { isValidValue, cleanValue } from "./metadata";
-import { parseValidYear } from "./item-field-scorers.strategy";
+import { isValidValue, cleanValue } from "./metadata-mapper";
+import { parseValidYear } from "./metadata-extra.constants";
 
 export type FieldLookupSource = {
   p: Record<string, unknown>;

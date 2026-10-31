@@ -3,7 +3,6 @@
 import React, { useState, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/shared/lib/utils';
-import { RecentlyReadEmptyState } from './RecentlyReadEmptyState';
 import {
   libraryIllustrationStyles,
   StarredStackIllustration,
@@ -16,7 +15,40 @@ import {
   SearchStackIllustration,
   FeedStackIllustration,
   FeedAllReadIllustration,
+  RecentlyReadVerticalStackIllustration,
 } from './LibraryIllustrations';
+
+export { RecentlyReadVerticalStackIllustration };
+
+/**
+ * RecentlyReadEmptyState
+ * Pure Flat Precision / Plane.so style empty state for Recently Read.
+ * Strictly contains NO action buttons, seamless default background, and
+ * authentic 3D isometric illustration.
+ */
+export function RecentlyReadEmptyState() {
+  return (
+    <div
+      data-testid="recently-read-empty"
+      className="flex-1 w-full h-full min-h-[440px] flex flex-col items-center justify-center p-8 text-center select-none"
+    >
+      <style dangerouslySetInnerHTML={{ __html: libraryIllustrationStyles }} />
+
+      <div className="plane-library-illustration mb-6 flex items-center justify-center">
+        <RecentlyReadVerticalStackIllustration />
+      </div>
+
+      <h3 className="text-16 font-semibold text-foreground mb-2 tracking-tight">
+        No recently read references
+      </h3>
+
+      <p className="text-13 text-muted-foreground max-w-[420px] leading-relaxed font-normal">
+        Papers and literature you open or read will appear here for quick
+        access.
+      </p>
+    </div>
+  );
+}
 
 export interface LibraryEmptyStateProps {
   search?: string;
@@ -172,7 +204,6 @@ function DefaultLibraryEmptyState({
   const config = getConfig();
   const IllustrationComponent = config.illustration;
 
-  // File drag & drop handling
   const handleDragOver = useCallback(
     (e: React.DragEvent) => {
       if (!canEdit || !onDirectFilesUpload || !config.showDropzone) return;
@@ -215,15 +246,12 @@ function DefaultLibraryEmptyState({
     >
       <style dangerouslySetInnerHTML={{ __html: libraryIllustrationStyles }} />
 
-      {/* 3D Isometric Multi-Layer Illustration */}
       <IllustrationComponent className="plane-illustration mb-6 shrink-0" />
 
-      {/* Title (h2 ensures valid heading hierarchy after page h1) */}
       <h2 className="text-16 font-semibold text-foreground mb-2 tracking-tight">
         {config.title}
       </h2>
 
-      {/* Description */}
       <p className="text-13 text-muted-foreground max-w-[420px] leading-relaxed font-normal">
         {config.description}
       </p>
@@ -242,12 +270,10 @@ export function LibraryEmptyState(props: LibraryEmptyStateProps) {
     activeFilter === 'recently-read' ||
     pathname?.includes('/recently-read');
 
-  // Recently Read has its own dedicated component
   if (isRecent && !isSearchActive) {
     return <RecentlyReadEmptyState />;
   }
 
-  // Determine current context variant
   const variant: EmptyStateVariant = (() => {
     if (isSearchActive) return 'search';
     if (isRecent) return 'recently-read';

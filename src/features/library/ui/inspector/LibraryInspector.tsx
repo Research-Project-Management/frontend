@@ -18,21 +18,27 @@ import { useLibraryUIStore, type InspectorSectionId } from '@/features/library/c
 import { useRelations } from '@/features/library/sdk/queries/saved-searches-relations.queries';
 import { useInspectorItemResolver } from '@/features/library/core/coordinator/inspector-item.coordinator';
 
-import { InspectorTabs } from './InspectorTabs';
+import { usePanelResize } from '@/features/library/core/coordinator/inspector-item.coordinator';
 import {
+  InspectorHeader,
+  InspectorTabs,
   INSPECTOR_LEVELS,
-} from './inspector-levels.constants';
+  InspectorSection,
+  type InspectorSectionProps,
+} from './InspectorHeader';
+
 export {
   INSPECTOR_LEVELS,
+  InspectorSection,
+  type InspectorSectionProps,
 };
-import { InspectorSection, type InspectorSectionProps } from './InspectorSection';
-export { InspectorSection, type InspectorSectionProps };
-import { usePanelResize } from '@/features/library/ui/hooks/usePanelResize';
-import { InspectorHeader } from './InspectorHeader';
 
 import dynamic from 'next/dynamic';
 const InfoSection = dynamic(() => import('./InfoSection'), { ssr: false });
-const AbstractSection = dynamic(() => import('./AbstractSection'), { ssr: false });
+const AbstractSection = dynamic(
+  () => import('./InfoSection').then((m) => m.AbstractSection),
+  { ssr: false },
+);
 const AttachmentsSection = dynamic(() => import('./AttachmentsSection'), { ssr: false });
 const CiteSection = dynamic(() => import('./CiteSection'), { ssr: false });
 const NotesSection = dynamic(() => import('./NotesSection'), { ssr: false });
@@ -45,7 +51,7 @@ const CollectionPickerPopover = dynamic(
 const RelatedSection = dynamic(() => import('./RelatedSection'), { ssr: false });
 
 import { cn } from '@/shared/lib/utils';
-import type { Item } from '@/features/library/domain/types/library.types';
+import type { Item } from '@/features/library/domain/types/core.types';
 
 export interface LibraryInspectorProps {
   item?: Item | null;

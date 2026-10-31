@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { ExternalLink, Copy, CheckCircle2 } from "lucide-react";
-import { SchemaFieldDefinition } from "@/features/library/domain/types/library.types";
-import { isValidValue } from "@/features/library/domain/metadata";
+import { SchemaFieldDefinition } from "@/features/library/domain/types/core.types";
+import { isValidValue } from "@/features/library/domain/metadata-mapper";
 import { InlineField } from "./InlineField";
 import {
   Tooltip,
@@ -51,6 +51,149 @@ function toValidUrl(str: string): string {
   return `https://${trimmed}`;
 }
 
+const MONO_FIELD_KEYS = new Set<string>([
+  "doi",
+  "citationkey",
+  "citekey",
+  "isbn",
+  "issn",
+  "pmid",
+  "pmcid",
+  "arxiv",
+  "arxivid",
+  "year",
+  "volume",
+  "issue",
+  "pages",
+  "date",
+  "citationcount",
+]);
+
+export interface InspectorFieldActionDescriptor {
+  type: "external-link" | "copy-cite";
+  href?: string;
+  copyText?: string;
+  title: string;
+  label: string;
+}
+
+export interface InspectorFieldDescriptor {
+  isMono: boolean;
+  isCitationKey: boolean;
+  action?: InspectorFieldActionDescriptor;
+}
+
+interface FieldActionStrategy {
+  matches(fieldKeyLower: string, value: string, options?: { displayDoi?: string; fieldDef?: SchemaFieldDefinition }): boolean;
+  resolve(fieldKeyLower: string, value: string, options?: { displayDoi?: string; fieldDef?: SchemaFieldDefinition }): InspectorFieldActionDescriptor;
+}
+
+const INSPECTOR_FIELD_ACTION_STRATEGIES: readonly FieldActionStrategy[] = [
+  {
+    matches: (key, val, opts) =>
+      key === "doi" && Boolean(opts?.displayDoi || isValidValue(val)),
+    resolve: (_key, val, opts) => {
+      const targetDoi = (opts?.displayDoi || val).trim();
+      return {
+        type: "external-link",
+        href: `https://doi.org/${targetDoi}`,
+        title: "Open DOI",
+        label: "Open DOI",
+      };
+    },
+  },
+  {
+    matches: (key, val) =>
+      (key === "citationkey" || key === "citekey") && isValidValue(val),
+    resolve: (_key, val) => ({
+      type: "copy-cite",
+      copyText: `\\cite{${val}}`,
+      title: "Copy citation key",
+      label: "Citation Key",
+    }),
+  },
+  {
+    matches: (key, val) =>
+      (key === "pmid" || key === "pmcid") && Boolean(val && val.trim()),
+    resolve: (key, val) => ({
+      type: "external-link",
+      href:
+        key === "pmid"
+          ? `https://pubmed.ncbi.nlm.nih.gov/${encodeURIComponent(val)}/`
+          : `https://www.ncbi.nlm.nih.gov/pmc/articles/${encodeURIComponent(val)}/`,
+      title: "Open in PubMed",
+      label: "Open in PubMed",
+    }),
+  },
+  {
+    matches: (key, val) =>
+      (key === "arxivid" || key === "arxiv") && Boolean(val && val.trim()),
+    resolve: (_key, val) => ({
+      type: "external-link",
+      href: `https://arxiv.org/abs/${encodeURIComponent(val.replace(/^arxiv:/i, ""))}`,
+      title: "Open in arXiv",
+      label: "Open in arXiv",
+    }),
+  },
+  {
+    matches: (key, val, opts) => {
+      if (
+        key === "doi" ||
+        key === "pmid" ||
+        key === "pmcid" ||
+        key === "arxivid" ||
+        key === "arxiv"
+      ) {
+        return false;
+      }
+      const isUrlField = key === "url" || opts?.fieldDef?.type === "url";
+      return (
+        isUrlLike(val) ||
+        (isUrlField &&
+          isValidValue(val) &&
+          val.trim() !== "http://" &&
+          val.trim() !== "https://")
+      );
+    },
+    resolve: (_key, val, opts) => {
+      const fieldLabel = opts?.fieldDef?.label || "URL";
+      return {
+        type: "external-link",
+        href: toValidUrl(val),
+        title: `Open ${fieldLabel.toLowerCase()} link`,
+        label: `Open ${fieldLabel} link`,
+      };
+    },
+  },
+];
+
+export function resolveInspectorFieldAction(
+  fieldKeyOrDef: string | SchemaFieldDefinition,
+  value: string,
+  displayDoi?: string,
+): InspectorFieldDescriptor {
+  const fieldDef =
+    typeof fieldKeyOrDef === "object" && fieldKeyOrDef !== null
+      ? fieldKeyOrDef
+      : undefined;
+  const rawKey = typeof fieldKeyOrDef === "string" ? fieldKeyOrDef : fieldDef?.field || "";
+  const keyLower = rawKey.trim().toLowerCase();
+  const isCitationKey = keyLower === "citationkey" || keyLower === "citekey";
+  const isMono = Boolean(fieldDef?.mono || MONO_FIELD_KEYS.has(keyLower));
+
+  for (const strategy of INSPECTOR_FIELD_ACTION_STRATEGIES) {
+    if (strategy.matches(keyLower, value, { displayDoi, fieldDef })) {
+      return {
+        isMono,
+        isCitationKey,
+        action: strategy.resolve(keyLower, value, { displayDoi, fieldDef }),
+      };
+    }
+  }
+
+  return { isMono, isCitationKey };
+}
+
 export function DynamicInspectorField({
   fieldDef,
   val,
@@ -67,36 +210,8 @@ export function DynamicInspectorField({
   }, [val]);
 
   const currentVal = liveValue ?? val;
-  const isDoi = fieldDef.field.toLowerCase() === "doi";
-  const isUrlField =
-    fieldDef.field.toLowerCase() === "url" || fieldDef.type === "url";
-  const isCitationKey =
-    fieldDef.field.toLowerCase() === "citationkey" ||
-    fieldDef.field.toLowerCase() === "citekey";
-  const isIdentifierOrNumeric =
-    isDoi ||
-    isCitationKey ||
-    fieldDef.mono ||
-    [
-      "isbn",
-      "issn",
-      "pmid",
-      "pmcid",
-      "arxiv",
-      "year",
-      "volume",
-      "issue",
-      "pages",
-      "date",
-      "citationcount",
-    ].includes(fieldDef.field.toLowerCase());
-
-  const hasLink =
-    isUrlLike(currentVal) ||
-    (isUrlField &&
-      isValidValue(currentVal) &&
-      currentVal.trim() !== "http://" &&
-      currentVal.trim() !== "https://");
+  const descriptor = resolveInspectorFieldAction(fieldDef, currentVal, displayDoi);
+  const { isMono, isCitationKey, action } = descriptor;
 
   return (
     <div className="grid grid-cols-[84px_1fr] gap-2 items-center py-0.5 group">
@@ -117,69 +232,53 @@ export function DynamicInspectorField({
           onChange={setLiveValue}
           ariaLabel={isCitationKey ? "BibTeX Citation Key" : fieldDef.label}
           onSave={onSave}
-          mono={Boolean(isIdentifierOrNumeric)}
+          mono={isMono}
           readOnly={!canEdit}
           className="flex-1 w-full"
         />
 
-        {/* DOI Quick Action */}
-        {isDoi && displayDoi && (
-          <div className="invisible group-hover:visible group-focus-within:visible max-md:visible flex items-center shrink-0">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <a
-                  href={`https://doi.org/${displayDoi}`}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer focus-visible:outline-none transition-colors relative before:absolute before:-inset-2 md:before:hidden"
-                  aria-label="Open DOI"
-                >
-                  <ExternalLink
-                    className="size-3.5 shrink-0"
-                    aria-hidden="true"
-                    strokeWidth={1.5}
-                  />
-                </a>
-              </TooltipTrigger>
-              <TooltipContent
-                side="bottom"
-                align="start"
-                sideOffset={6}
-                alignOffset={2}
-              >
-                Open DOI
-              </TooltipContent>
-            </Tooltip>
-          </div>
-        )}
-
-        {/* Citation Key Quick Action (Copy) */}
-        {isCitationKey && isValidValue(currentVal) && (
+        {action && (
           <div className="invisible group-hover:visible group-focus-within:visible max-md:visible flex items-center gap-0.5 shrink-0">
             <Tooltip>
               <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={() =>
-                    onCopy(`\\cite{${currentVal}}`, "Citation Key")
-                  }
-                  className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer focus-visible:outline-none transition-colors relative before:absolute before:-inset-2 md:before:hidden"
-                  aria-label="Copy citation key"
-                >
-                  {copiedKey === "Citation Key" ? (
-                    <CheckCircle2
-                      className="size-3.5 text-primary shrink-0"
-                      aria-hidden="true"
-                      strokeWidth={1.5}
-                    />
-                  ) : (
-                    <Copy
+                {action.type === "external-link" && action.href ? (
+                  <a
+                    href={action.href}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer focus-visible:outline-none transition-colors relative before:absolute before:-inset-2 md:before:hidden"
+                    aria-label={action.label}
+                  >
+                    <ExternalLink
                       className="size-3.5 shrink-0"
                       aria-hidden="true"
                       strokeWidth={1.5}
                     />
-                  )}
-                </button>
+                  </a>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      action.copyText && onCopy(action.copyText, action.label)
+                    }
+                    className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer focus-visible:outline-none transition-colors relative before:absolute before:-inset-2 md:before:hidden"
+                    aria-label={action.title}
+                  >
+                    {copiedKey === action.label ? (
+                      <CheckCircle2
+                        className="size-3.5 text-primary shrink-0"
+                        aria-hidden="true"
+                        strokeWidth={1.5}
+                      />
+                    ) : (
+                      <Copy
+                        className="size-3.5 shrink-0"
+                        aria-hidden="true"
+                        strokeWidth={1.5}
+                      />
+                    )}
+                  </button>
+                )}
               </TooltipTrigger>
               <TooltipContent
                 side="bottom"
@@ -187,117 +286,11 @@ export function DynamicInspectorField({
                 sideOffset={6}
                 alignOffset={2}
               >
-                Copy citation key
+                {action.title}
               </TooltipContent>
             </Tooltip>
           </div>
         )}
-
-        {/* PubMed Quick Action */}
-        {(fieldDef.field.toLowerCase() === "pmid" ||
-          fieldDef.field.toLowerCase() === "pmcid") &&
-          currentVal && (
-            <div className="invisible group-hover:visible group-focus-within:visible max-md:visible flex items-center shrink-0">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <a
-                    href={
-                      fieldDef.field.toLowerCase() === "pmid"
-                        ? `https://pubmed.ncbi.nlm.nih.gov/${encodeURIComponent(currentVal)}/`
-                        : `https://www.ncbi.nlm.nih.gov/pmc/articles/${encodeURIComponent(currentVal)}/`
-                    }
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer focus-visible:outline-none transition-colors relative before:absolute before:-inset-2 md:before:hidden"
-                    aria-label="Open in PubMed"
-                  >
-                    <ExternalLink
-                      className="size-3.5 shrink-0"
-                      aria-hidden="true"
-                      strokeWidth={1.5}
-                    />
-                  </a>
-                </TooltipTrigger>
-                <TooltipContent
-                  side="bottom"
-                  align="start"
-                  sideOffset={6}
-                  alignOffset={2}
-                >
-                  Open in PubMed
-                </TooltipContent>
-              </Tooltip>
-            </div>
-          )}
-
-        {/* arXiv Quick Action */}
-        {(fieldDef.field.toLowerCase() === "arxivid" ||
-          fieldDef.field.toLowerCase() === "arxiv") &&
-          currentVal && (
-            <div className="invisible group-hover:visible group-focus-within:visible max-md:visible flex items-center shrink-0">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <a
-                    href={`https://arxiv.org/abs/${encodeURIComponent(currentVal.replace(/^arxiv:/i, ""))}`}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer focus-visible:outline-none transition-colors relative before:absolute before:-inset-2 md:before:hidden"
-                    aria-label="Open in arXiv"
-                  >
-                    <ExternalLink
-                      className="size-3.5 shrink-0"
-                      aria-hidden="true"
-                      strokeWidth={1.5}
-                    />
-                  </a>
-                </TooltipTrigger>
-                <TooltipContent
-                  side="bottom"
-                  align="start"
-                  sideOffset={6}
-                  alignOffset={2}
-                >
-                  Open in arXiv
-                </TooltipContent>
-              </Tooltip>
-            </div>
-          )}
-
-        {/* General Link / URL Quick Action (License, URL, Rights, or any field containing a web link) */}
-        {!isDoi &&
-          fieldDef.field.toLowerCase() !== "pmid" &&
-          fieldDef.field.toLowerCase() !== "pmcid" &&
-          fieldDef.field.toLowerCase() !== "arxivid" &&
-          fieldDef.field.toLowerCase() !== "arxiv" &&
-          hasLink && (
-            <div className="invisible group-hover:visible group-focus-within:visible max-md:visible flex items-center shrink-0">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <a
-                    href={toValidUrl(currentVal)}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer focus-visible:outline-none transition-colors relative before:absolute before:-inset-2 md:before:hidden"
-                    aria-label={`Open ${fieldDef.label} link`}
-                  >
-                    <ExternalLink
-                      className="size-3.5 shrink-0"
-                      aria-hidden="true"
-                      strokeWidth={1.5}
-                    />
-                  </a>
-                </TooltipTrigger>
-                <TooltipContent
-                  side="bottom"
-                  align="start"
-                  sideOffset={6}
-                  alignOffset={2}
-                >
-                  Open {fieldDef.label.toLowerCase()} link
-                </TooltipContent>
-              </Tooltip>
-            </div>
-          )}
       </div>
     </div>
   );

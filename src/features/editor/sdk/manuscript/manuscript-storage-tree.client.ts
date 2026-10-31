@@ -23,7 +23,6 @@ import type {
   ProjectTemplateItem,
 } from './types';
 import type { EditorStorageItem } from '@/features/editor/domain/types/storage-item.types';
-import { uploadBlobWithPresigned } from '@/features/storage';
 
 export type { EditorStorageItem };
 
@@ -121,15 +120,26 @@ export const structure = {
         : `${MANUSCRIPTS_API_BASE}/pages/${pageId}/structure/nodes`;
       const nodes = await apiGet<StructureNodeDto[]>(endpoint, { silent: true });
       if (Array.isArray(nodes)) {
-        return nodes.map((n) => ({
-          id: n.id,
-          filename: n.name,
-          isFolder: n.type?.toUpperCase() === 'FOLDER',
-          parentId: n.parentId,
-          size: n.sizeBytes,
-          createdAt: n.createdAt,
-          updatedAt: n.updatedAt,
-        }));
+        return nodes.map((n) => {
+          const upperType = (n.type?.toUpperCase() || 'FILE') as 'FOLDER' | 'DOC' | 'FILE';
+          const isFolder = upperType === 'FOLDER';
+          const isFileAsset = upperType === 'FILE';
+          return {
+            id: n.id,
+            filename: n.name,
+            path: n.path,
+            isFolder,
+            nodeType: upperType,
+            docId: n.docId ?? null,
+            fileId: n.fileId ?? null,
+            isRootDoc: Boolean(n.isRootDoc),
+            parentId: n.parentId,
+            size: n.sizeBytes,
+            ...(isFileAsset ? { url: filestore.getStreamUrl(pageId, n.fileId || n.id) } : {}),
+            createdAt: n.createdAt,
+            updatedAt: n.updatedAt,
+          };
+        });
       }
     } catch {
       return [];
@@ -141,81 +151,11 @@ export const structure = {
     return structure.getProjectFiles(pageId, parentId);
   },
 
-  createFileRecord: async (
-    pageId: string,
-    params: {
-      filename: string;
-      size: number;
-      mimeType: string;
-      url: string;
-      parentId?: string | null;
-      fileBase64?: string;
-    },
-    projectId?: string,
-  ) => {
-    const targetPageId = pageId || projectId || '';
-    return await apiPost(`${MANUSCRIPTS_API_BASE}/pages/${targetPageId}/structure/nodes`, {
-      name: params.filename,
-      type: 'FILE',
-      parentId: params.parentId ?? null,
-      url: params.url,
-      sizeBytes: params.size,
-      mimeType: params.mimeType,
-    });
-  },
-
-  createFile: async (
-    pageId: string,
-    name: string,
-    parentId?: string | null,
-    content?: string,
-  ) => {
-    return await apiPost(`${MANUSCRIPTS_API_BASE}/pages/${pageId}/structure/nodes`, {
-      name,
-      type: 'DOC',
-      parentId: parentId ?? null,
-      ...(content !== undefined ? { content } : {}),
-    });
-  },
-
   createFolder: async (pageId: string, name: string, parentId?: string | null) => {
     return await apiPost(`${MANUSCRIPTS_API_BASE}/pages/${pageId}/structure/nodes`, {
       name,
       type: 'FOLDER',
       parentId: parentId ?? null,
-    });
-  },
-
-  createPageFolder: async (pageId: string, name: string, parentId?: string | null) => {
-    return structure.createFolder(pageId, name, parentId);
-  },
-
-  createProjectFolder: async (pageId: string, name: string, parentId?: string | null) => {
-    return structure.createFolder(pageId, name, parentId);
-  },
-
-  renameItem: async (itemId: string, name: string, pageId?: string) => {
-    return await apiPatch(`${MANUSCRIPTS_API_BASE}/pages/${pageId || ''}/structure/nodes/${itemId}/rename`, { name });
-  },
-
-  deleteItem: async (itemId: string, pageId?: string) => {
-    return await apiDelete(`${MANUSCRIPTS_API_BASE}/pages/${pageId || ''}/structure/nodes/${itemId}`);
-  },
-
-  permanentlyDeleteItem: async (itemId: string, pageId?: string) => {
-    return structure.deleteItem(itemId, pageId);
-  },
-
-  moveItem: async (itemId: string, targetFolderId: string | null, pageId?: string) => {
-    return await apiPatch(`${MANUSCRIPTS_API_BASE}/pages/${pageId || ''}/structure/nodes/${itemId}/move`, {
-      destParentId: targetFolderId,
-    });
-  },
-
-  reorderItem: async (itemId: string, sortOrder: number, pageId?: string) => {
-    if (!pageId) return null;
-    return await apiPost(`${MANUSCRIPTS_API_BASE}/pages/${pageId}/structure/nodes/${itemId}/reorder`, {
-      sortOrder,
     });
   },
 };
@@ -267,37 +207,18 @@ export const filestore = {
     projectId?: string,
   ): Promise<EditorStorageItem> => {
     const targetPageId = projectId || pageId || '';
-    try {
-      const uploaded = await filestore.upload(targetPageId, file, file.name);
-      onProgress?.(100);
-      const id = uploaded.id || '';
-      return {
-        id,
-        filename: uploaded.name || file.name,
-        size: uploaded.sizeBytes ?? file.size,
-        mimeType: uploaded.mimeType || file.type,
-        isFolder: false,
-        parentId: parentId || null,
-        url: filestore.getStreamUrl(targetPageId, id),
-      };
-    } catch {
-      const completed = await uploadBlobWithPresigned(file, file.name, {
-        projectId: targetPageId,
-        parentId: parentId || null,
-        onProgress,
-      });
-
-      const id = completed.fileId || '';
-      return {
-        id,
-        filename: file.name,
-        size: file.size,
-        mimeType: file.type,
-        isFolder: false,
-        parentId: parentId || null,
-        url: completed.url || `/api/v1/storage/files/${id}/content`,
-      };
-    }
+    const uploaded = await filestore.upload(targetPageId, file, file.name);
+    onProgress?.(100);
+    const id = uploaded.id || '';
+    return {
+      id,
+      filename: uploaded.name || file.name,
+      size: uploaded.sizeBytes ?? file.size,
+      mimeType: uploaded.mimeType || file.type,
+      isFolder: false,
+      parentId: parentId || null,
+      url: filestore.getStreamUrl(targetPageId, id),
+    };
   },
 };
 

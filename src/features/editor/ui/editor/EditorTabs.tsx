@@ -148,7 +148,7 @@ export function EditorTabs({ rootPageId, activeFileId, availableFiles, rightSlot
         seen.add(key);
         const trimmedTitle = (t.title || '').trim();
         const normalizedTitle =
-          isRoot && (!trimmedTitle || trimmedTitle.toLowerCase() === 'flux')
+          isRoot && !trimmedTitle
             ? configuredMain
             : t.title;
         result.push({ ...t, title: normalizedTitle });

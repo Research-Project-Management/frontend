@@ -50,7 +50,6 @@ import {
   workspaceCoordinator,
   sessionCoordinator,
   documentAuthority,
-  editorInvariantMonitor,
 } from '@/features/editor/core';
 import { useCompileStore } from '@/features/editor/subsystems/compiler';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
@@ -296,7 +295,6 @@ export function HistoryPage({
       lruDocumentCache.clearAll();
       useCompileStore.getState().clearAllDirty();
       clearYjsProviderPool();
-      editorInvariantMonitor.reconcileInvariants();
       queryClient.invalidateQueries({ queryKey: historyKeys.versions(effectiveProjectId) });
       queryClient.invalidateQueries({ queryKey: ['project-history-diff'] });
       queryClient.invalidateQueries({ queryKey: ['project-snapshot'] });
@@ -400,8 +398,8 @@ export function HistoryPage({
           }
         }
       } else {
-        const created = await manuscriptService.docs.create({
-          projectId: effectiveProjectId,
+        const created = await manuscriptService.docs.createChildFile({
+          parentPageId: effectivePageId || effectiveProjectId,
           title: activeFilePath.replace(/^\//, ''),
           content: baseContent,
         });
@@ -434,13 +432,12 @@ export function HistoryPage({
         }
       }
       const cachedByPath = lruDocumentCache.findByPath(filePath);
-      if (cachedByPath && cachedByPath.fileId !== docId) {
+      if ( cachedByPath && cachedByPath.fileId !== docId) {
         lruDocumentCache.updateContent(cachedByPath.fileId, baseContent, false);
         lruDocumentCache.markClean(cachedByPath.fileId);
         useCompileStore.getState().clearDirty(cachedByPath.fileId);
         void draftStorageService.clearDraft(cachedByPath.fileId);
       }
-      editorInvariantMonitor.reconcileInvariants();
       queryClient.invalidateQueries({ queryKey: historyKeys.versions(effectiveProjectId) });
       queryClient.invalidateQueries({ queryKey: ['project-history-diff'] });
       queryClient.invalidateQueries({ queryKey: ['project-snapshot'] });

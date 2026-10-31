@@ -16,6 +16,14 @@
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { type LinkedFileDto } from '@/features/editor/sdk/manuscript/types';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
+import {
+  normalizeVirtualPath,
+  splitVirtualPath,
+  joinVirtualPath,
+  isUnderVirtualFolder,
+  rewritePathPrefix,
+  parseVirtualFolderId,
+} from '@/features/editor/domain/document/document-naming';
 import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
 import { latexDagEngine } from '@/features/editor/domain/latex/latex-dag-engine';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
@@ -32,7 +40,6 @@ import { useWorkspaceStore } from '../store/workspace.store';
 import { usePageStore } from '../store/editor.store';
 import { useSettingsStore } from '../store/settings.store';
 import { documentAuthority } from './document-authority.facade';
-import { editorInvariantMonitor } from './editor-invariant-monitor';
 import { toast } from 'sonner';
 
 export interface CreateFileOptions {
@@ -56,7 +63,7 @@ export interface MoveItemOptions {
   projectId?: string;
 }
 
-type CreatedFileNode = LinkedFileDto & { title?: string; content?: string };
+type CreatedFileNode = LinkedFileDto & { title?: string; content?: string; path?: string };
 
 const defaultServicePort: WorkspaceServicePort = {
   createNode: (projectId, data) => manuscriptService.structure.createNode(projectId, data),
@@ -248,23 +255,32 @@ export class WorkspaceCoordinatorRegistry {
     }
 
     try {
+      const { folderPath, leafName } = splitVirtualPath(name);
+      const effectiveLeafName = leafName || name;
+      const explicitPath = !folderId && folderPath ? `/${normalizeVirtualPath(name)}` : undefined;
+
       const res = (await this.servicePort.createNode(effectiveProjectId, {
-        name,
+        name: explicitPath ? effectiveLeafName : name,
+        ...(explicitPath ? { path: explicitPath } : {}),
         parentId: folderId,
         content,
         type: 'DOC',
-      })) as ({ data?: CreatedFileNode } & CreatedFileNode) | null;
+      })) as ({ data?: CreatedFileNode } & CreatedFileNode & { path?: string }) | null;
       const newFile = res?.data || res;
 
       if (!newFile) return null;
 
-      const resolvedTitle = newFile.title || newFile.name || name;
+      const resolvedFileId = newFile.docId || newFile.id;
+      const resolvedTitle =
+        normalizeVirtualPath(newFile.path || newFile.title || '') ||
+        newFile.name ||
+        name;
       const resolvedContent = newFile.content || content;
 
       // 1 & 2. Warm LRU cache + Register in LaTeX DAG Engine & Symbol Index
       this.indexDocumentInWorkspace(
         effectiveProjectId,
-        newFile.id,
+        resolvedFileId,
         resolvedTitle,
         resolvedContent,
       );
@@ -276,7 +292,7 @@ export class WorkspaceCoordinatorRegistry {
       if (openAfterCreate) {
         editorCommandBus.dispatch({
           type: 'navigation:open-tab',
-          fileId: newFile.id,
+          fileId: resolvedFileId,
           title: resolvedTitle,
           path: resolvedTitle,
         });
@@ -292,6 +308,168 @@ export class WorkspaceCoordinatorRegistry {
   }
 
   /**
+   * Shared path-change cascade across Tabs, PageStore, LRU Cache, ProjectFiles,
+   * Diagnostics aliases, LaTeX DAG, and Symbol Index for both file and folder renames/moves.
+   */
+  private cascadePathChange(
+    effectiveProjectId: string,
+    itemId: string,
+    oldPath: string,
+    newPath: string,
+  ): void {
+    // 1. Cascade path/title change to Tabs Store across all project/page scopes
+    this.updateTabTitleInStore(effectiveProjectId, itemId, newPath);
+
+    const wsStore = useWorkspaceStore.getState();
+    const oldPrefix = normalizeVirtualPath(oldPath);
+    const newPrefix = normalizeVirtualPath(newPath);
+    if (oldPrefix && oldPrefix !== newPrefix) {
+      for (const [pId, tabs] of Object.entries(wsStore.tabsByProject)) {
+        let changed = false;
+        const nextTabs = tabs.map((t) => {
+          let nextTab = t;
+          if (t.path) {
+            const hasLeadingSlash = t.path.startsWith('/');
+            const rewrittenPath = rewritePathPrefix(t.path, oldPrefix, newPrefix);
+            if (rewrittenPath !== null) {
+              changed = true;
+              nextTab = { ...nextTab, path: hasLeadingSlash ? `/${rewrittenPath}` : rewrittenPath };
+            }
+          }
+          if (t.title) {
+            const rewrittenTitle = rewritePathPrefix(t.title, oldPrefix, newPrefix);
+            if (rewrittenTitle !== null) {
+              changed = true;
+              nextTab = { ...nextTab, title: rewrittenTitle };
+            }
+          }
+          return nextTab;
+        });
+        if (changed) {
+          useWorkspaceStore.setState((s) => ({
+            tabsByProject: { ...s.tabsByProject, [pId]: nextTabs },
+          }));
+        }
+      }
+    }
+
+    // 2. Cascade to PageStore if active or current page matches (or is under renamed/moved folder)
+    const pageStore = usePageStore.getState();
+    if (pageStore.activeFilePage?.id === itemId) {
+      pageStore.setActiveFilePage({
+        ...pageStore.activeFilePage,
+        title: newPath,
+      });
+    } else if (oldPrefix && pageStore.activeFilePage?.title) {
+      const rewrittenActiveTitle = rewritePathPrefix(pageStore.activeFilePage.title, oldPrefix, newPrefix);
+      if (rewrittenActiveTitle !== null) {
+        pageStore.setActiveFilePage({
+          ...pageStore.activeFilePage,
+          title: rewrittenActiveTitle,
+        });
+      }
+    }
+    if (pageStore.currentPage?.id === itemId) {
+      pageStore.setCurrentPage((prev) => (prev ? { ...prev, title: newPath } : prev));
+    }
+
+    // 3. Cascade to LRU Cache & Project Files cache (including folder prefix descendants)
+    const cachedModel = lruDocumentCache.getModel(itemId);
+    lruDocumentCache.renameFile(itemId, newPath);
+    const cascadedDescendants = oldPrefix
+      ? lruDocumentCache.renameFolderPrefix(oldPrefix, newPrefix)
+      : [];
+    if (this.projectFiles.length > 0) {
+      this.projectFiles = this.projectFiles.map((f) => {
+        if (f.id === itemId) {
+          return { ...f, title: newPath, path: newPath };
+        }
+        if (oldPrefix) {
+          const rewrittenFPath = rewritePathPrefix(f.path || f.title || f.name || '', oldPrefix, newPrefix);
+          if (rewrittenFPath !== null) {
+            return { ...f, title: rewrittenFPath, path: rewrittenFPath };
+          }
+        }
+        return f;
+      });
+      documentAuthority.hydrateServerProjectFiles(effectiveProjectId, this.projectFiles);
+    }
+
+    // 4. Cascade to Diagnostics Coordinator (alias old path to new path)
+    diagnosticsCoordinator.registerAlias(newPath, oldPath);
+    for (const desc of cascadedDescendants) {
+      diagnosticsCoordinator.registerAlias(desc.newPath, desc.oldPath);
+    }
+
+    // 5. Re-index in LaTeX DAG & Symbols
+    latexDagEngine.removeFileNode(oldPath);
+    const contentToIndex = cachedModel?.content || documentAuthority.getDocumentContent(itemId);
+    if (contentToIndex) {
+      latexDagEngine.parseAndRegister(newPath, contentToIndex, itemId);
+      latexSymbolsIndex.indexFile(itemId, newPath, contentToIndex);
+    }
+    for (const desc of cascadedDescendants) {
+      latexDagEngine.removeFileNode(desc.oldPath);
+      if (desc.content) {
+        latexDagEngine.parseAndRegister(desc.newPath, desc.content, desc.fileId);
+        latexSymbolsIndex.indexFile(desc.fileId, desc.newPath, desc.content);
+      }
+    }
+  }
+
+  /**
+   * Canonical cleanup of all client-side workspace caches, tabs, split panes,
+   * DAG nodes, and symbol index entries when a file or folder is deleted.
+   */
+  public evictDeletedFileResources(fileId: string, optProjectId?: string): void {
+    const effectiveProjectId = optProjectId || this.getActiveProjectId();
+    const cachedModel = lruDocumentCache.getModel(fileId);
+    const fileObj = this.projectFiles.find((f) => f.id === fileId);
+    const filePath = cachedModel?.filePath || fileObj?.path || fileObj?.title || fileObj?.name;
+
+    sessionCoordinator.evictDeletedFile(fileId);
+    lruDocumentCache.evictModel(fileId);
+    this.closeTabInStore(fileId);
+    this.closeTabInStore(`asset:${fileId}`);
+    const wsStore = useWorkspaceStore.getState();
+    if (wsStore.secondaryFileId === fileId) {
+      wsStore.setSecondaryFileId(null);
+    }
+    const pageStore = usePageStore.getState();
+    if (pageStore.selectedAsset?.id === fileId) {
+      pageStore.setSelectedAsset(null);
+    }
+    editorCommandBus.dispatch({ type: 'navigation:close-tab', fileId });
+    editorCommandBus.dispatch({ type: 'navigation:close-tab', fileId: `asset:${fileId}` });
+
+    const cleanFolderPrefix = normalizeVirtualPath(filePath);
+    if (cleanFolderPrefix) {
+      for (const model of lruDocumentCache.getAllModels()) {
+        if (isUnderVirtualFolder(model.filePath, cleanFolderPrefix)) {
+          sessionCoordinator.evictDeletedFile(model.fileId);
+          lruDocumentCache.evictModel(model.fileId);
+          this.closeTabInStore(model.fileId);
+          latexDagEngine.removeFileNode(model.filePath);
+          latexSymbolsIndex.removeFile(model.fileId, model.filePath);
+        }
+      }
+    }
+
+    latexDagEngine.removeFileNode(filePath || fileId);
+    latexSymbolsIndex.removeFile(fileId, filePath);
+    if (this.projectFiles.length > 0 && effectiveProjectId) {
+      this.projectFiles = this.projectFiles.filter((f) => {
+        if (f.id === fileId) return false;
+        if (cleanFolderPrefix && isUnderVirtualFolder(f.path || f.title || f.name || '', cleanFolderPrefix)) {
+          return false;
+        }
+        return true;
+      });
+      documentAuthority.hydrateServerProjectFiles(effectiveProjectId, this.projectFiles);
+    }
+  }
+
+  /**
    * Renames a file or folder and cascades updates across IDE systems
    */
   public async renameItem(options: RenameItemOptions): Promise<boolean> {
@@ -301,76 +479,28 @@ export class WorkspaceCoordinatorRegistry {
     if (!effectiveProjectId) return false;
 
     try {
-      await this.servicePort.renameNode(effectiveProjectId, itemId, { name: newName });
+      const { folderPath: oldFolderPath } = splitVirtualPath(oldName);
+      const { folderPath: newFolderPath, leafName: newLeafName } = splitVirtualPath(newName);
+      const effectiveLeafName = newLeafName || newName;
+      const resolvedFullNewPath =
+        newFolderPath
+          ? normalizeVirtualPath(newName)
+          : oldFolderPath
+            ? joinVirtualPath(oldFolderPath, effectiveLeafName)
+            : effectiveLeafName;
 
-      // 1. Cascade rename to Tabs Store across all project/page scopes
-      this.updateTabTitleInStore(effectiveProjectId, itemId, newName);
-
-      // 1c. If renaming a folder, update child tab paths
-      const wsStore = useWorkspaceStore.getState();
-      const oldPrefix = oldName.replace(/^\/+/, '');
-      const newPrefix = newName.replace(/^\/+/, '');
-      for (const [pId, tabs] of Object.entries(wsStore.tabsByProject)) {
-        let changed = false;
-        const nextTabs = tabs.map((t) => {
-          if (t.path) {
-            const cleanPath = t.path.replace(/^\/+/, '');
-            if (cleanPath.startsWith(`${oldPrefix}/`)) {
-              changed = true;
-              return { ...t, path: `/${cleanPath.replace(oldPrefix, newPrefix)}` };
-            }
-          }
-          return t;
-        });
-        if (changed) {
-          useWorkspaceStore.setState((s) => ({
-            tabsByProject: { ...s.tabsByProject, [pId]: nextTabs },
-          }));
-        }
-      }
-
-      // 1b. Cascade rename to PageStore if active or current page matches
-      const pageStore = usePageStore.getState();
-      if (pageStore.activeFilePage?.id === itemId) {
-        pageStore.setActiveFilePage({
-          ...pageStore.activeFilePage,
-          title: newName,
-        });
-      }
-      if (pageStore.currentPage?.id === itemId) {
-        pageStore.setCurrentPage((prev) => (prev ? { ...prev, title: newName } : prev));
-      }
-
-      // 2. Cascade rename to LRU Cache & Project Files cache
-      lruDocumentCache.renameFile(itemId, newName);
-      const model = lruDocumentCache.getModel(itemId);
-      if (this.projectFiles.length > 0) {
-        this.projectFiles = this.projectFiles.map((f) =>
-          f.id === itemId ? { ...f, title: newName, path: newName } : f
-        );
-        documentAuthority.hydrateServerProjectFiles(effectiveProjectId, this.projectFiles);
-      }
-
-      // 3. Cascade rename to Diagnostics Coordinator (alias old path to new path)
-      diagnosticsCoordinator.registerAlias(newName, oldName);
-
-      // 4. Re-index in LaTeX DAG & Symbols
-      latexDagEngine.removeFileNode(oldName);
-      const contentToIndex = model?.content || documentAuthority.getDocumentContent(itemId);
-      if (contentToIndex) {
-        latexDagEngine.parseAndRegister(newName, contentToIndex, itemId);
-        latexSymbolsIndex.indexFile(itemId, newName, contentToIndex);
-      }
-
-      editorInvariantMonitor.reconcileInvariants();
-
-      // 5. Notify FileTree
-      editorCommandBus.dispatch({
-        type: 'filetree:updated',
-        payload: { action: 'rename', itemId, oldName, newName },
+      await this.servicePort.renameNode(effectiveProjectId, itemId, {
+        name: newFolderPath && newFolderPath !== oldFolderPath ? resolvedFullNewPath : effectiveLeafName,
       });
 
-      this.notificationPort.notifySuccess(`Renamed to "${newName}"`, `rename-file-${itemId}`);
+      this.cascadePathChange(effectiveProjectId, itemId, oldName, resolvedFullNewPath);
+
+      editorCommandBus.dispatch({
+        type: 'filetree:updated',
+        payload: { action: 'rename', itemId, oldName, newName: resolvedFullNewPath },
+      });
+
+      this.notificationPort.notifySuccess(`Renamed to "${effectiveLeafName}"`, `rename-file-${itemId}`);
       return true;
     } catch (err: unknown) {
       console.error('[WorkspaceCoordinator] Rename error:', err);
@@ -390,27 +520,9 @@ export class WorkspaceCoordinatorRegistry {
     if (!effectiveProjectId) return false;
 
     try {
-      const cachedModel = lruDocumentCache.getModel(fileId);
-      const fileObj = this.projectFiles.find((f) => f.id === fileId);
-      const filePath = cachedModel?.filePath || fileObj?.path || fileObj?.title || fileObj?.name;
-
       await this.servicePort.deleteNode(effectiveProjectId, fileId);
+      this.evictDeletedFileResources(fileId, effectiveProjectId);
 
-      // 1. Evict and close open tab if present
-      sessionCoordinator.evictDeletedFile(fileId);
-      this.closeTabInStore(fileId);
-      editorCommandBus.dispatch({ type: 'navigation:close-tab', fileId });
-
-      // 2. Evict from DAG, Symbol Index, and Project Files cache
-      latexDagEngine.removeFileNode(filePath || fileId);
-      latexSymbolsIndex.removeFile(fileId, filePath);
-      if (this.projectFiles.length > 0) {
-        this.projectFiles = this.projectFiles.filter((f) => f.id !== fileId);
-        documentAuthority.hydrateServerProjectFiles(effectiveProjectId, this.projectFiles);
-      }
-      editorInvariantMonitor.reconcileInvariants();
-
-      // 3. Notify CommandBus
       editorCommandBus.dispatch({
         type: 'filetree:updated',
         payload: { action: 'delete', fileId },
@@ -426,6 +538,34 @@ export class WorkspaceCoordinatorRegistry {
   }
 
   /**
+   * Resolves a folder ID or path when given a virtual `folder:<path>` ID
+   * or a real backend folder UUID.
+   */
+  public async ensureFolderHierarchyId(
+    targetFolderId: string | null | undefined,
+  ): Promise<{ id: string | null; path: string }> {
+    if (!targetFolderId) {
+      return { id: null, path: '' };
+    }
+    const virtualFolderPath = parseVirtualFolderId(targetFolderId);
+    if (virtualFolderPath === null) {
+      const folderObj = this.projectFiles.find((f) => f.id === targetFolderId);
+      const path = normalizeVirtualPath(folderObj?.path || folderObj?.title || folderObj?.name || '');
+      return { id: targetFolderId, path };
+    }
+
+    const existingFolder = this.projectFiles.find((pf) => {
+      const pfPath = normalizeVirtualPath(pf.path || pf.title || pf.name || '');
+      return pfPath.toLowerCase() === virtualFolderPath.toLowerCase() && !pf.id.startsWith('folder:');
+    });
+    if (existingFolder?.id) {
+      return { id: existingFolder.id, path: virtualFolderPath };
+    }
+
+    return { id: null, path: virtualFolderPath };
+  }
+
+  /**
    * Moves a file/folder to a new parent folder
    */
   public async moveItem(options: MoveItemOptions): Promise<boolean> {
@@ -434,15 +574,36 @@ export class WorkspaceCoordinatorRegistry {
     if (!effectiveProjectId) return false;
 
     try {
-      await this.servicePort.moveNode(effectiveProjectId, itemId, {
-        destParentId: targetFolderId,
-      });
+      const cachedModel = lruDocumentCache.getModel(itemId);
+      const fileObj = this.projectFiles.find((f) => f.id === itemId);
+      const oldPath = cachedModel?.filePath || fileObj?.path || fileObj?.title || fileObj?.name || '';
 
-      editorInvariantMonitor.reconcileInvariants();
+      const { id: resolvedTargetFolderId, path: targetFolderPrefix } =
+        await this.ensureFolderHierarchyId(targetFolderId);
+
+      const { leafName } = splitVirtualPath(oldPath);
+      const computedDestPath =
+        !resolvedTargetFolderId && targetFolderPrefix && leafName
+          ? `/${joinVirtualPath(targetFolderPrefix, leafName)}`
+          : undefined;
+
+      const moveRes = (await this.servicePort.moveNode(effectiveProjectId, itemId, {
+        destParentId: resolvedTargetFolderId,
+        ...(computedDestPath ? { destPath: computedDestPath } : {}),
+      })) as { path?: string; data?: { path?: string } } | null;
+
+      const returnedPath = normalizeVirtualPath(moveRes?.data?.path || moveRes?.path || '');
+      const nextPath =
+        returnedPath ||
+        (leafName ? joinVirtualPath(targetFolderPrefix, leafName) : '');
+
+      if (nextPath && oldPath && nextPath !== normalizeVirtualPath(oldPath)) {
+        this.cascadePathChange(effectiveProjectId, itemId, oldPath, nextPath);
+      }
 
       editorCommandBus.dispatch({
         type: 'filetree:updated',
-        payload: { action: 'move', itemId, targetFolderId },
+        payload: { action: 'move', itemId, targetFolderId: resolvedTargetFolderId },
       });
 
       this.notificationPort.notifySuccess('Moved successfully', `move-file-${itemId}`);

@@ -212,6 +212,47 @@ describe('WorkspaceCoordinator Deep Module (Ports & Seams)', () => {
         'rename-file-item-1'
       );
     });
+
+    it('cascades folder prefix rename across descendant models in LRU cache, DAG, and diagnostics', async () => {
+      lruDocumentCache.warm('child-doc-1', {
+        filePath: 'sections/intro.tex',
+        content: '\\section{Intro}\\label{sec:intro}',
+        projectId: 'proj-test',
+      });
+      latexDagEngine.parseAndRegister('sections/intro.tex', '\\section{Intro}', 'child-doc-1');
+      const diagSpy = vi.spyOn(diagnosticsCoordinator, 'registerAlias');
+
+      const ok = await coordinator.renameItem({
+        itemId: 'folder-sec',
+        oldName: 'sections',
+        newName: 'chapters',
+      });
+
+      expect(ok).toBe(true);
+      expect(lruDocumentCache.getModel('child-doc-1')?.filePath).toBe('chapters/intro.tex');
+      expect(diagSpy).toHaveBeenCalledWith('chapters/intro.tex', 'sections/intro.tex');
+    });
+
+    it('preserves parent folder prefix when renaming a nested file with a leaf name (e.g. sections/old.tex -> new.tex)', async () => {
+      lruDocumentCache.warm('nested-doc-1', {
+        filePath: 'sections/old.tex',
+        content: '\\section{Old}',
+        projectId: 'proj-test',
+      });
+
+      const ok = await coordinator.renameItem({
+        itemId: 'nested-doc-1',
+        oldName: 'sections/old.tex',
+        newName: 'new.tex',
+      });
+
+      expect(ok).toBe(true);
+      // Sends leaf name to backend renameNode
+      expect(mockService.renameNode).toHaveBeenCalledWith('proj-test', 'nested-doc-1', { name: 'new.tex' });
+      // Cascades full path "sections/new.tex" to Tabs and LRU cache
+      expect(mockStore.updateTabTitle).toHaveBeenCalledWith('proj-test', 'nested-doc-1', 'sections/new.tex');
+      expect(lruDocumentCache.getModel('nested-doc-1')?.filePath).toBe('sections/new.tex');
+    });
   });
 
   describe('deleteFile', () => {

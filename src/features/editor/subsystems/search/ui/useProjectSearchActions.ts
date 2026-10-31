@@ -16,7 +16,6 @@ import {
   sessionCoordinator,
   documentAuthority,
   lruDocumentCache,
-  editorInvariantMonitor,
 } from '@/features/editor/core';
 import type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
 
@@ -135,9 +134,6 @@ export function useProjectSearchActions({
           }
         }
       }
-
-      // 3. Reconcile editor state invariants
-      editorInvariantMonitor.reconcileInvariants();
     } catch (err: unknown) {
       toast.error((err as Error)?.message || 'Failed to replace across project', { id: 'search-replace-status' });
     } finally {

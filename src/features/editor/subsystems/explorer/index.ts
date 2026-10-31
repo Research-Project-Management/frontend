@@ -15,9 +15,7 @@ export {
   buildFileTree,
   buildUnifiedTree,
   filterFileTree,
-  inferResearchFolder,
   getRootFilePriority,
-  getFolderPriority,
   type FileTreeNode,
   type FileTreeFileNode,
   type FileTreeFolderNode,
@@ -52,6 +50,14 @@ export {
   isImageAsset,
   displayName,
   cleanBasename,
+  normalizeVirtualPath,
+  splitVirtualPathSegments,
+  splitVirtualPath,
+  joinVirtualPath,
+  isUnderVirtualFolder,
+  rewritePathPrefix,
+  parseVirtualFolderId,
+  formatLatexIncludeSnippet,
 } from '@/features/editor/domain/document/document-naming';
 
 export {

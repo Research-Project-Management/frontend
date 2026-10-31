@@ -239,11 +239,7 @@ export const docs = {
       effectiveProjectId = params.projectId || params.pageId;
     }
 
-    try {
-      await structure.setRootDoc(effectiveProjectId, fileId);
-    } catch {
-      // Non-fatal if rootDoc already synced
-    }
+    await structure.setRootDoc(effectiveProjectId, fileId);
     return { id: pageId, mainFileId: fileId };
   },
 
@@ -369,9 +365,8 @@ export const compiler = {
   compile: async (payload: CompileLatexPayload, signal?: AbortSignal): Promise<CompileLatexResponse> => {
     const effectiveSignal = signal || payload.signal;
     const { signal: _unused, ...body } = payload;
-    if (!body.timeout_ms) {
-      body.timeout_ms = 120000;
-    }
+    const effectiveTimeout = body.timeout_ms ?? body.timeoutMs ?? 240000;
+    body.timeout_ms = effectiveTimeout;
     if (effectiveSignal?.aborted) {
       const abortErr = new Error('Compilation superseded');
       abortErr.name = 'AbortError';
@@ -381,7 +376,7 @@ export const compiler = {
     try {
       return await apiPost<CompileLatexResponse>(`${MANUSCRIPTS_API_BASE}/compile`, body, {
         signal: effectiveSignal,
-        timeout: 120000,
+        timeout: effectiveTimeout,
       });
     } catch (err: unknown) {
       const isAborted =
@@ -479,15 +474,11 @@ export const compiler = {
   },
 
   downloadAuxFileUrl: (projectId: string, filename: string): string => {
-    const token = getAuthToken();
-    const tokenQuery = token ? `?token=${encodeURIComponent(token)}` : '';
-    return `${MANUSCRIPTS_API_BASE}/projects/${projectId}/artifacts/${encodeURIComponent(filename)}${tokenQuery}`;
+    return `${MANUSCRIPTS_API_BASE}/projects/${projectId}/artifacts/${encodeURIComponent(filename)}`;
   },
 
   downloadAllArtifactsZipUrl: (projectId: string): string => {
-    const token = getAuthToken();
-    const tokenQuery = token ? `?token=${encodeURIComponent(token)}` : '';
-    return `${MANUSCRIPTS_API_BASE}/projects/${projectId}/artifacts-zip${tokenQuery}`;
+    return `${MANUSCRIPTS_API_BASE}/projects/${projectId}/artifacts-zip`;
   },
 
   cancelCompile: async (projectId: string): Promise<{ success: boolean; cancelled: boolean }> => {

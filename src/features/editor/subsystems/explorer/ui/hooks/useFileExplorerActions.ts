@@ -13,14 +13,14 @@
  * keeping UI presentation components purely declarative.
  */
 
-import { useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { filesQuery } from '@/features/editor/ui/hooks/document.queries';
-import type { Page, PageFile } from '@/features/editor/domain/types/core.types';
+import { extractDocumentContentString, type Page, type PageFile } from '@/features/editor/domain/types/core.types';
 import type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
-import { displayName } from '@/features/editor/domain/document/document-naming';
+import { displayName, formatLatexIncludeSnippet } from '@/features/editor/domain/document/document-naming';
 import { prepareAssetInsertion } from '@/features/editor/domain/latex/smart-paste';
 import { downloadFileUrl } from '@/shared/lib/file-client';
 
@@ -35,10 +35,7 @@ export interface UseFileExplorerActionsOptions {
 }
 
 export function copyTexCommandToClipboard(title: string): void {
-  const full = displayName(title);
-  const base = full.replace(/\.[a-z0-9]+$/i, '');
-  const ext = full.split('.').pop()?.toLowerCase();
-  const snippet = ext === 'bib' ? `\\bibliography{${base}}` : `\\input{${base}}`;
+  const snippet = formatLatexIncludeSnippet(title, 'tex');
 
   navigator.clipboard.writeText(snippet);
   toast.success(`Copied ${snippet} to clipboard`, { id: 'copy-tex-snippet' });
@@ -47,30 +44,23 @@ export function copyTexCommandToClipboard(title: string): void {
 export function useFileExplorerActions(options?: UseFileExplorerActionsOptions) {
   const queryClient = useQueryClient();
   const { projectId, parentPageId, currentPage, engine } = options || {};
+  const [isRenamePending, setIsRenamePending] = useState(false);
 
   const downloadTex = useCallback(
     async (file: { id: string; title: string }) => {
       try {
-        let rawContent: unknown = '';
-        const latestPage = currentPage || usePageStore.getState().currentPage;
-        if (latestPage && latestPage.id === file.id && latestPage.content) {
-          rawContent = latestPage.content;
-        } else {
-          const doc = await manuscriptService.docs.getById(file.id);
-          rawContent = doc?.content ?? '';
+        let rawContent: unknown = lruDocumentCache.getContent(file.id);
+        if (rawContent === undefined) {
+          const latestPage = currentPage || usePageStore.getState().currentPage;
+          if (latestPage && latestPage.id === file.id && latestPage.content) {
+            rawContent = latestPage.content;
+          } else {
+            const doc = await manuscriptService.docs.getById(file.id);
+            rawContent = doc?.content ?? '';
+          }
         }
 
-        const record = typeof rawContent === 'object' && rawContent !== null ? (rawContent as Record<string, unknown>) : null;
-        const textContent =
-          typeof rawContent === 'string'
-            ? rawContent
-            : typeof record?.source === 'string'
-              ? record.source
-              : typeof record?.text === 'string'
-                ? record.text
-                : typeof record?.content === 'string'
-                  ? record.content
-                  : '';
+        const textContent = extractDocumentContentString(rawContent);
 
         const blob = new Blob([textContent], { type: 'text/x-tex;charset=utf-8' });
         const url = URL.createObjectURL(blob);
@@ -186,16 +176,17 @@ export function useFileExplorerActions(options?: UseFileExplorerActionsOptions) 
     async (fileId: string, newName: string, oldName = '') => {
       const trimmed = newName.trim();
       if (!trimmed || trimmed === oldName) return false;
-      const existingModel = lruDocumentCache.getModel(fileId);
-      if (existingModel) {
-        existingModel.filePath = trimmed;
+      setIsRenamePending(true);
+      try {
+        return await workspaceCoordinator.renameItem({
+          itemId: fileId,
+          oldName: oldName || trimmed,
+          newName: trimmed,
+          projectId: projectId || parentPageId || undefined,
+        });
+      } finally {
+        setIsRenamePending(false);
       }
-      return workspaceCoordinator.renameItem({
-        itemId: fileId,
-        oldName: oldName || trimmed,
-        newName: trimmed,
-        projectId: projectId || parentPageId || undefined,
-      });
     },
     [projectId, parentPageId],
   );
@@ -208,18 +199,13 @@ export function useFileExplorerActions(options?: UseFileExplorerActionsOptions) 
     refreshAllLinkedFiles,
     insertAsset,
     handleRenameSubmit,
+    isRenamePending,
   };
 }
 
 export function useStorageItemActions() {
   const copyStorageSnippet = useCallback((filename: string) => {
-    const ext = filename.split('.').pop()?.toLowerCase() ?? '';
-    let snippet = `\\includegraphics[width=\\linewidth]{${filename}}`;
-    if (['bib', 'bst'].includes(ext)) {
-      snippet = `\\bibliography{${filename.replace(/\.[a-z0-9]+$/i, '')}}`;
-    } else if (['tex', 'ltx'].includes(ext)) {
-      snippet = `\\input{${filename.replace(/\.[a-z0-9]+$/i, '')}}`;
-    }
+    const snippet = formatLatexIncludeSnippet(filename, 'asset');
     navigator.clipboard.writeText(snippet);
     toast.success(`Copied ${snippet} to clipboard`, { id: 'copy-tex-snippet' });
   }, []);

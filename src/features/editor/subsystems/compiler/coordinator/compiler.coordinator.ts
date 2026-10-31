@@ -391,6 +391,13 @@ export class CompilerCoordinatorRegistry {
     // 2. Pre-compile atomic flush barrier: commit drafts, sync active buffer, trigger background save
     await CompilationFlushBarrier.execute(effectiveActiveFileId, currentVal);
 
+    if (currentController.signal.aborted) {
+      compileStore.setCompileStatus('idle');
+      editorCommandBus.dispatch({ type: 'compiler:finished', success: false, aborted: true });
+      this.scheduleNextPendingCompile(currentController);
+      return false;
+    }
+
     // 3. Notify start of compilation
     editorCommandBus.dispatch({ type: 'compiler:started' });
     compileStore.setCompileStatus('compiling');
@@ -501,10 +508,22 @@ export class CompilerCoordinatorRegistry {
         useCache: options?.forceClean ? false : settingsStore.useCache,
         forceClean: options?.forceClean,
         stopOnFirstError: settingsStore.stopOnFirstError,
-        dirtyFiles: snapshot.dirtyFileIds.map((id: string) => ({
-          fileId: id,
-          content: lruDocumentCache.getContent(id) ?? compileStore.dirtyContentMap.get(id) ?? snapshot.files[id] ?? '',
-        })),
+        dirtyFiles: snapshot.dirtyFileIds.map((id: string) => {
+          const resolvedPath =
+            allFilePathsById[id] ||
+            lruDocumentCache.getModel(id)?.filePath ||
+            undefined;
+          return {
+            fileId: id,
+            path: resolvedPath && resolvedPath !== id ? resolvedPath : undefined,
+            content:
+              lruDocumentCache.getContent(id) ??
+              compileStore.dirtyContentMap.get(id) ??
+              (resolvedPath ? snapshot.files[resolvedPath] : undefined) ??
+              snapshot.files[id] ??
+              '',
+          };
+        }),
         signal: currentController.signal,
         onPhaseChange: (phase: string) => {
           compileStore.setCompileStatus(phase as CompileStatus);
@@ -651,6 +670,8 @@ export class CompilerCoordinatorRegistry {
         useConnectivityStore.getState().recordOffline();
         useConnectivityStore.getState().setOfflinePendingCompile(true);
         sessionCoordinator.flushPendingDrafts();
+        this.pendingCompileOptions = undefined;
+        compileStore.setPendingCompile(false);
         compileStore.setCompileStatus('idle');
         compileStore.setCompileLog(
           '[Offline Mode] Network connection lost during compilation request.\n' +
@@ -666,10 +687,10 @@ export class CompilerCoordinatorRegistry {
     } finally {
       if (this.compileAbortController === currentController) {
         this.compileAbortController = null;
-      }
-      this.isCompiling = false;
-      if (useCompileStore.getState().compileStatus === 'compiling') {
-        useCompileStore.getState().setCompileStatus('idle');
+        this.isCompiling = false;
+        if (useCompileStore.getState().compileStatus === 'compiling') {
+          useCompileStore.getState().setCompileStatus('idle');
+        }
       }
     }
   }

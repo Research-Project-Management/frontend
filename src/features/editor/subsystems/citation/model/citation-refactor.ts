@@ -313,31 +313,33 @@ export async function executeProjectCitekeyRefactor(
 
   const fileMap = new Map<string, { id: string; path: string; content: string }>();
 
-  // 1. Include files registered in workspaceCoordinator
+  // 1. Seed from workspaceCoordinator / context projectFiles
   const wsFiles = effectiveCtx?.projectFiles ?? workspaceCoordinator.getProjectFiles() ?? [];
   for (const wf of wsFiles) {
     if (wf.id) {
-      const cached = lruDocumentCache.get(wf.id);
       fileMap.set(wf.id, {
         id: wf.id,
-        path: cached?.filePath || wf.path || wf.title || '',
-        content: cached?.content ?? extractDocumentContentString(wf.content),
+        path: wf.path || wf.title || '',
+        content: documentAuthority.getDocumentContent(wf.id) || extractDocumentContentString(wf.content),
       });
     }
   }
 
-  // 2. Fetch backend files and merge (preferring unsaved local edits in lruDocumentCache)
+  // 2. Fetch backend project files and hydrate via DocumentAuthority
   try {
-    const files = effectiveCtx?.service
+    const serverFiles = effectiveCtx?.service
       ? await effectiveCtx.service.getFilesByProjectId(effectiveProjectId)
       : await manuscriptService.docs.getFiles(effectiveProjectId);
-    for (const f of files) {
+    documentAuthority.hydrateServerProjectFiles(
+      effectiveProjectId,
+      serverFiles as unknown as Parameters<typeof documentAuthority.hydrateServerProjectFiles>[1],
+    );
+    for (const f of serverFiles) {
       if (f.id) {
-        const cached = lruDocumentCache.get(f.id);
         fileMap.set(f.id, {
           id: f.id,
-          path: cached?.filePath || f.title || ('name' in f && f.name ? f.name : '') || '',
-          content: cached?.content ?? f.content ?? '',
+          path: f.title || ('name' in f && f.name ? f.name : '') || '',
+          content: documentAuthority.getDocumentContent(f.id) || f.content || '',
         });
       }
     }
@@ -345,43 +347,14 @@ export async function executeProjectCitekeyRefactor(
     // Non-blocking fallback to cache and active doc
   }
 
-  if (fileMap.size === 0 && activeDoc?.id && activeDoc.id !== effectiveProjectId) {
-    try {
-      const pageFiles = effectiveCtx?.service
-        ? await effectiveCtx.service.getFilesByProjectId(activeDoc.id)
-        : await manuscriptService.docs.getFiles(activeDoc.id);
-      for (const f of pageFiles) {
-        if (f.id) {
-          const cached = lruDocumentCache.get(f.id);
-          fileMap.set(f.id, {
-            id: f.id,
-            path: cached?.filePath || f.title || ('name' in f && f.name ? f.name : '') || '',
-            content: cached?.content ?? f.content ?? '',
-          });
-        }
-      }
-    } catch {
-      // Ignore fallback error
-    }
-  }
-
-  // 3. Ensure all models in lruDocumentCache take precedence over server snapshots
-  const cachedModels = lruDocumentCache.getAllModels();
-  for (const m of cachedModels) {
+  // 3. Overlay any remaining models from lruDocumentCache & active editor engine via DocumentAuthority
+  for (const m of lruDocumentCache.getAllModels()) {
     if (m.fileId) {
       fileMap.set(m.fileId, {
         id: m.fileId,
         path: m.filePath,
-        content: m.content,
+        content: documentAuthority.getDocumentContent(m.fileId) || m.content,
       });
-    }
-  }
-
-  // Ensure all live files (active tab or split-pane) are up to date via DocumentAuthority
-  for (const [fId, item] of fileMap.entries()) {
-    const liveContent = documentAuthority?.getDocumentContent(fId);
-    if (liveContent) {
-      item.content = liveContent;
     }
   }
 
@@ -390,7 +363,7 @@ export async function executeProjectCitekeyRefactor(
     const activeDocMatches = activeDoc?.id === activeDocId;
     const cachedActive = lruDocumentCache.get(activeDocId);
     const liveContent =
-      documentAuthority?.getDocumentContent(activeDocId) ||
+      documentAuthority.getDocumentContent(activeDocId) ||
       liveEngine?.getContent?.() ||
       cachedActive?.content ||
       (activeDocMatches ? extractDocumentContentString(activeDoc) : '') ||
@@ -455,8 +428,8 @@ export async function executeProjectCitekeyRefactor(
     latexDagEngine.parseAndRegister(mod.path, mod.newContent, mod.id);
 
     try {
-      if (ctx?.service) {
-        await ctx.service.updateFileContent(mod.id, mod.newContent);
+      if (effectiveCtx?.service) {
+        await effectiveCtx.service.updateFileContent(mod.id, mod.newContent);
       } else {
         await sessionCoordinator.flushFile(mod.id);
       }

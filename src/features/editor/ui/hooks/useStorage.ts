@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import type { EditorStorageItem } from '@/features/editor/domain/types/storage-item.types';
 import { usePageStore, workspaceCoordinator, editorCommandBus } from '@/features/editor/core';
-import { pageKeys } from './document.queries';
+import { invalidateFileTreeQueries, storageKeys } from './document.queries';
 
 export function useResolvedProjectId(
   pageIdOrProjectId?: string | null,
@@ -65,7 +65,7 @@ export function useEditorStorageFiles(
     isLoading,
     refetch,
   } = useQuery({
-    queryKey: ['editor-storage-files', effectiveProjectId, pageIdOrProjectId, parentId],
+    queryKey: storageKeys.files(effectiveProjectId, pageIdOrProjectId, parentId),
     queryFn: async (): Promise<EditorStorageItem[]> => {
       if (effectiveProjectId) {
         return await manuscriptService.structure.getProjectFiles(effectiveProjectId, parentId);
@@ -100,16 +100,18 @@ export function useEditorStorageMutations(
   const queryClient = useQueryClient();
   const effectiveProjectId = useResolvedProjectId(pageIdOrProjectId, explicitProjectId);
 
-  const invalidateStorageState = () => {
-    const parentPageId = usePageStore.getState().parentPageId || usePageStore.getState().currentPage?.id || pageIdOrProjectId;
-    queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
-    queryClient.invalidateQueries({ queryKey: pageKeys.all });
-    queryClient.invalidateQueries({ queryKey: ['projects'] });
-    if (parentPageId) {
-      queryClient.invalidateQueries({ queryKey: pageKeys.files(parentPageId) });
-      queryClient.invalidateQueries({ queryKey: pageKeys.deletedFiles(parentPageId) });
+  const invalidateStorageState = (options?: { emitBusEvent?: boolean; includeRootDoc?: boolean }) => {
+    const parentPageId =
+      usePageStore.getState().parentPageId ||
+      usePageStore.getState().currentPage?.id ||
+      pageIdOrProjectId;
+    invalidateFileTreeQueries(queryClient, {
+      parentPageId,
+      includeRootDoc: options?.includeRootDoc,
+    });
+    if (options?.emitBusEvent) {
+      editorCommandBus.dispatch({ type: 'filetree:updated' });
     }
-    editorCommandBus.dispatch({ type: 'filetree:updated' });
   };
 
   const uploadFileMutation = useMutation({
@@ -135,7 +137,7 @@ export function useEditorStorageMutations(
       );
     },
     onSuccess: (newItem) => {
-      invalidateStorageState();
+      invalidateStorageState({ emitBusEvent: true });
       toast.success(`Uploaded "${newItem.filename}"`, { id: `upload-${newItem.filename}` });
     },
     onError: (err: unknown) => {
@@ -156,15 +158,11 @@ export function useEditorStorageMutations(
       projectId?: string;
       pageId?: string;
     }): Promise<unknown> => {
-      const pid = targetProjectId || effectiveProjectId;
-      if (pid) {
-        return await manuscriptService.structure.createProjectFolder(pid, name, targetParentId ?? defaultParentId);
-      }
-      const targetId = targetPageId || pageIdOrProjectId || '';
-      return await manuscriptService.structure.createPageFolder(targetId, name, targetParentId ?? defaultParentId);
+      const targetId = targetProjectId || effectiveProjectId || targetPageId || pageIdOrProjectId || '';
+      return await manuscriptService.structure.createFolder(targetId, name, targetParentId ?? defaultParentId);
     },
     onSuccess: () => {
-      invalidateStorageState();
+      invalidateStorageState({ emitBusEvent: true });
       toast.success('Folder created', { id: 'create-folder' });
     },
     onError: (err: unknown) => {
@@ -184,16 +182,16 @@ export function useEditorStorageMutations(
       const id = args.itemId || args.fileId || '';
       const name = args.newName || args.name || '';
       const old = args.oldName || '';
-      try {
-        const ok = await workspaceCoordinator.renameItem({
-          itemId: id,
-          oldName: old,
-          newName: name,
-          projectId: effectiveProjectId,
-        });
-        if (ok) return { success: true };
-      } catch {}
-      return await manuscriptService.structure.renameItem(id, name, effectiveProjectId);
+      const ok = await workspaceCoordinator.renameItem({
+        itemId: id,
+        oldName: old,
+        newName: name,
+        projectId: effectiveProjectId,
+      });
+      if (!ok) {
+        throw new Error(`Failed to rename "${old || id}"`);
+      }
+      return { success: true };
     },
     onSuccess: () => {
       invalidateStorageState();
@@ -206,11 +204,11 @@ export function useEditorStorageMutations(
 
   const deleteMutation = useMutation({
     mutationFn: async (itemId: string): Promise<unknown> => {
-      try {
-        const ok = await workspaceCoordinator.deleteFile(itemId, effectiveProjectId);
-        if (ok) return { success: true };
-      } catch {}
-      return await manuscriptService.structure.permanentlyDeleteItem(itemId, effectiveProjectId);
+      const ok = await workspaceCoordinator.deleteFile(itemId, effectiveProjectId);
+      if (!ok) {
+        throw new Error('Failed to delete file');
+      }
+      return { success: true };
     },
     onSuccess: () => {
       invalidateStorageState();
@@ -225,15 +223,15 @@ export function useEditorStorageMutations(
     mutationFn: async (args: { itemId?: string; targetFolderId?: string | null } | string): Promise<unknown> => {
       const itemId = typeof args === 'string' ? args : (args.itemId || '');
       const targetFolderId = typeof args === 'string' ? null : (args.targetFolderId ?? null);
-      try {
-        const ok = await workspaceCoordinator.moveItem({
-          itemId,
-          targetFolderId,
-          projectId: effectiveProjectId,
-        });
-        if (ok) return { success: true };
-      } catch {}
-      return await manuscriptService.structure.moveItem(itemId, targetFolderId, effectiveProjectId);
+      const ok = await workspaceCoordinator.moveItem({
+        itemId,
+        targetFolderId,
+        projectId: effectiveProjectId,
+      });
+      if (!ok) {
+        throw new Error('Failed to move item');
+      }
+      return { success: true };
     },
     onSuccess: () => {
       invalidateStorageState();
@@ -246,11 +244,12 @@ export function useEditorStorageMutations(
 
   const reorderMutation = useMutation({
     mutationFn: async (args: { itemId: string; sortOrder: number; projectId?: string }) => {
-      const pid = args.projectId || effectiveProjectId;
-      return await manuscriptService.structure.reorderItem(args.itemId, args.sortOrder, pid);
+      const pid = args.projectId || effectiveProjectId || pageIdOrProjectId || '';
+      if (!pid) return null;
+      return await manuscriptService.structure.reorderNode(pid, args.itemId, args.sortOrder);
     },
     onSuccess: () => {
-      invalidateStorageState();
+      invalidateStorageState({ emitBusEvent: true });
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Failed to reorder item';
@@ -260,13 +259,15 @@ export function useEditorStorageMutations(
 
   const setRootDocMutation = useMutation({
     mutationFn: async (args: { nodeId: string; projectId?: string }) => {
-      const pid = args.projectId || effectiveProjectId;
-      return await manuscriptService.structure.setRootDoc(args.nodeId, pid);
+      const pid = args.projectId || effectiveProjectId || pageIdOrProjectId || undefined;
+      const ok = await workspaceCoordinator.setMainFile(args.nodeId, pid);
+      if (!ok) {
+        throw new Error('Failed to set main document');
+      }
+      return { success: true };
     },
     onSuccess: () => {
-      invalidateStorageState();
-      queryClient.invalidateQueries({ queryKey: ['editor-root-doc'] });
-      toast.success('Main document set successfully', { id: 'set-main-doc' });
+      invalidateStorageState({ includeRootDoc: true });
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Failed to set main document';
@@ -292,7 +293,7 @@ export function useEditorStorageRootDoc(
   const effectiveProjectId = useResolvedProjectId(pageIdOrProjectId, explicitProjectId);
 
   const rootDocQuery = useQuery({
-    queryKey: ['editor-root-doc', effectiveProjectId],
+    queryKey: storageKeys.rootDoc(effectiveProjectId),
     queryFn: async () => {
       if (!effectiveProjectId) return null;
       return await manuscriptService.structure.getRootDoc(effectiveProjectId);

@@ -24,7 +24,8 @@ export const createFolderSchema = z.object({
     .string()
     .trim()
     .min(1, 'Folder name is required')
-    .max(255, 'Folder name is too long'),
+    .max(255, 'Folder name is too long')
+    .refine((name) => !name.includes('\\'), 'Backslashes are not allowed in folder names'),
 });
 
 export type CreateFolderInput = z.infer<typeof createFolderSchema>;
@@ -34,7 +35,8 @@ export const renameItemSchema = z.object({
     .string()
     .trim()
     .min(1, 'Name is required')
-    .max(255, 'Name is too long'),
+    .max(255, 'Name is too long')
+    .refine((name) => !name.includes('\\'), 'Backslashes are not allowed in names'),
 });
 
 export type RenameItemInput = z.infer<typeof renameItemSchema>;

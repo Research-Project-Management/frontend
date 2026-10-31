@@ -1,6 +1,9 @@
+import {
+  normalizeVirtualPath,
+  rewritePathPrefix,
+} from './document-naming';
+
 /**
- * lru-document-cache.ts
- *
  * In-Memory Virtual Document Model & Bounded LRU Cache (Domain Layer).
  *
  * High-performance Doubly Linked List + Hash Map (O(1) touch/evict/read).
@@ -395,6 +398,43 @@ export class LRUDocumentCache {
     model.lastActiveAt = Date.now();
     this.touch(fileId);
     this.notify(fileId, model);
+  }
+
+  /**
+   * Renames all cached models whose filePath resides under `oldPrefix/`.
+   * Returns the list of updated models with their old and new paths so callers
+   * can synchronize DAG, symbol index, and diagnostics aliases.
+   */
+  public renameFolderPrefix(
+    oldPrefix: string,
+    newPrefix: string,
+  ): Array<{ fileId: string; oldPath: string; newPath: string; content: string }> {
+    const cleanOld = normalizeVirtualPath(oldPrefix);
+    const cleanNew = normalizeVirtualPath(newPrefix);
+    if (!cleanOld || cleanOld === cleanNew) return [];
+
+    const updated: Array<{ fileId: string; oldPath: string; newPath: string; content: string }> = [];
+    const now = Date.now();
+
+    for (const model of this.models.values()) {
+      const nextPath = rewritePathPrefix(model.filePath, cleanOld, cleanNew, true);
+      if (nextPath !== null) {
+        const prevPath = model.filePath;
+        model.filePath = nextPath;
+        model.lastActiveAt = now;
+        updated.push({
+          fileId: model.fileId,
+          oldPath: prevPath,
+          newPath: nextPath,
+          content: model.content,
+        });
+      }
+    }
+
+    if (updated.length > 0) {
+      this.notify();
+    }
+    return updated;
   }
 
   /**

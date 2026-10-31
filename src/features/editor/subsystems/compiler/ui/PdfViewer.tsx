@@ -124,6 +124,7 @@ export function PdfViewer({ isDetached = false }: PdfViewerProps = {}) {
     compileStatus,
     compileLog,
     pdfUrl,
+    synctexMap,
     synctexMapRef,
     handleCompile,
     handleClearCacheAndCompile,
@@ -380,7 +381,7 @@ export function PdfViewer({ isDetached = false }: PdfViewerProps = {}) {
               <PdfSurface
                 ref={pdfSurfaceRef}
                 pdfUrl={pdfUrl}
-                synctexMap={synctexMapRef.current}
+                synctexMap={synctexMap ?? synctexMapRef.current}
                 scale={scale}
                 autoFit={autoFit}
                 containerWidth={containerWidth}

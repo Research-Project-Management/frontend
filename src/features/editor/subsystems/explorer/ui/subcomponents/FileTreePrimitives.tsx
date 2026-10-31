@@ -56,6 +56,7 @@ export function InlineInput({
   onCancel: () => void;
   isPending?: boolean;
 }) {
+  const handledRef = React.useRef(false);
   return (
     <div
       className="flex h-8 items-center gap-1.5 w-full rounded-md pl-2 pr-1 bg-muted/40 transition-colors select-none"
@@ -73,18 +74,27 @@ export function InlineInput({
         type="text"
         name="newItemName"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => {
+          handledRef.current = false;
+          onChange(e.target.value);
+        }}
         onKeyDown={(e) => {
           if (e.key === 'Enter') {
             e.preventDefault();
+            if (handledRef.current) return;
+            handledRef.current = true;
             onCommit();
           }
           if (e.key === 'Escape') {
             e.preventDefault();
+            if (handledRef.current) return;
+            handledRef.current = true;
             onCancel();
           }
         }}
         onBlur={() => {
+          if (handledRef.current) return;
+          handledRef.current = true;
           if (value.trim()) onCommit();
           else onCancel();
         }}
@@ -113,6 +123,7 @@ export function RenameInput({
   onCancel: () => void;
   isPending?: boolean;
 }) {
+  const handledRef = React.useRef(false);
   return (
     <div className="flex-1 min-w-0 flex items-center">
       <input
@@ -120,20 +131,29 @@ export function RenameInput({
         type="text"
         name="renameItemName"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => {
+          handledRef.current = false;
+          onChange(e.target.value);
+        }}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
           e.stopPropagation();
           if (e.key === 'Enter') {
             e.preventDefault();
+            if (handledRef.current) return;
+            handledRef.current = true;
             onCommit();
           }
           if (e.key === 'Escape') {
             e.preventDefault();
+            if (handledRef.current) return;
+            handledRef.current = true;
             onCancel();
           }
         }}
         onBlur={() => {
+          if (handledRef.current) return;
+          handledRef.current = true;
           if (value.trim()) onCommit();
           else onCancel();
         }}

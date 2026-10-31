@@ -49,6 +49,7 @@ export interface SnapshotLRUModel {
 
 export interface SnapshotDirtyItem {
   fileId: string;
+  filePath?: string;
   content: string;
 }
 

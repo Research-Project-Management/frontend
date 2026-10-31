@@ -234,16 +234,6 @@ async function bundleAndDownloadZip({
 
     return filename;
   } catch (error) {
-    try {
-      const serverBlob = await manuscriptService.export.exportProjectZip(parentPageId);
-      if (serverBlob && serverBlob.size > 0) {
-        const fallbackFilename = isArxiv ? `arxiv-${cleanTitle}.zip` : `${cleanTitle}.zip`;
-        triggerFileDownload(serverBlob, fallbackFilename);
-        return fallbackFilename;
-      }
-    } catch {
-      // Fall through to original error
-    }
     console.error('[export-zip] Error generating ZIP:', error);
     throw error;
   }
@@ -304,42 +294,66 @@ export async function exportVersionAsZip(options: ExportVersionZipOptions): Prom
 
     const targetDate = revisionDate ? new Date(revisionDate).getTime() : Date.now();
     const filesMap = new Map<string, string>();
+    let resolvedViaProjectSnapshot = false;
 
-    // 2. Resolve content for each file at the revision
-    await Promise.all(
-      allFiles.map(async (f) => {
-        const title = f.title?.trim();
-        if (!title) return;
-
-        // Fetch versions of this file
-        try {
-          const versions = await manuscriptService.history.getByDocId(f.id).catch(() => []);
-          if (versions && versions.length > 0) {
-            let matchingVer = versions.find((v) => v.id === versionId);
-            if (!matchingVer && revisionDate) {
-              const beforeVers = versions.filter(
-                (v) => new Date(v.createdAt).getTime() <= targetDate + 1000,
-              );
-              matchingVer = beforeVers[0] || versions[versions.length - 1];
-            }
-            if (!matchingVer) matchingVer = versions[0];
-
-            if (matchingVer) {
-              const fullVer = await manuscriptService.history.getById(f.id, matchingVer.id).catch(() => null);
-              if (fullVer && typeof fullVer.content === 'string') {
-                filesMap.set(title, fullVer.content);
-                return;
-              }
+    // 2a. Primary Authority for Milestone Project Snapshots: Single server call
+    if (options.projectId && typeof options.version === 'number') {
+      try {
+        const snap = await manuscriptService.history.getProjectSnapshot(
+          options.projectId,
+          options.version,
+        );
+        if (snap && snap.files && Object.keys(snap.files).length > 0) {
+          for (const [filePath, fileData] of Object.entries(snap.files)) {
+            const cleanPath = filePath.replace(/^\//, '');
+            const content = extractDocumentContentString(fileData);
+            if (content !== undefined) {
+              filesMap.set(cleanPath, content);
             }
           }
-        } catch {
-          // fallback to file's default content
+          resolvedViaProjectSnapshot = filesMap.size > 0;
         }
+      } catch {
+        // Fall through to per-file history resolution if snapshot endpoint fails
+      }
+    }
 
-        const strContent = extractDocumentContentString(f.content);
-        filesMap.set(title, strContent);
-      }),
-    );
+    // 2b. Fallback: Resolve content per file at the target revision
+    if (!resolvedViaProjectSnapshot) {
+      await Promise.all(
+        allFiles.map(async (f) => {
+          const title = f.title?.trim();
+          if (!title) return;
+
+          try {
+            const versions = await manuscriptService.history.getByPageId(f.id).catch(() => []);
+            if (versions && versions.length > 0) {
+              let matchingVer = versions.find((v) => v.id === versionId);
+              if (!matchingVer && revisionDate) {
+                const beforeVers = versions.filter(
+                  (v) => new Date(v.createdAt).getTime() <= targetDate + 1000,
+                );
+                matchingVer = beforeVers[0] || versions[versions.length - 1];
+              }
+              if (!matchingVer) matchingVer = versions[0];
+
+              if (matchingVer) {
+                const fullVer = await manuscriptService.history.getById(f.id, matchingVer.id).catch(() => null);
+                if (fullVer && typeof fullVer.content === 'string') {
+                  filesMap.set(title, fullVer.content);
+                  return;
+                }
+              }
+            }
+          } catch {
+            // fallback to file's default content
+          }
+
+          const strContent = extractDocumentContentString(f.content);
+          filesMap.set(title, strContent);
+        }),
+      );
+    }
 
     // 3. Ensure the main LaTeX document is included
     const configuredMain = (useSettingsStore.getState().mainFile || DEFAULT_MAIN_FILE).toLowerCase();
@@ -355,7 +369,7 @@ export async function exportVersionAsZip(options: ExportVersionZipOptions): Prom
 
       let rootStr = typeof rootPage?.content === 'string' ? rootPage.content : '';
       try {
-        const rootVersions = await manuscriptService.history.getByDocId(parentPageId).catch(() => []);
+        const rootVersions = await manuscriptService.history.getByPageId(parentPageId).catch(() => []);
         const matchingRoot =
           rootVersions.find((v) => v.id === versionId) ||
           rootVersions.find((v) => new Date(v.createdAt).getTime() <= targetDate + 1000) ||
@@ -371,22 +385,6 @@ export async function exportVersionAsZip(options: ExportVersionZipOptions): Prom
       }
 
       filesMap.set(rootTitle, rootStr);
-    }
-
-    // 3b. If exporting a milestone project snapshot directly by version number
-    if (options.projectId && typeof options.version === 'number') {
-      try {
-        const snap = await manuscriptService.history.getProjectSnapshot(options.projectId, options.version);
-        if (snap && snap.files) {
-          for (const [filePath, fileData] of Object.entries(snap.files)) {
-            const cleanPath = filePath.replace(/^\//, '');
-            const content = extractDocumentContentString(fileData);
-            if (content !== undefined) {
-              filesMap.set(cleanPath, content);
-            }
-          }
-        }
-      } catch {}
     }
 
     // Add all source files to the ZIP

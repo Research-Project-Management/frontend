@@ -16,7 +16,6 @@ import type { Item } from '@/features/library/domain/types/library.types';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 import { DEFAULT_BIB_FILE } from '@/features/editor/domain/constants/editor.constants';
-import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 
 export interface LibraryTabPaneProps {
   parentPageId: string | null;
@@ -92,8 +91,6 @@ export function LibraryTabPane({
     const bibEntries = chosenItems
       .map((item) => formatItemToBibtex(item))
       .join('\n\n');
-
-    void manuscriptService.citations.parseRaw(bibEntries).catch(() => null);
 
     createFile.mutate(
       {

@@ -12,6 +12,10 @@ export interface EditorStorageItem {
   size?: number;
   mimeType?: string;
   isFolder: boolean;
+  nodeType?: 'FOLDER' | 'DOC' | 'FILE';
+  docId?: string | null;
+  fileId?: string | null;
+  isRootDoc?: boolean;
   parentId?: string | null;
   url?: string;
   createdAt?: string;

@@ -290,6 +290,8 @@ export interface StructureNodeDto {
   path: string;
   type: 'folder' | 'file' | 'doc' | 'FOLDER' | 'FILE' | 'DOC';
   parentId?: string | null;
+  docId?: string | null;
+  fileId?: string | null;
   sortOrder?: number;
   sizeBytes?: number;
   isRootDoc?: boolean;

@@ -7,7 +7,7 @@
  * Location: `features/editor/ui/features/preview/hooks/use-pdf-compiler.ts`
  */
 
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { useSettingsStore, editorCommandBus } from '@/features/editor/core';
 import { useCompileStore } from '@/features/editor/subsystems/compiler/coordinator/compiler.store';
 import { compilerCoordinator } from '@/features/editor/subsystems/compiler/coordinator/compiler.coordinator';
@@ -38,16 +38,20 @@ export function usePdfCompiler({
   const pdfUrl = useCompileStore((s) => s.pdfUrl);
   const lastCompiledAt = useCompileStore((s) => s.lastCompiledAt);
 
-  const synctexMapRef = useRef<SyncTeXMap | null>(null);
-  const rawSynctexRef = useRef<string | null>(null);
+  const synctexMapRef = useRef<SyncTeXMap | null>(compilerCoordinator.getSynctexMap());
+  const rawSynctexRef = useRef<string | null>(compilerCoordinator.getRawSynctex());
+  const [synctexMap, setSynctexMap] = useState<SyncTeXMap | null>(() => compilerCoordinator.getSynctexMap());
 
-  // Sync coordinator synctex maps into refs for viewer compatibility
+  // Sync coordinator synctex maps into refs and reactive state for viewer compatibility
   useEffect(() => {
-    synctexMapRef.current = compilerCoordinator.getSynctexMap();
+    const currentMap = compilerCoordinator.getSynctexMap();
+    synctexMapRef.current = currentMap;
     rawSynctexRef.current = compilerCoordinator.getRawSynctex();
+    setSynctexMap(currentMap);
 
     const unsub = editorCommandBus.subscribe('synctex:map-updated', (cmd) => {
       synctexMapRef.current = cmd.map;
+      setSynctexMap(cmd.map);
     });
     return unsub;
   }, [lastCompiledAt]);
@@ -93,6 +97,7 @@ export function usePdfCompiler({
     compileLog,
     pdfUrl,
     lastCompiledAt,
+    synctexMap,
     synctexMapRef,
     rawSynctexRef,
     handleCompile,

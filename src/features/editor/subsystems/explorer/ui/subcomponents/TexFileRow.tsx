@@ -134,13 +134,14 @@ export const TexFileRow = React.memo(function TexFileRow({
   const handleCopyInput = useCallback(
     (e?: React.MouseEvent) => {
       e?.stopPropagation();
+      const targetPath = file.title || fullName;
       if (onCopyCommand) {
-        onCopyCommand(fullName);
+        onCopyCommand(targetPath);
       } else {
-        copyTexCommandToClipboard(fullName);
+        copyTexCommandToClipboard(targetPath);
       }
     },
-    [fullName, onCopyCommand],
+    [file.title, fullName, onCopyCommand],
   );
 
   const handleDownload = useCallback(

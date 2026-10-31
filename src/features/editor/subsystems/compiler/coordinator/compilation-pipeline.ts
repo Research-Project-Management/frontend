@@ -270,7 +270,7 @@ export const LatexCompilerEngine = {
 
     // Resolve source content from dirtyFiles, options, or active page
     let sourceContent = opts.source ?? opts.content;
-    const filesMap: Record<string, string> = { ...(opts.files || {}) };
+    const rawFilesMap: Record<string, string> = { ...(opts.files || {}) };
 
     for (const item of dirtyFiles) {
       if (!sourceContent && (item.fileId === pageId || item.fileId === mainFile)) {
@@ -278,10 +278,26 @@ export const LatexCompilerEngine = {
       }
       const resolvedPath = item.path || lruDocumentCache.getModel(item.fileId)?.filePath;
       if (resolvedPath) {
-        filesMap[resolvedPath] = item.content;
-      } else if (!(item.fileId in filesMap) && Object.keys(filesMap).length === 0) {
-        filesMap[item.fileId] = item.content;
+        rawFilesMap[resolvedPath] = item.content;
+      } else if (!(item.fileId in rawFilesMap) && Object.keys(rawFilesMap).length === 0) {
+        rawFilesMap[item.fileId] = item.content;
       }
+    }
+
+    // Deduplicate raw UUID aliases if a canonical relative path (with extension or slash) already exists
+    const filesMap: Record<string, string> = {};
+    const rawEntries = Object.entries(rawFilesMap);
+    const hasCanonicalPaths = rawEntries.some(([k]) => k.includes('.') || k.includes('/'));
+    for (const [key, val] of rawEntries) {
+      const isUuidLike =
+        !key.includes('.') &&
+        !key.includes('/') &&
+        (/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(key) ||
+          dirtyFiles.some((d) => d.fileId === key && (d.path || lruDocumentCache.getModel(d.fileId)?.filePath)));
+      if (hasCanonicalPaths && isUuidLike && key !== mainFile) {
+        continue;
+      }
+      filesMap[key] = val;
     }
 
     const payload: CompileLatexPayload = {
@@ -296,6 +312,7 @@ export const LatexCompilerEngine = {
       use_cache: useCache ?? true,
       force_clean: opts.forceClean,
       stop_on_first_error: opts.stopOnFirstError,
+      ...(opts.timeoutMs ? { timeout_ms: opts.timeoutMs } : {}),
     };
 
     try {

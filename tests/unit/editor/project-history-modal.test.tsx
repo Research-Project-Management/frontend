@@ -418,7 +418,7 @@ describe('HistoryPage Component (Overleaf Parity)', () => {
         },
       },
     });
-    vi.spyOn(manuscriptService.docs, 'create').mockResolvedValue({ id: 'new-doc-1' } as any);
+    vi.spyOn(manuscriptService.docs, 'createChildFile').mockResolvedValue({ id: 'new-doc-1' } as any);
 
     renderModal({ initialVersion: 2 });
 
@@ -438,9 +438,9 @@ describe('HistoryPage Component (Overleaf Parity)', () => {
     fireEvent.click(confirmBtn);
 
     await waitFor(() => {
-      expect(manuscriptService.docs.create).toHaveBeenCalledWith(
+      expect(manuscriptService.docs.createChildFile).toHaveBeenCalledWith(
         expect.objectContaining({
-          projectId: 'proj-123',
+          parentPageId: 'doc-1',
           title: 'chapter1.tex',
           content: '\\chapter{Intro}\nThis was chapter 1.',
         })

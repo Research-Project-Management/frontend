@@ -87,13 +87,19 @@ export function FileTreeContainer({
     <div
       className="relative min-h-0 flex-1 overflow-y-auto px-2 pt-2.5 pb-3 thin-scrollbar space-y-0.5 border-b border-border bg-surface"
       onDragEnter={(e) => {
-        if (!e.dataTransfer.types.includes('application/flux-file-id')) {
+        if (
+          !e.dataTransfer.types.includes('application/flux-file-id') &&
+          !e.dataTransfer.types.includes('application/x-asset-id')
+        ) {
           handleDragEnter(e);
         }
       }}
       onDragLeave={handleDragLeave}
       onDragOver={(e) => {
-        if (e.dataTransfer.types.includes('application/flux-file-id')) {
+        if (
+          e.dataTransfer.types.includes('application/flux-file-id') ||
+          e.dataTransfer.types.includes('application/x-asset-id')
+        ) {
           e.preventDefault();
           e.dataTransfer.dropEffect = 'move';
         } else {
@@ -101,7 +107,9 @@ export function FileTreeContainer({
         }
       }}
       onDrop={(e) => {
-        const internalFileId = e.dataTransfer.getData('application/flux-file-id');
+        const internalFileId =
+          e.dataTransfer.getData('application/flux-file-id') ||
+          e.dataTransfer.getData('application/x-asset-id');
         if (internalFileId) {
           e.preventDefault();
           e.stopPropagation();

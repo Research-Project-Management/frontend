@@ -34,11 +34,9 @@ import { cn } from '@/shared/lib/utils';
 import { useEditorStorageMutations } from '@/features/editor/ui/hooks/useStorage';
 import type { EditorStorageItem as StorageItem } from '@/features/editor/domain/types/storage-item.types';
 import {
-  sessionCoordinator,
   RASTER_AND_VECTOR_IMAGE_EXTENSIONS,
   CODE_EXTENSIONS,
 } from '@/features/editor/core';
-import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 
 const ICON_IMAGE = { icon: Image, color: 'text-foreground' };
 const ICON_PDF = { icon: FileText, color: 'text-foreground' };
@@ -103,12 +101,14 @@ export const StorageFileRow = React.memo(function StorageFileRow({
   const [renameValue, setRenameValue] = useState('');
   const { copyStorageSnippet, downloadStorageItem } = useStorageItemActions();
 
+  const fullAssetPath = item.path || item.filename;
+
   const handleCopySnippet = useCallback(
     (e?: React.MouseEvent) => {
       e?.stopPropagation();
-      copyStorageSnippet(item.filename);
+      copyStorageSnippet(fullAssetPath);
     },
-    [item.filename, copyStorageSnippet],
+    [fullAssetPath, copyStorageSnippet],
   );
 
   const handleDownload = useCallback(
@@ -136,12 +136,8 @@ export const StorageFileRow = React.memo(function StorageFileRow({
               setRenamingId(null);
               return;
             }
-            const existingModel = lruDocumentCache.getModel(item.id);
-            if (existingModel) {
-              existingModel.filePath = n;
-            }
             renameFile.mutate(
-              { fileId: item.id, name: n, oldName: item.filename || n },
+              { fileId: item.id, name: n, oldName: item.path || item.filename || n },
               { onSuccess: () => setRenamingId(null) },
             );
           }}
@@ -166,14 +162,14 @@ export const StorageFileRow = React.memo(function StorageFileRow({
         e.dataTransfer.setData('application/x-asset-id', item.id);
         e.dataTransfer.effectAllowed = 'move';
       }}
-      onClick={() => (isImage ? onPreview(item) : onInsertAsset(item.filename))}
+      onClick={() => (isImage ? onPreview(item) : onInsertAsset(fullAssetPath))}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           if (isImage) {
             onPreview(item);
           } else {
-            onInsertAsset(item.filename);
+            onInsertAsset(fullAssetPath);
           }
         }
       }}
@@ -198,7 +194,7 @@ export const StorageFileRow = React.memo(function StorageFileRow({
         <DropdownMenuItem
           onClick={(e) => {
             e.stopPropagation();
-            onInsertAsset(item.filename);
+            onInsertAsset(fullAssetPath);
           }}
           className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
         >
@@ -237,11 +233,7 @@ export const StorageFileRow = React.memo(function StorageFileRow({
           variant="destructive"
           onClick={(e) => {
             e.stopPropagation();
-            deleteFile.mutate(item.id, {
-              onSuccess: () => {
-                sessionCoordinator.evictDeletedFile(item.id);
-              },
-            });
+            deleteFile.mutate(item.id);
           }}
           className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer rounded-md outline-none focus:bg-destructive/10 focus:text-destructive focus-visible:ring-1 focus-visible:ring-destructive transition-colors"
         >
@@ -259,7 +251,7 @@ export const StorageFileRow = React.memo(function StorageFileRow({
         <ContextMenuItem
           onClick={(e) => {
             e.stopPropagation();
-            onInsertAsset(item.filename);
+            onInsertAsset(fullAssetPath);
           }}
           className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
         >
@@ -298,11 +290,7 @@ export const StorageFileRow = React.memo(function StorageFileRow({
           variant="destructive"
           onClick={(e) => {
             e.stopPropagation();
-            deleteFile.mutate(item.id, {
-              onSuccess: () => {
-                sessionCoordinator.evictDeletedFile(item.id);
-              },
-            });
+            deleteFile.mutate(item.id);
           }}
           className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer rounded-md outline-none focus:bg-destructive/10 focus:text-destructive focus-visible:ring-1 focus-visible:ring-destructive transition-colors"
         >

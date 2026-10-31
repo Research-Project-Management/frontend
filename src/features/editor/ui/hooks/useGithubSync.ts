@@ -15,7 +15,6 @@ import {
   editorCommandBus,
   sessionCoordinator,
   documentAuthority,
-  editorInvariantMonitor,
   getAllRegisteredEngines,
 } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/subsystems/explorer';
@@ -169,7 +168,6 @@ export function useGithubSync({
         documentAuthority.clearProjectCache(projectId);
         await draftStorageService.clearProjectDrafts(projectId);
       }
-      editorInvariantMonitor.reconcileInvariants();
       queryClient.invalidateQueries({ queryKey: pageKeys.all });
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
       queryClient.invalidateQueries({ queryKey: ['projects'] });

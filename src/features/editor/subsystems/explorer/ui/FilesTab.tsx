@@ -24,26 +24,22 @@ import dynamic from 'next/dynamic';
 
 import { useEditorStorage } from '@/features/editor/ui/hooks/useStorage';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
-import { createFileSchema, createFolderSchema, renameItemSchema, extractProjectId, extractDocumentContentString } from '@/features/editor/domain/types/core.types';
+import { createFileSchema, createFolderSchema, renameItemSchema, extractProjectId } from '@/features/editor/domain/types/core.types';
+import { splitVirtualPath } from '@/features/editor/domain/document/document-naming';
 import { DEFAULT_MAIN_FILE } from '@/features/editor/domain/constants/editor.constants';
 import {
   usePageStore,
   useSettingsStore,
   useWorkspaceStore,
   editorCommandBus,
-  workspaceCoordinator,
-  sessionCoordinator,
-  lruDocumentCache,
   syncShallowUrlParams,
 } from '@/features/editor/core';
-import { latexDagEngine } from '@/features/editor/domain/latex/latex-dag-engine';
-import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 import type { AssetInfo } from '@/features/editor/domain/types/asset.types';
 import {
   pageQuery,
   filesQuery,
-  deletedFilesQuery,
+  invalidateFileTreeQueries,
 } from '@/features/editor/ui/hooks/document.queries';
 import { usePageActions } from '@/features/editor/ui/hooks/usePageActions';
 import type { EditorStorageItem as StorageItem } from '@/features/editor/domain/types/storage-item.types';
@@ -131,7 +127,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [newFileName, setNewFileName] = useState('');
   const [newFolderName, setNewFolderName] = useState('');
-  const [fileToDelete, setFileToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [fileToDelete, setFileToDelete] = useState<{ id: string; title: string; isFolder?: boolean } | null>(null);
 
   const mainFileId =
     parentPage?.mainFile && typeof parentPage.mainFile === 'object'
@@ -152,7 +148,6 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
     createFile: createFileMutation,
     setMainFile: setMainFileMutation,
     deletePage: deletePageMutation,
-    updateTitle: updateTitleMutation,
     updateContent: updateContentMutation,
   } = usePageActions();
 
@@ -167,30 +162,19 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
   const queryClient = useQueryClient();
 
   const handleMoveItem = useCallback(
-    (itemId: string, targetFolderId: string | null) => {
-      moveItem.mutate(
-        { itemId, targetFolderId },
-        {
-          onSuccess: () => {
-            if (parentPageId) {
-              queryClient.invalidateQueries({ queryKey: filesQuery(parentPageId).queryKey });
-            }
-            queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
-            editorCommandBus.dispatch({ type: 'filetree:updated' });
-          },
-        },
-      );
+    async (itemId: string, targetFolderId: string | null) => {
+      moveItem.mutate({ itemId, targetFolderId });
     },
-    [moveItem, queryClient, parentPageId],
+    [moveItem],
   );
 
-  // Listen for real-time WebSocket file-tree mutations from collaborating peers
+  // Listen for real-time WebSocket and Coordinator file-tree mutations (Hollywood Principle)
   useEffect(() => {
     const handleFileTreeUpdated = () => {
-      if (parentPageId) {
-        queryClient.invalidateQueries({ queryKey: filesQuery(parentPageId).queryKey });
-        queryClient.invalidateQueries({ queryKey: deletedFilesQuery(parentPageId).queryKey });
-      }
+      invalidateFileTreeQueries(queryClient, {
+        parentPageId,
+        includeProjects: false,
+      });
     };
 
     return editorCommandBus.subscribe('filetree:updated', handleFileTreeUpdated);
@@ -229,6 +213,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
     refreshAllLinkedFiles,
     insertAsset,
     handleRenameSubmit,
+    isRenamePending,
   } = useFileExplorerActions({
     projectId,
     parentPageId,
@@ -262,7 +247,6 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
     projectFiles,
     createFileMutation,
     uploadFile,
-    createFolder,
     updateContentMutation,
     setSearchParams,
   });
@@ -425,10 +409,18 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
     );
   }, [newFolderName, parentPageId, projectId, createFolder]);
 
-  const handleStartRename = useCallback((file: { id: string; title: string }) => {
-    setRenamingId(file.id);
-    setRenameValue(file.title);
-  }, []);
+  const handleStartRename = useCallback(
+    (file: { id: string; title: string; isFolder?: boolean }) => {
+      setRenamingId(file.id);
+      const isFolderItem =
+        Boolean(file.isFolder) ||
+        Boolean(projectFiles?.some((pf) => pf.id === file.id && pf.isFolder));
+      const { leafName } = splitVirtualPath(file.title);
+      const baseLeaf = leafName || file.title;
+      setRenameValue(isFolderItem ? baseLeaf : displayName(baseLeaf));
+    },
+    [projectFiles],
+  );
 
   const handleCommitRename = useCallback(
     (fileId: string) => {
@@ -438,12 +430,18 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
         setRenamingId(null);
         return;
       }
-      const oldTitle = files?.find((f) => f.id === fileId)?.title ?? '';
+      const matchedFile = files?.find((f) => f.id === fileId);
+      const matchedStorageItem = projectFiles?.find((pf) => pf.id === fileId);
+      const oldTitle =
+        matchedFile?.title ??
+        matchedStorageItem?.path ??
+        matchedStorageItem?.filename ??
+        '';
       void handleRenameSubmit(fileId, parsed.data.name, oldTitle).finally(() => {
         setRenamingId(null);
       });
     },
-    [renameValue, files, handleRenameSubmit, updateTitleMutation],
+    [renameValue, files, projectFiles, handleRenameSubmit],
   );
 
   const handleDelete = useCallback(
@@ -451,9 +449,22 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
       const target =
         files?.find((f) => f.id === fileId) ||
         (fileId === parentPageId || fileId === mainFileId ? { id: fileId, title: 'main.tex' } : null);
-      setFileToDelete(target || { id: fileId, title: 'document.tex' });
+      if (target) {
+        setFileToDelete(target);
+        return;
+      }
+      const folderTarget = projectFiles?.find((pf) => pf.id === fileId && pf.isFolder);
+      if (folderTarget) {
+        setFileToDelete({
+          id: folderTarget.id,
+          title: folderTarget.filename,
+          isFolder: true,
+        });
+        return;
+      }
+      setFileToDelete({ id: fileId, title: 'document.tex' });
     },
-    [files, parentPageId, mainFileId],
+    [files, projectFiles, parentPageId, mainFileId],
   );
 
   const handleConfirmDelete = useCallback(() => {
@@ -462,14 +473,6 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
 
     deletePageMutation.mutate(targetId, {
       onSuccess: () => {
-        sessionCoordinator.evictDeletedFile(targetId);
-        const wsStore = useWorkspaceStore.getState();
-        if (wsStore.secondaryFileId === targetId) {
-          wsStore.setSecondaryFileId(null);
-        }
-        lruDocumentCache.evictModel(targetId);
-        latexDagEngine.removeFileNode(targetId);
-        latexSymbolsIndex.removeFile(targetId);
         navigationCoordinator.closeDocument(targetId);
         setFileToDelete(null);
       },
@@ -504,15 +507,27 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
             node={node}
             depth={depth}
             isExpanded={isFolderExpanded(node)}
+            isRenaming={renamingId === node.id}
+            renameValue={renameValue}
+            isRenamePending={isRenamePending}
             onToggle={toggleFolder}
             onMoveItem={handleMoveItem}
             onNewFileInFolder={(folderName) => {
               setNewFileName(`${folderName}/`);
               setIsCreatingFile(true);
             }}
+            onNewFolderInFolder={(folderName) => {
+              setNewFolderName(`${folderName}/`);
+              setIsCreatingFolder(true);
+            }}
             onUploadToFolder={(folderId) => {
               handleUploadToFolder([], folderId);
             }}
+            onStartRename={handleStartRename}
+            onRenameChange={setRenameValue}
+            onCommitRename={handleCommitRename}
+            onCancelRename={() => setRenamingId(null)}
+            onDelete={handleDelete}
           >
             {node.children.map((child) => renderTreeNode(child, depth + 1))}
           </FileTreeFolderRow>
@@ -541,17 +556,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
 
       // TeX file node
       const activeId = activeTabId || activeFileId || fileParam || pageId;
-      const isMain = Boolean(
-        mainFileId
-          ? node.id === mainFileId
-          : configuredMainFile
-            ? node.displayLabel.toLowerCase() === configuredMainFile.toLowerCase() ||
-              node.title.toLowerCase() === configuredMainFile.toLowerCase()
-            : node.isRootDoc ||
-              node.id === parentPageId ||
-              node.id === `${parentPageId}-main` ||
-              node.displayLabel.toLowerCase() === 'main.tex'
-      );
+      const isMain = Boolean(node.isRootDoc);
       const isActive =
         node.id === activeId ||
         node.title === activeId ||
@@ -574,7 +579,7 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
           onDeleteLinked={deleteLinkedFile}
           isRenaming={renamingId === node.id}
           renameValue={renameValue}
-          isRenamePending={updateTitleMutation.isPending}
+          isRenamePending={isRenamePending}
           onFileClick={handleFileClick}
           onStartRename={handleStartRename}
           onRenameChange={setRenameValue}
@@ -599,15 +604,12 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
       activeTabId,
       fileParam,
       pageId,
-      mainFileId,
-      configuredMainFile,
-      parentPageId,
       linkedFileMap,
       refreshLinkedFile,
       deleteLinkedFile,
       renamingId,
       renameValue,
-      updateTitleMutation.isPending,
+      isRenamePending,
       handleFileClick,
       handleStartRename,
       handleCommitRename,

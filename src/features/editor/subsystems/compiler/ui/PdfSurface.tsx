@@ -347,8 +347,9 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
       {isVisible ? (
         <Page
           pageNumber={pageNum}
-          width={autoFit ? containerWidth : undefined}
+          width={autoFit ? pageWidth : undefined}
           scale={autoFit ? undefined : scale}
+          canvasBackground="#ffffff"
           renderTextLayer
           renderAnnotationLayer
           customTextRenderer={normalizePdfTextItem}

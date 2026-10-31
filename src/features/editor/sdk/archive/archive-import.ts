@@ -468,49 +468,13 @@ export async function extractAndImportZipToProject({
     throw new Error('Failed to create or resolve root document page.');
   }
 
-  // ── Step 3: Create Asset Directory Tree ──────────────────────────────────
+  // ── Step 3: Upload Asset Files (Backend FilestoreRepository materializes folder chains from path) ──
   if (extracted.assetFiles.length > 0) {
-    report('creating_folders', 'Creating directory structure for figures and assets...');
-    const folderPaths = new Set<string>();
-    for (const asset of extracted.assetFiles) {
-      if (asset.folderPath) {
-        const parts = asset.folderPath.split('/');
-        for (let i = 1; i <= parts.length; i++) {
-          folderPaths.add(parts.slice(0, i).join('/'));
-        }
-      }
-    }
-
-    const sortedFolders = Array.from(folderPaths).sort();
-    const folderIdMap: Record<string, string> = {};
-
-    for (const fPath of sortedFolders) {
-      const parts = fPath.split('/');
-      const folderName = parts[parts.length - 1];
-      const parentPath = parts.slice(0, -1).join('/');
-      const parentFolderId = parentPath ? folderIdMap[parentPath] : null;
-
-      try {
-        const created = await manuscriptService.structure.createPageFolder(
-          effectiveRootPageId,
-          folderName,
-          parentFolderId,
-        );
-        folderIdMap[fPath] =
-          created && typeof created === 'object' && 'id' in created
-            ? String((created as { id: unknown }).id)
-            : '';
-      } catch (folderErr) {
-        console.warn(`[import-zip] Folder creation note for "${fPath}":`, folderErr);
-      }
-    }
-
-    // ── Step 4: Upload Asset Files ─────────────────────────────────────────
     report('uploading_assets', `Uploading ${extracted.assetFiles.length} asset(s)...`);
     for (const asset of extracted.assetFiles) {
       if (!asset.blob) continue;
-      const parentFolderId = asset.folderPath ? folderIdMap[asset.folderPath] : null;
-      const file = new File([asset.blob], asset.name, {
+      const assetPath = (asset.path || asset.name).replace(/^\/+/, '');
+      const file = new File([asset.blob], assetPath, {
         type: asset.blob.type || 'application/octet-stream',
       });
 
@@ -518,7 +482,9 @@ export async function extractAndImportZipToProject({
         await manuscriptService.filestore.uploadPageFile(
           effectiveRootPageId,
           file,
-          parentFolderId,
+          null,
+          undefined,
+          effectiveProjectId,
         );
       } catch (assetErr) {
         console.error(`[import-zip] Failed to upload asset ${asset.path}:`, assetErr);
@@ -557,7 +523,7 @@ export async function extractAndImportZipToProject({
     }
   }
 
-  // ── Step 6: Finalize Main Document ───────────────────────────────────────
+  // ── Step 5: Finalize Main Document ───────────────────────────────────────
   if (rootPageFileId) {
     try {
       await manuscriptService.docs.setMainFile({
@@ -566,15 +532,6 @@ export async function extractAndImportZipToProject({
       });
     } catch (setMainErr) {
       console.warn('[import-zip] Note setting main file:', setMainErr);
-    }
-  }
-
-  // Only fall back to server-side ZIP import if no client-side items were extracted/created
-  if (effectiveProjectId && zipFile && totalItems === 0) {
-    try {
-      await manuscriptService.export.importProjectZip(effectiveProjectId, zipFile);
-    } catch {
-      // Non-fatal fallback when offline or local-only
     }
   }
 

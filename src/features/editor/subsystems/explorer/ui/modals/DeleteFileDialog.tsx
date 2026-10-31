@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { displayName } from '@/features/editor/subsystems/explorer/ui/subcomponents/TexFileRow';
 
 export interface DeleteFileDialogProps {
-  fileToDelete: { id: string; title: string } | null;
+  fileToDelete: { id: string; title: string; isFolder?: boolean } | null;
   isPending: boolean;
   onClose: () => void;
   onConfirm: () => void;
@@ -21,15 +21,24 @@ export function DeleteFileDialog({
 }: DeleteFileDialogProps) {
   if (!fileToDelete) return null;
 
+  const isFolder = Boolean(fileToDelete.isFolder);
+
   return (
     <Dialog open={!!fileToDelete} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="w-[95vw] sm:max-w-[400px] rounded-md p-5 gap-4">
         <DialogHeader className="pb-1 pr-6">
           <DialogTitle className="text-sm font-semibold tracking-tight text-foreground">
-            Delete file
+            {isFolder ? 'Delete folder' : 'Delete file'}
           </DialogTitle>
           <DialogDescription className="text-xs text-foreground leading-relaxed pt-1">
-            Are you sure you want to delete <span className="font-semibold text-foreground font-mono">{displayName(fileToDelete.title)}</span>? This file will be moved to Trash and can be restored at any time.
+            Are you sure you want to delete{' '}
+            <span className="font-semibold text-foreground font-mono">
+              {isFolder ? fileToDelete.title : displayName(fileToDelete.title)}
+            </span>
+            ?{' '}
+            {isFolder
+              ? 'This folder and all files inside it will be moved to Trash.'
+              : 'This file will be moved to Trash and can be restored at any time.'}
           </DialogDescription>
         </DialogHeader>
 

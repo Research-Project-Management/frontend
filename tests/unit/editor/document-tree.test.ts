@@ -1,42 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import {
-  inferResearchFolder,
   getRootFilePriority,
-  getFolderPriority,
   buildFileTree,
   filterFileTree,
   type FileTreeFileNode,
 } from '@/features/editor/subsystems/explorer/model/document-tree';
 
-describe('document-tree', () => {
-  describe('inferResearchFolder', () => {
-    it('does not categorize main documents or preamble into subfolders', () => {
-      expect(inferResearchFolder('main.tex')).toBeNull();
-      expect(inferResearchFolder('preamble.tex')).toBeNull();
-      expect(inferResearchFolder('references.bib')).toBeNull();
-      expect(inferResearchFolder('custom_main.tex', 'custom_main.tex')).toBeNull();
-      expect(inferResearchFolder('paper_title.tex', null, 'paper_title.tex')).toBeNull();
-    });
-
-    it('infers standard academic folders correctly', () => {
-      expect(inferResearchFolder('01_intro.tex')).toBe('sections');
-      expect(inferResearchFolder('methodology.tex')).toBe('sections');
-      expect(inferResearchFolder('conclusion.tex')).toBe('sections');
-      expect(inferResearchFolder('table_results.tex')).toBe('tables');
-      expect(inferResearchFolder('alg_optimization.tex')).toBe('algorithms');
-      expect(inferResearchFolder('appendix_proofs.tex')).toBe('appendices');
-      expect(inferResearchFolder('macros.tex')).toBe('macros');
-      expect(inferResearchFolder('custom.sty')).toBe('styles');
-      expect(inferResearchFolder('fig1.png')).toBe('figures');
-      expect(inferResearchFolder('beamer_slides.tex')).toBe('supplementary');
-    });
-
-    it('returns null for unclassified files', () => {
-      expect(inferResearchFolder('readme.md')).toBeNull();
-      expect(inferResearchFolder('notes.txt')).toBeNull();
-    });
-  });
-
+describe('document-tree (1:1 Path-Trie Builder)', () => {
   describe('sorting priorities', () => {
     it('assigns highest priority to designated main document', () => {
       const mainNode: FileTreeFileNode = {
@@ -69,23 +39,18 @@ describe('document-tree', () => {
       expect(getRootFilePriority(randomNode, 'file-3', null, 'file-1')).toBe(1);
       expect(getRootFilePriority(mainNode, 'file-3', null, 'file-1')).toBe(10);
     });
-
-    it('sorts folder priorities following academic conventions', () => {
-      expect(getFolderPriority('sections')).toBeLessThan(getFolderPriority('figures'));
-      expect(getFolderPriority('figures')).toBeLessThan(getFolderPriority('tables'));
-      expect(getFolderPriority('tables')).toBeLessThan(getFolderPriority('algorithms'));
-      expect(getFolderPriority('algorithms')).toBeLessThan(getFolderPriority('appendices'));
-    });
   });
 
   describe('buildFileTree', () => {
-    it('builds unified tree with root files and structured folders', () => {
+    it('places root files at root (zero synthetic folder hallucination) and path-prefixed files into exact folders', () => {
       const files = [
-        { id: '1', title: '01_intro.tex' },
+        { id: '1', title: 'sections/01_intro.tex' },
         { id: '2', title: 'main.tex' },
+        { id: '3', title: '02_flat_at_root.tex' },
       ];
       const projectFiles = [
-        { id: 'img-1', filename: 'architecture.png', isFolder: false, size: 1024 },
+        { id: 'img-1', filename: 'architecture.png', path: 'figures/architecture.png', isFolder: false, size: 1024 },
+        { id: 'img-root', filename: 'fig_root.png', isFolder: false, size: 512 },
         { id: 'f-1', filename: 'custom_folder', isFolder: true },
       ];
 
@@ -96,14 +61,116 @@ describe('document-tree', () => {
         mainFileId: '2',
       });
 
-      expect(tree.length).toBeGreaterThan(0);
-      const rootFiles = tree.filter((n) => n.type === 'file');
+      const rootFiles = tree.filter((n): n is FileTreeFileNode => n.type === 'file');
       const folders = tree.filter((n) => n.type === 'folder');
 
-      expect(rootFiles.some((f) => f.displayLabel === 'main.tex')).toBe(true);
-      expect(folders.some((f) => f.name === 'sections')).toBe(true);
-      expect(folders.some((f) => f.name === 'figures')).toBe(true);
-      expect(folders.some((f) => f.name === 'custom_folder')).toBe(true);
+      // Root files stay at root unless their path actually contains a folder prefix
+      expect(rootFiles.map((f) => f.displayLabel)).toEqual([
+        'main.tex',
+        '02_flat_at_root.tex',
+        'fig_root.png',
+      ]);
+      expect(folders.map((f) => f.name)).toEqual([
+        'custom_folder',
+        'figures',
+        'sections',
+      ]);
+    });
+
+    it('preserves nested folder paths and asset full paths via f.path or parentId chain', () => {
+      const projectFiles = [
+        { id: 'folder-top', filename: 'chapters', path: '/chapters', isFolder: true, parentId: null },
+        { id: 'folder-sub', filename: 'part1', path: '/chapters/part1', isFolder: true, parentId: 'folder-top' },
+        {
+          id: 'asset-nested',
+          filename: 'diagram.png',
+          path: '/chapters/part1/diagram.png',
+          isFolder: false,
+          parentId: 'folder-sub',
+          size: 2048,
+        },
+      ];
+
+      const tree = buildFileTree({
+        files: [{ id: 'main-1', title: 'main.tex', isRootDoc: true }],
+        projectFiles,
+      });
+
+      const chaptersFolder = tree.find((n) => n.type === 'folder' && n.name === 'chapters');
+      expect(chaptersFolder).toBeDefined();
+      if (chaptersFolder && chaptersFolder.type === 'folder') {
+        expect(chaptersFolder.id).toBe('folder-top');
+        expect(chaptersFolder.fullPath).toBe('chapters');
+        const part1Folder = chaptersFolder.children.find((c) => c.type === 'folder' && c.name === 'part1');
+        expect(part1Folder).toBeDefined();
+        if (part1Folder && part1Folder.type === 'folder') {
+          expect(part1Folder.id).toBe('folder-sub');
+          expect(part1Folder.fullPath).toBe('chapters/part1');
+          const assetNode = part1Folder.children.find((c) => c.type === 'file' && c.id === 'asset-nested');
+          expect(assetNode).toBeDefined();
+          if (assetNode && assetNode.type === 'file') {
+            expect(assetNode.title).toBe('chapters/part1/diagram.png');
+            expect(assetNode.displayLabel).toBe('diagram.png');
+          }
+        }
+      }
+    });
+
+    it('supports building the full tree from single-source projectFiles containing DOC, FILE, and FOLDER nodes', () => {
+      const projectFiles = [
+        {
+          id: 'node-root',
+          docId: 'doc-main',
+          filename: 'main.tex',
+          path: '/main.tex',
+          isFolder: false,
+          nodeType: 'DOC' as const,
+          isRootDoc: true,
+        },
+        {
+          id: 'node-folder',
+          filename: 'sections',
+          path: '/sections',
+          isFolder: true,
+          nodeType: 'FOLDER' as const,
+        },
+        {
+          id: 'node-intro',
+          docId: 'doc-intro',
+          filename: 'intro.tex',
+          path: '/sections/intro.tex',
+          isFolder: false,
+          nodeType: 'DOC' as const,
+          parentId: 'node-folder',
+        },
+      ];
+
+      const tree = buildFileTree({
+        projectFiles,
+        parentPage: { id: 'project-root-page', title: 'main.tex' },
+      });
+      expect(tree).toHaveLength(2);
+      expect(tree[0]).toMatchObject({
+        type: 'file',
+        id: 'doc-main',
+        displayLabel: 'main.tex',
+        kind: 'tex',
+        isRootDoc: true,
+      });
+      expect(tree[1]).toMatchObject({
+        type: 'folder',
+        id: 'node-folder',
+        name: 'sections',
+      });
+      if (tree[1]?.type === 'folder') {
+        expect(tree[1].children[0]).toMatchObject({
+          type: 'file',
+          id: 'doc-intro',
+          title: 'sections/intro.tex',
+          displayLabel: 'intro.tex',
+          kind: 'tex',
+        });
+      }
     });
   });
 
@@ -111,8 +178,8 @@ describe('document-tree', () => {
     it('filters files and retains parent folder structures for matches', () => {
       const tree = buildFileTree({
         files: [
-          { id: '1', title: '01_intro.tex' },
-          { id: '2', title: '02_method.tex' },
+          { id: '1', title: 'sections/01_intro.tex' },
+          { id: '2', title: 'sections/02_method.tex' },
           { id: '3', title: 'main.tex' },
         ],
       });
@@ -124,7 +191,7 @@ describe('document-tree', () => {
         expect(filtered[0].children.length).toBe(1);
         const firstChild = filtered[0].children[0];
         if (firstChild && firstChild.type === 'file') {
-          expect(firstChild.title).toBe('01_intro.tex');
+          expect(firstChild.title).toBe('sections/01_intro.tex');
         }
       }
     });

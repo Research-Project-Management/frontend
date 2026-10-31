@@ -13,7 +13,6 @@ import {
   SelectValue,
 } from '@/shared/components/ui/select';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
-import { PageService } from '@/features/projects/project-id/pages/services/page.service';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 
@@ -66,7 +65,7 @@ export function ProjectTabPane({
     isLoading: isLoadingOtherPages,
   } = useQuery({
     queryKey: ['project-pages-for-copy', selectedProjectId],
-    queryFn: () => PageService.getProjectPages(selectedProjectId),
+    queryFn: () => manuscriptService.docs.getFiles(selectedProjectId),
     enabled: Boolean(selectedProjectId),
   });
 

@@ -24,7 +24,7 @@ import {
 } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { updateActiveYjsDocContent } from '@/features/editor/sdk/realtime/yjs-socket-provider';
-import { pageKeys } from './document.queries';
+import { pageKeys, invalidateFileTreeQueries } from './document.queries';
 import { toast } from 'sonner';
 
 export function usePageActions() {
@@ -38,10 +38,10 @@ export function usePageActions() {
       return await manuscriptService.docs.createChildFile({ parentPageId, title, content });
     },
     onSuccess: (newFile, variables) => {
-      queryClient.invalidateQueries({ queryKey: pageKeys.files(variables.parentPageId) });
-      queryClient.invalidateQueries({ queryKey: pageKeys.all });
-      queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      invalidateFileTreeQueries(queryClient, {
+        parentPageId: variables.parentPageId,
+        includeDeleted: false,
+      });
       editorCommandBus.dispatch({ type: 'filetree:updated', payload: { action: 'create', file: newFile } });
       toast.success(`Created file "${newFile.title}"`, { id: `create-file-${newFile.id || variables.title}` });
     },
@@ -60,11 +60,13 @@ export function usePageActions() {
     },
     onSuccess: (_, variables) => {
       const targetPageId = typeof variables === 'string' ? variables : variables.pageId;
-      queryClient.invalidateQueries({ queryKey: pageKeys.detail(targetPageId) });
-      queryClient.invalidateQueries({ queryKey: pageKeys.files(targetPageId) });
-      queryClient.invalidateQueries({ queryKey: pageKeys.all });
-      queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
-      queryClient.invalidateQueries({ queryKey: ['editor-root-doc'] });
+      invalidateFileTreeQueries(queryClient, {
+        parentPageId: targetPageId,
+        pageId: targetPageId,
+        includeDeleted: false,
+        includeRootDoc: true,
+        includeProjects: false,
+      });
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Failed to set main document';
@@ -119,10 +121,10 @@ export function usePageActions() {
       return await manuscriptService.docs.updateTitle(pageId, title, oldTitle);
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: pageKeys.detail(variables.pageId) });
-      queryClient.invalidateQueries({ queryKey: pageKeys.all });
-      queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      invalidateFileTreeQueries(queryClient, {
+        pageId: variables.pageId,
+        includeDeleted: false,
+      });
 
       // Synchronize open tabs across projects
       const tabsState = useWorkspaceStore.getState();
@@ -142,19 +144,15 @@ export function usePageActions() {
   const deletePageMutation = useMutation({
     mutationFn: async (pageId: string) => {
       if (isLocked) throw new Error('Document is locked');
-      return await manuscriptService.docs.delete(pageId);
-    },
-    onSuccess: (_data, pageId) => {
-      const parentPageId = usePageStore.getState().parentPageId || usePageStore.getState().currentPage?.id;
-      queryClient.invalidateQueries({ queryKey: pageKeys.all });
-      if (parentPageId) {
-        queryClient.invalidateQueries({ queryKey: pageKeys.files(parentPageId) });
-        queryClient.invalidateQueries({ queryKey: pageKeys.deletedFiles(parentPageId) });
+      const ok = await workspaceCoordinator.deleteFile(pageId);
+      if (!ok) {
+        throw new Error('Failed to delete file');
       }
-      queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-      editorCommandBus.dispatch({ type: 'filetree:updated' });
-      toast.success('File deleted', { id: `delete-file-${pageId}` });
+      return { success: true };
+    },
+    onSuccess: () => {
+      const parentPageId = usePageStore.getState().parentPageId || usePageStore.getState().currentPage?.id;
+      invalidateFileTreeQueries(queryClient, { parentPageId });
     },
     onError: (err: unknown, pageId) => {
       const msg = err instanceof Error ? err.message : 'Failed to delete file';
@@ -169,14 +167,7 @@ export function usePageActions() {
     },
     onSuccess: (_, pageId) => {
       const parentPageId = usePageStore.getState().parentPageId || usePageStore.getState().currentPage?.id;
-      queryClient.invalidateQueries({ queryKey: pageKeys.all });
-      queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-      queryClient.invalidateQueries({ queryKey: pageKeys.deletedFiles(pageId) });
-      if (parentPageId) {
-        queryClient.invalidateQueries({ queryKey: pageKeys.files(parentPageId) });
-        queryClient.invalidateQueries({ queryKey: pageKeys.deletedFiles(parentPageId) });
-      }
+      invalidateFileTreeQueries(queryClient, { parentPageId, pageId });
     },
     onError: (err: unknown, pageId) => {
       const msg = err instanceof Error ? err.message : 'Failed to restore file';
@@ -191,12 +182,7 @@ export function usePageActions() {
     },
     onSuccess: (_data, pageId) => {
       const parentPageId = usePageStore.getState().parentPageId || usePageStore.getState().currentPage?.id;
-      queryClient.invalidateQueries({ queryKey: pageKeys.all });
-      if (parentPageId) {
-        queryClient.invalidateQueries({ queryKey: pageKeys.files(parentPageId) });
-      }
-      queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      invalidateFileTreeQueries(queryClient, { parentPageId, includeDeleted: false });
       editorCommandBus.dispatch({ type: 'filetree:updated' });
       toast.success('File duplicated', { id: `duplicate-file-${pageId}` });
     },

@@ -180,9 +180,9 @@ export function useViewerSyncTeX({
       let targetPath = sourcePath;
       let targetLine = line;
 
-      // Remote fallback: if local map had no target or line <= 1, query backend SyncTeX processor
+      // Remote fallback: if local map had no target or line < 1, query backend SyncTeX processor
       const rootId = projectId || pageId;
-      if ((!targetPath || targetLine <= 1) && rootId && pageNum && x !== undefined && y !== undefined) {
+      if ((!targetPath || targetLine < 1) && rootId && pageNum && x !== undefined && y !== undefined) {
         try {
           const remoteRes = await compilerCoordinator.resolveReverseRemote(
             rootId,
@@ -261,9 +261,11 @@ export function useViewerSyncTeX({
       const filename = overrideFilePath || activeFilePath || useSettingsStore.getState().mainFile || DEFAULT_MAIN_FILE;
 
       const effectiveScale =
-        autoFit && containerWidth && containerWidth > 0
-          ? containerWidth / widthPt
-          : (scale > 0 ? scale : 1);
+        scale > 0
+          ? scale
+          : autoFit && containerWidth && containerWidth > 0
+            ? containerWidth / widthPt
+            : 1;
 
       let targetPage: number | null = null;
       let targetX: number | undefined;

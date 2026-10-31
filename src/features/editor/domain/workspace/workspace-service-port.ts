@@ -28,6 +28,7 @@ export interface WorkspaceServicePort {
       parentId: string | null;
       content: string;
       type: 'DOC' | 'FOLDER' | 'FILE';
+      path?: string;
     }
   ): Promise< unknown >;
   renameNode(projectId: string, itemId: string, data: { name: string }): Promise<unknown>;
@@ -35,7 +36,7 @@ export interface WorkspaceServicePort {
   moveNode(
     projectId: string,
     itemId: string,
-    data: { destParentId: string | null }
+    data: { destParentId: string | null; destPath?: string }
   ): Promise<unknown>;
   restoreFile(fileId: string, projectId?: string): Promise<unknown>;
   setRootDoc(projectId: string, fileId: string): Promise<unknown>;

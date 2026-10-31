@@ -215,10 +215,7 @@ export function useActiveDocument() {
 
       const configuredMain = useSettingsStore.getState().mainFile || 'main.tex';
       const rawTitle = (parentPage.title || '').trim();
-      const resolvedTitle =
-        !rawTitle || rawTitle.toLowerCase() === 'flux'
-          ? configuredMain
-          : rawTitle;
+      const resolvedTitle = !rawTitle ? configuredMain : rawTitle;
 
       syncWorkspaceTabs(
         [pageId, projectId],

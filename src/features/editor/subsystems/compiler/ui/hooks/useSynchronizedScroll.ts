@@ -95,10 +95,10 @@ export function useSynchronizedScroll({
 
       const effectiveMap = synctexMapRef.current || compilerCoordinator.getSynctexMap();
       const effectiveScale =
-        autoFit && containerWidth && containerWidth > 0
-          ? containerWidth / widthPt
-          : scale > 0
-            ? scale
+        scale > 0
+          ? scale
+          : autoFit && containerWidth && containerWidth > 0
+            ? containerWidth / widthPt
             : 1;
 
       // Try forward resolution with precise coordinates

@@ -28,6 +28,7 @@ import {
   useSearchStore,
   editorCommandBus,
   documentAuthority,
+  lruDocumentCache,
 } from "@/features/editor/core";
 import { filesQuery } from "@/features/editor/ui/hooks/document.queries";
 import { useDebounce } from "@/shared/hooks/use-debounce";
@@ -172,13 +173,42 @@ export default function SearchTab() {
     };
   }, [setQuery, setShowReplace]);
 
-  // Fetch all text files in project
-  const { data: projectFiles = [] } = useQuery({
-    ...filesQuery(rootPageId),
-    enabled: !!rootPageId,
+  // ─── BACKEND SEARCH QUERY ──────────────────────────────────────────────────
+  const {
+    data: backendSearchData,
+    isFetching,
+    error: searchError,
+    isError: isSearchError,
+  } = useQuery({
+    queryKey: [
+      "project-document-search",
+      rootProjectId,
+      effectiveQuery,
+      caseSensitive,
+      wholeWord,
+      useRegex,
+    ],
+    queryFn: async () => {
+      if (!effectiveQuery.trim() || !rootProjectId) {
+        return null;
+      }
+      return manuscriptService.search.search(rootProjectId, effectiveQuery, {
+        caseSensitive,
+        wholeWord,
+        useRegex,
+      });
+    },
+    enabled: !!effectiveQuery.trim() && !!rootProjectId,
+    staleTime: 5000,
   });
 
-  // Assemble full searchable files list for client buffer sync via centralized DocumentAuthority
+  // Fetch all text files in project ONLY as a fallback if backend search fails
+  const { data: projectFiles = [] } = useQuery({
+    ...filesQuery(rootPageId),
+    enabled: !!rootPageId && isSearchError,
+  });
+
+  // Assemble full searchable files list for client buffer fallback via centralized DocumentAuthority
   const searchableFiles = useMemo(() => {
     const projectKey = rootProjectId || rootPageId;
     if (projectFiles && projectFiles.length > 0 && projectKey) {
@@ -216,86 +246,102 @@ export default function SearchTab() {
     });
   }, [projectFiles, rootProjectId, rootPageId, activeFileId, getContent, activeFilePage?.content, currentPage?.id, currentPage?.title, currentPage?.content]);
 
-  // ─── BACKEND SEARCH QUERY ──────────────────────────────────────────────────
-  const {
-    data: backendSearchData,
-    isFetching,
-    error: searchError,
-    isError: isSearchError,
-  } = useQuery({
-    queryKey: [
-      "project-document-search",
-      rootProjectId,
-      effectiveQuery,
-      caseSensitive,
-      wholeWord,
-      useRegex,
-    ],
-    queryFn: async () => {
-      if (!effectiveQuery.trim() || !rootProjectId) {
-        return null;
-      }
-      return manuscriptService.search.search(rootProjectId, effectiveQuery, {
-        caseSensitive,
-        wholeWord,
-        useRegex,
-      });
-    },
-    enabled: !!effectiveQuery.trim() && !!rootProjectId,
-    staleTime: 5000,
-  });
-
-  // Execute project-wide search: backend with client buffer fallback
+  // Execute project-wide search: backend primary authority with live dirty-buffer overlay
   const fileResults = useMemo<FileSearchResult[]>(() => {
     if (!effectiveQuery.trim()) return [];
-
-    if (backendSearchData && Array.isArray(backendSearchData.results)) {
-      return backendSearchData.results.map((file) => ({
-        fileId: file.fileId,
-        fileName: file.fileName,
-        isCurrent: file.fileId === activeFileId,
-        matches: file.matches.map((m) => ({
-          line: m.line,
-          text: m.text,
-          matchStart: m.matchStart,
-          matchEnd: m.matchEnd,
-        })),
-      }));
-    }
 
     const re = buildSearchRegex(effectiveQuery, {
       useRegex,
       wholeWord,
       caseSensitive,
     });
-    if (!re) return [];
 
-    const results: FileSearchResult[] = [];
-
-    for (const file of searchableFiles) {
-      const lines = file.content.split("\n");
+    const scanContentMatches = (content: string): MatchEntry[] => {
+      if (!re) return [];
+      const lines = content.split("\n");
       const fileMatches: MatchEntry[] = [];
-
       lines.forEach((lineText: string, idx: number) => {
         const lineNum = idx + 1;
         re.lastIndex = 0;
         let m: RegExpExecArray | null;
         while ((m = re.exec(lineText)) !== null) {
-          const matchStart = m.index;
-          const matchEnd = m.index + m[0].length;
-
           fileMatches.push({
             line: lineNum,
             text: lineText,
-            matchStart,
-            matchEnd,
+            matchStart: m.index,
+            matchEnd: m.index + m[0].length,
           });
           if (m[0].length === 0) {
             re.lastIndex++;
           }
         }
       });
+      return fileMatches;
+    };
 
+    if (backendSearchData && Array.isArray(backendSearchData.results)) {
+      const dirtyById = new Map<string, { fileName: string; content: string }>();
+      for (const dirtyModel of lruDocumentCache.getDirtyModels()) {
+        dirtyById.set(dirtyModel.fileId, {
+          fileName: dirtyModel.filePath.replace(/^\/+/, "") || "untitled.tex",
+          content: dirtyModel.content,
+        });
+      }
+
+      const mergedResults: FileSearchResult[] = [];
+      const seenIds = new Set<string>();
+
+      for (const file of backendSearchData.results) {
+        seenIds.add(file.fileId);
+        const dirtyOverride = dirtyById.get(file.fileId);
+        if (dirtyOverride) {
+          const matches = scanContentMatches(dirtyOverride.content);
+          if (matches.length > 0) {
+            mergedResults.push({
+              fileId: file.fileId,
+              fileName: file.fileName,
+              isCurrent: file.fileId === activeFileId,
+              matches,
+            });
+          }
+        } else {
+          mergedResults.push({
+            fileId: file.fileId,
+            fileName: file.fileName,
+            isCurrent: file.fileId === activeFileId,
+            matches: file.matches.map((m) => ({
+              line: m.line,
+              text: m.text,
+              matchStart: m.matchStart,
+              matchEnd: m.matchEnd,
+            })),
+          });
+        }
+      }
+
+      for (const [dirtyFileId, dirtyInfo] of dirtyById.entries()) {
+        if (!seenIds.has(dirtyFileId)) {
+          const matches = scanContentMatches(dirtyInfo.content);
+          if (matches.length > 0) {
+            mergedResults.push({
+              fileId: dirtyFileId,
+              fileName: dirtyInfo.fileName,
+              isCurrent: dirtyFileId === activeFileId,
+              matches,
+            });
+          }
+        }
+      }
+
+      return mergedResults;
+    }
+
+    if (!re) return [];
+
+    const results: FileSearchResult[] = [];
+
+    for (const file of searchableFiles) {
+      const fileMatches = scanContentMatches(file.content);
       if (fileMatches.length > 0) {
         results.push({
           fileId: file.id,

@@ -105,29 +105,6 @@ export function useFileTree({
     return filterFileTree(treeItems, fileFilter);
   }, [treeItems, fileFilter]);
 
-  const docMap = useMemo(() => {
-    const map = new Map<string, { id: string; title: string; updatedAt?: string; isRootDoc?: boolean }>();
-    if (parentPage?.id) {
-      map.set(parentPage.id, {
-        id: parentPage.id,
-        title: parentPage.title || configuredMainFile || mainFile || 'main.tex',
-        updatedAt: parentPage.updatedAt,
-        isRootDoc: true,
-      });
-    }
-    files?.forEach((f) => {
-      if (f.id) {
-        map.set(f.id, {
-          id: f.id,
-          title: f.title || '',
-          updatedAt: f.updatedAt,
-          isRootDoc: f.isRootDoc,
-        });
-      }
-    });
-    return map;
-  }, [parentPage, files, configuredMainFile, mainFile]);
-
   const toggleFolder = useCallback((folderKey: string) => {
     setExpandedFolders((prev) => {
       const next = new Set(prev);
@@ -148,8 +125,7 @@ export function useFileTree({
       const walk = (nodes: FileTreeNode[]) => {
         for (const n of nodes) {
           if (n.type === 'folder') {
-            allFolders.add(n.id);
-            allFolders.add(n.name);
+            allFolders.add(n.fullPath || n.name);
             if (n.children) walk(n.children);
           }
         }
@@ -164,9 +140,14 @@ export function useFileTree({
   }, []);
 
   const isFolderExpanded = useCallback(
-    (node: { id: string; name: string }): boolean => {
+    (node: { id: string; name: string; fullPath?: string }): boolean => {
       if (fileFilter.trim()) return true;
-      return expandedFolders.has(node.name) || expandedFolders.has(node.id);
+      const folderKey = node.fullPath || node.name;
+      return (
+        expandedFolders.has(folderKey) ||
+        expandedFolders.has(node.name) ||
+        expandedFolders.has(node.id)
+      );
     },
     [fileFilter, expandedFolders],
   );
@@ -174,7 +155,6 @@ export function useFileTree({
   return {
     treeItems,
     displayTree,
-    docMap,
     expandedFolders,
     toggleFolder,
     expandAll,

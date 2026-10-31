@@ -30,15 +30,11 @@ export const PageFileMapper = {
     },
   ): PageFile {
     const now = new Date().toISOString();
-    const rawCandidate =
+    const resolvedTitle =
       raw.title ||
       raw.name ||
       (options.includePath ? undefined : raw.path?.replace(/^\//, '')) ||
       options.defaultTitle;
-    const resolvedTitle =
-      rawCandidate.trim().toLowerCase() === 'flux'
-        ? options.defaultTitle || 'main.tex'
-        : rawCandidate;
     const base: PageFile = {
       id: raw.id || raw._id || `file-${Date.now()}`,
       pageId: raw.pageId || options.defaultPageId,

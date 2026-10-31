@@ -337,7 +337,6 @@ function LibraryInspectorContent({
                   canEdit={effectiveCanEdit}
                 >
                   <AbstractSection
-                    key={effectiveItem.id}
                     item={effectiveItem}
                     onUpdateItem={handleUpdateItem}
                     canEdit={effectiveCanEdit}
@@ -407,6 +406,7 @@ function LibraryInspectorContent({
                   keepMounted
                 >
                   <AttachmentsSection
+                    key={effectiveItem.id}
                     item={effectiveItem}
                     scopeId={targetScope}
                     hideHeader

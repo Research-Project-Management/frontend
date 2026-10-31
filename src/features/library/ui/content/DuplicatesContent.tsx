@@ -299,9 +299,7 @@ export function DuplicatesContent({
 
     setIsBatchProcessing(true);
     try {
-      for (const key of keys) {
-        await handleDismissGroup(key);
-      }
+      await Promise.all(keys.map((key) => handleDismissGroup(key)));
       setSelectedGroupKeys(new Set());
     } finally {
       setIsBatchProcessing(false);

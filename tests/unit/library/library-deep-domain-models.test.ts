@@ -194,5 +194,41 @@ describe('Library Deep Domain Models (Pure In-Process)', () => {
         }
       }
     });
+
+    it('supports independent per-subdomain service hosts and origin trust verification', async () => {
+      const prevCatalog = process.env.NEXT_PUBLIC_LIBRARY_CATALOG_URL;
+      const prevCitation = process.env.NEXT_PUBLIC_LIBRARY_CITATION_URL;
+      const prevServices = process.env.NEXT_PUBLIC_LIBRARY_SERVICES_URL;
+      process.env.NEXT_PUBLIC_LIBRARY_CATALOG_URL = 'https://catalog-svc.flux.io/api/v1';
+      process.env.NEXT_PUBLIC_LIBRARY_CITATION_URL = 'https://citation-svc.flux.io';
+      process.env.NEXT_PUBLIC_LIBRARY_SERVICES_URL = 'https://fallback-svc.flux.io';
+
+      try {
+        const { resolveLibraryUrl, getLibraryServiceHost, isTrustedOrigin } = await import(
+          '@/features/library/sdk'
+        );
+
+        expect(getLibraryServiceHost('catalog')).toBe('https://catalog-svc.flux.io');
+        expect(getLibraryServiceHost('citation')).toBe('https://citation-svc.flux.io');
+        expect(getLibraryServiceHost('reader')).toBe('https://fallback-svc.flux.io');
+        expect(resolveLibraryUrl('catalog', '/items', 'user')).toBe(
+          'https://catalog-svc.flux.io/api/v1/library/items',
+        );
+        expect(resolveLibraryUrl('citation', '/items', 'user', 'citations/parse')).toBe(
+          'https://citation-svc.flux.io/api/v1/library/items/citations/parse',
+        );
+        expect(isTrustedOrigin('https://catalog-svc.flux.io')).toBe(true);
+        expect(isTrustedOrigin('https://citation-svc.flux.io')).toBe(true);
+        expect(isTrustedOrigin('https://fallback-svc.flux.io')).toBe(true);
+        expect(isTrustedOrigin('https://untrusted-external.example.com')).toBe(false);
+      } finally {
+        if (prevCatalog === undefined) delete process.env.NEXT_PUBLIC_LIBRARY_CATALOG_URL;
+        else process.env.NEXT_PUBLIC_LIBRARY_CATALOG_URL = prevCatalog;
+        if (prevCitation === undefined) delete process.env.NEXT_PUBLIC_LIBRARY_CITATION_URL;
+        else process.env.NEXT_PUBLIC_LIBRARY_CITATION_URL = prevCitation;
+        if (prevServices === undefined) delete process.env.NEXT_PUBLIC_LIBRARY_SERVICES_URL;
+        else process.env.NEXT_PUBLIC_LIBRARY_SERVICES_URL = prevServices;
+      }
+    });
   });
 });

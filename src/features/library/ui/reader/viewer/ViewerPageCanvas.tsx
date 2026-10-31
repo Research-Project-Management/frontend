@@ -5,10 +5,16 @@ import { Page } from 'react-pdf';
 import { Check, X } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { getCappedDevicePixelRatio } from '@/shared/lib/pdfjs-worker';
-import type { ReaderAnnotation } from '@/features/library/domain/types/reader.schema';
+import type {
+  ReaderAnnotation,
+  InlineTextInputState,
+  AreaSelectionState,
+} from '@/features/library/domain/types/reader.schema';
 import type { ReaderAnnotationTool } from '@/features/library/core/store/reader.store';
 import { calculatePageAspectRatio } from '@/features/library/domain/reader-search-outline';
 import { PageAnnotationOverlay } from './PageAnnotationOverlay';
+
+export type { InlineTextInputState, AreaSelectionState };
 
 export function DocumentPageSkeleton({
   width,
@@ -45,22 +51,6 @@ export function DocumentPageSkeleton({
       <div className="h-2 w-1/4 bg-muted rounded-sm self-center mt-auto" />
     </div>
   );
-}
-
-export interface InlineTextInputState {
-  pageNum: number;
-  normX: number;
-  normY: number;
-  text: string;
-}
-
-export interface AreaSelectionState {
-  pageNum: number;
-  startX: number;
-  startY: number;
-  currentX: number;
-  currentY: number;
-  active: boolean;
 }
 
 export interface ViewerPageCanvasProps {

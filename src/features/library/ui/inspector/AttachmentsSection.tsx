@@ -74,12 +74,7 @@ export function PdfPageCanvas({
     cleanup?: () => Promise<void> | void;
     destroy?: () => Promise<void> | void;
   } | null>(null);
-  const [containerWidth, setContainerWidth] = useState<number>(280);
-
-  useEffect(() => {
-    setCurrentPage(1);
-    setNumPages(0);
-  }, [paperUrl]);
+  const [ containerWidth, setContainerWidth ] = useState<number>(280);
 
   useEffect(() => {
     return () => {
@@ -274,7 +269,11 @@ export function PdfPagePreview({
           </button>
         </div>
       ) : (
-        <PdfPageCanvas paperUrl={paperUrl} scopeId={scopeId || paper.projectId || undefined} />
+        <PdfPageCanvas
+          key={paperUrl}
+          paperUrl={paperUrl}
+          scopeId={scopeId || paper.projectId || undefined}
+        />
       )}
     </div>
   );

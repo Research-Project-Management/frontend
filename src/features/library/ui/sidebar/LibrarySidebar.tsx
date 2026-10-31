@@ -21,7 +21,10 @@ import {
   useTrash,
   useDeleteLibraryItemsMutation,
 } from '@/features/library/sdk/queries/tags-notes.queries';
-import { useBatchRestoreItemsMutation } from '@/features/library/sdk/queries/catalog.queries';
+import {
+  useBatchRestoreItemsMutation,
+  useLibraryCountsQuery,
+} from '@/features/library/sdk/queries/catalog.queries';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import {
   useLibraryCommandStore,
@@ -151,7 +154,12 @@ export function LibrarySidebar() {
     deleteSavedSearch: deleteProjectSavedSearch,
   } = useSavedSearches(projectId, { enabled: isInProjectContext });
 
-  const { trashItems, emptyTrash } = useTrash('user');
+  const { trashItems, emptyTrash } = useTrash('user', {
+    enabled: currentFilter === 'trash',
+  });
+  const { data: userCounts } = useLibraryCountsQuery('user');
+  const effectiveTrashCount =
+    currentFilter === 'trash' ? trashItems.length : (userCounts?.trash ?? trashItems.length);
   const deleteMutation = useDeleteLibraryItemsMutation(effectiveScopeId);
   const restoreMutation = useBatchRestoreItemsMutation(effectiveScopeId);
   const executeCommand = useLibraryCommandStore((s) => s.executeCommand);
@@ -159,7 +167,7 @@ export function LibrarySidebar() {
   const clearSelection = useLibraryUIStore((s) => s.clearSelection);
 
   const handleEmptyTrash = useCallback(() => {
-    if (trashItems.length === 0) {
+    if (effectiveTrashCount === 0) {
       toast.info('Trash is already empty', { id: 'empty-trash' });
       return;
     }
@@ -175,7 +183,7 @@ export function LibrarySidebar() {
         }
       },
     });
-  }, [trashItems.length, openModal, emptyTrash, clearCommandHistory, clearSelection]);
+  }, [effectiveTrashCount, openModal, emptyTrash, clearCommandHistory, clearSelection]);
 
   const handleDropToTrash = useCallback(
     async (ids: string[]) => {
@@ -525,7 +533,7 @@ export function LibrarySidebar() {
                     onRenameSavedSearchValueChange={setRenameSavedSearchValue}
                     onDuplicateSavedSearch={handleDuplicateSavedSearch}
                     onEmptyTrash={handleEmptyTrash}
-                    trashCount={trashItems.length}
+                    trashCount={effectiveTrashCount}
                     canEmptyTrash={canManageCollections}
                     onDropToTrash={handleDropToTrash}
                     onDropToMyPublications={handleDropToMyPublications}

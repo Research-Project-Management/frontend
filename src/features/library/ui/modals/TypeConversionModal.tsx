@@ -214,10 +214,11 @@ export function TypeConversionModal({
         retainUnmappedInExtra: retainUnmapped,
       });
       const updatedItem = result?.item;
-      if (updatedItem) {
-        onSuccess?.(updatedItem, retainUnmapped);
+      if (updatedItem && onSuccess) {
+        onSuccess(updatedItem, retainUnmapped);
+      } else {
+        onOpenChange(false);
       }
-      onOpenChange(false);
     } catch (err: unknown) {
       // Invalidate item query cache immediately on error so UI synchronizes latest version
       const targetScope = scopeId || currentItem?.projectId || "user";

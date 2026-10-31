@@ -354,9 +354,6 @@ export function ModernLibraryPage({
       scopeId: effectiveScopeId,
       collectionId: effectiveCollectionId,
       queryClient,
-      onSuccess: () => {
-        void invalidateScopeItemsAndCounts(effectiveScopeId, { includeCollections: true });
-      },
     });
   };
 

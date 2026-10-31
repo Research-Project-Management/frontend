@@ -20,6 +20,7 @@ import {
   type FeedFetchApiResponse,
 } from '@/features/library/domain/feed-parser.domain';
 import { executeSaveFeedEntryWithFeedback } from '@/features/library/core/coordinator/ingestion.coordinator';
+import { isEditableOrModalElementFocused } from '@/features/library/core/coordinator/keyboard-shortcuts.coordinator';
 import {
   useFeedsStore,
   isFeedEntryInLibrary,
@@ -264,13 +265,7 @@ export function FeedViewContent({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const activeEl = document.activeElement;
-      if (
-        activeEl &&
-        (activeEl.tagName === 'INPUT' ||
-          activeEl.tagName === 'TEXTAREA' ||
-          (activeEl as HTMLElement).isContentEditable)
-      ) {
+      if (isEditableOrModalElementFocused(e.target)) {
         return;
       }
 

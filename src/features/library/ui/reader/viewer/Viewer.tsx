@@ -368,29 +368,31 @@ export default function Viewer({
               items?: Array<unknown>;
             }>,
           ): Promise<PdfOutlineItem[]> => {
-            const mapped: PdfOutlineItem[] = [];
-            for (const node of nodes) {
-              const title = (node.title || "").trim();
-              if (!title) continue;
-              const pageNumber = await resolvePageNum(node.dest);
-              const children =
-                Array.isArray(node.items) && node.items.length > 0
-                  ? await mapNodes(
-                      node.items as Array<{
-                        title?: string;
-                        dest?: string | Array<unknown> | null;
-                        items?: Array<unknown>;
-                      }>,
-                    )
-                  : undefined;
-              mapped.push({
-                title,
-                pageNumber,
-                dest: node.dest,
-                items: children,
-              });
-            }
-            return mapped;
+            const results = await Promise.all(
+              nodes.map(async (node): Promise<PdfOutlineItem | null> => {
+                const title = (node.title || "").trim();
+                if (!title) return null;
+                const [pageNumber, children] = await Promise.all([
+                  resolvePageNum(node.dest),
+                  Array.isArray(node.items) && node.items.length > 0
+                    ? mapNodes(
+                        node.items as Array<{
+                          title?: string;
+                          dest?: string | Array<unknown> | null;
+                          items?: Array<unknown>;
+                        }>,
+                      )
+                    : Promise.resolve(undefined),
+                ]);
+                return {
+                  title,
+                  pageNumber,
+                  dest: node.dest,
+                  items: children,
+                };
+              }),
+            );
+            return results.filter((item): item is PdfOutlineItem => item !== null);
           };
 
           const resolvedOutline = await mapNodes(rawOutline);

@@ -303,7 +303,7 @@ export function DestructiveItemModalsHost({
   closeModal,
 }: ModalHostProps) {
   const clearSelection = useLibraryUIStore((s) => s.clearSelection);
-  const activeItemId = useLibraryUIStore((s) => s.activeItemId);
+  const evictItems = useLibraryUIStore((s) => s.evictItems);
   const setActiveItem = useLibraryUIStore((s) => s.setActiveItem);
 
   const deleteItemsMutation = useDeleteLibraryItemsMutation(effectiveScope);
@@ -343,10 +343,18 @@ export function DestructiveItemModalsHost({
           restoreMutation: { mutateAsync: restoreItemsMutation.mutateAsync },
           deleteMutation: { mutateAsync: deleteItemsMutation.mutateAsync },
         }),
+        { silentToast: true },
       );
+      clearSelection();
     } else if (isPermanentDelete) {
       await purgeItemsMutation.mutateAsync(itemIds);
       clearCommandHistory();
+      if (isEmptyTrashMode) {
+        clearSelection();
+        setActiveItem(null);
+      } else {
+        evictItems(itemIds);
+      }
     } else {
       await executeCommand(
         createTrashCommand({
@@ -354,13 +362,11 @@ export function DestructiveItemModalsHost({
           deleteMutation: { mutateAsync: deleteItemsMutation.mutateAsync },
           restoreMutation: { mutateAsync: restoreItemsMutation.mutateAsync },
         }),
+        { silentToast: true },
       );
+      evictItems(itemIds);
     }
 
-    clearSelection();
-    if (!isRestoreMode && activeItemId && itemIds.includes(activeItemId)) {
-      setActiveItem(null);
-    }
     closeModal();
   };
 

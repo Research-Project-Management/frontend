@@ -105,12 +105,6 @@ export function CreatorFields({
   }, [itemId, itemCreators, itemContributors, itemAuthors]);
 
   useEffect(() => {
-    setIsAuthorsExpanded(false);
-    setEmptyAuthorDraft("");
-    emptyInputFocusedItemIdRef.current = undefined;
-  }, [itemId]);
-
-  useEffect(() => {
     if (
       focusAuthorIndex !== null &&
       authorInputRefs.current[focusAuthorIndex]

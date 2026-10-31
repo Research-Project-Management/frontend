@@ -182,9 +182,7 @@ export function CurationModalsHost({
         onSuccess={(updatedItem: Item, retainUnmapped?: boolean) => {
           const targetItemId =
             updatedItem?.id || sourceItemForConversion?.id || payload?.itemId;
-          if (targetItemId && updatedItem) {
-            syncConvertedOrPatchedItem(targetItemId, updatedItem, effectiveScope);
-          } else {
+          if (!targetItemId || !updatedItem) {
             void invalidateScopeItemsAndCounts(effectiveScope);
           }
 
@@ -217,6 +215,7 @@ export function CurationModalsHost({
                   }
                 },
               }),
+              { silentToast: true },
             );
           }
 
@@ -402,7 +401,6 @@ export function IngestionAndUtilityModalsHost({
         defaultCollectionId={payload?.collectionId || ''}
         initialFiles={payload?.files || payload?.initialFiles || []}
         onSuccess={() => {
-          void invalidateScopeItemsAndCounts(effectiveScope);
           closeModal();
         }}
       />

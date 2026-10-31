@@ -3,18 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import { StickyNote, Trash2, X, Loader2 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import type { ReaderAnnotation, AnnotationRect } from '@/features/library/domain/types/reader.schema';
+import type {
+  ReaderAnnotation,
+  AnnotationRect,
+  ActiveHighlightTooltipState,
+} from '@/features/library/domain/types/reader.schema';
 import { ANNOTATION_PALETTE_COLORS } from '@/features/library/ui/reader/ReaderToolbar';
 
-export interface ActiveHighlightTooltipState {
-  id: string;
-  quote?: string;
-  comment?: string;
-  color?: string;
-  top: number;
-  left: number;
-  ann: ReaderAnnotation;
-}
+export type { ActiveHighlightTooltipState };
 
 export interface PageAnnotationOverlayProps {
   annotations: ReaderAnnotation[];

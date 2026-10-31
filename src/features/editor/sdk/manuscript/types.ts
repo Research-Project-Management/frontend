@@ -311,29 +311,19 @@ export interface CompilerDiagnostic {
 }
 
 export interface CompileLatexPayload {
-  project_id?: string;
   projectId?: string;
-  page_id?: string;
   pageId?: string;
-  main_file: string | null;
+  mainFile?: string;
   engine: string;
   texLiveVersion?: string;
   draft: boolean;
-  use_cache: boolean;
-  force_clean?: boolean;
+  useCache: boolean;
   forceClean?: boolean;
-  stop_on_first_error?: boolean;
-  timeout_ms?: number;
+  stopOnFirstError?: boolean;
   timeoutMs?: number;
   source?: string;
   files?: Record<string, string>;
   signal?: AbortSignal;
-}
-
-export interface CompileOutputFile {
-  type?: string;
-  path?: string;
-  url?: string;
 }
 
 export interface CompileLatexResponse {
@@ -343,9 +333,6 @@ export interface CompileLatexResponse {
   synctex?: string;
   error?: string;
   diagnostics?: CompilerDiagnostic[];
-  compile?: {
-    outputFiles?: CompileOutputFile[];
-  };
 }
 
 export interface WordCountResponse {

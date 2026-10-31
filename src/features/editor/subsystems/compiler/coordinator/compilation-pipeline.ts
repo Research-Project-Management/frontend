@@ -301,18 +301,18 @@ export const LatexCompilerEngine = {
     }
 
     const payload: CompileLatexPayload = {
-      project_id: projectId || undefined,
-      page_id: pageId || undefined,
-      main_file: mainFile ?? null,
+      projectId: projectId || undefined,
+      pageId: pageId || undefined,
+      mainFile: mainFile || undefined,
       source: sourceContent || undefined,
       files: Object.keys(filesMap).length > 0 ? filesMap : undefined,
       engine: engine ?? 'pdflatex',
       texLiveVersion: opts.texLiveVersion,
       draft: draft ?? false,
-      use_cache: useCache ?? true,
-      force_clean: opts.forceClean,
-      stop_on_first_error: opts.stopOnFirstError,
-      ...(opts.timeoutMs ? { timeout_ms: opts.timeoutMs } : {}),
+      useCache: useCache ?? true,
+      forceClean: opts.forceClean,
+      stopOnFirstError: opts.stopOnFirstError,
+      ...(opts.timeoutMs ? { timeoutMs: opts.timeoutMs } : {}),
     };
 
     try {
@@ -346,13 +346,7 @@ export const LatexCompilerEngine = {
         };
       }
 
-      // Overleaf parity: Support data.pdf, data.pdfUrl, or from Overleaf outputFiles
-      const rawPdf =
-        data?.pdf ||
-        (data as { pdfUrl?: string })?.pdfUrl ||
-        data?.compile?.outputFiles?.find(
-          (f) => f.type === 'pdf' || f.path === 'output.pdf',
-        )?.url;
+      const rawPdf = data?.pdf;
 
       if (rawPdf && typeof rawPdf === 'string' && rawPdf.trim().length > 0) {
         const decoded = createPdfBlobAndUrl(rawPdf);

@@ -365,8 +365,8 @@ export const compiler = {
   compile: async (payload: CompileLatexPayload, signal?: AbortSignal): Promise<CompileLatexResponse> => {
     const effectiveSignal = signal || payload.signal;
     const { signal: _unused, ...body } = payload;
-    const effectiveTimeout = body.timeout_ms ?? body.timeoutMs ?? 240000;
-    body.timeout_ms = effectiveTimeout;
+    const effectiveTimeout = body.timeoutMs ?? 240000;
+    body.timeoutMs = effectiveTimeout;
     if (effectiveSignal?.aborted) {
       const abortErr = new Error('Compilation superseded');
       abortErr.name = 'AbortError';
@@ -429,12 +429,12 @@ export const compiler = {
       const res = await apiPost<{ pdf?: string; logs?: string; synctex?: string; error?: string }>(
         `${MANUSCRIPTS_API_BASE}/compile`,
         {
-          project_id: opts.sessionId || 'preview',
-          main_file: 'preview.tex',
+          projectId: opts.sessionId || 'preview',
+          mainFile: 'preview.tex',
           engine,
           source,
           draft: true,
-          use_cache: false,
+          useCache: false,
         },
       );
 

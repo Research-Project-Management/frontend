@@ -7,7 +7,7 @@ import {
   history,
   citations,
   templates,
-} from '@/features/editor/sdk/manuscript/manuscript-api.client';
+} from '@/features/editor/sdk/manuscript/docstore.client';
 
 const { apiGetMock, apiPostMock, apiPatchMock, apiDeleteMock } = vi.hoisted(() => ({
   apiGetMock: vi.fn(),

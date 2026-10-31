@@ -125,7 +125,17 @@ const defaultStorePort: WorkspaceStorePort = {
 
 export class WorkspaceCoordinatorRegistry {
   private initialized = false;
-  private projectFiles: Array<{ id: string; title?: string; name?: string; path?: string; content?: unknown }> = [];
+  private projectFiles: Array<{
+    id: string;
+    nodeId?: string;
+    docId?: string | null;
+    fileId?: string | null;
+    isFolder?: boolean;
+    title?: string;
+    name?: string;
+    path?: string;
+    content?: unknown;
+  }> = [];
   private servicePort: WorkspaceServicePort = defaultServicePort;
   private notificationPort: WorkspaceNotificationPort = defaultNotificationPort;
   private storePort: WorkspaceStorePort = defaultStorePort;
@@ -237,9 +247,86 @@ export class WorkspaceCoordinatorRegistry {
       diagnosticsCoordinator.clearDiagnostics();
     });
 
+    editorCommandBus.subscribe('filetree:updated', (cmd) => {
+      this.reconcileRemoteFileTreeEvent(
+        cmd.payload && typeof cmd.payload === 'object'
+          ? (cmd.payload as Record<string, unknown>)
+          : undefined,
+      );
+    });
+
     editorCommandBus.registerExecutor('editor:rename-citekey', async (cmd) => {
       return this.refactorCitekey(cmd.oldKey, cmd.newKey);
     });
+  }
+
+  /**
+   * Reconciles remote WebSocket `fileTree:update` payloads (create, rename, move, delete, set-root)
+   * against open tabs, active document, LRU cache, and settings store even when `FilesTab` is unmounted.
+   */
+  public reconcileRemoteFileTreeEvent(payload?: Record<string, unknown>): void {
+    if (!payload || typeof payload !== 'object') return;
+    const action = typeof payload.action === 'string' ? payload.action : '';
+    const node = (payload.node || payload.file) as
+      | {
+          id?: string;
+          nodeId?: string;
+          docId?: string | null;
+          fileId?: string | null;
+          name?: string;
+          title?: string;
+          path?: string;
+          isRootDoc?: boolean;
+        }
+      | undefined;
+
+    const effectiveProjectId = this.getActiveProjectId() || '';
+
+    if (action === 'delete') {
+      if (payload.local === true) return;
+      const targetId =
+        (typeof payload.fileId === 'string' ? payload.fileId : '') ||
+        node?.docId ||
+        node?.id ||
+        '';
+      if (targetId) {
+        this.evictDeletedFileResources(targetId, effectiveProjectId || undefined);
+      }
+      if (node?.id && node.id !== targetId) {
+        this.evictDeletedFileResources(node.id, effectiveProjectId || undefined);
+      }
+      return;
+    }
+
+    if ((action === 'rename' || action === 'move') && node) {
+      if (payload.local === true) return;
+      const targetId = node.docId || node.id || '';
+      const newPath = normalizeVirtualPath(node.path || node.title || node.name || '');
+      if (targetId && newPath) {
+        const existing = this.findProjectItem(targetId) || (node.id ? this.findProjectItem(node.id) : undefined);
+        const cached = lruDocumentCache.getModel(targetId);
+        const oldPath = normalizeVirtualPath(
+          cached?.filePath || existing?.path || existing?.title || existing?.name || '',
+        );
+        if (oldPath && oldPath !== newPath) {
+          this.cascadePathChange(effectiveProjectId, targetId, oldPath, newPath);
+        }
+      }
+      return;
+    }
+
+    if (action === 'set-root' && node) {
+      const rootPath = normalizeVirtualPath(node.path || node.title || node.name || '');
+      if (rootPath) {
+        this.storePort.setMainFile(rootPath);
+      }
+    }
+  }
+
+  private findProjectItem(itemId: string) {
+    return this.projectFiles.find(
+      (f) => f.id === itemId || f.nodeId === itemId || f.docId === itemId || f.fileId === itemId,
+    );
   }
 
   /**
@@ -286,7 +373,10 @@ export class WorkspaceCoordinatorRegistry {
       );
 
       // 3. Notify FileTree & CommandBus
-      editorCommandBus.dispatch({ type: 'filetree:updated', payload: { action: 'create', file: newFile } });
+      editorCommandBus.dispatch({
+        type: 'filetree:updated',
+        payload: { action: 'create', file: newFile, local: true },
+      });
 
       // 4. Auto-open in tab if requested
       if (openAfterCreate) {
@@ -343,6 +433,13 @@ export class WorkspaceCoordinatorRegistry {
               nextTab = { ...nextTab, title: rewrittenTitle };
             }
           }
+          if (nextTab !== t) {
+            Object.defineProperty(nextTab, 'isDirty', {
+              get: () => lruDocumentCache.isDirty(t.id),
+              enumerable: true,
+              configurable: true,
+            });
+          }
           return nextTab;
         });
         if (changed) {
@@ -381,7 +478,7 @@ export class WorkspaceCoordinatorRegistry {
       : [];
     if (this.projectFiles.length > 0) {
       this.projectFiles = this.projectFiles.map((f) => {
-        if (f.id === itemId) {
+        if (f.id === itemId || f.nodeId === itemId || f.docId === itemId) {
           return { ...f, title: newPath, path: newPath };
         }
         if (oldPrefix) {
@@ -424,23 +521,51 @@ export class WorkspaceCoordinatorRegistry {
   public evictDeletedFileResources(fileId: string, optProjectId?: string): void {
     const effectiveProjectId = optProjectId || this.getActiveProjectId();
     const cachedModel = lruDocumentCache.getModel(fileId);
-    const fileObj = this.projectFiles.find((f) => f.id === fileId);
+    const fileObj = this.findProjectItem(fileId);
+    const resolvedDocId = fileObj?.docId || fileId;
+    const resolvedNodeId = fileObj?.nodeId || fileObj?.id || fileId;
     const filePath = cachedModel?.filePath || fileObj?.path || fileObj?.title || fileObj?.name;
 
     sessionCoordinator.evictDeletedFile(fileId);
-    lruDocumentCache.evictModel(fileId);
-    this.closeTabInStore(fileId);
-    this.closeTabInStore(`asset:${fileId}`);
-    const wsStore = useWorkspaceStore.getState();
-    if (wsStore.secondaryFileId === fileId) {
-      wsStore.setSecondaryFileId(null);
+    if (resolvedDocId !== fileId) {
+      sessionCoordinator.evictDeletedFile(resolvedDocId);
     }
-    const pageStore = usePageStore.getState();
-    if (pageStore.selectedAsset?.id === fileId) {
-      pageStore.setSelectedAsset(null);
+    lruDocumentCache.evictModel(fileId);
+    if (resolvedDocId !== fileId) {
+      lruDocumentCache.evictModel(resolvedDocId);
     }
     editorCommandBus.dispatch({ type: 'navigation:close-tab', fileId });
     editorCommandBus.dispatch({ type: 'navigation:close-tab', fileId: `asset:${fileId}` });
+    if (resolvedDocId !== fileId) {
+      editorCommandBus.dispatch({ type: 'navigation:close-tab', fileId: resolvedDocId });
+    }
+    if (resolvedNodeId !== fileId) {
+      editorCommandBus.dispatch({ type: 'navigation:close-tab', fileId: resolvedNodeId });
+      editorCommandBus.dispatch({ type: 'navigation:close-tab', fileId: `asset:${resolvedNodeId}` });
+    }
+    this.closeTabInStore(fileId);
+    this.closeTabInStore(`asset:${fileId}`);
+    if (resolvedDocId !== fileId) {
+      this.closeTabInStore(resolvedDocId);
+    }
+    if (resolvedNodeId !== fileId) {
+      this.closeTabInStore(resolvedNodeId);
+      this.closeTabInStore(`asset:${resolvedNodeId}`);
+    }
+    const wsStore = useWorkspaceStore.getState();
+    if (wsStore.secondaryFileId === fileId || wsStore.secondaryFileId === resolvedDocId) {
+      wsStore.setSecondaryFileId(null);
+    }
+    const pageStore = usePageStore.getState();
+    if (
+      pageStore.selectedAsset?.id === fileId ||
+      pageStore.selectedAsset?.id === resolvedNodeId ||
+      (filePath &&
+        normalizeVirtualPath(pageStore.selectedAsset?.filename) ===
+          normalizeVirtualPath(filePath))
+    ) {
+      pageStore.setSelectedAsset(null);
+    }
 
     const cleanFolderPrefix = normalizeVirtualPath(filePath);
     if (cleanFolderPrefix) {
@@ -453,13 +578,42 @@ export class WorkspaceCoordinatorRegistry {
           latexSymbolsIndex.removeFile(model.fileId, model.filePath);
         }
       }
+      for (const f of this.projectFiles) {
+        const fPath = f.path || f.title || f.name || '';
+        if (isUnderVirtualFolder(fPath, cleanFolderPrefix)) {
+          const descIds = [f.id, f.nodeId, f.docId, f.fileId].filter(
+            (x): x is string => typeof x === 'string' && x.length > 0,
+          );
+          for (const dId of descIds) {
+            sessionCoordinator.evictDeletedFile(dId);
+            lruDocumentCache.evictModel(dId);
+            this.closeTabInStore(dId);
+            this.closeTabInStore(`asset:${dId}`);
+          }
+        }
+      }
+      const latestWs = useWorkspaceStore.getState();
+      for (const [pId, tabs] of Object.entries(latestWs.tabsByProject)) {
+        for (const t of tabs) {
+          const tabPath = t.path || t.title || '';
+          if (isUnderVirtualFolder(tabPath, cleanFolderPrefix)) {
+            latestWs.closeTab(pId, t.id);
+          }
+        }
+      }
+      if (
+        pageStore.selectedAsset?.filename &&
+        isUnderVirtualFolder(pageStore.selectedAsset.filename, cleanFolderPrefix)
+      ) {
+        pageStore.setSelectedAsset(null);
+      }
     }
 
     latexDagEngine.removeFileNode(filePath || fileId);
     latexSymbolsIndex.removeFile(fileId, filePath);
     if (this.projectFiles.length > 0 && effectiveProjectId) {
       this.projectFiles = this.projectFiles.filter((f) => {
-        if (f.id === fileId) return false;
+        if (f.id === fileId || f.nodeId === fileId || f.docId === fileId) return false;
         if (cleanFolderPrefix && isUnderVirtualFolder(f.path || f.title || f.name || '', cleanFolderPrefix)) {
           return false;
         }
@@ -497,7 +651,7 @@ export class WorkspaceCoordinatorRegistry {
 
       editorCommandBus.dispatch({
         type: 'filetree:updated',
-        payload: { action: 'rename', itemId, oldName, newName: resolvedFullNewPath },
+        payload: { action: 'rename', itemId, oldName, newName: resolvedFullNewPath, local: true },
       });
 
       this.notificationPort.notifySuccess(`Renamed to "${effectiveLeafName}"`, `rename-file-${itemId}`);
@@ -525,7 +679,7 @@ export class WorkspaceCoordinatorRegistry {
 
       editorCommandBus.dispatch({
         type: 'filetree:updated',
-        payload: { action: 'delete', fileId },
+        payload: { action: 'delete', fileId, local: true },
       });
 
       this.notificationPort.notifySuccess('File moved to trash', `delete-file-${fileId}`);
@@ -549,17 +703,17 @@ export class WorkspaceCoordinatorRegistry {
     }
     const virtualFolderPath = parseVirtualFolderId(targetFolderId);
     if (virtualFolderPath === null) {
-      const folderObj = this.projectFiles.find((f) => f.id === targetFolderId);
+      const folderObj = this.findProjectItem(targetFolderId);
       const path = normalizeVirtualPath(folderObj?.path || folderObj?.title || folderObj?.name || '');
       return { id: targetFolderId, path };
     }
 
     const existingFolder = this.projectFiles.find((pf) => {
       const pfPath = normalizeVirtualPath(pf.path || pf.title || pf.name || '');
-      return pfPath.toLowerCase() === virtualFolderPath.toLowerCase() && !pf.id.startsWith('folder:');
+      return pfPath === virtualFolderPath && !pf.id.startsWith('folder:');
     });
     if (existingFolder?.id) {
-      return { id: existingFolder.id, path: virtualFolderPath };
+      return { id: existingFolder.nodeId || existingFolder.id, path: virtualFolderPath };
     }
 
     return { id: null, path: virtualFolderPath };
@@ -575,7 +729,7 @@ export class WorkspaceCoordinatorRegistry {
 
     try {
       const cachedModel = lruDocumentCache.getModel(itemId);
-      const fileObj = this.projectFiles.find((f) => f.id === itemId);
+      const fileObj = this.findProjectItem(itemId);
       const oldPath = cachedModel?.filePath || fileObj?.path || fileObj?.title || fileObj?.name || '';
 
       const { id: resolvedTargetFolderId, path: targetFolderPrefix } =
@@ -603,7 +757,14 @@ export class WorkspaceCoordinatorRegistry {
 
       editorCommandBus.dispatch({
         type: 'filetree:updated',
-        payload: { action: 'move', itemId, targetFolderId: resolvedTargetFolderId },
+        payload: {
+          action: 'move',
+          itemId,
+          targetFolderId: resolvedTargetFolderId,
+          oldName: oldPath,
+          newName: nextPath,
+          local: true,
+        },
       });
 
       this.notificationPort.notifySuccess('Moved successfully', `move-file-${itemId}`);
@@ -669,13 +830,19 @@ export class WorkspaceCoordinatorRegistry {
     try {
       await this.servicePort.setRootDoc(effectiveProjectId, fileId);
       const cached = lruDocumentCache.getModel(fileId);
-      const matchedProjectFile = this.projectFiles.find((f) => f.id === fileId);
-      const resolvedFileName = cached?.filePath || matchedProjectFile?.title || matchedProjectFile?.name || fileId;
-      this.storePort.setMainFile(resolvedFileName);
+      const matchedProjectFile = this.findProjectItem(fileId);
+      const resolvedFileName = normalizeVirtualPath(
+        cached?.filePath ||
+          matchedProjectFile?.path ||
+          matchedProjectFile?.title ||
+          matchedProjectFile?.name ||
+          fileId,
+      );
+      this.storePort.setMainFile(resolvedFileName || fileId);
 
       editorCommandBus.dispatch({
         type: 'filetree:updated',
-        payload: { action: 'set-root', fileId },
+        payload: { action: 'set-root', fileId, local: true },
       });
 
       this.notificationPort.notifySuccess('Set as main document', 'set-main-file');
@@ -714,7 +881,7 @@ export class WorkspaceCoordinatorRegistry {
   /**
    * High-speed initial bulk indexing of all project files for cross-referencing and DAG
    */
-  public initProjectSymbols(files: Array<{ id: string; title?: string; name?: string; path?: string; content?: unknown }>): void {
+  public initProjectSymbols(files: Array<{ id: string; nodeId?: string; docId?: string | null; fileId?: string | null; isFolder?: boolean; title?: string; name?: string; path?: string; content?: unknown }>): void {
     const projectKey = this.getActiveProjectId() || 'default';
     const fingerprint = `${projectKey}::${files
       .map((f) => {
@@ -724,21 +891,93 @@ export class WorkspaceCoordinatorRegistry {
       })
       .join('|')}`;
 
-    if (fingerprint === this.lastIndexedFingerprint && this.projectFiles.length === files.length) {
+    if (fingerprint === this.lastIndexedFingerprint && this.projectFiles.length >= files.length) {
       return;
     }
 
     const projectChanged = this.lastIndexedProjectKey !== '' && this.lastIndexedProjectKey !== projectKey;
     this.lastIndexedProjectKey = projectKey;
     this.lastIndexedFingerprint = fingerprint;
-    this.projectFiles = [...files];
+
+    // Preserve any structure-synced folder/asset/nodeId records when merging incoming doc files
+    const preservedStructureRecords = projectChanged
+      ? []
+      : this.projectFiles.filter((pf) => pf.isFolder || pf.fileId);
+    const existingById = new Map(this.projectFiles.map((pf) => [pf.id, pf]));
+    const mergedDocs = files.map((f) => {
+      const prior = existingById.get(f.id);
+      return prior
+        ? {
+            ...prior,
+            ...f,
+            nodeId: f.nodeId ?? prior.nodeId,
+            docId: f.docId ?? prior.docId ?? f.id,
+          }
+        : f;
+    });
+    const mergedDocIds = new Set(mergedDocs.map((d) => d.id));
+    this.projectFiles = [
+      ...mergedDocs,
+      ...preservedStructureRecords.filter((r) => !mergedDocIds.has(r.id)),
+    ];
 
     latexSymbolsIndex.clear();
     latexDagEngine.clear();
     if (projectChanged) {
       diagnosticsCoordinator.clearDiagnostics();
     }
-    documentAuthority.hydrateServerProjectFiles(projectKey, files);
+    documentAuthority.hydrateServerProjectFiles(projectKey, this.projectFiles);
+  }
+
+  /**
+   * Syncs structure nodes (including FOLDER, DOC, and FILE nodes) into `this.projectFiles`
+   * so folder move/rename/delete operations always know every folder's path and descendants.
+   */
+  public syncStructureItems(
+    items: Array<{
+      id: string;
+      docId?: string | null;
+      fileId?: string | null;
+      filename?: string;
+      path?: string;
+      isFolder?: boolean;
+    }>,
+  ): void {
+    if (!Array.isArray(items) || items.length === 0) return;
+    const byId = new Map<
+      string,
+      {
+        id: string;
+        nodeId?: string;
+        docId?: string | null;
+        fileId?: string | null;
+        isFolder?: boolean;
+        title?: string;
+        name?: string;
+        path?: string;
+        content?: unknown;
+      }
+    >();
+    for (const existing of this.projectFiles) {
+      byId.set(existing.id, existing);
+    }
+    for (const item of items) {
+      const cleanPath = normalizeVirtualPath(item.path || item.filename || '');
+      const primaryId = item.docId || item.id;
+      const existing = byId.get(primaryId) || byId.get(item.id);
+      byId.set(primaryId, {
+        ...existing,
+        id: primaryId,
+        nodeId: item.id,
+        docId: item.docId ?? existing?.docId ?? null,
+        fileId: item.fileId ?? existing?.fileId ?? null,
+        isFolder: Boolean(item.isFolder),
+        name: item.filename || existing?.name || cleanPath,
+        title: cleanPath || existing?.title || item.filename,
+        path: cleanPath || existing?.path || item.filename,
+      });
+    }
+    this.projectFiles = Array.from(byId.values());
   }
 
   /**

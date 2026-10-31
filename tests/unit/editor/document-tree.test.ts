@@ -203,4 +203,95 @@ describe('document-tree (1:1 Path-Trie Builder)', () => {
       expect(filterFileTree(tree, '').length).toBe(tree.length);
     });
   });
+
+  describe('schema & identity invariants (Overleaf/POSIX parity)', () => {
+    it('prevents binary FILE assets from being misclassified as TeX documents even if present in files array', () => {
+      const files = [
+        { id: 'node-main', title: 'main.tex', isRootDoc: true },
+        { id: 'node-fig', title: 'figures/plot.png' },
+      ];
+      const projectFiles = [
+        {
+          id: 'node-fig',
+          fileId: 'blob-fig',
+          filename: 'plot.png',
+          path: '/figures/plot.png',
+          isFolder: false,
+          nodeType: 'FILE' as const,
+          size: 4096,
+          url: '/api/v1/manuscripts/projects/p1/files/blob-fig',
+        },
+      ];
+
+      const tree = buildFileTree({ files, projectFiles });
+      const figuresFolder = tree.find((n) => n.type === 'folder' && n.name === 'figures');
+      expect(figuresFolder).toBeDefined();
+      if (figuresFolder && figuresFolder.type === 'folder') {
+        expect(figuresFolder.children).toHaveLength(1);
+        expect(figuresFolder.children[0]).toMatchObject({
+          type: 'file',
+          id: 'node-fig',
+          kind: 'asset',
+          displayLabel: 'plot.png',
+        });
+      }
+    });
+
+    it('preserves case-sensitive distinct paths and prioritizes authoritative isRootDoc over nested main.tex', () => {
+      const projectFiles = [
+        {
+          id: 'node-paper',
+          docId: 'doc-paper',
+          filename: 'paper.tex',
+          path: '/paper.tex',
+          isFolder: false,
+          nodeType: 'DOC' as const,
+          isRootDoc: true,
+        },
+        {
+          id: 'node-sub-main',
+          docId: 'doc-sub-main',
+          filename: 'main.tex',
+          path: '/subproject/main.tex',
+          isFolder: false,
+          nodeType: 'DOC' as const,
+          isRootDoc: false,
+        },
+        {
+          id: 'node-lower',
+          docId: 'doc-lower',
+          filename: 'readme.tex',
+          path: '/readme.tex',
+          isFolder: false,
+          nodeType: 'DOC' as const,
+        },
+        {
+          id: 'node-upper',
+          docId: 'doc-upper',
+          filename: 'README.tex',
+          path: '/README.tex',
+          isFolder: false,
+          nodeType: 'DOC' as const,
+        },
+      ];
+
+      const tree = buildFileTree({
+        projectFiles,
+        configuredMainFile: 'main.tex',
+      });
+
+      const rootFiles = tree.filter((n): n is FileTreeFileNode => n.type === 'file');
+      expect(rootFiles.map((f) => f.displayLabel)).toContain('readme.tex');
+      expect(rootFiles.map((f) => f.displayLabel)).toContain('README.tex');
+
+      const paperNode = rootFiles.find((f) => f.id === 'doc-paper');
+      expect(paperNode?.isRootDoc).toBe(true);
+
+      const subFolder = tree.find((n) => n.type === 'folder' && n.name === 'subproject');
+      if (subFolder && subFolder.type === 'folder') {
+        const subMain = subFolder.children[0] as FileTreeFileNode;
+        expect(subMain.isRootDoc).toBe(false);
+      }
+    });
+  });
 });

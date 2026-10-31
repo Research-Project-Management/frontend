@@ -34,7 +34,7 @@ import { Checkbox } from '@/shared/components/ui/checkbox';
 import { cn } from '@/shared/lib/utils';
 import { useEditorStorage } from '@/features/editor/ui/hooks/useStorage';
 import { resolveFileUrl } from '@/shared/lib/file-client';
-import { figureWizardSchema, type FigureWizardFormValues } from '@/features/editor/domain/types/forms.types';
+import { figureWizardSchema, type FigureWizardFormValues } from '@/features/editor/domain/types/core.types';
 import { IMAGE_EXTENSIONS } from '@/features/editor/core';
 
 export interface FigureWizardModalProps {

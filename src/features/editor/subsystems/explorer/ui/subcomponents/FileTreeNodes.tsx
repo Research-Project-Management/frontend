@@ -86,19 +86,32 @@ export const StorageFileRow = React.memo(function StorageFileRow({
   depth,
   onInsertAsset,
   onPreview,
+  onRequestDelete,
+  onStartRename,
+  isRenaming = false,
+  renameValue = '',
+  isRenamePending = false,
+  onRenameChange,
+  onCommitRename,
+  onCancelRename,
   projectId,
 }: {
   item: StorageItem;
   depth: number;
   onInsertAsset: (name: string) => void;
   onPreview: (item: StorageItem) => void;
+  onRequestDelete?: (id: string) => void;
+  onStartRename?: (file: { id: string; title: string; isFolder?: boolean }) => void;
+  isRenaming?: boolean;
+  renameValue?: string;
+  isRenamePending?: boolean;
+  onRenameChange?: (val: string) => void;
+  onCommitRename?: (id: string) => void;
+  onCancelRename?: () => void;
   projectId?: string | null;
 }) {
   const isImage = item.mimeType?.startsWith('image/');
   const { icon: Icon, color } = getStorageIcon(item);
-  const { deleteFile, renameFile } = useEditorStorageMutations(projectId);
-  const [renamingId, setRenamingId] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState('');
   const { copyStorageSnippet, downloadStorageItem } = useStorageItemActions();
 
   const fullAssetPath = item.path || item.filename;
@@ -119,7 +132,7 @@ export const StorageFileRow = React.memo(function StorageFileRow({
     [item.url, item.filename, downloadStorageItem],
   );
 
-  if (renamingId === item.id) {
+  if (isRenaming && onRenameChange && onCommitRename && onCancelRename) {
     return (
       <div
         className="group/row flex h-8 items-center w-full rounded-md pl-2 pr-1 bg-muted/40 transition-colors select-none"
@@ -129,20 +142,10 @@ export const StorageFileRow = React.memo(function StorageFileRow({
         <Icon className={cn('size-4 shrink-0 mr-2', color)} strokeWidth={1.5} />
         <RenameInput
           value={renameValue}
-          onChange={setRenameValue}
-          onCommit={() => {
-            const n = renameValue.trim();
-            if (!n) {
-              setRenamingId(null);
-              return;
-            }
-            renameFile.mutate(
-              { fileId: item.id, name: n, oldName: item.path || item.filename || n },
-              { onSuccess: () => setRenamingId(null) },
-            );
-          }}
-          onCancel={() => setRenamingId(null)}
-          isPending={renameFile.isPending}
+          onChange={onRenameChange}
+          onCommit={() => onCommitRename(item.id)}
+          onCancel={onCancelRename}
+          isPending={isRenamePending}
         />
       </div>
     );
@@ -221,8 +224,7 @@ export const StorageFileRow = React.memo(function StorageFileRow({
         <DropdownMenuItem
           onClick={(e) => {
             e.stopPropagation();
-            setRenamingId(item.id);
-            setRenameValue(item.filename);
+            onStartRename?.({ id: item.id, title: fullAssetPath });
           }}
           className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
         >
@@ -233,7 +235,7 @@ export const StorageFileRow = React.memo(function StorageFileRow({
           variant="destructive"
           onClick={(e) => {
             e.stopPropagation();
-            deleteFile.mutate(item.id);
+            onRequestDelete?.(item.id);
           }}
           className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer rounded-md outline-none focus:bg-destructive/10 focus:text-destructive focus-visible:ring-1 focus-visible:ring-destructive transition-colors"
         >
@@ -278,8 +280,7 @@ export const StorageFileRow = React.memo(function StorageFileRow({
         <ContextMenuItem
           onClick={(e) => {
             e.stopPropagation();
-            setRenamingId(item.id);
-            setRenameValue(item.filename);
+            onStartRename?.({ id: item.id, title: fullAssetPath });
           }}
           className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
         >
@@ -290,7 +291,7 @@ export const StorageFileRow = React.memo(function StorageFileRow({
           variant="destructive"
           onClick={(e) => {
             e.stopPropagation();
-            deleteFile.mutate(item.id);
+            onRequestDelete?.(item.id);
           }}
           className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer rounded-md outline-none focus:bg-destructive/10 focus:text-destructive focus-visible:ring-1 focus-visible:ring-destructive transition-colors"
         >

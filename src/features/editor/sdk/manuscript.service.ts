@@ -23,14 +23,14 @@
  * - spelling: Personal spellcheck dictionary
  */
 
-import { manuscriptService } from './manuscript/manuscript-api.client';
-import { PageFileMapper, type RawPageFileRecord } from './manuscript/page-file-mapper';
+import { manuscriptService } from './manuscript/docstore.client';
+import { PageFileMapper, type RawPageFileRecord } from './manuscript/doc-mapper';
 import type { CollaborationEvent } from './manuscript/types';
 
 export * from './manuscript/base';
 export * from './manuscript/types';
-export * from './manuscript/manuscript-api.client';
-export * from './manuscript/page-file-mapper';
+export * from './manuscript/docstore.client';
+export * from './manuscript/doc-mapper';
 export * from './realtime/yjs-socket-provider';
 export * from './archive/archive-export';
 export * from './archive/archive-import';
@@ -75,7 +75,7 @@ export const collaborationService = {
 export const listAuxFiles = (projectId: string) => manuscriptService.compiler.listAuxFiles(projectId);
 export const downloadAuxFileUrl = (projectId: string, filename: string) => manuscriptService.compiler.downloadAuxFileUrl(projectId, filename);
 export const downloadAllArtifactsZipUrl = (projectId: string) => manuscriptService.compiler.downloadAllArtifactsZipUrl(projectId);
-export { suggestLatexFix } from './manuscript/ai-api.client';
+export { suggestLatexFix } from './manuscript/ai.client';
 export const fetchWordCount = async (source: string, projectId?: string) => {
   return await manuscriptService.compiler.wordCount(source, projectId);
 };

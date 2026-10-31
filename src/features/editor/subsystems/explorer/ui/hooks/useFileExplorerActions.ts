@@ -20,7 +20,11 @@ import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { filesQuery } from '@/features/editor/ui/hooks/document.queries';
 import { extractDocumentContentString, type Page, type PageFile } from '@/features/editor/domain/types/core.types';
 import type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
-import { displayName, formatLatexIncludeSnippet } from '@/features/editor/domain/document/document-naming';
+import {
+  displayName,
+  formatLatexIncludeSnippet,
+  splitVirtualPath,
+} from '@/features/editor/domain/document/document-naming';
 import { prepareAssetInsertion } from '@/features/editor/domain/latex/smart-paste';
 import { downloadFileUrl } from '@/shared/lib/file-client';
 
@@ -175,7 +179,10 @@ export function useFileExplorerActions(options?: UseFileExplorerActionsOptions) 
   const handleRenameSubmit = useCallback(
     async (fileId: string, newName: string, oldName = '') => {
       const trimmed = newName.trim();
-      if (!trimmed || trimmed === oldName) return false;
+      const { leafName: oldLeaf } = splitVirtualPath(oldName);
+      if (!trimmed || trimmed === oldName || (!trimmed.includes('/') && trimmed === oldLeaf)) {
+        return false;
+      }
       setIsRenamePending(true);
       try {
         return await workspaceCoordinator.renameItem({

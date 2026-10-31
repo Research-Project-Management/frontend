@@ -1,5 +1,5 @@
 /**
- * collaboration-api.client.ts
+ * collaboration.client.ts
  *
  * Collaboration, Review, History, Search, and Export Sub-APIs (Part of manuscriptService SDK).
  */

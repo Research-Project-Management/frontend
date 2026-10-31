@@ -321,7 +321,7 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
             const now = Date.now();
             const current = state.tabsByProject[projectId] ?? [];
             const updated = current.map((t) =>
-              t.id === tabId ? { ...t, lastAccessedAt: now } : t
+              t.id === tabId ? decorateTabWithDirtyGetter(t, now) : t
             );
             return {
               tabsByProject: {
@@ -381,7 +381,9 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
             return {
               tabsByProject: {
                 ...state.tabsByProject,
-                [projectId]: current.map((t) => (t.id === tabId ? { ...t, title } : t)),
+                [projectId]: current.map((t) =>
+                  t.id === tabId ? decorateTabWithDirtyGetter({ ...t, title }, t.lastAccessedAt) : t,
+                ),
               },
             };
           });

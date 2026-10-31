@@ -68,9 +68,8 @@ export function usePageActions() {
         includeProjects: false,
       });
     },
-    onError: (err: unknown) => {
-      const msg = err instanceof Error ? err.message : 'Failed to set main document';
-      toast.error(msg, { id: 'set-main-file' });
+    onError: () => {
+      // Handled by workspaceCoordinator.notificationPort
     },
   });
 
@@ -154,9 +153,8 @@ export function usePageActions() {
       const parentPageId = usePageStore.getState().parentPageId || usePageStore.getState().currentPage?.id;
       invalidateFileTreeQueries(queryClient, { parentPageId });
     },
-    onError: (err: unknown, pageId) => {
-      const msg = err instanceof Error ? err.message : 'Failed to delete file';
-      toast.error(msg, { id: `delete-file-${pageId}` });
+    onError: () => {
+      // Handled by workspaceCoordinator.notificationPort
     },
   });
 
@@ -169,9 +167,8 @@ export function usePageActions() {
       const parentPageId = usePageStore.getState().parentPageId || usePageStore.getState().currentPage?.id;
       invalidateFileTreeQueries(queryClient, { parentPageId, pageId });
     },
-    onError: (err: unknown, pageId) => {
-      const msg = err instanceof Error ? err.message : 'Failed to restore file';
-      toast.error(msg, { id: `restore-file-${pageId}` });
+    onError: () => {
+      // Handled by workspaceCoordinator.notificationPort
     },
   });
 

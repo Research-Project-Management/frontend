@@ -28,7 +28,7 @@ import {
   type SymbolsWorkerMessageOut,
 } from './latex-symbols-core';
 import { PrefixTrie, LatexSymbolCatalog } from './prefix-trie';
-import { isItemRetracted, getRetractionInfo } from '@/features/library/domain/retraction';
+import { isItemRetracted, getRetractionInfo } from '@/features/library/domain/system-views.policy';
 
 export type {
   BibEntry,

@@ -56,15 +56,17 @@ export function useFileUpload({
   const [pendingUploads, setPendingUploads] = useState<PendingItem[]>([]);
   const [isDragging, setIsDragging] = useState(false);
 
-  // Build a set of existing file relative paths for duplicate detection (case-insensitive)
+  // Build a set of existing file relative paths for duplicate detection
   const existingNames = useMemo(() => {
     const names = new Set<string>();
-    files?.forEach((f) => names.add(f.title.replace(/^\/+/, '').toLowerCase()));
+    files?.forEach((f) => {
+      const clean = f.title.replace(/^\/+/, '');
+      if (clean) names.add(clean);
+    });
     projectFiles?.forEach((f) => {
       if (!f.isFolder) {
-        const relPath = (f.path || f.filename || '').replace(/^\/+/, '').toLowerCase();
+        const relPath = (f.path || f.filename || '').replace(/^\/+/, '');
         if (relPath) names.add(relPath);
-        if (f.filename) names.add(f.filename.toLowerCase());
       }
     });
     return names;
@@ -75,10 +77,10 @@ export function useFileUpload({
     (items: { file: File; name: string }[]): PendingItem[] => {
       const seen = new Set<string>();
       return items.map((item) => {
-        const lower = item.name.toLowerCase();
-        const isDup = existingNames.has(lower) || seen.has(lower);
-        seen.add(lower);
-        const isZip = lower.endsWith('.zip');
+        const cleanName = item.name.replace(/^\/+/, '');
+        const isDup = existingNames.has(cleanName) || seen.has(cleanName);
+        seen.add(cleanName);
+        const isZip = cleanName.toLowerCase().endsWith('.zip');
         return {
           ...item,
           conflict: isDup ? 'duplicate' : 'none',
@@ -91,16 +93,20 @@ export function useFileUpload({
 
   /** Auto-generate a unique suffix name: file.tex -> file_2.tex, file_3.tex ... */
   const autoSuffix = useCallback(
-    (name: string): string => {
+    (name: string, batchAllocatedNames?: Set<string>): string => {
       const dot = name.lastIndexOf('.');
       const base = dot > 0 ? name.slice(0, dot) : name;
       const ext = dot > 0 ? name.slice(dot) : '';
       let n = 2;
       let candidate = `${base}_${n}${ext}`;
-      while (existingNames.has(candidate.toLowerCase())) {
+      while (
+        existingNames.has(candidate.replace(/^\/+/, '')) ||
+        batchAllocatedNames?.has(candidate.replace(/^\/+/, ''))
+      ) {
         n++;
         candidate = `${base}_${n}${ext}`;
       }
+      batchAllocatedNames?.add(candidate.replace(/^\/+/, ''));
       return candidate;
     },
     [existingNames],
@@ -271,10 +277,12 @@ export function useFileUpload({
     if (pendingUploads.some((p) => p.conflict === 'duplicate' && !p.resolution)) return;
     setUploadDialogOpen(false);
 
+    const batchAllocatedNames = new Set<string>();
     const resolved = pendingUploads.map((p) => {
       if (p.conflict === 'duplicate' && p.resolution === 'suffix') {
-        return { ...p, name: autoSuffix(p.name) };
+        return { ...p, name: autoSuffix(p.name, batchAllocatedNames) };
       }
+      batchAllocatedNames.add(p.name.replace(/^\/+/, ''));
       return p;
     });
 
@@ -357,27 +365,36 @@ export function useFileUpload({
       });
 
       if (conflict === 'duplicate' && resolution === 'overwrite') {
-        const existingPage = files?.find(
-          (f) => f.title.toLowerCase() === targetTitle.toLowerCase(),
-        );
-        if (existingPage) {
+        const cleanTarget = targetTitle.replace(/^\/+/, '');
+        const existingPage =
+          files?.find((f) => f.title.replace(/^\/+/, '') === cleanTarget) ||
+          projectFiles?.find(
+            (pf) =>
+              pf.nodeType === 'DOC' &&
+              (pf.path || pf.filename || '').replace(/^\/+/, '') === cleanTarget,
+          );
+        const existingDocId =
+          existingPage && 'docId' in existingPage && existingPage.docId
+            ? existingPage.docId
+            : existingPage?.id;
+        if (existingPage && existingDocId) {
           await updateContentMutation.mutateAsync({
-            pageId: existingPage.id,
+            pageId: existingDocId,
             content,
           });
-          lruDocumentCache.updateContent(existingPage.id, content, false);
-          lruDocumentCache.markClean(existingPage.id);
+          lruDocumentCache.updateContent(existingDocId, content, false);
+          lruDocumentCache.markClean(existingDocId);
           editorCommandBus.dispatch({
             type: 'editor:set-content',
-            fileId: existingPage.id,
+            fileId: existingDocId,
             content,
           });
           editorCommandBus.dispatch({
             type: 'document:content-updated',
-            docId: existingPage.id,
+            docId: existingDocId,
             content,
           });
-          return { id: existingPage.id, title: existingPage.title, content };
+          return { id: existingDocId, title: cleanTarget, content };
         }
       }
 

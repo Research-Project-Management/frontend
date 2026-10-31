@@ -40,7 +40,7 @@ export function displayName(title: string): string {
   if (!trimmed) {
     return 'main.tex';
   }
-  return /\.[a-z0-9]+$/i.test(trimmed) ? trimmed : `${trimmed}.tex`;
+  return /\.[a-z0-9_-]+$/i.test(trimmed) ? trimmed : `${trimmed}.tex`;
 }
 
 /** Strips file extension from display name to get clean basename */

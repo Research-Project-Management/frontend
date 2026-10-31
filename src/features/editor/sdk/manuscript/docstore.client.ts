@@ -1,8 +1,8 @@
 /**
- * manuscript-api.client.ts
+ * docstore.client.ts
  *
  * Consolidated Manuscript API Gateway Client (Deep Module - SDK Layer).
- * Location: frontend/src/features/editor/sdk/manuscript/manuscript-api.client.ts
+ * Location: frontend/src/features/editor/sdk/manuscript/docstore.client.ts
  *
  * Adheres strictly to Matt Pocock Codebase Design & Ousterhout Deep Module principles:
  * - Single typed entry point consolidating 22 shallow sub-domain endpoints.
@@ -55,7 +55,7 @@ import type {
 } from '@/features/editor/domain/ai/ai-error-assist';
 import { countLatexWords } from '../../domain/document/word-count';
 import { flushYjsProviders } from '../realtime/yjs-provider-pool';
-import { PageFileMapper, type RawPageFileRecord } from './page-file-mapper';
+import { PageFileMapper, type RawPageFileRecord } from './doc-mapper';
 import type {
   PendingBundleInfo,
   NotificationDigest,
@@ -638,12 +638,12 @@ import {
   search,
   exportDocs,
   history,
-} from './collaboration-api.client';
+} from './collaboration.client';
 import {
   ai,
   AcademicAiService,
   suggestLatexFix,
-} from './ai-api.client';
+} from './ai.client';
 import {
   structure,
   filestore,  citations,
@@ -659,7 +659,7 @@ import {
   type CheckSpellingPayload,
   type GitTokenInfo,
   type GitRepoInfo,
-} from './manuscript-storage-tree.client';
+} from './structure.client';
 
 export type {
   CustomDictionaryResponse,

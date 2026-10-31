@@ -148,7 +148,11 @@ export const FileTreeFolderRow = React.memo(function FileTreeFolderRow({
         const internalFileId =
           e.dataTransfer.getData('application/flux-file-id') ||
           e.dataTransfer.getData('application/x-asset-id');
+        const draggedPath = e.dataTransfer.getData('text/plain');
         if (internalFileId && internalFileId !== node.id) {
+          if (draggedPath && (folderKey === draggedPath || folderKey.startsWith(`${draggedPath}/`))) {
+            return;
+          }
           e.preventDefault();
           e.stopPropagation();
           onMoveItem(internalFileId, node.id);

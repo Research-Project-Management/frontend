@@ -32,6 +32,9 @@ export type FileTreeFolderNode = {
 export type FileTreeFileNode = {
   type: 'file';
   id: string;
+  nodeId?: string;
+  docId?: string | null;
+  fileId?: string | null;
   title: string;
   displayLabel: string;
   updatedAt?: string;
@@ -44,7 +47,14 @@ export type FileTreeNode = FileTreeFolderNode | FileTreeFileNode;
 
 export interface BuildFileTreeParams {
   projectFiles?: StorageItem[] | null;
-  files?: Array<{ id: string; title?: string; updatedAt?: string; isRootDoc?: boolean }> | null;
+  files?: Array<{
+    id: string;
+    nodeId?: string;
+    title?: string;
+    path?: string;
+    updatedAt?: string;
+    isRootDoc?: boolean;
+  }> | null;
   parentPage?: { id: string; title?: string; updatedAt?: string; mainFile?: unknown } | null;
   projectId?: string | null;
   parentPageId?: string | null;
@@ -71,14 +81,20 @@ export function getRootFilePriority(
   mainBibFile = 'references.bib',
 ): number {
   const lower = item.displayLabel.toLowerCase();
+  const fullLower = normalizeVirtualPath(item.title || item.displayLabel).toLowerCase();
 
+  if (item.isRootDoc) return 1;
   if (mainFileId) {
-    if (item.id === mainFileId) return 1;
+    if (item.id === mainFileId || item.docId === mainFileId || item.nodeId === mainFileId) return 1;
   } else if (configuredMainFile) {
-    if (lower === configuredMainFile.toLowerCase()) return 1;
+    const cleanCfg = normalizeVirtualPath(configuredMainFile).toLowerCase();
+    if (fullLower === cleanCfg || (!cleanCfg.includes('/') && lower === cleanCfg)) return 1;
   } else {
-    if (mainFile && lower === mainFile.toLowerCase()) return 1;
-    if (item.isRootDoc || (parentPageId && item.id === parentPageId) || lower === 'main.tex') return 1;
+    if (mainFile) {
+      const cleanMain = normalizeVirtualPath(mainFile).toLowerCase();
+      if (fullLower === cleanMain || (!cleanMain.includes('/') && lower === cleanMain)) return 1;
+    }
+    if ((parentPageId && item.id === parentPageId) || fullLower === 'main.tex') return 1;
   }
 
   if (lower === 'preamble.tex') return 2;
@@ -126,7 +142,7 @@ export function buildFileTree(params: BuildFileTreeParams): FileTreeNode[] {
     for (let i = 0; i < segments.length; i++) {
       const segment = segments[i];
       currentPath = currentPath ? `${currentPath}/${segment}` : segment;
-      const key = currentPath.toLowerCase();
+      const key = currentPath;
       let folder = allFoldersByPath.get(key);
       const isLeaf = i === segments.length - 1;
 
@@ -216,21 +232,42 @@ export function buildFileTree(params: BuildFileTreeParams): FileTreeNode[] {
   const seenPaths = new Set<string>();
   const seenFileIds = new Set<string>();
 
+  // Index binary FILE assets by id, fileId, and path so `files` never misclassifies an asset as a TeX doc
+  const assetIds = new Set<string>();
+  const assetPaths = new Set<string>();
+  projectFiles?.forEach((f) => {
+    if (!f.isFolder && f.nodeType !== 'DOC') {
+      if (f.id) assetIds.add(f.id);
+      if (f.fileId) assetIds.add(f.fileId);
+      const p = resolveStoragePath(f) || normalizeVirtualPath(f.filename);
+      if (p) assetPaths.add(p);
+    }
+  });
+
   // 2. Materialize TeX / text documents from `files`
   files?.forEach((f) => {
-    const rawPath = normalizeVirtualPath(f.title);
+    const rawPath = normalizeVirtualPath(f.path || f.title);
     if (!rawPath) return;
-    const lowerPath = rawPath.toLowerCase();
-    if ((f.id && seenFileIds.has(f.id)) || seenPaths.has(lowerPath)) return;
+    if (
+      (f.id && assetIds.has(f.id)) ||
+      (f.nodeId && assetIds.has(f.nodeId)) ||
+      assetPaths.has(rawPath)
+    ) {
+      return;
+    }
+    if ((f.id && seenFileIds.has(f.id)) || seenPaths.has(rawPath)) return;
 
-    seenPaths.add(lowerPath);
+    seenPaths.add(rawPath);
     if (f.id) seenFileIds.add(f.id);
+    if (f.nodeId) seenFileIds.add(f.nodeId);
 
     const { folderPath, leafName } = splitVirtualPath(rawPath);
-    const resolvedTitle = f.title || rawPath;
+    const resolvedTitle = f.title ? normalizeVirtualPath(f.title) || rawPath : rawPath;
     insertFileNode(folderPath, {
       type: 'file',
       id: f.id,
+      nodeId: f.nodeId || f.id,
+      docId: f.id,
       title: resolvedTitle,
       displayLabel: displayName(leafName || resolvedTitle),
       updatedAt: f.updatedAt,
@@ -243,7 +280,15 @@ export function buildFileTree(params: BuildFileTreeParams): FileTreeNode[] {
   projectFiles?.forEach((f) => {
     if (f.isFolder) return;
     const nodeId = f.docId || f.id;
-    if (nodeId && seenFileIds.has(nodeId)) return;
+    if (nodeId && seenFileIds.has(nodeId)) {
+      const existingNode = allFileNodes.find((n) => n.id === nodeId || n.nodeId === f.id);
+      if (existingNode) {
+        if (!existingNode.nodeId) existingNode.nodeId = f.id;
+        if (f.isRootDoc) existingNode.isRootDoc = true;
+        if (!existingNode.storageData) existingNode.storageData = f;
+      }
+      return;
+    }
     if (f.id && seenFileIds.has(f.id)) return;
 
     const fname = (f.filename || '').trim();
@@ -257,10 +302,17 @@ export function buildFileTree(params: BuildFileTreeParams): FileTreeNode[] {
     }
 
     const rawPath = resolveStoragePath(f) || normalizeVirtualPath(fname);
-    const lowerPath = rawPath.toLowerCase();
-    if (seenPaths.has(lowerPath)) return;
+    if (seenPaths.has(rawPath)) {
+      const existingByPath = allFileNodes.find((n) => normalizeVirtualPath(n.title) === rawPath);
+      if (existingByPath) {
+        if (!existingByPath.nodeId) existingByPath.nodeId = f.id;
+        if (f.isRootDoc) existingByPath.isRootDoc = true;
+        if (!existingByPath.storageData) existingByPath.storageData = f;
+      }
+      return;
+    }
 
-    seenPaths.add(lowerPath);
+    seenPaths.add(rawPath);
     if (nodeId) seenFileIds.add(nodeId);
     if (f.id) seenFileIds.add(f.id);
 
@@ -273,6 +325,9 @@ export function buildFileTree(params: BuildFileTreeParams): FileTreeNode[] {
     insertFileNode(folderPath, {
       type: 'file',
       id: nodeId,
+      nodeId: f.id,
+      docId: f.docId ?? (isDocNode ? nodeId : null),
+      fileId: f.fileId ?? (!isDocNode ? f.id : null),
       title: folderPath ? rawPath : f.filename,
       displayLabel: isDocNode ? displayName(leafName) : leafName,
       updatedAt: f.updatedAt,
@@ -283,32 +338,35 @@ export function buildFileTree(params: BuildFileTreeParams): FileTreeNode[] {
   });
 
   // 4. Ensure root document fallback when parentPage is supplied without matching child doc
-  const resolvedRootTitle = configuredMainFile || mainFile || 'main.tex';
+  const resolvedRootTitle = normalizeVirtualPath(configuredMainFile || mainFile || 'main.tex') || 'main.tex';
   const resolvedRootTitleLower = resolvedRootTitle.toLowerCase();
-  const storeMainFileLower = mainFile ? mainFile.toLowerCase() : null;
+  const storeMainFileLower = mainFile ? normalizeVirtualPath(mainFile).toLowerCase() : null;
+  const seenPathsLower = new Set(Array.from(seenPaths).map((p) => p.toLowerCase()));
 
   const hasRootDocument =
     allFileNodes.some((rf) => {
-      const rfLower = rf.displayLabel.toLowerCase();
+      const rfFullLower = normalizeVirtualPath(rf.title || rf.displayLabel).toLowerCase();
       return (
         rf.id === parentPage?.id ||
         rf.id === mainFileId ||
         Boolean(rf.isRootDoc) ||
-        rfLower === resolvedRootTitleLower ||
-        (storeMainFileLower !== null && rfLower === storeMainFileLower) ||
-        rfLower === 'main.tex'
+        rfFullLower === resolvedRootTitleLower ||
+        (storeMainFileLower !== null && rfFullLower === storeMainFileLower) ||
+        rfFullLower === 'main.tex'
       );
     }) ||
-    seenPaths.has(resolvedRootTitleLower) ||
-    Boolean(storeMainFileLower && seenPaths.has(storeMainFileLower)) ||
-    seenPaths.has('main.tex');
+    seenPathsLower.has(resolvedRootTitleLower) ||
+    Boolean(storeMainFileLower && seenPathsLower.has(storeMainFileLower)) ||
+    seenPathsLower.has('main.tex');
 
   if (parentPage && !hasRootDocument && !seenFileIds.has(parentPage.id)) {
     const rootNode: FileTreeFileNode = {
       type: 'file',
       id: parentPage.id,
+      nodeId: parentPage.id,
+      docId: parentPage.id,
       title: resolvedRootTitle,
-      displayLabel: resolvedRootTitle,
+      displayLabel: splitVirtualPath(resolvedRootTitle).leafName || resolvedRootTitle,
       updatedAt: parentPage.updatedAt || new Date().toISOString(),
       kind: 'tex',
       isRootDoc: true,
@@ -316,24 +374,24 @@ export function buildFileTree(params: BuildFileTreeParams): FileTreeNode[] {
     rootFiles.unshift(rootNode);
     allFileNodes.unshift(rootNode);
     seenFileIds.add(parentPage.id);
-    seenPaths.add(resolvedRootTitleLower);
+    seenPaths.add(resolvedRootTitle);
   }
 
   // 5. Enforce single isRootDoc invariant across the tree
-  const cfgLower = configuredMainFile?.toLowerCase();
+  const cfgLower = configuredMainFile ? normalizeVirtualPath(configuredMainFile).toLowerCase() : undefined;
+  const matchesConfiguredPath = (n: FileTreeFileNode, targetLower: string) => {
+    const fullLower = normalizeVirtualPath(n.title || n.displayLabel).toLowerCase();
+    if (fullLower === targetLower) return true;
+    return !targetLower.includes('/') && !fullLower.includes('/') && n.displayLabel.toLowerCase() === targetLower;
+  };
+
   const primaryRootNode =
-    (mainFileId ? allFileNodes.find((n) => n.id === mainFileId) : undefined) ||
-    (cfgLower
-      ? allFileNodes.find((n) => n.title.toLowerCase() === cfgLower || n.displayLabel.toLowerCase() === cfgLower)
-      : undefined) ||
     allFileNodes.find((n) => Boolean(n.isRootDoc)) ||
-    (storeMainFileLower
-      ? allFileNodes.find(
-          (n) => n.title.toLowerCase() === storeMainFileLower || n.displayLabel.toLowerCase() === storeMainFileLower,
-        )
-      : undefined) ||
+    (mainFileId ? allFileNodes.find((n) => n.id === mainFileId || n.nodeId === mainFileId) : undefined) ||
+    (cfgLower ? allFileNodes.find((n) => matchesConfiguredPath(n, cfgLower)) : undefined) ||
+    (storeMainFileLower ? allFileNodes.find((n) => matchesConfiguredPath(n, storeMainFileLower)) : undefined) ||
     (parentPage?.id ? allFileNodes.find((n) => n.id === parentPage.id) : undefined) ||
-    allFileNodes.find((n) => n.displayLabel.toLowerCase() === 'main.tex');
+    allFileNodes.find((n) => matchesConfiguredPath(n, 'main.tex'));
 
   for (const node of allFileNodes) {
     if (node.kind === 'tex') {

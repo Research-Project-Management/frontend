@@ -22,7 +22,7 @@ import {
   isVietnameseAuthorName,
   formatInTextCitationPreview,
 } from '@/features/editor/subsystems/citation/model/citation-formatter';
-import { formatRetractionReason } from '@/features/library/domain/retraction';
+import { formatRetractionReason } from '@/features/library/domain/system-views.policy';
 import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 
 /**

@@ -68,12 +68,15 @@ export function useEditorStorageFiles(
     queryKey: storageKeys.files(effectiveProjectId, pageIdOrProjectId, parentId),
     queryFn: async (): Promise<EditorStorageItem[]> => {
       if (effectiveProjectId) {
-        return await manuscriptService.structure.getProjectFiles(effectiveProjectId, parentId);
+        const result = await manuscriptService.structure.getProjectFiles(effectiveProjectId, parentId);
+        workspaceCoordinator.syncStructureItems(result || []);
+        return result || [];
       }
       const targetId = pageIdOrProjectId || '';
       if (!targetId) return [];
       try {
         const files = await manuscriptService.structure.getPageFiles(targetId, parentId);
+        workspaceCoordinator.syncStructureItems(files || []);
         return files || [];
       } catch (err) {
         console.warn('[useEditorStorage] Could not fetch remote files:', err);
@@ -196,9 +199,8 @@ export function useEditorStorageMutations(
     onSuccess: () => {
       invalidateStorageState();
     },
-    onError: (err: unknown, args) => {
-      const msg = err instanceof Error ? err.message : 'Failed to rename item';
-      toast.error(msg, { id: `rename-${args.itemId || args.fileId}` });
+    onError: () => {
+      // Handled by workspaceCoordinator.notificationPort
     },
   });
 
@@ -213,9 +215,8 @@ export function useEditorStorageMutations(
     onSuccess: () => {
       invalidateStorageState();
     },
-    onError: (err: unknown, itemId) => {
-      const msg = err instanceof Error ? err.message : 'Failed to delete file';
-      toast.error(msg, { id: `delete-${itemId}` });
+    onError: () => {
+      // Handled by workspaceCoordinator.notificationPort
     },
   });
 
@@ -236,9 +237,8 @@ export function useEditorStorageMutations(
     onSuccess: () => {
       invalidateStorageState();
     },
-    onError: (err: unknown) => {
-      const msg = err instanceof Error ? err.message : 'Failed to move item';
-      toast.error(msg, { id: 'move-item' });
+    onError: () => {
+      // Handled by workspaceCoordinator.notificationPort
     },
   });
 
@@ -269,9 +269,8 @@ export function useEditorStorageMutations(
     onSuccess: () => {
       invalidateStorageState({ includeRootDoc: true });
     },
-    onError: (err: unknown) => {
-      const msg = err instanceof Error ? err.message : 'Failed to set main document';
-      toast.error(msg, { id: 'set-main-doc' });
+    onError: () => {
+      // Handled by workspaceCoordinator.notificationPort
     },
   });
 

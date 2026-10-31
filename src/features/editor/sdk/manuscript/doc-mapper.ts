@@ -1,5 +1,5 @@
 /**
- * page-file-mapper.ts
+ * doc-mapper.ts
  *
  * Pure Data Mapper / Assembler for `RawPageFileRecord -> PageFile`.
  * Eliminates repeated normalization and fallback timestamp boilerplate.

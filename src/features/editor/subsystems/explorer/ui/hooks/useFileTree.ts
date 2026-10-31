@@ -18,6 +18,8 @@ import {
   type BuildFileTreeParams,
 } from '@/features/editor/subsystems/explorer/model/document-tree';
 import { useSettingsStore } from '@/features/editor/core/store/settings.store';
+import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
+import { rewritePathPrefix, normalizeVirtualPath } from '@/features/editor/domain/document/document-naming';
 import { EDITOR_STORAGE_KEYS } from '@/features/editor/domain/constants/editor.constants';
 
 export interface UseFileTreeParams extends BuildFileTreeParams {
@@ -76,6 +78,52 @@ export function useFileTree({
       localStorage.setItem(storageKey, JSON.stringify(Array.from(expandedFolders)));
     } catch {}
   }, [storageKey, expandedFolders]);
+
+  // Keep expanded folder paths in sync when a folder is renamed or moved (locally or via remote Socket.IO)
+  useEffect(() => {
+    return editorCommandBus.subscribe('filetree:updated', (cmd) => {
+      const payload = cmd.payload as
+        | {
+            action?: string;
+            oldName?: string;
+            newName?: string;
+            node?: { id?: string; docId?: string | null; path?: string; name?: string };
+          }
+        | undefined;
+      if (payload?.action !== 'rename' && payload?.action !== 'move') return;
+
+      let rawOld = payload.oldName || '';
+      let rawNew = payload.newName || payload.node?.path || payload.node?.name || '';
+      if (!rawOld && payload.node?.id) {
+        const matched = projectFiles?.find(
+          (pf) => pf.id === payload.node?.id || pf.docId === payload.node?.id,
+        );
+        rawOld = matched?.path || matched?.filename || '';
+      }
+      const oldClean = normalizeVirtualPath(rawOld);
+      const newClean = normalizeVirtualPath(rawNew);
+      if (!oldClean || !newClean || oldClean === newClean) return;
+      setExpandedFolders((prev) => {
+        let mutated = false;
+        const next = new Set<string>();
+        for (const key of prev) {
+          if (key === oldClean) {
+            next.add(newClean);
+            mutated = true;
+          } else {
+            const rewritten = rewritePathPrefix(key, oldClean, newClean);
+            if (rewritten !== null) {
+              next.add(rewritten);
+              mutated = true;
+            } else {
+              next.add(key);
+            }
+          }
+        }
+        return mutated ? next : prev;
+      });
+    });
+  }, [projectFiles]);
 
   const treeItems = useMemo<FileTreeNode[]>(() => {
     return buildFileTree({

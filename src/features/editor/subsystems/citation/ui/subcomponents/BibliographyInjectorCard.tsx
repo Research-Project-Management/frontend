@@ -4,8 +4,8 @@ import React, { useState, useCallback } from 'react';
 import { BookOpen, Copy, Check, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { copyToClipboard } from '@/shared/lib/utils';
-import { libraryServices } from '@/features/library/sdk/library.client';
-import type { Item } from '@/features/library/domain/types/library.types';
+import { libraryServices } from '@/features/library/sdk';
+import type { Item } from '@/features/library/domain/types/core.types';
 import {
   isLatexDocument,
   detectDocumentCitationStyle,

@@ -1,5 +1,5 @@
 import type { BibEntry } from '@/features/editor/domain/latex/bib-parser';
-import { getRetractionInfo } from '@/features/library/domain/retraction';
+import { getRetractionInfo } from '@/features/library/domain/system-views.policy';
 
 export interface RetractedItemInfo {
   title?: string;

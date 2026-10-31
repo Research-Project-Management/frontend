@@ -51,7 +51,6 @@ export function invalidateFileTreeQueries(
   } = options ?? {};
 
   queryClient.invalidateQueries({ queryKey: storageKeys.allFiles });
-  queryClient.invalidateQueries({ queryKey: pageKeys.all });
 
   if (includeProjects) {
     queryClient.invalidateQueries({ queryKey: storageKeys.projects });
@@ -70,6 +69,9 @@ export function invalidateFileTreeQueries(
     if (includeDeleted) {
       queryClient.invalidateQueries({ queryKey: pageKeys.deletedFiles(parentPageId) });
     }
+  }
+  if (!pageId && !parentPageId) {
+    queryClient.invalidateQueries({ queryKey: pageKeys.all });
   }
 }
 

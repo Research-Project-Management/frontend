@@ -1,5 +1,5 @@
 /**
- * ai-api.client.ts
+ * ai.client.ts
  *
  * AI Academic Assistant & LaTeX Error Repair Sub-API (Part of manuscriptService SDK).
  * Connects frontend editor and logs to /api/ai/chat/sync endpoint, backed by

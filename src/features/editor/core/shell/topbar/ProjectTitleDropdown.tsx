@@ -54,7 +54,7 @@ import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance'
 import { useProject } from '@/features/projects/shell/hooks/use-project';
 import { editorCommandBus } from '../../bus/command-bus';
 
-import { projectRenameSchema, type ProjectRenameInput } from '@/features/editor/domain/types/forms.types';
+import { projectRenameSchema, type ProjectRenameInput } from '@/features/editor/domain/types/core.types';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
 import { useProjectTitleActions } from './useProjectTitleActions';
 

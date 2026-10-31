@@ -44,7 +44,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/components/ui/select';
-import { pushChangesSchema, linkRepoSchema, createRepoSchema, type PushChangesFormValues, type LinkRepoFormValues, type CreateRepoFormValues } from '@/features/editor/domain/types/forms.types';
+import { pushChangesSchema, linkRepoSchema, createRepoSchema, type PushChangesFormValues, type LinkRepoFormValues, type CreateRepoFormValues } from '@/features/editor/domain/types/core.types';
 
 interface ProjectGithubTabProps {
   projectId?: string;

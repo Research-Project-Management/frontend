@@ -1,5 +1,5 @@
 /**
- * manuscript-storage-tree.client.ts
+ * structure.client.ts
  *
  * Project Hierarchy, Storage, Filestore, Linked Files, Citations, Templates,
  * Spelling, and Git Sub-APIs (Part of manuscriptService SDK).

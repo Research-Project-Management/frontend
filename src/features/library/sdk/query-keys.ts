@@ -431,4 +431,52 @@ export const annotationKeys = {
     libraryKeys.annotations(scopeId, attachmentId),
 };
 
+const activeBootstrapPromises = new WeakMap<object, Map<string, Promise<unknown>>>();
+
+export function registerBootstrapPromise<T>(
+  queryClient: object,
+  scopeId: string | undefined,
+  promise: Promise<T>,
+): Promise<T> {
+  const scope = normalizeScopeId(scopeId);
+  let map = activeBootstrapPromises.get(queryClient);
+  if (!map) {
+    map = new Map<string, Promise<unknown>>();
+    activeBootstrapPromises.set(queryClient, map);
+  }
+  const tracked = promise.finally(() => {
+    if (map?.get(scope) === tracked) {
+      map.delete(scope);
+    }
+  });
+  map.set(scope, tracked);
+  return tracked;
+}
+
+export function getActiveBootstrapPromise(
+  queryClient: object,
+  scopeId?: string,
+): Promise<unknown> | undefined {
+  return activeBootstrapPromises.get(queryClient)?.get(normalizeScopeId(scopeId));
+}
+
+export async function waitForBootstrapCache<T>(
+  queryClient: { getQueryData: <D>(key: readonly unknown[]) => D | undefined },
+  scopeId: string | undefined,
+  cacheKey: readonly unknown[],
+): Promise<T | undefined> {
+  await Promise.resolve();
+  const pending = getActiveBootstrapPromise(queryClient, scopeId);
+  if (pending) {
+    try {
+      await pending;
+    } catch {
+      return undefined;
+    }
+    return queryClient.getQueryData<T>(cacheKey);
+  }
+  return undefined;
+}
+
+
 

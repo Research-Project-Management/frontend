@@ -29,7 +29,6 @@ import {
   isProjectScope,
   mapBackendItem,
 } from './http.client';
-import { ItemsService } from './items.client';
 
 // 10. Ingestion, Curation & Retraction Services
 export const IngestionService = {
@@ -232,16 +231,42 @@ async function batchHydrateMissingDuplicateItems(
   scopeId: string | undefined,
   missingIds: ReadonlySet<string>,
   seedItems?: ReadonlyMap<string, Item>,
+  fetchItemsByIds?: (ids: string[]) => Promise<Item[]>,
 ): Promise<Map<string, Item>> {
   const hydratedMap = new Map<string, Item>(seedItems);
   const unresolvedIds = Array.from(missingIds).filter((id) => !hydratedMap.has(id));
   if (unresolvedIds.length === 0) return hydratedMap;
 
   try {
-    const listRes = await ItemsService.getAll(scopeId, {
-      limit: Math.max(250, unresolvedIds.length * 2),
+    if (fetchItemsByIds) {
+      const items = await fetchItemsByIds(unresolvedIds);
+      for (const item of items || []) {
+        if (item?.id && missingIds.has(item.id)) {
+          hydratedMap.set(item.id, item);
+        }
+      }
+      return hydratedMap;
+    }
+
+    const res = await libraryClient.get<
+      Item[] | { items?: Item[]; data?: Item[] | { items?: Item[] } }
+    >(resolveLibraryUrl('catalog', '/items', scopeId), {
+      params: {
+        ids: unresolvedIds.join(','),
+        limit: Math.max(250, unresolvedIds.length * 2),
+      },
     });
-    for (const item of listRes?.items || []) {
+    const rawItems = Array.isArray(res)
+      ? res
+      : Array.isArray(res?.items)
+        ? res.items
+        : Array.isArray(res?.data)
+          ? res.data
+          : Array.isArray((res?.data as { items?: Item[] } | undefined)?.items)
+            ? (res!.data as { items: Item[] }).items
+            : [];
+    for (const raw of rawItems) {
+      const item = mapBackendItem(raw as unknown as Record<string, unknown>);
       if (item?.id && missingIds.has(item.id)) {
         hydratedMap.set(item.id, item);
       }
@@ -256,7 +281,10 @@ async function batchHydrateMissingDuplicateItems(
 export const CurationService = {
   getDuplicates: async (
     scopeId?: string,
-    options?: { cachedItemsById?: ReadonlyMap<string, Item> },
+    options?: {
+      cachedItemsById?: ReadonlyMap<string, Item>;
+      fetchItemsByIds?: (ids: string[]) => Promise<Item[]>;
+    },
   ): Promise<{ duplicateGroups: DuplicateGroup[]; totalDuplicates: number }> => {
     const res = await libraryClient.get<
       | RawDuplicateCluster[]
@@ -280,6 +308,7 @@ export const CurationService = {
           scopeId,
           missingIds,
           options?.cachedItemsById,
+          options?.fetchItemsByIds,
         );
         for (const g of groups) {
           g.items = (g.items || []).map((it) => {

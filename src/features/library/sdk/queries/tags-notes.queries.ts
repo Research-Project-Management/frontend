@@ -94,16 +94,26 @@ export function useTrash(
 
   const emptyTrashMutation = useMutation({
     mutationFn: async (items: Item[]) => {
-      if (items.length === 0) return 0;
-      const ids = items.map((item) => item.id).filter(Boolean);
+      let targetItems = items;
+      if (targetItems.length === 0) {
+        const res = await ItemsService.getAll(effectiveScope, { view: 'trash' });
+        targetItems = Array.isArray(res?.items)
+          ? res.items
+          : Array.isArray(res)
+            ? (res as Item[])
+            : [];
+      }
+      if (targetItems.length === 0) return 0;
+      const ids = targetItems.map((item) => item.id).filter(Boolean);
       const chunks = chunkUniqueIds(ids, 100);
       if (chunks.length === 0) return 0;
-      let totalPurged = 0;
-      for (const chunk of chunks) {
-        const res = await ItemsService.bulkPurge(effectiveScope, chunk);
-        totalPurged += res?.count ?? chunk.length;
-      }
-      return totalPurged;
+      const results = await Promise.all(
+        chunks.map((chunk) => ItemsService.bulkPurge(effectiveScope, chunk)),
+      );
+      return results.reduce(
+        (sum, res, idx) => sum + (res?.count ?? chunks[idx].length),
+        0,
+      );
     },
     onSuccess: (count) => {
       toast.success('Trash emptied', {
@@ -146,13 +156,13 @@ export function useDeleteLibraryItemsMutation(scopeId?: string) {
       const rawIds = Array.isArray(itemIds) ? itemIds : [itemIds];
       const chunks = chunkUniqueIds(rawIds, 100);
       if (chunks.length === 0) return [];
-      for (const chunk of chunks) {
-        if (chunk.length === 1 && chunks.length === 1) {
-          await ItemsService.delete(effectiveScope, chunk[0]);
-        } else {
-          await ItemsService.bulkTrash(effectiveScope, chunk);
-        }
-      }
+      await Promise.all(
+        chunks.map((chunk) =>
+          chunk.length === 1 && chunks.length === 1
+            ? ItemsService.delete(effectiveScope, chunk[0])
+            : ItemsService.bulkTrash(effectiveScope, chunk),
+        ),
+      );
       return rawIds;
     },
     onSuccess: (ids) => {
@@ -188,13 +198,13 @@ export function useBatchRestoreItemsMutation(scopeId?: string) {
       const rawIds = Array.isArray(itemIds) ? itemIds : [itemIds];
       const chunks = chunkUniqueIds(rawIds, 100);
       if (chunks.length === 0) return [];
-      for (const chunk of chunks) {
-        if (chunk.length === 1 && chunks.length === 1) {
-          await ItemsService.restore(effectiveScope, chunk[0]);
-        } else {
-          await ItemsService.bulkRestore(effectiveScope, chunk);
-        }
-      }
+      await Promise.all(
+        chunks.map((chunk) =>
+          chunk.length === 1 && chunks.length === 1
+            ? ItemsService.restore(effectiveScope, chunk[0])
+            : ItemsService.bulkRestore(effectiveScope, chunk),
+        ),
+      );
       return rawIds;
     },
     onSuccess: (ids) => {
@@ -231,9 +241,9 @@ export function useBatchPurgeItemsMutation(scopeId?: string) {
       const rawIds = Array.isArray(itemIds) ? itemIds : [itemIds];
       const chunks = chunkUniqueIds(rawIds, 100);
       if (chunks.length === 0) return [];
-      for (const chunk of chunks) {
-        await ItemsService.bulkPurge(effectiveScope, chunk);
-      }
+      await Promise.all(
+        chunks.map((chunk) => ItemsService.bulkPurge(effectiveScope, chunk)),
+      );
       return rawIds;
     },
     onSuccess: (ids) => {
@@ -391,9 +401,19 @@ export function useNotes(scopeId?: string, itemId?: string) {
         ...dto,
         itemId: dto.itemId !== undefined ? dto.itemId : itemId,
       }),
-    onSuccess: (_data, dto) => {
+    onSuccess: (createdNote, dto) => {
       const targetItemId =
         (dto.itemId !== undefined ? dto.itemId : itemId) ?? undefined;
+      if (createdNote && typeof createdNote === 'object' && 'id' in createdNote) {
+        queryClient.setQueryData<Note[]>(
+          noteKeys.list(effectiveScope, targetItemId),
+          (old) => {
+            const list = Array.isArray(old) ? old : [];
+            if (list.some((n) => n.id === (createdNote as Note).id)) return list;
+            return [createdNote as Note, ...list];
+          },
+        );
+      }
       queryClient.invalidateQueries({
         queryKey: noteKeys.list(effectiveScope, targetItemId),
       });
@@ -423,7 +443,30 @@ export function useNotes(scopeId?: string, itemId?: string) {
       version: number;
       dto: UpdateNoteDTO;
     }) => NotesService.update(effectiveScope, id, version, dto),
-    onSuccess: () => {
+    onSuccess: (updatedNote, variables) => {
+      queryClient.setQueryData<Note[]>(
+        noteKeys.list(effectiveScope, itemId),
+        (old) => {
+          if (!Array.isArray(old)) return old;
+          const serverPatch =
+            updatedNote && typeof updatedNote === 'object'
+              ? (updatedNote as Partial<Note>)
+              : {};
+          return old.map((n) =>
+            n.id === variables.id
+              ? {
+                  ...n,
+                  ...variables.dto,
+                  ...serverPatch,
+                  version:
+                    typeof serverPatch.version === 'number'
+                      ? serverPatch.version
+                      : (n.version ?? variables.version) + 1,
+                }
+              : n,
+          );
+        },
+      );
       queryClient.invalidateQueries({ queryKey: noteKeys.list(effectiveScope, itemId) });
       queryClient.invalidateQueries({ queryKey: noteKeys.all(effectiveScope) });
       if (itemId) {
@@ -444,6 +487,18 @@ export function useNotes(scopeId?: string, itemId?: string) {
   const deleteMutation = useMutation({
     mutationFn: ({ id, version }: { id: string; version?: number }) =>
       NotesService.delete(effectiveScope, id, version),
+    onMutate: async ({ id }) => {
+      const listKey = noteKeys.list(effectiveScope, itemId);
+      await queryClient.cancelQueries({ queryKey: listKey });
+      const previousNotes = queryClient.getQueryData<Note[]>(listKey);
+      if (Array.isArray(previousNotes)) {
+        queryClient.setQueryData<Note[]>(
+          listKey,
+          previousNotes.filter((n) => n.id !== id),
+        );
+      }
+      return { previousNotes };
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: noteKeys.list(effectiveScope, itemId) });
       queryClient.invalidateQueries({ queryKey: noteKeys.all(effectiveScope) });
@@ -454,7 +509,13 @@ export function useNotes(scopeId?: string, itemId?: string) {
       });
       toast.success('Note deleted', { id: 'note-mutation-toast' });
     },
-    onError: (err: Error) => {
+    onError: (err: Error, _variables, context) => {
+      if (context?.previousNotes !== undefined) {
+        queryClient.setQueryData(
+          noteKeys.list(effectiveScope, itemId),
+          context.previousNotes,
+        );
+      }
       toast.error('Failed to delete note', {
         description: err.message || 'Please try again.',
         id: 'note-mutation-toast',

@@ -7,6 +7,7 @@ import { useLibraryUIStore } from '@/features/library/core/store/library-ui.stor
 import { libraryServices } from '@/features/library/sdk';
 import type { Item, CslStyle } from '@/features/library/domain/types/core.types';
 import { isItemRetracted } from '@/features/library/domain/system-views.policy';
+import { isEditableOrModalElementFocused } from './keyboard-shortcuts.coordinator';
 
 export { copyToClipboard, buildReaderPaperUrl };
 
@@ -110,6 +111,87 @@ export function navigateToUrl(url: string): void {
  * feedback, and browser file downloads on the client.
  */
 
+export type ExportFormatType = 'bibtex' | 'ris' | 'csl_json' | 'csv' | 'markdown';
+
+const EXPORT_FORMAT_EXTENSION_MAP: Record<ExportFormatType, string> = {
+  bibtex: 'bib',
+  ris: 'ris',
+  csl_json: 'json',
+  csv: 'csv',
+  markdown: 'md',
+};
+
+async function formatBibliographyForIds(
+  scopeId: string | undefined,
+  itemIds: string[],
+  style: CslStyle,
+  preferSingleEndpoint: boolean = false,
+): Promise<string> {
+  if (preferSingleEndpoint && itemIds.length === 1) {
+    const res = await libraryServices.citations.formatCitation(scopeId, itemIds[0], style);
+    return res.bibliography || res.inText || '';
+  }
+  const res = await libraryServices.citations.batchFormat(scopeId, itemIds, style);
+  return (
+    res.bibliographyText ||
+    res.citations
+      .map((c) => c.citation?.bibliography)
+      .filter(Boolean)
+      .join('\n\n')
+  );
+}
+
+async function formatInTextForIds(
+  scopeId: string | undefined,
+  itemIds: string[],
+  style: CslStyle,
+  preferSingleEndpoint: boolean = false,
+): Promise<string> {
+  if (preferSingleEndpoint && itemIds.length === 1) {
+    const res = await libraryServices.citations.formatCitation(scopeId, itemIds[0], style);
+    return res.inText || '';
+  }
+  const res = await libraryServices.citations.batchFormat(scopeId, itemIds, style);
+  return (
+    res.combinedInText ||
+    res.citations
+      .map((c) => c.citation?.inText)
+      .filter(Boolean)
+      .join('; ')
+  );
+}
+
+async function exportLibraryToFile(
+  scopeId: string,
+  params: {
+    format: ExportFormatType;
+    itemIds?: string[];
+    collectionId?: string;
+  },
+  options: {
+    fallbackFilename: string;
+    successMessage?: string;
+    errorMessage: string;
+    logLabel: string;
+  },
+): Promise<void> {
+  try {
+    const res = await libraryServices.exports.exportLibrary(scopeId, params);
+    if (res?.content) {
+      const downloadFilename = res.filename || options.fallbackFilename;
+      triggerBrowserTextDownload(res.content, downloadFilename, 'text/plain;charset=utf-8');
+      if (options.successMessage) {
+        toast.success(options.successMessage);
+      }
+      return;
+    }
+  } catch (err) {
+    logger.warn(options.logLabel, { error: err });
+  }
+
+  toast.error(options.errorMessage, { id: 'library-clipboard' });
+}
+
 export function warnIfRetractedHelper(
   retractedCount: number,
   totalSelectedCount: number,
@@ -145,13 +227,7 @@ export async function executeCopyMultiCite(
   const itemIds = items.map((p) => p.id).filter(Boolean);
   if (itemIds.length > 0) {
     try {
-      const res = await libraryServices.citations.batchFormat(scopeId, itemIds, style);
-      const text =
-        res.bibliographyText ||
-        res.citations
-          .map((c) => c.citation?.bibliography)
-          .filter(Boolean)
-          .join('\n\n');
+      const text = await formatBibliographyForIds(scopeId, itemIds, style);
       if (text) {
         await copyWithToastHelper(
           text,
@@ -177,13 +253,7 @@ export async function executeCopyInTextCite(
   const itemIds = items.map((p) => p.id).filter(Boolean);
   if (itemIds.length > 0) {
     try {
-      const res = await libraryServices.citations.batchFormat(scopeId, itemIds, style);
-      const text =
-        res.combinedInText ||
-        res.citations
-          .map((c) => c.citation?.inText)
-          .filter(Boolean)
-          .join('; ');
+      const text = await formatInTextForIds(scopeId, itemIds, style);
       if (text) {
         await copyWithToastHelper(text, `Copied in-text citation (${itemIds.length} items)`);
         return;
@@ -235,124 +305,79 @@ export async function executeDownloadBibFile(
   const itemIds = items.map((p) => p.id).filter(Boolean);
   if (itemIds.length === 0) return;
 
-  try {
-    const res = await libraryServices.exports.exportLibrary(scopeId, {
-      format: 'bibtex',
-      itemIds,
-    });
-    if (res?.content) {
-      const downloadFilename = res.filename || `references-selected-${selectedCount}.bib`;
-      triggerBrowserTextDownload(res.content, downloadFilename, 'text/plain;charset=utf-8');
-      return;
-    }
-  } catch (err) {
-    logger.warn('Backend BibTeX export failed', { error: err });
-  }
-
-  toast.error('Unable to generate BibTeX file for download', { id: 'library-clipboard' });
+  await exportLibraryToFile(
+    scopeId,
+    { format: 'bibtex', itemIds },
+    {
+      fallbackFilename: `references-selected-${selectedCount}.bib`,
+      errorMessage: 'Unable to generate BibTeX file for download',
+      logLabel: 'Backend BibTeX export failed',
+    },
+  );
 }
 
 export async function executeDownloadFormatFile(
   items: Item[],
   scopeId: string,
-  format: 'bibtex' | 'ris' | 'csl_json' | 'csv' | 'markdown',
+  format: ExportFormatType,
   retractedCount: number = 0,
 ): Promise<void> {
   warnIfRetractedHelper(retractedCount, items.length, `${format.toUpperCase()} export`);
   const itemIds = items.map((p) => p.id).filter(Boolean);
   if (itemIds.length === 0) return;
 
-  const extMap: Record<typeof format, string> = {
-    bibtex: 'bib',
-    ris: 'ris',
-    csl_json: 'json',
-    csv: 'csv',
-    markdown: 'md',
-  };
-
-  try {
-    const res = await libraryServices.exports.exportLibrary(scopeId, {
-      format,
-      itemIds,
-    });
-    if (res?.content) {
-      const downloadFilename =
-        res.filename || `references-selected-${items.length}.${extMap[format]}`;
-      triggerBrowserTextDownload(res.content, downloadFilename, 'text/plain;charset=utf-8');
-      toast.success(`Exported ${items.length} item(s) as .${extMap[format]}`);
-      return;
-    }
-  } catch (err) {
-    logger.warn(`Backend ${format} export failed`, { error: err });
-  }
-
-  toast.error(`Unable to export ${format.toUpperCase()} file`, { id: 'library-clipboard' });
+  const ext = EXPORT_FORMAT_EXTENSION_MAP[format];
+  await exportLibraryToFile(
+    scopeId,
+    { format, itemIds },
+    {
+      fallbackFilename: `references-selected-${items.length}.${ext}`,
+      successMessage: `Exported ${items.length} item(s) as .${ext}`,
+      errorMessage: `Unable to export ${format.toUpperCase()} file`,
+      logLabel: `Backend ${format} export failed`,
+    },
+  );
 }
 
 export async function executeExportCollectionFormat(
   collectionId: string,
   collectionName: string,
   scopeId: string,
-  format: 'bibtex' | 'ris' | 'csl_json' | 'csv' | 'markdown',
+  format: ExportFormatType,
 ): Promise<void> {
-  const extMap: Record<typeof format, string> = {
-    bibtex: 'bib',
-    ris: 'ris',
-    csl_json: 'json',
-    csv: 'csv',
-    markdown: 'md',
-  };
+  const ext = EXPORT_FORMAT_EXTENSION_MAP[format];
+  const safeSlug = collectionName.toLowerCase().replace(/[^a-z0-9-_]+/g, '-') || 'collection';
 
-  try {
-    const res = await libraryServices.exports.exportLibrary(scopeId, {
-      format,
-      collectionId,
-    });
-    if (res?.content) {
-      const safeSlug = collectionName.toLowerCase().replace(/[^a-z0-9-_]+/g, '-') || 'collection';
-      const downloadFilename = res.filename || `${safeSlug}.${extMap[format]}`;
-      triggerBrowserTextDownload(res.content, downloadFilename, 'text/plain;charset=utf-8');
-      toast.success(`Exported "${collectionName}" as .${extMap[format]}`);
-      return;
-    }
-  } catch (err) {
-    logger.warn(`Collection ${format} export failed`, { error: err });
-  }
-
-  toast.error(`Unable to export collection as ${format.toUpperCase()}`, { id: 'library-clipboard' });
+  await exportLibraryToFile(
+    scopeId,
+    { format, collectionId },
+    {
+      fallbackFilename: `${safeSlug}.${ext}`,
+      successMessage: `Exported "${collectionName}" as .${ext}`,
+      errorMessage: `Unable to export collection as ${format.toUpperCase()}`,
+      logLabel: `Collection ${format} export failed`,
+    },
+  );
 }
 
 export async function executeExportScopeFormat(
   scopeId: string,
-  format: 'bibtex' | 'ris' | 'csl_json' | 'csv' | 'markdown',
+  format: ExportFormatType,
   collectionId?: string,
 ): Promise<void> {
-  const extMap: Record<typeof format, string> = {
-    bibtex: 'bib',
-    ris: 'ris',
-    csl_json: 'json',
-    csv: 'csv',
-    markdown: 'md',
-  };
+  const ext = EXPORT_FORMAT_EXTENSION_MAP[format];
+  const dateSuffix = new Date().toISOString().slice(0, 10);
 
-  try {
-    const res = await libraryServices.exports.exportLibrary(scopeId, {
-      format,
-      ...(collectionId ? { collectionId } : {}),
-    });
-    if (res?.content) {
-      const downloadFilename =
-        res.filename ||
-        `${collectionId ? 'collection-export' : 'library-export'}-${new Date().toISOString().slice(0, 10)}.${extMap[format]}`;
-      triggerBrowserTextDownload(res.content, downloadFilename, 'text/plain;charset=utf-8');
-      toast.success(`Exported library as .${extMap[format]}`);
-      return;
-    }
-  } catch (err) {
-    logger.warn(`Library ${format} export failed`, { error: err });
-  }
-
-  toast.error(`Unable to export library as ${format.toUpperCase()}`, { id: 'library-clipboard' });
+  await exportLibraryToFile(
+    scopeId,
+    { format, ...(collectionId ? { collectionId } : {}) },
+    {
+      fallbackFilename: `${collectionId ? 'collection-export' : 'library-export'}-${dateSuffix}.${ext}`,
+      successMessage: `Exported library as .${ext}`,
+      errorMessage: `Unable to export library as ${format.toUpperCase()}`,
+      logLabel: `Library ${format} export failed`,
+    },
+  );
 }
 
 export interface UseQuickCopyOptions {
@@ -424,19 +449,7 @@ export function useQuickCopyCoordinator({
       );
 
       try {
-        let text = '';
-        if (itemIds.length === 1) {
-          const res = await libraryServices.citations.formatCitation(scopeId, itemIds[0], style);
-          text = res.bibliography || res.inText || '';
-        } else {
-          const res = await libraryServices.citations.batchFormat(scopeId, itemIds, style);
-          text =
-            res.bibliographyText ||
-            res.citations
-              .map((c) => c.citation?.bibliography)
-              .filter(Boolean)
-              .join('\n\n');
-        }
+        const text = await formatBibliographyForIds(scopeId, itemIds, style, true);
 
         if (!text.trim()) {
           toast.error('Unable to generate bibliography for selected items', { id: toastId });
@@ -476,19 +489,7 @@ export function useQuickCopyCoordinator({
       );
 
       try {
-        let text = '';
-        if (itemIds.length === 1) {
-          const res = await libraryServices.citations.formatCitation(scopeId, itemIds[0], style);
-          text = res.inText || '';
-        } else {
-          const res = await libraryServices.citations.batchFormat(scopeId, itemIds, style);
-          text =
-            res.combinedInText ||
-            res.citations
-              .map((c) => c.citation?.inText)
-              .filter(Boolean)
-              .join('; ');
-        }
+        const text = await formatInTextForIds(scopeId, itemIds, style, true);
 
         if (!text.trim()) {
           toast.error('Unable to generate in-text citation', { id: toastId });
@@ -525,18 +526,7 @@ export function useQuickCopyCoordinator({
         : false;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (useLibraryUIStore.getState().activeModal !== null) return;
-      const target = e.target as HTMLElement | null;
-      const tag = target?.tagName?.toLowerCase();
-      if (
-        tag === 'input' ||
-        tag === 'textarea' ||
-        tag === 'select' ||
-        target?.isContentEditable ||
-        target?.closest('[role="dialog"], [role="menu"], [role="combobox"]')
-      ) {
-        return;
-      }
+      if (isEditableOrModalElementFocused(e.target)) return;
 
       const modifier = isMac ? e.metaKey : e.ctrlKey;
       if (!modifier || !e.shiftKey) return;

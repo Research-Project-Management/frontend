@@ -121,8 +121,10 @@ export function useUpdateLibraryItemMutation(scopeId?: string) {
     },
     onMutate: async ({ itemId, data }) => {
       if (!itemId) return undefined;
-      await queryClient.cancelQueries({ queryKey: itemKeys.all(effectiveScope) });
-      await queryClient.cancelQueries({ queryKey: itemKeys.byId(effectiveScope, itemId) });
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: itemKeys.all(effectiveScope) }),
+        queryClient.cancelQueries({ queryKey: itemKeys.byId(effectiveScope, itemId) }),
+      ]);
 
       const previousDetail = queryClient.getQueryData(
         itemKeys.byId(effectiveScope, itemId),
@@ -143,7 +145,11 @@ export function useUpdateLibraryItemMutation(scopeId?: string) {
           // Keep old.version during optimistic patch to prevent 409 Conflict if mutationFn reads cache
           version: old.version,
         }),
-        { membershipPatch: optimisticPatch },
+        {
+          membershipPatch: optimisticPatch,
+          forceSkipMembershipInvalidation: true,
+          baseItem: previousItemSnapshot,
+        },
       );
 
       return { previousDetail, previousItemSnapshot };
@@ -169,13 +175,19 @@ export function useUpdateLibraryItemMutation(scopeId?: string) {
         );
         patchItemAcrossScopeCaches(queryClient, effectiveScope, targetId, patchData, {
           membershipPatch: rawData,
+          baseItem: existingCached,
         });
       }
 
-      if (rawData.tags !== undefined) {
+      const isLastInFlightMutation = queryClient.isMutating({ mutationKey }) <= 1;
+      if (rawData.tags !== undefined && isLastInFlightMutation) {
         queryClient.invalidateQueries({ queryKey: libraryKeys.tags(effectiveScope) });
       }
-      if (rawData.collectionIds !== undefined || (rawData as Record<string, unknown>).collectionId !== undefined) {
+      if (
+        (rawData.collectionIds !== undefined ||
+          (rawData as Record<string, unknown>).collectionId !== undefined) &&
+        isLastInFlightMutation
+      ) {
         invalidateCollections(queryClient, effectiveScope);
       }
 
@@ -221,7 +233,10 @@ export function useUpdateLibraryItemMutation(scopeId?: string) {
           queryKey: itemKeys.byId(effectiveScope, targetId),
         });
       }
-      if (queryClient.isMutating({ mutationKey }) <= 1) {
+      const { silent: _silent, ...rawData } = variables?.data || {};
+      const shouldInvalidateListsAndCounts =
+        Boolean(_error) || !isMetadataOnlyPatch(rawData);
+      if (shouldInvalidateListsAndCounts && queryClient.isMutating({ mutationKey }) <= 1) {
         queryClient.invalidateQueries({
           queryKey: itemKeys.all(effectiveScope),
         });
@@ -242,9 +257,11 @@ export function useToggleStarItemMutation(scopeId?: string) {
       return StateService.updateState(effectiveScope, id, { isStarred });
     },
     onMutate: async ({ id, isStarred }) => {
-      await queryClient.cancelQueries({ queryKey: itemKeys.all(effectiveScope) });
-      await queryClient.cancelQueries({ queryKey: itemKeys.byId(effectiveScope, id) });
-      await queryClient.cancelQueries({ queryKey: itemKeys.state(effectiveScope, id) });
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: itemKeys.all(effectiveScope) }),
+        queryClient.cancelQueries({ queryKey: itemKeys.byId(effectiveScope, id) }),
+        queryClient.cancelQueries({ queryKey: itemKeys.state(effectiveScope, id) }),
+      ]);
 
       const previousItem = queryClient.getQueryData(
         itemKeys.byId(effectiveScope, id),
@@ -331,11 +348,13 @@ export function useImportFromUserMutation(scopeId?: string) {
         : normalizeScopeId(input.projectId || input.scopeId || effectiveScope);
       const chunks = chunkUniqueIds(rawIds, 100);
       if (chunks.length === 0) return { success: true, importedCount: 0 };
-      let totalImported = 0;
-      for (const chunk of chunks) {
-        const res = await ItemsService.importFromUser(targetProject, chunk);
-        totalImported += res?.importedCount ?? chunk.length;
-      }
+      const results = await Promise.all(
+        chunks.map((chunk) => ItemsService.importFromUser(targetProject, chunk)),
+      );
+      const totalImported = results.reduce(
+        (sum, res, idx) => sum + (res?.importedCount ?? chunks[idx].length),
+        0,
+      );
       return { success: true, importedCount: totalImported };
     },
     onSuccess: (_res, input) => {

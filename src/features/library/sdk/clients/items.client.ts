@@ -480,7 +480,7 @@ export const ItemsService = {
 
   getFulltext: (scopeId: string | undefined, itemId: string): Promise<DocumentFulltext | null> =>
     libraryClient.get<Record<string, unknown>>(
-      getCatalogUrl(scopeId, `${encodeURIComponent(itemId)}/fulltext`),
+      resolveLibraryUrl('reader', '/items', scopeId, `${encodeURIComponent(itemId)}/fulltext`),
     ).then((res) => ((res as { data?: unknown })?.data || res || null) as DocumentFulltext | null).catch(() => null),
 
   getItemFileUrl,
@@ -513,7 +513,7 @@ export const ItemsService = {
       references: Record<string, unknown>[];
       citations: Record<string, unknown>[];
     }>(
-      getCatalogUrl(scopeId, 'citations/parse'),
+      resolveLibraryUrl('citation', '/items', scopeId, 'citations/parse'),
       { rawCitations, citations: rawCitations },
     ),
 

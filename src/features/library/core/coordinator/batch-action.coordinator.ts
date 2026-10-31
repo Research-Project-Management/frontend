@@ -28,6 +28,7 @@ import {
   isPersistedLibraryItem,
 } from '@/features/library/domain/library-permissions.policy';
 import type { Item, CslStyle } from '@/features/library/domain/types/core.types';
+import { isEditableOrModalElementFocused } from './keyboard-shortcuts.coordinator';
 import {
   copyWithToastHelper,
   warnIfRetractedHelper,
@@ -256,19 +257,7 @@ export function useLibraryBatchCoordinator({
     if (!enableKeydownListener || selectedCount === 0) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || e.defaultPrevented) return;
-      if (useLibraryUIStore.getState().activeModal !== null) return;
-
-      const target = e.target as HTMLElement | null;
-      if (
-        target &&
-        (target.tagName === 'INPUT' ||
-          target.tagName === 'TEXTAREA' ||
-          target.tagName === 'SELECT' ||
-          target.isContentEditable ||
-          target.closest('[role="dialog"]') !== null)
-      ) {
-        return;
-      }
+      if (isEditableOrModalElementFocused(e.target)) return;
 
       clearSelection();
     };
@@ -376,6 +365,7 @@ export function useLibraryBatchCoordinator({
           clearSelection();
         },
       }),
+      { silentToast: true },
     );
   }, [capabilityMask, selectedIds, restoreMutation, deleteMutation, clearSelection]);
 
@@ -403,6 +393,7 @@ export function useLibraryBatchCoordinator({
               clearSelection();
             },
           }),
+          { silentToast: true },
         );
       } catch {
         // Error toast handled by useLibraryCommandStore

@@ -1,4 +1,8 @@
-import type { ReaderFitMode, ReaderTab, ReaderTheme } from '../store/reader.store';
+import type {
+  ReaderFitMode,
+  ReaderTab,
+  ReaderTheme,
+} from '@/features/library/domain/types/reader.schema';
 
 export const DEFAULT_READER_TABS: ReaderTab[] = [
   { id: 'library', title: 'My Library', type: 'library' },

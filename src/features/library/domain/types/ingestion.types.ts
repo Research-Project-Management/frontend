@@ -59,6 +59,10 @@ export interface ProcessingFileItem {
 
 export interface InvalidationClient {
   invalidateQueries: (filters: { queryKey: readonly unknown[] }) => Promise<unknown> | void;
+  refetchQueries?: (filters: {
+    queryKey: readonly unknown[];
+    type?: 'active' | 'inactive' | 'all';
+  }) => Promise<unknown> | void;
 }
 
 export interface ProcessBatchUploadOptions {
@@ -67,6 +71,14 @@ export interface ProcessBatchUploadOptions {
   queryClient: InvalidationClient;
   onSuccess?: () => void;
   abortSignal?: AbortSignal;
+}
+
+export interface IngestionRunStatus extends Partial<IngestionProgressResponse> {
+  totalItems?: number;
+  processedItems?: number;
+  failedItems?: number;
+  lastError?: string | null;
+  errorMessage?: string | null;
 }
 
 export interface ProcessModalStoreApi {
@@ -82,7 +94,36 @@ export interface ProcessModalStoreApi {
           processingItems: ProcessingFileItem[];
         }>),
   ) => void;
+  initializeBatchRun: (
+    runId: string,
+    fileName: string,
+    items: IngestionProgressItem[],
+    autoMinimizeOrOptions?:
+      | boolean
+      | {
+          autoMinimize?: boolean;
+          scopeId?: string;
+          currentTitle?: string;
+          initialProcessingItems?: ProcessingFileItem[];
+        },
+  ) => void;
+  applyServerRunSnapshot: (run: Partial<IngestionRunStatus>, fallbackTotal?: number) => void;
+  patchBatchItemAndRecalculate: (
+    matcher: string | number,
+    patch: Partial<IngestionProgressItem>,
+    options?: {
+      currentTitle?: string;
+      processingPatch?: Partial<ProcessingFileItem>;
+      removeProcessingItem?: boolean;
+    },
+  ) => void;
+  completeBatchRun: (error?: string | null, provisionalIdsToRemove?: Iterable<string>) => void;
+  clearProcessingItemsByIds: (ids: Iterable<string>) => void;
+  updateProcessingItem: (id: string, updates: Partial<ProcessingFileItem>) => void;
+  dismissProcessingItem: (id: string) => void;
 }
+
+export type ProcessModalStoreAdapter = ProcessModalStoreApi;
 
 // ── Feeds ────────────────────────────────────────────────────────────────────
 export type FeedReadFilterType = 'all' | 'unread' | 'read';

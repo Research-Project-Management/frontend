@@ -6,11 +6,7 @@ import type { Item } from '@/features/library/domain/types/core.types';
 import { ALL_SCHEMA_PROMOTE_KEYS } from '@/features/library/domain/metadata-mapper';
 import { CANONICAL_FIELD_ALIASES } from '@/features/library/domain/item-field-schema';
 import { extractExplicitUserMergeOverrides } from '@/features/library/domain/diff';
-import { clearGroupMergeDraft } from '@/features/library/core/coordinator/curation.coordinator';
-
-export {
-  type BatchTask, type BatchFlowOptions, type BatchFlowProgress, type BatchFlowEventListener, BatchFlowManager,
-} from '@/features/library/core/coordinator/file-ingestion.strategies';
+import { notifyDraftCacheCleared } from '@/features/library/sdk';
 
 // ── Snapshot & Inverse Patch Helpers ─────────────────────────────────────────
 
@@ -386,6 +382,7 @@ export function createConvertItemTypeCommand(params: ConvertItemTypeCommandParam
 export interface MergeDuplicatesCommandParams {
   primaryItem: Item;
   duplicateIdsToDelete: string[];
+  groupKey?: string;
   mergedFields?: Record<string, unknown>;
   items?: readonly Item[];
   fieldOverrides?: Record<string, unknown>;
@@ -421,15 +418,18 @@ export function createMergeDuplicatesCommand(params: MergeDuplicatesCommandParam
         duplicateItemIds: params.duplicateIdsToDelete,
         overrides: effectiveOverrides && Object.keys(effectiveOverrides).length > 0 ? effectiveOverrides : undefined,
       });
+      if (params.groupKey) notifyDraftCacheCleared(params.groupKey);
       params.onExecuted?.();
     },
     async () => {
-      if (params.duplicateIdsToDelete.length > 0 && params.restoreMutation) {
-        await params.restoreMutation.mutateAsync(params.duplicateIdsToDelete);
-      }
-      if (params.updateItemMutation) {
-        await params.updateItemMutation.mutateAsync({ itemId: p.id, data: preMergeSnapshot, silent: true });
-      }
+      await Promise.all([
+        params.duplicateIdsToDelete.length > 0 && params.restoreMutation
+          ? params.restoreMutation.mutateAsync(params.duplicateIdsToDelete)
+          : Promise.resolve(),
+        params.updateItemMutation
+          ? params.updateItemMutation.mutateAsync({ itemId: p.id, data: preMergeSnapshot, silent: true })
+          : Promise.resolve(),
+      ]);
       params.onUndone?.();
     },
   );
@@ -484,19 +484,25 @@ export function createBatchTagToggleCommand(options: BatchTagToggleCommandOption
     'tag-toggle',
     options.action === 'remove' ? `Removed tag "${options.tagName}"` : `Applied tag "${options.tagName}"`,
     async () => {
-      await Promise.all(
-        options.snapshots.map((snap) =>
-          options.updateItemMutation.mutateAsync({ itemId: snap.itemId, data: { tags: snap.nextTags }, silent: true }),
-        ),
-      );
+      for (let i = 0; i < options.snapshots.length; i += 6) {
+        const batch = options.snapshots.slice(i, i + 6);
+        await Promise.all(
+          batch.map((snap) =>
+            options.updateItemMutation.mutateAsync({ itemId: snap.itemId, data: { tags: snap.nextTags }, silent: true }),
+          ),
+        );
+      }
       options.onExecuted?.();
     },
     async () => {
-      await Promise.all(
-        options.snapshots.map((snap) =>
-          options.updateItemMutation.mutateAsync({ itemId: snap.itemId, data: { tags: snap.previousTags }, silent: true }),
-        ),
-      );
+      for (let i = 0; i < options.snapshots.length; i += 6) {
+        const batch = options.snapshots.slice(i, i + 6);
+        await Promise.all(
+          batch.map((snap) =>
+            options.updateItemMutation.mutateAsync({ itemId: snap.itemId, data: { tags: snap.previousTags }, silent: true }),
+          ),
+        );
+      }
       options.onUndone?.();
     },
   );
@@ -622,14 +628,19 @@ export interface LibraryCommandActions {
 const MAX_HISTORY_LENGTH = 30;
 let activeExecutionsCount = 0;
 
+function resolveCommandToastId(id: string): string {
+  if (id.startsWith('trash-')) return 'item-delete';
+  if (id.startsWith('restore-')) return 'item-restore';
+  if (id.startsWith('star-')) return 'item-star-toggle';
+  if (id.startsWith('detach-')) return 'batch-detach-items';
+  if (id.startsWith('merge-')) return 'library-merge';
+  if (id.startsWith('note-')) return 'note-mutation-toast';
+  if (id.startsWith('convert-type-')) return 'type-conversion';
+  return `cmd-${id}`;
+}
+
 export const useLibraryCommandStore = create<LibraryCommandState & LibraryCommandActions>((set, get) => ({
-  undoStack: [],
-  redoStack: [],
-  isExecuting: false,
-  isUndoing: false,
-  lastCommand: null,
-  epoch: 0,
-  currentScopeId: null,
+  undoStack: [], redoStack: [], isExecuting: false, isUndoing: false, lastCommand: null, epoch: 0, currentScopeId: null,
 
   executeCommand: async <T>(command: LibraryCommand<T>, options: { silentToast?: boolean } = {}): Promise<T> => {
     const ensuredCommand: LibraryCommand<T> = command.id
@@ -648,20 +659,19 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
       }
       set((s) => ({
         undoStack: [ensuredCommand, ...s.undoStack.filter((c) => c.id !== ensuredCommand.id).slice(0, MAX_HISTORY_LENGTH - 1)],
-        redoStack: [],
-        lastCommand: ensuredCommand,
-        isExecuting: stillExecuting,
+        redoStack: [], lastCommand: ensuredCommand, isExecuting: stillExecuting,
       }));
       if (!options.silentToast) {
-        const toastId = ensuredCommand.id.startsWith('trash-') ? 'item-delete' : `cmd-${ensuredCommand.id}`;
-        toast.success(ensuredCommand.description, { id: toastId });
+        toast.success(ensuredCommand.description, {
+          id: resolveCommandToastId(ensuredCommand.id),
+          action: { label: 'Undo', onClick: () => { void get().undo(ensuredCommand.id); } },
+        });
       }
       return result;
     } catch (err: unknown) {
       activeExecutionsCount = Math.max(0, activeExecutionsCount - 1);
       set({ isExecuting: activeExecutionsCount > 0 });
-      const message = err instanceof Error ? err.message : 'Operation failed';
-      toast.error(`Operation failed: ${message}`, { id: `cmd-err-${ensuredCommand.id}` });
+      toast.error(`Operation failed: ${err instanceof Error ? err.message : 'Operation failed'}`, { id: `cmd-err-${ensuredCommand.id}` });
       throw err;
     }
   },
@@ -674,12 +684,13 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
     if (get().epoch !== startEpoch) return;
     set((s) => ({
       undoStack: [ensuredCommand, ...s.undoStack.filter((c) => c.id !== ensuredCommand.id).slice(0, MAX_HISTORY_LENGTH - 1)],
-      redoStack: [],
-      lastCommand: ensuredCommand,
+      redoStack: [], lastCommand: ensuredCommand,
     }));
     if (!options.silentToast) {
-      const toastId = ensuredCommand.id.startsWith('trash-') ? 'item-delete' : `cmd-${ensuredCommand.id}`;
-      toast.success(ensuredCommand.description, { id: toastId });
+      toast.success(ensuredCommand.description, {
+        id: resolveCommandToastId(ensuredCommand.id),
+        action: { label: 'Undo', onClick: () => { void get().undo(ensuredCommand.id); } },
+      });
     }
   },
 
@@ -688,27 +699,21 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
     if (undoStack.length === 0 || isUndoing || isExecuting) return false;
     const commandToUndo = expectedCommandId ? undoStack.find((c) => c.id === expectedCommandId) : undoStack[0];
     if (!commandToUndo) return false;
-
     const startEpoch = get().epoch;
     set({ isUndoing: true });
     try {
       await commandToUndo.undo();
-      if (get().epoch !== startEpoch) {
-        set({ isUndoing: false });
-        return false;
-      }
+      if (get().epoch !== startEpoch) { set({ isUndoing: false }); return false; }
       set((s) => ({
         undoStack: s.undoStack.filter((c) => c.id !== commandToUndo.id),
         redoStack: [commandToUndo, ...s.redoStack.slice(0, MAX_HISTORY_LENGTH - 1)],
-        lastCommand: commandToUndo,
-        isUndoing: false,
+        lastCommand: commandToUndo, isUndoing: false,
       }));
-      toast.info(`Undone: ${commandToUndo.description}`, { id: `undo-${commandToUndo.id}` });
+      toast.info(`Undone: ${commandToUndo.description}`, { id: resolveCommandToastId(commandToUndo.id) });
       return true;
     } catch (err: unknown) {
       set({ isUndoing: false });
-      const message = err instanceof Error ? err.message : 'Undo failed';
-      toast.error(`Undo failed: ${message}`);
+      toast.error(`Undo failed: ${err instanceof Error ? err.message : 'Undo failed'}`);
       return false;
     }
   },
@@ -740,7 +745,7 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
         lastCommand: commandToRedo,
         isExecuting: activeExecutionsCount > 0,
       }));
-      toast.success(`Redone: ${commandToRedo.description}`, { id: `redo-${commandToRedo.id}` });
+      toast.success(`Redone: ${commandToRedo.description}`, { id: resolveCommandToastId(commandToRedo.id) });
       return true;
     } catch (err: unknown) {
       activeExecutionsCount = Math.max(0, activeExecutionsCount - 1);
@@ -753,7 +758,7 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
 
   clearHistory: () => {
     activeExecutionsCount = 0;
-    clearGroupMergeDraft();
+    notifyDraftCacheCleared();
     set((s) => ({ undoStack: [], redoStack: [], lastCommand: null, isExecuting: false, isUndoing: false, epoch: s.epoch + 1 }));
   },
 
@@ -763,7 +768,7 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
     const normalized = scopeId || 'user';
     if (get().currentScopeId && get().currentScopeId !== normalized) {
       get().clearHistory();
-      clearGroupMergeDraft();
+      notifyDraftCacheCleared();
     }
     set({ currentScopeId: normalized });
   },

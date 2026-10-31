@@ -24,7 +24,6 @@ import {
   unwrapResolvedReference,
   isProjectScope,
 } from './http.client';
-import { NotesService } from './catalog-entities.client';
 
 // 8. Citations & Exports Services
 export const CitationService = {
@@ -633,14 +632,47 @@ export const AnnotationsService = {
       webBaseUrl?: string;
     },
   ): Promise<{ totalExtracted: number; note?: Note; message?: string }> => {
-    const res = await NotesService.extractFromAnnotations(scopeId, itemId, options);
+    const raw = await libraryClient.post<
+      | Note
+      | {
+          success?: boolean;
+          data?: Note;
+          note?: Note;
+          literatureNote?: Note;
+          totalExtracted?: number;
+          message?: string;
+        }
+    >(
+      resolveLibraryUrl(
+        'catalog',
+        `/notes/items/${encodeURIComponent(itemId)}/from-annotations`,
+        scopeId,
+      ),
+      options ?? {},
+    );
+    const rawObj =
+      raw && typeof raw === 'object'
+        ? (raw as {
+            data?: Note;
+            note?: Note;
+            literatureNote?: Note;
+            totalExtracted?: number;
+            message?: string;
+            id?: string;
+          })
+        : undefined;
+    const note =
+      rawObj?.data ||
+      rawObj?.note ||
+      rawObj?.literatureNote ||
+      (rawObj?.id ? (raw as Note) : undefined);
     const count =
-      res && typeof res === 'object' && 'totalExtracted' in res && typeof res.totalExtracted === 'number'
-        ? res.totalExtracted
-        : res && (res as { id?: string }).id
+      typeof rawObj?.totalExtracted === 'number'
+        ? rawObj.totalExtracted
+        : note?.id
           ? 1
           : 0;
-    return { totalExtracted: count, note: res?.note, message: res?.message };
+    return { totalExtracted: count, note, message: rawObj?.message };
   },
 
   importExternal: async (

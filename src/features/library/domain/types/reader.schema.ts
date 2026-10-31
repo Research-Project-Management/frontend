@@ -466,3 +466,41 @@ export interface ItemMetadataSourcesResponse {
   count?: number;
   sources: ItemMetadataSourceItem[];
 }
+
+export interface ReaderTab {
+  id: string;
+  title: string;
+  type: 'library' | 'paper';
+  currentPage?: number;
+  zoom?: number;
+  fitMode?: ReaderFitMode;
+  rotation?: number;
+  theme?: ReaderTheme;
+}
+
+export interface ActiveHighlightTooltipState {
+  id: string;
+  quote?: string;
+  comment?: string;
+  color?: string;
+  top: number;
+  left: number;
+  ann: ReaderAnnotation;
+}
+
+export interface InlineTextInputState {
+  pageNum: number;
+  normX: number;
+  normY: number;
+  text: string;
+}
+
+export interface AreaSelectionState {
+  pageNum: number;
+  startX: number;
+  startY: number;
+  currentX: number;
+  currentY: number;
+  active: boolean;
+}
+

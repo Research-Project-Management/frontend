@@ -17,6 +17,7 @@ import {
   collectionKeys,
   invalidateCollections,
   normalizeScopeId,
+  waitForBootstrapCache,
 } from '@/features/library/sdk/query-keys';
 import { chunkUniqueIds } from './cache-patcher';
 
@@ -68,10 +69,19 @@ export function useCollections(scopeIdOrOptions?: UseCollectionsScopeInput) {
     typeof scopeIdOrOptions === 'object' ? scopeIdOrOptions?.enabled : undefined;
 
   const queryClient = useQueryClient();
+  const cacheKey = collectionKeys.all(scopeId);
 
   const collectionsQuery = useQuery({
-    queryKey: collectionKeys.all(scopeId),
-    queryFn: () => CollectionsService.getAll(scopeId),
+    queryKey: cacheKey,
+    queryFn: async () => {
+      const seeded = await waitForBootstrapCache<Collection[] | { collections: Collection[] }>(
+        queryClient,
+        scopeId,
+        cacheKey,
+      );
+      if (seeded !== undefined) return seeded;
+      return CollectionsService.getAll(scopeId);
+    },
     enabled: (explicitEnabled ?? true) && Boolean(scopeId),
     staleTime: 1000 * 60,
     select: (data) => (Array.isArray(data) ? data : (data?.collections || [])),
@@ -137,8 +147,10 @@ export function useCollections(scopeIdOrOptions?: UseCollectionsScopeInput) {
     },
     onMutate: async (data) => {
       const targetScope = normalizeScopeId(data.scopeId || scopeId);
-      await queryClient.cancelQueries({ queryKey: collectionKeys.all(targetScope) });
-      await queryClient.cancelQueries({ queryKey: collectionKeys.byId(targetScope, data.collectionId) });
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: collectionKeys.all(targetScope) }),
+        queryClient.cancelQueries({ queryKey: collectionKeys.byId(targetScope, data.collectionId) }),
+      ]);
       const previousCollections = queryClient.getQueryData<
         Collection[] | { collections: Collection[] }
       >(collectionKeys.all(targetScope));
@@ -198,7 +210,38 @@ export function useCollections(scopeIdOrOptions?: UseCollectionsScopeInput) {
       const targetScope = normalizeScopeId(variables.scopeId || scopeId);
       invalidateCollections(queryClient, targetScope);
     },
-    onSuccess: () => {
+    onSuccess: (updatedCollection, variables) => {
+      const targetScope = normalizeScopeId(variables.scopeId || scopeId);
+      const serverCollection =
+        updatedCollection &&
+        typeof updatedCollection === 'object' &&
+        'collection' in updatedCollection &&
+        (updatedCollection as { collection?: Collection }).collection
+          ? (updatedCollection as { collection: Collection }).collection
+          : (updatedCollection as Partial<Collection> | undefined);
+
+      if (serverCollection && typeof serverCollection === 'object') {
+        queryClient.setQueryData(
+          collectionKeys.byId(targetScope, variables.collectionId),
+          (old: Collection | undefined) =>
+            old ? { ...old, ...serverCollection } : (serverCollection as Collection),
+        );
+        queryClient.setQueryData<Collection[] | { collections: Collection[] }>(
+          collectionKeys.all(targetScope),
+          (old) => {
+            if (!old) return old;
+            const patchList = (cols: Collection[]) =>
+              cols.map((col) =>
+                col.id === variables.collectionId ? { ...col, ...serverCollection } : col,
+              );
+            if (Array.isArray(old)) return patchList(old);
+            if (Array.isArray(old.collections)) {
+              return { ...old, collections: patchList(old.collections) };
+            }
+            return old;
+          },
+        );
+      }
       toast.success('Collection updated', { id: 'collection-mutation' });
     },
   });
@@ -266,10 +309,20 @@ export function useCollectionsQuery(
   scopeId?: string,
   options?: { enabled?: boolean },
 ) {
+  const queryClient = useQueryClient();
   const targetScope = normalizeScopeId(scopeId);
+  const cacheKey = libraryKeys.collections(targetScope);
   return useQuery({
-    queryKey: libraryKeys.collections(targetScope),
-    queryFn: () => CollectionsService.getAll(targetScope),
+    queryKey: cacheKey,
+    queryFn: async () => {
+      const seeded = await waitForBootstrapCache<Collection[] | { collections: Collection[] }>(
+        queryClient,
+        targetScope,
+        cacheKey,
+      );
+      if (seeded !== undefined) return seeded;
+      return CollectionsService.getAll(targetScope);
+    },
     select: (data) => (Array.isArray(data) ? data : (data?.collections || [])),
     staleTime: 1000 * 60,
     enabled: options?.enabled ?? true,
@@ -343,9 +396,11 @@ export function useBatchDetachItemsMutation(scopeId?: string) {
       itemIds: string[];
     }) => {
       const chunks = chunkUniqueIds(itemIds, 100);
-      for (const chunk of chunks) {
-        await CollectionsService.bulkDetachItems(effectiveScope, collectionId, chunk);
-      }
+      await Promise.all(
+        chunks.map((chunk) =>
+          CollectionsService.bulkDetachItems(effectiveScope, collectionId, chunk),
+        ),
+      );
     },
     onSuccess: (_data, variables) => {
       invalidateCollections(queryClient, effectiveScope);
@@ -381,13 +436,15 @@ export function useMoveCollectionItemsMutation(scopeId?: string) {
     }) => {
       const targetScope = normalizeScopeId(overrideScope || effectiveScopeId);
       const chunks = chunkUniqueIds(itemIds, 100);
-      for (const chunk of chunks) {
-        await libraryServices.collections.moveItems(
-          targetScope,
-          targetCollectionId || 'unfiled',
-          chunk,
-        );
-      }
+      await Promise.all(
+        chunks.map((chunk) =>
+          libraryServices.collections.moveItems(
+            targetScope,
+            targetCollectionId || 'unfiled',
+            chunk,
+          ),
+        ),
+      );
     },
     onSuccess: (_data, variables) => {
       const targetScope = normalizeScopeId(variables.scopeId || effectiveScopeId);
@@ -421,13 +478,11 @@ export function useAssignCollectionItemsMutation(scopeId?: string) {
     }) => {
       const rawIds = Array.isArray(itemIds) ? itemIds : [itemIds];
       const chunks = chunkUniqueIds(rawIds, 100);
-      for (const chunk of chunks) {
-        await CollectionsService.assignItems(
-          effectiveScopeId,
-          collectionId,
-          chunk,
-        );
-      }
+      await Promise.all(
+        chunks.map((chunk) =>
+          CollectionsService.assignItems(effectiveScopeId, collectionId, chunk),
+        ),
+      );
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScopeId) });

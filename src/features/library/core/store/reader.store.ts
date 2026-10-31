@@ -12,21 +12,14 @@ import {
   MAX_BOOKMARKED_ITEMS,
 } from '../adapters/reader-storage.adapter';
 
+import type {
+  ReaderFitMode,
+  ReaderTab,
+  ReaderTheme,
+} from '@/features/library/domain/types/reader.schema';
+
 export { normalizeReaderZoom, MAX_READER_TABS, MAX_BOOKMARKED_ITEMS };
-
-export type ReaderFitMode = 'fit-width' | 'fit-page' | 'auto' | 'custom';
-export type ReaderTheme = 'normal' | 'sepia' | 'dark' | 'invert';
-
-export interface ReaderTab {
-  id: string; // 'library' or paperId
-  title: string;
-  type: 'library' | 'paper';
-  currentPage?: number;
-  zoom?: number;
-  fitMode?: ReaderFitMode;
-  rotation?: number;
-  theme?: ReaderTheme;
-}
+export type { ReaderFitMode, ReaderTab, ReaderTheme };
 
 // Standard Reader annotation tools (in order, Alt+1 through Alt+7):
 // highlight, underline, note, text, area, ink, eraser

@@ -17,6 +17,7 @@ import {
   savedSearchKeys,
   relationKeys,
   normalizeScopeId,
+  waitForBootstrapCache,
 } from '@/features/library/sdk/query-keys';
 import {
   patchItemAcrossScopeCaches,
@@ -37,10 +38,19 @@ export function useSavedSearches(
 ) {
   const queryClient = useQueryClient();
   const effectiveScope = normalizeScopeId(scopeId);
+  const cacheKey = savedSearchKeys.all(effectiveScope);
 
   const savedSearchesQuery = useQuery({
-    queryKey: savedSearchKeys.all(effectiveScope),
-    queryFn: () => SavedSearchesService.getAll(effectiveScope),
+    queryKey: cacheKey,
+    queryFn: async () => {
+      const seeded = await waitForBootstrapCache<Awaited<ReturnType<typeof SavedSearchesService.getAll>>>(
+        queryClient,
+        effectiveScope,
+        cacheKey,
+      );
+      if (seeded !== undefined) return seeded;
+      return SavedSearchesService.getAll(effectiveScope);
+    },
     enabled: options?.enabled ?? true,
     staleTime: 1000 * 60,
   });

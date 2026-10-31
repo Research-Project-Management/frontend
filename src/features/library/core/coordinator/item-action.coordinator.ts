@@ -324,15 +324,15 @@ export interface UseLibraryItemOperationsOptions {
     mutateAsync?: (args: { id: string; isStarred: boolean }) => Promise<unknown>;
   };
   deleteMutation: {
-    mutate: (ids: string[]) => void;
+    mutate: (ids: string[], options?: { onSuccess?: () => void }) => void;
     mutateAsync?: (ids: string[]) => Promise<unknown>;
   };
   restoreMutation: {
-    mutate: (ids: string[]) => void;
+    mutate: (ids: string[], options?: { onSuccess?: () => void }) => void;
     mutateAsync?: (ids: string[]) => Promise<unknown>;
   };
   purgeMutation: {
-    mutate: (ids: string[]) => void;
+    mutate: (ids: string[], options?: { onSuccess?: () => void }) => void;
   };
   moveMutation: {
     mutateAsync: (args: {
@@ -373,6 +373,7 @@ export function useLibraryItemOperations(options: UseLibraryItemOperationsOption
             newStarred: !isStarred,
             toggleStarMutation: { mutateAsync: toggleStarMutation.mutateAsync },
           }),
+          { silentToast: true },
         );
         return;
       }
@@ -400,20 +401,12 @@ export function useLibraryItemOperations(options: UseLibraryItemOperationsOption
       }
 
       const clearSelectionIfAffected = () => {
-        const state = useLibraryUIStore.getState();
-        if (state.activeItemId === id) {
-          state.setActiveItem(null);
-        }
-        if (state.selectedIds.has(id)) {
-          state.toggleSelect(id);
-        }
+        useLibraryUIStore.getState().evictItems([id]);
       };
 
       if (opts.isTrash) {
-        clearSelectionIfAffected();
         openModal('DELETE_CONFIRM', { itemIds: [id], permanent: true });
       } else if (opts.deleteMutation.mutateAsync && opts.restoreMutation.mutateAsync) {
-        clearSelectionIfAffected();
         void useLibraryCommandStore.getState().executeCommand(
           createTrashCommand({
             itemIds: [id],
@@ -424,10 +417,14 @@ export function useLibraryItemOperations(options: UseLibraryItemOperationsOption
               clearSelectionIfAffected();
             },
           }),
+          { silentToast: true },
         );
       } else {
-        clearSelectionIfAffected();
-        opts.deleteMutation.mutate([id]);
+        opts.deleteMutation.mutate([id], {
+          onSuccess: () => {
+            clearSelectionIfAffected();
+          },
+        });
       }
     },
     [openModal],
@@ -446,6 +443,7 @@ export function useLibraryItemOperations(options: UseLibraryItemOperationsOption
             deleteMutation: { mutateAsync: opts.deleteMutation.mutateAsync },
             onExecuted: () => opts.onRestoreItems?.([id]),
           }),
+          { silentToast: true },
         );
       } else if (opts.onRestoreItems) {
         opts.onRestoreItems([id]);
@@ -470,19 +468,17 @@ export function useLibraryItemOperations(options: UseLibraryItemOperationsOption
         );
         return;
       }
-      const state = useLibraryUIStore.getState();
-      if (state.activeItemId === id) {
-        state.setActiveItem(null);
-      }
-      if (state.selectedIds.has(id)) {
-        state.toggleSelect(id);
-      }
       if (opts.onPermanentDeleteItems) {
+        useLibraryUIStore.getState().evictItems([id]);
         useLibraryCommandStore.getState().clearHistory();
         opts.onPermanentDeleteItems([id]);
       } else {
-        useLibraryCommandStore.getState().clearHistory();
-        opts.purgeMutation.mutate([id]);
+        opts.purgeMutation.mutate([id], {
+          onSuccess: () => {
+            useLibraryUIStore.getState().evictItems([id]);
+            useLibraryCommandStore.getState().clearHistory();
+          },
+        });
       }
     },
     [],

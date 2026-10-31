@@ -1,5 +1,6 @@
 'use client';
 
+import { useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { libraryServices, IngestionService } from '@/features/library/sdk';
@@ -16,6 +17,7 @@ import {
   retractionKeys,
   invalidateCollections,
   normalizeScopeId,
+  waitForBootstrapCache,
 } from '@/features/library/sdk/query-keys';
 import {
   invalidateLibraryCatalogDependencies,
@@ -57,12 +59,19 @@ export {
 
 export function useTrackedIdentifierIngestion(scopeId: string) {
   const queryClient = useQueryClient();
-  return (options: Omit<TrackedIdentifierIngestionOptions, 'queryClient' | 'scopeId'> & { scopeId?: string }) =>
-    executeTrackedIdentifierIngestion({
-      scopeId: options.scopeId || scopeId,
-      queryClient,
-      ...options,
-    });
+  return useCallback(
+    (
+      options: Omit<TrackedIdentifierIngestionOptions, 'queryClient' | 'scopeId'> & {
+        scopeId?: string;
+      },
+    ) =>
+      executeTrackedIdentifierIngestion({
+        scopeId: options.scopeId || scopeId,
+        queryClient,
+        ...options,
+      }),
+    [scopeId, queryClient],
+  );
 }
 
 // ── Curation & Duplicates Queries ─────────────────────────────────────────────
@@ -240,9 +249,17 @@ export function useFetchAcademicFeed() {
 // ── Feed Subscriptions Queries & Mutations (TanStack Query + Store Sync) ─────
 
 export function useFeedSubscriptionsQuery(options?: { enabled?: boolean }) {
+  const queryClient = useQueryClient();
+  const cacheKey = feedKeys.subscriptions();
   return useQuery({
-    queryKey: feedKeys.subscriptions(),
+    queryKey: cacheKey,
     queryFn: async () => {
+      const seeded = await waitForBootstrapCache<SavedFeedSubscription[]>(
+        queryClient,
+        'user',
+        cacheKey,
+      );
+      if (seeded !== undefined) return seeded;
       const res = await libraryServices.feeds.getSubscriptions();
       if (res?.data && Array.isArray(res.data)) {
         const mappedFeeds = mapServerFeedSubscriptions(res.data);

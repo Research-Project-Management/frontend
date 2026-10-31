@@ -431,10 +431,14 @@ export function patchItemAcrossScopeCaches(
   options?: {
     membershipPatch?: Record<string, unknown>;
     forceSkipMembershipInvalidation?: boolean;
+    baseItem?: Item | null;
   },
 ): void {
   const effectiveScope = normalizeScopeId(scopeId);
-  const oldItem = resolveCachedItemFromScope(queryClient, effectiveScope, itemId);
+  const oldItem =
+    options?.baseItem !== undefined
+      ? options.baseItem
+      : resolveCachedItemFromScope(queryClient, effectiveScope, itemId);
   const resolvedUpdatedItem: Item = oldItem
     ? typeof patch === 'function'
       ? patch(oldItem)

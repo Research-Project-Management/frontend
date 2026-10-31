@@ -38,7 +38,9 @@ export {
   type ReferenceData,
   type CslStyleMetadata,
   type LibrarySubdomain,
+  SUBDOMAIN_ENV_HOSTS,
   getLibraryServiceHost,
+  isTrustedOrigin,
   resolveLibraryUrl,
   resolveLibraryRawPath,
   libraryClient,
@@ -132,17 +134,22 @@ export interface FeedHydrationObserver {
   getFeeds?: () => SavedFeedSubscription[];
 }
 
+export type DraftCacheClearListener = (groupKey?: string) => void;
+
 let activeObserver: FeedHydrationObserver | null = null;
-let draftCacheClearListener: ((groupKey?: string) => void) | null = null;
+const draftCacheClearListeners = new Set<DraftCacheClearListener>();
 
 export function registerFeedHydrationObserver(observer: FeedHydrationObserver): void {
   activeObserver = observer;
 }
 
 export function registerDraftCacheClearListener(
-  listener: (groupKey?: string) => void,
-): void {
-  draftCacheClearListener = listener;
+  listener: DraftCacheClearListener,
+): () => void {
+  draftCacheClearListeners.add(listener);
+  return () => {
+    draftCacheClearListeners.delete(listener);
+  };
 }
 
 export function notifyServerFeedsHydrated(feeds: SavedFeedSubscription[]): void {
@@ -193,7 +200,7 @@ export function getRegisteredFeedsSnapshot(): SavedFeedSubscription[] {
 }
 
 export function notifyDraftCacheCleared(groupKey?: string): void {
-  draftCacheClearListener?.(groupKey);
+  draftCacheClearListeners.forEach((listener) => listener(groupKey));
 }
 
 // ── Query & Mutation Hooks ───────────────────────────────────────────────────

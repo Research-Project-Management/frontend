@@ -67,6 +67,34 @@ export interface KeyboardShortcutCommand {
   execute(ctx: KeyboardShortcutCommandContext): void;
 }
 
+const MODAL_OR_POPUP_SELECTOR =
+  '[role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"], [role="combobox"], [data-radix-popper-content-wrapper]';
+
+export function isEditableOrModalElementFocused(
+  target?: EventTarget | null,
+): boolean {
+  if (useLibraryUIStore.getState().activeModal !== null) {
+    return true;
+  }
+  const el =
+    (target instanceof HTMLElement ? target : null) ??
+    (typeof document !== "undefined" &&
+    document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null);
+  if (!el) return false;
+  const tag = el.tagName;
+  if (
+    tag === "INPUT" ||
+    tag === "TEXTAREA" ||
+    tag === "SELECT" ||
+    el.isContentEditable
+  ) {
+    return true;
+  }
+  return Boolean(el.closest(MODAL_OR_POPUP_SELECTOR));
+}
+
 export const LIBRARY_KEYBINDING_COMMANDS: readonly KeyboardShortcutCommand[] = [
   {
     id: "navigate-down",
@@ -184,26 +212,6 @@ export const LIBRARY_KEYBINDING_COMMANDS: readonly KeyboardShortcutCommand[] = [
           clearSelection();
         }
       }
-    },
-  },
-  {
-    id: "undo-or-redo-z",
-    matches: ({ e }) => (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z",
-    execute: ({ e, redoCommand, undoCommand }) => {
-      e.preventDefault();
-      if (e.shiftKey) {
-        void redoCommand();
-      } else {
-        void undoCommand();
-      }
-    },
-  },
-  {
-    id: "redo-y",
-    matches: ({ e }) => (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "y",
-    execute: ({ e, redoCommand }) => {
-      e.preventDefault();
-      void redoCommand();
     },
   },
   {
@@ -327,24 +335,8 @@ export function useLibraryKeyboardShortcuts({
       if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
       const key = e.key.toLowerCase();
       if (key !== "z" && key !== "y") return;
-      if (activeModal !== null) return;
-
-      const target =
-        (e.target as HTMLElement | null) ??
-        (typeof document !== "undefined"
-          ? (document.activeElement as HTMLElement | null)
-          : null);
-      if (target) {
-        const tag = target.tagName;
-        if (
-          tag === "INPUT" ||
-          tag === "TEXTAREA" ||
-          tag === "SELECT" ||
-          target.isContentEditable ||
-          target.closest('[role="dialog"], [role="menu"], [role="combobox"]')
-        ) {
-          return;
-        }
+      if (activeModal !== null || isEditableOrModalElementFocused(e.target)) {
+        return;
       }
 
       e.preventDefault();
@@ -363,16 +355,11 @@ export function useLibraryKeyboardShortcuts({
     (e: React.KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       if (
-        target &&
-        (target.tagName === 'INPUT' ||
-          target.tagName === 'TEXTAREA' ||
-          target.isContentEditable ||
-          target.tagName === 'BUTTON' ||
-          target.closest('button') ||
-          target.closest('[role="menu"]') ||
-          target.closest('[role="menuitem"]') ||
-          target.closest('[role="dialog"]') ||
-          target.closest('[role="combobox"]'))
+        isEditableOrModalElementFocused(target) ||
+        (target &&
+          (target.tagName === "BUTTON" ||
+            target.closest("button") ||
+            target.closest('[role="menuitem"]')))
       ) {
         return;
       }

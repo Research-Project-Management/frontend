@@ -24,54 +24,14 @@ import { isProjectScope, getItemFileUrl } from '@/features/library/domain/identi
 import { mapBackendItem } from '@/features/library/domain/metadata-mapper';
 import type {
   Item,
-  PaginatedItemsResponse,
-  CursorPaginationMeta,
-  ItemQueryParams,
-  Collection,
-  CreateCollectionDTO,
-  UpdateCollectionDTO,
   TagWithCount,
-  Note,
   ItemStateData,
-  SavedSearch,
   CreateSavedSearchInput,
   UpdateSavedSearchInput,
-  SavedSearchResultsResponse,
-  SavedSearchPreviewResponse,
   SavedSearchConditionGroup,
-  RelatedItem,
-  SchemaItemTypeDefinition,
-  FormattedCitation,
-  CslStyle,
   ReferenceData,
   CslStyleMetadata,
-  ItemAttachment,
-  SearchResponse,
-  SearchSortBy,
-  SearchSortOrder,
-  DuplicateGroup,
-  LibraryIntegrityReport,
-  FlagRetractionInput,
-  RetractionStats,
-} from '@/features/library/domain/types/core.types';
-import type {
-  ReaderDocument,
-  ReaderAnnotation,
-  CreateAnnotationDto,
-  UpdateAnnotationDto,
-  DocumentReadingState,
-  DocumentFulltext,
-} from '@/features/library/domain/types/reader.schema';
-import {
-  type UnifiedIngestionPayload,
-  type UnifiedIngestionResponse,
-  type IngestionRunSnapshotResponse,
-  type UrlCapturePreviewResponse,
-  UnifiedIngestionPayloadSchema,
-  UnifiedIngestionResponseSchema,
-  UrlCapturePreviewResponseSchema,
-  IngestionRunSnapshotResponseSchema,
-  itemSchema,
+  UnifiedIngestionPayload,
 } from '@/features/library/domain/types/core.types';
 
 export { isProjectScope, getItemFileUrl, mapBackendItem };
@@ -94,6 +54,20 @@ export type LibrarySubdomain =
   | 'sync'
   | 'reader';
 
+const ALL_LIBRARY_SUBDOMAINS: readonly LibrarySubdomain[] = [
+  'catalog', 'extraction', 'ingestion', 'citation', 'search', 'sync', 'reader',
+] as const;
+
+export const SUBDOMAIN_ENV_HOSTS: Record<LibrarySubdomain, string | undefined> = {
+  get catalog() { return process.env.NEXT_PUBLIC_LIBRARY_CATALOG_URL; },
+  get extraction() { return process.env.NEXT_PUBLIC_LIBRARY_EXTRACTION_URL; },
+  get ingestion() { return process.env.NEXT_PUBLIC_LIBRARY_INGESTION_URL; },
+  get citation() { return process.env.NEXT_PUBLIC_LIBRARY_CITATION_URL; },
+  get search() { return process.env.NEXT_PUBLIC_LIBRARY_SEARCH_URL; },
+  get sync() { return process.env.NEXT_PUBLIC_LIBRARY_SYNC_URL; },
+  get reader() { return process.env.NEXT_PUBLIC_LIBRARY_READER_URL; },
+};
+
 // Base URL & Endpoint Resolution
 
 function normalizeServiceHost(raw: string): string {
@@ -106,7 +80,11 @@ function normalizeServiceHost(raw: string): string {
     .replace(/\/api\/v1$/i, '');
 }
 
-export function getLibraryServiceHost(_domain?: LibrarySubdomain): string {
+export function getLibraryServiceHost(domain?: LibrarySubdomain): string {
+  const domainSpecific = domain ? SUBDOMAIN_ENV_HOSTS[domain]?.trim() : undefined;
+  if (domainSpecific) {
+    return normalizeServiceHost(domainSpecific);
+  }
   const rawConfigured =
     process.env.NEXT_PUBLIC_LIBRARY_SERVICES_URL ||
     process.env.NEXT_PUBLIC_API_URL ||
@@ -116,13 +94,34 @@ export function getLibraryServiceHost(_domain?: LibrarySubdomain): string {
   return normalizeServiceHost(rawConfigured);
 }
 
+export function isTrustedOrigin(targetOrigin: string, fallbackBaseUrl?: string): boolean {
+  if (!targetOrigin) return false;
+  const baseOrigin =
+    (typeof window !== 'undefined' && window.location?.origin) || fallbackBaseUrl || '';
+  const candidateHosts = [
+    baseOrigin,
+    getLibraryServiceHost(),
+    ...ALL_LIBRARY_SUBDOMAINS.map((d) => getLibraryServiceHost(d)),
+  ].filter(Boolean);
+
+  for (const candidate of candidateHosts) {
+    try {
+      const origin = baseOrigin ? new URL(candidate, baseOrigin).origin : new URL(candidate).origin;
+      if (origin === targetOrigin) return true;
+    } catch {
+      // Ignore malformed candidate URL
+    }
+  }
+  return false;
+}
+
 export function resolveLibraryUrl(
-  _domain: LibrarySubdomain,
+  domain: LibrarySubdomain,
   resourcePath: string,
   scopeId?: string,
   suffix = '',
 ): string {
-  const host = getLibraryServiceHost();
+  const host = getLibraryServiceHost(domain);
   const cleanResource = resourcePath.startsWith('/') ? resourcePath : `/${resourcePath}`;
   const cleanSuffix = suffix ? (suffix.startsWith('/') ? suffix : `/${suffix}`) : '';
 
@@ -133,10 +132,10 @@ export function resolveLibraryUrl(
   return host ? `${host}${basePath}` : basePath;
 }
 
-export function resolveLibraryRawPath(path: string, _domain?: LibrarySubdomain): string {
+export function resolveLibraryRawPath(path: string, domain?: LibrarySubdomain): string {
   if (!path) return path;
   if (path.startsWith('http://') || path.startsWith('https://')) return path;
-  const host = getLibraryServiceHost();
+  const host = getLibraryServiceHost(domain);
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
   return host ? `${host}${cleanPath}` : cleanPath;
 }
@@ -411,7 +410,7 @@ export const fetchPdfBlob = async (
     }
 
     const isLocalStatic = normalizedTarget.startsWith('/papers/') || normalizedTarget.startsWith('/public/');
-    const libraryHost = getLibraryServiceHost();
+    const libraryHost = getLibraryServiceHost('reader') || getLibraryServiceHost('extraction');
     const rawApiBase =
       libraryHost ||
       (typeof API_BASE_URL === 'string' && API_BASE_URL !== 'undefined' && API_BASE_URL !== 'null'
@@ -424,7 +423,7 @@ export const fetchPdfBlob = async (
         : rawApiBase;
 
     let resolvedUrl = normalizedTarget;
-    let isTrustedOrigin = false;
+    let trustedTargetOrigin = false;
     try {
       if (normalizedTarget.startsWith('http://') || normalizedTarget.startsWith('https://')) {
         resolvedUrl = normalizedTarget;
@@ -441,17 +440,15 @@ export const fetchPdfBlob = async (
       if (baseUrl) {
         const resolvedOrigin = new URL(resolvedUrl, baseUrl).origin;
         const apiOrigin = rawApiBase ? new URL(rawApiBase, baseUrl).origin : new URL(baseUrl).origin;
-        const libOrigin = libraryHost ? new URL(libraryHost, baseUrl).origin : apiOrigin;
-        isTrustedOrigin =
-          resolvedOrigin === new URL(baseUrl).origin ||
+        trustedTargetOrigin =
+          isTrustedOrigin(resolvedOrigin, baseUrl) ||
           resolvedOrigin === apiOrigin ||
-          resolvedOrigin === libOrigin ||
           normalizedTarget.startsWith('/api/');
       } else {
-        isTrustedOrigin = normalizedTarget.startsWith('/api/');
+        trustedTargetOrigin = normalizedTarget.startsWith('/api/');
       }
     } catch {
-      isTrustedOrigin = normalizedTarget.startsWith('/api/');
+      trustedTargetOrigin = normalizedTarget.startsWith('/api/');
     }
 
     const headers: Record<string, string> = {};
@@ -459,7 +456,7 @@ export const fetchPdfBlob = async (
       typeof api.getAuthToken === 'function'
         ? api.getAuthToken()
         : getAuthToken();
-    if (token && isTrustedOrigin && !isLocalStatic) {
+    if (token && trustedTargetOrigin && !isLocalStatic) {
       headers.Authorization = `Bearer ${token}`;
     }
 
@@ -469,7 +466,7 @@ export const fetchPdfBlob = async (
           const match = normalizedTarget.match(/\/projects\/([^/?#]+)\//);
           return match?.[1] && isProjectScope(match[1]) ? match[1] : undefined;
         })();
-    if (effectiveScope && isTrustedOrigin && !isLocalStatic) {
+    if (effectiveScope && trustedTargetOrigin && !isLocalStatic) {
       headers['X-Project-Id'] = effectiveScope;
     }
 
@@ -481,7 +478,7 @@ export const fetchPdfBlob = async (
     let response: Response;
     try {
       response = await fetch(resolvedUrl, {
-        credentials: isTrustedOrigin && !isLocalStatic ? 'include' : 'same-origin',
+        credentials: trustedTargetOrigin && !isLocalStatic ? 'include' : 'same-origin',
         headers,
         signal: fetchTimeoutController.signal,
       });
@@ -498,7 +495,7 @@ export const fetchPdfBlob = async (
       // If direct fetch to an external URL failed (CORS, network error, or timeout), fallback to internal proxy route
       if (
         (resolvedUrl.startsWith('http://') || resolvedUrl.startsWith('https://')) &&
-        !isTrustedOrigin
+        !trustedTargetOrigin
       ) {
         const proxyController = new AbortController();
         const onCallerAbort = () => proxyController.abort();

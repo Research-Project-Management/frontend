@@ -2,15 +2,24 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type {
   IngestionProgressItem,
+  IngestionProgressResponse,
+  IngestionRunStatus,
   ProcessingFileItem,
   ProcessModalState,
   ProcessBatchUploadOptions,
+  ProcessModalStoreAdapter,
 } from '@/features/library/domain/types/ingestion.types';
 // executeBatchUpload is lazily imported inside startBatchUpload to prevent cyclic module initialization
 import { cleanFilenameToTitle } from '@/features/library/domain/metadata-mapper';
 
 export { cleanFilenameToTitle };
-export type { ProcessModalState, ProcessingFileItem, ProcessBatchUploadOptions };
+export type {
+  ProcessModalState,
+  ProcessingFileItem,
+  ProcessBatchUploadOptions,
+  IngestionRunStatus,
+  ProcessModalStoreAdapter,
+};
 
 // ---------------------------------------------------------------------------
 // Explicit Finite State Machine (FSM) Selectors & Transition Guards (FE-P3)
@@ -107,12 +116,58 @@ export function classifyProcessItemStage(
   return 'PENDING';
 }
 
+function recalculateBatchProgressData(
+  baseData: IngestionProgressResponse,
+  items: IngestionProgressItem[],
+  fallbackTotal?: number,
+): IngestionProgressResponse {
+  const total = items.length || fallbackTotal || baseData.total || 0;
+  const succeeded = items.filter((i) => TERMINAL_SUCCESS_ITEM_STATUSES.has(String(i.status || '').toUpperCase())).length;
+  const failed = items.filter((i) => TERMINAL_FAILED_ITEM_STATUSES.has(String(i.status || '').toUpperCase())).length;
+  const processed = succeeded + failed;
+  const percentage = total > 0 ? Math.round((processed / total) * 100) : 100;
+  return {
+    ...baseData,
+    items,
+    total,
+    succeeded,
+    failed,
+    processed,
+    percentage,
+  };
+}
+
 export interface ProcessModalStore {
   state: ProcessModalState;
   processingItems: ProcessingFileItem[];
   addProcessingItem: (item: ProcessingFileItem) => void;
   updateProcessingItem: (id: string, updates: Partial<ProcessingFileItem>) => void;
   dismissProcessingItem: (id: string) => void;
+  clearProcessingItemsByIds: (ids: Iterable<string>) => void;
+  initializeBatchRun: (
+    runId: string,
+    fileName: string,
+    items: IngestionProgressItem[],
+    autoMinimizeOrOptions?:
+      | boolean
+      | {
+          autoMinimize?: boolean;
+          scopeId?: string;
+          currentTitle?: string;
+          initialProcessingItems?: ProcessingFileItem[];
+        },
+  ) => void;
+  applyServerRunSnapshot: (run: Partial<IngestionRunStatus>, fallbackTotal?: number) => void;
+  patchBatchItemAndRecalculate: (
+    matcher: string | number,
+    patch: Partial<IngestionProgressItem>,
+    options?: {
+      currentTitle?: string;
+      processingPatch?: Partial<ProcessingFileItem>;
+      removeProcessingItem?: boolean;
+    },
+  ) => void;
+  completeBatchRun: (error?: string | null, provisionalIdsToRemove?: Iterable<string>) => void;
   updateItemById: (taskId: string, patch: Partial<IngestionProgressItem>) => void;
   updateItem: (index: number, patch: Partial<IngestionProgressItem>) => void;
   startBatchUpload: (
@@ -171,40 +226,217 @@ export const useProcessModalStore = create<ProcessModalStore>()(
     }));
   },
 
-  updateItemById: (taskId: string, patch: Partial<IngestionProgressItem>) => {
+  clearProcessingItemsByIds: (ids: Iterable<string>) => {
+    const idSet = new Set(ids);
+    if (idSet.size === 0) return;
+    set((s) => ({
+      processingItems: s.processingItems.filter((p) => !idSet.has(p.id)),
+    }));
+  },
+
+  initializeBatchRun: (runId, fileName, items, autoMinimizeOrOptions) => {
+    const opts =
+      typeof autoMinimizeOrOptions === 'boolean'
+        ? { autoMinimize: autoMinimizeOrOptions }
+        : (autoMinimizeOrOptions ?? {});
+    const initialProcessingItems = opts.initialProcessingItems ?? [];
+
     set((s) => {
-      if (!s.state.data) return s;
-      const items = s.state.data.items.map((item) =>
-        item.id === taskId ? { ...item, ...patch } : item,
+      const hasActiveBatch = Boolean(!s.state.isComplete && s.state.data && s.state.data.items.length > 0);
+      const mergedItems = hasActiveBatch ? [...s.state.data!.items, ...items] : items;
+      const baseData: IngestionProgressResponse = {
+        runId: hasActiveBatch ? s.state.data!.runId : runId,
+        scopeId: opts.scopeId ?? s.state.data?.scopeId ?? 'user',
+        status: 'PROCESSING',
+        total: mergedItems.length,
+        processed: 0,
+        percentage: 0,
+        succeeded: 0,
+        duplicates: hasActiveBatch ? s.state.data!.duplicates : 0,
+        failed: 0,
+        currentTitle: opts.currentTitle || items[0]?.title || fileName,
+        items: mergedItems,
+        startedAt: hasActiveBatch ? s.state.data!.startedAt : new Date().toISOString(),
+      };
+      const recalculated = recalculateBatchProgressData(baseData, mergedItems, mergedItems.length);
+      const isMinimized = opts.autoMinimize ?? (hasActiveBatch ? s.state.isMinimized : false);
+
+      return {
+        ...(initialProcessingItems.length > 0
+          ? {
+              processingItems: [
+                ...s.processingItems.filter(
+                  (p) =>
+                    !initialProcessingItems.some(
+                      (n) => n.fileName === p.fileName && n.fileSize === p.fileSize,
+                    ),
+                ),
+                ...initialProcessingItems,
+              ],
+            }
+          : {}),
+        state: {
+          isOpen: !isMinimized,
+          isMinimized,
+          runId: hasActiveBatch ? s.state.runId || runId : runId,
+          fileName: recalculated.total === 1 ? (mergedItems[0]?.title || fileName) : `${recalculated.total} documents`,
+          isComplete: false,
+          error: null,
+          data: recalculated,
+        },
+      };
+    });
+  },
+
+  applyServerRunSnapshot: (run, fallbackTotal = 0) => {
+    set((s) => {
+      const currentData = s.state.data;
+      const rawStatus = String(run.status || currentData?.status || '').toUpperCase();
+      const isTerminal =
+        TERMINAL_SUCCESS_ITEM_STATUSES.has(rawStatus) || TERMINAL_FAILED_ITEM_STATUSES.has(rawStatus);
+
+      if (!currentData) {
+        if (!isTerminal) return s;
+        return {
+          state: {
+            ...s.state,
+            isComplete: true,
+            error: run.lastError || run.errorMessage || s.state.error,
+          },
+        };
+      }
+
+      const incomingItems = Array.isArray(run.items) ? run.items : null;
+      const mergedItems = incomingItems && incomingItems.length > 0
+        ? currentData.items.map((it) => {
+            const match = incomingItems.find(
+              (pi) => pi.id === it.id || (pi.title && it.title && pi.title.includes(it.title)),
+            );
+            return match
+              ? {
+                  ...it,
+                  ...match,
+                  status: (match.status || it.status) as IngestionProgressItem['status'],
+                  title: match.title || it.title,
+                }
+              : it;
+          })
+        : currentData.items;
+
+      const recalculated = recalculateBatchProgressData(
+        currentData,
+        mergedItems,
+        fallbackTotal || run.total || run.totalItems || currentData.total,
       );
+
       return {
         state: {
           ...s.state,
+          isComplete: isTerminal ? true : s.state.isComplete,
+          error: run.lastError || run.errorMessage || s.state.error,
           data: {
-            ...s.state.data,
-            items,
+            ...recalculated,
+            status: isTerminal
+              ? (TERMINAL_FAILED_ITEM_STATUSES.has(rawStatus) ? 'FAILED_FINAL' : 'COMPLETED')
+              : (run.status || recalculated.status),
+            percentage: isTerminal ? 100 : recalculated.percentage,
           },
         },
       };
     });
   },
 
-  updateItem: (index: number, patch: Partial<IngestionProgressItem>) => {
+  patchBatchItemAndRecalculate: (matcher, patch, options) => {
     set((s) => {
-      if (!s.state.data) return s;
-      const items = s.state.data.items.map((item, idx) =>
-        idx === index ? { ...item, ...patch } : item,
-      );
+      const targetId =
+        typeof matcher === 'string'
+          ? matcher
+          : s.state.data?.items[matcher]?.id;
+      const nextProcessingItems = options?.removeProcessingItem && targetId
+        ? s.processingItems.filter((p) => p.id !== targetId)
+        : options?.processingPatch && targetId
+          ? s.processingItems.map((p) => (p.id === targetId ? { ...p, ...options.processingPatch } : p))
+          : s.processingItems;
+
+      if (!s.state.data) {
+        return { processingItems: nextProcessingItems };
+      }
+
+      const items = s.state.data.items.map((item, idx) => {
+        const isMatch = typeof matcher === 'string' ? item.id === matcher : idx === matcher;
+        return isMatch ? { ...item, ...patch } : item;
+      });
+      const recalculated = recalculateBatchProgressData(s.state.data, items);
+
       return {
+        processingItems: nextProcessingItems,
         state: {
           ...s.state,
           data: {
-            ...s.state.data,
-            items,
+            ...recalculated,
+            ...(options?.currentTitle !== undefined ? { currentTitle: options.currentTitle } : {}),
           },
         },
       };
     });
+  },
+
+  completeBatchRun: (error, provisionalIdsToRemove) => {
+    const removeSet = provisionalIdsToRemove ? new Set(provisionalIdsToRemove) : null;
+    set((s) => {
+      const remainingProvisional = removeSet
+        ? s.processingItems.filter((p) => !removeSet.has(p.id))
+        : s.processingItems;
+      const currentData = s.state.data;
+      if (!currentData) {
+        return {
+          processingItems: remainingProvisional,
+          state: {
+            ...s.state,
+            isComplete: true,
+            error: error ?? s.state.error,
+          },
+        };
+      }
+      const recalculated = recalculateBatchProgressData(currentData, currentData.items);
+      const allDone =
+        error !== undefined
+          ? true
+          : remainingProvisional.length === 0 && recalculated.processed >= recalculated.total;
+      const resolvedError =
+        error !== undefined
+          ? error
+          : allDone && recalculated.failed === recalculated.total && recalculated.total > 0
+            ? 'All files failed to process'
+            : null;
+
+      return {
+        processingItems: remainingProvisional,
+        state: {
+          ...s.state,
+          isComplete: allDone,
+          error: resolvedError,
+          data: {
+            ...recalculated,
+            status: !allDone
+              ? 'PROCESSING'
+              : recalculated.failed === recalculated.total && recalculated.total > 0
+                ? 'FAILED_FINAL'
+                : 'COMPLETED',
+            percentage: allDone && recalculated.total === 0 ? 100 : recalculated.percentage,
+            completedAt: allDone ? new Date().toISOString() : undefined,
+          },
+        },
+      };
+    });
+  },
+
+  updateItemById: (taskId: string, patch: Partial<IngestionProgressItem>) => {
+    get().patchBatchItemAndRecalculate(taskId, patch);
+  },
+
+  updateItem: (index: number, patch: Partial<IngestionProgressItem>) => {
+    get().patchBatchItemAndRecalculate(index, patch);
   },
 
   closeModal: () => {
@@ -245,15 +477,19 @@ export const useProcessModalStore = create<ProcessModalStore>()(
     const abortSignal = activeBatchAbortController.signal;
 
     const { executeBatchUpload } = await import('@/features/library/core/coordinator/ingestion.coordinator');
+    const storeAdapter: ProcessModalStoreAdapter = {
+      getState: get,
+      setState: set,
+      initializeBatchRun: get().initializeBatchRun,
+      applyServerRunSnapshot: get().applyServerRunSnapshot,
+      patchBatchItemAndRecalculate: get().patchBatchItemAndRecalculate,
+      completeBatchRun: get().completeBatchRun,
+      clearProcessingItemsByIds: get().clearProcessingItemsByIds,
+      updateProcessingItem: get().updateProcessingItem,
+      dismissProcessingItem: get().dismissProcessingItem,
+    };
     try {
-      await executeBatchUpload(
-        files,
-        { ...options, abortSignal },
-        {
-          getState: get,
-          setState: set,
-        },
-      );
+      await executeBatchUpload(files, { ...options, abortSignal }, storeAdapter);
     } finally {
       if (activeBatchAbortController?.signal === abortSignal) {
         activeBatchAbortController = null;
@@ -266,13 +502,7 @@ export const useProcessModalStore = create<ProcessModalStore>()(
       activeBatchAbortController.abort();
       activeBatchAbortController = null;
     }
-    set((s) => ({
-      state: {
-        ...s.state,
-        isComplete: true,
-        error: 'Batch processing cancelled by user',
-      },
-    }));
+    get().completeBatchRun('Batch processing cancelled by user');
   },
 }),
     {

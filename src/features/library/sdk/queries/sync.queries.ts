@@ -47,6 +47,7 @@ export interface DeltaSyncBatchContext {
   effectiveScope: string;
   deletedItemIds: string[];
   patchedCount: number;
+  abortedForMutation: boolean;
   hasCreatedItems: boolean;
   shouldInvalidateCollections: boolean;
   shouldInvalidateTags: boolean;
@@ -175,9 +176,11 @@ const handleItemChange = (change: DeltaChangeRecord, ctx: DeltaSyncBatchContext)
   if (!rawHasExplicitState) {
     setMappedItemMeta(patch, { hasExplicitUserState: false });
   }
-  if (ctx.queryClient.isMutating() === 0) {
-    patchItemAcrossScopeCaches(ctx.queryClient, ctx.effectiveScope, itemId, patch);
+  if (ctx.queryClient.isMutating() > 0) {
+    ctx.abortedForMutation = true;
+    return;
   }
+  patchItemAcrossScopeCaches(ctx.queryClient, ctx.effectiveScope, itemId, patch);
   ctx.patchedItemIdsToInvalidate.add(itemId);
   ctx.patchedCount++;
 };
@@ -237,13 +240,20 @@ export function useLibraryDeltaSync(
         lastSyncSeqRef.current = null;
       }
 
-      if (lastSyncSeqRef.current === null) {
+      const readCachedSyncVersion = () => {
         const cachedSync = queryClient.getQueryData<{
           version?: string;
           scopeId?: string;
         }>(libraryKeys.syncVersion(effectiveScope));
-        if (cachedSync?.version && cachedSync.version !== '0') {
-          lastSyncSeqRef.current = String(cachedSync.version);
+        return cachedSync?.version && cachedSync.version !== '0'
+          ? String(cachedSync.version)
+          : null;
+      };
+
+      if (lastSyncSeqRef.current === null) {
+        const initialCachedVersion = readCachedSyncVersion();
+        if (initialCachedVersion) {
+          lastSyncSeqRef.current = initialCachedVersion;
         }
       }
 
@@ -255,8 +265,12 @@ export function useLibraryDeltaSync(
         return state?.fetchStatus === 'fetching' && state?.status === 'pending';
       });
       if (isBootstrapping && lastSyncSeqRef.current === null) {
+        const bootstrapVersion = readCachedSyncVersion() ?? '0';
+        if (bootstrapVersion !== '0') {
+          lastSyncSeqRef.current = bootstrapVersion;
+        }
         return {
-          version: '0',
+          version: bootstrapVersion,
           scopeId: effectiveScope,
           syncedCount: 0,
         };
@@ -266,12 +280,17 @@ export function useLibraryDeltaSync(
       const remoteVersion = String(versionRes?.version ?? '0');
 
       if (lastSyncSeqRef.current === null) {
-        lastSyncSeqRef.current = remoteVersion;
-        return {
-          version: remoteVersion,
-          scopeId: effectiveScope,
-          syncedCount: 0,
-        };
+        const postBootstrapVersion = readCachedSyncVersion();
+        if (postBootstrapVersion) {
+          lastSyncSeqRef.current = postBootstrapVersion;
+        } else {
+          lastSyncSeqRef.current = remoteVersion;
+          return {
+            version: remoteVersion,
+            scopeId: effectiveScope,
+            syncedCount: 0,
+          };
+        }
       }
 
       if (!hasSyncVersionAdvanced(lastSyncSeqRef.current, remoteVersion)) {
@@ -291,12 +310,22 @@ export function useLibraryDeltaSync(
         };
       }
 
+      const invalidateFullSyncScopeCaches = () =>
+        Promise.all([
+          queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) }),
+          queryClient.invalidateQueries({ queryKey: collectionKeys.all(effectiveScope) }),
+          queryClient.invalidateQueries({ queryKey: tagKeys.list(effectiveScope) }),
+          queryClient.invalidateQueries({ queryKey: itemKeys.counts(effectiveScope) }),
+          queryClient.invalidateQueries({ queryKey: libraryKeys.savedSearches(effectiveScope) }),
+        ]);
+
       let currentSince = lastSyncSeqRef.current;
       const batchCtx: DeltaSyncBatchContext = {
         queryClient,
         effectiveScope,
         deletedItemIds: [],
         patchedCount: 0,
+        abortedForMutation: false,
         hasCreatedItems: false,
         shouldInvalidateCollections: false,
         shouldInvalidateTags: false,
@@ -351,13 +380,7 @@ export function useLibraryDeltaSync(
             String(errObj?.message || '').includes('410');
           if (is410) {
             lastSyncSeqRef.current = '0';
-            await Promise.all([
-              queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) }),
-              queryClient.invalidateQueries({ queryKey: collectionKeys.all(effectiveScope) }),
-              queryClient.invalidateQueries({ queryKey: tagKeys.list(effectiveScope) }),
-              queryClient.invalidateQueries({ queryKey: itemKeys.counts(effectiveScope) }),
-              queryClient.invalidateQueries({ queryKey: libraryKeys.savedSearches(effectiveScope) }),
-            ]);
+            await invalidateFullSyncScopeCaches();
             return {
               version: remoteVersion,
               scopeId: effectiveScope,
@@ -369,11 +392,7 @@ export function useLibraryDeltaSync(
         }
         if (changesRes?.fullSyncRequired) {
           lastSyncSeqRef.current = '0';
-          await Promise.all([
-            queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) }),
-            queryClient.invalidateQueries({ queryKey: collectionKeys.all(effectiveScope) }),
-            queryClient.invalidateQueries({ queryKey: tagKeys.list(effectiveScope) }),
-          ]);
+          await invalidateFullSyncScopeCaches();
           return {
             version: remoteVersion,
             scopeId: effectiveScope,
@@ -381,6 +400,12 @@ export function useLibraryDeltaSync(
             fullSync: true,
           };
         }
+
+        if (queryClient.isMutating() > 0) {
+          batchCtx.abortedForMutation = true;
+          break;
+        }
+
         const changes = Array.isArray(changesRes?.changes) ? changesRes.changes : [];
         if (changes.length === 0) {
           hasMore = false;
@@ -418,7 +443,14 @@ export function useLibraryDeltaSync(
               },
               batchCtx,
             );
+            if (batchCtx.abortedForMutation) {
+              break;
+            }
           }
+        }
+
+        if (batchCtx.abortedForMutation) {
+          break;
         }
 
         const lastChangeSeq = changes[changes.length - 1]?.seq;
@@ -434,6 +466,16 @@ export function useLibraryDeltaSync(
           hasMore = false;
           break;
         }
+      }
+
+      if (batchCtx.abortedForMutation) {
+        lastSyncSeqRef.current = currentSince;
+        return {
+          version: currentSince,
+          scopeId: effectiveScope,
+          syncedCount: batchCtx.patchedCount + batchCtx.deletedItemIds.length,
+          deferredForMutation: true,
+        };
       }
 
       if (batchCtx.deletedItemIds.length > 0) {

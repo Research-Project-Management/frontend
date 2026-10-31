@@ -4,10 +4,11 @@ import { useState, useRef, useCallback } from 'react';
 import type {
   ReaderAnnotation,
   AnnotationRect,
+  ActiveHighlightTooltipState,
+  InlineTextInputState,
+  AreaSelectionState,
 } from '@/features/library/domain/types/reader.schema';
 import type { ReaderAnnotationTool } from '@/features/library/core/store/reader.store';
-import type { ActiveHighlightTooltipState } from '@/features/library/ui/reader/viewer/PageAnnotationOverlay';
-import type { InlineTextInputState, AreaSelectionState } from '@/features/library/ui/reader/viewer/ViewerPageCanvas';
 
 export interface UsePdfViewerInteractionParams {
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;

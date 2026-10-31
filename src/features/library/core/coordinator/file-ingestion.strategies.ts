@@ -299,17 +299,11 @@ export const TextBibliographyFileStrategy: IFileIngestionStrategy = {
     return TEXT_BIBLIOGRAPHY_EXTENSIONS.some((ext) => lowerName.endsWith(ext));
   },
   async execute(file: File, ctx: FileIngestionStrategyContext): Promise<void> {
-    ctx.store.setState((s) => {
-      const items = (s.state.data?.items || []).map((i: IngestionProgressItem) =>
-        i.id === ctx.provisionalId ? { ...i, status: 'PROCESSING' as const } : i,
-      );
-      return {
-        processingItems: s.processingItems.map((p) =>
-          p.id === ctx.provisionalId ? { ...p, status: 'PROCESSING' } : p,
-        ),
-        state: s.state.data ? { ...s.state, data: { ...s.state.data, items } } : s.state,
-      };
-    });
+    ctx.store.patchBatchItemAndRecalculate(
+      ctx.provisionalId,
+      { status: 'PROCESSING' },
+      { processingPatch: { status: 'PROCESSING' } },
+    );
 
     const content = await file.text();
     const source = detectBibliographyFileFormat(file, content) || 'bibtex';
@@ -341,11 +335,7 @@ export const BinaryAttachmentFileStrategy: IFileIngestionStrategy = {
     if (!uploadRes) {
       uploadRes = await UploadService.uploadMultipart(ctx.scopeId, file, {
         onProgress: (percent: number) => {
-          ctx.store.setState((s) => ({
-            processingItems: s.processingItems.map((p) =>
-              p.id === ctx.provisionalId ? { ...p, progress: percent } : p,
-            ),
-          }));
+          ctx.store.updateProcessingItem(ctx.provisionalId, { progress: percent });
         },
         signal: ctx.signal,
       });
@@ -358,27 +348,18 @@ export const BinaryAttachmentFileStrategy: IFileIngestionStrategy = {
       throw new Error('Upload succeeded without file identifier');
     }
 
-    ctx.store.setState((s) => {
-      const items = s.state.data?.items.map((i: IngestionProgressItem) =>
-        i.id === ctx.provisionalId ? { ...i, status: 'PROCESSING' as const } : i,
-      );
-      return {
-        processingItems: s.processingItems.map((p) =>
-          p.id === ctx.provisionalId
-            ? {
-                ...p,
-                status: 'PROCESSING',
-                fileId: uploadRes?.fileId,
-                fileUrl: uploadRes?.url,
-                progress: 100,
-              }
-            : p,
-        ),
-        state: s.state.data
-          ? { ...s.state, data: { ...s.state.data, items: items || [] } }
-          : s.state,
-      };
-    });
+    ctx.store.patchBatchItemAndRecalculate(
+      ctx.provisionalId,
+      { status: 'PROCESSING' },
+      {
+        processingPatch: {
+          status: 'PROCESSING',
+          fileId: uploadRes.fileId,
+          fileUrl: uploadRes.url,
+          progress: 100,
+        },
+      },
+    );
 
     const identifiedTitle = cleanFilenameToTitle(file.name);
 

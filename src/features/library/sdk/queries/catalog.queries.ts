@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef } from 'react';
 import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
@@ -29,6 +30,8 @@ import {
   feedKeys,
   invalidateCollections,
   normalizeScopeId,
+  registerBootstrapPromise,
+  waitForBootstrapCache,
 } from '@/features/library/sdk/query-keys';
 import { notifyServerFeedsHydrated } from '@/features/library/sdk';
 import { mapServerFeedSubscriptions } from '@/features/library/domain/feed-parser.domain';
@@ -52,6 +55,8 @@ import {
   useReResolveItemMetadataMutation,
   useSetMyPublicationMutation,
 } from './item-mutations.queries';
+import { useDeleteLibraryItemsMutation } from './tags-notes.queries';
+import { useMoveCollectionItemsMutation } from './collections.queries';
 import {
   chunkUniqueIds,
   extractItemFromCacheData,
@@ -93,70 +98,94 @@ export function useLibraryBootstrapQuery(
   const targetScope = normalizeScopeId(scopeId);
   const includeItems = options?.includeItems ?? true;
 
+  const initialSeedRef = useRef<{
+    scope: string;
+    params?: ItemQueryParams;
+    includeItems: boolean;
+  }>({
+    scope: targetScope,
+    params: itemParams,
+    includeItems,
+  });
+  if (initialSeedRef.current.scope !== targetScope) {
+    initialSeedRef.current = {
+      scope: targetScope,
+      params: itemParams,
+      includeItems,
+    };
+  }
+  const seedParams = initialSeedRef.current.params;
+  const seedIncludeItems = initialSeedRef.current.includeItems;
+
   return useQuery({
-    queryKey: libraryKeys.bootstrap(targetScope, includeItems ? itemParams : { includeItems: false }),
+    queryKey: libraryKeys.bootstrap(targetScope, { includeItems: seedIncludeItems }),
     enabled: options?.enabled ?? true,
-    staleTime: 1000 * 60,
-    gcTime: 5 * 60 * 1000,
-    queryFn: async ({ signal }) => {
-      const res = await ItemsService.getBootstrap(
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    queryFn: ({ signal }) =>
+      registerBootstrapPromise(
+        queryClient,
         targetScope,
-        {
-          ...(includeItems ? itemParams : {}),
-          includeItems,
-        },
-        { signal },
-      );
-      if (!res || typeof res !== 'object') return res;
+        (async () => {
+          const res = await ItemsService.getBootstrap(
+            targetScope,
+            {
+              ...(seedIncludeItems ? seedParams : {}),
+              includeItems: seedIncludeItems,
+            },
+            { signal },
+          );
+          if (!res || typeof res !== 'object') return res;
 
-      if (res.counts) {
-        queryClient.setQueryData(itemKeys.counts(targetScope), res.counts);
-      }
-      if (Array.isArray(res.collections)) {
-        queryClient.setQueryData(collectionKeys.all(targetScope), res.collections);
-      }
-      if (Array.isArray(res.savedSearches)) {
-        queryClient.setQueryData(savedSearchKeys.all(targetScope), res.savedSearches);
-      }
-      if (res.itemTypes && typeof res.itemTypes === 'object') {
-        updateLibrarySchemaRegistry(res.itemTypes);
-        queryClient.setQueryData(itemKeys.types(targetScope), res.itemTypes);
-        if (targetScope !== 'user') {
-          queryClient.setQueryData(itemKeys.types('user'), res.itemTypes);
-        }
-      }
-      if (res.syncVersion && typeof res.syncVersion === 'object') {
-        queryClient.setQueryData(libraryKeys.syncVersion(targetScope), {
-          version: String(res.syncVersion.version ?? '0'),
-          scopeId: targetScope,
-          syncedCount: 0,
-        });
-      }
-      if (targetScope === 'user' && Array.isArray(res.feedSubscriptions)) {
-        const mappedFeeds = mapServerFeedSubscriptions(res.feedSubscriptions);
-        notifyServerFeedsHydrated(mappedFeeds);
-        queryClient.setQueryData(feedKeys.subscriptions(), mappedFeeds);
-      }
-      if (includeItems && Array.isArray(res.items)) {
-        const items: Item[] = res.items;
-        const meta = (res.meta || res.pagination || null) as CursorPaginationMeta | null;
-        const total = meta?.totalCount ?? items.length;
-        const hasNextPage = Boolean(meta?.hasNextPage);
-        const nextCursor = meta?.nextCursor || meta?.cursor || null;
-        queryClient.setQueryData<LibraryItemsQueryResult>(
-          libraryKeys.items(targetScope, itemParams),
-          {
-            items,
-            total,
-            meta,
-            hasNextPage,
-            nextCursor,
-          },
-        );
-      }
+          if (res.counts) {
+            queryClient.setQueryData(itemKeys.counts(targetScope), res.counts);
+          }
+          if (Array.isArray(res.collections)) {
+            queryClient.setQueryData(collectionKeys.all(targetScope), res.collections);
+          }
+          if (Array.isArray(res.savedSearches)) {
+            queryClient.setQueryData(savedSearchKeys.all(targetScope), res.savedSearches);
+          }
+          if (res.itemTypes && typeof res.itemTypes === 'object') {
+            updateLibrarySchemaRegistry(res.itemTypes);
+            queryClient.setQueryData(itemKeys.types(targetScope), res.itemTypes);
+            if (targetScope !== 'user') {
+              queryClient.setQueryData(itemKeys.types('user'), res.itemTypes);
+            }
+          }
+          if (res.syncVersion && typeof res.syncVersion === 'object') {
+            queryClient.setQueryData(libraryKeys.syncVersion(targetScope), {
+              version: String(res.syncVersion.version ?? '0'),
+              scopeId: targetScope,
+              syncedCount: 0,
+            });
+          }
+          if (targetScope === 'user' && Array.isArray(res.feedSubscriptions)) {
+            const mappedFeeds = mapServerFeedSubscriptions(res.feedSubscriptions);
+            notifyServerFeedsHydrated(mappedFeeds);
+            queryClient.setQueryData(feedKeys.subscriptions(), mappedFeeds);
+          }
+          if (seedIncludeItems && Array.isArray(res.items)) {
+            const items: Item[] = res.items;
+            const meta = (res.meta || res.pagination || null) as CursorPaginationMeta | null;
+            const total = meta?.totalCount ?? items.length;
+            const hasNextPage = Boolean(meta?.hasNextPage);
+            const nextCursor = meta?.nextCursor || meta?.cursor || null;
+            queryClient.setQueryData<LibraryItemsQueryResult>(
+              libraryKeys.items(targetScope, seedParams),
+              {
+                items,
+                total,
+                meta,
+                hasNextPage,
+                nextCursor,
+              },
+            );
+          }
 
-      return res;
-    },
+          return res;
+        })(),
+      ),
   });
 }
 
@@ -164,10 +193,20 @@ export function useLibraryCountsQuery(
   scopeId?: string,
   options?: { enabled?: boolean },
 ) {
+  const queryClient = useQueryClient();
   const targetScope = normalizeScopeId(scopeId);
+  const cacheKey = itemKeys.counts(targetScope);
   return useQuery({
-    queryKey: itemKeys.counts(targetScope),
-    queryFn: () => ItemsService.getCounts(targetScope),
+    queryKey: cacheKey,
+    queryFn: async () => {
+      const seeded = await waitForBootstrapCache<Awaited<ReturnType<typeof ItemsService.getCounts>>>(
+        queryClient,
+        targetScope,
+        cacheKey,
+      );
+      if (seeded !== undefined) return seeded;
+      return ItemsService.getCounts(targetScope);
+    },
     enabled: options?.enabled ?? true,
     staleTime: 1000 * 60,
   });
@@ -270,6 +309,8 @@ export function useItems(optionsOrScope: string | UseItemsOptions = {}) {
 
   const createMutation = useCreateLibraryItemMutation(targetScope, collectionId);
   const updateMutation = useUpdateLibraryItemMutation(targetScope);
+  const batchDeleteMutation = useDeleteLibraryItemsMutation(targetScope);
+  const batchMoveMutation = useMoveCollectionItemsMutation(targetScope);
 
   const deleteMutation = useMutation({
     mutationFn: async ({
@@ -372,81 +413,18 @@ export function useItems(optionsOrScope: string | UseItemsOptions = {}) {
   };
 
   const batchDeleteItems = async (ids: string[]) => {
-    const chunks = chunkUniqueIds(ids, 100);
-    if (!chunks.length) return;
-    const totalCount = ids.length;
-    const toastId = toast.loading(`Moving ${totalCount} item(s) to trash...`, {
-      id: 'batch-trash',
-    });
-    try {
-      for (const chunk of chunks) {
-        if (chunk.length === 1 && chunks.length === 1) {
-          await deleteMutation.mutateAsync({ id: chunk[0], silent: true });
-        } else {
-          await ItemsService.bulkTrash(targetScope, chunk);
-        }
-      }
-      toast.success('Moved to trash', {
-        description: `${totalCount} document(s) moved to trash.`,
-        id: toastId,
-      });
-    } catch (err: unknown) {
-      toast.error('Failed to delete items', {
-        description:
-          err instanceof Error
-            ? err.message
-            : 'Could not move selected documents to trash.',
-        id: toastId,
-      });
-    } finally {
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(targetScope) });
-      queryClient.invalidateQueries({ queryKey: itemKeys.trash(targetScope) });
-      invalidateCollections(queryClient, targetScope);
-    }
+    if (!ids.length) return;
+    await batchDeleteMutation.mutateAsync(ids);
   };
 
   const batchMoveItems = async (ids: string[], targetCollectionId: string | null) => {
-    const chunks = chunkUniqueIds(ids, 100);
-    if (!chunks.length) return;
-    const totalCount = ids.length;
-    const toastId = toast.loading(`Moving ${totalCount} item(s)...`, {
-      id: 'batch-move',
+    if (!ids.length) return;
+    await batchMoveMutation.mutateAsync({
+      targetCollectionId,
+      itemIds: ids,
+      sourceCollectionId: collectionId,
+      scopeId: targetScope,
     });
-    try {
-      for (const chunk of chunks) {
-        await CollectionsService.moveItems(
-          targetScope,
-          targetCollectionId || 'unfiled',
-          chunk,
-        );
-      }
-      toast.success('Documents moved', {
-        description: `Moved ${totalCount} item(s) to target collection.`,
-        id: toastId,
-      });
-    } catch (err: unknown) {
-      toast.error('Failed to move items', {
-        description:
-          err instanceof Error
-            ? err.message
-            : 'Could not move selected documents.',
-        id: toastId,
-      });
-    } finally {
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(targetScope) });
-      queryClient.invalidateQueries({ queryKey: collectionKeys.all(targetScope) });
-      if (targetCollectionId) {
-        queryClient.invalidateQueries({
-          queryKey: itemKeys.byCollection(targetScope, targetCollectionId),
-        });
-      }
-      if (collectionId) {
-        queryClient.invalidateQueries({
-          queryKey: itemKeys.byCollection(targetScope, collectionId),
-        });
-      }
-      invalidateCollections(queryClient, targetScope);
-    }
   };
 
   return {
@@ -495,9 +473,14 @@ export function useItemTypes(
   const enabled =
     typeof scopeIdOrOptions === 'object' ? (scopeIdOrOptions?.enabled ?? true) : true;
 
+  const queryClient = useQueryClient();
+  const cacheKey = itemKeys.types(sid);
+
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: itemKeys.types(sid),
+    queryKey: cacheKey,
     queryFn: async () => {
+      const seeded = await waitForBootstrapCache<ItemTypesResponse>(queryClient, sid, cacheKey);
+      if (seeded !== undefined) return seeded;
       const res = await ItemsService.getItemTypes(sid);
       if (res) {
         updateLibrarySchemaRegistry(res);
@@ -577,10 +560,17 @@ export function useLibraryItemsQuery(
 ) {
   const queryClient = useQueryClient();
   const targetScope = normalizeScopeId(scopeId);
+  const cacheKey = libraryKeys.items(targetScope, params);
   return useQuery({
-    queryKey: libraryKeys.items(targetScope, params),
+    queryKey: cacheKey,
     enabled: options?.enabled ?? true,
     queryFn: async ({ signal }): Promise<LibraryItemsQueryResult> => {
+      const seeded = await waitForBootstrapCache<LibraryItemsQueryResult>(
+        queryClient,
+        targetScope,
+        cacheKey,
+      );
+      if (seeded !== undefined) return seeded;
       const res = await ItemsService.getAll(targetScope, params, { signal });
       const items: Item[] = res?.items || [];
       const meta = (res?.meta || null) as CursorPaginationMeta | null;

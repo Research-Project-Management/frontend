@@ -376,3 +376,325 @@ export function useOcrExtraction(scopeId?: string, itemId?: string) {
     isTriggeringOcr: mutation.isPending,
   };
 }
+
+// ── 4. Annotation Batch & Undo/Redo History Transport (SDK Layer) ────────────
+
+export type UndoAction =
+  | { type: 'create'; createdAnnotation: ReaderAnnotation; attachmentId: string }
+  | {
+      type: 'update';
+      annotationId: string;
+      attachmentId: string;
+      before: Partial<ReaderAnnotation>;
+      after: Partial<ReaderAnnotation>;
+      version?: number;
+    }
+  | { type: 'delete'; items: ReaderAnnotation[] }
+  | {
+      type: 'color';
+      items: { id: string; prevColor: string; newColor: string; version: number; previousData: ReaderAnnotation }[];
+    }
+  | {
+      type: 'tag';
+      items: { id: string; prevTags: string[]; newTags: string[]; version: number; previousData: ReaderAnnotation }[];
+    };
+
+export type HistoryEntry = UndoAction;
+
+export interface AnnotationHistoryContext {
+  scopeId: string;
+  effectiveAttachmentId: string;
+  qc: ReturnType<typeof useQueryClient>;
+  updateUndoStack: (updater: UndoAction[] | ((prev: UndoAction[]) => UndoAction[])) => void;
+  updateRedoStack: (updater: UndoAction[] | ((prev: UndoAction[]) => UndoAction[])) => void;
+}
+
+export interface AnnotationHistoryStrategy<T extends UndoAction = UndoAction> {
+  prune(entry: T, deletedSet: ReadonlySet<string>): T | null;
+  undo(entry: T, ctx: AnnotationHistoryContext): Promise<void>;
+  redo(entry: T, ctx: AnnotationHistoryContext): Promise<void>;
+}
+
+export async function executeAnnotationBatchSync(
+  qc: ReturnType<typeof useQueryClient>,
+  scopeId: string,
+  attachmentId: string,
+  payload: Parameters<typeof AnnotationsService.batch>[2],
+): Promise<void> {
+  await AnnotationsService.batch(scopeId, attachmentId, payload);
+  await qc.invalidateQueries({ queryKey: annotationKeys.byAttachment(scopeId, attachmentId) });
+}
+
+export async function executeExtractAnnotationNotes(
+  scopeId: string,
+  paperId: string,
+  options?: Parameters<typeof AnnotationsService.extractNotes>[2],
+): Promise<unknown> {
+  return AnnotationsService.extractNotes(scopeId, paperId, options);
+}
+
+export const ANNOTATION_HISTORY_HANDLERS: {
+  [K in HistoryEntry['type']]: AnnotationHistoryStrategy<Extract<HistoryEntry, { type: K }>>;
+} = {
+  create: {
+    prune: (entry, deletedSet) => (deletedSet.has(entry.createdAnnotation.id) ? null : entry),
+    undo: async (entry, ctx) => {
+      const targetAttId = entry.attachmentId || ctx.effectiveAttachmentId;
+      await executeAnnotationBatchSync(ctx.qc, ctx.scopeId, targetAttId, {
+        upserts: [],
+        deletes: [entry.createdAnnotation.id],
+      });
+      ctx.updateUndoStack((prev) => prev.slice(0, prev.length - 1));
+      ctx.updateRedoStack((prev) => [...prev.slice(-19), entry]);
+      toast.success('Undid annotation creation');
+    },
+    redo: async (entry, ctx) => {
+      const targetAttId = entry.attachmentId || ctx.effectiveAttachmentId;
+      const item = entry.createdAnnotation;
+      await executeAnnotationBatchSync(ctx.qc, ctx.scopeId, targetAttId, {
+        upserts: [
+          {
+            id: item.id,
+            pageIndex: item.pageIndex,
+            color: item.color,
+            rects: item.rects,
+            quoteText: item.quoteText,
+            comment: item.comment,
+            tags: item.tags,
+            type: item.type,
+          },
+        ],
+        deletes: [],
+      });
+      ctx.updateRedoStack((prev) => prev.slice(0, prev.length - 1));
+      ctx.updateUndoStack((prev) => [...prev.slice(-19), entry]);
+      toast.success('Restored annotation');
+    },
+  },
+  update: {
+    prune: (entry, deletedSet) => (deletedSet.has(entry.annotationId) ? null : entry),
+    undo: async (entry, ctx) => {
+      const targetAttId = entry.attachmentId || ctx.effectiveAttachmentId;
+      const existing =
+        ctx.qc.getQueryData<ReaderAnnotation[]>(annotationKeys.byAttachment(ctx.scopeId, targetAttId)) || [];
+      const found = existing.find((a) => a.id === entry.annotationId);
+      if (!found) {
+        ctx.updateUndoStack((prev) => prev.slice(0, prev.length - 1));
+        return;
+      }
+      await AnnotationsService.update(
+        ctx.scopeId,
+        targetAttId,
+        entry.annotationId,
+        found.version ?? entry.version ?? 1,
+        {
+          ...(entry.before.color !== undefined ? { color: entry.before.color } : {}),
+          ...(entry.before.comment !== undefined ? { comment: entry.before.comment } : {}),
+          ...(entry.before.quoteText !== undefined ? { quoteText: entry.before.quoteText } : {}),
+          ...(entry.before.tags !== undefined ? { tags: entry.before.tags } : {}),
+        },
+      );
+      await ctx.qc.invalidateQueries({ queryKey: annotationKeys.byAttachment(ctx.scopeId, targetAttId) });
+      ctx.updateUndoStack((prev) => prev.slice(0, prev.length - 1));
+      ctx.updateRedoStack((prev) => [...prev.slice(-19), entry]);
+      toast.success('Reverted annotation edit');
+    },
+    redo: async (entry, ctx) => {
+      const targetAttId = entry.attachmentId || ctx.effectiveAttachmentId;
+      const existing =
+        ctx.qc.getQueryData<ReaderAnnotation[]>(annotationKeys.byAttachment(ctx.scopeId, targetAttId)) || [];
+      const found = existing.find((a) => a.id === entry.annotationId);
+      if (!found) {
+        ctx.updateRedoStack((prev) => prev.slice(0, prev.length - 1));
+        return;
+      }
+      await AnnotationsService.update(
+        ctx.scopeId,
+        targetAttId,
+        entry.annotationId,
+        found.version ?? entry.version ?? 1,
+        {
+          ...(entry.after.color !== undefined ? { color: entry.after.color } : {}),
+          ...(entry.after.comment !== undefined ? { comment: entry.after.comment } : {}),
+          ...(entry.after.quoteText !== undefined ? { quoteText: entry.after.quoteText } : {}),
+          ...(entry.after.tags !== undefined ? { tags: entry.after.tags } : {}),
+        },
+      );
+      await ctx.qc.invalidateQueries({ queryKey: annotationKeys.byAttachment(ctx.scopeId, targetAttId) });
+      ctx.updateRedoStack((prev) => prev.slice(0, prev.length - 1));
+      ctx.updateUndoStack((prev) => [...prev.slice(-19), entry]);
+      toast.success('Re-applied annotation edit');
+    },
+  },
+  delete: {
+    prune: (entry) => entry,
+    undo: async (entry, ctx) => {
+      const upserts = entry.items.map((item) => ({
+        id: item.id,
+        pageIndex: item.pageIndex,
+        color: item.color,
+        rects: item.rects,
+        quoteText: item.quoteText,
+        comment: item.comment,
+        tags: item.tags,
+        type: item.type,
+      }));
+      await executeAnnotationBatchSync(ctx.qc, ctx.scopeId, ctx.effectiveAttachmentId, { upserts, deletes: [] });
+      ctx.updateUndoStack((prev) => prev.slice(0, prev.length - 1));
+      ctx.updateRedoStack((prev) => [...prev.slice(-19), entry]);
+      toast.success(`Restored ${entry.items.length} annotation${entry.items.length > 1 ? 's' : ''}`);
+    },
+    redo: async (entry, ctx) => {
+      const deletes = entry.items.map((a) => a.id);
+      await executeAnnotationBatchSync(ctx.qc, ctx.scopeId, ctx.effectiveAttachmentId, { upserts: [], deletes });
+      ctx.updateRedoStack((prev) => prev.slice(0, prev.length - 1));
+      ctx.updateUndoStack((prev) => [...prev.slice(-19), entry]);
+      toast.success(`Re-deleted ${deletes.length} annotation${deletes.length > 1 ? 's' : ''}`);
+    },
+  },
+  color: {
+    prune: (entry, deletedSet) => {
+      const remaining = entry.items.filter((it) => !deletedSet.has(it.id));
+      return remaining.length === 0 ? null : { ...entry, items: remaining };
+    },
+    undo: async (entry, ctx) => {
+      const existing =
+        ctx.qc.getQueryData<ReaderAnnotation[]>(annotationKeys.byAttachment(ctx.scopeId, ctx.effectiveAttachmentId)) || [];
+      const existingMap = new Map(existing.map((a) => [a.id, a]));
+      const liveItems = entry.items.filter((item) => existingMap.has(item.id));
+      if (liveItems.length === 0) {
+        ctx.updateUndoStack((prev) => prev.slice(0, prev.length - 1));
+        return;
+      }
+      await executeAnnotationBatchSync(ctx.qc, ctx.scopeId, ctx.effectiveAttachmentId, {
+        upserts: liveItems.map((item) => {
+          const found = existingMap.get(item.id)!;
+          return {
+            id: item.id,
+            pageIndex: found.pageIndex,
+            color: item.prevColor,
+            rects: found.rects,
+            quoteText: found.quoteText,
+            comment: found.comment,
+            tags: found.tags,
+            type: found.type,
+            expectedVersion: found.version ?? item.version,
+          };
+        }),
+        deletes: [],
+      });
+      ctx.updateUndoStack((prev) => prev.slice(0, prev.length - 1));
+      ctx.updateRedoStack((prev) => [...prev.slice(-19), { ...entry, items: liveItems }]);
+      toast.success('Reverted color change');
+    },
+    redo: async (entry, ctx) => {
+      const existing =
+        ctx.qc.getQueryData<ReaderAnnotation[]>(annotationKeys.byAttachment(ctx.scopeId, ctx.effectiveAttachmentId)) || [];
+      const existingMap = new Map(existing.map((a) => [a.id, a]));
+      const liveItems = entry.items.filter((item) => existingMap.has(item.id));
+      if (liveItems.length === 0) {
+        ctx.updateRedoStack((prev) => prev.slice(0, prev.length - 1));
+        return;
+      }
+      await executeAnnotationBatchSync(ctx.qc, ctx.scopeId, ctx.effectiveAttachmentId, {
+        upserts: liveItems.map((item) => {
+          const found = existingMap.get(item.id)!;
+          return {
+            id: item.id,
+            pageIndex: found.pageIndex,
+            color: item.newColor,
+            rects: found.rects,
+            quoteText: found.quoteText,
+            comment: found.comment,
+            tags: found.tags,
+            type: found.type,
+            expectedVersion: found.version ?? item.version,
+          };
+        }),
+        deletes: [],
+      });
+      ctx.updateRedoStack((prev) => prev.slice(0, prev.length - 1));
+      ctx.updateUndoStack((prev) => [...prev.slice(-19), { ...entry, items: liveItems }]);
+      toast.success('Re-applied color change');
+    },
+  },
+  tag: {
+    prune: (entry, deletedSet) => {
+      const remaining = entry.items.filter((it) => !deletedSet.has(it.id));
+      return remaining.length === 0 ? null : { ...entry, items: remaining };
+    },
+    undo: async (entry, ctx) => {
+      const existing =
+        ctx.qc.getQueryData<ReaderAnnotation[]>(annotationKeys.byAttachment(ctx.scopeId, ctx.effectiveAttachmentId)) || [];
+      const existingMap = new Map(existing.map((a) => [a.id, a]));
+      const liveItems = entry.items.filter((item) => existingMap.has(item.id));
+      if (liveItems.length === 0) {
+        ctx.updateUndoStack((prev) => prev.slice(0, prev.length - 1));
+        return;
+      }
+      await executeAnnotationBatchSync(ctx.qc, ctx.scopeId, ctx.effectiveAttachmentId, {
+        upserts: liveItems.map((item) => {
+          const found = existingMap.get(item.id)!;
+          return {
+            id: item.id,
+            pageIndex: found.pageIndex,
+            color: found.color,
+            rects: found.rects,
+            quoteText: found.quoteText,
+            comment: found.comment,
+            tags: item.prevTags,
+            type: found.type,
+            expectedVersion: found.version ?? item.version,
+          };
+        }),
+        deletes: [],
+      });
+      ctx.updateUndoStack((prev) => prev.slice(0, prev.length - 1));
+      ctx.updateRedoStack((prev) => [...prev.slice(-19), { ...entry, items: liveItems }]);
+      toast.success('Reverted tag change');
+    },
+    redo: async (entry, ctx) => {
+      const existing =
+        ctx.qc.getQueryData<ReaderAnnotation[]>(annotationKeys.byAttachment(ctx.scopeId, ctx.effectiveAttachmentId)) || [];
+      const existingMap = new Map(existing.map((a) => [a.id, a]));
+      const liveItems = entry.items.filter((item) => existingMap.has(item.id));
+      if (liveItems.length === 0) {
+        ctx.updateRedoStack((prev) => prev.slice(0, prev.length - 1));
+        return;
+      }
+      await executeAnnotationBatchSync(ctx.qc, ctx.scopeId, ctx.effectiveAttachmentId, {
+        upserts: liveItems.map((item) => {
+          const found = existingMap.get(item.id)!;
+          return {
+            id: item.id,
+            pageIndex: found.pageIndex,
+            color: found.color,
+            rects: found.rects,
+            quoteText: found.quoteText,
+            comment: found.comment,
+            tags: item.newTags,
+            type: found.type,
+            expectedVersion: found.version ?? item.version,
+          };
+        }),
+        deletes: [],
+      });
+      ctx.updateRedoStack((prev) => prev.slice(0, prev.length - 1));
+      ctx.updateUndoStack((prev) => [...prev.slice(-19), { ...entry, items: liveItems }]);
+      toast.success('Re-applied tag change');
+    },
+  },
+};
+
+export async function executeAnnotationHistoryEntry(
+  action: UndoAction,
+  ctx: AnnotationHistoryContext,
+  direction: 'undo' | 'redo',
+): Promise<void> {
+  const handler = ANNOTATION_HISTORY_HANDLERS[action.type] as AnnotationHistoryStrategy<UndoAction>;
+  if (direction === 'undo') {
+    await handler.undo(action, ctx);
+  } else {
+    await handler.redo(action, ctx);
+  }
+}

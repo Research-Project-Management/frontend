@@ -178,7 +178,7 @@ export async function executeDuplicateMergeWithCommand({
         void invalidateScopeItemsAndCounts(effectiveScopeId);
       },
     }),
-    { silentToast: false },
+    { silentToast: true },
   );
 }
 

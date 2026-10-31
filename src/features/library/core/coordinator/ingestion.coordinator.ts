@@ -14,13 +14,13 @@ import type {
   ProcessModalStoreApi,
   InvalidationClient,
 } from '@/features/library/domain/types/ingestion.types';
-import { BatchFlowManager } from '@/features/library/core/manager/library-command.manager';
 import {
   executeSaveFeedEntryToLibrary,
   type ParsedFeedEntry,
 } from '@/features/library/domain/feed-parser.domain';
 import type { Collection } from '@/features/library/domain/types/core.types';
 import {
+  BatchFlowManager,
   resolveFileIngestionStrategy,
   detectBibliographyFileFormat,
   TextBibliographyFileStrategy,
@@ -76,50 +76,10 @@ function initializeBatchModalState(
     status: (idx === 0 ? 'UPLOADING' : 'PENDING') as IngestionProgressItem['status'],
   }));
 
-  store.setState((s) => {
-    const hasActiveBatch = Boolean(!s.state.isComplete && s.state.data && s.state.data.items.length > 0);
-    const mergedItems = hasActiveBatch
-      ? [...s.state.data!.items, ...newProgressItems]
-      : newProgressItems;
-    const total = mergedItems.length;
-    const succeeded = mergedItems.filter((i) => i.status === 'SUCCEEDED').length;
-    const failed = mergedItems.filter((i) => i.status === 'FAILED').length;
-    const processed = succeeded + failed;
-    const percentage = total > 0 ? Math.round((processed / total) * 100) : 0;
-
-    return {
-      processingItems: [
-        ...s.processingItems.filter(
-          (p) =>
-            !initialProcessingItems.some(
-              (n) => n.fileName === p.fileName && n.fileSize === p.fileSize,
-            ),
-        ),
-        ...initialProcessingItems,
-      ],
-      state: {
-        isOpen: hasActiveBatch && s.state.isMinimized ? false : true,
-        isMinimized: hasActiveBatch ? s.state.isMinimized : false,
-        runId: hasActiveBatch ? s.state.runId || runId : runId,
-        fileName: total === 1 ? mergedItems[0]!.title : `${total} documents`,
-        isComplete: false,
-        error: null,
-        data: {
-          runId: hasActiveBatch ? s.state.data!.runId : runId,
-          scopeId,
-          status: 'PROCESSING',
-          total,
-          processed,
-          percentage,
-          succeeded,
-          duplicates: hasActiveBatch ? s.state.data!.duplicates : 0,
-          failed,
-          currentTitle: files[0]?.name || title,
-          items: mergedItems,
-          startedAt: hasActiveBatch ? s.state.data!.startedAt : new Date().toISOString(),
-        },
-      },
-    };
+  store.initializeBatchRun(runId, title, newProgressItems, {
+    scopeId,
+    currentTitle: files[0]?.name || title,
+    initialProcessingItems,
   });
 }
 
@@ -146,6 +106,12 @@ async function synchronizeBatchCaches(
       counts: true,
       smartCollections: true,
     }),
+    queryClient.refetchQueries
+      ? queryClient.refetchQueries({
+          queryKey: itemKeys.all(scopeId),
+          type: 'active',
+        })
+      : Promise.resolve(),
     effectiveCollection
       ? queryClient.invalidateQueries({
           queryKey: itemKeys.byCollection(scopeId, effectiveCollection),
@@ -196,39 +162,11 @@ export async function executeBatchUpload(
   const markFileFailed = (_file: File, _index: number, provisionalId: string, errorMsg: string) => {
     failCount++;
     completedCount++;
-    store.setState((s) => {
-      const items = (s.state.data?.items || []).map((i: IngestionProgressItem) =>
-        i.id === provisionalId
-          ? {
-              ...i,
-              status: 'FAILED' as const,
-              error: errorMsg,
-            }
-          : i,
-      );
-      const total = items.length || files.length;
-      const succeeded = items.filter((i) => i.status === 'SUCCEEDED').length;
-      const failed = items.filter((i) => i.status === 'FAILED').length;
-      const processed = succeeded + failed;
-      const percentage = total > 0 ? Math.round((processed / total) * 100) : 100;
-      return {
-        processingItems: s.processingItems.filter((p) => p.id !== provisionalId),
-        state: s.state.data
-          ? {
-              ...s.state,
-              data: {
-                ...s.state.data,
-                items,
-                total,
-                processed,
-                succeeded,
-                failed,
-                percentage,
-              },
-            }
-          : s.state,
-      };
-    });
+    store.patchBatchItemAndRecalculate(
+      provisionalId,
+      { status: 'FAILED', error: errorMsg },
+      { removeProcessingItem: true },
+    );
   };
 
   const markFileSucceeded = (
@@ -241,49 +179,23 @@ export async function executeBatchUpload(
   ) => {
     successCount++;
     completedCount++;
-    store.setState((s) => {
-      const items = (s.state.data?.items || []).map((i: IngestionProgressItem) =>
-        i.id === provisionalId
-          ? { ...i, status: 'SUCCEEDED' as const, itemName: extractedTitle, itemId: finalItemId }
-          : i,
-      );
-      const total = items.length || files.length;
-      const succeeded = items.filter((i) => i.status === 'SUCCEEDED').length;
-      const failed = items.filter((i) => i.status === 'FAILED').length;
-      const processed = succeeded + failed;
-      const percentage = total > 0 ? Math.round((processed / total) * 100) : 100;
-      return {
-        ...(updateProvisional
-          ? {
-               processingItems: s.processingItems.map((p) =>
-                p.id === provisionalId
-                  ? {
-                      ...p,
-                      itemId: finalItemId,
-                      extractedTitle,
-                      status: 'SUCCEEDED' as const,
-                      progress: 100,
-                    }
-                  : p,
-              ),
-            }
-          : {}),
-        state: s.state.data
-          ? {
-              ...s.state,
-              data: {
-                ...s.state.data,
-                items,
-                total,
-                processed,
-                succeeded,
-                failed,
-                percentage,
-              },
-            }
-          : s.state,
-      };
-    });
+    store.patchBatchItemAndRecalculate(
+      provisionalId,
+      { status: 'SUCCEEDED', itemName: extractedTitle, itemId: finalItemId },
+      updateProvisional
+        ? {
+            processingPatch: {
+              itemId: finalItemId,
+              extractedTitle,
+              status: 'SUCCEEDED',
+              progress: 100,
+            },
+          }
+        : undefined,
+    );
+    if (files.length > 1 && finalItemId) {
+      void queryClient.invalidateQueries({ queryKey: itemKeys.all(scopeId) });
+    }
   };
 
   const processFile = async (entry: { file: File; index: number; provisionalId: string }, signal?: AbortSignal) => {
@@ -291,18 +203,11 @@ export async function executeBatchUpload(
     const { file, index, provisionalId } = entry;
 
     // Set item to UPLOADING
-    store.setState((s) => {
-      if (!s.state.data) return s;
-      const items = s.state.data.items.map((i: IngestionProgressItem) =>
-        i.id === provisionalId ? { ...i, status: 'UPLOADING' as const, error: undefined } : i,
-      );
-      return {
-        state: {
-          ...s.state,
-          data: { ...s.state.data, items, currentTitle: file.name },
-        },
-      };
-    });
+    store.patchBatchItemAndRecalculate(
+      provisionalId,
+      { status: 'UPLOADING', error: undefined },
+      { currentTitle: file.name },
+    );
 
     try {
       if (file.size > MAX_UPLOAD_FILE_SIZE_BYTES) {
@@ -356,43 +261,7 @@ export async function executeBatchUpload(
   await synchronizeBatchCaches(queryClient, scopeId, effectiveCollection);
 
   // Ensure all provisional items for this batch are wiped and modal reflects aggregate status
-  store.setState((s) => {
-    const remainingProvisional = s.processingItems.filter((p) => !batchProvisionalIds.has(p.id));
-    const allItems = s.state.data?.items || [];
-    const total = allItems.length || files.length;
-    const totalSucceeded = allItems.filter((i) => i.status === 'SUCCEEDED').length;
-    const totalFailed = allItems.filter((i) => i.status === 'FAILED').length;
-    const totalProcessed = totalSucceeded + totalFailed;
-    const allDone = remainingProvisional.length === 0 && totalProcessed >= total;
-
-    return {
-      processingItems: remainingProvisional,
-      state: {
-        ...s.state,
-        isComplete: allDone,
-        error:
-          allDone && totalFailed === total && total > 0
-            ? 'All files failed to process'
-            : null,
-        data: s.state.data
-          ? {
-              ...s.state.data,
-              status: !allDone
-                ? 'PROCESSING'
-                : totalFailed === total
-                  ? 'FAILED_FINAL'
-                  : 'COMPLETED',
-              percentage: total > 0 ? Math.round((totalProcessed / total) * 100) : 100,
-              total,
-              processed: totalProcessed,
-              succeeded: totalSucceeded,
-              failed: totalFailed,
-              completedAt: allDone ? new Date().toISOString() : undefined,
-            }
-          : null,
-      },
-    };
-  });
+  store.completeBatchRun(undefined, batchProvisionalIds);
 
   if (successCount > 0) {
     toast.success(
@@ -419,6 +288,7 @@ export function useResumeBatchIngestionPolling(
   isComplete: boolean,
 ): void {
   const { queryClient } = useLibraryCacheSynchronizer(effectiveScope);
+  const applyServerRunSnapshot = useProcessModalStore((s) => s.applyServerRunSnapshot);
   const pollingRef = useRef<boolean>(false);
 
   useEffect(() => {
@@ -444,20 +314,9 @@ export function useResumeBatchIngestionPolling(
           status === 'SUCCEEDED' ||
           status === 'FAILED_FINAL'
         ) {
-          useProcessModalStore.setState((s) => ({
-            state: {
-              ...s.state,
-              isComplete: true,
-              data: s.state.data
-                ? {
-                    ...s.state.data,
-                    status: status === 'FAILED_FINAL' ? 'FAILED_FINAL' : 'COMPLETED',
-                    percentage: 100,
-                  }
-                : null,
-            },
-          }));
-          void queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
+          applyServerRunSnapshot({ status });
+          await synchronizeBatchCaches(queryClient, effectiveScope);
+          useProcessModalStore.getState().completeBatchRun();
           return;
         }
 
@@ -468,32 +327,12 @@ export function useResumeBatchIngestionPolling(
               items?: Array<{ id: string; status: string; title?: string }>;
             };
             if (Array.isArray(pr.items) && pr.items.length > 0) {
-              useProcessModalStore.setState((s) => {
-                if (!s.state.data) return s;
-                const updatedItems = s.state.data.items.map((it) => {
-                  const match = pr.items!.find(
-                    (pi) =>
-                      pi.id === it.id ||
-                      (pi.title && it.title && pi.title.includes(it.title)),
-                  );
-                  if (match) {
-                    return {
-                      ...it,
-                      status: (match.status || it.status) as IngestionProgressItem['status'],
-                      title: match.title || it.title,
-                    };
-                  }
-                  return it;
-                });
-                return {
-                  state: {
-                    ...s.state,
-                    data: {
-                      ...s.state.data,
-                      items: updatedItems,
-                    },
-                  },
-                };
+              applyServerRunSnapshot({
+                items: pr.items.map((pi) => ({
+                  id: pi.id,
+                  title: pi.title || '',
+                  status: (pi.status || 'PROCESSING') as IngestionProgressItem['status'],
+                })),
               });
             }
           }
@@ -518,7 +357,7 @@ export function useResumeBatchIngestionPolling(
       pollingRef.current = false;
       if (timer) clearTimeout(timer);
     };
-  }, [activeRunId, isComplete, effectiveScope, queryClient]);
+  }, [activeRunId, isComplete, effectiveScope, queryClient, applyServerRunSnapshot]);
 }
 
 export interface SaveFeedEntryCoordinatorOptions<

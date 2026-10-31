@@ -93,6 +93,7 @@ export interface LibrarySelectionSlice {
   clearSelection: () => void;
   setActiveItem: (id: string | null) => void;
   toggleActiveItem: (id: string) => boolean;
+  evictItems: (ids: Iterable<string>) => void;
 }
 
 // 4. Centralized Modal Dialog Bus Slice
@@ -335,6 +336,32 @@ const createSelectionSlice: StateCreator<
     set({ activeItemId: id, isInspectorOpen: true });
     return true;
   },
+
+  evictItems: (ids) =>
+    set((state) => {
+      const idSet = ids instanceof Set ? ids : new Set(ids);
+      if (idSet.size === 0) return state;
+
+      let selectedChanged = false;
+      const nextSelected = new Set(state.selectedIds);
+      for (const id of idSet) {
+        if (nextSelected.delete(id)) {
+          selectedChanged = true;
+        }
+      }
+
+      const activeCleared =
+        state.activeItemId !== null && idSet.has(state.activeItemId);
+
+      if (!selectedChanged && !activeCleared) {
+        return state;
+      }
+
+      return {
+        ...(selectedChanged ? { selectedIds: nextSelected } : {}),
+        ...(activeCleared ? { activeItemId: null } : {}),
+      };
+    }),
 });
 
 const createModalSlice: StateCreator<

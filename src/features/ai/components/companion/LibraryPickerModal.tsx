@@ -5,13 +5,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, } from '@/shared/comp
 import { Button } from '@/shared/components/ui/button';
 import {
   Search, FileText, Loader2, Folder, Layers, X, Check, } from 'lucide-react';
-import { libraryServices } from '@/features/library/sdk/library.client';
-import { isProjectScope } from '@/features/library/domain/item-url';
-import type { Item, Collection } from '@/features/library/domain/types/library.types';
+import { libraryServices } from '@/features/library/sdk';
+import { isProjectScope } from '@/features/library/domain/identifiers';
+import type { Item, Collection } from '@/features/library/domain/types/core.types';
 import { LibraryEmptyState } from '@/features/library/ui/content/LibraryEmptyState';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
-import { buildTree } from '@/features/library/domain/collection-tree';
-import type { TreeNode } from '@/features/library/ui/sidebar/sidebar.types';
+import { buildTree, type TreeNode } from '@/features/library/domain/collection-tree';
 import { cn } from '@/shared/lib/utils';
 import { toast } from 'sonner';
 

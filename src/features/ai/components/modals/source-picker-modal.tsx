@@ -25,7 +25,7 @@ import { Skeleton } from '@/shared/components/ui/skeleton';
 import { useChatMode } from '../../hooks/use-chat-mode';
 import { useCollections } from '@/features/library/sdk/queries/collections.queries';
 import { useItems } from '@/features/library/sdk/queries/catalog.queries';
-import type { Collection, Item } from '@/features/library/domain/types/library.types';
+import type { Collection, Item } from '@/features/library/domain/types/core.types';
 import { LibraryEmptyState } from '@/features/library/ui/content/LibraryEmptyState';
 import { storageDriveService, type StorageItem } from '@/features/storage';
 import { StorageEmptyState } from '@/features/storage/components/layout/StorageEmptyState';

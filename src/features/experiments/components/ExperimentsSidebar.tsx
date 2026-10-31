@@ -29,8 +29,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
-import { usePanelResize } from '@/features/library/ui/hooks/usePanelResize';
-import { SidebarResizer } from '@/features/library/ui/sidebar/SidebarResizer';
+import { usePanelResize } from '@/features/library/core/coordinator/inspector-item.coordinator';
+import { SidebarResizer } from '@/features/library/ui/sidebar/SidebarSystemNav';
 import {
   useExperimentsUIStore,
   type ExperimentsViewId,

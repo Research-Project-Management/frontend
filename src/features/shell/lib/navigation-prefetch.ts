@@ -29,7 +29,7 @@ import {
 import {
   CollectionsService,
   ItemsService,
-} from '@/features/library/sdk/library.client';
+} from '@/features/library/sdk';
 
 /**
  * Centralized Navigation Intent & Prefetch Budget Controller (Deep Module).

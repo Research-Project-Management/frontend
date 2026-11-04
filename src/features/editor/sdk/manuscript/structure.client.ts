@@ -13,18 +13,32 @@ import {
   rawFetch,
 } from '@/shared/lib/api';
 import { MANUSCRIPTS_API_BASE, getManuscriptsBaseUrl } from './base';
+import { normalizeVirtualPath } from '@/features/editor/domain/document/document-naming';
 import type {
   StructureNodeDto,
+  ManuscriptNodeDto,
   FileMetadataDto,
+  StorageFileDto,
   BibEntryDto,
   CitationValidationDto,
   LinkedFileDto,
   CreateLinkedFilePayload,
   ProjectTemplateItem,
+  ProjectOutlineResponseDto,
+  ProjectSymbolsResponseDto,
+  ImportFromProjectPayload,
 } from './types';
 import type { EditorStorageItem } from '@/features/editor/domain/types/storage-item.types';
 
-export type { EditorStorageItem };
+export type {
+  EditorStorageItem,
+  StructureNodeDto,
+  ManuscriptNodeDto,
+  FileMetadataDto,
+  StorageFileDto,
+  ProjectSymbolsResponseDto,
+  ImportFromProjectPayload,
+};
 
 /** Result of POST citations/sync-library. `conflicts` lists citekeys that already existed and were overwritten. */
 export interface SyncLibraryResult {
@@ -44,6 +58,45 @@ export interface SyncLibraryResult {
 export const structure = {
   getTree: async (pageId: string) => {
     return await apiGet(`${MANUSCRIPTS_API_BASE}/pages/${pageId}/structure/tree`);
+  },
+
+  getSymbols: async (projectId: string): Promise<ProjectSymbolsResponseDto | null> => {
+    if (!projectId) return null;
+    try {
+      return await apiGet<ProjectSymbolsResponseDto>(
+        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/symbols`,
+        { silent: true },
+      );
+    } catch {
+      return null;
+    }
+  },
+
+  getOutline: async (
+    projectId: string,
+    params?: { filePath?: string; docId?: string; content?: string },
+  ): Promise<ProjectOutlineResponseDto> => {
+    if (!projectId) {
+      return { rootDocPath: null, entries: [], tree: [] };
+    }
+    try {
+      if (params?.content !== undefined) {
+        return await apiPost<ProjectOutlineResponseDto>(
+          `${MANUSCRIPTS_API_BASE}/pages/${projectId}/structure/outline`,
+          params,
+          { silent: true },
+        );
+      }
+      const query: Record<string, string> = {};
+      if (params?.filePath) query.filePath = params.filePath;
+      if (params?.docId) query.docId = params.docId;
+      return await apiGet<ProjectOutlineResponseDto>(
+        `${MANUSCRIPTS_API_BASE}/pages/${projectId}/structure/outline`,
+        { params: query, silent: true },
+      );
+    } catch {
+      return { rootDocPath: null, entries: [], tree: [] };
+    }
   },
 
   getAllNodes: async (pageId: string): Promise<StructureNodeDto[]> => {
@@ -124,16 +177,21 @@ export const structure = {
           const upperType = (n.type?.toUpperCase() || 'FILE') as 'FOLDER' | 'DOC' | 'FILE';
           const isFolder = upperType === 'FOLDER';
           const isFileAsset = upperType === 'FILE';
+          const normalizedPath = normalizeVirtualPath(n.path || n.name) || n.name;
           return {
             id: n.id,
+            nodeId: n.id,
+            pageId: n.pageId ?? n.projectId ?? pageId ?? null,
+            projectId: n.projectId ?? null,
             filename: n.name,
-            path: n.path,
+            path: normalizedPath,
             isFolder,
             nodeType: upperType,
             docId: n.docId ?? null,
             fileId: n.fileId ?? null,
             isRootDoc: Boolean(n.isRootDoc),
-            parentId: n.parentId,
+            parentId: n.parentId ?? null,
+            sortOrder: n.sortOrder,
             size: n.sizeBytes,
             ...(isFileAsset ? { url: filestore.getStreamUrl(pageId, n.fileId || n.id) } : {}),
             createdAt: n.createdAt,
@@ -199,6 +257,16 @@ export const filestore = {
     return await apiDelete(`${MANUSCRIPTS_API_BASE}/projects/${projectIdOrPageId}/files/${fileId}`);
   },
 
+  importFromProject: async (
+    projectIdOrPageId: string,
+    payload: ImportFromProjectPayload,
+  ): Promise<{ file: Record<string, unknown> }> => {
+    return await apiPost<{ file: Record<string, unknown> }>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectIdOrPageId}/files/import-from-project`,
+      payload,
+    );
+  },
+
   uploadPageFile: async (
     pageId: string,
     file: File,
@@ -206,16 +274,26 @@ export const filestore = {
     onProgress?: (progress: number) => void,
     projectId?: string,
   ): Promise<EditorStorageItem> => {
-    const targetPageId = projectId || pageId || '';
+    const targetPageId = pageId || projectId || '';
     const uploaded = await filestore.upload(targetPageId, file, file.name);
     onProgress?.(100);
     const id = uploaded.id || '';
+    const filename = uploaded.name || uploaded.filename || file.name;
+    const normalizedPath = normalizeVirtualPath(uploaded.path || filename) || filename;
     return {
       id,
-      filename: uploaded.name || file.name,
+      nodeId: uploaded.nodeId ?? id,
+      pageId: uploaded.pageId ?? pageId ?? projectId ?? null,
+      projectId: uploaded.projectId ?? projectId ?? pageId ?? null,
+      filename,
+      path: normalizedPath,
       size: uploaded.sizeBytes ?? file.size,
       mimeType: uploaded.mimeType || file.type,
       isFolder: false,
+      nodeType: 'FILE',
+      docId: uploaded.docId ?? null,
+      fileId: uploaded.fileId ?? id,
+      isRootDoc: false,
       parentId: parentId || null,
       url: filestore.getStreamUrl(targetPageId, id),
     };
@@ -230,6 +308,18 @@ export const filestore = {
  */
 
 export const citations = {
+  list: async (projectId: string, limit = 500): Promise<BibEntryDto[]> => {
+    if (!projectId) return [];
+    try {
+      return await apiGet<BibEntryDto[]>(
+        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/citations?limit=${limit}`,
+        { silent: true },
+      );
+    } catch {
+      return [];
+    }
+  },
+
   search: async (projectId: string, query = '', limit = 20): Promise<BibEntryDto[]> => {
     return await apiGet<BibEntryDto[]>(
       `${MANUSCRIPTS_API_BASE}/projects/${projectId}/citations/search?query=${encodeURIComponent(query)}&limit=${limit}`,
@@ -245,6 +335,80 @@ export const citations = {
 
   validate: async (projectId: string): Promise<CitationValidationDto> => {
     return await apiGet<CitationValidationDto>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/citations/validate`);
+  },
+
+  refactorKey: async (
+    projectId: string,
+    dto: { oldKey: string; newKey: string },
+  ): Promise<{
+    oldKey: string;
+    newKey: string;
+    totalReplacements: number;
+    affectedFiles: Array<{
+      docId: string;
+      path: string;
+      count: number;
+      newContent: string;
+    }>;
+  }> => {
+    return await apiPost(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/citations/refactor`,
+      dto,
+    );
+  },
+
+  upsertEntries: async (
+    projectId: string,
+    dto: {
+      entry?: Record<string, unknown>;
+      entries?: Array<Record<string, unknown>>;
+      rawBibtex?: string;
+      targetBibFile?: string;
+      targetFilename?: string;
+    },
+  ): Promise<{
+    filePath: string;
+    docId?: string;
+    syncedCount: number;
+    entries: BibEntryDto[];
+    formattedBibtex: string;
+    conflicts?: string[];
+  }> => {
+    return await apiPost(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/citations/entries`,
+      dto,
+    );
+  },
+
+  injectBibliography: async (
+    projectId: string | undefined,
+    dto: {
+      docId?: string;
+      content?: string;
+      filePath?: string;
+      format?: 'latex' | 'markdown';
+      styleId?: string;
+      headingTitle?: string;
+      bibliographyText?: string;
+      citations?: Array<{
+        key?: string;
+        inText?: string;
+        bibliography?: string;
+      }>;
+    },
+  ): Promise<{
+    nextContent: string;
+    action: 'replaced' | 'appended';
+    section: string;
+    format: 'latex' | 'markdown';
+  }> => {
+    if (projectId) {
+      return await apiPost(
+        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/citations/inject-bibliography`,
+        dto,
+      );
+    }
+    return await apiPost(`${MANUSCRIPTS_API_BASE}/citations/format-bibitem`, dto);
   },
 
   syncLibrary: async (

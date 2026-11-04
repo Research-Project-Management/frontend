@@ -27,7 +27,7 @@ import {
   useDocumentCollaborationStore,
 } from '@/features/editor/core';
 import { integrationService } from '@/features/settings/services/integration.service';
-import { latexDagEngine } from '@/features/editor/domain/latex/latex-dag-engine';
+import { latexDependencyGraph } from '@/features/editor/domain/latex/dependency-graph';
 import { parseLatexStructure } from '@/features/editor/domain/latex/latex-structure';
 import { LatexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import { assembleCompilationSnapshot } from '@/features/editor/domain/document/compilation-snapshot';
@@ -277,7 +277,7 @@ describe('User-Driven Overleaf End-to-End Journeys (Phases 1 -> 14)', () => {
       ];
 
       // 1. Infer Root Main Document automatically even if main.tex is not first
-      const dag = latexDagEngine.buildFromProjectFiles(projectFiles);
+      const dag = latexDependencyGraph.buildFromProjectFiles(projectFiles);
       expect(dag.rootCandidates).toContain('main.tex');
       const mainNode = dag.nodes.get('main.tex');
       expect(mainNode?.includes).toContain('chapters/intro.tex');

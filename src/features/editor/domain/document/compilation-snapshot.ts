@@ -12,7 +12,7 @@
  * - Pure Domain logic: Zero dependencies on UI stores, command bus, or coordinators.
  */
 
-import { normalizeLatexPath } from '@/features/editor/domain/latex/latex-dag-engine';
+import { normalizeLatexPath } from '@/features/editor/domain/latex/dependency-graph';
 import { extractDocumentContentString } from '../types/core.types';
 
 export interface ProjectCompilationSnapshot {

@@ -5,7 +5,7 @@
  *
  * Responsibilities:
  * - Interval-Indexed Diagnostics & Compiler Errors Coordination.
- * - Real-time LaTeX Syntax Linting via Background Web Worker.
+ * - Real-time LaTeX Syntax Linting via Backend FastSyntaxLinter.
  * - CodeMirror 6 Inline Error Lens and Diagnostics Gutter Decorations.
  * - AI 1-Click Error AutoFix Integration.
  */
@@ -13,7 +13,8 @@
 // 1. Coordinator & Core Services
 export {
   diagnosticsCoordinator,
-  DiagnosticsCoordinatorRegistry,
+  DiagnosticsCoordinator,
+  DiagnosticsCoordinator as DiagnosticsCoordinatorRegistry,
   type IndexedDiagnosticItem,
   type FileDiagnosticsSummary,
   type DiagnosticsTelemetry,
@@ -48,6 +49,12 @@ export {
 } from './extensions/diagnostics-gutter';
 export {
   createLatexLinterExtension,
-  latexLinterWorkerClient,
+  LatexLinterClient,
+  LatexLinterClient as LatexLinterBackendClient,
+  latexLinterClient,
+  latexLinterClient as latexLinterWorkerClient,
+  createLatexLinterPlugin,
+  createLatexLinterPlugin as createLatexLinterIncrementalPlugin,
+  latexLinterPlugin,
+  latexLinterPlugin as latexLinterIncrementalPlugin,
 } from './extensions/latex-linter';
-

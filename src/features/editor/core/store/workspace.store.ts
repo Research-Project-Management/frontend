@@ -393,8 +393,8 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
         getActiveDocId: (projectId, rootPageId) => {
           const s = get();
           return (
-            s.activeByProject[projectId] ??
             (rootPageId ? s.activeByProject[rootPageId] : null) ??
+            s.activeByProject[projectId] ??
             null
           );
         },
@@ -415,8 +415,8 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
         getTabsForHierarchy: (projectId, rootPageId) => {
           const s = get();
           return (
-            s.tabsByProject[projectId] ??
             (rootPageId ? s.tabsByProject[rootPageId] : undefined) ??
+            s.tabsByProject[projectId] ??
             []
           );
         },

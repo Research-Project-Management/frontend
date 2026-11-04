@@ -28,6 +28,19 @@ export interface UseFileTreeParams extends BuildFileTreeParams {
 
 const STORAGE_KEY_PREFIX = EDITOR_STORAGE_KEYS.EXPANDED_FOLDERS_PREFIX;
 
+export function isFolderOpen(
+  openFolders: ReadonlySet<string>,
+  node: { id: string; name: string; fullPath?: string; path?: string },
+): boolean {
+  const folderKey = node.fullPath || node.path || node.name;
+  return (
+    openFolders.has(folderKey) ||
+    openFolders.has(`folder:${folderKey}`) ||
+    openFolders.has(node.name) ||
+    openFolders.has(node.id)
+  );
+}
+
 function loadExpandedFolders(key: string): Set<string> {
   if (typeof window !== 'undefined') {
     try {
@@ -57,9 +70,9 @@ export function useFileTree({
   const mainBibFile = useSettingsStore((s) => s.mainBibFile);
 
   const storageKey = useMemo(() => {
-    const scopeId = projectId || parentPageId || 'default';
+    const scopeId = parentPageId || parentPage?.id || projectId || 'default';
     return `${STORAGE_KEY_PREFIX}${scopeId}`;
-  }, [projectId, parentPageId]);
+  }, [parentPageId, parentPage?.id, projectId]);
 
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(() =>
     loadExpandedFolders(storageKey),
@@ -154,12 +167,21 @@ export function useFileTree({
   }, [treeItems, fileFilter]);
 
   const toggleFolder = useCallback((folderKey: string) => {
+    const cleanKey =
+      normalizeVirtualPath(
+        folderKey.startsWith('folder:')
+          ? folderKey.slice('folder:'.length)
+          : folderKey,
+      ) || folderKey;
     setExpandedFolders((prev) => {
       const next = new Set(prev);
-      if (next.has(folderKey)) {
+      const syntheticKey = `folder:${cleanKey}`;
+      if (next.has(cleanKey) || next.has(folderKey) || next.has(syntheticKey)) {
+        next.delete(cleanKey);
         next.delete(folderKey);
+        next.delete(syntheticKey);
       } else {
-        next.add(folderKey);
+        next.add(cleanKey);
       }
       return next;
     });
@@ -188,14 +210,9 @@ export function useFileTree({
   }, []);
 
   const isFolderExpanded = useCallback(
-    (node: { id: string; name: string; fullPath?: string }): boolean => {
+    (node: { id: string; name: string; fullPath?: string; path?: string }): boolean => {
       if (fileFilter.trim()) return true;
-      const folderKey = node.fullPath || node.name;
-      return (
-        expandedFolders.has(folderKey) ||
-        expandedFolders.has(node.name) ||
-        expandedFolders.has(node.id)
-      );
+      return isFolderOpen(expandedFolders, node);
     },
     [fileFilter, expandedFolders],
   );

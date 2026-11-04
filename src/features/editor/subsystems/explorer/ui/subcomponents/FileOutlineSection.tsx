@@ -3,11 +3,30 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import { editorCommandBus, usePageStore, documentAuthority } from '@/features/editor/core';
-import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
-import { parseDocumentOutline, OUTLINE_INDENT } from '@/features/editor/subsystems/compiler';
+import { editorCommandBus, usePageStore, documentFacade } from '@/features/editor/core';
+import { extractDocumentContentString, extractProjectId } from '@/features/editor/domain/types/core.types';
+import {
+  parseDocumentOutline,
+  dtoToOutlineEntries,
+  cacheBackendOutline,
+  OUTLINE_INDENT,
+  type OutlineEntry,
+} from '@/features/editor/subsystems/compiler';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
 import { useWorkspaceStore } from '@/features/editor/core';
+
+const outlineResultCache = new Map<string, OutlineEntry[]>();
+const outlineInFlightCache = new Map<string, Promise<OutlineEntry[]>>();
+
+function hashOutlineKey(projectId: string, filePath: string | undefined, content: string): string {
+  let h = 2166136261;
+  for (let i = 0; i < content.length; i++) {
+    h ^= content.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return `${projectId}|${filePath ?? ''}|${content.length}:${h >>> 0}`;
+}
 
 export interface FileOutlineSectionProps {
   isFileTreeOpen: boolean;
@@ -35,7 +54,7 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
       return;
     }
     if (!isOutlineOpen) return;
-    const currentText = engine?.getContent() || documentAuthority.getDocumentContent();
+    const currentText = engine?.getContent() || documentFacade.getDocumentContent();
     if (currentText) {
       setContent(currentText);
       return;
@@ -115,10 +134,80 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
     [outlineHeight],
   );
 
-  const outline = useMemo(
-    () => (isOutlineOpen ? parseDocumentOutline(content) : []),
-    [content, isOutlineOpen],
-  );
+  const [outline, setOutline] = useState<OutlineEntry[]>([]);
+  const lastFetchedHashRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!isOutlineOpen) {
+      return;
+    }
+    const pageState = usePageStore.getState();
+    const projectId =
+      pageState.projectId ||
+      extractProjectId(pageState.currentPage) ||
+      pageState.currentPage?.id ||
+      '';
+    if (!projectId) {
+      setOutline(parseDocumentOutline(content));
+      return;
+    }
+
+    const outlineHash = hashOutlineKey(projectId, activeFileName, content);
+    if (lastFetchedHashRef.current === outlineHash) {
+      return;
+    }
+
+    const cached = outlineResultCache.get(outlineHash);
+    if (cached) {
+      lastFetchedHashRef.current = outlineHash;
+      cacheBackendOutline(cached);
+      setOutline(cached);
+      return;
+    }
+
+    let cancelled = false;
+    let requestPromise = outlineInFlightCache.get(outlineHash);
+    if (!requestPromise) {
+      requestPromise = manuscriptService.structure
+        .getOutline(projectId, {
+          filePath: activeFileName,
+          content,
+        })
+        .then((res) => {
+          const mapped = dtoToOutlineEntries(res?.entries);
+          if (outlineResultCache.size >= 32) {
+            const oldestKey = outlineResultCache.keys().next().value;
+            if (oldestKey !== undefined) {
+              outlineResultCache.delete(oldestKey);
+            }
+          }
+          outlineResultCache.set(outlineHash, mapped);
+          return mapped;
+        })
+        .finally(() => {
+          outlineInFlightCache.delete(outlineHash);
+        });
+      outlineInFlightCache.set(outlineHash, requestPromise);
+    }
+
+    requestPromise
+      .then((mapped) => {
+        if (cancelled) return;
+        lastFetchedHashRef.current = outlineHash;
+        cacheBackendOutline(mapped);
+        setOutline(mapped);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          lastFetchedHashRef.current = outlineHash;
+          setOutline(parseDocumentOutline(content));
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [content, activeFileName, isOutlineOpen]);
 
   // Active section heading containing the current cursor position
   const activeSectionIndex = useMemo(() => {

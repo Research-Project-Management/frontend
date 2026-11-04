@@ -9,8 +9,8 @@
  * - Single source of truth for the active compilation lifecycle (IDLE -> COMPILING -> SYNCING -> SUCCESS / ERROR / ABORTED).
  */
 
-import { LatexCompilerEngine, type CompilerExecutionEngine, type CompilerExecutionPort } from './compilation-pipeline';
-import { CompilationFlushBarrier } from './compilation-flush-barrier';
+import { CompilePipeline, type CompilerPort, type CompilerExecutionEngine, type CompilerExecutionPort } from './compile-pipeline';
+import { FlushBarrier } from './flush-barrier';
 import {
   resolveForwardDetail,
   resolveForward,
@@ -22,14 +22,14 @@ import {
   type ProjectCompilationSnapshot,
   type SnapshotProjectFile,
 } from '@/features/editor/domain/document/compilation-snapshot';
-import { latexDagEngine } from '@/features/editor/domain/latex/latex-dag-engine';
+import { latexDependencyGraph } from '@/features/editor/domain/latex/dependency-graph';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { diagnosticsCoordinator, type IndexedDiagnosticItem, type FileDiagnosticsSummary } from '@/features/editor/subsystems/diagnostics';
 import {
   editorCommandBus,
   workspaceCoordinator,
   sessionCoordinator,
-  documentAuthority,
+  documentFacade,
   usePageStore,
   useSettingsStore,
   useConnectivityStore,
@@ -45,6 +45,48 @@ import type { CompileError, CompileStatus } from '@/features/editor/domain/types
 import { extractProjectId, extractDocumentContentString } from '@/features/editor/domain/types/core.types';
 import type { NodeTreeItem } from '@/features/editor/domain/types/node.types';
 import { parseCompileErrors } from '@/features/editor/domain/latex/latex-structure';
+import {
+  diagnosticsToParsedLog,
+  cacheBackendParsedLog,
+} from '@/features/editor/domain/latex/compiler-logs-parser';
+
+const VALID_COMPILE_STATUSES = new Set<CompileStatus>([
+  'idle',
+  'flushing',
+  'compiling',
+  'syncing',
+  'done',
+  'success',
+  'error',
+  'aborted',
+]);
+const EM_EN_DASH_REGEX = /[\u2014\u2013]/g;
+const BOX_WARNING_MSG_REGEX = /^(Overfull|Underfull)\s*\\[hv]box/i;
+
+function sanitizeDash(s?: string): string {
+  return s ? s.replace(EM_EN_DASH_REGEX, '-') : '';
+}
+
+function normalizeEditorDiagnostics(
+  items: ReadonlyArray<CompileError>,
+  excludeBoxWarnings = false,
+): CompileError[] {
+  return items
+    .filter((d) => {
+      if (d.severity === 'info' || d.severity === 'badbox') return false;
+      if (excludeBoxWarnings && BOX_WARNING_MSG_REGEX.test(d.message || '')) return false;
+      return true;
+    })
+    .map((d) => ({
+      line: d.line,
+      message: sanitizeDash(d.message),
+      context: sanitizeDash(d.context || ''),
+      file: d.file,
+      severity: d.severity === 'badbox' ? 'info' : d.severity,
+      code: d.code,
+      suggestion: d.suggestion,
+    }));
+}
 
 export interface CreateSnapshotOptions {
   rootFileId?: string;
@@ -81,7 +123,7 @@ export function buildPageStoreFilePaths(pageStore: {
   return map;
 }
 
-export class CompilationSnapshotProvider {
+export class SnapshotProvider {
   public static createSnapshot(options: CreateSnapshotOptions = {}): ProjectCompilationSnapshot {
     const pageStore = usePageStore.getState();
     const compileStore = useCompileStore.getState();
@@ -102,7 +144,7 @@ export class CompilationSnapshotProvider {
     const wsFiles = workspaceCoordinator.getProjectFiles();
     const baseFiles =
       options.projectFiles ||
-      (wsFiles && wsFiles.length > 0 ? wsFiles : documentAuthority.getOverlayFiles()) ||
+      (wsFiles && wsFiles.length > 0 ? wsFiles : documentFacade.getOverlayFiles()) ||
       [];
     const lruModels = lruDocumentCache.getAllModels();
     const dirtyFiles = compileStore.getDirtyFiles();
@@ -173,14 +215,14 @@ export interface SyncTeXReverseDetail {
 }
 
 export interface CompilerCoordinatorOptions {
-  compilerEngine?: CompilerExecutionEngine;
+  compilerEngine?: CompilerPort;
   getProjectId?: () => string | undefined;
   getMainFile?: () => string | undefined;
   getEngine?: () => string | undefined;
   getTexLiveVersion?: () => string | undefined;
 }
 
-export class CompilerCoordinatorRegistry {
+export class CompilerCoordinator {
   private isCompiling = false;
   private compileAbortController: AbortController | null = null;
   private pendingCompileOptions: CompileOptions | undefined = undefined;
@@ -188,13 +230,13 @@ export class CompilerCoordinatorRegistry {
   private rawSynctex: string | null = null;
   private initialized = false;
 
-  /** Injected Compiler Engine (LatexCompilerEngine by default) */
-  private compilerEngine: CompilerExecutionEngine;
+  /** Injected Compiler Engine (CompilePipeline by default) */
+  private compilerEngine: CompilerPort;
   private readonly options: CompilerCoordinatorOptions;
 
   constructor(options: CompilerCoordinatorOptions = {}) {
     this.options = options;
-    this.compilerEngine = options.compilerEngine || LatexCompilerEngine;
+    this.compilerEngine = options.compilerEngine || CompilePipeline;
     this.initCommandSubscriptions();
   }
 
@@ -223,11 +265,11 @@ export class CompilerCoordinatorRegistry {
 
   // ── Dependency Injection & Seam Configuration ───────────────────────────────
 
-  public setCompilerEngine(engine: CompilerExecutionPort): void {
+  public setCompilerEngine(engine: CompilerPort): void {
     this.compilerEngine = engine;
   }
 
-  public getCompilerEngine(): CompilerExecutionPort {
+  public getCompilerEngine(): CompilerPort {
     return this.compilerEngine;
   }
 
@@ -276,7 +318,7 @@ export class CompilerCoordinatorRegistry {
               : cmd.status === 'queued'
                 ? 'compiling'
                 : cmd.status;
-        if (['idle', 'flushing', 'compiling', 'syncing', 'done', 'success', 'error', 'aborted'].includes(mappedStatus)) {
+        if (VALID_COMPILE_STATUSES.has(mappedStatus as CompileStatus)) {
           useCompileStore.getState().setCompileStatus(mappedStatus as CompileStatus);
         }
       }
@@ -389,7 +431,7 @@ export class CompilerCoordinatorRegistry {
       extractDocumentContentString(activeDoc?.content);
 
     // 2. Pre-compile atomic flush barrier: commit drafts, sync active buffer, trigger background save
-    await CompilationFlushBarrier.execute(effectiveActiveFileId, currentVal);
+    await FlushBarrier.execute(effectiveActiveFileId, currentVal);
 
     if (currentController.signal.aborted) {
       compileStore.setCompileStatus('idle');
@@ -406,12 +448,12 @@ export class CompilerCoordinatorRegistry {
     const allFilePathsById = buildPageStoreFilePaths(pageStore);
     const allModels = lruDocumentCache.getAllModels();
     for (const m of allModels) {
-      latexDagEngine.updateFileNode(m.fileId, m.filePath || m.fileId, m.content);
+      latexDependencyGraph.updateFileNode(m.fileId, m.filePath || m.fileId, m.content);
     }
     if (activeDoc && activeDoc.content) {
       const cTitle = activeDoc.title || 'main.tex';
       const cContent = extractDocumentContentString(activeDoc.content);
-      latexDagEngine.updateFileNode(activeDoc.id, cTitle, cContent);
+      latexDependencyGraph.updateFileNode(activeDoc.id, cTitle, cContent);
     }
     const registeredEngines = getAllRegisteredEngines?.();
     if (registeredEngines && registeredEngines.size > 0) {
@@ -428,12 +470,12 @@ export class CompilerCoordinatorRegistry {
             wsFile?.title ||
             allFilePathsById[fId] ||
             (fId === effectiveActiveFileId ? activeTitle : fId);
-          latexDagEngine.updateFileNode(fId, fPath, liveText);
+          latexDependencyGraph.updateFileNode(fId, fPath, liveText);
         }
       }
     }
     if (effectiveActiveFileId) {
-      latexDagEngine.updateFileNode(effectiveActiveFileId, activeTitle, currentVal);
+      latexDependencyGraph.updateFileNode(effectiveActiveFileId, activeTitle, currentVal);
     }
 
     // 5. Infer Root Document (DAG traversal, subfile resolution, or settings preference)
@@ -441,7 +483,7 @@ export class CompilerCoordinatorRegistry {
       ? this.options.getMainFile()
       : settingsStore.mainFile;
 
-    const inferred = latexDagEngine.inferRootDocument(
+    const inferred = latexDependencyGraph.inferRootDocument(
       effectiveActiveFileId,
       preferredMainFile
     );
@@ -490,7 +532,7 @@ export class CompilerCoordinatorRegistry {
       (!isBibFile ? activeDoc?.id : undefined) ||
       pageStore.projectId;
 
-    const snapshot = CompilationSnapshotProvider.createSnapshot({
+    const snapshot = SnapshotProvider.createSnapshot({
       rootFileId: safeRootFileId,
       resolvedMainFile,
     });
@@ -563,27 +605,24 @@ export class CompilerCoordinatorRegistry {
             });
         }
 
-        const sanitizeDash = (s?: string) => (s ? s.replace(/[\u2014\u2013]/g, '-') : '');
         const rawLog = res.logs ?? res.rawLog ?? '';
+        const backendDiags = res.diagnostics || [];
+        compileStore.setCompileDiagnostics(backendDiags);
+        const structuredParsedLog = diagnosticsToParsedLog(backendDiags);
+        if (rawLog) {
+          cacheBackendParsedLog(rawLog, structuredParsedLog);
+        }
+        compileStore.setParsedLog(structuredParsedLog);
+
         const rawSuccessDiagnostics =
-          res.diagnostics && res.diagnostics.length > 0
-            ? res.diagnostics
+          backendDiags.length > 0
+            ? backendDiags
             : rawLog
               ? parseCompileErrors(rawLog)
               : [];
         // Only ingest real errors and warnings into Editor Diagnostics Coordinator.
         // Filter out badboxes and info messages (Overfull \hbox etc.) so they stay in CompilerLogs panel only.
-        const successDiagnostics: CompileError[] = rawSuccessDiagnostics
-          .filter((d) => d.severity !== 'info')
-          .map((d) => ({
-            line: d.line,
-            message: sanitizeDash(d.message),
-            context: sanitizeDash(d.context || ''),
-            file: d.file,
-            severity: d.severity,
-            code: d.code,
-            suggestion: d.suggestion,
-          }));
+        const successDiagnostics = normalizeEditorDiagnostics(rawSuccessDiagnostics, false);
         compileStore.setCompileErrors(successDiagnostics);
         diagnosticsCoordinator.ingestCompilerErrors(successDiagnostics, resolvedMainFile);
 
@@ -626,32 +665,18 @@ export class CompilerCoordinatorRegistry {
         compileStore.setCompileStatus('error');
         compileStore.setCompileLog(rawLog || null);
 
-        const sanitizeDash = (s?: string) => (s ? s.replace(/[\u2014\u2013]/g, '-') : '');
+        const backendDiags = res.diagnostics || [];
+        compileStore.setCompileDiagnostics(backendDiags);
+        const structuredParsedLog = diagnosticsToParsedLog(backendDiags);
+        if (rawLog && backendDiags.length > 0) {
+          cacheBackendParsedLog(rawLog, structuredParsedLog);
+        }
+        compileStore.setParsedLog(structuredParsedLog);
 
-        const formattedErrors: CompileError[] =
-          res.diagnostics && res.diagnostics.length > 0
-            ? res.diagnostics
-                .filter((d) => d.severity !== 'info' && !/^(Overfull|Underfull)\s*\\[hv]box/i.test(d.message || ''))
-                .map((d) => ({
-                  line: d.line,
-                  message: sanitizeDash(d.message),
-                  context: sanitizeDash(d.context || ''),
-                  file: d.file,
-                  severity: d.severity,
-                  code: d.code,
-                  suggestion: d.suggestion,
-                }))
-            : (res.errors || [])
-                .filter((err) => err.severity !== 'info' && !/^(Overfull|Underfull)\s*\\[hv]box/i.test(err.message || ''))
-                .map((err) => ({
-                  line: err.line,
-                  message: sanitizeDash(err.message),
-                  context: sanitizeDash(err.context),
-                  file: err.file,
-                  severity: err.severity,
-                  code: err.code,
-                  suggestion: err.suggestion,
-                }));
+        const formattedErrors = normalizeEditorDiagnostics(
+          backendDiags.length > 0 ? backendDiags : res.errors || [],
+          true,
+        );
 
         compileStore.setCompileErrors(formattedErrors);
         diagnosticsCoordinator.ingestCompilerErrors(formattedErrors, resolvedMainFile);
@@ -707,7 +732,7 @@ export class CompilerCoordinatorRegistry {
     try {
       const res = this.compilerEngine.forceSync
         ? await this.compilerEngine.forceSync(targetId)
-        : await LatexCompilerEngine.forceSync(targetId);
+        : await CompilePipeline.forceSync(targetId);
       await this.compile();
       return res;
     } catch (err) {
@@ -777,7 +802,7 @@ export class CompilerCoordinatorRegistry {
     if (this.compilerEngine.resolveReverseRemote) {
       return this.compilerEngine.resolveReverseRemote(projectId, pageNum, x, y);
     }
-    return LatexCompilerEngine.resolveReverseRemote(projectId, pageNum, x, y);
+    return CompilePipeline.resolveReverseRemote(projectId, pageNum, x, y);
   }
 
   public async resolveForwardRemote(
@@ -789,7 +814,7 @@ export class CompilerCoordinatorRegistry {
     if (this.compilerEngine.resolveForwardRemote) {
       return this.compilerEngine.resolveForwardRemote(projectId, file, line, column);
     }
-    return LatexCompilerEngine.resolveForwardRemote(projectId, file, line, column);
+    return CompilePipeline.resolveForwardRemote(projectId, file, line, column);
   }
 
   /**
@@ -803,4 +828,10 @@ export class CompilerCoordinatorRegistry {
   }
 }
 
-export const compilerCoordinator = new CompilerCoordinatorRegistry();
+export const compilerCoordinator = new CompilerCoordinator();
+export {
+  CompilerCoordinator as CompilerCoordinatorRegistry,
+  SnapshotProvider as CompilationSnapshotProvider,
+};
+export type { CompilerExecutionEngine, CompilerExecutionPort };
+

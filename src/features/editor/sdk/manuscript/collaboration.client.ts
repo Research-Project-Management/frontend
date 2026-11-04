@@ -28,6 +28,7 @@ import type {
   ProjectDiffResponse,
   VersionLabelItem,
   ImportProjectZipResult,
+  RestoreProjectVersionFileResult,
   ReconstructedContent,
 } from './types';
 import type { Page } from '@/features/editor/domain/types/core.types';
@@ -192,8 +193,8 @@ export const suggestions = {
     docId: string,
   ): Promise<{ ok: boolean; acceptedCount: number; page?: Page }> => {
     return await apiPost<{ ok: boolean; acceptedCount: number; page?: Page }>(
-      `${MANUSCRIPTS_API_BASE}/docs/${docId}/suggestions/accept-all`,
-      {},
+      `${MANUSCRIPTS_API_BASE}/docs/${docId}/suggestions/batch-resolve`,
+      { action: 'accept' },
     );
   },
 
@@ -201,8 +202,8 @@ export const suggestions = {
     docId: string,
   ): Promise<{ ok: boolean; rejectedCount: number }> => {
     return await apiPost<{ ok: boolean; rejectedCount: number }>(
-      `${MANUSCRIPTS_API_BASE}/docs/${docId}/suggestions/reject-all`,
-      {},
+      `${MANUSCRIPTS_API_BASE}/docs/${docId}/suggestions/batch-resolve`,
+      { action: 'reject' },
     );
   },
 
@@ -211,8 +212,8 @@ export const suggestions = {
     suggestionIds: string[],
   ): Promise<{ ok: boolean; acceptedCount: number; page?: Page }> => {
     return await apiPost<{ ok: boolean; acceptedCount: number; page?: Page }>(
-      `${MANUSCRIPTS_API_BASE}/docs/${docId}/suggestions/accept-all`,
-      { suggestionIds },
+      `${MANUSCRIPTS_API_BASE}/docs/${docId}/suggestions/batch-resolve`,
+      { action: 'accept', suggestionIds },
     );
   },
 
@@ -221,8 +222,25 @@ export const suggestions = {
     suggestionIds: string[],
   ): Promise<{ ok: boolean; rejectedCount: number }> => {
     return await apiPost<{ ok: boolean; rejectedCount: number }>(
-      `${MANUSCRIPTS_API_BASE}/docs/${docId}/suggestions/reject-all`,
-      { suggestionIds },
+      `${MANUSCRIPTS_API_BASE}/docs/${docId}/suggestions/batch-resolve`,
+      { action: 'reject', suggestionIds },
+    );
+  },
+
+  batchResolve: async (
+    docId: string,
+    payload: { action: 'accept' | 'reject'; suggestionIds?: string[] },
+  ): Promise<{
+    ok: boolean;
+    action: 'accept' | 'reject';
+    resolvedCount: number;
+    acceptedCount: number;
+    rejectedCount: number;
+    page?: Page;
+  }> => {
+    return await apiPost(
+      `${MANUSCRIPTS_API_BASE}/docs/${docId}/suggestions/batch-resolve`,
+      payload,
     );
   },
 };
@@ -233,7 +251,7 @@ export const notifications = {
   getPendingBundles: async (): Promise<PendingBundleInfo[]> => {
     try {
       const data = await api.apiGet<{ bundles: PendingBundleInfo[] }>(
-        '/api/documents/notifications/bundles',
+        `${MANUSCRIPTS_API_BASE}/notifications/bundles`,
       );
       return data.bundles || [];
     } catch {
@@ -247,7 +265,7 @@ export const notifications = {
   ): Promise<NotificationDigest | null> => {
     try {
       const data = await api.apiPost<{ digest: NotificationDigest }>(
-        '/api/documents/notifications/bundles/flush',
+        `${MANUSCRIPTS_API_BASE}/notifications/bundles/flush`,
         { scopeId, projectId },
       );
       return data.digest || null;
@@ -259,7 +277,7 @@ export const notifications = {
   getDigestHistory: async (limit = 20): Promise<NotificationDigest[]> => {
     try {
       const data = await api.apiGet<{ digests: NotificationDigest[] }>(
-        '/api/documents/notifications/digests',
+        `${MANUSCRIPTS_API_BASE}/notifications/digests`,
         { params: { limit } },
       );
       return data.digests || [];
@@ -271,7 +289,7 @@ export const notifications = {
   getSettings: async (): Promise<NotificationBundlingSettings> => {
     try {
       const data = await api.apiGet<{ settings: NotificationBundlingSettings }>(
-        '/api/documents/notifications/settings',
+        `${MANUSCRIPTS_API_BASE}/notifications/settings`,
       );
       return data.settings || { enabled: false, windowMinutes: 10 };
     } catch {
@@ -284,7 +302,7 @@ export const notifications = {
   ): Promise<NotificationBundlingSettings> => {
     try {
       const data = await api.apiPut<{ settings: NotificationBundlingSettings }>(
-        '/api/documents/notifications/settings',
+        `${MANUSCRIPTS_API_BASE}/notifications/settings`,
         settings,
       );
       return data.settings || { enabled: false, windowMinutes: 10 };
@@ -365,6 +383,22 @@ export const exportDocs = {
       'GET',
     );
     if (!res.ok) throw new Error(`Export ZIP failed: ${res.statusText}`);
+    return await res.blob();
+  },
+
+  exportVersionZip: async (
+    projectId: string,
+    version: number | string,
+    projectName?: string,
+  ): Promise<Blob> => {
+    const params = new URLSearchParams();
+    if (projectName) params.append('projectName', projectName);
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    const res = await rawFetch(
+      `${getManuscriptsBaseUrl()}/projects/${projectId}/history/versions/${encodeURIComponent(String(version))}/export-zip${queryString}`,
+      'GET',
+    );
+    if (!res.ok) throw new Error(`Export Version ZIP failed: ${res.statusText}`);
     return await res.blob();
   },
 
@@ -592,6 +626,26 @@ export const history = {
       `${MANUSCRIPTS_API_BASE}/projects/${projectId}/history/restore`,
       { targetVersion },
     );
+  },
+
+  restoreProjectVersionFile: async (
+    projectId: string,
+    version: number,
+    pathname: string,
+    fileId?: string,
+  ): Promise<RestoreProjectVersionFileResult> => {
+    return apiPost<RestoreProjectVersionFileResult>(
+      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/history/versions/${version}/restore-file`,
+      { pathname, ...(fileId ? { fileId } : {}) },
+    );
+  },
+
+  exportVersionZip: async (
+    projectId: string,
+    version: number | string,
+    projectName?: string,
+  ): Promise<Blob> => {
+    return exportDocs.exportVersionZip(projectId, version, projectName);
   },
 
   createProjectSnapshot: async (

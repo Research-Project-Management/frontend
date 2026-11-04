@@ -11,6 +11,7 @@ import { Badge } from '@/shared/components/ui/badge';
 import { cn } from '@/shared/lib/utils';
 import { libraryBibtexModalSchema, type LibraryBibtexModalFormValues } from '@/features/editor/domain/types/core.types';
 import { formatItemToBibtex } from '@/features/editor/subsystems/citation';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { useViewItems } from '@/features/library/sdk/queries/catalog.queries';
 import type { Item } from '@/features/library/domain/types/core.types';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
@@ -82,37 +83,53 @@ export function LibraryTabPane({
     });
   };
 
-  const handleExportFromLibrary = (data: LibraryBibtexModalFormValues) => {
+  const handleExportFromLibrary = async (data: LibraryBibtexModalFormValues) => {
     if (!parentPageId || selectedItemIds.size === 0) return;
     const targetName = data.fileName.trim() || useSettingsStore.getState().mainBibFile || DEFAULT_BIB_FILE;
     const chosenItems = libraryItems.filter((i) => selectedItemIds.has(i.id));
 
     setIsExportingBib(true);
-    const bibEntries = chosenItems
-      .map((item) => formatItemToBibtex(item))
-      .join('\n\n');
+    try {
+      const res = await manuscriptService.citations.upsertEntries(parentPageId, {
+        entries: chosenItems as unknown as Array<Record<string, unknown>>,
+        targetBibFile: targetName,
+      });
+      const createdId = res.docId || res.filePath || targetName;
+      navigationCoordinator.openDocument({
+        fileId: createdId,
+        title: res.filePath || targetName,
+        content: res.formattedBibtex,
+      });
+      setSearchParams({ file: createdId });
+      onClose();
+      setIsExportingBib(false);
+    } catch {
+      const bibEntries = chosenItems
+        .map((item) => formatItemToBibtex(item))
+        .join('\n\n');
 
-    createFile.mutate(
-      {
-        parentPageId,
-        title: targetName,
-        content: bibEntries,
-      },
-      {
-        onSuccess: (created: { id: string }) => {
-          navigationCoordinator.openDocument({
-            fileId: created.id,
-            title: targetName,
-            content: bibEntries,
-          });
-          setSearchParams({ file: created.id });
-          onClose();
+      createFile.mutate(
+        {
+          parentPageId,
+          title: targetName,
+          content: bibEntries,
         },
-        onSettled: () => {
-          setIsExportingBib(false);
+        {
+          onSuccess: (created: { id: string }) => {
+            navigationCoordinator.openDocument({
+              fileId: created.id,
+              title: targetName,
+              content: bibEntries,
+            });
+            setSearchParams({ file: created.id });
+            onClose();
+          },
+          onSettled: () => {
+            setIsExportingBib(false);
+          },
         },
-      },
-    );
+      );
+    }
   };
 
   return (

@@ -23,6 +23,7 @@ import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 
 import { usePageStore, useSettingsStore, useWorkspaceStore } from '@/features/editor/core';
+import { useCompileStore } from '@/features/editor/subsystems/compiler/coordinator/compiler.store';
 import { useViewerStore, type DocumentViewerState } from '@/features/editor/subsystems/compiler/coordinator/viewer.store';
 import { filesQuery } from '@/features/editor/ui/hooks/document.queries';
 import { usePageActions } from '@/features/editor/ui/hooks/usePageActions';
@@ -141,10 +142,14 @@ export function PdfViewer({ isDetached = false }: PdfViewerProps = {}) {
   const customSuppressedWarnings = useSettingsStore((s) => s.customSuppressedWarnings);
   const stopOnFirstError = useSettingsStore((s) => s.stopOnFirstError);
 
-  const parsedLog = useMemo(
-    () => (compileLog ? parseLatexLog(compileLog) : null),
-    [compileLog],
-  );
+  const storeParsedLog = useCompileStore((s) => s.parsedLog);
+  const storeDiagnostics = useCompileStore((s) => s.compileDiagnostics);
+
+  const parsedLog = useMemo(() => {
+    if (storeParsedLog) return storeParsedLog;
+    if (compileLog) return parseLatexLog(compileLog, storeDiagnostics);
+    return null;
+  }, [storeParsedLog, storeDiagnostics, compileLog]);
 
   const filteredWarningCount = useMemo(() => {
     if (!parsedLog) return 0;
@@ -207,6 +212,7 @@ export function PdfViewer({ isDetached = false }: PdfViewerProps = {}) {
   // 3b. Dual-Window Synchronized Dual Scrolling Controller
   const { handleViewerScroll } = useSynchronizedScroll({
     enabled: Boolean(syncScroll && pdfViewer !== 'browser'),
+    projectId: projectId || rootPageId || undefined,
     pdfSurfaceRef,
     synctexMapRef,
     numPages,

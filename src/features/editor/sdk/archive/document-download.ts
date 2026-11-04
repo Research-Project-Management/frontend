@@ -1,10 +1,10 @@
 /**
  * document-download.ts
  *
- * Domain logic for client-side single document export and browser file downloads:
- * - Word (.docx) export and download
- * - Markdown (.md) export and download
- * - Standalone styled HTML (.html) preview export with KaTeX
+ * Client SDK triggers for authoritative backend single-document exports and browser file downloads:
+ * - Word (.docx) export via backend `manuscriptService.export.exportDocument(..., 'docx')`
+ * - Markdown (.md) export via backend `manuscriptService.export.exportDocument(..., 'md')`
+ * - Standalone styled HTML (.html) export via backend `manuscriptService.export.exportDocument(..., 'html')`
  * - Generic file download triggers
  */
 
@@ -15,6 +15,7 @@ export interface ExportSingleDocOptions {
   projectTitle?: string;
   includeChildren?: boolean;
   fallbackContent?: string;
+  content?: string;
 }
 
 /**
@@ -63,99 +64,72 @@ export async function exportDocumentAsWord({
 }
 
 /**
- * Exports document manuscript to Markdown (.md) and triggers download.
+ * Exports document manuscript to Markdown (.md) via backend transpiler and triggers download.
  * Returns the downloaded filename on success, throws on error.
  */
 export async function exportDocumentAsMarkdown({
   pageId,
   projectTitle,
   includeChildren = true,
-  fallbackContent,
 }: ExportSingleDocOptions): Promise<string> {
-  try {
-    const res = await manuscriptService.export.exportDocument(pageId, 'md', includeChildren);
+  const res = await manuscriptService.export.exportDocument(pageId, 'md', includeChildren);
 
-    const blob = new Blob([res.content], {
-      type: 'text/markdown;charset=utf-8',
-    });
+  const blob = new Blob([res.content], {
+    type: 'text/markdown;charset=utf-8',
+  });
 
-    const fallbackName = (projectTitle || 'document')
-      .toLowerCase()
-      .replace(/[^a-z0-9_-]/g, '_');
-    const finalFilename = res.filename || `${fallbackName}.md`;
+  const fallbackName = (projectTitle || 'document')
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, '_');
+  const finalFilename = res.filename || `${fallbackName}.md`;
 
-    triggerFileDownload(blob, finalFilename);
-    return finalFilename;
-  } catch (error) {
-    if (fallbackContent) {
-      const fallbackName = (projectTitle || 'document')
-        .toLowerCase()
-        .replace(/[^a-z0-9_-]/g, '_');
-      const finalFilename = `${fallbackName}.md`;
-      const blob = new Blob([fallbackContent], { type: 'text/markdown;charset=utf-8' });
-      triggerFileDownload(blob, finalFilename);
-      return finalFilename;
-    }
-    throw error;
-  }
+  triggerFileDownload(blob, finalFilename);
+  return finalFilename;
 }
 
 /**
- * Exports document manuscript to HTML (.html) with Katex and styling, triggers download.
- * Returns the downloaded filename on success.
+ * Exports document manuscript to HTML (.html) via backend transpiler and triggers download.
+ * Returns the downloaded filename on success, throws on error.
  */
-export function exportDocumentAsHtml({
-  content,
-  projectTitle,
-}: {
-  content: string;
-  projectTitle?: string;
-}): string {
-  const title = projectTitle || 'document';
-  const fallbackName = title.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
-  const finalFilename = `${fallbackName}.html`;
+export async function exportDocumentAsHtml(
+  pageIdOrOptions:
+    | string
+    | {
+        pageId?: string;
+        projectTitle?: string;
+        includeChildren?: boolean;
+        content?: string;
+      },
+  title?: string,
+): Promise<string> {
+  const pageId =
+    typeof pageIdOrOptions === 'string'
+      ? pageIdOrOptions
+      : pageIdOrOptions.pageId || '';
+  const projectTitle =
+    typeof pageIdOrOptions === 'string'
+      ? title
+      : pageIdOrOptions.projectTitle || title;
+  const includeChildren =
+    typeof pageIdOrOptions === 'string'
+      ? true
+      : (pageIdOrOptions.includeChildren ?? true);
 
-  const htmlBody = content
-    .replace(/\\section\*?\{([^}]+)\}/g, '<h1>$1</h1>')
-    .replace(/\\subsection\*?\{([^}]+)\}/g, '<h2>$1</h2>')
-    .replace(/\\subsubsection\*?\{([^}]+)\}/g, '<h3>$1</h3>')
-    .replace(/\\textbf\{([^}]+)\}/g, '<strong>$1</strong>')
-    .replace(/\\textit\{([^}]+)\}/g, '<em>$1</em>')
-    .replace(/\\emph\{([^}]+)\}/g, '<em>$1</em>')
-    .replace(/\\underline\{([^}]+)\}/g, '<u>$1</u>')
-    .replace(/\n\n+/g, '</p><p>');
+  const res = await manuscriptService.export.exportDocument(
+    pageId,
+    'html',
+    includeChildren,
+  );
 
-  const fullHtml = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title}</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      line-height: 1.6;
-      max-width: 820px;
-      margin: 40px auto;
-      padding: 0 24px;
-      color: #1a202c;
-    }
-    h1, h2, h3, h4, h5, h6 { color: #111827; margin-top: 1.5em; margin-bottom: 0.5em; }
-    p { margin-bottom: 1em; }
-    table { border-collapse: collapse; width: 100%; margin: 1.5em 0; }
-    th, td { border: 1px solid #e2e8f0; padding: 8px 12px; text-align: left; }
-    th { background-color: #f8fafc; font-weight: 600; }
-    pre { background: #f1f5f9; padding: 14px; border-radius: 6px; overflow-x: auto; font-size: 13px; }
-  </style>
-</head>
-<body>
-  <h1>${title}</h1>
-  <p>${htmlBody}</p>
-</body>
-</html>`;
+  const blob = new Blob([res.content], {
+    type: 'text/html;charset=utf-8',
+  });
 
-  const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+  const fallbackName = (projectTitle || 'document')
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, '_');
+  const finalFilename = res.filename || `${fallbackName}.html`;
+
   triggerFileDownload(blob, finalFilename);
   return finalFilename;
 }

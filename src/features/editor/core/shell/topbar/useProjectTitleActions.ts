@@ -115,11 +115,13 @@ export function useProjectTitleActions({
   }, [fallbackRootId, currentPage?.id, effectiveProjectId, displayTitle, getContent, exportMarkdown]);
 
   const handleExportHtml = useCallback(() => {
+    const docId = fallbackRootId || effectiveProjectId || currentPage?.id;
     exportHtml({
+      pageId: docId || '',
       content: getContent(),
       projectTitle: displayTitle,
     });
-  }, [getContent, displayTitle, exportHtml]);
+  }, [fallbackRootId, effectiveProjectId, currentPage?.id, getContent, displayTitle, exportHtml]);
 
   const handleApplyRename = useCallback(
     async (newName: string): Promise<boolean> => {

@@ -32,7 +32,7 @@ export interface ShortcutDefinition {
   handler: (e: KeyboardEvent) => void;
 }
 
-export class KeybindingCoordinatorRegistry {
+export class KeybindingCoordinator {
   private shortcuts: ShortcutDefinition[] = [];
   private initialized = false;
 
@@ -392,4 +392,5 @@ export class KeybindingCoordinatorRegistry {
   }
 }
 
-export const keybindingCoordinator = new KeybindingCoordinatorRegistry();
+export { KeybindingCoordinator as KeybindingCoordinatorRegistry };
+export const keybindingCoordinator = new KeybindingCoordinator();

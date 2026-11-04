@@ -15,7 +15,7 @@ import { cn } from '@/shared/lib/utils';
 import type { PageSuggestion } from '@/features/editor/domain/types/suggestion.types';
 import type { MentionMember } from '@/features/editor/domain/collaboration/mention';
 import type { TrackChangesViewMode } from '@/features/editor/subsystems/review/extensions/track-changes.extension';
-import { formatOverleafDate, resolveAuthorDisplay } from '@/features/editor/domain/collaboration/author-display';
+import { formatReviewDate, resolveAuthorDisplay } from '@/features/editor/domain/collaboration/author-display';
 
 // ── Suggestion Card ─────────────────────────────────────────────────────────
 
@@ -83,7 +83,7 @@ export const SuggestionCard = React.memo(function SuggestionCard({
               {authorDisplay.name}
             </span>
             <span className="text-11 font-mono text-muted-foreground">
-              {formatOverleafDate(suggestion.createdAt)}
+              {formatReviewDate(suggestion.createdAt)}
             </span>
           </div>
         </div>

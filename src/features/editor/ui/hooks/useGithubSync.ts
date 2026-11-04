@@ -14,7 +14,7 @@ import { pageKeys } from '@/features/editor/ui/hooks/document.queries';
 import {
   editorCommandBus,
   sessionCoordinator,
-  documentAuthority,
+  documentFacade,
   getAllRegisteredEngines,
 } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/subsystems/explorer';
@@ -49,6 +49,8 @@ export function useGithubSync({
     queryKey: githubSyncKeys.link(projectId),
     queryFn: () => (projectId ? integrationService.getProjectGithubLink(projectId) : null),
     enabled: Boolean(projectId) && enabled,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
   });
 
   const reposQuery = useQuery({
@@ -56,6 +58,8 @@ export function useGithubSync({
     queryFn: () => integrationService.listGithubRepos(),
     enabled,
     retry: false,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
   });
 
   const linkMutation = useMutation({
@@ -165,7 +169,7 @@ export function useGithubSync({
       useCompileStore.getState().clearAllDirty();
       clearYjsProviderPool();
       if (projectId) {
-        documentAuthority.clearProjectCache(projectId);
+        documentFacade.clearProjectCache(projectId);
         await draftStorageService.clearProjectDrafts(projectId);
       }
       queryClient.invalidateQueries({ queryKey: pageKeys.all });

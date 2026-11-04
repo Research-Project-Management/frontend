@@ -13,7 +13,8 @@
 // 1. Coordinators
 export {
   reviewCoordinator,
-  ReviewCoordinatorRegistry,
+  ReviewCoordinator,
+  ReviewCoordinator as ReviewCoordinatorRegistry,
 } from './coordinator/review.coordinator';
 export type {
   ReviewServicePort,
@@ -86,9 +87,12 @@ export {
   type EmptyReviewStateProps,
 } from './ui/subcomponents/ReviewNav';
 export {
-  OverleafReviewIcon,
-  OverleafReviewSolidIcon,
-  OverleafResolvedCommentsIcon,
+  ReviewIcon,
+  ReviewIcon as OverleafReviewIcon,
+  ReviewSolidIcon,
+  ReviewSolidIcon as OverleafReviewSolidIcon,
+  ResolvedCommentsIcon,
+  ResolvedCommentsIcon as OverleafResolvedCommentsIcon,
   MentionBadge,
   MentionRenderer,
   NotificationDigestBadge,

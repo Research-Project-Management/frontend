@@ -19,13 +19,38 @@ export const createFileSchema = z.object({
 
 export type CreateFileInput = z.infer<typeof createFileSchema>;
 
+export const SAFE_FOLDER_SEGMENT_REGEX = /^[a-zA-Z0-9._ -]+$/;
+
 export const createFolderSchema = z.object({
   name: z
     .string()
     .trim()
     .min(1, 'Folder name is required')
     .max(255, 'Folder name is too long')
-    .refine((name) => !name.includes('\\'), 'Backslashes are not allowed in folder names'),
+    .refine((name) => !name.includes('\\'), 'Backslashes are not allowed in folder names')
+    .transform((val) =>
+      val
+        .trim()
+        .replace(/\\/g, '/')
+        .replace(/^(\.\/+|\/+)/, '')
+        .replace(/\/+/g, '/')
+        .replace(/\/+$/, '')
+        .trim(),
+    )
+    .refine(
+      (val) => {
+        if (!val) return false;
+        const segments = val.split('/');
+        return segments.every(
+          (seg) =>
+            seg.length > 0 &&
+            seg !== '.' &&
+            seg !== '..' &&
+            SAFE_FOLDER_SEGMENT_REGEX.test(seg),
+        );
+      },
+      'Folder name contains invalid path segments',
+    ),
 });
 
 export type CreateFolderInput = z.infer<typeof createFolderSchema>;

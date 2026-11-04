@@ -12,7 +12,8 @@
 
 export {
   navigationCoordinator,
-  NavigationCoordinatorRegistry,
+  NavigationCoordinator,
+  NavigationCoordinator as NavigationCoordinatorRegistry,
   jumpToEditorLine,
   defaultNavigationNotifier,
   type OpenDocumentOptions,

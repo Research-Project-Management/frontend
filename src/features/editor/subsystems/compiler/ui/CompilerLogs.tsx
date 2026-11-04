@@ -28,7 +28,7 @@ import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { useCompileStore } from '@/features/editor/subsystems/compiler/coordinator/compiler.store';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
 import { editorCommandBus, usePageStore, useSettingsStore } from '@/features/editor/core';
-import { listAuxFiles, suggestLatexFix } from '@/features/editor/sdk/manuscript.service';
+import { listAuxFiles, suggestLatexFix, manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { type AuxFileItem } from '@/features/editor/sdk/manuscript/types';
 import type { AiErrorFixResult } from '@/features/editor/domain/ai/ai-error-assist';
 
@@ -36,6 +36,8 @@ import type { LogEntry, ParsedLog, CompilerLogsProps, LogsProps, ErrorExplanatio
 
 import {
   parseLatexLog,
+  diagnosticsToParsedLog,
+  cacheBackendParsedLog,
   DEFAULT_OUTPUT_FILES,
 } from '@/features/editor/domain/latex/compiler-logs-parser';
 import { DEFAULT_MAIN_FILE } from '@/features/editor/domain/constants/editor.constants';
@@ -62,11 +64,42 @@ export function CompilerLogs({
 }: CompilerLogsProps & { onStopCompilation?: () => void }) {
   const projectId = usePageStore((s) => s.projectId);
   const compileStatus = useCompileStore((s) => s.compileStatus);
+  const storeParsedLog = useCompileStore((s) => s.parsedLog);
+  const storeDiagnostics = useCompileStore((s) => s.compileDiagnostics);
   const { engine } = useEditorInstance();
-  const parsed = useMemo(
-    () => externalParsedLog ?? parseLatexLog(log),
-    [externalParsedLog, log],
-  );
+  const [remoteParsedLog, setRemoteParsedLog] = useState<ParsedLog | null>(null);
+
+  useEffect(() => {
+    if (externalParsedLog || (storeDiagnostics && storeDiagnostics.length > 0) || !log || !log.trim()) {
+      setRemoteParsedLog(null);
+      return;
+    }
+    let active = true;
+    manuscriptService.diagnostics
+      .parseLog(log)
+      .then((report) => {
+        if (!active || !report?.items) return;
+        const converted = diagnosticsToParsedLog(report.items);
+        cacheBackendParsedLog(log, converted);
+        setRemoteParsedLog(converted);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [externalParsedLog, storeDiagnostics, log]);
+
+  const parsed = useMemo(() => {
+    if (externalParsedLog) return externalParsedLog;
+    if (storeParsedLog && (storeParsedLog.errors.length > 0 || storeParsedLog.warnings.length > 0 || storeParsedLog.badBoxes.length > 0)) {
+      return storeParsedLog;
+    }
+    if (storeDiagnostics && storeDiagnostics.length > 0) {
+      return diagnosticsToParsedLog(storeDiagnostics);
+    }
+    if (remoteParsedLog) return remoteParsedLog;
+    return parseLatexLog(log);
+  }, [externalParsedLog, storeParsedLog, storeDiagnostics, remoteParsedLog, log]);
 
   const [activeTab, setActiveTab] = useState<TabType>('all');
   const [isRawLogsOpen, setIsRawLogsOpen] = useState(false);

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { detectMathAtPosition } from '@/features/editor/core/engine/extensions/latex-math-preview';
 import { SHORTCUT_LIST, type ShortcutItem } from '@/features/editor/ui/modals/KeyboardShortcutsModal';
 import { parseSyncTeX } from '@/features/editor/subsystems/compiler/synctex/synctex-index';
-import { LatexCompilerEngine } from '@/features/editor/subsystems/compiler';
+import { CompilePipeline } from '@/features/editor/subsystems/compiler';
 import { useSettingsStore } from '@/features/editor/core';
 
 describe('Advanced IDE Features (Overleaf Parity)', () => {
@@ -65,7 +65,7 @@ describe('Advanced IDE Features (Overleaf Parity)', () => {
     });
   });
 
-  describe('SyncTeX Forward Coordinate Resolution (LatexCompilerEngine.resolveForwardDetail)', () => {
+  describe('SyncTeX Forward Coordinate Resolution (CompilePipeline.resolveForwardDetail)', () => {
     it('should resolve page and coordinates from SyncTeX map', () => {
       const sampleSyncTex = [
         'SyncTeX Version:1',
@@ -80,7 +80,7 @@ describe('Advanced IDE Features (Overleaf Parity)', () => {
       const map = parseSyncTeX(sampleSyncTex);
       expect(map.lineToPage.get(12)).toBe(1);
 
-      const detail = LatexCompilerEngine.resolveForwardDetail(12, map, 'main.tex');
+      const detail = CompilePipeline.resolveForwardDetail(12, map, 'main.tex');
       expect(detail).not.toBeNull();
       expect(detail?.page).toBe(1);
       expect(detail?.x).toBe(38);
@@ -88,7 +88,7 @@ describe('Advanced IDE Features (Overleaf Parity)', () => {
     });
 
     it('should return null gracefully if line is not found or map is null', () => {
-      expect(LatexCompilerEngine.resolveForwardDetail(999, null)).toBeNull();
+      expect(CompilePipeline.resolveForwardDetail(999, null)).toBeNull();
     });
   });
 
@@ -125,8 +125,8 @@ describe('Advanced IDE Features (Overleaf Parity)', () => {
       expect(useSettingsStore.getState().stopOnFirstError).toBe(false);
     });
 
-    it('should allow stopping in-flight compilation via LatexCompilerEngine.cancelInFlightCompile', () => {
-      expect(() => LatexCompilerEngine.cancelInFlightCompile()).not.toThrow();
+    it('should allow stopping in-flight compilation via CompilePipeline.cancelInFlightCompile', () => {
+      expect(() => CompilePipeline.cancelInFlightCompile()).not.toThrow();
     });
   });
 });

@@ -1,17 +1,18 @@
 /**
  * latex-symbols-index.ts
  *
- * Web Worker Orchestrator & Client for Project Symbols & Metadata (Domain Layer).
+ * Project Symbols & Metadata Client (Domain Layer).
  * Location: `features/editor/domain/latex/latex-symbols-index.ts`
  *
- * Architecture (Overleaf Parity):
- * - Spawns a dedicated Web Worker (`latex-symbols.worker.ts`) to offload 100% of
- *   BibTeX extraction, TeX regex token parsing, and line splitting off the main UI thread.
- * - Debounces file parsing (200ms) during active typing to prevent event loop saturation.
- * - Caches the latest immutable `SymbolSnapshot` in UI memory for instant 0ms O(1)
- *   synchronous CodeMirror 6 autocompletion popup response.
- * - Automatic graceful fallback to in-process `LatexSymbolsIndexCore` if Web Workers
- *   are unavailable (SSR, Node, or constrained environments).
+ * Architecture:
+ * - Hydrates authoritative project symbols (`\label`, BibTeX citations, `\newcommand`,
+ *   `\newenvironment`, included files, images, and section outline) from the backend
+ *   `/api/v1/manuscripts/projects/:projectId/structure/symbols` endpoint.
+ * - Maintains a fast O(K) `LatexSymbolCatalog` PrefixTrie in memory for instant 0ms
+ *   CodeMirror 6 autocompletion and hover previews.
+ * - Preserves synchronous `indexFile` / `indexFilesBatch` methods via `LatexSymbolsIndexCore`
+ *   for local unsaved buffer updates and offline/unit-test compatibility without spawning
+ *   a background Web Worker on every keystroke.
  */
 
 import {
@@ -24,10 +25,11 @@ import {
   type OutlineNode,
   type SectionLevel,
   type SymbolSnapshot,
-  type SymbolsWorkerMessageIn,
-  type SymbolsWorkerMessageOut,
 } from './latex-symbols-core';
 import { PrefixTrie, LatexSymbolCatalog } from './prefix-trie';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
+import type { ProjectSymbolsResponseDto } from '@/features/editor/sdk/manuscript/types';
+import { latexDependencyGraph } from './dependency-graph';
 import { isItemRetracted, getRetractionInfo } from '@/features/library/domain/system-views.policy';
 
 export type {
@@ -42,11 +44,10 @@ export type {
 };
 
 export class LatexSymbolsIndex {
-  private worker: Worker | null = null;
-  private isWorkerFailed = false;
   private fallbackCore = new LatexSymbolsIndexCore();
-  private requestIdCounter = 0;
   private debounceTimers = new Map<string, NodeJS.Timeout>();
+  private serverRefreshTimer: NodeJS.Timeout | null = null;
+  private inFlightServerFetch: Promise<SymbolSnapshot | null> | null = null;
   private changeListeners = new Set<(snapshot: SymbolSnapshot) => void>();
   private libraryCitations: BibEntry[] = [];
   private retractedByDoi = new Map<string, { reason?: string; nature?: string; noticeUrl?: string; title?: string }>();
@@ -64,93 +65,92 @@ export class LatexSymbolsIndex {
     version: 0,
   };
 
-  constructor() {
-    this.initWorker();
-  }
-
-  private initWorker(): void {
-    if (
-      typeof window === 'undefined' ||
-      typeof Worker === 'undefined' ||
-      process.env.NODE_ENV === 'test'
-    )
-      return;
-
-    try {
-      this.worker = new Worker(
-        new URL('../../core/engine/workers/latex-symbols.worker.ts', import.meta.url)
-      );
-
-      this.worker.onmessage = (event: MessageEvent<SymbolsWorkerMessageOut>) => {
-        const { snapshot } = event.data;
-        if (snapshot && snapshot.version >= this.snapshot.version) {
-          if (this.libraryCitations.length > 0) {
-            const existingKeys = new Set(snapshot.citations.map((c) => c.key.toLowerCase()));
-            const additions = this.libraryCitations.filter((b) => !existingKeys.has(b.key.toLowerCase()));
-            this.snapshot = {
-              ...snapshot,
-              citations: [...snapshot.citations, ...additions],
-            };
-          } else {
-            this.snapshot = snapshot;
-          }
-          this.rebuildCatalog(this.snapshot);
-          this.notifyListeners();
-        }
-      };
-
-      this.worker.onerror = (err) => {
-        console.warn('[LatexSymbolsIndex] Worker error, falling back to local thread:', err);
-        this.isWorkerFailed = true;
-        this.worker?.terminate();
-        this.worker = null;
-      };
-    } catch (e) {
-      console.warn('[LatexSymbolsIndex] Web Worker unavailable, running in-process:', e);
-      this.isWorkerFailed = true;
-      this.worker = null;
+  /**
+   * Hydrates the project symbol index directly from the backend `/structure/symbols` endpoint.
+   */
+  public async hydrateFromServer(projectId: string): Promise<SymbolSnapshot | null> {
+    if (!projectId || projectId === 'default' || projectId === 'workspace-local') {
+      return null;
     }
+    if (this.inFlightServerFetch) {
+      return this.inFlightServerFetch;
+    }
+
+    this.inFlightServerFetch = (async () => {
+      try {
+        const dto: ProjectSymbolsResponseDto = await manuscriptService.structure.getSymbols(projectId);
+        if (!dto || typeof dto !== 'object') return null;
+
+        if (dto.rootDocPath) {
+          latexDependencyGraph.setServerRootDoc(dto.rootDocPath);
+        }
+
+        const nextSnapshot = this.fallbackCore.hydrateFromServerDto(dto);
+        this.applySnapshotWithLibrary(nextSnapshot);
+        return this.snapshot;
+      } catch (err) {
+        console.warn('[LatexSymbolsIndex] Failed to hydrate symbols from server, keeping local snapshot:', err);
+        return null;
+      } finally {
+        this.inFlightServerFetch = null;
+      }
+    })();
+
+    return this.inFlightServerFetch;
   }
 
   /**
-   * Indexes or updates a file based on its extension.
-   * Debounced by default (200ms) to ensure smooth 120 FPS typing during active keystrokes.
+   * Debounced background refresh of project symbols from the backend (e.g., after document save).
+   */
+  public refreshFromServer(projectId: string, delayMs = 400): void {
+    if (!projectId || projectId === 'default' || projectId === 'workspace-local') return;
+    if (this.serverRefreshTimer) {
+      clearTimeout(this.serverRefreshTimer);
+    }
+    this.serverRefreshTimer = setTimeout(() => {
+      this.serverRefreshTimer = null;
+      void this.hydrateFromServer(projectId);
+    }, delayMs);
+  }
+
+  private applySnapshotWithLibrary(rawSnapshot: SymbolSnapshot): void {
+    if (this.libraryCitations.length > 0) {
+      const existingKeys = new Set(rawSnapshot.citations.map((c) => c.key.toLowerCase()));
+      const additions = this.libraryCitations.filter((b) => !existingKeys.has(b.key.toLowerCase()));
+      this.snapshot = {
+        ...rawSnapshot,
+        citations: [...rawSnapshot.citations, ...additions],
+      };
+    } else {
+      this.snapshot = rawSnapshot;
+    }
+    this.rebuildCatalog(this.snapshot);
+    this.notifyListeners();
+  }
+
+  /**
+   * Indexes or updates a single file in local memory.
    */
   public indexFile(fileId: string, filePath: string, content: string, immediate = false): void {
-    if (this.worker && !this.isWorkerFailed) {
-      const existingTimer = this.debounceTimers.get(fileId);
-      if (existingTimer) {
-        clearTimeout(existingTimer);
-        this.debounceTimers.delete(fileId);
-      }
+    const existingTimer = this.debounceTimers.get(fileId);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+      this.debounceTimers.delete(fileId);
+    }
 
-      if (immediate) {
-        this.worker.postMessage({
-          type: 'indexFile',
-          fileId,
-          filePath,
-          content,
-          id: ++this.requestIdCounter,
-        } as SymbolsWorkerMessageIn);
-      } else {
-        const timer = setTimeout(() => {
-          this.debounceTimers.delete(fileId);
-          this.worker?.postMessage({
-            type: 'indexFile',
-            fileId,
-            filePath,
-            content,
-            id: ++this.requestIdCounter,
-          } as SymbolsWorkerMessageIn);
-        }, 200);
-        this.debounceTimers.set(fileId, timer);
-      }
-    } else {
-      // In-process fallback
+    const execute = () => {
       this.fallbackCore.indexFile(fileId, filePath, content);
-      this.snapshot = this.fallbackCore.exportSnapshot();
-      this.rebuildCatalog(this.snapshot);
-      this.notifyListeners();
+      this.applySnapshotWithLibrary(this.fallbackCore.exportSnapshot());
+    };
+
+    if (immediate || process.env.NODE_ENV === 'test') {
+      execute();
+    } else {
+      const timer = setTimeout(() => {
+        this.debounceTimers.delete(fileId);
+        execute();
+      }, 250);
+      this.debounceTimers.set(fileId, timer);
     }
   }
 
@@ -169,22 +169,9 @@ export class LatexSymbolsIndex {
         clearTimeout(existingTimer);
         this.debounceTimers.delete(f.fileId);
       }
+      this.fallbackCore.indexFile(f.fileId, f.filePath, f.content);
     }
-
-    if (this.worker && !this.isWorkerFailed) {
-      this.worker.postMessage({
-        type: 'indexBatch',
-        files,
-        id: ++this.requestIdCounter,
-      } as SymbolsWorkerMessageIn);
-    } else {
-      for (const f of files) {
-        this.fallbackCore.indexFile(f.fileId, f.filePath, f.content);
-      }
-      this.snapshot = this.fallbackCore.exportSnapshot();
-      this.rebuildCatalog(this.snapshot);
-      this.notifyListeners();
-    }
+    this.applySnapshotWithLibrary(this.fallbackCore.exportSnapshot());
   }
 
   /**
@@ -197,19 +184,8 @@ export class LatexSymbolsIndex {
       this.debounceTimers.delete(fileId);
     }
 
-    if (this.worker && !this.isWorkerFailed) {
-      this.worker.postMessage({
-        type: 'removeFile',
-        fileId,
-        filePath,
-        id: ++this.requestIdCounter,
-      } as SymbolsWorkerMessageIn);
-    } else {
-      this.fallbackCore.removeFile(fileId, filePath);
-      this.snapshot = this.fallbackCore.exportSnapshot();
-      this.rebuildCatalog(this.snapshot);
-      this.notifyListeners();
-    }
+    this.fallbackCore.removeFile(fileId, filePath);
+    this.applySnapshotWithLibrary(this.fallbackCore.exportSnapshot());
   }
 
   /**
@@ -220,22 +196,19 @@ export class LatexSymbolsIndex {
       clearTimeout(timer);
     }
     this.debounceTimers.clear();
+    if (this.serverRefreshTimer) {
+      clearTimeout(this.serverRefreshTimer);
+      this.serverRefreshTimer = null;
+    }
     this.libraryCitations = [];
     this.retractedByDoi.clear();
     this.retractedByKey.clear();
     this.catalog.clear();
 
-    if (this.worker && !this.isWorkerFailed) {
-      this.worker.postMessage({
-        type: 'clear',
-        id: ++this.requestIdCounter,
-      } as SymbolsWorkerMessageIn);
-    } else {
-      this.fallbackCore.clear();
-      this.snapshot = this.fallbackCore.exportSnapshot();
-      this.rebuildCatalog(this.snapshot);
-      this.notifyListeners();
-    }
+    this.fallbackCore.clear();
+    this.snapshot = this.fallbackCore.exportSnapshot();
+    this.rebuildCatalog(this.snapshot);
+    this.notifyListeners();
   }
 
   /**
@@ -658,16 +631,18 @@ export class LatexSymbolsIndex {
   }
 
   /**
-   * Teardown worker and pending debounce timers
+   * Teardown pending debounce timers and listeners
    */
   public dispose(): void {
     for (const timer of this.debounceTimers.values()) {
       clearTimeout(timer);
     }
     this.debounceTimers.clear();
+    if (this.serverRefreshTimer) {
+      clearTimeout(this.serverRefreshTimer);
+      this.serverRefreshTimer = null;
+    }
     this.changeListeners.clear();
-    this.worker?.terminate();
-    this.worker = null;
   }
 }
 

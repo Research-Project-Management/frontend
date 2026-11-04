@@ -3,7 +3,7 @@ import {
   parseSyncTeX,
   type SyncTeXMap,
 } from '@/features/editor/subsystems/compiler/synctex/synctex-index';
-import { LatexCompilerEngine } from '@/features/editor/subsystems/compiler';
+import { CompilePipeline } from '@/features/editor/subsystems/compiler';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 
 describe('Reverse SyncTeX (PDF Double-Click -> LaTeX Source Jump)', () => {
@@ -88,7 +88,7 @@ x2,80:6553600,19660800
     });
   });
 
-  describe('LatexCompilerEngine.resolveReverse (Local 0ms Jump)', () => {
+  describe('CompilePipeline.resolveReverse (Local 0ms Jump)', () => {
     const mockSyncTeXContent = `SyncTeX Version:1
 Input:1:./main.tex
 Input:2:./sections/intro.tex
@@ -107,13 +107,13 @@ x2,55:6553600,13107200
       // Node 1: line 15, y = 6553600 sp (100 pt)
       // Node 2: line 42, y = 19660800 sp (300 pt)
       // User clicks at page 1, ptX = 100 pt, ptY = 110 pt (very close to line 15)
-      const res1 = LatexCompilerEngine.resolveReverse(0.13, 1, map, 100, 110);
+      const res1 = CompilePipeline.resolveReverse(0.13, 1, map, 100, 110);
       expect(res1).not.toBeNull();
       expect(res1?.line).toBe(15);
       expect(res1?.sourcePath).toBe('./main.tex');
 
       // User clicks at page 1, ptX = 100 pt, ptY = 290 pt (very close to line 42)
-      const res2 = LatexCompilerEngine.resolveReverse(0.35, 1, map, 100, 290);
+      const res2 = CompilePipeline.resolveReverse(0.35, 1, map, 100, 290);
       expect(res2).not.toBeNull();
       expect(res2?.line).toBe(42);
       expect(res2?.sourcePath).toBe('./main.tex');
@@ -123,7 +123,7 @@ x2,55:6553600,13107200
       const map = parseSyncTeX(mockSyncTeXContent);
 
       // Page 2 has tag 2 -> ./sections/intro.tex, line 55
-      const res = LatexCompilerEngine.resolveReverse(0.2, 2, map, 100, 200);
+      const res = CompilePipeline.resolveReverse(0.2, 2, map, 100, 200);
       expect(res).not.toBeNull();
       expect(res?.line).toBe(55);
       expect(res?.sourcePath).toBe('./sections/intro.tex');
@@ -133,18 +133,18 @@ x2,55:6553600,13107200
       const map = parseSyncTeX(mockSyncTeXContent);
 
       // clickFraction near top of page (approx y ~ 100 pt = 0.12 * 842 pt)
-      const res = LatexCompilerEngine.resolveReverse(0.12, 1, map);
+      const res = CompilePipeline.resolveReverse(0.12, 1, map);
       expect(res).not.toBeNull();
       expect(res?.line).toBe(15);
     });
 
     it('should return null when synctexMap is null', () => {
-      const res = LatexCompilerEngine.resolveReverse(0.5, 1, null, 100, 200);
+      const res = CompilePipeline.resolveReverse(0.5, 1, null, 100, 200);
       expect(res).toBeNull();
     });
   });
 
-  describe('LatexCompilerEngine.resolveReverseRemote (Backend Fallback)', () => {
+  describe('CompilePipeline.resolveReverseRemote (Backend Fallback)', () => {
     it('should successfully query manuscriptService.synctex when called', async () => {
       const mockResult = {
         file: 'chapters/abstract.tex',
@@ -154,7 +154,7 @@ x2,55:6553600,13107200
 
       vi.spyOn(manuscriptService.synctex, 'reverseSync').mockResolvedValueOnce(mockResult);
 
-      const res = await LatexCompilerEngine.resolveReverseRemote(
+      const res = await CompilePipeline.resolveReverseRemote(
         'proj-123',
         1,
         150,
@@ -177,7 +177,7 @@ x2,55:6553600,13107200
     it('should return null gracefully if manuscriptService.synctex returns null or throws', async () => {
       vi.spyOn(manuscriptService.synctex, 'reverseSync').mockRejectedValueOnce(new Error('Network error'));
 
-      const res = await LatexCompilerEngine.resolveReverseRemote(
+      const res = await CompilePipeline.resolveReverseRemote(
         'proj-123',
         1,
         150,

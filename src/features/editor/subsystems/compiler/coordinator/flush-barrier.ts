@@ -1,5 +1,5 @@
 /**
- * compilation-flush-barrier.ts
+ * flush-barrier.ts
  *
  * Pre-Compilation Atomic Consistency & Persistence Flush Barrier (Deep Module Pattern).
  * Follows Matt Pocock's Codebase Design principles:
@@ -12,7 +12,7 @@
 import { sessionCoordinator, getAllRegisteredEngines } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { useCompileStore } from './compiler.store';
-import type { DirtyFileItem } from './compilation-pipeline';
+import type { DirtyFileItem } from './compile-pipeline';
 
 export interface FlushBarrierDeps {
   dirtyFiles: DirtyFileItem[];
@@ -29,7 +29,7 @@ export interface FlushBarrierResult {
 
 export const DEFAULT_BARRIER_TIMEOUT_MS = 1500;
 
-export class CompilationFlushBarrier {
+export class FlushBarrier {
   /**
    * Pre-compilation flush barrier:
    * 1. Commits pending draft timers synchronously so local state is resilient.
@@ -77,21 +77,31 @@ export class CompilationFlushBarrier {
 
     // 3. Await remote autosave with bounded barrier timeout so normal network flushes finish before compileLatex
     let timedOut = false;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    try {
-      const flushPromise = sessionCoordinator.flushAllPending().catch(() => null);
-      const timeoutPromise = new Promise<'timeout'>((resolve) => {
-        timer = setTimeout(() => resolve('timeout'), timeoutMs);
-      });
-      const winner = await Promise.race([flushPromise, timeoutPromise]);
-      if (winner === 'timeout') {
-        timedOut = true;
+    const flushPromise = sessionCoordinator.flushAllPending().catch(() => null);
+    const hasWork =
+      typeof sessionCoordinator.hasDirtyDocuments === 'function'
+        ? sessionCoordinator.hasDirtyDocuments()
+        : true;
+    if (hasWork && timeoutMs > 0) {
+      let timer: ReturnType<typeof setTimeout> | null = null;
+      try {
+        const timeoutPromise = new Promise<'timeout'>((resolve) => {
+          timer = setTimeout(() => resolve('timeout'), timeoutMs);
+        });
+        const winner = await Promise.race([flushPromise, timeoutPromise]);
+        if (winner === 'timeout') {
+          timedOut = true;
+        }
+      } finally {
+        if (timer) clearTimeout(timer);
       }
-    } finally {
-      if (timer) clearTimeout(timer);
+    } else {
+      await flushPromise;
     }
 
     const dirtyFileCount = useCompileStore.getState().getDirtyFiles().length;
     return { dirtyFileCount, activeFlushed, timedOut };
   }
 }
+
+export { FlushBarrier as CompilationFlushBarrier };

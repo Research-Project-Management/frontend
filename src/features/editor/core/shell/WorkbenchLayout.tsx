@@ -1,8 +1,8 @@
 /**
- * ModernWorkbenchLayout.tsx
+ * WorkbenchLayout.tsx
  *
  * Workbench Layout Orchestrator (Block 7: UI Shell Layer).
- * Location: `features/editor/ui/shell/ModernWorkbenchLayout.tsx`
+ * Location: `features/editor/core/shell/WorkbenchLayout.tsx`
  *
  * Connects the WorkbenchShell slots to their implementations:
  * - TopBar: Project title, compile button, global actions.
@@ -64,11 +64,12 @@ function getDocContent(doc: unknown, fallbackEngineContent?: string): string {
 
 interface ConnectedWordCountModalProps {
   open: boolean;
+  projectId?: string;
   rootPageId: string | null;
   engine: ReturnType<typeof useEditorInstance>['engine'];
 }
 
-function ConnectedWordCountModal({ open, rootPageId, engine }: ConnectedWordCountModalProps) {
+function ConnectedWordCountModal({ open, projectId, rootPageId, engine }: ConnectedWordCountModalProps) {
   const currentDoc = usePageStore((s) => s.activeFilePage || s.currentPage);
   const configuredMainFile = useSettingsStore((s) => s.mainFile) || DEFAULT_MAIN_FILE;
   const { data: serverFiles = [] } = useQuery({
@@ -105,6 +106,7 @@ function ConnectedWordCountModal({ open, rootPageId, engine }: ConnectedWordCoun
     <WordCountModal
       open={open}
       onClose={() => editorCommandBus.dispatch({ type: 'dialog:close', dialog: 'word-count' })}
+      projectId={projectId || rootPageId || currentDoc?.id}
       content={getDocContent(currentDoc, engine?.getContent())}
       selectedText={engine?.getSelectedText() || ''}
       activeFileName={currentDoc?.title || configuredMainFile}
@@ -117,7 +119,7 @@ function ConnectedWordCountModal({ open, rootPageId, engine }: ConnectedWordCoun
   );
 }
 
-export function ModernWorkbenchLayout() {
+export function WorkbenchLayout() {
   const { projectId: routeProjectId, pageId, draftId } = useParams<{
     projectId?: string;
     pageId?: string;
@@ -322,6 +324,7 @@ export function ModernWorkbenchLayout() {
       {wordCountOpen && (
         <ConnectedWordCountModal
           open={wordCountOpen}
+          projectId={rawProjectId}
           rootPageId={rootPageId}
           engine={engine}
         />
@@ -448,5 +451,5 @@ export function ModernWorkbenchLayout() {
   );
 }
 
-export default ModernWorkbenchLayout;
-
+export { WorkbenchLayout as ModernWorkbenchLayout };
+export default WorkbenchLayout;

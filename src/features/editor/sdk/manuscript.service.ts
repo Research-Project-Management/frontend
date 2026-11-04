@@ -76,6 +76,25 @@ export const listAuxFiles = (projectId: string) => manuscriptService.compiler.li
 export const downloadAuxFileUrl = (projectId: string, filename: string) => manuscriptService.compiler.downloadAuxFileUrl(projectId, filename);
 export const downloadAllArtifactsZipUrl = (projectId: string) => manuscriptService.compiler.downloadAllArtifactsZipUrl(projectId);
 export { suggestLatexFix } from './manuscript/ai.client';
-export const fetchWordCount = async (source: string, projectId?: string) => {
-  return await manuscriptService.compiler.wordCount(source, projectId);
+export const fetchWordCount = async (
+  source: string,
+  projectId?: string,
+  options?: {
+    includeBib?: boolean;
+    filename?: string;
+    files?: Record<string, string>;
+  },
+) => {
+  return await manuscriptService.compiler.wordCount(source, projectId, options);
 };
+export const restoreProjectVersionFile = (
+  projectId: string,
+  version: number,
+  pathname: string,
+  fileId?: string,
+) => manuscriptService.history.restoreProjectVersionFile(projectId, version, pathname, fileId);
+export const exportVersionZip = (
+  projectId: string,
+  version: number | string,
+  projectName?: string,
+) => manuscriptService.export.exportVersionZip(projectId, version, projectName);

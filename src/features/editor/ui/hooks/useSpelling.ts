@@ -25,12 +25,16 @@ export function useSpellingDictionary(projectId?: string, enabled = true) {
     queryKey: spellingKeys.user(),
     queryFn: () => spellingService.getUserDictionary(),
     enabled,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
   });
 
   const projectQuery = useQuery({
     queryKey: spellingKeys.project(projectId),
     queryFn: () => (projectId ? spellingService.getProjectDictionary(projectId) : Promise.resolve([])),
     enabled: enabled && !!projectId,
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
   });
 
   const addWordMutation = useMutation({

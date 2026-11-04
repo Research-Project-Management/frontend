@@ -16,7 +16,7 @@ import { editorCommandBus } from '../bus/command-bus';
 
 export type VisibilityLifecycleState = 'active' | 'hibernated';
 
-export class VisibilityCoordinatorRegistry {
+export class VisibilityCoordinator {
   private currentState: VisibilityLifecycleState = 'active';
   private initialized = false;
   private hiddenTimestamp: number | null = null;
@@ -134,4 +134,5 @@ export class VisibilityCoordinatorRegistry {
   }
 }
 
-export const visibilityCoordinator = new VisibilityCoordinatorRegistry();
+export { VisibilityCoordinator as VisibilityCoordinatorRegistry };
+export const visibilityCoordinator = new VisibilityCoordinator();

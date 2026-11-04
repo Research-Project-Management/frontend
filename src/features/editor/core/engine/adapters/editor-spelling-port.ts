@@ -23,7 +23,7 @@ let defaultSpellingService: SpellingServicePort = {
   getProjectDictionary: (projectId) => manuscriptService.spelling.getProjectDictionary(projectId),
   getUserDictionary: () => manuscriptService.spelling.getUserDictionary(),
   learnProjectWord: (projectId, word) => manuscriptService.spelling.learnProjectWord(projectId, word),
-  checkSpelling: (text, lang) => manuscriptService.spelling.checkSpelling(text, lang),
+  checkSpelling: (projectId, payload) => manuscriptService.spelling.checkSpelling(projectId, payload),
 };
 
 let defaultNotifier: SpellingNotificationPort = {

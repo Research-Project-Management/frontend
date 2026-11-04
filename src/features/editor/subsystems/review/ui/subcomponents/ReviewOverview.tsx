@@ -9,7 +9,9 @@
  */
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { FileText, Loader2 } from 'lucide-react';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { usePageComments } from '@/features/editor/subsystems/review/ui/hooks/useComment';
 import {
   usePageSuggestions,
@@ -34,6 +36,9 @@ export interface OverviewFileGroupProps {
   members: MentionMember[];
   membersMap?: Map<string, MentionMember>;
   onCountReport?: (fileId: string, visibleCount: number, resolvedCount: number) => void;
+  preloadedComments?: PageComment[];
+  preloadedSuggestions?: PageSuggestion[];
+  isPreloadedLoading?: boolean;
 }
 
 export const OverviewFileGroup = React.memo(function OverviewFileGroup({
@@ -45,9 +50,18 @@ export const OverviewFileGroup = React.memo(function OverviewFileGroup({
   members,
   membersMap,
   onCountReport,
+  preloadedComments,
+  preloadedSuggestions,
+  isPreloadedLoading,
 }: OverviewFileGroupProps) {
-  const { data: comments = [], isLoading: isCommentsLoading } = usePageComments(file.id);
-  const { data: suggestions = [], isLoading: isSuggestionsLoading } = usePageSuggestions(file.id);
+  const hasPreloaded = Boolean(
+    isPreloadedLoading || (preloadedComments !== undefined && preloadedSuggestions !== undefined),
+  );
+  const { data: fetchedComments = [], isLoading: isCommentsLoading } = usePageComments(hasPreloaded ? '' : file.id);
+  const { data: fetchedSuggestions = [], isLoading: isSuggestionsLoading } = usePageSuggestions(hasPreloaded ? '' : file.id);
+  const comments = preloadedComments ?? fetchedComments;
+  const suggestions = preloadedSuggestions ?? fetchedSuggestions;
+  const isLoading = hasPreloaded ? Boolean(isPreloadedLoading) : (isCommentsLoading || isSuggestionsLoading);
   const acceptMutation = useAcceptSuggestion();
   const rejectMutation = useRejectSuggestion();
 
@@ -68,7 +82,7 @@ export const OverviewFileGroup = React.memo(function OverviewFileGroup({
     onCountReport?.(file.id, totalVisibleCount, fileResolvedCount);
   }, [file.id, totalVisibleCount, fileResolvedCount, onCountReport]);
 
-  if (isCommentsLoading || isSuggestionsLoading) {
+  if (isLoading) {
     return (
       <div className="border-b border-border px-3.5 py-2.5 flex items-center justify-between text-xs text-muted-foreground">
         <span className="truncate">{file.title}</span>
@@ -168,6 +182,26 @@ export function OverviewView({
 }: OverviewViewProps) {
   const [fileCounts, setFileCounts] = useState<Record<string, { visible: number; resolved: number }>>({});
 
+  const { data: overviewData, isLoading: isOverviewLoading } = useQuery({
+    queryKey: ['project-review-overview', projectId],
+    queryFn: () => manuscriptService.review.getProjectOverview(projectId!),
+    enabled: Boolean(projectId),
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+  });
+
+  const overviewByDocId = useMemo(() => {
+    if (!overviewData?.files) return null;
+    const map = new Map<string, { comments: PageComment[]; suggestions: PageSuggestion[] }>();
+    for (const f of overviewData.files) {
+      map.set(f.docId, {
+        comments: (f.comments ?? []) as PageComment[],
+        suggestions: (f.suggestions ?? []) as PageSuggestion[],
+      });
+    }
+    return map;
+  }, [overviewData]);
+
   const handleCountReport = useCallback((fileId: string, visible: number, resolved: number) => {
     setFileCounts((prev) => {
       if (prev[fileId]?.visible === visible && prev[fileId]?.resolved === resolved) {
@@ -177,7 +211,9 @@ export function OverviewView({
     });
   }, []);
 
-  const totalResolved = Object.values(fileCounts).reduce((acc, curr) => acc + curr.resolved, 0);
+  const totalResolved = overviewData?.summary?.resolvedComments !== undefined
+    ? (overviewData.summary.resolvedComments + overviewData.summary.resolvedSuggestions)
+    : Object.values(fileCounts).reduce((acc, curr) => acc + curr.resolved, 0);
 
   useEffect(() => {
     onOverviewResolvedCount?.(totalResolved);
@@ -189,19 +225,25 @@ export function OverviewView({
 
   return (
     <div className="flex-1 overflow-y-auto min-h-0">
-      {files.map((file) => (
-        <OverviewFileGroup
-          key={file.id}
-          file={file}
-          currentUserId={currentUserId}
-          projectId={projectId}
-          showResolved={showResolved}
-          onNavigateToFile={onNavigateToFile}
-          members={members}
-          membersMap={membersMap}
-          onCountReport={handleCountReport}
-        />
-      ))}
+      {files.map((file) => {
+        const preloaded = overviewByDocId?.get(file.id);
+        return (
+          <OverviewFileGroup
+            key={file.id}
+            file={file}
+            currentUserId={currentUserId}
+            projectId={projectId}
+            showResolved={showResolved}
+            onNavigateToFile={onNavigateToFile}
+            members={members}
+            membersMap={membersMap}
+            onCountReport={handleCountReport}
+            preloadedComments={overviewByDocId ? (preloaded?.comments ?? []) : undefined}
+            preloadedSuggestions={overviewByDocId ? (preloaded?.suggestions ?? []) : undefined}
+            isPreloadedLoading={Boolean(projectId) && isOverviewLoading}
+          />
+        );
+      })}
     </div>
   );
 }

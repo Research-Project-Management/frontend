@@ -10,7 +10,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
-  ReviewCoordinatorRegistry,
+  ReviewCoordinator,
   reviewCoordinator,
 } from '@/features/editor/subsystems/review';
 import type {
@@ -23,7 +23,7 @@ import { editorCommandBus } from '@/features/editor/core';
 describe('ReviewCoordinator Deep Module (Ports & Seams)', () => {
   let mockService: ReviewServicePort;
   let mockNotification: ReviewNotificationPort;
-  let coordinator: ReviewCoordinatorRegistry;
+  let coordinator: ReviewCoordinator;
 
   beforeEach(() => {
     mockService = {
@@ -40,7 +40,7 @@ describe('ReviewCoordinator Deep Module (Ports & Seams)', () => {
       notifyError: vi.fn(),
     };
 
-    coordinator = new ReviewCoordinatorRegistry({
+    coordinator = new ReviewCoordinator({
       service: mockService,
       notification: mockNotification,
     });

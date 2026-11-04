@@ -33,9 +33,9 @@ import {
   BundledNotificationItem,
 } from '@/features/editor/domain/collaboration/notification-digest';
 
-// ── Overleaf Review Icons ───────────────────────────────────────────────────
+// ── Review Icons ────────────────────────────────────────────────────────────
 
-export function OverleafReviewIcon({
+export function ReviewIcon({
   className = 'size-4',
   ...props
 }: React.SVGProps<SVGSVGElement>) {
@@ -56,9 +56,9 @@ export function OverleafReviewIcon({
   );
 }
 
-export const OverleafReviewSolidIcon = OverleafReviewIcon;
+export const ReviewSolidIcon = ReviewIcon;
 
-export function OverleafResolvedCommentsIcon({
+export function ResolvedCommentsIcon({
   className = 'size-4',
   ...props
 }: React.SVGProps<SVGSVGElement>) {
@@ -78,6 +78,12 @@ export function OverleafResolvedCommentsIcon({
     </svg>
   );
 }
+
+export {
+  ReviewIcon as OverleafReviewIcon,
+  ReviewSolidIcon as OverleafReviewSolidIcon,
+  ResolvedCommentsIcon as OverleafResolvedCommentsIcon,
+};
 
 // ── Mention Badges & Renderer ───────────────────────────────────────────────
 

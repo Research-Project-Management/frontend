@@ -64,13 +64,48 @@ const AddFilesModal = dynamic(
   { ssr: false },
 );
 
+const FILE_EXTENSION_REGEX = /\.[a-z]+$/i;
+const VALID_MAIN_TEX_EXT_REGEX = /\.(tex|ltx|rtex|rnw)$/i;
+const TRAILING_DOT_REGEX = /\.$/;
+
 const sanitizeTitle = (raw: string) => {
   const trimmed = raw.trim();
-  if (/\.[a-z]+$/i.test(trimmed)) return trimmed;
-  return trimmed.replace(/\.$/, '');
+  if (FILE_EXTENSION_REGEX.test(trimmed)) return trimmed;
+  return trimmed.replace(TRAILING_DOT_REGEX, '');
 };
 
 const EMPTY_LINKED_FILES: LinkedFileDto[] = [];
+
+function resolveExplorerItemById(
+  fileId: string,
+  files?: Array<{ id: string; title: string }> | null,
+  projectFiles?: StorageItem[] | null,
+  parentPage?: { id: string; title?: string } | null,
+  parentPageId?: string | null,
+  mainFileId?: string | null,
+): { id: string; title: string; isFolder?: boolean } | null {
+  const matchedDoc = files?.find((f) => f.id === fileId);
+  if (matchedDoc) {
+    return { id: matchedDoc.id, title: matchedDoc.title };
+  }
+  const matchedStorage = projectFiles?.find(
+    (pf) => pf.id === fileId || pf.docId === fileId || pf.fileId === fileId,
+  );
+  if (matchedStorage) {
+    return {
+      id: matchedStorage.id,
+      title: matchedStorage.path || matchedStorage.filename,
+      isFolder: matchedStorage.isFolder,
+    };
+  }
+  if (fileId === parentPageId || fileId === mainFileId) {
+    return {
+      id: fileId,
+      title: parentPage?.title || 'main.tex',
+    };
+  }
+  return null;
+}
 
 // ── Main FilesTab ───────────────────────────────────────────────────────────
 
@@ -193,6 +228,8 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
       }
     },
     enabled: Boolean(projectId),
+    staleTime: 60_000,
+    gcTime: 5 * 60_000,
   });
 
   const linkedFiles = linkedFilesData ?? EMPTY_LINKED_FILES;
@@ -322,9 +359,11 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
     [fileParam, pageId, parentPageId, mainFileId, configuredMainFile],
   );
 
-  const handleStartCreateFolder = useCallback(() => {
+  const handleStartCreateFolder = useCallback((initialPrefix = '') => {
+    setIsCreatingFile(false);
+    setNewFileName('');
     setIsCreatingFolder(true);
-    setNewFolderName('');
+    setNewFolderName(initialPrefix);
   }, []);
 
   const handleCancelCreate = useCallback(() => {
@@ -374,15 +413,14 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
   }, [handleStartCreateFolder]);
 
   const handleCreateFile = useCallback(() => {
-    const title = sanitizeTitle(newFileName);
-    const parsed = createFileSchema.safeParse({ title });
+    const cleanInput = normalizeVirtualPath(sanitizeTitle(newFileName));
+    const parsed = createFileSchema.safeParse({ title: cleanInput });
     if (!parentPageId || !parsed.success) return;
     createFileMutation.mutate(
       { parentPageId, title: parsed.data.title },
       {
         onSuccess: (file: { id: string }) => {
-          setIsCreatingFile(false);
-          setNewFileName('');
+          handleCancelCreate();
           navigationCoordinator.openDocument({
             fileId: file.id,
             title: parsed.data.title,
@@ -391,30 +429,26 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
         },
       },
     );
-  }, [newFileName, parentPageId, createFileMutation]);
+  }, [newFileName, parentPageId, createFileMutation, handleCancelCreate]);
 
   const handleCreateFolder = useCallback(() => {
-    const name = newFolderName.trim();
-    const parsed = createFolderSchema.safeParse({ name });
+    const cleanInput = normalizeVirtualPath(newFolderName);
+    const parsed = createFolderSchema.safeParse({ name: cleanInput });
     if (!parentPageId || !parsed.success) return;
     const effectiveProjectId = projectId || parentPageId;
     createFolder.mutate(
       { name: parsed.data.name, projectId: effectiveProjectId, pageId: parentPageId },
       {
-        onSuccess: () => {
-          setIsCreatingFolder(false);
-          setNewFolderName('');
-        },
+        onSuccess: handleCancelCreateFolder,
       },
     );
-  }, [newFolderName, parentPageId, projectId, createFolder]);
+  }, [newFolderName, parentPageId, projectId, createFolder, handleCancelCreateFolder]);
 
   const handleStartRename = useCallback(
     (file: { id: string; title: string; isFolder?: boolean }) => {
       setRenamingId(file.id);
       const { leafName } = splitVirtualPath(file.title);
-      const baseLeaf = leafName || file.title;
-      setRenameValue(baseLeaf);
+      setRenameValue(leafName || file.title);
     },
     [],
   );
@@ -427,52 +461,39 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
         setRenamingId(null);
         return;
       }
-      const matchedFile = files?.find((f) => f.id === fileId);
-      const matchedStorageItem = projectFiles?.find(
-        (pf) => pf.id === fileId || pf.docId === fileId || pf.fileId === fileId,
+      const existing = resolveExplorerItemById(
+        fileId,
+        files,
+        projectFiles,
+        parentPage,
+        parentPageId,
+        mainFileId,
       );
-      const oldTitle =
-        matchedFile?.title ??
-        matchedStorageItem?.path ??
-        matchedStorageItem?.filename ??
-        '';
-      void handleRenameSubmit(fileId, parsed.data.name, oldTitle).finally(() => {
+      void handleRenameSubmit(fileId, parsed.data.name, existing?.title ?? '').finally(() => {
         setRenamingId(null);
       });
     },
-    [renameValue, files, projectFiles, handleRenameSubmit],
+    [renameValue, files, projectFiles, parentPage, parentPageId, mainFileId, handleRenameSubmit],
   );
 
   const handleDelete = useCallback(
     (fileId: string) => {
-      const target =
-        files?.find((f) => f.id === fileId) ||
-        (fileId === parentPageId || fileId === mainFileId ? { id: fileId, title: 'main.tex' } : null);
-      if (target) {
-        setFileToDelete(target);
-        return;
-      }
-      const storageTarget = projectFiles?.find(
-        (pf) => pf.id === fileId || pf.docId === fileId || pf.fileId === fileId,
+      const target = resolveExplorerItemById(
+        fileId,
+        files,
+        projectFiles,
+        parentPage,
+        parentPageId,
+        mainFileId,
       );
-      if (storageTarget) {
-        setFileToDelete({
-          id: storageTarget.id,
-          title: storageTarget.path || storageTarget.filename,
-          isFolder: storageTarget.isFolder,
-        });
-        return;
-      }
-      setFileToDelete({ id: fileId, title: 'document.tex' });
+      setFileToDelete(target ?? { id: fileId, title: 'document.tex' });
     },
-    [files, projectFiles, parentPageId, mainFileId],
+    [files, projectFiles, parentPage, parentPageId, mainFileId],
   );
 
   const handleConfirmDelete = useCallback(() => {
     if (!fileToDelete || !parentPageId) return;
-    const targetId = fileToDelete.id;
-
-    deletePageMutation.mutate(targetId, {
+    deletePageMutation.mutate(fileToDelete.id, {
       onSuccess: () => {
         setFileToDelete(null);
       },
@@ -482,25 +503,23 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
   const handleSetMain = useCallback(
     (fileId: string) => {
       if (!parentPageId) return;
-      const targetFile =
-        files?.find((f) => f.id === fileId) ||
-        projectFiles?.find((pf) => pf.id === fileId || pf.docId === fileId) ||
-        (fileId === parentPageId ? parentPage : null);
+      const targetFile = resolveExplorerItemById(
+        fileId,
+        files,
+        projectFiles,
+        parentPage,
+        parentPageId,
+        mainFileId,
+      );
       if (targetFile) {
-        const rawTitle = String(
-          ('path' in targetFile && targetFile.path) ||
-            ('title' in targetFile && targetFile.title) ||
-            ('filename' in targetFile && targetFile.filename) ||
-            'main.tex',
-        );
-        const cleanTitle = normalizeVirtualPath(rawTitle) || 'main.tex';
-        const hasValidExt = /\.(tex|ltx|rtex|rnw)$/i.test(cleanTitle);
+        const cleanTitle = normalizeVirtualPath(targetFile.title) || 'main.tex';
+        const hasValidExt = VALID_MAIN_TEX_EXT_REGEX.test(cleanTitle);
         setMainFile(hasValidExt ? cleanTitle : `${cleanTitle}.tex`);
       }
       const effectiveProjectId = projectId || parentPageId;
       setMainFileMutation.mutate({ pageId: parentPageId, fileId, projectId: effectiveProjectId });
     },
-    [parentPageId, files, projectFiles, parentPage, setMainFile, projectId, setMainFileMutation],
+    [parentPageId, files, projectFiles, parentPage, mainFileId, setMainFile, projectId, setMainFileMutation],
   );
 
   const renderTreeNode = useCallback(
@@ -517,13 +536,20 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
             isRenamePending={isRenamePending}
             onToggle={toggleFolder}
             onMoveItem={handleMoveItem}
-            onNewFileInFolder={(folderName) => {
-              setNewFileName(`${folderName}/`);
+            onNewFileInFolder={(folderPath) => {
+              if (!isFolderExpanded(node)) {
+                toggleFolder(folderPath);
+              }
+              setIsCreatingFolder(false);
+              setNewFolderName('');
+              setNewFileName(`${folderPath}/`);
               setIsCreatingFile(true);
             }}
-            onNewFolderInFolder={(folderName) => {
-              setNewFolderName(`${folderName}/`);
-              setIsCreatingFolder(true);
+            onNewFolderInFolder={(folderPath) => {
+              if (!isFolderExpanded(node)) {
+                toggleFolder(folderPath);
+              }
+              handleStartCreateFolder(`${folderPath}/`);
             }}
             onUploadToFolder={(folderId) => {
               handleUploadToFolder([], folderId);

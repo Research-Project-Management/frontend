@@ -80,7 +80,7 @@ export const FileTreeFolderRow = React.memo(function FileTreeFolderRow({
   onDelete,
   children,
 }: FileTreeFolderRowProps) {
-  const folderKey = node.fullPath || node.name;
+  const folderKey = node.fullPath || node.path || node.name;
   const folderDiag = useFolderDiagnosticsSummary(folderKey);
   const isPersistedFolder = !node.id.startsWith('folder:');
 
@@ -253,7 +253,7 @@ export const FileTreeFolderRow = React.memo(function FileTreeFolderRow({
           <DropdownMenuItem
             onClick={(e) => {
               e.stopPropagation();
-              onStartRename({ id: node.id, title: node.name, isFolder: true });
+              onStartRename({ id: node.id, title: folderKey, isFolder: true });
             }}
             className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
           >
@@ -320,7 +320,7 @@ export const FileTreeFolderRow = React.memo(function FileTreeFolderRow({
             <ContextMenuItem
               onClick={(e) => {
                 e.stopPropagation();
-                onStartRename({ id: node.id, title: node.name, isFolder: true });
+                onStartRename({ id: node.id, title: folderKey, isFolder: true });
               }}
               className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
             >

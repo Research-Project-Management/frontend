@@ -1,28 +1,48 @@
 /**
- * latex-structure.ts — Pure LaTeX Outline, Environment & AST utilities
+ * latex-structure.ts — Lightweight LaTeX Outline, Environment & Diagnostic helpers.
+ * Authoritative full-document AST outline parsing is handled by `/structure/outline`.
  */
 
 import type { LogEntry, ParsedLog } from '@/features/editor/domain/types/compiler.types';
+import type { CompilerDiagnostic } from '@/features/editor/sdk/manuscript/types';
 import { parseLatexLog } from './compiler-logs-parser';
 
-// ── Compile Error Parser ───────────────────────────────────────────────────────
+export { parseLatexLog } from './compiler-logs-parser';
+export type { LogEntry, ParsedLog };
 
 export interface ParsedCompileError {
   line: number | null;
   message: string;
   context: string;
   file?: string;
-  severity?: 'error' | 'warning' | 'info';
+  severity?: 'error' | 'warning' | 'info' | 'badbox';
   code?: string;
   suggestion?: string;
+  quickFix?: {
+    description: string;
+    replacementText: string;
+  };
 }
 
-/** Parse pdflatex/xelatex/tectonic/bibtex/biber log to extract error and warning entries (Official Overleaf Parity) */
-export function parseCompileErrors(log: string): ParsedCompileError[] {
+export function parseCompileErrors(
+  log: string,
+  diagnostics?: CompilerDiagnostic[],
+): ParsedCompileError[] {
+  if (diagnostics && diagnostics.length > 0) {
+    return diagnostics.slice(0, 50).map((d) => ({
+      file: d.file,
+      line: d.line ?? null,
+      message: d.message,
+      context: d.context || d.message,
+      severity: d.severity,
+      code: d.code,
+      suggestion: d.suggestion || d.quickFix?.description,
+      quickFix: d.quickFix,
+    }));
+  }
   if (!log) return [];
   const parsed = parseLatexLog(log);
   const errors: ParsedCompileError[] = [];
-
   for (const err of parsed.errors) {
     if (errors.length >= 50) break;
     errors.push({
@@ -32,31 +52,22 @@ export function parseCompileErrors(log: string): ParsedCompileError[] {
       context: err.rawExcerpt || err.detail || err.message,
       severity: 'error',
       suggestion: err.quickFix?.description,
+      quickFix: err.quickFix,
     });
   }
-
   for (const warn of parsed.warnings) {
     if (errors.length >= 50) break;
-    const strippedMessage = warn.message
-      .replace(/^(?:LaTeX3?|LaTeX\s+Font|(?:Package|Class|Module)\s+\S+|pdfTeX|xdvipdfmx)\s+[Ww]arning:\s*/i, '')
-      .trim();
     errors.push({
       file: warn.file,
       line: warn.line ?? null,
-      message: strippedMessage,
+      message: warn.message.replace(/^(?:LaTeX3?|LaTeX\s+Font|(?:Package|Class|Module)\s+\S+|pdfTeX|xdvipdfmx)\s+[Ww]arning:\s*/i, '').trim(),
       context: warn.rawExcerpt || warn.message,
       severity: 'warning',
+      quickFix: warn.quickFix,
     });
   }
-
   return errors;
 }
-
-// ── Raw LaTeX Log Parser ──────────────────────────────────────────────────────
-export { parseLatexLog } from './compiler-logs-parser';
-export type { LogEntry, ParsedLog };
-
-// ── LaTeX AST Structure & Line Context ──────────────────────────────────────────
 
 export interface LatexSection {
   level: string;
@@ -107,167 +118,52 @@ export function parseLatexStructure(latex: string): LatexStructure {
   const packages: string[] = [];
   const labels: string[] = [];
   const citations: string[] = [];
-
-  if (!latex) {
-    return { sections, environments, packages, labels, citations };
-  }
+  if (!latex) return { sections, environments, packages, labels, citations };
 
   const lines = latex.split(/\r?\n/);
   const envStack: Array<{ type: string; startLine: number }> = [];
-
-  const beginRegex = /\\begin\{([^}]+)\}/g;
-  const endRegex = /\\end\{([^}]+)\}/g;
-  const pkgRegex = /\\usepackage(?:\[[^\]]*\])?\{([^}]+)\}/g;
-  const labelRegex = /\\label\{([^}]+)\}/g;
-  const citeRegex = /\\(?:cite|citet|citep|citealp|citealt|citeauthor|citeyear|citeyearpar|autocite|parencite|textcite|footcite|nocite|newcite|shortcite)\*?(?:\[[^\]]*\])*\{([^}]+)\}/g;
-
-  let iffalseDepth = 0;
-
   for (let i = 0; i < lines.length; i++) {
     const lineNum = i + 1;
-    // Strip unescaped % comments
-    const rawLine = lines[i];
-    const line = rawLine.replace(/(^|[^\\])%.*$/, '$1');
-
-    if (/\\iffalse\b/.test(line)) {
-      iffalseDepth++;
-    }
-    if (/\\fi\b/.test(line)) {
-      if (iffalseDepth > 0) iffalseDepth--;
-      continue;
-    }
-    if (iffalseDepth > 0) {
-      continue;
-    }
-
-    // 1. Sections (supports nested braces in titles)
-    const secCmdMatch = line.match(/\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\*?(?:\[[^\]]*\])?\{/);
-    if (secCmdMatch && secCmdMatch.index !== undefined) {
-      const level = secCmdMatch[1];
-      const openBraceIdx = secCmdMatch.index + secCmdMatch[0].length - 1;
-      let depth = 0;
-      let closeBraceIdx = -1;
-      for (let k = openBraceIdx; k < line.length; k++) {
-        if (line[k] === '{' && line[k - 1] !== '\\') depth++;
-        else if (line[k] === '}' && line[k - 1] !== '\\') {
-          depth--;
-          if (depth === 0) {
-            closeBraceIdx = k;
-            break;
-          }
-        }
-      }
-      if (closeBraceIdx !== -1) {
-        sections.push({
-          level,
-          title: line.slice(openBraceIdx + 1, closeBraceIdx).trim(),
-          startLine: lineNum,
-        });
-      }
-    }
-
-    // 2. Environments
-    let bMatch: RegExpExecArray | null;
-    beginRegex.lastIndex = 0;
-    while ((bMatch = beginRegex.exec(line)) !== null) {
-      envStack.push({
-        type: bMatch[1].trim(),
-        startLine: lineNum,
-      });
-    }
-
-    let eMatch: RegExpExecArray | null;
-    endRegex.lastIndex = 0;
-    while ((eMatch = endRegex.exec(line)) !== null) {
-      const endType = eMatch[1].trim();
-      const lastIdx = envStack.map((e) => e.type).lastIndexOf(endType);
-      if (lastIdx !== -1) {
-        const [matched] = envStack.splice(lastIdx, 1);
-        environments.push({
-          type: matched.type,
-          startLine: matched.startLine,
-          endLine: lineNum,
-        });
-      }
-    }
-
-    // 3. Packages
-    let pMatch: RegExpExecArray | null;
-    pkgRegex.lastIndex = 0;
-    while ((pMatch = pkgRegex.exec(line)) !== null) {
-      const pkgs = pMatch[1].split(',').map((p) => p.trim()).filter(Boolean);
-      for (const p of pkgs) {
-        if (!packages.includes(p)) packages.push(p);
-      }
-    }
-
-    // 4. Labels
-    let lMatch: RegExpExecArray | null;
-    labelRegex.lastIndex = 0;
-    while ((lMatch = labelRegex.exec(line)) !== null) {
-      const lbl = lMatch[1].trim();
-      if (lbl && !labels.includes(lbl)) labels.push(lbl);
-    }
-
-    // 5. Citations
-    let cMatch: RegExpExecArray | null;
-    citeRegex.lastIndex = 0;
-    while ((cMatch = citeRegex.exec(line)) !== null) {
-      const cites = cMatch[1].split(',').map((c) => c.trim()).filter(Boolean);
-      for (const c of cites) {
-        if (!citations.includes(c)) citations.push(c);
+    const line = lines[i].replace(/(^|[^\\])%.*$/, '$1');
+    const secMatch = line.match(/\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\*?(?:\[[^\]]*\])?\{([^}]*)\}/);
+    if (secMatch) sections.push({ level: secMatch[1], title: secMatch[2].trim(), startLine: lineNum });
+    const bMatch = line.match(/\\begin\{([^}]+)\}/);
+    if (bMatch) envStack.push({ type: bMatch[1].trim(), startLine: lineNum });
+    const eMatch = line.match(/\\end\{([^}]+)\}/);
+    if (eMatch) {
+      const idx = envStack.map((e) => e.type).lastIndexOf(eMatch[1].trim());
+      if (idx !== -1) {
+        const [m] = envStack.splice(idx, 1);
+        environments.push({ type: m.type, startLine: m.startLine, endLine: lineNum });
       }
     }
   }
-
-  return {
-    sections,
-    environments,
-    packages,
-    labels,
-    citations,
-  };
+  return { sections, environments, packages, labels, citations };
 }
 
 export function getLineContext(
   line: number,
   structure: LatexStructure,
 ): { section: string | null; environment: string | null } {
-  let activeSection: string | null = null;
+  let section: string | null = null;
   for (const s of structure.sections) {
-    if (s.startLine <= line) {
-      activeSection = `\\${s.level}{${s.title}}`;
-    } else {
-      break;
-    }
+    if (s.startLine <= line) section = `\\${s.level}{${s.title}}`;
+    else break;
   }
-
-  let activeEnvironment: string | null = null;
-  let smallestSpan = Infinity;
+  let environment: string | null = null;
   for (const env of structure.environments) {
     if (env.type !== 'document' && env.startLine <= line && env.endLine >= line) {
-      const span = env.endLine - env.startLine;
-      if (span <= smallestSpan) {
-        smallestSpan = span;
-        activeEnvironment = env.type;
-      }
+      environment = env.type;
     }
   }
-
-  return {
-    section: activeSection,
-    environment: activeEnvironment,
-  };
+  return { section, environment };
 }
 
 export function formatContextForPrompt(richCtx: RichEditorContext): string {
-  const parts: string[] = [];
-  if (richCtx.filename) parts.push(`File: ${richCtx.filename}`);
-  if (richCtx.currentSection) parts.push(`Current section: ${richCtx.currentSection}`);
-  if (richCtx.currentEnvironment) parts.push(`Inside environment: \\begin{${richCtx.currentEnvironment}}`);
-  if (richCtx.selectedText) parts.push(richCtx.selectedText);
-  return parts.join('\n');
+  return [
+    richCtx.filename && `File: ${richCtx.filename}`,
+    richCtx.currentSection && `Current section: ${richCtx.currentSection}`,
+    richCtx.currentEnvironment && `Inside environment: \\begin{${richCtx.currentEnvironment}}`,
+    richCtx.selectedText,
+  ].filter(Boolean).join('\n');
 }
-
-
-

@@ -180,9 +180,9 @@ export function useViewerSyncTeX({
       let targetPath = sourcePath;
       let targetLine = line;
 
-      // Remote fallback: if local map had no target or line < 1, query backend SyncTeX processor
+      // 1. Primary Authority: Backend SyncTeX reverse resolution when page & coordinates are provided
       const rootId = projectId || pageId;
-      if ((!targetPath || targetLine < 1) && rootId && pageNum && x !== undefined && y !== undefined) {
+      if (rootId && pageNum && x !== undefined && y !== undefined && (!targetPath || targetLine < 1)) {
         try {
           const remoteRes = await compilerCoordinator.resolveReverseRemote(
             rootId,
@@ -273,47 +273,47 @@ export function useViewerSyncTeX({
       let targetW: number | undefined;
       let targetH: number | undefined;
 
-      // 1. Fast-path: 0ms Local In-Memory SyncTeX Map Lookup
-      const effectiveMap = synctexMapRef.current || compilerCoordinator.getSynctexMap();
-      if (effectiveMap) {
-        const localDetail = compilerCoordinator.resolveForwardDetail(
-          targetLine,
-          filename,
-          numPages || 1,
-          effectiveMap,
-        );
-        if (localDetail) {
-          targetPage = localDetail.page;
-          if (localDetail.x !== undefined && localDetail.y !== undefined) {
-            targetX = localDetail.x * effectiveScale;
-            targetY = localDetail.y * effectiveScale;
-            targetW = localDetail.w !== undefined ? localDetail.w * effectiveScale : undefined;
-            targetH = localDetail.h !== undefined ? localDetail.h * effectiveScale : undefined;
-          }
-        }
-        if (!targetPage) {
-          targetPage = compilerCoordinator.resolveForward(
+      // 1. Primary Authority: Backend Remote SyncTeX Resolution
+      const remoteRes = await compilerCoordinator.resolveForwardRemote(
+        rootId,
+        filename,
+        targetLine,
+      );
+      if (remoteRes) {
+        targetPage = remoteRes.page ?? null;
+        targetX = remoteRes.x * effectiveScale;
+        targetY = remoteRes.y * effectiveScale;
+        targetW = remoteRes.w !== undefined ? remoteRes.w * effectiveScale : undefined;
+        targetH = remoteRes.h !== undefined ? remoteRes.h * effectiveScale : undefined;
+      }
+
+      // 2. Fallback: Local SyncTeX Map Lookup if remote endpoint is unavailable
+      if (!targetPage) {
+        const effectiveMap = synctexMapRef.current || compilerCoordinator.getSynctexMap();
+        if (effectiveMap) {
+          const localDetail = compilerCoordinator.resolveForwardDetail(
             targetLine,
             filename,
             numPages || 1,
             effectiveMap,
           );
-        }
-      }
-
-      // 2. Fallback: Backend Remote SyncTeX Resolution when local map is absent or misses
-      if (!targetPage) {
-        const remoteRes = await compilerCoordinator.resolveForwardRemote(
-          rootId,
-          filename,
-          targetLine,
-        );
-        if (remoteRes) {
-          targetPage = remoteRes.page ?? null;
-          targetX = remoteRes.x * effectiveScale;
-          targetY = remoteRes.y * effectiveScale;
-          targetW = remoteRes.w !== undefined ? remoteRes.w * effectiveScale : undefined;
-          targetH = remoteRes.h !== undefined ? remoteRes.h * effectiveScale : undefined;
+          if (localDetail) {
+            targetPage = localDetail.page;
+            if (localDetail.x !== undefined && localDetail.y !== undefined) {
+              targetX = localDetail.x * effectiveScale;
+              targetY = localDetail.y * effectiveScale;
+              targetW = localDetail.w !== undefined ? localDetail.w * effectiveScale : undefined;
+              targetH = localDetail.h !== undefined ? localDetail.h * effectiveScale : undefined;
+            }
+          }
+          if (!targetPage) {
+            targetPage = compilerCoordinator.resolveForward(
+              targetLine,
+              filename,
+              numPages || 1,
+              effectiveMap,
+            );
+          }
         }
       }
 
@@ -348,31 +348,35 @@ export function useViewerSyncTeX({
   useEffect(() => {
     const handleReverse = async (customPage?: number, customX?: number, customY?: number) => {
       const p = customPage || pageNumber || useViewerStore.getState().pageNumber || 1;
-      const effectiveMap = synctexMapRef.current || compilerCoordinator.getSynctexMap();
-      let resolved = compilerCoordinator.resolveReverse(
-        0.25,
-        p,
-        customX,
-        customY,
-        effectiveMap,
-        heightPt,
-      );
+      const rootId = projectId || pageId;
+      let resolved: { line: number; sourcePath: string | null } | null = null;
 
+      // 1. Primary Authority: Backend Remote SyncTeX Reverse Resolution
+      if (rootId && customX !== undefined && customY !== undefined) {
+        try {
+          const remoteRes = await compilerCoordinator.resolveReverseRemote(
+            rootId,
+            p,
+            customX,
+            customY,
+          );
+          if (remoteRes && remoteRes.line) {
+            resolved = remoteRes;
+          }
+        } catch {}
+      }
+
+      // 2. Fallback: Local SyncTeX Map Lookup
       if (!resolved || !resolved.line) {
-        const rootId = projectId || pageId;
-        if (rootId && customX !== undefined && customY !== undefined) {
-          try {
-            const remoteRes = await compilerCoordinator.resolveReverseRemote(
-              rootId,
-              p,
-              customX,
-              customY,
-            );
-            if (remoteRes && remoteRes.line) {
-              resolved = remoteRes;
-            }
-          } catch {}
-        }
+        const effectiveMap = synctexMapRef.current || compilerCoordinator.getSynctexMap();
+        resolved = compilerCoordinator.resolveReverse(
+          0.25,
+          p,
+          customX,
+          customY,
+          effectiveMap,
+          heightPt,
+        );
       }
 
       if (resolved?.line && resolved.line >= 1) {

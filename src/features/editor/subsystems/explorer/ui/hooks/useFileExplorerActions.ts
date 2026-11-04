@@ -189,7 +189,7 @@ export function useFileExplorerActions(options?: UseFileExplorerActionsOptions) 
           itemId: fileId,
           oldName: oldName || trimmed,
           newName: trimmed,
-          projectId: projectId || parentPageId || undefined,
+          projectId: parentPageId || projectId || undefined,
         });
       } finally {
         setIsRenamePending(false);

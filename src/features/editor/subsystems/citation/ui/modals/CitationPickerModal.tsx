@@ -32,7 +32,7 @@ import { useEditorCitations } from '@/features/editor/subsystems/citation/ui/hoo
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import {
   extractCitationKeys, formatCitationSnippet, formatBibEntryToBibtex, formatItemToBibtex, } from '@/features/editor/subsystems/citation/model/citation-formatter';
-import { validateAcademicIdentifier } from '@/features/editor/subsystems/citation/model/citation.schema';
+import { validateIdentifier } from '@/features/editor/subsystems/citation/model/citation.schema';
 import {
   buildRetractedCitationMap, type RetractedItemInfo, } from '@/features/editor/subsystems/citation/model/retracted-citations';
 import type { BibEntry } from '@/features/editor/domain/latex/bib-parser';
@@ -488,79 +488,51 @@ export default function CitationPickerModal({
 
   // Check if search query matches DOI or arXiv identifier
   const isIdentifier = useMemo(() => {
-    return validateAcademicIdentifier(search).isIdentifier;
+    return validateIdentifier(search).isIdentifier;
   }, [search]);
 
   /**
-   * Overleaf Parity Auto-Sync: Appends missing BibTeX entry to references.bib
+   * Overleaf Parity Auto-Sync: Upserts missing BibTeX entry into project references.bib via backend
    */
   const ensureBibtexInProject = useCallback(
     async (entry: BibEntry) => {
       if (!effectiveProjectId) return;
 
-      const candidateMap = new Map<string, { id: string; title: string; content: string }>();
-      for (const wf of workspaceCoordinator.getProjectFiles() || []) {
-        const title = (wf.path || wf.title || '').trim();
-        if (title.toLowerCase().endsWith('.bib')) {
-          const cached = wf.id ? lruDocumentCache.get(wf.id) : undefined;
-          candidateMap.set(wf.id || title.toLowerCase(), {
-            id: wf.id,
-            title,
-            content: cached?.content ?? extractDocumentContentString(wf.content),
-          });
-        }
-      }
-      const files = Array.isArray(projectFiles) ? projectFiles : [];
-      for (const f of files as Array<{ id: string; title?: string; name?: string; content?: string }>) {
-        const title = (f.title || f.name || '').trim();
-        if (title.toLowerCase().endsWith('.bib')) {
-          const cached = f.id ? lruDocumentCache.get(f.id) : undefined;
-          candidateMap.set(f.id || title.toLowerCase(), {
-            id: f.id,
-            title,
-            content: cached?.content ?? f.content ?? '',
-          });
-        }
-      }
-      const bibFiles = Array.from(candidateMap.values());
-
       const storeBib = useSettingsStore.getState().mainBibFile;
       const preferredBib =
         storeBib && storeBib !== 'auto' ? storeBib : 'references.bib';
-      const primaryBib =
-        bibFiles.find(
-          (f) => f.title.toLowerCase() === preferredBib.toLowerCase(),
-        ) || bibFiles[0];
 
-      let bibCode = '';
       const matchedLibItem = libraryItems.find(
         (it) => (it.citationKey || it.id)?.toLowerCase() === entry.key.toLowerCase(),
       );
 
-      if (matchedLibItem) {
-        bibCode = formatItemToBibtex(matchedLibItem);
-      } else {
-        bibCode = formatBibEntryToBibtex(entry);
-      }
-
-      if (!bibCode) return;
-
-      if (primaryBib) {
-        const currentContent = primaryBib.content || '';
-        if (new RegExp(`@\\w+\\s*\\{\\s*${entry.key}\\s*,`, 'i').test(currentContent)) {
-          return;
-        }
-
-        const newContent = currentContent
-          ? `${currentContent.trim()}\n\n${bibCode}\n`
-          : `${bibCode}\n`;
-        lruDocumentCache.updateContent(primaryBib.id, newContent, true);
-        sessionCoordinator.notifyContentChange(primaryBib.id, newContent);
-        latexSymbolsIndex.indexFile(primaryBib.id, primaryBib.title || preferredBib, newContent);
-        toast.success(`Synced @${entry.key} to ${primaryBib.title || preferredBib}`, {
-          id: `sync-bib-${entry.key}`,
+      try {
+        const res = await manuscriptService.citations.upsertEntries(effectiveProjectId, {
+          entry: (matchedLibItem ?? entry) as unknown as Record<string, unknown>,
+          targetBibFile: preferredBib,
         });
-      } else {
+
+        if (res.syncedCount > 0 && res.formattedBibtex) {
+          const targetDocId = res.docId || res.filePath || preferredBib;
+          const existingCached = res.docId ? lruDocumentCache.get(res.docId) : undefined;
+          const updatedContent = existingCached?.content
+            ? `${existingCached.content.trim()}\n\n${res.formattedBibtex}\n`
+            : `${res.formattedBibtex}\n`;
+          if (res.docId) {
+            lruDocumentCache.updateContent(res.docId, updatedContent, false);
+          }
+          latexSymbolsIndex.indexFile(targetDocId, res.filePath || preferredBib, updatedContent);
+          toast.success(`Synced @${entry.key} to ${res.filePath || preferredBib}`, {
+            id: `sync-bib-${entry.key}`,
+          });
+        }
+      } catch {
+        // Fallback to local buffer sync if backend upsert is unreachable
+        const bibCode = matchedLibItem
+          ? formatItemToBibtex(matchedLibItem)
+          : formatBibEntryToBibtex(entry);
+        if (!bibCode) return;
+
         const created = await workspaceCoordinator.createFile({
           name: preferredBib,
           content: `${bibCode}\n`,
@@ -569,7 +541,7 @@ export default function CitationPickerModal({
         if (created?.id) {
           latexSymbolsIndex.indexFile(created.id, preferredBib, `${bibCode}\n`);
         }
-        toast.success(`Created ${preferredBib} and synced @${entry.key}`, {
+        toast.success(`Synced @${entry.key} to ${preferredBib}`, {
           id: `sync-bib-${entry.key}`,
         });
       }
@@ -580,9 +552,10 @@ export default function CitationPickerModal({
       queryClient.invalidateQueries({ queryKey: pageKeys.all });
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
       queryClient.invalidateQueries({ queryKey: ['project-citation-validation', effectiveProjectId] });
+      queryClient.invalidateQueries({ queryKey: ['project-citations', effectiveProjectId] });
       editorCommandBus.dispatch({ type: 'filetree:updated' });
     },
-    [effectiveProjectId, projectFiles, libraryItems, rootId, queryClient],
+    [effectiveProjectId, libraryItems, rootId, queryClient],
   );
 
   /**

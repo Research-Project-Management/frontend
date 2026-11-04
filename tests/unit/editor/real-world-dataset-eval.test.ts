@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import { parseBibContent, type BibEntry } from '@/features/editor/domain/latex/bib-parser';
-import { LatexDagEngine } from '@/features/editor/domain/latex/latex-dag-engine';
+import { LatexDependencyGraph } from '@/features/editor/domain/latex/dependency-graph';
 import { runLatexLinter } from '@/features/editor/subsystems/diagnostics/extensions/latex-linter-core';
 import { countLatexWords } from '@/features/editor/domain/document/word-count';
 
@@ -74,7 +74,7 @@ describe('Flux Editor Real-World Academic Dataset Evaluation', () => {
   // =========================================================================
   describe('Case 2: Multi-File Dependency Graph & Root Resolution on Real Manuscripts', () => {
     it('accurately constructs DAG and infers root document for Attention Is All You Need (arXiv:1706.03762)', () => {
-      const dag = new LatexDagEngine();
+      const dag = new LatexDependencyGraph();
       const files: Array<{ id: string; title: string; path: string; content: string }> = [];
 
       const fileNames = fs.readdirSync(ATTENTION_DIR).filter((f) => f.endsWith('.tex'));
@@ -103,7 +103,7 @@ describe('Flux Editor Real-World Academic Dataset Evaluation', () => {
     });
 
     it('accurately constructs DAG and infers root document for BERT (arXiv:1810.04805)', () => {
-      const dag = new LatexDagEngine();
+      const dag = new LatexDependencyGraph();
       const files: Array<{ id: string; title: string; path: string; content: string }> = [];
 
       const fileNames = fs.readdirSync(BERT_DIR).filter((f) => f.endsWith('.tex'));

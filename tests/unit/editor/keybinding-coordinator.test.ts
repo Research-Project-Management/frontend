@@ -4,7 +4,7 @@ import { editorCommandBus } from '@/features/editor/core';
 import { sessionCoordinator } from '@/features/editor/core';
 import { useSettingsStore } from '@/features/editor/core';
 
-describe('KeybindingCoordinatorRegistry (Global & Scoped Shortcuts)', () => {
+describe('KeybindingCoordinator (Global & Scoped Shortcuts)', () => {
   let cleanup: () => void;
 
   beforeEach(() => {

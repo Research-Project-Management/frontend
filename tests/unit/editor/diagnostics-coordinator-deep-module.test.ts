@@ -11,16 +11,16 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
-  DiagnosticsCoordinatorRegistry,
+  DiagnosticsCoordinator,
   diagnosticsCoordinator,
 } from '@/features/editor/subsystems/diagnostics';
 import type { CompileError } from '@/features/editor/domain/types/compiler.types';
 
 describe('DiagnosticsCoordinator Deep Module', () => {
-  let coordinator: DiagnosticsCoordinatorRegistry;
+  let coordinator: DiagnosticsCoordinator;
 
   beforeEach(() => {
-    coordinator = new DiagnosticsCoordinatorRegistry();
+    coordinator = new DiagnosticsCoordinator();
   });
 
   describe('Compiler Errors Ingestion & Canonical Resolution', () => {

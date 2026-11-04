@@ -4,7 +4,7 @@
  * ClientEditor.tsx
  *
  * Dynamic Client-only wrapper for Next.js SSR avoidance.
- * Location: `features/editor/ui/shell/ClientEditor.tsx`
+ * Location: `features/editor/core/shell/ClientEditor.tsx`
  */
 
 import dynamic from 'next/dynamic';
@@ -13,8 +13,8 @@ import { TooltipProvider } from '@/shared/components/ui/tooltip';
 import { sessionCoordinator } from '../coordinator/session.coordinator';
 import EditorSkeleton from './EditorSkeleton';
 
-const ModernWorkbenchLayout = dynamic(
-  () => import('./ModernWorkbenchLayout'),
+const WorkbenchLayout = dynamic(
+  () => import('./WorkbenchLayout'),
   {
     ssr: false,
     loading: () => <EditorSkeleton />,
@@ -38,7 +38,7 @@ export default function ClientEditor() {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <ModernWorkbenchLayout />
+      <WorkbenchLayout />
     </TooltipProvider>
   );
 }

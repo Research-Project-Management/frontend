@@ -1,17 +1,17 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
-  LatexDagEngine,
+  LatexDependencyGraph,
   normalizeLatexPath,
   resolveRelativeLatexPath,
   stripLatexComments,
   parseLatexDirectives,
-} from '@/features/editor/domain/latex/latex-dag-engine';
+} from '@/features/editor/domain/latex/dependency-graph';
 
-describe('LatexDagEngine (Include Dependency Graph & Subfiles Parity)', () => {
-  let dag: LatexDagEngine;
+describe('LatexDependencyGraph (Include Dependency Graph & Subfiles Parity)', () => {
+  let dag: LatexDependencyGraph;
 
   beforeEach(() => {
-    dag = new LatexDagEngine();
+    dag = new LatexDependencyGraph();
   });
 
   describe('1. Directive Parsing & Syntax Tolerance', () => {

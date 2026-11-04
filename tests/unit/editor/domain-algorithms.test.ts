@@ -13,12 +13,12 @@ import {
   type DocumentModelState,
 } from '@/features/editor/domain/document/lru-document-cache';
 import {
-  LatexDagEngine,
+  LatexDependencyGraph,
   normalizeLatexPath,
   resolveRelativeLatexPath,
-} from '@/features/editor/domain/latex/latex-dag-engine';
+} from '@/features/editor/domain/latex/dependency-graph';
 import {
-  DiagnosticsCoordinatorRegistry,
+  DiagnosticsCoordinator,
 } from '@/features/editor/subsystems/diagnostics';
 
 describe('1. Bounded LRU Document Cache', () => {
@@ -75,7 +75,7 @@ describe('2. LaTeX DAG Engine & Root Document Inference', () => {
   });
 
   it('builds include graph and detects cycles via DFS 3-coloring', () => {
-    const dag = new LatexDagEngine();
+    const dag = new LatexDependencyGraph();
 
     // Cyclic graph: A -> B -> C -> A
     dag.parseAndRegister('a.tex', '\\include{b}');
@@ -87,7 +87,7 @@ describe('2. LaTeX DAG Engine & Root Document Inference', () => {
   });
 
   it('infers root document through reverse DAG backtracking', () => {
-    const dag = new LatexDagEngine();
+    const dag = new LatexDependencyGraph();
 
     // Project structure:
     // main.tex (\documentclass{article}, \include{chapters/intro})
@@ -108,7 +108,7 @@ describe('2. LaTeX DAG Engine & Root Document Inference', () => {
 
 describe('3. Diagnostics Coordinator (Interval Partitioning)', () => {
   it('partitions diagnostics by file and performs O(log K) range queries', () => {
-    const coordinator = new DiagnosticsCoordinatorRegistry();
+    const coordinator = new DiagnosticsCoordinator();
 
     const mockErrors = [
       { file: 'main.tex', line: 10, message: 'Undefined control sequence', severity: 'error' as const },

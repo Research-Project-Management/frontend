@@ -42,7 +42,7 @@ import { createReplySchema, createCommentSchema } from '@/features/editor/domain
 import type { MentionMember } from '@/features/editor/domain/collaboration/mention';
 import { MentionRenderer } from './ReviewBadges';
 import { MentionTextarea } from './MentionTextarea';
-import { formatOverleafDate, resolveAuthorDisplay } from '@/features/editor/domain/collaboration/author-display';
+import { formatReviewDate, resolveAuthorDisplay } from '@/features/editor/domain/collaboration/author-display';
 
 // ── Reply Row ───────────────────────────────────────────────────────────────
 
@@ -82,7 +82,7 @@ export const ReplyRow = React.memo(function ReplyRow({
             {authorDisplay.name}
           </span>
           <span className="text-11 font-mono text-muted-foreground">
-            {formatOverleafDate(reply.createdAt)}
+            {formatReviewDate(reply.createdAt)}
           </span>
         </div>
         {isAuthor && (
@@ -347,7 +347,7 @@ export const CommentCard = React.memo(function CommentCard({
 
       {/* Row 2: Timestamp */}
       <div className="text-12 font-mono text-muted-foreground mt-0.5 leading-normal">
-        {formatOverleafDate(comment.createdAt)}
+        {formatReviewDate(comment.createdAt)}
       </div>
 
       {/* Row 3: Comment Body (or Edit Form) */}

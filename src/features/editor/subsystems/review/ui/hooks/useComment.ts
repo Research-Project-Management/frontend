@@ -19,6 +19,9 @@ export const commentKeys = {
   byPage: (pageId: string | null, status?: CommentStatus) => ['page-comments', pageId, status] as const,
 };
 
+const COMMENT_QUERY_STALE_TIME = 30_000;
+const COMMENT_QUERY_GC_TIME = 5 * 60_000;
+
 export const usePageComments = (
   pageId: string | null,
   status?: CommentStatus,
@@ -34,6 +37,8 @@ export const usePageComments = (
         return comments || [];
       },
       enabled: Boolean(pageId),
+      staleTime: COMMENT_QUERY_STALE_TIME,
+      gcTime: COMMENT_QUERY_GC_TIME,
     },
     effectiveClient
   );
@@ -100,7 +105,11 @@ export const useCreateComment = (customClient?: QueryClient) => {
     },
     onSettled: (_data, _err, variables) => {
       queryClient.invalidateQueries({ queryKey: ['page-comments', variables.pageId] });
-      queryClient.invalidateQueries({ queryKey: ['page-comments'] });
+      if (variables.projectId) {
+        queryClient.invalidateQueries({ queryKey: ['project-review-overview', variables.projectId] });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['project-review-overview'] });
+      }
     },
     onSuccess: () => {
       toast.success('Comment added', { id: 'create-comment' });
@@ -160,7 +169,11 @@ export const useUpdateComment = (customClient?: QueryClient) => {
     },
     onSettled: (_data, _err, variables) => {
       queryClient.invalidateQueries({ queryKey: ['page-comments', variables.pageId] });
-      queryClient.invalidateQueries({ queryKey: ['page-comments'] });
+      if (variables.projectId) {
+        queryClient.invalidateQueries({ queryKey: ['project-review-overview', variables.projectId] });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ['project-review-overview'] });
+      }
     },
     onSuccess: (_data, vars) => {
       toast.success('Comment updated', { id: `comment-${vars.commentId}` });
@@ -203,7 +216,7 @@ export const useDeleteComment = (customClient?: QueryClient) => {
     },
     onSettled: (_data, _err, vars) => {
       queryClient.invalidateQueries({ queryKey: ['page-comments', vars.pageId] });
-      queryClient.invalidateQueries({ queryKey: ['page-comments'] });
+      queryClient.invalidateQueries({ queryKey: ['project-review-overview'] });
     },
     onSuccess: (_data, vars) => {
       toast.success('Comment deleted', { id: `comment-${vars.commentId}` });
@@ -228,7 +241,7 @@ export const useAddReply = (customClient?: QueryClient) => {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['page-comments', variables.pageId] });
-      queryClient.invalidateQueries({ queryKey: ['page-comments'] });
+      queryClient.invalidateQueries({ queryKey: ['project-review-overview'] });
       toast.success('Reply added', { id: `reply-${variables.commentId}` });
     },
     onError: (err: Error | unknown, variables) => {
@@ -279,7 +292,7 @@ export const useResolveComment = (customClient?: QueryClient) => {
     },
     onSettled: (_data, _err, vars) => {
       queryClient.invalidateQueries({ queryKey: ['page-comments', vars.pageId] });
-      queryClient.invalidateQueries({ queryKey: ['page-comments'] });
+      queryClient.invalidateQueries({ queryKey: ['project-review-overview'] });
     },
     onSuccess: (_, variables) => {
       toast.success(variables.resolved ? 'Comment resolved' : 'Comment reopened', { id: `resolve-${variables.commentId}` });
@@ -304,7 +317,7 @@ export const useDeleteReply = (customClient?: QueryClient) => {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['page-comments', variables.pageId] });
-      queryClient.invalidateQueries({ queryKey: ['page-comments'] });
+      queryClient.invalidateQueries({ queryKey: ['project-review-overview'] });
       toast.success('Reply deleted', { id: `reply-${variables.replyId}` });
     },
     onError: (err: Error | unknown, variables) => {

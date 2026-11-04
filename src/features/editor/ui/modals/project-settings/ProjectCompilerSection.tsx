@@ -25,7 +25,7 @@ import {
 } from '@/features/editor/core';
 import {
   SettingRow,
-  OverleafSwitch,
+  SettingsSwitch,
   EDITOR_FONT_FAMILIES,
   EDITOR_FONT_SIZES,
 } from './settings-common';
@@ -283,7 +283,7 @@ export function ProjectCompilerSection({
         title="Auto-compile"
         description="Automatically compile on document changes"
       >
-        <OverleafSwitch
+        <SettingsSwitch
           checked={autoCompile}
           onCheckedChange={setAutoCompile}
           aria-label="Auto-compile toggle"
@@ -295,7 +295,7 @@ export function ProjectCompilerSection({
         title="Auto-complete"
         description="Show LaTeX command, environment, and citation suggestions"
       >
-        <OverleafSwitch
+        <SettingsSwitch
           checked={autoComplete}
           onCheckedChange={setAutoComplete}
           aria-label="Auto-complete toggle"
@@ -307,7 +307,7 @@ export function ProjectCompilerSection({
         title="Auto-close brackets"
         description="Automatically insert matching brackets and quotes"
       >
-        <OverleafSwitch
+        <SettingsSwitch
           checked={autoCloseBrackets}
           onCheckedChange={setAutoCloseBrackets}
           aria-label="Auto-close brackets toggle"
@@ -319,7 +319,7 @@ export function ProjectCompilerSection({
         title="Code check"
         description="Inline syntax linting and LaTeX warnings"
       >
-        <OverleafSwitch
+        <SettingsSwitch
           checked={linterEnabled}
           onCheckedChange={setLinterEnabled}
           aria-label="Code check toggle"
@@ -331,7 +331,7 @@ export function ProjectCompilerSection({
         title="Error lens"
         description="Inline error badges at erroneous lines with 1-click AI fix"
       >
-        <OverleafSwitch
+        <SettingsSwitch
           checked={errorLensEnabled}
           onCheckedChange={setErrorLensEnabled}
           aria-label="Error lens toggle"
@@ -489,7 +489,7 @@ export function ProjectCompilerSection({
         title="Draft mode"
         description="Speeds up compilation by skipping image inclusion"
       >
-        <OverleafSwitch
+        <SettingsSwitch
           checked={compileMode === 'draft'}
           onCheckedChange={(checked) => setCompileMode(checked ? 'draft' : 'full')}
           aria-label="Draft mode toggle"
@@ -501,7 +501,7 @@ export function ProjectCompilerSection({
         title="Stop on first error"
         description="Halt compiler immediately on fatal TeX error"
       >
-        <OverleafSwitch
+        <SettingsSwitch
           checked={stopOnFirstError}
           onCheckedChange={setStopOnFirstError}
           aria-label="Stop on first error toggle"
@@ -513,7 +513,7 @@ export function ProjectCompilerSection({
         title="Hide bad boxes"
         description="Suppress noisy Overfull & Underfull \hbox / \vbox warnings"
       >
-        <OverleafSwitch
+        <SettingsSwitch
           checked={suppressBadBoxes}
           onCheckedChange={setSuppressBadBoxes}
           aria-label="Hide bad boxes toggle"
@@ -525,7 +525,7 @@ export function ProjectCompilerSection({
         title="Hide font warnings"
         description="Suppress missing font shapes and substitution warnings"
       >
-        <OverleafSwitch
+        <SettingsSwitch
           checked={suppressFontWarnings}
           onCheckedChange={setSuppressFontWarnings}
           aria-label="Hide font warnings toggle"
@@ -537,7 +537,7 @@ export function ProjectCompilerSection({
         title="Hide package warnings"
         description="Suppress non-critical warnings emitted by packages and classes"
       >
-        <OverleafSwitch
+        <SettingsSwitch
           checked={suppressPackageWarnings}
           onCheckedChange={setSuppressPackageWarnings}
           aria-label="Hide package warnings toggle"

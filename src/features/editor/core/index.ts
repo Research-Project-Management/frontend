@@ -7,7 +7,7 @@
  * - Central Command Bus (IEditorCommandBus) & strongly-typed discriminated unions.
  * - CodeMirror 6 Host, Extension Compartments, Keymaps & Themes.
  * - Unified Workspace, Document, Layout, Connectivity & Collaboration Stores.
- * - Modern Workbench Layout Shell (ActivityBar, Topbar, WorkbenchShell).
+ * - Workbench Layout Shell (ActivityBar, Topbar, WorkbenchShell).
  */
 
 // 1. Event Bus Spine
@@ -95,7 +95,7 @@ export {
 export type { CompileError } from '@/features/editor/domain/types/compiler.types';
 
 // 3. Shell Presentation Layer
-export { default as ModernWorkbenchLayout } from './shell/ModernWorkbenchLayout';
+export { default as WorkbenchLayout, WorkbenchLayout as ModernWorkbenchLayout } from './shell/WorkbenchLayout';
 export { default as ActivityBar } from './shell/ActivityBar';
 export { default as Topbar } from './shell/Topbar';
 export { default as WorkbenchShell } from './shell/WorkbenchShell';
@@ -106,7 +106,8 @@ export { default as PrimarySidebar } from './shell/PrimarySidebar';
 // 4. Core Engine Coordinators
 export {
   sessionCoordinator,
-  SessionCoordinatorRegistry,
+  SessionCoordinator,
+  SessionCoordinator as SessionCoordinatorRegistry,
   shouldUseRealtimePersistence,
   type DocumentPersistencePort,
   type DocumentSessionOptions,
@@ -117,27 +118,36 @@ export {
 
 export {
   workspaceCoordinator,
-  WorkspaceCoordinatorRegistry,
+  WorkspaceCoordinator,
+  WorkspaceCoordinator as WorkspaceCoordinatorRegistry,
 } from './coordinator/workspace.coordinator';
 
 export {
   visibilityCoordinator,
+  VisibilityCoordinator,
+  VisibilityCoordinator as VisibilityCoordinatorRegistry,
   type VisibilityLifecycleState,
 } from './coordinator/visibility.coordinator';
 
 export {
-  documentAuthority,
-  DocumentAuthorityRegistry,
+  documentFacade,
+  documentFacade as documentAuthority,
+  DocumentFacade,
+  DocumentFacade as DocumentAuthorityRegistry,
   type ProjectFileReadModel,
   type ActiveDocumentDescriptor,
-} from './coordinator/document-authority.facade';
+} from './coordinator/document.facade';
 
 export {
-  editorInvariantMonitor,
-  EditorStateInvariantMonitor,
+  invariantMonitor,
+  invariantMonitor as editorInvariantMonitor,
+  InvariantMonitor,
+  InvariantMonitor as EditorStateInvariantMonitor,
+  type InvariantViolation,
   type EditorInvariantViolation,
+  type InvariantReport,
   type EditorInvariantReport,
-} from './coordinator/editor-invariant-monitor';
+} from './coordinator/invariant.monitor';
 export { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 
 // 5. Manuscript Backend Services & API Contracts

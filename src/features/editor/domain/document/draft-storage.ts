@@ -62,7 +62,7 @@ const MUTATION_QUEUE_STORAGE_KEY = EDITOR_STORAGE_KEYS.OFFLINE_MUTATIONS_QUEUE;
 const MAX_MEMORY_DRAFTS = EDITOR_LIMITS.MAX_MEMORY_DRAFTS;
 const MAX_PROJECT_FILES_CACHE = EDITOR_LIMITS.MAX_PROJECT_FILES_CACHE;
 
-export class DraftStorageServiceRegistry implements IDraftStorageSink {
+export class DraftStorageService implements IDraftStorageSink {
   private dbPromise: Promise<IDBDatabase | null> | null = null;
   private readonly memoryCache = new Map<string, DraftSnapshot>();
   private readonly projectFilesMemoryCache = new Map<string, ProjectFileSnapshot>();
@@ -669,5 +669,6 @@ export class DraftStorageServiceRegistry implements IDraftStorageSink {
   }
 }
 
-export const draftStorageService = new DraftStorageServiceRegistry();
+export { DraftStorageService as DraftStorageServiceRegistry };
+export const draftStorageService = new DraftStorageService();
 

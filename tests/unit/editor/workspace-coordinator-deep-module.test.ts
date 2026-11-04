@@ -11,7 +11,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
-  WorkspaceCoordinatorRegistry,
+  WorkspaceCoordinator,
   workspaceCoordinator,
   usePageStore,
 } from '@/features/editor/core';
@@ -21,7 +21,7 @@ import type {
   WorkspaceStorePort,
 } from '@/features/editor/domain/workspace/workspace-service-port';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
-import { latexDagEngine } from '@/features/editor/domain/latex/latex-dag-engine';
+import { latexDependencyGraph } from '@/features/editor/domain/latex/dependency-graph';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics';
 import { editorCommandBus } from '@/features/editor/core';
@@ -30,11 +30,11 @@ describe('WorkspaceCoordinator Deep Module (Ports & Seams)', () => {
   let mockService: WorkspaceServicePort;
   let mockNotification: WorkspaceNotificationPort;
   let mockStore: WorkspaceStorePort;
-  let coordinator: WorkspaceCoordinatorRegistry;
+  let coordinator: WorkspaceCoordinator;
 
   beforeEach(() => {
     lruDocumentCache.clearAll();
-    latexDagEngine.clear();
+    latexDependencyGraph.clear();
     latexSymbolsIndex.clear();
     usePageStore.setState({ activeDoc: null, currentPage: null } as any);
 
@@ -76,7 +76,7 @@ describe('WorkspaceCoordinator Deep Module (Ports & Seams)', () => {
       getActiveDocumentId: vi.fn().mockReturnValue('file-new-1'),
     };
 
-    coordinator = new WorkspaceCoordinatorRegistry({
+    coordinator = new WorkspaceCoordinator({
       service: mockService,
       notification: mockNotification,
       store: mockStore,
@@ -161,7 +161,7 @@ describe('WorkspaceCoordinator Deep Module (Ports & Seams)', () => {
         content: '\\input{sub.tex}',
         projectId: 'proj-test',
       });
-      latexDagEngine.parseAndRegister('old_name.tex', '\\input{sub.tex}', 'file-rename-1');
+      latexDependencyGraph.parseAndRegister('old_name.tex', '\\input{sub.tex}', 'file-rename-1');
 
       const busEvents: any[] = [];
       const unsub = editorCommandBus.subscribe('filetree:updated', (cmd) => busEvents.push(cmd));
@@ -219,7 +219,7 @@ describe('WorkspaceCoordinator Deep Module (Ports & Seams)', () => {
         content: '\\section{Intro}\\label{sec:intro}',
         projectId: 'proj-test',
       });
-      latexDagEngine.parseAndRegister('sections/intro.tex', '\\section{Intro}', 'child-doc-1');
+      latexDependencyGraph.parseAndRegister('sections/intro.tex', '\\section{Intro}', 'child-doc-1');
       const diagSpy = vi.spyOn(diagnosticsCoordinator, 'registerAlias');
 
       const ok = await coordinator.renameItem({
@@ -262,7 +262,7 @@ describe('WorkspaceCoordinator Deep Module (Ports & Seams)', () => {
         content: 'content',
         projectId: 'proj-test',
       });
-      latexDagEngine.parseAndRegister('del.tex', 'content', 'del-1');
+      latexDependencyGraph.parseAndRegister('del.tex', 'content', 'del-1');
 
       const ok = await coordinator.deleteFile('del-1');
 

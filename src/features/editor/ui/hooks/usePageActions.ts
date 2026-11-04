@@ -33,17 +33,31 @@ export function usePageActions() {
   const queryClient = useQueryClient();
 
   const createFileMutation = useMutation({
-    mutationFn: async ({ parentPageId, title, content }: { parentPageId: string; title: string; content?: string }) => {
+    mutationFn: async ({
+      parentPageId,
+      title,
+      content,
+    }: {
+      parentPageId: string;
+      title: string;
+      content?: string;
+      skipInvalidation?: boolean;
+      silent?: boolean;
+    }) => {
       if (isLocked) throw new Error('Document is locked');
       return await manuscriptService.docs.createChildFile({ parentPageId, title, content });
     },
     onSuccess: (newFile, variables) => {
-      invalidateFileTreeQueries(queryClient, {
-        parentPageId: variables.parentPageId,
-        includeDeleted: false,
-      });
-      editorCommandBus.dispatch({ type: 'filetree:updated', payload: { action: 'create', file: newFile } });
-      toast.success(`Created file "${newFile.title}"`, { id: `create-file-${newFile.id || variables.title}` });
+      if (!variables.skipInvalidation) {
+        invalidateFileTreeQueries(queryClient, {
+          parentPageId: variables.parentPageId,
+          includeDeleted: false,
+        });
+        editorCommandBus.dispatch({ type: 'filetree:updated', payload: { action: 'create', file: newFile } });
+      }
+      if (!variables.silent) {
+        toast.success(`Created file "${newFile.title}"`, { id: `create-file-${newFile.id || variables.title}` });
+      }
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Failed to create file';
@@ -55,8 +69,8 @@ export function usePageActions() {
     mutationFn: async (params: string | { pageId: string; fileId: string; projectId?: string }) => {
       if (isLocked) throw new Error('Document is locked');
       const fileId = typeof params === 'string' ? params : params.fileId;
-      const projId = typeof params === 'string' ? undefined : (params.projectId || params.pageId);
-      return await workspaceCoordinator.setMainFile(fileId, projId);
+      const scopeId = typeof params === 'string' ? undefined : (params.pageId || params.projectId);
+      return await workspaceCoordinator.setMainFile(fileId, scopeId);
     },
     onSuccess: (_, variables) => {
       const targetPageId = typeof variables === 'string' ? variables : variables.pageId;
@@ -120,7 +134,11 @@ export function usePageActions() {
       return await manuscriptService.docs.updateTitle(pageId, title, oldTitle);
     },
     onSuccess: (_, variables) => {
+      const parentPageId =
+        usePageStore.getState().parentPageId ||
+        usePageStore.getState().currentPage?.id;
       invalidateFileTreeQueries(queryClient, {
+        parentPageId,
         pageId: variables.pageId,
         includeDeleted: false,
       });

@@ -303,11 +303,13 @@ export function createFoldMarkerDOM(open: boolean): HTMLElement {
   return marker;
 }
 
-export function createModernFoldGutter(): Extension {
+export function createFoldGutter(): Extension {
   return foldGutter({
     markerDOM: (open) => createFoldMarkerDOM(open),
   });
 }
+
+export { createFoldGutter as createModernFoldGutter };
 
 /**
  * Creates configured lineNumbers extension with standard editor event handling:
@@ -506,7 +508,7 @@ export function createCodeMirrorPreset(options: CodeMirrorPresetOptions = {}): E
         : []
     ),
     compartments.lineNumbers.of(
-      showLineNumbers ? [createModernFoldGutter(), createConfiguredLineNumbers(), highlightActiveLineGutter()] : []
+      showLineNumbers ? [createFoldGutter(), createConfiguredLineNumbers(), highlightActiveLineGutter()] : []
     ),
     compartments.lineWrapping.of(lineWrapping ? EditorView.lineWrapping : []),
     compartments.bracketMatching.of(
@@ -590,7 +592,7 @@ export function reconfigureVisualMode(
         enabled ? createVisualModeExtensions() : []
       ),
       compartments.lineNumbers.reconfigure(
-        enabled ? [] : [createModernFoldGutter(), createConfiguredLineNumbers(), highlightActiveLineGutter()]
+        enabled ? [] : [createFoldGutter(), createConfiguredLineNumbers(), highlightActiveLineGutter()]
       ),
     ],
   });
@@ -686,7 +688,7 @@ export function computeCompartmentReconfigEffects(
   if (prevEffectiveLineNumbers !== nextEffectiveLineNumbers) {
     effects.push(
       compartments.lineNumbers.reconfigure(
-        nextEffectiveLineNumbers ? [createModernFoldGutter(), createConfiguredLineNumbers(), highlightActiveLineGutter()] : []
+        nextEffectiveLineNumbers ? [createFoldGutter(), createConfiguredLineNumbers(), highlightActiveLineGutter()] : []
       )
     );
   }

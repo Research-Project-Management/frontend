@@ -37,11 +37,14 @@ import { cn } from '@/shared/lib/utils';
 import { fetchWordCount, type WordCountResponse } from '@/features/editor/sdk/manuscript.service';
 import {
   countLatexWords,
+  EMPTY_TEXCOUNT_STATS,
   type TeXcountStats,
+  type LatexWordCountResult,
+  type WordCountSection,
 } from '@/features/editor/domain/document/word-count';
 import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
 
-export { countLatexWords, type TeXcountStats };
+export { countLatexWords, type TeXcountStats, type LatexWordCountResult, type WordCountSection };
 
 export interface WordCountModalFile {
   id: string;
@@ -52,6 +55,7 @@ export interface WordCountModalFile {
 export interface WordCountModalProps {
   open: boolean;
   onClose: () => void;
+  projectId?: string;
   content?: string;
   selectedText?: string;
   activeFileName?: string;
@@ -61,9 +65,40 @@ export interface WordCountModalProps {
 
 export type WordCountScope = 'document' | 'project' | 'selection';
 
+const wordCountResultCache = new Map<string, WordCountResponse['stats']>();
+const wordCountInFlightCache = new Map<string, Promise<WordCountResponse>>();
+
+function hashWordCountInput(
+  scope: WordCountScope,
+  projectId: string | undefined,
+  includeBib: boolean,
+  filename: string,
+  source: string,
+  filesMap?: Record<string, string>,
+): string {
+  let h = 2166136261;
+  for (let i = 0; i < source.length; i++) {
+    h ^= source.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  let filesHash = 0;
+  if (filesMap) {
+    for (const [k, v] of Object.entries(filesMap)) {
+      for (let i = 0; i < k.length; i++) {
+        filesHash = Math.imul(filesHash ^ k.charCodeAt(i), 16777619);
+      }
+      for (let i = 0; i < v.length; i++) {
+        filesHash = Math.imul(filesHash ^ v.charCodeAt(i), 16777619);
+      }
+    }
+  }
+  return `${scope}|${projectId ?? ''}|${includeBib ? 1 : 0}|${filename}|${source.length}:${h >>> 0}|${filesHash >>> 0}`;
+}
+
 export function WordCountModal({
   open,
   onClose,
+  projectId,
   content = '',
   selectedText = '',
   activeFileName = 'main.tex',
@@ -87,22 +122,20 @@ export function WordCountModal({
     }
   }, [open, hasSelection]);
 
-  // Aggregate project content across all .tex files
-  const projectTexFiles = useMemo(() => {
-    if (!Array.isArray(projectFiles)) return [];
-    return projectFiles.filter((f) => {
-      const name = (f?.title || '').toLowerCase();
-      return name.endsWith('.tex') || !name.includes('.');
-    });
+  // Build project files map for backend project-scope word count
+  const projectFilesMap = useMemo(() => {
+    if (!Array.isArray(projectFiles) || projectFiles.length === 0) return undefined;
+    const map: Record<string, string> = {};
+    for (const f of projectFiles) {
+      const name = f?.title || '';
+      if (!name) continue;
+      const lower = name.toLowerCase();
+      if (lower.endsWith('.tex') || lower.endsWith('.bbl') || !lower.includes('.')) {
+        map[name] = extractDocumentContentString(f?.content);
+      }
+    }
+    return Object.keys(map).length > 0 ? map : undefined;
   }, [projectFiles]);
-
-  const aggregatedProjectContent = useMemo(() => {
-    if (projectTexFiles.length === 0) return content;
-    return projectTexFiles
-      .map((f) => extractDocumentContentString(f?.content))
-      .filter(Boolean)
-      .join('\n\n');
-  }, [projectTexFiles, content]);
 
   // Determine current active text based on selected scope
   const activeContent = useMemo(() => {
@@ -110,105 +143,156 @@ export function WordCountModal({
       case 'selection':
         return selectedText;
       case 'project':
-        return aggregatedProjectContent;
+        return '';
       case 'document':
       default:
         return content;
     }
-  }, [scope, selectedText, aggregatedProjectContent, content]);
+  }, [scope, selectedText, content]);
 
-  const [includeBib, setIncludeBib] = useState<boolean>(() => /%TC:incbib\b/i.test(activeContent));
+  const [includeBib, setIncludeBib] = useState<boolean>(() => /%TC:incbib\b/i.test(content));
 
   // Sync if %TC:incbib appears in document
   useEffect(() => {
-    if (/%TC:incbib\b/i.test(activeContent)) {
+    if (/%TC:incbib\b/i.test(content)) {
       setIncludeBib(true);
     }
-  }, [activeContent]);
-
-  // Fast local calculation (instant feedback)
-  const localStats = useMemo(() => countLatexWords(activeContent, { includeBib }), [activeContent, includeBib]);
+  }, [content]);
 
   // Backend CLSI analysis state
   const [serverStats, setServerStats] = useState<WordCountResponse['stats'] | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Per-file statistics for Project scope breakdown
+  // Per-file statistics returned from backend for Project scope breakdown
   const perFileStats = useMemo(() => {
-    if (scope !== 'project' || projectTexFiles.length <= 1) return [];
-    return projectTexFiles.map((file) => {
-      const fileText = extractDocumentContentString(file?.content);
-      const fileCount = countLatexWords(fileText);
-      return {
-        id: file.id,
-        title: file.title || 'untitled.tex',
-        words: fileCount.totalWords ?? (fileCount.wordsInText + fileCount.wordsInHeaders + fileCount.wordsInCaptions),
-        headers: fileCount.headers,
-        math: fileCount.mathInlines + fileCount.mathDisplayed,
-      };
-    });
-  }, [scope, projectTexFiles]);
+    if (scope !== 'project') return [];
+    return serverStats?.perFileStats ?? [];
+  }, [scope, serverStats]);
 
-  // Recount trigger function
-  const executeWordCount = useCallback(() => {
-    if (!open || !activeContent || !activeContent.trim()) {
-      setServerStats(null);
-      setLoading(false);
-      return;
-    }
+  // Recount trigger function calling backend word-count authority with content-hash deduplication
+  const executeWordCount = useCallback(
+    (forceRefresh = false) => {
+      if (!open) {
+        setServerStats(null);
+        setLoading(false);
+        return;
+      }
 
-    let active = true;
-    setLoading(true);
+      if (scope !== 'project' && (!activeContent || !activeContent.trim())) {
+        setServerStats(null);
+        setLoading(false);
+        return;
+      }
 
-    fetchWordCount(activeContent)
-      .then((res) => {
-        if (active && res.success && res.stats) {
-          setServerStats(res.stats);
+      const sourceParam = scope === 'project' ? '' : activeContent;
+      const filenameParam =
+        scope === 'selection'
+          ? 'selection.tex'
+          : activeFileName || 'main.tex';
+      const targetProjectId = scope === 'project' ? projectId : undefined;
+      const filesForScope = scope === 'project' && projectFilesMap ? projectFilesMap : undefined;
+
+      const cacheKey = hashWordCountInput(
+        scope,
+        targetProjectId,
+        includeBib,
+        filenameParam,
+        sourceParam,
+        filesForScope,
+      );
+
+      if (!forceRefresh) {
+        const cached = wordCountResultCache.get(cacheKey);
+        if (cached) {
+          setServerStats(cached);
+          setLoading(false);
+          return;
         }
-      })
-      .catch((err) => {
-        console.warn('[WordCountDialog] Server word count error, using local analysis:', err);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+      }
 
-    return () => {
-      active = false;
-    };
-  }, [open, activeContent]);
+      let active = true;
+      setLoading(true);
+
+      let reqPromise = !forceRefresh ? wordCountInFlightCache.get(cacheKey) : undefined;
+      if (!reqPromise) {
+        reqPromise = fetchWordCount(sourceParam, targetProjectId, {
+          includeBib,
+          filename: filenameParam,
+          ...(filesForScope ? { files: filesForScope } : {}),
+        }).finally(() => {
+          wordCountInFlightCache.delete(cacheKey);
+        });
+        wordCountInFlightCache.set(cacheKey, reqPromise);
+      }
+
+      reqPromise
+        .then((res) => {
+          if (res.success && res.stats) {
+            if (wordCountResultCache.size >= 32) {
+              const oldestKey = wordCountResultCache.keys().next().value;
+              if (oldestKey !== undefined) {
+                wordCountResultCache.delete(oldestKey);
+              }
+            }
+            wordCountResultCache.set(cacheKey, res.stats);
+            if (active) {
+              setServerStats(res.stats);
+            }
+          }
+        })
+        .catch((err) => {
+          console.warn('[WordCountDialog] Server word count error:', err);
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+
+      return () => {
+        active = false;
+      };
+    },
+    [open, scope, activeContent, activeFileName, projectId, includeBib, projectFilesMap],
+  );
 
   useEffect(() => {
     const cleanup = executeWordCount();
     return cleanup;
   }, [executeWordCount]);
 
-  // Active merged stats (server prioritized, local fallback)
+  // Active stats from backend authority
   const stats: TeXcountStats = useMemo(() => {
     if (serverStats) {
       const wordsInText = serverStats.wordsInText ?? 0;
       const wordsInHeaders = serverStats.wordsInHeaders ?? 0;
       const wordsInCaptions = serverStats.wordsInCaptions ?? 0;
+      const wordsInBibliography = serverStats.wordsInBibliography ?? 0;
       const totalWords =
-        serverStats.totalWords ?? (wordsInText + wordsInHeaders + wordsInCaptions);
+        serverStats.totalWords ??
+        (wordsInText +
+          wordsInHeaders +
+          wordsInCaptions +
+          (includeBib ? wordsInBibliography : 0));
 
       return {
         wordsInText,
         wordsInHeaders,
         wordsInCaptions,
+        wordsInBibliography,
         headers: serverStats.headers ?? 0,
         floats: serverStats.floats ?? 0,
         mathInlines: serverStats.mathInlines ?? 0,
         mathDisplayed: serverStats.mathDisplayed ?? 0,
         totalWords,
-        charactersWithSpaces:
-          serverStats.charactersWithSpaces ?? localStats.charactersWithSpaces,
-        charactersNoSpaces:
-          serverStats.charactersNoSpaces ?? localStats.charactersNoSpaces,
+        charactersWithSpaces: serverStats.charactersWithSpaces ?? 0,
+        charactersNoSpaces: serverStats.charactersNoSpaces ?? 0,
+        cjkCharacters: serverStats.cjkCharacters ?? 0,
+        readingTimeMinutes: serverStats.readingTimeMinutes ?? 0,
+        sections: serverStats.sections ?? [],
+        perFileStats: serverStats.perFileStats ?? [],
       };
     }
-    return localStats;
-  }, [serverStats, localStats]);
+    return EMPTY_TEXCOUNT_STATS;
+  }, [serverStats, includeBib]);
 
   const totalWordsCount =
     stats.totalWords ??

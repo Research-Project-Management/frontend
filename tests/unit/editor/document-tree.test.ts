@@ -293,5 +293,65 @@ describe('document-tree (1:1 Path-Trie Builder)', () => {
         expect(subMain.isRootDoc).toBe(false);
       }
     });
+
+    it('propagates 3-tier hierarchy (projectId -> pageId -> nodeId/docId) and treats parentPageId/projectId as root in resolveStoragePath', () => {
+      const projectFiles = [
+        {
+          id: 'node-root-doc',
+          nodeId: 'node-root-doc',
+          docId: 'doc-main-1',
+          filename: 'main.tex',
+          path: '/main.tex',
+          isFolder: false,
+          nodeType: 'DOC' as const,
+          isRootDoc: true,
+          parentId: 'page-manuscript-1',
+        },
+        {
+          id: 'folder-figs',
+          nodeId: 'folder-figs',
+          filename: 'figures',
+          isFolder: true,
+          nodeType: 'FOLDER' as const,
+          parentId: 'proj-group-1',
+        },
+        {
+          id: 'asset-plot',
+          nodeId: 'asset-plot',
+          fileId: 'file-plot-1',
+          filename: 'plot.png',
+          isFolder: false,
+          nodeType: 'FILE' as const,
+          parentId: 'folder-figs',
+          size: 1024,
+        },
+      ];
+
+      const tree = buildFileTree({
+        projectFiles,
+        projectId: 'proj-group-1',
+        parentPageId: 'page-manuscript-1',
+        parentPage: { id: 'page-manuscript-1', title: 'main.tex', projectId: 'proj-group-1' },
+      });
+
+      const rootDoc = tree.find((n) => n.type === 'file' && n.id === 'doc-main-1') as FileTreeFileNode | undefined;
+      expect(rootDoc).toBeDefined();
+      expect(rootDoc?.pageId).toBe('page-manuscript-1');
+      expect(rootDoc?.projectId).toBe('proj-group-1');
+      expect(rootDoc?.nodeId).toBe('node-root-doc');
+
+      const figsFolder = tree.find((n) => n.type === 'folder' && n.name === 'figures');
+      expect(figsFolder).toBeDefined();
+      if (figsFolder && figsFolder.type === 'folder') {
+        expect(figsFolder.pageId).toBe('page-manuscript-1');
+        expect(figsFolder.projectId).toBe('proj-group-1');
+        expect(figsFolder.fullPath).toBe('figures');
+        expect(figsFolder.children).toHaveLength(1);
+        const plotAsset = figsFolder.children[0] as FileTreeFileNode;
+        expect(plotAsset.title).toBe('figures/plot.png');
+        expect(plotAsset.pageId).toBe('page-manuscript-1');
+        expect(plotAsset.projectId).toBe('proj-group-1');
+      }
+    });
   });
 });

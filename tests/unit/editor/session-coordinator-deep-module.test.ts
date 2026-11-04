@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
-  SessionCoordinatorRegistry,
+  SessionCoordinator,
   type DocumentPersistencePort,
 } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
@@ -26,7 +26,7 @@ describe('SessionCoordinator as Deep Module (Matt Pocock Codebase Design)', () =
       },
     };
 
-    const session = new SessionCoordinatorRegistry({
+    const session = new SessionCoordinator({
       persistenceAdapter: inMemoryAdapter,
       autoSaveDelay: 200,
     });
@@ -46,7 +46,7 @@ describe('SessionCoordinator as Deep Module (Matt Pocock Codebase Design)', () =
   });
 
   it('handles FSM state transitions during tab switching', () => {
-    const session = new SessionCoordinatorRegistry();
+    const session = new SessionCoordinator();
     lruDocumentCache.registerModel('tab1.tex', { content: 'Doc 1' });
     lruDocumentCache.registerModel('tab2.tex', { content: 'Doc 2' });
 
@@ -71,7 +71,7 @@ describe('SessionCoordinator as Deep Module (Matt Pocock Codebase Design)', () =
       },
     };
 
-    const session = new SessionCoordinatorRegistry({
+    const session = new SessionCoordinator({
       persistenceAdapter: deferredAdapter,
     });
 

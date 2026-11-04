@@ -10,7 +10,7 @@ import type { PageSuggestion } from '@/features/editor/domain/types/suggestion.t
 import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 import {
   timeAgo,
-  formatOverleafDate,
+  formatReviewDate,
   getAuthorColor,
 } from '@/features/editor/domain/collaboration/author-display';
 
@@ -181,7 +181,7 @@ export function createTrackChangesTooltipDOM(s: PageSuggestion): HTMLElement {
   const author = s.author?.name || 'Collaborator';
   const authorInitials = author.slice(0, 2).toUpperCase();
   const authorColor = getAuthorColor(s.author?.id || s.authorId || author);
-  const timeDisplay = timeAgo(s.createdAt) || formatOverleafDate(s.createdAt) || 'just now';
+  const timeDisplay = timeAgo(s.createdAt) || formatReviewDate(s.createdAt) || 'just now';
 
   const typeLabel = s.type === 'insert' ? 'Added' : s.type === 'delete' ? 'Deleted' : 'Replaced';
   const typeBadgeColor =

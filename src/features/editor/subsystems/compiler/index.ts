@@ -13,24 +13,28 @@
 // 1. Coordinators & Stores
 export {
   compilerCoordinator,
-  CompilerCoordinatorRegistry,
-  CompilationSnapshotProvider,
+  CompilerCoordinator,
+  CompilerCoordinator as CompilerCoordinatorRegistry,
+  SnapshotProvider,
+  SnapshotProvider as CompilationSnapshotProvider,
   buildPageStoreFilePaths,
   type CompileOptions,
   type SyncTeXForwardDetail,
   type SyncTeXReverseDetail,
 } from './coordinator/compiler.coordinator';
 export {
-  LatexCompilerEngine,
+  CompilePipeline,
+  CompilePipeline as LatexCompilerEngine,
   generateThumbnail,
-  type CompilerExecutionEngine,
-  type CompilerExecutionPort,
+  type CompilerPort,
+  type CompilerPort as CompilerExecutionEngine,
+  type CompilerPort as CompilerExecutionPort,
   type CompileExecutionOptions,
   type CompileExecutionResult,
   type DirtyFileItem,
   type FlushBarrierDeps,
   type CompilerDiagnostic,
-} from './coordinator/compilation-pipeline';
+} from './coordinator/compile-pipeline';
 export {
   useCompileStore,
   type DocumentCompilerState,
@@ -68,6 +72,8 @@ export {
   extractPdfBookmarks,
   extractOutlineFromContent,
   parseDocumentOutline,
+  dtoToOutlineEntries,
+  cacheBackendOutline,
   cleanLatexTitle,
   OUTLINE_INDENT,
   type PdfOutlineItem,
@@ -116,14 +122,15 @@ export { useSynchronizedScroll } from './ui/hooks/useSynchronizedScroll';
 
 // 5. Pre-Compile Flush Barrier
 export {
-  CompilationFlushBarrier,
+  FlushBarrier,
+  FlushBarrier as CompilationFlushBarrier,
   type FlushBarrierResult,
-} from './coordinator/compilation-flush-barrier';
+} from './coordinator/flush-barrier';
 
 // 6. Subsystem Deep Interface Port & Implementation (The Seam)
 import {
   compilerCoordinator,
-  CompilationSnapshotProvider,
+  SnapshotProvider,
 } from './coordinator/compiler.coordinator';
 import { useCompileStore } from './coordinator/compiler.store';
 import { editorCommandBus, usePageStore } from '@/features/editor/core';
@@ -213,7 +220,7 @@ export const compilerSubsystem: CompilerSubsystemPort = {
     return null;
   },
   getSnapshot(): ProjectCompilationSnapshot {
-    return CompilationSnapshotProvider.createSnapshot();
+    return SnapshotProvider.createSnapshot();
   },
 };
 

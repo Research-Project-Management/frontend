@@ -10,7 +10,8 @@
 
 export {
   aiCoordinator,
-  AiCoordinatorRegistry,
+  AiCoordinator,
+  AiCoordinator as AiCoordinatorRegistry,
   type AiContextPayload,
 } from './coordinator/ai.coordinator';
 

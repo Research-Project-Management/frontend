@@ -31,6 +31,16 @@ const LATEX_TRIGGER_REGEX =
   /\\(?:auto|paren|text|foot|no|new|short)?cite(?:p|t|alt|alp|author|year|date|num)?\*?(?:\[[^\]]*\])?(?:\[[^\]]*\])?\{([^}]*)$/i;
 const MD_BRACKET_TRIGGER_REGEX = /\[@([a-zA-Z0-9_:-]*)$/;
 const MD_MULTI_TRIGGER_REGEX = /;\s*@([a-zA-Z0-9_:-]*)$/;
+const VIETNAMESE_DIACRITIC_REGEX =
+  /[àáảãạăắằẳẵặâấầẩẫậđèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵ]/i;
+const COMBINING_DIACRITICS_REGEX = /[\u0300-\u036f]/g;
+const VIETNAMESE_SURNAME_REGEX =
+  /^(nguyen|tran|le|pham|hoang|huynh|phan|vu|vo|dang|bui|do|ho|ngo|duong|ly|dinh|doan|lam|trinh|mai|dao|cao|ha|luu|luong|thai|ta|phung|to|vuong|chu)(\s|$)/i;
+const AUTHOR_DELIMITER_REGEX = /\s+and\s+|;\s*/i;
+const WHITESPACE_SPLIT_REGEX = /\s+/;
+const WHITESPACE_COLLAPSE_REGEX = /\s+/g;
+const COMMA_SPACING_REGEX = /,\s*/g;
+const ABSTRACT_PREFIX_REGEX = /^(?:(?:abstract|background)\s*[:\-\u2013\u2014]\s*)+/i;
 const NO_TRIGGER_RESULT: CitationTriggerContext = {
   isTrigger: false,
   format: 'latex',
@@ -246,6 +256,12 @@ interface ContributorNameInput {
   name?: string | null;
 }
 
+function extractFamilyPartFromTokens(text: string): string {
+  const parts = text.split(WHITESPACE_SPLIT_REGEX);
+  if (parts.length === 1) return parts[0];
+  return VIETNAMESE_DIACRITIC_REGEX.test(text) ? parts[0] : parts[parts.length - 1];
+}
+
 /**
  * Extracts author's family/surname with support for Vietnamese and East Asian naming order.
  */
@@ -256,26 +272,17 @@ function getAuthorFamilyName(c: ContributorNameInput | null | undefined): string
   const rawFirst = (c.firstName || '').trim();
   const rawFull = (c.fullName || c.name || '').trim();
 
-  // If full name provided
   if (rawFull) {
-    const parts = rawFull.split(/\s+/);
-    if (parts.length === 1) return parts[0];
-    const isVn = /[àáảãạăắằẳẵặâấầẩẫậđèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵ]/i.test(rawFull);
-    if (isVn) return parts[0]; // Vietnamese surname is first
-    return parts[parts.length - 1]; // Western surname is last
+    return extractFamilyPartFromTokens(rawFull);
   }
 
   if (rawLast) {
     if (rawLast.includes(' ')) {
-      const parts = rawLast.split(/\s+/);
-      const isVn = /[àáảãạăắằẳẵặâấầẩẫậđèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵ]/i.test(rawLast);
-      if (isVn) return parts[0];
-      return parts[parts.length - 1];
+      return extractFamilyPartFromTokens(rawLast);
     }
-    if (rawFirst) {
-      const firstParts = rawFirst.split(/\s+/);
-      const isVn = /[àáảãạăắằẳẵặâấầẩẫậđèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵ]/i.test(rawFirst);
-      if (isVn && firstParts.length >= 1) {
+    if (rawFirst && VIETNAMESE_DIACRITIC_REGEX.test(rawFirst)) {
+      const firstParts = rawFirst.split(WHITESPACE_SPLIT_REGEX);
+      if (firstParts.length >= 1) {
         return firstParts[0]; // Self-healing for inverted forms
       }
     }
@@ -290,18 +297,15 @@ function getAuthorFamilyName(c: ContributorNameInput | null | undefined): string
  */
 export function isVietnameseAuthorName(name: string): boolean {
   if (!name) return false;
-  if (/[àáảãạăắằẳẵặâấầẩẫậđèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵ]/i.test(name)) {
+  if (VIETNAMESE_DIACRITIC_REGEX.test(name)) {
     return true;
   }
   const clean = name
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/đ/g, 'd')
-    .replace(/Đ/g, 'D')
+    .replace(COMBINING_DIACRITICS_REGEX, '')
+    .replace(/đ/gi, 'd')
     .toLowerCase();
-  return /^(nguyen|tran|le|pham|hoang|huynh|phan|vu|vo|dang|bui|do|ho|ngo|duong|ly|dinh|doan|lam|trinh|mai|dao|cao|ha|luu|luong|thai|ta|phung|to|vuong|chu)(\s|$)/i.test(
-    clean
-  );
+  return VIETNAMESE_SURNAME_REGEX.test(clean);
 }
 
 /**
@@ -310,7 +314,7 @@ export function isVietnameseAuthorName(name: string): boolean {
 export function formatShortAuthor(rawAuthorStr?: string): string {
   if (!rawAuthorStr) return '';
   const authors = rawAuthorStr
-    .split(/\s+and\s+|;\s*/i)
+    .split(AUTHOR_DELIMITER_REGEX)
     .map((a) => a.trim())
     .filter(Boolean);
 
@@ -320,38 +324,37 @@ export function formatShortAuthor(rawAuthorStr?: string): string {
     const trimmed = authorStr.trim();
     if (isVietnameseAuthorName(trimmed)) {
       // Natural Vietnamese: remove accidental commas (e.g. "Nguyễn, Văn An" -> "Nguyễn Văn An")
-      return trimmed.replace(/,\s*/g, ' ');
+      return trimmed.replace(COMMA_SPACING_REGEX, ' ');
     }
     // Western: extract last name
     if (trimmed.includes(',')) {
       return trimmed.split(',')[0].trim();
     }
-    const parts = trimmed.split(/\s+/);
+    const parts = trimmed.split(WHITESPACE_SPLIT_REGEX);
     return parts[parts.length - 1] || trimmed;
   };
 
   const firstAuthor = formatSingle(authors[0]);
-  const isVn = isVietnameseAuthorName(authors[0]);
-
   if (authors.length === 1) {
     return firstAuthor;
   }
   if (authors.length === 2) {
-    const secondAuthor = formatSingle(authors[1]);
-    return `${firstAuthor} & ${secondAuthor}`;
+    return `${firstAuthor} & ${formatSingle(authors[1])}`;
   }
-  return `${firstAuthor} ${isVn ? 'và c.s.' : 'et al.'}`;
+  return `${firstAuthor} ${isVietnameseAuthorName(authors[0]) ? 'và c.s.' : 'et al.'}`;
+}
+
+function resolveRawAuthorString(entry: { author?: string; authors?: string[] }): string | undefined {
+  return entry.author || (entry.authors && entry.authors.length > 0 ? entry.authors.join(' and ') : undefined);
 }
 
 /**
  * Formats an in-text citation preview e.g. "(Nguyen et al., 2024)"
  */
 export function formatInTextCitationPreview(entry: { author?: string; authors?: string[]; year?: string }): string {
-  const rawAuthor = entry.author || (entry.authors && entry.authors.length > 0 ? entry.authors.join(' and ') : undefined);
-  const authorShort = formatShortAuthor(rawAuthor);
+  const authorShort = formatShortAuthor(resolveRawAuthorString(entry));
   const yearStr = entry.year || 'n.d.';
-  if (!authorShort) return `(${yearStr})`;
-  return `(${authorShort}, ${yearStr})`;
+  return authorShort ? `(${authorShort}, ${yearStr})` : `(${yearStr})`;
 }
 
 /**
@@ -366,8 +369,7 @@ export function formatBibliographyPreview(entry: {
   year?: string;
   doi?: string;
 }): string {
-  const rawAuthor = entry.author || (entry.authors && entry.authors.length > 0 ? entry.authors.join(' and ') : undefined);
-  const authorShort = formatShortAuthor(rawAuthor) || 'Anonymous';
+  const authorShort = formatShortAuthor(resolveRawAuthorString(entry)) || 'Anonymous';
   const yearStr = entry.year ? `(${entry.year})` : '(n.d.)';
   const titleStr = entry.title ? `"${entry.title}"` : 'Untitled document';
   const pub = entry.journal || entry.booktitle || '';
@@ -392,20 +394,28 @@ export function formatBibEntryAuthorSummary(entry: Pick<BibEntry, 'authors'>): s
  * Returns a human-readable summary string for an Item (e.g. for completion details).
  */
 export function formatItemAuthorSummary(item: Item): string {
-  if (Array.isArray(item.contributors) && item.contributors.length > 0) {
-    const firstAuthor = item.contributors[0];
-    const lastName = getAuthorFamilyName(firstAuthor);
-    if (item.contributors.length === 1) {
-      return lastName;
-    }
-    if (item.contributors.length === 2) {
-      const secondAuthor = item.contributors[1];
-      const secondLastName = getAuthorFamilyName(secondAuthor);
-      return `${lastName} & ${secondLastName}`;
-    }
-    return `${lastName} et al.`;
+  if (!Array.isArray(item.contributors) || item.contributors.length === 0) {
+    return 'Unknown author';
   }
-  return 'Unknown author';
+  const firstLastName = getAuthorFamilyName(item.contributors[0]);
+  if (item.contributors.length === 1) {
+    return firstLastName;
+  }
+  if (item.contributors.length === 2) {
+    return `${firstLastName} & ${getAuthorFamilyName(item.contributors[1])}`;
+  }
+  return `${firstLastName} et al.`;
+}
+
+function appendBibtexFields(
+  fields: string[],
+  entries: ReadonlyArray<readonly [string, string | number | null | undefined]>,
+): void {
+  for (const [key, value] of entries) {
+    if (value !== undefined && value !== null && value !== '') {
+      fields.push(`  ${key} = {${value}}`);
+    }
+  }
 }
 
 /**
@@ -419,29 +429,30 @@ export function formatItemToBibtex(item: Item): string {
   else if (itemType.includes('conf') || itemType.includes('proc')) type = 'inproceedings';
   else if (itemType.includes('thesis')) type = 'phdthesis';
 
-  const fields: string[] = [];
-  if (item.title) fields.push(`  title = {${item.title}}`);
+  let authorValue: string | undefined;
   if (item.authors && item.authors.length > 0) {
-    fields.push(`  author = {${item.authors.join(' and ')}}`);
+    authorValue = item.authors.join(' and ');
   } else if (item.contributors && item.contributors.length > 0) {
     const names = item.contributors
       .map((c) => {
         if (c.name) return c.name;
-        if (c.lastName && c.firstName) {
-          return `${c.lastName}, ${c.firstName}`;
-        }
+        if (c.lastName && c.firstName) return `${c.lastName}, ${c.firstName}`;
         return c.lastName || c.firstName || '';
       })
       .filter(Boolean);
-    if (names.length > 0) fields.push(`  author = {${names.join(' and ')}}`);
+    if (names.length > 0) authorValue = names.join(' and ');
   }
-  if (item.publicationTitle) {
-    fields.push(`  journal = {${item.publicationTitle}}`);
-  }
-  if (item.year) fields.push(`  year = {${item.year}}`);
-  if (item.doi) fields.push(`  doi = {${item.doi}}`);
-  if (item.volume) fields.push(`  volume = {${item.volume}}`);
-  if (item.pages) fields.push(`  pages = {${item.pages}}`);
+
+  const fields: string[] = [];
+  appendBibtexFields(fields, [
+    ['title', item.title],
+    ['author', authorValue],
+    ['journal', item.publicationTitle],
+    ['year', item.year],
+    ['doi', item.doi],
+    ['volume', item.volume],
+    ['pages', item.pages],
+  ]);
 
   return `@${type}{${key},\n${fields.join(',\n')}\n}`;
 }
@@ -457,43 +468,20 @@ export function formatBibEntryToBibtex(entry: BibEntry): string {
   const type = (entry.type || 'article').toLowerCase();
   const fields: string[] = [];
 
-  if (entry.title) {
-    fields.push(`  title = {${entry.title}}`);
-  }
-  if (entry.authors && entry.authors.length > 0) {
-    fields.push(`  author = {${entry.authors.join(' and ')}}`);
-  }
-  if (entry.journal) {
-    fields.push(`  journal = {${entry.journal}}`);
-  }
-  if (entry.booktitle) {
-    fields.push(`  booktitle = {${entry.booktitle}}`);
-  }
-  if (entry.year) {
-    fields.push(`  year = {${entry.year}}`);
-  }
-  if (entry.volume) {
-    fields.push(`  volume = {${entry.volume}}`);
-  }
-  if (entry.number) {
-    fields.push(`  number = {${entry.number}}`);
-  }
-  if (entry.pages) {
-    fields.push(`  pages = {${entry.pages}}`);
-  }
-  if (entry.publisher) {
-    fields.push(`  publisher = {${entry.publisher}}`);
-  }
-  if (entry.doi) {
-    fields.push(`  doi = {${entry.doi}}`);
-  }
-  if (entry.url) {
-    fields.push(`  url = {${entry.url}}`);
-  }
-  if (entry.abstract) {
-    const cleanAbstract = entry.abstract.replace(/\s+/g, ' ').trim();
-    fields.push(`  abstract = {${cleanAbstract}}`);
-  }
+  appendBibtexFields(fields, [
+    ['title', entry.title],
+    ['author', entry.authors && entry.authors.length > 0 ? entry.authors.join(' and ') : undefined],
+    ['journal', entry.journal],
+    ['booktitle', entry.booktitle],
+    ['year', entry.year],
+    ['volume', entry.volume],
+    ['number', entry.number],
+    ['pages', entry.pages],
+    ['publisher', entry.publisher],
+    ['doi', entry.doi],
+    ['url', entry.url],
+    ['abstract', entry.abstract ? entry.abstract.replace(WHITESPACE_COLLAPSE_REGEX, ' ').trim() : undefined],
+  ]);
 
   return `@${type}{${entry.key},\n${fields.join(',\n')}\n}`;
 }
@@ -506,8 +494,7 @@ export function formatBibEntryToBibtex(entry: BibEntry): string {
 export function cleanAbstractText(rawAbstract?: string): string {
   if (!rawAbstract || typeof rawAbstract !== 'string') return '';
   return rawAbstract
-    .replace(/^(?:abstract\s*[:\-\u2013\u2014]\s*)+/i, '')
-    .replace(/^(?:background\s*[:\-\u2013\u2014]\s*)+/i, '')
-    .replace(/\s+/g, ' ')
+    .replace(ABSTRACT_PREFIX_REGEX, '')
+    .replace(WHITESPACE_COLLAPSE_REGEX, ' ')
     .trim();
 }

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
-  documentAuthority,
-  editorInvariantMonitor,
+  documentFacade,
+  invariantMonitor,
   sessionCoordinator,
   usePageStore,
   useWorkspaceStore,
@@ -13,19 +13,19 @@ import {
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import {
   useCompileStore,
-  CompilationSnapshotProvider,
+  SnapshotProvider,
 } from '@/features/editor/subsystems/compiler';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 import { aiCoordinator } from '@/features/editor/subsystems/ai/coordinator/ai.coordinator';
 import { executeProjectCitekeyRefactor } from '@/features/editor/subsystems/citation/model/citation-refactor';
 
-describe('DocumentAuthorityFacade & EditorStateInvariantMonitor Deep Module', () => {
+describe('DocumentFacade & InvariantMonitor Deep Module', () => {
   const projectId = 'proj-authority-999';
   const rootPageId = 'page-root-999';
 
   beforeEach(() => {
     lruDocumentCache.clear();
-    documentAuthority.clearProjectCache();
+    documentFacade.clearProjectCache();
     useWorkspaceStore.getState().closeAllTabsForProject(projectId);
     useWorkspaceStore.getState().closeAllTabsForProject(rootPageId);
     useCompileStore.getState().clearAllDirty();
@@ -48,12 +48,12 @@ describe('DocumentAuthorityFacade & EditorStateInvariantMonitor Deep Module', ()
 
   it('resolves document content with strict priority: Mounted Engine > LRU Cache > PageStore > Server Read Model', () => {
     // 1. Hydrate server files
-    documentAuthority.hydrateServerProjectFiles(projectId, [
+    documentFacade.hydrateServerProjectFiles(projectId, [
       { id: 'file-main', title: 'main.tex', path: 'main.tex', content: 'Server Main' },
       { id: 'file-sec', title: 'sec.tex', path: 'sections/sec.tex', content: 'Server Section' },
     ]);
 
-    expect(documentAuthority.getDocumentContent('file-sec')).toBe('Server Section');
+    expect(documentFacade.getDocumentContent('file-sec')).toBe('Server Section');
 
     // 2. Register in LRU cache -> overrides server read model
     lruDocumentCache.registerModel('file-sec', {
@@ -61,19 +61,19 @@ describe('DocumentAuthorityFacade & EditorStateInvariantMonitor Deep Module', ()
       filePath: 'sections/sec.tex',
       projectId,
     });
-    expect(documentAuthority.getDocumentContent('file-sec')).toBe('LRU Cached Section');
+    expect(documentFacade.getDocumentContent('file-sec')).toBe('LRU Cached Section');
 
     // 3. Mount a split-pane CodeMirror engine for file-sec -> overrides LRU cache
     const secEngine: Partial<IEditorEngine> = {
       getContent: () => 'Live Split-Pane Keystrokes in Section',
     };
     registerEditorEngine('file-sec', secEngine as IEditorEngine);
-    expect(documentAuthority.getDocumentContent('file-sec')).toBe(
+    expect(documentFacade.getDocumentContent('file-sec')).toBe(
       'Live Split-Pane Keystrokes in Section',
     );
 
     // 4. Overlay files merge live engine + LRU + server baseline seamlessly
-    const overlay = documentAuthority.getOverlayFiles(projectId);
+    const overlay = documentFacade.getOverlayFiles(projectId);
     const secOverlay = overlay.find((f) => f.id === 'file-sec');
     expect(secOverlay?.content).toBe('Live Split-Pane Keystrokes in Section');
   });
@@ -107,7 +107,7 @@ describe('DocumentAuthorityFacade & EditorStateInvariantMonitor Deep Module', ()
     expect(lruDocumentCache.getActiveFileId()).toBe('file-main');
   });
 
-  it('guarantees single source of truth across LRU and compile store with no-op EditorStateInvariantMonitor', () => {
+  it('guarantees single source of truth across LRU and compile store with no-op InvariantMonitor', () => {
     lruDocumentCache.registerModel('file-main', {
       content: 'Initial',
       filePath: 'main.tex',
@@ -136,12 +136,12 @@ describe('DocumentAuthorityFacade & EditorStateInvariantMonitor Deep Module', ()
     expect(lruDocumentCache.isDirty('file-sec')).toBe(false);
     expect(useCompileStore.getState().isDirtyFile('file-sec')).toBe(false);
 
-    // EditorStateInvariantMonitor is a trivial no-op pass-through
-    const beforeReport = editorInvariantMonitor.checkInvariants();
+    // InvariantMonitor is a trivial no-op pass-through
+    const beforeReport = invariantMonitor.checkInvariants();
     expect(beforeReport.valid).toBe(true);
     expect(beforeReport.violations).toHaveLength(0);
 
-    const reconcileReport = editorInvariantMonitor.reconcileInvariants();
+    const reconcileReport = invariantMonitor.reconcileInvariants();
     expect(reconcileReport.valid).toBe(true);
     expect(reconcileReport.violations).toHaveLength(0);
   });
@@ -185,7 +185,7 @@ describe('DocumentAuthorityFacade & EditorStateInvariantMonitor Deep Module', ()
     registerEditorEngine('file-sec', secEngine as IEditorEngine);
 
     // Hydrate server files
-    documentAuthority.hydrateServerProjectFiles(projectId, [
+    documentFacade.hydrateServerProjectFiles(projectId, [
       { id: 'file-main', title: 'main.tex', path: 'main.tex', content: 'Main file' },
       { id: 'file-sec', title: 'sec.tex', path: 'sec.tex', content: 'Old server text' },
     ]);
@@ -208,8 +208,8 @@ describe('DocumentAuthorityFacade & EditorStateInvariantMonitor Deep Module', ()
     expect(secContent).toBe('\\section{Ref}\nSee \\cite{newKey2026} for details.');
   });
 
-  it('overlays all mounted split-pane engine buffers in CompilationSnapshotProvider.createSnapshot', () => {
-    documentAuthority.hydrateServerProjectFiles(projectId, [
+  it('overlays all mounted split-pane engine buffers in SnapshotProvider.createSnapshot', () => {
+    documentFacade.hydrateServerProjectFiles(projectId, [
       { id: 'file-main', title: 'main.tex', path: 'main.tex', content: 'Server main' },
       { id: 'file-sec', title: 'sections/sec.tex', path: 'sections/sec.tex', content: 'Server sec' },
     ]);
@@ -225,13 +225,13 @@ describe('DocumentAuthorityFacade & EditorStateInvariantMonitor Deep Module', ()
     registerEditorEngine('file-sec', secEngine as IEditorEngine);
     setActiveEditorEngine(mainEngine as IEditorEngine);
 
-    const snapshot = CompilationSnapshotProvider.createSnapshot();
+    const snapshot = SnapshotProvider.createSnapshot();
     expect(snapshot.files['main.tex']).toBe('Live primary main.tex buffer');
     expect(snapshot.files['sections/sec.tex']).toBe('Live secondary split-pane sections/sec.tex buffer');
   });
 
   it('focuses and jumps directly to secondary split-pane engine in navigationCoordinator.jumpToLine without opening duplicate primary tab', () => {
-    documentAuthority.hydrateServerProjectFiles(projectId, [
+    documentFacade.hydrateServerProjectFiles(projectId, [
       { id: 'file-main', title: 'main.tex', path: 'main.tex', content: 'Main' },
       { id: 'file-sec', title: 'sections/results.tex', path: 'sections/results.tex', content: 'Results' },
     ]);

@@ -21,6 +21,9 @@ export const suggestionKeys = {
     ['page-suggestions', pageId, status] as const,
 };
 
+const SUGGESTION_QUERY_STALE_TIME = 30_000;
+const SUGGESTION_QUERY_GC_TIME = 5 * 60_000;
+
 export const usePageSuggestions = (
   pageId: string | null,
   status?: SuggestionStatus,
@@ -36,6 +39,8 @@ export const usePageSuggestions = (
         return suggestions || [];
       },
       enabled: Boolean(pageId),
+      staleTime: SUGGESTION_QUERY_STALE_TIME,
+      gcTime: SUGGESTION_QUERY_GC_TIME,
     },
     effectiveClient
   );
@@ -49,7 +54,7 @@ export const useCreateSuggestion = (customClient?: QueryClient) => {
     },
     onSuccess: (_newSug, variables) => {
       queryClient.invalidateQueries({ queryKey: ['page-suggestions', variables.pageId] });
-      queryClient.invalidateQueries({ queryKey: ['page-suggestions'] });
+      queryClient.invalidateQueries({ queryKey: ['project-review-overview'] });
       if (!variables?.silent) {
         toast.success('Suggestion submitted', { id: 'submit-suggestion' });
       }
@@ -89,7 +94,7 @@ export const useAcceptSuggestion = (customClient?: QueryClient) => {
     },
     onSettled: (_data, _err, vars) => {
       queryClient.invalidateQueries({ queryKey: ['page-suggestions', vars.pageId] });
-      queryClient.invalidateQueries({ queryKey: ['page-suggestions'] });
+      queryClient.invalidateQueries({ queryKey: ['project-review-overview'] });
       queryClient.invalidateQueries({ queryKey: ['pages', 'detail', vars.pageId] });
     },
     onSuccess: (_data, vars) => {
@@ -127,7 +132,7 @@ export const useRejectSuggestion = (customClient?: QueryClient) => {
     },
     onSettled: (_data, _err, vars) => {
       queryClient.invalidateQueries({ queryKey: ['page-suggestions', vars.pageId] });
-      queryClient.invalidateQueries({ queryKey: ['page-suggestions'] });
+      queryClient.invalidateQueries({ queryKey: ['project-review-overview'] });
     },
     onSuccess: (_data, vars) => {
       toast.info('Suggestion rejected', { id: `sug-${vars.suggestionId}` });
@@ -148,7 +153,7 @@ export const useAcceptAllSuggestions = (customClient?: QueryClient) => {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['page-suggestions', variables.pageId] });
-      queryClient.invalidateQueries({ queryKey: ['page-suggestions'] });
+      queryClient.invalidateQueries({ queryKey: ['project-review-overview'] });
       queryClient.invalidateQueries({ queryKey: ['pages', 'detail', variables.pageId] });
       toast.success('All suggestions accepted', { id: 'sug-bulk' });
     },
@@ -174,7 +179,7 @@ export const useRejectAllSuggestions = (customClient?: QueryClient) => {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['page-suggestions', variables.pageId] });
-      queryClient.invalidateQueries({ queryKey: ['page-suggestions'] });
+      queryClient.invalidateQueries({ queryKey: ['project-review-overview'] });
       toast.info('All suggestions rejected', { id: 'sug-bulk' });
     },
     onError: (err: unknown, _variables, context) => {

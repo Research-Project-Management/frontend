@@ -23,7 +23,7 @@ export type CitationLookupInput = z.infer<typeof citationLookupSchema>;
 /**
  * Validates whether an input query is a structured academic identifier (DOI or arXiv)
  */
-export function validateAcademicIdentifier(query: string): {
+export function validateIdentifier(query: string): {
   isIdentifier: boolean;
   type?: 'doi' | 'arxiv';
   normalized?: string;
@@ -40,4 +40,6 @@ export function validateAcademicIdentifier(query: string): {
   }
   return { isIdentifier: false };
 }
+
+export { validateIdentifier as validateAcademicIdentifier };
 

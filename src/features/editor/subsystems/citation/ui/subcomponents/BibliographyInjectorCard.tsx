@@ -5,6 +5,7 @@ import { BookOpen, Copy, Check, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { copyToClipboard } from '@/shared/lib/utils';
 import { libraryServices } from '@/features/library/sdk';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import type { Item } from '@/features/library/domain/types/core.types';
 import {
   isLatexDocument,
@@ -78,20 +79,39 @@ export const BibliographyInjectorCard = React.memo(function BibliographyInjector
         bibliography: c.citation?.bibliography || '',
       }));
 
-      const newSection = buildBibliographySection({
-        bibliographyText: rawText,
-        format,
-        styleId: detectedStyle,
-        citations: citationsList,
-      });
-
-      const { nextContent, action } = injectBibliographyIntoDocument({
-        currentContent,
-        newSection,
-        format,
-      });
-
       const activeDocId = usePageStore.getState().getActiveDocumentId();
+      let nextContent: string;
+      let action: 'replaced' | 'appended';
+
+      try {
+        const serverInj = await manuscriptService.citations.injectBibliography(projectId, {
+          docId: activeDocId ?? undefined,
+          content: currentContent,
+          filePath: activeFilePath,
+          format,
+          styleId: detectedStyle,
+          bibliographyText: rawText,
+          citations: citationsList,
+        });
+        nextContent = serverInj.nextContent;
+        action = serverInj.action;
+      } catch {
+        const newSection = buildBibliographySection({
+          bibliographyText: rawText,
+          format,
+          styleId: detectedStyle,
+          citations: citationsList,
+        });
+
+        const fallbackRes = injectBibliographyIntoDocument({
+          currentContent,
+          newSection,
+          format,
+        });
+        nextContent = fallbackRes.nextContent;
+        action = fallbackRes.action;
+      }
+
       if (activeDocId) {
         lruDocumentCache.updateContent(activeDocId, nextContent, true);
         sessionCoordinator.notifyContentChange(activeDocId, nextContent);
@@ -127,6 +147,7 @@ export const BibliographyInjectorCard = React.memo(function BibliographyInjector
     activeFilePath,
     fetchFormattedBibliography,
     citedItems,
+    projectId,
     refreshContent,
   ]);
 

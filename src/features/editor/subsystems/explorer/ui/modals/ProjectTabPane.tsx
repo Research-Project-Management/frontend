@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -15,6 +15,8 @@ import {
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
+import { invalidateFileTreeQueries } from '@/features/editor/ui/hooks/document.queries';
+import { editorCommandBus } from '@/features/editor/core';
 
 interface ProjectOption {
   id: string;
@@ -50,6 +52,7 @@ export function ProjectTabPane({
   setSearchParams,
   onClose,
 }: ProjectTabPaneProps) {
+  const queryClient = useQueryClient();
   const { projects: allProjects = [], isLoading: isLoadingProjects } = useProjects();
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [selectedFileId, setSelectedFileId] = useState<string>('');
@@ -67,48 +70,60 @@ export function ProjectTabPane({
     queryKey: ['project-pages-for-copy', selectedProjectId],
     queryFn: () => manuscriptService.docs.getFiles(selectedProjectId),
     enabled: Boolean(selectedProjectId),
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
   });
 
   const handleCopyFromProject = async () => {
-    if (!parentPageId || !selectedFileId || !projectTargetName.trim()) return;
+    const targetProjectKey = projectId || parentPageId;
+    if (!targetProjectKey || !selectedProjectId || !selectedFileId || !projectTargetName.trim()) return;
     setIsCopyingFromProject(true);
     try {
-      const sourcePage = await manuscriptService.docs.getById(selectedFileId);
-      const rawContent = sourcePage?.content;
-      let contentStr = '';
-      if (typeof rawContent === 'string') {
-        contentStr = rawContent;
-      } else if (rawContent && typeof rawContent === 'object') {
-        const rc = rawContent as Record<string, unknown>;
-        if (typeof rc.text === 'string') {
-          contentStr = rc.text;
-        } else if (typeof rc.content === 'string') {
-          contentStr = rc.content;
-        }
-      }
       const targetTitle = projectTargetName.trim();
-      createFile.mutate(
-        {
-          parentPageId,
-          title: targetTitle,
-          content: contentStr,
-        },
-        {
-          onSuccess: (created: { id: string }) => {
-            navigationCoordinator.openDocument({
-              fileId: created.id,
-              title: targetTitle,
-              content: contentStr,
-            });
-            setSearchParams({ file: created.id });
-            onClose();
-          },
-          onSettled: () => {
-            setIsCopyingFromProject(false);
-          },
-        },
-      );
+      const imported = await manuscriptService.filestore.importFromProject(targetProjectKey, {
+        sourceProjectId: selectedProjectId,
+        sourceFileId: selectedFileId,
+        targetName: targetTitle,
+        parentPageId: parentPageId || undefined,
+      });
+      invalidateFileTreeQueries(queryClient, {
+        parentPageId,
+        includeDeleted: false,
+      });
+      editorCommandBus.dispatch({ type: 'filetree:updated' });
+      const createdId = imported.docId || imported.fileId || imported.id;
+      const contentStr = typeof imported.content === 'string' ? imported.content : '';
+      navigationCoordinator.openDocument({
+        fileId: createdId,
+        title: imported.title || targetTitle,
+        content: contentStr,
+      });
+      setSearchParams({ file: createdId });
+      onClose();
     } catch {
+      // Fallback to createFile mutation if needed
+      if (parentPageId) {
+        const targetTitle = projectTargetName.trim();
+        createFile.mutate(
+          {
+            parentPageId,
+            title: targetTitle,
+            content: '',
+          },
+          {
+            onSuccess: (created: { id: string }) => {
+              navigationCoordinator.openDocument({
+                fileId: created.id,
+                title: targetTitle,
+                content: '',
+              });
+              setSearchParams({ file: created.id });
+              onClose();
+            },
+          },
+        );
+      }
+    } finally {
       setIsCopyingFromProject(false);
     }
   };

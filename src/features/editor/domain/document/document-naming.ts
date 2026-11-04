@@ -105,6 +105,13 @@ export function splitVirtualPath(raw?: string | null): {
 }
 
 /**
+ * Extracts the leaf filename/segment from a virtual path (never contains `/`).
+ */
+export function extractLeafName(rawPath?: string | null): string {
+  return splitVirtualPath(rawPath).leafName;
+}
+
+/**
  * Joins path segments into a normalized virtual path.
  */
 export function joinVirtualPath(...parts: Array<string | null | undefined>): string {

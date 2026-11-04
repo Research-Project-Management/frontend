@@ -8,7 +8,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import * as Y from 'yjs';
-import { LatexDagEngine } from '@/features/editor/domain/latex/latex-dag-engine';
+import { LatexDependencyGraph } from '@/features/editor/domain/latex/dependency-graph';
 import { LatexSymbolsIndexCore } from '@/features/editor/domain/latex/latex-symbols-core';
 import { parseBibContent } from '@/features/editor/domain/latex/bib-parser';
 import {
@@ -48,7 +48,7 @@ describe('Overleaf Comprehensive Datasets, Group Workflows, Edge Cases & SLO Gat
   // ===========================================================================
   describe('DS-1: Multi-Chapter PhD Dissertation Benchmark & SLO Gate', () => {
     it('constructs 52-file 3-level nested PhD thesis DAG and indexes 500+ labels & 400+ BibTeX entries within SLO', () => {
-      const dag = new LatexDagEngine();
+      const dag = new LatexDependencyGraph();
       const symbolsIndex = new LatexSymbolsIndexCore();
 
       const files: Array<{ id: string; path: string; content: string }> = [];
@@ -470,7 +470,7 @@ describe('Overleaf Comprehensive Datasets, Group Workflows, Edge Cases & SLO Gat
 
     it('CS-E3 & DS-5: survives cyclic \\input graphs and parses 5,000-line compiler log within <100ms SLO', () => {
       // 1. Cyclic \input graph resilience (a.tex -> b.tex -> c.tex -> a.tex)
-      const dag = new LatexDagEngine();
+      const dag = new LatexDependencyGraph();
       dag.parseAndRegister('a.tex', '\\documentclass{article}\\input{b.tex}');
       dag.parseAndRegister('b.tex', '\\input{c.tex}');
       dag.parseAndRegister('c.tex', '\\input{a.tex}');

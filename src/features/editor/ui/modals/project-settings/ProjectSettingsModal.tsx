@@ -223,24 +223,28 @@ export function ProjectSettingsModal() {
 
   useEffect(() => {
     if (!effectiveProjectId || !settingsPanelOpen) return;
-    manuscriptService.git.getRepoInfo(effectiveProjectId)
+    let cancelled = false;
+    manuscriptService.git
+      .getRepoInfo(effectiveProjectId)
       .then((info) => {
+        if (cancelled) return;
         if (info) {
           setGitRepoInfo(info);
           if (Array.isArray(info.tokens)) {
             setGitTokensList(info.tokens);
+            return;
           }
         }
+        return manuscriptService.git.listTokens().then((res) => {
+          if (!cancelled && res && Array.isArray(res.tokens)) {
+            setGitTokensList(res.tokens);
+          }
+        });
       })
       .catch(() => {});
-
-    manuscriptService.git.listTokens()
-      .then((res) => {
-        if (res && Array.isArray(res.tokens)) {
-          setGitTokensList(res.tokens);
-        }
-      })
-      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, [effectiveProjectId, settingsPanelOpen]);
 
   const gitCloneUrl = gitRepoInfo?.cloneUrl || (typeof window !== 'undefined'
@@ -307,6 +311,7 @@ export function ProjectSettingsModal() {
       const mainContent = getContent() || (typeof parentPage?.content === 'string' ? parentPage.content : '') || `\\documentclass{article}\n\\begin{document}\n\\title{${projectTitle}}\n\\maketitle\n\\end{document}`;
       const targetMainFile = useSettingsStore.getState().mainFile || DEFAULT_MAIN_FILE;
       await manuscriptService.templates.createCustom({
+        projectId: effectiveProjectId,
         name: `${projectTitle} Template`,
         description: `Custom template saved from ${projectTitle}`,
         category: 'Academic',

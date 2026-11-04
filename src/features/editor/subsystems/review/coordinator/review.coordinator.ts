@@ -77,7 +77,7 @@ export interface ReviewRollbackSnapshot {
   readonly suggestions: Array<[string, PageSuggestion]>;
 }
 
-export class ReviewCoordinatorRegistry {
+export class ReviewCoordinator {
   private servicePort: ReviewServicePort = defaultServicePort;
   private notificationPort: ReviewNotificationPort = defaultNotificationPort;
   private storePort: ReviewStorePort = defaultStorePort;
@@ -957,6 +957,45 @@ export class ReviewCoordinatorRegistry {
     return this.resolveSingleSuggestion(pageId, suggestionId, 'reject');
   }
 
+  private syncServerPatchedDocument(pageId: string, res: unknown): void {
+    if (!pageId || !res || typeof res !== 'object') return;
+    const payload = res as {
+      page?: { rev?: number; content?: unknown };
+      rev?: number;
+      content?: unknown;
+    };
+    const serverRev = payload.page?.rev ?? payload.rev;
+    if (typeof serverRev === 'number') {
+      lruDocumentCache.setServerRev(pageId, serverRev);
+    }
+    const rawContent = payload.page?.content ?? payload.content;
+    const serverText =
+      typeof rawContent === 'string'
+        ? rawContent
+        : rawContent && typeof rawContent === 'object'
+          ? String(
+              (rawContent as Record<string, unknown>).text ??
+                (rawContent as Record<string, unknown>).content ??
+                '',
+            )
+          : null;
+    if (typeof serverText === 'string' && !sessionCoordinator.isRealtimeConnected(pageId)) {
+      const targetViews = this.getViewsForFile(pageId, this.activeView);
+      for (const view of targetViews) {
+        const currentText = view.state.doc.toString();
+        if (currentText !== serverText) {
+          view.dispatch({
+            changes: { from: 0, to: currentText.length, insert: serverText },
+          });
+        }
+      }
+      if (lruDocumentCache.getModel(pageId)) {
+        lruDocumentCache.updateContent(pageId, serverText, false);
+        lruDocumentCache.markClean(pageId);
+      }
+    }
+  }
+
   private async resolveAllSuggestions(
     pageId: string,
     action: 'accept' | 'reject'
@@ -972,11 +1011,11 @@ export class ReviewCoordinatorRegistry {
     const event = action === 'accept' ? 'suggestion:accepted-all' : 'suggestion:rejected-all';
 
     try {
-      if (action === 'accept') {
-        await this.servicePort.acceptAllSuggestions(pageId);
-      } else {
-        await this.servicePort.rejectAllSuggestions(pageId);
-      }
+      const res =
+        action === 'accept'
+          ? await this.servicePort.acceptAllSuggestions(pageId)
+          : await this.servicePort.rejectAllSuggestions(pageId);
+      this.syncServerPatchedDocument(pageId, res);
       this.notificationPort.notifySuccess(`All changes ${pastTense}`, 'sug-bulk');
       editorCommandBus.dispatch({
         type: 'editor:review-event',
@@ -1044,11 +1083,12 @@ export class ReviewCoordinatorRegistry {
     }
 
     try {
-      if (action === 'accept') {
-        await this.servicePort.acceptSelectedSuggestions(pageId, persistedIds);
-      } else {
-        await this.servicePort.rejectSelectedSuggestions(pageId, persistedIds);
-      }
+      const res = this.servicePort.batchResolve
+        ? await this.servicePort.batchResolve(pageId, { suggestionIds: persistedIds, action })
+        : action === 'accept'
+          ? await this.servicePort.acceptSelectedSuggestions(pageId, persistedIds)
+          : await this.servicePort.rejectSelectedSuggestions(pageId, persistedIds);
+      this.syncServerPatchedDocument(pageId, res);
       this.notificationPort.notifySuccess(`${suggestionIds.length} changes ${pastTense}`, 'sug-bulk');
       editorCommandBus.dispatch({
         type: 'editor:review-event',
@@ -1081,4 +1121,6 @@ export class ReviewCoordinatorRegistry {
   }
 }
 
-export const reviewCoordinator = new ReviewCoordinatorRegistry();
+export const reviewCoordinator = new ReviewCoordinator();
+export { ReviewCoordinator as ReviewCoordinatorRegistry };
+

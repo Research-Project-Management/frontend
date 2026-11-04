@@ -18,7 +18,7 @@ import {
   editorCommandBus,
   sessionCoordinator,
   workspaceCoordinator,
-  documentAuthority,
+  documentFacade,
   getActiveEditorEngine,
   getEditorEngineForFile,
   syncShallowFileUrlParam,
@@ -65,7 +65,7 @@ export interface PendingLineJump {
   highlight?: 'error' | 'synctex';
 }
 
-export class NavigationCoordinatorRegistry {
+export class NavigationCoordinator {
   private initialized = false;
   private lastDiagnosticIndex: number = -1;
   private lastDiagnosticLine: number | null = null;
@@ -322,7 +322,7 @@ export class NavigationCoordinatorRegistry {
       if (typeof optContent === 'string' && optContent.length > 0) {
         return optContent;
       }
-      const authorityContent = documentAuthority.getDocumentContent(fileId);
+      const authorityContent = documentFacade.getDocumentContent(fileId);
       if (authorityContent) {
         return authorityContent;
       }
@@ -530,7 +530,7 @@ export class NavigationCoordinatorRegistry {
             resolvedFileId = matchingWsFile.id;
             resolvedTitle = matchingWsFile.title || matchingWsFile.path || filePath;
           } else {
-            const overlayFiles = documentAuthority.getOverlayFiles() || [];
+            const overlayFiles = documentFacade.getOverlayFiles() || [];
             const matchingOverlay = overlayFiles.find(
               (f) => f.id === filePath || matchesTargetPath(f.path)
             );
@@ -703,7 +703,8 @@ export class NavigationCoordinatorRegistry {
   }
 }
 
-export const navigationCoordinator = new NavigationCoordinatorRegistry();
+export { NavigationCoordinator as NavigationCoordinatorRegistry };
+export const navigationCoordinator = new NavigationCoordinator();
 
 /**
  * Dispatches jump-to-line commands to CodeMirror editor and PDF viewer

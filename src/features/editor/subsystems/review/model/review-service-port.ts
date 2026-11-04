@@ -13,6 +13,10 @@ export interface ReviewServicePort {
   rejectAllSuggestions(pageId: string): Promise<unknown>;
   acceptSelectedSuggestions(pageId: string, suggestionIds: string[]): Promise<unknown>;
   rejectSelectedSuggestions(pageId: string, suggestionIds: string[]): Promise<unknown>;
+  batchResolve?(
+    pageId: string,
+    payload: { suggestionIds: string[]; action: 'accept' | 'reject' },
+  ): Promise<unknown>;
   createSuggestion?(payload: {
     pageId: string;
     type: 'insert' | 'delete' | 'replace';

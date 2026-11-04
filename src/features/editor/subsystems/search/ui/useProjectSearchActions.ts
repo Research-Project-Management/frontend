@@ -14,7 +14,7 @@ import { filesQuery } from '@/features/editor/ui/hooks/document.queries';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import {
   sessionCoordinator,
-  documentAuthority,
+  documentFacade,
   lruDocumentCache,
 } from '@/features/editor/core';
 import type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
@@ -100,40 +100,58 @@ export function useProjectSearchActions({
         `Replaced ${res.totalOccurrencesReplaced} occurrence(s) across ${res.totalFilesAffected} file(s)`,
         { id: 'search-replace-status' },
       );
-      await queryClient.invalidateQueries({
-        queryKey: ['project-document-search'],
-      });
-      await queryClient.invalidateQueries({
-        queryKey: filesQuery(rootPageId).queryKey,
-      });
-      await queryClient.invalidateQueries({
-        queryKey: ['pages'],
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ['project-document-search'],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: filesQuery(rootPageId).queryKey,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ['pages'],
+        }),
+      ]);
 
-      // 2. Reconcile all affected files across mounted engines (active & split-pane) and LRU cache
-      const re = buildSearchRegex(effectiveQuery, { useRegex, wholeWord, caseSensitive });
-      if (re) {
-        for (const affectedId of res.affectedFileIds) {
-          const mountedEngine = documentAuthority.getEditorEngineForFile(affectedId);
-          if (mountedEngine) {
-            const currentContent = mountedEngine.getContent();
-            const replaced = currentContent.replace(re, replaceText);
-            if (replaced !== currentContent) {
-              mountedEngine.setContent(replaced);
-            }
-            lruDocumentCache.updateContent(affectedId, replaced, false);
-            lruDocumentCache.markClean(affectedId);
-          } else {
-            const cachedModel = lruDocumentCache.getModel(affectedId);
-            if (cachedModel) {
-              const replaced = cachedModel.content.replace(re, replaceText);
-              lruDocumentCache.updateContent(affectedId, replaced, false);
-              lruDocumentCache.markClean(affectedId);
-            }
+      // 2. Evict stale non-mounted models and refresh mounted non-realtime engines from server in parallel
+      await Promise.all(
+        res.affectedFileIds.map(async (affectedId) => {
+          const mountedEngine = documentFacade.getEditorEngineForFile(affectedId);
+          if (!mountedEngine) {
             lruDocumentCache.evictModel(affectedId);
+            return;
           }
-        }
-      }
+          if (!sessionCoordinator.isRealtimeConnected(affectedId)) {
+            const re = buildSearchRegex(effectiveQuery, { useRegex, wholeWord, caseSensitive });
+            if (re) {
+              const currentText = mountedEngine.getContent();
+              const nextText = currentText.replace(re, replaceText);
+              if (nextText !== currentText) {
+                mountedEngine.setContent(nextText);
+                lruDocumentCache.updateContent(affectedId, nextText, false);
+                lruDocumentCache.markClean(affectedId);
+                return;
+              }
+            }
+            try {
+              const freshPage = await manuscriptService.docs.getById(affectedId);
+              const raw = freshPage?.content;
+              const freshText =
+                typeof raw === 'string'
+                  ? raw
+                  : raw && typeof raw === 'object'
+                    ? String((raw as Record<string, unknown>).text || (raw as Record<string, unknown>).content || '')
+                    : '';
+              if (freshText) {
+                mountedEngine.setContent(freshText);
+                lruDocumentCache.updateContent(affectedId, freshText, false);
+                lruDocumentCache.markClean(affectedId);
+              }
+            } catch {
+              // Yjs or next query refetch will reconcile
+            }
+          }
+        }),
+      );
     } catch (err: unknown) {
       toast.error((err as Error)?.message || 'Failed to replace across project', { id: 'search-replace-status' });
     } finally {

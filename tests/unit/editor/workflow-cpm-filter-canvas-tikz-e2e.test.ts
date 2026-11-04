@@ -654,7 +654,7 @@ describe('End-to-End Workflow Verification: CPM -> Bitset Filter -> Canvas -> Ti
         '\\end{figure}',
       ].join('\n');
 
-      // 5.2 Simulate ModernWorkbenchLayout modal callback:
+      // 5.2 Simulate WorkbenchLayout modal callback:
       // When user clicks "Insert TikZ", modal dispatches:
       editorCommandBus.dispatch({
         type: 'editor:insert-text',

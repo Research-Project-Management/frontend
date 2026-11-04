@@ -25,6 +25,8 @@ import type {
   ReviewStatus,
   ReviewRoundInfo,
   ReviewStatusResponse,
+  ProjectReviewOverviewResponseDto,
+  ProjectReviewFileOverviewDto,
   DocstoreDocDto,
   QueueUpdatePayload,
   FlushResultDto,
@@ -42,18 +44,25 @@ import type {
   ReverseSyncResult,
 } from './types';
 
-export type { ReviewStatus, ReviewRoundInfo, ReviewStatusResponse };
+export type {
+  ReviewStatus,
+  ReviewRoundInfo,
+  ReviewStatusResponse,
+  ProjectReviewOverviewResponseDto,
+  ProjectReviewFileOverviewDto,
+};
 import type { Page, PageFile } from '@/features/editor/domain/types/core.types';
 import type { EditorStorageItem } from '@/features/editor/domain/types/storage-item.types';
 import type {
+  AiActionParams,
+  AiActionResult,
   AcademicAiActionParams,
   AcademicAiActionResult,
-} from '@/features/editor/domain/ai/ai-academic-assistant';
+} from '@/features/editor/domain/ai/ai-assistant';
 import type {
   AiErrorFixParams,
   AiErrorFixResult,
 } from '@/features/editor/domain/ai/ai-error-assist';
-import { countLatexWords } from '../../domain/document/word-count';
 import { flushYjsProviders } from '../realtime/yjs-provider-pool';
 import { PageFileMapper, type RawPageFileRecord } from './doc-mapper';
 import type {
@@ -63,6 +72,8 @@ import type {
 } from '@/features/editor/domain/collaboration/notification-digest';
 
 export type {
+  AiActionParams,
+  AiActionResult,
   AcademicAiActionParams,
   AcademicAiActionResult,
   AiErrorFixParams,
@@ -400,19 +411,31 @@ export const compiler = {
     }
   },
 
-  wordCount: async (source: string, projectId?: string): Promise<WordCountResponse> => {
-    try {
-      const endpoint = projectId
-        ? `${MANUSCRIPTS_API_BASE}/projects/${projectId}/word-count`
-        : `${MANUSCRIPTS_API_BASE}/word-count`;
-      return await apiPost<WordCountResponse>(endpoint, { source, ...(projectId ? { projectId } : {}) });
-    } catch {
-      const stats = countLatexWords(source);
-      return {
-        success: true,
-        stats,
-      };
-    }
+  wordCount: async (
+    source?: string,
+    projectId?: string,
+    options?: {
+      includeBib?: boolean;
+      filename?: string;
+      files?: Record<string, string>;
+    },
+  ): Promise<WordCountResponse> => {
+    const endpoint = projectId
+      ? `${MANUSCRIPTS_API_BASE}/projects/${projectId}/word-count`
+      : `${MANUSCRIPTS_API_BASE}/word-count`;
+    return await apiPost<WordCountResponse>(
+      endpoint,
+      {
+        ...(source !== undefined ? { source } : {}),
+        ...(projectId ? { projectId } : {}),
+        ...(options?.includeBib !== undefined
+          ? { includeBib: options.includeBib }
+          : {}),
+        ...(options?.filename ? { filename: options.filename } : {}),
+        ...(options?.files ? { files: options.files } : {}),
+      },
+      { silent: true },
+    );
   },
 
   preview: async (opts: {
@@ -609,8 +632,54 @@ export const diagnostics = {
     );
   },
 
-  lint: async (source: string, filename = 'main.tex'): Promise<DiagnosticReportDto> => {
-    return await apiPost<DiagnosticReportDto>(`${MANUSCRIPTS_API_BASE}/diagnostics/lint`, { source, filename });
+  lint: async (
+    source: string,
+    filename = 'main.tex',
+    options?: {
+      projectId?: string;
+      docId?: string;
+      knownBibKeys?: string[];
+      knownLabels?: string[];
+    },
+  ): Promise<DiagnosticReportDto> => {
+    const payload = {
+      source,
+      content: source,
+      filename,
+      projectId: options?.projectId,
+      docId: options?.docId,
+      knownBibKeys: options?.knownBibKeys,
+      knownLabels: options?.knownLabels,
+    };
+    if (options?.projectId) {
+      return await apiPost<DiagnosticReportDto>(
+        `${MANUSCRIPTS_API_BASE}/diagnostics/projects/${options.projectId}/lint-doc`,
+        payload,
+        { silent: true },
+      );
+    }
+    return await apiPost<DiagnosticReportDto>(
+      `${MANUSCRIPTS_API_BASE}/diagnostics/lint`,
+      payload,
+      { silent: true },
+    );
+  },
+
+  lintDoc: async (
+    projectId: string,
+    payload: {
+      content: string;
+      filename?: string;
+      docId?: string;
+      knownBibKeys?: string[];
+      knownLabels?: string[];
+    },
+  ): Promise<DiagnosticReportDto> => {
+    return await apiPost<DiagnosticReportDto>(
+      `${MANUSCRIPTS_API_BASE}/diagnostics/projects/${projectId}/lint-doc`,
+      { ...payload, source: payload.content, projectId },
+      { silent: true },
+    );
   },
 
   lintProject: async (projectId: string): Promise<DiagnosticReportDto> => {
@@ -641,6 +710,7 @@ import {
 } from './collaboration.client';
 import {
   ai,
+  AiClient,
   AcademicAiService,
   suggestLatexFix,
 } from './ai.client';
@@ -680,6 +750,7 @@ export {
   exportDocs,
   history,
   ai,
+  AiClient,
   AcademicAiService,
   suggestLatexFix,
   structure,
@@ -807,6 +878,20 @@ export const review = {
     );
   },
 
+  getProjectOverview: async (
+    projectId: string,
+  ): Promise<ProjectReviewOverviewResponseDto | null> => {
+    if (!projectId) return null;
+    try {
+      return await apiGet<ProjectReviewOverviewResponseDto>(
+        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/review-overview`,
+        { silent: true },
+      );
+    } catch {
+      return null;
+    }
+  },
+
   updateReviewStatus: async (
     projectId: string,
     docId: string,
@@ -841,9 +926,15 @@ export const manuscriptService = {
   spelling: spellingService,  notifications,
   notificationBundlerService,
   ai,
+  AiClient,
   AcademicAiService,
   suggestLatexFix,
   git: gitApi,
+  restoreProjectVersionFile: history.restoreProjectVersionFile,
+  exportVersionZip: exportDocs.exportVersionZip,
+  exportDocument: exportDocs.exportDocument,
+  exportProjectZip: exportDocs.exportProjectZip,
+  importProjectZip: exportDocs.importProjectZip,
 };
 
 export default manuscriptService;

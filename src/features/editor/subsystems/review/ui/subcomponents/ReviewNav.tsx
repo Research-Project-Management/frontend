@@ -19,7 +19,7 @@ import {
 } from '@/shared/components/ui/tooltip';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { SidebarPanelHeader } from '@/features/editor/core';
-import { OverleafResolvedCommentsIcon } from './ReviewBadges';
+import { ResolvedCommentsIcon } from './ReviewBadges';
 import type { ReviewStatus } from '@/features/editor/sdk/manuscript.service';
 
 // ── Review Header ───────────────────────────────────────────────────────────
@@ -94,7 +94,7 @@ export function ReviewHeader({
             )}
             aria-label={tooltipLabel}
           >
-            <OverleafResolvedCommentsIcon className="size-4 shrink-0 text-foreground" />
+            <ResolvedCommentsIcon className="size-4 shrink-0 text-foreground" />
           </button>
         </TooltipTrigger>
         <TooltipContent side="bottom">{tooltipLabel}</TooltipContent>

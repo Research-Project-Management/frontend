@@ -5,7 +5,6 @@ import {
   type ProjectFileSnapshot,
 } from '@/features/editor/domain/document/draft-storage';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
-import { documentStore } from '@/features/editor/domain/document/document-store';
 import { sessionCoordinator } from '@/features/editor/core';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { useConnectivityStore } from '@/features/editor/core';

@@ -15,6 +15,8 @@ export {
   buildFileTree,
   buildUnifiedTree,
   filterFileTree,
+  flattenFileTree,
+  findNodeByPath,
   getRootFilePriority,
   type FileTreeNode,
   type FileTreeFileNode,
@@ -34,11 +36,14 @@ export {
 } from '@/features/editor/domain/document/lru-document-cache';
 
 export {
-  ACADEMIC_TEMPLATES,
+  PROJECT_TEMPLATES,
+  PROJECT_TEMPLATES as ACADEMIC_TEMPLATES,
   RAW_ACADEMIC_TEMPLATES,
-  type AcademicTemplate,
+  type ProjectTemplate,
+  type ProjectTemplate as AcademicTemplate,
   type RawAcademicTemplate,
-  type AcademicTemplateCategory,
+  type TemplateCategory,
+  type TemplateCategory as AcademicTemplateCategory,
   type TemplateIconName,
 } from './model/template-gallery.data';
 
@@ -65,6 +70,8 @@ export {
   parseZipArchive,
   extractAndImportZipToProject,
   type ExtractedZipProject,
+  type ParsedZipArchive,
+  type ZipImportResult,
   type ImportZipProgress,
 } from '@/features/editor/sdk/archive/archive-import';
 export {
@@ -75,7 +82,8 @@ export {
 
 // 2. UI Presentation Layer
 export { default as FilesTab } from './ui/FilesTab';
-export { FileTreeContainer } from './ui/FileTreeContainer';
+export { FileTreeContainer, isFolderOpen } from './ui/FileTreeContainer';
+export { useFileTree } from './ui/hooks/useFileTree';
 export { TexFileRow } from './ui/subcomponents/TexFileRow';
 export { IndentGuides, InlineInput, RenameInput, RowActions } from './ui/subcomponents/FileTreePrimitives';
 export { StorageFileRow, getStorageIcon } from './ui/subcomponents/FileTreeNodes';

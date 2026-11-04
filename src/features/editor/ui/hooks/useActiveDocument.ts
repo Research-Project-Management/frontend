@@ -92,6 +92,8 @@ export function useActiveDocument() {
     queryKey: ['projects', projectId, 'docs'],
     queryFn: () => manuscriptService.docs.getProjectDocs(projectId!),
     enabled: !!projectId && !directPageId,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
   });
 
   const projectDocs = projectDocsData ?? EMPTY_PAGE_ARRAY;

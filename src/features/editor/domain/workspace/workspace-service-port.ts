@@ -1,7 +1,7 @@
 /**
  * workspace-service-port.ts
  *
- * Hexagonal / Deep Module Ports for WorkspaceCoordinatorRegistry.
+ * Hexagonal / Deep Module Ports for WorkspaceCoordinator.
  * Location: `features/editor/domain/workspace/workspace-service-port.ts`
  *
  * Isolates file-system lifecycle orchestration from:

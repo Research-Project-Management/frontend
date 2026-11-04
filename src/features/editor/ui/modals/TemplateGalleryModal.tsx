@@ -35,18 +35,20 @@ import { cn } from '@/shared/lib/utils';
 import { useSettingsStore, usePageStore, editorCommandBus, sessionCoordinator } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/subsystems/explorer';
 import { clearYjsProviderPool } from '@/features/editor/sdk/realtime/yjs-socket-provider';
-import { pageKeys } from '@/features/editor/ui/hooks/document.queries';
+import { invalidateFileTreeQueries } from '@/features/editor/ui/hooks/document.queries';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { DEFAULT_MAIN_FILE } from '@/features/editor/domain/constants/editor.constants';
 
 import {
+  type ProjectTemplate,
   type AcademicTemplate,
+  PROJECT_TEMPLATES,
   ACADEMIC_TEMPLATES,
 } from '@/features/editor/subsystems/explorer';
 
-export type { AcademicTemplate };
-export { ACADEMIC_TEMPLATES };
+export type { ProjectTemplate, AcademicTemplate };
+export { PROJECT_TEMPLATES, ACADEMIC_TEMPLATES };
 
 const TEMPLATE_ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   Layout,
@@ -67,7 +69,7 @@ export default function TemplateGalleryModal() {
   const currentPageId = usePageStore((s) => s.currentPage?.id);
   const projectId = usePageStore((s) => s.projectId);
   const { engine } = useEditorInstance();
-  const [selectedTemplate, setSelectedTemplate] = useState<AcademicTemplate>(ACADEMIC_TEMPLATES[0]);
+  const [selectedTemplate, setSelectedTemplate] = useState<ProjectTemplate>(PROJECT_TEMPLATES[0]);
   const [previewTab, setPreviewTab] = useState<'main' | 'bib'>('main');
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('All');
@@ -87,37 +89,72 @@ export default function TemplateGalleryModal() {
       }
     },
     enabled: isTemplateModalOpen,
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000,
   });
 
   const combinedTemplates = useMemo(() => {
-    const list: AcademicTemplate[] = [...ACADEMIC_TEMPLATES];
-    const validCategories: AcademicTemplate['category'][] = [
+    const validCategories: ProjectTemplate['category'][] = [
       'Conference',
       'Journal',
       'Preprint',
       'Thesis',
       'Resume',
     ];
+    const iconByCat: Record<ProjectTemplate['category'], ProjectTemplate['iconName']> = {
+      Conference: 'Layout',
+      Journal: 'BookOpen',
+      Preprint: 'FileCode',
+      Thesis: 'GraduationCap',
+      Resume: 'FileText',
+    };
+
+    const list: ProjectTemplate[] = [];
+    const seenIds = new Set<string>();
+
+    // 1. Primary source: Backend official & custom templates
     serverTemplates.forEach((st) => {
-      if (!list.some((t) => t.id === st.id)) {
-        const matchedCat = validCategories.find(
-          (c) => c.toLowerCase() === st.category?.toLowerCase(),
-        );
-        const templateName = st.name || st.title || 'Untitled Template';
-        list.push({
-          id: st.id,
-          name: templateName,
-          category: matchedCat ?? 'Conference',
-          publisher: (typeof st.publisher === 'string' && st.publisher) || (typeof st.author === 'string' && st.author) || 'Manuscripts',
-          description: st.description || 'Verified academic template from backend repository',
-          iconName: 'Layout',
-          badge: (typeof st.badge === 'string' && st.badge) || 'latex',
-          mainTex:
-            (typeof st.mainTex === 'string' && st.mainTex) ||
-            `% Template: ${templateName}\n\\documentclass{article}\n\\begin{document}\n\\title{${templateName}}\n\\maketitle\n\n\\section{Introduction}\nDocument initialized from template.\n\\end{document}`,
-        });
-      }
+      if (!st.id || seenIds.has(st.id)) return;
+      seenIds.add(st.id);
+      const matchedCat = validCategories.find(
+        (c) => c.toLowerCase() === st.category?.toLowerCase(),
+      ) ?? 'Conference';
+      const fallbackMeta = PROJECT_TEMPLATES.find(
+        (t) => t.id === st.id || t.name.toLowerCase() === (st.name || st.title || '').toLowerCase(),
+      );
+      if (fallbackMeta) seenIds.add(fallbackMeta.id);
+
+      const templateName = st.name || st.title || fallbackMeta?.name || 'Untitled Template';
+      list.push({
+        id: st.id,
+        name: templateName,
+        category: matchedCat,
+        publisher:
+          (typeof st.publisher === 'string' && st.publisher) ||
+          (typeof st.author === 'string' && st.author) ||
+          fallbackMeta?.publisher ||
+          'Manuscripts',
+        description: st.description || fallbackMeta?.description || 'Verified academic template from backend repository',
+        iconName: fallbackMeta?.iconName || iconByCat[matchedCat] || 'Layout',
+        badge: (typeof st.badge === 'string' && st.badge) || fallbackMeta?.badge || 'latex',
+        mainTex:
+          (typeof st.mainTex === 'string' && st.mainTex) ||
+          (typeof st.content === 'string' && st.content) ||
+          fallbackMeta?.mainTex ||
+          `% Template: ${templateName}\n\\documentclass{article}\n\\begin{document}\n\\title{${templateName}}\n\\maketitle\n\n\\section{Introduction}\nDocument initialized from template.\n\\end{document}`,
+        bibTex: typeof st.bibTex === 'string' && st.bibTex ? st.bibTex : fallbackMeta?.bibTex,
+      });
     });
+
+    // 2. Fallback metadata if server templates haven't loaded yet
+    if (list.length === 0) {
+      for (const tpl of PROJECT_TEMPLATES) {
+        if (!seenIds.has(tpl.id)) {
+          list.push(tpl);
+        }
+      }
+    }
+
     return list.filter((tpl) => {
       const matchCat =
         categoryFilter === 'All' || tpl.category.toLowerCase() === categoryFilter.toLowerCase();
@@ -129,25 +166,46 @@ export default function TemplateGalleryModal() {
     });
   }, [serverTemplates, categoryFilter, searchQuery]);
 
-  const handleSelectTemplate = async (tpl: AcademicTemplate) => {
+  // Keep selectedTemplate hydrated with full server mainTex/bibTex when serverTemplates resolve
+  React.useEffect(() => {
+    if (combinedTemplates.length === 0) return;
+    const match =
+      combinedTemplates.find(
+        (t) =>
+          t.id === selectedTemplate.id ||
+          t.name.toLowerCase() === selectedTemplate.name.toLowerCase(),
+      ) || combinedTemplates[0];
+    if (
+      match &&
+      (match.id !== selectedTemplate.id ||
+        match.mainTex !== selectedTemplate.mainTex ||
+        match.bibTex !== selectedTemplate.bibTex)
+    ) {
+      setSelectedTemplate(match);
+    }
+  }, [combinedTemplates, selectedTemplate.id, selectedTemplate.name, selectedTemplate.mainTex, selectedTemplate.bibTex]);
+
+  const handleSelectTemplate = async (tpl: ProjectTemplate) => {
     setSelectedTemplate(tpl);
     setPreviewTab('main');
-    // If it's a server template, dynamically fetch latest template payload
-    if (!ACADEMIC_TEMPLATES.some((a: AcademicTemplate) => a.id === tpl.id)) {
-      try {
-        const remoteDetails = await manuscriptService.templates.getById(tpl.id);
-        if (remoteDetails && (remoteDetails.mainTex || remoteDetails.content)) {
-          const mainTex = String(remoteDetails.mainTex || remoteDetails.content);
-          const bibTex = remoteDetails.bibTex ? String(remoteDetails.bibTex) : undefined;
-          setSelectedTemplate((prev) => ({
-            ...prev,
-            mainTex,
-            bibTex: bibTex || prev.bibTex,
-          }));
-        }
-      } catch {
-        // use fallback mainTex
+    try {
+      const remoteDetails = await queryClient.fetchQuery({
+        queryKey: ['manuscript-template-detail', tpl.id],
+        queryFn: () => manuscriptService.templates.getById(tpl.id),
+        staleTime: 5 * 60_000,
+        gcTime: 10 * 60_000,
+      });
+      if (remoteDetails && (remoteDetails.mainTex || remoteDetails.content)) {
+        const mainTex = String(remoteDetails.mainTex || remoteDetails.content);
+        const bibTex = remoteDetails.bibTex ? String(remoteDetails.bibTex) : undefined;
+        setSelectedTemplate((prev) => ({
+          ...prev,
+          mainTex,
+          bibTex: bibTex || prev.bibTex,
+        }));
       }
+    } catch {
+      // use existing mainTex
     }
   };
 
@@ -189,9 +247,10 @@ export default function TemplateGalleryModal() {
       if (engine) {
         engine.setContent(selectedTemplate.mainTex);
       }
-      queryClient.invalidateQueries({ queryKey: pageKeys.all });
-      queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      invalidateFileTreeQueries(queryClient, {
+        includeRootDoc: true,
+        includeProjects: true,
+      });
       editorCommandBus.dispatch({ type: 'filetree:updated' });
       toast.success(`Project scaffolded successfully with "${selectedTemplate.name}"!`, { id: 'scaffold-template' });
       setIsTemplateModalOpen(false);
@@ -392,6 +451,7 @@ export default function TemplateGalleryModal() {
                         const mainContent = engine?.getContent() || selectedTemplate.mainTex;
                         const targetMainFile = useSettingsStore.getState().mainFile || DEFAULT_MAIN_FILE;
                         await manuscriptService.templates.createCustom({
+                          projectId,
                           name: `${activeFileTitle?.replace(/\.tex$/i, '') || 'Custom'} Template`,
                           description: 'Saved from active manuscript project',
                           category: 'Academic',

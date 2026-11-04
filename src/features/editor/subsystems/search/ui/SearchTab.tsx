@@ -27,10 +27,8 @@ import {
   usePageStore,
   useSearchStore,
   editorCommandBus,
-  documentAuthority,
-  lruDocumentCache,
+  sessionCoordinator,
 } from "@/features/editor/core";
-import { filesQuery } from "@/features/editor/ui/hooks/document.queries";
 import { useDebounce } from "@/shared/hooks/use-debounce";
 import { manuscriptService } from "@/features/editor/sdk/manuscript.service";
 import { useEditorInstance } from "@/features/editor/ui/hooks/useEditorInstance";
@@ -39,7 +37,7 @@ import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { SidebarPanelHeader } from '@/features/editor/core/shell/SidebarPanelHeader';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
-import { buildSearchRegex, useProjectSearchActions } from './useProjectSearchActions';
+import { useProjectSearchActions } from './useProjectSearchActions';
 
 interface MatchEntry {
   line: number;
@@ -62,7 +60,7 @@ export default function SearchTab() {
   const currentPage = usePageStore((s) => s.currentPage);
   const activeFilePage = usePageStore((s) => s.activeFilePage);
   const storeProjectId = usePageStore((s) => s.projectId);
-  const { engine, getContent } = useEditorInstance();
+  const { engine } = useEditorInstance();
 
   const rootPageId = params?.pageId || params?.projectId || currentPage?.id || "";
   const rootProjectId = params?.projectId || storeProjectId || extractProjectId(currentPage) || params?.pageId || currentPage?.id || "";
@@ -192,6 +190,16 @@ export default function SearchTab() {
       if (!effectiveQuery.trim() || !rootProjectId) {
         return null;
       }
+      const hadDirtyBeforeFlush =
+        typeof sessionCoordinator.hasDirtyDocuments === 'function'
+          ? sessionCoordinator.hasDirtyDocuments()
+          : true;
+      if (hadDirtyBeforeFlush) {
+        const flushRes = await sessionCoordinator.flushAllPending();
+        if (!flushRes || flushRes.total > 0) {
+          await manuscriptService.updater.flushProject(rootProjectId).catch(() => {});
+        }
+      }
       return manuscriptService.search.search(rootProjectId, effectiveQuery, {
         caseSensitive,
         wholeWord,
@@ -199,169 +207,28 @@ export default function SearchTab() {
       });
     },
     enabled: !!effectiveQuery.trim() && !!rootProjectId,
-    staleTime: 5000,
+    staleTime: 15_000,
+    gcTime: 2 * 60_000,
   });
 
-  // Fetch all text files in project ONLY as a fallback if backend search fails
-  const { data: projectFiles = [] } = useQuery({
-    ...filesQuery(rootPageId),
-    enabled: !!rootPageId && isSearchError,
-  });
-
-  // Assemble full searchable files list for client buffer fallback via centralized DocumentAuthority
-  const searchableFiles = useMemo(() => {
-    const projectKey = rootProjectId || rootPageId;
-    if (projectFiles && projectFiles.length > 0 && projectKey) {
-      documentAuthority.hydrateServerProjectFiles(projectKey, projectFiles);
-    }
-
-    const rawActive =
-      getContent() ||
-      documentAuthority.getDocumentContent(activeFileId) ||
-      activeFilePage?.content ||
-      currentPage?.content ||
-      "";
-    const activeContent = typeof rawActive === "string" ? rawActive : "";
-
-    if (!projectFiles || projectFiles.length === 0) {
-      return [
-        {
-          id: currentPage?.id || "main",
-          title: currentPage?.title || "main.tex",
-          content: activeContent,
-          isCurrent: true,
-        },
-      ];
-    }
-
-    const overlayFiles = documentAuthority.getOverlayFiles(projectKey, projectFiles);
-    return overlayFiles.map((file) => {
-      const isCurrent = file.id === activeFileId;
-      return {
-        id: file.id,
-        title: file.title || "untitled.tex",
-        content: isCurrent && activeContent ? activeContent : file.content,
-        isCurrent,
-      };
-    });
-  }, [projectFiles, rootProjectId, rootPageId, activeFileId, getContent, activeFilePage?.content, currentPage?.id, currentPage?.title, currentPage?.content]);
-
-  // Execute project-wide search: backend primary authority with live dirty-buffer overlay
+  // Map authoritative backend search results
   const fileResults = useMemo<FileSearchResult[]>(() => {
-    if (!effectiveQuery.trim()) return [];
-
-    const re = buildSearchRegex(effectiveQuery, {
-      useRegex,
-      wholeWord,
-      caseSensitive,
-    });
-
-    const scanContentMatches = (content: string): MatchEntry[] => {
-      if (!re) return [];
-      const lines = content.split("\n");
-      const fileMatches: MatchEntry[] = [];
-      lines.forEach((lineText: string, idx: number) => {
-        const lineNum = idx + 1;
-        re.lastIndex = 0;
-        let m: RegExpExecArray | null;
-        while ((m = re.exec(lineText)) !== null) {
-          fileMatches.push({
-            line: lineNum,
-            text: lineText,
-            matchStart: m.index,
-            matchEnd: m.index + m[0].length,
-          });
-          if (m[0].length === 0) {
-            re.lastIndex++;
-          }
-        }
-      });
-      return fileMatches;
-    };
-
-    if (backendSearchData && Array.isArray(backendSearchData.results)) {
-      const dirtyById = new Map<string, { fileName: string; content: string }>();
-      for (const dirtyModel of lruDocumentCache.getDirtyModels()) {
-        dirtyById.set(dirtyModel.fileId, {
-          fileName: dirtyModel.filePath.replace(/^\/+/, "") || "untitled.tex",
-          content: dirtyModel.content,
-        });
-      }
-
-      const mergedResults: FileSearchResult[] = [];
-      const seenIds = new Set<string>();
-
-      for (const file of backendSearchData.results) {
-        seenIds.add(file.fileId);
-        const dirtyOverride = dirtyById.get(file.fileId);
-        if (dirtyOverride) {
-          const matches = scanContentMatches(dirtyOverride.content);
-          if (matches.length > 0) {
-            mergedResults.push({
-              fileId: file.fileId,
-              fileName: file.fileName,
-              isCurrent: file.fileId === activeFileId,
-              matches,
-            });
-          }
-        } else {
-          mergedResults.push({
-            fileId: file.fileId,
-            fileName: file.fileName,
-            isCurrent: file.fileId === activeFileId,
-            matches: file.matches.map((m) => ({
-              line: m.line,
-              text: m.text,
-              matchStart: m.matchStart,
-              matchEnd: m.matchEnd,
-            })),
-          });
-        }
-      }
-
-      for (const [dirtyFileId, dirtyInfo] of dirtyById.entries()) {
-        if (!seenIds.has(dirtyFileId)) {
-          const matches = scanContentMatches(dirtyInfo.content);
-          if (matches.length > 0) {
-            mergedResults.push({
-              fileId: dirtyFileId,
-              fileName: dirtyInfo.fileName,
-              isCurrent: dirtyFileId === activeFileId,
-              matches,
-            });
-          }
-        }
-      }
-
-      return mergedResults;
+    if (!effectiveQuery.trim() || !backendSearchData || !Array.isArray(backendSearchData.results)) {
+      return [];
     }
 
-    if (!re) return [];
-
-    const results: FileSearchResult[] = [];
-
-    for (const file of searchableFiles) {
-      const fileMatches = scanContentMatches(file.content);
-      if (fileMatches.length > 0) {
-        results.push({
-          fileId: file.id,
-          fileName: file.title,
-          isCurrent: file.isCurrent,
-          matches: fileMatches,
-        });
-      }
-    }
-
-    return results;
-  }, [
-    effectiveQuery,
-    backendSearchData,
-    activeFileId,
-    useRegex,
-    wholeWord,
-    caseSensitive,
-    searchableFiles,
-  ]);
+    return backendSearchData.results.map((file) => ({
+      fileId: file.fileId,
+      fileName: file.fileName,
+      isCurrent: file.fileId === activeFileId,
+      matches: file.matches.map((m) => ({
+        line: m.line,
+        text: m.text,
+        matchStart: m.matchStart,
+        matchEnd: m.matchEnd,
+      })),
+    }));
+  }, [effectiveQuery, backendSearchData, activeFileId]);
 
   const totalMatches = useMemo(
     () => fileResults.reduce((acc, f) => acc + f.matches.length, 0),

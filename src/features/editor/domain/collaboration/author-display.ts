@@ -27,9 +27,9 @@ const MONTH_NAMES = [
 ] as const;
 
 /**
- * Format ISO timestamp to standard Overleaf display: "6 October, 7:15 pm"
+ * Format ISO timestamp to standard review display: "6 October, 7:15 pm"
  */
-export function formatOverleafDate(iso: string | null | undefined): string {
+export function formatReviewDate(iso: string | null | undefined): string {
   if (!iso) return '';
   try {
     const d = new Date(iso);
@@ -47,6 +47,8 @@ export function formatOverleafDate(iso: string | null | undefined): string {
     return String(iso);
   }
 }
+
+export { formatReviewDate as formatOverleafDate };
 
 /**
  * Format relative time (e.g. "just now", "10m ago", "2h ago", "1d ago")

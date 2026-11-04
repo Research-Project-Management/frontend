@@ -150,16 +150,37 @@ export function useProjectExport() {
     }
   }, []);
 
-  const exportHtml = useCallback((options: { content: string; projectTitle?: string }): string | null => {
-    try {
-      const filename = exportDocumentAsHtml(options);
-      toast.success(`Exported ${filename} successfully!`, { id: 'export-html' });
-      return filename;
-    } catch (err: unknown) {
-      toast.error((err as Error)?.message || 'Failed to export HTML document.', { id: 'export-html' });
-      return null;
-    }
-  }, []);
+  const exportHtml = useCallback(
+    async (
+      options: {
+        pageId?: string;
+        content?: string;
+        projectTitle?: string;
+        includeChildren?: boolean;
+      },
+    ): Promise<string | null> => {
+      if (!options.pageId) {
+        toast.error('Unable to find project or document ID', { id: 'export-html' });
+        return null;
+      }
+      const toastId = toast.loading('Exporting document to HTML (.html)...');
+      setIsExporting(true);
+      try {
+        const filename = await exportDocumentAsHtml(options);
+        toast.success(`Exported ${filename} successfully!`, { id: toastId });
+        return filename;
+      } catch (err: unknown) {
+        toast.error(
+          (err as Error)?.message || 'Failed to export HTML document.',
+          { id: toastId },
+        );
+        return null;
+      } finally {
+        setIsExporting(false);
+      }
+    },
+    [],
+  );
 
   const exportVersionZip = useCallback(async (options: ExportVersionZipOptions): Promise<string | null> => {
     const toastId = toast.loading('Packaging historical snapshot into ZIP...');

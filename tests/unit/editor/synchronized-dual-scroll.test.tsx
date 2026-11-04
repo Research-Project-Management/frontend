@@ -6,7 +6,7 @@ import { PdfToolbar } from '@/features/editor/subsystems/compiler';
 import { useSettingsStore } from '@/features/editor/core';
 import { useWorkspaceStore } from '@/features/editor/core';
 import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/core';
-import { LatexCompilerEngine } from '@/features/editor/subsystems/compiler';
+import { CompilePipeline } from '@/features/editor/subsystems/compiler';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
 import type { SurfaceHandle } from '@/features/editor/subsystems/compiler';
 import type { SyncTeXMap } from '@/features/editor/subsystems/compiler/synctex/synctex-index';

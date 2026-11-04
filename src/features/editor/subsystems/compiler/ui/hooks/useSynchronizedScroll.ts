@@ -9,12 +9,13 @@
  * Capabilities:
  * 1. Bidirectional lock-scrolling between Editor (CodeMirror 6 / Visual) and PDF Preview.
  * 2. Anti-feedback loop latch: Prevents ping-pong feedback cycles when one pane drives the other.
- * 3. Smooth coordinate-based positioning via SyncTeX geometry with graceful page/fraction fallbacks.
+ * 3. Smooth coordinate-based positioning via Backend SyncTeX geometry with graceful page/fraction fallbacks.
  * 4. Respects the user's `syncScroll` preference toggle (defaults to true).
  */
 
 import { useEffect, useRef, useCallback } from 'react';
 import { editorCommandBus, getActiveEditorEngine } from '@/features/editor/core';
+import { DEFAULT_MAIN_FILE } from '@/features/editor/domain/constants/editor.constants';
 import { compilerCoordinator } from '@/features/editor/subsystems/compiler/coordinator/compiler.coordinator';
 import {
   resolveForwardDetail,
@@ -29,6 +30,7 @@ import type { PdfSurfaceHandle } from '@/features/editor/subsystems/compiler/ui/
 
 export interface UseSynchronizedScrollProps {
   enabled: boolean;
+  projectId?: string;
   pdfSurfaceRef: React.RefObject<PdfSurfaceHandle | null>;
   synctexMapRef: React.MutableRefObject<SyncTeXMap | null>;
   numPages: number;
@@ -41,6 +43,7 @@ export interface UseSynchronizedScrollProps {
 
 export function useSynchronizedScroll({
   enabled,
+  projectId,
   pdfSurfaceRef,
   synctexMapRef,
   numPages,
@@ -93,7 +96,6 @@ export function useSynchronizedScroll({
 
       setDriverWithTimeout('editor', 250);
 
-      const effectiveMap = synctexMapRef.current || compilerCoordinator.getSynctexMap();
       const effectiveScale =
         scale > 0
           ? scale
@@ -101,47 +103,62 @@ export function useSynchronizedScroll({
             ? containerWidth / widthPt
             : 1;
 
-      // Try forward resolution with precise coordinates
-      const detail = resolveForwardDetail(
-        cmd.line,
-        effectiveMap,
-        activeFilePath,
-        numPages || 1,
-      );
+      void (async () => {
+        if (projectId) {
+          const remoteDetail = await compilerCoordinator.resolveForwardRemote(
+            projectId,
+            activeFilePath || DEFAULT_MAIN_FILE,
+            cmd.line,
+          );
+          if (remoteDetail && remoteDetail.page) {
+            const y = remoteDetail.y !== undefined ? remoteDetail.y * effectiveScale : 0;
+            pdfSurfaceRef.current?.scrollToCoords?.(remoteDetail.page, y, 'auto');
+            return;
+          }
+        }
 
-      if (detail && detail.page) {
-        const y = detail.y !== undefined ? detail.y * effectiveScale : 0;
-        pdfSurfaceRef.current?.scrollToCoords?.(detail.page, y, 'auto');
-      } else {
-        // Fallback: estimate page number
-        const page = resolveForward(
+        const effectiveMap = synctexMapRef.current || compilerCoordinator.getSynctexMap();
+        const detail = resolveForwardDetail(
           cmd.line,
           effectiveMap,
           activeFilePath,
           numPages || 1,
         );
-        if (page) {
-          pdfSurfaceRef.current?.scrollToCoords?.(page, 0, 'auto');
-        } else if (numPages > 0) {
-          // Proportional scrolling fallback from Editor to Viewer (Overleaf parity)
-          const fraction =
-            cmd.fraction !== undefined
-              ? cmd.fraction
-              : cmd.totalLines && cmd.totalLines > 0
-                ? cmd.line / cmd.totalLines
-                : 0;
-          const rawTargetPage = fraction * numPages;
-          const targetPage = Math.min(numPages, Math.max(1, Math.floor(rawTargetPage) + 1));
-          const pageFraction = rawTargetPage - Math.floor(rawTargetPage);
-          const targetY = pageFraction * heightPt * effectiveScale;
-          pdfSurfaceRef.current?.scrollToCoords?.(targetPage, targetY, 'auto');
+
+        if (detail && detail.page) {
+          const y = detail.y !== undefined ? detail.y * effectiveScale : 0;
+          pdfSurfaceRef.current?.scrollToCoords?.(detail.page, y, 'auto');
+        } else {
+          const page = resolveForward(
+            cmd.line,
+            effectiveMap,
+            activeFilePath,
+            numPages || 1,
+          );
+          if (page) {
+            pdfSurfaceRef.current?.scrollToCoords?.(page, 0, 'auto');
+          } else if (numPages > 0) {
+            // Proportional scrolling fallback from Editor to Viewer (Overleaf parity)
+            const fraction =
+              cmd.fraction !== undefined
+                ? cmd.fraction
+                : cmd.totalLines && cmd.totalLines > 0
+                  ? cmd.line / cmd.totalLines
+                  : 0;
+            const rawTargetPage = fraction * numPages;
+            const targetPage = Math.min(numPages, Math.max(1, Math.floor(rawTargetPage) + 1));
+            const pageFraction = rawTargetPage - Math.floor(rawTargetPage);
+            const targetY = pageFraction * heightPt * effectiveScale;
+            pdfSurfaceRef.current?.scrollToCoords?.(targetPage, targetY, 'auto');
+          }
         }
-      }
+      })();
     });
 
     return unsub;
   }, [
     enabled,
+    projectId,
     synctexMapRef,
     activeFilePath,
     numPages,
@@ -165,45 +182,64 @@ export function useSynchronizedScroll({
 
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       rafRef.current = requestAnimationFrame(() => {
-        const effectiveMap = synctexMapRef.current || compilerCoordinator.getSynctexMap();
-        if (!effectiveMap) {
-          // Proportional scrolling fallback from Viewer to Editor (Overleaf parity)
-          const activeEngine = getActiveEditorEngine();
-          const totalLines = activeEngine?.getLineCount?.() || 100;
-          if (numPages > 0) {
-            const overallFraction = (info.page - 1 + (info.fraction ?? 0)) / numPages;
-            const targetLine = Math.min(
-              totalLines,
-              Math.max(1, Math.round(overallFraction * totalLines))
+        void (async () => {
+          if (projectId) {
+            const remoteResolved = await compilerCoordinator.resolveReverseRemote(
+              projectId,
+              info.page,
+              72,
+              info.y,
             );
+            if (remoteResolved?.line) {
+              editorCommandBus.dispatch({
+                type: 'editor:scroll-to-line',
+                line: remoteResolved.line,
+                smooth: true,
+              });
+              return;
+            }
+          }
+
+          const effectiveMap = synctexMapRef.current || compilerCoordinator.getSynctexMap();
+          if (!effectiveMap) {
+            // Proportional scrolling fallback from Viewer to Editor (Overleaf parity)
+            const activeEngine = getActiveEditorEngine();
+            const totalLines = activeEngine?.getLineCount?.() || 100;
+            if (numPages > 0) {
+              const overallFraction = (info.page - 1 + (info.fraction ?? 0)) / numPages;
+              const targetLine = Math.min(
+                totalLines,
+                Math.max(1, Math.round(overallFraction * totalLines)),
+              );
+              editorCommandBus.dispatch({
+                type: 'editor:scroll-to-line',
+                line: targetLine,
+                smooth: true,
+              });
+            }
+            return;
+          }
+
+          const resolved = resolveReverse(
+            info.fraction,
+            info.page,
+            effectiveMap,
+            72, // standard left margin in pt
+            info.y,
+            heightPt,
+          );
+
+          if (resolved?.line) {
             editorCommandBus.dispatch({
               type: 'editor:scroll-to-line',
-              line: targetLine,
+              line: resolved.line,
               smooth: true,
             });
           }
-          return;
-        }
-
-        const resolved = resolveReverse(
-          info.fraction,
-          info.page,
-          effectiveMap,
-          72, // standard left margin in pt
-          info.y,
-          heightPt,
-        );
-
-        if (resolved?.line) {
-          editorCommandBus.dispatch({
-            type: 'editor:scroll-to-line',
-            line: resolved.line,
-            smooth: true,
-          });
-        }
+        })();
       });
     },
-    [enabled, synctexMapRef, numPages, heightPt, setDriverWithTimeout],
+    [enabled, projectId, synctexMapRef, numPages, heightPt, setDriverWithTimeout],
   );
 
   return {

@@ -41,15 +41,13 @@ import { exportVersionAsZip } from '@/features/editor/sdk/archive/archive-export
 import {
   clearYjsProviderPool,
   flushYjsProviders,
-  updateActiveYjsDocContent,
 } from '@/features/editor/sdk/realtime/yjs-socket-provider';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
 import {
   editorCommandBus,
   usePageStore,
-  workspaceCoordinator,
   sessionCoordinator,
-  documentAuthority,
+  documentFacade,
 } from '@/features/editor/core';
 import { useCompileStore } from '@/features/editor/subsystems/compiler';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
@@ -159,6 +157,8 @@ export function HistoryPage({
     queryKey: historyKeys.versions(effectiveProjectId),
     queryFn: () => manuscriptService.history.getProjectVersions(effectiveProjectId),
     enabled: !!effectiveProjectId && open,
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
   });
 
   // Automatically select latest target version and target - 1 as base
@@ -204,6 +204,8 @@ export function HistoryPage({
         selectedTargetVersion!
       ),
     enabled: canCompare && open,
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000,
   });
 
   // Query snapshots for file restoration and diff viewer
@@ -214,6 +216,8 @@ export function HistoryPage({
         ? manuscriptService.history.getProjectSnapshot(effectiveProjectId, selectedBaseVersion)
         : null,
     enabled: canCompare && open,
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000,
   });
 
   // Automatically select first file when diff loads
@@ -252,10 +256,16 @@ export function HistoryPage({
 
   const createSnapshotMutation = useMutation({
     mutationFn: async (summary: string) => {
-      if (effectiveProjectId) {
-        flushYjsProviders(effectiveProjectId);
+      const hasDirtyBeforeSnapshot =
+        typeof sessionCoordinator.hasDirtyDocuments === 'function'
+          ? sessionCoordinator.hasDirtyDocuments()
+          : true;
+      if (hasDirtyBeforeSnapshot) {
+        if (effectiveProjectId) {
+          flushYjsProviders(effectiveProjectId);
+        }
+        await sessionCoordinator.flushAllPending();
       }
-      await sessionCoordinator.flushAllPending();
       return await manuscriptService.history.createProjectSnapshot(effectiveProjectId, { summary });
     },
     onSuccess: (newVersion) => {
@@ -288,7 +298,7 @@ export function HistoryPage({
         void draftStorageService.clearDraft(m.fileId);
       }
       if (effectiveProjectId) {
-        documentAuthority.clearProjectCache(effectiveProjectId);
+        documentFacade.clearProjectCache(effectiveProjectId);
         void draftStorageService.clearProjectDrafts(effectiveProjectId);
       }
       draftStorageService.clearMemoryCaches();
@@ -314,125 +324,40 @@ export function HistoryPage({
         throw new Error('Missing project, version or file information');
       }
 
-      // 1. Fetch snapshot of base version if not already cached
-      let snap = baseSnapshot;
-      if (!snap) {
-        snap = await manuscriptService.history.getProjectSnapshot(effectiveProjectId, selectedBaseVersion);
-      }
-      if (!snap || !snap.files) {
-        throw new Error(`Snapshot for Version ${selectedBaseVersion} not found`);
-      }
-
-      const fileData =
-        snap.files[activeFilePath] ||
-        snap.files[`/${activeFilePath}`] ||
-        snap.files[activeFilePath.replace(/^\//, '')];
-
-      if (!fileData) {
-        throw new Error(`File ${activeFilePath} not found in Version ${selectedBaseVersion}`);
-      }
-
-      const baseContent =
-        typeof fileData === 'string'
-          ? fileData
-          : fileData.content ?? (fileData.lines ? fileData.lines.join('\n') : '');
-
-      // 2. Resolve document ID for active file
-      const activeFileDiff = diffData?.files?.find(
-        (f) =>
-          f.path === activeFilePath ||
-          f.path === `/${activeFilePath}` ||
-          f.path === activeFilePath.replace(/^\//, '')
+      const restored = await manuscriptService.history.restoreProjectVersionFile(
+        effectiveProjectId,
+        selectedBaseVersion,
+        activeFilePath,
       );
-      const isFileDeleted = activeFileDiff?.status === 'deleted';
-      let docId: string | undefined =
-        !isFileDeleted && typeof fileData === 'object' && fileData !== null
-          ? fileData.docId
-          : undefined;
 
-      if (!docId && !isFileDeleted) {
-        const currentPage = usePageStore.getState().currentPage;
-        if (
-          currentPage &&
-          (currentPage.title === activeFilePath ||
-            currentPage.id === activeFilePath ||
-            activeFilePath.endsWith(`/${currentPage.title}`))
-        ) {
-          docId = currentPage.id;
-        }
-      }
-      if (!docId) {
-        const wsFiles = workspaceCoordinator.getProjectFiles() || [];
-        const matched = wsFiles.find(
-          (f) =>
-            f.title === activeFilePath ||
-            f.path === activeFilePath ||
-            f.title === activeFilePath.split('/').pop()
-        );
-        if (matched?.id) {
-          docId = matched.id;
-        }
-      }
-      if (!docId) {
-        const cachedByPath = lruDocumentCache.findByPath(activeFilePath);
-        if (cachedByPath?.fileId) {
-          docId = cachedByPath.fileId;
-        }
-      }
-
-      // 3. Update document content if docId found, or create new file if it was deleted
-      if (docId) {
-        const isYjsActive =
-          updateActiveYjsDocContent(docId, baseContent, effectiveProjectId, 'history-restore') ||
-          sessionCoordinator.isRealtimeConnected(docId);
-        if (isYjsActive) {
-          await sessionCoordinator.flushFile(docId);
-        } else {
-          const updated = await manuscriptService.docs.updateContent(docId, baseContent);
-          const nextRev =
-            updated && typeof updated === 'object' && 'rev' in updated && typeof updated.rev === 'number'
-              ? updated.rev
-              : undefined;
-          if (nextRev !== undefined) {
-            lruDocumentCache.setServerRev(docId, nextRev);
-          }
-        }
-      } else {
-        const created = await manuscriptService.docs.createChildFile({
-          parentPageId: effectivePageId || effectiveProjectId,
-          title: activeFilePath.replace(/^\//, ''),
-          content: baseContent,
-        });
-        if (created?.id) {
-          docId = created.id;
-        }
-      }
-
-      // 4. Capture automated non-destructive checkpoint
-      await manuscriptService.history.createProjectSnapshot(effectiveProjectId, {
-        summary: `Restored ${activeFilePath} from Version ${selectedBaseVersion}`,
-        isAutomatic: false,
-      });
-
-      return { filePath: activeFilePath, docId, baseVersion: selectedBaseVersion, baseContent };
+      return {
+        filePath: restored.path || activeFilePath,
+        docId: restored.docId ?? undefined,
+        baseVersion: selectedBaseVersion,
+        baseContent: restored.content ?? '',
+        rev: restored.rev,
+      };
     },
-    onSuccess: ({ filePath, docId, baseVersion, baseContent }) => {
+    onSuccess: ({ filePath, docId, baseVersion, baseContent, rev }) => {
       toast.success(`File "${filePath}" restored from Version ${baseVersion}`, { id: `history-restore-${filePath}` });
       setConfirmingFileRestore(false);
       let updatedMountedEngine = false;
       if (docId) {
+        if (typeof rev === 'number') {
+          lruDocumentCache.setServerRev(docId, rev);
+        }
         lruDocumentCache.updateContent(docId, baseContent, false);
         lruDocumentCache.markClean(docId);
         useCompileStore.getState().clearDirty(docId);
         void draftStorageService.clearDraft(docId);
-        const engine = documentAuthority.getEditorEngineForFile(docId);
+        const engine = documentFacade.getEditorEngineForFile(docId);
         if (engine) {
           engine.setContent(baseContent);
           updatedMountedEngine = true;
         }
       }
       const cachedByPath = lruDocumentCache.findByPath(filePath);
-      if ( cachedByPath && cachedByPath.fileId !== docId) {
+      if (cachedByPath && cachedByPath.fileId !== docId) {
         lruDocumentCache.updateContent(cachedByPath.fileId, baseContent, false);
         lruDocumentCache.markClean(cachedByPath.fileId);
         useCompileStore.getState().clearDirty(cachedByPath.fileId);

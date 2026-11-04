@@ -11,6 +11,23 @@ import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { InlineInput } from './subcomponents/FileTreePrimitives';
 import type { FileTreeNode } from '@/features/editor/subsystems/explorer/model/document-tree';
+import { isFolderOpen } from './hooks/useFileTree';
+
+export { isFolderOpen };
+
+const INTERNAL_DRAG_TYPES = ['application/flux-file-id', 'application/x-asset-id'] as const;
+
+function hasInternalDragType(dataTransfer: DataTransfer): boolean {
+  return INTERNAL_DRAG_TYPES.some((type) => dataTransfer.types.includes(type));
+}
+
+function getInternalDraggedFileId(dataTransfer: DataTransfer): string {
+  for (const type of INTERNAL_DRAG_TYPES) {
+    const val = dataTransfer.getData(type);
+    if (val) return val;
+  }
+  return '';
+}
 
 export interface FileTreeContainerProps {
   isDragging: boolean;
@@ -87,19 +104,13 @@ export function FileTreeContainer({
     <div
       className="relative min-h-0 flex-1 overflow-y-auto px-2 pt-2.5 pb-3 thin-scrollbar space-y-0.5 border-b border-border bg-surface"
       onDragEnter={(e) => {
-        if (
-          !e.dataTransfer.types.includes('application/flux-file-id') &&
-          !e.dataTransfer.types.includes('application/x-asset-id')
-        ) {
+        if (!hasInternalDragType(e.dataTransfer)) {
           handleDragEnter(e);
         }
       }}
       onDragLeave={handleDragLeave}
       onDragOver={(e) => {
-        if (
-          e.dataTransfer.types.includes('application/flux-file-id') ||
-          e.dataTransfer.types.includes('application/x-asset-id')
-        ) {
+        if (hasInternalDragType(e.dataTransfer)) {
           e.preventDefault();
           e.dataTransfer.dropEffect = 'move';
         } else {
@@ -107,9 +118,7 @@ export function FileTreeContainer({
         }
       }}
       onDrop={(e) => {
-        const internalFileId =
-          e.dataTransfer.getData('application/flux-file-id') ||
-          e.dataTransfer.getData('application/x-asset-id');
+        const internalFileId = getInternalDraggedFileId(e.dataTransfer);
         if (internalFileId) {
           e.preventDefault();
           e.stopPropagation();

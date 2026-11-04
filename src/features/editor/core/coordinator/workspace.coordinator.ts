@@ -25,7 +25,7 @@ import {
   parseVirtualFolderId,
 } from '@/features/editor/domain/document/document-naming';
 import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
-import { latexDagEngine } from '@/features/editor/domain/latex/latex-dag-engine';
+import { latexDependencyGraph } from '@/features/editor/domain/latex/dependency-graph';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics';
 import type {
@@ -39,7 +39,7 @@ import { sessionCoordinator } from './session.coordinator';
 import { useWorkspaceStore } from '../store/workspace.store';
 import { usePageStore } from '../store/editor.store';
 import { useSettingsStore } from '../store/settings.store';
-import { documentAuthority } from './document-authority.facade';
+import { documentFacade } from './document.facade';
 import { toast } from 'sonner';
 
 export interface CreateFileOptions {
@@ -89,11 +89,16 @@ const defaultNotificationPort: WorkspaceNotificationPort = {
 };
 
 const defaultStorePort: WorkspaceStorePort = {
-  getActiveProjectId: () =>
-    usePageStore.getState().projectId ||
-    usePageStore.getState().parentPageId ||
-    usePageStore.getState().currentPage?.id ||
-    null,
+  getActiveProjectId: () => {
+    const state = usePageStore.getState();
+    return (
+      state.rootPageId ||
+      state.parentPageId ||
+      state.projectId ||
+      state.currentPage?.id ||
+      null
+    );
+  },
   closeTab: (fileId: string) => {
     const wsStore = useWorkspaceStore.getState();
     if (wsStore.secondaryFileId === fileId) {
@@ -123,19 +128,37 @@ const defaultStorePort: WorkspaceStorePort = {
   getActiveDocumentId: () => usePageStore.getState().getActiveDocument()?.id ?? null,
 };
 
-export class WorkspaceCoordinatorRegistry {
+export class WorkspaceCoordinator {
   private initialized = false;
   private projectFiles: Array<{
     id: string;
     nodeId?: string;
     docId?: string | null;
     fileId?: string | null;
+    pageId?: string | null;
+    projectId?: string | null;
     isFolder?: boolean;
     title?: string;
     name?: string;
     path?: string;
     content?: unknown;
   }> = [];
+  private projectFilesByScope = new Map<
+    string,
+    Array<{
+      id: string;
+      nodeId?: string;
+      docId?: string | null;
+      fileId?: string | null;
+      pageId?: string | null;
+      projectId?: string | null;
+      isFolder?: boolean;
+      title?: string;
+      name?: string;
+      path?: string;
+      content?: unknown;
+    }>
+  >();
   private servicePort: WorkspaceServicePort = defaultServicePort;
   private notificationPort: WorkspaceNotificationPort = defaultNotificationPort;
   private storePort: WorkspaceStorePort = defaultStorePort;
@@ -323,10 +346,31 @@ export class WorkspaceCoordinatorRegistry {
     }
   }
 
-  private findProjectItem(itemId: string) {
-    return this.projectFiles.find(
+  private findProjectItem(itemId: string, scopeKey?: string) {
+    const list =
+      (scopeKey ? this.projectFilesByScope.get(scopeKey) : undefined) || this.projectFiles;
+    return list.find(
       (f) => f.id === itemId || f.nodeId === itemId || f.docId === itemId || f.fileId === itemId,
     );
+  }
+
+  /**
+   * Resolves the canonical document ID (`docId`) for a virtual tree item ID, nodeId, or path.
+   */
+  public resolveDocId(itemIdOrPath: string, scopeKey?: string): string {
+    const cleanTarget = normalizeVirtualPath(itemIdOrPath);
+    const list =
+      (scopeKey ? this.projectFilesByScope.get(scopeKey) : undefined) || this.projectFiles;
+    const matched = list.find(
+      (f) =>
+        f.id === itemIdOrPath ||
+        f.nodeId === itemIdOrPath ||
+        f.docId === itemIdOrPath ||
+        f.fileId === itemIdOrPath ||
+        (cleanTarget &&
+          normalizeVirtualPath(f.path || f.title || f.name || '') === cleanTarget),
+    );
+    return matched?.docId || matched?.id || itemIdOrPath;
   }
 
   /**
@@ -419,11 +463,10 @@ export class WorkspaceCoordinatorRegistry {
         const nextTabs = tabs.map((t) => {
           let nextTab = t;
           if (t.path) {
-            const hasLeadingSlash = t.path.startsWith('/');
-            const rewrittenPath = rewritePathPrefix(t.path, oldPrefix, newPrefix);
+            const rewrittenPath = rewritePathPrefix(t.path, oldPrefix, newPrefix, true);
             if (rewrittenPath !== null) {
               changed = true;
-              nextTab = { ...nextTab, path: hasLeadingSlash ? `/${rewrittenPath}` : rewrittenPath };
+              nextTab = { ...nextTab, path: rewrittenPath };
             }
           }
           if (t.title) {
@@ -489,7 +532,10 @@ export class WorkspaceCoordinatorRegistry {
         }
         return f;
       });
-      documentAuthority.hydrateServerProjectFiles(effectiveProjectId, this.projectFiles);
+      if (effectiveProjectId) {
+        this.projectFilesByScope.set(effectiveProjectId, this.projectFiles);
+      }
+      documentFacade.hydrateServerProjectFiles(effectiveProjectId, this.projectFiles);
     }
 
     // 4. Cascade to Diagnostics Coordinator (alias old path to new path)
@@ -499,16 +545,16 @@ export class WorkspaceCoordinatorRegistry {
     }
 
     // 5. Re-index in LaTeX DAG & Symbols
-    latexDagEngine.removeFileNode(oldPath);
-    const contentToIndex = cachedModel?.content || documentAuthority.getDocumentContent(itemId);
+    latexDependencyGraph.removeFileNode(oldPath);
+    const contentToIndex = cachedModel?.content || documentFacade.getDocumentContent(itemId);
     if (contentToIndex) {
-      latexDagEngine.parseAndRegister(newPath, contentToIndex, itemId);
+      latexDependencyGraph.parseAndRegister(newPath, contentToIndex, itemId);
       latexSymbolsIndex.indexFile(itemId, newPath, contentToIndex);
     }
     for (const desc of cascadedDescendants) {
-      latexDagEngine.removeFileNode(desc.oldPath);
+      latexDependencyGraph.removeFileNode(desc.oldPath);
       if (desc.content) {
-        latexDagEngine.parseAndRegister(desc.newPath, desc.content, desc.fileId);
+        latexDependencyGraph.parseAndRegister(desc.newPath, desc.content, desc.fileId);
         latexSymbolsIndex.indexFile(desc.fileId, desc.newPath, desc.content);
       }
     }
@@ -526,40 +572,26 @@ export class WorkspaceCoordinatorRegistry {
     const resolvedNodeId = fileObj?.nodeId || fileObj?.id || fileId;
     const filePath = cachedModel?.filePath || fileObj?.path || fileObj?.title || fileObj?.name;
 
-    sessionCoordinator.evictDeletedFile(fileId);
-    if (resolvedDocId !== fileId) {
-      sessionCoordinator.evictDeletedFile(resolvedDocId);
+    const candidateIds = new Set<string>([fileId]);
+    if (resolvedDocId) candidateIds.add(resolvedDocId);
+    if (resolvedNodeId) candidateIds.add(resolvedNodeId);
+
+    for (const id of candidateIds) {
+      sessionCoordinator.evictDeletedFile(id);
+      lruDocumentCache.evictModel(id);
+      editorCommandBus.dispatch({ type: 'navigation:close-tab', fileId: id });
+      editorCommandBus.dispatch({ type: 'navigation:close-tab', fileId: `asset:${id}` });
+      this.closeTabInStore(id);
+      this.closeTabInStore(`asset:${id}`);
     }
-    lruDocumentCache.evictModel(fileId);
-    if (resolvedDocId !== fileId) {
-      lruDocumentCache.evictModel(resolvedDocId);
-    }
-    editorCommandBus.dispatch({ type: 'navigation:close-tab', fileId });
-    editorCommandBus.dispatch({ type: 'navigation:close-tab', fileId: `asset:${fileId}` });
-    if (resolvedDocId !== fileId) {
-      editorCommandBus.dispatch({ type: 'navigation:close-tab', fileId: resolvedDocId });
-    }
-    if (resolvedNodeId !== fileId) {
-      editorCommandBus.dispatch({ type: 'navigation:close-tab', fileId: resolvedNodeId });
-      editorCommandBus.dispatch({ type: 'navigation:close-tab', fileId: `asset:${resolvedNodeId}` });
-    }
-    this.closeTabInStore(fileId);
-    this.closeTabInStore(`asset:${fileId}`);
-    if (resolvedDocId !== fileId) {
-      this.closeTabInStore(resolvedDocId);
-    }
-    if (resolvedNodeId !== fileId) {
-      this.closeTabInStore(resolvedNodeId);
-      this.closeTabInStore(`asset:${resolvedNodeId}`);
-    }
+
     const wsStore = useWorkspaceStore.getState();
-    if (wsStore.secondaryFileId === fileId || wsStore.secondaryFileId === resolvedDocId) {
+    if (wsStore.secondaryFileId && candidateIds.has(wsStore.secondaryFileId)) {
       wsStore.setSecondaryFileId(null);
     }
     const pageStore = usePageStore.getState();
     if (
-      pageStore.selectedAsset?.id === fileId ||
-      pageStore.selectedAsset?.id === resolvedNodeId ||
+      (pageStore.selectedAsset?.id && candidateIds.has(pageStore.selectedAsset.id)) ||
       (filePath &&
         normalizeVirtualPath(pageStore.selectedAsset?.filename) ===
           normalizeVirtualPath(filePath))
@@ -574,7 +606,7 @@ export class WorkspaceCoordinatorRegistry {
           sessionCoordinator.evictDeletedFile(model.fileId);
           lruDocumentCache.evictModel(model.fileId);
           this.closeTabInStore(model.fileId);
-          latexDagEngine.removeFileNode(model.filePath);
+          latexDependencyGraph.removeFileNode(model.filePath);
           latexSymbolsIndex.removeFile(model.fileId, model.filePath);
         }
       }
@@ -609,7 +641,7 @@ export class WorkspaceCoordinatorRegistry {
       }
     }
 
-    latexDagEngine.removeFileNode(filePath || fileId);
+    latexDependencyGraph.removeFileNode(filePath || fileId);
     latexSymbolsIndex.removeFile(fileId, filePath);
     if (this.projectFiles.length > 0 && effectiveProjectId) {
       this.projectFiles = this.projectFiles.filter((f) => {
@@ -619,7 +651,8 @@ export class WorkspaceCoordinatorRegistry {
         }
         return true;
       });
-      documentAuthority.hydrateServerProjectFiles(effectiveProjectId, this.projectFiles);
+      this.projectFilesByScope.set(effectiveProjectId, this.projectFiles);
+      documentFacade.hydrateServerProjectFiles(effectiveProjectId, this.projectFiles);
     }
   }
 
@@ -870,7 +903,7 @@ export class WorkspaceCoordinatorRegistry {
       projectId,
     });
     if (content) {
-      latexDagEngine.parseAndRegister(filePath, content, fileId);
+      latexDependencyGraph.parseAndRegister(filePath, content, fileId);
       latexSymbolsIndex.indexFile(fileId, filePath, content);
     }
   }
@@ -881,8 +914,23 @@ export class WorkspaceCoordinatorRegistry {
   /**
    * High-speed initial bulk indexing of all project files for cross-referencing and DAG
    */
-  public initProjectSymbols(files: Array<{ id: string; nodeId?: string; docId?: string | null; fileId?: string | null; isFolder?: boolean; title?: string; name?: string; path?: string; content?: unknown }>): void {
-    const projectKey = this.getActiveProjectId() || 'default';
+  public initProjectSymbols(
+    files: Array<{
+      id: string;
+      nodeId?: string;
+      docId?: string | null;
+      fileId?: string | null;
+      pageId?: string | null;
+      projectId?: string | null;
+      isFolder?: boolean;
+      title?: string;
+      name?: string;
+      path?: string;
+      content?: unknown;
+    }>,
+    scopeId?: string,
+  ): void {
+    const projectKey = scopeId || this.getActiveProjectId() || 'default';
     const fingerprint = `${projectKey}::${files
       .map((f) => {
         const path = f.path || f.title || f.name || f.id;
@@ -899,34 +947,42 @@ export class WorkspaceCoordinatorRegistry {
     this.lastIndexedProjectKey = projectKey;
     this.lastIndexedFingerprint = fingerprint;
 
-    // Preserve any structure-synced folder/asset/nodeId records when merging incoming doc files
-    const preservedStructureRecords = projectChanged
-      ? []
-      : this.projectFiles.filter((pf) => pf.isFolder || pf.fileId);
-    const existingById = new Map(this.projectFiles.map((pf) => [pf.id, pf]));
+    // Preserve structure-synced folder/asset/nodeId records scoped to this specific manuscript workspace
+    const scopedExisting = this.projectFilesByScope.get(projectKey) ?? (projectChanged ? [] : this.projectFiles);
+    const preservedStructureRecords = scopedExisting.filter(
+      (pf) =>
+        (pf.isFolder || pf.fileId) &&
+        (!pf.pageId || pf.pageId === projectKey),
+    );
+    const existingById = new Map(scopedExisting.map((pf) => [pf.id, pf]));
     const mergedDocs = files.map((f) => {
       const prior = existingById.get(f.id);
       return prior
         ? {
             ...prior,
             ...f,
+            pageId: f.pageId ?? prior.pageId ?? projectKey,
             nodeId: f.nodeId ?? prior.nodeId,
             docId: f.docId ?? prior.docId ?? f.id,
           }
-        : f;
+        : {
+            ...f,
+            pageId: f.pageId ?? projectKey,
+          };
     });
     const mergedDocIds = new Set(mergedDocs.map((d) => d.id));
     this.projectFiles = [
       ...mergedDocs,
       ...preservedStructureRecords.filter((r) => !mergedDocIds.has(r.id)),
     ];
+    this.projectFilesByScope.set(projectKey, this.projectFiles);
 
     latexSymbolsIndex.clear();
-    latexDagEngine.clear();
+    latexDependencyGraph.clear();
     if (projectChanged) {
       diagnosticsCoordinator.clearDiagnostics();
     }
-    documentAuthority.hydrateServerProjectFiles(projectKey, this.projectFiles);
+    documentFacade.hydrateServerProjectFiles(projectKey, this.projectFiles);
   }
 
   /**
@@ -936,14 +992,36 @@ export class WorkspaceCoordinatorRegistry {
   public syncStructureItems(
     items: Array<{
       id: string;
+      nodeId?: string;
+      pageId?: string | null;
+      projectId?: string | null;
       docId?: string | null;
       fileId?: string | null;
       filename?: string;
       path?: string;
       isFolder?: boolean;
     }>,
+    scopeId?: string,
   ): void {
     if (!Array.isArray(items) || items.length === 0) return;
+    const activeScope =
+      scopeId ||
+      items[0]?.pageId ||
+      this.getActiveProjectId() ||
+      'default';
+    const scopeSwitched =
+      this.lastIndexedProjectKey !== '' &&
+      activeScope !== 'default' &&
+      this.lastIndexedProjectKey !== activeScope;
+    if (scopeSwitched) {
+      this.lastIndexedProjectKey = activeScope;
+      this.lastIndexedFingerprint = '';
+    }
+
+    const baseList = scopeSwitched
+      ? (this.projectFilesByScope.get(activeScope) ?? [])
+      : this.projectFiles.filter((pf) => !pf.pageId || pf.pageId === activeScope);
+
     const byId = new Map<
       string,
       {
@@ -951,6 +1029,8 @@ export class WorkspaceCoordinatorRegistry {
         nodeId?: string;
         docId?: string | null;
         fileId?: string | null;
+        pageId?: string | null;
+        projectId?: string | null;
         isFolder?: boolean;
         title?: string;
         name?: string;
@@ -958,7 +1038,7 @@ export class WorkspaceCoordinatorRegistry {
         content?: unknown;
       }
     >();
-    for (const existing of this.projectFiles) {
+    for (const existing of baseList) {
       byId.set(existing.id, existing);
     }
     for (const item of items) {
@@ -968,7 +1048,9 @@ export class WorkspaceCoordinatorRegistry {
       byId.set(primaryId, {
         ...existing,
         id: primaryId,
-        nodeId: item.id,
+        nodeId: item.nodeId || item.id,
+        pageId: item.pageId ?? existing?.pageId ?? activeScope,
+        projectId: item.projectId ?? existing?.projectId ?? null,
         docId: item.docId ?? existing?.docId ?? null,
         fileId: item.fileId ?? existing?.fileId ?? null,
         isFolder: Boolean(item.isFolder),
@@ -978,12 +1060,20 @@ export class WorkspaceCoordinatorRegistry {
       });
     }
     this.projectFiles = Array.from(byId.values());
+    if (activeScope) {
+      this.projectFilesByScope.set(activeScope, this.projectFiles);
+    }
   }
 
   /**
    * Returns all known project files from the most recent workspace load or indexing.
    */
-  public getProjectFiles(): Array<{ id: string; title?: string; name?: string; path?: string; content?: unknown }> {
+  public getProjectFiles(
+    scopeId?: string,
+  ): Array<{ id: string; title?: string; name?: string; path?: string; content?: unknown }> {
+    if (scopeId && this.projectFilesByScope.has(scopeId)) {
+      return this.projectFilesByScope.get(scopeId)!;
+    }
     return this.projectFiles;
   }
 
@@ -1026,4 +1116,5 @@ export class WorkspaceCoordinatorRegistry {
   }
 }
 
-export const workspaceCoordinator = new WorkspaceCoordinatorRegistry();
+export { WorkspaceCoordinator as WorkspaceCoordinatorRegistry };
+export const workspaceCoordinator = new WorkspaceCoordinator();

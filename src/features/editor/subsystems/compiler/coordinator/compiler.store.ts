@@ -5,7 +5,8 @@
  */
 
 import { create } from 'zustand';
-import type { CompileStatus, CompileError } from '@/features/editor/domain/types/compiler.types';
+import type { CompileStatus, CompileError, ParsedLog } from '@/features/editor/domain/types/compiler.types';
+import type { CompilerDiagnostic } from '@/features/editor/sdk/manuscript/types';
 import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 
@@ -32,6 +33,10 @@ export interface DocumentCompilerState {
   compileLog: string | null;
   /** Parsed error list from the last failed compilation */
   compileErrors: CompileError[];
+  /** Full structured diagnostics from backend compiler */
+  compileDiagnostics: CompilerDiagnostic[];
+  /** Structured ParsedLog from backend diagnostics */
+  parsedLog: ParsedLog | null;
   pdfUrl: string | null;
   lastCompiledAt: Date | null;
   pendingCompile: boolean;
@@ -40,6 +45,8 @@ export interface DocumentCompilerState {
   setCompileStatus: (status: CompileStatus) => void;
   setCompileLog: (log: string | null) => void;
   setCompileErrors: (errors: CompileError[]) => void;
+  setCompileDiagnostics: (diagnostics: CompilerDiagnostic[]) => void;
+  setParsedLog: (parsedLog: ParsedLog | null) => void;
   /** Sets the PDF blob URL, revoking the previous blob URL to prevent leaks */
   setPdfUrl: (url: string | null) => void;
   setLastCompiledAt: (date: Date | null) => void;
@@ -96,6 +103,8 @@ export const useCompileStore = create<DocumentCompilerState>()((set, get) => ({
   compileStatus: 'idle',
   compileLog: null,
   compileErrors: [],
+  compileDiagnostics: [],
+  parsedLog: null,
   pdfUrl: null,
   lastCompiledAt: null,
   pendingCompile: false,
@@ -119,6 +128,14 @@ export const useCompileStore = create<DocumentCompilerState>()((set, get) => ({
     set({ compileErrors: errors });
   },
 
+  setCompileDiagnostics(diagnostics) {
+    set({ compileDiagnostics: diagnostics });
+  },
+
+  setParsedLog(parsedLog) {
+    set({ parsedLog });
+  },
+
   setPdfUrl(url) {
     // Revoke the old blob URL before setting the new one to prevent memory leaks,
     // but only when the URL actually changes to avoid invalidating the active PDF.
@@ -138,7 +155,12 @@ export const useCompileStore = create<DocumentCompilerState>()((set, get) => ({
   },
 
   clearLogs() {
-    set({ compileLog: null, compileErrors: [] });
+    set({
+      compileLog: null,
+      compileErrors: [],
+      compileDiagnostics: [],
+      parsedLog: null,
+    });
   },
 
   resetCompiler() {
@@ -154,6 +176,8 @@ export const useCompileStore = create<DocumentCompilerState>()((set, get) => ({
       pdfUrl: null,
       compileLog: null,
       compileErrors: [],
+      compileDiagnostics: [],
+      parsedLog: null,
       compileStatus: 'idle',
       pendingCompile: false,
     });

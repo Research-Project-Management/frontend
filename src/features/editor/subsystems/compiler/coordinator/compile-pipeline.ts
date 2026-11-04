@@ -1,5 +1,5 @@
 /**
- * compilation-pipeline.ts
+ * compile-pipeline.ts
  *
  * Domain pipeline for client-side compilation orchestration:
  * - PDF decoding, base64 data URL handling, and blob conversion
@@ -154,7 +154,7 @@ export interface CompileExecutionResult {
   flushErrors?: Array<{ fileId: string; error: unknown }>;
 }
 
-export interface CompilerExecutionEngine {
+export interface CompilerPort {
   compile(opts: CompileExecutionOptions): Promise<CompileExecutionResult>;
   cancelInFlightCompile(projectId?: string): void;
   forceSync?(projectId: string): Promise<{ synced: string[] }>;
@@ -172,15 +172,16 @@ export interface CompilerExecutionEngine {
   ): Promise<{ sourcePath: string | null; line: number } | null>;
 }
 
-export type CompilerExecutionPort = CompilerExecutionEngine;
+export type CompilerExecutionEngine = CompilerPort;
+export type CompilerExecutionPort = CompilerPort;
 
-// Active compile controller for in-flight cancellation (Overleaf debounce & anti-stacking)
+// Active compile controller for in-flight cancellation (debounce & anti-stacking)
 let activeCompileController: AbortController | null = null;
 let activeCompileProjectId: string | null = null;
 
-// ── Deep Compiler Engine ──────────────────────────────────────────────────────
+// ── Deep Compile Pipeline ─────────────────────────────────────────────────────
 
-export const LatexCompilerEngine = {
+export const CompilePipeline = {
   /**
    * Cancels any ongoing compilation request to free server resources.
    */
@@ -229,7 +230,7 @@ export const LatexCompilerEngine = {
     const currentSignal = controller.signal;
 
     // 2. Pre-compile dirty-file sync: await non-realtime dirty file flushes if not already flushed
-    //    by CompilationFlushBarrier so POST /manuscripts/compile never races against in-flight PUTs.
+    //    by FlushBarrier so POST /manuscripts/compile never races against in-flight PUTs.
     const flushedFileIds: string[] = [];
     const flushErrors: Array<{ fileId: string; error: unknown }> = [];
 
@@ -240,7 +241,7 @@ export const LatexCompilerEngine = {
           flushedFileIds.push(fileId);
           continue;
         }
-        // If sessionCoordinator already flushed this file (via CompilationFlushBarrier)
+        // If sessionCoordinator already flushed this file (via FlushBarrier)
         // and its LRU model is now clean, skip redundant flush.
         if (!lruDocumentCache.isDirty(fileId)) {
           flushedFileIds.push(fileId);
@@ -256,7 +257,7 @@ export const LatexCompilerEngine = {
             })
             .catch((err: unknown) => {
               flushErrors.push({ fileId, error: err });
-              logger.debug(`[LatexCompilerEngine] Flush notice on ${fileId}`, { error: err });
+              logger.debug(`[CompilePipeline] Flush notice on ${fileId}`, { error: err });
             }),
         );
       }
@@ -317,7 +318,7 @@ export const LatexCompilerEngine = {
 
     try {
       if (currentSignal.aborted) {
-        logger.debug('[LatexCompilerEngine] Compile request was aborted before execution.');
+        logger.debug('[CompilePipeline] Compile request was aborted before execution.');
         return {
           status: 'aborted',
           success: false,
@@ -333,7 +334,7 @@ export const LatexCompilerEngine = {
       const data = await manuscriptService.compiler.compile(payload, currentSignal);
 
       if (currentSignal.aborted || data?.error?.toLowerCase().includes('aborted')) {
-        logger.debug('[LatexCompilerEngine] Compile request aborted or superseded.');
+        logger.debug('[CompilePipeline] Compile request aborted or superseded.');
         return {
           status: 'aborted',
           success: false,
@@ -410,7 +411,7 @@ export const LatexCompilerEngine = {
       }
 
       const log = data?.logs || data?.error || 'Compilation finished without generating a PDF.';
-      const parsedErrors = parseCompileErrors(log);
+      const parsedErrors = parseCompileErrors(log, data?.diagnostics);
 
       return {
         status: 'error',
@@ -429,7 +430,7 @@ export const LatexCompilerEngine = {
         currentSignal.aborted;
 
       if (isAborted) {
-        logger.debug('[LatexCompilerEngine] Previous compile request aborted in favor of newer request.');
+        logger.debug('[CompilePipeline] Previous compile request aborted in favor of newer request.');
         return {
           status: 'aborted',
           success: false,
@@ -483,7 +484,7 @@ export const LatexCompilerEngine = {
       });
       return res ?? null;
     } catch (err) {
-      logger.debug('[LatexCompilerEngine] Remote forward sync failed', { err });
+      logger.debug('[CompilePipeline] Remote forward sync failed', { err });
       return null;
     }
   },
@@ -509,7 +510,7 @@ export const LatexCompilerEngine = {
       }
       return null;
     } catch (err) {
-      logger.debug('[LatexCompilerEngine] Remote reverse sync failed', { err });
+      logger.debug('[CompilePipeline] Remote reverse sync failed', { err });
       return null;
     }
   },
@@ -531,5 +532,5 @@ export const LatexCompilerEngine = {
   resolveReverse,
 };
 
+export { CompilePipeline as LatexCompilerEngine };
 export { extractDoiFromText, parsePdfDate } from '@/features/editor/subsystems/compiler/synctex/pdf-resolver';
-

@@ -12,8 +12,8 @@
  */
 
 import type { CompileError } from '@/features/editor/domain/types/compiler.types';
-import { normalizeLatexPath } from '@/features/editor/domain/latex/latex-dag-engine';
-import { heuristicLatexErrorFix } from '@/features/editor/domain/ai/ai-error-assist';
+import { normalizeLatexPath } from '@/features/editor/domain/latex/dependency-graph';
+import { fixLatexError } from '@/features/editor/domain/ai/ai-error-assist';
 import type { EditorDiagnosticItem } from '@/features/editor/domain/types/diagnostics.types';
 import { type WarningFilterOptions, filterDiagnostics } from '@/features/editor/domain/latex/warning-filter';
 import { useSettingsStore, type DocumentSettingsState } from '@/features/editor/core/store/settings.store';
@@ -87,7 +87,7 @@ function areSummariesEqual(a: FileDiagnosticsSummary | undefined, b: FileDiagnos
   );
 }
 
-export class DiagnosticsCoordinatorRegistry {
+export class DiagnosticsCoordinator {
   private static readonly MAX_ALIAS_MAP_SIZE = 500;
   private fileIndex = new Map<string, IndexedDiagnosticItem[]>();
   private linterIndex = new Map<string, IndexedDiagnosticItem[]>();
@@ -264,7 +264,7 @@ export class DiagnosticsCoordinatorRegistry {
   private setBoundedAlias(key: string, canonical: string): void {
     if (this.aliasMap.has(key)) {
       this.aliasMap.delete(key);
-    } else if (this.aliasMap.size >= DiagnosticsCoordinatorRegistry.MAX_ALIAS_MAP_SIZE) {
+    } else if (this.aliasMap.size >= DiagnosticsCoordinator.MAX_ALIAS_MAP_SIZE) {
       const oldest = this.aliasMap.keys().next().value;
       if (oldest !== undefined) {
         this.aliasMap.delete(oldest);
@@ -324,7 +324,7 @@ export class DiagnosticsCoordinatorRegistry {
       const canonicalKey = rawFile ? this.resolveCanonicalKey(rawFile) : normDefault;
 
       const heuristic = !err.suggestion
-        ? heuristicLatexErrorFix({
+        ? fixLatexError({
             errorMessage: err.message,
             errorLine: err.line,
             errorFile: err.file || defaultFile,
@@ -696,7 +696,8 @@ export class DiagnosticsCoordinatorRegistry {
   }
 }
 
-export const diagnosticsCoordinator = new DiagnosticsCoordinatorRegistry();
+export { DiagnosticsCoordinator as DiagnosticsCoordinatorRegistry };
+export const diagnosticsCoordinator = new DiagnosticsCoordinator();
 
 const syncFilterOptions = (state: DocumentSettingsState) => {
   diagnosticsCoordinator.setFilterOptions({

@@ -9,8 +9,9 @@ import { lruDocumentCache } from '@/features/editor/domain/document/lru-document
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 import type { EditorStorageItem as StorageItem } from '@/features/editor/domain/types/storage-item.types';
 import { TEX_EXTS, type PendingUploadItem as PendingItem } from '@/features/editor/subsystems/explorer/ui/modals/UploadConflictDialog';
-import { parseZipArchive, extractAndImportZipToProject } from '@/features/editor/sdk/archive/archive-import';
+import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
+import { normalizeVirtualPath, parseVirtualFolderId } from '@/features/editor/domain/document/document-naming';
 import { readEntriesRecursively } from '../modals/directory-reader';
 
 export interface UseFileUploadOptions {
@@ -20,12 +21,31 @@ export interface UseFileUploadOptions {
   files: Array<{ id: string; title: string }> | undefined;
   projectFiles: StorageItem[] | undefined;
   createFileMutation: {
-    mutate: (vars: { parentPageId: string; title: string; content?: string }, opts?: { onSettled?: () => void }) => void;
-    mutateAsync: (vars: { parentPageId: string; title: string; content?: string }) => Promise<{ id: string }>;
+    mutate: (
+      vars: { parentPageId: string; title: string; content?: string; skipInvalidation?: boolean; silent?: boolean },
+      opts?: { onSettled?: () => void },
+    ) => void;
+    mutateAsync: (vars: {
+      parentPageId: string;
+      title: string;
+      content?: string;
+      skipInvalidation?: boolean;
+      silent?: boolean;
+    }) => Promise<{ id: string }>;
   };
   uploadFile: {
-    mutate: (vars: { file: File; projectId: string; pageId: string; parentId?: string }, opts?: { onSettled?: () => void }) => void;
-    mutateAsync: (vars: { file: File; projectId: string; pageId: string; parentId?: string }) => Promise<unknown>;
+    mutate: (
+      vars: { file: File; projectId: string; pageId: string; parentId?: string; skipInvalidation?: boolean; silent?: boolean },
+      opts?: { onSettled?: () => void },
+    ) => void;
+    mutateAsync: (vars: {
+      file: File;
+      projectId: string;
+      pageId: string;
+      parentId?: string;
+      skipInvalidation?: boolean;
+      silent?: boolean;
+    }) => Promise<unknown>;
   };
   updateContentMutation: {
     mutateAsync: (vars: { pageId: string; content: string }) => Promise<unknown>;
@@ -60,12 +80,12 @@ export function useFileUpload({
   const existingNames = useMemo(() => {
     const names = new Set<string>();
     files?.forEach((f) => {
-      const clean = f.title.replace(/^\/+/, '');
+      const clean = normalizeVirtualPath(f.title);
       if (clean) names.add(clean);
     });
     projectFiles?.forEach((f) => {
       if (!f.isFolder) {
-        const relPath = (f.path || f.filename || '').replace(/^\/+/, '');
+        const relPath = normalizeVirtualPath(f.path || f.filename || '');
         if (relPath) names.add(relPath);
       }
     });
@@ -77,7 +97,7 @@ export function useFileUpload({
     (items: { file: File; name: string }[]): PendingItem[] => {
       const seen = new Set<string>();
       return items.map((item) => {
-        const cleanName = item.name.replace(/^\/+/, '');
+        const cleanName = normalizeVirtualPath(item.name);
         const isDup = existingNames.has(cleanName) || seen.has(cleanName);
         seen.add(cleanName);
         const isZip = cleanName.toLowerCase().endsWith('.zip');
@@ -100,13 +120,13 @@ export function useFileUpload({
       let n = 2;
       let candidate = `${base}_${n}${ext}`;
       while (
-        existingNames.has(candidate.replace(/^\/+/, '')) ||
-        batchAllocatedNames?.has(candidate.replace(/^\/+/, ''))
+        existingNames.has(normalizeVirtualPath(candidate)) ||
+        batchAllocatedNames?.has(normalizeVirtualPath(candidate))
       ) {
         n++;
         candidate = `${base}_${n}${ext}`;
       }
-      batchAllocatedNames?.add(candidate.replace(/^\/+/, ''));
+      batchAllocatedNames?.add(normalizeVirtualPath(candidate));
       return candidate;
     },
     [existingNames],
@@ -222,25 +242,32 @@ export function useFileUpload({
       const tabProjectId = extractProjectId(parentPage) || projectId || '';
       setUploadingCount((prev) => prev + droppedFiles.length);
 
-      const settle = () => setUploadingCount((prev) => Math.max(0, prev - 1));
+      let batchRemaining = droppedFiles.length;
+      const settle = () => {
+        batchRemaining = Math.max(0, batchRemaining - 1);
+        setUploadingCount((prev) => Math.max(0, prev - 1));
+        if (batchRemaining === 0 && parentPageId) {
+          invalidateFileTreeQueries(queryClient, { parentPageId, includeDeleted: false });
+          editorCommandBus.dispatch({ type: 'filetree:updated' });
+        }
+      };
 
       let resolvedFolderPath = '';
       let resolvedFolderId: string | undefined = folderId;
-      if (folderId.startsWith('folder:')) {
-        resolvedFolderPath = folderId.slice('folder:'.length).replace(/^\/+/, '').replace(/\/+$/, '');
+      const virtualPath = parseVirtualFolderId(folderId);
+      if (virtualPath !== null) {
+        resolvedFolderPath = virtualPath;
         const matchingFolder = projectFiles?.find(
           (pf) =>
             pf.isFolder &&
-            ((pf.path && pf.path.replace(/^\/+/, '').toLowerCase() === resolvedFolderPath.toLowerCase()) ||
+            ((pf.path && normalizeVirtualPath(pf.path).toLowerCase() === resolvedFolderPath.toLowerCase()) ||
               pf.filename.toLowerCase() === resolvedFolderPath.toLowerCase()),
         );
         resolvedFolderId = matchingFolder?.id;
       } else {
         const folderItem = projectFiles?.find((pf) => pf.id === folderId);
         if (folderItem) {
-          resolvedFolderPath = (folderItem.path || folderItem.filename || '')
-            .replace(/^\/+/, '')
-            .replace(/\/+$/, '');
+          resolvedFolderPath = normalizeVirtualPath(folderItem.path || folderItem.filename || '');
         }
       }
 
@@ -251,7 +278,7 @@ export function useFileUpload({
           reader.onload = () => {
             const fullTitle = resolvedFolderPath ? `${resolvedFolderPath}/${file.name}` : file.name;
             createFileMutation.mutate(
-              { parentPageId, title: fullTitle, content: reader.result as string },
+              { parentPageId, title: fullTitle, content: reader.result as string, skipInvalidation: true },
               { onSettled: settle },
             );
           };
@@ -263,13 +290,19 @@ export function useFileUpload({
             ? new File([file], `${resolvedFolderPath}/${file.name}`, { type: file.type })
             : file;
           uploadFile.mutate(
-            { file: fileForUpload, projectId: tabProjectId, pageId: parentPageId, parentId: resolvedFolderId },
+            {
+              file: fileForUpload,
+              projectId: tabProjectId,
+              pageId: parentPageId,
+              parentId: resolvedFolderId,
+              skipInvalidation: true,
+            },
             { onSettled: settle },
           );
         }
       });
     },
-    [parentPageId, uploadFile, createFileMutation, parentPage, projectId, projectFiles],
+    [parentPageId, uploadFile, createFileMutation, parentPage, projectId, projectFiles, queryClient],
   );
 
   const handleConfirmUpload = async () => {
@@ -303,14 +336,15 @@ export function useFileUpload({
         for (const zipItem of zipUnpackItems) {
           try {
             toast.loading(`Unpacking ${zipItem.file.name}...`, { id: `zip-${zipItem.name}` });
-            const parsed = await parseZipArchive(zipItem.file);
-            await extractAndImportZipToProject({
-              extracted: parsed,
-              zipFile: zipItem.file,
-              projectId: tabProjectId,
-              parentPageId,
-            });
-            toast.success(`Unpacked ${parsed.totalFiles} files from ${zipItem.file.name}`, {
+            const importRes = await manuscriptService.export.importProjectZip(
+              tabProjectId || parentPageId,
+              zipItem.file,
+            );
+            const totalImported =
+              (importRes?.totalDocs ?? 0) + (importRes?.totalFiles ?? 0) ||
+              importRes?.totalEntries ||
+              0;
+            toast.success(`Unpacked ${totalImported} files from ${zipItem.file.name}`, {
               id: `zip-${zipItem.name}`,
             });
           } catch (err: unknown) {
@@ -365,13 +399,13 @@ export function useFileUpload({
       });
 
       if (conflict === 'duplicate' && resolution === 'overwrite') {
-        const cleanTarget = targetTitle.replace(/^\/+/, '');
+        const cleanTarget = normalizeVirtualPath(targetTitle);
         const existingPage =
-          files?.find((f) => f.title.replace(/^\/+/, '') === cleanTarget) ||
+          files?.find((f) => normalizeVirtualPath(f.title) === cleanTarget) ||
           projectFiles?.find(
             (pf) =>
               pf.nodeType === 'DOC' &&
-              (pf.path || pf.filename || '').replace(/^\/+/, '') === cleanTarget,
+              normalizeVirtualPath(pf.path || pf.filename || '') === cleanTarget,
           );
         const existingDocId =
           existingPage && 'docId' in existingPage && existingPage.docId
@@ -402,27 +436,31 @@ export function useFileUpload({
         parentPageId,
         title: targetTitle,
         content,
+        skipInvalidation: true,
       });
       return { id: created.id, title: targetTitle, content };
     };
 
-    let lastTexItem: { id: string; title: string; content: string } | null = null;
     if (texFlat.length) {
-      for (const { file, name, conflict, resolution } of texFlat) {
-        try {
-          const effectiveTitle = name.trim() || file.name;
-          lastTexItem = await upsertTexFile(
-            file,
-            conflict === 'duplicate' && resolution === 'overwrite' ? file.name : effectiveTitle,
-            conflict,
-            resolution,
-          );
-        } catch (err) {
-          console.error('Failed to upload tex:', err);
-        } finally {
-          onFileSettled();
-        }
-      }
+      const texResults = await Promise.all(
+        texFlat.map(async ({ file, name, conflict, resolution }) => {
+          try {
+            const effectiveTitle = name.trim() || file.name;
+            return await upsertTexFile(
+              file,
+              conflict === 'duplicate' && resolution === 'overwrite' ? file.name : effectiveTitle,
+              conflict,
+              resolution,
+            );
+          } catch (err) {
+            console.error('Failed to upload tex:', err);
+            return null;
+          } finally {
+            onFileSettled();
+          }
+        }),
+      );
+      const lastTexItem = [...texResults].reverse().find(Boolean) ?? null;
       if (lastTexItem) {
         navigationCoordinator.openDocument({
           fileId: lastTexItem.id,
@@ -434,57 +472,63 @@ export function useFileUpload({
     }
 
     if (assetFlat.length && projectId) {
-      for (const { file, name } of assetFlat) {
-        try {
-          const renamedFile =
-            name !== file.name ? new File([file], name, { type: file.type }) : file;
-          await uploadFile.mutateAsync({
-            file: renamedFile,
-            projectId,
-            pageId: parentPageId,
-          });
-        } catch (err) {
-          console.error('Failed to upload asset:', err);
-        } finally {
-          onFileSettled();
-        }
-      }
+      await Promise.all(
+        assetFlat.map(async ({ file, name }) => {
+          try {
+            const renamedFile =
+              name !== file.name ? new File([file], name, { type: file.type }) : file;
+            await uploadFile.mutateAsync({
+              file: renamedFile,
+              projectId,
+              pageId: parentPageId,
+              skipInvalidation: true,
+            });
+          } catch (err) {
+            console.error('Failed to upload asset:', err);
+          } finally {
+            onFileSettled();
+          }
+        }),
+      );
     }
 
     if (folderItems.length && projectId) {
       void (async () => {
         try {
-          for (const { file, name, conflict, resolution } of folderItems) {
-            const cleanRelativePath = name.replace(/^\/+/, '');
-            const ext = '.' + (cleanRelativePath.split('.').pop() ?? '').toLowerCase();
-            const isTex = TEX_EXTS.has(ext);
+          await Promise.all(
+            folderItems.map(async ({ file, name, conflict, resolution }) => {
+              const cleanRelativePath = name.replace(/^\/+/, '');
+              const ext = '.' + (cleanRelativePath.split('.').pop() ?? '').toLowerCase();
+              const isTex = TEX_EXTS.has(ext);
 
-            if (isTex) {
-              try {
-                await upsertTexFile(file, cleanRelativePath, conflict, resolution);
-              } catch (err) {
-                console.error('Failed to upload folder tex:', err);
-              } finally {
-                onFileSettled();
+              if (isTex) {
+                try {
+                  await upsertTexFile(file, cleanRelativePath, conflict, resolution);
+                } catch (err) {
+                  console.error('Failed to upload folder tex:', err);
+                } finally {
+                  onFileSettled();
+                }
+              } else {
+                const fileToUpload =
+                  cleanRelativePath !== file.name
+                    ? new File([file], cleanRelativePath, { type: file.type })
+                    : file;
+                try {
+                  await uploadFile.mutateAsync({
+                    file: fileToUpload,
+                    projectId,
+                    pageId: parentPageId,
+                    skipInvalidation: true,
+                  });
+                } catch (uploadErr) {
+                  console.error('Failed:', uploadErr);
+                } finally {
+                  onFileSettled();
+                }
               }
-            } else {
-              const fileToUpload =
-                cleanRelativePath !== file.name
-                  ? new File([file], cleanRelativePath, { type: file.type })
-                  : file;
-              try {
-                await uploadFile.mutateAsync({
-                  file: fileToUpload,
-                  projectId,
-                  pageId: parentPageId,
-                });
-              } catch (uploadErr) {
-                console.error('Failed:', uploadErr);
-              } finally {
-                onFileSettled();
-              }
-            }
-          }
+            }),
+          );
         } catch (err) {
           console.error('Fatal error:', err);
           for (let i = 0; i < folderItems.length; i++) onFileSettled();

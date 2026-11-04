@@ -1,7 +1,7 @@
 /**
- * document-authority.facade.ts
+ * document.facade.ts
  *
- * Centralized Document Authority & Overlay Read Model (Core Workbench Deep Module).
+ * Centralized Document Facade & Overlay Read Model (Core Workbench Deep Module).
  *
  * Unifies:
  * 1. Live CodeMirror Engine Buffers (`getEditorEngineForFile` / `getActiveEditorEngine`)
@@ -21,7 +21,7 @@ import type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-
 import { usePageStore } from '../store/editor.store';
 import { useWorkspaceStore } from '../store/workspace.store';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
-import { latexDagEngine } from '@/features/editor/domain/latex/latex-dag-engine';
+import { latexDependencyGraph } from '@/features/editor/domain/latex/dependency-graph';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import {
   extractDocumentContentString,
@@ -50,7 +50,7 @@ export interface ActiveDocumentDescriptor {
   isDirty: boolean;
 }
 
-export class DocumentAuthorityRegistry {
+export class DocumentFacade {
   private readonly serverFilesByProject = new Map<
     string,
     Array<{ id: string; title: string; path: string; content: string }>
@@ -179,8 +179,8 @@ export class DocumentAuthorityRegistry {
       return extractDocumentContentString(pageState.currentPage.content);
     }
 
-    // 4. Server Project Files Read Model
-    for (const key of [projectId, rootPageId]) {
+    // 4. Server Project Files Read Model (prioritize active manuscript workspace scope rootPageId before shared projectId)
+    for (const key of [rootPageId, projectId]) {
       if (!key) continue;
       const list = this.serverFilesByProject.get(key);
       const found = list?.find((f) => f.id === targetId || f.path === targetId || f.title === targetId);
@@ -263,9 +263,10 @@ export class DocumentAuthorityRegistry {
 
     if (indexPayload.length > 0) {
       for (const item of indexPayload) {
-        latexDagEngine.parseAndRegister(item.filePath, item.content, item.fileId);
+        latexDependencyGraph.parseAndRegister(item.filePath, item.content, item.fileId);
       }
       latexSymbolsIndex.indexFilesBatch(indexPayload);
+      latexSymbolsIndex.refreshFromServer(projectKey, 150);
     }
 
     return this.getOverlayFiles(projectKey, rawFiles);
@@ -293,8 +294,8 @@ export class DocumentAuthorityRegistry {
             content: extractDocumentContentString(f.content),
           }))
         : (projectKey ? this.serverFilesByProject.get(projectKey) : undefined) ??
-          (projectId ? this.serverFilesByProject.get(projectId) : undefined) ??
-          (rootPageId ? this.serverFilesByProject.get(rootPageId) : undefined)) ?? [];
+          (rootPageId ? this.serverFilesByProject.get(rootPageId) : undefined) ??
+          (projectId ? this.serverFilesByProject.get(projectId) : undefined)) ?? [];
 
     if (baseList.length === 0) {
       const pageState = usePageStore.getState();
@@ -345,4 +346,6 @@ export class DocumentAuthorityRegistry {
   }
 }
 
-export const documentAuthority = new DocumentAuthorityRegistry();
+export { DocumentFacade as DocumentAuthorityRegistry };
+export const documentFacade = new DocumentFacade();
+export { documentFacade as documentAuthority };

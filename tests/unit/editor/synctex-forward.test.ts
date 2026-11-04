@@ -3,7 +3,7 @@ import {
   parseSyncTeX,
   type SyncTeXMap,
 } from '@/features/editor/subsystems/compiler/synctex/synctex-index';
-import { LatexCompilerEngine } from '@/features/editor/subsystems/compiler';
+import { CompilePipeline } from '@/features/editor/subsystems/compiler';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 
 describe('Forward SyncTeX (Code Cursor -> PDF Highlight & Bounding Box)', () => {
@@ -84,7 +84,7 @@ x1,30:6553600,32768000
     });
   });
 
-  describe('LatexCompilerEngine.resolveForwardDetail', () => {
+  describe('CompilePipeline.resolveForwardDetail', () => {
     const mockSyncTeXContent = `SyncTeX Version:1
 Input:1:./main.tex
 Input:2:./sections/methodology.tex
@@ -99,7 +99,7 @@ x1,42:6553600,26214400
     it('should resolve page, coordinates and bounding box dimensions for main file', () => {
       const map = parseSyncTeX(mockSyncTeXContent);
 
-      const res = LatexCompilerEngine.resolveForwardDetail(15, map, 'main.tex', 2);
+      const res = CompilePipeline.resolveForwardDetail(15, map, 'main.tex', 2);
       expect(res).not.toBeNull();
       expect(res?.page).toBe(1);
       expect(res?.x).toBe(100);
@@ -111,7 +111,7 @@ x1,42:6553600,26214400
     it('should resolve correctly for sub-files via activeTitle matching', () => {
       const map = parseSyncTeX(mockSyncTeXContent);
 
-      const res = LatexCompilerEngine.resolveForwardDetail(80, map, 'sections/methodology.tex', 2);
+      const res = CompilePipeline.resolveForwardDetail(80, map, 'sections/methodology.tex', 2);
       expect(res).not.toBeNull();
       expect(res?.page).toBe(2);
       expect(res?.x).toBe(100);
@@ -123,7 +123,7 @@ x1,42:6553600,26214400
     it('should resolve point nodes without width/height gracefully', () => {
       const map = parseSyncTeX(mockSyncTeXContent);
 
-      const res = LatexCompilerEngine.resolveForwardDetail(42, map, 'main.tex', 2);
+      const res = CompilePipeline.resolveForwardDetail(42, map, 'main.tex', 2);
       expect(res).not.toBeNull();
       expect(res?.page).toBe(1);
       expect(res?.x).toBe(100);
@@ -133,14 +133,14 @@ x1,42:6553600,26214400
     });
 
     it('should return null when synctexMap is null or line not found', () => {
-      expect(LatexCompilerEngine.resolveForwardDetail(10, null, 'main.tex')).toBeNull();
+      expect(CompilePipeline.resolveForwardDetail(10, null, 'main.tex')).toBeNull();
 
       const map = parseSyncTeX(mockSyncTeXContent);
-      expect(LatexCompilerEngine.resolveForwardDetail(9999, map, 'main.tex')).toBeNull();
+      expect(CompilePipeline.resolveForwardDetail(9999, map, 'main.tex')).toBeNull();
     });
   });
 
-  describe('LatexCompilerEngine.resolveForward (Page number lookup)', () => {
+  describe('CompilePipeline.resolveForward (Page number lookup)', () => {
     const mockSyncTeXContent = `SyncTeX Version:1
 Input:1:./main.tex
 {1
@@ -152,12 +152,12 @@ x1,55:0,0
 
     it('should return the corresponding page number', () => {
       const map = parseSyncTeX(mockSyncTeXContent);
-      expect(LatexCompilerEngine.resolveForward(10, map, 'main.tex')).toBe(1);
-      expect(LatexCompilerEngine.resolveForward(55, map, 'main.tex')).toBe(2);
+      expect(CompilePipeline.resolveForward(10, map, 'main.tex')).toBe(1);
+      expect(CompilePipeline.resolveForward(55, map, 'main.tex')).toBe(2);
     });
   });
 
-  describe('LatexCompilerEngine.resolveForwardRemote (Backend Single Source of Truth)', () => {
+  describe('CompilePipeline.resolveForwardRemote (Backend Single Source of Truth)', () => {
     it('should query manuscriptService.synctex.forwardSync and return full coordinate and box result', async () => {
       const mockResult = {
         page: 3,
@@ -169,7 +169,7 @@ x1,55:0,0
 
       vi.spyOn(manuscriptService.synctex, 'forwardSync').mockResolvedValueOnce(mockResult);
 
-      const res = await LatexCompilerEngine.resolveForwardRemote(
+      const res = await CompilePipeline.resolveForwardRemote(
         'proj-456',
         'main.tex',
         45,
@@ -188,7 +188,7 @@ x1,55:0,0
     it('should handle remote failure gracefully', async () => {
       vi.spyOn(manuscriptService.synctex, 'forwardSync').mockRejectedValueOnce(new Error('Compiler unreachable'));
 
-      const res = await LatexCompilerEngine.resolveForwardRemote(
+      const res = await CompilePipeline.resolveForwardRemote(
         'proj-456',
         'main.tex',
         45,

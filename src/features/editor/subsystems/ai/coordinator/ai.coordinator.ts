@@ -14,7 +14,7 @@ import {
   getActiveEditorEngine,
   getEditorEngineForFile,
   getActiveEditorContent,
-  documentAuthority,
+  documentFacade,
   editorCommandBus,
   usePageStore,
   useWorkspaceStore,
@@ -26,7 +26,7 @@ import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import type { DiffProposal } from '@/features/editor/domain/types/ports/editor-engine.port';
 import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
-import { heuristicLatexErrorFix } from '@/features/editor/domain/ai/ai-error-assist';
+import { fixLatexError } from '@/features/editor/domain/ai/ai-error-assist';
 import { toast } from 'sonner';
 
 export interface AiContextPayload {
@@ -37,7 +37,7 @@ export interface AiContextPayload {
   recentErrors?: Array<{ line: number; message: string; context?: string }>;
 }
 
-export class AiCoordinatorRegistry {
+export class AiCoordinator {
   private initialized = false;
 
   constructor() {
@@ -175,7 +175,7 @@ export class AiCoordinatorRegistry {
 
     const engine = getActiveEditorEngine();
     const content =
-      documentAuthority.getDocumentContent(fileId) ||
+      documentFacade.getDocumentContent(fileId) ||
       engine?.getContent() ||
       extractDocumentContentString(activeDoc?.content);
 
@@ -260,7 +260,7 @@ export class AiCoordinatorRegistry {
     }
 
     // 2. Offline Heuristic Fallback rule
-    const fallbackFix = heuristicLatexErrorFix({
+    const fallbackFix = fixLatexError({
       errorMessage: diagnostic.message,
       errorLine: diagnostic.line,
       errorFile: fileName,
@@ -403,7 +403,7 @@ export class AiCoordinatorRegistry {
     if (!replacement) return false;
 
     const engine =
-      documentAuthority.getEditorEngineForFile(fileId) ?? getActiveEditorEngine();
+      documentFacade.getEditorEngineForFile(fileId) ?? getActiveEditorEngine();
 
     // If active document or split-pane is open in CodeMirror, apply via engine
     if (engine) {
@@ -434,4 +434,5 @@ export class AiCoordinatorRegistry {
   }
 }
 
-export const aiCoordinator = new AiCoordinatorRegistry();
+export { AiCoordinator as AiCoordinatorRegistry };
+export const aiCoordinator = new AiCoordinator();

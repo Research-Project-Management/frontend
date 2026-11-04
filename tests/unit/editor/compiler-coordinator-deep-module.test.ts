@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
-  CompilerCoordinatorRegistry,
+  CompilerCoordinator,
   compilerCoordinator,
   compilerSubsystem,
-  CompilationFlushBarrier,
-  type CompilerExecutionPort,
+  FlushBarrier,
+  type CompilerPort,
 } from '@/features/editor/subsystems/compiler';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { sessionCoordinator, editorCommandBus } from '@/features/editor/core';
@@ -39,7 +39,7 @@ describe('CompilerCoordinator as Deep Module (Matt Pocock Codebase Design)', () 
 
   it('compiles via injected test compiler port without network or child process', async () => {
     let compileCalled = false;
-    const testCompiler: CompilerExecutionPort = {
+    const testCompiler: CompilerPort = {
       compile: async (opts) => {
         compileCalled = true;
         return {
@@ -62,7 +62,7 @@ describe('CompilerCoordinator as Deep Module (Matt Pocock Codebase Design)', () 
       cancelInFlightCompile: vi.fn(),
     };
 
-    const compiler = new CompilerCoordinatorRegistry({
+    const compiler = new CompilerCoordinator({
       compilerEngine: testCompiler,
       getProjectId: () => 'proj-123',
       getMainFile: () => 'main.tex',
@@ -88,12 +88,12 @@ describe('CompilerCoordinator as Deep Module (Matt Pocock Codebase Design)', () 
 
   it('cancels in-flight compile on stop()', () => {
     const cancelMock = vi.fn();
-    const testCompiler: CompilerExecutionPort = {
+    const testCompiler: CompilerPort = {
       compile: vi.fn(),
       cancelInFlightCompile: cancelMock,
     };
 
-    const compiler = new CompilerCoordinatorRegistry({
+    const compiler = new CompilerCoordinator({
       compilerEngine: testCompiler,
     });
 
@@ -103,7 +103,7 @@ describe('CompilerCoordinator as Deep Module (Matt Pocock Codebase Design)', () 
   });
 
   it('provides high-leverage summary metrics across the seam', async () => {
-    const testCompiler: CompilerExecutionPort = {
+    const testCompiler: CompilerPort = {
       compile: async () => ({
         success: false,
         error: 'Fatal error occurred',
@@ -121,7 +121,7 @@ describe('CompilerCoordinator as Deep Module (Matt Pocock Codebase Design)', () 
       cancelInFlightCompile: vi.fn(),
     };
 
-    const compiler = new CompilerCoordinatorRegistry({
+    const compiler = new CompilerCoordinator({
       compilerEngine: testCompiler,
     });
 
@@ -141,7 +141,7 @@ describe('CompilerCoordinator as Deep Module (Matt Pocock Codebase Design)', () 
   });
 
   it('compilerSubsystem encapsulates compile intent, duration, and status into structured CompilationOutcome', async () => {
-    const testCompiler: CompilerExecutionPort = {
+    const testCompiler: CompilerPort = {
       compile: async () => ({
         success: true,
         pdfUrl: 'blob:http://localhost/seam-test.pdf',
@@ -182,7 +182,7 @@ describe('CompilerCoordinator as Deep Module (Matt Pocock Codebase Design)', () 
     expect(dispatchSpy).toHaveBeenCalledWith({ type: 'viewer:goto-page', page: 3 });
   });
 
-  it('CompilationFlushBarrier flushes pending drafts and synchronizes active dirty buffer', async () => {
+  it('FlushBarrier flushes pending drafts and synchronizes active dirty buffer', async () => {
     const flushDraftsSpy = vi.spyOn(sessionCoordinator, 'flushPendingDrafts');
     const flushAllSpy = vi.spyOn(sessionCoordinator, 'flushAllPending').mockResolvedValue({
       total: 0,
@@ -196,7 +196,7 @@ describe('CompilerCoordinator as Deep Module (Matt Pocock Codebase Design)', () 
       filePath: 'doc.tex',
     });
 
-    const result = await CompilationFlushBarrier.execute('doc-1', 'Updated content via editor');
+    const result = await FlushBarrier.execute('doc-1', 'Updated content via editor');
     expect(flushDraftsSpy).toHaveBeenCalled();
     expect(flushAllSpy).toHaveBeenCalled();
     expect(result.activeFlushed).toBe(true);

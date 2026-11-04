@@ -25,7 +25,7 @@ import {
   type SessionFsmContext,
 } from '@/features/editor/domain/document/session-fsm';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
-import { latexDagEngine } from '@/features/editor/domain/latex/latex-dag-engine';
+import { latexDependencyGraph } from '@/features/editor/domain/latex/dependency-graph';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import {
   markHttpSavedWhileDisconnected,
@@ -102,8 +102,13 @@ export interface DocumentSessionOptions {
 const DEFAULT_AUTOSAVE_DELAY = 800; // ms
 const DEFAULT_AUTOCOMPILE_DELAY = 1500; // ms (Overleaf parity)
 const MAX_FSM_CONTEXTS = 200;
+const STRUCTURAL_DIRECTIVE_REGEX =
+  /\\(?:documentclass|input|include|subfile|import|bibliography|addbibresource)/;
+const TRANSIENT_ERROR_MSG_REGEX =
+  /timeout|timed out|too many requests|bad gateway|service unavailable|gateway timeout/i;
+const CONFLICT_ERROR_MSG_REGEX = /\b409\b|conflict/i;
 
-export class SessionCoordinatorRegistry {
+export class SessionCoordinator {
   private readonly persistenceAdapter: DocumentPersistencePort;
   private readonly saveTimers = new Map<string, NodeJS.Timeout>();
   private compileTimer: NodeJS.Timeout | null = null;
@@ -291,8 +296,8 @@ export class SessionCoordinatorRegistry {
     const model = lruDocumentCache.getModel(fileId);
     const filePath = model?.filePath || fileId;
     latexSymbolsIndex.indexFile(fileId, filePath, content);
-    if (/\\(?:documentclass|input|include|subfile|import|bibliography|addbibresource)/.test(content)) {
-      latexDagEngine.parseAndRegister(filePath, content, fileId);
+    if (STRUCTURAL_DIRECTIVE_REGEX.test(content)) {
+      latexDependencyGraph.parseAndRegister(filePath, content, fileId);
     }
   }
 
@@ -332,6 +337,8 @@ export class SessionCoordinatorRegistry {
       useCompileStore.getState().clearDirty(fileId);
       this.clearWorkspaceTabDirty(fileId, model.projectId);
       this.clearDraftSnapshot(fileId);
+      const effectiveProjectId = this.resolveEffectiveProjectId(model.projectId);
+      latexSymbolsIndex.refreshFromServer(effectiveProjectId);
       return true;
     }
     // Content changed while the request was in flight: keep dirty & re-save.
@@ -487,14 +494,14 @@ export class SessionCoordinatorRegistry {
 
     // Fast guard: debounced re-parsing of DAG graph if file contains structural include/class directives.
     const shouldCheckDag = options?.hasStructuralChange ?? true;
-    if (shouldCheckDag && /\\(?:documentclass|input|include|subfile|import|bibliography|addbibresource)/.test(content)) {
+    if (shouldCheckDag && STRUCTURAL_DIRECTIVE_REGEX.test(content)) {
       const existingDagTimer = this.dagDebounceTimers.get(fileId);
       if (existingDagTimer) clearTimeout(existingDagTimer);
       this.dagDebounceTimers.set(
         fileId,
         setTimeout(() => {
           this.dagDebounceTimers.delete(fileId);
-          latexDagEngine.parseAndRegister(filePath, content);
+          latexDependencyGraph.parseAndRegister(filePath, content);
         }, 400),
       );
     }
@@ -532,12 +539,7 @@ export class SessionCoordinatorRegistry {
     if (status !== undefined) {
       return false;
     }
-    return (
-      err instanceof Error &&
-      /timeout|timed out|too many requests|bad gateway|service unavailable|gateway timeout/i.test(
-        err.message
-      )
-    );
+    return err instanceof Error && TRANSIENT_ERROR_MSG_REGEX.test(err.message);
   }
 
   private async persistWithRetry(
@@ -590,28 +592,21 @@ export class SessionCoordinatorRegistry {
     const isConflict =
       status === 409 ||
       (err as { code?: string })?.code === 'CONFLICT' ||
-      (err instanceof Error && /\b409\b|conflict/i.test(err.message));
+      (err instanceof Error && CONFLICT_ERROR_MSG_REGEX.test(err.message));
 
     if (isConflict) {
       this.transitionFsm(fileId, { type: 'CONFLICT_DETECTED' });
       const details = (err as { details?: Record<string, unknown> })?.details;
-      const remoteRev =
-        typeof details?.rev === 'number'
-          ? details.rev
-          : typeof details?.version === 'number'
-            ? details.version
-            : typeof details?.remoteRev === 'number'
-              ? details.remoteRev
-              : undefined;
+      const remoteRev = [details?.rev, details?.version, details?.remoteRev].find(
+        (v): v is number => typeof v === 'number',
+      );
       if (remoteRev !== undefined) {
         lruDocumentCache.updateServerVersion(fileId, { rev: remoteRev });
       }
       const remoteContent =
-        typeof details?.remoteContent === 'string'
-          ? details.remoteContent
-          : typeof details?.content === 'string'
-            ? details.content
-            : '';
+        [details?.remoteContent, details?.content].find(
+          (v): v is string => typeof v === 'string',
+        ) ?? '';
       const localContent = model?.content ?? sentContent;
       this.draftRecovery.recordConflict(fileId, localContent, remoteContent, model?.projectId);
       useConnectivityStore.getState().setSyncStatus('error');
@@ -774,6 +769,16 @@ export class SessionCoordinatorRegistry {
     }
   }
 
+  public hasDirtyDocuments(): boolean {
+    if (this.saveTimers.size > 0 || this.inFlightFileFlushes.size > 0) {
+      return true;
+    }
+    if (lruDocumentCache.getDirtyModels().length > 0) {
+      return true;
+    }
+    return useCompileStore.getState().getDirtyFiles().length > 0;
+  }
+
   public async flushDocument(fileId: string): Promise<boolean> {
     return this.flushFile(fileId);
   }
@@ -791,6 +796,11 @@ export class SessionCoordinatorRegistry {
     this.flushPendingDrafts();
 
     const dirtyModels = lruDocumentCache.getDirtyModels();
+    if (dirtyModels.length === 0) {
+      this.isFlushingAll = false;
+      return { total: 0, succeeded: 0, failed: 0, results: [] };
+    }
+
     const isOnline = useConnectivityStore.getState().checkIsOnline();
 
     if (!isOnline) {
@@ -831,33 +841,53 @@ export class SessionCoordinatorRegistry {
   public async replayPendingMutations(): Promise<{ total: number; succeeded: number; failed: number }> {
     const pending = await draftStorageService.getPendingMutations();
     useConnectivityStore.getState().setPendingMutationsCount(pending.length);
+    if (pending.length === 0) {
+      return { total: 0, succeeded: 0, failed: 0 };
+    }
+
     let succeeded = 0;
     let failed = 0;
 
+    // Group mutations by fileId so independent files replay in parallel while
+    // preserving sequential order within each fileId.
+    const mutationsByFile = new Map<string, typeof pending>();
     for (const mut of pending) {
-      if (mut.type === 'update_content' && mut.payload.content !== undefined) {
-        const content = mut.payload.content as string;
-        const cachedModel = lruDocumentCache.getModel(mut.fileId);
-        const expectedRev =
-          (mut.payload.expectedRev as number | undefined) ?? cachedModel?.serverRev;
-        try {
-          await this.persistWithRetry(mut.fileId, content, expectedRev);
-          await this.finalizeSuccessfulSave(mut.fileId, content);
-          if (mut.id) {
-            await draftStorageService.removeMutation(mut.id);
-          }
-          await draftStorageService.clearDraft(mut.fileId);
-          succeeded++;
-        } catch (err) {
-          this.handleSaveConflictOrError(mut.fileId, content, err);
-          const errMsg = err instanceof Error ? err.message : String(err);
-          if (mut.id) {
-            await draftStorageService.updateMutationStatus(mut.id, 'failed', errMsg);
-          }
-          failed++;
-        }
+      const list = mutationsByFile.get(mut.fileId);
+      if (list) {
+        list.push(mut);
+      } else {
+        mutationsByFile.set(mut.fileId, [mut]);
       }
     }
+
+    await Promise.allSettled(
+      Array.from(mutationsByFile.values()).map(async (fileMutations) => {
+        for (const mut of fileMutations) {
+          if (mut.type === 'update_content' && mut.payload.content !== undefined) {
+            const content = mut.payload.content as string;
+            const cachedModel = lruDocumentCache.getModel(mut.fileId);
+            const expectedRev =
+              (mut.payload.expectedRev as number | undefined) ?? cachedModel?.serverRev;
+            try {
+              await this.persistWithRetry(mut.fileId, content, expectedRev);
+              await this.finalizeSuccessfulSave(mut.fileId, content);
+              if (mut.id) {
+                await draftStorageService.removeMutation(mut.id);
+              }
+              await draftStorageService.clearDraft(mut.fileId);
+              succeeded++;
+            } catch (err) {
+              this.handleSaveConflictOrError(mut.fileId, content, err);
+              const errMsg = err instanceof Error ? err.message : String(err);
+              if (mut.id) {
+                await draftStorageService.updateMutationStatus(mut.id, 'failed', errMsg);
+              }
+              failed++;
+            }
+          }
+        }
+      }),
+    );
 
     const remaining = await draftStorageService.getPendingMutations().catch(() => []);
     useConnectivityStore.getState().setPendingMutationsCount(remaining.length);
@@ -1043,4 +1073,5 @@ export class SessionCoordinatorRegistry {
   }
 }
 
-export const sessionCoordinator = new SessionCoordinatorRegistry();
+export { SessionCoordinator as SessionCoordinatorRegistry };
+export const sessionCoordinator = new SessionCoordinator();

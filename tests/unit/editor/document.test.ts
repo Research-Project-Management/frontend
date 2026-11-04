@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { parseSyncTeX } from '@/features/editor/subsystems/compiler/synctex/synctex-index';
 import { extractDoiFromText, parsePdfDate } from '@/features/editor/subsystems/compiler/synctex/pdf-resolver';
-import { LatexCompilerEngine } from '@/features/editor/subsystems/compiler';
+import { CompilePipeline } from '@/features/editor/subsystems/compiler';
 import { parseCompileErrors } from '@/features/editor/domain/latex/latex-structure';
 
 describe('Document & LaTeX Compiler Frontend Utilities', () => {
@@ -34,11 +34,11 @@ h1:20,30:150000,300000
     });
   });
 
-  describe('LatexCompilerEngine.resolveForward', () => {
+  describe('CompilePipeline.resolveForward', () => {
     it('should map editor line to correct PDF page', () => {
       const synctexMap = parseSyncTeX(sampleSyncTeX);
 
-      const targetPageMain = LatexCompilerEngine.resolveForward(
+      const targetPageMain = CompilePipeline.resolveForward(
         10,
         synctexMap,
         'main.tex',
@@ -46,7 +46,7 @@ h1:20,30:150000,300000
       );
       expect(targetPageMain).toBe(1);
 
-      const targetPageChild = LatexCompilerEngine.resolveForward(
+      const targetPageChild = CompilePipeline.resolveForward(
         5,
         synctexMap,
         'intro.tex',
@@ -57,7 +57,7 @@ h1:20,30:150000,300000
 
     it('should return null when line is not in map', () => {
       const synctexMap = parseSyncTeX(sampleSyncTeX);
-      const targetPage = LatexCompilerEngine.resolveForward(
+      const targetPage = CompilePipeline.resolveForward(
         9999,
         synctexMap,
         'main.tex',
@@ -67,11 +67,11 @@ h1:20,30:150000,300000
     });
   });
 
-  describe('LatexCompilerEngine.resolveReverse', () => {
+  describe('CompilePipeline.resolveReverse', () => {
     it('should resolve click position on page to source line and path', () => {
       const synctexMap = parseSyncTeX(sampleSyncTeX);
 
-      const resolved = LatexCompilerEngine.resolveReverse(0.5, 1, synctexMap);
+      const resolved = CompilePipeline.resolveReverse(0.5, 1, synctexMap);
       expect(resolved).not.toBeNull();
       expect(resolved?.sourcePath).toBe('main.tex');
       expect(resolved?.line).toBeGreaterThan(0);

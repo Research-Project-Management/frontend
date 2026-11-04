@@ -7,16 +7,20 @@
 
 export interface EditorStorageItem {
   id: string;
+  nodeId?: string;
   filename: string;
   path?: string;
   size?: number;
   mimeType?: string;
   isFolder: boolean;
   nodeType?: 'FOLDER' | 'DOC' | 'FILE';
+  pageId?: string | null;
+  projectId?: string | null;
   docId?: string | null;
   fileId?: string | null;
   isRootDoc?: boolean;
   parentId?: string | null;
+  sortOrder?: number;
   url?: string;
   createdAt?: string;
   updatedAt?: string;

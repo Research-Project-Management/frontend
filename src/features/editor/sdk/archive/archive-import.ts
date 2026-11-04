@@ -1,16 +1,12 @@
 /**
  * archive-import.ts
  *
- * Domain logic for unpacking and importing ZIP project archives into the workspace:
- * - Parsing ZIP archive entries with JSZip
- * - Stripping macOS/OS artifacts and detecting common root prefixes
- * - Detecting main LaTeX entry file (main.tex, \documentclass)
- * - Creating asset directories and uploading media
- * - Creating child text files and setting the root/main file
+ * Thin client SDK wrapper for importing ZIP project archives via the authoritative
+ * Backend Manuscripts ExportImportService (`POST /projects/:projectId/import/zip`).
  */
 
-import JSZip from 'jszip';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
+import type { ImportProjectZipResult } from '@/features/editor/sdk/manuscript/types';
 import { ProjectService } from '@/features/projects/shell/services/project.service';
 
 export const TEXT_EXTENSIONS = new Set([
@@ -72,6 +68,8 @@ export interface ExtractedZipProject {
   name: string;
   /** Relative path of the detected main LaTeX document */
   mainFilePath?: string;
+  /** Raw ZIP archive file/blob for backend upload */
+  zipFile?: File | Blob;
   /** All extracted items (excluding system noise) */
   items: ExtractedZipItem[];
   /** Filtered list of text documents (.tex, .bib, .sty, etc.) */
@@ -83,6 +81,9 @@ export interface ExtractedZipProject {
   /** Total uncompressed size in bytes */
   totalSize: number;
 }
+
+export type ParsedZipArchive = ExtractedZipProject;
+export type ZipImportResult = ImportProjectZipResult;
 
 export interface ImportZipProgress {
   phase:
@@ -121,94 +122,6 @@ export function isZipFile(file: File | Blob | string): boolean {
   );
 }
 
-export const ZIP_SECURITY_LIMITS = {
-  MAX_TOTAL_FILES: 5000,
-  MAX_TOTAL_UNCOMPRESSED_SIZE: 150 * 1024 * 1024, // 150 MB
-  MAX_SINGLE_FILE_SIZE: 50 * 1024 * 1024, // 50 MB
-};
-
-/**
- * Normalizes file path to POSIX standard, strips leading/trailing slashes,
- * and securely neutralizes Path Traversal sequences (Zip Slip prevention: CWE-22).
- * Guarantees that extracted files are safely confined within the target root directory.
- */
-export function sanitizeZipPath(rawPath: string): string {
-  if (!rawPath || typeof rawPath !== 'string') return '';
-
-  // 1. Remove null bytes and non-printable control characters
-  let clean = rawPath.replace(/\0/g, '').replace(/[\x00-\x1f\x7f]/g, '').trim();
-
-  // 2. Normalize Windows drive letters (e.g. C:/, D:\) and backslashes
-  clean = clean.replace(/^[a-zA-Z]:[/\\]*/, '').replace(/\\/g, '/');
-
-  // 3. Strip leading and trailing slashes
-  clean = clean.replace(/^\/+/, '').replace(/\/+$/, '').trim();
-
-  // 4. Safely resolve path segments inside jail
-  const rawSegments = clean.split('/');
-  const safeSegments: string[] = [];
-
-  for (const segment of rawSegments) {
-    const trimmed = segment.trim();
-    if (!trimmed || trimmed === '.') continue;
-
-    // Neutralize directory traversal ('..')
-    if (trimmed === '..') {
-      if (safeSegments.length > 0) {
-        safeSegments.pop();
-      }
-      // Never allow escaping above project root
-      continue;
-    }
-
-    safeSegments.push(trimmed);
-  }
-
-  return safeSegments.join('/');
-}
-
-/**
- * Checks if a zip entry path represents OS system noise (__MACOSX, .DS_Store, Thumbs.db, etc.)
- */
-export function isSystemNoise(path: string): boolean {
-  const normalized = sanitizeZipPath(path);
-  const segments = normalized.split('/');
-  for (const seg of segments) {
-    if (seg === '__MACOSX' || seg === '.DS_Store' || seg === 'Thumbs.db' || seg === 'desktop.ini') {
-      return true;
-    }
-    if (seg.startsWith('._')) {
-      return true;
-    }
-    if (seg === '.git') {
-      return true;
-    }
-  }
-  return false;
-}
-
-/**
- * If all files in the archive share a single common top-level directory (standard Overleaf/GitHub archive export),
- * returns that prefix so it can be stripped.
- */
-export function detectCommonRootPrefix(paths: string[]): string {
-  if (paths.length === 0) return '';
-
-  const validPaths = paths.filter((p) => !isSystemNoise(p));
-  if (validPaths.length === 0) return '';
-
-  const firstSegs = validPaths.map((p) => {
-    const parts = sanitizeZipPath(p).split('/');
-    return parts.length > 1 ? parts[0] : null;
-  });
-
-  const rootCandidate = firstSegs[0];
-  if (!rootCandidate) return '';
-
-  const allShareRoot = firstSegs.every((seg) => seg === rootCandidate);
-  return allShareRoot ? `${rootCandidate}/` : '';
-}
-
 /**
  * Determines whether a file path has an extension indicating text content.
  */
@@ -218,151 +131,57 @@ export function isTextFile(path: string): boolean {
 }
 
 /**
- * Parses a ZIP archive into structured project data, stripping system junk and
- * detecting the main LaTeX entry point.
+ * Prepares a lightweight archive descriptor for the selected ZIP file without
+ * client-side JSZip unpacking; actual extraction, Zip-Slip validation, and quota enforcement
+ * are performed authoritatively on the backend (`POST /projects/:projectId/import/zip`).
  */
 export async function parseZipArchive(
   fileOrBlob: File | Blob,
   preferredName?: string,
 ): Promise<ExtractedZipProject> {
-  const zip = await JSZip.loadAsync(fileOrBlob);
-
-  const rawEntries: { path: string; entry: JSZip.JSZipObject }[] = [];
-  zip.forEach((relPath, entry) => {
-    if (!entry.dir) {
-      const safePath = sanitizeZipPath(relPath);
-      if (safePath && !isSystemNoise(safePath)) {
-        rawEntries.push({ path: safePath, entry });
-      }
-    }
-  });
-
-  // Guard: File count limit (Zip Bomb protection)
-  if (rawEntries.length > ZIP_SECURITY_LIMITS.MAX_TOTAL_FILES) {
-    throw new Error(
-      `Security violation: ZIP archive contains ${rawEntries.length} files, exceeding maximum safety limit (${ZIP_SECURITY_LIMITS.MAX_TOTAL_FILES} files).`
-    );
+  if (!fileOrBlob || fileOrBlob.size === 0) {
+    return {
+      name: preferredName || 'Imported Project',
+      zipFile: fileOrBlob,
+      items: [],
+      textFiles: [],
+      assetFiles: [],
+      totalFiles: 0,
+      totalSize: 0,
+    };
   }
 
-  // Check for common root prefix
-  const allPaths = rawEntries.map((e) => e.path);
-  const commonPrefix = detectCommonRootPrefix(allPaths);
-
-  const items: ExtractedZipItem[] = [];
-  let accumulatedSize = 0;
-
-  for (const { path: rawPath, entry } of rawEntries) {
-    const cleanPath = commonPrefix && rawPath.startsWith(commonPrefix)
-      ? rawPath.slice(commonPrefix.length)
-      : rawPath;
-
-    if (!cleanPath) continue;
-
-    const parts = cleanPath.split('/');
-    const name = parts[parts.length - 1];
-    const folderPath = parts.slice(0, -1).join('/');
-    const isText = isTextFile(name);
-
-    if (isText) {
-      const textContent = await entry.async('string');
-      const entrySize = new TextEncoder().encode(textContent).length;
-
-      if (entrySize > ZIP_SECURITY_LIMITS.MAX_SINGLE_FILE_SIZE) {
-        throw new Error(
-          `Security violation: File "${cleanPath}" exceeds maximum allowable single file size (50MB).`
-        );
-      }
-
-      accumulatedSize += entrySize;
-      if (accumulatedSize > ZIP_SECURITY_LIMITS.MAX_TOTAL_UNCOMPRESSED_SIZE) {
-        throw new Error(
-          `Security violation: Archive uncompressed size exceeds maximum safety limit (150MB).`
-        );
-      }
-
-      items.push({
-        path: cleanPath,
-        name,
-        folderPath,
-        isText: true,
-        textContent,
-        size: entrySize,
-      });
-    } else {
-      const blob = await entry.async('blob');
-
-      if (blob.size > ZIP_SECURITY_LIMITS.MAX_SINGLE_FILE_SIZE) {
-        throw new Error(
-          `Security violation: File "${cleanPath}" exceeds maximum allowable single file size (50MB).`
-        );
-      }
-
-      accumulatedSize += blob.size;
-      if (accumulatedSize > ZIP_SECURITY_LIMITS.MAX_TOTAL_UNCOMPRESSED_SIZE) {
-        throw new Error(
-          `Security violation: Archive uncompressed size exceeds maximum safety limit (150MB).`
-        );
-      }
-
-      items.push({
-        path: cleanPath,
-        name,
-        folderPath,
-        isText: false,
-        blob,
-        size: blob.size,
-      });
-    }
-  }
-
-  // Identify main file
-  const textFiles = items.filter((i) => i.isText);
-  const assetFiles = items.filter((i) => !i.isText);
-
-  const isRealDocClass = (text?: string) =>
-    Boolean(
-      text &&
-        /\\documentclass\b/.test(text) &&
-        !/\\documentclass\s*(?:\[[^\]]*\])?\s*\{\s*subfiles\s*\}/.test(text),
-    );
-  const texFiles = textFiles.filter((f) => f.name.toLowerCase().endsWith('.tex'));
-
-  const mainFilePath = (
-    texFiles.find((f) => f.path.toLowerCase() === 'main.tex') ||
-    texFiles.find((f) => !f.folderPath && isRealDocClass(f.textContent)) ||
-    texFiles.find((f) => isRealDocClass(f.textContent)) ||
-    texFiles.find((f) => !f.folderPath) ||
-    texFiles[0]
-  )?.path;
-
-  // Project name deduction
   let projectName = preferredName;
   if (!projectName && fileOrBlob instanceof File && fileOrBlob.name) {
     projectName = fileOrBlob.name.replace(/\.zip$/i, '').trim();
-  }
-  if (!projectName && commonPrefix) {
-    projectName = commonPrefix.replace(/\/$/, '').trim();
   }
   if (!projectName) {
     projectName = 'Imported Project';
   }
 
-  const totalSize = items.reduce((acc, curr) => acc + curr.size, 0);
+  const placeholderMain: ExtractedZipItem = {
+    path: 'main.tex',
+    name: 'main.tex',
+    folderPath: '',
+    isText: true,
+    size: fileOrBlob.size,
+  };
 
   return {
     name: projectName,
-    mainFilePath,
-    items,
-    textFiles,
-    assetFiles,
-    totalFiles: items.length,
-    totalSize,
+    mainFilePath: 'main.tex',
+    zipFile: fileOrBlob,
+    items: [placeholderMain],
+    textFiles: [placeholderMain],
+    assetFiles: [],
+    totalFiles: 1,
+    totalSize: fileOrBlob.size,
   };
 }
 
 export interface ImportZipOptions {
-  extracted: ExtractedZipProject;
-  zipFile?: File;
+  extracted?: ExtractedZipProject;
+  zipFile?: File | Blob;
   projectName?: string;
   projectId?: string;
   parentPageId?: string;
@@ -370,9 +189,10 @@ export interface ImportZipOptions {
 }
 
 /**
- * Imports extracted project files into Flux backend:
- * - If `parentPageId` is absent: creates new Project and root Page, then attaches child files/assets.
- * - If `parentPageId` is provided: unpacks files directly into the existing project.
+ * Delegates ZIP archive unpacking and project hydration directly to the Flux backend
+ * (`manuscriptService.export.importProjectZip`).
+ * - If `projectId` is absent: creates a new Project container first, then imports the ZIP on the server.
+ * - If `projectId` is provided: imports the ZIP directly into the existing project on the server.
  */
 export async function extractAndImportZipToProject({
   extracted,
@@ -381,26 +201,44 @@ export async function extractAndImportZipToProject({
   projectId: existingProjectId,
   parentPageId: existingParentPageId,
   onProgress,
-}: ImportZipOptions): Promise<{ projectId: string; rootPageId: string; mainFileId?: string }> {
-  const finalProjectName = (projectName || extracted.name || 'Imported LaTeX Project').trim();
+}: ImportZipOptions): Promise<{
+  projectId: string;
+  rootPageId: string;
+  mainFileId?: string;
+  summary?: ImportProjectZipResult;
+}> {
+  const effectiveZipFile = zipFile ?? extracted?.zipFile;
+  if (!effectiveZipFile) {
+    throw new Error('ZIP archive file is required for import.');
+  }
+
+  const finalProjectName = (
+    projectName ||
+    extracted?.name ||
+    (effectiveZipFile instanceof File
+      ? effectiveZipFile.name.replace(/\.zip$/i, '')
+      : '') ||
+    'Imported LaTeX Project'
+  ).trim();
+
   let effectiveProjectId = existingProjectId;
-  let effectiveRootPageId = existingParentPageId;
+  const totalItems = Math.max(1, extracted?.totalFiles ?? 1);
 
-  const totalItems = extracted.items.length;
-  let processedItems = 0;
-
-  const report = (phase: ImportZipProgress['phase'], message: string) => {
+  const report = (
+    phase: ImportZipProgress['phase'],
+    message: string,
+    current: number,
+  ) => {
     onProgress?.({
       phase,
       message,
-      current: processedItems,
+      current,
       total: totalItems,
     });
   };
 
-  // ── Step 1: Create Project if needed ─────────────────────────────────────
   if (!effectiveProjectId) {
-    report('creating_project', `Creating project "${finalProjectName}"...`);
+    report('creating_project', `Creating project "${finalProjectName}"...`, 0);
     const projectRes = await ProjectService.create({
       name: finalProjectName,
       modules: ['pages', 'work-items'],
@@ -423,123 +261,19 @@ export async function extractAndImportZipToProject({
     throw new Error('Could not initialize project container.');
   }
 
-  // ── Step 1.5: Primary Authority — Delegate atomic ZIP unpacking to Backend Manuscript ExportImportService ──
-  if (zipFile && effectiveProjectId) {
-    try {
-      report('uploading_assets', `Importing archive "${finalProjectName}" on server...`);
-      const serverImportRes = await manuscriptService.export.importProjectZip(
-        effectiveProjectId,
-        zipFile,
-      );
-      if (serverImportRes?.rootDocId || serverImportRes?.projectId) {
-        processedItems = totalItems;
-        report('done', 'Imported project archive successfully.');
-        return {
-          projectId: serverImportRes.projectId || effectiveProjectId,
-          rootPageId: serverImportRes.rootDocId || effectiveRootPageId || '',
-          mainFileId: serverImportRes.rootDocId || undefined,
-        };
-      }
-    } catch {
-      // Fallback to client-side unpacking if backend import endpoint is unavailable
-    }
-  }
+  report('uploading_assets', `Importing archive "${finalProjectName}" on server...`, 0);
+  const serverImportRes = await manuscriptService.export.importProjectZip(
+    effectiveProjectId,
+    effectiveZipFile,
+    extracted?.mainFilePath,
+  );
 
-  // ── Step 2: Create Root Page if needed ───────────────────────────────────
-  let rootPageFileId: string | undefined;
-
-  // Identify the content to put in the root document
-  const mainItem = extracted.textFiles.find((f) => f.path === extracted.mainFilePath);
-  const rootContent = mainItem?.textContent || '% LaTeX document\n\\documentclass{article}\n\\begin{document}\n\\end{document}';
-  const rootTitle = mainItem?.name || 'main.tex';
-
-  if (!effectiveRootPageId) {
-    report('creating_root', `Initializing root document (${rootTitle})...`);
-    const createdRoot = await manuscriptService.docs.create({
-      projectId: effectiveProjectId,
-      title: rootTitle,
-      content: rootContent,
-      status: 'draft',
-    });
-    effectiveRootPageId = createdRoot?.id;
-  }
-
-  if (!effectiveRootPageId) {
-    throw new Error('Failed to create or resolve root document page.');
-  }
-
-  // ── Step 3: Upload Asset Files (Backend FilestoreRepository materializes folder chains from path) ──
-  if (extracted.assetFiles.length > 0) {
-    report('uploading_assets', `Uploading ${extracted.assetFiles.length} asset(s)...`);
-    for (const asset of extracted.assetFiles) {
-      if (!asset.blob) continue;
-      const assetPath = (asset.path || asset.name).replace(/^\/+/, '');
-      const file = new File([asset.blob], assetPath, {
-        type: asset.blob.type || 'application/octet-stream',
-      });
-
-      try {
-        await manuscriptService.filestore.uploadPageFile(
-          effectiveRootPageId,
-          file,
-          null,
-          undefined,
-          effectiveProjectId,
-        );
-      } catch (assetErr) {
-        console.error(`[import-zip] Failed to upload asset ${asset.path}:`, assetErr);
-      } finally {
-        processedItems++;
-        report('uploading_assets', `Uploaded ${asset.name} (${processedItems}/${totalItems})`);
-      }
-    }
-  }
-
-  // ── Step 5: Create Child Text Documents (.tex, .bib, .sty, etc.) ────────
-  report('creating_files', `Extracting ${extracted.textFiles.length} source file(s)...`);
-
-  for (const textFile of extracted.textFiles) {
-    // If this file was already used as root page content and we're initializing a new root page
-    if (!existingParentPageId && textFile.path === extracted.mainFilePath) {
-      processedItems++;
-      continue;
-    }
-
-    try {
-      const createdChild = await manuscriptService.docs.createChildFile({
-        parentPageId: effectiveRootPageId,
-        title: textFile.path,
-        content: textFile.textContent,
-      });
-
-      if (textFile.path === extracted.mainFilePath) {
-        rootPageFileId = createdChild.id;
-      }
-    } catch (textErr) {
-      console.error(`[import-zip] Failed to create source file ${textFile.path}:`, textErr);
-    } finally {
-      processedItems++;
-      report('creating_files', `Created ${textFile.name} (${processedItems}/${totalItems})`);
-    }
-  }
-
-  // ── Step 5: Finalize Main Document ───────────────────────────────────────
-  if (rootPageFileId) {
-    try {
-      await manuscriptService.docs.setMainFile({
-        pageId: effectiveRootPageId,
-        fileId: rootPageFileId,
-      });
-    } catch (setMainErr) {
-      console.warn('[import-zip] Note setting main file:', setMainErr);
-    }
-  }
-
-  report('done', 'Import complete!');
+  report('done', 'Imported project archive successfully.', totalItems);
 
   return {
-    projectId: effectiveProjectId,
-    rootPageId: effectiveRootPageId,
-    mainFileId: rootPageFileId,
+    projectId: serverImportRes.projectId || effectiveProjectId,
+    rootPageId: serverImportRes.rootDocId || existingParentPageId || '',
+    mainFileId: serverImportRes.rootDocId || undefined,
+    summary: serverImportRes,
   };
 }

@@ -8,7 +8,7 @@ import {
   type SynctexHighlightState,
 } from '@/features/editor/subsystems/compiler';
 import { editorCommandBus } from '@/features/editor/core';
-import { LatexCompilerEngine } from '@/features/editor/subsystems/compiler';
+import { CompilePipeline } from '@/features/editor/subsystems/compiler';
 import { usePageStore } from '@/features/editor/core';
 
 // Mock react-pdf to avoid canvas & worker initialization in jsdom

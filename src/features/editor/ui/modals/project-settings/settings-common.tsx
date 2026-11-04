@@ -50,8 +50,8 @@ export function CodeIconBrackets({ className = 'size-4 shrink-0' }: { className?
   );
 }
 
-// ── Overleaf 1:1 Switch (Toggle) ──────────────────────────────────────────────
-export function OverleafSwitch({
+// ── Settings Switch (Toggle) ──────────────────────────────────────────────────
+export function SettingsSwitch({
   checked,
   onCheckedChange,
   disabled,
@@ -77,6 +77,8 @@ export function OverleafSwitch({
     />
   );
 }
+
+export { SettingsSwitch as OverleafSwitch };
 
 // ── Overleaf Setting Row (Title, Subtitle, Control) ────────────────────────────
 export function SettingRow({

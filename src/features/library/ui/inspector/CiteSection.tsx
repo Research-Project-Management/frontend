@@ -34,6 +34,7 @@ import type {
   CslStyle,
 } from "@/features/library/domain/types/core.types";
 import {
+  generateCitationKey,
   getCleanStyleLabel,
   normalizeCitationStyleId,
 } from "@/features/library/domain/citations";
@@ -126,10 +127,10 @@ export default function CiteSection({ item, scopeId }: CiteSectionProps) {
     currentCslStyle,
   );
 
-  const rawCiteKey = item?.citationKey || item?.id || "";
   const citeKey = useMemo(() => {
-    return (rawCiteKey || "ref").replace(/[^a-zA-Z0-9_-]/g, "");
-  }, [rawCiteKey]);
+    const resolved = item?.citationKey?.trim() || generateCitationKey(item);
+    return (resolved || "ref").replace(/[^a-zA-Z0-9_-]/g, "");
+  }, [item]);
 
   // 4 Core primary styles (APA, IEEE, MLA, BibTeX) - ALWAYS FIXED and NEVER replaced!
   const coreStyles = useMemo(

@@ -41,6 +41,7 @@ export class BatchFlowManager<TInput = unknown, TOutput = unknown> {
   private readonly retryBaseDelayMs: number;
   private readonly abortController: AbortController;
   private readonly progressListeners = new Set<BatchFlowEventListener<TOutput>>();
+  private readonly externalSignal?: AbortSignal;
 
   private isRunning = false;
   private isCancelled = false;
@@ -50,9 +51,10 @@ export class BatchFlowManager<TInput = unknown, TOutput = unknown> {
     this.maxRetries = options.maxRetries ?? 2;
     this.retryBaseDelayMs = options.retryBaseDelayMs ?? 500;
     this.abortController = new AbortController();
+    this.externalSignal = options.abortSignal;
 
-    if (options.abortSignal) {
-      options.abortSignal.addEventListener('abort', () => this.cancel(), { once: true });
+    if (this.externalSignal?.aborted) {
+      this.cancel();
     }
   }
 
@@ -72,6 +74,15 @@ export class BatchFlowManager<TInput = unknown, TOutput = unknown> {
       throw new Error('BatchFlowManager is already running an active task flow.');
     }
     this.isRunning = true;
+
+    const onExternalAbort = () => this.cancel();
+    if (this.externalSignal) {
+      if (this.externalSignal.aborted) {
+        this.cancel();
+      } else {
+        this.externalSignal.addEventListener('abort', onExternalAbort, { once: true });
+      }
+    }
 
     const total = tasks.length;
     const results = new Map<string, TOutput>();
@@ -100,80 +111,82 @@ export class BatchFlowManager<TInput = unknown, TOutput = unknown> {
       });
     };
 
-    if (total === 0) {
-      this.isRunning = false;
-      return { total: 0, completed: 0, succeeded: 0, failed: 0, percentage: 100, results, errors };
-    }
+    try {
+      if (total === 0) {
+        return { total: 0, completed: 0, succeeded: 0, failed: 0, percentage: 100, results, errors };
+      }
 
-    const queue = [...tasks];
+      const queue = [...tasks];
 
-    const runWorker = async (): Promise<void> => {
-      while (queue.length > 0 && !this.isCancelled) {
-        const task = queue.shift();
-        if (!task) break;
+      const runWorker = async (): Promise<void> => {
+        while (queue.length > 0 && !this.isCancelled) {
+          const task = queue.shift();
+          if (!task) break;
 
-        let attempt = 0;
-        const taskMaxRetries = task.retries ?? this.maxRetries;
-        let lastError: Error = new Error(`Task ${task.id} failed without execution.`);
+          let attempt = 0;
+          const taskMaxRetries = task.retries ?? this.maxRetries;
+          let lastError: Error = new Error(`Task ${task.id} failed without execution.`);
 
-        while (attempt <= taskMaxRetries && !this.isCancelled) {
-          try {
-            const res = await task.execute(task.data, this.abortController.signal);
-            results.set(task.id, res);
-            succeeded++;
-            completed++;
-            notify();
-            lastError = undefined as unknown as Error;
-            break;
-          } catch (err: unknown) {
-            lastError = err instanceof Error ? err : new Error(String(err));
-            attempt++;
-            if (attempt <= taskMaxRetries && !this.isCancelled) {
-              const delay = this.retryBaseDelayMs * Math.pow(2, attempt - 1) + Math.random() * 100;
-              await new Promise<void>((resolve) => {
-                if (this.abortController.signal.aborted) {
-                  resolve();
-                  return;
-                }
-                const onAbort = () => {
-                  clearTimeout(timer);
-                  resolve();
-                };
-                const timer = setTimeout(() => {
-                  this.abortController.signal.removeEventListener('abort', onAbort);
-                  resolve();
-                }, delay);
-                this.abortController.signal.addEventListener('abort', onAbort, { once: true });
-              });
+          while (attempt <= taskMaxRetries && !this.isCancelled) {
+            try {
+              const res = await task.execute(task.data, this.abortController.signal);
+              results.set(task.id, res);
+              succeeded++;
+              completed++;
+              notify();
+              lastError = undefined as unknown as Error;
+              break;
+            } catch (err: unknown) {
+              lastError = err instanceof Error ? err : new Error(String(err));
+              attempt++;
+              if (attempt <= taskMaxRetries && !this.isCancelled) {
+                const delay = this.retryBaseDelayMs * Math.pow(2, attempt - 1) + Math.random() * 100;
+                await new Promise<void>((resolve) => {
+                  if (this.abortController.signal.aborted) {
+                    resolve();
+                    return;
+                  }
+                  const onAbort = () => {
+                    clearTimeout(timer);
+                    resolve();
+                  };
+                  const timer = setTimeout(() => {
+                    this.abortController.signal.removeEventListener('abort', onAbort);
+                    resolve();
+                  }, delay);
+                  this.abortController.signal.addEventListener('abort', onAbort, { once: true });
+                });
+              }
             }
           }
+
+          if (lastError && !this.isCancelled) {
+            errors.set(task.id, lastError);
+            failed++;
+            completed++;
+            notify();
+          }
         }
+      };
 
-        if (lastError && !this.isCancelled) {
-          errors.set(task.id, lastError);
-          failed++;
-          completed++;
-          notify();
-        }
-      }
-    };
+      const workerCount = Math.min(this.concurrency, total);
+      const workers = Array.from({ length: workerCount }, () => runWorker());
+      await Promise.all(workers);
 
-    const workerCount = Math.min(this.concurrency, total);
-    const workers = Array.from({ length: workerCount }, () => runWorker());
-
-    await Promise.all(workers);
-    this.isRunning = false;
-
-    const finalPercentage = total > 0 ? Math.round((completed / total) * 100) : 100;
-    return {
-      total,
-      completed,
-      succeeded,
-      failed,
-      percentage: finalPercentage,
-      results,
-      errors,
-    };
+      const finalPercentage = total > 0 ? Math.round((completed / total) * 100) : 100;
+      return {
+        total,
+        completed,
+        succeeded,
+        failed,
+        percentage: finalPercentage,
+        results,
+        errors,
+      };
+    } finally {
+      this.isRunning = false;
+      this.externalSignal?.removeEventListener('abort', onExternalAbort);
+    }
   }
 }
 
@@ -238,6 +251,12 @@ export interface FileIngestionStrategyContext {
     extractedTitle: string,
     finalItemId?: string,
     updateProvisional?: boolean,
+  ) => void;
+  readonly markFileFailed?: (
+    file: File,
+    index: number,
+    provisionalId: string,
+    errorMsg: string,
   ) => void;
 }
 
@@ -383,28 +402,55 @@ export const BinaryAttachmentFileStrategy: IFileIngestionStrategy = {
     const runId = ingestPayload?.data?.runId || ingestPayload?.runId;
     const completedItemId = ingestPayload?.data?.itemId || ingestPayload?.itemId;
 
-    let finalTitle = identifiedTitle;
-    let finalItemId = completedItemId;
-
     if (runId) {
-      const pollOutcome = await pollIngestionRunCompletion(ctx.scopeId, runId, {
+      // Mark file uploaded immediately, freeing up the upload worker slot
+      ctx.markFileSucceeded(
+        file,
+        ctx.index,
+        ctx.provisionalId,
+        identifiedTitle,
+        completedItemId,
+        false,
+      );
+
+      // Decouple extraction polling so upload worker slots are freed immediately
+      void pollIngestionRunCompletion(ctx.scopeId, runId, {
         fallbackTitle: identifiedTitle,
         initialItemId: completedItemId,
         signal: ctx.signal,
-      });
-      if (!pollOutcome.ok) {
-        throw new Error(pollOutcome.error || 'Extraction failed');
-      }
-      finalTitle = pollOutcome.title || identifiedTitle;
-      finalItemId = pollOutcome.itemId || completedItemId;
+      })
+        .then((pollOutcome) => {
+          if (pollOutcome.ok) {
+            ctx.markFileSucceeded(
+              file,
+              ctx.index,
+              ctx.provisionalId,
+              pollOutcome.title || identifiedTitle,
+              pollOutcome.itemId || completedItemId,
+              true,
+            );
+          } else {
+            ctx.markFileFailed?.(
+              file,
+              ctx.index,
+              ctx.provisionalId,
+              pollOutcome.error || 'Extraction failed',
+            );
+          }
+        })
+        .catch((err: unknown) => {
+          const errMsg = err instanceof Error ? err.message : String(err);
+          ctx.markFileFailed?.(file, ctx.index, ctx.provisionalId, errMsg);
+        });
+      return;
     }
 
     ctx.markFileSucceeded(
       file,
       ctx.index,
       ctx.provisionalId,
-      finalTitle,
-      finalItemId,
+      identifiedTitle,
+      completedItemId,
       true,
     );
   },

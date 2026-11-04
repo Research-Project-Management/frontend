@@ -66,8 +66,6 @@ export function subscribeToDrafts(listener: () => void): () => void {
   };
 }
 
-export const subscribeGroupMergeDrafts = subscribeToDrafts;
-
 export function clearGroupMergeDraft(groupKey?: string): void {
   if (!groupKey) {
     if (groupMergeDraftCache.size === 0) return;
@@ -130,6 +128,7 @@ export interface ExecuteDuplicateMergeWithCommandOptions {
     mutateAsync: (payload: {
       primaryItemId: string;
       duplicateItemIds: string[];
+      overrides?: Record<string, unknown>;
       mergedFields?: Record<string, unknown>;
     }) => Promise<unknown>;
   };

@@ -3,118 +3,16 @@
 import { create } from 'zustand';
 import { toast } from 'sonner';
 import type { Item } from '@/features/library/domain/types/core.types';
-import { ALL_SCHEMA_PROMOTE_KEYS } from '@/features/library/domain/metadata-mapper';
-import { CANONICAL_FIELD_ALIASES } from '@/features/library/domain/item-field-schema';
 import { extractExplicitUserMergeOverrides } from '@/features/library/domain/diff';
 import { notifyDraftCacheCleared } from '@/features/library/sdk';
+import {
+  cloneSnapshotValue,
+  buildInverseMetadataPatch,
+  PRE_CONVERSION_BIBLIOGRAPHIC_SCALAR_KEYS,
+  buildPreConversionSnapshot,
+} from '../../domain/item-field-schema';
 
-// ── Snapshot & Inverse Patch Helpers ─────────────────────────────────────────
-
-export function cloneSnapshotValue<T>(val: T): T {
-  if (Array.isArray(val)) {
-    return val.map((item) => (item && typeof item === 'object' ? { ...(item as Record<string, unknown>) } : item)) as unknown as T;
-  }
-  if (Boolean(val) && typeof val === 'object') return { ...(val as Record<string, unknown>) } as unknown as T;
-  return val;
-}
-
-const TRANSIENT_PATCH_KEYS = new Set<string>(['version', 'silent', 'expectedVersion']);
-
-const MULTI_KEY_SIBLING_FALLBACKS: Record<string, readonly string[]> = {
-  abstract: ['abstractNote', 'abstract'], abstractNote: ['abstractNote', 'abstract'],
-  date: ['publicationDate', 'date', 'issueDate', 'dateDecided', 'dateEnacted', 'filingDate'],
-  publicationDate: ['publicationDate', 'date', 'issueDate', 'dateDecided', 'dateEnacted', 'filingDate'],
-  issueDate: ['issueDate', 'publicationDate', 'date'], dateDecided: ['dateDecided', 'publicationDate', 'date'],
-  dateEnacted: ['dateEnacted', 'publicationDate', 'date'], filingDate: ['filingDate', 'date', 'publicationDate'],
-  journal: ['publicationTitle', 'journal'], publicationTitle: ['publicationTitle', 'journal'],
-  journalAbbr: ['journalAbbreviation', 'journalAbbr'], journalAbbreviation: ['journalAbbreviation', 'journalAbbr'],
-  accessedAt: ['accessDate', 'accessedAt'], accessDate: ['accessDate', 'accessedAt'],
-  rights: ['license', 'rights'], license: ['license', 'rights'],
-  numPages: ['numberOfPages', 'numPages'], numberOfPages: ['numberOfPages', 'numPages'],
-  archiveID: ['arxivId', 'archiveID', 'archiveId'], archiveId: ['arxivId', 'archiveID', 'archiveId'], arxivId: ['arxivId', 'archiveID', 'archiveId'],
-};
-
-function resolvePreviousScalarValue(itemRecord: Record<string, unknown>, key: string): unknown {
-  if (itemRecord[key] !== undefined) return itemRecord[key];
-  const currentEf =
-    itemRecord.extraFields && typeof itemRecord.extraFields === 'object' && !Array.isArray(itemRecord.extraFields)
-      ? (itemRecord.extraFields as Record<string, unknown>)
-      : undefined;
-  const siblingCandidates = MULTI_KEY_SIBLING_FALLBACKS[key] ?? CANONICAL_FIELD_ALIASES[key];
-  if (siblingCandidates) {
-    for (const sibling of siblingCandidates) {
-      if (itemRecord[sibling] !== undefined) return itemRecord[sibling];
-      if (currentEf && currentEf[sibling] !== undefined) return currentEf[sibling];
-    }
-  }
-  return currentEf && currentEf[key] !== undefined ? currentEf[key] : undefined;
-}
-
-export function buildInverseMetadataPatch(currentItem: Item, forwardPatch: Partial<Item>): Partial<Item> {
-  const itemRecord = currentItem as Record<string, unknown>;
-  const patchRecord = forwardPatch as Record<string, unknown>;
-  const inverse: Record<string, unknown> = {};
-
-  for (const key of Object.keys(patchRecord)) {
-    if (TRANSIENT_PATCH_KEYS.has(key)) continue;
-    if (key === 'extraFields' || key === 'metadata') {
-      const forwardNested = patchRecord[key];
-      if (forwardNested && typeof forwardNested === 'object' && !Array.isArray(forwardNested)) {
-        const currentNested =
-          itemRecord[key] && typeof itemRecord[key] === 'object' && !Array.isArray(itemRecord[key])
-            ? (itemRecord[key] as Record<string, unknown>)
-            : {};
-        const inverseNested: Record<string, unknown> = { ...currentNested };
-        for (const subKey of Object.keys(forwardNested as Record<string, unknown>)) {
-          inverseNested[subKey] =
-            subKey in currentNested && currentNested[subKey] !== undefined ? cloneSnapshotValue(currentNested[subKey]) : null;
-        }
-        inverse[key] = inverseNested;
-      }
-      continue;
-    }
-    const prevVal = resolvePreviousScalarValue(itemRecord, key);
-    inverse[key] = prevVal === undefined ? null : cloneSnapshotValue(prevVal);
-  }
-  return inverse as Partial<Item>;
-}
-
-const BASE_PRE_CONVERSION_SCALAR_KEYS = [
-  'title', 'isbn', 'issn', 'doi', 'pmid', 'pmcid', 'arxivId', 'volume', 'issue', 'pages',
-  'numberOfPages', 'edition', 'series', 'seriesTitle', 'seriesNumber', 'place', 'abstract',
-  'abstractNote', 'url', 'openAccessPdfUrl', 'language', 'rights', 'license', 'archive',
-  'archiveLocation', 'callNumber', 'shortTitle', 'year', 'publicationDate', 'date', 'accessDate',
-  'journalAbbreviation', 'citationKey', 'itemType', 'extra', 'publicationTitle', 'venue', 'publisher',
-] as const;
-
-export const PRE_CONVERSION_BIBLIOGRAPHIC_SCALAR_KEYS: readonly string[] = Array.from(
-  new Set<string>([...BASE_PRE_CONVERSION_SCALAR_KEYS, ...ALL_SCHEMA_PROMOTE_KEYS]),
-);
-
-export function buildPreConversionSnapshot(sourceItem: Partial<Item>): Partial<Item> {
-  const srcRecord = sourceItem as Record<string, unknown>;
-  const snap: Record<string, unknown> = {};
-  if (typeof sourceItem.id === 'string' && sourceItem.id) snap.id = sourceItem.id;
-
-  const allKeysToSnapshot = new Set<string>([...PRE_CONVERSION_BIBLIOGRAPHIC_SCALAR_KEYS, ...ALL_SCHEMA_PROMOTE_KEYS]);
-  for (const key of allKeysToSnapshot) {
-    if (srcRecord[key] !== undefined) {
-      const orig = srcRecord[key];
-      snap[key] =
-        typeof orig === 'string' || typeof orig === 'number' || typeof orig === 'boolean'
-          ? orig
-          : cloneSnapshotValue(orig);
-    }
-  }
-  snap.extra = typeof sourceItem.extra === 'string' ? sourceItem.extra : '';
-  if (sourceItem.extraFields && typeof sourceItem.extraFields === 'object') {
-    snap.extraFields = { ...(sourceItem.extraFields as Record<string, unknown>) };
-  }
-  if (Array.isArray(sourceItem.creators)) snap.creators = sourceItem.creators.map((c) => ({ ...c }));
-  if (Array.isArray(sourceItem.contributors)) snap.contributors = sourceItem.contributors.map((c) => ({ ...c }));
-  if (Array.isArray(sourceItem.authors)) snap.authors = [...sourceItem.authors];
-  return snap as Partial<Item>;
-}
+export { cloneSnapshotValue, buildInverseMetadataPatch, PRE_CONVERSION_BIBLIOGRAPHIC_SCALAR_KEYS, buildPreConversionSnapshot };
 
 // ── LibraryCommand & Concrete Command Factories ──────────────────────────────
 
@@ -126,6 +24,8 @@ export interface LibraryCommand<TResult = unknown> {
   undo(): Promise<void>;
   redo?(): Promise<TResult>;
 }
+
+export type CommandEntry<TResult = unknown> = LibraryCommand<TResult>;
 
 function defineLibraryCommand<TResult = void>(
   prefix: string,
@@ -145,12 +45,10 @@ function defineLibraryCommand<TResult = void>(
 }
 
 export interface TrashCommandOptions {
-  itemIds: string[];
-  itemTitle?: string;
+  itemIds: string[]; itemTitle?: string;
   deleteMutation: { mutateAsync: (ids: string[]) => Promise<unknown> };
   restoreMutation: { mutateAsync: (ids: string[]) => Promise<unknown> };
-  onExecuted?: () => void;
-  onUndone?: () => void;
+  onExecuted?: () => void; onUndone?: () => void;
 }
 
 export function createTrashCommand(options: TrashCommandOptions): LibraryCommand {
@@ -164,12 +62,10 @@ export function createTrashCommand(options: TrashCommandOptions): LibraryCommand
 }
 
 export interface RestoreCommandOptions {
-  itemIds: string[];
-  itemTitle?: string;
+  itemIds: string[]; itemTitle?: string;
   restoreMutation: { mutateAsync: (ids: string[]) => Promise<unknown> };
   deleteMutation: { mutateAsync: (ids: string[]) => Promise<unknown> };
-  onExecuted?: () => void;
-  onUndone?: () => void;
+  onExecuted?: () => void; onUndone?: () => void;
 }
 
 export function createRestoreCommand(options: RestoreCommandOptions): LibraryCommand {
@@ -184,20 +80,13 @@ export function createRestoreCommand(options: RestoreCommandOptions): LibraryCom
 }
 
 export interface MoveItemsCommandOptions {
-  itemIds: string[];
-  sourceCollectionId: string | null;
-  targetCollectionId: string | null;
-  targetCollectionName?: string;
-  previousCollectionsByItem?: Map<string, string[]>;
+  itemIds: string[]; sourceCollectionId: string | null; targetCollectionId: string | null;
+  targetCollectionName?: string; previousCollectionsByItem?: Map<string, string[]>;
   onUndoMove?: () => Promise<void>;
   detachMutation?: { mutateAsync: (args: { collectionId: string; itemIds: string[] }) => Promise<unknown> };
   assignMutation?: { mutateAsync: (args: { collectionId: string; itemIds: string[] }) => Promise<unknown> };
-  moveMutation: {
-    mutateAsync: (args: { targetCollectionId: string | null; itemIds: string[]; sourceCollectionId?: string | null; scopeId?: string }) => Promise<unknown>;
-  };
-  scopeId?: string;
-  onExecuted?: () => void;
-  onUndone?: () => void;
+  moveMutation: { mutateAsync: (args: { targetCollectionId: string | null; itemIds: string[]; sourceCollectionId?: string | null; scopeId?: string }) => Promise<unknown> };
+  scopeId?: string; onExecuted?: () => void; onUndone?: () => void;
 }
 
 export function createMoveItemsCommand(options: MoveItemsCommandOptions): LibraryCommand {
@@ -264,12 +153,9 @@ export function createMoveItemsCommand(options: MoveItemsCommandOptions): Librar
 }
 
 export interface ToggleStarCommandOptions {
-  itemId: string;
-  itemTitle?: string;
-  newStarred: boolean;
+  itemId: string; itemTitle?: string; newStarred: boolean;
   toggleStarMutation: { mutateAsync: (args: { id: string; isStarred: boolean }) => Promise<unknown> };
-  onExecuted?: () => void;
-  onUndone?: () => void;
+  onExecuted?: () => void; onUndone?: () => void;
 }
 
 export function createToggleStarCommand(options: ToggleStarCommandOptions): LibraryCommand {
@@ -277,22 +163,13 @@ export function createToggleStarCommand(options: ToggleStarCommandOptions): Libr
   return defineLibraryCommand(
     'star',
     options.itemTitle ? `${actionText} "${options.itemTitle}"` : actionText,
-    async () => {
-      await options.toggleStarMutation.mutateAsync({ id: options.itemId, isStarred: options.newStarred });
-      options.onExecuted?.();
-    },
-    async () => {
-      await options.toggleStarMutation.mutateAsync({ id: options.itemId, isStarred: !options.newStarred });
-      options.onUndone?.();
-    },
+    async () => { await options.toggleStarMutation.mutateAsync({ id: options.itemId, isStarred: options.newStarred }); options.onExecuted?.(); },
+    async () => { await options.toggleStarMutation.mutateAsync({ id: options.itemId, isStarred: !options.newStarred }); options.onUndone?.(); },
   );
 }
 
 export interface UpdateItemMetadataCommandParams {
-  itemId: string;
-  description?: string;
-  forwardPatch: Partial<Item>;
-  inversePatch: Partial<Item>;
+  itemId: string; description?: string; forwardPatch: Partial<Item>; inversePatch: Partial<Item>;
   applyPatch: (itemId: string, patch: Partial<Item>) => Promise<unknown>;
 }
 
@@ -322,7 +199,7 @@ export interface ConvertItemTypeCommandParams {
   targetTypeLabel?: string;
   retainUnmappedInExtra?: boolean;
   convertType: (args: { itemId: string; targetType: string; retainUnmappedInExtra?: boolean; silent?: boolean }) => Promise<{ item?: Item } | unknown>;
-  applyMetadataPatch?: (itemId: string, patch: Partial<Item>) => Promise<unknown>;
+  applyMetadataPatch?: (itemId: string, patch: Partial<Item>, expectedVersion?: number) => Promise<unknown>;
   onStateSynced?: (updatedItem?: Item) => void;
 }
 
@@ -370,7 +247,8 @@ export function createConvertItemTypeCommand(params: ConvertItemTypeCommandParam
           extraFields: preEf,
           itemType: previousItemType as Item['itemType'],
         };
-        const patched = await params.applyMetadataPatch(params.itemId, restorePatch);
+        const currentVersion = typeof restoredItem?.version === 'number' ? restoredItem.version : undefined;
+        const patched = await params.applyMetadataPatch(params.itemId, restorePatch, currentVersion);
         restoredItem = extractResultItem(patched) ?? restoredItem;
       }
       params.onStateSynced?.(restoredItem);
@@ -462,6 +340,39 @@ export function createBatchDetachCommand(options: BatchDetachCommandOptions): Li
   );
 }
 
+export interface BatchAssignCommandOptions {
+  collectionId: string;
+  collectionName?: string;
+  itemIds: string[];
+  alreadyAssignedItemIds?: Set<string>;
+  assignMutation: { mutateAsync: (args: { collectionId: string; itemIds: string[] }) => Promise<unknown> };
+  detachMutation: { mutateAsync: (args: { collectionId: string; itemIds: string[] }) => Promise<unknown> };
+  onExecuted?: () => void;
+  onUndone?: () => void;
+}
+
+export function createBatchAssignCommand(options: BatchAssignCommandOptions): LibraryCommand {
+  const count = options.itemIds.length;
+  const colLabel = options.collectionName ? `"${options.collectionName}"` : 'collection';
+  const idsToDetachOnUndo = options.alreadyAssignedItemIds
+    ? options.itemIds.filter((id) => !options.alreadyAssignedItemIds!.has(id))
+    : options.itemIds;
+  return defineLibraryCommand(
+    'assign',
+    count === 1 ? `Added 1 item to ${colLabel}` : `Added ${count} items to ${colLabel}`,
+    async () => {
+      await options.assignMutation.mutateAsync({ collectionId: options.collectionId, itemIds: options.itemIds });
+      options.onExecuted?.();
+    },
+    async () => {
+      if (idsToDetachOnUndo.length > 0) {
+        await options.detachMutation.mutateAsync({ collectionId: options.collectionId, itemIds: idsToDetachOnUndo });
+      }
+      options.onUndone?.();
+    },
+  );
+}
+
 export interface BatchTagToggleItemSnapshot {
   itemId: string;
   previousTags: string[];
@@ -539,6 +450,31 @@ export function createAddNoteCommand(options: AddNoteCommandOptions): LibraryCom
   );
 }
 
+const noteIdRemapRegistry = new Map<string, string>();
+const noteVersionRemapRegistry = new Map<string, number>();
+
+function resolveRemappedNoteId(noteId: string): string {
+  let current = noteId;
+  const visited = new Set<string>();
+  while (noteIdRemapRegistry.has(current) && !visited.has(current)) {
+    visited.add(current);
+    current = noteIdRemapRegistry.get(current)!;
+  }
+  return current;
+}
+
+export function registerRecreatedNoteIdRemap(
+  oldNoteId: string,
+  newNoteId: string,
+  newVersion?: number,
+): void {
+  if (!oldNoteId || !newNoteId || oldNoteId === newNoteId) return;
+  noteIdRemapRegistry.set(oldNoteId, newNoteId);
+  if (typeof newVersion === 'number') {
+    noteVersionRemapRegistry.set(newNoteId, newVersion);
+  }
+}
+
 export interface UpdateNoteCommandOptions {
   noteId: string;
   initialVersion?: number;
@@ -555,13 +491,19 @@ export function createUpdateNoteCommand(options: UpdateNoteCommandOptions): Libr
     `note-update-${options.noteId}`,
     'Updated note',
     async () => {
-      const updated = await options.updateNote(options.noteId, currentVersion, { contentMd: options.nextContentMd });
-      currentVersion = typeof updated?.version === 'number' ? updated.version : currentVersion + 1;
+      const targetId = resolveRemappedNoteId(options.noteId);
+      const effectiveVersion = noteVersionRemapRegistry.get(targetId) ?? currentVersion;
+      const updated = await options.updateNote(targetId, effectiveVersion, { contentMd: options.nextContentMd });
+      currentVersion = typeof updated?.version === 'number' ? updated.version : effectiveVersion + 1;
+      noteVersionRemapRegistry.set(targetId, currentVersion);
       options.onExecuted?.();
     },
     async () => {
-      const reverted = await options.updateNote(options.noteId, currentVersion, { contentMd: options.previousContentMd });
-      currentVersion = typeof reverted?.version === 'number' ? reverted.version : currentVersion + 1;
+      const targetId = resolveRemappedNoteId(options.noteId);
+      const effectiveVersion = noteVersionRemapRegistry.get(targetId) ?? currentVersion;
+      const reverted = await options.updateNote(targetId, effectiveVersion, { contentMd: options.previousContentMd });
+      currentVersion = typeof reverted?.version === 'number' ? reverted.version : effectiveVersion + 1;
+      noteVersionRemapRegistry.set(targetId, currentVersion);
       options.onUndone?.();
     },
   );
@@ -587,8 +529,14 @@ export function createDeleteNoteCommand(options: DeleteNoteCommandOptions): Libr
   return defineLibraryCommand(
     `note-delete-${options.noteId}`,
     'Deleted note',
-    async () => { await options.deleteNote(currentNoteId, currentVersion); options.onExecuted?.(); },
     async () => {
+      const targetId = resolveRemappedNoteId(currentNoteId);
+      const effectiveVersion = noteVersionRemapRegistry.get(targetId) ?? currentVersion;
+      await options.deleteNote(targetId, effectiveVersion);
+      options.onExecuted?.();
+    },
+    async () => {
+      const previousNoteId = resolveRemappedNoteId(currentNoteId);
       const recreated = await options.createNote({
         itemId: options.itemId,
         contentMd: options.contentMd,
@@ -596,7 +544,12 @@ export function createDeleteNoteCommand(options: DeleteNoteCommandOptions): Libr
         title: options.title,
         ...(options.tags !== undefined ? { tags: options.tags } : {}),
       });
-      if (recreated?.id) { currentNoteId = recreated.id; currentVersion = recreated.version; }
+      if (recreated?.id) {
+        registerRecreatedNoteIdRemap(previousNoteId, recreated.id, recreated.version);
+        registerRecreatedNoteIdRemap(options.noteId, recreated.id, recreated.version);
+        currentNoteId = recreated.id;
+        currentVersion = recreated.version;
+      }
       options.onUndone?.(recreated?.id);
     },
   );
@@ -636,6 +589,7 @@ function resolveCommandToastId(id: string): string {
   if (id.startsWith('merge-')) return 'library-merge';
   if (id.startsWith('note-')) return 'note-mutation-toast';
   if (id.startsWith('convert-type-')) return 'type-conversion';
+  if (id.startsWith('meta-')) return 'item-update';
   return `cmd-${id}`;
 }
 
@@ -643,9 +597,11 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
   undoStack: [], redoStack: [], isExecuting: false, isUndoing: false, lastCommand: null, epoch: 0, currentScopeId: null,
 
   executeCommand: async <T>(command: LibraryCommand<T>, options: { silentToast?: boolean } = {}): Promise<T> => {
-    const ensuredCommand: LibraryCommand<T> = command.id
-      ? command
-      : { ...command, id: `cmd-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` };
+    const ensuredCommand: LibraryCommand<T> = {
+      ...command,
+      id: command.id || `cmd-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      timestamp: command.timestamp || Date.now(),
+    };
     activeExecutionsCount += 1;
     set({ isExecuting: true });
     const startEpoch = get().epoch;
@@ -657,14 +613,18 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
         set({ isExecuting: stillExecuting });
         return result;
       }
+      const executedWithNow: LibraryCommand<T> = {
+        ...ensuredCommand,
+        timestamp: Date.now(),
+      };
       set((s) => ({
-        undoStack: [ensuredCommand, ...s.undoStack.filter((c) => c.id !== ensuredCommand.id).slice(0, MAX_HISTORY_LENGTH - 1)],
-        redoStack: [], lastCommand: ensuredCommand, isExecuting: stillExecuting,
+        undoStack: [executedWithNow, ...s.undoStack.filter((c) => c.id !== executedWithNow.id).slice(0, MAX_HISTORY_LENGTH - 1)],
+        redoStack: [], lastCommand: executedWithNow, isExecuting: stillExecuting,
       }));
       if (!options.silentToast) {
-        toast.success(ensuredCommand.description, {
-          id: resolveCommandToastId(ensuredCommand.id),
-          action: { label: 'Undo', onClick: () => { void get().undo(ensuredCommand.id); } },
+        toast.success(executedWithNow.description, {
+          id: resolveCommandToastId(executedWithNow.id),
+          action: { label: 'Undo', onClick: () => { void get().undo(executedWithNow.id); } },
         });
       }
       return result;
@@ -677,9 +637,11 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
   },
 
   pushExecutedCommand: <T>(command: LibraryCommand<T>, options: { silentToast?: boolean } = {}): void => {
-    const ensuredCommand: LibraryCommand<T> = command.id
-      ? command
-      : { ...command, id: `cmd-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` };
+    const ensuredCommand: LibraryCommand<T> = {
+      ...command,
+      id: command.id || `cmd-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      timestamp: command.timestamp || Date.now(),
+    };
     const startEpoch = get().epoch;
     if (get().epoch !== startEpoch) return;
     set((s) => ({
@@ -697,17 +659,18 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
   undo: async (expectedCommandId?: string): Promise<boolean> => {
     const { undoStack, isUndoing, isExecuting } = get();
     if (undoStack.length === 0 || isUndoing || isExecuting) return false;
-    const commandToUndo = expectedCommandId ? undoStack.find((c) => c.id === expectedCommandId) : undoStack[0];
-    if (!commandToUndo) return false;
+    const commandToUndo = undoStack[0];
+    if (!commandToUndo || (expectedCommandId && commandToUndo.id !== expectedCommandId)) return false;
     const startEpoch = get().epoch;
     set({ isUndoing: true });
     try {
       await commandToUndo.undo();
       if (get().epoch !== startEpoch) { set({ isUndoing: false }); return false; }
+      const undoneEntry: LibraryCommand = { ...commandToUndo, timestamp: Date.now() };
       set((s) => ({
         undoStack: s.undoStack.filter((c) => c.id !== commandToUndo.id),
-        redoStack: [commandToUndo, ...s.redoStack.slice(0, MAX_HISTORY_LENGTH - 1)],
-        lastCommand: commandToUndo, isUndoing: false,
+        redoStack: [undoneEntry, ...s.redoStack.slice(0, MAX_HISTORY_LENGTH - 1)],
+        lastCommand: undoneEntry, isUndoing: false,
       }));
       toast.info(`Undone: ${commandToUndo.description}`, { id: resolveCommandToastId(commandToUndo.id) });
       return true;
@@ -739,10 +702,11 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
         return false;
       }
       activeExecutionsCount = Math.max(0, activeExecutionsCount - 1);
+      const redoneEntry: LibraryCommand = { ...commandToRedo, timestamp: Date.now() };
       set((s) => ({
         redoStack: s.redoStack.filter((c) => c.id !== commandToRedo.id),
-        undoStack: [commandToRedo, ...s.undoStack.slice(0, MAX_HISTORY_LENGTH - 1)],
-        lastCommand: commandToRedo,
+        undoStack: [redoneEntry, ...s.undoStack.slice(0, MAX_HISTORY_LENGTH - 1)],
+        lastCommand: redoneEntry,
         isExecuting: activeExecutionsCount > 0,
       }));
       toast.success(`Redone: ${commandToRedo.description}`, { id: resolveCommandToastId(commandToRedo.id) });
@@ -758,6 +722,8 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
 
   clearHistory: () => {
     activeExecutionsCount = 0;
+    noteIdRemapRegistry.clear();
+    noteVersionRemapRegistry.clear();
     notifyDraftCacheCleared();
     set((s) => ({ undoStack: [], redoStack: [], lastCommand: null, isExecuting: false, isUndoing: false, epoch: s.epoch + 1 }));
   },
@@ -773,19 +739,3 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
     set({ currentScopeId: normalized });
   },
 }));
-
-export function useLibraryCommandManager() {
-  const s = useLibraryCommandStore();
-  return {
-    executeCommand: s.executeCommand,
-    pushExecutedCommand: s.pushExecutedCommand,
-    undo: s.undo,
-    undoById: s.undoById,
-    redo: s.redo,
-    clearHistory: s.clearHistory,
-    canUndo: s.undoStack.length > 0,
-    canRedo: s.redoStack.length > 0,
-    isExecuting: s.isExecuting,
-    isUndoing: s.isUndoing,
-  };
-}

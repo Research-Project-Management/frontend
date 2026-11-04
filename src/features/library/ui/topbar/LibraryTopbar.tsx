@@ -35,7 +35,7 @@ import {
   type LibraryDisplayOptions,
   type LibraryOrderBy,
 } from "./LibraryDisplayPopover";
-import { TopbarSearch } from "./TopbarSearch";
+import { TopbarSearch } from "./LibraryDisplayPopover";
 import {
   TopbarNewItemDropdown,
   TopbarNewFeedDropdown,
@@ -212,8 +212,6 @@ export interface TopbarProps {
   className?: string;
 }
 
-export type LibraryTopbarProps = TopbarProps;
-
 /**
  * LibraryTopbar Zone
  * Modern autonomous topbar supporting standalone Workspace mode and injected Page mode.
@@ -269,7 +267,41 @@ export function LibraryTopbar({
   const clearSelection = useLibraryUIStore((s) => s.clearSelection);
   const nav = useLibraryNavigation();
 
-  const effectiveDisplayOptions = propDisplayOptions ?? storeDisplayOptions;
+  const rawDisplayOptions = propDisplayOptions ?? storeDisplayOptions;
+  const hasActiveSearch = Boolean((search ?? nav.search)?.trim());
+  const effectiveDisplayOptions = React.useMemo<LibraryDisplayOptions>(() => {
+    const fallbackOrderBy =
+      rawDisplayOptions.orderBy === "relevance" && !hasActiveSearch
+        ? "createdAt"
+        : rawDisplayOptions.orderBy;
+    const validNavOrderBy =
+      nav.orderBy === "relevance" && !hasActiveSearch
+        ? undefined
+        : nav.orderBy;
+    const resolvedOrderBy =
+      validNavOrderBy ||
+      (hasActiveSearch && !isTrash ? "relevance" : fallbackOrderBy);
+    const resolvedOrderDirection =
+      nav.orderDirection ||
+      (resolvedOrderBy === "relevance" ? "desc" : rawDisplayOptions.orderDirection);
+    if (
+      resolvedOrderBy === rawDisplayOptions.orderBy &&
+      resolvedOrderDirection === rawDisplayOptions.orderDirection
+    ) {
+      return rawDisplayOptions;
+    }
+    return {
+      ...rawDisplayOptions,
+      orderBy: resolvedOrderBy,
+      orderDirection: resolvedOrderDirection,
+    };
+  }, [
+    rawDisplayOptions,
+    nav.orderBy,
+    nav.orderDirection,
+    hasActiveSearch,
+    isTrash,
+  ]);
   const effectiveOnDisplayOptionsChange =
     propOnDisplayOptionsChange ?? setStoreDisplayOptions;
 
@@ -520,6 +552,7 @@ export function LibraryTopbar({
               options={effectiveDisplayOptions}
               onOptionsChange={handleDisplayOptionsChange}
               isTrash={isTrash}
+              hasActiveSearch={hasActiveSearch}
             />
           )}
 

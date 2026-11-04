@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   FolderInput,
+  FolderPlus,
   FolderMinus,
   Copy,
   Trash2,
@@ -30,6 +31,7 @@ import {
   TooltipContent,
 } from '@/shared/components/ui/tooltip';
 import { executeDownloadFormatFile } from '@/features/library/core/coordinator/citation-export.coordinator';
+import { getCollectionAncestorPath } from '@/features/library/domain/collection-tree';
 import type {
   Collection,
   CslStyle,
@@ -43,7 +45,9 @@ export interface BatchMoveCollectionPopoverProps {
   isProjectScope: boolean;
   rootLibraryName: string;
   targetableCollections: Collection[];
+  allCollections?: Collection[];
   onBatchMove: (collectionId: string | null) => void;
+  onBatchAssign?: (collectionId: string, collectionName?: string) => void;
 }
 
 export function BatchMoveCollectionPopover({
@@ -53,68 +57,140 @@ export function BatchMoveCollectionPopover({
   isProjectScope,
   rootLibraryName,
   targetableCollections,
+  allCollections,
   onBatchMove,
+  onBatchAssign,
 }: BatchMoveCollectionPopoverProps) {
+  const collectionBreadcrumbMap = useMemo(() => {
+    const sourceList = allCollections && allCollections.length > 0 ? allCollections : targetableCollections;
+    const byId = new Map<string, Collection>();
+    for (const c of sourceList) {
+      if (c.id) byId.set(c.id, c);
+    }
+    const memo = new Map<string, string>();
+    const labels = new Map<string, string>();
+    for (const c of targetableCollections) {
+      const ancestor = getCollectionAncestorPath(c.id, byId, memo);
+      labels.set(c.id, ancestor ? `${ancestor} / ${c.name}` : c.name);
+    }
+    return labels;
+  }, [allCollections, targetableCollections]);
+
   return (
-    <DropdownMenu>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={isAllProcessingSelected}
-              className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none relative before:absolute before:-inset-1 md:before:hidden"
+    <>
+      {onBatchAssign && !isUnfiledView && targetableCollections.length > 0 && (
+        <DropdownMenu>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={isAllProcessingSelected}
+                  className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none relative before:absolute before:-inset-1 md:before:hidden"
+                >
+                  <FolderPlus className="size-3.5 text-foreground shrink-0" />
+                  <span>Add to</span>
+                </Button>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={8}>
+              Add to collection (keep existing collections)
+            </TooltipContent>
+          </Tooltip>
+          <DropdownMenuContent
+            align="center"
+            sideOffset={8}
+            onCloseAutoFocus={(e) => e.preventDefault()}
+            className="w-64 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 max-h-64 overflow-y-auto"
+          >
+            {targetableCollections.map((c) => {
+              const fullLabel = collectionBreadcrumbMap.get(c.id) || c.name;
+              return (
+                <DropdownMenuItem
+                  key={c.id}
+                  onClick={() => onBatchAssign(c.id, c.name)}
+                  className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+                >
+                  <Folder
+                    className="size-4 text-foreground shrink-0"
+                    strokeWidth={1.5}
+                  />
+                  <span className="truncate" title={fullLabel}>
+                    {fullLabel}
+                  </span>
+                </DropdownMenuItem>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+
+      <DropdownMenu>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={isAllProcessingSelected}
+                className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none relative before:absolute before:-inset-1 md:before:hidden"
+              >
+                <FolderInput className="size-3.5 text-foreground shrink-0" />
+                <span>{isUnfiledView ? 'Assign to' : 'Move to'}</span>
+              </Button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent side="top" sideOffset={8}>
+            {isUnfiledView ? 'Assign to collection' : 'Move to collection'}
+          </TooltipContent>
+        </Tooltip>
+        <DropdownMenuContent
+          align="center"
+          sideOffset={8}
+          onCloseAutoFocus={(e) => e.preventDefault()}
+          className="w-64 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 max-h-64 overflow-y-auto"
+        >
+          {canMoveToRootUnfiled && (
+            <DropdownMenuItem
+              onClick={() => onBatchMove(null)}
+              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
             >
-              <FolderInput className="size-3.5 text-foreground shrink-0" />
-              <span>{isUnfiledView ? 'Assign to' : 'Move to'}</span>
-            </Button>
-          </DropdownMenuTrigger>
-        </TooltipTrigger>
-        <TooltipContent side="top" sideOffset={8}>
-          {isUnfiledView ? 'Assign to collection' : 'Move to collection'}
-        </TooltipContent>
-      </Tooltip>
-      <DropdownMenuContent
-        align="center"
-        sideOffset={8}
-        onCloseAutoFocus={(e) => e.preventDefault()}
-        className="w-60 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 max-h-64 overflow-y-auto"
-      >
-        {canMoveToRootUnfiled && (
-          <DropdownMenuItem
-            onClick={() => onBatchMove(null)}
-            className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-          >
-            {isProjectScope ? (
-              <Folder
-                className="size-4 text-foreground shrink-0"
-                strokeWidth={1.5}
-              />
-            ) : (
-              <Library
-                className="size-4 text-foreground shrink-0"
-                strokeWidth={1.5}
-              />
-            )}
-            <span>{rootLibraryName} (Unfile)</span>
-          </DropdownMenuItem>
-        )}
-        {targetableCollections.map((c) => (
-          <DropdownMenuItem
-            key={c.id}
-            onClick={() => onBatchMove(c.id)}
-            className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-          >
-            <Folder
-              className="size-4 text-foreground shrink-0"
-              strokeWidth={1.5}
-            />
-            <span className="truncate">{c.name}</span>
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+              {isProjectScope ? (
+                <Folder
+                  className="size-4 text-foreground shrink-0"
+                  strokeWidth={1.5}
+                />
+              ) : (
+                <Library
+                  className="size-4 text-foreground shrink-0"
+                  strokeWidth={1.5}
+                />
+              )}
+              <span>{rootLibraryName} (Unfile)</span>
+            </DropdownMenuItem>
+          )}
+          {targetableCollections.map((c) => {
+            const fullLabel = collectionBreadcrumbMap.get(c.id) || c.name;
+            return (
+              <DropdownMenuItem
+                key={c.id}
+                onClick={() => onBatchMove(c.id)}
+                className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+              >
+                <Folder
+                  className="size-4 text-foreground shrink-0"
+                  strokeWidth={1.5}
+                />
+                <span className="truncate" title={fullLabel}>
+                  {fullLabel}
+                </span>
+              </DropdownMenuItem>
+            );
+          })}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
   );
 }
 

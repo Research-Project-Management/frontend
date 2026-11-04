@@ -320,13 +320,6 @@ export interface SchemaTypeEntry {
   fields?: SchemaFieldEntry[];
 }
 
-export interface SchemaCachePayload {
-  version?: number;
-  timestamp?: number;
-  itemTypes?: SchemaTypeEntry[];
-  data?: SchemaTypeEntry[] | { itemTypes?: SchemaTypeEntry[] };
-}
-
 /**
  * Updates the field label and type-field mappings in-memory from backend schema definitions.
  */

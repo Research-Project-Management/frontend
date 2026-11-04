@@ -248,11 +248,15 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
   const isLoadingFulltext = fulltextQuery.isLoading;
 
   const requestedAttachmentId = searchParams?.get('attachmentId') || undefined;
+  const activeTabAttachmentId = useReaderStore(
+    (s) => s.tabs.find((t) => t.id === effectivePaperId)?.attachmentId,
+  );
+  const resolvedRequestedAttachmentId = requestedAttachmentId || activeTabAttachmentId || undefined;
 
   const selectedAttachment = useMemo(() => {
     if (!paper?.attachments || paper.attachments.length === 0) return null;
-    if (requestedAttachmentId) {
-      const found = paper.attachments.find((a) => a.id === requestedAttachmentId);
+    if (resolvedRequestedAttachmentId) {
+      const found = paper.attachments.find((a) => a.id === resolvedRequestedAttachmentId);
       if (found) return found;
     }
     return (
@@ -260,7 +264,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
       paper.attachments[0] ||
       null
     );
-  }, [paper?.attachments, requestedAttachmentId]);
+  }, [paper?.attachments, resolvedRequestedAttachmentId]);
 
   const effectiveAttachmentId = selectedAttachment?.id;
 
@@ -305,6 +309,9 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     isImporting: isImportingAnnotations,
   } = useAnnotations(effectiveScopeId, effectiveAttachmentId);
 
+  const annotationsRef = useRef<ReaderAnnotation[]>(annotations);
+  annotationsRef.current = annotations;
+
   useReadingProgress({
     scopeId: effectiveScopeId,
     paper,
@@ -344,20 +351,24 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
       annotationId: string,
       expectedVersion: number | undefined,
       dto: {
+        type?: AnnotationType;
         color?: string;
         comment?: string;
         quoteText?: string;
+        pageLabel?: string | null;
         tags?: string[];
         rects?: AnnotationRect[];
         boundingRect?: AnnotationRect;
       },
     ) => {
-      const target = (annotations || []).find((a) => a.id === annotationId);
+      const target = (annotationsRef.current || []).find((a) => a.id === annotationId);
       const before: Partial<ReaderAnnotation> = target
         ? {
+            ...(dto.type !== undefined ? { type: target.type } : {}),
             ...(dto.color !== undefined ? { color: target.color } : {}),
             ...(dto.comment !== undefined ? { comment: target.comment ?? '' } : {}),
             ...(dto.quoteText !== undefined ? { quoteText: target.quoteText } : {}),
+            ...(dto.pageLabel !== undefined ? { pageLabel: target.pageLabel ?? null } : {}),
             ...(dto.tags !== undefined ? { tags: target.tags ?? [] } : {}),
             ...(dto.rects !== undefined ? { rects: target.rects } : {}),
             ...(dto.boundingRect !== undefined ? { boundingRect: target.boundingRect } : {}),
@@ -375,19 +386,19 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
       }
       return res;
     },
-    [annotations, effectiveAttachmentId, rawUpdateAnnotation, recordUpdateAnnotation],
+    [effectiveAttachmentId, rawUpdateAnnotation, recordUpdateAnnotation],
   );
 
   const deleteAnnotation = useCallback(
     async (annotationId: string, expectedVersion?: number) => {
-      const target = (annotations || []).find((a) => a.id === annotationId);
+      const target = (annotationsRef.current || []).find((a) => a.id === annotationId);
       pruneDeletedFromHistory([annotationId]);
       if (target) {
         recordSingleDeleteAnnotation(target);
       }
       return rawDeleteAnnotation(annotationId, expectedVersion);
     },
-    [annotations, recordSingleDeleteAnnotation, rawDeleteAnnotation, pruneDeletedFromHistory],
+    [recordSingleDeleteAnnotation, rawDeleteAnnotation, pruneDeletedFromHistory],
   );
 
   useEffect(() => {
@@ -417,37 +428,51 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
 
   const handleAddToNote = useCallback(
     (text: string, pageNumber?: number, annotationId?: string) => {
-      if (annotationId && paper?.id && effectiveAttachmentId) {
-        useLibraryUIStore.getState().setIsInspectorOpen(true);
-        useLibraryUIStore.getState().setActiveInspectorTab('notes');
-        void extractNotes(paper.id, {
-          attachmentId: effectiveAttachmentId,
-          annotationIds: [annotationId],
-        });
-        return;
-      }
+      const targetAnn = annotationId
+        ? (annotationsRef.current || []).find((a) => a.id === annotationId)
+        : undefined;
+      const trimmed = (
+        text ||
+        targetAnn?.quoteText ||
+        targetAnn?.text ||
+        targetAnn?.comment ||
+        ''
+      ).trim();
 
-      const trimmed = text.trim();
-      if (!trimmed) return;
+      const resolvedPage =
+        pageNumber ??
+        targetAnn?.pageNumber ??
+        (targetAnn?.pageIndex !== undefined ? targetAnn.pageIndex + 1 : undefined);
 
       let citationLink = '';
-      if (pageNumber) {
+      if (resolvedPage || annotationId) {
         const cit = formatAnnotationCitation(
           paper,
           effectiveAttachmentId,
-          pageNumber,
+          resolvedPage,
           annotationId,
           effectiveScopeId,
+          targetAnn?.pageLabel,
         );
-        citationLink = `\n> - ${cit.markdown}`;
+        citationLink = trimmed ? ` ${cit.markdown}` : cit.markdown;
       }
 
-      const formatted = `> "${trimmed}"${citationLink}`;
+      const commentLine =
+        targetAnn?.comment && targetAnn.comment.trim() && targetAnn.comment.trim() !== trimmed
+          ? `\n**Note:** ${targetAnn.comment.trim()}`
+          : '';
+      const quotedText = trimmed.replace(/\r?\n/g, '\n> ');
+      const formatted = trimmed
+        ? `> "${quotedText}"${citationLink}${commentLine}`
+        : `${citationLink}${commentLine}`;
+
+      if (!formatted.trim()) return;
+
       setPendingNoteText(formatted);
       useLibraryUIStore.getState().setIsInspectorOpen(true);
       useLibraryUIStore.getState().setActiveInspectorTab('notes');
     },
-    [paper, effectiveAttachmentId, effectiveScopeId, extractNotes],
+    [paper, effectiveAttachmentId, effectiveScopeId],
   );
 
   const handleAnnotate = useCallback(
@@ -456,13 +481,21 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
       pageNum?: number,
       colorHex: string = '#ffd400',
       rects?: AnnotationRect[],
-      type: 'highlight' | 'underline' | 'note' | 'text' | 'rect' | 'area' = 'highlight',
+      type: 'highlight' | 'underline' | 'note' | 'text' | 'rect' | 'area' | 'ink' = 'highlight',
       comment?: string,
+      pageLabel?: string | null,
     ) => {
       if (!effectiveAttachmentId) return;
 
       const quote = text?.trim();
-      if (!quote && type !== 'rect' && type !== 'area' && type !== 'text' && type !== 'note') {
+      if (
+        !quote &&
+        type !== 'rect' &&
+        type !== 'area' &&
+        type !== 'text' &&
+        type !== 'note' &&
+        type !== 'ink'
+      ) {
         return;
       }
 
@@ -472,6 +505,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
         const created = await createAnnotation({
           type: effectiveType as AnnotationType,
           pageIndex,
+          pageLabel: pageLabel ?? undefined,
           color: colorHex,
           quoteText: quote || undefined,
           comment: comment?.trim() || undefined,

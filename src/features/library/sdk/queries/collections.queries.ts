@@ -266,7 +266,6 @@ export function useCollections(scopeIdOrOptions?: UseCollectionsScopeInput) {
       const targetScope = normalizeScopeId(typeof input === 'object' ? input.scopeId : scopeId);
       invalidateCollections(queryClient, targetScope);
       queryClient.invalidateQueries({ queryKey: itemKeys.all(targetScope) });
-      queryClient.invalidateQueries({ queryKey: itemKeys.counts(targetScope) });
       toast.success('Collection deleted', {
         description:
           strategy === 'cascade'
@@ -403,13 +402,15 @@ export function useBatchDetachItemsMutation(scopeId?: string) {
       );
     },
     onSuccess: (_data, variables) => {
-      invalidateCollections(queryClient, effectiveScope);
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
       toast.success(`Removed ${variables.itemIds.length} item(s) from collection`, {
         description:
           'Items remain safely in your library (now in Unfiled Items if not in other collections).',
         id: 'batch-detach-items',
       });
+    },
+    onSettled: () => {
+      invalidateCollections(queryClient, effectiveScope);
+      queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
     },
     onError: (err: Error) => {
       toast.error('Failed to remove items from collection', {
@@ -427,6 +428,7 @@ export function useMoveCollectionItemsMutation(scopeId?: string) {
     mutationFn: async ({
       targetCollectionId,
       itemIds,
+      sourceCollectionId,
       scopeId: overrideScope,
     }: {
       targetCollectionId: string | null;
@@ -442,19 +444,20 @@ export function useMoveCollectionItemsMutation(scopeId?: string) {
             targetScope,
             targetCollectionId || 'unfiled',
             chunk,
+            sourceCollectionId,
           ),
         ),
       );
     },
-    onSuccess: (_data, variables) => {
-      const targetScope = normalizeScopeId(variables.scopeId || effectiveScopeId);
+    onSettled: (_data, _err, variables) => {
+      const targetScope = normalizeScopeId(variables?.scopeId || effectiveScopeId);
       queryClient.invalidateQueries({ queryKey: itemKeys.all(targetScope) });
-      if (variables.targetCollectionId) {
+      if (variables?.targetCollectionId) {
         queryClient.invalidateQueries({
           queryKey: itemKeys.byCollection(targetScope, variables.targetCollectionId),
         });
       }
-      if (variables.sourceCollectionId) {
+      if (variables?.sourceCollectionId) {
         queryClient.invalidateQueries({
           queryKey: itemKeys.byCollection(targetScope, variables.sourceCollectionId),
         });
@@ -484,11 +487,13 @@ export function useAssignCollectionItemsMutation(scopeId?: string) {
         ),
       );
     },
-    onSuccess: (_data, variables) => {
+    onSettled: (_data, _err, variables) => {
       queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScopeId) });
-      queryClient.invalidateQueries({
-        queryKey: itemKeys.byCollection(effectiveScopeId, variables.collectionId),
-      });
+      if (variables?.collectionId) {
+        queryClient.invalidateQueries({
+          queryKey: itemKeys.byCollection(effectiveScopeId, variables.collectionId),
+        });
+      }
       invalidateCollections(queryClient, effectiveScopeId);
     },
   });

@@ -24,10 +24,10 @@ import {
   useIsItemSelected,
   useIsActiveItem,
 } from '@/features/library/core/store/library-ui.store';
-import { ItemContextMenu } from './ItemContextMenu';
+import { ItemContextMenu } from './ItemRowActions';
 import { ItemRowActions } from './ItemRowActions';
 import type { Item, Collection } from '@/features/library/domain/types/core.types';
-import { cleanAcademicText, formatAcademicAuthors } from '@/features/library/domain/academic-text';
+import { cleanText, formatAuthors } from '@/features/library/domain/citations';
 import {
   getItemDisplayTitle,
   getItemDisplayDate,
@@ -95,7 +95,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
   const resolveDragItemIds = useLibraryUIStore((s) => s.resolveDragItemIds);
 
   const { cleanTitle, formattedAuthors, authorTooltip, displayYear, venueText } = React.useMemo(() => {
-    const title = cleanAcademicText(getItemDisplayTitle(item) || item.title) || 'Untitled';
+    const title = cleanText(getItemDisplayTitle(item) || item.title) || 'Untitled';
 
     const rawAuthors =
       item.authors && item.authors.length > 0
@@ -104,8 +104,8 @@ export const ItemTableRow = React.memo(function ItemTableRow({
     let shortAuthors = '—';
     let fullAuthors = '';
     if (rawAuthors) {
-      const full = formatAcademicAuthors(rawAuthors, 999);
-      shortAuthors = formatAcademicAuthors(rawAuthors);
+      const full = formatAuthors(rawAuthors, 999);
+      shortAuthors = formatAuthors(rawAuthors);
       fullAuthors = full !== '—' ? full : '';
     }
 
@@ -117,7 +117,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
       year = rawDate.match(/\b(1\d{3}|20\d{2})\b/)?.[1] || rawDate || '-';
     }
 
-    const venue = cleanAcademicText(
+    const venue = cleanText(
       getPublicationVenue(item) ||
         item.publicationTitle ||
         item.publisher ||

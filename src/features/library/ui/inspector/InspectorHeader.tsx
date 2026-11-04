@@ -345,6 +345,7 @@ export function InspectorHeader({
 
   useEffect(() => {
     setTitleDraft(displayTitle);
+    focusedItemIdRef.current = item.id;
   }, [item.id, item.itemType, displayTitle]);
 
   const handleCommitTitle = () => {

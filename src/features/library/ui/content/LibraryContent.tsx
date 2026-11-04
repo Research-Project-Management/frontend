@@ -4,7 +4,7 @@ import React, { useMemo, useCallback, useState } from 'react';
 import { toast } from 'sonner';
 import { UploadCloud } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import { useLibraryItemsQuery } from '@/features/library/sdk/queries/catalog.queries';
+import { useLibraryItemsQuery, usePrefetchNextLibraryItemsPage } from '@/features/library/sdk/queries/catalog.queries';
 import { normalizeScopeId } from '@/features/library/sdk/query-keys';
 import { useDetachItemFromCollectionMutation } from '@/features/library/sdk/queries/collections.queries';
 import { useCollectionsQuery } from '@/features/library/sdk/queries/collections.queries';
@@ -13,7 +13,7 @@ import { WorkspaceRowListSkeleton } from '@/shared/components/layout/WorkspaceSk
 import { ItemTable } from './ItemTable';
 import { DuplicatesContent } from './DuplicatesContent';
 import { FeedViewContent } from './FeedViewContent';
-import LibraryEmptyState from './LibraryEmptyState';
+import { LibraryEmptyState } from './ItemTableHeader';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { ErrorBoundary } from '@/shared/components/ui/error-boundary';
 import { BatchBar } from './BatchBar';
@@ -49,24 +49,45 @@ export const ITEM_LIST_FIELDS = [
   'tags', 'labels', 'url',
 ] as const;
 
-export const PAGE_SIZE = 1000;
+export const PAGE_SIZE = 200;
 
 
 /** Maps generic library order-by fields to the saved search results API sortBy contract. */
 export const mapOrderByToSavedSearchSortBy = (
   orderBy?: LibraryOrderBy | string,
-): 'dateAdded' | 'year' | 'title' | 'creator' | 'updatedAt' | undefined => {
+):
+  | 'dateAdded'
+  | 'year'
+  | 'title'
+  | 'creator'
+  | 'publicationTitle'
+  | 'citationKey'
+  | 'deletedAt'
+  | 'updatedAt'
+  | undefined => {
   if (!orderBy) return undefined;
   switch (orderBy) {
     case 'createdAt':
+    case 'dateAdded':
       return 'dateAdded';
     case 'year':
       return 'year';
     case 'title':
       return 'title';
     case 'authors':
+    case 'creator':
+    case 'firstAuthor':
       return 'creator';
+    case 'publication':
+    case 'publicationTitle':
+      return 'publicationTitle';
+    case 'citationKey':
+      return 'citationKey';
+    case 'deletedAt':
+    case 'dateDeleted':
+      return 'deletedAt';
     case 'updatedAt':
+    case 'dateModified':
       return 'updatedAt';
     default:
       return undefined;
@@ -82,6 +103,7 @@ interface LibraryContentProps {
   canEdit?: boolean;
   onDirectFilesUpload?: (files: File[]) => void;
   onAddLink?: () => void;
+  onMergeDuplicateGroup?: (group: DuplicateGroup, groupKey: string) => Promise<void> | void;
   onSelectedDuplicateGroupChange?: (
     group: DuplicateGroup | null,
     groupKey: string | null,
@@ -98,6 +120,7 @@ export function LibraryContent({
   view,
   canEdit = true,
   onDirectFilesUpload,
+  onMergeDuplicateGroup,
   onSelectedDuplicateGroupChange,
 }: LibraryContentProps) {
   const nav = useLibraryNavigation();
@@ -121,8 +144,98 @@ export function LibraryContent({
   const savedSearchSortBy = isSavedSearchView && !nav.orderBy ? (activeSavedSearch?.sortBy as LibraryOrderBy | undefined) : undefined;
   const savedSearchSortOrder = isSavedSearchView && !nav.orderDirection ? activeSavedSearch?.sortOrder : undefined;
 
-  const effectiveOrderBy = nav.orderBy || savedSearchSortBy || displayOptions?.orderBy;
-  const effectiveOrderDirection = nav.orderDirection || savedSearchSortOrder || displayOptions?.orderDirection;
+  const hasActiveSearch = Boolean(nav.search?.trim());
+  const isTrashView = effectiveView === 'trash';
+  const isRecentView = effectiveView === 'recent';
+
+  const isStandardOrderBy =
+    displayOptions?.orderBy && displayOptions.orderBy !== 'relevance'
+      ? displayOptions.orderBy
+      : 'createdAt';
+
+  const effectiveOrderBy: LibraryOrderBy | undefined =
+    (nav.orderBy === 'relevance' && !hasActiveSearch
+      ? undefined
+      : nav.orderBy) ||
+    savedSearchSortBy ||
+    (hasActiveSearch && !isSavedSearchView && !isTrashView && !isRecentView
+      ? 'relevance'
+      : isStandardOrderBy);
+  const effectiveOrderDirection: 'asc' | 'desc' | undefined =
+    nav.orderDirection ||
+    savedSearchSortOrder ||
+    (effectiveOrderBy === 'relevance' && !nav.orderDirection
+      ? 'desc'
+      : displayOptions?.orderDirection);
+
+  const effectiveDisplayOptions = useMemo(
+    () => ({
+      ...displayOptions,
+      orderBy: effectiveOrderBy || displayOptions.orderBy,
+      orderDirection: effectiveOrderDirection || displayOptions.orderDirection,
+    }),
+    [displayOptions, effectiveOrderBy, effectiveOrderDirection],
+  );
+
+  const filterKey = useMemo(
+    () =>
+      JSON.stringify([
+        scopeId,
+        collectionId,
+        effectiveSavedSearchId,
+        effectiveView,
+        displayOptions?.includeSubcollections,
+        nav.search,
+        nav.searchMode,
+        nav.type,
+        nav.fromYear,
+        nav.toYear,
+        nav.readStatus,
+        nav.hasFile,
+        nav.hasNotes,
+        nav.tag,
+        effectiveOrderBy,
+        effectiveOrderDirection,
+      ]),
+    [
+      scopeId,
+      collectionId,
+      effectiveSavedSearchId,
+      effectiveView,
+      displayOptions?.includeSubcollections,
+      nav.search,
+      nav.searchMode,
+      nav.type,
+      nav.fromYear,
+      nav.toYear,
+      nav.readStatus,
+      nav.hasFile,
+      nav.hasNotes,
+      nav.tag,
+      effectiveOrderBy,
+      effectiveOrderDirection,
+    ],
+  );
+
+  // Zotero Web Pattern: Ephemeral scroll-chunk page state (kept out of browser URL history
+  // so Back/Forward navigates between views/filters and F5 always starts cleanly at chunk 1).
+  const [scrollChunkState, setScrollChunkState] = useState<{
+    filterKey: string;
+    page: number;
+  }>({ filterKey: '', page: 1 });
+
+  const activePage =
+    scrollChunkState.filterKey === filterKey ? scrollChunkState.page : 1;
+
+  const setActivePage = useCallback(
+    (nextPage: number) => {
+      setScrollChunkState({
+        filterKey,
+        page: Math.max(1, nextPage),
+      });
+    },
+    [filterKey],
+  );
 
   const queryParams = useMemo(
     () => ({
@@ -141,7 +254,7 @@ export function LibraryContent({
       orderBy: effectiveOrderBy,
       orderDirection: effectiveOrderDirection,
       fields: ITEM_LIST_FIELDS,
-      page: nav.page,
+      page: activePage,
       limit: PAGE_SIZE,
     }),
     [
@@ -159,7 +272,7 @@ export function LibraryContent({
       nav.tag,
       effectiveOrderBy,
       effectiveOrderDirection,
-      nav.page,
+      activePage,
     ],
   );
 
@@ -169,6 +282,7 @@ export function LibraryContent({
   const {
     data,
     isLoading: isItemsLoading,
+    isFetching: isItemsFetching,
     isError: isItemsError,
     error: itemsError,
   } = useLibraryItemsQuery(scopeId, queryParams, {
@@ -179,7 +293,7 @@ export function LibraryContent({
     scopeId,
     effectiveSavedSearchId || null,
     {
-      page: nav.page,
+      page: activePage,
       limit: PAGE_SIZE,
       sortBy:
         mapOrderByToSavedSearchSortBy(effectiveOrderBy) ||
@@ -192,16 +306,93 @@ export function LibraryContent({
   const detachMutation = useDetachItemFromCollectionMutation(scopeId);
 
   const isLoading = isSavedSearchView ? savedSearchQuery.isLoading : isItemsLoading;
+  const isFetching = isSavedSearchView ? savedSearchQuery.isFetching : isItemsFetching;
   const isError = isSavedSearchView ? savedSearchQuery.isError : isItemsError;
   const error = isSavedSearchView ? savedSearchQuery.error : itemsError;
   const isTrash = effectiveView === 'trash';
 
-  const items: Item[] = useMemo(() => {
+  const pageItems: Item[] = useMemo(() => {
     if (isSavedSearchView) {
       return savedSearchQuery.data?.items || [];
     }
     return data?.items || [];
   }, [isSavedSearchView, savedSearchQuery.data?.items, data?.items]);
+
+  const rawServerTotal = isSavedSearchView
+    ? savedSearchQuery.data?.meta?.totalCount
+    : (data?.meta?.totalCount ?? data?.total);
+
+  const accumulatedStateRef = React.useRef<{
+    filterKey: string;
+    itemsByPage: Map<number, Item[]>;
+    knownTotalCount: number;
+  }>({ filterKey: '', itemsByPage: new Map(), knownTotalCount: 0 });
+
+  React.useEffect(() => {
+    if (accumulatedStateRef.current.filterKey !== filterKey || activePage <= 1) {
+      const nextMap = new Map<number, Item[]>();
+      nextMap.set(1, pageItems);
+      const nextKnownTotal =
+        typeof rawServerTotal === 'number' && rawServerTotal >= pageItems.length
+          ? rawServerTotal
+          : pageItems.length;
+      accumulatedStateRef.current = {
+        filterKey,
+        itemsByPage: nextMap,
+        knownTotalCount: nextKnownTotal,
+      };
+      return;
+    }
+    const nextMap = new Map(accumulatedStateRef.current.itemsByPage);
+    nextMap.set(activePage, pageItems);
+    const prevKnown = accumulatedStateRef.current.knownTotalCount;
+    const nextKnownTotal =
+      typeof rawServerTotal === 'number' && rawServerTotal > prevKnown
+        ? rawServerTotal
+        : prevKnown;
+    accumulatedStateRef.current = {
+      filterKey,
+      itemsByPage: nextMap,
+      knownTotalCount: nextKnownTotal,
+    };
+  }, [filterKey, activePage, pageItems, rawServerTotal]);
+
+  const items: Item[] = useMemo(() => {
+    if (accumulatedStateRef.current.filterKey !== filterKey || activePage <= 1) {
+      return pageItems;
+    }
+    const seen = new Set<string>();
+    const combined: Item[] = [];
+    const pages = Array.from(
+      new Set([...accumulatedStateRef.current.itemsByPage.keys(), activePage]),
+    ).sort((a, b) => a - b);
+    for (const p of pages) {
+      if (p > activePage) continue;
+      const list =
+        p === activePage
+          ? pageItems
+          : accumulatedStateRef.current.itemsByPage.get(p) || [];
+      for (const it of list) {
+        if (!seen.has(it.id)) {
+          seen.add(it.id);
+          combined.push(it);
+        }
+      }
+    }
+    return combined;
+  }, [filterKey, activePage, pageItems]);
+
+  // Empty-page boundary recovery: if user is on page > 1 and the current page returned 0 items
+  // (e.g. after deleting the last item on a page), step back to the previous loaded chunk.
+  React.useEffect(() => {
+    if (isDuplicates || isFeed) return;
+    if (!isLoading && !isFetching && !isError && activePage > 1 && pageItems.length === 0) {
+      const hasEarlierItems = Array.from(
+        accumulatedStateRef.current.itemsByPage.entries(),
+      ).some(([p, list]) => p < activePage && list.length > 0);
+      setActivePage(hasEarlierItems ? activePage - 1 : 1);
+    }
+  }, [isDuplicates, isFeed, isLoading, isFetching, isError, activePage, pageItems.length, setActivePage]);
 
   // Construct provisional raw items from active background uploads
   const provisionalItems: Item[] = useMemo(() => {
@@ -230,12 +421,39 @@ export function LibraryContent({
     return [...provisionalItems, ...items];
   }, [provisionalItems, items]);
 
-  const totalCount =
-    (isSavedSearchView
-      ? (savedSearchQuery.data?.meta?.totalCount ?? items.length)
-      : (data?.total ?? items.length)) + provisionalItems.length;
+  const serverHasNextPage = isSavedSearchView
+    ? Boolean(savedSearchQuery.data?.meta?.hasNextPage)
+    : Boolean(data?.hasNextPage);
 
-  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+  const baseTotalCount = Math.max(
+    typeof rawServerTotal === 'number' ? rawServerTotal : 0,
+    accumulatedStateRef.current.filterKey === filterKey
+      ? accumulatedStateRef.current.knownTotalCount
+      : 0,
+    items.length + (serverHasNextPage ? 1 : 0),
+  );
+
+  const totalCount = baseTotalCount + provisionalItems.length;
+
+  const totalPages = Math.max(1, Math.ceil(baseTotalCount / PAGE_SIZE));
+  const hasNextPage = serverHasNextPage || activePage < totalPages;
+
+  // Zotero Web Pattern: Lookahead background prefetch of next chunk (page + 1)
+  usePrefetchNextLibraryItemsPage({
+    scopeId,
+    queryParams,
+    activePage,
+    baseTotalCount,
+    enabled: !(
+      isSavedSearchView ||
+      isDuplicates ||
+      isFeed ||
+      isLoading ||
+      isFetching ||
+      !hasNextPage ||
+      Boolean(nav.search?.trim())
+    ),
+  });
 
   const clearSelection = useLibraryUIStore((s) => s.clearSelection);
   const setActiveCollectionId = useLibraryUIStore((s) => s.setActiveCollectionId);
@@ -336,10 +554,10 @@ export function LibraryContent({
   const { setSorting } = nav;
 
   const handleLoadMore = useCallback(() => {
-    if (nav.page < totalPages) {
-      nav.setPage(nav.page + 1);
+    if (!isFetching && hasNextPage) {
+      setActivePage(activePage + 1);
     }
-  }, [nav, totalPages]);
+  }, [isFetching, hasNextPage, setActivePage, activePage]);
 
   const handleSortChange = useCallback(
     (columnKey: string, direction: 'asc' | 'desc') => {
@@ -359,6 +577,7 @@ export function LibraryContent({
       <DuplicatesContent
         scopeId={scopeId}
         canEdit={canEdit}
+        onMergeGroup={onMergeDuplicateGroup}
         onSelectedGroupChange={onSelectedDuplicateGroupChange}
       />
     );
@@ -422,8 +641,10 @@ export function LibraryContent({
           <ItemTable
             items={displayedItems}
             totalCount={totalCount}
-            hasNextPage={nav.page < totalPages}
-            onLoadMore={nav.page < totalPages ? handleLoadMore : undefined}
+            hasNextPage={hasNextPage}
+            isLoadingMore={isFetching && activePage > 1}
+            onLoadMore={hasNextPage ? handleLoadMore : undefined}
+            displayOptions={effectiveDisplayOptions}
             onSortChange={handleSortChange}
             scopeId={scopeId}
             collectionId={collectionId}

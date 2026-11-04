@@ -81,6 +81,7 @@ export async function pollIngestionRunCompletion(
   let finalItemId = opts.initialItemId;
   let slowThresholdTriggered = false;
   let attempt = 0;
+  let consecutiveErrors = 0;
 
   while (Date.now() - startTime < maxWaitMs) {
     if (opts.signal?.aborted) {
@@ -109,6 +110,7 @@ export async function pollIngestionRunCompletion(
 
     try {
       const runStatus = await IngestionService.getRunStatus(scopeId, runId);
+      consecutiveErrors = 0;
       const statusPayload = runStatus as {
         data?: {
           status?: string;
@@ -133,6 +135,7 @@ export async function pollIngestionRunCompletion(
         currentStatus === 'COMPLETED' ||
         currentStatus === 'READY' ||
         currentStatus === 'SUCCEEDED' ||
+        currentStatus === 'PARTIAL' ||
         currentRun?.resolutionStatus === 'NEEDS_REVIEW' ||
         currentResolutionStatus === 'NEEDS_REVIEW' ||
         currentStatus === 'NEEDS_REVIEW'
@@ -150,6 +153,7 @@ export async function pollIngestionRunCompletion(
         currentStatus === 'FAILED_FINAL' ||
         currentStatus === 'FAILED_RETRYABLE' ||
         currentStatus === 'CANCELLED' ||
+        currentStatus === 'CANCELED' ||
         currentStatus === 'FAILED'
       ) {
         return {
@@ -158,9 +162,10 @@ export async function pollIngestionRunCompletion(
         };
       }
     } catch (err: unknown) {
+      consecutiveErrors += 1;
       const errObj = err as { status?: number; statusCode?: number; response?: { status?: number } } | null;
       const status = errObj?.status ?? errObj?.statusCode ?? errObj?.response?.status;
-      if (status === 401 || status === 403 || status === 404) {
+      if (status === 401 || status === 403 || status === 404 || consecutiveErrors >= 5) {
         throw err;
       }
       // Retry on transient poll network glitch
@@ -173,109 +178,6 @@ export async function pollIngestionRunCompletion(
 
 // ── Identifier / Link Ingestion & Polling Orchestration ───────────────────────
 
-export interface IdentifierPayloadDetectionContext {
-  raw: string;
-  collectionId?: string;
-  overrides?: Record<string, unknown>;
-}
-
-export interface IdentifierPayloadStrategy {
-  matches(ctx: IdentifierPayloadDetectionContext): boolean;
-  build(ctx: IdentifierPayloadDetectionContext): Record<string, unknown>;
-}
-
-export const IDENTIFIER_PAYLOAD_STRATEGIES: readonly IdentifierPayloadStrategy[] = [
-  {
-    matches: ({ raw }) =>
-      raw.startsWith('@') ||
-      /^(?:%[^\r\n]*[\r\n]+\s*)*@[a-zA-Z]+\s*\{/.test(raw),
-    build: ({ raw, collectionId, overrides }) => ({
-      source: 'bibtex',
-      content: raw,
-      collectionId,
-      ...(overrides ? { overrides } : {}),
-    }),
-  },
-  {
-    matches: ({ raw }) =>
-      raw.startsWith('TY  -') || /^(?:\uFEFF)?\s*TY\s+-/m.test(raw),
-    build: ({ raw, collectionId, overrides }) => ({
-      source: 'ris',
-      content: raw,
-      collectionId,
-      ...(overrides ? { overrides } : {}),
-    }),
-  },
-  {
-    matches: ({ raw }) =>
-      (raw.startsWith('[') && raw.endsWith(']')) ||
-      (raw.startsWith('{') &&
-        raw.endsWith('}') &&
-        /"(?:title|type|author|DOI|issued)"/i.test(raw)),
-    build: ({ raw, collectionId, overrides }) => ({
-      source: 'csl_json',
-      content: raw,
-      collectionId,
-      ...(overrides ? { overrides } : {}),
-    }),
-  },
-  {
-    matches: ({ raw }) => {
-      const arxivCandidate = extractArxivId(raw);
-      return Boolean(
-        arxivCandidate &&
-          (/arxiv/i.test(raw) ||
-            /^\(?\[?(?:arxiv:\s*)?(\d{4}\.\d{4,5}|[a-z-]+\/\d{7})/i.test(raw)),
-      );
-    },
-    build: ({ raw, collectionId, overrides }) => ({
-      source: 'arxiv',
-      arxivId: extractArxivId(raw)!,
-      collectionId,
-      overrides,
-    }),
-  },
-  {
-    matches: ({ raw }) => Boolean(extractPmcId(raw)),
-    build: ({ raw, collectionId, overrides }) => ({
-      source: 'pmid',
-      pmid: extractPmcId(raw)!,
-      collectionId,
-      overrides,
-    }),
-  },
-  {
-    matches: ({ raw }) => Boolean(extractPmid(raw)),
-    build: ({ raw, collectionId, overrides }) => ({
-      source: 'pmid',
-      pmid: extractPmid(raw)!,
-      collectionId,
-      overrides,
-    }),
-  },
-  {
-    matches: ({ raw }) => {
-      const doiCandidate = cleanDoi(raw);
-      return Boolean(doiCandidate && /^10\.\d{4,9}\//.test(doiCandidate));
-    },
-    build: ({ raw, collectionId, overrides }) => ({
-      source: 'doi',
-      doi: cleanDoi(raw)!,
-      collectionId,
-      overrides,
-    }),
-  },
-  {
-    matches: ({ raw }) => Boolean(cleanIsbn(raw)),
-    build: ({ raw, collectionId, overrides }) => ({
-      source: 'isbn',
-      isbn: cleanIsbn(raw)!,
-      collectionId,
-      overrides,
-    }),
-  },
-];
-
 export function buildIdentifierIngestionPayload(
   rawInput: string,
   options?: {
@@ -286,7 +188,7 @@ export function buildIdentifierIngestionPayload(
   },
 ): UnifiedIngestionPayload {
   const raw = rawInput.trim();
-  const targetCollectionId = options?.collectionId || undefined;
+  const collectionId = options?.collectionId || undefined;
   const userTitle = options?.title?.trim() || undefined;
   const overridesObj: Record<string, unknown> = {
     ...(userTitle ? { title: userTitle } : {}),
@@ -295,19 +197,48 @@ export function buildIdentifierIngestionPayload(
   };
   const overrides = Object.keys(overridesObj).length > 0 ? overridesObj : undefined;
 
-  const ctx: IdentifierPayloadDetectionContext = {
-    raw,
-    collectionId: targetCollectionId,
-    overrides,
-  };
-
-  for (const strategy of IDENTIFIER_PAYLOAD_STRATEGIES) {
-    if (strategy.matches(ctx)) {
-      return strategy.build(ctx) as unknown as UnifiedIngestionPayload;
-    }
+  if (raw.startsWith('@') || /^(?:%[^\r\n]*[\r\n]+\s*)*@[a-zA-Z]+\s*\{/.test(raw)) {
+    return { source: 'bibtex', content: raw, collectionId, ...(overrides ? { overrides } : {}) };
+  }
+  if (raw.startsWith('TY  -') || /^(?:\uFEFF)?\s*TY\s+-/m.test(raw)) {
+    return { source: 'ris', content: raw, collectionId, ...(overrides ? { overrides } : {}) };
+  }
+  if (
+    (raw.startsWith('[') && raw.endsWith(']')) ||
+    (raw.startsWith('{') && raw.endsWith('}') && /"(?:title|type|author|DOI|issued)"/i.test(raw))
+  ) {
+    return { source: 'csl_json', content: raw, collectionId, ...(overrides ? { overrides } : {}) };
   }
 
-  return { source: 'url', url: raw, collectionId: targetCollectionId, overrides };
+  const arxivCandidate = extractArxivId(raw);
+  if (
+    arxivCandidate &&
+    (/arxiv/i.test(raw) || /^\(?\[?(?:arxiv:\s*)?(\d{4}\.\d{4,5}|[a-z-]+\/\d{7})/i.test(raw))
+  ) {
+    return { source: 'arxiv', arxivId: arxivCandidate, collectionId, overrides };
+  }
+
+  const pmcCandidate = extractPmcId(raw);
+  if (pmcCandidate) {
+    return { source: 'pmid', pmid: pmcCandidate, collectionId, overrides };
+  }
+
+  const pmidCandidate = extractPmid(raw);
+  if (pmidCandidate) {
+    return { source: 'pmid', pmid: pmidCandidate, collectionId, overrides };
+  }
+
+  const doiCandidate = cleanDoi(raw);
+  if (doiCandidate && /^10\.\d{4,9}\//.test(doiCandidate)) {
+    return { source: 'doi', doi: doiCandidate, collectionId, overrides };
+  }
+
+  const isbnCandidate = cleanIsbn(raw);
+  if (isbnCandidate) {
+    return { source: 'isbn', isbn: isbnCandidate, collectionId, overrides };
+  }
+
+  return { source: 'url', url: raw, collectionId, overrides };
 }
 
 export interface TrackedIdentifierIngestionOptions {

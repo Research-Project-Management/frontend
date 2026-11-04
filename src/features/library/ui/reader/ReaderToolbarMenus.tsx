@@ -4,11 +4,13 @@ import React from "react";
 import {
   ChevronDown,
   RotateCw,
+  RotateCcw,
   Check,
   Columns2,
   Rows2,
   Square,
   Baseline,
+  Maximize,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -35,7 +37,7 @@ export const ZOOM_PRESETS = [
   { label: "200%", value: 2.0 },
 ] as const;
 
-export function ToolbarIconButton({
+export const ToolbarIconButton = React.memo(function ToolbarIconButton({
   onClick,
   disabled,
   active,
@@ -63,6 +65,7 @@ export function ToolbarIconButton({
           data-active={active || undefined}
           className={cn(
             "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:opacity-30 disabled:hover:bg-transparent text-foreground hover:bg-muted",
+            active && "bg-background text-primary font-medium ring-1 ring-inset ring-border shadow-2xs",
             className,
           )}
         >
@@ -72,14 +75,27 @@ export function ToolbarIconButton({
       <TooltipContent side="bottom">{tooltip}</TooltipContent>
     </Tooltip>
   );
-}
+});
 
-export function ReaderZoomDropdown({
+export const FIT_MODE_OPTIONS: ReadonlyArray<{
+  id: "fit-width" | "fit-page" | "auto";
+  label: string;
+}> = [
+  { id: "auto", label: "Automatic Zoom" },
+  { id: "fit-width", label: "Page Width" },
+  { id: "fit-page", label: "Page Fit" },
+];
+
+export const ReaderZoomDropdown = React.memo(function ReaderZoomDropdown({
   zoom,
+  fitMode,
   onSetZoom,
+  onSelectFitMode,
 }: {
   zoom: number;
+  fitMode?: "fit-width" | "fit-page" | "auto" | "custom";
   onSetZoom?: (zoom: number) => void;
+  onSelectFitMode?: (mode: "fit-width" | "fit-page" | "auto" | "custom") => void;
 }) {
   return (
     <DropdownMenu>
@@ -98,29 +114,53 @@ export function ReaderZoomDropdown({
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="center"
-        className="w-28 text-xs p-1 bg-popover border border-border shadow-raised-200 rounded-md z-50 font-sans"
+        className="w-36 text-xs p-1 bg-popover border border-border shadow-raised-200 rounded-md z-50 font-sans"
       >
+        {onSelectFitMode && (
+          <>
+            {FIT_MODE_OPTIONS.map((opt) => (
+              <DropdownMenuItem
+                key={opt.id}
+                onClick={() => onSelectFitMode(opt.id)}
+                className="cursor-pointer text-11 flex items-center justify-between"
+              >
+                <span>{opt.label}</span>
+                {fitMode === opt.id && (
+                  <Check
+                    className="size-3 text-primary shrink-0"
+                    strokeWidth={1.5}
+                  />
+                )}
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+          </>
+        )}
         {ZOOM_PRESETS.map((preset) => (
           <DropdownMenuItem
             key={preset.label}
-            onClick={() => onSetZoom?.(preset.value)}
+            onClick={() => {
+              onSelectFitMode?.("custom");
+              onSetZoom?.(preset.value);
+            }}
             className="cursor-pointer text-11 font-mono flex items-center justify-between tabular-nums"
           >
             <span>{preset.label}</span>
-            {Math.abs(zoom - preset.value) < 0.05 && (
-              <Check
-                className="size-3 text-primary shrink-0"
-                strokeWidth={1.5}
-              />
-            )}
+            {(!fitMode || fitMode === "custom") &&
+              Math.abs(zoom - preset.value) < 0.05 && (
+                <Check
+                  className="size-3 text-primary shrink-0"
+                  strokeWidth={1.5}
+                />
+              )}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
   );
-}
+});
 
-export function ReaderColorPickerDropdown({
+export const ReaderColorPickerDropdown = React.memo(function ReaderColorPickerDropdown({
   activeColor,
   onSelectColor,
 }: {
@@ -185,7 +225,7 @@ export function ReaderColorPickerDropdown({
       </DropdownMenuContent>
     </DropdownMenu>
   );
-}
+});
 
 export interface ReaderAppearanceMenuProps {
   viewMode?: "single" | "continuous" | "spread";
@@ -197,9 +237,12 @@ export interface ReaderAppearanceMenuProps {
   onSelectThemeMode?: (mode: "normal" | "dark" | "sepia" | "invert") => void;
   rotation?: number;
   onRotate?: () => void;
+  onRotateCcw?: () => void;
+  isReadingMode?: boolean;
+  onToggleReadingMode?: () => void;
 }
 
-export function ReaderAppearanceMenu({
+export const ReaderAppearanceMenu = React.memo(function ReaderAppearanceMenu({
   viewMode = "continuous",
   onSelectViewMode,
   splitMode = "none",
@@ -209,6 +252,9 @@ export function ReaderAppearanceMenu({
   onSelectThemeMode,
   rotation = 0,
   onRotate,
+  onRotateCcw,
+  isReadingMode = false,
+  onToggleReadingMode,
 }: ReaderAppearanceMenuProps) {
   const applyTheme = (mode: "normal" | "sepia" | "dark" | "invert") => {
     if (onSelectThemeMode) {
@@ -347,24 +393,65 @@ export function ReaderAppearanceMenu({
         )}
 
         {/* Group 4: Rotate */}
-        {onRotate && (
+        {(onRotate || onRotateCcw) && (
+          <>
+            <DropdownMenuSeparator />
+            {onRotate && (
+              <DropdownMenuItem
+                onClick={onRotate}
+                className="cursor-pointer text-11 flex items-center justify-between px-2 py-1.5"
+              >
+                <div className="flex items-center gap-2">
+                  <RotateCw
+                    className="size-3 text-foreground shrink-0"
+                    strokeWidth={1.5}
+                  />
+                  <span>Rotate Clockwise (+90°)</span>
+                </div>
+                {rotation !== 0 && (
+                  <span className="text-10 font-mono text-muted-foreground">
+                    {rotation}°
+                  </span>
+                )}
+              </DropdownMenuItem>
+            )}
+            {onRotateCcw && (
+              <DropdownMenuItem
+                onClick={onRotateCcw}
+                className="cursor-pointer text-11 flex items-center justify-between px-2 py-1.5"
+              >
+                <div className="flex items-center gap-2">
+                  <RotateCcw
+                    className="size-3 text-foreground shrink-0"
+                    strokeWidth={1.5}
+                  />
+                  <span>Rotate Counterclockwise (-90°)</span>
+                </div>
+              </DropdownMenuItem>
+            )}
+          </>
+        )}
+
+        {/* Group 5: Focus Mode */}
+        {onToggleReadingMode && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onClick={onRotate}
+              onClick={onToggleReadingMode}
               className="cursor-pointer text-11 flex items-center justify-between px-2 py-1.5"
             >
               <div className="flex items-center gap-2">
-                <RotateCw
+                <Maximize
                   className="size-3 text-foreground shrink-0"
                   strokeWidth={1.5}
                 />
-                <span>Rotate 90°</span>
+                <span>Focus Mode (Hide Panels)</span>
               </div>
-              {rotation !== 0 && (
-                <span className="text-10 font-mono text-muted-foreground">
-                  {rotation}°
-                </span>
+              {isReadingMode && (
+                <Check
+                  className="size-3 text-primary shrink-0"
+                  strokeWidth={1.5}
+                />
               )}
             </DropdownMenuItem>
           </>
@@ -372,4 +459,4 @@ export function ReaderAppearanceMenu({
       </DropdownMenuContent>
     </DropdownMenu>
   );
-}
+});

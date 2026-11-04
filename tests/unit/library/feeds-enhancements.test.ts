@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useFeedsStore } from '@/features/library/core/store/feeds.store';
+import { useFeedsStore } from '@/features/library/core/store/reader.store';
 import {
   mapFeedEntryToCreateItemPayload,
   filterFeedEntriesByRetention,

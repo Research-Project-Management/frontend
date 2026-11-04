@@ -22,11 +22,12 @@ import { toast } from "sonner";
 import { useTags } from "@/features/library/sdk/queries/tags-notes.queries";
 import {
   DEFAULT_LIBRARY_DISPLAY_OPTIONS,
+  getDefaultSortDirection,
   type LibraryDisplayOptions,
   type LibraryOrderBy,
-} from "@/features/library/ui/topbar/LibraryDisplayPopover";
-import { sortLibraryItems } from "@/features/library/domain/sort-items.domain";
-import { ItemTableHeader } from "./ItemRowActions";
+} from "@/features/library/domain/types/ingestion.types";
+import { sortLibraryItems } from "@/features/library/domain/zotero-extra-parser";
+import { ItemTableHeader } from "./ItemTableHeader";
 import { ItemTableRow } from "./ItemTableRow";
 import { useLibraryKeyboardShortcuts } from "@/features/library/core/coordinator/keyboard-shortcuts.coordinator";
 import { useLibraryItemOperations } from "@/features/library/core/coordinator/item-action.coordinator";
@@ -136,12 +137,16 @@ export const ItemTable = React.memo(function ItemTable({
   // Scrollable container ref for TanStack Virtual
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
-  // Column sort toggle
+  // Column sort toggle:
+  // - Clicking an already-active column flips asc <-> desc
+  // - Clicking a new column uses its natural default direction (A->Z for text, Newest first for dates/year)
   const handleSort = (columnKey: string) => {
-    let nextDir: "asc" | "desc" = "desc";
-    if (sortColumn === columnKey) {
-      nextDir = sortDirection === "asc" ? "desc" : "asc";
-    }
+    const nextDir: "asc" | "desc" =
+      sortColumn === columnKey
+        ? sortDirection === "asc"
+          ? "desc"
+          : "asc"
+        : getDefaultSortDirection(columnKey);
     if (onSortChange) {
       // Server-sort mode: let the parent (LibraryContent) own the store update
       // to avoid double-refetch (setStoreDisplayOptions + onSortChange both trigger query re-run)
@@ -182,11 +187,12 @@ export const ItemTable = React.memo(function ItemTable({
   const virtualRows = rowVirtualizer.getVirtualItems();
   const totalVirtualHeight = rowVirtualizer.getTotalSize();
 
-  // Auto-trigger infinite load more when virtual window reaches bottom items (if infinite pagination is active)
+  // Auto-trigger infinite load more when virtual window reaches within ~20 rows of bottom
   const lastVirtualRow = virtualRows[virtualRows.length - 1];
   React.useEffect(() => {
     if (!lastVirtualRow || !hasNextPage || isLoadingMore) return;
-    if (lastVirtualRow.index >= sortedItems.length - 4) {
+    const lookaheadTriggerIndex = Math.max(0, sortedItems.length - 20);
+    if (lastVirtualRow.index >= lookaheadTriggerIndex) {
       onLoadMore?.();
     }
   }, [
@@ -197,14 +203,15 @@ export const ItemTable = React.memo(function ItemTable({
     sortedItems.length,
   ]);
 
-  // Reset scroll position to top when items reference changes (e.g. page navigation)
-  const prevItemsRef = useRef(items);
+  // Reset scroll position to top when active scope, collection, trash mode, or sort order changes
+  const scrollContextKey = `${activeScope.type}:${activeScope.id}::${collectionId || ''}::${isTrash ? 'trash' : 'normal'}::${sortColumn}::${sortDirection}`;
+  const prevScrollContextRef = useRef(scrollContextKey);
   React.useEffect(() => {
-    if (prevItemsRef.current !== items) {
-      prevItemsRef.current = items;
+    if (prevScrollContextRef.current !== scrollContextKey) {
+      prevScrollContextRef.current = scrollContextKey;
       tableContainerRef.current?.scrollTo({ top: 0, behavior: "auto" });
     }
-  }, [items]);
+  }, [scrollContextKey]);
 
   const columns =
     displayOptions?.columns || DEFAULT_LIBRARY_DISPLAY_OPTIONS.columns;
@@ -553,8 +560,48 @@ export const ItemTable = React.memo(function ItemTable({
                 />
               </tr>
             )}
+
+            {/* Infinite scroll loading indicator row */}
+            {isLoadingMore && (
+              <tr className="border-t border-border/50">
+                <td
+                  colSpan={activeColumnCount}
+                  className="py-2.5 text-center text-12 text-muted-foreground"
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <span className="size-3.5 rounded-full border-2 border-muted-foreground/30 border-t-foreground animate-spin" />
+                    Loading more references…
+                  </span>
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
+      </div>
+
+      {/* Compact Pagination & Total Count Status Footer */}
+      <div
+        role="status"
+        aria-live="polite"
+        className="h-7 px-3 border-t border-border bg-muted/20 text-11 text-muted-foreground flex items-center justify-between select-none shrink-0"
+      >
+        <div className="flex items-center gap-2 truncate">
+          <span>
+            {typeof totalCount === "number" && totalCount > sortedItems.length
+              ? `Showing ${sortedItems.length.toLocaleString()} of ${totalCount.toLocaleString()} references`
+              : `${sortedItems.length.toLocaleString()} ${sortedItems.length === 1 ? "reference" : "references"}`}
+          </span>
+        </div>
+        {hasNextPage && onLoadMore && (
+          <button
+            type="button"
+            disabled={isLoadingMore}
+            onClick={onLoadMore}
+            className="text-11 font-medium text-foreground/80 hover:text-foreground disabled:opacity-50 transition-colors cursor-pointer"
+          >
+            {isLoadingMore ? "Loading…" : "Load more"}
+          </button>
+        )}
       </div>
     </div>
   );

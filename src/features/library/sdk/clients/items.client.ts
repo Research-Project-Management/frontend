@@ -110,13 +110,16 @@ export interface LibraryBootstrapResponse {
   };
   collections?: import('@/features/library/domain/types/core.types').Collection[];
   savedSearches?: import('@/features/library/domain/types/core.types').SavedSearch[];
+  tags?: import('./http.client').TagWithCount[];
+  degraded?: boolean;
+  degradedBranches?: string[];
   syncVersion?: {
     version: string;
     scope: 'user' | 'project';
     scopeId: string;
   };
   itemTypes?: Record<string, unknown>;
-  feedSubscriptions?: import('./ingestion-sync.client').FeedSubscriptionResponse[];
+  feedSubscriptions?: import('../index').FeedSubscriptionResponse[];
   items?: Item[];
   meta?: CursorPaginationMeta;
   pagination?: CursorPaginationMeta;
@@ -250,11 +253,17 @@ export const ItemsService = {
         meta?.totalCount ??
         res?.total ??
         items.length;
+      const hasNextPage = Boolean(
+        meta?.hasNextPage ?? (meta as { hasMore?: boolean } | undefined)?.hasMore,
+      );
+      const nextCursor = meta?.nextCursor ?? meta?.cursor ?? null;
       return {
         items,
         total,
         meta,
         pagination: meta,
+        hasNextPage,
+        nextCursor,
       };
     });
   },
@@ -374,26 +383,98 @@ export const ItemsService = {
       getCatalogUrl(scopeId || 'user', `${encodeURIComponent(itemId)}/purge`),
     ),
 
+  emptyTrash: (scopeId: string | undefined) =>
+    libraryClient
+      .delete<{
+        success?: boolean;
+        count?: number;
+        purgedCount?: number;
+        succeededIds?: string[];
+        failedIds?: string[];
+      }>(getCatalogUrl(scopeId || 'user', 'trash'))
+      .then((res) => {
+        const succeededIds = res?.succeededIds ?? [];
+        const count = res?.purgedCount ?? res?.count ?? succeededIds.length;
+        return {
+          success: res?.success ?? true,
+          count,
+          purgedCount: count,
+          succeededIds,
+          failedIds: res?.failedIds ?? [],
+        };
+      }),
+
   bulkPurge: (scopeId: string | undefined, itemIds: string[]) =>
-    libraryClient.post<{ success: boolean; count: number; purgedIds: string[] }>(
-      getCatalogUrl(scopeId || 'user', 'bulk-purge'),
-      { itemIds },
-    ),
+    libraryClient
+      .post<{
+        success?: boolean;
+        count?: number;
+        purgedCount?: number;
+        purgedIds?: string[];
+        succeededIds?: string[];
+        failedIds?: string[];
+      }>(getCatalogUrl(scopeId || 'user', 'bulk-purge'), { itemIds })
+      .then((res) => {
+        const succeededIds = res?.succeededIds ?? res?.purgedIds ?? itemIds;
+        const count = res?.count ?? res?.purgedCount ?? succeededIds.length;
+        return {
+          success: res?.success ?? true,
+          count,
+          purgedCount: count,
+          purgedIds: succeededIds,
+          succeededIds,
+          failedIds: res?.failedIds ?? [],
+        };
+      }),
 
   bulkTrash: (scopeId: string | undefined, itemIds: string[]) =>
-    libraryClient.post<{ success: boolean; count: number; trashedIds: string[] }>(
-      getCatalogUrl(scopeId || 'user', 'bulk-trash'),
-      { itemIds },
-    ),
+    libraryClient
+      .post<{
+        success?: boolean;
+        count?: number;
+        trashedCount?: number;
+        trashedIds?: string[];
+        succeededIds?: string[];
+        failedIds?: string[];
+      }>(getCatalogUrl(scopeId || 'user', 'bulk-trash'), { itemIds })
+      .then((res) => {
+        const succeededIds = res?.succeededIds ?? res?.trashedIds ?? itemIds;
+        const count = res?.count ?? res?.trashedCount ?? succeededIds.length;
+        return {
+          success: res?.success ?? true,
+          count,
+          trashedCount: count,
+          trashedIds: succeededIds,
+          succeededIds,
+          failedIds: res?.failedIds ?? [],
+        };
+      }),
 
   bulkDelete: (scopeId: string | undefined, itemIds: string[]) =>
     ItemsService.bulkTrash(scopeId, itemIds),
 
   bulkRestore: (scopeId: string | undefined, itemIds: string[]) =>
-    libraryClient.post<{ success: boolean; count: number; restoredIds: string[] }>(
-      getCatalogUrl(scopeId || 'user', 'bulk-restore'),
-      { itemIds },
-    ),
+    libraryClient
+      .post<{
+        success?: boolean;
+        count?: number;
+        restoredCount?: number;
+        restoredIds?: string[];
+        succeededIds?: string[];
+        failedIds?: string[];
+      }>(getCatalogUrl(scopeId || 'user', 'bulk-restore'), { itemIds })
+      .then((res) => {
+        const succeededIds = res?.succeededIds ?? res?.restoredIds ?? itemIds;
+        const count = res?.count ?? res?.restoredCount ?? succeededIds.length;
+        return {
+          success: res?.success ?? true,
+          count,
+          restoredCount: count,
+          restoredIds: succeededIds,
+          succeededIds,
+          failedIds: res?.failedIds ?? [],
+        };
+      }),
 
   reindex: (scopeId: string | undefined, itemId: string) =>
     libraryClient.post<{ success?: boolean; message?: string; itemId?: string; data?: unknown }>(

@@ -17,14 +17,16 @@ import {
   createRestoreCommand,
   createMoveItemsCommand,
   createToggleStarCommand,
+  createConvertItemTypeCommand,
 } from '@/features/library/core/manager/library-command.manager';
 import { ItemsService } from '@/features/library/sdk';
-import { libraryKeys, itemKeys } from '@/features/library/sdk/query-keys';
+import { resolveCachedItemFromScope } from '@/features/library/sdk/queries/cache-patcher';
 import { useCitationStyles } from '@/features/library/sdk/queries/extraction.queries';
 import { useAssignCollectionItemsMutation } from '@/features/library/sdk/queries/collections.queries';
 import {
   useReResolveItemMetadataMutation,
   useSetMyPublicationMutation,
+  useUpdateLibraryItemMutation,
 } from '@/features/library/sdk/queries/catalog.queries';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { useRetraction } from '@/features/library/sdk/queries/ingestion.queries';
@@ -38,6 +40,7 @@ import {
   DEFAULT_CITATION_STYLES,
   getCleanStyleLabel,
 } from '@/features/library/domain/citations';
+import { getAssignedCollectionIds } from '@/features/library/domain/metadata-mapper';
 import type { Item, Collection, CslStyle } from '@/features/library/domain/types/core.types';
 
 export interface UseItemActionHandlersOptions {
@@ -81,6 +84,7 @@ export function useItemActionHandlers(
   const assignCollectionItemsMutation = useAssignCollectionItemsMutation(effectiveScope);
   const reResolveMutation = useReResolveItemMetadataMutation(effectiveScope);
   const setMyPublicationMutation = useSetMyPublicationMutation(effectiveScope);
+  const updateItemMutation = useUpdateLibraryItemMutation(effectiveScope);
   const { flagItem, unflagItem } = useRetraction(effectiveScope, { includeItems: false });
   const itemTypeConversion = useItemTypeConversion(effectiveScope);
   const { data: serverStyles = [] } = useCitationStyles(effectiveScope, { enabled: isMenuOpen });
@@ -240,14 +244,30 @@ export function useItemActionHandlers(
   const handleConvertType = useCallback(
     async (targetType: string, retainUnmappedInExtra = true) => {
       onAfterAction?.();
-      await itemTypeConversion.convertAsync({
+      const command = createConvertItemTypeCommand({
         itemId: item.id,
+        itemTitle: item.title,
+        sourceItem: item,
         targetType,
-        expectedVersion: item.version,
         retainUnmappedInExtra,
+        convertType: ({ itemId, targetType: nextType, retainUnmappedInExtra: retain, silent }) =>
+          itemTypeConversion.convertAsync({
+            itemId,
+            targetType: nextType,
+            retainUnmappedInExtra: retain,
+            silent,
+          }),
+        applyMetadataPatch: (itemId, patch, expectedVersion) =>
+          updateItemMutation.mutateAsync({
+            itemId,
+            data: patch,
+            expectedVersion,
+            silent: true,
+          }),
       });
+      await useLibraryCommandStore.getState().executeCommand(command, { silentToast: true });
     },
-    [item.id, item.version, itemTypeConversion, onAfterAction],
+    [item, itemTypeConversion, updateItemMutation, onAfterAction],
   );
 
   return {
@@ -281,23 +301,11 @@ export function useDropToMyPublications(effectiveScopeId: string = 'user') {
       if (!ids || ids.length === 0) return;
       const targetId = ids[0];
       try {
-        let item: Item | undefined =
-          queryClient.getQueryData<Item>(itemKeys.byId(effectiveScopeId, targetId));
-        if (!item) {
-          const cachedQueries = queryClient.getQueriesData<unknown>({ queryKey: libraryKeys.all });
-          for (const [_, data] of cachedQueries) {
-            const list = Array.isArray(data)
-              ? data
-              : (data as { items?: unknown[] })?.items;
-            if (Array.isArray(list)) {
-              const found = list.find((it) => (it as { id?: string })?.id === targetId);
-              if (found) {
-                item = found as Item;
-                break;
-              }
-            }
-          }
-        }
+        let item: Item | undefined = resolveCachedItemFromScope(
+          queryClient,
+          effectiveScopeId,
+          targetId,
+        ) as Item | undefined;
         if (!item) {
           item = ((await ItemsService.getById(effectiveScopeId, targetId)) ?? undefined) as Item | undefined;
         }
@@ -469,8 +477,6 @@ export function useLibraryItemOperations(options: UseLibraryItemOperationsOption
         return;
       }
       if (opts.onPermanentDeleteItems) {
-        useLibraryUIStore.getState().evictItems([id]);
-        useLibraryCommandStore.getState().clearHistory();
         opts.onPermanentDeleteItems([id]);
       } else {
         opts.purgeMutation.mutate([id], {
@@ -493,8 +499,11 @@ export function useLibraryItemOperations(options: UseLibraryItemOperationsOption
       }
       const targetItem = opts.itemsById.get(itemId);
       const previousCollectionsByItem = new Map<string, string[]>();
-      if (targetItem && Array.isArray(targetItem.collectionIds)) {
-        previousCollectionsByItem.set(itemId, [...targetItem.collectionIds]);
+      if (targetItem) {
+        const assigned = getAssignedCollectionIds(targetItem);
+        if (assigned.length > 0) {
+          previousCollectionsByItem.set(itemId, assigned);
+        }
       }
       void useLibraryCommandStore.getState().executeCommand(
         createMoveItemsCommand({

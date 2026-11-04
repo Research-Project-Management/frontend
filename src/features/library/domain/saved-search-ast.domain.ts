@@ -1,34 +1,40 @@
+import type { SavedSearchCondition, SavedSearchConditionGroup, SavedSearchField, SavedSearchOperator, SavedSearchScopeOptions } from '@/features/library/domain/types/ingestion.types';
+import { FIELD_LABELS, humanizeFieldName } from '@/features/library/domain/types/core.types';
+
 /**
  * Pure Domain SavedSearchAstEngine
  * Zero React imports. Encapsulates Saved Search AST hydration, condition state transitions,
- * multi-mode validation (preview vs submit), smart fallback naming, and recursive client-side evaluation.
+ * multi-mode validation (preview vs submit), and smart fallback naming.
+ * All Saved Search query execution and live previews are evaluated authoritatively by Backend.
  */
 
-import {
-  type ConditionRow,
-  getFieldConfig,
-  formatConditionValue,
-} from '@/features/library/domain/saved-search-schema.domain';
-import {
-  parseBetweenBounds,
-  extractItemFieldValues,
-  evaluateLeafCondition,
-  SEARCH_FIELD_ALIASES,
-} from '@/features/library/domain/saved-search-evaluator.domain';
-import type {
-  SavedSearchCondition,
-  SavedSearchConditionGroup,
-  SavedSearchField,
-  SavedSearchOperator,
-  SavedSearchScopeOptions,
-} from '@/features/library/domain/types/saved-searches.types';
+export function parseBetweenBounds(raw: unknown): [string, string] | null {
+  if (Array.isArray(raw)) {
+    if (raw.length < 2) return null;
+    const a = String(raw[0] ?? '').trim();
+    const b = String(raw[1] ?? '').trim();
+    return a && b ? [a, b] : null;
+  }
+  if (raw && typeof raw === 'object') {
+    const rec = raw as Record<string, unknown>;
+    const a = String(rec.min ?? rec.from ?? rec.start ?? '').trim();
+    const b = String(rec.max ?? rec.to ?? rec.end ?? '').trim();
+    return a && b ? [a, b] : null;
+  }
+  if (typeof raw !== 'string') return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
 
-export {
-  parseBetweenBounds,
-  extractItemFieldValues,
-  evaluateLeafCondition,
-  SEARCH_FIELD_ALIASES,
-};
+  const parts = trimmed.includes('..')
+    ? trimmed.split('..')
+    : trimmed.includes(',')
+      ? trimmed.split(',')
+      : trimmed.split(/\s+to\s+|\s*;\s*/i);
+  if (parts.length < 2) return null;
+  const start = (parts[0] ?? '').trim();
+  const end = (parts[1] ?? '').trim();
+  return start && end ? [start, end] : null;
+}
 
 export interface HydratedSavedSearchAst {
   rows: ConditionRow[];
@@ -134,7 +140,15 @@ export const SavedSearchAstEngine = {
       };
     }
 
-    const conjunction: 'AND' | 'OR' = group.conjunction === 'OR' ? 'OR' : 'AND';
+    const rawConj = String(
+      (group as { conjunction?: string; matchMode?: string }).conjunction ||
+        (group as { matchMode?: string }).matchMode ||
+        'AND',
+    ).toUpperCase();
+    const isRootNot =
+      rawConj === 'NOT' || Boolean((group as { not?: boolean }).not);
+    const conjunction: 'AND' | 'OR' =
+      rawConj === 'OR' || rawConj === 'ANY' ? 'OR' : 'AND';
     const rawScope = group.scopeOptions;
     const scopeOptions: Required<SavedSearchScopeOptions> = {
       searchSubcollections: rawScope?.searchSubcollections !== false,
@@ -145,7 +159,12 @@ export const SavedSearchAstEngine = {
     const preservedGroups: SavedSearchConditionGroup[] = [];
     const leafNodes: SavedSearchCondition[] = [];
 
-    if (Array.isArray(group.conditions)) {
+    if (isRootNot && Array.isArray(group.conditions) && group.conditions.length > 0) {
+      preservedGroups.push({
+        conjunction: 'NOT',
+        conditions: group.conditions,
+      });
+    } else if (Array.isArray(group.conditions)) {
       for (const node of group.conditions) {
         if (isConditionGroupNode(node)) {
           preservedGroups.push(node);
@@ -229,7 +248,7 @@ export const SavedSearchAstEngine = {
    */
   validate(
     rows: ConditionRow[],
-    matchMode: 'AND' | 'OR',
+    matchMode: 'AND' | 'OR' | 'NOT',
     preservedGroups: SavedSearchConditionGroup[] = [],
     mode: 'preview' | 'submit' = 'submit',
     scopeOptions?: SavedSearchScopeOptions,
@@ -352,51 +371,314 @@ export const SavedSearchAstEngine = {
     }
     return `Search (${new Date().toLocaleDateString()})`;
   },
-
-  /**
-   * Pure client-side recursive AST evaluator supporting `AND`, `OR`, `NOT`,
-   * and core operators (`is`, `isNot`, `contains`, `doesNotContain`, `isGreaterThan`,
-   * `isLessThan`, `isBetween`, `isInTheLast`, `isEmpty`/`isAbsent`, `isNotEmpty`/`isPresent`).
-   */
-  matchesItem(item: Record<string, unknown>, group: SavedSearchConditionGroup): boolean {
-    if (!group || !Array.isArray(group.conditions) || group.conditions.length === 0) {
-      return true;
-    }
-
-    const rawConjunction = String(
-      (group as { conjunction?: string; operator?: string }).conjunction ||
-        (group as { operator?: string }).operator ||
-        'AND',
-    ).toUpperCase();
-    const isNotGroup =
-      rawConjunction === 'NOT' || Boolean((group as { not?: boolean }).not);
-
-    const evaluateNode = (node: SavedSearchCondition | SavedSearchConditionGroup): boolean =>
-      isConditionGroupNode(node)
-        ? SavedSearchAstEngine.matchesItem(item, node)
-        : evaluateLeafCondition(item, node);
-
-    if (rawConjunction === 'OR') {
-      const matched = group.conditions.some(evaluateNode);
-      return isNotGroup ? !matched : matched;
-    }
-
-    const matchedAll = group.conditions.every(evaluateNode);
-    return isNotGroup ? !matchedAll : matchedAll;
-  },
 };
 
-export function evaluateSavedSearch(
-  item: Record<string, unknown>,
-  group: SavedSearchConditionGroup,
-): boolean {
-  return SavedSearchAstEngine.matchesItem(item, group);
+/**
+ * Pure Saved Search Schema & Field Definitions
+ * Single Source of Truth for Saved Search field configurations, operators,
+ * duration parsing, and condition value formatting.
+ */
+
+
+export interface SavedSearchOperatorConfig {
+  value: SavedSearchOperator;
+  label: string;
 }
 
-export function filterItemsBySavedSearch<T extends Record<string, unknown>>(
-  items: ReadonlyArray<T>,
-  group: SavedSearchConditionGroup,
-): T[] {
-  if (!Array.isArray(items) || items.length === 0) return [];
-  return items.filter((item) => SavedSearchAstEngine.matchesItem(item, group));
+export interface SavedSearchFieldConfig {
+  value: SavedSearchField;
+  label: string;
+  type: 'text' | 'date' | 'boolean' | 'enum' | 'number';
+  operators: SavedSearchOperatorConfig[];
+  placeholder: string;
+  defaultValue?: string;
+}
+
+export interface ConditionRow {
+  id: string;
+  field: SavedSearchField;
+  operator: SavedSearchOperator;
+  value: string;
+}
+
+export const READ_STATUS_OPTIONS = [
+  { value: 'unread', label: 'Unread' },
+  { value: 'reading', label: 'Reading' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'read', label: 'Read' },
+  { value: 'skimming', label: 'Skimming' },
+];
+
+export const RATING_OPTIONS = [
+  { value: '1', label: '★☆☆☆☆ (1 Star)' },
+  { value: '2', label: '★★☆☆☆ (2 Stars)' },
+  { value: '3', label: '★★★☆☆ (3 Stars)' },
+  { value: '4', label: '★★★★☆ (4 Stars)' },
+  { value: '5', label: '★★★★★ (5 Stars)' },
+];
+
+export const HAS_ATTACHMENT_OPTIONS = [
+  { value: 'true', label: 'Has Attachments' },
+  { value: 'false', label: 'No Attachments' },
+];
+
+export const PRIMARY_SAVED_SEARCH_FIELD_ITEMS: {
+  value: SavedSearchField;
+  label: string;
+}[] = [
+  { value: 'title', label: 'Title' },
+  { value: 'creator', label: 'Author / Creator' },
+  { value: 'year', label: 'Year' },
+  { value: 'dateAdded', label: 'Date Added' },
+  { value: 'dateModified', label: 'Date Modified' },
+  { value: 'anyField', label: 'Any Field' },
+  { value: 'itemType', label: 'Item Type' },
+  { value: 'collection', label: 'Collection' },
+  { value: 'tag', label: 'Tag' },
+  { value: 'noteContent', label: 'Note' },
+  { value: 'attachmentContent', label: 'Attachment Content' },
+  { value: 'attachmentFilename', label: 'Attachment File Name' },
+  { value: 'doi', label: 'DOI' },
+  { value: 'isbn', label: 'ISBN' },
+  { value: 'url', label: 'URL' },
+  { value: 'readStatus', label: 'Read Status' },
+  { value: 'rating', label: 'Rating' },
+];
+
+export const PRIMARY_FIELD_SET = new Set(
+  PRIMARY_SAVED_SEARCH_FIELD_ITEMS.map((f) => f.value),
+);
+
+export const ALL_SCHEMA_FIELD_ITEMS: {
+  value: SavedSearchField;
+  label: string;
+}[] = Object.entries(FIELD_LABELS)
+  .filter(
+    ([key]) =>
+      !PRIMARY_FIELD_SET.has(key as SavedSearchField) &&
+      key !== 'citationCount' &&
+      key !== 'referenceCount',
+  )
+  .map(([key, label]) => ({
+    value: key as SavedSearchField,
+    label,
+  }))
+  .sort((a, b) => a.label.localeCompare(b.label));
+
+export function getFieldConfig(field: SavedSearchField | string): SavedSearchFieldConfig {
+  const f = field as SavedSearchField;
+
+  if (f === 'anyField') {
+    return {
+      value: 'anyField',
+      label: 'Any Field',
+      type: 'text',
+      operators: [
+        { value: 'contains', label: 'contains' },
+        { value: 'doesNotContain', label: 'does not contain' },
+        { value: 'is', label: 'is (exact)' },
+        { value: 'isNot', label: 'is not' },
+      ],
+      placeholder: 'Search across all fields, authors, notes, tags...',
+    };
+  }
+
+  if (
+    f === 'dateAdded' ||
+    f === 'dateModified' ||
+    f === 'date' ||
+    f === 'publicationDate' ||
+    f === 'accessDate' ||
+    f === 'accessedAt' ||
+    f === 'filingDate' ||
+    f === 'issueDate' ||
+    f === 'dateDecided' ||
+    f === 'dateEnacted'
+  ) {
+    const label =
+      f === 'dateAdded'
+        ? 'Date Added'
+        : f === 'dateModified'
+          ? 'Date Modified'
+          : FIELD_LABELS[f] || humanizeFieldName(f);
+
+    return {
+      value: f,
+      label,
+      type: 'date',
+      operators: [
+        { value: 'isInTheLast', label: 'is in the last' },
+        { value: 'isGreaterThan', label: 'is after (>)' },
+        { value: 'isLessThan', label: 'is before (<)' },
+        { value: 'is', label: 'is' },
+        { value: 'isNot', label: 'is not' },
+        { value: 'isBetween', label: 'is between' },
+        { value: 'isPresent', label: 'is set' },
+        { value: 'isAbsent', label: 'is not set' },
+      ],
+      placeholder: 'YYYY-MM-DD',
+      defaultValue: '30 days',
+    };
+  }
+
+  if (f === 'year' || f === 'numberOfVolumes' || f === 'numPages') {
+    const label = FIELD_LABELS[f] || humanizeFieldName(f);
+    return {
+      value: f,
+      label,
+      type: 'number',
+      operators: [
+        { value: 'is', label: 'equals (=)' },
+        { value: 'isGreaterThan', label: 'is greater than (>)' },
+        { value: 'isLessThan', label: 'is less than (<)' },
+        { value: 'isNot', label: 'is not equal to (≠)' },
+        { value: 'isBetween', label: 'is between' },
+        { value: 'isPresent', label: 'has value' },
+        { value: 'isAbsent', label: 'is empty' },
+      ],
+      placeholder: 'Enter number...',
+    };
+  }
+
+  if (f === 'itemType') {
+    return {
+      value: 'itemType',
+      label: 'Item Type',
+      type: 'enum',
+      operators: [
+        { value: 'is', label: 'is' },
+        { value: 'isNot', label: 'is not' },
+        { value: 'isPresent', label: 'is not empty' },
+        { value: 'isAbsent', label: 'is empty' },
+      ],
+      placeholder: 'Select item type...',
+      defaultValue: 'journalArticle',
+    };
+  }
+
+  if (f === 'collection') {
+    return {
+      value: 'collection',
+      label: 'Collection',
+      type: 'enum',
+      operators: [
+        { value: 'is', label: 'is in collection' },
+        { value: 'isNot', label: 'is not in collection' },
+        { value: 'isPresent', label: 'is in any collection' },
+        { value: 'isAbsent', label: 'is unfiled (no collection)' },
+      ],
+      placeholder: 'Select collection...',
+    };
+  }
+
+  if (f === 'tag') {
+    return {
+      value: 'tag',
+      label: 'Tag',
+      type: 'text',
+      operators: [
+        { value: 'contains', label: 'contains' },
+        { value: 'is', label: 'is exact tag' },
+        { value: 'doesNotContain', label: 'does not contain' },
+        { value: 'isPresent', label: 'has tags' },
+        { value: 'isAbsent', label: 'no tags' },
+      ],
+      placeholder: 'Enter tag name...',
+    };
+  }
+
+  if (f === 'hasAttachment') {
+    return {
+      value: 'hasAttachment',
+      label: 'Has Attachment',
+      type: 'boolean',
+      operators: [{ value: 'is', label: 'is' }],
+      placeholder: 'Select attachment status...',
+      defaultValue: 'true',
+    };
+  }
+
+  if (f === 'readStatus') {
+    return {
+      value: 'readStatus',
+      label: 'Read Status',
+      type: 'enum',
+      operators: [
+        { value: 'is', label: 'is' },
+        { value: 'isNot', label: 'is not' },
+      ],
+      placeholder: 'Select reading status...',
+      defaultValue: 'unread',
+    };
+  }
+
+  if (f === 'rating') {
+    return {
+      value: 'rating',
+      label: 'Rating',
+      type: 'number',
+      operators: [
+        { value: 'is', label: 'equals (=)' },
+        { value: 'isGreaterThan', label: 'is greater than (>)' },
+        { value: 'isLessThan', label: 'is less than (<)' },
+        { value: 'isNot', label: 'is not equal to (≠)' },
+        { value: 'isPresent', label: 'is rated' },
+        { value: 'isAbsent', label: 'is unrated' },
+      ],
+      placeholder: 'Select rating...',
+      defaultValue: '3',
+    };
+  }
+
+  const label = FIELD_LABELS[f] || humanizeFieldName(f) || f;
+  return {
+    value: f,
+    label,
+    type: 'text',
+    operators: [
+      { value: 'contains', label: 'contains' },
+      { value: 'doesNotContain', label: 'does not contain' },
+      { value: 'is', label: 'is (exact)' },
+      { value: 'isNot', label: 'is not' },
+      { value: 'beginsWith', label: 'begins with' },
+      { value: 'endsWith', label: 'ends with' },
+      { value: 'isPresent', label: 'is not empty' },
+      { value: 'isAbsent', label: 'is empty' },
+    ],
+    placeholder: `Enter ${label.toLowerCase()}...`,
+  };
+}
+
+export function parseDurationParts(val: string): { count: string; unit: string } {
+  if (!val || typeof val !== 'string') return { count: '30', unit: 'days' };
+  const match = val.trim().match(/^(\d+)\s*([a-zA-Z]+)?$/);
+  if (match) {
+    const count = match[1] || '30';
+    let unit = (match[2] || 'days').toLowerCase();
+    if (unit.startsWith('d')) unit = 'days';
+    else if (unit.startsWith('w')) unit = 'weeks';
+    else if (unit.startsWith('m')) unit = 'months';
+    else if (unit.startsWith('y')) unit = 'years';
+    else unit = 'days';
+    return { count, unit };
+  }
+  return { count: '30', unit: 'days' };
+}
+
+export function formatConditionValue(
+  field: SavedSearchField | string,
+  val: unknown,
+): string | number | boolean {
+  if (val === null || val === undefined) return '';
+  if (typeof val === 'boolean') return val;
+  if (typeof val === 'number') return val;
+  const trimmed = String(val).trim();
+  if (field === 'year' || field === 'rating') {
+    const num = Number(trimmed);
+    return !isNaN(num) && trimmed !== '' ? num : trimmed;
+  }
+  if (field === 'hasAttachment') {
+    return trimmed === 'true';
+  }
+  return trimmed;
 }

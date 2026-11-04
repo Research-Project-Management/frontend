@@ -315,29 +315,37 @@ interface CachedPdfBlobEntry {
 
 const pdfBlobLruCache = new Map<string, CachedPdfBlobEntry>();
 
-function getCachedPdfBlob(url: string): Blob | null {
-  const entry = pdfBlobLruCache.get(url);
+function buildPdfBlobCacheKey(url: string, scopeId?: string): string {
+  const token =
+    typeof api.getAuthToken === 'function' ? api.getAuthToken() : getAuthToken();
+  const tokenFingerprint = token ? token.slice(-16) : 'anon';
+  const normalizedScope = isProjectScope(scopeId) ? scopeId!.trim() : 'user';
+  return `${tokenFingerprint}:${normalizedScope}:${url.trim()}`;
+}
+
+function getCachedPdfBlob(cacheKey: string): Blob | null {
+  const entry = pdfBlobLruCache.get(cacheKey);
   if (!entry) return null;
   if (Date.now() - entry.cachedAt > PDF_BLOB_CACHE_TTL_MS) {
-    pdfBlobLruCache.delete(url);
+    pdfBlobLruCache.delete(cacheKey);
     return null;
   }
-  pdfBlobLruCache.delete(url);
-  pdfBlobLruCache.set(url, entry);
+  pdfBlobLruCache.delete(cacheKey);
+  pdfBlobLruCache.set(cacheKey, entry);
   return entry.blob;
 }
 
-function setCachedPdfBlob(url: string, blob: Blob): void {
+function setCachedPdfBlob(cacheKey: string, blob: Blob): void {
   if (blob.size <= 0 || blob.size > MAX_CACHED_PDF_BLOB_BYTES) return;
-  if (pdfBlobLruCache.has(url)) {
-    pdfBlobLruCache.delete(url);
+  if (pdfBlobLruCache.has(cacheKey)) {
+    pdfBlobLruCache.delete(cacheKey);
   } else if (pdfBlobLruCache.size >= MAX_CACHED_PDF_BLOBS) {
     const oldestKey = pdfBlobLruCache.keys().next().value;
     if (oldestKey !== undefined) {
       pdfBlobLruCache.delete(oldestKey);
     }
   }
-  pdfBlobLruCache.set(url, { blob, cachedAt: Date.now() });
+  pdfBlobLruCache.set(cacheKey, { blob, cachedAt: Date.now() });
 }
 
 function awaitWithSignal<T>(
@@ -383,12 +391,13 @@ export const fetchPdfBlob = async (
   }
 
   const targetUrl = url.trim();
-  const cachedBlob = getCachedPdfBlob(targetUrl);
+  const cacheKey = buildPdfBlobCacheKey(targetUrl, options?.scopeId);
+  const cachedBlob = getCachedPdfBlob(cacheKey);
   if (cachedBlob) {
     return cachedBlob;
   }
 
-  const existingInFlight = inFlightPdfBlobRequests.get(targetUrl);
+  const existingInFlight = inFlightPdfBlobRequests.get(cacheKey);
   if (existingInFlight) {
     existingInFlight.subscribers += 1;
     return awaitWithSignal(existingInFlight.promise, signal, () => {
@@ -582,7 +591,7 @@ export const fetchPdfBlob = async (
     if (blob.size === 0) {
       throw new Error('Received an empty file from server.');
     }
-    setCachedPdfBlob(targetUrl, blob);
+    setCachedPdfBlob(cacheKey, blob);
     return blob;
   };
 
@@ -592,10 +601,10 @@ export const fetchPdfBlob = async (
     subscribers: 1,
   };
   const promise = executeFetch().finally(() => {
-    inFlightPdfBlobRequests.delete(targetUrl);
+    inFlightPdfBlobRequests.delete(cacheKey);
   });
   entry.promise = promise;
-  inFlightPdfBlobRequests.set(targetUrl, entry);
+  inFlightPdfBlobRequests.set(cacheKey, entry);
   return awaitWithSignal(promise, signal, () => {
     entry.subscribers = Math.max(0, entry.subscribers - 1);
     if (entry.subscribers === 0) {
@@ -711,18 +720,6 @@ export function unwrapList<T>(res: unknown, key: string): T[] {
     if (Array.isArray(obj.data)) return obj.data as T[];
   }
   return [];
-}
-
-export function unwrapRecord<T>(res: unknown, key: string): T | null {
-  if (!res || typeof res !== 'object') return null;
-  const obj = res as Record<string, unknown>;
-  if (key in obj && obj[key] && typeof obj[key] === 'object') {
-    return obj[key] as T;
-  }
-  if ('data' in obj && obj.data && typeof obj.data === 'object') {
-    return obj.data as T;
-  }
-  return res as T;
 }
 
 export function unwrapItemResponse(res: unknown): Item {

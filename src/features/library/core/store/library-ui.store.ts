@@ -5,7 +5,7 @@ import type { LibraryScope } from '@/features/library/domain/types/core.types';
 import {
   DEFAULT_LIBRARY_DISPLAY_OPTIONS,
   type LibraryDisplayOptions,
-} from '@/features/library/domain/types/saved-searches.types';
+} from '@/features/library/domain/types/ingestion.types';
 import { useLibraryCommandStore } from '@/features/library/core/manager/library-command.manager';
 
 export type InspectorSectionId =
@@ -43,8 +43,6 @@ export type LibraryModalType =
   | 'ADD_FEED'
   | 'EDIT_FEED'
   | 'MY_PUBLICATION_CONFIRM';
-
-export type ModalType = LibraryModalType;
 
 // 1. Scope & Navigation Context Slice
 export interface LibraryScopeSlice {
@@ -467,13 +465,6 @@ export const useIsItemSelected = (id: string): boolean =>
 
 export const useIsActiveItem = (id: string): boolean =>
   useLibraryUIStore((state) => state.activeItemId === id);
-
-export const useSelectionCount = (): number =>
-  useLibraryUIStore((state) => state.selectedIds.size);
-
-export const useHasSelection = (): boolean =>
-  useLibraryUIStore((state) => state.selectedIds.size > 0);
-
 
 if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
   (window as unknown as Record<string, unknown>).__LIBRARY_UI_STORE__ = useLibraryUIStore;

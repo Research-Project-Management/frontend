@@ -56,14 +56,17 @@ import {
   useLibraryUIStore,
   type LibraryModalType,
 } from "@/features/library/core/store/library-ui.store";
-import { useFeedsStore } from "@/features/library/core/store/feeds.store";
+import { useFeedsStore } from "@/features/library/core/store/reader.store";
 import { useItemTypes } from "@/features/library/sdk/queries/catalog.queries";
+import {
+  useExportOpmlFeedsMutation,
+  useImportOpmlFeedsMutation,
+} from "@/features/library/sdk/queries/ingestion.queries";
 import { mapRegistryItemTypes } from "@/features/library/domain/types/core.types";
 import {
   executeExportScopeFormat,
   triggerBrowserTextDownload,
 } from "@/features/library/core/coordinator/citation-export.coordinator";
-import { parseOpmlFeeds } from "@/features/library/domain/feed-parser.domain";
 
 const PRIMARY_TYPE_KEYS = new Set([
   "journalArticle",
@@ -113,15 +116,6 @@ const ITEM_TYPE_ICON_MAP: Record<string, React.ComponentType<{ className?: strin
   videoRecording: Video,
 };
 
-function escapeXml(unsafe: string): string {
-  return unsafe
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
-}
-
 export interface TopbarNewFeedDropdownProps {
   onRefreshFeed?: () => void;
   onMarkAllFeedRead?: () => void;
@@ -133,39 +127,32 @@ export function TopbarNewFeedDropdown({
 }: TopbarNewFeedDropdownProps) {
   const openModal = useLibraryUIStore((s) => s.openModal);
   const feeds = useFeedsStore((s) => s.feeds);
-  const addFeed = useFeedsStore((s) => s.addFeed);
+  const { mutateAsync: exportOpmlMutation } = useExportOpmlFeedsMutation();
+  const { mutateAsync: importOpmlMutation } = useImportOpmlFeedsMutation();
   const opmlInputRef = useRef<HTMLInputElement>(null);
 
-  const handleExportOPML = () => {
+  const handleExportOPML = async () => {
     if (!feeds || feeds.length === 0) {
       toast.info("No feeds to export");
       return;
     }
 
-    const outlines = feeds
-      .map(
-        (f) =>
-          `    <outline type="rss" text="${escapeXml(f.name)}" title="${escapeXml(f.name)}" xmlUrl="${escapeXml(f.url)}" htmlUrl="${escapeXml(f.url)}"/>`,
-      )
-      .join("\n");
-
-    const opmlContent = `<?xml version="1.0" encoding="UTF-8"?>
-<opml version="2.0">
-  <head>
-    <title>Flux Academic Feeds Export</title>
-    <dateCreated>${new Date().toUTCString()}</dateCreated>
-  </head>
-  <body>
-    <outline text="Subscriptions" title="Subscriptions">
-${outlines}
-    </outline>
-  </body>
-</opml>`;
-
     const filename = `flux-feeds-${new Date().toISOString().slice(0, 10)}.opml`;
-    triggerBrowserTextDownload(opmlContent, filename, "text/x-opml");
-
-    toast.success(`Exported ${feeds.length} feeds to OPML file`);
+    try {
+      const serverData = await exportOpmlMutation();
+      if (serverData?.opmlXml) {
+        triggerBrowserTextDownload(serverData.opmlXml, filename, "text/x-opml");
+        toast.success(`Exported ${serverData.count ?? feeds.length} feeds to OPML file`);
+      } else {
+        toast.error("Failed to export feeds to OPML");
+      }
+    } catch (err) {
+      toast.error(
+        err instanceof Error && err.message
+          ? err.message
+          : "Failed to export feeds to OPML",
+      );
+    }
   };
 
   const handleImportOPML = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -178,29 +165,18 @@ ${outlines}
       if (typeof content !== "string") return;
 
       try {
-        const parsedFeeds = parseOpmlFeeds(content);
-        if (parsedFeeds.length === 0) {
-          toast.error("No valid RSS/Atom feeds found in OPML file");
-          return;
-        }
-
-        let importedCount = 0;
-        for (const feed of parsedFeeds) {
-          try {
-            await addFeed(feed.name, feed.url, 30);
-            importedCount++;
-          } catch {
-            // Continue importing remaining feeds
-          }
-        }
-
-        if (importedCount > 0) {
-          toast.success(`Imported ${importedCount} feeds from OPML`);
+        const imported = await importOpmlMutation(content);
+        if (imported && imported.importedCount > 0) {
+          toast.success(`Imported ${imported.importedCount} feeds from OPML`);
         } else {
-          toast.error("Failed to import feeds from OPML");
+          toast.error("No valid RSS/Atom feeds found in OPML file");
         }
-      } catch {
-        toast.error("Failed to parse OPML file");
+      } catch (err) {
+        toast.error(
+          err instanceof Error && err.message
+            ? err.message
+            : "Failed to import feeds from OPML",
+        );
       }
     };
     reader.readAsText(file);

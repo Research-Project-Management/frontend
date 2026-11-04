@@ -3,9 +3,9 @@ import { getItemTypeDefinition, getPrimaryCreatorType } from './types/item-types
 import { isValidValue, normalizeTags } from './metadata-sanitizers';
 import { getItemDisplayTitle, getItemDisplayDate, getPublicationVenue } from './metadata-extra';
 import { splitAuthorString, buildStructuredCreatorsFromAuthors } from './creators';
-import { prepareInspectorFieldContext, resolveInspectorFieldValue, MULTI_KEY_SYNC_SETTERS, type PreparedInspectorFieldContext } from './item-field-schema';
+import { prepareInspectorFieldContext, resolveInspectorFieldValue, EXTRA_FIELD_FALLBACKS, MULTI_KEY_SYNC_SETTERS, type PreparedInspectorFieldContext } from './item-field-schema';
 
-export { buildStructuredCreatorsFromAuthors };
+export { buildStructuredCreatorsFromAuthors, EXTRA_FIELD_FALLBACKS };
 
 export interface MergeFieldDefinition { key: string; label: string; category: 'core' | 'details' | 'identifiers' | 'publishing'; description?: string; }
 
@@ -56,43 +56,15 @@ export function getMergeableFieldsForTypes(itemTypes?: readonly (string | undefi
 
 export type DiffStatus = 'IDENTICAL' | 'CONFLICT' | 'MISSING_IN_MASTER' | 'MISSING_IN_CANDIDATE';
 
-export interface FieldOptionValue {
-  itemId: string; itemTitle: string; isMaster: boolean; rawValue: unknown; displayValue: string;
-  isEmpty: boolean; sourceItemIndex: number; value?: unknown; formattedDisplay?: string;
-}
-
-export interface ItemFieldDiff {
-  key: string; label: string; category: 'core' | 'details' | 'identifiers' | 'publishing';
-  status: DiffStatus; hasConflict: boolean; options: FieldOptionValue[]; masterValue?: FieldOptionValue;
-  recommendedItemId: string; recommendedValue?: unknown; candidateValue?: unknown;
-}
-
-export interface MergeInspectionResult {
-  masterItemId: string; fields: ItemFieldDiff[]; hasConflicts: boolean;
-  conflictCount: number; identicalCount: number; missingInMasterCount: number;
-}
+export interface FieldOptionValue { itemId: string; itemTitle: string; isMaster: boolean; rawValue: unknown; displayValue: string; isEmpty: boolean; sourceItemIndex: number; value?: unknown; formattedDisplay?: string; }
+export interface ItemFieldDiff { key: string; label: string; category: 'core' | 'details' | 'identifiers' | 'publishing'; status: DiffStatus; hasConflict: boolean; options: FieldOptionValue[]; masterValue?: FieldOptionValue; recommendedItemId: string; recommendedValue?: unknown; candidateValue?: unknown; }
+export interface MergeInspectionResult { masterItemId: string; fields: ItemFieldDiff[]; hasConflicts: boolean; conflictCount: number; identicalCount: number; missingInMasterCount: number; }
 
 export function isFieldEmpty(val: unknown): boolean {
-  if (!isValidValue(val)) return true;
-  if (typeof val === 'number' && val === 0) return true;
-  if (Array.isArray(val)) return !val.some((v) => isValidValue(v));
-  return false;
+  return !isValidValue(val) || (typeof val === 'number' && val === 0) || (Array.isArray(val) && !val.some((v) => isValidValue(v)));
 }
 
-const EXTRA_FIELD_FALLBACKS: Record<string, readonly string[]> = {
-  publicationDate: ['date', 'issueDate', 'dateDecided', 'dateEnacted', 'filingDate'],
-  issue: ['number', 'patentNumber', 'reportNumber', 'docketNumber', 'publicLawNumber', 'billNumber', 'documentNumber', 'identifier', 'episodeNumber'],
-  place: ['eventPlace', 'country', 'repositoryLocation'],
-  publisher: ['university', 'institution', 'issuingAuthority', 'authority', 'organization', 'company', 'repository', 'court', 'distributor', 'studio', 'network', 'label'],
-  series: ['seriesTitle'],
-  seriesTitle: ['series'],
-};
-
-export function resolveItemFieldValue(
-  item: Record<string, unknown> | undefined,
-  key: string,
-  precomputedContext?: PreparedInspectorFieldContext | null,
-): unknown {
+export function resolveItemFieldValue(item: Record<string, unknown> | undefined, key: string, precomputedContext?: PreparedInspectorFieldContext | null): unknown {
   if (!item) return undefined;
   const direct = item[key];
   const ef = item.extraFields as Record<string, unknown> | undefined;
@@ -125,17 +97,12 @@ export function resolveItemFieldValue(
   if (!isFieldEmpty(direct)) return direct;
   if (ef && !isFieldEmpty(ef[key])) return ef[key];
 
-  const aliases = EXTRA_FIELD_FALLBACKS[key];
-  if (aliases) {
-    for (const alias of aliases) {
-      if (!isFieldEmpty(item[alias])) return item[alias];
-      if (ef && !isFieldEmpty(ef[alias])) return ef[alias];
-    }
+  for (const alias of EXTRA_FIELD_FALLBACKS[key] ?? []) {
+    if (!isFieldEmpty(item[alias])) return item[alias];
+    if (ef && !isFieldEmpty(ef[alias])) return ef[alias];
   }
   return direct;
 }
-
-export const extractFieldValue = resolveItemFieldValue;
 
 function extractCreatorObjectName(obj: Record<string, unknown>, fallback: unknown): string {
   const fullName = [obj.firstName || obj.given, obj.lastName || obj.family].filter(Boolean).join(' ');
@@ -203,37 +170,27 @@ const ITEM_TYPE_QUALITY_WEIGHT: Readonly<Record<string, number>> = {
 };
 
 const selectMostCompleteMasterItem = (items: readonly Item[]): string => {
-  let bestId = items[0]!.id;
-  let bestScore = -Infinity;
-  let bestTs: number | null = null;
+  let bestId = items[0]!.id, bestScore = -Infinity, bestTs: number | null = null;
   const effectiveFields = getMergeableFieldsForTypes(items.map((i) => i.itemType));
-
   for (const item of items) {
-    const rec = item as Record<string, unknown>;
-    const itemCtx = prepareInspectorFieldContext(item);
+    const rec = item as Record<string, unknown>, itemCtx = prepareInspectorFieldContext(item);
     const isRetracted = rec.isRetracted === true || rec.retractionStatus === 'retracted';
     const itemType = String(item.itemType || 'journalArticle').trim();
     const doi = String(resolveItemFieldValue(rec, 'doi', itemCtx) || '').trim();
-    const isArxivDoi = /10\.48550\/arxiv/i.test(doi);
     const populatedFieldsCount = effectiveFields.reduce((acc, field) => acc + (isFieldEmpty(resolveItemFieldValue(rec, field.key, itemCtx)) ? 0 : 1), 0);
-    const score =
-      (isRetracted ? -500 : 0) + (ITEM_TYPE_QUALITY_WEIGHT[itemType] ?? 0) + (doi ? (isArxivDoi ? 10 : 35) : 0) +
+    const score = (isRetracted ? -500 : 0) + (ITEM_TYPE_QUALITY_WEIGHT[itemType] ?? 0) + (doi ? (/10\.48550\/arxiv/i.test(doi) ? 10 : 35) : 0) +
       5 * populatedFieldsCount + 8 * (Array.isArray(item.attachments) ? item.attachments.length : 0) + 4 * (Array.isArray(item.notes) ? item.notes.length : 0);
     const ts = parseItemTimestamp(rec);
     if (score > bestScore || (score === bestScore && ts !== null && (bestTs === null || ts < bestTs))) {
-      bestScore = score;
-      bestId = item.id;
-      bestTs = ts;
+      bestScore = score; bestId = item.id; bestTs = ts;
     }
   }
   return bestId;
 };
 
 export const MASTER_SELECTION_STRATEGIES: Readonly<Record<MasterSelectionStrategy, (items: readonly Item[]) => string>> = {
-  oldest: (items) => selectByTimestampOrder(items, 'oldest'),
-  newest: (items) => selectByTimestampOrder(items, 'newest'),
-  'most-complete': selectMostCompleteMasterItem,
-  smart: selectMostCompleteMasterItem,
+  oldest: (items) => selectByTimestampOrder(items, 'oldest'), newest: (items) => selectByTimestampOrder(items, 'newest'),
+  'most-complete': selectMostCompleteMasterItem, smart: selectMostCompleteMasterItem,
 };
 
 export function selectBestMasterItemId(items: readonly Item[], strategy: MasterSelectionStrategy = 'smart'): string {
@@ -411,13 +368,6 @@ export function mergeItemExtraFields(
   return lines.join('\n');
 }
 
-export interface MergedItemPayload {
-  masterId: string; sourceIds: string[]; duplicateIds: string[];
-  fieldSelections: Record<string, unknown>; resolvedFields: Record<string, unknown>;
-  tags: string[]; collectionIds: string[]; attachments: unknown[];
-  uniqueAttachmentCount: number; duplicateAttachmentCount: number; totalAnnotationCount: number;
-}
-
 export interface AggregatedAssetsSummary {
   totalFiles: number; fileList: unknown[]; attachments: unknown[];
   uniqueAttachmentCount: number; duplicateAttachmentCount: number; totalAnnotationCount: number;
@@ -425,8 +375,6 @@ export interface AggregatedAssetsSummary {
   totalTags: number; tags: string[]; totalCollections: number; collectionCount: number; collections: string[];
   combinedTags: string[]; combinedCollectionIds: string[]; attachmentCount: number; notesCount: number;
 }
-
-export type AggregatedAssetsResult = AggregatedAssetsSummary;
 export interface DuplicateGroupMergeDraft { selectedMasterId: string; fieldOverrides: Record<string, unknown>; showConflictsOnly: boolean; }
 
 export function createInitialDuplicateGroupMergeDraft(recommendedMasterId: string): DuplicateGroupMergeDraft {
@@ -738,27 +686,6 @@ export function extractExplicitUserMergeOverrides(
   options?: { inspection?: MergeInspectionResult; customFieldTexts?: Record<string, string> },
 ): Record<string, unknown> {
   return resolveDuplicateMergeFieldOverrides(items, masterId, fieldOverrides, { ...options, includeUnchangedMasterFields: false, explicitUserSelectionsOnly: true });
-}
-
-export function buildMergedItemPayload(
-  items: Item[],
-  masterId: string,
-  fieldOverrides: Record<string, unknown> = {},
-  customFieldTexts?: Record<string, string>,
-): MergedItemPayload {
-  const masterItem = items.find((i) => i.id === masterId) || items[0];
-  const orderedItems = masterItem ? [masterItem, ...items.filter((i) => i.id !== masterItem.id)] : items;
-  const inspection = inspectItemDifferences(items, masterId);
-  const assets = aggregateItemAssets(orderedItems);
-  const resolvedOverrides = resolveDuplicateMergeFieldOverrides(items, masterId, fieldOverrides, { inspection, includeUnchangedMasterFields: true, customFieldTexts });
-  const resolvedFields: Record<string, unknown> = { tags: assets.combinedTags, collections: assets.combinedCollectionIds, ...resolvedOverrides };
-  const duplicateIds = items.filter((i) => i.id !== masterId).map((i) => i.id);
-
-  return {
-    masterId, sourceIds: duplicateIds, duplicateIds, fieldSelections: resolvedFields, resolvedFields,
-    tags: assets.combinedTags, collectionIds: assets.combinedCollectionIds, attachments: assets.attachments,
-    uniqueAttachmentCount: assets.uniqueAttachmentCount, duplicateAttachmentCount: assets.duplicateAttachmentCount, totalAnnotationCount: assets.totalAnnotationCount,
-  };
 }
 
 export interface MergeFieldOptionState {

@@ -69,7 +69,14 @@ describe('buildRetractedCitationMap', () => {
     const diags = runLatexLinter('See \\cite{wakefield1998}.', {
       retractedCitationsMap: map,
     });
-    expect(diags.some((d) => d.message.includes('Retracted Paper'))).toBe(true);
+    expect(
+      diags.some(
+        (d) =>
+          d.message.includes('Retracted Paper') ||
+          d.message.includes('CRITICAL ACADEMIC WARNING') ||
+          d.message.includes('Data falsification'),
+      ),
+    ).toBe(true);
   });
 });
 

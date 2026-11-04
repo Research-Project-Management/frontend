@@ -16,6 +16,8 @@ export const annotationRectSchema = z.object({
   y2: z.number(),
   width: z.number().optional(),
   height: z.number().optional(),
+  paths: z.array(z.string()).optional(),
+  imageDataUrl: z.string().optional(),
 });
 
 export const annotationTypeSchema = z.enum([
@@ -39,6 +41,7 @@ const baseAnnotationFields = {
   quoteText: z.string().optional(),
   selectedText: z.string().optional(),
   comment: z.string().optional(),
+  pageLabel: z.string().nullable().optional(),
   x: z.number().min(0).max(1).optional(),
   y: z.number().min(0).max(1).optional(),
   rects: z.array(annotationRectSchema).optional(),
@@ -71,14 +74,17 @@ export const createAnnotationSchema = z.object({
   attachmentId: z.string().optional(),
   pageNumber: z.number().int().positive().optional(),
   pageIndex: z.number().int().nonnegative().optional(),
+  annotationSortIndex: z.string().optional(),
   ...baseAnnotationFields,
 });
 
 export const updateAnnotationSchema = z.object({
+  type: annotationTypeSchema.optional(),
   color: z.string().optional(),
   comment: z.string().optional(),
   text: z.string().optional(),
   quoteText: z.string().optional(),
+  pageLabel: z.string().nullable().optional(),
   tags: z.array(z.string()).optional(),
   rects: z.array(annotationRectSchema).optional(),
   boundingRect: annotationRectSchema.optional(),
@@ -260,6 +266,7 @@ export const annotationFormSchema = z.object({
   quoteText: z.string().trim().optional(),
   comment: z.string().trim().optional(),
   color: z.string().optional(),
+  pageLabel: z.string().trim().optional(),
   tags: z.array(z.string()).optional(),
 });
 
@@ -360,34 +367,22 @@ export type AnnotationType = z.infer<typeof annotationTypeSchema>;
 export type ReaderAnnotation = z.infer<typeof readerAnnotationSchema>;
 export type CreateAnnotationDto = z.infer<typeof createAnnotationSchema>;
 export type UpdateAnnotationDto = z.infer<typeof updateAnnotationSchema>;
-
-export type ReaderPanel = z.infer<typeof readerPanelSchema>;
 export type ReaderFitMode = z.infer<typeof readerFitModeSchema>;
 export type ReaderTheme = z.infer<typeof readerThemeSchema>;
 
 export type CreatorType = z.infer<typeof creatorTypeSchema>;
 export type DocumentCreator = z.infer<typeof documentCreatorSchema>;
-export type DocumentAttachment = z.infer<typeof documentAttachmentSchema>;
-export type PrimaryDocumentFile = z.infer<typeof primaryFileSchema>;
 
 export type ReaderNote = z.infer<typeof readerNoteSchema>;
 export type CreateNoteDto = z.infer<typeof createNoteSchema>;
 export type UpdateNoteDto = z.infer<typeof updateNoteSchema>;
-export type ReaderCollection = z.infer<typeof readerCollectionSchema>;
-
-export type DocumentReadingState = z.infer<typeof documentReadingStateSchema>;
-export type DocumentTag = z.infer<typeof documentTagSchema>;
 export type ReaderDocument = z.infer<typeof readerDocumentSchema>;
-export type UpdateDocumentDto = z.infer<typeof updateDocumentSchema>;
 
 export type AnnotationFormData = z.infer<typeof annotationFormSchema>;
-
-export type DocumentBoundingBox = z.infer<typeof documentBoundingBoxSchema>;
 export type DocumentSection = z.infer<typeof documentSectionSchema>;
 export type DocumentFigure = z.infer<typeof documentFigureSchema>;
 export type DocumentTable = z.infer<typeof documentTableSchema>;
 export type DocumentFormula = z.infer<typeof documentFormulaSchema>;
-export type DocumentReference = z.infer<typeof documentReferenceSchema>;
 export type DocumentFulltext = z.infer<typeof documentFulltextSchema>;
 
 export interface PdfOutlineItem {
@@ -476,6 +471,11 @@ export interface ReaderTab {
   fitMode?: ReaderFitMode;
   rotation?: number;
   theme?: ReaderTheme;
+  viewMode?: 'single' | 'continuous' | 'spread';
+  splitMode?: 'none' | 'horizontal' | 'vertical';
+  secondaryPage?: number;
+  interactionMode?: 'select' | 'hand';
+  attachmentId?: string | null;
 }
 
 export interface ActiveHighlightTooltipState {
@@ -501,6 +501,13 @@ export interface AreaSelectionState {
   startY: number;
   currentX: number;
   currentY: number;
+  active: boolean;
+}
+
+export interface InkDrawingState {
+  pageNum: number;
+  paths: string[];
+  currentPoints: Array<{ x: number; y: number }>;
   active: boolean;
 }
 

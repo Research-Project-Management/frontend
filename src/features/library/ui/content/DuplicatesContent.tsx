@@ -3,15 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { openInNewTab, buildReaderPaperUrl } from '@/features/library/core/coordinator/citation-export.coordinator';
 import {
-  GitMerge,
-  Layers,
-  FileText,
-  Calendar,
-  ExternalLink,
-  ChevronRight,
-  Columns,
-  CheckSquare,
-  X,
+  GitMerge, Layers, FileText, Calendar, ExternalLink, ChevronRight, Columns, CheckSquare, X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
@@ -29,25 +21,23 @@ import {
   useDuplicateGroups,
   useDismissDuplicatesMutation,
   useMergeDuplicates,
+  useBatchMergeDuplicates,
 } from '@/features/library/sdk/queries/ingestion.queries';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import {
   clearGroupMergeDraft,
+  computeDuplicateSetKey,
   getDeterministicDuplicateGroupKey,
+  getGroupMergeDraft,
 } from '@/features/library/core/coordinator/curation.coordinator';
 import {
+  extractExplicitUserMergeOverrides,
   inspectItemDifferences,
   selectBestMasterItemId,
 } from '@/features/library/domain/diff';
 import type { Item, DuplicateGroup } from '@/features/library/domain/types/core.types';
 
-function InlineDiffView({
-  items,
-  recommendedMasterId,
-}: {
-  items: Item[];
-  recommendedMasterId?: string;
-}) {
+function InlineDiffView({ items, recommendedMasterId }: { items: Item[]; recommendedMasterId?: string }) {
   const diff = useMemo(
     () => inspectItemDifferences(items, recommendedMasterId || items[0]?.id),
     [items, recommendedMasterId],
@@ -62,23 +52,15 @@ function InlineDiffView({
         </span>
         <div className="flex items-center gap-2">
           {diff.conflictCount > 0 ? (
-            <Badge
-              variant="outline"
-              className="text-10 h-4 px-1.5 border-warning/30 text-warning bg-warning/10 font-normal"
-            >
+            <Badge variant="outline" className="text-10 h-4 px-1.5 border-warning/30 text-warning bg-warning/10 font-normal">
               {diff.conflictCount} conflict(s)
             </Badge>
           ) : (
-            <Badge
-              variant="outline"
-              className="text-10 h-4 px-1.5 border-success/30 text-success bg-success/10 font-normal"
-            >
+            <Badge variant="outline" className="text-10 h-4 px-1.5 border-success/30 text-success bg-success/10 font-normal">
               Identical
             </Badge>
           )}
-          <span className="text-10 font-mono">
-            {diff.fields.length} fields evaluated
-          </span>
+          <span className="text-10 font-mono">{diff.fields.length} fields evaluated</span>
         </div>
       </div>
 
@@ -89,9 +71,7 @@ function InlineDiffView({
               <tr className="text-foreground font-medium">
                 <th className="w-36 px-3 py-1.5">Field</th>
                 {items.map((it, idx) => (
-                  <th key={it.id || idx} className="px-3 py-1.5">
-                    Version {idx + 1}
-                  </th>
+                  <th key={it.id || idx} className="px-3 py-1.5">Version {idx + 1}</th>
                 ))}
               </tr>
             </thead>
@@ -99,38 +79,22 @@ function InlineDiffView({
               {diff.fields.map((field) => (
                 <tr
                   key={field.key}
-                  className={cn(
-                    'transition-colors',
-                    field.hasConflict
-                      ? 'bg-warning/5 hover:bg-warning/10'
-                      : 'hover:bg-muted',
-                  )}
+                  className={cn('transition-colors', field.hasConflict ? 'bg-warning/5 hover:bg-warning/10' : 'hover:bg-muted')}
                 >
                   <td className="px-3 py-2 font-medium text-foreground align-top">
                     <div className="space-y-0.5">
                       <span>{field.label}</span>
                       {field.hasConflict ? (
-                        <span className="block text-9 text-warning font-mono">
-                          conflict
-                        </span>
+                        <span className="block text-9 text-warning font-mono">conflict</span>
                       ) : (
-                        <span className="block text-9 text-muted-foreground font-mono">
-                          identical
-                        </span>
+                        <span className="block text-9 text-muted-foreground font-mono">identical</span>
                       )}
                     </div>
                   </td>
                   {field.options.map((opt) => (
-                    <td
-                      key={opt.itemId}
-                      className="px-3 py-2 align-top text-foreground"
-                    >
+                    <td key={opt.itemId} className="px-3 py-2 align-top text-foreground">
                       <div className="line-clamp-3 leading-relaxed text-11">
-                        {opt.isEmpty ? (
-                          <span className="italic text-muted-foreground">(Empty)</span>
-                        ) : (
-                          opt.displayValue
-                        )}
+                        {opt.isEmpty ? <span className="italic text-muted-foreground">(Empty)</span> : opt.displayValue}
                       </div>
                     </td>
                   ))}
@@ -176,6 +140,7 @@ export function DuplicatesContent({
   const { data, isLoading, isError, error } = useDuplicateGroups(scopeId);
   const dismissMutation = useDismissDuplicatesMutation(scopeId);
   const mergeMutation = useMergeDuplicates(scopeId);
+  const batchMergeMutation = useBatchMergeDuplicates(scopeId);
 
   // Local state
   const [dismissedGroupKeys, setDismissedGroupKeys] = useState<Set<string>>(new Set());
@@ -322,6 +287,13 @@ export function DuplicatesContent({
     setIsBatchProcessing(true);
     try {
       let mergedGroupsCount = 0;
+      const batchPayloads: Array<{
+        key: string;
+        setKey: string;
+        primaryItemId: string;
+        duplicateItemIds: string[];
+        overrides?: Record<string, unknown>;
+      }> = [];
       for (const key of keys) {
         const group = activeGroupByKey.get(key);
         if (!group) continue;
@@ -335,8 +307,15 @@ export function DuplicatesContent({
         const items = (group.items || []) as Item[];
         if (items.length < 2) continue;
 
+        const setKey = computeDuplicateSetKey(items);
+        const draft = getGroupMergeDraft(setKey) || getGroupMergeDraft(key);
         const masterId =
-          group.recommendedMasterId || selectBestMasterItemId(items) || items[0]?.id;
+          (draft?.selectedMasterId && items.some((it) => it.id === draft.selectedMasterId)
+            ? draft.selectedMasterId
+            : undefined) ||
+          group.recommendedMasterId ||
+          selectBestMasterItemId(items) ||
+          items[0]?.id;
         if (!masterId) continue;
 
         const duplicateItemIds = items
@@ -344,30 +323,69 @@ export function DuplicatesContent({
           .filter((id): id is string => Boolean(id && id !== masterId));
         if (duplicateItemIds.length === 0) continue;
 
-        await mergeMutation.mutateAsync({
+        const overrides = draft?.fieldOverrides
+          ? extractExplicitUserMergeOverrides(items, masterId, draft.fieldOverrides)
+          : undefined;
+
+        batchPayloads.push({
+          key,
+          setKey,
           primaryItemId: masterId,
           duplicateItemIds,
+          ...(overrides && Object.keys(overrides).length > 0 ? { overrides } : {}),
         });
-        clearGroupMergeDraft(key);
-        setDismissedGroupKeys((prev) => new Set(prev).add(key));
-        mergedGroupsCount++;
       }
 
-      if (mergedGroupsCount > 0) {
-        setSelectedGroupKeys(new Set());
+      if (batchPayloads.length > 1) {
+        try {
+          await batchMergeMutation.mutateAsync(
+            batchPayloads.map((p) => ({
+              primaryItemId: p.primaryItemId,
+              duplicateItemIds: p.duplicateItemIds,
+              ...(p.overrides ? { fieldSelections: p.overrides as Record<string, string> } : {}),
+            })),
+          );
+          const mergedKeys: string[] = [];
+          batchPayloads.forEach((p) => {
+            clearGroupMergeDraft(p.key);
+            clearGroupMergeDraft(p.setKey);
+            mergedKeys.push(p.key);
+          });
+          setDismissedGroupKeys((prev) => {
+            const next = new Set(prev);
+            for (const k of mergedKeys) next.add(k);
+            return next;
+          });
+          mergedGroupsCount += batchPayloads.length;
+        } catch (err) {
+          toast.error(err instanceof Error && err.message ? err.message : 'Failed to merge duplicate groups', {
+            id: 'duplicate-group-action',
+          });
+        }
+      } else if (batchPayloads.length === 1) {
+        const p = batchPayloads[0]!;
+        try {
+          await mergeMutation.mutateAsync({
+            primaryItemId: p.primaryItemId,
+            duplicateItemIds: p.duplicateItemIds,
+            ...(p.overrides ? { overrides: p.overrides } : {}),
+          });
+          clearGroupMergeDraft(p.key);
+          clearGroupMergeDraft(p.setKey);
+          setDismissedGroupKeys((prev) => new Set(prev).add(p.key));
+          mergedGroupsCount++;
+        } catch (err) {
+          toast.error(err instanceof Error && err.message ? err.message : 'Failed to merge duplicate group', {
+            id: 'duplicate-group-action',
+          });
+        }
       }
+
+      if (mergedGroupsCount > 0) setSelectedGroupKeys(new Set());
     } finally {
       setIsBatchProcessing(false);
     }
-  }, [
-    selectedGroupKeys,
-    canEdit,
-    isBatchProcessing,
-    onMergeGroup,
-    activeGroupByKey,
-    handleOpenMerge,
-    mergeMutation,
-  ]);
+  }, [selectedGroupKeys, canEdit, isBatchProcessing, onMergeGroup, activeGroupByKey, handleOpenMerge, mergeMutation, batchMergeMutation]);
 
   React.useEffect(() => {
     if (!onSelectedGroupChange) return;

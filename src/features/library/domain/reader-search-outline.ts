@@ -8,10 +8,11 @@
 import type {
   ReaderDocument,
   DocumentCreator,
+  PdfOutlineItem,
 } from '@/features/library/domain/types/reader.schema';
 import { normalizeAuthors, parseCreatorName } from '@/features/library/domain/creators';
 import { isValidValue } from '@/features/library/domain/metadata-mapper';
-import { foldDiacritics } from '@/features/library/domain/academic-text';
+import { foldDiacritics } from '@/features/library/domain/citations';
 import { isProjectScope } from '@/features/library/domain/identifiers';
 
 export { foldDiacritics };
@@ -62,24 +63,56 @@ export function computeEffectivePdfPageWidth(params: ViewportParams): number {
     fitMode = 'fit-width',
     viewMode = 'continuous',
   } = params;
-  const clampedZoom = Math.min(3.0, Math.max(0.25, zoom));
+  const clampedZoom = Math.min(5.0, Math.max(0.25, zoom));
 
   if (viewMode === 'spread') {
-    return Math.max(260, Math.round((containerWidth / 2) * clampedZoom));
+    const availableSpreadWidth = Math.max(520, containerWidth - 32);
+    return Math.max(260, Math.round((availableSpreadWidth / 2) * clampedZoom));
   }
   if (fitMode === 'fit-page' || fitMode === 'page-fit') {
     const containerH = containerHeight || 800;
     return Math.max(260, Math.round(((containerH - 72) / ISO_A4_ASPECT_RATIO) * clampedZoom));
   }
+  if (fitMode === 'auto') {
+    const availableWidth = Math.max(320, containerWidth - 32);
+    return Math.max(320, Math.round(Math.min(availableWidth, 920) * clampedZoom));
+  }
   return Math.max(320, Math.round(containerWidth * clampedZoom));
 }
 
-export function computeSpreadPairs(totalPages: number): Array<[number, number | null]> {
+export function computeSpreadPairs(
+  totalPages: number,
+  spreadMode: 'odd' | 'even' = 'odd',
+): Array<[number, number | null]> {
   if (totalPages <= 0) return [];
+  if (spreadMode === 'even') {
+    const pairs: Array<[number, number | null]> = [[1, null]];
+    for (let p = 2; p <= totalPages; p += 2) {
+      pairs.push([p, p + 1 <= totalPages ? p + 1 : null]);
+    }
+    return pairs;
+  }
   return Array.from({ length: Math.ceil(totalPages / 2) }, (_, i) => {
     const p = 2 * i + 1;
     return [p, p + 1 <= totalPages ? p + 1 : null];
   });
+}
+
+export function buildClientAnnotationSortIndex(
+  pageIndex: number,
+  y = 0,
+  x = 0,
+): string {
+  const clampPad = (val: number, digits: number): string => {
+    const safe = Number.isFinite(val) ? Math.max(0, Math.round(val)) : 0;
+    const maxVal = Math.pow(10, digits) - 1;
+    return String(Math.min(maxVal, safe)).padStart(digits, '0');
+  };
+  const scaleCoord = (coord: number): number => {
+    if (!Number.isFinite(coord) || coord < 0) return 0;
+    return coord <= 1.0001 ? Math.round(coord * 10000) : Math.round(coord * 100);
+  };
+  return `${clampPad(pageIndex, 5)}|${clampPad(scaleCoord(y), 6)}|${clampPad(scaleCoord(x), 5)}`;
 }
 
 export function isPageInVirtualWindow(params: {
@@ -124,6 +157,44 @@ export function normalizeRectCoordinates(
     width: round4(width / pageWidth),
     height: round4(height / pageHeight),
   };
+}
+
+export function cropCanvasSelectionToDataUrl(
+  canvas: HTMLCanvasElement | null | undefined,
+  rectNorm: { x1: number; y1: number; width?: number; height?: number; x2?: number; y2?: number },
+  maxDim = 560,
+  quality = 0.78,
+): string | undefined {
+  if (!canvas || canvas.width <= 0 || canvas.height <= 0 || typeof document === 'undefined') {
+    return undefined;
+  }
+  try {
+    const normW = rectNorm.width ?? (rectNorm.x2 !== undefined ? rectNorm.x2 - rectNorm.x1 : 0.1);
+    const normH = rectNorm.height ?? (rectNorm.y2 !== undefined ? rectNorm.y2 - rectNorm.y1 : 0.1);
+    const sx = Math.round(rectNorm.x1 * canvas.width);
+    const sy = Math.round(rectNorm.y1 * canvas.height);
+    const sw = Math.max(1, Math.round(normW * canvas.width));
+    const sh = Math.max(1, Math.round(normH * canvas.height));
+    const cropCanvas = document.createElement('canvas');
+    const scale = Math.min(1, maxDim / Math.max(sw, sh));
+    cropCanvas.width = Math.max(1, Math.round(sw * scale));
+    cropCanvas.height = Math.max(1, Math.round(sh * scale));
+    const ctx = cropCanvas.getContext('2d');
+    if (!ctx) return undefined;
+    ctx.drawImage(canvas, sx, sy, sw, sh, 0, 0, cropCanvas.width, cropCanvas.height);
+    let dataUrl = cropCanvas.toDataURL('image/webp', quality);
+    if (!dataUrl.startsWith('data:image/webp')) {
+      dataUrl = cropCanvas.toDataURL('image/jpeg', quality);
+    }
+    if (dataUrl.length > 180_000) {
+      dataUrl = cropCanvas.toDataURL('image/jpeg', Math.max(0.5, quality - 0.18));
+    }
+    cropCanvas.width = 0;
+    cropCanvas.height = 0;
+    return dataUrl.length <= 180_000 ? dataUrl : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 // ── Fulltext Search, Outline Filtering & Citation Helpers ───────────────────
@@ -289,7 +360,11 @@ export function getSurnameForCitation(rawAuthor: string): string {
   return parsed.lastName || parsed.fullName || 'Unknown';
 }
 
-export function formatInTextCitation(paper: ReaderDocument, pageNumber?: number): string {
+export function formatInTextCitation(
+  paper: ReaderDocument,
+  pageNumber?: number,
+  pageLabel?: string | null,
+): string {
   const authors = normalizeReaderAuthors(paper.authors, paper.creators);
   let authorStr = 'Unknown';
   if (authors.length === 1) {
@@ -303,7 +378,8 @@ export function formatInTextCitation(paper: ReaderDocument, pageNumber?: number)
     authorStr = `${s1} et al.`;
   }
   const yearStr = paper.year && isValidValue(paper.year) ? String(paper.year) : 'n.d.';
-  const pageStr = pageNumber ? `, p. ${pageNumber}` : '';
+  const displayPage = pageLabel && pageLabel.trim() ? pageLabel.trim() : pageNumber ? String(pageNumber) : '';
+  const pageStr = displayPage ? `, p. ${displayPage}` : '';
   return `(${authorStr}, ${yearStr}${pageStr})`;
 }
 
@@ -313,13 +389,15 @@ export function formatAnnotationCitation(
   pageNumber?: number,
   annotationId?: string,
   scopeId?: string,
+  pageLabel?: string | null,
 ): { label: string; url: string; markdown: string } {
   const authors = paper ? normalizeReaderAuthors(paper.authors, paper.creators) : [];
   const firstAuthor = authors.length > 0 ? getSurnameForCitation(authors[0]!) : 'Unknown';
   const hasMultipleAuthors = authors.length > 1;
   const year = paper?.year && isValidValue(paper.year) ? paper.year : 'n.d.';
   const authorCitation = hasMultipleAuthors ? `${firstAuthor} et al., ${year}` : `${firstAuthor}, ${year}`;
-  const pageStr = pageNumber ? `, p. ${pageNumber}` : '';
+  const displayPage = pageLabel && pageLabel.trim() ? pageLabel.trim() : pageNumber ? String(pageNumber) : '';
+  const pageStr = displayPage ? `, p. ${displayPage}` : '';
   const label = `(${authorCitation}${pageStr})`;
 
   const itemId = paper?.id;
@@ -351,21 +429,40 @@ const FOLDED_PAGE_TEXT_CACHE = new WeakMap<
   { rawText: string; foldedText: string }
 >();
 
+export interface SearchPdfPagesOptions {
+  snippetRadius?: number;
+  matchCase?: boolean;
+  wholeWords?: boolean;
+}
+
+function isWordBoundaryChar(ch?: string): boolean {
+  if (!ch) return false;
+  return /[\p{L}\p{N}_]/u.test(ch);
+}
+
 /**
- * Searches extracted PDF pages (`{ pageNumber, text }`) with diacritic & case insensitivity,
- * returning ordered `PdfTextMatch` items with surrounding snippet context.
+ * Searches extracted PDF pages (`{ pageNumber, text }`) with configurable diacritic,
+ * case sensitivity, and whole-word matching, returning ordered `PdfTextMatch` items.
  */
 export function searchPdfPages(
   pages: ReadonlyArray<{ pageNumber: number; text: string }>,
   query?: string | null,
-  snippetRadius = 35,
+  snippetRadiusOrOptions: number | SearchPdfPagesOptions = 35,
 ): PdfTextMatch[] {
   if (!query || typeof query !== 'string') return [];
   const cleanQuery = query.trim().normalize('NFC');
   if (!cleanQuery) return [];
 
-  const foldedQuery = foldDiacritics(cleanQuery);
-  if (!foldedQuery) return [];
+  const opts: SearchPdfPagesOptions =
+    typeof snippetRadiusOrOptions === 'number'
+      ? { snippetRadius: snippetRadiusOrOptions }
+      : snippetRadiusOrOptions;
+  const snippetRadius = opts.snippetRadius ?? 35;
+  const matchCase = Boolean(opts.matchCase);
+  const wholeWords = Boolean(opts.wholeWords);
+
+  const targetQuery = matchCase ? cleanQuery : foldDiacritics(cleanQuery);
+  if (!targetQuery) return [];
 
   const matches: PdfTextMatch[] = [];
   let matchIndex = 0;
@@ -382,15 +479,26 @@ export function searchPdfPages(
       FOLDED_PAGE_TEXT_CACHE.set(page, cached);
     }
     const { rawText, foldedText } = cached;
+    const targetHaystack = matchCase ? rawText : foldedText;
 
     let searchPos = 0;
-    while (searchPos <= foldedText.length - foldedQuery.length) {
-      const idx = foldedText.indexOf(foldedQuery, searchPos);
+    while (searchPos <= targetHaystack.length - targetQuery.length) {
+      const idx = targetHaystack.indexOf(targetQuery, searchPos);
       if (idx === -1) break;
 
-      const matchedText = rawText.slice(idx, idx + foldedQuery.length);
+      const matchEnd = idx + targetQuery.length;
+      if (wholeWords) {
+        const charBefore = idx > 0 ? rawText[idx - 1] : undefined;
+        const charAfter = matchEnd < rawText.length ? rawText[matchEnd] : undefined;
+        if (isWordBoundaryChar(charBefore) || isWordBoundaryChar(charAfter)) {
+          searchPos = idx + 1;
+          continue;
+        }
+      }
+
+      const matchedText = rawText.slice(idx, matchEnd);
       const snippetStart = Math.max(0, idx - snippetRadius);
-      const snippetEnd = Math.min(rawText.length, idx + foldedQuery.length + snippetRadius);
+      const snippetEnd = Math.min(rawText.length, matchEnd + snippetRadius);
       const prefix = snippetStart > 0 ? '...' : '';
       const suffix = snippetEnd < rawText.length ? '...' : '';
       const snippet = `${prefix}${rawText.slice(snippetStart, snippetEnd).trim()}${suffix}`;
@@ -403,7 +511,7 @@ export function searchPdfPages(
         charOffset: idx,
       });
 
-      searchPos = idx + Math.max(1, foldedQuery.length);
+      searchPos = idx + Math.max(1, targetQuery.length);
     }
   }
 
@@ -517,4 +625,91 @@ export function writeReaderPreference<T>(
   } catch {
     // Ignore storage quota errors
   }
+}
+
+export interface PdfOutlineProxyDoc {
+  getOutline?: () => Promise<
+    Array<{
+      title?: string;
+      dest?: string | Array<unknown> | null;
+      items?: Array<unknown>;
+    }> | null
+  >;
+  getDestination?: (dest: string) => Promise<Array<unknown> | null>;
+  getPageIndex?: (ref: unknown) => Promise<number>;
+}
+
+/**
+ * Extracts and resolves a nested PDF outline tree with 1-based page numbers from a PDF.js document proxy.
+ */
+export async function resolvePdfOutlineFromDoc(
+  outlineDoc: PdfOutlineProxyDoc,
+): Promise<PdfOutlineItem[]> {
+  if (typeof outlineDoc.getOutline !== 'function') return [];
+  const rawOutline = await outlineDoc.getOutline();
+  if (!Array.isArray(rawOutline) || rawOutline.length === 0) return [];
+
+  const resolvePageNum = async (
+    dest: string | Array<unknown> | null | undefined,
+  ): Promise<number> => {
+    if (!dest) return 1;
+    try {
+      const destArray =
+        typeof dest === 'string'
+          ? typeof outlineDoc.getDestination === 'function'
+            ? await outlineDoc.getDestination(dest)
+            : null
+          : Array.isArray(dest)
+            ? dest
+            : null;
+      if (!destArray || destArray.length === 0) return 1;
+      const pageRef = destArray[0];
+      if (typeof pageRef === 'number') {
+        return Math.max(1, pageRef + 1);
+      }
+      if (pageRef && typeof outlineDoc.getPageIndex === 'function') {
+        const idx = await outlineDoc.getPageIndex(pageRef);
+        return Math.max(1, idx + 1);
+      }
+    } catch {
+      // Ignore destination resolution error
+    }
+    return 1;
+  };
+
+  const mapNodes = async (
+    nodes: Array<{
+      title?: string;
+      dest?: string | Array<unknown> | null;
+      items?: Array<unknown>;
+    }>,
+  ): Promise<PdfOutlineItem[]> => {
+    const results = await Promise.all(
+      nodes.map(async (node): Promise<PdfOutlineItem | null> => {
+        const title = (node.title || '').trim();
+        if (!title) return null;
+        const [pageNumber, children] = await Promise.all([
+          resolvePageNum(node.dest),
+          Array.isArray(node.items) && node.items.length > 0
+            ? mapNodes(
+                node.items as Array<{
+                  title?: string;
+                  dest?: string | Array<unknown> | null;
+                  items?: Array<unknown>;
+                }>,
+              )
+            : Promise.resolve(undefined),
+        ]);
+        return {
+          title,
+          pageNumber,
+          dest: node.dest,
+          items: children,
+        };
+      }),
+    );
+    return results.filter((item): item is PdfOutlineItem => item !== null);
+  };
+
+  return mapNodes(rawOutline);
 }

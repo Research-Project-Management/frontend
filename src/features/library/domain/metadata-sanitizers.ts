@@ -103,9 +103,7 @@ const INVALID_TAG_TOKENS = new Set([
   "unknown",
   "false",
   "true",
-  "sample",
-  "draft",
-  "test",
+  "untitled",
   "etc",
   "etc.",
   "et al",
@@ -114,13 +112,13 @@ const INVALID_TAG_TOKENS = new Set([
   "downloaded from",
   "full text",
   "pdf",
-  "abstract",
   "keywords",
   "keyword",
   "index terms",
   "key words",
   "open access",
   "all rights reserved",
+  "copyright",
   "peer-reviewed",
   "original article",
   "research article",
@@ -182,12 +180,28 @@ export function cleanSingleFrontendTag(raw: string): string | null {
   return str;
 }
 
+export interface StructuredItemTag {
+  id?: string;
+  tagId?: string;
+  name: string;
+  type: "manual" | "automatic";
+  color?: string;
+  shortcut?: number | null;
+}
+
 /**
  * Normalizes tags from an Item for inspector display.
+ * When `itemTags` or `tags` is explicitly an array on an Item object, treats it as
+ * authoritative (avoiding resurrecting deleted tags from legacy `keywords` / `labels`).
  */
 export function normalizeTags(
   rawItem?:
-    | { tags?: unknown; keywords?: unknown; labels?: unknown }
+    | {
+        itemTags?: unknown;
+        tags?: unknown;
+        keywords?: unknown;
+        labels?: unknown;
+      }
     | unknown[]
     | string
     | null,
@@ -199,12 +213,18 @@ export function normalizeTags(
     candidates.push(...rawItem);
   } else if (typeof rawItem === "object") {
     const obj = rawItem as Record<string, unknown>;
-    if (Array.isArray(obj.tags)) candidates.push(...obj.tags);
-    if (Array.isArray(obj.keywords)) candidates.push(...obj.keywords);
-    if (Array.isArray(obj.labels)) candidates.push(...obj.labels);
-    if (typeof obj.tags === "string") candidates.push(obj.tags);
-    if (typeof obj.keywords === "string") candidates.push(obj.keywords);
-    if (typeof obj.labels === "string") candidates.push(obj.labels);
+    const hasAuthoritativeTags =
+      Array.isArray(obj.itemTags) || Array.isArray(obj.tags);
+    if (hasAuthoritativeTags) {
+      if (Array.isArray(obj.itemTags)) candidates.push(...obj.itemTags);
+      if (Array.isArray(obj.tags)) candidates.push(...obj.tags);
+    } else {
+      if (typeof obj.tags === "string") candidates.push(obj.tags);
+      if (Array.isArray(obj.keywords)) candidates.push(...obj.keywords);
+      if (Array.isArray(obj.labels)) candidates.push(...obj.labels);
+      if (typeof obj.keywords === "string") candidates.push(obj.keywords);
+      if (typeof obj.labels === "string") candidates.push(obj.labels);
+    }
   } else if (typeof rawItem === "string") {
     candidates.push(rawItem);
   }
@@ -231,12 +251,18 @@ export function normalizeTags(
       }
     } else if (item && typeof item === "object") {
       const tagObj = item as Record<string, unknown>;
+      const innerTag =
+        tagObj.tag && typeof tagObj.tag === "object"
+          ? (tagObj.tag as Record<string, unknown>)
+          : null;
       const name =
         typeof tagObj.name === "string"
           ? tagObj.name
           : typeof tagObj.tag === "string"
             ? tagObj.tag
-            : "";
+            : innerTag && typeof innerTag.name === "string"
+              ? innerTag.name
+              : "";
       if (name) {
         addTag(cleanSingleFrontendTag(name));
       }
@@ -245,6 +271,170 @@ export function normalizeTags(
 
   return tagList;
 }
+
+/**
+ * Extracts structured tags (`name`, `type: 'manual' | 'automatic'`, `color`, `shortcut`, `tagId`)
+ * for an Item, merging with scope catalog tags when available.
+ */
+export function extractStructuredItemTags(
+  rawItem?:
+    | {
+        itemTags?: unknown;
+        tags?: unknown;
+        keywords?: unknown;
+        labels?: unknown;
+      }
+    | null,
+  catalogTags?: Array<{
+    id?: string;
+    name?: string;
+    type?: string | number;
+    color?: string | null;
+    shortcut?: number | null;
+  }>,
+): StructuredItemTag[] {
+  if (!rawItem) return [];
+
+  const catalogByLower = new Map<
+    string,
+    {
+      id?: string;
+      name: string;
+      type?: "manual" | "automatic";
+      color?: string;
+      shortcut?: number | null;
+    }
+  >();
+  if (Array.isArray(catalogTags)) {
+    for (const ct of catalogTags) {
+      if (!ct || typeof ct.name !== "string") continue;
+      const cleaned = cleanSingleFrontendTag(ct.name);
+      if (!cleaned) continue;
+      const isAuto =
+        ct.type === "automatic" || ct.type === 1 || ct.type === "1";
+      catalogByLower.set(cleaned.toLowerCase(), {
+        id: typeof ct.id === "string" ? ct.id : undefined,
+        name: cleaned,
+        type: isAuto ? "automatic" : "manual",
+        color:
+          typeof ct.color === "string" && ct.color.trim()
+            ? ct.color.trim()
+            : undefined,
+        shortcut: typeof ct.shortcut === "number" ? ct.shortcut : undefined,
+      });
+    }
+  }
+
+  const itemTagByLower = new Map<string, StructuredItemTag>();
+  const rawItemTags = Array.isArray(rawItem.itemTags) ? rawItem.itemTags : [];
+  for (const entry of rawItemTags) {
+    if (!entry || typeof entry !== "object") continue;
+    const obj = entry as Record<string, unknown>;
+    const innerTag =
+      obj.tag && typeof obj.tag === "object"
+        ? (obj.tag as Record<string, unknown>)
+        : null;
+    const rawName =
+      typeof obj.name === "string"
+        ? obj.name
+        : typeof obj.tag === "string"
+          ? obj.tag
+          : innerTag && typeof innerTag.name === "string"
+            ? innerTag.name
+            : "";
+    const cleaned = cleanSingleFrontendTag(rawName);
+    if (!cleaned) continue;
+    const lower = cleaned.toLowerCase();
+    if (itemTagByLower.has(lower)) continue;
+
+    const rawType = obj.type ?? innerTag?.type;
+    const isAuto =
+      rawType === "automatic" || rawType === 1 || rawType === "1";
+    const rawColor = obj.color ?? innerTag?.color;
+    const rawShortcut = obj.shortcut ?? innerTag?.shortcut;
+    const tagId =
+      typeof obj.tagId === "string"
+        ? obj.tagId
+        : innerTag && typeof innerTag.id === "string"
+          ? innerTag.id
+          : undefined;
+    const id = typeof obj.id === "string" ? obj.id : undefined;
+
+    itemTagByLower.set(lower, {
+      ...(id ? { id } : {}),
+      ...(tagId ? { tagId } : {}),
+      name: cleaned,
+      type: isAuto ? "automatic" : "manual",
+      ...(typeof rawColor === "string" && rawColor.trim()
+        ? { color: rawColor.trim() }
+        : {}),
+      ...(typeof rawShortcut === "number" ? { shortcut: rawShortcut } : {}),
+    });
+  }
+
+  const names = normalizeTags(rawItem);
+  return names.map((name) => {
+    const lower = name.toLowerCase();
+    const fromItemTag = itemTagByLower.get(lower);
+    const fromCatalog = catalogByLower.get(lower);
+    return {
+      id: fromItemTag?.id,
+      tagId: fromItemTag?.tagId ?? fromCatalog?.id,
+      name,
+      type: fromItemTag?.type ?? fromCatalog?.type ?? "manual",
+      color: fromItemTag?.color ?? fromCatalog?.color,
+      shortcut: fromItemTag?.shortcut ?? fromCatalog?.shortcut ?? null,
+    };
+  });
+}
+
+/**
+ * Builds a canonical multi-field update patch for an Item's tags,
+ * keeping `tags`, `keywords`, and structured `itemTags` synchronized.
+ */
+export function buildCanonicalTagsPatch(
+  updatedTags: string[],
+  structuredTags: StructuredItemTag[],
+  overrideTypes?: Map<string, "manual" | "automatic">,
+): Partial<{
+  tags: string[];
+  keywords: string[];
+  itemTags: Array<Record<string, unknown>>;
+  silent: boolean;
+}> {
+  const currentTypeByLower = new Map(
+    structuredTags.map((t) => [t.name.toLowerCase(), t] as const),
+  );
+  const nextItemTags = updatedTags.map((name) => {
+    const lower = name.toLowerCase();
+    const prev = currentTypeByLower.get(lower);
+    const resolvedType =
+      overrideTypes?.get(lower) ?? prev?.type ?? ("manual" as const);
+    return {
+      ...(prev?.id ? { id: prev.id } : {}),
+      ...(prev?.tagId ? { tagId: prev.tagId } : {}),
+      name,
+      type: resolvedType,
+      ...(prev?.color ? { color: prev.color } : {}),
+      ...(prev?.shortcut !== undefined ? { shortcut: prev.shortcut } : {}),
+      tag: {
+        ...(prev?.tagId ? { id: prev.tagId } : {}),
+        name,
+        type: resolvedType,
+        ...(prev?.color ? { color: prev.color } : {}),
+        ...(prev?.shortcut !== undefined ? { shortcut: prev.shortcut } : {}),
+      },
+    };
+  });
+
+  return {
+    tags: updatedTags,
+    keywords: updatedTags,
+    itemTags: nextItemTags,
+    silent: true,
+  };
+}
+
 
 export interface NormalizedNote {
   id: string;

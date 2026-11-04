@@ -51,7 +51,7 @@ export interface NotesSectionProps {
   onNavigateToAnnotation?: (pageNumber: number, annotationId?: string) => void;
   isReader?: boolean;
   onRegisterExtract?: (register: {
-    extract: () => Promise<void>;
+    extract: (() => Promise<void>) | null;
     isExtracting: boolean;
   }) => void;
 }
@@ -64,6 +64,13 @@ export function NoteIcon({ className = "size-3.5" }: { className?: string }) {
     />
   );
 }
+
+// Module-level draft cache keyed by `${scopeId}:${paperId}` so unsaved note drafts
+// survive Inspector remounts and item switches without data loss.
+const NOTE_DRAFTS_BY_PAPER = new Map<
+  string,
+  { newNote: string; editingNoteId: string | null; editingContent: string }
+>();
 
 export default function NotesSection(props: NotesSectionProps) {
   const { item } = props;
@@ -86,34 +93,49 @@ function NotesSectionContent({
 }: NotesSectionProps & { item: Item }) {
   const paperId = paper.id;
   const activeScopeId = scopeId || paper?.projectId || "user";
-  const [isAdding, setIsAdding] = useState(false);
+  const draftKey = `${activeScopeId}:${paperId}`;
+  const initialDraft = NOTE_DRAFTS_BY_PAPER.get(draftKey);
+
+  const [isAdding, setIsAdding] = useState(() =>
+    Boolean(initialDraft?.newNote?.trim()),
+  );
   const [expandedNoteIds, setExpandedNoteIds] = useState<Set<string>>(
     () => new Set(),
   );
 
+  const [newNoteContent, setNewNoteContent] = useState(
+    () => initialDraft?.newNote || "",
+  );
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(
+    () => initialDraft?.editingNoteId || null,
+  );
+  const [editingContent, setEditingContent] = useState(
+    () => initialDraft?.editingContent || "",
+  );
+
   useEffect(() => {
-    if (forceAdding && canEdit) {
+    if (forceAdding && canEdit && !editingNoteId) {
       setIsAdding(true);
     }
-  }, [forceAdding, canEdit]);
+  }, [forceAdding, canEdit, editingNoteId]);
 
   useEffect(() => {
     if (pendingText && canEdit) {
-      setIsAdding(true);
-      setNewNoteContent((prev) =>
-        prev ? `${prev}\n\n${pendingText}` : pendingText,
-      );
+      if (editingNoteId) {
+        setEditingContent((prev) =>
+          prev ? `${prev}\n\n${pendingText}` : pendingText,
+        );
+      } else {
+        setIsAdding(true);
+        setNewNoteContent((prev) =>
+          prev ? `${prev}\n\n${pendingText}` : pendingText,
+        );
+      }
       onClearPendingText?.();
     }
-  }, [pendingText, canEdit, onClearPendingText]);
+  }, [pendingText, canEdit, editingNoteId, onClearPendingText]);
 
-  const [newNoteContent, setNewNoteContent] = useState("");
-  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
-  const [editingContent, setEditingContent] = useState("");
-
-  // Preserve drafts per paperId across item switches to prevent data loss
-  const noteDraftsByPaperRef = useRef<Record<string, { newNote: string; editingNoteId: string | null; editingContent: string }>>({});
-  const prevPaperIdRef = useRef(paperId);
+  const prevDraftKeyRef = useRef(draftKey);
 
   const {
     notes: canonicalNotes,
@@ -125,17 +147,10 @@ function NotesSectionContent({
   } = useNotes(activeScopeId, paper.id);
   const executeCommand = useLibraryCommandStore((s) => s.executeCommand);
 
-  // Safely persist draft of previous paper and restore draft of active paper
+  // Continuously sync active draft into NOTE_DRAFTS_BY_PAPER and restore on paper switch
   useEffect(() => {
-    if (prevPaperIdRef.current !== paperId) {
-      if (prevPaperIdRef.current) {
-        noteDraftsByPaperRef.current[prevPaperIdRef.current] = {
-          newNote: newNoteContent,
-          editingNoteId,
-          editingContent,
-        };
-      }
-      const restored = noteDraftsByPaperRef.current[paperId];
+    if (prevDraftKeyRef.current !== draftKey) {
+      const restored = NOTE_DRAFTS_BY_PAPER.get(draftKey);
       if (restored) {
         setNewNoteContent(restored.newNote || "");
         setEditingNoteId(restored.editingNoteId || null);
@@ -148,9 +163,20 @@ function NotesSectionContent({
         setEditingContent("");
       }
       setExpandedNoteIds(new Set());
-      prevPaperIdRef.current = paperId;
+      prevDraftKeyRef.current = draftKey;
+      return;
     }
-  }, [paperId, newNoteContent, editingNoteId, editingContent]);
+
+    if (newNoteContent || editingNoteId || editingContent) {
+      NOTE_DRAFTS_BY_PAPER.set(draftKey, {
+        newNote: newNoteContent,
+        editingNoteId,
+        editingContent,
+      });
+    } else {
+      NOTE_DRAFTS_BY_PAPER.delete(draftKey);
+    }
+  }, [draftKey, newNoteContent, editingNoteId, editingContent]);
 
   const notes: NormalizedNote[] = useMemo(() => {
     if (canonicalNotes && canonicalNotes.length > 0) {
@@ -174,22 +200,36 @@ function NotesSectionContent({
 
   const handleExtractFromAnnotations = useCallback(async () => {
     try {
+      const existingLitNote = notes.find(
+        (n) =>
+          !n.id.startsWith("note-") &&
+          ((Array.isArray(n.tags) && n.tags.includes("literature-note")) ||
+            (typeof n.title === "string" &&
+              n.title.toLowerCase().startsWith("literature notes")) ||
+            n.content.trim().startsWith("# Literature Notes:")),
+      );
       await extractFromAnnotations({
         includeComments: true,
         tagColor: true,
+        ...(existingLitNote?.id ? { noteId: existingLitNote.id } : {}),
       });
     } catch (caughtError) {
       logger.error("Failed to extract notes from annotations", caughtError);
     }
-  }, [extractFromAnnotations]);
+  }, [extractFromAnnotations, notes]);
 
   useEffect(() => {
-    if (onRegisterExtract) {
+    if (!onRegisterExtract) return;
+    onRegisterExtract({
+      extract: handleExtractFromAnnotations,
+      isExtracting: isExtractingFromAnnotations,
+    });
+    return () => {
       onRegisterExtract({
-        extract: handleExtractFromAnnotations,
-        isExtracting: isExtractingFromAnnotations,
+        extract: null,
+        isExtracting: false,
       });
-    }
+    };
   }, [onRegisterExtract, isExtractingFromAnnotations, handleExtractFromAnnotations]);
 
   const handleSaveNewNote = async () => {
@@ -230,7 +270,12 @@ function NotesSectionContent({
     const previousContentMd =
       targetNote?.contentMd || existingNormalized?.content || "";
 
-    if (targetNote && trimmedContent !== previousContentMd) {
+    if (!targetNote) {
+      toast.error("Note is no longer available", { id: "note-update-error" });
+      return;
+    }
+
+    if (trimmedContent !== previousContentMd) {
       try {
         await executeCommand(
           createUpdateNoteCommand({
@@ -244,6 +289,8 @@ function NotesSectionContent({
         );
       } catch (caughtError) {
         logger.error("Failed to update note", caughtError);
+        toast.error("Failed to save note changes", { id: "note-update-error" });
+        return;
       }
     }
     setEditingNoteId(null);
@@ -255,8 +302,38 @@ function NotesSectionContent({
     setEditingContent("");
   };
 
+  const handleDropAnnotationToNotes = (e: React.DragEvent<HTMLDivElement>) => {
+    if (!canEdit) return;
+    const droppedPayload =
+      e.dataTransfer.getData("application/x-flux-annotation") ||
+      e.dataTransfer.getData("text/plain");
+    if (!droppedPayload || !droppedPayload.trim()) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const cleaned = droppedPayload.trim();
+    if (editingNoteId) {
+      setEditingContent((prev) => (prev ? `${prev}\n\n${cleaned}` : cleaned));
+    } else {
+      setIsAdding(true);
+      setNewNoteContent((prev) => (prev ? `${prev}\n\n${cleaned}` : cleaned));
+    }
+  };
+
   return (
-    <div className="flex flex-col gap-2 min-w-0 font-sans">
+    <div
+      onDragOver={(e) => {
+        if (
+          canEdit &&
+          (e.dataTransfer.types.includes("application/x-flux-annotation") ||
+            e.dataTransfer.types.includes("text/plain"))
+        ) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "copy";
+        }
+      }}
+      onDrop={handleDropAnnotationToNotes}
+      className="flex flex-col gap-2 min-w-0 font-sans"
+    >
       {!hideHeader && (
         <div className="flex items-center justify-between pb-1">
           <h3 className="text-12 font-medium text-foreground">Notes</h3>
@@ -317,6 +394,7 @@ function NotesSectionContent({
             setNewNoteContent("");
             onCancelAdding?.();
           }}
+          onNavigateToAnnotation={onNavigateToAnnotation}
           autoFocus
           placeholder="Write a research note... (Supports **bold**, *italic*, ### headings, - lists, > quotes)"
         />
@@ -358,6 +436,7 @@ function NotesSectionContent({
                   onChange={setEditingContent}
                   onSave={() => handleSaveEdit(n.id)}
                   onCancel={handleCancelEdit}
+                  onNavigateToAnnotation={onNavigateToAnnotation}
                   autoFocus
                 />
               );
@@ -455,7 +534,6 @@ function NotesSectionContent({
                                   deleteNote,
                                   createNote,
                                 }),
-                                { silentToast: true },
                               );
                             }}
                             className="opacity-0 group-hover/note:opacity-100 max-md:opacity-100 size-6 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-opacity"
@@ -520,6 +598,19 @@ function NotesSectionContent({
                     </p>
                   </div>
                 ) : null}
+
+                {n.tags && n.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1.5 pt-1 border-t border-border/30">
+                    {n.tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="inline-flex items-center px-1.5 py-0.5 rounded-sm text-10 font-mono bg-muted/60 text-muted-foreground border border-border/50"
+                      >
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })}

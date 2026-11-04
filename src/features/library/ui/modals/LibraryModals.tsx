@@ -9,12 +9,14 @@ import {
   type LibraryModalType,
 } from '@/features/library/core/store/library-ui.store';
 import { useProcessModalStore } from '@/features/library/core/store/process-modal.store';
-import { useResumeBatchIngestionPolling } from '@/features/library/core/coordinator/ingestion.coordinator';
+import {
+  useResumeBatchIngestionPolling,
+  executeSubscribeFeedWithAutoTitle,
+} from '@/features/library/core/coordinator/ingestion.coordinator';
 import {
   useBatchRestoreItemsMutation,
   useUpdateLibraryItemMutation,
   useLibraryCacheSynchronizer,
-  useViewItems,
 } from '@/features/library/sdk/queries/catalog.queries';
 import {
   useLibraryCommandStore,
@@ -27,7 +29,7 @@ import {
   useTrackedIdentifierIngestion,
   useMergeDuplicates,
   useDismissDuplicatesMutation,
-  useFetchAcademicFeed,
+  useFetchFeed,
   useSubscribeFeedMutation,
 } from '@/features/library/sdk/queries/ingestion.queries';
 import { useSetMyPublicationMutation } from '@/features/library/sdk/queries/item-mutations.queries';
@@ -42,6 +44,7 @@ import {
   type LibraryModalPayload,
   type ModalHostProps,
   CollectionModalsHost,
+  WorkspaceIntegrationsModalsHost,
   DestructiveItemModalsHost,
   SavedSearchModalHost,
 } from './ModalHosts';
@@ -50,6 +53,7 @@ export {
   type LibraryModalPayload,
   type ModalHostProps,
   CollectionModalsHost,
+  WorkspaceIntegrationsModalsHost,
   DestructiveItemModalsHost,
   SavedSearchModalHost,
 };
@@ -68,11 +72,17 @@ const MergeModal = dynamic(() => import('./MergeModal'), { ssr: false });
 const UploadFilesModal = dynamic(() => import('./UploadFilesModal'), { ssr: false });
 const AddFeedModal = dynamic(() => import('./AddFeedModal'), { ssr: false });
 const EditFeedModal = dynamic(
-  () => import('./EditFeedModal').then((m) => m.EditFeedModal),
+  () => import('./AddFeedModal').then((m) => m.EditFeedModal),
   { ssr: false },
 );
-const CslStyleSearchModal = dynamic(() => import('./CslStyleSearchModal'), { ssr: false });
-const MyPublicationModal = dynamic(() => import('./MyPublicationModal'), { ssr: false });
+const CslStyleSearchModal = dynamic(
+  () => import('./CreateCollectionModal').then((m) => m.CslStyleSearchModal),
+  { ssr: false },
+);
+const MyPublicationModal = dynamic(
+  () => import('./ProcessModal').then((m) => m.MyPublicationModal),
+  { ssr: false },
+);
 
 /**
  * 4. CurationModalsHost
@@ -258,51 +268,27 @@ export function IngestionAndUtilityModalsHost({
   const { invalidateScopeItemsAndCounts } = useLibraryCacheSynchronizer(effectiveScope);
 
   const isImportFromUserOpen = activeModal === 'IMPORT_FROM_USER';
-  const { data: projectItemsData } = useViewItems(
-    isImportFromUserOpen ? effectiveScope : undefined,
-    'all',
-    { limit: 500 },
-    { enabled: isImportFromUserOpen },
-  );
   const existingProjectTitles = React.useMemo(() => {
     if (payload?.existingTitles && Array.isArray(payload.existingTitles)) {
       return payload.existingTitles;
     }
-    return (projectItemsData?.items || []).map((it) => it.title).filter(Boolean);
-  }, [payload?.existingTitles, projectItemsData?.items]);
+    return [] as string[];
+  }, [payload?.existingTitles]);
 
   const [isSubmittingLink, setIsSubmittingLink] = React.useState(false);
   const router = useRouter();
   const setMyPublicationMutation = useSetMyPublicationMutation(effectiveScope);
   const { mutateAsync: subscribeFeed } = useSubscribeFeedMutation();
-  const { mutateAsync: fetchAcademicFeed } = useFetchAcademicFeed();
+  const { mutateAsync: fetchAcademicFeed } = useFetchFeed();
   const [isSubmittingFeed, setIsSubmittingFeed] = React.useState(false);
 
   const handleAddFeedSubmit = async (data: AddFeedFormValues) => {
     setIsSubmittingFeed(true);
     try {
-      let finalName = (data.name || '').trim();
-      if (!finalName) {
-        try {
-          const res = await fetchAcademicFeed({ url: data.url, silent: true });
-          const payload =
-            typeof res === 'object' && res !== null && 'data' in res
-              ? (res as { data?: { feedTitle?: string } }).data
-              : (res as { feedTitle?: string });
-          if (payload?.feedTitle) {
-            finalName = payload.feedTitle.trim();
-          }
-        } catch {
-          // fallback to domain naming in store
-        }
-      }
-
-      const newFeed = await subscribeFeed({
-        name: finalName || 'Academic Feed',
-        url: data.url,
-        retentionDays: data.cleanupUnreadAfter ?? data.retentionDays,
-        cleanupReadAfter: data.cleanupReadAfter ?? 7,
-        cleanupUnreadAfter: data.cleanupUnreadAfter ?? data.retentionDays,
+      const newFeed = await executeSubscribeFeedWithAutoTitle({
+        data,
+        fetchAcademicFeed,
+        subscribeFeed,
       });
       toast.success(`Subscribed to "${newFeed.name}"`);
       await invalidateScopeItemsAndCounts(effectiveScope);
@@ -493,8 +479,8 @@ export const ACTIVE_MODAL_REGISTRY: Partial<
   CREATE_COLLECTION: CollectionModalsHost,
   RENAME_COLLECTION: CollectionModalsHost,
   DELETE_COLLECTION: CollectionModalsHost,
-  EXPORT_LIBRARY: CollectionModalsHost,
-  FEEDS_MANAGER: CollectionModalsHost,
+  EXPORT_LIBRARY: WorkspaceIntegrationsModalsHost,
+  FEEDS_MANAGER: WorkspaceIntegrationsModalsHost,
   DELETE_CONFIRM: DestructiveItemModalsHost,
   CONFIRM_DELETE: DestructiveItemModalsHost,
   CONFIRM_RESTORE: DestructiveItemModalsHost,

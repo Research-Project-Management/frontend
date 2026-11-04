@@ -27,16 +27,19 @@ import type { Item } from "@/features/library/domain/types/core.types";
 import type {
   CreateSavedSearchInput,
   SavedSearch,
-} from "@/features/library/domain/types/saved-searches.types";
+} from "@/features/library/domain/types/ingestion.types";
 import { ConditionRowEditor } from "./ConditionRowEditor";
-import { useSavedSearchBuilder } from "@/features/library/core/coordinator/saved-search-builder.coordinator";
+import {
+  useSavedSearchBuilder,
+  type SavedSearchBuilderSortBy,
+} from "@/features/library/core/coordinator/saved-search-builder.coordinator";
 
 export interface SavedSearchPreviewTableProps {
   isPreviewLoading: boolean;
   previewCount: number | null;
   previewSamples: Item[];
-  sortBy: "dateAdded" | "year" | "title" | "creator";
-  onSortByChange: (val: "dateAdded" | "year" | "title" | "creator") => void;
+  sortBy: SavedSearchBuilderSortBy;
+  onSortByChange: (val: SavedSearchBuilderSortBy) => void;
   sortOrder: "asc" | "desc";
   onSortOrderChange: (val: "asc" | "desc") => void;
 }
@@ -99,6 +102,12 @@ export function SavedSearchPreviewTable({
                 Date Added
               </SelectItem>
               <SelectItem
+                value="updatedAt"
+                className="text-13 py-1.5 px-2 rounded-sm cursor-pointer"
+              >
+                Date Modified
+              </SelectItem>
+              <SelectItem
                 value="year"
                 className="text-13 py-1.5 px-2 rounded-sm cursor-pointer"
               >
@@ -115,6 +124,18 @@ export function SavedSearchPreviewTable({
                 className="text-13 py-1.5 px-2 rounded-sm cursor-pointer"
               >
                 Author
+              </SelectItem>
+              <SelectItem
+                value="publicationTitle"
+                className="text-13 py-1.5 px-2 rounded-sm cursor-pointer"
+              >
+                Publication
+              </SelectItem>
+              <SelectItem
+                value="citationKey"
+                className="text-13 py-1.5 px-2 rounded-sm cursor-pointer"
+              >
+                Citation Key
               </SelectItem>
             </SelectContent>
           </Select>
@@ -262,6 +283,9 @@ export function CreateSavedSearchModal({
     <Dialog open={open} onOpenChange={(v) => { if (isPending) return; onOpenChange(v); }}>
       <DialogContent
         onCloseAutoFocus={(e) => e.preventDefault()}
+        onPointerDownOutside={(e) => {
+          if (builder.isDirty || isPending) e.preventDefault();
+        }}
         className="w-full sm:max-w-[740px] max-h-[92vh] flex flex-col p-4 sm:p-6 bg-background border border-border shadow-raised-200 rounded-lg gap-0"
       >
         <DialogHeader className="text-left pb-4">

@@ -6,6 +6,7 @@ import { SyncService } from '@/features/library/sdk';
 import {
   mapBackendItem,
   hasExplicitUserStateInPayload,
+  preserveMappedItemFlags,
   setMappedItemMeta,
 } from '@/features/library/domain/metadata-mapper';
 import type { Item } from '@/features/library/domain/types/core.types';
@@ -19,6 +20,7 @@ import {
 } from '@/features/library/sdk/query-keys';
 import {
   patchItemAcrossScopeCaches,
+  preserveCachedUserReadingState,
   removeItemsFromScopeCaches,
   resolveCachedItemFromScope,
 } from './cache-patcher';
@@ -63,12 +65,18 @@ export interface DeltaSyncBatchContext {
   patchedItemIdsToInvalidate: Set<string>;
 }
 
-const handleCollectionChange = (_change: DeltaChangeRecord, ctx: DeltaSyncBatchContext) => {
+const handleCollectionChange = (change: DeltaChangeRecord, ctx: DeltaSyncBatchContext) => {
   ctx.shouldInvalidateCollections = true;
+  if (change.entityType === 'collectionitem' || change.entityType === 'item_collection') {
+    ctx.hasCreatedItems = true;
+  }
 };
 
-const handleTagChange = (_change: DeltaChangeRecord, ctx: DeltaSyncBatchContext) => {
+const handleTagChange = (change: DeltaChangeRecord, ctx: DeltaSyncBatchContext) => {
   ctx.shouldInvalidateTags = true;
+  if (change.entityType === 'itemtag' || change.entityType === 'item_tag') {
+    ctx.hasCreatedItems = true;
+  }
 };
 
 const handleSavedSearchChange = (_change: DeltaChangeRecord, ctx: DeltaSyncBatchContext) => {
@@ -115,6 +123,79 @@ const handleNoteChange = (change: DeltaChangeRecord, ctx: DeltaSyncBatchContext)
   }
 };
 
+const handleStateChange = (change: DeltaChangeRecord, ctx: DeltaSyncBatchContext) => {
+  const rawEntityId = String(change.itemId || '');
+  const stateItemId = String(
+    change.rawData.itemId ??
+      change.raw.itemId ??
+      (rawEntityId.includes(':') ? rawEntityId.split(':').pop() : rawEntityId) ??
+      '',
+  );
+  if (!stateItemId) return;
+
+  if (ctx.queryClient.isMutating() > 0) {
+    ctx.abortedForMutation = true;
+    return;
+  }
+
+  const readStatusRaw =
+    typeof change.rawData.readStatus === 'string'
+      ? change.rawData.readStatus
+      : undefined;
+  const isStarred =
+    typeof change.rawData.isStarred === 'boolean'
+      ? change.rawData.isStarred
+      : undefined;
+  const rating =
+    typeof change.rawData.rating === 'number'
+      ? change.rawData.rating
+      : undefined;
+  const currentPage =
+    typeof change.rawData.currentPage === 'number'
+      ? change.rawData.currentPage
+      : undefined;
+  const lastReadAt =
+    typeof change.rawData.lastReadAt === 'string'
+      ? change.rawData.lastReadAt
+      : undefined;
+  const lastOpenedAt =
+    typeof change.rawData.lastOpenedAt === 'string'
+      ? change.rawData.lastOpenedAt
+      : undefined;
+
+  const normalizedStatus =
+    typeof readStatusRaw === 'string'
+      ? (readStatusRaw.trim().toLowerCase() as Item['readStatus'])
+      : undefined;
+
+  const patch: Partial<Item> = {
+    id: stateItemId,
+    ...(isStarred !== undefined ? { isStarred } : {}),
+    ...(normalizedStatus !== undefined
+      ? {
+          readStatus: normalizedStatus,
+          isRead: normalizedStatus === 'completed',
+        }
+      : {}),
+    ...(rating !== undefined ? { rating } : {}),
+    ...(currentPage !== undefined
+      ? { currentPage, lastReadPage: currentPage }
+      : {}),
+    ...(lastReadAt !== undefined ? { lastReadAt } : {}),
+    ...(lastOpenedAt !== undefined ? { lastOpenedAt } : {}),
+  };
+
+  setMappedItemMeta(patch, { hasExplicitUserState: true });
+  patchItemAcrossScopeCaches(
+    ctx.queryClient,
+    ctx.effectiveScope,
+    stateItemId,
+    patch,
+  );
+  ctx.patchedItemIdsToInvalidate.add(stateItemId);
+  ctx.patchedCount++;
+};
+
 const handleItemChange = (change: DeltaChangeRecord, ctx: DeltaSyncBatchContext) => {
   const { itemId, action, rawData, version } = change;
   if (!itemId) return;
@@ -145,35 +226,40 @@ const handleItemChange = (change: DeltaChangeRecord, ctx: DeltaSyncBatchContext)
     itemId,
   );
   const rawHasExplicitState = hasExplicitUserStateInPayload(rawData);
+  const shouldPreserveExistingUserState = Boolean(
+    existingCached && (!rawHasExplicitState || ctx.effectiveScope !== 'user'),
+  );
+  const hasExplicitCollections =
+    'collections' in rawData || 'collectionIds' in rawData || 'collectionItems' in rawData;
+  const hasExplicitTags = 'tags' in rawData || 'itemTags' in rawData || 'keywords' in rawData;
+  const hasExplicitAttachments = 'attachments' in rawData || 'files' in rawData;
+  const hasExplicitNotes = 'notes' in rawData || 'notesList' in rawData;
+
   const patch: Partial<Item> = {
     ...mapped,
     id: itemId,
     ...(typeof version === 'number' ? { version } : {}),
-    ...(existingCached && !rawHasExplicitState
+    ...(existingCached && !hasExplicitCollections
       ? {
-          isStarred: existingCached.isStarred,
-          isRead: existingCached.isRead,
-          readStatus: existingCached.readStatus,
-          rating: existingCached.rating,
-          ...(existingCached.lastReadAt !== undefined
-            ? { lastReadAt: existingCached.lastReadAt }
-            : {}),
-          ...(existingCached.currentPage !== undefined
-            ? { currentPage: existingCached.currentPage }
-            : {}),
-          ...(existingCached.lastReadPage !== undefined
-            ? { lastReadPage: existingCached.lastReadPage }
-            : {}),
-          ...(existingCached.scrollPosition !== undefined
-            ? { scrollPosition: existingCached.scrollPosition }
-            : {}),
-          ...(existingCached.lastOpenedAt !== undefined
-            ? { lastOpenedAt: existingCached.lastOpenedAt }
-            : {}),
+          collectionIds: existingCached.collectionIds,
         }
       : {}),
+    ...(existingCached && !hasExplicitTags ? { tags: existingCached.tags } : {}),
+    ...(existingCached && !hasExplicitAttachments
+      ? {
+          attachments: existingCached.attachments,
+          ...(existingCached.fileUrl !== undefined ? { fileUrl: existingCached.fileUrl } : {}),
+          ...(existingCached.fileId !== undefined ? { fileId: existingCached.fileId } : {}),
+          ...(existingCached.hasFile !== undefined ? { hasFile: existingCached.hasFile } : {}),
+        }
+      : {}),
+    ...(existingCached && !hasExplicitNotes ? { notes: existingCached.notes } : {}),
   };
-  if (!rawHasExplicitState) {
+  if (shouldPreserveExistingUserState && existingCached) {
+    preserveCachedUserReadingState(patch as Record<string, unknown>, existingCached, mapped);
+  }
+  preserveMappedItemFlags(mapped, patch);
+  if (shouldPreserveExistingUserState || !rawHasExplicitState) {
     setMappedItemMeta(patch, { hasExplicitUserState: false });
   }
   if (ctx.queryClient.isMutating() > 0) {
@@ -201,6 +287,7 @@ export const DELTA_ENTITY_HANDLERS: Record<
   attachment: handleAttachmentChange,
   relation: handleRelationChange,
   note: handleNoteChange,
+  state: handleStateChange,
   item: handleItemChange,
 };
 
@@ -228,11 +315,20 @@ export function useLibraryDeltaSync(
     }
   }, [effectiveScope]);
 
+  const baseInterval = options?.refetchInterval;
+  const resolvedRefetchInterval =
+    baseInterval === false
+      ? false
+      : typeof baseInterval === 'number'
+        ? baseInterval
+        : () => Math.floor(30_000 * (0.85 + Math.random() * 0.3));
+
   return useQuery({
     queryKey: libraryKeys.syncVersion(effectiveScope),
     enabled: options?.enabled ?? true,
     refetchOnWindowFocus: true,
-    refetchInterval: options?.refetchInterval ?? 30_000,
+    refetchIntervalInBackground: false,
+    refetchInterval: resolvedRefetchInterval,
     staleTime: 10_000,
     queryFn: async () => {
       if (lastScopeRef.current !== effectiveScope) {
@@ -408,6 +504,16 @@ export function useLibraryDeltaSync(
 
         const changes = Array.isArray(changesRes?.changes) ? changesRes.changes : [];
         if (changes.length === 0) {
+          const emptyPageCursor =
+            changesRes?.nextCursor || changesRes?.nextSince || null;
+          if (
+            changesRes?.hasMore &&
+            emptyPageCursor &&
+            emptyPageCursor !== currentSince
+          ) {
+            currentSince = emptyPageCursor;
+            continue;
+          }
           hasMore = false;
           break;
         }
@@ -468,6 +574,10 @@ export function useLibraryDeltaSync(
         }
       }
 
+      if (batchCtx.deletedItemIds.length > 0) {
+        removeItemsFromScopeCaches(queryClient, effectiveScope, batchCtx.deletedItemIds);
+      }
+
       if (batchCtx.abortedForMutation) {
         lastSyncSeqRef.current = currentSince;
         return {
@@ -478,33 +588,14 @@ export function useLibraryDeltaSync(
         };
       }
 
-      if (batchCtx.deletedItemIds.length > 0) {
-        removeItemsFromScopeCaches(queryClient, effectiveScope, batchCtx.deletedItemIds);
-      }
-
-      lastSyncSeqRef.current = hasMore ? currentSince : remoteVersion;
+      const settledSyncVersion = hasMore ? currentSince : remoteVersion;
+      lastSyncSeqRef.current = settledSyncVersion;
 
       const postSyncInvalidations: Promise<unknown>[] = [
         queryClient.invalidateQueries({
           queryKey: itemKeys.counts(effectiveScope),
         }),
       ];
-      for (const patchedItemId of batchCtx.patchedItemIdsToInvalidate) {
-        postSyncInvalidations.push(
-          queryClient.invalidateQueries({
-            queryKey: itemKeys.byId(effectiveScope, patchedItemId),
-            refetchType: 'active',
-          }),
-        );
-      }
-      if (batchCtx.hasCreatedItems || batchCtx.patchedCount > 0 || batchCtx.deletedItemIds.length > 0) {
-        postSyncInvalidations.push(
-          queryClient.invalidateQueries({
-            queryKey: itemKeys.trash(effectiveScope),
-            refetchType: 'active',
-          }),
-        );
-      }
       if (batchCtx.hasCreatedItems) {
         postSyncInvalidations.push(
           queryClient.invalidateQueries({
@@ -512,6 +603,23 @@ export function useLibraryDeltaSync(
             refetchType: 'active',
           }),
         );
+      } else {
+        for (const patchedItemId of batchCtx.patchedItemIdsToInvalidate) {
+          postSyncInvalidations.push(
+            queryClient.invalidateQueries({
+              queryKey: itemKeys.byId(effectiveScope, patchedItemId),
+              refetchType: 'active',
+            }),
+          );
+        }
+        if (batchCtx.patchedCount > 0 || batchCtx.deletedItemIds.length > 0) {
+          postSyncInvalidations.push(
+            queryClient.invalidateQueries({
+              queryKey: itemKeys.trash(effectiveScope),
+              refetchType: 'active',
+            }),
+          );
+        }
       }
       if (batchCtx.shouldInvalidateCollections) {
         postSyncInvalidations.push(
@@ -527,7 +635,14 @@ export function useLibraryDeltaSync(
           }),
         );
       }
-      if (batchCtx.shouldInvalidateSavedSearches) {
+      if (
+        batchCtx.shouldInvalidateSavedSearches ||
+        batchCtx.hasCreatedItems ||
+        batchCtx.patchedCount > 0 ||
+        batchCtx.deletedItemIds.length > 0 ||
+        batchCtx.shouldInvalidateCollections ||
+        batchCtx.shouldInvalidateTags
+      ) {
         postSyncInvalidations.push(
           queryClient.invalidateQueries({
             queryKey: libraryKeys.savedSearches(effectiveScope),
@@ -600,7 +715,7 @@ export function useLibraryDeltaSync(
       await Promise.all(postSyncInvalidations);
 
       return {
-        version: remoteVersion,
+        version: settledSyncVersion,
         scopeId: effectiveScope,
         syncedCount: batchCtx.patchedCount + batchCtx.deletedItemIds.length,
       };

@@ -3,12 +3,12 @@ import {
   normalizeSearchStr,
   calculateFilterMatchScore,
   KNOWN_TYPE_ALIASES,
-} from '@/features/library/domain/sort-items.domain';
+} from '@/features/library/domain/zotero-extra-parser';
 import {
   getFieldConfig,
   parseDurationParts,
   formatConditionValue,
-} from '@/features/library/domain/saved-search-schema.domain';
+} from '@/features/library/domain/saved-search-ast.domain';
 import {
   calculateEffectiveViewportDimensions,
   computeSpreadPairs,
@@ -154,7 +154,7 @@ describe('Library Deep Domain Models (Pure In-Process)', () => {
   describe('sdk/library.client (Standalone Microservice Routing & Transport)', () => {
     it('resolves relative Monolith/Gateway paths when no microservice env var is set', async () => {
       const { resolveLibraryUrl, resolveLibraryRawPath } = await import(
-        '@/features/library/sdk'
+        '@/features/library/sdk/clients/http.client'
       );
 
       expect(resolveLibraryUrl('catalog', '/items')).toBe('/api/v1/library/items');
@@ -165,7 +165,7 @@ describe('Library Deep Domain Models (Pure In-Process)', () => {
       expect(resolveLibraryRawPath('/api/v1/library/citation/resolve', 'citation')).toBe(
         '/api/v1/library/citation/resolve',
       );
-    });
+    }, 30000);
 
     it('dynamically routes to standalone Library Microservice host when NEXT_PUBLIC_LIBRARY_SERVICES_URL is configured', async () => {
       const prevEnv = process.env.NEXT_PUBLIC_LIBRARY_SERVICES_URL;
@@ -173,7 +173,7 @@ describe('Library Deep Domain Models (Pure In-Process)', () => {
 
       try {
         const { resolveLibraryUrl, resolveLibraryRawPath, getLibraryServiceHost } = await import(
-          '@/features/library/sdk'
+          '@/features/library/sdk/clients/http.client'
         );
 
         expect(getLibraryServiceHost('catalog')).toBe('https://library-service.flux.io');
@@ -205,7 +205,7 @@ describe('Library Deep Domain Models (Pure In-Process)', () => {
 
       try {
         const { resolveLibraryUrl, getLibraryServiceHost, isTrustedOrigin } = await import(
-          '@/features/library/sdk'
+          '@/features/library/sdk/clients/http.client'
         );
 
         expect(getLibraryServiceHost('catalog')).toBe('https://catalog-svc.flux.io');

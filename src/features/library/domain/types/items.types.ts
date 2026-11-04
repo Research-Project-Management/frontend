@@ -72,7 +72,6 @@ export const attachmentSchema = z.object({
 export type ItemAttachment = z.input<typeof attachmentSchema> & {
   id: string;
 };
-export type AttachmentRevision = z.infer<typeof attachmentRevisionSchema>;
 export type LinkMode = z.infer<typeof linkModeSchema>;
 export type AttachmentType = z.infer<typeof attachmentTypeSchema>;
 export type AttachmentExtractionStatus = z.infer<
@@ -129,10 +128,6 @@ export const updateNoteSchema = z.object({
 export type Note = z.input<typeof noteSchema> & {
   id: string;
 };
-export type CreateNoteInput = z.infer<typeof createNoteSchema>;
-export type UpdateNoteInput = z.infer<typeof updateNoteSchema>;
-export type NoteResponse = z.infer<typeof noteResponseSchema>;
-export type NoteListResponse = z.infer<typeof noteListResponseSchema>;
 
 // ── Tags ─────────────────────────────────────────────────────────────────────
 export const tagTypeSchema = z.enum(['manual', 'automatic', 'ai']);
@@ -177,9 +172,6 @@ export const mergeTagsSchema = z.object({
 
 export type Tag = z.infer<typeof tagSchema>;
 export type TagWithCount = Tag;
-export type CreateTagInput = z.infer<typeof createTagSchema>;
-export type UpdateTagInput = z.infer<typeof updateTagSchema>;
-export type MergeTagsInput = z.infer<typeof mergeTagsSchema>;
 
 // ── Relations ────────────────────────────────────────────────────────────────
 export const relationTypeSchema = z.enum([
@@ -206,8 +198,6 @@ export const relationTypeSchema = z.enum([
   'uses_dataset',
   'survey_of',
 ]);
-
-export const RelationTypeSchema = relationTypeSchema;
 
 const LEGACY_RELATION_TYPE_MAP: Record<string, z.infer<typeof relationTypeSchema>> = {
   cited_by: 'isCitedBy',
@@ -253,7 +243,6 @@ export const linkRelationSchema = z.object({
 
 export type RelationType = z.infer<typeof relationTypeSchema>;
 export type RelatedItem = z.infer<typeof relatedItemSchema>;
-export type LinkRelationInput = z.infer<typeof linkRelationSchema>;
 
 // ── Retraction ───────────────────────────────────────────────────────────────
 export const retractionNatureSchema = z.enum([
@@ -376,11 +365,17 @@ export const collectionRelationSchema = z.object({
 });
 
 export const itemTagRelationSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().optional(),
+  type: z.string().optional(),
+  color: z.string().optional(),
+  shortcut: z.number().int().nullable().optional(),
   tag: z.object({
-    id: z.string(),
+    id: z.string().optional(),
     name: z.string(),
     color: z.string().optional(),
     type: z.string().optional(),
+    shortcut: z.number().int().nullable().optional(),
   }).optional(),
   tagId: z.string().optional(),
   itemId: z.string().optional(),
@@ -508,6 +503,7 @@ export const baseItemSchema = z.object({
   isDeleted: z.boolean().optional().default(false),
   isPending: z.boolean().optional(),
   silent: z.boolean().optional(),
+  alreadyInProject: z.boolean().optional(),
 
   // Zotero item-type specific fields (complete Schema v42 coverage)
   DOI: z.string().optional(),
@@ -644,16 +640,10 @@ export const paginatedItemsResponseSchema = z.object({
   meta: z.union([cursorPaginationMetaSchema, itemMetaSchema, z.record(z.string(), z.unknown())]).optional(),
   total: z.number().optional(),
 });
-
-export type ItemMeta = z.infer<typeof itemMetaSchema>;
 export type User = z.infer<typeof userSchema>;
 export type CreatorCredit = z.infer<typeof creatorCreditSchema>;
-export type ContributorRelation = z.infer<typeof contributorRelationSchema>;
 export type Identifier = z.infer<typeof identifierSchema>;
-export type PrimaryFile = z.infer<typeof primaryFileSchema>;
 export type Provenance = z.infer<typeof provenanceSchema>;
-export type CollectionRelation = z.infer<typeof collectionRelationSchema>;
-export type ItemTagRelation = z.infer<typeof itemTagRelationSchema>;
 
 export type Item = z.infer<typeof baseItemSchema>;
 export type CreateItemDTO = z.infer<typeof createItemSchema>;
@@ -688,6 +678,7 @@ export interface ItemQueryParams {
   smartFilter?: 'unfiled' | 'missing-doi' | 'missing-pdf' | 'with-notes';
   view?: string;
   projectId?: string;
+  checkInProjectId?: string;
   fields?: readonly string[] | string[];
 }
 

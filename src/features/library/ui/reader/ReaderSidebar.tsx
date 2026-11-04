@@ -1,22 +1,13 @@
 "use client";
 
 import React, { useState, useMemo, useRef, useEffect } from "react";
-import { Document, Page } from "react-pdf";
-import { useVirtualizer } from "@tanstack/react-virtual";
 import {
-  setupPdfWorker,
-  getSharedPdfDocumentOptions,
-} from "@/shared/lib/pdfjs-worker";
-
-setupPdfWorker();
-const SHARED_PDF_OPTIONS = getSharedPdfDocumentOptions();
-import {
-  ChevronRight,
   Search,
   X,
   Loader2,
   Download,
   FileText,
+  Bookmark,
 } from "lucide-react";
 import {
   Tooltip,
@@ -25,7 +16,6 @@ import {
 } from "@/shared/components/ui/tooltip";
 import { cn } from "@/shared/lib/utils";
 import { PlaneEmptyState } from "@/shared/components/ui/PlaneEmptyState";
-import { PlaneErrorState } from "@/shared/components/ui/PlaneErrorState";
 import { Input } from "@/shared/components/ui/input";
 import type {
   DocumentFulltext,
@@ -38,8 +28,29 @@ import {
   resolveActiveOutlineSectionId,
 } from "@/features/library/domain/reader-search-outline";
 import AnnotationsPanel from "./panel/AnnotationsPanel";
-import { ReaderLeftRail, type ReaderSidebarTab } from "./ReaderTopbar";
+import { ReaderLeftRail, type ReaderSidebarTab } from "./ReaderThumbnailsPanel";
+import {
+  LazyThumbnailPage,
+  ThumbnailsView,
+  type ThumbnailsViewProps,
+} from "./ReaderThumbnailsPanel";
+import {
+  OutlineNodeItem,
+  OutlineTreeView,
+  type OutlineNodeItemProps,
+  type OutlineTreeViewProps,
+} from "./ReaderThumbnailsPanel";
 import { usePanelResize } from "@/features/library/core/coordinator/inspector-item.coordinator";
+
+export {
+  LazyThumbnailPage,
+  ThumbnailsView,
+  OutlineNodeItem,
+  OutlineTreeView,
+  type ThumbnailsViewProps,
+  type OutlineNodeItemProps,
+  type OutlineTreeViewProps,
+};
 
 const HeaderIconButton = ({
   onClick,
@@ -129,61 +140,6 @@ const HeaderSearchBar = ({
   </div>
 );
 
-const LazyThumbnailPage = React.memo(function LazyThumbnailPage({
-  pageNum,
-  isCurrent,
-  showPdfCanvas = true,
-  onJumpToPage,
-}: {
-  pageNum: number;
-  isCurrent: boolean;
-  showPdfCanvas?: boolean;
-  onJumpToPage: (page: number) => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={() => onJumpToPage(pageNum)}
-      className={cn(
-        "flex flex-col items-center p-1 rounded-md border transition-all group cursor-pointer overflow-hidden",
-        isCurrent
-          ? "border-primary ring-2 ring-primary bg-primary/10"
-          : "border-border hover:border-border-hover bg-card",
-      )}
-    >
-      <div className="w-full aspect-[1/1.4] rounded-sm bg-background border border-border overflow-hidden flex items-center justify-center">
-        {showPdfCanvas ? (
-          <Page
-            pageNumber={pageNum}
-            width={100}
-            devicePixelRatio={1}
-            canvasBackground="#ffffff"
-            renderTextLayer={false}
-            renderAnnotationLayer={false}
-            loading={
-              <div className="size-full flex items-center justify-center text-foreground text-11 font-mono">
-                {pageNum}
-              </div>
-            }
-          />
-        ) : (
-          <div className="size-full flex items-center justify-center text-muted-foreground text-11 font-mono tabular-nums">
-            {pageNum}
-          </div>
-        )}
-      </div>
-      <span
-        className={cn(
-          "text-11 font-mono tabular-nums mt-1",
-          isCurrent ? "font-semibold text-primary" : "text-foreground",
-        )}
-      >
-        Page {pageNum}
-      </span>
-    </button>
-  );
-});
-
 export interface ReaderSidebarProps {
   isOpen: boolean;
   onClose: () => void;
@@ -196,6 +152,9 @@ export interface ReaderSidebarProps {
   scopeId?: string;
   attachmentId?: string;
   pdfBlobUrl?: string | null;
+  pdfDocument?: unknown;
+  bookmarkedPages?: number[];
+  onToggleBookmarkPage?: (page: number) => void;
   selectedIds?: Set<string>;
   onSelectIds?: (ids: Set<string>) => void;
   onToggleSelect?: (id: string) => void;
@@ -220,7 +179,14 @@ export interface ReaderSidebarProps {
   onUpdateAnnotation?: (
     annotationId: string,
     expectedVersion: number | undefined,
-    dto: { color?: string; comment?: string; quoteText?: string; tags?: string[] },
+    dto: {
+      type?: import("@/features/library/domain/types/reader.schema").AnnotationType;
+      color?: string;
+      comment?: string;
+      quoteText?: string;
+      pageLabel?: string | null;
+      tags?: string[];
+    },
   ) => Promise<unknown>;
   onDeleteAnnotation?: (annotationId: string, expectedVersion?: number) => Promise<unknown>;
   onExtractNotes?: (itemId: string) => Promise<unknown> | void;
@@ -238,6 +204,9 @@ export function ReaderSidebar({
   scopeId,
   attachmentId,
   pdfBlobUrl,
+  pdfDocument,
+  bookmarkedPages = [],
+  onToggleBookmarkPage,
   selectedIds,
   onSelectIds,
   onToggleSelect,
@@ -266,6 +235,7 @@ export function ReaderSidebar({
   const [annotationsSearchQuery, setAnnotationsSearchQuery] = useState("");
   const [isAnnotationsSearchExpanded, setIsAnnotationsSearchExpanded] =
     useState(false);
+  const [showBookmarkedPagesOnly, setShowBookmarkedPagesOnly] = useState(false);
   const [selectedOutlineId, setSelectedOutlineId] = useState<string | null>(
     null,
   );
@@ -281,14 +251,6 @@ export function ReaderSidebar({
     setSelectedOutlineId(null);
     setCollapsedOutlineIds(new Set());
   }, [paper?.id, attachmentId]);
-
-  const numRows = Math.ceil(Math.max(0, totalPages) / 2);
-  const thumbVirtualizer = useVirtualizer({
-    count: numRows,
-    getScrollElement: () => thumbContainerRef.current,
-    estimateSize: () => 196,
-    overscan: 4,
-  });
 
   const { isDragging, handleMouseDown } = usePanelResize({
     width,
@@ -376,416 +338,273 @@ export function ReaderSidebar({
 
       {/* ── Expandable Content Panel (w-72 or resized) ── */}
       <aside
-          aria-label="Document navigation panel"
-          style={{ width: `${width}px` }}
+        aria-label="Document navigation panel"
+        style={{ width: `${width}px` }}
+        className={cn(
+          "relative h-full min-h-full self-stretch border-r border-border bg-background flex flex-col shrink-0 select-text",
+          isDragging && "select-none transition-none",
+        )}
+      >
+        {/* Header with Title & Right-Aligned Actions */}
+        <div
           className={cn(
-            "relative h-full min-h-full self-stretch border-r border-border bg-background flex flex-col shrink-0 select-text",
-            isDragging && "select-none transition-none",
+            "h-10 shrink-0 border-b border-border flex items-center bg-background select-none",
+            isOutlineSearchOpen || isAnnotationsSearchOpen
+              ? "px-2"
+              : "justify-between px-3",
           )}
         >
-          {/* Header with Title & Right-Aligned Actions */}
-          <div
-            className={cn(
-              "h-10 shrink-0 border-b border-border flex items-center bg-background select-none",
-              isOutlineSearchOpen || isAnnotationsSearchOpen
-                ? "px-2"
-                : "justify-between px-3",
-            )}
-          >
-            {isOutlineSearchOpen ? (
-              <HeaderSearchBar
-                inputRef={outlineSearchInputRef}
-                value={outlineFilter}
-                onChange={setOutlineFilter}
-                onClear={() => {
-                  setOutlineFilter("");
-                  setIsOutlineSearchExpanded(false);
-                }}
-                onCollapseIfEmpty={() => setIsOutlineSearchExpanded(false)}
-                placeholder="Filter headings in outline..."
-                clearLabel="Clear filter"
-              />
-            ) : isAnnotationsSearchOpen ? (
-              <HeaderSearchBar
-                inputRef={annotationsSearchInputRef}
-                value={annotationsSearchQuery}
-                onChange={setAnnotationsSearchQuery}
-                onClear={() => {
-                  setAnnotationsSearchQuery("");
-                  setIsAnnotationsSearchExpanded(false);
-                }}
-                onCollapseIfEmpty={() => setIsAnnotationsSearchExpanded(false)}
-                placeholder="Search highlights..."
-                clearLabel="Clear search"
-              />
-            ) : (
-              <>
-                <h2 className="text-12 font-semibold text-foreground truncate">
-                  {panelTitle}
-                </h2>
+          {isOutlineSearchOpen ? (
+            <HeaderSearchBar
+              inputRef={outlineSearchInputRef}
+              value={outlineFilter}
+              onChange={setOutlineFilter}
+              onClear={() => {
+                setOutlineFilter("");
+                setIsOutlineSearchExpanded(false);
+              }}
+              onCollapseIfEmpty={() => setIsOutlineSearchExpanded(false)}
+              placeholder="Filter headings in outline..."
+              clearLabel="Clear filter"
+            />
+          ) : isAnnotationsSearchOpen ? (
+            <HeaderSearchBar
+              inputRef={annotationsSearchInputRef}
+              value={annotationsSearchQuery}
+              onChange={setAnnotationsSearchQuery}
+              onClear={() => {
+                setAnnotationsSearchQuery("");
+                setIsAnnotationsSearchExpanded(false);
+              }}
+              onCollapseIfEmpty={() => setIsAnnotationsSearchExpanded(false)}
+              placeholder="Search highlights..."
+              clearLabel="Clear search"
+            />
+          ) : (
+            <>
+              <h2 className="text-12 font-semibold text-foreground truncate">
+                {panelTitle}
+              </h2>
 
-                <div className="flex items-center gap-0.5 shrink-0">
-                  {activeTab === "outline" && (
+              <div className="flex items-center gap-0.5 shrink-0">
+                {activeTab === "outline" && (
+                  <HeaderIconButton
+                    onClick={() => {
+                      setIsOutlineSearchExpanded(true);
+                      setTimeout(
+                        () => outlineSearchInputRef.current?.focus(),
+                        50,
+                      );
+                    }}
+                    disabled={!hasAnyOutline}
+                    label="Filter headings in outline"
+                  >
+                    <Search
+                      className="size-3.5 shrink-0 text-foreground"
+                      strokeWidth={1.5}
+                    />
+                  </HeaderIconButton>
+                )}
+
+                {activeTab === "pages" && (
+                  <HeaderIconButton
+                    onClick={() => setShowBookmarkedPagesOnly((v) => !v)}
+                    label={
+                      showBookmarkedPagesOnly
+                        ? "Show all pages"
+                        : `Show bookmarked pages only (${bookmarkedPages.length})`
+                    }
+                  >
+                    <Bookmark
+                      className={cn(
+                        "size-3.5 shrink-0 transition-colors",
+                        showBookmarkedPagesOnly
+                          ? "fill-primary text-primary"
+                          : "text-foreground",
+                      )}
+                      strokeWidth={1.5}
+                    />
+                  </HeaderIconButton>
+                )}
+
+                {activeTab === "annotations" && (
+                  <>
                     <HeaderIconButton
                       onClick={() => {
-                        setIsOutlineSearchExpanded(true);
+                        setIsAnnotationsSearchExpanded(true);
                         setTimeout(
-                          () => outlineSearchInputRef.current?.focus(),
+                          () => annotationsSearchInputRef.current?.focus(),
                           50,
                         );
                       }}
-                      disabled={!hasAnyOutline}
-                      label="Filter headings in outline"
+                      disabled={(annotations?.length ?? 0) === 0}
+                      label="Search highlights"
                     >
                       <Search
                         className="size-3.5 shrink-0 text-foreground"
                         strokeWidth={1.5}
                       />
                     </HeaderIconButton>
-                  )}
 
-                  {activeTab === "annotations" && (
-                    <>
+                    {onImportExternalAnnotations && (
                       <HeaderIconButton
-                        onClick={() => {
-                          setIsAnnotationsSearchExpanded(true);
-                          setTimeout(
-                            () => annotationsSearchInputRef.current?.focus(),
-                            50,
-                          );
-                        }}
-                        disabled={(annotations?.length ?? 0) === 0}
-                        label="Search highlights"
+                        onClick={() => void onImportExternalAnnotations()}
+                        disabled={isImportingAnnotations}
+                        label="Import embedded annotations from PDF"
                       >
-                        <Search
-                          className="size-3.5 shrink-0 text-foreground"
-                          strokeWidth={1.5}
-                        />
-                      </HeaderIconButton>
-
-                      {onImportExternalAnnotations && (
-                        <HeaderIconButton
-                          onClick={() => void onImportExternalAnnotations()}
-                          disabled={isImportingAnnotations}
-                          label="Import embedded annotations from PDF"
-                        >
-                          {isImportingAnnotations ? (
-                            <Loader2
-                              className="size-3.5 animate-spin text-foreground shrink-0"
-                              strokeWidth={1.5}
-                            />
-                          ) : (
-                            <Download
-                              className="size-3.5 text-foreground shrink-0"
-                              strokeWidth={1.5}
-                            />
-                          )}
-                        </HeaderIconButton>
-                      )}
-
-                      {paper && (
-                        <HeaderIconButton
-                          onClick={() => {
-                            if (
-                              (selectedIds?.size ?? 0) > 0 &&
-                              onBatchAddToNote
-                            ) {
-                              onBatchAddToNote(Array.from(selectedIds!));
-                            } else if (onExtractNotes) {
-                              void onExtractNotes(paper.id);
-                            }
-                          }}
-                          disabled={
-                            isExtractingNotes || (annotations?.length ?? 0) === 0
-                          }
-                          label={
-                            (selectedIds?.size ?? 0) > 0
-                              ? `Add ${selectedIds!.size} selected highlights to Note`
-                              : "Add all highlights to Notes"
-                          }
-                        >
-                          {isExtractingNotes ? (
-                            <Loader2
-                              className="size-3.5 animate-spin text-foreground shrink-0"
-                              strokeWidth={1.5}
-                            />
-                          ) : (
-                            <FileText
-                              className="size-3.5 text-foreground shrink-0"
-                              strokeWidth={1.5}
-                            />
-                          )}
-                        </HeaderIconButton>
-                      )}
-                    </>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Content Body */}
-          <div
-            ref={thumbContainerRef}
-            className={cn(
-              "flex-1 min-h-0",
-              activeTab === "annotations"
-                ? "overflow-hidden"
-                : "overflow-y-auto p-2 scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
-            )}
-          >
-            {activeTab === "outline" ? (
-              filteredSections.length > 0 ? (
-                <div className="space-y-0.5">
-                  {filteredSections.map((s, idx) => {
-                    const isCurrent = s.id === activeOutlineSectionId;
-                    const isCollapsed = collapsedOutlineIds.has(s.id);
-                    const isSearchingOutline = Boolean(outlineFilter.trim());
-                    const level = s.level ?? 1;
-                    const indentPx = Math.max(8, (level - 1) * 14 + 8);
-                    return (
-                      <div
-                        key={s.id || idx}
-                        className={cn(
-                          "w-full flex items-center gap-1 pr-2 py-1 text-left rounded-md text-12 leading-snug transition-colors group",
-                          isCurrent
-                            ? "bg-muted text-foreground font-medium"
-                            : "text-foreground/85 hover:bg-muted/70 hover:text-foreground font-normal",
-                        )}
-                        style={{ paddingLeft: `${indentPx}px` }}
-                      >
-                        {s.hasChildren && !isSearchingOutline ? (
-                          <button
-                            type="button"
-                            onClick={(e) => toggleOutlineCollapse(s.id, e)}
-                            aria-label={
-                              isCollapsed
-                                ? `Expand ${s.title}`
-                                : `Collapse ${s.title}`
-                            }
-                            aria-expanded={!isCollapsed}
-                            className="size-4 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-background/80 shrink-0 cursor-pointer transition-colors"
-                          >
-                            <ChevronRight
-                              className={cn(
-                                "size-3 shrink-0 transition-transform duration-150",
-                                !isCollapsed && "rotate-90",
-                              )}
-                              strokeWidth={1.5}
-                            />
-                          </button>
+                        {isImportingAnnotations ? (
+                          <Loader2
+                            className="size-3.5 animate-spin text-foreground shrink-0"
+                            strokeWidth={1.5}
+                          />
                         ) : (
-                          <span className="size-4 shrink-0" aria-hidden="true" />
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedOutlineId(s.id);
-                            onJumpToPage(s.page || 1);
-                          }}
-                          className="flex-1 min-w-0 flex items-center justify-between gap-2 text-left cursor-pointer outline-none py-0.5"
-                        >
-                          <span className="truncate flex-1">
-                            {s.num ? `${s.num} ` : ""}
-                            {s.title}
-                          </span>
-                          {s.page && (
-                            <span
-                              className={cn(
-                                "text-11 font-mono tabular-nums shrink-0",
-                                isCurrent
-                                  ? "text-foreground font-medium"
-                                  : "text-muted-foreground group-hover:text-foreground",
-                              )}
-                            >
-                              {s.page}
-                            </span>
-                          )}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : outlineFilter ? (
-                <PlaneEmptyState
-                  variant="search"
-                  title="No matching headings"
-                  description={`No headings match "${outlineFilter}".`}
-                  isCompact
-                />
-              ) : (
-                <PlaneEmptyState
-                  variant="document"
-                  title="No document outline"
-                  description="This PDF does not contain an embedded outline or table of contents."
-                  isCompact
-                />
-              )
-            ) : activeTab === "annotations" ? (
-              paper ? (
-                <AnnotationsPanel
-                  paper={paper}
-                  scopeId={scopeId || "user"}
-                  attachmentId={attachmentId}
-                  annotations={annotations}
-                  searchQuery={annotationsSearchQuery}
-                  onSearchQueryChange={setAnnotationsSearchQuery}
-                  hideSearchBar={true}
-                  isLoading={isLoadingAnnotations}
-                  isError={isAnnotationsError}
-                  refetch={onRefetchAnnotations}
-                  isUpdating={isUpdatingAnnotation}
-                  isExtracting={isExtractingNotes}
-                  isImporting={isImportingAnnotations}
-                  onImportExternal={onImportExternalAnnotations}
-                  onNavigateToPage={onJumpToPage}
-                  selectedIds={selectedIds}
-                  onSelectIds={onSelectIds}
-                  onToggleSelect={onToggleSelect}
-                  onBatchChangeColor={onBatchChangeColor}
-                  onBatchDelete={onBatchDelete}
-                  onBatchAddToNote={onBatchAddToNote}
-                  onAddToNote={onAddToNote}
-                  onAskAi={onAskAi}
-                  onUpdateAnnotation={onUpdateAnnotation}
-                  onDeleteAnnotation={onDeleteAnnotation}
-                  onExtractNotes={onExtractNotes}
-                />
-              ) : (
-                <PlaneEmptyState
-                  variant="document"
-                  title="No document loaded"
-                  description="Load a document to view annotations and highlights."
-                  isCompact
-                />
-              )
-            ) : /* Pages grid */
-            totalPages === 0 ? (
-              <PlaneEmptyState
-                variant="document"
-                title="No pages found"
-                description="Unable to detect pages for thumbnail rendering."
-                isCompact
-              />
-            ) : pdfBlobUrl ? (
-              <Document
-                file={pdfBlobUrl}
-                options={SHARED_PDF_OPTIONS}
-                loading={
-                  <div className="flex flex-col items-center justify-center p-8 text-center gap-2">
-                    <Loader2
-                      className="size-5 animate-spin text-muted-foreground"
-                      strokeWidth={1.5}
-                    />
-                    <p className="text-11 font-sans text-muted-foreground">
-                      Loading thumbnails...
-                    </p>
-                  </div>
-                }
-                error={
-                  <PlaneErrorState
-                    title="Unable to load thumbnails"
-                    error="Failed to render PDF page previews."
-                  />
-                }
-              >
-                <div
-                  className="relative w-full p-1"
-                  style={{ height: `${thumbVirtualizer.getTotalSize()}px` }}
-                >
-                  {thumbVirtualizer.getVirtualItems().map((virtualRow) => {
-                    const p1 = virtualRow.index * 2 + 1;
-                    const p2 = p1 + 1 <= totalPages ? p1 + 1 : null;
-                    return (
-                      <div
-                        key={virtualRow.key}
-                        data-index={virtualRow.index}
-                        ref={thumbVirtualizer.measureElement}
-                        className="absolute top-0 left-0 w-full grid grid-cols-2 gap-2 pb-2"
-                        style={{
-                          transform: `translateY(${virtualRow.start}px)`,
-                        }}
-                      >
-                        <LazyThumbnailPage
-                          pageNum={p1}
-                          isCurrent={p1 === currentPage}
-                          showPdfCanvas={true}
-                          onJumpToPage={onJumpToPage}
-                        />
-                        {p2 !== null && (
-                          <LazyThumbnailPage
-                            pageNum={p2}
-                            isCurrent={p2 === currentPage}
-                            showPdfCanvas={true}
-                            onJumpToPage={onJumpToPage}
+                          <Download
+                            className="size-3.5 text-foreground shrink-0"
+                            strokeWidth={1.5}
                           />
                         )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </Document>
-            ) : (
-              <div
-                className="relative w-full p-1"
-                style={{ height: `${thumbVirtualizer.getTotalSize()}px` }}
-              >
-                {thumbVirtualizer.getVirtualItems().map((virtualRow) => {
-                  const p1 = virtualRow.index * 2 + 1;
-                  const p2 = p1 + 1 <= totalPages ? p1 + 1 : null;
-                  return (
-                    <div
-                      key={virtualRow.key}
-                      data-index={virtualRow.index}
-                      ref={thumbVirtualizer.measureElement}
-                      className="absolute top-0 left-0 w-full grid grid-cols-2 gap-2 pb-2"
-                      style={{
-                        transform: `translateY(${virtualRow.start}px)`,
-                      }}
-                    >
-                      <LazyThumbnailPage
-                        pageNum={p1}
-                        isCurrent={p1 === currentPage}
-                        showPdfCanvas={false}
-                        onJumpToPage={onJumpToPage}
-                      />
-                      {p2 !== null && (
-                        <LazyThumbnailPage
-                          pageNum={p2}
-                          isCurrent={p2 === currentPage}
-                          showPdfCanvas={false}
-                          onJumpToPage={onJumpToPage}
-                        />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+                      </HeaderIconButton>
+                    )}
 
-          {/* Right edge drag resize handle */}
-          <div
-            role="separator"
-            aria-orientation="vertical"
-            aria-valuenow={width}
-            aria-valuemin={240}
-            aria-valuemax={520}
-            aria-label="Resize document navigation panel"
-            tabIndex={0}
-            onMouseDown={handleMouseDown}
-            onDoubleClick={() => setWidth(288)}
-            className="absolute top-0 bottom-0 -right-1.5 w-3 cursor-col-resize z-30 flex items-center justify-center group focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-          >
-            <div
-              className={cn(
-                "w-0.5 h-full transition-colors duration-150",
-                "group-hover:bg-primary",
-                isDragging && "bg-primary",
-              )}
+                    {paper && (
+                      <HeaderIconButton
+                        onClick={() => {
+                          if (
+                            (selectedIds?.size ?? 0) > 0 &&
+                            onBatchAddToNote
+                          ) {
+                            onBatchAddToNote(Array.from(selectedIds!));
+                          } else if (onExtractNotes) {
+                            void onExtractNotes(paper.id);
+                          }
+                        }}
+                        disabled={
+                          isExtractingNotes || (annotations?.length ?? 0) === 0
+                        }
+                        label={
+                          (selectedIds?.size ?? 0) > 0
+                            ? `Add ${selectedIds!.size} selected highlights to Note`
+                            : "Add all highlights to Notes"
+                        }
+                      >
+                        {isExtractingNotes ? (
+                          <Loader2
+                            className="size-3.5 animate-spin text-foreground shrink-0"
+                            strokeWidth={1.5}
+                          />
+                        ) : (
+                          <FileText
+                            className="size-3.5 text-foreground shrink-0"
+                            strokeWidth={1.5}
+                          />
+                        )}
+                      </HeaderIconButton>
+                    )}
+                  </>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Content Body */}
+        <div
+          ref={thumbContainerRef}
+          className={cn(
+            "flex-1 min-h-0",
+            activeTab === "annotations"
+              ? "overflow-hidden"
+              : "overflow-y-auto p-2 scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
+          )}
+        >
+          {activeTab === "outline" ? (
+            <OutlineTreeView
+              filteredSections={filteredSections}
+              activeOutlineSectionId={activeOutlineSectionId}
+              collapsedOutlineIds={collapsedOutlineIds}
+              outlineFilter={outlineFilter}
+              onToggleCollapse={toggleOutlineCollapse}
+              onSelectSection={(s) => {
+                setSelectedOutlineId(s.id);
+                onJumpToPage(s.page || 1);
+              }}
             />
-          </div>
-        </aside>
+          ) : activeTab === "annotations" ? (
+            paper ? (
+              <AnnotationsPanel
+                paper={paper}
+                scopeId={scopeId || "user"}
+                attachmentId={attachmentId}
+                annotations={annotations}
+                searchQuery={annotationsSearchQuery}
+                onSearchQueryChange={setAnnotationsSearchQuery}
+                hideSearchBar={true}
+                isLoading={isLoadingAnnotations}
+                isError={isAnnotationsError}
+                refetch={onRefetchAnnotations}
+                isUpdating={isUpdatingAnnotation}
+                isExtracting={isExtractingNotes}
+                isImporting={isImportingAnnotations}
+                onImportExternal={onImportExternalAnnotations}
+                onNavigateToPage={onJumpToPage}
+                selectedIds={selectedIds}
+                onSelectIds={onSelectIds}
+                onToggleSelect={onToggleSelect}
+                onBatchChangeColor={onBatchChangeColor}
+                onBatchDelete={onBatchDelete}
+                onBatchAddToNote={onBatchAddToNote}
+                onAddToNote={onAddToNote}
+                onAskAi={onAskAi}
+                onUpdateAnnotation={onUpdateAnnotation}
+                onDeleteAnnotation={onDeleteAnnotation}
+                onExtractNotes={onExtractNotes}
+              />
+            ) : (
+              <PlaneEmptyState
+                variant="document"
+                title="No document loaded"
+                description="Load a document to view annotations and highlights."
+                isCompact
+              />
+            )
+          ) : (
+            <ThumbnailsView
+              scrollContainerRef={thumbContainerRef}
+              totalPages={totalPages}
+              currentPage={currentPage}
+              bookmarkedPages={bookmarkedPages}
+              showBookmarkedPagesOnly={showBookmarkedPagesOnly}
+              isEnabled={activeTab === "pages" && isOpen}
+              pdfDocument={pdfDocument}
+              pdfBlobUrl={pdfBlobUrl}
+              onJumpToPage={onJumpToPage}
+              onToggleBookmarkPage={onToggleBookmarkPage}
+            />
+          )}
+        </div>
+
+        {/* Right edge drag resize handle */}
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-valuenow={width}
+          aria-valuemin={240}
+          aria-valuemax={520}
+          aria-label="Resize document navigation panel"
+          tabIndex={0}
+          onMouseDown={handleMouseDown}
+          onDoubleClick={() => setWidth(288)}
+          className="absolute top-0 bottom-0 -right-1.5 w-3 cursor-col-resize z-30 flex items-center justify-center group focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+        >
+          <div
+            className={cn(
+              "w-0.5 h-full transition-colors duration-150",
+              "group-hover:bg-primary",
+              isDragging && "bg-primary",
+            )}
+          />
+        </div>
+      </aside>
     </div>
   );
 }

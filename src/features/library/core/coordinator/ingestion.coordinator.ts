@@ -13,12 +13,17 @@ import type {
   ProcessBatchUploadOptions,
   ProcessModalStoreApi,
   InvalidationClient,
+  FeedRetentionDays,
+  SavedFeedSubscription,
 } from '@/features/library/domain/types/ingestion.types';
 import {
-  executeSaveFeedEntryToLibrary,
+  mapFeedEntryToCreateItemPayload,
   type ParsedFeedEntry,
 } from '@/features/library/domain/feed-parser.domain';
-import type { Collection } from '@/features/library/domain/types/core.types';
+import type {
+  Collection,
+  AddFeedFormValues,
+} from '@/features/library/domain/types/core.types';
 import {
   BatchFlowManager,
   resolveFileIngestionStrategy,
@@ -29,6 +34,11 @@ import {
   type FileIngestionStrategyContext,
   type BibliographyTextFormat,
 } from './file-ingestion.strategies';
+import {
+  pollIngestionRunCompletion,
+  type PollRunOutcome,
+  type PollIngestionRunOptions,
+} from '@/features/library/sdk/queries/ingestion.queries';
 
 export {
   resolveFileIngestionStrategy,
@@ -38,6 +48,9 @@ export {
   type IFileIngestionStrategy,
   type FileIngestionStrategyContext,
   type BibliographyTextFormat,
+  pollIngestionRunCompletion,
+  type PollRunOutcome,
+  type PollIngestionRunOptions,
 };
 
 // Stage 1: Provisional Item Creation & Modal Initialization
@@ -82,14 +95,6 @@ function initializeBatchModalState(
     initialProcessingItems,
   });
 }
-
-import {
-  pollIngestionRunCompletion,
-  type PollRunOutcome,
-  type PollIngestionRunOptions,
-} from '@/features/library/sdk/queries/ingestion.queries';
-
-export { pollIngestionRunCompletion, type PollRunOutcome, type PollIngestionRunOptions };
 
 // Stage 3: Cache Synchronization
 
@@ -193,9 +198,6 @@ export async function executeBatchUpload(
           }
         : undefined,
     );
-    if (files.length > 1 && finalItemId) {
-      void queryClient.invalidateQueries({ queryKey: itemKeys.all(scopeId) });
-    }
   };
 
   const processFile = async (entry: { file: File; index: number; provisionalId: string }, signal?: AbortSignal) => {
@@ -224,6 +226,7 @@ export async function executeBatchUpload(
         uploadedCache,
         signal,
         markFileSucceeded,
+        markFileFailed,
       });
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Processing failed';
@@ -282,6 +285,30 @@ export async function executeBatchUpload(
   }
 }
 
+const TERMINAL_BATCH_RUN_STATUSES = new Set([
+  'COMPLETED',
+  'READY',
+  'SUCCEEDED',
+  'PARTIAL',
+  'FAILED',
+  'FAILED_FINAL',
+  'FAILED_RETRYABLE',
+  'CANCELLED',
+  'CANCELED',
+]);
+
+const PERMANENT_POLL_HTTP_STATUSES = new Set([401, 403, 404]);
+
+function extractHttpStatus(err: unknown): number | undefined {
+  if (!err || typeof err !== 'object') return undefined;
+  const candidate = err as {
+    status?: number;
+    statusCode?: number;
+    response?: { status?: number };
+  };
+  return candidate.status ?? candidate.statusCode ?? candidate.response?.status;
+}
+
 export function useResumeBatchIngestionPolling(
   effectiveScope: string,
   activeRunId: string | null | undefined,
@@ -292,28 +319,25 @@ export function useResumeBatchIngestionPolling(
   const pollingRef = useRef<boolean>(false);
 
   useEffect(() => {
-    if (!activeRunId || isComplete || pollingRef.current) return;
+    if (!activeRunId || activeRunId.startsWith('batch-') || isComplete || pollingRef.current) return;
     pollingRef.current = true;
 
     let timer: ReturnType<typeof setTimeout> | null = null;
     let cancelled = false;
+    let consecutiveErrors = 0;
 
     async function pollBatchRunProgress() {
       try {
         const snapshot = await IngestionService.getRunStatus(effectiveScope, activeRunId!);
         if (cancelled) return;
+        consecutiveErrors = 0;
 
         const rawData =
           (snapshot as { data?: Record<string, unknown> })?.data ??
           (snapshot as Record<string, unknown>);
-        const status = (typeof rawData?.status === 'string' ? rawData.status : '').toUpperCase();
+        const status = (typeof rawData?.status === 'string' ? rawData.status.trim() : '').toUpperCase();
 
-        if (
-          status === 'COMPLETED' ||
-          status === 'READY' ||
-          status === 'SUCCEEDED' ||
-          status === 'FAILED_FINAL'
-        ) {
+        if (TERMINAL_BATCH_RUN_STATUSES.has(status)) {
           applyServerRunSnapshot({ status });
           await synchronizeBatchCaches(queryClient, effectiveScope);
           useProcessModalStore.getState().completeBatchRun();
@@ -343,7 +367,16 @@ export function useResumeBatchIngestionPolling(
         if (!cancelled) {
           timer = setTimeout(pollBatchRunProgress, 2500);
         }
-      } catch {
+      } catch (pollErr: unknown) {
+        consecutiveErrors++;
+        const httpStatus = extractHttpStatus(pollErr);
+        if (
+          consecutiveErrors >= 5 ||
+          (httpStatus !== undefined && PERMANENT_POLL_HTTP_STATUSES.has(httpStatus))
+        ) {
+          useProcessModalStore.getState().completeBatchRun();
+          return;
+        }
         if (!cancelled) {
           timer = setTimeout(pollBatchRunProgress, 4000);
         }
@@ -358,6 +391,69 @@ export function useResumeBatchIngestionPolling(
       if (timer) clearTimeout(timer);
     };
   }, [activeRunId, isComplete, effectiveScope, queryClient, applyServerRunSnapshot]);
+}
+
+/**
+ * Centralized workflow orchestrator for saving an RSS/Atom feed entry to the Library:
+ * 1. When the entry has an authoritative identifier (DOI or arXiv ID) and an `ingestItem`
+ *    executor is provided, attempts full pipeline ingestion first (enriching metadata & OA PDF).
+ * 2. Falls back to `createItem` with `mapFeedEntryToCreateItemPayload`.
+ */
+export async function executeSaveFeedEntryToLibrary<TCreatePayload extends Record<string, unknown>>(params: {
+  entry: ParsedFeedEntry;
+  scopeId: string;
+  targetCollectionId?: string;
+  createItem: (payload: TCreatePayload) => Promise<unknown>;
+  ingestItem?: (
+    payload:
+      | {
+          source: 'doi';
+          doi: string;
+          collectionId?: string;
+          overrides?: Record<string, unknown>;
+        }
+      | {
+          source: 'arxiv';
+          arxivId: string;
+          collectionId?: string;
+          overrides?: Record<string, unknown>;
+        },
+  ) => Promise<unknown>;
+}): Promise<void> {
+  const { entry, scopeId, targetCollectionId, createItem, ingestItem } = params;
+  const createPayload = mapFeedEntryToCreateItemPayload(entry, {
+    scopeId,
+    collectionId: targetCollectionId,
+  });
+
+  let savedViaPipeline = false;
+  if (ingestItem && (entry.doi || entry.arxivId)) {
+    try {
+      await ingestItem({
+        ...(entry.doi
+          ? { source: 'doi' as const, doi: entry.doi }
+          : { source: 'arxiv' as const, arxivId: entry.arxivId! }),
+        collectionId: targetCollectionId,
+        overrides: {
+          title: entry.title,
+          abstract: entry.abstract,
+          publicationTitle: entry.publicationTitle,
+          year: entry.year,
+          url: createPayload.url,
+          tags: entry.categories,
+          attachOaPdf: true,
+          saveSnapshot: false,
+        },
+      });
+      savedViaPipeline = true;
+    } catch {
+      savedViaPipeline = false;
+    }
+  }
+
+  if (!savedViaPipeline) {
+    await createItem({ ...createPayload, silent: true } as unknown as TCreatePayload);
+  }
 }
 
 export interface SaveFeedEntryCoordinatorOptions<
@@ -391,7 +487,6 @@ export async function executeSaveFeedEntryWithFeedback<
   setEntrySaving,
   markEntrySaved,
 }: SaveFeedEntryCoordinatorOptions<TCreatePayload>): Promise<void> {
-  markEntryAsRead(entry.id);
   setEntrySaving(entry.id, true);
   try {
     await executeSaveFeedEntryToLibrary({
@@ -401,6 +496,7 @@ export async function executeSaveFeedEntryWithFeedback<
       createItem,
       ingestItem,
     });
+    markEntryAsRead(entry.id);
     markEntrySaved(entry.id);
 
     const colName = targetCollectionId
@@ -418,4 +514,64 @@ export async function executeSaveFeedEntryWithFeedback<
     setEntrySaving(entry.id, false);
   }
 }
+
+/**
+ * Resolves the RSS/Atom feed title from a feed URL via `fetchAcademicFeed`.
+ * Returns `undefined` when auto-detection fails or produces an empty string.
+ */
+export async function resolveFeedTitleFromUrl(
+  url: string,
+  fetchAcademicFeed: (params: { url: string; silent?: boolean }) => Promise<unknown>,
+): Promise<string | undefined> {
+  const trimmedUrl = url.trim();
+  if (!trimmedUrl) return undefined;
+  try {
+    const res = await fetchAcademicFeed({ url: trimmedUrl, silent: true });
+    const payload =
+      typeof res === 'object' && res !== null && 'data' in res
+        ? (res as { data?: { feedTitle?: string } }).data
+        : (res as { feedTitle?: string });
+    const detected = payload?.feedTitle;
+    if (detected && typeof detected === 'string' && detected.trim()) {
+      return detected.trim();
+    }
+  } catch {
+    // Background detection failure is non-fatal
+  }
+  return undefined;
+}
+
+/**
+ * Shared coordinator workflow for subscribing to a new RSS/Atom feed with automatic title fallback.
+ * Eliminates duplicate auto-title + subscribe orchestration across AddFeedModal, LibraryModals, and FeedsManagerModal.
+ */
+export async function executeSubscribeFeedWithAutoTitle(params: {
+  data: AddFeedFormValues;
+  fetchAcademicFeed: (params: { url: string; silent?: boolean }) => Promise<unknown>;
+  subscribeFeed: (payload: {
+    name: string;
+    url: string;
+    retentionDays: FeedRetentionDays;
+    cleanupReadAfter: FeedRetentionDays;
+    cleanupUnreadAfter: FeedRetentionDays;
+  }) => Promise<SavedFeedSubscription>;
+}): Promise<SavedFeedSubscription> {
+  const { data, fetchAcademicFeed, subscribeFeed } = params;
+  let finalName = (data.name || '').trim();
+  if (!finalName) {
+    finalName = (await resolveFeedTitleFromUrl(data.url, fetchAcademicFeed)) || '';
+  }
+
+  const unreadDays = (data.cleanupUnreadAfter ?? data.retentionDays ?? 30) as FeedRetentionDays;
+  const readDays = (data.cleanupReadAfter ?? 7) as FeedRetentionDays;
+
+  return subscribeFeed({
+    name: finalName || 'Academic Feed',
+    url: data.url.trim(),
+    retentionDays: unreadDays,
+    cleanupReadAfter: readDays,
+    cleanupUnreadAfter: unreadDays,
+  });
+}
+
 

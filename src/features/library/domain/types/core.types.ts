@@ -20,7 +20,6 @@ export type Result<T> =
 
 // Domain Type Re-Exports
 export * from './items.types';
-export * from './saved-searches.types';
 export * from './ingestion.types';
 export * from './item-types.types';
 export type {
@@ -223,17 +222,6 @@ export type UpdateCollectionDTO = Partial<CollectionInput> & {
   version?: number;
 };
 
-export interface MoveToTrashTarget {
-  id?: string;
-  ids?: string[];
-  title?: string;
-  type?: 'item' | 'items' | 'collection';
-  withItems?: boolean;
-  scopeId?: string;
-  count?: number;
-  items?: Array<{ id: string; title: string }>;
-}
-
 export type TreeNode = Collection & { children: TreeNode[] };
 
 export interface CollectionActionHandlers {
@@ -297,8 +285,6 @@ export const libraryIntegrityReportSchema = z.object({
 });
 
 export type DuplicateGroup = z.infer<typeof duplicateGroupSchema>;
-export type MergeStrategy = z.infer<typeof mergeStrategySchema>;
-export type FlaggedItemIssue = z.infer<typeof flaggedItemIssueSchema>;
 export type LibraryIntegrityReport = z.infer<typeof libraryIntegrityReportSchema>;
 
 // ── Forms ────────────────────────────────────────────────────────────────────
@@ -363,24 +349,29 @@ export const addLinkSchema = z.object({
       'Please enter a valid DOI, arXiv ID, PMID, ISBN, or Web URL',
     ),
   title: z.string().optional(),
+  attachOaPdf: z.boolean().optional(),
+  saveSnapshot: z.boolean().optional(),
 });
 
 export type AddLinkFormValues = z.infer<typeof addLinkSchema>;
 
-export const flagRetractionSchema = z.object({
-  nature: retractionNatureSchema,
-  reason: z.string().min(1, 'Reason is required'),
-  noticeUrl: z.string().url('Valid URL required'),
-  date: z.string().optional(),
+export const myPublicationFormSchema = z.object({
+  contributorId: z.string(),
+  isPublic: z.boolean(),
+  includeAttachments: z.boolean(),
+  openAccessLicense: z.string(),
 });
 
-export type FlagRetractionFormValues = z.infer<typeof flagRetractionSchema>;
+export type MyPublicationFormValues = z.infer<typeof myPublicationFormSchema>;
 
-export const authorshipSchema = z.object({
-  confirmed: z.boolean(),
+export const zoteroApiKeyConnectSchema = z.object({
+  zoteroUserId: z.string().trim().min(1, 'Zotero User ID is required'),
+  apiKey: z.string().trim().min(1, 'Personal API Key is required'),
 });
 
-export type AuthorshipFormValues = z.infer<typeof authorshipSchema>;
+export type ZoteroApiKeyConnectFormValues = z.infer<
+  typeof zoteroApiKeyConnectSchema
+>;
 
 export const addFeedSchema = z.object({
   url: z
@@ -409,3 +400,130 @@ export const editFeedSchema = z.object({
 });
 
 export type EditFeedFormValues = z.infer<typeof editFeedSchema>;
+
+// ── Level-5 Form Resilience: Server Error Extraction & Field Mapping ─────────
+
+export function extractServerErrorMessage(
+  err: unknown,
+  fallback = 'An unexpected error occurred. Please check your input and try again.',
+): string {
+  if (!err) return fallback;
+  if (typeof err === 'string' && err.trim()) return err.trim();
+  if (typeof err === 'object') {
+    const candidate = err as {
+      message?: unknown;
+      response?: { data?: { message?: unknown; error?: unknown } };
+      data?: { message?: unknown; error?: unknown };
+    };
+    const rawMsg =
+      candidate.response?.data?.message ??
+      candidate.data?.message ??
+      candidate.message ??
+      candidate.response?.data?.error ??
+      candidate.data?.error;
+    if (Array.isArray(rawMsg) && rawMsg.length > 0) {
+      const first = rawMsg.find((m) => typeof m === 'string' && m.trim());
+      if (typeof first === 'string') return first.trim();
+    }
+    if (typeof rawMsg === 'string' && rawMsg.trim()) {
+      return rawMsg.trim();
+    }
+  }
+  return fallback;
+}
+
+export function applyServerErrorToForm<TFieldName extends string>(
+  err: unknown,
+  setError: (
+    name: TFieldName,
+    error: { type: string; message: string },
+    options?: { shouldFocus: boolean },
+  ) => void,
+  options: {
+    allowedFields: readonly TFieldName[];
+    fallbackField: TFieldName;
+    fallbackMessage?: string;
+  },
+): string {
+  const { allowedFields, fallbackField, fallbackMessage } = options;
+  const allowedSet = new Set<string>(allowedFields);
+  let focused = false;
+
+  if (err && typeof err === 'object') {
+    const payload = (
+      (err as { response?: { data?: Record<string, unknown> }; data?: Record<string, unknown> })
+        .response?.data ??
+      (err as { data?: Record<string, unknown> }).data ??
+      err
+    ) as Record<string, unknown>;
+
+    const fieldErrors = payload.errors ?? payload.fieldErrors;
+    if (Array.isArray(fieldErrors)) {
+      for (const item of fieldErrors) {
+        if (item && typeof item === 'object') {
+          const prop = String(
+            (item as { field?: unknown; property?: unknown }).field ??
+              (item as { property?: unknown }).property ??
+              '',
+          );
+          const msg = String(
+            (item as { message?: unknown }).message ??
+              Object.values(
+                ((item as { constraints?: Record<string, string> }).constraints || {}),
+              )[0] ??
+              '',
+          ).trim();
+          if (allowedSet.has(prop) && msg) {
+            setError(
+              prop as TFieldName,
+              { type: 'server', message: msg },
+              { shouldFocus: !focused },
+            );
+            focused = true;
+          }
+        }
+      }
+      if (focused) {
+        return extractServerErrorMessage(err, fallbackMessage);
+      }
+    } else if (fieldErrors && typeof fieldErrors === 'object') {
+      for (const [key, val] of Object.entries(fieldErrors as Record<string, unknown>)) {
+        if (!allowedSet.has(key)) continue;
+        const msg = Array.isArray(val)
+          ? String(val[0] ?? '').trim()
+          : typeof val === 'string'
+            ? val.trim()
+            : '';
+        if (msg) {
+          setError(
+            key as TFieldName,
+            { type: 'server', message: msg },
+            { shouldFocus: !focused },
+          );
+          focused = true;
+        }
+      }
+      if (focused) {
+        return extractServerErrorMessage(err, fallbackMessage);
+      }
+    }
+  }
+
+  const message = extractServerErrorMessage(err, fallbackMessage);
+  const lowerMsg = message.toLowerCase();
+
+  let targetField: TFieldName = fallbackField;
+  for (const field of allowedFields) {
+    if (lowerMsg.includes(field.toLowerCase())) {
+      targetField = field;
+      break;
+    }
+  }
+
+  setError(
+    targetField,
+    { type: 'server', message },
+    { shouldFocus: true },
+  );
+  return message;
+}

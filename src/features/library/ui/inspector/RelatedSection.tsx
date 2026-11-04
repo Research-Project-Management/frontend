@@ -25,7 +25,7 @@ import {
 import { toast } from 'sonner';
 import type { Item, RelatedItem, Collection, RelationType } from '@/features/library/domain/types/core.types';
 import { cn } from '@/shared/lib/utils';
-import { cleanAcademicText } from '@/features/library/domain/academic-text';
+import { cleanText } from '@/features/library/domain/citations';
 
 const RELATION_TYPES: Array<{ id: RelationType; label: string }> = [
   { id: 'related', label: 'Related' },
@@ -220,7 +220,7 @@ export default function RelatedSection(props: RelatedSectionProps) {
     return null;
   }
 
-  const currentPaperCleanTitle = cleanAcademicText(item.title) || 'Current Reference';
+  const currentPaperCleanTitle = cleanText(item.title) || 'Current Reference';
 
   return (
     <div className="flex flex-col gap-2 text-12 min-w-0">
@@ -271,7 +271,7 @@ export default function RelatedSection(props: RelatedSectionProps) {
       {!isLoading && relatedList.length > 0 && (
         <div className="flex flex-col gap-2">
           {relatedList.map((relItem) => {
-            const cleanTitle = cleanAcademicText(relItem.title) || 'Untitled Item';
+            const cleanTitle = cleanText(relItem.title) || 'Untitled Item';
 
             return (
               <div
@@ -541,7 +541,7 @@ export default function RelatedSection(props: RelatedSectionProps) {
                   <div className="space-y-0.5">
                     {availableItems.map((targetItem: Item, index: number) => {
                       const isChecked = selectedTargetIds.has(targetItem.id);
-                      const cleanTitle = cleanAcademicText(targetItem.title) || 'Untitled Reference';
+                      const cleanTitle = cleanText(targetItem.title) || 'Untitled Reference';
 
                       return (
                         <React.Fragment key={targetItem.id}>

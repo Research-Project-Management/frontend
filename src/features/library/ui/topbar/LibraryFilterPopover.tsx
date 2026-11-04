@@ -63,6 +63,7 @@ export interface FilterFacetSectionsProps {
   onDeleteTag?: (tagId: string) => Promise<unknown>;
   onDeleteAutomaticTags?: () => Promise<unknown>;
   isDeletingAutomatic?: boolean;
+  onSplitTag?: (params: { tagId: string; parts: string[] }) => Promise<unknown>;
   matchingFileItems: Array<{
     id: "has-pdf" | "missing-pdf" | "has-notes";
     label: string;
@@ -101,6 +102,7 @@ export function FilterFacetSections({
   onDeleteTag,
   onDeleteAutomaticTags,
   isDeletingAutomatic,
+  onSplitTag,
   matchingFileItems,
   fileStatus,
   onFileStatusToggle,
@@ -191,6 +193,11 @@ export function FilterFacetSections({
                       <span className="font-normal leading-none truncate">
                         {t.label}
                       </span>
+                      {t.count > 0 && (
+                        <span className="ml-auto shrink-0 text-11 font-mono text-muted-foreground">
+                          {t.count}
+                        </span>
+                      )}
                     </div>
                   );
                 })}
@@ -211,6 +218,7 @@ export function FilterFacetSections({
         onDeleteTag={onDeleteTag}
         onDeleteAutomaticTags={onDeleteAutomaticTags}
         isDeletingAutomatic={isDeletingAutomatic}
+        onSplitTag={onSplitTag}
       />
 
       {matchingFileItems.length > 0 && (
@@ -483,6 +491,21 @@ export function LibraryFilterPopover({
           )}
         </div>
 
+        {facets.activeCount > 0 && (
+          <div className="flex items-center justify-between px-1 pb-1.5 mb-1 border-b border-border text-11 shrink-0">
+            <span className="text-muted-foreground font-normal">
+              {facets.activeCount} {facets.activeCount === 1 ? "filter" : "filters"} active
+            </span>
+            <button
+              type="button"
+              onClick={facets.handleClearAllFilters}
+              className="text-11 font-medium text-primary hover:underline cursor-pointer"
+            >
+              Clear all
+            </button>
+          </div>
+        )}
+
         <FilterFacetSections
           searchQuery={searchQuery}
           onClearSearchQuery={() => setSearchQuery("")}
@@ -500,6 +523,7 @@ export function LibraryFilterPopover({
           onDeleteTag={canEditItem ? facets.deleteTag : undefined}
           onDeleteAutomaticTags={canEditItem ? facets.deleteAutomaticTags : undefined}
           isDeletingAutomatic={facets.isDeletingAutomatic}
+          onSplitTag={canEditItem ? facets.splitTag : undefined}
           matchingFileItems={facets.matchingFileItems}
           fileStatus={facets.fileStatus}
           onFileStatusToggle={facets.handleFileStatusToggle}

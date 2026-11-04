@@ -1,274 +1,17 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import {
-  MoreVertical,
-  ExternalLink,
-  BookOpen,
-  Star,
-  Copy,
-  Quote,
-  FolderPlus,
-  FolderMinus,
-  Trash2,
-  RotateCcw,
-  RefreshCw,
-  Award,
-  ShieldAlert,
-  ArrowUp,
-  ArrowDown,
-} from 'lucide-react';
+import { MoreVertical, ExternalLink, BookOpen, Star, Copy, Quote, FolderPlus, FolderMinus, Trash2, RotateCcw, RefreshCw, Award, ShieldAlert } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import { Checkbox } from '@/shared/components/ui/checkbox';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/shared/components/ui/tooltip';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-} from '@/shared/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from '@/shared/components/ui/dropdown-menu';
 import { useItemActionHandlers } from '@/features/library/core/coordinator/item-action.coordinator';
 import type { Item, Collection, CslStyle } from '@/features/library/domain/types/core.types';
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger, ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger, ContextMenuShortcut } from '@/shared/components/ui/context-menu';
 
-export interface ItemTableHeaderProps {
-  columns: Record<string, boolean>;
-  isTrash?: boolean;
-  isAllSelected: boolean;
-  onSelectAll: () => void;
-  sortColumn: string | null;
-  sortDirection: 'asc' | 'desc';
-  onSort: (columnKey: string) => void;
-}
-
-export function ItemTableHeader({
-  columns,
-  isTrash = false,
-  isAllSelected,
-  onSelectAll,
-  sortColumn,
-  sortDirection,
-  onSort,
-}: ItemTableHeaderProps) {
-  const renderSortIndicator = (key: string) => {
-    if (sortColumn !== key) return null;
-    return sortDirection === 'asc' ? (
-      <ArrowUp className="size-3 text-foreground ml-1 shrink-0" strokeWidth={1.5} />
-    ) : (
-      <ArrowDown className="size-3 text-foreground ml-1 shrink-0" strokeWidth={1.5} />
-    );
-  };
-
-  const getAriaSort = (key: string): React.AriaAttributes['aria-sort'] => {
-    if (sortColumn !== key) return 'none';
-    return sortDirection === 'asc' ? 'ascending' : 'descending';
-  };
-
-  return (
-    <thead className="sticky top-0 z-10 bg-background select-none">
-      <tr className="h-8 text-foreground font-medium text-12">
-        <th
-          scope="col"
-          className="pl-1.5 pr-3 h-8 py-0 align-middle font-medium select-none text-left bg-background border-b border-border"
-        >
-          <div className="flex items-center gap-1.5 w-full">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onSelectAll();
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === ' ' || e.key === 'Enter') {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      onSelectAll();
-                    }
-                  }}
-                  aria-label={isAllSelected ? 'Deselect all' : 'Select all'}
-                  className="flex items-center justify-center shrink-0 cursor-pointer rounded-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                >
-                  <Checkbox
-                    checked={isAllSelected}
-                    tabIndex={-1}
-                    aria-hidden="true"
-                    className="size-3.5 border-border data-[state=checked]:border-primary pointer-events-none"
-                  />
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                {isAllSelected ? 'Deselect all' : 'Select all'}
-              </TooltipContent>
-            </Tooltip>
-            <button
-              type="button"
-              onClick={() => onSort('title')}
-              aria-sort={getAriaSort('title')}
-              className="flex items-center gap-1.5 cursor-pointer min-w-0 text-foreground text-12 font-medium bg-transparent border-0 p-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded-xs"
-            >
-              <span>Title</span>
-              {renderSortIndicator('title')}
-            </button>
-          </div>
-        </th>
-
-        {columns.authors !== false && (
-          <th
-            scope="col"
-            aria-sort={getAriaSort('authors')}
-            onClick={() => onSort('authors')}
-            onKeyDown={(e) => {
-              if (e.key === ' ' || e.key === 'Enter') {
-                e.preventDefault();
-                onSort('authors');
-              }
-            }}
-            tabIndex={0}
-            className="px-3 h-8 py-0 align-middle font-medium cursor-pointer text-foreground select-none text-left bg-background border-b border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset"
-          >
-            <div className="flex items-center gap-1.5">
-              <span>Authors</span>
-              {renderSortIndicator('authors')}
-            </div>
-          </th>
-        )}
-
-        {columns.year !== false && (
-          <th
-            scope="col"
-            aria-sort={getAriaSort('year')}
-            onClick={() => onSort('year')}
-            onKeyDown={(e) => {
-              if (e.key === ' ' || e.key === 'Enter') {
-                e.preventDefault();
-                onSort('year');
-              }
-            }}
-            tabIndex={0}
-            className="px-2 h-8 py-0 align-middle text-center font-medium cursor-pointer text-foreground select-none bg-background border-b border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset"
-          >
-            <div className="flex items-center justify-center gap-1.5">
-              <span>Year</span>
-              {renderSortIndicator('year')}
-            </div>
-          </th>
-        )}
-
-        {columns.publication !== false && (
-          <th
-            scope="col"
-            aria-sort={getAriaSort('publicationTitle')}
-            onClick={() => onSort('publicationTitle')}
-            onKeyDown={(e) => {
-              if (e.key === ' ' || e.key === 'Enter') {
-                e.preventDefault();
-                onSort('publicationTitle');
-              }
-            }}
-            tabIndex={0}
-            className="px-3 h-8 py-0 align-middle font-medium cursor-pointer text-foreground select-none text-left bg-background border-b border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset"
-          >
-            <div className="flex items-center gap-1.5">
-              <span>Publication</span>
-              {renderSortIndicator('publicationTitle')}
-            </div>
-          </th>
-        )}
-
-        {columns.itemType && (
-          <th scope="col" className="px-3 h-8 py-0 align-middle font-medium text-foreground text-left bg-background border-b border-border">
-            Type
-          </th>
-        )}
-
-        {columns.doi && (
-          <th scope="col" className="px-3 h-8 py-0 align-middle font-medium text-foreground text-left bg-background border-b border-border">
-            DOI
-          </th>
-        )}
-
-        {columns.citationKey && (
-          <th
-            scope="col"
-            aria-sort={getAriaSort('citationKey')}
-            onClick={() => onSort('citationKey')}
-            onKeyDown={(e) => {
-              if (e.key === ' ' || e.key === 'Enter') {
-                e.preventDefault();
-                onSort('citationKey');
-              }
-            }}
-            tabIndex={0}
-            className="px-3 h-8 py-0 align-middle font-medium cursor-pointer text-foreground select-none text-left bg-background border-b border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset"
-          >
-            <div className="flex items-center gap-1.5">
-              <span>Citation Key</span>
-              {renderSortIndicator('citationKey')}
-            </div>
-          </th>
-        )}
-
-        {columns.citations && (
-          <th
-            scope="col"
-            aria-sort={getAriaSort('citationCount')}
-            onClick={() => onSort('citationCount')}
-            onKeyDown={(e) => {
-              if (e.key === ' ' || e.key === 'Enter') {
-                e.preventDefault();
-                onSort('citationCount');
-              }
-            }}
-            tabIndex={0}
-            className="px-2 h-8 py-0 align-middle text-center font-medium cursor-pointer text-foreground select-none bg-background border-b border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset"
-          >
-            <div className="flex items-center justify-center gap-1.5">
-              <span>Citations</span>
-              {renderSortIndicator('citationCount')}
-            </div>
-          </th>
-        )}
-
-        {isTrash && (
-          <th
-            scope="col"
-            aria-sort={getAriaSort('deletedAt')}
-            onClick={() => onSort('deletedAt')}
-            onKeyDown={(e) => {
-              if (e.key === ' ' || e.key === 'Enter') {
-                e.preventDefault();
-                onSort('deletedAt');
-              }
-            }}
-            tabIndex={0}
-            className="px-3 h-8 py-0 align-middle font-medium cursor-pointer text-foreground select-none text-left bg-background border-b border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset"
-          >
-            <div className="flex items-center gap-1.5">
-              <span>Date Deleted</span>
-              {renderSortIndicator('deletedAt')}
-            </div>
-          </th>
-        )}
-
-        <th
-          scope="col"
-          aria-label="Actions"
-          className="w-11 px-1 h-8 py-0 align-middle bg-background border-b border-border"
-        />
-      </tr>
-    </thead>
-  );
-}
+export {
+  ItemTableHeader,
+  type ItemTableHeaderProps,
+} from './ItemTableHeader';
 
 export interface ItemRowActionsProps {
   item: Item;
@@ -587,3 +330,278 @@ export const ItemRowActions = React.memo(function ItemRowActions({
 });
 
 export default ItemRowActions;
+
+export interface ItemContextMenuProps {
+  children: React.ReactNode;
+  item: Item;
+  isTrash?: boolean;
+  collections?: Collection[];
+  canEdit?: boolean;
+  onToggleStar?: () => void;
+  onDelete?: () => void;
+  onRestore?: () => void;
+  onPurge?: () => void;
+  onAddToCollection?: (collectionId: string) => void;
+  onMoveToCollection?: (collectionId: string) => void;
+  onDetachFromCollection?: () => void;
+  onOpenItem?: (id: string) => void;
+  onOpenInNewTab?: (id: string) => void;
+  /** scopeId needed to call setMyPublication (project id or 'user') */
+  scopeId?: string;
+}
+
+export function ItemContextMenu({
+  children,
+  item,
+  isTrash = false,
+  collections = [],
+  canEdit = true,
+  onToggleStar,
+  onDelete,
+  onRestore,
+  onPurge,
+  onAddToCollection,
+  onMoveToCollection,
+  onDetachFromCollection,
+  onOpenItem,
+  onOpenInNewTab,
+  scopeId,
+}: ItemContextMenuProps) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const {
+    availableStyles,
+    isStarred,
+    handleOpen,
+    handleOpenInNewTab,
+    handleCopyBibliography,
+    handleCopyInTextCitation,
+    handleCopyCitationKey,
+    handleRefreshMetadata,
+    handleToggleMyPublications,
+    handleToggleRetraction,
+    handleSelectCollection,
+  } = useItemActionHandlers(item, {
+    scopeId,
+    isMenuOpen: isOpen,
+    onOpenItem,
+    onOpenInNewTab,
+    onAddToCollection,
+    onMoveToCollection,
+  });
+
+  if (isTrash && !canEdit) {
+    return <>{children}</>;
+  }
+
+  return (
+    <ContextMenu onOpenChange={setIsOpen}>
+      <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
+
+      <ContextMenuContent
+        onClick={(e) => e.stopPropagation()}
+        onCloseAutoFocus={(e) => e.preventDefault()}
+        className="min-w-[14.5rem] w-max max-w-xs text-12 shadow-raised-200 select-none p-1 rounded-md"
+      >
+        {!isTrash ? (
+          <>
+            <ContextMenuItem
+              onClick={handleOpen}
+              className="gap-2 text-12 py-1.5 px-2 cursor-pointer whitespace-nowrap"
+            >
+              <BookOpen className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+              Open in Reader
+            </ContextMenuItem>
+
+            <ContextMenuItem
+              onClick={handleOpenInNewTab}
+              className="gap-2 text-12 py-1.5 px-2 cursor-pointer whitespace-nowrap"
+            >
+              <ExternalLink className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+              Open in New Tab
+            </ContextMenuItem>
+
+            {canEdit && onToggleStar && (
+              <ContextMenuItem
+                onClick={onToggleStar}
+                className="gap-2 text-12 py-1.5 px-2 cursor-pointer whitespace-nowrap"
+              >
+                <Star
+                  className={cn(
+                    'size-3.5 text-foreground shrink-0',
+                    isStarred && 'fill-warning text-warning',
+                  )}
+                />
+                {isStarred ? 'Remove from Starred' : 'Add to Starred'}
+              </ContextMenuItem>
+            )}
+
+            <ContextMenuSeparator className="my-1" />
+
+            <ContextMenuSub>
+              <ContextMenuSubTrigger className="gap-2 text-12 py-1.5 px-2 cursor-pointer whitespace-nowrap">
+                <Copy className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                Copy Citation
+              </ContextMenuSubTrigger>
+              <ContextMenuSubContent className="w-48 text-12 shadow-raised-200 p-1 max-h-64 overflow-y-auto">
+                {availableStyles.map((style) => (
+                  <ContextMenuItem
+                    key={style.id}
+                    onClick={() => handleCopyBibliography(style.id as CslStyle)}
+                    className="cursor-pointer text-12 py-1.5 px-2 truncate"
+                  >
+                    {style.label}
+                  </ContextMenuItem>
+                ))}
+                <ContextMenuSeparator className="my-1" />
+                <ContextMenuItem
+                  onClick={() => handleCopyBibliography('bibtex')}
+                  className="cursor-pointer text-12 py-1.5 px-2 font-mono text-11"
+                >
+                  BibTeX
+                </ContextMenuItem>
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+
+            <ContextMenuSub>
+              <ContextMenuSubTrigger className="gap-2 text-12 py-1.5 px-2 cursor-pointer whitespace-nowrap">
+                <Quote className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                Copy In-text Citation
+              </ContextMenuSubTrigger>
+              <ContextMenuSubContent className="w-48 text-12 shadow-raised-200 p-1 max-h-64 overflow-y-auto">
+                {availableStyles.map((style) => (
+                  <ContextMenuItem
+                    key={style.id}
+                    onClick={() => handleCopyInTextCitation(style.id as CslStyle)}
+                    className="cursor-pointer text-12 py-1.5 px-2 truncate"
+                  >
+                    {style.label}
+                  </ContextMenuItem>
+                ))}
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+
+            <ContextMenuItem
+              onClick={() => handleCopyCitationKey('Copied')}
+              className="gap-2 text-12 py-1.5 px-2 cursor-pointer whitespace-nowrap"
+            >
+              <Copy className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+              Copy Citation Key
+            </ContextMenuItem>
+
+            {canEdit && (
+              <>
+                <ContextMenuSeparator className="my-1" />
+                <ContextMenuItem
+                  onClick={handleRefreshMetadata}
+                  className="gap-2 text-12 py-1.5 px-2 cursor-pointer whitespace-nowrap"
+                >
+                  <RefreshCw className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                  Update Metadata & PDF
+                </ContextMenuItem>
+
+                <ContextMenuItem
+                  onClick={handleToggleMyPublications}
+                  className="gap-2 text-12 py-1.5 px-2 cursor-pointer whitespace-nowrap"
+                >
+                  <Award className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                  {item.isMyPublication
+                    ? 'Remove from My Publications'
+                    : 'Add to My Publications'}
+                </ContextMenuItem>
+
+                <ContextMenuItem
+                  onClick={handleToggleRetraction}
+                  className="gap-2 text-12 py-1.5 px-2 cursor-pointer whitespace-nowrap"
+                >
+                  <ShieldAlert className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                  {item.isRetracted
+                    ? 'Clear Retraction Flag'
+                    : 'Flag as Retracted'}
+                </ContextMenuItem>
+              </>
+            )}
+
+            {canEdit && (collections.length > 0 || onDetachFromCollection) && (
+              <>
+                <ContextMenuSeparator className="my-1" />
+
+                {collections.length > 0 && (
+                  <ContextMenuSub>
+                    <ContextMenuSubTrigger className="gap-2 text-12 py-1.5 px-2 cursor-pointer whitespace-nowrap">
+                      <FolderPlus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                      Add to Collection
+                    </ContextMenuSubTrigger>
+                    <ContextMenuSubContent className="w-44 text-12 shadow-raised-200 max-h-56 overflow-y-auto p-1">
+                      {collections.map((col: Collection) => (
+                        <ContextMenuItem
+                          key={col.id}
+                          onClick={() => void handleSelectCollection(col)}
+                          className="cursor-pointer truncate text-12 py-1.5 px-2"
+                        >
+                          {col.name}
+                        </ContextMenuItem>
+                      ))}
+                    </ContextMenuSubContent>
+                  </ContextMenuSub>
+                )}
+
+                {onDetachFromCollection && (
+                  <ContextMenuItem
+                    onClick={onDetachFromCollection}
+                    className="gap-2 text-12 py-1.5 px-2 cursor-pointer text-foreground focus:text-foreground whitespace-nowrap"
+                  >
+                    <FolderMinus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                    <span>Remove from Collection</span>
+                    <ContextMenuShortcut className="text-11 ml-auto">Del</ContextMenuShortcut>
+                  </ContextMenuItem>
+                )}
+              </>
+            )}
+
+            {canEdit && onDelete && (
+              <>
+                <ContextMenuSeparator className="my-1" />
+                <ContextMenuItem
+                  onClick={onDelete}
+                  className="gap-2 text-12 py-1.5 px-2 cursor-pointer text-destructive focus:text-destructive focus:bg-muted whitespace-nowrap"
+                >
+                  <Trash2 className="size-3.5 text-destructive shrink-0" strokeWidth={1.5} />
+                  <span>Move to Trash</span>
+                  <ContextMenuShortcut className="text-11 ml-auto">
+                    {onDetachFromCollection ? 'Shift+Del' : 'Del'}
+                  </ContextMenuShortcut>
+                </ContextMenuItem>
+              </>
+            )}
+          </>
+        ) : (
+          <>
+            {canEdit && onRestore && (
+              <ContextMenuItem
+                onClick={onRestore}
+                className="gap-2 text-12 py-1.5 px-2 cursor-pointer text-foreground focus:text-foreground whitespace-nowrap"
+              >
+                <RotateCcw className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                Restore Item
+              </ContextMenuItem>
+            )}
+
+            {canEdit && onPurge && (
+              <>
+                {canEdit && onRestore && <ContextMenuSeparator className="my-1" />}
+                <ContextMenuItem
+                  onClick={onPurge}
+                  className="gap-2 text-12 py-1.5 px-2 cursor-pointer text-destructive focus:text-destructive focus:bg-muted whitespace-nowrap"
+                >
+                  <Trash2 className="size-3.5 text-destructive shrink-0" strokeWidth={1.5} />
+                  Delete Permanently
+                </ContextMenuItem>
+              </>
+            )}
+          </>
+        )}
+      </ContextMenuContent>
+    </ContextMenu>
+  );
+}

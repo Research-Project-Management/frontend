@@ -1,27 +1,14 @@
 import type { Item } from './types/core.types';
 import { ALL_SCHEMA_FIELD_KEYS } from './types/item-fields.constants';
-import {
-  normalizeCanonicalItemType,
-  registerSchemaRegistryUpdateListener,
-} from './types/item-types.types';
+import { normalizeCanonicalItemType, registerSchemaRegistryUpdateListener } from './types/item-types.types';
 import { normalizeAuthors } from './creators';
-import {
-  isValidValue,
-  stripLatexMarkup,
-  cleanFilenameToTitle,
-} from './metadata-sanitizers';
-import {
-  getItemDisplayTitle,
-  getItemDisplayDate,
-} from './metadata-extra';
+import { isValidValue, stripLatexMarkup, cleanFilenameToTitle } from './metadata-sanitizers';
+import { getItemDisplayTitle, getItemDisplayDate } from './metadata-extra';
 
 export * from './metadata-sanitizers';
 export * from './metadata-extra';
 
-const MUTABLE_SCHEMA_PROMOTE_KEYS: string[] = Array.from(ALL_SCHEMA_FIELD_KEYS).filter(
-  (k) => k !== 'title' && k !== 'extra',
-);
-
+const MUTABLE_SCHEMA_PROMOTE_KEYS: string[] = Array.from(ALL_SCHEMA_FIELD_KEYS).filter((k) => k !== 'title' && k !== 'extra');
 export const ALL_SCHEMA_PROMOTE_KEYS: readonly string[] = MUTABLE_SCHEMA_PROMOTE_KEYS;
 export const ALL_SCHEMA_PROMOTE_KEY_SET = new Set<string>(MUTABLE_SCHEMA_PROMOTE_KEYS);
 
@@ -31,161 +18,74 @@ function refreshSchemaPromoteKeys(): void {
   ALL_SCHEMA_PROMOTE_KEY_SET.clear();
   for (const k of nextKeys) ALL_SCHEMA_PROMOTE_KEY_SET.add(k);
 }
-
 registerSchemaRegistryUpdateListener(refreshSchemaPromoteKeys);
 
 export const CONTAINER_TITLE_CANDIDATE_KEYS = [
-  'publicationTitle', 'containerTitle', 'journal', 'bookTitle', 'proceedingsTitle',
-  'encyclopediaTitle', 'dictionaryTitle', 'websiteTitle', 'blogTitle', 'forumTitle',
-  'programTitle', 'seriesTitle', 'sessionTitle', 'meetingName',
+  'publicationTitle', 'containerTitle', 'journal', 'bookTitle', 'proceedingsTitle', 'encyclopediaTitle',
+  'dictionaryTitle', 'websiteTitle', 'blogTitle', 'forumTitle', 'programTitle', 'seriesTitle', 'sessionTitle', 'meetingName',
 ] as const;
 
 export const SUBTYPE_CANDIDATE_KEYS = [
-  'type', 'genre', 'thesisType', 'reportType', 'presentationType',
-  'manuscriptType', 'websiteType', 'postType', 'letterType', 'mapType',
+  'type', 'genre', 'thesisType', 'reportType', 'presentationType', 'manuscriptType', 'websiteType', 'postType', 'letterType', 'mapType',
 ] as const;
 
-export const PLACE_CANDIDATE_KEYS = [
-  'eventPlace', 'address', 'location', 'repositoryLocation', 'country',
-] as const;
+export const PLACE_CANDIDATE_KEYS = ['eventPlace', 'address', 'location', 'repositoryLocation', 'country'] as const;
 
 export const PUBLISHER_CANDIDATE_KEYS = [
-  'publisher', 'university', 'institution', 'issuingAuthority', 'authority',
-  'court', 'legislativeBody', 'company', 'organization', 'repository',
-  'distributor', 'studio', 'network', 'label',
+  'publisher', 'university', 'institution', 'issuingAuthority', 'authority', 'court', 'legislativeBody',
+  'company', 'organization', 'repository', 'distributor', 'studio', 'network', 'label',
 ] as const;
 
-export const DATE_CANDIDATE_KEYS = [
-  'publicationDate', 'date', 'issueDate', 'dateDecided', 'dateEnacted', 'filingDate',
-] as const;
+export const DATE_CANDIDATE_KEYS = ['publicationDate', 'date', 'issueDate', 'dateDecided', 'dateEnacted', 'filingDate'] as const;
 
 export const CANONICAL_SCALAR_PROJECTIONS: ReadonlyArray<readonly [string, readonly string[]]> = [
-  ['abstractNote', ['abstractNote', 'abstract']],
-  ['publicationTitle', ['publicationTitle', 'journal']],
-  ['journalAbbreviation', ['journalAbbreviation', 'journalAbbr']],
-  ['doi', ['doi', 'DOI']],
-  ['issn', ['issn', 'ISSN']],
-  ['isbn', ['isbn', 'ISBN']],
-  ['pmid', ['pmid', 'PMID']],
-  ['pmcid', ['pmcid', 'PMCID']],
-  ['arxivId', ['arxivId', 'archiveID', 'archiveId']],
-  ['license', ['license', 'rights']],
-  ['accessDate', ['accessDate', 'accessedAt']],
-  ['citationKey', ['citationKey', 'key']],
-  ['retractionReason', ['retractionReason', 'reason']],
-  ['itemType', ['itemType', 'type']],
-  ['volume', ['volume', 'reporterVolume', 'codeNumber', 'codeVolume']],
+  ['abstractNote', ['abstractNote', 'abstract']], ['publicationTitle', ['publicationTitle', 'journal']],
+  ['journalAbbreviation', ['journalAbbreviation', 'journalAbbr']], ['doi', ['doi', 'DOI']],
+  ['issn', ['issn', 'ISSN']], ['isbn', ['isbn', 'ISBN']], ['pmid', ['pmid', 'PMID']],
+  ['pmcid', ['pmcid', 'PMCID']], ['arxivId', ['arxivId', 'archiveID', 'archiveId']],
+  ['license', ['license', 'rights']], ['accessDate', ['accessDate', 'accessedAt']],
+  ['citationKey', ['citationKey', 'key']], ['retractionReason', ['retractionReason', 'reason']],
+  ['itemType', ['itemType', 'type']], ['volume', ['volume', 'reporterVolume', 'codeNumber', 'codeVolume']],
   ['pages', ['pages', 'firstPage', 'codePages']],
 ];
 
 export const EMPTY_BACKEND_ITEM_DEFAULTS: Item = {
-  id: '',
-  title: 'Untitled',
-  itemType: 'journalArticle',
-  authors: [],
-  editors: [],
-  creators: [],
-  contributors: [],
-  year: 0,
-  publicationTitle: '',
-  journalAbbreviation: '',
-  publisher: '',
-  volume: '',
-  issue: '',
-  pages: '',
-  isbn: '',
-  issn: '',
-  doi: '',
-  url: '',
-  abstractNote: '',
-  keywords: [],
-  language: '',
-  shortTitle: '',
-  license: '',
-  citationKey: '',
-  extra: '',
-  extraFields: {},
-  fields: {},
-  tags: [],
-  itemTags: [],
-  collections: [],
-  collectionIds: [],
-  attachments: [],
-  notes: [],
-  fileUrl: '',
-  filename: '',
-  mimeType: '',
-  size: 0,
-  hasFile: false,
-  fileCount: 0,
-  notesCount: 0,
-  noteCount: 0,
-  attachmentCount: 0,
-  isStarred: false,
-  isRead: false,
-  readStatus: 'unread',
-  rating: 0,
-  isRetracted: false,
-  isMyPublication: false,
-  crossrefEnriched: false,
-  identifiers: [],
-  version: 1,
-  isDeleted: false,
-  createdAt: '1970-01-01T00:00:00.000Z',
-  updatedAt: '1970-01-01T00:00:00.000Z',
+  id: '', title: 'Untitled', itemType: 'journalArticle', authors: [], editors: [], creators: [], contributors: [],
+  year: 0, publicationTitle: '', journalAbbreviation: '', publisher: '', volume: '', issue: '', pages: '',
+  isbn: '', issn: '', doi: '', url: '', abstractNote: '', keywords: [], language: '', shortTitle: '',
+  license: '', citationKey: '', extra: '', extraFields: {}, fields: {}, tags: [], itemTags: [],
+  collections: [], collectionIds: [], attachments: [], notes: [], fileUrl: '', filename: '', mimeType: '',
+  size: 0, hasFile: false, fileCount: 0, notesCount: 0, noteCount: 0, attachmentCount: 0, isStarred: false,
+  isRead: false, readStatus: 'unread', rating: 0, isRetracted: false, isMyPublication: false,
+  crossrefEnriched: false, identifiers: [], version: 1, isDeleted: false,
+  createdAt: '1970-01-01T00:00:00.000Z', updatedAt: '1970-01-01T00:00:00.000Z',
 };
 
-export function pickFirstValidField(
-  rec: Record<string, unknown>,
-  ef: Record<string, unknown>,
-  keys: readonly string[],
-): unknown {
-  for (const k of keys) {
-    if (isValidValue(rec[k])) return rec[k];
-  }
+export function pickFirstValidField(rec: Record<string, unknown>, ef: Record<string, unknown>, keys: readonly string[]): unknown {
+  for (const k of keys) if (isValidValue(rec[k])) return rec[k];
   for (const k of keys) {
     if (k in rec && (rec[k] === '' || rec[k] === null)) continue;
-    if (ef[k] === null) continue;
-    if (isValidValue(ef[k])) return ef[k];
+    if (ef[k] !== null && isValidValue(ef[k])) return ef[k];
   }
   return undefined;
 }
 
 const RELATIONAL_IDENTIFIER_KEY_MAP: Readonly<Record<string, string>> = {
-  doi: 'doi',
-  arxiv: 'arxivId',
-  arxivid: 'arxivId',
-  archiveid: 'arxivId',
-  pmid: 'pmid',
-  pmcid: 'pmcid',
-  isbn: 'isbn',
-  issn: 'issn',
+  doi: 'doi', arxiv: 'arxivId', arxivid: 'arxivId', archiveid: 'arxivId', pmid: 'pmid', pmcid: 'pmcid', isbn: 'isbn', issn: 'issn',
 };
 
 const IDENTIFIER_UPPER_ALIAS_MAP: Readonly<Record<string, readonly string[]>> = {
-  doi: ['DOI'],
-  arxivId: ['archiveID', 'archiveId'],
-  pmid: ['PMID'],
-  pmcid: ['PMCID'],
-  isbn: ['ISBN'],
-  issn: ['ISSN'],
+  doi: ['DOI'], arxivId: ['archiveID', 'archiveId'], pmid: ['PMID'], pmcid: ['PMCID'], isbn: ['ISBN'], issn: ['ISSN'],
 };
 
-export function hydrateIdentifiersFromRelationalArray(
-  rec: Record<string, unknown>,
-  ef: Record<string, unknown>,
-): void {
+export function hydrateIdentifiersFromRelationalArray(rec: Record<string, unknown>, ef: Record<string, unknown>): void {
   const identifiers = Array.isArray(rec.identifiers) ? rec.identifiers : [];
-  if (identifiers.length === 0) return;
-
   for (const rawIdent of identifiers) {
     if (!rawIdent || typeof rawIdent !== 'object') continue;
     const ident = rawIdent as { type?: unknown; identifierType?: unknown; value?: unknown };
     const rawType = typeof ident.type === 'string' ? ident.type : typeof ident.identifierType === 'string' ? ident.identifierType : '';
-    const normType = rawType.trim().toLowerCase().replace(/[\s_-]+/g, '');
-    const targetKey = RELATIONAL_IDENTIFIER_KEY_MAP[normType];
+    const targetKey = RELATIONAL_IDENTIFIER_KEY_MAP[rawType.trim().toLowerCase().replace(/[\s_-]+/g, '')];
     if (!targetKey) continue;
-
     const rawValue = typeof ident.value === 'string' ? ident.value.trim() : '';
     if (!isValidValue(rawValue)) continue;
 
@@ -196,12 +96,9 @@ export function hydrateIdentifiersFromRelationalArray(
       aliases.some((alias) => (alias in rec && (rec[alias] === null || rec[alias] === '')) || (alias in ef && (ef[alias] === null || ef[alias] === '')));
     if (isTombstoned) continue;
 
-    const hasExisting =
-      isValidValue(rec[targetKey]) ||
-      isValidValue(ef[targetKey]) ||
-      aliases.some((alias) => isValidValue(rec[alias]) || isValidValue(ef[alias]));
-    if (hasExisting) continue;
-
+    if (isValidValue(rec[targetKey]) || isValidValue(ef[targetKey]) || aliases.some((alias) => isValidValue(rec[alias]) || isValidValue(ef[alias]))) {
+      continue;
+    }
     ef[targetKey] = rawValue;
     rec[targetKey] = rawValue;
   }
@@ -223,6 +120,13 @@ export function mergeRawItemPartials(rec: Record<string, unknown>): {
   const clearedOrTombstonedKeys = new Set<string>();
   for (const k of Object.keys(rec)) {
     if (rec[k] === '' || rec[k] === null) clearedOrTombstonedKeys.add(k);
+  }
+  if (Array.isArray(rec.tags) || Array.isArray(rec.itemTags)) {
+    clearedOrTombstonedKeys.add('tags');
+    clearedOrTombstonedKeys.add('keywords');
+    clearedOrTombstonedKeys.add('labels');
+    clearedOrTombstonedKeys.add('zoteroTags');
+    clearedOrTombstonedKeys.add('keywordsList');
   }
   for (const k of Object.keys(rawExtraFields)) {
     if (rawExtraFields[k] === null) clearedOrTombstonedKeys.add(k);
@@ -299,17 +203,10 @@ export function getAssignedCollectionIds(item: Partial<Item> | null | undefined)
 }
 
 export interface ProvisionalUploadItemInput {
-  id: string;
-  filename?: string;
-  fileName?: string;
-  extractedTitle?: string;
-  fileSize?: number;
-  mimeType?: string;
-  fileUrl?: string;
+  id: string; filename?: string; fileName?: string; extractedTitle?: string;
+  fileSize?: number; mimeType?: string; fileUrl?: string;
   status: 'uploading' | 'extracting' | 'completed' | 'error' | 'UPLOADING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED';
-  progress: number;
-  error?: string;
-  createdAt: string;
+  progress: number; error?: string; createdAt: string;
 }
 
 export function createProvisionalUploadItem(
@@ -322,51 +219,28 @@ export function createProvisionalUploadItem(
   const isExtracting = p.status === 'extracting' || p.status === 'PROCESSING';
   return {
     ...EMPTY_BACKEND_ITEM_DEFAULTS,
-    id: p.id,
-    title,
-    itemType: 'journalArticle',
+    id: p.id, title, itemType: 'journalArticle',
     authors: isExtracting ? ['Processing metadata...'] : ['Uploading raw file...'],
-    year: null,
-    scopeId: scopeId ?? null,
+    year: null, scopeId: scopeId ?? null,
     collectionIds: collectionId ? [collectionId] : [],
-    attachments: [
-      {
-        id: `att-${p.id}`,
-        filename: rawName,
-        size: p.fileSize ?? 0,
-        mimeType: p.mimeType || 'application/pdf',
-        url: p.fileUrl || '',
-        linkMode: 'imported_file',
-        attachmentType: 'supplementary',
-      },
-    ],
-    hasFile: true,
-    fileCount: 1,
-    attachmentCount: 1,
-    createdAt: p.createdAt,
-    dateAdded: p.createdAt,
-    _isProcessing: true,
-    _processingStatus: p.status,
-    _processingProgress: p.progress,
-    _processingError: p.error,
+    attachments: [{
+      id: `att-${p.id}`, filename: rawName, size: p.fileSize ?? 0,
+      mimeType: p.mimeType || 'application/pdf', url: p.fileUrl || '',
+      linkMode: 'imported_file', attachmentType: 'supplementary',
+    }],
+    hasFile: true, fileCount: 1, attachmentCount: 1,
+    createdAt: p.createdAt, dateAdded: p.createdAt,
+    _isProcessing: true, _processingStatus: p.status,
+    _processingProgress: p.progress, _processingError: p.error,
   };
 }
 
 const CONTAINER_VENUE_FIELD_BY_TYPE: Readonly<Record<string, string>> = {
-  conferencePaper: 'proceedingsTitle',
-  bookSection: 'bookTitle',
-  webpage: 'websiteTitle',
-  blogPost: 'blogTitle',
-  forumPost: 'forumTitle',
-  dictionaryEntry: 'dictionaryTitle',
-  encyclopediaArticle: 'encyclopediaTitle',
-  presentation: 'sessionTitle',
-  case: 'reporter',
-  statute: 'code',
-  tvBroadcast: 'programTitle',
-  radioBroadcast: 'programTitle',
-  podcast: 'seriesTitle',
-  audioRecording: 'seriesTitle',
+  conferencePaper: 'proceedingsTitle', bookSection: 'bookTitle', webpage: 'websiteTitle',
+  blogPost: 'blogTitle', forumPost: 'forumTitle', dictionaryEntry: 'dictionaryTitle',
+  encyclopediaArticle: 'encyclopediaTitle', presentation: 'sessionTitle', case: 'reporter',
+  statute: 'code', tvBroadcast: 'programTitle', radioBroadcast: 'programTitle',
+  podcast: 'seriesTitle', audioRecording: 'seriesTitle',
 };
 
 export function projectContainerAndVenueTitles(
@@ -559,35 +433,106 @@ function projectCanonicalBaseFields(
     mapped.attachments = rec.files;
   }
 
-  const rawTagCandidates = [
-    ...(Array.isArray(rec.tags) ? rec.tags : []),
-    ...(Array.isArray(rec.itemTags) ? rec.itemTags : []),
-    ...(Array.isArray(ef.tags) ? (ef.tags as unknown[]) : []),
-  ];
-  if (rawTagCandidates.length > 0) {
+  const hasAuthoritativeTags = Array.isArray(rec.tags) || Array.isArray(rec.itemTags);
+  const rawTagCandidates = hasAuthoritativeTags
+    ? [
+        ...(Array.isArray(rec.itemTags) ? rec.itemTags : []),
+        ...(Array.isArray(rec.tags) ? rec.tags : []),
+      ]
+    : [
+        ...(Array.isArray(ef.tags) ? (ef.tags as unknown[]) : []),
+        ...(Array.isArray(ef.keywords) ? (ef.keywords as unknown[]) : []),
+      ];
+
+  if (hasAuthoritativeTags || rawTagCandidates.length > 0) {
     const seenTags = new Set<string>();
     const cleanTags: string[] = [];
+    const structuredItemTags: Array<{
+      id?: string;
+      tagId?: string;
+      name: string;
+      type: 'manual' | 'automatic';
+      color?: string;
+      shortcut?: number | null;
+      tag?: {
+        id?: string;
+        name: string;
+        type: 'manual' | 'automatic';
+        color?: string;
+        shortcut?: number | null;
+      };
+    }> = [];
+
     for (const entry of rawTagCandidates) {
       let tagName = '';
-      if (typeof entry === 'string') tagName = entry.trim();
-      else if (entry && typeof entry === 'object') {
-        const obj = entry as { name?: unknown; tag?: unknown };
+      let tagType: 'manual' | 'automatic' = 'manual';
+      let tagColor: string | undefined;
+      let tagShortcut: number | null | undefined;
+      let tagId: string | undefined;
+      let itemTagId: string | undefined;
+
+      if (typeof entry === 'string') {
+        tagName = entry.trim();
+      } else if (entry && typeof entry === 'object') {
+        const obj = entry as {
+          id?: unknown;
+          tagId?: unknown;
+          name?: unknown;
+          type?: unknown;
+          color?: unknown;
+          shortcut?: unknown;
+          tag?: unknown;
+        };
+        if (typeof obj.id === 'string') itemTagId = obj.id;
+        if (typeof obj.tagId === 'string') tagId = obj.tagId;
+        const innerTag = obj.tag && typeof obj.tag === 'object' ? (obj.tag as Record<string, unknown>) : null;
         if (typeof obj.name === 'string') tagName = obj.name.trim();
         else if (typeof obj.tag === 'string') tagName = obj.tag.trim();
-        else if (obj.tag && typeof obj.tag === 'object' && typeof (obj.tag as { name?: unknown }).name === 'string') {
-          tagName = ((obj.tag as { name: string }).name || '').trim();
+        else if (innerTag && typeof innerTag.name === 'string') tagName = innerTag.name.trim();
+
+        const rawType = obj.type ?? innerTag?.type;
+        if (rawType === 'automatic' || rawType === 1 || rawType === '1') {
+          tagType = 'automatic';
         }
+        const rawColor = obj.color ?? innerTag?.color;
+        if (typeof rawColor === 'string' && rawColor.trim()) tagColor = rawColor.trim();
+        const rawShortcut = obj.shortcut ?? innerTag?.shortcut;
+        if (typeof rawShortcut === 'number') tagShortcut = rawShortcut;
+        if (!tagId && innerTag && typeof innerTag.id === 'string') tagId = innerTag.id;
       }
+
       if (tagName) {
         const lower = tagName.toLowerCase();
         if (!seenTags.has(lower)) {
           seenTags.add(lower);
           cleanTags.push(tagName);
+          const resolvedTagId = tagId || itemTagId;
+          structuredItemTags.push({
+            ...(itemTagId ? { id: itemTagId } : {}),
+            ...(resolvedTagId ? { tagId: resolvedTagId } : {}),
+            name: tagName,
+            type: tagType,
+            ...(tagColor ? { color: tagColor } : {}),
+            ...(tagShortcut !== undefined ? { shortcut: tagShortcut } : {}),
+            tag: {
+              ...(resolvedTagId ? { id: resolvedTagId } : {}),
+              name: tagName,
+              type: tagType,
+              ...(tagColor ? { color: tagColor } : {}),
+              ...(tagShortcut !== undefined ? { shortcut: tagShortcut } : {}),
+            },
+          });
         }
       }
     }
     mapped.tags = cleanTags;
-    if (!Array.isArray(mapped.keywords) || mapped.keywords.length === 0) mapped.keywords = cleanTags;
+    mapped.keywords = cleanTags;
+    mapped.itemTags = structuredItemTags;
+    if (mapped.extraFields && typeof mapped.extraFields === 'object') {
+      const nextEf = mapped.extraFields as Record<string, unknown>;
+      nextEf.tags = cleanTags;
+      nextEf.keywords = cleanTags;
+    }
   }
 
   if (!Array.isArray(mapped.collectionIds) || mapped.collectionIds.length === 0) {

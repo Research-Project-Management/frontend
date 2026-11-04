@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import {
   ChevronDown,
   ChevronUp,
@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
 import { TAG_PALETTE_COLORS } from "@/features/library/core/coordinator/facet-filter.coordinator";
+import { cleanSingleFrontendTag } from "@/features/library/domain/metadata-mapper";
 import type { TagWithCount } from "@/features/library/domain/types/core.types";
 
 export interface FilterTagsSectionProps {
@@ -51,6 +52,7 @@ export interface FilterTagsSectionProps {
   onDeleteTag?: (tagId: string) => Promise<unknown>;
   onDeleteAutomaticTags?: () => Promise<unknown>;
   isDeletingAutomatic?: boolean;
+  onSplitTag?: (params: { tagId: string; parts: string[] }) => Promise<unknown>;
 }
 
 export function FilterTagsSection({
@@ -64,12 +66,14 @@ export function FilterTagsSection({
   onDeleteTag,
   onDeleteAutomaticTags,
   isDeletingAutomatic = false,
+  onSplitTag,
 }: FilterTagsSectionProps) {
   const [tagsOpen, setTagsOpen] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [newTagName, setNewTagName] = useState("");
   const [renamingTagId, setRenamingTagId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const skipBlurCommitRef = useRef(false);
 
   const activeTagSet = useMemo(
     () => new Set(activeTags.map((t) => t.toLowerCase())),
@@ -77,26 +81,34 @@ export function FilterTagsSection({
   );
 
   const handleCreate = async () => {
-    const trimmed = newTagName.trim();
+    if (skipBlurCommitRef.current) {
+      skipBlurCommitRef.current = false;
+      return;
+    }
+    const cleaned = cleanSingleFrontendTag(newTagName.trim());
     setIsCreating(false);
     setNewTagName("");
-    if (!trimmed || !onCreateTag) return;
+    if (!cleaned || !onCreateTag) return;
     try {
-      await onCreateTag({ name: trimmed, type: "manual" });
+      await onCreateTag({ name: cleaned, type: "manual" });
     } catch {
       // Handled by mutation toast
     }
   };
 
   const handleCommitRename = async (tag: TagWithCount) => {
-    const trimmed = renameValue.trim();
+    if (skipBlurCommitRef.current) {
+      skipBlurCommitRef.current = false;
+      return;
+    }
+    const cleaned = cleanSingleFrontendTag(renameValue.trim());
     setRenamingTagId(null);
     setRenameValue("");
-    if (!trimmed || trimmed === tag.name || !onUpdateTag) return;
+    if (!cleaned || cleaned === tag.name || !onUpdateTag) return;
     try {
       await onUpdateTag({
         tagId: tag.id,
-        data: { name: trimmed },
+        data: { name: cleaned },
       });
     } catch {
       // Handled by mutation toast
@@ -104,35 +116,14 @@ export function FilterTagsSection({
   };
 
   const handleSplitTag = async (tag: TagWithCount) => {
-    if (!onCreateTag) return;
+    if (!onSplitTag) return;
     const parts = tag.name
       .split(/[;,]/)
       .map((p) => p.trim())
       .filter(Boolean);
     if (parts.length <= 1) return;
     try {
-      if (onUpdateTag) {
-        await onUpdateTag({
-          tagId: tag.id,
-          data: { name: parts[0] },
-        });
-        for (const part of parts.slice(1)) {
-          await onCreateTag({
-            name: part,
-            color: tag.color,
-            type: "manual",
-          });
-        }
-      } else if (onDeleteTag) {
-        for (const part of parts) {
-          await onCreateTag({
-            name: part,
-            color: tag.color,
-            type: "manual",
-          });
-        }
-        await onDeleteTag(tag.id);
-      }
+      await onSplitTag({ tagId: tag.id, parts });
     } catch {
       // Handled by mutation toast
     }
@@ -309,8 +300,11 @@ export function FilterTagsSection({
                   e.stopPropagation();
                   if (e.key === "Enter") {
                     e.preventDefault();
+                    skipBlurCommitRef.current = false;
                     void handleCreate();
                   } else if (e.key === "Escape") {
+                    e.preventDefault();
+                    skipBlurCommitRef.current = true;
                     setIsCreating(false);
                     setNewTagName("");
                   }
@@ -343,8 +337,11 @@ export function FilterTagsSection({
                         e.stopPropagation();
                         if (e.key === "Enter") {
                           e.preventDefault();
+                          skipBlurCommitRef.current = false;
                           void handleCommitRename(tag);
                         } else if (e.key === "Escape") {
+                          e.preventDefault();
+                          skipBlurCommitRef.current = true;
                           setRenamingTagId(null);
                           setRenameValue("");
                         }
@@ -529,7 +526,7 @@ export function FilterTagsSection({
                           <span>Rename / Merge Tag...</span>
                         </DropdownMenuItem>
 
-                        {/[;,]/.test(tag.name) && (
+                        {onSplitTag && /[;,]/.test(tag.name) && (
                           <DropdownMenuItem
                             onClick={() => void handleSplitTag(tag)}
                             className="gap-2 text-xs cursor-pointer"

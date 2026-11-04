@@ -1,34 +1,14 @@
 'use client';
 
 import React, { useState } from 'react';
-import {
-  Trash2,
-  Loader2,
-  ShieldAlert,
-  ExternalLink,
-  AlertTriangle,
-  Check,
-  Copy,
-  Download,
-  FileJson,
-} from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/shared/components/ui/dialog';
+import { Trash2, Loader2, ShieldAlert, ExternalLink, AlertTriangle, Check, Copy, Download, FileJson } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/lib/utils';
 import type { Item } from '@/features/library/domain/types/core.types';
-import type { ReaderDocument } from '@/features/library/domain/types/reader.schema';
 import { getRetractionInfo, safeHttpUrl } from '@/features/library/domain/system-views.policy';
-import {
-  useReaderClipboard,
-  useReaderFileDownload,
-} from '@/features/library/core/coordinator/reader/use-reader';
+import type { ReaderDocument } from '@/features/library/domain/types/reader.schema';
+import { useReaderClipboard, useReaderFileDownload } from '@/features/library/core/coordinator/reader/use-reader';
 import { useExportItemCitationQuery } from '@/features/library/sdk/queries/extraction.queries';
 
 export interface DeleteModalProps {
@@ -136,6 +116,8 @@ export function DeleteModal({
     </Dialog>
   );
 }
+
+export default DeleteModal;
 
 export interface RetractionNoticeModalProps {
   open: boolean;
@@ -467,5 +449,3 @@ export function PaperBibtexDialog({
 }
 
 export const BibtexModal = PaperBibtexDialog;
-
-export default DeleteModal;

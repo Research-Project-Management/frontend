@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback, useDeferredValue, useRef } from 'react';
 import {
   X,
   Loader2,
@@ -13,6 +13,7 @@ import {
   Download,
   User,
   ArrowUpDown,
+  Filter,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import {
@@ -31,6 +32,7 @@ import type {
   ReaderDocument,
   ReaderAnnotation,
   AnnotationFormData,
+  AnnotationType,
 } from '@/features/library/domain/types/reader.schema';
 import {
   extractAnnotationFacets,
@@ -63,7 +65,14 @@ export interface AnnotationsPanelProps {
   onUpdateAnnotation?: (
     annotationId: string,
     expectedVersion: number | undefined,
-    dto: { color?: string; comment?: string; quoteText?: string; tags?: string[] },
+    dto: {
+      type?: AnnotationType;
+      color?: string;
+      comment?: string;
+      quoteText?: string;
+      pageLabel?: string | null;
+      tags?: string[];
+    },
   ) => Promise<unknown>;
   onDeleteAnnotation?: (annotationId: string, expectedVersion?: number) => Promise<unknown>;
   onExtractNotes?: (itemId: string) => Promise<unknown> | void;
@@ -80,6 +89,7 @@ const EMPTY_ANNOTATIONS: ReaderAnnotation[] = [];
 
 export function AnnotationsPanel({
   paper,
+  scopeId,
   attachmentId,
   annotations: propAnnotations,
   searchQuery: propSearchQuery,
@@ -116,14 +126,18 @@ export function AnnotationsPanel({
 
   const [internalSearchQuery, setInternalSearchQuery] = useState('');
   const searchQuery = propSearchQuery !== undefined ? propSearchQuery : internalSearchQuery;
+  const deferredSearchQuery = useDeferredValue(searchQuery);
   const setSearchQuery = onSearchQueryChange ?? setInternalSearchQuery;
   const [selectedColor, setSelectedColor] = useState<string>('all');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [typeFilter, setTypeFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'position' | 'newest' | 'oldest' | 'color'>('position');
   const [authorFilter, setAuthorFilter] = useState<'all' | string>('all');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [lastSelectedId, setLastSelectedId] = useState<string | null>(null);
+  const panelContainerRef = useRef<HTMLDivElement | null>(null);
+  const isPanelActiveRef = useRef<boolean>(false);
 
   const selectedIdsArray = useMemo(() => Array.from(selectedIds), [selectedIds]);
 
@@ -135,79 +149,137 @@ export function AnnotationsPanel({
   const filteredAnnotations = useMemo(
     () =>
       filterAndSortAnnotations(annotations, {
-        searchQuery,
+        searchQuery: deferredSearchQuery,
         selectedColor,
         selectedTag,
         authorFilter,
+        typeFilter,
         sortBy,
       }),
-    [annotations, searchQuery, selectedColor, selectedTag, authorFilter, sortBy],
+    [annotations, deferredSearchQuery, selectedColor, selectedTag, authorFilter, typeFilter, sortBy],
   );
 
-  const handleSaveEdit = async (annotation: ReaderAnnotation, data: AnnotationFormData) => {
-    if (!effectiveAttachmentId || !onUpdateAnnotation) return;
-    try {
-      await onUpdateAnnotation(annotation.id, annotation.version, {
-        comment: data.comment?.trim(),
-        quoteText: data.quoteText?.trim(),
-        color: data.color || annotation.color,
-        tags: data.tags,
-      });
-      setEditingId(null);
-    } catch {
-      /* Handled in hook */
-    }
-  };
-
-  const handleDelete = async (annotation: ReaderAnnotation) => {
-    if (!effectiveAttachmentId) return;
-    try {
-      if (onDeleteAnnotation) await onDeleteAnnotation(annotation.id, annotation.version);
-      else if (onBatchDelete) await onBatchDelete([annotation.id]);
-      setDeletingId(null);
-    } catch {
-      /* Handled in hook */
-    }
-  };
-
-  const handleJumpToPage = (pageIndex?: number, annotationId?: string) => {
-    if (pageIndex !== undefined && onNavigateToPage) onNavigateToPage(pageIndex + 1, annotationId);
-  };
-
-  const handleCardClick = (e: React.MouseEvent, annotation: ReaderAnnotation) => {
-    if (editingId === annotation.id) return;
-    if (e.ctrlKey || e.metaKey) {
-      if (onToggleSelect) onToggleSelect(annotation.id);
-      else if (onSelectIds) {
-        const next = new Set(selectedIds);
-        if (next.has(annotation.id)) next.delete(annotation.id);
-        else next.add(annotation.id);
-        onSelectIds(next);
+  const handleSaveEdit = useCallback(
+    async (annotation: ReaderAnnotation, data: AnnotationFormData) => {
+      if (!effectiveAttachmentId || !onUpdateAnnotation) return;
+      try {
+        await onUpdateAnnotation(annotation.id, annotation.version, {
+          comment: data.comment?.trim(),
+          quoteText: data.quoteText?.trim(),
+          color: data.color || annotation.color,
+          pageLabel:
+            data.pageLabel !== undefined
+              ? data.pageLabel.trim() || null
+              : annotation.pageLabel,
+          tags: data.tags,
+        });
+        setEditingId(null);
+      } catch {
+        /* Handled in hook */
       }
-      setLastSelectedId(annotation.id);
-    } else if (e.shiftKey && lastSelectedId && onSelectIds) {
-      const next = computeRangeSelectedAnnotationIds(
-        filteredAnnotations,
-        selectedIds,
-        lastSelectedId,
-        annotation.id,
-      );
-      if (next) onSelectIds(next);
-    } else {
-      onSelectIds?.(new Set([annotation.id]));
-      setLastSelectedId(annotation.id);
-      handleJumpToPage(annotation.pageIndex, annotation.id);
-    }
-  };
+    },
+    [effectiveAttachmentId, onUpdateAnnotation],
+  );
 
-  const handleCardContextMenu = (annotation: ReaderAnnotation) => {
-    if (!selectedIds.has(annotation.id) && onSelectIds) {
-      onSelectIds(new Set([annotation.id]));
-      setLastSelectedId(annotation.id);
-    }
-  };
+  const handleChangeType = useCallback(
+    async (
+      annotation: ReaderAnnotation,
+      nextType: 'highlight' | 'underline' | 'strike',
+    ) => {
+      if (!effectiveAttachmentId || !onUpdateAnnotation) return;
+      try {
+        await onUpdateAnnotation(annotation.id, annotation.version, {
+          type: nextType,
+        });
+      } catch {
+        /* Handled in hook */
+      }
+    },
+    [effectiveAttachmentId, onUpdateAnnotation],
+  );
+
+  const handleDelete = useCallback(
+    async (annotation: ReaderAnnotation) => {
+      if (!effectiveAttachmentId) return;
+      try {
+        if (onDeleteAnnotation)
+          await onDeleteAnnotation(annotation.id, annotation.version);
+        else if (onBatchDelete) await onBatchDelete([annotation.id]);
+        setDeletingId(null);
+      } catch {
+        /* Handled in hook */
+      }
+    },
+    [effectiveAttachmentId, onDeleteAnnotation, onBatchDelete],
+  );
+
+  const handleJumpToPage = useCallback(
+    (pageIndex?: number, annotationId?: string) => {
+      if (pageIndex !== undefined && onNavigateToPage)
+        onNavigateToPage(pageIndex + 1, annotationId);
+    },
+    [onNavigateToPage],
+  );
+
+  const handleCancelEdit = useCallback(() => setEditingId(null), []);
+  const handleCancelDelete = useCallback(() => setDeletingId(null), []);
+
+  const handleCardClick = useCallback(
+    (e: React.MouseEvent, annotation: ReaderAnnotation) => {
+      if (editingId === annotation.id) return;
+      if (e.ctrlKey || e.metaKey) {
+        if (onToggleSelect) onToggleSelect(annotation.id);
+        else if (onSelectIds) {
+          const next = new Set(selectedIds);
+          if (next.has(annotation.id)) next.delete(annotation.id);
+          else next.add(annotation.id);
+          onSelectIds(next);
+        }
+        setLastSelectedId(annotation.id);
+      } else if (e.shiftKey && lastSelectedId && onSelectIds) {
+        const next = computeRangeSelectedAnnotationIds(
+          filteredAnnotations,
+          selectedIds,
+          lastSelectedId,
+          annotation.id,
+        );
+        if (next) onSelectIds(next);
+      } else {
+        onSelectIds?.(new Set([annotation.id]));
+        setLastSelectedId(annotation.id);
+        handleJumpToPage(annotation.pageIndex, annotation.id);
+      }
+    },
+    [
+      editingId,
+      onToggleSelect,
+      onSelectIds,
+      selectedIds,
+      lastSelectedId,
+      filteredAnnotations,
+      handleJumpToPage,
+    ],
+  );
+
+  const handleCardContextMenu = useCallback(
+    (annotation: ReaderAnnotation) => {
+      if (!selectedIds.has(annotation.id) && onSelectIds) {
+        onSelectIds(new Set([annotation.id]));
+        setLastSelectedId(annotation.id);
+      }
+    },
+    [selectedIds, onSelectIds],
+  );
 
   const handleContainerKeyDown = (e: React.KeyboardEvent) => {
+    const container = panelContainerRef.current;
+    const activeEl = typeof document !== 'undefined' ? document.activeElement : null;
+    if (
+      !isPanelActiveRef.current &&
+      (!container || !activeEl || !container.contains(activeEl))
+    ) {
+      return;
+    }
     const target = e.target as HTMLElement | null;
     const tag = target?.tagName?.toLowerCase();
     if (tag === 'input' || tag === 'textarea' || target?.isContentEditable) return;
@@ -226,23 +298,37 @@ export function AnnotationsPanel({
     selectedColor !== 'all' ||
     selectedTag !== null ||
     authorFilter !== 'all' ||
+    typeFilter !== 'all' ||
     searchQuery.trim() !== '';
 
   const handleResetFilters = () => {
     setSelectedColor('all');
     setSelectedTag(null);
     setAuthorFilter('all');
+    setTypeFilter('all');
     setSearchQuery('');
   };
 
   return (
     <div
+      ref={panelContainerRef}
       tabIndex={0}
+      onMouseDown={() => {
+        isPanelActiveRef.current = true;
+      }}
+      onFocusCapture={() => {
+        isPanelActiveRef.current = true;
+      }}
+      onBlurCapture={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+          isPanelActiveRef.current = false;
+        }
+      }}
       onKeyDown={handleContainerKeyDown}
       className="flex h-full flex-col bg-background min-h-0 select-none outline-none focus-visible:ring-0 font-sans"
     >
       {/* ── TOP HEADER: Search Bar & Actions (.sidebar-toolbar) ── */}
-      {annotations.length > 0 && (
+      {(annotations.length > 0 || !hideSearchBar || Boolean(onImportExternal)) && (
         <div className="border-b border-border p-2 bg-background space-y-1.5 shrink-0">
           {!hideSearchBar && (
             <div className="flex items-center gap-1">
@@ -384,6 +470,49 @@ export function AnnotationsPanel({
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
+                    className={cn(
+                      'size-5 flex items-center justify-center rounded text-10 font-sans text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                      typeFilter !== 'all' && 'text-primary bg-primary/10',
+                    )}
+                    title="Filter by annotation type"
+                    aria-label="Filter by annotation type"
+                  >
+                    <Filter className="size-2.5 shrink-0" strokeWidth={1.5} />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  className="w-36 text-xs p-1 bg-popover border border-border shadow-raised-200 rounded-lg z-50 font-sans"
+                >
+                  {(
+                    [
+                      ['all', 'All Types'],
+                      ['highlight', 'Highlights'],
+                      ['underline', 'Underlines'],
+                      ['note', 'Sticky Notes'],
+                      ['rect', 'Area / Image'],
+                      ['ink', 'Freehand Ink'],
+                      ['text', 'Text Notes'],
+                    ] as const
+                  ).map(([val, label]) => (
+                    <DropdownMenuItem
+                      key={val}
+                      onClick={() => setTypeFilter(val)}
+                      className="cursor-pointer text-11 flex items-center justify-between text-foreground"
+                    >
+                      <span>{label}</span>
+                      {typeFilter === val && (
+                        <Check className="size-3 text-primary shrink-0" strokeWidth={1.5} />
+                      )}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
                     className="size-5 flex items-center justify-center text-10 font-sans text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
                     title="Sort annotations"
                   >
@@ -513,6 +642,9 @@ export function AnnotationsPanel({
                 <AnnotationsPanelCard
                   key={annotation.id}
                   annotation={annotation}
+                  paper={paper}
+                  scopeId={scopeId}
+                  attachmentId={effectiveAttachmentId}
                   isEditing={editingId === annotation.id}
                   isDeletingCurrent={deletingId === annotation.id}
                   isSelected={isSelected}
@@ -522,15 +654,16 @@ export function AnnotationsPanel({
                   onCardContextMenu={handleCardContextMenu}
                   onJumpToPage={handleJumpToPage}
                   onStartEdit={setEditingId}
-                  onCancelEdit={() => setEditingId(null)}
+                  onCancelEdit={handleCancelEdit}
                   onSaveEdit={handleSaveEdit}
                   onStartDelete={setDeletingId}
-                  onCancelDelete={() => setDeletingId(null)}
+                  onCancelDelete={handleCancelDelete}
                   onConfirmDelete={handleDelete}
                   onAddToNote={onAddToNote}
                   onAskAi={onAskAi}
                   onBatchAddToNote={onBatchAddToNote}
                   onBatchChangeColor={onBatchChangeColor}
+                  onChangeType={handleChangeType}
                   onBatchDelete={onBatchDelete}
                 />
               );

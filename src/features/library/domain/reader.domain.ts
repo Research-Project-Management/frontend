@@ -11,7 +11,6 @@ import type {
   AnnotationRect,
   DocumentFulltext,
 } from '@/features/library/domain/types/reader.schema';
-import { generateCitationKey } from './citations';
 import {
   normalizeReaderAuthors,
   getSurnameForCitation,
@@ -28,13 +27,12 @@ import {
   isPageInVirtualWindow,
   calculatePageAspectRatio,
   normalizeRectCoordinates,
+  cropCanvasSelectionToDataUrl,
   type ViewportParams,
   type PdfTextMatch,
   type PdfSearchCycleResult,
   type PdfOutlineNode,
 } from './reader-search-outline';
-
-export const generateReaderCitationKey = generateCitationKey;
 
 export {
   normalizeReaderAuthors,
@@ -52,6 +50,7 @@ export {
   isPageInVirtualWindow,
   calculatePageAspectRatio,
   normalizeRectCoordinates,
+  cropCanvasSelectionToDataUrl,
   type ViewportParams,
   type PdfTextMatch,
   type PdfSearchCycleResult,
@@ -59,62 +58,14 @@ export {
 };
 
 export const ANNOTATION_COLORS = {
-  yellow: {
-    id: 'yellow',
-    name: 'Yellow',
-    semanticLabel: 'General / Important',
-    bg: 'rgba(255, 212, 0, 0.35)',
-    border: '#ffd400',
-  },
-  red: {
-    id: 'red',
-    name: 'Red',
-    semanticLabel: 'Disagreement / Critical Error',
-    bg: 'rgba(255, 102, 102, 0.35)',
-    border: '#ff6666',
-  },
-  green: {
-    id: 'green',
-    name: 'Green',
-    semanticLabel: 'Methodology / Supporting Evidence',
-    bg: 'rgba(95, 178, 54, 0.35)',
-    border: '#5fb236',
-  },
-  blue: {
-    id: 'blue',
-    name: 'Blue',
-    semanticLabel: 'Definition / Background',
-    bg: 'rgba(46, 168, 229, 0.35)',
-    border: '#2ea8e5',
-  },
-  purple: {
-    id: 'purple',
-    name: 'Purple',
-    semanticLabel: 'Future Work / Follow-up',
-    bg: 'rgba(162, 138, 229, 0.35)',
-    border: '#a28ae5',
-  },
-  magenta: {
-    id: 'magenta',
-    name: 'Magenta',
-    semanticLabel: 'Results / Key Findings',
-    bg: 'rgba(229, 110, 238, 0.35)',
-    border: '#e56eee',
-  },
-  orange: {
-    id: 'orange',
-    name: 'Orange',
-    semanticLabel: 'Metrics / Quantitative Data',
-    bg: 'rgba(241, 152, 55, 0.35)',
-    border: '#f19837',
-  },
-  gray: {
-    id: 'gray',
-    name: 'Gray',
-    semanticLabel: 'Secondary / Archived',
-    bg: 'rgba(170, 170, 170, 0.35)',
-    border: '#aaaaaa',
-  },
+  yellow: { id: 'yellow', name: 'Yellow', semanticLabel: 'General / Important', bg: 'rgba(255, 212, 0, 0.35)', border: '#ffd400' },
+  red: { id: 'red', name: 'Red', semanticLabel: 'Disagreement / Critical Error', bg: 'rgba(255, 102, 102, 0.35)', border: '#ff6666' },
+  green: { id: 'green', name: 'Green', semanticLabel: 'Methodology / Supporting Evidence', bg: 'rgba(95, 178, 54, 0.35)', border: '#5fb236' },
+  blue: { id: 'blue', name: 'Blue', semanticLabel: 'Definition / Background', bg: 'rgba(46, 168, 229, 0.35)', border: '#2ea8e5' },
+  purple: { id: 'purple', name: 'Purple', semanticLabel: 'Future Work / Follow-up', bg: 'rgba(162, 138, 229, 0.35)', border: '#a28ae5' },
+  magenta: { id: 'magenta', name: 'Magenta', semanticLabel: 'Results / Key Findings', bg: 'rgba(229, 110, 238, 0.35)', border: '#e56eee' },
+  orange: { id: 'orange', name: 'Orange', semanticLabel: 'Metrics / Quantitative Data', bg: 'rgba(241, 152, 55, 0.35)', border: '#f19837' },
+  gray: { id: 'gray', name: 'Gray', semanticLabel: 'Secondary / Archived', bg: 'rgba(170, 170, 170, 0.35)', border: '#aaaaaa' },
 } as const;
 
 export type AnnotationColorId = keyof typeof ANNOTATION_COLORS;
@@ -163,7 +114,7 @@ export interface Box2DInput {
  * Projects an arbitrary 2D box into $[0, M_x] \times [0, M_y]$ with guaranteed
  * ordered intervals $0 \le x_1 \le x_2 \le M_x$ and $0 \le y_1 \le y_2 \le M_y$.
  */
-export function projectBox2D(
+function projectBox2D(
   r: Box2DInput,
   maxBoundX = 1,
   maxBoundY = maxBoundX,
@@ -396,11 +347,16 @@ export const PdfAnnotationEngine = {
 
       if (q) {
         const selectedText = String((a as Record<string, unknown>).selectedText || '').toLowerCase();
+        const pageNumStr = String(a.pageNumber ?? ((a.pageIndex ?? 0) + 1));
+        const pageLabelStr = (a.pageLabel || '').toLowerCase();
         const textMatch =
           (a.quoteText || '').toLowerCase().includes(q) ||
           selectedText.includes(q) ||
           (a.text || '').toLowerCase().includes(q) ||
           (a.comment || '').toLowerCase().includes(q) ||
+          pageNumStr === q ||
+          `p. ${pageNumStr}` === q ||
+          (pageLabelStr && (pageLabelStr === q || `p. ${pageLabelStr}` === q)) ||
           itemTagNames.some((t) => t.includes(q));
         if (!textMatch) return false;
       }
@@ -422,30 +378,6 @@ export const PdfAnnotationEngine = {
     maxBound = 100,
   ): AnnotationRect {
     return projectBox2D(rect, maxBound);
-  },
-
-  denormalizeRect(
-    rect: AnnotationRect | { x: number; y: number; width: number; height: number },
-    pageWidth: number,
-    pageHeight: number,
-  ): { x: number; y: number; width: number; height: number; x1: number; y1: number; x2: number; y2: number } {
-    const norm = projectBox2D(rect as Box2DInput, 1);
-    const w = Math.max(0, pageWidth);
-    const h = Math.max(0, pageHeight);
-    const x1 = norm.x1 * w;
-    const y1 = norm.y1 * h;
-    const x2 = norm.x2 * w;
-    const y2 = norm.y2 * h;
-    return {
-      x: x1,
-      y: y1,
-      width: x2 - x1,
-      height: y2 - y1,
-      x1,
-      y1,
-      x2,
-      y2,
-    };
   },
 
   getColorConfig(colorId?: string): { bg: string; border: string; semanticLabel: string } {
@@ -472,7 +404,14 @@ export const PdfAnnotationEngine = {
       .map((a) => {
         const pageNum = a.pageNumber ?? (a.pageIndex !== undefined ? a.pageIndex + 1 : 1);
         const effAttId = attachmentId || a.attachmentId;
-        const citation = formatAnnotationCitation(paper, effAttId, pageNum, a.id, scopeId);
+        const citation = formatAnnotationCitation(
+          paper,
+          effAttId,
+          pageNum,
+          a.id,
+          scopeId,
+          a.pageLabel,
+        );
         const lines: string[] = [];
         const quote = (a.quoteText || a.text || '').trim();
         if (quote) {
@@ -652,8 +591,6 @@ export function resolveEpubOrSnapshot(
 
   return null;
 }
-
-export const resolveEpubOrSnapshotAttachment = resolveEpubOrSnapshot;
 
 export function buildReaderPaperUrl(
   itemId: string,

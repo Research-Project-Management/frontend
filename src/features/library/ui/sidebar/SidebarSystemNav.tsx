@@ -27,8 +27,8 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from '@/shared/components/ui/context-menu';
-import { SavedSearchListSection } from './SavedSearchListSection';
-import type { SavedSearch } from '@/features/library/domain/types/saved-searches.types';
+import { SavedSearchListSection } from './FeedsListSection';
+import type { SavedSearch } from '@/features/library/domain/types/ingestion.types';
 
 export interface SidebarResizerProps {
   width: number;

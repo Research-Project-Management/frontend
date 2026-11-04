@@ -1,227 +1,28 @@
-"use client";
+'use client';
 
-import React, { useRef } from "react";
-import { Bold, Italic, Heading3, List, Quote } from "lucide-react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/shared/components/ui/tooltip";
-import { Textarea } from "@/shared/components/ui/textarea";
-import { cn } from "@/shared/lib/utils";
+import React, { useRef, useMemo } from "react";
+import { Bold, Italic, Heading3, List, Quote, BookOpen, ExternalLink, Copy, CheckCircle2 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import { Textarea } from '@/shared/components/ui/textarea';
+import { normalizeCitationLinkHref, parseAnnotationDeepLinkUrl, extractStructuredDeepLinksFromMarkdown, tokenizeCitationDeepLinksForEditor, detokenizeCitationDeepLinksFromEditor, renderInlineMarkdown, FormattedNoteBody, getNoteDisplayTitle, getNotePreviewSnippet, type ParsedAnnotationDeepLink, type CompactCitationTokenEntry } from './FormattedNoteBody';
+import { useState, useEffect } from 'react';
+import { SchemaFieldDefinition } from '@/features/library/domain/types/core.types';
+import { isValidValue } from '@/features/library/domain/metadata-mapper';
+import { InlineField } from '@/features/library/ui/inspector/fields/GeneralFields';
 
-export interface ParsedAnnotationDeepLink {
-  pageNumber: number;
-  annotationId?: string;
-}
-
-/**
- * Extracts structured page and annotation deep-link parameters from a markdown URL
- * (`/library/papers/...?page=X&annotation=Y` or `flux://...?page=X&annotation=Y`).
- */
-export function parseAnnotationDeepLinkUrl(rawUrl: string): ParsedAnnotationDeepLink | null {
-  if (!rawUrl) return null;
-  const trimmed = rawUrl.trim();
-  if (
-    !trimmed.startsWith("/library/papers") &&
-    !trimmed.startsWith("flux://") &&
-    !trimmed.includes("/library/papers/")
-  ) {
-    return null;
-  }
-  const qIdx = trimmed.indexOf("?");
-  if (qIdx === -1) return null;
-  const search = new URLSearchParams(trimmed.slice(qIdx + 1));
-  const rawPage = search.get("page");
-  if (!rawPage) return null;
-  const pageNumber = parseInt(rawPage, 10);
-  if (!Number.isFinite(pageNumber) || pageNumber < 1) return null;
-  const annotationId = search.get("annotation") || undefined;
-  return { pageNumber, annotationId };
-}
-
-/**
- * Scans markdown content for structured citation deep-links (`[...](url?page=X&annotation=Y)`).
- */
-export function extractStructuredDeepLinksFromMarkdown(
-  content: string,
-): ParsedAnnotationDeepLink[] {
-  if (!content) return [];
-  const results: ParsedAnnotationDeepLink[] = [];
-  const linkRegex = /\[[^\]]+\]\(([^)]+)\)/g;
-  let match: RegExpExecArray | null;
-  while ((match = linkRegex.exec(content)) !== null) {
-    const parsed = parseAnnotationDeepLinkUrl(match[1]);
-    if (parsed) {
-      results.push(parsed);
-    }
-  }
-  return results;
-}
-
-/**
- * Renders inline Markdown tokens (**bold**, *italic*, `code`) cleanly.
- */
-export function renderInlineMarkdown(
-  text: string,
-  onNavigateToAnnotation?: (pageNumber: number, annotationId?: string) => void,
-): React.ReactNode {
-  // Supports markdown links [text](url) as well as **bold**, *italic*, `code`
-  const parts = text.split(/(\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g);
-  return parts.map((part, idx) => {
-    if (part.startsWith("[") && part.includes("](") && part.endsWith(")")) {
-      const match = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
-      if (match) {
-        const linkText = match[1];
-        const linkUrl = match[2].trim();
-        const deepLink = parseAnnotationDeepLinkUrl(linkUrl);
-        if (deepLink && onNavigateToAnnotation) {
-          return (
-            <button
-              key={idx}
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onNavigateToAnnotation(deepLink.pageNumber, deepLink.annotationId);
-              }}
-              className="text-primary hover:underline font-medium inline-flex items-center gap-0.5 cursor-pointer bg-transparent border-0 p-0 text-left"
-            >
-              {renderInlineMarkdown(linkText, onNavigateToAnnotation)}
-            </button>
-          );
-        }
-        const isSafeUrl = /^(https?:\/\/|mailto:|(\/projects\/[^/]+)?\/library\/papers)/i.test(linkUrl);
-        if (!isSafeUrl) {
-          return <span key={idx}>{renderInlineMarkdown(linkText, onNavigateToAnnotation)}</span>;
-        }
-        return (
-          <a
-            key={idx}
-            href={linkUrl}
-            target={linkUrl.startsWith("/") ? undefined : "_blank"}
-            rel={linkUrl.startsWith("/") ? undefined : "noopener noreferrer"}
-            onClick={(e) => e.stopPropagation()}
-            className="text-primary hover:underline font-medium inline-flex items-center gap-0.5 break-all"
-          >
-            {renderInlineMarkdown(linkText, onNavigateToAnnotation)}
-          </a>
-        );
-      }
-    }
-    if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
-      return (
-        <strong key={idx} className="font-semibold text-foreground">
-          {part.slice(2, -2)}
-        </strong>
-      );
-    }
-    if (part.startsWith("*") && part.endsWith("*") && part.length > 2) {
-      return (
-        <em key={idx} className="italic">
-          {part.slice(1, -1)}
-        </em>
-      );
-    }
-    if (part.startsWith("`") && part.endsWith("`") && part.length > 2) {
-      return (
-        <code
-          key={idx}
-          className="px-1 py-0.5 rounded bg-muted font-mono text-11 text-foreground"
-        >
-          {part.slice(1, -1)}
-        </code>
-      );
-    }
-    return part;
-  });
-}
-
-/**
- * Formatted Markdown Note Renderer supporting headings, blockquotes, lists, and inline emphasis.
- */
-export function FormattedNoteBody({
-  content,
-  isExpanded,
-  omitFirstHeading = false,
-  onNavigateToAnnotation,
-}: {
-  content: string;
-  isExpanded: boolean;
-  omitFirstHeading?: boolean;
-  onNavigateToAnnotation?: (pageNumber: number, annotationId?: string) => void;
-}) {
-  let lines = content.split("\n");
-
-  if (omitFirstHeading && lines.length > 0 && lines[0].startsWith("#")) {
-    lines = lines.slice(1);
-    while (lines.length > 0 && (!lines[0].trim() || lines[0].trim() === "---")) {
-      lines = lines.slice(1);
-    }
-  }
-
-  const visibleLines = isExpanded ? lines : lines.slice(0, 3);
-
-  return (
-    <div
-      className={cn(
-        "space-y-1 text-xs text-foreground leading-relaxed break-words select-text",
-        !isExpanded && "line-clamp-2",
-      )}
-    >
-      {visibleLines.map((rawLine, idx) => {
-        const line = rawLine.trim();
-        if (!line) {
-          return <div key={idx} className="h-1" />;
-        }
-        if (line.startsWith("### ")) {
-          return (
-            <h4
-              key={idx}
-              className="text-11 font-semibold text-foreground pt-0.5"
-            >
-              {renderInlineMarkdown(line.slice(4), onNavigateToAnnotation)}
-            </h4>
-          );
-        }
-        if (line.startsWith("## ") || line.startsWith("# ")) {
-          const cleanHeading = line.replace(/^#{1,2}\s+/, "");
-          return (
-            <h3
-              key={idx}
-              className="text-xs font-semibold text-foreground pt-0.5"
-            >
-              {renderInlineMarkdown(cleanHeading, onNavigateToAnnotation)}
-            </h3>
-          );
-        }
-        if (line.startsWith("> ")) {
-          return (
-            <blockquote
-              key={idx}
-              className="border-l border-border pl-2.5 my-1 text-muted-foreground bg-muted/20 py-0.5 rounded-r"
-            >
-              {renderInlineMarkdown(line.slice(2), onNavigateToAnnotation)}
-            </blockquote>
-          );
-        }
-        if (line.startsWith("- ") || line.startsWith("* ")) {
-          return (
-            <div key={idx} className="flex items-start gap-1.5 pl-1">
-              <span className="text-muted-foreground select-none">•</span>
-              <span className="flex-1">
-                {renderInlineMarkdown(line.slice(2), onNavigateToAnnotation)}
-              </span>
-            </div>
-          );
-        }
-        if (line === "---") {
-          return <hr key={idx} className="border-border my-1" />;
-        }
-        return <p key={idx}>{renderInlineMarkdown(rawLine, onNavigateToAnnotation)}</p>;
-      })}
-    </div>
-  );
-}
+export {
+  normalizeCitationLinkHref,
+  parseAnnotationDeepLinkUrl,
+  extractStructuredDeepLinksFromMarkdown,
+  tokenizeCitationDeepLinksForEditor,
+  detokenizeCitationDeepLinksFromEditor,
+  renderInlineMarkdown,
+  FormattedNoteBody,
+  getNoteDisplayTitle,
+  getNotePreviewSnippet,
+  type ParsedAnnotationDeepLink,
+  type CompactCitationTokenEntry,
+};
 
 /**
  * Formatting toolbar for Rich-Text / Markdown note editing (Rich Note Editor)
@@ -382,6 +183,7 @@ export interface NoteEditorBoxProps {
   onChange: (nextValue: string) => void;
   onSave: () => void;
   onCancel: () => void;
+  onNavigateToAnnotation?: (pageNumber: number, annotationId?: string) => void;
   autoFocus?: boolean;
   placeholder?: string;
   isSaving?: boolean;
@@ -389,33 +191,92 @@ export interface NoteEditorBoxProps {
 }
 
 /**
- * Standard note editor box with integrated formatting toolbar, non-resizing clean textarea, and footer actions.
+ * Standard note editor box with integrated formatting toolbar, compact `@cite:N` citation link protection,
+ * interactive linked highlight pills, and footer actions.
  */
 export function NoteEditorBox({
   value,
   onChange,
   onSave,
   onCancel,
+  onNavigateToAnnotation,
   autoFocus = true,
   placeholder = "Write a research note... (Supports **bold**, *italic*, ### headings, - lists, > quotes)",
   isSaving = false,
   minRows = 3,
 }: NoteEditorBoxProps) {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const citationTokenMapRef = useRef<Map<string, CompactCitationTokenEntry>>(
+    new Map(),
+  );
+
+  const { displayText, entries: linkedCitations } = useMemo(() => {
+    const tokenized = tokenizeCitationDeepLinksForEditor(
+      value,
+      citationTokenMapRef.current,
+    );
+    citationTokenMapRef.current = tokenized.tokenMap;
+    return tokenized;
+  }, [value]);
+
+  const handleEditorChange = (nextDisplayText: string) => {
+    const restored = detokenizeCitationDeepLinksFromEditor(
+      nextDisplayText,
+      citationTokenMapRef.current,
+    );
+    onChange(restored);
+  };
+
+  const handleDropAnnotation = (e: React.DragEvent<HTMLDivElement>) => {
+    const droppedPayload =
+      e.dataTransfer.getData("application/x-flux-annotation") ||
+      e.dataTransfer.getData("text/plain");
+    if (!droppedPayload || !droppedPayload.trim()) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const el = textareaRef.current;
+    if (el) {
+      const start = el.selectionStart ?? displayText.length;
+      const end = el.selectionEnd ?? displayText.length;
+      const before = displayText.slice(0, start);
+      const after = displayText.slice(end);
+      const separatorBefore = before && !before.endsWith("\n") ? "\n\n" : "";
+      const separatorAfter = after && !after.startsWith("\n") ? "\n\n" : "";
+      const combined = `${before}${separatorBefore}${droppedPayload.trim()}${separatorAfter}${after}`;
+      handleEditorChange(combined);
+    } else {
+      const combined = displayText
+        ? `${displayText}\n\n${droppedPayload.trim()}`
+        : droppedPayload.trim();
+      handleEditorChange(combined);
+    }
+  };
 
   return (
-    <div className="flex flex-col p-2.5 rounded-lg border border-border bg-card gap-1.5 transition-all focus-within:border-ring focus-within:ring-1 focus-within:ring-ring">
+    <div
+      onDragOver={(e) => {
+        if (
+          e.dataTransfer.types.includes("application/x-flux-annotation") ||
+          e.dataTransfer.types.includes("text/plain")
+        ) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "copy";
+        }
+      }}
+      onDrop={handleDropAnnotation}
+      className="flex flex-col p-2.5 rounded-lg border border-border bg-card gap-1.5 transition-all focus-within:border-ring focus-within:ring-1 focus-within:ring-ring"
+    >
       <NoteFormattingToolbar
         textareaRef={textareaRef}
-        value={value}
-        onChange={onChange}
+        value={displayText}
+        onChange={handleEditorChange}
       />
       <Textarea
         ref={textareaRef}
         autoFocus={autoFocus}
         placeholder={placeholder}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
+        value={displayText}
+        onChange={(e) => handleEditorChange(e.target.value)}
         onKeyDown={(e) => {
           if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
             e.preventDefault();
@@ -428,6 +289,33 @@ export function NoteEditorBox({
         rows={minRows}
         className="text-xs resize-none w-full min-h-[68px] max-h-56 overflow-y-auto border-0 focus-visible:ring-0 p-0 bg-transparent rounded-none outline-none shadow-none placeholder:text-muted-foreground/60 leading-relaxed font-sans"
       />
+      {linkedCitations.length > 0 && (
+        <div
+          className="flex flex-wrap items-center gap-1 pt-1 border-t border-border/30 select-none"
+          aria-label="Linked PDF citations"
+        >
+          <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground mr-0.5">
+            <BookOpen className="size-2.5 shrink-0" />
+            <span>Citations:</span>
+          </span>
+          {linkedCitations.map((cite) => (
+            <button
+              key={cite.token}
+              type="button"
+              onClick={() => {
+                if (onNavigateToAnnotation) {
+                  onNavigateToAnnotation(cite.pageNumber, cite.annotationId);
+                }
+              }}
+              title={`${cite.label} (${cite.token})`}
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 hover:bg-primary/20 text-primary text-[10px] font-medium cursor-pointer transition-colors"
+            >
+              <span className="font-mono opacity-75">{cite.token}</span>
+              <span>p. {cite.pageNumber}</span>
+            </button>
+          ))}
+        </div>
+      )}
       <div className="flex items-center justify-between pt-1 border-t border-border/40 select-none">
         <span className="text-10 text-muted-foreground font-sans">
           <kbd className="font-mono text-10">Ctrl+Enter</kbd> to save
@@ -454,72 +342,289 @@ export function NoteEditorBox({
   );
 }
 
-/**
- * Extracts a clean, concise title for a note without markdown noise.
- */
-export function getNoteDisplayTitle(note: {
-  title?: string;
-  content: string;
-}): string {
-  if (note.title && note.title.trim()) {
-    return note.title.trim();
-  }
-  const lines = note.content.trim().split("\n");
-  const firstNonEmpty = lines.find((l) => l.trim().length > 0) || "";
-  if (firstNonEmpty.startsWith("#")) {
-    const cleaned = firstNonEmpty
-      .replace(/^#+\s*/, "")
-      .replace(/[*_`]/g, "")
-      .trim();
-    if (cleaned) return cleaned;
-  }
-  if (firstNonEmpty) {
-    const cleaned = firstNonEmpty.replace(/[*_`]/g, "").trim();
-    return cleaned.length > 50 ? `${cleaned.slice(0, 50)}…` : cleaned;
-  }
-  return "Note";
+export interface DynamicInspectorFieldProps {
+  fieldDef: SchemaFieldDefinition;
+  val: string;
+  displayDoi: string;
+  copiedKey: string | null;
+  canEdit?: boolean;
+  onSave: (newVal: string) => void;
+  onCopy: (text: string, label: string) => void;
 }
 
-/**
- * Generates a clean text preview snippet of the note content, stripping redundant title headings and markdown syntax.
- */
-export function getNotePreviewSnippet(
-  content: string,
-  displayTitle?: string,
-): string {
-  const lines = content.trim().split("\n");
-  let startIndex = 0;
+/** Check if a string represents an external link / URL */
+function isUrlLike(str?: string | null): boolean {
+  if (!str || typeof str !== "string") return false;
+  const trimmed = str.trim();
+  if (!trimmed || trimmed === "http://" || trimmed === "https://") return false;
+  if (/^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(trimmed)) return true;
+  if (/^www\.[a-z0-9-]+(\.[a-z0-9-]+)+/i.test(trimmed)) return true;
+  if (/^(dx\.)?doi\.org\//i.test(trimmed)) return true;
+  if (
+    /^[a-z0-9-]+(\.[a-z0-9-]+)+(:\d+)?(\/[^\s]*)?$/i.test(trimmed) &&
+    trimmed.includes(".")
+  ) {
+    const hasDomainExtension =
+      /\.(org|com|net|edu|gov|io|ai|app|dev|co|uk|de|fr|vn|jp|cn|info|me|tech|xyz)(\/|$)/i.test(
+        trimmed,
+      );
+    return hasDomainExtension;
+  }
+  return false;
+}
 
-  if (lines.length > 0 && lines[0].startsWith("#")) {
-    const headingText = lines[0]
-      .replace(/^#+\s*/, "")
-      .replace(/[*_`]/g, "")
-      .trim();
-    if (
-      !displayTitle ||
-      displayTitle === "Note" ||
-      headingText.toLowerCase().includes(displayTitle.toLowerCase()) ||
-      displayTitle.toLowerCase().includes(headingText.toLowerCase())
-    ) {
-      startIndex = 1;
+/** Ensure link starts with valid protocol */
+function toValidUrl(str: string): string {
+  const trimmed = str.trim();
+  if (/^(https?:\/\/|ftp:\/\/|mailto:)/i.test(trimmed)) {
+    return trimmed;
+  }
+  return `https://${trimmed}`;
+}
+
+const MONO_FIELD_KEYS = new Set<string>([
+  "doi",
+  "citationkey",
+  "citekey",
+  "isbn",
+  "issn",
+  "pmid",
+  "pmcid",
+  "arxiv",
+  "arxivid",
+  "year",
+  "volume",
+  "issue",
+  "pages",
+  "date",
+  "citationcount",
+]);
+
+export interface InspectorFieldActionDescriptor {
+  type: "external-link" | "copy-cite";
+  href?: string;
+  copyText?: string;
+  title: string;
+  label: string;
+}
+
+export interface InspectorFieldDescriptor {
+  isMono: boolean;
+  isCitationKey: boolean;
+  action?: InspectorFieldActionDescriptor;
+}
+
+interface FieldActionStrategy {
+  matches(fieldKeyLower: string, value: string, options?: { displayDoi?: string; fieldDef?: SchemaFieldDefinition }): boolean;
+  resolve(fieldKeyLower: string, value: string, options?: { displayDoi?: string; fieldDef?: SchemaFieldDefinition }): InspectorFieldActionDescriptor;
+}
+
+const INSPECTOR_FIELD_ACTION_STRATEGIES: readonly FieldActionStrategy[] = [
+  {
+    matches: (key, val, opts) =>
+      key === "doi" && Boolean(opts?.displayDoi || isValidValue(val)),
+    resolve: (_key, val, opts) => {
+      const targetDoi = (opts?.displayDoi || val).trim();
+      return {
+        type: "external-link",
+        href: `https://doi.org/${targetDoi}`,
+        title: "Open DOI",
+        label: "Open DOI",
+      };
+    },
+  },
+  {
+    matches: (key, val) =>
+      (key === "citationkey" || key === "citekey") && isValidValue(val),
+    resolve: (_key, val) => ({
+      type: "copy-cite",
+      copyText: `\\cite{${val}}`,
+      title: "Copy citation key",
+      label: "Citation Key",
+    }),
+  },
+  {
+    matches: (key, val) =>
+      (key === "pmid" || key === "pmcid") && Boolean(val && val.trim()),
+    resolve: (key, val) => ({
+      type: "external-link",
+      href:
+        key === "pmid"
+          ? `https://pubmed.ncbi.nlm.nih.gov/${encodeURIComponent(val)}/`
+          : `https://www.ncbi.nlm.nih.gov/pmc/articles/${encodeURIComponent(val)}/`,
+      title: "Open in PubMed",
+      label: "Open in PubMed",
+    }),
+  },
+  {
+    matches: (key, val) =>
+      (key === "arxivid" || key === "arxiv") && Boolean(val && val.trim()),
+    resolve: (_key, val) => ({
+      type: "external-link",
+      href: `https://arxiv.org/abs/${encodeURIComponent(val.replace(/^arxiv:/i, ""))}`,
+      title: "Open in arXiv",
+      label: "Open in arXiv",
+    }),
+  },
+  {
+    matches: (key, val, opts) => {
+      if (
+        key === "doi" ||
+        key === "pmid" ||
+        key === "pmcid" ||
+        key === "arxivid" ||
+        key === "arxiv"
+      ) {
+        return false;
+      }
+      const isUrlField = key === "url" || opts?.fieldDef?.type === "url";
+      return (
+        isUrlLike(val) ||
+        (isUrlField &&
+          isValidValue(val) &&
+          val.trim() !== "http://" &&
+          val.trim() !== "https://")
+      );
+    },
+    resolve: (_key, val, opts) => {
+      const fieldLabel = opts?.fieldDef?.label || "URL";
+      return {
+        type: "external-link",
+        href: toValidUrl(val),
+        title: `Open ${fieldLabel.toLowerCase()} link`,
+        label: `Open ${fieldLabel} link`,
+      };
+    },
+  },
+];
+
+export function resolveInspectorFieldAction(
+  fieldKeyOrDef: string | SchemaFieldDefinition,
+  value: string,
+  displayDoi?: string,
+): InspectorFieldDescriptor {
+  const fieldDef =
+    typeof fieldKeyOrDef === "object" && fieldKeyOrDef !== null
+      ? fieldKeyOrDef
+      : undefined;
+  const rawKey = typeof fieldKeyOrDef === "string" ? fieldKeyOrDef : fieldDef?.field || "";
+  const keyLower = rawKey.trim().toLowerCase();
+  const isCitationKey = keyLower === "citationkey" || keyLower === "citekey";
+  const isMono = Boolean(fieldDef?.mono || MONO_FIELD_KEYS.has(keyLower));
+
+  for (const strategy of INSPECTOR_FIELD_ACTION_STRATEGIES) {
+    if (strategy.matches(keyLower, value, { displayDoi, fieldDef })) {
+      return {
+        isMono,
+        isCitationKey,
+        action: strategy.resolve(keyLower, value, { displayDoi, fieldDef }),
+      };
     }
   }
 
-  while (
-    startIndex < lines.length &&
-    (!lines[startIndex].trim() || lines[startIndex].trim() === "---")
-  ) {
-    startIndex++;
-  }
-
-  const remaining = lines.slice(startIndex).join(" ");
-  return remaining
-    .replace(/^#+\s+/gm, "")
-    .replace(/\*\*([^*]+)\*\*/g, "$1")
-    .replace(/\*([^*]+)\*/g, "$1")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/^>\s+/gm, "")
-    .replace(/^[-*]\s+/gm, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  return { isMono, isCitationKey };
 }
+
+export function DynamicInspectorField({
+  fieldDef,
+  val,
+  displayDoi,
+  copiedKey,
+  canEdit = true,
+  onSave,
+  onCopy,
+}: DynamicInspectorFieldProps) {
+  const [liveValue, setLiveValue] = useState(val);
+
+  useEffect(() => {
+    setLiveValue(val);
+  }, [val]);
+
+  const currentVal = liveValue ?? val;
+  const descriptor = resolveInspectorFieldAction(fieldDef, currentVal, displayDoi);
+  const { isMono, isCitationKey, action } = descriptor;
+
+  return (
+    <div className="grid grid-cols-[84px_1fr] gap-2 items-center py-0.5 group">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="text-muted-foreground text-right font-medium select-none pr-1 text-11 leading-normal whitespace-nowrap truncate">
+            {fieldDef.label}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" align="start" sideOffset={6}>
+          {fieldDef.label}
+        </TooltipContent>
+      </Tooltip>
+      <div className="flex items-center gap-1 min-w-0 w-full">
+        <InlineField
+          itemKey={fieldDef.field}
+          value={val}
+          onChange={setLiveValue}
+          ariaLabel={isCitationKey ? "BibTeX Citation Key" : fieldDef.label}
+          onSave={onSave}
+          mono={isMono}
+          readOnly={!canEdit}
+          className="flex-1 w-full"
+        />
+
+        {action && (
+          <div className="invisible group-hover:visible group-focus-within:visible max-md:visible flex items-center gap-0.5 shrink-0">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                {action.type === "external-link" && action.href ? (
+                  <a
+                    href={action.href}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer focus-visible:outline-none transition-colors relative before:absolute before:-inset-2 md:before:hidden"
+                    aria-label={action.label}
+                  >
+                    <ExternalLink
+                      className="size-3.5 shrink-0"
+                      aria-hidden="true"
+                      strokeWidth={1.5}
+                    />
+                  </a>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      action.copyText && onCopy(action.copyText, action.label)
+                    }
+                    className="size-6 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer focus-visible:outline-none transition-colors relative before:absolute before:-inset-2 md:before:hidden"
+                    aria-label={action.title}
+                  >
+                    {copiedKey === action.label ? (
+                      <CheckCircle2
+                        className="size-3.5 text-primary shrink-0"
+                        aria-hidden="true"
+                        strokeWidth={1.5}
+                      />
+                    ) : (
+                      <Copy
+                        className="size-3.5 shrink-0"
+                        aria-hidden="true"
+                        strokeWidth={1.5}
+                      />
+                    )}
+                  </button>
+                )}
+              </TooltipTrigger>
+              <TooltipContent
+                side="bottom"
+                align="start"
+                sideOffset={6}
+                alignOffset={2}
+              >
+                {action.title}
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default DynamicInspectorField;

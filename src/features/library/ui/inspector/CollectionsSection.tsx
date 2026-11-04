@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import {
   Library,
@@ -12,14 +12,14 @@ import {
   Search,
   Loader2,
 } from "lucide-react";
-import { useUpdateLibraryItemMutation } from "@/features/library/sdk/queries/catalog.queries";
-import { useCollections } from "@/features/library/sdk/queries/collections.queries";
 import { useLibraryUIStore } from "@/features/library/core/store/library-ui.store";
-import {
-  useLibraryCommandStore,
-  createUpdateItemMetadataCommand,
-} from "@/features/library/core/manager/library-command.manager";
+import { createUpdateItemMetadataCommand } from "@/features/library/core/manager/library-command.manager";
 import { useLibraryProjectContext } from "@/features/library/core/adapters/project-context.adapter";
+import {
+  getCollectionAncestorPath,
+  useItemCollectionsManager,
+  type ItemCollectionsManagerState,
+} from "@/features/library/core/coordinator/inspector-item.coordinator";
 import {
   Popover,
   PopoverContent,
@@ -32,209 +32,20 @@ import {
 } from "@/shared/components/ui/tooltip";
 import { Checkbox } from "@/shared/components/ui/checkbox";
 import { toast } from "sonner";
-import { cn } from "@/shared/lib/utils";
 import type {
   Item,
   Collection,
   CreateCollectionDTO,
 } from "@/features/library/domain/types/core.types";
-import { getAssignedCollectionIds } from "@/features/library/domain/metadata-mapper";
 
-// ── Helper: compute ancestor breadcrumb path for a collection ────────────────
-function getCollectionAncestorPath(
-  collectionId: string,
-  colMap: Map<string, Collection>,
-  memo?: Map<string, string>,
-): string {
-  const cached = memo?.get(collectionId);
-  if (cached !== undefined) return cached;
-
-  const parts: string[] = [];
-  let curr = colMap.get(collectionId);
-  const visited = new Set<string>();
-
-  while (curr?.parentId && !visited.has(curr.parentId)) {
-    visited.add(curr.parentId);
-    const parent = colMap.get(curr.parentId);
-    if (parent?.name) {
-      parts.push(parent.name);
-    }
-    curr = parent;
-  }
-  parts.reverse();
-  const resolved = parts.join(" / ");
-  memo?.set(collectionId, resolved);
-  return resolved;
-}
-
-// ── Shared Hook: Item Collections State & Undoable Toggle/Remove ────────────
-function useItemCollectionsManager(
-  item: Item,
-  effectiveScope: string,
-  canEdit: boolean,
-  externalCollections?: Collection[],
-  externalCreateCollection?: (
-    data: CreateCollectionDTO & { scopeId?: string },
-  ) => Promise<unknown>,
-) {
-  const updateItemMutation = useUpdateLibraryItemMutation(effectiveScope);
-  const updateItem = useCallback(
-    (
-      itemId: string,
-      data: Partial<Item>,
-      options?: { expectedVersion?: number; silent?: boolean },
-    ) => {
-      return updateItemMutation.mutateAsync({
-        itemId,
-        data,
-        expectedVersion: options?.expectedVersion,
-        silent: options?.silent ?? true,
-      });
-    },
-    [updateItemMutation],
-  );
-  const {
-    collections: queriedCollections = [],
-    createCollection: queriedCreateCollection,
-  } = useCollections({
-    scopeId: effectiveScope,
-    enabled: externalCollections === undefined,
-  });
-  const collections = externalCollections ?? queriedCollections;
-  const createCollection =
-    externalCreateCollection ?? queriedCreateCollection;
-  const pushExecutedCommand = useLibraryCommandStore((s) => s.pushExecutedCommand);
-  const undoCommand = useLibraryCommandStore((s) => s.undo);
-
-  // Map collections for O(1) lookup
-  const colMap = useMemo(() => {
-    const map = new Map<string, Collection>();
-    collections.forEach((c: Collection) => map.set(c.id, c));
-    (item?.collections || []).forEach((c) => {
-      if (c?.id && !map.has(c.id)) {
-        map.set(c.id, c as Collection);
-      }
-    });
-    return map;
-  }, [collections, item?.collections]);
-
-  // Pre-compute ancestor paths and lowercased search tokens once per colMap change
-  const collectionSearchIndex = useMemo(() => {
-    const pathMemo = new Map<string, string>();
-    const index = new Map<
-      string,
-      { path: string; lowerPath: string; lowerName: string }
-    >();
-    colMap.forEach((col, id) => {
-      const path = getCollectionAncestorPath(id, colMap, pathMemo);
-      index.set(id, {
-        path,
-        lowerPath: path.toLowerCase(),
-        lowerName: (col.name || "").toLowerCase(),
-      });
-    });
-    return index;
-  }, [colMap]);
-
-  // Set of all currently assigned collection IDs
-  const assignedCollectionIdsSet = useMemo(
-    () => new Set<string>(getAssignedCollectionIds(item)),
-    [item],
-  );
-
-  // Toggle assigning or removing a collection with undo support
-  const handleToggleCollection = useCallback(
-    async (targetColId: string) => {
-      if (!item?.id || !canEdit) return;
-      const isAssigned = assignedCollectionIdsSet.has(targetColId);
-      const prevIds = Array.from(assignedCollectionIdsSet);
-      const remainingIds = isAssigned
-        ? prevIds.filter((id) => id !== targetColId)
-        : [...prevIds, targetColId];
-
-      const targetItemId = item.id;
-      const targetCol = colMap.get(targetColId);
-      const colName = targetCol?.name || "Collection";
-      const commandDescription = isAssigned
-        ? `Removed from "${colName}"`
-        : `Added to "${colName}"`;
-
-      const command = createUpdateItemMetadataCommand({
-        itemId: targetItemId,
-        description: commandDescription,
-        forwardPatch: { collectionIds: remainingIds },
-        inversePatch: { collectionIds: prevIds },
-        applyPatch: (id, patch) => updateItem(id, patch, { silent: true }),
-      });
-
-      try {
-        await updateItem(
-          targetItemId,
-          {
-            collectionIds: remainingIds,
-          },
-          { expectedVersion: item.version },
-        );
-
-        pushExecutedCommand(command, { silentToast: true });
-
-        const undoAction = {
-          label: "Undo",
-          onClick: () => {
-            void undoCommand(command.id);
-          },
-        };
-
-        if (isAssigned) {
-          const remainingCount = remainingIds.length;
-          const description =
-            remainingCount === 0
-              ? "Item is now in Unfiled Items (remains safely in your library)."
-              : `Item remains in ${remainingCount} other ${remainingCount === 1 ? "collection" : "collections"}.`;
-
-          toast.success(`Removed from "${colName}"`, {
-            description,
-            id: "col-assign",
-            duration: 3000,
-            action: undoAction,
-          });
-        } else {
-          toast.success(`Added to "${colName}"`, {
-            id: "col-assign",
-            action: undoAction,
-          });
-        }
-      } catch (err: unknown) {
-        toast.error(`Failed to update "${colName}"`, {
-          description: err instanceof Error ? err.message : "Please try again.",
-          id: "col-assign",
-        });
-      }
-    },
-    [
-      item?.id,
-      item?.version,
-      assignedCollectionIdsSet,
-      canEdit,
-      updateItem,
-      colMap,
-      pushExecutedCommand,
-      undoCommand,
-    ],
-  );
-
-  return {
-    collections,
-    colMap,
-    collectionSearchIndex,
-    assignedCollectionIdsSet,
-    updateItem,
-    createCollection,
-    handleToggleCollection,
-  };
-}
+export {
+  getCollectionAncestorPath,
+  useItemCollectionsManager,
+  type ItemCollectionsManagerState,
+};
 
 // ── CollectionPickerContent Component (Lazy Popover Content) ───────────────
+
 interface CollectionPickerContentProps {
   item: Item;
   scopeId?: string;
@@ -244,6 +55,11 @@ interface CollectionPickerContentProps {
   createCollection?: (
     data: CreateCollectionDTO & { scopeId?: string },
   ) => Promise<unknown>;
+  onUpdateItem?: (
+    payload: Partial<Item>,
+    options?: { silent?: boolean; skipHistory?: boolean },
+  ) => Promise<unknown> | void;
+  manager?: ItemCollectionsManagerState;
   onClose: () => void;
 }
 
@@ -254,12 +70,22 @@ function CollectionPickerContent({
   align = "end",
   collections: externalCollections,
   createCollection: externalCreateCollection,
+  onUpdateItem,
+  manager: externalManager,
   onClose,
 }: CollectionPickerContentProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreatingQuick, setIsCreatingQuick] = useState(false);
 
   const effectiveScope = scopeId || item?.projectId || "user";
+  const internalManager = useItemCollectionsManager(
+    item,
+    effectiveScope,
+    canEdit && !externalManager,
+    externalCollections,
+    externalCreateCollection,
+    onUpdateItem,
+  );
   const {
     collections,
     colMap,
@@ -268,13 +94,8 @@ function CollectionPickerContent({
     updateItem,
     createCollection,
     handleToggleCollection,
-  } = useItemCollectionsManager(
-    item,
-    effectiveScope,
-    canEdit,
-    externalCollections,
-    externalCreateCollection,
-  );
+    pushExecutedCommand,
+  } = externalManager ?? internalManager;
   const openModal = useLibraryUIStore((s) => s.openModal);
 
   // Filter collections based on search query using O(1) pre-computed index
@@ -307,7 +128,15 @@ function CollectionPickerContent({
         (res as { collection?: { id: string }; id?: string })?.collection?.id ||
         (res as { id?: string })?.id;
       if (createdId) {
-        const nextIds = [...Array.from(assignedCollectionIdsSet), createdId];
+        const prevIds = Array.from(assignedCollectionIdsSet);
+        const nextIds = [...prevIds, createdId];
+        const command = createUpdateItemMetadataCommand({
+          itemId: item.id,
+          description: `Added to "${trimmed}"`,
+          forwardPatch: { collectionIds: nextIds },
+          inversePatch: { collectionIds: prevIds },
+          applyPatch: (id, patch) => updateItem(id, patch, { silent: true }),
+        });
         await updateItem(
           item.id,
           {
@@ -315,6 +144,7 @@ function CollectionPickerContent({
           },
           { expectedVersion: item.version },
         );
+        pushExecutedCommand(command, { silentToast: true });
         toast.success(`Created & added to "${trimmed}"`, { id: "col-assign" });
         setSearchQuery("");
       }
@@ -481,6 +311,11 @@ export interface CollectionPickerPopoverProps {
   createCollection?: (
     data: CreateCollectionDTO & { scopeId?: string },
   ) => Promise<unknown>;
+  onUpdateItem?: (
+    payload: Partial<Item>,
+    options?: { silent?: boolean; skipHistory?: boolean },
+  ) => Promise<unknown> | void;
+  manager?: ItemCollectionsManagerState;
   children: React.ReactNode;
 }
 
@@ -492,6 +327,8 @@ export function CollectionPickerPopover(props: CollectionPickerPopoverProps) {
     align = "end",
     collections,
     createCollection,
+    onUpdateItem,
+    manager,
     children,
   } = props;
   const [open, setOpen] = useState(false);
@@ -507,6 +344,8 @@ export function CollectionPickerPopover(props: CollectionPickerPopoverProps) {
           align={align}
           collections={collections}
           createCollection={createCollection}
+          onUpdateItem={onUpdateItem}
+          manager={manager}
           onClose={() => setOpen(false)}
         />
       )}
@@ -520,11 +359,23 @@ interface CollectionsSectionProps {
   scopeId?: string;
   hideHeader?: boolean;
   canEdit?: boolean;
+  onUpdateItem?: (
+    payload: Partial<Item>,
+    options?: { silent?: boolean; skipHistory?: boolean },
+  ) => Promise<unknown> | void;
 }
 
 export default function CollectionsSection(props: CollectionsSectionProps) {
-  const { item, scopeId, hideHeader = false, canEdit = true } = props;
+  const { item, scopeId, hideHeader = false, canEdit = true, onUpdateItem } = props;
   const effectiveScope = scopeId || item?.projectId || "user";
+  const manager = useItemCollectionsManager(
+    item,
+    effectiveScope,
+    canEdit,
+    undefined,
+    undefined,
+    onUpdateItem,
+  );
   const {
     collections,
     colMap,
@@ -532,7 +383,7 @@ export default function CollectionsSection(props: CollectionsSectionProps) {
     assignedCollectionIdsSet,
     createCollection,
     handleToggleCollection: handleRemoveFromCollection,
-  } = useItemCollectionsManager(item, effectiveScope, canEdit);
+  } = manager;
   const { projects = [] } = useLibraryProjectContext();
 
   // Resolve active library root name and icon (My Library vs Project Library)
@@ -590,6 +441,8 @@ export default function CollectionsSection(props: CollectionsSectionProps) {
               align="end"
               collections={collections}
               createCollection={createCollection}
+              onUpdateItem={onUpdateItem}
+              manager={manager}
             >
               <button
                 type="button"

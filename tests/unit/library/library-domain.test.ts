@@ -7,13 +7,14 @@ import {
   splitAuthorString,
   isNoiseAuthorName,
 } from "@/features/library/domain/creators";
+import { formatAuthors } from "@/features/library/domain/citations";
 import {
   cleanDoi,
   isValidDoi,
   extractArxivId,
   getArxivPdfUrl,
   cleanPaperTitle,
-  normalizeAcademicTitleCase,
+  normalizeTitleCase,
 } from "@/features/library/domain/identifiers";
 import { generateCitationKey, toAsciiKeyPart, getCleanStyleLabel, formatCitationStyleLabel } from "@/features/library/domain/citations";
 import {
@@ -24,7 +25,6 @@ import {
   getLibraryPermissions,
   getScopeTarget,
 } from "@/features/library/domain/library-permissions.policy";
-import { formatAcademicAuthors } from "@/features/library/domain/academic-text";
 import {
   getItemFileUrl,
   isProjectScope,
@@ -124,30 +124,30 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
       );
     });
 
-    it("should format academic authors for UI display without confusing mid-name commas", () => {
+    it("should format authors for UI display without confusing mid-name commas", () => {
       // Inverted authors become natural for UI joining
       expect(
-        formatAcademicAuthors(["Simonyan, Karen", "Zisserman, Andrew"]),
+        formatAuthors(["Simonyan, Karen", "Zisserman, Andrew"]),
       ).toBe("Karen Simonyan, Andrew Zisserman");
 
       // Single composite string is split and formatted
       expect(
-        formatAcademicAuthors(
+        formatAuthors(
           "Ashish Vaswani; Noam Shazeer; Niki Parmar; Jakob Uszkoreit",
         ),
       ).toBe("Ashish Vaswani, Noam Shazeer, Niki Parmar et al.");
 
       // CSL-JSON objects
       expect(
-        formatAcademicAuthors([
+        formatAuthors([
           { family: "Vaswani", given: "Ashish" },
           { family: "Shazeer", given: "Noam" },
         ]),
       ).toBe("Ashish Vaswani, Noam Shazeer");
 
       // Empty or invalid returns dash
-      expect(formatAcademicAuthors(null)).toBe("—");
-      expect(formatAcademicAuthors([])).toBe("—");
+      expect(formatAuthors(null)).toBe("—");
+      expect(formatAuthors([])).toBe("—");
     });
 
     it("should normalize authors from string or object arrays", () => {
@@ -192,11 +192,11 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
       );
     });
 
-    it("should clean title and normalize academic title case", () => {
+    it("should clean title and normalize title case", () => {
       expect(cleanPaperTitle("  A Study on   Deep Learning\n\r ")).toBe(
         "A Study on Deep Learning",
       );
-      expect(normalizeAcademicTitleCase("attention is all you need")).toBe(
+      expect(normalizeTitleCase("attention is all you need")).toBe(
         "Attention Is All You Need",
       );
     });
@@ -389,7 +389,7 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
   describe("Library Sorting Utility (sort-items.ts)", () => {
     it("should pin processing items to the top regardless of sort direction", async () => {
       const { sortLibraryItems } =
-        await import("@/features/library/domain/sort-items.domain");
+        await import("@/features/library/domain/zotero-extra-parser");
       const items: any[] = [
         { id: "1", title: "Beta", year: 2020 },
         { id: "2", title: "Alpha", year: 2024, _isProcessing: true },
@@ -403,7 +403,7 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
 
     it("should sort regular items alphabetically and numerically", async () => {
       const { sortLibraryItems } =
-        await import("@/features/library/domain/sort-items.domain");
+        await import("@/features/library/domain/zotero-extra-parser");
       const items: any[] = [
         { id: "1", title: "Charlie", year: 2020 },
         { id: "2", title: "Alpha", year: 2024 },
@@ -418,7 +418,7 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
 
     it("should correctly handle author and date aliases", async () => {
       const { sortLibraryItems } =
-        await import("@/features/library/domain/sort-items.domain");
+        await import("@/features/library/domain/zotero-extra-parser");
       const items: any[] = [
         { id: "1", authors: ["Knuth"], createdAt: "2024-01-01" },
         { id: "2", authors: ["Einstein"], createdAt: "2024-05-01" },
@@ -432,7 +432,7 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
 
     it("should correctly handle publication and dateDeleted aliases", async () => {
       const { sortLibraryItems } =
-        await import("@/features/library/domain/sort-items.domain");
+        await import("@/features/library/domain/zotero-extra-parser");
       const items: any[] = [
         {
           id: "1",
@@ -777,6 +777,135 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
       );
       expect(patch.doi).toBe("");
       expect(patch.metadata).toEqual({ doi: null });
+    });
+
+    it("should prevent ghost tag resurrection from stale metadata.tags/keywords when itemTags/tags is empty and extract structured manual/automatic tag metadata", async () => {
+      const {
+        mapBackendItem,
+        normalizeTags,
+        extractStructuredItemTags,
+      } = await import("@/features/library/domain/metadata-mapper");
+
+      // 1. Deleting all tags (itemTags: [], tags: []) must NOT resurrect stale metadata.tags or metadata.keywords
+      const mappedDeleted = mapBackendItem({
+        id: "item-deleted-tags",
+        title: "Paper After Deleting All Tags",
+        itemType: "journalArticle",
+        tags: [],
+        itemTags: [],
+        metadata: {
+          tags: ["Resurrected-Ghost-Tag"],
+          keywords: ["Resurrected-Ghost-Keyword"],
+          labels: ["Resurrected-Label"],
+        },
+        extraFields: {
+          tags: ["Resurrected-Extra-Tag"],
+        },
+      });
+      expect(mappedDeleted.tags).toEqual([]);
+      expect(mappedDeleted.keywords).toEqual([]);
+      expect(normalizeTags(mappedDeleted)).toEqual([]);
+
+      // 2. Structured tags preserve manual vs automatic provenance, colors, and shortcuts
+      const mappedStructured = mapBackendItem({
+        id: "item-structured-tags",
+        title: "Attention Is All You Need",
+        itemType: "journalArticle",
+        itemTags: [
+          {
+            id: "it-1",
+            tagId: "tag-1",
+            type: "manual",
+            tag: {
+              id: "tag-1",
+              name: "To-Read",
+              type: "manual",
+              color: "#ff6666",
+              shortcut: 1,
+            },
+          },
+          {
+            id: "it-2",
+            tagId: "tag-2",
+            type: "automatic",
+            tag: {
+              id: "tag-2",
+              name: "Self-Attention",
+              type: "automatic",
+            },
+          },
+        ],
+        metadata: {
+          tags: ["Stale-Old-Subject-Tag"],
+        },
+      });
+
+      expect(mappedStructured.tags).toEqual(["To-Read", "Self-Attention"]);
+      const structured = extractStructuredItemTags(mappedStructured);
+      expect(structured).toEqual([
+        {
+          id: "it-1",
+          tagId: "tag-1",
+          name: "To-Read",
+          type: "manual",
+          color: "#ff6666",
+          shortcut: 1,
+        },
+        {
+          id: "it-2",
+          tagId: "tag-2",
+          name: "Self-Attention",
+          type: "automatic",
+          color: undefined,
+          shortcut: null,
+        },
+      ]);
+    });
+
+    it("should losslessly tokenize and detokenize PDF citation deep-links into compact @cite:N tokens for NoteEditorBox", async () => {
+      const {
+        tokenizeCitationDeepLinksForEditor,
+        detokenizeCitationDeepLinksFromEditor,
+        getNotePreviewSnippet,
+      } = await import("@/features/library/ui/inspector/NoteMarkdownEditor");
+
+      const rawMarkdown = [
+        "# Literature Notes: Attention Is All You Need",
+        "",
+        '> "Scaled Dot-Product Attention" [(Vaswani et al., 2017, p. 4)](/library/papers/550e8400-e29b-41d4-a716-446655440001?attachmentId=550e8400-e29b-41d4-a716-446655440002&page=4&annotation=550e8400-e29b-41d4-a716-446655440010)',
+        "",
+        '> "Multi-Head Attention allows the model to jointly attend" [(Vaswani et al., 2017, p. 5)](/library/papers/550e8400-e29b-41d4-a716-446655440001?attachmentId=550e8400-e29b-41d4-a716-446655440002&page=5&annotation=550e8400-e29b-41d4-a716-446655440011)',
+      ].join("\n");
+
+      const tokenized = tokenizeCitationDeepLinksForEditor(rawMarkdown);
+      expect(tokenized.displayText).toContain(
+        "[(Vaswani et al., 2017, p. 4)](@cite:1)",
+      );
+      expect(tokenized.displayText).toContain(
+        "[(Vaswani et al., 2017, p. 5)](@cite:2)",
+      );
+      expect(tokenized.displayText).not.toContain("attachmentId=");
+      expect(tokenized.entries).toHaveLength(2);
+      expect(tokenized.entries[0]).toMatchObject({
+        token: "@cite:1",
+        pageNumber: 4,
+        annotationId: "550e8400-e29b-41d4-a716-446655440010",
+      });
+
+      const editedDisplay = `${tokenized.displayText}\n\nMy synthesis note.`;
+      const restored = detokenizeCitationDeepLinksFromEditor(
+        editedDisplay,
+        tokenized.tokenMap,
+      );
+      expect(restored).toBe(`${rawMarkdown}\n\nMy synthesis note.`);
+
+      // Preview snippet strips raw citation URLs and keeps clean label text
+      const snippet = getNotePreviewSnippet(
+        rawMarkdown,
+        "Literature Notes: Attention Is All You Need",
+      );
+      expect(snippet).toContain("(Vaswani et al., 2017, p. 4)");
+      expect(snippet).not.toContain("/library/papers/");
     });
   });
 });

@@ -2,88 +2,42 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import dynamic from 'next/dynamic';
 import { Plus, X, FileText, Loader2, Upload, Link2, FolderSync } from 'lucide-react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/shared/components/ui/tooltip';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/shared/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
+import { cn } from '@/shared/lib/utils';
+import type { Item } from '@/features/library/domain/types/core.types';
+import type { ReaderDocument } from '@/features/library/domain/types/reader.schema';
+import { openInNewTab, buildReaderPaperUrl } from '@/features/library/core/coordinator/citation-export.coordinator';
 import { useLibraryUIStore, type InspectorSectionId } from '@/features/library/core/store/library-ui.store';
 import { useRelations } from '@/features/library/sdk/queries/saved-searches-relations.queries';
-import { useInspectorItemResolver } from '@/features/library/core/coordinator/inspector-item.coordinator';
+import { useInspectorItemResolver, usePanelResize } from '@/features/library/core/coordinator/inspector-item.coordinator';
+import { InspectorHeader, InspectorTabs, INSPECTOR_LEVELS, InspectorSection, type InspectorSectionProps } from './InspectorHeader';
 
-import { usePanelResize } from '@/features/library/core/coordinator/inspector-item.coordinator';
-import {
-  InspectorHeader,
-  InspectorTabs,
-  INSPECTOR_LEVELS,
-  InspectorSection,
-  type InspectorSectionProps,
-} from './InspectorHeader';
+export { INSPECTOR_LEVELS, InspectorSection, type InspectorSectionProps };
 
-export {
-  INSPECTOR_LEVELS,
-  InspectorSection,
-  type InspectorSectionProps,
-};
-
-import dynamic from 'next/dynamic';
 const InfoSection = dynamic(() => import('./InfoSection'), { ssr: false });
-const AbstractSection = dynamic(
-  () => import('./InfoSection').then((m) => m.AbstractSection),
-  { ssr: false },
-);
+const AbstractSection = dynamic(() => import('./InfoSection').then((m) => m.AbstractSection), { ssr: false });
 const AttachmentsSection = dynamic(() => import('./AttachmentsSection'), { ssr: false });
 const CiteSection = dynamic(() => import('./CiteSection'), { ssr: false });
 const NotesSection = dynamic(() => import('./NotesSection'), { ssr: false });
 const TagsSection = dynamic(() => import('./TagsSection'), { ssr: false });
 const CollectionsSection = dynamic(() => import('./CollectionsSection'), { ssr: false });
-const CollectionPickerPopover = dynamic(
-  () => import('./CollectionsSection').then((m) => m.CollectionPickerPopover),
-  { ssr: false },
-);
+const CollectionPickerPopover = dynamic(() => import('./CollectionsSection').then((m) => m.CollectionPickerPopover), { ssr: false });
 const RelatedSection = dynamic(() => import('./RelatedSection'), { ssr: false });
 
-import { cn } from '@/shared/lib/utils';
-import type { Item } from '@/features/library/domain/types/core.types';
-
 export interface LibraryInspectorProps {
-  item?: Item | null;
-  scopeId?: string;
-  canEdit?: boolean;
-  onClose?: () => void;
-  onSelectItem?: (itemId: string) => void;
-  pendingNoteText?: string;
-  onClearPendingText?: () => void;
+  item?: Item | null; scopeId?: string; canEdit?: boolean; onClose?: () => void;
+  onSelectItem?: (itemId: string) => void; pendingNoteText?: string; onClearPendingText?: () => void;
   onNavigateToAnnotation?: (pageNumber: number, annotationId?: string) => void;
-  hideRailToggle?: boolean;
-  defaultOpen?: boolean;
-  isReader?: boolean;
-  hideHeader?: boolean;
-  hideTabs?: boolean;
+  hideRailToggle?: boolean; defaultOpen?: boolean; isReader?: boolean; hideHeader?: boolean; hideTabs?: boolean;
 }
 
-/**
- * Autonomous Zone 4: LibraryInspector
- * Modern, high-performance, modular right-side document inspector.
- * Replaces the previous 1,300-line monolithic Panel.tsx.
- */
 export function LibraryInspector(props: LibraryInspectorProps) {
   const storeIsInspectorOpen = useLibraryUIStore((s) => s.isInspectorOpen);
-  const effectiveIsOpen =
-    props.defaultOpen !== undefined
-      ? Boolean(props.defaultOpen)
-      : storeIsInspectorOpen;
-  if (!effectiveIsOpen) {
-    return null;
-  }
-  return <LibraryInspectorContent {...props} />;
+  const effectiveIsOpen = props.defaultOpen !== undefined ? Boolean(props.defaultOpen) : storeIsInspectorOpen;
+  return effectiveIsOpen ? <LibraryInspectorContent {...props} /> : null;
 }
 
 function LibraryInspectorContent({
@@ -191,6 +145,12 @@ function LibraryInspectorContent({
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [isAddingTag, setIsAddingTag] = useState(false);
 
+  useEffect(() => {
+    setIsAddingNote(false);
+    setIsAddingTag(false);
+    setIsAddRelatedOpen(false);
+  }, [effectiveItem?.id]);
+
   // When pending text is passed from PDF viewer (e.g. "Add to Note"), open inspector and activate notes tab
   useEffect(() => {
     if (pendingNoteText) {
@@ -221,7 +181,7 @@ function LibraryInspectorContent({
     isExtracting: boolean;
   }>({ extract: null, isExtracting: false });
   const handleRegisterExtract = useCallback(
-    (action: { extract: () => Promise<void>; isExtracting: boolean }) => {
+    (action: { extract: (() => Promise<void>) | null; isExtracting: boolean }) => {
       setExtractNotesState((prev) => {
         if (
           prev.extract === action.extract &&
@@ -287,6 +247,7 @@ function LibraryInspectorContent({
             <>
               {!shouldHideHeader && (
                 <InspectorHeader
+                  key={effectiveItem.id}
                   item={effectiveItem}
                   scopeId={targetScope}
                   canEdit={effectiveCanEdit}
@@ -337,6 +298,7 @@ function LibraryInspectorContent({
                   canEdit={effectiveCanEdit}
                 >
                   <AbstractSection
+                    key={effectiveItem.id}
                     item={effectiveItem}
                     onUpdateItem={handleUpdateItem}
                     canEdit={effectiveCanEdit}
@@ -443,7 +405,8 @@ function LibraryInspectorContent({
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              extractNotesState.extract?.();
+                              setExpandedSections((prev) => ({ ...prev, notes: true }));
+                              void extractNotesState.extract?.();
                             }}
                             disabled={extractNotesState.isExtracting}
                             className="size-5 rounded flex items-center justify-center text-foreground hover:bg-muted cursor-pointer transition-colors relative before:absolute before:-inset-2.5 md:before:hidden disabled:opacity-50"
@@ -467,8 +430,10 @@ function LibraryInspectorContent({
                   }
                   contentClassName="px-2.5 pt-1.5 pb-2.5 flex flex-col gap-2"
                   canEdit={effectiveCanEdit}
+                  keepMounted
                 >
                   <NotesSection
+                    key={effectiveItem.id}
                     item={effectiveItem}
                     scopeId={targetScope}
                     hideHeader
@@ -498,6 +463,7 @@ function LibraryInspectorContent({
                         scopeId={targetScope}
                         canEdit={effectiveCanEdit}
                         align="end"
+                        onUpdateItem={handleUpdateItem}
                       >
                         <button
                           type="button"
@@ -513,10 +479,12 @@ function LibraryInspectorContent({
                   canEdit={effectiveCanEdit}
                 >
                   <CollectionsSection
+                    key={effectiveItem.id}
                     item={effectiveItem}
                     scopeId={targetScope}
                     hideHeader
                     canEdit={effectiveCanEdit}
+                    onUpdateItem={handleUpdateItem}
                   />
                 </InspectorSection>
 
@@ -536,7 +504,9 @@ function LibraryInspectorContent({
                   canEdit={effectiveCanEdit}
                 >
                   <TagsSection
+                    key={effectiveItem.id}
                     item={effectiveItem}
+                    scopeId={targetScope}
                     precomputedTags={tagsList}
                     onUpdateItem={handleUpdateItem}
                     hideHeader
@@ -561,6 +531,7 @@ function LibraryInspectorContent({
                   canEdit={effectiveCanEdit}
                 >
                   <RelatedSection
+                    key={effectiveItem.id}
                     item={effectiveItem}
                     scopeId={targetScope}
                     onSelectItem={handleSelectItem}
@@ -582,6 +553,7 @@ function LibraryInspectorContent({
                   canEdit={effectiveCanEdit}
                 >
                   <CiteSection
+                    key={effectiveItem.id}
                     item={effectiveItem}
                     scopeId={targetScope}
                   />
@@ -678,29 +650,17 @@ function LibraryInspectorContent({
               onMouseDown={handleMouseDown}
               onDoubleClick={resetWidth}
               onKeyDown={(e) => {
-                if (e.key === 'ArrowLeft') {
-                  e.preventDefault();
-                  setWidth(width + 20);
-                } else if (e.key === 'ArrowRight') {
-                  e.preventDefault();
-                  setWidth(width - 20);
-                } else if (e.key === 'Home') {
-                  e.preventDefault();
-                  setWidth(260);
-                } else if (e.key === 'End') {
-                  e.preventDefault();
-                  setWidth(640);
-                } else if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  resetWidth();
-                }
+                if (e.key === 'ArrowLeft') { e.preventDefault(); setWidth(width + 20); }
+                else if (e.key === 'ArrowRight') { e.preventDefault(); setWidth(width - 20); }
+                else if (e.key === 'Home') { e.preventDefault(); setWidth(260); }
+                else if (e.key === 'End') { e.preventDefault(); setWidth(640); }
+                else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); resetWidth(); }
               }}
               className="absolute top-0 bottom-0 -left-1.5 w-3 cursor-col-resize z-30 flex items-center justify-center group focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
             >
               <div
                 className={cn(
-                  'w-0.5 h-full transition-colors duration-150',
-                  'group-hover:bg-primary',
+                  'w-0.5 h-full transition-colors duration-150 group-hover:bg-primary',
                   isDragging && 'bg-primary',
                 )}
               />
@@ -725,6 +685,32 @@ function LibraryInspectorContent({
         )}
       </div>
     </>
+  );
+}
+
+export interface ReaderInspectorProps extends Omit<LibraryInspectorProps, 'item'> {
+  item?: Item | ReaderDocument | null;
+}
+
+export function ReaderInspector({ item, onSelectItem, ...rest }: ReaderInspectorProps) {
+  const defaultSelectItem = useCallback(
+    (itemId: string) => {
+      const projectId =
+        item && 'projectId' in item && item.projectId ? String(item.projectId) : rest.scopeId;
+      openInNewTab(buildReaderPaperUrl(itemId, { projectId }));
+    },
+    [item, rest.scopeId],
+  );
+
+  return (
+    <LibraryInspector
+      {...rest}
+      item={(item || null) as Item | null}
+      onSelectItem={onSelectItem || defaultSelectItem}
+      hideRailToggle={rest.hideRailToggle ?? false}
+      defaultOpen={rest.defaultOpen}
+      isReader={true}
+    />
   );
 }
 

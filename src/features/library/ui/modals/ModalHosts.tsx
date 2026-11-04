@@ -24,11 +24,6 @@ import {
   buildPreConversionSnapshot,
   PRE_CONVERSION_BIBLIOGRAPHIC_SCALAR_KEYS,
 } from '@/features/library/core/manager/library-command.manager';
-
-export {
-  buildPreConversionSnapshot,
-  PRE_CONVERSION_BIBLIOGRAPHIC_SCALAR_KEYS,
-};
 import { useSavedSearches } from '@/features/library/sdk/queries/saved-searches-relations.queries';
 import type {
   Collection,
@@ -36,8 +31,13 @@ import type {
   Item,
   CreateSavedSearchInput,
 } from '@/features/library/domain/types/core.types';
-import type { SavedSearch } from '@/features/library/domain/types/saved-searches.types';
+import type { SavedSearch } from '@/features/library/domain/types/ingestion.types';
 import type { SavedFeedSubscription } from '@/features/library/domain/types/ingestion.types';
+
+export {
+  buildPreConversionSnapshot,
+  PRE_CONVERSION_BIBLIOGRAPHIC_SCALAR_KEYS,
+};
 
 const CreateCollectionModal = dynamic(() => import('./CreateCollectionModal'), { ssr: false });
 const CreateSavedSearchModal = dynamic(() => import('./CreateSavedSearchModal'), { ssr: false });
@@ -95,31 +95,79 @@ export interface ModalHostProps {
 }
 
 /**
- * 1. CollectionModalsHost
- * Only mounts collection create/rename/delete/sync/feeds queries & mutations when opened.
+ * 1a. WorkspaceIntegrationsModalsHost
+ * Only mounts External Library Sync (Zotero/Mendeley) and Academic Feeds Manager modals.
  */
-export function CollectionModalsHost({
+export function WorkspaceIntegrationsModalsHost({
   activeModal,
   payload,
   effectiveScope,
   closeModal,
 }: ModalHostProps) {
-  const activeScope = useLibraryUIStore((s) => s.activeScope);
-  const isCreateCollectionOpen =
-    activeModal === 'CREATE_COLLECTION' || activeModal === 'RENAME_COLLECTION';
-  const isDeleteCollectionOpen = activeModal === 'DELETE_COLLECTION';
   const isExternalSyncOpen = activeModal === 'EXPORT_LIBRARY';
   const isFeedsManagerOpen = activeModal === 'FEEDS_MANAGER';
 
   const collectionsController = useCollections({
     scopeId: effectiveScope,
-    enabled: isCreateCollectionOpen || isExternalSyncOpen || isFeedsManagerOpen,
+    enabled: isExternalSyncOpen || isFeedsManagerOpen,
+  });
+  const collections = collectionsController.collections;
+
+  if (isExternalSyncOpen) {
+    return (
+      <ExternalLibrarySyncModal
+        open={isExternalSyncOpen}
+        onOpenChange={(open) => !open && closeModal()}
+        defaultProvider={payload?.provider || 'zotero'}
+        scopeId={effectiveScope}
+        collections={collections}
+        defaultCollectionId={payload?.collectionId || null}
+      />
+    );
+  }
+
+  if (isFeedsManagerOpen) {
+    return (
+      <FeedsManagerModal
+        open={isFeedsManagerOpen}
+        onOpenChange={(open) => !open && closeModal()}
+        scopeId={effectiveScope}
+        collections={collections}
+        defaultCollectionId={payload?.collectionId || null}
+      />
+    );
+  }
+
+  return null;
+}
+
+/**
+ * 1b. CollectionModalsHost
+ * Only mounts collection create/rename/delete queries & mutations when opened,
+ * and delegates workspace integration modals to `WorkspaceIntegrationsModalsHost`.
+ */
+export function CollectionModalsHost(props: ModalHostProps) {
+  const { activeModal, payload, effectiveScope, closeModal } = props;
+  const activeScope = useLibraryUIStore((s) => s.activeScope);
+  const isCreateCollectionOpen =
+    activeModal === 'CREATE_COLLECTION' || activeModal === 'RENAME_COLLECTION';
+  const isDeleteCollectionOpen = activeModal === 'DELETE_COLLECTION';
+  const isIntegrationModalOpen =
+    activeModal === 'EXPORT_LIBRARY' || activeModal === 'FEEDS_MANAGER';
+
+  const collectionsController = useCollections({
+    scopeId: effectiveScope,
+    enabled: isCreateCollectionOpen,
   });
   const collections = collectionsController.collections;
 
   const createCollectionMutation = useCreateCollectionMutation(effectiveScope);
   const updateItemMutation = useUpdateLibraryItemMutation(effectiveScope);
   const [isCustomSubmitting, setIsCustomSubmitting] = React.useState(false);
+
+  if (isIntegrationModalOpen) {
+    return <WorkspaceIntegrationsModalsHost {...props} />;
+  }
 
   const handleCreateOrRenameCollection = async (data: CollectionFormValues) => {
     if (typeof payload?.onSubmit === 'function') {
@@ -260,31 +308,6 @@ export function CollectionModalsHost({
         confirmLabel={payload?.confirmLabel || 'Delete Collection'}
         onConfirm={handleConfirmDeleteCollection}
         isDeleting={collectionsController.isDeleting || isCustomSubmitting}
-      />
-    );
-  }
-
-  if (isExternalSyncOpen) {
-    return (
-      <ExternalLibrarySyncModal
-        open={isExternalSyncOpen}
-        onOpenChange={(open) => !open && closeModal()}
-        defaultProvider={payload?.provider || 'zotero'}
-        scopeId={effectiveScope}
-        collections={collections}
-        defaultCollectionId={payload?.collectionId || null}
-      />
-    );
-  }
-
-  if (isFeedsManagerOpen) {
-    return (
-      <FeedsManagerModal
-        open={isFeedsManagerOpen}
-        onOpenChange={(open) => !open && closeModal()}
-        scopeId={effectiveScope}
-        collections={collections}
-        defaultCollectionId={payload?.collectionId || null}
       />
     );
   }

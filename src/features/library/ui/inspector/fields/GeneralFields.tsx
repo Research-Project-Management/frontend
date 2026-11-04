@@ -1,30 +1,13 @@
-"use client";
+'use client';
 
-import { useMemo } from "react";
-import { Check } from "lucide-react";
-import { cn } from "@/shared/lib/utils";
-import type { Item } from "@/features/library/domain/types/core.types";
-import { useLibraryUIStore } from "@/features/library/core/store/library-ui.store";
-import {
-  SchemaItemTypeDefinition,
-  ALL_ITEM_TYPES_FLAT,
-  getTitleFieldForType,
-} from "@/features/library/domain/types/core.types";
-import {
-  cleanValue,
-  getItemDisplayTitle,
-  buildExtraMetadataPatch,
-  formatAndSanitizeExtraMetadata,
-  isValidValue,
-} from "@/features/library/domain/metadata-mapper";
-import { buildInspectorFieldPatch } from "@/features/library/domain/item-field-schema";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/shared/components/ui/dropdown-menu";
-import { InlineTextarea } from "./InlineField";
+import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
+import { Check } from 'lucide-react';
+import { cn } from '@/shared/lib/utils';
+import { type Item, SchemaItemTypeDefinition, ALL_ITEM_TYPES_FLAT, getTitleFieldForType } from '@/features/library/domain/types/core.types';
+import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import { cleanValue, getItemDisplayTitle, buildExtraMetadataPatch, formatAndSanitizeExtraMetadata, isValidValue } from '@/features/library/domain/metadata-mapper';
+import { buildInspectorFieldPatch } from '@/features/library/domain/item-field-schema';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 
 export interface GeneralFieldsProps {
   item?: Item;
@@ -279,3 +262,266 @@ export function ExtraAuditFields({
 }
 
 export default GeneralFields;
+
+export interface InlineFieldProps {
+  value: string;
+  itemKey?: string;
+  ariaLabel?: string;
+  onSave: (val: string) => void;
+  onChange?: (val: string) => void;
+  className?: string;
+  mono?: boolean;
+  readOnly?: boolean;
+}
+
+/**
+ * Clean Inline Editable Text Input
+ * Saves on Enter / Blur, Cancels on Escape.
+ */
+export function InlineField({
+  value,
+  itemKey,
+  ariaLabel,
+  onSave,
+  onChange,
+  className,
+  mono,
+  readOnly = false,
+}: InlineFieldProps) {
+  const [draft, setDraft] = useState(value);
+  const draftRef = useRef(value);
+  const skipBlurCommitRef = useRef(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const activeItemKeyRef = useRef(itemKey);
+  const focusedItemKeyRef = useRef(itemKey);
+  const focusedInitialValueRef = useRef(value);
+
+  useEffect(() => {
+    const isFocused =
+      typeof document !== 'undefined' && document.activeElement === inputRef.current;
+    activeItemKeyRef.current = itemKey;
+    if (!isFocused) {
+      draftRef.current = value;
+      setDraft(value);
+    }
+  }, [value, itemKey]);
+
+  const handleFocus = () => {
+    skipBlurCommitRef.current = false;
+    focusedItemKeyRef.current = itemKey;
+    focusedInitialValueRef.current = value;
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (readOnly) return;
+    const newVal = e.target.value;
+    draftRef.current = newVal;
+    setDraft(newVal);
+    onChange?.(newVal);
+  };
+
+  const handleBlur = () => {
+    if (readOnly) return;
+    if (skipBlurCommitRef.current) {
+      skipBlurCommitRef.current = false;
+      return;
+    }
+    // Guard against cross-item draft corruption when switching active items mid-edit
+    if (
+      (itemKey !== undefined && focusedItemKeyRef.current !== activeItemKeyRef.current) ||
+      (itemKey === undefined && focusedInitialValueRef.current !== value)
+    ) {
+      draftRef.current = value;
+      setDraft(value);
+      return;
+    }
+    const trimmed = draftRef.current.trim();
+    if (trimmed !== value.trim()) {
+      onSave(trimmed);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (readOnly) return;
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      inputRef.current?.blur();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      skipBlurCommitRef.current = true;
+      draftRef.current = value;
+      setDraft(value);
+      inputRef.current?.blur();
+    }
+  };
+
+  if (readOnly) {
+    return (
+      <div
+        className={cn(
+          'w-full h-7 text-foreground px-2 py-1 rounded-md text-13 leading-normal font-normal truncate whitespace-nowrap select-text flex items-center font-sans',
+          mono && 'font-mono text-11 tabular-nums tracking-normal',
+          className,
+        )}
+      >
+        {value || ''}
+      </div>
+    );
+  }
+
+  return (
+    <input
+      ref={inputRef}
+      type="text"
+      aria-label={ariaLabel || 'Metadata field'}
+      value={draft}
+      onFocus={handleFocus}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+      className={cn(
+        'w-full flex-1 min-w-0 h-7 bg-transparent text-foreground px-2 py-1 rounded-md border border-transparent outline-none text-13 leading-normal font-normal truncate transition-colors font-sans',
+        'hover:bg-muted focus:bg-background focus:border-primary focus:ring-1 focus:ring-ring focus:hover:bg-background',
+        mono && 'font-mono text-11 tabular-nums tracking-normal',
+        className,
+      )}
+    />
+  );
+}
+
+export interface InlineTextareaProps {
+  value: string;
+  itemKey?: string;
+  placeholder?: string;
+  ariaLabel?: string;
+  onSave: (val: string) => void;
+  className?: string;
+  rows?: number;
+  readOnly?: boolean;
+}
+
+/**
+ * Clean Inline Editable Auto-Expanding Textarea
+ * Used for Title and Abstract editing.
+ */
+export function InlineTextarea({
+  value,
+  itemKey,
+  placeholder,
+  ariaLabel,
+  onSave,
+  className,
+  rows = 1,
+  readOnly = false,
+}: InlineTextareaProps) {
+  const [draft, setDraft] = useState(value);
+  const draftRef = useRef(value);
+  const skipBlurCommitRef = useRef(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const activeItemKeyRef = useRef(itemKey);
+  const focusedItemKeyRef = useRef(itemKey);
+  const focusedInitialValueRef = useRef(value);
+
+  useEffect(() => {
+    const isFocused =
+      typeof document !== 'undefined' && document.activeElement === textareaRef.current;
+    activeItemKeyRef.current = itemKey;
+    if (!isFocused) {
+      draftRef.current = value;
+      setDraft(value);
+    }
+  }, [value, itemKey]);
+
+  const handleFocus = () => {
+    skipBlurCommitRef.current = false;
+    focusedItemKeyRef.current = itemKey;
+    focusedInitialValueRef.current = value;
+  };
+
+  const adjustHeight = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    const borderOffset = el.offsetHeight - el.clientHeight;
+    el.style.height = `${Math.max(28, el.scrollHeight + borderOffset)}px`;
+  }, []);
+
+  useEffect(() => {
+    adjustHeight();
+  }, [draft, adjustHeight]);
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => {
+      adjustHeight();
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [adjustHeight]);
+
+  if (readOnly) {
+    return (
+      <div
+        className={cn(
+          'w-full min-h-7 text-foreground px-2 py-1 rounded-md text-13 leading-normal font-normal break-words [overflow-wrap:anywhere] whitespace-pre-wrap select-text font-sans',
+          className,
+        )}
+      >
+        {value || ''}
+      </div>
+    );
+  }
+
+  const commit = () => {
+    if (skipBlurCommitRef.current) {
+      skipBlurCommitRef.current = false;
+      return;
+    }
+    // Guard against cross-item draft corruption when switching active items mid-edit
+    if (
+      (itemKey !== undefined && focusedItemKeyRef.current !== activeItemKeyRef.current) ||
+      (itemKey === undefined && focusedInitialValueRef.current !== value)
+    ) {
+      draftRef.current = value;
+      setDraft(value);
+      return;
+    }
+    const trimmed = draftRef.current.trim();
+    if (trimmed !== value) {
+      onSave(trimmed);
+    }
+  };
+
+  return (
+    <textarea
+      ref={textareaRef}
+      rows={rows}
+      value={draft}
+      placeholder={placeholder}
+      aria-label={ariaLabel || 'Text area'}
+      onFocus={handleFocus}
+      onChange={(e) => {
+        draftRef.current = e.target.value;
+        setDraft(e.target.value);
+      }}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          (e.target as HTMLTextAreaElement).blur();
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          skipBlurCommitRef.current = true;
+          draftRef.current = value;
+          setDraft(value);
+          (e.target as HTMLTextAreaElement).blur();
+        }
+      }}
+      className={cn(
+        'w-full min-h-7 bg-transparent text-foreground px-2 py-1 rounded-md border border-transparent hover:bg-muted focus:border-primary focus:ring-1 focus:ring-ring focus:bg-background outline-none text-13 leading-normal font-normal resize-none overflow-hidden break-words [overflow-wrap:anywhere] select-text focus:outline-none focus-visible:outline-none font-sans',
+        className,
+      )}
+    />
+  );
+}

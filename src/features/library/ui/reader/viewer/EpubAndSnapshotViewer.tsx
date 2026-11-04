@@ -1,8 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import JSZip from 'jszip';
-import DOMPurify from 'dompurify';
+import React, { useState, useEffect, useCallback, useRef, useMemo, useDeferredValue } from 'react';
 import {
   BookOpen,
   ChevronLeft,
@@ -15,19 +13,28 @@ import {
   ExternalLink,
   Search,
   X,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { cn } from '@/shared/lib/utils';
 import { fetchPdfBlob } from '@/features/library/sdk';
-import type { ReaderNavigationTarget } from '@/features/library/domain/types/reader.schema';
+import { ANNOTATION_PALETTE_COLORS } from '@/features/library/domain/reader.domain';
+import type {
+  ReaderNavigationTarget,
+  ReaderAnnotation,
+  PdfOutlineItem,
+  ActiveHighlightTooltipState,
+} from '@/features/library/domain/types/reader.schema';
+import { AnnotationQuickEditCard } from './PageAnnotationOverlay';
+import {
+  sanitizeReaderHtml,
+  unpackEpubArchiveChapters,
+  highlightReaderHtml,
+  type EpubChapter,
+} from './ViewerPageCanvas';
 
-export interface EpubChapter {
-  id: string;
-  title: string;
-  href: string;
-  htmlContent: string;
-}
+export type { EpubChapter };
 
 export interface EpubAndSnapshotViewerProps {
   url: string;
@@ -38,6 +45,9 @@ export interface EpubAndSnapshotViewerProps {
   themeMode?: 'normal' | 'sepia' | 'dark' | 'invert';
   zoom?: number;
   activeColor?: string;
+  onSelectColor?: (hex: string) => void;
+  annotations?: ReaderAnnotation[];
+  onOutlineLoad?: (outline: PdfOutlineItem[]) => void;
   targetPage?: ReaderNavigationTarget | null;
   onVisiblePageChange?: (page: number) => void;
   onAddToNote?: (text: string, pageNumber?: number, annotationId?: string) => void;
@@ -47,29 +57,16 @@ export interface EpubAndSnapshotViewerProps {
     pageNum?: number,
     colorHex?: string,
   ) => Promise<unknown> | void;
+  onUpdateAnnotation?: (
+    annotationId: string,
+    expectedVersion: number | undefined,
+    dto: { color?: string; comment?: string; tags?: string[] },
+  ) => Promise<unknown>;
+  onDeleteAnnotation?: (annotation: ReaderAnnotation) => void;
   onPageChange?: (current: number, total: number) => void;
   isSearchOpen?: boolean;
   onCloseSearch?: () => void;
   initialSearchQuery?: string;
-}
-
-/**
- * Resolves a relative path inside an EPUB archive against a base directory.
- */
-function resolveEpubPath(baseDir: string, relativeHref: string): string {
-  const cleanHref = relativeHref.split('#')[0];
-  if (!baseDir) return cleanHref.replace(/^\/+/, '');
-  const parts = `${baseDir}/${cleanHref}`.split('/');
-  const resolved: string[] = [];
-  for (const part of parts) {
-    if (!part || part === '.') continue;
-    if (part === '..') {
-      resolved.pop();
-    } else {
-      resolved.push(part);
-    }
-  }
-  return resolved.join('/');
 }
 
 /**
@@ -89,11 +86,16 @@ export function EpubAndSnapshotViewer({
   themeMode = 'normal',
   zoom = 1.0,
   activeColor = '#ffd400',
+  onSelectColor,
+  annotations = [],
+  onOutlineLoad,
   targetPage,
   onVisiblePageChange,
   onAddToNote,
   onAskAi,
   onAnnotate,
+  onUpdateAnnotation,
+  onDeleteAnnotation,
   onPageChange,
   isSearchOpen = false,
   onCloseSearch,
@@ -102,6 +104,7 @@ export function EpubAndSnapshotViewer({
   const [chapters, setChapters] = useState<EpubChapter[]>([]);
   const [currentChapterIndex, setCurrentChapterIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
+  const deferredSearchQuery = useDeferredValue(searchQuery);
 
   const onPageChangeRef = useRef(onPageChange);
   useEffect(() => {
@@ -113,11 +116,19 @@ export function EpubAndSnapshotViewer({
     onVisiblePageChangeRef.current = onVisiblePageChange;
   }, [onVisiblePageChange]);
 
+  const onOutlineLoadRef = useRef(onOutlineLoad);
+  useEffect(() => {
+    onOutlineLoadRef.current = onOutlineLoad;
+  }, [onOutlineLoad]);
+
   const [snapshotHtml, setSnapshotHtml] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isTocOpen, setIsTocOpen] = useState(false);
   const [selectedText, setSelectedText] = useState('');
+  const [activeHighlightTooltip, setActiveHighlightTooltip] =
+    useState<ActiveHighlightTooltipState | null>(null);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
 
   // Load EPUB or Snapshot
   useEffect(() => {
@@ -135,20 +146,16 @@ export function EpubAndSnapshotViewer({
           });
           if (cancelled || abortController.signal.aborted) return;
 
-          // Guard against binary PDF streams mistakenly routed to snapshot viewer
           const magicBytes = await blob.slice(0, 5).text();
           if (magicBytes === '%PDF-' || blob.type === 'application/pdf') {
-            throw new Error('This document is a PDF document, not an HTML web snapshot. Please open it with the PDF viewer.');
+            throw new Error(
+              'This document is a PDF document, not an HTML web snapshot. Please open it with the PDF viewer.',
+            );
           }
 
           const rawHtml = await blob.text();
           if (cancelled || abortController.signal.aborted) return;
-          const sanitized = DOMPurify.sanitize(rawHtml, {
-            WHOLE_DOCUMENT: false,
-            ADD_TAGS: ['article', 'section', 'header', 'footer', 'figure', 'figcaption'],
-            FORBID_TAGS: ['style', 'form', 'input', 'button', 'iframe', 'object', 'embed', 'link', 'meta', 'base'],
-            FORBID_ATTR: ['onerror', 'onload'],
-          });
+          const sanitized = sanitizeReaderHtml(rawHtml);
           setSnapshotHtml(sanitized);
           onPageChangeRef.current?.(1, 1);
           onVisiblePageChangeRef.current?.(1);
@@ -156,123 +163,35 @@ export function EpubAndSnapshotViewer({
           return;
         }
 
-        // Mode === 'epub': Unpack with JSZip
         const blob = await fetchPdfBlob(url, abortController.signal, { scopeId });
         if (cancelled || abortController.signal.aborted) return;
 
-        // Guard against PDF streams mistakenly routed to epub viewer
         const epubMagic = await blob.slice(0, 5).text();
         if (epubMagic === '%PDF-' || blob.type === 'application/pdf') {
-          throw new Error('This document is a PDF document, not an EPUB eBook. Please open it with the PDF viewer.');
+          throw new Error(
+            'This document is a PDF document, not an EPUB eBook. Please open it with the PDF viewer.',
+          );
         }
 
         const buffer = await blob.arrayBuffer();
         if (cancelled || abortController.signal.aborted) return;
-        const zip = await JSZip.loadAsync(buffer);
+        const loadedChapters = await unpackEpubArchiveChapters(
+          buffer,
+          abortController.signal,
+        );
         if (cancelled || abortController.signal.aborted) return;
 
-        // 1. Locate OPF package path from META-INF/container.xml
-        const containerFile = zip.file('META-INF/container.xml');
-        let opfPath = '';
-        if (containerFile) {
-          const containerXml = await containerFile.async('text');
-          if (cancelled || abortController.signal.aborted) return;
-          const match = containerXml.match(/full-path=["']([^"']+)["']/i);
-          if (match?.[1]) opfPath = match[1];
-        }
-
-        if (!opfPath) {
-          // Fallback: search for any .opf file in the zip
-          const opfFiles = Object.keys(zip.files).filter((k) =>
-            k.toLowerCase().endsWith('.opf'),
-          );
-          opfPath = opfFiles[0] || '';
-        }
-
-        if (!opfPath || !zip.file(opfPath)) {
-          throw new Error('Invalid EPUB archive: missing package.opf manifest.');
-        }
-
-        const opfXml = await zip.file(opfPath)!.async('text');
-        if (cancelled || abortController.signal.aborted) return;
-        const opfDir = opfPath.includes('/')
-          ? opfPath.slice(0, opfPath.lastIndexOf('/'))
-          : '';
-
-        const parser = new DOMParser();
-        const opfDoc = parser.parseFromString(opfXml, 'application/xml');
-
-        // 2. Parse <manifest> items
-        const manifestMap = new Map<
-          string,
-          { href: string; mediaType: string }
-        >();
-        const itemEls = Array.from(opfDoc.getElementsByTagName('item'));
-        for (const el of itemEls) {
-          const id = el.getAttribute('id');
-          const href = el.getAttribute('href');
-          const mediaType = el.getAttribute('media-type') || '';
-          if (id && href) {
-            manifestMap.set(id, { href, mediaType });
-          }
-        }
-
-        // 3. Parse <spine> itemrefs
-        const itemrefEls = Array.from(opfDoc.getElementsByTagName('itemref'));
-        const loadedChapters: EpubChapter[] = [];
-
-        for (let i = 0; i < itemrefEls.length; i++) {
-          if (cancelled || abortController.signal.aborted) return;
-          const idref = itemrefEls[i].getAttribute('idref');
-          if (!idref) continue;
-          const manifestEntry = manifestMap.get(idref);
-          if (!manifestEntry) continue;
-
-          const resolvedPath = resolveEpubPath(opfDir, manifestEntry.href);
-          let decodedPath = resolvedPath;
-          try {
-            decodedPath = decodeURIComponent(resolvedPath);
-          } catch {
-            decodedPath = resolvedPath;
-          }
-          const chapterFile =
-            zip.file(resolvedPath) ||
-            zip.file(decodedPath);
-          if (!chapterFile) continue;
-
-          const rawChapterHtml = await chapterFile.async('text');
-          if (cancelled || abortController.signal.aborted) return;
-          const chapterDoc = parser.parseFromString(
-            rawChapterHtml,
-            'text/html',
-          );
-          const headingText =
-            chapterDoc.querySelector('h1, h2, h3, title')?.textContent?.trim() ||
-            `Section ${loadedChapters.length + 1}`;
-          const bodyHtml = chapterDoc.body
-            ? chapterDoc.body.innerHTML
-            : rawChapterHtml;
-
-          const sanitizedHtml = DOMPurify.sanitize(bodyHtml, {
-            FORBID_TAGS: ['style', 'form', 'input', 'button', 'iframe', 'object', 'embed', 'link', 'meta', 'base'],
-            FORBID_ATTR: ['onerror', 'onload'],
-          });
-          if (sanitizedHtml.trim()) {
-            loadedChapters.push({
-              id: idref,
-              title: headingText,
-              href: resolvedPath,
-              htmlContent: sanitizedHtml,
-            });
-          }
-        }
-
-        if (cancelled || abortController.signal.aborted) return;
         setChapters(loadedChapters);
         setCurrentChapterIndex(0);
         const total = Math.max(1, loadedChapters.length);
         onPageChangeRef.current?.(1, total);
         onVisiblePageChangeRef.current?.(1);
+        onOutlineLoadRef.current?.(
+          loadedChapters.map((ch, idx) => ({
+            title: ch.title,
+            pageNumber: idx + 1,
+          })),
+        );
       } catch (err) {
         if (!cancelled && !abortController.signal.aborted) {
           setError(
@@ -315,6 +234,46 @@ export function EpubAndSnapshotViewer({
     setSelectedText(sel);
   }, []);
 
+  const handleViewportClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      const markEl = target.closest('mark[data-annotation-id]') as HTMLElement | null;
+      if (!markEl) {
+        setActiveHighlightTooltip(null);
+        return;
+      }
+      const annId = markEl.getAttribute('data-annotation-id');
+      if (!annId) return;
+      const matchedAnn = annotations.find((a) => a.id === annId);
+      if (!matchedAnn) return;
+
+      const viewport = viewportRef.current;
+      if (!viewport) return;
+      const markRect = markEl.getBoundingClientRect();
+      const vpRect = viewport.getBoundingClientRect();
+      const top = markRect.bottom - vpRect.top + viewport.scrollTop + 6;
+      const left = Math.max(
+        16,
+        Math.min(
+          viewport.clientWidth - 300,
+          markRect.left - vpRect.left + viewport.scrollLeft,
+        ),
+      );
+
+      setActiveHighlightTooltip({
+        id: matchedAnn.id,
+        color: matchedAnn.color || '#ffd400',
+        comment: matchedAnn.comment || '',
+        quote: matchedAnn.quoteText || matchedAnn.text || markEl.textContent || '',
+        top,
+        left,
+        ann: matchedAnn,
+      });
+    },
+    [annotations],
+  );
+
   const handlePrevChapter = () => {
     const next = Math.max(0, currentChapterIndex - 1);
     setCurrentChapterIndex(next);
@@ -330,62 +289,29 @@ export function EpubAndSnapshotViewer({
   };
 
   const currentChapter = chapters[currentChapterIndex];
+  const currentPageNum = mode === 'epub' ? currentChapterIndex + 1 : 1;
 
-  const highlightHtml = useCallback(
-    (html: string) => {
-      const q = searchQuery.trim().slice(0, 120);
-      if (!isSearchOpen || q.length < 2 || typeof DOMParser === 'undefined') return html;
-      const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const regex = new RegExp(`(${escaped})`, 'gi');
-      let matchCount = 0;
-      const MAX_MATCHES = 500;
+  const renderedChapterHtml = useMemo(() => {
+    if (!currentChapter) return '';
+    return highlightReaderHtml(
+      currentChapter.htmlContent,
+      annotations,
+      currentPageNum,
+      isSearchOpen,
+      deferredSearchQuery,
+    );
+  }, [currentChapter, annotations, currentPageNum, isSearchOpen, deferredSearchQuery]);
 
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, 'text/html');
-      const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
-      const textNodes: Text[] = [];
-      let currentNode = walker.nextNode();
-      while (currentNode) {
-        textNodes.push(currentNode as Text);
-        currentNode = walker.nextNode();
-      }
-
-      for (const textNode of textNodes) {
-        if (matchCount >= MAX_MATCHES) break;
-        const text = textNode.nodeValue;
-        if (!text) continue;
-        regex.lastIndex = 0;
-        if (!regex.test(text)) continue;
-        regex.lastIndex = 0;
-
-        const fragment = doc.createDocumentFragment();
-        let lastIndex = 0;
-        let match: RegExpExecArray | null;
-        while ((match = regex.exec(text)) !== null) {
-          if (matchCount >= MAX_MATCHES) break;
-          if (match.index > lastIndex) {
-            fragment.appendChild(doc.createTextNode(text.slice(lastIndex, match.index)));
-          }
-          const mark = doc.createElement('mark');
-          mark.className = 'bg-amber-300/70 text-foreground rounded px-0.5';
-          mark.textContent = match[0];
-          fragment.appendChild(mark);
-          lastIndex = regex.lastIndex;
-          matchCount++;
-          if (match[0].length === 0) {
-            regex.lastIndex++;
-          }
-        }
-        if (lastIndex < text.length) {
-          fragment.appendChild(doc.createTextNode(text.slice(lastIndex)));
-        }
-        textNode.parentNode?.replaceChild(fragment, textNode);
-      }
-
-      return doc.body.innerHTML;
-    },
-    [isSearchOpen, searchQuery],
-  );
+  const renderedSnapshotHtml = useMemo(() => {
+    if (!snapshotHtml) return '';
+    return highlightReaderHtml(
+      snapshotHtml,
+      annotations,
+      1,
+      isSearchOpen,
+      deferredSearchQuery,
+    );
+  }, [snapshotHtml, annotations, isSearchOpen, deferredSearchQuery]);
 
   const themeClasses =
     themeMode === 'dark'
@@ -476,6 +402,33 @@ export function EpubAndSnapshotViewer({
         <div className="flex items-center gap-1.5 shrink-0">
           {selectedText && (
             <div className="flex items-center gap-1 bg-primary/10 border border-primary/30 rounded-md px-2 py-0.5">
+              <div className="flex items-center gap-1 pr-1 border-r border-border/60">
+                {ANNOTATION_PALETTE_COLORS.map((c) => {
+                  const isCurrent = activeColor.toLowerCase() === c.hex.toLowerCase();
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      title={`Highlight (${c.label})`}
+                      aria-label={`Highlight (${c.label})`}
+                      onClick={() => {
+                        onSelectColor?.(c.hex);
+                        onAnnotate?.(
+                          selectedText,
+                          mode === 'epub' ? currentChapterIndex + 1 : 1,
+                          c.hex,
+                        );
+                        setSelectedText('');
+                      }}
+                      className={cn(
+                        'size-3.5 rounded-full border border-border transition-transform hover:scale-110 cursor-pointer',
+                        isCurrent && 'ring-1 ring-primary ring-offset-1',
+                      )}
+                      style={{ backgroundColor: c.hex }}
+                    />
+                  );
+                })}
+              </div>
               {onAnnotate && (
                 <button
                   type="button"
@@ -519,14 +472,9 @@ export function EpubAndSnapshotViewer({
                     );
                     setSelectedText('');
                   }}
-                  className="h-6 px-2 rounded text-11 font-medium whitespace-nowrap shrink-0 text-foreground hover:bg-primary/20 flex items-center gap-1 cursor-pointer"
+                  className="h-6 px-2 rounded text-11 font-medium whitespace-nowrap shrink-0 text-ai hover:bg-primary/20 flex items-center gap-1 cursor-pointer"
                 >
-                  <img
-                    src="/Chat.svg"
-                    alt=""
-                    aria-hidden="true"
-                    className="size-3 rounded-full object-contain shrink-0"
-                  />
+                  <Sparkles className="size-3 text-ai shrink-0" strokeWidth={1.5} />
                   <span>Ask AI</span>
                 </button>
               )}
@@ -620,15 +568,29 @@ export function EpubAndSnapshotViewer({
 
         {/* Reader Scroll Viewport */}
         <div
+          ref={viewportRef}
           onMouseUp={handleMouseUp}
-          className="flex-1 overflow-y-auto px-6 py-8 md:px-14"
+          onClick={handleViewportClick}
+          className="flex-1 overflow-y-auto px-6 py-8 md:px-14 relative"
         >
+          {activeHighlightTooltip && (
+            <AnnotationQuickEditCard
+              tooltip={activeHighlightTooltip}
+              visiblePage={currentPageNum}
+              onUpdateAnnotation={onUpdateAnnotation}
+              onDeleteAnnotation={onDeleteAnnotation}
+              onAddToNote={onAddToNote}
+              onAskAi={onAskAi}
+              onUpdateTooltip={setActiveHighlightTooltip}
+              onClose={() => setActiveHighlightTooltip(null)}
+            />
+          )}
           {mode === 'epub' ? (
             currentChapter ? (
               <article
                 style={{ fontSize: `${Math.round(zoom * 100)}%` }}
                 className="max-w-3xl mx-auto prose prose-sm md:prose-base dark:prose-invert leading-relaxed select-text"
-                dangerouslySetInnerHTML={{ __html: highlightHtml(currentChapter.htmlContent) }}
+                dangerouslySetInnerHTML={{ __html: renderedChapterHtml }}
               />
             ) : (
               <div className="text-center text-muted-foreground py-12 text-13">
@@ -640,7 +602,7 @@ export function EpubAndSnapshotViewer({
             <article
               style={{ fontSize: `${Math.round(zoom * 100)}%` }}
               className="max-w-4xl mx-auto prose prose-sm md:prose-base dark:prose-invert leading-relaxed select-text"
-              dangerouslySetInnerHTML={{ __html: highlightHtml(snapshotHtml) }}
+              dangerouslySetInnerHTML={{ __html: renderedSnapshotHtml }}
             />
           ) : (
             <PlaneEmptyState

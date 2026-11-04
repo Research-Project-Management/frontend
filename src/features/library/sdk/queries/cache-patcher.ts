@@ -9,12 +9,6 @@ import {
   getMappedItemMeta,
   setMappedItemMeta,
 } from '@/features/library/domain/metadata-mapper';
-import {
-  isItemTrashed,
-  isItemInMyPublications,
-  isItemUnfiled,
-} from '@/features/library/domain/system-views.policy';
-import { isItemRetracted } from '@/features/library/domain/system-views.policy';
 import type { InvalidationClient } from '@/features/library/domain/types/ingestion.types';
 import {
   itemKeys,
@@ -23,6 +17,23 @@ import {
   invalidateCollections,
   normalizeScopeId,
 } from '@/features/library/sdk/query-keys';
+import {
+  isTrashQueryKey,
+  doesItemMatchQueryFilter,
+  MEMBERSHIP_MUTATION_KEYS,
+  doesPatchAffectMembership,
+  isMetadataOnlyPatch,
+  hasMembershipFieldsChanged,
+} from './item-mutations.queries';
+
+export {
+  isTrashQueryKey,
+  doesItemMatchQueryFilter,
+  MEMBERSHIP_MUTATION_KEYS,
+  doesPatchAffectMembership,
+  isMetadataOnlyPatch,
+  hasMembershipFieldsChanged,
+};
 
 export type { InvalidationClient };
 export function chunkUniqueIds(ids: readonly string[], chunkSize = 100): string[][] {
@@ -94,6 +105,35 @@ const IDENTIFIER_FIELD_TO_TYPES: Record<string, readonly string[]> = {
 };
 
 /**
+ * Preserves cached user-reading-state fields (`isStarred`, `isRead`, `readStatus`,
+ * `rating`, `lastReadAt`, `lastOpenedAt`, `currentPage`, `lastReadPage`, `scrollPosition`,
+ * `readProgress`, `readingProgress`) on a target cache patch when the incoming payload
+ * does not explicitly carry user reading state.
+ */
+export function preserveCachedUserReadingState(
+  target: Record<string, unknown>,
+  existing: Item,
+  sourcePayload?: unknown,
+): void {
+  const src =
+    sourcePayload && typeof sourcePayload === 'object'
+      ? (sourcePayload as Record<string, unknown>)
+      : target;
+  target.isStarred = existing.isStarred ?? src.isStarred ?? false;
+  target.isRead = existing.isRead ?? src.isRead ?? false;
+  target.readStatus = existing.readStatus ?? src.readStatus ?? 'unread';
+  target.rating = existing.rating ?? src.rating ?? 0;
+  if (existing.lastReadAt !== undefined) target.lastReadAt = existing.lastReadAt;
+  if (existing.lastOpenedAt !== undefined) target.lastOpenedAt = existing.lastOpenedAt;
+  if (existing.currentPage !== undefined) target.currentPage = existing.currentPage;
+  if (existing.lastReadPage !== undefined) target.lastReadPage = existing.lastReadPage;
+  if (existing.scrollPosition !== undefined) target.scrollPosition = existing.scrollPosition;
+  if (existing.readProgress !== undefined) target.readProgress = existing.readProgress;
+  const readingProgress = (existing as Record<string, unknown>).readingProgress;
+  if (readingProgress !== undefined) target.readingProgress = readingProgress;
+}
+
+/**
  * Merges a partial item patch onto an existing cached Item while preserving user-state fields
  * (`isStarred`, `isRead`, `readStatus`, `rating`, `lastReadAt`) when `patch` came
  * from `mapBackendItem(raw)` without explicit user-state data (`_hasExplicitUserState === false`),
@@ -162,20 +202,15 @@ export function mergeCachedItemWithPatch(current: Item, patch: Partial<Item>): I
     ...baseRecord,
     ...(mergedExtraFields !== undefined ? { extraFields: mergedExtraFields } : {}),
     ...(mergedMetadata !== undefined ? { metadata: mergedMetadata } : {}),
-    ...(preserveUserState
-      ? {
-          isStarred: current.isStarred ?? patch.isStarred ?? false,
-          isRead: current.isRead ?? patch.isRead ?? false,
-          readStatus: current.readStatus ?? patch.readStatus ?? "unread",
-          rating: current.rating ?? patch.rating ?? 0,
-          ...(current.lastReadAt !== undefined ? { lastReadAt: current.lastReadAt } : {}),
-          ...(current.currentPage !== undefined ? { currentPage: current.currentPage } : {}),
-          ...(current.lastReadPage !== undefined ? { lastReadPage: current.lastReadPage } : {}),
-          ...(current.scrollPosition !== undefined ? { scrollPosition: current.scrollPosition } : {}),
-          ...(current.lastOpenedAt !== undefined ? { lastOpenedAt: current.lastOpenedAt } : {}),
-        }
-      : {}),
   };
+
+  if (preserveUserState) {
+    preserveCachedUserReadingState(
+      mergedResult as unknown as Record<string, unknown>,
+      current,
+      patch,
+    );
+  }
 
   if (!("identifiers" in patch) && Array.isArray(mergedResult.identifiers) && mergedResult.identifiers.length > 0) {
     const clearedIdTypes = new Set<string>();
@@ -322,101 +357,6 @@ export function patchSingleItemCache<T>(
       ? patchOrUpdater(currentItem)
       : mergeCachedItemWithPatch(currentItem, patchOrUpdater);
   return updatedItem as unknown as T;
-}
-
-function isTrashQueryKey(queryKey: readonly unknown[]): boolean {
-  if (queryKey[2] === 'trash' || queryKey[3] === 'trash') return true;
-  const params = queryKey[3];
-  if (params && typeof params === 'object' && (params as { view?: unknown }).view === 'trash') {
-    return true;
-  }
-  return false;
-}
-
-const isItemStarred = (item: Record<string, unknown>): boolean =>
-  Boolean(item.isStarred || item.starred);
-
-const VIEW_PREDICATE: Readonly<Record<string, (item: Record<string, unknown>) => boolean>> = {
-  starred: isItemStarred,
-  unfiled: isItemUnfiled,
-  'my-publications': isItemInMyPublications,
-  publications: isItemInMyPublications,
-  retracted: isItemRetracted,
-};
-
-function doesItemMatchQueryFilter(
-  item: Item,
-  params: Record<string, unknown> | undefined,
-): boolean {
-  if (!params || typeof params !== 'object') return true;
-  const view = typeof params.view === 'string' ? params.view : undefined;
-  const rec = item as Record<string, unknown>;
-
-  if (isItemTrashed(rec) !== (view === 'trash')) return false;
-  if (view === 'trash') return true;
-  if (view && VIEW_PREDICATE[view] && !VIEW_PREDICATE[view]!(rec)) return false;
-  if (Boolean(params.starred) && !isItemStarred(rec)) return false;
-  if (Boolean(params.unfiled) && !isItemUnfiled(rec)) return false;
-
-  const collectionId = typeof params.collectionId === 'string' ? params.collectionId : undefined;
-  if (collectionId) {
-    const colIds = Array.isArray(item.collectionIds) ? item.collectionIds : [];
-    const singleColId = (item as { collectionId?: string }).collectionId;
-    if (!colIds.includes(collectionId) && singleColId !== collectionId) return false;
-  }
-  return true;
-}
-
-export const MEMBERSHIP_MUTATION_KEYS = new Set([
-  'isStarred',
-  'deletedAt',
-  'status',
-  'collectionId',
-  'collectionIds',
-]);
-
-export function doesPatchAffectMembership(patch?: Record<string, unknown> | null): boolean {
-  if (!patch || typeof patch !== 'object') return false;
-  for (const key of Object.keys(patch)) {
-    if (MEMBERSHIP_MUTATION_KEYS.has(key)) return true;
-  }
-  return false;
-}
-
-export function isMetadataOnlyPatch(patch?: Record<string, unknown> | null): boolean {
-  if (!patch || typeof patch !== 'object') return false;
-  const keys = Object.keys(patch);
-  if (keys.length === 0) return true;
-  return !keys.some((k) => MEMBERSHIP_MUTATION_KEYS.has(k) || k === 'tags');
-}
-
-const MEMBERSHIP_STATE_EXTRACTORS: ReadonlyArray<(it: Record<string, unknown>) => unknown> = [
-  isItemStarred,
-  isItemTrashed,
-  isItemInMyPublications,
-  isItemRetracted,
-  (it) => (it as { status?: string }).status ?? null,
-  (it) => (it as { collectionId?: string }).collectionId ?? null,
-];
-
-function hasMembershipFieldsChanged(
-  oldItem: Item | null,
-  updatedItem: Item,
-  membershipPatch?: Record<string, unknown>,
-): boolean {
-  if ((membershipPatch && !doesPatchAffectMembership(membershipPatch)) || !oldItem) {
-    return false;
-  }
-  const oldRec = oldItem as Record<string, unknown>;
-  const nextRec = updatedItem as Record<string, unknown>;
-  if (MEMBERSHIP_STATE_EXTRACTORS.some((fn) => fn(oldRec) !== fn(nextRec))) {
-    return true;
-  }
-  const oldCols = Array.isArray(oldItem.collectionIds) ? oldItem.collectionIds : [];
-  const nextCols = Array.isArray(updatedItem.collectionIds) ? updatedItem.collectionIds : [];
-  if (oldCols.length !== nextCols.length) return true;
-  const oldSet = new Set(oldCols);
-  return nextCols.some((c) => !oldSet.has(c));
 }
 
 /**
@@ -605,8 +545,6 @@ export function removeItemsFromScopeCaches(
 
   void queryClient.invalidateQueries({ queryKey: itemKeys.trash(effectiveScope) });
 }
-
-export const evictItemFromScopeCaches = removeItemsFromScopeCaches;
 
 /**
  * Reusable post-mutation invalidation helper that normalizes scopeId and

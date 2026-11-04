@@ -105,6 +105,7 @@ export default function ImportFromPersonalModal({
     limit: 200,
     search: debouncedSearch || undefined,
     collectionId: activeCollectionId,
+    checkInProjectId: scopeId !== "user" ? scopeId : undefined,
   });
   const filteredItems: Item[] = useMemo(() => data?.items ?? [], [data?.items]);
 
@@ -144,6 +145,7 @@ export default function ImportFromPersonalModal({
   // Filter items eligible for selection (not already in the project)
   const selectableItems = useMemo(() => {
     return filteredItems.filter((it) => {
+      if (it.alreadyInProject === true) return false;
       const titleLower =
         indexedItems.get(it.id)?.titleLower ??
         (it.title || "").toLowerCase().trim();
@@ -403,7 +405,8 @@ export default function ImportFromPersonalModal({
                   const titleLower =
                     indexed?.titleLower ??
                     (item.title || "").toLowerCase().trim();
-                  const isAlreadyInProject = existingSet.has(titleLower);
+                  const isAlreadyInProject =
+                    item.alreadyInProject === true || existingSet.has(titleLower);
                   const authorText =
                     indexed?.authorText ??
                     formatCreatorCompact(normalizeAuthors(item));

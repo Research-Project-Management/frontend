@@ -93,15 +93,6 @@ export function openInNewTab(url: string): void {
   }
 }
 
-export function navigateToUrl(url: string): void {
-  if (typeof window === 'undefined' || !url) return;
-  if (window.location && typeof window.location.assign === 'function') {
-    window.location.assign(url);
-  } else if (typeof window.open === 'function') {
-    window.open(url, '_self');
-  }
-}
-
 /**
  * Stateless Citation & Bibliography Export Application Service.
  *

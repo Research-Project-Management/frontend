@@ -1,35 +1,18 @@
+import type { Item } from '@/features/library/domain/types/core.types';
+import { ALL_SCHEMA_FIELD_KEYS } from '@/features/library/domain/types/item-fields.constants';
+import { normalizeCanonicalItemType, registerSchemaRegistryUpdateListener, type SchemaFieldDefinition } from '@/features/library/domain/types/item-types.types';
+import { cleanDoi } from './identifiers';
+import { isValidValue, cleanValue, parseItemExtraField, stripOrUpdateExtraKeyLine } from './metadata-mapper';
+import { FIRST_CLASS_ITEM_COLUMNS, CANONICAL_FIELD_ALIASES, buildDerivedFieldMappings, getDirectExtraAliases, parseValidYear } from './metadata-extra.constants';
+import { applyCoupledFieldSynchronization } from './item-field-descriptors.domain';
+import { type FieldLookupSource, type InspectorFieldDescriptor, INSPECTOR_FIELD_DESCRIPTORS } from './item-field-descriptors.domain';
+import { ALL_SCHEMA_PROMOTE_KEYS } from '@/features/library/domain/metadata-mapper';
+
 /**
  * Single Source of Truth for Zotero Schema v42 Field Resolution, Alias Fallback Chains,
  * First-Class Column Mapping, and Atomic Inspector Patch Construction.
  */
 
-import type { Item } from "@/features/library/domain/types/core.types";
-import { ALL_SCHEMA_FIELD_KEYS } from "@/features/library/domain/types/item-fields.constants";
-import {
-  normalizeCanonicalItemType,
-  registerSchemaRegistryUpdateListener,
-  type SchemaFieldDefinition,
-} from "@/features/library/domain/types/item-types.types";
-import { cleanDoi } from "./identifiers";
-import {
-  isValidValue,
-  cleanValue,
-  parseItemExtraField,
-  stripOrUpdateExtraKeyLine,
-} from "./metadata-mapper";
-import {
-  FIRST_CLASS_ITEM_COLUMNS,
-  CANONICAL_FIELD_ALIASES,
-  buildDerivedFieldMappings,
-  getDirectExtraAliases,
-  parseValidYear,
-} from "./metadata-extra.constants";
-import { applyCoupledFieldSynchronization } from "./item-field-coupling.domain";
-import {
-  type FieldLookupSource,
-  type InspectorFieldDescriptor,
-  INSPECTOR_FIELD_DESCRIPTORS,
-} from "./item-field-descriptors.domain";
 
 export {
   ALL_SCHEMA_FIELD_KEYS,
@@ -190,6 +173,44 @@ export function prepareInspectorFieldContext(
   return ctx;
 }
 
+export const EXTRA_FIELD_FALLBACKS: Record<string, readonly string[]> = {
+  publicationDate: [
+    "date",
+    "issueDate",
+    "dateDecided",
+    "dateEnacted",
+    "filingDate",
+  ],
+  issue: [
+    "number",
+    "patentNumber",
+    "reportNumber",
+    "docketNumber",
+    "publicLawNumber",
+    "billNumber",
+    "documentNumber",
+    "identifier",
+    "episodeNumber",
+  ],
+  place: ["eventPlace", "country", "repositoryLocation"],
+  publisher: [
+    "university",
+    "institution",
+    "issuingAuthority",
+    "authority",
+    "organization",
+    "company",
+    "repository",
+    "court",
+    "distributor",
+    "studio",
+    "network",
+    "label",
+  ],
+  series: ["seriesTitle"],
+  seriesTitle: ["series"],
+};
+
 /**
  * Pure helper to resolve the display value of any Zotero schema field from an Item.
  */
@@ -211,15 +232,26 @@ export function resolveInspectorFieldValue(
 
   const fallbackChain = FIELD_FALLBACK_CHAINS[keyLower];
   if (fallbackChain) {
-    return cleanValue(pickFirst(p, ef, fallbackChain, keyLower));
+    const resolved = cleanValue(pickFirst(p, ef, fallbackChain, keyLower));
+    if (resolved) return resolved;
   }
 
-  return cleanValue(
+  const directOrCustom = cleanValue(
     p[fieldKey] ??
       ef[fieldKey] ??
       ef[keyLower] ??
       (p.customFields as Record<string, unknown> | undefined)?.[fieldKey],
   );
+  if (directOrCustom) return directOrCustom;
+
+  const aliases = EXTRA_FIELD_FALLBACKS[fieldKey];
+  if (aliases) {
+    for (const alias of aliases) {
+      const candidate = cleanValue(p[alias] ?? ef[alias]);
+      if (candidate) return candidate;
+    }
+  }
+  return "";
 }
 
 /**
@@ -381,4 +413,120 @@ export function buildInspectorFieldPatch(
   }
 
   return patch;
+}
+
+export function cloneSnapshotValue<T>(val: T): T {
+  if (Array.isArray(val)) {
+    return val.map((item) => (item && typeof item === 'object' ? { ...(item as Record<string, unknown>) } : item)) as unknown as T;
+  }
+  if (Boolean(val) && typeof val === 'object') return { ...(val as Record<string, unknown>) } as unknown as T;
+  return val;
+}
+
+const TRANSIENT_PATCH_KEYS = new Set<string>(['version', 'silent', 'expectedVersion']);
+
+const MULTI_KEY_SIBLING_FALLBACKS: Record<string, readonly string[]> = {
+  abstract: ['abstractNote', 'abstract'],
+  abstractNote: ['abstractNote', 'abstract'],
+  date: ['publicationDate', 'date', 'issueDate', 'dateDecided', 'dateEnacted', 'filingDate'],
+  publicationDate: ['publicationDate', 'date', 'issueDate', 'dateDecided', 'dateEnacted', 'filingDate'],
+  issueDate: ['issueDate', 'publicationDate', 'date'],
+  dateDecided: ['dateDecided', 'publicationDate', 'date'],
+  dateEnacted: ['dateEnacted', 'publicationDate', 'date'],
+  filingDate: ['filingDate', 'date', 'publicationDate'],
+  journal: ['publicationTitle', 'journal'],
+  publicationTitle: ['publicationTitle', 'journal'],
+  journalAbbr: ['journalAbbreviation', 'journalAbbr'],
+  journalAbbreviation: ['journalAbbreviation', 'journalAbbr'],
+  accessedAt: ['accessDate', 'accessedAt'],
+  accessDate: ['accessDate', 'accessedAt'],
+  rights: ['license', 'rights'],
+  license: ['license', 'rights'],
+  numPages: ['numberOfPages', 'numPages'],
+  numberOfPages: ['numberOfPages', 'numPages'],
+  archiveID: ['arxivId', 'archiveID', 'archiveId'],
+  archiveId: ['arxivId', 'archiveID', 'archiveId'],
+  arxivId: ['arxivId', 'archiveID', 'archiveId'],
+};
+
+function resolvePreviousScalarValue(itemRecord: Record<string, unknown>, key: string): unknown {
+  if (itemRecord[key] !== undefined) return itemRecord[key];
+  const currentEf =
+    itemRecord.extraFields && typeof itemRecord.extraFields === 'object' && !Array.isArray(itemRecord.extraFields)
+      ? (itemRecord.extraFields as Record<string, unknown>)
+      : undefined;
+  const siblingCandidates = MULTI_KEY_SIBLING_FALLBACKS[key] ?? CANONICAL_FIELD_ALIASES[key];
+  if (siblingCandidates) {
+    for (const sibling of siblingCandidates) {
+      if (itemRecord[sibling] !== undefined) return itemRecord[sibling];
+      if (currentEf && currentEf[sibling] !== undefined) return currentEf[sibling];
+    }
+  }
+  return currentEf && currentEf[key] !== undefined ? currentEf[key] : undefined;
+}
+
+export function buildInverseMetadataPatch(currentItem: Item, forwardPatch: Partial<Item>): Partial<Item> {
+  const itemRecord = currentItem as Record<string, unknown>;
+  const patchRecord = forwardPatch as Record<string, unknown>;
+  const inverse: Record<string, unknown> = {};
+
+  for (const key of Object.keys(patchRecord)) {
+    if (TRANSIENT_PATCH_KEYS.has(key)) continue;
+    if (key === 'extraFields' || key === 'metadata') {
+      const forwardNested = patchRecord[key];
+      if (forwardNested && typeof forwardNested === 'object' && !Array.isArray(forwardNested)) {
+        const currentNested =
+          itemRecord[key] && typeof itemRecord[key] === 'object' && !Array.isArray(itemRecord[key])
+            ? (itemRecord[key] as Record<string, unknown>)
+            : {};
+        const inverseNested: Record<string, unknown> = { ...currentNested };
+        for (const subKey of Object.keys(forwardNested as Record<string, unknown>)) {
+          inverseNested[subKey] =
+            subKey in currentNested && currentNested[subKey] !== undefined ? cloneSnapshotValue(currentNested[subKey]) : null;
+        }
+        inverse[key] = inverseNested;
+      }
+      continue;
+    }
+    const prevVal = resolvePreviousScalarValue(itemRecord, key);
+    inverse[key] = prevVal === undefined ? null : cloneSnapshotValue(prevVal);
+  }
+  return inverse as Partial<Item>;
+}
+
+const BASE_PRE_CONVERSION_SCALAR_KEYS = [
+  'title', 'isbn', 'issn', 'doi', 'pmid', 'pmcid', 'arxivId', 'volume', 'issue', 'pages',
+  'numberOfPages', 'edition', 'series', 'seriesTitle', 'seriesNumber', 'place', 'abstract',
+  'abstractNote', 'url', 'openAccessPdfUrl', 'language', 'rights', 'license', 'archive',
+  'archiveLocation', 'callNumber', 'shortTitle', 'year', 'publicationDate', 'date', 'accessDate',
+  'journalAbbreviation', 'citationKey', 'itemType', 'extra', 'publicationTitle', 'venue', 'publisher',
+] as const;
+
+export const PRE_CONVERSION_BIBLIOGRAPHIC_SCALAR_KEYS: readonly string[] = Array.from(
+  new Set<string>([...BASE_PRE_CONVERSION_SCALAR_KEYS, ...ALL_SCHEMA_PROMOTE_KEYS]),
+);
+
+export function buildPreConversionSnapshot(sourceItem: Partial<Item>): Partial<Item> {
+  const srcRecord = sourceItem as Record<string, unknown>;
+  const snap: Record<string, unknown> = {};
+  if (typeof sourceItem.id === 'string' && sourceItem.id) snap.id = sourceItem.id;
+
+  const allKeysToSnapshot = new Set<string>([...PRE_CONVERSION_BIBLIOGRAPHIC_SCALAR_KEYS, ...ALL_SCHEMA_PROMOTE_KEYS]);
+  for (const key of allKeysToSnapshot) {
+    if (srcRecord[key] !== undefined) {
+      const orig = srcRecord[key];
+      snap[key] =
+        typeof orig === 'string' || typeof orig === 'number' || typeof orig === 'boolean'
+          ? orig
+          : cloneSnapshotValue(orig);
+    }
+  }
+  snap.extra = typeof sourceItem.extra === 'string' ? sourceItem.extra : '';
+  if (sourceItem.extraFields && typeof sourceItem.extraFields === 'object') {
+    snap.extraFields = { ...(sourceItem.extraFields as Record<string, unknown>) };
+  }
+  if (Array.isArray(sourceItem.creators)) snap.creators = sourceItem.creators.map((c) => ({ ...c }));
+  if (Array.isArray(sourceItem.contributors)) snap.contributors = sourceItem.contributors.map((c) => ({ ...c }));
+  if (Array.isArray(sourceItem.authors)) snap.authors = [...sourceItem.authors];
+  return snap as Partial<Item>;
 }

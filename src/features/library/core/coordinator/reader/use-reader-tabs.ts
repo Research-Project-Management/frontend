@@ -2,14 +2,77 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useQueryClient } from '@tanstack/react-query';
-import { StateService, itemKeys, normalizeScopeId } from '@/features/library/sdk';
+import { useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { StateService, itemKeys, normalizeScopeId, type ItemStateData } from '@/features/library/sdk';
 import { patchItemAcrossScopeCaches } from '@/features/library/sdk/queries/cache-patcher';
 import { useReaderStore, type ReaderTab } from '@/features/library/core/store/reader.store';
+import {
+  MIN_READER_ZOOM,
+  MAX_READER_ZOOM,
+  normalizeReaderFitMode,
+  normalizeReaderTheme,
+  normalizeReaderZoom,
+} from '@/features/library/core/adapters/project-context.adapter';
 import type {
   ReaderDocument,
   ReaderNavigationTarget,
 } from '@/features/library/domain/types/reader.schema';
+
+export interface ScrollPositionWithBookmarks extends Record<string, unknown> { bookmarks?: number[]; }
+
+export function normalizeBookmarkPages(raw: unknown): number[] {
+  if (!Array.isArray(raw)) return [];
+  const unique = new Set<number>();
+  for (const entry of raw) {
+    if (typeof entry === 'number' && Number.isFinite(entry) && entry >= 1) unique.add(Math.max(1, Math.floor(entry)));
+  }
+  return Array.from(unique).sort((a, b) => a - b);
+}
+
+export function parseScrollPositionObject(scrollPosition: unknown): ScrollPositionWithBookmarks {
+  if (scrollPosition && typeof scrollPosition === 'object' && !Array.isArray(scrollPosition)) {
+    const record = scrollPosition as Record<string, unknown>;
+    return 'bookmarks' in record ? { ...record, bookmarks: normalizeBookmarkPages(record.bookmarks) } : { ...record };
+  }
+  return {};
+}
+
+export function hasExplicitBookmarksInScrollPosition(scrollPosition: unknown): boolean {
+  return Boolean(scrollPosition && typeof scrollPosition === 'object' && !Array.isArray(scrollPosition) && Array.isArray((scrollPosition as { bookmarks?: unknown }).bookmarks));
+}
+
+export function extractBookmarksFromScrollPosition(scrollPosition: unknown): number[] | undefined {
+  if (hasExplicitBookmarksInScrollPosition(scrollPosition)) {
+    const raw = (scrollPosition as { bookmarks?: unknown }).bookmarks;
+    return normalizeBookmarkPages(raw);
+  }
+  return undefined;
+}
+
+export function buildScrollPositionWithBookmarks(
+  baseScrollPosition: unknown,
+  latestScrollPosition: Record<string, unknown>,
+  bookmarks: readonly number[],
+): ScrollPositionWithBookmarks {
+  return {
+    ...parseScrollPositionObject(baseScrollPosition),
+    ...latestScrollPosition,
+    bookmarks: normalizeBookmarkPages(bookmarks),
+  };
+}
+
+function syncPaperStateQueryCache(
+  queryClient: QueryClient,
+  effectiveScope: string,
+  paperId: string,
+  patch: Partial<ItemStateData>,
+): void {
+  const stateKey = itemKeys.state(effectiveScope, paperId);
+  queryClient.setQueryData<ItemStateData>(stateKey, (prev) => ({
+    ...(prev ?? ({ itemId: paperId } as unknown as ItemStateData)),
+    ...patch,
+  }));
+}
 
 export interface UseReadingProgressOptions {
   scopeId: string;
@@ -45,10 +108,12 @@ export function useReadingProgress({
   const lastSavedPageRef = useRef<number | null>(null);
   const pendingPageUpdateRef = useRef<{ scope: string; paperId: string; page: number } | null>(null);
   const hydratedBookmarksRef = useRef<string | null>(null);
+  const latestScrollPositionRef = useRef<ScrollPositionWithBookmarks>({});
 
   useEffect(() => {
     if (!paper?.id || restoredPaperIdRef.current === paper.id) return;
-    restoredPaperIdRef.current = paper.id;
+    const paperId = paper.id;
+    restoredPaperIdRef.current = paperId;
     isInitialStateLoadedRef.current = false;
     let isCancelled = false;
 
@@ -57,13 +122,22 @@ export function useReadingProgress({
       scrollPosition?: unknown,
     ) => {
       if (isCancelled) return;
-      if (scrollPosition && typeof scrollPosition === 'object' && 'bookmarks' in scrollPosition) {
-        const rawBookmarks = (scrollPosition as { bookmarks?: unknown }).bookmarks;
-        if (Array.isArray(rawBookmarks)) {
-          useReaderStore.getState().setBookmarks(paper.id, rawBookmarks as number[]);
-        }
+      const parsedScroll = parseScrollPositionObject(scrollPosition);
+      latestScrollPositionRef.current = parsedScroll;
+
+      const hasExplicitBookmarks = hasExplicitBookmarksInScrollPosition(scrollPosition);
+      const extractedBookmarks = extractBookmarksFromScrollPosition(scrollPosition);
+      if (hasExplicitBookmarks) {
+        useReaderStore.getState().setBookmarks(paperId, extractedBookmarks ?? []);
+        hydratedBookmarksRef.current = JSON.stringify(extractedBookmarks ?? []);
+      } else {
+        hydratedBookmarksRef.current = null;
       }
-      hydratedBookmarksRef.current = JSON.stringify(useReaderStore.getState().getBookmarks(paper.id));
+
+      syncPaperStateQueryCache(queryClient, effectiveScope, paperId, {
+        ...(typeof currentPage === 'number' ? { currentPage } : {}),
+        ...(scrollPosition !== undefined ? { scrollPosition: parsedScroll } : {}),
+      });
 
       if (!hasExplicitDeepLink && currentPage && currentPage > 1) {
         lastSavedPageRef.current = currentPage;
@@ -87,8 +161,21 @@ export function useReadingProgress({
       };
     }
 
-    StateService
-      .getState(scopeId, paper.id)
+    const stateKey = itemKeys.state(effectiveScope, paperId);
+    const cachedState = queryClient.getQueryData<ItemStateData | null>(stateKey);
+    if (cachedState && (cachedState.currentPage !== undefined || cachedState.scrollPosition !== undefined)) {
+      applyHydratedState(cachedState.currentPage, cachedState.scrollPosition);
+      return () => {
+        isCancelled = true;
+      };
+    }
+
+    queryClient
+      .fetchQuery({
+        queryKey: stateKey,
+        queryFn: () => StateService.getState(effectiveScope, paperId),
+        staleTime: 30_000,
+      })
       .then((stateData) => {
         applyHydratedState(stateData?.currentPage, stateData?.scrollPosition);
       })
@@ -101,36 +188,54 @@ export function useReadingProgress({
     return () => {
       isCancelled = true;
     };
-  }, [paper, scopeId, setTargetPage, setVisiblePage, hasExplicitDeepLink]);
+  }, [paper, effectiveScope, queryClient, setTargetPage, setVisiblePage, hasExplicitDeepLink]);
 
   const paperBookmarks = useReaderStore((s) => (paper?.id ? s.bookmarks[paper.id] : undefined));
   useEffect(() => {
     if (!paper?.id || !isInitialStateLoadedRef.current) return;
-    const currentBookmarks = paperBookmarks ?? [];
+    const currentBookmarks = normalizeBookmarkPages(paperBookmarks);
     const serialized = JSON.stringify(currentBookmarks);
     if (hydratedBookmarksRef.current === serialized) return;
-    hydratedBookmarksRef.current = serialized;
 
-    const existingScrollPos =
-      paper.readingState?.scrollPosition &&
-      typeof paper.readingState.scrollPosition === 'object' &&
-      !Array.isArray(paper.readingState.scrollPosition)
-        ? (paper.readingState.scrollPosition as Record<string, unknown>)
-        : {};
+    const paperId = paper.id;
+    const embeddedScrollPos = paper.readingState?.scrollPosition;
 
-    StateService
-      .updateState(effectiveScope, paper.id, {
-        scrollPosition: {
-          ...existingScrollPos,
-          bookmarks: currentBookmarks,
-        },
-      })
-      .then(() => {
-        void queryClient.invalidateQueries({
-          queryKey: itemKeys.state(effectiveScope, paper.id),
+    const timeout = setTimeout(() => {
+      const previousSerialized = hydratedBookmarksRef.current;
+      const previousScrollPos = { ...latestScrollPositionRef.current };
+      hydratedBookmarksRef.current = serialized;
+
+      const nextScrollPos = buildScrollPositionWithBookmarks(
+        embeddedScrollPos,
+        latestScrollPositionRef.current,
+        currentBookmarks,
+      );
+      latestScrollPositionRef.current = nextScrollPos;
+
+      syncPaperStateQueryCache(queryClient, effectiveScope, paperId, {
+        scrollPosition: nextScrollPos,
+      });
+
+      StateService
+        .updateState(effectiveScope, paperId, {
+          scrollPosition: nextScrollPos,
+        })
+        .then((updatedState) => {
+          syncPaperStateQueryCache(queryClient, effectiveScope, paperId, {
+            ...(updatedState ?? {}),
+            scrollPosition: updatedState?.scrollPosition ?? nextScrollPos,
+          });
+        })
+        .catch(() => {
+          hydratedBookmarksRef.current = previousSerialized;
+          latestScrollPositionRef.current = previousScrollPos;
+          syncPaperStateQueryCache(queryClient, effectiveScope, paperId, {
+            scrollPosition: previousScrollPos,
+          });
         });
-      })
-      .catch(() => undefined);
+    }, 400);
+
+    return () => clearTimeout(timeout);
   }, [paperBookmarks, paper?.id, paper?.readingState?.scrollPosition, effectiveScope, queryClient]);
 
   useEffect(() => {
@@ -149,18 +254,49 @@ export function useReadingProgress({
 
     const timeout = setTimeout(() => {
       const pending = pendingPageUpdateRef.current;
+      const targetPage = pending ? pending.page : visiblePage;
+      const previousSavedPage = lastSavedPageRef.current;
       pendingPageUpdateRef.current = null;
-      lastSavedPageRef.current = visiblePage;
+      lastSavedPageRef.current = targetPage;
+
+      const currentScrollPos = latestScrollPositionRef.current;
+      syncPaperStateQueryCache(queryClient, effectiveScope, paperId, {
+        currentPage: targetPage,
+        ...(Object.keys(currentScrollPos).length > 0 ? { scrollPosition: currentScrollPos } : {}),
+      });
+      patchItemAcrossScopeCaches(
+        queryClient,
+        effectiveScope,
+        paperId,
+        { currentPage: targetPage },
+        { forceSkipMembershipInvalidation: true },
+      );
+
       StateService
         .updateState(effectiveScope, paperId, {
-          currentPage: pending ? pending.page : visiblePage,
+          currentPage: targetPage,
         })
-        .then(() => {
-          void queryClient.invalidateQueries({
-            queryKey: itemKeys.state(effectiveScope, paperId),
+        .then((updatedState) => {
+          const mergedScrollPos =
+            updatedState?.scrollPosition !== undefined
+              ? { ...parseScrollPositionObject(updatedState.scrollPosition), ...latestScrollPositionRef.current }
+              : latestScrollPositionRef.current;
+          syncPaperStateQueryCache(queryClient, effectiveScope, paperId, {
+            ...(updatedState ?? {}),
+            currentPage: updatedState?.currentPage ?? targetPage,
+            ...(Object.keys(mergedScrollPos).length > 0 ? { scrollPosition: mergedScrollPos } : {}),
           });
         })
-        .catch(() => undefined);
+        .catch(() => {
+          if (lastSavedPageRef.current === targetPage) {
+            lastSavedPageRef.current = previousSavedPage;
+          }
+          if (previousSavedPage !== null) {
+            syncPaperStateQueryCache(queryClient, effectiveScope, paperId, {
+              currentPage: previousSavedPage,
+            });
+          }
+        });
     }, 800);
 
     return () => clearTimeout(timeout);
@@ -171,14 +307,23 @@ export function useReadingProgress({
       const pending = pendingPageUpdateRef.current;
       if (pending && pending.page !== lastSavedPageRef.current) {
         pendingPageUpdateRef.current = null;
+        syncPaperStateQueryCache(queryClient, pending.scope, pending.paperId, {
+          currentPage: pending.page,
+        });
         void StateService
           .updateState(pending.scope, pending.paperId, {
             currentPage: pending.page,
           })
+          .then((updatedState) => {
+            syncPaperStateQueryCache(queryClient, pending.scope, pending.paperId, {
+              ...(updatedState ?? {}),
+              currentPage: updatedState?.currentPage ?? pending.page,
+            });
+          })
           .catch(() => undefined);
       }
     };
-  }, []);
+  }, [queryClient]);
 
   const markedPaperIdRef = useRef<string | null>(null);
   useEffect(() => {
@@ -189,16 +334,23 @@ export function useReadingProgress({
         .markAsRead(effectiveScope, paperId)
         .then((updatedState) => {
           const nextReadStatus = updatedState?.readStatus || 'reading';
+          const lastReadAt = updatedState?.lastReadAt || new Date().toISOString();
+          syncPaperStateQueryCache(queryClient, effectiveScope, paperId, {
+            ...(updatedState ?? {}),
+            readStatus: nextReadStatus,
+            lastReadAt,
+          });
           patchItemAcrossScopeCaches(queryClient, effectiveScope, paperId, {
             isRead: nextReadStatus === 'completed',
             readStatus: nextReadStatus,
-            lastReadAt: updatedState?.lastReadAt || new Date().toISOString(),
-          });
-          void queryClient.invalidateQueries({
-            queryKey: itemKeys.state(effectiveScope, paperId),
+            lastReadAt,
           });
         })
-        .catch(() => undefined);
+        .catch(() => {
+          if (markedPaperIdRef.current === paperId) {
+            markedPaperIdRef.current = null;
+          }
+        });
     }
   }, [effectiveScope, paper?.id, queryClient]);
 }
@@ -305,34 +457,7 @@ export interface UseReaderTabPresentationOptions {
 }
 
 export type ViewerFitMode = 'fit-width' | 'fit-page' | 'auto' | 'custom';
-export type StoreFitMode = 'fit-width' | 'fit-page' | 'auto' | 'custom';
 export type ViewerThemeMode = 'normal' | 'sepia' | 'dark' | 'invert';
-
-export const STORE_TO_VIEWER_FIT_MODE: Readonly<Record<string, ViewerFitMode>> = {
-  'fit-page': 'fit-page',
-  'page-fit': 'fit-page',
-  'fit-width': 'fit-width',
-  'page-width': 'fit-width',
-  auto: 'auto',
-  custom: 'custom',
-  manual: 'custom',
-};
-
-export const VIEWER_TO_STORE_FIT_MODE: Readonly<Record<string, StoreFitMode>> = {
-  'fit-page': 'fit-page',
-  'fit-width': 'fit-width',
-  auto: 'auto',
-  custom: 'custom',
-  manual: 'custom',
-};
-
-export const STORE_TO_VIEWER_THEME_MODE: Readonly<Record<string, ViewerThemeMode>> = {
-  normal: 'normal',
-  light: 'normal',
-  sepia: 'sepia',
-  dark: 'dark',
-  invert: 'invert',
-};
 
 export function useReaderTabPresentation({
   effectiveTabId,
@@ -343,23 +468,23 @@ export function useReaderTabPresentation({
   updateTabState,
 }: UseReaderTabPresentationOptions) {
   const [fallbackFitMode, setFitModeState] = useState<ViewerFitMode>(
-    () => STORE_TO_VIEWER_FIT_MODE[activeTab?.fitMode ?? ''] ?? 'fit-width',
+    () => normalizeReaderFitMode(activeTab?.fitMode),
   );
   const [fallbackRotation, setRotationState] = useState<number>(
     () => activeTab?.rotation ?? 0,
   );
   const [fallbackThemeMode, setThemeModeState] = useState<ViewerThemeMode>(
-    () => STORE_TO_VIEWER_THEME_MODE[activeTab?.theme ?? ''] ?? 'normal',
+    () => normalizeReaderTheme(activeTab?.theme),
   );
 
   const fitMode: ViewerFitMode = activeTab
-    ? (STORE_TO_VIEWER_FIT_MODE[activeTab.fitMode ?? ''] ?? 'fit-width')
+    ? normalizeReaderFitMode(activeTab.fitMode)
     : fallbackFitMode;
 
   const rotation: number = activeTab ? (activeTab.rotation ?? 0) : fallbackRotation;
 
   const themeMode: ViewerThemeMode = activeTab
-    ? (STORE_TO_VIEWER_THEME_MODE[activeTab.theme ?? ''] ?? 'normal')
+    ? normalizeReaderTheme(activeTab.theme)
     : fallbackThemeMode;
 
   useEffect(() => {
@@ -371,7 +496,10 @@ export function useReaderTabPresentation({
 
   useEffect(() => {
     if (!effectiveTabId || effectiveTabId === 'library' || visiblePage < 1) return;
-    updateTabState(effectiveTabId, { currentPage: visiblePage });
+    const timeout = setTimeout(() => {
+      updateTabState(effectiveTabId, { currentPage: visiblePage });
+    }, 400);
+    return () => clearTimeout(timeout);
   }, [effectiveTabId, visiblePage, updateTabState]);
 
   const setTabZoom = useCallback(
@@ -384,10 +512,10 @@ export function useReaderTabPresentation({
         typeof nextOrUpdater === 'function'
           ? nextOrUpdater(currentZoom)
           : nextOrUpdater;
-      const resolved = Math.min(3.0, Math.max(0.25, Number(rawResolved.toFixed(4))));
-      const mappedFitMode = VIEWER_TO_STORE_FIT_MODE[nextFitMode] ?? 'custom';
+      const resolved = normalizeReaderZoom(rawResolved);
+      const mappedFitMode = normalizeReaderFitMode(nextFitMode);
       setZoom(resolved);
-      setFitModeState(nextFitMode);
+      setFitModeState(mappedFitMode);
       if (effectiveTabId && effectiveTabId !== 'library') {
         updateTabState(effectiveTabId, { zoom: resolved, fitMode: mappedFitMode });
       }
@@ -397,8 +525,8 @@ export function useReaderTabPresentation({
 
   const setFitMode = useCallback(
     (next: ViewerFitMode) => {
-      const mappedFitMode = VIEWER_TO_STORE_FIT_MODE[next] ?? 'fit-width';
-      setFitModeState(next);
+      const mappedFitMode = normalizeReaderFitMode(next);
+      setFitModeState(mappedFitMode);
       if (effectiveTabId && effectiveTabId !== 'library') {
         updateTabState(effectiveTabId, {
           fitMode: mappedFitMode,
@@ -453,6 +581,152 @@ export function useReaderTabPresentation({
     setThemeMode,
     setTabZoom,
   };
+}
+
+export interface UseReaderKeyboardShortcutsOptions {
+  activeTool: string;
+  setActiveTool: (tool: 'select' | 'highlight' | 'underline' | 'note' | 'text' | 'area' | 'ink' | 'eraser') => void;
+  setInteractionMode: (mode: 'select' | 'hand') => void;
+  onNavigateBack: () => void;
+  onNavigateForward: () => void;
+  onNavigatePage: (pageNumber: number) => void;
+  visiblePage: number;
+  totalPages: number;
+  setTabZoom: (updater: number | ((prev: number) => number), fitMode?: ViewerFitMode) => void;
+  setFitMode: (mode: ViewerFitMode) => void;
+  setRotation: (updater: number | ((prev: number) => number)) => void;
+}
+
+export function useReaderKeyboardShortcuts({
+  activeTool,
+  setActiveTool,
+  setInteractionMode,
+  onNavigateBack,
+  onNavigateForward,
+  onNavigatePage,
+  visiblePage,
+  totalPages,
+  setTabZoom,
+  setFitMode,
+  setRotation,
+}: UseReaderKeyboardShortcutsOptions): void {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isEditable =
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable);
+      if (isEditable) return;
+
+      // Alt+1..7: Zotero annotation tool shortcuts, Alt+Left/Right: Back/Forward
+      if (e.altKey && !e.ctrlKey && !e.metaKey) {
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          onNavigateBack();
+          return;
+        }
+        if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          onNavigateForward();
+          return;
+        }
+        const toolMap: Record<string, 'highlight' | 'underline' | 'note' | 'text' | 'area' | 'ink' | 'eraser'> = {
+          '1': 'highlight',
+          '2': 'underline',
+          '3': 'note',
+          '4': 'text',
+          '5': 'area',
+          '6': 'ink',
+          '7': 'eraser',
+        };
+        const mapped = toolMap[e.key];
+        if (mapped) {
+          e.preventDefault();
+          setInteractionMode('select');
+          setActiveTool(activeTool === mapped ? 'select' : mapped);
+          return;
+        }
+      }
+
+      // Ctrl/Cmd + = / - / 0: Zoom shortcuts
+      if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+        if (e.key === '=' || e.key === '+') {
+          e.preventDefault();
+          setTabZoom((z) => Math.min(MAX_READER_ZOOM, Number((z + 0.1).toFixed(2))), 'custom');
+          return;
+        }
+        if (e.key === '-') {
+          e.preventDefault();
+          setTabZoom((z) => Math.max(MIN_READER_ZOOM, Number((z - 0.1).toFixed(2))), 'custom');
+          return;
+        }
+        if (e.key === '0') {
+          e.preventDefault();
+          setTabZoom(1.0, 'fit-width');
+          setFitMode('fit-width');
+          return;
+        }
+      }
+
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      // Single-key shortcuts: S (Select), H (Hand), R / Shift+R (Rotate), PageUp / PageDown
+      if (e.key === 's' || e.key === 'S') {
+        e.preventDefault();
+        setInteractionMode('select');
+        setActiveTool('select');
+        return;
+      }
+      if (e.key === 'h' || e.key === 'H') {
+        e.preventDefault();
+        setInteractionMode('hand');
+        setActiveTool('select');
+        return;
+      }
+      if (e.key === 'r') {
+        e.preventDefault();
+        setRotation((r) => (r + 90) % 360);
+        return;
+      }
+      if (e.key === 'R' && e.shiftKey) {
+        e.preventDefault();
+        setRotation((r) => (r + 270) % 360);
+        return;
+      }
+      if (e.key === 'PageUp') {
+        if (visiblePage > 1) {
+          e.preventDefault();
+          onNavigatePage(visiblePage - 1);
+        }
+        return;
+      }
+      if (e.key === 'PageDown') {
+        if (totalPages > 0 && visiblePage < totalPages) {
+          e.preventDefault();
+          onNavigatePage(visiblePage + 1);
+        }
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [
+    activeTool,
+    setActiveTool,
+    setInteractionMode,
+    onNavigateBack,
+    onNavigateForward,
+    onNavigatePage,
+    visiblePage,
+    totalPages,
+    setTabZoom,
+    setFitMode,
+    setRotation,
+  ]);
 }
 
 export {

@@ -230,6 +230,20 @@ export function useAttachmentCoordinator({
       if (!paper.id) return;
       const targetUrl = linkUrlInput.trim();
       if (!targetUrl) return;
+      try {
+        const parsed = new URL(targetUrl);
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+          toast.error('Invalid link URL', {
+            description: 'Only http:// and https:// URLs are allowed.',
+          });
+          return;
+        }
+      } catch {
+        toast.error('Invalid link URL', {
+          description: 'Please enter a valid http:// or https:// URL.',
+        });
+        return;
+      }
       const linkTitle = linkTitleInput.trim() || targetUrl;
 
       try {

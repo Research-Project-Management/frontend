@@ -14,6 +14,48 @@ import {
 import { LibraryInspector } from '@/features/library/ui/inspector/LibraryInspector';
 import { ErrorBoundary } from '@/shared/components/ui/error-boundary';
 import { useLibraryNavigation } from '@/features/library/core/coordinator/navigation.coordinator';
+import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import '@/features/library/core/adapters/project-context.adapter';
+import {
+  useLibraryCommandStore,
+} from '@/features/library/core/manager/library-command.manager';
+import {
+  clearGroupMergeDraft,
+  computeDuplicateSetKey,
+  executeDuplicateMergeWithCommand,
+  getGroupMergeDraft,
+} from '@/features/library/core/coordinator/curation.coordinator';
+import {
+  extractExplicitUserMergeOverrides,
+  selectBestMasterItemId,
+} from '@/features/library/domain/diff';
+import { useFeedsStore, isFeedEntryInLibrary } from '@/features/library/core/store/reader.store';
+import { useLibraryPermissions } from '@/features/library/core/adapters/project-context.adapter';
+import { useProcessModalStore } from '@/features/library/core/store/process-modal.store';
+import { useCollectionsQuery } from '@/features/library/sdk/queries/collections.queries';
+import { useSavedSearches } from '@/features/library/sdk/queries/saved-searches-relations.queries';
+import { useTrash } from '@/features/library/sdk/queries/tags-notes.queries';
+import { useLibraryDeltaSync } from '@/features/library/sdk/queries/sync.queries';
+import {
+  useLibraryBootstrapQuery,
+  useLibraryCountsQuery,
+  useItemTypes,
+  useCreateLibraryItemMutation,
+  useBatchRestoreItemsMutation,
+  useUpdateLibraryItemMutation,
+  useLibraryCacheSynchronizer,
+} from '@/features/library/sdk/queries/catalog.queries';
+import {
+  useMergeDuplicates,
+  useDuplicateGroups,
+  useIngestMutation,
+} from '@/features/library/sdk/queries/ingestion.queries';
+import { formatItemTypeLabel } from '@/features/library/domain/metadata-mapper';
+import { parseEmojiPrefix } from '@/features/library/domain/citations';
+import { getCollectionBreadcrumbPath } from '@/features/library/domain/collection-tree';
+import { type ParsedFeedEntry } from '@/features/library/domain/feed-parser.domain';
+import { executeSaveFeedEntryWithFeedback } from '@/features/library/core/coordinator/ingestion.coordinator';
+import type { Item, DuplicateGroup, Collection } from '@/features/library/domain/types/core.types';
 
 const DuplicateMergeInspector = dynamic(
   () => import('@/features/library/ui/inspector/DuplicateMergeInspector').then((m) => m.DuplicateMergeInspector),
@@ -23,39 +65,6 @@ const FeedItemInspector = dynamic(
   () => import('@/features/library/ui/inspector/FeedItemInspector').then((m) => m.FeedItemInspector),
   { ssr: false }
 );
-import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
-import '@/features/library/core/adapters/project-context.adapter';
-import {
-  useLibraryCommandStore,
-} from '@/features/library/core/manager/library-command.manager';
-import { executeDuplicateMergeWithCommand } from '@/features/library/core/coordinator/curation.coordinator';
-import { useFeedsStore, isFeedEntryInLibrary } from '@/features/library/core/store/feeds.store';
-import { useLibraryPermissions } from '@/features/library/core/adapters/project-context.adapter';
-import { useProcessModalStore } from '@/features/library/core/store/process-modal.store';
-import { useCollectionsQuery } from '@/features/library/sdk/queries/collections.queries';
-import { useSavedSearches } from '@/features/library/sdk/queries/saved-searches-relations.queries';
-import {
-  useTrash,
-  useLibraryBootstrapQuery,
-  useLibraryCountsQuery,
-  useItemTypes,
-  useCreateLibraryItemMutation,
-  useBatchRestoreItemsMutation,
-  useUpdateLibraryItemMutation,
-  useLibraryDeltaSync,
-  useLibraryCacheSynchronizer,
-} from '@/features/library/sdk/queries/catalog.queries';
-import {
-  useMergeDuplicates,
-  useDuplicateGroups,
-  useIngestMutation,
-} from '@/features/library/sdk/queries/ingestion.queries';
-import { formatItemTypeLabel } from '@/features/library/domain/metadata-mapper';
-import { parseEmojiPrefix } from '@/features/library/domain/academic-text';
-import { getCollectionBreadcrumbPath } from '@/features/library/domain/collection-tree';
-import { type ParsedFeedEntry } from '@/features/library/domain/feed-parser.domain';
-import { executeSaveFeedEntryWithFeedback } from '@/features/library/core/coordinator/ingestion.coordinator';
-import type { Item, DuplicateGroup, Collection } from '@/features/library/domain/types/core.types';
 
 interface LibraryPageProps {
   scopeId?: string;
@@ -421,7 +430,7 @@ export function ModernLibraryPage({
 
   const { data: countsData } = useLibraryCountsQuery(effectiveScopeId);
   const displayCount = useMemo(() => {
-    if (isTrash) return trashItems.length;
+    if (isTrash) return countsData?.trash ?? trashItems.length;
     if (effectiveView === 'duplicates') {
       return duplicateGroupsQuery.data?.duplicateGroups?.length ?? 0;
     }
@@ -438,6 +447,7 @@ export function ModernLibraryPage({
     return countsData?.total;
   }, [
     isTrash,
+    countsData?.trash,
     trashItems.length,
     effectiveView,
     duplicateGroupsQuery.data?.duplicateGroups?.length,
@@ -500,6 +510,36 @@ export function ModernLibraryPage({
       restoreItemsMutation,
       updateItemMutation,
     ],
+  );
+
+  const handleMergeDuplicateGroup = useCallback(
+    async (group: DuplicateGroup, groupKey: string) => {
+      const items = (group.items || []) as Item[];
+      if (items.length < 2) return;
+      const setKey = computeDuplicateSetKey(items);
+      const draft = getGroupMergeDraft(setKey) || getGroupMergeDraft(groupKey);
+      const masterId =
+        (draft?.selectedMasterId && items.some((it) => it.id === draft.selectedMasterId)
+          ? draft.selectedMasterId
+          : undefined) ||
+        group.recommendedMasterId ||
+        selectBestMasterItemId(items) ||
+        items[0]?.id;
+      const masterPaper = items.find((it) => it.id === masterId) || items[0];
+      if (!masterPaper) return;
+      const duplicateIdsToDelete = items
+        .map((it) => it.id)
+        .filter((id): id is string => Boolean(id && id !== masterPaper.id));
+      if (duplicateIdsToDelete.length === 0) return;
+
+      const overrides = draft?.fieldOverrides
+        ? extractExplicitUserMergeOverrides(items, masterPaper.id, draft.fieldOverrides)
+        : {};
+      await handleExecuteDuplicateMerge(masterPaper, overrides as Partial<Item>, duplicateIdsToDelete);
+      clearGroupMergeDraft(groupKey);
+      clearGroupMergeDraft(setKey);
+    },
+    [handleExecuteDuplicateMerge],
   );
 
   const { mutateAsync: ingestFeedItem } = useIngestMutation(effectiveScopeId);
@@ -595,6 +635,9 @@ export function ModernLibraryPage({
             canEdit={canEdit}
             onDirectFilesUpload={canEdit ? handleDirectFilesUpload : undefined}
             onAddLink={canEdit ? () => openModal('ADD_BY_IDENTIFIER', { collectionId: effectiveCollectionId }) : undefined}
+            onMergeDuplicateGroup={
+              effectiveView === 'duplicates' ? handleMergeDuplicateGroup : undefined
+            }
             onSelectedDuplicateGroupChange={
               effectiveView === 'duplicates' ? handleSelectedDuplicateGroupChange : undefined
             }
@@ -605,29 +648,32 @@ export function ModernLibraryPage({
       {/* Inspector Panel (Right side details, metadata, attachments, duplicate merge workbench, or Feed Inspector) */}
       <ErrorBoundary variant="section" featureName="Metadata Inspector">
         {effectiveView === 'duplicates' && selectedDuplicateGroupItems.length >= 2 ? (
-          <div className="hidden md:flex w-80 lg:w-96 xl:w-[420px] h-full shrink-0 flex-col overflow-hidden border-l border-border bg-background">
-            <DuplicateMergeInspector
-              items={selectedDuplicateGroupItems}
-              recommendedMasterId={selectedDuplicateGroup?.recommendedMasterId}
-              canEdit={canEdit}
-              onOpenModal={() => {
-                if (selectedDuplicateGroup) {
-                  openMergeModalRef.current?.(
-                    selectedDuplicateGroup,
-                    selectedDuplicateGroupKey || undefined,
-                  );
-                }
-              }}
-              onMerge={handleExecuteDuplicateMerge}
-              onDismiss={async () => {
-                if (selectedDuplicateGroupKey) {
-                  await dismissDuplicateGroupRef.current?.(selectedDuplicateGroupKey);
-                }
-                setSelectedDuplicateGroup(null);
-                setSelectedDuplicateGroupKey(null);
-              }}
-            />
-          </div>
+          isInspectorOpen ? (
+            <div className="hidden md:flex w-80 lg:w-96 xl:w-[420px] h-full shrink-0 flex-col overflow-hidden border-l border-border bg-background">
+              <DuplicateMergeInspector
+                items={selectedDuplicateGroupItems}
+                recommendedMasterId={selectedDuplicateGroup?.recommendedMasterId}
+                canEdit={canEdit}
+                onClose={() => setIsInspectorOpen(false)}
+                onOpenModal={() => {
+                  if (selectedDuplicateGroup) {
+                    openMergeModalRef.current?.(
+                      selectedDuplicateGroup,
+                      selectedDuplicateGroupKey || undefined,
+                    );
+                  }
+                }}
+                onMerge={handleExecuteDuplicateMerge}
+                onDismiss={async () => {
+                  if (selectedDuplicateGroupKey) {
+                    await dismissDuplicateGroupRef.current?.(selectedDuplicateGroupKey);
+                  }
+                  setSelectedDuplicateGroup(null);
+                  setSelectedDuplicateGroupKey(null);
+                }}
+              />
+            </div>
+          ) : null
         ) : effectiveView === 'feed' ? (
           isInspectorOpen ? (
             <div className="hidden md:flex w-80 lg:w-[420px] xl:w-[480px] 2xl:w-[520px] h-full shrink-0 flex-col overflow-hidden border-l border-border bg-background">

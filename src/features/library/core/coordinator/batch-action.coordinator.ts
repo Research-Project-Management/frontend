@@ -21,8 +21,10 @@ import {
   createRestoreCommand,
   createMoveItemsCommand,
   createBatchDetachCommand,
+  createBatchAssignCommand,
 } from '@/features/library/core/manager/library-command.manager';
 import { isItemRetracted } from '@/features/library/domain/system-views.policy';
+import { getAssignedCollectionIds } from '@/features/library/domain/metadata-mapper';
 import {
   isPersistedItemId,
   isPersistedLibraryItem,
@@ -202,10 +204,10 @@ export function useLibraryBatchCoordinator({
     return items.filter((item) => selectedIds.has(item.id));
   }, [items, selectedIds]);
 
-  const selectedCount = selectedIds.size;
+  const selectedCount = selectedItems.length;
   const isAllSelected = items.length > 0 && items.every((item) => selectedIds.has(item.id));
 
-  // Processing Guards & Set Difference A = S \ P
+  // Processing Guards & Set Difference A = (S ∩ V) \ P
   const processingIds = useMemo(() => {
     const set = new Set<string>();
     for (const item of selectedItems) {
@@ -213,22 +215,17 @@ export function useLibraryBatchCoordinator({
         set.add(item.id);
       }
     }
-    for (const id of selectedIds) {
-      if (!isPersistedItemId(id)) {
-        set.add(id);
-      }
-    }
     return set;
-  }, [selectedItems, selectedIds]);
-
-  const actionableIds = useMemo(
-    () => Array.from(selectedIds).filter((id) => !processingIds.has(id)),
-    [selectedIds, processingIds],
-  );
+  }, [selectedItems]);
 
   const actionableItems = useMemo(
     () => selectedItems.filter((item) => !processingIds.has(item.id)),
     [selectedItems, processingIds],
+  );
+
+  const actionableIds = useMemo(
+    () => actionableItems.map((item) => item.id).filter(Boolean),
+    [actionableItems],
   );
 
   const isAllProcessingSelected =
@@ -294,8 +291,9 @@ export function useLibraryBatchCoordinator({
 
       const previousCollectionsByItem = new Map<string, string[]>();
       for (const item of actionableItems) {
-        if (Array.isArray(item.collectionIds)) {
-          previousCollectionsByItem.set(item.id, [...item.collectionIds]);
+        const assigned = getAssignedCollectionIds(item);
+        if (assigned.length > 0) {
+          previousCollectionsByItem.set(item.id, assigned);
         }
       }
 
@@ -334,6 +332,55 @@ export function useLibraryBatchCoordinator({
     ],
   );
 
+  // Action: Batch Assign (Add) to Collection (preserves existing collection memberships)
+  const batchAssign = useCallback(
+    async (targetCollectionId: string, targetCollectionName?: string) => {
+      if (!(capabilityMask & BATCH_CAP_BIT.MOVE) || !targetCollectionId) return;
+
+      if (processingIds.size > 0) {
+        toast.warning('Cannot add files that are currently uploading or processing', {
+          id: 'library-item-guard',
+        });
+      }
+      if (actionableIds.length === 0) return;
+
+      const alreadyAssignedItemIds = new Set<string>();
+      for (const item of actionableItems) {
+        const assigned = getAssignedCollectionIds(item);
+        if (assigned.includes(targetCollectionId)) {
+          alreadyAssignedItemIds.add(item.id);
+        }
+      }
+
+      try {
+        await useLibraryCommandStore.getState().executeCommand(
+          createBatchAssignCommand({
+            collectionId: targetCollectionId,
+            collectionName: targetCollectionName,
+            itemIds: actionableIds,
+            alreadyAssignedItemIds,
+            assignMutation,
+            detachMutation: batchDetachMutation,
+            onExecuted: () => {
+              clearSelection();
+            },
+          }),
+        );
+      } catch {
+        // Error toast handled by useLibraryCommandStore
+      }
+    },
+    [
+      capabilityMask,
+      actionableIds,
+      actionableItems,
+      processingIds.size,
+      assignMutation,
+      batchDetachMutation,
+      clearSelection,
+    ],
+  );
+
   // Action: Batch Delete Items
   const batchDelete = useCallback(() => {
     if (!(capabilityMask & BATCH_CAP_BIT.DELETE)) return;
@@ -354,11 +401,10 @@ export function useLibraryBatchCoordinator({
   // Action: Batch Restore from Trash
   const batchRestore = useCallback(async () => {
     if (!(capabilityMask & BATCH_CAP_BIT.RESTORE)) return;
-    const ids = Array.from(selectedIds);
-    if (ids.length === 0) return;
+    if (actionableIds.length === 0) return;
     await useLibraryCommandStore.getState().executeCommand(
       createRestoreCommand({
-        itemIds: ids,
+        itemIds: actionableIds,
         restoreMutation: { mutateAsync: restoreMutation.mutateAsync },
         deleteMutation: { mutateAsync: deleteMutation.mutateAsync },
         onExecuted: () => {
@@ -367,7 +413,7 @@ export function useLibraryBatchCoordinator({
       }),
       { silentToast: true },
     );
-  }, [capabilityMask, selectedIds, restoreMutation, deleteMutation, clearSelection]);
+  }, [capabilityMask, actionableIds, restoreMutation, deleteMutation, clearSelection]);
 
   // Action: Batch Detach from Collection
   const batchDetach = useCallback(
@@ -413,13 +459,13 @@ export function useLibraryBatchCoordinator({
 
   // Action: Batch Merge Duplicates (Strictly available ONLY in Duplicates view)
   const batchMerge = useCallback(() => {
-    if (!(capabilityMask & BATCH_CAP_BIT.MERGE) || selectedItems.length < 2) return;
+    if (!(capabilityMask & BATCH_CAP_BIT.MERGE) || actionableItems.length < 2) return;
     openModal('MERGE_DUPLICATES', {
-      itemIds: Array.from(selectedIds),
-      items: selectedItems,
-      duplicates: selectedItems,
+      itemIds: actionableIds,
+      items: actionableItems,
+      duplicates: actionableItems,
     });
-  }, [capabilityMask, selectedItems, openModal, selectedIds]);
+  }, [capabilityMask, actionableItems, openModal, actionableIds]);
 
   // Action: Batch Unstar Items (Contextual for Starred Items view)
   const batchUnstar = useCallback(async () => {
@@ -543,6 +589,7 @@ export function useLibraryBatchCoordinator({
 
       // Page-Aware Batch Operations
       batchMove: capabilityMask & BATCH_CAP_BIT.MOVE ? batchMove : undefined,
+      batchAssign: capabilityMask & BATCH_CAP_BIT.MOVE ? batchAssign : undefined,
       batchDelete: capabilityMask & BATCH_CAP_BIT.DELETE ? batchDelete : undefined,
       batchRestore: capabilityMask & BATCH_CAP_BIT.RESTORE ? batchRestore : undefined,
       batchDetach: capabilityMask & BATCH_CAP_BIT.DETACH ? batchDetach : undefined,
@@ -587,6 +634,7 @@ export function useLibraryBatchCoordinator({
       clearSelection,
       rangeSelect,
       batchMove,
+      batchAssign,
       batchDelete,
       batchRestore,
       batchDetach,

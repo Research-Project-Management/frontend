@@ -2,15 +2,16 @@
 
 import { useState, useEffect, useMemo, memo } from 'react';
 import Link from 'next/link';
-import { Folder, ChevronRight } from 'lucide-react';
+import { Folder, ChevronRight, FolderPlus, FolderOutput, FolderMinus, MoreVertical, Pencil, Trash2, Library, Copy, FileCode, FileJson } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { logger } from '@/shared/lib/logger';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { useLibraryCacheSynchronizer } from '@/features/library/sdk/queries/catalog.queries';
-import type { TreeNode } from '@/features/library/domain/collection-tree';
+import { type TreeNode, getValidMoveTargets } from '@/features/library/domain/collection-tree';
 import type { Collection, CollectionActionHandlers } from '@/features/library/domain/types/core.types';
-import { CollectionContextMenu } from './CollectionContextMenu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/shared/components/ui/dropdown-menu';
+import { executeExportCollectionFormat } from '@/features/library/core/coordinator/citation-export.coordinator';
 
 export type { TreeNode, CollectionActionHandlers };
 
@@ -54,12 +55,19 @@ export const CollectionNode = memo(function CollectionNode({
   onDropItems,
 }: CollectionNodeProps) {
   const { prefetchCollection } = useLibraryCacheSynchronizer(node.projectId || undefined);
+  const includeSubcollections = useLibraryUIStore(
+    (s) => s.displayOptions?.includeSubcollections !== false,
+  );
   const to = `${basePath}/${node.id}`;
   const isActive = activeId === node.id;
   const isHighlightedContainer = Boolean(highlightedCollectionIds?.has(node.id));
   const hasChildren = node.children.length > 0;
   const [isOpen, setIsOpen] = useState(true);
   const [isDragOverTarget, setIsDragOverTarget] = useState(false);
+
+  const displayCount = includeSubcollections
+    ? (node.recursiveItemCount ?? node.itemCount ?? 0)
+    : (node.itemCount ?? 0);
 
   const handleDragOver = (e: React.DragEvent) => {
     if (!canManageCollections) return;
@@ -164,6 +172,11 @@ export const CollectionNode = memo(function CollectionNode({
             </Link>
 
             <div className="flex items-center gap-0.5 shrink-0 ml-auto">
+              {displayCount > 0 && (
+                <span className="px-1 text-11 font-mono tabular-nums text-muted-foreground group-hover/node:hidden group-has-[[data-state=open]]/node:hidden select-none">
+                  {displayCount}
+                </span>
+              )}
               <CollectionContextMenu
                 node={node}
                 allCollections={allCollections}
@@ -390,5 +403,249 @@ export function CollectionTree({
         />
       ))}
     </div>
+  );
+}
+
+interface CollectionContextMenuProps {
+  node: TreeNode;
+  allCollections?: Collection[];
+  validMoveTargets?: Collection[];
+  canManageCollections?: boolean;
+  onCreateSub: (parentId: string, parentName: string) => void;
+  onStartRename: (id: string, name: string) => void;
+  onMove: (collectionId: string, newParentId: string | null) => void;
+  onCopy: (collectionId: string, targetParentId: string | null) => void;
+  onExportBibtex?: (id: string, name: string) => void;
+  onExportBundle?: (id: string, name: string) => void;
+  onDelete: (id: string) => void;
+  onDeleteWithItems: (id: string) => void;
+}
+
+export function CollectionContextMenu({
+  node,
+  allCollections = [],
+  validMoveTargets: propValidMoveTargets,
+  canManageCollections = true,
+  onCreateSub,
+  onStartRename,
+  onMove,
+  onCopy,
+  onExportBibtex,
+  onExportBundle,
+  onDelete,
+  onDeleteWithItems,
+}: CollectionContextMenuProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const activeScope = useLibraryUIStore((s) => s.activeScope);
+  const isProjectScope = activeScope.type === 'project';
+  const isNodeProjectScope =
+    Boolean(node.projectId) || (node.projectId === undefined && isProjectScope);
+  const nodeScopeId: string =
+    node.projectId || (isNodeProjectScope && activeScope.id ? activeScope.id : 'user');
+  const rootLibraryName = isNodeProjectScope ? (activeScope.name || 'Project') : 'My Library';
+
+  const validMoveTargets = useMemo(() => {
+    if (propValidMoveTargets) return propValidMoveTargets;
+    if (!isOpen || allCollections.length === 0) return [];
+    return getValidMoveTargets(allCollections, node.id);
+  }, [isOpen, propValidMoveTargets, allCollections, node.id]);
+  return (
+    <DropdownMenu open={isOpen} onOpenChange={setIsOpen} modal={false}>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground opacity-0 max-md:opacity-100 group-hover/node:opacity-100 data-[state=open]:opacity-100 data-[state=open]:bg-background data-[state=open]:border-border data-[state=open]:text-foreground focus-visible:opacity-100 border border-transparent hover:border-border/50 hover:bg-background transition-colors duration-150 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary relative before:absolute before:-inset-2 md:before:hidden"
+          onClick={(e) => e.stopPropagation()}
+          aria-label={`Options for ${node.name}`}
+        >
+          <MoreVertical className="size-3.5 shrink-0" strokeWidth={1.5} />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        side="bottom"
+        align="end"
+        sideOffset={4}
+        collisionPadding={12}
+        onCloseAutoFocus={(e) => e.preventDefault()}
+        className="w-64 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
+      >
+        {canManageCollections && (
+          <>
+            <DropdownMenuItem
+              onClick={() => onCreateSub(node.id, node.name)}
+              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+            >
+              <FolderPlus className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+              <span>New Subcollection</span>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem
+              onClick={() => onStartRename(node.id, node.name)}
+              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+            >
+              <Pencil className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+              <span>Rename Collection</span>
+            </DropdownMenuItem>
+
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors">
+                <FolderOutput className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                <span>Move to</span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="w-60 p-1.5 rounded-md border border-border bg-popover text-popover-foreground text-13 shadow-raised-200 space-y-0.5 select-none">
+                <DropdownMenuItem
+                  onClick={() => onMove(node.id, null)}
+                  className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+                >
+                  {isNodeProjectScope ? (
+                    <Folder className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                  ) : (
+                    <Library className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                  )}
+                  <span>{rootLibraryName}</span>
+                </DropdownMenuItem>
+                {validMoveTargets.map((target) => (
+                  <DropdownMenuItem
+                    key={target.id}
+                    onClick={() => onMove(node.id, target.id)}
+                    className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+                  >
+                    <Folder className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                    <span className="truncate">{target.name}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors">
+                <Copy className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                <span>Copy to</span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="w-60 p-1.5 rounded-md border border-border bg-popover text-popover-foreground text-13 shadow-raised-200 space-y-0.5 select-none">
+                <DropdownMenuItem
+                  onClick={() => onCopy(node.id, null)}
+                  className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+                >
+                  {isNodeProjectScope ? (
+                    <Folder className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                  ) : (
+                    <Library className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                  )}
+                  <span>{rootLibraryName}</span>
+                </DropdownMenuItem>
+                {validMoveTargets.map((target) => (
+                  <DropdownMenuItem
+                    key={target.id}
+                    onClick={() => onCopy(node.id, target.id)}
+                    className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+                  >
+                    <Folder className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                    <span className="truncate">{target.name}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          </>
+        )}
+
+        <DropdownMenuItem
+          className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+          onClick={() => onExportBibtex?.(node.id, node.name)}
+        >
+          <FileCode className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+          <span>Export BibTeX (.bib)</span>
+        </DropdownMenuItem>
+
+        <DropdownMenuItem
+          className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+          onClick={() => onExportBundle?.(node.id, node.name)}
+        >
+          <FileJson className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+          <span>Export Bundle (.json)</span>
+        </DropdownMenuItem>
+
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors">
+            <FileCode className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+            <span>More Export Formats</span>
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent className="w-56 p-1.5 rounded-md border border-border bg-popover text-popover-foreground text-13 shadow-raised-200 space-y-0.5 select-none">
+            <DropdownMenuItem
+              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted"
+              onClick={() =>
+                void executeExportCollectionFormat(
+                  node.id,
+                  node.name,
+                  nodeScopeId,
+                  'ris',
+                )
+              }
+            >
+              <span>Export RIS (.ris)</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted"
+              onClick={() =>
+                void executeExportCollectionFormat(
+                  node.id,
+                  node.name,
+                  nodeScopeId,
+                  'csl_json',
+                )
+              }
+            >
+              <span>Export CSL-JSON (.json)</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted"
+              onClick={() =>
+                void executeExportCollectionFormat(
+                  node.id,
+                  node.name,
+                  nodeScopeId,
+                  'csv',
+                )
+              }
+            >
+              <span>Export CSV (.csv)</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted"
+              onClick={() =>
+                void executeExportCollectionFormat(
+                  node.id,
+                  node.name,
+                  nodeScopeId,
+                  'markdown',
+                )
+              }
+            >
+              <span>Export Markdown (.md)</span>
+            </DropdownMenuItem>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+
+        {canManageCollections && (
+          <>
+            <DropdownMenuItem
+              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-destructive focus:text-destructive hover:bg-destructive/10 focus:bg-destructive/10 rounded-md outline-none transition-colors"
+              onClick={() => onDelete(node.id)}
+            >
+              <FolderMinus className="size-4 text-destructive shrink-0" strokeWidth={1.5} />
+              <span>Delete Collection</span>
+            </DropdownMenuItem>
+
+            <DropdownMenuItem
+              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-destructive focus:text-destructive hover:bg-destructive/10 focus:bg-destructive/10 rounded-md outline-none transition-colors"
+              onClick={() => onDeleteWithItems(node.id)}
+            >
+              <Trash2 className="size-4 text-destructive shrink-0" strokeWidth={1.5} />
+              <span>Delete Collection and Items</span>
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

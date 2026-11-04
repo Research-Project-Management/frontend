@@ -1,4 +1,9 @@
+import dns from 'node:dns/promises';
 import { NextRequest, NextResponse } from 'next/server';
+import { isTokenValid } from '@/shared/utils/auth-token.util';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 const DISALLOWED_HOSTNAMES = new Set([
   'localhost',
@@ -11,8 +16,46 @@ const DISALLOWED_HOSTNAMES = new Set([
   '169.254.169.254',
 ]);
 
+const MAX_PAYLOAD_BYTES = 52_428_800; // 50 MB
+const MAX_REDIRECTS = 5;
+
 function normalizeHostname(raw: string): string {
   return raw.toLowerCase().replace(/^\[|\]$/g, '').replace(/\.+$/, '');
+}
+
+function isDisallowedIp(ip: string): boolean {
+  const cleanIp = ip.toLowerCase().trim();
+  if (
+    cleanIp === '127.0.0.1' ||
+    cleanIp === '0.0.0.0' ||
+    cleanIp === '::1' ||
+    cleanIp === '::' ||
+    cleanIp.startsWith('127.') ||
+    cleanIp.startsWith('0.') ||
+    cleanIp.startsWith('10.') ||
+    cleanIp.startsWith('192.168.') ||
+    cleanIp.startsWith('169.254.') ||
+    /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(cleanIp) ||
+    /^100\.(6[4-9]|[7-9][0-9]|1[0-1][0-9]|12[0-7])\./.test(cleanIp)
+  ) {
+    return true;
+  }
+  if (cleanIp.includes(':')) {
+    if (
+      cleanIp === '::1' ||
+      cleanIp === '::' ||
+      /^0*:0*:0*:0*:0*:0*:0*:[01]$/.test(cleanIp) ||
+      cleanIp.startsWith('fc') ||
+      cleanIp.startsWith('fd') ||
+      /^fe[89ab][0-9a-f]:/i.test(cleanIp) ||
+      cleanIp.startsWith('ff') ||
+      cleanIp.startsWith('::ffff:') ||
+      /^0*:0*:0*:0*:0*:ffff:/i.test(cleanIp)
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function isPrivateOrDisallowedHost(rawHostname: string): boolean {
@@ -27,38 +70,50 @@ function isPrivateOrDisallowedHost(rawHostname: string): boolean {
   ) {
     return true;
   }
-  if (
-    hostname.startsWith('0.') ||
-    hostname.startsWith('10.') ||
-    hostname.startsWith('192.168.') ||
-    hostname.startsWith('127.') ||
-    hostname.startsWith('169.254.') ||
-    /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname) ||
-    /^100\.(6[4-9]|[7-9][0-9]|1[0-1][0-9]|12[0-7])\./.test(hostname)
-  ) {
+  if (isDisallowedIp(hostname)) {
     return true;
-  }
-  // IPv6 loopback, unspecified, unique-local (fc00::/7), link-local (fe80::/10), IPv4-mapped (::ffff:)
-  if (hostname.includes(':')) {
-    if (
-      hostname === '::1' ||
-      hostname === '::' ||
-      /^0*:0*:0*:0*:0*:0*:0*:[01]$/.test(hostname) ||
-      hostname.startsWith('fc') ||
-      hostname.startsWith('fd') ||
-      /^fe[89ab][0-9a-f]:/.test(hostname) ||
-      hostname.startsWith('::ffff:') ||
-      /^0*:0*:0*:0*:0*:ffff:/i.test(hostname)
-    ) {
-      return true;
-    }
   }
   return false;
 }
 
-const MAX_REDIRECTS = 5;
+async function validateHostSafety(hostname: string, port?: string): Promise<boolean> {
+  if (port && port !== '80' && port !== '443') {
+    return false;
+  }
+  const norm = normalizeHostname(hostname);
+  if (isPrivateOrDisallowedHost(norm)) {
+    return false;
+  }
+  try {
+    const addresses = await dns.lookup(norm, { all: true });
+    if (!addresses || addresses.length === 0) {
+      return false;
+    }
+    for (const addr of addresses) {
+      if (isDisallowedIp(addr.address)) {
+        return false;
+      }
+    }
+  } catch {
+    return false;
+  }
+  return true;
+}
 
 export async function GET(request: NextRequest) {
+  // 1. Authentication check (mitigate open proxy)
+  const rawToken = request.cookies.get('accessToken')?.value;
+  const authHeader = request.headers.get('authorization');
+  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  const hasRefreshToken = Boolean(request.cookies.get('refresh_token')?.value);
+
+  const isAuthenticated =
+    isTokenValid(rawToken) || isTokenValid(bearerToken) || hasRefreshToken;
+
+  if (!isAuthenticated) {
+    return NextResponse.json({ error: 'Unauthorized access to PDF proxy' }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const targetUrl = searchParams.get('url');
 
@@ -77,34 +132,52 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Only HTTP and HTTPS protocols are allowed' }, { status: 400 });
   }
 
-  if (isPrivateOrDisallowedHost(parsed.hostname)) {
-    return NextResponse.json({ error: 'Requests to internal network are prohibited' }, { status: 403 });
+  const isInitialHostSafe = await validateHostSafety(parsed.hostname, parsed.port);
+  if (!isInitialHostSafe) {
+    return NextResponse.json({ error: 'Requests to internal or disallowed networks are prohibited' }, { status: 403 });
   }
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 30_000);
+  const incomingRange = request.headers.get('range');
+  const incomingIfRange = request.headers.get('if-range');
 
   try {
     let currentUrl = parsed.toString();
     let upstreamResponse: Response | null = null;
 
     for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+      const currentParsed = new URL(currentUrl);
+      const isHopSafe = await validateHostSafety(currentParsed.hostname, currentParsed.port);
+      if (!isHopSafe) {
+        clearTimeout(timeoutId);
+        return NextResponse.json(
+          { error: 'Requests to internal or disallowed networks are prohibited' },
+          { status: 403 },
+        );
+      }
+
+      const upstreamHeaders: Record<string, string> = {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        Accept: 'application/pdf,application/octet-stream;q=0.9',
+        'Accept-Language': 'en-US,en;q=0.9',
+      };
+      if (incomingRange) {
+        upstreamHeaders['Range'] = incomingRange;
+      }
+      if (incomingIfRange) {
+        upstreamHeaders['If-Range'] = incomingIfRange;
+      }
+
       upstreamResponse = await fetch(currentUrl, {
         method: 'GET',
-        headers: {
-          'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-          Accept: 'application/pdf,application/octet-stream,*/*;q=0.8',
-          'Accept-Language': 'en-US,en;q=0.9',
-        },
+        headers: upstreamHeaders,
         signal: controller.signal,
         redirect: 'manual',
       });
 
-      if (
-        upstreamResponse.status >= 300 &&
-        upstreamResponse.status < 400
-      ) {
+      if (upstreamResponse.status >= 300 && upstreamResponse.status < 400) {
         const locationHeader = upstreamResponse.headers.get('location');
         if (!locationHeader) break;
         if (hop === MAX_REDIRECTS) {
@@ -131,10 +204,11 @@ export async function GET(request: NextRequest) {
             { status: 403 },
           );
         }
-        if (isPrivateOrDisallowedHost(nextUrl.hostname)) {
+        const isRedirectSafe = await validateHostSafety(nextUrl.hostname, nextUrl.port);
+        if (!isRedirectSafe) {
           clearTimeout(timeoutId);
           return NextResponse.json(
-            { error: 'Redirect to internal network is prohibited' },
+            { error: 'Redirect to internal or disallowed network is prohibited' },
             { status: 403 },
           );
         }
@@ -171,28 +245,122 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const contentType = upstreamResponse.headers.get('content-type') || '';
-    if (contentType.includes('text/html')) {
+    const rawContentType = (upstreamResponse.headers.get('content-type') || '').toLowerCase();
+    const mimeType = rawContentType.split(';')[0]?.trim() || '';
+    const isRejectedMimeType =
+      rawContentType.includes('text/html') ||
+      rawContentType.includes('image/svg') ||
+      rawContentType.includes('svg') ||
+      rawContentType.includes('xhtml') ||
+      rawContentType.includes('xml') ||
+      rawContentType.includes('javascript') ||
+      rawContentType.includes('text/plain');
+    const isAllowedMimeType =
+      !mimeType ||
+      mimeType === 'application/pdf' ||
+      mimeType === 'application/x-pdf' ||
+      mimeType === 'application/octet-stream' ||
+      mimeType === 'binary/octet-stream';
+
+    // Strictly prevent XSS or non-PDF mime types being interpreted by the browser
+    if (isRejectedMimeType || !isAllowedMimeType) {
       return NextResponse.json(
         {
           error:
-            'The remote link returned an HTML webpage or protection challenge instead of a PDF file.',
+            'The remote link returned an invalid content type (HTML/XML/SVG) instead of a PDF file.',
         },
         { status: 422 }
       );
     }
 
-    const body = upstreamResponse.body;
-    const responseHeaders = new Headers();
-    responseHeaders.set('Content-Type', contentType || 'application/pdf');
-    const contentLength = upstreamResponse.headers.get('content-length');
-    if (contentLength) {
-      responseHeaders.set('Content-Length', contentLength);
+    const contentLengthHeader = upstreamResponse.headers.get('content-length');
+    if (contentLengthHeader) {
+      const parsedLength = parseInt(contentLengthHeader, 10);
+      if (!Number.isNaN(parsedLength) && parsedLength > MAX_PAYLOAD_BYTES) {
+        return NextResponse.json(
+          { error: 'Remote document exceeds maximum allowed size (50MB)' },
+          { status: 413 }
+        );
+      }
     }
-    responseHeaders.set('Cache-Control', 'public, max-age=3600');
+
+    const isPartialContent = upstreamResponse.status === 206;
+    const contentRangeHeader = upstreamResponse.headers.get('content-range');
+    const acceptRangesHeader = upstreamResponse.headers.get('accept-ranges');
+    const isByteZeroStart =
+      !isPartialContent ||
+      !contentRangeHeader ||
+      /^bytes\s+0-/i.test(contentRangeHeader.trim());
+
+    let body: ReadableStream<Uint8Array> | null = upstreamResponse.body;
+    if (body && typeof body.getReader === 'function') {
+      const reader = body.getReader();
+      const firstRead = await reader.read();
+      if (!firstRead.done && firstRead.value && firstRead.value.byteLength >= 5) {
+        const prefix = new TextDecoder('ascii').decode(firstRead.value.subarray(0, 1024));
+        const trimmedPrefix = prefix.trimStart();
+        if (
+          trimmedPrefix.startsWith('<!DOCTYPE') ||
+          trimmedPrefix.startsWith('<html') ||
+          trimmedPrefix.startsWith('<svg') ||
+          trimmedPrefix.startsWith('<?xml') ||
+          (isByteZeroStart &&
+            mimeType !== 'application/pdf' &&
+            mimeType !== 'application/x-pdf' &&
+            !prefix.includes('%PDF-'))
+        ) {
+          await reader.cancel().catch(() => undefined);
+          return NextResponse.json(
+            {
+              error:
+                'The remote payload does not contain valid %PDF- magic bytes.',
+            },
+            { status: 422 },
+          );
+        }
+      }
+      body = new ReadableStream<Uint8Array>({
+        start(streamController) {
+          if (!firstRead.done && firstRead.value) {
+            streamController.enqueue(firstRead.value);
+          } else if (firstRead.done) {
+            streamController.close();
+          }
+        },
+        async pull(streamController) {
+          const { done, value } = await reader.read();
+          if (done) {
+            streamController.close();
+          } else if (value) {
+            streamController.enqueue(value);
+          }
+        },
+        cancel(reason) {
+          return reader.cancel(reason);
+        },
+      });
+    }
+
+    const responseHeaders = new Headers();
+    // Force application/pdf and strict security headers
+    responseHeaders.set('Content-Type', 'application/pdf');
+    responseHeaders.set('X-Content-Type-Options', 'nosniff');
+    responseHeaders.set('Content-Security-Policy', 'sandbox');
+    responseHeaders.set('Content-Disposition', 'inline; filename="document.pdf"');
+    responseHeaders.set('Cache-Control', 'private, max-age=3600');
+
+    if (contentLengthHeader) {
+      responseHeaders.set('Content-Length', contentLengthHeader);
+    }
+    if (contentRangeHeader) {
+      responseHeaders.set('Content-Range', contentRangeHeader);
+    }
+    if (acceptRangesHeader) {
+      responseHeaders.set('Accept-Ranges', acceptRangesHeader);
+    }
 
     return new Response(body, {
-      status: 200,
+      status: isPartialContent ? 206 : 200,
       headers: responseHeaders,
     });
   } catch (err: unknown) {

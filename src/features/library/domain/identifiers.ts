@@ -147,10 +147,18 @@ export function extractArxivId(input?: string | null): string | null {
     .replace(/[.,;:\s"')\]>]+$/, '')
     .replace(/\.pdf$/i, '');
 
-  const match =
+  const explicitMatch =
     clean.match(/arxiv\.org\/(?:abs|pdf|html)\/([a-z-]+\/\d{7}(?:v\d+)?|\d{4}\.\d{4,5}(?:v\d+)?)/i) ||
     clean.match(/10\.48550\/arxiv\.(\d{4}\.\d{4,5}(?:v\d+)?)/i) ||
-    clean.match(/arxiv[.:]\s*([a-z-]+\/\d{7}(?:v\d+)?|\d{4}\.\d{4,5}(?:v\d+)?)/i) ||
+    clean.match(/arxiv[.:]\s*([a-z-]+\/\d{7}(?:v\d+)?|\d{4}\.\d{4,5}(?:v\d+)?)/i);
+  if (explicitMatch) return explicitMatch[1];
+
+  // Do not extract bare NNNN.NNNNN substrings from non-arXiv DOIs (e.g. 10.1000/2020.12345)
+  if (/^(?:https?:\/\/(?:dx\.)?doi\.org\/|doi\s*:\s*)?10\.(?!48550\/arxiv\.)\d{4,9}\//i.test(clean)) {
+    return null;
+  }
+
+  const match =
     clean.match(/\b([a-z]{2,}(?:-[a-z]{2,})?\/\d{7}(?:v\d+)?)\b/i) ||
     clean.match(/\b(\d{4}\.\d{4,5}(?:v\d+)?)\b/);
 
@@ -389,7 +397,7 @@ const TITLE_CASE_STOP_WORDS: ReadonlySet<string> = new Set([
  * Converts a title to standard academic title case, lowercasing common prepositions/articles
  * except when at the start or end of the title.
  */
-export function normalizeAcademicTitleCase(title?: string | null): string {
+export function normalizeTitleCase(title?: string | null): string {
   if (!title || typeof title !== 'string') return '';
   const cleaned = cleanPaperTitle(title);
   if (!cleaned) return '';

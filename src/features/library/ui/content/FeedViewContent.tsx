@@ -3,8 +3,8 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import {
-  useAcademicFeedArticlesQuery,
-  useFetchAcademicFeed,
+  useFeedArticlesQuery,
+  useFetchFeed,
   useIngestMutation,
 } from '@/features/library/sdk/queries/ingestion.queries';
 import {
@@ -24,7 +24,7 @@ import { isEditableOrModalElementFocused } from '@/features/library/core/coordin
 import {
   useFeedsStore,
   isFeedEntryInLibrary,
-} from '@/features/library/core/store/feeds.store';
+} from '@/features/library/core/store/reader.store';
 import { ContentSkeleton } from '@/features/library/ui/content/LibraryContent';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
@@ -95,8 +95,8 @@ export function FeedViewContent({
     mutateAsync: fetchAcademicFeed,
     isPending: isRefreshingFeed,
     error: refreshError,
-  } = useFetchAcademicFeed();
-  const feedArticlesQuery = useAcademicFeedArticlesQuery(
+  } = useFetchFeed();
+  const feedArticlesQuery = useFeedArticlesQuery(
     scopeId,
     activeFeed?.url,
     {
@@ -166,7 +166,7 @@ export function FeedViewContent({
           forceRefresh: true,
         });
       } catch {
-        // Mutation error state is captured by useFetchAcademicFeed
+        // Mutation error state is captured by useFetchFeed
       }
     },
     [activeFeed, fetchAcademicFeed, feedArticlesQuery],
@@ -278,11 +278,32 @@ export function FeedViewContent({
           e.preventDefault();
           void handleSaveEntry(selectedFeedEntry);
         }
-      } else if (e.key === '`' || e.key === 'm') {
+        return;
+      }
+
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      if (e.key === '`' || e.key === 'm') {
         if (selectedFeedEntry) {
           e.preventDefault();
           toggleEntryRead(selectedFeedEntry.id);
         }
+      } else if (e.key === 's') {
+        if (selectedFeedEntry && canEdit) {
+          e.preventDefault();
+          void handleSaveEntry(selectedFeedEntry);
+        }
+      } else if (e.key === 'o') {
+        if (selectedFeedEntry?.url) {
+          e.preventDefault();
+          window.open(selectedFeedEntry.url, '_blank', 'noopener,noreferrer');
+          if (!isEntryRead(selectedFeedEntry.id)) {
+            markEntryAsRead(selectedFeedEntry.id);
+          }
+        }
+      } else if (e.key === 'r') {
+        e.preventDefault();
+        void loadFeedEntries(true);
       } else if (e.key === 'j' || e.key === 'ArrowDown') {
         if (filteredEntries.length === 0) return;
         e.preventDefault();
@@ -321,6 +342,7 @@ export function FeedViewContent({
     filteredEntries,
     canEdit,
     handleSaveEntry,
+    loadFeedEntries,
     toggleEntryRead,
     setSelectedFeedEntry,
     isEntryRead,

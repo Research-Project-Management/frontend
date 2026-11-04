@@ -1,7 +1,5 @@
 /**
  * Pure Hierarchical Collection Tree Utilities (Hierarchical Collections & Subcollections)
- * Implements GoF Composite Pattern (`CollectionTreeComposite`) so single leaf collections
- * and nested folder hierarchies can be queried and traversed uniformly.
  */
 
 import type { Collection } from './types/core.types';
@@ -12,120 +10,6 @@ export interface CollectionHierarchyNode extends Collection {
 
 export type CollectionNode = CollectionHierarchyNode;
 export type TreeNode = CollectionHierarchyNode;
-
-/**
- * GoF Composite Pattern Contract for Collection Hierarchies.
- * Allows leaf collections and nested composite folders to be queried uniformly.
- */
-export interface CollectionTreeComponent {
-  readonly id: string;
-  readonly name: string;
-  readonly parentId?: string | null;
-  readonly node: CollectionHierarchyNode;
-  isLeaf(): boolean;
-  collectSubtreeIds(): string[];
-  getSubtreeTotalItemCount(): number;
-  findNode(targetId: string): CollectionHierarchyNode | null;
-  containsDescendant(targetId: string): boolean;
-}
-
-/**
- * Recursively collects `[node.id, ...allDescendantIds]` for a `CollectionHierarchyNode` subtree.
- */
-export function collectSubtreeIds(node: CollectionHierarchyNode | null | undefined): string[] {
-  if (!node || !node.id) return [];
-  const result: string[] = [];
-  const visited = new Set<string>();
-  const stack: CollectionHierarchyNode[] = [node];
-
-  while (stack.length > 0) {
-    const curr = stack.pop()!;
-    if (!curr.id || visited.has(curr.id)) continue;
-    visited.add(curr.id);
-    result.push(curr.id);
-
-    for (let i = curr.children.length - 1; i >= 0; i--) {
-      const child = curr.children[i];
-      if (child && !visited.has(child.id)) {
-        stack.push(child);
-      }
-    }
-  }
-
-  return result;
-}
-
-/**
- * Recursively computes the total item count across `node` and all of its descendant subcollections.
- * Prefers `node.recursiveItemCount` when explicitly populated by the server and no child nodes override it,
- * otherwise sums `itemCount` across the entire composite subtree.
- */
-export function getSubtreeTotalItemCount(node: CollectionHierarchyNode | null | undefined): number {
-  if (!node) return 0;
-  if (node.children.length === 0) {
-    return typeof node.recursiveItemCount === 'number'
-      ? node.recursiveItemCount
-      : (node.itemCount ?? 0);
-  }
-
-  let total = 0;
-  const visited = new Set<string>();
-  const stack: CollectionHierarchyNode[] = [node];
-
-  while (stack.length > 0) {
-    const curr = stack.pop()!;
-    if (!curr.id || visited.has(curr.id)) continue;
-    visited.add(curr.id);
-    total += curr.itemCount ?? 0;
-
-    for (const child of curr.children) {
-      if (child && !visited.has(child.id)) {
-        stack.push(child);
-      }
-    }
-  }
-
-  return typeof node.recursiveItemCount === 'number'
-    ? Math.max(node.recursiveItemCount, total)
-    : total;
-}
-
-/**
- * Uniformly searches a forest of `CollectionHierarchyNode` roots (or flat collections) for `id`.
- */
-export function findCollectionNode(
-  rootsOrCollections: ReadonlyArray<CollectionHierarchyNode | Collection>,
-  id: string | null | undefined,
-): CollectionHierarchyNode | null {
-  if (!id || rootsOrCollections.length === 0) return null;
-
-  const hasPrebuiltChildren =
-    'children' in rootsOrCollections[0]! &&
-    Array.isArray((rootsOrCollections[0] as CollectionHierarchyNode).children);
-
-  const roots: ReadonlyArray<CollectionHierarchyNode> = hasPrebuiltChildren
-    ? (rootsOrCollections as ReadonlyArray<CollectionHierarchyNode>)
-    : buildCollectionTree(rootsOrCollections as Collection[]);
-
-  const visited = new Set<string>();
-  const stack: CollectionHierarchyNode[] = [...roots];
-
-  while (stack.length > 0) {
-    const curr = stack.pop()!;
-    if (!curr.id || visited.has(curr.id)) continue;
-    if (curr.id === id) return curr;
-    visited.add(curr.id);
-
-    for (let i = curr.children.length - 1; i >= 0; i--) {
-      const child = curr.children[i];
-      if (child && !visited.has(child.id)) {
-        stack.push(child);
-      }
-    }
-  }
-
-  return null;
-}
 
 /**
  * Checks whether `candidateDescendantId` is inside the subtree of `targetAncestorId`
@@ -142,12 +26,36 @@ export function isDescendantOf(
 
   const first = rootsOrCollections[0]!;
   if ('children' in first && Array.isArray((first as CollectionHierarchyNode).children)) {
-    const ancestorNode = findCollectionNode(
-      rootsOrCollections as ReadonlyArray<CollectionHierarchyNode>,
-      targetAncestorId,
-    );
+    const stack: CollectionHierarchyNode[] = [...(rootsOrCollections as ReadonlyArray<CollectionHierarchyNode>)];
+    const visited = new Set<string>();
+    let ancestorNode: CollectionHierarchyNode | null = null;
+    while (stack.length > 0) {
+      const curr = stack.pop()!;
+      if (!curr.id || visited.has(curr.id)) continue;
+      if (curr.id === targetAncestorId) {
+        ancestorNode = curr;
+        break;
+      }
+      visited.add(curr.id);
+      for (let i = curr.children.length - 1; i >= 0; i--) {
+        const child = curr.children[i];
+        if (child && !visited.has(child.id)) stack.push(child);
+      }
+    }
     if (!ancestorNode) return false;
-    return collectSubtreeIds(ancestorNode).includes(candidateDescendantId);
+
+    const subStack: CollectionHierarchyNode[] = [ancestorNode];
+    const subVisited = new Set<string>();
+    while (subStack.length > 0) {
+      const curr = subStack.pop()!;
+      if (!curr.id || subVisited.has(curr.id)) continue;
+      if (curr.id === candidateDescendantId) return true;
+      subVisited.add(curr.id);
+      for (const child of curr.children) {
+        if (child && !subVisited.has(child.id)) subStack.push(child);
+      }
+    }
+    return false;
   }
 
   const parentMap = new Map<string, string | null | undefined>();
@@ -165,60 +73,6 @@ export function isDescendantOf(
   }
 
   return false;
-}
-
-/**
- * Concrete GoF Composite wrapper around a `CollectionHierarchyNode` or forest of nodes.
- */
-export class CollectionTreeComposite implements CollectionTreeComponent {
-  readonly node: CollectionHierarchyNode;
-
-  constructor(node: CollectionHierarchyNode) {
-    this.node = node;
-  }
-
-  static fromCollection(collection: Collection): CollectionTreeComposite {
-    return new CollectionTreeComposite({
-      ...collection,
-      children: [],
-    });
-  }
-
-  static fromFlatList(collections: Collection[]): CollectionTreeComposite[] {
-    return buildCollectionTree(collections).map((root) => new CollectionTreeComposite(root));
-  }
-
-  get id(): string {
-    return this.node.id;
-  }
-
-  get name(): string {
-    return this.node.name;
-  }
-
-  get parentId(): string | null | undefined {
-    return this.node.parentId;
-  }
-
-  isLeaf(): boolean {
-    return this.node.children.length === 0;
-  }
-
-  collectSubtreeIds(): string[] {
-    return collectSubtreeIds(this.node);
-  }
-
-  getSubtreeTotalItemCount(): number {
-    return getSubtreeTotalItemCount(this.node);
-  }
-
-  findNode(targetId: string): CollectionHierarchyNode | null {
-    return findCollectionNode([this.node], targetId);
-  }
-
-  containsDescendant(targetId: string): boolean {
-    return isDescendantOf([this.node], targetId, this.node.id);
-  }
 }
 
 /**
@@ -334,14 +188,20 @@ export function getDescendantCollectionIds(
  * Safely terminates if a corrupted parent cycle is encountered.
  */
 export function getCollectionBreadcrumbPath<T extends Pick<Collection, 'id' | 'name' | 'parentId'>>(
-  collections: ReadonlyArray<T>,
+  collections: ReadonlyArray<T> | ReadonlyMap<string, T>,
   targetId: string,
 ): T[] {
   if (!targetId) return [];
-  const byId = new Map<string, T>();
-  for (const c of collections) {
-    if (c.id) byId.set(c.id, c);
-  }
+  const byId =
+    collections instanceof Map
+      ? collections
+      : (() => {
+          const map = new Map<string, T>();
+          for (const c of collections as ReadonlyArray<T>) {
+            if (c.id) map.set(c.id, c);
+          }
+          return map;
+        })();
 
   const path: T[] = [];
   const visited = new Set<string>();
@@ -356,6 +216,27 @@ export function getCollectionBreadcrumbPath<T extends Pick<Collection, 'id' | 'n
   }
 
   return path.reverse();
+}
+
+/**
+ * Computes ancestor breadcrumb path string for a collection (excluding the target node itself, e.g. `Parent / Subfolder`).
+ */
+export function getCollectionAncestorPath<T extends Pick<Collection, 'id' | 'name' | 'parentId'>>(
+  collectionId: string,
+  colMap: ReadonlyMap<string, T>,
+  memo?: Map<string, string>,
+): string {
+  const cached = memo?.get(collectionId);
+  if (cached !== undefined) return cached;
+
+  const fullPath = getCollectionBreadcrumbPath(colMap, collectionId);
+  const resolved = fullPath
+    .slice(0, -1)
+    .map((c) => c.name)
+    .filter(Boolean)
+    .join(' / ');
+  memo?.set(collectionId, resolved);
+  return resolved;
 }
 
 /**

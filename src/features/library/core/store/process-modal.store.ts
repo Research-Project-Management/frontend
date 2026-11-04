@@ -196,6 +196,7 @@ const initialModalState: ProcessModalState = {
  * from asynchronous upload transport and notification side effects.
  */
 let activeBatchAbortController: AbortController | null = null;
+let activeBatchUploadsCount = 0;
 
 export const useProcessModalStore = create<ProcessModalStore>()(
   persist(
@@ -309,9 +310,16 @@ export const useProcessModalStore = create<ProcessModalStore>()(
       const incomingItems = Array.isArray(run.items) ? run.items : null;
       const mergedItems = incomingItems && incomingItems.length > 0
         ? currentData.items.map((it) => {
-            const match = incomingItems.find(
-              (pi) => pi.id === it.id || (pi.title && it.title && pi.title.includes(it.title)),
-            );
+            const trimmedItTitle = it.title?.trim();
+            const match = incomingItems.find((pi) => {
+              if (pi.id && it.id && pi.id === it.id) return true;
+              const trimmedPiTitle = pi.title?.trim();
+              return Boolean(
+                trimmedPiTitle &&
+                  trimmedItTitle &&
+                  (trimmedPiTitle === trimmedItTitle || trimmedPiTitle.includes(trimmedItTitle)),
+              );
+            });
             return match
               ? {
                   ...it,
@@ -470,11 +478,12 @@ export const useProcessModalStore = create<ProcessModalStore>()(
   },
 
   startBatchUpload: async (files, options) => {
-    if (activeBatchAbortController) {
-      activeBatchAbortController.abort();
+    if (!activeBatchAbortController || activeBatchAbortController.signal.aborted) {
+      activeBatchAbortController = new AbortController();
     }
-    activeBatchAbortController = new AbortController();
-    const abortSignal = activeBatchAbortController.signal;
+    const controller = activeBatchAbortController;
+    const abortSignal = controller.signal;
+    activeBatchUploadsCount += 1;
 
     const { executeBatchUpload } = await import('@/features/library/core/coordinator/ingestion.coordinator');
     const storeAdapter: ProcessModalStoreAdapter = {
@@ -491,13 +500,15 @@ export const useProcessModalStore = create<ProcessModalStore>()(
     try {
       await executeBatchUpload(files, { ...options, abortSignal }, storeAdapter);
     } finally {
-      if (activeBatchAbortController?.signal === abortSignal) {
+      activeBatchUploadsCount = Math.max(0, activeBatchUploadsCount - 1);
+      if (activeBatchUploadsCount === 0 && activeBatchAbortController === controller) {
         activeBatchAbortController = null;
       }
     }
   },
 
   abortBatch: () => {
+    activeBatchUploadsCount = 0;
     if (activeBatchAbortController) {
       activeBatchAbortController.abort();
       activeBatchAbortController = null;
@@ -512,6 +523,31 @@ export const useProcessModalStore = create<ProcessModalStore>()(
         state: state.state,
         processingItems: state.processingItems,
       }),
+      onRehydrateStorage: () => (rehydrated) => {
+        if (rehydrated?.state && !rehydrated.state.isComplete && !activeBatchAbortController) {
+          rehydrated.state.isComplete = true;
+          rehydrated.state.error = 'Upload interrupted by page reload.';
+          if (
+            rehydrated.state.data &&
+            ACTIVE_ITEM_STATUSES.has(String(rehydrated.state.data.status || '').toUpperCase())
+          ) {
+            rehydrated.state.data.status = 'FAILED';
+          }
+          if (Array.isArray(rehydrated.processingItems)) {
+            rehydrated.processingItems = rehydrated.processingItems.map((item) => {
+              const upperStatus = String(item.status || '').toUpperCase();
+              if (upperStatus === 'UPLOADING' || upperStatus === 'PENDING') {
+                return {
+                  ...item,
+                  status: 'FAILED',
+                  error: 'Upload interrupted by page reload.',
+                };
+              }
+              return item;
+            });
+          }
+        }
+      },
     },
   ),
 );

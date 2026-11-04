@@ -7,16 +7,23 @@ import { getErrorMessage } from '@/shared/lib/utils';
 import type { ExtractNotesOptions } from '@/features/library/sdk';
 import { annotationKeys } from '@/features/library/sdk/query-keys';
 import {
-  ANNOTATION_HISTORY_HANDLERS,
-  executeAnnotationHistoryEntry,
   executeAnnotationBatchSync,
   executeExtractAnnotationNotes,
+} from '@/features/library/sdk/queries/reader.queries';
+import {
+  ANNOTATION_HISTORY_HANDLERS,
+  pruneAnnotationHistoryEntry,
+  runUndoAnnotationHistoryAction,
+  runRedoAnnotationHistoryAction,
+  executeAnnotationHistoryEntry,
   type UndoAction,
   type HistoryEntry,
+  type AnnotationHistoryEntry,
   type AnnotationHistoryContext,
   type AnnotationHistoryStrategy,
-} from '@/features/library/sdk/queries/reader.queries';
+} from '@/features/library/sdk/queries/annotation-history.transport';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import { useLibraryCommandStore } from '@/features/library/core/manager/library-command.manager';
 import type {
   ReaderAnnotation,
   ReaderDocument,
@@ -24,9 +31,13 @@ import type {
 
 export {
   ANNOTATION_HISTORY_HANDLERS,
+  pruneAnnotationHistoryEntry,
+  runUndoAnnotationHistoryAction,
+  runRedoAnnotationHistoryAction,
   executeAnnotationHistoryEntry,
   type UndoAction,
   type HistoryEntry,
+  type AnnotationHistoryEntry,
   type AnnotationHistoryContext,
   type AnnotationHistoryStrategy,
 };
@@ -40,16 +51,15 @@ export interface UseAnnotationBatchOptions {
 }
 
 function dispatchPruneHistoryEntry(action: UndoAction, deletedSet: ReadonlySet<string>): UndoAction | null {
-  const handler = ANNOTATION_HISTORY_HANDLERS[action.type] as AnnotationHistoryStrategy<UndoAction>;
-  return handler.prune(action, deletedSet);
+  return pruneAnnotationHistoryEntry(action, deletedSet);
 }
 
 async function dispatchUndoHistoryEntry(action: UndoAction, ctx: AnnotationHistoryContext): Promise<void> {
-  await executeAnnotationHistoryEntry(action, ctx, 'undo');
+  await runUndoAnnotationHistoryAction(action, ctx);
 }
 
 async function dispatchRedoHistoryEntry(action: UndoAction, ctx: AnnotationHistoryContext): Promise<void> {
-  await executeAnnotationHistoryEntry(action, ctx, 'redo');
+  await runRedoAnnotationHistoryAction(action, ctx);
 }
 
 /**
@@ -70,6 +80,10 @@ export function useAnnotationBatch({
   const [redoStack, setRedoStackState] = useState<UndoAction[]>([]);
   const undoStackRef = useRef<UndoAction[]>([]);
   const redoStackRef = useRef<UndoAction[]>([]);
+  const historyByAttachmentRef = useRef<
+    Map<string, { undoStack: UndoAction[]; redoStack: UndoAction[] }>
+  >(new Map());
+  const currentAttachmentKeyRef = useRef<string | null>(null);
   const isProcessingRef = useRef(false);
   const attachmentEpochRef = useRef(0);
 
@@ -78,6 +92,17 @@ export function useAnnotationBatch({
       const next =
         typeof updater === 'function' ? updater(undoStackRef.current) : updater;
       undoStackRef.current = next;
+      const attKey = currentAttachmentKeyRef.current;
+      if (attKey) {
+        const existing = historyByAttachmentRef.current.get(attKey) ?? {
+          undoStack: [],
+          redoStack: redoStackRef.current,
+        };
+        historyByAttachmentRef.current.set(attKey, {
+          ...existing,
+          undoStack: next,
+        });
+      }
       setUndoStackState(next);
     },
     [],
@@ -88,6 +113,17 @@ export function useAnnotationBatch({
       const next =
         typeof updater === 'function' ? updater(redoStackRef.current) : updater;
       redoStackRef.current = next;
+      const attKey = currentAttachmentKeyRef.current;
+      if (attKey) {
+        const existing = historyByAttachmentRef.current.get(attKey) ?? {
+          undoStack: undoStackRef.current,
+          redoStack: [],
+        };
+        historyByAttachmentRef.current.set(attKey, {
+          ...existing,
+          redoStack: next,
+        });
+      }
       setRedoStackState(next);
     },
     [],
@@ -98,9 +134,16 @@ export function useAnnotationBatch({
     isProcessingRef.current = false;
     setIsBatchProcessing(false);
     setSelectedAnnotationIds(new Set());
-    updateUndoStack([]);
-    updateRedoStack([]);
-  }, [scopeId, effectiveAttachmentId, updateUndoStack, updateRedoStack]);
+    const attKey = effectiveAttachmentId ? `${scopeId || 'user'}:${effectiveAttachmentId}` : null;
+    currentAttachmentKeyRef.current = attKey;
+    const saved = attKey ? historyByAttachmentRef.current.get(attKey) : undefined;
+    const restoredUndo = saved?.undoStack ?? [];
+    const restoredRedo = saved?.redoStack ?? [];
+    undoStackRef.current = restoredUndo;
+    redoStackRef.current = restoredRedo;
+    setUndoStackState(restoredUndo);
+    setRedoStackState(restoredRedo);
+  }, [scopeId, effectiveAttachmentId]);
 
   const handleToggleSelectAnnotation = useCallback((id: string) => {
     setSelectedAnnotationIds((prev) => {
@@ -206,20 +249,33 @@ export function useAnnotationBatch({
       if (tag === 'input' || tag === 'textarea' || target?.isContentEditable) return;
 
       if ((e.ctrlKey || e.metaKey) && !e.altKey) {
-        if (e.key.toLowerCase() === 'z') {
-          if (e.shiftKey) {
-            if (redoStackRef.current.length === 0) return;
-            e.preventDefault();
-            void redo();
-          } else {
-            if (undoStackRef.current.length === 0) return;
-            e.preventDefault();
-            void undo();
-          }
-        } else if (e.key.toLowerCase() === 'y') {
-          if (redoStackRef.current.length === 0) return;
+        const keyLower = e.key.toLowerCase();
+        if (keyLower === 'z' && !e.shiftKey) {
+          const topAnnUndo = undoStackRef.current[undoStackRef.current.length - 1];
+          const cmdState = useLibraryCommandStore.getState();
+          const topCmdUndo = cmdState.undoStack[0];
+          if (!topAnnUndo && !topCmdUndo) return;
           e.preventDefault();
-          void redo();
+          const annTs = topAnnUndo?.timestamp ?? 0;
+          const cmdTs = topCmdUndo?.timestamp ?? 0;
+          if (topAnnUndo && (!topCmdUndo || annTs >= cmdTs)) {
+            void undo();
+          } else if (topCmdUndo) {
+            void cmdState.undo();
+          }
+        } else if ((keyLower === 'z' && e.shiftKey) || keyLower === 'y') {
+          const topAnnRedo = redoStackRef.current[redoStackRef.current.length - 1];
+          const cmdState = useLibraryCommandStore.getState();
+          const topCmdRedo = cmdState.redoStack[0];
+          if (!topAnnRedo && !topCmdRedo) return;
+          e.preventDefault();
+          const annTs = topAnnRedo?.timestamp ?? 0;
+          const cmdTs = topCmdRedo?.timestamp ?? 0;
+          if (topAnnRedo && (!topCmdRedo || annTs >= cmdTs)) {
+            void redo();
+          } else if (topCmdRedo) {
+            void cmdState.redo();
+          }
         }
       }
     };
@@ -278,7 +334,10 @@ export function useAnnotationBatch({
 
         if (attachmentEpochRef.current !== startEpoch) return;
 
-        updateUndoStack((prev) => [...prev.slice(-19), { type: 'color', items: historyItems }]);
+        updateUndoStack((prev) => [
+          ...prev.slice(-19),
+          { type: 'color', items: historyItems, timestamp: Date.now() },
+        ]);
         updateRedoStack([]);
 
         toast.success(`Updated color for ${ids.length} highlight${ids.length > 1 ? 's' : ''}`, {
@@ -322,7 +381,10 @@ export function useAnnotationBatch({
         if (attachmentEpochRef.current !== startEpoch) return;
 
         pruneDeletedFromHistory(ids);
-        updateUndoStack((prev) => [...prev.slice(-19), { type: 'delete', items: deletedItems }]);
+        updateUndoStack((prev) => [
+          ...prev.slice(-19),
+          { type: 'delete', items: deletedItems, timestamp: Date.now() },
+        ]);
         updateRedoStack([]);
 
         setSelectedAnnotationIds((prev) => {
@@ -353,15 +415,18 @@ export function useAnnotationBatch({
 
   const recordDeletedAnnotations = useCallback((items: ReaderAnnotation[]) => {
     if (!items || items.length === 0) return;
-    updateUndoStack((prev) => [...prev.slice(-19), { type: 'delete', items }]);
+    updateUndoStack((prev) => [...prev.slice(-19), { type: 'delete', items, timestamp: Date.now() }]);
     updateRedoStack([]);
-  }, []);
+  }, [updateUndoStack, updateRedoStack]);
 
   const recordSingleDeleteAnnotation = useCallback((annotation: ReaderAnnotation) => {
     if (!annotation) return;
-    updateUndoStack((prev) => [...prev.slice(-19), { type: 'delete', items: [annotation] }]);
+    updateUndoStack((prev) => [
+      ...prev.slice(-19),
+      { type: 'delete', items: [annotation], timestamp: Date.now() },
+    ]);
     updateRedoStack([]);
-  }, []);
+  }, [updateUndoStack, updateRedoStack]);
 
   const recordCreateAnnotation = useCallback(
     (createdAnnotation: ReaderAnnotation, attachmentId?: string) => {
@@ -369,11 +434,11 @@ export function useAnnotationBatch({
       if (!createdAnnotation || !targetAttId) return;
       updateUndoStack((prev) => [
         ...prev.slice(-19),
-        { type: 'create', createdAnnotation, attachmentId: targetAttId },
+        { type: 'create', createdAnnotation, attachmentId: targetAttId, timestamp: Date.now() },
       ]);
       updateRedoStack([]);
     },
-    [effectiveAttachmentId],
+    [effectiveAttachmentId, updateUndoStack, updateRedoStack],
   );
 
   const recordUpdateAnnotation = useCallback(
@@ -395,11 +460,12 @@ export function useAnnotationBatch({
           before: params.before,
           after: params.after,
           version: params.version,
+          timestamp: Date.now(),
         },
       ]);
       updateRedoStack([]);
     },
-    [effectiveAttachmentId],
+    [effectiveAttachmentId, updateUndoStack, updateRedoStack],
   );
 
   const handleBatchAddToNote = useCallback(
@@ -414,15 +480,24 @@ export function useAnnotationBatch({
         await extractNotes(paper.id, {
           attachmentId: effectiveAttachmentId,
           annotationIds: ids,
+          includeComments: true,
+          tagColor: true,
         });
       } else {
-        await executeExtractAnnotationNotes(scopeId, paper.id, {
-          attachmentId: effectiveAttachmentId,
-          annotationIds: ids,
-        });
+        await executeExtractAnnotationNotes(
+          scopeId,
+          paper.id,
+          {
+            attachmentId: effectiveAttachmentId,
+            annotationIds: ids,
+            includeComments: true,
+            tagColor: true,
+          },
+          qc,
+        );
       }
     },
-    [effectiveAttachmentId, selectedAnnotationIds, scopeId, paper?.id, extractNotes],
+    [effectiveAttachmentId, selectedAnnotationIds, scopeId, paper?.id, extractNotes, qc],
   );
 
   return {

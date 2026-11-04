@@ -2,7 +2,8 @@
 
 import { useMemo, useCallback } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import type { LibraryOrderBy } from '@/features/library/domain/types/saved-searches.types';
+import type { LibraryOrderBy } from '@/features/library/domain/types/ingestion.types';
+import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 
 export interface LibraryNavigationFilters {
   search?: string;
@@ -22,6 +23,7 @@ export interface LibraryNavigationFilters {
   orderDirection?: 'asc' | 'desc';
   page: number;
   selectedItemId?: string;
+  collectionId?: string;
 }
 
 /**
@@ -140,12 +142,25 @@ export function useLibraryNavigation() {
     [searchParamsString],
   );
 
+  const collectionMatch = pathname.match(/\/library\/([a-zA-Z0-9_-]+)/);
+  const routeCollectionId =
+    collectionMatch &&
+    !['trash', 'unfiled', 'duplicates', 'feeds', 'saved-searches'].includes(
+      collectionMatch[1],
+    )
+      ? collectionMatch[1]
+      : undefined;
+  const effectiveCollectionId = filters.collectionId || routeCollectionId;
+
   // Helper to push query updates
   const updateQuery = useCallback(
     (
       updater: (params: URLSearchParams) => void,
-      options: { resetPage?: boolean; replace?: boolean } = {},
+      options: { resetPage?: boolean; replace?: boolean; clearSelection?: boolean } = {},
     ) => {
+      if (options.clearSelection || options.resetPage) {
+        useLibraryUIStore.getState().clearSelection();
+      }
       const params = new URLSearchParams(searchParamsString);
       if (options.resetPage) {
         params.delete('page');
@@ -172,6 +187,10 @@ export function useLibraryNavigation() {
             p.set('q', q.trim());
           } else {
             p.delete('q');
+            if (p.get('orderBy') === 'relevance') {
+              p.delete('orderBy');
+              p.delete('orderDirection');
+            }
           }
         },
         { resetPage: true, replace: true },
@@ -184,6 +203,10 @@ export function useLibraryNavigation() {
     updateQuery(
       (p) => {
         p.delete('q');
+        if (p.get('orderBy') === 'relevance') {
+          p.delete('orderBy');
+          p.delete('orderDirection');
+        }
       },
       { resetPage: true, replace: true },
     );
@@ -253,13 +276,16 @@ export function useLibraryNavigation() {
 
   const setPage = useCallback(
     (newPage: number) => {
-      updateQuery((p) => {
-        if (newPage <= 1) {
-          p.delete('page');
-        } else {
-          p.set('page', String(newPage));
-        }
-      });
+      updateQuery(
+        (p) => {
+          if (newPage <= 1) {
+            p.delete('page');
+          } else {
+            p.set('page', String(newPage));
+          }
+        },
+        { clearSelection: true },
+      );
     },
     [updateQuery],
   );
@@ -303,6 +329,7 @@ export function useLibraryNavigation() {
 
   const navigateToCollection = useCallback(
     (collectionId?: string) => {
+      useLibraryUIStore.getState().clearSelection();
       if (!collectionId) {
         router.push('/library');
       } else {
@@ -332,6 +359,7 @@ export function useLibraryNavigation() {
       savedSearchId: filters.savedSearchId,
       feedId: filters.feedId,
       filterParam: filters.filter,
+      collectionId: effectiveCollectionId,
       searchParams,
 
       // Actions

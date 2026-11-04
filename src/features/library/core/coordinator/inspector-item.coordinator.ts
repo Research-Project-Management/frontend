@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import { toast } from 'sonner';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import {
   useLibraryCommandStore,
@@ -13,8 +14,16 @@ import {
   useLibraryCacheSynchronizer,
   mergeCachedItemWithPatch,
 } from '@/features/library/sdk/queries/catalog.queries';
+import { useCollections } from '@/features/library/sdk/queries/collections.queries';
 import { normalizeTags, getAssignedCollectionIds } from '@/features/library/domain/metadata-mapper';
-import type { Item } from '@/features/library/domain/types/core.types';
+import { getCollectionAncestorPath } from '@/features/library/domain/collection-tree';
+import type {
+  Item,
+  Collection,
+  CreateCollectionDTO,
+} from '@/features/library/domain/types/core.types';
+
+export { getCollectionAncestorPath };
 
 export interface UsePanelResizeOptions {
   /** Initial or controlled width of the panel in pixels */
@@ -146,11 +155,11 @@ export function useInspectorItemResolver({
   const targetScope = scopeId || 'user';
   const incomingItem = propItem || null;
 
-  const queryItemId = !incomingItem && activeItemId ? activeItemId : undefined;
+  const targetItemId = incomingItem?.id || activeItemId || undefined;
   const { resolveCachedItem } = useLibraryCacheSynchronizer(targetScope);
   const cachedListItem = useMemo(
-    () => resolveCachedItem(queryItemId, targetScope),
-    [resolveCachedItem, queryItemId, targetScope],
+    () => resolveCachedItem(targetItemId, targetScope),
+    [resolveCachedItem, targetItemId, targetScope],
   );
 
   const hasCachedCoreMetadata = Boolean(
@@ -160,21 +169,32 @@ export function useInspectorItemResolver({
       cachedListItem.abstractNote !== undefined,
   );
   const shouldFetchFullDetail = Boolean(
-    queryItemId && (needsFullDetail || !hasCachedCoreMetadata),
+    !incomingItem && targetItemId && (needsFullDetail || !hasCachedCoreMetadata),
   );
 
   const { data: queriedItem, isLoading } = useLibraryItemDetailQuery(
     targetScope,
-    queryItemId,
+    targetItemId,
     { enabled: shouldFetchFullDetail },
   );
 
   const lastItemRef = useRef<Item | null>(null);
+  const fresherQueriedOrCached =
+    queriedItem && (!targetItemId || queriedItem.id === targetItemId)
+      ? queriedItem
+      : cachedListItem && (!targetItemId || cachedListItem.id === targetItemId)
+        ? cachedListItem
+        : null;
+
   const effectiveItem =
-    incomingItem ||
-    (queriedItem && (!activeItemId || queriedItem.id === activeItemId) ? queriedItem : null) ||
-    (cachedListItem && (!activeItemId || cachedListItem.id === activeItemId) ? cachedListItem : null) ||
-    (activeItemId && lastItemRef.current?.id === activeItemId ? lastItemRef.current : null);
+    incomingItem &&
+    fresherQueriedOrCached &&
+    fresherQueriedOrCached.id === incomingItem.id &&
+    (fresherQueriedOrCached.version ?? 0) >= (incomingItem.version ?? 0)
+      ? fresherQueriedOrCached
+      : incomingItem ||
+        fresherQueriedOrCached ||
+        (activeItemId && lastItemRef.current?.id === activeItemId ? lastItemRef.current : null);
 
   useEffect(() => {
     if (!activeItemId || (lastItemRef.current && lastItemRef.current.id !== activeItemId)) {
@@ -192,8 +212,14 @@ export function useInspectorItemResolver({
   const isItemInTrash = Boolean(effectiveItem?.deletedAt);
   const effectiveCanEdit = canEdit && !isItemInTrash;
 
-  const attachmentCount = effectiveItem?.attachments?.length ?? 0;
-  const noteCount = effectiveItem?.notes?.length ?? 0;
+  const attachmentCount =
+    Array.isArray(effectiveItem?.attachments) && effectiveItem.attachments.length > 0
+      ? effectiveItem.attachments.length
+      : (effectiveItem?.attachmentCount ?? 0);
+  const noteCount =
+    Array.isArray(effectiveItem?.notes) && effectiveItem.notes.length > 0
+      ? effectiveItem.notes.length
+      : (effectiveItem?.noteCount ?? effectiveItem?.notesCount ?? 0);
 
   const tagsList = useMemo(() => normalizeTags(effectiveItem), [effectiveItem]);
 
@@ -217,11 +243,7 @@ export function useInspectorItemResolver({
     }
     if (typeof effectiveItem.version === 'number') {
       const tracked = latestVersionRef.current.get(effectiveItem.id);
-      if (
-        tracked === undefined ||
-        (!pendingMutationPromiseRef.current.has(effectiveItem.id) &&
-          effectiveItem.version > tracked)
-      ) {
+      if (tracked === undefined || effectiveItem.version > tracked) {
         latestVersionRef.current.set(effectiveItem.id, effectiveItem.version);
       }
     }
@@ -233,58 +255,66 @@ export function useInspectorItemResolver({
       patch: Partial<Item>,
       fallbackVersion?: number,
       isSilent = false,
+      onPatchPrepared?: (prePatchSnapshot: Item | undefined) => void,
     ): Promise<unknown> => {
-      const currentSnapshot = latestItemSnapshotRef.current.get(targetItemId);
-      if (currentSnapshot) {
-        latestItemSnapshotRef.current.set(
-          targetItemId,
-          mergeCachedItemWithPatch(currentSnapshot, patch),
-        );
-      }
       const prevPromise = pendingMutationPromiseRef.current.get(targetItemId) ?? Promise.resolve();
       const nextPromise = prevPromise
         .catch(() => undefined)
         .then(async () => {
+          const prePatchSnapshot = latestItemSnapshotRef.current.get(targetItemId);
+          onPatchPrepared?.(prePatchSnapshot);
+          if (prePatchSnapshot) {
+            latestItemSnapshotRef.current.set(
+              targetItemId,
+              mergeCachedItemWithPatch(prePatchSnapshot, patch),
+            );
+          }
+
           const trackedVersion = latestVersionRef.current.get(targetItemId);
           const expectedVersion =
-            typeof trackedVersion === 'number'
-              ? trackedVersion
-              : typeof fallbackVersion === 'number'
-                ? fallbackVersion
+            typeof fallbackVersion === 'number'
+              ? fallbackVersion
+              : typeof trackedVersion === 'number'
+                ? trackedVersion
                 : undefined;
 
-          const res = await updateMutation.mutateAsync({
-            itemId: targetItemId,
-            data: patch,
-            expectedVersion,
-            silent: isSilent,
-          });
+          try {
+            const res = await updateMutation.mutateAsync({
+              itemId: targetItemId,
+              data: patch,
+              expectedVersion,
+              silent: isSilent,
+            });
 
-          const returnedItem =
-            res && typeof res === 'object' && 'item' in res && res.item
-              ? (res.item as Partial<Item>)
-              : (res as Partial<Item> | undefined);
+            const returnedItem =
+              res && typeof res === 'object' && 'item' in res && res.item
+                ? (res.item as Partial<Item>)
+                : (res as Partial<Item> | undefined);
 
-          if (typeof returnedItem?.version === 'number') {
-            latestVersionRef.current.set(targetItemId, returnedItem.version);
-          } else if (typeof expectedVersion === 'number') {
-            latestVersionRef.current.set(targetItemId, expectedVersion + 1);
-          }
-          if (returnedItem && typeof returnedItem === 'object') {
-            const snap = latestItemSnapshotRef.current.get(targetItemId);
-            if (snap) {
-              latestItemSnapshotRef.current.set(
-                targetItemId,
-                mergeCachedItemWithPatch(snap, returnedItem),
-              );
+            if (typeof returnedItem?.version === 'number') {
+              latestVersionRef.current.set(targetItemId, returnedItem.version);
+            } else if (typeof expectedVersion === 'number') {
+              latestVersionRef.current.set(targetItemId, expectedVersion + 1);
             }
+            if (returnedItem && typeof returnedItem === 'object') {
+              const snap = latestItemSnapshotRef.current.get(targetItemId);
+              if (snap) {
+                latestItemSnapshotRef.current.set(
+                  targetItemId,
+                  mergeCachedItemWithPatch(snap, returnedItem),
+                );
+              }
+            }
+            return res;
+          } catch (err) {
+            if (prePatchSnapshot) {
+              latestItemSnapshotRef.current.set(targetItemId, prePatchSnapshot);
+            } else {
+              latestItemSnapshotRef.current.delete(targetItemId);
+            }
+            latestVersionRef.current.delete(targetItemId);
+            throw err;
           }
-          return res;
-        })
-        .catch((err) => {
-          latestVersionRef.current.delete(targetItemId);
-          latestItemSnapshotRef.current.delete(targetItemId);
-          throw err;
         })
         .finally(() => {
           if (pendingMutationPromiseRef.current.get(targetItemId) === nextPromise) {
@@ -299,14 +329,21 @@ export function useInspectorItemResolver({
   );
 
   const handleUpdateItem = useCallback(
-    (payload: Partial<Item>, options?: { silent?: boolean; skipHistory?: boolean }) => {
-      if (!effectiveItem || !effectiveCanEdit) return;
+    (
+      payload: Partial<Item>,
+      options?: { silent?: boolean; skipHistory?: boolean },
+    ): Promise<unknown> => {
+      if (!effectiveItem || !effectiveCanEdit) return Promise.resolve();
       const itemId = effectiveItem.id;
       const fallbackVersion = payload.version ?? effectiveItem.version;
-      const isSilent = options?.silent !== undefined ? Boolean(options.silent) : (payload.silent !== undefined ? Boolean(payload.silent) : true);
+      const isSilent =
+        options?.silent !== undefined
+          ? Boolean(options.silent)
+          : payload.silent !== undefined
+            ? Boolean(payload.silent)
+            : true;
       const skipHistory = Boolean(options?.skipHistory);
 
-      const baseSnapshot = latestItemSnapshotRef.current.get(itemId) ?? effectiveItem;
       if (!latestItemSnapshotRef.current.has(itemId)) {
         latestItemSnapshotRef.current.set(itemId, effectiveItem);
       }
@@ -316,24 +353,50 @@ export function useInspectorItemResolver({
       ) {
         latestVersionRef.current.set(itemId, effectiveItem.version);
       }
-      const inversePatch = buildInverseMetadataPatch(baseSnapshot, payload);
-      const command = createUpdateItemMetadataCommand({
-        itemId,
-        description: baseSnapshot.title
-          ? `Updated "${baseSnapshot.title}"`
-          : 'Updated item metadata',
-        forwardPatch: payload,
-        inversePatch,
-        applyPatch: (targetId, patch) => enqueueItemPatch(targetId, patch, undefined, true),
-      });
 
-      void enqueueItemPatch(itemId, payload, fallbackVersion, isSilent)
-        .then(() => {
+      let preparedInversePatch = buildInverseMetadataPatch(
+        latestItemSnapshotRef.current.get(itemId) ?? effectiveItem,
+        payload,
+      );
+      let preparedTitle = (
+        latestItemSnapshotRef.current.get(itemId) ?? effectiveItem
+      ).title;
+
+      return enqueueItemPatch(
+        itemId,
+        payload,
+        fallbackVersion,
+        isSilent,
+        (prePatchSnapshot) => {
+          const baseSnapshot = prePatchSnapshot ?? effectiveItem;
+          preparedInversePatch = buildInverseMetadataPatch(baseSnapshot, payload);
+          preparedTitle = baseSnapshot.title;
+        },
+      )
+        .then((res) => {
           if (!skipHistory) {
-            useLibraryCommandStore.getState().pushExecutedCommand(command, { silentToast: true });
+            const command = createUpdateItemMetadataCommand({
+              itemId,
+              description: preparedTitle
+                ? `Updated "${preparedTitle}"`
+                : 'Updated item metadata',
+              forwardPatch: payload,
+              inversePatch: preparedInversePatch,
+              applyPatch: (targetId, patch) =>
+                enqueueItemPatch(targetId, patch, undefined, true),
+            });
+            useLibraryCommandStore
+              .getState()
+              .pushExecutedCommand(command, { silentToast: true });
           }
+          return res;
         })
-        .catch(() => undefined);
+        .catch((err) => {
+          if (options?.skipHistory) {
+            throw err;
+          }
+          return undefined;
+        });
     },
     [effectiveItem, effectiveCanEdit, enqueueItemPatch],
   );
@@ -351,3 +414,183 @@ export function useInspectorItemResolver({
     handleUpdateItem,
   };
 }
+
+/**
+ * Shared coordinator hook for item collection assignment state & undoable toggle/remove.
+ */
+export function useItemCollectionsManager(
+  item: Item,
+  effectiveScope: string,
+  canEdit: boolean,
+  externalCollections?: Collection[],
+  externalCreateCollection?: (
+    data: CreateCollectionDTO & { scopeId?: string },
+  ) => Promise<unknown>,
+  onUpdateItem?: (
+    payload: Partial<Item>,
+    options?: { silent?: boolean; skipHistory?: boolean },
+  ) => Promise<unknown> | void,
+) {
+  const updateItemMutation = useUpdateLibraryItemMutation(effectiveScope);
+  const updateItem = useCallback(
+    (
+      itemId: string,
+      data: Partial<Item>,
+      options?: { expectedVersion?: number; silent?: boolean },
+    ) => {
+      if (onUpdateItem && itemId === item?.id) {
+        return Promise.resolve(
+          onUpdateItem(data, {
+            silent: options?.silent ?? true,
+            skipHistory: true,
+          }),
+        );
+      }
+      return updateItemMutation.mutateAsync({
+        itemId,
+        data,
+        expectedVersion: options?.expectedVersion,
+        silent: options?.silent ?? true,
+      });
+    },
+    [onUpdateItem, item?.id, updateItemMutation],
+  );
+  const {
+    collections: queriedCollections = [],
+    createCollection: queriedCreateCollection,
+  } = useCollections({
+    scopeId: effectiveScope,
+    enabled: externalCollections === undefined,
+  });
+  const collections = externalCollections ?? queriedCollections;
+  const createCollection =
+    externalCreateCollection ?? queriedCreateCollection;
+  const pushExecutedCommand = useLibraryCommandStore((s) => s.pushExecutedCommand);
+  const undoCommand = useLibraryCommandStore((s) => s.undo);
+
+  const colMap = useMemo(() => {
+    const map = new Map<string, Collection>();
+    collections.forEach((c: Collection) => map.set(c.id, c));
+    (item?.collections || []).forEach((c) => {
+      if (c?.id && !map.has(c.id)) {
+        map.set(c.id, c as Collection);
+      }
+    });
+    return map;
+  }, [collections, item?.collections]);
+
+  const collectionSearchIndex = useMemo(() => {
+    const pathMemo = new Map<string, string>();
+    const index = new Map<
+      string,
+      { path: string; lowerPath: string; lowerName: string }
+    >();
+    colMap.forEach((col, id) => {
+      const path = getCollectionAncestorPath(id, colMap, pathMemo);
+      index.set(id, {
+        path,
+        lowerPath: path.toLowerCase(),
+        lowerName: (col.name || '').toLowerCase(),
+      });
+    });
+    return index;
+  }, [colMap]);
+
+  const assignedCollectionIdsSet = useMemo(
+    () => new Set<string>(getAssignedCollectionIds(item)),
+    [item],
+  );
+
+  const handleToggleCollection = useCallback(
+    async (targetColId: string) => {
+      if (!item?.id || !canEdit) return;
+      const isAssigned = assignedCollectionIdsSet.has(targetColId);
+      const prevIds = Array.from(assignedCollectionIdsSet);
+      const remainingIds = isAssigned
+        ? prevIds.filter((id) => id !== targetColId)
+        : [...prevIds, targetColId];
+
+      const targetItemId = item.id;
+      const targetCol = colMap.get(targetColId);
+      const colName = targetCol?.name || 'Collection';
+      const commandDescription = isAssigned
+        ? `Removed from "${colName}"`
+        : `Added to "${colName}"`;
+
+      const command = createUpdateItemMetadataCommand({
+        itemId: targetItemId,
+        description: commandDescription,
+        forwardPatch: { collectionIds: remainingIds },
+        inversePatch: { collectionIds: prevIds },
+        applyPatch: (id, patch) => updateItem(id, patch, { silent: true }),
+      });
+
+      try {
+        await updateItem(
+          targetItemId,
+          {
+            collectionIds: remainingIds,
+          },
+          { expectedVersion: item.version },
+        );
+
+        pushExecutedCommand(command, { silentToast: true });
+
+        const undoAction = {
+          label: 'Undo',
+          onClick: () => {
+            void undoCommand(command.id);
+          },
+        };
+
+        if (isAssigned) {
+          const remainingCount = remainingIds.length;
+          const description =
+            remainingCount === 0
+              ? 'Item is now in Unfiled Items (remains safely in your library).'
+              : `Item remains in ${remainingCount} other ${remainingCount === 1 ? 'collection' : 'collections'}.`;
+
+          toast.success(`Removed from "${colName}"`, {
+            description,
+            id: 'col-assign',
+            duration: 3000,
+            action: undoAction,
+          });
+        } else {
+          toast.success(`Added to "${colName}"`, {
+            id: 'col-assign',
+            action: undoAction,
+          });
+        }
+      } catch (err: unknown) {
+        toast.error(`Failed to update "${colName}"`, {
+          description: err instanceof Error ? err.message : 'Please try again.',
+          id: 'col-assign',
+        });
+      }
+    },
+    [
+      item?.id,
+      item?.version,
+      assignedCollectionIdsSet,
+      canEdit,
+      updateItem,
+      colMap,
+      pushExecutedCommand,
+      undoCommand,
+    ],
+  );
+
+  return {
+    collections,
+    colMap,
+    collectionSearchIndex,
+    assignedCollectionIdsSet,
+    updateItem,
+    createCollection,
+    handleToggleCollection,
+    pushExecutedCommand,
+  };
+}
+
+export type ItemCollectionsManagerState = ReturnType<typeof useItemCollectionsManager>;

@@ -3,7 +3,11 @@
 import { useMemo, useState } from 'react';
 import { useTags } from '@/features/library/sdk/queries/tags-notes.queries';
 import type { TagWithCount } from '@/features/library/domain/types/items.types';
-import { useLibraryCountsQuery, useItemTypes } from '@/features/library/sdk/queries/catalog.queries';
+import {
+  useLibraryCountsQuery,
+  useItemTypes,
+  useLibrarySearchFacetsQuery,
+} from '@/features/library/sdk/queries/catalog.queries';
 import type { Item } from '@/features/library/domain/types/core.types';
 import {
   ALL_ITEM_TYPES_FLAT,
@@ -14,7 +18,7 @@ import {
   calculateFilterMatchScore,
   formatTypeFallback,
   KNOWN_TYPE_ALIASES,
-} from '@/features/library/domain/sort-items.domain';
+} from '@/features/library/domain/zotero-extra-parser';
 import { useLibraryNavigation } from '@/features/library/core/coordinator/navigation.coordinator';
 
 /** Standard Zotero 7 9-Color Tag Palette */
@@ -66,8 +70,20 @@ export function useLibraryFacetCounts({
   searchQuery,
   isOpen = true,
 }: UseLibraryFacetCountsParams) {
-  const { searchParams, updateQuery } = useLibraryNavigation();
+  const {
+    searchParams,
+    updateQuery,
+    search: activeLibrarySearch,
+    searchMode: activeSearchMode,
+    collectionId: activeCollectionId,
+  } = useLibraryNavigation();
   const { data: counts } = useLibraryCountsQuery(scopeId, { enabled: isOpen });
+  const { data: searchFacets } = useLibrarySearchFacetsQuery(
+    scopeId,
+    isOpen ? activeLibrarySearch : undefined,
+    activeCollectionId,
+    activeSearchMode,
+  );
   const {
     tags,
     createTag,
@@ -75,6 +91,7 @@ export function useLibraryFacetCounts({
     deleteTag,
     deleteAutomaticTags,
     isDeletingAutomatic,
+    splitTag,
   } = useTags(scopeId, { enabled: isOpen });
   const [showAutomaticTags, setShowAutomaticTags] = useState(true);
 
@@ -104,7 +121,7 @@ export function useLibraryFacetCounts({
     if (!raw.length) return [];
     return raw
       .flatMap((t: string) => t.split(','))
-      .map((t: string) => decodeURIComponent(t.trim()).toLowerCase())
+      .map((t: string) => decodeURIComponent(t.trim()))
       .filter(Boolean);
   }, [searchParams]);
 
@@ -264,6 +281,22 @@ export function useLibraryFacetCounts({
     });
   };
 
+  const handleClearAllFilters = () => {
+    replaceFilterQuery((params) => {
+      params.delete('fileStatus');
+      params.delete('hasFile');
+      params.delete('hasNotes');
+      params.delete('readStatus');
+      params.delete('type');
+      params.delete('itemType');
+      params.delete('fromYear');
+      params.delete('toYear');
+      params.delete('startDate');
+      params.delete('endDate');
+      params.delete('tag');
+    });
+  };
+
   const currentYear = new Date().getFullYear();
   const hasDateFilter = Boolean(startDate || endDate || fromYear !== null || toYear !== null);
 
@@ -291,7 +324,14 @@ export function useLibraryFacetCounts({
     if (!isOpen) return [];
     const existingTypeMap = new Map<string, { canonicalKey: string; count: number }>();
 
-    const serverTypeCounts = counts?.itemTypes || counts?.byItemType;
+    const hasActiveSearchFacets = Boolean(
+      activeLibrarySearch?.trim() &&
+        searchFacets?.itemTypes &&
+        typeof searchFacets.itemTypes === 'object',
+    );
+    const serverTypeCounts = hasActiveSearchFacets
+      ? searchFacets!.itemTypes
+      : (counts?.itemTypes || counts?.byItemType);
     if (serverTypeCounts && typeof serverTypeCounts === 'object') {
       for (const [rawType, rawCount] of Object.entries(serverTypeCounts)) {
         const trimmed = rawType.trim();
@@ -349,7 +389,7 @@ export function useLibraryFacetCounts({
     });
 
     return options.sort((a, b) => a.label.localeCompare(b.label));
-  }, [counts, itemTypes, serverItemTypes, isOpen]);
+  }, [counts, searchFacets, activeLibrarySearch, itemTypes, serverItemTypes, isOpen]);
 
   const matchingTypeItems = useMemo(() => {
     if (!isOpen) return [];
@@ -381,7 +421,30 @@ export function useLibraryFacetCounts({
 
   const matchingTags = useMemo(() => {
     if (!isOpen) return [];
-    const list = tags.filter((t: TagWithCount) => {
+    const hasSearchTagFacets = Boolean(
+      activeLibrarySearch?.trim() &&
+        searchFacets?.tags &&
+        typeof searchFacets.tags === 'object',
+    );
+    const searchTagCountByLower = new Map<string, number>();
+    if (hasSearchTagFacets) {
+      for (const [tagName, tagCount] of Object.entries(searchFacets!.tags)) {
+        searchTagCountByLower.set(tagName.toLowerCase(), Number(tagCount) || 0);
+      }
+    }
+
+    const enrichedTags: TagWithCount[] = hasSearchTagFacets
+      ? tags.map((t: TagWithCount) => {
+          const dynamicCount = searchTagCountByLower.get(t.name.toLowerCase()) ?? 0;
+          return {
+            ...t,
+            itemCount: dynamicCount,
+            _count: { ...(t._count || {}), itemTags: dynamicCount },
+          };
+        })
+      : tags;
+
+    const list = enrichedTags.filter((t: TagWithCount) => {
       const isAuto = (t.type || 'manual').toLowerCase() === 'automatic';
       if (!showAutomaticTags && isAuto && !activeTagsSet.has(t.name.toLowerCase())) {
         return false;
@@ -389,6 +452,7 @@ export function useLibraryFacetCounts({
       const count = t._count?.itemTags ?? t.itemCount ?? 0;
       if (count > 0) return true;
       if (activeTagsSet.has(t.name.toLowerCase())) return true;
+      if (hasSearchTagFacets) return false;
       if (!isAuto) return true;
       if (typeof t.shortcut === 'number' || Boolean(t.color)) return true;
       return false;
@@ -421,7 +485,7 @@ export function useLibraryFacetCounts({
       })
       .filter((item) => item.matches)
       .sort((a, b) => b.score - a.score || sortPinnedFirst(a.tag, b.tag));
-  }, [tags, searchQuery, activeTagsSet, isOpen, showAutomaticTags]);
+  }, [tags, searchFacets, activeLibrarySearch, searchQuery, activeTagsSet, isOpen, showAutomaticTags]);
 
   const totalMatchesCount =
     matchingFileItems.length +
@@ -452,6 +516,7 @@ export function useLibraryFacetCounts({
     deleteTag,
     deleteAutomaticTags,
     isDeletingAutomatic,
+    splitTag,
     handleFileStatusToggle,
     handleReadStatusToggle,
     handleTypeToggle,
@@ -459,5 +524,6 @@ export function useLibraryFacetCounts({
     handleEndDateSelect,
     handleClearDate,
     handleTagToggle,
+    handleClearAllFilters,
   };
 }

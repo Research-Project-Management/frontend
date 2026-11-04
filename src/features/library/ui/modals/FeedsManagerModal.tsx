@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Dialog,
   DialogContent,
@@ -9,25 +11,41 @@ import {
   DialogTitle,
 } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
+import { Input } from '@/shared/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/shared/components/ui/select';
 import { RefreshCw, Plus, Rss, Trash2, Loader2, ExternalLink, Check, BookPlus, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { safeHttpUrl } from '@/features/library/domain/system-views.policy';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { FeedStackIllustration } from '@/features/library/ui/content/LibraryIllustrations';
 import {
-  useFetchAcademicFeed,
+  useFetchFeed,
   useIngestMutation,
 } from '@/features/library/sdk/queries/ingestion.queries';
-import { useCreateLibraryItemMutation, useLibraryItemsQuery } from '@/features/library/sdk/queries/catalog.queries';
+import { useCreateLibraryItemMutation } from '@/features/library/sdk/queries/catalog.queries';
 import {
   normalizeFetchedFeedEntries,
-  executeSaveFeedEntryToLibrary,
   type ParsedFeedEntry,
   type FeedFetchApiResponse,
 } from '@/features/library/domain/feed-parser.domain';
-import type { Collection } from '@/features/library/domain/types/core.types';
+import {
+  executeSaveFeedEntryWithFeedback,
+  resolveFeedTitleFromUrl,
+} from '@/features/library/core/coordinator/ingestion.coordinator';
+import {
+  addFeedSchema,
+  applyServerErrorToForm,
+  type AddFeedFormValues,
+  type Collection,
+} from '@/features/library/domain/types/core.types';
 import { cn } from '@/shared/lib/utils';
-import { useFeedsStore, isFeedEntryInLibrary } from '@/features/library/core/store/feeds.store';
+import { useFeedsStore, isFeedEntryInLibrary } from '@/features/library/core/store/reader.store';
 import type { SavedFeedSubscription } from '@/features/library/domain/types/ingestion.types';
 
 export type { SavedFeedSubscription };
@@ -47,14 +65,9 @@ export default function FeedsManagerModal({
   collections = [],
   defaultCollectionId = null,
 }: FeedsManagerModalProps) {
-  const { mutateAsync: fetchAcademicFeed } = useFetchAcademicFeed();
+  const { mutateAsync: fetchAcademicFeed } = useFetchFeed();
   const { mutateAsync: createItem } = useCreateLibraryItemMutation(scopeId);
   const { mutateAsync: ingestItem } = useIngestMutation(scopeId);
-  const { data: libraryData } = useLibraryItemsQuery(
-    scopeId,
-    { limit: 100, fields: ['id', 'title', 'doi', 'url'] },
-    { enabled: open },
-  );
   const feeds = useFeedsStore((s) => s.feeds);
   const activeFeedId = useFeedsStore((s) => s.activeFeedId);
   const loadFeeds = useFeedsStore((s) => s.loadFeeds);
@@ -70,11 +83,30 @@ export default function FeedsManagerModal({
 
   const [isAddingFeed, setIsAddingFeed] = useState(false);
   const [isSubmittingNewFeed, setIsSubmittingNewFeed] = useState(false);
-  const [newFeedName, setNewFeedName] = useState('');
-  const [newFeedUrl, setNewFeedUrl] = useState('');
   const [targetCollectionId, setTargetCollectionId] = useState<string>(
     defaultCollectionId || '',
   );
+
+  const inlineFeedForm = useForm<AddFeedFormValues>({
+    resolver: zodResolver(addFeedSchema),
+    defaultValues: {
+      url: '',
+      name: '',
+      retentionDays: 30,
+      cleanupReadAfter: 7,
+      cleanupUnreadAfter: 30,
+    },
+    mode: 'onSubmit',
+    reValidateMode: 'onChange',
+  });
+
+  const {
+    register: registerInlineFeed,
+    handleSubmit: handleSubmitInlineFeed,
+    reset: resetInlineFeedForm,
+    setError: setInlineFeedError,
+    formState: { errors: inlineFeedErrors },
+  } = inlineFeedForm;
 
   const [entries, setEntries] = useState<ParsedFeedEntry[]>([]);
   const [feedTitle, setFeedTitle] = useState<string>('');
@@ -86,13 +118,18 @@ export default function FeedsManagerModal({
 
   useEffect(() => {
     if (open) {
-      loadFeeds();
+      void loadFeeds();
     } else {
       setIsAddingFeed(false);
-      setNewFeedName('');
-      setNewFeedUrl('');
+      resetInlineFeedForm({
+        url: '',
+        name: '',
+        retentionDays: 30,
+        cleanupReadAfter: 7,
+        cleanupUnreadAfter: 30,
+      });
     }
-  }, [open, loadFeeds]);
+  }, [open, loadFeeds, resetInlineFeedForm]);
 
   const activeFeed = feeds.find((f) => f.id === activeFeedId) || feeds[0];
 
@@ -129,18 +166,39 @@ export default function FeedsManagerModal({
     }
   }, [open, activeFeed, loadFeedEntries]);
 
-  const handleAddFeedSubscription = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const url = newFeedUrl.trim();
-    if (!url || isSubmittingNewFeed) return;
+  const onValidInlineAddFeed = async (data: AddFeedFormValues) => {
+    if (isSubmittingNewFeed) return;
     setIsSubmittingNewFeed(true);
     try {
-      const newFeed = await addFeed(newFeedName, url);
-      setNewFeedName('');
-      setNewFeedUrl('');
+      let resolvedName = (data.name || '').trim();
+      if (!resolvedName) {
+        resolvedName =
+          (await resolveFeedTitleFromUrl(data.url, fetchAcademicFeed)) || '';
+      }
+      const newFeed = addFeed(
+        resolvedName,
+        data.url,
+        data.retentionDays,
+        {
+          cleanupReadAfter: data.cleanupReadAfter ?? 7,
+          cleanupUnreadAfter: data.cleanupUnreadAfter ?? data.retentionDays,
+        },
+      );
+      resetInlineFeedForm({
+        url: '',
+        name: '',
+        retentionDays: 30,
+        cleanupReadAfter: 7,
+        cleanupUnreadAfter: 30,
+      });
       setIsAddingFeed(false);
       toast.success(`Subscribed to "${newFeed.name}"`);
-    } catch {
+    } catch (err: unknown) {
+      applyServerErrorToForm(err, setInlineFeedError, {
+        allowedFields: ['url', 'name'] as const,
+        fallbackField: 'url',
+        fallbackMessage: 'Failed to subscribe to feed',
+      });
       toast.error('Failed to subscribe to feed');
     } finally {
       setIsSubmittingNewFeed(false);
@@ -160,27 +218,17 @@ export default function FeedsManagerModal({
   };
 
   const handleSaveEntryToLibrary = async (entry: ParsedFeedEntry) => {
-    markEntryAsRead(entry.id);
-    setEntrySaving(entry.id, true);
-    try {
-      await executeSaveFeedEntryToLibrary({
-        entry,
-        scopeId,
-        targetCollectionId: targetCollectionId || undefined,
-        createItem,
-        ingestItem,
-      });
-      markEntrySaved(entry.id);
-      toast.success('Saved article to Library', {
-        description: entry.title,
-      });
-    } catch (err) {
-      toast.error('Failed to save article from feed', {
-        description: err instanceof Error ? err.message : 'Please try again.',
-      });
-    } finally {
-      setEntrySaving(entry.id, false);
-    }
+    await executeSaveFeedEntryWithFeedback({
+      entry,
+      scopeId,
+      targetCollectionId: targetCollectionId || undefined,
+      createItem,
+      ingestItem,
+      collections,
+      markEntryAsRead,
+      setEntrySaving,
+      markEntrySaved,
+    });
   };
 
   return (
@@ -203,18 +251,29 @@ export default function FeedsManagerModal({
                 <span className="text-muted-foreground hidden sm:inline">
                   Save to:
                 </span>
-                <select
-                  value={targetCollectionId}
-                  onChange={(e) => setTargetCollectionId(e.target.value)}
-                  className="h-7 px-2 rounded-md border border-border bg-background text-11 text-foreground outline-none focus:border-primary"
+                <Select
+                  value={targetCollectionId || '__root__'}
+                  onValueChange={(val) =>
+                    setTargetCollectionId(val === '__root__' ? '' : val)
+                  }
                 >
-                  <option value="">My Library (Root)</option>
-                  {collections.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger
+                    aria-label="Target collection for saved feed articles"
+                    className="h-7 px-2 min-w-[140px] max-w-[200px] rounded-md border border-border bg-background text-11 text-foreground shadow-none"
+                  >
+                    <SelectValue placeholder="My Library (Root)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__root__" className="text-11">
+                      My Library (Root)
+                    </SelectItem>
+                    {collections.map((c) => (
+                      <SelectItem key={c.id} value={c.id} className="text-11">
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             )}
 
@@ -254,24 +313,43 @@ export default function FeedsManagerModal({
 
             {isAddingFeed && (
               <form
-                onSubmit={handleAddFeedSubscription}
+                onSubmit={handleSubmitInlineFeed(onValidInlineAddFeed)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    e.stopPropagation();
+                    setIsAddingFeed(false);
+                    resetInlineFeedForm();
+                  }
+                }}
                 className="p-2 rounded-md border border-border bg-background flex flex-col gap-1.5 text-xs"
               >
-                <input
+                <Input
                   type="url"
-                  required
                   autoFocus
+                  aria-label="RSS or Atom Feed URL"
+                  aria-invalid={Boolean(inlineFeedErrors.url)}
+                  aria-describedby={
+                    inlineFeedErrors.url ? 'inline-feed-url-error' : undefined
+                  }
                   placeholder="https://rss.arxiv.org/rss/cs.LG"
-                  value={newFeedUrl}
-                  onChange={(e) => setNewFeedUrl(e.target.value)}
-                  className="h-7 px-2 rounded border border-border bg-background text-11 text-foreground outline-none focus:border-primary"
+                  {...registerInlineFeed('url')}
+                  className="h-7 px-2 rounded border border-border bg-background text-11 text-foreground shadow-none"
                 />
-                <input
+                {inlineFeedErrors.url && (
+                  <p
+                    id="inline-feed-url-error"
+                    role="alert"
+                    className="text-10 text-destructive font-medium"
+                  >
+                    {inlineFeedErrors.url.message}
+                  </p>
+                )}
+                <Input
                   type="text"
+                  aria-label="Feed title (optional)"
                   placeholder="Feed title (optional)"
-                  value={newFeedName}
-                  onChange={(e) => setNewFeedName(e.target.value)}
-                  className="h-7 px-2 rounded border border-border bg-background text-11 text-foreground outline-none focus:border-primary"
+                  {...registerInlineFeed('name')}
+                  className="h-7 px-2 rounded border border-border bg-background text-11 text-foreground shadow-none"
                 />
                 <div className="flex items-center justify-end gap-1 pt-0.5">
                   <Button
@@ -279,7 +357,10 @@ export default function FeedsManagerModal({
                     variant="ghost"
                     size="sm"
                     disabled={isSubmittingNewFeed}
-                    onClick={() => setIsAddingFeed(false)}
+                    onClick={() => {
+                      setIsAddingFeed(false);
+                      resetInlineFeedForm();
+                    }}
                     className="h-7 px-2.5 text-12 cursor-pointer"
                   >
                     Cancel
@@ -364,7 +445,7 @@ export default function FeedsManagerModal({
               <div className="flex-1 overflow-y-auto divide-y divide-border">
                 {entries.map((entry) => {
                   const isSaving = savingEntryIds.includes(entry.id);
-                  const isSaved = isFeedEntryInLibrary(entry, savedEntryIds, libraryData?.items);
+                  const isSaved = isFeedEntryInLibrary(entry, savedEntryIds);
 
                   return (
                     <div

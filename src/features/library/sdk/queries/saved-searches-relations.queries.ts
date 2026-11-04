@@ -10,7 +10,14 @@ import {
   type UpdateSavedSearchInput,
   type SavedSearchConditionGroup,
 } from '@/features/library/sdk';
-import type { Item, SavedSearchScopeOptions } from '@/features/library/domain/types/core.types';
+import type {
+  Item,
+  SavedSearchScopeOptions,
+  DroppedField,
+  FieldMappingChange,
+  CreatorRoleChange,
+  TypeConversionPreview,
+} from '@/features/library/domain/types/core.types';
 import { mapBackendItem } from '@/features/library/domain/metadata-mapper';
 import {
   itemKeys,
@@ -22,9 +29,16 @@ import {
 import {
   patchItemAcrossScopeCaches,
   invalidateLibraryCatalogDependencies,
+  resolveCachedItemFromScope,
 } from './cache-patcher';
 
 export { savedSearchKeys, relationKeys };
+export type {
+  DroppedField,
+  FieldMappingChange,
+  CreatorRoleChange,
+  TypeConversionPreview,
+};
 
 // SAVED SEARCHES QUERY HOOKS
 
@@ -171,15 +185,16 @@ export function useSavedSearchResults(
     sortOrder?: string;
   },
 ) {
-  const effectiveScope = scopeId || null;
+  const effectiveScope = normalizeScopeId(scopeId);
 
   return useQuery({
-    queryKey: savedSearchKeys.results(effectiveScope ?? undefined, id || '', params),
+    queryKey: savedSearchKeys.results(effectiveScope, id || '', params),
     queryFn: () => {
       if (!id) return null;
-      return SavedSearchesService.getResults(effectiveScope || 'user', id, params);
+      return SavedSearchesService.getResults(effectiveScope, id, params);
     },
-    enabled: !!id && !!effectiveScope,
+    enabled: Boolean(id && effectiveScope),
+    placeholderData: (previousData) => previousData,
     gcTime: 5 * 60 * 1000,
   });
 }
@@ -303,20 +318,6 @@ export function useRelations(
 
 // CONVERSION QUERY HOOKS
 
-import type {
-  DroppedField,
-  FieldMappingChange,
-  CreatorRoleChange,
-  TypeConversionPreview,
-} from '@/features/library/domain/types/core.types';
-
-export type {
-  DroppedField,
-  FieldMappingChange,
-  CreatorRoleChange,
-  TypeConversionPreview,
-};
-
 export function useItemTypeConversionPreviewQuery(
   scopeId: string,
   itemId: string | undefined,
@@ -346,7 +347,7 @@ export function useItemTypeConversionPreviewQuery(
 
 export function useItemTypeConversion(scopeId?: string) {
   const queryClient = useQueryClient();
-  const effectiveScopeId = scopeId || 'user';
+  const effectiveScopeId = normalizeScopeId(scopeId);
 
   const previewMutation = useMutation({
     mutationFn: ({
@@ -391,14 +392,18 @@ export function useItemTypeConversion(scopeId?: string) {
       expectedVersion?: number;
       retainUnmappedInExtra?: boolean;
       silent?: boolean;
-    }) =>
-      ItemsService.convertType(
+    }) => {
+      const resolvedExpectedVersion =
+        expectedVersion ??
+        resolveCachedItemFromScope(queryClient, effectiveScopeId, itemId)?.version;
+      return ItemsService.convertType(
         effectiveScopeId,
         itemId,
         targetType,
-        expectedVersion,
+        resolvedExpectedVersion,
         retainUnmappedInExtra,
-      ),
+      );
+    },
     onSuccess: (data, variables) => {
       const rawUpdated =
         (data as { item?: unknown; data?: unknown })?.item ??

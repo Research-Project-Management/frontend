@@ -2,8 +2,6 @@
  * Pure Domain Policy: System Views, Retraction State & "My Publications" Authorship / Open Access License Guard
  */
 
-import type { LibraryScope } from './types/core.types';
-
 export function safeHttpUrl(raw?: string | null): string | undefined {
   if (!raw || typeof raw !== 'string') return undefined;
   const trimmed = raw.trim();
@@ -106,7 +104,7 @@ export function parseRetractionReasonParts(text?: string): { prefix?: string; bo
   return { body: text };
 }
 
-export function getRetractionTitle(nature?: string): string {
+function getRetractionTitle(nature?: string): string {
   if (nature === 'expression_of_concern') {
     return 'Expression of Concern';
   }
@@ -359,65 +357,80 @@ export function isItemUnfiled(item: Record<string, unknown>): boolean {
   return colIds.length === 0 && cols.length === 0 && !singleColId;
 }
 
-export function filterItemsBySystemView<T extends Record<string, unknown>>(
-  items: readonly T[],
-  view: LibrarySystemViewId,
-  scope: LibraryScope | { type: 'user' | 'project'; id?: string } = { type: 'user', id: 'user' },
-): T[] {
-  if (view === 'trash') {
-    return items.filter((item) => isItemTrashed(item));
+export function isItemStarred(item: Record<string, unknown>): boolean {
+  return Boolean(item.isStarred || item.starred);
+}
+
+export function isItemUnread(item: Record<string, unknown>): boolean {
+  const status = typeof item.readStatus === 'string' ? item.readStatus.trim().toLowerCase() : '';
+  if (status) return status === 'unread';
+  return !item.isRead;
+}
+
+export function doesItemHavePdf(item: Record<string, unknown>): boolean {
+  if (item.hasFile === true || item.hasPdf === true) return true;
+  if (typeof item.fileUrl === 'string' && item.fileUrl.trim().length > 0) return true;
+  if (typeof item.openAccessPdfUrl === 'string' && item.openAccessPdfUrl.trim().length > 0) return true;
+  if (Array.isArray(item.attachments)) {
+    return item.attachments.some((att) => {
+      if (!att || typeof att !== 'object') return false;
+      const a = att as Record<string, unknown>;
+      return (
+        a.attachmentType === 'primary_pdf' ||
+        a.mimeType === 'application/pdf' ||
+        (typeof a.filename === 'string' && a.filename.toLowerCase().endsWith('.pdf'))
+      );
+    });
+  }
+  return false;
+}
+
+export function isItemBroken(item: Record<string, unknown>): boolean {
+  if (Array.isArray(item.qualityIssues) && item.qualityIssues.length > 0) return true;
+  if (typeof item.qualityScore === 'number' && item.qualityScore < 50) return true;
+  const title = typeof item.title === 'string' ? item.title.trim() : '';
+  return !title || title === 'Untitled' || title === 'Untitled Item';
+}
+
+/**
+ * Canonical predicate determining whether an item matches a given system view (`all`, `starred`,
+ * `favorites`, `trash`, `unfiled`, `my-publications`, `publications`, `retracted`, `recent`,
+ * `unread`, `has_pdf`, `broken`).
+ */
+export function doesItemMatchSystemView(
+  item: Record<string, unknown>,
+  view: string,
+): boolean {
+  const normalizedView = view.trim().toLowerCase();
+  if (normalizedView === 'trash') {
+    return isItemTrashed(item);
+  }
+  if (isItemTrashed(item)) {
+    return false;
   }
 
-  const activeItems = items.filter((item) => !isItemTrashed(item));
-
-  switch (view) {
+  switch (normalizedView) {
     case 'all':
-      return activeItems;
-
+    case 'recent':
+      return true;
+    case 'starred':
+    case 'favorites':
+      return isItemStarred(item);
+    case 'unfiled':
+      return isItemUnfiled(item);
     case 'my-publications':
     case 'publications':
-      if (scope.type !== 'user') {
-        return [];
-      }
-      return activeItems.filter((item) => isItemInMyPublications(item));
-
-    case 'unfiled':
-      return activeItems.filter((item) => isItemUnfiled(item));
-
+      return isItemInMyPublications(item);
     case 'retracted':
-      return activeItems.filter((item) => isItemRetracted(item));
-
-    case 'starred':
-      return activeItems.filter((item) => Boolean(item.isStarred));
-
-    case 'duplicates': {
-      const doiCounts = new Map<string, number>();
-      const titleYearCounts = new Map<string, number>();
-
-      for (const item of activeItems) {
-        const doi = typeof item.doi === 'string' && item.doi.trim() ? item.doi.trim().toLowerCase() : '';
-        if (doi) {
-          doiCounts.set(doi, (doiCounts.get(doi) || 0) + 1);
-        }
-        const title = typeof item.title === 'string' ? item.title.trim().toLowerCase() : '';
-        const year = item.year ? String(item.year) : '';
-        if (title) {
-          const key = `${title}|${year}`;
-          titleYearCounts.set(key, (titleYearCounts.get(key) || 0) + 1);
-        }
-      }
-
-      return activeItems.filter((item) => {
-        const doi = typeof item.doi === 'string' && item.doi.trim() ? item.doi.trim().toLowerCase() : '';
-        if (doi && (doiCounts.get(doi) || 0) > 1) return true;
-        const title = typeof item.title === 'string' ? item.title.trim().toLowerCase() : '';
-        const year = item.year ? String(item.year) : '';
-        if (title && (titleYearCounts.get(`${title}|${year}`) || 0) > 1) return true;
-        return false;
-      });
-    }
-
+      return isItemRetracted(item);
+    case 'unread':
+      return isItemUnread(item);
+    case 'has_pdf':
+    case 'has-pdf':
+      return doesItemHavePdf(item);
+    case 'broken':
+      return isItemBroken(item);
     default:
-      return activeItems;
+      return true;
   }
 }

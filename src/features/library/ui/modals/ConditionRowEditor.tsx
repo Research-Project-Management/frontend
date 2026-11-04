@@ -46,7 +46,7 @@ import type { Collection } from "@/features/library/domain/types/core.types";
 import type {
   SavedSearchField,
   SavedSearchOperator,
-} from "@/features/library/domain/types/saved-searches.types";
+} from "@/features/library/domain/types/ingestion.types";
 import {
   type ConditionRow,
   PRIMARY_SAVED_SEARCH_FIELD_ITEMS,
@@ -56,7 +56,7 @@ import {
   HAS_ATTACHMENT_OPTIONS,
   getFieldConfig,
   parseDurationParts,
-} from "@/features/library/domain/saved-search-schema.domain";
+} from "@/features/library/domain/saved-search-ast.domain";
 
 export const FIELD_ICONS: Record<
   string,

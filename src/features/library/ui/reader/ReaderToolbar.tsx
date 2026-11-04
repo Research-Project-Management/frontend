@@ -23,7 +23,11 @@ import {
   MousePointer,
   Loader2,
   ScanText,
+  PenTool,
+  Eraser,
+  Bookmark,
 } from "lucide-react";
+import { cn } from "@/shared/lib/utils";
 import type { ReaderAnnotationTool } from "@/features/library/core/store/reader.store";
 import { ANNOTATION_PALETTE_COLORS } from "@/features/library/domain/reader.domain";
 import {
@@ -68,6 +72,7 @@ export interface ReaderToolbarProps {
   onFitWidth?: () => void;
   rotation?: number;
   onRotate?: () => void;
+  onRotateCcw?: () => void;
   viewMode?: "single" | "continuous" | "spread";
   onSelectViewMode?: (mode: "single" | "continuous" | "spread") => void;
   fitMode?: "fit-width" | "fit-page" | "auto" | "custom";
@@ -83,6 +88,10 @@ export interface ReaderToolbarProps {
   isScanned?: boolean;
   ocrStatus?: "pending" | "processing" | "ready" | "completed" | "none";
   onTriggerOcr?: () => void;
+  isPageBookmarked?: boolean;
+  onToggleBookmark?: () => void;
+  isReadingMode?: boolean;
+  onToggleReadingMode?: () => void;
 }
 
 const ANNOTATION_TOOLS: Array<{
@@ -116,6 +125,18 @@ const ANNOTATION_TOOLS: Array<{
     shortcut: "Select Area / Image (Alt+5)",
     icon: Scan,
   },
+  {
+    id: "ink",
+    label: "Draw / Ink annotation",
+    shortcut: "Draw / Ink (Alt+6)",
+    icon: PenTool,
+  },
+  {
+    id: "eraser",
+    label: "Erase annotation",
+    shortcut: "Eraser (Alt+7)",
+    icon: Eraser,
+  },
 ];
 
 export const ReaderToolbar = memo(function ReaderToolbar({
@@ -143,8 +164,10 @@ export const ReaderToolbar = memo(function ReaderToolbar({
   onFitWidth,
   rotation = 0,
   onRotate,
+  onRotateCcw,
   viewMode = "continuous",
   onSelectViewMode,
+  fitMode,
   onSelectFitMode,
   themeMode = "normal",
   onToggleThemeMode,
@@ -157,6 +180,10 @@ export const ReaderToolbar = memo(function ReaderToolbar({
   isScanned = false,
   ocrStatus = "none",
   onTriggerOcr,
+  isPageBookmarked = false,
+  onToggleBookmark,
+  isReadingMode = false,
+  onToggleReadingMode,
 }: ReaderToolbarProps) {
   const [pageInput, setPageInput] = useState(String(visiblePage));
 
@@ -209,7 +236,12 @@ export const ReaderToolbar = memo(function ReaderToolbar({
           <ZoomOut className="size-3.5 shrink-0" strokeWidth={1.5} />
         </ToolbarIconButton>
 
-        <ReaderZoomDropdown zoom={zoom} onSetZoom={onSetZoom} />
+        <ReaderZoomDropdown
+          zoom={zoom}
+          fitMode={fitMode}
+          onSetZoom={onSetZoom}
+          onSelectFitMode={onSelectFitMode}
+        />
 
         <ToolbarIconButton
           onClick={onZoomIn}
@@ -312,6 +344,34 @@ export const ReaderToolbar = memo(function ReaderToolbar({
             {numPages || 1}
           </span>
         </form>
+
+        {onToggleBookmark && (
+          <ToolbarIconButton
+            onClick={onToggleBookmark}
+            active={isPageBookmarked}
+            ariaLabel={
+              isPageBookmarked
+                ? `Remove bookmark on page ${visiblePage}`
+                : `Bookmark page ${visiblePage}`
+            }
+            tooltip={
+              isPageBookmarked
+                ? `Remove Bookmark (Page ${visiblePage})`
+                : `Bookmark Page ${visiblePage}`
+            }
+            className="ml-0.5"
+          >
+            <Bookmark
+              className={cn(
+                "size-3.5 shrink-0 transition-colors",
+                isPageBookmarked
+                  ? "fill-primary text-primary"
+                  : "text-foreground",
+              )}
+              strokeWidth={1.5}
+            />
+          </ToolbarIconButton>
+        )}
       </div>
 
       {/* ── 2. CENTER CLUSTER (.center.tools): Annotation Tools + Color + Tool Lock ── */}
@@ -422,6 +482,9 @@ export const ReaderToolbar = memo(function ReaderToolbar({
           onSelectThemeMode={onSelectThemeMode}
           rotation={rotation}
           onRotate={onRotate}
+          onRotateCcw={onRotateCcw}
+          isReadingMode={isReadingMode}
+          onToggleReadingMode={onToggleReadingMode}
         />
 
         {onToggleSearch && (

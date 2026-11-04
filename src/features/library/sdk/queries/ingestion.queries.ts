@@ -92,22 +92,6 @@ export function useDuplicateGroups(
   });
 }
 
-export function useLibraryIntegrityReport(
-  scopeId?: string,
-  options?: { enabled?: boolean },
-) {
-  const effectiveScope = normalizeScopeId(scopeId);
-  return useQuery({
-    queryKey: curationKeys.integrity(effectiveScope),
-    queryFn: () => libraryServices.curation.getIntegrityReport(effectiveScope),
-    enabled: options?.enabled ?? true,
-    staleTime: 60 * 1000,
-    gcTime: 5 * 60 * 1000,
-  });
-}
-
-export const useQualityAudit = useLibraryIntegrityReport;
-
 export function useMergeDuplicates(scopeId?: string) {
   const queryClient = useQueryClient();
   const effectiveScope = normalizeScopeId(scopeId);
@@ -173,7 +157,56 @@ export function useMergeDuplicates(scopeId?: string) {
   });
 }
 
-export function useAcademicFeedArticlesQuery(
+export function useBatchMergeDuplicates(scopeId?: string) {
+  const queryClient = useQueryClient();
+  const effectiveScope = normalizeScopeId(scopeId);
+  return useMutation({
+    mutationFn: (
+      merges: Array<{
+        primaryItemId: string;
+        duplicateItemIds: string[];
+        fieldSelections?: Record<string, string>;
+      }>,
+    ) => libraryServices.curation.mergeDuplicatesBatch(effectiveScope, merges),
+    onSuccess: (data, variables) => {
+      const allDeletedIds = new Set<string>();
+      (data?.results ?? []).forEach((res) => {
+        if (res.primaryItem) {
+          patchItemAcrossScopeCaches(
+            queryClient,
+            effectiveScope,
+            res.primaryItem.id,
+            res.primaryItem as Record<string, unknown>,
+          );
+        }
+        (res.softDeletedItemIds ?? []).forEach((id) => allDeletedIds.add(id));
+      });
+      if (allDeletedIds.size === 0) {
+        variables.forEach((m) => m.duplicateItemIds.forEach((id) => allDeletedIds.add(id)));
+      }
+      if (allDeletedIds.size > 0) {
+        removeItemsFromScopeCaches(queryClient, effectiveScope, Array.from(allDeletedIds));
+      }
+      void invalidateLibraryCatalogDependencies(queryClient, effectiveScope, {
+        itemsList: true,
+        counts: true,
+        tags: true,
+        collections: true,
+        smartCollections: true,
+      });
+      void queryClient.invalidateQueries({ queryKey: itemKeys.trash(effectiveScope) });
+      void queryClient.invalidateQueries({ queryKey: curationKeys.duplicates(effectiveScope) });
+      void queryClient.invalidateQueries({ queryKey: curationKeys.integrity(effectiveScope) });
+      const groupsCount = data?.mergedGroups ?? variables.length;
+      toast.success('Duplicate groups merged', {
+        description: `Consolidated ${groupsCount} duplicate group(s). Notes and citations preserved.`,
+        id: 'library-merge',
+      });
+    },
+  });
+}
+
+export function useFeedArticlesQuery(
   scopeId: string,
   feedUrl: string | undefined,
   options?: { enabled?: boolean },
@@ -201,7 +234,7 @@ export function useAcademicFeedArticlesQuery(
   });
 }
 
-export function useFetchAcademicFeed() {
+export function useFetchFeed() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (
@@ -230,8 +263,8 @@ export function useFetchAcademicFeed() {
           predicate: (q) =>
             Array.isArray(q.queryKey) &&
             q.queryKey[1] === 'feeds' &&
-            q.queryKey[2] === 'articles' &&
-            q.queryKey[3] === (url || ''),
+            ((q.queryKey[2] === 'articles' && q.queryKey[3] === (url || '')) ||
+              (q.queryKey[3] === 'articles' && q.queryKey[4] === (url || 'none'))),
         },
         res,
       );
@@ -335,66 +368,28 @@ export function useUnsubscribeFeedMutation() {
   });
 }
 
-export function usePreviewCaptureUrlMutation(scopeId?: string) {
-  const effectiveScope = normalizeScopeId(scopeId);
-
+export function useImportOpmlFeedsMutation() {
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (urlOrInput: string | { url: string; scopeId?: string }) => {
-      const targetUrl = typeof urlOrInput === 'string' ? urlOrInput : urlOrInput.url;
-      const targetScope =
-        typeof urlOrInput === 'object' && urlOrInput.scopeId
-          ? normalizeScopeId(urlOrInput.scopeId)
-          : effectiveScope;
-      return libraryServices.ingestion.captureUrl(targetScope, targetUrl);
+    mutationFn: async (opmlXml: string) => {
+      const res = await libraryServices.feeds.importOpml(opmlXml);
+      if (res?.data?.subscriptions && Array.isArray(res.data.subscriptions)) {
+        const mappedFeeds = mapServerFeedSubscriptions(res.data.subscriptions);
+        notifyServerFeedsHydrated(mappedFeeds);
+      }
+      return res?.data;
     },
-    onError: (error: Error) => {
-      toast.error('Failed to preview URL', {
-        description: error.message || 'Could not extract metadata from URL.',
-        id: 'capture-url-preview',
-      });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: feedKeys.subscriptions() });
     },
   });
 }
 
-export interface ConfirmCaptureUrlInput {
-  url: string;
-  previewToken: string;
-  title?: string;
-  abstract?: string;
-  doi?: string;
-  year?: number;
-  publicationTitle?: string;
-  itemType?: string;
-  collectionId?: string;
-  scopeId?: string;
-}
-
-export function useConfirmCaptureUrlMutation(scopeId?: string) {
-  const queryClient = useQueryClient();
-  const effectiveScope = normalizeScopeId(scopeId);
-
+export function useExportOpmlFeedsMutation() {
   return useMutation({
-    mutationFn: (payload: ConfirmCaptureUrlInput) => {
-      const { scopeId: overrideScope, ...confirmPayload } = payload;
-      const targetScope = overrideScope ? normalizeScopeId(overrideScope) : effectiveScope;
-      return libraryServices.ingestion.confirmUrl(targetScope, confirmPayload);
-    },
-    onSuccess: (_data, variables) => {
-      const targetScope = variables.scopeId ? normalizeScopeId(variables.scopeId) : effectiveScope;
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(targetScope) });
-      queryClient.invalidateQueries({ queryKey: itemKeys.counts(targetScope) });
-      if (variables.collectionId) {
-        queryClient.invalidateQueries({
-          queryKey: itemKeys.byCollection(targetScope, variables.collectionId),
-        });
-      }
-      invalidateCollections(queryClient, targetScope);
-    },
-    onError: (error: Error) => {
-      toast.error('Failed to save captured URL', {
-        description: error.message || 'Could not confirm URL import.',
-        id: 'capture-url-confirm',
-      });
+    mutationFn: async () => {
+      const res = await libraryServices.feeds.exportOpml();
+      return res?.data;
     },
   });
 }
@@ -408,7 +403,6 @@ export function useIngestMutation(scopeId?: string) {
       libraryServices.ingestion.ingest(effectiveScope, payload),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
-      queryClient.invalidateQueries({ queryKey: itemKeys.counts(effectiveScope) });
       const colId = (variables as { collectionId?: string })?.collectionId;
       if (colId) {
         queryClient.invalidateQueries({
@@ -597,7 +591,6 @@ export function useSyncExternalBibtexMutation(scopeId?: string) {
       }
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) }),
-        queryClient.invalidateQueries({ queryKey: itemKeys.counts(effectiveScope) }),
         invalidateCollections(queryClient, effectiveScope),
       ]);
       return res;

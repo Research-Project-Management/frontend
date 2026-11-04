@@ -29,22 +29,23 @@ import { useLibraryUIStore } from '@/features/library/core/store/library-ui.stor
 import {
   useLibraryCommandStore,
   createMoveItemsCommand,
+  createBatchAssignCommand,
   createTrashCommand,
 } from '@/features/library/core/manager/library-command.manager';
 import { useLibraryPermissions } from '@/features/library/core/adapters/project-context.adapter';
 import { useLibraryProjectContext } from '@/features/library/core/adapters/project-context.adapter';
 
-import type { SavedSearch } from '@/features/library/domain/types/saved-searches.types';
+import type { SavedSearch } from '@/features/library/domain/types/ingestion.types';
 
 import { buildTree, filterCollections } from '@/features/library/domain/collection-tree';
 import { usePanelResize } from '@/features/library/core/coordinator/inspector-item.coordinator';
 import { useCollectionCoordinator } from '@/features/library/core/coordinator/collection.coordinator';
 import { useDropToMyPublications } from '@/features/library/core/coordinator/item-action.coordinator';
-import { SidebarHeader } from './SidebarHeader';
+import { SidebarHeader } from './FeedsListSection';
 import { CollectionTree } from './CollectionTree';
 import { SidebarSystemNav, SidebarResizer } from './SidebarSystemNav';
 import { FeedsListSection } from './FeedsListSection';
-import { ProjectLibrariesSection, resolveProjectRole, type ProjectLike } from './ProjectLibrariesSection';
+import { ProjectLibrariesSection, resolveProjectRole, type ProjectLike } from '../content/BatchBar';
 
 /**
  * LibrarySidebar Zone
@@ -74,7 +75,14 @@ export function LibrarySidebar() {
   const assignMutation = useAssignCollectionItemsMutation(effectiveScopeId);
   const detachMutation = useBatchDetachItemsMutation(effectiveScopeId);
 
-  const userCollectionsQuery = useCollectionsQuery('user');
+  const [isLibraryExpanded, setIsLibraryExpanded] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [renamingSavedSearchId, setRenamingSavedSearchId] = useState<string | null>(null);
+  const [renameSavedSearchValue, setRenameSavedSearchValue] = useState('');
+
+  const userCollectionsQuery = useCollectionsQuery('user', {
+    enabled: !isInProjectContext || isLibraryExpanded,
+  });
   const projectCollectionsQuery = useCollectionsQuery(projectId, {
     enabled: isInProjectContext,
   });
@@ -88,11 +96,6 @@ export function LibrarySidebar() {
       setSidebarOpen(false);
     }
   }, [setSidebarOpen]);
-
-  const [isLibraryExpanded, setIsLibraryExpanded] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [renamingSavedSearchId, setRenamingSavedSearchId] = useState<string | null>(null);
-  const [renameSavedSearchValue, setRenameSavedSearchValue] = useState('');
 
   const { isDragging, handleMouseDown } = usePanelResize({
     width: sidebarWidth,
@@ -145,7 +148,9 @@ export function LibrarySidebar() {
     createSavedSearch: createUserSavedSearch,
     updateSavedSearch: updateUserSavedSearch,
     deleteSavedSearch: deleteUserSavedSearch,
-  } = useSavedSearches('user');
+  } = useSavedSearches('user', {
+    enabled: !isInProjectContext || isLibraryExpanded,
+  });
 
   const {
     savedSearches: projectSavedSearches,
@@ -154,10 +159,10 @@ export function LibrarySidebar() {
     deleteSavedSearch: deleteProjectSavedSearch,
   } = useSavedSearches(projectId, { enabled: isInProjectContext });
 
-  const { trashItems, emptyTrash } = useTrash('user', {
+  const { trashItems, emptyTrash } = useTrash(effectiveScopeId, {
     enabled: currentFilter === 'trash',
   });
-  const { data: userCounts } = useLibraryCountsQuery('user');
+  const { data: userCounts } = useLibraryCountsQuery(effectiveScopeId);
   const effectiveTrashCount =
     currentFilter === 'trash' ? trashItems.length : (userCounts?.trash ?? trashItems.length);
   const deleteMutation = useDeleteLibraryItemsMutation(effectiveScopeId);
@@ -295,16 +300,35 @@ export function LibrarySidebar() {
         }
       }
 
-      if (options?.copy && targetCollectionId) {
-        const toastId = toast.loading(`Adding ${ids.length} item(s) to collection...`, {
+      const targetCollection =
+        userCollections.find((c) => c.id === targetCollectionId) ??
+        projectCollections.find((c) => c.id === targetCollectionId);
+      const targetCollectionName = targetCollection?.name ?? 'Library';
+
+      // Zotero Drag & Drop Semantics:
+      // - When dragging from root "My Library" / Smart View (!activeId) into a collection,
+      //   default to Add to Collection (preserving existing collections) unless Shift/Cmd explicitly requests Move.
+      // - When holding Alt/Ctrl (`options?.copy`), always Add to Collection.
+      const shouldCopyToCollection =
+        Boolean(targetCollectionId) &&
+        (Boolean(options?.copy) || (!activeId && !options?.move));
+
+      if (shouldCopyToCollection && targetCollectionId) {
+        const toastId = toast.loading(`Adding ${ids.length} item(s) to "${targetCollectionName}"...`, {
           id: 'batch-move',
         });
         try {
-          await assignMutation.mutateAsync({
-            collectionId: targetCollectionId,
-            itemIds: ids,
-          });
-          toast.success('Documents added to collection', {
+          await executeCommand(
+            createBatchAssignCommand({
+              collectionId: targetCollectionId,
+              collectionName: targetCollectionName,
+              itemIds: ids,
+              assignMutation,
+              detachMutation,
+            }),
+            { silentToast: true },
+          );
+          toast.success(`Added to "${targetCollectionName}"`, {
             description: `Added ${ids.length} item(s) while keeping existing collections.`,
             id: toastId,
           });
@@ -324,10 +348,6 @@ export function LibrarySidebar() {
         id: 'batch-move',
       });
       try {
-        const targetCollection =
-          userCollections.find((c) => c.id === targetCollectionId) ??
-          projectCollections.find((c) => c.id === targetCollectionId);
-        const targetCollectionName = targetCollection?.name ?? 'Library';
         await executeCommand(
           createMoveItemsCommand({
             itemIds: ids,
@@ -342,7 +362,7 @@ export function LibrarySidebar() {
           { silentToast: true },
         );
         toast.success('Documents moved', {
-          description: `Moved ${ids.length} item(s) to target collection.`,
+          description: `Moved ${ids.length} item(s) to ${targetCollectionName}.`,
           id: toastId,
         });
       } catch (err: unknown) {

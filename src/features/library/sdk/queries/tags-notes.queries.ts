@@ -16,6 +16,7 @@ import {
   noteKeys,
   invalidateCollections,
   normalizeScopeId,
+  waitForBootstrapCache,
 } from '@/features/library/sdk/query-keys';
 import {
   chunkUniqueIds,
@@ -33,11 +34,17 @@ export function useTrash(
 ) {
   const queryClient = useQueryClient();
   const effectiveScope = normalizeScopeId(scopeId);
+  const cacheKey = itemKeys.trash(effectiveScope);
 
   const trashQuery = useQuery({
-    queryKey: itemKeys.trash(effectiveScope),
-    queryFn: ({ signal }) =>
-      ItemsService.getAll(effectiveScope, { view: 'trash' }, { signal }),
+    queryKey: cacheKey,
+    queryFn: async ({ signal }) => {
+      const seeded = await waitForBootstrapCache<
+        Awaited<ReturnType<typeof ItemsService.getAll>>
+      >(queryClient, effectiveScope, cacheKey);
+      if (seeded !== undefined) return seeded;
+      return ItemsService.getAll(effectiveScope, { view: 'trash' }, { signal });
+    },
     enabled: (options?.enabled ?? true) && Boolean(scopeId),
     select: (data): Item[] => {
       if (Array.isArray(data?.items)) return data.items;
@@ -94,32 +101,64 @@ export function useTrash(
 
   const emptyTrashMutation = useMutation({
     mutationFn: async (items: Item[]) => {
-      let targetItems = items;
-      if (targetItems.length === 0) {
-        const res = await ItemsService.getAll(effectiveScope, { view: 'trash' });
-        targetItems = Array.isArray(res?.items)
-          ? res.items
-          : Array.isArray(res)
-            ? (res as Item[])
+      const purgeIdsBatch = async (ids: string[]) => {
+        const chunks = chunkUniqueIds(ids, 100);
+        if (chunks.length === 0) return 0;
+        const results = await Promise.all(
+          chunks.map((chunk) => ItemsService.bulkPurge(effectiveScope, chunk)),
+        );
+        return results.reduce(
+          (sum, res, idx) => sum + (res?.count ?? chunks[idx].length),
+          0,
+        );
+      };
+
+      const initialIds = items.map((item) => item.id).filter(Boolean);
+
+      if (typeof ItemsService.emptyTrash === 'function') {
+        try {
+          const atomicRes = await ItemsService.emptyTrash(effectiveScope);
+          const purgedCount = atomicRes?.purgedCount ?? atomicRes?.count ?? 0;
+          const failedIds = Array.isArray(atomicRes?.failedIds)
+            ? atomicRes.failedIds.filter(Boolean)
             : [];
+          if (failedIds.length > 0) {
+            const fallbackPurged = await purgeIdsBatch(failedIds);
+            return purgedCount + fallbackPurged;
+          }
+          if (atomicRes && typeof atomicRes.purgedCount === 'number') {
+            return purgedCount || initialIds.length;
+          }
+        } catch {
+          // Fallback to single bulkPurge pass if backend /items/trash is unavailable
+        }
       }
-      if (targetItems.length === 0) return 0;
-      const ids = targetItems.map((item) => item.id).filter(Boolean);
-      const chunks = chunkUniqueIds(ids, 100);
-      if (chunks.length === 0) return 0;
-      const results = await Promise.all(
-        chunks.map((chunk) => ItemsService.bulkPurge(effectiveScope, chunk)),
-      );
-      return results.reduce(
-        (sum, res, idx) => sum + (res?.count ?? chunks[idx].length),
-        0,
-      );
+
+      if (initialIds.length > 0) {
+        return purgeIdsBatch(initialIds);
+      }
+
+      const res = await ItemsService.getAll(effectiveScope, {
+        view: 'trash',
+        limit: 200,
+      });
+      const remainingItems = Array.isArray(res?.items)
+        ? res.items
+        : Array.isArray(res)
+          ? (res as Item[])
+          : [];
+      const remainingIds = remainingItems
+        .map((item) => item.id)
+        .filter((id): id is string => Boolean(id));
+      return purgeIdsBatch(remainingIds);
     },
     onSuccess: (count) => {
       toast.success('Trash emptied', {
         description: `Permanently removed ${count} item(s).`,
         id: 'trash-mutation-toast',
       });
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
       queryClient.invalidateQueries({ queryKey: itemKeys.trash(effectiveScope) });
       invalidateCollections(queryClient, effectiveScope);
@@ -167,6 +206,12 @@ export function useDeleteLibraryItemsMutation(scopeId?: string) {
     },
     onSuccess: (ids) => {
       removeItemsFromScopeCaches(queryClient, effectiveScope, ids);
+      toast.success(
+        ids.length === 1 ? 'Item moved to trash' : `Moved ${ids.length} items to trash`,
+        { id: 'item-delete' },
+      );
+    },
+    onSettled: () => {
       void invalidateLibraryCatalogDependencies(queryClient, effectiveScope, {
         itemsList: true,
         collections: true,
@@ -175,10 +220,6 @@ export function useDeleteLibraryItemsMutation(scopeId?: string) {
         smartCollections: true,
       });
       void queryClient.invalidateQueries({ queryKey: itemKeys.trash(effectiveScope) });
-      toast.success(
-        ids.length === 1 ? 'Item moved to trash' : `Moved ${ids.length} items to trash`,
-        { id: 'item-delete' },
-      );
     },
     onError: (err: Error) => {
       toast.error('Failed to delete items', {
@@ -208,6 +249,12 @@ export function useBatchRestoreItemsMutation(scopeId?: string) {
       return rawIds;
     },
     onSuccess: (ids) => {
+      toast.success(
+        `Restored ${ids.length} ${ids.length === 1 ? 'item' : 'items'}`,
+        { id: 'item-restore' },
+      );
+    },
+    onSettled: () => {
       void invalidateLibraryCatalogDependencies(queryClient, effectiveScope, {
         itemsList: true,
         collections: true,
@@ -216,10 +263,6 @@ export function useBatchRestoreItemsMutation(scopeId?: string) {
         smartCollections: true,
       });
       void queryClient.invalidateQueries({ queryKey: itemKeys.trash(effectiveScope) });
-      toast.success(
-        `Restored ${ids.length} ${ids.length === 1 ? 'item' : 'items'}`,
-        { id: 'item-restore' },
-      );
     },
     onError: (err: Error) => {
       toast.error('Failed to restore items', {
@@ -229,8 +272,6 @@ export function useBatchRestoreItemsMutation(scopeId?: string) {
     },
   });
 }
-
-export const useRestoreLibraryItemsMutation = useBatchRestoreItemsMutation;
 
 export function useBatchPurgeItemsMutation(scopeId?: string) {
   const queryClient = useQueryClient();
@@ -248,6 +289,12 @@ export function useBatchPurgeItemsMutation(scopeId?: string) {
     },
     onSuccess: (ids) => {
       removeItemsFromScopeCaches(queryClient, effectiveScope, ids);
+      toast.success(
+        `Permanently deleted ${ids.length} ${ids.length === 1 ? 'item' : 'items'}`,
+        { id: 'item-purge' },
+      );
+    },
+    onSettled: () => {
       void invalidateLibraryCatalogDependencies(queryClient, effectiveScope, {
         itemsList: true,
         collections: true,
@@ -256,10 +303,6 @@ export function useBatchPurgeItemsMutation(scopeId?: string) {
         smartCollections: true,
       });
       void queryClient.invalidateQueries({ queryKey: itemKeys.trash(effectiveScope) });
-      toast.success(
-        `Permanently deleted ${ids.length} ${ids.length === 1 ? 'item' : 'items'}`,
-        { id: 'item-purge' },
-      );
     },
     onError: (err: Error) => {
       toast.error('Failed to permanently delete items', {
@@ -270,17 +313,24 @@ export function useBatchPurgeItemsMutation(scopeId?: string) {
   });
 }
 
-export const usePurgeLibraryItemsMutation = useBatchPurgeItemsMutation;
-
 // ── Tags Query Hooks ─────────────────────────────────────────────────────────
 
 export function useTags(scopeId?: string, options?: { enabled?: boolean }) {
   const queryClient = useQueryClient();
   const effectiveScope = normalizeScopeId(scopeId);
 
+  const cacheKey = tagKeys.list(effectiveScope);
   const tagsQuery = useQuery({
-    queryKey: tagKeys.list(effectiveScope),
-    queryFn: () => TagsService.list(effectiveScope),
+    queryKey: cacheKey,
+    queryFn: async () => {
+      const seeded = await waitForBootstrapCache<Awaited<ReturnType<typeof TagsService.list>>>(
+        queryClient,
+        effectiveScope,
+        cacheKey,
+      );
+      if (seeded !== undefined) return seeded;
+      return TagsService.list(effectiveScope);
+    },
     enabled: options?.enabled ?? true,
     staleTime: 30_000,
   });
@@ -363,6 +413,24 @@ export function useTags(scopeId?: string, options?: { enabled?: boolean }) {
     },
   });
 
+  const splitMutation = useMutation({
+    mutationFn: ({ tagId, parts }: { tagId: string; parts: string[] }) =>
+      TagsService.split(effectiveScope, tagId, parts),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: tagKeys.list(effectiveScope) });
+      queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
+      toast.success(`Split into ${data?.count ?? 2} tags`, {
+        id: 'tag-mutation',
+      });
+    },
+    onError: (err: Error) => {
+      toast.error('Failed to split tag', {
+        description: err.message || 'Please try again.',
+        id: 'tag-mutation',
+      });
+    },
+  });
+
   return {
     tags: tagsQuery.data || [],
     isLoading: tagsQuery.isLoading,
@@ -377,6 +445,8 @@ export function useTags(scopeId?: string, options?: { enabled?: boolean }) {
     isDeleting: deleteMutation.isPending,
     deleteAutomaticTags: deleteAutomaticMutation.mutateAsync,
     isDeletingAutomatic: deleteAutomaticMutation.isPending,
+    splitTag: splitMutation.mutateAsync,
+    isSplitting: splitMutation.isPending,
   };
 }
 
@@ -547,7 +617,13 @@ export function useNotes(scopeId?: string, itemId?: string) {
         itemsList: true,
         counts: true,
       });
-      const extractedInfo = res as { totalExtracted?: number; id?: string; note?: { id?: string }; message?: string } | null;
+      const extractedInfo = res as {
+        totalExtracted?: number;
+        addedCount?: number;
+        id?: string;
+        note?: { id?: string };
+        message?: string;
+      } | null;
       const hasExtracted =
         extractedInfo &&
         (typeof extractedInfo.totalExtracted === 'number'
@@ -558,10 +634,20 @@ export function useNotes(scopeId?: string, itemId?: string) {
           description: 'Highlight text or add annotations in the PDF reader first.',
           id: 'note-mutation-toast',
         });
-      } else {
-        toast.success('Compiled note from PDF annotations', {
+      } else if (extractedInfo?.addedCount === 0) {
+        toast.info('Literature note is already up to date', {
+          description: 'All PDF highlights are already included in this note.',
           id: 'note-mutation-toast',
         });
+      } else {
+        toast.success(
+          typeof extractedInfo?.addedCount === 'number' && extractedInfo.addedCount > 0
+            ? `Added ${extractedInfo.addedCount} highlight(s) to Literature Note`
+            : 'Compiled note from PDF annotations',
+          {
+            id: 'note-mutation-toast',
+          },
+        );
       }
     },
     onError: (err: Error) => {
@@ -590,16 +676,5 @@ export function useNotes(scopeId?: string, itemId?: string) {
     deleteNote: (id: string, version?: number) =>
       deleteMutation.mutateAsync({ id, version }),
     extractFromAnnotations: extractFromAnnotationsMutation.mutateAsync,
-  };
-}
-
-export function useExtractNotesFromAnnotationsMutation(
-  scopeId?: string,
-  itemId?: string,
-) {
-  const { extractFromAnnotations, isExtractingFromAnnotations } = useNotes(scopeId, itemId);
-  return {
-    mutateAsync: extractFromAnnotations,
-    isPending: isExtractingFromAnnotations,
   };
 }

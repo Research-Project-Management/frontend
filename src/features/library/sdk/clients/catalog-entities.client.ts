@@ -92,10 +92,18 @@ export const CollectionsService = {
       data ?? {},
     ),
 
-  moveItems: (scopeId: string | undefined, collectionId: string, itemIds: string[]) =>
+  moveItems: (
+    scopeId: string | undefined,
+    collectionId: string,
+    itemIds: string[],
+    sourceCollectionId?: string | null,
+  ) =>
     libraryClient.post<{ message: string; count: number; targetCollectionId: string | null }>(
       resolveLibraryUrl('catalog', `/collections/${encodeURIComponent(collectionId)}/move-items`, scopeId),
-      { itemIds },
+      {
+        itemIds,
+        ...(sourceCollectionId ? { sourceCollectionId } : {}),
+      },
     ),
 
   reorder: (
@@ -251,6 +259,26 @@ export const TagsService = {
       getTagsUrl(scopeId, 'automatic'),
     );
     return raw?.data || (raw && typeof raw.count === 'number' ? { count: raw.count } : { count: 0 });
+  },
+
+  split: async (
+    scopeId: string | undefined,
+    tagId: string,
+    parts: string[],
+  ): Promise<{ tags: TagWithCount[]; count: number }> => {
+    const raw = await libraryClient.post<{
+      tags?: TagWithCount[];
+      count?: number;
+      data?: { tags?: TagWithCount[]; count?: number };
+    }>(getTagsUrl(scopeId, `${encodeURIComponent(tagId)}/split`), {
+      parts,
+      ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
+    });
+    const tags = raw?.tags || raw?.data?.tags || [];
+    return {
+      tags,
+      count: raw?.count ?? raw?.data?.count ?? tags.length,
+    };
   },
 
   assignToItem: async (

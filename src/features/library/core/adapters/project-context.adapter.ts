@@ -6,11 +6,28 @@ import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { resolveEffectiveLibraryPermissions } from '@/features/library/domain/library-permissions.policy';
 import { useLibraryCountsQuery } from '@/features/library/sdk/queries/catalog.queries';
-import type { LibraryPermissions } from '@/features/library/domain/types/core.types';
-import {
-  updateLibrarySchemaRegistry,
-  setSchemaPersistenceListener,
-} from '@/features/library/domain/types/core.types';
+import { type LibraryPermissions, type LibrarySchemaRegistrySnapshot, updateLibrarySchemaRegistry, setSchemaPersistenceListener, getSchemaRegistryVersion, getLibrarySchemaSnapshot, registerSchemaRegistryUpdateListener } from '@/features/library/domain/types/core.types';
+import type { ReaderFitMode, ReaderTab, ReaderTheme } from '@/features/library/domain/types/reader.schema';
+
+export {
+  getSchemaRegistryVersion,
+  getLibrarySchemaSnapshot,
+  registerSchemaRegistryUpdateListener,
+  type LibrarySchemaRegistrySnapshot,
+};
+
+/**
+ * Synchronizes dynamic item-type schemas into the in-memory domain registry,
+ * increments the schema registry version counter, and notifies all subscribers.
+ * Returns an immutable snapshot of the updated schema registry.
+ */
+export function syncDynamicSchemasToMemory(
+  data: unknown,
+  options?: { persist?: boolean },
+): LibrarySchemaRegistrySnapshot {
+  updateLibrarySchemaRegistry(data, options);
+  return getLibrarySchemaSnapshot();
+}
 
 export interface LibraryProjectScope {
   id: string;
@@ -73,6 +90,23 @@ export function useLibraryProjectContext(): UseLibraryProjectContextReturn {
 }
 
 /**
+ * Canonical Scope Resolution Helper for Library UI Store & Components.
+ * Resolves the effective scope ID from an activeScope object or explicit overrides.
+ */
+export function resolveActiveLibraryScopeId(
+  activeScope?: { type?: string; id?: string; projectId?: string } | null,
+  explicitScopeId?: string | null,
+  fallbackProjectId?: string | null,
+): string {
+  if (explicitScopeId) return explicitScopeId;
+  if (fallbackProjectId) return fallbackProjectId;
+  if (activeScope?.type === 'project') {
+    return activeScope.projectId || activeScope.id || 'user';
+  }
+  return 'user';
+}
+
+/**
  * Permissions Coordinator Hook
  *
  * Single Source of Truth for combining Client Scope (Zustand Store),
@@ -81,7 +115,7 @@ export function useLibraryProjectContext(): UseLibraryProjectContextReturn {
  */
 export function useLibraryPermissions(): LibraryPermissions {
   const activeScope = useLibraryUIStore((state) => state.activeScope);
-  const effectiveScopeId = activeScope.type === 'project' ? activeScope.id : 'user';
+  const effectiveScopeId = resolveActiveLibraryScopeId(activeScope);
   const { data: countsData } = useLibraryCountsQuery(effectiveScopeId);
 
   return useMemo(
@@ -184,6 +218,222 @@ setSchemaPersistenceListener(saveSchemaCache);
 if (isBrowser()) {
   const cached = loadSchemaCache();
   if (cached) {
-    updateLibrarySchemaRegistry(cached, { persist: false });
+    syncDynamicSchemasToMemory(cached, { persist: false });
   }
+}
+
+export const DEFAULT_READER_TABS: ReaderTab[] = [
+  { id: 'library', title: 'My Library', type: 'library' },
+];
+
+export const MAX_READER_TABS = 15;
+export const MAX_BOOKMARKED_ITEMS = 200;
+export const MIN_READER_ZOOM = 0.25;
+export const MAX_READER_ZOOM = 5.0;
+
+const READER_TABS_STORAGE_KEY = 'flux_reader_tabs';
+const READER_ACTIVE_TAB_STORAGE_KEY = 'flux_reader_active_tab';
+const READER_BOOKMARKS_STORAGE_KEY = 'flux_reader_bookmarks';
+
+/**
+ * Evicts the oldest inactive paper tabs when the tab count exceeds MAX_READER_TABS.
+ * Always preserves the 'library' tab and the currently active tab.
+ */
+export function enforceMaxReaderTabs(tabs: ReaderTab[], activeTabId: string): ReaderTab[] {
+  if (tabs.length <= MAX_READER_TABS) return tabs;
+  const result = [...tabs];
+  while (result.length > MAX_READER_TABS) {
+    const evictIdx = result.findIndex((t) => t.id !== 'library' && t.id !== activeTabId);
+    if (evictIdx === -1) break;
+    result.splice(evictIdx, 1);
+  }
+  return result;
+}
+
+/**
+ * Evicts the oldest bookmarked items when the bookmark dictionary exceeds MAX_BOOKMARKED_ITEMS.
+ */
+export function enforceMaxBookmarkedItems(
+  bookmarks: Record<string, number[]>,
+): Record<string, number[]> {
+  const keys = Object.keys(bookmarks);
+  if (keys.length <= MAX_BOOKMARKED_ITEMS) return bookmarks;
+  const keepKeys = keys.slice(keys.length - MAX_BOOKMARKED_ITEMS);
+  const bounded: Record<string, number[]> = {};
+  for (const k of keepKeys) {
+    if (bookmarks[k] && bookmarks[k].length > 0) {
+      bounded[k] = bookmarks[k];
+    }
+  }
+  return bounded;
+}
+
+function safeSetReaderStorageItem(key: string, value: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Ignore storage quota errors
+  }
+}
+
+/**
+ * Normalizes zoom input whether provided as a float scale (e.g. 1.25)
+ * or percentage (e.g. 125) into a clamped float scale in [0.25, 3.0].
+ */
+export function normalizeReaderZoom(rawZoom?: number | null): number {
+  if (typeof rawZoom !== 'number' || Number.isNaN(rawZoom) || rawZoom <= 0) {
+    return 1.0;
+  }
+  const scale = rawZoom > 10 ? rawZoom / 100 : rawZoom;
+  return Math.min(MAX_READER_ZOOM, Math.max(MIN_READER_ZOOM, Number(scale.toFixed(4))));
+}
+
+export function normalizeReaderFitMode(raw?: string | null): ReaderFitMode {
+  if (raw === 'fit-width' || raw === 'page-width') return 'fit-width';
+  if (raw === 'fit-page' || raw === 'page-fit') return 'fit-page';
+  if (raw === 'manual') return 'custom';
+  if (raw === 'auto' || raw === 'custom') return raw;
+  return 'fit-width';
+}
+
+export function normalizeReaderTheme(raw?: string | null): ReaderTheme {
+  if (raw === 'normal' || raw === 'light') return 'normal';
+  if (raw === 'sepia' || raw === 'dark' || raw === 'invert') return raw;
+  return 'normal';
+}
+
+/**
+ * Normalizes a ReaderTab record to guarantee valid page, zoom, fitMode, rotation, and theme values.
+ */
+export function normalizeReaderTab(tab: ReaderTab): ReaderTab {
+  if (tab.type === 'library' || tab.id === 'library') {
+    return { id: 'library', title: tab.title || 'My Library', type: 'library' };
+  }
+  return {
+    ...tab,
+    type: 'paper',
+    currentPage: Math.max(1, Math.floor(tab.currentPage ?? 1)),
+    zoom: normalizeReaderZoom(tab.zoom ?? 1.0),
+    fitMode: normalizeReaderFitMode(tab.fitMode),
+    rotation: (((tab.rotation ?? 0) % 360) + 360) % 360,
+    theme: normalizeReaderTheme(tab.theme),
+    viewMode:
+      tab.viewMode === 'single' || tab.viewMode === 'continuous' || tab.viewMode === 'spread'
+        ? tab.viewMode
+        : 'continuous',
+    splitMode:
+      tab.splitMode === 'none' || tab.splitMode === 'horizontal' || tab.splitMode === 'vertical'
+        ? tab.splitMode
+        : 'none',
+    secondaryPage:
+      typeof tab.secondaryPage === 'number' && Number.isFinite(tab.secondaryPage) && tab.secondaryPage >= 1
+        ? Math.max(1, Math.floor(tab.secondaryPage))
+        : 1,
+    interactionMode:
+      tab.interactionMode === 'select' || tab.interactionMode === 'hand'
+        ? tab.interactionMode
+        : 'select',
+    ...(tab.attachmentId !== undefined ? { attachmentId: tab.attachmentId } : {}),
+  };
+}
+
+/**
+ * Resolves the next active tab ID when closing a tab:
+ * prefers right neighbor -> left neighbor -> first remaining tab -> 'library'.
+ */
+export function resolveNextActiveTabOnClose(
+  tabs: ReaderTab[],
+  closedTabId: string,
+  currentActiveId: string,
+): string {
+  const nextTabs = tabs.filter((t) => t.id !== closedTabId);
+  if (currentActiveId !== closedTabId) {
+    return nextTabs.some((t) => t.id === currentActiveId)
+      ? currentActiveId
+      : (nextTabs[0]?.id ?? 'library');
+  }
+  const idx = tabs.findIndex((t) => t.id === closedTabId);
+  const rightNeighbor = tabs[idx + 1];
+  if (rightNeighbor) return rightNeighbor.id;
+  const leftNeighbor = tabs[idx - 1];
+  if (leftNeighbor) return leftNeighbor.id;
+  return nextTabs[0]?.id ?? 'library';
+}
+
+/**
+ * Hydrates initial reader tabs and bookmarks from localStorage (SSR-safe).
+ */
+export function loadReaderStorageState(): {
+  tabs: ReaderTab[];
+  activeTabId: string;
+  bookmarks: Record<string, number[]>;
+} {
+  if (typeof window === 'undefined') {
+    return { tabs: DEFAULT_READER_TABS, activeTabId: 'library', bookmarks: {} };
+  }
+
+  let bookmarks: Record<string, number[]> = {};
+  try {
+    const rawBookmarks = localStorage.getItem(READER_BOOKMARKS_STORAGE_KEY);
+    if (rawBookmarks) {
+      const parsedBookmarks = JSON.parse(rawBookmarks);
+      if (parsedBookmarks && typeof parsedBookmarks === 'object' && !Array.isArray(parsedBookmarks)) {
+        bookmarks = enforceMaxBookmarkedItems(parsedBookmarks as Record<string, number[]>);
+      }
+    }
+  } catch {
+    // Ignore storage read error
+  }
+
+  try {
+    const raw = localStorage.getItem(READER_TABS_STORAGE_KEY);
+    const rawActive = localStorage.getItem(READER_ACTIVE_TAB_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      const filtered = parsed
+        .filter(
+          (t: unknown): t is ReaderTab =>
+            Boolean(
+              t &&
+                typeof t === 'object' &&
+                'id' in t &&
+                (t as { id: unknown }).id &&
+                (t as { id: unknown }).id !== 'library',
+            ),
+        )
+        .map(normalizeReaderTab);
+      const rawTabs: ReaderTab[] = [DEFAULT_READER_TABS[0], ...filtered];
+      const activeTabId =
+        rawActive && rawTabs.some((t) => t.id === rawActive) ? rawActive : rawTabs[0].id;
+      const tabs = enforceMaxReaderTabs(rawTabs, activeTabId);
+      return { tabs, activeTabId, bookmarks };
+    }
+  } catch {
+    // Ignore parse error
+  }
+
+  return { tabs: DEFAULT_READER_TABS, activeTabId: 'library', bookmarks };
+}
+
+/**
+ * Persists reader tabs and activeTabId to localStorage.
+ */
+export function saveReaderTabsToStorage(tabs: ReaderTab[], activeTabId: string): void {
+  if (typeof window === 'undefined') return;
+  const boundedTabs = enforceMaxReaderTabs(tabs, activeTabId);
+  safeSetReaderStorageItem(
+    READER_TABS_STORAGE_KEY,
+    JSON.stringify(boundedTabs),
+  );
+  safeSetReaderStorageItem(READER_ACTIVE_TAB_STORAGE_KEY, activeTabId);
+}
+
+/**
+ * Persists reader bookmarks to localStorage.
+ */
+export function saveReaderBookmarksToStorage(bookmarks: Record<string, number[]>): void {
+  if (typeof window === 'undefined') return;
+  const bounded = enforceMaxBookmarkedItems(bookmarks);
+  safeSetReaderStorageItem(READER_BOOKMARKS_STORAGE_KEY, JSON.stringify(bounded));
 }

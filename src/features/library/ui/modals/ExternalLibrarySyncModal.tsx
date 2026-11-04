@@ -1,6 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Check,
   RefreshCw,
@@ -22,6 +24,7 @@ import {
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { Input } from '@/shared/components/ui/input';
+import { Label } from '@/shared/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -35,7 +38,12 @@ import {
   useRemoteCollections,
 } from '@/features/settings/hooks/use-integrations';
 import { useSyncExternalBibtexMutation } from '@/features/library/sdk/queries/ingestion.queries';
-import type { Collection } from '@/features/library/domain/types/core.types';
+import {
+  zoteroApiKeyConnectSchema,
+  applyServerErrorToForm,
+  type ZoteroApiKeyConnectFormValues,
+  type Collection,
+} from '@/features/library/domain/types/core.types';
 
 export interface ExternalLibrarySyncModalProps {
   open: boolean;
@@ -60,12 +68,38 @@ export default function ExternalLibrarySyncModal({
     defaultCollectionId || '__root__',
   );
   const [isSyncing, setIsSyncing] = useState(false);
-  const [zoteroUserId, setZoteroUserId] = useState('');
-  const [apiKey, setApiKey] = useState('');
+  const zoteroUserIdInputId = useId();
+  const zoteroApiKeyInputId = useId();
+  const sourceCollectionSelectId = useId();
+  const targetCollectionSelectId = useId();
+
+  const connectForm = useForm<ZoteroApiKeyConnectFormValues>({
+    resolver: zodResolver(zoteroApiKeyConnectSchema),
+    defaultValues: {
+      zoteroUserId: '',
+      apiKey: '',
+    },
+    mode: 'onSubmit',
+    reValidateMode: 'onChange',
+  });
+
+  const {
+    register,
+    handleSubmit,
+    reset: resetConnectForm,
+    setError: setConnectError,
+    formState: { errors: connectErrors, isDirty: isConnectFormDirty },
+  } = connectForm;
 
   useEffect(() => {
     setTargetCollectionId(defaultCollectionId || '__root__');
   }, [defaultCollectionId]);
+
+  useEffect(() => {
+    if (!open) {
+      resetConnectForm({ zoteroUserId: '', apiKey: '' });
+    }
+  }, [open, resetConnectForm]);
 
   const {
     integrations,
@@ -98,25 +132,21 @@ export default function ExternalLibrarySyncModal({
     }
   }, [remoteCollections, selectedRemoteCollection]);
 
-  const handleConnectWithApiKey = async () => {
-    const uid = zoteroUserId.trim();
-    const key = apiKey.trim();
-
-    if (!uid || !key) {
-      toast.warning('Please enter both your Zotero User ID and Personal API Key.');
-      return;
-    }
-
+  const onValidConnectWithApiKey = async (data: ZoteroApiKeyConnectFormValues) => {
     try {
       await connectZoteroApiKey({
-        zoteroUserId: uid,
-        apiKey: key,
+        zoteroUserId: data.zoteroUserId.trim(),
+        apiKey: data.apiKey.trim(),
       });
       toast.success('Successfully connected to Zotero.');
+      resetConnectForm({ zoteroUserId: '', apiKey: '' });
       void refetchCollections();
     } catch (err: unknown) {
-      const msg =
-        err instanceof Error ? err.message : 'Failed to verify Zotero API Key.';
+      const msg = applyServerErrorToForm(err, setConnectError, {
+        allowedFields: ['zoteroUserId', 'apiKey'] as const,
+        fallbackField: 'apiKey',
+        fallbackMessage: 'Failed to verify Zotero API Key.',
+      });
       toast.error('Zotero Connection Failed', { description: msg });
     }
   };
@@ -187,7 +217,14 @@ export default function ExternalLibrarySyncModal({
         onOpenChange(v);
       }}
     >
-      <DialogContent className="sm:max-w-[500px] p-0 gap-0 overflow-hidden border-border bg-background">
+      <DialogContent
+        onPointerDownOutside={(e) => {
+          if (isConnectFormDirty || isSyncing || isConnectingZoteroApiKey) {
+            e.preventDefault();
+          }
+        }}
+        className="sm:max-w-[500px] p-0 gap-0 overflow-hidden border-border bg-background"
+      >
         <DialogHeader className="px-5 pt-5 pb-3.5 border-b border-border">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
@@ -214,7 +251,10 @@ export default function ExternalLibrarySyncModal({
           {!isConnected ? (
             <div className="space-y-4">
               {/* Personal API Key Authentication */}
-              <div className="p-4 rounded-lg border border-border bg-card space-y-3">
+              <form
+                onSubmit={handleSubmit(onValidConnectWithApiKey)}
+                className="p-4 rounded-lg border border-border bg-card space-y-3"
+              >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 text-xs font-medium text-foreground">
                     <Key className="size-3.5 text-muted-foreground" />
@@ -234,8 +274,13 @@ export default function ExternalLibrarySyncModal({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-foreground flex items-center justify-between">
-                    <span>Zotero User ID</span>
+                  <div className="flex items-center justify-between">
+                    <Label
+                      htmlFor={zoteroUserIdInputId}
+                      className="text-xs font-medium text-foreground"
+                    >
+                      Zotero User ID
+                    </Label>
                     <a
                       href="https://www.zotero.org/settings/keys"
                       target="_blank"
@@ -245,19 +290,37 @@ export default function ExternalLibrarySyncModal({
                       <span>Find User ID in Settings</span>
                       <ExternalLink className="size-2.5" />
                     </a>
-                  </label>
+                  </div>
                   <Input
+                    id={zoteroUserIdInputId}
                     type="text"
                     placeholder="e.g. 12345678"
-                    value={zoteroUserId}
-                    onChange={(e) => setZoteroUserId(e.target.value)}
+                    aria-invalid={Boolean(connectErrors.zoteroUserId)}
+                    aria-describedby={
+                      connectErrors.zoteroUserId ? 'zotero-uid-error' : undefined
+                    }
+                    {...register('zoteroUserId')}
                     className="h-8 text-xs font-mono"
                   />
+                  {connectErrors.zoteroUserId && (
+                    <p
+                      id="zotero-uid-error"
+                      role="alert"
+                      className="text-11 text-destructive font-medium"
+                    >
+                      {connectErrors.zoteroUserId.message}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-foreground flex items-center justify-between">
-                    <span>Personal API Key</span>
+                  <div className="flex items-center justify-between">
+                    <Label
+                      htmlFor={zoteroApiKeyInputId}
+                      className="text-xs font-medium text-foreground"
+                    >
+                      Personal API Key
+                    </Label>
                     <a
                       href="https://www.zotero.org/settings/keys/new"
                       target="_blank"
@@ -267,25 +330,33 @@ export default function ExternalLibrarySyncModal({
                       <span>Create New API Key</span>
                       <ExternalLink className="size-2.5" />
                     </a>
-                  </label>
+                  </div>
                   <Input
+                    id={zoteroApiKeyInputId}
                     type="password"
                     placeholder="Enter Zotero API Key (with library read access)"
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
+                    aria-invalid={Boolean(connectErrors.apiKey)}
+                    aria-describedby={
+                      connectErrors.apiKey ? 'zotero-apikey-error' : undefined
+                    }
+                    {...register('apiKey')}
                     className="h-8 text-xs font-mono"
                   />
+                  {connectErrors.apiKey && (
+                    <p
+                      id="zotero-apikey-error"
+                      role="alert"
+                      className="text-11 text-destructive font-medium"
+                    >
+                      {connectErrors.apiKey.message}
+                    </p>
+                  )}
                 </div>
 
                 <div className="pt-1">
                   <Button
-                    type="button"
-                    onClick={handleConnectWithApiKey}
-                    disabled={
-                      isConnectingZoteroApiKey ||
-                      !zoteroUserId.trim() ||
-                      !apiKey.trim()
-                    }
+                    type="submit"
+                    disabled={isConnectingZoteroApiKey}
                     className="w-full h-8 text-xs font-medium gap-1.5 cursor-pointer"
                   >
                     {isConnectingZoteroApiKey ? (
@@ -300,7 +371,7 @@ export default function ExternalLibrarySyncModal({
                     </span>
                   </Button>
                 </div>
-              </div>
+              </form>
             </div>
           ) : (
             <div className="space-y-4">
@@ -349,15 +420,21 @@ export default function ExternalLibrarySyncModal({
               {/* Collection Pickers */}
               <div className="space-y-3.5">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-foreground block">
+                  <Label
+                    htmlFor={sourceCollectionSelectId}
+                    className="text-xs font-medium text-foreground block"
+                  >
                     Source Zotero Collection
-                  </label>
+                  </Label>
                   <Select
                     value={selectedRemoteCollection}
                     onValueChange={setSelectedRemoteCollection}
                     disabled={isLoadingRemoteCollections}
                   >
-                    <SelectTrigger className="w-full h-8.5 text-xs bg-background border-border">
+                    <SelectTrigger
+                      id={sourceCollectionSelectId}
+                      className="w-full h-8.5 text-xs bg-background border-border"
+                    >
                       <SelectValue
                         placeholder={
                           isLoadingRemoteCollections
@@ -381,15 +458,21 @@ export default function ExternalLibrarySyncModal({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-foreground flex items-center gap-1.5">
+                  <Label
+                    htmlFor={targetCollectionSelectId}
+                    className="text-xs font-medium text-foreground flex items-center gap-1.5"
+                  >
                     <FolderOpen className="size-3.5 text-muted-foreground" />
                     <span>Target Library Collection (Optional)</span>
-                  </label>
+                  </Label>
                   <Select
                     value={targetCollectionId}
                     onValueChange={setTargetCollectionId}
                   >
-                    <SelectTrigger className="w-full h-8.5 text-xs bg-background border-border">
+                    <SelectTrigger
+                      id={targetCollectionSelectId}
+                      className="w-full h-8.5 text-xs bg-background border-border"
+                    >
                       <SelectValue placeholder="My Library (Root)" />
                     </SelectTrigger>
                     <SelectContent>

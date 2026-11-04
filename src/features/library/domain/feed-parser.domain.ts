@@ -19,30 +19,29 @@ import { safeHttpUrl } from '@/features/library/domain/system-views.policy';
 import { parseCreatorName } from '@/features/library/domain/creators';
 import {
   decodeXmlEntities,
-  cleanAcademicText,
-} from '@/features/library/domain/academic-text';
+  cleanText,
+} from '@/features/library/domain/citations';
 import {
   cleanDoi,
   normalizeArxivId,
-  getArxivPdfUrl,
 } from '@/features/library/domain/identifiers';
 
 export { decodeXmlEntities };
 
-export interface ServerFeedSubscriptionItem {
+interface ServerFeedSubscriptionItem {
   id: string;
   feedId?: string;
   customTitle?: string | null;
-  cleanupDays?: number | null;
   cleanupReadAfter?: number | null;
   cleanupUnreadAfter?: number | null;
   feed?: {
-    id?: string;
-    url?: string;
     title?: string | null;
+    url?: string | null;
     lastFetchedAt?: string | null;
-  };
+  } | null;
 }
+
+type FeedFormat = 'atom' | 'rss2' | 'rdf';
 
 export function mapServerFeedSubscriptions(
   subs: ServerFeedSubscriptionItem[] | undefined | null,
@@ -62,8 +61,6 @@ export function mapServerFeedSubscriptions(
     };
   });
 }
-
-export type FeedFormat = 'rss2' | 'rdf' | 'atom' | 'unknown';
 
 export interface FeedCreatorApiItem {
   firstName?: string;
@@ -133,8 +130,6 @@ export interface ParsedFeedEntry {
   feedFormat: FeedFormat;
 }
 
-export type AcademicFeedEntry = ParsedFeedEntry;
-
 export interface CreateLibraryItemFromFeedPayload {
   title: string;
   itemType: string;
@@ -197,7 +192,7 @@ export function mapFeedEntryToCreateItemPayload(
     : undefined;
 
   return {
-    title: cleanAcademicText(decodeXmlEntities(entry.title)) || entry.title,
+    title: cleanText(decodeXmlEntities(entry.title)) || entry.title,
     itemType: isPreprint ? 'preprint' : 'journalArticle',
     authors: entry.authors,
     creators,
@@ -205,7 +200,7 @@ export function mapFeedEntryToCreateItemPayload(
     arxivId: normalizedArxiv,
     url: safeHttpUrl(entry.url) || safeHttpUrl(entry.pdfUrl),
     publicationTitle: entry.publicationTitle
-      ? cleanAcademicText(decodeXmlEntities(entry.publicationTitle))
+      ? cleanText(decodeXmlEntities(entry.publicationTitle))
       : undefined,
     volume: entry.volume,
     issue: entry.issue,
@@ -218,57 +213,6 @@ export function mapFeedEntryToCreateItemPayload(
     collectionIds: collectionId ? [collectionId] : [],
     scopeId,
   };
-}
-
-export interface OpmlFeedItem {
-  name: string;
-  url: string;
-}
-
-function stripCdataAndHtml(raw?: string | null): string {
-  if (!raw || typeof raw !== 'string') return '';
-  let text = raw.trim();
-  text = text.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/gi, '$1');
-  text = decodeXmlEntities(text);
-  text = text
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, ' ')
-    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, ' ')
-    .replace(/<\/?(?:p|div|br|li|ul|ol|blockquote|h[1-6])\b[^>]*>/gi, ' ')
-    .replace(/<[^>]+>/g, '');
-  text = decodeXmlEntities(text);
-  return text.replace(/\s+/g, ' ').trim();
-}
-
-function extractXmlTagValue(xml: string, tagPatterns: readonly string[]): string | undefined {
-  for (const pattern of tagPatterns) {
-    const regex = new RegExp(
-      `<${pattern}(?:\\s[^>]*?)?(?<!\\/)>([\\s\\S]*?)<\\/${pattern}>`,
-      'i',
-    );
-    const match = xml.match(regex);
-    if (match?.[1]) {
-      const cleaned = stripCdataAndHtml(match[1]);
-      if (cleaned) return cleaned;
-    }
-  }
-  return undefined;
-}
-
-function extractAllXmlTagValues(xml: string, tagPatterns: readonly string[]): string[] {
-  const results: string[] = [];
-  for (const pattern of tagPatterns) {
-    const regex = new RegExp(
-      `<${pattern}(?:\\s[^>]*?)?(?<!\\/)>([\\s\\S]*?)<\\/${pattern}>`,
-      'gi',
-    );
-    for (const match of xml.matchAll(regex)) {
-      if (match[1]) {
-        const cleaned = stripCdataAndHtml(match[1]);
-        if (cleaned) results.push(cleaned);
-      }
-    }
-  }
-  return results;
 }
 
 /**
@@ -313,236 +257,6 @@ export function normalizeFeedDate(rawDate?: string | null): {
   };
 }
 
-/**
- * Pure domain parser for Atom 1.0, RSS 2.0, and RDF/PRISM 1.0 XML feeds.
- * Delegates entity decoding to `decodeXmlEntities` and identifier normalization to
- * canonical `cleanDoi` and `normalizeArxivId` helpers from `./identifiers`.
- */
-export function parseFeedXml(xml: string, _feedUrl?: string): ParsedFeedEntry[] {
-  if (!xml || typeof xml !== 'string') return [];
-
-  const isAtom = /<feed[\s>]/i.test(xml) && /<entry[\s>]/i.test(xml);
-  const isRdf = /<rdf:RDF[\s>]/i.test(xml) || /xmlns:prism=/i.test(xml);
-  const format: FeedFormat = isAtom ? 'atom' : isRdf ? 'rdf' : 'rss2';
-  const tag = isAtom ? 'entry' : 'item';
-  const entryRegex = new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${tag}>`, 'gi');
-  const entries: ParsedFeedEntry[] = [];
-
-  let idx = 0;
-  for (const match of xml.matchAll(entryRegex)) {
-    const entryXml = match[0] || '';
-    const rawTitle = extractXmlTagValue(entryXml, ['title', 'dc:title']);
-    if (!rawTitle || rawTitle.toLowerCase() === 'error') continue;
-    const title =
-      cleanAcademicText(rawTitle.replace(/\s*\(arXiv:[^)]+\)\s*$/i, '').trim()) || rawTitle;
-
-    let url = extractXmlTagValue(entryXml, ['link', 'prism:url']);
-    let pdfUrl: string | undefined;
-
-    for (const linkMatch of entryXml.matchAll(/<link\b([^>]*)\/?>/gi)) {
-      const attrs = linkMatch[1] || '';
-      const hrefMatch = attrs.match(/\bhref=["']([^"']+)["']/i);
-      if (!hrefMatch?.[1]) continue;
-      const href = decodeXmlEntities(hrefMatch[1].trim());
-      const relMatch = attrs.match(/\brel=["']([^"']+)["']/i);
-      const typeMatch = attrs.match(/\btype=["']([^"']+)["']/i);
-      const titleAttrMatch = attrs.match(/\btitle=["']([^"']+)["']/i);
-
-      if (
-        typeMatch?.[1]?.toLowerCase() === 'application/pdf' ||
-        titleAttrMatch?.[1]?.toLowerCase() === 'pdf'
-      ) {
-        pdfUrl = href;
-      } else if (!url || relMatch?.[1]?.toLowerCase() === 'alternate') {
-        url = href;
-      }
-    }
-
-    const rawId =
-      extractXmlTagValue(entryXml, ['id', 'guid']) ||
-      entryXml.match(/<item[^>]*\brdf:about=["']([^"']+)["']/i)?.[1] ||
-      url ||
-      `feed-entry-${idx}`;
-
-    const atomAuthors = Array.from(
-      entryXml.matchAll(/<author>\s*<name>([\s\S]*?)<\/name>[\s\S]*?<\/author>/gi),
-      (m) => stripCdataAndHtml(m[1]),
-    ).filter(Boolean);
-    const dcCreators = extractAllXmlTagValues(entryXml, ['dc:creator', 'creator']);
-    const plainAuthors =
-      atomAuthors.length === 0 && dcCreators.length === 0
-        ? extractAllXmlTagValues(entryXml, ['author'])
-        : [];
-    const rawAuthorList = [...atomAuthors, ...dcCreators, ...plainAuthors];
-    const authors: string[] = [];
-    const creators: FeedCreatorApiItem[] = [];
-    const seenAuthors = new Set<string>();
-    for (const rawAuthor of rawAuthorList) {
-      const parsed = parseCreatorName(rawAuthor);
-      const display = parsed.fullName || rawAuthor;
-      const key = display.toLowerCase();
-      if (!display || seenAuthors.has(key)) continue;
-      seenAuthors.add(key);
-      authors.push(display);
-      creators.push({
-        firstName: parsed.firstName || '',
-        lastName: parsed.lastName || display,
-        creatorType: 'author',
-      });
-    }
-
-    const rawAbstract = extractXmlTagValue(entryXml, [
-      'summary',
-      'content:encoded',
-      'description',
-      'content',
-      'dc:description',
-    ]);
-    const abstract = rawAbstract
-      ? rawAbstract
-          .replace(/^arXiv:\S+\s+Announce Type:\s*\S+\s*(?:Abstract:\s*)?/i, '')
-          .replace(/^Abstract:\s*/i, '')
-          .trim()
-      : undefined;
-
-    const rawDoi = extractXmlTagValue(entryXml, ['prism:doi', 'arxiv:doi', 'dc:doi']);
-    const dcIdentifiers = extractAllXmlTagValues(entryXml, ['dc:identifier']);
-    let doi = cleanDoi(rawDoi) || undefined;
-    let arxivId = normalizeArxivId(rawId) || normalizeArxivId(url) || undefined;
-
-    for (const idVal of dcIdentifiers) {
-      if (!doi) {
-        const candidateDoi = cleanDoi(idVal);
-        if (candidateDoi) doi = candidateDoi;
-      }
-      if (!arxivId) {
-        const candidateArxiv = normalizeArxivId(idVal);
-        if (candidateArxiv) arxivId = candidateArxiv;
-      }
-    }
-    if (!doi && url) {
-      const doiFromUrl = cleanDoi(url);
-      if (doiFromUrl) doi = doiFromUrl;
-    }
-    if (!doi && abstract) {
-      const doiInAbstract = cleanDoi(abstract);
-      if (doiInAbstract) doi = doiInAbstract;
-    }
-    if (!arxivId && abstract) {
-      const arxivInAbstract = normalizeArxivId(abstract);
-      if (arxivInAbstract) arxivId = arxivInAbstract;
-    }
-    if (!pdfUrl && arxivId) {
-      pdfUrl = getArxivPdfUrl(arxivId) || undefined;
-    }
-
-    const publicationTitle = extractXmlTagValue(entryXml, [
-      'prism:publicationName',
-      'arxiv:journal_ref',
-      'dc:source',
-    ]);
-    const volume = extractXmlTagValue(entryXml, ['prism:volume']);
-    const issue = extractXmlTagValue(entryXml, ['prism:number', 'prism:issue']);
-    const startingPage = extractXmlTagValue(entryXml, ['prism:startingPage']);
-    const endingPage = extractXmlTagValue(entryXml, ['prism:endingPage']);
-    const pages =
-      startingPage && endingPage
-        ? `${startingPage}-${endingPage}`
-        : startingPage || extractXmlTagValue(entryXml, ['prism:pageRange']);
-
-    const rawDate = extractXmlTagValue(entryXml, [
-      'published',
-      'prism:coverDate',
-      'prism:publicationDate',
-      'dc:date',
-      'pubDate',
-      'updated',
-    ]);
-    const rawUpdated = extractXmlTagValue(entryXml, ['updated']);
-    const { publishedAt, year } = normalizeFeedDate(rawDate);
-    const { publishedAt: updatedAt } = normalizeFeedDate(rawUpdated);
-
-    const atomCategories = Array.from(
-      entryXml.matchAll(/<category[^>]*\bterm=["']([^"']+)["'][^>]*>/gi),
-      (m) => decodeXmlEntities(m[1]!.trim()),
-    ).filter(Boolean);
-    const rssCategories = extractAllXmlTagValues(entryXml, ['category', 'dc:subject']);
-    const primaryCatMatch = entryXml.match(
-      /<arxiv:primary_category[^>]*\bterm=["']([^"']+)["'][^>]*>/i,
-    );
-    const primaryCategory = primaryCatMatch?.[1]
-      ? decodeXmlEntities(primaryCatMatch[1].trim())
-      : atomCategories[0] || rssCategories[0];
-    const categories = Array.from(
-      new Set([...atomCategories, ...rssCategories, ...(primaryCategory ? [primaryCategory] : [])]),
-    );
-
-    const comment = extractXmlTagValue(entryXml, ['arxiv:comment']);
-    const rights = extractXmlTagValue(entryXml, ['rights', 'dc:rights', 'prism:copyright']);
-
-    entries.push({
-      id: stripCdataAndHtml(rawId),
-      title,
-      authors,
-      creators,
-      doi,
-      arxivId,
-      primaryCategory,
-      url: safeHttpUrl(url),
-      pdfUrl: safeHttpUrl(pdfUrl),
-      publishedAt,
-      updatedAt,
-      year,
-      publicationTitle,
-      volume,
-      issue,
-      pages,
-      abstract,
-      categories,
-      comment,
-      rights,
-      feedFormat: format,
-    });
-    idx++;
-  }
-
-  return entries;
-}
-
-/**
- * Pure domain parser for OPML 1.0 / 2.0 XML feeds.
- * Deduplicates feeds and robustly handles both xmlUrl/url and title/text attributes.
- */
-export function parseOpmlFeeds(opmlContent: string): OpmlFeedItem[] {
-  if (!opmlContent || typeof opmlContent !== 'string') return [];
-
-  const feeds: OpmlFeedItem[] = [];
-  const seenUrls = new Set<string>();
-
-  const outlineRegex = /<outline\b([^>]*?)\/?>/gi;
-  let match: RegExpExecArray | null;
-
-  while ((match = outlineRegex.exec(opmlContent)) !== null) {
-    const attrs = match[1] || '';
-    const xmlUrlMatch = attrs.match(/\b(?:xmlUrl|url)=["']([^"']+)["']/i);
-    if (xmlUrlMatch?.[1]) {
-      const feedUrl = decodeXmlEntities(xmlUrlMatch[1].trim());
-      if (!feedUrl || seenUrls.has(feedUrl)) continue;
-
-      const titleMatch = attrs.match(/\b(?:title|text)=["']([^"']+)["']/i);
-      const feedName = titleMatch?.[1] ? decodeXmlEntities(titleMatch[1].trim()) : '';
-
-      feeds.push({
-        name: feedName,
-        url: feedUrl,
-      });
-      seenUrls.add(feedUrl);
-    }
-  }
-
-  return feeds;
-}
-
 export function normalizeFetchedFeedEntries(entries: FeedEntryApiItem[]): ParsedFeedEntry[] {
   return entries.map((e: FeedEntryApiItem, idx: number) => {
     const rawDate = e.publicationDate || e.published || e.updated;
@@ -551,7 +265,7 @@ export function normalizeFetchedFeedEntries(entries: FeedEntryApiItem[]): Parsed
     const cleanedArxiv = e.arxivId ? normalizeArxivId(e.arxivId) || e.arxivId : undefined;
     return {
       id: e.id || e.url || e.link || `feed-item-${idx}`,
-      title: cleanAcademicText(decodeXmlEntities(e.title)) || e.title,
+      title: cleanText(decodeXmlEntities(e.title)) || e.title,
       authors: (e.authors || []).map((a) => decodeXmlEntities(a)),
       creators: (e.creators || []).map((c: FeedCreatorApiItem) => ({
         firstName: decodeXmlEntities(c.firstName || ''),
@@ -567,7 +281,7 @@ export function normalizeFetchedFeedEntries(entries: FeedEntryApiItem[]): Parsed
       updatedAt: e.updated,
       year: e.year ?? parsedYear ?? undefined,
       publicationTitle: e.publicationTitle
-        ? cleanAcademicText(decodeXmlEntities(e.publicationTitle))
+        ? cleanText(decodeXmlEntities(e.publicationTitle))
         : undefined,
       volume: e.volume,
       issue: e.issue,
@@ -638,67 +352,5 @@ export function filterFeedEntriesByReadAndQuery(
   );
 }
 
-/**
- * Centralized domain orchestrator for saving an RSS/Atom feed entry to the Library:
- * 1. Marks the entry as read and enters the saving state.
- * 2. When the entry has an authoritative identifier (DOI or arXiv ID) and an `ingestItem`
- *    executor is provided, attempts full pipeline ingestion first (enriching metadata & OA PDF).
- * 3. Falls back to `createItem` with `mapFeedEntryToCreateItemPayload`.
- */
-export async function executeSaveFeedEntryToLibrary<TCreatePayload extends Record<string, unknown>>(params: {
-  entry: ParsedFeedEntry;
-  scopeId: string;
-  targetCollectionId?: string;
-  createItem: (payload: TCreatePayload) => Promise<unknown>;
-  ingestItem?: (
-    payload:
-      | {
-          source: 'doi';
-          doi: string;
-          collectionId?: string;
-          overrides?: Record<string, unknown>;
-        }
-      | {
-          source: 'arxiv';
-          arxivId: string;
-          collectionId?: string;
-          overrides?: Record<string, unknown>;
-        },
-  ) => Promise<unknown>;
-}): Promise<void> {
-  const { entry, scopeId, targetCollectionId, createItem, ingestItem } = params;
-  const createPayload = mapFeedEntryToCreateItemPayload(entry, {
-    scopeId,
-    collectionId: targetCollectionId,
-  });
 
-  let savedViaPipeline = false;
-  if (ingestItem && (entry.doi || entry.arxivId)) {
-    try {
-      await ingestItem({
-        ...(entry.doi
-          ? { source: 'doi' as const, doi: entry.doi }
-          : { source: 'arxiv' as const, arxivId: entry.arxivId! }),
-        collectionId: targetCollectionId,
-        overrides: {
-          title: entry.title,
-          abstract: entry.abstract,
-          publicationTitle: entry.publicationTitle,
-          year: entry.year,
-          url: createPayload.url,
-          tags: entry.categories,
-          attachOaPdf: true,
-          saveSnapshot: false,
-        },
-      });
-      savedViaPipeline = true;
-    } catch {
-      savedViaPipeline = false;
-    }
-  }
-
-  if (!savedViaPipeline) {
-    await createItem({ ...createPayload, silent: true } as unknown as TCreatePayload);
-  }
-}
 

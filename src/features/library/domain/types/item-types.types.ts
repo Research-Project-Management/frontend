@@ -254,8 +254,6 @@ for (const t of ALL_ITEM_TYPES_FLAT) {
   }
 }
 
-export const ITEM_TYPE_DEFINITIONS = LIBRARY_ITEM_TYPES;
-export const LIBRARY_ITEM_TYPE_KEYS = Object.keys(LIBRARY_ITEM_TYPES);
 for (const f of DEFAULT_BIBLIOGRAPHIC_FIELDS) {
   if (!FIELD_DEFINITIONS[f.field]) {
     FIELD_DEFINITIONS[f.field] = f;
@@ -280,12 +278,33 @@ let persistenceListener: SchemaPersistenceListener | null = null;
 let schemaRegistryVersion = 1;
 const schemaRegistryUpdateListeners = new Set<() => void>();
 
+export interface LibrarySchemaRegistrySnapshot {
+  readonly version: number;
+  readonly itemTypes: Readonly<Record<string, SchemaItemTypeDefinition>>;
+  readonly fieldDefinitions: Readonly<Record<string, SchemaFieldDefinition>>;
+  readonly itemTypeLabels: Readonly<Record<string, string>>;
+}
+
+let cachedRegistrySnapshot: LibrarySchemaRegistrySnapshot | null = null;
+
 export function setSchemaPersistenceListener(listener: SchemaPersistenceListener | null): void {
   persistenceListener = listener;
 }
 
 export function getSchemaRegistryVersion(): number {
   return schemaRegistryVersion;
+}
+
+export function getLibrarySchemaSnapshot(): LibrarySchemaRegistrySnapshot {
+  if (!cachedRegistrySnapshot || cachedRegistrySnapshot.version !== schemaRegistryVersion) {
+    cachedRegistrySnapshot = Object.freeze({
+      version: schemaRegistryVersion,
+      itemTypes: Object.freeze({ ...LIBRARY_ITEM_TYPES }),
+      fieldDefinitions: Object.freeze({ ...FIELD_DEFINITIONS }),
+      itemTypeLabels: Object.freeze({ ...ITEM_TYPE_LABELS }),
+    });
+  }
+  return cachedRegistrySnapshot;
 }
 
 export function registerSchemaRegistryUpdateListener(listener: () => void): () => void {
@@ -297,6 +316,7 @@ export function registerSchemaRegistryUpdateListener(listener: () => void): () =
 
 function notifySchemaRegistryUpdated(): void {
   schemaRegistryVersion += 1;
+  cachedRegistrySnapshot = null;
   rebuildAllSchemaFieldKeys();
   for (const listener of schemaRegistryUpdateListeners) {
     listener();

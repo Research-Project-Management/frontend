@@ -63,21 +63,6 @@ export function useCslCitation(
   });
 }
 
-export function useFormatCitationMutation(scopeId?: string) {
-  const effectiveScope = normalizeScopeId(scopeId);
-  return useMutation({
-    mutationFn: ({
-      itemId,
-      style = 'apa',
-      index = 1,
-    }: {
-      itemId: string;
-      style?: CslStyle;
-      index?: number;
-    }) => libraryServices.citations.formatCitation(effectiveScope, itemId, style, index),
-  });
-}
-
 export function useSearchCslStyles(
   query: string = '',
   limit: number = 30,
@@ -89,21 +74,6 @@ export function useSearchCslStyles(
     queryFn: () => libraryServices.citations.searchStyles(query, limit, effectiveScope),
     enabled: options?.enabled ?? true,
     staleTime: 1000 * 60 * 60,
-  });
-}
-
-export function useUploadCustomCslStyleMutation(scopeId?: string) {
-  const queryClient = useQueryClient();
-  const effectiveScope = normalizeScopeId(scopeId);
-  return useMutation({
-    mutationFn: ({ xml, title }: { xml: string; title?: string }) =>
-      libraryServices.citations.uploadCustomStyle(xml, title, effectiveScope),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: citationKeys.styles(effectiveScope) });
-      void queryClient.invalidateQueries({
-        queryKey: [...citationKeys.all, 'styles-search', effectiveScope],
-      });
-    },
   });
 }
 
@@ -158,13 +128,10 @@ export function useAttachments(
       queryClient.invalidateQueries({
         queryKey: attachmentKeys.byItem(scopeId, itemId),
       });
-      if (itemId) {
-        queryClient.invalidateQueries({
-          queryKey: itemKeys.byId(scopeId, itemId),
-        });
-      }
-      queryClient.invalidateQueries({
-        queryKey: itemKeys.all(scopeId),
+      invalidateLibraryCatalogDependencies(queryClient, scopeId, {
+        itemId,
+        itemsList: true,
+        counts: true,
       });
       toast.success("Attachment added", { id: "attachment-mutation" });
     },
@@ -192,13 +159,10 @@ export function useAttachments(
       queryClient.invalidateQueries({
         queryKey: attachmentKeys.byItem(scopeId, effectiveItemId),
       });
-      if (effectiveItemId) {
-        queryClient.invalidateQueries({
-          queryKey: itemKeys.byId(scopeId, effectiveItemId),
-        });
-      }
-      queryClient.invalidateQueries({
-        queryKey: itemKeys.all(scopeId),
+      invalidateLibraryCatalogDependencies(queryClient, scopeId, {
+        itemId: effectiveItemId,
+        itemsList: true,
+        counts: true,
       });
       toast.success("Attachment deleted", { id: "attachment-mutation" });
     },
@@ -393,6 +357,7 @@ export function useDownloadAnnotatedPdfMutation(scopeId?: string) {
             itemId: string;
             filename?: string;
             fallbackFilename?: string;
+            attachmentId?: string;
             scopeId?: string;
           },
     ) => {
@@ -413,6 +378,7 @@ export function useDownloadAnnotatedPdfMutation(scopeId?: string) {
         targetScope,
         itemIdOrInput.itemId,
         fallbackFilename,
+        itemIdOrInput.attachmentId,
       );
     },
   });

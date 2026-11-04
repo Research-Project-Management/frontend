@@ -161,6 +161,27 @@ export const libraryKeys = {
 
   // Search
   search: () => [...libraryKeys.all, "search"] as const,
+  searchFacets: (scopeId?: string, params?: unknown) =>
+    [
+      ...libraryKeys.all,
+      "search-facets",
+      normalizeScopeId(scopeId),
+      (params ?? {}) as Record<string, unknown>,
+    ] as const,
+  searchAnchors: (
+    scopeId?: string,
+    attachmentId?: string,
+    term?: string,
+    pageIndex?: number,
+  ) =>
+    [
+      ...libraryKeys.all,
+      "search-anchors",
+      normalizeScopeId(scopeId),
+      attachmentId || "none",
+      term || "",
+      pageIndex ?? "all",
+    ] as const,
 
   // Sync (Distributed Replication CDC)
   syncVersion: (scopeId?: string) =>
@@ -226,7 +247,13 @@ export const itemKeys = {
   byId: (scopeId?: string, itemId?: string) =>
     libraryKeys.item(scopeId, itemId),
   byCollection: (scopeId?: string, collectionId?: string) =>
-    libraryKeys.items(scopeId, { collectionId }),
+    [
+      ...libraryKeys.all,
+      "items",
+      normalizeScopeId(scopeId),
+      "by-collection",
+      collectionId || "none",
+    ] as const,
   byView: (scopeId?: string, view?: string, search?: string) =>
     libraryKeys.items(scopeId, { view: view || "all", search: search || "" }),
   trash: (scopeId?: string) => libraryKeys.items(scopeId, { view: "trash" }),
@@ -431,7 +458,61 @@ export const annotationKeys = {
     libraryKeys.annotations(scopeId, attachmentId),
 };
 
+interface BootstrapDeferredGate {
+  promise: Promise<unknown>;
+  resolve: () => void;
+  timer: ReturnType<typeof setTimeout>;
+}
+
 const activeBootstrapPromises = new WeakMap<object, Map<string, Promise<unknown>>>();
+const pendingBootstrapGates = new WeakMap<object, Map<string, BootstrapDeferredGate>>();
+
+/**
+ * Synchronously pre-registers a short-lived bootstrap gate during the render phase
+ * so sibling components that mount earlier in the React tree (e.g. `LibrarySidebar`
+ * mounting before `ModernLibraryPage`) still await the upcoming `/bootstrap` request
+ * instead of firing duplicate individual HTTP requests.
+ */
+export function prepareBootstrapScope(
+  queryClient: object,
+  scopeId?: string,
+): void {
+  const scope = normalizeScopeId(scopeId);
+  let promiseMap = activeBootstrapPromises.get(queryClient);
+  if (!promiseMap) {
+    promiseMap = new Map<string, Promise<unknown>>();
+    activeBootstrapPromises.set(queryClient, promiseMap);
+  }
+  if (promiseMap.has(scope)) {
+    return;
+  }
+
+  let gateMap = pendingBootstrapGates.get(queryClient);
+  if (!gateMap) {
+    gateMap = new Map<string, BootstrapDeferredGate>();
+    pendingBootstrapGates.set(queryClient, gateMap);
+  }
+
+  let resolveGate!: () => void;
+  const gatePromise = new Promise<void>((resolve) => {
+    resolveGate = resolve;
+  });
+
+  const timer = setTimeout(() => {
+    gateMap?.delete(scope);
+    if (promiseMap?.get(scope) === gatePromise) {
+      promiseMap.delete(scope);
+    }
+    resolveGate();
+  }, 250);
+
+  gateMap.set(scope, {
+    promise: gatePromise,
+    resolve: resolveGate,
+    timer,
+  });
+  promiseMap.set(scope, gatePromise);
+}
 
 export function registerBootstrapPromise<T>(
   queryClient: object,
@@ -444,10 +525,19 @@ export function registerBootstrapPromise<T>(
     map = new Map<string, Promise<unknown>>();
     activeBootstrapPromises.set(queryClient, map);
   }
+
+  const gateMap = pendingBootstrapGates.get(queryClient);
+  const existingGate = gateMap?.get(scope);
+  if (existingGate) {
+    clearTimeout(existingGate.timer);
+    gateMap?.delete(scope);
+  }
+
   const tracked = promise.finally(() => {
     if (map?.get(scope) === tracked) {
       map.delete(scope);
     }
+    existingGate?.resolve();
   });
   map.set(scope, tracked);
   return tracked;
@@ -461,16 +551,32 @@ export function getActiveBootstrapPromise(
 }
 
 export async function waitForBootstrapCache<T>(
-  queryClient: { getQueryData: <D>(key: readonly unknown[]) => D | undefined },
+  queryClient: {
+    getQueryData: <D>(key: readonly unknown[]) => D | undefined;
+    getQueryState?: (key: readonly unknown[]) => { dataUpdatedAt?: number } | undefined;
+  },
   scopeId: string | undefined,
   cacheKey: readonly unknown[],
 ): Promise<T | undefined> {
   await Promise.resolve();
   const pending = getActiveBootstrapPromise(queryClient, scopeId);
   if (pending) {
+    const updatedBefore = queryClient.getQueryState?.(cacheKey)?.dataUpdatedAt ?? 0;
     try {
       await pending;
     } catch {
+      return undefined;
+    }
+    const latestPending = getActiveBootstrapPromise(queryClient, scopeId);
+    if (latestPending && latestPending !== pending) {
+      try {
+        await latestPending;
+      } catch {
+        return undefined;
+      }
+    }
+    const updatedAfter = queryClient.getQueryState?.(cacheKey)?.dataUpdatedAt ?? 0;
+    if (updatedBefore > 0 && updatedAfter <= updatedBefore) {
       return undefined;
     }
     return queryClient.getQueryData<T>(cacheKey);

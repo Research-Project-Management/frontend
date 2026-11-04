@@ -1,7 +1,7 @@
 /**
  * Presentation Model: Creators & Authors
  *
- * NOTE: The Backend Server (BibliographicUtils, TrustedExtractionService,
+ * NOTE: The Backend Server (BibliographicUtils, PdfMetadataExtractor,
  * ItemMapper) is the authoritative single source of truth for author splitting,
  * OCR junk cleaning, institution detection, and creator mapping.
  *
@@ -11,104 +11,65 @@
  */
 
 import { cleanValue, isValidValue, stripLatexMarkup } from './metadata-sanitizers';
-import { cleanAcademicText } from './academic-text';
+import { cleanText } from './citations';
 import type { CreatorCredit, Item } from './types/core.types';
 import { getPrimaryCreatorType } from './types/item-types.types';
 
-export interface ParsedCreator {
-  firstName: string;
-  lastName: string;
-  fullName: string;
-  isInstitution?: boolean;
-}
-
-export interface CreatorEntry {
-  creatorType: string;
-  name: string;
-  fieldMode?: number;
-  firstName?: string;
-  lastName?: string;
-  shortName?: string;
-}
-
-export type CreatorDraft = CreatorEntry;
+export interface ParsedCreator { firstName: string; lastName: string; fullName: string; isInstitution?: boolean; }
+export interface CreatorEntry { creatorType: string; name: string; fieldMode?: number; firstName?: string; lastName?: string; shortName?: string; }
 
 export const INSTITUTION_KEYWORDS = [
-  'university', 'universities', 'institute', 'institutes', 'institution', 'institutions',
-  'consortium', 'consortia', 'collaboration', 'collaborations', 'committee', 'committees',
-  'organization', 'organizations', 'organisation', 'organisations', 'association', 'associations',
-  'society', 'societies', 'foundation', 'group', 'groups', 'team', 'council', 'agency', 'agencies',
-  'department', 'departments', 'ministry', 'laboratory', 'laboratories', 'center', 'centers',
-  'centre', 'centres', 'network', 'initiative', 'working party', 'investigators', 'commission',
-  'corporation', 'hospital', 'hospitals', 'inc', 'llc', 'ltd', 'openai', 'deepmind', 'anthropic',
-  'google', 'microsoft', 'cern', 'nasa', 'ieee',
+  'university', 'universities', 'institute', 'institutes', 'institution', 'institutions', 'consortium', 'consortia', 'collaboration', 'collaborations', 'committee', 'committees', 'organization', 'organizations', 'organisation', 'organisations', 'association', 'associations', 'society', 'societies', 'foundation', 'group', 'groups', 'team', 'council', 'agency', 'agencies', 'department', 'departments', 'ministry', 'laboratory', 'laboratories', 'center', 'centers', 'centre', 'centres', 'network', 'initiative', 'working party', 'investigators', 'commission', 'corporation', 'hospital', 'hospitals', 'inc', 'llc', 'ltd', 'openai', 'deepmind', 'anthropic', 'google', 'microsoft', 'cern', 'nasa', 'ieee',
 ];
 
-const INSTITUTION_REGEX = new RegExp(
-  `(?:^|[^\\p{L}\\p{N}])(?:${INSTITUTION_KEYWORDS.map((kw) => kw.replace(/\s+/g, '\\s+')).join('|')})(?=$|[^\\p{L}\\p{N}])`,
-  'iu',
-);
+const INSTITUTION_REGEX = new RegExp(`(?:^|[^\\p{L}\\p{N}])(?:${INSTITUTION_KEYWORDS.map((kw) => kw.replace(/\s+/g, '\\s+')).join('|')})(?=$|[^\\p{L}\\p{N}])`, 'iu');
 
 export function isInstitutionName(name?: string | null): boolean {
-  if (!name || typeof name !== 'string') return false;
-  return INSTITUTION_REGEX.test(name);
+  return Boolean(name && typeof name === 'string' && INSTITUTION_REGEX.test(name));
 }
 
 export const NOISE_AUTHOR_WORDS = new Set([
-  'abstract', 'introduction', 'indexterms', 'keywords', 'keyword', 'references', 'reference',
-  'bibliography', 'contents', 'tableofcontents', 'acknowledgments', 'acknowledgements',
-  'correspondence', 'correspondingauthor', 'allrightsreserved', 'copyright', 'unknown',
-  'none', 'null', 'undefined', 'etal', 'andothers', 'visualgeometrygroup',
+  'abstract', 'introduction', 'indexterms', 'keywords', 'keyword', 'references', 'reference', 'bibliography', 'contents', 'tableofcontents', 'acknowledgments', 'acknowledgements', 'correspondence', 'correspondingauthor', 'allrightsreserved', 'copyright', 'unknown', 'anonymous', 'none', 'null', 'undefined', 'etal', 'others', 'andothers', 'visualgeometrygroup',
 ]);
 
-/**
- * Validates if an author name token is actually section noise, OCR artifact,
- * or academic affiliation header rather than a genuine author name.
- */
 export function isNoiseAuthorName(raw?: string | null): boolean {
   if (!raw || typeof raw !== 'string') return true;
   const trimmed = raw.trim();
-  if (!trimmed) return true;
-  if (trimmed.length <= 1 && !/\p{L}/u.test(trimmed)) return true;
-
+  if (!trimmed || (trimmed.length <= 1 && !/\p{L}/u.test(trimmed))) return true;
   const lower = trimmed.toLowerCase();
   if (lower === 'n/a' || lower === 'n.a.' || lower === 'n.a') return true;
-
   const collapsed = lower.replace(/[^a-z]/g, '');
   if (collapsed && NOISE_AUTHOR_WORDS.has(collapsed)) return true;
-
-  if (
-    /^(?:department|faculty|school|division|college)\s+of\s+/i.test(lower) ||
-    /^(?:lab|laboratory)\s+of\s+/i.test(lower) ||
-    /^(?:centre|center)\s+for\s+/i.test(lower) ||
-    /department of/i.test(lower) ||
-    /university of .+, department of/i.test(lower) ||
-    /^(?:institute|university)\s+of\s+[a-z\s]+,\s*(?:department|faculty|school|division)/i.test(lower)
-  ) {
+  if (/^(?:department|faculty|school|division|college|lab|laboratory)\s+of\s+|^(?:centre|center)\s+for\s+|department of|university of .+, department of|^(?:institute|university)\s+of\s+[a-z\s]+,\s*(?:department|faculty|school|division)/i.test(lower)) {
     return true;
   }
-
   return /@/.test(trimmed) || /^https?:\/\//i.test(trimmed);
 }
 
 /**
- * Strips OCR junk, footnote markers, email addresses, affiliations,
- * and academic titles from a single author string token.
+ * Validates whether an author name or name part (firstName, lastName, fullName)
+ * is a genuine author token, explicitly preserving valid 2-3 letter surnames
+ * like "Na" and "Nil" while rejecting placeholder/noise strings.
  */
+export function isValidAuthorPart(val?: unknown): boolean {
+  return typeof val === 'string' && Boolean(val.trim()) && !isNoiseAuthorName(val.trim());
+}
+
+function cleanAuthorPart(val?: unknown): string {
+  return isValidAuthorPart(val) ? String(val).trim() : '';
+}
+
 export function cleanAuthorName(raw?: string | null): string {
   if (!raw || typeof raw !== 'string') return '';
-  let cleaned = stripLatexMarkup(raw.trim());
+  let cleaned = stripLatexMarkup(raw.trim())
+    .replace(/<[^>]+@[^>]+>/g, ' ')
+    .replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g, ' ')
+    .replace(/^(?:(?:\[?\d+\]?[\.\)]?|[-•*])\s+|(?:by|author|authors):\s*)/i, '')
+    .replace(/\s*\([^)]*\)/gi, '')
+    .replace(/^(?:(?:Prof(?:essor)?|Dr|Doctor|Mr|Mrs|Ms)\.?\s+)+/i, '');
 
-  cleaned = cleaned.replace(/<[^>]+@[^>]+>/g, ' ');
-  cleaned = cleaned.replace(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g, ' ');
-  cleaned = cleaned.replace(/^(?:(?:\[?\d+\]?[\.\)]?|[-•*])\s+|(?:by|author|authors):\s*)/i, '');
-  cleaned = cleaned.replace(/\s*\([^)]*\)/gi, '');
-  cleaned = cleaned.replace(/^(?:(?:Prof(?:essor)?|Dr|Doctor|Mr|Mrs|Ms)\.?\s+)+/i, '');
-
-  const TRAILING_DEGREE_REGEX =
-    /,\s*(?:Ph\.?\s?D\.?|PHD|Pharm\.?\s?D\.?|M\.?D\.?|M\.?Sc\.?|MSc|M\.?S\.?|M\.?A\.?|B\.?Sc\.?|BSc|B\.?S\.?|B\.?A\.?|MBA|MPH|D\.?Phil\.?|DPhil|F\.?R\.?C\.?S\.?|FAAN|FACP|FRS|FRSE|FIEEE|OBE|CBE)\s*$/i;
-  const UNAMBIGUOUS_DEGREE_REGEX =
-    /^,\s*(?:Ph\.?\s?D\.?|PHD|Pharm\.?\s?D\.?|M\.?Sc\.?|MSc|B\.?Sc\.?|BSc|MBA|MPH|D\.?Phil\.?|DPhil|F\.?R\.?C\.?S\.?|FAAN|FACP|FRS|FRSE|FIEEE|OBE|CBE)\s*$/i;
+  const TRAILING_DEGREE_REGEX = /,\s*(?:Ph\.?\s?D\.?|PHD|Pharm\.?\s?D\.?|M\.?D\.?|M\.?Sc\.?|MSc|M\.?S\.?|M\.?A\.?|B\.?Sc\.?|BSc|B\.?S\.?|B\.?A\.?|MBA|MPH|D\.?Phil\.?|DPhil|F\.?R\.?C\.?S\.?|FAAN|FACP|FRS|FRSE|FIEEE|OBE|CBE)\s*$/i;
+  const UNAMBIGUOUS_DEGREE_REGEX = /^,\s*(?:Ph\.?\s?D\.?|PHD|Pharm\.?\s?D\.?|M\.?Sc\.?|MSc|B\.?Sc\.?|BSc|MBA|MPH|D\.?Phil\.?|DPhil|F\.?R\.?C\.?S\.?|FAAN|FACP|FRS|FRSE|FIEEE|OBE|CBE)\s*$/i;
   for (let guard = 0; guard < 4; guard++) {
     const m = cleaned.match(TRAILING_DEGREE_REGEX);
     if (!m || m.index === undefined) break;
@@ -117,54 +78,35 @@ export function cleanAuthorName(raw?: string | null): string {
     cleaned = prefix;
   }
 
-  cleaned = cleaned.replace(/(?:[\s,]*[*†‡§^#~]+[\s,]*\d*|[\s,]*\d+[*†‡§^#~,\d]*)+$/, '');
-  cleaned = cleaned.replace(/\s+/g, ' ').trim();
-  cleaned = cleaned.replace(/[,;]+$/, '').trim();
+  cleaned = cleaned
+    .replace(/(?:[\s,]*[*†‡§^#~]+[\s,]*\d*|[\s,]*\d+[*†‡§^#~,\d]*)+$/, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/[,;]+$/, '')
+    .trim();
 
   return isNoiseAuthorName(cleaned) ? '' : cleaned;
 }
 
 const GENERATIONAL_SUFFIX_REGEX = /^(?:Jr\.?|Sr\.?|II|III|IV|V|Esq\.?)$/i;
-
-const VIETNAMESE_DIACRITICS_REGEX =
-  /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ]/u;
+const VIETNAMESE_DIACRITICS_REGEX = /[àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ]/u;
 
 const VIETNAMESE_FAMILY_NAMES = new Set([
-  'nguyễn', 'trần', 'lê', 'phạm', 'hoàng', 'huỳnh', 'phan', 'vũ', 'võ', 'đặng',
-  'bùi', 'đỗ', 'hồ', 'ngô', 'dương', 'lý', 'đinh', 'đoàn', 'lâm', 'trịnh',
-  'mai', 'đào', 'cao', 'hà', 'lưu', 'lương', 'thái', 'phùng', 'tô', 'vương',
-  'tạ', 'tống', 'quách', 'nông', 'diệp', 'triệu', 'tiêu', 'khổng', 'nghiêm',
-  'la', 'tăng', 'trương', 'chu', 'châu', 'tôn', 'vi', 'lục', 'ma', 'bành',
-  'cù', 'cấn', 'thạch', 'bạch', 'sầm', 'lại', 'hứa', 'kiều', 'mạc', 'cáp',
-  'thân', 'tào', 'nhan', 'mã', 'chử', 'doãn', 'ân', 'bàng', 'quản', 'đậu', 'phí',
-  'nguyen', 'tran', 'le', 'pham', 'hoang', 'huynh', 'phan', 'vu', 'vo', 'dang',
-  'bui', 'do', 'ho', 'ngo', 'duong', 'ly', 'dinh', 'doan', 'lam', 'trinh',
-  'dao', 'ha', 'luu', 'luong', 'thai', 'phung', 'to', 'vuong', 'ta', 'tong',
-  'quach', 'nong', 'diep', 'trieu', 'tieu', 'khong', 'nghiem', 'tang', 'truong',
-  'chau', 'ton', 'luc', 'banh', 'cu', 'can', 'thach', 'bach', 'sam', 'lai',
-  'hua', 'kieu', 'mac', 'cap', 'than', 'tao', 'quan', 'dau', 'phi',
+  'nguyễn', 'trần', 'lê', 'phạm', 'hoàng', 'huỳnh', 'phan', 'vũ', 'võ', 'đặng', 'bùi', 'đỗ', 'hồ', 'ngô', 'dương', 'lý', 'đinh', 'đoàn', 'lâm', 'trịnh', 'mai', 'đào', 'cao', 'hà', 'lưu', 'lương', 'thái', 'phùng', 'tô', 'vương', 'tạ', 'tống', 'quách', 'nông', 'diệp', 'triệu', 'tiêu', 'khổng', 'nghiêm', 'la', 'tăng', 'trương', 'chu', 'châu', 'tôn', 'vi', 'lục', 'ma', 'bành', 'cù', 'cấn', 'thạch', 'bạch', 'sầm', 'lại', 'hứa', 'kiều', 'mạc', 'cáp', 'thân', 'tào', 'nhan', 'mã', 'chử', 'doãn', 'ân', 'bàng', 'quản', 'đậu', 'phí',
+  'nguyen', 'tran', 'le', 'pham', 'hoang', 'huynh', 'phan', 'vu', 'vo', 'dang', 'bui', 'do', 'ho', 'ngo', 'duong', 'ly', 'dinh', 'doan', 'lam', 'trinh', 'dao', 'ha', 'luu', 'luong', 'thai', 'phung', 'to', 'vuong', 'ta', 'tong', 'quach', 'nong', 'diep', 'trieu', 'tieu', 'khong', 'nghiem', 'tang', 'truong', 'chau', 'ton', 'luc', 'banh', 'cu', 'can', 'thach', 'bach', 'sam', 'lai', 'hua', 'kieu', 'mac', 'cap', 'than', 'tao', 'quan', 'dau', 'phi',
 ]);
 
 const VIETNAMESE_MIDDLE_NAMES = new Set([
-  'văn', 'thị', 'hữu', 'đình', 'đức', 'ngọc', 'xuân', 'thanh', 'quang', 'trọng',
-  'minh', 'hoàng', 'anh', 'hải', 'quốc', 'công', 'kim', 'bảo', 'thu', 'phương',
-  'hồng', 'thùy', 'thảo', 'mạnh', 'tiến', 'đắc', 'tuấn', 'hùng', 'bá', 'chí',
-  'van', 'thi', 'huu', 'dinh', 'duc', 'ngoc', 'xuan', 'trong', 'hoang', 'hai',
-  'quoc', 'cong', 'bao', 'phuong', 'hong', 'thuy', 'thao', 'manh', 'tien',
-  'dac', 'tuan', 'hung', 'ba', 'chi',
+  'văn', 'thị', 'hữu', 'đình', 'đức', 'ngọc', 'xuân', 'thanh', 'quang', 'trọng', 'minh', 'hoàng', 'anh', 'hải', 'quốc', 'công', 'kim', 'bảo', 'thu', 'phương', 'hồng', 'thùy', 'thảo', 'mạnh', 'tiến', 'đắc', 'tuấn', 'hùng', 'bá', 'chí',
+  'van', 'thi', 'huu', 'dinh', 'duc', 'ngoc', 'xuan', 'trong', 'hoang', 'hai', 'quoc', 'cong', 'bao', 'phuong', 'hong', 'thuy', 'thao', 'manh', 'tien', 'dac', 'tuan', 'hung', 'ba', 'chi',
 ]);
 
 const VIETNAMESE_COMPOUND_SURNAMES = new Set([
-  'nguyễn phúc', 'nguyen phuc', 'tôn thất', 'ton that', 'tôn nữ', 'ton nu',
-  'âu dương', 'au duong', 'hoàng lê', 'hoang le', 'trần đình', 'tran dinh',
-  'đặng trần', 'dang tran', 'hồ đắc', 'ho dac', 'lương thế', 'luong the',
-  'nguyễn đình', 'nguyen dinh', 'nguyễn khoa', 'nguyen khoa',
-  'phan huy', 'trần huy', 'tran huy', 'vũ đình', 'vu dinh',
+  'nguyễn phúc', 'nguyen phuc', 'tôn thất', 'ton that', 'tôn nữ', 'ton nu', 'âu dương', 'au duong', 'hoàng lê', 'hoang le', 'trần đình', 'tran dinh', 'đặng trần', 'dang tran', 'hồ đắc', 'ho dac', 'lương thế', 'luong the', 'nguyễn đình', 'nguyen dinh', 'nguyễn khoa', 'nguyen khoa', 'phan huy', 'trần huy', 'tran huy', 'vũ đình', 'vu dinh',
 ]);
 
 export const AMBIGUOUS_UNACCENTED_VN_SURNAMES = new Set([
-  'le', 'mai', 'ha', 'do', 'la', 'to', 'ma', 'ho', 'ly', 'chu', 'can', 'vi',
-  'an', 'ta', 'cu', 'ba', 'ca', 'vo', 'vu', 'au', 'lo', 'no', 'ro', 'so', 'po',
+  'le', 'mai', 'ha', 'do', 'la', 'to', 'ma', 'ho', 'ly', 'chu', 'can', 'vi', 'an', 'ta', 'cu', 'ba', 'ca', 'vo', 'vu', 'au', 'lo', 'no', 'ro', 'so', 'po',
 ]);
 
 export const VN_SYLLABLE_REGEX =
@@ -211,7 +153,13 @@ export function splitAuthorString(rawInput?: string | null): string[] {
   const lines = trimmed.split(/[\r\n]+/).map((s) => s.trim()).filter(Boolean);
   const result: string[] = [];
 
-  for (const line of lines) {
+  for (const rawLine of lines) {
+    const line = rawLine
+      .replace(/(?:[,;]\s*|\s+)\b(?:et\s+al\.?|and\s+others)\s*$/i, '')
+      .replace(/(?:[\s,]*[*∗⋆†‡§¶^#~]+[\s,]*\d*|[\s,]*\d+[*∗⋆†‡§¶^#~]+)+(?=\s*(?:;|,|\band\b|&|$))/giu, '')
+      .trim();
+    if (!line) continue;
+
     if (line.includes(';')) {
       for (const p of line.split(';').map((s) => s.trim()).filter(Boolean)) {
         result.push(...splitAuthorString(p));
@@ -275,6 +223,19 @@ export function splitAuthorString(rawInput?: string | null): string[] {
       continue;
     }
 
+    if (/[*∗⋆†‡§¶]/.test(line)) {
+      const parts = line
+        .split(/(?:[\s,]*[*∗⋆†‡§¶]+\s*)+/u)
+        .map((s) => s.trim())
+        .filter((s) => s.length >= 2 && !/^\d+$/.test(s));
+      if (parts.length > 1) {
+        for (const p of parts) {
+          result.push(...splitAuthorString(p));
+        }
+        continue;
+      }
+    }
+
     result.push(line.trim());
   }
 
@@ -287,17 +248,10 @@ export function splitAuthorString(rawInput?: string | null): string[] {
  * generational suffixes, and institutions.
  */
 export function parseCreatorName(rawName: string): ParsedCreator {
-  if (!rawName || typeof rawName !== 'string') {
-    return { firstName: '', lastName: '', fullName: '', isInstitution: false };
-  }
+  if (!rawName || typeof rawName !== 'string') return { firstName: '', lastName: '', fullName: '', isInstitution: false };
   const trimmed = stripLatexMarkup(rawName.trim());
-  if (!trimmed) {
-    return { firstName: '', lastName: '', fullName: '', isInstitution: false };
-  }
-
-  if (isInstitutionName(trimmed)) {
-    return { firstName: '', lastName: '', fullName: trimmed, isInstitution: true };
-  }
+  if (!trimmed) return { firstName: '', lastName: '', fullName: '', isInstitution: false };
+  if (isInstitutionName(trimmed)) return { firstName: '', lastName: '', fullName: trimmed, isInstitution: true };
 
   const vTokens = trimmed.split(/\s+/);
   if (
@@ -318,20 +272,10 @@ export function parseCreatorName(rawName: string): ParsedCreator {
     if (vnTokens.length >= 3) {
       const potentialCompound = `${vnTokens[0]} ${vnTokens[1]}`.toLowerCase();
       if (VIETNAMESE_COMPOUND_SURNAMES.has(potentialCompound)) {
-        return {
-          firstName: vnTokens.slice(2).join(' '),
-          lastName: `${vnTokens[0]} ${vnTokens[1]}`,
-          fullName: trimmed,
-          isInstitution: false,
-        };
+        return { firstName: vnTokens.slice(2).join(' '), lastName: `${vnTokens[0]} ${vnTokens[1]}`, fullName: trimmed, isInstitution: false };
       }
     }
-    return {
-      firstName: vnTokens.slice(1).join(' '),
-      lastName: vnTokens[0] || '',
-      fullName: trimmed,
-      isInstitution: false,
-    };
+    return { firstName: vnTokens.slice(1).join(' '), lastName: vnTokens[0] || '', fullName: trimmed, isInstitution: false };
   }
 
   const genMatch = trimmed.match(/^(.*?),\s*(Jr\.?|Sr\.?|II|III|IV|V|Esq\.?)$/i);
@@ -340,30 +284,18 @@ export function parseCreatorName(rawName: string): ParsedCreator {
     const suffix = genMatch[2]!.trim();
     const tokens = coreName.split(/\s+/);
     const lastToken = tokens.pop() || '';
-    return {
-      firstName: tokens.join(' '),
-      lastName: `${lastToken} ${suffix}`.trim(),
-      fullName: `${coreName} ${suffix}`,
-      isInstitution: false,
-    };
+    return { firstName: tokens.join(' '), lastName: `${lastToken} ${suffix}`.trim(), fullName: `${coreName} ${suffix}`, isInstitution: false };
   }
 
   if (trimmed.includes(',')) {
     const parts = trimmed.split(',').map((p) => p.trim());
     const lastName = parts[0] || '';
     const firstName = parts.slice(1).join(' ') || '';
-    return {
-      firstName,
-      lastName,
-      fullName: firstName ? `${firstName} ${lastName}` : lastName,
-      isInstitution: false,
-    };
+    return { firstName, lastName, fullName: firstName ? `${firstName} ${lastName}` : lastName, isInstitution: false };
   }
 
   const tokens = trimmed.split(/\s+/).filter(Boolean);
-  if (tokens.length === 1) {
-    return { firstName: '', lastName: tokens[0]!, fullName: tokens[0]!, isInstitution: false };
-  }
+  if (tokens.length === 1) return { firstName: '', lastName: tokens[0]!, fullName: tokens[0]!, isInstitution: false };
 
   const lastParts = [tokens.pop() || ''];
   while (tokens.length > 1 && SURNAME_PARTICLES.has(tokens[tokens.length - 1]!.toLowerCase())) {
@@ -514,7 +446,7 @@ export function getItemAuthorsSummary(
 
   const cleaned = rawList
     .map((name) => {
-      const clean = cleanAcademicText(name);
+      const clean = cleanText(name);
       if (!clean) return '';
       if (clean.includes(',')) {
         const parsed = parseCreatorName(clean);
@@ -543,10 +475,10 @@ export function parseCreators(item: Item, defaultRoleOverride?: string): Creator
     const parsedCreators: CreatorEntry[] = [];
     for (const rawCreatorItem of rawCreators) {
       const creatorType = rawCreatorItem.creatorType || defaultRoleOverride || 'author';
-      const firstName = cleanValue(rawCreatorItem.firstName || (rawCreatorItem as Record<string, unknown>).given);
-      const lastName = cleanValue(rawCreatorItem.lastName || (rawCreatorItem as Record<string, unknown>).family);
+      const firstName = cleanAuthorPart(rawCreatorItem.firstName || (rawCreatorItem as Record<string, unknown>).given);
+      const lastName = cleanAuthorPart(rawCreatorItem.lastName || (rawCreatorItem as Record<string, unknown>).family);
       const shortName = cleanValue(rawCreatorItem.shortName || undefined);
-      let creatorName = cleanValue(rawCreatorItem.name || rawCreatorItem.fullName);
+      let creatorName = cleanAuthorPart(rawCreatorItem.name || rawCreatorItem.fullName);
       if (!creatorName && (firstName || lastName)) {
         creatorName = [lastName, firstName].filter(Boolean).join(', ');
       } else if (
@@ -669,14 +601,7 @@ export function areCreatorsEqual(
 /** Convert CreatorEntry items into strongly typed CreatorCredit items for Item */
 export function toItemCreators(
   creatorEntries: CreatorEntry[],
-): Array<
-  CreatorCredit & {
-    orderIndex: number;
-    creatorType: string;
-    fieldMode: number;
-    fullName: string;
-  }
-> {
+): Array<CreatorCredit & { orderIndex: number; creatorType: string; fieldMode: number; fullName: string }> {
   return creatorEntries.map((creatorEntry, indexPosition) => {
     const trimmedName = creatorEntry.name.trim();
     let firstName = creatorEntry.firstName;
@@ -689,8 +614,7 @@ export function toItemCreators(
       const combinedForward = [firstName, lastName].filter(Boolean).join(' ').trim();
       const combinedInverted = [lastName, firstName].filter(Boolean).join(', ').trim();
       const matchesExisting =
-        Boolean(firstName || lastName) &&
-        (trimmedName === combinedForward || trimmedName === combinedInverted);
+        Boolean(firstName || lastName) && (trimmedName === combinedForward || trimmedName === combinedInverted);
       if (!matchesExisting) {
         const parsed = parseCreatorName(trimmedName);
         firstName = parsed.firstName;
@@ -712,15 +636,69 @@ export function toItemCreators(
 }
 
 /**
+ * Builds a canonical multi-field update patch for an Item's creators,
+ * keeping `authors`, `editors`, `creators`, `contributors`, and `extraFields` synchronized.
+ */
+export function buildCanonicalCreatorsPatch(
+  item: Item,
+  updatedCreators: CreatorEntry[],
+  primaryCreatorType?: string,
+): Partial<Item> {
+  const nextCreators = updatedCreators.filter((c) => c.name.trim().length > 0);
+  const currentItemType = item.itemType || 'journalArticle';
+  const primaryRoleDef = (primaryCreatorType || getPrimaryCreatorType(currentItemType) || 'author').toLowerCase();
+
+  const isAuthorRole = (role?: string): boolean => {
+    const r = (role || 'author').trim().toLowerCase();
+    return r === primaryRoleDef || r === 'author' || r === 'bookauthor';
+  };
+
+  const primaryCreatorNames = nextCreators
+    .filter((creatorItem) => isAuthorRole(creatorItem.creatorType || primaryRoleDef))
+    .map((creatorItem) => creatorItem.name.trim())
+    .filter(Boolean);
+
+  const editorNames = nextCreators
+    .filter((creatorItem) => (creatorItem.creatorType || '').toLowerCase() === 'editor')
+    .map((creatorItem) => creatorItem.name.trim())
+    .filter(Boolean);
+
+  const finalAuthors =
+    primaryCreatorNames.length > 0
+      ? primaryCreatorNames
+      : nextCreators
+          .filter((creatorItem) => !creatorItem.creatorType || !creatorItem.creatorType.trim())
+          .map((creatorItem) => creatorItem.name.trim())
+          .filter(Boolean);
+
+  const structuredCreators = nextCreators.length ? toItemCreators(nextCreators) : [];
+  const currentExtraFields =
+    item.extraFields && typeof item.extraFields === 'object' ? (item.extraFields as Record<string, unknown>) : {};
+
+  return {
+    ...(item.itemType ? { itemType: item.itemType } : {}),
+    authors: nextCreators.length ? finalAuthors : [],
+    editors: nextCreators.length ? editorNames : [],
+    creators: structuredCreators,
+    contributors: structuredCreators,
+    ...(structuredCreators.length === 0
+      ? { extraFields: { ...currentExtraFields, creators: null, contributors: null } }
+      : 'creators' in currentExtraFields || 'contributors' in currentExtraFields
+        ? { extraFields: { ...currentExtraFields, creators: structuredCreators, contributors: structuredCreators } }
+        : {}),
+    silent: true,
+  };
+}
+
+/**
  * Converts a raw authors array or string into structured Creator objects,
  * preserving `fieldMode: 1` for institutional creators.
  */
-export function buildStructuredCreatorsFromAuthors(
-  rawAuthors: unknown,
-): Array<Record<string, unknown>> {
-  if (!isValidValue(rawAuthors) || (Array.isArray(rawAuthors) && !rawAuthors.some((v) => isValidValue(v)))) {
-    return [];
-  }
+export function buildStructuredCreatorsFromAuthors(rawAuthors: unknown): Array<Record<string, unknown>> {
+  const hasValidAuthors = Array.isArray(rawAuthors)
+    ? rawAuthors.some((v) => isValidValue(v) || isValidAuthorPart(v))
+    : isValidValue(rawAuthors) || isValidAuthorPart(rawAuthors);
+  if (!hasValidAuthors) return [];
   const rawList = Array.isArray(rawAuthors)
     ? rawAuthors
     : typeof rawAuthors === 'string'
@@ -745,11 +723,8 @@ export function buildStructuredCreatorsFromAuthors(
       const rec = entry as Record<string, unknown>;
       const firstName = String(rec.firstName ?? rec.given ?? '').trim();
       const lastName = String(rec.lastName ?? rec.family ?? '').trim();
-      const fullName = String(
-        rec.fullName ?? rec.name ?? [firstName, lastName].filter(Boolean).join(' '),
-      ).trim();
-      const isInst =
-        rec.fieldMode === 1 || (!firstName && isInstitutionName(fullName || lastName));
+      const fullName = String(rec.fullName ?? rec.name ?? [firstName, lastName].filter(Boolean).join(' ')).trim();
+      const isInst = rec.fieldMode === 1 || (!firstName && isInstitutionName(fullName || lastName));
       structured.push({
         ...rec,
         firstName: isInst ? '' : firstName,

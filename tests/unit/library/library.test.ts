@@ -374,7 +374,7 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
         '@/features/library/domain/citations'
       );
       const { CitationService } = await import(
-        '@/features/library/sdk/clients/citation-extraction.client'
+        '@/features/library/sdk/clients/attachments-annotations.client'
       );
 
       expect(CANONICAL_CSL_STYLE_IDS).toContain('apa-7th');
@@ -474,7 +474,7 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
 
     it('forwards onProgress as onUploadProgress in UploadService.uploadMultipart', async () => {
       const { UploadService } = await import(
-        '@/features/library/sdk/clients/citation-extraction.client'
+        '@/features/library/sdk/clients/attachments-annotations.client'
       );
       vi.mocked(api.apiPost).mockImplementationOnce(async (_url, _body, options) => {
         options?.onUploadProgress?.({ loaded: 50, total: 100 });
@@ -494,13 +494,13 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
       expect(onProgress).toHaveBeenCalledWith(50);
     });
 
-    it('unifies duplicate group key generation and deduplicates getItemAuthorsSummary / formatAcademicAuthors', async () => {
+    it('unifies duplicate group key generation and deduplicates getItemAuthorsSummary / formatAuthors', async () => {
       const {
         computeDuplicateSetKey,
         getDeterministicDuplicateGroupKey,
       } = await import('@/features/library/domain/diff');
       const { getItemAuthorsSummary } = await import('@/features/library/domain/creators');
-      const { formatAcademicAuthors } = await import('@/features/library/domain/academic-text');
+      const { formatAuthors } = await import('@/features/library/domain/citations');
 
       const items = [
         { id: 'item-b', title: 'B', itemType: 'journalArticle' },
@@ -514,7 +514,7 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
       const sampleItem = {
         authors: ['Vaswani, Ashish', 'Shazeer, Noam'],
       };
-      expect(formatAcademicAuthors(sampleItem)).toBe(getItemAuthorsSummary(sampleItem));
+      expect(formatAuthors(sampleItem)).toBe(getItemAuthorsSummary(sampleItem));
       expect(getItemAuthorsSummary(sampleItem)).toBe('Ashish Vaswani, Noam Shazeer');
     });
 

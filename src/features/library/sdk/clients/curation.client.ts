@@ -1,169 +1,6 @@
-import {
-  type Item,
-  type SearchResponse,
-  type SearchSortBy,
-  type SearchSortOrder,
-  type DuplicateGroup,
-  type LibraryIntegrityReport,
-  type FlagRetractionInput,
-  type RetractionStats,
-  type UnifiedIngestionPayload,
-  type UnifiedIngestionResponse,
-  type IngestionRunSnapshotResponse,
-  type UrlCapturePreviewResponse,
-  UnifiedIngestionPayloadSchema,
-  UnifiedIngestionResponseSchema,
-  UrlCapturePreviewResponseSchema,
-  IngestionRunSnapshotResponseSchema,
-  itemSchema,
-} from '@/features/library/domain/types/core.types';
+import { type Item, type DuplicateGroup, type LibraryIntegrityReport, type FlagRetractionInput, type RetractionStats, itemSchema, type UnifiedIngestionPayload, type UnifiedIngestionResponse, type IngestionRunSnapshotResponse, type UrlCapturePreviewResponse, UnifiedIngestionPayloadSchema, UnifiedIngestionResponseSchema, UrlCapturePreviewResponseSchema, IngestionRunSnapshotResponseSchema } from '@/features/library/domain/types/core.types';
 import { preserveMappedItemFlags } from '@/features/library/domain/metadata-mapper';
-import {
-  libraryClient,
-  resolveLibraryUrl,
-  getIngestionUrl,
-  getCurationUrl,
-  getRetractionUrl,
-  getSyncUrl,
-  toIngestionSubmission,
-  isProjectScope,
-  mapBackendItem,
-} from './http.client';
-
-// 10. Ingestion, Curation & Retraction Services
-export const IngestionService = {
-  ingest: async (
-    scopeId: string | undefined,
-    payload: UnifiedIngestionPayload,
-    options?: { signal?: AbortSignal },
-  ): Promise<UnifiedIngestionResponse> => {
-    const validated = UnifiedIngestionPayloadSchema.parse(payload);
-    const submission = {
-      ...toIngestionSubmission(validated),
-      ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
-    };
-    const res = await libraryClient.post<Record<string, unknown>>(
-      getIngestionUrl(scopeId, 'submit'),
-      submission,
-      { timeout: 30000, signal: options?.signal },
-    );
-    const accepted = (res && typeof res === 'object' && 'data' in res && res.data ? res.data : res) as Record<string, unknown>;
-    const rawItemId = accepted.existingItemId ?? accepted.itemId;
-    return UnifiedIngestionResponseSchema.parse({
-      success: true,
-      data: {
-        runId: accepted.runId,
-        status: accepted.status,
-        itemId: typeof rawItemId === 'string' && rawItemId ? rawItemId : undefined,
-        deduplicated: accepted.deduplicated,
-      },
-    });
-  },
-
-  getRunStatus: async (scopeId: string | undefined, runId: string): Promise<IngestionRunSnapshotResponse> => {
-    const res = await libraryClient.get<Record<string, unknown>>(
-      getIngestionUrl(scopeId, `runs/${encodeURIComponent(runId)}`),
-    );
-    const enveloped = res && typeof res === 'object' && 'data' in res ? res : { success: true, data: res };
-    return IngestionRunSnapshotResponseSchema.parse(enveloped);
-  },
-
-  getRunProgress: async (scopeId: string | undefined, runId: string) => {
-    const res = await libraryClient.get<{ data?: unknown } | unknown>(
-      getIngestionUrl(scopeId, `status/${encodeURIComponent(runId)}/progress`),
-    );
-    return (res && typeof res === 'object' && 'data' in res && res.data ? res.data : res) as import('@/features/library/domain/types/ingestion.types').IngestionProgressResponse;
-  },
-
-  captureUrl: async (scopeId: string | undefined, url: string): Promise<UrlCapturePreviewResponse> => {
-    const res = await libraryClient.post<Record<string, unknown>>(
-      getIngestionUrl(scopeId, 'capture-url'),
-      { url },
-    );
-    const enveloped = res && typeof res === 'object' && 'data' in res ? res : { success: true, data: res };
-    return UrlCapturePreviewResponseSchema.parse(enveloped);
-  },
-
-  confirmUrl: (
-    scopeId: string | undefined,
-    payload: {
-      url: string;
-      previewToken: string;
-      title?: string;
-      abstract?: string;
-      doi?: string;
-      year?: number;
-      publicationTitle?: string;
-      itemType?: string;
-      collectionId?: string;
-    },
-  ) =>
-    libraryClient.post<{ id: string; title: string; doi?: string; year?: number; citationKey?: string }>(
-      getIngestionUrl(scopeId, 'confirm-url'),
-      {
-        ...payload,
-        ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
-      },
-    ),
-
-  fetchFeed: async (
-    url: string,
-    forceRefresh = false,
-  ): Promise<{
-    feedTitle: string;
-    entries: Array<{
-      id?: string;
-      title: string;
-      authors: string[];
-      published?: string;
-      summary?: string;
-      doi?: string;
-      arxivId?: string;
-      link?: string;
-      isRead?: boolean;
-      isSaved?: boolean;
-      savedItemId?: string | null;
-    }>;
-  }> => {
-    const res = await libraryClient.post<{
-      feedTitle?: string;
-      entries?: Array<{
-        id?: string;
-        title: string;
-        authors: string[];
-        published?: string;
-        summary?: string;
-        doi?: string;
-        arxivId?: string;
-        link?: string;
-        isRead?: boolean;
-        isSaved?: boolean;
-        savedItemId?: string | null;
-      }>;
-      data?: {
-        feedTitle?: string;
-        entries?: Array<{
-          id?: string;
-          title: string;
-          authors: string[];
-          published?: string;
-          summary?: string;
-          doi?: string;
-          arxivId?: string;
-          link?: string;
-          isRead?: boolean;
-          isSaved?: boolean;
-          savedItemId?: string | null;
-        }>;
-      };
-    }>(getIngestionUrl(undefined, 'fetch-feed'), { url, forceRefresh });
-    const payload = res && typeof res === 'object' && 'data' in res && res.data ? res.data : res;
-    return {
-      feedTitle: payload?.feedTitle || 'Academic Feed',
-      entries: Array.isArray(payload?.entries) ? payload.entries : [],
-    };
-  },
-};
+import { libraryClient, resolveLibraryUrl, getCurationUrl, getRetractionUrl, isProjectScope, mapBackendItem, getIngestionUrl, toIngestionSubmission } from './http.client';
 
 interface RawDuplicateCluster {
   clusterId: string;
@@ -407,6 +244,42 @@ export const CurationService = {
     };
   },
 
+  mergeDuplicatesBatch: async (
+    scopeId: string | undefined,
+    merges: Array<{
+      primaryItemId: string;
+      duplicateItemIds: string[];
+      fieldSelections?: Record<string, string>;
+    }>,
+  ) => {
+    const res = await libraryClient.post<{
+      mergedGroups?: number;
+      mergedItems?: number;
+      results?: Array<{
+        primaryItem?: Record<string, unknown>;
+        masterItem?: Record<string, unknown>;
+        mergedCount?: number;
+        softDeletedItemIds?: string[];
+      }>;
+    }>(getCurationUrl(scopeId, 'merge-batch'), {
+      merges,
+      ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
+    });
+    const results = (res?.results ?? []).map((r) => {
+      const raw = r.primaryItem || r.masterItem;
+      return {
+        primaryItem: raw ? mapBackendItem(raw) : undefined,
+        mergedCount: r.mergedCount ?? 0,
+        softDeletedItemIds: r.softDeletedItemIds ?? [],
+      };
+    });
+    return {
+      mergedGroups: res?.mergedGroups ?? results.length,
+      mergedItems: res?.mergedItems ?? results.reduce((s, r) => s + r.mergedCount, 0),
+      results,
+    };
+  },
+
   getIntegrityReport: async (scopeId?: string): Promise<LibraryIntegrityReport> => {
     const pQuery = isProjectScope(scopeId) ? `?projectId=${encodeURIComponent(scopeId!)}` : '';
     const res = await libraryClient.get<LibraryIntegrityReport & { averageQualityScore?: number; healthScorePercentage?: number }>(
@@ -537,161 +410,136 @@ export const RetractionService = {
       ),
 };
 
-// 11. Search & Sync Services
-export const SearchService = {
-  search: (params: {
-    query?: string;
-    q?: string;
-    limit?: number;
-    cursor?: string;
-    collectionId?: string;
-    tagId?: string;
-    itemType?: string;
-    yearFrom?: number;
-    yearTo?: number;
-    sortBy?: SearchSortBy;
-    sortOrder?: SearchSortOrder;
-    includeFacets?: boolean;
-  }, scopeId?: string): Promise<SearchResponse> => {
-    const effectiveQuery = params.query ?? params.q ?? '';
-    const queryParams: Record<string, string> = { query: effectiveQuery };
-    if (params.limit !== undefined) queryParams.limit = String(params.limit);
-    if (params.cursor) queryParams.cursor = params.cursor;
-    if (params.collectionId) queryParams.collectionId = params.collectionId;
-    if (params.tagId) queryParams.tagId = params.tagId;
-    if (params.itemType) queryParams.itemType = params.itemType;
-    if (params.yearFrom !== undefined) queryParams.yearFrom = String(params.yearFrom);
-    if (params.yearTo !== undefined) queryParams.yearTo = String(params.yearTo);
-    if (params.sortBy) queryParams.sortBy = params.sortBy;
-    if (params.sortOrder) queryParams.sortOrder = params.sortOrder;
-    if (params.includeFacets !== undefined) queryParams.includeFacets = String(params.includeFacets);
-
-    return libraryClient
-      .get<SearchResponse>(
-        resolveLibraryUrl('search', '/search', scopeId),
-        { params: queryParams },
-      )
-      .then((res) => ({
-        ...res,
-        items: Array.isArray(res?.items)
-          ? res.items.map((it) => mapBackendItem(it))
-          : [],
-      }));
-  },
-
-  searchAnchors: (attachmentId: string, term: string, pageIndex?: number, scopeId?: string) => {
-    const params: Record<string, string> = { term };
-    if (pageIndex !== undefined) params.pageIndex = String(pageIndex);
-    return libraryClient.get<Array<{
-      pageIndex: number;
-      text: string;
-      startOffset?: number;
-      endOffset?: number;
-      highlightBoxes?: Array<{ x: number; y: number; width: number; height: number }>;
-    }>>(
-      resolveLibraryUrl(
-        'search',
-        `/search/attachments/${encodeURIComponent(attachmentId)}/anchors`,
-        scopeId,
-      ),
-      { params },
+export const IngestionService = {
+  ingest: async (
+    scopeId: string | undefined,
+    payload: UnifiedIngestionPayload,
+    options?: { signal?: AbortSignal },
+  ): Promise<UnifiedIngestionResponse> => {
+    const validated = UnifiedIngestionPayloadSchema.parse(payload);
+    const submission = {
+      ...toIngestionSubmission(validated),
+      ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
+    };
+    const res = await libraryClient.post<Record<string, unknown>>(
+      getIngestionUrl(scopeId, 'submit'),
+      submission,
+      { timeout: 30000, signal: options?.signal },
     );
+    const accepted = (res && typeof res === 'object' && 'data' in res && res.data ? res.data : res) as Record<string, unknown>;
+    const rawItemId = accepted.existingItemId ?? accepted.itemId;
+    return UnifiedIngestionResponseSchema.parse({
+      success: true,
+      data: {
+        runId: accepted.runId,
+        status: accepted.status,
+        itemId: typeof rawItemId === 'string' && rawItemId ? rawItemId : undefined,
+        deduplicated: accepted.deduplicated,
+      },
+    });
   },
-};
 
-export const SyncService = {
-  getDiagnostics: (scopeId?: string) =>
-    libraryClient.get<unknown>(getSyncUrl(scopeId, 'diagnostics')),
+  getRunStatus: async (scopeId: string | undefined, runId: string): Promise<IngestionRunSnapshotResponse> => {
+    const res = await libraryClient.get<Record<string, unknown>>(
+      getIngestionUrl(scopeId, `runs/${encodeURIComponent(runId)}`),
+    );
+    const enveloped = res && typeof res === 'object' && 'data' in res ? res : { success: true, data: res };
+    return IngestionRunSnapshotResponseSchema.parse(enveloped);
+  },
 
-  getVersion: (scopeId?: string) =>
-    libraryClient.get<{ version: string; scope: 'user' | 'project'; scopeId: string }>(getSyncUrl(scopeId, 'version')),
+  getRunProgress: async (scopeId: string | undefined, runId: string) => {
+    const res = await libraryClient.get<{ data?: unknown } | unknown>(
+      getIngestionUrl(scopeId, `status/${encodeURIComponent(runId)}/progress`),
+    );
+    return (res && typeof res === 'object' && 'data' in res && res.data ? res.data : res) as import('@/features/library/domain/types/ingestion.types').IngestionProgressResponse;
+  },
 
-  getChanges: (scopeId?: string, params?: { since?: string; limit?: number; compact?: boolean }) =>
-    libraryClient.get<{
-      since: string;
-      count: number;
-      compacted?: boolean;
-      hasMore: boolean;
-      nextCursor?: string | null;
-      nextSince?: string | null;
-      changes: Array<Record<string, unknown>>;
-    }>(
-      getSyncUrl(scopeId, 'changes'),
-      {
-        params: {
-          since: params?.since ?? '0',
-          limit: params?.limit ?? 100,
-          ...(params?.compact !== undefined ? { compact: params.compact } : {}),
-        },
-      },
-    ),
+  captureUrl: async (scopeId: string | undefined, url: string): Promise<UrlCapturePreviewResponse> => {
+    const res = await libraryClient.post<Record<string, unknown>>(
+      getIngestionUrl(scopeId, 'capture-url'),
+      { url },
+    );
+    const enveloped = res && typeof res === 'object' && 'data' in res ? res : { success: true, data: res };
+    return UrlCapturePreviewResponseSchema.parse(enveloped);
+  },
 
-  getTombstones: (scopeId?: string, params?: { since?: string; limit?: number }) =>
-    libraryClient.get<{ since: string; count: number; hasMore: boolean; tombstones: Array<Record<string, unknown>> }>(
-      getSyncUrl(scopeId, 'tombstones'),
-      {
-        params: {
-          ...(params?.since !== undefined ? { since: params.since } : {}),
-          limit: params?.limit ?? 100,
-        },
-      },
-    ),
-};
-
-
-export interface FeedSubscriptionResponse {
-  id: string;
-  userId?: string;
-  feedId?: string;
-  customTitle?: string | null;
-  cleanupReadAfter?: number;
-  cleanupUnreadAfter?: number;
-  feed?: {
-    id: string;
-    url: string;
-    title: string;
-    siteUrl?: string | null;
-    description?: string | null;
-    lastFetchedAt?: string | null;
-  };
-}
-
-export const FeedsService = {
-  getSubscriptions: () =>
-    libraryClient.get<{ data: FeedSubscriptionResponse[] }>(
-      resolveLibraryUrl('ingestion', '/feeds/subscriptions'),
-    ),
-
-  subscribe: (data: {
-    url: string;
-    customTitle?: string;
-    cleanupDays?: number;
-    cleanupReadAfter?: number;
-    cleanupUnreadAfter?: number;
-  }) =>
-    libraryClient.post<{ data: unknown }>(resolveLibraryUrl('ingestion', '/feeds/subscriptions'), data),
-
-  updateSubscription: (
-    feedId: string,
-    data: {
-      customTitle?: string;
-      cleanupDays?: number;
-      cleanupReadAfter?: number;
-      cleanupUnreadAfter?: number;
-      url?: string;
+  confirmUrl: (
+    scopeId: string | undefined,
+    payload: {
+      url: string;
+      previewToken: string;
+      title?: string;
+      abstract?: string;
+      doi?: string;
+      year?: number;
+      publicationTitle?: string;
+      itemType?: string;
+      collectionId?: string;
     },
   ) =>
-    libraryClient.patch<{ data: unknown }>(resolveLibraryUrl('ingestion', `/feeds/subscriptions/${encodeURIComponent(feedId)}`), data),
+    libraryClient.post<{ id: string; title: string; doi?: string; year?: number; citationKey?: string }>(
+      getIngestionUrl(scopeId, 'confirm-url'),
+      {
+        ...payload,
+        ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
+      },
+    ),
 
-  unsubscribe: (feedId: string) =>
-    libraryClient.delete<void>(resolveLibraryUrl('ingestion', `/feeds/subscriptions/${encodeURIComponent(feedId)}`)),
-
-  getItems: (feedId: string, params?: { readStatus?: 'read' | 'unread' | 'all'; limit?: number }) =>
-    libraryClient.get<{ data: unknown[] }>(resolveLibraryUrl('ingestion', `/feeds/${encodeURIComponent(feedId)}/items`), { params }),
-
-  markItemRead: (itemId: string, isRead = true) =>
-    libraryClient.post<{ success: boolean }>(resolveLibraryUrl('ingestion', `/feeds/items/${encodeURIComponent(itemId)}/read`), { isRead }),
-
-  markAllRead: (itemIds: string[]) =>
-    libraryClient.post<{ success: boolean }>(resolveLibraryUrl('ingestion', '/feeds/items/mark-all-read'), { itemIds }),
+  fetchFeed: async (
+    url: string,
+    forceRefresh = false,
+  ): Promise<{
+    feedTitle: string;
+    entries: Array<{
+      id?: string;
+      title: string;
+      authors: string[];
+      published?: string;
+      summary?: string;
+      doi?: string;
+      arxivId?: string;
+      link?: string;
+      isRead?: boolean;
+      isSaved?: boolean;
+      savedItemId?: string | null;
+    }>;
+  }> => {
+    const res = await libraryClient.post<{
+      feedTitle?: string;
+      entries?: Array<{
+        id?: string;
+        title: string;
+        authors: string[];
+        published?: string;
+        summary?: string;
+        doi?: string;
+        arxivId?: string;
+        link?: string;
+        isRead?: boolean;
+        isSaved?: boolean;
+        savedItemId?: string | null;
+      }>;
+      data?: {
+        feedTitle?: string;
+        entries?: Array<{
+          id?: string;
+          title: string;
+          authors: string[];
+          published?: string;
+          summary?: string;
+          doi?: string;
+          arxivId?: string;
+          link?: string;
+          isRead?: boolean;
+          isSaved?: boolean;
+          savedItemId?: string | null;
+        }>;
+      };
+    }>(getIngestionUrl(undefined, 'fetch-feed'), { url, forceRefresh });
+    const payload = res && typeof res === 'object' && 'data' in res && res.data ? res.data : res;
+    return {
+      feedTitle: payload?.feedTitle || 'Academic Feed',
+      entries: Array.isArray(payload?.entries) ? payload.entries : [],
+    };
+  },
 };

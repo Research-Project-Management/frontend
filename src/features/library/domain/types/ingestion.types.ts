@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { itemSchema } from './items.types';
 
 // ── Batch Upload & Progress ──────────────────────────────────────────────────
 export interface IngestionProgressItem {
@@ -9,8 +10,6 @@ export interface IngestionProgressItem {
   error?: string;
   itemName?: string;
 }
-
-export type ProcessItem = IngestionProgressItem;
 
 export interface IngestionProgressResponse {
   runId: string;
@@ -172,33 +171,6 @@ export const UNREAD_RETENTION_OPTIONS: RetentionOption[] = [
   { value: 14, label: '14 days' },
   { value: 90, label: '90 days' },
   { value: 0, label: 'Never' },
-];
-
-export const DEFAULT_ACADEMIC_FEEDS: SavedFeedSubscription[] = [
-  {
-    id: 'arxiv-cs-ai',
-    name: 'arXiv: Artificial Intelligence (cs.AI)',
-    url: 'https://rss.arxiv.org/rss/cs.AI',
-    retentionDays: 30,
-    cleanupReadAfter: 7,
-    cleanupUnreadAfter: 30,
-  },
-  {
-    id: 'arxiv-cs-cl',
-    name: 'arXiv: Computation and Language (cs.CL)',
-    url: 'https://rss.arxiv.org/rss/cs.CL',
-    retentionDays: 30,
-    cleanupReadAfter: 7,
-    cleanupUnreadAfter: 30,
-  },
-  {
-    id: 'nature-main',
-    name: 'Nature — Current Issue Research',
-    url: 'https://www.nature.com/nature.rss',
-    retentionDays: 30,
-    cleanupReadAfter: 7,
-    cleanupUnreadAfter: 30,
-  },
 ];
 
 // ── Ingestion Payloads & Responses ───────────────────────────────────────────
@@ -395,8 +367,6 @@ export const UnifiedIngestionDataSchema = z.object({
   errorMessage: z.string().nullable().optional(),
 });
 
-export type UnifiedIngestionData = z.infer<typeof UnifiedIngestionDataSchema>;
-
 export const UnifiedIngestionResponseSchema = z.object({
   success: z.boolean().default(true),
   data: UnifiedIngestionDataSchema,
@@ -431,8 +401,6 @@ export const IngestionRunSnapshotDataSchema = z
   })
   .passthrough();
 
-export type IngestionRunSnapshotData = z.infer<typeof IngestionRunSnapshotDataSchema>;
-
 export const IngestionRunSnapshotResponseSchema = z.object({
   success: z.boolean().default(true),
   data: IngestionRunSnapshotDataSchema,
@@ -449,8 +417,6 @@ export const UrlCapturePreviewDataSchema = z.object({
   metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
-export type UrlCapturePreviewData = z.infer<typeof UrlCapturePreviewDataSchema>;
-
 export const UrlCapturePreviewResponseSchema = z.object({
   success: z.boolean().default(true),
   data: UrlCapturePreviewDataSchema,
@@ -460,12 +426,278 @@ export type UrlCapturePreviewResponse = z.infer<
   typeof UrlCapturePreviewResponseSchema
 >;
 
-export type DoiIngestionPayload = z.infer<typeof DoiIngestionPayloadSchema>;
-export type UrlIngestionPayload = z.infer<typeof UrlIngestionPayloadSchema>;
-export type BibtexIngestionPayload = z.infer<typeof BibtexIngestionPayloadSchema>;
-export type PdfIngestionPayload = z.infer<typeof PdfIngestionPayloadSchema>;
-export type ArxivIngestionPayload = z.infer<typeof ArxivIngestionPayloadSchema>;
-export type PmidIngestionPayload = z.infer<typeof PmidIngestionPayloadSchema>;
-export type IsbnIngestionPayload = z.infer<typeof IsbnIngestionPayloadSchema>;
-export type RisIngestionPayload = z.infer<typeof RisIngestionPayloadSchema>;
-export type ZoteroIngestionPayload = z.infer<typeof ZoteroIngestionPayloadSchema>;
+// ── Search & Facets ──────────────────────────────────────────────────────────
+export const searchSortBySchema = z.enum([
+  'relevance',
+  'dateAdded',
+  'createdAt',
+  'updatedAt',
+  'year',
+  'title',
+  'authors',
+  'publicationTitle',
+  'citationKey',
+  'deletedAt',
+]);
+
+export const searchSortOrderSchema = z.enum(['asc', 'desc']);
+
+export const searchFacetsSchema = z.object({
+  itemTypes: z.record(z.string(), z.number()).optional().default({}),
+  collections: z.record(z.string(), z.number()).optional().default({}),
+  years: z.record(z.string(), z.number()).optional().default({}),
+  tags: z.record(z.string(), z.number()).optional().default({}),
+});
+
+export const searchResponseSchema = z.object({
+  items: z.array(itemSchema).default([]),
+  total: z.number().optional().default(0),
+  facets: searchFacetsSchema.optional(),
+  meta: z
+    .object({
+      cursor: z.string().optional(),
+      hasNextPage: z.boolean().default(false),
+      pageCount: z.number().optional(),
+      totalCount: z.number().optional(),
+    })
+    .transform((m) => {
+      if (!m) return m;
+      return {
+        ...m,
+        totalCount: m.totalCount ?? m.pageCount ?? 0,
+      };
+    })
+    .optional(),
+  nextCursor: z.string().nullable().optional(),
+});
+
+export type SearchSortBy = z.infer<typeof searchSortBySchema>;
+export type SearchSortOrder = z.infer<typeof searchSortOrderSchema>;
+export type SearchFacets = z.infer<typeof searchFacetsSchema>;
+export type SearchResponse = z.infer<typeof searchResponseSchema>;
+
+// ── Display Options ──────────────────────────────────────────────────────────
+export type LibraryColumnKey =
+  | 'authors'
+  | 'year'
+  | 'publication'
+  | 'itemType'
+  | 'doi'
+  | 'citationKey'
+  | 'citations';
+
+export type LibraryOrderBy =
+  | 'relevance'
+  | 'createdAt'
+  | 'updatedAt'
+  | 'year'
+  | 'title'
+  | 'citationKey'
+  | 'authors'
+  | 'publicationTitle'
+  | 'deletedAt';
+
+const ASCENDING_DEFAULT_SORT_FIELDS = new Set<string>([
+  'title',
+  'authors',
+  'creator',
+  'firstAuthor',
+  'publication',
+  'publicationTitle',
+  'citationKey',
+]);
+
+/**
+ * Returns the natural first-click sort direction for a given column/field:
+ * - Textual fields (Title, Creator, Publication, Citation Key) -> 'asc' (A -> Z)
+ * - Numeric, chronological, and relevance fields (Year, Date Added/Modified/Deleted, Relevance) -> 'desc' (Newest / Highest first)
+ */
+export function getDefaultSortDirection(field?: string | null): 'asc' | 'desc' {
+  if (!field) return 'desc';
+  return ASCENDING_DEFAULT_SORT_FIELDS.has(field) ? 'asc' : 'desc';
+}
+
+export interface LibraryDisplayOptions {
+  columns: Record<LibraryColumnKey, boolean>;
+  orderBy: LibraryOrderBy;
+  orderDirection: 'asc' | 'desc';
+  density?: 'comfortable' | 'compact';
+  includeSubcollections?: boolean;
+}
+
+export const DEFAULT_LIBRARY_DISPLAY_OPTIONS: LibraryDisplayOptions = {
+  columns: {
+    authors: true,
+    year: true,
+    publication: true,
+    itemType: false,
+    doi: false,
+    citationKey: true,
+    citations: false,
+  },
+  orderBy: 'createdAt',
+  orderDirection: 'desc',
+  density: 'comfortable',
+  includeSubcollections: true,
+};
+
+// ── Saved Searches ───────────────────────────────────────────────────────────
+export const savedSearchFieldSchema = z.string();
+
+export const savedSearchOperatorSchema = z.enum([
+  'is',
+  'isNot',
+  'is_not',
+  'contains',
+  'doesNotContain',
+  'does_not_contain',
+  'beginsWith',
+  'begins_with',
+  'endsWith',
+  'ends_with',
+  'isGreaterThan',
+  'greater_than',
+  'gt',
+  'isLessThan',
+  'less_than',
+  'lt',
+  'isBetween',
+  'between',
+  'isInTheLast',
+  'in_the_last',
+  'isPresent',
+  'is_present',
+  'isAbsent',
+  'is_absent',
+  'equals',
+  'not_equals',
+]);
+
+export const savedSearchScopeOptionsSchema = z.object({
+  searchSubcollections: z.boolean().optional().default(true),
+  showOnlyTopLevel: z.boolean().optional().default(false),
+  includeParentsAndChildren: z.boolean().optional().default(true),
+});
+
+export type SavedSearchScopeOptions = z.infer<typeof savedSearchScopeOptionsSchema>;
+
+export const savedSearchConditionSchema = z.object({
+  field: savedSearchFieldSchema,
+  operator: savedSearchOperatorSchema,
+  value: z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.array(z.union([z.string(), z.number()])),
+    z.record(z.string(), z.unknown()),
+  ]).optional(),
+});
+
+export type SavedSearchCondition = z.infer<typeof savedSearchConditionSchema>;
+
+export interface SavedSearchConditionGroup {
+  conjunction: 'AND' | 'OR' | 'NOT';
+  conditions: (SavedSearchCondition | SavedSearchConditionGroup)[];
+  scopeOptions?: SavedSearchScopeOptions;
+}
+
+export const savedSearchConditionGroupSchema: z.ZodType<SavedSearchConditionGroup> = z.lazy(() =>
+  z.object({
+    conjunction: z.enum(['AND', 'OR', 'NOT']).default('AND'),
+    conditions: z.array(
+      z.union([savedSearchConditionSchema, savedSearchConditionGroupSchema]),
+    ),
+    scopeOptions: savedSearchScopeOptionsSchema.optional(),
+  }),
+);
+
+export const savedSearchSortBySchema = z.enum([
+  'dateAdded',
+  'createdAt',
+  'year',
+  'title',
+  'creator',
+  'authors',
+  'firstAuthor',
+  'publication',
+  'publicationTitle',
+  'citationKey',
+  'deletedAt',
+  'dateDeleted',
+  'updatedAt',
+  'dateModified',
+]);
+
+export const savedSearchSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1),
+  description: z.string().optional().default(''),
+  icon: z.string().optional().default(''),
+  color: z.string().optional().default('#3b82f6'),
+  conditions: savedSearchConditionGroupSchema,
+  scopeOptions: savedSearchScopeOptionsSchema.optional(),
+  conjunction: z.enum(['AND', 'OR']).default('AND'),
+  sortBy: savedSearchSortBySchema.optional().default('dateAdded'),
+  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
+  isPinned: z.boolean().optional().default(false),
+  cachedCount: z.number().nullable().optional().default(0),
+  lastEvaluatedAt: z.string().datetime().nullable().optional(),
+  scope: z.string().optional(),
+  scopeId: z.string().optional(),
+  projectId: z.string().nullable().optional(),
+  userId: z.string(),
+  creator: z
+    .object({
+      id: z.string(),
+      name: z.string(),
+      avatar: z.string().nullable().optional(),
+    })
+    .optional(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+
+export const createSavedSearchSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  description: z.string().optional(),
+  icon: z.string().optional(),
+  color: z.string().optional(),
+  conditions: savedSearchConditionGroupSchema,
+  scopeOptions: savedSearchScopeOptionsSchema.optional(),
+  conjunction: z.enum(['AND', 'OR']).optional().default('AND'),
+  sortBy: savedSearchSortBySchema.optional(),
+  sortOrder: z.enum(['asc', 'desc']).optional(),
+  isPinned: z.boolean().optional(),
+  targetScope: z.string().optional(),
+  scope: z.string().optional(),
+});
+
+export const updateSavedSearchSchema = createSavedSearchSchema.partial();
+
+export const savedSearchResultsResponseSchema = z.object({
+  savedSearch: savedSearchSchema,
+  items: z.array(itemSchema),
+  meta: z.object({
+    totalCount: z.number(),
+    cursor: z.string().optional(),
+    hasNextPage: z.boolean(),
+  }),
+});
+
+export const savedSearchPreviewResponseSchema = z.object({
+  count: z.number(),
+  sampleItems: z.array(itemSchema),
+});
+
+export type SavedSearchField = z.infer<typeof savedSearchFieldSchema>;
+export type SavedSearchOperator = z.infer<typeof savedSearchOperatorSchema>;
+
+export type SavedSearch = z.infer<typeof savedSearchSchema>;
+export type CreateSavedSearchInput = z.infer<typeof createSavedSearchSchema>;
+export type UpdateSavedSearchInput = z.infer<typeof updateSavedSearchSchema>;
+export type SavedSearchResultsResponse = z.infer<
+  typeof savedSearchResultsResponseSchema
+>;
+export type SavedSearchPreviewResponse = z.infer<
+  typeof savedSearchPreviewResponseSchema
+>;

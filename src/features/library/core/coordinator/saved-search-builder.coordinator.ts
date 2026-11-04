@@ -7,6 +7,7 @@ import { useTags } from '@/features/library/sdk/queries/tags-notes.queries';
 import { useSavedSearches } from '@/features/library/sdk/queries/saved-searches-relations.queries';
 import {
   mapRegistryItemTypes,
+  extractServerErrorMessage,
 } from '@/features/library/domain/types/core.types';
 import type {
   CreateSavedSearchInput,
@@ -14,10 +15,20 @@ import type {
   SavedSearchOperator,
   SavedSearchConditionGroup,
   SavedSearch,
-} from '@/features/library/domain/types/saved-searches.types';
+} from '@/features/library/domain/types/ingestion.types';
+import { getDefaultSortDirection } from '@/features/library/domain/types/ingestion.types';
 import type { Item } from '@/features/library/domain/types/items.types';
-import type { ConditionRow } from '@/features/library/domain/saved-search-schema.domain';
+import type { ConditionRow } from '@/features/library/domain/saved-search-ast.domain';
 import { SavedSearchAstEngine } from '@/features/library/domain/saved-search-ast.domain';
+
+export type SavedSearchBuilderSortBy =
+  | 'dateAdded'
+  | 'updatedAt'
+  | 'year'
+  | 'title'
+  | 'creator'
+  | 'publicationTitle'
+  | 'citationKey';
 
 export interface UseSavedSearchBuilderParams {
   open: boolean;
@@ -82,8 +93,13 @@ export function useSavedSearchBuilder({
 
   const [name, setName] = useState('');
   const [conjunction, setConjunction] = useState<'AND' | 'OR'>('AND');
-  const [sortBy, setSortBy] = useState<'dateAdded' | 'year' | 'title' | 'creator'>('dateAdded');
+  const [sortBy, setSortByState] = useState<SavedSearchBuilderSortBy>('dateAdded');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  const setSortBy = (nextSortBy: SavedSearchBuilderSortBy) => {
+    setSortByState(nextSortBy);
+    setSortOrder(getDefaultSortDirection(nextSortBy));
+  };
 
   const [searchSubcollections, setSearchSubcollections] = useState(true);
   const [showOnlyTopLevel, setShowOnlyTopLevel] = useState(false);
@@ -130,14 +146,23 @@ export function useSavedSearchBuilder({
       setConjunction(conj === 'OR' ? 'OR' : 'AND');
 
       const rawSort = savedSearch.sortBy;
-      const normalizedSort: 'dateAdded' | 'year' | 'title' | 'creator' =
-        rawSort === 'year' || rawSort === 'title' || rawSort === 'creator'
+      const normalizedSort: SavedSearchBuilderSortBy =
+        rawSort === 'year' ||
+        rawSort === 'title' ||
+        rawSort === 'creator' ||
+        rawSort === 'updatedAt' ||
+        rawSort === 'publicationTitle' ||
+        rawSort === 'citationKey'
           ? rawSort
-          : rawSort === 'authors'
+          : rawSort === 'authors' || rawSort === 'firstAuthor'
             ? 'creator'
-            : 'dateAdded';
-      setSortBy(normalizedSort);
-      setSortOrder(savedSearch.sortOrder || 'desc');
+            : rawSort === 'dateModified'
+              ? 'updatedAt'
+              : rawSort === 'publication'
+                ? 'publicationTitle'
+                : 'dateAdded';
+      setSortByState(normalizedSort);
+      setSortOrder(savedSearch.sortOrder || getDefaultSortDirection(normalizedSort));
 
       const scopeOpts = savedSearch.scopeOptions || hydrated.scopeOptions;
       setSearchSubcollections(scopeOpts.searchSubcollections !== false);
@@ -151,7 +176,7 @@ export function useSavedSearchBuilder({
       preservedNestedGroupsRef.current = [];
       setName('');
       setConjunction(hydrated.conjunction);
-      setSortBy('dateAdded');
+      setSortByState('dateAdded');
       setSortOrder('desc');
       setSearchSubcollections(hydrated.scopeOptions.searchSubcollections);
       setShowOnlyTopLevel(hydrated.scopeOptions.showOnlyTopLevel);
@@ -327,9 +352,27 @@ export function useSavedSearchBuilder({
       scope: targetScope,
     };
 
-    await onSubmit(payload);
-    onOpenChange(false);
+    try {
+      await onSubmit(payload);
+      onOpenChange(false);
+    } catch (err: unknown) {
+      setError(
+        extractServerErrorMessage(
+          err,
+          'Failed to save search. Please verify your conditions and try again.',
+        ),
+      );
+    }
   };
+
+  const isDirty = useMemo(() => {
+    if (savedSearch) {
+      return true;
+    }
+    if (name.trim().length > 0) return true;
+    if (conditions.length > 1) return true;
+    return conditions.some((c) => Boolean(c.value && c.value.trim()));
+  }, [savedSearch, name, conditions]);
 
   return {
     targetScope,
@@ -354,6 +397,7 @@ export function useSavedSearchBuilder({
     conditions,
     error,
     setError,
+    isDirty,
     previewCount,
     previewSamples,
     isPreviewLoading,

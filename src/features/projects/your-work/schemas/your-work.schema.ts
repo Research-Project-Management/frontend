@@ -14,7 +14,7 @@ export const yourWorkChildItemSchema = z.object({
   title: z.string().optional(),
   completed: z.boolean().optional(),
   columnId: z.string().optional(),
-  rank: z.string().optional(),
+  rank: z.union([z.number(), z.string()]).optional(),
 });
 
 export const yourWorkUserRefSchema = z.object({
@@ -29,6 +29,16 @@ export const yourWorkItemSchema = z.object({
   identifier: z.string().optional(),
   title: z.string(),
   columnId: z.string().optional().default('todo'),
+  stateGroup: z.string().nullable().optional(),
+  state: z
+    .object({
+      id: z.string().optional(),
+      name: z.string().optional(),
+      group: z.string().optional(),
+      color: z.string().optional(),
+    })
+    .nullable()
+    .optional(),
   priority: z.enum(['urgent', 'high', 'medium', 'low', 'none']).optional().default('none'),
   dueDate: z.string().nullable().optional(),
   assigneeId: z.string().nullable().optional(),
@@ -37,7 +47,21 @@ export const yourWorkItemSchema = z.object({
   author: z.union([z.string(), yourWorkUserRefSchema]).nullable().optional(),
   description: z.string().nullable().optional(),
   sequenceNumber: z.number().nullable().optional(),
-  labels: z.array(z.string()).optional().default([]),
+  labels: z
+    .array(
+      z.union([
+        z.string(),
+        z
+          .object({
+            id: z.string().optional(),
+            name: z.string().optional(),
+            color: z.string().optional(),
+          })
+          .passthrough(),
+      ]),
+    )
+    .optional()
+    .default([]),
   projectId: z.union([z.string(), z.object({ id: z.string().optional(), name: z.string().optional(), identifier: z.string().nullable().optional(), avatar: z.string().nullable().optional() })]).optional(),
   project: z.object({
     id: z.string().optional(),

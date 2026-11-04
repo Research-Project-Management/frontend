@@ -3,7 +3,7 @@
 import React from 'react';
 import { useParams } from 'next/navigation';
 import { useProjectOverview } from '../hooks/use-project-overview';
-import { useProjectDetails } from '@/features/projects/project-id/work-items/hooks/use-work-items-query';
+import { useProjectDetails } from '@/features/projects/project-id/work-items/hooks/use-query';
 import { CleanProjectOverview } from '../components/CleanProjectOverview';
 import { Switcher } from '@/features/projects/project-id/components/layout/Switcher';
 import { Skeleton } from '@/shared/components/ui/skeleton';

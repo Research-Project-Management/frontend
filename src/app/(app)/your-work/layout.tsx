@@ -2,10 +2,10 @@
 
 import React from 'react';
 import { UserStar } from 'lucide-react';
-import YourWorkNavigationBar from '@/features/projects/your-work/components/layout/NavigationBar';
+import NavigationBar from '@/features/projects/your-work/components/layout/NavigationBar';
 import ProfileSidebar from '@/features/projects/your-work/components/profile/ProfileSidebar';
 import { YourWorkProvider, useYourWorkContext } from '@/features/projects/your-work/context/your-work.context';
-import { WorkItemDialogModal } from '@/features/projects/your-work/components/shared/WorkItemDialogModal';
+import { ItemDetailModal } from '@/features/projects/your-work/components/shared/ItemDetailModal';
 
 function YourWorkLayoutContent({ children }: { children: React.ReactNode }) {
   const {
@@ -38,7 +38,7 @@ function YourWorkLayoutContent({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Tabs Bar */}
-        <YourWorkNavigationBar
+        <NavigationBar
           counts={{
             assigned: selectedProjectId ? assigned.length : totalCounts.assigned,
             created: selectedProjectId ? created.length : totalCounts.created,
@@ -63,7 +63,7 @@ function YourWorkLayoutContent({ children }: { children: React.ReactNode }) {
 
       {/* Shared Work Item Detail Dialog */}
       {selectedWorkItem && (
-        <WorkItemDialogModal
+        <ItemDetailModal
           workItemId={selectedWorkItem.workItemId || ''}
           projectId={selectedWorkItem.projectId}
           initialWorkItem={selectedWorkItem.workItem}

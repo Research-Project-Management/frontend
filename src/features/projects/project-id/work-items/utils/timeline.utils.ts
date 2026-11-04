@@ -5,13 +5,13 @@ import type {
   TimelineTier1Group,
   TimelineBarData,
   DependencyLine,
-} from '@/features/projects/project-id/work-items/types/timeline-view.types';
+} from '@/features/projects/project-id/work-items/types/work-item.types';
 import {
   getPixelForTimeBinarySearch,
   parseDateOnly,
-  calculateTaskDuration,
+  computeDurationDays,
   extractNormalizedEdges,
-} from './cpm-graph';
+} from './cpm-graph.utils';
 import { EMPTY_ARRAY } from './work-item.utils';
 
 export { EMPTY_ARRAY, parseDateOnly };
@@ -103,7 +103,7 @@ export function calculateDuration(
     return { days: 0, label: '' };
   }
 
-  const diffDays = calculateTaskDuration(startDate || dueDate, dueDate || startDate);
+  const diffDays = computeDurationDays(startDate || dueDate, dueDate || startDate);
 
   if (diffDays === 1) return { days: 1, label: '1 day' };
   if (diffDays === 7) return { days: 7, label: '1 week' };
@@ -425,7 +425,8 @@ export function computeDependencyLines(
   items: Item[],
   barDataMap: Map<string, TimelineBarData>,
   rowYMap: Map<string, number>,
-  criticalEdges?: Set<string>
+  criticalEdges?: Set<string>,
+  violatedEdges?: Set<string>
 ): DependencyLine[] {
   const lines: DependencyLine[] = [];
   const itemMap = new Map<string, Item>(items.map((t) => [t.id, t]));
@@ -458,19 +459,19 @@ export function computeDependencyLines(
     if (depType === 'FS') {
       fromX = predBar.pixelLeft + predBar.pixelWidth;
       toX = succBar.pixelLeft;
-      violated = !!(succStart && predDue && succStart < predDue);
+      violated = violatedEdges ? violatedEdges.has(`${predId}->${succId}`) : !!(succStart && predDue && succStart < predDue);
     } else if (depType === 'SS') {
       fromX = predBar.pixelLeft;
       toX = succBar.pixelLeft;
-      violated = !!(succStart && predStart && succStart < predStart);
+      violated = violatedEdges ? violatedEdges.has(`${predId}->${succId}`) : !!(succStart && predStart && succStart < predStart);
     } else if (depType === 'SF') {
       fromX = predBar.pixelLeft;
       toX = succBar.pixelLeft + succBar.pixelWidth;
-      violated = !!(succDue && predStart && succDue < predStart);
+      violated = violatedEdges ? violatedEdges.has(`${predId}->${succId}`) : !!(succDue && predStart && succDue < predStart);
     } else {
       fromX = predBar.pixelLeft + predBar.pixelWidth;
       toX = succBar.pixelLeft + succBar.pixelWidth;
-      violated = !!(succDue && predDue && succDue < predDue);
+      violated = violatedEdges ? violatedEdges.has(`${predId}->${succId}`) : !!(succDue && predDue && succDue < predDue);
     }
 
     const isCritical = criticalEdges?.has(`${predId}->${succId}`) ?? false;

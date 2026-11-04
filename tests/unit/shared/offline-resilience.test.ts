@@ -8,7 +8,7 @@ import { editorCommandBus } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { draftStorageService } from '@/features/editor/domain/document/draft-storage';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
-import { LatexCompilerEngine } from '@/features/editor/subsystems/compiler';
+import { CompilePipeline } from '@/features/editor/subsystems/compiler';
 
 describe('Phase 8: Offline Durability & Network Disconnect Recovery (Overleaf Parity)', () => {
   beforeEach(() => {
@@ -135,7 +135,7 @@ describe('Phase 8: Offline Durability & Network Disconnect Recovery (Overleaf Pa
 
   describe('3. Compiler Coordinator Offline Graceful Queueing', () => {
     it('queues compilation and displays friendly offline notice without making network calls', async () => {
-      const compileEngineSpy = vi.spyOn(LatexCompilerEngine, 'compile');
+      const compileEngineSpy = vi.spyOn(CompilePipeline, 'compile');
       usePageStore.setState({
         projectId: 'proj-offline-compile',
         currentPage: { id: 'doc-main', title: 'main.tex', content: '\\documentclass{article}' } as any,
@@ -160,7 +160,7 @@ describe('Phase 8: Offline Durability & Network Disconnect Recovery (Overleaf Pa
       });
 
       // Emulate remote compile failing due to network drop
-      vi.spyOn(LatexCompilerEngine, 'compile').mockRejectedValue(
+      vi.spyOn(CompilePipeline, 'compile').mockRejectedValue(
         new Error('NetworkError when attempting to fetch resource.')
       );
 
@@ -177,7 +177,7 @@ describe('Phase 8: Offline Durability & Network Disconnect Recovery (Overleaf Pa
   describe('4. Reconnection & Auto-Recovery Workflow', () => {
     it('executes queued offline compilation automatically when connectivity is restored', async () => {
       const updateContentSpy = vi.spyOn(manuscriptService.docs, 'updateContent').mockResolvedValue({} as any);
-      vi.spyOn(LatexCompilerEngine, 'compile').mockResolvedValue({
+      vi.spyOn(CompilePipeline, 'compile').mockResolvedValue({
         success: true,
         pdfUrl: 'blob:mock-pdf',
         logs: '',

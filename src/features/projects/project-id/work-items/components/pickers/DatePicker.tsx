@@ -12,18 +12,18 @@ import { cn } from '@/shared/lib/utils';
 import { ItemHelpers } from '@/features/projects/project-id/work-items/utils/work-item.utils';
 
 import {
-  SingleDatePopover,
+  SingleDatePopover as SingleDatePicker,
   DateCalendarIcon,
-  type SingleDatePopoverProps,
+  type SingleDatePopoverProps as SingleDatePickerProps,
 } from '@/shared/components/ui/single-date-popover';
-import type { DatePopoverProps } from '@/features/projects/project-id/work-items/types/picker.types';
+import type { RangeDatePickerProps } from '@/features/projects/project-id/work-items/types/work-item.types';
 
-export type { DatePopoverProps, SingleDatePopoverProps };
-export { DateCalendarIcon, SingleDatePopover };
+export type { RangeDatePickerProps, SingleDatePickerProps };
+export { DateCalendarIcon, SingleDatePicker };
 
 // ── Range Date Popover ────────────────────────────────────────────────────────
 
-export function DatePopover({
+export function RangeDatePicker({
   open,
   onOpenChange,
   startDate,
@@ -33,7 +33,7 @@ export function DatePopover({
   label,
   children,
   isReadOnly = false,
-}: DatePopoverProps) {
+}: RangeDatePickerProps) {
   const [selectedRange, setSelectedRange] = useState<DateRange>({
     from: startDate ? new Date(startDate) : undefined,
     to: dueDate ? new Date(dueDate) : undefined,
@@ -274,4 +274,4 @@ export function DatePopover({
   );
 }
 
-export const DatePicker = SingleDatePopover;
+export const DatePicker = SingleDatePicker;

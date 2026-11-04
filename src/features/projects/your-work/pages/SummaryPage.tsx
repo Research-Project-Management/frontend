@@ -2,9 +2,9 @@
 
 import React from 'react';
 import { Skeleton } from '@/shared/components/ui/skeleton';
-import { useSummaryWork } from '../hooks/use-summary-work';
+import { useYourWorkContext } from '../context/your-work.context';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
-import { YourWorkEmptyState } from '../components/shared/YourWorkEmptyState';
+import { EmptyState } from '../components/shared/EmptyState';
 import dynamic from 'next/dynamic';
 import { OverviewCards } from '../components/summary/OverviewCards';
 import { WorkloadCards } from '../components/summary/WorkloadCards';
@@ -27,17 +27,21 @@ const StateBreakdown = dynamic(
 );
 
 export function SummaryPage() {
-  const { state, actions } = useSummaryWork();
   const {
-    workItems,
+    allWorkItems: workItems,
     activities,
-    categorizedWorkItems,
+    assigned,
+    created,
+    subscribed,
+    statusBreakdown,
+    priorityBreakdown,
     workItemProjectMap,
     isLoading,
     isError,
     error,
     isEmpty,
-  } = state;
+    openWorkItem,
+  } = useYourWorkContext();
 
   if (isLoading) {
     return (
@@ -82,7 +86,7 @@ export function SummaryPage() {
   if (isEmpty || (workItems.length === 0 && activities.length === 0)) {
     return (
       <div className="max-w-6xl mx-auto p-6">
-        <YourWorkEmptyState variant="summary" />
+        <EmptyState variant="summary" />
       </div>
     );
   }
@@ -91,25 +95,25 @@ export function SummaryPage() {
     <div className="space-y-6 max-w-6xl mx-auto p-6">
       {/* 1. Overview: 3 Cards */}
       <OverviewCards
-        createdCount={categorizedWorkItems.created.length}
-        assignedCount={categorizedWorkItems.assigned.length}
-        subscribedCount={categorizedWorkItems.subscribed.length}
+        createdCount={created.length}
+        assignedCount={assigned.length}
+        subscribedCount={subscribed.length}
       />
 
       {/* 2. Workload: 5 Status Boxes */}
       <WorkloadCards
-        statusBreakdown={categorizedWorkItems.statusBreakdown}
+        statusBreakdown={statusBreakdown}
       />
 
       {/* 3. Breakdown Graphs: Priority on Left, State on Right */}
       <div className="grid gap-4 md:grid-cols-2">
         <PriorityBreakdown
-          priorityBreakdown={categorizedWorkItems.priorityBreakdown}
-          totalAssigned={categorizedWorkItems.assigned.length}
+          priorityBreakdown={priorityBreakdown}
+          totalAssigned={assigned.length}
         />
         <StateBreakdown
-          statusBreakdown={categorizedWorkItems.statusBreakdown}
-          totalAssigned={categorizedWorkItems.assigned.length}
+          statusBreakdown={statusBreakdown}
+          totalAssigned={assigned.length}
         />
       </div>
 
@@ -118,7 +122,7 @@ export function SummaryPage() {
         title="Recent activity"
         maxItems={5}
         items={activities}
-        onWorkItemClick={actions.openWorkItem}
+        onWorkItemClick={openWorkItem}
         workItemProjectMap={workItemProjectMap}
       />
     </div>

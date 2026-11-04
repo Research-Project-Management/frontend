@@ -23,7 +23,7 @@ import {
 import { DraftsIcon } from '@/shared/components/icons';
 import { Button } from '@/shared/components/ui/button';
 import type { WorkItemDraft } from '../types/draft.types';
-import type { WorkItemPriority } from '@/features/projects/project-id/work-items/types/work-item.types';
+import type { Priority } from '@/features/projects/project-id/work-items/types/work-item.types';
 
 const EditorModal = dynamic(
   () => import('../components/modals/EditorModal').then((m) => m.EditorModal),
@@ -90,7 +90,7 @@ export default function DraftsPage() {
   const handleSaveDraft = async (formData: {
     title: string;
     description: string;
-    priority: WorkItemPriority;
+    priority: Priority;
     columnId?: string;
     projectId?: string;
     labels?: string[];

@@ -38,11 +38,11 @@ export function StateItemIcon({ col, className }: { col?: Partial<Column> | null
   );
 }
 
-import type { StatePopoverProps } from '@/features/projects/project-id/work-items/types/picker.types';
+import type { StatePickerProps } from '@/features/projects/project-id/work-items/types/work-item.types';
 
-export type { StatePopoverProps };
+export type { StatePickerProps };
 
-export const StatePopover: React.FC<StatePopoverProps> = ({
+export const StatePicker: React.FC<StatePickerProps> = ({
   open,
   onOpenChange,
   columnId: propColumnId,
@@ -140,4 +140,3 @@ export const StatePopover: React.FC<StatePopoverProps> = ({
   );
 };
 
-export const StatePicker = StatePopover;

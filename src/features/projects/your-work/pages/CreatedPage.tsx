@@ -2,24 +2,23 @@
 
 import React from 'react';
 import { useYourWorkContext } from '../context/your-work.context';
-import { YourWorkItemList } from '../components/shared/YourWorkItemList';
-import { YourWorkPageLayout } from '../components/shared/YourWorkPageLayout';
+import { ItemList } from '../components/shared/ItemList';
+import { PageLayout } from '../components/shared/PageLayout';
 
 export function CreatedPage() {
   const { created, workItemProjectMap, isLoading, isError, error, openWorkItem } =
     useYourWorkContext();
 
   return (
-    <YourWorkPageLayout isLoading={isLoading} isError={isError} error={error}>
-      <YourWorkItemList
+    <PageLayout isLoading={isLoading} isError={isError} error={error}>
+      <ItemList
         variant="created"
         workItems={created}
         onWorkItemClick={openWorkItem}
         workItemProjectMap={workItemProjectMap}
       />
-    </YourWorkPageLayout>
+    </PageLayout>
   );
 }
 
 export default CreatedPage;
-

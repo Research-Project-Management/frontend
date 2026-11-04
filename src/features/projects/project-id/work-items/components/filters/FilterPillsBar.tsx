@@ -41,8 +41,8 @@ import {
   PriorityLowIcon,
   PriorityNoneIcon,
 } from './FilterDropdown';
-import type { FilterPillsBarProps } from '@/features/projects/project-id/work-items/types/layout.types';
-import { DUE_DATE_LABELS, DUE_DATE_QUICK_OPTIONS } from '@/features/projects/project-id/work-items/utils/filter.utils';
+import type { FilterPillsBarProps } from '@/features/projects/project-id/work-items/types/work-item.types';
+import { DUE_DATE_LABELS, DUE_DATE_QUICK_OPTIONS } from '@/features/projects/project-id/work-items/utils/filter-engine.utils';
 
 export type { FilterPillsBarProps };
 

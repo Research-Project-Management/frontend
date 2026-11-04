@@ -8,7 +8,7 @@ import {
 import { libraryServices } from '@/features/library/sdk';
 import { isProjectScope } from '@/features/library/domain/identifiers';
 import type { Item, Collection } from '@/features/library/domain/types/core.types';
-import { LibraryEmptyState } from '@/features/library/ui/content/LibraryEmptyState';
+import { LibraryEmptyState } from '@/features/library/ui/content/ItemTableHeader';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { buildTree, type TreeNode } from '@/features/library/domain/collection-tree';
 import { cn } from '@/shared/lib/utils';

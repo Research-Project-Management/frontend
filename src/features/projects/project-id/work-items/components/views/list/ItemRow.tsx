@@ -26,18 +26,19 @@ import {
 } from '@/shared/components/ui/dropdown-menu';
 import { StatusIcon } from '@/shared/components/icons';
 import { cn } from '@/shared/lib/utils';
-import { ItemHelpers, resolveColumnId } from '@/features/projects/project-id/work-items/utils/work-item.utils';
-import { PriorityPopover } from '@/features/projects/project-id/work-items/components/pickers/PriorityPicker';
-import { MemberPopover, AvatarStack } from '@/features/projects/project-id/work-items/components/pickers/MemberPicker';
-import { SingleDatePopover } from '@/features/projects/project-id/work-items/components/pickers/DatePicker';
-import { LabelPopover } from '@/features/projects/project-id/work-items/components/pickers/LabelPicker';
-import type { Item, Priority, SubItem } from '@/features/projects/project-id/work-items/types/work-item.types';
-import type { ItemRowProps } from '@/features/projects/project-id/work-items/types/list-view.types';
 import {
+  ItemHelpers,
+  resolveColumnId,
   PRIORITY_THEME_CLASSES,
-  formatDueDate,
+  formatDateDisplay,
   EMPTY_ARRAY,
-} from '@/features/projects/project-id/work-items/utils/list.utils';
+} from '@/features/projects/project-id/work-items/utils/work-item.utils';
+import { PriorityPicker } from '@/features/projects/project-id/work-items/components/pickers/PriorityPicker';
+import { MemberPicker, AvatarStack } from '@/features/projects/project-id/work-items/components/pickers/MemberPicker';
+import { SingleDatePicker } from '@/features/projects/project-id/work-items/components/pickers/DatePicker';
+import { LabelPicker } from '@/features/projects/project-id/work-items/components/pickers/LabelPicker';
+import type { Item, Priority, SubItem } from '@/features/projects/project-id/work-items/types/work-item.types';
+import type { ItemRowProps } from '@/features/projects/project-id/work-items/types/work-item.types';
 
 export const ItemRow = memo(function ItemRow({
   item,
@@ -46,12 +47,12 @@ export const ItemRow = memo(function ItemRow({
   currentColumn,
   isSelected = false,
   onToggleSelect,
-  onEditCard,
-  onDuplicateCard,
-  onJoinCard,
-  onLeaveCard,
-  onDeleteCard,
-  onMoveCard,
+  onEditItem,
+  onDuplicateItem,
+  onJoinItem,
+  onLeaveItem,
+  onDeleteItem,
+  onMoveItem,
   onUpdateItem,
   displayOptions,
   members = EMPTY_ARRAY,
@@ -115,8 +116,8 @@ export const ItemRow = memo(function ItemRow({
     currentUserId && (assigneeId === currentUserId || resolvedAssigneeIds.includes(currentUserId))
   );
 
-  const formattedStart = formatDueDate(item.startDate);
-  const formattedDue = formatDueDate(item.dueDate);
+  const formattedStart = formatDateDisplay(item.startDate);
+  const formattedDue = formatDateDisplay(item.dueDate);
 
   // Overdue and Due Today Calculations for Colorization
   const isOverdue = useMemo(() => {
@@ -265,11 +266,11 @@ export const ItemRow = memo(function ItemRow({
         <span
           role="button"
           tabIndex={0}
-          onClick={() => onEditCard(item)}
+          onClick={() => onEditItem(item)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
-              onEditCard(item);
+              onEditItem(item);
             }
           }}
           className={cn(
@@ -321,7 +322,7 @@ export const ItemRow = memo(function ItemRow({
                       if (onUpdateItem) {
                         onUpdateItem(item.id, { columnId: cId });
                       } else {
-                        onMoveCard(item.id, cId);
+                        onMoveItem(item.id, cId);
                       }
                     }}
                     className={cn(
@@ -347,7 +348,7 @@ export const ItemRow = memo(function ItemRow({
         {/* 2. Priority Pill (Interactive Popover with Semantic Color) */}
         {showPriority && (
           <div className="shrink-0 hidden xs:flex">
-            <PriorityPopover
+            <PriorityPicker
               open={priorityOpen}
               onOpenChange={setPriorityOpen}
               priority={priorityKey as Priority}
@@ -417,7 +418,7 @@ export const ItemRow = memo(function ItemRow({
               </button>
             )}
 
-            <MemberPopover
+            <MemberPicker
               open={assigneeOpen}
               onOpenChange={setAssigneeOpen}
               assigneeId={assigneeId ?? null}
@@ -439,7 +440,7 @@ export const ItemRow = memo(function ItemRow({
         {/* 4. Start Date Pill */}
         {showStartDate && (
           <div className="shrink-0 hidden md:flex">
-            <SingleDatePopover
+            <SingleDatePicker
               open={startDateOpen}
               onOpenChange={setStartDateOpen}
               label={formattedStart || 'Start date'}
@@ -457,7 +458,7 @@ export const ItemRow = memo(function ItemRow({
         {/* 5. Due Date Pill (Overdue / Today / Future Semantic States) */}
         {showDueDate && (
           <div className="shrink-0 hidden sm:flex">
-            <SingleDatePopover
+            <SingleDatePicker
               open={dateOpen}
               onOpenChange={setDateOpen}
               label={formattedDue || 'Due date'}
@@ -500,7 +501,7 @@ export const ItemRow = memo(function ItemRow({
               );
             })}
 
-            <LabelPopover
+            <LabelPicker
               open={labelOpen}
               onOpenChange={setLabelOpen}
               labels={Array.isArray(item.labels) ? item.labels.map((l) => (typeof l === 'string' ? l : l.id || '')).filter(Boolean) : []}
@@ -520,7 +521,7 @@ export const ItemRow = memo(function ItemRow({
         {showAttach && attachLabel && (
           <button
             type="button"
-            onClick={() => onEditCard(item)}
+            onClick={() => onEditItem(item)}
             className="h-6 px-2.5 text-11 font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground hidden xl:flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
             title="Attachments"
           >
@@ -533,7 +534,7 @@ export const ItemRow = memo(function ItemRow({
         {showLinks && linksCount > 0 && (
           <button
             type="button"
-            onClick={() => onEditCard(item)}
+            onClick={() => onEditItem(item)}
             className="h-6 px-2 text-11 font-normal rounded-md border border-border bg-background hover:bg-muted text-foreground hidden xl:flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
             title={`${linksCount} links`}
           >
@@ -558,7 +559,7 @@ export const ItemRow = memo(function ItemRow({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44 p-1 text-xs z-100 rounded-md shadow-overlay">
               <DropdownMenuItem
-                onClick={() => onDuplicateCard(item)}
+                onClick={() => onDuplicateItem(item)}
                 className="cursor-pointer gap-2 py-1.5 rounded-md"
               >
                 <Copy className="size-3.5 text-foreground shrink-0" />
@@ -575,7 +576,7 @@ export const ItemRow = memo(function ItemRow({
 
               {currentUserId && (
                 <DropdownMenuItem
-                  onClick={() => (isCurrentUserAssignee ? onLeaveCard(item) : onJoinCard(item))}
+                  onClick={() => (isCurrentUserAssignee ? onLeaveItem(item) : onJoinItem(item))}
                   className="cursor-pointer gap-2 py-1.5 rounded-md"
                 >
                   {isCurrentUserAssignee ? (
@@ -595,7 +596,7 @@ export const ItemRow = memo(function ItemRow({
               <DropdownMenuSeparator />
 
               <DropdownMenuItem
-                onClick={() => onDeleteCard(item)}
+                onClick={() => onDeleteItem(item)}
                 className="cursor-pointer gap-2 py-1.5 rounded-md text-foreground focus:bg-muted"
               >
                 <Trash2 className="size-3.5 shrink-0" />

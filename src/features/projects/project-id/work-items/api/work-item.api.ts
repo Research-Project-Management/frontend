@@ -13,13 +13,13 @@ import type {
   BulkUpdateItemInput,
   CreateSubItemInput,
   ProjectItemsData,
-  WorkItemState,
+  State,
   StateGroup,
   ProjectMember,
   Relation,
   Label,
   ActivityLog,
-  ItemAttachment,
+  Attachment,
   Attachments,
   AttachPageItem,
   AttachPaperItem,
@@ -29,6 +29,8 @@ import type {
   AttachPaperInput,
   AttachFileInput,
   AttachLinkInput,
+  RelationType,
+  ServerCpmAnalysisDto,
 } from '@/features/projects/project-id/work-items/types/work-item.types';
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -64,7 +66,7 @@ export interface ReorderStateItem {
 export interface AddRelationInput {
   targetId?: string;
   targetWorkItemId?: string;
-  type: 'blocks' | 'blocked_by' | 'relates_to' | 'duplicate_of';
+  type: RelationType;
 }
 
 export interface RelationResponse {
@@ -96,12 +98,45 @@ export interface ProjectAnalyticsDistribution {
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
+const normalizeWorkItemEntity = (raw: Item): Item => {
+  if (!raw || typeof raw !== 'object') return raw;
+  const item = raw as Item & {
+    parentWorkItemId?: string | null;
+    parentId?: string | null;
+    childWorkItems?: Item[];
+    subItems?: Item[];
+    content?: string;
+    description?: string;
+  };
+  const parentId = item.parentId ?? item.parentWorkItemId ?? null;
+  const childWorkItems = item.childWorkItems || item.subItems || [];
+  const description = item.description ?? item.content ?? '';
+  const assigneeIds = Array.isArray(item.assigneeIds)
+    ? item.assigneeIds
+    : item.assigneeId
+      ? [item.assigneeId]
+      : [];
+  const assigneeId = item.assigneeId ?? assigneeIds[0] ?? null;
+  return {
+    ...item,
+    parentId,
+    parentWorkItemId: parentId,
+    childWorkItems,
+    subItems: childWorkItems,
+    description,
+    content: item.content ?? description,
+    assigneeId,
+    assigneeIds,
+  };
+};
+
 const unwrapItem = (res: unknown): { workItem: Item; item: Item } => {
   if (!res || typeof res !== 'object') {
     return { workItem: {} as Item, item: {} as Item };
   }
   const obj = res as Record<string, unknown>;
-  const item = (obj.workItem || obj.item || obj.data || obj) as Item;
+  const rawItem = (obj.workItem || obj.item || obj.data || obj) as Item;
+  const item = normalizeWorkItemEntity(rawItem);
   return { workItem: item, item };
 };
 
@@ -110,16 +145,35 @@ const unwrapItem = (res: unknown): { workItem: Item; item: Item } => {
 export const workItemApi = {
   // ── 1. Items (Core CRUD, Ranking, Hierarchy) ──────────────────────────────
   items: {
-    getProjectItems: async (projectId: string): Promise<ProjectItemsData> => {
-      const res = await apiGet<ProjectItemsData | Item[]>(`/api/projects/${projectId}/work-items`);
+    getProjectItems: async (
+      projectId: string,
+      params?: Record<string, string | string[] | number | boolean | undefined>,
+    ): Promise<ProjectItemsData> => {
+      const searchParams = new URLSearchParams();
+      if (params) {
+        for (const [key, val] of Object.entries(params)) {
+          if (val === undefined || val === null || val === '') continue;
+          if (Array.isArray(val)) {
+            if (val.length > 0) {
+              searchParams.set(key, val.join(','));
+            }
+          } else {
+            searchParams.set(key, String(val));
+          }
+        }
+      }
+      const queryStr = searchParams.toString() ? `?${searchParams.toString()}` : '';
+      const res = await apiGet<ProjectItemsData | Item[]>(`/api/projects/${projectId}/work-items${queryStr}`);
       if (Array.isArray(res)) {
+        const normalized = res.map(normalizeWorkItemEntity);
         return {
-          items: res,
-          workItems: res,
+          items: normalized,
+          workItems: normalized,
           columns: [],
         };
       }
-      const items = res?.items || res?.workItems || [];
+      const rawItems = res?.items || res?.workItems || [];
+      const items = rawItems.map(normalizeWorkItemEntity);
       return {
         ...res,
         items,
@@ -217,9 +271,9 @@ export const workItemApi = {
 
   // ── 2. Workflow States (Kanban Columns) ────────────────────────────────────
   states: {
-    getStates: async (projectId: string): Promise<WorkItemState[]> => {
-      const res = await apiGet<WorkItemState[] | { states?: WorkItemState[]; columns?: WorkItemState[] }>(`/api/projects/${projectId}/states`);
-      if (Array.isArray(res)) return res as WorkItemState[];
+    getStates: async (projectId: string): Promise<State[]> => {
+      const res = await apiGet<State[] | { states?: State[]; columns?: State[] }>(`/api/projects/${projectId}/states`);
+      if (Array.isArray(res)) return res as State[];
       return res?.states || res?.columns || [];
     },
 
@@ -227,32 +281,32 @@ export const workItemApi = {
       apiGet<Record<string, number>>(`/api/projects/${projectId}/states/counts`),
 
     createState: (projectId: string, data: CreateStateInput) =>
-      apiPost<{ state: WorkItemState; states: WorkItemState[]; columns: WorkItemState[] }>(
+      apiPost<{ state: State; states: State[]; columns: State[] }>(
         `/api/projects/${projectId}/states`,
         data,
       ),
 
     updateState: (projectId: string, stateId: string, data: UpdateStateInput) =>
-      apiPut<{ state: WorkItemState; states: WorkItemState[]; columns: WorkItemState[] }>(
+      apiPut<{ state: State; states: State[]; columns: State[] }>(
         `/api/projects/${projectId}/states/${stateId}`,
         data,
       ),
 
     reorderStates: (projectId: string, states: ReorderStateItem[]) =>
-      apiPut<{ states: WorkItemState[]; columns: WorkItemState[] }>(
+      apiPut<{ states: State[]; columns: State[] }>(
         `/api/projects/${projectId}/states/reorder`,
         { states },
       ),
 
     deleteState: (projectId: string, stateId: string, fallbackStateId?: string) =>
-      apiDelete<{ success: boolean; states: WorkItemState[]; columns: WorkItemState[]; migratedTo?: string }>(
+      apiDelete<{ success: boolean; states: State[]; columns: State[]; migratedTo?: string }>(
         `/api/projects/${projectId}/states/${stateId}${
           fallbackStateId ? `?targetStateId=${fallbackStateId}` : ''
         }`,
       ),
 
     resetStates: (projectId: string) =>
-      apiPost<{ states: WorkItemState[]; columns: WorkItemState[] }>(
+      apiPost<{ states: State[]; columns: State[] }>(
         `/api/projects/${projectId}/states/reset`,
         {},
       ),
@@ -260,8 +314,13 @@ export const workItemApi = {
 
   // ── 3. Assignments & Members ──────────────────────────────────────────────
   assignments: {
-    getEligibleAssignees: (projectId: string) =>
-      apiGet<ProjectMember[]>(`/api/projects/${projectId}/work-items/assignees`),
+    getEligibleAssignees: async (projectId: string) => {
+      const res = await apiGet<
+        ProjectMember[] | { members?: ProjectMember[]; data?: ProjectMember[] }
+      >(`/api/projects/${projectId}/work-items/assignees`);
+      if (Array.isArray(res)) return res;
+      return res?.members ?? res?.data ?? [];
+    },
 
     assign: (projectId: string, itemId: string, assigneeId: string | null) =>
       apiPost<{ message: string; workItem: Item; item?: Item }>(`/api/projects/${projectId}/work-items/${itemId}/assign`, {
@@ -322,6 +381,9 @@ export const workItemApi = {
 
     getViolations: (itemId: string) =>
       apiGet<unknown[]>(`/api/work-items/${itemId}/relations/violations`),
+
+    getProjectCpm: (projectId: string) =>
+      apiGet<ServerCpmAnalysisDto>(`/api/projects/${projectId}/work-items/cpm`),
   },
 
   // ── 5. Labels & Tags ──────────────────────────────────────────────────────
@@ -381,7 +443,7 @@ export const workItemApi = {
       apiGet<{
         workItemId?: string;
         total?: number;
-        attachments?: ItemAttachment[];
+        attachments?: Attachment[];
         center?: Attachments;
         pages?: AttachPageItem[];
         papers?: AttachPaperItem[];

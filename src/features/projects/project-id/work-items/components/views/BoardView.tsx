@@ -37,12 +37,13 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { StatusIcon } from "@/shared/components/icons";
 import { cn } from "@/shared/lib/utils";
 import { useKanban, useCard } from '@/features/projects/project-id/work-items/hooks/use-view';
-import { PriorityPopover } from '@/features/projects/project-id/work-items/components/pickers/PriorityPicker';
-import { DatePopover } from '@/features/projects/project-id/work-items/components/pickers/DatePicker';
-import { MemberPopover, AvatarStack } from '@/features/projects/project-id/work-items/components/pickers/MemberPicker';
-import { LabelPopover } from '@/features/projects/project-id/work-items/components/pickers/LabelPicker';
+import { PriorityPicker } from '@/features/projects/project-id/work-items/components/pickers/PriorityPicker';
+import { RangeDatePicker } from '@/features/projects/project-id/work-items/components/pickers/DatePicker';
+import { MemberPicker, AvatarStack } from '@/features/projects/project-id/work-items/components/pickers/MemberPicker';
+import { LabelPicker } from '@/features/projects/project-id/work-items/components/pickers/LabelPicker';
 import {
   ItemHelpers,
+  MemberHelpers,
   resolveColumnId,
   getItemBucketKey,
   resolveColumnColor,
@@ -53,8 +54,8 @@ import {
 import {
   type Item,
   type DisplayOptions,
-  type BaseWorkItemViewProps,
-  type WorkItemCardHandlers,
+  type BaseViewProps,
+  type ItemHandlers,
   type Priority,
   type ProjectMember,
 } from '@/features/projects/project-id/work-items/types/work-item.types';
@@ -63,12 +64,11 @@ import type {
   CardProps,
   ColumnProps,
   BoardViewProps,
-  BoardProps,
   SwimlaneDef,
-} from '@/features/projects/project-id/work-items/types/kanban-view.types';
-import { formatDateDisplay, EMPTY_ARRAY } from '@/features/projects/project-id/work-items/utils/board.utils';
+} from '@/features/projects/project-id/work-items/types/work-item.types';
+import { formatDateDisplay, EMPTY_ARRAY } from '@/features/projects/project-id/work-items/utils/work-item.utils';
 
-export type { ItemCardLabel, CardProps, ColumnProps, BoardViewProps, BoardProps, SwimlaneDef };
+export type { ItemCardLabel, CardProps, ColumnProps, BoardViewProps, SwimlaneDef };
 
 // ── Icons & Themes ──────────────────────────────────────────────────────────
 
@@ -148,7 +148,7 @@ export const CardUI = React.memo(function CardUI({
   onDelete,
   onJoin,
   onLeave,
-  onMoveCard,
+  onMoveItem,
   onUpdateItem,
   isReadOnly = false,
   isDragging = false,
@@ -344,7 +344,7 @@ export const CardUI = React.memo(function CardUI({
           {/* 1. Priority */}
           {displayOptions?.properties?.priority !== false && (
             <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-              <PriorityPopover
+              <PriorityPicker
                 open={priorityOpen}
                 onOpenChange={setPriorityOpen}
                 priority={priorityKey as Priority}
@@ -361,7 +361,7 @@ export const CardUI = React.memo(function CardUI({
           {/* 2. Date */}
           {displayOptions?.properties?.dueDate !== false && formattedDateRange && (
             <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-              <DatePopover
+              <RangeDatePicker
                 open={dateOpen}
                 onOpenChange={setDateOpen}
                 startDate={card.startDate || null}
@@ -461,7 +461,7 @@ export const CardUI = React.memo(function CardUI({
           {/* Quick Add Date if empty - visible on hover */}
           {displayOptions?.properties?.dueDate !== false && !formattedDateRange && !isReadOnly && (
             <div className="shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-              <DatePopover
+              <RangeDatePicker
                 open={dateOpen}
                 onOpenChange={setDateOpen}
                 startDate={card.startDate || null}
@@ -482,7 +482,7 @@ export const CardUI = React.memo(function CardUI({
           {/* Quick Add Label - only visible on hover if no labels exist yet */}
           {displayOptions?.properties?.labels !== false && labels.length === 0 && !isReadOnly && (
             <div className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-              <LabelPopover
+              <LabelPicker
                 open={labelOpen}
                 onOpenChange={setLabelOpen}
                 labels={ItemHelpers.uniqueLabels(card.labels)}
@@ -540,7 +540,7 @@ export const CardUI = React.memo(function CardUI({
               </button>
             ) : null}
 
-            <MemberPopover
+            <MemberPicker
               open={memberOpen}
               onOpenChange={setMemberOpen}
               members={members}
@@ -600,13 +600,13 @@ export const Column = React.memo(function Column({
   droppableId,
   laneId,
   subGroupBy,
-  onAddCard,
-  onEditCard,
-  onDeleteCard,
-  onDuplicateCard,
-  onJoinCard,
-  onLeaveCard,
-  onMoveCard,
+  onAddItem,
+  onEditItem,
+  onDeleteItem,
+  onDuplicateItem,
+  onJoinItem,
+  onLeaveItem,
+  onMoveItem,
   onUpdateItem,
   isReadOnly = false,
   selectedIds = EMPTY_ARRAY,
@@ -652,8 +652,8 @@ export const Column = React.memo(function Column({
 
   const handleQuickAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!quickTitle.trim() || !onAddCard) return;
-    onAddCard(
+    if (!quickTitle.trim() || !onAddItem) return;
+    onAddItem(
       columnId,
       quickTitle.trim(),
       laneId && subGroupBy && subGroupBy !== 'none'
@@ -708,7 +708,7 @@ export const Column = React.memo(function Column({
             <ExpandColumnIcon className="size-3.5 shrink-0" />
           </Button>
 
-          {!isReadOnly && onAddCard && (
+          {!isReadOnly && onAddItem && (
             <Button
               variant="ghost"
               size="icon"
@@ -765,7 +765,7 @@ export const Column = React.memo(function Column({
             <CollapseColumnIcon className="size-3.5 shrink-0" />
           </Button>
 
-          {!isReadOnly && onAddCard && (
+          {!isReadOnly && onAddItem && (
             <Button
               variant="ghost"
               size="icon"
@@ -860,12 +860,12 @@ export const Column = React.memo(function Column({
                       currentUserId={currentUserId}
                       currentUserAvatar={currentUserAvatar}
                       members={members}
-                      onEdit={onEditCard}
-                      onDuplicate={onDuplicateCard}
-                      onDelete={onDeleteCard}
-                      onJoin={onJoinCard}
-                      onLeave={onLeaveCard}
-                      onMoveCard={onMoveCard}
+                      onEdit={onEditItem}
+                      onDuplicate={onDuplicateItem}
+                      onDelete={onDeleteItem}
+                      onJoin={onJoinItem}
+                      onLeave={onLeaveItem}
+                      onMoveItem={onMoveItem}
                       onUpdateItem={onUpdateItem}
                       isReadOnly={isReadOnly}
                       isSelected={selectedIdsSet.has(card.id)}
@@ -887,12 +887,12 @@ export const Column = React.memo(function Column({
                 currentUserId={currentUserId}
                 currentUserAvatar={currentUserAvatar}
                 members={members}
-                onEdit={onEditCard}
-                onDuplicate={onDuplicateCard}
-                onDelete={onDeleteCard}
-                onJoin={onJoinCard}
-                onLeave={onLeaveCard}
-                onMoveCard={onMoveCard}
+                onEdit={onEditItem}
+                onDuplicate={onDuplicateItem}
+                onDelete={onDeleteItem}
+                onJoin={onJoinItem}
+                onLeave={onLeaveItem}
+                onMoveItem={onMoveItem}
                 onUpdateItem={onUpdateItem}
                 isReadOnly={isReadOnly}
                 isSelected={selectedIdsSet.has(card.id)}
@@ -902,7 +902,7 @@ export const Column = React.memo(function Column({
           )}
         </SortableContext>
 
-        {!isQuickAdding && !isReadOnly && onAddCard && (
+        {!isQuickAdding && !isReadOnly && onAddItem && (
           <button
             type="button"
             onClick={() => setIsQuickAdding(true)}
@@ -929,14 +929,14 @@ export const BoardView = React.memo(function BoardView({
   currentUserId,
   currentUserAvatar,
   members = EMPTY_ARRAY,
-  onAddCard,
-  onEditCard,
-  onDeleteCard,
-  onDuplicateCard,
-  onJoinCard,
-  onLeaveCard,
-  onMoveCard,
-  onReorderCard,
+  onAddItem,
+  onEditItem,
+  onDeleteItem,
+  onDuplicateItem,
+  onJoinItem,
+  onLeaveItem,
+  onMoveItem,
+  onReorderItem,
   onUpdateItem,
   isReadOnly = false,
   selectedIds = EMPTY_ARRAY,
@@ -974,9 +974,9 @@ export const BoardView = React.memo(function BoardView({
     } else if (subGroupBy === 'assignee') {
       const memberLanes: SwimlaneDef[] = (members || []).map((m: unknown, idx: number) => {
         const mem = m as { userId?: string; id?: string; name?: string; avatar?: string; user?: { id?: string; name?: string; avatar?: string } };
-        const userId = mem.userId || mem.user?.id || mem.id || `member-${idx}`;
-        const name = mem.user?.name || mem.name || 'Member';
-        const avatar = mem.user?.avatar || mem.avatar;
+        const userId = MemberHelpers.resolveUserId(mem, `member-${idx}`);
+        const name = MemberHelpers.resolveDisplayName(mem, 'Member');
+        const avatar = MemberHelpers.resolveAvatar(mem);
         return {
           id: userId,
           title: name,
@@ -1026,6 +1026,33 @@ export const BoardView = React.memo(function BoardView({
           icon: <Tag className="size-3.5 text-foreground shrink-0" />,
         },
       ];
+    } else if (subGroupBy === 'createdBy') {
+      const authorLanes: SwimlaneDef[] = (members || []).map((m: unknown, idx: number) => {
+        const mem = m as { userId?: string; id?: string; name?: string; avatar?: string; user?: { id?: string; name?: string; avatar?: string } };
+        const userId = MemberHelpers.resolveUserId(mem, `member-${idx}`);
+        const name = MemberHelpers.resolveDisplayName(mem, 'Member');
+        const avatar = MemberHelpers.resolveAvatar(mem);
+        return {
+          id: userId,
+          title: name,
+          color: GROUP_DEFAULT_COLORS.assignee,
+          icon: (
+            <Avatar className="size-4 shrink-0">
+              <AvatarImage src={avatar || undefined} />
+              <AvatarFallback className="text-9">{name.charAt(0).toUpperCase()}</AvatarFallback>
+            </Avatar>
+          ),
+        };
+      });
+      defs = [
+        ...authorLanes,
+        {
+          id: '__unknown_author__',
+          title: 'Unknown Author',
+          color: GROUP_DEFAULT_COLORS.unassigned,
+          icon: <User className="size-3.5 text-foreground shrink-0" />,
+        },
+      ];
     } else {
       return [];
     }
@@ -1039,20 +1066,11 @@ export const BoardView = React.memo(function BoardView({
       let completedCount = 0;
 
       items.forEach((t: Item) => {
-        let itemLaneId = 'none';
-        if (subGroupBy === 'priority') {
-          itemLaneId = (t.priority || 'none').toLowerCase();
-        } else if (subGroupBy === 'assignee') {
-          itemLaneId = ItemHelpers.resolveAssigneeId(t) || '__unassigned__';
-        } else if (subGroupBy === 'labels') {
-          const first = (t.labels && t.labels.length > 0) ? t.labels[0] : null;
-          const lbl = first as { name?: string; id?: string } | null;
-          itemLaneId = first ? (typeof first === 'string' ? first : lbl?.name || lbl?.id || '__no_label__') : '__no_label__';
-        }
+        const itemLaneId = getItemBucketKey(t, subGroupBy) || 'none';
 
         if (itemLaneId === lane.id) {
           count++;
-          if (t.completed || t.stateGroup === 'completed' || t.state?.group === 'completed' || t.columnId === 'done' || t.columnId === 'completed') {
+          if (ItemHelpers.isCompleted(t, columns)) {
             completedCount++;
           }
           const colId = getItemBucketKey(t, displayOptions?.groupBy) || t.columnId || columnIds[0] || 'backlog';
@@ -1086,8 +1104,8 @@ export const BoardView = React.memo(function BoardView({
     columns,
     itemsByColumnId,
     groupBy: displayOptions?.groupBy,
-    onMoveCard,
-    onReorderCard,
+    onMoveItem,
+    onReorderItem,
     isReadOnly,
     subGroupBy,
   });
@@ -1209,13 +1227,13 @@ export const BoardView = React.memo(function BoardView({
                             currentUserId={currentUserId}
                             currentUserAvatar={currentUserAvatar}
                             members={members}
-                            onAddCard={onAddCard}
-                            onEditCard={onEditCard}
-                            onDeleteCard={onDeleteCard}
-                            onDuplicateCard={onDuplicateCard}
-                            onJoinCard={onJoinCard}
-                            onLeaveCard={onLeaveCard}
-                            onMoveCard={onMoveCard}
+                            onAddItem={onAddItem}
+                            onEditItem={onEditItem}
+                            onDeleteItem={onDeleteItem}
+                            onDuplicateItem={onDuplicateItem}
+                            onJoinItem={onJoinItem}
+                            onLeaveItem={onLeaveItem}
+                            onMoveItem={onMoveItem}
                             onUpdateItem={onUpdateItem}
                             isReadOnly={isReadOnly}
                             selectedIds={selectedIds}
@@ -1246,13 +1264,13 @@ export const BoardView = React.memo(function BoardView({
                   currentUserId={currentUserId}
                   currentUserAvatar={currentUserAvatar}
                   members={members}
-                  onAddCard={onAddCard}
-                  onEditCard={onEditCard}
-                  onDeleteCard={onDeleteCard}
-                  onDuplicateCard={onDuplicateCard}
-                  onJoinCard={onJoinCard}
-                  onLeaveCard={onLeaveCard}
-                  onMoveCard={onMoveCard}
+                  onAddItem={onAddItem}
+                  onEditItem={onEditItem}
+                  onDeleteItem={onDeleteItem}
+                  onDuplicateItem={onDuplicateItem}
+                  onJoinItem={onJoinItem}
+                  onLeaveItem={onLeaveItem}
+                  onMoveItem={onMoveItem}
                   onUpdateItem={onUpdateItem}
                   isReadOnly={isReadOnly}
                   selectedIds={selectedIds}
@@ -1290,5 +1308,4 @@ export const BoardView = React.memo(function BoardView({
   );
 });
 
-export const Board = BoardView;
 export default BoardView;

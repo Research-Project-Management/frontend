@@ -29,21 +29,18 @@ import {
   useCreateSubItem,
   useUpdateItem,
   useDeleteItem,
-} from '@/features/projects/project-id/work-items/hooks/use-work-item-crud';
+} from '@/features/projects/project-id/work-items/hooks/use-crud';
 
 // Subcomponents, types, and constants
-export * from '@/features/projects/project-id/work-items/types/list-view.types';
-export * from './list/GroupCheckbox';
+export * from '@/features/projects/project-id/work-items/types/work-item.types';
 export * from './list/ChildItemRow';
 export * from './list/ItemRow';
-export * from './list/SortableItemRow';
-export * from './list/ListViewGroup';
+export * from './list/GroupRow';
 
 import { ItemRow } from './list/ItemRow';
-import { SortableItemRow } from './list/SortableItemRow';
-import { ListViewGroup } from './list/ListViewGroup';
-import type { ListViewProps } from '@/features/projects/project-id/work-items/types/list-view.types';
-import { EMPTY_ARRAY } from '@/features/projects/project-id/work-items/utils/list.utils';
+import { SortableItemRow, GroupRow } from './list/GroupRow';
+import type { ListViewProps } from '@/features/projects/project-id/work-items/types/work-item.types';
+import { EMPTY_ARRAY } from '@/features/projects/project-id/work-items/utils/work-item.utils';
 
 export const ListView = React.memo(function ListView({
   projectId,
@@ -51,14 +48,14 @@ export const ListView = React.memo(function ListView({
   columns,
   projectStates,
   currentUserId,
-  onAddCard,
-  onEditCard,
-  onDeleteCard,
-  onDuplicateCard,
-  onJoinCard,
-  onLeaveCard,
-  onMoveCard,
-  onReorderCard,
+  onAddItem,
+  onEditItem,
+  onDeleteItem,
+  onDuplicateItem,
+  onJoinItem,
+  onLeaveItem,
+  onMoveItem,
+  onReorderItem,
   onUpdateItem,
   isReadOnly = false,
   selectedIds = EMPTY_ARRAY,
@@ -237,26 +234,11 @@ export const ListView = React.memo(function ListView({
       return;
     }
     setFlatQuickTitle('');
-    onAddCard(defaultUnstartedColumnId, trimmed);
+    onAddItem(defaultUnstartedColumnId, trimmed);
   };
 
   const handleUpdateChildItem = useCallback(
-    async (parentItem: Item, childItem: SubItem, subIndex: number, data: Partial<SubItem>) => {
-      const childList: SubItem[] = (parentItem.subItems && parentItem.subItems.length > 0)
-        ? [...parentItem.subItems]
-        : [];
-
-      const updated = childList.map((s, idx) => {
-        if ((s.id && s.id === childItem.id) || idx === subIndex) {
-          return { ...s, ...data };
-        }
-        return s;
-      });
-
-      onUpdateItem?.(parentItem.id, {
-        subItems: updated,
-      });
-
+    async (_parentItem: Item, childItem: SubItem, _subIndex: number, data: Partial<SubItem>) => {
       if (childItem.id && !childItem.id.startsWith('sub_')) {
         if (onUpdateItem) {
           onUpdateItem(childItem.id, {
@@ -274,7 +256,7 @@ export const ListView = React.memo(function ListView({
               ...(data.completed !== undefined && { completed: data.completed }),
             });
           } catch {
-            // Handled
+            // Handled by mutation hook
           }
         }
       }
@@ -283,31 +265,24 @@ export const ListView = React.memo(function ListView({
   );
 
   const handleDeleteChildItem = useCallback(
-    async (parentItem: Item, childItemId: string, subIndex: number) => {
-      const childList: SubItem[] = (parentItem.subItems && parentItem.subItems.length > 0)
-        ? [...parentItem.subItems]
-        : [];
-
-      const updated = childList.filter((s, idx) => (s.id ? s.id !== childItemId : idx !== subIndex));
-
-      onUpdateItem?.(parentItem.id, {
-        subItems: updated,
-      });
+    async (parentItem: Item, childItemId: string, _subIndex: number) => {
+      const childList: SubItem[] =
+        parentItem.subItems && parentItem.subItems.length > 0 ? parentItem.subItems : [];
 
       if (childItemId && !childItemId.startsWith('sub_')) {
-        if (onDeleteCard) {
+        if (onDeleteItem) {
           const targetChild = childList.find((s) => s.id === childItemId);
-          onDeleteCard((targetChild || { id: childItemId }) as unknown as Item);
+          onDeleteItem((targetChild || { id: childItemId }) as unknown as Item);
         } else {
           try {
             await deleteItemMutation.mutateAsync({ id: childItemId, projectId });
           } catch {
-            // Handled
+            // Handled by mutation hook
           }
         }
       }
     },
-    [onUpdateItem, onDeleteCard, deleteItemMutation, projectId]
+    [onDeleteItem, deleteItemMutation, projectId]
   );
 
   const handleAddChildItem = useCallback(
@@ -322,26 +297,10 @@ export const ListView = React.memo(function ListView({
         });
         setExpandedChildParentIds((prev) => new Set(prev).add(parentItemId));
       } catch {
-        for (const group of groups) {
-          const parent = group.items.find((t: Item) => t.id === parentItemId);
-          if (parent) {
-            const currentSubs = parent.subItems || [];
-            const newSub: SubItem = {
-              id: `sub_${Date.now()}`,
-              title: title.trim(),
-              columnId: defaultUnstartedColumnId,
-              completed: false,
-              rank: currentSubs.length,
-            };
-            onUpdateItem?.(parentItemId, {
-              subItems: [...currentSubs, newSub],
-            });
-            break;
-          }
-        }
+        // Error toast handled by createSubItemMutation
       }
     },
-    [groups, onUpdateItem, defaultUnstartedColumnId, createSubItemMutation, projectId]
+    [defaultUnstartedColumnId, createSubItemMutation, projectId]
   );
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -364,7 +323,7 @@ export const ListView = React.memo(function ListView({
 
       const draggedItem = flatItems[sourceIndex];
       const targetColId = draggedItem?.columnId || defaultUnstartedColumnId;
-      onReorderCard?.(activeId, targetColId, targetIndex);
+      onReorderItem?.(activeId, targetColId, targetIndex);
       return;
     }
 
@@ -407,15 +366,15 @@ export const ListView = React.memo(function ListView({
       const sourceIndex = group.items.findIndex((item: Item) => item.id === activeId);
       if (sourceIndex === -1 || sourceIndex === targetIndex) return;
 
-      onReorderCard?.(activeId, targetGroupKey, targetIndex);
+      onReorderItem?.(activeId, targetGroupKey, targetIndex);
       return;
     }
 
     // Cross group move:
-    if (onReorderCard) {
-      onReorderCard(activeId, targetGroupKey, targetIndex);
+    if (onReorderItem) {
+      onReorderItem(activeId, targetGroupKey, targetIndex);
     } else {
-      onMoveCard(activeId, targetGroupKey);
+      onMoveItem(activeId, targetGroupKey);
     }
   };
 
@@ -470,12 +429,12 @@ export const ListView = React.memo(function ListView({
                           projectStates={projectStates}
                           isSelected={selectedIds.includes(item.id)}
                           onToggleSelect={onToggleSelect}
-                          onEditCard={onEditCard}
-                          onDuplicateCard={onDuplicateCard}
-                          onJoinCard={onJoinCard}
-                          onLeaveCard={onLeaveCard}
-                          onMoveCard={onMoveCard}
-                          onDeleteCard={onDeleteCard}
+                          onEditItem={onEditItem}
+                          onDuplicateItem={onDuplicateItem}
+                          onJoinItem={onJoinItem}
+                          onLeaveItem={onLeaveItem}
+                          onMoveItem={onMoveItem}
+                          onDeleteItem={onDeleteItem}
                           onUpdateItem={onUpdateItem}
                           displayOptions={displayOptions}
                           members={members}
@@ -500,12 +459,12 @@ export const ListView = React.memo(function ListView({
                     projectStates={projectStates}
                     isSelected={selectedIds.includes(item.id)}
                     onToggleSelect={onToggleSelect}
-                    onEditCard={onEditCard}
-                    onDuplicateCard={onDuplicateCard}
-                    onJoinCard={onJoinCard}
-                    onLeaveCard={onLeaveCard}
-                    onMoveCard={onMoveCard}
-                    onDeleteCard={onDeleteCard}
+                    onEditItem={onEditItem}
+                    onDuplicateItem={onDuplicateItem}
+                    onJoinItem={onJoinItem}
+                    onLeaveItem={onLeaveItem}
+                    onMoveItem={onMoveItem}
+                    onDeleteItem={onDeleteItem}
                     onUpdateItem={onUpdateItem}
                     displayOptions={displayOptions}
                     members={members}
@@ -575,7 +534,7 @@ export const ListView = React.memo(function ListView({
           </div>
         ) : (
           groups.map((group) => (
-            <ListViewGroup
+            <GroupRow
               key={group.key}
               group={group}
               columns={columns}
@@ -584,13 +543,13 @@ export const ListView = React.memo(function ListView({
               onToggleExpand={toggleExpand}
               quickAddKey={quickAddKey}
               setQuickAddKey={setQuickAddKey}
-              onAddCard={onAddCard}
-              onEditCard={onEditCard}
-              onDuplicateCard={onDuplicateCard}
-              onJoinCard={onJoinCard}
-              onLeaveCard={onLeaveCard}
-              onDeleteCard={onDeleteCard}
-              onMoveCard={onMoveCard}
+              onAddItem={onAddItem}
+              onEditItem={onEditItem}
+              onDuplicateItem={onDuplicateItem}
+              onJoinItem={onJoinItem}
+              onLeaveItem={onLeaveItem}
+              onDeleteItem={onDeleteItem}
+              onMoveItem={onMoveItem}
               onUpdateItem={onUpdateItem}
               displayOptions={displayOptions}
               members={members}
@@ -620,12 +579,12 @@ export const ListView = React.memo(function ListView({
                 columns={columns}
                 projectStates={projectStates}
                 currentColumn={columns.find((c) => resolveColumnId(c) === activeItem.columnId)}
-                onEditCard={() => {}}
-                onDuplicateCard={() => {}}
-                onJoinCard={() => {}}
-                onLeaveCard={() => {}}
-                onDeleteCard={() => {}}
-                onMoveCard={() => {}}
+                onEditItem={() => {}}
+                onDuplicateItem={() => {}}
+                onJoinItem={() => {}}
+                onLeaveItem={() => {}}
+                onDeleteItem={() => {}}
+                onMoveItem={() => {}}
                 displayOptions={displayOptions}
                 members={members}
                 isDragging={true}

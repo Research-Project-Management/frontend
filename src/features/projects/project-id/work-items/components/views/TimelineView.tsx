@@ -20,24 +20,25 @@ import {
   NonePriorityBoxIcon,
 } from '@/shared/components/icons';
 import { cn } from "@/shared/lib/utils";
-import { useAddRelationMutation } from '@/features/projects/project-id/work-items/hooks/use-relation';
-import { ItemHelpers, resolveColumnId, resolveColumnColor, buildWorkItemTree } from '@/features/projects/project-id/work-items/utils/work-item.utils';
-import { TableHorizontalScrollbar } from './TableView';
+import { useAddRelationMutation, useProjectCpmQuery } from '@/features/projects/project-id/work-items/hooks/use-relation';
+import { ItemHelpers, resolveColumnId, resolveColumnColor, buildItemTree } from '@/features/projects/project-id/work-items/utils/work-item.utils';
+import { HorizontalScrollbar, renderPriorityIcon } from './TableView';
 import {
   analyzeCriticalPath,
+  hydrateServerCpmResult,
   getPixelForTimeBinarySearch,
-} from '@/features/projects/project-id/work-items/utils/cpm-graph';
+} from '@/features/projects/project-id/work-items/utils/cpm-graph.utils';
 import type {
   Item,
   Column,
-  BaseWorkItemViewProps,
-  WorkItemCardHandlers,
+  BaseViewProps,
+  ItemHandlers,
   Priority,
   ProjectMember,
 } from '@/features/projects/project-id/work-items/types/work-item.types';
 
 // ── Types & Utilities ───────────────────────────────────────────────────────
-export * from '@/features/projects/project-id/work-items/types/timeline-view.types';
+export * from '@/features/projects/project-id/work-items/types/work-item.types';
 export * from '@/features/projects/project-id/work-items/utils/timeline.utils';
 
 import type {
@@ -48,7 +49,7 @@ import type {
   DepLineType,
   DependencyLine,
   TimelineViewProps,
-} from '@/features/projects/project-id/work-items/types/timeline-view.types';
+} from '@/features/projects/project-id/work-items/types/work-item.types';
 
 import {
   EMPTY_ARRAY,
@@ -74,7 +75,6 @@ import {
   mapItemToBar,
   computeDependencyLines,
 } from '@/features/projects/project-id/work-items/utils/timeline.utils';
-import { renderPriorityIcon } from '@/features/projects/project-id/work-items/utils/table.utils';
 
 // ============================================================================
 // TOP CONTROLS (ZOOM, TODAY, FULLSCREEN)
@@ -163,8 +163,8 @@ interface TimelineBarProps {
   zoom: TimelineZoom;
   stateColumn?: Column;
   rowY: number;
-  onEditCard: (item: Item) => void;
-  onUpdateCard?: (item: { id: string } & Partial<Item>) => void;
+  onEditItem: (item: Item) => void;
+  onUpdateItem?: (item: { id: string } & Partial<Item>) => void;
   onStartConnect?: (itemId: string, side: 'start' | 'end', startX: number, startY: number) => void;
   isConnecting?: boolean;
   isConnectTarget?: boolean;
@@ -178,8 +178,8 @@ const TimelineBar = memo(function TimelineBar({
   zoom,
   stateColumn,
   rowY,
-  onEditCard,
-  onUpdateCard,
+  onEditItem,
+  onUpdateItem,
   onStartConnect,
   isConnecting = false,
   isConnectTarget = false,
@@ -195,7 +195,7 @@ const TimelineBar = memo(function TimelineBar({
     event: React.PointerEvent,
     mode: 'move' | 'start' | 'end'
   ) => {
-    if (isReadOnly || !onUpdateCard) return;
+    if (isReadOnly || !onUpdateItem) return;
     event.stopPropagation();
     event.preventDefault();
 
@@ -245,7 +245,7 @@ const TimelineBar = memo(function TimelineBar({
         if (newDue < newStart) newDue = new Date(newStart.getTime());
       }
 
-      onUpdateCard({
+      onUpdateItem({
         id: item.id,
         startDate: formatToDateStr(newStart),
         dueDate: formatToDateStr(newDue),
@@ -299,7 +299,7 @@ const TimelineBar = memo(function TimelineBar({
       onKeyDown={(e) => {
         if (!dragging && (e.key === 'Enter' || e.key === ' ')) {
           e.preventDefault();
-          onEditCard(item);
+          onEditItem(item);
         }
       }}
       style={{
@@ -321,7 +321,7 @@ const TimelineBar = memo(function TimelineBar({
       onClick={(event) => {
         if (!dragging) {
           event.stopPropagation();
-          onEditCard(item);
+          onEditItem(item);
         }
       }}
       title={barTooltip}
@@ -347,7 +347,7 @@ const TimelineBar = memo(function TimelineBar({
       )}
 
       {/* Left resize handle */}
-      {!isReadOnly && onUpdateCard && visualWidth >= 40 && (
+      {!isReadOnly && onUpdateItem && visualWidth >= 40 && (
         <div
           onPointerDown={(event) => handlePointerDown(event, 'start')}
           className={`absolute left-0 top-0 bottom-0 w-2.5 cursor-ew-resize rounded-l-md hover:bg-black/20 flex items-center justify-center transition-opacity ${
@@ -389,7 +389,7 @@ const TimelineBar = memo(function TimelineBar({
       </div>
 
       {/* Right resize handle */}
-      {!isReadOnly && onUpdateCard && (
+      {!isReadOnly && onUpdateItem && (
         <div
           onPointerDown={(event) => handlePointerDown(event, 'end')}
           className={`absolute right-0 top-0 bottom-0 w-2.5 cursor-ew-resize rounded-r-md hover:bg-black/20 flex items-center justify-center transition-opacity ${
@@ -520,11 +520,11 @@ const DependencyOverlay = memo(function DependencyOverlay({
 // ── Timeline Pinned Bottom Add Bar (Plane.so Parity) ──────────────────────
 export const TimelineBottomAddBar = memo(function TimelineBottomAddBar({
   defaultColId,
-  onAddCard,
+  onAddItem,
   sidebarWidth,
 }: {
   defaultColId: string;
-  onAddCard: (columnId: string, title?: string, dueDate?: string) => void;
+  onAddItem: (columnId: string, title?: string, dueDate?: string) => void;
   sidebarWidth?: number;
 }) {
   const [isAdding, setIsAdding] = useState(false);
@@ -544,7 +544,7 @@ export const TimelineBottomAddBar = memo(function TimelineBottomAddBar({
       setIsAdding(false);
       return;
     }
-    onAddCard(defaultColId, trimmed);
+    onAddItem(defaultColId, trimmed);
     setTitle('');
     setTimeout(() => {
       inputRef.current?.focus();
@@ -645,17 +645,21 @@ export const TimelineView = memo(function TimelineView({
   projectId = '',
   members = EMPTY_ARRAY,
   displayOptions,
-  onAddCard,
-  onEditCard,
-  onUpdateCard,
+  onAddItem,
+  onEditItem,
+  onUpdateItem,
   isReadOnly = false,
 }: TimelineViewProps) {
   // Zoom state with localStorage persistence (SSR-safe to prevent hydration mismatch)
   const [zoom, setZoom] = useState<TimelineZoom>('week');
 
-  // Critical Path Method (CPM) calculation & toggle
+  // Critical Path Method (CPM) calculation & toggle (Server SSOT with instant local fallback)
   const [showCriticalPath, setShowCriticalPath] = useState(false);
-  const cpmAnalysis = useMemo(() => analyzeCriticalPath(items), [items]);
+  const { data: serverCpm } = useProjectCpmQuery(projectId, Boolean(projectId));
+  const cpmAnalysis = useMemo(
+    () => (serverCpm ? hydrateServerCpmResult(serverCpm, items) : analyzeCriticalPath(items)),
+    [serverCpm, items]
+  );
 
   // Resizable sidebar width with localStorage persistence (SSR-safe)
   const [sidebarWidth, setSidebarWidth] = useState<number>(DEFAULT_SIDEBAR_WIDTH);
@@ -803,7 +807,7 @@ export const TimelineView = memo(function TimelineView({
 
   const buildTreeRows = useCallback(
     (sortedList: Item[]) =>
-      buildWorkItemTree(sortedList, { showChildWorkItems, collapsedParentIds }),
+      buildItemTree(sortedList, { showChildWorkItems, collapsedParentIds }),
     [showChildWorkItems, collapsedParentIds]
   );
 
@@ -853,17 +857,18 @@ export const TimelineView = memo(function TimelineView({
         items,
         barDataMap,
         rowYMap,
-        showCriticalPath ? cpmAnalysis.criticalEdges : undefined
+        showCriticalPath ? cpmAnalysis.criticalEdges : undefined,
+        cpmAnalysis.violatedEdges
       ),
-    [items, barDataMap, rowYMap, showCriticalPath, cpmAnalysis.criticalEdges]
+    [items, barDataMap, rowYMap, showCriticalPath, cpmAnalysis.criticalEdges, cpmAnalysis.violatedEdges]
   );
 
   // Quick schedule when clicking empty row cell
   const handleEmptyCellClick = (item: Item, col: TimelineColumn) => {
-    if (isReadOnly || !onUpdateCard) return;
+    if (isReadOnly || !onUpdateItem) return;
     const startStr = formatToDateStr(col.startDate);
     const dueStr = formatToDateStr(col.endDate);
-    onUpdateCard({
+    onUpdateItem({
       id: item.id,
       startDate: startStr,
       dueDate: dueStr,
@@ -952,20 +957,6 @@ export const TimelineView = memo(function TimelineView({
 
           createDependencyWithCycleCheck(fromId, toId, items, {
             type: 'blocks',
-            onSuccess: () => {
-              if (onUpdateCard) {
-                const src = items.find((t) => t.id === fromId);
-                if (src) {
-                  onUpdateCard({
-                    id: fromId,
-                    relations: [
-                      ...(src.relations || []),
-                      { id: `rel-${Date.now()}`, type: 'blocks', targetId: toId, targetWorkItemId: toId },
-                    ],
-                  });
-                }
-              }
-            },
           });
         }
         return null;
@@ -1285,7 +1276,7 @@ export const TimelineView = memo(function TimelineView({
                         'sticky left-0 z-20 flex items-center justify-between px-3 h-full shrink-0 bg-background group-hover/row:bg-muted transition-colors cursor-pointer border-r border-border',
                         isSubItem && 'pl-7'
                       )}
-                      onClick={() => onEditCard(item)}
+                      onClick={() => onEditItem(item)}
                     >
                       <div className="flex items-center gap-1.5 min-w-0 flex-1 pr-2">
                         {/* Subitem connector indicator */}
@@ -1346,8 +1337,8 @@ export const TimelineView = memo(function TimelineView({
                           zoom={zoom}
                           stateColumn={stateCol}
                           rowY={y + ROW_HEIGHT / 2}
-                          onEditCard={onEditCard}
-                          onUpdateCard={onUpdateCard}
+                          onEditItem={onEditItem}
+                          onUpdateItem={onUpdateItem}
                           onStartConnect={handleStartConnect}
                           isConnecting={activeDrag?.sourceItemId === item.id}
                           isConnectTarget={isConnectTarget}
@@ -1379,13 +1370,13 @@ export const TimelineView = memo(function TimelineView({
       </div>
 
       {/* Sleek Horizontal Scrollbar - placed ABOVE TimelineBottomAddBar */}
-      <TableHorizontalScrollbar scrollRef={mainScrollRef} />
+      <HorizontalScrollbar scrollRef={mainScrollRef} />
 
       {/* Pinned Bottom "+ New work item" Row (Plane.so Parity) */}
       {!isReadOnly && (
         <TimelineBottomAddBar
           defaultColId={defaultColId}
-          onAddCard={onAddCard}
+          onAddItem={onAddItem}
           sidebarWidth={sidebarWidth}
         />
       )}

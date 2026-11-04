@@ -3,8 +3,8 @@
 import React from 'react';
 import { useYourWorkContext } from '../context/your-work.context';
 import { ActivityFeedList } from '../components/shared/ActivityFeedList';
-import { YourWorkPageLayout } from '../components/shared/YourWorkPageLayout';
-import { YourWorkEmptyState } from '../components/shared/YourWorkEmptyState';
+import { PageLayout } from '../components/shared/PageLayout';
+import { EmptyState } from '../components/shared/EmptyState';
 
 export function ActivityPage() {
   const {
@@ -18,9 +18,9 @@ export function ActivityPage() {
   } = useYourWorkContext();
 
   return (
-    <YourWorkPageLayout isLoading={isLoading} isError={isError} error={error}>
+    <PageLayout isLoading={isLoading} isError={isError} error={error}>
       {activities.length === 0 ? (
-        <YourWorkEmptyState variant="activity" />
+        <EmptyState variant="activity" />
       ) : (
         <ActivityFeedList
           title="Recent activity"
@@ -32,9 +32,8 @@ export function ActivityPage() {
           emptyPadding="py-12"
         />
       )}
-    </YourWorkPageLayout>
+    </PageLayout>
   );
 }
 
 export default ActivityPage;
-

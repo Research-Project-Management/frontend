@@ -27,7 +27,7 @@ import {
   LowPriorityBoxIcon,
   NonePriorityBoxIcon,
 } from '@/shared/components/icons';
-import type { WorkItemPriority } from '@/features/projects/project-id/work-items/types/work-item.types';
+import type { Priority } from '@/features/projects/project-id/work-items/types/work-item.types';
 import type { WorkItemDraft } from '../../types/draft.types';
 
 export interface ListItemProps {
@@ -38,7 +38,7 @@ export interface ListItemProps {
   onDelete: (draft: WorkItemDraft) => void;
 }
 
-function PriorityPillIcon({ priority }: { priority?: WorkItemPriority | string }) {
+function PriorityPillIcon({ priority }: { priority?: Priority | string }) {
   switch (priority) {
     case 'urgent':
       return <UrgentPriorityBoxIcon className="size-3.5 shrink-0" />;

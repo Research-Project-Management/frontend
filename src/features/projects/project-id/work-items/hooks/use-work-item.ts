@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import type {
   Item,
   Project,
@@ -10,20 +10,18 @@ import type {
 } from '@/features/projects/project-id/work-items/types/work-item.types';
 import { DEFAULT_STATES } from '@/features/projects/project-id/work-items/types/work-item.types';
 import { normalizeStates, resolveItemId } from '@/features/projects/project-id/work-items/utils/work-item.utils';
-import { useLabelsQuery } from './use-label';
 
-// Re-export all sub-hooks and schemas for 100% backward compatibility
-export * from './use-work-items-query';
-export * from './use-work-item-crud';
-export * from './use-work-item-form';
-export * from './use-work-item-selection';
-export * from './use-work-item-toast';
+// Re-export all sub-hooks and schemas
+export * from './use-query';
+export * from './use-crud';
+export * from './use-form';
 
 import {
   useProjectItems,
   useProjectDetails,
   useProjectStates,
-} from './use-work-items-query';
+  useLabelsQuery,
+} from './use-query';
 import {
   useCreateItem,
   useUpdateItem,
@@ -32,20 +30,74 @@ import {
   useBulkUpdate,
   useReorderItem,
   useCreateSubItem,
-} from './use-work-item-crud';
+} from './use-crud';
 
 // ── Composite Project Work-Item Hook (useProject) ───────────────────────────
 
-import type { UseProjectOptions } from '@/features/projects/project-id/work-items/types/hook.types';
+import type {
+  UseProjectOptions,
+  UseItemSelectionOptions,
+} from '@/features/projects/project-id/work-items/types/work-item.types';
 
-export type { UseProjectOptions };
+export type { UseProjectOptions, UseItemSelectionOptions };
+
+export function useItemSelection(options: UseItemSelectionOptions = {}) {
+  const { initialSelectedIds = [], onSelectionChange } = options;
+  const [selectedIds, setSelectedIds] = useState<string[]>(initialSelectedIds);
+
+  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+
+  const toggleSelect = useCallback(
+    (id: string) => {
+      setSelectedIds((prev) => {
+        const next = prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id];
+        onSelectionChange?.(next);
+        return next;
+      });
+    },
+    [onSelectionChange],
+  );
+
+  const selectAll = useCallback(
+    (allIds: string[]) => {
+      setSelectedIds((prev) => {
+        const isAllSelected = allIds.length > 0 && prev.length === allIds.length;
+        const next = isAllSelected ? [] : allIds;
+        onSelectionChange?.(next);
+        return next;
+      });
+    },
+    [onSelectionChange],
+  );
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds([]);
+    onSelectionChange?.([]);
+  }, [onSelectionChange]);
+
+  const isSelected = useCallback(
+    (id: string) => selectedSet.has(id),
+    [selectedSet],
+  );
+
+  return {
+    selectedIds,
+    selectedSet,
+    toggleSelect,
+    selectAll,
+    clearSelection,
+    isSelected,
+    selectedCount: selectedIds.length,
+    hasSelection: selectedIds.length > 0,
+  };
+}
 
 /**
  * Lightweight Quick-Create Context Hook.
  * Only fetches project details + states and mounts a single `useCreateItem` mutation,
  * avoiding the 4 queries + 7 mutations of the full `useProject` workspace hook.
  */
-export function useQuickCreateWorkItemContext(projectId: string) {
+export function useQuickCreate(projectId: string) {
   const detailsQ = useProjectDetails(projectId);
   const statesQ = useProjectStates(projectId);
   const createMut = useCreateItem();
@@ -278,7 +330,7 @@ export function useProject({ projectId }: UseProjectOptions) {
       duplicateWorkItem: duplicateAction,
       reorderWorkItem: reorderAction,
       createSubWorkItem: createSubItemAction,
-      assignWorkItemsToDate: assignItemsToDateAction,
+      assignItemsToDate: assignItemsToDateAction,
     }),
     [
       createAction,

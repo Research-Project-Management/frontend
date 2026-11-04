@@ -4,11 +4,11 @@ import React, { useState, useMemo } from 'react';
 import { Hash, ChevronDown, Search, Check } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/components/ui/popover';
 import { cn } from '@/shared/lib/utils';
-import type { ProjectSelectorPopoverProps } from '@/features/projects/project-id/work-items/types/picker.types';
+import type { ProjectPickerProps } from '@/features/projects/project-id/work-items/types/work-item.types';
 
-export type { ProjectSelectorPopoverProps };
+export type { ProjectPickerProps };
 
-export const ProjectSelectorPopover: React.FC<ProjectSelectorPopoverProps> = ({
+export const ProjectPicker: React.FC<ProjectPickerProps> = ({
   open,
   onOpenChange,
   project,
@@ -106,4 +106,3 @@ export const ProjectSelectorPopover: React.FC<ProjectSelectorPopoverProps> = ({
   );
 };
 
-export const ProjectPicker = ProjectSelectorPopover;

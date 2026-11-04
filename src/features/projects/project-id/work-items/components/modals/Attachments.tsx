@@ -29,17 +29,17 @@ import type {
   AttachLinkItem,
 } from '@/features/projects/project-id/work-items/types/work-item.types';
 import type {
-  ItemAttachment,
+  Attachment,
   AttachCenterData,
   AttachmentsProps,
-} from '@/features/projects/project-id/work-items/types/attachment.types';
+} from '@/features/projects/project-id/work-items/types/work-item.types';
 import {
   getAttachmentTypeLabel,
   formatAttachmentMeta,
-} from '@/features/projects/project-id/work-items/utils/attachment.utils';
+} from '@/features/projects/project-id/work-items/utils/modal.utils';
 import { normalizeAttachments } from '@/features/projects/project-id/work-items/utils/modal.utils';
 
-export type { ItemAttachment, AttachCenterData, AttachmentsProps };
+export type { Attachment, AttachCenterData, AttachmentsProps };
 
 export function Attachments({
   attachments,
@@ -51,7 +51,7 @@ export function Attachments({
   onDetachPage,
   onAttachPaper,
   onDetachPaper,
-  onAttachFile,
+  onAttachFile, onAttachFiles,
   onDetachFile,
   onAttachLink,
   onDetachLink,
@@ -136,7 +136,7 @@ export function Attachments({
         successMessage: 'File attached successfully',
         errorMessage: 'Failed to upload file',
       });
-      results.forEach(({ file: f, url: uploadedUrl, fileId }) => {
+      if (onAttachFiles) { onAttachFiles(results.map(({ file: f, url: uploadedUrl, fileId }) => ({ name: f.name, url: uploadedUrl, size: f.size, type: f.type, fileId }))); } else results.forEach(({ file: f, url: uploadedUrl, fileId }) => {
         onAttachFile?.({
           name: f.name,
           url: uploadedUrl,

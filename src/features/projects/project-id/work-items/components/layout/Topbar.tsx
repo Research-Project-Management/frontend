@@ -16,8 +16,8 @@ import {
 import { Button } from '@/shared/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from "@/shared/lib/utils";
-import type { AssigneeFilterOption, ViewMode, TopbarProps } from '@/features/projects/project-id/work-items/types/topbar.types';
-import { countActiveFilters } from '@/features/projects/project-id/work-items/utils/topbar.utils';
+import type { AssigneeFilterOption, ViewMode, TopbarProps } from '@/features/projects/project-id/work-items/types/work-item.types';
+import { countActiveFilters } from '@/features/projects/project-id/work-items/utils/work-item.utils';
 import { DisplayPopover } from './DisplayPopover';
 import { FilterDropdown } from '@/features/projects/project-id/work-items/components/filters/FilterDropdown';
 import { Switcher } from '@/features/projects/project-id/components/layout/Switcher';
@@ -65,7 +65,7 @@ export function Topbar({
 
   const HeaderIcon = icon || PropIcon || WorkItemsIcon;
 
-  const handleAdd = onAddItem || (() => {});
+  const handleAdd = useCallback(() => { onAddItem?.(); }, [onAddItem]);
 
   const handleToggleCol = useCallback((colId: string) => {
     if (onToggleColumn) {

@@ -59,8 +59,8 @@ import {
   useUpdateItem,
   useDeleteItem,
 } from "@/features/projects/project-id/work-items/hooks/use-work-item";
-import { useActivityLogs } from "@/features/projects/project-id/work-items/hooks/use-history";
-import { useWorkItemAttachments } from "@/features/projects/project-id/work-items/hooks/use-attachment";
+import { useActivityLogs } from "@/features/projects/project-id/work-items/hooks/use-work-item";
+import { useItemAttachments } from "@/features/projects/project-id/work-items/hooks/use-attachment";
 import {
   useRelations,
   useAddRelationMutation,
@@ -70,18 +70,18 @@ import { useArchiveItem, useRestoreItem } from "@/features/projects/project-id/w
 import {
   useSubscribeItemMutation,
   useUnsubscribeItemMutation,
-} from "@/features/projects/project-id/work-items/hooks/use-assignment";
+} from "@/features/projects/project-id/work-items/hooks/use-work-item";
 
 import { Activities } from "./Activities";
 import { Attachments, type AttachCenterData } from "./Attachments";
-import { StatePopover } from "@/features/projects/project-id/work-items/components/pickers/StatePicker";
-import { MemberPopover } from "@/features/projects/project-id/work-items/components/pickers/MemberPicker";
-import { LabelPopover } from "@/features/projects/project-id/work-items/components/pickers/LabelPicker";
-import { DatePopover } from "@/features/projects/project-id/work-items/components/pickers/DatePicker";
-import { PriorityPopover } from "@/features/projects/project-id/work-items/components/pickers/PriorityPicker";
-import { ParentItemPopover } from "@/features/projects/project-id/work-items/components/pickers/ParentPicker";
+import { StatePicker } from "@/features/projects/project-id/work-items/components/pickers/StatePicker";
+import { MemberPicker } from "@/features/projects/project-id/work-items/components/pickers/MemberPicker";
+import { LabelPicker } from "@/features/projects/project-id/work-items/components/pickers/LabelPicker";
+import { RangeDatePicker } from "@/features/projects/project-id/work-items/components/pickers/DatePicker";
+import { PriorityPicker } from "@/features/projects/project-id/work-items/components/pickers/PriorityPicker";
+import { ParentPicker } from "@/features/projects/project-id/work-items/components/pickers/ParentPicker";
 import { Relations } from "./Relations";
-import type { DetailModalProps } from "@/features/projects/project-id/work-items/types/modal.types";
+import type { DetailModalProps } from "@/features/projects/project-id/work-items/types/work-item.types";
 import {
   EMPTY_ATTACHMENTS,
   normalizeAttachments,
@@ -96,8 +96,7 @@ export type { DetailModalProps };
 export function DetailModal({
   open,
   onOpenChange,
-  item: propItem,
-  card: propCard,
+  item: card,
   columns,
   project,
   members = [],
@@ -107,7 +106,6 @@ export function DetailModal({
   onDuplicate,
   isReadOnly = false,
 }: DetailModalProps) {
-  const card = propItem || propCard;
   const availableItems = propAvailableItems || [];
   const { projectId: routeProjectId } = useParams() as { projectId?: string };
   const currentProjectId = routeProjectId || project?.id || card?.projectId;
@@ -148,6 +146,8 @@ export function DetailModal({
   const [newSubItemTitle, setNewSubItemTitle] = useState("");
   const [completed, setCompleted] = useState(false);
   const [attachments, setAttachments] = useState<AttachCenterData>(EMPTY_ATTACHMENTS);
+  const attachmentsRef = useRef<AttachCenterData>(EMPTY_ATTACHMENTS);
+  useEffect(() => { attachmentsRef.current = attachments; }, [attachments]);
   const [commentCaretPosition, setCommentCaretPosition] = useState(0);
   const initialSnapshotRef = useRef("");
   const autosaveSignatureRef = useRef("");
@@ -171,7 +171,7 @@ export function DetailModal({
   const canComment = Boolean(workItemId);
   const { data: itemComments = [] } = useComments(open && workItemId ? workItemId : "");
   const { data: itemActivity = [], error: activityError, isLoading: activityLoading } = useActivityLogs(open && workItemId ? workItemId : "");
-  const { data: fetchedAttachments } = useWorkItemAttachments(open && workItemId ? workItemId : "");
+  const { data: fetchedAttachments } = useItemAttachments(open && workItemId ? workItemId : "");
   const { data: fetchedRelationsData } = useRelations(open && workItemId ? workItemId : "");
   const createCommentMutation = useAddComment();
   const updateCommentMutation = useUpdateComment();
@@ -313,7 +313,7 @@ export function DetailModal({
       ? (Array.isArray(card.assigneeIds) && card.assigneeIds.length > 0
         ? card.assigneeIds
         : Array.isArray(card.assignees) && card.assignees.length > 0
-        ? card.assignees.map((a) => a.id).filter(Boolean)
+        ? card.assignees.map((a: { id?: string }) => a.id).filter(Boolean)
         : card.assigneeId
         ? [card.assigneeId]
         : card.assignee?.id
@@ -599,7 +599,7 @@ export function DetailModal({
 
   const updateAttachmentsAndSave = useCallback(
     (updater: (prev: AttachCenterData) => AttachCenterData) => {
-      const updated = updater(attachments);
+      const updated = updater(attachmentsRef.current); attachmentsRef.current = updated;
       setAttachments(updated);
       const nextPayload = { ...currentPayload, attachments: updated };
       const nextSnap = ItemHelpers.createSnapshot(nextPayload);
@@ -615,7 +615,7 @@ export function DetailModal({
     handleDetachPage,
     handleAttachPaper,
     handleDetachPaper,
-    handleAttachFile,
+    handleAttachFile, handleAttachFiles,
     handleDetachFile,
     handleAttachLink,
     handleDetachLink,
@@ -910,7 +910,7 @@ export function DetailModal({
                     <div className="grid grid-cols-[84px_1fr] items-center gap-2 h-8">
                       <span className="text-muted-foreground text-11 font-medium select-none">Status</span>
                       <div className="flex items-center min-w-0">
-                        <StatePopover
+                        <StatePicker
                           open={openStatePopover}
                           onOpenChange={setOpenStatePopover}
                           columnId={columnId}
@@ -926,7 +926,7 @@ export function DetailModal({
                     <div className="grid grid-cols-[84px_1fr] items-center gap-2 h-8">
                       <span className="text-muted-foreground text-11 font-medium select-none">Priority</span>
                       <div className="flex items-center min-w-0">
-                        <PriorityPopover
+                        <PriorityPicker
                           open={openPriorityPopover}
                           onOpenChange={setOpenPriorityPopover}
                           priority={priority}
@@ -943,7 +943,7 @@ export function DetailModal({
                     <div className="grid grid-cols-[84px_1fr] items-center gap-2 h-8">
                       <span className="text-muted-foreground text-11 font-medium select-none">Assignees</span>
                       <div className="flex items-center min-w-0">
-                        <MemberPopover
+                        <MemberPicker
                           open={openMemberPopover}
                           onOpenChange={setOpenMemberPopover}
                           assigneeId={assigneeId}
@@ -972,7 +972,7 @@ export function DetailModal({
                     <div className="grid grid-cols-[84px_1fr] items-center gap-2 h-8">
                       <span className="text-muted-foreground text-11 font-medium select-none">Dates</span>
                       <div className="flex items-center min-w-0">
-                        <DatePopover
+                        <RangeDatePicker
                           open={openDatePopover}
                           onOpenChange={setOpenDatePopover}
                           startDate={startDate}
@@ -998,8 +998,9 @@ export function DetailModal({
                     <div className="grid grid-cols-[84px_1fr] items-center gap-2 h-8">
                       <span className="text-muted-foreground text-11 font-medium select-none">Parent</span>
                       <div className="flex items-center min-w-0">
-                        <ParentItemPopover
+                        <ParentPicker
                           open={openParentPopover}
+                          currentItemId={workItemId}
                           onOpenChange={setOpenParentPopover}
                           parentId={parentId}
                           setParentId={(pId) => {
@@ -1017,7 +1018,7 @@ export function DetailModal({
                     <div className="grid grid-cols-[84px_1fr] items-center gap-2 h-8">
                       <span className="text-muted-foreground text-11 font-medium select-none">Labels</span>
                       <div className="flex items-center min-w-0">
-                        <LabelPopover
+                        <LabelPicker
                           open={openLabelPopover}
                           onOpenChange={setOpenLabelPopover}
                           labels={labels}
@@ -1296,6 +1297,7 @@ export function DetailModal({
               onAttachPaper={handleAttachPaper}
               onDetachPaper={handleDetachPaper}
               onAttachFile={handleAttachFile}
+              onAttachFiles={handleAttachFiles}
               onDetachFile={handleDetachFile}
               onAttachLink={handleAttachLink}
               onDetachLink={handleDetachLink}

@@ -39,7 +39,7 @@ import { useProjectsQuery } from '../hooks/use-project';
 import type { Project } from '../types/project.types';
 import { useFavorites } from '@/features/projects/favorite/hooks/use-favorites';
 import { useQueryClient } from '@tanstack/react-query';
-import { useQuickCreateWorkItemContext } from '@/features/projects/project-id/work-items/hooks/use-work-item';
+import { useQuickCreate } from '@/features/projects/project-id/work-items/hooks/use-work-item';
 import {
   prefetchWorkspaceRoute,
   prefetchProjectSubmodule,
@@ -103,7 +103,7 @@ function QuickCreateWorkItemDialog({
   activeProjectId: string;
 }) {
   const { project, columns, members, isSaving, create } =
-    useQuickCreateWorkItemContext(activeProjectId);
+    useQuickCreate(activeProjectId);
 
   return (
     <CreateModal

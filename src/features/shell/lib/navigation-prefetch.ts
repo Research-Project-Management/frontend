@@ -14,7 +14,7 @@ import {
 import {
   prefetchProjectWorkspace,
   stateKeys,
-} from '@/features/projects/project-id/work-items/hooks/use-work-items-query';
+} from '@/features/projects/project-id/work-items/hooks/use-query';
 import { workItemApi } from '@/features/projects/project-id/work-items/api/work-item.api';
 import { getYourWork } from '@/features/projects/your-work/services/your-work.service';
 import { OverviewService } from '@/features/projects/project-id/overview/services/overview.service';
@@ -147,9 +147,9 @@ export function prefetchAppSection(
         staleTime: 30_000,
       });
       void queryClient.prefetchQuery({
-        queryKey: libraryKeys.items('user', { limit: 100 }),
+        queryKey: libraryKeys.items('user', { limit: 200 }),
         queryFn: ({ signal }) =>
-          ItemsService.getAll('user', { limit: 100 }, { signal }),
+          ItemsService.getAll('user', { limit: 200 }, { signal }),
         staleTime: 30_000,
       });
     }
@@ -264,7 +264,7 @@ export function prefetchLibraryCollection(
     const params = {
       collectionId,
       includeSubcollections: true,
-      limit: 100,
+      limit: 200,
     };
     void queryClient.prefetchQuery({
       queryKey: libraryKeys.items(targetScope, params),
@@ -287,9 +287,9 @@ export function prefetchLibraryProjectScope(
       staleTime: 5 * 60_000,
     });
     void queryClient.prefetchQuery({
-      queryKey: libraryKeys.items(targetScope, { limit: 100 }),
+      queryKey: libraryKeys.items(targetScope, { limit: 200 }),
       queryFn: ({ signal }) =>
-        ItemsService.getAll(targetScope, { limit: 100 }, { signal }),
+        ItemsService.getAll(targetScope, { limit: 200 }, { signal }),
       staleTime: 30_000,
     });
   });

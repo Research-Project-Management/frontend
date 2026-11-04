@@ -14,7 +14,7 @@ import {
 import { cn } from "@/shared/lib/utils";
 import type { Relation, RelationType, Item } from '@/features/projects/project-id/work-items/types/work-item.types';
 import { RELATION_TYPE_CONFIG } from '@/features/projects/project-id/work-items/types/work-item.types';
-import type { RelationsProps } from '@/features/projects/project-id/work-items/types/modal.types';
+import type { RelationsProps } from '@/features/projects/project-id/work-items/types/work-item.types';
 
 export type { RelationsProps };
 

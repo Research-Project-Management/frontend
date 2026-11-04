@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useTransition } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { prefetchProjectWorkspace } from '@/features/projects/project-id/work-items/hooks/use-work-items-query';
+import { prefetchProjectWorkspace } from '@/features/projects/project-id/work-items/hooks/use-query';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import {

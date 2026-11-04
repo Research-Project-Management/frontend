@@ -3,12 +3,13 @@
 import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { workItemApi } from '@/features/projects/project-id/work-items/api/work-item.api';
-import type { Item } from '@/features/projects/project-id/work-items/types/work-item.types';
-import { extractNormalizedEdges, wouldCauseCycle } from '@/features/projects/project-id/work-items/utils/cpm-graph';
-import { workItemToast } from './use-work-item-toast';
+import type { Item, RelationType } from '@/features/projects/project-id/work-items/types/work-item.types';
+import { extractNormalizedEdges, wouldCauseCycle } from '@/features/projects/project-id/work-items/utils/cpm-graph.utils';
+import { itemToast } from './use-crud';
 
 export const relationKeys = {
   item: (id: string) => ['work-item-relations', id] as const,
+  cpm: (projectId: string) => ['work-item-cpm', projectId] as const,
 };
 
 export const useRelations = (id: string) =>
@@ -18,13 +19,21 @@ export const useRelations = (id: string) =>
     enabled: Boolean(id),
   });
 
+export const useProjectCpmQuery = (projectId: string, enabled = true) =>
+  useQuery({
+    queryKey: relationKeys.cpm(projectId),
+    queryFn: () => workItemApi.relations.getProjectCpm(projectId),
+    enabled: Boolean(projectId) && enabled,
+    staleTime: 30_000,
+  });
+
 export interface AddRelationVariables {
   id?: string;
   itemId?: string;
   workItemId?: string;
   targetId?: string;
   targetWorkItemId?: string;
-  type: 'blocks' | 'blocked_by' | 'relates_to' | 'duplicate_of';
+  type: RelationType;
   successMessage?: string;
   silent?: boolean;
 }
@@ -48,6 +57,7 @@ export const useAddRelationMutation = () => {
       const sourceId = (vars.id || vars.itemId || vars.workItemId) ?? '';
       const target = (vars.targetId || vars.targetWorkItemId) ?? '';
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
+      queryClient.invalidateQueries({ queryKey: ['work-item-cpm'] });
       queryClient.invalidateQueries({ queryKey: relationKeys.item(sourceId) });
       queryClient.invalidateQueries({ queryKey: ['work-item-activity', sourceId] });
       if (target) {
@@ -55,10 +65,10 @@ export const useAddRelationMutation = () => {
         queryClient.invalidateQueries({ queryKey: ['work-item-activity', target] });
       }
       if (!vars.silent) {
-        workItemToast.success(vars.successMessage || 'Created dependency relation', 'relation');
+        itemToast.success(vars.successMessage || 'Created dependency relation', 'relation');
       }
     },
-    onError: (error: Error) => workItemToast.error(error, 'Failed to add relation', 'relation'),
+    onError: (error: Error) => itemToast.error(error, 'Failed to add relation', 'relation'),
   });
 
   const { mutate } = mutation;
@@ -69,13 +79,13 @@ export const useAddRelationMutation = () => {
       toId: string,
       items: Item[],
       options?: {
-        type?: 'blocks' | 'blocked_by' | 'relates_to' | 'duplicate_of';
+        type?: RelationType;
         onSuccess?: () => void;
       },
     ) => {
       const currentEdges = extractNormalizedEdges(items);
       if (wouldCauseCycle(fromId, toId, currentEdges)) {
-        workItemToast.error(
+        itemToast.error(
           'Cannot create dependency: circular dependency detected',
           'Cannot create dependency: circular dependency detected',
           'relation',
@@ -132,6 +142,7 @@ export const useRemoveRelationMutation = () => {
       const sourceId = (vars.id || vars.itemId || vars.workItemId) ?? '';
       const target = (vars.targetId || vars.targetWorkItemId || vars.relationId) ?? '';
       queryClient.invalidateQueries({ queryKey: ['work-items'] });
+      queryClient.invalidateQueries({ queryKey: ['work-item-cpm'] });
       queryClient.invalidateQueries({ queryKey: relationKeys.item(sourceId) });
       queryClient.invalidateQueries({ queryKey: ['work-item-activity', sourceId] });
       if (target) {
@@ -139,7 +150,6 @@ export const useRemoveRelationMutation = () => {
         queryClient.invalidateQueries({ queryKey: ['work-item-activity', target] });
       }
     },
-    onError: (error: Error) => workItemToast.error(error, 'Failed to remove relation', 'relation'),
+    onError: (error: Error) => itemToast.error(error, 'Failed to remove relation', 'relation'),
   });
 };
-

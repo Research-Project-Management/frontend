@@ -6,28 +6,29 @@ import Topbar from '@/features/projects/project-id/work-items/components/layout/
 import { FilterPillsBar } from '@/features/projects/project-id/work-items/components/filters/FilterPillsBar';
 import { BulkActionBar } from '@/features/projects/project-id/work-items/components/layout/BulkActionBar';
 import {
-  WorkItemModals,
+  Modals,
   ModalState,
-} from '@/features/projects/project-id/work-items/components/layout/WorkItemModals';
-import { WorkItemViewContainer } from '@/features/projects/project-id/work-items/components/layout/WorkItemViewContainer';
+} from '@/features/projects/project-id/work-items/components/layout/Modals';
+import { ViewContainer } from '@/features/projects/project-id/work-items/components/layout/ViewContainer';
 import {
   useProject,
   useBulkDelete,
-  useWorkItemSelection,
+  useItemSelection,
 } from '@/features/projects/project-id/work-items/hooks/use-work-item';
 import {
   useBulkArchive,
   useBulkRestore,
   useArchivedItems,
 } from '@/features/projects/project-id/work-items/hooks/use-archive';
-import { useWorkItemGrouping } from '@/features/projects/project-id/work-items/hooks/use-work-item-grouping';
+import { useGrouping } from '@/features/projects/project-id/work-items/hooks/use-grouping';
 import {
   ItemHelpers,
   resolveStateId,
   buildGroupMoveUpdates,
+  getItemBucketKey,
 } from '@/features/projects/project-id/work-items/utils/work-item.utils';
 import { useTopbar } from '@/features/projects/project-id/work-items/hooks/use-topbar';
-import { useRealtimeWorkItems } from '@/features/projects/project-id/work-items/hooks/use-realtime';
+import { useRealtimeItems } from '@/features/projects/project-id/work-items/hooks/use-realtime';
 import type {
   Item,
   ItemMutationInput,
@@ -65,7 +66,7 @@ export function WorkItemPage({
     projectId,
   });
 
-  useRealtimeWorkItems({ projectId, enabled: Boolean(projectId) });
+  useRealtimeItems({ projectId, enabled: Boolean(projectId) });
 
   const {
     items: projectItems,
@@ -94,7 +95,7 @@ export function WorkItemPage({
     toggleSelect: handleToggleSelect,
     selectAll: handleSelectAll,
     clearSelection: handleClearSelection,
-  } = useWorkItemSelection();
+  } = useItemSelection();
 
   const handleBulkUpdate = useCallback(
     (data: Record<string, unknown>) => {
@@ -201,7 +202,7 @@ export function WorkItemPage({
     effectiveGroupBy,
     itemsByColumnId,
     visibleColumns,
-  } = useWorkItemGrouping({
+  } = useGrouping({
     items: activeFilteredItems,
     columns,
     members,
@@ -215,15 +216,15 @@ export function WorkItemPage({
   const pathname = usePathname();
 
   const activeModal = useMemo<ModalState>(() => {
-    if (modal.type !== 'detail' || !modal.card?.id) return modal;
+    if (modal.type !== 'detail' || !modal.item?.id) return modal;
     const liveItem =
-      allItems.find((i) => i.id === modal.card.id) ||
-      archivedItems.find((i) => i.id === modal.card.id);
+      allItems.find((i) => i.id === modal.item.id) ||
+      archivedItems.find((i) => i.id === modal.item.id);
     if (!liveItem) return modal;
     return {
       ...modal,
-      card: {
-        ...modal.card,
+      item: {
+        ...modal.item,
         ...liveItem,
       },
     };
@@ -282,7 +283,7 @@ export function WorkItemPage({
     );
 
     if (matchedItem) {
-      setModal({ type: 'detail', card: matchedItem });
+      setModal({ type: 'detail', item: matchedItem });
     }
   }, [searchParams, allItems]);
 
@@ -347,7 +348,7 @@ export function WorkItemPage({
   }, [columns, effectiveGroupBy, projectState.isSaving, projectActions, projectId]);
 
   const handleOpenEditDialog = useCallback((card: Item) => {
-    setModal({ type: 'detail', card });
+    setModal({ type: 'detail', item: card });
   }, []);
 
   const handleMoveCard = useCallback((
@@ -378,8 +379,9 @@ export function WorkItemPage({
   const handleReorderCard = useCallback((workItemId: string, newColumnId: string, rank: number) => {
     if (!workItemId) return;
 
+    const targetItem = displayItems.find((i) => i.id === workItemId);
+
     if (effectiveGroupBy === 'none') {
-      const targetItem = displayItems.find((i) => i.id === workItemId);
       if (targetItem) {
         projectActions.reorder({
           id: workItemId,
@@ -391,14 +393,29 @@ export function WorkItemPage({
       return;
     }
 
-    const updates = buildGroupMoveUpdates(effectiveGroupBy, newColumnId);
-    if (updates && effectiveGroupBy !== 'state') {
-      projectActions.update({
-        id: workItemId,
-        projectId,
-        ...updates,
-      });
-      return;
+    if (effectiveGroupBy !== 'state') {
+      const currentBucket = targetItem ? getItemBucketKey(targetItem, effectiveGroupBy) : '';
+      if (targetItem && currentBucket === newColumnId) {
+        // Same-group reorder: preserve rank ordering via reorder endpoint
+        projectActions.reorder({
+          id: workItemId,
+          columnId: targetItem.columnId,
+          rank,
+          projectId,
+        });
+        return;
+      }
+
+      const updates = buildGroupMoveUpdates(effectiveGroupBy, newColumnId);
+      if (updates) {
+        projectActions.update({
+          id: workItemId,
+          projectId,
+          rank,
+          ...updates,
+        });
+        return;
+      }
     }
 
     projectActions.reorder({
@@ -436,7 +453,7 @@ export function WorkItemPage({
           initialData: { columnId: formData.columnId },
         });
       } else if (createdItem?.id && targetProjectId === projectId) {
-        setModal({ type: 'detail', card: createdItem });
+        setModal({ type: 'detail', item: createdItem });
       } else {
         closeModal();
       }
@@ -446,14 +463,14 @@ export function WorkItemPage({
   }, [columns, projectId, projectActions, closeModal]);
 
   const handleSaveCard = useCallback(async (formData: ItemMutationInput) => {
-    if (activeModal.type !== 'detail' || !activeModal.card.id) return;
+    if (activeModal.type !== 'detail' || !activeModal.item.id) return;
     if (!formData.title?.trim()) return;
 
     const payload = {
       ...formData,
       title: formData.title.trim(),
       projectId,
-      id: activeModal.card.id,
+      id: activeModal.item.id,
     };
 
     try {
@@ -464,8 +481,8 @@ export function WorkItemPage({
   }, [activeModal, projectId, projectActions]);
 
   const handleDeleteCard = useCallback(() => {
-    if (activeModal.type === 'detail' && activeModal.card.id) {
-      setModal({ type: 'delete', item: activeModal.card });
+    if (activeModal.type === 'detail' && activeModal.item.id) {
+      setModal({ type: 'delete', item: activeModal.item });
     }
   }, [activeModal]);
 
@@ -511,7 +528,7 @@ export function WorkItemPage({
     quiet = false,
     startDate?: string | null,
   ) => {
-    projectActions.assignWorkItemsToDate(itemIds, dueDate, quiet, startDate);
+    projectActions.assignItemsToDate(itemIds, dueDate, quiet, startDate);
   }, [projectActions]);
 
   const handleQuickUpdateItem = useCallback(
@@ -620,7 +637,7 @@ export function WorkItemPage({
             <WorkspaceBoardSkeleton columns={4} />
           )
         ) : (
-          <WorkItemViewContainer
+          <ViewContainer
             viewMode={viewMode}
             isArchivedEmpty={isArchivedEmpty}
             isProjectEmpty={isProjectEmpty}
@@ -644,12 +661,12 @@ export function WorkItemPage({
             onSelectAll={(ids) => handleSelectAll(ids || [])}
             onOpenAddDialog={handleOpenAddDialog}
             onOpenEditDialog={handleOpenEditDialog}
-            onDeleteCard={handleDeleteCard}
-            onDuplicateCard={handleDuplicateCard}
-            onJoinCard={handleJoinCard}
-            onLeaveCard={handleLeaveCard}
-            onMoveCard={handleMoveCard}
-            onReorderCard={handleReorderCard}
+            onDeleteItem={handleDeleteCard}
+            onDuplicateItem={handleDuplicateCard}
+            onJoinItem={handleJoinCard}
+            onLeaveItem={handleLeaveCard}
+            onMoveItem={handleMoveCard}
+            onReorderItem={handleReorderCard}
             onQuickUpdateItem={handleQuickUpdateItem}
             onQuickUpdateItemFromCard={handleQuickUpdateItemFromCard}
             onAssignExistingItemsToDate={handleAssignExistingItemsToDate}
@@ -686,7 +703,7 @@ export function WorkItemPage({
       />
 
       {/* Modals & Dialogs Container */}
-      <WorkItemModals
+      <Modals
         modal={activeModal}
         onCloseModal={closeModal}
         columns={columns}
@@ -698,12 +715,12 @@ export function WorkItemPage({
         isDeleting={projectState.status.isDeleting}
         isReadOnly={isReadOnly}
         onCreateItem={handleCreateItem}
-        onSaveCard={handleSaveCard}
-        onDeleteCard={handleDeleteCard}
+        onSaveItem={handleSaveCard}
+        onDeleteItem={handleDeleteCard}
         onConfirmDelete={handleItemDeleteConfirm}
-        onDuplicateCard={() => {
-          if (activeModal.type === 'detail' && activeModal.card.id) {
-            handleDuplicateCard(activeModal.card);
+        onDuplicateItem={() => {
+          if (activeModal.type === 'detail' && activeModal.item.id) {
+            handleDuplicateCard(activeModal.item);
           }
         }}
         isAnalyticsOpen={analyticsOpen}

@@ -19,18 +19,23 @@ import type {
   ViewMode,
   AssigneeFilterOption,
   UseTopbarOptions,
-} from '@/features/projects/project-id/work-items/types/topbar.types';
+} from '@/features/projects/project-id/work-items/types/work-item.types';
+import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import {
+  ItemHelpers,
+  resolveStateId,
+  compareItems,
   ITEMS_VIEW_STORAGE_KEY,
   VALID_MODES,
   getDisplayOptionsStorageKey,
   getInitialDisplayOptions,
   PRIORITY_WEIGHT,
   countActiveFilters,
-} from '@/features/projects/project-id/work-items/utils/topbar.utils';
-import { useProjects } from '@/features/projects/shell/hooks/use-project';
-import { ItemHelpers, resolveStateId } from '@/features/projects/project-id/work-items/utils/work-item.utils';
-import { WorkItemFilterEngine } from '@/features/projects/project-id/work-items/utils/work-item-filter-engine';
+} from '@/features/projects/project-id/work-items/utils/work-item.utils';
+import {
+  filterItems,
+  serializeFiltersToQuery,
+} from '@/features/projects/project-id/work-items/utils/filter-engine.utils';
 
 export type { ViewMode, AssigneeFilterOption, UseTopbarOptions };
 
@@ -212,71 +217,25 @@ export function useTopbar({
     return list;
   }, [items, propUsers, members]);
 
-  // ── High-Performance Inverted Index & Bitset Filtering Engine ────────────
-  const filterEngine = useMemo(() => {
-    const rawItems = Array.isArray(items) ? items : [];
-    return new WorkItemFilterEngine(rawItems, columns);
-  }, [items, columns]);
+  // ── Server Query Params & Stateless Optimistic Filtering ───────────────────
+  const serverQueryParams = useMemo(
+    () => serializeFiltersToQuery(filters, displayOptions),
+    [filters, displayOptions],
+  );
 
   const filteredItems = useMemo(() => {
     const rawItems = Array.isArray(items) ? items : [];
     if (rawItems.length === 0) return [];
 
-    let result = filterEngine.executeFilter(filters, '');
+    const result = filterItems(rawItems, filters, '', columns, assignees);
 
-    // Mentions filter (post-filter on filtered candidates)
-    if (filters.mentions && filters.mentions.length > 0) {
-      result = result.filter((item) => {
-        const text = `${item.title || ''} ${item.description || ''} ${item.content || ''}`.toLowerCase();
-        return filters.mentions.some((userId) => {
-          const user = assignees.find((assignee) => assignee.id === userId);
-          if (user?.name && text.includes(`@${user.name.toLowerCase()}`)) return true;
-          const assigneeUserId = ItemHelpers.resolveAssigneeId(item);
-          return assigneeUserId === userId;
-        });
-      });
-    }
-
-    // 17. Ordering (In-place sort on the single newly allocated filtered array)
-    const direction = displayOptions.orderDirection === 'desc' ? -1 : 1;
-    result.sort((first, second) => {
-      if (displayOptions.orderBy === 'priority') {
-        const weightA = PRIORITY_WEIGHT[first.priority || 'none'] ?? 0;
-        const weightB = PRIORITY_WEIGHT[second.priority || 'none'] ?? 0;
-        return (weightA - weightB) * direction;
-      }
-      if (displayOptions.orderBy === 'dueDate') {
-        if (!first.dueDate && !second.dueDate) return 0;
-        if (!first.dueDate) return 1;
-        if (!second.dueDate) return -1;
-        return (new Date(first.dueDate).getTime() - new Date(second.dueDate).getTime()) * direction;
-      }
-      if (displayOptions.orderBy === 'startDate') {
-        if (!first.startDate && !second.startDate) return 0;
-        if (!first.startDate) return 1;
-        if (!second.startDate) return -1;
-        return (new Date(first.startDate).getTime() - new Date(second.startDate).getTime()) * direction;
-      }
-      if (displayOptions.orderBy === 'createdAt') {
-        const timeA = first.createdAt ? new Date(first.createdAt).getTime() : 0;
-        const timeB = second.createdAt ? new Date(second.createdAt).getTime() : 0;
-        return (timeA - timeB) * direction;
-      }
-      if (displayOptions.orderBy === 'updatedAt') {
-        const timeA = first.updatedAt ? new Date(first.updatedAt).getTime() : 0;
-        const timeB = second.updatedAt ? new Date(second.updatedAt).getTime() : 0;
-        return (timeA - timeB) * direction;
-      }
-      if (displayOptions.orderBy === 'title') {
-        const titleA = (first.title || '').toLowerCase();
-        const titleB = (second.title || '').toLowerCase();
-        return titleA.localeCompare(titleB, 'vi', { sensitivity: 'base' }) * direction;
-      }
-      return ((first.rank ?? 0) - (second.rank ?? 0)) * direction;
-    });
+    // Ordering (In-place sort on the newly allocated filtered array)
+    result.sort((first, second) =>
+      compareItems(first, second, displayOptions.orderBy, displayOptions.orderDirection),
+    );
 
     return result;
-  }, [filterEngine, items, filters, assignees, displayOptions]);
+  }, [items, columns, filters, assignees, displayOptions]);
 
   // ── Projects Search ───────────────────────────────────────────────────────
   const filteredProjects = useMemo(() => {
@@ -424,6 +383,7 @@ export function useTopbar({
     () => ({
       viewMode: mode,
       filters,
+      serverQueryParams,
       selectedColumnIds: filters.state,
       selectedAssigneeIds: filters.assignees,
       selectedPriorities: filters.priority,
@@ -447,6 +407,7 @@ export function useTopbar({
     [
       mode,
       filters,
+      serverQueryParams,
       filteredItems,
       assignees,
       activeCols,

@@ -26,11 +26,10 @@ export {
   NonePriorityTriggerIcon,
 };
 
-export const NonePriorityIcon = NonePriorityTriggerIcon;
 
-import type { PriorityPopoverProps } from '@/features/projects/project-id/work-items/types/picker.types';
+import type { PriorityPickerProps } from '@/features/projects/project-id/work-items/types/work-item.types';
 
-export type { PriorityPopoverProps };
+export type { PriorityPickerProps };
 
 const PRIORITY_OPTIONS: { id: Priority; label: string; icon: React.FC<{ className?: string }> }[] = [
   { id: 'urgent', label: 'Urgent', icon: UrgentPriorityBoxIcon },
@@ -40,7 +39,7 @@ const PRIORITY_OPTIONS: { id: Priority; label: string; icon: React.FC<{ classNam
   { id: 'none', label: 'None', icon: NonePriorityBoxIcon },
 ];
 
-export const PriorityPopover: React.FC<PriorityPopoverProps> = ({
+export const PriorityPicker: React.FC<PriorityPickerProps> = ({
   open,
   onOpenChange,
   priority,
@@ -105,4 +104,3 @@ export const PriorityPopover: React.FC<PriorityPopoverProps> = ({
   );
 };
 
-export const PriorityPicker = PriorityPopover;

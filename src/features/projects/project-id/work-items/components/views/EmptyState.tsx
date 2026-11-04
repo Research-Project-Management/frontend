@@ -250,9 +250,9 @@ export function WorkItemVerticalStackIllustration({ className }: TIllustrationAs
   );
 }
 
-import type { EmptyStateProps, WorkItemsEmptyStateProps } from '@/features/projects/project-id/work-items/types/layout.types';
+import type { EmptyStateProps } from '@/features/projects/project-id/work-items/types/work-item.types';
 
-export type { EmptyStateProps, WorkItemsEmptyStateProps };
+export type { EmptyStateProps };
 
 export function EmptyState({
   onCreateItem,
@@ -288,6 +288,5 @@ export function EmptyState({
   );
 }
 
-export const WorkItemsEmptyState = EmptyState;
 export default EmptyState;
 

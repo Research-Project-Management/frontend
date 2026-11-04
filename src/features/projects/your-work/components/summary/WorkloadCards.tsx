@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { getWorkloadStates, type WorkloadStateItem } from '../../utils/workload.util';
+import { getWorkloadStates, type WorkloadStateItem } from '../../utils/your-work.utils';
 
 export interface WorkloadCardsProps {
   statusBreakdown?: Record<string, number>;

@@ -28,7 +28,7 @@ import type {
   CardMetadataItem,
   UseKanbanOptions,
   UseCardOptions,
-} from '@/features/projects/project-id/work-items/types/kanban-view.types';
+} from '@/features/projects/project-id/work-items/types/work-item.types';
 import { resolveColumnId, getItemBucketKey } from '@/features/projects/project-id/work-items/utils/work-item.utils';
 import { ItemHelpers } from '@/features/projects/project-id/work-items/utils/work-item.utils';
 
@@ -43,8 +43,8 @@ export function useKanban({
   items: propItems,
   workItems: propWorkItems,
   columns = [],
-  onMoveCard,
-  onReorderCard,
+  onMoveItem,
+  onReorderItem,
   isReadOnly = false,
   subGroupBy = 'none',
   groupBy = 'state',
@@ -123,15 +123,7 @@ export function useKanban({
           targetColumnId = getItemBucketKey(overItem, groupBy) || overItem.columnId || null;
           isOverCard = true;
           if (subGroupBy && subGroupBy !== 'none') {
-            if (subGroupBy === 'priority') {
-              targetLaneId = (overItem.priority || 'none').toLowerCase();
-            } else if (subGroupBy === 'assignee') {
-              targetLaneId = ItemHelpers.resolveAssigneeId(overItem) || '__unassigned__';
-            } else if (subGroupBy === 'labels') {
-              const firstLbl = (overItem.labels && overItem.labels.length > 0) ? overItem.labels[0] : null;
-              const lbl = firstLbl as { name?: string; id?: string } | null;
-              targetLaneId = firstLbl ? (typeof firstLbl === 'string' ? firstLbl : lbl?.name || lbl?.id || '__no_label__') : '__no_label__';
-            }
+            targetLaneId = getItemBucketKey(overItem, subGroupBy) || null;
           }
         }
       }
@@ -139,27 +131,27 @@ export function useKanban({
       if (!targetColumnId) return;
 
       if (targetLaneId) {
-        if (onMoveCard) {
-          onMoveCard(activeItemId, targetColumnId, { subGroupBy, laneId: targetLaneId });
+        if (onMoveItem) {
+          onMoveItem(activeItemId, targetColumnId, { subGroupBy, laneId: targetLaneId });
         }
         return;
       }
 
-      if (isOverCard && onReorderCard) {
+      if (isOverCard && onReorderItem) {
         if (activeItemId === overId) return;
         const columnCards = itemsByColumn.get(targetColumnId) || [];
         const overIndex = columnCards.findIndex((item) => item.id === overId);
         if (overIndex !== -1) {
-          onReorderCard(activeItemId, targetColumnId, overIndex);
+          onReorderItem(activeItemId, targetColumnId, overIndex);
           return;
         }
       }
 
-      if (onMoveCard) {
-        onMoveCard(activeItemId, targetColumnId);
+      if (onMoveItem) {
+        onMoveItem(activeItemId, targetColumnId);
       }
     },
-    [validColumnIds, isReadOnly, items, itemsByColumn, onMoveCard, onReorderCard, subGroupBy, groupBy],
+    [validColumnIds, isReadOnly, items, itemsByColumn, onMoveItem, onReorderItem, subGroupBy, groupBy],
   );
 
   const dragCancel = useCallback(() => {

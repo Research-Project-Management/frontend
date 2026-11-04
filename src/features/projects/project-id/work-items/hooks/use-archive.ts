@@ -4,8 +4,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { workItemApi } from '@/features/projects/project-id/work-items/api/work-item.api';
 import type { Item } from '@/features/projects/project-id/work-items/types/work-item.types';
 import { resolveItemId } from '@/features/projects/project-id/work-items/utils/work-item.utils';
-import { invalidateWorkItemRelatedQueries } from './use-work-items-query';
-import { workItemToast } from './use-work-item-toast';
+import { invalidateItemRelatedQueries } from './use-query';
+import { itemToast } from './use-crud';
 
 type ProjectItemsCache =
   | Item[]
@@ -68,13 +68,13 @@ export const useArchiveItem = () => {
           return [archivedItem, ...old];
         });
       }
-      invalidateWorkItemRelatedQueries(queryClient, serverItem?.projectId);
+      invalidateItemRelatedQueries(queryClient, serverItem?.projectId);
       queryClient.invalidateQueries({ queryKey: ['archived-items'] });
       queryClient.invalidateQueries({ queryKey: ['your-work'] });
       queryClient.invalidateQueries({ queryKey: ['work-item-activity', id] });
-      workItemToast.success('Work item archived', 'action');
+      itemToast.success('Work item archived', 'action');
     },
-    onError: (error: Error) => workItemToast.error(error, 'Failed to archive work item', 'action'),
+    onError: (error: Error) => itemToast.error(error, 'Failed to archive work item', 'action'),
   });
 };
 
@@ -111,13 +111,13 @@ export const useRestoreItem = () => {
           );
         }
       }
-      invalidateWorkItemRelatedQueries(queryClient, serverItem?.projectId);
+      invalidateItemRelatedQueries(queryClient, serverItem?.projectId);
       queryClient.invalidateQueries({ queryKey: ['archived-items'] });
       queryClient.invalidateQueries({ queryKey: ['your-work'] });
       queryClient.invalidateQueries({ queryKey: ['work-item-activity', id] });
-      workItemToast.success('Work item restored', 'action');
+      itemToast.success('Work item restored', 'action');
     },
-    onError: (error: Error) => workItemToast.error(error, 'Failed to restore work item', 'action'),
+    onError: (error: Error) => itemToast.error(error, 'Failed to restore work item', 'action'),
   });
 };
 
@@ -136,15 +136,15 @@ export const useBulkArchive = () => {
           filterItemsCache(old, (item) => !idSet.has(resolveItemId(item))),
         );
       }
-      invalidateWorkItemRelatedQueries(queryClient, vars.projectId);
+      invalidateItemRelatedQueries(queryClient, vars.projectId);
       queryClient.invalidateQueries({ queryKey: ['archived-items'] });
       if (vars.projectId) {
         queryClient.invalidateQueries({ queryKey: ['archived-items', vars.projectId] });
       }
       queryClient.invalidateQueries({ queryKey: ['your-work'] });
-      workItemToast.success(`Archived ${targetIds.length} items`, 'bulk');
+      itemToast.success(`Archived ${targetIds.length} items`, 'bulk');
     },
-    onError: (error: Error) => workItemToast.error(error, 'Failed to archive work items', 'bulk'),
+    onError: (error: Error) => itemToast.error(error, 'Failed to archive work items', 'bulk'),
   });
 };
 
@@ -163,15 +163,15 @@ export const useBulkRestore = () => {
           Array.isArray(old) ? old.filter((item) => !idSet.has(resolveItemId(item))) : old,
         );
       }
-      invalidateWorkItemRelatedQueries(queryClient, vars.projectId);
+      invalidateItemRelatedQueries(queryClient, vars.projectId);
       queryClient.invalidateQueries({ queryKey: ['archived-items'] });
       if (vars.projectId) {
         queryClient.invalidateQueries({ queryKey: ['archived-items', vars.projectId] });
       }
       queryClient.invalidateQueries({ queryKey: ['your-work'] });
-      workItemToast.success(`Restored ${targetIds.length} items`, 'bulk');
+      itemToast.success(`Restored ${targetIds.length} items`, 'bulk');
     },
-    onError: (error: Error) => workItemToast.error(error, 'Failed to restore work items', 'bulk'),
+    onError: (error: Error) => itemToast.error(error, 'Failed to restore work items', 'bulk'),
   });
 };
 

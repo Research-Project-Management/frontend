@@ -117,7 +117,7 @@ import type {
   ActivityEntry,
   ActivitiesProps,
   ActivityTab,
-} from '@/features/projects/project-id/work-items/types/activity.types';
+} from '@/features/projects/project-id/work-items/types/work-item.types';
 
 export type {
   ActivityEntry,

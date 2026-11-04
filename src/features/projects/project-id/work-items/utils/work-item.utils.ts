@@ -3,12 +3,35 @@ import type {
   State,
   StateGroup,
   Item,
+  ViewMode,
+  DisplayOptions,
+  Priority,
+  GroupByOption,
+  SubGroupByOption,
+  Filters,
+  TablePropertyKey,
+  TablePropertyConfig,
 } from "@/features/projects/project-id/work-items/types/work-item.types";
 import {
   STATE_GROUPS,
   DEFAULT_STATES,
+  DEFAULT_DISPLAY_OPTIONS,
 } from "@/features/projects/project-id/work-items/types/work-item.types";
-import { parseDateOnly } from "./cpm-graph";
+import {
+  Users,
+  Tag,
+  Paperclip,
+  CalendarClock,
+  Calendar,
+  User,
+  Link2,
+  Layers,
+} from 'lucide-react';
+import {
+  StatusIcon,
+  MediumPriorityBoxIcon,
+} from '@/shared/components/icons';
+import { parseDateOnly } from "./cpm-graph.utils";
 
 // ── 1. Column & State Resolvers ──────────────────────────────────────────────
 
@@ -35,7 +58,6 @@ export function resolveItemId(target?: { id?: string; itemId?: string; workItemI
   if (!target) return "";
   return target.id ?? target.workItemId ?? target.itemId ?? "";
 }
-export const resolveWorkItemId = resolveItemId;
 
 export function resolveStateId(state?: Pick<State, "id"> | null): string {
   return state?.id ?? "";
@@ -47,6 +69,25 @@ export function resolveStateTitle(state?: Partial<State> | null): string {
   if (!state) return "";
   return state.name || state.title || state.id || "";
 }
+
+export const STATE_GROUP_KEYWORD_RULES: ReadonlyArray<{
+  group: StateGroup;
+  keywords: ReadonlyArray<string>;
+}> = [
+  { group: "backlog", keywords: ["backlog"] },
+  {
+    group: "completed",
+    keywords: ["done", "completed", "complete", "closed", "resolved"],
+  },
+  {
+    group: "cancelled",
+    keywords: ["cancel", "rejected", "abandon", "wontfix", "won't fix"],
+  },
+  {
+    group: "started",
+    keywords: ["doing", "progress", "started", "review", "testing", "qa", "dev"],
+  },
+];
 
 export function inferStateGroup(
   id?: string | null,
@@ -63,35 +104,10 @@ export function inferStateGroup(
     return id as StateGroup;
   }
   const combined = `${id || ""} ${name || ""}`.toLowerCase().trim();
-  if (combined.includes("backlog")) return "backlog";
-  if (
-    combined.includes("done") ||
-    combined.includes("completed") ||
-    combined.includes("complete") ||
-    combined.includes("closed") ||
-    combined.includes("resolved")
-  ) {
-    return "completed";
-  }
-  if (
-    combined.includes("cancel") ||
-    combined.includes("rejected") ||
-    combined.includes("abandon") ||
-    combined.includes("wontfix") ||
-    combined.includes("won't fix")
-  ) {
-    return "cancelled";
-  }
-  if (
-    combined.includes("doing") ||
-    combined.includes("progress") ||
-    combined.includes("started") ||
-    combined.includes("review") ||
-    combined.includes("testing") ||
-    combined.includes("qa") ||
-    combined.includes("dev")
-  ) {
-    return "started";
+  for (const rule of STATE_GROUP_KEYWORD_RULES) {
+    if (rule.keywords.some((kw) => combined.includes(kw))) {
+      return rule.group;
+    }
   }
   return "unstarted";
 }
@@ -173,11 +189,10 @@ export function normalizeStates(raw: unknown): Column[] {
 
   return result.sort((a, b) => a.sequence - b.sequence);
 }
-export const normalizeWorkItemStates = normalizeStates;
 
 // ── 2. Pure Domain Helper Functions ──────────────────────────────────────────
 
-export const WorkItemHelpers = {
+export const ItemHelpers = {
   getInitials: (name?: string): string => {
     if (!name?.trim()) return "U";
     const parts = name.trim().split(/\s+/);
@@ -242,7 +257,7 @@ export const WorkItemHelpers = {
   },
 
   formatGitBranch: (item: { title?: string | null; identifier?: string | null }): string => {
-    const slug = WorkItemHelpers.toBranchSlug(item.title, item.identifier);
+    const slug = ItemHelpers.toBranchSlug(item.title, item.identifier);
     return item.identifier ? `${item.identifier.toLowerCase()}-${slug}` : `feature/${slug}`;
   },
 
@@ -269,13 +284,13 @@ export const WorkItemHelpers = {
     // If only start date is present, do not display; only display when due date exists
     if (!dueDate) return "";
 
-    const formattedDue = WorkItemHelpers.formatDate(dueDate);
+    const formattedDue = ItemHelpers.formatDate(dueDate);
     if (!formattedDue) return "";
 
     // If no start date: display only due date
     if (!startDate) return formattedDue;
 
-    const formattedStart = WorkItemHelpers.formatDate(startDate);
+    const formattedStart = ItemHelpers.formatDate(startDate);
     // If both start and due date exist and differ: combine into range
     if (formattedStart && formattedStart !== formattedDue) {
       return `${formattedStart} - ${formattedDue}`;
@@ -385,7 +400,7 @@ export const WorkItemHelpers = {
       }
     }
 
-    const primary = WorkItemHelpers.resolveAssignee(item);
+    const primary = ItemHelpers.resolveAssignee(item);
     if (primary && !seenIds.has(primary.id)) {
       seenIds.add(primary.id);
       result.unshift(primary);
@@ -452,17 +467,119 @@ export const WorkItemHelpers = {
     if (!Array.isArray(subItems) || subItems.length === 0) return 0;
     let completed = 0;
     for (const sub of subItems) {
-      if (
-        sub.completed ||
-        sub.stateGroup === "completed" ||
-        sub.state?.group === "completed" ||
-        sub.columnId === "done" ||
-        sub.columnId === "completed"
-      ) {
+      if (ItemHelpers.isCompleted(sub)) {
         completed++;
       }
     }
     return Math.round((completed / subItems.length) * 100);
+  },
+
+  resolveAuthorId: (
+    item:
+      | {
+          authorId?: string | null;
+          createdById?: string | null;
+          author?: { id?: string | null } | string | null;
+          createdBy?: { id?: string | null } | string | null;
+        }
+      | null
+      | undefined
+  ): string | undefined => {
+    if (!item) return undefined;
+    if (typeof item.authorId === "string" && item.authorId) return item.authorId;
+    const raw = item as Record<string, unknown>;
+    if (typeof raw.createdById === "string" && raw.createdById) return raw.createdById;
+    if (typeof item.author === "string" && item.author) return item.author;
+    if (item.author && typeof item.author === "object" && typeof item.author.id === "string" && item.author.id) {
+      return item.author.id;
+    }
+    if (typeof item.createdBy === "string" && item.createdBy) return item.createdBy;
+    if (
+      item.createdBy &&
+      typeof item.createdBy === "object" &&
+      typeof item.createdBy.id === "string" &&
+      item.createdBy.id
+    ) {
+      return item.createdBy.id;
+    }
+    return undefined;
+  },
+
+  resolveParentId: (
+    item:
+      | {
+          parentId?: string | null;
+          parentItemId?: string | null;
+          parentWorkItemId?: string | null;
+        }
+      | null
+      | undefined
+  ): string | undefined => {
+    if (!item) return undefined;
+    return item.parentId || item.parentItemId || item.parentWorkItemId || undefined;
+  },
+
+  resolveStateGroup: (
+    item:
+      | {
+          completed?: boolean;
+          columnId?: string | null;
+          stateId?: string | null;
+          stateGroup?: string | null;
+          state?: { id?: string; name?: string; group?: string } | string | null;
+        }
+      | null
+      | undefined,
+    columns: Column[] = []
+  ): StateGroup => {
+    if (!item) return "unstarted";
+    const stateObj = item.state && typeof item.state === "object" ? item.state : null;
+    const legacyState = typeof item.state === "string" ? item.state : undefined;
+    const colId = item.columnId || item.stateId || stateObj?.id || legacyState || "";
+    const matchedCol = columns.find((c) => resolveColumnId(c) === colId);
+    const explicitGroup = matchedCol?.group || item.stateGroup || stateObj?.group;
+    if (explicitGroup && (STATE_GROUPS as readonly string[]).includes(explicitGroup)) {
+      return explicitGroup as StateGroup;
+    }
+    if (item.completed) return "completed";
+    return inferStateGroup(colId, stateObj?.name || matchedCol?.name || matchedCol?.title || colId);
+  },
+
+  isCompleted: (
+    item:
+      | {
+          completed?: boolean;
+          columnId?: string | null;
+          stateId?: string | null;
+          stateGroup?: string | null;
+          state?: { id?: string; name?: string; group?: string } | string | null;
+        }
+      | null
+      | undefined,
+    columns: Column[] = []
+  ): boolean => {
+    if (!item) return false;
+    if (item.completed) return true;
+    const group = ItemHelpers.resolveStateGroup(item, columns);
+    return group === "completed";
+  },
+
+  isCancelled: (
+    item:
+      | {
+          completed?: boolean;
+          columnId?: string | null;
+          stateId?: string | null;
+          stateGroup?: string | null;
+          state?: { id?: string; name?: string; group?: string } | string | null;
+        }
+      | null
+      | undefined,
+    columns: Column[] = []
+  ): boolean => {
+    if (!item) return false;
+    const group = ItemHelpers.resolveStateGroup(item, columns);
+    return group === "cancelled";
   },
 
   isDueSoon: (dueDate?: string | null, daysThreshold = 3): boolean => {
@@ -540,7 +657,7 @@ export const WorkItemHelpers = {
     const attachmentsCount =
       typeof rawItem.attachmentCount === "number"
         ? rawItem.attachmentCount
-        : WorkItemHelpers.countAttachments(item.attachments || rawItem.attach);
+        : ItemHelpers.countAttachments(item.attachments || rawItem.attach);
 
     return {
       resolvedState,
@@ -555,30 +672,29 @@ export const WorkItemHelpers = {
   },
 };
 
-export const ItemHelpers = WorkItemHelpers;
 
-export const getInitials = WorkItemHelpers.getInitials;
-export const formatActivityTime = WorkItemHelpers.formatActivityTime;
-export const formatDate = WorkItemHelpers.formatDate;
-export const formatDateRange = WorkItemHelpers.formatDateRange;
-export const checkOverdue = WorkItemHelpers.checkOverdue;
-export const uniqueLabels = WorkItemHelpers.uniqueLabels;
-export const countAttachments = WorkItemHelpers.countAttachments;
-export const resolveAssignee = WorkItemHelpers.resolveAssignee;
-export const resolveAssignees = WorkItemHelpers.resolveAssignees;
-export const resolveAssigneeId = WorkItemHelpers.resolveAssigneeId;
-export const createSnapshot = WorkItemHelpers.createSnapshot;
-export const calculateProgressRollup = WorkItemHelpers.calculateProgressRollup;
-export const isDueSoon = WorkItemHelpers.isDueSoon;
-export const resolveItemMeta = WorkItemHelpers.resolveItemMeta;
-export const toBranchSlug = WorkItemHelpers.toBranchSlug;
-export const formatGitBranch = WorkItemHelpers.formatGitBranch;
-export const resolveIdentifier = WorkItemHelpers.resolveIdentifier;
+export const getInitials = ItemHelpers.getInitials;
+export const formatActivityTime = ItemHelpers.formatActivityTime;
+export const formatDate = ItemHelpers.formatDate;
+export const formatDateRange = ItemHelpers.formatDateRange;
+export const checkOverdue = ItemHelpers.checkOverdue;
+export const uniqueLabels = ItemHelpers.uniqueLabels;
+export const countAttachments = ItemHelpers.countAttachments;
+export const resolveAssignee = ItemHelpers.resolveAssignee;
+export const resolveAssignees = ItemHelpers.resolveAssignees;
+export const resolveAssigneeId = ItemHelpers.resolveAssigneeId;
+export const createSnapshot = ItemHelpers.createSnapshot;
+export const calculateProgressRollup = ItemHelpers.calculateProgressRollup;
+export const isDueSoon = ItemHelpers.isDueSoon;
+export const resolveItemMeta = ItemHelpers.resolveItemMeta;
+export const toBranchSlug = ItemHelpers.toBranchSlug;
+export const formatGitBranch = ItemHelpers.formatGitBranch;
+export const resolveIdentifier = ItemHelpers.resolveIdentifier;
 export { DEFAULT_STATES, PRIORITY_THEME_COLORS, GROUP_DEFAULT_COLORS } from '@/features/projects/project-id/work-items/types/work-item.types';
 
 export const EMPTY_ARRAY: never[] = [];
 
-export interface WorkItemTreeRow {
+export interface ItemTreeRow {
   item: Item;
   isSubItem: boolean;
   hasChildren: boolean;
@@ -586,14 +702,14 @@ export interface WorkItemTreeRow {
   depth?: number;
 }
 
-export function buildWorkItemTree(
+export function buildItemTree(
   sortedList: Item[],
   options?: {
     showChildWorkItems?: boolean;
     collapsedParentIds?: Set<string>;
     expandedIds?: Set<string>;
   }
-): WorkItemTreeRow[] {
+): ItemTreeRow[] {
   if (!Array.isArray(sortedList) || sortedList.length === 0) return [];
 
   const showChildWorkItems = options?.showChildWorkItems ?? true;
@@ -639,7 +755,7 @@ export function buildWorkItemTree(
     }
   }
 
-  const result: WorkItemTreeRow[] = [];
+  const result: ItemTreeRow[] = [];
   const visited = new Set<string>();
 
   const markSubtreeVisited = (parentId: string) => {
@@ -723,6 +839,50 @@ export function buildGroupMoveUpdates(
   return updates;
 }
 
+export const MemberHelpers = {
+  resolveUserId: (
+    member:
+      | {
+          id?: string;
+          userId?: string;
+          user?: { id?: string } | null;
+        }
+      | null
+      | undefined,
+    fallback = ""
+  ): string => {
+    if (!member) return fallback;
+    return member.userId || member.user?.id || member.id || fallback;
+  },
+
+  resolveDisplayName: (
+    member:
+      | {
+          name?: string | null;
+          user?: { name?: string | null } | null;
+        }
+      | null
+      | undefined,
+    fallback = "Member"
+  ): string => {
+    if (!member) return fallback;
+    return member.name || member.user?.name || fallback;
+  },
+
+  resolveAvatar: (
+    member:
+      | {
+          avatar?: string | null;
+          user?: { avatar?: string | null } | null;
+        }
+      | null
+      | undefined
+  ): string | undefined => {
+    if (!member) return undefined;
+    return member.avatar || member.user?.avatar || undefined;
+  },
+};
+
 export function getItemBucketKey(item: Item, groupBy?: string): string {
   const itemRecord = item as Record<string, unknown>;
   if (!groupBy || groupBy === 'state') {
@@ -757,14 +917,213 @@ export function getItemBucketKey(item: Item, groupBy?: string): string {
     return firstLabel || '__no_label__';
   }
   if (groupBy === 'createdBy') {
-    const authorId =
-      item.authorId ||
-      (typeof itemRecord.createdBy === 'string' ? itemRecord.createdBy : undefined) ||
-      (typeof itemRecord.author === 'object' && itemRecord.author !== null && 'id' in itemRecord.author
-        ? (itemRecord.author as { id?: string }).id
-        : undefined);
-    return authorId || '__unknown__';
+    return ItemHelpers.resolveAuthorId(item) || '__unknown_author__';
   }
   return item.columnId || (typeof itemRecord.stateId === 'string' ? itemRecord.stateId : '');
 }
+
+/**
+ * Unified comparator for sorting work items across Topbar, TableView, and ListView (OCP / DRY).
+ */
+export function compareItems(
+  first: Item,
+  second: Item,
+  field?: string,
+  direction: 'asc' | 'desc' = 'asc'
+): number {
+  const dir = direction === 'desc' ? -1 : 1;
+  switch (field) {
+    case 'priority': {
+      const weightA = PRIORITY_WEIGHT[((first.priority || 'none').toLowerCase() as Priority)] ?? 0;
+      const weightB = PRIORITY_WEIGHT[((second.priority || 'none').toLowerCase() as Priority)] ?? 0;
+      return (weightA - weightB) * dir;
+    }
+    case 'dueDate': {
+      if (!first.dueDate && !second.dueDate) return 0;
+      if (!first.dueDate) return 1;
+      if (!second.dueDate) return -1;
+      return (new Date(first.dueDate).getTime() - new Date(second.dueDate).getTime()) * dir;
+    }
+    case 'startDate': {
+      if (!first.startDate && !second.startDate) return 0;
+      if (!first.startDate) return 1;
+      if (!second.startDate) return -1;
+      return (new Date(first.startDate).getTime() - new Date(second.startDate).getTime()) * dir;
+    }
+    case 'createdAt':
+    case 'createdOn': {
+      const timeA = first.createdAt ? new Date(first.createdAt).getTime() : 0;
+      const timeB = second.createdAt ? new Date(second.createdAt).getTime() : 0;
+      return (timeA - timeB) * dir;
+    }
+    case 'updatedAt':
+    case 'updatedOn': {
+      const timeA = first.updatedAt ? new Date(first.updatedAt).getTime() : 0;
+      const timeB = second.updatedAt ? new Date(second.updatedAt).getTime() : 0;
+      return (timeA - timeB) * dir;
+    }
+    case 'title': {
+      const titleA = (first.title || '').toLowerCase();
+      const titleB = (second.title || '').toLowerCase();
+      return titleA.localeCompare(titleB, 'vi', { sensitivity: 'base' }) * dir;
+    }
+    case 'identifier': {
+      const numA = first.sequenceNumber || 0;
+      const numB = second.sequenceNumber || 0;
+      return (numA - numB) * dir;
+    }
+    default:
+      return ((first.rank ?? 0) - (second.rank ?? 0)) * dir;
+  }
+}
+
+// ── 3. Topbar, Display & List Theme Constants ────────────────────────────────
+
+export const PRIORITY_THEME_CLASSES: Record<string, string> = {
+  urgent:
+    'text-foreground bg-muted/40 border-border hover:bg-muted shadow-none font-normal',
+  high:
+    'text-foreground bg-muted/30 border-border hover:bg-muted shadow-none font-normal',
+  medium:
+    'text-foreground bg-muted/20 border-border hover:bg-muted shadow-none font-normal',
+  low:
+    'text-foreground bg-muted/10 border-border hover:bg-muted shadow-none font-normal',
+  none:
+    'text-foreground bg-transparent hover:bg-muted/50 border-border shadow-none font-normal',
+};
+
+export function formatDateDisplay(dateStr?: string | null): string {
+  return ItemHelpers.formatDate(dateStr);
+}
+
+
+export function formatTableDate(dateStr?: string | null): string | null {
+  return ItemHelpers.formatDate(dateStr) || null;
+}
+
+export function isDateOverdue(dateStr?: string | null, completed?: boolean): boolean {
+  if (!dateStr || completed) return false;
+  return ItemHelpers.checkOverdue(dateStr);
+}
+
+export const ITEMS_VIEW_STORAGE_KEY = 'flux:work-items-view-mode';
+export const DISPLAY_OPTIONS_STORAGE_KEY = 'flux:work-item-display-options';
+export const VALID_MODES: ViewMode[] = ['board', 'list', 'calendar', 'table', 'timeline', 'split'];
+
+export const getDisplayOptionsStorageKey = (projId?: string, currentMode?: ViewMode) => {
+  const modeKey = currentMode || 'board';
+  return projId
+    ? `flux:work-item-display-options:${projId}:${modeKey}`
+    : `${DISPLAY_OPTIONS_STORAGE_KEY}:${modeKey}`;
+};
+
+export const getInitialDisplayOptions = (projId?: string, targetMode: ViewMode = 'board'): DisplayOptions => {
+  const defaultGb: GroupByOption = (targetMode === 'table' || targetMode === 'timeline') ? 'none' : 'state';
+  if (typeof window !== 'undefined') {
+    try {
+      const modeKey = getDisplayOptionsStorageKey(projId, targetMode);
+      const saved = localStorage.getItem(modeKey);
+      if (saved) {
+        const parsed = JSON.parse(saved) as Record<string, unknown>;
+        const rawGb = typeof parsed.groupBy === 'string' ? parsed.groupBy : undefined;
+        const rawSubGb = typeof parsed.subGroupBy === 'string' ? parsed.subGroupBy : undefined;
+        const groupBy = rawGb && rawGb !== 'null' ? (rawGb as GroupByOption) : defaultGb;
+        let subGroupBy = rawSubGb && rawSubGb !== 'null' ? (rawSubGb as SubGroupByOption) : 'none';
+        if (subGroupBy === groupBy) subGroupBy = 'none';
+        return {
+          ...DEFAULT_DISPLAY_OPTIONS,
+          ...parsed,
+          groupBy,
+          subGroupBy,
+        };
+      }
+    } catch {}
+  }
+  return {
+    ...DEFAULT_DISPLAY_OPTIONS,
+    groupBy: defaultGb,
+  };
+};
+
+export const PRIORITY_WEIGHT: Record<Priority, number> = {
+  urgent: 4,
+  high: 3,
+  medium: 2,
+  low: 1,
+  none: 0,
+};
+
+export function countActiveFilters(filters: Filters): number {
+  return (
+    filters.state.length +
+    filters.state_group.length +
+    filters.priority.length +
+    filters.assignees.length +
+    filters.mentions.length +
+    filters.created_by.length +
+    filters.labels.length +
+    filters.attach.length +
+    (filters.work_items?.length ?? 0) +
+    filters.parent.length +
+    filters.due_date.length +
+    filters.start_date.length +
+    filters.created_at.length +
+    filters.updated_at.length +
+    (filters.subscribers?.length ?? 0)
+  );
+}
+
+// ── 4. Table View Constants ──────────────────────────────────────────────────
+
+export const TABLE_STORAGE_KEY = 'flux:table_view:columns_v5';
+export const TABLE_WIDTHS_STORAGE_KEY = 'flux:table_view:column_widths_v4';
+
+export const TABLE_PROPERTIES: TablePropertyConfig[] = [
+  { key: 'state', label: 'State', icon: StatusIcon, defaultVisible: true, minWidth: 140 },
+  { key: 'priority', label: 'Priority', icon: MediumPriorityBoxIcon, defaultVisible: true, minWidth: 110 },
+  { key: 'assignees', label: 'Assignees', icon: Users, defaultVisible: true, minWidth: 145 },
+  { key: 'startDate', label: 'Start date', icon: CalendarClock, defaultVisible: false, minWidth: 135 },
+  { key: 'dueDate', label: 'Due date', icon: Calendar, defaultVisible: true, minWidth: 135 },
+  { key: 'labels', label: 'Labels', icon: Tag, defaultVisible: true, minWidth: 190 },
+  { key: 'subItemCount', label: 'Sub-items', icon: Layers, defaultVisible: false, minWidth: 115 },
+  { key: 'attachment', label: 'Attachments', icon: Paperclip, defaultVisible: false, minWidth: 115 },
+  { key: 'link', label: 'Links', icon: Link2, defaultVisible: false, minWidth: 100 },
+  { key: 'createdOn', label: 'Created on', icon: Calendar, defaultVisible: false, minWidth: 135 },
+  { key: 'createdBy', label: 'Created by', icon: User, defaultVisible: false, minWidth: 135 },
+  { key: 'updatedOn', label: 'Updated on', icon: Calendar, defaultVisible: false, minWidth: 135 },
+];
+
+export const DEFAULT_VISIBLE_PROPERTIES: Record<TablePropertyKey, boolean> = {
+  state: true,
+  priority: true,
+  assignees: true,
+  startDate: false,
+  dueDate: true,
+  labels: true,
+  subItemCount: false,
+  attachment: false,
+  link: false,
+  createdOn: false,
+  createdBy: false,
+  updatedOn: false,
+};
+
+export const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
+  title: 380,
+  state: 140,
+  priority: 110,
+  assignees: 145,
+  startDate: 135,
+  dueDate: 135,
+  labels: 190,
+  subItemCount: 115,
+  attachment: 115,
+  link: 100,
+  createdOn: 135,
+  createdBy: 135,
+  updatedOn: 135,
+};
+
+
+
 

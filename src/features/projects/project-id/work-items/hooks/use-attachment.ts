@@ -16,7 +16,7 @@ import {
   attachFileInputSchema,
   attachLinkInputSchema,
 } from '@/features/projects/project-id/work-items/types/work-item.types';
-import { workItemToast } from './use-work-item-toast';
+import { itemToast } from './use-crud';
 
 type WithTargetId = { id?: string; itemId?: string; workItemId?: string };
 
@@ -40,10 +40,10 @@ function createAttachmentMutation<TVars extends WithTargetId, TResult = unknown>
           queryClient.invalidateQueries({ queryKey: ['work-items', targetId, 'attachments'] });
           queryClient.invalidateQueries({ queryKey: ['work-item-activity', targetId] });
         }
-        workItemToast.success(config.successMessage, 'attachment');
+        itemToast.success(config.successMessage, 'attachment');
       },
       onError: (error: Error) =>
-        workItemToast.error(error, config.errorMessage, 'attachment'),
+        itemToast.error(error, config.errorMessage, 'attachment'),
     });
   };
 }
@@ -144,11 +144,11 @@ export const useUploadFilesWithToast = () => {
           })
         );
         if (options?.showSuccessToast ?? true) {
-          workItemToast.success(options?.successMessage || 'File attached successfully', 'upload');
+          itemToast.success(options?.successMessage || 'File attached successfully', 'upload');
         }
         return results;
       } catch (err) {
-        workItemToast.error(err, options?.errorMessage || 'Failed to upload file', 'upload');
+        itemToast.error(err, options?.errorMessage || 'Failed to upload file', 'upload');
         throw err;
       }
     },
@@ -156,18 +156,7 @@ export const useUploadFilesWithToast = () => {
   );
 };
 
-export const useUploadAttachmentWithToast = () => {
-  const uploadFiles = useUploadFilesWithToast();
-  return useCallback(
-    async (file: File) => {
-      const results = await uploadFiles([file]);
-      return results[0]?.url;
-    },
-    [uploadFiles]
-  );
-};
-
-export const useWorkItemAttachments = (workItemId?: string | null) => {
+export const useItemAttachments = (workItemId?: string | null) => {
   return useQuery({
     queryKey: ['work-items', workItemId, 'attachments'],
     queryFn: () => (workItemId ? workItemApi.attachments.getWorkItemAttachments(workItemId) : Promise.resolve(null)),

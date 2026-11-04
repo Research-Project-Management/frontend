@@ -9,7 +9,7 @@ import {
   Tooltip as RechartsTooltip,
 } from 'recharts';
 import { BreakdownCard, BreakdownTooltip } from './BreakdownCard';
-import { getWorkloadStates } from '../../utils/workload.util';
+import { getWorkloadStates } from '../../utils/your-work.utils';
 
 export interface StateBreakdownProps {
   statusBreakdown?: Record<string, number>;

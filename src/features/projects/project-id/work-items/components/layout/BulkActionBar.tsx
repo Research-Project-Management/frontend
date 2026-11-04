@@ -39,7 +39,7 @@ const PRIORITY_ICONS: Record<Priority, React.ElementType> = {
   none: CircleOff,
 };
 
-import type { BulkActionBarProps } from '@/features/projects/project-id/work-items/types/layout.types';
+import type { BulkActionBarProps } from '@/features/projects/project-id/work-items/types/work-item.types';
 
 export type { BulkActionBarProps };
 

@@ -20,7 +20,7 @@ import {
   AvatarImage,
 } from '@/shared/components/ui/avatar';
 import { BarChart3, Users, CheckCircle2 } from 'lucide-react';
-import type { AnalyticsDrawerProps } from '@/features/projects/project-id/work-items/types/layout.types';
+import type { AnalyticsDrawerProps } from '@/features/projects/project-id/work-items/types/work-item.types';
 
 export type { AnalyticsDrawerProps };
 

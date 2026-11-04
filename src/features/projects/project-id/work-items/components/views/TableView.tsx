@@ -9,23 +9,37 @@ import {
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
-import { StatusIcon } from '@/shared/components/icons';
-import { ItemHelpers, resolveColumnId, buildWorkItemTree } from '@/features/projects/project-id/work-items/utils/work-item.utils';
+import {
+  StatusIcon,
+  UrgentPriorityBoxIcon,
+  HighPriorityBoxIcon,
+  MediumPriorityBoxIcon,
+  LowPriorityBoxIcon,
+  NonePriorityBoxIcon,
+} from '@/shared/components/icons';
+import { cn } from '@/shared/lib/utils';
+import {
+  ItemHelpers,
+  MemberHelpers,
+  resolveColumnId,
+  buildItemTree,
+  compareItems,
+  formatTableDate,
+  isDateOverdue,
+} from '@/features/projects/project-id/work-items/utils/work-item.utils';
 import type {
   Item,
   Priority,
 } from '@/features/projects/project-id/work-items/types/work-item.types';
 
 // Subcomponents, types, and constants
-export * from '@/features/projects/project-id/work-items/types/table-view.types';
-export * from '@/features/projects/project-id/work-items/utils/table.utils';
-export * from './table/TableColumnPropertiesPopover';
-export * from './table/TableHeaderRow';
-export * from './table/TableGroupHeader';
-export * from './table/TableRowItem';
-export * from './table/TableGroupRowList';
-export * from './table/TableInlineAddRow';
-export * from './table/TableHorizontalScrollbar';
+export * from '@/features/projects/project-id/work-items/types/work-item.types';
+export { formatTableDate, isDateOverdue };
+export * from './table/HeaderRow';
+export * from './table/RowItem';
+export * from './table/GroupRowList';
+export * from './table/InlineAddRow';
+export * from './table/HorizontalScrollbar';
 
 import {
   type TablePropertyKey,
@@ -35,12 +49,27 @@ import {
   DEFAULT_VISIBLE_PROPERTIES,
   DEFAULT_COLUMN_WIDTHS,
   type TableViewProps,
-} from '@/features/projects/project-id/work-items/types/table-view.types';
-import { renderPriorityIcon } from '@/features/projects/project-id/work-items/utils/table.utils';
-import { TableHeaderRow } from './table/TableHeaderRow';
-import { TableGroupHeader } from './table/TableGroupHeader';
-import { TableGroupRowList } from './table/TableGroupRowList';
-import { TableInlineAddRow } from './table/TableInlineAddRow';
+} from '@/features/projects/project-id/work-items/types/work-item.types';
+import { HeaderRow, GroupHeader } from './table/HeaderRow';
+import { GroupRowList } from './table/GroupRowList';
+import { InlineAddRow } from './table/InlineAddRow';
+
+export function renderPriorityIcon(priority?: Priority, className?: string) {
+  const p = priority || 'none';
+  switch (p) {
+    case 'urgent':
+      return <UrgentPriorityBoxIcon className={cn('size-3.5 shrink-0', className)} />;
+    case 'high':
+      return <HighPriorityBoxIcon className={cn('size-3.5 shrink-0', className)} />;
+    case 'medium':
+      return <MediumPriorityBoxIcon className={cn('size-3.5 shrink-0', className)} />;
+    case 'low':
+      return <LowPriorityBoxIcon className={cn('size-3.5 shrink-0', className)} />;
+    case 'none':
+    default:
+      return <NonePriorityBoxIcon className={cn('size-3.5 shrink-0', className)} />;
+  }
+}
 
 // ── Main TableView Component ──────────────────────────────────────────────────
 
@@ -52,11 +81,11 @@ export function TableView({
   displayOptions,
   projectId = '',
   members = [],
-  onAddCard,
-  onEditCard,
-  onDeleteCard,
-  onDuplicateCard,
-  onUpdateCard,
+  onAddItem,
+  onEditItem,
+  onDeleteItem,
+  onDuplicateItem,
+  onUpdateItem,
   isReadOnly = false,
   selectedIds: propSelectedIds,
   onToggleSelect: rawOnToggleSelect,
@@ -168,63 +197,11 @@ export function TableView({
 
   const sortItemsList = useCallback(
     (list: Item[]) => {
+      if (!sortField) return [...list];
       const copy = [...list];
-      copy.sort((itemA, itemB) => {
-        let comparison = 0;
-
-        switch (sortField) {
-          case 'identifier': {
-            const numA = itemA.sequenceNumber || 0;
-            const numB = itemB.sequenceNumber || 0;
-            comparison = numA - numB;
-            break;
-          }
-          case 'title':
-            comparison = (itemA.title || '').localeCompare(itemB.title || '');
-            break;
-          case 'dueDate': {
-            const timeA = itemA.dueDate ? new Date(itemA.dueDate).getTime() : 0;
-            const timeB = itemB.dueDate ? new Date(itemB.dueDate).getTime() : 0;
-            comparison = timeA - timeB;
-            break;
-          }
-          case 'startDate': {
-            const timeA = itemA.startDate ? new Date(itemA.startDate).getTime() : 0;
-            const timeB = itemB.startDate ? new Date(itemB.startDate).getTime() : 0;
-            comparison = timeA - timeB;
-            break;
-          }
-          case 'createdOn': {
-            const timeA = itemA.createdAt ? new Date(itemA.createdAt).getTime() : 0;
-            const timeB = itemB.createdAt ? new Date(itemB.createdAt).getTime() : 0;
-            comparison = timeA - timeB;
-            break;
-          }
-          case 'updatedOn': {
-            const timeA = itemA.updatedAt ? new Date(itemA.updatedAt).getTime() : 0;
-            const timeB = itemB.updatedAt ? new Date(itemB.updatedAt).getTime() : 0;
-            comparison = timeA - timeB;
-            break;
-          }
-          case 'priority': {
-            const weights: Record<string, number> = {
-              urgent: 4,
-              high: 3,
-              medium: 2,
-              low: 1,
-              none: 0,
-            };
-            const weightA = weights[itemA.priority || 'none'] || 0;
-            const weightB = weights[itemB.priority || 'none'] || 0;
-            comparison = weightA - weightB;
-            break;
-          }
-          default:
-            comparison = 0;
-        }
-
-        return sortOrder === 'asc' ? comparison : -comparison;
-      });
+      copy.sort((itemA, itemB) =>
+        compareItems(itemA, itemB, sortField, sortOrder),
+      );
       return copy;
     },
     [sortField, sortOrder]
@@ -284,9 +261,9 @@ export function TableView({
 
     if (effectiveGroupBy === 'assignee') {
       const memberGroups = (members || []).map((m) => {
-        const mem = m as typeof m & { user?: { id?: string; name?: string } };
-        const userId = mem.userId || mem.user?.id || mem.id || '';
-        const name = mem.name || mem.user?.name || 'Member';
+        const userId = MemberHelpers.resolveUserId(m);
+        const name = MemberHelpers.resolveDisplayName(m, 'Member');
+        const avatar = MemberHelpers.resolveAvatar(m);
         const groupItems =
           itemsByColumnId instanceof Map && itemsByColumnId.has(userId)
             ? itemsByColumnId.get(userId) || []
@@ -299,7 +276,7 @@ export function TableView({
           color: undefined,
           icon: (
             <Avatar className="size-4 shrink-0">
-              <AvatarImage src={mem.avatar || mem.user?.avatar} />
+              <AvatarImage src={avatar} />
               <AvatarFallback className="text-9 font-medium bg-muted">
                 {name.charAt(0).toUpperCase()}
               </AvatarFallback>
@@ -322,6 +299,48 @@ export function TableView({
       });
 
       return memberGroups;
+    }
+
+    if (effectiveGroupBy === 'createdBy') {
+      const authorGroups = (members || []).map((m) => {
+        const userId = MemberHelpers.resolveUserId(m);
+        const name = MemberHelpers.resolveDisplayName(m, 'Member');
+        const avatar = MemberHelpers.resolveAvatar(m);
+        const groupItems =
+          itemsByColumnId instanceof Map && itemsByColumnId.has(userId)
+            ? itemsByColumnId.get(userId) || []
+            : items.filter((item) => (ItemHelpers.resolveAuthorId(item) || '') === userId);
+        return {
+          key: userId,
+          title: name,
+          color: undefined,
+          icon: (
+            <Avatar className="size-4 shrink-0">
+              <AvatarImage src={avatar} />
+              <AvatarFallback className="text-9 font-medium bg-muted">
+                {name.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+          ),
+          items: sortItemsList(groupItems),
+        };
+      });
+
+      const unknownAuthorItems =
+        itemsByColumnId instanceof Map && itemsByColumnId.has('__unknown_author__')
+          ? itemsByColumnId.get('__unknown_author__') || []
+          : items.filter((item) => !ItemHelpers.resolveAuthorId(item));
+      if (unknownAuthorItems.length > 0) {
+        authorGroups.push({
+          key: '__unknown_author__',
+          title: 'Unknown Author',
+          color: undefined,
+          icon: <User className="size-3.5 shrink-0 text-muted-foreground" />,
+          items: sortItemsList(unknownAuthorItems),
+        });
+      }
+
+      return authorGroups;
     }
 
     if (effectiveGroupBy === 'labels') {
@@ -426,7 +445,7 @@ export function TableView({
 
   const buildTreeRows = useCallback(
     (sortedList: Item[]) =>
-      buildWorkItemTree(sortedList, { showChildWorkItems, collapsedParentIds }),
+      buildItemTree(sortedList, { showChildWorkItems, collapsedParentIds }),
     [showChildWorkItems, collapsedParentIds]
   );
 
@@ -451,7 +470,7 @@ export function TableView({
         <div role="table" aria-label="Work items table" className="w-full min-w-max flex flex-col">
           {/* Main Sticky Header */}
           <div role="rowgroup">
-            <TableHeaderRow
+            <HeaderRow
               visibleProperties={visibleProperties}
               onToggleProperty={handleToggleProperty}
               sortField={sortField}
@@ -474,7 +493,7 @@ export function TableView({
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => onAddCard(defaultColId)}
+                  onClick={() => onAddItem(defaultColId)}
                   className="gap-1.5 text-xs rounded-md focus-visible:ring-1 focus-visible:ring-ring"
                 >
                   <Plus className="size-3.5" />
@@ -495,7 +514,7 @@ export function TableView({
 
                 return (
                   <div key={group.key} className="flex flex-col">
-                    <TableGroupHeader
+                    <GroupHeader
                       title={group.title}
                       color={group.color}
                       icon={group.icon}
@@ -505,7 +524,7 @@ export function TableView({
                     />
 
                     {isExpanded && (
-                      <TableGroupRowList
+                      <GroupRowList
                         rows={buildTreeRows(group.items)}
                         scrollRef={tableScrollRef}
                         columns={columns}
@@ -513,10 +532,10 @@ export function TableView({
                         visibleProperties={visibleProperties}
                         selectedIds={selectedIds}
                         onToggleSelect={handleToggleSelect}
-                        onEditCard={onEditCard}
-                        onDeleteCard={onDeleteCard}
-                        onDuplicateCard={onDuplicateCard}
-                        onUpdateCard={onUpdateCard}
+                        onEditItem={onEditItem}
+                        onDeleteItem={onDeleteItem}
+                        onDuplicateItem={onDuplicateItem}
+                        onUpdateItem={onUpdateItem}
                         members={members}
                         projectId={projectId}
                         isReadOnly={isReadOnly}
@@ -532,7 +551,7 @@ export function TableView({
           {/* Flat Mode */}
           {!isGrouped && items.length > 0 && (
             <div role="rowgroup" className="flex flex-col">
-              <TableGroupRowList
+              <GroupRowList
                 rows={flatTreeRows}
                 scrollRef={tableScrollRef}
                 columns={columns}
@@ -540,10 +559,10 @@ export function TableView({
                 visibleProperties={visibleProperties}
                 selectedIds={selectedIds}
                 onToggleSelect={handleToggleSelect}
-                onEditCard={onEditCard}
-                onDeleteCard={onDeleteCard}
-                onDuplicateCard={onDuplicateCard}
-                onUpdateCard={onUpdateCard}
+                onEditItem={onEditItem}
+                onDeleteItem={onDeleteItem}
+                onDuplicateItem={onDuplicateItem}
+                onUpdateItem={onUpdateItem}
                 members={members}
                 projectId={projectId}
                 isReadOnly={isReadOnly}
@@ -557,10 +576,10 @@ export function TableView({
       {/* Fixed Bottom Footer: "+ New work item" Row (pinned at bottom, outside the scroll area) */}
       {items.length > 0 && !isReadOnly && (
         <div className="shrink-0 border-t border-border bg-background z-20">
-          <TableInlineAddRow
+          <InlineAddRow
             targetColumnId={defaultColId}
             titleWidth={DEFAULT_COLUMN_WIDTHS.title}
-            onAddCard={onAddCard}
+            onAddItem={onAddItem}
             isReadOnly={isReadOnly}
           />
         </div>

@@ -63,11 +63,11 @@ export function AvatarStack({
   );
 }
 
-import type { MemberPopoverProps } from '@/features/projects/project-id/work-items/types/picker.types';
+import type { MemberPickerProps } from '@/features/projects/project-id/work-items/types/work-item.types';
 
-export type { MemberPopoverProps };
+export type { MemberPickerProps };
 
-export function MemberPopover({
+export function MemberPicker({
   open,
   onOpenChange,
   assigneeId,
@@ -80,7 +80,7 @@ export function MemberPopover({
   isMulti = false,
   disabled = false,
   isReadOnly = false,
-}: MemberPopoverProps) {
+}: MemberPickerProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
   const activeIds = useMemo<string[]>(() => {
@@ -243,5 +243,3 @@ export function MemberPopover({
   );
 }
 
-export const MemberPicker = MemberPopover;
-export const AssigneePicker = MemberPopover;

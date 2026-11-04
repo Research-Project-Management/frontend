@@ -1,5 +1,5 @@
-﻿import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { AcademicAiService } from '@/features/editor/sdk/manuscript.service';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { AiClient, AcademicAiService } from '@/features/editor/sdk/manuscript.service';
 
 describe('AI Inline Floating Assistant & Academic Rephrase (Overleaf AI Parity)', () => {
   beforeEach(() => {
@@ -13,7 +13,7 @@ describe('AI Inline Floating Assistant & Academic Rephrase (Overleaf AI Parity)'
   it('enhances academic tone while preserving citations and math formulas verbatim', async () => {
     const rawText = 'We look at a lot of samples to show that $E = mc^2$ holds as cited in \\cite{einstein1905}.';
 
-    const result = await AcademicAiService.executeAction({
+    const result = await AiClient.executeAction({
       action: 'academic-tone',
       selectedText: rawText,
     });
@@ -32,7 +32,7 @@ describe('AI Inline Floating Assistant & Academic Rephrase (Overleaf AI Parity)'
   it('makes text concise by pruning wordy phrases', async () => {
     const wordyText = 'In order to evaluate the model, due to the fact that data was limited, we ran tests.';
 
-    const result = await AcademicAiService.executeAction({
+    const result = await AiClient.executeAction({
       action: 'make-concise',
       selectedText: wordyText,
     });
@@ -47,7 +47,7 @@ describe('AI Inline Floating Assistant & Academic Rephrase (Overleaf AI Parity)'
   it('preserves equation references \\ref{} and \\eqref{}', async () => {
     const textWithRefs = 'According to Equation \\eqref{eq:loss} and Figure \\ref{fig:arch}, accuracy improves.';
 
-    const result = await AcademicAiService.executeAction({
+    const result = await AiClient.executeAction({
       action: 'fix-grammar',
       selectedText: textWithRefs,
     });
@@ -58,7 +58,7 @@ describe('AI Inline Floating Assistant & Academic Rephrase (Overleaf AI Parity)'
   });
 
   it('returns empty result gracefully when selected text is blank', async () => {
-    const result = await AcademicAiService.executeAction({
+    const result = await AiClient.executeAction({
       action: 'academic-tone',
       selectedText: '   ',
     });

@@ -14,7 +14,7 @@ import {
   resolveReverse,
   decompressSyncTeXData,
 } from '@/features/editor/subsystems/compiler/synctex/synctex-index';
-import { performRecursiveXyCut, type PdfTextItemRect } from '@/features/editor/subsystems/compiler/pdf/pdf-xy-cut';
+import { performRecursiveXyCut, type PdfTextItemRect } from '@/features/editor/subsystems/compiler/synctex/xy-cut';
 
 const FIXTURES_DIR = path.resolve(__dirname, '../fixtures/overleaf-ground-truth');
 

@@ -120,32 +120,48 @@ type CalendarViewProps = {
   items?: Item[];
   columns: Column[];
   projectId: string;
-  onAddCard: (columnId: string, title?: string, dueDate?: string) => void;
-  onOpenCardDetail: (item: Item) => void;
+  onAddItem: (columnId: string, title?: string, dueDate?: string) => void;
+  onOpenItemDetail: (item: Item) => void;
   onAssignExistingItems?: (ids: string[], dueDate: string, quiet?: boolean, startDate?: string | null) => void;
-  isAddingCard?: boolean;
+  isAddingItem?: boolean;
   isReadOnly?: boolean;
 };
 
-import type { CalendarLayoutMode } from '@/features/projects/project-id/work-items/types/calendar-view.types';
-import {
-  DATE_KEY_FORMAT,
-  WEEK_DAY_LABELS,
-  DATE_KEY_PATTERN,
-  isMidnightDueDate,
-  getCalendarDateKey,
-  createCalendarDueDate,
-} from '@/features/projects/project-id/work-items/utils/calendar.utils';
+import type { CalendarLayoutMode } from '@/features/projects/project-id/work-items/types/work-item.types';
 
 export type { CalendarLayoutMode };
-export {
-  DATE_KEY_FORMAT,
-  WEEK_DAY_LABELS,
-  DATE_KEY_PATTERN,
-  isMidnightDueDate,
-  getCalendarDateKey,
-  createCalendarDueDate,
-};
+
+export const DATE_KEY_FORMAT = 'yyyy-MM-dd';
+export const WEEK_DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+export const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+export function isMidnightDueDate(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}T00:00(?::00(?:\.000)?)?(?:Z|[+-]\d{2}:\d{2})?$/.test(
+    value,
+  );
+}
+
+export function getCalendarDateKey(dueDate?: string | null): string | null {
+  if (!dueDate) return null;
+  if (DATE_KEY_PATTERN.test(dueDate)) return dueDate;
+
+  const [datePart] = dueDate.split('T');
+  const parsedDate = new Date(dueDate);
+
+  if (isMidnightDueDate(dueDate) && DATE_KEY_PATTERN.test(datePart)) {
+    return datePart;
+  }
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return DATE_KEY_PATTERN.test(datePart) ? datePart : null;
+  }
+
+  return format(parsedDate, DATE_KEY_FORMAT);
+}
+
+export function createCalendarDueDate(dateKey: string): string {
+  return `${dateKey}T00:00:00.000Z`;
+}
 
 const EMPTY_ARRAY: never[] = [];
 const NOOP = () => {};
@@ -154,10 +170,10 @@ export const CalendarView = memo(function CalendarView({
   items: propItems = EMPTY_ARRAY,
   columns,
   projectId,
-  onAddCard,
-  onOpenCardDetail,
+  onAddItem,
+  onOpenItemDetail,
   onAssignExistingItems: propOnAssignExistingItems,
-  isAddingCard,
+  isAddingItem,
   isReadOnly,
 }: CalendarViewProps) {
   const items = propItems;
@@ -297,8 +313,8 @@ export const CalendarView = memo(function CalendarView({
     setQuickAddDateKey(null);
     setQuickAddTitle("");
 
-    onAddCard(columnIdToSubmit, trimmedTitle, createCalendarDueDate(dateKeyToSubmit));
-  }, [quickAddDateKey, columns, quickAddTitle, onAddCard]);
+    onAddItem(columnIdToSubmit, trimmedTitle, createCalendarDueDate(dateKeyToSubmit));
+  }, [quickAddDateKey, columns, quickAddTitle, onAddItem]);
 
   const handleOpenAddItemMenu = useCallback((dateKey: string) => {
     setAddItemMenuDateKey(dateKey);
@@ -517,7 +533,7 @@ export const CalendarView = memo(function CalendarView({
                           dayTextClass={dayTextClass}
                           dayCellMinHeight={dayCellMinHeight}
                           layoutMode={layoutMode}
-                          onOpenCardDetail={onOpenCardDetail}
+                          onOpenItemDetail={onOpenItemDetail}
                           handleOpenAddItemMenu={handleOpenAddItemMenu}
                           addItemMenuDateKey={addItemMenuDateKey}
                           isAddItemMenuOpen={addItemMenuDateKey === dateKey}
@@ -528,7 +544,7 @@ export const CalendarView = memo(function CalendarView({
                           onSetQuickAddTitle={setQuickAddTitle}
                           onQuickAddSubmit={handleQuickAddSubmit}
                           onCloseQuickAdd={handleCloseQuickAdd}
-                          isAddingCard={isAddingCard}
+                          isAddingItem={isAddingItem}
                           columns={columns}
                           isReadOnly={isReadOnly}
                         />
@@ -636,7 +652,7 @@ export const CalendarView = memo(function CalendarView({
                           type="button"
                           onClick={(event) => {
                             event.stopPropagation();
-                            onOpenCardDetail(item);
+                            onOpenItemDetail(item);
                           }}
                           className="inline-flex size-6 shrink-0 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-1 md:before:hidden"
                           aria-label="Open item detail"
@@ -734,7 +750,7 @@ interface CalendarDayCellProps {
   dayTextClass?: string;
   dayCellMinHeight: string | number;
   layoutMode: string;
-  onOpenCardDetail: (item: Item) => void;
+  onOpenItemDetail: (item: Item) => void;
   handleOpenAddItemMenu: (dateKey: string) => void;
   addItemMenuDateKey: string | null;
   isAddItemMenuOpen?: boolean;
@@ -744,7 +760,7 @@ interface CalendarDayCellProps {
   onSetQuickAddTitle: (title: string) => void;
   onQuickAddSubmit: () => void;
   onCloseQuickAdd: () => void;
-  isAddingCard?: boolean;
+  isAddingItem?: boolean;
   columns: Column[];
   isReadOnly?: boolean;
   quickAddTitle?: string;
@@ -760,7 +776,7 @@ const CalendarDayCell = memo(({
   dayTextClass,
   dayCellMinHeight,
   layoutMode,
-  onOpenCardDetail,
+  onOpenItemDetail,
   handleOpenAddItemMenu,
   addItemMenuDateKey,
   onSetAddItemMenuDateKey,
@@ -769,7 +785,7 @@ const CalendarDayCell = memo(({
   onSetQuickAddTitle,
   onQuickAddSubmit,
   onCloseQuickAdd,
-  isAddingCard,
+  isAddingItem,
   columns,
   isReadOnly,
   quickAddTitle = '',
@@ -834,7 +850,7 @@ const CalendarDayCell = memo(({
             <CalendarItem
               key={item.id}
               item={item}
-              onOpenCardDetail={onOpenCardDetail}
+              onOpenItemDetail={onOpenItemDetail}
               isReadOnly={isReadOnly}
               columns={columns}
             />
@@ -909,7 +925,7 @@ const CalendarDayCell = memo(({
                 }}
                 placeholder="Title..."
                 className="h-6.5 min-w-0 flex-1 bg-transparent px-2 text-11 text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
-                disabled={isAddingCard}
+                disabled={isAddingItem}
               />
             </div>
             <div className="flex items-center gap-1.5">
@@ -918,7 +934,7 @@ const CalendarDayCell = memo(({
                 size="sm"
                 className="h-6 px-2 text-11 font-medium bg-primary hover:bg-primary-hover text-primary-foreground rounded-md cursor-pointer shadow-none"
                 onClick={onQuickAddSubmit}
-                disabled={!quickAddTitle.trim() || columns.length === 0 || isAddingCard}
+                disabled={!quickAddTitle.trim() || columns.length === 0 || isAddingItem}
               >
                 Add
               </Button>
@@ -941,12 +957,12 @@ const CalendarDayCell = memo(({
 
 const CalendarItem = memo(({
   item,
-  onOpenCardDetail,
+  onOpenItemDetail,
   isReadOnly,
   columns,
 }: {
   item: Item;
-  onOpenCardDetail: (item: Item) => void;
+  onOpenItemDetail: (item: Item) => void;
   isReadOnly?: boolean;
   columns?: Column[];
 }) => {
@@ -997,7 +1013,7 @@ const CalendarItem = memo(({
         <PopoverTrigger asChild>
           <button
             type="button"
-            onClick={() => onOpenCardDetail(item)}
+            onClick={() => onOpenItemDetail(item)}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
             className={cn(

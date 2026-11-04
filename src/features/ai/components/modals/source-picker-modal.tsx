@@ -26,7 +26,7 @@ import { useChatMode } from '../../hooks/use-chat-mode';
 import { useCollections } from '@/features/library/sdk/queries/collections.queries';
 import { useItems } from '@/features/library/sdk/queries/catalog.queries';
 import type { Collection, Item } from '@/features/library/domain/types/core.types';
-import { LibraryEmptyState } from '@/features/library/ui/content/LibraryEmptyState';
+import { LibraryEmptyState } from '@/features/library/ui/content/ItemTableHeader';
 import { storageDriveService, type StorageItem } from '@/features/storage';
 import { StorageEmptyState } from '@/features/storage/components/layout/StorageEmptyState';
 import { uploadDocument } from '../../services/chat.service';

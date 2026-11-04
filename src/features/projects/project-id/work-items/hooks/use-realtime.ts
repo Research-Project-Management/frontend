@@ -4,14 +4,14 @@ import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { API_BASE_URL } from '@/config/env';
 import { getAuthToken } from '@/shared/lib/token-storage';
-import type { UseRealtimeWorkItemsOptions } from '@/features/projects/project-id/work-items/types/hook.types';
+import type { UseRealtimeItemsOptions } from '@/features/projects/project-id/work-items/types/work-item.types';
 
-export type { UseRealtimeWorkItemsOptions };
+export type { UseRealtimeItemsOptions };
 
-export function useRealtimeWorkItems({
+export function useRealtimeItems({
   projectId,
   enabled = true,
-}: UseRealtimeWorkItemsOptions) {
+}: UseRealtimeItemsOptions) {
   const queryClient = useQueryClient();
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -48,13 +48,14 @@ export function useRealtimeWorkItems({
               queryClient.invalidateQueries({ queryKey: ['work-items', projectId] });
 
               // Only invalidate state counts if the event is a state/column change
-              if (!payload?.verb || payload.verb.includes('state') || payload.verb.includes('column') || payload.verb.includes('delete') || payload.verb.includes('create')) {
+              if (!payload?.verb || (payload as Record<string, unknown>)?.entityType === 'project' || payload.verb.includes('state') || payload.verb.includes('column') || payload.verb.includes('delete') || payload.verb.includes('create')) {
                 queryClient.invalidateQueries({ queryKey: ['project-states', projectId] });
                 queryClient.invalidateQueries({ queryKey: ['project-state-counts', projectId] });
               }
 
               const targetId = payload?.workItemId || payload?.entityId;
               if (targetId) {
+                queryClient.invalidateQueries({ queryKey: ['comments', targetId] });
                 queryClient.invalidateQueries({ queryKey: ['work-item-comments', targetId] });
                 queryClient.invalidateQueries({ queryKey: ['work-item-activity', targetId] });
               }

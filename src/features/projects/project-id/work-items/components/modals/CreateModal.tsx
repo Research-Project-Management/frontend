@@ -32,11 +32,11 @@ import {
 } from '@/features/projects/project-id/work-items/utils/work-item.utils';
 import { useWatch } from 'react-hook-form';
 import {
-  useWorkItemForm,
+  useItemForm,
   useProjectStates,
   useProjectDetails,
   useProjectItems,
-  type CreateWorkItemFormData,
+  type ItemFormData,
 } from '@/features/projects/project-id/work-items/hooks/use-work-item';
 
 import {
@@ -44,14 +44,14 @@ import {
   type AttachCenterData,
 } from './Attachments';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
-import { StatePopover } from '@/features/projects/project-id/work-items/components/pickers/StatePicker';
-import { MemberPopover } from '@/features/projects/project-id/work-items/components/pickers/MemberPicker';
-import { LabelPopover } from '@/features/projects/project-id/work-items/components/pickers/LabelPicker';
-import { PriorityPopover } from '@/features/projects/project-id/work-items/components/pickers/PriorityPicker';
-import { SingleDatePopover } from '@/features/projects/project-id/work-items/components/pickers/DatePicker';
-import { ParentItemPopover } from '@/features/projects/project-id/work-items/components/pickers/ParentPicker';
-import { ProjectSelectorPopover } from '@/features/projects/project-id/work-items/components/pickers/ProjectPicker';
-import type { CreateModalProps } from '@/features/projects/project-id/work-items/types/modal.types';
+import { StatePicker } from '@/features/projects/project-id/work-items/components/pickers/StatePicker';
+import { MemberPicker } from '@/features/projects/project-id/work-items/components/pickers/MemberPicker';
+import { LabelPicker } from '@/features/projects/project-id/work-items/components/pickers/LabelPicker';
+import { PriorityPicker } from '@/features/projects/project-id/work-items/components/pickers/PriorityPicker';
+import { SingleDatePicker } from '@/features/projects/project-id/work-items/components/pickers/DatePicker';
+import { ParentPicker } from '@/features/projects/project-id/work-items/components/pickers/ParentPicker';
+import { ProjectPicker } from '@/features/projects/project-id/work-items/components/pickers/ProjectPicker';
+import type { CreateModalProps } from '@/features/projects/project-id/work-items/types/work-item.types';
 import {
   EMPTY_ATTACHMENTS as DEFAULT_EMPTY_ATTACHMENTS,
   normalizeAttachments,
@@ -153,7 +153,7 @@ export function CreateModal({
   }, [initialData?.columnId, effectiveColumns]);
 
   // React Hook Form Integration (Skills: react-hook-form, formcfg-default-values, sub-usewatch-over-watch)
-  const workItemForm = useWorkItemForm({
+  const workItemForm = useItemForm({
     defaultColumnId,
     initialValues: {
       columnId: initialData?.columnId || defaultColumnId,
@@ -337,7 +337,7 @@ export function CreateModal({
   );
 
   // Submit Handler
-  const onValidSubmit = async (formData: CreateWorkItemFormData) => {
+  const onValidSubmit = async (formData: ItemFormData) => {
     const trimmedTitle = formData.title.trim();
     if (!trimmedTitle) {
       form.setError('title', { message: 'Title is required' });
@@ -415,7 +415,7 @@ export function CreateModal({
           <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 px-4 sm:px-6 pt-3 pb-5 space-y-3.5">
             {/* Project Selector Trigger & Popover */}
             <div className="flex items-center gap-2 pb-0.5">
-              <ProjectSelectorPopover
+              <ProjectPicker
                 open={openProjectPopover}
                 onOpenChange={setOpenProjectPopover}
                 project={activeProject || undefined}
@@ -478,7 +478,7 @@ export function CreateModal({
           {/* Property Pills Toolbar (10 Pills) */}
           <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap py-0.5">
             {/* 1. Status / Column */}
-            <StatePopover
+            <StatePicker
               open={openStatePopover}
               onOpenChange={setOpenStatePopover}
               columnId={columnId}
@@ -489,7 +489,7 @@ export function CreateModal({
             />
 
             {/* 2. Priority */}
-            <PriorityPopover
+            <PriorityPicker
               open={openPriorityPopover}
               onOpenChange={setOpenPriorityPopover}
               priority={priority}
@@ -499,7 +499,7 @@ export function CreateModal({
             />
 
             {/* 3. Assignees */}
-            <MemberPopover
+            <MemberPicker
               open={openMemberPopover}
               onOpenChange={setOpenMemberPopover}
               assigneeId={assigneeId}
@@ -513,7 +513,7 @@ export function CreateModal({
             />
 
             {/* 4. Start date */}
-            <SingleDatePopover
+            <SingleDatePicker
               label="Start date"
               date={startDate}
               onSelectDate={setStartDate}
@@ -523,7 +523,7 @@ export function CreateModal({
             />
 
             {/* 5. Due date */}
-            <SingleDatePopover
+            <SingleDatePicker
               label="Due date"
               date={dueDate}
               onSelectDate={setDueDate}
@@ -533,7 +533,7 @@ export function CreateModal({
             />
 
             {/* 6. Labels */}
-            <LabelPopover
+            <LabelPicker
               open={openLabelPopover}
               onOpenChange={setOpenLabelPopover}
               labels={labels}
@@ -563,7 +563,7 @@ export function CreateModal({
             </Button>
 
             {/* 8. Add parent */}
-            <ParentItemPopover
+            <ParentPicker
               open={openParentPopover}
               onOpenChange={setOpenParentPopover}
               parentId={parentId}

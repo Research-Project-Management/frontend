@@ -39,7 +39,7 @@ import {
   LowPriorityBoxIcon,
   NonePriorityBoxIcon,
 } from '@/shared/components/icons';
-import type { WorkItemPriority } from '@/features/projects/project-id/work-items/types/work-item.types';
+import type { Priority } from '@/features/projects/project-id/work-items/types/work-item.types';
 import type { WorkItemDraft } from '../../types/draft.types';
 
 export interface EditorModalProps {
@@ -56,7 +56,7 @@ export interface EditorModalProps {
   onSave: (data: {
     title: string;
     description: string;
-    priority: WorkItemPriority;
+    priority: Priority;
     columnId?: string;
     projectId?: string;
     labels?: string[];
@@ -66,7 +66,7 @@ export interface EditorModalProps {
   isSaving: boolean;
 }
 
-const PRIORITY_OPTIONS: Array<{ key: WorkItemPriority; label: string; icon: React.FC<{ className?: string }> }> = [
+const PRIORITY_OPTIONS: Array<{ key: Priority; label: string; icon: React.FC<{ className?: string }> }> = [
   { key: 'none', label: 'None', icon: NonePriorityBoxIcon },
   { key: 'low', label: 'Low', icon: LowPriorityBoxIcon },
   { key: 'medium', label: 'Medium', icon: MediumPriorityBoxIcon },
@@ -92,7 +92,7 @@ export const EditorModal: React.FC<EditorModalProps> = ({
 }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [priority, setPriority] = useState<WorkItemPriority>('none');
+  const [priority, setPriority] = useState<Priority>('none');
   const [columnName, setColumnName] = useState('Backlog');
   const [columnId, setColumnId] = useState<string | undefined>(undefined);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');

@@ -4,8 +4,8 @@ import type {
   AttachFileItem,
   AttachLinkItem,
 } from '@/features/projects/project-id/work-items/types/work-item.types';
-import type { AttachCenterData, ItemAttachment } from '@/features/projects/project-id/work-items/types/attachment.types';
-import type { ActivityEntry } from '@/features/projects/project-id/work-items/types/activity.types';
+import type { AttachCenterData, Attachment } from '@/features/projects/project-id/work-items/types/work-item.types';
+import type { ActivityEntry } from '@/features/projects/project-id/work-items/types/work-item.types';
 import { ItemHelpers } from './work-item.utils';
 import { formatBytes } from '@/shared/utils/format';
 
@@ -19,7 +19,7 @@ export const EMPTY_ATTACHMENTS: AttachCenterData = {
 export const normalizeAttachments = (raw: unknown): AttachCenterData => {
   if (!raw) return { pages: [], papers: [], files: [], links: [] };
   if (Array.isArray(raw)) {
-    return { pages: [], papers: [], files: raw as ItemAttachment[], links: [] };
+    return { pages: [], papers: [], files: raw as Attachment[], links: [] };
   }
   const obj = raw as Partial<AttachCenterData>;
   return {
@@ -116,6 +116,14 @@ export const AttachmentStateHelpers = {
     };
   },
 
+  addFiles: (
+    prev: AttachCenterData,
+    files: Array<{ name: string; url: string; size?: number; type?: string; fileId?: string }>,
+  ): AttachCenterData => {
+    if (!Array.isArray(files) || files.length === 0) return prev;
+    return files.reduce((acc, file) => AttachmentStateHelpers.addFile(acc, file), prev);
+  },
+
   removeFile: (prev: AttachCenterData, fileId: string): AttachCenterData => {
     const fileToRemove = (prev.files || []).find((f) => f.id === fileId);
     if (fileToRemove?.url?.startsWith('blob:')) {
@@ -205,6 +213,19 @@ export function createAttachmentHandlers(
       fileId?: string;
     }) => {
       updateAttachments((prev) => AttachmentStateHelpers.addFile(prev, file));
+      onAfterAdd?.();
+    },
+    handleAttachFiles: (
+      files: Array<{
+        name: string;
+        url: string;
+        size?: number;
+        type?: string;
+        fileId?: string;
+      }>,
+    ) => {
+      if (!Array.isArray(files) || files.length === 0) return;
+      updateAttachments((prev) => AttachmentStateHelpers.addFiles(prev, files));
       onAfterAdd?.();
     },
     handleDetachFile,
@@ -349,4 +370,34 @@ export const getTimeAgo = (dateStr?: string | null): string => {
     return 'recently';
   }
 };
+
+export function getAttachmentTypeLabel(attachment: Attachment | AttachFileItem): string {
+  const name = attachment.name?.trim() || '';
+  const extension = name.includes('.') ? name.split('.').pop()?.toUpperCase() : '';
+  const mimeType = attachment.type?.split('/')[0] || '';
+
+  if (extension) return extension;
+  if (mimeType === 'image') return 'IMG';
+  if (mimeType === 'video') return 'VID';
+  if (mimeType === 'audio') return 'AUD';
+  if (mimeType === 'application') return 'FILE';
+
+  return 'FILE';
+}
+
+export function formatAttachmentMeta(dateStr?: string): string {
+  if (!dateStr) return 'Added';
+  const createdDate = new Date(dateStr);
+  if (Number.isNaN(createdDate.getTime())) return 'Added';
+
+  const diffInMinutes = Math.floor((Date.now() - createdDate.getTime()) / 60000);
+  if (diffInMinutes < 1) return 'Just now';
+  if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours}h ago`;
+
+  const diffInDays = Math.floor(diffInHours / 24);
+  return `${diffInDays}d ago`;
+}
 

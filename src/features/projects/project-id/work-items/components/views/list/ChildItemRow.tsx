@@ -13,7 +13,7 @@ import {
 import { StatusIcon } from '@/shared/components/icons';
 import { resolveColumnId } from '@/features/projects/project-id/work-items/utils/work-item.utils';
 import type { Item, Column } from '@/features/projects/project-id/work-items/types/work-item.types';
-import type { ChildItemRowProps } from '@/features/projects/project-id/work-items/types/list-view.types';
+import type { ChildItemRowProps } from '@/features/projects/project-id/work-items/types/work-item.types';
 
 export const ChildItemRow = ({
   childItem,
@@ -23,7 +23,7 @@ export const ChildItemRow = ({
   projectStates,
   members = [],
   isReadOnly = false,
-  onEditCard,
+  onEditItem,
   onUpdateChildItem,
   onDeleteChildItem,
 }: ChildItemRowProps) => {
@@ -105,25 +105,37 @@ export const ChildItemRow = ({
           role="button"
           tabIndex={0}
           onClick={() => {
-            onEditCard({
-              ...parentItem,
+            onEditItem({
               id: childItem.id,
               title: childItem.title,
+              identifier: childItem.identifier,
               columnId: childItem.columnId || defaultUnstartedId,
               completed: isDone,
+              rank: childItem.rank ?? index,
+              assigneeId: childItem.assigneeId ?? null,
+              assignee: subAssignee,
+              dueDate: childItem.dueDate ?? null,
               parentId: parentItem.id,
+              parentWorkItemId: parentItem.id,
+              projectId: parentItem.projectId,
             } as Item);
           }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
-              onEditCard({
-                ...parentItem,
+              onEditItem({
                 id: childItem.id,
                 title: childItem.title,
+                identifier: childItem.identifier,
                 columnId: childItem.columnId || defaultUnstartedId,
                 completed: isDone,
+                rank: childItem.rank ?? index,
+                assigneeId: childItem.assigneeId ?? null,
+                assignee: subAssignee,
+                dueDate: childItem.dueDate ?? null,
                 parentId: parentItem.id,
+                parentWorkItemId: parentItem.id,
+                projectId: parentItem.projectId,
               } as Item);
             }
           }}

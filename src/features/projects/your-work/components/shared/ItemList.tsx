@@ -1,0 +1,650 @@
+'use client';
+
+import React, { useState, useMemo, useCallback } from 'react';
+import {
+  ChevronRight,
+  CheckSquare,
+  Clock3,
+  MessageSquare,
+  AlertCircle,
+  ArrowUp,
+  Minus,
+  ArrowDown,
+  GitBranch,
+  Search,
+  X,
+  CheckCircle2,
+  Circle,
+  FolderGit2,
+  Layers,
+  UserCheck,
+  PlusSquare,
+  Inbox,
+} from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
+import { ProjectAvatar, StatusIcon } from "@/shared/components/icons";
+import { Input } from '@/shared/components/ui/input';
+import { cn } from "@/shared/lib/utils";
+import { getWorkItemProject, type ProjectMap } from '../../utils/your-work.utils';
+import {
+  inferStateGroup,
+  STATE_GROUP_CONFIG,
+  type StateGroup,
+} from '../../utils/your-work.utils';
+import type { YourWorkItem } from '../../schemas/your-work.schema';
+import { EmptyState } from './EmptyState';
+
+const PRIORITY_BADGES: Record<
+  string,
+  { label: string; icon: React.ElementType; color: string; bg: string }
+> = {
+  urgent: {
+    label: 'Urgent',
+    icon: AlertCircle,
+    color: 'text-destructive',
+    bg: 'bg-destructive/10 text-destructive',
+  },
+  high: {
+    label: 'High',
+    icon: ArrowUp,
+    color: 'text-warning',
+    bg: 'bg-warning/10 text-warning',
+  },
+  medium: {
+    label: 'Medium',
+    icon: Minus,
+    color: 'text-warning',
+    bg: 'bg-warning/10 text-warning',
+  },
+  low: {
+    label: 'Low',
+    icon: ArrowDown,
+    color: 'text-primary',
+    bg: 'bg-primary/10 text-primary',
+  },
+};
+
+export type ListVariant = 'assigned' | 'created' | 'subscribed';
+
+const VARIANT_DEFAULTS: Record<
+  ListVariant,
+  { title: string; emptyMessage: string; emptyIcon: React.ElementType }
+> = {
+  assigned: {
+    title: 'Work items assigned to you',
+    emptyMessage: 'No work items assigned to you.',
+    emptyIcon: UserCheck,
+  },
+  created: {
+    title: 'Work items created by you',
+    emptyMessage: 'No work items created by you.',
+    emptyIcon: PlusSquare,
+  },
+  subscribed: {
+    title: 'Work items subscribed & watching',
+    emptyMessage: 'No work items subscribed.',
+    emptyIcon: Inbox,
+  },
+};
+
+export interface ItemListProps {
+  variant?: ListVariant;
+  title?: string;
+  workItems?: YourWorkItem[];
+  onWorkItemClick?: (workItemId: string) => void;
+  workItemProjectMap?: ProjectMap;
+  emptyMessage?: string;
+  emptyIcon?: React.ElementType;
+  className?: string;
+}
+
+export function ItemList({
+  variant,
+  title: propTitle,
+  workItems = [],
+  onWorkItemClick,
+  workItemProjectMap = {},
+  emptyMessage: propEmptyMessage,
+  emptyIcon: propEmptyIcon,
+  className,
+}: ItemListProps) {
+  const variantConfig = variant ? VARIANT_DEFAULTS[variant] : undefined;
+  const title = propTitle ?? variantConfig?.title ?? 'Work items';
+  const emptyMessage = propEmptyMessage ?? variantConfig?.emptyMessage ?? 'No work items found.';
+  const EmptyIcon = propEmptyIcon ?? variantConfig?.emptyIcon ?? CheckSquare;
+  const actualOnClick = onWorkItemClick ?? (() => {});
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [groupBy, setGroupBy] = useState<'state' | 'project'>('state');
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  const toggleExpand = useCallback((id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  // Filter items by search query
+  const filteredWorkItems = useMemo(() => {
+    if (!searchQuery.trim()) return workItems;
+    const query = searchQuery.toLowerCase().trim();
+    return workItems.filter((item) => {
+      const titleMatch = (item.title || '').toLowerCase().includes(query);
+      const identifierMatch = (item.identifier || '').toLowerCase().includes(query);
+      const project = getWorkItemProject(item, workItemProjectMap);
+      const projectMatch = project ? project.name.toLowerCase().includes(query) : false;
+      return titleMatch || identifierMatch || projectMatch;
+    });
+  }, [workItems, searchQuery, workItemProjectMap]);
+
+  // Grouping by State Group
+  const stateGroups = useMemo(() => {
+    const map = new Map<StateGroup, YourWorkItem[]>();
+    filteredWorkItems.forEach((item) => {
+      let colName = item.columnId;
+      const cols = (item.project as { workItemColumns?: Array<{ id?: string; name?: string; title?: string }> } | undefined)?.workItemColumns;
+      if (Array.isArray(cols)) {
+        const matched = (cols as Array<Record<string, unknown>>).find(
+          (c) => c.id === item.columnId,
+        );
+        if (matched?.title || matched?.name) {
+          colName = String(matched.title || matched.name);
+        }
+      }
+      const group = inferStateGroup(item.columnId, colName || '');
+      if (!map.has(group)) map.set(group, []);
+      map.get(group)!.push(item);
+    });
+
+    const order: StateGroup[] = ['backlog', 'unstarted', 'started', 'completed', 'cancelled'];
+    return order
+      .filter((groupKey) => map.has(groupKey))
+      .map((groupKey) => ({
+        key: groupKey,
+        label: STATE_GROUP_CONFIG[groupKey]?.label || groupKey,
+        color: STATE_GROUP_CONFIG[groupKey]?.hex || '#64748b',
+        items: map.get(groupKey) || [],
+      }));
+  }, [filteredWorkItems]);
+
+  // Grouping by Project
+  const projectGroups = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        id: string;
+        name: string;
+        identifier: string | null;
+        avatar?: string | null;
+        items: YourWorkItem[];
+      }
+    >();
+
+    filteredWorkItems.forEach((item) => {
+      const p = getWorkItemProject(item, workItemProjectMap);
+      const pId = p?.id || 'unassigned-project';
+      const pName = p?.name || 'No Project';
+      const projectObj =
+        typeof item.projectId === 'object' && item.projectId !== null
+          ? (item.projectId as Record<string, unknown>)
+          : null;
+      const pIdentifier =
+        item.project?.identifier ||
+        (typeof projectObj?.identifier === 'string'
+          ? projectObj.identifier
+          : null) ||
+        null;
+      const pAvatar =
+        item.project?.avatar ||
+        (typeof projectObj?.avatar === 'string'
+          ? projectObj.avatar
+          : null) ||
+        p?.avatar ||
+        null;
+
+      if (!map.has(pId)) {
+        map.set(pId, {
+          id: pId,
+          name: pName,
+          identifier: pIdentifier,
+          avatar: pAvatar,
+          items: [],
+        });
+      }
+      map.get(pId)!.items.push(item);
+    });
+
+    return Array.from(map.values()).sort((a, b) => b.items.length - a.items.length);
+  }, [filteredWorkItems, workItemProjectMap]);
+
+  return (
+    <div className={cn('space-y-4', className)}>
+      {/* Header, Search & GroupBy Control */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-0.5">
+        <div className="flex items-center gap-2">
+          <h2 className="text-foreground font-semibold text-13 tracking-tight">
+            {title}
+          </h2>
+          <span className="text-12 font-medium text-muted-foreground tabular-nums">
+            ({filteredWorkItems.length}
+            {filteredWorkItems.length !== workItems.length && ` of ${workItems.length}`})
+          </span>
+        </div>
+
+        {workItems.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Quick Search */}
+            <div className="relative w-full sm:w-52">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none shrink-0" />
+              <Input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Filter work items..."
+                className="h-8 pl-8 pr-7 text-13 rounded-md bg-muted/40 border-0 focus-visible:bg-background focus-visible:ring-1 focus-visible:ring-ring"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  aria-label="Clear search"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 size-4 text-muted-foreground hover:text-foreground flex items-center justify-center rounded-sm before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <X className="size-3 shrink-0" />
+                </button>
+              )}
+            </div>
+
+            {/* Group By Segmented Toggle */}
+            <div className="flex items-center rounded-md p-0.5 bg-muted/40">
+              <button
+                type="button"
+                onClick={() => setGroupBy('state')}
+                className={cn(
+                  'flex items-center gap-1 px-2.5 py-1 rounded-sm text-12 font-medium transition-colors relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                  groupBy === 'state'
+                    ? 'bg-background text-foreground shadow-none font-semibold'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+                title="Group by State Group"
+              >
+                <Layers className="size-3 shrink-0" />
+                <span>State</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setGroupBy('project')}
+                className={cn(
+                  'flex items-center gap-1 px-2.5 py-1 rounded-sm text-12 font-medium transition-colors relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                  groupBy === 'project'
+                    ? 'bg-background text-foreground shadow-none font-semibold'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+                title="Group by Project"
+              >
+                <FolderGit2 className="size-3 shrink-0" />
+                <span>Project</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* List content */}
+      <div className="space-y-3">
+        {filteredWorkItems.length === 0 ? (
+          searchQuery ? (
+            <EmptyState
+              variant="search"
+              searchQuery={searchQuery}
+              onClearSearch={() => setSearchQuery('')}
+            />
+          ) : (
+            <EmptyState
+              variant={
+                title.toLowerCase().includes('assigned')
+                  ? 'assigned'
+                  : title.toLowerCase().includes('created')
+                    ? 'created'
+                    : title.toLowerCase().includes('subscribed')
+                      ? 'subscribed'
+                      : 'default'
+              }
+              title={emptyMessage}
+            />
+          )
+        ) : groupBy === 'state' ? (
+          /* Render by State Groups */
+          stateGroups.map((group) => {
+            const isCollapsed = expandedIds.has(group.key);
+
+            return (
+              <div
+                key={group.key}
+                className="rounded-md overflow-hidden bg-muted/30 shadow-none"
+              >
+                {/* State Group Header */}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={!isCollapsed}
+                  className="flex items-center gap-2 px-3 py-1.5 min-h-8 bg-muted/60 transition-colors group cursor-pointer hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring select-none"
+                  onClick={() => toggleExpand(group.key)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      toggleExpand(group.key);
+                    }
+                  }}
+                >
+                  <ChevronRight
+                    className={cn(
+                      'size-3.5 text-muted-foreground transition-transform duration-200 shrink-0',
+                      !isCollapsed && 'rotate-90'
+                    )}
+                  />
+                  <span
+                    className="size-2 rounded-full shrink-0"
+                    style={{ backgroundColor: group.color }}
+                  />
+                  <span className="text-12 font-semibold text-foreground">
+                    {group.label}
+                  </span>
+                  <span className="text-11 px-1.5 py-0.2 rounded-full bg-muted text-muted-foreground font-medium tabular-nums">
+                    {group.items.length}
+                  </span>
+                </div>
+
+                <div
+                  className={cn(
+                    'divide-y divide-border/60',
+                    isCollapsed ? 'hidden' : 'block',
+                  )}
+                >
+                  {group.items.map((item) => (
+                    <ItemRow
+                      key={item.id}
+                      item={item}
+                      onWorkItemClick={actualOnClick}
+                      workItemProjectMap={workItemProjectMap}
+                      showProjectBadge={true}
+                      showStateBadge={false}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          /* Render by Projects */
+          projectGroups.map((group) => {
+            const isCollapsed = expandedIds.has(group.id);
+
+            return (
+              <div
+                key={group.id}
+                className="rounded-md overflow-hidden bg-muted/30 shadow-none"
+              >
+                {/* Project Group Header */}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={!isCollapsed}
+                  className="flex items-center justify-between px-3 py-1.5 min-h-8 bg-muted/60 transition-colors group cursor-pointer hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring select-none"
+                  onClick={() => toggleExpand(group.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      toggleExpand(group.id);
+                    }
+                  }}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <ChevronRight
+                      className={cn(
+                        'size-3.5 text-muted-foreground transition-transform duration-200 shrink-0',
+                        !isCollapsed && 'rotate-90'
+                      )}
+                    />
+                    <ProjectAvatar
+                      avatar={group.avatar}
+                      name={group.name}
+                      id={group.id}
+                      size="xs"
+                      className="size-4.5 rounded-sm"
+                    />
+                    <span className="text-12 font-semibold text-foreground truncate">
+                      {group.name}
+                    </span>
+                    {group.identifier && (
+                      <span className="text-10 font-mono font-medium px-1.5 py-0.2 rounded-sm bg-muted text-muted-foreground shrink-0">
+                        {group.identifier}
+                      </span>
+                    )}
+                    <span className="text-11 px-1.5 py-0.2 rounded-full bg-muted text-muted-foreground font-medium tabular-nums">
+                      {group.items.length}
+                    </span>
+                  </div>
+                </div>
+
+                <div
+                  className={cn(
+                    'divide-y divide-border/60',
+                    isCollapsed ? 'hidden' : 'block',
+                  )}
+                >
+                  {group.items.map((item) => (
+                    <ItemRow
+                      key={item.id}
+                      item={item}
+                      onWorkItemClick={actualOnClick}
+                      workItemProjectMap={workItemProjectMap}
+                      showProjectBadge={false}
+                      showStateBadge={true}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface ItemRowProps {
+  item: YourWorkItem;
+  onWorkItemClick: (workItemId: string) => void;
+  workItemProjectMap: ProjectMap;
+  showProjectBadge: boolean;
+  showStateBadge: boolean;
+}
+
+const ItemRow = React.memo(function ItemRow({
+  item,
+  onWorkItemClick,
+  workItemProjectMap,
+  showProjectBadge,
+  showStateBadge,
+}: ItemRowProps) {
+  const workItemId = item.id;
+  const projectInfo = getWorkItemProject(item, workItemProjectMap);
+  const extra = item as unknown as { stateGroup?: string; state?: { group?: string; id?: string } };
+  const isDone = item.columnId === 'done' || item.completed || extra.stateGroup === 'completed' || extra.state?.group === 'completed';
+  const isCancelled = item.columnId === 'cancelled' || item.columnId === 'cancel' || extra.stateGroup === 'cancelled' || extra.state?.group === 'cancelled';
+  const isOverdue =
+    item.dueDate && new Date(item.dueDate) < new Date() && !isDone && !isCancelled;
+  const priorityKey = item.priority || 'none';
+  const priorityConfig = PRIORITY_BADGES[priorityKey];
+  const PriorityIcon = priorityConfig?.icon;
+  const childCount = item.childWorkItemCount ?? (item.childWorkItems?.length ?? 0);
+  const childDone =
+    item.childWorkItemCompletedCount ??
+    (item.childWorkItems?.filter((s) => s.completed || s.columnId === 'done').length ?? 0);
+
+  const resolvedIdentifier =
+    item.identifier ||
+    (item.project?.identifier && item.sequenceNumber
+      ? `${item.project.identifier}-${item.sequenceNumber}`
+      : null);
+
+  const assigneeObj = typeof item.assignee === 'object' ? item.assignee : null;
+
+  let colName = item.columnId;
+  const cols = (item.project as { workItemColumns?: Array<{ id?: string; name?: string; title?: string }> } | undefined)?.workItemColumns;
+  if (Array.isArray(cols)) {
+    const matched = (cols as Array<Record<string, unknown>>).find(
+      (c) => c.id === item.columnId,
+    );
+    if (matched?.title || matched?.name) {
+      colName = String(matched.title || matched.name);
+    }
+  }
+  const stateGroup = extra.stateGroup || extra.state?.group || inferStateGroup(item.columnId, colName || '');
+  const stateConfig = STATE_GROUP_CONFIG[stateGroup as StateGroup];
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => onWorkItemClick(workItemId || '')}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onWorkItemClick(workItemId || '');
+        }
+      }}
+      className="w-full flex items-center gap-3 px-3.5 py-1.5 min-h-8 bg-card hover:bg-muted focus-visible:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors text-left group cursor-pointer"
+    >
+      {/* State indicator */}
+      <div className="shrink-0 flex items-center justify-center">
+        {isDone ? (
+          <CheckCircle2 className="size-3.5 text-state-completed shrink-0" />
+        ) : isCancelled ? (
+          <StatusIcon group="cancelled" className="size-3.5 shrink-0" />
+        ) : stateGroup === 'started' ? (
+          <Clock3 className="size-3.5 text-state-started shrink-0" />
+        ) : stateGroup === 'backlog' ? (
+          <Circle className="size-3.5 text-state-backlog/70 shrink-0" />
+        ) : (
+          <Circle className="size-3.5 text-state-unstarted shrink-0" />
+        )}
+      </div>
+
+      {/* Identifier badge */}
+      {resolvedIdentifier && (
+        <span className="text-11 font-medium font-mono text-muted-foreground px-1.5 py-0.5 rounded-md bg-muted/60 shrink-0">
+          {resolvedIdentifier}
+        </span>
+      )}
+
+      {/* Title & optional badges */}
+      <div className="flex-1 min-w-0 flex items-center gap-2">
+        <span
+          className={cn(
+            'text-13 truncate font-medium text-foreground transition-colors',
+            isCancelled && 'text-muted-foreground line-through font-normal',
+            isDone && !isCancelled && 'text-muted-foreground font-normal',
+          )}
+        >
+          {item.title}
+        </span>
+
+        {showProjectBadge && projectInfo && (
+          <span className="hidden sm:inline-flex items-center gap-1.5 text-11 font-medium text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded-md shrink-0">
+            <ProjectAvatar
+              avatar={projectInfo.avatar}
+              name={projectInfo.name}
+              id={projectInfo.id}
+              size="xs"
+              className="size-3.5 text-10"
+            />
+            {projectInfo.name}
+          </span>
+        )}
+
+        {showStateBadge && stateConfig && (
+          <span className="hidden sm:inline-flex items-center gap-1 text-11 font-medium text-muted-foreground bg-muted/60 px-1.5 py-0.2 rounded-md shrink-0">
+            <span
+              className="size-1.5 rounded-full shrink-0"
+              style={{ backgroundColor: stateConfig.hex }}
+            />
+            <span>{stateConfig.label}</span>
+          </span>
+        )}
+      </div>
+
+      {/* Metadata badges (Priority, Child Work Items, Comments, Due Date, Assignee) */}
+      <div className="flex items-center gap-2.5 shrink-0">
+        {priorityConfig && PriorityIcon && (
+          <span
+            className={cn(
+              'inline-flex items-center gap-1 text-11 font-medium px-1.5 py-0.5 rounded-md shrink-0',
+              priorityConfig.bg,
+            )}
+          >
+            <PriorityIcon className={cn('size-2.5', priorityConfig.color)} />
+            <span className="hidden md:inline">{priorityConfig.label}</span>
+          </span>
+        )}
+
+        {childCount > 0 && (
+          <span className="inline-flex items-center gap-1 text-11 text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded-md shrink-0">
+            <GitBranch className="size-2.5 shrink-0" />
+            <span>
+              {childDone}/{childCount}
+            </span>
+          </span>
+        )}
+
+        {(item.commentCount ?? 0) > 0 && (
+          <div
+            className="flex items-center gap-1 text-11 text-muted-foreground"
+            title="Comments"
+          >
+            <MessageSquare className="size-3 shrink-0" />
+            <span>{item.commentCount}</span>
+          </div>
+        )}
+
+        {item.dueDate && (
+          <span
+            className={cn(
+              'flex items-center gap-1 text-11 px-1.5 py-0.5 rounded-md font-medium',
+              isOverdue
+                ? 'bg-destructive/10 text-destructive'
+                : 'bg-muted/60 text-muted-foreground',
+            )}
+          >
+            <Clock3 className="size-3 shrink-0" />
+            <span>
+              {new Date(item.dueDate).toLocaleDateString('en-GB', {
+                day: 'numeric',
+                month: 'short',
+              })}
+            </span>
+          </span>
+        )}
+
+        {assigneeObj && (
+          <Avatar className="size-5 rounded-full shrink-0">
+            <AvatarImage
+              src={assigneeObj.avatar || undefined}
+              alt={assigneeObj.name || 'Assignee'}
+            />
+            <AvatarFallback className="text-10 font-medium bg-muted">
+              {assigneeObj.name?.charAt(0) || 'U'}
+            </AvatarFallback>
+          </Avatar>
+        )}
+      </div>
+    </div>
+  );
+});
+
+export default ItemList;
+

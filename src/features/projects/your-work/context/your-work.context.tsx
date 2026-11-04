@@ -1,13 +1,12 @@
 'use client';
 
 import React, { createContext, useContext, useState, useMemo, useCallback, useEffect } from 'react';
-import { useYourWorkBase } from '../hooks/use-your-work-base';
-import { useWorkItemModal, type SelectedWorkItemState } from '../hooks/use-work-item-modal';
+import { useYourWork } from '../hooks/use-your-work';
 import {
   calculateStatusBreakdown,
   calculatePriorityBreakdown,
   getWorkItemProjectId,
-} from '../utils/your-work.util';
+} from '../utils/your-work.utils';
 import type {
   YourWorkItem,
   YourWorkActivityEvent,
@@ -15,7 +14,13 @@ import type {
   ProjectWorkloadBreakdown,
   UserProfileData,
 } from '../schemas/your-work.schema';
-import type { ProjectMap } from '../utils/your-work.util';
+import type { ProjectMap } from '../utils/your-work.utils';
+
+export interface SelectedWorkItemState {
+  workItemId: string;
+  projectId: string;
+  workItem?: YourWorkItem;
+}
 
 export interface YourWorkContextType {
   currentUserId?: string | null;
@@ -63,8 +68,8 @@ export interface YourWorkContextType {
 const YourWorkContext = createContext<YourWorkContextType | null>(null);
 
 export function YourWorkProvider({ children }: { children: React.ReactNode }) {
-  const base = useYourWorkBase();
   const [selectedProjectId, setSelectedProjectIdState] = useState<string | null>(null);
+  const base = useYourWork();
 
   // Sync with URL query parameter on client mount
   useEffect(() => {
@@ -124,11 +129,27 @@ export function YourWorkProvider({ children }: { children: React.ReactNode }) {
     return Array.from(map.values());
   }, [filteredAssigned, filteredCreated, filteredSubscribed]);
 
-  const {
-    selectedWorkItem,
-    handleOpenWorkItem: openWorkItem,
-    handleCloseWorkItem: closeWorkItem,
-  } = useWorkItemModal(filteredAllWorkItems);
+  const [selectedWorkItem, setSelectedWorkItem] = useState<SelectedWorkItemState | null>(null);
+
+  const openWorkItem = useCallback(
+    (workItemId: string, fallbackProjectId?: string) => {
+      const workItem = filteredAllWorkItems.find((t) => t.id === workItemId);
+      const projectId = workItem ? getWorkItemProjectId(workItem) : fallbackProjectId || null;
+
+      if (projectId) {
+        setSelectedWorkItem({
+          workItemId,
+          projectId,
+          workItem,
+        });
+      }
+    },
+    [filteredAllWorkItems],
+  );
+
+  const closeWorkItem = useCallback(() => {
+    setSelectedWorkItem(null);
+  }, []);
 
   // Selected project metadata
   const selectedProject = useMemo(() => {
@@ -138,16 +159,20 @@ export function YourWorkProvider({ children }: { children: React.ReactNode }) {
     );
   }, [base.projectBreakdown, selectedProjectId]);
 
-  // Recompute breakdowns for the filtered view
+  // Recompute breakdowns for the filtered view (prefer server breakdown when unfiltered)
   const statusBreakdown = useMemo(() => {
     if (!selectedProjectId) return base.statusBreakdown;
+    if (selectedProject?.stateGroupBreakdown) return selectedProject.stateGroupBreakdown;
     return calculateStatusBreakdown(filteredAssigned);
-  }, [base.statusBreakdown, filteredAssigned, selectedProjectId]);
+  }, [base.statusBreakdown, filteredAssigned, selectedProjectId, selectedProject]);
 
   const subscribedStatusBreakdown = useMemo(() => {
     if (!selectedProjectId) return base.subscribedStatusBreakdown;
+    if (selectedProject?.subscribedStateGroupBreakdown) {
+      return selectedProject.subscribedStateGroupBreakdown;
+    }
     return calculateStatusBreakdown(filteredSubscribed);
-  }, [base.subscribedStatusBreakdown, filteredSubscribed, selectedProjectId]);
+  }, [base.subscribedStatusBreakdown, filteredSubscribed, selectedProjectId, selectedProject]);
 
   const priorityBreakdown = useMemo(() => {
     if (!selectedProjectId) return base.priorityBreakdown;

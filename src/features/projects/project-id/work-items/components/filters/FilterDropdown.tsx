@@ -328,8 +328,8 @@ const CREATED_UPDATED_DATE_OPTIONS = [
 
 // ── Filter Dropdown Props & Configuration ───────────────────────────────────
 
-import type { FilterDropdownProps } from '@/features/projects/project-id/work-items/types/layout.types';
-import type { FilterItemConfig } from '@/features/projects/project-id/work-items/types/filter.types';
+import type { FilterDropdownProps } from '@/features/projects/project-id/work-items/types/work-item.types';
+import type { FilterItemConfig } from '@/features/projects/project-id/work-items/types/work-item.types';
 
 export type { FilterDropdownProps, FilterItemConfig };
 

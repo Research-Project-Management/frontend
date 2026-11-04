@@ -26,18 +26,18 @@ export function ParentHierarchyIcon({ className }: { className?: string }) {
   );
 }
 
-export const AddParentIcon = ParentHierarchyIcon;
 
-import type { ParentItemPopoverProps } from '@/features/projects/project-id/work-items/types/picker.types';
+import type { ParentPickerProps } from '@/features/projects/project-id/work-items/types/work-item.types';
 
-export type { ParentItemPopoverProps };
+export type { ParentPickerProps };
 
-export const ParentItemPopover: React.FC<ParentItemPopoverProps> = ({
+export const ParentPicker: React.FC<ParentPickerProps> = ({
   open,
   onOpenChange,
   parentId: propParentId,
   setParentId: propSetParentId,
   currentParentId,
+  currentItemId,
   onSelectParent,
   items: propItems,
   availableItems,
@@ -49,6 +49,35 @@ export const ParentItemPopover: React.FC<ParentItemPopoverProps> = ({
   const items = useMemo(() => propItems || availableItems || [], [propItems, availableItems]);
   const [query, setQuery] = useState('');
 
+  // Exclude currentItemId and any transitive descendants of currentItemId to prevent hierarchy cycles
+  const eligibleItems = useMemo(() => {
+    if (!currentItemId) return items;
+    const forbiddenIds = new Set<string>([currentItemId]);
+    let added = true;
+    while (added) {
+      added = false;
+      for (const it of items) {
+        if (!it || forbiddenIds.has(it.id)) continue;
+        const pId = it.parentWorkItemId || it.parentItemId || it.parentId;
+        if (pId && forbiddenIds.has(pId)) {
+          forbiddenIds.add(it.id);
+          added = true;
+        }
+      }
+      for (const it of items) {
+        if (!it || !forbiddenIds.has(it.id)) continue;
+        const subs = it.childWorkItems || it.subItems || [];
+        for (const s of subs) {
+          if (s?.id && !forbiddenIds.has(s.id)) {
+            forbiddenIds.add(s.id);
+            added = true;
+          }
+        }
+      }
+    }
+    return items.filter((it) => it && !forbiddenIds.has(it.id));
+  }, [items, currentItemId]);
+
   const selectedParent = useMemo(() => {
     if (!parentId) return null;
     return items.find((item) => item.id === parentId) || null;
@@ -56,15 +85,15 @@ export const ParentItemPopover: React.FC<ParentItemPopoverProps> = ({
 
   const filteredItems = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return items.slice(0, 30);
-    return items
+    if (!q) return eligibleItems.slice(0, 30);
+    return eligibleItems
       .filter((item) => {
         const titleMatch = item.title?.toLowerCase().includes(q);
         const identMatch = item.identifier?.toLowerCase().includes(q);
         return Boolean(titleMatch || identMatch);
       })
       .slice(0, 30);
-  }, [items, query]);
+  }, [eligibleItems, query]);
 
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
@@ -154,4 +183,3 @@ export const ParentItemPopover: React.FC<ParentItemPopoverProps> = ({
   );
 };
 
-export const ParentPicker = ParentItemPopover;

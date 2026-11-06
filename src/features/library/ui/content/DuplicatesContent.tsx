@@ -36,7 +36,7 @@ import {
   inspectItemDifferences,
   selectBestMasterItemId,
 } from '@/features/library/domain/diff.domain';
-import type { Item, DuplicateGroup } from '@/features/library/domain/types/core.types';
+import type { Item, DuplicateGroup } from '@/features/library/types/core.types';
 
 function InlineDiffView({ items, recommendedMasterId }: { items: Item[]; recommendedMasterId?: string }) {
   const diff = useMemo(

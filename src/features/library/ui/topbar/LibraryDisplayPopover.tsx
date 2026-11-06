@@ -12,8 +12,8 @@ import {
   type LibraryDisplayOptions,
   type LibraryColumnKey,
   type LibraryOrderBy,
-} from '@/features/library/domain/types/ingestion.types';
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+} from '@/features/library/types/ingestion.types';
+import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { Input } from '@/shared/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 
@@ -40,7 +40,7 @@ export const COLUMN_ITEMS: Array<{ key: LibraryColumnKey; label: string }> = [
   { key: "itemType", label: "Item Type" },
   { key: "doi", label: "DOI" },
   { key: "citationKey", label: "Citation Key" },
-  { key: "citations", label: "Citations" },
+  { key: "createdAt", label: "Date Added" },
 ];
 
 const ORDER_BY_OPTIONS: Array<{ value: LibraryOrderBy; label: string }> = [
@@ -69,9 +69,8 @@ export function LibraryDisplayPopover({
 
   const [columnsOpen, setColumnsOpen] = useState(true);
   const [orderByOpen, setOrderByOpen] = useState(true);
-  const [densityOpen, setDensityOpen] = useState(true);
 
-  const { columns, orderBy, orderDirection, density = "comfortable" } = options;
+  const { columns, orderBy, orderDirection } = options;
 
   const orderByOptions = React.useMemo(() => {
     const list: Array<{ value: LibraryOrderBy; label: string }> = [];
@@ -109,13 +108,6 @@ export function LibraryDisplayPopover({
     onOptionsChange({
       ...options,
       orderDirection: orderDirection === "asc" ? "desc" : "asc",
-    });
-  };
-
-  const handleDensityChange = (d: "comfortable" | "compact") => {
-    onOptionsChange({
-      ...options,
-      density: d,
     });
   };
 
@@ -263,70 +255,6 @@ export function LibraryDisplayPopover({
             </div>
           )}
         </div>
-
-        <div className="-mx-2 border-t border-border my-0.5" />
-
-        {/* 3. Density */}
-        <div>
-          <button
-            type="button"
-            onClick={() => setDensityOpen(!densityOpen)}
-            className="flex w-full items-center justify-between px-1 py-0.5 text-12 font-medium text-foreground cursor-pointer select-none"
-          >
-            <span>Density</span>
-            {densityOpen ? (
-              <ChevronUp className="size-3.5 text-foreground shrink-0" />
-            ) : (
-              <ChevronDown className="size-3.5 text-foreground shrink-0" />
-            )}
-          </button>
-
-          {densityOpen && (
-            <div className="space-y-0.5 pt-0.5 select-none">
-              {[
-                { value: "comfortable" as const, label: "Comfortable" },
-                { value: "compact" as const, label: "Compact" },
-              ].map((item) => {
-                const isSelected = density === item.value;
-                return (
-                  <label
-                    key={item.value}
-                    className={cn(
-                      "flex w-full items-center gap-2 py-1 px-1.5 rounded-md text-12 text-foreground transition-colors cursor-pointer select-none hover:bg-muted",
-                      isSelected ? "font-medium" : "font-normal",
-                    )}
-                  >
-                    <Checkbox
-                      checked={isSelected}
-                      onCheckedChange={() => handleDensityChange(item.value)}
-                      className="size-3.5 border-border data-[state=checked]:border-primary cursor-pointer shrink-0"
-                    />
-                    <span>{item.label}</span>
-                  </label>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        <div className="-mx-2 border-t border-border my-0.5" />
-
-        {/* 4. Subcollection Items */}
-        <div className="pt-0.5">
-          <label className="flex w-full items-center justify-between py-1 px-1.5 rounded-md text-12 text-foreground transition-colors cursor-pointer select-none hover:bg-muted font-medium">
-            <span>Show items from subcollections</span>
-            <Checkbox
-              checked={options.includeSubcollections ?? true}
-              onCheckedChange={(checked) =>
-                onOptionsChange({
-                  ...options,
-                  includeSubcollections: Boolean(checked),
-                })
-              }
-              className="size-3.5 border-border data-[state=checked]:border-primary cursor-pointer shrink-0"
-            />
-          </label>
-        </div>
       </PopoverContent>
     </Popover>
   );
@@ -357,19 +285,18 @@ export function TopbarSearch({
   onChange: propOnChange,
   onClear: propOnClear,
 }: TopbarSearchProps) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const ephemeralFilters = useLibraryUIStore((s) => s.ephemeralFilters);
+  const setEphemeralFilters = useLibraryUIStore((s) => s.setEphemeralFilters);
 
   const isControlled = propOnChange !== undefined;
-  const urlSearch = searchParams.get('q') || '';
-  const rawMode = searchParams.get('searchMode');
+  const storeSearch = ephemeralFilters.q || '';
+  const rawMode = ephemeralFilters.searchMode;
   const currentSearchMode: QuickSearchMode =
     rawMode === 'title_creator_year' || rawMode === 'everything' || rawMode === 'fields_tags'
       ? rawMode
       : 'fields_tags';
 
-  const [internalValue, setInternalValue] = useState(urlSearch);
+  const [internalValue, setInternalValue] = useState(storeSearch);
 
   const effectiveValue = isControlled ? (propValue || '') : internalValue;
   const [isExpanded, setIsExpanded] = useState(Boolean(effectiveValue));
@@ -377,39 +304,40 @@ export function TopbarSearch({
 
   useEffect(() => {
     if (!isControlled) {
-      setInternalValue(urlSearch);
-      if (urlSearch) {
+      setInternalValue(storeSearch);
+      if (storeSearch) {
         setIsExpanded(true);
       }
     } else if (propValue) {
       setIsExpanded(true);
     }
-  }, [urlSearch, isControlled, propValue]);
+  }, [storeSearch, isControlled, propValue]);
 
-  // Debounced URL sync (uncontrolled mode only)
+  // Debounced store sync (uncontrolled mode only)
   useEffect(() => {
     if (isControlled) return;
 
     const timer = setTimeout(() => {
-      if (internalValue === urlSearch) return;
-
-      const params = new URLSearchParams(searchParams.toString());
-      if (internalValue.trim()) {
-        params.set('q', internalValue.trim());
-        params.delete('page');
-      } else {
-        params.delete('q');
-        if (params.get('orderBy') === 'relevance') {
-          params.delete('orderBy');
-          params.delete('orderDirection');
+      if (internalValue === storeSearch) return;
+      const trimmed = internalValue.trim();
+      setEphemeralFilters((prev) => {
+        const next = { ...prev };
+        delete next.page;
+        if (trimmed) {
+          next.q = trimmed;
+        } else {
+          delete next.q;
+          if (next.orderBy === 'relevance') {
+            delete next.orderBy;
+            delete next.orderDirection;
+          }
         }
-      }
-      const newQuery = params.toString();
-      router.replace(newQuery ? `${pathname}?${newQuery}` : pathname);
+        return next;
+      });
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [internalValue, urlSearch, pathname, router, searchParams, isControlled]);
+  }, [internalValue, storeSearch, setEphemeralFilters, isControlled]);
 
   const active = isExpanded || Boolean(effectiveValue);
 
@@ -439,6 +367,16 @@ export function TopbarSearch({
       propOnChange?.('');
     } else {
       setInternalValue('');
+      setEphemeralFilters((prev) => {
+        const next = { ...prev };
+        delete next.q;
+        delete next.page;
+        if (next.orderBy === 'relevance') {
+          delete next.orderBy;
+          delete next.orderDirection;
+        }
+        return next;
+      });
     }
     setIsExpanded(false);
   };
@@ -453,15 +391,16 @@ export function TopbarSearch({
   };
 
   const handleSelectSearchMode = (mode: QuickSearchMode) => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (mode === 'fields_tags') {
-      params.delete('searchMode');
-    } else {
-      params.set('searchMode', mode);
-    }
-    params.delete('page');
-    const newQuery = params.toString();
-    router.replace(newQuery ? `${pathname}?${newQuery}` : pathname);
+    setEphemeralFilters((prev) => {
+      const next = { ...prev };
+      delete next.page;
+      if (mode === 'fields_tags') {
+        delete next.searchMode;
+      } else {
+        next.searchMode = mode;
+      }
+      return next;
+    });
   };
 
   const activeModeLabel =

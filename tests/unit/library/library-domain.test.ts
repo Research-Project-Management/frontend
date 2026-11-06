@@ -6,8 +6,8 @@ import {
   cleanAuthorName,
   splitAuthorString,
   isNoiseAuthorName,
-} from "@/features/library/domain/creators";
-import { formatAuthors } from "@/features/library/domain/citations";
+} from "@/features/library/domain/creators.domain";
+import { formatAuthors } from "@/features/library/domain/citations.domain";
 import {
   cleanDoi,
   isValidDoi,
@@ -15,12 +15,12 @@ import {
   getArxivPdfUrl,
   cleanPaperTitle,
   normalizeTitleCase,
-} from "@/features/library/domain/identifiers";
-import { generateCitationKey, toAsciiKeyPart, getCleanStyleLabel, formatCitationStyleLabel } from "@/features/library/domain/citations";
+} from "@/features/library/domain/identifiers.domain";
+import { generateCitationKey, toAsciiKeyPart, getCleanStyleLabel, formatCitationStyleLabel } from "@/features/library/domain/citations.domain";
 import {
   inspectItemDifferences,
   aggregateItemAssets,
-} from "@/features/library/domain/diff";
+} from "@/features/library/domain/diff.domain";
 import {
   getLibraryPermissions,
   getScopeTarget,
@@ -28,7 +28,7 @@ import {
 import {
   getItemFileUrl,
   isProjectScope,
-} from "@/features/library/domain/identifiers";
+} from "@/features/library/domain/identifiers.domain";
 
 describe("Library Domain Layer — Pure Functional Logic", () => {
   describe("Creators Domain (creators.ts)", () => {
@@ -310,7 +310,7 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
   describe("Tree Structure & Cycle Guard (tree-helpers.ts)", () => {
     it("should build a nested tree from a flat collection array", async () => {
       const { buildTree } =
-        await import("@/features/library/domain/collection-tree");
+        await import("@/features/library/domain/collection-tree.domain");
       const collections: any[] = [
         { id: "c1", name: "Root 1", parentId: null },
         { id: "c2", name: "Child 1.1", parentId: "c1" },
@@ -329,7 +329,7 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
 
     it("should break circular parent cycles gracefully without stack overflow", async () => {
       const { buildTree } =
-        await import("@/features/library/domain/collection-tree");
+        await import("@/features/library/domain/collection-tree.domain");
       // Create a circular dependency: A -> B -> A and self-reference: C -> C
       const collections: any[] = [
         { id: "cA", name: "Cyclic A", parentId: "cB" },
@@ -353,7 +353,7 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
 
     it("should accurately compute valid move targets excluding self and all descendants", async () => {
       const { getValidMoveTargets } =
-        await import("@/features/library/domain/collection-tree");
+        await import("@/features/library/domain/collection-tree.domain");
       const collections: any[] = [
         { id: "root", name: "Root", parentId: null },
         { id: "child", name: "Child", parentId: "root" },
@@ -371,7 +371,7 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
 
     it("should filter collections preserving ancestor chain", async () => {
       const { filterCollections } =
-        await import("@/features/library/domain/collection-tree");
+        await import("@/features/library/domain/collection-tree.domain");
       const collections: any[] = [
         { id: "root", name: "Physics Department", parentId: null },
         { id: "child", name: "Quantum Optics Lab", parentId: "root" },
@@ -389,7 +389,7 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
   describe("Library Sorting Utility (sort-items.ts)", () => {
     it("should pin processing items to the top regardless of sort direction", async () => {
       const { sortLibraryItems } =
-        await import("@/features/library/domain/zotero-extra-parser");
+        await import("@/features/library/domain/extra-metadata.mapper");
       const items: any[] = [
         { id: "1", title: "Beta", year: 2020 },
         { id: "2", title: "Alpha", year: 2024, _isProcessing: true },
@@ -403,7 +403,7 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
 
     it("should sort regular items alphabetically and numerically", async () => {
       const { sortLibraryItems } =
-        await import("@/features/library/domain/zotero-extra-parser");
+        await import("@/features/library/domain/extra-metadata.mapper");
       const items: any[] = [
         { id: "1", title: "Charlie", year: 2020 },
         { id: "2", title: "Alpha", year: 2024 },
@@ -418,7 +418,7 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
 
     it("should correctly handle author and date aliases", async () => {
       const { sortLibraryItems } =
-        await import("@/features/library/domain/zotero-extra-parser");
+        await import("@/features/library/domain/extra-metadata.mapper");
       const items: any[] = [
         { id: "1", authors: ["Knuth"], createdAt: "2024-01-01" },
         { id: "2", authors: ["Einstein"], createdAt: "2024-05-01" },
@@ -432,7 +432,7 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
 
     it("should correctly handle publication and dateDeleted aliases", async () => {
       const { sortLibraryItems } =
-        await import("@/features/library/domain/zotero-extra-parser");
+        await import("@/features/library/domain/extra-metadata.mapper");
       const items: any[] = [
         {
           id: "1",
@@ -601,7 +601,7 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
         getVenueFieldForType,
         getPublisherFieldForType,
         buildStaticFieldsForType,
-      } = await import("@/features/library/domain/types/item-types.types");
+      } = await import("@/features/library/types/item-types.types");
 
       const recomputed = deriveReverseBaseFieldMappings(BASE_FIELD_MAPPINGS);
       expect(REVERSE_BASE_FIELD_MAPPINGS).toEqual(recomputed);
@@ -630,7 +630,7 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
 
       // Ensure InfoSection declarative descriptors handle citationCount, referenceCount, and DOI without hardcoded allowlists
       const { resolveInspectorFieldValue, buildInspectorFieldPatch } =
-        await import("@/features/library/domain/item-field-schema");
+        await import("@/features/library/domain/item-field-schema.domain");
       const audioItem: any = {
         id: "aud-1",
         itemType: "audioRecording",
@@ -657,7 +657,7 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
 
     it("should resolve item field values declaratively across FIELD_ALIAS_MAP in diff.ts", async () => {
       const { resolveItemFieldValue } =
-        await import("@/features/library/domain/diff");
+        await import("@/features/library/domain/diff.domain");
 
       expect(
         resolveItemFieldValue({ creators: [{ name: "Turing" }] }, "authors"),
@@ -755,7 +755,7 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
 
     it("should emit only tombstone keys in patch.metadata when clearing fields and not sync authority into publisher", async () => {
       const { buildInspectorFieldPatch, buildDerivedFieldMappings } = await import(
-        "@/features/library/domain/item-field-schema"
+        "@/features/library/domain/item-field-schema.domain"
       );
 
       const { syncSetters } = buildDerivedFieldMappings();
@@ -784,7 +784,7 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
         mapBackendItem,
         normalizeTags,
         extractStructuredItemTags,
-      } = await import("@/features/library/domain/metadata-mapper");
+      } = await import("@/features/library/domain/metadata.mapper");
 
       // 1. Deleting all tags (itemTags: [], tags: []) must NOT resurrect stale metadata.tags or metadata.keywords
       const mappedDeleted = mapBackendItem({

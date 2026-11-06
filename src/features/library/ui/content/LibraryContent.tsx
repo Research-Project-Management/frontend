@@ -29,7 +29,7 @@ import {
   type Item,
   type Collection,
   type DuplicateGroup,
-} from '@/features/library/domain/types/core.types';
+} from '@/features/library/types/core.types';
 import type { LibraryOrderBy } from '@/features/library/ui/topbar/LibraryDisplayPopover';
 
 export { ContentSkeleton };
@@ -392,11 +392,19 @@ export function LibraryContent({
   const provisionalItems: Item[] = useMemo(() => {
     if (isTrash) return [];
     if (isSavedSearchView) return [];
+    if (
+      effectiveView === 'starred' ||
+      effectiveView === 'my-publications' ||
+      effectiveView === 'retracted'
+    ) {
+      return [];
+    }
 
     const targetScope = normalizeScopeId(scopeId);
     const activeProcessing = processingItems.filter((p) => {
       const pScope = normalizeScopeId(p.scopeId);
       if (pScope !== targetScope) return false;
+      if (effectiveView === 'unfiled' && p.collectionId) return false;
       if (collectionId && p.collectionId && p.collectionId !== collectionId) return false;
       return true;
     });
@@ -408,7 +416,7 @@ export function LibraryContent({
     return activeProcessing
       .filter((p) => !p.itemId || !existingIds.has(p.itemId))
       .map((p): Item => createProvisionalUploadItem(p, targetScope, collectionId));
-  }, [isTrash, isSavedSearchView, processingItems, scopeId, collectionId, items]);
+  }, [isTrash, isSavedSearchView, effectiveView, processingItems, scopeId, collectionId, items]);
 
   const displayedItems: Item[] = useMemo(() => {
     if (provisionalItems.length === 0) return items;

@@ -5,9 +5,9 @@ import { Trash2, Loader2, ShieldAlert, ExternalLink, AlertTriangle, Check, Copy,
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/lib/utils';
-import type { Item } from '@/features/library/domain/types/core.types';
+import type { Item } from '@/features/library/types/core.types';
 import { getRetractionInfo, safeHttpUrl } from '@/features/library/domain/system-views.policy';
-import type { ReaderDocument } from '@/features/library/domain/types/reader.schema';
+import type { ReaderDocument } from '@/features/library/types/reader.types';
 import { useReaderClipboard, useReaderFileDownload } from '@/features/library/core/coordinator/reader/use-reader';
 import { useExportItemCitationQuery } from '@/features/library/core/coordinator/citation-export.coordinator';
 

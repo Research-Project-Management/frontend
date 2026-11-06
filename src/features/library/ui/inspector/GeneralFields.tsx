@@ -3,7 +3,7 @@
 import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { Check } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import { type Item, SchemaItemTypeDefinition, ALL_ITEM_TYPES_FLAT, getTitleFieldForType } from '@/features/library/domain/types/core.types';
+import { type Item, SchemaItemTypeDefinition, ALL_ITEM_TYPES_FLAT, getTitleFieldForType } from '@/features/library/types/core.types';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { cleanValue, getItemDisplayTitle, buildExtraMetadataPatch, formatAndSanitizeExtraMetadata, isValidValue } from '@/features/library/domain/metadata.mapper';
 import { buildInspectorFieldPatch } from '@/features/library/domain/item-field-schema.domain';
@@ -210,7 +210,7 @@ export function ExtraAuditFields({
       {(canEdit || isValidValue(formattedExtraMetadata)) && (
         <div className="grid grid-cols-[84px_1fr] gap-2 items-start py-0.5">
           <span
-            className="text-foreground text-right font-normal select-none pr-1 text-12 leading-normal whitespace-nowrap truncate pt-1"
+            className="text-muted-foreground text-right font-medium select-none pr-1 text-11 leading-normal whitespace-nowrap truncate pt-1"
             id="label-extra"
           >
             Extra
@@ -237,10 +237,10 @@ export function ExtraAuditFields({
       {/* Date Added */}
       {isValidValue(item.createdAt) && (
         <div className="grid grid-cols-[84px_1fr] gap-2 items-center py-0.5">
-          <span className="text-foreground text-right font-normal select-none pr-1 text-12 leading-normal whitespace-nowrap truncate">
+          <span className="text-muted-foreground text-right font-medium select-none pr-1 text-11 leading-normal whitespace-nowrap truncate">
             Date Added
           </span>
-          <span className="text-foreground text-12 leading-normal px-2 py-1 select-text truncate whitespace-nowrap font-normal h-7 flex items-center font-sans">
+          <span className="text-foreground text-13 leading-normal px-2 py-1 select-text truncate whitespace-nowrap font-normal h-7 flex items-center font-sans">
             {formatAuditDate(item.createdAt)}
           </span>
         </div>
@@ -249,10 +249,10 @@ export function ExtraAuditFields({
       {/* Modified */}
       {isValidValue(item.updatedAt) && (
         <div className="grid grid-cols-[84px_1fr] gap-2 items-center py-0.5">
-          <span className="text-foreground text-right font-normal select-none pr-1 text-12 leading-normal whitespace-nowrap truncate">
+          <span className="text-muted-foreground text-right font-medium select-none pr-1 text-11 leading-normal whitespace-nowrap truncate">
             Modified
           </span>
-          <span className="text-foreground text-12 leading-normal px-2 py-1 select-text truncate whitespace-nowrap font-normal h-7 flex items-center font-sans">
+          <span className="text-foreground text-13 leading-normal px-2 py-1 select-text truncate whitespace-nowrap font-normal h-7 flex items-center font-sans">
             {formatAuditDate(item.updatedAt)}
           </span>
         </div>
@@ -360,7 +360,7 @@ export function InlineField({
       <div
         className={cn(
           'w-full h-7 text-foreground px-2 py-1 rounded-md text-13 leading-normal font-normal truncate whitespace-nowrap select-text flex items-center font-sans',
-          mono && 'font-mono text-11 tabular-nums tracking-normal',
+          mono && 'tabular-nums',
           className,
         )}
       >
@@ -382,7 +382,7 @@ export function InlineField({
       className={cn(
         'w-full flex-1 min-w-0 h-7 bg-transparent text-foreground px-2 py-1 rounded-md border border-transparent outline-none text-13 leading-normal font-normal truncate transition-colors font-sans',
         'hover:bg-muted focus:bg-background focus:border-primary focus:ring-1 focus:ring-ring focus:hover:bg-background',
-        mono && 'font-mono text-11 tabular-nums tracking-normal',
+        mono && 'tabular-nums',
         className,
       )}
     />
@@ -438,6 +438,8 @@ function InlineTextarea({
     focusedInitialValueRef.current = value;
   };
 
+  const prevWidthRef = useRef<number>(0);
+
   const adjustHeight = useCallback(() => {
     const el = textareaRef.current;
     if (!el) return;
@@ -453,8 +455,16 @@ function InlineTextarea({
   useEffect(() => {
     const el = textareaRef.current;
     if (!el || typeof ResizeObserver === 'undefined') return;
-    const observer = new ResizeObserver(() => {
-      adjustHeight();
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      const currentWidth = Math.round(entry.contentRect.width);
+      // ONLY re-adjust height if horizontal width actually changed (panel resize/window resize)
+      // This strictly prevents the ResizeObserver loop when adjustHeight modifies the height
+      if (currentWidth > 0 && Math.abs(currentWidth - prevWidthRef.current) >= 1) {
+        prevWidthRef.current = currentWidth;
+        adjustHeight();
+      }
     });
     observer.observe(el);
     return () => observer.disconnect();

@@ -6,7 +6,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/
 import { Textarea } from '@/shared/components/ui/textarea';
 import { normalizeCitationLinkHref, parseAnnotationDeepLinkUrl, extractStructuredDeepLinksFromMarkdown, tokenizeCitationDeepLinksForEditor, detokenizeCitationDeepLinksFromEditor, renderInlineMarkdown, FormattedNoteBody, getNoteDisplayTitle, getNotePreviewSnippet, type ParsedAnnotationDeepLink, type CompactCitationTokenEntry } from './FormattedNoteBody';
 import { useState, useEffect } from 'react';
-import { SchemaFieldDefinition } from '@/features/library/domain/types/core.types';
+import { SchemaFieldDefinition } from '@/features/library/types/core.types';
 import { isValidValue } from '@/features/library/domain/metadata.mapper';
 import { InlineField } from '@/features/library/ui/inspector/GeneralFields';
 
@@ -408,7 +408,7 @@ interface InspectorFieldActionDescriptor {
   label: string;
 }
 
-export interface InspectorFieldDescriptor {
+interface InspectorFieldDescriptor {
   isMono: boolean;
   isCitationKey: boolean;
   action?: InspectorFieldActionDescriptor;

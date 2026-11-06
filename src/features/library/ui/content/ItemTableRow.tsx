@@ -7,6 +7,7 @@ import {
   StickyNote,
   ShieldAlert,
   AlertCircle,
+  Star,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Checkbox } from '@/shared/components/ui/checkbox';
@@ -26,14 +27,14 @@ import {
 } from '@/features/library/core/store/library-ui.store';
 import { ItemContextMenu } from './ItemRowActions';
 import { ItemRowActions } from './ItemRowActions';
-import type { Item, Collection } from '@/features/library/domain/types/core.types';
+import type { Item, Collection } from '@/features/library/types/core.types';
 import { cleanText, formatAuthors } from '@/features/library/domain/citations.domain';
 import {
   getItemDisplayTitle,
   getItemDisplayDate,
   getPublicationVenue,
 } from '@/features/library/domain/metadata.mapper';
-import { getItemTypeDefinition } from '@/features/library/domain/types/item-types.types';
+import { getItemTypeDefinition } from '@/features/library/types/item-types.types';
 
 interface ItemTableRowProps {
   item: Item;
@@ -305,8 +306,28 @@ export const ItemTableRow = React.memo(function ItemTableRow({
             </Tooltip>
 
             {/* Trailing Status Indicators (Aligned after title so all titles start on a strict vertical axis) */}
-            {(hasAttachment || hasNotes || isRetracted || (isProcessing && processingStatus === 'FAILED')) && (
+            {(isStarred || hasAttachment || hasNotes || isRetracted || (isProcessing && processingStatus === 'FAILED')) && (
               <div className="flex items-center gap-1.5 shrink-0 ml-1">
+                {isStarred && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!isProcessing && onToggleStar) {
+                            onToggleStar(item, isStarred);
+                          }
+                        }}
+                        className="inline-flex items-center justify-center size-5 rounded-sm text-amber-500 hover:bg-background/80 transition-colors cursor-pointer shrink-0 outline-none"
+                        aria-label="Remove from Starred"
+                      >
+                        <Star className="size-3.5 fill-amber-400 text-amber-500 shrink-0" strokeWidth={1.5} />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Starred (click to unstar)</TooltipContent>
+                  </Tooltip>
+                )}
                 {isProcessing && processingStatus === 'FAILED' && (
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -458,6 +479,17 @@ export const ItemTableRow = React.memo(function ItemTableRow({
             ) : (
               <span className="text-foreground">-</span>
             )}
+          </td>
+        )}
+
+        {/* Date Added */}
+        {columns.createdAt && (
+          <td className="px-3 h-8 py-0 align-middle text-12 font-mono tabular-nums text-foreground font-normal">
+            <span className="truncate">
+              {item.createdAt
+                ? new Date(item.createdAt).toLocaleDateString()
+                : '-'}
+            </span>
           </td>
         )}
 

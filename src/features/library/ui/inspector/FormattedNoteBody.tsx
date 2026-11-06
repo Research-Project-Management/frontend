@@ -499,40 +499,43 @@ export function getNotePreviewSnippet(
   content: string,
   displayTitle?: string,
 ): string {
-  const lines = content.trim().split("\n");
-  let startIndex = 0;
-
-  if (lines.length > 0 && lines[0].startsWith("#")) {
-    const headingText = lines[0]
-      .replace(/^#+\s*/, "")
-      .replace(/[*_`]/g, "")
+  const stripInline = (str: string) =>
+    str
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+      .replace(/^#+\s+/gm, "")
+      .replace(/\*\*([^*]+)\*\*/g, "$1")
+      .replace(/\*([^*]+)\*/g, "$1")
+      .replace(/`([^`]+)`/g, "$1")
+      .replace(/^>\s+/gm, "")
+      .replace(/^[-*]\s+/gm, "")
+      .replace(/\s+/g, " ")
       .trim();
-    if (
-      !displayTitle ||
-      displayTitle === "Note" ||
-      headingText.toLowerCase().includes(displayTitle.toLowerCase()) ||
-      displayTitle.toLowerCase().includes(headingText.toLowerCase())
-    ) {
-      startIndex = 1;
-    }
-  }
 
-  while (
-    startIndex < lines.length &&
-    (!lines[startIndex].trim() || lines[startIndex].trim() === "---")
+  const lines = content
+    .trim()
+    .split("\n")
+    .filter((l) => l.trim().length > 0 && l.trim() !== "---");
+
+  if (lines.length === 0) return "";
+
+  const firstLineCleaned = stripInline(lines[0]);
+  const cleanTitle = (displayTitle || "").replace(/…$/, "").trim().toLowerCase();
+
+  let startIndex = 0;
+  if (
+    lines[0].startsWith("#") ||
+    !cleanTitle ||
+    cleanTitle === "note" ||
+    firstLineCleaned.toLowerCase() === cleanTitle ||
+    firstLineCleaned.toLowerCase().startsWith(cleanTitle) ||
+    cleanTitle.startsWith(firstLineCleaned.toLowerCase())
   ) {
-    startIndex++;
+    startIndex = 1;
   }
 
-  const remaining = lines.slice(startIndex).join(" ");
-  return remaining
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    .replace(/^#+\s+/gm, "")
-    .replace(/\*\*([^*]+)\*\*/g, "$1")
-    .replace(/\*([^*]+)\*/g, "$1")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/^>\s+/gm, "")
-    .replace(/^[-*]\s+/gm, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  if (startIndex >= lines.length) {
+    return "";
+  }
+
+  return stripInline(lines.slice(startIndex).join(" "));
 }

@@ -35,8 +35,8 @@ import {
   createRestoreCommand,
 } from '@/features/library/core/manager/library-command.manager';
 import type { InspectorSectionId } from '@/features/library/core/store/library-ui.store';
-import type { Item } from '@/features/library/domain/types/core.types';
-import { getTitleFieldForType } from '@/features/library/domain/types/item-types.types';
+import type { Item } from '@/features/library/types/core.types';
+import { getTitleFieldForType } from '@/features/library/types/item-types.types';
 import { getItemDisplayTitle } from '@/features/library/domain/metadata.mapper';
 import { buildInspectorFieldPatch } from '@/features/library/domain/item-field-schema.domain';
 import dynamic from 'next/dynamic';
@@ -59,7 +59,6 @@ export interface InspectorSectionProps {
   title: string;
   count?: number;
   isExpanded: boolean;
-  isHighlighted?: boolean;
   onToggleExpand: () => void;
   onAdd?: () => void;
   actionSlot?: React.ReactNode;
@@ -74,29 +73,22 @@ export function InspectorSection({
   title,
   count,
   isExpanded,
-  isHighlighted = false,
   onToggleExpand,
   onAdd,
   actionSlot,
   children,
-  contentClassName = 'px-2.5 pt-1.5 pb-2.5',
+  contentClassName = 'px-2.5 pt-1 pb-2.5',
   canEdit = true,
   keepMounted = false,
 }: InspectorSectionProps) {
   return (
     <div
       id={`inspector-section-${id}`}
-      className={cn(
-        'group/section border-b border-border last:border-b-0 w-full transition-colors duration-300',
-        isHighlighted && 'bg-muted/60',
-      )}
+      className="group/section border-b border-border last:border-b-0 w-full transition-colors duration-300"
     >
       <div
         onClick={onToggleExpand}
-        className={cn(
-          'flex items-center justify-between px-2.5 h-8 box-border select-none transition-colors w-full cursor-pointer hover:bg-muted/50',
-          isHighlighted && 'bg-muted/80',
-        )}
+        className="flex items-center justify-between px-2.5 h-8 box-border select-none transition-colors w-full cursor-pointer"
       >
         <button
           type="button"
@@ -171,7 +163,10 @@ export function InspectorSection({
       {(isExpanded || keepMounted) && (
         <div
           id={`section-content-${id}`}
-          className={cn('bg-background', isExpanded ? contentClassName : 'hidden')}
+          className={cn(
+            'bg-background empty:hidden [&:not(:has(*:not(input.hidden)))]:hidden',
+            isExpanded ? contentClassName : 'hidden',
+          )}
         >
           {children}
         </div>

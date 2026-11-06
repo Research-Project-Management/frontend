@@ -35,7 +35,7 @@ import {
 import { useLibraryPermissions } from '@/features/library/core/coordinator/navigation.coordinator';
 import { useLibraryProjectContext } from '@/features/library/core/adapters/project-context.adapter';
 
-import type { SavedSearch } from '@/features/library/domain/types/ingestion.types';
+import type { SavedSearch } from '@/features/library/types/ingestion.types';
 
 import { buildTree, filterCollections } from '@/features/library/domain/collection-tree.domain';
 import { usePanelResize } from '@/features/library/core/coordinator/inspector-item.coordinator';
@@ -301,7 +301,7 @@ export function LibrarySidebar() {
       const targetCollection =
         userCollections.find((c) => c.id === targetCollectionId) ??
         projectCollections.find((c) => c.id === targetCollectionId);
-      const targetCollectionName = targetCollection?.name ?? 'Library';
+      const targetCollectionName = targetCollection?.name ?? 'Unfiled Items';
 
       // Zotero Drag & Drop Semantics:
       // - When dragging from root "My Library" / Smart View (!activeId) into a collection,

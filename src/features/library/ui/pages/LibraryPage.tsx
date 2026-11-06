@@ -55,7 +55,7 @@ import { parseEmojiPrefix } from '@/features/library/domain/citations.domain';
 import { getCollectionBreadcrumbPath } from '@/features/library/domain/collection-tree.domain';
 import { type ParsedFeedEntry } from '@/features/library/domain/feed-parser.domain';
 import { executeSaveFeedEntryWithFeedback } from '@/features/library/core/coordinator/ingestion.coordinator';
-import type { Item, DuplicateGroup, Collection } from '@/features/library/domain/types/core.types';
+import type { Item, DuplicateGroup, Collection } from '@/features/library/types/core.types';
 
 const DuplicateMergeInspector = dynamic(
   () => import('@/features/library/ui/inspector/DuplicateMergeInspector').then((m) => m.DuplicateMergeInspector),
@@ -423,6 +423,7 @@ export function ModernLibraryPage({
           clearSelection();
         } catch (err: unknown) {
           toast.error('Failed to empty trash', { id: 'empty-trash-error' });
+          throw err;
         }
       },
     });
@@ -433,6 +434,12 @@ export function ModernLibraryPage({
     if (isTrash) return countsData?.trash ?? trashItems.length;
     if (effectiveView === 'duplicates') {
       return duplicateGroupsQuery.data?.duplicateGroups?.length ?? 0;
+    }
+    if (effectiveView === 'unfiled') {
+      return countsData?.unfiled;
+    }
+    if (effectiveView === 'starred') {
+      return countsData?.starred;
     }
     if (isSavedSearchView) {
       return currentSavedSearch?.cachedCount ?? 0;
@@ -448,6 +455,8 @@ export function ModernLibraryPage({
   }, [
     isTrash,
     countsData?.trash,
+    countsData?.unfiled,
+    countsData?.starred,
     trashItems.length,
     effectiveView,
     duplicateGroupsQuery.data?.duplicateGroups?.length,

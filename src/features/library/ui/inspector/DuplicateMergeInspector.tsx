@@ -30,7 +30,7 @@ import {
 } from "@/features/library/domain/metadata.mapper";
 import { normalizeAuthors } from "@/features/library/domain/creators.domain";
 import { useDuplicateMergeState } from "@/features/library/core/coordinator/curation.coordinator";
-import type { Item } from "@/features/library/domain/types/core.types";
+import type { Item } from "@/features/library/types/core.types";
 import { cn } from "@/shared/lib/utils";
 
 interface DuplicateMergeInspectorProps {

@@ -1,11 +1,9 @@
 "use client";
 
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { Search, X, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/components/ui/button";
-import { Input } from "@/shared/components/ui/input";
-import { Checkbox } from "@/shared/components/ui/checkbox";
 import {
   Popover,
   PopoverContent,
@@ -16,21 +14,38 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/shared/components/ui/tooltip";
-import { SingleDatePopover } from "@/shared/components/ui/single-date-popover";
 import { FilterFunnelIcon } from "@/shared/components/icons";
-import type { Item, TagWithCount } from "@/features/library/domain/types/core.types";
+import type { Item, TagWithCount } from "@/features/library/types/core.types";
 import { useLibraryFacetCounts } from "@/features/library/core/coordinator/facet-filter.coordinator";
-import { useLibraryPermissions } from "@/features/library/core/coordinator/navigation.coordinator";
 import { FilterTagsSection } from "./FilterTagsSection";
 
 function FilterCheckbox({ checked }: { checked: boolean }) {
   return (
-    <Checkbox
-      checked={checked}
-      tabIndex={-1}
+    <span
       aria-hidden="true"
-      className="size-3.5 border-border data-[state=checked]:border-primary pointer-events-none shrink-0"
-    />
+      className={cn(
+        "size-3.5 rounded-[4px] border flex items-center justify-center shrink-0 transition-colors pointer-events-none",
+        checked
+          ? "bg-primary border-primary text-primary-foreground"
+          : "border-border bg-transparent",
+      )}
+    >
+      {checked && (
+        <svg
+          viewBox="0 0 12 12"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2.2}
+          className="size-2.5 text-white shrink-0"
+        >
+          <path
+            d="M2.5 6L5 8.5L9.5 3.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      )}
+    </span>
   );
 }
 
@@ -46,43 +61,17 @@ interface FilterFacetSectionsProps {
   onTagToggle: (name: string) => void;
   showAutomaticTags?: boolean;
   onToggleShowAutomaticTags?: (show: boolean) => void;
-  onCreateTag?: (params: {
-    name: string;
-    color?: string;
-    type?: string;
-  }) => Promise<unknown>;
-  onUpdateTag?: (params: {
-    tagId: string;
-    data: {
-      name?: string;
-      color?: string;
-      type?: string;
-      shortcut?: number | null;
-    };
-  }) => Promise<unknown>;
-  onDeleteTag?: (tagId: string) => Promise<unknown>;
-  onDeleteAutomaticTags?: () => Promise<unknown>;
-  isDeletingAutomatic?: boolean;
-  onSplitTag?: (params: { tagId: string; parts: string[] }) => Promise<unknown>;
   matchingFileItems: Array<{
     id: "has-pdf" | "missing-pdf" | "has-notes";
     label: string;
   }>;
   fileStatus: string;
   onFileStatusToggle: (id: "has-pdf" | "missing-pdf" | "has-notes") => void;
-  matchingReadingItems: Array<{
-    id: "unread" | "reading" | "completed";
-    label: string;
-  }>;
-  readStatuses: string[];
-  onReadStatusToggle: (id: "unread" | "reading" | "completed") => void;
-  showDateSection: boolean;
-  hasDateFilter: boolean;
-  startDate: string;
-  endDate: string;
-  onStartDateSelect: (dateStr: string) => void;
-  onEndDateSelect: (dateStr: string) => void;
-  onClearDate: () => void;
+  showYearSection: boolean;
+  fromYear: number | null;
+  toYear: number | null;
+  onYearPreset: (from: number | null, to: number | null) => void;
+  onClearYear: () => void;
 }
 
 function FilterFacetSections({
@@ -97,40 +86,48 @@ function FilterFacetSections({
   onTagToggle,
   showAutomaticTags,
   onToggleShowAutomaticTags,
-  onCreateTag,
-  onUpdateTag,
-  onDeleteTag,
-  onDeleteAutomaticTags,
-  isDeletingAutomatic,
-  onSplitTag,
   matchingFileItems,
   fileStatus,
   onFileStatusToggle,
-  matchingReadingItems,
-  readStatuses,
-  onReadStatusToggle,
-  showDateSection,
-  hasDateFilter,
-  startDate,
-  endDate,
-  onStartDateSelect,
-  onEndDateSelect,
-  onClearDate,
+  showYearSection,
+  fromYear,
+  toYear,
+  onYearPreset,
+  onClearYear,
 }: FilterFacetSectionsProps) {
   const [filesOpen, setFilesOpen] = useState(true);
-  const [readingOpen, setReadingOpen] = useState(true);
   const [typesOpen, setTypesOpen] = useState(true);
   const [yearOpen, setYearOpen] = useState(true);
-  const [startDateOpen, setStartDateOpen] = useState(false);
-  const [endDateOpen, setEndDateOpen] = useState(false);
+  const [fromDraft, setFromDraft] = useState(fromYear ? String(fromYear) : "");
+  const [toDraft, setToDraft] = useState(toYear ? String(toYear) : "");
+
+  useEffect(() => {
+    setFromDraft(fromYear ? String(fromYear) : "");
+  }, [fromYear]);
+
+  useEffect(() => {
+    setToDraft(toYear ? String(toYear) : "");
+  }, [toYear]);
+
+  const commitYearInputs = (rawFrom: string, rawTo: string) => {
+    const parsedFrom = rawFrom.trim() ? parseInt(rawFrom.trim(), 10) : null;
+    const parsedTo = rawTo.trim() ? parseInt(rawTo.trim(), 10) : null;
+    const validFrom =
+      parsedFrom !== null && Number.isFinite(parsedFrom) && parsedFrom >= 1000 && parsedFrom <= 2100
+        ? parsedFrom
+        : null;
+    const validTo =
+      parsedTo !== null && Number.isFinite(parsedTo) && parsedTo >= 1000 && parsedTo <= 2100
+        ? parsedTo
+        : null;
+    if (validFrom !== fromYear || validTo !== toYear) {
+      onYearPreset(validFrom, validTo);
+    }
+  };
 
   const itemTypeSet = useMemo(
     () => new Set(itemTypes.map((it) => it.toLowerCase())),
     [itemTypes],
-  );
-  const readStatusSet = useMemo(
-    () => new Set(readStatuses),
-    [readStatuses],
   );
 
   return (
@@ -168,7 +165,7 @@ function FilterFacetSections({
 
           {typesOpen && (
             <div className="pt-1 select-none">
-              <div className="max-h-36 overflow-y-auto space-y-0.5 no-scrollbar">
+              <div className="max-h-36 overflow-y-auto space-y-0.5 pr-1 scrollbar-thin">
                 {matchingTypeItems.map((t) => {
                   const isChecked = itemTypeSet.has(t.id.toLowerCase());
                   return (
@@ -193,11 +190,6 @@ function FilterFacetSections({
                       <span className="font-normal leading-none truncate">
                         {t.label}
                       </span>
-                      {t.count > 0 && (
-                        <span className="ml-auto shrink-0 text-11 font-mono text-muted-foreground">
-                          {t.count}
-                        </span>
-                      )}
                     </div>
                   );
                 })}
@@ -213,12 +205,6 @@ function FilterFacetSections({
         onTagToggle={onTagToggle}
         showAutomaticTags={showAutomaticTags}
         onToggleShowAutomaticTags={onToggleShowAutomaticTags}
-        onCreateTag={onCreateTag}
-        onUpdateTag={onUpdateTag}
-        onDeleteTag={onDeleteTag}
-        onDeleteAutomaticTags={onDeleteAutomaticTags}
-        isDeletingAutomatic={isDeletingAutomatic}
-        onSplitTag={onSplitTag}
       />
 
       {matchingFileItems.length > 0 && (
@@ -270,113 +256,88 @@ function FilterFacetSections({
         </div>
       )}
 
-      {matchingReadingItems.length > 0 && (
+      {showYearSection && (
         <div className="-mx-2 px-2 border-t border-border pt-1.5 mt-0.5 first:border-t-0 first:pt-0.5 first:mt-0 shrink-0">
-          <button
-            type="button"
-            onClick={() => setReadingOpen(!readingOpen)}
-            className="flex w-full items-center justify-between py-1 px-1 text-12 font-medium text-foreground cursor-pointer select-none"
-          >
-            <span>Progress</span>
-            {readingOpen ? (
-              <ChevronUp className="size-3.5 text-foreground shrink-0" />
-            ) : (
-              <ChevronDown className="size-3.5 text-foreground shrink-0" />
-            )}
-          </button>
-
-          {readingOpen && (
-            <div className="space-y-0.5 pt-1 select-none">
-              {matchingReadingItems.map((item) => {
-                const isChecked = readStatusSet.has(item.id);
-                return (
-                  <div
-                    key={item.id}
-                    role="checkbox"
-                    tabIndex={0}
-                    aria-checked={isChecked}
-                    onClick={() => onReadStatusToggle(item.id)}
-                    onKeyDown={(e) => {
-                      if (e.key === " " || e.key === "Enter") {
-                        e.preventDefault();
-                        onReadStatusToggle(item.id);
-                      }
-                    }}
-                    className={cn(
-                      "flex items-center gap-2 py-0.5 px-1.5 rounded-md text-12 text-foreground cursor-pointer select-none hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary",
-                      isChecked && "bg-muted font-medium",
-                    )}
-                  >
-                    <FilterCheckbox checked={isChecked} />
-                    <span className="font-normal leading-none">
-                      {item.label}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {showDateSection && (
-        <div className="-mx-2 px-2 border-t border-border pt-1.5 mt-0.5 first:border-t-0 first:pt-0.5 first:mt-0 shrink-0">
-          <button
-            type="button"
-            onClick={() => setYearOpen(!yearOpen)}
-            className="flex w-full items-center justify-between py-1 px-1 text-12 font-medium text-foreground cursor-pointer select-none"
-          >
-            <div className="flex items-center gap-1.5">
-              <span>Date</span>
-              {hasDateFilter && (
-                <span className="size-1.5 rounded-full bg-foreground shrink-0" />
+          <div className="flex w-full items-center justify-between py-1 px-1 text-12 font-medium text-foreground select-none">
+            <button
+              type="button"
+              onClick={() => setYearOpen(!yearOpen)}
+              className="flex items-center gap-1.5 flex-1 text-left cursor-pointer"
+            >
+              <span>Year</span>
+            </button>
+            <div className="flex items-center gap-1">
+              {(fromYear !== null || toYear !== null) && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setFromDraft("");
+                    setToDraft("");
+                    onClearYear();
+                  }}
+                  className="text-11 text-muted-foreground hover:text-foreground cursor-pointer px-1 rounded"
+                >
+                  Clear
+                </button>
               )}
+              <button
+                type="button"
+                onClick={() => setYearOpen(!yearOpen)}
+                className="size-5 flex items-center justify-center rounded hover:bg-muted text-foreground cursor-pointer"
+                aria-label={yearOpen ? "Collapse year" : "Expand year"}
+              >
+                {yearOpen ? (
+                  <ChevronUp className="size-3.5 text-foreground shrink-0" />
+                ) : (
+                  <ChevronDown className="size-3.5 text-foreground shrink-0" />
+                )}
+              </button>
             </div>
-            <div className="flex items-center gap-1.5">
-              {hasDateFilter && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onClearDate();
-                      }}
-                      className="text-12 text-foreground underline cursor-pointer px-1 py-0.5 rounded-md hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                    >
-                      Clear
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>Clear date filter</TooltipContent>
-                </Tooltip>
-              )}
-              {yearOpen ? (
-                <ChevronUp className="size-3.5 text-foreground shrink-0" />
-              ) : (
-                <ChevronDown className="size-3.5 text-foreground shrink-0" />
-              )}
-            </div>
-          </button>
+          </div>
 
           {yearOpen && (
-            <div className="pt-1 flex flex-col gap-0.5 select-none">
-              <SingleDatePopover
-                label="Start date"
-                date={startDate}
-                onSelectDate={onStartDateSelect}
-                open={startDateOpen}
-                onOpenChange={setStartDateOpen}
-                variant="ghost"
-                actionBtnClass="w-full justify-start h-8 px-2 text-12 font-normal rounded-md border-0 bg-transparent hover:bg-muted text-foreground transition-colors shadow-none cursor-pointer"
+            <div className="pt-1 px-1 flex items-center gap-1.5 select-none">
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={4}
+                placeholder="From"
+                aria-label="From year"
+                value={fromDraft}
+                onChange={(e) =>
+                  setFromDraft(e.target.value.replace(/\D/g, ""))
+                }
+                onBlur={() => commitYearInputs(fromDraft, toDraft)}
+                onKeyDown={(e) => {
+                  e.stopPropagation();
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    commitYearInputs(fromDraft, toDraft);
+                  }
+                }}
+                className="w-full h-7 px-2 rounded-md border border-border bg-background text-12 text-foreground placeholder:text-muted-foreground outline-none focus:border-foreground/40 tabular-nums"
               />
-              <SingleDatePopover
-                label="End date"
-                date={endDate}
-                onSelectDate={onEndDateSelect}
-                open={endDateOpen}
-                onOpenChange={setEndDateOpen}
-                variant="ghost"
-                actionBtnClass="w-full justify-start h-8 px-2 text-12 font-normal rounded-md border-0 bg-transparent hover:bg-muted text-foreground transition-colors shadow-none cursor-pointer"
+              <span className="text-muted-foreground text-12 shrink-0">–</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={4}
+                placeholder="To"
+                aria-label="To year"
+                value={toDraft}
+                onChange={(e) =>
+                  setToDraft(e.target.value.replace(/\D/g, ""))
+                }
+                onBlur={() => commitYearInputs(fromDraft, toDraft)}
+                onKeyDown={(e) => {
+                  e.stopPropagation();
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    commitYearInputs(fromDraft, toDraft);
+                  }
+                }}
+                className="w-full h-7 px-2 rounded-md border border-border bg-background text-12 text-foreground placeholder:text-muted-foreground outline-none focus:border-foreground/40 tabular-nums"
               />
             </div>
           )}
@@ -401,7 +362,6 @@ export function LibraryFilterPopover({
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const { canEditItem } = useLibraryPermissions();
 
   const facets = useLibraryFacetCounts({
     scopeId,
@@ -417,39 +377,20 @@ export function LibraryFilterPopover({
           <PopoverTrigger asChild>
             <Button
               type="button"
-              size={facets.activeCount > 0 ? "sm" : "icon"}
+              size="icon"
               className={cn(
-                "rounded-md border border-border bg-background text-foreground hover:bg-muted cursor-pointer transition-colors shrink-0 select-none inline-flex items-center",
-                facets.activeCount > 0
-                  ? "h-8 px-2.5 gap-1.5 border-primary text-primary"
-                  : "size-8",
-                isOpen && "bg-muted",
+                "size-8 rounded-md border border-border bg-background text-foreground hover:bg-muted cursor-pointer transition-colors shrink-0 select-none inline-flex items-center justify-center",
+                (isOpen || facets.activeCount > 0) && "bg-muted",
                 className,
               )}
-              aria-label={
-                facets.activeCount > 0
-                  ? `Filter (${facets.activeCount} active)`
-                  : "Filter"
-              }
+              aria-label="Filter"
             >
-              <FilterFunnelIcon
-                className={cn(
-                  "size-4 shrink-0",
-                  facets.activeCount > 0 ? "text-primary" : "text-foreground",
-                )}
-              />
-              {facets.activeCount > 0 && (
-                <span className="text-12 font-medium font-mono tabular-nums leading-none">
-                  {facets.activeCount}
-                </span>
-              )}
+              <FilterFunnelIcon className="size-4 shrink-0 text-foreground" />
             </Button>
           </PopoverTrigger>
         </TooltipTrigger>
         <TooltipContent side="bottom" sideOffset={6}>
-          {facets.activeCount > 0
-            ? `Filter (${facets.activeCount} active)`
-            : "Filter"}
+          Filter
         </TooltipContent>
       </Tooltip>
 
@@ -460,20 +401,20 @@ export function LibraryFilterPopover({
       >
         <div
           role="presentation"
-          className="relative flex items-center mb-1.5 shrink-0"
+          className="-mx-2 -mt-2 mb-1 px-2.5 h-8 border-b border-border flex items-center gap-2 shrink-0"
           onClick={(e) => e.stopPropagation()}
         >
           <Search
-            className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none shrink-0"
+            className="size-3.5 text-muted-foreground pointer-events-none shrink-0"
             strokeWidth={1.5}
           />
-          <Input
+          <input
             ref={searchInputRef}
             type="text"
-            placeholder="Search"
+            placeholder="Search..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-8 w-full pl-8 pr-7 text-13 bg-background border-border hover:border-border-hover rounded-md focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-ring text-foreground placeholder:text-muted-foreground shadow-none"
+            className="flex-1 min-w-0 h-full bg-transparent border-none outline-none ring-0 text-12 text-foreground placeholder:text-muted-foreground"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => {
               if (e.key !== "Escape") e.stopPropagation();
@@ -483,7 +424,7 @@ export function LibraryFilterPopover({
             <button
               type="button"
               onClick={() => setSearchQuery("")}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-muted-foreground hover:text-foreground cursor-pointer rounded-md"
+              className="size-4 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer rounded"
               aria-label="Clear filter search"
             >
               <X className="size-3 shrink-0" />
@@ -518,25 +459,14 @@ export function LibraryFilterPopover({
           onTagToggle={facets.handleTagToggle}
           showAutomaticTags={facets.showAutomaticTags}
           onToggleShowAutomaticTags={facets.setShowAutomaticTags}
-          onCreateTag={canEditItem ? facets.createTag : undefined}
-          onUpdateTag={canEditItem ? facets.updateTag : undefined}
-          onDeleteTag={canEditItem ? facets.deleteTag : undefined}
-          onDeleteAutomaticTags={canEditItem ? facets.deleteAutomaticTags : undefined}
-          isDeletingAutomatic={facets.isDeletingAutomatic}
-          onSplitTag={canEditItem ? facets.splitTag : undefined}
           matchingFileItems={facets.matchingFileItems}
           fileStatus={facets.fileStatus}
           onFileStatusToggle={facets.handleFileStatusToggle}
-          matchingReadingItems={facets.matchingReadingItems}
-          readStatuses={facets.readStatuses}
-          onReadStatusToggle={facets.handleReadStatusToggle}
-          showDateSection={facets.dateSectionMatch.matches}
-          hasDateFilter={facets.hasDateFilter}
-          startDate={facets.startDate}
-          endDate={facets.endDate}
-          onStartDateSelect={facets.handleStartDateSelect}
-          onEndDateSelect={facets.handleEndDateSelect}
-          onClearDate={facets.handleClearDate}
+          showYearSection={facets.dateSectionMatch.matches}
+          fromYear={facets.fromYear}
+          toYear={facets.toYear}
+          onYearPreset={facets.handleYearPreset}
+          onClearYear={facets.handleClearDate}
         />
       </PopoverContent>
     </Popover>

@@ -7,15 +7,15 @@ import { Button } from '@/shared/components/ui/button';
 import { Progress } from '@/shared/components/ui/progress';
 import { Badge } from '@/shared/components/ui/badge';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
-import { CheckCircle2, AlertCircle, RefreshCw, Loader2, X, Award, ShieldCheck, FileText, Globe, Lock } from 'lucide-react';
+import { CheckCircle2, AlertCircle, RefreshCw, Loader2, X } from 'lucide-react';
 import { deriveProcessModalPhase, deriveProcessModalDisplayMode, classifyProcessItemStage, type ProcessModalState } from '@/features/library/core/store/process-modal.store';
 import { cn } from '@/shared/lib/utils';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Switch } from '@/shared/components/ui/switch';
+import { Checkbox } from '@/shared/components/ui/checkbox';
 import { Label } from '@/shared/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
-import { myPublicationFormSchema, type MyPublicationFormValues, type Item } from '@/features/library/domain/types/core.types';
+import { ALL_ITEM_TYPES_FLAT, myPublicationFormSchema, type MyPublicationFormValues, type Item } from '@/features/library/types/core.types';
 
 interface ProcessModalProps {
   state: ProcessModalState;
@@ -76,6 +76,16 @@ export default function ProcessModal({
   const isErroredPhase = batchPhase === "FAILED" || batchPhase === "ABORTED";
   const isCompletedPhase =
     batchPhase === "COMPLETED" || batchPhase === "PARTIAL_FAILURE";
+
+  // Auto-dismiss minimized pill when processing completes without errors
+  useEffect(() => {
+    if (displayMode === "MINIMIZED_PILL" && batchPhase === "COMPLETED") {
+      const timer = setTimeout(() => {
+        onClose();
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [displayMode, batchPhase, onClose]);
 
   // Compute active item index: the first item that is not yet in a terminal stage
   const activeIndex = !isRunning
@@ -240,8 +250,8 @@ export default function ProcessModal({
                   <span>Item Name</span>
                 </div>
 
-                {/* Rows wrapped in ScrollArea with clean subtle dividers */}
-                <ScrollArea className="max-h-[300px]">
+                {/* Rows wrapped in scrollable container with clean subtle dividers */}
+                <ScrollArea type="always" className="max-h-[300px]">
                   <div className="divide-y divide-border-subtle">
                     {items.map((item, idx) => {
                       const itemStage = classifyProcessItemStage(
@@ -363,8 +373,8 @@ export function MyPublicationModal({
 }: MyPublicationModalProps) {
   const contributorSelectId = useId();
   const licenseSelectId = useId();
-  const isPublicSwitchId = useId();
-  const includeAttachmentsSwitchId = useId();
+  const isPublicCheckboxId = useId();
+  const includeAttachmentsCheckboxId = useId();
 
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
@@ -380,6 +390,7 @@ export function MyPublicationModal({
 
   const { control, handleSubmit, reset, watch } = form;
   const isPublic = watch('isPublic');
+  const includeAttachments = watch('includeAttachments');
 
   useEffect(() => {
     if (open) {
@@ -397,6 +408,11 @@ export function MyPublicationModal({
     ? item.contributors
     : [];
 
+  const itemTypeLabel = item?.itemType
+    ? ALL_ITEM_TYPES_FLAT.find((t) => t.value === item.itemType)?.label ||
+      item.itemType
+    : 'Publication';
+
   const onValidSubmit = async (data: MyPublicationFormValues) => {
     setIsSubmitting(true);
     try {
@@ -409,7 +425,10 @@ export function MyPublicationModal({
             : null,
         isPublic: data.isPublic,
         includeAttachments: data.isPublic ? data.includeAttachments : false,
-        openAccessLicense: data.isPublic ? data.openAccessLicense : null,
+        openAccessLicense:
+          data.isPublic && data.includeAttachments
+            ? data.openAccessLicense
+            : null,
       });
       onOpenChange(false);
     } finally {
@@ -418,84 +437,82 @@ export function MyPublicationModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (isSubmitting) return; onOpenChange(v); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (isSubmitting) return;
+        onOpenChange(v);
+      }}
+    >
       <DialogContent
-        className="sm:max-w-[540px] p-6 rounded-lg border border-border bg-background shadow-raised-200"
+        className="sm:max-w-[460px] p-6 rounded-lg border border-border bg-background shadow-raised-200 gap-0"
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
-        <form onSubmit={handleSubmit(onValidSubmit)}>
-          <DialogHeader className="flex flex-row items-start gap-3.5 space-y-0 text-left">
-            <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full bg-amber-500/10 text-amber-500 dark:text-amber-400">
-              <Award className="size-5 shrink-0" strokeWidth={1.75} />
-            </div>
-
-            <div className="min-w-0 flex-1">
-              <DialogTitle className="text-15 font-semibold text-foreground tracking-tight">
-                Add to My Publications
-              </DialogTitle>
-              <DialogDescription className="mt-1 text-12 text-muted-foreground leading-normal">
-                Confirm authorship to claim this work in your personal academic portfolio.
-              </DialogDescription>
-            </div>
+        <form onSubmit={handleSubmit(onValidSubmit)} className="space-y-4">
+          <DialogHeader className="text-left pb-0">
+            <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
+              Add to My Publications
+            </DialogTitle>
+            <DialogDescription className="text-12 text-muted-foreground">
+              Only add work that you authored or co-authored yourself.
+            </DialogDescription>
           </DialogHeader>
 
-          {/* Paper Summary Card */}
           {item && (
-            <div className="mt-3 p-3 rounded-md bg-muted/60 border border-border/70 flex flex-col gap-1">
-              <span className="text-11 font-medium text-muted-foreground uppercase tracking-wider">
-                {item.itemType || 'Publication'}
-              </span>
-              <p className="text-13 font-medium text-foreground line-clamp-2">
+            <div className="rounded-md border border-border bg-muted/40 px-3 py-2.5 space-y-0.5">
+              <p className="text-13 font-medium text-foreground line-clamp-2 leading-snug">
                 {item.title || 'Untitled Document'}
               </p>
-              <div className="flex items-center gap-2 text-11 text-muted-foreground">
-                {item.year && <span>{item.year}</span>}
+              <div className="flex items-center gap-1.5 text-11 text-muted-foreground truncate">
+                <span>{itemTypeLabel}</span>
+                {item.year && (
+                  <>
+                    <span>•</span>
+                    <span>{item.year}</span>
+                  </>
+                )}
                 {item.publicationTitle && (
                   <>
                     <span>•</span>
-                    <span className="truncate max-w-[280px]">{item.publicationTitle}</span>
+                    <span className="truncate">{item.publicationTitle}</span>
                   </>
                 )}
               </div>
             </div>
           )}
 
-          {/* Disclaimer Note */}
-          <div className="mt-2 p-2.5 rounded-md bg-primary/5 border border-primary/20 text-11 text-foreground flex items-start gap-2">
-            <ShieldCheck className="size-4 shrink-0 text-primary mt-0.5" />
-            <p className="leading-relaxed">
-              <strong>Authorship Notice:</strong> Only add work that you authored or co-authored yourself.
-              Items in My Publications can be displayed on your public research profile.
-            </p>
-          </div>
-
-          {/* Author Identity Linkage */}
           {contributors.length > 0 && (
-            <div className="mt-4 flex flex-col gap-1.5">
-              <Label htmlFor={contributorSelectId} className="text-12 font-medium text-foreground">
-                Which author represents you?
+            <div className="space-y-1.5">
+              <Label
+                htmlFor={contributorSelectId}
+                className="text-11 font-medium text-foreground"
+              >
+                Author Position
               </Label>
               <Controller
                 name="contributorId"
                 control={control}
                 render={({ field }) => (
-                  <Select
-                    value={field.value}
-                    onValueChange={field.onChange}
-                  >
-                    <SelectTrigger id={contributorSelectId} className="h-8 text-12">
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger
+                      id={contributorSelectId}
+                      className="w-full h-8 text-12 text-foreground justify-between rounded-md border-border bg-background hover:border-border-hover focus-visible:border-primary cursor-pointer"
+                    >
                       <SelectValue placeholder="Select your name in author list" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="unlinked" className="text-12">
-                        (General Author — not linked to a specific position)
+                    <SelectContent className="max-h-60 bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md">
+                      <SelectItem value="unlinked" className="text-12 py-1.5 px-2">
+                        General Author (not linked to a specific position)
                       </SelectItem>
                       {contributors.map((c, index) => {
                         const val = c.id || `contrib-${index}`;
+                        const nameLabel =
+                          c.fullName ||
+                          `${c.firstName || ''} ${c.lastName || ''}`.trim() ||
+                          'Author';
                         return (
-                          <SelectItem key={val} value={val} className="text-12">
-                            {c.fullName || `${c.firstName || ''} ${c.lastName || ''}`.trim() || 'Author'}{' '}
-                            {c.creatorType ? `(${c.creatorType})` : ''}
+                          <SelectItem key={val} value={val} className="text-12 py-1.5 px-2">
+                            {nameLabel}
                           </SelectItem>
                         );
                       })}
@@ -506,116 +523,108 @@ export function MyPublicationModal({
             </div>
           )}
 
-          {/* Visibility and Licensing Controls */}
-          <div className="mt-4 space-y-3 pt-3 border-t border-border">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label
-                  htmlFor={isPublicSwitchId}
-                  className="text-12 font-medium text-foreground flex items-center gap-1.5 cursor-pointer"
+          <div className="flex flex-col gap-2.5 pt-0.5">
+            <Controller
+              name="isPublic"
+              control={control}
+              render={({ field }) => (
+                <label
+                  htmlFor={isPublicCheckboxId}
+                  className="flex items-center gap-2 text-12 text-foreground cursor-pointer select-none"
                 >
-                  <Globe className="size-3.5 text-muted-foreground" />
-                  Show on public profile
-                </Label>
-                <p className="text-11 text-muted-foreground">
-                  Make this citation visible on your public portfolio page
-                </p>
-              </div>
-              <Controller
-                name="isPublic"
-                control={control}
-                render={({ field }) => (
-                  <Switch
-                    id={isPublicSwitchId}
+                  <Checkbox
+                    id={isPublicCheckboxId}
                     checked={field.value}
-                    onCheckedChange={field.onChange}
+                    onCheckedChange={(checked) =>
+                      field.onChange(Boolean(checked))
+                    }
                   />
-                )}
-              />
-            </div>
+                  <span>Show citation on my public research profile</span>
+                </label>
+              )}
+            />
 
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label
-                  htmlFor={includeAttachmentsSwitchId}
-                  className="text-12 font-medium text-foreground flex items-center gap-1.5 cursor-pointer"
-                >
-                  <FileText className="size-3.5 text-muted-foreground" />
-                  Include attached full-text files
-                </Label>
-                <p className="text-11 text-muted-foreground">
-                  Allow visitors to download open-access PDF attachments
-                </p>
-              </div>
+            {isPublic && (
               <Controller
                 name="includeAttachments"
                 control={control}
                 render={({ field }) => (
-                  <Switch
-                    id={includeAttachmentsSwitchId}
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                    disabled={!isPublic}
-                  />
+                  <label
+                    htmlFor={includeAttachmentsCheckboxId}
+                    className="flex items-center gap-2 text-12 text-foreground cursor-pointer select-none"
+                  >
+                    <Checkbox
+                      id={includeAttachmentsCheckboxId}
+                      checked={field.value}
+                      onCheckedChange={(checked) =>
+                        field.onChange(Boolean(checked))
+                      }
+                    />
+                    <span>Include attached full-text PDF files</span>
+                  </label>
                 )}
               />
-            </div>
-
-            {isPublic && (
-              <div className="pt-2 flex flex-col gap-1.5">
-                <Label htmlFor={licenseSelectId} className="text-12 font-medium text-foreground flex items-center gap-1.5">
-                  <Lock className="size-3.5 text-muted-foreground" />
-                  Open Access License
-                </Label>
-                <Controller
-                  name="openAccessLicense"
-                  control={control}
-                  render={({ field }) => (
-                    <Select
-                      value={field.value}
-                      onValueChange={field.onChange}
-                    >
-                      <SelectTrigger id={licenseSelectId} className="h-8 text-12">
-                        <SelectValue placeholder="Select license" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="CC-BY-4.0" className="text-12">
-                          CC-BY 4.0 (Creative Commons Attribution)
-                        </SelectItem>
-                        <SelectItem value="CC-BY-NC-4.0" className="text-12">
-                          CC-BY-NC 4.0 (Non-Commercial)
-                        </SelectItem>
-                        <SelectItem value="CC0-1.0" className="text-12">
-                          CC0 1.0 (Public Domain Dedication)
-                        </SelectItem>
-                        <SelectItem value="All-Rights-Reserved" className="text-12">
-                          All Rights Reserved / Publisher Restricted
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </div>
             )}
           </div>
 
-          <DialogFooter className="mt-5 flex w-full flex-row items-center justify-end gap-2 sm:justify-end">
+          {isPublic && includeAttachments && (
+            <div className="space-y-1.5">
+              <Label
+                htmlFor={licenseSelectId}
+                className="text-11 font-medium text-foreground"
+              >
+                Distribution License
+              </Label>
+              <Controller
+                name="openAccessLicense"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger
+                      id={licenseSelectId}
+                      className="w-full h-8 text-12 text-foreground justify-between rounded-md border-border bg-background hover:border-border-hover focus-visible:border-primary cursor-pointer"
+                    >
+                      <SelectValue placeholder="Select license" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60 bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md">
+                      <SelectItem value="CC-BY-4.0" className="text-12 py-1.5 px-2">
+                        CC-BY 4.0 (Creative Commons Attribution)
+                      </SelectItem>
+                      <SelectItem value="CC-BY-NC-4.0" className="text-12 py-1.5 px-2">
+                        CC-BY-NC 4.0 (Non-Commercial)
+                      </SelectItem>
+                      <SelectItem value="CC0-1.0" className="text-12 py-1.5 px-2">
+                        CC0 1.0 (Public Domain Dedication)
+                      </SelectItem>
+                      <SelectItem value="All-Rights-Reserved" className="text-12 py-1.5 px-2">
+                        All Rights Reserved / Publisher Copy
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+          )}
+
+          <DialogFooter className="flex items-center justify-end gap-2 pt-2 sm:space-x-0">
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
+              size="sm"
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
-              className="h-8 px-3 text-13 font-medium cursor-pointer rounded-md hover:bg-muted"
+              className="h-8 px-3 text-13 font-medium cursor-pointer text-foreground rounded-md hover:bg-muted"
             >
               Cancel
             </Button>
             <Button
               type="submit"
+              size="sm"
               disabled={isSubmitting}
-              className="h-8 px-3 text-13 font-medium cursor-pointer rounded-md bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center gap-1.5"
+              className="h-8 px-3.5 text-13 font-medium cursor-pointer rounded-md shadow-none inline-flex items-center gap-1.5"
             >
               {isSubmitting && <Loader2 className="size-3.5 animate-spin" />}
-              Confirm Authorship
+              Add to Publications
             </Button>
           </DialogFooter>
         </form>

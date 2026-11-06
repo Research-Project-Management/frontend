@@ -33,7 +33,7 @@ import {
   useLibraryNavigation,
   useLibraryPermissions,
 } from "@/features/library/core/coordinator/navigation.coordinator";
-import type { Item } from "@/features/library/domain/types/core.types";
+import type { Item } from "@/features/library/types/core.types";
 
 interface BreadcrumbSwitcherOption {
   id: string;
@@ -329,15 +329,11 @@ export function LibraryTopbar({
   const directFolderInputRef = useRef<HTMLInputElement>(null);
 
   const handleAddFileClick = () => {
-    openModal("UPLOAD_PDF", { collectionId: params?.collectionId });
+    openModal("UPLOAD_PDF", { collectionId: params?.collectionId, mode: "file" });
   };
 
   const handleAddFolderClick = () => {
-    if (onDirectFolderUpload && directFolderInputRef.current) {
-      directFolderInputRef.current.click();
-    } else {
-      openModal("UPLOAD_PDF", { collectionId: params?.collectionId });
-    }
+    openModal("UPLOAD_PDF", { collectionId: params?.collectionId, mode: "folder" });
   };
 
   const handleAddLinkClick = () => {

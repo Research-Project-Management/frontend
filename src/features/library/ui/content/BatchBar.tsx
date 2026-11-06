@@ -3,15 +3,14 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ShieldAlert, FolderSync } from 'lucide-react';
-import { Button } from '@/shared/components/ui/button';
+import { X, ShieldAlert } from 'lucide-react';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { useParams } from 'next/navigation';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/shared/components/ui/tooltip';
-import type { Collection, CslStyle, Item } from '@/features/library/domain/types/core.types';
-import { useLibraryBatchCoordinator, hasItemPdfOrAttachment } from '@/features/library/core/coordinator/batch-action.coordinator';
+import type { Collection, CslStyle, Item } from '@/features/library/types/core.types';
+import { useLibraryBatchCoordinator } from '@/features/library/core/coordinator/batch-action.coordinator';
 import { executeCopyMultiCite, executeCopyInTextCite, executeExportAllBibtex, executeDownloadBibFile } from '@/features/library/core/coordinator/citation-export.coordinator';
-import { useBatchRenameAttachmentsMutation, useCitationStyles } from '@/features/library/core/coordinator/citation-export.coordinator';
+import { useCitationStyles } from '@/features/library/core/coordinator/citation-export.coordinator';
 import { formatCitationStyleLabel } from '@/features/library/domain/citations.domain';
 import { BatchMoveCollectionPopover, BatchCitationExportPopovers, BatchSmartViewActions, BatchLifecycleActions } from '@/features/library/ui/content/BatchBarPopovers';
 
@@ -126,26 +125,12 @@ export function BatchBar({
   );
 
   const showMoveDropdown =
-    Boolean(onBatchMove) &&
-    (targetableCollections.length > 0 || canMoveToRootUnfiled);
-
-  const selectedItemsWithFilesIds = useMemo(
-    () =>
-      coordinatorFileIds ??
-      resolvedItems
-        .filter((it) => !it._isProcessing && hasItemPdfOrAttachment(it))
-        .map((it) => it.id)
-        .filter(Boolean),
-    [coordinatorFileIds, resolvedItems],
-  );
-
-  const showRenamePdfs =
-    Boolean(onBatchMove) && selectedItemsWithFilesIds.length > 0;
+    Boolean(onBatchMove || onBatchAssign) &&
+    targetableCollections.length > 0;
 
   const { data: serverStyles = [] } = useCitationStyles(effectiveScopeId, {
     enabled: !effectiveIsTrash && selectedCount > 0,
   });
-  const batchRenameMutation = useBatchRenameAttachmentsMutation(effectiveScopeId);
 
   const citationStyles = useMemo(
     () =>
@@ -278,33 +263,6 @@ export function BatchBar({
               onExportAllBibtex={() => void handleExportAllBibtex()}
               onDownloadBibFile={() => void handleDownloadBibFile()}
             />
-          )}
-
-          {/* Batch Rename Attachments from Parent Metadata — Only when selected items actually have PDF/file attachments */}
-          {showRenamePdfs && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={
-                    isAllProcessingSelected || batchRenameMutation.isPending
-                  }
-                  onClick={() =>
-                    void batchRenameMutation.mutateAsync({
-                      itemIds: selectedItemsWithFilesIds,
-                    })
-                  }
-                  className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
-                >
-                  <FolderSync className="size-3.5 shrink-0 text-foreground" />
-                  <span>Rename PDFs</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={8}>
-                Rename attached files from parent metadata ({selectedItemsWithFilesIds.length} with files)
-              </TooltipContent>
-            </Tooltip>
           )}
 
           {/* Batch Restore / Batch Move to Trash / Batch Purge */}

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { getItemTypeDefinition, normalizeCanonicalItemType, mapRegistryItemTypes, SchemaFieldDefinition, SchemaItemTypeDefinition, type Item } from '@/features/library/domain/types/core.types';
+import { getItemTypeDefinition, normalizeCanonicalItemType, mapRegistryItemTypes, SchemaFieldDefinition, SchemaItemTypeDefinition, type Item } from '@/features/library/types/core.types';
 import { cleanValue } from '@/features/library/domain/metadata.mapper';
 import { toast } from 'sonner';
 import { cn, copyToClipboard as copyText } from '@/shared/lib/utils';
@@ -259,6 +259,8 @@ export function AbstractSection({
     }
   }, [item?.id, currentAbstract]);
 
+  const prevWidthRef = useRef<number>(0);
+
   // Auto-resize textarea to fit content naturally without jump
   const adjustHeight = useCallback(() => {
     const el = textareaRef.current;
@@ -274,8 +276,16 @@ export function AbstractSection({
   useEffect(() => {
     const el = textareaRef.current;
     if (!el || typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(() => {
-      adjustHeight();
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      const currentWidth = Math.round(entry.contentRect.width);
+      // ONLY re-adjust height if horizontal width actually changed (panel resize/window resize)
+      // This strictly prevents the ResizeObserver loop when adjustHeight modifies the height
+      if (currentWidth > 0 && Math.abs(currentWidth - prevWidthRef.current) >= 1) {
+        prevWidthRef.current = currentWidth;
+        adjustHeight();
+      }
     });
     observer.observe(el);
     return () => observer.disconnect();
@@ -293,6 +303,10 @@ export function AbstractSection({
       }
     }
   }, [draft, item, handleUpdate]);
+
+  if (!canEdit && !draft.trim() && hideHeader) {
+    return null;
+  }
 
   return (
     <div className="space-y-1 text-xs min-w-0">
@@ -316,7 +330,7 @@ export function AbstractSection({
           ref={textareaRef}
           rows={2}
           value={draft}
-          placeholder={canEdit ? "Add abstract..." : "No abstract"}
+          placeholder={canEdit ? "Add abstract..." : undefined}
           aria-label="Item abstract summary"
           readOnly={!canEdit}
           onChange={(e) => setDraft(e.target.value)}
@@ -375,6 +389,7 @@ export function PdfPageCanvas({
 
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [numPages, setNumPages] = useState<number>(0);
+  const [loadedBlobUrl, setLoadedBlobUrl] = useState<string | null>(null);
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const pageCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const pdfDocRef = useRef<{
@@ -384,6 +399,9 @@ export function PdfPageCanvas({
   const [ containerWidth, setContainerWidth ] = useState<number>(280);
 
   useEffect(() => {
+    setLoadedBlobUrl(null);
+    setNumPages(0);
+    setCurrentPage(1);
     return () => {
       if (pageCanvasRef.current) {
         pageCanvasRef.current.width = 0;
@@ -437,12 +455,18 @@ export function PdfPageCanvas({
         </div>
       ) : pdfBlobUrl ? (
         <Document
+          key={pdfBlobUrl}
           file={pdfBlobUrl}
           options={SHARED_PDF_OPTIONS}
           onLoadSuccess={(doc) => {
             pdfDocRef.current = doc;
             setNumPages(doc.numPages);
             setCurrentPage(1);
+            setLoadedBlobUrl(pdfBlobUrl);
+          }}
+          onLoadError={() => {
+            setLoadedBlobUrl(null);
+            setNumPages(0);
           }}
           loading={
             <div className="h-60 flex flex-col items-center justify-center gap-2 text-foreground">
@@ -456,22 +480,25 @@ export function PdfPageCanvas({
             </div>
           }
         >
-          <Page
-            pageNumber={currentPage}
-            width={Math.max(200, containerWidth)}
-            devicePixelRatio={getCappedDevicePixelRatio(1.5)}
-            renderAnnotationLayer={false}
-            renderTextLayer={false}
-            canvasRef={(node) => {
-              if (node) {
-                pageCanvasRef.current = node;
-              } else if (pageCanvasRef.current) {
-                pageCanvasRef.current.width = 0;
-                pageCanvasRef.current.height = 0;
-                pageCanvasRef.current = null;
-              }
-            }}
-          />
+          {loadedBlobUrl === pdfBlobUrl && numPages > 0 && pdfDocRef.current ? (
+            <Page
+              pdf={pdfDocRef.current as never}
+              pageNumber={Math.min(Math.max(1, currentPage), numPages)}
+              width={Math.max(200, containerWidth)}
+              devicePixelRatio={getCappedDevicePixelRatio(1.5)}
+              renderAnnotationLayer={false}
+              renderTextLayer={false}
+              canvasRef={(node) => {
+                if (node) {
+                  pageCanvasRef.current = node;
+                } else if (pageCanvasRef.current) {
+                  pageCanvasRef.current.width = 0;
+                  pageCanvasRef.current.height = 0;
+                  pageCanvasRef.current = null;
+                }
+              }}
+            />
+          ) : null}
         </Document>
       ) : (
         <div className="h-60 flex flex-col items-center justify-center gap-2 px-4 text-center text-12 text-foreground">

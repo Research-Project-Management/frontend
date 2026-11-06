@@ -7,7 +7,7 @@ import type {
   ReaderAnnotation,
   AnnotationRect,
   ActiveHighlightTooltipState,
-} from '@/features/library/domain/types/reader.schema';
+} from '@/features/library/types/reader.types';
 import type { ReaderAnnotationTool } from '@/features/library/core/store/reader.store';
 import { ANNOTATION_PALETTE_COLORS } from '@/features/library/ui/reader/ReaderToolbar';
 import { cropCanvasSelectionToDataUrl } from '@/features/library/domain/reader-search-outline.domain';
@@ -45,11 +45,19 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
   onUpdateAnnotation,
 }: PageAnnotationOverlayProps) {
   const overlayRef = useRef<HTMLDivElement | null>(null);
+  const dragCleanupRef = useRef<(() => void) | null>(null);
   const [draggingRectState, setDraggingRectState] = useState<{
     annotationId: string;
     rectIdx: number;
     rect: AnnotationRect;
   } | null>(null);
+
+  useEffect(() => {
+    return () => {
+      dragCleanupRef.current?.();
+      dragCleanupRef.current = null;
+    };
+  }, []);
 
   if (!annotations || annotations.length === 0) return null;
 
@@ -140,9 +148,16 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
       });
     };
 
-    const handleWindowMouseUp = () => {
+    const cleanupListeners = () => {
       window.removeEventListener('mousemove', handleWindowMouseMove);
       window.removeEventListener('mouseup', handleWindowMouseUp);
+      if (dragCleanupRef.current === cleanupListeners) {
+        dragCleanupRef.current = null;
+      }
+    };
+
+    const handleWindowMouseUp = () => {
+      cleanupListeners();
       setDraggingRectState(null);
       if (!moved) return;
 
@@ -162,6 +177,8 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
       void onUpdateAnnotation(ann.id, ann.version, { rects: nextRects });
     };
 
+    dragCleanupRef.current?.();
+    dragCleanupRef.current = cleanupListeners;
     window.addEventListener('mousemove', handleWindowMouseMove);
     window.addEventListener('mouseup', handleWindowMouseUp);
   };
@@ -411,25 +428,8 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
           });
         }
 
-        // Fallback chip if no rects stored yet
-        return (
-          <div
-            key={ann.id}
-            id={`annotation-${ann.id}`}
-            data-annotation-id={ann.id}
-            className={cn(
-              'absolute top-2 left-2 z-20 pointer-events-auto flex items-center gap-1 px-1.5 py-0.5 rounded-md text-10 font-mono border shadow-none cursor-pointer bg-background/85 backdrop-blur-xs',
-              isPulsing && 'ring-2 ring-primary ring-offset-1',
-            )}
-            style={{ borderColor: colorHex }}
-            onClick={(e) => handleAnnotationInteraction(e, ann)}
-          >
-            <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: colorHex }} />
-            <span className="truncate max-w-[120px] text-foreground">
-              {ann.quoteText || 'Highlight'}
-            </span>
-          </div>
-        );
+        // Annotations without coordinates are listed in the sidebar, never rendered at arbitrary page coordinates
+        return null;
       })}
     </div>
   );
@@ -597,28 +597,25 @@ export function AnnotationQuickEditCard({
             <button
               type="button"
               onClick={() => {
-                onAskAi(
-                  tooltip.quote || tooltipComment || tooltip.comment || '',
-                  pageNumber,
-                );
+                onAskAi(tooltip.quote || tooltipComment || tooltip.comment || '', pageNumber);
                 onClose();
               }}
-              className="size-6 rounded-md text-ai hover:bg-muted flex items-center justify-center cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="size-6 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               title="Ask AI"
               aria-label="Ask AI"
             >
-              <Sparkles className="size-3.5 text-ai shrink-0" strokeWidth={1.5} />
+              <img
+                src="/Chat.svg"
+                alt="AI Assistant"
+                className="size-3.5 rounded-full object-cover shrink-0"
+              />
             </button>
           )}
           {onAddToNote && (
             <button
               type="button"
               onClick={() => {
-                onAddToNote(
-                  tooltip.quote || tooltipComment || tooltip.comment || '',
-                  pageNumber,
-                  tooltip.ann.id,
-                );
+                onAddToNote(tooltip.quote || tooltipComment || tooltip.comment || '', pageNumber, tooltip.ann.id);
                 onClose();
               }}
               className="size-6 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
@@ -659,8 +656,7 @@ export function AnnotationQuickEditCard({
         <span className="text-10 font-medium text-muted-foreground">Color:</span>
         <div className="flex items-center gap-1">
           {ANNOTATION_PALETTE_COLORS.map((c) => {
-            const isSelected =
-              (tooltip.color || '#ffd400').toLowerCase() === c.hex.toLowerCase();
+            const isSelected = (tooltip.color || '#ffd400').toLowerCase() === c.hex.toLowerCase();
             return (
               <button
                 key={c.id}
@@ -682,13 +678,8 @@ export function AnnotationQuickEditCard({
       {/* 3. Quote Block (if exists) */}
       {tooltip.quote && (
         <div className="my-2 px-2 py-1.5 rounded-sm bg-muted/60 border border-border-subtle flex items-start gap-1.5">
-          <span
-            className="w-1 self-stretch rounded-full shrink-0 my-0.5"
-            style={{ backgroundColor: tooltip.color }}
-          />
-          <p className="text-11 leading-snug text-foreground italic select-text line-clamp-4">
-            &ldquo;{tooltip.quote}&rdquo;
-          </p>
+          <span className="w-1 self-stretch rounded-full shrink-0 my-0.5" style={{ backgroundColor: tooltip.color }} />
+          <p className="text-11 leading-snug text-foreground italic select-text line-clamp-4">&ldquo;{tooltip.quote}&rdquo;</p>
         </div>
       )}
 

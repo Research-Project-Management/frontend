@@ -4,8 +4,8 @@ import React, { useRef, useCallback, useLayoutEffect } from 'react';
 import { Page } from 'react-pdf';
 import { Check, X } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import { getCappedDevicePixelRatio, releaseCanvasMemory } from '@/shared/lib/pdfjs-worker';
-import type { ReaderAnnotation, AnnotationRect, InlineTextInputState, AreaSelectionState, InkDrawingState } from '@/features/library/domain/types/reader.schema';
+import { getCappedDevicePixelRatio, releaseCanvasMemory, isPdfDocumentValid } from '@/shared/lib/pdfjs-worker';
+import type { ReaderAnnotation, AnnotationRect, InlineTextInputState, AreaSelectionState, InkDrawingState } from '@/features/library/types/reader.types';
 import type { ReaderAnnotationTool } from '@/features/library/core/store/reader.store';
 import { calculatePageAspectRatio } from '@/features/library/domain/reader-search-outline.domain';
 import { PageAnnotationOverlay } from './PageAnnotationOverlay';
@@ -168,17 +168,20 @@ export const ViewerPageCanvas = React.memo(function ViewerPageCanvas({
         activeTool === 'text' && 'cursor-text',
       )}
     >
-      {inWindow ? (
+      {inWindow && (!pdfDocument || isPdfDocumentValid(pdfDocument)) ? (
         <Page
-          pdf={(pdfDocument as never) || undefined}
+          pdf={isPdfDocumentValid(pdfDocument) ? (pdfDocument as never) : undefined}
           pageNumber={pageNum}
           width={effectivePageWidth}
           rotate={rotation}
           canvasBackground="#fcfcfb"
           renderTextLayer={true}
-          renderAnnotationLayer={true}
+          renderAnnotationLayer={false}
           devicePixelRatio={getCappedDevicePixelRatio(2)}
           onLoadSuccess={handlePageLoadSuccess}
+          onLoadError={(err) => {
+            console.warn(`[ViewerPageCanvas] Failed to render page ${pageNum}:`, err);
+          }}
           loading={
             <DocumentPageSkeleton
               width={effectivePageWidth}
@@ -304,8 +307,9 @@ export interface EpubChapter {
 export function sanitizeReaderHtml(rawHtml: string): string {
   const clean = DOMPurify.sanitize(rawHtml, {
     WHOLE_DOCUMENT: false,
+    SANITIZE_NAMED_PROPS: true,
     ADD_TAGS: ['article', 'section', 'header', 'footer', 'figure', 'figcaption'],
-    ADD_ATTR: ['target', 'rel', 'id', 'name'],
+    ADD_ATTR: ['target', 'rel', 'id'],
     FORBID_TAGS: [
       'style',
       'form',
@@ -318,7 +322,7 @@ export function sanitizeReaderHtml(rawHtml: string): string {
       'meta',
       'base',
     ],
-    FORBID_ATTR: ['onerror', 'onload'],
+    FORBID_ATTR: ['onerror', 'onload', 'name'],
   });
   if (typeof DOMParser === 'undefined') return clean;
   const parser = new DOMParser();

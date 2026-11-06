@@ -18,6 +18,11 @@ import {
   useAssignCollectionItemsMutation,
   useBatchDetachItemsMutation,
 } from "@/features/library/core/coordinator/collection.coordinator";
+import {
+  useLibraryCommandStore,
+  createBatchAssignCommand,
+} from "@/features/library/core/manager/library-command.manager";
+import { getAssignedCollectionIds } from "@/features/library/domain/metadata.mapper";
 import { toast } from "sonner";
 import { useTags } from "@/features/library/core/coordinator/saved-search-builder.coordinator";
 import {
@@ -25,13 +30,13 @@ import {
   getDefaultSortDirection,
   type LibraryDisplayOptions,
   type LibraryOrderBy,
-} from "@/features/library/domain/types/ingestion.types";
+} from "@/features/library/types/ingestion.types";
 import { sortLibraryItems } from "@/features/library/domain/extra-metadata.mapper";
 import { ItemTableHeader } from "./ItemTableHeader";
 import { ItemTableRow } from "./ItemTableRow";
 import { useLibraryKeyboardShortcuts } from "@/features/library/core/coordinator/keyboard-shortcuts.coordinator";
 import { useLibraryItemOperations } from "@/features/library/core/coordinator/item-action.coordinator";
-import type { Item, Collection } from "@/features/library/domain/types/core.types";
+import type { Item, Collection } from "@/features/library/types/core.types";
 
 interface ItemTableProps {
   items: Item[];
@@ -225,6 +230,7 @@ export const ItemTable = React.memo(function ItemTable({
     if (columns.itemType) count++;
     if (columns.doi) count++;
     if (columns.citationKey) count++;
+    if (columns.createdAt) count++;
     if (columns.citations) count++;
     if (isTrash) count++;
     count++; // Dedicated Actions column
@@ -277,9 +283,8 @@ export const ItemTable = React.memo(function ItemTable({
 
   const router = useRouter();
 
-  const handleOpenItem = useCallback(
+  const resolveItemReaderUrl = useCallback(
     (itemId: string) => {
-      if (isTrash) return;
       const currentQuery =
         typeof window !== "undefined"
           ? new URLSearchParams(window.location.search).get("q")
@@ -289,36 +294,28 @@ export const ItemTable = React.memo(function ItemTable({
         targetItem?.projectId ||
         (activeScope.type === "project" ? activeScope.id : null);
 
-      router.push(
-        buildReaderPaperUrl(itemId, {
-          projectId: effectiveProjectId,
-          query: currentQuery,
-        }),
-      );
+      return buildReaderPaperUrl(itemId, {
+        projectId: effectiveProjectId,
+        query: currentQuery,
+      });
     },
-    [activeScope.id, activeScope.type, isTrash, itemsById, router],
+    [activeScope.id, activeScope.type, itemsById],
+  );
+
+  const handleOpenItem = useCallback(
+    (itemId: string) => {
+      if (isTrash) return;
+      router.push(resolveItemReaderUrl(itemId));
+    },
+    [isTrash, resolveItemReaderUrl, router],
   );
 
   const handleOpenInNewTab = useCallback(
     (itemId: string) => {
       if (isTrash) return;
-      const currentQuery =
-        typeof window !== "undefined"
-          ? new URLSearchParams(window.location.search).get("q")
-          : null;
-      const targetItem = itemsById.get(itemId);
-      const effectiveProjectId =
-        targetItem?.projectId ||
-        (activeScope.type === "project" ? activeScope.id : null);
-
-      openInNewTab(
-        buildReaderPaperUrl(itemId, {
-          projectId: effectiveProjectId,
-          query: currentQuery,
-        }),
-      );
+      openInNewTab(resolveItemReaderUrl(itemId));
     },
-    [activeScope.id, activeScope.type, isTrash, itemsById],
+    [isTrash, resolveItemReaderUrl],
   );
 
 
@@ -365,20 +362,31 @@ export const ItemTable = React.memo(function ItemTable({
 
   const handleAddToCollection = useCallback(
     async (itemId: string, targetCollectionId: string) => {
+      const targetCol = collections.find((c) => c.id === targetCollectionId);
+      const targetItem = itemsById.get(itemId);
+      const alreadyAssignedItemIds = new Set<string>();
+      if (targetItem) {
+        const assigned = getAssignedCollectionIds(targetItem);
+        if (assigned.includes(targetCollectionId)) {
+          alreadyAssignedItemIds.add(itemId);
+        }
+      }
       try {
-        await assignMutation.mutateAsync({
-          collectionId: targetCollectionId,
-          itemIds: [itemId],
-        });
-        const targetCol = collections.find((c) => c.id === targetCollectionId);
-        toast.success(`Added to "${targetCol?.name || 'collection'}"`);
-      } catch (err) {
-        toast.error('Failed to add to collection', {
-          description: err instanceof Error ? err.message : String(err),
-        });
+        await useLibraryCommandStore.getState().executeCommand(
+          createBatchAssignCommand({
+            collectionId: targetCollectionId,
+            collectionName: targetCol?.name,
+            itemIds: [itemId],
+            alreadyAssignedItemIds,
+            assignMutation,
+            detachMutation: batchDetachMutation,
+          }),
+        );
+      } catch {
+        // Error toast handled by useLibraryCommandStore
       }
     },
-    [assignMutation, collections],
+    [assignMutation, batchDetachMutation, collections, itemsById],
   );
 
   // Dynamically compute table minimum width to prevent column squashing when fields are toggled
@@ -390,6 +398,7 @@ export const ItemTable = React.memo(function ItemTable({
     if (columns.itemType) width += 130;
     if (columns.doi) width += 180;
     if (columns.citationKey) width += 160;
+    if (columns.createdAt) width += 110;
     if (columns.citations) width += 84;
     if (isTrash) width += 140;
     width += 44; // Dedicated Actions column
@@ -401,6 +410,7 @@ export const ItemTable = React.memo(function ItemTable({
     columns.itemType,
     columns.doi,
     columns.citationKey,
+    columns.createdAt,
     columns.citations,
     isTrash,
   ]);
@@ -415,6 +425,7 @@ export const ItemTable = React.memo(function ItemTable({
     if (columns.itemType) fixedPx += 130;
     if (columns.doi) fixedPx += 180;
     if (columns.citationKey) fixedPx += 160;
+    if (columns.createdAt) fixedPx += 110;
     if (columns.citations) fixedPx += 84;
     if (isTrash) fixedPx += 140;
 
@@ -441,6 +452,7 @@ export const ItemTable = React.memo(function ItemTable({
     columns.itemType,
     columns.doi,
     columns.citationKey,
+    columns.createdAt,
     columns.citations,
     isTrash,
   ]);
@@ -480,6 +492,7 @@ export const ItemTable = React.memo(function ItemTable({
             {columns.itemType && <col style={{ width: "130px" }} />}
             {columns.doi && <col style={{ width: "180px" }} />}
             {columns.citationKey && <col style={{ width: "160px" }} />}
+            {columns.createdAt && <col style={{ width: "110px" }} />}
             {columns.citations && <col style={{ width: "84px" }} />}
             {isTrash && <col style={{ width: "140px" }} />}
             <col style={{ width: "44px" }} />
@@ -577,31 +590,6 @@ export const ItemTable = React.memo(function ItemTable({
             )}
           </tbody>
         </table>
-      </div>
-
-      {/* Compact Pagination & Total Count Status Footer */}
-      <div
-        role="status"
-        aria-live="polite"
-        className="h-7 px-3 border-t border-border bg-muted/20 text-11 text-muted-foreground flex items-center justify-between select-none shrink-0"
-      >
-        <div className="flex items-center gap-2 truncate">
-          <span>
-            {typeof totalCount === "number" && totalCount > sortedItems.length
-              ? `Showing ${sortedItems.length.toLocaleString()} of ${totalCount.toLocaleString()} references`
-              : `${sortedItems.length.toLocaleString()} ${sortedItems.length === 1 ? "reference" : "references"}`}
-          </span>
-        </div>
-        {hasNextPage && onLoadMore && (
-          <button
-            type="button"
-            disabled={isLoadingMore}
-            onClick={onLoadMore}
-            className="text-11 font-medium text-foreground/80 hover:text-foreground disabled:opacity-50 transition-colors cursor-pointer"
-          >
-            {isLoadingMore ? "Loading…" : "Load more"}
-          </button>
-        )}
       </div>
     </div>
   );

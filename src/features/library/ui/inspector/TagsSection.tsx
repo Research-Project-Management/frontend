@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useMemo } from "react";
-import { Tag, MinusCircle, Plus, Sparkles } from "lucide-react";
+import { Tag, MinusCircle, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/shared/lib/utils";
 import {
@@ -9,7 +9,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/shared/components/ui/tooltip";
-import type { Item } from "@/features/library/domain/types/core.types";
+import type { Item } from "@/features/library/types/core.types";
 import {
   normalizeTags,
   cleanSingleFrontendTag,
@@ -32,7 +32,7 @@ interface TagsSectionProps {
   canEdit?: boolean;
 }
 
-/** Individual Tag Item matching InfoSection's exact InlineField input interaction style */
+/** Individual Tag Item matching Zotero's exact clean tag list interaction style */
 function TagItemInput({
   tagMeta,
   onCommit,
@@ -44,56 +44,17 @@ function TagItemInput({
   onRemove: (tag: string) => void;
   canEdit?: boolean;
 }) {
-  const { name: tag, type, color } = tagMeta;
-  const isAutomatic = type === "automatic";
+  const { name: tag } = tagMeta;
   const [value, setValue] = useState(tag);
+  const [isEditing, setIsEditing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     setValue(tag);
   }, [tag]);
 
-  const renderLeadingIcon = () => {
-    if (color) {
-      return (
-        <span
-          className="size-2.5 rounded-full shrink-0 border border-border/40"
-          style={{ backgroundColor: color }}
-          aria-hidden="true"
-        />
-      );
-    }
-    return (
-      <Tag className="size-3.5 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
-    );
-  };
-
-  if (!canEdit) {
-    return (
-      <div className="flex items-center gap-2 px-1.5 py-0.5 min-h-[28px] rounded-md">
-        <div className="size-4 shrink-0 flex items-center justify-center">
-          {renderLeadingIcon()}
-        </div>
-        <span className="flex-1 min-w-0 h-auto text-foreground px-1.5 py-0.5 text-xs font-normal break-words leading-snug select-text flex items-center font-sans">
-          {tag}
-        </span>
-        {isAutomatic && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="px-1 py-0.5 rounded text-[10px] font-medium leading-none text-muted-foreground bg-muted/60 shrink-0">
-                Auto
-              </span>
-            </TooltipTrigger>
-            <TooltipContent side="top">
-              Automatic tag extracted from paper metadata
-            </TooltipContent>
-          </Tooltip>
-        )}
-      </div>
-    );
-  }
-
   const handleBlur = () => {
+    setIsEditing(false);
     const trimmed = value.trim();
     if (!trimmed) {
       onRemove(tag);
@@ -103,71 +64,81 @@ function TagItemInput({
   };
 
   return (
-    <div className="group flex items-center gap-2 px-1.5 py-0.5 min-h-[28px] rounded-md">
-      <div className="size-4 shrink-0 flex items-center justify-center">
-        {renderLeadingIcon()}
+    <div
+      className={cn(
+        "group flex items-start gap-1.5 px-1.5 min-h-[26px] py-1 rounded-md transition-colors",
+        isEditing && canEdit ? "bg-muted/60" : "hover:bg-muted/40",
+      )}
+    >
+      <div className="size-4 shrink-0 flex items-center justify-center mt-0.5">
+        <Tag
+          className={cn(
+            "size-3.5 transition-colors shrink-0",
+            isEditing && canEdit
+              ? "text-foreground"
+              : "text-muted-foreground group-hover:text-foreground",
+          )}
+        />
       </div>
 
-      {/* Synchronized with InfoSection's InlineField input style */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <input
-            ref={inputRef}
-            type="text"
-            aria-label={`Edit tag ${tag}`}
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            onBlur={handleBlur}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                handleBlur();
-                inputRef.current?.blur();
-              } else if (e.key === "Escape") {
-                setValue(tag);
-                inputRef.current?.blur();
-              }
-            }}
-            className="flex-1 min-w-0 h-6 bg-transparent text-foreground px-1.5 py-0.5 rounded-md border border-transparent hover:bg-muted focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background outline-none text-xs font-normal focus:outline-none focus-visible:outline-none font-sans cursor-pointer focus:cursor-text transition-colors"
-          />
-        </TooltipTrigger>
-        <TooltipContent side="top">
-          {isAutomatic ? `${tag} (Automatic keyword)` : tag}
-        </TooltipContent>
-      </Tooltip>
-
-      {isAutomatic && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span className="px-1 py-0.5 rounded text-[10px] font-medium leading-none text-muted-foreground bg-muted/60 shrink-0 select-none">
-              Auto
-            </span>
-          </TooltipTrigger>
-          <TooltipContent side="top">
-            Automatic tag extracted from paper metadata
-          </TooltipContent>
-        </Tooltip>
+      {isEditing && canEdit ? (
+        <input
+          ref={inputRef}
+          type="text"
+          aria-label={`Edit tag ${tag}`}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onBlur={handleBlur}
+          autoFocus
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              handleBlur();
+            } else if (e.key === "Escape") {
+              setValue(tag);
+              setIsEditing(false);
+            }
+          }}
+          className="flex-1 min-w-0 bg-transparent text-foreground px-1 py-0.5 border-none outline-none ring-0 text-xs font-normal leading-snug font-sans"
+        />
+      ) : (
+        <span
+          onClick={() => {
+            if (canEdit) {
+              setIsEditing(true);
+            }
+          }}
+          className={cn(
+            "flex-1 min-w-0 text-foreground px-1 py-0.5 text-xs font-normal break-words leading-snug select-text font-sans",
+            canEdit ? "cursor-text" : "cursor-default",
+          )}
+          title={tag}
+        >
+          {tag}
+        </span>
       )}
 
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            onMouseDown={(e) => {
-              e.preventDefault();
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              onRemove(tag);
-            }}
-            className="size-5 shrink-0 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-muted cursor-pointer invisible group-hover:visible max-md:visible focus-visible:visible relative before:absolute before:-inset-2.5 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors"
-            aria-label={`Remove tag "${tag}"`}
-          >
-            <MinusCircle className="size-3.5 shrink-0" />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="top">Remove tag</TooltipContent>
-      </Tooltip>
+      {canEdit && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemove(tag);
+              }}
+              className="size-5 shrink-0 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-muted cursor-pointer invisible group-hover:visible max-md:visible focus-visible:visible relative before:absolute before:-inset-2.5 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors mt-0.5"
+              aria-label={`Remove tag "${tag}"`}
+            >
+              <MinusCircle className="size-3.5 shrink-0" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">Remove tag</TooltipContent>
+        </Tooltip>
+      )}
     </div>
   );
 }
@@ -226,20 +197,19 @@ export default function TagsSection({
     [precomputedTags, structuredTags, item],
   );
 
-  const automaticTagsCount = useMemo(
-    () => structuredTags.filter((t) => t.type === "automatic").length,
-    [structuredTags],
-  );
-
   const autocompleteSuggestions = useMemo(() => {
-    if (!isAdding) return [];
     const query = newTag.trim().toLowerCase();
+    if (!isAdding || !query) return [];
     const existingSet = new Set(tags.map((t) => t.toLowerCase()));
+    const seen = new Set<string>();
     const candidates = (catalogTags || []).filter((ct) => {
       if (!ct?.name) return false;
-      const lower = ct.name.trim().toLowerCase();
-      if (!lower || existingSet.has(lower)) return false;
-      return !query || lower.includes(query);
+      const cleanedName = cleanSingleFrontendTag(ct.name) || ct.name.trim();
+      const lower = cleanedName.toLowerCase();
+      if (!lower || existingSet.has(lower) || seen.has(lower)) return false;
+      if (!lower.includes(query)) return false;
+      seen.add(lower);
+      return true;
     });
     return candidates
       .sort((a, b) => {
@@ -303,18 +273,6 @@ export default function TagsSection({
     saveTags(updated);
   };
 
-  const handleClearAutomaticTags = () => {
-    const manualOnly = structuredTags
-      .filter((t) => t.type !== "automatic")
-      .map((t) => t.name);
-    const removedCount = tags.length - manualOnly.length;
-    if (removedCount <= 0) return;
-    saveTags(manualOnly);
-    toast.success(`Cleared ${removedCount} automatic tag(s) from this item`, {
-      id: "clear-item-auto-tags",
-    });
-  };
-
   const handleCommitEdit = (oldTag: string, updatedTag: string) => {
     const cleaned = cleanSingleFrontendTag(updatedTag);
     if (!cleaned) {
@@ -342,8 +300,12 @@ export default function TagsSection({
     saveTags(deduplicated, overrides);
   };
 
+  if (tags.length === 0 && !isAdding && hideHeader) {
+    return null;
+  }
+
   return (
-    <div className="flex flex-col gap-1 text-xs select-none font-sans">
+    <div className="flex flex-col gap-0.5 text-xs select-none font-sans">
       {!hideHeader && (
         <div className="flex items-center justify-between pb-1 px-1.5">
           <h3 className="text-12 font-medium text-foreground">Tags</h3>
@@ -368,21 +330,6 @@ export default function TagsSection({
         </div>
       )}
 
-      {tags.length === 0 && !isAdding && (
-        <div className="flex items-center justify-between px-1.5 py-1 text-12 text-muted-foreground select-none">
-          <span>No tags assigned</span>
-          {canEdit && (
-            <button
-              type="button"
-              onClick={() => setIsAdding(true)}
-              className="text-11 font-medium text-foreground hover:underline cursor-pointer"
-            >
-              Add tag
-            </button>
-          )}
-        </div>
-      )}
-
       {/* List of tags using InfoSection's exact synchronized input style */}
       {structuredTags.map((tagMeta) => (
         <TagItemInput
@@ -397,14 +344,15 @@ export default function TagsSection({
       {/* Adding Tag Row with Catalog Autocomplete */}
       {isAdding && (
         <div className="relative flex flex-col">
-          <div className="flex items-center gap-2 px-1.5 py-0.5 min-h-[28px] rounded-md">
-            <div className="size-4 shrink-0 flex items-center justify-center">
-              <Tag className="size-3.5 text-muted-foreground shrink-0" />
+          <div className="flex items-start gap-1.5 px-1.5 min-h-[26px] py-1 rounded-md bg-muted/60">
+            <div className="size-4 shrink-0 flex items-center justify-center mt-0.5">
+              <Tag className="size-3.5 text-foreground shrink-0" />
             </div>
             <input
               ref={newTagInputRef}
               autoFocus
               type="text"
+              placeholder="Add tag..."
               aria-label="New tag name"
               value={newTag}
               onChange={(e) => {
@@ -446,7 +394,7 @@ export default function TagsSection({
                   onCancelAdding?.();
                 }
               }}
-              className="flex-1 min-w-0 h-6 bg-background text-foreground px-1.5 py-0.5 rounded-md border border-primary focus:ring-1 focus:ring-primary outline-none text-xs font-normal focus:outline-none focus-visible:outline-none font-sans"
+              className="flex-1 min-w-0 bg-transparent text-foreground placeholder:text-muted-foreground px-1 py-0.5 border-none outline-none ring-0 text-xs font-normal leading-snug font-sans"
             />
             <Tooltip>
               <TooltipTrigger asChild>
@@ -461,7 +409,7 @@ export default function TagsSection({
                     setActiveSuggestionIdx(-1);
                     onCancelAdding?.();
                   }}
-                  className="size-5 shrink-0 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-muted cursor-pointer relative before:absolute before:-inset-2.5 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors"
+                  className="size-5 shrink-0 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-muted cursor-pointer relative before:absolute before:-inset-2.5 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors mt-0.5"
                   aria-label="Cancel adding tag"
                 >
                   <MinusCircle className="size-3.5 shrink-0" />
@@ -475,7 +423,7 @@ export default function TagsSection({
             <div
               role="listbox"
               aria-label="Suggested tags"
-              className="mt-1 ml-6 mr-1 rounded-md border border-border bg-popover text-popover-foreground shadow-md py-1 z-20 max-h-40 overflow-y-auto"
+              className="mt-1 ml-6 mr-1 p-1 rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 z-20 max-h-40 overflow-y-auto scrollbar-thin"
             >
               {autocompleteSuggestions.map((sug, idx) => (
                 <button
@@ -488,24 +436,16 @@ export default function TagsSection({
                     commitNewTagValue(sug.name);
                   }}
                   className={cn(
-                    "w-full flex items-center justify-between gap-2 px-2 py-1 text-left text-xs hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors",
-                    idx === activeSuggestionIdx &&
-                      "bg-accent text-accent-foreground",
+                    "w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-md text-left text-xs text-foreground hover:bg-muted cursor-pointer transition-colors",
+                    idx === activeSuggestionIdx && "bg-muted font-medium",
                   )}
                 >
                   <span className="flex items-center gap-1.5 min-w-0 truncate">
-                    {sug.color ? (
-                      <span
-                        className="size-2 rounded-full shrink-0"
-                        style={{ backgroundColor: sug.color }}
-                      />
-                    ) : (
-                      <Tag className="size-3 text-muted-foreground shrink-0" />
-                    )}
+                    <Tag className="size-3 text-muted-foreground shrink-0" />
                     <span className="truncate">{sug.name}</span>
                   </span>
                   {typeof sug.itemCount === "number" && sug.itemCount > 0 && (
-                    <span className="text-[10px] text-muted-foreground shrink-0">
+                    <span className="text-[10px] text-muted-foreground font-mono shrink-0">
                       {sug.itemCount}
                     </span>
                   )}
@@ -513,20 +453,6 @@ export default function TagsSection({
               ))}
             </div>
           )}
-        </div>
-      )}
-
-      {canEdit && automaticTagsCount > 0 && !isAdding && (
-        <div className="flex items-center justify-end px-1.5 pt-1">
-          <button
-            type="button"
-            onClick={handleClearAutomaticTags}
-            className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-            aria-label="Clear automatic tags from this item"
-          >
-            <Sparkles className="size-3 shrink-0" />
-            <span>Clear automatic ({automaticTagsCount})</span>
-          </button>
         </div>
       )}
     </div>

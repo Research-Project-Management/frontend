@@ -9,7 +9,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { useLibraryCacheSynchronizer } from '@/features/library/core/coordinator/item-action.coordinator';
 import { type TreeNode, getValidMoveTargets } from '@/features/library/domain/collection-tree.domain';
-import type { Collection, CollectionActionHandlers } from '@/features/library/domain/types/core.types';
+import type { Collection, CollectionActionHandlers } from '@/features/library/types/core.types';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/shared/components/ui/dropdown-menu';
 import { ContextMenu, ContextMenuTrigger } from '@/shared/components/ui/context-menu';
 import { executeExportCollectionFormat } from '@/features/library/core/coordinator/citation-export.coordinator';

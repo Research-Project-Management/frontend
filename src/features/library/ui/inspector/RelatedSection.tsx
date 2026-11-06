@@ -23,22 +23,9 @@ import {
   DialogDescription,
 } from '@/shared/components/ui/dialog';
 import { toast } from 'sonner';
-import type { Item, RelatedItem, Collection, RelationType } from '@/features/library/domain/types/core.types';
+import type { Item, RelatedItem, Collection, RelationType } from '@/features/library/types/core.types';
 import { cn } from '@/shared/lib/utils';
-import { cleanText } from '@/features/library/domain/citations.domain';
-
-const RELATION_TYPES: Array<{ id: RelationType; label: string }> = [
-  { id: 'related', label: 'Related' },
-  { id: 'cites', label: 'Cites' },
-  { id: 'extends', label: 'Extends' },
-  { id: 'replicates', label: 'Replicates' },
-  { id: 'is_preprint_of', label: 'Preprint of' },
-  { id: 'uses_dataset', label: 'Uses dataset' },
-  { id: 'supplements', label: 'Supplements' },
-  { id: 'rebuts', label: 'Rebuts' },
-  { id: 'survey_of', label: 'Survey of' },
-  { id: 'is_translation_of', label: 'Translation of' },
-];
+import { cleanText, formatAuthors } from '@/features/library/domain/citations.domain';
 
 interface RelatedSectionProps {
   item?: Item;
@@ -74,7 +61,6 @@ export default function RelatedSection(props: RelatedSectionProps) {
 
   // Modal State
   const [selectedTargetIds, setSelectedTargetIds] = useState<Set<string>>(new Set());
-  const [selectedRelationType, setSelectedRelationType] = useState<RelationType>('related');
   const [selectedCollectionFilter, setSelectedCollectionFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -178,11 +164,10 @@ export default function RelatedSection(props: RelatedSectionProps) {
     try {
       await link({
         targetItemIds: targets,
-        relationType: selectedRelationType,
+        relationType: 'related',
       });
 
       setSelectedTargetIds(new Set());
-      setSelectedRelationType('related');
       setSearchQuery('');
       setSelectedCollectionFilter('all');
       setModalOpen(false);
@@ -191,7 +176,7 @@ export default function RelatedSection(props: RelatedSectionProps) {
     } finally {
       isSubmittingRef.current = false;
     }
-  }, [selectedTargetIds, selectedRelationType, isLinking, link, setModalOpen]);
+  }, [selectedTargetIds, isLinking, link, setModalOpen]);
 
   const handleUnlink = async (targetItemId: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -220,10 +205,14 @@ export default function RelatedSection(props: RelatedSectionProps) {
     return null;
   }
 
+  if (!isLoading && relatedList.length === 0 && !isModalOpen && hideHeader) {
+    return null;
+  }
+
   const currentPaperCleanTitle = cleanText(item.title) || 'Current Reference';
 
   return (
-    <div className="flex flex-col gap-2 text-12 min-w-0">
+    <div className="flex flex-col gap-2 text-12 min-w-0 empty:hidden">
       {/* Header bar */}
       {!hideHeader && (
         <div className="flex items-center justify-between">
@@ -251,25 +240,9 @@ export default function RelatedSection(props: RelatedSectionProps) {
         </div>
       )}
 
-      {/* Empty state */}
-      {!isLoading && relatedList.length === 0 && (
-        <div className="flex items-center justify-between px-1.5 py-1 text-12 text-muted-foreground select-none">
-          <span>No related items linked</span>
-          {canEdit && (
-            <button
-              type="button"
-              onClick={() => setModalOpen(true)}
-              className="text-11 font-medium text-foreground hover:underline cursor-pointer"
-            >
-              Link item
-            </button>
-          )}
-        </div>
-      )}
-
       {/* Relations list in Inspector */}
       {!isLoading && relatedList.length > 0 && (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-0.5">
           {relatedList.map((relItem) => {
             const cleanTitle = cleanText(relItem.title) || 'Untitled Item';
 
@@ -285,34 +258,29 @@ export default function RelatedSection(props: RelatedSectionProps) {
                     handleItemClick(relItem.id);
                   }
                 }}
-                className="group relative flex items-start gap-2 p-2 rounded-md border border-border bg-card hover:bg-muted hover:border-border transition-all cursor-pointer select-none"
+                className="group flex items-center justify-between gap-1.5 min-h-[26px] px-1.5 py-0.5 rounded-md hover:bg-muted transition-colors cursor-pointer select-none"
               >
-                {/* Left document icon - neutral, does not change color on hover */}
-                <div className="size-6 rounded bg-muted text-foreground flex items-center justify-center shrink-0 mt-0.5">
-                  <FileText className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                </div>
-
-                {/* Main reference info - paper title & semantic relation badge */}
-                <div className="min-w-0 flex-1 pr-1">
+                {/* Left document icon + title */}
+                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                  <div className="size-4 shrink-0 flex items-center justify-center">
+                    <FileText
+                      className="size-3.5 text-muted-foreground group-hover:text-foreground transition-colors shrink-0"
+                      strokeWidth={1.5}
+                    />
+                  </div>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <p className="font-medium text-12 text-foreground leading-snug line-clamp-2">
+                      <p className="text-12 font-normal text-foreground truncate leading-snug">
                         {cleanTitle}
                       </p>
                     </TooltipTrigger>
-                    <TooltipContent>{cleanTitle}</TooltipContent>
+                    <TooltipContent side="top">{cleanTitle}</TooltipContent>
                   </Tooltip>
-                  {relItem.relationType && relItem.relationType !== 'related' && (
-                    <span className="mt-1 inline-flex items-center px-1.5 py-0.5 rounded text-10 font-mono bg-muted text-muted-foreground border border-border-subtle">
-                      {RELATION_TYPES.find((rt) => rt.id === relItem.relationType)?.label ||
-                        relItem.relationType.replace(/_/g, ' ')}
-                    </span>
-                  )}
                 </div>
 
-                {/* Top-right action controls - pushed to the right, clean neutral colors */}
+                {/* Right action controls - visible on hover */}
                 <div
-                  className="flex items-center gap-0.5 shrink-0 ml-auto -mt-0.5"
+                  className="invisible group-hover:visible group-focus-within:visible focus-visible:visible max-md:visible flex items-center gap-0.5 shrink-0"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {/* Open DOI */}
@@ -323,10 +291,10 @@ export default function RelatedSection(props: RelatedSectionProps) {
                           href={`https://doi.org/${encodeURIComponent(relItem.doi)}`}
                           target="_blank"
                           rel="noreferrer noopener"
-                          className="size-6 flex items-center justify-center rounded text-foreground hover:bg-muted transition-colors cursor-pointer"
+                          className="size-5 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-background transition-colors cursor-pointer"
                           aria-label={`Open DOI: ${relItem.doi}`}
                         >
-                          <ExternalLink className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                          <ExternalLink className="size-3.5 shrink-0" strokeWidth={1.5} />
                         </a>
                       </TooltipTrigger>
                       <TooltipContent side="top" align="end" sideOffset={4}>
@@ -342,10 +310,10 @@ export default function RelatedSection(props: RelatedSectionProps) {
                         <button
                           type="button"
                           onClick={(e) => handleUnlink(relItem.id, e)}
-                          className="size-6 flex items-center justify-center rounded text-foreground hover:bg-muted transition-colors cursor-pointer"
+                          className="size-5 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-background transition-colors cursor-pointer"
                           aria-label="Unlink reference"
                         >
-                          <X className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                          <X className="size-3.5 shrink-0" strokeWidth={1.5} />
                         </button>
                       </TooltipTrigger>
                       <TooltipContent side="top" align="end" sideOffset={4}>
@@ -370,37 +338,25 @@ export default function RelatedSection(props: RelatedSectionProps) {
       >
         <DialogContent
           onKeyDown={handleDialogKeyDown}
-          className="sm:max-w-[780px] w-full sm:w-[95vw] h-[92vh] sm:h-[580px] max-h-[92vh] sm:max-h-[85vh] bg-background text-foreground p-0 gap-0 border border-border rounded-xl shadow-raised-200 overflow-hidden flex flex-col"
+          className="sm:max-w-[760px] w-full sm:w-[92vw] h-[85vh] sm:h-[540px] max-h-[85vh] bg-background text-foreground p-0 gap-0 border border-border rounded-xl shadow-raised-200 overflow-hidden flex flex-col"
         >
-          {/* Header */}
-          <DialogHeader className="px-5 py-3.5 border-b border-border bg-background space-y-1 shrink-0">
+          {/* Header - Clean Zotero standard title */}
+          <DialogHeader className="px-5 py-3 border-b border-border bg-background shrink-0 flex flex-row items-center justify-between">
             <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
-              Add Related References
+              Select Items
             </DialogTitle>
-            <DialogDescription className="text-11 text-muted-foreground leading-normal flex items-center gap-1.5 min-w-0">
-              <span className="shrink-0 text-muted-foreground">Linking with:</span>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="font-medium text-foreground truncate max-w-[500px]">
-                    &ldquo;{currentPaperCleanTitle}&rdquo;
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>{currentPaperCleanTitle}</TooltipContent>
-              </Tooltip>
-            </DialogDescription>
           </DialogHeader>
 
-          {/* Body: Responsive Layout - Top Filter Strip on Mobile, Left Sidebar on Desktop */}
+          {/* Body: Two-column layout (Left: Library/Collections, Right: Search + Items List) */}
           <div className="flex-1 flex flex-col sm:flex-row min-h-0 overflow-hidden">
-            {/* Collections: Horizontal scroll on mobile, Left Sidebar on desktop */}
-            <div className="w-full sm:w-56 shrink-0 border-b sm:border-b-0 sm:border-r border-border-subtle bg-muted flex flex-col min-h-0 select-none">
-              <div className="px-3 pt-2.5 pb-1 sm:pt-3 sm:pb-1.5 text-11 font-medium text-foreground flex items-center justify-between">
-                <span>Collections</span>
-                <span className="sm:hidden text-10 text-muted-foreground">Swipe to filter</span>
-              </div>
-
-              <div className="flex flex-row sm:flex-col overflow-x-auto sm:overflow-y-auto p-1.5 gap-1 sm:gap-0.5 thin-scrollbar shrink-0">
-                {/* All Items Option */}
+            {/* Left Sidebar: Library & Collections */}
+            <div className="w-full sm:w-52 shrink-0 border-b sm:border-b-0 sm:border-r border-border bg-muted/15 flex flex-col min-h-0 select-none">
+              <div
+                role="navigation"
+                aria-label="Collections filter"
+                className="flex-1 overflow-x-auto sm:overflow-y-auto p-2 gap-0.5 flex flex-row sm:flex-col thin-scrollbar shrink-0"
+              >
+                {/* My Library Option */}
                 <button
                   type="button"
                   aria-pressed={selectedCollectionFilter === 'all'}
@@ -408,16 +364,16 @@ export default function RelatedSection(props: RelatedSectionProps) {
                   className={cn(
                     'text-left px-2.5 py-1.5 rounded-md text-12 flex items-center justify-between gap-2 cursor-pointer transition-colors select-none shrink-0 sm:shrink sm:w-full',
                     selectedCollectionFilter === 'all'
-                      ? 'bg-background text-foreground font-medium border border-border-subtle'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted font-normal',
+                      ? 'bg-muted text-foreground font-medium'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 font-normal',
                   )}
                 >
                   <div className="flex items-center gap-2 min-w-0 flex-1 truncate">
-                    <Library className="size-3.5 shrink-0 text-foreground" strokeWidth={1.5} />
-                    <span className="truncate">All Items</span>
+                    <Library className="size-3.5 shrink-0 text-muted-foreground" strokeWidth={1.5} />
+                    <span className="truncate">My Library</span>
                   </div>
                   {collectionCounts.all > 0 && (
-                    <span className="text-10 font-mono text-muted-foreground tabular-nums shrink-0 ml-1">
+                    <span className="text-11 font-mono text-muted-foreground tabular-nums shrink-0 ml-1">
                       {collectionCounts.all}
                     </span>
                   )}
@@ -429,78 +385,64 @@ export default function RelatedSection(props: RelatedSectionProps) {
                   const count = collectionCounts[col.id] || 0;
 
                   return (
-                    <Tooltip key={col.id}>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          aria-pressed={isSelected}
-                          onClick={() => setSelectedCollectionFilter(col.id)}
-                          className={cn(
-                            'text-left px-2.5 py-1.5 rounded-md text-12 flex items-center justify-between gap-2 cursor-pointer transition-colors select-none shrink-0 sm:shrink sm:w-full',
-                            isSelected
-                              ? 'bg-background text-foreground font-medium border border-border-subtle'
-                              : 'text-muted-foreground hover:text-foreground hover:bg-muted font-normal',
-                          )}
-                          aria-label={`${col.name} (${count} items)`}
-                        >
-                          <div className="flex items-center gap-2 min-w-0 flex-1 truncate">
-                            <Folder
-                              className="size-3.5 shrink-0 text-foreground"
-                              strokeWidth={1.5}
-                            />
-                            <span className="truncate">{col.name}</span>
-                          </div>
-                          {count > 0 && (
-                            <span className="text-10 font-mono text-muted-foreground tabular-nums shrink-0 ml-1">
-                              {count}
-                            </span>
-                          )}
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>{col.name}</TooltipContent>
-                    </Tooltip>
+                    <button
+                      key={col.id}
+                      type="button"
+                      aria-pressed={isSelected}
+                      onClick={() => setSelectedCollectionFilter(col.id)}
+                      className={cn(
+                        'text-left px-2.5 py-1.5 rounded-md text-12 flex items-center justify-between gap-2 cursor-pointer transition-colors select-none shrink-0 sm:shrink sm:w-full',
+                        isSelected
+                          ? 'bg-muted text-foreground font-medium'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 font-normal',
+                      )}
+                      title={`${col.name} (${count} items)`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0 flex-1 truncate">
+                        <Folder
+                          className="size-3.5 shrink-0 text-muted-foreground"
+                          strokeWidth={1.5}
+                        />
+                        <span className="truncate">{col.name}</span>
+                      </div>
+                      {count > 0 && (
+                        <span className="text-11 font-mono text-muted-foreground tabular-nums shrink-0 ml-1">
+                          {count}
+                        </span>
+                      )}
+                    </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* Right Main Panel: Command Search + Inset Divider + References List */}
+            {/* Right Main Panel: Search Bar + References List */}
             <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-background">
-              {/* Seamless Command Search Bar */}
-              <div className="px-3.5 pt-3 pb-2 flex items-center shrink-0">
-                <div className="relative w-full max-w-md flex items-center">
-                  <Search
-                    className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none"
-                    strokeWidth={1.5}
-                  />
-                  <Input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search by title, author, venue, year..."
-                    aria-label="Search references"
-                    className="w-full h-8.5 pl-9 pr-9 text-13 rounded-lg border border-border bg-background hover:border-border-hover focus:border-primary text-foreground placeholder:text-muted-foreground outline-none transition-all shadow-none"
-                  />
-                  {searchQuery && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          onClick={() => setSearchQuery('')}
-                          className="absolute right-1 top-1/2 -translate-y-1/2 size-7 flex items-center justify-center text-foreground hover:bg-muted cursor-pointer transition-colors rounded-md"
-                          aria-label="Clear search"
-                        >
-                          <X className="size-3.5" strokeWidth={1.5} />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>Clear search</TooltipContent>
-                    </Tooltip>
-                  )}
-                </div>
+              {/* Seamless Command Search Bar aligned horizontally with sidebar header */}
+              <div className="h-10 px-3.5 flex items-center gap-2 border-b border-border bg-background shrink-0">
+                <Search
+                  className="size-3.5 text-muted-foreground shrink-0 pointer-events-none"
+                  strokeWidth={1.5}
+                />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search items by title, author, year..."
+                  aria-label="Search references"
+                  className="flex-1 bg-transparent text-12 text-foreground placeholder:text-muted-foreground outline-none border-none h-full"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="size-5 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-pointer transition-colors rounded"
+                    aria-label="Clear search"
+                  >
+                    <X className="size-3" strokeWidth={1.5} />
+                  </button>
+                )}
               </div>
-
-              {/* Inset non-touching divider line between search and list */}
-              <Separator className="shrink-0" />
 
               {/* Scrollable References List with live region */}
               <div
@@ -510,13 +452,13 @@ export default function RelatedSection(props: RelatedSectionProps) {
                 className="flex-1 overflow-y-auto px-2.5 py-2 min-h-0 thin-scrollbar"
               >
                 {availableItems.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-foreground space-y-2 text-center px-4">
+                  <div className="flex flex-col items-center justify-center py-12 text-muted-foreground space-y-2 text-center px-4">
                     <div className="size-9 rounded-full bg-muted flex items-center justify-center">
-                      <FileText className="size-4 text-foreground" strokeWidth={1.5} />
+                      <FileText className="size-4 text-muted-foreground" strokeWidth={1.5} />
                     </div>
                     <div className="space-y-0.5">
                       <p className="text-12 font-medium text-foreground">No references available</p>
-                      <p className="text-12 text-foreground max-w-[280px]">
+                      <p className="text-12 text-muted-foreground max-w-[280px]">
                         {searchQuery || selectedCollectionFilter !== 'all'
                           ? 'No items match your search in this collection.'
                           : 'All available items in this collection are already linked.'}
@@ -539,58 +481,64 @@ export default function RelatedSection(props: RelatedSectionProps) {
                   </div>
                 ) : (
                   <div className="space-y-0.5">
-                    {availableItems.map((targetItem: Item, index: number) => {
+                    {availableItems.map((targetItem: Item) => {
                       const isChecked = selectedTargetIds.has(targetItem.id);
                       const cleanTitle = cleanText(targetItem.title) || 'Untitled Reference';
 
+                      const rawAuthors =
+                        targetItem.authors && targetItem.authors.length > 0
+                          ? targetItem.authors
+                          : targetItem.creators;
+                      const authorSummary = rawAuthors ? formatAuthors(rawAuthors, 2) : '';
+                      const displayAuthors =
+                        authorSummary && authorSummary !== '—' ? authorSummary : '';
+
                       return (
-                        <React.Fragment key={targetItem.id}>
-                          {index > 0 && <div className="my-0.5 border-b border-border-subtle" />}
-                          <label
-                            className={cn(
-                              'group relative w-full text-left px-3 py-2 rounded-md text-13 flex items-center gap-2.5 cursor-pointer transition-colors duration-150 select-none focus-within:ring-1 focus-within:ring-ring',
-                              isChecked
-                                ? 'bg-primary/10 text-primary font-medium'
-                                : 'hover:bg-muted text-foreground',
+                        <label
+                          key={targetItem.id}
+                          className={cn(
+                            'group w-full text-left px-2.5 py-1.5 rounded-md flex items-center gap-3 cursor-pointer transition-colors duration-150 select-none',
+                            isChecked
+                              ? 'bg-muted text-foreground'
+                              : 'hover:bg-muted/50 text-foreground',
+                          )}
+                        >
+                          {/* Checkbox with direct binding */}
+                          <div className="shrink-0 flex items-center">
+                            <Checkbox
+                              checked={isChecked}
+                              onCheckedChange={() => handleToggleSelect(targetItem.id)}
+                              className="size-4 rounded border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                              aria-label={`Select ${cleanTitle}`}
+                            />
+                          </div>
+
+                          {/* Title & Author metadata */}
+                          <div className="min-w-0 flex-1 flex flex-col justify-center">
+                            <p
+                              className={cn(
+                                'text-13 leading-snug truncate',
+                                isChecked ? 'font-medium text-foreground' : 'font-normal text-foreground',
+                              )}
+                              title={cleanTitle}
+                            >
+                              {cleanTitle}
+                            </p>
+
+                            {displayAuthors && (
+                              <p className="text-11 text-muted-foreground truncate leading-tight mt-0.5 font-normal" title={displayAuthors}>
+                                {displayAuthors}
+                              </p>
                             )}
-                          >
-                            {/* Checkbox with direct binding */}
-                            <div className="shrink-0 flex items-center">
-                              <Checkbox
-                                checked={isChecked}
-                                onCheckedChange={() => handleToggleSelect(targetItem.id)}
-                                className="size-4 rounded border-border data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                                aria-label={`Select ${cleanTitle}`}
-                              />
-                            </div>
+                          </div>
 
-                            {/* Title only */}
-                            <div className="min-w-0 flex-1">
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <p
-                                    className={cn(
-                                      'text-13 leading-snug line-clamp-1 break-words',
-                                      isChecked ? 'font-medium text-primary' : 'font-normal text-foreground',
-                                    )}
-                                  >
-                                    {cleanTitle}
-                                  </p>
-                                </TooltipTrigger>
-                                <TooltipContent>{cleanTitle}</TooltipContent>
-                              </Tooltip>
-                            </div>
-
-                            {/* Right: Year Badge */}
-                            {targetItem.year ? (
-                              <div className="shrink-0 pl-2">
-                                <span className="px-1.5 py-0.5 rounded text-11 font-mono text-muted-foreground bg-muted border border-border-subtle tabular-nums">
-                                  {targetItem.year}
-                                </span>
-                              </div>
-                            ) : null}
-                          </label>
-                        </React.Fragment>
+                          {/* Right: Clean Year Text */}
+                          {targetItem.year ? (
+                            <span className="shrink-0 text-12 font-mono text-muted-foreground tabular-nums select-none pl-2">
+                              {targetItem.year}
+                            </span>
+                          ) : null}
+                        </label>
                       );
                     })}
                   </div>
@@ -600,57 +548,50 @@ export default function RelatedSection(props: RelatedSectionProps) {
           </div>
 
           {/* Footer Actions across full modal width */}
-          <div className="px-5 py-3 border-t border-border bg-background flex items-center justify-between gap-2 shrink-0 select-none">
-            <div className="flex items-center gap-2">
-              <label htmlFor="relation-type-select" className="text-11 text-muted-foreground">
-                Relation:
-              </label>
-              <select
-                id="relation-type-select"
-                value={selectedRelationType}
-                onChange={(e) => setSelectedRelationType(e.target.value as RelationType)}
-                className="h-8 px-2.5 rounded-md border border-border bg-background text-12 text-foreground outline-none focus:ring-1 focus:ring-ring cursor-pointer"
-              >
-                {RELATION_TYPES.map((rt) => (
-                  <option key={rt.id} value={rt.id}>
-                    {rt.label}
-                  </option>
-                ))}
-              </select>
+          <div className="px-5 py-2.5 border-t border-border bg-background flex items-center justify-between gap-2 shrink-0 select-none">
+            <div className="text-12 text-muted-foreground">
+              {selectedTargetIds.size > 0 ? (
+                <span className="font-medium text-foreground">
+                  {selectedTargetIds.size} {selectedTargetIds.size === 1 ? 'item' : 'items'} selected
+                </span>
+              ) : (
+                <span className="text-11 text-muted-foreground/75">
+                  {availableItems.length} {availableItems.length === 1 ? 'reference' : 'references'} available
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={isLinking}
-              className="h-8 px-3 text-12 font-medium rounded-md border-border bg-background hover:bg-muted text-foreground transition-colors cursor-pointer shadow-none"
-              onClick={() => {
-                if (isLinking) return;
-                setModalOpen(false);
-                setSelectedTargetIds(new Set());
-                setSelectedRelationType('related');
-                setSearchQuery('');
-                setSelectedCollectionFilter('all');
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              variant="default"
-              disabled={selectedTargetIds.size === 0 || isLinking}
-              onClick={handleLinkConfirm}
-              className="h-8 px-4 text-12 font-medium rounded-md cursor-pointer shadow-none flex items-center gap-1.5 disabled:opacity-50 disabled:bg-muted disabled:text-foreground disabled:border-transparent disabled:pointer-events-none"
-            >
-              {isLinking && <Loader2 className="size-3.5 animate-spin shrink-0" strokeWidth={1.5} />}
-              <span>
-                {isLinking
-                  ? 'Linking...'
-                  : selectedTargetIds.size > 0
-                  ? `Link ${selectedTargetIds.size} ${selectedTargetIds.size === 1 ? 'Reference' : 'References'}`
-                  : 'Link References'}
-              </span>
-            </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={isLinking}
+                className="h-8 px-3 text-12 font-medium rounded-md border-border bg-background hover:bg-muted text-foreground transition-colors cursor-pointer shadow-none"
+                onClick={() => {
+                  if (isLinking) return;
+                  setModalOpen(false);
+                  setSelectedTargetIds(new Set());
+                  setSearchQuery('');
+                  setSelectedCollectionFilter('all');
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                variant="default"
+                disabled={selectedTargetIds.size === 0 || isLinking}
+                onClick={handleLinkConfirm}
+                className="h-8 px-4 text-12 font-medium rounded-md cursor-pointer shadow-none flex items-center gap-1.5"
+              >
+                {isLinking && <Loader2 className="size-3.5 animate-spin shrink-0" strokeWidth={1.5} />}
+                <span>
+                  {isLinking
+                    ? 'Linking...'
+                    : selectedTargetIds.size > 0
+                    ? `Link ${selectedTargetIds.size} ${selectedTargetIds.size === 1 ? 'Reference' : 'References'}`
+                    : 'Link References'}
+                </span>
+              </Button>
             </div>
           </div>
         </DialogContent>

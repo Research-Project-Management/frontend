@@ -1,33 +1,20 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo } from "react";
 import {
   ChevronDown,
   ChevronUp,
-  Plus,
   MoreHorizontal,
-  Palette,
   Check,
-  Hash,
-  Pencil,
-  Trash2,
-  Scissors,
 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
-import { Checkbox } from "@/shared/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
-import { TAG_PALETTE_COLORS } from "@/features/library/core/coordinator/facet-filter.coordinator";
-import { cleanSingleFrontendTag } from "@/features/library/domain/metadata.mapper";
-import type { TagWithCount } from "@/features/library/domain/types/core.types";
+import type { TagWithCount } from "@/features/library/types/core.types";
 
 interface FilterTagsSectionProps {
   matchingTags: Array<{ tag: TagWithCount; score: number }>;
@@ -61,113 +48,15 @@ export function FilterTagsSection({
   onTagToggle,
   showAutomaticTags = true,
   onToggleShowAutomaticTags,
-  onCreateTag,
-  onUpdateTag,
-  onDeleteTag,
-  onDeleteAutomaticTags,
-  isDeletingAutomatic = false,
-  onSplitTag,
 }: FilterTagsSectionProps) {
   const [tagsOpen, setTagsOpen] = useState(true);
-  const [isCreating, setIsCreating] = useState(false);
-  const [newTagName, setNewTagName] = useState("");
-  const [renamingTagId, setRenamingTagId] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState("");
-  const skipBlurCommitRef = useRef(false);
 
   const activeTagSet = useMemo(
     () => new Set(activeTags.map((t) => t.toLowerCase())),
     [activeTags],
   );
 
-  const handleCreate = async () => {
-    if (skipBlurCommitRef.current) {
-      skipBlurCommitRef.current = false;
-      return;
-    }
-    const cleaned = cleanSingleFrontendTag(newTagName.trim());
-    setIsCreating(false);
-    setNewTagName("");
-    if (!cleaned || !onCreateTag) return;
-    try {
-      await onCreateTag({ name: cleaned, type: "manual" });
-    } catch {
-      // Handled by mutation toast
-    }
-  };
-
-  const handleCommitRename = async (tag: TagWithCount) => {
-    if (skipBlurCommitRef.current) {
-      skipBlurCommitRef.current = false;
-      return;
-    }
-    const cleaned = cleanSingleFrontendTag(renameValue.trim());
-    setRenamingTagId(null);
-    setRenameValue("");
-    if (!cleaned || cleaned === tag.name || !onUpdateTag) return;
-    try {
-      await onUpdateTag({
-        tagId: tag.id,
-        data: { name: cleaned },
-      });
-    } catch {
-      // Handled by mutation toast
-    }
-  };
-
-  const handleSplitTag = async (tag: TagWithCount) => {
-    if (!onSplitTag) return;
-    const parts = tag.name
-      .split(/[;,]/)
-      .map((p) => p.trim())
-      .filter(Boolean);
-    if (parts.length <= 1) return;
-    try {
-      await onSplitTag({ tagId: tag.id, parts });
-    } catch {
-      // Handled by mutation toast
-    }
-  };
-
-  const handleAssignColor = async (
-    tag: TagWithCount,
-    color: string | undefined,
-  ) => {
-    if (!onUpdateTag) return;
-    try {
-      await onUpdateTag({
-        tagId: tag.id,
-        data: { color: color || "" },
-      });
-    } catch {
-      // Handled by mutation toast
-    }
-  };
-
-  const handleAssignShortcut = async (
-    tag: TagWithCount,
-    shortcut: number | null,
-  ) => {
-    if (!onUpdateTag) return;
-    try {
-      const defaultColor =
-        shortcut && (!tag.color || tag.color === "#3b82f6")
-          ? TAG_PALETTE_COLORS[(shortcut - 1) % TAG_PALETTE_COLORS.length].value
-          : tag.color;
-
-      await onUpdateTag({
-        tagId: tag.id,
-        data: {
-          shortcut,
-          ...(defaultColor ? { color: defaultColor } : {}),
-        },
-      });
-    } catch {
-      // Handled by mutation toast
-    }
-  };
-
-  if (matchingTags.length === 0 && !isCreating && !onCreateTag) {
+  if (matchingTags.length === 0) {
     return null;
   }
 
@@ -180,92 +69,36 @@ export function FilterTagsSection({
           className="flex items-center gap-1.5 flex-1 text-left cursor-pointer"
         >
           <span>Tags</span>
-          {matchingTags.length > 0 && (
-            <span className="text-10 font-mono text-muted-foreground">
-              ({matchingTags.length})
-            </span>
-          )}
         </button>
 
         <div className="flex items-center gap-0.5">
-          {onCreateTag && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setTagsOpen(true);
-                setIsCreating(true);
-              }}
-              className="size-5 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-              aria-label="New tag"
-              title="Create new tag"
-            >
-              <Plus className="size-3.5 shrink-0" />
-            </button>
-          )}
-
-          {(onToggleShowAutomaticTags || onCreateTag || onDeleteAutomaticTags) && (
+          {onToggleShowAutomaticTags && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
                   onClick={(e) => e.stopPropagation()}
                   className="size-5 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-                  aria-label="Tag options"
+                  aria-label="Tag filter options"
                 >
                   <MoreHorizontal className="size-3.5 shrink-0" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 text-xs">
-                {onToggleShowAutomaticTags && (
-                  <DropdownMenuItem
-                    onClick={() =>
-                      onToggleShowAutomaticTags(!showAutomaticTags)
-                    }
-                    className="gap-2 text-xs cursor-pointer"
-                  >
-                    <Check
-                      className={cn(
-                        "size-3.5",
-                        showAutomaticTags ? "opacity-100" : "opacity-0",
-                      )}
-                    />
-                    <span>Show Automatic Tags</span>
-                  </DropdownMenuItem>
-                )}
-                {onCreateTag && (
-                  <DropdownMenuItem
-                    onClick={() => {
-                      setTagsOpen(true);
-                      setIsCreating(true);
-                    }}
-                    className="gap-2 text-xs cursor-pointer"
-                  >
-                    <Plus className="size-3.5" />
-                    <span>Create New Tag...</span>
-                  </DropdownMenuItem>
-                )}
-                {onDeleteAutomaticTags && (
-                  <>
-                    {(onToggleShowAutomaticTags || onCreateTag) && (
-                      <DropdownMenuSeparator />
+              <DropdownMenuContent align="end" className="w-52 text-xs">
+                <DropdownMenuItem
+                  onClick={() =>
+                    onToggleShowAutomaticTags(!showAutomaticTags)
+                  }
+                  className="gap-2 text-xs cursor-pointer"
+                >
+                  <Check
+                    className={cn(
+                      "size-3.5",
+                      showAutomaticTags ? "opacity-100" : "opacity-0",
                     )}
-                    <DropdownMenuItem
-                      disabled={isDeletingAutomatic}
-                      onClick={() => {
-                        void onDeleteAutomaticTags();
-                      }}
-                      className="gap-2 text-xs cursor-pointer text-destructive focus:text-destructive"
-                    >
-                      <Trash2 className="size-3.5" />
-                      <span>
-                        {isDeletingAutomatic
-                          ? "Deleting Automatic Tags..."
-                          : "Delete Automatic Tags"}
-                      </span>
-                    </DropdownMenuItem>
-                  </>
-                )}
+                  />
+                  <span>Show Automatic Tags</span>
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -286,71 +119,10 @@ export function FilterTagsSection({
       </div>
 
       {tagsOpen && (
-        <div className="pt-1 select-none space-y-1">
-          {isCreating && (
-            <div className="px-1">
-              <input
-                autoFocus
-                type="text"
-                placeholder="New tag name..."
-                value={newTagName}
-                onChange={(e) => setNewTagName(e.target.value)}
-                onBlur={() => void handleCreate()}
-                onKeyDown={(e) => {
-                  e.stopPropagation();
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    skipBlurCommitRef.current = false;
-                    void handleCreate();
-                  } else if (e.key === "Escape") {
-                    e.preventDefault();
-                    skipBlurCommitRef.current = true;
-                    setIsCreating(false);
-                    setNewTagName("");
-                  }
-                }}
-                className="w-full h-6 px-2 text-12 rounded-md bg-background border border-primary outline-none text-foreground"
-              />
-            </div>
-          )}
-
-          <div className="max-h-44 overflow-y-auto space-y-0.5 no-scrollbar">
+        <div className="pt-1 select-none">
+          <div className="max-h-44 overflow-y-auto space-y-0.5 pr-1 scrollbar-thin">
             {matchingTags.map(({ tag }) => {
               const isSelected = activeTagSet.has(tag.name.toLowerCase());
-              const tagCount = tag._count?.itemTags ?? tag.itemCount ?? 0;
-              const isAuto =
-                (tag.type || "manual").toLowerCase() === "automatic";
-              const hasCustomColor = Boolean(
-                tag.color && tag.color !== "#3b82f6",
-              );
-
-              if (renamingTagId === tag.id) {
-                return (
-                  <div key={tag.id} className="px-1 py-0.5">
-                    <input
-                      autoFocus
-                      type="text"
-                      value={renameValue}
-                      onChange={(e) => setRenameValue(e.target.value)}
-                      onBlur={() => void handleCommitRename(tag)}
-                      onKeyDown={(e) => {
-                        e.stopPropagation();
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          skipBlurCommitRef.current = false;
-                          void handleCommitRename(tag);
-                        } else if (e.key === "Escape") {
-                          e.preventDefault();
-                          skipBlurCommitRef.current = true;
-                          setRenamingTagId(null);
-                          setRenameValue("");
-                        }
-                      }}
-                      className="w-full h-6 px-2 text-12 rounded-md bg-background border border-primary outline-none text-foreground"
-                    />
-                  </div>
-                );
-              }
 
               return (
                 <div
@@ -366,188 +138,41 @@ export function FilterTagsSection({
                     }
                   }}
                   className={cn(
-                    "group/tagrow flex items-center gap-2 py-0.5 px-1.5 rounded-md text-12 text-foreground cursor-pointer select-none transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary",
+                    "flex items-center gap-2 py-0.5 px-1.5 rounded-md text-12 text-foreground cursor-pointer select-none transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary",
                     isSelected
                       ? "bg-muted font-medium"
                       : "hover:bg-muted font-normal",
                   )}
                 >
-                  <Checkbox
-                    checked={isSelected}
-                    tabIndex={-1}
+                  <span
                     aria-hidden="true"
-                    className="size-3.5 border-border data-[state=checked]:border-primary pointer-events-none shrink-0"
-                  />
-
-                  {(hasCustomColor || typeof tag.shortcut === "number") &&
-                    tag.color && (
-                      <span
-                        className="size-2 rounded-full shrink-0 border border-black/10"
-                        style={{ backgroundColor: tag.color }}
-                      />
+                    className={cn(
+                      "size-3.5 rounded-[4px] border flex items-center justify-center shrink-0 transition-colors pointer-events-none",
+                      isSelected
+                        ? "bg-primary border-primary text-primary-foreground"
+                        : "border-border bg-transparent",
                     )}
-
-                  <span className="flex-1 min-w-0 truncate leading-snug tracking-tight text-12">
-                    {tag.name}
+                  >
+                    {isSelected && (
+                      <svg
+                        viewBox="0 0 12 12"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2.2}
+                        className="size-2.5 text-white shrink-0"
+                      >
+                        <path
+                          d="M2.5 6L5 8.5L9.5 3.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    )}
                   </span>
 
-                  {isAuto && (
-                    <span
-                      className="shrink-0 text-[9px] font-mono uppercase px-1 rounded bg-muted text-muted-foreground"
-                      title="Automatic tag"
-                    >
-                      auto
-                    </span>
-                  )}
-
-                  {typeof tag.shortcut === "number" && (
-                    <span
-                      className="shrink-0 text-10 font-mono px-1 rounded bg-primary/10 text-primary"
-                      title={`Shortcut key ${tag.shortcut}`}
-                    >
-                      #{tag.shortcut}
-                    </span>
-                  )}
-
-                  {tagCount > 0 && (
-                    <span className="shrink-0 text-11 font-mono text-muted-foreground">
-                      {tagCount}
-                    </span>
-                  )}
-
-                  {onUpdateTag && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          type="button"
-                          onClick={(e) => e.stopPropagation()}
-                          className="size-4 flex items-center justify-center rounded opacity-0 group-hover/tagrow:opacity-100 focus:opacity-100 text-muted-foreground hover:text-foreground hover:bg-background transition-opacity shrink-0 cursor-pointer"
-                          aria-label={`Manage tag ${tag.name}`}
-                        >
-                          <MoreHorizontal className="size-3" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        align="end"
-                        className="w-48 text-xs"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <DropdownMenuSub>
-                          <DropdownMenuSubTrigger className="gap-2 text-xs">
-                            <Palette className="size-3.5" />
-                            <span>Assign Color</span>
-                          </DropdownMenuSubTrigger>
-                          <DropdownMenuSubContent className="w-40 text-xs">
-                            {TAG_PALETTE_COLORS.map((c) => (
-                              <DropdownMenuItem
-                                key={c.value}
-                                onClick={() =>
-                                  void handleAssignColor(tag, c.value)
-                                }
-                                className="gap-2 text-xs cursor-pointer"
-                              >
-                                <span
-                                  className="size-3 rounded-full shrink-0"
-                                  style={{ backgroundColor: c.value }}
-                                />
-                                <span className="flex-1">{c.label}</span>
-                                {tag.color === c.value && (
-                                  <Check className="size-3.5 text-foreground" />
-                                )}
-                              </DropdownMenuItem>
-                            ))}
-                            {hasCustomColor && (
-                              <>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    void handleAssignColor(tag, undefined)
-                                  }
-                                  className="text-xs text-muted-foreground cursor-pointer"
-                                >
-                                  Remove Color
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                          </DropdownMenuSubContent>
-                        </DropdownMenuSub>
-
-                        <DropdownMenuSub>
-                          <DropdownMenuSubTrigger className="gap-2 text-xs">
-                            <Hash className="size-3.5" />
-                            <span>Shortcut Key (1–9)</span>
-                          </DropdownMenuSubTrigger>
-                          <DropdownMenuSubContent className="w-44 text-xs">
-                            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-                              <DropdownMenuItem
-                                key={num}
-                                onClick={() =>
-                                  void handleAssignShortcut(tag, num)
-                                }
-                                className="gap-2 text-xs cursor-pointer"
-                              >
-                                <span className="font-mono text-11 w-5">
-                                  #{num}
-                                </span>
-                                <span className="flex-1">
-                                  Press {num} in table
-                                </span>
-                                {tag.shortcut === num && (
-                                  <Check className="size-3.5 text-foreground" />
-                                )}
-                              </DropdownMenuItem>
-                            ))}
-                            {typeof tag.shortcut === "number" && (
-                              <>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    void handleAssignShortcut(tag, null)
-                                  }
-                                  className="text-xs text-muted-foreground cursor-pointer"
-                                >
-                                  Clear Shortcut Key
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                          </DropdownMenuSubContent>
-                        </DropdownMenuSub>
-
-                        <DropdownMenuSeparator />
-
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setRenamingTagId(tag.id);
-                            setRenameValue(tag.name);
-                          }}
-                          className="gap-2 text-xs cursor-pointer"
-                        >
-                          <Pencil className="size-3.5" />
-                          <span>Rename / Merge Tag...</span>
-                        </DropdownMenuItem>
-
-                        {onSplitTag && /[;,]/.test(tag.name) && (
-                          <DropdownMenuItem
-                            onClick={() => void handleSplitTag(tag)}
-                            className="gap-2 text-xs cursor-pointer"
-                          >
-                            <Scissors className="size-3.5" />
-                            <span>Split Tag...</span>
-                          </DropdownMenuItem>
-                        )}
-
-                        {onDeleteTag && (
-                          <DropdownMenuItem
-                            onClick={() => void onDeleteTag(tag.id)}
-                            className="gap-2 text-xs text-destructive focus:text-destructive cursor-pointer"
-                          >
-                            <Trash2 className="size-3.5" />
-                            <span>Delete Tag</span>
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
+                  <span className="flex-1 min-w-0 truncate leading-none text-12">
+                    {tag.name}
+                  </span>
                 </div>
               );
             })}

@@ -14,8 +14,8 @@ import {
   ContextMenuShortcut, ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger, ContextMenuTrigger,
 } from '@/shared/components/ui/context-menu';
 import { cn } from '@/shared/lib/utils';
-import type { ReaderDocument, ReaderAnnotation, AnnotationFormData } from '@/features/library/domain/types/reader.schema';
-import { annotationFormSchema } from '@/features/library/domain/types/reader.schema';
+import type { ReaderDocument, ReaderAnnotation, AnnotationFormData } from '@/features/library/types/reader.types';
+import { annotationFormSchema } from '@/features/library/types/reader.types';
 import { PdfAnnotationEngine, ANNOTATION_PALETTE_COLORS, formatAnnotationCitation } from '@/features/library/domain/reader.domain';
 
 const ANNOTATION_COLOR_BY_HEX_MAP: ReadonlyMap<string, (typeof ANNOTATION_PALETTE_COLORS)[number]> = new Map(
@@ -203,7 +203,7 @@ interface AnnotationsPanelCardProps {
   targetIds: string[];
   onCardClick: (e: React.MouseEvent, annotation: ReaderAnnotation) => void;
   onCardContextMenu: (annotation: ReaderAnnotation) => void;
-  onJumpToPage: (pageIndex?: number, annotationId?: string) => void;
+  onJumpToPage: (pageIndex?: number, annotationId?: string, pageNumber?: number) => void;
   onStartEdit: (annotationId: string) => void;
   onCancelEdit: () => void;
   onSaveEdit: (annotation: ReaderAnnotation, data: AnnotationFormData) => Promise<void> | void;
@@ -336,10 +336,10 @@ export const AnnotationsPanelCard = React.memo(function AnnotationsPanelCard({
                     className="font-mono text-foreground hover:underline cursor-pointer tabular-nums font-medium"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onJumpToPage(annotation.pageIndex, annotation.id);
+                      onJumpToPage(annotation.pageIndex, annotation.id, annotation.pageNumber);
                     }}
                   >
-                    P. {displayPage}
+                    p. {displayPage}
                   </span>
                   {annotation.type && annotation.type !== 'highlight' && (
                     <span className="inline-flex items-center gap-0.5 text-10 text-muted-foreground font-sans">
@@ -392,10 +392,14 @@ export const AnnotationsPanelCard = React.memo(function AnnotationsPanelCard({
                             );
                           }}
                           aria-label="Ask AI"
-                          className="size-6 sm:size-5 rounded-md text-ai hover:bg-muted flex items-center justify-center cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                          className="size-6 sm:size-5 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
                           title="Ask AI"
                         >
-                          <Sparkles className="size-3 text-ai shrink-0" strokeWidth={1.5} />
+                          <img
+                            src="/Chat.svg"
+                            alt="AI Assistant"
+                            className="size-3 rounded-full object-cover shrink-0"
+                          />
                         </button>
                       )}
                       {(onAddToNote || onBatchAddToNote) && (
@@ -517,9 +521,13 @@ export const AnnotationsPanelCard = React.memo(function AnnotationsPanelCard({
                 (annotation.pageIndex ?? 0) + 1,
               )
             }
-            className="flex items-center gap-2 cursor-pointer text-ai px-2 py-1.5 rounded-sm hover:bg-muted"
+            className="flex items-center gap-2 cursor-pointer text-foreground px-2 py-1.5 rounded-sm hover:bg-muted"
           >
-            <Sparkles className="size-3.5 text-ai shrink-0" strokeWidth={1.5} />
+            <img
+              src="/Chat.svg"
+              alt="AI Assistant"
+              className="size-3.5 rounded-full object-cover shrink-0"
+            />
             <span>Ask AI</span>
           </ContextMenuItem>
         )}
@@ -641,10 +649,10 @@ export const AnnotationsBottomSelectorDock = React.memo(function AnnotationsBott
   }
 
   return (
-    <div className="border-t border-border bg-muted p-2 space-y-1.5 shrink-0 text-11 font-sans">
+    <div className="border-t border-border bg-background p-2 space-y-1.5 shrink-0 text-11 font-sans">
       {existingColors.length >= 1 && (
         <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-10 font-semibold text-muted-foreground uppercase tracking-wider">
+          <span className="text-10 font-medium text-muted-foreground">
             Colors:
           </span>
           <div className="flex items-center gap-1">
@@ -679,7 +687,7 @@ export const AnnotationsBottomSelectorDock = React.memo(function AnnotationsBott
 
       {existingTags.length > 0 && (
         <div className="flex items-center gap-1 flex-wrap">
-          <span className="text-10 font-semibold text-muted-foreground uppercase tracking-wider">
+          <span className="text-10 font-medium text-muted-foreground">
             Tags:
           </span>
           <div className="flex items-center gap-1 flex-wrap">

@@ -7,8 +7,8 @@ import { Plus, X, FileText, Loader2, Upload, Link2, FolderSync } from 'lucide-re
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import { cn } from '@/shared/lib/utils';
-import type { Item } from '@/features/library/domain/types/core.types';
-import type { ReaderDocument } from '@/features/library/domain/types/reader.schema';
+import type { Item } from '@/features/library/types/core.types';
+import type { ReaderDocument } from '@/features/library/types/reader.types';
 import { openInNewTab, buildReaderPaperUrl } from '@/features/library/core/coordinator/citation-export.coordinator';
 import { useLibraryUIStore, type InspectorSectionId } from '@/features/library/core/store/library-ui.store';
 import { useRelations } from '@/features/library/core/coordinator/saved-search-builder.coordinator';
@@ -199,14 +199,6 @@ function LibraryInspectorContent({
     effectiveItem?.abstractNote
   );
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [highlightedSection, setHighlightedSection] = useState<InspectorSectionId | null>(null);
-  const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
-    };
-  }, []);
 
   // Tab change: Clicking a tab in the vertical rail activates only that tab, ensures the section is expanded, and scrolls to it
   const handleTabChange = (tabId: InspectorSectionId) => {
@@ -215,12 +207,6 @@ function LibraryInspectorContent({
       ...prev,
       [tabId]: true,
     }));
-
-    setHighlightedSection(tabId);
-    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current);
-    highlightTimerRef.current = setTimeout(() => {
-      setHighlightedSection(null);
-    }, 900);
 
     requestAnimationFrame(() => {
       const container = scrollContainerRef.current;
@@ -259,16 +245,15 @@ function LibraryInspectorContent({
               {/* Scrollable Collapsible Sections */}
               <div
                 ref={scrollContainerRef}
-                className="relative flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-[60vh] bg-background inspector-scrollbar scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                className="relative flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-6 bg-background inspector-scrollbar scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
               >
                 {/* Details */}
                 <InspectorSection
                   id="info"
                   title="Details"
                   isExpanded={expandedSections.info}
-                  isHighlighted={highlightedSection === 'info'}
                   onToggleExpand={() => toggleSection('info')}
-                  contentClassName="px-2.5 pt-1.5 pb-2.5 flex flex-col gap-1"
+                  contentClassName="px-2.5 pt-1 pb-2.5 flex flex-col gap-1"
                   canEdit={effectiveCanEdit}
                 >
                   <InfoSection
@@ -285,7 +270,6 @@ function LibraryInspectorContent({
                   id="abstract"
                   title="Abstract"
                   isExpanded={expandedSections.abstract}
-                  isHighlighted={highlightedSection === 'abstract'}
                   onToggleExpand={() => toggleSection('abstract')}
                   onAdd={
                     !hasAbstract && effectiveCanEdit
@@ -294,7 +278,7 @@ function LibraryInspectorContent({
                         }
                       : undefined
                   }
-                  contentClassName={hasAbstract ? "px-2.5 pt-1.5 pb-2.5 flex flex-col gap-2" : "px-2.5 pt-1.5 pb-2.5"}
+                  contentClassName={hasAbstract ? "px-2.5 pt-1 pb-2.5 flex flex-col gap-2" : "px-2.5 pt-1 pb-2.5"}
                   canEdit={effectiveCanEdit}
                 >
                   <AbstractSection
@@ -312,7 +296,6 @@ function LibraryInspectorContent({
                   title="Attachments"
                   count={attachmentCount}
                   isExpanded={expandedSections.files}
-                  isHighlighted={highlightedSection === 'files'}
                   onToggleExpand={() => toggleSection('files')}
                   actionSlot={
                     effectiveCanEdit ? (
@@ -363,7 +346,7 @@ function LibraryInspectorContent({
                       </DropdownMenu>
                     ) : undefined
                   }
-                  contentClassName="px-2.5 pt-1.5 pb-2.5 flex flex-col gap-2"
+                  contentClassName="px-2.5 pt-1 pb-2.5 flex flex-col gap-2"
                   canEdit={effectiveCanEdit}
                   keepMounted
                 >
@@ -391,7 +374,6 @@ function LibraryInspectorContent({
                   title="Notes"
                   count={noteCount}
                   isExpanded={expandedSections.notes}
-                  isHighlighted={highlightedSection === 'notes'}
                   onToggleExpand={() => toggleSection('notes')}
                   onAdd={() => {
                     setExpandedSections((prev) => ({ ...prev, notes: true }));
@@ -428,7 +410,7 @@ function LibraryInspectorContent({
                       </Tooltip>
                     ) : undefined
                   }
-                  contentClassName="px-2.5 pt-1.5 pb-2.5 flex flex-col gap-2"
+                  contentClassName="px-2.5 pt-1 pb-2.5 flex flex-col gap-0.5"
                   canEdit={effectiveCanEdit}
                   keepMounted
                 >
@@ -454,7 +436,6 @@ function LibraryInspectorContent({
                   title="Libraries and Collections"
                   count={itemCollectionIds.length}
                   isExpanded={expandedSections.collections}
-                  isHighlighted={highlightedSection === 'collections'}
                   onToggleExpand={() => toggleSection('collections')}
                   actionSlot={
                     effectiveCanEdit && effectiveItem ? (
@@ -475,7 +456,7 @@ function LibraryInspectorContent({
                       </CollectionPickerPopover>
                     ) : null
                   }
-                  contentClassName="px-2.5 pt-1.5 pb-2.5 flex flex-col gap-1"
+                  contentClassName="px-2.5 pt-1 pb-2.5 flex flex-col gap-0.5"
                   canEdit={effectiveCanEdit}
                 >
                   <CollectionsSection
@@ -494,13 +475,12 @@ function LibraryInspectorContent({
                   title="Tags"
                   count={tagsList.length}
                   isExpanded={expandedSections.tags}
-                  isHighlighted={highlightedSection === 'tags'}
                   onToggleExpand={() => toggleSection('tags')}
                   onAdd={() => {
                     setExpandedSections((prev) => ({ ...prev, tags: true }));
                     setIsAddingTag(true);
                   }}
-                  contentClassName="px-2.5 pt-1.5 pb-2.5 flex flex-col gap-1"
+                  contentClassName="px-2.5 pt-1 pb-2.5 flex flex-col gap-0.5"
                   canEdit={effectiveCanEdit}
                 >
                   <TagsSection
@@ -522,12 +502,11 @@ function LibraryInspectorContent({
                   title="Related"
                   count={relatedItems.length}
                   isExpanded={expandedSections.relations}
-                  isHighlighted={highlightedSection === 'relations'}
                   onToggleExpand={() => toggleSection('relations')}
                   onAdd={() => {
                     handleAddRelatedOpenChange(true);
                   }}
-                  contentClassName="px-2.5 pt-1.5 pb-2.5 flex flex-col gap-2"
+                  contentClassName="px-2.5 pt-1 pb-2.5 flex flex-col gap-0.5"
                   canEdit={effectiveCanEdit}
                 >
                   <RelatedSection
@@ -547,9 +526,8 @@ function LibraryInspectorContent({
                   id="cite"
                   title="Citation"
                   isExpanded={expandedSections.cite}
-                  isHighlighted={highlightedSection === 'cite'}
                   onToggleExpand={() => toggleSection('cite')}
-                  contentClassName="px-2.5 pt-1.5 pb-2.5 flex flex-col gap-2"
+                  contentClassName="px-2.5 pt-1 pb-2.5 flex flex-col gap-2"
                   canEdit={effectiveCanEdit}
                 >
                   <CiteSection

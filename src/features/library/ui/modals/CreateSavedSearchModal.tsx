@@ -23,11 +23,11 @@ import {
 } from "@/shared/components/ui/select";
 import { cn } from "@/shared/lib/utils";
 import { useLibraryProjectContext } from "@/features/library/core/adapters/project-context.adapter";
-import type { Item } from "@/features/library/domain/types/core.types";
+import type { Item } from "@/features/library/types/core.types";
 import type {
   CreateSavedSearchInput,
   SavedSearch,
-} from "@/features/library/domain/types/ingestion.types";
+} from "@/features/library/types/ingestion.types";
 import { ConditionRowEditor } from "./ConditionRowEditor";
 import {
   useSavedSearchBuilder,
@@ -55,7 +55,7 @@ function SavedSearchPreviewTable({
 }: SavedSearchPreviewTableProps) {
   return (
     <div className="flex-1 min-h-[160px] flex flex-col pt-1">
-      <div className="flex flex-wrap items-center justify-between gap-2 pb-1.5 border-b border-border text-11">
+      <div className="flex flex-wrap items-center justify-between gap-2 pb-1.5 border-b border-border text-12">
         <div
           className="flex items-center gap-2"
           role="status"
@@ -63,24 +63,24 @@ function SavedSearchPreviewTable({
         >
           <span className="font-medium text-foreground">Preview results</span>
           {isPreviewLoading ? (
-            <span className="flex items-center gap-1 text-foreground font-normal">
+            <span className="flex items-center gap-1 text-muted-foreground font-normal">
               <Loader2
-                className="size-3 animate-spin text-foreground"
+                className="size-3 animate-spin text-muted-foreground"
                 aria-hidden="true"
               />
               Searching...
             </span>
           ) : previewCount !== null ? (
-            <span className="text-foreground font-normal">
+            <span className="text-muted-foreground font-normal">
               ({previewCount} {previewCount === 1 ? "item" : "items"} found)
             </span>
           ) : null}
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <span className="text-foreground text-12 flex items-center gap-1 shrink-0">
+          <span className="text-muted-foreground text-12 flex items-center gap-1 shrink-0">
             <ArrowUpDown
-              className="size-3 text-foreground shrink-0"
+              className="size-3 text-muted-foreground shrink-0"
               aria-hidden="true"
               strokeWidth={1.5}
             />
@@ -97,43 +97,43 @@ function SavedSearchPreviewTable({
             <SelectContent className="bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md">
               <SelectItem
                 value="dateAdded"
-                className="text-13 py-1.5 px-2 rounded-sm cursor-pointer"
+                className="text-13 py-1.5 px-2 rounded-md cursor-pointer font-normal"
               >
                 Date Added
               </SelectItem>
               <SelectItem
                 value="updatedAt"
-                className="text-13 py-1.5 px-2 rounded-sm cursor-pointer"
+                className="text-13 py-1.5 px-2 rounded-md cursor-pointer font-normal"
               >
                 Date Modified
               </SelectItem>
               <SelectItem
                 value="year"
-                className="text-13 py-1.5 px-2 rounded-sm cursor-pointer"
+                className="text-13 py-1.5 px-2 rounded-md cursor-pointer font-normal"
               >
                 Year
               </SelectItem>
               <SelectItem
                 value="title"
-                className="text-13 py-1.5 px-2 rounded-sm cursor-pointer"
+                className="text-13 py-1.5 px-2 rounded-md cursor-pointer font-normal"
               >
                 Title
               </SelectItem>
               <SelectItem
                 value="creator"
-                className="text-13 py-1.5 px-2 rounded-sm cursor-pointer"
+                className="text-13 py-1.5 px-2 rounded-md cursor-pointer font-normal"
               >
                 Author
               </SelectItem>
               <SelectItem
                 value="publicationTitle"
-                className="text-13 py-1.5 px-2 rounded-sm cursor-pointer"
+                className="text-13 py-1.5 px-2 rounded-md cursor-pointer font-normal"
               >
                 Publication
               </SelectItem>
               <SelectItem
                 value="citationKey"
-                className="text-13 py-1.5 px-2 rounded-sm cursor-pointer"
+                className="text-13 py-1.5 px-2 rounded-md cursor-pointer font-normal"
               >
                 Citation Key
               </SelectItem>
@@ -150,13 +150,13 @@ function SavedSearchPreviewTable({
             <SelectContent className="bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md">
               <SelectItem
                 value="desc"
-                className="text-13 py-1.5 px-2 rounded-sm cursor-pointer"
+                className="text-13 py-1.5 px-2 rounded-md cursor-pointer font-normal"
               >
                 Descending
               </SelectItem>
               <SelectItem
                 value="asc"
-                className="text-13 py-1.5 px-2 rounded-sm cursor-pointer"
+                className="text-13 py-1.5 px-2 rounded-md cursor-pointer font-normal"
               >
                 Ascending
               </SelectItem>
@@ -165,14 +165,14 @@ function SavedSearchPreviewTable({
         </div>
       </div>
 
-      <div className="max-h-40 min-h-[100px] overflow-y-auto overflow-x-auto scrollbar-thin text-11">
+      <div className="max-h-40 min-h-[100px] overflow-y-auto overflow-x-auto scrollbar-thin text-12">
         {previewSamples.length > 0 ? (
           <table
             className="w-full text-left border-collapse min-w-[480px] sm:min-w-full"
             aria-label="Matching search preview publications"
           >
             <thead>
-              <tr className="border-b border-border text-11 font-medium text-foreground">
+              <tr className="border-b border-border text-11 font-medium text-muted-foreground">
                 <th scope="col" className="py-1.5 pr-3">
                   Title
                 </th>
@@ -199,7 +199,7 @@ function SavedSearchPreviewTable({
                   >
                     <span className="flex items-center gap-1.5 truncate">
                       <FileText
-                        className="size-3 text-foreground shrink-0"
+                        className="size-3.5 text-muted-foreground shrink-0"
                         aria-hidden="true"
                       />
                       <span className="truncate">
@@ -215,10 +215,10 @@ function SavedSearchPreviewTable({
                       ? `${item.authors[0]}${item.authors.length > 1 ? " et al." : ""}`
                       : "—"}
                   </td>
-                  <td className="py-1.5 px-3 truncate text-foreground capitalize hidden sm:table-cell">
+                  <td className="py-1.5 px-3 truncate text-muted-foreground capitalize hidden sm:table-cell">
                     {item.itemType || "document"}
                   </td>
-                  <td className="py-1.5 pl-3 text-right text-foreground font-mono">
+                  <td className="py-1.5 pl-3 text-right text-muted-foreground font-mono">
                     {item.year || "—"}
                   </td>
                 </tr>
@@ -226,15 +226,15 @@ function SavedSearchPreviewTable({
             </tbody>
           </table>
         ) : (
-          <div className="h-24 flex flex-col items-center justify-center text-center p-4 text-foreground">
+          <div className="h-24 flex flex-col items-center justify-center text-center p-4 text-muted-foreground">
             {isPreviewLoading ? (
-              <p className="text-11">Searching publications...</p>
+              <p className="text-12">Searching publications...</p>
             ) : previewCount === 0 ? (
-              <p className="text-11">
+              <p className="text-12">
                 No publications match the specified criteria.
               </p>
             ) : (
-              <p className="text-11">
+              <p className="text-12">
                 Set conditions above to preview matching publications in
                 real-time.
               </p>
@@ -244,7 +244,7 @@ function SavedSearchPreviewTable({
       </div>
 
       {previewCount !== null && previewCount > previewSamples.length && (
-        <div className="pt-1.5 border-t border-border-subtle text-11 text-foreground text-center">
+        <div className="pt-1.5 border-t border-border-subtle text-11 text-muted-foreground text-center">
           + {previewCount - previewSamples.length} more publications match this
           search
         </div>
@@ -305,7 +305,7 @@ export function CreateSavedSearchModal({
             <div className="sm:col-span-2 space-y-1.5">
               <Label
                 htmlFor="smart-search-name"
-                className="text-11 font-medium text-foreground"
+                className="text-12 font-medium text-foreground"
               >
                 Name
               </Label>
@@ -318,14 +318,14 @@ export function CreateSavedSearchModal({
                 }}
                 placeholder="Saved search name..."
                 autoFocus
-                className="h-8 text-13 text-foreground bg-background hover:border-border-hover focus-visible:border-primary focus-visible:ring-ring rounded-md border-border placeholder:text-muted-foreground"
+                className="h-8 text-13 text-foreground bg-background border border-border hover:border-border-hover focus-visible:border-primary focus-visible:ring-ring rounded-md placeholder:text-muted-foreground"
               />
             </div>
 
             <div className="space-y-1.5">
               <Label
                 htmlFor="smart-search-scope"
-                className="text-11 font-medium text-foreground"
+                className="text-12 font-medium text-foreground"
               >
                 Search In
               </Label>
@@ -344,7 +344,7 @@ export function CreateSavedSearchModal({
                 <SelectContent className="bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md">
                   <SelectItem
                     value="user"
-                    className="text-13 py-1.5 px-2 rounded-sm cursor-pointer"
+                    className="text-13 py-1.5 px-2 rounded-md cursor-pointer font-normal"
                   >
                     <span className="flex items-center gap-1.5 truncate">
                       <Library
@@ -358,7 +358,7 @@ export function CreateSavedSearchModal({
                     <SelectItem
                       key={p.id}
                       value={p.id}
-                      className="text-13 py-1.5 px-2 rounded-sm cursor-pointer"
+                      className="text-13 py-1.5 px-2 rounded-md cursor-pointer font-normal"
                     >
                       <span className="flex items-center gap-1.5 truncate">
                         <Users
@@ -388,10 +388,10 @@ export function CreateSavedSearchModal({
                   aria-checked={builder.conjunction === "AND"}
                   onClick={() => builder.setConjunction("AND")}
                   className={cn(
-                    "px-2.5 py-0.5 rounded text-11 transition-colors cursor-pointer",
+                    "px-2.5 py-0.5 rounded text-12 transition-colors cursor-pointer",
                     builder.conjunction === "AND"
-                      ? "bg-background text-foreground font-medium"
-                      : "text-foreground hover:bg-background",
+                      ? "bg-background text-foreground font-medium shadow-xs"
+                      : "text-muted-foreground hover:text-foreground",
                   )}
                 >
                   All
@@ -402,10 +402,10 @@ export function CreateSavedSearchModal({
                   aria-checked={builder.conjunction === "OR"}
                   onClick={() => builder.setConjunction("OR")}
                   className={cn(
-                    "px-2.5 py-0.5 rounded text-11 transition-colors cursor-pointer",
+                    "px-2.5 py-0.5 rounded text-12 transition-colors cursor-pointer",
                     builder.conjunction === "OR"
-                      ? "bg-background text-foreground font-medium"
-                      : "text-foreground hover:bg-background",
+                      ? "bg-background text-foreground font-medium shadow-xs"
+                      : "text-muted-foreground hover:text-foreground",
                   )}
                 >
                   Any
@@ -443,6 +443,7 @@ export function CreateSavedSearchModal({
               <Checkbox
                 checked={builder.searchSubcollections}
                 onCheckedChange={(c) => builder.setSearchSubcollections(!!c)}
+                className="border-border"
               />
               <span className="text-12 text-foreground font-normal">
                 Search subcollections
@@ -452,6 +453,7 @@ export function CreateSavedSearchModal({
               <Checkbox
                 checked={builder.showOnlyTopLevel}
                 onCheckedChange={(c) => builder.setShowOnlyTopLevel(!!c)}
+                className="border-border"
               />
               <span className="text-12 text-foreground font-normal">
                 Show only top-level items
@@ -461,6 +463,7 @@ export function CreateSavedSearchModal({
               <Checkbox
                 checked={builder.includeParentAndChild}
                 onCheckedChange={(c) => builder.setIncludeParentAndChild(!!c)}
+                className="border-border"
               />
               <span className="text-12 text-foreground font-normal">
                 Include parent and child items
@@ -494,7 +497,7 @@ export function CreateSavedSearchModal({
               variant="ghost"
               onClick={() => onOpenChange(false)}
               disabled={isPending}
-              className="h-8 px-3 text-13 font-normal cursor-pointer text-foreground rounded-md hover:bg-muted"
+              className="h-8 px-3 text-13 font-medium cursor-pointer text-foreground rounded-md hover:bg-muted"
             >
               Cancel
             </Button>

@@ -33,13 +33,13 @@ import {
   useSubscribeFeedMutation,
 } from '@/features/library/core/coordinator/curation.coordinator';
 import { useSetMyPublicationMutation } from '@/features/library/core/coordinator/item-action.coordinator';
-import type { SavedFeedSubscription } from '@/features/library/domain/types/ingestion.types';
-import type { AddFeedFormValues } from '@/features/library/domain/types/core.types';
+import type { SavedFeedSubscription } from '@/features/library/types/ingestion.types';
+import type { AddFeedFormValues } from '@/features/library/types/core.types';
 import { parseBatchIdentifiersInput } from '@/features/library/domain/identifiers.domain';
 import {
   ALL_ITEM_TYPES_FLAT,
   type Item,
-} from '@/features/library/domain/types/core.types';
+} from '@/features/library/types/core.types';
 import {
   type LibraryModalPayload,
   type ModalHostProps,
@@ -387,6 +387,7 @@ function IngestionAndUtilityModalsHost({
         scopeId={effectiveScope}
         defaultCollectionId={payload?.collectionId || ''}
         initialFiles={payload?.files || payload?.initialFiles || []}
+        mode={payload?.mode === 'folder' ? 'folder' : 'file'}
         onSuccess={() => {
           closeModal();
         }}

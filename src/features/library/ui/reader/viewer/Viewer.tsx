@@ -6,7 +6,7 @@ import { PlaneEmptyState } from "@/shared/components/ui/PlaneEmptyState";
 import { PlaneErrorState } from "@/shared/components/ui/PlaneErrorState";
 import type {
   DocumentFulltext, ReaderDocument, ReaderAnnotation, AnnotationRect, ReaderNavigationTarget, PdfOutlineItem,
-} from "@/features/library/domain/types/reader.schema";
+} from "@/features/library/types/reader.types";
 import type { ReaderAnnotationTool } from "@/features/library/core/store/reader.store";
 import { ANNOTATION_PALETTE_COLORS } from "@/features/library/ui/reader/ReaderToolbar";
 import {
@@ -16,12 +16,11 @@ import { useViewerSearch, ViewerSearchBar, type PdfSearchDocumentProxy } from ".
 import { TextSelectionToolbar } from "./ViewerSmartHover";
 import { AnnotationQuickEditCard } from "./PageAnnotationOverlay";
 import { ViewerPageCanvas, DocumentPageSkeleton } from "./ViewerPageCanvas";
-import { useViewerSmartHover, ViewerSmartHoverPopover } from "./ViewerSmartHover";
 import { usePdfViewerInteraction } from "@/features/library/core/coordinator/reader/use-pdf-interaction";
 import "react-pdf/dist/Page/TextLayer.css";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import { cn } from "@/shared/lib/utils";
-import { setupPdfWorker, getSharedPdfDocumentOptions } from "@/shared/lib/pdfjs-worker";
+import { setupPdfWorker, getSharedPdfDocumentOptions, isPdfDocumentValid } from "@/shared/lib/pdfjs-worker";
 
 export { ANNOTATION_PALETTE_COLORS, DocumentPageSkeleton };
 
@@ -54,8 +53,12 @@ interface ViewerProps {
   onSelectFitMode?: (mode: "fit-width" | "fit-page" | "auto" | "custom") => void;
   rotation?: number; themeMode?: "normal" | "sepia" | "dark" | "invert";
   interactionMode?: "select" | "hand"; activeColor?: string; activeTool?: ReaderAnnotationTool;
+  onSelectColor?: (color: string) => void; onSelectTool?: (tool: ReaderAnnotationTool) => void;
   isSearchOpen?: boolean; onCloseSearch?: () => void; initialSearchQuery?: string;
   viewMode?: "single" | "continuous" | "spread"; fitMode?: "fit-width" | "fit-page" | "auto" | "custom";
+  isSuspended?: boolean;
+  initialScrollTop?: number;
+  onScrollPositionChange?: (scrollTop: number) => void;
 }
 
 export default function Viewer({
@@ -65,8 +68,12 @@ export default function Viewer({
   onDocumentLoad, onDocumentLoaded, sharedPdfDocument, onOpenInSplitView,
   zoom: zoomProp, onZoomChange, onSelectFitMode, rotation = 0, themeMode = "normal",
   interactionMode = "select", activeColor, activeTool = "select",
+  onSelectColor, onSelectTool,
   isSearchOpen = false, onCloseSearch, initialSearchQuery,
   viewMode = "continuous", fitMode = "fit-width",
+  isSuspended = false,
+  initialScrollTop,
+  onScrollPositionChange,
 }: ViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [visiblePage, setVisiblePage] = useState<number>(1);
@@ -119,14 +126,11 @@ export default function Viewer({
         } catch {
           // Ignore cleanup errors on unmount/blob transition
         }
-        try {
-          void pdfDocRef.current?.destroy?.();
-        } catch {
-          // Ignore destroy errors on unmount/blob transition
-        }
+        pdfDocRef.current = null;
+        setPdfDocument(null);
+        onDocumentLoad?.(null as never);
+        onDocumentLoaded?.(null as never);
       }
-      pdfDocRef.current = null;
-      setPdfDocument(null);
     };
   }, [blobUrl, isSharedDocumentConsumer]);
 
@@ -172,6 +176,57 @@ export default function Viewer({
     expiresAt: number;
   } | null>(null);
 
+  const [isScrolling, setIsScrolling] = useState(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const scrollDebounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const hasRestoredInitialScrollRef = useRef(false);
+
+  const handleScroll = useCallback(() => {
+    setIsScrolling(true);
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+    scrollTimeoutRef.current = setTimeout(() => {
+      setIsScrolling(false);
+    }, 1000);
+
+    if (onScrollPositionChange) {
+      if (scrollDebounceTimerRef.current) {
+        clearTimeout(scrollDebounceTimerRef.current);
+      }
+      scrollDebounceTimerRef.current = setTimeout(() => {
+        const top = scrollContainerRef.current?.scrollTop;
+        if (typeof top === "number" && !isNaN(top)) {
+          onScrollPositionChange(top);
+        }
+      }, 300);
+    }
+  }, [onScrollPositionChange]);
+
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+      if (scrollDebounceTimerRef.current) clearTimeout(scrollDebounceTimerRef.current);
+    };
+  }, []);
+
+  // Restore pixel-accurate scrollTop on document load
+  useEffect(() => {
+    if (
+      !initialScrollTop ||
+      initialScrollTop <= 0 ||
+      hasRestoredInitialScrollRef.current ||
+      numPages === 0
+    ) {
+      return;
+    }
+    const container = scrollContainerRef.current;
+    if (container) {
+      container.scrollTop = initialScrollTop;
+      hasRestoredInitialScrollRef.current = true;
+    }
+  }, [initialScrollTop, numPages]);
+
   const scrollToPage = useCallback(
     (page: number) => {
       programmaticScrollTargetRef.current = {
@@ -183,8 +238,14 @@ export default function Viewer({
         setVisiblePage(page);
         onVisiblePageChange?.(page);
       }
+      const container = scrollContainerRef.current;
       const el = pageRefs.current.get(page);
-      if (el) el.scrollIntoView({ behavior: "auto", block: "start" });
+      if (container && el) {
+        const containerRect = container.getBoundingClientRect();
+        const elRect = el.getBoundingClientRect();
+        const targetTop = container.scrollTop + (elRect.top - containerRect.top);
+        container.scrollTo({ top: Math.max(0, targetTop), behavior: "auto" });
+      }
     },
     [onVisiblePageChange],
   );
@@ -212,18 +273,6 @@ export default function Viewer({
     pageRefs,
     pdfDocument,
     scrollToPage,
-  });
-
-  const {
-    smartHoverCard,
-    setSmartHoverCard,
-    cancelHoverDismiss,
-    scheduleDismissSmartHover,
-    handleContainerMouseOver,
-  } = useViewerSmartHover({
-    fulltext,
-    numPages,
-    scrollContainerRef,
   });
 
   const handleAnnotateWithPageLabel = useCallback(
@@ -292,7 +341,7 @@ export default function Viewer({
   }, []);
 
   useEffect(() => {
-    if (numPages === 0) return;
+    if (numPages === 0 || isSuspended) return;
     const container = scrollContainerRef.current;
     if (!container) return;
 
@@ -396,7 +445,16 @@ export default function Viewer({
         if (!container) return false;
         const el = container.querySelector(selector) as HTMLElement | null;
         if (el) {
-          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          const containerRect = container.getBoundingClientRect();
+          const elRect = el.getBoundingClientRect();
+          const targetTop =
+            container.scrollTop +
+            (elRect.top - containerRect.top) -
+            (container.clientHeight / 2 - elRect.height / 2);
+          container.scrollTo({
+            top: Math.max(0, targetTop),
+            behavior: "smooth",
+          });
           observer?.disconnect();
           observer = null;
           return true;
@@ -502,17 +560,18 @@ export default function Viewer({
 
   const renderPageCard = (pageNum: number) => {
     const inWindow =
-      numPages <= 6 ||
-      viewMode === "single" ||
-      interaction.areaSelection?.pageNum === pageNum ||
-      interaction.inlineTextInput?.pageNum === pageNum ||
-      isPageInVirtualWindow({
-        pageNum,
-        visiblePage,
-        totalPages: numPages,
-        viewMode,
-        pinnedPage: targetPage?.pageNumber,
-      });
+      !isSuspended &&
+      (numPages <= 6 ||
+        viewMode === "single" ||
+        interaction.areaSelection?.pageNum === pageNum ||
+        interaction.inlineTextInput?.pageNum === pageNum ||
+        isPageInVirtualWindow({
+          pageNum,
+          visiblePage,
+          totalPages: numPages,
+          viewMode,
+          pinnedPage: targetPage?.pageNumber,
+        }));
 
     const pageAnns = annotationsByPage.get(pageNum) ?? EMPTY_ANNOTATIONS;
     const pagePulsingId =
@@ -537,7 +596,7 @@ export default function Viewer({
         key={pageNum} pageNum={pageNum} inWindow={inWindow}
         effectivePageWidth={effectivePageWidth} rotation={rotation} themeMode={themeMode}
         activeTool={activeTool} activeColor={activeColor} cachedDim={pageDimensions[pageNum]}
-        pdfDocument={sharedPdfDocProxy} pageAnnotations={pageAnns}
+        pdfDocument={sharedPdfDocProxy || pdfDocument} pageAnnotations={pageAnns}
         pulsingAnnotationId={pagePulsingId} inlineTextInput={pageInlineInput}
         areaSelection={pageAreaSelection} inkDrawing={pageInkDrawing}
         customTextRenderer={customTextRenderer} onRegisterPageRef={handleRegisterPageRef}
@@ -551,14 +610,19 @@ export default function Viewer({
   };
 
   return (
-    <div className="relative flex-1 flex flex-col min-w-0 h-full overflow-hidden transition-colors bg-background">
+    <div
+      className={cn(
+        "relative flex-1 flex flex-col min-w-0 h-full overflow-hidden transition-colors bg-background",
+        isSuspended && "invisible pointer-events-none select-none",
+      )}
+      style={isSuspended ? { contentVisibility: "hidden" as never } : undefined}
+    >
       <div
         ref={scrollContainerRef}
+        onScroll={handleScroll}
         onMouseUp={interaction.handleMouseUpCombined}
         onMouseDown={interaction.handleMouseDown}
         onMouseMove={interaction.handleMouseMove}
-        onMouseOver={handleContainerMouseOver}
-        onMouseLeave={scheduleDismissSmartHover}
         className={cn(
           "flex-1 w-full relative bg-background",
           currentZoom > 1.0
@@ -583,20 +647,6 @@ export default function Viewer({
             onNextMatch={handleNextMatch}
             onPrevMatch={handlePrevMatch}
             onClose={onCloseSearch}
-          />
-        )}
-
-        {smartHoverCard && (
-          <ViewerSmartHoverPopover
-            card={smartHoverCard}
-            onCancelDismiss={cancelHoverDismiss}
-            onScheduleDismiss={scheduleDismissSmartHover}
-            onDismiss={() => setSmartHoverCard(null)}
-            onJumpToPage={(page) => {
-              if (onNavigateWithHistory) onNavigateWithHistory(page);
-              else scrollToPage(page);
-            }}
-            onOpenInSplitView={onOpenInSplitView}
           />
         )}
 
@@ -625,7 +675,7 @@ export default function Viewer({
               />
             )}
           </div>
-        ) : sharedPdfDocProxy ? (
+        ) : sharedPdfDocProxy && isPdfDocumentValid(sharedPdfDocProxy) ? (
           <div className="w-full min-w-full flex flex-col items-center">
             {viewMode === "spread" ? (
               <div className="w-full flex flex-col items-center gap-4 pb-8 max-w-[1920px] mx-auto">
@@ -655,6 +705,7 @@ export default function Viewer({
           </div>
         ) : (
           <Document
+            key={blobUrl}
             file={blobUrl}
             options={SHARED_PDF_OPTIONS}
             externalLinkTarget="_blank"
@@ -677,31 +728,33 @@ export default function Viewer({
               </div>
             }
           >
-            {viewMode === "spread" ? (
-              <div className="w-full flex flex-col items-center gap-4 pb-8 max-w-[1920px] mx-auto">
-                {spreadPairs.map(([p1, p2]) => (
-                  <div
-                    key={p1}
-                    className="flex flex-row justify-center items-start gap-4"
-                  >
-                    {renderPageCard(p1)}
-                    {p2 && renderPageCard(p2)}
-                  </div>
-                ))}
-              </div>
-            ) : viewMode === "single" ? (
-              <div className="w-full flex flex-col items-center min-h-full justify-center">
-                {renderPageCard(
-                  Math.min(Math.max(1, visiblePage), numPages || 1),
-                )}
-              </div>
-            ) : (
-              <div className="w-full flex flex-col items-center gap-0 pb-8">
-                {Array.from({ length: numPages }, (_, i) => i + 1).map(
-                  (pageNum) => renderPageCard(pageNum),
-                )}
-              </div>
-            )}
+            {pdfDocument && numPages > 0 ? (
+              viewMode === "spread" ? (
+                <div className="w-full flex flex-col items-center gap-4 pb-8 max-w-[1920px] mx-auto">
+                  {spreadPairs.map(([p1, p2]) => (
+                    <div
+                      key={p1}
+                      className="flex flex-row justify-center items-start gap-4"
+                    >
+                      {renderPageCard(p1)}
+                      {p2 && renderPageCard(p2)}
+                    </div>
+                  ))}
+                </div>
+              ) : viewMode === "single" ? (
+                <div className="w-full flex flex-col items-center min-h-full justify-center">
+                  {renderPageCard(
+                    Math.min(Math.max(1, visiblePage), numPages || 1),
+                  )}
+                </div>
+              ) : (
+                <div className="w-full flex flex-col items-center gap-0 pb-8">
+                  {Array.from({ length: numPages }, (_, i) => i + 1).map(
+                    (pageNum) => renderPageCard(pageNum),
+                  )}
+                </div>
+              )
+            ) : null}
           </Document>
         )}
 
@@ -729,6 +782,9 @@ export default function Viewer({
             paper={paper}
             visiblePage={visiblePage}
             onAnnotate={handleAnnotateWithPageLabel}
+            onSelectColor={onSelectColor}
+            onSelectTool={onSelectTool}
+            onOpenAnnotationCard={interaction.openAnnotationCard}
             onAddToNote={onAddToNote}
             onAskAi={onAskAi}
             onClose={() => interaction.setShowFloatingMenu(false)}

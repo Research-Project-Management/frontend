@@ -3,7 +3,7 @@ import {
   normalizeSearchStr,
   calculateFilterMatchScore,
   KNOWN_TYPE_ALIASES,
-} from '@/features/library/domain/zotero-extra-parser';
+} from '@/features/library/domain/extra-metadata.mapper';
 import {
   getFieldConfig,
   parseDurationParts,
@@ -15,7 +15,7 @@ import {
   isPageInVirtualWindow,
   calculatePageAspectRatio,
   normalizeRectCoordinates,
-} from '@/features/library/domain/reader-search-outline';
+} from '@/features/library/domain/reader-search-outline.domain';
 
 describe('Library Deep Domain Models (Pure In-Process)', () => {
   describe('filter-matcher.domain', () => {

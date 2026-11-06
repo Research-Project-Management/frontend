@@ -25,7 +25,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
-import type { Collection } from '@/features/library/domain/types/core.types';
+import type { Collection } from '@/features/library/types/core.types';
 import type { ParsedFeedEntry } from '@/features/library/domain/feed-parser.domain';
 import { cn } from '@/shared/lib/utils';
 

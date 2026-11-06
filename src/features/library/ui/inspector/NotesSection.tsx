@@ -30,7 +30,7 @@ import {
 import { cn } from "@/shared/lib/utils";
 import { logger } from "@/shared/lib/logger";
 import { toast } from "sonner";
-import type { Item } from "@/features/library/domain/types/core.types";
+import type { Item } from "@/features/library/types/core.types";
 import {
   FormattedNoteBody,
   NoteEditorBox,
@@ -319,6 +319,10 @@ function NotesSectionContent({
     }
   };
 
+  if (notes.length === 0 && !isAdding && hideHeader) {
+    return null;
+  }
+
   return (
     <div
       onDragOver={(e) => {
@@ -332,7 +336,7 @@ function NotesSectionContent({
         }
       }}
       onDrop={handleDropAnnotationToNotes}
-      className="flex flex-col gap-2 min-w-0 font-sans"
+      className="flex flex-col gap-2 min-w-0 font-sans empty:hidden"
     >
       {!hideHeader && (
         <div className="flex items-center justify-between pb-1">
@@ -400,25 +404,9 @@ function NotesSectionContent({
         />
       )}
 
-      {/* Empty State */}
-      {notes.length === 0 && !isAdding && (
-        <div className="flex items-center justify-between px-1.5 py-1 text-12 text-muted-foreground select-none">
-          <span>No notes yet</span>
-          {canEdit && (
-            <button
-              type="button"
-              onClick={() => setIsAdding(true)}
-              className="text-11 font-medium text-foreground hover:underline cursor-pointer"
-            >
-              Add note
-            </button>
-          )}
-        </div>
-      )}
-
       {/* Notes List */}
       {notes.length > 0 && (
-        <div className="flex flex-col gap-1.5 min-w-0">
+        <div className="flex flex-col gap-0.5 min-w-0">
           {notes.map((n) => {
             const isEditing = editingNoteId === n.id;
             const isExpanded = expandedNoteIds.has(n.id);
@@ -452,20 +440,25 @@ function NotesSectionContent({
               <div
                 key={n.id}
                 className={cn(
-                  "group/note flex flex-col p-2.5 rounded-lg border border-border/70 bg-card text-xs min-w-0",
+                  "group/note flex flex-col px-1.5 py-0.5 rounded-md hover:bg-muted/50 text-xs min-w-0 transition-colors",
                 )}
               >
                 <div
-                  onClick={() => isLongNote && toggleExpandNote(n.id)}
+                  onClick={() => {
+                    if (isLongNote) toggleExpandNote(n.id);
+                    else if (canEdit) handleStartEdit(n);
+                  }}
                   className={cn(
-                    "flex items-center justify-between gap-1.5 min-w-0 select-none",
-                    isLongNote && "cursor-pointer",
+                    "flex items-center justify-between gap-1.5 min-h-[26px] min-w-0 select-none",
+                    isLongNote ? "cursor-pointer" : canEdit ? "cursor-text" : "",
                   )}
                 >
                   <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                    <NoteIcon className="size-3.5 text-muted-foreground shrink-0" />
+                    <div className="size-4 shrink-0 flex items-center justify-center">
+                      <NoteIcon className="size-3.5 text-muted-foreground shrink-0" />
+                    </div>
                     <span
-                      className="text-11 font-medium text-foreground truncate"
+                      className="text-xs font-normal text-foreground truncate"
                       title={displayTitle}
                     >
                       {displayTitle}
@@ -503,7 +496,7 @@ function NotesSectionContent({
                           <button
                             type="button"
                             onClick={() => handleStartEdit(n)}
-                            className="opacity-0 group-hover/note:opacity-100 max-md:opacity-100 size-6 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-opacity"
+                            className="opacity-0 group-hover/note:opacity-100 max-md:opacity-100 size-5 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-opacity"
                             aria-label="Edit note"
                           >
                             <Pencil className="size-3 shrink-0" />
@@ -536,7 +529,7 @@ function NotesSectionContent({
                                 }),
                               );
                             }}
-                            className="opacity-0 group-hover/note:opacity-100 max-md:opacity-100 size-6 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-opacity"
+                            className="opacity-0 group-hover/note:opacity-100 max-md:opacity-100 size-5 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-destructive cursor-pointer transition-opacity"
                             aria-label="Delete note"
                           >
                             <MinusCircle className="size-3.5 shrink-0" />
@@ -552,7 +545,7 @@ function NotesSectionContent({
                           <button
                             type="button"
                             onClick={() => toggleExpandNote(n.id)}
-                            className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                            className="size-5 flex items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
                             aria-label={
                               isExpanded ? "Collapse note" : "Expand note"
                             }
@@ -574,7 +567,7 @@ function NotesSectionContent({
 
                 {/* Body: Preview when collapsed, Markdown when expanded */}
                 {isExpanded ? (
-                  <div className="border-t border-border/40 mt-1.5 pt-1.5 select-text">
+                  <div className="border-t border-border/40 mt-1.5 pt-1.5 pl-6 select-text">
                     <FormattedNoteBody
                       content={n.content}
                       isExpanded={true}
@@ -589,7 +582,7 @@ function NotesSectionContent({
                       else if (canEdit) handleStartEdit(n);
                     }}
                     className={cn(
-                      "min-w-0 mt-1",
+                      "min-w-0 mt-0.5 pl-6",
                       isLongNote ? "cursor-pointer" : canEdit ? "cursor-text" : "",
                     )}
                   >
@@ -598,19 +591,6 @@ function NotesSectionContent({
                     </p>
                   </div>
                 ) : null}
-
-                {n.tags && n.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-1.5 pt-1 border-t border-border/30">
-                    {n.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="inline-flex items-center px-1.5 py-0.5 rounded-sm text-10 font-mono bg-muted/60 text-muted-foreground border border-border/50"
-                      >
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
               </div>
             );
           })}

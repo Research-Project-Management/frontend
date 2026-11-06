@@ -35,8 +35,14 @@ function isDisallowedIp(ip: string): boolean {
     cleanIp.startsWith('10.') ||
     cleanIp.startsWith('192.168.') ||
     cleanIp.startsWith('169.254.') ||
+    cleanIp.startsWith('192.0.0.') ||
+    cleanIp.startsWith('192.0.2.') ||
+    cleanIp.startsWith('198.51.100.') ||
+    cleanIp.startsWith('203.0.113.') ||
     /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(cleanIp) ||
-    /^100\.(6[4-9]|[7-9][0-9]|1[0-1][0-9]|12[0-7])\./.test(cleanIp)
+    /^100\.(6[4-9]|[7-9][0-9]|1[0-1][0-9]|12[0-7])\./.test(cleanIp) ||
+    /^198\.1[89]\./.test(cleanIp) ||
+    /^(22[4-9]|23[0-9]|24[0-9]|25[0-5])\./.test(cleanIp)
   ) {
     return true;
   }
@@ -50,7 +56,9 @@ function isDisallowedIp(ip: string): boolean {
       /^fe[89ab][0-9a-f]:/i.test(cleanIp) ||
       cleanIp.startsWith('ff') ||
       cleanIp.startsWith('::ffff:') ||
-      /^0*:0*:0*:0*:0*:ffff:/i.test(cleanIp)
+      /^0*:0*:0*:0*:0*:ffff:/i.test(cleanIp) ||
+      cleanIp.startsWith('64:ff9b:') ||
+      cleanIp.startsWith('2002:')
     ) {
       return true;
     }
@@ -101,14 +109,12 @@ async function validateHostSafety(hostname: string, port?: string): Promise<bool
 }
 
 export async function GET(request: NextRequest) {
-  // 1. Authentication check (mitigate open proxy)
+  // 1. Authentication check (mitigate open proxy - require valid unexpired access token)
   const rawToken = request.cookies.get('accessToken')?.value;
   const authHeader = request.headers.get('authorization');
   const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
-  const hasRefreshToken = Boolean(request.cookies.get('refresh_token')?.value);
 
-  const isAuthenticated =
-    isTokenValid(rawToken) || isTokenValid(bearerToken) || hasRefreshToken;
+  const isAuthenticated = isTokenValid(rawToken) || isTokenValid(bearerToken);
 
   if (!isAuthenticated) {
     return NextResponse.json({ error: 'Unauthorized access to PDF proxy' }, { status: 401 });
@@ -218,9 +224,8 @@ export async function GET(request: NextRequest) {
       break;
     }
 
-    clearTimeout(timeoutId);
-
     if (!upstreamResponse) {
+      clearTimeout(timeoutId);
       return NextResponse.json(
         { error: 'Failed to receive response from upstream server' },
         { status: 502 },
@@ -228,6 +233,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (!upstreamResponse.ok) {
+      clearTimeout(timeoutId);
       if (upstreamResponse.status === 403) {
         return NextResponse.json(
           {
@@ -239,7 +245,7 @@ export async function GET(request: NextRequest) {
       }
       return NextResponse.json(
         {
-          error: `External publisher returned HTTP ${upstreamResponse.status}: ${upstreamResponse.statusText}`,
+          error: `External publisher returned HTTP ${upstreamResponse.status}`,
         },
         { status: upstreamResponse.status }
       );
@@ -264,6 +270,7 @@ export async function GET(request: NextRequest) {
 
     // Strictly prevent XSS or non-PDF mime types being interpreted by the browser
     if (isRejectedMimeType || !isAllowedMimeType) {
+      clearTimeout(timeoutId);
       return NextResponse.json(
         {
           error:
@@ -277,6 +284,7 @@ export async function GET(request: NextRequest) {
     if (contentLengthHeader) {
       const parsedLength = parseInt(contentLengthHeader, 10);
       if (!Number.isNaN(parsedLength) && parsedLength > MAX_PAYLOAD_BYTES) {
+        clearTimeout(timeoutId);
         return NextResponse.json(
           { error: 'Remote document exceeds maximum allowed size (50MB)' },
           { status: 413 }
@@ -309,6 +317,7 @@ export async function GET(request: NextRequest) {
             mimeType !== 'application/x-pdf' &&
             !prefix.includes('%PDF-'))
         ) {
+          clearTimeout(timeoutId);
           await reader.cancel().catch(() => undefined);
           return NextResponse.json(
             {
@@ -319,26 +328,52 @@ export async function GET(request: NextRequest) {
           );
         }
       }
+      let totalBytesRead = !firstRead.done && firstRead.value ? firstRead.value.byteLength : 0;
+      if (totalBytesRead > MAX_PAYLOAD_BYTES) {
+        clearTimeout(timeoutId);
+        await reader.cancel().catch(() => undefined);
+        return NextResponse.json(
+          { error: 'Remote document exceeds maximum allowed size (50MB)' },
+          { status: 413 },
+        );
+      }
       body = new ReadableStream<Uint8Array>({
         start(streamController) {
           if (!firstRead.done && firstRead.value) {
             streamController.enqueue(firstRead.value);
           } else if (firstRead.done) {
+            clearTimeout(timeoutId);
             streamController.close();
           }
         },
         async pull(streamController) {
-          const { done, value } = await reader.read();
-          if (done) {
-            streamController.close();
-          } else if (value) {
-            streamController.enqueue(value);
+          try {
+            const { done, value } = await reader.read();
+            if (done) {
+              clearTimeout(timeoutId);
+              streamController.close();
+            } else if (value) {
+              totalBytesRead += value.byteLength;
+              if (totalBytesRead > MAX_PAYLOAD_BYTES) {
+                clearTimeout(timeoutId);
+                await reader.cancel('MAX_PAYLOAD_BYTES_EXCEEDED').catch(() => undefined);
+                streamController.error(new Error('Remote document exceeds maximum allowed size (50MB)'));
+                return;
+              }
+              streamController.enqueue(value);
+            }
+          } catch (readErr) {
+            clearTimeout(timeoutId);
+            streamController.error(readErr);
           }
         },
         cancel(reason) {
+          clearTimeout(timeoutId);
           return reader.cancel(reason);
         },
       });
+    } else {
+      clearTimeout(timeoutId);
     }
 
     const responseHeaders = new Headers();
@@ -348,6 +383,7 @@ export async function GET(request: NextRequest) {
     responseHeaders.set('Content-Security-Policy', 'sandbox');
     responseHeaders.set('Content-Disposition', 'inline; filename="document.pdf"');
     responseHeaders.set('Cache-Control', 'private, max-age=3600');
+    responseHeaders.set('Vary', 'Cookie, Authorization');
 
     if (contentLengthHeader) {
       responseHeaders.set('Content-Length', contentLengthHeader);
@@ -363,11 +399,10 @@ export async function GET(request: NextRequest) {
       status: isPartialContent ? 206 : 200,
       headers: responseHeaders,
     });
-  } catch (err: unknown) {
+  } catch {
     clearTimeout(timeoutId);
-    const msg = err instanceof Error ? err.message : String(err);
     return NextResponse.json(
-      { error: `Failed to fetch remote document: ${msg}` },
+      { error: 'Failed to fetch remote document from upstream server' },
       { status: 502 }
     );
   }

@@ -107,7 +107,7 @@ export function ItemTableHeader({
             className="px-3 h-8 py-0 align-middle font-medium cursor-pointer text-foreground select-none text-left bg-background border-b border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset"
           >
             <div className="flex items-center gap-1.5">
-              <span>Authors</span>
+              <span>Creator</span>
               {renderSortIndicator('authors')}
             </div>
           </th>
@@ -157,7 +157,7 @@ export function ItemTableHeader({
 
         {columns.itemType && (
           <th scope="col" className="px-3 h-8 py-0 align-middle font-medium text-foreground text-left bg-background border-b border-border">
-            Type
+            Item Type
           </th>
         )}
 
@@ -184,6 +184,27 @@ export function ItemTableHeader({
             <div className="flex items-center gap-1.5">
               <span>Citation Key</span>
               {renderSortIndicator('citationKey')}
+            </div>
+          </th>
+        )}
+
+        {columns.createdAt && (
+          <th
+            scope="col"
+            aria-sort={getAriaSort('createdAt')}
+            onClick={() => onSort('createdAt')}
+            onKeyDown={(e) => {
+              if (e.key === ' ' || e.key === 'Enter') {
+                e.preventDefault();
+                onSort('createdAt');
+              }
+            }}
+            tabIndex={0}
+            className="px-3 h-8 py-0 align-middle font-medium cursor-pointer text-foreground select-none text-left bg-background border-b border-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:ring-inset"
+          >
+            <div className="flex items-center gap-1.5">
+              <span>Date Added</span>
+              {renderSortIndicator('createdAt')}
             </div>
           </th>
         )}

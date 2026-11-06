@@ -15,7 +15,9 @@ import {
   Upload,
   Link2,
   Trash2,
+  Copy,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/shared/components/ui/button";
 import {
   DropdownMenu,
@@ -31,7 +33,7 @@ import {
 } from "@/shared/components/ui/tooltip";
 import { useAttachmentCoordinator } from "@/features/library/core/coordinator/attachment.coordinator";
 import { classifyAttachmentDescriptor } from "@/features/library/domain/reader.domain";
-import type { Item } from "@/features/library/domain/types/core.types";
+import type { Item } from "@/features/library/types/core.types";
 import {
   PdfPageCanvas,
   PdfPagePreview,
@@ -135,26 +137,12 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
 
   if (allAttachments.length === 0 && !isAddingLink) {
     return (
-      <>
-        <input
-          ref={fileInputRef}
-          type="file"
-          className="hidden"
-          onChange={handleFileSelect}
-        />
-        <div className="flex items-center justify-between px-1.5 py-1 text-12 text-muted-foreground select-none">
-          <span>No attachments</span>
-          {canEdit && (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="text-11 font-medium text-foreground hover:underline cursor-pointer"
-            >
-              Attach file
-            </button>
-          )}
-        </div>
-      </>
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        onChange={handleFileSelect}
+      />
     );
   }
 
@@ -180,14 +168,14 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
                       <button
                         type="button"
                         disabled={isUploadingFile}
-                        className="size-5 flex items-center justify-center rounded text-foreground hover:bg-muted cursor-pointer transition-colors"
+                        className="size-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
                         aria-label="Add attachment"
                       >
                         {isUploadingFile ? (
-                          <Loader2 className="size-3.5 animate-spin text-foreground shrink-0" />
+                          <Loader2 className="size-3.5 animate-spin shrink-0" />
                         ) : (
                           <Plus
-                            className="size-3.5 text-foreground shrink-0"
+                            className="size-3.5 shrink-0"
                             strokeWidth={1.5}
                           />
                         )}
@@ -425,9 +413,9 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
                       type="button"
                       aria-label="Attachment options"
                       onClick={(e) => e.stopPropagation()}
-                      className="size-6 rounded-md flex items-center justify-center text-foreground hover:bg-muted cursor-pointer focus-visible:outline-none focus-visible:ring-0 relative before:absolute before:-inset-2 md:before:hidden"
+                      className="size-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-foreground border border-transparent hover:border-border hover:bg-background hover:shadow-2xs transition-all duration-150 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring data-[state=open]:bg-background data-[state=open]:border-border data-[state=open]:text-foreground data-[state=open]:shadow-2xs relative before:absolute before:-inset-2 md:before:hidden"
                     >
-                      <MoreVertical className="size-3.5 text-foreground shrink-0" />
+                      <MoreVertical className="size-3.5 shrink-0" strokeWidth={1.5} />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
@@ -463,6 +451,21 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
                       >
                         <ExternalLink className="size-3.5 text-foreground shrink-0" />
                         <span>Open in New Tab</span>
+                      </DropdownMenuItem>
+                    )}
+                    {(targetUrl || (downloadUrl && isSafeBrowserUrl(downloadUrl))) && (
+                      <DropdownMenuItem
+                        onClick={() => {
+                          const urlToCopy = targetUrl || downloadUrl;
+                          if (urlToCopy) {
+                            void navigator.clipboard.writeText(urlToCopy);
+                            toast.success("Attachment link copied to clipboard");
+                          }
+                        }}
+                        className="gap-2 cursor-pointer"
+                      >
+                        <Copy className="size-3.5 text-foreground shrink-0" />
+                        <span>Copy Link</span>
                       </DropdownMenuItem>
                     )}
                     {!isLink && downloadUrl && (

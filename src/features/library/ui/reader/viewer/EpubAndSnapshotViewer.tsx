@@ -25,7 +25,7 @@ import type {
   ReaderAnnotation,
   PdfOutlineItem,
   ActiveHighlightTooltipState,
-} from '@/features/library/domain/types/reader.schema';
+} from '@/features/library/types/reader.types';
 import { AnnotationQuickEditCard } from './PageAnnotationOverlay';
 import {
   sanitizeReaderHtml,
@@ -382,7 +382,7 @@ export function EpubAndSnapshotViewer({
             </>
           ) : (
             <div className="flex items-center gap-2 text-12 text-muted-foreground truncate">
-              <Globe className="size-3.5 text-primary shrink-0" />
+              <Globe className="size-3.5 text-muted-foreground shrink-0" />
               <span className="font-medium text-foreground truncate">
                 {title || 'Archived Web Snapshot'}
               </span>
@@ -403,7 +403,7 @@ export function EpubAndSnapshotViewer({
         {/* Selection Quick Action Bar (Highlight & Add to Note) */}
         <div className="flex items-center gap-1.5 shrink-0">
           {selectedText && (
-            <div className="flex items-center gap-1 bg-primary/10 border border-primary/30 rounded-md px-2 py-0.5">
+            <div className="flex items-center gap-1 bg-muted border border-border rounded-md px-2 py-0.5">
               <div className="flex items-center gap-1 pr-1 border-r border-border/60">
                 {ANNOTATION_PALETTE_COLORS.map((c) => {
                   const isCurrent = activeColor.toLowerCase() === c.hex.toLowerCase();
@@ -442,9 +442,9 @@ export function EpubAndSnapshotViewer({
                     );
                     setSelectedText('');
                   }}
-                  className="h-6 px-2 rounded text-11 font-medium text-foreground hover:bg-primary/20 flex items-center gap-1 cursor-pointer"
+                  className="h-6 px-2 rounded text-11 font-medium text-foreground hover:bg-muted flex items-center gap-1 cursor-pointer"
                 >
-                  <Highlighter className="size-3 text-primary" />
+                  <Highlighter className="size-3 text-foreground" />
                   <span>Save Highlight</span>
                 </button>
               )}
@@ -458,9 +458,9 @@ export function EpubAndSnapshotViewer({
                     );
                     setSelectedText('');
                   }}
-                  className="h-6 px-2 rounded text-11 font-medium text-foreground hover:bg-primary/20 flex items-center gap-1 cursor-pointer"
+                  className="h-6 px-2 rounded text-11 font-medium text-foreground hover:bg-muted flex items-center gap-1 cursor-pointer"
                 >
-                  <StickyNote className="size-3 text-primary" />
+                  <StickyNote className="size-3 text-foreground" />
                   <span>Add to Note</span>
                 </button>
               )}
@@ -474,9 +474,13 @@ export function EpubAndSnapshotViewer({
                     );
                     setSelectedText('');
                   }}
-                  className="h-6 px-2 rounded text-11 font-medium whitespace-nowrap shrink-0 text-ai hover:bg-primary/20 flex items-center gap-1 cursor-pointer"
+                  className="h-6 px-2 rounded text-11 font-medium whitespace-nowrap shrink-0 text-foreground hover:bg-muted flex items-center gap-1 cursor-pointer"
                 >
-                  <Sparkles className="size-3 text-ai shrink-0" strokeWidth={1.5} />
+                  <img
+                    src="/Chat.svg"
+                    alt="AI Assistant"
+                    className="size-3 rounded-full object-cover shrink-0"
+                  />
                   <span>Ask AI</span>
                 </button>
               )}

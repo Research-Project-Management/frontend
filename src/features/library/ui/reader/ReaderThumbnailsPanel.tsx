@@ -4,7 +4,7 @@ import React, { useMemo, useRef, useEffect } from 'react';
 import { Document, Page } from 'react-pdf';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Bookmark, Loader2, ListTree, LayoutGrid, Highlighter, ChevronRight } from 'lucide-react';
-import { setupPdfWorker, getSharedPdfDocumentOptions } from '@/shared/lib/pdfjs-worker';
+import { setupPdfWorker, getSharedPdfDocumentOptions, isPdfDocumentValid } from '@/shared/lib/pdfjs-worker';
 import { cn } from '@/shared/lib/utils';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
@@ -36,8 +36,8 @@ export const LazyThumbnailPage = React.memo(function LazyThumbnailPage({
       className={cn(
         "relative flex flex-col items-center p-1 rounded-md border transition-all group overflow-hidden",
         isCurrent
-          ? "border-primary ring-2 ring-primary bg-primary/10"
-          : "border-border hover:border-border-hover bg-card",
+          ? "border-primary bg-muted/40"
+          : "border-border hover:border-border/80 bg-card",
       )}
     >
       {onToggleBookmarkPage && (
@@ -55,14 +55,14 @@ export const LazyThumbnailPage = React.memo(function LazyThumbnailPage({
           className={cn(
             "absolute top-1.5 right-1.5 z-10 size-5 rounded-sm flex items-center justify-center transition-opacity cursor-pointer",
             isBookmarked
-              ? "opacity-100 bg-background/90 text-primary shadow-2xs"
+              ? "opacity-100 bg-background/90 text-foreground"
               : "opacity-0 group-hover:opacity-100 bg-background/80 text-muted-foreground hover:text-foreground",
           )}
         >
           <Bookmark
             className={cn(
               "size-3 shrink-0",
-              isBookmarked && "fill-primary text-primary",
+              isBookmarked && "fill-foreground text-foreground",
             )}
             strokeWidth={1.5}
           />
@@ -74,15 +74,18 @@ export const LazyThumbnailPage = React.memo(function LazyThumbnailPage({
         className="w-full flex flex-col items-center cursor-pointer outline-none"
       >
         <div className="w-full aspect-[1/1.4] rounded-sm bg-background border border-border overflow-hidden flex items-center justify-center">
-          {showPdfCanvas ? (
+          {showPdfCanvas && isPdfDocumentValid(pdfDocument) ? (
             <Page
-              pdf={(pdfDocument as never) || undefined}
+              pdf={isPdfDocumentValid(pdfDocument) ? (pdfDocument as never) : undefined}
               pageNumber={pageNum}
               width={100}
               devicePixelRatio={1}
               canvasBackground="#fcfcfb"
               renderTextLayer={false}
               renderAnnotationLayer={false}
+              onLoadError={(err) => {
+                console.warn(`[LazyThumbnailPage] Failed to render thumbnail page ${pageNum}:`, err);
+              }}
               loading={
                 <div className="size-full flex items-center justify-center text-foreground text-11 font-mono">
                   {pageNum}
@@ -98,7 +101,7 @@ export const LazyThumbnailPage = React.memo(function LazyThumbnailPage({
         <span
           className={cn(
             "text-11 font-mono tabular-nums mt-1",
-            isCurrent ? "font-semibold text-primary" : "text-foreground",
+            isCurrent ? "font-semibold text-foreground" : "text-muted-foreground",
           )}
         >
           Page {pageNum}
@@ -137,7 +140,10 @@ export function ThumbnailsView({
     null,
   );
 
+  const [loadedThumbPdfDoc, setLoadedThumbPdfDoc] = React.useState<unknown>(null);
+
   useEffect(() => {
+    setLoadedThumbPdfDoc(null);
     return () => {
       try {
         void thumbPdfDocRef.current?.cleanup?.();
@@ -193,8 +199,11 @@ export function ThumbnailsView({
     );
   }
 
-  const hasSharedPdfDoc = Boolean(pdfDocument);
-  const showPdfCanvas = hasSharedPdfDoc || Boolean(pdfBlobUrl);
+  const validSharedDoc = isPdfDocumentValid(pdfDocument) ? pdfDocument : null;
+  const validThumbDoc = isPdfDocumentValid(loadedThumbPdfDoc) ? loadedThumbPdfDoc : null;
+  const effectivePdfDoc = validSharedDoc || validThumbDoc;
+  const hasSharedPdfDoc = Boolean(validSharedDoc);
+  const showPdfCanvas = Boolean(effectivePdfDoc);
 
   const gridElement = (
     <div
@@ -220,7 +229,7 @@ export function ThumbnailsView({
               isCurrent={p1 === currentPage}
               isBookmarked={bookmarkedPagesSet.has(p1)}
               showPdfCanvas={showPdfCanvas}
-              pdfDocument={pdfDocument}
+              pdfDocument={effectivePdfDoc}
               onJumpToPage={onJumpToPage}
               onToggleBookmarkPage={onToggleBookmarkPage}
             />
@@ -230,7 +239,7 @@ export function ThumbnailsView({
                 isCurrent={p2 === currentPage}
                 isBookmarked={bookmarkedPagesSet.has(p2)}
                 showPdfCanvas={showPdfCanvas}
-                pdfDocument={pdfDocument}
+                pdfDocument={effectivePdfDoc}
                 onJumpToPage={onJumpToPage}
                 onToggleBookmarkPage={onToggleBookmarkPage}
               />
@@ -241,16 +250,21 @@ export function ThumbnailsView({
     </div>
   );
 
-  if (hasSharedPdfDoc) {
+  if (hasSharedPdfDoc && validSharedDoc) {
     return gridElement;
   }
 
   return pdfBlobUrl ? (
     <Document
+      key={pdfBlobUrl}
       file={pdfBlobUrl}
       options={SHARED_PDF_OPTIONS}
       onLoadSuccess={(doc) => {
         thumbPdfDocRef.current = doc;
+        setLoadedThumbPdfDoc(doc);
+      }}
+      onLoadError={() => {
+        setLoadedThumbPdfDoc(null);
       }}
       loading={
         <div className="flex flex-col items-center justify-center p-8 text-center gap-2">
@@ -383,12 +397,12 @@ export const OutlineNodeItem = React.memo(function OutlineNodeItem({
   onSelect,
 }: OutlineNodeItemProps) {
   const level = section.level ?? 1;
-  const indentPx = Math.max(8, (level - 1) * 14 + 8);
+  const indentPx = (level - 1) * 12 + 2;
 
   return (
     <div
       className={cn(
-        "w-full flex items-center gap-1 pr-2 py-1 text-left rounded-md text-12 leading-snug transition-colors group",
+        "w-full flex items-center gap-1 pr-1.5 py-1 text-left rounded-md text-12 leading-snug transition-colors group",
         isCurrent
           ? "bg-muted text-foreground font-medium"
           : "text-foreground/85 hover:bg-muted/70 hover:text-foreground font-normal",
@@ -403,7 +417,7 @@ export const OutlineNodeItem = React.memo(function OutlineNodeItem({
             isCollapsed ? `Expand ${section.title}` : `Collapse ${section.title}`
           }
           aria-expanded={!isCollapsed}
-          className="size-4 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-background/80 shrink-0 cursor-pointer transition-colors"
+          className="size-3.5 flex items-center justify-center rounded-sm text-muted-foreground hover:text-foreground hover:bg-background/80 shrink-0 cursor-pointer transition-colors"
         >
           <ChevronRight
             className={cn(
@@ -414,12 +428,12 @@ export const OutlineNodeItem = React.memo(function OutlineNodeItem({
           />
         </button>
       ) : (
-        <span className="size-4 shrink-0" aria-hidden="true" />
+        <span className="size-3.5 shrink-0" aria-hidden="true" />
       )}
       <button
         type="button"
         onClick={() => onSelect(section)}
-        className="flex-1 min-w-0 flex items-center justify-between gap-2 text-left cursor-pointer outline-none py-0.5"
+        className="flex-1 min-w-0 flex items-center justify-between gap-1.5 text-left cursor-pointer outline-none py-0.5"
       >
         <span className="truncate flex-1">
           {section.num ? `${section.num} ` : ""}
@@ -428,7 +442,7 @@ export const OutlineNodeItem = React.memo(function OutlineNodeItem({
         {section.page && (
           <span
             className={cn(
-              "text-11 font-mono tabular-nums shrink-0",
+              "text-11 font-mono tabular-nums shrink-0 ml-1",
               isCurrent
                 ? "text-foreground font-medium"
                 : "text-muted-foreground group-hover:text-foreground",

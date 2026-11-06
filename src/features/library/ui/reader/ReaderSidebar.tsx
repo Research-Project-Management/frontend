@@ -21,7 +21,7 @@ import type {
   DocumentFulltext,
   ReaderDocument,
   PdfOutlineItem,
-} from "@/features/library/domain/types/reader.schema";
+} from "@/features/library/types/reader.types";
 import {
   buildOutlineSections,
   filterVisibleOutlineSections,
@@ -100,7 +100,7 @@ const HeaderSearchBar = ({
 }) => (
   <div className="relative flex items-center w-full h-7 rounded-md border border-border bg-background overflow-hidden">
     <Search
-      className="size-3.5 absolute left-2 text-muted-foreground pointer-events-none shrink-0"
+      className="size-3.5 absolute left-2 text-foreground pointer-events-none shrink-0"
       strokeWidth={1.5}
     />
     <Input
@@ -127,10 +127,10 @@ const HeaderSearchBar = ({
             e.stopPropagation();
           }}
           onClick={onClear}
-          className="size-5 absolute right-1 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted rounded-sm cursor-pointer"
+          className="size-5 absolute right-1 flex items-center justify-center text-foreground hover:bg-muted rounded-sm cursor-pointer"
           aria-label={clearLabel}
         >
-          <X className="size-3" strokeWidth={1.5} />
+          <X className="size-3 text-foreground" strokeWidth={1.5} />
         </button>
       </TooltipTrigger>
       <TooltipContent side="bottom" sideOffset={4} className="text-11">
@@ -164,7 +164,7 @@ interface ReaderSidebarProps {
   ) => Promise<void>;
   onBatchDelete?: (targetIds?: string[]) => Promise<void>;
   onBatchAddToNote?: (targetIds?: string[]) => void;
-  annotations?: import("@/features/library/domain/types/reader.schema").ReaderAnnotation[];
+  annotations?: import("@/features/library/types/reader.types").ReaderAnnotation[];
   annotationsCount?: number;
   isLoadingAnnotations?: boolean;
   isAnnotationsError?: boolean;
@@ -180,7 +180,7 @@ interface ReaderSidebarProps {
     annotationId: string,
     expectedVersion: number | undefined,
     dto: {
-      type?: import("@/features/library/domain/types/reader.schema").AnnotationType;
+      type?: import("@/features/library/types/reader.types").AnnotationType;
       color?: string;
       comment?: string;
       quoteText?: string;
@@ -348,7 +348,7 @@ export function ReaderSidebar({
         {/* Header with Title & Right-Aligned Actions */}
         <div
           className={cn(
-            "h-10 shrink-0 border-b border-border flex items-center bg-background select-none",
+            "h-10 shrink-0 border-b border-border flex items-center select-none",
             isOutlineSearchOpen || isAnnotationsSearchOpen
               ? "px-2"
               : "justify-between px-3",
@@ -419,7 +419,7 @@ export function ReaderSidebar({
                       className={cn(
                         "size-3.5 shrink-0 transition-colors",
                         showBookmarkedPagesOnly
-                          ? "fill-primary text-primary"
+                          ? "fill-foreground text-foreground"
                           : "text-foreground",
                       )}
                       strokeWidth={1.5}
@@ -514,7 +514,9 @@ export function ReaderSidebar({
             "flex-1 min-h-0",
             activeTab === "annotations"
               ? "overflow-hidden"
-              : "overflow-y-auto p-2 scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
+              : activeTab === "outline"
+                ? "overflow-y-auto px-1.5 py-2 scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                : "overflow-y-auto p-2 scrollbar-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
           )}
         >
           {activeTab === "outline" ? (

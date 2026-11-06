@@ -43,10 +43,10 @@ import {
   applyServerErrorToForm,
   type AddFeedFormValues,
   type Collection,
-} from '@/features/library/domain/types/core.types';
+} from '@/features/library/types/core.types';
 import { cn } from '@/shared/lib/utils';
 import { useFeedsStore, isFeedEntryInLibrary } from '@/features/library/core/store/reader.store';
-import type { SavedFeedSubscription } from '@/features/library/domain/types/ingestion.types';
+import type { SavedFeedSubscription } from '@/features/library/types/ingestion.types';
 
 export type { SavedFeedSubscription };
 

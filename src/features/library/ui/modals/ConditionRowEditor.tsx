@@ -5,30 +5,14 @@ import {
   Plus,
   Minus,
   Folder,
-  Tag,
-  FileText,
-  Type,
-  User,
-  Calendar,
-  BookOpen,
-  AlignLeft,
-  Layers,
-  Hash,
-  Barcode,
-  Globe,
-  CalendarPlus,
-  CalendarClock,
-  StickyNote,
-  Paperclip,
-  CheckCircle2,
-  Star,
-  ChevronsUpDown,
+  ChevronDown,
   Check,
   Search,
   X,
 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import {
   Popover,
   PopoverTrigger,
@@ -42,11 +26,11 @@ import {
   SelectItem,
 } from "@/shared/components/ui/select";
 import { cn } from "@/shared/lib/utils";
-import type { Collection } from "@/features/library/domain/types/core.types";
+import type { Collection } from "@/features/library/types/core.types";
 import type {
   SavedSearchField,
   SavedSearchOperator,
-} from "@/features/library/domain/types/ingestion.types";
+} from "@/features/library/types/ingestion.types";
 import {
   type ConditionRow,
   PRIMARY_SAVED_SEARCH_FIELD_ITEMS,
@@ -57,41 +41,6 @@ import {
   getFieldConfig,
   parseDurationParts,
 } from "@/features/library/domain/saved-search-ast.domain";
-
-const FIELD_ICONS: Record<
-  string,
-  React.ComponentType<{ className?: string; strokeWidth?: number | string }>
-> = {
-  title: Type,
-  creator: User,
-  year: Calendar,
-  dateAdded: CalendarPlus,
-  dateModified: CalendarClock,
-  anyField: Search,
-  itemType: Layers,
-  collection: Folder,
-  tag: Tag,
-  noteContent: StickyNote,
-  attachmentContent: FileText,
-  attachmentFilename: Paperclip,
-  doi: Hash,
-  isbn: Barcode,
-  url: Globe,
-  readStatus: CheckCircle2,
-  rating: Star,
-  publicationTitle: BookOpen,
-  abstract: AlignLeft,
-};
-
-const PRIMARY_FIELDS = PRIMARY_SAVED_SEARCH_FIELD_ITEMS.map((item) => ({
-  ...item,
-  icon: FIELD_ICONS[item.value] || BookOpen,
-}));
-
-const ALL_SCHEMA_FIELDS = ALL_SCHEMA_FIELD_ITEMS.map((item) => ({
-  ...item,
-  icon: FIELD_ICONS[item.value] || BookOpen,
-}));
 
 interface ConditionFieldSelectProps {
   value: SavedSearchField;
@@ -109,12 +58,11 @@ function ConditionFieldSelect({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const activeConfig = getFieldConfig(value);
-  const ActiveIcon = FIELD_ICONS[value] || BookOpen;
 
   const filteredPrimary = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return PRIMARY_FIELDS;
-    return PRIMARY_FIELDS.filter(
+    if (!q) return PRIMARY_SAVED_SEARCH_FIELD_ITEMS;
+    return PRIMARY_SAVED_SEARCH_FIELD_ITEMS.filter(
       (f) =>
         f.label.toLowerCase().includes(q) ||
         f.value.toLowerCase().includes(q),
@@ -123,8 +71,8 @@ function ConditionFieldSelect({
 
   const filteredAZ = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return ALL_SCHEMA_FIELDS;
-    return ALL_SCHEMA_FIELDS.filter(
+    if (!q) return ALL_SCHEMA_FIELD_ITEMS;
+    return ALL_SCHEMA_FIELD_ITEMS.filter(
       (f) =>
         f.label.toLowerCase().includes(q) ||
         f.value.toLowerCase().includes(q),
@@ -150,137 +98,117 @@ function ConditionFieldSelect({
           role="combobox"
           aria-expanded={open}
           aria-label={ariaLabel || "Select field"}
-          className="w-full sm:w-[175px] h-8 px-2.5 flex items-center justify-between gap-1.5 text-13 font-normal text-foreground bg-background border border-border rounded-md hover:border-border-hover focus-visible:outline-none focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-ring transition-colors shrink-0 select-none cursor-pointer"
+          className="w-full sm:w-[175px] h-8 px-3 flex items-center justify-between gap-2 text-13 font-normal text-foreground bg-background border border-border rounded-md hover:border-border-hover focus-visible:outline-none focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-ring transition-colors shrink-0 select-none cursor-pointer"
         >
-          <span className="flex items-center gap-1.5 min-w-0 truncate">
-            <ActiveIcon className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-            <span className="truncate">{activeConfig.label}</span>
-          </span>
-          <ChevronsUpDown className="size-3.5 text-foreground shrink-0 ml-1" strokeWidth={1.5} />
+          <span className="truncate">{activeConfig.label}</span>
+          <ChevronDown className="size-4 opacity-50 shrink-0" />
         </button>
       </PopoverTrigger>
       <PopoverContent
         align="start"
         sideOffset={4}
-        className="w-[230px] p-0 rounded-lg border border-border shadow-raised-300 bg-popover text-popover-foreground overflow-hidden z-[60]"
+        onWheel={(e) => e.stopPropagation()}
+        className="w-56 p-0 rounded-md border border-border shadow-raised-200 bg-popover text-popover-foreground overflow-hidden z-[60]"
       >
-        <div className="p-1.5 border-b border-border">
-          <div className="flex items-center gap-1.5 h-8 px-2 rounded-md bg-background border border-border text-13 focus-within:ring-1 focus-within:ring-ring focus-within:border-primary transition-colors hover:border-border-hover">
-            <Search className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-            <input
-              ref={inputRef}
-              type="text"
-              aria-label="Filter fields"
-              placeholder="Filter fields..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") {
+        <div className="flex items-center gap-2 px-2.5 h-8.5 border-b border-border">
+          <Search className="size-3.5 text-muted-foreground shrink-0" strokeWidth={1.5} />
+          <input
+            ref={inputRef}
+            type="text"
+            aria-label="Filter fields"
+            placeholder="Filter fields..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setOpen(false);
+              } else if (e.key === "Enter") {
+                const first = filteredPrimary[0] || filteredAZ[0];
+                if (first) {
+                  onChange(first.value);
                   setOpen(false);
-                } else if (e.key === "Enter") {
-                  const first = filteredPrimary[0] || filteredAZ[0];
-                  if (first) {
-                    onChange(first.value);
-                    setOpen(false);
-                  }
                 }
-              }}
-              className="flex-1 min-w-0 h-full bg-transparent text-13 text-foreground placeholder:text-muted-foreground outline-none leading-none font-sans"
-            />
-            {search && (
-              <button
-                type="button"
-                onClick={() => setSearch("")}
-                className="text-muted-foreground hover:text-foreground hover:bg-muted p-0.5 rounded cursor-pointer flex items-center justify-center shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                aria-label="Clear filter"
-              >
-                <X className="size-3 shrink-0" strokeWidth={1.5} />
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="max-h-[280px] overflow-y-auto scrollbar-thin p-1 space-y-2">
-          {filteredPrimary.length === 0 && filteredAZ.length === 0 ? (
-            <div className="py-6 text-center text-11 text-foreground select-none">
-              No matching fields
-            </div>
-          ) : (
-            <>
-              {filteredPrimary.length > 0 && (
-                <div className="space-y-0.5">
-                  <div className="px-2 pt-1 pb-0.5 text-10 font-semibold text-muted-foreground uppercase tracking-wider select-none">
-                    Primary Fields
-                  </div>
-                  {filteredPrimary.map((field) => {
-                    const isSelected = field.value === value;
-                    const Icon = field.icon;
-                    return (
-                      <button
-                        key={field.value}
-                        type="button"
-                        onClick={() => {
-                          onChange(field.value);
-                          setOpen(false);
-                        }}
-                        className={cn(
-                          "w-full h-7 px-2 py-1 flex items-center justify-between gap-2 rounded-sm text-13 text-left transition-colors cursor-pointer select-none",
-                          isSelected
-                            ? "bg-muted font-medium text-foreground"
-                            : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                        )}
-                      >
-                        <span className="flex items-center gap-2 truncate">
-                          <Icon className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                          <span className="truncate">{field.label}</span>
-                        </span>
-                        {isSelected && (
-                          <Check className="size-3.5 text-foreground shrink-0 ml-1" strokeWidth={1.5} />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              {filteredAZ.length > 0 && (
-                <div className="-mx-1 px-1 space-y-0.5 pt-1 border-t border-border">
-                  <div className="px-2 pt-1 pb-0.5 text-10 font-semibold text-muted-foreground uppercase tracking-wider select-none">
-                    All Fields (A–Z)
-                  </div>
-                  {filteredAZ.map((field) => {
-                    const isSelected = field.value === value;
-                    const Icon = field.icon;
-                    return (
-                      <button
-                        key={field.value}
-                        type="button"
-                        onClick={() => {
-                          onChange(field.value);
-                          setOpen(false);
-                        }}
-                        className={cn(
-                          "w-full h-7 px-2 py-1 flex items-center justify-between gap-2 rounded-sm text-13 text-left transition-colors cursor-pointer select-none",
-                          isSelected
-                            ? "bg-muted font-medium text-foreground"
-                            : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                        )}
-                      >
-                        <span className="flex items-center gap-2 truncate">
-                          <Icon className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                          <span className="truncate">{field.label}</span>
-                        </span>
-                        {isSelected && (
-                          <Check className="size-3.5 text-foreground shrink-0 ml-1" strokeWidth={1.5} />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </>
+              }
+            }}
+            className="flex-1 min-w-0 h-full bg-transparent text-12 text-foreground placeholder:text-muted-foreground outline-none border-none font-sans"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="text-muted-foreground hover:text-foreground hover:bg-muted p-0.5 rounded cursor-pointer flex items-center justify-center shrink-0 focus-visible:outline-none"
+              aria-label="Clear filter"
+            >
+              <X className="size-3 shrink-0" strokeWidth={1.5} />
+            </button>
           )}
         </div>
+
+        <ScrollArea type="always" className="max-h-64">
+          <div className="p-1 pr-2.5">
+            {filteredPrimary.length === 0 && filteredAZ.length === 0 ? (
+              <div className="py-4 text-center text-12 text-muted-foreground select-none">
+                No matching fields
+              </div>
+            ) : (
+              <>
+                {filteredPrimary.map((field) => {
+                  const isSelected = field.value === value;
+                  return (
+                    <button
+                      key={field.value}
+                      type="button"
+                      onClick={() => {
+                        onChange(field.value);
+                        setOpen(false);
+                      }}
+                      className={cn(
+                        "w-full h-7 px-2 flex items-center justify-between gap-2 rounded-md text-12 text-left transition-colors cursor-pointer select-none",
+                        isSelected
+                          ? "bg-muted font-medium text-foreground"
+                          : "text-foreground hover:bg-muted font-normal",
+                      )}
+                    >
+                      <span className="truncate">{field.label}</span>
+                      {isSelected && (
+                        <Check className="size-3.5 text-foreground shrink-0 ml-1" strokeWidth={1.5} />
+                      )}
+                    </button>
+                  );
+                })}
+
+                {filteredPrimary.length > 0 && filteredAZ.length > 0 && (
+                  <div className="my-1 border-t border-border" />
+                )}
+
+                {filteredAZ.map((field) => {
+                  const isSelected = field.value === value;
+                  return (
+                    <button
+                      key={field.value}
+                      type="button"
+                      onClick={() => {
+                        onChange(field.value);
+                        setOpen(false);
+                      }}
+                      className={cn(
+                        "w-full h-7 px-2 flex items-center justify-between gap-2 rounded-md text-12 text-left transition-colors cursor-pointer select-none",
+                        isSelected
+                          ? "bg-muted font-medium text-foreground"
+                          : "text-foreground hover:bg-muted font-normal",
+                      )}
+                    >
+                      <span className="truncate">{field.label}</span>
+                      {isSelected && (
+                        <Check className="size-3.5 text-foreground shrink-0 ml-1" strokeWidth={1.5} />
+                      )}
+                    </button>
+                  );
+                })}
+              </>
+            )}
+          </div>
+        </ScrollArea>
       </PopoverContent>
     </Popover>
   );
@@ -349,7 +277,7 @@ export function ConditionRowEditor({
               <SelectItem
                 key={op.value}
                 value={op.value}
-                className="text-13 py-1.5 px-2 rounded-sm cursor-pointer focus:bg-muted"
+                className="text-13 py-1.5 px-2 rounded-md cursor-pointer focus:bg-muted font-normal"
               >
                 {op.label}
               </SelectItem>
@@ -372,7 +300,7 @@ export function ConditionRowEditor({
                   onValueChange(cond.id, `${count} ${unit}`);
                 }}
                 placeholder="30"
-                className="w-20 h-8 text-13 text-foreground bg-background border-border hover:border-border-hover focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-ring rounded-md"
+                className="w-20 h-8 text-13 text-foreground bg-background border border-border hover:border-border-hover focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-ring rounded-md"
               />
               <Select
                 value={parseDurationParts(cond.value).unit}
@@ -383,7 +311,7 @@ export function ConditionRowEditor({
               >
                 <SelectTrigger
                   size="sm"
-                  className="w-[105px] h-8 text-13 text-foreground bg-background border-border hover:border-border-hover focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-ring rounded-md shrink-0"
+                  className="w-[105px] h-8 text-13 font-normal text-foreground bg-background border-border hover:border-border-hover focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-ring rounded-md shrink-0"
                 >
                   <SelectValue />
                 </SelectTrigger>
@@ -394,25 +322,25 @@ export function ConditionRowEditor({
                 >
                   <SelectItem
                     value="days"
-                    className="text-13 py-1.5 px-2 rounded-sm cursor-pointer"
+                    className="text-13 py-1.5 px-2 rounded-md cursor-pointer font-normal"
                   >
                     Days
                   </SelectItem>
                   <SelectItem
                     value="weeks"
-                    className="text-13 py-1.5 px-2 rounded-sm cursor-pointer"
+                    className="text-13 py-1.5 px-2 rounded-md cursor-pointer font-normal"
                   >
                     Weeks
                   </SelectItem>
                   <SelectItem
                     value="months"
-                    className="text-13 py-1.5 px-2 rounded-sm cursor-pointer"
+                    className="text-13 py-1.5 px-2 rounded-md cursor-pointer font-normal"
                   >
                     Months
                   </SelectItem>
                   <SelectItem
                     value="years"
-                    className="text-13 py-1.5 px-2 rounded-sm cursor-pointer"
+                    className="text-13 py-1.5 px-2 rounded-md cursor-pointer font-normal"
                   >
                     Years
                   </SelectItem>
@@ -425,7 +353,7 @@ export function ConditionRowEditor({
               onChange={(e) => onValueChange(cond.id, e.target.value)}
               placeholder={activeConfig.placeholder}
               aria-label={`Keyword for condition ${idx + 1}`}
-              className="flex-1 min-w-0 h-8 text-13 text-foreground bg-background border-border hover:border-border-hover focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-ring rounded-md placeholder:text-muted-foreground"
+              className="flex-1 min-w-0 h-8 text-13 text-foreground bg-background border border-border hover:border-border-hover focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-ring rounded-md placeholder:text-muted-foreground"
             />
           ) : cond.field === "itemType" ? (
             <div className="flex-1 min-w-0">
@@ -451,7 +379,7 @@ export function ConditionRowEditor({
                     <SelectItem
                       key={opt.value}
                       value={opt.value}
-                      className="text-13 py-1.5 px-2 rounded-sm cursor-pointer focus:bg-muted"
+                      className="text-13 py-1.5 px-2 rounded-md cursor-pointer focus:bg-muted font-normal"
                     >
                       {opt.label}
                     </SelectItem>
@@ -478,7 +406,7 @@ export function ConditionRowEditor({
                   className="max-h-56 p-1 bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md"
                 >
                   {collections.length === 0 ? (
-                    <div className="p-2 text-11 text-foreground text-center">
+                    <div className="p-2 text-12 text-muted-foreground text-center">
                       No collections found
                     </div>
                   ) : (
@@ -486,7 +414,7 @@ export function ConditionRowEditor({
                       <SelectItem
                         key={col.id}
                         value={col.id}
-                        className="text-13 py-1.5 px-2 rounded-sm cursor-pointer focus:bg-muted"
+                        className="text-13 py-1.5 px-2 rounded-md cursor-pointer focus:bg-muted font-normal"
                       >
                         <span className="flex items-center gap-1.5 truncate">
                           <Folder
@@ -509,7 +437,7 @@ export function ConditionRowEditor({
                 onChange={(e) => onValueChange(cond.id, e.target.value)}
                 placeholder="Enter tag name..."
                 aria-label={`Tag for condition ${idx + 1}`}
-                className="h-8 text-13 text-foreground bg-background border-border hover:border-border-hover focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-ring rounded-md placeholder:text-muted-foreground"
+                className="h-8 text-13 text-foreground bg-background border border-border hover:border-border-hover focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-ring rounded-md placeholder:text-muted-foreground"
               />
               <datalist id={`tag-suggestions-${cond.id}`}>
                 {tagList.map((tag) => (
@@ -524,7 +452,7 @@ export function ConditionRowEditor({
               onChange={(e) => onValueChange(cond.id, e.target.value)}
               placeholder="YYYY"
               aria-label={`Year for condition ${idx + 1}`}
-              className="flex-1 min-w-0 h-8 text-13 text-foreground bg-background border-border hover:border-border-hover focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-ring rounded-md placeholder:text-muted-foreground"
+              className="flex-1 min-w-0 h-8 text-13 text-foreground bg-background border border-border hover:border-border-hover focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-ring rounded-md placeholder:text-muted-foreground"
             />
           ) : cond.field === "readStatus" ? (
             <div className="flex-1 min-w-0">
@@ -548,7 +476,7 @@ export function ConditionRowEditor({
                     <SelectItem
                       key={opt.value}
                       value={opt.value}
-                      className="text-13 py-1.5 px-2 rounded-sm cursor-pointer focus:bg-muted"
+                      className="text-13 py-1.5 px-2 rounded-md cursor-pointer focus:bg-muted font-normal"
                     >
                       {opt.label}
                     </SelectItem>
@@ -578,7 +506,7 @@ export function ConditionRowEditor({
                     <SelectItem
                       key={opt.value}
                       value={opt.value}
-                      className="text-13 py-1.5 px-2 rounded-sm cursor-pointer focus:bg-muted"
+                      className="text-13 py-1.5 px-2 rounded-md cursor-pointer focus:bg-muted font-normal"
                     >
                       {opt.label}
                     </SelectItem>
@@ -608,7 +536,7 @@ export function ConditionRowEditor({
                     <SelectItem
                       key={opt.value}
                       value={opt.value}
-                      className="text-13 py-1.5 px-2 rounded-sm cursor-pointer focus:bg-muted"
+                      className="text-13 py-1.5 px-2 rounded-md cursor-pointer focus:bg-muted font-normal"
                     >
                       {opt.label}
                     </SelectItem>
@@ -622,7 +550,7 @@ export function ConditionRowEditor({
               onChange={(e) => onValueChange(cond.id, e.target.value)}
               placeholder={activeConfig.placeholder}
               aria-label={`${activeConfig.label} for condition ${idx + 1}`}
-              className="flex-1 min-w-0 h-8 text-13 text-foreground bg-background border-border hover:border-border-hover focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-ring rounded-md placeholder:text-muted-foreground"
+              className="flex-1 min-w-0 h-8 text-13 text-foreground bg-background border border-border hover:border-border-hover focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-ring rounded-md placeholder:text-muted-foreground"
             />
           )
         ) : (
@@ -631,27 +559,27 @@ export function ConditionRowEditor({
           </div>
         )}
 
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0">
           <Button
             type="button"
-            variant="ghost"
-            size="icon-sm"
+            variant="outline"
+            size="icon"
             onClick={() => onAddAfter(idx)}
             title="Add condition below"
             aria-label={`Add condition after condition ${idx + 1}`}
-            className="size-8 text-foreground hover:bg-muted border border-border hover:border-border-hover rounded-md cursor-pointer flex items-center justify-center shrink-0 transition-colors"
+            className="size-8 text-foreground hover:bg-muted border-border hover:border-border-hover rounded-md cursor-pointer shrink-0 shadow-none"
           >
             <Plus className="size-3.5 shrink-0" strokeWidth={1.5} />
           </Button>
           <Button
             type="button"
-            variant="ghost"
-            size="icon-sm"
+            variant="outline"
+            size="icon"
             onClick={() => onRemove(cond.id)}
             disabled={!canRemove}
             title="Remove condition"
             aria-label={`Remove condition ${idx + 1}`}
-            className="size-8 text-foreground hover:bg-muted border border-border hover:border-border-hover rounded-md cursor-pointer disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center shrink-0 transition-colors"
+            className="size-8 text-foreground hover:bg-muted border-border hover:border-border-hover rounded-md cursor-pointer shrink-0 shadow-none"
           >
             <Minus className="size-3.5 shrink-0" strokeWidth={1.5} />
           </Button>

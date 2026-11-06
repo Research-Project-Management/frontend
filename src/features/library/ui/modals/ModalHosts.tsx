@@ -30,9 +30,9 @@ import type {
   CollectionFormValues,
   Item,
   CreateSavedSearchInput,
-} from '@/features/library/domain/types/core.types';
-import type { SavedSearch } from '@/features/library/domain/types/ingestion.types';
-import type { SavedFeedSubscription } from '@/features/library/domain/types/ingestion.types';
+} from '@/features/library/types/core.types';
+import type { SavedSearch } from '@/features/library/types/ingestion.types';
+import type { SavedFeedSubscription } from '@/features/library/types/ingestion.types';
 
 export {
   buildPreConversionSnapshot,
@@ -74,6 +74,7 @@ export interface LibraryModalPayload {
   permanent?: boolean;
   files?: File[];
   initialFiles?: File[];
+  mode?: 'file' | 'folder';
   savedSearch?: SavedSearch | null;
   provider?: 'zotero' | 'mendeley';
   onConfirm?: () => Promise<void>;

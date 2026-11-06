@@ -23,7 +23,7 @@ import {
   MousePointer,
   PenTool,
   Eraser,
-  Bookmark,
+  Columns2,
 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import type { ReaderAnnotationTool } from "@/features/library/core/store/reader.store";
@@ -83,8 +83,6 @@ interface ReaderToolbarProps {
   onToggleSearch?: () => void;
   isInspectorOpen: boolean;
   onToggleInspector: () => void;
-  isPageBookmarked?: boolean;
-  onToggleBookmark?: () => void;
   isReadingMode?: boolean;
   onToggleReadingMode?: () => void;
 }
@@ -172,8 +170,6 @@ export const ReaderToolbar = memo(function ReaderToolbar({
   onToggleSearch,
   isInspectorOpen,
   onToggleInspector,
-  isPageBookmarked = false,
-  onToggleBookmark,
   isReadingMode = false,
   onToggleReadingMode,
 }: ReaderToolbarProps) {
@@ -206,13 +202,12 @@ export const ReaderToolbar = memo(function ReaderToolbar({
     <div
       role="toolbar"
       aria-label="Reader tools and navigation"
-      className="@container/toolbar relative h-10 shrink-0 border-b border-border bg-background px-2 grid grid-cols-[1fr_auto_1fr] items-center gap-2 select-none z-20 text-12 font-sans overflow-x-auto no-scrollbar"
+      className="@container/toolbar relative h-10 shrink-0 border-b border-border bg-background px-2 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 select-none z-20 text-12 font-sans overflow-x-auto overflow-y-hidden no-scrollbar whitespace-nowrap"
     >
       {/* ── 1. LEFT CLUSTER (.start): Sidebar | Zoom | Back | Page Nav ── */}
-      <div className="flex items-center gap-1 shrink-0 justify-self-start">
+      <div className="flex items-center gap-1 justify-self-start shrink-0">
         <ToolbarIconButton
           onClick={onToggleSidebar}
-          active={isSidebarOpen}
           ariaLabel={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
           tooltip={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
         >
@@ -336,38 +331,10 @@ export const ReaderToolbar = memo(function ReaderToolbar({
             {numPages || 1}
           </span>
         </form>
-
-        {onToggleBookmark && (
-          <ToolbarIconButton
-            onClick={onToggleBookmark}
-            active={isPageBookmarked}
-            ariaLabel={
-              isPageBookmarked
-                ? `Remove bookmark on page ${visiblePage}`
-                : `Bookmark page ${visiblePage}`
-            }
-            tooltip={
-              isPageBookmarked
-                ? `Remove Bookmark (Page ${visiblePage})`
-                : `Bookmark Page ${visiblePage}`
-            }
-            className="ml-0.5"
-          >
-            <Bookmark
-              className={cn(
-                "size-3.5 shrink-0 transition-colors",
-                isPageBookmarked
-                  ? "fill-primary text-primary"
-                  : "text-foreground",
-              )}
-              strokeWidth={1.5}
-            />
-          </ToolbarIconButton>
-        )}
       </div>
 
       {/* ── 2. CENTER CLUSTER (.center.tools): Annotation Tools + Color + Tool Lock ── */}
-      <div className="flex items-center gap-1 bg-muted px-1.5 py-0.5 rounded-md border border-border shrink-0 justify-self-center">
+      <div className="flex items-center gap-1 bg-muted px-1.5 py-0.5 rounded-md border border-border justify-self-center shrink-0">
         <ToolbarIconButton
           onClick={() => {
             onSelectTool?.("select");
@@ -419,30 +386,36 @@ export const ReaderToolbar = memo(function ReaderToolbar({
         {onToggleToolLocked && (
           <ToolbarIconButton
             onClick={onToggleToolLocked}
-            active={isToolLocked}
             ariaLabel={isToolLocked ? "Unlock tool" : "Lock tool"}
             tooltip={
               isToolLocked
                 ? "Tool Locked (Tool stays active after use)"
                 : "Lock Tool (Stay active)"
             }
-            className={
-              isToolLocked
-                ? "ml-0.5 bg-primary/10 text-primary border border-primary"
-                : "ml-0.5"
-            }
+            className="ml-0.5"
           >
             {isToolLocked ? (
-              <Lock className="size-3.5 shrink-0" strokeWidth={1.5} />
+              <Lock className="size-3.5 shrink-0 text-foreground" strokeWidth={1.5} />
             ) : (
-              <Unlock className="size-3.5 shrink-0" strokeWidth={1.5} />
+              <Unlock className="size-3.5 shrink-0 text-foreground" strokeWidth={1.5} />
             )}
           </ToolbarIconButton>
         )}
       </div>
 
       {/* ── 3. RIGHT CLUSTER (.end): Appearance (Aa) | Find (Ctrl+F) | Inspector Toggle ── */}
-      <div className="flex items-center gap-1 shrink-0 justify-self-end">
+      <div className="flex items-center gap-1 justify-self-end shrink-0">
+        {splitMode !== "none" && onSelectSplitMode && (
+          <ToolbarIconButton
+            onClick={() => onSelectSplitMode("none")}
+            ariaLabel="Close split view"
+            tooltip="Close Split View"
+            active
+          >
+            <Columns2 className="size-3.5 shrink-0" strokeWidth={1.5} />
+          </ToolbarIconButton>
+        )}
+
         <ReaderAppearanceMenu
           viewMode={viewMode}
           onSelectViewMode={onSelectViewMode}
@@ -470,7 +443,6 @@ export const ReaderToolbar = memo(function ReaderToolbar({
 
         <ToolbarIconButton
           onClick={onToggleInspector}
-          active={isInspectorOpen}
           ariaLabel={
             isInspectorOpen ? "Close details pane" : "Open details pane"
           }

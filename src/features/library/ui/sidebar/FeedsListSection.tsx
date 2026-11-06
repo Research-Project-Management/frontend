@@ -9,8 +9,8 @@ import { useFeedsStore } from '@/features/library/core/store/reader.store';
 import { useFeedSubscriptionsQuery, useUnsubscribeFeedMutation } from '@/features/library/core/coordinator/curation.coordinator';
 import { useLibraryCacheSynchronizer } from '@/features/library/core/coordinator/item-action.coordinator';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
-import type { SavedFeedSubscription, SavedSearch } from '@/features/library/domain/types/ingestion.types';
-import type { Collection, CollectionActionHandlers, LibraryScope, ProjectRole } from '@/features/library/domain/types/core.types';
+import type { SavedFeedSubscription, SavedSearch } from '@/features/library/types/ingestion.types';
+import type { Collection, CollectionActionHandlers, LibraryScope, ProjectRole } from '@/features/library/types/core.types';
 import { getLibraryPermissions } from '@/features/library/domain/library-permissions.policy';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
@@ -443,7 +443,7 @@ export interface ProjectLike {
   name?: string;
   role?: string;
   yourRole?: string;
-  permissions?: Partial<import('@/features/library/domain/types/core.types').LibraryPermissions> | string[] | Record<string, unknown>;
+  permissions?: Partial<import('@/features/library/types/core.types').LibraryPermissions> | string[] | Record<string, unknown>;
   effectivePermissions?: string[];
   [key: string]: unknown;
 }

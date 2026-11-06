@@ -33,7 +33,7 @@ import type {
   ReaderAnnotation,
   AnnotationFormData,
   AnnotationType,
-} from '@/features/library/domain/types/reader.schema';
+} from '@/features/library/types/reader.types';
 import {
   extractAnnotationFacets,
   computeRangeSelectedAnnotationIds,
@@ -214,9 +214,14 @@ export function AnnotationsPanel({
   );
 
   const handleJumpToPage = useCallback(
-    (pageIndex?: number, annotationId?: string) => {
-      if (pageIndex !== undefined && onNavigateToPage)
-        onNavigateToPage(pageIndex + 1, annotationId);
+    (pageIndex?: number, annotationId?: string, pageNumber?: number) => {
+      const targetPage =
+        pageNumber !== undefined && pageNumber >= 1
+          ? pageNumber
+          : pageIndex !== undefined
+            ? pageIndex + 1
+            : 1;
+      if (onNavigateToPage) onNavigateToPage(targetPage, annotationId);
     },
     [onNavigateToPage],
   );
@@ -247,7 +252,7 @@ export function AnnotationsPanel({
       } else {
         onSelectIds?.(new Set([annotation.id]));
         setLastSelectedId(annotation.id);
-        handleJumpToPage(annotation.pageIndex, annotation.id);
+        handleJumpToPage(annotation.pageIndex, annotation.id, annotation.pageNumber);
       }
     },
     [
@@ -334,7 +339,7 @@ export function AnnotationsPanel({
             <div className="flex items-center gap-1">
               <div className="relative flex-1 flex items-center min-w-0">
                 <Search
-                  className="absolute left-2.5 size-3.5 text-muted-foreground pointer-events-none shrink-0"
+                  className="absolute left-2.5 size-3.5 text-foreground pointer-events-none shrink-0"
                   strokeWidth={1.5}
                 />
                 <input
@@ -348,10 +353,10 @@ export function AnnotationsPanel({
                   <button
                     type="button"
                     onClick={() => setSearchQuery('')}
-                    className="absolute right-1.5 flex size-4 items-center justify-center text-muted-foreground hover:text-foreground rounded cursor-pointer transition-colors"
+                    className="absolute right-1.5 flex size-4 items-center justify-center text-foreground hover:bg-muted rounded cursor-pointer transition-colors"
                     aria-label="Clear search"
                   >
-                    <X className="size-3" strokeWidth={1.5} />
+                    <X className="size-3 text-foreground" strokeWidth={1.5} />
                   </button>
                 )}
               </div>
@@ -429,7 +434,7 @@ export function AnnotationsPanel({
                       type="button"
                       className={cn(
                         'h-5 px-1.5 flex items-center gap-1 rounded text-10 font-sans border border-border bg-background text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary',
-                        authorFilter !== 'all' && 'border-primary text-primary font-medium',
+                        authorFilter !== 'all' && 'bg-muted font-medium',
                       )}
                       title="Filter by Author"
                     >
@@ -472,12 +477,12 @@ export function AnnotationsPanel({
                     type="button"
                     className={cn(
                       'size-5 flex items-center justify-center rounded text-10 font-sans text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary',
-                      typeFilter !== 'all' && 'text-primary bg-primary/10',
+                      typeFilter !== 'all' && 'bg-muted font-medium',
                     )}
                     title="Filter by annotation type"
                     aria-label="Filter by annotation type"
                   >
-                    <Filter className="size-2.5 shrink-0" strokeWidth={1.5} />
+                    <Filter className="size-3 text-foreground shrink-0" strokeWidth={1.5} />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
@@ -516,7 +521,7 @@ export function AnnotationsPanel({
                     className="size-5 flex items-center justify-center text-10 font-sans text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
                     title="Sort annotations"
                   >
-                    <ArrowUpDown className="size-2.5 text-foreground shrink-0" strokeWidth={1.5} />
+                    <ArrowUpDown className="size-3 text-foreground shrink-0" strokeWidth={1.5} />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent

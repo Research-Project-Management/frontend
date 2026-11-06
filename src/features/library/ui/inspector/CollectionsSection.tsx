@@ -6,13 +6,11 @@ import {
   Library,
   Folder,
   FolderKanban,
-  FolderPlus,
   X,
   Plus,
   Search,
   Loader2,
 } from "lucide-react";
-import { useLibraryUIStore } from "@/features/library/core/store/library-ui.store";
 import { createUpdateItemMetadataCommand } from "@/features/library/core/manager/library-command.manager";
 import { useLibraryProjectContext } from "@/features/library/core/adapters/project-context.adapter";
 import {
@@ -36,7 +34,7 @@ import type {
   Item,
   Collection,
   CreateCollectionDTO,
-} from "@/features/library/domain/types/core.types";
+} from "@/features/library/types/core.types";
 
 export {
   getCollectionAncestorPath,
@@ -96,7 +94,6 @@ function CollectionPickerContent({
     handleToggleCollection,
     pushExecutedCommand,
   } = externalManager ?? internalManager;
-  const openModal = useLibraryUIStore((s) => s.openModal);
 
   // Filter collections based on search query using O(1) pre-computed index
   const filteredCollections = useMemo(() => {
@@ -169,62 +166,58 @@ function CollectionPickerContent({
   return (
     <PopoverContent
       align={align}
-      sideOffset={6}
-      className="w-[270px] p-0 rounded-lg border border-border bg-popover text-popover-foreground shadow-raised-300 overflow-hidden z-50 select-none font-sans"
+      sideOffset={4}
+      onWheel={(e) => e.stopPropagation()}
+      className="w-56 p-0 rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 overflow-hidden z-50 select-none font-sans"
       onClick={(e) => e.stopPropagation()}
     >
-      {/* Search Header */}
-      <div className="flex items-center gap-1.5 px-2.5 py-1.5 border-b border-border">
+      {/* Borderless Search Header */}
+      <div className="flex items-center gap-2 px-2.5 h-8.5 border-b border-border">
         <Search
-          className="size-3.5 text-muted-foreground shrink-0"
+          className="size-3.5 text-muted-foreground pointer-events-none shrink-0"
           strokeWidth={1.5}
         />
         <input
           type="text"
-          placeholder="Search collections..."
-          aria-label="Search collections"
+          placeholder={
+            collections.length > 0
+              ? "Filter collections..."
+              : "New collection name..."
+          }
+          aria-label="Filter or create collection"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           onKeyDown={(e) => {
-            if (
+            if (e.key === "Escape") {
+              onClose();
+            } else if (
               e.key === "Enter" &&
               searchQuery.trim() &&
               !exactMatchExists
             ) {
               e.preventDefault();
-              handleQuickCreateAndAssign();
+              void handleQuickCreateAndAssign();
             }
           }}
-          className="w-full bg-transparent text-12 text-foreground placeholder:text-muted-foreground outline-none"
+          className="flex-1 min-w-0 h-full bg-transparent text-12 text-foreground placeholder:text-muted-foreground outline-none border-none font-sans"
           autoFocus
         />
         {searchQuery && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => setSearchQuery("")}
-                className="text-muted-foreground hover:text-foreground hover:bg-muted p-0.5 rounded cursor-pointer shrink-0"
-                aria-label="Clear search"
-              >
-                <X className="size-3" strokeWidth={1.5} />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="top">Clear search</TooltipContent>
-          </Tooltip>
+          <button
+            type="button"
+            onClick={() => setSearchQuery("")}
+            className="text-muted-foreground hover:text-foreground hover:bg-muted p-0.5 rounded cursor-pointer flex items-center justify-center shrink-0 focus-visible:outline-none"
+            aria-label="Clear search"
+          >
+            <X className="size-3 shrink-0" strokeWidth={1.5} />
+          </button>
         )}
       </div>
 
-      {/* Collections List with Checkbox Selection */}
-      <div className="max-h-56 overflow-y-auto p-1 flex flex-col gap-0.5">
-        {filteredCollections.length === 0 ? (
-          <div className="py-4 px-2 text-center text-11 text-muted-foreground">
-            {searchQuery
-              ? `No collections matching "${searchQuery}"`
-              : "No collections available"}
-          </div>
-        ) : (
-          filteredCollections.map((col: Collection) => {
+      {/* Collections List or Empty State */}
+      {filteredCollections.length > 0 ? (
+        <div className="max-h-56 overflow-y-auto p-1 flex flex-col gap-0.5 scrollbar-thin">
+          {filteredCollections.map((col: Collection) => {
             const isAssigned = assignedCollectionIdsSet.has(col.id);
             const path = getCollectionAncestorPath(col.id, colMap);
 
@@ -238,10 +231,10 @@ function CollectionPickerContent({
                   checked={isAssigned}
                   onCheckedChange={() => handleToggleCollection(col.id)}
                   onClick={(e) => e.stopPropagation()}
-                  className="size-3.5 rounded-xs shrink-0 cursor-pointer"
+                  className="size-3.5 rounded-xs border-border shrink-0 cursor-pointer"
                 />
                 <Folder
-                  className="size-3.5 text-foreground shrink-0"
+                  className="size-3.5 text-muted-foreground group-hover:text-foreground shrink-0 transition-colors"
                   strokeWidth={1.5}
                 />
                 <div className="min-w-0 flex-1 flex flex-col justify-center">
@@ -256,45 +249,44 @@ function CollectionPickerContent({
                 </div>
               </div>
             );
-          })
-        )}
-      </div>
+          })}
+        </div>
+      ) : !(canEdit && searchQuery.trim() && !exactMatchExists) ? (
+        <div className="py-5 px-3 flex flex-col items-center justify-center gap-1 text-center select-none">
+          <Folder
+            className="size-4 text-muted-foreground/60 shrink-0"
+            strokeWidth={1.5}
+          />
+          <span className="text-12 text-muted-foreground">
+            {searchQuery.trim() ? "No matching collections" : "No collections yet"}
+          </span>
+        </div>
+      ) : null}
 
-      {/* Simplified footer: Create collection option */}
-      {canEdit && (
-        <div className="p-1 border-t border-border flex items-center">
-          {searchQuery.trim() && !exactMatchExists ? (
-            <button
-              type="button"
-              disabled={isCreatingQuick}
-              onClick={handleQuickCreateAndAssign}
-              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted text-foreground text-12 cursor-pointer transition-colors"
-            >
-              {isCreatingQuick ? (
-                <Loader2 className="size-3.5 animate-spin shrink-0" />
-              ) : (
-                <Plus className="size-3.5 shrink-0" strokeWidth={1.5} />
-              )}
-              <span className="truncate">
-                Create <strong>&ldquo;{searchQuery.trim()}&rdquo;</strong>
-              </span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                onClose();
-                openModal("CREATE_COLLECTION", {
-                  assignToItemId: item.id,
-                  currentCollectionIds: Array.from(assignedCollectionIdsSet),
-                });
-              }}
-              className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-muted text-foreground text-12 cursor-pointer transition-colors font-normal"
-            >
-              <FolderPlus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-              <span>New collection...</span>
-            </button>
-          )}
+      {/* Inline Quick-Create Row (only shown when typing a new collection name) */}
+      {canEdit && searchQuery.trim() && !exactMatchExists && (
+        <div
+          className={
+            filteredCollections.length > 0
+              ? "p-1 border-t border-border"
+              : "p-1"
+          }
+        >
+          <button
+            type="button"
+            disabled={isCreatingQuick}
+            onClick={handleQuickCreateAndAssign}
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md bg-muted/60 hover:bg-muted text-foreground text-12 cursor-pointer transition-colors"
+          >
+            {isCreatingQuick ? (
+              <Loader2 className="size-3.5 animate-spin text-muted-foreground shrink-0" />
+            ) : (
+              <Plus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+            )}
+            <span className="truncate">
+              Create <strong>&ldquo;{searchQuery.trim()}&rdquo;</strong>
+            </span>
+          </button>
         </div>
       )}
     </PopoverContent>
@@ -510,7 +502,7 @@ export default function CollectionsSection(props: CollectionsSectionProps) {
               </div>
               <div className="min-w-0 flex-1 flex flex-col justify-center">
                 {col.path && (
-                  <span className="text-10 text-foreground leading-none truncate mb-0.5">
+                  <span className="text-10 text-muted-foreground leading-none truncate mb-0.5">
                     {col.path}
                   </span>
                 )}

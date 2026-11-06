@@ -282,7 +282,7 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
   describe('LDE3 Domain, Store & SDK Architectural Invariants', () => {
     it('recognizes item.isMyPublication in isItemInMyPublications and projects it in mapBackendItem', async () => {
       const { isItemInMyPublications } = await import('@/features/library/domain/system-views.policy');
-      const { mapBackendItem } = await import('@/features/library/domain/metadata-mapper');
+      const { mapBackendItem } = await import('@/features/library/domain/metadata.mapper');
 
       expect(isItemInMyPublications({ id: '1', title: 'A', isMyPublication: true })).toBe(true);
       expect(isItemInMyPublications({ id: '2', title: 'B', isInMyPublications: true })).toBe(true);
@@ -301,7 +301,7 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
 
     it('normalizes canonical CSL citation style IDs across domain and CitationService', async () => {
       const { normalizeCitationStyleId, CANONICAL_CSL_STYLE_IDS } = await import(
-        '@/features/library/domain/citations'
+        '@/features/library/domain/citations.domain'
       );
       const { CitationService } = await import(
         '@/features/library/sdk/clients/attachments-annotations.client'
@@ -428,9 +428,9 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
       const {
         computeDuplicateSetKey,
         getDeterministicDuplicateGroupKey,
-      } = await import('@/features/library/domain/diff');
-      const { getItemAuthorsSummary } = await import('@/features/library/domain/creators');
-      const { formatAuthors } = await import('@/features/library/domain/citations');
+      } = await import('@/features/library/domain/diff.domain');
+      const { getItemAuthorsSummary } = await import('@/features/library/domain/creators.domain');
+      const { formatAuthors } = await import('@/features/library/domain/citations.domain');
 
       const items = [
         { id: 'item-b', title: 'B', itemType: 'journalArticle' },
@@ -449,7 +449,7 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
     });
 
     it('computes field candidate selection and recommendation state via resolveMergeFieldOptionState', async () => {
-      const { resolveMergeFieldOptionState, selectRecommendedFieldValue } = await import('@/features/library/domain/diff');
+      const { resolveMergeFieldOptionState, selectRecommendedFieldValue } = await import('@/features/library/domain/diff.domain');
 
       // Priority coalesce + 3 deterministic upgrade rules (DOI, Venue, Completeness)
       expect(
@@ -542,7 +542,182 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
       notifyDraftCacheCleared('item-1');
       expect(getGroupMergeDraft('item-1::item-2')).toBeUndefined();
     });
+
+    it('computes adaptive upload concurrency from KB to MB and bundles lightweight CSV/BibTeX files by byte budget', async () => {
+      const {
+        computeAdaptiveUploadConcurrency,
+        bundleLightweightTextFiles,
+      } = await import(
+        '@/features/library/core/coordinator/file-ingestion.strategies'
+      );
+
+      // 1. Tiny files in KB (< 256 KB avg) -> scales up to 10 workers
+      const tinyFiles = Array.from({ length: 20 }, () => ({ size: 12 * 1024 }));
+      expect(computeAdaptiveUploadConcurrency(tinyFiles)).toBe(10);
+
+      // 2. Medium PDFs (4 MB avg) -> 4 workers (16 MB / 4 MB)
+      const mediumFiles = Array.from({ length: 10 }, () => ({
+        size: 4 * 1024 * 1024,
+      }));
+      expect(computeAdaptiveUploadConcurrency(mediumFiles)).toBe(4);
+
+      // 3. Heavy scanned books (25 MB avg) -> throttles down to 2 workers
+      const heavyFiles = Array.from({ length: 10 }, () => ({
+        size: 25 * 1024 * 1024,
+      }));
+      expect(computeAdaptiveUploadConcurrency(heavyFiles)).toBe(2);
+
+      // 4. Bundling 200 tiny CSV files (each ~100 bytes) into a single deduplicated-header batch (max 150 files/bundle -> 2 bundles!)
+      const csvEntries = Array.from({ length: 200 }, (_, i) => {
+        const csvContent = `Title,DOI,Year\n"Paper ${i + 1}",10.1000/test-${i + 1},2025`;
+        const file = new File([csvContent], `paper_${i + 1}.csv`, {
+          type: 'text/csv',
+        });
+        return {
+          file,
+          index: i,
+          provisionalId: `prov-${i}`,
+        };
+      });
+
+      const { bundles, passthroughEntries } =
+        await bundleLightweightTextFiles(csvEntries);
+
+      expect(passthroughEntries).toHaveLength(0);
+      // 200 files capped at 150 files/bundle -> 2 bundles (150 + 50) instead of 200 HTTP requests!
+      expect(bundles).toHaveLength(2);
+      expect(bundles[0]?.entries).toHaveLength(150);
+      expect(bundles[1]?.entries).toHaveLength(50);
+
+      const firstBundleLines = bundles[0]!.mergedContent.split('\n');
+      // Header line + 150 data rows = 151 lines (header is NOT repeated 150 times!)
+      expect(firstBundleLines).toHaveLength(151);
+      expect(firstBundleLines[0]).toBe('Title,DOI,Year');
+      expect(firstBundleLines[1]).toContain('Paper 1');
+      expect(firstBundleLines[150]).toContain('Paper 150');
+
+      // 5. Bundling lightweight CSL-JSON (.json) files into a single valid JSON array
+      const jsonEntries = Array.from({ length: 10 }, (_, i) => {
+        const jsonContent = JSON.stringify({
+          id: `csl-${i + 1}`,
+          type: 'article-journal',
+          title: `CSL Paper ${i + 1}`,
+          DOI: `10.1000/csl-${i + 1}`,
+        });
+        return {
+          file: new File([jsonContent], `item_${i + 1}.json`, {
+            type: 'application/json',
+          }),
+          index: i,
+          provisionalId: `prov-json-${i}`,
+        };
+      });
+      const jsonBundleRes = await bundleLightweightTextFiles(jsonEntries);
+      expect(jsonBundleRes.bundles).toHaveLength(1);
+      expect(jsonBundleRes.bundles[0]?.source).toBe('csl_json');
+      const parsedMergedJson = JSON.parse(
+        jsonBundleRes.bundles[0]!.mergedContent,
+      ) as Array<{ title: string }>;
+      expect(parsedMergedJson).toHaveLength(10);
+      expect(parsedMergedJson[0]?.title).toBe('CSL Paper 1');
+      expect(parsedMergedJson[9]?.title).toBe('CSL Paper 10');
+    });
+
+    it('sniffs PDF front-matter/XMP, ACL/BioRxiv/PMC filenames, FlateDecode streams, and computes WebCrypto SHA-256', async () => {
+      const { sniffPdfEdgeIdentifier, computeEdgeFileSha256 } = await import(
+        '@/features/library/domain/identifiers.domain'
+      );
+
+      // 1. Sniff XMP <prism:doi> from first 128KB of a PDF
+      const xmpPdfBytes =
+        '%PDF-1.7\n<x:xmpmeta><rdf:Description><prism:doi>10.1038/s41586-021-03819-2</prism:doi></rdf:Description></x:xmpmeta>\n%%EOF';
+      const xmpFile = new File([xmpPdfBytes], 'alphafold.pdf', {
+        type: 'application/pdf',
+      });
+      const sniffedDoi = await sniffPdfEdgeIdentifier(xmpFile);
+      expect(sniffedDoi).toEqual({
+        type: 'doi',
+        value: '10.1038/s41586-021-03819-2',
+      });
+
+      // 2. Sniff arXiv watermark from PDF front-matter
+      const arxivPdfBytes =
+        '%PDF-1.5\nstream\narXiv:1706.03762v5 [cs.CL] 2 Aug 2023\nendstream\n%%EOF';
+      const arxivFile = new File([arxivPdfBytes], 'attention.pdf', {
+        type: 'application/pdf',
+      });
+      const sniffedArxiv = await sniffPdfEdgeIdentifier(arxivFile);
+      expect(sniffedArxiv).toEqual({
+        type: 'arxiv',
+        value: '1706.03762v5',
+      });
+
+      // 3. Sniff ACL Anthology, BioRxiv, PMC, and OpenReview filename patterns
+      expect(
+        await sniffPdfEdgeIdentifier(
+          new File(['%PDF'], '2023.acl-long.123.pdf', { type: 'application/pdf' }),
+        ),
+      ).toEqual({ type: 'doi', value: '10.18653/v1/2023.acl-long.123' });
+
+      expect(
+        await sniffPdfEdgeIdentifier(
+          new File(['%PDF'], '2023.05.12.540123v1.full.pdf', { type: 'application/pdf' }),
+        ),
+      ).toEqual({ type: 'doi', value: '10.1101/2023.05.12.540123' });
+
+      expect(
+        await sniffPdfEdgeIdentifier(
+          new File(['%PDF'], 'PMC9876543.pdf', { type: 'application/pdf' }),
+        ),
+      ).toEqual({ type: 'pmid', value: 'PMC9876543' });
+
+      // 4. Sniff compressed FlateDecode stream inside a PDF using browser DecompressionStream
+      if (typeof CompressionStream !== 'undefined') {
+        const rawPageText = 'BT /F1 12 Tf (arXiv:2401.99999v2 [cs.AI]) Tj ET';
+        const cs = new CompressionStream('deflate');
+        const writer = cs.writable.getWriter();
+        void writer.write(new TextEncoder().encode(rawPageText));
+        void writer.close();
+        const deflatedBytes = new Uint8Array(
+          await new Response(cs.readable).arrayBuffer(),
+        );
+        const prefix = new TextEncoder().encode(
+          '%PDF-1.7\n1 0 obj << /Filter /FlateDecode >>\nstream\n',
+        );
+        const suffix = new TextEncoder().encode('\nendstream\nendobj\n%%EOF');
+        const fullPdf = new Uint8Array(
+          prefix.length + deflatedBytes.length + suffix.length,
+        );
+        fullPdf.set(prefix, 0);
+        fullPdf.set(deflatedBytes, prefix.length);
+        fullPdf.set(suffix, prefix.length + deflatedBytes.length);
+
+        const flatePdfFile = new File([fullPdf], 'compiled_latex.pdf', {
+          type: 'application/pdf',
+        });
+        expect(await sniffPdfEdgeIdentifier(flatePdfFile)).toEqual({
+          type: 'arxiv',
+          value: '2401.99999v2',
+        });
+      }
+
+      // 5. WebCrypto SHA-256 produces identical 64-char hex digest for identical binary content regardless of filename
+      const fileCopyA = new File([xmpPdfBytes], 'copy_a.pdf', {
+        type: 'application/pdf',
+      });
+      const fileCopyB = new File([xmpPdfBytes], 'copy_b.pdf', {
+        type: 'application/pdf',
+      });
+      const [hashA, hashB] = await Promise.all([
+        computeEdgeFileSha256(fileCopyA),
+        computeEdgeFileSha256(fileCopyB),
+      ]);
+      expect(hashA).toBeTruthy();
+      expect(hashA).toHaveLength(64);
+      expect(hashA).toBe(hashB);
+    });
   });
 });
+
 
 

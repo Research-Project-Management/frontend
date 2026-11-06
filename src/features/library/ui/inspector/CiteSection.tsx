@@ -32,7 +32,7 @@ import {
 import type {
   Item,
   CslStyle,
-} from "@/features/library/domain/types/core.types";
+} from "@/features/library/types/core.types";
 import {
   generateCitationKey,
   getCleanStyleLabel,
@@ -97,9 +97,32 @@ export default function CiteSection({ item, scopeId }: CiteSectionProps) {
 
   const dropdownStyles = useMemo(() => {
     if (!serverStyles || serverStyles.length === 0) return [];
-    const secondaries = serverStyles.filter((s) => !s.isPrimary);
-    return secondaries.length > 0 ? secondaries : serverStyles.slice(4);
-  }, [serverStyles]);
+    const coreIdSet = new Set(["auto", "apa-7th", "apa", "ieee", "mla-9th", "mla", "bibtex"]);
+    const baseList = serverStyles.filter(
+      (s) => !coreIdSet.has(normalizeCitationStyleId(s.id)) && s.id !== "auto",
+    );
+    const list = baseList.length > 0 ? baseList : serverStyles.slice(4);
+    if (
+      searchedStyle &&
+      !coreIdSet.has(normalizeCitationStyleId(searchedStyle.id)) &&
+      !list.some(
+        (s) =>
+          normalizeCitationStyleId(s.id) ===
+          normalizeCitationStyleId(searchedStyle.id),
+      )
+    ) {
+      return [
+        {
+          id: searchedStyle.id,
+          name: searchedStyle.label,
+          shortTitle: searchedStyle.label,
+          category: "author-date" as const,
+        },
+        ...list,
+      ];
+    }
+    return list;
+  }, [serverStyles, searchedStyle]);
 
   const handleSelectSearchedStyle = useCallback(
     (style: { id: string; label: string }) => {

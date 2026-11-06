@@ -2,13 +2,10 @@
 
 import React, { useMemo } from 'react';
 import {
-  FolderInput,
   FolderPlus,
   FolderMinus,
-  Copy,
   Trash2,
   Folder,
-  Library,
   Quote,
   Download,
   RotateCcw,
@@ -16,7 +13,6 @@ import {
   ShieldAlert,
   Star,
   Award,
-  RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import {
@@ -36,14 +32,14 @@ import type {
   Collection,
   CslStyle,
   Item,
-} from '@/features/library/domain/types/core.types';
+} from '@/features/library/types/core.types';
 
 interface BatchMoveCollectionPopoverProps {
-  isUnfiledView: boolean;
+  isUnfiledView?: boolean;
   isAllProcessingSelected: boolean;
-  canMoveToRootUnfiled: boolean;
-  isProjectScope: boolean;
-  rootLibraryName: string;
+  canMoveToRootUnfiled?: boolean;
+  isProjectScope?: boolean;
+  rootLibraryName?: string;
   targetableCollections: Collection[];
   allCollections?: Collection[];
   onBatchMove: (collectionId: string | null) => void;
@@ -51,11 +47,7 @@ interface BatchMoveCollectionPopoverProps {
 }
 
 export function BatchMoveCollectionPopover({
-  isUnfiledView,
   isAllProcessingSelected,
-  canMoveToRootUnfiled,
-  isProjectScope,
-  rootLibraryName,
   targetableCollections,
   allCollections,
   onBatchMove,
@@ -76,121 +68,61 @@ export function BatchMoveCollectionPopover({
     return labels;
   }, [allCollections, targetableCollections]);
 
-  return (
-    <>
-      {onBatchAssign && !isUnfiledView && targetableCollections.length > 0 && (
-        <DropdownMenu>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={isAllProcessingSelected}
-                  className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none relative before:absolute before:-inset-1 md:before:hidden"
-                >
-                  <FolderPlus className="size-3.5 text-foreground shrink-0" />
-                  <span>Add to</span>
-                </Button>
-              </DropdownMenuTrigger>
-            </TooltipTrigger>
-            <TooltipContent side="top" sideOffset={8}>
-              Add to collection (keep existing collections)
-            </TooltipContent>
-          </Tooltip>
-          <DropdownMenuContent
-            align="center"
-            sideOffset={8}
-            onCloseAutoFocus={(e) => e.preventDefault()}
-            className="w-64 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 max-h-64 overflow-y-auto"
-          >
-            {targetableCollections.map((c) => {
-              const fullLabel = collectionBreadcrumbMap.get(c.id) || c.name;
-              return (
-                <DropdownMenuItem
-                  key={c.id}
-                  onClick={() => onBatchAssign(c.id, c.name)}
-                  className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-                >
-                  <Folder
-                    className="size-4 text-foreground shrink-0"
-                    strokeWidth={1.5}
-                  />
-                  <span className="truncate" title={fullLabel}>
-                    {fullLabel}
-                  </span>
-                </DropdownMenuItem>
-              );
-            })}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
+  if (targetableCollections.length === 0) return null;
 
-      <DropdownMenu>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={isAllProcessingSelected}
-                className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none relative before:absolute before:-inset-1 md:before:hidden"
-              >
-                <FolderInput className="size-3.5 text-foreground shrink-0" />
-                <span>{isUnfiledView ? 'Assign to' : 'Move to'}</span>
-              </Button>
-            </DropdownMenuTrigger>
-          </TooltipTrigger>
-          <TooltipContent side="top" sideOffset={8}>
-            {isUnfiledView ? 'Assign to collection' : 'Move to collection'}
-          </TooltipContent>
-        </Tooltip>
-        <DropdownMenuContent
-          align="center"
-          sideOffset={8}
-          onCloseAutoFocus={(e) => e.preventDefault()}
-          className="w-64 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 max-h-64 overflow-y-auto"
-        >
-          {canMoveToRootUnfiled && (
+  return (
+    <DropdownMenu>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={isAllProcessingSelected}
+              className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none relative before:absolute before:-inset-1 md:before:hidden"
+            >
+              <FolderPlus className="size-3.5 text-foreground shrink-0" />
+              <span>Add to collection</span>
+            </Button>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent side="top" sideOffset={8}>
+          Add selected items to collection
+        </TooltipContent>
+      </Tooltip>
+      <DropdownMenuContent
+        align="center"
+        side="top"
+        sideOffset={8}
+        onCloseAutoFocus={(e) => e.preventDefault()}
+        className="w-64 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 max-h-64 overflow-y-auto"
+      >
+        {targetableCollections.map((c) => {
+          const fullLabel = collectionBreadcrumbMap.get(c.id) || c.name;
+          return (
             <DropdownMenuItem
-              onClick={() => onBatchMove(null)}
+              key={c.id}
+              onClick={() => {
+                if (onBatchAssign) {
+                  onBatchAssign(c.id, c.name);
+                } else {
+                  onBatchMove(c.id);
+                }
+              }}
               className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
             >
-              {isProjectScope ? (
-                <Folder
-                  className="size-4 text-foreground shrink-0"
-                  strokeWidth={1.5}
-                />
-              ) : (
-                <Library
-                  className="size-4 text-foreground shrink-0"
-                  strokeWidth={1.5}
-                />
-              )}
-              <span>{rootLibraryName} (Unfile)</span>
+              <Folder
+                className="size-4 text-foreground shrink-0"
+                strokeWidth={1.5}
+              />
+              <span className="truncate" title={fullLabel}>
+                {fullLabel}
+              </span>
             </DropdownMenuItem>
-          )}
-          {targetableCollections.map((c) => {
-            const fullLabel = collectionBreadcrumbMap.get(c.id) || c.name;
-            return (
-              <DropdownMenuItem
-                key={c.id}
-                onClick={() => onBatchMove(c.id)}
-                className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-              >
-                <Folder
-                  className="size-4 text-foreground shrink-0"
-                  strokeWidth={1.5}
-                />
-                <span className="truncate" title={fullLabel}>
-                  {fullLabel}
-                </span>
-              </DropdownMenuItem>
-            );
-          })}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -211,7 +143,6 @@ export function BatchCitationExportPopovers({
   effectiveScopeId,
   retractedCount,
   onCopyMultiCite,
-  onCopyInTextCite,
   onExportAllBibtex,
   onDownloadBibFile,
 }: BatchCitationExportPopoversProps) {
@@ -241,7 +172,7 @@ export function BatchCitationExportPopovers({
           align="center"
           side="top"
           sideOffset={8}
-          className="w-auto min-w-[240px] max-w-[320px] p-1.5 space-y-0.5 bg-popover border border-border rounded-md shadow-raised-200"
+          className="w-auto min-w-[200px] max-w-[300px] p-1.5 space-y-0.5 bg-popover border border-border rounded-md shadow-raised-200"
         >
           {citationStyles.map((style) => (
             <DropdownMenuItem
@@ -256,38 +187,20 @@ export function BatchCitationExportPopovers({
           <div className="mx-1 h-px my-1 bg-border" />
 
           <DropdownMenuItem
+            onClick={onExportAllBibtex}
+            className="h-8 gap-2 px-2.5 text-13 cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors whitespace-nowrap font-mono text-11"
+          >
+            <span>BibTeX</span>
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
             onClick={() => onCopyMultiCite('latex')}
             className="h-8 gap-2 px-2.5 text-13 cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors whitespace-nowrap font-mono text-11"
           >
             <span>LaTeX \cite</span>
           </DropdownMenuItem>
-
-          <DropdownMenuItem
-            onClick={() => onCopyInTextCite('apa')}
-            className="h-8 gap-2 px-2.5 text-13 cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors whitespace-nowrap"
-          >
-            <span>In-Text Citation</span>
-          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-
-      {/* Copy All BibTeX */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onExportAllBibtex}
-            className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
-          >
-            <Copy className="size-3.5 shrink-0 text-foreground" />
-            <span>Copy BibTeX</span>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="top" sideOffset={8}>
-          Copy BibTeX
-        </TooltipContent>
-      </Tooltip>
 
       {/* Export Dropdown (.bib, .ris, .json, .csv, .md) */}
       <DropdownMenu>
@@ -405,12 +318,10 @@ export function BatchSmartViewActions({
   canEdit,
   selectedCount,
   isAllProcessingSelected,
-  isCheckingRetraction,
   isUnflaggingRetraction,
   onBatchMerge,
   onBatchUnstar,
   onBatchRemoveFromMyPublications,
-  onBatchRecheckRetraction,
   onBatchClearRetractionFlags,
 }: BatchSmartViewActionsProps) {
   if (effectiveIsTrash || !canEdit) return null;
@@ -480,48 +391,25 @@ export function BatchSmartViewActions({
         </Tooltip>
       )}
 
-      {/* Retracted Items Page Actions: Re-verify & Clear Flag */}
-      {isRetractedView && (
-        <>
-          {onBatchRecheckRetraction && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={isAllProcessingSelected || isCheckingRetraction}
-                  onClick={() => void onBatchRecheckRetraction()}
-                  className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
-                >
-                  <RefreshCw className="size-3.5 shrink-0 text-foreground" />
-                  <span>Re-check retraction</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={8}>
-                Re-verify retraction status for selected items
-              </TooltipContent>
-            </Tooltip>
-          )}
-          {onBatchClearRetractionFlags && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={isAllProcessingSelected || isUnflaggingRetraction}
-                  onClick={() => void onBatchClearRetractionFlags()}
-                  className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
-                >
-                  <ShieldAlert className="size-3.5 shrink-0 text-foreground" />
-                  <span>Clear flag</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={8}>
-                Clear retraction flag on selected items
-              </TooltipContent>
-            </Tooltip>
-          )}
-        </>
+      {/* Retracted Items Page Action: Clear Flag */}
+      {isRetractedView && onBatchClearRetractionFlags && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={isAllProcessingSelected || isUnflaggingRetraction}
+              onClick={() => void onBatchClearRetractionFlags()}
+              className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
+            >
+              <ShieldAlert className="size-3.5 shrink-0 text-foreground" />
+              <span>Clear flag</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top" sideOffset={8}>
+            Clear retraction flag on selected items
+          </TooltipContent>
+        </Tooltip>
       )}
     </>
   );

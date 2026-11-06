@@ -25,7 +25,7 @@ import {
   SlidersHorizontal,
   AlertTriangle,
 } from "lucide-react";
-import type { Item } from "@/features/library/domain/types/items.types";
+import type { Item } from "@/features/library/types/items.types";
 import { getItemAuthorsSummary } from "@/features/library/domain/creators.domain";
 import { useDuplicateMergeState } from "@/features/library/core/coordinator/curation.coordinator";
 import {

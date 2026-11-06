@@ -65,7 +65,7 @@ export const ToolbarIconButton = React.memo(function ToolbarIconButton({
           data-active={active || undefined}
           className={cn(
             "size-7 flex items-center justify-center rounded-md transition-colors cursor-pointer relative before:absolute before:-inset-2 md:before:hidden outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:opacity-30 disabled:hover:bg-transparent text-foreground hover:bg-muted",
-            active && "bg-background text-primary font-medium ring-1 ring-inset ring-border shadow-2xs",
+            active && "bg-muted text-foreground font-medium",
             className,
           )}
         >
@@ -381,8 +381,8 @@ export const ReaderAppearanceMenu = React.memo(function ReaderAppearanceMenu({
                   className={cn(
                     "flex-1 py-1 text-center text-11 rounded-sm border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
                     themeMode === mode
-                      ? "border-primary bg-primary/10 text-primary font-medium"
-                      : "border-border bg-background text-foreground hover:bg-muted",
+                      ? "border-border bg-muted text-foreground font-medium"
+                      : "border-border/60 bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
                   )}
                 >
                   {label}

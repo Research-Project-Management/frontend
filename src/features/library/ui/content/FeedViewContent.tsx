@@ -11,7 +11,7 @@ import {
   useCreateLibraryItemMutation,
 } from '@/features/library/core/coordinator/item-action.coordinator';
 import { useCollections } from '@/features/library/core/coordinator/collection.coordinator';
-import type { Collection } from '@/features/library/domain/types/core.types';
+import type { Collection } from '@/features/library/types/core.types';
 import {
   normalizeFetchedFeedEntries,
   filterFeedEntriesByRetention,
@@ -20,6 +20,7 @@ import {
   type FeedFetchApiResponse,
 } from '@/features/library/domain/feed-parser.domain';
 import { executeSaveFeedEntryWithFeedback } from '@/features/library/core/coordinator/ingestion.coordinator';
+import { safeHttpUrl } from '@/features/library/domain/system-views.policy';
 import { isEditableOrModalElementFocused } from '@/features/library/core/coordinator/keyboard-shortcuts.coordinator';
 import {
   useFeedsStore,
@@ -263,8 +264,9 @@ export function FeedViewContent({
     ],
   );
 
+  const keydownHandlerRef = useRef<(e: KeyboardEvent) => void>(() => {});
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    keydownHandlerRef.current = (e: KeyboardEvent) => {
       if (isEditableOrModalElementFocused(e.target)) {
         return;
       }
@@ -294,9 +296,10 @@ export function FeedViewContent({
           void handleSaveEntry(selectedFeedEntry);
         }
       } else if (e.key === 'o') {
-        if (selectedFeedEntry?.url) {
+        const safeUrl = selectedFeedEntry?.url ? safeHttpUrl(selectedFeedEntry.url) : null;
+        if (safeUrl && selectedFeedEntry) {
           e.preventDefault();
-          window.open(selectedFeedEntry.url, '_blank', 'noopener,noreferrer');
+          window.open(safeUrl, '_blank', 'noopener,noreferrer');
           if (!isEntryRead(selectedFeedEntry.id)) {
             markEntryAsRead(selectedFeedEntry.id);
           }
@@ -334,21 +337,13 @@ export function FeedViewContent({
         }
       }
     };
+  });
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => keydownHandlerRef.current(e);
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [
-    selectedFeedEntry,
-    filteredEntries,
-    canEdit,
-    handleSaveEntry,
-    loadFeedEntries,
-    toggleEntryRead,
-    setSelectedFeedEntry,
-    isEntryRead,
-    markEntryAsRead,
-    rowVirtualizer,
-  ]);
+  }, []);
 
   const handleSelectEntry = useCallback(
     (entry: ParsedFeedEntry) => {

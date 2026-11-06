@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback, useDeferredValue } from 'react';
 import { Search, ChevronLeft, ChevronRight, X, CaseSensitive, WholeWord } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import type { DocumentFulltext } from '@/features/library/domain/types/reader.schema';
+import { isPdfDocumentValid } from '@/shared/lib/pdfjs-worker';
+import type { DocumentFulltext } from '@/features/library/types/reader.types';
 import { useViewerSearchAnchors } from '@/features/library/core/coordinator/reader/use-pdf-interaction';
 import {
   foldDiacritics,
@@ -138,7 +139,7 @@ export function useViewerSearch({
     }
     if (!hasActiveSearchQuery) return;
     if (extractedForDocRef.current === pdfDocument) return;
-    if (typeof pdfDocument.getPage !== 'function' || numPages <= 0) return;
+    if (!isPdfDocumentValid(pdfDocument) || typeof pdfDocument.getPage !== 'function' || numPages <= 0) return;
 
     const currentDoc = pdfDocument;
     let cancelled = false;
@@ -567,7 +568,7 @@ export function ViewerSearchBar({
           className={cn(
             'size-6 flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring',
             matchCase
-              ? 'bg-primary/15 text-primary ring-1 ring-inset ring-primary/40 font-medium'
+              ? 'bg-muted text-foreground font-medium'
               : 'text-muted-foreground hover:bg-muted hover:text-foreground',
           )}
         >
@@ -585,7 +586,7 @@ export function ViewerSearchBar({
           className={cn(
             'size-6 flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring',
             wholeWords
-              ? 'bg-primary/15 text-primary ring-1 ring-inset ring-primary/40 font-medium'
+              ? 'bg-muted text-foreground font-medium'
               : 'text-muted-foreground hover:bg-muted hover:text-foreground',
           )}
         >

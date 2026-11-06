@@ -18,9 +18,10 @@ import { useAiCompanionStore } from "@/features/ai/store/ai-companion.store";
 import { useLibraryPermissions } from "@/features/library/core/coordinator/navigation.coordinator";
 import { useExportAnnotatedPdf } from "@/features/library/core/coordinator/reader/use-reader";
 import { ReaderInspector } from "@/features/library/ui/inspector/LibraryInspector";
+import { LruTabPool } from "@/features/library/domain/reader-tab-pool.domain";
 import Topbar, { ReaderRetractionBanner } from "@/features/library/ui/reader/ReaderTopbar";
 import ReaderToolbar from "@/features/library/ui/reader/ReaderToolbar";
-import type { AnnotationRect, ReaderNavigationTarget, PdfOutlineItem } from "@/features/library/domain/types/reader.schema";
+import type { AnnotationRect, ReaderNavigationTarget, PdfOutlineItem } from "@/features/library/types/reader.types";
 import {
   useReaderTabHistory,
   useReaderTabPresentation,
@@ -104,13 +105,13 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
 
   // Multi-Tab Store
   const {
-    tabs, activeTabId, openReader, closeTab, setActiveTab, updateTabState,
+    tabs, activeTabId, openReader, closeTab, reorderTabs, setActiveTab, updateTabState,
     activeColor, setActiveColor, activeTool, setActiveTool,
     bookmarks, toggleBookmark,
   } = useReaderStore(
     useShallow((s) => ({
       tabs: s.tabs, activeTabId: s.activeTabId, openReader: s.openReader,
-      closeTab: s.closeTab, setActiveTab: s.setActiveTab, updateTabState: s.updateTabState,
+      closeTab: s.closeTab, reorderTabs: s.reorderTabs, setActiveTab: s.setActiveTab, updateTabState: s.updateTabState,
       activeColor: s.activeColor, setActiveColor: s.setActiveColor,
       activeTool: s.activeTool, setActiveTool: s.setActiveTool,
       bookmarks: s.bookmarks, toggleBookmark: s.toggleBookmark,
@@ -119,6 +120,20 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
 
   const effectiveTabId = paper?.id || activeTabId;
   const activeTab = tabs.find((t) => t.id === effectiveTabId);
+
+  // Tri-State Tab Memory Pool (1 Active + 2 Standby, strictly bounded by LRU)
+  const warmPoolRef = useRef<LruTabPool<{ paperId: string; title: string }>>(
+    new LruTabPool<{ paperId: string; title: string }>(3),
+  );
+
+  useEffect(() => {
+    if (!effectiveTabId || effectiveTabId === "library") return;
+    warmPoolRef.current.put(
+      effectiveTabId,
+      { paperId: effectiveTabId, title: paper?.title || "Document" },
+      new Set(["library", effectiveTabId]),
+    );
+  }, [effectiveTabId, paper?.title]);
 
   // Reader inspector toggle backed directly by global library UI store
   const isGlobalInspectorOpen = useLibraryUIStore((s) => s.isInspectorOpen);
@@ -206,6 +221,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
 
   const handleCloseTab = useCallback(
     (id: string) => {
+      warmPoolRef.current.delete(id);
       const closedIdx = tabs.findIndex((t) => t.id === id);
       const wasActive = activeTabId === id || (paper && paper.id === id);
       closeTab(id);
@@ -372,9 +388,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
-      const target = e.target as HTMLElement | null;
-      const tag = target?.tagName?.toLowerCase();
-      if (tag === "input" || tag === "textarea" || target?.isContentEditable) return;
+      if (isEditableOrModalElementFocused(e.target)) return;
 
       if (isReadingMode) {
         setIsReadingMode(false);
@@ -497,7 +511,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
       id: string,
       version: number | undefined,
       dto: {
-        type?: import("@/features/library/domain/types/reader.schema").AnnotationType;
+        type?: import("@/features/library/types/reader.types").AnnotationType;
         color?: string;
         comment?: string;
         quoteText?: string;
@@ -539,6 +553,15 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
   const handleClearPendingText = useCallback(() => setPendingNoteText(""), [setPendingNoteText]);
   const handleSelectItem = useCallback((id: string) => openInNewTab(getPaperUrl(id)), [getPaperUrl]);
 
+  const handleScrollPositionChange = useCallback(
+    (top: number) => {
+      if (effectiveTabId && effectiveTabId !== "library") {
+        updateTabState(effectiveTabId, { scrollTop: top });
+      }
+    },
+    [effectiveTabId, updateTabState],
+  );
+
   const sharedViewerProps = useMemo(
     () => ({
       blobUrl: pdfBlobUrl, isLoading: pdfLoading, error: pdfError,
@@ -548,14 +571,19 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
       onDeleteAnnotation: handleDeleteAnnotationProp, onUpdateAnnotation: handleUpdateAnnotationProp,
       fulltext, paper: paper || undefined, zoom, onZoomChange: handleSetCustomZoom,
       onSelectFitMode: setFitMode, rotation, themeMode, interactionMode, activeColor,
-      activeTool, viewMode, fitMode, onNavigateWithHistory: handleNavigateToPageWithHistory,
+      activeTool, onSelectColor: setActiveColor, onSelectTool: setActiveTool,
+      viewMode, fitMode, onNavigateWithHistory: handleNavigateToPageWithHistory,
+      initialScrollTop: activeTab?.scrollTop,
+      onScrollPositionChange: handleScrollPositionChange,
     }),
     [
       pdfBlobUrl, pdfLoading, pdfError, effectiveAttachmentId, scopeId,
       handleAddToNoteAndExitReadingMode, handleAskAiWithSelection,
       handleAnnotateWithLock, annotations, handleDeleteAnnotationProp, handleUpdateAnnotationProp,
       fulltext, paper, zoom, handleSetCustomZoom, setFitMode, rotation, themeMode, interactionMode,
-      activeColor, activeTool, viewMode, fitMode, handleNavigateToPageWithHistory,
+      activeColor, activeTool, setActiveColor, setActiveTool,
+      viewMode, fitMode, handleNavigateToPageWithHistory,
+      activeTab?.scrollTop, handleScrollPositionChange,
     ],
   );
 
@@ -573,7 +601,8 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
         <Topbar
           paper={paper} tabs={tabs} activeTabId={paper?.id || activeTabId}
           scopeTitle={activeScope.name} onSelectTab={handleSelectTab}
-          onCloseTab={handleCloseTab} onBack={goBack} onExportAnnotatedPdf={handleExportAnnotatedPdf}
+          onCloseTab={handleCloseTab} onReorderTabs={reorderTabs} onBack={goBack}
+          onExportAnnotatedPdf={handleExportAnnotatedPdf}
         />
       )}
 
@@ -598,8 +627,6 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
           fitMode={fitMode} onSelectFitMode={setFitMode}
           onToggleSearch={handleToggleSearch} isInspectorOpen={isGlobalInspectorOpen}
           onToggleInspector={handleToggleInspector}
-          isPageBookmarked={isCurrentPageBookmarked}
-          onToggleBookmark={paper?.id ? handleToggleCurrentBookmark : undefined}
           isReadingMode={isReadingMode} onToggleReadingMode={handleToggleReadingMode}
         />
       )}

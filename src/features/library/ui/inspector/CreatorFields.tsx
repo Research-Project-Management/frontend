@@ -4,8 +4,8 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { ChevronDown, ChevronUp, Plus, Minus, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { type CreatorEntry, normalizeAuthors, splitAuthorString, parseCreatorName, parseCreators, areCreatorsEqual, toItemCreators, buildCanonicalCreatorsPatch, isInstitutionName } from '@/features/library/domain/creators.domain';
-import type { Item } from '@/features/library/domain/types/core.types';
-import { type SchemaItemTypeDefinition, ALL_CREATOR_TYPES, getPrimaryCreatorType } from '@/features/library/domain/types/item-types.types';
+import type { Item } from '@/features/library/types/core.types';
+import { type SchemaItemTypeDefinition, ALL_CREATOR_TYPES, getPrimaryCreatorType } from '@/features/library/types/item-types.types';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
@@ -260,7 +260,7 @@ export function CreatorFields({
           <div className="grid grid-cols-[84px_1fr] gap-2 items-center py-0.5">
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="text-foreground text-right font-normal select-none pr-1 text-12 leading-normal whitespace-nowrap truncate">
+                <span className="text-muted-foreground text-right font-medium select-none pr-1 text-11 leading-normal whitespace-nowrap truncate">
                   {typeDefinition.creatorTypes[0]?.label || "Author"}
                 </span>
               </TooltipTrigger>
@@ -325,7 +325,7 @@ export function CreatorFields({
                   (keyboardEvent.target as HTMLInputElement).blur();
                 }
               }}
-              className="flex-1 h-7 bg-transparent px-2 py-1 rounded-md border border-transparent focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background text-foreground text-12 leading-normal outline-none min-w-0 font-normal font-sans"
+              className="flex-1 h-7 bg-transparent px-2 py-1 rounded-md border border-transparent hover:bg-muted focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background text-foreground text-13 leading-normal outline-none min-w-0 font-normal font-sans"
             />
           </div>
         ) : null
@@ -657,7 +657,7 @@ function CreatorRowItem({
             </div>
           </>
         ) : (
-          <div className="flex-1 min-h-7 h-auto px-2 py-1 text-foreground text-12 leading-snug min-w-0 font-normal font-sans break-words select-text flex items-center gap-1.5">
+          <div className="flex-1 min-h-7 h-auto px-2 py-1 text-foreground text-13 leading-normal min-w-0 font-normal font-sans break-words select-text flex items-center gap-1.5">
             <span>{creatorEntry.name}</span>
           </div>
         )}

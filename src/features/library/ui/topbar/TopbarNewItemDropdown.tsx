@@ -62,7 +62,7 @@ import {
   useExportOpmlFeedsMutation,
   useImportOpmlFeedsMutation,
 } from "@/features/library/core/coordinator/curation.coordinator";
-import { mapRegistryItemTypes } from "@/features/library/domain/types/core.types";
+import { mapRegistryItemTypes } from "@/features/library/types/core.types";
 import {
   executeExportScopeFormat,
   triggerBrowserTextDownload,
@@ -206,7 +206,7 @@ export function TopbarNewFeedDropdown({
         <DropdownMenuContent
           align="end"
           sideOffset={6}
-          className="w-56 p-1.5 text-13 rounded-lg border border-border bg-popover text-popover-foreground shadow-raised-200 z-50 select-none space-y-0.5"
+          className="w-56 p-1.5 text-13 rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 z-50 select-none space-y-0.5"
         >
           {onRefreshFeed && (
             <DropdownMenuItem
@@ -346,7 +346,7 @@ export function TopbarNewItemDropdown({
         align="end"
         sideOffset={4}
         onCloseAutoFocus={(e) => e.preventDefault()}
-        className="w-56 p-1.5 rounded-lg border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 select-none space-y-0.5"
+        className="w-56 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 select-none space-y-0.5"
       >
         <DropdownMenuItem
           onClick={onAddLinkClick}
@@ -381,7 +381,7 @@ export function TopbarNewItemDropdown({
             collisionPadding={16}
             sideOffset={4}
             alignOffset={-4}
-            className="w-52 p-1.5 rounded-lg border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
+            className="w-52 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
           >
             {isLoading ? (
               <div className="py-2.5 px-3 flex items-center justify-center gap-2 text-12 text-muted-foreground">
@@ -418,7 +418,7 @@ export function TopbarNewItemDropdown({
                     collisionPadding={16}
                     sideOffset={4}
                     alignOffset={-4}
-                    className="w-56 max-h-[min(380px,var(--radix-dropdown-menu-content-available-height,calc(100vh-64px)))] overflow-y-auto overflow-x-hidden p-1.5 rounded-lg border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
+                    className="w-56 max-h-[min(380px,var(--radix-dropdown-menu-content-available-height,calc(100vh-64px)))] overflow-y-auto overflow-x-hidden p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
                   >
                     {moreTypes.map(({ type, label, icon: MoreIcon }) => (
                       <DropdownMenuItem

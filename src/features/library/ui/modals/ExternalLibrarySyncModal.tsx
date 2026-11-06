@@ -43,7 +43,7 @@ import {
   applyServerErrorToForm,
   type ZoteroApiKeyConnectFormValues,
   type Collection,
-} from '@/features/library/domain/types/core.types';
+} from '@/features/library/types/core.types';
 
 interface ExternalLibrarySyncModalProps {
   open: boolean;

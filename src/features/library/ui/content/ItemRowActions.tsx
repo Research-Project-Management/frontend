@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { MoreVertical, ExternalLink, BookOpen, Star, Copy, Quote, FolderPlus, FolderMinus, Trash2, RotateCcw, RefreshCw, Award, ShieldAlert } from 'lucide-react';
+import { MoreVertical, ExternalLink, BookOpen, Star, Copy, Quote, FolderPlus, FolderMinus, Trash2, RotateCcw } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from '@/shared/components/ui/dropdown-menu';
 import { useItemActionHandlers } from '@/features/library/core/coordinator/item-action.coordinator';
-import type { Item, Collection, CslStyle } from '@/features/library/domain/types/core.types';
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger, ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger, ContextMenuShortcut } from '@/shared/components/ui/context-menu';
+import type { Item, Collection, CslStyle } from '@/features/library/types/core.types';
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger, ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger } from '@/shared/components/ui/context-menu';
 
 export {
   ItemTableHeader,
@@ -55,11 +55,7 @@ export const ItemRowActions = React.memo(function ItemRowActions({
     handleOpen,
     handleOpenInNewTab,
     handleCopyBibliography,
-    handleCopyInTextCitation,
     handleCopyCitationKey,
-    handleRefreshMetadata,
-    handleToggleMyPublications,
-    handleToggleRetraction,
     handleSelectCollection,
   } = useItemActionHandlers(item, {
     scopeId,
@@ -171,7 +167,7 @@ export const ItemRowActions = React.memo(function ItemRowActions({
                     <Star
                       className={cn(
                         'size-3.5 shrink-0',
-                        isStarred ? 'fill-warning text-warning' : 'text-foreground',
+                        isStarred ? 'text-warning fill-warning' : 'text-foreground',
                       )}
                       strokeWidth={1.5}
                     />
@@ -181,12 +177,20 @@ export const ItemRowActions = React.memo(function ItemRowActions({
 
                 <DropdownMenuSeparator className="my-1" />
 
+                <DropdownMenuItem
+                  onClick={() => handleCopyCitationKey()}
+                  className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+                >
+                  <Copy className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                  <span>Copy Citation Key</span>
+                </DropdownMenuItem>
+
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors">
-                    <Copy className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                    <Quote className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                     <span>Copy Citation</span>
                   </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="w-48 p-1 text-12 shadow-raised-200 select-none max-h-64 overflow-y-auto">
+                  <DropdownMenuSubContent sideOffset={6} className="w-48 p-1 text-12 shadow-raised-200 select-none max-h-64 overflow-y-auto">
                     {availableStyles.map((style) => (
                       <DropdownMenuItem
                         key={style.id}
@@ -203,69 +207,6 @@ export const ItemRowActions = React.memo(function ItemRowActions({
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
 
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors">
-                    <Quote className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                    <span>Copy In-text Citation</span>
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent className="w-48 p-1 text-12 shadow-raised-200 select-none max-h-64 overflow-y-auto">
-                    {availableStyles.map((style) => (
-                      <DropdownMenuItem
-                        key={style.id}
-                        onClick={() => handleCopyInTextCitation(style.id as CslStyle)}
-                        className="cursor-pointer text-12 py-1.5 px-2 truncate"
-                      >
-                        {style.label}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-
-                <DropdownMenuItem
-                  onClick={() => handleCopyCitationKey('Copied citation key')}
-                  className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-                >
-                  <Quote className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                  <span>Copy Citation Key</span>
-                </DropdownMenuItem>
-
-                {canEdit && (
-                  <>
-                    <DropdownMenuSeparator className="my-1" />
-                    <DropdownMenuItem
-                      onClick={handleRefreshMetadata}
-                      className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-                    >
-                      <RefreshCw className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                      <span>Update Metadata & PDF</span>
-                    </DropdownMenuItem>
-
-                    <DropdownMenuItem
-                      onClick={handleToggleMyPublications}
-                      className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-                    >
-                      <Award className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                      <span>
-                        {item.isMyPublication
-                          ? 'Remove from My Publications'
-                          : 'Add to My Publications'}
-                      </span>
-                    </DropdownMenuItem>
-
-                    <DropdownMenuItem
-                      onClick={handleToggleRetraction}
-                      className="h-8 gap-2.5 px-2.5 text-12 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-                    >
-                      <ShieldAlert className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                      <span>
-                        {item.isRetracted
-                          ? 'Clear Retraction Flag'
-                          : 'Flag as Retracted'}
-                      </span>
-                    </DropdownMenuItem>
-                  </>
-                )}
-
                 {canEdit && (collections.length > 0 || onDetachFromCollection) && (
                   <>
                     <DropdownMenuSeparator className="my-1" />
@@ -276,7 +217,7 @@ export const ItemRowActions = React.memo(function ItemRowActions({
                           <FolderPlus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                           <span>Add to Collection</span>
                         </DropdownMenuSubTrigger>
-                        <DropdownMenuSubContent className="w-48 text-12 shadow-raised-200 max-h-56 overflow-y-auto p-1">
+                        <DropdownMenuSubContent sideOffset={6} className="w-48 text-12 shadow-raised-200 max-h-56 overflow-y-auto p-1">
                           {collections.map((col: Collection) => (
                             <DropdownMenuItem
                               key={col.id}
@@ -375,11 +316,7 @@ export function ItemContextMenu({
     handleOpen,
     handleOpenInNewTab,
     handleCopyBibliography,
-    handleCopyInTextCitation,
     handleCopyCitationKey,
-    handleRefreshMetadata,
-    handleToggleMyPublications,
-    handleToggleRetraction,
     handleSelectCollection,
   } = useItemActionHandlers(item, {
     scopeId,
@@ -428,9 +365,10 @@ export function ItemContextMenu({
               >
                 <Star
                   className={cn(
-                    'size-3.5 text-foreground shrink-0',
-                    isStarred && 'fill-warning text-warning',
+                    'size-3.5 shrink-0',
+                    isStarred ? 'text-warning fill-warning' : 'text-foreground',
                   )}
+                  strokeWidth={1.5}
                 />
                 {isStarred ? 'Remove from Starred' : 'Add to Starred'}
               </ContextMenuItem>
@@ -438,12 +376,20 @@ export function ItemContextMenu({
 
             <ContextMenuSeparator className="my-1" />
 
+            <ContextMenuItem
+              onClick={() => handleCopyCitationKey()}
+              className="gap-2 text-12 py-1.5 px-2 cursor-pointer whitespace-nowrap"
+            >
+              <Copy className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+              Copy Citation Key
+            </ContextMenuItem>
+
             <ContextMenuSub>
               <ContextMenuSubTrigger className="gap-2 text-12 py-1.5 px-2 cursor-pointer whitespace-nowrap">
-                <Copy className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                <Quote className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                 Copy Citation
               </ContextMenuSubTrigger>
-              <ContextMenuSubContent className="w-48 text-12 shadow-raised-200 p-1 max-h-64 overflow-y-auto">
+              <ContextMenuSubContent sideOffset={6} className="w-48 text-12 shadow-raised-200 p-1 max-h-64 overflow-y-auto">
                 {availableStyles.map((style) => (
                   <ContextMenuItem
                     key={style.id}
@@ -463,65 +409,6 @@ export function ItemContextMenu({
               </ContextMenuSubContent>
             </ContextMenuSub>
 
-            <ContextMenuSub>
-              <ContextMenuSubTrigger className="gap-2 text-12 py-1.5 px-2 cursor-pointer whitespace-nowrap">
-                <Quote className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                Copy In-text Citation
-              </ContextMenuSubTrigger>
-              <ContextMenuSubContent className="w-48 text-12 shadow-raised-200 p-1 max-h-64 overflow-y-auto">
-                {availableStyles.map((style) => (
-                  <ContextMenuItem
-                    key={style.id}
-                    onClick={() => handleCopyInTextCitation(style.id as CslStyle)}
-                    className="cursor-pointer text-12 py-1.5 px-2 truncate"
-                  >
-                    {style.label}
-                  </ContextMenuItem>
-                ))}
-              </ContextMenuSubContent>
-            </ContextMenuSub>
-
-            <ContextMenuItem
-              onClick={() => handleCopyCitationKey('Copied')}
-              className="gap-2 text-12 py-1.5 px-2 cursor-pointer whitespace-nowrap"
-            >
-              <Copy className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-              Copy Citation Key
-            </ContextMenuItem>
-
-            {canEdit && (
-              <>
-                <ContextMenuSeparator className="my-1" />
-                <ContextMenuItem
-                  onClick={handleRefreshMetadata}
-                  className="gap-2 text-12 py-1.5 px-2 cursor-pointer whitespace-nowrap"
-                >
-                  <RefreshCw className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                  Update Metadata & PDF
-                </ContextMenuItem>
-
-                <ContextMenuItem
-                  onClick={handleToggleMyPublications}
-                  className="gap-2 text-12 py-1.5 px-2 cursor-pointer whitespace-nowrap"
-                >
-                  <Award className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                  {item.isMyPublication
-                    ? 'Remove from My Publications'
-                    : 'Add to My Publications'}
-                </ContextMenuItem>
-
-                <ContextMenuItem
-                  onClick={handleToggleRetraction}
-                  className="gap-2 text-12 py-1.5 px-2 cursor-pointer whitespace-nowrap"
-                >
-                  <ShieldAlert className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
-                  {item.isRetracted
-                    ? 'Clear Retraction Flag'
-                    : 'Flag as Retracted'}
-                </ContextMenuItem>
-              </>
-            )}
-
             {canEdit && (collections.length > 0 || onDetachFromCollection) && (
               <>
                 <ContextMenuSeparator className="my-1" />
@@ -532,7 +419,7 @@ export function ItemContextMenu({
                       <FolderPlus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                       Add to Collection
                     </ContextMenuSubTrigger>
-                    <ContextMenuSubContent className="w-44 text-12 shadow-raised-200 max-h-56 overflow-y-auto p-1">
+                    <ContextMenuSubContent sideOffset={6} className="w-44 text-12 shadow-raised-200 max-h-56 overflow-y-auto p-1">
                       {collections.map((col: Collection) => (
                         <ContextMenuItem
                           key={col.id}
@@ -553,7 +440,6 @@ export function ItemContextMenu({
                   >
                     <FolderMinus className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
                     <span>Remove from Collection</span>
-                    <ContextMenuShortcut className="text-11 ml-auto">Del</ContextMenuShortcut>
                   </ContextMenuItem>
                 )}
               </>
@@ -568,9 +454,6 @@ export function ItemContextMenu({
                 >
                   <Trash2 className="size-3.5 text-destructive shrink-0" strokeWidth={1.5} />
                   <span>Move to Trash</span>
-                  <ContextMenuShortcut className="text-11 ml-auto">
-                    {onDetachFromCollection ? 'Shift+Del' : 'Del'}
-                  </ContextMenuShortcut>
                 </ContextMenuItem>
               </>
             )}

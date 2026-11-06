@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { UploadCloud, Loader2 } from 'lucide-react';
+import { UploadCloud, FolderUp, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/shared/components/ui/select';
@@ -10,7 +10,7 @@ import { useCollectionsQuery } from '@/features/library/core/coordinator/collect
 import { useLibraryCacheSynchronizer } from '@/features/library/core/coordinator/item-action.coordinator';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { useProcessModalStore } from '@/features/library/core/store/process-modal.store';
-import { addLinkSchema, applyServerErrorToForm, type Collection, type AddLinkFormValues } from '@/features/library/domain/types/core.types';
+import { addLinkSchema, applyServerErrorToForm, type Collection, type AddLinkFormValues } from '@/features/library/types/core.types';
 import { cn } from '@/shared/lib/utils';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -25,10 +25,32 @@ interface UploadFilesModalProps {
   scopeId?: string;
   defaultCollectionId?: string;
   initialFiles?: File[];
+  mode?: 'file' | 'folder';
   onSuccess?: () => void;
 }
 
 const EMPTY_FILES: File[] = [];
+const SUPPORTED_EXTENSIONS = [
+  '.pdf',
+  '.bib',
+  '.bibtex',
+  '.ris',
+  '.json',
+  '.csl.json',
+  '.xml',
+  '.mods',
+  '.rdf',
+  '.nbib',
+  '.medline',
+  '.csv',
+];
+
+function filterSupportedFiles(files: FileList | File[]): File[] {
+  return Array.from(files).filter((f) => {
+    const lower = f.name.toLowerCase();
+    return SUPPORTED_EXTENSIONS.some((ext) => lower.endsWith(ext));
+  });
+}
 
 export function UploadFilesModal({
   open,
@@ -36,12 +58,15 @@ export function UploadFilesModal({
   scopeId,
   defaultCollectionId,
   initialFiles = EMPTY_FILES,
+  mode = 'file',
   onSuccess,
 }: UploadFilesModalProps) {
   const { queryClient } = useLibraryCacheSynchronizer(scopeId);
   const routeParams = useParams() as { collectionId?: string };
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
   const startBatchUpload = useProcessModalStore((s) => s.startBatchUpload);
+  const isFolderMode = mode === 'folder';
 
   const { data: collections = [] } = useCollectionsQuery(scopeId);
 
@@ -127,6 +152,16 @@ export function UploadFilesModal({
     }
   };
 
+  const handleFolderInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const supported = filterSupportedFiles(e.target.files);
+      if (supported.length > 0) {
+        handleUploadFiles(supported);
+      }
+      e.target.value = '';
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -134,10 +169,10 @@ export function UploadFilesModal({
       >
         <DialogHeader className="p-0 shrink-0 text-left">
           <DialogTitle className="text-14 font-semibold text-foreground tracking-tight">
-            Upload Documents
+            {isFolderMode ? 'Upload Folder' : 'Upload Documents'}
           </DialogTitle>
           <DialogDescription className="sr-only">
-            Upload papers or bibliographic files.
+            {isFolderMode ? 'Upload a folder of papers or bibliographic files.' : 'Upload papers or bibliographic files.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -175,11 +210,15 @@ export function UploadFilesModal({
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => (isFolderMode ? folderInputRef.current?.click() : fileInputRef.current?.click())}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                fileInputRef.current?.click();
+                if (isFolderMode) {
+                  folderInputRef.current?.click();
+                } else {
+                  fileInputRef.current?.click();
+                }
               }
             }}
             className={cn(
@@ -197,14 +236,44 @@ export function UploadFilesModal({
               className="hidden"
               onChange={handleFileInputChange}
             />
+            <input
+              ref={folderInputRef}
+              type="file"
+              webkitdirectory=""
+              directory=""
+              multiple
+              className="hidden"
+              onChange={handleFolderInputChange}
+            />
             <div className="flex flex-col items-center justify-center gap-2.5">
-              <UploadCloud
-                className="size-8 text-foreground transition-colors"
-                strokeWidth={1.5}
-              />
+              {isFolderMode ? (
+                <FolderUp
+                  className="size-8 text-foreground transition-colors"
+                  strokeWidth={1.5}
+                />
+              ) : (
+                <UploadCloud
+                  className="size-8 text-foreground transition-colors"
+                  strokeWidth={1.5}
+                />
+              )}
               <div className="space-y-1">
                 <p className="text-13 font-medium text-foreground">
-                  Drag and drop files here, or <span className="text-primary underline-offset-2 hover:underline">browse</span>
+                  {isFolderMode ? (
+                    <>
+                      Drag and drop files here, or{' '}
+                      <span className="text-primary underline-offset-2 hover:underline">
+                        browse folder
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      Drag and drop files here, or{' '}
+                      <span className="text-primary underline-offset-2 hover:underline">
+                        browse
+                      </span>
+                    </>
+                  )}
                 </p>
                 <p className="text-11 text-foreground pt-0.5">
                   Supported formats: PDF, BibTeX, RIS, CSL-JSON, EndNote XML, MODS, Zotero RDF, PubMed (.nbib), CSV • max 100MB

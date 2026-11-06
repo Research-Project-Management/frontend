@@ -5,11 +5,11 @@ import { Check } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { type Item, SchemaItemTypeDefinition, ALL_ITEM_TYPES_FLAT, getTitleFieldForType } from '@/features/library/domain/types/core.types';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
-import { cleanValue, getItemDisplayTitle, buildExtraMetadataPatch, formatAndSanitizeExtraMetadata, isValidValue } from '@/features/library/domain/metadata-mapper';
-import { buildInspectorFieldPatch } from '@/features/library/domain/item-field-schema';
+import { cleanValue, getItemDisplayTitle, buildExtraMetadataPatch, formatAndSanitizeExtraMetadata, isValidValue } from '@/features/library/domain/metadata.mapper';
+import { buildInspectorFieldPatch } from '@/features/library/domain/item-field-schema.domain';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 
-export interface GeneralFieldsProps {
+interface GeneralFieldsProps {
   item?: Item;
   currentItemType: string;
   selectableItemTypes: Array<{ value: string; label: string }>;
@@ -162,7 +162,7 @@ export function GeneralFields({
 }
 
 /** Format ISO date into locale format (e.g. 8/20/2026, 3:53:43 PM) */
-export function formatAuditDate(dateStr?: string | Date | null): string {
+function formatAuditDate(dateStr?: string | Date | null): string {
   if (!dateStr) return "";
   try {
     const d = new Date(dateStr);
@@ -181,7 +181,7 @@ export function formatAuditDate(dateStr?: string | Date | null): string {
   }
 }
 
-export interface ExtraAuditFieldsProps {
+interface ExtraAuditFieldsProps {
   item?: Item;
   canEdit?: boolean;
   onUpdateItem?: (data: Partial<Item>) => void;
@@ -263,7 +263,7 @@ export function ExtraAuditFields({
 
 export default GeneralFields;
 
-export interface InlineFieldProps {
+interface InlineFieldProps {
   value: string;
   itemKey?: string;
   ariaLabel?: string;
@@ -389,7 +389,7 @@ export function InlineField({
   );
 }
 
-export interface InlineTextareaProps {
+interface InlineTextareaProps {
   value: string;
   itemKey?: string;
   placeholder?: string;
@@ -404,7 +404,7 @@ export interface InlineTextareaProps {
  * Clean Inline Editable Auto-Expanding Textarea
  * Used for Title and Abstract editing.
  */
-export function InlineTextarea({
+function InlineTextarea({
   value,
   itemKey,
   placeholder,

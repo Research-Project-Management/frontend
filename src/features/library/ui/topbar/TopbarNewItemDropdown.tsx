@@ -57,11 +57,11 @@ import {
   type LibraryModalType,
 } from "@/features/library/core/store/library-ui.store";
 import { useFeedsStore } from "@/features/library/core/store/reader.store";
-import { useItemTypes } from "@/features/library/sdk/queries/catalog.queries";
+import { useItemTypes } from "@/features/library/core/coordinator/item-action.coordinator";
 import {
   useExportOpmlFeedsMutation,
   useImportOpmlFeedsMutation,
-} from "@/features/library/sdk/queries/ingestion.queries";
+} from "@/features/library/core/coordinator/curation.coordinator";
 import { mapRegistryItemTypes } from "@/features/library/domain/types/core.types";
 import {
   executeExportScopeFormat,
@@ -116,7 +116,7 @@ const ITEM_TYPE_ICON_MAP: Record<string, React.ComponentType<{ className?: strin
   videoRecording: Video,
 };
 
-export interface TopbarNewFeedDropdownProps {
+interface TopbarNewFeedDropdownProps {
   onRefreshFeed?: () => void;
   onMarkAllFeedRead?: () => void;
 }
@@ -271,7 +271,7 @@ export function TopbarNewFeedDropdown({
   );
 }
 
-export interface TopbarNewItemDropdownProps {
+interface TopbarNewItemDropdownProps {
   scopeId?: string;
   activeCollectionId?: string;
   isSubcollection?: boolean;

@@ -3,19 +3,7 @@
 import React, { useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { cn } from "@/shared/lib/utils";
-import {
-  Check,
-  CheckCheck,
-  ChevronRight,
-  Folder,
-  MoreHorizontal,
-  PanelLeft,
-  PanelRight,
-  RefreshCw,
-  Rss,
-  Search,
-  Trash2,
-} from "lucide-react";
+import { Check, ChevronRight, Folder, MoreHorizontal, PanelLeft, PanelRight, Rss, Search, Trash2 } from "lucide-react";
 import { LibraryIcon } from "@/shared/components/icons";
 import { Button } from "@/shared/components/ui/button";
 import {
@@ -41,11 +29,13 @@ import {
   TopbarNewFeedDropdown,
 } from "./TopbarNewItemDropdown";
 import { useLibraryUIStore } from "@/features/library/core/store/library-ui.store";
-import { useLibraryNavigation } from "@/features/library/core/coordinator/navigation.coordinator";
-import { useLibraryPermissions } from "@/features/library/core/adapters/project-context.adapter";
+import {
+  useLibraryNavigation,
+  useLibraryPermissions,
+} from "@/features/library/core/coordinator/navigation.coordinator";
 import type { Item } from "@/features/library/domain/types/core.types";
 
-export interface BreadcrumbSwitcherOption {
+interface BreadcrumbSwitcherOption {
   id: string;
   name: string;
   isActive?: boolean;

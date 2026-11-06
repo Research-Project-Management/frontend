@@ -8,6 +8,17 @@ import {
   BaseSlabs,
   type TIllustrationAssetProps,
 } from "@/shared/components/ui/PlaneEmptyState";
+import { WorkspaceRowListSkeleton } from "@/shared/components/layout/WorkspaceSkeleton";
+
+export function ContentSkeleton({ rowCount = 10 }: { rowCount?: number }) {
+  return (
+    <WorkspaceRowListSkeleton
+      rows={rowCount}
+      variant="library"
+      showTableHeader={true}
+    />
+  );
+}
 
 export {
   ILLUSTRATION_COLOR_TOKEN_MAP,

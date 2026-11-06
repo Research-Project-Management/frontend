@@ -27,15 +27,15 @@ import {
 import { ItemContextMenu } from './ItemRowActions';
 import { ItemRowActions } from './ItemRowActions';
 import type { Item, Collection } from '@/features/library/domain/types/core.types';
-import { cleanText, formatAuthors } from '@/features/library/domain/citations';
+import { cleanText, formatAuthors } from '@/features/library/domain/citations.domain';
 import {
   getItemDisplayTitle,
   getItemDisplayDate,
   getPublicationVenue,
-} from '@/features/library/domain/metadata-mapper';
+} from '@/features/library/domain/metadata.mapper';
 import { getItemTypeDefinition } from '@/features/library/domain/types/item-types.types';
 
-export interface ItemTableRowProps {
+interface ItemTableRowProps {
   item: Item;
   index: number;
   scopeId?: string;

@@ -13,8 +13,8 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { collectionFormSchema, applyServerErrorToForm, type CollectionFormValues, type Collection, type CslStyleMetadata } from '@/features/library/domain/types/core.types';
 import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
-import { useSearchCslStyles } from '@/features/library/sdk/queries/extraction.queries';
-import { getCleanStyleLabel } from '@/features/library/domain/citations';
+import { useSearchCslStyles } from '@/features/library/core/coordinator/citation-export.coordinator';
+import { getCleanStyleLabel } from '@/features/library/domain/citations.domain';
 
 interface CreateCollectionModalProps {
   open: boolean;
@@ -274,7 +274,7 @@ export default function CreateCollectionModal({
   );
 }
 
-export interface CslStyleSearchModalProps {
+interface CslStyleSearchModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSelectStyle: (style: { id: string; label: string }) => void;

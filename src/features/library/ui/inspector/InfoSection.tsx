@@ -2,23 +2,20 @@
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { getItemTypeDefinition, normalizeCanonicalItemType, mapRegistryItemTypes, SchemaFieldDefinition, SchemaItemTypeDefinition, type Item } from '@/features/library/domain/types/core.types';
-import { cleanValue } from '@/features/library/domain/metadata-mapper';
+import { cleanValue } from '@/features/library/domain/metadata.mapper';
 import { toast } from 'sonner';
 import { cn, copyToClipboard as copyText } from '@/shared/lib/utils';
-import { useItemTypes } from '@/features/library/sdk/queries/catalog.queries';
-import { CreatorFields } from './fields/CreatorFields';
-import { GeneralFields, ExtraAuditFields } from './fields/GeneralFields';
+import { useItemTypes } from '@/features/library/core/coordinator/item-action.coordinator';
+import { CreatorFields } from './CreatorFields';
+import { GeneralFields, ExtraAuditFields } from './GeneralFields';
 import { DynamicInspectorField } from './NoteMarkdownEditor';
-import { INSPECTOR_FIELD_DESCRIPTORS, prepareInspectorFieldContext, resolveInspectorFieldValue, buildInspectorFieldPatch } from '@/features/library/domain/item-field-schema';
-import { INSPECTOR_LEVELS } from './InspectorHeader';
+import { INSPECTOR_FIELD_DESCRIPTORS, prepareInspectorFieldContext, resolveInspectorFieldValue, buildInspectorFieldPatch } from '@/features/library/domain/item-field-schema.domain';
 import { FileText, Loader2, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
 import { Document, Page } from 'react-pdf';
 import { setupPdfWorker, getSharedPdfDocumentOptions, getCappedDevicePixelRatio, releaseCanvasMemory } from '@/shared/lib/pdfjs-worker';
 import { usePdf } from '@/features/library/core/coordinator/reader/use-reader';
 
-export { INSPECTOR_LEVELS };
-
-export interface InfoSectionProps {
+interface InfoSectionProps {
   item?: Item;
   onUpdateItem?: (data: Partial<Item>, options?: { silent?: boolean }) => void;
   canEdit?: boolean;
@@ -220,7 +217,7 @@ export function InfoSection({
   );
 }
 
-export interface AbstractSectionProps {
+interface AbstractSectionProps {
   item?: Item;
   onUpdateItem?: (data: Partial<Item>) => void;
   hideHeader?: boolean;

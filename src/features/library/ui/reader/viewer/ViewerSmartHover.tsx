@@ -8,7 +8,7 @@ import { formatInTextCitation } from '@/features/library/domain/reader.domain';
 import type { ReaderAnnotationTool } from '@/features/library/core/store/reader.store';
 import { ANNOTATION_PALETTE_COLORS } from '@/features/library/ui/reader/ReaderToolbar';
 
-export interface SmartHoverCardData {
+interface SmartHoverCardData {
   kind: "Reference" | "Figure" | "Table" | "Section";
   label: string;
   body: string;
@@ -334,7 +334,7 @@ export function ViewerSmartHoverPopover({
   );
 }
 
-export interface TextSelectionToolbarProps {
+interface TextSelectionToolbarProps {
   selectedText: string;
   selectedPageNum: number;
   selectedRects: AnnotationRect[];

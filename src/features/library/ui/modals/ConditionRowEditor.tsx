@@ -58,7 +58,7 @@ import {
   parseDurationParts,
 } from "@/features/library/domain/saved-search-ast.domain";
 
-export const FIELD_ICONS: Record<
+const FIELD_ICONS: Record<
   string,
   React.ComponentType<{ className?: string; strokeWidth?: number | string }>
 > = {
@@ -83,23 +83,23 @@ export const FIELD_ICONS: Record<
   abstract: AlignLeft,
 };
 
-export const PRIMARY_FIELDS = PRIMARY_SAVED_SEARCH_FIELD_ITEMS.map((item) => ({
+const PRIMARY_FIELDS = PRIMARY_SAVED_SEARCH_FIELD_ITEMS.map((item) => ({
   ...item,
   icon: FIELD_ICONS[item.value] || BookOpen,
 }));
 
-export const ALL_SCHEMA_FIELDS = ALL_SCHEMA_FIELD_ITEMS.map((item) => ({
+const ALL_SCHEMA_FIELDS = ALL_SCHEMA_FIELD_ITEMS.map((item) => ({
   ...item,
   icon: FIELD_ICONS[item.value] || BookOpen,
 }));
 
-export interface ConditionFieldSelectProps {
+interface ConditionFieldSelectProps {
   value: SavedSearchField;
   onChange: (field: SavedSearchField) => void;
   ariaLabel?: string;
 }
 
-export function ConditionFieldSelect({
+function ConditionFieldSelect({
   value,
   onChange,
   ariaLabel,
@@ -286,7 +286,7 @@ export function ConditionFieldSelect({
   );
 }
 
-export interface ConditionRowEditorProps {
+interface ConditionRowEditorProps {
   condition: ConditionRow;
   index: number;
   canRemove: boolean;

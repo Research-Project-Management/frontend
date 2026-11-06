@@ -11,7 +11,7 @@ import type { Item } from '@/features/library/domain/types/core.types';
 import type { ReaderDocument } from '@/features/library/domain/types/reader.schema';
 import { openInNewTab, buildReaderPaperUrl } from '@/features/library/core/coordinator/citation-export.coordinator';
 import { useLibraryUIStore, type InspectorSectionId } from '@/features/library/core/store/library-ui.store';
-import { useRelations } from '@/features/library/sdk/queries/saved-searches-relations.queries';
+import { useRelations } from '@/features/library/core/coordinator/saved-search-builder.coordinator';
 import { useInspectorItemResolver, usePanelResize } from '@/features/library/core/coordinator/inspector-item.coordinator';
 import { InspectorHeader, InspectorTabs, INSPECTOR_LEVELS, InspectorSection, type InspectorSectionProps } from './InspectorHeader';
 
@@ -27,7 +27,7 @@ const CollectionsSection = dynamic(() => import('./CollectionsSection'), { ssr: 
 const CollectionPickerPopover = dynamic(() => import('./CollectionsSection').then((m) => m.CollectionPickerPopover), { ssr: false });
 const RelatedSection = dynamic(() => import('./RelatedSection'), { ssr: false });
 
-export interface LibraryInspectorProps {
+interface LibraryInspectorProps {
   item?: Item | null; scopeId?: string; canEdit?: boolean; onClose?: () => void;
   onSelectItem?: (itemId: string) => void; pendingNoteText?: string; onClearPendingText?: () => void;
   onNavigateToAnnotation?: (pageNumber: number, annotationId?: string) => void;
@@ -688,7 +688,7 @@ function LibraryInspectorContent({
   );
 }
 
-export interface ReaderInspectorProps extends Omit<LibraryInspectorProps, 'item'> {
+interface ReaderInspectorProps extends Omit<LibraryInspectorProps, 'item'> {
   item?: Item | ReaderDocument | null;
 }
 

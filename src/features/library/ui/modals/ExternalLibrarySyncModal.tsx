@@ -37,7 +37,7 @@ import {
   useIntegrations,
   useRemoteCollections,
 } from '@/features/settings/hooks/use-integrations';
-import { useSyncExternalBibtexMutation } from '@/features/library/sdk/queries/ingestion.queries';
+import { useSyncExternalBibtexMutation } from '@/features/library/core/coordinator/curation.coordinator';
 import {
   zoteroApiKeyConnectSchema,
   applyServerErrorToForm,
@@ -45,7 +45,7 @@ import {
   type Collection,
 } from '@/features/library/domain/types/core.types';
 
-export interface ExternalLibrarySyncModalProps {
+interface ExternalLibrarySyncModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultProvider?: 'zotero' | 'mendeley';

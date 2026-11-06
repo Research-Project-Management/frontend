@@ -302,7 +302,7 @@ function CollectionPickerContent({
 }
 
 // ── CollectionPickerPopover Component ────────────────────────────────────────
-export interface CollectionPickerPopoverProps {
+interface CollectionPickerPopoverProps {
   item: Item;
   scopeId?: string;
   canEdit?: boolean;

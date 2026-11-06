@@ -9,7 +9,7 @@ import { cn } from '@/shared/lib/utils';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
-import type { FlattenedOutlineSection } from '@/features/library/domain/reader-search-outline';
+import type { FlattenedOutlineSection } from '@/features/library/domain/reader-search-outline.domain';
 
 setupPdfWorker();
 const SHARED_PDF_OPTIONS = getSharedPdfDocumentOptions();

@@ -15,16 +15,16 @@ import {
   useMoveCollectionItemsMutation,
   useAssignCollectionItemsMutation,
   useBatchDetachItemsMutation,
-} from '@/features/library/sdk/queries/collections.queries';
-import { useSavedSearches } from '@/features/library/sdk/queries/saved-searches-relations.queries';
+} from '@/features/library/core/coordinator/collection.coordinator';
+import { useSavedSearches } from '@/features/library/core/coordinator/saved-search-builder.coordinator';
 import {
   useTrash,
   useDeleteLibraryItemsMutation,
-} from '@/features/library/sdk/queries/tags-notes.queries';
+} from '@/features/library/core/coordinator/saved-search-builder.coordinator';
 import {
   useBatchRestoreItemsMutation,
   useLibraryCountsQuery,
-} from '@/features/library/sdk/queries/catalog.queries';
+} from '@/features/library/core/coordinator/item-action.coordinator';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import {
   useLibraryCommandStore,
@@ -32,20 +32,18 @@ import {
   createBatchAssignCommand,
   createTrashCommand,
 } from '@/features/library/core/manager/library-command.manager';
-import { useLibraryPermissions } from '@/features/library/core/adapters/project-context.adapter';
+import { useLibraryPermissions } from '@/features/library/core/coordinator/navigation.coordinator';
 import { useLibraryProjectContext } from '@/features/library/core/adapters/project-context.adapter';
 
 import type { SavedSearch } from '@/features/library/domain/types/ingestion.types';
 
-import { buildTree, filterCollections } from '@/features/library/domain/collection-tree';
+import { buildTree, filterCollections } from '@/features/library/domain/collection-tree.domain';
 import { usePanelResize } from '@/features/library/core/coordinator/inspector-item.coordinator';
 import { useCollectionCoordinator } from '@/features/library/core/coordinator/collection.coordinator';
 import { useDropToMyPublications } from '@/features/library/core/coordinator/item-action.coordinator';
-import { SidebarHeader } from './FeedsListSection';
 import { CollectionTree } from './CollectionTree';
-import { SidebarSystemNav, SidebarResizer } from './SidebarSystemNav';
-import { FeedsListSection } from './FeedsListSection';
-import { ProjectLibrariesSection, resolveProjectRole, type ProjectLike } from '../content/BatchBar';
+import { SidebarHeader, SidebarSystemNav, SidebarResizer } from './SidebarSystemNav';
+import { FeedsListSection, ProjectLibrariesSection, resolveProjectRole, type ProjectLike } from './FeedsListSection';
 
 /**
  * LibrarySidebar Zone

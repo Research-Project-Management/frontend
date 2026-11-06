@@ -11,7 +11,7 @@ import type { ReaderAnnotationTool } from "@/features/library/core/store/reader.
 import { ANNOTATION_PALETTE_COLORS } from "@/features/library/ui/reader/ReaderToolbar";
 import {
   computeEffectivePdfPageWidth, computeSpreadPairs, isPageInVirtualWindow, resolvePdfOutlineFromDoc, type PdfOutlineProxyDoc,
-} from "@/features/library/domain/reader-search-outline";
+} from "@/features/library/domain/reader-search-outline.domain";
 import { useViewerSearch, ViewerSearchBar, type PdfSearchDocumentProxy } from "./ViewerSearchBar";
 import { TextSelectionToolbar } from "./ViewerSmartHover";
 import { AnnotationQuickEditCard } from "./PageAnnotationOverlay";

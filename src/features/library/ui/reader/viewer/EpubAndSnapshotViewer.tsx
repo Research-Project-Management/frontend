@@ -18,7 +18,7 @@ import {
 import { Button } from '@/shared/components/ui/button';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { cn } from '@/shared/lib/utils';
-import { fetchPdfBlob } from '@/features/library/sdk';
+import { useReaderDocumentBlobLoader } from '@/features/library/core/coordinator/reader/use-reader';
 import { ANNOTATION_PALETTE_COLORS } from '@/features/library/domain/reader.domain';
 import type {
   ReaderNavigationTarget,
@@ -130,6 +130,8 @@ export function EpubAndSnapshotViewer({
     useState<ActiveHighlightTooltipState | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
 
+  const loadDocumentBlob = useReaderDocumentBlobLoader();
+
   // Load EPUB or Snapshot
   useEffect(() => {
     let cancelled = false;
@@ -140,7 +142,7 @@ export function EpubAndSnapshotViewer({
       setError(null);
       try {
         if (mode === 'snapshot') {
-          const blob = await fetchPdfBlob(url, abortController.signal, {
+          const blob = await loadDocumentBlob(url, abortController.signal, {
             scopeId,
             allowHtml: true,
           });
@@ -163,7 +165,7 @@ export function EpubAndSnapshotViewer({
           return;
         }
 
-        const blob = await fetchPdfBlob(url, abortController.signal, { scopeId });
+        const blob = await loadDocumentBlob(url, abortController.signal, { scopeId });
         if (cancelled || abortController.signal.aborted) return;
 
         const epubMagic = await blob.slice(0, 5).text();
@@ -212,7 +214,7 @@ export function EpubAndSnapshotViewer({
       cancelled = true;
       abortController.abort();
     };
-  }, [url, mode, scopeId]);
+  }, [url, mode, scopeId, loadDocumentBlob]);
 
   // Sync external targetPage navigation (from ReaderToolbar or ReaderSidebar)
   useEffect(() => {

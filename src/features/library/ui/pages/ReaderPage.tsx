@@ -15,8 +15,8 @@ import { useShallow } from "zustand/react/shallow";
 import { useReaderStore } from "@/features/library/core/store/reader.store";
 import { useLibraryUIStore } from "@/features/library/core/store/library-ui.store";
 import { useAiCompanionStore } from "@/features/ai/store/ai-companion.store";
-import { useLibraryPermissions } from "@/features/library/core/adapters/project-context.adapter";
-import { useOcrExtraction, useExportAnnotatedPdf } from "@/features/library/sdk/queries/reader.queries";
+import { useLibraryPermissions } from "@/features/library/core/coordinator/navigation.coordinator";
+import { useExportAnnotatedPdf } from "@/features/library/core/coordinator/reader/use-reader";
 import { ReaderInspector } from "@/features/library/ui/inspector/LibraryInspector";
 import Topbar, { ReaderRetractionBanner } from "@/features/library/ui/reader/ReaderTopbar";
 import ReaderToolbar from "@/features/library/ui/reader/ReaderToolbar";
@@ -25,7 +25,6 @@ import {
   useReaderTabHistory,
   useReaderTabPresentation,
   useReaderKeyboardShortcuts,
-  resolveDocumentOcrState,
 } from "@/features/library/core/coordinator/reader/use-reader-tabs";
 import { isEditableOrModalElementFocused } from "@/features/library/core/coordinator/keyboard-shortcuts.coordinator";
 
@@ -58,7 +57,7 @@ const EpubAndSnapshotViewer = dynamic<import("@/features/library/ui/reader/viewe
   { ssr: false },
 );
 
-export interface ReaderPageProps {
+interface ReaderPageProps {
   paperId?: string | null;
   onBack?: () => void;
 }
@@ -413,8 +412,6 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     [actions],
   );
 
-  const { triggerOcr } = useOcrExtraction(scopeId, paper?.id);
-
   const handleAddToNoteAndExitReadingMode = useCallback(
     (text: string, pageNumber?: number, annotationId?: string) => {
       if (isReadingMode) {
@@ -471,23 +468,6 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     },
     [handleAnnotate, isToolLocked, activeTool, setActiveTool],
   );
-
-  // Scanned document detection & OCR status
-  const { isScanned, ocrStatus } = resolveDocumentOcrState(
-    paper,
-    effectiveAttachmentId,
-    fulltext,
-    numPages,
-  );
-
-  const handleTriggerOcr = useCallback(async () => {
-    if (!effectiveAttachmentId) return;
-    try {
-      await triggerOcr(effectiveAttachmentId);
-    } catch {
-      // Handled by useOcrExtraction hook toast
-    }
-  }, [effectiveAttachmentId, triggerOcr]);
 
   const { exportAnnotatedPdf } = useExportAnnotatedPdf(scopeId || "user");
 
@@ -617,8 +597,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
           viewMode={viewMode} onSelectViewMode={setViewMode}
           fitMode={fitMode} onSelectFitMode={setFitMode}
           onToggleSearch={handleToggleSearch} isInspectorOpen={isGlobalInspectorOpen}
-          onToggleInspector={handleToggleInspector} isScanned={isScanned}
-          ocrStatus={ocrStatus} onTriggerOcr={handleTriggerOcr}
+          onToggleInspector={handleToggleInspector}
           isPageBookmarked={isCurrentPageBookmarked}
           onToggleBookmark={paper?.id ? handleToggleCurrentBookmark : undefined}
           isReadingMode={isReadingMode} onToggleReadingMode={handleToggleReadingMode}

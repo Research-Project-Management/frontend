@@ -191,45 +191,6 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
     });
   });
 
-  describe('ItemService — Academic Metadata Provenance', () => {
-    it('should query metadata sources endpoint for personal item', async () => {
-      vi.mocked(api.apiGet).mockResolvedValueOnce({
-        itemId: 'item-123',
-        count: 2,
-        sources: [
-          {
-            id: 'src-1',
-            sourceProvider: 'arXiv',
-            sourceUri: 'arxiv:2301.00001',
-            fetchedAt: '2026-01-01T00:00:00.000Z',
-          },
-        ],
-      });
-
-      const res = await ItemService.getMetadataSources('user', 'item-123');
-
-      expect(api.apiGet).toHaveBeenCalledWith(
-        '/api/v1/library/items/item-123/metadata-sources',
-      );
-      expect(res.count).toBe(2);
-      expect(res.sources[0].sourceProvider).toBe('arXiv');
-    });
-
-    it('should query metadata sources endpoint with project scope', async () => {
-      vi.mocked(api.apiGet).mockResolvedValueOnce({
-        itemId: 'item-456',
-        count: 1,
-        sources: [],
-      });
-
-      await ItemService.getMetadataSources('proj-777', 'item-456');
-
-      expect(api.apiGet).toHaveBeenCalledWith(
-        '/api/v1/projects/proj-777/library/items/item-456/metadata-sources',
-      );
-    });
-  });
-
   describe('SyncService — Distributed Replication CDC', () => {
     it('should fetch sync version for user scope', async () => {
       vi.mocked(api.apiGet).mockResolvedValueOnce({
@@ -291,37 +252,6 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
       );
       expect(res.changes).toHaveLength(1);
       expect(res.changes[0].action).toBe('create');
-    });
-
-    it('should fetch tombstones with since parameter', async () => {
-      vi.mocked(api.apiGet).mockResolvedValueOnce({
-        since: '10',
-        count: 1,
-        hasMore: false,
-        tombstones: [
-          {
-            id: 'tb-1',
-            seq: '11',
-            entityType: 'item',
-            entityId: 'item-99',
-            deletedAt: '2026-01-01T00:00:00.000Z',
-          },
-        ],
-      });
-
-      const res = await SyncService.getTombstones('user', { since: '10' });
-
-      expect(api.apiGet).toHaveBeenCalledWith(
-        '/api/v1/library/sync/tombstones',
-        {
-          params: {
-            since: '10',
-            limit: 100,
-          },
-        },
-      );
-      expect(res.tombstones).toHaveLength(1);
-      expect(res.tombstones[0].entityId).toBe('item-99');
     });
   });
 

@@ -10,7 +10,7 @@ import {
   searchPdfPages,
   cyclePdfSearchMatch,
   type PdfTextMatch,
-} from '@/features/library/domain/reader-search-outline';
+} from '@/features/library/domain/reader-search-outline.domain';
 
 export interface PdfSearchDocumentProxy {
   numPages: number;
@@ -21,7 +21,7 @@ export interface PdfSearchDocumentProxy {
   }>;
 }
 
-export interface UseViewerSearchOptions {
+interface UseViewerSearchOptions {
   isSearchOpen: boolean;
   initialSearchQuery?: string;
   attachmentId?: string;
@@ -500,7 +500,7 @@ export function useViewerSearch({
   };
 }
 
-export interface ViewerSearchBarProps {
+interface ViewerSearchBarProps {
   searchInputRef: React.RefObject<HTMLInputElement | null>;
   searchQuery: string;
   onSearchQueryChange: (q: string) => void;

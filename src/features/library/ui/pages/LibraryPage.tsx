@@ -28,14 +28,14 @@ import {
 import {
   extractExplicitUserMergeOverrides,
   selectBestMasterItemId,
-} from '@/features/library/domain/diff';
+} from '@/features/library/domain/diff.domain';
 import { useFeedsStore, isFeedEntryInLibrary } from '@/features/library/core/store/reader.store';
-import { useLibraryPermissions } from '@/features/library/core/adapters/project-context.adapter';
+import { useLibraryPermissions } from '@/features/library/core/coordinator/navigation.coordinator';
 import { useProcessModalStore } from '@/features/library/core/store/process-modal.store';
-import { useCollectionsQuery } from '@/features/library/sdk/queries/collections.queries';
-import { useSavedSearches } from '@/features/library/sdk/queries/saved-searches-relations.queries';
-import { useTrash } from '@/features/library/sdk/queries/tags-notes.queries';
-import { useLibraryDeltaSync } from '@/features/library/sdk/queries/sync.queries';
+import { useCollectionsQuery } from '@/features/library/core/coordinator/collection.coordinator';
+import { useSavedSearches } from '@/features/library/core/coordinator/saved-search-builder.coordinator';
+import { useTrash } from '@/features/library/core/coordinator/saved-search-builder.coordinator';
+import { useLibraryDeltaSync } from '@/features/library/core/coordinator/navigation.coordinator';
 import {
   useLibraryBootstrapQuery,
   useLibraryCountsQuery,
@@ -44,15 +44,15 @@ import {
   useBatchRestoreItemsMutation,
   useUpdateLibraryItemMutation,
   useLibraryCacheSynchronizer,
-} from '@/features/library/sdk/queries/catalog.queries';
+} from '@/features/library/core/coordinator/item-action.coordinator';
 import {
   useMergeDuplicates,
   useDuplicateGroups,
   useIngestMutation,
-} from '@/features/library/sdk/queries/ingestion.queries';
-import { formatItemTypeLabel } from '@/features/library/domain/metadata-mapper';
-import { parseEmojiPrefix } from '@/features/library/domain/citations';
-import { getCollectionBreadcrumbPath } from '@/features/library/domain/collection-tree';
+} from '@/features/library/core/coordinator/curation.coordinator';
+import { formatItemTypeLabel } from '@/features/library/domain/metadata.mapper';
+import { parseEmojiPrefix } from '@/features/library/domain/citations.domain';
+import { getCollectionBreadcrumbPath } from '@/features/library/domain/collection-tree.domain';
 import { type ParsedFeedEntry } from '@/features/library/domain/feed-parser.domain';
 import { executeSaveFeedEntryWithFeedback } from '@/features/library/core/coordinator/ingestion.coordinator';
 import type { Item, DuplicateGroup, Collection } from '@/features/library/domain/types/core.types';

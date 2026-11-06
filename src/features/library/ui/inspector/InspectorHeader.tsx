@@ -28,8 +28,8 @@ import {
   useUpdateLibraryItemMutation,
   useBatchRestoreItemsMutation,
   useDeleteLibraryItemsMutation,
-} from '@/features/library/sdk/queries/catalog.queries';
-import { useRetraction } from '@/features/library/sdk/queries/ingestion.queries';
+} from '@/features/library/core/coordinator/item-action.coordinator';
+import { useRetraction } from '@/features/library/core/coordinator/curation.coordinator';
 import {
   useLibraryCommandStore,
   createRestoreCommand,
@@ -37,8 +37,8 @@ import {
 import type { InspectorSectionId } from '@/features/library/core/store/library-ui.store';
 import type { Item } from '@/features/library/domain/types/core.types';
 import { getTitleFieldForType } from '@/features/library/domain/types/item-types.types';
-import { getItemDisplayTitle } from '@/features/library/domain/metadata-mapper';
-import { buildInspectorFieldPatch } from '@/features/library/domain/item-field-schema';
+import { getItemDisplayTitle } from '@/features/library/domain/metadata.mapper';
+import { buildInspectorFieldPatch } from '@/features/library/domain/item-field-schema.domain';
 import dynamic from 'next/dynamic';
 import {
   isItemRetracted,
@@ -180,7 +180,7 @@ export function InspectorSection({
   );
 }
 
-export type InspectorTabKey = InspectorSectionId;
+type InspectorTabKey = InspectorSectionId;
 
 export const INSPECTOR_LEVELS: InspectorSectionId[] = [
   'cite',
@@ -200,7 +200,7 @@ interface TabItem {
   badge?: number;
 }
 
-export interface InspectorTabsProps {
+interface InspectorTabsProps {
   activeTab: InspectorSectionId;
   onTabChange: (tab: InspectorSectionId) => void;
   attachmentCount?: number;

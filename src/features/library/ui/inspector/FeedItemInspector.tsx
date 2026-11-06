@@ -26,7 +26,7 @@ import { safeHttpUrl } from '@/features/library/domain/system-views.policy';
 import type { Collection } from '@/features/library/domain/types/core.types';
 import { cn } from '@/shared/lib/utils';
 
-export interface FeedItemInspectorProps {
+interface FeedItemInspectorProps {
   entry: ParsedFeedEntry | null;
   feedTitle?: string;
   collections?: Collection[];

@@ -31,14 +31,14 @@ import {
   TooltipContent,
 } from '@/shared/components/ui/tooltip';
 import { executeDownloadFormatFile } from '@/features/library/core/coordinator/citation-export.coordinator';
-import { getCollectionAncestorPath } from '@/features/library/domain/collection-tree';
+import { getCollectionAncestorPath } from '@/features/library/domain/collection-tree.domain';
 import type {
   Collection,
   CslStyle,
   Item,
 } from '@/features/library/domain/types/core.types';
 
-export interface BatchMoveCollectionPopoverProps {
+interface BatchMoveCollectionPopoverProps {
   isUnfiledView: boolean;
   isAllProcessingSelected: boolean;
   canMoveToRootUnfiled: boolean;
@@ -194,7 +194,7 @@ export function BatchMoveCollectionPopover({
   );
 }
 
-export interface BatchCitationExportPopoversProps {
+interface BatchCitationExportPopoversProps {
   citationStyles: Array<{ id: string; label: string }>;
   resolvedItems: Item[];
   effectiveScopeId: string;
@@ -378,7 +378,7 @@ export function BatchCitationExportPopovers({
   );
 }
 
-export interface BatchSmartViewActionsProps {
+interface BatchSmartViewActionsProps {
   effectiveIsTrash: boolean;
   isDuplicatesView: boolean;
   isStarredView: boolean;
@@ -527,7 +527,7 @@ export function BatchSmartViewActions({
   );
 }
 
-export interface BatchLifecycleActionsProps {
+interface BatchLifecycleActionsProps {
   effectiveIsTrash: boolean;
   canEdit: boolean;
   isAllProcessingSelected: boolean;

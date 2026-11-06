@@ -13,7 +13,7 @@ export {
   type ItemTableHeaderProps,
 } from './ItemTableHeader';
 
-export interface ItemRowActionsProps {
+interface ItemRowActionsProps {
   item: Item;
   scopeId?: string;
   isTrash?: boolean;
@@ -331,7 +331,7 @@ export const ItemRowActions = React.memo(function ItemRowActions({
 
 export default ItemRowActions;
 
-export interface ItemContextMenuProps {
+interface ItemContextMenuProps {
   children: React.ReactNode;
   item: Item;
   isTrash?: boolean;

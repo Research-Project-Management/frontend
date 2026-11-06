@@ -20,7 +20,7 @@ import { SingleDatePopover } from "@/shared/components/ui/single-date-popover";
 import { FilterFunnelIcon } from "@/shared/components/icons";
 import type { Item, TagWithCount } from "@/features/library/domain/types/core.types";
 import { useLibraryFacetCounts } from "@/features/library/core/coordinator/facet-filter.coordinator";
-import { useLibraryPermissions } from "@/features/library/core/adapters/project-context.adapter";
+import { useLibraryPermissions } from "@/features/library/core/coordinator/navigation.coordinator";
 import { FilterTagsSection } from "./FilterTagsSection";
 
 function FilterCheckbox({ checked }: { checked: boolean }) {
@@ -34,7 +34,7 @@ function FilterCheckbox({ checked }: { checked: boolean }) {
   );
 }
 
-export interface FilterFacetSectionsProps {
+interface FilterFacetSectionsProps {
   searchQuery: string;
   onClearSearchQuery: () => void;
   totalMatchesCount: number;
@@ -85,7 +85,7 @@ export interface FilterFacetSectionsProps {
   onClearDate: () => void;
 }
 
-export function FilterFacetSections({
+function FilterFacetSections({
   searchQuery,
   onClearSearchQuery,
   totalMatchesCount,
@@ -386,7 +386,7 @@ export function FilterFacetSections({
   );
 }
 
-export interface LibraryFilterPopoverProps {
+interface LibraryFilterPopoverProps {
   scopeId?: string;
   items?: Item[];
   className?: string;

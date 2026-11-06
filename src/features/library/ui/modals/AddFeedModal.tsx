@@ -13,12 +13,12 @@ import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/shared/components/ui/select';
 import { cn } from '@/shared/lib/utils';
-import { useFetchFeed, useSubscribeFeedMutation, useUpdateFeedSubscriptionMutation } from '@/features/library/sdk/queries/ingestion.queries';
+import { useFetchFeed, useSubscribeFeedMutation, useUpdateFeedSubscriptionMutation } from '@/features/library/core/coordinator/curation.coordinator';
 import { resolveFeedTitleFromUrl, executeSubscribeFeedWithAutoTitle } from '@/features/library/core/coordinator/ingestion.coordinator';
 import { addFeedSchema, applyServerErrorToForm, type AddFeedFormValues, editFeedSchema, type EditFeedFormValues } from '@/features/library/domain/types/core.types';
 import { READ_RETENTION_OPTIONS, UNREAD_RETENTION_OPTIONS, type FeedRetentionDays, type SavedFeedSubscription } from '@/features/library/domain/types/ingestion.types';
 
-export interface AddFeedModalProps {
+interface AddFeedModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit?: (data: AddFeedFormValues) => Promise<unknown> | void;
@@ -335,7 +335,7 @@ export function AddFeedModal({
 
 export default AddFeedModal;
 
-export interface EditFeedModalProps {
+interface EditFeedModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   feed: SavedFeedSubscription | null;

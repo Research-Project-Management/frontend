@@ -7,7 +7,7 @@ import { cn } from '@/shared/lib/utils';
 import { getCappedDevicePixelRatio, releaseCanvasMemory } from '@/shared/lib/pdfjs-worker';
 import type { ReaderAnnotation, AnnotationRect, InlineTextInputState, AreaSelectionState, InkDrawingState } from '@/features/library/domain/types/reader.schema';
 import type { ReaderAnnotationTool } from '@/features/library/core/store/reader.store';
-import { calculatePageAspectRatio } from '@/features/library/domain/reader-search-outline';
+import { calculatePageAspectRatio } from '@/features/library/domain/reader-search-outline.domain';
 import { PageAnnotationOverlay } from './PageAnnotationOverlay';
 import JSZip from 'jszip';
 import DOMPurify from 'dompurify';
@@ -51,7 +51,7 @@ export function DocumentPageSkeleton({
   );
 }
 
-export interface ViewerPageCanvasProps {
+interface ViewerPageCanvasProps {
   pageNum: number;
   inWindow: boolean;
   effectivePageWidth: number;
@@ -339,7 +339,7 @@ export function sanitizeReaderHtml(rawHtml: string): string {
 /**
  * Resolves a relative path inside an EPUB archive against a base directory.
  */
-export function resolveEpubPath(baseDir: string, relativeHref: string): string {
+function resolveEpubPath(baseDir: string, relativeHref: string): string {
   const cleanHref = relativeHref.split('#')[0];
   if (!baseDir) return cleanHref.replace(/^\/+/, '');
   const parts = `${baseDir}/${cleanHref}`.split('/');

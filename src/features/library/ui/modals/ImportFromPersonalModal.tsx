@@ -27,12 +27,12 @@ import {
   useViewItems,
   useLibraryCountsQuery,
   useImportFromUserMutation,
-} from "@/features/library/sdk/queries/catalog.queries";
-import { useCollections } from "@/features/library/sdk/queries/collections.queries";
+} from "@/features/library/core/coordinator/item-action.coordinator";
+import { useCollections } from "@/features/library/core/coordinator/collection.coordinator";
 import {
   formatCreatorCompact,
   normalizeAuthors,
-} from "@/features/library/domain/creators";
+} from "@/features/library/domain/creators.domain";
 import type {
   Item,
 } from "@/features/library/domain/types/core.types";

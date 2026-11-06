@@ -264,7 +264,7 @@ export function RecentlyReadEmptyState() {
   );
 }
 
-export interface LibraryEmptyStateProps {
+interface LibraryEmptyStateProps {
   search?: string;
   activeFilter?: string | null;
   collectionId?: string;

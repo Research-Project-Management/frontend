@@ -6,8 +6,8 @@ import { UploadCloud, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/shared/components/ui/select';
-import { useCollectionsQuery } from '@/features/library/sdk/queries/collections.queries';
-import { useLibraryCacheSynchronizer } from '@/features/library/sdk/queries/catalog.queries';
+import { useCollectionsQuery } from '@/features/library/core/coordinator/collection.coordinator';
+import { useLibraryCacheSynchronizer } from '@/features/library/core/coordinator/item-action.coordinator';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { useProcessModalStore } from '@/features/library/core/store/process-modal.store';
 import { addLinkSchema, applyServerErrorToForm, type Collection, type AddLinkFormValues } from '@/features/library/domain/types/core.types';
@@ -19,7 +19,7 @@ import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 
-export interface UploadFilesModalProps {
+interface UploadFilesModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   scopeId?: string;
@@ -232,7 +232,7 @@ export function UploadFilesModal({
 
 export default UploadFilesModal;
 
-export interface AddLinkData {
+interface AddLinkData {
   url: string;
   title?: string;
   attachOaPdf?: boolean;
@@ -244,7 +244,7 @@ export interface AddLinkData {
   [key: string]: unknown;
 }
 
-export interface AddLinkModalProps {
+interface AddLinkModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: AddLinkData) => Promise<unknown> | void;

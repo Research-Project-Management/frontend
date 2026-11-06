@@ -3,14 +3,14 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { ChevronDown, ChevronUp, Plus, Minus, Check } from 'lucide-react';
 import { toast } from 'sonner';
-import { type CreatorEntry, normalizeAuthors, splitAuthorString, parseCreatorName, parseCreators, areCreatorsEqual, toItemCreators, buildCanonicalCreatorsPatch, isInstitutionName } from '@/features/library/domain/creators';
+import { type CreatorEntry, normalizeAuthors, splitAuthorString, parseCreatorName, parseCreators, areCreatorsEqual, toItemCreators, buildCanonicalCreatorsPatch, isInstitutionName } from '@/features/library/domain/creators.domain';
 import type { Item } from '@/features/library/domain/types/core.types';
 import { type SchemaItemTypeDefinition, ALL_CREATOR_TYPES, getPrimaryCreatorType } from '@/features/library/domain/types/item-types.types';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 
-export interface CreatorFieldsProps {
+interface CreatorFieldsProps {
   item?: Item;
   typeDefinition: SchemaItemTypeDefinition;
   canEdit?: boolean;
@@ -381,13 +381,13 @@ export function CreatorFields({
 
 export default CreatorFields;
 
-export interface CreatorTypeOption {
+interface CreatorTypeOption {
   creatorType: string;
   label: string;
   primary?: boolean;
 }
 
-export interface CreatorRowItemProps {
+interface CreatorRowItemProps {
   creatorEntry: CreatorEntry;
   originalIndex: number;
   canEdit: boolean;
@@ -401,7 +401,7 @@ export interface CreatorRowItemProps {
   onRemoveCreator: (index: number) => void;
 }
 
-export function CreatorRowItem({
+function CreatorRowItem({
   creatorEntry,
   originalIndex,
   canEdit,

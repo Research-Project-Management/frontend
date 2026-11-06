@@ -27,8 +27,8 @@ import { FeedStackIllustration } from '@/features/library/ui/content/LibraryIllu
 import {
   useFetchFeed,
   useIngestMutation,
-} from '@/features/library/sdk/queries/ingestion.queries';
-import { useCreateLibraryItemMutation } from '@/features/library/sdk/queries/catalog.queries';
+} from '@/features/library/core/coordinator/curation.coordinator';
+import { useCreateLibraryItemMutation } from '@/features/library/core/coordinator/item-action.coordinator';
 import {
   normalizeFetchedFeedEntries,
   type ParsedFeedEntry,
@@ -50,7 +50,7 @@ import type { SavedFeedSubscription } from '@/features/library/domain/types/inge
 
 export type { SavedFeedSubscription };
 
-export interface FeedsManagerModalProps {
+interface FeedsManagerModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   scopeId: string;
@@ -72,6 +72,7 @@ export default function FeedsManagerModal({
   const activeFeedId = useFeedsStore((s) => s.activeFeedId);
   const loadFeeds = useFeedsStore((s) => s.loadFeeds);
   const hydrateReadEntries = useFeedsStore((s) => s.hydrateReadEntries);
+  const hydrateSavedEntries = useFeedsStore((s) => s.hydrateSavedEntries);
   const setActiveFeedId = useFeedsStore((s) => s.setActiveFeedId);
   const addFeed = useFeedsStore((s) => s.addFeed);
   const removeFeed = useFeedsStore((s) => s.removeFeed);
@@ -150,6 +151,12 @@ export default function FeedsManagerModal({
         if (readIds.length > 0) {
           hydrateReadEntries(readIds);
         }
+        const savedIds = normalized
+          .filter((e) => e.isSaved === true || Boolean(e.savedItemId))
+          .map((e) => e.id);
+        if (savedIds.length > 0) {
+          hydrateSavedEntries(savedIds);
+        }
       } else {
         setEntries([]);
       }
@@ -158,7 +165,7 @@ export default function FeedsManagerModal({
     } finally {
       setIsLoadingEntries(false);
     }
-  }, [fetchAcademicFeed, hydrateReadEntries]);
+  }, [fetchAcademicFeed, hydrateReadEntries, hydrateSavedEntries]);
 
   useEffect(() => {
     if (open && activeFeed) {

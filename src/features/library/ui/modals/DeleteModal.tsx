@@ -9,7 +9,7 @@ import type { Item } from '@/features/library/domain/types/core.types';
 import { getRetractionInfo, safeHttpUrl } from '@/features/library/domain/system-views.policy';
 import type { ReaderDocument } from '@/features/library/domain/types/reader.schema';
 import { useReaderClipboard, useReaderFileDownload } from '@/features/library/core/coordinator/reader/use-reader';
-import { useExportItemCitationQuery } from '@/features/library/sdk/queries/extraction.queries';
+import { useExportItemCitationQuery } from '@/features/library/core/coordinator/citation-export.coordinator';
 
 export interface DeleteModalProps {
   open: boolean;
@@ -119,7 +119,7 @@ export function DeleteModal({
 
 export default DeleteModal;
 
-export interface RetractionNoticeModalProps {
+interface RetractionNoticeModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   item: Item;
@@ -277,7 +277,7 @@ export function RetractionNoticeModal({
   );
 }
 
-export interface PaperBibtexDialogProps {
+interface PaperBibtexDialogProps {
   paper: ReaderDocument;
   open: boolean;
   onOpenChange: (open: boolean) => void;

@@ -10,13 +10,13 @@ import {
 import {
   useCreateCollectionMutation,
   useCollections,
-} from '@/features/library/sdk/queries/collections.queries';
+} from '@/features/library/core/coordinator/collection.coordinator';
 import {
   useDeleteLibraryItemsMutation,
   useBatchRestoreItemsMutation,
   useBatchPurgeItemsMutation,
   useUpdateLibraryItemMutation,
-} from '@/features/library/sdk/queries/catalog.queries';
+} from '@/features/library/core/coordinator/item-action.coordinator';
 import {
   useLibraryCommandStore,
   createTrashCommand,
@@ -24,7 +24,7 @@ import {
   buildPreConversionSnapshot,
   PRE_CONVERSION_BIBLIOGRAPHIC_SCALAR_KEYS,
 } from '@/features/library/core/manager/library-command.manager';
-import { useSavedSearches } from '@/features/library/sdk/queries/saved-searches-relations.queries';
+import { useSavedSearches } from '@/features/library/core/coordinator/saved-search-builder.coordinator';
 import type {
   Collection,
   CollectionFormValues,

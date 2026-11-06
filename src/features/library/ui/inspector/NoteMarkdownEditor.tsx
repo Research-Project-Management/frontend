@@ -7,8 +7,8 @@ import { Textarea } from '@/shared/components/ui/textarea';
 import { normalizeCitationLinkHref, parseAnnotationDeepLinkUrl, extractStructuredDeepLinksFromMarkdown, tokenizeCitationDeepLinksForEditor, detokenizeCitationDeepLinksFromEditor, renderInlineMarkdown, FormattedNoteBody, getNoteDisplayTitle, getNotePreviewSnippet, type ParsedAnnotationDeepLink, type CompactCitationTokenEntry } from './FormattedNoteBody';
 import { useState, useEffect } from 'react';
 import { SchemaFieldDefinition } from '@/features/library/domain/types/core.types';
-import { isValidValue } from '@/features/library/domain/metadata-mapper';
-import { InlineField } from '@/features/library/ui/inspector/fields/GeneralFields';
+import { isValidValue } from '@/features/library/domain/metadata.mapper';
+import { InlineField } from '@/features/library/ui/inspector/GeneralFields';
 
 export {
   normalizeCitationLinkHref,
@@ -27,7 +27,7 @@ export {
 /**
  * Formatting toolbar for Rich-Text / Markdown note editing (Rich Note Editor)
  */
-export function NoteFormattingToolbar({
+function NoteFormattingToolbar({
   textareaRef,
   value,
   onChange,
@@ -178,7 +178,7 @@ export function NoteFormattingToolbar({
   );
 }
 
-export interface NoteEditorBoxProps {
+interface NoteEditorBoxProps {
   value: string;
   onChange: (nextValue: string) => void;
   onSave: () => void;
@@ -342,7 +342,7 @@ export function NoteEditorBox({
   );
 }
 
-export interface DynamicInspectorFieldProps {
+interface DynamicInspectorFieldProps {
   fieldDef: SchemaFieldDefinition;
   val: string;
   displayDoi: string;
@@ -400,7 +400,7 @@ const MONO_FIELD_KEYS = new Set<string>([
   "citationcount",
 ]);
 
-export interface InspectorFieldActionDescriptor {
+interface InspectorFieldActionDescriptor {
   type: "external-link" | "copy-cite";
   href?: string;
   copyText?: string;
@@ -498,7 +498,7 @@ const INSPECTOR_FIELD_ACTION_STRATEGIES: readonly FieldActionStrategy[] = [
   },
 ];
 
-export function resolveInspectorFieldAction(
+function resolveInspectorFieldAction(
   fieldKeyOrDef: string | SchemaFieldDefinition,
   value: string,
   displayDoi?: string,

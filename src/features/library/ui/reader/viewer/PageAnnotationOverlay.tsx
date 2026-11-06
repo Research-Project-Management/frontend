@@ -10,11 +10,11 @@ import type {
 } from '@/features/library/domain/types/reader.schema';
 import type { ReaderAnnotationTool } from '@/features/library/core/store/reader.store';
 import { ANNOTATION_PALETTE_COLORS } from '@/features/library/ui/reader/ReaderToolbar';
-import { cropCanvasSelectionToDataUrl } from '@/features/library/domain/reader-search-outline';
+import { cropCanvasSelectionToDataUrl } from '@/features/library/domain/reader-search-outline.domain';
 
 export type { ActiveHighlightTooltipState };
 
-export interface PageAnnotationOverlayProps {
+interface PageAnnotationOverlayProps {
   annotations: ReaderAnnotation[];
   pulsingAnnotationId: string | null;
   activeTool?: ReaderAnnotationTool;
@@ -435,7 +435,7 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
   );
 });
 
-export interface AnnotationQuickEditCardProps {
+interface AnnotationQuickEditCardProps {
   tooltip: ActiveHighlightTooltipState;
   visiblePage: number;
   onUpdateAnnotation?: (

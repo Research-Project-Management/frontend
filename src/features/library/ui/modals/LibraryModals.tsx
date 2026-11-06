@@ -17,25 +17,25 @@ import {
   useBatchRestoreItemsMutation,
   useUpdateLibraryItemMutation,
   useLibraryCacheSynchronizer,
-} from '@/features/library/sdk/queries/catalog.queries';
+} from '@/features/library/core/coordinator/item-action.coordinator';
 import {
   useLibraryCommandStore,
   buildPreConversionSnapshot,
   createConvertItemTypeCommand,
 } from '@/features/library/core/manager/library-command.manager';
 import { executeDuplicateMergeWithCommand } from '@/features/library/core/coordinator/curation.coordinator';
-import { useItemTypeConversion } from '@/features/library/sdk/queries/saved-searches-relations.queries';
+import { useItemTypeConversion } from '@/features/library/core/coordinator/saved-search-builder.coordinator';
 import {
   useTrackedIdentifierIngestion,
   useMergeDuplicates,
   useDismissDuplicatesMutation,
   useFetchFeed,
   useSubscribeFeedMutation,
-} from '@/features/library/sdk/queries/ingestion.queries';
-import { useSetMyPublicationMutation } from '@/features/library/sdk/queries/item-mutations.queries';
+} from '@/features/library/core/coordinator/curation.coordinator';
+import { useSetMyPublicationMutation } from '@/features/library/core/coordinator/item-action.coordinator';
 import type { SavedFeedSubscription } from '@/features/library/domain/types/ingestion.types';
 import type { AddFeedFormValues } from '@/features/library/domain/types/core.types';
-import { parseBatchIdentifiersInput } from '@/features/library/domain/identifiers';
+import { parseBatchIdentifiersInput } from '@/features/library/domain/identifiers.domain';
 import {
   ALL_ITEM_TYPES_FLAT,
   type Item,
@@ -89,7 +89,7 @@ const MyPublicationModal = dynamic(
  * Only mounts duplicate merge, duplicate dismiss, item type conversion, and item update hooks when open.
  * Pushes reversible Undo/Redo commands onto `useLibraryCommandStore`.
  */
-export function CurationModalsHost({
+function CurationModalsHost({
   activeModal,
   payload,
   effectiveScope,
@@ -255,7 +255,7 @@ export function CurationModalsHost({
  * 5. IngestionAndUtilityModalsHost
  * Lazy host for identifier link ingestion, PDF upload, personal library import, feeds, and CSL style picker.
  */
-export function IngestionAndUtilityModalsHost({
+function IngestionAndUtilityModalsHost({
   activeModal,
   payload,
   effectiveScope,
@@ -341,6 +341,7 @@ export function IngestionAndUtilityModalsHost({
           attachOaPdf: data.attachOaPdf,
           saveSnapshot: data.saveSnapshot,
           collectionId: payload?.collectionId,
+          rethrowOnError: true,
           onCloseModal: closeModal,
           onAddProvisionalItem: addProcessingItem,
           onDismissProvisionalItem: dismissProcessingItem,
@@ -473,7 +474,7 @@ export function IngestionAndUtilityModalsHost({
  * Declarative Strategy Registry mapping every `LibraryModalType` to its lazy host container.
  * Ensures zero modal-specific TanStack Query / Mutation hooks subscribe when `activeModal === null`.
  */
-export const ACTIVE_MODAL_REGISTRY: Partial<
+const ACTIVE_MODAL_REGISTRY: Partial<
   Record<LibraryModalType, React.ComponentType<ModalHostProps>>
 > = {
   CREATE_COLLECTION: CollectionModalsHost,

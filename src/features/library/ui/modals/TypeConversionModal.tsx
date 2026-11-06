@@ -31,10 +31,10 @@ import {
   useItemTypeConversion,
   useItemTypeConversionPreviewQuery,
   type TypeConversionPreview,
-} from "@/features/library/sdk/queries/saved-searches-relations.queries";
-import { useLibraryCacheSynchronizer } from "@/features/library/sdk/queries/catalog.queries";
+} from "@/features/library/core/coordinator/saved-search-builder.coordinator";
+import { useLibraryCacheSynchronizer } from "@/features/library/core/coordinator/item-action.coordinator";
 
-export type TypeConversionItemLike = {
+type TypeConversionItemLike = {
   id?: string;
   itemType?: string;
   projectId?: string | null;
@@ -43,7 +43,7 @@ export type TypeConversionItemLike = {
   [key: string]: unknown;
 };
 
-export interface TypeConversionModalProps {
+interface TypeConversionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   item?: Item | TypeConversionItemLike;

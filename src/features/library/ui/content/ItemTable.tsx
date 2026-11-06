@@ -11,29 +11,29 @@ import {
   useDeleteLibraryItemsMutation,
   useBatchRestoreItemsMutation,
   useBatchPurgeItemsMutation,
-} from "@/features/library/sdk/queries/catalog.queries";
+} from "@/features/library/core/coordinator/item-action.coordinator";
 import {
   useCollectionsQuery,
   useMoveCollectionItemsMutation,
   useAssignCollectionItemsMutation,
   useBatchDetachItemsMutation,
-} from "@/features/library/sdk/queries/collections.queries";
+} from "@/features/library/core/coordinator/collection.coordinator";
 import { toast } from "sonner";
-import { useTags } from "@/features/library/sdk/queries/tags-notes.queries";
+import { useTags } from "@/features/library/core/coordinator/saved-search-builder.coordinator";
 import {
   DEFAULT_LIBRARY_DISPLAY_OPTIONS,
   getDefaultSortDirection,
   type LibraryDisplayOptions,
   type LibraryOrderBy,
 } from "@/features/library/domain/types/ingestion.types";
-import { sortLibraryItems } from "@/features/library/domain/zotero-extra-parser";
+import { sortLibraryItems } from "@/features/library/domain/extra-metadata.mapper";
 import { ItemTableHeader } from "./ItemTableHeader";
 import { ItemTableRow } from "./ItemTableRow";
 import { useLibraryKeyboardShortcuts } from "@/features/library/core/coordinator/keyboard-shortcuts.coordinator";
 import { useLibraryItemOperations } from "@/features/library/core/coordinator/item-action.coordinator";
 import type { Item, Collection } from "@/features/library/domain/types/core.types";
 
-export interface ItemTableProps {
+interface ItemTableProps {
   items: Item[];
   totalCount?: number;
   hasNextPage?: boolean;

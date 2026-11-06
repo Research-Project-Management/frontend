@@ -343,7 +343,7 @@ export default function ProcessModal({
   );
 }
 
-export interface MyPublicationModalProps {
+interface MyPublicationModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   item?: Item | null;

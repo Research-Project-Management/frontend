@@ -26,10 +26,10 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
 import { TAG_PALETTE_COLORS } from "@/features/library/core/coordinator/facet-filter.coordinator";
-import { cleanSingleFrontendTag } from "@/features/library/domain/metadata-mapper";
+import { cleanSingleFrontendTag } from "@/features/library/domain/metadata.mapper";
 import type { TagWithCount } from "@/features/library/domain/types/core.types";
 
-export interface FilterTagsSectionProps {
+interface FilterTagsSectionProps {
   matchingTags: Array<{ tag: TagWithCount; score: number }>;
   activeTags: string[];
   onTagToggle: (name: string) => void;

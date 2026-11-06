@@ -28,7 +28,7 @@ import {
 import {
   useCslCitation,
   useCitationStyles,
-} from "@/features/library/sdk/queries/extraction.queries";
+} from "@/features/library/core/coordinator/citation-export.coordinator";
 import type {
   Item,
   CslStyle,
@@ -37,17 +37,17 @@ import {
   generateCitationKey,
   getCleanStyleLabel,
   normalizeCitationStyleId,
-} from "@/features/library/domain/citations";
+} from "@/features/library/domain/citations.domain";
 import { triggerBrowserTextDownload } from "@/features/library/core/coordinator/citation-export.coordinator";
 import { useLibraryUIStore } from "@/features/library/core/store/library-ui.store";
 import DOMPurify from "dompurify";
 
-export interface CiteSectionProps {
+interface CiteSectionProps {
   item?: Item;
   scopeId?: string;
 }
 
-export type CitationFormat = string;
+type CitationFormat = string;
 
 /**
  * Robust CSL HTML sanitizer powered by DOMPurify.

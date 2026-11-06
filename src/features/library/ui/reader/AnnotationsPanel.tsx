@@ -44,7 +44,7 @@ import {
 
 export { AnnotationsPanelCard, AnnotationsBottomSelectorDock };
 
-export interface AnnotationsPanelProps {
+interface AnnotationsPanelProps {
   paper: ReaderDocument;
   scopeId?: string;
   attachmentId?: string;

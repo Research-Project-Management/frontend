@@ -18,10 +18,10 @@ import type { ReaderDocument, ReaderAnnotation, AnnotationFormData } from '@/fea
 import { annotationFormSchema } from '@/features/library/domain/types/reader.schema';
 import { PdfAnnotationEngine, ANNOTATION_PALETTE_COLORS, formatAnnotationCitation } from '@/features/library/domain/reader.domain';
 
-export const ANNOTATION_COLOR_BY_HEX_MAP: ReadonlyMap<string, (typeof ANNOTATION_PALETTE_COLORS)[number]> = new Map(
+const ANNOTATION_COLOR_BY_HEX_MAP: ReadonlyMap<string, (typeof ANNOTATION_PALETTE_COLORS)[number]> = new Map(
   ANNOTATION_PALETTE_COLORS.map((c) => [c.hex.toLowerCase(), c]),
 );
-export const ANNOTATION_COLOR_BY_ID_MAP: ReadonlyMap<string, (typeof ANNOTATION_PALETTE_COLORS)[number]> = new Map(
+const ANNOTATION_COLOR_BY_ID_MAP: ReadonlyMap<string, (typeof ANNOTATION_PALETTE_COLORS)[number]> = new Map(
   ANNOTATION_PALETTE_COLORS.map((c) => [c.id.toLowerCase(), c]),
 );
 
@@ -69,7 +69,7 @@ export function filterAndSortAnnotations(
   return params.sortBy === 'position' ? PdfAnnotationEngine.sortAnnotations(filtered) : PdfAnnotationEngine.sortAnnotationsByMode(filtered, params.sortBy);
 }
 
-export function AnnotationEditForm({
+function AnnotationEditForm({
   initialQuote,
   initialComment,
   initialColor,
@@ -191,7 +191,7 @@ export function AnnotationEditForm({
   );
 }
 
-export interface AnnotationsPanelCardProps {
+interface AnnotationsPanelCardProps {
   annotation: ReaderAnnotation;
   paper?: ReaderDocument;
   scopeId?: string;
@@ -619,7 +619,7 @@ export const AnnotationsPanelCard = React.memo(function AnnotationsPanelCard({
   );
 });
 
-export interface AnnotationsBottomSelectorDockProps {
+interface AnnotationsBottomSelectorDockProps {
   existingColors: Array<{ id: string; label: string; hex: string }>;
   existingTags: string[];
   selectedColor: string;

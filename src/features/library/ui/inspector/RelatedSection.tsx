@@ -2,9 +2,9 @@
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { FileText, X, ExternalLink, Loader2, Search, Plus, Folder, Library, } from 'lucide-react';
-import { useRelations } from '@/features/library/sdk/queries/saved-searches-relations.queries';
-import { useViewItems, useLibraryCountsQuery } from '@/features/library/sdk/queries/catalog.queries';
-import { useCollectionsQuery } from '@/features/library/sdk/queries/collections.queries';
+import { useRelations } from '@/features/library/core/coordinator/saved-search-builder.coordinator';
+import { useViewItems, useLibraryCountsQuery } from '@/features/library/core/coordinator/item-action.coordinator';
+import { useCollectionsQuery } from '@/features/library/core/coordinator/collection.coordinator';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { Button } from '@/shared/components/ui/button';
 import { Checkbox } from '@/shared/components/ui/checkbox';
@@ -25,7 +25,7 @@ import {
 import { toast } from 'sonner';
 import type { Item, RelatedItem, Collection, RelationType } from '@/features/library/domain/types/core.types';
 import { cn } from '@/shared/lib/utils';
-import { cleanText } from '@/features/library/domain/citations';
+import { cleanText } from '@/features/library/domain/citations.domain';
 
 const RELATION_TYPES: Array<{ id: RelationType; label: string }> = [
   { id: 'related', label: 'Related' },

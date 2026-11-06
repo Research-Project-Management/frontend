@@ -26,14 +26,14 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import type { Item } from "@/features/library/domain/types/items.types";
-import { getItemAuthorsSummary } from "@/features/library/domain/creators";
+import { getItemAuthorsSummary } from "@/features/library/domain/creators.domain";
 import { useDuplicateMergeState } from "@/features/library/core/coordinator/curation.coordinator";
 import {
   resolveMergeFieldOptionState,
   type ItemFieldDiff,
-} from "@/features/library/domain/diff";
+} from "@/features/library/domain/diff.domain";
 
-export interface MergeModalProps {
+interface MergeModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   duplicates: Item[];

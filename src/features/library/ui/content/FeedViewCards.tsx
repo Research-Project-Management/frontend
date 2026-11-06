@@ -29,7 +29,7 @@ import type { Collection } from '@/features/library/domain/types/core.types';
 import type { ParsedFeedEntry } from '@/features/library/domain/feed-parser.domain';
 import { cn } from '@/shared/lib/utils';
 
-export interface FeedSubNavigationBarProps {
+interface FeedSubNavigationBarProps {
   readFilter: 'all' | 'unread' | 'read';
   onChangeReadFilter: (tab: 'all' | 'unread' | 'read') => void;
   lastRefreshed?: string | null;
@@ -92,7 +92,7 @@ export function FeedSubNavigationBar({
   );
 }
 
-export interface FeedArticleRowProps {
+interface FeedArticleRowProps {
   entry: ParsedFeedEntry;
   feedTitle: string;
   canEdit: boolean;

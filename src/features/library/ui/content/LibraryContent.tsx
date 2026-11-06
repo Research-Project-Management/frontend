@@ -3,13 +3,16 @@
 import React, { useMemo, useCallback, useState } from 'react';
 import { toast } from 'sonner';
 import { UploadCloud } from 'lucide-react';
-import { cn } from '@/shared/lib/utils';
-import { useLibraryItemsQuery, usePrefetchNextLibraryItemsPage } from '@/features/library/sdk/queries/catalog.queries';
-import { normalizeScopeId } from '@/features/library/sdk/query-keys';
-import { useDetachItemFromCollectionMutation } from '@/features/library/sdk/queries/collections.queries';
-import { useCollectionsQuery } from '@/features/library/sdk/queries/collections.queries';
-import { useSavedSearchResults, useSavedSearches } from '@/features/library/sdk/queries/saved-searches-relations.queries';
-import { WorkspaceRowListSkeleton } from '@/shared/components/layout/WorkspaceSkeleton';
+
+import {
+  useLibraryItemsQuery,
+  usePrefetchNextLibraryItemsPage,
+  normalizeScopeId,
+} from '@/features/library/core/coordinator/item-action.coordinator';
+import { useDetachItemFromCollectionMutation } from '@/features/library/core/coordinator/collection.coordinator';
+import { useCollectionsQuery } from '@/features/library/core/coordinator/collection.coordinator';
+import { useSavedSearchResults, useSavedSearches } from '@/features/library/core/coordinator/saved-search-builder.coordinator';
+import { ContentSkeleton } from './LibraryIllustrations';
 import { ItemTable } from './ItemTable';
 import { DuplicatesContent } from './DuplicatesContent';
 import { FeedViewContent } from './FeedViewContent';
@@ -19,7 +22,7 @@ import { ErrorBoundary } from '@/shared/components/ui/error-boundary';
 import { BatchBar } from './BatchBar';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { useProcessModalStore } from '@/features/library/core/store/process-modal.store';
-import { createProvisionalUploadItem } from '@/features/library/domain/metadata-mapper';
+import { createProvisionalUploadItem } from '@/features/library/domain/metadata.mapper';
 import { useQuickCopyCoordinator } from '@/features/library/core/coordinator/citation-export.coordinator';
 import { useLibraryNavigation } from '@/features/library/core/coordinator/navigation.coordinator';
 import {
@@ -29,15 +32,7 @@ import {
 } from '@/features/library/domain/types/core.types';
 import type { LibraryOrderBy } from '@/features/library/ui/topbar/LibraryDisplayPopover';
 
-export function ContentSkeleton({ rowCount = 10 }: { rowCount?: number }) {
-  return (
-    <WorkspaceRowListSkeleton
-      rows={rowCount}
-      variant="library"
-      showTableHeader={true}
-    />
-  );
-}
+export { ContentSkeleton };
 
 /** Fields requested from the server for the list view — kept at module scope to avoid inline array allocation. */
 export const ITEM_LIST_FIELDS = [
@@ -51,9 +46,8 @@ export const ITEM_LIST_FIELDS = [
 
 export const PAGE_SIZE = 200;
 
-
 /** Maps generic library order-by fields to the saved search results API sortBy contract. */
-export const mapOrderByToSavedSearchSortBy = (
+const mapOrderByToSavedSearchSortBy = (
   orderBy?: LibraryOrderBy | string,
 ):
   | 'dateAdded'
@@ -670,6 +664,4 @@ export function LibraryContent({
 }
 
 export default LibraryContent;
-
-
 

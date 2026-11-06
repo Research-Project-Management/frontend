@@ -9,11 +9,12 @@ import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
+import { Checkbox } from '@/shared/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
-import { getItemAuthorsSummary } from '@/features/library/domain/creators';
-import { ContentSkeleton } from '@/features/library/ui/content/LibraryContent';
+import { getItemAuthorsSummary } from '@/features/library/domain/creators.domain';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import {
+  ContentSkeleton,
   DuplicatesStackIllustration,
   libraryIllustrationStyles,
 } from '@/features/library/ui/content/LibraryIllustrations';
@@ -22,7 +23,7 @@ import {
   useDismissDuplicatesMutation,
   useMergeDuplicates,
   useBatchMergeDuplicates,
-} from '@/features/library/sdk/queries/ingestion.queries';
+} from '@/features/library/core/coordinator/curation.coordinator';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import {
   clearGroupMergeDraft,
@@ -34,7 +35,7 @@ import {
   extractExplicitUserMergeOverrides,
   inspectItemDifferences,
   selectBestMasterItemId,
-} from '@/features/library/domain/diff';
+} from '@/features/library/domain/diff.domain';
 import type { Item, DuplicateGroup } from '@/features/library/domain/types/core.types';
 
 function InlineDiffView({ items, recommendedMasterId }: { items: Item[]; recommendedMasterId?: string }) {
@@ -108,11 +109,28 @@ function InlineDiffView({ items, recommendedMasterId }: { items: Item[]; recomme
   );
 }
 
+function getMatchReasonLabel(group: DuplicateGroup): string {
+  switch (group.matchType) {
+    case 'DOI':
+      return 'Matching DOI';
+    case 'ARXIV':
+      return 'Matching arXiv ID';
+    case 'PMID':
+      return 'Matching PMID';
+    case 'ISBN':
+      return 'Matching ISBN';
+    case 'INGESTION_SUSPECT':
+      return 'Ingestion Suspect';
+    default:
+      return 'Matching Title & Author';
+  }
+}
+
 function getDeterministicGroupKey(group: DuplicateGroup): string {
   return getDeterministicDuplicateGroupKey(group);
 }
 
-export interface DuplicatesContentProps {
+interface DuplicatesContentProps {
   scopeId?: string;
   canEdit?: boolean;
   onMergeGroup?: (group: DuplicateGroup, groupKey: string) => Promise<void> | void;
@@ -558,34 +576,33 @@ export function DuplicatesContent({
                 {/* Cluster Header */}
                 <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 bg-background border-b border-border">
                   <div className="flex items-center gap-2.5">
-                    <span className="text-12 font-semibold text-foreground">
-                      Group #{groupIdx + 1}
-                    </span>
-                    <Badge
-                      variant={isHighConfidence ? 'default' : 'secondary'}
-                      className="text-11 font-normal h-5 rounded-md"
+                    <div
+                      role="presentation"
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex items-center"
                     >
-                      {group.matchType === 'DOI' ? 'Matching DOI' : 'Matching Title & Author'}
+                      <Checkbox
+                        checked={selectedGroupKeys.has(groupKey)}
+                        onCheckedChange={() => toggleGroupSelect(groupKey)}
+                        aria-label={`Select duplicate group #${groupIdx + 1}`}
+                        className="cursor-pointer"
+                      />
+                    </div>
+                    <span className="text-12 font-semibold text-foreground">Group #{groupIdx + 1}</span>
+                    <Badge variant={isHighConfidence ? 'default' : 'secondary'} className="text-11 font-normal h-5 rounded-md">
+                      {getMatchReasonLabel(group)}
                     </Badge>
-                    <Badge
-                      variant="outline"
-                      className="text-10 text-foreground font-normal h-5 rounded-md"
-                    >
+                    <Badge variant="outline" className="text-10 text-foreground font-normal h-5 rounded-md">
                       {items.length} {items.length === 1 ? 'item' : 'items'}
                     </Badge>
                     {hasMismatchedTypes && (
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Badge
-                            variant="outline"
-                            className="text-10 text-warning border-warning/30 bg-warning/10 font-normal h-5 rounded-md cursor-default"
-                          >
+                          <Badge variant="outline" className="text-10 text-warning border-warning/30 bg-warning/10 font-normal h-5 rounded-md cursor-default">
                             Cross-Type Group
                           </Badge>
                         </TooltipTrigger>
-                        <TooltipContent side="top">
-                          Cross-Type Group — master type will be unified on merge
-                        </TooltipContent>
+                        <TooltipContent side="top">Cross-Type Group — master type will be unified on merge</TooltipContent>
                       </Tooltip>
                     )}
                   </div>
@@ -599,27 +616,20 @@ export function DuplicatesContent({
                           onClick={(e) => toggleInlineDiff(groupKey, e)}
                           className={cn(
                             'h-8 px-2.5 text-12 gap-1.5 transition-colors cursor-pointer',
-                            isDiffExpanded
-                              ? 'bg-primary/10 text-primary font-medium'
-                              : 'text-foreground hover:bg-muted',
+                            isDiffExpanded ? 'bg-primary/10 text-primary font-medium' : 'text-foreground hover:bg-muted',
                           )}
                         >
                           <Columns className="size-3.5" />
                           <span>{isDiffExpanded ? 'Hide Diff' : 'Inline Diff'}</span>
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent side="bottom">
-                        Toggle inline side-by-side diff comparison
-                      </TooltipContent>
+                      <TooltipContent side="bottom">Toggle inline side-by-side diff comparison</TooltipContent>
                     </Tooltip>
 
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDismissGroup(groupKey);
-                      }}
+                      onClick={(e) => { e.stopPropagation(); handleDismissGroup(groupKey); }}
                       className="h-8 px-2.5 text-12 text-foreground hover:bg-muted cursor-pointer"
                     >
                       Dismiss
@@ -630,10 +640,7 @@ export function DuplicatesContent({
                           <span className="inline-flex">
                             <Button
                               size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenMerge(group, groupKey);
-                              }}
+                              onClick={(e) => { e.stopPropagation(); handleOpenMerge(group, groupKey); }}
                               className="h-8 px-3 text-12 gap-1.5 font-medium shadow-none cursor-pointer"
                             >
                               <GitMerge className="h-3.5 w-3.5" />
@@ -642,9 +649,7 @@ export function DuplicatesContent({
                           </span>
                         </TooltipTrigger>
                         <TooltipContent side="bottom">
-                          {hasMismatchedTypes
-                            ? 'Open merge workbench (cross-type group will be unified)'
-                            : 'Open merge workbench'}
+                          {hasMismatchedTypes ? 'Open merge workbench (cross-type group will be unified)' : 'Open merge workbench'}
                         </TooltipContent>
                       </Tooltip>
                     )}

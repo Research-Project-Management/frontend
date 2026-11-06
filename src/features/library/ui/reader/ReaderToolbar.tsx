@@ -21,8 +21,6 @@ import {
   Unlock,
   Hand,
   MousePointer,
-  Loader2,
-  ScanText,
   PenTool,
   Eraser,
   Bookmark,
@@ -47,7 +45,7 @@ export {
   ReaderAppearanceMenu,
 };
 
-export interface ReaderToolbarProps {
+interface ReaderToolbarProps {
   isSidebarOpen: boolean;
   onToggleSidebar: () => void;
   visiblePage: number;
@@ -85,9 +83,6 @@ export interface ReaderToolbarProps {
   onToggleSearch?: () => void;
   isInspectorOpen: boolean;
   onToggleInspector: () => void;
-  isScanned?: boolean;
-  ocrStatus?: "pending" | "processing" | "ready" | "completed" | "none";
-  onTriggerOcr?: () => void;
   isPageBookmarked?: boolean;
   onToggleBookmark?: () => void;
   isReadingMode?: boolean;
@@ -177,9 +172,6 @@ export const ReaderToolbar = memo(function ReaderToolbar({
   onToggleSearch,
   isInspectorOpen,
   onToggleInspector,
-  isScanned = false,
-  ocrStatus = "none",
-  onTriggerOcr,
   isPageBookmarked = false,
   onToggleBookmark,
   isReadingMode = false,
@@ -416,27 +408,6 @@ export const ReaderToolbar = memo(function ReaderToolbar({
             )}
           </ToolbarIconButton>
         ))}
-
-        {isScanned && onTriggerOcr && (
-          <ToolbarIconButton
-            onClick={onTriggerOcr}
-            disabled={ocrStatus === "processing"}
-            ariaLabel="Extract text via OCR"
-            tooltip="OCR Document"
-          >
-            {ocrStatus === "processing" ? (
-              <Loader2
-                className="size-3.5 animate-spin text-primary shrink-0"
-                strokeWidth={1.5}
-              />
-            ) : (
-              <ScanText
-                className="size-3.5 text-primary shrink-0"
-                strokeWidth={1.5}
-              />
-            )}
-          </ToolbarIconButton>
-        )}
 
         <div className="w-px h-3.5 bg-border mx-0.5" />
 

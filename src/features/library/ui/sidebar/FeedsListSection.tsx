@@ -1,22 +1,23 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Rss, ChevronRight, Plus, CheckCheck, MoreVertical, Pencil, RefreshCw, Trash2, Search, Copy, SlidersHorizontal, X, FolderPlus, PanelLeft } from 'lucide-react';
+import { Rss, ChevronRight, Plus, CheckCheck, MoreVertical, Pencil, RefreshCw, Trash2, Search, Copy, SlidersHorizontal, Users, Folder, Files } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
-import { SidebarNavItem } from './SidebarSystemNav';
+import { CollectionTree, SidebarNavItem, type TreeNode } from './CollectionTree';
 import { useFeedsStore } from '@/features/library/core/store/reader.store';
-import { useFeedSubscriptionsQuery, useUnsubscribeFeedMutation } from '@/features/library/sdk/queries/ingestion.queries';
+import { useFeedSubscriptionsQuery, useUnsubscribeFeedMutation } from '@/features/library/core/coordinator/curation.coordinator';
+import { useLibraryCacheSynchronizer } from '@/features/library/core/coordinator/item-action.coordinator';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
-import type { SavedFeedSubscription } from '@/features/library/domain/types/ingestion.types';
+import type { SavedFeedSubscription, SavedSearch } from '@/features/library/domain/types/ingestion.types';
+import type { Collection, CollectionActionHandlers, LibraryScope, ProjectRole } from '@/features/library/domain/types/core.types';
+import { getLibraryPermissions } from '@/features/library/domain/library-permissions.policy';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 import { toast } from 'sonner';
-import { parseEmojiPrefix } from '@/features/library/domain/citations';
-import type { SavedSearch } from '@/features/library/domain/types/ingestion.types';
-import { Input } from '@/shared/components/ui/input';
+import { parseEmojiPrefix } from '@/features/library/domain/citations.domain';
 
-export interface FeedContextMenuProps {
+interface FeedContextMenuProps {
   feed: SavedFeedSubscription;
   onRefresh?: (feed: SavedFeedSubscription) => void;
   onMarkAllAsRead?: (feed: SavedFeedSubscription) => void;
@@ -24,7 +25,7 @@ export interface FeedContextMenuProps {
   onDelete: (feed: SavedFeedSubscription) => void;
 }
 
-export function FeedContextMenu({
+function FeedContextMenu({
   feed,
   onRefresh,
   onMarkAllAsRead,
@@ -96,7 +97,7 @@ export function FeedContextMenu({
   );
 }
 
-export interface FeedsListSectionProps {
+interface FeedsListSectionProps {
   basePath: string;
   navId: string;
   currentFilter: string | null;
@@ -258,7 +259,7 @@ export function FeedsListSection({
 
 export default FeedsListSection;
 
-export interface SavedSearchContextMenuProps {
+interface SavedSearchContextMenuProps {
   savedSearch: SavedSearch;
   onEdit: (savedSearch: SavedSearch) => void;
   onRename: (id: string, name: string) => void;
@@ -270,7 +271,7 @@ export interface SavedSearchContextMenuProps {
  * SavedSearchContextMenu (Smart Search Menu)
  * Provides complete lifecycle management: Edit Criteria, Rename, Duplicate, Delete.
  */
-export function SavedSearchContextMenu({
+function SavedSearchContextMenu({
   savedSearch,
   onEdit,
   onRename,
@@ -338,7 +339,7 @@ export function SavedSearchContextMenu({
   );
 }
 
-export interface SavedSearchListSectionProps {
+interface SavedSearchListSectionProps {
   savedSearches?: SavedSearch[];
   basePath: string;
   navId: string;
@@ -437,212 +438,262 @@ export function SavedSearchListSection({
   );
 }
 
-interface SidebarHeaderProps {
-  searchQuery: string;
-  onSearchChange: (query: string) => void;
-  canManageCollections: boolean;
-  onOpenCreateRoot: () => void;
-  onOpenCreateSavedSearch?: () => void;
-  onToggleCollapse: () => void;
+export interface ProjectLike {
+  id: string;
+  name?: string;
+  role?: string;
+  yourRole?: string;
+  permissions?: Partial<import('@/features/library/domain/types/core.types').LibraryPermissions> | string[] | Record<string, unknown>;
+  effectivePermissions?: string[];
+  [key: string]: unknown;
 }
 
-export function SidebarHeader({
+interface ProjectLibrariesSectionProps extends CollectionActionHandlers {
+  projects: ProjectLike[];
+  activeScope: LibraryScope;
+  currentUserId?: string;
+  basePath: string;
+  navId: string;
+  projectTree: TreeNode[];
+  projectCollections: Collection[];
+  savedSearches?: SavedSearch[] | Array<{ id: string; name: string }>;
+  currentSavedSearchId?: string | null;
+  currentFilter?: string | null;
+  activeId: string | string[] | null;
+  isSearching: boolean;
+  searchQuery: string;
+  renamingId: string | null;
+  renameValue: string;
+  canManageCollections?: boolean;
+  onSelectProject: (scope: LibraryScope) => void;
+  onEditSavedSearch?: (savedSearch: SavedSearch) => void;
+  onStartRenameSavedSearch?: (id: string, name: string) => void;
+  onSubmitRenameSavedSearch?: (id: string) => void;
+  onRenameSavedSearchValueChange?: (value: string) => void;
+  onDuplicateSavedSearch?: (savedSearch: SavedSearch) => void;
+  onDeleteSavedSearch?: (id: string) => void;
+  pathname?: string;
+  renamingSavedSearchId?: string | null;
+  renameSavedSearchValue?: string;
+}
+
+export function resolveProjectRole(
+  project: ProjectLike | null | undefined,
+  _currentUserId?: string,
+): ProjectRole {
+  if (!project) return 'reviewer';
+  const rawServerRole = project.yourRole || project.role;
+  if (rawServerRole) {
+    const norm = String(rawServerRole).trim().toLowerCase();
+    if (norm === 'owner') return 'owner';
+    if (norm === 'coordinator') return 'coordinator';
+    if (norm === 'contributor') return 'contributor';
+    if (norm === 'reviewer') return 'reviewer';
+  }
+  return 'reviewer';
+}
+
+export function ProjectLibrariesSection({
+  projects,
+  activeScope,
+  currentUserId,
+  basePath,
+  navId,
+  projectTree,
+  projectCollections,
+  savedSearches,
+  currentSavedSearchId,
+  currentFilter,
+  activeId,
+  isSearching,
   searchQuery,
-  onSearchChange,
-  canManageCollections,
-  onOpenCreateRoot,
-  onOpenCreateSavedSearch,
-  onToggleCollapse,
-}: SidebarHeaderProps) {
-  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-
-  const expandSearch = () => {
-    if (!isSearchExpanded) {
-      setIsSearchExpanded(true);
-      setTimeout(() => searchInputRef.current?.focus(), 50);
-    }
-  };
-
-  const handleClearSearch = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onSearchChange("");
-    setIsSearchExpanded(false);
-  };
+  renamingId,
+  renameValue,
+  canManageCollections: propCanManageCollections,
+  onSelectProject,
+  onStartRename,
+  onSubmitRename,
+  onRenameValueChange,
+  onDelete,
+  onDeleteWithItems,
+  onMove,
+  onCopy,
+  onCreateSub,
+  onExportBibtex,
+  onExportBundle,
+  onLinkClick,
+  onDropItems,
+  onEditSavedSearch,
+  onStartRenameSavedSearch,
+  onSubmitRenameSavedSearch,
+  onRenameSavedSearchValueChange,
+  onDuplicateSavedSearch,
+  onDeleteSavedSearch,
+  renamingSavedSearchId,
+  renameSavedSearchValue = '',
+  pathname = '',
+}: ProjectLibrariesSectionProps) {
+  const { prefetchProjectScope } = useLibraryCacheSynchronizer(activeScope.id);
+  const [isProjectsExpanded, setIsProjectsExpanded] = useState(true);
 
   return (
-    <div
-      className={cn(
-        "flex items-center h-8 font-semibold text-sm tracking-tight text-foreground select-none w-full",
-        isSearchExpanded || searchQuery ? "px-0" : "justify-between px-1"
-      )}
-    >
-      {isSearchExpanded || searchQuery ? (
-        <div className="relative flex items-center w-full h-8 rounded-md border border-border bg-background overflow-hidden font-normal text-13">
-          <Search
-            className="absolute top-1/2 -translate-y-1/2 size-3.5 z-10 left-2.5 translate-x-0 text-muted-foreground pointer-events-none shrink-0"
-            strokeWidth={1.5}
-          />
-          <Input
-            ref={searchInputRef}
-            autoFocus
-            placeholder="Search collections..."
-            aria-label="Search collections"
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Escape") {
-                onSearchChange("");
-                setIsSearchExpanded(false);
-              }
-            }}
-            onBlur={() => {
-              if (!searchQuery) {
-                setIsSearchExpanded(false);
-              }
-            }}
-            className="h-full text-13 font-normal tracking-tight py-0 leading-none border-none bg-transparent focus-visible:ring-0 focus-visible:border-none focus-visible:outline-none focus:outline-none outline-none shadow-none w-full placeholder:text-muted-foreground placeholder:font-normal pl-8 pr-7 text-foreground"
-          />
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-                onClick={handleClearSearch}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center justify-center size-5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer rounded-md outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-2 md:before:hidden"
-                aria-label="Clear search"
-              >
-                <X
-                  className="size-3 shrink-0"
-                  strokeWidth={1.5}
-                />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent
-              side="bottom"
-              align="start"
-              sideOffset={6}
-              alignOffset={2}
-            >
-              Clear search
-            </TooltipContent>
-          </Tooltip>
-        </div>
-      ) : (
-        <>
-          <span className="shrink-0 font-semibold text-15 tracking-tight text-foreground">
-            Library
+    <div className="mt-1.5 flex flex-col gap-0.5 w-full">
+      <div className="relative group/root flex items-center w-full">
+        <button
+          type="button"
+          onClick={() => setIsProjectsExpanded((v) => !v)}
+          className={cn(
+            'group/item relative flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none select-none pr-8 cursor-pointer text-left',
+            activeScope.type === 'project'
+              ? 'bg-muted text-foreground font-medium'
+              : 'text-foreground hover:bg-muted group-hover/root:bg-muted font-normal',
+          )}
+        >
+          <Users className="relative z-10 size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+          <span className="relative z-10 min-w-0 truncate flex-1 tracking-tight">
+            Project Libraries
           </span>
+        </button>
 
-          <div className="flex items-center gap-0.5 shrink-0">
-            {/* Search collections toggle button */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={expandSearch}
-                  className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary relative before:absolute before:-inset-1.5 md:before:hidden"
-                  aria-label="Search collections"
-                >
-                  <Search
-                    className="size-4 shrink-0 text-foreground"
-                    strokeWidth={1.5}
-                  />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent
-                side="bottom"
-                align="start"
-                sideOffset={6}
-                alignOffset={2}
-              >
-                Search collections
-              </TooltipContent>
-            </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsProjectsExpanded((v) => !v);
+              }}
+              aria-label={isProjectsExpanded ? 'Collapse Project Libraries' : 'Expand Project Libraries'}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 z-20 flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground border border-transparent hover:border-border/50 hover:bg-background cursor-pointer transition-colors duration-150 outline-none focus-visible:ring-1 focus-visible:ring-primary before:absolute before:-inset-2 md:before:hidden"
+            >
+              <ChevronRight
+                className={cn(
+                  'size-3.5 transition-transform duration-150 shrink-0',
+                  isProjectsExpanded && 'rotate-90',
+                )}
+                strokeWidth={1.5}
+              />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" align="start" sideOffset={6} alignOffset={2}>
+            {isProjectsExpanded ? 'Collapse' : 'Expand'}
+          </TooltipContent>
+        </Tooltip>
+      </div>
 
-            {/* New collection button */}
-            {canManageCollections && (
-              <Tooltip>
-                <TooltipTrigger asChild>
+      {isProjectsExpanded && (
+        <div className="flex flex-col gap-0.5 w-full">
+          {projects.length === 0 ? (
+            <div className="pl-6 pr-2.5 py-1.5 text-11 text-muted-foreground italic select-none">
+              No project libraries
+            </div>
+          ) : (
+            projects.map((project) => {
+              const isProjectActive =
+                activeScope.type === 'project' && activeScope.id === project.id;
+              const projectCanManageCollections =
+                propCanManageCollections !== undefined
+                  ? propCanManageCollections
+                  : isProjectActive && getLibraryPermissions(activeScope).canManageCollections;
+
+              return (
+                <div key={project.id} className="flex flex-col gap-0.5 w-full">
                   <button
                     type="button"
-                    onClick={onOpenCreateRoot}
-                    className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary relative before:absolute before:-inset-1.5 md:before:hidden"
-                    aria-label="New collection"
+                    onMouseEnter={() => prefetchProjectScope(project.id)}
+                    onFocus={() => prefetchProjectScope(project.id)}
+                    onClick={() => {
+                      const role = resolveProjectRole(project, currentUserId);
+                      onSelectProject({
+                        type: 'project',
+                        id: project.id,
+                        projectId: project.id,
+                        name: project.name || '',
+                        role,
+                        ...(project.permissions ? { permissions: project.permissions } : {}),
+                        ...(project.effectivePermissions
+                          ? { effectivePermissions: project.effectivePermissions }
+                          : {}),
+                      });
+                    }}
+                    className={cn(
+                      'group/item relative flex h-8 w-full items-center gap-2.5 rounded-md pr-2.5 pl-6 text-13 leading-5 transition-colors outline-none select-none text-left cursor-pointer',
+                      isProjectActive
+                        ? 'bg-muted text-foreground font-medium'
+                        : 'text-foreground hover:bg-muted has-[[data-state=open]]:bg-muted font-normal',
+                    )}
                   >
-                    <FolderPlus
-                      className="size-4 shrink-0 text-foreground"
-                      strokeWidth={1.5}
-                    />
+                    <Folder className="relative z-10 size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+                    <span className="relative z-10 min-w-0 truncate flex-1 tracking-tight">
+                      {project.name}
+                    </span>
                   </button>
-                </TooltipTrigger>
-                <TooltipContent
-                  side="bottom"
-                  align="start"
-                  sideOffset={6}
-                  alignOffset={2}
-                >
-                  New collection
-                </TooltipContent>
-              </Tooltip>
-            )}
 
-            {/* New saved search button */}
-            {canManageCollections && onOpenCreateSavedSearch && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={onOpenCreateSavedSearch}
-                    className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary relative before:absolute before:-inset-1.5 md:before:hidden"
-                    aria-label="New saved search"
-                  >
-                    <SlidersHorizontal
-                      className="size-4 shrink-0 text-foreground"
-                      strokeWidth={1.5}
-                    />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent
-                  side="bottom"
-                  align="start"
-                  sideOffset={6}
-                  alignOffset={2}
-                >
-                  New saved search
-                </TooltipContent>
-              </Tooltip>
-            )}
+                  {isProjectActive && (
+                    <div className="flex flex-col gap-0.5 w-full">
+                      {projectTree.length > 0 && (
+                        <CollectionTree
+                          tree={projectTree}
+                          allCollections={projectCollections}
+                          basePath={basePath}
+                          activeId={activeId}
+                          navId={navId}
+                          renamingId={renamingId}
+                          renameValue={renameValue}
+                          isSearching={isSearching}
+                          searchQuery={searchQuery}
+                          canManageCollections={projectCanManageCollections}
+                          onStartRename={onStartRename}
+                          onSubmitRename={onSubmitRename}
+                          onRenameValueChange={onRenameValueChange}
+                          onDelete={onDelete}
+                          onDeleteWithItems={onDeleteWithItems}
+                          onMove={onMove}
+                          onCopy={onCopy}
+                          onCreateSub={onCreateSub}
+                          onExportBibtex={onExportBibtex}
+                          onExportBundle={onExportBundle}
+                          onLinkClick={onLinkClick}
+                          onDropItems={onDropItems}
+                        />
+                      )}
 
-            {/* Toggle / Collapse Sidebar Button */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  onClick={onToggleCollapse}
-                  aria-label="Toggle sidebar"
-                  className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary relative before:absolute before:-inset-1.5 md:before:hidden"
-                >
-                  <PanelLeft
-                    className="size-4 shrink-0 text-foreground"
-                    strokeWidth={1.5}
-                  />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent
-                side="bottom"
-                align="start"
-                sideOffset={6}
-                alignOffset={2}
-              >
-                Collapse sidebar
-              </TooltipContent>
-            </Tooltip>
-          </div>
-        </>
+                      <SavedSearchListSection
+                        savedSearches={savedSearches as SavedSearch[] | undefined}
+                        basePath={basePath}
+                        navId={navId}
+                        currentFilter={currentFilter ?? null}
+                        currentSavedSearchId={currentSavedSearchId}
+                        isActiveScope={isProjectActive}
+                        onItemClick={onLinkClick}
+                        onEditSavedSearch={onEditSavedSearch}
+                        onStartRenameSavedSearch={onStartRenameSavedSearch}
+                        onSubmitRenameSavedSearch={onSubmitRenameSavedSearch}
+                        onRenameSavedSearchValueChange={onRenameSavedSearchValueChange}
+                        onDuplicateSavedSearch={onDuplicateSavedSearch}
+                        onDeleteSavedSearch={onDeleteSavedSearch}
+                        renamingSavedSearchId={renamingSavedSearchId}
+                        renameSavedSearchValue={renameSavedSearchValue}
+                      />
+
+                      <div className="flex flex-col gap-0.5 w-full">
+                        <SidebarNavItem
+                          href={`${basePath}/duplicates`}
+                          icon={Files}
+                          label="Duplicate Items"
+                          isActive={pathname === `${basePath}/duplicates` || (pathname === basePath && currentFilter === 'duplicates')}
+                          navId={navId}
+                          onClick={onLinkClick}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
       )}
     </div>
   );

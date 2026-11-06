@@ -19,8 +19,8 @@ import {
 import {
   normalizeNotes,
   type NormalizedNote,
-} from "@/features/library/domain/metadata-mapper";
-import { useNotes } from "@/features/library/sdk/queries/tags-notes.queries";
+} from "@/features/library/domain/metadata.mapper";
+import { useNotes } from "@/features/library/core/coordinator/saved-search-builder.coordinator";
 import {
   useLibraryCommandStore,
   createAddNoteCommand,
@@ -39,7 +39,7 @@ import {
   extractStructuredDeepLinksFromMarkdown,
 } from "./NoteMarkdownEditor";
 
-export interface NotesSectionProps {
+interface NotesSectionProps {
   item?: Item;
   scopeId?: string;
   hideHeader?: boolean;
@@ -56,7 +56,7 @@ export interface NotesSectionProps {
   }) => void;
 }
 
-export function NoteIcon({ className = "size-3.5" }: { className?: string }) {
+function NoteIcon({ className = "size-3.5" }: { className?: string }) {
   return (
     <StickyNote
       className={cn("size-3.5 shrink-0 text-foreground", className)}

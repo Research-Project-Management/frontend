@@ -26,8 +26,8 @@ import {
   buildOutlineSections,
   filterVisibleOutlineSections,
   resolveActiveOutlineSectionId,
-} from "@/features/library/domain/reader-search-outline";
-import AnnotationsPanel from "./panel/AnnotationsPanel";
+} from "@/features/library/domain/reader-search-outline.domain";
+import AnnotationsPanel from "./AnnotationsPanel";
 import { ReaderLeftRail, type ReaderSidebarTab } from "./ReaderThumbnailsPanel";
 import {
   LazyThumbnailPage,
@@ -140,7 +140,7 @@ const HeaderSearchBar = ({
   </div>
 );
 
-export interface ReaderSidebarProps {
+interface ReaderSidebarProps {
   isOpen: boolean;
   onClose: () => void;
   onToggleOpen?: () => void;

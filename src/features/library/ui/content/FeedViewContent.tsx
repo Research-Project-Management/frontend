@@ -6,11 +6,11 @@ import {
   useFeedArticlesQuery,
   useFetchFeed,
   useIngestMutation,
-} from '@/features/library/sdk/queries/ingestion.queries';
+} from '@/features/library/core/coordinator/curation.coordinator';
 import {
   useCreateLibraryItemMutation,
-} from '@/features/library/sdk/queries/catalog.queries';
-import { useCollections } from '@/features/library/sdk/queries/collections.queries';
+} from '@/features/library/core/coordinator/item-action.coordinator';
+import { useCollections } from '@/features/library/core/coordinator/collection.coordinator';
 import type { Collection } from '@/features/library/domain/types/core.types';
 import {
   normalizeFetchedFeedEntries,
@@ -25,10 +25,10 @@ import {
   useFeedsStore,
   isFeedEntryInLibrary,
 } from '@/features/library/core/store/reader.store';
-import { ContentSkeleton } from '@/features/library/ui/content/LibraryContent';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import {
+  ContentSkeleton,
   FeedStackIllustration,
   FeedAllReadIllustration,
   SearchStackIllustration,

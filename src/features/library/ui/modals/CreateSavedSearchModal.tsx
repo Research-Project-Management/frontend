@@ -34,7 +34,7 @@ import {
   type SavedSearchBuilderSortBy,
 } from "@/features/library/core/coordinator/saved-search-builder.coordinator";
 
-export interface SavedSearchPreviewTableProps {
+interface SavedSearchPreviewTableProps {
   isPreviewLoading: boolean;
   previewCount: number | null;
   previewSamples: Item[];
@@ -44,7 +44,7 @@ export interface SavedSearchPreviewTableProps {
   onSortOrderChange: (val: "asc" | "desc") => void;
 }
 
-export function SavedSearchPreviewTable({
+function SavedSearchPreviewTable({
   isPreviewLoading,
   previewCount,
   previewSamples,
@@ -253,7 +253,7 @@ export function SavedSearchPreviewTable({
   );
 }
 
-export interface CreateSavedSearchModalProps {
+interface CreateSavedSearchModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: CreateSavedSearchInput) => Promise<unknown> | void;

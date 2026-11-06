@@ -28,7 +28,7 @@ export {
   type ReaderLeftRailProps,
 } from "./ReaderThumbnailsPanel";
 
-export interface ReaderRetractionBannerProps {
+interface ReaderRetractionBannerProps {
   paper?: {
     isRetracted?: boolean;
     retractionNature?: string;
@@ -78,7 +78,7 @@ export function ReaderRetractionBanner({
   );
 }
 
-export interface ReaderTopbarProps {
+interface ReaderTopbarProps {
   paper?: ReaderDocument | null;
   tabs?: ReaderTab[];
   activeTabId?: string;

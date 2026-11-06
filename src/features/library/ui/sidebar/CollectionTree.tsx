@@ -2,20 +2,115 @@
 
 import { useState, useEffect, useMemo, memo } from 'react';
 import Link from 'next/link';
-import { Folder, ChevronRight, FolderPlus, FolderOutput, FolderMinus, MoreVertical, Pencil, Trash2, Library, Copy, FileCode, FileJson } from 'lucide-react';
+import { Folder, ChevronRight, FolderPlus, FolderOutput, FolderMinus, MoreVertical, Pencil, Trash2, Library, Copy, FileCode, FileJson, type LucideIcon } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { logger } from '@/shared/lib/logger';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
-import { useLibraryCacheSynchronizer } from '@/features/library/sdk/queries/catalog.queries';
-import { type TreeNode, getValidMoveTargets } from '@/features/library/domain/collection-tree';
+import { useLibraryCacheSynchronizer } from '@/features/library/core/coordinator/item-action.coordinator';
+import { type TreeNode, getValidMoveTargets } from '@/features/library/domain/collection-tree.domain';
 import type { Collection, CollectionActionHandlers } from '@/features/library/domain/types/core.types';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/shared/components/ui/dropdown-menu';
+import { ContextMenu, ContextMenuTrigger } from '@/shared/components/ui/context-menu';
 import { executeExportCollectionFormat } from '@/features/library/core/coordinator/citation-export.coordinator';
 
 export type { TreeNode, CollectionActionHandlers };
 
-export interface CollectionNodeProps extends CollectionActionHandlers {
+interface SidebarNavItemProps {
+  href: string;
+  icon?: LucideIcon | React.ComponentType<{ className?: string }>;
+  customIcon?: React.ReactNode;
+  label: string;
+  isActive: boolean;
+  navId?: string;
+  badge?: React.ReactNode;
+  action?: React.ReactNode;
+  contextMenu?: React.ReactNode;
+  onClick?: () => void;
+  onDropItems?: (itemIds: string[]) => void;
+}
+
+export function SidebarNavItem({
+  href, icon: Icon, customIcon, label, isActive, badge, action, contextMenu, onClick, onDropItems,
+}: SidebarNavItemProps) {
+  const [isDragOverTarget, setIsDragOverTarget] = useState(false);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    if (!onDropItems || !e.dataTransfer.types.includes('application/x-flux-items')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+    if (!isDragOverTarget) setIsDragOverTarget(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    if (!onDropItems) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOverTarget(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    if (!onDropItems || !e.dataTransfer.types.includes('application/x-flux-items')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOverTarget(false);
+    try {
+      const raw = e.dataTransfer.getData('application/x-flux-items');
+      if (raw) {
+        const parsed = JSON.parse(raw) as string[] | { ids?: string[] };
+        const ids = Array.isArray(parsed) ? parsed : (parsed?.ids || []);
+        if (ids.length > 0) onDropItems(ids);
+      }
+    } catch (err) {
+      logger.error('Failed to parse dropped items', err);
+    }
+  };
+
+  const linkContent = (
+    <Link
+      href={href}
+      onClick={onClick}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={cn(
+        'relative flex h-8 w-full items-center gap-2.5 rounded-md pr-2.5 text-13 leading-5 outline-none select-none pl-6',
+        action && 'pr-8',
+        isActive
+          ? 'bg-muted text-foreground font-medium'
+          : 'text-foreground hover:bg-muted group-hover/item:bg-muted has-[[data-state=open]]:bg-muted font-normal',
+        isDragOverTarget && 'bg-primary/10 text-primary font-medium ring-1 ring-primary ring-inset',
+      )}
+    >
+      {customIcon ? (
+        <span className="relative z-10 flex size-4 shrink-0 items-center justify-center text-13 leading-none select-none">{customIcon}</span>
+      ) : Icon ? (
+        <Icon className="relative z-10 size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+      ) : null}
+      <span className={cn('relative z-10 min-w-0 truncate flex-1 tracking-tight text-foreground', isActive ? 'font-medium' : 'font-normal')}>
+        {label}
+      </span>
+      {badge}
+    </Link>
+  );
+
+  return (
+    <div className="group/item relative flex items-center w-full">
+      {contextMenu ? (
+        <ContextMenu>
+          <ContextMenuTrigger asChild>{linkContent}</ContextMenuTrigger>
+          {contextMenu}
+        </ContextMenu>
+      ) : (
+        linkContent
+      )}
+      {action && <div className="absolute right-1.5 z-20 flex items-center">{action}</div>}
+    </div>
+  );
+}
+
+interface CollectionNodeProps extends CollectionActionHandlers {
   node: TreeNode;
   depth: number;
   basePath: string;
@@ -421,7 +516,7 @@ interface CollectionContextMenuProps {
   onDeleteWithItems: (id: string) => void;
 }
 
-export function CollectionContextMenu({
+function CollectionContextMenu({
   node,
   allCollections = [],
   validMoveTargets: propValidMoveTargets,

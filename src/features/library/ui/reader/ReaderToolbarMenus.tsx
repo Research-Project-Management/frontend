@@ -77,7 +77,7 @@ export const ToolbarIconButton = React.memo(function ToolbarIconButton({
   );
 });
 
-export const FIT_MODE_OPTIONS: ReadonlyArray<{
+const FIT_MODE_OPTIONS: ReadonlyArray<{
   id: "fit-width" | "fit-page" | "auto";
   label: string;
 }> = [
@@ -227,7 +227,7 @@ export const ReaderColorPickerDropdown = React.memo(function ReaderColorPickerDr
   );
 });
 
-export interface ReaderAppearanceMenuProps {
+interface ReaderAppearanceMenuProps {
   viewMode?: "single" | "continuous" | "spread";
   onSelectViewMode?: (mode: "single" | "continuous" | "spread") => void;
   splitMode?: "none" | "horizontal" | "vertical";

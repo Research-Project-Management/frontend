@@ -23,7 +23,7 @@ export type {
   LibraryDisplayOptions,
 };
 
-export interface LibraryDisplayPopoverProps {
+interface LibraryDisplayPopoverProps {
   options: LibraryDisplayOptions;
   onOptionsChange: (options: LibraryDisplayOptions) => void;
   open?: boolean;
@@ -334,7 +334,7 @@ export function LibraryDisplayPopover({
 
 export default LibraryDisplayPopover;
 
-export type QuickSearchMode = 'title_creator_year' | 'fields_tags' | 'everything';
+type QuickSearchMode = 'title_creator_year' | 'fields_tags' | 'everything';
 
 const SEARCH_MODES: Array<{ id: QuickSearchMode; label: string; shortLabel: string }> = [
   { id: 'title_creator_year', label: 'Title, Creator, Year', shortLabel: 'Title/Creator' },
@@ -342,7 +342,7 @@ const SEARCH_MODES: Array<{ id: QuickSearchMode; label: string; shortLabel: stri
   { id: 'everything', label: 'Everything (Full Text & Notes)', shortLabel: 'Everything' },
 ];
 
-export interface TopbarSearchProps {
+interface TopbarSearchProps {
   placeholder?: string;
   className?: string;
   value?: string;

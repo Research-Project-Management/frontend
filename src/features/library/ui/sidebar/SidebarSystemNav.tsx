@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
-import Link from 'next/link';
+import React, { useState, useRef } from 'react';
 import {
   History,
   Inbox,
@@ -11,10 +10,16 @@ import {
   Trash2,
   Star,
   MoreVertical,
+  Search,
+  SlidersHorizontal,
+  X,
+  FolderPlus,
+  PanelLeft,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import { logger } from '@/shared/lib/logger';
+import { Input } from '@/shared/components/ui/input';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,15 +27,186 @@ import {
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
 import {
-  ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
-  ContextMenuTrigger,
 } from '@/shared/components/ui/context-menu';
+import { SidebarNavItem } from './CollectionTree';
 import { SavedSearchListSection } from './FeedsListSection';
 import type { SavedSearch } from '@/features/library/domain/types/ingestion.types';
 
-export interface SidebarResizerProps {
+export { SidebarNavItem };
+
+interface SidebarHeaderProps {
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
+  canManageCollections: boolean;
+  onOpenCreateRoot: () => void;
+  onOpenCreateSavedSearch?: () => void;
+  onToggleCollapse: () => void;
+}
+
+export function SidebarHeader({
+  searchQuery,
+  onSearchChange,
+  canManageCollections,
+  onOpenCreateRoot,
+  onOpenCreateSavedSearch,
+  onToggleCollapse,
+}: SidebarHeaderProps) {
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const expandSearch = () => {
+    if (!isSearchExpanded) {
+      setIsSearchExpanded(true);
+      setTimeout(() => searchInputRef.current?.focus(), 50);
+    }
+  };
+
+  const handleClearSearch = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onSearchChange('');
+    setIsSearchExpanded(false);
+  };
+
+  return (
+    <div
+      className={cn(
+        'flex items-center h-8 font-semibold text-sm tracking-tight text-foreground select-none w-full',
+        isSearchExpanded || searchQuery ? 'px-0' : 'justify-between px-1',
+      )}
+    >
+      {isSearchExpanded || searchQuery ? (
+        <div className="relative flex items-center w-full h-8 rounded-md border border-border bg-background overflow-hidden font-normal text-13">
+          <Search
+            className="absolute top-1/2 -translate-y-1/2 size-3.5 z-10 left-2.5 translate-x-0 text-muted-foreground pointer-events-none shrink-0"
+            strokeWidth={1.5}
+          />
+          <Input
+            ref={searchInputRef}
+            autoFocus
+            placeholder="Search collections..."
+            aria-label="Search collections"
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                onSearchChange('');
+                setIsSearchExpanded(false);
+              }
+            }}
+            onBlur={() => {
+              if (!searchQuery) {
+                setIsSearchExpanded(false);
+              }
+            }}
+            className="h-full text-13 font-normal tracking-tight py-0 leading-none border-none bg-transparent focus-visible:ring-0 focus-visible:border-none focus-visible:outline-none focus:outline-none outline-none shadow-none w-full placeholder:text-muted-foreground placeholder:font-normal pl-8 pr-7 text-foreground"
+          />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onClick={handleClearSearch}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center justify-center size-5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer rounded-md outline-none focus-visible:ring-1 focus-visible:ring-ring before:absolute before:-inset-2 md:before:hidden"
+                aria-label="Clear search"
+              >
+                <X className="size-3 shrink-0" strokeWidth={1.5} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" align="start" sideOffset={6} alignOffset={2}>
+              Clear search
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      ) : (
+        <>
+          <span className="shrink-0 font-semibold text-15 tracking-tight text-foreground">
+            Library
+          </span>
+
+          <div className="flex items-center gap-0.5 shrink-0">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={expandSearch}
+                  className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary relative before:absolute before:-inset-1.5 md:before:hidden"
+                  aria-label="Search collections"
+                >
+                  <Search className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" align="start" sideOffset={6} alignOffset={2}>
+                Search collections
+              </TooltipContent>
+            </Tooltip>
+
+            {canManageCollections && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={onOpenCreateRoot}
+                    className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary relative before:absolute before:-inset-1.5 md:before:hidden"
+                    aria-label="New collection"
+                  >
+                    <FolderPlus className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" align="start" sideOffset={6} alignOffset={2}>
+                  New collection
+                </TooltipContent>
+              </Tooltip>
+            )}
+
+            {canManageCollections && onOpenCreateSavedSearch && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={onOpenCreateSavedSearch}
+                    className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary relative before:absolute before:-inset-1.5 md:before:hidden"
+                    aria-label="New saved search"
+                  >
+                    <SlidersHorizontal
+                      className="size-4 shrink-0 text-foreground"
+                      strokeWidth={1.5}
+                    />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" align="start" sideOffset={6} alignOffset={2}>
+                  New saved search
+                </TooltipContent>
+              </Tooltip>
+            )}
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={onToggleCollapse}
+                  aria-label="Toggle sidebar"
+                  className="rounded-md p-1.5 text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary relative before:absolute before:-inset-1.5 md:before:hidden"
+                >
+                  <PanelLeft className="size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" align="start" sideOffset={6} alignOffset={2}>
+                Collapse sidebar
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+interface SidebarResizerProps {
   width: number;
   setWidth: (w: number) => void;
   isDragging: boolean;
@@ -76,137 +252,14 @@ export function SidebarResizer({
   );
 }
 
-export interface SidebarNavItemProps {
-  href: string;
-  icon?: LucideIcon | React.ComponentType<{ className?: string }>;
-  customIcon?: React.ReactNode;
-  label: string;
-  isActive: boolean;
-  navId?: string;
-  badge?: React.ReactNode;
-  action?: React.ReactNode;
-  contextMenu?: React.ReactNode;
-  onClick?: () => void;
-  onDropItems?: (itemIds: string[]) => void;
-}
-
-export function SidebarNavItem({
-  href,
-  icon: Icon,
-  customIcon,
-  label,
-  isActive,
-  badge,
-  action,
-  contextMenu,
-  onClick,
-  onDropItems,
-}: SidebarNavItemProps) {
-  const [isDragOverTarget, setIsDragOverTarget] = useState(false);
-
-  const handleDragOver = (e: React.DragEvent) => {
-    if (!onDropItems) return;
-    if (e.dataTransfer.types.includes('application/x-flux-items')) {
-      e.preventDefault();
-      e.stopPropagation();
-      e.dataTransfer.dropEffect = 'move';
-      if (!isDragOverTarget) setIsDragOverTarget(true);
-    }
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    if (!onDropItems) return;
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOverTarget(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    if (!onDropItems) return;
-    if (e.dataTransfer.types.includes('application/x-flux-items')) {
-      e.preventDefault();
-      e.stopPropagation();
-      setIsDragOverTarget(false);
-      try {
-        const raw = e.dataTransfer.getData('application/x-flux-items');
-        if (raw) {
-          const parsed = JSON.parse(raw) as string[] | { ids?: string[] };
-          const ids = Array.isArray(parsed) ? parsed : (parsed?.ids || []);
-          if (ids.length > 0) {
-            onDropItems(ids);
-          }
-        }
-      } catch (err) {
-        logger.error('Failed to parse dropped items', err);
-      }
-    }
-  };
-
-  const linkContent = (
-    <Link
-      href={href}
-      onClick={onClick}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-      className={cn(
-        'relative flex h-8 w-full items-center gap-2.5 rounded-md pr-2.5 text-13 leading-5 outline-none select-none pl-6',
-        action && 'pr-8',
-        isActive
-          ? 'bg-muted text-foreground font-medium'
-          : 'text-foreground hover:bg-muted group-hover/item:bg-muted has-[[data-state=open]]:bg-muted font-normal',
-        isDragOverTarget && 'bg-primary/10 text-primary font-medium ring-1 ring-primary ring-inset',
-      )}
-    >
-      {customIcon ? (
-        <span className="relative z-10 flex size-4 shrink-0 items-center justify-center text-13 leading-none select-none">
-          {customIcon}
-        </span>
-      ) : Icon ? (
-        <Icon
-          className="relative z-10 size-4 shrink-0 text-foreground"
-          strokeWidth={1.5}
-        />
-      ) : null}
-      <span
-        className={cn(
-          'relative z-10 min-w-0 truncate flex-1 tracking-tight text-foreground',
-          isActive ? 'font-medium' : 'font-normal',
-        )}
-      >
-        {label}
-      </span>
-      {badge}
-    </Link>
-  );
-
-  return (
-    <div className="group/item relative flex items-center w-full">
-      {contextMenu ? (
-        <ContextMenu>
-          <ContextMenuTrigger asChild>{linkContent}</ContextMenuTrigger>
-          {contextMenu}
-        </ContextMenu>
-      ) : (
-        linkContent
-      )}
-      {action && (
-        <div className="absolute right-1.5 z-20 flex items-center">
-          {action}
-        </div>
-      )}
-    </div>
-  );
-}
-
-export interface SystemNavStats {
+interface SystemNavStats {
   retractedCount?: number;
   unfiledCount?: number;
   duplicateCount?: number;
   starredCount?: number;
 }
 
-export interface SystemNavItemConfig {
+interface SystemNavItemConfig {
   id: string;
   label: string;
   href: (basePath: string) => string;
@@ -220,7 +273,7 @@ export interface SystemNavItemConfig {
   getBadge?: (stats: SystemNavStats) => number | null;
 }
 
-export const SYSTEM_BOTTOM_NAV_ITEMS: SystemNavItemConfig[] = [
+const SYSTEM_BOTTOM_NAV_ITEMS: SystemNavItemConfig[] = [
   {
     id: 'starred',
     label: 'Starred Items',
@@ -275,13 +328,13 @@ export const SYSTEM_BOTTOM_NAV_ITEMS: SystemNavItemConfig[] = [
   },
 ];
 
-export interface TrashContextMenuProps {
+interface TrashContextMenuProps {
   onEmptyTrash: () => void;
   isEmpty?: boolean;
   canEmpty?: boolean;
 }
 
-export function TrashContextMenuAction({
+function TrashContextMenuAction({
   onEmptyTrash,
   isEmpty = false,
   canEmpty = true,
@@ -315,7 +368,7 @@ export function TrashContextMenuAction({
   );
 }
 
-export function TrashContextMenuContent({
+function TrashContextMenuContent({
   onEmptyTrash,
   isEmpty = false,
   canEmpty = true,

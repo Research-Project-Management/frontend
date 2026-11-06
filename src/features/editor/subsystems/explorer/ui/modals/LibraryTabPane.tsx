@@ -13,7 +13,7 @@ import { libraryBibtexModalSchema, type LibraryBibtexModalFormValues } from '@/f
 import { formatItemToBibtex } from '@/features/editor/subsystems/citation';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { useViewItems } from '@/features/library/sdk/queries/catalog.queries';
-import type { Item } from '@/features/library/domain/types/core.types';
+import type { Item } from '@/features/library/types/core.types';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 import { DEFAULT_BIB_FILE } from '@/features/editor/domain/constants/editor.constants';

@@ -9,7 +9,7 @@
 
 import { useEffect, useMemo, useCallback } from 'react';
 import { useViewItems } from '@/features/library/sdk/queries/catalog.queries';
-import type { Item } from '@/features/library/domain/types/core.types';
+import type { Item } from '@/features/library/types/core.types';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import { workspaceCoordinator } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';

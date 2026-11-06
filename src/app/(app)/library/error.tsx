@@ -22,6 +22,7 @@ export default function LibraryRouteError({
       title="Library is currently unavailable"
       description="An issue occurred while loading your library references. Other data and modules remain safe."
       error={error}
+      reset={reset}
     />
   );
 }

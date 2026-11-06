@@ -126,6 +126,25 @@ export function releaseCanvasMemory(container: HTMLElement | null | undefined): 
   }
 }
 
+/**
+ * Safely checks if a PDF.js document proxy is valid, active, and not destroyed.
+ * Prevents "Cannot read properties of null (reading 'sendWithPromise')" when transport has been torn down.
+ */
+export function isPdfDocumentValid(doc: unknown): boolean {
+  if (!doc || typeof doc !== 'object') return false;
+  const d = doc as {
+    destroyed?: boolean;
+    _destroyed?: boolean;
+    transport?: { messageHandler?: unknown } | null;
+    _transport?: { messageHandler?: unknown } | null;
+    getPage?: unknown;
+  };
+  if (d.destroyed === true || d._destroyed === true) return false;
+  if (d.transport !== undefined && (d.transport === null || d.transport.messageHandler === null)) return false;
+  if (d._transport !== undefined && (d._transport === null || d._transport.messageHandler === null)) return false;
+  return typeof d.getPage === 'function';
+}
+
 // Automatically invoke on module evaluation in client context
 if (typeof window !== 'undefined') {
   setupPdfWorker();

@@ -8,7 +8,7 @@ import {
 import { CollectionsService } from '@/features/library/sdk/clients/catalog-entities.client';
 import { ItemsService } from '@/features/library/sdk/clients/items.client';
 import { isProjectScope } from '@/features/library/domain/identifiers.domain';
-import type { Item, Collection } from '@/features/library/domain/types/core.types';
+import type { Item, Collection } from '@/features/library/types/core.types';
 import { LibraryEmptyState } from '@/features/library/ui/content/ItemTableHeader';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { buildTree, type TreeNode } from '@/features/library/domain/collection-tree.domain';

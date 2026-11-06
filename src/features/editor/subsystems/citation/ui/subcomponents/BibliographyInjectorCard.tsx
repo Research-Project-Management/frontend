@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { copyToClipboard } from '@/shared/lib/utils';
 import { CitationService } from '@/features/library/sdk/clients/attachments-annotations.client';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
-import type { Item } from '@/features/library/domain/types/core.types';
+import type { Item } from '@/features/library/types/core.types';
 import {
   isLatexDocument,
   detectDocumentCitationStyle,

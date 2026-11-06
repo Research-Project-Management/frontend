@@ -1,12 +1,15 @@
-import { IngestionService, UploadService } from '@/features/library/sdk';
-import { pollIngestionRunCompletion } from '@/features/library/sdk/queries/ingestion.queries';
-import { cleanFilenameToTitle } from '@/features/library/domain/metadata-mapper';
-import type {
-  IngestionProgressItem,
-  ProcessModalStoreApi,
-} from '@/features/library/domain/types/ingestion.types';
+import {
+  executeLibraryIngestion,
+  pollIngestionRunCompletion,
+} from '@/features/library/sdk/queries/ingestion.queries';
+import {
+  uploadLibraryFileMultipart,
+  type UploadedMultipartFile,
+} from '@/features/library/sdk/queries/extraction.queries';
+import { cleanFilenameToTitle } from '@/features/library/domain/metadata.mapper';
+import type { ProcessModalStoreApi } from '@/features/library/domain/types/ingestion.types';
 
-export interface BatchTask<TInput = unknown, TOutput = unknown> {
+interface BatchTask<TInput = unknown, TOutput = unknown> {
   id: string;
   name: string;
   data: TInput;
@@ -14,14 +17,14 @@ export interface BatchTask<TInput = unknown, TOutput = unknown> {
   retries?: number;
 }
 
-export interface BatchFlowOptions {
+interface BatchFlowOptions {
   concurrency?: number;
   maxRetries?: number;
   retryBaseDelayMs?: number;
   abortSignal?: AbortSignal;
 }
 
-export interface BatchFlowProgress<TOutput = unknown> {
+interface BatchFlowProgress<TOutput = unknown> {
   total: number;
   completed: number;
   succeeded: number;
@@ -31,7 +34,7 @@ export interface BatchFlowProgress<TOutput = unknown> {
   errors: Map<string, Error>;
 }
 
-export type BatchFlowEventListener<TOutput = unknown> = (
+type BatchFlowEventListener<TOutput = unknown> = (
   progress: BatchFlowProgress<TOutput>,
 ) => void;
 
@@ -242,8 +245,9 @@ export interface FileIngestionStrategyContext {
   readonly provisionalId: string;
   readonly effectiveCollection?: string;
   readonly store: ProcessModalStoreApi;
-  readonly uploadedCache: Map<File, Awaited<ReturnType<typeof UploadService.uploadMultipart>>>;
+  readonly uploadedCache: Map<File, UploadedMultipartFile>;
   readonly signal?: AbortSignal;
+  readonly registerBackgroundExtraction?: (promise: Promise<void>) => void;
   readonly markFileSucceeded: (
     file: File,
     index: number,
@@ -266,13 +270,13 @@ export interface IFileIngestionStrategy {
   execute(file: File, ctx: FileIngestionStrategyContext): Promise<void>;
 }
 
-export async function ingestTextContent(
+async function ingestTextContent(
   file: File,
   source: BibliographyTextFormat,
   content: string,
   ctx: FileIngestionStrategyContext,
 ): Promise<{ extractedTitle: string; resolvedItemId?: string }> {
-  const res = await IngestionService.ingest(ctx.scopeId, {
+  const res = await executeLibraryIngestion(ctx.scopeId, {
     source,
     content,
     collectionId: ctx.effectiveCollection,
@@ -352,7 +356,7 @@ export const BinaryAttachmentFileStrategy: IFileIngestionStrategy = {
   async execute(file: File, ctx: FileIngestionStrategyContext): Promise<void> {
     let uploadRes = ctx.uploadedCache.get(file);
     if (!uploadRes) {
-      uploadRes = await UploadService.uploadMultipart(ctx.scopeId, file, {
+      uploadRes = await uploadLibraryFileMultipart(ctx.scopeId, file, {
         onProgress: (percent: number) => {
           ctx.store.updateProcessingItem(ctx.provisionalId, { progress: percent });
         },
@@ -382,7 +386,7 @@ export const BinaryAttachmentFileStrategy: IFileIngestionStrategy = {
 
     const identifiedTitle = cleanFilenameToTitle(file.name);
 
-    const ingestRes = await IngestionService.ingest(
+    const ingestRes = await executeLibraryIngestion(
       ctx.scopeId,
       {
         source: 'pdf',
@@ -403,18 +407,25 @@ export const BinaryAttachmentFileStrategy: IFileIngestionStrategy = {
     const completedItemId = ingestPayload?.data?.itemId || ingestPayload?.itemId;
 
     if (runId) {
-      // Mark file uploaded immediately, freeing up the upload worker slot
-      ctx.markFileSucceeded(
-        file,
-        ctx.index,
+      // Keep item in PROCESSING state while server-side PDF extraction runs,
+      // while freeing up the multipart upload worker slot immediately.
+      ctx.store.patchBatchItemAndRecalculate(
         ctx.provisionalId,
-        identifiedTitle,
-        completedItemId,
-        false,
+        { status: 'PROCESSING', itemName: identifiedTitle, itemId: completedItemId },
+        {
+          currentTitle: identifiedTitle,
+          processingPatch: {
+            status: 'PROCESSING',
+            extractedTitle: identifiedTitle,
+            ...(completedItemId ? { itemId: completedItemId } : {}),
+            progress: 95,
+          },
+        },
       );
 
-      // Decouple extraction polling so upload worker slots are freed immediately
-      void pollIngestionRunCompletion(ctx.scopeId, runId, {
+      // Decouple extraction polling from upload worker pool, but register the
+      // background promise so batch completion waits for all extractions to finish.
+      const extractionPromise = pollIngestionRunCompletion(ctx.scopeId, runId, {
         fallbackTitle: identifiedTitle,
         initialItemId: completedItemId,
         signal: ctx.signal,
@@ -442,6 +453,12 @@ export const BinaryAttachmentFileStrategy: IFileIngestionStrategy = {
           const errMsg = err instanceof Error ? err.message : String(err);
           ctx.markFileFailed?.(file, ctx.index, ctx.provisionalId, errMsg);
         });
+
+      if (ctx.registerBackgroundExtraction) {
+        ctx.registerBackgroundExtraction(extractionPromise);
+      } else {
+        await extractionPromise;
+      }
       return;
     }
 
@@ -456,7 +473,7 @@ export const BinaryAttachmentFileStrategy: IFileIngestionStrategy = {
   },
 };
 
-export const FILE_INGESTION_STRATEGY_REGISTRY: ReadonlyArray<IFileIngestionStrategy> = [
+const FILE_INGESTION_STRATEGY_REGISTRY: ReadonlyArray<IFileIngestionStrategy> = [
   TextBibliographyFileStrategy,
   BinaryAttachmentFileStrategy,
 ];

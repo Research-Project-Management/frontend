@@ -10,15 +10,14 @@
  * standardizing author display, and managing structured creator entries.
  */
 
-import { cleanValue, isValidValue, stripLatexMarkup } from './metadata-sanitizers';
-import { cleanText } from './citations';
+import { cleanValue, isValidValue, stripLatexMarkup, cleanText } from './metadata-sanitizers.domain';
 import type { CreatorCredit, Item } from './types/core.types';
 import { getPrimaryCreatorType } from './types/item-types.types';
 
-export interface ParsedCreator { firstName: string; lastName: string; fullName: string; isInstitution?: boolean; }
+interface ParsedCreator { firstName: string; lastName: string; fullName: string; isInstitution?: boolean; }
 export interface CreatorEntry { creatorType: string; name: string; fieldMode?: number; firstName?: string; lastName?: string; shortName?: string; }
 
-export const INSTITUTION_KEYWORDS = [
+const INSTITUTION_KEYWORDS = [
   'university', 'universities', 'institute', 'institutes', 'institution', 'institutions', 'consortium', 'consortia', 'collaboration', 'collaborations', 'committee', 'committees', 'organization', 'organizations', 'organisation', 'organisations', 'association', 'associations', 'society', 'societies', 'foundation', 'group', 'groups', 'team', 'council', 'agency', 'agencies', 'department', 'departments', 'ministry', 'laboratory', 'laboratories', 'center', 'centers', 'centre', 'centres', 'network', 'initiative', 'working party', 'investigators', 'commission', 'corporation', 'hospital', 'hospitals', 'inc', 'llc', 'ltd', 'openai', 'deepmind', 'anthropic', 'google', 'microsoft', 'cern', 'nasa', 'ieee',
 ];
 
@@ -28,7 +27,7 @@ export function isInstitutionName(name?: string | null): boolean {
   return Boolean(name && typeof name === 'string' && INSTITUTION_REGEX.test(name));
 }
 
-export const NOISE_AUTHOR_WORDS = new Set([
+const NOISE_AUTHOR_WORDS = new Set([
   'abstract', 'introduction', 'indexterms', 'keywords', 'keyword', 'references', 'reference', 'bibliography', 'contents', 'tableofcontents', 'acknowledgments', 'acknowledgements', 'correspondence', 'correspondingauthor', 'allrightsreserved', 'copyright', 'unknown', 'anonymous', 'none', 'null', 'undefined', 'etal', 'others', 'andothers', 'visualgeometrygroup',
 ]);
 
@@ -51,7 +50,7 @@ export function isNoiseAuthorName(raw?: string | null): boolean {
  * is a genuine author token, explicitly preserving valid 2-3 letter surnames
  * like "Na" and "Nil" while rejecting placeholder/noise strings.
  */
-export function isValidAuthorPart(val?: unknown): boolean {
+function isValidAuthorPart(val?: unknown): boolean {
   return typeof val === 'string' && Boolean(val.trim()) && !isNoiseAuthorName(val.trim());
 }
 
@@ -105,14 +104,14 @@ const VIETNAMESE_COMPOUND_SURNAMES = new Set([
   'nguyễn phúc', 'nguyen phuc', 'tôn thất', 'ton that', 'tôn nữ', 'ton nu', 'âu dương', 'au duong', 'hoàng lê', 'hoang le', 'trần đình', 'tran dinh', 'đặng trần', 'dang tran', 'hồ đắc', 'ho dac', 'lương thế', 'luong the', 'nguyễn đình', 'nguyen dinh', 'nguyễn khoa', 'nguyen khoa', 'phan huy', 'trần huy', 'tran huy', 'vũ đình', 'vu dinh',
 ]);
 
-export const AMBIGUOUS_UNACCENTED_VN_SURNAMES = new Set([
+const AMBIGUOUS_UNACCENTED_VN_SURNAMES = new Set([
   'le', 'mai', 'ha', 'do', 'la', 'to', 'ma', 'ho', 'ly', 'chu', 'can', 'vi', 'an', 'ta', 'cu', 'ba', 'ca', 'vo', 'vu', 'au', 'lo', 'no', 'ro', 'so', 'po',
 ]);
 
-export const VN_SYLLABLE_REGEX =
+const VN_SYLLABLE_REGEX =
   /^(?:ng|nh|tr|ch|gh|gi|kh|ph|qu|th|[bcdghklmnpstvx])?[aeiouy]+(?:ng|nh|ch|[cmnpt])?$/i;
 
-export function isVietnameseName(raw?: string | null): boolean {
+function isVietnameseName(raw?: string | null): boolean {
   if (!raw || typeof raw !== 'string') return false;
   const normalized = raw.trim().normalize('NFC');
   if (normalized.includes(',')) return false;
@@ -136,7 +135,7 @@ export function isVietnameseName(raw?: string | null): boolean {
   return tokens.every((tok) => VN_SYLLABLE_REGEX.test(tok));
 }
 
-export const SURNAME_PARTICLES = new Set([
+const SURNAME_PARTICLES = new Set([
   'van', 'von', 'zu', 'de', 'del', 'della', 'der', 'den', 'des', 'do', 'het', 'ter', 'ten',
   'la', 'le', 'las', 'los', 'du', 'di', 'da', 'dos', 'das', 'bin', 'ibn', 'al', 'el', 'vander', 'vanden',
 ]);
@@ -308,7 +307,7 @@ export function parseCreatorName(rawName: string): ParsedCreator {
 
 export const parseAuthorName = parseCreatorName;
 
-export interface RawCreatorLike {
+interface RawCreatorLike {
   creatorType?: string;
   name?: string;
   fullName?: string;
@@ -408,16 +407,6 @@ export function normalizeAuthors(
   }
 
   return [];
-}
-
-/**
- * Formats authors into a display string with an optional maxAuthors truncation threshold.
- */
-export function formatAuthorsText(rawAuthors?: unknown, maxAuthors = 3): string {
-  const list = normalizeAuthors(rawAuthors);
-  if (list.length === 0) return '';
-  if (list.length <= maxAuthors) return list.join(', ');
-  return `${list.slice(0, maxAuthors).join(', ')} et al.`;
 }
 
 /**

@@ -15,8 +15,8 @@ import {
   mergeCachedItemWithPatch,
 } from '@/features/library/sdk/queries/catalog.queries';
 import { useCollections } from '@/features/library/sdk/queries/collections.queries';
-import { normalizeTags, getAssignedCollectionIds } from '@/features/library/domain/metadata-mapper';
-import { getCollectionAncestorPath } from '@/features/library/domain/collection-tree';
+import { normalizeTags, getAssignedCollectionIds } from '@/features/library/domain/metadata.mapper';
+import { getCollectionAncestorPath } from '@/features/library/domain/collection-tree.domain';
 import type {
   Item,
   Collection,
@@ -25,7 +25,7 @@ import type {
 
 export { getCollectionAncestorPath };
 
-export interface UsePanelResizeOptions {
+interface UsePanelResizeOptions {
   /** Initial or controlled width of the panel in pixels */
   width: number;
   /** Callback fired continuously during drag and on release */
@@ -122,14 +122,14 @@ export function usePanelResize({
   };
 }
 
-export interface UseInspectorItemResolverParams {
+interface UseInspectorItemResolverParams {
   propItem?: Item | null;
   scopeId?: string;
   canEdit?: boolean;
   needsFullDetail?: boolean;
 }
 
-export interface UseInspectorItemResolverResult {
+interface UseInspectorItemResolverResult {
   effectiveItem: Item | null;
   targetScope: string;
   isLoading: boolean;
@@ -405,8 +405,8 @@ export function useInspectorItemResolver({
     effectiveItem,
     targetScope,
     isLoading,
-    effectiveCanEdit,
     isItemInTrash,
+    effectiveCanEdit,
     attachmentCount,
     noteCount,
     tagsList,

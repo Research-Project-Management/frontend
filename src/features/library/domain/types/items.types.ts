@@ -72,11 +72,6 @@ export const attachmentSchema = z.object({
 export type ItemAttachment = z.input<typeof attachmentSchema> & {
   id: string;
 };
-export type LinkMode = z.infer<typeof linkModeSchema>;
-export type AttachmentType = z.infer<typeof attachmentTypeSchema>;
-export type AttachmentExtractionStatus = z.infer<
-  typeof attachmentExtractionStatusSchema
->;
 
 // ── Notes ────────────────────────────────────────────────────────────────────
 export const noteSchema = z.object({
@@ -95,16 +90,6 @@ export const noteSchema = z.object({
   deletedAt: z.string().nullable().optional(),
   createdAt: z.string().optional().default(''),
   updatedAt: z.string().optional().default(''),
-});
-
-export const noteResponseSchema = z.object({
-  success: z.boolean().default(true),
-  data: noteSchema,
-});
-
-export const noteListResponseSchema = z.object({
-  success: z.boolean().default(true),
-  data: z.array(noteSchema),
 });
 
 export const createNoteSchema = z.object({
@@ -147,27 +132,6 @@ export const tagSchema = z.object({
   itemCount: z.number().optional().default(0),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
-});
-
-export const createTagSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  color: z.string().optional().default('#3b82f6'),
-  shortcut: z.number().int().min(1).max(9).nullable().optional(),
-  type: tagTypeSchema.optional().default('manual'),
-  projectId: z.string().optional(),
-});
-
-export const updateTagSchema = z.object({
-  name: z.string().optional(),
-  color: z.string().optional(),
-  shortcut: z.number().int().min(1).max(9).nullable().optional(),
-  type: tagTypeSchema.optional(),
-  projectId: z.string().optional(),
-});
-
-export const mergeTagsSchema = z.object({
-  sourceTagIds: z.array(z.string()),
-  targetTagId: z.string(),
 });
 
 export type Tag = z.infer<typeof tagSchema>;
@@ -234,13 +198,6 @@ export const relatedItemSchema = z.object({
   linkedAt: z.string().optional(),
 });
 
-export const linkRelationSchema = z.object({
-  targetItemId: z.string().optional(),
-  targetItemIds: z.array(z.string()).optional(),
-  relationType: relationTypeSchema.optional().default('related'),
-  note: z.string().optional(),
-});
-
 export type RelationType = z.infer<typeof relationTypeSchema>;
 export type RelatedItem = z.infer<typeof relatedItemSchema>;
 
@@ -251,14 +208,6 @@ export const retractionNatureSchema = z.enum([
   'correction',
   'manual',
 ]);
-
-export const retractionDetailsSchema = z.object({
-  nature: retractionNatureSchema,
-  reason: z.string().optional(),
-  noticeUrl: z.string().optional(),
-  date: z.string().optional(),
-  source: z.enum(['crossref', 'openalex', 'retraction_watch', 'manual']),
-});
 
 export const flagRetractionInputSchema = z.object({
   nature: retractionNatureSchema.optional().default('manual'),
@@ -275,8 +224,6 @@ export const retractionStatsSchema = z.object({
   manualCount: z.number(),
 });
 
-export type RetractionNature = z.infer<typeof retractionNatureSchema>;
-export type RetractionDetails = z.infer<typeof retractionDetailsSchema>;
 export type FlagRetractionInput = z.infer<typeof flagRetractionInputSchema>;
 export type RetractionStats = z.infer<typeof retractionStatsSchema>;
 
@@ -694,5 +641,4 @@ export const itemStateSchema = z.object({
   scrollPosition: z.unknown().optional(),
 });
 
-export type ReadStatus = z.infer<typeof readStatusSchema>;
 export type ItemStateData = z.infer<typeof itemStateSchema>;

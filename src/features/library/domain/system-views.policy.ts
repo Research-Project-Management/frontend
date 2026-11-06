@@ -2,6 +2,8 @@
  * Pure Domain Policy: System Views, Retraction State & "My Publications" Authorship / Open Access License Guard
  */
 
+import type { Item } from './types/core.types';
+
 export function safeHttpUrl(raw?: string | null): string | undefined {
   if (!raw || typeof raw !== 'string') return undefined;
   const trimmed = raw.trim();
@@ -17,7 +19,7 @@ export function safeHttpUrl(raw?: string | null): string | undefined {
   }
 }
 
-export interface RetractionInfo {
+interface RetractionInfo {
   nature?: string;
   reason?: string;
   reasons?: string[];
@@ -200,16 +202,6 @@ export function getRetractionInfo(item: unknown): RetractionInfo {
 
 // ── System Views & Open Access License Policy ───────────────────────────────
 
-export type LibrarySystemViewId =
-  | 'all'
-  | 'my-publications'
-  | 'publications'
-  | 'unfiled'
-  | 'duplicates'
-  | 'trash'
-  | 'retracted'
-  | 'starred';
-
 export interface OpenAccessLicenseBadge {
   code: string;
   label: string;
@@ -361,13 +353,13 @@ export function isItemStarred(item: Record<string, unknown>): boolean {
   return Boolean(item.isStarred || item.starred);
 }
 
-export function isItemUnread(item: Record<string, unknown>): boolean {
+function isItemUnread(item: Record<string, unknown>): boolean {
   const status = typeof item.readStatus === 'string' ? item.readStatus.trim().toLowerCase() : '';
   if (status) return status === 'unread';
   return !item.isRead;
 }
 
-export function doesItemHavePdf(item: Record<string, unknown>): boolean {
+function doesItemHavePdf(item: Record<string, unknown>): boolean {
   if (item.hasFile === true || item.hasPdf === true) return true;
   if (typeof item.fileUrl === 'string' && item.fileUrl.trim().length > 0) return true;
   if (typeof item.openAccessPdfUrl === 'string' && item.openAccessPdfUrl.trim().length > 0) return true;
@@ -385,7 +377,7 @@ export function doesItemHavePdf(item: Record<string, unknown>): boolean {
   return false;
 }
 
-export function isItemBroken(item: Record<string, unknown>): boolean {
+function isItemBroken(item: Record<string, unknown>): boolean {
   if (Array.isArray(item.qualityIssues) && item.qualityIssues.length > 0) return true;
   if (typeof item.qualityScore === 'number' && item.qualityScore < 50) return true;
   const title = typeof item.title === 'string' ? item.title.trim() : '';
@@ -433,4 +425,161 @@ export function doesItemMatchSystemView(
     default:
       return true;
   }
+}
+
+export function isTrashQueryKey(queryKey: readonly unknown[]): boolean {
+  if (queryKey[2] === 'trash' || queryKey[3] === 'trash') return true;
+  const params = queryKey[3];
+  if (params && typeof params === 'object' && (params as { view?: unknown }).view === 'trash') {
+    return true;
+  }
+  return false;
+}
+
+function extractNormalizedItemTags(item: Item): string[] {
+  if (!Array.isArray(item.tags)) return [];
+  return item.tags
+    .map((t) => {
+      if (typeof t === 'string') return t.trim().toLowerCase();
+      if (t && typeof t === 'object' && 'name' in t && typeof (t as { name?: unknown }).name === 'string') {
+        return ((t as { name: string }).name || '').trim().toLowerCase();
+      }
+      return '';
+    })
+    .filter(Boolean);
+}
+
+export function doesItemMatchQueryFilter(
+  item: Item,
+  params: Record<string, unknown> | undefined,
+): boolean {
+  if (!params || typeof params !== 'object') return true;
+  const view = typeof params.view === 'string' ? params.view : undefined;
+  const rec = item as Record<string, unknown>;
+
+  if (view) {
+    if (!doesItemMatchSystemView(rec, view)) return false;
+    if (view === 'trash') return true;
+  } else if (isItemTrashed(rec)) {
+    return false;
+  }
+  if (Boolean(params.starred) && !isItemStarred(rec)) return false;
+  if (Boolean(params.unfiled) && !isItemUnfiled(rec)) return false;
+
+  const collectionId = typeof params.collectionId === 'string' ? params.collectionId : undefined;
+  if (collectionId) {
+    const colIds = Array.isArray(item.collectionIds) ? item.collectionIds : [];
+    const singleColId = (item as { collectionId?: string }).collectionId;
+    const expandedIds = Array.isArray(params.collectionIds) ? (params.collectionIds as string[]) : null;
+    if (expandedIds && expandedIds.length > 0) {
+      if (!colIds.some((c) => expandedIds.includes(c)) && (!singleColId || !expandedIds.includes(singleColId))) return false;
+    } else if (params.includeSubcollections === false) {
+      if (!colIds.includes(collectionId) && singleColId !== collectionId) return false;
+    } else if (colIds.length === 0 && !singleColId) {
+      return false;
+    }
+  }
+
+  if (typeof params.tag === 'string' && params.tag.trim()) {
+    const requiredTags = params.tag
+      .split(',')
+      .map((t) => t.trim().toLowerCase())
+      .filter(Boolean);
+    if (requiredTags.length > 0 && Array.isArray(item.tags)) {
+      const itemTagSet = new Set(extractNormalizedItemTags(item));
+      if (!requiredTags.every((req) => itemTagSet.has(req))) return false;
+    }
+  }
+
+  if (typeof params.itemType === 'string' && params.itemType.trim()) {
+    const targetType = params.itemType.trim();
+    const currentType = (item.itemType || (rec.type as string | undefined) || '').trim();
+    if (currentType && currentType !== targetType) return false;
+  }
+
+  if (typeof params.readStatus === 'string' && params.readStatus.trim()) {
+    const targetStatus = params.readStatus.trim().toLowerCase();
+    const mappedTarget = targetStatus === 'read' ? 'completed' : targetStatus;
+    const currentStatus = (item.readStatus || (item.isRead ? 'completed' : 'unread')).toLowerCase();
+    if (currentStatus !== mappedTarget) return false;
+  }
+
+  return true;
+}
+
+export const MEMBERSHIP_MUTATION_KEYS = new Set([
+  'isStarred',
+  'deletedAt',
+  'status',
+  'readStatus',
+  'isRead',
+  'collectionId',
+  'collectionIds',
+  'isMyPublication',
+  'isInMyPublications',
+  'isRetracted',
+  'retractionStatus',
+  'itemType',
+]);
+
+export function doesPatchAffectMembership(patch?: Record<string, unknown> | null): boolean {
+  if (!patch || typeof patch !== 'object') return false;
+  for (const key of Object.keys(patch)) {
+    if (MEMBERSHIP_MUTATION_KEYS.has(key)) return true;
+  }
+  return false;
+}
+
+export function isMetadataOnlyPatch(patch?: Record<string, unknown> | null): boolean {
+  if (!patch || typeof patch !== 'object') return false;
+  const keys = Object.keys(patch);
+  if (keys.length === 0) return true;
+  return !keys.some((k) => MEMBERSHIP_MUTATION_KEYS.has(k) || k === 'tags');
+}
+
+const MEMBERSHIP_STATE_EXTRACTORS: ReadonlyArray<(it: Record<string, unknown>) => unknown> = [
+  isItemStarred,
+  isItemTrashed,
+  isItemInMyPublications,
+  isItemRetracted,
+  (it) => (it as { status?: string }).status ?? null,
+  (it) => (it as { readStatus?: string }).readStatus ?? null,
+  (it) => (it as { itemType?: string }).itemType ?? null,
+  (it) => (it as { collectionId?: string }).collectionId ?? null,
+];
+
+export function hasMembershipFieldsChanged(
+  oldItem: Item | null,
+  updatedItem: Item,
+  membershipPatch?: Record<string, unknown>,
+): boolean {
+  if (membershipPatch && !doesPatchAffectMembership(membershipPatch)) {
+    return false;
+  }
+  const nextRec = updatedItem as Record<string, unknown>;
+  const nextCols = Array.isArray(updatedItem.collectionIds) ? updatedItem.collectionIds : [];
+  if (!oldItem) {
+    return (
+      nextCols.length > 0 ||
+      Boolean((updatedItem as { collectionId?: string }).collectionId) ||
+      isItemStarred(nextRec) ||
+      isItemTrashed(nextRec) ||
+      isItemInMyPublications(nextRec) ||
+      isItemRetracted(nextRec)
+    );
+  }
+  const oldRec = oldItem as Record<string, unknown>;
+  if (MEMBERSHIP_STATE_EXTRACTORS.some((fn) => fn(oldRec) !== fn(nextRec))) {
+    return true;
+  }
+  const oldCols = Array.isArray(oldItem.collectionIds) ? oldItem.collectionIds : [];
+  if (oldCols.length !== nextCols.length) return true;
+  const oldSet = new Set(oldCols);
+  if (nextCols.some((c) => !oldSet.has(c))) return true;
+
+  const oldTags = extractNormalizedItemTags(oldItem);
+  const nextTags = extractNormalizedItemTags(updatedItem);
+  if (oldTags.length !== nextTags.length) return true;
+  const oldTagSet = new Set(oldTags);
+  return nextTags.some((t) => !oldTagSet.has(t));
 }

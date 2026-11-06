@@ -12,6 +12,9 @@ import type {
   SavedSearchPreviewResponse,
   SavedSearchConditionGroup,
   SavedSearchScopeOptions,
+  SearchResponse,
+  SearchSortBy,
+  SearchSortOrder,
 } from '@/features/library/domain/types/core.types';
 import {
   libraryClient,
@@ -19,9 +22,17 @@ import {
   getBasePath,
   getCatalogUrl,
   getExportsUrl,
+  getSyncUrl,
   isProjectScope,
   mapBackendItem,
 } from './http.client';
+
+export type {
+  CreateSavedSearchInput,
+  UpdateSavedSearchInput,
+  SavedSearchConditionGroup,
+  ItemStateData,
+};
 
 export interface ExtractNotesOptions {
   protocol?: 'flux' | 'web' | 'zotero';
@@ -47,11 +58,6 @@ export const CollectionsService = {
     ),
 
   list: (scopeId?: string) => CollectionsService.getAll(scopeId),
-
-  getTree: (scopeId?: string) =>
-    libraryClient.get<{ tree: Collection[] }>(
-      resolveLibraryUrl('catalog', '/collections/tree', scopeId),
-    ),
 
   getById: (scopeId?: string, collectionId?: string) => {
     const effectiveScope = collectionId ? scopeId : undefined;
@@ -150,17 +156,6 @@ export const CollectionsService = {
       { itemIds },
     ),
 
-  detachItems: (
-    scopeId: string | undefined,
-    collectionId: string,
-    itemIds: string[],
-  ) => CollectionsService.bulkDetachItems(scopeId, collectionId, itemIds),
-
-  getItemCollections: (scopeId: string | undefined, itemId: string) =>
-    libraryClient.get<{ success?: boolean; collections: Collection[] }>(
-      getCatalogUrl(scopeId, `${encodeURIComponent(itemId)}/collections`),
-    ).then((res) => res?.collections || (Array.isArray(res) ? res : [])),
-
   exportBibtex: (scopeId: string | undefined, collectionId: string) =>
     libraryClient.get<{ bibtex: string; total: number; filename: string }>(
       `${getExportsUrl(scopeId)}?format=bibtex&collectionId=${encodeURIComponent(collectionId)}`,
@@ -244,12 +239,6 @@ export const TagsService = {
   rename: (scopeId: string | undefined, tagId: string, name: string) =>
     TagsService.update(scopeId, tagId, { name }),
 
-  updateColor: (
-    scopeId: string | undefined,
-    tagId: string,
-    color: string,
-  ): Promise<TagWithCount> => TagsService.update(scopeId, tagId, { color }),
-
   delete: async (scopeId: string | undefined, tagId: string): Promise<void> => {
     await libraryClient.delete<unknown>(getTagsUrl(scopeId, encodeURIComponent(tagId)));
   },
@@ -280,46 +269,6 @@ export const TagsService = {
       count: raw?.count ?? raw?.data?.count ?? tags.length,
     };
   },
-
-  assignToItem: async (
-    scopeId: string | undefined,
-    tagId: string,
-    itemId: string,
-  ): Promise<void> => {
-    await libraryClient.post<unknown>(
-      getTagsUrl(scopeId, `${encodeURIComponent(tagId)}/items/${encodeURIComponent(itemId)}`),
-      {},
-    );
-  },
-
-  attachToItem: async (
-    scopeId: string | undefined,
-    itemId: string,
-    tagName: string,
-    color?: string,
-  ): Promise<TagWithCount> => {
-    const tag = await TagsService.create(scopeId, tagName, color);
-    if (tag?.id) {
-      await TagsService.assignToItem(scopeId, tag.id, itemId);
-    }
-    return tag;
-  },
-
-  /**
-   * Harmonized signature: (scopeId, itemId, tagId) matching detachFromItem.
-   */
-  removeFromItem: async (
-    scopeId: string | undefined,
-    itemId: string,
-    tagId: string,
-  ): Promise<void> => {
-    await libraryClient.delete<unknown>(
-      getTagsUrl(scopeId, `${encodeURIComponent(tagId)}/items/${encodeURIComponent(itemId)}`),
-    );
-  },
-
-  detachFromItem: (scopeId: string | undefined, itemId: string, tagId: string) =>
-    TagsService.removeFromItem(scopeId, itemId, tagId),
 };
 
 // 4. NotesService
@@ -369,9 +318,6 @@ export const NotesService = {
     }
     return (raw && typeof raw === 'object' ? (raw.data || raw.notes) : []) || [];
   },
-
-  getByItem: (scopeId: string | undefined, itemId: string) =>
-    NotesService.list(scopeId, itemId),
 
   get: async (scopeId: string | undefined, id: string): Promise<Note> => {
     const raw = await libraryClient.get<Note | { success?: boolean; data?: Note; note?: Note }>(
@@ -505,16 +451,6 @@ export const StateService = {
     );
     return unwrapState(res) ?? ({} as ItemStateData);
   },
-
-  batchStates: async (
-    scopeId?: string,
-    itemIds?: string[],
-  ): Promise<Record<string, ItemStateData>> => {
-    const res = await libraryClient.post<
-      Record<string, ItemStateData> | { data: Record<string, ItemStateData> }
-    >(resolveLibraryUrl('catalog', '/state/batch', scopeId), { itemIds: itemIds ?? [] });
-    return unwrapState(res) ?? {};
-  },
 };
 
 // 6. SavedSearchesService
@@ -612,3 +548,163 @@ export const SavedSearchesService = {
   execute: (scopeId: string | undefined, id: string, params?: { page?: number; limit?: number }) =>
     SavedSearchesService.getResults(scopeId, id, params),
 };
+
+export const SearchService = {
+  search: (
+    params: {
+      query?: string;
+      q?: string;
+      searchMode?: string;
+      view?: string;
+      limit?: number;
+      page?: number;
+      cursor?: string;
+      collectionId?: string;
+      includeSubcollections?: boolean;
+      tagId?: string;
+      tag?: string;
+      itemType?: string;
+      type?: string;
+      yearFrom?: number;
+      yearTo?: number;
+      fromYear?: number;
+      toYear?: number;
+      hasFile?: boolean;
+      hasNotes?: boolean;
+      readStatus?: string;
+      sortBy?: SearchSortBy | string;
+      sortOrder?: SearchSortOrder | string;
+      orderBy?: string;
+      orderDirection?: 'asc' | 'desc';
+      includeFacets?: boolean;
+    },
+    scopeId?: string,
+    options?: { signal?: AbortSignal },
+  ): Promise<SearchResponse> => {
+    const effectiveQuery = params.query ?? params.q ?? '';
+    const queryParams: Record<string, string> = { query: effectiveQuery };
+    if (params.searchMode) queryParams.searchMode = params.searchMode;
+    if (params.view) queryParams.view = params.view;
+    if (params.limit !== undefined) queryParams.limit = String(params.limit);
+    if (params.page !== undefined) queryParams.page = String(params.page);
+    if (params.cursor) queryParams.cursor = params.cursor;
+    if (params.collectionId) queryParams.collectionId = params.collectionId;
+    if (params.includeSubcollections !== undefined) {
+      queryParams.includeSubcollections = String(params.includeSubcollections);
+    }
+    if (params.tagId) queryParams.tagId = params.tagId;
+    if (params.tag) queryParams.tag = params.tag;
+    const effectiveItemType = params.itemType ?? params.type;
+    if (effectiveItemType) queryParams.itemType = effectiveItemType;
+    const effectiveYearFrom = params.yearFrom ?? params.fromYear;
+    if (effectiveYearFrom !== undefined) {
+      queryParams.yearFrom = String(effectiveYearFrom);
+    }
+    const effectiveYearTo = params.yearTo ?? params.toYear;
+    if (effectiveYearTo !== undefined) {
+      queryParams.yearTo = String(effectiveYearTo);
+    }
+    if (params.hasFile !== undefined) {
+      queryParams.hasFile = String(params.hasFile);
+    }
+    if (params.hasNotes !== undefined) {
+      queryParams.hasNotes = String(params.hasNotes);
+    }
+    if (params.readStatus) queryParams.readStatus = params.readStatus;
+    const effectiveSortBy = params.sortBy ?? params.orderBy;
+    if (effectiveSortBy) queryParams.sortBy = String(effectiveSortBy);
+    const effectiveSortOrder = params.sortOrder ?? params.orderDirection;
+    if (effectiveSortOrder) queryParams.sortOrder = String(effectiveSortOrder);
+    if (params.includeFacets !== undefined) {
+      queryParams.includeFacets = String(params.includeFacets);
+    }
+
+    return libraryClient
+      .get<SearchResponse>(
+        resolveLibraryUrl('search', '/search', scopeId),
+        { params: queryParams, signal: options?.signal },
+      )
+      .then((res) => ({
+        ...res,
+        items: Array.isArray(res?.items)
+          ? res.items.map((it) => mapBackendItem(it))
+          : [],
+      }));
+  },
+
+  searchAnchors: (
+    attachmentId: string,
+    term: string,
+    pageIndex?: number,
+    scopeId?: string,
+    options?: { signal?: AbortSignal },
+  ) => {
+    const params: Record<string, string> = { term };
+    if (pageIndex !== undefined) params.pageIndex = String(pageIndex);
+    return libraryClient
+      .get<
+        Array<{
+          attachmentId?: string;
+          pageIndex: number;
+          snippet?: string;
+          text?: string;
+          charOffsetStart?: number;
+          charOffsetEnd?: number;
+          startOffset?: number;
+          endOffset?: number;
+          highlightBoxes?: Array<{ x: number; y: number; width: number; height: number }>;
+        }>
+      >(
+        resolveLibraryUrl(
+          'search',
+          `/search/attachments/${encodeURIComponent(attachmentId)}/anchors`,
+          scopeId,
+        ),
+        { params, signal: options?.signal },
+      )
+      .then((rows) =>
+        (Array.isArray(rows) ? rows : []).map((row) => {
+          const snippet = row.snippet ?? row.text ?? '';
+          const charOffsetStart = row.charOffsetStart ?? row.startOffset ?? 0;
+          const charOffsetEnd = row.charOffsetEnd ?? row.endOffset ?? charOffsetStart;
+          return {
+            attachmentId: row.attachmentId ?? attachmentId,
+            pageIndex: row.pageIndex,
+            snippet,
+            text: snippet,
+            charOffsetStart,
+            charOffsetEnd,
+            startOffset: charOffsetStart,
+            endOffset: charOffsetEnd,
+            highlightBoxes: row.highlightBoxes,
+          };
+        }),
+      );
+  },
+};
+
+export const SyncService = {
+  getVersion: (scopeId?: string) =>
+    libraryClient.get<{ version: string; scope: 'user' | 'project'; scopeId: string }>(getSyncUrl(scopeId, 'version')),
+
+  getChanges: (scopeId?: string, params?: { since?: string; limit?: number; compact?: boolean }) =>
+    libraryClient.get<{
+      since: string;
+      count: number;
+      compacted?: boolean;
+      hasMore: boolean;
+      nextCursor?: string | null;
+      nextSince?: string | null;
+      changes: Array<Record<string, unknown>>;
+    }>(
+      getSyncUrl(scopeId, 'changes'),
+      {
+        params: {
+          since: params?.since ?? '0',
+          limit: params?.limit ?? 100,
+          ...(params?.compact !== undefined ? { compact: params.compact } : {}),
+        },
+      },
+    ),
+};
+

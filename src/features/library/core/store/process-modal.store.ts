@@ -9,8 +9,19 @@ import type {
   ProcessBatchUploadOptions,
   ProcessModalStoreAdapter,
 } from '@/features/library/domain/types/ingestion.types';
-// executeBatchUpload is lazily imported inside startBatchUpload to prevent cyclic module initialization
-import { cleanFilenameToTitle } from '@/features/library/domain/metadata-mapper';
+import { cleanFilenameToTitle } from '@/features/library/domain/metadata.mapper';
+
+export type BatchUploadExecutor = (
+  files: File[],
+  options: ProcessBatchUploadOptions,
+  store: ProcessModalStoreAdapter,
+) => Promise<void>;
+
+let registeredBatchUploadExecutor: BatchUploadExecutor | null = null;
+
+export function registerBatchUploadExecutor(executor: BatchUploadExecutor): void {
+  registeredBatchUploadExecutor = executor;
+}
 
 export { cleanFilenameToTitle };
 export type {
@@ -25,7 +36,7 @@ export type {
 // Explicit Finite State Machine (FSM) Selectors & Transition Guards (FE-P3)
 // ---------------------------------------------------------------------------
 
-export type ProcessModalPhase =
+type ProcessModalPhase =
   | 'IDLE'
   | 'RUNNING'
   | 'COMPLETED'
@@ -33,9 +44,9 @@ export type ProcessModalPhase =
   | 'FAILED'
   | 'ABORTED';
 
-export type ProcessModalDisplayMode = 'HIDDEN' | 'EXPANDED' | 'MINIMIZED_PILL';
+type ProcessModalDisplayMode = 'HIDDEN' | 'EXPANDED' | 'MINIMIZED_PILL';
 
-export type ProcessItemStage = 'PENDING' | 'ACTIVE' | 'SUCCEEDED' | 'FAILED';
+type ProcessItemStage = 'PENDING' | 'ACTIVE' | 'SUCCEEDED' | 'FAILED';
 
 const TERMINAL_SUCCESS_ITEM_STATUSES = new Set<string>(['SUCCEEDED', 'COMPLETED', 'READY']);
 const TERMINAL_FAILED_ITEM_STATUSES = new Set<string>([
@@ -137,7 +148,7 @@ function recalculateBatchProgressData(
   };
 }
 
-export interface ProcessModalStore {
+interface ProcessModalStore {
   state: ProcessModalState;
   processingItems: ProcessingFileItem[];
   addProcessingItem: (item: ProcessingFileItem) => void;
@@ -168,13 +179,11 @@ export interface ProcessModalStore {
     },
   ) => void;
   completeBatchRun: (error?: string | null, provisionalIdsToRemove?: Iterable<string>) => void;
-  updateItemById: (taskId: string, patch: Partial<IngestionProgressItem>) => void;
   updateItem: (index: number, patch: Partial<IngestionProgressItem>) => void;
   startBatchUpload: (
     files: File[],
     options: ProcessBatchUploadOptions,
   ) => Promise<void>;
-  abortBatch: () => void;
   closeModal: () => void;
   minimizeModal: () => void;
   restoreModal: () => void;
@@ -439,10 +448,6 @@ export const useProcessModalStore = create<ProcessModalStore>()(
     });
   },
 
-  updateItemById: (taskId: string, patch: Partial<IngestionProgressItem>) => {
-    get().patchBatchItemAndRecalculate(taskId, patch);
-  },
-
   updateItem: (index: number, patch: Partial<IngestionProgressItem>) => {
     get().patchBatchItemAndRecalculate(index, patch);
   },
@@ -485,7 +490,6 @@ export const useProcessModalStore = create<ProcessModalStore>()(
     const abortSignal = controller.signal;
     activeBatchUploadsCount += 1;
 
-    const { executeBatchUpload } = await import('@/features/library/core/coordinator/ingestion.coordinator');
     const storeAdapter: ProcessModalStoreAdapter = {
       getState: get,
       setState: set,
@@ -498,22 +502,15 @@ export const useProcessModalStore = create<ProcessModalStore>()(
       dismissProcessingItem: get().dismissProcessingItem,
     };
     try {
-      await executeBatchUpload(files, { ...options, abortSignal }, storeAdapter);
+      if (registeredBatchUploadExecutor) {
+        await registeredBatchUploadExecutor(files, { ...options, abortSignal }, storeAdapter);
+      }
     } finally {
       activeBatchUploadsCount = Math.max(0, activeBatchUploadsCount - 1);
       if (activeBatchUploadsCount === 0 && activeBatchAbortController === controller) {
         activeBatchAbortController = null;
       }
     }
-  },
-
-  abortBatch: () => {
-    activeBatchUploadsCount = 0;
-    if (activeBatchAbortController) {
-      activeBatchAbortController.abort();
-      activeBatchAbortController = null;
-    }
-    get().completeBatchRun('Batch processing cancelled by user');
   },
 }),
     {

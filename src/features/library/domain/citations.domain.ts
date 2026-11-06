@@ -1,7 +1,9 @@
 import type { Item, CslStyle } from '@/features/library/domain/types/core.types';
-import { parseCreatorName } from './creators';
-import { stripLatexMarkup, isValidValue, parseItemExtraField, getItemDisplayTitle, getItemDisplayDate } from './metadata-mapper';
-import { getItemAuthorsSummary } from '@/features/library/domain/creators';
+import { parseCreatorName, getItemAuthorsSummary } from './creators.domain';
+import { stripLatexMarkup, isValidValue, parseItemExtraField, getItemDisplayTitle, getItemDisplayDate } from './metadata.mapper';
+import { foldDiacritics, cleanText } from './metadata-sanitizers.domain';
+
+export { foldDiacritics, cleanText };
 
 /**
  * Presentation Model: Citations & Citation Keys
@@ -16,7 +18,7 @@ import { getItemAuthorsSummary } from '@/features/library/domain/creators';
  */
 
 
-export interface CitationKeyInput {
+interface CitationKeyInput {
   title?: string | null;
   authors?: Array<string | { name?: string | null; fullName?: string | null; lastName?: string | null; [key: string]: unknown }> | null;
   creators?: Array<{ firstName?: string | null; lastName?: string | null; fullName?: string | null; name?: string | null; creatorType?: string | null; [key: string]: unknown }> | null;
@@ -193,7 +195,7 @@ export const CANONICAL_CSL_STYLE_IDS = [
   'ris',
 ] as const;
 
-export const CORE_CITATION_STYLES = [
+const CORE_CITATION_STYLES = [
   { id: 'apa-7th', label: 'APA (7th Edition)', shortLabel: 'APA' },
   { id: 'ieee', label: 'IEEE Style', shortLabel: 'IEEE' },
   { id: 'mla-9th', label: 'MLA (9th Edition)', shortLabel: 'MLA' },
@@ -312,25 +314,6 @@ export function formatCitationStyleLabel(style: {
  */
 
 
-const ASCII_ONLY_RE = /^[\x00-\x7F]*$/;
-const SPECIAL_LATIN_FOLD_RE = /[ĐđŁłØøßÆæŒœ]/g;
-const COMBINING_DIACRITIC_RE = /[\u0300-\u036f]/g;
-const SPECIAL_LATIN_MAP: Readonly<Record<string, string>> = {
-  Đ: 'd',
-  đ: 'd',
-  Ł: 'l',
-  ł: 'l',
-  Ø: 'o',
-  ø: 'o',
-  ß: 'ss',
-  Æ: 'ae',
-  æ: 'ae',
-  Œ: 'oe',
-  œ: 'oe',
-};
-
-const BROKEN_HYPHEN_RE = /(\b[A-Za-z0-9]+)-\s*\r?\n\s*([A-Za-z0-9]+\b)/g;
-const MULTI_WHITESPACE_RE = /\s+/g;
 const LEADING_EMOJI_RE = /^(\p{Extended_Pictographic}|\p{Emoji_Presentation}|[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}])\s*(.*)$/u;
 
 const NAMED_XML_ENTITIES: Readonly<Record<string, string>> = {
@@ -517,36 +500,6 @@ export function decodeXmlEntities(raw?: string | null): string {
 
   const first = decodePass(raw);
   return first.includes('&') ? decodePass(first) : first;
-}
-
-export const decodeHtmlEntities = decodeXmlEntities;
-
-/**
- * Transliterates and folds Unicode diacritics into lowercase ASCII characters
- * for diacritic-insensitive search and key normalization.
- * Uses an O(1) ASCII fast-path to bypass NFD normalization when no non-ASCII characters exist.
- */
-export function foldDiacritics(input?: string | null): string {
-  if (!input) return '';
-  if (ASCII_ONLY_RE.test(input)) {
-    return input.toLowerCase();
-  }
-  return input
-    .replace(SPECIAL_LATIN_FOLD_RE, (m) => SPECIAL_LATIN_MAP[m] ?? m)
-    .normalize('NFD')
-    .replace(COMBINING_DIACRITIC_RE, '')
-    .toLowerCase();
-}
-
-/**
- * Normalizes broken hyphens and irregular whitespace in academic titles/venues.
- */
-export function cleanText(text?: string | null): string {
-  if (!text) return '';
-  return text
-    .replace(BROKEN_HYPHEN_RE, '$1-$2')
-    .replace(MULTI_WHITESPACE_RE, ' ')
-    .trim();
 }
 
 /**

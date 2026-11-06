@@ -20,8 +20,8 @@ import * as api from '@/shared/lib/api';
 import { API_BASE_URL } from '@/config/env';
 import { getAuthToken } from '@/shared/lib/token-storage';
 import type { RequestOptions } from '@/shared/types/api.types';
-import { isProjectScope, getItemFileUrl } from '@/features/library/domain/identifiers';
-import { mapBackendItem } from '@/features/library/domain/metadata-mapper';
+import { isProjectScope, getItemFileUrl } from '@/features/library/domain/identifiers.domain';
+import { mapBackendItem } from '@/features/library/domain/metadata.mapper';
 import type {
   Item,
   TagWithCount,
@@ -45,7 +45,7 @@ export type {
   CslStyleMetadata,
 };
 
-export type LibrarySubdomain =
+type LibrarySubdomain =
   | 'catalog'
   | 'extraction'
   | 'ingestion'
@@ -58,7 +58,7 @@ const ALL_LIBRARY_SUBDOMAINS: readonly LibrarySubdomain[] = [
   'catalog', 'extraction', 'ingestion', 'citation', 'search', 'sync', 'reader',
 ] as const;
 
-export const SUBDOMAIN_ENV_HOSTS: Record<LibrarySubdomain, string | undefined> = {
+const SUBDOMAIN_ENV_HOSTS: Record<LibrarySubdomain, string | undefined> = {
   get catalog() { return process.env.NEXT_PUBLIC_LIBRARY_CATALOG_URL; },
   get extraction() { return process.env.NEXT_PUBLIC_LIBRARY_EXTRACTION_URL; },
   get ingestion() { return process.env.NEXT_PUBLIC_LIBRARY_INGESTION_URL; },
@@ -222,7 +222,7 @@ export function getBasePath(scopeId?: string, suffix = ''): string {
   return resolveLibraryUrl('catalog', '', scopeId, suffix);
 }
 
-export function buildLibraryUrl(scopeId: string | undefined, resourcePath: string): string {
+function buildLibraryUrl(scopeId: string | undefined, resourcePath: string): string {
   const cleanResource = resourcePath.startsWith('/') ? resourcePath : `/${resourcePath}`;
   if (cleanResource.startsWith('/pdf-proxy')) {
     const scopeQuery = isProjectScope(scopeId)

@@ -1,16 +1,16 @@
 import type { Item } from './types/core.types';
-import { ALL_SCHEMA_FIELD_KEYS } from './types/item-fields.constants';
+import { ALL_SCHEMA_FIELD_KEYS } from './types/item-type-mappings.constants';
 import { normalizeCanonicalItemType, registerSchemaRegistryUpdateListener } from './types/item-types.types';
-import { normalizeAuthors } from './creators';
-import { isValidValue, stripLatexMarkup, cleanFilenameToTitle } from './metadata-sanitizers';
-import { getItemDisplayTitle, getItemDisplayDate } from './metadata-extra';
+import { normalizeAuthors } from './creators.domain';
+import { isValidValue, stripLatexMarkup, cleanFilenameToTitle } from './metadata-sanitizers.domain';
+import { getItemDisplayTitle, getItemDisplayDate } from './metadata-extra.domain';
 
-export * from './metadata-sanitizers';
-export * from './metadata-extra';
+export * from './metadata-sanitizers.domain';
+export * from './metadata-extra.domain';
 
 const MUTABLE_SCHEMA_PROMOTE_KEYS: string[] = Array.from(ALL_SCHEMA_FIELD_KEYS).filter((k) => k !== 'title' && k !== 'extra');
 export const ALL_SCHEMA_PROMOTE_KEYS: readonly string[] = MUTABLE_SCHEMA_PROMOTE_KEYS;
-export const ALL_SCHEMA_PROMOTE_KEY_SET = new Set<string>(MUTABLE_SCHEMA_PROMOTE_KEYS);
+const ALL_SCHEMA_PROMOTE_KEY_SET = new Set<string>(MUTABLE_SCHEMA_PROMOTE_KEYS);
 
 function refreshSchemaPromoteKeys(): void {
   const nextKeys = Array.from(ALL_SCHEMA_FIELD_KEYS).filter((k) => k !== 'title' && k !== 'extra');
@@ -20,25 +20,25 @@ function refreshSchemaPromoteKeys(): void {
 }
 registerSchemaRegistryUpdateListener(refreshSchemaPromoteKeys);
 
-export const CONTAINER_TITLE_CANDIDATE_KEYS = [
+const CONTAINER_TITLE_CANDIDATE_KEYS = [
   'publicationTitle', 'containerTitle', 'journal', 'bookTitle', 'proceedingsTitle', 'encyclopediaTitle',
   'dictionaryTitle', 'websiteTitle', 'blogTitle', 'forumTitle', 'programTitle', 'seriesTitle', 'sessionTitle', 'meetingName',
 ] as const;
 
-export const SUBTYPE_CANDIDATE_KEYS = [
+const SUBTYPE_CANDIDATE_KEYS = [
   'type', 'genre', 'thesisType', 'reportType', 'presentationType', 'manuscriptType', 'websiteType', 'postType', 'letterType', 'mapType',
 ] as const;
 
-export const PLACE_CANDIDATE_KEYS = ['eventPlace', 'address', 'location', 'repositoryLocation', 'country'] as const;
+const PLACE_CANDIDATE_KEYS = ['eventPlace', 'address', 'location', 'repositoryLocation', 'country'] as const;
 
-export const PUBLISHER_CANDIDATE_KEYS = [
+const PUBLISHER_CANDIDATE_KEYS = [
   'publisher', 'university', 'institution', 'issuingAuthority', 'authority', 'court', 'legislativeBody',
   'company', 'organization', 'repository', 'distributor', 'studio', 'network', 'label',
 ] as const;
 
-export const DATE_CANDIDATE_KEYS = ['publicationDate', 'date', 'issueDate', 'dateDecided', 'dateEnacted', 'filingDate'] as const;
+const DATE_CANDIDATE_KEYS = ['publicationDate', 'date', 'issueDate', 'dateDecided', 'dateEnacted', 'filingDate'] as const;
 
-export const CANONICAL_SCALAR_PROJECTIONS: ReadonlyArray<readonly [string, readonly string[]]> = [
+const CANONICAL_SCALAR_PROJECTIONS: ReadonlyArray<readonly [string, readonly string[]]> = [
   ['abstractNote', ['abstractNote', 'abstract']], ['publicationTitle', ['publicationTitle', 'journal']],
   ['journalAbbreviation', ['journalAbbreviation', 'journalAbbr']], ['doi', ['doi', 'DOI']],
   ['issn', ['issn', 'ISSN']], ['isbn', ['isbn', 'ISBN']], ['pmid', ['pmid', 'PMID']],
@@ -49,7 +49,7 @@ export const CANONICAL_SCALAR_PROJECTIONS: ReadonlyArray<readonly [string, reado
   ['pages', ['pages', 'firstPage', 'codePages']],
 ];
 
-export const EMPTY_BACKEND_ITEM_DEFAULTS: Item = {
+const EMPTY_BACKEND_ITEM_DEFAULTS: Item = {
   id: '', title: 'Untitled', itemType: 'journalArticle', authors: [], editors: [], creators: [], contributors: [],
   year: 0, publicationTitle: '', journalAbbreviation: '', publisher: '', volume: '', issue: '', pages: '',
   isbn: '', issn: '', doi: '', url: '', abstractNote: '', keywords: [], language: '', shortTitle: '',
@@ -61,7 +61,7 @@ export const EMPTY_BACKEND_ITEM_DEFAULTS: Item = {
   createdAt: '1970-01-01T00:00:00.000Z', updatedAt: '1970-01-01T00:00:00.000Z',
 };
 
-export function pickFirstValidField(rec: Record<string, unknown>, ef: Record<string, unknown>, keys: readonly string[]): unknown {
+function pickFirstValidField(rec: Record<string, unknown>, ef: Record<string, unknown>, keys: readonly string[]): unknown {
   for (const k of keys) if (isValidValue(rec[k])) return rec[k];
   for (const k of keys) {
     if (k in rec && (rec[k] === '' || rec[k] === null)) continue;
@@ -78,7 +78,7 @@ const IDENTIFIER_UPPER_ALIAS_MAP: Readonly<Record<string, readonly string[]>> = 
   doi: ['DOI'], arxivId: ['archiveID', 'archiveId'], pmid: ['PMID'], pmcid: ['PMCID'], isbn: ['ISBN'], issn: ['ISSN'],
 };
 
-export function hydrateIdentifiersFromRelationalArray(rec: Record<string, unknown>, ef: Record<string, unknown>): void {
+function hydrateIdentifiersFromRelationalArray(rec: Record<string, unknown>, ef: Record<string, unknown>): void {
   const identifiers = Array.isArray(rec.identifiers) ? rec.identifiers : [];
   for (const rawIdent of identifiers) {
     if (!rawIdent || typeof rawIdent !== 'object') continue;
@@ -104,7 +104,7 @@ export function hydrateIdentifiersFromRelationalArray(rec: Record<string, unknow
   }
 }
 
-export function mergeRawItemPartials(rec: Record<string, unknown>): {
+function mergeRawItemPartials(rec: Record<string, unknown>): {
   mapped: Record<string, unknown>;
   ef: Record<string, unknown>;
 } {
@@ -202,7 +202,7 @@ export function getAssignedCollectionIds(item: Partial<Item> | null | undefined)
   return Array.from(ids);
 }
 
-export interface ProvisionalUploadItemInput {
+interface ProvisionalUploadItemInput {
   id: string; filename?: string; fileName?: string; extractedTitle?: string;
   fileSize?: number; mimeType?: string; fileUrl?: string;
   status: 'uploading' | 'extracting' | 'completed' | 'error' | 'UPLOADING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED';
@@ -243,7 +243,7 @@ const CONTAINER_VENUE_FIELD_BY_TYPE: Readonly<Record<string, string>> = {
   podcast: 'seriesTitle', audioRecording: 'seriesTitle',
 };
 
-export function projectContainerAndVenueTitles(
+function projectContainerAndVenueTitles(
   mapped: Record<string, unknown>,
   rec: Record<string, unknown>,
   ef: Record<string, unknown>,
@@ -659,6 +659,14 @@ export function mapBackendItem(
     typeof rec.lastOpenedAt === 'string' || rec.lastOpenedAt === null ? rec.lastOpenedAt :
     typeof stateSource?.lastOpenedAt === 'string' || stateSource?.lastOpenedAt === null ? stateSource.lastOpenedAt : undefined;
   if (resolvedLastOpenedAt !== undefined && mapped.lastOpenedAt === undefined) mapped.lastOpenedAt = resolvedLastOpenedAt;
+  if (mapped.readingState === undefined && (stateSource || hasExplicitUserState)) {
+    mapped.readingState = {
+      ...(stateSource ?? {}),
+      ...(resolvedCurrentPage !== undefined ? { currentPage: resolvedCurrentPage, lastReadPage: resolvedCurrentPage } : {}),
+      ...(resolvedScrollPosition !== undefined ? { scrollPosition: resolvedScrollPosition } : {}),
+      ...(resolvedLastOpenedAt !== undefined ? { lastOpenedAt: resolvedLastOpenedAt } : {}),
+    };
+  }
 
   projectCanonicalBaseFields(mapped, rec, ef);
 
@@ -691,7 +699,7 @@ export function mapBackendItem(
   return result;
 }
 
-export interface MappedItemMeta {
+interface MappedItemMeta {
   isFullBackendItem?: boolean;
   hasExplicitUserState?: boolean;
 }

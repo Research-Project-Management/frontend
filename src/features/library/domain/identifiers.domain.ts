@@ -2,7 +2,7 @@
  * Pure Domain Presentation Helpers: Identifiers (DOI, arXiv, PMID, ISBN) & Item File URL Resolvers
  */
 
-import { stripLatexMarkup } from './metadata-sanitizers';
+import { stripLatexMarkup } from './metadata-sanitizers.domain';
 
 const BRACKET_PAIRS: ReadonlyArray<readonly [string, number, number]> = [
   [')', 41, 40],
@@ -22,7 +22,7 @@ function hasMoreCloseThanOpen(str: string, closeCode: number, openCode: number):
   return closeCount > openCount;
 }
 
-export function trimUnmatchedClosingBrackets(str: string): string {
+function trimUnmatchedClosingBrackets(str: string): string {
   let s = str;
   for (const [closeChar, closeCode, openCode] of BRACKET_PAIRS) {
     while (
@@ -232,9 +232,9 @@ export function cleanIsbn(input?: string | null): string {
   return '';
 }
 
-export type BatchIdentifierType = 'doi' | 'arxiv' | 'pmid' | 'pmcid' | 'isbn' | 'url' | 'bibtex' | 'ris';
+type BatchIdentifierType = 'doi' | 'arxiv' | 'pmid' | 'pmcid' | 'isbn' | 'url' | 'bibtex' | 'ris';
 
-export interface ParsedBatchIdentifier {
+interface ParsedBatchIdentifier {
   type: BatchIdentifierType;
   value: string;
   canonicalKey: string;
@@ -428,7 +428,7 @@ export function isProjectScope(scopeId?: string): scopeId is string {
   );
 }
 
-export type ItemFileSource = {
+type ItemFileSource = {
   fileUrl?: string | null;
   pdfUrl?: string | null;
   openAccessPdfUrl?: string | null;

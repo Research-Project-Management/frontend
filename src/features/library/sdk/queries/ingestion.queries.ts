@@ -3,13 +3,17 @@
 import { useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { libraryServices, IngestionService } from '@/features/library/sdk';
+import {
+  IngestionService,
+  CurationService,
+  RetractionService,
+  FeedsService,
+} from '../clients/curation.client';
 import { integrationService } from '@/features/settings/services/integration.service';
 import type { UnifiedIngestionPayload, FlagRetractionInput } from '@/features/library/domain/types/core.types';
 import { mapServerFeedSubscriptions } from '@/features/library/domain/feed-parser.domain';
 import type { SavedFeedSubscription } from '@/features/library/domain/types/ingestion.types';
 import {
-  libraryKeys,
   itemKeys,
   ingestKeys,
   feedKeys,
@@ -18,14 +22,6 @@ import {
   invalidateCollections,
   normalizeScopeId,
   waitForBootstrapCache,
-} from '@/features/library/sdk/query-keys';
-import {
-  invalidateLibraryCatalogDependencies,
-  patchItemAcrossScopeCaches,
-  removeItemsFromScopeCaches,
-  getCachedItemsMapFromScope,
-} from './cache-patcher';
-import {
   notifyServerFeedsHydrated,
   notifyReadEntriesHydrated,
   invokeLoadFeedsFallback,
@@ -34,7 +30,13 @@ import {
   invokeRemoveFeed,
   getRegisteredFeedsSnapshot,
   notifyDraftCacheCleared,
-} from '@/features/library/sdk';
+} from '@/features/library/sdk/query-keys';
+import {
+  invalidateLibraryCatalogDependencies,
+  patchItemAcrossScopeCaches,
+  removeItemsFromScopeCaches,
+  getCachedItemsMapFromScope,
+} from './cache-patcher';
 import {
   type PollRunOutcome,
   type PollIngestionRunOptions,
@@ -55,6 +57,37 @@ export {
   pollIngestionRunCompletion,
   buildIdentifierIngestionPayload,
   executeTrackedIdentifierIngestion,
+};
+
+export function executeLibraryIngestion(
+  scopeId: string | undefined,
+  payload: UnifiedIngestionPayload,
+  options?: Parameters<typeof IngestionService.ingest>[2],
+) {
+  return IngestionService.ingest(scopeId, payload, options);
+}
+
+export function fetchIngestionRunStatus(scopeId: string | undefined, runId: string) {
+  return IngestionService.getRunStatus(scopeId, runId);
+}
+
+export function fetchIngestionRunProgress(scopeId: string | undefined, runId: string) {
+  return IngestionService.getRunProgress(scopeId, runId);
+}
+
+export const feedsTransportBindings = {
+  getSubscriptions: () => FeedsService.getSubscriptions(),
+  subscribe: (payload: Parameters<typeof FeedsService.subscribe>[0]) =>
+    FeedsService.subscribe(payload),
+  updateSubscription: (
+    id: string,
+    payload: Parameters<typeof FeedsService.updateSubscription>[1],
+  ) => FeedsService.updateSubscription(id, payload),
+  unsubscribe: (id: string) => FeedsService.unsubscribe(id),
+  markItemRead: (entryId: string, isRead: boolean) =>
+    FeedsService.markItemRead(entryId, isRead),
+  markAllRead: (entryIds: string[]) => FeedsService.markAllRead(entryIds),
+  getItems: (feedId: string) => FeedsService.getItems(feedId),
 };
 
 export function useTrackedIdentifierIngestion(scopeId: string) {
@@ -84,7 +117,7 @@ export function useDuplicateGroups(
   return useQuery({
     queryKey: curationKeys.duplicates(scopeId),
     queryFn: () =>
-      libraryServices.curation.getDuplicates(scopeId, {
+      CurationService.getDuplicates(scopeId, {
         cachedItemsById: getCachedItemsMapFromScope(queryClient, scopeId),
       }),
     enabled: options?.enabled ?? true,
@@ -106,7 +139,7 @@ export function useMergeDuplicates(scopeId?: string) {
       duplicateItemIds: string[];
       overrides?: Record<string, unknown>;
     }) => {
-      return libraryServices.curation.mergeDuplicates(
+      return CurationService.mergeDuplicates(
         effectiveScope,
         primaryItemId,
         duplicateItemIds,
@@ -114,7 +147,7 @@ export function useMergeDuplicates(scopeId?: string) {
       );
     },
     onSuccess: (
-      data: Awaited<ReturnType<typeof libraryServices.curation.mergeDuplicates>>,
+      data: Awaited<ReturnType<typeof CurationService.mergeDuplicates>>,
       variables,
     ) => {
       if (data?.primaryItem) {
@@ -167,7 +200,7 @@ export function useBatchMergeDuplicates(scopeId?: string) {
         duplicateItemIds: string[];
         fieldSelections?: Record<string, string>;
       }>,
-    ) => libraryServices.curation.mergeDuplicatesBatch(effectiveScope, merges),
+    ) => CurationService.mergeDuplicatesBatch(effectiveScope, merges),
     onSuccess: (data, variables) => {
       const allDeletedIds = new Set<string>();
       (data?.results ?? []).forEach((res) => {
@@ -198,10 +231,23 @@ export function useBatchMergeDuplicates(scopeId?: string) {
       void queryClient.invalidateQueries({ queryKey: curationKeys.duplicates(effectiveScope) });
       void queryClient.invalidateQueries({ queryKey: curationKeys.integrity(effectiveScope) });
       const groupsCount = data?.mergedGroups ?? variables.length;
-      toast.success('Duplicate groups merged', {
-        description: `Consolidated ${groupsCount} duplicate group(s). Notes and citations preserved.`,
-        id: 'library-merge',
-      });
+      const failedCount = data?.failedGroups?.length ?? 0;
+      if (failedCount > 0 && groupsCount > 0) {
+        toast.warning('Partial duplicate merge completed', {
+          description: `Consolidated ${groupsCount} group(s), ${failedCount} group(s) could not be merged.`,
+          id: 'library-merge',
+        });
+      } else if (failedCount > 0 && groupsCount === 0) {
+        toast.error('Batch merge failed', {
+          description: data?.failedGroups?.[0]?.error || 'Unable to consolidate selected duplicate groups.',
+          id: 'library-merge',
+        });
+      } else {
+        toast.success('Duplicate groups merged', {
+          description: `Consolidated ${groupsCount} duplicate group(s). Notes and citations preserved.`,
+          id: 'library-merge',
+        });
+      }
     },
   });
 }
@@ -215,7 +261,7 @@ export function useFeedArticlesQuery(
   return useQuery({
     queryKey: feedKeys.articles(effectiveScope, feedUrl),
     queryFn: async () => {
-      const res = await libraryServices.ingestion.fetchFeed(feedUrl!, false);
+      const res = await IngestionService.fetchFeed(feedUrl!, false);
       const entries = Array.isArray(res?.entries) ? res.entries : [];
       const readIds: string[] = [];
       entries.forEach((entry, idx) => {
@@ -242,7 +288,7 @@ export function useFetchFeed() {
     ) => {
       const url = typeof param === 'string' ? param : param.url;
       const forceRefresh = typeof param === 'object' ? param.forceRefresh : false;
-      const res = await libraryServices.ingestion.fetchFeed(url, forceRefresh);
+      const res = await IngestionService.fetchFeed(url, forceRefresh);
       const entries = Array.isArray(res?.entries) ? res.entries : [];
       const readIds: string[] = [];
       entries.forEach((entry, idx) => {
@@ -293,7 +339,7 @@ export function useFeedSubscriptionsQuery(options?: { enabled?: boolean }) {
         cacheKey,
       );
       if (seeded !== undefined) return seeded;
-      const res = await libraryServices.feeds.getSubscriptions();
+      const res = await FeedsService.getSubscriptions();
       if (res?.data && Array.isArray(res.data)) {
         const mappedFeeds = mapServerFeedSubscriptions(res.data);
         notifyServerFeedsHydrated(mappedFeeds);
@@ -372,7 +418,7 @@ export function useImportOpmlFeedsMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (opmlXml: string) => {
-      const res = await libraryServices.feeds.importOpml(opmlXml);
+      const res = await FeedsService.importOpml(opmlXml);
       if (res?.data?.subscriptions && Array.isArray(res.data.subscriptions)) {
         const mappedFeeds = mapServerFeedSubscriptions(res.data.subscriptions);
         notifyServerFeedsHydrated(mappedFeeds);
@@ -388,7 +434,7 @@ export function useImportOpmlFeedsMutation() {
 export function useExportOpmlFeedsMutation() {
   return useMutation({
     mutationFn: async () => {
-      const res = await libraryServices.feeds.exportOpml();
+      const res = await FeedsService.exportOpml();
       return res?.data;
     },
   });
@@ -399,8 +445,34 @@ export function useIngestMutation(scopeId?: string) {
   const effectiveScope = normalizeScopeId(scopeId);
 
   return useMutation({
-    mutationFn: (payload: UnifiedIngestionPayload) =>
-      libraryServices.ingestion.ingest(effectiveScope, payload),
+    mutationFn: async (payload: UnifiedIngestionPayload) => {
+      const res = await IngestionService.ingest(effectiveScope, payload);
+      const resObj = (res ?? {}) as {
+        data?: { runId?: string; status?: string };
+        runId?: string;
+        status?: string;
+        _polled?: boolean;
+      };
+      const runId = resObj.data?.runId || resObj.runId;
+      const initialStatus = String(
+        resObj.data?.status || resObj.status || '',
+      ).toUpperCase();
+      const isAlreadyDone =
+        initialStatus === 'COMPLETED' ||
+        initialStatus === 'READY' ||
+        initialStatus === 'PARTIAL' ||
+        initialStatus === 'DUPLICATE';
+      if (runId && !isAlreadyDone) {
+        const outcome = await pollIngestionRunCompletion(effectiveScope, runId);
+        if (outcome.status === 'FAILED' || outcome.status === 'BLOCKED') {
+          throw new Error(outcome.error || 'Ingestion run failed to complete');
+        }
+        if (res && typeof res === 'object') {
+          (res as { _polled?: boolean })._polled = true;
+        }
+      }
+      return res;
+    },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
       const colId = (variables as { collectionId?: string })?.collectionId;
@@ -419,7 +491,7 @@ export function useDismissDuplicatesMutation(scopeId?: string) {
   const effectiveScope = normalizeScopeId(scopeId);
   return useMutation({
     mutationFn: (itemIds: string[]) =>
-      libraryServices.curation.dismissDuplicates(effectiveScope, itemIds),
+      CurationService.dismissDuplicates(effectiveScope, itemIds),
     onSuccess: (_data, itemIds) => {
       if (Array.isArray(itemIds) && itemIds.length > 0) {
         notifyDraftCacheCleared(itemIds[0]);
@@ -432,7 +504,7 @@ export function useDismissDuplicatesMutation(scopeId?: string) {
   });
 }
 
-export const invalidateRetraction = (qc: QueryClient, scopeId?: string) => {
+const invalidateRetraction = (qc: QueryClient, scopeId?: string) => {
   const effectiveScope = normalizeScopeId(scopeId);
   qc.invalidateQueries({ queryKey: retractionKeys.all(effectiveScope) });
   qc.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
@@ -443,7 +515,7 @@ export function useRetractedItems(scopeId?: string, enabled = true) {
   const effectiveScope = normalizeScopeId(scopeId);
   return useQuery({
     queryKey: retractionKeys.items(effectiveScope),
-    queryFn: () => libraryServices.retraction.getRetractedItems(effectiveScope),
+    queryFn: () => RetractionService.getRetractedItems(effectiveScope),
     enabled,
     staleTime: 1000 * 60 * 60,
   });
@@ -454,7 +526,7 @@ export function useRetraction(scopeId?: string, options?: { includeItems?: boole
   const effectiveScope = normalizeScopeId(scopeId);
   const statsQuery = useQuery({
     queryKey: retractionKeys.stats(effectiveScope),
-    queryFn: () => libraryServices.retraction.getStats(effectiveScope),
+    queryFn: () => RetractionService.getStats(effectiveScope),
     enabled: true,
     staleTime: 1000 * 60 * 60,
   });
@@ -463,7 +535,7 @@ export function useRetraction(scopeId?: string, options?: { includeItems?: boole
     (options?.includeItems ?? true) && Boolean(effectiveScope),
   );
   const checkItemMutation = useMutation({
-    mutationFn: (itemId: string) => libraryServices.retraction.checkItem(effectiveScope, itemId),
+    mutationFn: (itemId: string) => RetractionService.checkItem(effectiveScope, itemId),
     onSuccess: (data) => {
       invalidateRetraction(queryClient, scopeId);
       if (data.status === 'unknown') {
@@ -486,7 +558,7 @@ export function useRetraction(scopeId?: string, options?: { includeItems?: boole
     onError: (err: Error) => toast.error('Check failed', { description: err.message, id: 'retraction-check' }),
   });
   const checkLibraryMutation = useMutation({
-    mutationFn: (itemIds?: string[]) => libraryServices.retraction.checkLibrary(effectiveScope, itemIds),
+    mutationFn: (itemIds?: string[]) => RetractionService.checkLibrary(effectiveScope, itemIds),
     onSuccess: (res) => {
       invalidateRetraction(queryClient, scopeId);
       if (res.newlyRetracted > 0) {
@@ -505,7 +577,7 @@ export function useRetraction(scopeId?: string, options?: { includeItems?: boole
   });
   const flagMutation = useMutation({
     mutationFn: ({ itemId, data }: { itemId: string; data: FlagRetractionInput }) =>
-      libraryServices.retraction.flagItem(effectiveScope, itemId, data),
+      RetractionService.flagItem(effectiveScope, itemId, data),
     onSuccess: () => {
       invalidateRetraction(queryClient, scopeId);
       toast.warning('Item flagged as retracted', { id: 'retraction-flag' });
@@ -513,7 +585,7 @@ export function useRetraction(scopeId?: string, options?: { includeItems?: boole
     onError: (err: Error) => toast.error('Failed to flag item', { description: err.message, id: 'retraction-flag' }),
   });
   const unflagMutation = useMutation({
-    mutationFn: (itemId: string) => libraryServices.retraction.unflagItem(effectiveScope, itemId),
+    mutationFn: (itemId: string) => RetractionService.unflagItem(effectiveScope, itemId),
     onSuccess: () => {
       invalidateRetraction(queryClient, scopeId);
       toast.success('Retraction flag removed', { id: 'retraction-flag' });
@@ -522,7 +594,7 @@ export function useRetraction(scopeId?: string, options?: { includeItems?: boole
   });
   const syncLibraryMutation = useMutation({
     mutationFn: (syncOptions?: { maxDays?: number; limit?: number }) =>
-      libraryServices.retraction.syncLibrary(effectiveScope, syncOptions),
+      RetractionService.syncLibrary(effectiveScope, syncOptions),
     onSuccess: (res) => {
       invalidateRetraction(queryClient, scopeId);
       if (res.newlyRetracted > 0) {
@@ -542,8 +614,6 @@ export function useRetraction(scopeId?: string, options?: { includeItems?: boole
   return {
     stats: statsQuery.data,
     retractedItems: itemsQuery.data || [],
-    isLoadingStats: statsQuery.isLoading,
-    isLoadingItems: itemsQuery.isLoading,
     checkItem: checkItemMutation.mutateAsync,
     checkLibrary: checkLibraryMutation.mutateAsync,
     syncLibrary: syncLibraryMutation.mutateAsync,
@@ -551,8 +621,6 @@ export function useRetraction(scopeId?: string, options?: { includeItems?: boole
     unflagItem: unflagMutation.mutateAsync,
     isCheckingItem: checkItemMutation.isPending,
     isCheckingLibrary: checkLibraryMutation.isPending,
-    isSyncingLibrary: syncLibraryMutation.isPending,
-    isFlagging: flagMutation.isPending,
     isUnflagging: unflagMutation.isPending,
   };
 }

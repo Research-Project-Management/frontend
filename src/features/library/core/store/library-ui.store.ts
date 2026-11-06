@@ -6,7 +6,15 @@ import {
   DEFAULT_LIBRARY_DISPLAY_OPTIONS,
   type LibraryDisplayOptions,
 } from '@/features/library/domain/types/ingestion.types';
-import { useLibraryCommandStore } from '@/features/library/core/manager/library-command.manager';
+
+const scopeChangeListeners = new Set<() => void>();
+
+export function registerLibraryScopeChangeListener(listener: () => void): () => void {
+  scopeChangeListeners.add(listener);
+  return () => {
+    scopeChangeListeners.delete(listener);
+  };
+}
 
 export type InspectorSectionId =
   | 'info'
@@ -45,7 +53,7 @@ export type LibraryModalType =
   | 'MY_PUBLICATION_CONFIRM';
 
 // 1. Scope & Navigation Context Slice
-export interface LibraryScopeSlice {
+interface LibraryScopeSlice {
   activeScope: LibraryScope;
   activeCollectionId: string | null;
   activeSavedSearchId: string | null;
@@ -55,7 +63,7 @@ export interface LibraryScopeSlice {
 }
 
 // 2. Workbench Layout & Display Slice
-export interface LibraryLayoutSlice {
+interface LibraryLayoutSlice {
   isSidebarOpen: boolean;
   sidebarWidth: number;
   inspectorWidth: number;
@@ -80,7 +88,7 @@ export interface LibraryLayoutSlice {
 }
 
 // 3. Multi-Selection Engine Slice
-export interface LibrarySelectionSlice {
+interface LibrarySelectionSlice {
   selectedIds: Set<string>;
   activeItemId: string | null;
   toggleSelect: (id: string) => void;
@@ -95,22 +103,22 @@ export interface LibrarySelectionSlice {
 }
 
 // 4. Centralized Modal Dialog Bus Slice
-export interface LibraryModalSlice {
+interface LibraryModalSlice {
   activeModal: LibraryModalType | null;
   modalProps: Record<string, unknown>;
   openModal: (modal: LibraryModalType, props?: Record<string, unknown>) => void;
   closeModal: () => void;
 }
 
-export type LibraryUIState = LibraryScopeSlice &
+type LibraryUIState = LibraryScopeSlice &
   LibraryLayoutSlice &
   LibrarySelectionSlice &
   LibraryModalSlice;
 
 const EMPTY_SELECTED_IDS = new Set<string>();
 const EMPTY_MODAL_PROPS: Record<string, unknown> = {};
-export const MIN_SIDEBAR_WIDTH = 200;
-export const MAX_SIDEBAR_WIDTH = 400;
+const MIN_SIDEBAR_WIDTH = 200;
+const MAX_SIDEBAR_WIDTH = 400;
 export const MIN_INSPECTOR_WIDTH = 260;
 export const MAX_INSPECTOR_WIDTH = 640;
 
@@ -142,7 +150,7 @@ const createScopeSlice: StateCreator<
         }
         return { activeScope };
       }
-      useLibraryCommandStore.getState().clearHistory();
+      scopeChangeListeners.forEach((listener) => listener());
       return {
         activeScope,
         selectedIds: state.selectedIds.size === 0 ? state.selectedIds : new Set<string>(),

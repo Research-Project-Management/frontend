@@ -4,7 +4,7 @@
 
 import type { Collection } from './types/core.types';
 
-export interface CollectionHierarchyNode extends Collection {
+interface CollectionHierarchyNode extends Collection {
   children: CollectionHierarchyNode[];
 }
 
@@ -15,7 +15,7 @@ export type TreeNode = CollectionHierarchyNode;
  * Checks whether `candidateDescendantId` is inside the subtree of `targetAncestorId`
  * (or equal to `targetAncestorId`), preventing circular drag-and-drop moves.
  */
-export function isDescendantOf(
+function isDescendantOf(
   rootsOrCollections: ReadonlyArray<CollectionHierarchyNode | Pick<Collection, 'id' | 'parentId'>>,
   candidateDescendantId: string | null | undefined,
   targetAncestorId: string | null | undefined,
@@ -80,7 +80,7 @@ export function isDescendantOf(
  * Uses 3-color DFS state memoization (0 = unvisited, 1 = visiting, 2 = safe/acyclic)
  * so ancestor cycle verification across the entire forest runs in strict O(N) time instead of O(N * D).
  */
-export function buildCollectionTree(collections: Collection[]): CollectionHierarchyNode[] {
+function buildCollectionTree(collections: Collection[]): CollectionHierarchyNode[] {
   const map = new Map<string, CollectionHierarchyNode>();
   const roots: CollectionHierarchyNode[] = [];
 

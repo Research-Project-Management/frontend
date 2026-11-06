@@ -20,7 +20,7 @@ import type {
   ProjectRole,
 } from '@/features/library/domain/types/core.types';
 
-export const CAP_PRIME = {
+const CAP_PRIME = {
   READ: 2,
   CREATE: 3,
   EDIT: 5,
@@ -31,7 +31,7 @@ export const CAP_PRIME = {
   EXPORT: 19,
 } as const;
 
-export const CAP_BIT = {
+const CAP_BIT = {
   READ: 1 << 0,
   CREATE: 1 << 1,
   EDIT: 1 << 2,
@@ -43,7 +43,7 @@ export const CAP_BIT = {
   ALL: 0xff,
 } as const;
 
-export const ROLE_PRIME_PRODUCT: Readonly<Record<ProjectRole, number>> = {
+const ROLE_PRIME_PRODUCT: Readonly<Record<ProjectRole, number>> = {
   reviewer: CAP_PRIME.READ * CAP_PRIME.EXPORT,
   contributor:
     CAP_PRIME.READ *
@@ -71,7 +71,7 @@ export const ROLE_PRIME_PRODUCT: Readonly<Record<ProjectRole, number>> = {
     CAP_PRIME.EXPORT,
 };
 
-export const ROLE_MASK: Readonly<Record<ProjectRole, number>> = {
+const ROLE_MASK: Readonly<Record<ProjectRole, number>> = {
   reviewer: CAP_BIT.READ | CAP_BIT.EXPORT,
   contributor:
     CAP_BIT.READ |
@@ -128,17 +128,10 @@ function maskToPermissions(mask: number, includePurge = true): LibraryPermission
   };
 }
 
-export const USER_SOVEREIGN_PERMISSIONS: LibraryPermissions = primeProductToPermissions(
+const USER_SOVEREIGN_PERMISSIONS: LibraryPermissions = primeProductToPermissions(
   ROLE_PRIME_PRODUCT.owner,
   false,
 );
-
-export const PROJECT_ROLE_PERMISSIONS: Record<ProjectRole, LibraryPermissions> = {
-  owner: primeProductToPermissions(ROLE_PRIME_PRODUCT.owner, true),
-  coordinator: primeProductToPermissions(ROLE_PRIME_PRODUCT.coordinator, true),
-  contributor: primeProductToPermissions(ROLE_PRIME_PRODUCT.contributor, true),
-  reviewer: primeProductToPermissions(ROLE_PRIME_PRODUCT.reviewer, true),
-};
 
 const TOKEN_GRANT_MASK: Readonly<Record<string, number>> = {
   '*': CAP_BIT.ALL,
@@ -184,7 +177,7 @@ const OVERRIDE_KEY_BIT: Readonly<Record<string, number>> = {
   canexport: CAP_BIT.EXPORT,
 };
 
-export interface ServerPermissionPayload {
+interface ServerPermissionPayload {
   scopeType?: 'user' | 'project' | string;
   role?: ProjectRole | string | null;
   yourRole?: ProjectRole | string | null;

@@ -18,7 +18,7 @@ import {
   calculateFilterMatchScore,
   formatTypeFallback,
   KNOWN_TYPE_ALIASES,
-} from '@/features/library/domain/zotero-extra-parser';
+} from '@/features/library/domain/extra-metadata.mapper';
 import { useLibraryNavigation } from '@/features/library/core/coordinator/navigation.coordinator';
 
 /** Standard Zotero 7 9-Color Tag Palette */
@@ -34,7 +34,7 @@ export const TAG_PALETTE_COLORS = [
   { label: 'Gray', value: '#94a3b8' },
 ] as const;
 
-export const FILE_STATUS_OPTIONS = [
+const FILE_STATUS_OPTIONS = [
   {
     id: 'has-pdf' as const,
     label: 'Has PDF',
@@ -52,13 +52,13 @@ export const FILE_STATUS_OPTIONS = [
   },
 ];
 
-export const READING_STATUS_OPTIONS = [
+const READING_STATUS_OPTIONS = [
   { id: 'unread' as const, label: 'Unread', aliases: ['not read', 'new', 'chua doc', 'moi'] },
   { id: 'reading' as const, label: 'Reading', aliases: ['in progress', 'dang doc', 'current'] },
   { id: 'completed' as const, label: 'Completed', aliases: ['done', 'finished', 'da doc', 'xong', 'read'] },
 ];
 
-export interface UseLibraryFacetCountsParams {
+interface UseLibraryFacetCountsParams {
   scopeId: string;
   items?: Item[];
   searchQuery: string;

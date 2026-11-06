@@ -9,31 +9,64 @@ import {
   inspectItemDifferences,
   aggregateItemAssets,
   selectBestMasterItemId,
-  resolveDuplicateMergeFieldOverrides,
   extractExplicitUserMergeOverrides,
   normalizeCompareValue,
   getMergeableFieldsForTypes,
   type FieldOptionValue,
-} from '@/features/library/domain/diff';
+} from '@/features/library/domain/diff.domain';
 import type { Item } from '@/features/library/domain/types/core.types';
 import {
   useLibraryCommandStore,
   createMergeDuplicatesCommand,
 } from '@/features/library/core/manager/library-command.manager';
-import { registerDraftCacheClearListener } from '@/features/library/sdk';
+import { registerDraftCacheClearListener } from '@/features/library/sdk/query-keys';
+import {
+  useDuplicateGroups,
+  useDismissDuplicatesMutation,
+  useMergeDuplicates,
+  useBatchMergeDuplicates,
+  useFeedArticlesQuery,
+  useFetchFeed,
+  useIngestMutation,
+  useRetraction,
+  useSubscribeFeedMutation,
+  useUpdateFeedSubscriptionMutation,
+  useSyncExternalBibtexMutation,
+  useTrackedIdentifierIngestion,
+  useFeedSubscriptionsQuery,
+  useUnsubscribeFeedMutation,
+  useExportOpmlFeedsMutation,
+  useImportOpmlFeedsMutation,
+} from '@/features/library/sdk/queries/ingestion.queries';
 
 export {
   type DuplicateGroupMergeDraft,
   createInitialDuplicateGroupMergeDraft,
   computeDuplicateSetKey,
   getDeterministicDuplicateGroupKey,
+  useDuplicateGroups,
+  useDismissDuplicatesMutation,
+  useMergeDuplicates,
+  useBatchMergeDuplicates,
+  useFeedArticlesQuery,
+  useFetchFeed,
+  useIngestMutation,
+  useRetraction,
+  useSubscribeFeedMutation,
+  useUpdateFeedSubscriptionMutation,
+  useSyncExternalBibtexMutation,
+  useTrackedIdentifierIngestion,
+  useFeedSubscriptionsQuery,
+  useUnsubscribeFeedMutation,
+  useExportOpmlFeedsMutation,
+  useImportOpmlFeedsMutation,
 };
 
 const MAX_DRAFT_GROUPS = 50;
-export const groupMergeDraftCache = new Map<string, DuplicateGroupMergeDraft>();
+const groupMergeDraftCache = new Map<string, DuplicateGroupMergeDraft>();
 const draftListeners = new Set<() => void>();
 
-export function setGroupMergeDraft(
+function setGroupMergeDraft(
   key: string,
   draft: DuplicateGroupMergeDraft,
 ): void {
@@ -55,11 +88,11 @@ export function getGroupMergeDraft(
   return groupMergeDraftCache.get(key);
 }
 
-export function notifyDraftListeners(): void {
+function notifyDraftListeners(): void {
   draftListeners.forEach((listener) => listener());
 }
 
-export function subscribeToDrafts(listener: () => void): () => void {
+function subscribeToDrafts(listener: () => void): () => void {
   draftListeners.add(listener);
   return () => {
     draftListeners.delete(listener);
@@ -103,7 +136,7 @@ export function getOrInitDraft(
   return initialDraft;
 }
 
-export function updateGroupDraft(
+function updateGroupDraft(
   setKey: string,
   updater: (prev: DuplicateGroupMergeDraft) => DuplicateGroupMergeDraft,
   fallbackMasterId: string,
@@ -117,7 +150,7 @@ export function updateGroupDraft(
 
 registerDraftCacheClearListener(clearGroupMergeDraft);
 
-export interface ExecuteDuplicateMergeWithCommandOptions {
+interface ExecuteDuplicateMergeWithCommandOptions {
   masterPaper: Item;
   mergedFields: Record<string, unknown>;
   duplicateIdsToDelete: string[];
@@ -302,20 +335,6 @@ export function useDuplicateMergeState(
     [fieldOverrides.itemType, masterPaper?.itemType],
   );
 
-  const resolvedFieldOverrides = useMemo(
-    () =>
-      resolveDuplicateMergeFieldOverrides(
-        items,
-        masterPaper?.id || selectedMasterId,
-        fieldOverrides,
-        {
-          inspection,
-          includeUnchangedMasterFields: false,
-        },
-      ),
-    [items, masterPaper?.id, selectedMasterId, fieldOverrides, inspection],
-  );
-
   const explicitMergeOverrides = useMemo(
     () =>
       extractExplicitUserMergeOverrides(
@@ -327,11 +346,6 @@ export function useDuplicateMergeState(
         },
       ),
     [items, masterPaper?.id, selectedMasterId, fieldOverrides, inspection],
-  );
-
-  const getEffectiveMergeSelections = useCallback(
-    () => ({ ...resolvedFieldOverrides }),
-    [resolvedFieldOverrides],
   );
 
   const getExplicitMergeSelections = useCallback(
@@ -402,22 +416,6 @@ export function useDuplicateMergeState(
     setFieldOverrides(newOverrides);
   }, [inspection.fields, selectedMasterId, setFieldOverrides]);
 
-  const resetMergeState = useCallback(
-    (defaultMasterId = '') => {
-      const targetMasterId =
-        defaultMasterId ||
-        (serverRecommendedMasterId &&
-        items.some((i) => i.id === serverRecommendedMasterId)
-          ? serverRecommendedMasterId
-          : selectBestMasterItemId(items)) ||
-        items[0]?.id ||
-        '';
-      setSelectedMasterId(targetMasterId);
-      setFieldOverrides({});
-    },
-    [items, serverRecommendedMasterId, setSelectedMasterId, setFieldOverrides],
-  );
-
   const clearDraft = useCallback(() => {
     clearGroupMergeDraft(setKey);
   }, [setKey]);
@@ -425,14 +423,9 @@ export function useDuplicateMergeState(
   return {
     selectedMasterId,
     recommendedMasterId,
-    setSelectedMasterId,
     fieldOverrides,
-    resolvedFieldOverrides,
-    explicitMergeOverrides,
-    getEffectiveMergeSelections,
     getExplicitMergeSelections,
     effectiveItemType,
-    setFieldOverrides,
     showConflictsOnly,
     setShowConflictsOnly,
     masterPaper,
@@ -444,7 +437,6 @@ export function useDuplicateMergeState(
     handleSelectMaster,
     handleSelectFieldValue,
     handleAutoRecommend,
-    resetMergeState,
     clearDraft,
   };
 }

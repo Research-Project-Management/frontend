@@ -8,7 +8,7 @@ import { FIELD_LABELS, humanizeFieldName } from '@/features/library/domain/types
  * All Saved Search query execution and live previews are evaluated authoritatively by Backend.
  */
 
-export function parseBetweenBounds(raw: unknown): [string, string] | null {
+function parseBetweenBounds(raw: unknown): [string, string] | null {
   if (Array.isArray(raw)) {
     if (raw.length < 2) return null;
     const a = String(raw[0] ?? '').trim();
@@ -36,19 +36,19 @@ export function parseBetweenBounds(raw: unknown): [string, string] | null {
   return start && end ? [start, end] : null;
 }
 
-export interface HydratedSavedSearchAst {
+interface HydratedSavedSearchAst {
   rows: ConditionRow[];
   preservedGroups: SavedSearchConditionGroup[];
   conjunction: 'AND' | 'OR';
   scopeOptions: Required<SavedSearchScopeOptions>;
 }
 
-export interface TransitionConditionLookup {
+interface TransitionConditionLookup {
   itemTypeOptions?: ReadonlyArray<{ value: string; label: string }>;
   collections?: ReadonlyArray<{ id: string; name: string }>;
 }
 
-export interface SavedSearchValidationResult {
+interface SavedSearchValidationResult {
   valid: boolean;
   errors: string[];
   payload: SavedSearchConditionGroup;
@@ -380,12 +380,12 @@ export const SavedSearchAstEngine = {
  */
 
 
-export interface SavedSearchOperatorConfig {
+interface SavedSearchOperatorConfig {
   value: SavedSearchOperator;
   label: string;
 }
 
-export interface SavedSearchFieldConfig {
+interface SavedSearchFieldConfig {
   value: SavedSearchField;
   label: string;
   type: 'text' | 'date' | 'boolean' | 'enum' | 'number';
@@ -445,7 +445,7 @@ export const PRIMARY_SAVED_SEARCH_FIELD_ITEMS: {
   { value: 'rating', label: 'Rating' },
 ];
 
-export const PRIMARY_FIELD_SET = new Set(
+const PRIMARY_FIELD_SET = new Set(
   PRIMARY_SAVED_SEARCH_FIELD_ITEMS.map((f) => f.value),
 );
 

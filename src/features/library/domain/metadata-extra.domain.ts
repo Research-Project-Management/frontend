@@ -1,13 +1,7 @@
 import type { Item } from './types/core.types';
 import {
-  getTitleFieldForType,
-  getVenueFieldForType,
-  getDateFieldForType,
-} from './types/item-types.types';
-import {
   isValidValue,
-  stripLatexMarkup,
-} from './metadata-sanitizers';
+} from './metadata-sanitizers.domain';
 import {
   ALLOWED_ITEM_EXTRA_LINE_KEYS,
   SYSTEM_INTERNAL_METADATA_KEYS,
@@ -17,10 +11,13 @@ import {
   EXTRA_KEY_ALIASES,
   CROSS_FIELD_FALLBACK_NORMS,
   PROMOTED_TOP_LEVEL_EXTRA_KEYS,
-  FALLBACK_VENUE_FIELDS_BASE,
   getCandidateNormsForUnmappedField,
   collectUnmappedFieldsSet,
   isDedicatedFieldForType,
+  getItemDisplayTitle,
+  getPublicationVenue,
+  formatItemTypeLabel,
+  getItemDisplayDate,
 } from './metadata-extra.constants';
 import {
   isSystemInternalExtraKey,
@@ -30,7 +27,7 @@ import {
   stripOrUpdateExtraKeyLine,
   extractNormalizedExtraLines,
   parseItemExtraField,
-} from './zotero-extra-parser';
+} from './extra-metadata.mapper';
 
 export {
   ALLOWED_ITEM_EXTRA_LINE_KEYS,
@@ -45,105 +42,11 @@ export {
   formatAndSanitizeExtraMetadata,
   stripOrUpdateExtraKeyLine,
   parseItemExtraField,
+  getItemDisplayTitle,
+  getPublicationVenue,
+  formatItemTypeLabel,
+  getItemDisplayDate,
 };
-
-/**
- * Extracts canonical display title from an Item across Zotero Schema v42 BASE_FIELD_MAPPINGS
- * (`title`, `caseName` for `case`, `nameOfAct` for `statute`, `subject` for `email`).
- */
-export function getItemDisplayTitle(
-  item?: Partial<Item> | Record<string, unknown> | null,
-): string {
-  if (!item || typeof item !== 'object') return '';
-  const rec = item as Record<string, unknown>;
-  const ef = (rec.extraFields as Record<string, unknown> | undefined) || {};
-
-  const clean = (val: unknown): string => {
-    if (!isValidValue(val)) return '';
-    return stripLatexMarkup(String(val).trim());
-  };
-
-  const itemType = typeof rec.itemType === 'string' ? rec.itemType : undefined;
-  const preferredTitleField = getTitleFieldForType(itemType);
-  if (preferredTitleField && preferredTitleField !== 'title') {
-    const val = clean(rec[preferredTitleField] ?? ef[preferredTitleField]);
-    if (val) return val;
-  }
-
-  const fallbackFields = ['title', 'caseName', 'nameOfAct', 'subject'] as const;
-  for (const field of fallbackFields) {
-    const val = clean(rec[field] ?? ef[field]);
-    if (val) return val;
-  }
-
-  return '';
-}
-
-/**
- * Extracts publication venue (journal, conference, court, issuingAuthority, repository, publisher)
- * for UI cards, tables, citations, and exports across all 37 Zotero Schema v42 item types.
- */
-export function getPublicationVenue(
-  item?: Partial<Item> | Record<string, unknown> | null,
-): string {
-  if (!item || typeof item !== 'object') return '';
-  const rec = item as Record<string, unknown>;
-  const extra = (rec.extraFields as Record<string, unknown> | undefined) || {};
-  const meta = (rec.metadata as Record<string, unknown> | undefined) || {};
-
-  const clean = (val: unknown): string => {
-    if (!isValidValue(val)) return '';
-    return stripLatexMarkup(String(val).trim());
-  };
-
-  const resolveField = (field: string): string => {
-    const fromRecOrExtra = clean(rec[field] ?? extra[field]);
-    if (fromRecOrExtra) return fromRecOrExtra;
-    if (
-      extra[field] === null ||
-      (field in rec && (rec[field] === '' || rec[field] === null))
-    ) {
-      return '';
-    }
-    return clean(meta[field]);
-  };
-
-  const itemType = (item as Item).itemType;
-  const preferredField = getVenueFieldForType(itemType);
-  if (preferredField) {
-    const val = resolveField(preferredField);
-    if (val) return val;
-  }
-
-  const fallbackFields =
-    itemType === 'conferencePaper'
-      ? FALLBACK_VENUE_FIELDS_BASE
-      : ['publicationTitle', 'journal', 'proceedingsTitle', 'bookTitle', 'conferenceName', 'meetingName', ...FALLBACK_VENUE_FIELDS_BASE.slice(4)];
-
-  for (const field of fallbackFields) {
-    const val = resolveField(field);
-    if (val) return val;
-  }
-
-  const arxivId = resolveField('arxivId') || resolveField('archiveID');
-  if (arxivId) {
-    return 'arXiv';
-  }
-
-  return '';
-}
-
-/**
- * Formats an academic itemType into a user-friendly label ("Journal Article", "Conference Paper").
- */
-export function formatItemTypeLabel(rawType?: string | null): string {
-  if (!rawType) return '—';
-  const str = String(rawType).trim();
-  const withSpaces = str
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .replace(/[_-]+/g, ' ');
-  return withSpaces.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
-}
 
 /**
  * Builds an atomic update patch when the user edits and saves the Inspector's `Extra` field.
@@ -373,48 +276,4 @@ export function buildExtraMetadataPatch(
   }
 
   return patch;
-}
-
-/**
- * Extracts a canonical display year (number) or date string from an Item across Zotero Schema v42.
- */
-export function getItemDisplayDate(
-  item?: Partial<Item> | Record<string, unknown> | null,
-): number | string | null {
-  if (!item || typeof item !== 'object') return null;
-  const rec = item as Record<string, unknown>;
-  const ef = (rec.extraFields as Record<string, unknown> | undefined) || {};
-  if (isValidValue(rec.year)) {
-    const num = Number(rec.year);
-    if (!isNaN(num) && num >= 1000 && num <= 2999) return num;
-  }
-
-  const itemType = typeof rec.itemType === 'string' ? rec.itemType : undefined;
-  const preferredDateField = getDateFieldForType(itemType);
-  const preferredVal =
-    preferredDateField && preferredDateField !== 'date'
-      ? (rec[preferredDateField] ?? ef[preferredDateField])
-      : undefined;
-
-  const dateSource =
-    preferredVal ||
-    rec.publicationDate ||
-    rec.date ||
-    rec.issueDate ||
-    rec.dateDecided ||
-    rec.dateEnacted ||
-    rec.filingDate ||
-    ef.publicationDate ||
-    ef.date ||
-    ef.issueDate ||
-    ef.dateDecided ||
-    ef.dateEnacted ||
-    ef.filingDate;
-
-  if (isValidValue(dateSource)) {
-    const match = String(dateSource).match(/\b(1\d{3}|20\d{2})\b/);
-    if (match) return parseInt(match[1], 10);
-    return String(dateSource).trim();
-  }
-  return null;
 }

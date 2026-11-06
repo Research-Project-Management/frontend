@@ -410,22 +410,6 @@ export type IngestionRunSnapshotResponse = z.infer<
   typeof IngestionRunSnapshotResponseSchema
 >;
 
-export const UrlCapturePreviewDataSchema = z.object({
-  title: z.string().optional().default(''),
-  url: z.string(),
-  previewToken: z.string().optional(),
-  metadata: z.record(z.string(), z.unknown()).optional(),
-});
-
-export const UrlCapturePreviewResponseSchema = z.object({
-  success: z.boolean().default(true),
-  data: UrlCapturePreviewDataSchema,
-});
-
-export type UrlCapturePreviewResponse = z.infer<
-  typeof UrlCapturePreviewResponseSchema
->;
-
 // ── Search & Facets ──────────────────────────────────────────────────────────
 export const searchSortBySchema = z.enum([
   'relevance',

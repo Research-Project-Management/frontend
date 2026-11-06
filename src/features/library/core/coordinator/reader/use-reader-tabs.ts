@@ -3,7 +3,13 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
-import { StateService, itemKeys, normalizeScopeId, type ItemStateData } from '@/features/library/sdk';
+import {
+  fetchReaderItemState,
+  updateReaderItemState,
+  markReaderItemAsRead,
+  type ItemStateData,
+} from '@/features/library/sdk/queries/reader.queries';
+import { itemKeys, normalizeScopeId } from '@/features/library/sdk/query-keys';
 import { patchItemAcrossScopeCaches } from '@/features/library/sdk/queries/cache-patcher';
 import { useReaderStore, type ReaderTab } from '@/features/library/core/store/reader.store';
 import {
@@ -18,9 +24,9 @@ import type {
   ReaderNavigationTarget,
 } from '@/features/library/domain/types/reader.schema';
 
-export interface ScrollPositionWithBookmarks extends Record<string, unknown> { bookmarks?: number[]; }
+interface ScrollPositionWithBookmarks extends Record<string, unknown> { bookmarks?: number[]; }
 
-export function normalizeBookmarkPages(raw: unknown): number[] {
+function normalizeBookmarkPages(raw: unknown): number[] {
   if (!Array.isArray(raw)) return [];
   const unique = new Set<number>();
   for (const entry of raw) {
@@ -29,7 +35,7 @@ export function normalizeBookmarkPages(raw: unknown): number[] {
   return Array.from(unique).sort((a, b) => a - b);
 }
 
-export function parseScrollPositionObject(scrollPosition: unknown): ScrollPositionWithBookmarks {
+function parseScrollPositionObject(scrollPosition: unknown): ScrollPositionWithBookmarks {
   if (scrollPosition && typeof scrollPosition === 'object' && !Array.isArray(scrollPosition)) {
     const record = scrollPosition as Record<string, unknown>;
     return 'bookmarks' in record ? { ...record, bookmarks: normalizeBookmarkPages(record.bookmarks) } : { ...record };
@@ -37,11 +43,11 @@ export function parseScrollPositionObject(scrollPosition: unknown): ScrollPositi
   return {};
 }
 
-export function hasExplicitBookmarksInScrollPosition(scrollPosition: unknown): boolean {
+function hasExplicitBookmarksInScrollPosition(scrollPosition: unknown): boolean {
   return Boolean(scrollPosition && typeof scrollPosition === 'object' && !Array.isArray(scrollPosition) && Array.isArray((scrollPosition as { bookmarks?: unknown }).bookmarks));
 }
 
-export function extractBookmarksFromScrollPosition(scrollPosition: unknown): number[] | undefined {
+function extractBookmarksFromScrollPosition(scrollPosition: unknown): number[] | undefined {
   if (hasExplicitBookmarksInScrollPosition(scrollPosition)) {
     const raw = (scrollPosition as { bookmarks?: unknown }).bookmarks;
     return normalizeBookmarkPages(raw);
@@ -49,7 +55,7 @@ export function extractBookmarksFromScrollPosition(scrollPosition: unknown): num
   return undefined;
 }
 
-export function buildScrollPositionWithBookmarks(
+function buildScrollPositionWithBookmarks(
   baseScrollPosition: unknown,
   latestScrollPosition: Record<string, unknown>,
   bookmarks: readonly number[],
@@ -74,7 +80,7 @@ function syncPaperStateQueryCache(
   }));
 }
 
-export interface UseReadingProgressOptions {
+interface UseReadingProgressOptions {
   scopeId: string;
   paper: ReaderDocument | null;
   effectivePaperId: string;
@@ -173,7 +179,7 @@ export function useReadingProgress({
     queryClient
       .fetchQuery({
         queryKey: stateKey,
-        queryFn: () => StateService.getState(effectiveScope, paperId),
+        queryFn: () => fetchReaderItemState(effectiveScope, paperId),
         staleTime: 30_000,
       })
       .then((stateData) => {
@@ -216,10 +222,9 @@ export function useReadingProgress({
         scrollPosition: nextScrollPos,
       });
 
-      StateService
-        .updateState(effectiveScope, paperId, {
-          scrollPosition: nextScrollPos,
-        })
+      updateReaderItemState(effectiveScope, paperId, {
+        scrollPosition: nextScrollPos,
+      })
         .then((updatedState) => {
           syncPaperStateQueryCache(queryClient, effectiveScope, paperId, {
             ...(updatedState ?? {}),
@@ -272,10 +277,9 @@ export function useReadingProgress({
         { forceSkipMembershipInvalidation: true },
       );
 
-      StateService
-        .updateState(effectiveScope, paperId, {
-          currentPage: targetPage,
-        })
+      updateReaderItemState(effectiveScope, paperId, {
+        currentPage: targetPage,
+      })
         .then((updatedState) => {
           const mergedScrollPos =
             updatedState?.scrollPosition !== undefined
@@ -310,10 +314,9 @@ export function useReadingProgress({
         syncPaperStateQueryCache(queryClient, pending.scope, pending.paperId, {
           currentPage: pending.page,
         });
-        void StateService
-          .updateState(pending.scope, pending.paperId, {
-            currentPage: pending.page,
-          })
+        void updateReaderItemState(pending.scope, pending.paperId, {
+          currentPage: pending.page,
+        })
           .then((updatedState) => {
             syncPaperStateQueryCache(queryClient, pending.scope, pending.paperId, {
               ...(updatedState ?? {}),
@@ -330,8 +333,7 @@ export function useReadingProgress({
     if (paper?.id && markedPaperIdRef.current !== paper.id) {
       const paperId = paper.id;
       markedPaperIdRef.current = paperId;
-      StateService
-        .markAsRead(effectiveScope, paperId)
+      markReaderItemAsRead(effectiveScope, paperId)
         .then((updatedState) => {
           const nextReadStatus = updatedState?.readStatus || 'reading';
           const lastReadAt = updatedState?.lastReadAt || new Date().toISOString();
@@ -355,7 +357,7 @@ export function useReadingProgress({
   }, [effectiveScope, paper?.id, queryClient]);
 }
 
-export interface UseReaderTabHistoryOptions {
+interface UseReaderTabHistoryOptions {
   effectiveTabId: string | null | undefined;
   visiblePage: number;
   onNavigateToPage: (pageNumber: number) => void;
@@ -442,7 +444,7 @@ export function useReaderTabHistory({
   };
 }
 
-export interface UseReaderTabPresentationOptions {
+interface UseReaderTabPresentationOptions {
   effectiveTabId: string | null | undefined;
   activeTab: ReaderTab | undefined;
   zoom: number;
@@ -456,8 +458,8 @@ export interface UseReaderTabPresentationOptions {
   ) => void;
 }
 
-export type ViewerFitMode = 'fit-width' | 'fit-page' | 'auto' | 'custom';
-export type ViewerThemeMode = 'normal' | 'sepia' | 'dark' | 'invert';
+type ViewerFitMode = 'fit-width' | 'fit-page' | 'auto' | 'custom';
+type ViewerThemeMode = 'normal' | 'sepia' | 'dark' | 'invert';
 
 export function useReaderTabPresentation({
   effectiveTabId,
@@ -583,7 +585,7 @@ export function useReaderTabPresentation({
   };
 }
 
-export interface UseReaderKeyboardShortcutsOptions {
+interface UseReaderKeyboardShortcutsOptions {
   activeTool: string;
   setActiveTool: (tool: 'select' | 'highlight' | 'underline' | 'note' | 'text' | 'area' | 'ink' | 'eraser') => void;
   setInteractionMode: (mode: 'select' | 'hand') => void;
@@ -728,9 +730,3 @@ export function useReaderKeyboardShortcuts({
     setRotation,
   ]);
 }
-
-export {
-  type OcrStatus,
-  type DocumentOcrState,
-  resolveDocumentOcrState,
-} from '@/features/library/domain/reader.domain';

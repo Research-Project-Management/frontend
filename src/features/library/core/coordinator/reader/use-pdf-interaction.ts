@@ -10,12 +10,12 @@ import type {
   InkDrawingState,
 } from '@/features/library/domain/types/reader.schema';
 import type { ReaderAnnotationTool } from '@/features/library/core/store/reader.store';
-import { cropCanvasSelectionToDataUrl } from '@/features/library/domain/reader-search-outline';
-import { SearchService } from '@/features/library/sdk/index';
+import { cropCanvasSelectionToDataUrl } from '@/features/library/domain/reader-search-outline.domain';
+import { searchReaderAttachmentAnchors } from '@/features/library/sdk/queries/reader.queries';
 
 export { cropCanvasSelectionToDataUrl };
 
-export interface ViewerSearchAnchor {
+interface ViewerSearchAnchor {
   attachmentId?: string;
   pageIndex: number;
   snippet?: string;
@@ -41,7 +41,7 @@ export function useViewerSearchAnchors(
       return;
     }
     const controller = new AbortController();
-    SearchService.searchAnchors(
+    searchReaderAttachmentAnchors(
       attachmentId,
       trimmed,
       undefined,
@@ -67,7 +67,7 @@ export function useViewerSearchAnchors(
   return matches;
 }
 
-export interface UsePdfViewerInteractionParams {
+interface UsePdfViewerInteractionParams {
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
   visiblePage: number;
   activeTool: ReaderAnnotationTool;

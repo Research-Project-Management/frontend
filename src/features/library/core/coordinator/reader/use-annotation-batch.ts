@@ -4,11 +4,11 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/shared/lib/utils';
-import type { ExtractNotesOptions } from '@/features/library/sdk';
 import { annotationKeys } from '@/features/library/sdk/query-keys';
 import {
   executeAnnotationBatchSync,
   executeExtractAnnotationNotes,
+  type ExtractNotesOptions,
 } from '@/features/library/sdk/queries/reader.queries';
 import {
   ANNOTATION_HISTORY_HANDLERS,
@@ -42,7 +42,7 @@ export {
   type AnnotationHistoryStrategy,
 };
 
-export interface UseAnnotationBatchOptions {
+interface UseAnnotationBatchOptions {
   scopeId: string;
   effectiveAttachmentId?: string;
   paper: ReaderDocument | null;

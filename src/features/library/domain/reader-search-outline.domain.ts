@@ -10,10 +10,10 @@ import type {
   DocumentCreator,
   PdfOutlineItem,
 } from '@/features/library/domain/types/reader.schema';
-import { normalizeAuthors, parseCreatorName } from '@/features/library/domain/creators';
-import { isValidValue } from '@/features/library/domain/metadata-mapper';
-import { foldDiacritics } from '@/features/library/domain/citations';
-import { isProjectScope } from '@/features/library/domain/identifiers';
+import { normalizeAuthors, parseCreatorName } from '@/features/library/domain/creators.domain';
+import { isValidValue } from '@/features/library/domain/metadata.mapper';
+import { foldDiacritics } from '@/features/library/domain/citations.domain';
+import { isProjectScope } from '@/features/library/domain/identifiers.domain';
 
 export { foldDiacritics };
 
@@ -112,7 +112,7 @@ export function buildClientAnnotationSortIndex(
     if (!Number.isFinite(coord) || coord < 0) return 0;
     return coord <= 1.0001 ? Math.round(coord * 10000) : Math.round(coord * 100);
   };
-  return `${clampPad(pageIndex, 5)}|${clampPad(scaleCoord(y), 6)}|${clampPad(scaleCoord(x), 5)}`;
+  return `${clampPad(pageIndex, 4)}|${clampPad(scaleCoord(y), 5)}|${clampPad(scaleCoord(x), 5)}`;
 }
 
 export function isPageInVirtualWindow(params: {
@@ -429,7 +429,7 @@ const FOLDED_PAGE_TEXT_CACHE = new WeakMap<
   { rawText: string; foldedText: string }
 >();
 
-export interface SearchPdfPagesOptions {
+interface SearchPdfPagesOptions {
   snippetRadius?: number;
   matchCase?: boolean;
   wholeWords?: boolean;
@@ -591,7 +591,7 @@ export function filterPdfOutlineTree(
   return filterRecursive(nodes);
 }
 
-export interface ReaderPreferenceStoragePort {
+interface ReaderPreferenceStoragePort {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
 }

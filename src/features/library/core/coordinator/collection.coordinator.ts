@@ -2,10 +2,31 @@ import { useState, useCallback, useMemo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { libraryServices } from '@/features/library/sdk';
-import { useCollections, invalidateCollections } from '@/features/library/sdk/queries/collections.queries';
+import {
+  copyLibraryCollection,
+  exportCollectionBibtex,
+  exportCollectionBundle,
+  useCollections,
+  useCollectionsQuery,
+  useMoveCollectionItemsMutation,
+  useAssignCollectionItemsMutation,
+  useBatchDetachItemsMutation,
+  useDetachItemFromCollectionMutation,
+  useCreateCollectionMutation,
+  invalidateCollections,
+} from '@/features/library/sdk/queries/collections.queries';
+
+export {
+  useCollections,
+  useCollectionsQuery,
+  useMoveCollectionItemsMutation,
+  useAssignCollectionItemsMutation,
+  useBatchDetachItemsMutation,
+  useDetachItemFromCollectionMutation,
+  useCreateCollectionMutation,
+};
 import { triggerBrowserTextDownload } from '@/features/library/core/coordinator/citation-export.coordinator';
-import { canMoveCollection } from '@/features/library/domain/collection-tree';
+import { canMoveCollection } from '@/features/library/domain/collection-tree.domain';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import type {
   Collection,
@@ -14,7 +35,7 @@ import type {
 
 export const DEFAULT_COLLECTION_COLOR = '#2563eb';
 
-export interface UseCollectionCoordinatorParams {
+interface UseCollectionCoordinatorParams {
   collectionService: ReturnType<typeof useCollections>;
   effectiveScopeId: string;
   collections: Collection[];
@@ -265,7 +286,7 @@ export function useCollectionCoordinator({
 
       const toastId = toast.loading(`Copying "${target.name}"...`, { id: 'collection-copy' });
       try {
-        await libraryServices.collections.copy(scopeId, collectionId, {
+        await copyLibraryCollection(scopeId, collectionId, {
           parentId: targetParentId,
         });
         invalidateCollections(queryClient, scopeId);
@@ -287,7 +308,7 @@ export function useCollectionCoordinator({
         id: 'collection-export',
       });
       try {
-        const res = await libraryServices.collections.exportBibtex(
+        const res = await exportCollectionBibtex(
           scopeId,
           collectionId,
         );
@@ -325,7 +346,7 @@ export function useCollectionCoordinator({
         id: 'bundle-export',
       });
       try {
-        const data = await libraryServices.collections.exportBundle(
+        const data = await exportCollectionBundle(
           scopeId,
           collectionId,
         );

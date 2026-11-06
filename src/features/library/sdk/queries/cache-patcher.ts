@@ -8,7 +8,7 @@ import type { Item } from '@/features/library/domain/types/core.types';
 import {
   getMappedItemMeta,
   setMappedItemMeta,
-} from '@/features/library/domain/metadata-mapper';
+} from '@/features/library/domain/metadata.mapper';
 import type { InvalidationClient } from '@/features/library/domain/types/ingestion.types';
 import {
   itemKeys,
@@ -24,7 +24,7 @@ import {
   doesPatchAffectMembership,
   isMetadataOnlyPatch,
   hasMembershipFieldsChanged,
-} from './item-mutations.queries';
+} from '@/features/library/domain/system-views.policy';
 
 export {
   isTrashQueryKey,
@@ -71,7 +71,7 @@ export function extractItemFromCacheData(data: unknown, itemId: string): Item | 
   return undefined;
 }
 
-export function hasFullBackendItemFlag(patch?: Partial<Item> | Record<string, unknown> | null): boolean {
+function hasFullBackendItemFlag(patch?: Partial<Item> | Record<string, unknown> | null): boolean {
   if (!patch || typeof patch !== "object") return false;
   return getMappedItemMeta(patch)?.isFullBackendItem === true;
 }

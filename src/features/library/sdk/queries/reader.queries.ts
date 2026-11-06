@@ -4,24 +4,68 @@ import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/shared/lib/utils';
+import { ItemsService } from '../clients/items.client';
+import { AnnotationsService, normalizeAnnotationEntity } from '../clients/attachments-annotations.client';
 import {
-  ItemsService,
-  AnnotationsService,
   NotesService,
-  ExportsService,
-  AttachmentsService,
+  StateService,
+  SearchService,
   type ExtractNotesOptions,
-} from '@/features/library/sdk';
+  type ItemStateData,
+} from '../clients/catalog-entities.client';
+import { fetchPdfBlob } from '../clients/http.client';
+
+export type { ExtractNotesOptions, ItemStateData };
+
+export function fetchReaderDocumentBlob(
+  url: string,
+  signal?: AbortSignal,
+  options?: Parameters<typeof fetchPdfBlob>[2],
+) {
+  return fetchPdfBlob(url, signal, options);
+}
+
+export function fetchReaderItemState(scopeId: string | undefined, itemId: string) {
+  return StateService.getState(scopeId, itemId);
+}
+
+export function updateReaderItemState(
+  scopeId: string | undefined,
+  itemId: string,
+  payload: Parameters<typeof StateService.updateState>[2],
+) {
+  return StateService.updateState(scopeId, itemId, payload);
+}
+
+export function markReaderItemAsRead(scopeId: string | undefined, itemId: string) {
+  return StateService.markAsRead(scopeId, itemId);
+}
+
+export function searchReaderAttachmentAnchors(
+  attachmentId: string,
+  query: string,
+  limit?: number,
+  scopeId?: string,
+  options?: { signal?: AbortSignal },
+) {
+  return SearchService.searchAnchors(attachmentId, query, limit, scopeId, options);
+}
 import {
   itemKeys,
   readerQueryKeys,
   annotationKeys,
   noteKeys,
+  relationKeys,
   normalizeScopeId,
+  prepareBootstrapScope,
+  registerBootstrapPromise,
+  waitForBootstrapCache,
+  getReaderBootstrapScope,
 } from '@/features/library/sdk/query-keys';
 import { useDownloadAnnotatedPdfMutation } from './extraction.queries';
+import { invalidateLibraryCatalogDependencies } from './cache-patcher';
 import { PdfAnnotationEngine } from '@/features/library/domain/reader.domain';
-import { buildClientAnnotationSortIndex } from '@/features/library/domain/reader-search-outline';
+import { buildClientAnnotationSortIndex } from '@/features/library/domain/reader-search-outline.domain';
 import {
   ANNOTATION_HISTORY_HANDLERS,
   executeAnnotationBatchSync,
@@ -43,21 +87,166 @@ import type {
   ReaderDocument,
 } from '@/features/library/domain/types/reader.schema';
 
-export type CreateAnnotationDTO = CreateAnnotationDto;
-export type UpdateAnnotationDTO = UpdateAnnotationDto & {
+type CreateAnnotationDTO = CreateAnnotationDto;
+type UpdateAnnotationDTO = UpdateAnnotationDto & {
   rects?: AnnotationRect[];
   boundingRect?: AnnotationRect;
 };
 
-
 // ── 1. Document & Fulltext Queries ───────────────────────────────────────────
 
-export function useReaderItem(scopeId?: string, itemId?: string) {
+export function useReaderBootstrap(
+  scopeId?: string,
+  itemId?: string,
+  attachmentId?: string,
+  options?: { enabled?: boolean },
+) {
+  const queryClient = useQueryClient();
+  const targetScope = normalizeScopeId(scopeId);
+  const readerGateScope = getReaderBootstrapScope(targetScope);
+  const bootstrapKey = readerQueryKeys.bootstrap(targetScope, itemId, attachmentId);
+  const isEnabled = Boolean(itemId) && (options?.enabled ?? true);
+
+  if (isEnabled && queryClient.getQueryData(bootstrapKey) === undefined) {
+    prepareBootstrapScope(queryClient, readerGateScope);
+  }
+
   return useQuery({
-    queryKey: readerQueryKeys.item(scopeId, itemId),
+    queryKey: bootstrapKey,
+    enabled: isEnabled,
+    refetchOnWindowFocus: false,
+    staleTime: 1000 * 60 * 5,
+    gcTime: 3 * 60 * 1000,
+    queryFn: ({ signal }) =>
+      registerBootstrapPromise(
+        queryClient,
+        readerGateScope,
+        (async () => {
+          if (!itemId || typeof ItemsService.getReaderBootstrap !== 'function') {
+            return null;
+          }
+          try {
+            const res = await ItemsService.getReaderBootstrap(
+              targetScope,
+              itemId,
+              attachmentId,
+              { signal },
+            );
+            if (!res || typeof res !== 'object') return null;
+
+            const degradedBranches = Array.isArray(res.degradedBranches)
+              ? res.degradedBranches
+              : [];
+
+            if (res.item) {
+              queryClient.setQueryData(
+                readerQueryKeys.item(targetScope, itemId),
+                res.item as ReaderDocument,
+              );
+              const rawAttachments = Array.isArray(res.item.attachments)
+                ? res.item.attachments
+                : [];
+              for (const att of rawAttachments) {
+                const attRec = att as unknown as Record<string, unknown>;
+                const attId =
+                  typeof att.id === 'string'
+                    ? att.id
+                    : typeof attRec.attachmentId === 'string'
+                      ? attRec.attachmentId
+                      : undefined;
+                if (attId && Array.isArray(attRec.annotations)) {
+                  const normalizedAttAnns = (
+                    attRec.annotations as Array<
+                      ReaderAnnotation & { rectCoords?: unknown; quoteText?: string }
+                    >
+                  ).map(normalizeAnnotationEntity);
+                  queryClient.setQueryData<ReaderAnnotation[]>(
+                    annotationKeys.byAttachment(targetScope, attId),
+                    normalizedAttAnns,
+                  );
+                }
+              }
+            }
+
+            if (res.activeAttachmentId && Array.isArray(res.annotations)) {
+              const normalizedActiveAnns = res.annotations.map(normalizeAnnotationEntity);
+              queryClient.setQueryData<ReaderAnnotation[]>(
+                annotationKeys.byAttachment(targetScope, res.activeAttachmentId),
+                normalizedActiveAnns,
+              );
+            }
+
+            if (res.fulltext !== undefined && !degradedBranches.includes('fulltext')) {
+              queryClient.setQueryData(
+                readerQueryKeys.fulltext(targetScope, itemId),
+                res.fulltext,
+              );
+            }
+
+            if (res.readingState) {
+              queryClient.setQueryData(
+                itemKeys.state(targetScope, itemId),
+                res.readingState,
+              );
+            }
+
+            if (Array.isArray(res.notes)) {
+              queryClient.setQueryData(
+                noteKeys.list(targetScope, itemId),
+                res.notes,
+              );
+            }
+
+            if (Array.isArray(res.relations)) {
+              queryClient.setQueryData(
+                relationKeys.all(targetScope, itemId),
+                {
+                  relatedItems: res.relations,
+                  total: res.relations.length,
+                },
+              );
+            }
+
+            if (
+              res.permissions &&
+              !degradedBranches.includes('permissions') &&
+              queryClient.getQueryData(itemKeys.counts(targetScope)) === undefined
+            ) {
+              queryClient.setQueryData(itemKeys.counts(targetScope), {
+                total: 0,
+                unfiled: 0,
+                starred: 0,
+                trash: 0,
+                role: res.role,
+                permissions: res.permissions,
+              });
+            }
+
+            return res;
+          } catch {
+            // Graceful fallback: individual hooks (useReaderItem, useAnnotations, etc.) will fetch independently
+            return null;
+          }
+        })(),
+      ),
+  });
+}
+
+export function useReaderItem(scopeId?: string, itemId?: string) {
+  const queryClient = useQueryClient();
+  const targetScope = normalizeScopeId(scopeId);
+  const cacheKey = readerQueryKeys.item(targetScope, itemId);
+  return useQuery({
+    queryKey: cacheKey,
     queryFn: async () => {
       if (!itemId) return null;
-      return (await ItemsService.getById(scopeId || 'user', itemId)) as ReaderDocument;
+      const seeded = await waitForBootstrapCache<ReaderDocument | null>(
+        queryClient,
+        getReaderBootstrapScope(targetScope),
+        cacheKey,
+      );
+      if (seeded !== undefined) return seeded;
+      return (await ItemsService.getById(targetScope, itemId)) as ReaderDocument;
     },
     enabled: Boolean(itemId),
     staleTime: 1000 * 60 * 5,
@@ -66,11 +255,18 @@ export function useReaderItem(scopeId?: string, itemId?: string) {
 }
 
 export function useReaderFulltext(scopeId?: string, itemId?: string) {
+  const queryClient = useQueryClient();
+  const targetScope = normalizeScopeId(scopeId);
+  const cacheKey = readerQueryKeys.fulltext(targetScope, itemId);
   return useQuery({
-    queryKey: readerQueryKeys.fulltext(scopeId, itemId),
-    queryFn: () => {
+    queryKey: cacheKey,
+    queryFn: async () => {
       if (!itemId) return null;
-      return ItemsService.getFulltext(scopeId, itemId);
+      const seeded = await waitForBootstrapCache<
+        Awaited<ReturnType<typeof ItemsService.getFulltext>>
+      >(queryClient, getReaderBootstrapScope(targetScope), cacheKey);
+      if (seeded !== undefined) return seeded;
+      return ItemsService.getFulltext(targetScope, itemId);
     },
     enabled: Boolean(itemId),
     staleTime: 1000 * 60 * 10,
@@ -82,12 +278,20 @@ export function useReaderFulltext(scopeId?: string, itemId?: string) {
 
 export function useAnnotations(scopeId?: string, attachmentId?: string) {
   const queryClient = useQueryClient();
+  const targetScope = normalizeScopeId(scopeId);
+  const cacheKey = annotationKeys.byAttachment(targetScope, attachmentId);
 
   const query = useQuery({
-    queryKey: annotationKeys.byAttachment(scopeId, attachmentId),
-    queryFn: () => {
+    queryKey: cacheKey,
+    queryFn: async () => {
       if (!attachmentId) return [];
-      return AnnotationsService.getByAttachment(scopeId, attachmentId);
+      const seeded = await waitForBootstrapCache<ReaderAnnotation[]>(
+        queryClient,
+        getReaderBootstrapScope(targetScope),
+        cacheKey,
+      );
+      if (seeded !== undefined) return seeded;
+      return AnnotationsService.getByAttachment(targetScope, attachmentId);
     },
     enabled: Boolean(attachmentId),
     gcTime: 3 * 60 * 1000,
@@ -297,16 +501,29 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
       if (paperId) {
         queryClient.invalidateQueries({ queryKey: noteKeys.list(scopeId, paperId) });
         queryClient.invalidateQueries({ queryKey: itemKeys.byId(scopeId, paperId) });
+        queryClient.invalidateQueries({ queryKey: readerQueryKeys.item(scopeId, paperId) });
+        invalidateLibraryCatalogDependencies(queryClient, normalizeScopeId(scopeId), {
+          itemId: paperId,
+          itemsList: true,
+          counts: true,
+        });
       } else {
         queryClient.invalidateQueries({ queryKey: noteKeys.all(scopeId) });
       }
+      const addedCount =
+        (res as { addedCount?: number } | undefined)?.addedCount ?? res?.totalExtracted;
       if (!res || res.totalExtracted === 0) {
         toast.info('No annotations in this document to extract', {
           id: 'reader-annotation-toast',
         });
+      } else if (addedCount === 0) {
+        toast.info('Literature note is already up to date', {
+          description: 'All annotations in this document have already been synthesized.',
+          id: 'reader-annotation-toast',
+        });
       } else {
         toast.success('Notes synthesized', {
-          description: `Extracted ${res.totalExtracted} note${res.totalExtracted === 1 ? '' : 's'} from document highlights.`,
+          description: `Extracted ${addedCount ?? res.totalExtracted} highlight${(addedCount ?? res.totalExtracted) === 1 ? '' : 's'} into Literature Note.`,
           id: 'reader-annotation-toast',
         });
       }
@@ -332,10 +549,24 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
         res?.importedCount ??
         (res as { imported?: number } | undefined)?.imported ??
         0;
-      toast.success('Annotations imported', {
-        description: `Imported ${count} annotations from PDF.`,
-        id: 'reader-annotation-toast',
-      });
+      const totalFound =
+        (res as { totalFound?: number } | undefined)?.totalFound ?? count;
+      if (totalFound === 0 && count === 0) {
+        toast.info('No embedded annotations found in PDF', {
+          description: 'Scanned document pages and found 0 standard PDF annotations.',
+          id: 'reader-annotation-toast',
+        });
+      } else if (count === 0 && totalFound > 0) {
+        toast.info('Annotations already imported', {
+          description: `All ${totalFound} embedded PDF annotation${totalFound === 1 ? '' : 's'} are already in your library.`,
+          id: 'reader-annotation-toast',
+        });
+      } else {
+        toast.success('Annotations imported', {
+          description: `Imported ${count} annotation${count === 1 ? '' : 's'} from PDF.`,
+          id: 'reader-annotation-toast',
+        });
+      }
     },
     onError: (err: unknown) => {
       toast.error('Failed to import annotations', {
@@ -407,39 +638,6 @@ export function useExportAnnotatedPdf(scopeId?: string) {
       }
     },
     isExporting: downloadMutation.isPending,
-  };
-}
-
-export function useOcrExtraction(scopeId?: string, itemId?: string) {
-  const queryClient = useQueryClient();
-
-  const mutation = useMutation({
-    mutationFn: async (attachmentId: string) => {
-      if (!attachmentId) throw new Error('No attachment available to run OCR');
-      toast.loading('Submitting OCR re-extraction job...', { id: 'reader-ocr-trigger' });
-      await AttachmentsService.reExtract(scopeId, attachmentId);
-      return attachmentId;
-    },
-    onSuccess: (attachmentId) => {
-      if (itemId) {
-        queryClient.invalidateQueries({ queryKey: itemKeys.byId(scopeId, itemId) });
-        queryClient.invalidateQueries({ queryKey: readerQueryKeys.fulltext(scopeId, itemId) });
-      }
-      queryClient.invalidateQueries({
-        queryKey: annotationKeys.byAttachment(scopeId, attachmentId),
-      });
-      toast.success('OCR job queued successfully', { id: 'reader-ocr-trigger' });
-    },
-    onError: (err: unknown) => {
-      toast.error(`Failed to trigger OCR: ${getErrorMessage(err) || 'Unknown error'}`, {
-        id: 'reader-ocr-trigger',
-      });
-    },
-  });
-
-  return {
-    triggerOcr: (attachmentId: string) => mutation.mutateAsync(attachmentId),
-    isTriggeringOcr: mutation.isPending,
   };
 }
 

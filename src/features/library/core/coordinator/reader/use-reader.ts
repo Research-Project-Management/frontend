@@ -6,21 +6,22 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/shared/lib/utils';
 import { logger } from '@/shared/lib/logger';
-import { libraryServices } from '@/features/library/sdk';
 import {
   copyToClipboard,
   triggerBrowserTextDownload,
 } from '@/features/library/core/coordinator/citation-export.coordinator';
-import { getItemFileUrl, isProjectScope } from '@/features/library/domain/identifiers';
+import { getItemFileUrl, isProjectScope } from '@/features/library/domain/identifiers.domain';
 import {
+  fetchReaderDocumentBlob,
+  useReaderBootstrap,
   useReaderItem,
   useReaderFulltext,
   useAnnotations,
+  useExportAnnotatedPdf,
 } from '@/features/library/sdk/queries/reader.queries';
-import {
-  annotationKeys,
-  normalizeScopeId,
-} from '@/features/library/sdk/query-keys';
+
+export { useExportAnnotatedPdf };
+import { normalizeScopeId } from '@/features/library/sdk/query-keys';
 import { useReadingProgress } from './use-reader-tabs';
 import { useAnnotationBatch } from './use-annotation-batch';
 import { useReaderStore } from '@/features/library/core/store/reader.store';
@@ -34,7 +35,7 @@ import type {
 } from '@/features/library/domain/types/reader.schema';
 import { formatAnnotationCitation } from '@/features/library/domain/reader.domain';
 
-export const READER_TOAST_IDS = {
+const READER_TOAST_IDS = {
   clipboard: 'reader-clipboard',
   download: 'reader-download',
   exportAnnotatedPdf: 'reader-export-annotated-pdf',
@@ -124,11 +125,22 @@ export function useReaderFileDownload() {
   return { download };
 }
 
-export interface UsePdfReturn {
+interface UsePdfReturn {
   blobUrl: string | null;
   isLoading: boolean;
   error: string | null;
   retry: () => void;
+}
+
+export function useReaderDocumentBlobLoader() {
+  return useCallback(
+    (
+      url: string,
+      signal?: AbortSignal,
+      options?: { scopeId?: string; allowHtml?: boolean },
+    ) => fetchReaderDocumentBlob(url, signal, options),
+    [],
+  );
 }
 
 export function usePdf(url: string | null, scopeId?: string): UsePdfReturn {
@@ -172,7 +184,7 @@ export function usePdf(url: string | null, scopeId?: string): UsePdfReturn {
         setError(null);
         setBlobUrl(null);
 
-        const blob = await libraryServices.items.fetchPdfBlob(
+        const blob = await fetchReaderDocumentBlob(
           url!,
           controller.signal,
           { scopeId },
@@ -231,6 +243,14 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
   const closeReader = useReaderStore((s) => s.closeReader);
   const effectivePaperId = overridePaperId || params?.paperId || storeReadingId || '';
 
+  const requestedAttachmentId = searchParams?.get('attachmentId') || undefined;
+  const activeTabAttachmentId = useReaderStore(
+    (s) => s.tabs.find((t) => t.id === effectivePaperId)?.attachmentId,
+  );
+  const resolvedRequestedAttachmentId = requestedAttachmentId || activeTabAttachmentId || undefined;
+
+  useReaderBootstrap(scopeId, effectivePaperId, resolvedRequestedAttachmentId);
+
   const paperQuery = useReaderItem(scopeId, effectivePaperId);
   const paper = (paperQuery.data ?? null) as ReaderDocument | null;
   const isLoadingPapers = paperQuery.isLoading;
@@ -246,12 +266,6 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
   const fulltextQuery = useReaderFulltext(effectiveScopeId, effectivePaperId);
   const fulltext = fulltextQuery.data ?? null;
   const isLoadingFulltext = fulltextQuery.isLoading;
-
-  const requestedAttachmentId = searchParams?.get('attachmentId') || undefined;
-  const activeTabAttachmentId = useReaderStore(
-    (s) => s.tabs.find((t) => t.id === effectivePaperId)?.attachmentId,
-  );
-  const resolvedRequestedAttachmentId = requestedAttachmentId || activeTabAttachmentId || undefined;
 
   const selectedAttachment = useMemo(() => {
     if (!paper?.attachments || paper.attachments.length === 0) return null;

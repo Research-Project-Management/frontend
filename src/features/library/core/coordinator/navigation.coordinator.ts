@@ -3,9 +3,57 @@
 import { useMemo, useCallback } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import type { LibraryOrderBy } from '@/features/library/domain/types/ingestion.types';
+import type { LibraryPermissions } from '@/features/library/domain/types/core.types';
+import { resolveEffectiveLibraryPermissions } from '@/features/library/domain/library-permissions.policy';
+import { useLibraryCountsQuery } from '@/features/library/sdk/queries/catalog.queries';
+import { useLibraryDeltaSync } from '@/features/library/sdk/queries/sync.queries';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 
-export interface LibraryNavigationFilters {
+export { useLibraryDeltaSync };
+
+function resolveActiveLibraryScopeId(
+  activeScope?: { type?: string; id?: string; projectId?: string } | null,
+  explicitScopeId?: string | null,
+  fallbackProjectId?: string | null,
+): string {
+  if (explicitScopeId) return explicitScopeId;
+  if (fallbackProjectId) return fallbackProjectId;
+  if (activeScope?.type === 'project') {
+    return activeScope.projectId || activeScope.id || 'user';
+  }
+  return 'user';
+}
+
+/**
+ * Permissions Coordinator Hook
+ *
+ * Single Source of Truth for combining Client Scope (Zustand Store),
+ * Server Permissions & Capability Counts (TanStack Query), and Pure RBAC Policies.
+ * Decoupled from pure Zustand Store selectors.
+ */
+export function useLibraryPermissions(): LibraryPermissions {
+  const activeScope = useLibraryUIStore((state) => state.activeScope);
+  const effectiveScopeId = resolveActiveLibraryScopeId(activeScope);
+  const { data: countsData } = useLibraryCountsQuery(effectiveScopeId);
+
+  return useMemo(
+    () =>
+      resolveEffectiveLibraryPermissions(
+        activeScope,
+        countsData
+          ? {
+              role: countsData.role || countsData.yourRole,
+              permissions: countsData.permissions,
+              effectivePermissions: countsData.effectivePermissions,
+              permissionOverrides: countsData.permissionOverrides,
+            }
+          : null,
+      ),
+    [activeScope, countsData],
+  );
+}
+
+interface LibraryNavigationFilters {
   search?: string;
   searchMode?: 'title_creator_year' | 'fields_tags' | 'everything';
   filter?: string;
@@ -29,7 +77,7 @@ export interface LibraryNavigationFilters {
 /**
  * Pure URLSearchParams parser for Library Navigation state.
  */
-export function parseLibrarySearchParams(searchParams: {
+function parseLibrarySearchParams(searchParams: {
   get: (name: string) => string | null;
   getAll?: (name: string) => string[];
 }): LibraryNavigationFilters {

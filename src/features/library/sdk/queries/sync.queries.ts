@@ -2,13 +2,13 @@
 
 import { useEffect, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { SyncService } from '@/features/library/sdk';
+import { SyncService } from '../clients/catalog-entities.client';
 import {
   mapBackendItem,
   hasExplicitUserStateInPayload,
   preserveMappedItemFlags,
   setMappedItemMeta,
-} from '@/features/library/domain/metadata-mapper';
+} from '@/features/library/domain/metadata.mapper';
 import type { Item } from '@/features/library/domain/types/core.types';
 import {
   itemKeys,
@@ -35,7 +35,7 @@ function hasSyncVersionAdvanced(currentSeq: string, nextVersion: string): boolea
   return nextVersion !== currentSeq;
 }
 
-export interface DeltaChangeRecord {
+interface DeltaChangeRecord {
   raw: Record<string, unknown>;
   entityType: string;
   action: string;
@@ -44,7 +44,7 @@ export interface DeltaChangeRecord {
   version?: number;
 }
 
-export interface DeltaSyncBatchContext {
+interface DeltaSyncBatchContext {
   queryClient: ReturnType<typeof useQueryClient>;
   effectiveScope: string;
   deletedItemIds: string[];
@@ -271,7 +271,7 @@ const handleItemChange = (change: DeltaChangeRecord, ctx: DeltaSyncBatchContext)
   ctx.patchedCount++;
 };
 
-export const DELTA_ENTITY_HANDLERS: Record<
+const DELTA_ENTITY_HANDLERS: Record<
   string,
   (change: DeltaChangeRecord, ctx: DeltaSyncBatchContext) => void
 > = {

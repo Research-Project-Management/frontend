@@ -1,7 +1,6 @@
 import { z } from 'zod';
-import { userSchema, itemSchema, retractionNatureSchema, type Provenance } from './items.types';
+import { userSchema, itemSchema, type Provenance } from './items.types';
 import { feedRetentionDaysSchema } from './ingestion.types';
-import { extractPmcId, parseBatchIdentifiersInput } from '../identifiers';
 
 // Matt Pocock Branded Types
 declare const __brand: unique symbol;
@@ -25,7 +24,6 @@ export * from './item-types.types';
 export type {
   ReaderDocument,
   ReaderAnnotation,
-  ReaderNote,
   AnnotationFormData,
   TypeConversionPreview,
   DroppedField,
@@ -33,20 +31,6 @@ export type {
   CreatorRoleChange,
 } from './reader.schema';
 export {
-  annotationRectSchema,
-  annotationTypeSchema,
-  readerAnnotationSchema,
-  createAnnotationSchema,
-  updateAnnotationSchema,
-  readerNoteSchema,
-  readerDocumentSchema,
-  documentReadingStateSchema,
-  documentSectionSchema,
-  documentFigureSchema,
-  documentTableSchema,
-  documentFormulaSchema,
-  documentReferenceSchema,
-  documentFulltextSchema,
   annotationFormSchema,
 } from './reader.schema';
 
@@ -244,48 +228,26 @@ export interface CollectionActionHandlers {
 }
 
 // ── Curation & Integrity ─────────────────────────────────────────────────────
+export const duplicateMatchTypeSchema = z.enum([
+  'DOI',
+  'ARXIV',
+  'PMID',
+  'ISBN',
+  'INGESTION_SUSPECT',
+  'TITLE_AUTHOR_YEAR',
+  'TITLE_AUTHOR',
+]);
+
 export const duplicateGroupSchema = z.object({
-  matchType: z.enum(['DOI', 'TITLE_AUTHOR_YEAR', 'TITLE_AUTHOR']),
+  matchType: duplicateMatchTypeSchema,
+  matchReason: z.string().optional(),
   confidence: z.enum(['high', 'medium']),
   key: z.string(),
   recommendedMasterId: z.string().optional(),
   items: z.array(itemSchema),
 });
 
-export const mergeStrategySchema = z.object({
-  primaryItemId: z.string().min(1, 'primaryItemId is required'),
-  keepFields: z.record(z.string(), z.string()).optional(),
-  deleteDuplicatesAfterMerge: z.boolean().default(true),
-});
-
-export const flaggedItemIssueSchema = z.object({
-  itemId: z.string(),
-  title: z.string().default('Untitled'),
-  issues: z.array(z.string()).default([]),
-});
-
-export const libraryIntegrityReportSchema = z.object({
-  totalItems: z.number().optional().default(0),
-  healthyItems: z.number().optional().default(0),
-  averageQualityScore: z.number().default(100),
-  healthScorePercentage: z.number().default(100),
-  missingDoiCount: z.number().default(0),
-  missingYearCount: z.number().default(0),
-  missingAuthorsCount: z.number().default(0),
-  missingAbstractCount: z.number().default(0),
-  missingPdfCount: z.number().default(0),
-  flaggedItems: z.array(flaggedItemIssueSchema).default([]),
-  healthReport: z
-    .object({
-      missingDoi: z.number().default(0),
-      missingAbstract: z.number().default(0),
-      missingYear: z.number().default(0),
-    })
-    .optional(),
-});
-
 export type DuplicateGroup = z.infer<typeof duplicateGroupSchema>;
-export type LibraryIntegrityReport = z.infer<typeof libraryIntegrityReportSchema>;
 
 // ── Forms ────────────────────────────────────────────────────────────────────
 export const collectionFormSchema = z.object({
@@ -297,8 +259,8 @@ export const collectionFormSchema = z.object({
 
 export type CollectionFormValues = z.infer<typeof collectionFormSchema>;
 
-const isValidIdentifierOrUrl = (val: string): boolean => {
-  const trimmed = val.trim();
+const isValidSingleIdentifierToken = (token: string): boolean => {
+  const trimmed = token.trim().replace(/^[([\s<"']+/, '').replace(/[.,;:\s"')\]>]+$/, '');
   if (!trimmed) return false;
 
   try {
@@ -308,7 +270,7 @@ const isValidIdentifierOrUrl = (val: string): boolean => {
     // not a standard web URL
   }
 
-  if (/\b10\.\d{4,9}\/[-._;()/:A-Za-z0-9<>+=[\]~]+\b/i.test(trimmed) || /^10\.\d{4,9}\//i.test(trimmed)) {
+  if (/\b10\.\d{4,9}\/[-._;()/:A-Za-z0-9<>+=[\]~]+\b/i.test(trimmed) || /^(?:doi:\s*)?10\.\d{4,9}\//i.test(trimmed)) {
     return true;
   }
 
@@ -316,15 +278,12 @@ const isValidIdentifierOrUrl = (val: string): boolean => {
     return true;
   }
 
-  if (/^(?:pmid:\s*)?\d{1,9}$/i.test(trimmed) || Boolean(extractPmcId(trimmed))) {
+  if (/^(?:pmid\s*[:#]?\s*)?\d{1,9}$/i.test(trimmed) || /\bPMC\d{5,9}\b/i.test(trimmed)) {
     return true;
   }
 
-  const cleanDigits = trimmed.replace(/[-\s]/g, '');
-  if (/^(?:isbn:?\s*)?(97[89]\d{10}|\d{9}[\dX])$/i.test(trimmed)) {
-    return true;
-  }
-  if ((cleanDigits.length === 10 || cleanDigits.length === 13) && /^\d+X?$/i.test(cleanDigits)) {
+  const cleanDigits = trimmed.replace(/^isbn(?:-?1[03])?\s*[:#]?\s*/i, '').replace(/[-\s]/g, '');
+  if (/^(?:97[89]\d{10}|\d{9}[\dXx])$/.test(cleanDigits)) {
     return true;
   }
 
@@ -332,11 +291,20 @@ const isValidIdentifierOrUrl = (val: string): boolean => {
     return true;
   }
 
-  if (parseBatchIdentifiersInput(trimmed).length > 0) {
+  return false;
+};
+
+const isValidIdentifierOrUrl = (val: string): boolean => {
+  const trimmed = val.trim();
+  if (!trimmed) return false;
+  if (/^@[a-zA-Z]+\s*\{/.test(trimmed) || /^TY\s+-\s+/m.test(trimmed)) {
     return true;
   }
-
-  return false;
+  if (isValidSingleIdentifierToken(trimmed)) {
+    return true;
+  }
+  const tokens = trimmed.split(/[\r\n,;]+|\s+/).filter(Boolean);
+  return tokens.some(isValidSingleIdentifierToken);
 };
 
 export const addLinkSchema = z.object({

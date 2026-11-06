@@ -1,12 +1,12 @@
 import type { Item } from '@/features/library/domain/types/core.types';
-import { ALL_SCHEMA_FIELD_KEYS } from '@/features/library/domain/types/item-fields.constants';
+import { ALL_SCHEMA_FIELD_KEYS } from '@/features/library/domain/types/item-type-mappings.constants';
 import { normalizeCanonicalItemType, registerSchemaRegistryUpdateListener, type SchemaFieldDefinition } from '@/features/library/domain/types/item-types.types';
-import { cleanDoi } from './identifiers';
-import { isValidValue, cleanValue, parseItemExtraField, stripOrUpdateExtraKeyLine } from './metadata-mapper';
+import { cleanDoi } from './identifiers.domain';
+import { isValidValue, cleanValue, parseItemExtraField, stripOrUpdateExtraKeyLine } from './metadata.mapper';
 import { FIRST_CLASS_ITEM_COLUMNS, CANONICAL_FIELD_ALIASES, buildDerivedFieldMappings, getDirectExtraAliases, parseValidYear } from './metadata-extra.constants';
 import { applyCoupledFieldSynchronization } from './item-field-descriptors.domain';
 import { type FieldLookupSource, type InspectorFieldDescriptor, INSPECTOR_FIELD_DESCRIPTORS } from './item-field-descriptors.domain';
-import { ALL_SCHEMA_PROMOTE_KEYS } from '@/features/library/domain/metadata-mapper';
+import { ALL_SCHEMA_PROMOTE_KEYS } from '@/features/library/domain/metadata.mapper';
 
 /**
  * Single Source of Truth for Zotero Schema v42 Field Resolution, Alias Fallback Chains,
@@ -29,7 +29,7 @@ export {
 
 const DERIVED_FIELD_MAPPINGS = buildDerivedFieldMappings();
 
-export const FIELD_FALLBACK_CHAINS: Record<
+const FIELD_FALLBACK_CHAINS: Record<
   string,
   ReadonlyArray<readonly ["p" | "ef", string]>
 > = DERIVED_FIELD_MAPPINGS.fallbackChains;
@@ -37,7 +37,7 @@ export const FIELD_FALLBACK_CHAINS: Record<
 export const MULTI_KEY_SYNC_SETTERS: Record<string, readonly string[]> =
   DERIVED_FIELD_MAPPINGS.syncSetters;
 
-export const DIRECT_METADATA_FIELDS: Set<string> = new Set<string>([
+const DIRECT_METADATA_FIELDS: Set<string> = new Set<string>([
   ...Array.from(ALL_SCHEMA_FIELD_KEYS).filter((k) => k !== "title" && k !== "extra"),
   ...Array.from(FIRST_CLASS_ITEM_COLUMNS).filter((k) => k !== "title" && k !== "itemType" && k !== "year"),
   ...Object.keys(CANONICAL_FIELD_ALIASES),

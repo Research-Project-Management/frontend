@@ -1,15 +1,375 @@
 /**
- * Static Bootstrap Constants & Mappings for Zotero Schema v42 Item Types
- * Extracted from item-types.types.ts to maintain strict modularity and file-size bounds (<= 800 lines).
+ * Static Bootstrap Constants, Field Labels & Mappings for Zotero Schema v42 Item Types
+ * Sourced dynamically from Backend Single Source of Truth (/api/v1/library/item-types/schema).
+ * Provides 0ms instant bootstrap with persistent client-side cache and runtime reactivity.
  */
 
-import type {
-  ItemTypeCategoryGroup,
-  SchemaFieldDefinition,
-} from './item-types.types';
+export interface SchemaFieldDefinition {
+  field: string;
+  label: string;
+  placeholder?: string;
+  type: 'text' | 'textarea' | 'date' | 'number' | 'url';
+  category?: 'core' | 'venue' | 'publication' | 'identifiers' | 'archive' | 'extra';
+  mono?: boolean;
+  /** Canonical semantic field supplied by Zotero Schema v42 baseField mappings */
+  baseField?: string;
+  order?: number;
+}
+
+export interface ItemTypeCategoryGroup {
+  id: string;
+  label: string;
+  types: { value: string; label: string }[];
+}
 
 export const SCHEMA_VERSION = 42;
-export const SCHEMA_SOURCE = 'zotero-schema-v42';
+export const SCHEMA_SOURCE = 'bibliographic-schema-v42';
+
+/**
+ * Converts a camelCase field identifier into a human-readable title.
+ */
+export function humanizeFieldName(field: string): string {
+  if (!field) return '';
+  const uppercaseAcronyms = new Set(['doi', 'isbn', 'issn', 'pmid', 'pmcid', 'url', 'csl']);
+  if (uppercaseAcronyms.has(field.toLowerCase())) {
+    return field.toUpperCase();
+  }
+  return field
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/^./, (s) => s.toUpperCase())
+    .trim();
+}
+
+/**
+ * Standard baseline field labels for initial offline render or SSR
+ * prior to backend schema query completion.
+ */
+export const INITIAL_FIELD_LABELS: Record<string, string> = {
+  abstractNote: 'Abstract',
+  accessDate: 'Accessed',
+  applicationNumber: 'Application Number',
+  archive: 'Archive',
+  archiveID: 'Archive ID',
+  archiveLocation: 'Loc. in Archive',
+  artworkMedium: 'Medium',
+  artworkSize: 'Artwork Size',
+  assignee: 'Assignee',
+  audioFileType: 'File Type',
+  audioRecordingFormat: 'Format',
+  billNumber: 'Bill Number',
+  blogTitle: 'Blog Title',
+  bookTitle: 'Book Title',
+  callNumber: 'Call Number',
+  caseName: 'Case Name',
+  citationKey: 'Citation Key',
+  code: 'Code',
+  codeNumber: 'Code Number',
+  codePages: 'Code Pages',
+  codeVolume: 'Code Volume',
+  committee: 'Committee',
+  company: 'Company',
+  conferenceName: 'Conference Name',
+  country: 'Country',
+  court: 'Court',
+  date: 'Date',
+  dateDecided: 'Date Decided',
+  dateEnacted: 'Date Enacted',
+  dictionaryTitle: 'Dictionary Title',
+  distributor: 'Distributor',
+  docketNumber: 'Docket Number',
+  documentNumber: 'Document Number',
+  DOI: 'DOI',
+  edition: 'Edition',
+  encyclopediaTitle: 'Encyclopedia Title',
+  episodeNumber: 'Episode Number',
+  eventPlace: 'Event Place',
+  extra: 'Extra',
+  filingDate: 'Filing Date',
+  firstPage: 'First Page',
+  format: 'Format',
+  forumTitle: 'Forum/List Title',
+  genre: 'Genre',
+  history: 'History',
+  identifier: 'Identifier',
+  institution: 'Institution',
+  interviewMedium: 'Medium',
+  ISBN: 'ISBN',
+  ISSN: 'ISSN',
+  issue: 'Issue',
+  issueDate: 'Issue Date',
+  issuingAuthority: 'Issuing Authority',
+  itemType: 'Item Type',
+  journalAbbreviation: 'Journal Abbr',
+  label: 'Label',
+  language: 'Language',
+  legalStatus: 'Legal Status',
+  legislativeBody: 'Legislative Body',
+  letterType: 'Type',
+  libraryCatalog: 'Library Catalog',
+  manuscriptType: 'Type',
+  mapType: 'Type',
+  medium: 'Medium',
+  meetingName: 'Meeting Name',
+  nameOfAct: 'Name of Act',
+  network: 'Network',
+  number: 'Number',
+  numberOfVolumes: '# of Volumes',
+  numPages: '# of Pages',
+  organization: 'Organization',
+  originalDate: 'Original Date',
+  originalPlace: 'Original Place',
+  originalPublisher: 'Original Publisher',
+  pages: 'Pages',
+  partNumber: 'Part Number',
+  partTitle: 'Part Title',
+  patentNumber: 'Patent Number',
+  place: 'Place',
+  PMCID: 'PMCID',
+  PMID: 'PMID',
+  postType: 'Post Type',
+  presentationType: 'Type',
+  priorityDate: 'Priority Date',
+  priorityNumbers: 'Priority Numbers',
+  proceedingsTitle: 'Proceedings Title',
+  programmingLanguage: 'Prog. Language',
+  programTitle: 'Program Title',
+  publicationTitle: 'Publication',
+  publicLawNumber: 'Public Law Number',
+  publisher: 'Publisher',
+  references: 'References',
+  reporter: 'Reporter',
+  reporterVolume: 'Reporter Volume',
+  reportNumber: 'Report Number',
+  reportType: 'Report Type',
+  repository: 'Repository',
+  repositoryLocation: 'Repo. Location',
+  rights: 'License',
+  runningTime: 'Running Time',
+  scale: 'Scale',
+  section: 'Section',
+  series: 'Series',
+  seriesNumber: 'Series Number',
+  seriesText: 'Series Text',
+  seriesTitle: 'Series Title',
+  session: 'Session',
+  sessionTitle: 'Session Title',
+  shortTitle: 'Short Title',
+  status: 'Status',
+  studio: 'Studio',
+  subject: 'Subject',
+  system: 'System',
+  thesisType: 'Type',
+  title: 'Title',
+  type: 'Type',
+  university: 'University',
+  url: 'URL',
+  versionNumber: 'Version',
+  videoRecordingFormat: 'Format',
+  volume: 'Volume',
+  websiteTitle: 'Website Title',
+  websiteType: 'Website Type',
+};
+
+/**
+ * Mutable, dynamically-updated label lookup map for all fields.
+ * Hydrated from backend schema and persisted across sessions.
+ */
+export const FIELD_LABELS: Record<string, string> = {
+  ...INITIAL_FIELD_LABELS,
+};
+
+/**
+ * Seed mappings for all 37 Zotero Schema v42 bibliographic item types.
+ * Dynamically updated from backend schema at runtime.
+ */
+export const INITIAL_ITEM_TYPE_FIELDS_MAP: Record<string, string[]> = {
+  artwork: [
+    'title', 'abstractNote', 'artworkMedium', 'artworkSize', 'date', 'eventPlace', 'DOI', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  audioRecording: [
+    'title', 'abstractNote', 'audioRecordingFormat', 'seriesTitle', 'volume', 'numberOfVolumes', 'label', 'place', 'date', 'runningTime', 'ISBN', 'DOI', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  bill: [
+    'title', 'abstractNote', 'billNumber', 'code', 'codeVolume', 'section', 'codePages', 'legislativeBody', 'session', 'history', 'date', 'DOI', 'citationKey', 'url', 'accessDate', 'shortTitle', 'language', 'rights', 'extra',
+  ],
+  blogPost: [
+    'title', 'abstractNote', 'blogTitle', 'websiteType', 'date', 'DOI', 'citationKey', 'url', 'accessDate', 'ISSN', 'shortTitle', 'language', 'rights', 'extra',
+  ],
+  book: [
+    'title', 'abstractNote', 'series', 'seriesNumber', 'volume', 'numberOfVolumes', 'edition', 'date', 'publisher', 'place', 'originalDate', 'originalPublisher', 'originalPlace', 'format', 'numPages', 'ISBN', 'DOI', 'citationKey', 'url', 'accessDate', 'ISSN', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  bookSection: [
+    'title', 'abstractNote', 'bookTitle', 'series', 'seriesNumber', 'volume', 'numberOfVolumes', 'edition', 'date', 'publisher', 'place', 'originalDate', 'originalPublisher', 'originalPlace', 'format', 'pages', 'ISBN', 'DOI', 'citationKey', 'url', 'accessDate', 'ISSN', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  case: [
+    'caseName', 'abstractNote', 'court', 'dateDecided', 'docketNumber', 'reporter', 'reporterVolume', 'firstPage', 'history', 'DOI', 'citationKey', 'url', 'accessDate', 'shortTitle', 'language', 'rights', 'extra',
+  ],
+  computerProgram: [
+    'title', 'abstractNote', 'seriesTitle', 'versionNumber', 'date', 'system', 'company', 'place', 'programmingLanguage', 'rights', 'citationKey', 'url', 'accessDate', 'DOI', 'ISBN', 'archive', 'archiveLocation', 'libraryCatalog', 'callNumber', 'shortTitle', 'extra',
+  ],
+  conferencePaper: [
+    'title', 'abstractNote', 'proceedingsTitle', 'conferenceName', 'publisher', 'place', 'date', 'eventPlace', 'volume', 'issue', 'numberOfVolumes', 'pages', 'series', 'seriesNumber', 'DOI', 'ISBN', 'citationKey', 'url', 'accessDate', 'ISSN', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  dataset: [
+    'title', 'abstractNote', 'identifier', 'type', 'versionNumber', 'date', 'repository', 'repositoryLocation', 'format', 'DOI', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  dictionaryEntry: [
+    'title', 'abstractNote', 'dictionaryTitle', 'series', 'seriesNumber', 'volume', 'numberOfVolumes', 'edition', 'date', 'publisher', 'place', 'pages', 'ISBN', 'DOI', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  document: [
+    'title', 'abstractNote', 'type', 'date', 'publisher', 'place', 'DOI', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  email: [
+    'subject', 'abstractNote', 'date', 'DOI', 'citationKey', 'url', 'accessDate', 'shortTitle', 'language', 'rights', 'extra',
+  ],
+  encyclopediaArticle: [
+    'title', 'abstractNote', 'encyclopediaTitle', 'series', 'seriesNumber', 'volume', 'numberOfVolumes', 'edition', 'date', 'publisher', 'place', 'pages', 'ISBN', 'DOI', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  film: [
+    'title', 'abstractNote', 'distributor', 'place', 'date', 'genre', 'videoRecordingFormat', 'runningTime', 'DOI', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  forumPost: [
+    'title', 'abstractNote', 'forumTitle', 'postType', 'date', 'DOI', 'citationKey', 'url', 'accessDate', 'shortTitle', 'language', 'rights', 'extra',
+  ],
+  hearing: [
+    'title', 'abstractNote', 'committee', 'publisher', 'numberOfVolumes', 'documentNumber', 'pages', 'legislativeBody', 'session', 'history', 'date', 'place', 'DOI', 'citationKey', 'url', 'accessDate', 'shortTitle', 'language', 'rights', 'extra',
+  ],
+  instantMessage: [
+    'title', 'abstractNote', 'date', 'DOI', 'citationKey', 'url', 'accessDate', 'shortTitle', 'language', 'rights', 'extra',
+  ],
+  interview: [
+    'title', 'abstractNote', 'interviewMedium', 'date', 'publisher', 'place', 'DOI', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  journalArticle: [
+    'title', 'abstractNote', 'publicationTitle', 'publisher', 'place', 'date', 'volume', 'issue', 'section', 'partNumber', 'partTitle', 'pages', 'series', 'seriesTitle', 'seriesText', 'journalAbbreviation', 'DOI', 'citationKey', 'url', 'accessDate', 'PMID', 'PMCID', 'ISSN', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  letter: [
+    'title', 'abstractNote', 'letterType', 'date', 'eventPlace', 'DOI', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  magazineArticle: [
+    'title', 'abstractNote', 'publicationTitle', 'publisher', 'place', 'date', 'volume', 'issue', 'pages', 'ISSN', 'DOI', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  manuscript: [
+    'title', 'abstractNote', 'manuscriptType', 'institution', 'place', 'date', 'numPages', 'number', 'DOI', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  map: [
+    'title', 'abstractNote', 'mapType', 'scale', 'seriesTitle', 'edition', 'publisher', 'place', 'date', 'DOI', 'ISBN', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  newspaperArticle: [
+    'title', 'abstractNote', 'publicationTitle', 'publisher', 'place', 'date', 'volume', 'issue', 'edition', 'section', 'pages', 'ISSN', 'DOI', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  patent: [
+    'title', 'abstractNote', 'place', 'country', 'assignee', 'issuingAuthority', 'patentNumber', 'filingDate', 'pages', 'applicationNumber', 'priorityNumbers', 'issueDate', 'priorityDate', 'references', 'legalStatus', 'DOI', 'citationKey', 'url', 'accessDate', 'shortTitle', 'language', 'rights', 'extra',
+  ],
+  podcast: [
+    'title', 'abstractNote', 'seriesTitle', 'episodeNumber', 'audioFileType', 'date', 'publisher', 'place', 'runningTime', 'DOI', 'citationKey', 'url', 'accessDate', 'shortTitle', 'language', 'rights', 'extra',
+  ],
+  preprint: [
+    'title', 'abstractNote', 'genre', 'repository', 'archiveID', 'place', 'date', 'series', 'seriesNumber', 'DOI', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  presentation: [
+    'title', 'abstractNote', 'presentationType', 'date', 'meetingName', 'place', 'series', 'sessionTitle', 'DOI', 'citationKey', 'url', 'accessDate', 'shortTitle', 'language', 'rights', 'extra',
+  ],
+  radioBroadcast: [
+    'title', 'abstractNote', 'programTitle', 'episodeNumber', 'audioRecordingFormat', 'network', 'place', 'date', 'runningTime', 'DOI', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  report: [
+    'title', 'abstractNote', 'reportNumber', 'reportType', 'institution', 'place', 'date', 'seriesTitle', 'seriesNumber', 'pages', 'DOI', 'ISBN', 'citationKey', 'url', 'accessDate', 'ISSN', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  standard: [
+    'title', 'abstractNote', 'organization', 'committee', 'type', 'number', 'versionNumber', 'edition', 'status', 'date', 'publisher', 'place', 'partNumber', 'partTitle', 'ISBN', 'DOI', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'numPages', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  statute: [
+    'nameOfAct', 'abstractNote', 'code', 'codeNumber', 'publicLawNumber', 'dateEnacted', 'pages', 'section', 'session', 'history', 'DOI', 'citationKey', 'url', 'accessDate', 'shortTitle', 'language', 'rights', 'extra',
+  ],
+  thesis: [
+    'title', 'abstractNote', 'thesisType', 'university', 'place', 'date', 'series', 'seriesNumber', 'numPages', 'DOI', 'ISBN', 'citationKey', 'url', 'accessDate', 'ISSN', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  tvBroadcast: [
+    'title', 'abstractNote', 'programTitle', 'episodeNumber', 'videoRecordingFormat', 'network', 'place', 'date', 'runningTime', 'DOI', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  videoRecording: [
+    'title', 'abstractNote', 'videoRecordingFormat', 'seriesTitle', 'volume', 'numberOfVolumes', 'studio', 'place', 'date', 'runningTime', 'ISBN', 'DOI', 'citationKey', 'url', 'accessDate', 'archive', 'archiveLocation', 'shortTitle', 'language', 'libraryCatalog', 'callNumber', 'rights', 'extra',
+  ],
+  webpage: [
+    'title', 'abstractNote', 'websiteTitle', 'websiteType', 'date', 'publisher', 'place', 'DOI', 'citationKey', 'url', 'accessDate', 'shortTitle', 'language', 'rights', 'extra',
+  ],
+};
+
+/**
+ * Mutable, dynamically-updated type-to-field list mapping.
+ * Hydrated from backend schema and persisted across sessions.
+ */
+export const ITEM_TYPE_FIELDS_MAP: Record<string, string[]> = {
+  ...INITIAL_ITEM_TYPE_FIELDS_MAP,
+};
+
+/**
+ * All canonical Zotero Schema v42 field names derived automatically from the
+ * bibliographic item types in `ITEM_TYPE_FIELDS_MAP`.
+ * Mutated in place by `updateCachedFields` whenever the dynamic schema registry hydrates.
+ */
+const MUTABLE_ALL_SCHEMA_FIELD_KEYS = new Set<string>(
+  Object.values(INITIAL_ITEM_TYPE_FIELDS_MAP).flat(),
+);
+
+export const ALL_SCHEMA_FIELD_KEYS: ReadonlySet<string> =
+  MUTABLE_ALL_SCHEMA_FIELD_KEYS;
+
+export function rebuildAllSchemaFieldKeys(): void {
+  for (const fields of Object.values(ITEM_TYPE_FIELDS_MAP)) {
+    if (Array.isArray(fields)) {
+      for (const f of fields) {
+        if (typeof f === 'string' && f.trim()) {
+          MUTABLE_ALL_SCHEMA_FIELD_KEYS.add(f.trim());
+        }
+      }
+    }
+  }
+}
+
+export interface SchemaFieldEntry {
+  field?: string;
+  key?: string;
+  label?: string;
+}
+
+export interface SchemaTypeEntry {
+  itemType: string;
+  fields?: SchemaFieldEntry[];
+}
+
+/**
+ * Updates the field label and type-field mappings in-memory from backend schema definitions.
+ */
+export function updateCachedFields(types: unknown[]): void {
+  if (!Array.isArray(types)) return;
+  for (const entry of types) {
+    if (!entry || typeof entry !== 'object') continue;
+    const typedEntry = entry as Partial<SchemaTypeEntry>;
+    const itemType = typedEntry.itemType;
+    if (!itemType || typeof itemType !== 'string') continue;
+
+    const fields = typedEntry.fields;
+    if (Array.isArray(fields)) {
+      const fieldKeys: string[] = [];
+      for (const f of fields) {
+        if (!f) continue;
+        const fieldName = f.field || f.key;
+        if (typeof fieldName === 'string' && fieldName.trim()) {
+          fieldKeys.push(fieldName);
+          MUTABLE_ALL_SCHEMA_FIELD_KEYS.add(fieldName);
+          if (f.label && typeof f.label === 'string') {
+            FIELD_LABELS[fieldName] = f.label;
+          } else if (!FIELD_LABELS[fieldName]) {
+            FIELD_LABELS[fieldName] = humanizeFieldName(fieldName);
+          }
+        }
+      }
+      ITEM_TYPE_FIELDS_MAP[itemType] = fieldKeys;
+    }
+  }
+}
 
 /**
  * Standard 37 Zotero bibliographic item types for immediate UI rendering.
@@ -62,7 +422,6 @@ export const ITEM_TYPE_LABELS: Record<string, string> = Object.fromEntries(
 
 /**
  * Category groupings mirroring backend CATEGORY_MAP in schema.constants.ts.
- * 'media' and 'documents' are separate categories, not merged.
  */
 export const ITEM_TYPE_GROUPS: ItemTypeCategoryGroup[] = [
   {
@@ -143,82 +502,41 @@ export const ITEM_TYPE_GROUPS: ItemTypeCategoryGroup[] = [
 export const ITEM_TYPE_CATEGORIES = ITEM_TYPE_GROUPS;
 
 /**
- * baseField → concrete field mappings per item type, derived from Zotero Schema v42.
- * Covers all 32 item types that have at least one baseField mapping.
- * Backend is the authoritative source; this is the bootstrap fallback only.
+ * baseField -> concrete field mappings per item type, derived from Zotero Schema v42.
  * Updated at runtime by updateLibrarySchemaRegistry() via Object.assign.
  */
 export const BASE_FIELD_MAPPINGS: Record<string, Record<string, string>> = {
-  // academic
   journalArticle: {},
   conferencePaper: { publicationTitle: 'proceedingsTitle' },
   preprint: { type: 'genre', publisher: 'repository', number: 'archiveID' },
   thesis: { type: 'thesisType', publisher: 'university' },
   report: { number: 'reportNumber', type: 'reportType', publisher: 'institution' },
-  dataset: {
-    number: 'identifier',
-    publisher: 'repository',
-    place: 'repositoryLocation',
-    medium: 'format',
-  },
+  dataset: { number: 'identifier', publisher: 'repository', place: 'repositoryLocation', medium: 'format' },
   presentation: { type: 'presentationType', publicationTitle: 'sessionTitle' },
   standard: { authority: 'organization' },
-  // books
   book: { medium: 'format' },
   bookSection: { publicationTitle: 'bookTitle', medium: 'format' },
   dictionaryEntry: { publicationTitle: 'dictionaryTitle' },
   encyclopediaArticle: { publicationTitle: 'encyclopediaTitle' },
   manuscript: { type: 'manuscriptType', publisher: 'institution' },
-  // articles
   magazineArticle: {},
   newspaperArticle: {},
   webpage: { publicationTitle: 'websiteTitle', type: 'websiteType' },
   blogPost: { publicationTitle: 'blogTitle', type: 'websiteType' },
   forumPost: { publicationTitle: 'forumTitle', type: 'postType' },
-  // legal
-  patent: {
-    authority: 'issuingAuthority',
-    number: 'patentNumber',
-    date: 'issueDate',
-    originalDate: 'priorityDate',
-    status: 'legalStatus',
-  },
+  patent: { authority: 'issuingAuthority', number: 'patentNumber', date: 'issueDate', originalDate: 'priorityDate', status: 'legalStatus' },
   statute: { title: 'nameOfAct', number: 'publicLawNumber', date: 'dateEnacted' },
-  bill: {
-    number: 'billNumber',
-    volume: 'codeVolume',
-    pages: 'codePages',
-    authority: 'legislativeBody',
-  },
-  case: {
-    title: 'caseName',
-    authority: 'court',
-    date: 'dateDecided',
-    number: 'docketNumber',
-    volume: 'reporterVolume',
-    pages: 'firstPage',
-  },
+  bill: { number: 'billNumber', volume: 'codeVolume', pages: 'codePages', authority: 'legislativeBody' },
+  case: { title: 'caseName', authority: 'court', date: 'dateDecided', number: 'docketNumber', volume: 'reporterVolume', pages: 'firstPage' },
   hearing: { number: 'documentNumber', authority: 'legislativeBody' },
-  // media
   artwork: { medium: 'artworkMedium' },
   audioRecording: { medium: 'audioRecordingFormat', publisher: 'label' },
   videoRecording: { medium: 'videoRecordingFormat', publisher: 'studio' },
   film: { publisher: 'distributor', type: 'genre', medium: 'videoRecordingFormat' },
-  radioBroadcast: {
-    publicationTitle: 'programTitle',
-    number: 'episodeNumber',
-    medium: 'audioRecordingFormat',
-    publisher: 'network',
-  },
-  tvBroadcast: {
-    publicationTitle: 'programTitle',
-    number: 'episodeNumber',
-    medium: 'videoRecordingFormat',
-    publisher: 'network',
-  },
+  radioBroadcast: { publicationTitle: 'programTitle', number: 'episodeNumber', medium: 'audioRecordingFormat', publisher: 'network' },
+  tvBroadcast: { publicationTitle: 'programTitle', number: 'episodeNumber', medium: 'videoRecordingFormat', publisher: 'network' },
   podcast: { number: 'episodeNumber', medium: 'audioFileType' },
   map: { type: 'mapType' },
-  // documents
   document: {},
   computerProgram: { publisher: 'company' },
   letter: { type: 'letterType' },
@@ -250,7 +568,6 @@ export const REVERSE_BASE_FIELD_MAPPINGS: Record<string, Record<string, string>>
 
 /**
  * All 37 Zotero creator roles (en-US, schema v42).
- * Backend is the authoritative source; this is the bootstrap fallback only.
  * Updated at runtime by updateLibrarySchemaRegistry() via Object.assign.
  */
 export const ALL_CREATOR_TYPES: Record<string, string> = {
@@ -295,8 +612,6 @@ export const ALL_CREATOR_TYPES: Record<string, string> = {
 
 /**
  * Full CSL type map for all 37 Zotero bibliographic item types.
- * Sourced from Zotero Schema v42 csl.types section.
- * Backend is the authoritative source; this is the bootstrap fallback only.
  * Updated at runtime by updateLibrarySchemaRegistry() via Object.assign.
  */
 export const CSL_TYPE_MAP: Record<string, string> = {

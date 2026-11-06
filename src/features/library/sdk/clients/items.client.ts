@@ -62,22 +62,6 @@ export const RelationsService = {
 };
 
 
-export interface ItemMetadataSourceItem {
-  id: string;
-  sourceProvider: string;
-  sourceUri?: string | null;
-  format?: string | null;
-  fetchedAt: string;
-  createdAt: string;
-  rawPayload?: unknown;
-}
-
-export interface ItemMetadataSourcesResponse {
-  itemId: string;
-  count: number;
-  sources: ItemMetadataSourceItem[];
-}
-
 export interface ItemTypesResponse {
   success: boolean;
   registryVersion: number;
@@ -92,7 +76,7 @@ export interface ItemTypesResponse {
   cslFieldMap?: Record<string, string>;
 }
 
-export interface LibraryBootstrapResponse {
+interface LibraryBootstrapResponse {
   scope: 'user' | 'project';
   scopeId: string;
   counts?: {
@@ -119,14 +103,64 @@ export interface LibraryBootstrapResponse {
     scopeId: string;
   };
   itemTypes?: Record<string, unknown>;
-  feedSubscriptions?: import('../index').FeedSubscriptionResponse[];
+  feedSubscriptions?: import('./curation.client').FeedSubscriptionResponse[];
   items?: Item[];
   meta?: CursorPaginationMeta;
   pagination?: CursorPaginationMeta;
 }
 
+export interface ReaderBootstrapResponse {
+  scope: 'user' | 'project';
+  scopeId: string;
+  degraded?: boolean;
+  degradedBranches?: string[];
+  item: Item;
+  activeAttachmentId: string | null;
+  annotations: import('@/features/library/domain/types/reader.schema').ReaderAnnotation[];
+  fulltext: DocumentFulltext | null;
+  readingState: import('./http.client').ItemStateData | null;
+  relations: RelatedItem[];
+  notes: import('@/features/library/domain/types/core.types').Note[];
+  role?: import('@/features/library/domain/types/core.types').ProjectRole;
+  permissions?: Partial<import('@/features/library/domain/types/core.types').LibraryPermissions> | string[];
+}
+
 // 1. ItemsService
 export const ItemsService = {
+  getReaderBootstrap: (
+    scopeId: string | undefined,
+    itemId: string,
+    attachmentId?: string,
+    options?: { signal?: AbortSignal },
+  ) =>
+    libraryClient
+      .get<ReaderBootstrapResponse>(
+        getCatalogUrl(scopeId || 'user', `${encodeURIComponent(itemId)}/reader-bootstrap`),
+        {
+          ...(attachmentId ? { params: { attachmentId } } : {}),
+          signal: options?.signal,
+        },
+        scopeId,
+      )
+      .then((res) => {
+        if (!res || typeof res !== 'object') return res;
+        const mappedItem = res.item ? unwrapItemResponse(res.item) : res.item;
+        if (mappedItem && res.readingState) {
+          (mappedItem as Record<string, unknown>).readingState = res.readingState;
+        }
+        const normalizedRelations = Array.isArray(res.relations)
+          ? res.relations.map((rel) => ({
+              ...rel,
+              relationType: normalizeRelationType(rel?.relationType),
+            }))
+          : [];
+        return {
+          ...res,
+          item: mappedItem,
+          relations: normalizedRelations,
+        };
+      }),
+
   getBootstrap: (
     scopeId?: string,
     params?: ItemQueryParams & { includeItems?: boolean },
@@ -193,17 +227,6 @@ export const ItemsService = {
       effectivePermissions?: string[];
       permissionOverrides?: Record<string, boolean>;
     }>(getCatalogUrl(scopeId, 'counts')),
-
-  getPermissions: (scopeId?: string) =>
-    libraryClient.get<{
-      scope: 'user' | 'project';
-      projectId: string | null;
-      role: import('@/features/library/domain/types/core.types').ProjectRole;
-      yourRole: import('@/features/library/domain/types/core.types').ProjectRole;
-      permissions: import('@/features/library/domain/types/core.types').LibraryPermissions;
-      effectivePermissions: string[];
-      permissionOverrides: Record<string, boolean>;
-    }>(resolveLibraryUrl('catalog', '/permissions', scopeId)),
 
   getAll: (
     scopeId?: string,
@@ -278,11 +301,6 @@ export const ItemsService = {
     libraryClient.get<Item | { item?: Item }>(
       getCatalogUrl(scopeId || 'user', encodeURIComponent(itemId)),
     ).then(unwrapItemResponse),
-
-  getMetadataSources: (scopeId: string | undefined, itemId: string) =>
-    libraryClient.get<ItemMetadataSourcesResponse>(
-      getCatalogUrl(scopeId, `${encodeURIComponent(itemId)}/metadata-sources`),
-    ),
 
   getByCollection: (scopeId: string | undefined, collectionId: string, search?: string) =>
     libraryClient.get<Record<string, unknown> | Item[]>(
@@ -490,6 +508,7 @@ export const ItemsService = {
     libraryClient
       .post<{
         success: boolean;
+        message?: string;
         updatedFields?: string[];
         oaPdfAttached?: boolean;
         oaPdfUrl?: string;
@@ -512,25 +531,6 @@ export const ItemsService = {
       resolveLibraryRawPath('/api/v1/library/item-types', 'catalog'),
       { rawEnvelope: true },
     ),
-
-  getItemType: (_scopeId: string | undefined, itemType: string) =>
-    libraryClient.get<{ success: boolean; itemType: unknown; data: unknown }>(
-      resolveLibraryRawPath(`/api/v1/library/item-types/${encodeURIComponent(itemType)}`, 'catalog'),
-    ),
-
-  getSchemaSnapshot: () =>
-    libraryClient.get<{ success: boolean; data: Record<string, unknown> }>(
-      resolveLibraryRawPath('/api/v1/library/types/schema', 'catalog'),
-    ),
-
-  validateItemPayload: (itemType: string, data: Record<string, unknown>) =>
-    libraryClient.post<{
-      success: boolean;
-      valid: boolean;
-      errors?: Array<{ field: string; message: string }>;
-      warnings?: Array<{ field: string; message: string }>;
-      sanitized?: Record<string, unknown>;
-    }>(resolveLibraryRawPath('/api/v1/library/types/validate', 'catalog'), { itemType, data }),
 
   previewConvertType: (
     scopeId: string | undefined,
@@ -571,48 +571,8 @@ export const ItemsService = {
 
   fetchPdfBlob,
 
-  markMyPublication: (
-    scopeId: string | undefined,
-    itemId: string,
-    options?: {
-      contributorId?: string | null;
-      isPublic?: boolean;
-      openAccessLicense?: string | null;
-      includeAttachments?: boolean;
-      includeNotes?: boolean;
-      authorshipConfirmed?: boolean;
-    },
-  ) => ItemsService.setMyPublication(scopeId, itemId, true, options),
-
-  unmarkMyPublication: (scopeId: string | undefined, itemId: string) =>
-    ItemsService.setMyPublication(scopeId, itemId, false),
-
-  parseCitations: (scopeId: string | undefined, rawCitations: string) =>
-    libraryClient.post<{
-      success: boolean;
-      count: number;
-      references: Record<string, unknown>[];
-      citations: Record<string, unknown>[];
-    }>(
-      resolveLibraryUrl('citation', '/items', scopeId, 'citations/parse'),
-      { rawCitations, citations: rawCitations },
-    ),
-
   getRelated: (scopeId: string | undefined, itemId: string) =>
     RelationsService.getRelated(scopeId, itemId),
-
-  linkRelated: (
-    scopeId: string | undefined,
-    itemId: string,
-    targetItemId: string | string[],
-    relationType?: string,
-  ) => RelationsService.link(scopeId, itemId, targetItemId, relationType),
-
-  unlinkRelated: (
-    scopeId: string | undefined,
-    itemId: string,
-    targetItemId: string,
-  ) => RelationsService.unlink(scopeId, itemId, targetItemId),
 
   setMyPublication: (
     scopeId: string | undefined,

@@ -5,12 +5,7 @@
  */
 
 import type { Item } from '@/features/library/domain/types/core.types';
-import type {
-  ReaderDocument,
-  ReaderAnnotation,
-  AnnotationRect,
-  DocumentFulltext,
-} from '@/features/library/domain/types/reader.schema';
+import type { ReaderDocument, ReaderAnnotation, AnnotationRect } from '@/features/library/domain/types/reader.schema';
 import {
   normalizeReaderAuthors,
   getSurnameForCitation,
@@ -32,7 +27,7 @@ import {
   type PdfTextMatch,
   type PdfSearchCycleResult,
   type PdfOutlineNode,
-} from './reader-search-outline';
+} from './reader-search-outline.domain';
 
 export {
   normalizeReaderAuthors,
@@ -57,7 +52,7 @@ export {
   type PdfOutlineNode,
 };
 
-export const ANNOTATION_COLORS = {
+const ANNOTATION_COLORS = {
   yellow: { id: 'yellow', name: 'Yellow', semanticLabel: 'General / Important', bg: 'rgba(255, 212, 0, 0.35)', border: '#ffd400' },
   red: { id: 'red', name: 'Red', semanticLabel: 'Disagreement / Critical Error', bg: 'rgba(255, 102, 102, 0.35)', border: '#ff6666' },
   green: { id: 'green', name: 'Green', semanticLabel: 'Methodology / Supporting Evidence', bg: 'rgba(95, 178, 54, 0.35)', border: '#5fb236' },
@@ -68,7 +63,7 @@ export const ANNOTATION_COLORS = {
   gray: { id: 'gray', name: 'Gray', semanticLabel: 'Secondary / Archived', bg: 'rgba(170, 170, 170, 0.35)', border: '#aaaaaa' },
 } as const;
 
-export type AnnotationColorId = keyof typeof ANNOTATION_COLORS;
+type AnnotationColorId = keyof typeof ANNOTATION_COLORS;
 
 /** Standard 8-Color Academic Annotation Palette */
 export const ANNOTATION_PALETTE_COLORS = Object.values(ANNOTATION_COLORS).map((c) => ({
@@ -84,7 +79,7 @@ const HEX_TO_COLOR_ID_MAP = new Map<string, AnnotationColorId>([
   ['#ffeb3b', 'yellow'],
 ]);
 
-export interface AnnotationFilterCriteria {
+interface AnnotationFilterCriteria {
   query?: string | null;
   color?: string | null;
   colors?: string[] | null;
@@ -99,7 +94,7 @@ export interface AnnotationFilterCriteria {
 export const clamp = (v: number, min: number, max: number): number =>
   Math.min(max, Math.max(min, v));
 
-export interface Box2DInput {
+interface Box2DInput {
   x1?: number;
   y1?: number;
   x2?: number;
@@ -428,12 +423,12 @@ export const PdfAnnotationEngine = {
   },
 };
 
-export interface EpubOrSnapshotInfo {
+interface EpubOrSnapshotInfo {
   mode: 'epub' | 'snapshot';
   url: string;
 }
 
-export interface RawAttachmentItem {
+interface RawAttachmentItem {
   id?: string;
   fileId?: string;
   url?: string;
@@ -448,14 +443,14 @@ export interface RawAttachmentItem {
   linkMode?: string;
 }
 
-export type AttachmentCapabilityKind =
+type AttachmentCapabilityKind =
   | 'pdf'
   | 'epub'
   | 'snapshot'
   | 'external_link'
   | 'file';
 
-export interface AttachmentCapabilityDescriptor {
+interface AttachmentCapabilityDescriptor {
   kind: AttachmentCapabilityKind;
   isPdf: boolean;
   isEpub: boolean;
@@ -620,68 +615,4 @@ export function buildReaderPaperUrl(
   }
   const qs = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
   return `/library/papers/${safeId}${qs}`;
-}
-
-export type OcrStatus = 'pending' | 'processing' | 'ready' | 'completed' | 'none';
-
-export interface DocumentOcrState {
-  isScanned: boolean;
-  ocrStatus: OcrStatus;
-}
-
-export function resolveDocumentOcrState(
-  paper:
-    | {
-        attachments?: Array<{ id?: string; [key: string]: unknown }>;
-        [key: string]: unknown;
-      }
-    | null
-    | undefined,
-  effectiveAttachmentId: string | undefined,
-  fulltext: DocumentFulltext | null | undefined,
-  _numPages?: number,
-): DocumentOcrState {
-  const primaryAttachment =
-    paper?.attachments?.find((a) => a.id === effectiveAttachmentId) ||
-    paper?.attachments?.[0];
-
-  const primaryAttachmentRecord = primaryAttachment as
-    | Record<string, unknown>
-    | undefined;
-  const attachmentMeta = primaryAttachmentRecord?.metadata as
-    | Record<string, unknown>
-    | undefined;
-  const paperRecord = paper as Record<string, unknown> | null | undefined;
-  const paperMeta = paperRecord?.metadata as
-    | Record<string, unknown>
-    | undefined;
-
-  const isScanned = Boolean(
-    attachmentMeta?.isScanned ||
-      paperMeta?.isScanned ||
-      (fulltext as { isScanned?: boolean } | null | undefined)?.isScanned,
-  );
-
-  const rawExtractionStatus = (
-    primaryAttachment as Record<string, unknown> | undefined
-  )?.extractionStatus;
-  const rawOcrStatus =
-    (typeof rawExtractionStatus === 'string'
-      ? rawExtractionStatus.toLowerCase()
-      : null) ||
-    (typeof attachmentMeta?.ocrStatus === 'string'
-      ? attachmentMeta.ocrStatus
-      : null) ||
-    (typeof paperMeta?.ocrStatus === 'string' ? paperMeta.ocrStatus : null) ||
-    'none';
-
-  const ocrStatus = (
-    ['pending', 'processing', 'ready', 'completed', 'none'].includes(
-      rawOcrStatus,
-    )
-  )
-    ? (rawOcrStatus as OcrStatus)
-    : 'none';
-
-  return { isScanned, ocrStatus };
 }

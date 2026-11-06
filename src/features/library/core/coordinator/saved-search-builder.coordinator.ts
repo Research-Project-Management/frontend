@@ -3,8 +3,28 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useItemTypes } from '@/features/library/sdk/queries/catalog.queries';
 import { useCollectionsQuery } from '@/features/library/sdk/queries/collections.queries';
-import { useTags } from '@/features/library/sdk/queries/tags-notes.queries';
-import { useSavedSearches } from '@/features/library/sdk/queries/saved-searches-relations.queries';
+import { useTags, useNotes, useTrash, useDeleteLibraryItemsMutation } from '@/features/library/sdk/queries/tags-notes.queries';
+import {
+  useSavedSearches,
+  useSavedSearchResults,
+  useRelations,
+  useItemTypeConversion,
+  useItemTypeConversionPreviewQuery,
+  type TypeConversionPreview,
+} from '@/features/library/sdk/queries/saved-searches-relations.queries';
+
+export {
+  useTags,
+  useNotes,
+  useTrash,
+  useDeleteLibraryItemsMutation,
+  useSavedSearches,
+  useSavedSearchResults,
+  useRelations,
+  useItemTypeConversion,
+  useItemTypeConversionPreviewQuery,
+  type TypeConversionPreview,
+};
 import {
   mapRegistryItemTypes,
   extractServerErrorMessage,
@@ -30,7 +50,7 @@ export type SavedSearchBuilderSortBy =
   | 'publicationTitle'
   | 'citationKey';
 
-export interface UseSavedSearchBuilderParams {
+interface UseSavedSearchBuilderParams {
   open: boolean;
   savedSearch?: SavedSearch | null;
   scopeId?: string;

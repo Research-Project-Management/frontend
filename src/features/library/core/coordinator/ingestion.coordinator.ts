@@ -1,12 +1,30 @@
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
-import { UploadService, IngestionService } from '@/features/library/sdk';
-import { itemKeys } from '@/features/library/sdk/query-keys';
+import type { UploadedMultipartFile } from '@/features/library/sdk/queries/extraction.queries';
+import {
+  fetchIngestionRunStatus,
+  fetchIngestionRunProgress,
+  feedsTransportBindings,
+  pollIngestionRunCompletion,
+  type PollRunOutcome,
+  type PollIngestionRunOptions,
+} from '@/features/library/sdk/queries/ingestion.queries';
+import {
+  itemKeys,
+  registerFeedHydrationObserver,
+} from '@/features/library/sdk/query-keys';
 import {
   invalidateLibraryCatalogDependencies,
   useLibraryCacheSynchronizer,
 } from '@/features/library/sdk/queries/cache-patcher';
-import { useProcessModalStore } from '@/features/library/core/store/process-modal.store';
+import {
+  useProcessModalStore,
+  registerBatchUploadExecutor,
+} from '@/features/library/core/store/process-modal.store';
+import {
+  useFeedsStore,
+  registerFeedsTransportAdapter,
+} from '@/features/library/core/store/reader.store';
 import type {
   IngestionProgressItem,
   ProcessingFileItem,
@@ -34,11 +52,6 @@ import {
   type FileIngestionStrategyContext,
   type BibliographyTextFormat,
 } from './file-ingestion.strategies';
-import {
-  pollIngestionRunCompletion,
-  type PollRunOutcome,
-  type PollIngestionRunOptions,
-} from '@/features/library/sdk/queries/ingestion.queries';
 
 export {
   resolveFileIngestionStrategy,
@@ -161,12 +174,17 @@ export async function executeBatchUpload(
   let completedCount = 0;
   let successCount = 0;
   let failCount = 0;
+  const settledProvisionalIds = new Set<string>();
+  const backgroundExtractions: Promise<void>[] = [];
   const effectiveCollection = collectionId || undefined;
-  const uploadedCache = new Map<File, Awaited<ReturnType<typeof UploadService.uploadMultipart>>>();
+  const uploadedCache = new Map<File, UploadedMultipartFile>();
 
   const markFileFailed = (_file: File, _index: number, provisionalId: string, errorMsg: string) => {
-    failCount++;
-    completedCount++;
+    if (!settledProvisionalIds.has(provisionalId)) {
+      settledProvisionalIds.add(provisionalId);
+      failCount++;
+      completedCount++;
+    }
     store.patchBatchItemAndRecalculate(
       provisionalId,
       { status: 'FAILED', error: errorMsg },
@@ -182,8 +200,11 @@ export async function executeBatchUpload(
     finalItemId?: string,
     updateProvisional = true,
   ) => {
-    successCount++;
-    completedCount++;
+    if (!settledProvisionalIds.has(provisionalId)) {
+      settledProvisionalIds.add(provisionalId);
+      successCount++;
+      completedCount++;
+    }
     store.patchBatchItemAndRecalculate(
       provisionalId,
       { status: 'SUCCEEDED', itemName: extractedTitle, itemId: finalItemId },
@@ -225,6 +246,9 @@ export async function executeBatchUpload(
         store,
         uploadedCache,
         signal,
+        registerBackgroundExtraction: (promise: Promise<void>) => {
+          backgroundExtractions.push(promise);
+        },
         markFileSucceeded,
         markFileFailed,
       });
@@ -249,7 +273,7 @@ export async function executeBatchUpload(
   });
   const batchProgress = await flowManager.execute(tasks);
 
-  // Mark any files that exhausted all retries as failed
+  // Mark any files that exhausted all retries during upload as failed
   batchProgress.errors.forEach((error, taskId) => {
     const taskEntry = queue.find((q) => q.provisionalId === taskId);
     if (taskEntry) {
@@ -261,6 +285,12 @@ export async function executeBatchUpload(
       );
     }
   });
+
+  // Wait for any decoupled server-side PDF extractions to finish before finalizing batch
+  if (backgroundExtractions.length > 0) {
+    await Promise.allSettled(backgroundExtractions);
+  }
+
   await synchronizeBatchCaches(queryClient, scopeId, effectiveCollection);
 
   // Ensure all provisional items for this batch are wiped and modal reflects aggregate status
@@ -328,7 +358,7 @@ export function useResumeBatchIngestionPolling(
 
     async function pollBatchRunProgress() {
       try {
-        const snapshot = await IngestionService.getRunStatus(effectiveScope, activeRunId!);
+        const snapshot = await fetchIngestionRunStatus(effectiveScope, activeRunId!);
         if (cancelled) return;
         consecutiveErrors = 0;
 
@@ -345,7 +375,7 @@ export function useResumeBatchIngestionPolling(
         }
 
         try {
-          const progressRes = await IngestionService.getRunProgress(effectiveScope, activeRunId!);
+          const progressRes = await fetchIngestionRunProgress(effectiveScope, activeRunId!);
           if (!cancelled && progressRes && typeof progressRes === 'object') {
             const pr = progressRes as {
               items?: Array<{ id: string; status: string; title?: string }>;
@@ -399,7 +429,7 @@ export function useResumeBatchIngestionPolling(
  *    executor is provided, attempts full pipeline ingestion first (enriching metadata & OA PDF).
  * 2. Falls back to `createItem` with `mapFeedEntryToCreateItemPayload`.
  */
-export async function executeSaveFeedEntryToLibrary<TCreatePayload extends Record<string, unknown>>(params: {
+async function executeSaveFeedEntryToLibrary<TCreatePayload extends Record<string, unknown>>(params: {
   entry: ParsedFeedEntry;
   scopeId: string;
   targetCollectionId?: string;
@@ -429,7 +459,7 @@ export async function executeSaveFeedEntryToLibrary<TCreatePayload extends Recor
   let savedViaPipeline = false;
   if (ingestItem && (entry.doi || entry.arxivId)) {
     try {
-      await ingestItem({
+      const ingestRes = await ingestItem({
         ...(entry.doi
           ? { source: 'doi' as const, doi: entry.doi }
           : { source: 'arxiv' as const, arxivId: entry.arxivId! }),
@@ -445,7 +475,29 @@ export async function executeSaveFeedEntryToLibrary<TCreatePayload extends Recor
           saveSnapshot: false,
         },
       });
-      savedViaPipeline = true;
+      const resObj = (ingestRes ?? {}) as {
+        data?: { runId?: string; status?: string };
+        runId?: string;
+        status?: string;
+        _polled?: boolean;
+      };
+      const runId = resObj.data?.runId || resObj.runId;
+      const initialStatus = String(
+        resObj.data?.status || resObj.status || '',
+      ).toUpperCase();
+      const isAlreadyDone =
+        resObj._polled === true ||
+        initialStatus === 'COMPLETED' ||
+        initialStatus === 'READY' ||
+        initialStatus === 'PARTIAL' ||
+        initialStatus === 'DUPLICATE';
+      if (runId && !isAlreadyDone) {
+        const outcome = await pollIngestionRunCompletion(scopeId, runId);
+        savedViaPipeline =
+          outcome.status !== 'FAILED' && outcome.status !== 'BLOCKED';
+      } else {
+        savedViaPipeline = true;
+      }
     } catch {
       savedViaPipeline = false;
     }
@@ -456,7 +508,7 @@ export async function executeSaveFeedEntryToLibrary<TCreatePayload extends Recor
   }
 }
 
-export interface SaveFeedEntryCoordinatorOptions<
+interface SaveFeedEntryCoordinatorOptions<
   TCreatePayload extends Record<string, unknown> = Record<string, unknown>,
 > {
   entry: ParsedFeedEntry;
@@ -573,5 +625,21 @@ export async function executeSubscribeFeedWithAutoTitle(params: {
     cleanupUnreadAfter: unreadDays,
   });
 }
+
+registerBatchUploadExecutor(executeBatchUpload);
+registerFeedsTransportAdapter(feedsTransportBindings);
+registerFeedHydrationObserver({
+  onServerFeedsHydrated: (feeds) => useFeedsStore.getState().hydrateFeeds(feeds),
+  onReadEntriesHydrated: (entryIds) => useFeedsStore.getState().hydrateReadEntries(entryIds),
+  onLoadFeedsFallback: async (options) => {
+    await useFeedsStore.getState().loadFeeds(options);
+    return useFeedsStore.getState().feeds;
+  },
+  onAddFeed: async (name, url, retentionDays, options) =>
+    useFeedsStore.getState().addFeed(name, url, retentionDays, options),
+  onUpdateFeed: (id, updates) => useFeedsStore.getState().updateFeed(id, updates),
+  onRemoveFeed: (id) => useFeedsStore.getState().removeFeed(id),
+  getFeeds: () => useFeedsStore.getState().feeds,
+});
 
 

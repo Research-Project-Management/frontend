@@ -1,10 +1,11 @@
 import type { CslStyle } from "@/features/library/domain/types/core.types";
+import type { SavedFeedSubscription } from "@/features/library/domain/types/ingestion.types";
 
 /**
  * Centralized TanStack Query Keys for features/library
  * Following Supabase Studio pattern for strict key isolation and single source of truth.
  */
-export const DEFAULT_SCOPE = "user";
+const DEFAULT_SCOPE = "user";
 
 export function normalizeScopeId(scopeId?: string | null): string {
   return !scopeId || scopeId === "me" || scopeId === "personal" ? DEFAULT_SCOPE : scopeId;
@@ -13,13 +14,21 @@ export function normalizeScopeId(scopeId?: string | null): string {
 export const libraryKeys = {
   all: ["library"] as const,
 
-  // Workspace Bootstrap
+  // Workspace & Document Reader Bootstrap
   bootstrap: (scopeId?: string, params?: unknown) =>
     [
       ...libraryKeys.all,
       "bootstrap",
       normalizeScopeId(scopeId),
       (params ?? {}) as Record<string, unknown>,
+    ] as const,
+  readerBootstrap: (scopeId?: string, itemId?: string, attachmentId?: string) =>
+    [
+      ...libraryKeys.all,
+      "reader-bootstrap",
+      normalizeScopeId(scopeId),
+      itemId || "none",
+      attachmentId || "primary",
     ] as const,
 
   // Items
@@ -186,33 +195,6 @@ export const libraryKeys = {
   // Sync (Distributed Replication CDC)
   syncVersion: (scopeId?: string) =>
     [...libraryKeys.all, "sync-version", normalizeScopeId(scopeId)] as const,
-  syncChanges: (scopeId?: string, params?: unknown) =>
-    [
-      ...libraryKeys.all,
-      "sync-changes",
-      normalizeScopeId(scopeId),
-      typeof params === "string"
-        ? { since: params }
-        : ((params ?? {}) as Record<string, unknown>),
-    ] as const,
-  syncTombstones: (scopeId?: string, params?: unknown) =>
-    [
-      ...libraryKeys.all,
-      "sync-tombstones",
-      normalizeScopeId(scopeId),
-      typeof params === "string"
-        ? { since: params }
-        : ((params ?? {}) as Record<string, unknown>),
-    ] as const,
-
-  // Metadata Sources (Provenance)
-  itemMetadataSources: (scopeId?: string, itemId?: string) =>
-    [
-      ...libraryKeys.all,
-      "metadata-sources",
-      normalizeScopeId(scopeId),
-      itemId || "none",
-    ] as const,
 
   // Ingestion
   ingestion: (scopeId?: string) =>
@@ -307,7 +289,6 @@ export const savedSearchKeys = {
 };
 
 export const relationKeys = {
-  allByScope: (scopeId?: string) => libraryKeys.relationsAll(scopeId),
   all: (scopeId?: string, itemId?: string) =>
     libraryKeys.relations(scopeId, itemId),
 };
@@ -372,20 +353,6 @@ export const citationKeys = {
 
 export const exportKeys = {
   all: libraryKeys.exports(),
-  collectionBundle: (scopeId?: string, collectionId?: string) =>
-    [
-      ...libraryKeys.exports(),
-      "bundle",
-      normalizeScopeId(scopeId),
-      collectionId || "none",
-    ] as const,
-  collectionBibtex: (scopeId?: string, collectionId?: string) =>
-    [
-      ...libraryKeys.exports(),
-      "bibtex",
-      normalizeScopeId(scopeId),
-      collectionId || "none",
-    ] as const,
 };
 
 export function invalidateCollections(
@@ -405,12 +372,12 @@ export function invalidateCollections(
  */
 export const readerQueryKeys = {
   all: libraryKeys.all,
+  bootstrap: (scopeId?: string, itemId?: string, attachmentId?: string) =>
+    libraryKeys.readerBootstrap(scopeId, itemId, attachmentId),
   item: (scopeId?: string, itemId?: string) =>
     libraryKeys.item(scopeId, itemId),
   fulltext: (scopeId?: string, itemId?: string) =>
     libraryKeys.fulltext(scopeId, itemId),
-  metadataSources: (scopeId?: string, itemId?: string) =>
-    libraryKeys.itemMetadataSources(scopeId, itemId),
   annotations: (scopeId?: string, attachmentId?: string) =>
     libraryKeys.annotations(scopeId, attachmentId),
   notes: (scopeId?: string, itemId?: string) =>
@@ -420,13 +387,6 @@ export const readerQueryKeys = {
   attachments: (scopeId?: string, itemId?: string) =>
     libraryKeys.attachments(scopeId, itemId),
   collections: (scopeId?: string) => libraryKeys.collections(scopeId),
-  itemCollections: (scopeId?: string, itemId?: string) =>
-    [
-      ...libraryKeys.all,
-      "item-collections",
-      normalizeScopeId(scopeId),
-      itemId || "none",
-    ] as const,
   tags: (scopeId?: string) => libraryKeys.tags(scopeId),
   itemTags: (scopeId?: string, itemId?: string) =>
     [
@@ -453,10 +413,13 @@ export const readerQueryKeys = {
 
 export const annotationKeys = {
   all: [...libraryKeys.all, "annotations"] as const,
-  allByScope: (scopeId?: string) => libraryKeys.annotationsAll(scopeId),
   byAttachment: (scopeId?: string, attachmentId?: string) =>
     libraryKeys.annotations(scopeId, attachmentId),
 };
+
+export function getReaderBootstrapScope(scopeId?: string | null): string {
+  return `reader:${normalizeScopeId(scopeId)}`;
+}
 
 interface BootstrapDeferredGate {
   promise: Promise<unknown>;
@@ -543,7 +506,7 @@ export function registerBootstrapPromise<T>(
   return tracked;
 }
 
-export function getActiveBootstrapPromise(
+function getActiveBootstrapPromise(
   queryClient: object,
   scopeId?: string,
 ): Promise<unknown> | undefined {
@@ -583,6 +546,117 @@ export async function waitForBootstrapCache<T>(
   }
   return undefined;
 }
+
+export interface FeedHydrationObserver {
+  onServerFeedsHydrated: (feeds: SavedFeedSubscription[]) => void;
+  onReadEntriesHydrated: (entryIds: Iterable<string>) => void;
+  onLoadFeedsFallback?: (options?: { force?: boolean }) => Promise<SavedFeedSubscription[]>;
+  onAddFeed?: (
+    name: string,
+    url: string,
+    retentionDays?: SavedFeedSubscription['retentionDays'],
+    options?: {
+      cleanupReadAfter?: SavedFeedSubscription['cleanupReadAfter'];
+      cleanupUnreadAfter?: SavedFeedSubscription['cleanupUnreadAfter'];
+    },
+  ) => Promise<SavedFeedSubscription> | SavedFeedSubscription;
+  onUpdateFeed?: (
+    id: string,
+    updates: Partial<Omit<SavedFeedSubscription, 'id'>>,
+  ) => Promise<void>;
+  onRemoveFeed?: (id: string) => Promise<void>;
+  getFeeds?: () => SavedFeedSubscription[];
+}
+
+export type DraftCacheClearListener = (groupKey?: string) => void;
+
+let activeObserver: FeedHydrationObserver | null = null;
+let lastHydratedFeedsKey = '';
+const draftCacheClearListeners = new Set<DraftCacheClearListener>();
+
+export function registerFeedHydrationObserver(
+  observer: FeedHydrationObserver,
+): () => void {
+  activeObserver = observer;
+  return () => {
+    if (activeObserver === observer) {
+      activeObserver = null;
+      lastHydratedFeedsKey = '';
+    }
+  };
+}
+
+export function registerDraftCacheClearListener(
+  listener: DraftCacheClearListener,
+): () => void {
+  draftCacheClearListeners.add(listener);
+  return () => {
+    draftCacheClearListeners.delete(listener);
+  };
+}
+
+export function notifyServerFeedsHydrated(feeds: SavedFeedSubscription[]): void {
+  if (!activeObserver || !Array.isArray(feeds)) return;
+  const nextKey = feeds
+    .map(
+      (f) =>
+        `${f.id}|${f.name}|${f.url}|${f.retentionDays ?? ''}|${f.cleanupReadAfter ?? ''}|${f.cleanupUnreadAfter ?? ''}`,
+    )
+    .join(';;');
+  if (nextKey === lastHydratedFeedsKey && (activeObserver.getFeeds?.()?.length ?? 0) === feeds.length) {
+    return;
+  }
+  lastHydratedFeedsKey = nextKey;
+  activeObserver.onServerFeedsHydrated(feeds);
+}
+
+export function notifyReadEntriesHydrated(entryIds: Iterable<string>): void {
+  activeObserver?.onReadEntriesHydrated(entryIds);
+}
+
+export async function invokeLoadFeedsFallback(options?: {
+  force?: boolean;
+}): Promise<SavedFeedSubscription[]> {
+  if (activeObserver?.onLoadFeedsFallback) {
+    return activeObserver.onLoadFeedsFallback(options);
+  }
+  return activeObserver?.getFeeds?.() ?? [];
+}
+
+export async function invokeAddFeed(
+  name: string,
+  url: string,
+  retentionDays?: SavedFeedSubscription['retentionDays'],
+  options?: {
+    cleanupReadAfter?: SavedFeedSubscription['cleanupReadAfter'];
+    cleanupUnreadAfter?: SavedFeedSubscription['cleanupUnreadAfter'];
+  },
+): Promise<SavedFeedSubscription> {
+  if (!activeObserver?.onAddFeed) {
+    throw new Error('FeedHydrationObserver.onAddFeed is not registered');
+  }
+  return activeObserver.onAddFeed(name, url, retentionDays, options);
+}
+
+export async function invokeUpdateFeed(
+  id: string,
+  updates: Partial<Omit<SavedFeedSubscription, 'id'>>,
+): Promise<void> {
+  await activeObserver?.onUpdateFeed?.(id, updates);
+}
+
+export async function invokeRemoveFeed(id: string): Promise<void> {
+  await activeObserver?.onRemoveFeed?.(id);
+}
+
+export function getRegisteredFeedsSnapshot(): SavedFeedSubscription[] {
+  return activeObserver?.getFeeds?.() ?? [];
+}
+
+export function notifyDraftCacheCleared(groupKey?: string): void {
+  draftCacheClearListeners.forEach((listener) => listener(groupKey));
+}
+
 
 
 

@@ -92,7 +92,6 @@ export const updateAnnotationSchema = z.object({
   expectedVersion: z.number().int().positive().optional(),
 });
 
-export const readerPanelSchema = z.enum(['ai', 'details', 'notes', 'annotations', 'cite']);
 export const readerFitModeSchema = z.enum(['fit-width', 'fit-page', 'auto', 'custom']);
 export const readerThemeSchema = z.enum(['normal', 'sepia', 'dark', 'invert']);
 
@@ -254,12 +253,6 @@ export const readerDocumentSchema = z
   })
   .passthrough();
 
-export const updateDocumentSchema = z.object({
-  title: z.string().optional(),
-  ...documentPublicationFields,
-  collectionIds: z.array(z.string()).optional(),
-});
-
 // ── Form Schemas for React Hook Form ──────────────────────────────────────────
 
 export const annotationFormSchema = z.object({
@@ -345,7 +338,6 @@ export const documentFulltextSchema = z
     markdown: z.string().optional(),
     plainText: z.string().optional(),
     pageCount: z.number().optional(),
-    isScanned: z.boolean().optional(),
     pages: z.array(documentFulltextPageSchema).optional(),
     sections: z.array(documentSectionSchema).default([]),
     figures: z.array(documentFigureSchema).default([]),
@@ -370,19 +362,11 @@ export type UpdateAnnotationDto = z.infer<typeof updateAnnotationSchema>;
 export type ReaderFitMode = z.infer<typeof readerFitModeSchema>;
 export type ReaderTheme = z.infer<typeof readerThemeSchema>;
 
-export type CreatorType = z.infer<typeof creatorTypeSchema>;
 export type DocumentCreator = z.infer<typeof documentCreatorSchema>;
 
-export type ReaderNote = z.infer<typeof readerNoteSchema>;
-export type CreateNoteDto = z.infer<typeof createNoteSchema>;
-export type UpdateNoteDto = z.infer<typeof updateNoteSchema>;
 export type ReaderDocument = z.infer<typeof readerDocumentSchema>;
 
 export type AnnotationFormData = z.infer<typeof annotationFormSchema>;
-export type DocumentSection = z.infer<typeof documentSectionSchema>;
-export type DocumentFigure = z.infer<typeof documentFigureSchema>;
-export type DocumentTable = z.infer<typeof documentTableSchema>;
-export type DocumentFormula = z.infer<typeof documentFormulaSchema>;
 export type DocumentFulltext = z.infer<typeof documentFulltextSchema>;
 
 export interface PdfOutlineItem {
@@ -443,23 +427,6 @@ export interface TypeConversionPreview {
   projectedItem?: Record<string, unknown>;
   unmappedRetained?: Record<string, unknown>;
   hasLoss?: boolean;
-}
-
-export interface ItemMetadataSourceItem {
-  id: string;
-  sourceProvider: string;
-  sourceUri?: string | null;
-  format?: string | null;
-  fetchedAt: string;
-  createdAt?: string;
-  doi?: string;
-  rawPayload?: Record<string, unknown> | unknown;
-}
-
-export interface ItemMetadataSourcesResponse {
-  itemId?: string;
-  count?: number;
-  sources: ItemMetadataSourceItem[];
 }
 
 export interface ReaderTab {

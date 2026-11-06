@@ -6,14 +6,14 @@ import {
   createTrashCommand,
   createBatchTagToggleCommand,
 } from "@/features/library/core/manager/library-command.manager";
-import { normalizeTags } from "@/features/library/domain/metadata-mapper";
+import { normalizeTags } from "@/features/library/domain/metadata.mapper";
 import {
   isPersistedItemId,
   isPersistedLibraryItem,
 } from "@/features/library/domain/library-permissions.policy";
 import type { Item } from "@/features/library/domain/types/core.types";
 
-export interface UseLibraryKeyboardShortcutsOptions {
+interface UseLibraryKeyboardShortcutsOptions {
   items: Item[];
   sortedItems: Item[];
   itemsById: Map<string, Item>;
@@ -31,7 +31,7 @@ export interface UseLibraryKeyboardShortcutsOptions {
   lastSelectedIndexRef: React.MutableRefObject<number | null>;
 }
 
-export interface KeyboardShortcutCommandContext {
+interface KeyboardShortcutCommandContext {
   e: React.KeyboardEvent;
   items: Item[];
   sortedItems: Item[];
@@ -61,7 +61,7 @@ export interface KeyboardShortcutCommandContext {
   redoCommand: ReturnType<typeof useLibraryCommandStore.getState>["redo"];
 }
 
-export interface KeyboardShortcutCommand {
+interface KeyboardShortcutCommand {
   id: string;
   matches(ctx: KeyboardShortcutCommandContext): boolean;
   execute(ctx: KeyboardShortcutCommandContext): void;
@@ -95,7 +95,7 @@ export function isEditableOrModalElementFocused(
   return Boolean(el.closest(MODAL_OR_POPUP_SELECTOR));
 }
 
-export const LIBRARY_KEYBINDING_COMMANDS: readonly KeyboardShortcutCommand[] = [
+const LIBRARY_KEYBINDING_COMMANDS: readonly KeyboardShortcutCommand[] = [
   {
     id: "navigate-down",
     matches: ({ e }) => e.key === "ArrowDown",

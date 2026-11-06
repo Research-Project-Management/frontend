@@ -1,5 +1,5 @@
-import { type Item, type DuplicateGroup, type LibraryIntegrityReport, type FlagRetractionInput, type RetractionStats, itemSchema, type UnifiedIngestionPayload, type UnifiedIngestionResponse, type IngestionRunSnapshotResponse, type UrlCapturePreviewResponse, UnifiedIngestionPayloadSchema, UnifiedIngestionResponseSchema, UrlCapturePreviewResponseSchema, IngestionRunSnapshotResponseSchema } from '@/features/library/domain/types/core.types';
-import { preserveMappedItemFlags } from '@/features/library/domain/metadata-mapper';
+import { type Item, type DuplicateGroup, type FlagRetractionInput, type RetractionStats, itemSchema, type UnifiedIngestionPayload, type UnifiedIngestionResponse, type IngestionRunSnapshotResponse, UnifiedIngestionPayloadSchema, UnifiedIngestionResponseSchema, IngestionRunSnapshotResponseSchema } from '@/features/library/domain/types/core.types';
+import { preserveMappedItemFlags } from '@/features/library/domain/metadata.mapper';
 import { libraryClient, resolveLibraryUrl, getCurationUrl, getRetractionUrl, isProjectScope, mapBackendItem, getIngestionUrl, toIngestionSubmission } from './http.client';
 
 interface RawDuplicateCluster {
@@ -115,6 +115,23 @@ async function batchHydrateMissingDuplicateItems(
   return hydratedMap;
 }
 
+function mapMatchReasonToType(reason?: string): DuplicateGroup['matchType'] {
+  switch (reason) {
+    case 'EXACT_DOI':
+      return 'DOI';
+    case 'EXACT_ARXIV':
+      return 'ARXIV';
+    case 'EXACT_PMID':
+      return 'PMID';
+    case 'EXACT_ISBN':
+      return 'ISBN';
+    case 'INGESTION_SUSPECT':
+      return 'INGESTION_SUSPECT';
+    default:
+      return 'TITLE_AUTHOR_YEAR';
+  }
+}
+
 export const CurationService = {
   getDuplicates: async (
     scopeId?: string,
@@ -185,7 +202,8 @@ export const CurationService = {
     );
 
     const duplicateGroups: DuplicateGroup[] = clusters.map((c) => ({
-      matchType: c.matchReason === 'EXACT_DOI' ? 'DOI' : 'TITLE_AUTHOR_YEAR',
+      matchType: mapMatchReasonToType(c.matchReason),
+      matchReason: c.matchReason,
       confidence: c.confidence >= 1 ? 'high' : 'medium',
       key: c.clusterId,
       ...(c.recommendedMasterId ? { recommendedMasterId: c.recommendedMasterId } : {}),
@@ -252,20 +270,29 @@ export const CurationService = {
       fieldSelections?: Record<string, string>;
     }>,
   ) => {
-    const res = await libraryClient.post<{
+    interface BatchMergePayload {
+      success?: boolean;
       mergedGroups?: number;
+      mergedGroupCount?: number;
       mergedItems?: number;
+      totalMergedItems?: number;
       results?: Array<{
         primaryItem?: Record<string, unknown>;
         masterItem?: Record<string, unknown>;
         mergedCount?: number;
         softDeletedItemIds?: string[];
       }>;
-    }>(getCurationUrl(scopeId, 'merge-batch'), {
-      merges,
-      ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
-    });
-    const results = (res?.results ?? []).map((r) => {
+      failedGroups?: Array<{ primaryItemId: string; error: string }>;
+    }
+    const res = await libraryClient.post<BatchMergePayload & { data?: BatchMergePayload }>(
+      getCurationUrl(scopeId, 'merge-batch'),
+      {
+        merges,
+        ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
+      },
+    );
+    const payload: BatchMergePayload = res?.data ?? res ?? {};
+    const results = (payload.results ?? []).map((r) => {
       const raw = r.primaryItem || r.masterItem;
       return {
         primaryItem: raw ? mapBackendItem(raw) : undefined,
@@ -273,33 +300,20 @@ export const CurationService = {
         softDeletedItemIds: r.softDeletedItemIds ?? [],
       };
     });
+    const mergedGroups =
+      payload.mergedGroups ?? payload.mergedGroupCount ?? results.length;
+    const mergedItems =
+      payload.mergedItems ??
+      payload.totalMergedItems ??
+      results.reduce((s, r) => s + r.mergedCount, 0);
     return {
-      mergedGroups: res?.mergedGroups ?? results.length,
-      mergedItems: res?.mergedItems ?? results.reduce((s, r) => s + r.mergedCount, 0),
+      success: payload.success ?? (payload.failedGroups?.length ?? 0) === 0,
+      mergedGroups,
+      mergedItems,
       results,
+      failedGroups: payload.failedGroups ?? [],
     };
   },
-
-  getIntegrityReport: async (scopeId?: string): Promise<LibraryIntegrityReport> => {
-    const pQuery = isProjectScope(scopeId) ? `?projectId=${encodeURIComponent(scopeId!)}` : '';
-    const res = await libraryClient.get<LibraryIntegrityReport & { averageQualityScore?: number; healthScorePercentage?: number }>(
-      `${getCurationUrl(scopeId, 'integrity')}${pQuery}`,
-    );
-    const score = res?.averageQualityScore ?? res?.healthScorePercentage ?? 100;
-    return {
-      ...res,
-      averageQualityScore: score,
-      healthScorePercentage: res?.healthScorePercentage ?? score,
-    };
-  },
-
-  dismissDuplicate: (scopeId: string | undefined, itemAId: string, itemBId: string) =>
-    libraryClient.post<{ dismissed: boolean; itemIds: string[] }>(
-      getCurationUrl(scopeId, 'duplicates/dismiss'),
-      {
-        itemIds: [itemAId, itemBId],
-      },
-    ),
 
   dismissDuplicates: (scopeId: string | undefined, itemIds: string[]) =>
     libraryClient.post<{ dismissed: boolean; itemIds: string[] }>(
@@ -311,22 +325,6 @@ export const CurationService = {
 export const RetractionService = {
   getStats: (scopeId?: string) =>
     libraryClient.get<RetractionStats>(getRetractionUrl(scopeId, 'stats')),
-
-  getDatabaseStats: (scopeId?: string) =>
-    libraryClient.get<{
-      totalRecords?: number;
-      lastSeededAt?: string | null;
-      status?: string;
-      [key: string]: unknown;
-    }>(getRetractionUrl(scopeId, 'database/stats')),
-
-  seedDatabase: (force = false, scopeId?: string) =>
-    libraryClient.post<{
-      seeded?: boolean;
-      insertedCount?: number;
-      totalRecords?: number;
-      [key: string]: unknown;
-    }>(getRetractionUrl(scopeId, 'database/seed'), { force }),
 
   getRetractedItems: (scopeId?: string): Promise<Item[]> =>
     libraryClient
@@ -454,37 +452,6 @@ export const IngestionService = {
     return (res && typeof res === 'object' && 'data' in res && res.data ? res.data : res) as import('@/features/library/domain/types/ingestion.types').IngestionProgressResponse;
   },
 
-  captureUrl: async (scopeId: string | undefined, url: string): Promise<UrlCapturePreviewResponse> => {
-    const res = await libraryClient.post<Record<string, unknown>>(
-      getIngestionUrl(scopeId, 'capture-url'),
-      { url },
-    );
-    const enveloped = res && typeof res === 'object' && 'data' in res ? res : { success: true, data: res };
-    return UrlCapturePreviewResponseSchema.parse(enveloped);
-  },
-
-  confirmUrl: (
-    scopeId: string | undefined,
-    payload: {
-      url: string;
-      previewToken: string;
-      title?: string;
-      abstract?: string;
-      doi?: string;
-      year?: number;
-      publicationTitle?: string;
-      itemType?: string;
-      collectionId?: string;
-    },
-  ) =>
-    libraryClient.post<{ id: string; title: string; doi?: string; year?: number; citationKey?: string }>(
-      getIngestionUrl(scopeId, 'confirm-url'),
-      {
-        ...payload,
-        ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
-      },
-    ),
-
   fetchFeed: async (
     url: string,
     forceRefresh = false,
@@ -543,3 +510,103 @@ export const IngestionService = {
     };
   },
 };
+
+export interface FeedSubscriptionResponse {
+  id: string;
+  userId?: string;
+  feedId?: string;
+  customTitle?: string | null;
+  cleanupReadAfter?: number;
+  cleanupUnreadAfter?: number;
+  feed?: {
+    id: string;
+    url: string;
+    title: string;
+    siteUrl?: string | null;
+    description?: string | null;
+    lastFetchedAt?: string | null;
+  };
+}
+
+export const FeedsService = {
+  getSubscriptions: () =>
+    libraryClient.get<{ data: FeedSubscriptionResponse[] }>(
+      resolveLibraryUrl('ingestion', '/feeds/subscriptions'),
+    ),
+
+  subscribe: (data: {
+    url: string;
+    customTitle?: string;
+    cleanupDays?: number;
+    cleanupReadAfter?: number;
+    cleanupUnreadAfter?: number;
+  }) =>
+    libraryClient.post<{ data: unknown }>(resolveLibraryUrl('ingestion', '/feeds/subscriptions'), data),
+
+  updateSubscription: (
+    feedId: string,
+    data: {
+      customTitle?: string;
+      cleanupDays?: number;
+      cleanupReadAfter?: number;
+      cleanupUnreadAfter?: number;
+      url?: string;
+    },
+  ) =>
+    libraryClient.patch<{ data: unknown }>(resolveLibraryUrl('ingestion', `/feeds/subscriptions/${encodeURIComponent(feedId)}`), data),
+
+  unsubscribe: (feedId: string) =>
+    libraryClient.delete<void>(resolveLibraryUrl('ingestion', `/feeds/subscriptions/${encodeURIComponent(feedId)}`)),
+
+  getItems: (
+    feedId: string,
+    params?: {
+      readStatus?: 'read' | 'unread' | 'all';
+      limit?: number;
+      cursor?: string;
+      page?: number;
+      search?: string;
+      forceRefresh?: boolean;
+    },
+  ) =>
+    libraryClient.get<{
+      data: unknown[];
+      meta?: {
+        hasNextPage: boolean;
+        nextCursor: string | null;
+        limit: number;
+      };
+      hasNextPage?: boolean;
+      nextCursor?: string | null;
+    }>(
+      resolveLibraryUrl('ingestion', `/feeds/${encodeURIComponent(feedId)}/items`),
+      { params },
+    ),
+
+  markItemRead: (itemId: string, isRead = true) =>
+    libraryClient.post<{ success: boolean }>(resolveLibraryUrl('ingestion', `/feeds/items/${encodeURIComponent(itemId)}/read`), { isRead }),
+
+  markAllRead: (itemIds: string[]) =>
+    libraryClient.post<{ success: boolean }>(resolveLibraryUrl('ingestion', '/feeds/items/mark-all-read'), { itemIds }),
+
+  markFeedAllRead: (feedId: string) =>
+    libraryClient.post<{ success: boolean; markedCount?: number }>(
+      resolveLibraryUrl('ingestion', `/feeds/${encodeURIComponent(feedId)}/mark-all-read`),
+      {},
+    ),
+
+  exportOpml: () =>
+    libraryClient.get<{ data: { opmlXml: string; count: number } }>(
+      resolveLibraryUrl('ingestion', '/feeds/opml/export'),
+    ),
+
+  importOpml: (opmlXml: string) =>
+    libraryClient.post<{
+      data: {
+        importedCount: number;
+        totalParsed: number;
+        subscriptions: FeedSubscriptionResponse[];
+      };
+    }>(resolveLibraryUrl('ingestion', '/feeds/opml/import'), { opmlXml }),
+};
+

@@ -3,14 +3,15 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { getItemFileUrl, isProjectScope } from '@/features/library/domain/identifiers';
+import { getItemFileUrl, isProjectScope } from '@/features/library/domain/identifiers.domain';
 import { classifyAttachmentDescriptor } from '@/features/library/domain/reader.domain';
-import { resolveLibraryUrl, resolveLibraryRawPath } from '@/features/library/sdk';
 import { triggerBrowserUrlDownload, openInNewTab } from '@/features/library/core/coordinator/citation-export.coordinator';
 import {
   useAttachments,
   useRenameAttachment,
   useUploadAttachmentMutation,
+  resolveAttachmentDownloadUrl,
+  resolveAttachmentRawPath,
 } from '@/features/library/sdk/queries/extraction.queries';
 import { useReResolveItemMetadataMutation } from '@/features/library/sdk/queries/catalog.queries';
 import type {
@@ -18,13 +19,13 @@ import type {
   ItemAttachment,
 } from '@/features/library/domain/types/core.types';
 
-export interface UseAttachmentCoordinatorParams {
+interface UseAttachmentCoordinatorParams {
   item: Item;
   scopeId?: string;
   onRegisterAdd?: (trigger: () => void) => void;
 }
 
-export type AttachmentLike = Omit<ItemAttachment, 'attachmentType'> & {
+type AttachmentLike = Omit<ItemAttachment, 'attachmentType'> & {
   attachmentType?: ItemAttachment['attachmentType'] | 'web_snapshot';
   type?: string;
   name?: string;
@@ -35,11 +36,7 @@ const EMPTY_ATTACHMENTS: ItemAttachment[] = [];
 
 function resolveAttachmentUrl(att: AttachmentLike, scopeId?: string): string {
   if (att.fileId) {
-    return resolveLibraryUrl(
-      'extraction',
-      `/files/${encodeURIComponent(att.fileId)}/content`,
-      scopeId,
-    );
+    return resolveAttachmentDownloadUrl(att.fileId, scopeId);
   }
   const raw = getItemFileUrl(
     {
@@ -49,7 +46,7 @@ function resolveAttachmentUrl(att: AttachmentLike, scopeId?: string): string {
     },
     scopeId,
   );
-  return raw ? resolveLibraryRawPath(raw, 'extraction') : '';
+  return raw ? resolveAttachmentRawPath(raw) : '';
 }
 
 export function useAttachmentCoordinator({
@@ -63,8 +60,6 @@ export function useAttachmentCoordinator({
   const rawScopeId = scopeId || paper.projectId || routeProjectId || 'user';
 
   const {
-    captureSnapshot,
-    isCapturingSnapshot,
     setPrimary,
     isSettingPrimary,
     add: addAttachment,
@@ -148,10 +143,6 @@ export function useAttachmentCoordinator({
     );
   }, [allAttachments, paperFilename]);
 
-  const otherAttachments = useMemo(() => {
-    return allAttachments.filter((att) => att !== primaryAttachment);
-  }, [allAttachments, primaryAttachment]);
-
   const activePreviewAttachment = useMemo(() => {
     if (selectedAttachmentId) {
       const found = allAttachments.find((att) => att.id === selectedAttachmentId);
@@ -170,10 +161,6 @@ export function useAttachmentCoordinator({
     // Only return paperUrl if paper actually has a direct file attachment / resolved file URL
     return paperUrl || '';
   }, [activePreviewAttachment, rawScopeId, paperUrl]);
-
-  const hasSnapshot = useMemo(() => {
-    return allAttachments.some((att) => classifyAttachmentDescriptor(att).isSnapshot);
-  }, [allAttachments]);
 
   const handleFileSelect = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -325,11 +312,6 @@ export function useAttachmentCoordinator({
     [paper.id, removeAttachment, selectedAttachmentId],
   );
 
-  const handleCaptureSnapshot = useCallback(async () => {
-    if (!paper.id || !paper.url) return;
-    await captureSnapshot(paper.url);
-  }, [paper.id, paper.url, captureSnapshot]);
-
   const getAttachmentDownloadUrl = useCallback(
     (att: AttachmentLike) => resolveAttachmentUrl(att, rawScopeId),
     [rawScopeId],
@@ -351,13 +333,10 @@ export function useAttachmentCoordinator({
     handleSubmitLinkAttachment,
     allAttachments,
     primaryAttachment,
-    otherAttachments,
     activePreviewAttachment,
     activePreviewUrl,
-    selectedAttachmentId,
     setSelectedAttachmentId,
     getAttachmentDownloadUrl,
-    hasSnapshot,
     paperUrl,
     handleOpenReader,
     handleDownload,
@@ -365,8 +344,6 @@ export function useAttachmentCoordinator({
     handleSetPrimary,
     isDeleting,
     handleDeleteAttachment,
-    isCapturingSnapshot,
-    handleCaptureSnapshot,
     renameAttachmentMutation,
     reResolveMetadataMutation,
   };

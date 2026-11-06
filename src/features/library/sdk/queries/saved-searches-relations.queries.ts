@@ -4,12 +4,14 @@ import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tansta
 import { toast } from 'sonner';
 import {
   ItemsService,
-  SavedSearchesService,
   RelationsService,
+} from '../clients/items.client';
+import {
+  SavedSearchesService,
   type CreateSavedSearchInput,
   type UpdateSavedSearchInput,
   type SavedSearchConditionGroup,
-} from '@/features/library/sdk';
+} from '../clients/catalog-entities.client';
 import type {
   Item,
   SavedSearchScopeOptions,
@@ -18,13 +20,14 @@ import type {
   CreatorRoleChange,
   TypeConversionPreview,
 } from '@/features/library/domain/types/core.types';
-import { mapBackendItem } from '@/features/library/domain/metadata-mapper';
+import { mapBackendItem } from '@/features/library/domain/metadata.mapper';
 import {
   itemKeys,
   savedSearchKeys,
   relationKeys,
   normalizeScopeId,
   waitForBootstrapCache,
+  getReaderBootstrapScope,
 } from '@/features/library/sdk/query-keys';
 import {
   patchItemAcrossScopeCaches,
@@ -42,7 +45,7 @@ export type {
 
 // SAVED SEARCHES QUERY HOOKS
 
-export const invalidateSavedSearches = (qc: QueryClient, scopeId?: string) => {
+const invalidateSavedSearches = (qc: QueryClient, scopeId?: string) => {
   qc.invalidateQueries({ queryKey: savedSearchKeys.all(normalizeScopeId(scopeId)) });
 };
 
@@ -169,7 +172,6 @@ export function useSavedSearches(
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
-    isPreviewing: previewMutation.isPending,
     refetch: savedSearchesQuery.refetch,
   };
 }
@@ -219,10 +221,17 @@ export function useRelations(
 
   const queryClient = useQueryClient();
   const effectiveItemId = itemId || '';
+  const cacheKey = relationKeys.all(scopeId, effectiveItemId);
 
   const relationsQuery = useQuery({
-    queryKey: relationKeys.all(scopeId, effectiveItemId),
-    queryFn: () => RelationsService.getRelated(scopeId || '', effectiveItemId),
+    queryKey: cacheKey,
+    queryFn: async () => {
+      const seeded = await waitForBootstrapCache<
+        Awaited<ReturnType<typeof RelationsService.getRelated>>
+      >(queryClient, getReaderBootstrapScope(scopeId), cacheKey);
+      if (seeded !== undefined) return seeded;
+      return RelationsService.getRelated(scopeId || '', effectiveItemId);
+    },
     enabled: explicitEnabled && Boolean(effectiveItemId && effectiveItemId !== 'user'),
     select: (data) => ({
       items: data.relatedItems || [],
@@ -312,7 +321,6 @@ export function useRelations(
     link: linkMutation.mutateAsync,
     unlink: unlinkMutation.mutateAsync,
     isLinking: linkMutation.isPending,
-    isUnlinking: unlinkMutation.isPending,
   };
 }
 
@@ -348,36 +356,6 @@ export function useItemTypeConversionPreviewQuery(
 export function useItemTypeConversion(scopeId?: string) {
   const queryClient = useQueryClient();
   const effectiveScopeId = normalizeScopeId(scopeId);
-
-  const previewMutation = useMutation({
-    mutationFn: ({
-      itemId,
-      targetType,
-      retainUnmappedInExtra = true,
-    }: {
-      itemId: string;
-      targetType: string;
-      retainUnmappedInExtra?: boolean;
-    }) =>
-      ItemsService.previewConvertType(
-        effectiveScopeId,
-        itemId,
-        targetType,
-        retainUnmappedInExtra,
-      ).then(
-        (res: unknown): TypeConversionPreview =>
-          (res as { preview?: TypeConversionPreview; data?: TypeConversionPreview })
-            ?.preview ??
-          (res as { data?: TypeConversionPreview })?.data ??
-          (res as TypeConversionPreview),
-      ),
-    onError: (err: Error) => {
-      toast.error('Preview failed', {
-        description: err.message || 'Failed to preview type conversion.',
-        id: 'type-conversion-preview',
-      });
-    },
-  });
 
   const convertMutation = useMutation({
     mutationFn: ({
@@ -440,12 +418,8 @@ export function useItemTypeConversion(scopeId?: string) {
   });
 
   return {
-    previewAsync: previewMutation.mutateAsync,
     convertAsync: convertMutation.mutateAsync,
-    isPreviewing: previewMutation.isPending,
     isConverting: convertMutation.isPending,
-    previewData: previewMutation.data as TypeConversionPreview | undefined,
-    conversionResult: convertMutation.data,
   };
 }
 

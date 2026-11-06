@@ -1,9 +1,7 @@
 import type { Item } from '@/features/library/domain/types/core.types';
-import { isValidValue, stripLatexMarkup } from '@/features/library/domain/metadata-sanitizers';
-import { ALLOWED_ITEM_EXTRA_LINE_KEYS, SYSTEM_INTERNAL_METADATA_KEYS, INTERNAL_AND_DEDICATED_METADATA_KEYS, DEDICATED_FIELDS_BY_TYPE_MAP, EMPTY_DEDICATED_FIELDS_SET, EXTRA_KEY_ALIASES, getMatchingExtraKeyNorms, collectUnmappedFieldsSet, isDedicatedFieldForType } from './metadata-extra.constants';
-import { getPublicationVenue, getItemDisplayTitle, getItemDisplayDate } from '@/features/library/domain/metadata-extra';
-import { parseCreatorName } from '@/features/library/domain/creators';
-import { foldDiacritics } from '@/features/library/domain/citations';
+import { isValidValue, stripLatexMarkup, foldDiacritics } from '@/features/library/domain/metadata-sanitizers.domain';
+import { ALLOWED_ITEM_EXTRA_LINE_KEYS, SYSTEM_INTERNAL_METADATA_KEYS, INTERNAL_AND_DEDICATED_METADATA_KEYS, DEDICATED_FIELDS_BY_TYPE_MAP, EMPTY_DEDICATED_FIELDS_SET, EXTRA_KEY_ALIASES, getMatchingExtraKeyNorms, collectUnmappedFieldsSet, isDedicatedFieldForType, getPublicationVenue, getItemDisplayTitle, getItemDisplayDate } from './metadata-extra.constants';
+import { parseCreatorName } from '@/features/library/domain/creators.domain';
 
 export function isSystemInternalExtraKey(rawKey: string): boolean {
   const trimmed = rawKey.trim();

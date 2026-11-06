@@ -2,12 +2,13 @@
 
 import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { ItemsService, StateService } from '@/features/library/sdk';
-import { getMappedItemMeta, hasExplicitUserStateInPayload, preserveMappedItemFlags, setMappedItemMeta } from '@/features/library/domain/metadata-mapper';
+import { ItemsService } from '../clients/items.client';
+import { StateService } from '../clients/catalog-entities.client';
+import { getMappedItemMeta, hasExplicitUserStateInPayload, preserveMappedItemFlags, setMappedItemMeta } from '@/features/library/domain/metadata.mapper';
 import type { Item, CreateItemDTO, UpdateItemDTO } from '@/features/library/domain/types/core.types';
 import { itemKeys, libraryKeys, invalidateCollections, normalizeScopeId } from '@/features/library/sdk/query-keys';
-import { mergeCachedItemWithPatch, preserveCachedUserReadingState, patchItemAcrossScopeCaches, resolveCachedItemFromScope, chunkUniqueIds, invalidateLibraryCatalogDependencies } from './cache-patcher';
-import { doesItemMatchSystemView, isItemStarred, isItemTrashed, isItemInMyPublications, isItemUnfiled, isItemRetracted } from '@/features/library/domain/system-views.policy';
+import { mergeCachedItemWithPatch, preserveCachedUserReadingState, patchItemAcrossScopeCaches, resolveCachedItemFromScope, chunkUniqueIds, invalidateLibraryCatalogDependencies, isMetadataOnlyPatch } from './cache-patcher';
+import { isItemStarred } from '@/features/library/domain/system-views.policy';
 
 export function resolveCachedItemVersion(
   queryClient: QueryClient,
@@ -23,7 +24,7 @@ export function resolveCachedItemVersion(
   return typeof cached?.version === 'number' ? cached.version : undefined;
 }
 
-export function buildServerSuccessCachePatch(
+function buildServerSuccessCachePatch(
   serverItem: Partial<Item> | undefined,
   rawData: Partial<UpdateItemDTO>,
   existingCached: Item | null | undefined,
@@ -340,7 +341,7 @@ export function useImportFromUserMutation(scopeId?: string) {
   });
 }
 
-export type CreateLibraryItemMutationInput =
+type CreateLibraryItemMutationInput =
   | (Partial<Item> & Partial<CreateItemDTO> & { collectionId?: string; silent?: boolean })
   | {
       collectionId?: string;
@@ -443,12 +444,38 @@ export function useReResolveItemMetadataMutation(scopeId?: string) {
         itemsList: true,
         counts: true,
       });
+      if (res?.success === false) {
+        toast.warning('Could not resolve metadata from academic mirrors', {
+          description:
+            res.message ||
+            'No matching authoritative record was found for this item.',
+          id: 'item-re-resolve',
+        });
+        return;
+      }
+      const updatedCount = Array.isArray(res?.updatedFields)
+        ? res.updatedFields.length
+        : 0;
       if (res?.oaPdfAttached) {
         toast.success('Metadata refreshed & Open Access PDF attached', {
+          description:
+            updatedCount > 0
+              ? `Updated ${updatedCount} field${updatedCount === 1 ? '' : 's'} and linked Open Access PDF.`
+              : 'Open Access PDF was discovered and attached to this item.',
+          id: 'item-re-resolve',
+        });
+      } else if (updatedCount === 0 && res?.message) {
+        toast.info('Metadata is already up to date', {
+          description: res.message,
           id: 'item-re-resolve',
         });
       } else {
         toast.success('Metadata refreshed from academic mirrors', {
+          ...(updatedCount > 0
+            ? {
+                description: `Updated ${updatedCount} field${updatedCount === 1 ? '' : 's'}.`,
+              }
+            : {}),
           id: 'item-re-resolve',
         });
       }
@@ -509,160 +536,3 @@ export function useSetMyPublicationMutation(scopeId?: string) {
 }
 
 export { isItemStarred };
-
-export function isTrashQueryKey(queryKey: readonly unknown[]): boolean {
-  if (queryKey[2] === 'trash' || queryKey[3] === 'trash') return true;
-  const params = queryKey[3];
-  if (params && typeof params === 'object' && (params as { view?: unknown }).view === 'trash') {
-    return true;
-  }
-  return false;
-}
-
-function extractNormalizedItemTags(item: Item): string[] {
-  if (!Array.isArray(item.tags)) return [];
-  return item.tags
-    .map((t) => {
-      if (typeof t === 'string') return t.trim().toLowerCase();
-      if (t && typeof t === 'object' && 'name' in t && typeof (t as { name?: unknown }).name === 'string') {
-        return ((t as { name: string }).name || '').trim().toLowerCase();
-      }
-      return '';
-    })
-    .filter(Boolean);
-}
-
-export function doesItemMatchQueryFilter(
-  item: Item,
-  params: Record<string, unknown> | undefined,
-): boolean {
-  if (!params || typeof params !== 'object') return true;
-  const view = typeof params.view === 'string' ? params.view : undefined;
-  const rec = item as Record<string, unknown>;
-
-  if (view) {
-    if (!doesItemMatchSystemView(rec, view)) return false;
-    if (view === 'trash') return true;
-  } else if (isItemTrashed(rec)) {
-    return false;
-  }
-  if (Boolean(params.starred) && !isItemStarred(rec)) return false;
-  if (Boolean(params.unfiled) && !isItemUnfiled(rec)) return false;
-
-  const collectionId = typeof params.collectionId === 'string' ? params.collectionId : undefined;
-  if (collectionId) {
-    const colIds = Array.isArray(item.collectionIds) ? item.collectionIds : [];
-    const singleColId = (item as { collectionId?: string }).collectionId;
-    const expandedIds = Array.isArray(params.collectionIds) ? (params.collectionIds as string[]) : null;
-    if (expandedIds && expandedIds.length > 0) {
-      if (!colIds.some((c) => expandedIds.includes(c)) && (!singleColId || !expandedIds.includes(singleColId))) return false;
-    } else if (params.includeSubcollections === false) {
-      if (!colIds.includes(collectionId) && singleColId !== collectionId) return false;
-    } else if (colIds.length === 0 && !singleColId) {
-      return false;
-    }
-  }
-
-  if (typeof params.tag === 'string' && params.tag.trim()) {
-    const requiredTags = params.tag
-      .split(',')
-      .map((t) => t.trim().toLowerCase())
-      .filter(Boolean);
-    if (requiredTags.length > 0 && Array.isArray(item.tags)) {
-      const itemTagSet = new Set(extractNormalizedItemTags(item));
-      if (!requiredTags.every((req) => itemTagSet.has(req))) return false;
-    }
-  }
-
-  if (typeof params.itemType === 'string' && params.itemType.trim()) {
-    const targetType = params.itemType.trim();
-    const currentType = (item.itemType || (rec.type as string | undefined) || '').trim();
-    if (currentType && currentType !== targetType) return false;
-  }
-
-  if (typeof params.readStatus === 'string' && params.readStatus.trim()) {
-    const targetStatus = params.readStatus.trim().toLowerCase();
-    const mappedTarget = targetStatus === 'read' ? 'completed' : targetStatus;
-    const currentStatus = (item.readStatus || (item.isRead ? 'completed' : 'unread')).toLowerCase();
-    if (currentStatus !== mappedTarget) return false;
-  }
-
-  return true;
-}
-
-export const MEMBERSHIP_MUTATION_KEYS = new Set([
-  'isStarred',
-  'deletedAt',
-  'status',
-  'readStatus',
-  'isRead',
-  'collectionId',
-  'collectionIds',
-  'isMyPublication',
-  'isInMyPublications',
-  'isRetracted',
-  'retractionStatus',
-  'itemType',
-]);
-
-export function doesPatchAffectMembership(patch?: Record<string, unknown> | null): boolean {
-  if (!patch || typeof patch !== 'object') return false;
-  for (const key of Object.keys(patch)) {
-    if (MEMBERSHIP_MUTATION_KEYS.has(key)) return true;
-  }
-  return false;
-}
-
-export function isMetadataOnlyPatch(patch?: Record<string, unknown> | null): boolean {
-  if (!patch || typeof patch !== 'object') return false;
-  const keys = Object.keys(patch);
-  if (keys.length === 0) return true;
-  return !keys.some((k) => MEMBERSHIP_MUTATION_KEYS.has(k) || k === 'tags');
-}
-
-const MEMBERSHIP_STATE_EXTRACTORS: ReadonlyArray<(it: Record<string, unknown>) => unknown> = [
-  isItemStarred,
-  isItemTrashed,
-  isItemInMyPublications,
-  isItemRetracted,
-  (it) => (it as { status?: string }).status ?? null,
-  (it) => (it as { readStatus?: string }).readStatus ?? null,
-  (it) => (it as { itemType?: string }).itemType ?? null,
-  (it) => (it as { collectionId?: string }).collectionId ?? null,
-];
-
-export function hasMembershipFieldsChanged(
-  oldItem: Item | null,
-  updatedItem: Item,
-  membershipPatch?: Record<string, unknown>,
-): boolean {
-  if (membershipPatch && !doesPatchAffectMembership(membershipPatch)) {
-    return false;
-  }
-  const nextRec = updatedItem as Record<string, unknown>;
-  const nextCols = Array.isArray(updatedItem.collectionIds) ? updatedItem.collectionIds : [];
-  if (!oldItem) {
-    return (
-      nextCols.length > 0 ||
-      Boolean((updatedItem as { collectionId?: string }).collectionId) ||
-      isItemStarred(nextRec) ||
-      isItemTrashed(nextRec) ||
-      isItemInMyPublications(nextRec) ||
-      isItemRetracted(nextRec)
-    );
-  }
-  const oldRec = oldItem as Record<string, unknown>;
-  if (MEMBERSHIP_STATE_EXTRACTORS.some((fn) => fn(oldRec) !== fn(nextRec))) {
-    return true;
-  }
-  const oldCols = Array.isArray(oldItem.collectionIds) ? oldItem.collectionIds : [];
-  if (oldCols.length !== nextCols.length) return true;
-  const oldSet = new Set(oldCols);
-  if (nextCols.some((c) => !oldSet.has(c))) return true;
-
-  const oldTags = extractNormalizedItemTags(oldItem);
-  const nextTags = extractNormalizedItemTags(updatedItem);
-  if (oldTags.length !== nextTags.length) return true;
-  const oldTagSet = new Set(oldTags);
-  return nextTags.some((t) => !oldTagSet.has(t));
-}

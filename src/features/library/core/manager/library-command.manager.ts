@@ -3,20 +3,21 @@
 import { create } from 'zustand';
 import { toast } from 'sonner';
 import type { Item } from '@/features/library/domain/types/core.types';
-import { extractExplicitUserMergeOverrides } from '@/features/library/domain/diff';
-import { notifyDraftCacheCleared } from '@/features/library/sdk';
+import { extractExplicitUserMergeOverrides } from '@/features/library/domain/diff.domain';
+import { notifyDraftCacheCleared } from '@/features/library/sdk/query-keys';
+import { registerLibraryScopeChangeListener } from '@/features/library/core/store/library-ui.store';
 import {
   cloneSnapshotValue,
   buildInverseMetadataPatch,
   PRE_CONVERSION_BIBLIOGRAPHIC_SCALAR_KEYS,
   buildPreConversionSnapshot,
-} from '../../domain/item-field-schema';
+} from '../../domain/item-field-schema.domain';
 
 export { cloneSnapshotValue, buildInverseMetadataPatch, PRE_CONVERSION_BIBLIOGRAPHIC_SCALAR_KEYS, buildPreConversionSnapshot };
 
 // ── LibraryCommand & Concrete Command Factories ──────────────────────────────
 
-export interface LibraryCommand<TResult = unknown> {
+interface LibraryCommand<TResult = unknown> {
   readonly id: string;
   readonly description: string;
   readonly timestamp: number;
@@ -44,7 +45,7 @@ function defineLibraryCommand<TResult = void>(
   };
 }
 
-export interface TrashCommandOptions {
+interface TrashCommandOptions {
   itemIds: string[]; itemTitle?: string;
   deleteMutation: { mutateAsync: (ids: string[]) => Promise<unknown> };
   restoreMutation: { mutateAsync: (ids: string[]) => Promise<unknown> };
@@ -61,7 +62,7 @@ export function createTrashCommand(options: TrashCommandOptions): LibraryCommand
   );
 }
 
-export interface RestoreCommandOptions {
+interface RestoreCommandOptions {
   itemIds: string[]; itemTitle?: string;
   restoreMutation: { mutateAsync: (ids: string[]) => Promise<unknown> };
   deleteMutation: { mutateAsync: (ids: string[]) => Promise<unknown> };
@@ -79,7 +80,7 @@ export function createRestoreCommand(options: RestoreCommandOptions): LibraryCom
   );
 }
 
-export interface MoveItemsCommandOptions {
+interface MoveItemsCommandOptions {
   itemIds: string[]; sourceCollectionId: string | null; targetCollectionId: string | null;
   targetCollectionName?: string; previousCollectionsByItem?: Map<string, string[]>;
   onUndoMove?: () => Promise<void>;
@@ -152,7 +153,7 @@ export function createMoveItemsCommand(options: MoveItemsCommandOptions): Librar
   );
 }
 
-export interface ToggleStarCommandOptions {
+interface ToggleStarCommandOptions {
   itemId: string; itemTitle?: string; newStarred: boolean;
   toggleStarMutation: { mutateAsync: (args: { id: string; isStarred: boolean }) => Promise<unknown> };
   onExecuted?: () => void; onUndone?: () => void;
@@ -168,7 +169,7 @@ export function createToggleStarCommand(options: ToggleStarCommandOptions): Libr
   );
 }
 
-export interface UpdateItemMetadataCommandParams {
+interface UpdateItemMetadataCommandParams {
   itemId: string; description?: string; forwardPatch: Partial<Item>; inversePatch: Partial<Item>;
   applyPatch: (itemId: string, patch: Partial<Item>) => Promise<unknown>;
 }
@@ -191,7 +192,7 @@ function extractResultItem(res: unknown): Item | undefined {
   return undefined;
 }
 
-export interface ConvertItemTypeCommandParams {
+interface ConvertItemTypeCommandParams {
   itemId: string;
   itemTitle?: string;
   sourceItem: Partial<Item>;
@@ -257,7 +258,7 @@ export function createConvertItemTypeCommand(params: ConvertItemTypeCommandParam
   );
 }
 
-export interface MergeDuplicatesCommandParams {
+interface MergeDuplicatesCommandParams {
   primaryItem: Item;
   duplicateIdsToDelete: string[];
   groupKey?: string;
@@ -313,7 +314,7 @@ export function createMergeDuplicatesCommand(params: MergeDuplicatesCommandParam
   );
 }
 
-export interface BatchDetachCommandOptions {
+interface BatchDetachCommandOptions {
   collectionId: string;
   collectionName?: string;
   itemIds: string[];
@@ -340,7 +341,7 @@ export function createBatchDetachCommand(options: BatchDetachCommandOptions): Li
   );
 }
 
-export interface BatchAssignCommandOptions {
+interface BatchAssignCommandOptions {
   collectionId: string;
   collectionName?: string;
   itemIds: string[];
@@ -373,13 +374,13 @@ export function createBatchAssignCommand(options: BatchAssignCommandOptions): Li
   );
 }
 
-export interface BatchTagToggleItemSnapshot {
+interface BatchTagToggleItemSnapshot {
   itemId: string;
   previousTags: string[];
   nextTags: string[];
 }
 
-export interface BatchTagToggleCommandOptions {
+interface BatchTagToggleCommandOptions {
   tagName: string;
   action: 'add' | 'remove';
   snapshots: BatchTagToggleItemSnapshot[];
@@ -419,7 +420,7 @@ export function createBatchTagToggleCommand(options: BatchTagToggleCommandOption
   );
 }
 
-export interface AddNoteCommandOptions {
+interface AddNoteCommandOptions {
   itemId?: string | null;
   contentMd: string;
   title?: string;
@@ -463,7 +464,7 @@ function resolveRemappedNoteId(noteId: string): string {
   return current;
 }
 
-export function registerRecreatedNoteIdRemap(
+function registerRecreatedNoteIdRemap(
   oldNoteId: string,
   newNoteId: string,
   newVersion?: number,
@@ -475,7 +476,7 @@ export function registerRecreatedNoteIdRemap(
   }
 }
 
-export interface UpdateNoteCommandOptions {
+interface UpdateNoteCommandOptions {
   noteId: string;
   initialVersion?: number;
   previousContentMd: string;
@@ -509,7 +510,7 @@ export function createUpdateNoteCommand(options: UpdateNoteCommandOptions): Libr
   );
 }
 
-export interface DeleteNoteCommandOptions {
+interface DeleteNoteCommandOptions {
   noteId: string;
   version?: number;
   itemId?: string | null;
@@ -557,7 +558,7 @@ export function createDeleteNoteCommand(options: DeleteNoteCommandOptions): Libr
 
 // ── LibraryCommandStore ──────────────────────────────────────────────────────
 
-export interface LibraryCommandState {
+interface LibraryCommandState {
   undoStack: LibraryCommand[];
   redoStack: LibraryCommand[];
   isExecuting: boolean;
@@ -567,7 +568,7 @@ export interface LibraryCommandState {
   currentScopeId: string | null;
 }
 
-export interface LibraryCommandActions {
+interface LibraryCommandActions {
   executeCommand: <T>(command: LibraryCommand<T>, options?: { silentToast?: boolean }) => Promise<T>;
   pushExecutedCommand: <T>(command: LibraryCommand<T>, options?: { silentToast?: boolean }) => void;
   undo: (expectedCommandId?: string) => Promise<boolean>;
@@ -739,3 +740,7 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
     set({ currentScopeId: normalized });
   },
 }));
+
+registerLibraryScopeChangeListener(() => {
+  useLibraryCommandStore.getState().clearHistory();
+});

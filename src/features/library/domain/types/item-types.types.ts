@@ -9,8 +9,6 @@ import {
   updateCachedFields,
   rebuildAllSchemaFieldKeys,
   humanizeFieldName,
-} from './item-fields.constants';
-import {
   SCHEMA_VERSION,
   SCHEMA_SOURCE,
   ALL_ITEM_TYPES_FLAT,
@@ -24,6 +22,8 @@ import {
   CSL_TYPE_MAP,
   DEFAULT_BIBLIOGRAPHIC_FIELDS,
   ITEM_TYPE_CREATOR_ROLES_MAP,
+  type SchemaFieldDefinition,
+  type ItemTypeCategoryGroup,
 } from './item-type-mappings.constants';
 
 export {
@@ -45,19 +45,9 @@ export {
   CSL_TYPE_MAP,
   DEFAULT_BIBLIOGRAPHIC_FIELDS,
   ITEM_TYPE_CREATOR_ROLES_MAP,
+  type SchemaFieldDefinition,
+  type ItemTypeCategoryGroup,
 };
-
-export interface SchemaFieldDefinition {
-  field: string;
-  label: string;
-  placeholder?: string;
-  type: 'text' | 'textarea' | 'date' | 'number' | 'url';
-  category?: 'core' | 'venue' | 'publication' | 'identifiers' | 'archive' | 'extra';
-  mono?: boolean;
-  /** Canonical semantic field supplied by Zotero Schema v42 baseField mappings */
-  baseField?: string;
-  order?: number;
-}
 
 export interface SchemaCreatorTypeDefinition {
   creatorType: string;
@@ -66,7 +56,6 @@ export interface SchemaCreatorTypeDefinition {
 }
 
 export type ItemFieldDefinition = SchemaFieldDefinition;
-export type CreatorTypeDefinition = SchemaCreatorTypeDefinition;
 
 export interface SchemaItemTypeDefinition {
   itemType: string;
@@ -77,12 +66,6 @@ export interface SchemaItemTypeDefinition {
   fields: SchemaFieldDefinition[];
   isBibliographic?: boolean;
   isSpecial?: boolean;
-}
-
-export interface ItemTypeCategoryGroup {
-  id: string;
-  label: string;
-  types: { value: string; label: string }[];
 }
 
 export interface RegistryItemTypeDefinition {
@@ -450,16 +433,6 @@ export function getItemTypeDefinition(itemType?: string | null): SchemaItemTypeD
   };
 
   return fallbackDef;
-}
-
-/**
- * Checks whether a creator role is valid for a given item type per Zotero Schema v42.
- */
-export function isValidCreatorType(itemType: string, creatorType: string): boolean {
-  const canonical = normalizeCanonicalItemType(itemType);
-  const def = LIBRARY_ITEM_TYPES[canonical];
-  if (!def) return creatorType === 'author' || creatorType === 'contributor' || creatorType === 'editor';
-  return def.creatorTypes.some((c) => c.creatorType === creatorType);
 }
 
 /**

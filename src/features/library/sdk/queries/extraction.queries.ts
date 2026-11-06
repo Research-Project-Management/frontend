@@ -3,17 +3,68 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  libraryServices,
+  CitationService,
+  AttachmentsService,
   UploadService,
   ExportsService,
-} from "@/features/library/sdk";
+} from "../clients/attachments-annotations.client";
+import { resolveLibraryUrl, resolveLibraryRawPath } from "../clients/http.client";
 import type { ItemAttachment, CslStyle } from "@/features/library/domain/types/core.types";
+
+export type UploadedMultipartFile = Awaited<ReturnType<typeof UploadService.uploadMultipart>>;
+
+export function formatCitationItem(
+  scopeId: string | undefined,
+  itemId: string,
+  style?: CslStyle,
+) {
+  return CitationService.formatCitation(scopeId, itemId, style);
+}
+
+export function batchFormatCitations(
+  scopeId: string | undefined,
+  itemIds: string[],
+  style?: CslStyle,
+) {
+  return CitationService.batchFormat(scopeId, itemIds, style);
+}
+
+export function exportLibraryBibliography(
+  scopeId: string | undefined,
+  params: Parameters<typeof ExportsService.exportLibrary>[1],
+) {
+  return ExportsService.exportLibrary(scopeId, params);
+}
+
+export function uploadLibraryFileMultipart(
+  scopeId: string | undefined,
+  file: File,
+  options?: Parameters<typeof UploadService.uploadMultipart>[2],
+) {
+  return UploadService.uploadMultipart(scopeId, file, options);
+}
+
+export function resolveAttachmentDownloadUrl(
+  fileId: string,
+  scopeId?: string,
+): string {
+  return resolveLibraryUrl(
+    "extraction",
+    `/files/${encodeURIComponent(fileId)}/content`,
+    scopeId,
+  );
+}
+
+export function resolveAttachmentRawPath(rawUrl: string): string {
+  return resolveLibraryRawPath(rawUrl, "extraction");
+}
 import {
   itemKeys,
   libraryKeys,
   attachmentKeys,
   citationKeys,
   exportKeys,
+  readerQueryKeys,
   normalizeScopeId,
 } from "@/features/library/sdk/query-keys";
 import { invalidateLibraryCatalogDependencies } from "./cache-patcher";
@@ -25,7 +76,7 @@ export { attachmentKeys, citationKeys, exportKeys };
 export function useCitationStyles(scopeId?: string, options?: { enabled?: boolean }) {
   const query = useQuery({
     queryKey: citationKeys.styles(scopeId),
-    queryFn: () => libraryServices.citations.getStyles(scopeId),
+    queryFn: () => CitationService.getStyles(scopeId),
     enabled: options?.enabled ?? true,
     staleTime: 1000 * 60 * 60 * 24,
   });
@@ -57,7 +108,7 @@ export function useCslCitation(
 ) {
   return useQuery({
     queryKey: citationKeys.item(scopeId, itemId, style, index),
-    queryFn: () => libraryServices.citations.formatCitation(scopeId, itemId || '', style, index),
+    queryFn: () => CitationService.formatCitation(scopeId, itemId || '', style, index),
     enabled: Boolean(itemId),
     staleTime: 1000 * 60 * 30,
   });
@@ -71,7 +122,7 @@ export function useSearchCslStyles(
   const effectiveScope = normalizeScopeId(options?.scopeId);
   return useQuery({
     queryKey: [...citationKeys.all, 'styles-search', effectiveScope, query, limit] as const,
-    queryFn: () => libraryServices.citations.searchStyles(query, limit, effectiveScope),
+    queryFn: () => CitationService.searchStyles(query, limit, effectiveScope),
     enabled: options?.enabled ?? true,
     staleTime: 1000 * 60 * 60,
   });
@@ -87,7 +138,7 @@ export function useExportItemCitationQuery(
   return useQuery({
     queryKey: [...exportKeys.all, 'item-citation', effectiveScope, itemId || '', format] as const,
     queryFn: () =>
-      libraryServices.exports.exportLibrary(effectiveScope, {
+      ExportsService.exportLibrary(effectiveScope, {
         format,
         itemIds: itemId ? [itemId] : [],
       }),
@@ -113,13 +164,13 @@ export function useAttachments(
   const attachmentsQuery = useQuery({
     queryKey: attachmentKeys.byItem(scopeId, itemId || ""),
     queryFn: () =>
-      libraryServices.attachments.list(scopeId || "", itemId || ""),
+      AttachmentsService.list(scopeId || "", itemId || ""),
     enabled: Boolean(itemId),
   });
 
   const addMutation = useMutation({
     mutationFn: (data: Partial<ItemAttachment>) =>
-      libraryServices.attachments.create(
+      AttachmentsService.create(
         scopeId || "",
         itemId || "",
         data as Record<string, unknown>,
@@ -128,6 +179,11 @@ export function useAttachments(
       queryClient.invalidateQueries({
         queryKey: attachmentKeys.byItem(scopeId, itemId),
       });
+      if (itemId) {
+        queryClient.invalidateQueries({
+          queryKey: readerQueryKeys.item(scopeId, itemId),
+        });
+      }
       invalidateLibraryCatalogDependencies(queryClient, scopeId, {
         itemId,
         itemsList: true,
@@ -151,7 +207,7 @@ export function useAttachments(
       attachmentId: string;
       itemId?: string;
     }) => {
-      await libraryServices.attachments.delete(scopeId || "", attachmentId);
+      await AttachmentsService.delete(scopeId || "", attachmentId);
       return { itemId: callerItemId };
     },
     onSuccess: (result) => {
@@ -159,6 +215,11 @@ export function useAttachments(
       queryClient.invalidateQueries({
         queryKey: attachmentKeys.byItem(scopeId, effectiveItemId),
       });
+      if (effectiveItemId) {
+        queryClient.invalidateQueries({
+          queryKey: readerQueryKeys.item(scopeId, effectiveItemId),
+        });
+      }
       invalidateLibraryCatalogDependencies(queryClient, scopeId, {
         itemId: effectiveItemId,
         itemsList: true,
@@ -174,34 +235,9 @@ export function useAttachments(
     },
   });
 
-  const captureSnapshotMutation = useMutation({
-    mutationFn: (url?: string) =>
-      libraryServices.attachments.captureSnapshot(
-        scopeId || "",
-        itemId || "",
-        url,
-      ),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: attachmentKeys.byItem(scopeId, itemId),
-      });
-      invalidateLibraryCatalogDependencies(queryClient, scopeId, {
-        itemId,
-        itemsList: true,
-      });
-      toast.success("Web Snapshot captured", { id: "snapshot-mutation" });
-    },
-    onError: (err: Error) => {
-      toast.error("Failed to capture snapshot", {
-        description: err.message || "Please verify the URL is accessible.",
-        id: "snapshot-mutation",
-      });
-    },
-  });
-
   const setPrimaryMutation = useMutation({
     mutationFn: (attachmentId: string) =>
-      libraryServices.attachments.setPrimary(
+      AttachmentsService.setPrimary(
         scopeId || "",
         itemId || "",
         attachmentId,
@@ -210,6 +246,11 @@ export function useAttachments(
       queryClient.invalidateQueries({
         queryKey: attachmentKeys.byItem(scopeId, itemId),
       });
+      if (itemId) {
+        queryClient.invalidateQueries({
+          queryKey: readerQueryKeys.item(scopeId, itemId),
+        });
+      }
       invalidateLibraryCatalogDependencies(queryClient, scopeId, {
         itemId,
         itemsList: true,
@@ -232,11 +273,9 @@ export function useAttachments(
     error: attachmentsQuery.error,
     add: addMutation.mutateAsync,
     remove: deleteMutation.mutateAsync,
-    captureSnapshot: captureSnapshotMutation.mutateAsync,
     setPrimary: setPrimaryMutation.mutateAsync,
     isAdding: addMutation.isPending,
     isDeleting: deleteMutation.isPending,
-    isCapturingSnapshot: captureSnapshotMutation.isPending,
     isSettingPrimary: setPrimaryMutation.isPending,
   };
 }
@@ -255,7 +294,7 @@ export function useRenameAttachment(scopeId?: string) {
       filename?: string;
       pattern?: string;
     }) =>
-      libraryServices.attachments.rename(effectiveScope, attachmentId, {
+      AttachmentsService.rename(effectiveScope, attachmentId, {
         filename,
         pattern,
       }),
@@ -266,6 +305,9 @@ export function useRenameAttachment(scopeId?: string) {
       if (res?.attachment?.itemId) {
         queryClient.invalidateQueries({
           queryKey: libraryKeys.attachments(effectiveScope, res.attachment.itemId),
+        });
+        queryClient.invalidateQueries({
+          queryKey: readerQueryKeys.item(effectiveScope, res.attachment.itemId),
         });
       }
       queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
@@ -292,7 +334,7 @@ export function useBatchRenameAttachmentsMutation(scopeId?: string) {
       itemIds?: string[];
       attachmentIds?: string[];
       pattern?: string;
-    }) => libraryServices.attachments.batchRename(effectiveScope, dto),
+    }) => AttachmentsService.batchRename(effectiveScope, dto),
     onSuccess: (res) => {
       queryClient.invalidateQueries({
         queryKey: libraryKeys.attachmentsAll(effectiveScope),

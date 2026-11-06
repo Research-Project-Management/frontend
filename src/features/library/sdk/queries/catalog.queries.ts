@@ -2,18 +2,19 @@
 
 import { useRef, useEffect } from 'react';
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
-import { ItemsService, SearchService, type ItemTypesResponse } from '@/features/library/sdk';
+import { ItemsService, type ItemTypesResponse } from '../clients/items.client';
+import { SearchService } from '../clients/catalog-entities.client';
 import type {
   Item, Collection, CursorPaginationMeta, ItemQueryParams, SearchFacets,
 } from '@/features/library/domain/types/core.types';
 import { updateLibrarySchemaRegistry } from '@/features/library/domain/types/core.types';
 import { ALL_ITEM_TYPES_FLAT } from '@/features/library/domain/types/item-type-mappings.constants';
-import { getDescendantCollectionIds } from '@/features/library/domain/collection-tree';
+import { getDescendantCollectionIds } from '@/features/library/domain/collection-tree.domain';
 import {
   itemKeys, libraryKeys, collectionKeys, tagKeys, noteKeys, savedSearchKeys, relationKeys, feedKeys,
   invalidateCollections, normalizeScopeId, prepareBootstrapScope, registerBootstrapPromise, waitForBootstrapCache,
+  getReaderBootstrapScope, notifyServerFeedsHydrated,
 } from '@/features/library/sdk/query-keys';
-import { notifyServerFeedsHydrated } from '@/features/library/sdk';
 import { mapServerFeedSubscriptions } from '@/features/library/domain/feed-parser.domain';
 import {
   resolveCachedItemVersion, useUpdateLibraryItemMutation, useToggleStarItemMutation,
@@ -28,12 +29,18 @@ import {
 } from './cache-patcher';
 
 export {
+  type ItemTypesResponse,
   itemKeys, collectionKeys, tagKeys, noteKeys, savedSearchKeys, relationKeys, invalidateCollections,
+  normalizeScopeId,
   chunkUniqueIds, extractItemFromCacheData, mergeCachedItemWithPatch, patchItemInCacheData,
   patchSingleItemCache, patchItemAcrossScopeCaches, removeItemsFromCacheData, removeItemsFromScopeCaches,
   invalidateLibraryCatalogDependencies, invalidateLibraryScopeCatalog, resolveCachedItemFromScope,
   useLibraryCacheSynchronizer,
 };
+
+export function fetchLibraryItemById(scopeId: string | undefined, itemId: string) {
+  return ItemsService.getById(scopeId, itemId);
+}
 
 function derivePlaceholderItems(
   queryClient: QueryClient,
@@ -238,11 +245,17 @@ export function useLibraryCountsQuery(
   return useQuery({
     queryKey: cacheKey,
     queryFn: async () => {
-      const seeded = await waitForBootstrapCache<Awaited<ReturnType<typeof ItemsService.getCounts>>>(
-        queryClient,
-        targetScope,
-        cacheKey,
-      );
+      const seeded =
+        (await waitForBootstrapCache<Awaited<ReturnType<typeof ItemsService.getCounts>>>(
+          queryClient,
+          targetScope,
+          cacheKey,
+        )) ??
+        (await waitForBootstrapCache<Awaited<ReturnType<typeof ItemsService.getCounts>>>(
+          queryClient,
+          getReaderBootstrapScope(targetScope),
+          cacheKey,
+        ));
       if (seeded !== undefined) return seeded;
       return ItemsService.getCounts(targetScope);
     },
@@ -357,7 +370,7 @@ export function useViewItems(
   });
 }
 
-export interface UseItemsOptions {
+interface UseItemsOptions {
   projectId?: string;
   scopeId?: string;
   collectionId?: string;
@@ -413,7 +426,6 @@ export function useItems(optionsOrScope: string | UseItemsOptions = {}) {
       itemByIdQuery.isLoading ||
       collectionItemsQuery.isLoading,
     isLoadingAll: allItemsQuery.isLoading,
-    isLoadingItem: itemByIdQuery.isLoading,
     isLoadingCollection: collectionItemsQuery.isLoading,
     isError:
       allItemsQuery.isError ||
@@ -424,9 +436,6 @@ export function useItems(optionsOrScope: string | UseItemsOptions = {}) {
       itemByIdQuery.error ||
       collectionItemsQuery.error,
     refetch: allItemsQuery.refetch,
-    refetchAll: allItemsQuery.refetch,
-    refetchItem: itemByIdQuery.refetch,
-    refetchCollection: collectionItemsQuery.refetch,
   };
 }
 
@@ -484,34 +493,10 @@ export function useItemTypes(
     isLoading,
     isError,
     error,
-    isFallback,
   };
 }
 
-export function useItem(
-  id?: string,
-  scopeId?: string,
-  options?: { enabled?: boolean },
-) {
-  const queryClient = useQueryClient();
-  const targetScope = normalizeScopeId(scopeId);
-  return useQuery({
-    queryKey: itemKeys.byId(targetScope, id || ''),
-    queryFn: () => ItemsService.getById(targetScope, id || ''),
-    enabled: (options?.enabled ?? true) && Boolean(id),
-    staleTime: 1000 * 30,
-    gcTime: 5 * 60 * 1000,
-    placeholderData: (previousData) => {
-      if (!id) return undefined;
-      const cached = resolveCachedItemFromScope(queryClient, targetScope, id);
-      if (cached) return cached;
-      if (previousData && previousData.id === id) return previousData;
-      return undefined;
-    },
-  });
-}
-
-export interface LibraryItemsQueryResult {
+interface LibraryItemsQueryResult {
   items: Item[];
   total: number;
   meta: CursorPaginationMeta | null;
@@ -700,7 +685,13 @@ export function usePrefetchNextLibraryItemsPage(options: {
 export function useLibraryItemDetailQuery(
   scopeId: string | undefined, itemId: string | undefined, options?: { enabled?: boolean },
 ) {
-  return useItem(itemId, normalizeScopeId(scopeId), options);
+  const targetScope = normalizeScopeId(scopeId);
+  return useQuery<Item>({
+    queryKey: itemKeys.byId(targetScope, itemId || ''),
+    queryFn: () => ItemsService.getById(targetScope, itemId || ''),
+    enabled: Boolean(itemId) && (options?.enabled ?? true),
+    staleTime: 60_000,
+  });
 }
 
 export {

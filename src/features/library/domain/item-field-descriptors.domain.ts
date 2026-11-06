@@ -1,7 +1,7 @@
 import type { Item } from '@/features/library/domain/types/core.types';
 import { normalizeCanonicalItemType, getTitleFieldForType } from '@/features/library/domain/types/item-types.types';
-import { cleanDoi, extractArxivId } from './identifiers';
-import { isValidValue, cleanValue } from './metadata-mapper';
+import { cleanDoi, extractArxivId } from './identifiers.domain';
+import { isValidValue, cleanValue } from './metadata.mapper';
 import { parseValidYear } from './metadata-extra.constants';
 
 /**
@@ -412,13 +412,13 @@ export const INSPECTOR_FIELD_DESCRIPTORS: Record<
  */
 
 
-export const TITLE_COUPLED_BY_TYPE: Readonly<Record<string, string>> = {
+const TITLE_COUPLED_BY_TYPE: Readonly<Record<string, string>> = {
   case: "caseName",
   statute: "nameOfAct",
   email: "subject",
 };
 
-export const PUBLICATION_TITLE_COUPLED_BY_TYPE: Readonly<Record<string, string>> = {
+const PUBLICATION_TITLE_COUPLED_BY_TYPE: Readonly<Record<string, string>> = {
   case: "reporter",
   statute: "code",
   blogPost: "blogTitle",
@@ -433,7 +433,7 @@ export const PUBLICATION_TITLE_COUPLED_BY_TYPE: Readonly<Record<string, string>>
   presentation: "sessionTitle",
 };
 
-export const PLACE_COUPLED_BY_TYPE: Readonly<Record<string, string>> = {
+const PLACE_COUPLED_BY_TYPE: Readonly<Record<string, string>> = {
   conferencePaper: "eventPlace",
   presentation: "eventPlace",
   artwork: "eventPlace",
@@ -441,7 +441,7 @@ export const PLACE_COUPLED_BY_TYPE: Readonly<Record<string, string>> = {
   patent: "country",
 };
 
-export const DATE_COUPLED_FIELDS: ReadonlySet<string> = new Set<string>([
+const DATE_COUPLED_FIELDS: ReadonlySet<string> = new Set<string>([
   "date",
   "publicationDate",
   "dateDecided",
@@ -450,7 +450,7 @@ export const DATE_COUPLED_FIELDS: ReadonlySet<string> = new Set<string>([
   "filingDate",
 ]);
 
-export interface FieldCouplingContext {
+interface FieldCouplingContext {
   rec: Record<string, unknown>;
   currentEf: Record<string, unknown>;
   nextEf: Record<string, unknown>;
@@ -463,7 +463,7 @@ export interface FieldCouplingContext {
   setCoupledIfSynced: (targetKey: string) => void;
 }
 
-export interface FieldCouplingRule {
+interface FieldCouplingRule {
   id: string;
   matches(ctx: FieldCouplingContext): boolean;
   apply(ctx: FieldCouplingContext): void;
@@ -493,7 +493,7 @@ const PLACE_COUPLING_KEYS: ReadonlySet<string> = new Set([
   "country",
 ]);
 
-export const FIELD_COUPLING_RULES: readonly FieldCouplingRule[] = [
+const FIELD_COUPLING_RULES: readonly FieldCouplingRule[] = [
   {
     id: "title-coupling",
     matches: ({ fieldKey }) => TITLE_COUPLING_KEYS.has(fieldKey),

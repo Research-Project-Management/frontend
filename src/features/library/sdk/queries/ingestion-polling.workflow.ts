@@ -2,7 +2,7 @@
 
 import type { QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { libraryServices, IngestionService } from '@/features/library/sdk';
+import { IngestionService } from '../clients/curation.client';
 import type { UnifiedIngestionPayload } from '@/features/library/domain/types/core.types';
 import { itemKeys, invalidateCollections } from '@/features/library/sdk/query-keys';
 import {
@@ -11,10 +11,11 @@ import {
   extractPmid,
   extractPmcId,
   cleanIsbn,
-} from '@/features/library/domain/identifiers';
+} from '@/features/library/domain/identifiers.domain';
 
 export interface PollRunOutcome {
   ok: boolean;
+  status?: string;
   timedOut?: boolean;
   title?: string;
   itemId?: string;
@@ -22,7 +23,7 @@ export interface PollRunOutcome {
 }
 
 export interface PollIngestionRunOptions {
-  fallbackTitle: string;
+  fallbackTitle?: string;
   initialItemId?: string;
   pollIntervalMs?: number;
   maxWaitMs?: number;
@@ -32,7 +33,7 @@ export interface PollIngestionRunOptions {
   adaptiveBackoff?: boolean;
 }
 
-export function computeNextPollDelayMs(
+function computeNextPollDelayMs(
   baseIntervalMs: number,
   attempt: number,
   adaptiveBackoff: boolean,
@@ -70,14 +71,14 @@ function abortableSleep(ms: number, signal?: AbortSignal): Promise<void> {
 export async function pollIngestionRunCompletion(
   scopeId: string,
   runId: string,
-  opts: PollIngestionRunOptions,
+  opts: PollIngestionRunOptions = {},
 ): Promise<PollRunOutcome> {
   const startTime = Date.now();
   const maxWaitMs = opts.maxWaitMs ?? 120000;
   const pollIntervalMs = opts.pollIntervalMs ?? 1200;
   const useAdaptiveBackoff =
     opts.adaptiveBackoff ?? opts.pollIntervalMs === undefined;
-  let finalTitle = opts.fallbackTitle;
+  let finalTitle = opts.fallbackTitle || 'Document';
   let finalItemId = opts.initialItemId;
   let slowThresholdTriggered = false;
   let attempt = 0;
@@ -114,6 +115,7 @@ export async function pollIngestionRunCompletion(
       const statusPayload = runStatus as {
         data?: {
           status?: string;
+          ingestionStatus?: string;
           resolutionStatus?: string;
           title?: string;
           itemId?: string;
@@ -121,6 +123,7 @@ export async function pollIngestionRunCompletion(
           errorMessage?: string;
         };
         status?: string;
+        ingestionStatus?: string;
         resolutionStatus?: string;
         title?: string;
         itemId?: string;
@@ -129,7 +132,23 @@ export async function pollIngestionRunCompletion(
       } | null;
       const currentRun = statusPayload?.data || statusPayload;
       const currentStatus = (currentRun?.status || '').toUpperCase();
+      const currentIngestionStatus = (currentRun?.ingestionStatus || '').toUpperCase();
       const currentResolutionStatus = (currentRun?.resolutionStatus || '').toUpperCase();
+
+      if (
+        currentStatus === 'BLOCKED' ||
+        currentIngestionStatus === 'BLOCKED' ||
+        currentResolutionStatus === 'BLOCKED'
+      ) {
+        return {
+          ok: false,
+          status: 'BLOCKED',
+          error:
+            currentRun?.lastError ||
+            currentRun?.errorMessage ||
+            'Publisher blocked automated access — please download and upload the PDF directly.',
+        };
+      }
 
       if (
         currentStatus === 'COMPLETED' ||
@@ -146,7 +165,7 @@ export async function pollIngestionRunCompletion(
         if (currentRun?.itemId) {
           finalItemId = currentRun.itemId;
         }
-        return { ok: true, title: finalTitle, itemId: finalItemId };
+        return { ok: true, status: currentStatus || 'COMPLETED', title: finalTitle, itemId: finalItemId };
       }
 
       if (
@@ -158,6 +177,7 @@ export async function pollIngestionRunCompletion(
       ) {
         return {
           ok: false,
+          status: 'FAILED',
           error: currentRun?.lastError || currentRun?.errorMessage || 'Extraction failed',
         };
       }
@@ -248,6 +268,7 @@ export interface TrackedIdentifierIngestionOptions {
   attachOaPdf?: boolean;
   saveSnapshot?: boolean;
   collectionId?: string;
+  rethrowOnError?: boolean;
   queryClient: QueryClient;
   onCloseModal: () => void;
   onAddProvisionalItem: (item: {
@@ -276,6 +297,7 @@ export async function executeTrackedIdentifierIngestion({
   attachOaPdf,
   saveSnapshot,
   collectionId,
+  rethrowOnError = false,
   queryClient,
   onCloseModal,
   onAddProvisionalItem,
@@ -313,7 +335,7 @@ export async function executeTrackedIdentifierIngestion({
   };
 
   try {
-    const ingestRes = await libraryServices.ingestion.ingest(scopeId, ingestionPayload);
+    const ingestRes = await IngestionService.ingest(scopeId, ingestionPayload);
     const ingestData = ingestRes?.data;
     const runId = ingestData?.runId;
     const initialStatus = (ingestData?.status || '').toUpperCase();
@@ -410,5 +432,8 @@ export async function executeTrackedIdentifierIngestion({
       description: err instanceof Error ? err.message : 'Could not import reference.',
       id: toastId,
     });
+    if (rethrowOnError && !provisionalAdded) {
+      throw err instanceof Error ? err : new Error('Could not import reference.');
+    }
   }
 }

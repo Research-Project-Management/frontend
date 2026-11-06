@@ -6,7 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { copyToClipboard } from '@/shared/lib/utils';
 import { openInNewTab, buildReaderPaperUrl } from '@/features/library/core/coordinator/citation-export.coordinator';
-import { isProjectScope } from '@/features/library/domain/identifiers';
+import { isProjectScope } from '@/features/library/domain/identifiers.domain';
 import {
   isPersistedItemId,
   isPersistedLibraryItem,
@@ -17,20 +17,51 @@ import {
   createRestoreCommand,
   createMoveItemsCommand,
   createToggleStarCommand,
-  createConvertItemTypeCommand,
 } from '@/features/library/core/manager/library-command.manager';
-import { ItemsService } from '@/features/library/sdk';
 import { resolveCachedItemFromScope } from '@/features/library/sdk/queries/cache-patcher';
 import { useCitationStyles } from '@/features/library/sdk/queries/extraction.queries';
 import { useAssignCollectionItemsMutation } from '@/features/library/sdk/queries/collections.queries';
 import {
+  fetchLibraryItemById,
   useReResolveItemMetadataMutation,
   useSetMyPublicationMutation,
+  useCreateLibraryItemMutation,
+  useToggleStarItemMutation,
   useUpdateLibraryItemMutation,
+  useDeleteLibraryItemsMutation,
+  useBatchRestoreItemsMutation,
+  useBatchPurgeItemsMutation,
+  useLibraryItemsQuery,
+  usePrefetchNextLibraryItemsPage,
+  normalizeScopeId,
+  useItemTypes,
+  useViewItems,
+  useLibraryCountsQuery,
+  useImportFromUserMutation,
+  useLibraryCacheSynchronizer,
+  useLibraryBootstrapQuery,
 } from '@/features/library/sdk/queries/catalog.queries';
+
+export {
+  useSetMyPublicationMutation,
+  useCreateLibraryItemMutation,
+  useToggleStarItemMutation,
+  useUpdateLibraryItemMutation,
+  useDeleteLibraryItemsMutation,
+  useBatchRestoreItemsMutation,
+  useBatchPurgeItemsMutation,
+  useLibraryItemsQuery,
+  usePrefetchNextLibraryItemsPage,
+  normalizeScopeId,
+  useItemTypes,
+  useViewItems,
+  useLibraryCountsQuery,
+  useImportFromUserMutation,
+  useLibraryCacheSynchronizer,
+  useLibraryBootstrapQuery,
+};
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { useRetraction } from '@/features/library/sdk/queries/ingestion.queries';
-import { useItemTypeConversion } from '@/features/library/sdk/queries/saved-searches-relations.queries';
 import {
   executeCopyMultiCite,
   executeCopyInTextCite,
@@ -39,11 +70,11 @@ import {
 import {
   DEFAULT_CITATION_STYLES,
   getCleanStyleLabel,
-} from '@/features/library/domain/citations';
-import { getAssignedCollectionIds } from '@/features/library/domain/metadata-mapper';
+} from '@/features/library/domain/citations.domain';
+import { getAssignedCollectionIds } from '@/features/library/domain/metadata.mapper';
 import type { Item, Collection, CslStyle } from '@/features/library/domain/types/core.types';
 
-export interface UseItemActionHandlersOptions {
+interface UseItemActionHandlersOptions {
   scopeId?: string;
   isMenuOpen?: boolean;
   onOpenItem?: (id: string) => void;
@@ -53,7 +84,7 @@ export interface UseItemActionHandlersOptions {
   onAfterAction?: () => void;
 }
 
-export interface CitationStyleOption {
+interface CitationStyleOption {
   id: string;
   label: string;
 }
@@ -84,9 +115,7 @@ export function useItemActionHandlers(
   const assignCollectionItemsMutation = useAssignCollectionItemsMutation(effectiveScope);
   const reResolveMutation = useReResolveItemMetadataMutation(effectiveScope);
   const setMyPublicationMutation = useSetMyPublicationMutation(effectiveScope);
-  const updateItemMutation = useUpdateLibraryItemMutation(effectiveScope);
   const { flagItem, unflagItem } = useRetraction(effectiveScope, { includeItems: false });
-  const itemTypeConversion = useItemTypeConversion(effectiveScope);
   const { data: serverStyles = [] } = useCitationStyles(effectiveScope, { enabled: isMenuOpen });
 
   const availableStyles = useMemo<CitationStyleOption[]>(() => {
@@ -140,11 +169,6 @@ export function useItemActionHandlers(
     },
     [effectiveScope, item, onAfterAction],
   );
-
-  const handleCopyBibtex = useCallback(async () => {
-    onAfterAction?.();
-    await executeExportAllBibtex([item], effectiveScope, 1);
-  }, [effectiveScope, item, onAfterAction]);
 
   const handleCopyInTextCitation = useCallback(
     async (style: CslStyle = 'apa-7th') => {
@@ -241,50 +265,18 @@ export function useItemActionHandlers(
     ],
   );
 
-  const handleConvertType = useCallback(
-    async (targetType: string, retainUnmappedInExtra = true) => {
-      onAfterAction?.();
-      const command = createConvertItemTypeCommand({
-        itemId: item.id,
-        itemTitle: item.title,
-        sourceItem: item,
-        targetType,
-        retainUnmappedInExtra,
-        convertType: ({ itemId, targetType: nextType, retainUnmappedInExtra: retain, silent }) =>
-          itemTypeConversion.convertAsync({
-            itemId,
-            targetType: nextType,
-            retainUnmappedInExtra: retain,
-            silent,
-          }),
-        applyMetadataPatch: (itemId, patch, expectedVersion) =>
-          updateItemMutation.mutateAsync({
-            itemId,
-            data: patch,
-            expectedVersion,
-            silent: true,
-          }),
-      });
-      await useLibraryCommandStore.getState().executeCommand(command, { silentToast: true });
-    },
-    [item, itemTypeConversion, updateItemMutation, onAfterAction],
-  );
-
   return {
     availableStyles,
     isStarred,
     handleOpen,
     handleOpenInNewTab,
     handleCopyBibliography,
-    handleCopyBibtex,
     handleCopyInTextCitation,
     handleCopyCitationKey,
     handleRefreshMetadata,
     handleToggleMyPublications,
     handleToggleRetraction,
     handleSelectCollection,
-    handleConvertType,
-    itemTypeConversion,
   };
 }
 
@@ -307,7 +299,7 @@ export function useDropToMyPublications(effectiveScopeId: string = 'user') {
           targetId,
         ) as Item | undefined;
         if (!item) {
-          item = ((await ItemsService.getById(effectiveScopeId, targetId)) ?? undefined) as Item | undefined;
+          item = ((await fetchLibraryItemById(effectiveScopeId, targetId)) ?? undefined) as Item | undefined;
         }
         if (item) {
           openModal('MY_PUBLICATION_CONFIRM', { item });
@@ -320,7 +312,7 @@ export function useDropToMyPublications(effectiveScopeId: string = 'user') {
   );
 }
 
-export interface UseLibraryItemOperationsOptions {
+interface UseLibraryItemOperationsOptions {
   itemsById: Map<string, Item>;
   isTrash?: boolean;
   collectionId?: string;

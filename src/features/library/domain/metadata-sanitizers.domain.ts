@@ -450,7 +450,7 @@ export interface NormalizedNote {
 /**
  * Cleans HTML tags and entities from a note string while preserving paragraph structure.
  */
-export function cleanNoteContent(raw: string): string {
+function cleanNoteContent(raw: string): string {
   if (!raw || typeof raw !== "string") return "";
   if (!/<\/?[a-z][\s\S]*>/i.test(raw) && !raw.includes("&")) {
     return raw.trim();
@@ -694,4 +694,28 @@ export function cleanFilenameToTitle(filename?: string | null): string {
     .filter(Boolean)
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
+}
+
+const ASCII_ONLY_RE = /^[\x00-\x7F]*$/;
+const SPECIAL_LATIN_FOLD_RE = /[ĐđŁłØøßÆæŒœ]/g;
+const COMBINING_DIACRITIC_RE = /[\u0300-\u036f]/g;
+const SPECIAL_LATIN_MAP: Readonly<Record<string, string>> = {
+  Đ: 'd', đ: 'd', Ł: 'l', ł: 'l', Ø: 'o', ø: 'o', ß: 'ss', Æ: 'ae', æ: 'ae', Œ: 'oe', œ: 'oe',
+};
+const BROKEN_HYPHEN_RE = /(\b[A-Za-z0-9]+)-\s*\r?\n\s*([A-Za-z0-9]+\b)/g;
+const MULTI_WHITESPACE_RE = /\s+/g;
+
+export function foldDiacritics(input?: string | null): string {
+  if (!input) return '';
+  if (ASCII_ONLY_RE.test(input)) return input.toLowerCase();
+  return input
+    .replace(SPECIAL_LATIN_FOLD_RE, (m) => SPECIAL_LATIN_MAP[m] ?? m)
+    .normalize('NFD')
+    .replace(COMBINING_DIACRITIC_RE, '')
+    .toLowerCase();
+}
+
+export function cleanText(text?: string | null): string {
+  if (!text) return '';
+  return text.replace(BROKEN_HYPHEN_RE, '$1-$2').replace(MULTI_WHITESPACE_RE, ' ').trim();
 }

@@ -4,12 +4,29 @@ import { logger } from '@/shared/lib/logger';
 import { copyToClipboard } from '@/shared/lib/utils';
 import { buildReaderPaperUrl } from '@/features/library/domain/reader.domain';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
-import { libraryServices } from '@/features/library/sdk';
+import {
+  formatCitationItem,
+  batchFormatCitations,
+  exportLibraryBibliography,
+  useBatchRenameAttachmentsMutation,
+  useCitationStyles,
+  useCslCitation,
+  useSearchCslStyles,
+  useExportItemCitationQuery,
+} from '@/features/library/sdk/queries/extraction.queries';
 import type { Item, CslStyle } from '@/features/library/domain/types/core.types';
 import { isItemRetracted } from '@/features/library/domain/system-views.policy';
 import { isEditableOrModalElementFocused } from './keyboard-shortcuts.coordinator';
 
-export { copyToClipboard, buildReaderPaperUrl };
+export {
+  copyToClipboard,
+  buildReaderPaperUrl,
+  useBatchRenameAttachmentsMutation,
+  useCitationStyles,
+  useCslCitation,
+  useSearchCslStyles,
+  useExportItemCitationQuery,
+};
 
 /**
  * Shared Browser IO & Clipboard Utilities for Library Coordinators and Reader.
@@ -37,7 +54,7 @@ export async function copyWithToastHelper(
   return false;
 }
 
-export function triggerBrowserBlobDownload(
+function triggerBrowserBlobDownload(
   blob: Blob,
   filename: string,
   revokeDelayMs: number = 10_000,
@@ -102,7 +119,7 @@ export function openInNewTab(url: string): void {
  * feedback, and browser file downloads on the client.
  */
 
-export type ExportFormatType = 'bibtex' | 'ris' | 'csl_json' | 'csv' | 'markdown';
+type ExportFormatType = 'bibtex' | 'ris' | 'csl_json' | 'csv' | 'markdown';
 
 const EXPORT_FORMAT_EXTENSION_MAP: Record<ExportFormatType, string> = {
   bibtex: 'bib',
@@ -119,10 +136,10 @@ async function formatBibliographyForIds(
   preferSingleEndpoint: boolean = false,
 ): Promise<string> {
   if (preferSingleEndpoint && itemIds.length === 1) {
-    const res = await libraryServices.citations.formatCitation(scopeId, itemIds[0], style);
+    const res = await formatCitationItem(scopeId, itemIds[0], style);
     return res.bibliography || res.inText || '';
   }
-  const res = await libraryServices.citations.batchFormat(scopeId, itemIds, style);
+  const res = await batchFormatCitations(scopeId, itemIds, style);
   return (
     res.bibliographyText ||
     res.citations
@@ -139,10 +156,10 @@ async function formatInTextForIds(
   preferSingleEndpoint: boolean = false,
 ): Promise<string> {
   if (preferSingleEndpoint && itemIds.length === 1) {
-    const res = await libraryServices.citations.formatCitation(scopeId, itemIds[0], style);
+    const res = await formatCitationItem(scopeId, itemIds[0], style);
     return res.inText || '';
   }
-  const res = await libraryServices.citations.batchFormat(scopeId, itemIds, style);
+  const res = await batchFormatCitations(scopeId, itemIds, style);
   return (
     res.combinedInText ||
     res.citations
@@ -167,7 +184,7 @@ async function exportLibraryToFile(
   },
 ): Promise<void> {
   try {
-    const res = await libraryServices.exports.exportLibrary(scopeId, params);
+    const res = await exportLibraryBibliography(scopeId, params);
     if (res?.content) {
       const downloadFilename = res.filename || options.fallbackFilename;
       triggerBrowserTextDownload(res.content, downloadFilename, 'text/plain;charset=utf-8');
@@ -268,7 +285,7 @@ export async function executeExportAllBibtex(
   if (itemIds.length === 0) return;
 
   try {
-    const res = await libraryServices.exports.exportLibrary(scopeId, {
+    const res = await exportLibraryBibliography(scopeId, {
       format: 'bibtex',
       itemIds,
     });
@@ -371,7 +388,7 @@ export async function executeExportScopeFormat(
   );
 }
 
-export interface UseQuickCopyOptions {
+interface UseQuickCopyOptions {
   scopeId?: string;
   items?: Item[];
   selectedIds?: Set<string>;

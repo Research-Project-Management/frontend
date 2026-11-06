@@ -2,21 +2,23 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { ItemsService } from '../clients/items.client';
 import {
-  ItemsService,
   TagsService,
   NotesService,
   type CreateNoteDTO,
   type UpdateNoteDTO,
-} from '@/features/library/sdk';
+} from '../clients/catalog-entities.client';
 import type { Item, Note } from '@/features/library/domain/types/core.types';
 import {
   itemKeys,
   tagKeys,
   noteKeys,
+  curationKeys,
   invalidateCollections,
   normalizeScopeId,
   waitForBootstrapCache,
+  getReaderBootstrapScope,
 } from '@/features/library/sdk/query-keys';
 import {
   chunkUniqueIds,
@@ -71,28 +73,6 @@ export function useTrash(
     },
     onError: (err: Error) => {
       toast.error('Failed to restore item', {
-        description: err.message || 'Please try again.',
-        id: 'trash-mutation-toast',
-      });
-    },
-  });
-
-  const purgeMutation = useMutation({
-    mutationFn: (itemId: string) => ItemsService.purge(effectiveScope, itemId),
-    onSuccess: () => {
-      toast.success('Permanently deleted', {
-        description: 'The item and its attachments were permanently removed.',
-        id: 'trash-mutation-toast',
-      });
-      invalidateLibraryCatalogDependencies(queryClient, effectiveScope, {
-        itemsList: true,
-        collections: true,
-        tags: true,
-        counts: true,
-      });
-    },
-    onError: (err: Error) => {
-      toast.error('Failed to delete item', {
         description: err.message || 'Please try again.',
         id: 'trash-mutation-toast',
       });
@@ -177,11 +157,8 @@ export function useTrash(
     isError: trashQuery.isError,
     error: trashQuery.error,
     isRestoring: restoreMutation.isPending,
-    isPurging: purgeMutation.isPending,
-    isEmptyingTrash: emptyTrashMutation.isPending,
     refetch: trashQuery.refetch,
     restoreItem: restoreMutation.mutateAsync,
-    purgeItem: purgeMutation.mutateAsync,
     emptyTrash: () => emptyTrashMutation.mutateAsync(trashItems),
   };
 }
@@ -220,6 +197,8 @@ export function useDeleteLibraryItemsMutation(scopeId?: string) {
         smartCollections: true,
       });
       void queryClient.invalidateQueries({ queryKey: itemKeys.trash(effectiveScope) });
+      void queryClient.invalidateQueries({ queryKey: curationKeys.duplicates(effectiveScope) });
+      void queryClient.invalidateQueries({ queryKey: curationKeys.integrity(effectiveScope) });
     },
     onError: (err: Error) => {
       toast.error('Failed to delete items', {
@@ -263,6 +242,8 @@ export function useBatchRestoreItemsMutation(scopeId?: string) {
         smartCollections: true,
       });
       void queryClient.invalidateQueries({ queryKey: itemKeys.trash(effectiveScope) });
+      void queryClient.invalidateQueries({ queryKey: curationKeys.duplicates(effectiveScope) });
+      void queryClient.invalidateQueries({ queryKey: curationKeys.integrity(effectiveScope) });
     },
     onError: (err: Error) => {
       toast.error('Failed to restore items', {
@@ -303,6 +284,8 @@ export function useBatchPurgeItemsMutation(scopeId?: string) {
         smartCollections: true,
       });
       void queryClient.invalidateQueries({ queryKey: itemKeys.trash(effectiveScope) });
+      void queryClient.invalidateQueries({ queryKey: curationKeys.duplicates(effectiveScope) });
+      void queryClient.invalidateQueries({ queryKey: curationKeys.integrity(effectiveScope) });
     },
     onError: (err: Error) => {
       toast.error('Failed to permanently delete items', {
@@ -446,7 +429,6 @@ export function useTags(scopeId?: string, options?: { enabled?: boolean }) {
     deleteAutomaticTags: deleteAutomaticMutation.mutateAsync,
     isDeletingAutomatic: deleteAutomaticMutation.isPending,
     splitTag: splitMutation.mutateAsync,
-    isSplitting: splitMutation.isPending,
   };
 }
 
@@ -456,10 +438,17 @@ export function useNotes(scopeId?: string, itemId?: string) {
   const queryClient = useQueryClient();
   const effectiveScope = normalizeScopeId(scopeId);
 
+  const cacheKey = noteKeys.list(effectiveScope, itemId);
   const notesQuery = useQuery({
-    queryKey: noteKeys.list(effectiveScope, itemId),
-    queryFn: () => {
+    queryKey: cacheKey,
+    queryFn: async () => {
       if (!itemId) return [];
+      const seeded = await waitForBootstrapCache<Note[]>(
+        queryClient,
+        getReaderBootstrapScope(effectiveScope),
+        cacheKey,
+      );
+      if (seeded !== undefined) return seeded;
       return NotesService.list(effectiveScope, itemId);
     },
     enabled: !!itemId,

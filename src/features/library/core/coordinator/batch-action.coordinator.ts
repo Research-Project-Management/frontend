@@ -15,20 +15,10 @@ import {
   useAssignCollectionItemsMutation,
 } from '@/features/library/sdk/queries/collections.queries';
 import { useRetraction } from '@/features/library/sdk/queries/ingestion.queries';
-import {
-  useLibraryCommandStore,
-  createTrashCommand,
-  createRestoreCommand,
-  createMoveItemsCommand,
-  createBatchDetachCommand,
-  createBatchAssignCommand,
-} from '@/features/library/core/manager/library-command.manager';
+import { useLibraryCommandStore, createRestoreCommand, createMoveItemsCommand, createBatchDetachCommand, createBatchAssignCommand } from '@/features/library/core/manager/library-command.manager';
 import { isItemRetracted } from '@/features/library/domain/system-views.policy';
-import { getAssignedCollectionIds } from '@/features/library/domain/metadata-mapper';
-import {
-  isPersistedItemId,
-  isPersistedLibraryItem,
-} from '@/features/library/domain/library-permissions.policy';
+import { getAssignedCollectionIds } from '@/features/library/domain/metadata.mapper';
+import { isPersistedLibraryItem } from '@/features/library/domain/library-permissions.policy';
 import type { Item, CslStyle } from '@/features/library/domain/types/core.types';
 import { isEditableOrModalElementFocused } from './keyboard-shortcuts.coordinator';
 import {
@@ -51,7 +41,7 @@ export {
   executeDownloadBibFile,
 };
 
-export interface UseLibraryBatchCoordinatorOptions {
+interface UseLibraryBatchCoordinatorOptions {
   items?: Item[];
   scopeId?: string;
   collectionId?: string;
@@ -76,7 +66,7 @@ export function hasItemPdfOrAttachment(item: Item): boolean {
   );
 }
 
-export const BATCH_CAP_BIT = {
+const BATCH_CAP_BIT = {
   MOVE: 1 << 0,
   DELETE: 1 << 1,
   RESTORE: 1 << 2,
@@ -88,7 +78,7 @@ export const BATCH_CAP_BIT = {
   CITE_EXPORT: 1 << 8,
 } as const;
 
-export function computeBatchCapabilityMask(params: {
+function computeBatchCapabilityMask(params: {
   canEdit: boolean;
   isTrash: boolean;
   isDuplicatesView: boolean;

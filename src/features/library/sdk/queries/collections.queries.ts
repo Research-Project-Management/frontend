@@ -2,10 +2,23 @@
 
 import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import {
-  libraryServices,
-  CollectionsService,
-} from '@/features/library/sdk';
+import { CollectionsService } from '../clients/catalog-entities.client';
+
+export function copyLibraryCollection(
+  scopeId: string | undefined,
+  collectionId: string,
+  options?: { parentId?: string | null; name?: string },
+) {
+  return CollectionsService.copy(scopeId, collectionId, options);
+}
+
+export function exportCollectionBibtex(scopeId: string | undefined, collectionId: string) {
+  return CollectionsService.exportBibtex(scopeId, collectionId);
+}
+
+export function exportCollectionBundle(scopeId: string | undefined, collectionId: string) {
+  return CollectionsService.exportBundle(scopeId, collectionId);
+}
 import type {
   Collection,
   CreateCollectionDTO,
@@ -23,7 +36,7 @@ import { chunkUniqueIds } from './cache-patcher';
 
 export { collectionKeys, invalidateCollections };
 
-export type UseCollectionsScopeInput =
+type UseCollectionsScopeInput =
   | string
   | { scopeId?: string; projectId?: string; enabled?: boolean };
 
@@ -292,13 +305,10 @@ export function useCollections(scopeIdOrOptions?: UseCollectionsScopeInput) {
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
     create: createMutation.mutate,
-    createAsync: createMutation.mutateAsync,
     createCollection: createMutation.mutateAsync,
     update: updateMutation.mutate,
-    updateAsync: updateMutation.mutateAsync,
     updateCollection: updateMutation.mutateAsync,
     delete: deleteMutation.mutate,
-    deleteAsync: deleteMutation.mutateAsync,
     deleteCollection: deleteMutation.mutateAsync,
     refetch: collectionsQuery.refetch,
   };
@@ -440,7 +450,7 @@ export function useMoveCollectionItemsMutation(scopeId?: string) {
       const chunks = chunkUniqueIds(itemIds, 100);
       await Promise.all(
         chunks.map((chunk) =>
-          libraryServices.collections.moveItems(
+          CollectionsService.moveItems(
             targetScope,
             targetCollectionId || 'unfiled',
             chunk,

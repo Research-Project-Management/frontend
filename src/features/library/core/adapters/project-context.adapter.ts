@@ -3,10 +3,14 @@
 import { useMemo } from 'react';
 import { useProjectsQuery } from '@/features/projects/shell/hooks/use-project';
 import { useAuth } from '@/features/auth/hooks/use-auth';
-import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
-import { resolveEffectiveLibraryPermissions } from '@/features/library/domain/library-permissions.policy';
-import { useLibraryCountsQuery } from '@/features/library/sdk/queries/catalog.queries';
-import { type LibraryPermissions, type LibrarySchemaRegistrySnapshot, updateLibrarySchemaRegistry, setSchemaPersistenceListener, getSchemaRegistryVersion, getLibrarySchemaSnapshot, registerSchemaRegistryUpdateListener } from '@/features/library/domain/types/core.types';
+import {
+  type LibrarySchemaRegistrySnapshot,
+  updateLibrarySchemaRegistry,
+  setSchemaPersistenceListener,
+  getSchemaRegistryVersion,
+  getLibrarySchemaSnapshot,
+  registerSchemaRegistryUpdateListener,
+} from '@/features/library/domain/types/core.types';
 import type { ReaderFitMode, ReaderTab, ReaderTheme } from '@/features/library/domain/types/reader.schema';
 
 export {
@@ -21,7 +25,7 @@ export {
  * increments the schema registry version counter, and notifies all subscribers.
  * Returns an immutable snapshot of the updated schema registry.
  */
-export function syncDynamicSchemasToMemory(
+function syncDynamicSchemasToMemory(
   data: unknown,
   options?: { persist?: boolean },
 ): LibrarySchemaRegistrySnapshot {
@@ -29,7 +33,7 @@ export function syncDynamicSchemasToMemory(
   return getLibrarySchemaSnapshot();
 }
 
-export interface LibraryProjectScope {
+interface LibraryProjectScope {
   id: string;
   name: string;
   role?: string;
@@ -39,13 +43,13 @@ export interface LibraryProjectScope {
   [key: string]: unknown;
 }
 
-export interface LibraryUserSession {
+interface LibraryUserSession {
   id?: string;
   email?: string;
   name?: string;
 }
 
-export interface UseLibraryProjectContextReturn {
+interface UseLibraryProjectContextReturn {
   projects: LibraryProjectScope[];
   isLoadingProjects: boolean;
   currentUser: LibraryUserSession | null;
@@ -90,58 +94,12 @@ export function useLibraryProjectContext(): UseLibraryProjectContextReturn {
 }
 
 /**
- * Canonical Scope Resolution Helper for Library UI Store & Components.
- * Resolves the effective scope ID from an activeScope object or explicit overrides.
- */
-export function resolveActiveLibraryScopeId(
-  activeScope?: { type?: string; id?: string; projectId?: string } | null,
-  explicitScopeId?: string | null,
-  fallbackProjectId?: string | null,
-): string {
-  if (explicitScopeId) return explicitScopeId;
-  if (fallbackProjectId) return fallbackProjectId;
-  if (activeScope?.type === 'project') {
-    return activeScope.projectId || activeScope.id || 'user';
-  }
-  return 'user';
-}
-
-/**
- * Permissions Coordinator Hook
- *
- * Single Source of Truth for combining Client Scope (Zustand Store),
- * Server Permissions & Capability Counts (TanStack Query), and Pure RBAC Policies.
- * Decoupled from pure Zustand Store selectors.
- */
-export function useLibraryPermissions(): LibraryPermissions {
-  const activeScope = useLibraryUIStore((state) => state.activeScope);
-  const effectiveScopeId = resolveActiveLibraryScopeId(activeScope);
-  const { data: countsData } = useLibraryCountsQuery(effectiveScopeId);
-
-  return useMemo(
-    () =>
-      resolveEffectiveLibraryPermissions(
-        activeScope,
-        countsData
-          ? {
-              role: countsData.role || countsData.yourRole,
-              permissions: countsData.permissions,
-              effectivePermissions: countsData.effectivePermissions,
-              permissionOverrides: countsData.permissionOverrides,
-            }
-          : null,
-      ),
-    [activeScope, countsData],
-  );
-}
-
-/**
  * Centralized Storage Adapter for Zotero Schema v42 Client-Side Bootstrap Cache.
  * Isolates browser localStorage side effects away from pure domain/types modules.
  */
-export const SCHEMA_CACHE_KEY = 'flux:library:schema-v42:cache';
+const SCHEMA_CACHE_KEY = 'flux:library:schema-v42:cache';
 export const SCHEMA_VERSION = 42;
-export const SCHEMA_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const SCHEMA_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 export function isBrowser(): boolean {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
@@ -149,7 +107,7 @@ export function isBrowser(): boolean {
 
 let memorySchemaSnapshot: unknown | null | undefined = undefined;
 
-export function saveSchemaCache(data: unknown): void {
+function saveSchemaCache(data: unknown): void {
   if (!data) return;
   memorySchemaSnapshot = data;
   if (!isBrowser()) return;
@@ -167,7 +125,7 @@ export function saveSchemaCache(data: unknown): void {
   }
 }
 
-export function loadSchemaCache(): unknown | null {
+function loadSchemaCache(): unknown | null {
   if (memorySchemaSnapshot !== undefined && memorySchemaSnapshot !== null) {
     return memorySchemaSnapshot;
   }
@@ -222,7 +180,7 @@ if (isBrowser()) {
   }
 }
 
-export const DEFAULT_READER_TABS: ReaderTab[] = [
+const DEFAULT_READER_TABS: ReaderTab[] = [
   { id: 'library', title: 'My Library', type: 'library' },
 ];
 

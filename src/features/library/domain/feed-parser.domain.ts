@@ -16,15 +16,15 @@ import type {
   FeedRetentionDays,
 } from '@/features/library/domain/types/ingestion.types';
 import { safeHttpUrl } from '@/features/library/domain/system-views.policy';
-import { parseCreatorName } from '@/features/library/domain/creators';
+import { parseCreatorName } from '@/features/library/domain/creators.domain';
 import {
   decodeXmlEntities,
   cleanText,
-} from '@/features/library/domain/citations';
+} from '@/features/library/domain/citations.domain';
 import {
   cleanDoi,
   normalizeArxivId,
-} from '@/features/library/domain/identifiers';
+} from '@/features/library/domain/identifiers.domain';
 
 export { decodeXmlEntities };
 
@@ -62,13 +62,13 @@ export function mapServerFeedSubscriptions(
   });
 }
 
-export interface FeedCreatorApiItem {
+interface FeedCreatorApiItem {
   firstName?: string;
   lastName?: string;
   creatorType?: string;
 }
 
-export interface FeedEntryApiItem {
+interface FeedEntryApiItem {
   id?: string;
   title: string;
   authors: string[];
@@ -130,7 +130,7 @@ export interface ParsedFeedEntry {
   feedFormat: FeedFormat;
 }
 
-export interface CreateLibraryItemFromFeedPayload {
+interface CreateLibraryItemFromFeedPayload {
   title: string;
   itemType: string;
   authors: string[];
@@ -219,7 +219,7 @@ export function mapFeedEntryToCreateItemPayload(
  * Normalizes a publication date string (ISO 8601, RFC 2822, or YYYY-MM-DD) into
  * `{ publishedAt, year }`.
  */
-export function normalizeFeedDate(rawDate?: string | null): {
+function normalizeFeedDate(rawDate?: string | null): {
   publishedAt?: string;
   year?: number;
 } {
@@ -318,6 +318,7 @@ export function filterFeedEntriesByRetention(
   const dayMs = 24 * 60 * 60 * 1000;
 
   return entries.filter((e) => {
+    if (e.isSaved || e.savedItemId) return true;
     const isRead = Boolean(readSet?.has(e.id));
     const activeDays = isRead ? readDays : unreadDays;
     if (!activeDays || activeDays <= 0) return true;
@@ -348,7 +349,9 @@ export function filterFeedEntriesByReadAndQuery(
       e.authors.some((a) => a.toLowerCase().includes(q)) ||
       (e.abstract && e.abstract.toLowerCase().includes(q)) ||
       (e.doi && e.doi.toLowerCase().includes(q)) ||
-      (e.arxivId && e.arxivId.toLowerCase().includes(q)),
+      (e.arxivId && e.arxivId.toLowerCase().includes(q)) ||
+      (e.primaryCategory && e.primaryCategory.toLowerCase().includes(q)) ||
+      (e.categories && e.categories.some((c) => c.toLowerCase().includes(q))),
   );
 }
 

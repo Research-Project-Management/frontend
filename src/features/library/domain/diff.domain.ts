@@ -1,5 +1,11 @@
-import type { Item } from './types/core.types';
-import { getItemTypeDefinition, getPrimaryCreatorType } from './types/item-types.types';
+import type {
+  DiffStatus,
+  DuplicateGroupMergeDraft,
+  FieldOptionValue,
+  Item,
+  ItemFieldDiff,
+} from '@/features/library/types/core.types';
+import { getItemTypeDefinition, getPrimaryCreatorType } from '@/features/library/types/item-types.types';
 import { isValidValue, normalizeTags } from './metadata-sanitizers.domain';
 import { getItemDisplayTitle, getItemDisplayDate, getPublicationVenue } from './metadata-extra.domain';
 import { splitAuthorString, buildStructuredCreatorsFromAuthors } from './creators.domain';
@@ -54,10 +60,7 @@ export function getMergeableFieldsForTypes(itemTypes?: readonly (string | undefi
   return [...MERGEABLE_FIELDS.filter((f) => f.key !== 'extra'), ...extraFieldDefs, ...(extraField ? [extraField] : [])];
 }
 
-type DiffStatus = 'IDENTICAL' | 'CONFLICT' | 'MISSING_IN_MASTER' | 'MISSING_IN_CANDIDATE';
-
-export interface FieldOptionValue { itemId: string; itemTitle: string; isMaster: boolean; rawValue: unknown; displayValue: string; isEmpty: boolean; sourceItemIndex: number; value?: unknown; formattedDisplay?: string; }
-export interface ItemFieldDiff { key: string; label: string; category: 'core' | 'details' | 'identifiers' | 'publishing'; status: DiffStatus; hasConflict: boolean; options: FieldOptionValue[]; masterValue?: FieldOptionValue; recommendedItemId: string; recommendedValue?: unknown; candidateValue?: unknown; }
+export type { DiffStatus, FieldOptionValue, ItemFieldDiff };
 interface MergeInspectionResult { masterItemId: string; fields: ItemFieldDiff[]; hasConflicts: boolean; conflictCount: number; identicalCount: number; missingInMasterCount: number; }
 
 function isFieldEmpty(val: unknown): boolean {
@@ -375,7 +378,7 @@ interface AggregatedAssetsSummary {
   totalTags: number; tags: string[]; totalCollections: number; collectionCount: number; collections: string[];
   combinedTags: string[]; combinedCollectionIds: string[]; attachmentCount: number; notesCount: number;
 }
-export interface DuplicateGroupMergeDraft { selectedMasterId: string; fieldOverrides: Record<string, unknown>; showConflictsOnly: boolean; }
+export type { DuplicateGroupMergeDraft };
 
 export function createInitialDuplicateGroupMergeDraft(recommendedMasterId: string): DuplicateGroupMergeDraft {
   return { selectedMasterId: recommendedMasterId, fieldOverrides: {}, showConflictsOnly: false };

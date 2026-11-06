@@ -44,11 +44,11 @@ export function markReaderItemAsRead(scopeId: string | undefined, itemId: string
 export function searchReaderAttachmentAnchors(
   attachmentId: string,
   query: string,
-  limit?: number,
+  pageIndex?: number,
   scopeId?: string,
   options?: { signal?: AbortSignal },
 ) {
-  return SearchService.searchAnchors(attachmentId, query, limit, scopeId, options);
+  return SearchService.searchAnchors(attachmentId, query, pageIndex, scopeId, options);
 }
 import {
   itemKeys,
@@ -63,7 +63,7 @@ import {
   getReaderBootstrapScope,
 } from '@/features/library/sdk/query-keys';
 import { useDownloadAnnotatedPdfMutation } from './extraction.queries';
-import { invalidateLibraryCatalogDependencies } from './cache-patcher';
+import { invalidateLibraryCatalogDependencies } from './cache-patcher.queries';
 import { PdfAnnotationEngine } from '@/features/library/domain/reader.domain';
 import { buildClientAnnotationSortIndex } from '@/features/library/domain/reader-search-outline.domain';
 import {
@@ -78,14 +78,14 @@ import {
   type AnnotationHistoryEntry,
   type AnnotationHistoryContext,
   type AnnotationHistoryStrategy,
-} from './annotation-history.transport';
+} from './annotation-history.queries';
 import type {
   AnnotationRect,
   CreateAnnotationDto,
   UpdateAnnotationDto,
   ReaderAnnotation,
   ReaderDocument,
-} from '@/features/library/domain/types/reader.schema';
+} from '@/features/library/types/reader.types';
 
 type CreateAnnotationDTO = CreateAnnotationDto;
 type UpdateAnnotationDTO = UpdateAnnotationDto & {

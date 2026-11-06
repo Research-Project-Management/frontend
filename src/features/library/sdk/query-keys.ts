@@ -1,5 +1,5 @@
-import type { CslStyle } from "@/features/library/domain/types/core.types";
-import type { SavedFeedSubscription } from "@/features/library/domain/types/ingestion.types";
+import type { CslStyle } from "@/features/library/types/core.types";
+import type { SavedFeedSubscription } from "@/features/library/types/ingestion.types";
 
 /**
  * Centralized TanStack Query Keys for features/library
@@ -85,8 +85,9 @@ export const libraryKeys = {
   collection: (scopeId?: string, collectionId?: string) =>
     [
       ...libraryKeys.all,
-      "collection",
+      "collections",
       normalizeScopeId(scopeId),
+      "detail",
       collectionId || "none",
     ] as const,
 
@@ -164,7 +165,7 @@ export const libraryKeys = {
       normalizeScopeId(scopeId),
       itemId || "none",
       style || "apa",
-      index || 1,
+      index ?? 1,
     ] as const,
   exports: () => [...libraryKeys.all, "exports"] as const,
 
@@ -362,9 +363,11 @@ export function invalidateCollections(
     }) => Promise<unknown> | void;
   },
   scopeId?: string,
-): void {
-  qc.invalidateQueries({ queryKey: libraryKeys.collections(scopeId) });
-  qc.invalidateQueries({ queryKey: itemKeys.counts(scopeId) });
+): Promise<unknown> {
+  return Promise.all([
+    qc.invalidateQueries({ queryKey: libraryKeys.collections(scopeId) }),
+    qc.invalidateQueries({ queryKey: itemKeys.counts(scopeId) }),
+  ]);
 }
 
 /**

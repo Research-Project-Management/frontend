@@ -18,7 +18,7 @@ import type {
   LibraryPermissions,
   LibraryScopeType,
   ProjectRole,
-} from '@/features/library/domain/types/core.types';
+} from '@/features/library/types/core.types';
 
 const CAP_PRIME = {
   READ: 2,

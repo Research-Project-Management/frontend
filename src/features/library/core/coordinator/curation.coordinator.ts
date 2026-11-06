@@ -14,7 +14,7 @@ import {
   getMergeableFieldsForTypes,
   type FieldOptionValue,
 } from '@/features/library/domain/diff.domain';
-import type { Item } from '@/features/library/domain/types/core.types';
+import type { Item } from '@/features/library/types/core.types';
 import {
   useLibraryCommandStore,
   createMergeDuplicatesCommand,

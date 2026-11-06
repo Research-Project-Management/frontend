@@ -9,7 +9,7 @@ import {
   ExportsService,
 } from "../clients/attachments-annotations.client";
 import { resolveLibraryUrl, resolveLibraryRawPath } from "../clients/http.client";
-import type { ItemAttachment, CslStyle } from "@/features/library/domain/types/core.types";
+import type { ItemAttachment, CslStyle } from "@/features/library/types/core.types";
 
 export type UploadedMultipartFile = Awaited<ReturnType<typeof UploadService.uploadMultipart>>;
 
@@ -67,7 +67,7 @@ import {
   readerQueryKeys,
   normalizeScopeId,
 } from "@/features/library/sdk/query-keys";
-import { invalidateLibraryCatalogDependencies } from "./cache-patcher";
+import { invalidateLibraryCatalogDependencies } from "./cache-patcher.queries";
 
 export { attachmentKeys, citationKeys, exportKeys };
 

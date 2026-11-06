@@ -2,7 +2,7 @@
 
 import { create } from 'zustand';
 import { toast } from 'sonner';
-import type { Item } from '@/features/library/domain/types/core.types';
+import type { Item } from '@/features/library/types/core.types';
 import { extractExplicitUserMergeOverrides } from '@/features/library/domain/diff.domain';
 import { notifyDraftCacheCleared } from '@/features/library/sdk/query-keys';
 import { registerLibraryScopeChangeListener } from '@/features/library/core/store/library-ui.store';

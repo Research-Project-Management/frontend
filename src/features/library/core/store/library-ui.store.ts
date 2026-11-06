@@ -1,11 +1,33 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { StateCreator } from 'zustand';
-import type { LibraryScope } from '@/features/library/domain/types/core.types';
+import type { LibraryScope } from '@/features/library/types/core.types';
 import {
   DEFAULT_LIBRARY_DISPLAY_OPTIONS,
   type LibraryDisplayOptions,
-} from '@/features/library/domain/types/ingestion.types';
+  type LibraryOrderBy,
+} from '@/features/library/types/ingestion.types';
+
+export type QuickSearchMode = 'title_creator_year' | 'fields_tags' | 'everything';
+
+export interface LibraryEphemeralFilters {
+  q?: string;
+  searchMode?: QuickSearchMode;
+  fileStatus?: string;
+  hasFile?: string;
+  hasNotes?: string;
+  readStatus?: string | string[];
+  type?: string | string[];
+  itemType?: string | string[];
+  fromYear?: string;
+  toYear?: string;
+  startDate?: string;
+  endDate?: string;
+  tag?: string | string[];
+  orderBy?: LibraryOrderBy;
+  orderDirection?: 'asc' | 'desc';
+  page?: number;
+}
 
 const scopeChangeListeners = new Set<() => void>();
 
@@ -57,9 +79,16 @@ interface LibraryScopeSlice {
   activeScope: LibraryScope;
   activeCollectionId: string | null;
   activeSavedSearchId: string | null;
+  ephemeralFilters: LibraryEphemeralFilters;
   setActiveScope: (scope: LibraryScope) => void;
   setActiveCollectionId: (collectionId: string | null) => void;
   setActiveSavedSearchId: (savedSearchId: string | null) => void;
+  setEphemeralFilters: (
+    updater:
+      | LibraryEphemeralFilters
+      | ((prev: LibraryEphemeralFilters) => LibraryEphemeralFilters),
+  ) => void;
+  clearEphemeralFilters: () => void;
 }
 
 // 2. Workbench Layout & Display Slice
@@ -117,6 +146,7 @@ type LibraryUIState = LibraryScopeSlice &
 
 const EMPTY_SELECTED_IDS = new Set<string>();
 const EMPTY_MODAL_PROPS: Record<string, unknown> = {};
+const EMPTY_EPHEMERAL_FILTERS: LibraryEphemeralFilters = {};
 const MIN_SIDEBAR_WIDTH = 200;
 const MAX_SIDEBAR_WIDTH = 400;
 export const MIN_INSPECTOR_WIDTH = 260;
@@ -135,6 +165,7 @@ const createScopeSlice: StateCreator<
   },
   activeCollectionId: null,
   activeSavedSearchId: null,
+  ephemeralFilters: EMPTY_EPHEMERAL_FILTERS,
 
   setActiveScope: (activeScope) =>
     set((state) => {
@@ -158,6 +189,7 @@ const createScopeSlice: StateCreator<
         isInspectorOpen: false,
         activeCollectionId: null,
         activeSavedSearchId: null,
+        ephemeralFilters: EMPTY_EPHEMERAL_FILTERS,
         activeModal: null,
         modalProps: EMPTY_MODAL_PROPS,
       };
@@ -196,6 +228,24 @@ const createScopeSlice: StateCreator<
         activeItemId: null,
       };
     }),
+
+  setEphemeralFilters: (updater) =>
+    set((state) => {
+      const next =
+        typeof updater === 'function'
+          ? updater(state.ephemeralFilters)
+          : updater;
+      return next === state.ephemeralFilters
+        ? state
+        : { ephemeralFilters: next };
+    }),
+
+  clearEphemeralFilters: () =>
+    set((state) =>
+      Object.keys(state.ephemeralFilters).length === 0
+        ? state
+        : { ephemeralFilters: EMPTY_EPHEMERAL_FILTERS },
+    ),
 });
 
 const createLayoutSlice: StateCreator<

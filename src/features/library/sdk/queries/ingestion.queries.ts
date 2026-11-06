@@ -10,9 +10,9 @@ import {
   FeedsService,
 } from '../clients/curation.client';
 import { integrationService } from '@/features/settings/services/integration.service';
-import type { UnifiedIngestionPayload, FlagRetractionInput } from '@/features/library/domain/types/core.types';
+import type { UnifiedIngestionPayload, FlagRetractionInput } from '@/features/library/types/core.types';
 import { mapServerFeedSubscriptions } from '@/features/library/domain/feed-parser.domain';
-import type { SavedFeedSubscription } from '@/features/library/domain/types/ingestion.types';
+import type { SavedFeedSubscription } from '@/features/library/types/ingestion.types';
 import {
   itemKeys,
   ingestKeys,
@@ -36,7 +36,7 @@ import {
   patchItemAcrossScopeCaches,
   removeItemsFromScopeCaches,
   getCachedItemsMapFromScope,
-} from './cache-patcher';
+} from './cache-patcher.queries';
 import {
   type PollRunOutcome,
   type PollIngestionRunOptions,
@@ -44,7 +44,8 @@ import {
   pollIngestionRunCompletion,
   buildIdentifierIngestionPayload,
   executeTrackedIdentifierIngestion,
-} from './ingestion-polling.workflow';
+  lookupAcademicIdentifierDirect,
+} from './ingestion-polling.queries';
 
 export {
   ingestKeys,
@@ -57,6 +58,7 @@ export {
   pollIngestionRunCompletion,
   buildIdentifierIngestionPayload,
   executeTrackedIdentifierIngestion,
+  lookupAcademicIdentifierDirect,
 };
 
 export function executeLibraryIngestion(

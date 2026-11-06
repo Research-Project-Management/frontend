@@ -1,13 +1,19 @@
 import {
   executeLibraryIngestion,
   pollIngestionRunCompletion,
+  lookupAcademicIdentifierDirect,
+  fetchIngestionRunProgress,
 } from '@/features/library/sdk/queries/ingestion.queries';
 import {
   uploadLibraryFileMultipart,
   type UploadedMultipartFile,
 } from '@/features/library/sdk/queries/extraction.queries';
 import { cleanFilenameToTitle } from '@/features/library/domain/metadata.mapper';
-import type { ProcessModalStoreApi } from '@/features/library/domain/types/ingestion.types';
+import {
+  computeEdgeFileSha256,
+  sniffPdfEdgeIdentifier,
+} from '@/features/library/domain/identifiers.domain';
+import type { ProcessModalStoreApi } from '@/features/library/types/ingestion.types';
 
 interface BatchTask<TInput = unknown, TOutput = unknown> {
   id: string;
@@ -45,7 +51,6 @@ export class BatchFlowManager<TInput = unknown, TOutput = unknown> {
   private readonly abortController: AbortController;
   private readonly progressListeners = new Set<BatchFlowEventListener<TOutput>>();
   private readonly externalSignal?: AbortSignal;
-
   private isRunning = false;
   private isCancelled = false;
 
@@ -55,10 +60,7 @@ export class BatchFlowManager<TInput = unknown, TOutput = unknown> {
     this.retryBaseDelayMs = options.retryBaseDelayMs ?? 500;
     this.abortController = new AbortController();
     this.externalSignal = options.abortSignal;
-
-    if (this.externalSignal?.aborted) {
-      this.cancel();
-    }
+    if (this.externalSignal?.aborted) this.cancel();
   }
 
   onProgress(listener: BatchFlowEventListener<TOutput>): () => void {
@@ -73,20 +75,13 @@ export class BatchFlowManager<TInput = unknown, TOutput = unknown> {
   }
 
   async execute(tasks: BatchTask<TInput, TOutput>[]): Promise<BatchFlowProgress<TOutput>> {
-    if (this.isRunning) {
-      throw new Error('BatchFlowManager is already running an active task flow.');
-    }
+    if (this.isRunning) throw new Error('BatchFlowManager is already running an active task flow.');
     this.isRunning = true;
-
     const onExternalAbort = () => this.cancel();
     if (this.externalSignal) {
-      if (this.externalSignal.aborted) {
-        this.cancel();
-      } else {
-        this.externalSignal.addEventListener('abort', onExternalAbort, { once: true });
-      }
+      if (this.externalSignal.aborted) this.cancel();
+      else this.externalSignal.addEventListener('abort', onExternalAbort, { once: true });
     }
-
     const total = tasks.length;
     const results = new Map<string, TOutput>();
     const errors = new Map<string, Error>();
@@ -96,40 +91,20 @@ export class BatchFlowManager<TInput = unknown, TOutput = unknown> {
 
     const notify = () => {
       const percentage = total > 0 ? Math.round((completed / total) * 100) : 100;
-      const snapshot: BatchFlowProgress<TOutput> = {
-        total,
-        completed,
-        succeeded,
-        failed,
-        percentage,
-        results,
-        errors,
-      };
-      this.progressListeners.forEach((l) => {
-        try {
-          l(snapshot);
-        } catch {
-          // Swallow listener errors
-        }
-      });
+      const snapshot: BatchFlowProgress<TOutput> = { total, completed, succeeded, failed, percentage, results, errors };
+      this.progressListeners.forEach((l) => { try { l(snapshot); } catch { /* ignore */ } });
     };
 
     try {
-      if (total === 0) {
-        return { total: 0, completed: 0, succeeded: 0, failed: 0, percentage: 100, results, errors };
-      }
-
+      if (total === 0) return { total: 0, completed: 0, succeeded: 0, failed: 0, percentage: 100, results, errors };
       const queue = [...tasks];
-
       const runWorker = async (): Promise<void> => {
         while (queue.length > 0 && !this.isCancelled) {
           const task = queue.shift();
           if (!task) break;
-
           let attempt = 0;
           const taskMaxRetries = task.retries ?? this.maxRetries;
           let lastError: Error = new Error(`Task ${task.id} failed without execution.`);
-
           while (attempt <= taskMaxRetries && !this.isCancelled) {
             try {
               const res = await task.execute(task.data, this.abortController.signal);
@@ -145,14 +120,8 @@ export class BatchFlowManager<TInput = unknown, TOutput = unknown> {
               if (attempt <= taskMaxRetries && !this.isCancelled) {
                 const delay = this.retryBaseDelayMs * Math.pow(2, attempt - 1) + Math.random() * 100;
                 await new Promise<void>((resolve) => {
-                  if (this.abortController.signal.aborted) {
-                    resolve();
-                    return;
-                  }
-                  const onAbort = () => {
-                    clearTimeout(timer);
-                    resolve();
-                  };
+                  if (this.abortController.signal.aborted) { resolve(); return; }
+                  const onAbort = () => { clearTimeout(timer); resolve(); };
                   const timer = setTimeout(() => {
                     this.abortController.signal.removeEventListener('abort', onAbort);
                     resolve();
@@ -162,7 +131,6 @@ export class BatchFlowManager<TInput = unknown, TOutput = unknown> {
               }
             }
           }
-
           if (lastError && !this.isCancelled) {
             errors.set(task.id, lastError);
             failed++;
@@ -171,21 +139,9 @@ export class BatchFlowManager<TInput = unknown, TOutput = unknown> {
           }
         }
       };
-
       const workerCount = Math.min(this.concurrency, total);
-      const workers = Array.from({ length: workerCount }, () => runWorker());
-      await Promise.all(workers);
-
-      const finalPercentage = total > 0 ? Math.round((completed / total) * 100) : 100;
-      return {
-        total,
-        completed,
-        succeeded,
-        failed,
-        percentage: finalPercentage,
-        results,
-        errors,
-      };
+      await Promise.all(Array.from({ length: workerCount }, () => runWorker()));
+      return { total, completed, succeeded, failed, percentage: total > 0 ? Math.round((completed / total) * 100) : 100, results, errors };
     } finally {
       this.isRunning = false;
       this.externalSignal?.removeEventListener('abort', onExternalAbort);
@@ -275,7 +231,7 @@ async function ingestTextContent(
   source: BibliographyTextFormat,
   content: string,
   ctx: FileIngestionStrategyContext,
-): Promise<{ extractedTitle: string; resolvedItemId?: string }> {
+): Promise<{ extractedTitle: string; resolvedItemId?: string; runId?: string }> {
   const res = await executeLibraryIngestion(ctx.scopeId, {
     source,
     content,
@@ -312,7 +268,7 @@ async function ingestTextContent(
     resolvedItemId = pollOutcome.itemId || resolvedItemId;
   }
 
-  return { extractedTitle, resolvedItemId };
+  return { extractedTitle, resolvedItemId, runId: bibRunId };
 }
 
 export const TextBibliographyFileStrategy: IFileIngestionStrategy = {
@@ -348,20 +304,264 @@ export const TextBibliographyFileStrategy: IFileIngestionStrategy = {
   },
 };
 
+export interface QueuedIngestionFileEntry {
+  file: File;
+  index: number;
+  provisionalId: string;
+}
+
+export interface BundledTextFileBatch {
+  source: BibliographyTextFormat;
+  entries: QueuedIngestionFileEntry[];
+  mergedContent: string;
+  totalBytes: number;
+}
+
+const TEXT_BUNDLE_MAX_BYTES = 384 * 1024; // 384 KB byte budget per HTTP request
+const TEXT_BUNDLE_MAX_FILES = 150; // Cap files per bundle
+
+/**
+ * Computes adaptive upload concurrency from exact byte sizes (KB -> MB) using a 16MB in-flight budget.
+ * - Tiny files (< 256 KB avg): scales up to 8-10 concurrent workers
+ * - Standard PDFs (1 MB - 4 MB avg): 4-6 concurrent workers
+ * - Heavy scans (> 15 MB avg): scales down to 2 concurrent workers to prevent TCP/timeout stalls
+ */
+export function computeAdaptiveUploadConcurrency(
+  files: ReadonlyArray<Pick<File, 'size'>>,
+): number {
+  if (!files || files.length === 0) return 4;
+  const totalBytes = files.reduce((sum, f) => sum + Math.max(0, f.size || 0), 0);
+  const avgBytes = totalBytes / files.length;
+  const targetBytesInFlight = 16 * 1024 * 1024; // 16 MB
+  if (avgBytes <= 256 * 1024) {
+    return Math.min(10, Math.max(4, files.length));
+  }
+  if (avgBytes >= 15 * 1024 * 1024) {
+    return 2;
+  }
+  const computed = Math.round(targetBytesInFlight / Math.max(avgBytes, 1));
+  return Math.max(2, Math.min(8, computed));
+}
+
+/**
+ * Coalesces lightweight text bibliography files (.csv, .bib, .ris, .medline, .txt)
+ * by KB byte budget (384 KB) and file count (150 files) so 1,000 tiny CSV/BibTeX files
+ * are sent in 7-10 bulk HTTP requests instead of 1,000 individual HTTP requests.
+ */
+export async function bundleLightweightTextFiles(
+  entries: ReadonlyArray<QueuedIngestionFileEntry>,
+): Promise<{
+  bundles: BundledTextFileBatch[];
+  passthroughEntries: QueuedIngestionFileEntry[];
+}> {
+  const bundles: BundledTextFileBatch[] = [];
+  const passthroughEntries: QueuedIngestionFileEntry[] = [];
+  const activeBuckets = new Map<
+    string,
+    {
+      source: BibliographyTextFormat;
+      csvHeader?: string;
+      entries: QueuedIngestionFileEntry[];
+      chunks: string[];
+      totalBytes: number;
+    }
+  >();
+
+  const flushBucket = (key: string) => {
+    const bucket = activeBuckets.get(key);
+    if (!bucket || bucket.entries.length === 0) return;
+    activeBuckets.delete(key);
+    if (bucket.entries.length === 1) {
+      passthroughEntries.push(bucket.entries[0]!);
+      return;
+    }
+    const mergedContent =
+      bucket.source === 'csl_json'
+        ? `[${bucket.chunks.join(',')}]`
+        : bucket.source === 'csv' && bucket.csvHeader
+          ? `${bucket.csvHeader}\n${bucket.chunks.join('\n')}`
+          : bucket.chunks.join('\n\n');
+    bundles.push({
+      source: bucket.source,
+      entries: bucket.entries,
+      mergedContent,
+      totalBytes: bucket.totalBytes,
+    });
+  };
+
+  for (const entry of entries) {
+    const { file } = entry;
+    // Only bundle lightweight text files (<= 128 KB each)
+    if (
+      !TextBibliographyFileStrategy.canHandle(file) ||
+      file.size > 128 * 1024 ||
+      file.size === 0
+    ) {
+      passthroughEntries.push(entry);
+      continue;
+    }
+
+    let rawText = '';
+    try {
+      rawText = (await file.text()).trim();
+    } catch {
+      passthroughEntries.push(entry);
+      continue;
+    }
+    if (!rawText) {
+      passthroughEntries.push(entry);
+      continue;
+    }
+
+    const format = detectBibliographyFileFormat(file, rawText);
+    if (
+      format !== 'csv' &&
+      format !== 'bibtex' &&
+      format !== 'ris' &&
+      format !== 'medline' &&
+      format !== 'csl_json'
+    ) {
+      passthroughEntries.push(entry);
+      continue;
+    }
+
+    let bucketKey: string = format;
+    let payloadChunk = rawText;
+    let csvHeader: string | undefined;
+
+    if (format === 'csl_json') {
+      try {
+        const parsed = JSON.parse(rawText) as unknown;
+        const arr = Array.isArray(parsed) ? parsed : [parsed];
+        const validObjs = arr.filter(
+          (item) => item && typeof item === 'object' && !Array.isArray(item),
+        );
+        if (validObjs.length === 0) {
+          passthroughEntries.push(entry);
+          continue;
+        }
+        payloadChunk = validObjs.map((o) => JSON.stringify(o)).join(',');
+      } catch {
+        passthroughEntries.push(entry);
+        continue;
+      }
+    } else if (format === 'csv') {
+      const lines = rawText.split(/\r?\n/).filter((l) => l.trim().length > 0);
+      if (lines.length < 2) {
+        passthroughEntries.push(entry);
+        continue;
+      }
+      csvHeader = lines[0]!.trim();
+      payloadChunk = lines.slice(1).join('\n');
+      bucketKey = `csv:${csvHeader.toLowerCase()}`;
+    }
+
+    const byteLen = payloadChunk.length;
+    const existing = activeBuckets.get(bucketKey);
+    if (
+      existing &&
+      (existing.totalBytes + byteLen > TEXT_BUNDLE_MAX_BYTES ||
+        existing.entries.length >= TEXT_BUNDLE_MAX_FILES)
+    ) {
+      flushBucket(bucketKey);
+    }
+
+    let target = activeBuckets.get(bucketKey);
+    if (!target) {
+      target = {
+        source: format,
+        csvHeader,
+        entries: [],
+        chunks: [],
+        totalBytes: csvHeader ? csvHeader.length + 1 : 0,
+      };
+      activeBuckets.set(bucketKey, target);
+    }
+
+    target.entries.push(entry);
+    target.chunks.push(payloadChunk);
+    target.totalBytes += byteLen + 2;
+  }
+
+  for (const key of Array.from(activeBuckets.keys())) {
+    flushBucket(key);
+  }
+
+  return { bundles, passthroughEntries };
+}
+
+const MAX_CONCURRENT_BACKGROUND_POLLS = 4;
+let activeBackgroundPolls = 0;
+const backgroundPollWaiters: Array<() => void> = [];
+
+async function withBoundedBackgroundPoll<T>(fn: () => Promise<T>): Promise<T> {
+  if (activeBackgroundPolls >= MAX_CONCURRENT_BACKGROUND_POLLS) {
+    await new Promise<void>((resolve) => backgroundPollWaiters.push(resolve));
+  }
+  activeBackgroundPolls++;
+  try {
+    return await fn();
+  } finally {
+    activeBackgroundPolls--;
+    const next = backgroundPollWaiters.shift();
+    if (next) next();
+  }
+}
+
+const EDGE_UPLOAD_HASH_TTL_MS = 60_000;
+const edgeUploadHashInFlight = new Map<
+  string,
+  { expiresAt: number; promise: Promise<UploadedMultipartFile> }
+>();
+
 export const BinaryAttachmentFileStrategy: IFileIngestionStrategy = {
   id: 'binary-attachment',
   canHandle(_file: File): boolean {
     return true;
   },
   async execute(file: File, ctx: FileIngestionStrategyContext): Promise<void> {
+    // 1. Surgical 128KB PDF Sniffing + Direct Browser-IP Resolution IN PARALLEL with network upload
+    const edgeResolutionPromise = sniffPdfEdgeIdentifier(file)
+      .then((sniffed) => {
+        if (!sniffed) return null;
+        if (sniffed.type === 'doi') return lookupAcademicIdentifierDirect({ source: 'doi', doi: sniffed.value });
+        if (sniffed.type === 'arxiv') return lookupAcademicIdentifierDirect({ source: 'arxiv', arxivId: sniffed.value });
+        if (sniffed.type === 'pmid') return lookupAcademicIdentifierDirect({ source: 'pmid', pmid: sniffed.value });
+        return lookupAcademicIdentifierDirect({ source: 'url', url: sniffed.value });
+      })
+      .catch(() => null);
+
+    // 2. WebCrypto SHA-256 Pre-Flight Upload Deduplication (TTL-bounded to 60s to prevent stale fileId)
     let uploadRes = ctx.uploadedCache.get(file);
     if (!uploadRes) {
-      uploadRes = await uploadLibraryFileMultipart(ctx.scopeId, file, {
-        onProgress: (percent: number) => {
-          ctx.store.updateProcessingItem(ctx.provisionalId, { progress: percent });
-        },
-        signal: ctx.signal,
-      });
+      const contentHash = await computeEdgeFileSha256(file);
+      const hashCacheKey = contentHash ? `${ctx.scopeId}:${contentHash}` : null;
+      const now = Date.now();
+      const cachedEntry = hashCacheKey ? edgeUploadHashInFlight.get(hashCacheKey) : undefined;
+
+      if (cachedEntry && cachedEntry.expiresAt > now) {
+        uploadRes = await cachedEntry.promise;
+      } else {
+        if (hashCacheKey && cachedEntry) edgeUploadHashInFlight.delete(hashCacheKey);
+        const uploadTask = uploadLibraryFileMultipart(ctx.scopeId, file, {
+          onProgress: (percent: number) => {
+            ctx.store.updateProcessingItem(ctx.provisionalId, { progress: percent });
+          },
+          signal: ctx.signal,
+        });
+        if (hashCacheKey) {
+          edgeUploadHashInFlight.set(hashCacheKey, {
+            expiresAt: now + EDGE_UPLOAD_HASH_TTL_MS,
+            promise: uploadTask,
+          });
+        }
+        try {
+          uploadRes = await uploadTask;
+        } catch (err) {
+          if (hashCacheKey) edgeUploadHashInFlight.delete(hashCacheKey);
+          throw err;
+        }
+      }
       if (uploadRes?.fileId) {
         ctx.uploadedCache.set(file, uploadRes);
       }
@@ -371,20 +571,27 @@ export const BinaryAttachmentFileStrategy: IFileIngestionStrategy = {
       throw new Error('Upload succeeded without file identifier');
     }
 
+    const edgeOverrides = await edgeResolutionPromise;
+    const edgeTitle =
+      typeof edgeOverrides?.title === 'string' && edgeOverrides.title.trim()
+        ? edgeOverrides.title.trim()
+        : undefined;
+    const identifiedTitle = edgeTitle || cleanFilenameToTitle(file.name);
+
     ctx.store.patchBatchItemAndRecalculate(
       ctx.provisionalId,
-      { status: 'PROCESSING' },
+      { status: 'PROCESSING', ...(edgeTitle ? { itemName: edgeTitle } : {}) },
       {
+        ...(edgeTitle ? { currentTitle: edgeTitle } : {}),
         processingPatch: {
           status: 'PROCESSING',
           fileId: uploadRes.fileId,
           fileUrl: uploadRes.url,
+          ...(edgeTitle ? { extractedTitle: edgeTitle } : {}),
           progress: 100,
         },
       },
     );
-
-    const identifiedTitle = cleanFilenameToTitle(file.name);
 
     const ingestRes = await executeLibraryIngestion(
       ctx.scopeId,
@@ -393,6 +600,9 @@ export const BinaryAttachmentFileStrategy: IFileIngestionStrategy = {
         fileId: uploadRes.fileId,
         filename: file.name,
         collectionId: ctx.effectiveCollection,
+        ...(edgeOverrides
+          ? { overrides: { ...edgeOverrides, _clientResolved: true } }
+          : {}),
       },
       { signal: ctx.signal },
     );
@@ -407,8 +617,6 @@ export const BinaryAttachmentFileStrategy: IFileIngestionStrategy = {
     const completedItemId = ingestPayload?.data?.itemId || ingestPayload?.itemId;
 
     if (runId) {
-      // Keep item in PROCESSING state while server-side PDF extraction runs,
-      // while freeing up the multipart upload worker slot immediately.
       ctx.store.patchBatchItemAndRecalculate(
         ctx.provisionalId,
         { status: 'PROCESSING', itemName: identifiedTitle, itemId: completedItemId },
@@ -423,53 +631,30 @@ export const BinaryAttachmentFileStrategy: IFileIngestionStrategy = {
         },
       );
 
-      // Decouple extraction polling from upload worker pool, but register the
-      // background promise so batch completion waits for all extractions to finish.
-      const extractionPromise = pollIngestionRunCompletion(ctx.scopeId, runId, {
-        fallbackTitle: identifiedTitle,
-        initialItemId: completedItemId,
-        signal: ctx.signal,
-      })
+      const extractionPromise = withBoundedBackgroundPoll(() =>
+        pollIngestionRunCompletion(ctx.scopeId, runId, {
+          fallbackTitle: identifiedTitle,
+          initialItemId: completedItemId,
+          signal: ctx.signal,
+        }),
+      )
         .then((pollOutcome) => {
           if (pollOutcome.ok) {
-            ctx.markFileSucceeded(
-              file,
-              ctx.index,
-              ctx.provisionalId,
-              pollOutcome.title || identifiedTitle,
-              pollOutcome.itemId || completedItemId,
-              true,
-            );
+            ctx.markFileSucceeded(file, ctx.index, ctx.provisionalId, pollOutcome.title || identifiedTitle, pollOutcome.itemId || completedItemId, true);
           } else {
-            ctx.markFileFailed?.(
-              file,
-              ctx.index,
-              ctx.provisionalId,
-              pollOutcome.error || 'Extraction failed',
-            );
+            ctx.markFileFailed?.(file, ctx.index, ctx.provisionalId, pollOutcome.error || 'Extraction failed');
           }
         })
         .catch((err: unknown) => {
-          const errMsg = err instanceof Error ? err.message : String(err);
-          ctx.markFileFailed?.(file, ctx.index, ctx.provisionalId, errMsg);
+          ctx.markFileFailed?.(file, ctx.index, ctx.provisionalId, err instanceof Error ? err.message : String(err));
         });
 
-      if (ctx.registerBackgroundExtraction) {
-        ctx.registerBackgroundExtraction(extractionPromise);
-      } else {
-        await extractionPromise;
-      }
+      if (ctx.registerBackgroundExtraction) ctx.registerBackgroundExtraction(extractionPromise);
+      else await extractionPromise;
       return;
     }
 
-    ctx.markFileSucceeded(
-      file,
-      ctx.index,
-      ctx.provisionalId,
-      identifiedTitle,
-      completedItemId,
-      true,
-    );
+    ctx.markFileSucceeded(file, ctx.index, ctx.provisionalId, identifiedTitle, completedItemId, true);
   },
 };
 
@@ -483,4 +668,75 @@ export function resolveFileIngestionStrategy(file: File): IFileIngestionStrategy
     FILE_INGESTION_STRATEGY_REGISTRY.find((strategy) => strategy.canHandle(file)) ||
     BinaryAttachmentFileStrategy
   );
+}
+
+export async function executeBundledTextBatch(
+  bundle: BundledTextFileBatch,
+  ctx: {
+    scopeId: string;
+    effectiveCollection?: string;
+    store: ProcessModalStoreApi;
+    signal?: AbortSignal;
+    markFileSucceeded: FileIngestionStrategyContext['markFileSucceeded'];
+    markFileFailed: NonNullable<FileIngestionStrategyContext['markFileFailed']>;
+  },
+): Promise<void> {
+  if (ctx.signal?.aborted) throw new Error('Processing cancelled');
+  const firstEntry = bundle.entries[0]!;
+  for (const entry of bundle.entries) {
+    ctx.store.patchBatchItemAndRecalculate(
+      entry.provisionalId,
+      { status: 'PROCESSING', error: undefined },
+      { processingPatch: { status: 'PROCESSING' } },
+    );
+  }
+  try {
+    const { extractedTitle, resolvedItemId, runId } = await ingestTextContent(
+      firstEntry.file,
+      bundle.source,
+      bundle.mergedContent,
+      {
+        scopeId: ctx.scopeId,
+        index: firstEntry.index,
+        provisionalId: firstEntry.provisionalId,
+        effectiveCollection: ctx.effectiveCollection,
+        store: ctx.store,
+        uploadedCache: new Map(),
+        signal: ctx.signal,
+        markFileSucceeded: ctx.markFileSucceeded,
+        markFileFailed: ctx.markFileFailed,
+      },
+    );
+    let progressItems: Array<{ title?: string; status?: string; itemId?: string; error?: string }> = [];
+    if (runId) {
+      try {
+        const pr = (await fetchIngestionRunProgress(ctx.scopeId, runId)) as {
+          items?: Array<{ title?: string; status?: string; itemId?: string; error?: string }>;
+        } | null;
+        if (Array.isArray(pr?.items)) progressItems = pr.items;
+      } catch {
+        // Progress fetch is optional
+      }
+    }
+    bundle.entries.forEach((entry, idx) => {
+      const itemOutcome = progressItems.length === bundle.entries.length ? progressItems[idx] : undefined;
+      if (itemOutcome?.status === 'FAILED') {
+        ctx.markFileFailed(entry.file, entry.index, entry.provisionalId, itemOutcome.error || 'Record import failed');
+      } else {
+        ctx.markFileSucceeded(
+          entry.file,
+          entry.index,
+          entry.provisionalId,
+          itemOutcome?.title || entry.file.name || extractedTitle,
+          itemOutcome?.itemId || resolvedItemId,
+          true,
+        );
+      }
+    });
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : 'Bundled import failed';
+    for (const entry of bundle.entries) {
+      ctx.markFileFailed(entry.file, entry.index, entry.provisionalId, errorMsg);
+    }
+  }
 }

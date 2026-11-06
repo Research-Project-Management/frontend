@@ -8,7 +8,7 @@ import type {
   InlineTextInputState,
   AreaSelectionState,
   InkDrawingState,
-} from '@/features/library/domain/types/reader.schema';
+} from '@/features/library/types/reader.types';
 import type { ReaderAnnotationTool } from '@/features/library/core/store/reader.store';
 import { cropCanvasSelectionToDataUrl } from '@/features/library/domain/reader-search-outline.domain';
 import { searchReaderAttachmentAnchors } from '@/features/library/sdk/queries/reader.queries';
@@ -411,23 +411,33 @@ export function usePdfViewerInteraction({
   }, [activeColor, onAnnotate]);
 
   const openAnnotationCard = useCallback(
-    (ann: ReaderAnnotation, el: HTMLElement) => {
-      const target = el.getBoundingClientRect();
+    (ann: ReaderAnnotation, el?: HTMLElement) => {
       const container = scrollContainerRef.current?.getBoundingClientRect();
-      const top =
-        target.bottom -
-        (container?.top || 0) +
-        (scrollContainerRef.current?.scrollTop || 0) +
-        6;
-      const left = Math.max(
-        10,
-        Math.min(
-          (container?.width || 800) - 340,
-          target.left -
-            (container?.left || 0) +
-            (scrollContainerRef.current?.scrollLeft || 0),
-        ),
-      );
+      let top = 0;
+      let left = 0;
+      if (el) {
+        const target = el.getBoundingClientRect();
+        top =
+          target.bottom -
+          (container?.top || 0) +
+          (scrollContainerRef.current?.scrollTop || 0) +
+          6;
+        left = Math.max(
+          10,
+          Math.min(
+            (container?.width || 800) - 340,
+            target.left -
+              (container?.left || 0) +
+              (scrollContainerRef.current?.scrollLeft || 0),
+          ),
+        );
+      } else {
+        top = (menuPosition.top || 100) + 10;
+        left = Math.max(
+          10,
+          Math.min((container?.width || 800) - 340, (menuPosition.left || 200) - 140),
+        );
+      }
 
       setActiveHighlightTooltip({
         id: ann.id,
@@ -439,7 +449,7 @@ export function usePdfViewerInteraction({
         ann,
       });
     },
-    [scrollContainerRef],
+    [scrollContainerRef, menuPosition],
   );
 
   const handleMouseUp = useCallback(() => {
@@ -458,9 +468,9 @@ export function usePdfViewerInteraction({
       const rect = range.getBoundingClientRect();
       const firstLineRect = clientRects[0] || rect;
       const containerRect = container.getBoundingClientRect();
-      const menuHeight = 40;
-      const menuGap = 10;
-      const menuHalfWidth = 220;
+      const menuHeight = 36;
+      const menuGap = 12;
+      const menuHalfWidth = 240;
       const selectionTop = rect.top - containerRect.top + container.scrollTop;
       const selectionBottom = rect.bottom - containerRect.top + container.scrollTop;
       const visibleTop = container.scrollTop + menuGap;
@@ -484,27 +494,52 @@ export function usePdfViewerInteraction({
       setMenuPosition({ top, left });
       setSelectedText(text);
 
+      const startNode = range.startContainer;
+      const startEl = (
+        startNode.nodeType === Node.ELEMENT_NODE
+          ? startNode
+          : startNode.parentElement
+      ) as HTMLElement | null;
       const anchorNode = selection.anchorNode;
       const anchorEl = (
-        anchorNode?.nodeType === Node.ELEMENT_NODE ? anchorNode : anchorNode?.parentElement
+        anchorNode?.nodeType === Node.ELEMENT_NODE
+          ? anchorNode
+          : anchorNode?.parentElement
       ) as HTMLElement | null;
-      const pageEl = anchorEl?.closest('[data-page-num]') as HTMLElement | null;
+      const ancestorEl = (
+        range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
+          ? range.commonAncestorContainer
+          : range.commonAncestorContainer.parentElement
+      ) as HTMLElement | null;
+
+      const pageEl =
+        startEl?.closest('[data-page-num]') as HTMLElement | null ??
+        anchorEl?.closest('[data-page-num]') as HTMLElement | null ??
+        ancestorEl?.closest('[data-page-num]') as HTMLElement | null ??
+        container.querySelector(`[data-page-num="${visiblePage}"]`) as HTMLElement | null;
+
       const pNum = pageEl ? Number(pageEl.dataset.pageNum) : visiblePage;
       setSelectedPageNum(pNum);
 
       let relative: AnnotationRect[] = [];
       if (pageEl) {
         const pageRect = pageEl.getBoundingClientRect();
-        const clientRects = Array.from(range.getClientRects());
-        relative = clientRects
-          .map((cr) => {
-            const x1 = Math.max(0, (cr.left - pageRect.left) / pageRect.width);
-            const y1 = Math.max(0, (cr.top - pageRect.top) / pageRect.height);
-            const width = Math.min(1 - x1, cr.width / pageRect.width);
-            const height = Math.min(1 - y1, cr.height / pageRect.height);
-            return { x1, y1, x2: x1 + width, y2: y1 + height, width, height };
-          })
-          .filter((r) => r.width > 0.001 && r.height > 0.001);
+        if (pageRect.width > 0 && pageRect.height > 0) {
+          const clientRects = Array.from(range.getClientRects()).filter(
+            (cr) => cr.width > 0.5 && cr.height > 0.5,
+          );
+          const rectsToUse =
+            clientRects.length > 0 ? clientRects : [range.getBoundingClientRect()];
+          relative = rectsToUse
+            .map((cr) => {
+              const x1 = Math.max(0, (cr.left - pageRect.left) / pageRect.width);
+              const y1 = Math.max(0, (cr.top - pageRect.top) / pageRect.height);
+              const width = Math.min(1 - x1, cr.width / pageRect.width);
+              const height = Math.min(1 - y1, cr.height / pageRect.height);
+              return { x1, y1, x2: x1 + width, y2: y1 + height, width, height };
+            })
+            .filter((r) => r.width > 0.001 && r.height > 0.001);
+        }
       }
       setSelectedRects(relative);
 
@@ -565,6 +600,18 @@ export function usePdfViewerInteraction({
     }
     handleMouseUp();
   }, [interactionMode, handleMouseUp]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowFloatingMenu(false);
+        setActiveHighlightTooltip(null);
+        window.getSelection()?.removeAllRanges();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   return {
     selectedText,

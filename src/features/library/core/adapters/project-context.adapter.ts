@@ -10,8 +10,8 @@ import {
   getSchemaRegistryVersion,
   getLibrarySchemaSnapshot,
   registerSchemaRegistryUpdateListener,
-} from '@/features/library/domain/types/core.types';
-import type { ReaderFitMode, ReaderTab, ReaderTheme } from '@/features/library/domain/types/reader.schema';
+} from '@/features/library/types/core.types';
+import type { ReaderFitMode, ReaderTab, ReaderTheme } from '@/features/library/types/reader.types';
 
 export {
   getSchemaRegistryVersion,
@@ -192,6 +192,41 @@ export const MAX_READER_ZOOM = 5.0;
 const READER_TABS_STORAGE_KEY = 'flux_reader_tabs';
 const READER_ACTIVE_TAB_STORAGE_KEY = 'flux_reader_active_tab';
 const READER_BOOKMARKS_STORAGE_KEY = 'flux_reader_bookmarks';
+const FEED_READ_IDS_STORAGE_KEY = 'flux_feed_read_entry_ids_v1';
+const MAX_PERSISTED_FEED_READ_IDS = 2000;
+
+export function loadFeedReadEntryIdsFromStorage(): Set<string> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const raw = localStorage.getItem(FEED_READ_IDS_STORAGE_KEY);
+    if (!raw) return new Set();
+    const parsed: unknown = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return new Set(
+        parsed
+          .filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+          .slice(-MAX_PERSISTED_FEED_READ_IDS),
+      );
+    }
+  } catch {
+    // Ignore storage read error
+  }
+  return new Set();
+}
+
+export function saveFeedReadEntryIdsToStorage(readIds: Iterable<string>): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const arr = Array.from(readIds).filter(Boolean);
+    const bounded =
+      arr.length > MAX_PERSISTED_FEED_READ_IDS
+        ? arr.slice(arr.length - MAX_PERSISTED_FEED_READ_IDS)
+        : arr;
+    safeSetReaderStorageItem(FEED_READ_IDS_STORAGE_KEY, JSON.stringify(bounded));
+  } catch {
+    // Ignore storage quota error
+  }
+}
 
 /**
  * Evicts the oldest inactive paper tabs when the tab count exceeds MAX_READER_TABS.
@@ -272,6 +307,10 @@ export function normalizeReaderTab(tab: ReaderTab): ReaderTab {
     ...tab,
     type: 'paper',
     currentPage: Math.max(1, Math.floor(tab.currentPage ?? 1)),
+    scrollTop:
+      typeof tab.scrollTop === 'number' && Number.isFinite(tab.scrollTop) && tab.scrollTop >= 0
+        ? Math.round(tab.scrollTop)
+        : undefined,
     zoom: normalizeReaderZoom(tab.zoom ?? 1.0),
     fitMode: normalizeReaderFitMode(tab.fitMode),
     rotation: (((tab.rotation ?? 0) % 360) + 360) % 360,

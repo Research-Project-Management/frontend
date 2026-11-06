@@ -5,9 +5,11 @@ import {
   type ItemQueryParams,
   type RelatedItem,
   type SchemaItemTypeDefinition,
+  type ItemTypesResponse,
+  type ReaderBootstrapResponse,
   normalizeRelationType,
-} from '@/features/library/domain/types/core.types';
-import type { DocumentFulltext } from '@/features/library/domain/types/reader.schema';
+} from '@/features/library/types/core.types';
+import type { DocumentFulltext } from '@/features/library/types/reader.types';
 import {
   libraryClient,
   resolveLibraryUrl,
@@ -62,19 +64,7 @@ export const RelationsService = {
 };
 
 
-export interface ItemTypesResponse {
-  success: boolean;
-  registryVersion: number;
-  schemaVersion: number;
-  source: string;
-  itemTypes: SchemaItemTypeDefinition[];
-  data: SchemaItemTypeDefinition[];
-  baseFieldMappings?: Record<string, Record<string, string>>;
-  reverseBaseFieldMappings?: Record<string, Record<string, string>>;
-  creatorRoles?: Record<string, string>;
-  cslTypeMap?: Record<string, string>;
-  cslFieldMap?: Record<string, string>;
-}
+export type { ItemTypesResponse, ReaderBootstrapResponse };
 
 interface LibraryBootstrapResponse {
   scope: 'user' | 'project';
@@ -86,14 +76,14 @@ interface LibraryBootstrapResponse {
     trash: number;
     itemTypes?: Record<string, number>;
     byItemType?: Record<string, number>;
-    role?: import('@/features/library/domain/types/core.types').ProjectRole;
-    yourRole?: import('@/features/library/domain/types/core.types').ProjectRole;
-    permissions?: Partial<import('@/features/library/domain/types/core.types').LibraryPermissions> | string[];
+    role?: import('@/features/library/types/core.types').ProjectRole;
+    yourRole?: import('@/features/library/types/core.types').ProjectRole;
+    permissions?: Partial<import('@/features/library/types/core.types').LibraryPermissions> | string[];
     effectivePermissions?: string[];
     permissionOverrides?: Record<string, boolean>;
   };
-  collections?: import('@/features/library/domain/types/core.types').Collection[];
-  savedSearches?: import('@/features/library/domain/types/core.types').SavedSearch[];
+  collections?: import('@/features/library/types/core.types').Collection[];
+  savedSearches?: import('@/features/library/types/core.types').SavedSearch[];
   tags?: import('./http.client').TagWithCount[];
   degraded?: boolean;
   degradedBranches?: string[];
@@ -107,22 +97,6 @@ interface LibraryBootstrapResponse {
   items?: Item[];
   meta?: CursorPaginationMeta;
   pagination?: CursorPaginationMeta;
-}
-
-export interface ReaderBootstrapResponse {
-  scope: 'user' | 'project';
-  scopeId: string;
-  degraded?: boolean;
-  degradedBranches?: string[];
-  item: Item;
-  activeAttachmentId: string | null;
-  annotations: import('@/features/library/domain/types/reader.schema').ReaderAnnotation[];
-  fulltext: DocumentFulltext | null;
-  readingState: import('./http.client').ItemStateData | null;
-  relations: RelatedItem[];
-  notes: import('@/features/library/domain/types/core.types').Note[];
-  role?: import('@/features/library/domain/types/core.types').ProjectRole;
-  permissions?: Partial<import('@/features/library/domain/types/core.types').LibraryPermissions> | string[];
 }
 
 // 1. ItemsService
@@ -221,9 +195,9 @@ export const ItemsService = {
       trash: number;
       itemTypes?: Record<string, number>;
       byItemType?: Record<string, number>;
-      role?: import('@/features/library/domain/types/core.types').ProjectRole;
-      yourRole?: import('@/features/library/domain/types/core.types').ProjectRole;
-      permissions?: Partial<import('@/features/library/domain/types/core.types').LibraryPermissions> | string[];
+      role?: import('@/features/library/types/core.types').ProjectRole;
+      yourRole?: import('@/features/library/types/core.types').ProjectRole;
+      permissions?: Partial<import('@/features/library/types/core.types').LibraryPermissions> | string[];
       effectivePermissions?: string[];
       permissionOverrides?: Record<string, boolean>;
     }>(getCatalogUrl(scopeId, 'counts')),

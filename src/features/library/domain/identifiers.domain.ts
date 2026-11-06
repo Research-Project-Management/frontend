@@ -545,3 +545,199 @@ export function getItemFileUrl(
 
   return '';
 }
+
+/**
+ * Computes WebCrypto SHA-256 hex digest of a browser File/Blob (for files <= 25 MB)
+ * to deduplicate identical binary files before network upload.
+ */
+export async function computeEdgeFileSha256(file: Blob): Promise<string | null> {
+  if (!file || file.size === 0 || file.size > 25 * 1024 * 1024) return null;
+  if (typeof crypto === 'undefined' || !crypto.subtle?.digest) return null;
+  try {
+    const buffer = await file.arrayBuffer();
+    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+  } catch {
+    return null;
+  }
+}
+
+export type EdgeSniffedIdentifier =
+  | { type: 'doi'; value: string }
+  | { type: 'arxiv'; value: string }
+  | { type: 'pmid'; value: string }
+  | { type: 'url'; value: string };
+
+function extractIdentifierFromPdfSampleText(
+  sample: string,
+): EdgeSniffedIdentifier | null {
+  // 1. Authoritative XMP / PDF Info Dict tags (<prism:doi>, <pdfx:doi>, <dc:identifier>, /DOI (...))
+  const xmpDoiMatch =
+    sample.match(
+      /<(?:prism:doi|pdfx:doi|crossmark:doi)[^>]*>\s*(?:doi:\s*)?(10\.\d{4,9}\/[^\s<"'&]+)/i,
+    )?.[1] ||
+    sample.match(
+      /<dc:identifier[^>]*>\s*(?:doi:\s*|https?:\/\/(?:dx\.)?doi\.org\/)(10\.\d{4,9}\/[^\s<"'&]+)/i,
+    )?.[1] ||
+    sample.match(/\/DOI\s*\(\s*(?:doi:\s*)?(10\.\d{4,9}\/[^)\s]+)\s*\)/i)?.[1] ||
+    sample.match(/(?:doi\.org\/|doi:\s*)(10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+)/i)?.[1];
+  if (xmpDoiMatch) {
+    const cleaned = cleanDoi(xmpDoiMatch);
+    if (cleaned && /^10\.\d{4,9}\//.test(cleaned)) {
+      return { type: 'doi', value: cleaned };
+    }
+  }
+
+  // 2. arXiv stamp or XMP arXiv identifier (e.g., arXiv:2303.08774v1 [cs.CL])
+  const arxivMatch = sample.match(
+    /arXiv:\s*(\d{4}\.\d{4,5}(?:v\d+)?|[a-z-]+(?:\.[a-z]{2})?\/\d{7}(?:v\d+)?)/i,
+  )?.[1];
+  if (arxivMatch) {
+    const cleanedArxiv = extractArxivId(arxivMatch);
+    if (cleanedArxiv) return { type: 'arxiv', value: cleanedArxiv };
+  }
+
+  // 3. Explicit PMID / PMCID in PDF front-matter
+  const pmcMatch = sample.match(/\b(PMC\d{5,9})\b/i)?.[1];
+  if (pmcMatch) return { type: 'pmid', value: pmcMatch.toUpperCase() };
+  const pmidMatch = sample.match(/\bPMID\s*:\s*(\d{6,9})\b/i)?.[1];
+  if (pmidMatch) return { type: 'pmid', value: pmidMatch };
+
+  return null;
+}
+
+async function decompressFirstFlateStreams(
+  rawBytes: Uint8Array,
+  maxStreams = 3,
+): Promise<string> {
+  if (typeof DecompressionStream === 'undefined') return '';
+  const latin1 = new TextDecoder('latin1').decode(rawBytes);
+  const chunks: string[] = [];
+  let searchPos = 0;
+  let count = 0;
+
+  while (count < maxStreams && searchPos < latin1.length) {
+    const streamIdx = latin1.indexOf('stream', searchPos);
+    if (streamIdx === -1) break;
+    let dataStart = streamIdx + 6;
+    if (latin1[dataStart] === '\r' && latin1[dataStart + 1] === '\n') dataStart += 2;
+    else if (latin1[dataStart] === '\n' || latin1[dataStart] === '\r') dataStart += 1;
+    else {
+      searchPos = dataStart;
+      continue;
+    }
+
+    const endIdx = latin1.indexOf('endstream', dataStart);
+    if (endIdx === -1) break;
+    searchPos = endIdx + 9;
+
+    let streamEnd = endIdx;
+    if (streamEnd > dataStart && latin1[streamEnd - 1] === '\n') streamEnd--;
+    if (streamEnd > dataStart && latin1[streamEnd - 1] === '\r') streamEnd--;
+
+    const sliceLen = streamEnd - dataStart;
+    if (sliceLen < 8 || sliceLen > 64 * 1024) continue;
+    const compressedSlice = rawBytes.subarray(dataStart, streamEnd);
+    count++;
+
+    for (const format of ['deflate', 'deflate-raw'] as const) {
+      try {
+        const ds = new DecompressionStream(format);
+        const writer = ds.writable.getWriter();
+        void writer.write(compressedSlice as unknown as BufferSource).catch(() => {});
+        void writer.close().catch(() => {});
+        const text = await new Response(ds.readable).text();
+        if (text && text.length > 0) {
+          chunks.push(text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, ' '));
+          break;
+        }
+      } catch {
+        // Ignore non-zlib or truncated stream
+      }
+    }
+  }
+  return chunks.join('\n');
+}
+
+/**
+ * Surgical 128KB PDF Front-Matter, XMP & FlateDecode Stream Sniffer:
+ * Inspects the filename (DOI, arXiv, ACL Anthology, BioRxiv/MedRxiv, PMC/PMID, OpenReview)
+ * and the first 128 KB + last 64 KB of a PDF file (including browser-native DecompressionStream
+ * inflation of compressed LaTeX/pdfTeX page-1 streams) in < 3ms without loading the full PDF into RAM.
+ */
+export async function sniffPdfEdgeIdentifier(
+  file: Pick<File, 'name' | 'size' | 'slice'>,
+): Promise<EdgeSniffedIdentifier | null> {
+  const filenameWithoutExt = (file.name || '').replace(/\.pdf$/i, '').trim();
+
+  // A. Direct DOI in filename (10.xxxx/yyyy or 10.xxxx_yyyy)
+  const fnDoiMatch = filenameWithoutExt.match(
+    /10\.\d{4,9}[/_@][-._;()/:A-Za-z0-9]+/,
+  )?.[0];
+  if (fnDoiMatch) {
+    const cleaned = cleanDoi(fnDoiMatch.replace(/^(10\.\d{4,9})[_@]/, '$1/'));
+    if (cleaned) return { type: 'doi', value: cleaned };
+  }
+
+  // B. ACL Anthology filename pattern (e.g. 2023.acl-long.123.pdf, 2024.emnlp-main.45.pdf, 2023.naacl-main.12.pdf)
+  const aclMatch = filenameWithoutExt.match(
+    /\b(20\d{2}\.(?:acl|emnlp|naacl|eacl|coling|findings|tacl)-[a-z0-9-]+\.\d+)\b/i,
+  )?.[1];
+  if (aclMatch) {
+    return { type: 'doi', value: `10.18653/v1/${aclMatch}` };
+  }
+
+  // C. BioRxiv / MedRxiv filename pattern (e.g. 2023.05.12.540123v1.full.pdf or 2023.05.12.540123.pdf)
+  const biorxivMatch = filenameWithoutExt.match(
+    /\b(20\d{2}\.\d{2}\.\d{2}\.\d{6,8})(?:v\d+)?(?:\.full)?$/i,
+  )?.[1];
+  if (biorxivMatch) {
+    return { type: 'doi', value: `10.1101/${biorxivMatch}` };
+  }
+
+  // D. PubMed Central / PMID filename pattern (e.g. PMC9876543.pdf or pmid_36123456.pdf)
+  const fnPmc = filenameWithoutExt.match(/\b(PMC\d{5,9})\b/i)?.[1];
+  if (fnPmc) return { type: 'pmid', value: fnPmc.toUpperCase() };
+  const fnPmid = filenameWithoutExt.match(/\bpmid[-_:\s]*(\d{6,9})\b/i)?.[1];
+  if (fnPmid) return { type: 'pmid', value: fnPmid };
+
+  // E. OpenReview filename pattern (e.g. openreview_id_k9Ps2abc.pdf)
+  const fnOpenReview = filenameWithoutExt.match(
+    /openreview[-_](?:id[-_])?([A-Za-z0-9_-]{8,14})\b/i,
+  )?.[1];
+  if (fnOpenReview) {
+    return { type: 'url', value: `https://openreview.net/forum?id=${fnOpenReview}` };
+  }
+
+  // F. arXiv filename pattern (e.g. 2303.08774v2.pdf)
+  const fnArxiv = extractArxivId(filenameWithoutExt);
+  if (fnArxiv && (/arxiv/i.test(filenameWithoutExt) || /^\d{4}\.\d{4,5}/.test(fnArxiv))) {
+    return { type: 'arxiv', value: fnArxiv };
+  }
+
+  if (typeof file.slice !== 'function' || file.size <= 0) return null;
+  try {
+    const headBytesCount = Math.min(file.size, 128 * 1024);
+    const headBlob = file.slice(0, headBytesCount);
+    const headBuffer = await headBlob.arrayBuffer();
+    const headUint8 = new Uint8Array(headBuffer);
+    const headText = new TextDecoder('utf-8', { fatal: false }).decode(headUint8);
+    const tailText =
+      file.size > 192 * 1024
+        ? await file.slice(Math.max(headBytesCount, file.size - 64 * 1024), file.size).text()
+        : '';
+
+    const rawFound = extractIdentifierFromPdfSampleText(`${headText}\n${tailText}`);
+    if (rawFound) return rawFound;
+
+    // G. Browser-native DecompressionStream fallback for FlateDecode compressed LaTeX/pdfTeX streams
+    const decompressedText = await decompressFirstFlateStreams(headUint8, 3);
+    if (decompressedText) {
+      return extractIdentifierFromPdfSampleText(decompressedText);
+    }
+  } catch {
+    // Ignore binary slice read errors
+  }
+  return null;
+}

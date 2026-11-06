@@ -19,7 +19,7 @@ import type {
   FieldMappingChange,
   CreatorRoleChange,
   TypeConversionPreview,
-} from '@/features/library/domain/types/core.types';
+} from '@/features/library/types/core.types';
 import { mapBackendItem } from '@/features/library/domain/metadata.mapper';
 import {
   itemKeys,
@@ -33,7 +33,7 @@ import {
   patchItemAcrossScopeCaches,
   invalidateLibraryCatalogDependencies,
   resolveCachedItemFromScope,
-} from './cache-patcher';
+} from './cache-patcher.queries';
 
 export { savedSearchKeys, relationKeys };
 export type {

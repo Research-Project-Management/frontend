@@ -1,4 +1,4 @@
-import type { Item } from './types/core.types';
+import type { Item } from '@/features/library/types/core.types';
 import {
   isValidValue,
 } from './metadata-sanitizers.domain';
@@ -18,7 +18,7 @@ import {
   getPublicationVenue,
   formatItemTypeLabel,
   getItemDisplayDate,
-} from './metadata-extra.constants';
+} from './metadata-extra-rules.domain';
 import {
   isSystemInternalExtraKey,
   isAllowedItemExtraKey,

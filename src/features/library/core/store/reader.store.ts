@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import { normalizeReaderZoom, normalizeReaderTab, resolveNextActiveTabOnClose, loadReaderStorageState, saveReaderTabsToStorage, saveReaderBookmarksToStorage, enforceMaxReaderTabs, enforceMaxBookmarkedItems, MAX_READER_TABS, MAX_BOOKMARKED_ITEMS } from '../adapters/project-context.adapter';
-import type { ReaderFitMode, ReaderTab, ReaderTheme } from '@/features/library/domain/types/reader.schema';
-import { SavedFeedSubscription, FeedReadFilterType, FeedRetentionDays } from '@/features/library/domain/types/ingestion.types';
+import { normalizeReaderZoom, normalizeReaderTab, resolveNextActiveTabOnClose, loadReaderStorageState, saveReaderTabsToStorage, saveReaderBookmarksToStorage, loadFeedReadEntryIdsFromStorage, saveFeedReadEntryIdsToStorage, enforceMaxReaderTabs, enforceMaxBookmarkedItems, MAX_READER_TABS, MAX_BOOKMARKED_ITEMS } from '../adapters/project-context.adapter';
+import type { ReaderFitMode, ReaderTab, ReaderTheme } from '@/features/library/types/reader.types';
+import { SavedFeedSubscription, FeedReadFilterType, FeedRetentionDays } from '@/features/library/types/ingestion.types';
 import { cleanDoi } from '@/features/library/domain/identifiers.domain';
 import { mapServerFeedSubscriptions, type ParsedFeedEntry } from '@/features/library/domain/feed-parser.domain';
 
@@ -63,6 +63,7 @@ interface ReaderStoreState {
   closeReader: (paperId?: string) => void;
   openTab: (tab: ReaderTab) => void;
   closeTab: (id: string) => void;
+  reorderTabs: (newTabs: ReaderTab[]) => void;
   setActiveTab: (id: string) => void;
   setActiveColor: (color: string) => void;
   setActiveTool: (tool: ReaderAnnotationTool) => void;
@@ -72,6 +73,7 @@ interface ReaderStoreState {
       Pick<
         ReaderTab,
         | 'currentPage'
+        | 'scrollTop'
         | 'zoom'
         | 'fitMode'
         | 'rotation'
@@ -193,6 +195,12 @@ export const useReaderStore = create<ReaderStoreState>((set, get) => ({
     });
   },
 
+  reorderTabs: (newTabs: ReaderTab[]) => {
+    const { activeTabId } = get();
+    saveReaderTabsToStorage(newTabs, activeTabId);
+    set({ tabs: newTabs });
+  },
+
   setActiveTab: (id: string) => {
     const { tabs, activeTabId } = get();
     if (activeTabId === id || !tabs.some((t) => t.id === id)) return;
@@ -220,6 +228,9 @@ export const useReaderStore = create<ReaderStoreState>((set, get) => ({
         ...(patch.currentPage !== undefined
           ? { currentPage: Math.max(1, Math.floor(patch.currentPage)) }
           : {}),
+        ...(patch.scrollTop !== undefined
+          ? { scrollTop: Math.max(0, Math.round(patch.scrollTop)) }
+          : {}),
         ...(patch.zoom !== undefined ? { zoom: normalizeReaderZoom(patch.zoom) } : {}),
         ...(patch.fitMode !== undefined ? { fitMode: patch.fitMode } : {}),
         ...(patch.rotation !== undefined
@@ -237,6 +248,7 @@ export const useReaderStore = create<ReaderStoreState>((set, get) => ({
       if (
         nextTab.title !== t.title ||
         nextTab.currentPage !== t.currentPage ||
+        nextTab.scrollTop !== t.scrollTop ||
         nextTab.zoom !== t.zoom ||
         nextTab.fitMode !== t.fitMode ||
         nextTab.rotation !== t.rotation ||
@@ -396,7 +408,7 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
   currentFeedEntries: [],
   readFilter: 'all',
   refreshCounter: 0,
-  readEntryIds: new Set<string>(),
+  readEntryIds: loadFeedReadEntryIdsFromStorage(),
   savedEntryIds: [],
   savingEntryIds: [],
   isLoadingFeeds: false,
@@ -421,6 +433,7 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
       }
     }
     if (changed) {
+      saveFeedReadEntryIdsToStorage(next);
       set({ readEntryIds: next });
     }
   },
@@ -610,6 +623,7 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
     const previous = new Set(current);
     const next = new Set(current);
     next.add(entryId);
+    saveFeedReadEntryIdsToStorage(next);
     set({ readEntryIds: next });
 
     try {
@@ -617,6 +631,7 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
       if (req && typeof req.catch === 'function') {
         req.catch((err: unknown) => {
           if (shouldRollbackOptimisticReadUpdate(err)) {
+            saveFeedReadEntryIdsToStorage(previous);
             set({ readEntryIds: previous });
           }
         });
@@ -636,6 +651,7 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
     } else {
       next.add(entryId);
     }
+    saveFeedReadEntryIdsToStorage(next);
     set({ readEntryIds: next });
 
     try {
@@ -643,6 +659,7 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
       if (req && typeof req.catch === 'function') {
         req.catch((err: unknown) => {
           if (shouldRollbackOptimisticReadUpdate(err)) {
+            saveFeedReadEntryIdsToStorage(previous);
             set({ readEntryIds: previous });
           }
         });
@@ -664,6 +681,7 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
     for (const id of resolvedIds) {
       if (id) next.add(id);
     }
+    saveFeedReadEntryIdsToStorage(next);
     set({ readEntryIds: next });
 
     try {
@@ -671,6 +689,7 @@ export const useFeedsStore = create<FeedsStore>((set, get) => ({
       if (req && typeof req.catch === 'function') {
         req.catch((err: unknown) => {
           if (shouldRollbackOptimisticReadUpdate(err)) {
+            saveFeedReadEntryIdsToStorage(previous);
             set({ readEntryIds: previous });
           }
         });

@@ -21,13 +21,13 @@ import {
   type AnnotationHistoryEntry,
   type AnnotationHistoryContext,
   type AnnotationHistoryStrategy,
-} from '@/features/library/sdk/queries/annotation-history.transport';
+} from '@/features/library/sdk/queries/annotation-history.queries';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { useLibraryCommandStore } from '@/features/library/core/manager/library-command.manager';
 import type {
   ReaderAnnotation,
   ReaderDocument,
-} from '@/features/library/domain/types/reader.schema';
+} from '@/features/library/types/reader.types';
 
 export {
   ANNOTATION_HISTORY_HANDLERS,

@@ -18,7 +18,7 @@ import {
   createMoveItemsCommand,
   createToggleStarCommand,
 } from '@/features/library/core/manager/library-command.manager';
-import { resolveCachedItemFromScope } from '@/features/library/sdk/queries/cache-patcher';
+import { resolveCachedItemFromScope } from '@/features/library/sdk/queries/cache-patcher.queries';
 import { useCitationStyles } from '@/features/library/sdk/queries/extraction.queries';
 import { useAssignCollectionItemsMutation } from '@/features/library/sdk/queries/collections.queries';
 import {
@@ -72,7 +72,7 @@ import {
   getCleanStyleLabel,
 } from '@/features/library/domain/citations.domain';
 import { getAssignedCollectionIds } from '@/features/library/domain/metadata.mapper';
-import type { Item, Collection, CslStyle } from '@/features/library/domain/types/core.types';
+import type { Item, Collection, CslStyle } from '@/features/library/types/core.types';
 
 interface UseItemActionHandlersOptions {
   scopeId?: string;

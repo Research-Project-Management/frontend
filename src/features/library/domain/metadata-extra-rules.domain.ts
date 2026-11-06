@@ -4,19 +4,19 @@ import {
   INITIAL_ITEM_TYPE_FIELDS_MAP,
   ITEM_TYPE_FIELDS_MAP,
   humanizeFieldName,
-} from './types/item-type-mappings.constants';
+} from '@/features/library/types/item-type-mappings.constants';
 import {
   BASE_FIELD_MAPPINGS,
   registerSchemaRegistryUpdateListener,
   getTitleFieldForType,
   getVenueFieldForType,
   getDateFieldForType,
-} from './types/item-types.types';
+} from '@/features/library/types/item-types.types';
 import {
   isValidValue,
   stripLatexMarkup,
 } from './metadata-sanitizers.domain';
-import type { Item } from './types/core.types';
+import type { Item } from '@/features/library/types/core.types';
 
 /**
  * Genuine Zotero 7 `Extra` keys that are also valid schema fields on specific item types
@@ -56,6 +56,12 @@ export const SYSTEM_INTERNAL_METADATA_KEYS = new Set<string>([
   'matchedsignals',
   'missingfields',
   'isselfsufficient',
+  'isunindexed',
+  'isfilenametitle',
+  'xmpevaluated',
+  'xmpfound',
+  'ocrapplied',
+  'pagecount',
   'qualityscore',
   'engineused',
   'primarycategory',

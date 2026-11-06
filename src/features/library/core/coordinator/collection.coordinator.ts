@@ -31,7 +31,7 @@ import { useLibraryUIStore } from '@/features/library/core/store/library-ui.stor
 import type {
   Collection,
   CollectionInput,
-} from '@/features/library/domain/types/core.types';
+} from '@/features/library/types/core.types';
 
 export const DEFAULT_COLLECTION_COLOR = '#2563eb';
 

@@ -28,16 +28,16 @@ export {
 import {
   mapRegistryItemTypes,
   extractServerErrorMessage,
-} from '@/features/library/domain/types/core.types';
+} from '@/features/library/types/core.types';
 import type {
   CreateSavedSearchInput,
   SavedSearchField,
   SavedSearchOperator,
   SavedSearchConditionGroup,
   SavedSearch,
-} from '@/features/library/domain/types/ingestion.types';
-import { getDefaultSortDirection } from '@/features/library/domain/types/ingestion.types';
-import type { Item } from '@/features/library/domain/types/items.types';
+} from '@/features/library/types/ingestion.types';
+import { getDefaultSortDirection } from '@/features/library/types/ingestion.types';
+import type { Item } from '@/features/library/types/items.types';
 import type { ConditionRow } from '@/features/library/domain/saved-search-ast.domain';
 import { SavedSearchAstEngine } from '@/features/library/domain/saved-search-ast.domain';
 

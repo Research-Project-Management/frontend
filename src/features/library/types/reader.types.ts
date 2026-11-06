@@ -170,7 +170,7 @@ export const readerCollectionSchema = z.object({
 
 export const documentReadingStateSchema = z.object({
   readStatus: z.enum(['unread', 'reading', 'completed']).default('unread'),
-  rating: z.number().min(0).max(5).default(0),
+  rating: z.number().int().min(0).max(5).default(0),
   currentPage: z.number().int().positive().default(1).optional(),
   scrollPosition: z.unknown().nullable().optional(),
   lastOpenedAt: z.string().nullable().optional(),
@@ -434,6 +434,7 @@ export interface ReaderTab {
   title: string;
   type: 'library' | 'paper';
   currentPage?: number;
+  scrollTop?: number;
   zoom?: number;
   fitMode?: ReaderFitMode;
   rotation?: number;
@@ -477,4 +478,59 @@ export interface InkDrawingState {
   currentPoints: Array<{ x: number; y: number }>;
   active: boolean;
 }
+
+// ── Reader Search, Viewport & Outline Domain Types ───────────────────────────
+
+export interface ViewportParams {
+  containerWidth: number;
+  containerHeight: number;
+  zoom: number;
+  fitMode?: 'fit-width' | 'fit-page' | 'page-width' | 'page-fit' | 'auto' | 'custom';
+  viewMode?: 'continuous' | 'single' | 'spread';
+}
+
+export interface PdfTextMatch {
+  matchIndex: number;
+  pageNumber: number;
+  matchedText: string;
+  snippet: string;
+  charOffset: number;
+}
+
+export interface PdfSearchCycleResult {
+  activeMatchIndex: number;
+  displayPosition: string;
+  targetPageNumber: number | null;
+  activeMatch: PdfTextMatch | null;
+}
+
+export interface PdfOutlineNode {
+  title: string;
+  pageNumber: number;
+  items?: PdfOutlineNode[];
+  children?: PdfOutlineNode[];
+}
+
+export interface FlattenedOutlineSection {
+  id: string;
+  num: string;
+  title: string;
+  page?: number;
+  level: number;
+  hasChildren: boolean;
+  parentId: string | null;
+}
+
+export interface PdfOutlineProxyDoc {
+  getOutline?: () => Promise<
+    Array<{
+      title?: string;
+      dest?: string | Array<unknown> | null;
+      items?: Array<unknown>;
+    }> | null
+  >;
+  getDestination?: (dest: string) => Promise<Array<unknown> | null>;
+  getPageIndex?: (ref: unknown) => Promise<number>;
+}
+
 

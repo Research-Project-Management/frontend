@@ -4,7 +4,7 @@ import type { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { AnnotationsService } from '../clients/attachments-annotations.client';
 import { annotationKeys } from '@/features/library/sdk/query-keys';
-import type { ReaderAnnotation } from '@/features/library/domain/types/reader.schema';
+import type { ReaderAnnotation } from '@/features/library/types/reader.types';
 
 export type UndoAction =
   | {

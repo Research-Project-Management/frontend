@@ -9,7 +9,7 @@ import {
   preserveMappedItemFlags,
   setMappedItemMeta,
 } from '@/features/library/domain/metadata.mapper';
-import type { Item } from '@/features/library/domain/types/core.types';
+import type { Item } from '@/features/library/types/core.types';
 import {
   itemKeys,
   libraryKeys,
@@ -23,7 +23,7 @@ import {
   preserveCachedUserReadingState,
   removeItemsFromScopeCaches,
   resolveCachedItemFromScope,
-} from './cache-patcher';
+} from './cache-patcher.queries';
 
 function hasSyncVersionAdvanced(currentSeq: string, nextVersion: string): boolean {
   if (!nextVersion || nextVersion === currentSeq || nextVersion === '0') {
@@ -289,6 +289,7 @@ const DELTA_ENTITY_HANDLERS: Record<
   note: handleNoteChange,
   state: handleStateChange,
   item: handleItemChange,
+  userpublication: handleItemChange,
 };
 
 /**
@@ -354,7 +355,7 @@ export function useLibraryDeltaSync(
       }
 
       const bootstrapQueries = queryClient.getQueriesData({
-        queryKey: [...libraryKeys.all, 'bootstrap', effectiveScope],
+        queryKey: libraryKeys.bootstrap(effectiveScope).slice(0, 3),
       });
       const isBootstrapping = bootstrapQueries.some(([key]) => {
         const state = queryClient.getQueryState(key);
@@ -475,7 +476,7 @@ export function useLibraryDeltaSync(
             String(errObj?.message || '').includes('SYNC_RESET_REQUIRED') ||
             String(errObj?.message || '').includes('410');
           if (is410) {
-            lastSyncSeqRef.current = '0';
+            lastSyncSeqRef.current = remoteVersion;
             await invalidateFullSyncScopeCaches();
             return {
               version: remoteVersion,
@@ -487,7 +488,7 @@ export function useLibraryDeltaSync(
           throw err;
         }
         if (changesRes?.fullSyncRequired) {
-          lastSyncSeqRef.current = '0';
+          lastSyncSeqRef.current = remoteVersion;
           await invalidateFullSyncScopeCaches();
           return {
             version: remoteVersion,
@@ -552,6 +553,8 @@ export function useLibraryDeltaSync(
             if (batchCtx.abortedForMutation) {
               break;
             }
+          } else {
+            batchCtx.hasCreatedItems = true;
           }
         }
 

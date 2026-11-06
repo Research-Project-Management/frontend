@@ -14,7 +14,7 @@ import {
   useSearchCslStyles,
   useExportItemCitationQuery,
 } from '@/features/library/sdk/queries/extraction.queries';
-import type { Item, CslStyle } from '@/features/library/domain/types/core.types';
+import type { Item, CslStyle } from '@/features/library/types/core.types';
 import { isItemRetracted } from '@/features/library/domain/system-views.policy';
 import { isEditableOrModalElementFocused } from './keyboard-shortcuts.coordinator';
 

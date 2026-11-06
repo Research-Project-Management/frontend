@@ -9,23 +9,29 @@ import type {
   ReaderDocument,
   DocumentCreator,
   PdfOutlineItem,
-} from '@/features/library/domain/types/reader.schema';
+  ViewportParams,
+  PdfTextMatch,
+  PdfSearchCycleResult,
+  PdfOutlineNode,
+  FlattenedOutlineSection,
+  PdfOutlineProxyDoc,
+} from '@/features/library/types/reader.types';
 import { normalizeAuthors, parseCreatorName } from '@/features/library/domain/creators.domain';
 import { isValidValue } from '@/features/library/domain/metadata.mapper';
 import { foldDiacritics } from '@/features/library/domain/citations.domain';
 import { isProjectScope } from '@/features/library/domain/identifiers.domain';
 
 export { foldDiacritics };
+export type {
+  ViewportParams,
+  PdfTextMatch,
+  PdfSearchCycleResult,
+  PdfOutlineNode,
+  FlattenedOutlineSection,
+  PdfOutlineProxyDoc,
+};
 
 // ── PDF Viewport Math and Geometric Calculations ────────────────────────────
-
-export interface ViewportParams {
-  containerWidth: number;
-  containerHeight: number;
-  zoom: number;
-  fitMode?: 'fit-width' | 'fit-page' | 'page-width' | 'page-fit' | 'auto' | 'custom';
-  viewMode?: 'continuous' | 'single' | 'spread';
-}
 
 const ISO_A4_ASPECT_RATIO = Math.SQRT2;
 const round4 = (n: number): number => Math.round(n * 1e4) / 1e4;
@@ -199,36 +205,55 @@ export function cropCanvasSelectionToDataUrl(
 
 // ── Fulltext Search, Outline Filtering & Citation Helpers ───────────────────
 
-export interface PdfTextMatch {
-  matchIndex: number;
-  pageNumber: number;
-  matchedText: string;
-  snippet: string;
-  charOffset: number;
-}
+function isValidOutlineSection(
+  s: { num?: string; title: string },
+  seenReferences: boolean,
+): boolean {
+  const title = (s.title || '').trim();
+  if (!title || title.length < 2) return false;
 
-export interface PdfSearchCycleResult {
-  activeMatchIndex: number;
-  displayPosition: string;
-  targetPageNumber: number | null;
-  activeMatch: PdfTextMatch | null;
-}
+  // Check 4-digit year or list index incorrectly parsed as section number
+  if (s.num && /^\d{4}$/.test(s.num)) return false;
+  if (s.num && /^\d+$/.test(s.num) && parseInt(s.num, 10) > 30) return false;
 
-export interface PdfOutlineNode {
-  title: string;
-  pageNumber: number;
-  items?: PdfOutlineNode[];
-  children?: PdfOutlineNode[];
-}
+  // If we are past References/Bibliography, only Appendix / Supplementary are valid
+  if (seenReferences) {
+    const isAppendix = /^(?:appendix|appendices|supplementary|phụ lục|[A-Z]\b)/i.test(title);
+    if (!isAppendix) return false;
+  }
 
-export interface FlattenedOutlineSection {
-  id: string;
-  num: string;
-  title: string;
-  page?: number;
-  level: number;
-  hasChildren: boolean;
-  parentId: string | null;
+  // Heading should not end with sentence-ending punctuation like period, comma, or colon
+  if (/[.,;:]$/.test(title)) return false;
+
+  // Heading should not be an entire sentence (too many words)
+  const words = title.split(/\s+/).filter(Boolean);
+  if (words.length > 10) return false;
+
+  // Common body-text sentence starter phrases that heuristic regex falsely caught
+  const lower = title.toLowerCase();
+  const falseStarters = [
+    'in all cases',
+    'we note that',
+    'the vector',
+    'for example',
+    'the glue',
+    'the triviaqa',
+    'note that',
+    'question:',
+    'does bert',
+    'in addition',
+    'furthermore',
+    'however',
+    'as shown in',
+    'as described in',
+    'we also',
+    'we find that',
+  ];
+  if (falseStarters.some((prefix) => lower.startsWith(prefix))) {
+    return false;
+  }
+
+  return true;
 }
 
 export function buildOutlineSections(
@@ -236,28 +261,7 @@ export function buildOutlineSections(
   pdfOutline?: ReadonlyArray<PdfOutlineNode> | null,
   outlineFilter = '',
 ): FlattenedOutlineSection[] {
-  if (fulltextSections && fulltextSections.length > 0) {
-    const raw = fulltextSections.map((s, idx) => ({
-      id: s.id || `sec-${idx}-${s.num || ''}-${s.page || 1}`,
-      num: s.num || '',
-      title: s.title,
-      page: s.page,
-      level: s.num ? Math.min(4, s.num.split('.').filter(Boolean).length) : 1,
-    }));
-    return raw.map((item, idx) => {
-      const next = raw[idx + 1];
-      const hasChildren = Boolean(next && next.level > item.level);
-      let parentId: string | null = null;
-      for (let j = idx - 1; j >= 0; j--) {
-        if (raw[j]!.level < item.level) {
-          parentId = raw[j]!.id;
-          break;
-        }
-      }
-      return { ...item, hasChildren, parentId };
-    });
-  }
-
+  // 1. Authoritative Native PDF Outline (bookmarks embedded directly in the PDF by LaTeX / publisher)
   if (pdfOutline && pdfOutline.length > 0) {
     const flattened: FlattenedOutlineSection[] = [];
     const walk = (
@@ -288,6 +292,42 @@ export function buildOutlineSections(
       : pdfOutline;
     walk(filteredTree, 1, null);
     return flattened;
+  }
+
+  // 2. Fallback: Fulltext extracted sections (sanitized to remove false sentence/reference matches)
+  if (fulltextSections && fulltextSections.length > 0) {
+    let seenReferences = false;
+    const sanitized = fulltextSections.filter((s) => {
+      const isRef = /^(?:references|bibliography|tài liệu tham khảo)\b/i.test(s.title.trim());
+      if (seenReferences && !/^(?:appendix|appendices|supplementary|phụ lục|[A-Z]\b)/i.test(s.title.trim())) {
+        return false;
+      }
+      if (isRef) {
+        seenReferences = true;
+        return true;
+      }
+      return isValidOutlineSection(s, seenReferences);
+    });
+
+    const raw = sanitized.map((s, idx) => ({
+      id: s.id || `sec-${idx}-${s.num || ''}-${s.page || 1}`,
+      num: s.num || '',
+      title: s.title,
+      page: s.page,
+      level: s.num ? Math.min(4, s.num.split('.').filter(Boolean).length) : 1,
+    }));
+    return raw.map((item, idx) => {
+      const next = raw[idx + 1];
+      const hasChildren = Boolean(next && next.level > item.level);
+      let parentId: string | null = null;
+      for (let j = idx - 1; j >= 0; j--) {
+        if (raw[j]!.level < item.level) {
+          parentId = raw[j]!.id;
+          break;
+        }
+      }
+      return { ...item, hasChildren, parentId };
+    });
   }
 
   return [];
@@ -627,89 +667,81 @@ export function writeReaderPreference<T>(
   }
 }
 
-export interface PdfOutlineProxyDoc {
-  getOutline?: () => Promise<
-    Array<{
-      title?: string;
-      dest?: string | Array<unknown> | null;
-      items?: Array<unknown>;
-    }> | null
-  >;
-  getDestination?: (dest: string) => Promise<Array<unknown> | null>;
-  getPageIndex?: (ref: unknown) => Promise<number>;
-}
-
 /**
  * Extracts and resolves a nested PDF outline tree with 1-based page numbers from a PDF.js document proxy.
  */
 export async function resolvePdfOutlineFromDoc(
   outlineDoc: PdfOutlineProxyDoc,
 ): Promise<PdfOutlineItem[]> {
-  if (typeof outlineDoc.getOutline !== 'function') return [];
-  const rawOutline = await outlineDoc.getOutline();
-  if (!Array.isArray(rawOutline) || rawOutline.length === 0) return [];
+  if (!outlineDoc || typeof outlineDoc.getOutline !== 'function') return [];
+  try {
+    const rawOutline = await outlineDoc.getOutline();
+    if (!Array.isArray(rawOutline) || rawOutline.length === 0) return [];
 
-  const resolvePageNum = async (
-    dest: string | Array<unknown> | null | undefined,
-  ): Promise<number> => {
-    if (!dest) return 1;
-    try {
-      const destArray =
-        typeof dest === 'string'
-          ? typeof outlineDoc.getDestination === 'function'
-            ? await outlineDoc.getDestination(dest)
-            : null
-          : Array.isArray(dest)
-            ? dest
-            : null;
-      if (!destArray || destArray.length === 0) return 1;
-      const pageRef = destArray[0];
-      if (typeof pageRef === 'number') {
-        return Math.max(1, pageRef + 1);
+    const resolvePageNum = async (
+      dest: string | Array<unknown> | null | undefined,
+    ): Promise<number> => {
+      if (!dest) return 1;
+      try {
+        const destArray =
+          typeof dest === 'string'
+            ? typeof outlineDoc.getDestination === 'function'
+              ? await outlineDoc.getDestination(dest)
+              : null
+            : Array.isArray(dest)
+              ? dest
+              : null;
+        if (!destArray || destArray.length === 0) return 1;
+        const pageRef = destArray[0];
+        if (typeof pageRef === 'number') {
+          return Math.max(1, pageRef + 1);
+        }
+        if (pageRef && typeof outlineDoc.getPageIndex === 'function') {
+          const idx = await outlineDoc.getPageIndex(pageRef);
+          return Math.max(1, idx + 1);
+        }
+      } catch {
+        // Ignore destination resolution error
       }
-      if (pageRef && typeof outlineDoc.getPageIndex === 'function') {
-        const idx = await outlineDoc.getPageIndex(pageRef);
-        return Math.max(1, idx + 1);
-      }
-    } catch {
-      // Ignore destination resolution error
-    }
-    return 1;
-  };
+      return 1;
+    };
 
-  const mapNodes = async (
-    nodes: Array<{
-      title?: string;
-      dest?: string | Array<unknown> | null;
-      items?: Array<unknown>;
-    }>,
-  ): Promise<PdfOutlineItem[]> => {
-    const results = await Promise.all(
-      nodes.map(async (node): Promise<PdfOutlineItem | null> => {
-        const title = (node.title || '').trim();
-        if (!title) return null;
-        const [pageNumber, children] = await Promise.all([
-          resolvePageNum(node.dest),
-          Array.isArray(node.items) && node.items.length > 0
-            ? mapNodes(
-                node.items as Array<{
-                  title?: string;
-                  dest?: string | Array<unknown> | null;
-                  items?: Array<unknown>;
-                }>,
-              )
-            : Promise.resolve(undefined),
-        ]);
-        return {
-          title,
-          pageNumber,
-          dest: node.dest,
-          items: children,
-        };
-      }),
-    );
-    return results.filter((item): item is PdfOutlineItem => item !== null);
-  };
+    const mapNodes = async (
+      nodes: Array<{
+        title?: string;
+        dest?: string | Array<unknown> | null;
+        items?: Array<unknown>;
+      }>,
+    ): Promise<PdfOutlineItem[]> => {
+      const results = await Promise.all(
+        nodes.map(async (node): Promise<PdfOutlineItem | null> => {
+          const title = (node.title || '').trim();
+          if (!title) return null;
+          const [pageNumber, children] = await Promise.all([
+            resolvePageNum(node.dest),
+            Array.isArray(node.items) && node.items.length > 0
+              ? mapNodes(
+                  node.items as Array<{
+                    title?: string;
+                    dest?: string | Array<unknown> | null;
+                    items?: Array<unknown>;
+                  }>,
+                )
+              : Promise.resolve(undefined),
+          ]);
+          return {
+            title,
+            pageNumber,
+            dest: node.dest,
+            items: children,
+          };
+        }),
+      );
+      return results.filter((item): item is PdfOutlineItem => item !== null);
+    };
 
-  return mapNodes(rawOutline);
+    return await mapNodes(rawOutline);
+  } catch {
+    return [];
+  }
 }

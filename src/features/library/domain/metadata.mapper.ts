@@ -1,6 +1,6 @@
-import type { Item } from './types/core.types';
-import { ALL_SCHEMA_FIELD_KEYS } from './types/item-type-mappings.constants';
-import { normalizeCanonicalItemType, registerSchemaRegistryUpdateListener } from './types/item-types.types';
+import type { Item } from '@/features/library/types/core.types';
+import { ALL_SCHEMA_FIELD_KEYS } from '@/features/library/types/item-type-mappings.constants';
+import { normalizeCanonicalItemType, registerSchemaRegistryUpdateListener } from '@/features/library/types/item-types.types';
 import { normalizeAuthors } from './creators.domain';
 import { isValidValue, stripLatexMarkup, cleanFilenameToTitle } from './metadata-sanitizers.domain';
 import { getItemDisplayTitle, getItemDisplayDate } from './metadata-extra.domain';

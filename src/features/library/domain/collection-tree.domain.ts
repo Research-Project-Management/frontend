@@ -2,14 +2,14 @@
  * Pure Hierarchical Collection Tree Utilities (Hierarchical Collections & Subcollections)
  */
 
-import type { Collection } from './types/core.types';
+import type {
+  Collection,
+  CollectionHierarchyNode,
+  CollectionNode,
+  TreeNode,
+} from '@/features/library/types/core.types';
 
-interface CollectionHierarchyNode extends Collection {
-  children: CollectionHierarchyNode[];
-}
-
-export type CollectionNode = CollectionHierarchyNode;
-export type TreeNode = CollectionHierarchyNode;
+export type { CollectionHierarchyNode, CollectionNode, TreeNode };
 
 /**
  * Checks whether `candidateDescendantId` is inside the subtree of `targetAncestorId`

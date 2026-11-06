@@ -4,8 +4,8 @@
  * Pure domain & citation utilities for the PDF/EPUB Reader.
  */
 
-import type { Item } from '@/features/library/domain/types/core.types';
-import type { ReaderDocument, ReaderAnnotation, AnnotationRect } from '@/features/library/domain/types/reader.schema';
+import type { Item } from '@/features/library/types/core.types';
+import type { ReaderDocument, ReaderAnnotation, AnnotationRect } from '@/features/library/types/reader.types';
 import {
   normalizeReaderAuthors,
   getSurnameForCitation,

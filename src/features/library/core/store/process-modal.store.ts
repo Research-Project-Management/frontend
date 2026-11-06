@@ -8,7 +8,7 @@ import type {
   ProcessModalState,
   ProcessBatchUploadOptions,
   ProcessModalStoreAdapter,
-} from '@/features/library/domain/types/ingestion.types';
+} from '@/features/library/types/ingestion.types';
 import { cleanFilenameToTitle } from '@/features/library/domain/metadata.mapper';
 
 export type BatchUploadExecutor = (
@@ -522,14 +522,25 @@ export const useProcessModalStore = create<ProcessModalStore>()(
       }),
       onRehydrateStorage: () => (rehydrated) => {
         if (rehydrated?.state && !rehydrated.state.isComplete && !activeBatchAbortController) {
-          rehydrated.state.isComplete = true;
-          rehydrated.state.error = 'Upload interrupted by page reload.';
-          if (
-            rehydrated.state.data &&
-            ACTIVE_ITEM_STATUSES.has(String(rehydrated.state.data.status || '').toUpperCase())
-          ) {
-            rehydrated.state.data.status = 'FAILED';
-          }
+          const currentData = rehydrated.state.data;
+          const nextDataStatus =
+            currentData &&
+            ACTIVE_ITEM_STATUSES.has(String(currentData.status || '').toUpperCase())
+              ? 'FAILED'
+              : (currentData?.status ?? 'FAILED');
+          rehydrated.state = {
+            ...rehydrated.state,
+            isComplete: true,
+            error: 'Upload interrupted by page reload.',
+            ...(currentData
+              ? {
+                  data: {
+                    ...currentData,
+                    status: nextDataStatus,
+                  },
+                }
+              : {}),
+          };
           if (Array.isArray(rehydrated.processingItems)) {
             rehydrated.processingItems = rehydrated.processingItems.map((item) => {
               const upperStatus = String(item.status || '').toUpperCase();

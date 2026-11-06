@@ -2,7 +2,12 @@
  * Pure Domain Policy: System Views, Retraction State & "My Publications" Authorship / Open Access License Guard
  */
 
-import type { Item } from './types/core.types';
+import type {
+  Item,
+  OpenAccessLicenseBadge,
+} from '@/features/library/types/core.types';
+
+export type { OpenAccessLicenseBadge };
 
 export function safeHttpUrl(raw?: string | null): string | undefined {
   if (!raw || typeof raw !== 'string') return undefined;
@@ -201,13 +206,6 @@ export function getRetractionInfo(item: unknown): RetractionInfo {
 }
 
 // ── System Views & Open Access License Policy ───────────────────────────────
-
-export interface OpenAccessLicenseBadge {
-  code: string;
-  label: string;
-  isOpenAccess: boolean;
-  url?: string;
-}
 
 const KNOWN_LICENSES: Record<string, { label: string; isOpenAccess: boolean; url: string }> = {
   'cc-by-4.0': {

@@ -4,6 +4,9 @@ import type {
   UpdateCollectionDTO,
   TagWithCount,
   Note,
+  CreateNoteDTO,
+  UpdateNoteDTO,
+  ExtractNotesOptions,
   ItemStateData,
   SavedSearch,
   CreateSavedSearchInput,
@@ -15,7 +18,7 @@ import type {
   SearchResponse,
   SearchSortBy,
   SearchSortOrder,
-} from '@/features/library/domain/types/core.types';
+} from '@/features/library/types/core.types';
 import {
   libraryClient,
   resolveLibraryUrl,
@@ -32,23 +35,10 @@ export type {
   UpdateSavedSearchInput,
   SavedSearchConditionGroup,
   ItemStateData,
+  ExtractNotesOptions,
+  CreateNoteDTO,
+  UpdateNoteDTO,
 };
-
-export interface ExtractNotesOptions {
-  protocol?: 'flux' | 'web' | 'zotero';
-  webBaseUrl?: string;
-  projectId?: string;
-  noteId?: string;
-  targetNoteId?: string;
-  title?: string;
-  attachmentId?: string;
-  annotationIds?: string[];
-  groupBy?: 'page' | 'color' | 'tag' | 'chronological';
-  tagColor?: boolean | string;
-  tagColorName?: string;
-  includeComments?: boolean;
-  includeTags?: boolean;
-}
 
 // 2. CollectionsService
 export const CollectionsService = {
@@ -272,22 +262,6 @@ export const TagsService = {
 };
 
 // 4. NotesService
-export interface CreateNoteDTO {
-  itemId?: string | null;
-  title?: string;
-  contentJson?: Record<string, unknown> | null;
-  contentMd?: string;
-  tags?: string[];
-}
-
-export interface UpdateNoteDTO {
-  title?: string;
-  contentJson?: Record<string, unknown> | null;
-  contentMd?: string;
-  tags?: string[];
-  expectedVersion?: number;
-}
-
 function getNotesUrl(scopeId?: string, suffix = ''): string {
   return resolveLibraryUrl('catalog', '/notes', scopeId, suffix);
 }

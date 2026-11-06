@@ -1,5 +1,5 @@
-import type { ItemAttachment, Note, FormattedCitation, CslStyle, ReferenceData, CslStyleMetadata } from '@/features/library/domain/types/core.types';
-import type { ReaderAnnotation, CreateAnnotationDto, UpdateAnnotationDto } from '@/features/library/domain/types/reader.schema';
+import type { ItemAttachment, Note, FormattedCitation, CslStyle, ReferenceData, CslStyleMetadata } from '@/features/library/types/core.types';
+import type { ReaderAnnotation, CreateAnnotationDto, UpdateAnnotationDto } from '@/features/library/types/reader.types';
 import { libraryClient, resolveLibraryUrl, getItemAttachmentUrl, getAttachmentUrl, unwrapList, isProjectScope, getCitationUrl, getExportsUrl, unwrapResolvedReference } from './http.client';
 import { NotesService, type ExtractNotesOptions } from './catalog-entities.client';
 import { normalizeCitationStyleId } from '@/features/library/domain/citations.domain';
@@ -289,7 +289,7 @@ export const CitationService = {
 
   getStyles: (scopeId?: string) => {
     const pQuery = isProjectScope(scopeId) ? `?projectId=${encodeURIComponent(scopeId!)}` : '';
-    return libraryClient.get<import('@/features/library/domain/types/core.types').StyleSummary[]>(
+    return libraryClient.get<import('@/features/library/types/core.types').StyleSummary[]>(
       `${getCitationUrl(scopeId, 'styles')}${pQuery}`,
     );
   },

@@ -1,3 +1,10 @@
+import type {
+  NormalizedNote,
+  StructuredItemTag,
+} from '@/features/library/types/items.types';
+
+export type { NormalizedNote, StructuredItemTag };
+
 const LATEX_DIACRITIC_MAP: ReadonlyArray<
   readonly [RegExp, (match: string, c1: string, c2: string) => string]
 > = [
@@ -178,15 +185,6 @@ export function cleanSingleFrontendTag(raw: string): string | null {
     return null;
   }
   return str;
-}
-
-export interface StructuredItemTag {
-  id?: string;
-  tagId?: string;
-  name: string;
-  type: "manual" | "automatic";
-  color?: string;
-  shortcut?: number | null;
 }
 
 /**
@@ -435,17 +433,6 @@ export function buildCanonicalTagsPatch(
   };
 }
 
-
-export interface NormalizedNote {
-  id: string;
-  note?: string;
-  content: string;
-  title?: string;
-  tags?: string[];
-  createdAt?: string;
-  updatedAt?: string;
-  dateModified?: string;
-}
 
 /**
  * Cleans HTML tags and entities from a note string while preserving paragraph structure.

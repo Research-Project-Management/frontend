@@ -17,7 +17,7 @@ import { useReResolveItemMetadataMutation } from '@/features/library/sdk/queries
 import type {
   Item,
   ItemAttachment,
-} from '@/features/library/domain/types/core.types';
+} from '@/features/library/types/core.types';
 
 interface UseAttachmentCoordinatorParams {
   item: Item;

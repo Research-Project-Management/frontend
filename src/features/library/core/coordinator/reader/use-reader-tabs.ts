@@ -10,7 +10,7 @@ import {
   type ItemStateData,
 } from '@/features/library/sdk/queries/reader.queries';
 import { itemKeys, normalizeScopeId } from '@/features/library/sdk/query-keys';
-import { patchItemAcrossScopeCaches } from '@/features/library/sdk/queries/cache-patcher';
+import { patchItemAcrossScopeCaches } from '@/features/library/sdk/queries/cache-patcher.queries';
 import { useReaderStore, type ReaderTab } from '@/features/library/core/store/reader.store';
 import {
   MIN_READER_ZOOM,
@@ -22,7 +22,7 @@ import {
 import type {
   ReaderDocument,
   ReaderNavigationTarget,
-} from '@/features/library/domain/types/reader.schema';
+} from '@/features/library/types/reader.types';
 
 interface ScrollPositionWithBookmarks extends Record<string, unknown> { bookmarks?: number[]; }
 

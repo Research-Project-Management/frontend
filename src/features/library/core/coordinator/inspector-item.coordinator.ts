@@ -21,7 +21,7 @@ import type {
   Item,
   Collection,
   CreateCollectionDTO,
-} from '@/features/library/domain/types/core.types';
+} from '@/features/library/types/core.types';
 
 export { getCollectionAncestorPath };
 

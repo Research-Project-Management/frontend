@@ -642,3 +642,148 @@ export const itemStateSchema = z.object({
 });
 
 export type ItemStateData = z.infer<typeof itemStateSchema>;
+
+// ── Shared Catalog & Domain Types ───────────────────────────────────────────
+
+export interface CreatorEntry {
+  creatorType: string;
+  name: string;
+  fieldMode?: number;
+  firstName?: string;
+  lastName?: string;
+  shortName?: string;
+}
+
+export type DiffStatus =
+  | 'IDENTICAL'
+  | 'CONFLICT'
+  | 'MISSING_IN_MASTER'
+  | 'MISSING_IN_CANDIDATE';
+
+export interface FieldOptionValue {
+  itemId: string;
+  itemTitle: string;
+  isMaster: boolean;
+  rawValue: unknown;
+  displayValue: string;
+  isEmpty: boolean;
+  sourceItemIndex: number;
+  value?: unknown;
+  formattedDisplay?: string;
+}
+
+export interface ItemFieldDiff {
+  key: string;
+  label: string;
+  category: 'core' | 'details' | 'identifiers' | 'publishing';
+  status: DiffStatus;
+  hasConflict: boolean;
+  options: FieldOptionValue[];
+  masterValue?: FieldOptionValue;
+  recommendedItemId: string;
+  recommendedValue?: unknown;
+  candidateValue?: unknown;
+}
+
+export interface DuplicateGroupMergeDraft {
+  selectedMasterId: string;
+  fieldOverrides: Record<string, unknown>;
+  showConflictsOnly: boolean;
+}
+
+export type FieldLookupSource = {
+  p: Record<string, unknown>;
+  ef: Record<string, unknown>;
+  displayDoi: string;
+  fieldKey: string;
+};
+
+export interface InspectorFieldDescriptor {
+  get?: (ctx: FieldLookupSource) => string;
+  patch?: (
+    val: string,
+    item: Item | Partial<Item>,
+    currentExtraFields: Record<string, unknown>,
+  ) => Partial<Item> & Record<string, unknown>;
+  formatDisplay?: (rawVal: string) => string;
+}
+
+export interface PreparedInspectorFieldContext {
+  p: Record<string, unknown>;
+  ef: Record<string, unknown>;
+  displayDoi: string;
+}
+
+export interface StructuredItemTag {
+  id?: string;
+  tagId?: string;
+  name: string;
+  type: 'manual' | 'automatic';
+  color?: string;
+  shortcut?: number | null;
+}
+
+export interface NormalizedNote {
+  id: string;
+  note?: string;
+  content: string;
+  title?: string;
+  tags?: string[];
+  createdAt?: string;
+  updatedAt?: string;
+  dateModified?: string;
+}
+
+export interface OpenAccessLicenseBadge {
+  code: string;
+  label: string;
+  isOpenAccess: boolean;
+  url?: string;
+}
+
+export interface ExtractNotesOptions {
+  protocol?: 'flux' | 'web' | 'zotero';
+  webBaseUrl?: string;
+  projectId?: string;
+  noteId?: string;
+  targetNoteId?: string;
+  title?: string;
+  attachmentId?: string;
+  annotationIds?: string[];
+  groupBy?: 'page' | 'color' | 'tag' | 'chronological';
+  tagColor?: boolean | string;
+  tagColorName?: string;
+  includeComments?: boolean;
+  includeTags?: boolean;
+}
+
+export interface CreateNoteDTO {
+  itemId?: string | null;
+  title?: string;
+  contentJson?: Record<string, unknown> | null;
+  contentMd?: string;
+  tags?: string[];
+}
+
+export interface UpdateNoteDTO {
+  title?: string;
+  contentJson?: Record<string, unknown> | null;
+  contentMd?: string;
+  tags?: string[];
+  expectedVersion?: number;
+}
+
+export interface InspectorFieldActionDescriptor {
+  type: 'external-link' | 'copy-cite';
+  href?: string;
+  copyText?: string;
+  title: string;
+  label: string;
+}
+
+export interface InspectorFieldUiResolution {
+  isMono: boolean;
+  isCitationKey: boolean;
+  action?: InspectorFieldActionDescriptor;
+}
+

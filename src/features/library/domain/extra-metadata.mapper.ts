@@ -1,6 +1,6 @@
-import type { Item } from '@/features/library/domain/types/core.types';
+import type { Item } from '@/features/library/types/core.types';
 import { isValidValue, stripLatexMarkup, foldDiacritics } from '@/features/library/domain/metadata-sanitizers.domain';
-import { ALLOWED_ITEM_EXTRA_LINE_KEYS, SYSTEM_INTERNAL_METADATA_KEYS, INTERNAL_AND_DEDICATED_METADATA_KEYS, DEDICATED_FIELDS_BY_TYPE_MAP, EMPTY_DEDICATED_FIELDS_SET, EXTRA_KEY_ALIASES, getMatchingExtraKeyNorms, collectUnmappedFieldsSet, isDedicatedFieldForType, getPublicationVenue, getItemDisplayTitle, getItemDisplayDate } from './metadata-extra.constants';
+import { ALLOWED_ITEM_EXTRA_LINE_KEYS, SYSTEM_INTERNAL_METADATA_KEYS, INTERNAL_AND_DEDICATED_METADATA_KEYS, DEDICATED_FIELDS_BY_TYPE_MAP, EMPTY_DEDICATED_FIELDS_SET, EXTRA_KEY_ALIASES, getMatchingExtraKeyNorms, collectUnmappedFieldsSet, isDedicatedFieldForType, getPublicationVenue, getItemDisplayTitle, getItemDisplayDate } from './metadata-extra-rules.domain';
 import { parseCreatorName } from '@/features/library/domain/creators.domain';
 
 export function isSystemInternalExtraKey(rawKey: string): boolean {
@@ -85,9 +85,6 @@ export function formatAndSanitizeExtraMetadata(
       return false;
     }
     if (ALLOWED_ITEM_EXTRA_LINE_KEYS.has(normKey)) {
-      return true;
-    }
-    if (resolvedItemType && fromExplicitExtraText) {
       return true;
     }
     return isAllowedItemExtraKey(trimmedKey);

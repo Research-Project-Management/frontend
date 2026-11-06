@@ -1,9 +1,12 @@
-import type { Item } from '@/features/library/domain/types/core.types';
-import { ALL_SCHEMA_FIELD_KEYS } from '@/features/library/domain/types/item-type-mappings.constants';
-import { normalizeCanonicalItemType, registerSchemaRegistryUpdateListener, type SchemaFieldDefinition } from '@/features/library/domain/types/item-types.types';
+import type {
+  Item,
+  PreparedInspectorFieldContext,
+} from '@/features/library/types/core.types';
+import { ALL_SCHEMA_FIELD_KEYS } from '@/features/library/types/item-type-mappings.constants';
+import { normalizeCanonicalItemType, registerSchemaRegistryUpdateListener, type SchemaFieldDefinition } from '@/features/library/types/item-types.types';
 import { cleanDoi } from './identifiers.domain';
 import { isValidValue, cleanValue, parseItemExtraField, stripOrUpdateExtraKeyLine } from './metadata.mapper';
-import { FIRST_CLASS_ITEM_COLUMNS, CANONICAL_FIELD_ALIASES, buildDerivedFieldMappings, getDirectExtraAliases, parseValidYear } from './metadata-extra.constants';
+import { FIRST_CLASS_ITEM_COLUMNS, CANONICAL_FIELD_ALIASES, buildDerivedFieldMappings, getDirectExtraAliases, parseValidYear } from './metadata-extra-rules.domain';
 import { applyCoupledFieldSynchronization } from './item-field-descriptors.domain';
 import { type FieldLookupSource, type InspectorFieldDescriptor, INSPECTOR_FIELD_DESCRIPTORS } from './item-field-descriptors.domain';
 import { ALL_SCHEMA_PROMOTE_KEYS } from '@/features/library/domain/metadata.mapper';
@@ -119,11 +122,7 @@ function pickFirst(
   return undefined;
 }
 
-export interface PreparedInspectorFieldContext {
-  p: Record<string, unknown>;
-  ef: Record<string, unknown>;
-  displayDoi: string;
-}
+export type { PreparedInspectorFieldContext };
 
 const PREPARED_ITEM_CONTEXT_CACHE = new WeakMap<
   object,

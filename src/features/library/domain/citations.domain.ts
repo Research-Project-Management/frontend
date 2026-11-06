@@ -1,4 +1,4 @@
-import type { Item, CslStyle } from '@/features/library/domain/types/core.types';
+import type { Item, CslStyle } from '@/features/library/types/core.types';
 import { parseCreatorName, getItemAuthorsSummary } from './creators.domain';
 import { stripLatexMarkup, isValidValue, parseItemExtraField, getItemDisplayTitle, getItemDisplayDate } from './metadata.mapper';
 import { foldDiacritics, cleanText } from './metadata-sanitizers.domain';
@@ -260,20 +260,69 @@ export function normalizeCitationStyleId(styleId?: string | null): CslStyle {
   return CITATION_STYLE_ALIAS_MAP[cleaned] ?? styleId.trim();
 }
 
+const GENERIC_STYLE_FIRST_WORDS: ReadonlySet<string> = new Set([
+  'the',
+  'a',
+  'an',
+  'american',
+  'british',
+  'royal',
+  'international',
+  'national',
+  'european',
+  'canadian',
+  'australian',
+  'journal',
+  'proceedings',
+  'transactions',
+  'annals',
+  'association',
+  'society',
+  'institute',
+  'university',
+  'tieu',
+  'tiêu',
+]);
+
 /**
  * Normalizes full academic journal or style names into clean, compact
  * toolbar button labels (<= 14 characters) that will not break container layout.
  */
 export function getCleanStyleLabel(id: string, fullTitle?: string): string {
-  if (fullTitle) {
-    const clean = fullTitle.replace(/\s*\([^)]*\)/g, '').trim();
-    if (clean.length <= 14) return clean;
-    const firstWord = clean.split(/\s+/)[0];
-    if (firstWord && firstWord.length <= 14) return firstWord;
-  }
   const canonical = normalizeCitationStyleId(id).toLowerCase();
   const mappedShort = STYLE_SHORT_LABEL_MAP[canonical];
   if (mappedShort) return mappedShort;
+
+  if (fullTitle) {
+    const trimmedTitle = fullTitle.trim();
+    if (trimmedTitle.length <= 14 && !trimmedTitle.includes('(')) {
+      return trimmedTitle;
+    }
+    const acronymMatch = trimmedTitle.match(/\(([A-Z][A-Z0-9&-]{1,9})\)/);
+    if (acronymMatch?.[1]) {
+      return acronymMatch[1];
+    }
+    const clean = trimmedTitle.replace(/\s*\([^)]*\)/g, '').trim();
+    if (clean.length > 0 && clean.length <= 14) return clean;
+
+    const s = id.toLowerCase().trim();
+    for (const [prefix, label] of STYLE_PREFIX_SHORT_LABELS) {
+      if (s.startsWith(prefix)) return label;
+    }
+
+    const words = clean.split(/[\s-]+/).filter(Boolean);
+    const firstWord = words[0];
+    if (
+      firstWord &&
+      firstWord.length <= 14 &&
+      !GENERIC_STYLE_FIRST_WORDS.has(firstWord.toLowerCase())
+    ) {
+      return firstWord;
+    }
+    if (clean.length > 14) {
+      return `${clean.slice(0, 12).trim()}…`;
+    }
+  }
 
   const s = id.toLowerCase().trim();
   for (const [prefix, label] of STYLE_PREFIX_SHORT_LABELS) {

@@ -1,5 +1,14 @@
-import type { SavedSearchCondition, SavedSearchConditionGroup, SavedSearchField, SavedSearchOperator, SavedSearchScopeOptions } from '@/features/library/domain/types/ingestion.types';
-import { FIELD_LABELS, humanizeFieldName } from '@/features/library/domain/types/core.types';
+import type {
+  ConditionRow,
+  SavedSearchCondition,
+  SavedSearchConditionGroup,
+  SavedSearchField,
+  SavedSearchOperator,
+  SavedSearchScopeOptions,
+} from '@/features/library/types/ingestion.types';
+import { FIELD_LABELS, humanizeFieldName } from '@/features/library/types/core.types';
+
+export type { ConditionRow };
 
 /**
  * Pure Domain SavedSearchAstEngine
@@ -394,13 +403,6 @@ interface SavedSearchFieldConfig {
   defaultValue?: string;
 }
 
-export interface ConditionRow {
-  id: string;
-  field: SavedSearchField;
-  operator: SavedSearchOperator;
-  value: string;
-}
-
 export const READ_STATUS_OPTIONS = [
   { value: 'unread', label: 'Unread' },
   { value: 'reading', label: 'Reading' },
@@ -427,8 +429,9 @@ export const PRIMARY_SAVED_SEARCH_FIELD_ITEMS: {
   label: string;
 }[] = [
   { value: 'title', label: 'Title' },
-  { value: 'creator', label: 'Author / Creator' },
+  { value: 'creator', label: 'Creator' },
   { value: 'year', label: 'Year' },
+  { value: 'date', label: 'Date' },
   { value: 'dateAdded', label: 'Date Added' },
   { value: 'dateModified', label: 'Date Modified' },
   { value: 'anyField', label: 'Any Field' },
@@ -436,34 +439,60 @@ export const PRIMARY_SAVED_SEARCH_FIELD_ITEMS: {
   { value: 'collection', label: 'Collection' },
   { value: 'tag', label: 'Tag' },
   { value: 'noteContent', label: 'Note' },
+  { value: 'annotation', label: 'Annotation' },
   { value: 'attachmentContent', label: 'Attachment Content' },
-  { value: 'attachmentFilename', label: 'Attachment File Name' },
-  { value: 'doi', label: 'DOI' },
-  { value: 'isbn', label: 'ISBN' },
+  { value: 'attachmentFilename', label: 'Attachment File Type' },
+  { value: 'publicationTitle', label: 'Publication' },
+  { value: 'abstractNote', label: 'Abstract' },
+  { value: 'DOI', label: 'DOI' },
+  { value: 'ISBN', label: 'ISBN' },
+  { value: 'ISSN', label: 'ISSN' },
   { value: 'url', label: 'URL' },
-  { value: 'readStatus', label: 'Read Status' },
-  { value: 'rating', label: 'Rating' },
+  { value: 'extra', label: 'Extra' },
 ];
 
 const PRIMARY_FIELD_SET = new Set(
-  PRIMARY_SAVED_SEARCH_FIELD_ITEMS.map((f) => f.value),
+  PRIMARY_SAVED_SEARCH_FIELD_ITEMS.map((f) => f.value.toLowerCase()),
 );
+
+const EXCLUDED_SCHEMA_FIELD_KEYS = new Set([
+  'citationcount',
+  'referencecount',
+  'doi',
+  'isbn',
+  'issn',
+  'pmid',
+  'pmcid',
+]);
 
 export const ALL_SCHEMA_FIELD_ITEMS: {
   value: SavedSearchField;
   label: string;
-}[] = Object.entries(FIELD_LABELS)
-  .filter(
-    ([key]) =>
-      !PRIMARY_FIELD_SET.has(key as SavedSearchField) &&
-      key !== 'citationCount' &&
-      key !== 'referenceCount',
-  )
-  .map(([key, label]) => ({
-    value: key as SavedSearchField,
-    label,
-  }))
-  .sort((a, b) => a.label.localeCompare(b.label));
+}[] = (() => {
+  const seenLabels = new Set(
+    PRIMARY_SAVED_SEARCH_FIELD_ITEMS.map((f) => f.label.toLowerCase()),
+  );
+  const items: { value: SavedSearchField; label: string }[] = [];
+
+  for (const [key, label] of Object.entries(FIELD_LABELS)) {
+    const lowerKey = key.toLowerCase();
+    const lowerLabel = label.toLowerCase();
+    if (
+      PRIMARY_FIELD_SET.has(lowerKey) ||
+      EXCLUDED_SCHEMA_FIELD_KEYS.has(lowerKey) && key !== key.toUpperCase() ||
+      seenLabels.has(lowerLabel)
+    ) {
+      continue;
+    }
+    seenLabels.add(lowerLabel);
+    items.push({
+      value: key as SavedSearchField,
+      label,
+    });
+  }
+
+  return items.sort((a, b) => a.label.localeCompare(b.label));
+})();
 
 export function getFieldConfig(field: SavedSearchField | string): SavedSearchFieldConfig {
   const f = field as SavedSearchField;
@@ -630,7 +659,18 @@ export function getFieldConfig(field: SavedSearchField | string): SavedSearchFie
     };
   }
 
-  const label = FIELD_LABELS[f] || humanizeFieldName(f) || f;
+  const label =
+    f === 'creator'
+      ? 'Creator'
+      : f === 'noteContent'
+        ? 'Note'
+        : f === 'annotation'
+          ? 'Annotation'
+          : f === 'attachmentContent'
+            ? 'Attachment Content'
+            : f === 'attachmentFilename'
+              ? 'Attachment File Type'
+              : FIELD_LABELS[f] || humanizeFieldName(f) || f;
   return {
     value: f,
     label,

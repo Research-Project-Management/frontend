@@ -32,7 +32,7 @@ import type {
   ReferenceData,
   CslStyleMetadata,
   UnifiedIngestionPayload,
-} from '@/features/library/domain/types/core.types';
+} from '@/features/library/types/core.types';
 
 export { isProjectScope, getItemFileUrl, mapBackendItem };
 export type {
@@ -219,7 +219,7 @@ export const libraryClient = {
 // Scope URL Helpers
 
 export function getBasePath(scopeId?: string, suffix = ''): string {
-  return resolveLibraryUrl('catalog', '', scopeId, suffix);
+  return resolveLibraryUrl('catalog', '', scopeId, suffix).replace(/\/+$/, '');
 }
 
 function buildLibraryUrl(scopeId: string | undefined, resourcePath: string): string {

@@ -4,12 +4,12 @@ import {
   prefetchLibraryCollection,
   prefetchLibraryProjectScope,
 } from '@/features/shell/lib/navigation-prefetch';
-import type { Item } from '@/features/library/domain/types/core.types';
+import type { Item } from '@/features/library/types/core.types';
 import {
   getMappedItemMeta,
   setMappedItemMeta,
 } from '@/features/library/domain/metadata.mapper';
-import type { InvalidationClient } from '@/features/library/domain/types/ingestion.types';
+import type { InvalidationClient } from '@/features/library/types/ingestion.types';
 import {
   itemKeys,
   tagKeys,
@@ -449,6 +449,11 @@ export function patchItemAcrossScopeCaches(
       queryKey: itemKeys.all(effectiveScope),
       refetchType: 'active',
     });
+    void queryClient.invalidateQueries({
+      queryKey: itemKeys.counts(effectiveScope),
+      refetchType: 'active',
+    });
+    void invalidateCollections(queryClient, effectiveScope);
   }
 }
 
@@ -544,6 +549,8 @@ export function removeItemsFromScopeCaches(
   );
 
   void queryClient.invalidateQueries({ queryKey: itemKeys.trash(effectiveScope) });
+  void queryClient.invalidateQueries({ queryKey: itemKeys.counts(effectiveScope) });
+  void invalidateCollections(queryClient, effectiveScope);
 }
 
 /**

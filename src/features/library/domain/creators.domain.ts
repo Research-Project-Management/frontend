@@ -11,11 +11,11 @@
  */
 
 import { cleanValue, isValidValue, stripLatexMarkup, cleanText } from './metadata-sanitizers.domain';
-import type { CreatorCredit, Item } from './types/core.types';
-import { getPrimaryCreatorType } from './types/item-types.types';
+import type { CreatorCredit, CreatorEntry, Item } from '@/features/library/types/core.types';
+import { getPrimaryCreatorType } from '@/features/library/types/item-types.types';
 
 interface ParsedCreator { firstName: string; lastName: string; fullName: string; isInstitution?: boolean; }
-export interface CreatorEntry { creatorType: string; name: string; fieldMode?: number; firstName?: string; lastName?: string; shortName?: string; }
+export type { CreatorEntry };
 
 const INSTITUTION_KEYWORDS = [
   'university', 'universities', 'institute', 'institutes', 'institution', 'institutions', 'consortium', 'consortia', 'collaboration', 'collaborations', 'committee', 'committees', 'organization', 'organizations', 'organisation', 'organisations', 'association', 'associations', 'society', 'societies', 'foundation', 'group', 'groups', 'team', 'council', 'agency', 'agencies', 'department', 'departments', 'ministry', 'laboratory', 'laboratories', 'center', 'centers', 'centre', 'centres', 'network', 'initiative', 'working party', 'investigators', 'commission', 'corporation', 'hospital', 'hospitals', 'inc', 'llc', 'ltd', 'openai', 'deepmind', 'anthropic', 'google', 'microsoft', 'cern', 'nasa', 'ieee',

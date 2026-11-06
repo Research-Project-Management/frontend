@@ -29,10 +29,16 @@ export type {
   DroppedField,
   FieldMappingChange,
   CreatorRoleChange,
-} from './reader.schema';
+  ViewportParams,
+  PdfTextMatch,
+  PdfSearchCycleResult,
+  PdfOutlineNode,
+  FlattenedOutlineSection,
+  PdfOutlineProxyDoc,
+} from './reader.types';
 export {
   annotationFormSchema,
-} from './reader.schema';
+} from './reader.types';
 
 // ── Citation & CSL Schemas ───────────────────────────────────────────────────
 export const cslStyleSchema = z.string().min(1);
@@ -207,6 +213,38 @@ export type UpdateCollectionDTO = Partial<CollectionInput> & {
 };
 
 export type TreeNode = Collection & { children: TreeNode[] };
+export type CollectionHierarchyNode = TreeNode;
+export type CollectionNode = TreeNode;
+
+export interface ItemTypesResponse {
+  success: boolean;
+  registryVersion: number;
+  schemaVersion: number;
+  source: string;
+  itemTypes: import('./item-types.types').SchemaItemTypeDefinition[];
+  data: import('./item-types.types').SchemaItemTypeDefinition[];
+  baseFieldMappings?: Record<string, Record<string, string>>;
+  reverseBaseFieldMappings?: Record<string, Record<string, string>>;
+  creatorRoles?: Record<string, string>;
+  cslTypeMap?: Record<string, string>;
+  cslFieldMap?: Record<string, string>;
+}
+
+export interface ReaderBootstrapResponse {
+  scope: 'user' | 'project';
+  scopeId: string;
+  degraded?: boolean;
+  degradedBranches?: string[];
+  item: import('./items.types').Item;
+  activeAttachmentId: string | null;
+  annotations: import('./reader.types').ReaderAnnotation[];
+  fulltext: import('./reader.types').DocumentFulltext | null;
+  readingState: import('./items.types').ItemStateData | null;
+  relations: import('./items.types').RelatedItem[];
+  notes: import('./items.types').Note[];
+  role?: ProjectRole;
+  permissions?: Partial<LibraryPermissions> | string[];
+}
 
 export interface CollectionActionHandlers {
   onStartRename: (id: string, name: string) => void;

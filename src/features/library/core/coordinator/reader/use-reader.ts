@@ -32,7 +32,7 @@ import type {
   AnnotationRect,
   ReaderNavigationTarget,
   AnnotationType,
-} from '@/features/library/domain/types/reader.schema';
+} from '@/features/library/types/reader.types';
 import { formatAnnotationCitation } from '@/features/library/domain/reader.domain';
 
 const READER_TOAST_IDS = {

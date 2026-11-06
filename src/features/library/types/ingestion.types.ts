@@ -468,6 +468,7 @@ export type LibraryColumnKey =
   | 'itemType'
   | 'doi'
   | 'citationKey'
+  | 'createdAt'
   | 'citations';
 
 export type LibraryOrderBy =
@@ -517,6 +518,7 @@ export const DEFAULT_LIBRARY_DISPLAY_OPTIONS: LibraryDisplayOptions = {
     itemType: false,
     doi: false,
     citationKey: true,
+    createdAt: false,
     citations: false,
   },
   orderBy: 'createdAt',
@@ -685,3 +687,100 @@ export type SavedSearchResultsResponse = z.infer<
 export type SavedSearchPreviewResponse = z.infer<
   typeof savedSearchPreviewResponseSchema
 >;
+
+// ── Domain & SDK Shared Feed & Saved-Search AST Types ────────────────────────
+
+export type FeedFormat = 'atom' | 'rss2' | 'rdf';
+
+export interface FeedCreatorApiItem {
+  firstName?: string;
+  lastName?: string;
+  creatorType?: string;
+}
+
+export interface FeedEntryApiItem {
+  id?: string;
+  title: string;
+  authors: string[];
+  creators?: FeedCreatorApiItem[];
+  doi?: string;
+  arxivId?: string;
+  primaryCategory?: string;
+  url?: string;
+  link?: string;
+  pdfUrl?: string;
+  publicationDate?: string;
+  published?: string;
+  updated?: string;
+  year?: number | null;
+  publicationTitle?: string;
+  volume?: string;
+  issue?: string;
+  pages?: string;
+  abstract?: string;
+  summary?: string;
+  keywords?: string[];
+  comment?: string;
+  rights?: string;
+  isRead?: boolean;
+  isSaved?: boolean;
+  savedItemId?: string | null;
+}
+
+export interface FeedFetchApiResponse {
+  feedTitle?: string;
+  entries?: FeedEntryApiItem[];
+  data?: FeedFetchApiResponse;
+}
+
+export interface ParsedFeedEntry {
+  id: string;
+  title: string;
+  authors: string[];
+  creators?: FeedCreatorApiItem[];
+  doi?: string;
+  arxivId?: string;
+  primaryCategory?: string;
+  url?: string;
+  pdfUrl?: string;
+  publishedAt?: string;
+  updatedAt?: string;
+  year?: number;
+  publicationTitle?: string;
+  volume?: string;
+  issue?: string;
+  pages?: string;
+  abstract?: string;
+  categories?: string[];
+  comment?: string;
+  rights?: string;
+  isRead?: boolean;
+  isSaved?: boolean;
+  savedItemId?: string | null;
+  feedFormat: FeedFormat;
+}
+
+export interface FeedSubscriptionResponse {
+  id: string;
+  userId?: string;
+  feedId?: string;
+  customTitle?: string | null;
+  cleanupReadAfter?: number;
+  cleanupUnreadAfter?: number;
+  feed?: {
+    id: string;
+    url: string;
+    title: string;
+    siteUrl?: string | null;
+    description?: string | null;
+    lastFetchedAt?: string | null;
+  };
+}
+
+export interface ConditionRow {
+  id: string;
+  field: SavedSearchField;
+  operator: SavedSearchOperator;
+  value: string;
+}
+

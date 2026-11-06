@@ -6,9 +6,9 @@ import { ItemsService, type ItemTypesResponse } from '../clients/items.client';
 import { SearchService } from '../clients/catalog-entities.client';
 import type {
   Item, Collection, CursorPaginationMeta, ItemQueryParams, SearchFacets,
-} from '@/features/library/domain/types/core.types';
-import { updateLibrarySchemaRegistry } from '@/features/library/domain/types/core.types';
-import { ALL_ITEM_TYPES_FLAT } from '@/features/library/domain/types/item-type-mappings.constants';
+} from '@/features/library/types/core.types';
+import { updateLibrarySchemaRegistry } from '@/features/library/types/core.types';
+import { ALL_ITEM_TYPES_FLAT } from '@/features/library/types/item-type-mappings.constants';
 import { getDescendantCollectionIds } from '@/features/library/domain/collection-tree.domain';
 import {
   itemKeys, libraryKeys, collectionKeys, tagKeys, noteKeys, savedSearchKeys, relationKeys, feedKeys,
@@ -26,7 +26,7 @@ import {
   patchSingleItemCache, patchItemAcrossScopeCaches, removeItemsFromCacheData, removeItemsFromScopeCaches,
   invalidateLibraryCatalogDependencies, invalidateLibraryScopeCatalog, resolveCachedItemFromScope,
   useLibraryCacheSynchronizer,
-} from './cache-patcher';
+} from './cache-patcher.queries';
 
 export {
   type ItemTypesResponse,

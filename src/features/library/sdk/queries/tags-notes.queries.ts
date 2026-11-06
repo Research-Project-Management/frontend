@@ -9,7 +9,7 @@ import {
   type CreateNoteDTO,
   type UpdateNoteDTO,
 } from '../clients/catalog-entities.client';
-import type { Item, Note } from '@/features/library/domain/types/core.types';
+import type { Item, Note } from '@/features/library/types/core.types';
 import {
   itemKeys,
   tagKeys,
@@ -24,7 +24,7 @@ import {
   chunkUniqueIds,
   invalidateLibraryCatalogDependencies,
   removeItemsFromScopeCaches,
-} from './cache-patcher';
+} from './cache-patcher.queries';
 
 export { tagKeys, noteKeys };
 

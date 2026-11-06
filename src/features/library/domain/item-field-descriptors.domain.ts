@@ -1,31 +1,19 @@
-import type { Item } from '@/features/library/domain/types/core.types';
-import { normalizeCanonicalItemType, getTitleFieldForType } from '@/features/library/domain/types/item-types.types';
+import type {
+  FieldLookupSource,
+  InspectorFieldDescriptor,
+  Item,
+} from '@/features/library/types/core.types';
+import { normalizeCanonicalItemType, getTitleFieldForType } from '@/features/library/types/item-types.types';
 import { cleanDoi, extractArxivId } from './identifiers.domain';
 import { isValidValue, cleanValue } from './metadata.mapper';
-import { parseValidYear } from './metadata-extra.constants';
+import { parseValidYear } from './metadata-extra-rules.domain';
 
 /**
  * Declarative Inspector Field Descriptors (`get`, `patch`, `formatDisplay`)
  * for Zotero Schema v42 Fields.
  */
 
-
-export type FieldLookupSource = {
-  p: Record<string, unknown>;
-  ef: Record<string, unknown>;
-  displayDoi: string;
-  fieldKey: string;
-};
-
-export interface InspectorFieldDescriptor {
-  get?: (ctx: FieldLookupSource) => string;
-  patch?: (
-    val: string,
-    item: Item | Partial<Item>,
-    currentExtraFields: Record<string, unknown>,
-  ) => Partial<Item> & Record<string, unknown>;
-  formatDisplay?: (rawVal: string) => string;
-}
+export type { FieldLookupSource, InspectorFieldDescriptor };
 
 const formatCountDisplay = (rawVal: string): string => {
   if (!rawVal || isNaN(Number(rawVal))) return rawVal;

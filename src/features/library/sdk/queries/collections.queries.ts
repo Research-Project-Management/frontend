@@ -23,7 +23,7 @@ import type {
   Collection,
   CreateCollectionDTO,
   UpdateCollectionDTO,
-} from '@/features/library/domain/types/core.types';
+} from '@/features/library/types/core.types';
 import {
   itemKeys,
   libraryKeys,
@@ -32,7 +32,7 @@ import {
   normalizeScopeId,
   waitForBootstrapCache,
 } from '@/features/library/sdk/query-keys';
-import { chunkUniqueIds } from './cache-patcher';
+import { chunkUniqueIds } from './cache-patcher.queries';
 
 export { collectionKeys, invalidateCollections };
 
@@ -275,8 +275,10 @@ export function useCollections(scopeIdOrOptions?: UseCollectionsScopeInput) {
       return CollectionsService.delete(targetScope, collectionId, strategy);
     },
     onSuccess: (_res, input) => {
+      const collectionId = typeof input === 'string' ? input : input.collectionId;
       const strategy = typeof input === 'string' ? undefined : input.strategy;
       const targetScope = normalizeScopeId(typeof input === 'object' ? input.scopeId : scopeId);
+      queryClient.removeQueries({ queryKey: collectionKeys.byId(targetScope, collectionId) });
       invalidateCollections(queryClient, targetScope);
       queryClient.invalidateQueries({ queryKey: itemKeys.all(targetScope) });
       toast.success('Collection deleted', {
@@ -404,7 +406,7 @@ export function useBatchDetachItemsMutation(scopeId?: string) {
       collectionId: string;
       itemIds: string[];
     }) => {
-      const chunks = chunkUniqueIds(itemIds, 100);
+      const chunks = chunkUniqueIds(itemIds, 500);
       await Promise.all(
         chunks.map((chunk) =>
           CollectionsService.bulkDetachItems(effectiveScope, collectionId, chunk),
@@ -447,7 +449,7 @@ export function useMoveCollectionItemsMutation(scopeId?: string) {
       scopeId?: string;
     }) => {
       const targetScope = normalizeScopeId(overrideScope || effectiveScopeId);
-      const chunks = chunkUniqueIds(itemIds, 100);
+      const chunks = chunkUniqueIds(itemIds, 500);
       await Promise.all(
         chunks.map((chunk) =>
           CollectionsService.moveItems(
@@ -490,7 +492,7 @@ export function useAssignCollectionItemsMutation(scopeId?: string) {
       itemIds: string | string[];
     }) => {
       const rawIds = Array.isArray(itemIds) ? itemIds : [itemIds];
-      const chunks = chunkUniqueIds(rawIds, 100);
+      const chunks = chunkUniqueIds(rawIds, 500);
       await Promise.all(
         chunks.map((chunk) =>
           CollectionsService.assignItems(effectiveScopeId, collectionId, chunk),

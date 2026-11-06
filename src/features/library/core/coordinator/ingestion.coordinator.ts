@@ -16,7 +16,7 @@ import {
 import {
   invalidateLibraryCatalogDependencies,
   useLibraryCacheSynchronizer,
-} from '@/features/library/sdk/queries/cache-patcher';
+} from '@/features/library/sdk/queries/cache-patcher.queries';
 import {
   useProcessModalStore,
   registerBatchUploadExecutor,
@@ -33,7 +33,7 @@ import type {
   InvalidationClient,
   FeedRetentionDays,
   SavedFeedSubscription,
-} from '@/features/library/domain/types/ingestion.types';
+} from '@/features/library/types/ingestion.types';
 import {
   mapFeedEntryToCreateItemPayload,
   type ParsedFeedEntry,
@@ -41,13 +41,16 @@ import {
 import type {
   Collection,
   AddFeedFormValues,
-} from '@/features/library/domain/types/core.types';
+} from '@/features/library/types/core.types';
 import {
   BatchFlowManager,
   resolveFileIngestionStrategy,
   detectBibliographyFileFormat,
   TextBibliographyFileStrategy,
   BinaryAttachmentFileStrategy,
+  computeAdaptiveUploadConcurrency,
+  bundleLightweightTextFiles,
+  executeBundledTextBatch,
   type IFileIngestionStrategy,
   type FileIngestionStrategyContext,
   type BibliographyTextFormat,
@@ -58,6 +61,8 @@ export {
   detectBibliographyFileFormat,
   TextBibliographyFileStrategy,
   BinaryAttachmentFileStrategy,
+  computeAdaptiveUploadConcurrency,
+  bundleLightweightTextFiles,
   type IFileIngestionStrategy,
   type FileIngestionStrategyContext,
   type BibliographyTextFormat,
@@ -170,7 +175,7 @@ export async function executeBatchUpload(
     index,
     provisionalId: initialProcessingItems[index]!.id,
   }));
-  const concurrency = 4;
+  const concurrency = computeAdaptiveUploadConcurrency(files);
   let completedCount = 0;
   let successCount = 0;
   let failCount = 0;
@@ -258,20 +263,51 @@ export async function executeBatchUpload(
     }
   };
 
-  // Execute batch using classic Bounded Worker Pool Pattern
-  const tasks = files.map((file, index) => ({
-    id: initialProcessingItems[index]!.id,
-    name: file.name,
-    data: { file, index, provisionalId: initialProcessingItems[index]!.id },
-    execute: (entry: { file: File; index: number; provisionalId: string }, signal: AbortSignal) => processFile(entry, signal),
+  // Coalesce lightweight text files (.csv, .bib, .ris, .medline, .txt <= 128 KB) into 384 KB bundles
+  const { bundles, passthroughEntries } = await bundleLightweightTextFiles(queue);
+
+  const bundleTasks = bundles.map((bundle, bIdx) => ({
+    id: `bundle-${bIdx}-${bundle.entries[0]!.provisionalId}`,
+    name: `Bundled ${bundle.source.toUpperCase()} (${bundle.entries.length} files)`,
+    data: bundle,
+    execute: (b: typeof bundle, signal: AbortSignal) =>
+      executeBundledTextBatch(b, {
+        scopeId,
+        effectiveCollection,
+        store,
+        signal,
+        markFileSucceeded,
+        markFileFailed,
+      }),
   }));
 
-  const flowManager = new BatchFlowManager<{ file: File; index: number; provisionalId: string }>({
+  const singleFileTasks = passthroughEntries.map((entry) => ({
+    id: entry.provisionalId,
+    name: entry.file.name,
+    data: entry,
+    execute: (item: { file: File; index: number; provisionalId: string }, signal: AbortSignal) =>
+      processFile(item, signal),
+  }));
+
+  const flowManager = new BatchFlowManager<unknown>({
     concurrency,
     maxRetries: 0,
     abortSignal: options.abortSignal,
   });
-  const batchProgress = await flowManager.execute(tasks);
+  const batchProgress = await flowManager.execute([
+    ...(bundleTasks as Array<{
+      id: string;
+      name: string;
+      data: unknown;
+      execute: (input: unknown, signal: AbortSignal) => Promise<unknown>;
+    }>),
+    ...(singleFileTasks as Array<{
+      id: string;
+      name: string;
+      data: unknown;
+      execute: (input: unknown, signal: AbortSignal) => Promise<unknown>;
+    }>),
+  ]);
 
   // Mark any files that exhausted all retries during upload as failed
   batchProgress.errors.forEach((error, taskId) => {
@@ -457,6 +493,7 @@ async function executeSaveFeedEntryToLibrary<TCreatePayload extends Record<strin
   });
 
   let savedViaPipeline = false;
+  let pipelineRunCreated = false;
   if (ingestItem && (entry.doi || entry.arxivId)) {
     try {
       const ingestRes = await ingestItem({
@@ -482,6 +519,9 @@ async function executeSaveFeedEntryToLibrary<TCreatePayload extends Record<strin
         _polled?: boolean;
       };
       const runId = resObj.data?.runId || resObj.runId;
+      if (runId) {
+        pipelineRunCreated = true;
+      }
       const initialStatus = String(
         resObj.data?.status || resObj.status || '',
       ).toUpperCase();
@@ -499,7 +539,7 @@ async function executeSaveFeedEntryToLibrary<TCreatePayload extends Record<strin
         savedViaPipeline = true;
       }
     } catch {
-      savedViaPipeline = false;
+      savedViaPipeline = pipelineRunCreated;
     }
   }
 

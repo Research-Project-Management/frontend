@@ -5,9 +5,9 @@ import { toast } from 'sonner';
 import { ItemsService } from '../clients/items.client';
 import { StateService } from '../clients/catalog-entities.client';
 import { getMappedItemMeta, hasExplicitUserStateInPayload, preserveMappedItemFlags, setMappedItemMeta } from '@/features/library/domain/metadata.mapper';
-import type { Item, CreateItemDTO, UpdateItemDTO } from '@/features/library/domain/types/core.types';
+import type { Item, CreateItemDTO, UpdateItemDTO } from '@/features/library/types/core.types';
 import { itemKeys, libraryKeys, invalidateCollections, normalizeScopeId } from '@/features/library/sdk/query-keys';
-import { mergeCachedItemWithPatch, preserveCachedUserReadingState, patchItemAcrossScopeCaches, resolveCachedItemFromScope, chunkUniqueIds, invalidateLibraryCatalogDependencies, isMetadataOnlyPatch } from './cache-patcher';
+import { mergeCachedItemWithPatch, preserveCachedUserReadingState, patchItemAcrossScopeCaches, resolveCachedItemFromScope, chunkUniqueIds, invalidateLibraryCatalogDependencies, isMetadataOnlyPatch } from './cache-patcher.queries';
 import { isItemStarred } from '@/features/library/domain/system-views.policy';
 
 export function resolveCachedItemVersion(
@@ -176,11 +176,18 @@ export function useUpdateLibraryItemMutation(scopeId?: string) {
     },
     onError: (err: Error, variables, context) => {
       const targetId = variables?.itemId;
-      if (targetId && context?.previousDetail !== undefined) {
-        queryClient.setQueryData(
-          itemKeys.byId(effectiveScope, targetId),
-          context.previousDetail,
-        );
+      if (targetId) {
+        if (context?.previousDetail !== undefined) {
+          queryClient.setQueryData(
+            itemKeys.byId(effectiveScope, targetId),
+            context.previousDetail,
+          );
+        } else {
+          queryClient.removeQueries({
+            queryKey: itemKeys.byId(effectiveScope, targetId),
+            exact: true,
+          });
+        }
       }
       if (targetId && context?.previousItemSnapshot) {
         patchItemAcrossScopeCaches(
@@ -199,9 +206,10 @@ export function useUpdateLibraryItemMutation(scopeId?: string) {
     },
     onSettled: (_data, _error, variables) => {
       const targetId = variables?.itemId;
-      if (targetId && (Boolean(_error) || !_data)) {
+      if (targetId) {
         queryClient.invalidateQueries({
           queryKey: itemKeys.byId(effectiveScope, targetId),
+          refetchType: 'active',
         });
       }
       const { silent: _silent, ...rawData } = variables?.data || {};
@@ -222,8 +230,10 @@ export function useUpdateLibraryItemMutation(scopeId?: string) {
 export function useToggleStarItemMutation(scopeId?: string) {
   const queryClient = useQueryClient();
   const effectiveScope = normalizeScopeId(scopeId);
+  const mutationKey = ['toggle-star-item', effectiveScope];
 
   return useMutation({
+    mutationKey,
     mutationFn: async ({ id, isStarred }: { id: string; isStarred: boolean }) => {
       return StateService.updateState(effectiveScope, id, { isStarred });
     },
@@ -278,12 +288,19 @@ export function useToggleStarItemMutation(scopeId?: string) {
         id: 'item-star-toggle',
       });
     },
-    onSuccess: (_updated, variables) => {
+    onSuccess: (updated, variables) => {
+      const serverStarred =
+        updated &&
+        typeof updated === 'object' &&
+        'isStarred' in updated &&
+        typeof (updated as { isStarred?: unknown }).isStarred === 'boolean'
+          ? (updated as { isStarred: boolean }).isStarred
+          : variables.isStarred;
       patchItemAcrossScopeCaches(queryClient, effectiveScope, variables.id, {
-        isStarred: variables.isStarred,
+        isStarred: serverStarred,
       });
       toast.success(
-        variables.isStarred ? 'Added to Starred' : 'Removed from Starred',
+        serverStarred ? 'Added to Starred' : 'Removed from Starred',
         {
           id: 'item-star-toggle',
         },

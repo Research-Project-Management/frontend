@@ -11,7 +11,7 @@ import {
   isPersistedItemId,
   isPersistedLibraryItem,
 } from "@/features/library/domain/library-permissions.policy";
-import type { Item } from "@/features/library/domain/types/core.types";
+import type { Item } from "@/features/library/types/core.types";
 
 interface UseLibraryKeyboardShortcutsOptions {
   items: Item[];

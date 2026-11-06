@@ -2,18 +2,18 @@
 
 import { useMemo, useState } from 'react';
 import { useTags } from '@/features/library/sdk/queries/tags-notes.queries';
-import type { TagWithCount } from '@/features/library/domain/types/items.types';
+import type { TagWithCount } from '@/features/library/types/items.types';
 import {
   useLibraryCountsQuery,
   useItemTypes,
   useLibrarySearchFacetsQuery,
 } from '@/features/library/sdk/queries/catalog.queries';
-import type { Item } from '@/features/library/domain/types/core.types';
+import type { Item } from '@/features/library/types/core.types';
 import {
   ALL_ITEM_TYPES_FLAT,
   LIBRARY_ITEM_TYPES,
   mapRegistryItemTypes,
-} from '@/features/library/domain/types/core.types';
+} from '@/features/library/types/core.types';
 import {
   calculateFilterMatchScore,
   formatTypeFallback,
@@ -134,7 +134,6 @@ export function useLibraryFacetCounts({
     const raw = searchParams.getAll('tag');
     if (!raw.length) return [];
     return raw
-      .flatMap((t: string) => t.split(','))
       .map((t: string) => decodeURIComponent(t.trim()))
       .filter(Boolean);
   }, [searchParams]);
@@ -148,12 +147,11 @@ export function useLibraryFacetCounts({
   const activeCount = useMemo(() => {
     let count = 0;
     if (fileStatus !== 'all') count++;
-    if (readStatuses.length > 0) count += readStatuses.length;
     if (itemTypes.length > 0) count += itemTypes.length;
-    if (fromYear !== null || toYear !== null || Boolean(startDate) || Boolean(endDate)) count++;
+    if (fromYear !== null || toYear !== null) count++;
     if (activeTags.length > 0) count += activeTags.length;
     return count;
-  }, [fileStatus, readStatuses, itemTypes, fromYear, toYear, startDate, endDate, activeTags]);
+  }, [fileStatus, itemTypes, fromYear, toYear, activeTags]);
 
   const replaceFilterQuery = (mutator: (params: URLSearchParams) => void) => {
     updateQuery(mutator, { replace: true, resetPage: true });
@@ -275,8 +273,8 @@ export function useLibraryFacetCounts({
         ? activeTags.filter((t) => t.toLowerCase() !== lower)
         : [...activeTags, tagName];
       params.delete('tag');
-      if (nextTags.length > 0) {
-        params.set('tag', nextTags.join(','));
+      for (const t of nextTags) {
+        params.append('tag', t);
       }
     });
   };
@@ -452,18 +450,15 @@ export function useLibraryFacetCounts({
       const count = t._count?.itemTags ?? t.itemCount ?? 0;
       if (count > 0) return true;
       if (activeTagsSet.has(t.name.toLowerCase())) return true;
-      if (hasSearchTagFacets) return false;
-      if (!isAuto) return true;
-      if (typeof t.shortcut === 'number' || Boolean(t.color)) return true;
       return false;
     });
 
-    const tagRank = (t: TagWithCount): number =>
-      typeof t.shortcut === 'number' && t.shortcut >= 1
-        ? t.shortcut
-        : t.color && t.color !== '#3b82f6'
-          ? 100
-          : 200;
+    const tagRank = (t: TagWithCount): number => {
+      if (activeTagsSet.has(t.name.toLowerCase())) return 0;
+      if (typeof t.shortcut === 'number' && t.shortcut >= 1) return t.shortcut;
+      if (t.color && t.color !== '#3b82f6') return 100;
+      return 200;
+    };
 
     const sortPinnedFirst = (a: TagWithCount, b: TagWithCount) =>
       tagRank(a) - tagRank(b) || a.name.localeCompare(b.name);
@@ -489,7 +484,6 @@ export function useLibraryFacetCounts({
 
   const totalMatchesCount =
     matchingFileItems.length +
-    matchingReadingItems.length +
     matchingTypeItems.length +
     (dateSectionMatch.matches ? 1 : 0) +
     matchingTags.length;
@@ -498,6 +492,8 @@ export function useLibraryFacetCounts({
     fileStatus,
     readStatuses,
     itemTypes,
+    fromYear,
+    toYear,
     startDate,
     endDate,
     activeTags,
@@ -520,6 +516,7 @@ export function useLibraryFacetCounts({
     handleFileStatusToggle,
     handleReadStatusToggle,
     handleTypeToggle,
+    handleYearPreset,
     handleStartDateSelect,
     handleEndDateSelect,
     handleClearDate,

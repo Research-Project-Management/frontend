@@ -19,7 +19,7 @@ import { useLibraryCommandStore, createRestoreCommand, createMoveItemsCommand, c
 import { isItemRetracted } from '@/features/library/domain/system-views.policy';
 import { getAssignedCollectionIds } from '@/features/library/domain/metadata.mapper';
 import { isPersistedLibraryItem } from '@/features/library/domain/library-permissions.policy';
-import type { Item, CslStyle } from '@/features/library/domain/types/core.types';
+import type { Item, CslStyle } from '@/features/library/types/core.types';
 import { isEditableOrModalElementFocused } from './keyboard-shortcuts.coordinator';
 import {
   copyWithToastHelper,

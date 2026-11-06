@@ -4,7 +4,7 @@ import React, { useState, useCallback } from 'react';
 import { BookOpen, Copy, Check, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { copyToClipboard } from '@/shared/lib/utils';
-import { libraryServices } from '@/features/library/sdk';
+import { CitationService } from '@/features/library/sdk/clients/attachments-annotations.client';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import type { Item } from '@/features/library/domain/types/core.types';
 import {
@@ -52,7 +52,7 @@ export const BibliographyInjectorCard = React.memo(function BibliographyInjector
     const currentContent = getContent ? getContent() : engine?.getContent?.() || '';
     const detectedStyle = detectDocumentCitationStyle(currentContent, activeFilePath);
 
-    return await libraryServices.citations.batchFormat(projectId, itemIds, detectedStyle);
+    return await CitationService.batchFormat(projectId, itemIds, detectedStyle);
   }, [citedItems, projectId, getContent, engine, activeFilePath]);
 
   // Handler: Insert bibliography section directly into document content

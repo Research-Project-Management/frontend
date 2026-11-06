@@ -8,7 +8,7 @@ import {
   streamChatResponse, getChatSession, } from '../services/chat.service';
 import { buildResponseWidgetsFromActions } from '../components/chat/response-widgets';
 import { useChatMode } from './use-chat-mode';
-import { libraryServices } from '@/features/library/sdk';
+import { ItemsService } from '@/features/library/sdk/clients/items.client';
 import type { Item } from '@/features/library/domain/types/core.types';
 
 export function mergeAgentAction(current: AgentAction[], action: AgentAction): AgentAction[] {
@@ -223,7 +223,7 @@ export function useChat() {
     if (!collectionId || preloadedCollectionRef.current === collectionId) return;
 
     preloadedCollectionRef.current = collectionId;
-    libraryServices.items.getByCollection('user', collectionId)
+    ItemsService.getByCollection('user', collectionId)
       .then((res) => {
         const resObj = res as unknown as Item[] | { papers?: Item[]; items?: Item[] };
         const papers: Item[] = Array.isArray(resObj) ? resObj : resObj?.papers || resObj?.items || [];

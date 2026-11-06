@@ -5,12 +5,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, } from '@/shared/comp
 import { Button } from '@/shared/components/ui/button';
 import {
   Search, FileText, Loader2, Folder, Layers, X, Check, } from 'lucide-react';
-import { libraryServices } from '@/features/library/sdk';
-import { isProjectScope } from '@/features/library/domain/identifiers';
+import { CollectionsService } from '@/features/library/sdk/clients/catalog-entities.client';
+import { ItemsService } from '@/features/library/sdk/clients/items.client';
+import { isProjectScope } from '@/features/library/domain/identifiers.domain';
 import type { Item, Collection } from '@/features/library/domain/types/core.types';
 import { LibraryEmptyState } from '@/features/library/ui/content/ItemTableHeader';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
-import { buildTree, type TreeNode } from '@/features/library/domain/collection-tree';
+import { buildTree, type TreeNode } from '@/features/library/domain/collection-tree.domain';
 import { cn } from '@/shared/lib/utils';
 import { toast } from 'sonner';
 
@@ -59,7 +60,7 @@ export function LibraryPickerModal({
 
     const targetScope = projectId && isProjectScope(projectId) ? projectId : 'user';
 
-    libraryServices.collections.getAll(targetScope)
+    CollectionsService.getAll(targetScope)
       .then((res) => {
         if (!isMounted) return;
         const resObj = res as unknown as { collections?: Collection[]; data?: { collections?: Collection[] } | Collection[] } | Collection[];
@@ -90,7 +91,7 @@ export function LibraryPickerModal({
       setLoading(true);
       setError(null);
       const targetScope = projectId && isProjectScope(projectId) ? projectId : 'user';
-      const res = await libraryServices.items.getAll(targetScope, {
+      const res = await ItemsService.getAll(targetScope, {
         search: search.trim() || undefined,
         collectionId: selectedCollectionId || undefined,
         limit: 100,

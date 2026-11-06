@@ -12,7 +12,7 @@ import { useEditorCitations } from '@/features/editor/subsystems/citation/ui/hoo
 import { toast } from 'sonner';
 import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
 import { type CitationValidationResult, type BibEntryDto } from '@/features/editor/sdk/manuscript/types';
-import { generateCitationKey } from '@/features/library/domain/citations';
+import { generateCitationKey } from '@/features/library/domain/citations.domain';
 import { type BibEntry } from '@/features/editor/domain/latex/bib-parser';
 import {
   extractCitationKeys,

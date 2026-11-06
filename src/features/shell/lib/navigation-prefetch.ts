@@ -26,10 +26,8 @@ import {
   libraryKeys,
   normalizeScopeId,
 } from '@/features/library/sdk/query-keys';
-import {
-  CollectionsService,
-  ItemsService,
-} from '@/features/library/sdk';
+import { CollectionsService } from '@/features/library/sdk/clients/catalog-entities.client';
+import { ItemsService } from '@/features/library/sdk/clients/items.client';
 
 /**
  * Centralized Navigation Intent & Prefetch Budget Controller (Deep Module).

@@ -1,6 +1,6 @@
 "use client";
 
-import { resolveEpubOrSnapshot } from "@/features/library/domain/reader.domain";
+import { buildReaderPaperUrl, resolveEpubOrSnapshot } from "@/features/library/domain/reader.domain";
 
 import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from "react";
 import dynamic from "next/dynamic";
@@ -10,15 +10,22 @@ import { openInNewTab } from "@/features/library/core/coordinator/citation-expor
 import { cn } from "@/shared/lib/utils";
 import { Loader2 } from "lucide-react";
 import { PlaneEmptyState } from "@/shared/components/ui/PlaneEmptyState";
-import { useReader } from "@/features/library/core/coordinator/reader/use-reader";
+import {
+  useReader,
+  useExportAnnotatedPdf,
+  evictWarmObjectUrl,
+} from "@/features/library/core/coordinator/reader/use-reader";
 import { useShallow } from "zustand/react/shallow";
 import { useReaderStore } from "@/features/library/core/store/reader.store";
 import { useLibraryUIStore } from "@/features/library/core/store/library-ui.store";
 import { useAiCompanionStore } from "@/features/ai/store/ai-companion.store";
 import { useLibraryPermissions } from "@/features/library/core/coordinator/navigation.coordinator";
-import { useExportAnnotatedPdf } from "@/features/library/core/coordinator/reader/use-reader";
 import { ReaderInspector } from "@/features/library/ui/inspector/LibraryInspector";
-import { LruTabPool } from "@/features/library/domain/reader-tab-pool.domain";
+import {
+  warmViewerPool,
+  type WarmViewerPoolItem,
+} from "@/features/library/domain/reader-tab-pool.domain";
+import { prefetchReaderDocumentBlob } from "@/features/library/sdk/queries/reader.queries";
 import Topbar, { ReaderRetractionBanner } from "@/features/library/ui/reader/ReaderTopbar";
 import ReaderToolbar from "@/features/library/ui/reader/ReaderToolbar";
 import type { AnnotationRect, ReaderNavigationTarget, PdfOutlineItem } from "@/features/library/types/reader.types";
@@ -36,22 +43,25 @@ const BibtexModal = dynamic(
 );
 const AiCompanionSidebar = dynamic(() => import("@/features/ai/components/companion/AiCompanionSidebar"), { ssr: false, loading: () => null });
 
-const Viewer = dynamic(() => import("@/features/library/ui/reader/viewer/Viewer"), {
-  ssr: false,
-  loading: () => (
-    <div className="flex-1 flex items-center justify-center overflow-auto p-4 bg-muted">
-      <div className="flex flex-col gap-3 p-8 bg-card border border-border rounded-md animate-pulse select-none w-[600px] max-w-[90vw] h-[848px] max-h-[85vh]">
-        <div className="h-4 w-3/4 bg-muted rounded-sm mb-4" />
-        <div className="h-2.5 w-1/2 bg-muted rounded-sm mb-6" />
-        <div className="space-y-2 flex-1">
-          {[100, 100, 92, 100, 80].map((w, i) => (
-            <div key={i} className="h-2 bg-muted rounded-sm" style={{ width: `${w}%` }} />
-          ))}
+const Viewer = dynamic<import("@/features/library/ui/reader/viewer/Viewer").ViewerProps>(
+  () => import("@/features/library/ui/reader/viewer/Viewer"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex-1 flex items-center justify-center overflow-auto p-4 bg-muted">
+        <div className="flex flex-col gap-3 p-8 bg-card border border-border rounded-md animate-pulse select-none w-[600px] max-w-[90vw] h-[848px] max-h-[85vh]">
+          <div className="h-4 w-3/4 bg-muted rounded-sm mb-4" />
+          <div className="h-2.5 w-1/2 bg-muted rounded-sm mb-6" />
+          <div className="space-y-2 flex-1">
+            {[100, 100, 92, 100, 80].map((w, i) => (
+              <div key={i} className="h-2 bg-muted rounded-sm" style={{ width: `${w}%` }} />
+            ))}
+          </div>
         </div>
       </div>
-    </div>
-  ),
-});
+    ),
+  },
+);
 
 const EpubAndSnapshotViewer = dynamic<import("@/features/library/ui/reader/viewer/EpubAndSnapshotViewer").EpubAndSnapshotViewerProps>(
   () => import("@/features/library/ui/reader/viewer/EpubAndSnapshotViewer"),
@@ -121,19 +131,44 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
   const effectiveTabId = paper?.id || activeTabId;
   const activeTab = tabs.find((t) => t.id === effectiveTabId);
 
-  // Tri-State Tab Memory Pool (1 Active + 2 Standby, strictly bounded by LRU)
-  const warmPoolRef = useRef<LruTabPool<{ paperId: string; title: string }>>(
-    new LruTabPool<{ paperId: string; title: string }>(3),
+  // Tri-State Tab Memory Pool (Zotero 5-tab baseline, dynamically scaled 3..8 by device RAM)
+  const [standbyViewers, setStandbyViewers] = useState<WarmViewerPoolItem[]>(() =>
+    warmViewerPool.getValuesMruOrder(),
   );
 
   useEffect(() => {
     if (!effectiveTabId || effectiveTabId === "library") return;
-    warmPoolRef.current.put(
+    warmViewerPool.put(
       effectiveTabId,
-      { paperId: effectiveTabId, title: paper?.title || "Document" },
+      {
+        paperId: effectiveTabId,
+        title: paper?.title || activeTab?.title || "Document",
+        blobUrl: pdfBlobUrl,
+        fileUrl: paperUrl,
+        scopeId,
+        attachmentId: effectiveAttachmentId || undefined,
+        scrollTop: activeTab?.scrollTop,
+      },
       new Set(["library", effectiveTabId]),
     );
-  }, [effectiveTabId, paper?.title]);
+    setStandbyViewers(warmViewerPool.getValuesMruOrder());
+  }, [
+    effectiveTabId,
+    paper?.title,
+    activeTab?.title,
+    pdfBlobUrl,
+    paperUrl,
+    scopeId,
+    effectiveAttachmentId,
+    activeTab?.scrollTop,
+  ]);
+
+  // Persist resolved canonical PDF URL in ReaderTab so hover-prefetch hits the exact URL
+  useEffect(() => {
+    if (effectiveTabId && effectiveTabId !== "library" && paperUrl && activeTab?.fileUrl !== paperUrl) {
+      updateTabState(effectiveTabId, { fileUrl: paperUrl });
+    }
+  }, [effectiveTabId, paperUrl, activeTab?.fileUrl, updateTabState]);
 
   // Reader inspector toggle backed directly by global library UI store
   const isGlobalInspectorOpen = useLibraryUIStore((s) => s.isInspectorOpen);
@@ -204,7 +239,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
   }, [paper?.id, paper?.title, openReader]);
 
   const getPaperUrl = useCallback(
-    (id: string) => (isProject && rawProjectId ? `/projects/${rawProjectId}/library/papers/${id}` : `/library/papers/${id}`),
+    (id: string) => buildReaderPaperUrl(id, { projectId: isProject ? rawProjectId : undefined }),
     [isProject, rawProjectId],
   );
 
@@ -221,7 +256,13 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
 
   const handleCloseTab = useCallback(
     (id: string) => {
-      warmPoolRef.current.delete(id);
+      const closingTab = tabs.find((t) => t.id === id);
+      const closingWarm = warmViewerPool.peek(id);
+      const closingUrl = closingTab?.fileUrl || closingWarm?.fileUrl || (paper?.id === id ? paperUrl : undefined);
+      evictWarmObjectUrl(closingUrl, closingWarm?.scopeId ?? scopeId);
+      warmViewerPool.delete(id);
+      setStandbyViewers(warmViewerPool.getValuesMruOrder());
+
       const closedIdx = tabs.findIndex((t) => t.id === id);
       const wasActive = activeTabId === id || (paper && paper.id === id);
       closeTab(id);
@@ -235,7 +276,19 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
         else router.push(getPaperUrl(next.id));
       }
     },
-    [tabs, activeTabId, paper, closeTab, goBack, router, getPaperUrl],
+    [tabs, activeTabId, paper, paperUrl, scopeId, closeTab, goBack, router, getPaperUrl],
+  );
+
+  const handlePrefetchTab = useCallback(
+    (id: string) => {
+      if (!id || id === "library") return;
+      const targetScope = isProject && rawProjectId ? rawProjectId : undefined;
+      const targetTab = tabs.find((t) => t.id === id);
+      const warmItem = warmViewerPool.peek(id);
+      const resolvedUrl = targetTab?.fileUrl || warmItem?.fileUrl || `/papers/${id}.pdf`;
+      void prefetchReaderDocumentBlob(resolvedUrl, { scopeId: targetScope });
+    },
+    [isProject, rawProjectId, tabs],
   );
 
   // Academic Reader States (Pan/Select, Split View, Reading Mode, Lock Tool)
@@ -294,15 +347,6 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     () => (paper?.id ? bookmarks[paper.id] ?? [] : []),
     [paper?.id, bookmarks],
   );
-  const isCurrentPageBookmarked = useMemo(
-    () => currentPaperBookmarks.includes(visiblePage),
-    [currentPaperBookmarks, visiblePage],
-  );
-
-  const handleToggleCurrentBookmark = useCallback(() => {
-    if (!paper?.id || visiblePage < 1) return;
-    toggleBookmark(paper.id, visiblePage);
-  }, [paper?.id, visiblePage, toggleBookmark]);
 
   const handleToggleBookmarkPage = useCallback(
     (page: number) => {
@@ -370,6 +414,35 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     onNavigateToAnnotation: actions.handleNavigateToAnnotation,
   });
 
+  const handleSelectNextTab = useCallback(() => {
+    if (tabs.length <= 1) return;
+    const currentIndex = tabs.findIndex((t) => t.id === effectiveTabId);
+    const nextIndex = (currentIndex + 1) % tabs.length;
+    handleSelectTab(tabs[nextIndex].id);
+  }, [tabs, effectiveTabId, handleSelectTab]);
+
+  const handleSelectPrevTab = useCallback(() => {
+    if (tabs.length <= 1) return;
+    const currentIndex = tabs.findIndex((t) => t.id === effectiveTabId);
+    const prevIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+    handleSelectTab(tabs[prevIndex].id);
+  }, [tabs, effectiveTabId, handleSelectTab]);
+
+  const handleSelectTabByIndex = useCallback(
+    (index: number) => {
+      if (index >= 0 && index < tabs.length) {
+        handleSelectTab(tabs[index].id);
+      }
+    },
+    [tabs, handleSelectTab],
+  );
+
+  const handleCloseCurrentActiveTab = useCallback(() => {
+    if (effectiveTabId && effectiveTabId !== "library") {
+      handleCloseTab(effectiveTabId);
+    }
+  }, [effectiveTabId, handleCloseTab]);
+
   useReaderKeyboardShortcuts({
     activeTool: activeTool || "select",
     setActiveTool,
@@ -382,6 +455,10 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     setTabZoom,
     setFitMode,
     setRotation,
+    onSelectNextTab: handleSelectNextTab,
+    onSelectPrevTab: handleSelectPrevTab,
+    onCloseActiveTab: handleCloseCurrentActiveTab,
+    onSelectTabByIndex: handleSelectTabByIndex,
   });
 
   // Escape key exits distraction-free reading mode or resets active annotation tool to 'select'
@@ -601,7 +678,8 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
         <Topbar
           paper={paper} tabs={tabs} activeTabId={paper?.id || activeTabId}
           scopeTitle={activeScope.name} onSelectTab={handleSelectTab}
-          onCloseTab={handleCloseTab} onReorderTabs={reorderTabs} onBack={goBack}
+          onCloseTab={handleCloseTab} onReorderTabs={reorderTabs}
+          onPrefetchTab={handlePrefetchTab} onBack={goBack}
           onExportAnnotatedPdf={handleExportAnnotatedPdf}
         />
       )}
@@ -716,6 +794,35 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
               description="No local PDF, EPUB, or Web Snapshot attached to this entry. You can review metadata and notes in the inspector panel, or upload a PDF file."
             />
           )}
+
+          {/* WARM STANDBY VIEWERS (State 2: Suspended in DOM with 0 MB VRAM & ~35 DOM nodes per tab) */}
+          {standbyViewers
+            .filter(
+              (item) =>
+                item.paperId !== effectiveTabId &&
+                Boolean(item.blobUrl) &&
+                tabs.some((t) => t.id === item.paperId),
+            )
+            .map((item) => {
+              const standbyTab = tabs.find((t) => t.id === item.paperId);
+              return (
+                <Viewer
+                  key={`standby-${item.paperId}`}
+                  isSuspended={true}
+                  blobUrl={item.blobUrl ?? null}
+                  isLoading={false}
+                  error={null}
+                  attachmentId={item.attachmentId ?? undefined}
+                  scopeId={item.scopeId}
+                  zoom={standbyTab?.zoom ?? 1}
+                  rotation={standbyTab?.rotation ?? 0}
+                  themeMode={standbyTab?.theme ?? "normal"}
+                  viewMode={standbyTab?.viewMode ?? "continuous"}
+                  fitMode={standbyTab?.fitMode ?? "fit-width"}
+                  initialScrollTop={standbyTab?.scrollTop ?? item.scrollTop}
+                />
+              );
+            })}
         </main>
 
         {/* 5. UNIFIED INSPECTOR PANEL */}

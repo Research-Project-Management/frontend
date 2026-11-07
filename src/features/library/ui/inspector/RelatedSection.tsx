@@ -390,13 +390,13 @@ export default function RelatedSection(props: RelatedSectionProps) {
                       type="button"
                       aria-pressed={isSelected}
                       onClick={() => setSelectedCollectionFilter(col.id)}
+                      aria-label={`${col.name} (${count} items)`}
                       className={cn(
                         'text-left px-2.5 py-1.5 rounded-md text-12 flex items-center justify-between gap-2 cursor-pointer transition-colors select-none shrink-0 sm:shrink sm:w-full',
                         isSelected
                           ? 'bg-muted text-foreground font-medium'
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 font-normal',
                       )}
-                      title={`${col.name} (${count} items)`}
                     >
                       <div className="flex items-center gap-2 min-w-0 flex-1 truncate">
                         <Folder

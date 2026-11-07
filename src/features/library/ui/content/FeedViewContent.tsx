@@ -58,8 +58,11 @@ export function FeedViewContent({
   const searchQuery = (searchParams.get('q') || '').trim();
   const { mutateAsync: createItem } = useCreateLibraryItemMutation(scopeId);
   const { mutateAsync: ingestItem } = useIngestMutation(scopeId);
-  const { collections = [] } = useCollections(scopeId);
-  const collectionList: Collection[] = (collections as Collection[]) || [];
+  const { collections } = useCollections(scopeId);
+  const collectionList = useMemo<Collection[]>(
+    () => (collections as Collection[]) ?? [],
+    [collections],
+  );
 
   const feeds = useFeedsStore((s) => s.feeds);
   const loadFeeds = useFeedsStore((s) => s.loadFeeds);

@@ -132,7 +132,13 @@ export function useTrash(
         .filter((id): id is string => Boolean(id));
       return purgeIdsBatch(remainingIds);
     },
-    onSuccess: (count) => {
+    onSuccess: (count, items) => {
+      const purgedIds = Array.isArray(items)
+        ? items.map((item) => item.id).filter((id): id is string => Boolean(id))
+        : [];
+      if (purgedIds.length > 0) {
+        removeItemsFromScopeCaches(queryClient, effectiveScope, purgedIds, { permanent: true });
+      }
       toast.success('Trash emptied', {
         description: `Permanently removed ${count} item(s).`,
         id: 'trash-mutation-toast',

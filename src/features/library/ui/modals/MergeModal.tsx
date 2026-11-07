@@ -10,6 +10,7 @@ import {
   DialogFooter,
 } from "@/shared/components/ui/dialog";
 import { Button } from "@/shared/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui/tooltip";
 import { Badge } from "@/shared/components/ui/badge";
 import { Switch } from "@/shared/components/ui/switch";
 import { Label } from "@/shared/components/ui/label";
@@ -278,17 +279,23 @@ export function MergeModal({
               {/* Contextual Conflict Resolution Controls */}
               <div className="flex items-center gap-2 shrink-0">
                 {inspection.conflictCount > 0 && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleAutoRecommend}
-                    className="h-7 px-2.5 text-11 gap-1.5 font-medium rounded-md border-border text-foreground hover:bg-muted"
-                    title="Auto-select the most complete values (longest abstract, full author names, canonical DOI)"
-                  >
-                    <Check className="size-3 text-foreground shrink-0" />
-                    <span>Recommend Best</span>
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleAutoRecommend}
+                        className="h-7 px-2.5 text-11 gap-1.5 font-medium rounded-md border-border text-foreground hover:bg-muted"
+                      >
+                        <Check className="size-3 text-foreground shrink-0" />
+                        <span>Recommend Best</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" sideOffset={6} className="text-11 max-w-xs">
+                      Auto-select the most complete values (longest abstract, full author names, canonical DOI)
+                    </TooltipContent>
+                  </Tooltip>
                 )}
 
                 <div className="flex items-center gap-2 px-2.5 py-1 rounded-md border border-border bg-muted">

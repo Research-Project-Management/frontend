@@ -14,6 +14,13 @@ import {
   useLibraryCacheSynchronizer,
   mergeCachedItemWithPatch,
 } from '@/features/library/sdk/queries/catalog.queries';
+import {
+  prefetchReaderBootstrap,
+  prefetchReaderDocumentBlob,
+} from '@/features/library/sdk/queries/reader.queries';
+import { getItemFileUrl } from '@/features/library/domain/identifiers.domain';
+import { documentStorage } from '@/features/library/domain/reader-document-storage.domain';
+import { buildPdfBlobCacheKey } from '@/features/library/sdk/clients/http.client';
 import { useCollections } from '@/features/library/sdk/queries/collections.queries';
 import { normalizeTags, getAssignedCollectionIds } from '@/features/library/domain/metadata.mapper';
 import { getCollectionAncestorPath } from '@/features/library/domain/collection-tree.domain';
@@ -156,7 +163,7 @@ export function useInspectorItemResolver({
   const incomingItem = propItem || null;
 
   const targetItemId = incomingItem?.id || activeItemId || undefined;
-  const { resolveCachedItem } = useLibraryCacheSynchronizer(targetScope);
+  const { queryClient, resolveCachedItem } = useLibraryCacheSynchronizer(targetScope);
   const cachedListItem = useMemo(
     () => resolveCachedItem(targetItemId, targetScope),
     [resolveCachedItem, targetItemId, targetScope],
@@ -211,6 +218,28 @@ export function useInspectorItemResolver({
 
   const isItemInTrash = Boolean(effectiveItem?.deletedAt);
   const effectiveCanEdit = canEdit && !isItemInTrash;
+
+  // Smart Hover/Selection Prefetch (Zero-Wait First Open):
+  // When user clicks a row in the Library Table to inspect its metadata, wait 250ms
+  // (to ignore rapid keyboard arrow scrolling) then prefetch Reader Bootstrap metadata
+  // and warm Tier-1 RAM from Tier-4 OPFS if the PDF was previously cached on disk.
+  useEffect(() => {
+    if (incomingItem || !effectiveItem?.id || isItemInTrash) return;
+    const itemId = effectiveItem.id;
+    const timer = setTimeout(() => {
+      void prefetchReaderBootstrap(queryClient, targetScope, itemId);
+      const candidatePdfUrl = getItemFileUrl(effectiveItem, targetScope);
+      if (candidatePdfUrl) {
+        const cacheKey = buildPdfBlobCacheKey(candidatePdfUrl, targetScope);
+        void documentStorage.has(cacheKey).then((isCachedOnDisk: boolean) => {
+          if (isCachedOnDisk) {
+            void prefetchReaderDocumentBlob(candidatePdfUrl, { scopeId: targetScope });
+          }
+        });
+      }
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [incomingItem, effectiveItem, isItemInTrash, queryClient, targetScope]);
 
   const attachmentCount =
     Array.isArray(effectiveItem?.attachments) && effectiveItem.attachments.length > 0

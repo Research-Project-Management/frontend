@@ -103,6 +103,7 @@ interface ReaderTopbarProps {
   onSelectTab?: (id: string) => void;
   onCloseTab?: (id: string) => void;
   onReorderTabs?: (nextTabs: ReaderTab[]) => void;
+  onPrefetchTab?: (id: string) => void;
   onBack?: () => void;
   onExportAnnotatedPdf?: () => void;
 }
@@ -112,6 +113,7 @@ interface SortableTabItemProps {
   isActive: boolean;
   onSelectTab?: (id: string) => void;
   onCloseTab?: (id: string) => void;
+  onPrefetchTab?: (id: string) => void;
 }
 
 const SortableTabItem = memo(function SortableTabItem({
@@ -119,6 +121,7 @@ const SortableTabItem = memo(function SortableTabItem({
   isActive,
   onSelectTab,
   onCloseTab,
+  onPrefetchTab,
 }: SortableTabItemProps) {
   const {
     attributes: {
@@ -167,6 +170,7 @@ const SortableTabItem = memo(function SortableTabItem({
           : "text-muted-foreground hover:text-foreground hover:bg-background/60",
       )}
       title={tab.title}
+      onMouseEnter={() => onPrefetchTab?.(tab.id)}
       {...sortableAttributes}
       {...listeners}
     >
@@ -181,12 +185,11 @@ const SortableTabItem = memo(function SortableTabItem({
             onCloseTab(tab.id);
           }}
           className={cn(
-            "size-4 flex items-center justify-center rounded-sm hover:bg-muted text-foreground transition-all cursor-pointer shrink-0 relative before:absolute before:-inset-2.5 md:before:hidden",
+            "size-4 flex items-center justify-center rounded-sm hover:bg-muted text-foreground transition-colors cursor-pointer shrink-0 relative before:absolute before:-inset-2.5 md:before:hidden",
             isActive
               ? "opacity-70 hover:opacity-100"
               : "opacity-0 group-hover:opacity-100 max-md:opacity-100",
           )}
-          title="Close tab"
           aria-label={`Close tab ${tab.title}`}
         >
           <X className="size-3" strokeWidth={1.5} />
@@ -204,6 +207,7 @@ export const ReaderTopbar = memo(function ReaderTopbar({
   onSelectTab,
   onCloseTab,
   onReorderTabs,
+  onPrefetchTab,
   onBack,
   onExportAnnotatedPdf,
 }: ReaderTopbarProps) {
@@ -344,7 +348,6 @@ export const ReaderTopbar = memo(function ReaderTopbar({
                         ? "bg-background text-foreground font-medium border-x border-t border-border border-b-transparent -mb-px z-10"
                         : "text-muted-foreground hover:text-foreground hover:bg-background/60",
                     )}
-                    title={tabTitle}
                   >
                     <Library
                       className="size-3.5 shrink-0 text-foreground"
@@ -362,6 +365,7 @@ export const ReaderTopbar = memo(function ReaderTopbar({
                   isActive={isActive}
                   onSelectTab={onSelectTab}
                   onCloseTab={onCloseTab}
+                  onPrefetchTab={onPrefetchTab}
                 />
               );
             })}

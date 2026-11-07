@@ -90,7 +90,7 @@ export const ANNOTATION_HISTORY_HANDLERS: {
       });
       ctx.updateUndoStack((prev) => prev.slice(0, prev.length - 1));
       ctx.updateRedoStack((prev) => [...prev.slice(-19), { ...entry, timestamp: Date.now() }]);
-      toast.success('Undid annotation creation');
+      toast.success('Undid annotation creation', { id: 'reader-history-action', duration: 1500 });
     },
     redo: async (entry, ctx) => {
       const targetAttId = entry.attachmentId || ctx.effectiveAttachmentId;
@@ -115,7 +115,7 @@ export const ANNOTATION_HISTORY_HANDLERS: {
       });
       ctx.updateRedoStack((prev) => prev.slice(0, prev.length - 1));
       ctx.updateUndoStack((prev) => [...prev.slice(-19), { ...entry, timestamp: Date.now() }]);
-      toast.success('Restored annotation');
+      toast.success('Restored annotation', { id: 'reader-history-action', duration: 1500 });
     },
   },
   update: {
@@ -148,7 +148,7 @@ export const ANNOTATION_HISTORY_HANDLERS: {
       await ctx.qc.invalidateQueries({ queryKey: annotationKeys.byAttachment(ctx.scopeId, targetAttId) });
       ctx.updateUndoStack((prev) => prev.slice(0, prev.length - 1));
       ctx.updateRedoStack((prev) => [...prev.slice(-19), { ...entry, timestamp: Date.now() }]);
-      toast.success('Reverted annotation edit');
+      toast.success('Reverted annotation edit', { id: 'reader-history-action', duration: 1500 });
     },
     redo: async (entry, ctx) => {
       const targetAttId = entry.attachmentId || ctx.effectiveAttachmentId;
@@ -178,7 +178,7 @@ export const ANNOTATION_HISTORY_HANDLERS: {
       await ctx.qc.invalidateQueries({ queryKey: annotationKeys.byAttachment(ctx.scopeId, targetAttId) });
       ctx.updateRedoStack((prev) => prev.slice(0, prev.length - 1));
       ctx.updateUndoStack((prev) => [...prev.slice(-19), { ...entry, timestamp: Date.now() }]);
-      toast.success('Re-applied annotation edit');
+      toast.success('Re-applied annotation edit', { id: 'reader-history-action', duration: 1500 });
     },
   },
   delete: {
@@ -200,14 +200,14 @@ export const ANNOTATION_HISTORY_HANDLERS: {
       await executeAnnotationBatchSync(ctx.qc, ctx.scopeId, ctx.effectiveAttachmentId, { upserts, deletes: [] });
       ctx.updateUndoStack((prev) => prev.slice(0, prev.length - 1));
       ctx.updateRedoStack((prev) => [...prev.slice(-19), { ...entry, timestamp: Date.now() }]);
-      toast.success(`Restored ${entry.items.length} annotation${entry.items.length > 1 ? 's' : ''}`);
+      toast.success(`Restored ${entry.items.length} annotation${entry.items.length > 1 ? 's' : ''}`, { id: 'reader-history-action', duration: 1500 });
     },
     redo: async (entry, ctx) => {
       const deletes = entry.items.map((a) => a.id);
       await executeAnnotationBatchSync(ctx.qc, ctx.scopeId, ctx.effectiveAttachmentId, { upserts: [], deletes });
       ctx.updateRedoStack((prev) => prev.slice(0, prev.length - 1));
       ctx.updateUndoStack((prev) => [...prev.slice(-19), { ...entry, timestamp: Date.now() }]);
-      toast.success(`Re-deleted ${deletes.length} annotation${deletes.length > 1 ? 's' : ''}`);
+      toast.success(`Re-deleted ${deletes.length} annotation${deletes.length > 1 ? 's' : ''}`, { id: 'reader-history-action', duration: 1500 });
     },
   },
   color: {
@@ -246,7 +246,7 @@ export const ANNOTATION_HISTORY_HANDLERS: {
       });
       ctx.updateUndoStack((prev) => prev.slice(0, prev.length - 1));
       ctx.updateRedoStack((prev) => [...prev.slice(-19), { ...entry, items: liveItems, timestamp: Date.now() }]);
-      toast.success('Reverted color change');
+      toast.success('Reverted color change', { id: 'reader-history-action', duration: 1500 });
     },
     redo: async (entry, ctx) => {
       const existing =
@@ -279,7 +279,7 @@ export const ANNOTATION_HISTORY_HANDLERS: {
       });
       ctx.updateRedoStack((prev) => prev.slice(0, prev.length - 1));
       ctx.updateUndoStack((prev) => [...prev.slice(-19), { ...entry, items: liveItems, timestamp: Date.now() }]);
-      toast.success('Re-applied color change');
+      toast.success('Re-applied color change', { id: 'reader-history-action', duration: 1500 });
     },
   },
   tag: {
@@ -318,7 +318,7 @@ export const ANNOTATION_HISTORY_HANDLERS: {
       });
       ctx.updateUndoStack((prev) => prev.slice(0, prev.length - 1));
       ctx.updateRedoStack((prev) => [...prev.slice(-19), { ...entry, items: liveItems, timestamp: Date.now() }]);
-      toast.success('Reverted tag change');
+      toast.success('Reverted tag change', { id: 'reader-history-action', duration: 1500 });
     },
     redo: async (entry, ctx) => {
       const existing =
@@ -351,7 +351,7 @@ export const ANNOTATION_HISTORY_HANDLERS: {
       });
       ctx.updateRedoStack((prev) => prev.slice(0, prev.length - 1));
       ctx.updateUndoStack((prev) => [...prev.slice(-19), { ...entry, items: liveItems, timestamp: Date.now() }]);
-      toast.success('Re-applied tag change');
+      toast.success('Re-applied tag change', { id: 'reader-history-action', duration: 1500 });
     },
   },
 };

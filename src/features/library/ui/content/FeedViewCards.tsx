@@ -243,25 +243,18 @@ export function FeedArticleRow({
               {/* Save to Collection Dropdown */}
               {collectionList.length > 0 && !isSaved && (
                 <DropdownMenu>
-                  <Tooltip delayDuration={300}>
-                    <TooltipTrigger asChild>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          disabled={isSaving || isSaved}
-                          className="h-7 w-4.5 rounded-l-none rounded-r-md px-0 text-foreground cursor-pointer"
-                          aria-label="Save to specific collection"
-                        >
-                          <ChevronDown className="size-3 text-foreground" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="text-xs">
-                      Save to collection...
-                    </TooltipContent>
-                  </Tooltip>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      disabled={isSaving || isSaved}
+                      className="h-7 w-4.5 rounded-l-none rounded-r-md px-0 text-foreground cursor-pointer"
+                      aria-label="Save to specific collection"
+                    >
+                      <ChevronDown className="size-3 text-foreground" />
+                    </Button>
+                  </DropdownMenuTrigger>
                   <DropdownMenuContent
                     align="end"
                     side="bottom"
@@ -389,7 +382,6 @@ export function FeedArticleRow({
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
             className="inline-flex items-center gap-1.5 hover:underline cursor-pointer shrink-0 min-w-0 max-w-full"
-            title={`arXiv:${entry.arxivId}`}
           >
             <Bookmark className="size-3.5 text-foreground shrink-0" />
             <span>arXiv:{entry.arxivId}</span>
@@ -401,7 +393,6 @@ export function FeedArticleRow({
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
             className="inline-flex items-center hover:underline cursor-pointer shrink-0 min-w-0 max-w-full"
-            title={`DOI: ${entry.doi}`}
           >
             DOI: {entry.doi}
           </a>

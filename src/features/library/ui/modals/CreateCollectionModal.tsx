@@ -374,9 +374,6 @@ export function CslStyleSearchModal({
   const selectAndClose = (style: { id: string; label: string }) => {
     if (normalizeCitationStyleId(style.id) !== normalizedCurrentId) {
       onSelectStyle(style);
-      toast.success(`Selected style: ${style.label}`, {
-        id: 'csl-style-select',
-      });
     }
     onOpenChange(false);
   };

@@ -1,8 +1,22 @@
 import { describe, it, expect } from 'vitest';
-import { LruTabPool } from '@/features/library/domain/reader-tab-pool.domain';
+import {
+  LruTabPool,
+  calculateAdaptiveTabPoolCapacity,
+  DEFAULT_ZOTERO_WARM_TAB_CAPACITY,
+} from '@/features/library/domain/reader-tab-pool.domain';
 
 describe('Empirical Verification: Reader Tab Pool & DOM Safety Engine', () => {
   describe('1. Algorithmic Rigor: LRU Tab Pool (O(1) Bounds)', () => {
+    it('scales warm tab pool capacity from Zotero 5-tab baseline based on device RAM', () => {
+      const defaultPool = new LruTabPool();
+      expect(defaultPool.capacity).toBe(DEFAULT_ZOTERO_WARM_TAB_CAPACITY); // 5 tabs (Zotero 7 standard)
+      expect(calculateAdaptiveTabPoolCapacity(undefined)).toBe(5);
+      expect(calculateAdaptiveTabPoolCapacity(4)).toBe(5); // 4 GB RAM -> 5 tabs
+      expect(calculateAdaptiveTabPoolCapacity(2)).toBe(3); // <= 2 GB RAM -> 3 tabs
+      expect(calculateAdaptiveTabPoolCapacity(8)).toBe(8); // >= 8 GB RAM -> 8 tabs
+      expect(calculateAdaptiveTabPoolCapacity(16)).toBe(8); // 16 GB RAM -> 8 tabs
+    });
+
     it('maintains strict capacity bounds and evicts least-recently-used item', () => {
       const pool = new LruTabPool<{ title: string }>(3);
 
@@ -212,6 +226,34 @@ describe('Empirical Verification: Reader Tab Pool & DOM Safety Engine', () => {
       expect(reordered[1].id).toBe('paper-3');
       expect(reordered[2].id).toBe('paper-1');
       expect(reordered[3].id).toBe('paper-2');
+    });
+  });
+
+  describe('6. Cross-Module Garbage Collection (Library -> Reader Tab & Storage Cleanup)', () => {
+    it('closes open tabs and evicts warmViewerPool entries when items are trashed/purged in Library', async () => {
+      const { useReaderStore } = await import('@/features/library/core/store/reader.store');
+      const { warmViewerPool } = await import('@/features/library/domain/reader-tab-pool.domain');
+      const { cleanupReaderResourcesForItems } = await import(
+        '@/features/library/core/coordinator/reader/use-reader'
+      );
+
+      useReaderStore.getState().openReader('paper-gc-1', 'GC Test Paper 1');
+      useReaderStore.getState().updateTabState('paper-gc-1', {
+        fileUrl: '/api/v1/library/files/file-gc-1/content',
+      });
+      warmViewerPool.put('paper-gc-1', {
+        paperId: 'paper-gc-1',
+        title: 'GC Test Paper 1',
+        fileUrl: '/api/v1/library/files/file-gc-1/content',
+      });
+
+      expect(useReaderStore.getState().tabs.some((t) => t.id === 'paper-gc-1')).toBe(true);
+      expect(warmViewerPool.has('paper-gc-1')).toBe(true);
+
+      cleanupReaderResourcesForItems(['paper-gc-1'], { scopeId: 'user' });
+
+      expect(useReaderStore.getState().tabs.some((t) => t.id === 'paper-gc-1')).toBe(false);
+      expect(warmViewerPool.has('paper-gc-1')).toBe(false);
     });
   });
 });

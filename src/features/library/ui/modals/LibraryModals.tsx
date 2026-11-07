@@ -290,14 +290,14 @@ function IngestionAndUtilityModalsHost({
         fetchAcademicFeed,
         subscribeFeed,
       });
-      toast.success(`Subscribed to "${newFeed.name}"`);
+      toast.success(`Subscribed to "${newFeed.name}"`, { id: 'feed-subscribe' });
       await invalidateScopeItemsAndCounts(effectiveScope);
       closeModal();
       if (newFeed.id) {
         router.push(`/library/feeds/${newFeed.id}`);
       }
     } catch {
-      toast.error('Failed to subscribe to feed');
+      toast.error('Failed to subscribe to feed', { id: 'feed-subscribe' });
     } finally {
       setIsSubmittingFeed(false);
     }

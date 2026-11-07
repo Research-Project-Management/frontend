@@ -4,6 +4,7 @@ import React, { useState, useId, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { Progress } from '@/shared/components/ui/progress';
 import { Badge } from '@/shared/components/ui/badge';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
@@ -111,8 +112,8 @@ export default function ProcessModal({
         role="button"
         tabIndex={0}
         aria-live="polite"
+        aria-label="Click to view details"
         className="fixed bottom-4 right-4 z-50 flex items-center gap-2.5 h-8 px-2.5 rounded-md border border-border bg-background shadow-raised-200 cursor-pointer hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors text-12 font-medium text-foreground select-none overflow-hidden group"
-        title="Click to view details"
       >
         {/* Subtle Progress Bar Underline */}
         {isRunning && (
@@ -151,18 +152,24 @@ export default function ProcessModal({
 
         {/* Dismiss Button when Complete or Errored */}
         {(isCompletedPhase || isErroredPhase) && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onClose();
-            }}
-            className="size-4 p-0.5 rounded-xs hover:bg-muted text-muted-foreground hover:text-foreground inline-flex items-center justify-center ml-0.5 cursor-pointer outline-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            title="Dismiss"
-            aria-label="Dismiss"
-          >
-            <X className="size-3" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClose();
+                }}
+                className="size-4 p-0.5 rounded-xs hover:bg-muted text-muted-foreground hover:text-foreground inline-flex items-center justify-center ml-0.5 cursor-pointer outline-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                aria-label="Dismiss"
+              >
+                <X className="size-3" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={6} className="text-11">
+              Dismiss
+            </TooltipContent>
+          </Tooltip>
         )}
       </div>,
       document.body,

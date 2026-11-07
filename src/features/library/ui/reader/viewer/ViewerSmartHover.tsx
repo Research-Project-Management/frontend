@@ -1,12 +1,17 @@
 'use client';
 
 import { useState, useRef, useMemo, useCallback, type RefObject, useEffect } from 'react';
-import { Columns2, ArrowUpRight, X, StickyNote, Check, Quote, Copy, Highlighter, Underline } from 'lucide-react';
+import { Columns2, ArrowUpRight, X, StickyNote, Check, Quote, Copy, Underline, MessageSquare, FileText } from 'lucide-react';
 import type { DocumentFulltext, AnnotationRect, ReaderDocument, ReaderAnnotation } from '@/features/library/types/reader.types';
 import { copyToClipboard, cn } from '@/shared/lib/utils';
 import { formatInTextCitation } from '@/features/library/domain/reader.domain';
 import type { ReaderAnnotationTool } from '@/features/library/core/store/reader.store';
 import { ANNOTATION_PALETTE_COLORS } from '@/features/library/ui/reader/ReaderToolbar';
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from '@/shared/components/ui/tooltip';
 
 interface SmartHoverCardData {
   kind: "Reference" | "Figure" | "Table" | "Section";
@@ -299,7 +304,6 @@ export function ViewerSmartHoverPopover({
                 onDismiss();
               }}
               className="h-5 px-1.5 rounded-sm text-10 font-mono text-primary hover:bg-primary/10 flex items-center gap-0.5 cursor-pointer transition-colors"
-              title={`Jump to page ${card.targetPage}`}
             >
               <span>p. {card.targetPage}</span>
               <ArrowUpRight className="size-2.5" strokeWidth={1.5} />
@@ -313,7 +317,6 @@ export function ViewerSmartHoverPopover({
                 onDismiss();
               }}
               className="h-5 px-1.5 rounded-sm text-10 font-sans font-medium text-foreground hover:bg-muted flex items-center gap-1 cursor-pointer transition-colors"
-              title="Open target page in Split View"
             >
               <Columns2 className="size-3 shrink-0" strokeWidth={1.5} />
               <span>Split</span>
@@ -404,11 +407,10 @@ export function TextSelectionToolbar({
   };
 
   const effectiveColor = activeColor || "#ffd400";
-  const isUnderlineMode = activeTool === "underline";
 
   return (
     <div
-      className="pdf-floating-selection-menu absolute z-50 flex items-center gap-1 whitespace-nowrap w-max bg-background text-foreground px-1.5 py-1 rounded-md border border-border shadow-raised-200 duration-150 select-none animate-in fade-in zoom-in-95"
+      className="pdf-floating-selection-menu absolute z-50 flex items-center gap-1 whitespace-nowrap w-max bg-popover text-popover-foreground p-1 rounded-lg border border-border shadow-raised-200 duration-150 select-none animate-in fade-in zoom-in-95 font-sans"
       style={{
         top: `${menuPosition.top}px`,
         left: `${menuPosition.left}px`,
@@ -416,154 +418,120 @@ export function TextSelectionToolbar({
       }}
       onMouseUp={(e) => e.stopPropagation()}
     >
-      {/* 1. Highlight / Underline Tool Switchers (like Zotero 7) */}
+      {/* 1. All 8 Academic Colors (Zotero 7 standard: 1-click Highlight) */}
       {onAnnotate && (
-        <div className="flex items-center gap-0.5 pr-1 border-r border-border shrink-0">
-          <button
-            type="button"
-            aria-label="Highlight selected text"
-            title="Highlight"
-            onClick={async () => {
-              onSelectTool?.("highlight");
-              await onAnnotate(
-                selectedText,
-                selectedPageNum,
-                effectiveColor,
-                selectedRects,
-                "highlight",
-              );
-              onClose();
-              window.getSelection()?.removeAllRanges();
-            }}
-            className={cn(
-              "size-7 rounded flex items-center justify-center cursor-pointer transition-colors text-foreground",
-              !isUnderlineMode
-                ? "bg-muted text-foreground font-semibold"
-                : "hover:bg-muted text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <Highlighter className="size-3.5" strokeWidth={1.5} />
-          </button>
-          <button
-            type="button"
-            aria-label="Underline selected text"
-            title="Underline"
-            onClick={async () => {
-              onSelectTool?.("underline");
-              await onAnnotate(
-                selectedText,
-                selectedPageNum,
-                effectiveColor,
-                selectedRects,
-                "underline",
-              );
-              onClose();
-              window.getSelection()?.removeAllRanges();
-            }}
-            className={cn(
-              "size-7 rounded flex items-center justify-center cursor-pointer transition-colors text-foreground",
-              isUnderlineMode
-                ? "bg-muted text-foreground font-semibold"
-                : "hover:bg-muted text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <Underline className="size-3.5" strokeWidth={1.5} />
-          </button>
-        </div>
-      )}
-
-      {/* 2. Color Swatches: Click to annotate & set activeColor */}
-      {onAnnotate && (
-        <div className="flex items-center gap-1 px-1 border-r border-border shrink-0">
+        <div className="flex items-center gap-1 px-0.5 shrink-0">
           {ANNOTATION_PALETTE_COLORS.map((c) => {
             const isSelected = activeColor === c.hex;
             return (
-              <button
-                key={c.id}
-                type="button"
-                aria-label={`Annotate in ${c.label}`}
-                onClick={async () => {
-                  onSelectColor?.(c.hex);
-                  const targetType = isUnderlineMode ? "underline" : "highlight";
-                  await onAnnotate(
-                    selectedText,
-                    selectedPageNum,
-                    c.hex,
-                    selectedRects,
-                    targetType,
-                  );
-                  onClose();
-                  window.getSelection()?.removeAllRanges();
-                }}
-                title={`Annotate in ${c.label}`}
-                className={cn(
-                  "size-3.5 rounded-full border border-border transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-2 md:before:hidden hover:scale-110",
-                  isSelected && "ring-2 ring-primary ring-offset-1 scale-110",
-                )}
-                style={{ backgroundColor: c.hex }}
-              />
+              <Tooltip key={c.id}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={`Highlight in ${c.label}`}
+                    onClick={async () => {
+                      onSelectColor?.(c.hex);
+                      await onAnnotate(
+                        selectedText,
+                        selectedPageNum,
+                        c.hex,
+                        selectedRects,
+                        "highlight",
+                      );
+                      onClose();
+                      window.getSelection()?.removeAllRanges();
+                    }}
+                    className={cn(
+                      "size-3.5 rounded-full border border-border transition-transform cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-1 md:before:hidden hover:scale-125",
+                      isSelected && "ring-2 ring-primary ring-offset-1 scale-110",
+                    )}
+                    style={{ backgroundColor: c.hex }}
+                  />
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={6} className="text-11">
+                  Highlight in {c.label}
+                </TooltipContent>
+              </Tooltip>
             );
           })}
         </div>
       )}
 
-      {/* 3. Note: Annotate & immediately open inline comment card (Zotero parity) */}
+      {/* 2. Underline (Zotero parity) */}
       {onAnnotate && (
-        <button
-          type="button"
-          aria-label="Add Note to selection"
-          onClick={async () => {
-            const targetType = isUnderlineMode ? "underline" : "highlight";
-            const created = await onAnnotate(
-              selectedText,
-              selectedPageNum,
-              effectiveColor,
-              selectedRects,
-              targetType,
-              "",
-            );
-            onClose();
-            window.getSelection()?.removeAllRanges();
-            if (
-              created &&
-              typeof created === "object" &&
-              "id" in created &&
-              onOpenAnnotationCard
-            ) {
-              onOpenAnnotationCard(created as ReaderAnnotation);
-            }
-          }}
-          className="flex items-center gap-1 h-7 px-2 rounded-md text-12 font-medium whitespace-nowrap shrink-0 hover:bg-muted text-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-1.5 md:before:hidden"
-          title="Add Note (creates highlight and opens comment card)"
-        >
-          <StickyNote
-            className="size-3.5 text-foreground shrink-0"
-            strokeWidth={1.5}
-          />
-          <span>Note</span>
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              aria-label="Underline selected text"
+              onClick={async () => {
+                onSelectTool?.("underline");
+                await onAnnotate(
+                  selectedText,
+                  selectedPageNum,
+                  effectiveColor,
+                  selectedRects,
+                  "underline",
+                );
+                onClose();
+                window.getSelection()?.removeAllRanges();
+              }}
+              className="size-6 rounded-md flex items-center justify-center cursor-pointer transition-colors text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <Underline className="size-3.5" strokeWidth={1.5} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top" sideOffset={6} className="text-11">
+            Underline
+          </TooltipContent>
+        </Tooltip>
       )}
 
-      {/* Copy Action */}
-      <button
-        type="button"
-        aria-label="Copy selected text"
-        onClick={handleCopySelection}
-        className="flex items-center gap-1 h-7 px-2 rounded-md text-12 font-medium whitespace-nowrap shrink-0 hover:bg-muted text-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-1.5 md:before:hidden"
-        title="Copy text"
-      >
-        {copiedSelection ? (
-          <Check className="size-3.5 text-primary shrink-0" strokeWidth={1.5} />
-        ) : (
-          <Copy
-            className="size-3.5 text-foreground shrink-0"
-            strokeWidth={1.5}
-          />
-        )}
-        <span>{copiedSelection ? "Copied" : "Copy"}</span>
-      </button>
+      {/* 3. Add to Note (Zotero standard: send quote into Note editor) */}
+      {onAddToNote && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              aria-label="Add to Note"
+              onClick={() => {
+                onAddToNote(selectedText, selectedPageNum || visiblePage);
+                onClose();
+                window.getSelection()?.removeAllRanges();
+              }}
+              className="size-6 rounded-md flex items-center justify-center cursor-pointer transition-colors text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <FileText className="size-3.5" strokeWidth={1.5} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top" sideOffset={6} className="text-11">
+            Add to Note
+          </TooltipContent>
+        </Tooltip>
+      )}
 
-      {/* Ask AI Action */}
+      {/* 4. Copy Action */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            aria-label="Copy selected text"
+            onClick={handleCopySelection}
+            className="size-6 rounded-md flex items-center justify-center cursor-pointer transition-colors text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            {copiedSelection ? (
+              <Check className="size-3.5 text-primary" strokeWidth={1.5} />
+            ) : (
+              <Copy className="size-3.5 text-foreground" strokeWidth={1.5} />
+            )}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top" sideOffset={6} className="text-11">
+          {copiedSelection ? "Copied" : "Copy"}
+        </TooltipContent>
+      </Tooltip>
+
+      {/* 5. Ask AI Action */}
       {onAskAi && (
         <button
           type="button"
@@ -573,8 +541,7 @@ export function TextSelectionToolbar({
             onClose();
             window.getSelection()?.removeAllRanges();
           }}
-          className="flex items-center gap-1.5 h-7 px-2 rounded-md text-12 font-medium whitespace-nowrap shrink-0 hover:bg-muted text-foreground transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-1.5 md:before:hidden"
-          title="Ask AI about selected text"
+          className="h-6 px-2 rounded-md flex items-center gap-1 cursor-pointer transition-colors text-foreground hover:bg-muted text-11 font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
           <img
             src="/Chat.svg"

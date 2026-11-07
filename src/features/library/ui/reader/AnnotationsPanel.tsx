@@ -14,6 +14,8 @@ import {
   User,
   ArrowUpDown,
   Filter,
+  Trash2,
+  Palette,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import {
@@ -82,6 +84,10 @@ interface AnnotationsPanelProps {
   onBatchChangeColor?: (colorHex: string, targetIds?: string[]) => Promise<void>;
   onBatchDelete?: (targetIds?: string[]) => Promise<void>;
   onBatchAddToNote?: (targetIds?: string[]) => void;
+  typeFilter?: string;
+  onTypeFilterChange?: (filter: string) => void;
+  sortBy?: 'position' | 'newest' | 'oldest' | 'color';
+  onSortByChange?: (sort: 'position' | 'newest' | 'oldest' | 'color') => void;
 }
 
 const EMPTY_SELECTED_IDS = new Set<string>();
@@ -114,6 +120,10 @@ export function AnnotationsPanel({
   onBatchChangeColor,
   onBatchDelete,
   onBatchAddToNote,
+  typeFilter: propTypeFilter,
+  onTypeFilterChange,
+  sortBy: propSortBy,
+  onSortByChange,
 }: AnnotationsPanelProps) {
   const effectiveAttachmentId =
     attachmentId ||
@@ -130,8 +140,14 @@ export function AnnotationsPanel({
   const setSearchQuery = onSearchQueryChange ?? setInternalSearchQuery;
   const [selectedColor, setSelectedColor] = useState<string>('all');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
-  const [typeFilter, setTypeFilter] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<'position' | 'newest' | 'oldest' | 'color'>('position');
+  const [internalTypeFilter, setInternalTypeFilter] = useState<string>('all');
+  const typeFilter = propTypeFilter !== undefined ? propTypeFilter : internalTypeFilter;
+  const setTypeFilter = onTypeFilterChange ?? setInternalTypeFilter;
+
+  const [internalSortBy, setInternalSortBy] = useState<'position' | 'newest' | 'oldest' | 'color'>('position');
+  const sortBy = propSortBy !== undefined ? propSortBy : internalSortBy;
+  const setSortBy = onSortByChange ?? setInternalSortBy;
+
   const [authorFilter, setAuthorFilter] = useState<'all' | string>('all');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -332,8 +348,8 @@ export function AnnotationsPanel({
       onKeyDown={handleContainerKeyDown}
       className="flex h-full flex-col bg-background min-h-0 select-none outline-none focus-visible:ring-0 font-sans"
     >
-      {/* ── TOP HEADER: Search Bar & Actions (.sidebar-toolbar) ── */}
-      {(annotations.length > 0 || !hideSearchBar || Boolean(onImportExternal)) && (
+      {/* ── TOP HEADER: Search Bar & Actions (only when standalone, omitted when inside ReaderSidebar) ── */}
+      {!hideSearchBar && (annotations.length > 0 || Boolean(onImportExternal)) && (
         <div className="border-b border-border p-2 bg-background space-y-1.5 shrink-0">
           {!hideSearchBar && (
             <div className="flex items-center gap-1">
@@ -436,7 +452,6 @@ export function AnnotationsPanel({
                         'h-5 px-1.5 flex items-center gap-1 rounded text-10 font-sans border border-border bg-background text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary',
                         authorFilter !== 'all' && 'bg-muted font-medium',
                       )}
-                      title="Filter by Author"
                     >
                       <User className="size-2.5 text-foreground shrink-0" strokeWidth={1.5} />
                       <span>{authorFilter === 'all' ? 'All' : 'Author'}</span>
@@ -472,19 +487,25 @@ export function AnnotationsPanel({
               )}
 
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    className={cn(
-                      'size-5 flex items-center justify-center rounded text-10 font-sans text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary',
-                      typeFilter !== 'all' && 'bg-muted font-medium',
-                    )}
-                    title="Filter by annotation type"
-                    aria-label="Filter by annotation type"
-                  >
-                    <Filter className="size-3 text-foreground shrink-0" strokeWidth={1.5} />
-                  </button>
-                </DropdownMenuTrigger>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        className={cn(
+                          'size-5 flex items-center justify-center rounded text-10 font-sans text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary',
+                          typeFilter !== 'all' && 'bg-muted font-medium',
+                        )}
+                        aria-label="Filter by annotation type"
+                      >
+                        <Filter className="size-3 text-foreground shrink-0" strokeWidth={1.5} />
+                      </button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={6} className="text-11">
+                    Filter by type
+                  </TooltipContent>
+                </Tooltip>
                 <DropdownMenuContent
                   align="end"
                   className="w-36 text-xs p-1 bg-popover border border-border shadow-raised-200 rounded-lg z-50 font-sans"
@@ -515,15 +536,22 @@ export function AnnotationsPanel({
               </DropdownMenu>
 
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    className="size-5 flex items-center justify-center text-10 font-sans text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                    title="Sort annotations"
-                  >
-                    <ArrowUpDown className="size-3 text-foreground shrink-0" strokeWidth={1.5} />
-                  </button>
-                </DropdownMenuTrigger>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        className="size-5 flex items-center justify-center text-10 font-sans text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                        aria-label="Sort annotations"
+                      >
+                        <ArrowUpDown className="size-3 text-foreground shrink-0" strokeWidth={1.5} />
+                      </button>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={6} className="text-11">
+                    Sort annotations
+                  </TooltipContent>
+                </Tooltip>
                 <DropdownMenuContent
                   align="end"
                   className="w-36 text-xs p-1 bg-popover border border-border shadow-raised-200 rounded-lg z-50 font-sans"
@@ -554,22 +582,43 @@ export function AnnotationsPanel({
         </div>
       )}
 
-      {/* Selection Status Bar */}
-      {selectedIds.size > 0 && (
-        <div className="flex items-center justify-between px-3 py-1.5 bg-muted border-b border-border text-11 text-foreground shrink-0">
-          <div className="flex items-center gap-1.5 font-medium">
+      {/* Selection Status Bar (only shown when 2+ annotations are selected) */}
+      {selectedIds.size > 1 && (
+        <div className="flex items-center justify-between px-2.5 py-1.5 bg-muted/60 border-b border-border text-11 text-foreground shrink-0 gap-2">
+          <div className="flex items-center gap-1.5 font-medium shrink-0">
             <span className="flex size-4 items-center justify-center rounded bg-primary text-10 font-semibold tabular-nums text-primary-foreground">
               {selectedIds.size}
             </span>
             <span>selected</span>
-            <span className="text-muted-foreground text-10 ml-1 font-mono">(Del to delete)</span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 flex-wrap justify-end">
+            {onBatchAddToNote && (
+              <button
+                type="button"
+                onClick={() => onBatchAddToNote(Array.from(selectedIds))}
+                className="h-6 px-1.5 rounded text-10 font-medium text-foreground hover:bg-background border border-border transition-colors flex items-center gap-1 cursor-pointer"
+              >
+                <FileText className="size-3 shrink-0" strokeWidth={1.5} />
+                <span>Add to Note</span>
+              </button>
+            )}
+
+            {onBatchDelete && (
+              <button
+                type="button"
+                onClick={() => void onBatchDelete(Array.from(selectedIds))}
+                className="h-6 px-1.5 rounded text-10 font-medium text-destructive hover:bg-destructive/10 border border-destructive/20 transition-colors flex items-center gap-1 cursor-pointer"
+              >
+                <Trash2 className="size-3 shrink-0 text-destructive" strokeWidth={1.5} />
+                <span>Delete</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => onSelectIds?.(new Set())}
-              className="text-11 text-muted-foreground hover:text-foreground hover:underline cursor-pointer"
+              className="text-10 text-muted-foreground hover:text-foreground hover:underline cursor-pointer ml-0.5"
             >
               Clear
             </button>

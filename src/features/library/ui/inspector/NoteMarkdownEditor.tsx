@@ -299,20 +299,26 @@ export function NoteEditorBox({
             <span>Citations:</span>
           </span>
           {linkedCitations.map((cite) => (
-            <button
-              key={cite.token}
-              type="button"
-              onClick={() => {
-                if (onNavigateToAnnotation) {
-                  onNavigateToAnnotation(cite.pageNumber, cite.annotationId);
-                }
-              }}
-              title={`${cite.label} (${cite.token})`}
-              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 hover:bg-primary/20 text-primary text-[10px] font-medium cursor-pointer transition-colors"
-            >
-              <span className="font-mono opacity-75">{cite.token}</span>
-              <span>p. {cite.pageNumber}</span>
-            </button>
+            <Tooltip key={cite.token}>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onNavigateToAnnotation) {
+                      onNavigateToAnnotation(cite.pageNumber, cite.annotationId);
+                    }
+                  }}
+                  aria-label={`${cite.label} (${cite.token})`}
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary/10 hover:bg-primary/20 text-primary text-[10px] font-medium cursor-pointer transition-colors"
+                >
+                  <span className="font-mono opacity-75">{cite.token}</span>
+                  <span>p. {cite.pageNumber}</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={6} className="text-11 max-w-xs">
+                {cite.label} ({cite.token})
+              </TooltipContent>
+            </Tooltip>
           ))}
         </div>
       )}

@@ -16,6 +16,7 @@ import {
   getReaderBootstrapScope, notifyServerFeedsHydrated,
 } from '@/features/library/sdk/query-keys';
 import { mapServerFeedSubscriptions } from '@/features/library/domain/feed-parser.domain';
+import { useFeedsStore } from '@/features/library/core/store/feeds.store';
 import {
   resolveCachedItemVersion, useUpdateLibraryItemMutation, useToggleStarItemMutation,
   useImportFromUserMutation, useCreateLibraryItemMutation, useReResolveItemMetadataMutation,
@@ -201,6 +202,7 @@ export function useLibraryBootstrapQuery(
           }
           if (targetScope === 'user' && Array.isArray(res.feedSubscriptions)) {
             const mappedFeeds = mapServerFeedSubscriptions(res.feedSubscriptions);
+            useFeedsStore.getState().hydrateFeeds(mappedFeeds);
             notifyServerFeedsHydrated(mappedFeeds);
             queryClient.setQueryData(feedKeys.subscriptions(), mappedFeeds);
           }

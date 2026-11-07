@@ -12,12 +12,38 @@ import {
   registerSchemaRegistryUpdateListener,
 } from '@/features/library/types/core.types';
 import type { ReaderFitMode, ReaderTab, ReaderTheme } from '@/features/library/types/reader.types';
+import {
+  DEFAULT_READER_TABS,
+  MAX_READER_TABS,
+  MAX_BOOKMARKED_ITEMS,
+  MIN_READER_ZOOM,
+  MAX_READER_ZOOM,
+  enforceMaxReaderTabs,
+  enforceMaxBookmarkedItems,
+  normalizeReaderZoom,
+  normalizeReaderFitMode,
+  normalizeReaderTheme,
+  normalizeReaderTab,
+  resolveNextActiveTabOnClose,
+} from '@/features/library/domain/reader-tab-pool.domain';
 
 export {
   getSchemaRegistryVersion,
   getLibrarySchemaSnapshot,
   registerSchemaRegistryUpdateListener,
   type LibrarySchemaRegistrySnapshot,
+  DEFAULT_READER_TABS,
+  MAX_READER_TABS,
+  MAX_BOOKMARKED_ITEMS,
+  MIN_READER_ZOOM,
+  MAX_READER_ZOOM,
+  enforceMaxReaderTabs,
+  enforceMaxBookmarkedItems,
+  normalizeReaderZoom,
+  normalizeReaderFitMode,
+  normalizeReaderTheme,
+  normalizeReaderTab,
+  resolveNextActiveTabOnClose,
 };
 
 /**
@@ -180,15 +206,6 @@ if (isBrowser()) {
   }
 }
 
-const DEFAULT_READER_TABS: ReaderTab[] = [
-  { id: 'library', title: 'My Library', type: 'library' },
-];
-
-export const MAX_READER_TABS = 15;
-export const MAX_BOOKMARKED_ITEMS = 200;
-export const MIN_READER_ZOOM = 0.25;
-export const MAX_READER_ZOOM = 5.0;
-
 const READER_TABS_STORAGE_KEY = 'flux_reader_tabs';
 const READER_ACTIVE_TAB_STORAGE_KEY = 'flux_reader_active_tab';
 const READER_BOOKMARKS_STORAGE_KEY = 'flux_reader_bookmarks';
@@ -228,39 +245,6 @@ export function saveFeedReadEntryIdsToStorage(readIds: Iterable<string>): void {
   }
 }
 
-/**
- * Evicts the oldest inactive paper tabs when the tab count exceeds MAX_READER_TABS.
- * Always preserves the 'library' tab and the currently active tab.
- */
-export function enforceMaxReaderTabs(tabs: ReaderTab[], activeTabId: string): ReaderTab[] {
-  if (tabs.length <= MAX_READER_TABS) return tabs;
-  const result = [...tabs];
-  while (result.length > MAX_READER_TABS) {
-    const evictIdx = result.findIndex((t) => t.id !== 'library' && t.id !== activeTabId);
-    if (evictIdx === -1) break;
-    result.splice(evictIdx, 1);
-  }
-  return result;
-}
-
-/**
- * Evicts the oldest bookmarked items when the bookmark dictionary exceeds MAX_BOOKMARKED_ITEMS.
- */
-export function enforceMaxBookmarkedItems(
-  bookmarks: Record<string, number[]>,
-): Record<string, number[]> {
-  const keys = Object.keys(bookmarks);
-  if (keys.length <= MAX_BOOKMARKED_ITEMS) return bookmarks;
-  const keepKeys = keys.slice(keys.length - MAX_BOOKMARKED_ITEMS);
-  const bounded: Record<string, number[]> = {};
-  for (const k of keepKeys) {
-    if (bookmarks[k] && bookmarks[k].length > 0) {
-      bounded[k] = bookmarks[k];
-    }
-  }
-  return bounded;
-}
-
 function safeSetReaderStorageItem(key: string, value: string): void {
   if (typeof window === 'undefined') return;
   try {
@@ -268,94 +252,6 @@ function safeSetReaderStorageItem(key: string, value: string): void {
   } catch {
     // Ignore storage quota errors
   }
-}
-
-/**
- * Normalizes zoom input whether provided as a float scale (e.g. 1.25)
- * or percentage (e.g. 125) into a clamped float scale in [0.25, 3.0].
- */
-export function normalizeReaderZoom(rawZoom?: number | null): number {
-  if (typeof rawZoom !== 'number' || Number.isNaN(rawZoom) || rawZoom <= 0) {
-    return 1.0;
-  }
-  const scale = rawZoom > 10 ? rawZoom / 100 : rawZoom;
-  return Math.min(MAX_READER_ZOOM, Math.max(MIN_READER_ZOOM, Number(scale.toFixed(4))));
-}
-
-export function normalizeReaderFitMode(raw?: string | null): ReaderFitMode {
-  if (raw === 'fit-width' || raw === 'page-width') return 'fit-width';
-  if (raw === 'fit-page' || raw === 'page-fit') return 'fit-page';
-  if (raw === 'manual') return 'custom';
-  if (raw === 'auto' || raw === 'custom') return raw;
-  return 'fit-width';
-}
-
-export function normalizeReaderTheme(raw?: string | null): ReaderTheme {
-  if (raw === 'normal' || raw === 'light') return 'normal';
-  if (raw === 'sepia' || raw === 'dark' || raw === 'invert') return raw;
-  return 'normal';
-}
-
-/**
- * Normalizes a ReaderTab record to guarantee valid page, zoom, fitMode, rotation, and theme values.
- */
-export function normalizeReaderTab(tab: ReaderTab): ReaderTab {
-  if (tab.type === 'library' || tab.id === 'library') {
-    return { id: 'library', title: tab.title || 'My Library', type: 'library' };
-  }
-  return {
-    ...tab,
-    type: 'paper',
-    currentPage: Math.max(1, Math.floor(tab.currentPage ?? 1)),
-    scrollTop:
-      typeof tab.scrollTop === 'number' && Number.isFinite(tab.scrollTop) && tab.scrollTop >= 0
-        ? Math.round(tab.scrollTop)
-        : undefined,
-    zoom: normalizeReaderZoom(tab.zoom ?? 1.0),
-    fitMode: normalizeReaderFitMode(tab.fitMode),
-    rotation: (((tab.rotation ?? 0) % 360) + 360) % 360,
-    theme: normalizeReaderTheme(tab.theme),
-    viewMode:
-      tab.viewMode === 'single' || tab.viewMode === 'continuous' || tab.viewMode === 'spread'
-        ? tab.viewMode
-        : 'continuous',
-    splitMode:
-      tab.splitMode === 'none' || tab.splitMode === 'horizontal' || tab.splitMode === 'vertical'
-        ? tab.splitMode
-        : 'none',
-    secondaryPage:
-      typeof tab.secondaryPage === 'number' && Number.isFinite(tab.secondaryPage) && tab.secondaryPage >= 1
-        ? Math.max(1, Math.floor(tab.secondaryPage))
-        : 1,
-    interactionMode:
-      tab.interactionMode === 'select' || tab.interactionMode === 'hand'
-        ? tab.interactionMode
-        : 'select',
-    ...(tab.attachmentId !== undefined ? { attachmentId: tab.attachmentId } : {}),
-  };
-}
-
-/**
- * Resolves the next active tab ID when closing a tab:
- * prefers right neighbor -> left neighbor -> first remaining tab -> 'library'.
- */
-export function resolveNextActiveTabOnClose(
-  tabs: ReaderTab[],
-  closedTabId: string,
-  currentActiveId: string,
-): string {
-  const nextTabs = tabs.filter((t) => t.id !== closedTabId);
-  if (currentActiveId !== closedTabId) {
-    return nextTabs.some((t) => t.id === currentActiveId)
-      ? currentActiveId
-      : (nextTabs[0]?.id ?? 'library');
-  }
-  const idx = tabs.findIndex((t) => t.id === closedTabId);
-  const rightNeighbor = tabs[idx + 1];
-  if (rightNeighbor) return rightNeighbor.id;
-  const leftNeighbor = tabs[idx - 1];
-  if (leftNeighbor) return leftNeighbor.id;
-  return nextTabs[0]?.id ?? 'library';
 }
 
 /**

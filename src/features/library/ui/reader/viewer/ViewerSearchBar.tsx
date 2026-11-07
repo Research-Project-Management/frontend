@@ -3,6 +3,11 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback, useDeferredValue } from 'react';
 import { Search, ChevronLeft, ChevronRight, X, CaseSensitive, WholeWord } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/shared/components/ui/tooltip';
 import { isPdfDocumentValid } from '@/shared/lib/pdfjs-worker';
 import type { DocumentFulltext } from '@/features/library/types/reader.types';
 import { useViewerSearchAnchors } from '@/features/library/core/coordinator/reader/use-pdf-interaction';
@@ -474,7 +479,7 @@ export function useViewerSearch({
 
         if (rawStart >= rawCursor && rawEnd > rawStart) {
           out += escapeHtml(normStr.slice(rawCursor, rawStart));
-          out += `<mark data-pdf-search-match="true" class="bg-yellow-300/60 dark:bg-yellow-400/60 text-transparent rounded-[1px]" style="background-color: rgba(250, 204, 21, 0.45); color: transparent; border-radius: 2px;">${escapeHtml(normStr.slice(rawStart, rawEnd))}</mark>`;
+          out += `<mark data-pdf-search-match="true" class="bg-warning/40 text-transparent rounded-xs">${escapeHtml(normStr.slice(rawStart, rawEnd))}</mark>`;
           rawCursor = rawEnd;
         }
         searchPos = idx + Math.max(1, targetQuery.length);
@@ -559,74 +564,104 @@ export function ViewerSearchBar({
       ) : null}
 
       {onToggleMatchCase && (
-        <button
-          type="button"
-          onClick={onToggleMatchCase}
-          aria-pressed={matchCase}
-          aria-label="Match case"
-          title="Match Case (Aa)"
-          className={cn(
-            'size-6 flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring',
-            matchCase
-              ? 'bg-muted text-foreground font-medium'
-              : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-          )}
-        >
-          <CaseSensitive className="size-3.5 shrink-0" strokeWidth={1.5} />
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={onToggleMatchCase}
+              aria-pressed={matchCase}
+              aria-label="Match case (Aa)"
+              className={cn(
+                'size-6 flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                matchCase
+                  ? 'bg-muted text-foreground font-medium'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+              )}
+            >
+              <CaseSensitive className="size-3.5 shrink-0" strokeWidth={1.5} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top" sideOffset={6} className="text-11">
+            Match Case (Aa)
+          </TooltipContent>
+        </Tooltip>
       )}
 
       {onToggleWholeWords && (
-        <button
-          type="button"
-          onClick={onToggleWholeWords}
-          aria-pressed={wholeWords}
-          aria-label="Match whole words"
-          title="Whole Words ([ab])"
-          className={cn(
-            'size-6 flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring',
-            wholeWords
-              ? 'bg-muted text-foreground font-medium'
-              : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-          )}
-        >
-          <WholeWord className="size-3.5 shrink-0" strokeWidth={1.5} />
-        </button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              onClick={onToggleWholeWords}
+              aria-pressed={wholeWords}
+              aria-label="Match whole words ([ab])"
+              className={cn(
+                'size-6 flex items-center justify-center rounded-md transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                wholeWords
+                  ? 'bg-muted text-foreground font-medium'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+              )}
+            >
+              <WholeWord className="size-3.5 shrink-0" strokeWidth={1.5} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top" sideOffset={6} className="text-11">
+            Whole Words ([ab])
+          </TooltipContent>
+        </Tooltip>
       )}
 
       <div className="w-px h-3.5 bg-border mx-0.5" />
 
-      <button
-        type="button"
-        onClick={onPrevMatch}
-        disabled={matchCount === 0}
-        className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-foreground disabled:opacity-30 cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-        title="Previous match (Shift+Enter)"
-        aria-label="Previous match"
-      >
-        <ChevronLeft className="size-3.5 shrink-0" strokeWidth={1.5} />
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={onPrevMatch}
+            disabled={matchCount === 0}
+            className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-foreground disabled:opacity-30 cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            aria-label="Previous match (Shift+Enter)"
+          >
+            <ChevronLeft className="size-3.5 shrink-0" strokeWidth={1.5} />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top" sideOffset={6} className="text-11">
+          Previous match (Shift+Enter)
+        </TooltipContent>
+      </Tooltip>
 
-      <button
-        type="button"
-        onClick={onNextMatch}
-        disabled={matchCount === 0}
-        className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-foreground disabled:opacity-30 cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-        title="Next match (Enter)"
-        aria-label="Next match"
-      >
-        <ChevronRight className="size-3.5 shrink-0" strokeWidth={1.5} />
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={onNextMatch}
+            disabled={matchCount === 0}
+            className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-foreground disabled:opacity-30 cursor-pointer relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            aria-label="Next match (Enter)"
+          >
+            <ChevronRight className="size-3.5 shrink-0" strokeWidth={1.5} />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top" sideOffset={6} className="text-11">
+          Next match (Enter)
+        </TooltipContent>
+      </Tooltip>
 
-      <button
-        type="button"
-        onClick={() => onClose?.()}
-        className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer ml-0.5 relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-        title="Close (Escape)"
-        aria-label="Close search"
-      >
-        <X className="size-3.5 shrink-0" strokeWidth={1.5} />
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={() => onClose?.()}
+            className="size-6 flex items-center justify-center rounded-md hover:bg-muted text-foreground cursor-pointer ml-0.5 relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            aria-label="Close search (Escape)"
+          >
+            <X className="size-3.5 shrink-0" strokeWidth={1.5} />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top" sideOffset={6} className="text-11">
+          Close (Escape)
+        </TooltipContent>
+      </Tooltip>
     </div>
   );
 }

@@ -14,6 +14,10 @@ import {
   resolveAttachmentRawPath,
 } from '@/features/library/sdk/queries/extraction.queries';
 import { useReResolveItemMetadataMutation } from '@/features/library/sdk/queries/catalog.queries';
+import { invalidateReaderDocumentBlob } from '@/features/library/sdk/queries/reader.queries';
+import { evictWarmObjectUrl } from '@/features/library/core/coordinator/reader/use-reader';
+import { warmViewerPool } from '@/features/library/domain/reader-tab-pool.domain';
+import { useReaderStore } from '@/features/library/core/store/reader.store';
 import type {
   Item,
   ItemAttachment,
@@ -187,6 +191,7 @@ export function useAttachmentCoordinator({
       } catch (err: unknown) {
         if (!isMountedRef.current) return;
         toast.error('Failed to attach file', {
+          id: 'attachment-op',
           description: err instanceof Error ? err.message : 'Please try again.',
         });
       } finally {
@@ -221,12 +226,14 @@ export function useAttachmentCoordinator({
         const parsed = new URL(targetUrl);
         if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
           toast.error('Invalid link URL', {
+            id: 'attachment-url-err',
             description: 'Only http:// and https:// URLs are allowed.',
           });
           return;
         }
       } catch {
         toast.error('Invalid link URL', {
+          id: 'attachment-url-err',
           description: 'Please enter a valid http:// or https:// URL.',
         });
         return;
@@ -249,6 +256,7 @@ export function useAttachmentCoordinator({
         setLinkTitleInput('');
       } catch (err: unknown) {
         toast.error('Failed to attach link', {
+          id: 'attachment-op',
           description: err instanceof Error ? err.message : 'Please check the URL and try again.',
         });
       } finally {
@@ -300,8 +308,24 @@ export function useAttachmentCoordinator({
   const handleDeleteAttachment = useCallback(
     async (attachmentId: string) => {
       if (!paper.id || !attachmentId) return;
+      const targetAtt = allAttachments.find((att) => att.id === attachmentId);
+      const targetUrl = targetAtt ? resolveAttachmentUrl(targetAtt, rawScopeId) : '';
       try {
         await removeAttachment({ attachmentId, itemId: paper.id });
+        if (targetUrl) {
+          evictWarmObjectUrl(targetUrl, rawScopeId);
+          evictWarmObjectUrl(targetUrl, undefined);
+          void invalidateReaderDocumentBlob(targetUrl, { scopeId: rawScopeId });
+        }
+        const readerStore = useReaderStore.getState();
+        const openTab = readerStore.tabs.find((t) => t.id === paper.id);
+        if (openTab && (openTab.attachmentId === attachmentId || openTab.fileUrl === targetUrl)) {
+          readerStore.updateTabState(paper.id, { attachmentId: null, fileUrl: undefined });
+        }
+        const warmEntry = warmViewerPool.peek(paper.id);
+        if (warmEntry && (warmEntry.attachmentId === attachmentId || warmEntry.fileUrl === targetUrl)) {
+          warmViewerPool.delete(paper.id);
+        }
         if (selectedAttachmentId === attachmentId) {
           setSelectedAttachmentId(null);
         }
@@ -309,7 +333,7 @@ export function useAttachmentCoordinator({
         // Notification handled inside useAttachments
       }
     },
-    [paper.id, removeAttachment, selectedAttachmentId],
+    [paper.id, allAttachments, rawScopeId, removeAttachment, selectedAttachmentId],
   );
 
   const getAttachmentDownloadUrl = useCallback(

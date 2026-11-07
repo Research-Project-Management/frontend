@@ -88,11 +88,13 @@ export function CreatorFields({
       const isAnyInputFocused = authorInputRefs.current.some(
         (el) => el && typeof document !== "undefined" && document.activeElement === el,
       );
-      if ((isItemSwitched || !isAnyInputFocused) && !areCreatorsEqual(localCreators, incoming)) {
-        setLocalCreators(incoming);
+      if (isItemSwitched || !isAnyInputFocused) {
+        setLocalCreators((prev) =>
+          areCreatorsEqual(prev, incoming) ? prev : incoming,
+        );
       }
     }
-  }, [itemId, itemCreators, itemContributors, itemAuthors]);
+  }, [item, itemId, itemCreators, itemContributors, itemAuthors]);
 
   useEffect(() => {
     if (
@@ -425,24 +427,17 @@ function CreatorRowItem({
       <div className="flex items-center justify-end min-w-0 pr-1">
         {canEdit ? (
           <DropdownMenu>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    className="w-full min-h-7 h-auto flex items-center justify-end pr-1 rounded-md text-11 leading-normal font-medium text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring select-none text-right truncate"
-                    aria-label={`Change role for ${roleLabel.toLowerCase()} ${originalIndex + 1}`}
-                  >
-                    <span className="truncate whitespace-nowrap leading-normal">
-                      {roleLabel}
-                    </span>
-                  </button>
-                </DropdownMenuTrigger>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" align="start" sideOffset={6}>
-                {roleLabel}
-              </TooltipContent>
-            </Tooltip>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="w-full min-h-7 h-auto flex items-center justify-end pr-1 rounded-md text-11 leading-normal font-medium text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring select-none text-right truncate"
+                aria-label={`Change role for ${roleLabel.toLowerCase()} ${originalIndex + 1}`}
+              >
+                <span className="truncate whitespace-nowrap leading-normal">
+                  {roleLabel}
+                </span>
+              </button>
+            </DropdownMenuTrigger>
             <DropdownMenuContent
               align="start"
               className="min-w-[170px] p-1.5 rounded-md shadow-raised-200 border border-border bg-popover text-popover-foreground space-y-0.5"

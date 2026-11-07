@@ -227,21 +227,21 @@ export function FeedsListSection({
                     onRefresh={() => {
                       setActiveFeedId(feed.id);
                       triggerRefresh();
-                      toast.info(`Refreshing "${feed.name}"...`);
+                      toast.info(`Refreshing "${feed.name}"...`, { id: 'feed-refresh', duration: 2000 });
                     }}
                     onMarkAllAsRead={async () => {
                       try {
                         await markFeedAsRead(feed.id);
-                        toast.success(`Marked all articles in "${feed.name}" as read`);
+                        toast.success(`Marked all articles in "${feed.name}" as read`, { id: 'feed-mark-read', duration: 2000 });
                       } catch {
-                        toast.error(`Failed to mark articles in "${feed.name}" as read`);
+                        toast.error(`Failed to mark articles in "${feed.name}" as read`, { id: 'feed-mark-read' });
                       }
                     }}
                     onEdit={(f) => openModal('EDIT_FEED', { feed: f })}
                     onDelete={async (f) => {
                       try {
                         await unsubscribeFeed(f.id);
-                        toast.success(`Unsubscribed from "${f.name}"`);
+                        toast.success(`Unsubscribed from "${f.name}"`, { id: 'feed-unsubscribe' });
                       } catch {
                         // Error toast handled by mutation or caller
                       }

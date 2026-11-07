@@ -433,7 +433,6 @@ export function TopbarSearch({
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={(e) => e.stopPropagation()}
-              title={`Search mode: ${activeModeLabel}`}
               aria-label={`Search mode: ${activeModeLabel}`}
               className="absolute left-1 top-1/2 -translate-y-1/2 z-10 flex items-center gap-0.5 h-6 px-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer outline-none"
             >

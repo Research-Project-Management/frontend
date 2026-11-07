@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Trash2, Loader2, ShieldAlert, ExternalLink, AlertTriangle, Check, Copy, Download, FileJson } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/shared/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/lib/utils';
 import type { Item } from '@/features/library/types/core.types';
@@ -398,17 +399,23 @@ export function PaperBibtexDialog({
             <span className="text-11 text-muted-foreground font-mono">
               Key: <strong className="text-foreground">@{citationKey}</strong>
             </span>
-            <button
-              type="button"
-              onClick={async () => {
-                await copy(`@${citationKey}`, `@${citationKey}`);
-              }}
-              title="Copy Citation Key"
-              aria-label="Copy citation key"
-              className="text-muted-foreground hover:text-foreground hover:bg-muted p-1 rounded-sm cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            >
-              <Copy className="size-3" strokeWidth={1.5} />
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await copy(`@${citationKey}`, `@${citationKey}`);
+                  }}
+                  aria-label="Copy citation key"
+                  className="text-muted-foreground hover:text-foreground hover:bg-muted p-1 rounded-sm cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <Copy className="size-3" strokeWidth={1.5} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={6} className="text-11">
+                Copy Citation Key
+              </TooltipContent>
+            </Tooltip>
           </div>
 
           <div className="flex items-center gap-2">

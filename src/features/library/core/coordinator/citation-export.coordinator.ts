@@ -209,6 +209,7 @@ export function warnIfRetractedHelper(
     toast.warning(
       `Retraction Alert: ${retractedCount} of ${totalSelectedCount} selected item(s) have been retracted!`,
       {
+        id: 'retraction-alert',
         description: `Proceeding with ${actionLabel}. Please verify validity before citing in your research.`,
         duration: 6000,
       },
@@ -244,11 +245,11 @@ export async function executeCopyMultiCite(
         return;
       }
     } catch {
-      toast.error('Failed to format citation. Please try again.');
+      toast.error('Failed to format citation. Please try again.', { id: 'library-clipboard' });
       return;
     }
   }
-  toast.error('No valid items found to format citation.');
+  toast.error('No valid items found to format citation.', { id: 'library-clipboard' });
 }
 
 export async function executeCopyInTextCite(
@@ -267,11 +268,11 @@ export async function executeCopyInTextCite(
         return;
       }
     } catch {
-      toast.error('Failed to format citation. Please try again.');
+      toast.error('Failed to format citation. Please try again.', { id: 'library-clipboard' });
       return;
     }
   }
-  toast.error('No valid items found to format citation.');
+  toast.error('No valid items found to format citation.', { id: 'library-clipboard' });
 }
 
 export async function executeExportAllBibtex(

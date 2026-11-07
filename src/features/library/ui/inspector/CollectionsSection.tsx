@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import { createUpdateItemMetadataCommand } from "@/features/library/core/manager/library-command.manager";
 import { useLibraryProjectContext } from "@/features/library/core/adapters/project-context.adapter";
+import { useLibraryUIStore } from "@/features/library/core/store/library-ui.store";
+import { resolveProjectRole } from "@/features/library/ui/sidebar/FeedsListSection";
 import {
   getCollectionAncestorPath,
   useItemCollectionsManager,
@@ -376,7 +378,7 @@ export default function CollectionsSection(props: CollectionsSectionProps) {
     createCollection,
     handleToggleCollection: handleRemoveFromCollection,
   } = manager;
-  const { projects = [] } = useLibraryProjectContext();
+  const { projects = [], currentUserId } = useLibraryProjectContext();
 
   // Resolve active library root name and icon (My Library vs Project Library)
   const isProject = Boolean(
@@ -398,10 +400,32 @@ export default function CollectionsSection(props: CollectionsSectionProps) {
     ? matchedProject?.name || "Project Library"
     : "My Library";
 
-  const libraryRootHref =
-    isProject && matchedProject?.id
-      ? `/projects/${matchedProject.id}/library`
-      : "/library";
+  const libraryRootHref = "/library";
+
+  const handleLibraryScopeNavigation = () => {
+    if (isProject && matchedProject) {
+      const role = resolveProjectRole(matchedProject, currentUserId);
+      useLibraryUIStore.getState().setActiveScope({
+        type: "project",
+        id: matchedProject.id,
+        projectId: matchedProject.id,
+        name: matchedProject.name || "",
+        role,
+        ...(Array.isArray(matchedProject.permissions)
+          ? { permissions: matchedProject.permissions }
+          : {}),
+        ...(matchedProject.effectivePermissions
+          ? { effectivePermissions: matchedProject.effectivePermissions }
+          : {}),
+      });
+    } else if (!isProject) {
+      useLibraryUIStore.getState().setActiveScope({
+        type: "user",
+        id: "user",
+        name: "My Library",
+      });
+    }
+  };
 
   // List of assigned collection objects with resolved names and paths
   const assignedCollections = useMemo(() => {
@@ -471,6 +495,7 @@ export default function CollectionsSection(props: CollectionsSectionProps) {
             <TooltipTrigger asChild>
               <Link
                 href={libraryRootHref}
+                onClick={handleLibraryScopeNavigation}
                 className="font-medium text-12 text-foreground tracking-tight truncate hover:underline select-none"
               >
                 {libraryTitle}
@@ -483,10 +508,7 @@ export default function CollectionsSection(props: CollectionsSectionProps) {
 
       {/* When Assigned: Hierarchical Collection Rows */}
       {assignedCollections.map((col) => {
-        const href =
-          isProject && matchedProject?.id
-            ? `/projects/${matchedProject.id}/library/${col.id}`
-            : `/library/${col.id}`;
+        const href = `/library/${col.id}`;
 
         return (
           <div
@@ -510,6 +532,7 @@ export default function CollectionsSection(props: CollectionsSectionProps) {
                   <TooltipTrigger asChild>
                     <Link
                       href={href}
+                      onClick={handleLibraryScopeNavigation}
                       className="text-12 truncate leading-tight text-foreground font-normal hover:underline select-none"
                     >
                       {col.name}

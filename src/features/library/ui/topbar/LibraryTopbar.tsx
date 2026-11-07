@@ -342,7 +342,7 @@ export function LibraryTopbar({
     } else if (onAddPaper) {
       onAddPaper("link");
     } else {
-      openModal("ADD_BY_IDENTIFIER");
+      openModal("ADD_BY_IDENTIFIER", { collectionId: params?.collectionId });
     }
   };
 

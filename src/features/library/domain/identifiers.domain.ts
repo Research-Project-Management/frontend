@@ -547,6 +547,37 @@ export function getItemFileUrl(
 }
 
 /**
+ * Extracts all canonical file URLs (primary file + all attachments) associated with an Item.
+ * Used during item deletion/purge/merge to deterministically evict every cached binary
+ * and warm ObjectURL belonging to the item across Tier-1 RAM and Tier-4 OPFS/IndexedDB.
+ */
+export function resolveAllItemAttachmentUrls(
+  item?: ItemFileSource | null | undefined,
+  scopeId?: string,
+): string[] {
+  if (!item) return [];
+  const urls = new Set<string>();
+  const primary = getItemFileUrl(item, scopeId);
+  if (primary) urls.add(primary);
+
+  if (Array.isArray(item.attachments)) {
+    for (const att of item.attachments) {
+      if (!att) continue;
+      const attUrl = getItemFileUrl(
+        {
+          fileUrl: att.fileUrl || att.url,
+          url: att.url,
+          fileId: att.fileId,
+        },
+        scopeId,
+      );
+      if (attUrl) urls.add(attUrl);
+    }
+  }
+  return Array.from(urls);
+}
+
+/**
  * Computes WebCrypto SHA-256 hex digest of a browser File/Blob (for files <= 25 MB)
  * to deduplicate identical binary files before network upload.
  */

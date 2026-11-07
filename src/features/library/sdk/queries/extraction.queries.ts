@@ -94,10 +94,7 @@ export function useCitationStyles(scopeId?: string, options?: { enabled?: boolea
         .filter(Boolean)
     : [];
 
-  return {
-    ...query,
-    styles,
-  };
+  return Object.assign(query, { styles });
 }
 
 export function useCslCitation(

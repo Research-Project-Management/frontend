@@ -133,7 +133,7 @@ export function TopbarNewFeedDropdown({
 
   const handleExportOPML = async () => {
     if (!feeds || feeds.length === 0) {
-      toast.info("No feeds to export");
+      toast.info("No feeds to export", { id: "opml-export" });
       return;
     }
 
@@ -142,15 +142,16 @@ export function TopbarNewFeedDropdown({
       const serverData = await exportOpmlMutation();
       if (serverData?.opmlXml) {
         triggerBrowserTextDownload(serverData.opmlXml, filename, "text/x-opml");
-        toast.success(`Exported ${serverData.count ?? feeds.length} feeds to OPML file`);
+        toast.success(`Exported ${serverData.count ?? feeds.length} feeds to OPML file`, { id: "opml-export" });
       } else {
-        toast.error("Failed to export feeds to OPML");
+        toast.error("Failed to export feeds to OPML", { id: "opml-export" });
       }
     } catch (err) {
       toast.error(
         err instanceof Error && err.message
           ? err.message
           : "Failed to export feeds to OPML",
+        { id: "opml-export" },
       );
     }
   };
@@ -167,15 +168,16 @@ export function TopbarNewFeedDropdown({
       try {
         const imported = await importOpmlMutation(content);
         if (imported && imported.importedCount > 0) {
-          toast.success(`Imported ${imported.importedCount} feeds from OPML`);
+          toast.success(`Imported ${imported.importedCount} feeds from OPML`, { id: "opml-import" });
         } else {
-          toast.error("No valid RSS/Atom feeds found in OPML file");
+          toast.error("No valid RSS/Atom feeds found in OPML file", { id: "opml-import" });
         }
       } catch (err) {
         toast.error(
           err instanceof Error && err.message
             ? err.message
             : "Failed to import feeds from OPML",
+          { id: "opml-import" },
         );
       }
     };
@@ -329,7 +331,7 @@ export function TopbarNewItemDropdown({
 
   const handleManualTypeSelect = (type: string) => {
     if (onNewManualItem) onNewManualItem(type);
-    else openModal("ADD_BY_IDENTIFIER");
+    else openModal("ADD_BY_IDENTIFIER", { collectionId: activeCollectionId });
   };
 
   return (

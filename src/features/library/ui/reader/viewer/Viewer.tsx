@@ -13,7 +13,11 @@ import {
   computeEffectivePdfPageWidth, computeSpreadPairs, isPageInVirtualWindow, resolvePdfOutlineFromDoc, type PdfOutlineProxyDoc,
 } from "@/features/library/domain/reader-search-outline.domain";
 import { useViewerSearch, ViewerSearchBar, type PdfSearchDocumentProxy } from "./ViewerSearchBar";
-import { TextSelectionToolbar } from "./ViewerSmartHover";
+import {
+  TextSelectionToolbar,
+  useViewerSmartHover,
+  ViewerSmartHoverPopover,
+} from "./ViewerSmartHover";
 import { AnnotationQuickEditCard } from "./PageAnnotationOverlay";
 import { ViewerPageCanvas, DocumentPageSkeleton } from "./ViewerPageCanvas";
 import { usePdfViewerInteraction } from "@/features/library/core/coordinator/reader/use-pdf-interaction";
@@ -31,7 +35,7 @@ setupPdfWorker();
 const SHARED_PDF_OPTIONS = getSharedPdfDocumentOptions();
 const EMPTY_ANNOTATIONS: ReaderAnnotation[] = [];
 
-interface ViewerProps {
+export interface ViewerProps {
   blobUrl: string | null; isLoading: boolean; error: string | null; attachmentId?: string; scopeId?: string;
   onAddToNote?: (selectedText: string, pageNumber?: number, annotationId?: string) => void;
   onAskAi?: (selectedText: string, pageNumber?: number) => void;
@@ -112,6 +116,11 @@ export default function Viewer({
     }
   }, [sharedPdfDocProxy, onTotalPagesChange]);
 
+  const onDocumentLoadRef = useRef(onDocumentLoad);
+  onDocumentLoadRef.current = onDocumentLoad;
+  const onDocumentLoadedRef = useRef(onDocumentLoaded);
+  onDocumentLoadedRef.current = onDocumentLoaded;
+
   useEffect(() => {
     setDocError(null);
     if (!sharedPdfDocProxy) {
@@ -128,11 +137,11 @@ export default function Viewer({
         }
         pdfDocRef.current = null;
         setPdfDocument(null);
-        onDocumentLoad?.(null as never);
-        onDocumentLoaded?.(null as never);
+        onDocumentLoadRef.current?.(null as never);
+        onDocumentLoadedRef.current?.(null as never);
       }
     };
-  }, [blobUrl, isSharedDocumentConsumer]);
+  }, [blobUrl, isSharedDocumentConsumer, sharedPdfDocProxy]);
 
   const annotationsByPage = useMemo(() => {
     const map = new Map<number, ReaderAnnotation[]>();
@@ -307,6 +316,23 @@ export default function Viewer({
     onAnnotate: handleAnnotateWithPageLabel,
   });
 
+  const handleNavigateOrScrollToPage = useCallback(
+    (pageNumber: number) => {
+      if (onNavigateWithHistory) {
+        onNavigateWithHistory(pageNumber);
+      } else {
+        scrollToPage(pageNumber);
+      }
+    },
+    [onNavigateWithHistory, scrollToPage],
+  );
+
+  const smartHover = useViewerSmartHover({
+    scrollContainerRef,
+    fulltext,
+    numPages,
+  });
+
   useEffect(() => {
     if (!scrollContainerRef.current) return;
     const el = scrollContainerRef.current;
@@ -380,7 +406,7 @@ export default function Viewer({
       obs.disconnect();
       observerRef.current = null;
     };
-  }, [numPages, onVisiblePageChange, viewMode]);
+  }, [numPages, onVisiblePageChange, viewMode, isSuspended]);
 
   const onDocumentLoadSuccess = (
     doc: PdfSearchDocumentProxy & {
@@ -508,12 +534,10 @@ export default function Viewer({
   });
 
   useEffect(() => {
-    const el = scrollContainerRef.current;
-    if (!el || !onZoomChange) return;
-
-    const handleWheel = (e: WheelEvent) => {
+    const handleGlobalCtrlWheel = (e: WheelEvent) => {
       if (!e.ctrlKey && !e.metaKey) return;
       e.preventDefault();
+      if (!onZoomChange) return;
       const delta = e.deltaY < 0 ? 0.15 : -0.15;
       const nextZoom = Math.min(
         5.0,
@@ -523,8 +547,8 @@ export default function Viewer({
       onZoomChange(nextZoom);
     };
 
-    el.addEventListener("wheel", handleWheel, { passive: false });
-    return () => el.removeEventListener("wheel", handleWheel);
+    window.addEventListener("wheel", handleGlobalCtrlWheel, { passive: false });
+    return () => window.removeEventListener("wheel", handleGlobalCtrlWheel);
   }, [onZoomChange, onSelectFitMode]);
 
   const spreadPairs = useMemo(() => computeSpreadPairs(numPages), [numPages]);
@@ -612,7 +636,7 @@ export default function Viewer({
   return (
     <div
       className={cn(
-        "relative flex-1 flex flex-col min-w-0 h-full overflow-hidden transition-colors bg-background",
+        "relative flex-1 flex flex-col min-w-0 h-full overflow-hidden bg-canvas",
         isSuspended && "invisible pointer-events-none select-none",
       )}
       style={isSuspended ? { contentVisibility: "hidden" as never } : undefined}
@@ -623,8 +647,10 @@ export default function Viewer({
         onMouseUp={interaction.handleMouseUpCombined}
         onMouseDown={interaction.handleMouseDown}
         onMouseMove={interaction.handleMouseMove}
+        onMouseOver={smartHover.handleContainerMouseOver}
+        onMouseLeave={smartHover.scheduleDismissSmartHover}
         className={cn(
-          "flex-1 w-full relative bg-background",
+          "flex-1 w-full relative bg-canvas",
           currentZoom > 1.0
             ? "overflow-auto"
             : "overflow-y-auto overflow-x-hidden",
@@ -788,6 +814,17 @@ export default function Viewer({
             onAddToNote={onAddToNote}
             onAskAi={onAskAi}
             onClose={() => interaction.setShowFloatingMenu(false)}
+          />
+        )}
+
+        {smartHover.smartHoverCard && (
+          <ViewerSmartHoverPopover
+            card={smartHover.smartHoverCard}
+            onCancelDismiss={smartHover.cancelHoverDismiss}
+            onScheduleDismiss={smartHover.scheduleDismissSmartHover}
+            onDismiss={() => smartHover.setSmartHoverCard(null)}
+            onJumpToPage={handleNavigateOrScrollToPage}
+            onOpenInSplitView={onOpenInSplitView}
           />
         )}
       </div>

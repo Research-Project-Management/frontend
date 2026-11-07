@@ -446,15 +446,14 @@ export function formatAnnotationCitation(
     : paper?.projectId && isProjectScope(String(paper.projectId))
       ? String(paper.projectId)
       : undefined;
+  const projParam = effectiveProjectId ? `projectId=${encodeURIComponent(effectiveProjectId)}` : '';
   const attParam = attachmentId ? `attachmentId=${encodeURIComponent(attachmentId)}` : '';
   const pageParam = pageNumber ? `page=${pageNumber}` : '';
   const annotParam = annotationId ? `annotation=${encodeURIComponent(annotationId)}` : '';
-  const queryStr = [attParam, pageParam, annotParam].filter(Boolean).join('&');
+  const queryStr = [projParam, attParam, pageParam, annotParam].filter(Boolean).join('&');
   const qs = queryStr ? `?${queryStr}` : '';
 
-  const basePath = effectiveProjectId
-    ? `/projects/${encodeURIComponent(effectiveProjectId)}/library/papers`
-    : `/library/papers`;
+  const basePath = `/library/papers`;
   const url = itemId
     ? `${basePath}/${encodeURIComponent(itemId)}${qs}`
     : `${basePath}${qs}`;

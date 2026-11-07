@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useEffect } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import type { LibraryOrderBy } from '@/features/library/types/ingestion.types';
 import type { LibraryPermissions } from '@/features/library/types/core.types';
@@ -186,32 +186,70 @@ export function useLibraryNavigation() {
   const ephemeralFilters = useLibraryUIStore((s) => s.ephemeralFilters);
   const setEphemeralFilters = useLibraryUIStore((s) => s.setEphemeralFilters);
 
+  const EPHEMERAL_KEYS = useMemo(
+    () =>
+      [
+        'q',
+        'searchMode',
+        'fileStatus',
+        'hasFile',
+        'hasNotes',
+        'readStatus',
+        'type',
+        'itemType',
+        'fromYear',
+        'toYear',
+        'startDate',
+        'endDate',
+        'tag',
+        'orderBy',
+        'orderDirection',
+        'page',
+      ] as const,
+    [],
+  );
+
+  // Hydrate initial URL filter parameters (deep links / shared URLs) into ephemeralFilters
+  useEffect(() => {
+    if (!urlSearchParamsString) return;
+    const incomingParams = new URLSearchParams(urlSearchParamsString);
+    const currentEphemeral = useLibraryUIStore.getState().ephemeralFilters;
+    let shouldHydrate = false;
+    const patch: Record<string, string | string[] | number | undefined> = {
+      ...currentEphemeral,
+    };
+
+    for (const key of EPHEMERAL_KEYS) {
+      if (currentEphemeral[key] !== undefined) continue;
+      const allVals = incomingParams.getAll(key).filter((v) => v !== '');
+      if (allVals.length > 1) {
+        patch[key] = allVals;
+        shouldHydrate = true;
+      } else if (allVals.length === 1) {
+        patch[key] = key === 'page' ? Number(allVals[0]) || 1 : allVals[0];
+        shouldHydrate = true;
+      }
+    }
+
+    if (shouldHydrate) {
+      setEphemeralFilters(patch);
+    }
+  }, [urlSearchParamsString, EPHEMERAL_KEYS, setEphemeralFilters]);
+
   // Merge URL structural params (filter, savedSearchId, feedId, item) with in-memory ephemeralFilters
   const mergedSearchParams = useMemo(() => {
     const params = new URLSearchParams(urlSearchParamsString);
-    const ephemeralKeys = [
-      'q',
-      'searchMode',
-      'fileStatus',
-      'hasFile',
-      'hasNotes',
-      'readStatus',
-      'type',
-      'itemType',
-      'fromYear',
-      'toYear',
-      'startDate',
-      'endDate',
-      'tag',
-      'orderBy',
-      'orderDirection',
-      'page',
-    ] as const;
+    const hasActiveEphemeralState = Object.values(ephemeralFilters).some(
+      (v) => v !== undefined,
+    );
 
-    for (const key of ephemeralKeys) {
-      params.delete(key);
+    for (const key of EPHEMERAL_KEYS) {
       const val = ephemeralFilters[key];
+      if (hasActiveEphemeralState) {
+        params.delete(key);
+      }
       if (Array.isArray(val)) {
+        params.delete(key);
         for (const item of val) {
           if (item !== undefined && item !== '') {
             params.append(key, String(item));
@@ -222,7 +260,7 @@ export function useLibraryNavigation() {
       }
     }
     return params;
-  }, [urlSearchParamsString, ephemeralFilters]);
+  }, [urlSearchParamsString, ephemeralFilters, EPHEMERAL_KEYS]);
 
   // Parsed Values
   const filters = useMemo(
@@ -302,16 +340,21 @@ export function useLibraryNavigation() {
       }
       setEphemeralFilters(nextEphemeral);
 
-      // Only push/replace URL if structural non-filter params (e.g. filter=saved-search, savedSearchId, item) changed
+      // Only push/replace URL if structural non-filter params changed, OR if URL still carries
+      // initial ephemeral params that were just updated/cleared in Zustand.
       const cleanUrlParams = new URLSearchParams(urlSearchParamsString);
+      let urlHadEphemeralKey = false;
       for (const key of ephemeralKeys) {
-        cleanUrlParams.delete(key);
+        if (cleanUrlParams.has(key)) {
+          urlHadEphemeralKey = true;
+          cleanUrlParams.delete(key);
+        }
       }
       const nextStructuralQs = params.toString();
       const prevStructuralQs = cleanUrlParams.toString();
-      if (nextStructuralQs !== prevStructuralQs) {
+      if (nextStructuralQs !== prevStructuralQs || urlHadEphemeralKey) {
         const targetUrl = nextStructuralQs ? `${pathname}?${nextStructuralQs}` : pathname;
-        if (options.replace) {
+        if (options.replace || urlHadEphemeralKey) {
           router.replace(targetUrl, { scroll: false });
         } else {
           router.push(targetUrl, { scroll: false });
@@ -520,6 +563,7 @@ export function useLibraryNavigation() {
     }),
     [
       filters,
+      effectiveCollectionId,
       mergedSearchParams,
       updateQuery,
       setSearch,

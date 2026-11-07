@@ -13,12 +13,18 @@ import {
 import { getItemFileUrl, isProjectScope } from '@/features/library/domain/identifiers.domain';
 import {
   fetchReaderDocumentBlob,
+  invalidateReaderDocumentBlob,
   useReaderBootstrap,
   useReaderItem,
   useReaderFulltext,
   useAnnotations,
   useExportAnnotatedPdf,
 } from '@/features/library/sdk/queries/reader.queries';
+import {
+  LruTabPool,
+  calculateAdaptiveTabPoolCapacity,
+  warmViewerPool,
+} from '@/features/library/domain/reader-tab-pool.domain';
 
 export { useExportAnnotatedPdf };
 import { normalizeScopeId } from '@/features/library/sdk/query-keys';
@@ -143,14 +149,83 @@ export function useReaderDocumentBlobLoader() {
   );
 }
 
+/**
+ * Module-level Warm ObjectURL Pool (bounded to 3..8 tabs by device RAM).
+ * Prevents premature `URL.revokeObjectURL` when switching tabs across dynamic routes,
+ * allowing Standby `<Viewer isSuspended={true} />` instances to keep their parsed
+ * `PDFDocumentProxy` alive in Web Worker RAM with 0ms tab-switch latency.
+ */
+const warmObjectUrlPool = new LruTabPool<{ url: string; objectUrl: string }>(
+  calculateAdaptiveTabPoolCapacity(),
+);
+
+function buildWarmObjectUrlKey(url: string, scopeId?: string): string {
+  return `${scopeId || 'global'}::${url}`;
+}
+
+export function evictWarmObjectUrl(url?: string | null, scopeId?: string): void {
+  if (!url) return;
+  const key = buildWarmObjectUrlKey(url, scopeId);
+  const existing = warmObjectUrlPool.peek(key);
+  if (existing) {
+    URL.revokeObjectURL(existing.objectUrl);
+    warmObjectUrlPool.delete(key);
+  }
+}
+
+/**
+ * Cross-module garbage collector:
+ * When items are trashed, permanently purged, or merged as duplicates in the Library,
+ * closes their open Reader tabs, evicts their warm viewer/objectUrl instances,
+ * and deletes their cached PDF binaries from Tier-1 RAM & Tier-4 OPFS/IndexedDB.
+ */
+export function cleanupReaderResourcesForItems(
+  itemIds: Iterable<string>,
+  options?: { scopeId?: string; candidateUrls?: Iterable<string | null | undefined> },
+): void {
+  const scopeId = options?.scopeId;
+  const readerStore = useReaderStore.getState();
+  const urlsToInvalidate = new Set<string>();
+
+  if (options?.candidateUrls) {
+    for (const u of options.candidateUrls) {
+      if (u && typeof u === 'string') urlsToInvalidate.add(u);
+    }
+  }
+
+  for (const id of itemIds) {
+    if (!id || id === 'library') continue;
+    const openTab = readerStore.tabs.find((t) => t.id === id);
+    if (openTab?.fileUrl) {
+      urlsToInvalidate.add(openTab.fileUrl);
+    }
+    const warmEntry = warmViewerPool.peek(id);
+    if (warmEntry?.fileUrl) {
+      urlsToInvalidate.add(warmEntry.fileUrl);
+    }
+    warmViewerPool.delete(id);
+    if (openTab) {
+      readerStore.closeTab(id);
+    }
+  }
+
+  for (const url of urlsToInvalidate) {
+    evictWarmObjectUrl(url, scopeId);
+    evictWarmObjectUrl(url, undefined);
+    void invalidateReaderDocumentBlob(url, { scopeId });
+  }
+}
+
 export function usePdf(url: string | null, scopeId?: string): UsePdfReturn {
-  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [blobUrl, setBlobUrl] = useState<string | null>(() => {
+    if (!url) return null;
+    return warmObjectUrlPool.peek(buildWarmObjectUrlKey(url, scopeId))?.objectUrl ?? null;
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
 
   const abortControllerRef = useRef<AbortController | null>(null);
-  const currentBlobUrlRef = useRef<string | null>(null);
 
   const retry = useCallback(() => {
     setRetryCount((c) => c + 1);
@@ -162,16 +237,28 @@ export function usePdf(url: string | null, scopeId?: string): UsePdfReturn {
       abortControllerRef.current = null;
     }
 
-    if (currentBlobUrlRef.current) {
-      URL.revokeObjectURL(currentBlobUrlRef.current);
-      currentBlobUrlRef.current = null;
-    }
-
     if (!url) {
       setBlobUrl(null);
       setIsLoading(false);
       setError(null);
       return;
+    }
+
+    const poolKey = buildWarmObjectUrlKey(url, scopeId);
+
+    // Instant Warm-Pool Hit (0ms synchronous resolution on tab switch)
+    if (retryCount === 0) {
+      const warmHit = warmObjectUrlPool.get(poolKey);
+      if (warmHit) {
+        setBlobUrl(warmHit.objectUrl);
+        setIsLoading(false);
+        setError(null);
+        return;
+      }
+    } else {
+      // Explicit retry: revoke stale ObjectURL before re-fetching
+      evictWarmObjectUrl(url, scopeId);
+      void invalidateReaderDocumentBlob(url, { scopeId });
     }
 
     const controller = new AbortController();
@@ -187,12 +274,29 @@ export function usePdf(url: string | null, scopeId?: string): UsePdfReturn {
         const blob = await fetchReaderDocumentBlob(
           url!,
           controller.signal,
-          { scopeId },
+          { scopeId, forceRefresh: retryCount > 0 },
         );
 
         if (active) {
           const newObjectUrl = URL.createObjectURL(blob);
-          currentBlobUrlRef.current = newObjectUrl;
+          const keysBefore = warmObjectUrlPool.getKeysMruOrder();
+          const objectUrlsBefore = new Map<string, string>();
+          for (const k of keysBefore) {
+            const v = warmObjectUrlPool.peek(k);
+            if (v) objectUrlsBefore.set(k, v.objectUrl);
+          }
+
+          const evictedKey = warmObjectUrlPool.put(
+            poolKey,
+            { url: url!, objectUrl: newObjectUrl },
+            new Set([poolKey]),
+          );
+          if (evictedKey) {
+            const evictedObjectUrl = objectUrlsBefore.get(evictedKey);
+            if (evictedObjectUrl && evictedObjectUrl !== newObjectUrl) {
+              URL.revokeObjectURL(evictedObjectUrl);
+            }
+          }
           setBlobUrl(newObjectUrl);
           setIsLoading(false);
         }
@@ -214,10 +318,6 @@ export function usePdf(url: string | null, scopeId?: string): UsePdfReturn {
     return () => {
       active = false;
       controller.abort();
-      if (currentBlobUrlRef.current) {
-        URL.revokeObjectURL(currentBlobUrlRef.current);
-        currentBlobUrlRef.current = null;
-      }
     };
   }, [url, retryCount, scopeId]);
 

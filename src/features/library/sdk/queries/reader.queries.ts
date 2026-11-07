@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/shared/lib/utils';
 import { ItemsService } from '../clients/items.client';
@@ -13,7 +13,11 @@ import {
   type ExtractNotesOptions,
   type ItemStateData,
 } from '../clients/catalog-entities.client';
-import { fetchPdfBlob } from '../clients/http.client';
+import {
+  fetchPdfBlob,
+  prefetchPdfBlob,
+  invalidatePdfBlobCache,
+} from '../clients/http.client';
 
 export type { ExtractNotesOptions, ItemStateData };
 
@@ -23,6 +27,20 @@ export function fetchReaderDocumentBlob(
   options?: Parameters<typeof fetchPdfBlob>[2],
 ) {
   return fetchPdfBlob(url, signal, options);
+}
+
+export function prefetchReaderDocumentBlob(
+  url: string,
+  options?: Parameters<typeof prefetchPdfBlob>[1],
+) {
+  return prefetchPdfBlob(url, options);
+}
+
+export function invalidateReaderDocumentBlob(
+  url?: string,
+  options?: Parameters<typeof invalidatePdfBlobCache>[1],
+) {
+  return invalidatePdfBlobCache(url, options);
 }
 
 export function fetchReaderItemState(scopeId: string | undefined, itemId: string) {
@@ -95,6 +113,136 @@ type UpdateAnnotationDTO = UpdateAnnotationDto & {
 
 // ── 1. Document & Fulltext Queries ───────────────────────────────────────────
 
+function hydrateReaderBootstrapPayload(
+  queryClient: QueryClient,
+  targetScope: string,
+  itemId: string,
+  res: Awaited<ReturnType<typeof ItemsService.getReaderBootstrap>>,
+) {
+  if (!res || typeof res !== 'object') return null;
+
+  const degradedBranches = Array.isArray(res.degradedBranches)
+    ? res.degradedBranches
+    : [];
+
+  if (res.item) {
+    queryClient.setQueryData(
+      readerQueryKeys.item(targetScope, itemId),
+      res.item as ReaderDocument,
+    );
+    const rawAttachments = Array.isArray(res.item.attachments)
+      ? res.item.attachments
+      : [];
+    for (const att of rawAttachments) {
+      const attRec = att as unknown as Record<string, unknown>;
+      const attId =
+        typeof att.id === 'string'
+          ? att.id
+          : typeof attRec.attachmentId === 'string'
+            ? attRec.attachmentId
+            : undefined;
+      if (attId && Array.isArray(attRec.annotations)) {
+        const normalizedAttAnns = (
+          attRec.annotations as Array<
+            ReaderAnnotation & { rectCoords?: unknown; quoteText?: string }
+          >
+        ).map(normalizeAnnotationEntity);
+        queryClient.setQueryData<ReaderAnnotation[]>(
+          annotationKeys.byAttachment(targetScope, attId),
+          normalizedAttAnns,
+        );
+      }
+    }
+  }
+
+  if (res.activeAttachmentId && Array.isArray(res.annotations)) {
+    const normalizedActiveAnns = res.annotations.map(normalizeAnnotationEntity);
+    queryClient.setQueryData<ReaderAnnotation[]>(
+      annotationKeys.byAttachment(targetScope, res.activeAttachmentId),
+      normalizedActiveAnns,
+    );
+  }
+
+  if (res.fulltext !== undefined && !degradedBranches.includes('fulltext')) {
+    queryClient.setQueryData(
+      readerQueryKeys.fulltext(targetScope, itemId),
+      res.fulltext,
+    );
+  }
+
+  if (res.readingState) {
+    queryClient.setQueryData(
+      itemKeys.state(targetScope, itemId),
+      res.readingState,
+    );
+  }
+
+  if (Array.isArray(res.notes)) {
+    queryClient.setQueryData(
+      noteKeys.list(targetScope, itemId),
+      res.notes,
+    );
+  }
+
+  if (Array.isArray(res.relations)) {
+    queryClient.setQueryData(
+      relationKeys.all(targetScope, itemId),
+      {
+        relatedItems: res.relations,
+        total: res.relations.length,
+      },
+    );
+  }
+
+  if (
+    res.permissions &&
+    !degradedBranches.includes('permissions') &&
+    queryClient.getQueryData(itemKeys.counts(targetScope)) === undefined
+  ) {
+    queryClient.setQueryData(itemKeys.counts(targetScope), {
+      total: 0,
+      unfiled: 0,
+      starred: 0,
+      trash: 0,
+      role: res.role,
+      permissions: res.permissions,
+    });
+  }
+
+  return res;
+}
+
+export async function prefetchReaderBootstrap(
+  queryClient: QueryClient,
+  scopeId: string | undefined,
+  itemId: string,
+  attachmentId?: string,
+): Promise<void> {
+  if (!itemId || itemId === 'library') return;
+  const targetScope = normalizeScopeId(scopeId);
+  const bootstrapKey = readerQueryKeys.bootstrap(targetScope, itemId, attachmentId);
+  if (queryClient.getQueryData(bootstrapKey) !== undefined) return;
+
+  await queryClient.prefetchQuery({
+    queryKey: bootstrapKey,
+    staleTime: 1000 * 60 * 5,
+    queryFn: async ({ signal }) => {
+      if (typeof ItemsService.getReaderBootstrap !== 'function') return null;
+      try {
+        const res = await ItemsService.getReaderBootstrap(
+          targetScope,
+          itemId,
+          attachmentId,
+          { signal },
+        );
+        return hydrateReaderBootstrapPayload(queryClient, targetScope, itemId, res);
+      } catch {
+        return null;
+      }
+    },
+  });
+}
+
 export function useReaderBootstrap(
   scopeId?: string,
   itemId?: string,
@@ -132,97 +280,7 @@ export function useReaderBootstrap(
               attachmentId,
               { signal },
             );
-            if (!res || typeof res !== 'object') return null;
-
-            const degradedBranches = Array.isArray(res.degradedBranches)
-              ? res.degradedBranches
-              : [];
-
-            if (res.item) {
-              queryClient.setQueryData(
-                readerQueryKeys.item(targetScope, itemId),
-                res.item as ReaderDocument,
-              );
-              const rawAttachments = Array.isArray(res.item.attachments)
-                ? res.item.attachments
-                : [];
-              for (const att of rawAttachments) {
-                const attRec = att as unknown as Record<string, unknown>;
-                const attId =
-                  typeof att.id === 'string'
-                    ? att.id
-                    : typeof attRec.attachmentId === 'string'
-                      ? attRec.attachmentId
-                      : undefined;
-                if (attId && Array.isArray(attRec.annotations)) {
-                  const normalizedAttAnns = (
-                    attRec.annotations as Array<
-                      ReaderAnnotation & { rectCoords?: unknown; quoteText?: string }
-                    >
-                  ).map(normalizeAnnotationEntity);
-                  queryClient.setQueryData<ReaderAnnotation[]>(
-                    annotationKeys.byAttachment(targetScope, attId),
-                    normalizedAttAnns,
-                  );
-                }
-              }
-            }
-
-            if (res.activeAttachmentId && Array.isArray(res.annotations)) {
-              const normalizedActiveAnns = res.annotations.map(normalizeAnnotationEntity);
-              queryClient.setQueryData<ReaderAnnotation[]>(
-                annotationKeys.byAttachment(targetScope, res.activeAttachmentId),
-                normalizedActiveAnns,
-              );
-            }
-
-            if (res.fulltext !== undefined && !degradedBranches.includes('fulltext')) {
-              queryClient.setQueryData(
-                readerQueryKeys.fulltext(targetScope, itemId),
-                res.fulltext,
-              );
-            }
-
-            if (res.readingState) {
-              queryClient.setQueryData(
-                itemKeys.state(targetScope, itemId),
-                res.readingState,
-              );
-            }
-
-            if (Array.isArray(res.notes)) {
-              queryClient.setQueryData(
-                noteKeys.list(targetScope, itemId),
-                res.notes,
-              );
-            }
-
-            if (Array.isArray(res.relations)) {
-              queryClient.setQueryData(
-                relationKeys.all(targetScope, itemId),
-                {
-                  relatedItems: res.relations,
-                  total: res.relations.length,
-                },
-              );
-            }
-
-            if (
-              res.permissions &&
-              !degradedBranches.includes('permissions') &&
-              queryClient.getQueryData(itemKeys.counts(targetScope)) === undefined
-            ) {
-              queryClient.setQueryData(itemKeys.counts(targetScope), {
-                total: 0,
-                unfiled: 0,
-                starred: 0,
-                trash: 0,
-                role: res.role,
-                permissions: res.permissions,
-              });
-            }
-
-            return res;
+            return hydrateReaderBootstrapPayload(queryClient, targetScope, itemId, res);
           } catch {
             // Graceful fallback: individual hooks (useReaderItem, useAnnotations, etc.) will fetch independently
             return null;
@@ -369,7 +427,6 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
           queryKey: annotationKeys.byAttachment(scopeId, attachmentId),
         });
       }
-      toast.success('Annotation saved', { id: 'reader-annotation-toast' });
     },
     onError: (err: unknown, _variables, context) => {
       if (attachmentId) {
@@ -423,7 +480,6 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
       queryClient.invalidateQueries({
         queryKey: annotationKeys.byAttachment(scopeId, attachmentId),
       });
-      toast.success('Annotation updated', { id: 'reader-annotation-toast' });
     },
     onError: (err: unknown) => {
       toast.error('Failed to update annotation', {

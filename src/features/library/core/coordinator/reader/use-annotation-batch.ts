@@ -340,9 +340,11 @@ export function useAnnotationBatch({
         ]);
         updateRedoStack([]);
 
-        toast.success(`Updated color for ${ids.length} highlight${ids.length > 1 ? 's' : ''}`, {
-          id: 'reader-batch-action',
-        });
+        if (ids.length > 1) {
+          toast.success(`Updated color for ${ids.length} highlights`, {
+            id: 'reader-batch-action',
+          });
+        }
       } catch (err) {
         if (attachmentEpochRef.current === startEpoch) {
           toast.error('Batch update failed', {

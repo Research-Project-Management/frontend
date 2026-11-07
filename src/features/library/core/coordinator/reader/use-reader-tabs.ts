@@ -140,6 +140,10 @@ export function useReadingProgress({
         hydratedBookmarksRef.current = null;
       }
 
+      if (typeof parsedScroll.scrollTop === 'number' && Number.isFinite(parsedScroll.scrollTop) && parsedScroll.scrollTop >= 0) {
+        useReaderStore.getState().updateTabState(paperId, { scrollTop: Math.round(parsedScroll.scrollTop) });
+      }
+
       syncPaperStateQueryCache(queryClient, effectiveScope, paperId, {
         ...(typeof currentPage === 'number' ? { currentPage } : {}),
         ...(scrollPosition !== undefined ? { scrollPosition: parsedScroll } : {}),
@@ -264,7 +268,16 @@ export function useReadingProgress({
       pendingPageUpdateRef.current = null;
       lastSavedPageRef.current = targetPage;
 
-      const currentScrollPos = latestScrollPositionRef.current;
+      const currentTab = useReaderStore.getState().tabs.find((t) => t.id === paperId);
+      const resolvedScrollTop = currentTab?.scrollTop;
+      const currentScrollPos = {
+        ...latestScrollPositionRef.current,
+        ...(typeof resolvedScrollTop === 'number' && Number.isFinite(resolvedScrollTop) && resolvedScrollTop >= 0
+          ? { scrollTop: Math.round(resolvedScrollTop) }
+          : {}),
+      };
+      latestScrollPositionRef.current = currentScrollPos;
+
       syncPaperStateQueryCache(queryClient, effectiveScope, paperId, {
         currentPage: targetPage,
         ...(Object.keys(currentScrollPos).length > 0 ? { scrollPosition: currentScrollPos } : {}),
@@ -279,6 +292,7 @@ export function useReadingProgress({
 
       updateReaderItemState(effectiveScope, paperId, {
         currentPage: targetPage,
+        scrollPosition: currentScrollPos,
       })
         .then((updatedState) => {
           const mergedScrollPos =
@@ -316,6 +330,7 @@ export function useReadingProgress({
         });
         void updateReaderItemState(pending.scope, pending.paperId, {
           currentPage: pending.page,
+          scrollPosition: latestScrollPositionRef.current,
         })
           .then((updatedState) => {
             syncPaperStateQueryCache(queryClient, pending.scope, pending.paperId, {
@@ -364,6 +379,8 @@ interface UseReaderTabHistoryOptions {
   onNavigateToAnnotation: (pageNumber: number, annotationId?: string) => void;
 }
 
+const EMPTY_PAGE_HISTORY: number[] = [];
+
 export function useReaderTabHistory({
   effectiveTabId,
   visiblePage,
@@ -375,8 +392,8 @@ export function useReaderTabHistory({
   >({});
 
   const tabKey = effectiveTabId || 'default';
-  const pageHistory = tabHistoryByTabId[tabKey]?.pageHistory ?? [];
-  const forwardHistory = tabHistoryByTabId[tabKey]?.forwardHistory ?? [];
+  const pageHistory = tabHistoryByTabId[tabKey]?.pageHistory ?? EMPTY_PAGE_HISTORY;
+  const forwardHistory = tabHistoryByTabId[tabKey]?.forwardHistory ?? EMPTY_PAGE_HISTORY;
 
   const handleNavigateToPageWithHistory = useCallback(
     (newPage: number, annotationId?: string) => {
@@ -489,12 +506,15 @@ export function useReaderTabPresentation({
     ? normalizeReaderTheme(activeTab.theme)
     : fallbackThemeMode;
 
+  const activeTabId = activeTab?.id;
+  const activeTabZoom = activeTab?.zoom;
+
   useEffect(() => {
-    if (!activeTab) return;
-    if (typeof activeTab.zoom === 'number') {
-      setZoom(activeTab.zoom);
+    if (!activeTabId) return;
+    if (typeof activeTabZoom === 'number') {
+      setZoom(activeTabZoom);
     }
-  }, [effectiveTabId, activeTab?.id, setZoom]);
+  }, [effectiveTabId, activeTabId, activeTabZoom, setZoom]);
 
   useEffect(() => {
     if (!effectiveTabId || effectiveTabId === 'library' || visiblePage < 1) return;
@@ -597,6 +617,10 @@ interface UseReaderKeyboardShortcutsOptions {
   setTabZoom: (updater: number | ((prev: number) => number), fitMode?: ViewerFitMode) => void;
   setFitMode: (mode: ViewerFitMode) => void;
   setRotation: (updater: number | ((prev: number) => number)) => void;
+  onSelectNextTab?: () => void;
+  onSelectPrevTab?: () => void;
+  onCloseActiveTab?: () => void;
+  onSelectTabByIndex?: (index: number) => void;
 }
 
 export function useReaderKeyboardShortcuts({
@@ -611,6 +635,10 @@ export function useReaderKeyboardShortcuts({
   setTabZoom,
   setFitMode,
   setRotation,
+  onSelectNextTab,
+  onSelectPrevTab,
+  onCloseActiveTab,
+  onSelectTabByIndex,
 }: UseReaderKeyboardShortcutsOptions): void {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -622,6 +650,40 @@ export function useReaderKeyboardShortcuts({
           target.tagName === 'SELECT' ||
           target.isContentEditable);
       if (isEditable) return;
+
+      // Tab Navigation Shortcuts
+      if (
+        (e.ctrlKey && e.key === 'PageDown') ||
+        (e.altKey && e.key === ']') ||
+        (e.ctrlKey && !e.shiftKey && e.key === 'Tab')
+      ) {
+        e.preventDefault();
+        onSelectNextTab?.();
+        return;
+      }
+
+      if (
+        (e.ctrlKey && e.key === 'PageUp') ||
+        (e.altKey && e.key === '[') ||
+        (e.ctrlKey && e.shiftKey && e.key === 'Tab')
+      ) {
+        e.preventDefault();
+        onSelectPrevTab?.();
+        return;
+      }
+
+      if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === 'w' || e.key === 'W')) {
+        e.preventDefault();
+        onCloseActiveTab?.();
+        return;
+      }
+
+      if ((e.altKey || (e.ctrlKey && e.shiftKey)) && e.shiftKey && /^[1-9]$/.test(e.key)) {
+        const targetIdx = parseInt(e.key, 10) - 1;
+        e.preventDefault();
+        onSelectTabByIndex?.(targetIdx);
+        return;
+      }
 
       // Alt+1..7: Zotero annotation tool shortcuts, Alt+Left/Right: Back/Forward
       if (e.altKey && !e.ctrlKey && !e.metaKey) {
@@ -728,5 +790,9 @@ export function useReaderKeyboardShortcuts({
     setTabZoom,
     setFitMode,
     setRotation,
+    onSelectNextTab,
+    onSelectPrevTab,
+    onCloseActiveTab,
+    onSelectTabByIndex,
   ]);
 }

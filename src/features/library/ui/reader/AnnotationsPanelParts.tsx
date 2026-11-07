@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Loader2, StickyNote, Trash2, X, Check, Edit3, FileText, Palette,
   Highlighter, Underline, Strikethrough, Scan, PenTool, Type, Sparkles,
+  Copy, Link2, Quote, MoreHorizontal, MessageSquare,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Form } from '@/shared/components/ui/form';
@@ -13,6 +14,16 @@ import {
   ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator,
   ContextMenuShortcut, ContextMenuSub, ContextMenuSubContent, ContextMenuSubTrigger, ContextMenuTrigger,
 } from '@/shared/components/ui/context-menu';
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator,
+  DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent,
+} from '@/shared/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/shared/components/ui/tooltip';
+import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
 import type { ReaderDocument, ReaderAnnotation, AnnotationFormData } from '@/features/library/types/reader.types';
 import { annotationFormSchema } from '@/features/library/types/reader.types';
@@ -123,20 +134,26 @@ function AnnotationEditForm({
             {ANNOTATION_PALETTE_COLORS.map((c) => {
               const active = selectedColor.toLowerCase() === c.hex.toLowerCase();
               return (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedColor(c.hex);
-                    setValue('color', c.hex);
-                  }}
-                  title={c.label}
-                  className={cn(
-                    'size-3.5 rounded-full border border-border transition-colors cursor-pointer',
-                    active && 'ring-2 ring-primary ring-offset-1',
-                  )}
-                  style={{ backgroundColor: c.hex }}
-                />
+                <Tooltip key={c.id}>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedColor(c.hex);
+                        setValue('color', c.hex);
+                      }}
+                      aria-label={c.label}
+                      className={cn(
+                        'size-3.5 rounded-full border border-border transition-colors cursor-pointer',
+                        active && 'ring-2 ring-primary ring-offset-1',
+                      )}
+                      style={{ backgroundColor: c.hex }}
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={6} className="text-11">
+                    {c.label}
+                  </TooltipContent>
+                </Tooltip>
               );
             })}
           </div>
@@ -155,10 +172,17 @@ function AnnotationEditForm({
         />
         <textarea
           {...register('comment')}
+          autoFocus
           aria-label="Comment"
-          placeholder="Add a note/comment..."
+          placeholder="Add comment..."
           rows={2}
-          className="w-full resize-none bg-transparent text-12 outline-none text-foreground leading-relaxed font-sans"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+              e.preventDefault();
+              void handleSubmit(handleFormSubmit)();
+            }
+          }}
+          className="w-full resize-none bg-muted/40 p-1.5 rounded-sm text-12 outline-none text-foreground leading-relaxed font-sans border border-border focus:border-primary transition-colors"
         />
         <input
           value={tagText}
@@ -294,6 +318,46 @@ export const AnnotationsPanelCard = React.memo(function AnnotationsPanelCard({
     }
   };
 
+  const handleCopyText = useCallback(() => {
+    const textToCopy = (annotation.quoteText || annotation.text || annotation.comment || '').trim();
+    if (!textToCopy) return;
+    void navigator.clipboard.writeText(textToCopy);
+    toast.success('Copied text to clipboard', { id: 'reader-clipboard' });
+  }, [annotation.quoteText, annotation.text, annotation.comment]);
+
+  const handleCopyCitation = useCallback(() => {
+    const pageNumber = (annotation.pageIndex ?? 0) + 1;
+    const citation = formatAnnotationCitation(
+      paper,
+      attachmentId || annotation.attachmentId,
+      pageNumber,
+      annotation.id,
+      scopeId,
+      annotation.pageLabel,
+    );
+    const quote = (annotation.quoteText || annotation.text || '').trim();
+    const citationText = quote ? `"${quote}" ${citation.label}` : citation.label;
+    void navigator.clipboard.writeText(citationText);
+    toast.success('Copied citation to clipboard', { id: 'reader-clipboard' });
+  }, [paper, attachmentId, annotation, scopeId]);
+
+  const handleCopyLink = useCallback(() => {
+    const pageNumber = (annotation.pageIndex ?? 0) + 1;
+    const citation = formatAnnotationCitation(
+      paper,
+      attachmentId || annotation.attachmentId,
+      pageNumber,
+      annotation.id,
+      scopeId,
+      annotation.pageLabel,
+    );
+    const fullUrl = typeof window !== 'undefined'
+      ? `${window.location.origin}${citation.url}`
+      : citation.url;
+    void navigator.clipboard.writeText(fullUrl);
+    toast.success('Copied deep link to clipboard', { id: 'reader-clipboard' });
+  }, [paper, attachmentId, annotation, scopeId]);
+
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
@@ -305,7 +369,7 @@ export const AnnotationsPanelCard = React.memo(function AnnotationsPanelCard({
           onClick={(e) => onCardClick(e, annotation)}
           onContextMenu={() => onCardContextMenu(annotation)}
           className={cn(
-            'group rounded-md border p-2 text-12 transition-all relative cursor-pointer select-none outline-none',
+            'group rounded-md border p-2 text-12 transition-colors relative cursor-pointer select-none outline-none',
             isSelected
               ? 'border-primary bg-primary/10 ring-1 ring-primary'
               : 'border-border hover:border-border-hover bg-background',
@@ -383,62 +447,172 @@ export const AnnotationsPanelCard = React.memo(function AnnotationsPanelCard({
                   ) : (
                     <>
                       {onAskAi && (annotation.quoteText || annotation.comment) && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            onAskAi(
-                              annotation.quoteText || annotation.comment || '',
-                              (annotation.pageIndex ?? 0) + 1,
-                            );
-                          }}
-                          aria-label="Ask AI"
-                          className="size-6 sm:size-5 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                          title="Ask AI"
-                        >
-                          <img
-                            src="/Chat.svg"
-                            alt="AI Assistant"
-                            className="size-3 rounded-full object-cover shrink-0"
-                          />
-                        </button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onAskAi(
+                                  annotation.quoteText || annotation.comment || '',
+                                  (annotation.pageIndex ?? 0) + 1,
+                                );
+                              }}
+                              aria-label="Ask AI"
+                              className="size-6 sm:size-5 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                            >
+                              <img
+                                src="/Chat.svg"
+                                alt="AI Assistant"
+                                className="size-3 rounded-full object-cover shrink-0"
+                              />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" sideOffset={6} className="text-11">
+                            Ask AI
+                          </TooltipContent>
+                        </Tooltip>
                       )}
                       {(onAddToNote || onBatchAddToNote) && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (onAddToNote) {
-                              onAddToNote(
-                                annotation.quoteText || annotation.comment || '',
-                                (annotation.pageIndex ?? 0) + 1,
-                                annotation.id,
-                              );
-                            } else if (onBatchAddToNote) {
-                              onBatchAddToNote([annotation.id]);
-                            }
-                          }}
-                          aria-label="Add to Note"
-                          className="size-6 sm:size-5 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                          title="Add to Note"
-                        >
-                          <StickyNote className="size-3" strokeWidth={1.5} />
-                        </button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (onAddToNote) {
+                                  onAddToNote(
+                                    annotation.quoteText || annotation.comment || '',
+                                    (annotation.pageIndex ?? 0) + 1,
+                                  );
+                                } else if (onBatchAddToNote) {
+                                  onBatchAddToNote([annotation.id]);
+                                }
+                              }}
+                              aria-label="Add to Note"
+                              className="size-6 sm:size-5 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                            >
+                              <FileText className="size-3" strokeWidth={1.5} />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" sideOffset={6} className="text-11">
+                            Add to Note
+                          </TooltipContent>
+                        </Tooltip>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => onStartEdit(annotation.id)}
-                        aria-label="Edit annotation"
-                        className="size-6 sm:size-5 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                      >
-                        <Edit3 className="size-3" strokeWidth={1.5} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onStartDelete(annotation.id)}
-                        aria-label="Delete annotation"
-                        className="size-6 sm:size-5 rounded-md text-foreground hover:text-destructive hover:bg-destructive/10 flex items-center justify-center cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-                      >
-                        <Trash2 className="size-3" strokeWidth={1.5} />
-                      </button>
+
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            aria-label="More options"
+                            className="size-6 sm:size-5 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                          >
+                            <MoreHorizontal className="size-3" strokeWidth={1.5} />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          className="w-48 text-12 bg-popover border border-border shadow-raised-200 rounded-md p-1 z-50 font-sans"
+                        >
+                          <DropdownMenuItem
+                            onClick={handleCopyText}
+                            className="flex items-center gap-2 cursor-pointer text-foreground px-2 py-1.5 rounded-sm hover:bg-muted"
+                          >
+                            <Copy className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                            <span className="flex-1">Copy Text</span>
+                            <span className="text-10 text-muted-foreground font-mono">Ctrl+C</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={handleCopyCitation}
+                            className="flex items-center gap-2 cursor-pointer text-foreground px-2 py-1.5 rounded-sm hover:bg-muted"
+                          >
+                            <Quote className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                            <span>Copy Citation</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={handleCopyLink}
+                            className="flex items-center gap-2 cursor-pointer text-foreground px-2 py-1.5 rounded-sm hover:bg-muted"
+                          >
+                            <Link2 className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                            <span>Copy Link</span>
+                          </DropdownMenuItem>
+
+                          <DropdownMenuSeparator className="my-1 border-t border-border" />
+
+                          <DropdownMenuItem
+                            onClick={() => onStartEdit(annotation.id)}
+                            className="flex items-center gap-2 cursor-pointer text-foreground px-2 py-1.5 rounded-sm hover:bg-muted"
+                          >
+                            <Edit3 className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                            <span>Edit Comment</span>
+                          </DropdownMenuItem>
+
+                          {isTextMarkup && onChangeType && targetIds.length === 1 && (
+                            <DropdownMenuSub>
+                              <DropdownMenuSubTrigger className="flex items-center gap-2 cursor-pointer text-foreground px-2 py-1.5 rounded-sm hover:bg-muted">
+                                <Highlighter className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                                <span>Convert Type</span>
+                              </DropdownMenuSubTrigger>
+                              <DropdownMenuSubContent className="w-40 bg-popover border border-border shadow-raised-200 rounded-md p-1 z-50 font-sans">
+                                {(
+                                  [
+                                    ['highlight', 'Highlight', Highlighter],
+                                    ['underline', 'Underline', Underline],
+                                    ['strike', 'Strikethrough', Strikethrough],
+                                  ] as const
+                                ).map(([tVal, tLabel, TIcon]) => (
+                                  <DropdownMenuItem
+                                    key={tVal}
+                                    onClick={() => void onChangeType(annotation, tVal)}
+                                    className="flex items-center justify-between gap-2 cursor-pointer text-foreground px-2 py-1 rounded-sm hover:bg-muted text-11"
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <TIcon className="size-3 shrink-0" strokeWidth={1.5} />
+                                      <span>{tLabel}</span>
+                                    </div>
+                                    {(annotation.type || 'highlight') === tVal && (
+                                      <Check className="size-3 text-primary shrink-0" strokeWidth={1.5} />
+                                    )}
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuSubContent>
+                            </DropdownMenuSub>
+                          )}
+
+                          <DropdownMenuSub>
+                            <DropdownMenuSubTrigger className="flex items-center gap-2 cursor-pointer text-foreground px-2 py-1.5 rounded-sm hover:bg-muted">
+                              <Palette className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                              <span>Change Color</span>
+                            </DropdownMenuSubTrigger>
+                            <DropdownMenuSubContent className="w-36 bg-popover border border-border shadow-raised-200 rounded-md p-1 z-50 font-sans">
+                              {ANNOTATION_PALETTE_COLORS.map((c) => (
+                                <DropdownMenuItem
+                                  key={c.id}
+                                  onClick={() => onBatchChangeColor?.(c.hex, targetIds)}
+                                  className="flex items-center gap-2 cursor-pointer text-foreground px-2 py-1 rounded-sm hover:bg-muted text-11"
+                                >
+                                  <span
+                                    className="size-3 rounded-full border border-border shrink-0"
+                                    style={{ backgroundColor: c.hex }}
+                                  />
+                                  <span>{c.label}</span>
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuSubContent>
+                          </DropdownMenuSub>
+
+                          <DropdownMenuSeparator className="my-1 border-t border-border" />
+
+                          <DropdownMenuItem
+                            onClick={() => onStartDelete(annotation.id)}
+                            variant="destructive"
+                            className="flex items-center gap-2 cursor-pointer text-destructive hover:bg-destructive/10 px-2 py-1.5 rounded-sm text-12"
+                          >
+                            <Trash2 className="size-3.5 shrink-0 text-destructive" strokeWidth={1.5} />
+                            <span className="flex-1">Delete Annotation</span>
+                            <span className="text-10 text-destructive/80 font-mono">Del</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </>
                   )}
                 </div>
@@ -489,10 +663,34 @@ export const AnnotationsPanelCard = React.memo(function AnnotationsPanelCard({
                 </p>
               )}
 
-              {annotation.comment && (
-                <p className="text-11 text-foreground pl-2 leading-relaxed select-text">
-                  {annotation.comment}
-                </p>
+              {/* Comment field (Zotero parity: always accessible directly on card) */}
+              {annotation.comment ? (
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onStartEdit(annotation.id);
+                  }}
+                  className="flex items-start gap-1.5 ml-2 mt-1.5 py-1 px-1.5 text-11 text-foreground/90 bg-muted/40 rounded-sm border border-border/80 cursor-pointer hover:bg-muted/70 transition-colors"
+                >
+                  <MessageSquare className="size-3 text-muted-foreground shrink-0 mt-0.5" />
+                  <p className="leading-relaxed select-text flex-1 break-words">
+                    {annotation.comment}
+                  </p>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onStartEdit(annotation.id);
+                  }}
+                  className="flex items-center gap-1.5 ml-2 mt-1.5 text-11 text-muted-foreground hover:text-foreground cursor-pointer transition-colors py-0.5 group/comment"
+                >
+                  <MessageSquare className="size-3 text-muted-foreground group-hover/comment:text-foreground shrink-0" strokeWidth={1.5} />
+                  <span className="italic">Add comment...</span>
+                </button>
               )}
 
               {annotation.tags && annotation.tags.length > 0 && (
@@ -545,12 +743,49 @@ export const AnnotationsPanelCard = React.memo(function AnnotationsPanelCard({
           }}
           className="flex items-center gap-2 cursor-pointer text-foreground px-2 py-1.5 rounded-sm hover:bg-muted"
         >
-          <FileText className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+          <StickyNote className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
           <span>
             {targetIds.length > 1
               ? `Add to Note (${targetIds.length})`
               : 'Add to Note'}
           </span>
+        </ContextMenuItem>
+
+        <ContextMenuSeparator className="my-1 border-t border-border" />
+
+        <ContextMenuItem
+          onClick={handleCopyText}
+          className="flex items-center gap-2 cursor-pointer text-foreground px-2 py-1.5 rounded-sm hover:bg-muted"
+        >
+          <Copy className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+          <span className="flex-1">Copy Text</span>
+          <ContextMenuShortcut>Ctrl+C</ContextMenuShortcut>
+        </ContextMenuItem>
+
+        <ContextMenuItem
+          onClick={handleCopyCitation}
+          className="flex items-center gap-2 cursor-pointer text-foreground px-2 py-1.5 rounded-sm hover:bg-muted"
+        >
+          <Quote className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+          <span>Copy Citation</span>
+        </ContextMenuItem>
+
+        <ContextMenuItem
+          onClick={handleCopyLink}
+          className="flex items-center gap-2 cursor-pointer text-foreground px-2 py-1.5 rounded-sm hover:bg-muted"
+        >
+          <Link2 className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+          <span>Copy Link</span>
+        </ContextMenuItem>
+
+        <ContextMenuSeparator className="my-1 border-t border-border" />
+
+        <ContextMenuItem
+          onClick={() => onStartEdit(annotation.id)}
+          className="flex items-center gap-2 cursor-pointer text-foreground px-2 py-1.5 rounded-sm hover:bg-muted"
+        >
+          <Edit3 className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+          <span>Edit Comment</span>
         </ContextMenuItem>
 
         {isTextMarkup && onChangeType && targetIds.length === 1 && (
@@ -659,17 +894,23 @@ export const AnnotationsBottomSelectorDock = React.memo(function AnnotationsBott
             {existingColors.map((c) => {
               const active = selectedColor.toLowerCase() === c.hex.toLowerCase();
               return (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => onSelectColor(active ? 'all' : c.hex)}
-                  className={cn(
-                    'size-4 rounded-full border border-border transition-colors cursor-pointer relative',
-                    active && 'ring-2 ring-primary ring-offset-1',
-                  )}
-                  style={{ backgroundColor: c.hex }}
-                  title={`${c.label} (${active ? 'Active' : 'Filter by this color'})`}
-                />
+                <Tooltip key={c.id}>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => onSelectColor(active ? 'all' : c.hex)}
+                      aria-label={`${c.label} (${active ? 'Active' : 'Filter by this color'})`}
+                      className={cn(
+                        'size-4 rounded-full border border-border transition-colors cursor-pointer relative',
+                        active && 'ring-2 ring-primary ring-offset-1',
+                      )}
+                      style={{ backgroundColor: c.hex }}
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={6} className="text-11">
+                    {c.label} {active ? '(Active)' : ''}
+                  </TooltipContent>
+                </Tooltip>
               );
             })}
             {selectedColor !== 'all' && (

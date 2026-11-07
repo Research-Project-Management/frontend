@@ -244,7 +244,7 @@ export const CollectionNode = memo(function CollectionNode({
                 ? 'bg-muted text-foreground font-medium'
                 : 'text-foreground hover:bg-muted group-hover/node:bg-muted has-[[data-state=open]]:bg-muted font-normal',
               isHighlightedContainer &&
-                'bg-amber-500/15 ring-1 ring-amber-500/60 ring-inset font-medium',
+                'bg-warning/15 ring-1 ring-warning/60 ring-inset font-medium',
               isDragOverTarget && 'bg-primary/10 text-primary font-medium ring-1 ring-primary ring-inset',
             )}
             style={{ paddingLeft: `${paddingLeft}px` }}

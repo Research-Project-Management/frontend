@@ -8,7 +8,18 @@ import {
   Download,
   FileText,
   Bookmark,
+  Filter,
+  ArrowUpDown,
+  MoreHorizontal,
+  Check,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "@/shared/components/ui/dropdown-menu";
 import {
   Tooltip,
   TooltipContent,
@@ -235,6 +246,10 @@ export function ReaderSidebar({
   const [annotationsSearchQuery, setAnnotationsSearchQuery] = useState("");
   const [isAnnotationsSearchExpanded, setIsAnnotationsSearchExpanded] =
     useState(false);
+  const [annotationsTypeFilter, setAnnotationsTypeFilter] = useState<string>("all");
+  const [annotationsSortBy, setAnnotationsSortBy] = useState<
+    "position" | "newest" | "oldest" | "color"
+  >("position");
   const [showBookmarkedPagesOnly, setShowBookmarkedPagesOnly] = useState(false);
   const [selectedOutlineId, setSelectedOutlineId] = useState<string | null>(
     null,
@@ -382,8 +397,15 @@ export function ReaderSidebar({
             />
           ) : (
             <>
-              <h2 className="text-12 font-semibold text-foreground truncate">
-                {panelTitle}
+              <h2 className="text-12 font-semibold text-foreground truncate flex items-center gap-1.5">
+                <span>{panelTitle}</span>
+                {activeTab === "annotations" &&
+                  annotations &&
+                  annotations.length > 0 && (
+                    <span className="text-10 font-normal text-muted-foreground tabular-nums">
+                      ({annotations.length})
+                    </span>
+                  )}
               </h2>
 
               <div className="flex items-center gap-0.5 shrink-0">
@@ -446,60 +468,170 @@ export function ReaderSidebar({
                       />
                     </HeaderIconButton>
 
-                    {onImportExternalAnnotations && (
-                      <HeaderIconButton
-                        onClick={() => void onImportExternalAnnotations()}
-                        disabled={isImportingAnnotations}
-                        label="Import embedded annotations from PDF"
+                    {/* Filter by Type */}
+                    <DropdownMenu>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              type="button"
+                              className={cn(
+                                "size-7 rounded-md flex items-center justify-center text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary",
+                                annotationsTypeFilter !== "all" &&
+                                  "bg-muted font-medium text-primary",
+                              )}
+                              aria-label="Filter by type"
+                            >
+                              <Filter className="size-3.5 shrink-0" strokeWidth={1.5} />
+                            </button>
+                          </DropdownMenuTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" sideOffset={6} className="text-11">
+                          Filter by type
+                        </TooltipContent>
+                      </Tooltip>
+                      <DropdownMenuContent
+                        align="end"
+                        className="w-36 text-xs p-1 bg-popover border border-border shadow-raised-200 rounded-lg z-50 font-sans"
                       >
-                        {isImportingAnnotations ? (
-                          <Loader2
-                            className="size-3.5 animate-spin text-foreground shrink-0"
-                            strokeWidth={1.5}
-                          />
-                        ) : (
-                          <Download
-                            className="size-3.5 text-foreground shrink-0"
-                            strokeWidth={1.5}
-                          />
-                        )}
-                      </HeaderIconButton>
-                    )}
+                        {(
+                          [
+                            ["all", "All Types"],
+                            ["highlight", "Highlights"],
+                            ["underline", "Underlines"],
+                            ["note", "Sticky Notes"],
+                            ["rect", "Area / Image"],
+                            ["ink", "Freehand Ink"],
+                            ["text", "Text Notes"],
+                          ] as const
+                        ).map(([val, label]) => (
+                          <DropdownMenuItem
+                            key={val}
+                            onClick={() => setAnnotationsTypeFilter(val)}
+                            className="cursor-pointer text-11 flex items-center justify-between text-foreground"
+                          >
+                            <span>{label}</span>
+                            {annotationsTypeFilter === val && (
+                              <Check
+                                className="size-3 text-primary shrink-0"
+                                strokeWidth={1.5}
+                              />
+                            )}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
 
-                    {paper && (
-                      <HeaderIconButton
-                        onClick={() => {
-                          if (
-                            (selectedIds?.size ?? 0) > 0 &&
-                            onBatchAddToNote
-                          ) {
-                            onBatchAddToNote(Array.from(selectedIds!));
-                          } else if (onExtractNotes) {
-                            void onExtractNotes(paper.id);
-                          }
-                        }}
-                        disabled={
-                          isExtractingNotes || (annotations?.length ?? 0) === 0
-                        }
-                        label={
-                          (selectedIds?.size ?? 0) > 0
-                            ? `Add ${selectedIds!.size} selected highlights to Note`
-                            : "Add all highlights to Notes"
-                        }
+                    {/* Sort Order */}
+                    <DropdownMenu>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              type="button"
+                              className="size-7 rounded-md flex items-center justify-center text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                              aria-label="Sort annotations"
+                            >
+                              <ArrowUpDown className="size-3.5 shrink-0" strokeWidth={1.5} />
+                            </button>
+                          </DropdownMenuTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" sideOffset={6} className="text-11">
+                          Sort annotations
+                        </TooltipContent>
+                      </Tooltip>
+                      <DropdownMenuContent
+                        align="end"
+                        className="w-36 text-xs p-1 bg-popover border border-border shadow-raised-200 rounded-lg z-50 font-sans"
                       >
-                        {isExtractingNotes ? (
-                          <Loader2
-                            className="size-3.5 animate-spin text-foreground shrink-0"
+                        {(
+                          [
+                            ["position", "Document Order"],
+                            ["newest", "Newest First"],
+                            ["oldest", "Oldest First"],
+                            ["color", "By Color"],
+                          ] as const
+                        ).map(([val, label]) => (
+                          <DropdownMenuItem
+                            key={val}
+                            onClick={() => setAnnotationsSortBy(val)}
+                            className="cursor-pointer text-11 flex items-center justify-between text-foreground"
+                          >
+                            <span>{label}</span>
+                            {annotationsSortBy === val && (
+                              <Check
+                                className="size-3 text-primary shrink-0"
+                                strokeWidth={1.5}
+                              />
+                            )}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    {/* More Options Dropdown (Zotero-style overflow menu for batch utilities) */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          className="size-7 rounded-md flex items-center justify-center text-foreground hover:bg-muted cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                          aria-label="More options"
+                        >
+                          <MoreHorizontal
+                            className="size-3.5 shrink-0"
                             strokeWidth={1.5}
                           />
-                        ) : (
-                          <FileText
-                            className="size-3.5 text-foreground shrink-0"
-                            strokeWidth={1.5}
-                          />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        align="end"
+                        className="w-48 text-xs p-1 bg-popover border border-border shadow-raised-200 rounded-lg z-50 font-sans"
+                      >
+                        {paper && onExtractNotes && (
+                          <DropdownMenuItem
+                            onClick={() => void onExtractNotes(paper.id)}
+                            disabled={
+                              isExtractingNotes ||
+                              (annotations?.length ?? 0) === 0
+                            }
+                            className="cursor-pointer text-11 flex items-center gap-2 text-foreground"
+                          >
+                            {isExtractingNotes ? (
+                              <Loader2
+                                className="size-3.5 animate-spin text-foreground shrink-0"
+                                strokeWidth={1.5}
+                              />
+                            ) : (
+                              <FileText
+                                className="size-3.5 shrink-0"
+                                strokeWidth={1.5}
+                              />
+                            )}
+                            <span>Add All to Note</span>
+                          </DropdownMenuItem>
                         )}
-                      </HeaderIconButton>
-                    )}
+                        {onImportExternalAnnotations && (
+                          <DropdownMenuItem
+                            onClick={() => void onImportExternalAnnotations()}
+                            disabled={isImportingAnnotations}
+                            className="cursor-pointer text-11 flex items-center gap-2 text-foreground"
+                          >
+                            {isImportingAnnotations ? (
+                              <Loader2
+                                className="size-3.5 animate-spin text-foreground shrink-0"
+                                strokeWidth={1.5}
+                              />
+                            ) : (
+                              <Download
+                                className="size-3.5 shrink-0"
+                                strokeWidth={1.5}
+                              />
+                            )}
+                            <span>Import from PDF</span>
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </>
                 )}
               </div>
@@ -540,6 +672,10 @@ export function ReaderSidebar({
                 annotations={annotations}
                 searchQuery={annotationsSearchQuery}
                 onSearchQueryChange={setAnnotationsSearchQuery}
+                typeFilter={annotationsTypeFilter}
+                onTypeFilterChange={setAnnotationsTypeFilter}
+                sortBy={annotationsSortBy}
+                onSortByChange={setAnnotationsSortBy}
                 hideSearchBar={true}
                 isLoading={isLoadingAnnotations}
                 isError={isAnnotationsError}

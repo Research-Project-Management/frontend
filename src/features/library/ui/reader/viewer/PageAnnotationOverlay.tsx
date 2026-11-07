@@ -1,8 +1,13 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { StickyNote, Trash2, X, Loader2, Sparkles } from 'lucide-react';
+import { StickyNote, Trash2, X, Loader2, Sparkles, MessageSquare, FileText } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/shared/components/ui/tooltip';
 import type {
   ReaderAnnotation,
   AnnotationRect,
@@ -50,6 +55,11 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
     annotationId: string;
     rectIdx: number;
     rect: AnnotationRect;
+  } | null>(null);
+  const [hoveredCommentAnn, setHoveredCommentAnn] = useState<{
+    comment: string;
+    x: number;
+    y: number;
   } | null>(null);
 
   useEffect(() => {
@@ -208,7 +218,7 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
                 id={rIdx === 0 ? `annotation-${ann.id}` : undefined}
                 data-annotation-id={ann.id}
                 className={cn(
-                  'absolute pointer-events-auto z-20 transition-all',
+                  'absolute pointer-events-auto z-20',
                   isEraser ? 'cursor-crosshair hover:opacity-50' : 'cursor-pointer',
                   isPulsing && 'ring-2 ring-primary ring-offset-1',
                 )}
@@ -286,9 +296,8 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
               }}
             >
               <div
-                className="size-5 rounded flex items-center justify-center border border-black/15 transition-all"
+                className="size-5 rounded flex items-center justify-center border border-black/15"
                 style={{ backgroundColor: colorHex }}
-                title={ann.comment || 'Sticky Note'}
               >
                 <StickyNote className="size-3 text-white fill-white/20" strokeWidth={2} />
               </div>
@@ -305,7 +314,7 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
               id={`annotation-${ann.id}`}
               data-annotation-id={ann.id}
               className={cn(
-                'absolute pointer-events-auto text-11 font-sans font-medium px-2 py-1 rounded bg-background/95 border backdrop-blur-xs flex items-start gap-1.5 z-20 transition-all max-w-[260px]',
+                'absolute pointer-events-auto text-11 font-sans font-medium px-2 py-1 rounded bg-background/95 border backdrop-blur-xs flex items-start gap-1.5 z-20 max-w-[260px]',
                 isEraser ? 'cursor-crosshair hover:opacity-50' : 'cursor-pointer',
                 isPulsing && 'ring-2 ring-primary ring-offset-1',
               )}
@@ -335,102 +344,231 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
 
         // 3. Highlight / Underline / Strike / Rect (Area) Overlays
         if (rects.length > 0) {
-          return rects.map((rawRect, rIdx) => {
+          const isHighlight = !isRect && !isUnderline && !isStrike;
+
+          const displayRects = rects.map((rawRect, rIdx) => {
             const r =
               draggingRectState &&
               draggingRectState.annotationId === ann.id &&
               draggingRectState.rectIdx === rIdx
                 ? draggingRectState.rect
                 : rawRect;
+            return { ...r };
+          });
+
+          // Normalize vertical overlap between adjacent line rects to avoid dark seams
+          if (isHighlight && displayRects.length > 1) {
+            displayRects.sort((a, b) => a.y1 - b.y1 || a.x1 - b.x1);
+            for (let i = 0; i < displayRects.length - 1; i++) {
+              const curr = displayRects[i];
+              const next = displayRects[i + 1];
+              if (next.y1 < curr.y2 && next.y2 > curr.y2) {
+                const splitY = (curr.y2 + next.y1) / 2;
+                curr.y2 = splitY;
+                curr.height = Math.max(0.001, curr.y2 - curr.y1);
+                next.y1 = splitY;
+                next.height = Math.max(0.001, next.y2 - next.y1);
+              }
+            }
+          }
+
+          if (isHighlight) {
             return (
               <div
-                key={`${ann.id}-${rIdx}`}
-                id={rIdx === 0 ? `annotation-${ann.id}` : undefined}
+                key={ann.id}
+                id={`annotation-${ann.id}`}
                 data-annotation-id={ann.id}
-                className={cn(
-                  'absolute pointer-events-auto transition-all group/rect',
-                  isEraser
-                    ? 'cursor-crosshair hover:opacity-40'
-                    : isRect && onUpdateAnnotation
-                      ? 'cursor-move'
-                      : 'cursor-pointer',
-                  isRect && 'border-2 rounded-sm',
-                  isUnderline && 'border-b-2 rounded-none',
-                  isStrike &&
-                    "rounded-none after:content-[''] after:absolute after:left-0 after:right-0 after:top-1/2 after:-translate-y-1/2 after:border-t-2 after:border-current",
-                  !isRect && !isUnderline && !isStrike && 'rounded-[2px] hover:opacity-75',
-                  isPulsing && 'ring-2 ring-primary ring-offset-1 z-30',
-                )}
-                style={{
-                  left: `${r.x1 * 100}%`,
-                  top: `${r.y1 * 100}%`,
-                  width: `${(r.width ?? (r.x2 ?? r.x1) - r.x1) * 100}%`,
-                  height: `${(r.height ?? (r.y2 ?? r.y1) - r.y1) * 100}%`,
-                  borderColor: isRect || isUnderline ? colorHex : undefined,
-                  color: isStrike ? colorHex : undefined,
-                  backgroundColor:
-                    isUnderline || isStrike
-                      ? 'transparent'
-                      : isRect
-                        ? `${colorHex}25`
-                        : colorHex,
-                  opacity: isRect ? 0.95 : isUnderline || isStrike ? 1 : 0.38,
-                  mixBlendMode: isRect || isUnderline || isStrike ? 'normal' : 'multiply',
-                }}
-                onMouseDown={(e) => {
-                  if (isRect && !isEraser && onUpdateAnnotation) {
-                    startRectDrag(e, ann, rIdx, r, 'move');
-                  }
-                }}
-                onClick={(e) => handleAnnotationInteraction(e, ann)}
-                onMouseEnter={(e) => {
-                  if (isEraser && e.buttons === 1 && onDeleteAnnotation) {
-                    onDeleteAnnotation(ann);
-                  }
-                }}
+                className={cn('absolute inset-0 pointer-events-none', isPulsing && 'z-30')}
               >
-                {isRect && (
-                  <>
-                    <span
-                      className="absolute -top-3.5 left-0 px-1 py-0.5 text-[9px] font-mono rounded text-white font-semibold pointer-events-none"
-                      style={{ backgroundColor: colorHex }}
-                    >
-                      Area
-                    </span>
-                    {!isEraser && onUpdateAnnotation && (
-                      <>
-                        <span
-                          role="presentation"
-                          onMouseDown={(e) => startRectDrag(e, ann, rIdx, r, 'nw')}
-                          className="absolute -top-1 -left-1 size-2.5 rounded-full bg-background border border-foreground opacity-0 group-hover/rect:opacity-100 cursor-nwse-resize z-30"
-                        />
-                        <span
-                          role="presentation"
-                          onMouseDown={(e) => startRectDrag(e, ann, rIdx, r, 'ne')}
-                          className="absolute -top-1 -right-1 size-2.5 rounded-full bg-background border border-foreground opacity-0 group-hover/rect:opacity-100 cursor-nesw-resize z-30"
-                        />
-                        <span
-                          role="presentation"
-                          onMouseDown={(e) => startRectDrag(e, ann, rIdx, r, 'sw')}
-                          className="absolute -bottom-1 -left-1 size-2.5 rounded-full bg-background border border-foreground opacity-0 group-hover/rect:opacity-100 cursor-nesw-resize z-30"
-                        />
-                        <span
-                          role="presentation"
-                          onMouseDown={(e) => startRectDrag(e, ann, rIdx, r, 'se')}
-                          className="absolute -bottom-1 -right-1 size-2.5 rounded-full bg-background border border-foreground opacity-0 group-hover/rect:opacity-100 cursor-nwse-resize z-30"
-                        />
-                      </>
+                {/* Unified composite highlight fill: zero overlapping dark stripes */}
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{ mixBlendMode: 'multiply', opacity: 0.35 }}
+                >
+                  {displayRects.map((r, rIdx) => (
+                    <div
+                      key={`bg-${ann.id}-${rIdx}`}
+                      className="absolute rounded-[1px]"
+                      style={{
+                        left: `${r.x1 * 100}%`,
+                        top: `${r.y1 * 100}%`,
+                        width: `${(r.width ?? (r.x2 ?? r.x1) - r.x1) * 100}%`,
+                        height: `${(r.height ?? (r.y2 ?? r.y1) - r.y1) * 100}%`,
+                        backgroundColor: colorHex,
+                      }}
+                    />
+                  ))}
+                </div>
+
+                {/* Interactive Click & Hover Layer */}
+                {displayRects.map((r, rIdx) => (
+                  <div
+                    key={`hit-${ann.id}-${rIdx}`}
+                    className={cn(
+                      'absolute pointer-events-auto group/rect',
+                      isEraser ? 'cursor-crosshair hover:bg-destructive/20' : 'cursor-pointer hover:bg-black/5',
+                      isPulsing && 'ring-2 ring-primary ring-offset-1 z-30',
                     )}
-                  </>
-                )}
+                    style={{
+                      left: `${r.x1 * 100}%`,
+                      top: `${r.y1 * 100}%`,
+                      width: `${(r.width ?? (r.x2 ?? r.x1) - r.x1) * 100}%`,
+                      height: `${(r.height ?? (r.y2 ?? r.y1) - r.y1) * 100}%`,
+                    }}
+                    onClick={(e) => handleAnnotationInteraction(e, ann)}
+                    onMouseEnter={(e) => {
+                      if (isEraser && e.buttons === 1 && onDeleteAnnotation) {
+                        onDeleteAnnotation(ann);
+                        return;
+                      }
+                      if (ann.comment?.trim()) {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const containerRect = overlayRef.current?.getBoundingClientRect();
+                        if (containerRect) {
+                          setHoveredCommentAnn({
+                            comment: ann.comment.trim(),
+                            x: rect.left - containerRect.left + rect.width / 2,
+                            y: rect.top - containerRect.top - 6,
+                          });
+                        }
+                      }
+                    }}
+                    onMouseLeave={() => setHoveredCommentAnn(null)}
+                  >
+                    {ann.comment?.trim() && rIdx === 0 && (
+                      <span
+                        className="absolute -top-1.5 -right-1.5 size-3.5 rounded-full bg-primary text-primary-foreground flex items-center justify-center ring-1 ring-background pointer-events-none z-30 opacity-90 group-hover/rect:opacity-100"
+                      >
+                        <MessageSquare className="size-2 text-primary-foreground fill-current" />
+                      </span>
+                    )}
+                  </div>
+                ))}
               </div>
             );
-          });
+          }
+
+          return displayRects.map((r, rIdx) => (
+            <div
+              key={`${ann.id}-${rIdx}`}
+              id={rIdx === 0 ? `annotation-${ann.id}` : undefined}
+              data-annotation-id={ann.id}
+              className={cn(
+                'absolute pointer-events-auto group/rect',
+                isEraser
+                  ? 'cursor-crosshair hover:opacity-40'
+                  : isRect && onUpdateAnnotation
+                    ? 'cursor-move'
+                    : 'cursor-pointer',
+                isRect && 'border-2 rounded-sm',
+                isUnderline && 'border-b-2 rounded-none',
+                isStrike &&
+                  "rounded-none after:content-[''] after:absolute after:left-0 after:right-0 after:top-1/2 after:-translate-y-1/2 after:border-t-2 after:border-current",
+                isPulsing && 'ring-2 ring-primary ring-offset-1 z-30',
+              )}
+              style={{
+                left: `${r.x1 * 100}%`,
+                top: `${r.y1 * 100}%`,
+                width: `${(r.width ?? (r.x2 ?? r.x1) - r.x1) * 100}%`,
+                height: `${(r.height ?? (r.y2 ?? r.y1) - r.y1) * 100}%`,
+                borderColor: isRect || isUnderline ? colorHex : undefined,
+                color: isStrike ? colorHex : undefined,
+                backgroundColor:
+                  isUnderline || isStrike
+                    ? 'transparent'
+                    : isRect
+                      ? `${colorHex}25`
+                      : colorHex,
+                opacity: isRect ? 0.95 : 1,
+              }}
+              onMouseDown={(e) => {
+                if (isRect && !isEraser && onUpdateAnnotation) {
+                  startRectDrag(e, ann, rIdx, r, 'move');
+                }
+              }}
+              onClick={(e) => handleAnnotationInteraction(e, ann)}
+              onMouseEnter={(e) => {
+                if (isEraser && e.buttons === 1 && onDeleteAnnotation) {
+                  onDeleteAnnotation(ann);
+                  return;
+                }
+                if (ann.comment?.trim()) {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const containerRect = overlayRef.current?.getBoundingClientRect();
+                  if (containerRect) {
+                    setHoveredCommentAnn({
+                      comment: ann.comment.trim(),
+                      x: rect.left - containerRect.left + rect.width / 2,
+                      y: rect.top - containerRect.top - 6,
+                    });
+                  }
+                }
+              }}
+              onMouseLeave={() => setHoveredCommentAnn(null)}
+            >
+              {ann.comment?.trim() && rIdx === 0 && !isRect && (
+                <span
+                  className="absolute -top-1.5 -right-1.5 size-3.5 rounded-full bg-primary text-primary-foreground flex items-center justify-center ring-1 ring-background pointer-events-none z-30 opacity-90 group-hover/rect:opacity-100"
+                >
+                  <MessageSquare className="size-2 text-primary-foreground fill-current" />
+                </span>
+              )}
+              {isRect && (
+                <>
+                  <span
+                    className="absolute -top-3.5 left-0 px-1 py-0.5 text-[9px] font-mono rounded text-white font-semibold pointer-events-none"
+                    style={{ backgroundColor: colorHex }}
+                  >
+                    Area
+                  </span>
+                  {!isEraser && onUpdateAnnotation && (
+                    <>
+                      <span
+                        role="presentation"
+                        onMouseDown={(e) => startRectDrag(e, ann, rIdx, r, 'nw')}
+                        className="absolute -top-1 -left-1 size-2.5 rounded-full bg-background border border-foreground opacity-0 group-hover/rect:opacity-100 cursor-nwse-resize z-30"
+                      />
+                      <span
+                        role="presentation"
+                        onMouseDown={(e) => startRectDrag(e, ann, rIdx, r, 'ne')}
+                        className="absolute -top-1 -right-1 size-2.5 rounded-full bg-background border border-foreground opacity-0 group-hover/rect:opacity-100 cursor-nesw-resize z-30"
+                      />
+                      <span
+                        role="presentation"
+                        onMouseDown={(e) => startRectDrag(e, ann, rIdx, r, 'sw')}
+                        className="absolute -bottom-1 -left-1 size-2.5 rounded-full bg-background border border-foreground opacity-0 group-hover/rect:opacity-100 cursor-nesw-resize z-30"
+                      />
+                      <span
+                        role="presentation"
+                        onMouseDown={(e) => startRectDrag(e, ann, rIdx, r, 'se')}
+                        className="absolute -bottom-1 -right-1 size-2.5 rounded-full bg-background border border-foreground opacity-0 group-hover/rect:opacity-100 cursor-nwse-resize z-30"
+                      />
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          ));
         }
 
         // Annotations without coordinates are listed in the sidebar, never rendered at arbitrary page coordinates
         return null;
       })}
+
+      {hoveredCommentAnn && (
+        <div
+          className="absolute z-50 -translate-x-1/2 -translate-y-full pointer-events-none max-w-xs bg-popover/95 text-popover-foreground text-11 px-2.5 py-1.5 rounded-md shadow-raised-200 border border-border backdrop-blur-xs flex items-start gap-1.5 animate-in fade-in zoom-in-95 duration-75"
+          style={{
+            left: `${hoveredCommentAnn.x}px`,
+            top: `${hoveredCommentAnn.y}px`,
+          }}
+        >
+          <MessageSquare className="size-3 text-primary shrink-0 mt-0.5" />
+          <span className="line-clamp-4 select-none font-sans leading-snug font-normal">
+            {hoveredCommentAnn.comment}
+          </span>
+        </div>
+      )}
     </div>
   );
 });
@@ -594,60 +732,84 @@ export function AnnotationQuickEditCard({
         </div>
         <div className="flex items-center gap-0.5">
           {onAskAi && (tooltip.quote || tooltipComment || tooltip.comment) && (
-            <button
-              type="button"
-              onClick={() => {
-                onAskAi(tooltip.quote || tooltipComment || tooltip.comment || '', pageNumber);
-                onClose();
-              }}
-              className="size-6 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              title="Ask AI"
-              aria-label="Ask AI"
-            >
-              <img
-                src="/Chat.svg"
-                alt="AI Assistant"
-                className="size-3.5 rounded-full object-cover shrink-0"
-              />
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onAskAi(tooltip.quote || tooltipComment || tooltip.comment || '', pageNumber);
+                    onClose();
+                  }}
+                  className="size-6 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  aria-label="Ask AI"
+                >
+                  <img
+                    src="/Chat.svg"
+                    alt="AI Assistant"
+                    className="size-3.5 rounded-full object-cover shrink-0"
+                  />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={6} className="text-11">
+                Ask AI
+              </TooltipContent>
+            </Tooltip>
           )}
           {onAddToNote && (
-            <button
-              type="button"
-              onClick={() => {
-                onAddToNote(tooltip.quote || tooltipComment || tooltip.comment || '', pageNumber, tooltip.ann.id);
-                onClose();
-              }}
-              className="size-6 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              title="Add to Note"
-              aria-label="Add to Note"
-            >
-              <StickyNote className="size-3.5 shrink-0" strokeWidth={1.5} />
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onAddToNote(tooltip.quote || tooltipComment || tooltip.comment || '', pageNumber, tooltip.ann.id);
+                    onClose();
+                  }}
+                  className="size-6 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  aria-label="Add to Note"
+                >
+                  <FileText className="size-3.5 shrink-0" strokeWidth={1.5} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={6} className="text-11">
+                Add to Note
+              </TooltipContent>
+            </Tooltip>
           )}
           {onDeleteAnnotation && (
-            <button
-              type="button"
-              onClick={() => {
-                onDeleteAnnotation(tooltip.ann);
-                onClose();
-              }}
-              className="size-6 rounded-md text-foreground hover:text-destructive hover:bg-destructive/10 flex items-center justify-center cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              title="Delete annotation"
-              aria-label="Delete annotation"
-            >
-              <Trash2 className="size-3.5 shrink-0" strokeWidth={1.5} />
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDeleteAnnotation(tooltip.ann);
+                    onClose();
+                  }}
+                  className="size-6 rounded-md text-foreground hover:text-destructive hover:bg-destructive/10 flex items-center justify-center cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  aria-label="Delete annotation"
+                >
+                  <Trash2 className="size-3.5 shrink-0" strokeWidth={1.5} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={6} className="text-11">
+                Delete annotation
+              </TooltipContent>
+            </Tooltip>
           )}
-          <button
-            type="button"
-            onClick={onClose}
-            className="size-6 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            title="Close"
-            aria-label="Close"
-          >
-            <X className="size-3.5 shrink-0" strokeWidth={1.5} />
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={onClose}
+                className="size-6 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                aria-label="Close"
+              >
+                <X className="size-3.5 shrink-0" strokeWidth={1.5} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={6} className="text-11">
+              Close
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
@@ -658,18 +820,23 @@ export function AnnotationQuickEditCard({
           {ANNOTATION_PALETTE_COLORS.map((c) => {
             const isSelected = (tooltip.color || '#ffd400').toLowerCase() === c.hex.toLowerCase();
             return (
-              <button
-                key={c.id}
-                type="button"
-                aria-label={`Change to ${c.label}`}
-                title={c.label}
-                onClick={() => handleCardColorChange(c.hex)}
-                className={cn(
-                  'size-3.5 rounded-full border border-border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-2.5 md:before:hidden',
-                  isSelected && 'ring-2 ring-primary ring-offset-1',
-                )}
-                style={{ backgroundColor: c.hex }}
-              />
+              <Tooltip key={c.id}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={`Change to ${c.label}`}
+                    onClick={() => handleCardColorChange(c.hex)}
+                    className={cn(
+                      'size-3.5 rounded-full border border-border transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring relative before:absolute before:-inset-2.5 md:before:hidden',
+                      isSelected && 'ring-2 ring-primary ring-offset-1',
+                    )}
+                    style={{ backgroundColor: c.hex }}
+                  />
+                </TooltipTrigger>
+                <TooltipContent side="top" sideOffset={6} className="text-11">
+                  {c.label}
+                </TooltipContent>
+              </Tooltip>
             );
           })}
         </div>

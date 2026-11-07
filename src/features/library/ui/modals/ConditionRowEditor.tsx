@@ -19,6 +19,11 @@ import {
   PopoverContent,
 } from "@/shared/components/ui/popover";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/shared/components/ui/tooltip";
+import {
   Select,
   SelectTrigger,
   SelectValue,
@@ -560,29 +565,41 @@ export function ConditionRowEditor({
         )}
 
         <div className="flex items-center gap-1.5 shrink-0">
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            onClick={() => onAddAfter(idx)}
-            title="Add condition below"
-            aria-label={`Add condition after condition ${idx + 1}`}
-            className="size-8 text-foreground hover:bg-muted border-border hover:border-border-hover rounded-md cursor-pointer shrink-0 shadow-none"
-          >
-            <Plus className="size-3.5 shrink-0" strokeWidth={1.5} />
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            onClick={() => onRemove(cond.id)}
-            disabled={!canRemove}
-            title="Remove condition"
-            aria-label={`Remove condition ${idx + 1}`}
-            className="size-8 text-foreground hover:bg-muted border-border hover:border-border-hover rounded-md cursor-pointer shrink-0 shadow-none"
-          >
-            <Minus className="size-3.5 shrink-0" strokeWidth={1.5} />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => onAddAfter(idx)}
+                aria-label={`Add condition after condition ${idx + 1}`}
+                className="size-8 text-foreground hover:bg-muted border-border hover:border-border-hover rounded-md cursor-pointer shrink-0 shadow-none"
+              >
+                <Plus className="size-3.5 shrink-0" strokeWidth={1.5} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={6} className="text-11">
+              Add condition below
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => onRemove(cond.id)}
+                disabled={!canRemove}
+                aria-label={`Remove condition ${idx + 1}`}
+                className="size-8 text-foreground hover:bg-muted border-border hover:border-border-hover rounded-md cursor-pointer shrink-0 shadow-none"
+              >
+                <Minus className="size-3.5 shrink-0" strokeWidth={1.5} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={6} className="text-11">
+              Remove condition
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
     </div>

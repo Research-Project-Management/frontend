@@ -9,11 +9,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/shared/components/ui/popover";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/shared/components/ui/tooltip";
 import { FilterFunnelIcon } from "@/shared/components/icons";
 import type { Item, TagWithCount } from "@/features/library/types/core.types";
 import { useLibraryFacetCounts } from "@/features/library/core/coordinator/facet-filter.coordinator";
@@ -372,27 +367,20 @@ export function LibraryFilterPopover({
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <PopoverTrigger asChild>
-            <Button
-              type="button"
-              size="icon"
-              className={cn(
-                "size-8 rounded-md border border-border bg-background text-foreground hover:bg-muted cursor-pointer transition-colors shrink-0 select-none inline-flex items-center justify-center",
-                (isOpen || facets.activeCount > 0) && "bg-muted",
-                className,
-              )}
-              aria-label="Filter"
-            >
-              <FilterFunnelIcon className="size-4 shrink-0 text-foreground" />
-            </Button>
-          </PopoverTrigger>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" sideOffset={6}>
-          Filter
-        </TooltipContent>
-      </Tooltip>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          size="icon"
+          className={cn(
+            "size-8 rounded-md border border-border bg-background text-foreground hover:bg-muted cursor-pointer transition-colors shrink-0 select-none inline-flex items-center justify-center",
+            (isOpen || facets.activeCount > 0) && "bg-muted",
+            className,
+          )}
+          aria-label="Filter references"
+        >
+          <FilterFunnelIcon className="size-4 shrink-0 text-foreground" />
+        </Button>
+      </PopoverTrigger>
 
       <PopoverContent
         align="end"

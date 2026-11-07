@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
+import { cn } from '@/shared/lib/utils';
 import {
   FolderPlus,
   FolderMinus,
@@ -21,11 +22,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from '@/shared/components/ui/dropdown-menu';
-import {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-} from '@/shared/components/ui/tooltip';
 import { executeDownloadFormatFile } from '@/features/library/core/coordinator/citation-export.coordinator';
 import { getCollectionAncestorPath } from '@/features/library/domain/collection-tree.domain';
 import type {
@@ -47,6 +43,7 @@ interface BatchMoveCollectionPopoverProps {
 }
 
 export function BatchMoveCollectionPopover({
+  isUnfiledView = false,
   isAllProcessingSelected,
   targetableCollections,
   allCollections,
@@ -72,24 +69,17 @@ export function BatchMoveCollectionPopover({
 
   return (
     <DropdownMenu>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={isAllProcessingSelected}
-              className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none relative before:absolute before:-inset-1 md:before:hidden"
-            >
-              <FolderPlus className="size-3.5 text-foreground shrink-0" />
-              <span>Add to collection</span>
-            </Button>
-          </DropdownMenuTrigger>
-        </TooltipTrigger>
-        <TooltipContent side="top" sideOffset={8}>
-          Add selected items to collection
-        </TooltipContent>
-      </Tooltip>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={isAllProcessingSelected}
+          className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none relative before:absolute before:-inset-1 md:before:hidden"
+        >
+          <Folder className="size-3.5 text-foreground shrink-0" />
+          <span>{isUnfiledView ? 'Assign to' : 'Move to'}</span>
+        </Button>
+      </DropdownMenuTrigger>
       <DropdownMenuContent
         align="center"
         side="top"
@@ -150,24 +140,17 @@ export function BatchCitationExportPopovers({
     <>
       {/* Copy Multi Citation Dropdown */}
       <DropdownMenu>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
-                aria-label="Copy citation"
-              >
-                <Quote className="size-3.5 shrink-0 text-foreground" />
-                <span>Copy citation</span>
-              </Button>
-            </DropdownMenuTrigger>
-          </TooltipTrigger>
-          <TooltipContent side="top" sideOffset={8}>
-            Copy citation
-          </TooltipContent>
-        </Tooltip>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
+            aria-label="Copy citation"
+          >
+            <Quote className="size-3.5 shrink-0 text-foreground" />
+            <span>Copy citation</span>
+          </Button>
+        </DropdownMenuTrigger>
         <DropdownMenuContent
           align="center"
           side="top"
@@ -204,23 +187,16 @@ export function BatchCitationExportPopovers({
 
       {/* Export Dropdown (.bib, .ris, .json, .csv, .md) */}
       <DropdownMenu>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
-              >
-                <Download className="size-3.5 shrink-0 text-foreground" />
-                <span>Export</span>
-              </Button>
-            </DropdownMenuTrigger>
-          </TooltipTrigger>
-          <TooltipContent side="top" sideOffset={8}>
-            Export selected references
-          </TooltipContent>
-        </Tooltip>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
+          >
+            <Download className="size-3.5 shrink-0 text-foreground" />
+            <span>Export</span>
+          </Button>
+        </DropdownMenuTrigger>
         <DropdownMenuContent
           align="center"
           side="top"
@@ -318,10 +294,12 @@ export function BatchSmartViewActions({
   canEdit,
   selectedCount,
   isAllProcessingSelected,
+  isCheckingRetraction,
   isUnflaggingRetraction,
   onBatchMerge,
   onBatchUnstar,
   onBatchRemoveFromMyPublications,
+  onBatchRecheckRetraction,
   onBatchClearRetractionFlags,
 }: BatchSmartViewActionsProps) {
   if (effectiveIsTrash || !canEdit) return null;
@@ -330,86 +308,72 @@ export function BatchSmartViewActions({
     <>
       {/* Merge Duplicates Button — Strictly ONLY on Duplicate Items page */}
       {isDuplicatesView && onBatchMerge && selectedCount >= 2 && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={isAllProcessingSelected}
-              onClick={onBatchMerge}
-              className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
-            >
-              <GitMerge className="size-3.5 shrink-0 text-foreground" />
-              <span>Merge {selectedCount} items</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="top" sideOffset={8}>
-            Merge duplicate items
-          </TooltipContent>
-        </Tooltip>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={isAllProcessingSelected}
+          onClick={onBatchMerge}
+          className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
+        >
+          <GitMerge className="size-3.5 shrink-0 text-foreground" />
+          <span>Merge {selectedCount} items</span>
+        </Button>
       )}
 
       {/* Starred Items Page Action: Remove from Starred */}
       {isStarredView && onBatchUnstar && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={isAllProcessingSelected}
-              onClick={() => void onBatchUnstar()}
-              className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
-            >
-              <Star className="size-3.5 shrink-0 text-foreground" />
-              <span>Unstar</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="top" sideOffset={8}>
-            Remove selected items from Starred
-          </TooltipContent>
-        </Tooltip>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={isAllProcessingSelected}
+          onClick={() => void onBatchUnstar()}
+          className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
+        >
+          <Star className="size-3.5 shrink-0 text-foreground" />
+          <span>Unstar</span>
+        </Button>
       )}
 
       {/* My Publications Page Action: Remove from My Publications */}
       {isMyPublicationsView && onBatchRemoveFromMyPublications && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={isAllProcessingSelected}
-              onClick={() => void onBatchRemoveFromMyPublications()}
-              className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
-            >
-              <Award className="size-3.5 shrink-0 text-foreground" />
-              <span>Remove from Publications</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="top" sideOffset={8}>
-            Remove selected items from My Publications
-          </TooltipContent>
-        </Tooltip>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={isAllProcessingSelected}
+          onClick={() => void onBatchRemoveFromMyPublications()}
+          className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
+        >
+          <Award className="size-3.5 shrink-0 text-foreground" />
+          <span>Remove from Publications</span>
+        </Button>
+      )}
+
+      {/* Retracted Items Page Action: Re-check Retraction Status */}
+      {isRetractedView && onBatchRecheckRetraction && (
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={isAllProcessingSelected || isCheckingRetraction}
+          onClick={() => void onBatchRecheckRetraction()}
+          className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
+        >
+          <RotateCcw className={cn("size-3.5 shrink-0 text-foreground", isCheckingRetraction && "animate-spin")} />
+          <span>Re-check retraction</span>
+        </Button>
       )}
 
       {/* Retracted Items Page Action: Clear Flag */}
       {isRetractedView && onBatchClearRetractionFlags && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={isAllProcessingSelected || isUnflaggingRetraction}
-              onClick={() => void onBatchClearRetractionFlags()}
-              className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
-            >
-              <ShieldAlert className="size-3.5 shrink-0 text-foreground" />
-              <span>Clear flag</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="top" sideOffset={8}>
-            Clear retraction flag on selected items
-          </TooltipContent>
-        </Tooltip>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={isAllProcessingSelected || isUnflaggingRetraction}
+          onClick={() => void onBatchClearRetractionFlags()}
+          className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
+        >
+          <ShieldAlert className="size-3.5 shrink-0 text-foreground" />
+          <span>Clear flag</span>
+        </Button>
       )}
     </>
   );
@@ -438,42 +402,28 @@ export function BatchLifecycleActions({
     return (
       <>
         {onBatchRestore && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={isAllProcessingSelected}
-                onClick={onBatchRestore}
-                className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
-              >
-                <RotateCcw className="size-3.5 shrink-0 text-foreground" />
-                <span>Restore</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="top" sideOffset={8}>
-              Restore selected items
-            </TooltipContent>
-          </Tooltip>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={isAllProcessingSelected}
+            onClick={onBatchRestore}
+            className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
+          >
+            <RotateCcw className="size-3.5 shrink-0 text-foreground" />
+            <span>Restore</span>
+          </Button>
         )}
         {onBatchDelete && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={isAllProcessingSelected}
-                onClick={onBatchDelete}
-                className="h-8 px-2.5 gap-1.5 text-12 font-medium text-destructive hover:bg-destructive/10 hover:text-destructive rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
-              >
-                <Trash2 className="size-3.5 shrink-0 text-destructive" />
-                <span>Delete permanently</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="top" sideOffset={8}>
-              Delete permanently
-            </TooltipContent>
-          </Tooltip>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={isAllProcessingSelected}
+            onClick={onBatchDelete}
+            className="h-8 px-2.5 gap-1.5 text-12 font-medium text-destructive hover:bg-destructive/10 hover:text-destructive rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
+          >
+            <Trash2 className="size-3.5 shrink-0 text-destructive" />
+            <span>Delete permanently</span>
+          </Button>
         )}
       </>
     );
@@ -482,42 +432,28 @@ export function BatchLifecycleActions({
   return (
     <>
       {onBatchDetach && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={isAllProcessingSelected}
-              onClick={() => onBatchDetach()}
-              className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
-            >
-              <FolderMinus className="size-3.5 shrink-0 text-foreground" />
-              <span>Remove from collection</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="top" sideOffset={8}>
-            Remove from collection
-          </TooltipContent>
-        </Tooltip>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={isAllProcessingSelected}
+          onClick={() => onBatchDetach()}
+          className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
+        >
+          <FolderMinus className="size-3.5 shrink-0 text-foreground" />
+          <span>Remove from collection</span>
+        </Button>
       )}
       {onBatchDelete && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={isAllProcessingSelected}
-              onClick={onBatchDelete}
-              className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
-            >
-              <Trash2 className="size-3.5 shrink-0 text-foreground" />
-              <span>Move to trash</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="top" sideOffset={8}>
-            Move to trash
-          </TooltipContent>
-        </Tooltip>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={isAllProcessingSelected}
+          onClick={onBatchDelete}
+          className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
+        >
+          <Trash2 className="size-3.5 shrink-0 text-foreground" />
+          <span>Move to trash</span>
+        </Button>
       )}
     </>
   );

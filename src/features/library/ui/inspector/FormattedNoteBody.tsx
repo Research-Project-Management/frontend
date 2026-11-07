@@ -41,6 +41,20 @@ export function normalizeCitationLinkHref(rawUrl: string): string {
     /^((?:\/projects\/[^/]+)?)\/library\/items\/([^/?#]+)(?:\/reader)?/i,
     "$1/library/papers/$2",
   );
+  // Normalize legacy `/projects/:projectId/library/papers/:id` paths to `/library/papers/:id?projectId=:projectId`
+  const projectPaperMatch = url.match(
+    /^\/projects\/([^/]+)\/library\/papers\/([^?#]+)(\?[^#]*)?(#.*)?$/i,
+  );
+  if (projectPaperMatch) {
+    const [, projId, paperId, existingQuery = "", hash = ""] = projectPaperMatch;
+    const hasProjectParam = /[?&]projectId=/i.test(existingQuery);
+    const nextQuery = hasProjectParam
+      ? existingQuery
+      : existingQuery
+        ? `?projectId=${projId}&${existingQuery.slice(1)}`
+        : `?projectId=${projId}`;
+    url = `/library/papers/${paperId}${nextQuery}${hash}`;
+  }
   return url;
 }
 

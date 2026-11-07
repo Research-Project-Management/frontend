@@ -162,28 +162,23 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
             <h3 className="text-12 font-medium text-foreground">Attachments</h3>
             {canEdit && (
               <DropdownMenu>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        type="button"
-                        disabled={isUploadingFile}
-                        className="size-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
-                        aria-label="Add attachment"
-                      >
-                        {isUploadingFile ? (
-                          <Loader2 className="size-3.5 animate-spin shrink-0" />
-                        ) : (
-                          <Plus
-                            className="size-3.5 shrink-0"
-                            strokeWidth={1.5}
-                          />
-                        )}
-                      </button>
-                    </DropdownMenuTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">Add attachment</TooltipContent>
-                </Tooltip>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    disabled={isUploadingFile}
+                    className="size-5 flex items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-colors"
+                    aria-label="Add attachment"
+                  >
+                    {isUploadingFile ? (
+                      <Loader2 className="size-3.5 animate-spin shrink-0" />
+                    ) : (
+                      <Plus
+                        className="size-3.5 shrink-0"
+                        strokeWidth={1.5}
+                      />
+                    )}
+                  </button>
+                </DropdownMenuTrigger>
                 <DropdownMenuContent
                   align="end"
                   className="w-56 p-1.5 text-xs font-sans rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 space-y-0.5"

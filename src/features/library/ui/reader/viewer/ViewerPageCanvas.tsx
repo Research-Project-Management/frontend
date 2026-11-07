@@ -4,6 +4,11 @@ import React, { useRef, useCallback, useLayoutEffect } from 'react';
 import { Page } from 'react-pdf';
 import { Check, X } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/shared/components/ui/tooltip';
 import { getCappedDevicePixelRatio, releaseCanvasMemory, isPdfDocumentValid } from '@/shared/lib/pdfjs-worker';
 import type { ReaderAnnotation, AnnotationRect, InlineTextInputState, AreaSelectionState, InkDrawingState } from '@/features/library/types/reader.types';
 import type { ReaderAnnotationTool } from '@/features/library/core/store/reader.store';
@@ -159,7 +164,7 @@ export const ViewerPageCanvas = React.memo(function ViewerPageCanvas({
       onMouseMove={(e) => onPageMouseMove(e, pageNum)}
       onMouseUp={(e) => onPageMouseUp(e, pageNum)}
       className={cn(
-        'bg-background overflow-hidden transition-all relative shrink-0 mx-auto min-h-[400px]',
+        'bg-canvas overflow-hidden relative shrink-0 mx-auto min-h-[400px]',
         themeMode === 'dark' && 'brightness-90 contrast-95',
         themeMode === 'invert' && 'invert-[0.92] hue-rotate-180 contrast-90 brightness-95',
         themeMode === 'sepia' && 'sepia-[0.3] contrast-95 brightness-95',
@@ -174,14 +179,12 @@ export const ViewerPageCanvas = React.memo(function ViewerPageCanvas({
           pageNumber={pageNum}
           width={effectivePageWidth}
           rotate={rotation}
-          canvasBackground="#fcfcfb"
+          canvasBackground={themeMode === 'dark' ? '#1a1a22' : '#fcfcfb'}
           renderTextLayer={true}
           renderAnnotationLayer={false}
           devicePixelRatio={getCappedDevicePixelRatio(2)}
           onLoadSuccess={handlePageLoadSuccess}
-          onLoadError={(err) => {
-            console.warn(`[ViewerPageCanvas] Failed to render page ${pageNum}:`, err);
-          }}
+          onLoadError={() => {}}
           loading={
             <DocumentPageSkeleton
               width={effectivePageWidth}
@@ -193,7 +196,7 @@ export const ViewerPageCanvas = React.memo(function ViewerPageCanvas({
         />
       ) : (
         <div
-          className="bg-background select-none mx-auto"
+          className="bg-canvas select-none mx-auto"
           style={{ width: effectivePageWidth, height: skeletonHeight }}
           aria-hidden="true"
         />
@@ -202,7 +205,7 @@ export const ViewerPageCanvas = React.memo(function ViewerPageCanvas({
       {/* INLINE TEXT TOOL INPUT */}
       {inWindow && inlineTextInput && inlineTextInput.pageNum === pageNum && (
         <div
-          className="absolute z-40 bg-background/95 backdrop-blur-xs border border-border shadow-md rounded-md p-1.5 flex items-center gap-1.5 animate-in fade-in zoom-in-95 duration-100"
+          className="absolute z-40 bg-background/95 backdrop-blur-xs border border-border shadow-raised-200 rounded-md p-1.5 flex items-center gap-1.5 animate-in fade-in zoom-in-95 duration-100"
           style={{
             left: `${inlineTextInput.normX * 100}%`,
             top: `${inlineTextInput.normY * 100}%`,
@@ -225,24 +228,36 @@ export const ViewerPageCanvas = React.memo(function ViewerPageCanvas({
             }}
             className="text-12 px-2 py-1 rounded border border-border bg-muted text-foreground w-56 font-sans focus:outline-none focus:ring-1 focus:ring-primary"
           />
-          <button
-            type="button"
-            onClick={onSaveInlineText}
-            className="size-6 rounded-md text-primary hover:bg-primary/10 flex items-center justify-center cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            title="Save text (Enter)"
-            aria-label="Save text"
-          >
-            <Check className="size-3.5" strokeWidth={2} />
-          </button>
-          <button
-            type="button"
-            onClick={() => onInlineTextChange(null)}
-            className="size-6 rounded-md text-muted-foreground hover:bg-muted flex items-center justify-center cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            title="Cancel (Esc)"
-            aria-label="Cancel"
-          >
-            <X className="size-3.5" strokeWidth={2} />
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={onSaveInlineText}
+                className="size-6 rounded-md text-primary hover:bg-primary/10 flex items-center justify-center cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                aria-label="Save text (Enter)"
+              >
+                <Check className="size-3.5" strokeWidth={2} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={6} className="text-11">
+              Save text (Enter)
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => onInlineTextChange(null)}
+                className="size-6 rounded-md text-muted-foreground hover:bg-muted flex items-center justify-center cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                aria-label="Cancel (Esc)"
+              >
+                <X className="size-3.5" strokeWidth={2} />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="top" sideOffset={6} className="text-11">
+              Cancel (Esc)
+            </TooltipContent>
+          </Tooltip>
         </div>
       )}
 
@@ -537,7 +552,7 @@ export function highlightReaderHtml(
         fragment.appendChild(doc.createTextNode(text.slice(lastIndex, match.index)));
       }
       const mark = doc.createElement('mark');
-      mark.className = 'bg-amber-300/70 text-foreground rounded px-0.5';
+      mark.className = 'bg-warning/30 text-foreground rounded px-0.5';
       mark.textContent = match[0];
       fragment.appendChild(mark);
       lastIndex = regex.lastIndex;

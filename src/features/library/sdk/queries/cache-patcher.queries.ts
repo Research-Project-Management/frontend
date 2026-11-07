@@ -18,6 +18,11 @@ import {
   normalizeScopeId,
 } from '@/features/library/sdk/query-keys';
 import {
+  getItemFileUrl,
+  resolveAllItemAttachmentUrls,
+} from '@/features/library/domain/identifiers.domain';
+import { cleanupReaderResourcesForItems } from '@/features/library/core/coordinator/reader/use-reader';
+import {
   isTrashQueryKey,
   doesItemMatchQueryFilter,
   MEMBERSHIP_MUTATION_KEYS,
@@ -533,10 +538,20 @@ export function removeItemsFromScopeCaches(
   const idSet = new Set(ids.filter(Boolean));
   if (idSet.size === 0) return;
 
+  const candidateUrls: string[] = [];
   for (const id of idSet) {
+    const cached = resolveCachedItemFromScope(queryClient, effectiveScope, id);
+    if (cached) {
+      candidateUrls.push(...resolveAllItemAttachmentUrls(cached, effectiveScope));
+    }
     queryClient.setQueryData(itemKeys.byId(effectiveScope, id), null);
     queryClient.removeQueries({ queryKey: itemKeys.byId(effectiveScope, id), exact: true });
   }
+
+  cleanupReaderResourcesForItems(idSet, {
+    scopeId: effectiveScope,
+    candidateUrls,
+  });
 
   queryClient.setQueriesData(
     {

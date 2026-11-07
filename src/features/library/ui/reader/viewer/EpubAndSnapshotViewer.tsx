@@ -16,6 +16,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { cn } from '@/shared/lib/utils';
 import { useReaderDocumentBlobLoader } from '@/features/library/core/coordinator/reader/use-reader';
@@ -317,12 +318,12 @@ export function EpubAndSnapshotViewer({
 
   const themeClasses =
     themeMode === 'dark'
-      ? 'bg-card text-card-foreground'
+      ? 'bg-canvas text-foreground'
       : themeMode === 'invert'
-        ? 'bg-background text-foreground invert hue-rotate-180'
+        ? 'bg-canvas text-foreground invert hue-rotate-180'
         : themeMode === 'sepia'
           ? 'bg-[#f4ecd8] text-[#3c3222]'
-          : 'bg-background text-foreground';
+          : 'bg-canvas text-foreground';
 
   if (isLoading) {
     return (
@@ -408,26 +409,31 @@ export function EpubAndSnapshotViewer({
                 {ANNOTATION_PALETTE_COLORS.map((c) => {
                   const isCurrent = activeColor.toLowerCase() === c.hex.toLowerCase();
                   return (
-                    <button
-                      key={c.id}
-                      type="button"
-                      title={`Highlight (${c.label})`}
-                      aria-label={`Highlight (${c.label})`}
-                      onClick={() => {
-                        onSelectColor?.(c.hex);
-                        onAnnotate?.(
-                          selectedText,
-                          mode === 'epub' ? currentChapterIndex + 1 : 1,
-                          c.hex,
-                        );
-                        setSelectedText('');
-                      }}
-                      className={cn(
-                        'size-3.5 rounded-full border border-border transition-transform hover:scale-110 cursor-pointer',
-                        isCurrent && 'ring-1 ring-primary ring-offset-1',
-                      )}
-                      style={{ backgroundColor: c.hex }}
-                    />
+                    <Tooltip key={c.id}>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label={`Highlight (${c.label})`}
+                          onClick={() => {
+                            onSelectColor?.(c.hex);
+                            onAnnotate?.(
+                              selectedText,
+                              mode === 'epub' ? currentChapterIndex + 1 : 1,
+                              c.hex,
+                            );
+                            setSelectedText('');
+                          }}
+                          className={cn(
+                            'size-3.5 rounded-full border border-border transition-transform hover:scale-110 cursor-pointer',
+                            isCurrent && 'ring-1 ring-primary ring-offset-1',
+                          )}
+                          style={{ backgroundColor: c.hex }}
+                        />
+                      </TooltipTrigger>
+                      <TooltipContent side="top" sideOffset={6} className="text-11">
+                        Highlight in {c.label}
+                      </TooltipContent>
+                    </Tooltip>
                   );
                 })}
               </div>

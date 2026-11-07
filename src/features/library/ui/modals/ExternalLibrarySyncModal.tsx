@@ -22,6 +22,7 @@ import {
   DialogTitle,
 } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { Badge } from '@/shared/components/ui/badge';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
@@ -391,19 +392,26 @@ export default function ExternalLibrarySyncModal({
                 </div>
 
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => refetchCollections()}
-                    disabled={isLoadingRemoteCollections}
-                    className="h-7 px-2 text-11 cursor-pointer"
-                    title="Refresh collections list"
-                  >
-                    <RefreshCw
-                      className={`size-3 ${isLoadingRemoteCollections ? 'animate-spin' : ''}`}
-                    />
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => refetchCollections()}
+                        disabled={isLoadingRemoteCollections}
+                        aria-label="Refresh collections list"
+                        className="h-7 px-2 text-11 cursor-pointer"
+                      >
+                        <RefreshCw
+                          className={`size-3 ${isLoadingRemoteCollections ? 'animate-spin' : ''}`}
+                        />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" sideOffset={6} className="text-11">
+                      Refresh collections list
+                    </TooltipContent>
+                  </Tooltip>
                   <Button
                     type="button"
                     variant="outline"

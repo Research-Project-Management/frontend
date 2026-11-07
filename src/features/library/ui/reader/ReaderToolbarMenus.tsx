@@ -211,7 +211,7 @@ export const ReaderColorPickerDropdown = React.memo(function ReaderColorPickerDr
               >
                 {activeColor === c.hex && (
                   <Check
-                    className="size-3 text-background drop-shadow-xs"
+                    className="size-3 text-background"
                     strokeWidth={2.5}
                   />
                 )}

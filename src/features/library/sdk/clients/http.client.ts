@@ -303,10 +303,15 @@ interface InFlightPdfBlobEntry {
   subscribers: number;
 }
 
+import {
+  documentStorage,
+  extractStableUserNamespace,
+} from '@/features/library/domain/reader-document-storage.domain';
+
 const inFlightPdfBlobRequests = new Map<string, InFlightPdfBlobEntry>();
-const MAX_CACHED_PDF_BLOBS = 3;
-const MAX_CACHED_PDF_BLOB_BYTES = 30 * 1024 * 1024;
-const PDF_BLOB_CACHE_TTL_MS = 2 * 60 * 1000;
+const MAX_CACHED_PDF_BLOBS = 15;
+const MAX_CACHED_PDF_BLOB_BYTES = 60 * 1024 * 1024;
+const PDF_BLOB_CACHE_TTL_MS = 15 * 60 * 1000;
 
 interface CachedPdfBlobEntry {
   blob: Blob;
@@ -315,12 +320,26 @@ interface CachedPdfBlobEntry {
 
 const pdfBlobLruCache = new Map<string, CachedPdfBlobEntry>();
 
-function buildPdfBlobCacheKey(url: string, scopeId?: string): string {
+export function buildPdfBlobCacheKey(url: string, scopeId?: string): string {
   const token =
     typeof api.getAuthToken === 'function' ? api.getAuthToken() : getAuthToken();
-  const tokenFingerprint = token ? token.slice(-16) : 'anon';
+  const userNamespace = extractStableUserNamespace(token);
   const normalizedScope = isProjectScope(scopeId) ? scopeId!.trim() : 'user';
-  return `${tokenFingerprint}:${normalizedScope}:${url.trim()}`;
+  return `${userNamespace}:${normalizedScope}:${url.trim()}`;
+}
+
+export async function invalidatePdfBlobCache(
+  url?: string,
+  options?: { scopeId?: string },
+): Promise<void> {
+  if (!url) {
+    pdfBlobLruCache.clear();
+    await documentStorage.clearAll();
+    return;
+  }
+  const cacheKey = buildPdfBlobCacheKey(url.trim(), options?.scopeId);
+  pdfBlobLruCache.delete(cacheKey);
+  await documentStorage.deleteDocumentBinary(cacheKey);
 }
 
 function getCachedPdfBlob(cacheKey: string): Blob | null {
@@ -380,7 +399,7 @@ function awaitWithSignal<T>(
 export const fetchPdfBlob = async (
   url: string,
   signal?: AbortSignal,
-  options?: { allowHtml?: boolean; scopeId?: string },
+  options?: { allowHtml?: boolean; scopeId?: string; forceRefresh?: boolean },
 ): Promise<Blob> => {
   if (!url || typeof url !== 'string') {
     throw new Error('Invalid document URL provided.');
@@ -392,9 +411,30 @@ export const fetchPdfBlob = async (
 
   const targetUrl = url.trim();
   const cacheKey = buildPdfBlobCacheKey(targetUrl, options?.scopeId);
-  const cachedBlob = getCachedPdfBlob(cacheKey);
-  if (cachedBlob) {
-    return cachedBlob;
+
+  if (options?.forceRefresh) {
+    pdfBlobLruCache.delete(cacheKey);
+    try {
+      await documentStorage.deleteDocumentBinary(cacheKey);
+    } catch {
+      // Ignore deletion failure during forceRefresh
+    }
+  } else {
+    const cachedBlob = getCachedPdfBlob(cacheKey);
+    if (cachedBlob) {
+      return cachedBlob;
+    }
+
+    // Tier 4: Check Client-Side Persistent Disk Cache (OPFS / IndexedDB)
+    try {
+      const diskBlob = await documentStorage.getDocumentBinary(cacheKey);
+      if (diskBlob) {
+        setCachedPdfBlob(cacheKey, diskBlob);
+        return diskBlob;
+      }
+    } catch {
+      // Disk cache miss/error, proceed to network fetch
+    }
   }
 
   const existingInFlight = inFlightPdfBlobRequests.get(cacheKey);
@@ -592,6 +632,7 @@ export const fetchPdfBlob = async (
       throw new Error('Received an empty file from server.');
     }
     setCachedPdfBlob(cacheKey, blob);
+    void documentStorage.saveDocumentBinary(cacheKey, blob);
     return blob;
   };
 
@@ -611,6 +652,18 @@ export const fetchPdfBlob = async (
       entry.controller.abort();
     }
   });
+};
+
+export const prefetchPdfBlob = async (
+  url: string,
+  options?: { scopeId?: string },
+): Promise<void> => {
+  if (!url || typeof url !== 'string') return;
+  try {
+    await fetchPdfBlob(url, undefined, options);
+  } catch {
+    // Silent prefetch failure
+  }
 };
 
 const IDENTIFIER_SUBMISSION_CONFIG: Readonly<

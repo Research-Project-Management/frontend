@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ShieldAlert } from 'lucide-react';
+import { X, ShieldAlert, FileEdit } from 'lucide-react';
+import { Button } from '@/shared/components/ui/button';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { useParams } from 'next/navigation';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/shared/components/ui/tooltip';
@@ -11,6 +12,7 @@ import type { Collection, CslStyle, Item } from '@/features/library/types/core.t
 import { useLibraryBatchCoordinator } from '@/features/library/core/coordinator/batch-action.coordinator';
 import { executeCopyMultiCite, executeCopyInTextCite, executeExportAllBibtex, executeDownloadBibFile } from '@/features/library/core/coordinator/citation-export.coordinator';
 import { useCitationStyles } from '@/features/library/core/coordinator/citation-export.coordinator';
+import { useBatchRenameAttachmentsMutation } from '@/features/library/sdk/queries/extraction.queries';
 import { formatCitationStyleLabel } from '@/features/library/domain/citations.domain';
 import { BatchMoveCollectionPopover, BatchCitationExportPopovers, BatchSmartViewActions, BatchLifecycleActions } from '@/features/library/ui/content/BatchBarPopovers';
 
@@ -143,7 +145,18 @@ export function BatchBar({
     [serverStyles],
   );
 
+  const renameMutation = useBatchRenameAttachmentsMutation(effectiveScopeId);
+
   if (selectedCount === 0) return null;
+
+  const handleBatchRenamePdfs = async () => {
+    if (coordinatorFileIds.length === 0) return;
+    try {
+      await renameMutation.mutateAsync({ itemIds: coordinatorFileIds });
+    } catch {
+      // Handled
+    }
+  };
 
   const handleCopyMultiCite = (style: CslStyle | "latex" = "apa") =>
     executeCopyMultiCite(
@@ -250,6 +263,20 @@ export function BatchBar({
             onBatchRecheckRetraction={onBatchRecheckRetraction}
             onBatchClearRetractionFlags={onBatchClearRetractionFlags}
           />
+
+          {/* Batch Rename PDFs (Only when selected items have attachments and not trash) */}
+          {canEdit && !effectiveIsTrash && coordinatorFileIds.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={isAllProcessingSelected || renameMutation.isPending}
+              onClick={handleBatchRenamePdfs}
+              className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none inline-flex items-center relative before:absolute before:-inset-1 md:before:hidden"
+            >
+              <FileEdit className="size-3.5 shrink-0 text-foreground" />
+              <span>Rename PDFs</span>
+            </Button>
+          )}
 
           {/* Citation & Export Actions — Hidden on Trash page */}
           {!effectiveIsTrash && (

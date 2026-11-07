@@ -608,23 +608,18 @@ export function DuplicatesContent({
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => toggleInlineDiff(groupKey, e)}
-                          className={cn(
-                            'h-8 px-2.5 text-12 gap-1.5 transition-colors cursor-pointer',
-                            isDiffExpanded ? 'bg-primary/10 text-primary font-medium' : 'text-foreground hover:bg-muted',
-                          )}
-                        >
-                          <Columns className="size-3.5" />
-                          <span>{isDiffExpanded ? 'Hide Diff' : 'Inline Diff'}</span>
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom">Toggle inline side-by-side diff comparison</TooltipContent>
-                    </Tooltip>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => toggleInlineDiff(groupKey, e)}
+                      className={cn(
+                        'h-8 px-2.5 text-12 gap-1.5 transition-colors cursor-pointer',
+                        isDiffExpanded ? 'bg-primary/10 text-primary font-medium' : 'text-foreground hover:bg-muted',
+                      )}
+                    >
+                      <Columns className="size-3.5" />
+                      <span>{isDiffExpanded ? 'Hide Diff' : 'Inline Diff'}</span>
+                    </Button>
 
                     <Button
                       variant="ghost"
@@ -635,23 +630,14 @@ export function DuplicatesContent({
                       Dismiss
                     </Button>
                     {canEdit && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span className="inline-flex">
-                            <Button
-                              size="sm"
-                              onClick={(e) => { e.stopPropagation(); handleOpenMerge(group, groupKey); }}
-                              className="h-8 px-3 text-12 gap-1.5 font-medium shadow-none cursor-pointer"
-                            >
-                              <GitMerge className="h-3.5 w-3.5" />
-                              Merge this group
-                            </Button>
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom">
-                          {hasMismatchedTypes ? 'Open merge workbench (cross-type group will be unified)' : 'Open merge workbench'}
-                        </TooltipContent>
-                      </Tooltip>
+                      <Button
+                        size="sm"
+                        onClick={(e) => { e.stopPropagation(); handleOpenMerge(group, groupKey); }}
+                        className="h-8 px-3 text-12 gap-1.5 font-medium shadow-none cursor-pointer"
+                      >
+                        <GitMerge className="h-3.5 w-3.5" />
+                        Merge this group
+                      </Button>
                     )}
                   </div>
                 </div>

@@ -291,19 +291,15 @@ export const ItemTableRow = React.memo(function ItemTableRow({
                 )}
               />
             </div>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span
-                  className={cn(
-                    'truncate text-13 font-normal text-foreground',
-                    isProcessing && 'font-medium',
-                  )}
-                >
-                  {cleanTitle}
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>{cleanTitle}</TooltipContent>
-            </Tooltip>
+            <span
+              className={cn(
+                'truncate text-13 font-normal text-foreground',
+                isProcessing && 'font-medium',
+              )}
+              title={cleanTitle}
+            >
+              {cleanTitle}
+            </span>
 
             {/* Trailing Status Indicators (Aligned after title so all titles start on a strict vertical axis) */}
             {(isStarred || hasAttachment || hasNotes || isRetracted || (isProcessing && processingStatus === 'FAILED')) && (
@@ -319,10 +315,10 @@ export const ItemTableRow = React.memo(function ItemTableRow({
                             onToggleStar(item, isStarred);
                           }
                         }}
-                        className="inline-flex items-center justify-center size-5 rounded-sm text-amber-500 hover:bg-background/80 transition-colors cursor-pointer shrink-0 outline-none"
+                        className="inline-flex items-center justify-center size-5 rounded-sm text-warning hover:bg-background/80 transition-colors cursor-pointer shrink-0 outline-none"
                         aria-label="Remove from Starred"
                       >
-                        <Star className="size-3.5 fill-amber-400 text-amber-500 shrink-0" strokeWidth={1.5} />
+                        <Star className="size-3.5 fill-warning text-warning shrink-0" strokeWidth={1.5} />
                       </button>
                     </TooltipTrigger>
                     <TooltipContent>Starred (click to unstar)</TooltipContent>
@@ -397,15 +393,10 @@ export const ItemTableRow = React.memo(function ItemTableRow({
               item.authors[0] === 'Processing metadata...' ||
               item.authors[0] === 'Uploading raw file...') ? (
               <span className="text-foreground text-12 italic">Extracting authors...</span>
-            ) : authorTooltip ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="block truncate">{formattedAuthors}</span>
-                </TooltipTrigger>
-                <TooltipContent>{authorTooltip}</TooltipContent>
-              </Tooltip>
             ) : (
-              <span className="block truncate">{formattedAuthors}</span>
+              <span className="block truncate" title={authorTooltip || formattedAuthors}>
+                {formattedAuthors}
+              </span>
             )}
           </td>
         )}
@@ -423,12 +414,9 @@ export const ItemTableRow = React.memo(function ItemTableRow({
             {isProcessing && !item.publicationTitle ? (
               <span className="text-foreground text-12 italic">Recognizing venue...</span>
             ) : venueText ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="block truncate">{venueText}</span>
-                </TooltipTrigger>
-                <TooltipContent>{venueText}</TooltipContent>
-              </Tooltip>
+              <span className="block truncate" title={venueText}>
+                {venueText}
+              </span>
             ) : (
               <span className="text-foreground">-</span>
             )}
@@ -439,12 +427,9 @@ export const ItemTableRow = React.memo(function ItemTableRow({
         {columns.itemType && (
           <td className="px-3 h-8 py-0 align-middle truncate text-13 text-foreground font-normal">
             {itemTypeLabel && itemTypeLabel !== '-' ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className="block truncate">{itemTypeLabel}</span>
-                </TooltipTrigger>
-                <TooltipContent>{itemTypeLabel}</TooltipContent>
-              </Tooltip>
+              <span className="block truncate">
+                {itemTypeLabel}
+              </span>
             ) : (
               <span className="text-foreground">-</span>
             )}

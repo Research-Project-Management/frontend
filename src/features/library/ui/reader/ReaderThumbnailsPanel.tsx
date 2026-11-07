@@ -34,7 +34,7 @@ export const LazyThumbnailPage = React.memo(function LazyThumbnailPage({
   return (
     <div
       className={cn(
-        "relative flex flex-col items-center p-1 rounded-md border transition-all group overflow-hidden",
+        "relative flex flex-col items-center p-1 rounded-md border transition-colors group overflow-hidden",
         isCurrent
           ? "border-primary bg-muted/40"
           : "border-border hover:border-border/80 bg-card",
@@ -83,9 +83,7 @@ export const LazyThumbnailPage = React.memo(function LazyThumbnailPage({
               canvasBackground="#fcfcfb"
               renderTextLayer={false}
               renderAnnotationLayer={false}
-              onLoadError={(err) => {
-                console.warn(`[LazyThumbnailPage] Failed to render thumbnail page ${pageNum}:`, err);
-              }}
+              onLoadError={() => {}}
               loading={
                 <div className="size-full flex items-center justify-center text-foreground text-11 font-mono">
                   {pageNum}

@@ -444,6 +444,7 @@ export interface ReaderTab {
   secondaryPage?: number;
   interactionMode?: 'select' | 'hand';
   attachmentId?: string | null;
+  fileUrl?: string;
 }
 
 export interface ActiveHighlightTooltipState {

@@ -601,7 +601,7 @@ export function ModernLibraryPage({
             effectiveView === 'feed'
               ? () => {
                   triggerRefresh();
-                  toast.info(`Refreshing "${currentFeed?.name || 'feed'}"...`);
+                  toast.info(`Refreshing "${currentFeed?.name || 'feed'}"...`, { id: 'feed-refresh', duration: 2000 });
                 }
               : undefined
           }
@@ -614,7 +614,7 @@ export function ModernLibraryPage({
                   } else if (selectedFeedEntry) {
                     markAllEntriesAsRead([selectedFeedEntry.id]);
                   }
-                  toast.success(`Marked all articles in "${currentFeed?.name || 'feed'}" as read`);
+                  toast.success(`Marked all articles in "${currentFeed?.name || 'feed'}" as read`, { id: 'feed-mark-read', duration: 2000 });
                 }
               : undefined
           }

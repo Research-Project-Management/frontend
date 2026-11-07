@@ -413,6 +413,8 @@ export function usePdfViewerInteraction({
   const openAnnotationCard = useCallback(
     (ann: ReaderAnnotation, el?: HTMLElement) => {
       const container = scrollContainerRef.current?.getBoundingClientRect();
+      const containerWidth = container?.width || 800;
+      const maxLeft = Math.max(12, containerWidth - 304);
       let top = 0;
       let left = 0;
       if (el) {
@@ -423,9 +425,9 @@ export function usePdfViewerInteraction({
           (scrollContainerRef.current?.scrollTop || 0) +
           6;
         left = Math.max(
-          10,
+          12,
           Math.min(
-            (container?.width || 800) - 340,
+            maxLeft,
             target.left -
               (container?.left || 0) +
               (scrollContainerRef.current?.scrollLeft || 0),
@@ -434,8 +436,8 @@ export function usePdfViewerInteraction({
       } else {
         top = (menuPosition.top || 100) + 10;
         left = Math.max(
-          10,
-          Math.min((container?.width || 800) - 340, (menuPosition.left || 200) - 140),
+          12,
+          Math.min(maxLeft, (menuPosition.left || 200) - 144),
         );
       }
 
@@ -539,6 +541,20 @@ export function usePdfViewerInteraction({
               return { x1, y1, x2: x1 + width, y2: y1 + height, width, height };
             })
             .filter((r) => r.width > 0.001 && r.height > 0.001);
+
+          // Sort in reading order and eliminate vertical overlap between consecutive lines
+          relative.sort((a, b) => a.y1 - b.y1 || a.x1 - b.x1);
+          for (let i = 0; i < relative.length - 1; i++) {
+            const curr = relative[i];
+            const next = relative[i + 1];
+            if (next.y1 < curr.y2 && next.y2 > curr.y2) {
+              const splitY = Number(((curr.y2 + next.y1) / 2).toFixed(4));
+              curr.y2 = splitY;
+              curr.height = Number(Math.max(0.001, curr.y2 - curr.y1).toFixed(4));
+              next.y1 = splitY;
+              next.height = Number(Math.max(0.001, next.y2 - next.y1).toFixed(4));
+            }
+          }
         }
       }
       setSelectedRects(relative);

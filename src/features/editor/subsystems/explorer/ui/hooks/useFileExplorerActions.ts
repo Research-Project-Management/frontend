@@ -15,9 +15,7 @@
 
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
-import { useQueryClient } from '@tanstack/react-query';
-import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
-import { filesQuery } from '@/features/editor/ui/hooks/document.queries';
+import { manuscriptService } from '@/features/editor/sdk/pages.service';
 import { extractDocumentContentString, type Page, type PageFile } from '@/features/editor/domain/types/core.types';
 import type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
 import {
@@ -28,7 +26,7 @@ import {
 import { prepareAssetInsertion } from '@/features/editor/domain/latex/smart-paste';
 import { downloadFileUrl } from '@/shared/lib/file-client';
 
-import { usePageStore, editorCommandBus, workspaceCoordinator } from '@/features/editor/core';
+import { usePageStore, workspaceCoordinator } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 
 export interface UseFileExplorerActionsOptions {
@@ -46,7 +44,6 @@ export function copyTexCommandToClipboard(title: string): void {
 }
 
 export function useFileExplorerActions(options?: UseFileExplorerActionsOptions) {
-  const queryClient = useQueryClient();
   const { projectId, parentPageId, currentPage, engine } = options || {};
   const [isRenamePending, setIsRenamePending] = useState(false);
 
@@ -86,63 +83,6 @@ export function useFileExplorerActions(options?: UseFileExplorerActionsOptions) 
   const copyTexCommand = useCallback((title: string) => {
     copyTexCommandToClipboard(title);
   }, []);
-
-  const refreshLinkedFile = useCallback(
-    async (linkedFileId: string, fileName: string) => {
-      if (!projectId) return;
-      const toastId = toast.loading(`Refreshing ${fileName} from external source...`);
-      try {
-        await manuscriptService.linkedFiles.refresh(projectId, linkedFileId);
-        if (parentPageId) {
-          queryClient.invalidateQueries({ queryKey: filesQuery(parentPageId).queryKey });
-        }
-        queryClient.invalidateQueries({ queryKey: ['project-linked-files', projectId] });
-        editorCommandBus.dispatch({ type: 'filetree:updated' });
-        toast.success(`Successfully refreshed ${fileName}`, { id: toastId });
-      } catch (err: unknown) {
-        toast.error(`Failed to refresh ${fileName}: ${(err as Error)?.message || 'Network error'}`, { id: toastId });
-      }
-    },
-    [projectId, parentPageId, queryClient],
-  );
-
-  const deleteLinkedFile = useCallback(
-    async (linkedFileId: string, fileName: string, deleteNode = false) => {
-      if (!projectId) return;
-      const toastId = toast.loading(`Unlinking ${fileName}...`);
-      try {
-        await manuscriptService.linkedFiles.delete(projectId, linkedFileId, deleteNode);
-        if (parentPageId) {
-          queryClient.invalidateQueries({ queryKey: filesQuery(parentPageId).queryKey });
-        }
-        queryClient.invalidateQueries({ queryKey: ['project-linked-files', projectId] });
-        editorCommandBus.dispatch({ type: 'filetree:updated' });
-        toast.success(`Unlinked ${fileName}`, { id: toastId });
-      } catch (err: unknown) {
-        toast.error(`Failed to unlink ${fileName}: ${(err as Error)?.message || 'Network error'}`, { id: toastId });
-      }
-    },
-    [projectId, parentPageId, queryClient],
-  );
-
-  const refreshAllLinkedFiles = useCallback(
-    async () => {
-      if (!projectId) return;
-      const toastId = toast.loading('Refreshing all linked external files...');
-      try {
-        const res = await manuscriptService.linkedFiles.refreshAll(projectId);
-        if (parentPageId) {
-          queryClient.invalidateQueries({ queryKey: filesQuery(parentPageId).queryKey });
-        }
-        queryClient.invalidateQueries({ queryKey: ['project-linked-files', projectId] });
-        editorCommandBus.dispatch({ type: 'filetree:updated' });
-        toast.success(`Refreshed ${res?.refreshedCount ?? 0} linked file(s)`, { id: toastId });
-      } catch (err: unknown) {
-        toast.error(`Failed to refresh linked files: ${(err as Error)?.message || 'Network error'}`, { id: toastId });
-      }
-    },
-    [projectId, parentPageId, queryClient],
-  );
 
   const insertAsset = useCallback(
     (name: string) => {
@@ -201,9 +141,6 @@ export function useFileExplorerActions(options?: UseFileExplorerActionsOptions) 
   return {
     downloadTex,
     copyTexCommand,
-    refreshLinkedFile,
-    deleteLinkedFile,
-    refreshAllLinkedFiles,
     insertAsset,
     handleRenameSubmit,
     isRenamePending,

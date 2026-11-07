@@ -18,7 +18,6 @@ import {
   FilePlus,
   FolderPlus,
   Upload,
-  RefreshCw,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -33,8 +32,6 @@ export interface FileTreeToolbarProps {
   onOpenFileModal: () => void;
   onStartCreateFolder: () => void;
   onOpenUploadModal: () => void;
-  linkedFilesCount?: number;
-  onRefreshAllLinkedFiles?: () => void;
   onClose?: () => void;
 }
 
@@ -44,8 +41,6 @@ export const FileTreeToolbar = React.memo(function FileTreeToolbar({
   onOpenFileModal,
   onStartCreateFolder,
   onOpenUploadModal,
-  linkedFilesCount = 0,
-  onRefreshAllLinkedFiles,
 }: FileTreeToolbarProps) {
   return (
     <div className="flex flex-col shrink-0 select-none border-b border-border">
@@ -122,25 +117,6 @@ export const FileTreeToolbar = React.memo(function FileTreeToolbar({
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="text-11">Upload files</TooltipContent>
               </Tooltip>
-
-              {/* 3b. Refresh All Linked Files */}
-              {onRefreshAllLinkedFiles && linkedFilesCount > 0 && (
-                <Tooltip delayDuration={300}>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={onRefreshAllLinkedFiles}
-                      aria-label="Refresh linked files"
-                      className="relative flex size-7 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-foreground motion-reduce:transition-none after:absolute after:-inset-1 after:content-['']"
-                    >
-                      <RefreshCw className="size-3.5 shrink-0" strokeWidth={1.5} />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-11">
-                    Refresh all linked files ({linkedFilesCount})
-                  </TooltipContent>
-                </Tooltip>
-              )}
             </>
           )}
         </div>

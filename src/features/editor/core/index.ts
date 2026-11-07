@@ -153,7 +153,7 @@ export { lruDocumentCache } from '@/features/editor/domain/document/lru-document
 // 5. Manuscript Backend Services & API Contracts
 export {
   manuscriptService,
-} from '@/features/editor/sdk/manuscript.service';
+} from '@/features/editor/sdk/pages.service';
 export {
   MANUSCRIPTS_API_BASE,
-} from '@/features/editor/sdk/manuscript/base';
+} from '@/features/editor/sdk/pages/base';

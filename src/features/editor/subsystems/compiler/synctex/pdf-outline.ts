@@ -5,7 +5,7 @@
  * and mapping backend-extracted LaTeX outline DTOs.
  */
 
-import type { LatexOutlineEntryDto } from '@/features/editor/sdk/manuscript/types';
+import type { LatexOutlineEntryDto } from '@/features/editor/sdk/pages/types';
 import { resolvePageForLine, type SyncTeXMap } from './synctex-index';
 
 export interface PdfOutlineItem {

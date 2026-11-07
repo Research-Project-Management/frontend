@@ -55,9 +55,7 @@ export function useProjectTitleActions({
     exportMarkdown,
     exportHtml,
   } = useProjectExport();
-  const { updateTitle: updateTitleMutation } = usePageActions();
-  const updateProjectMutation = useUpdateProject();
-  const duplicateProjectMutation = useDuplicateProject();
+  const { updateTitle: updateTitleMutation, duplicatePage: duplicatePageMutation } = usePageActions();
 
   const handleDownloadPdf = useCallback(() => {
     downloadPdf(pdfUrl, displayTitle);
@@ -128,50 +126,48 @@ export function useProjectTitleActions({
       const trimmed = newName.trim();
       if (!trimmed) return false;
 
+      const targetPageId = currentPage?.id || fallbackRootId;
+      if (!targetPageId) return false;
+
       setIsSubmittingAction(true);
       try {
-        if (effectiveProjectId) {
-          await updateProjectMutation.mutateAsync({
-            projectId: effectiveProjectId,
-            name: trimmed,
-          });
-        }
+        await updateTitleMutation.mutateAsync({
+          pageId: targetPageId,
+          title: trimmed,
+          oldTitle: displayTitle,
+        });
 
-        if (currentPage?.id) {
-          await updateTitleMutation.mutateAsync({
-            pageId: currentPage.id,
-            title: trimmed,
-            oldTitle: displayTitle,
-          });
-        }
-
-        toast.success(`Project renamed to "${trimmed}"`, { id: 'rename-project' });
+        toast.success(`Document renamed to "${trimmed}"`, { id: 'rename-project' });
         return true;
       } catch (err: unknown) {
-        toast.error((err as Error)?.message || 'Failed to rename project', { id: 'rename-project' });
+        toast.error((err as Error)?.message || 'Failed to rename document', { id: 'rename-project' });
         return false;
       } finally {
         setIsSubmittingAction(false);
       }
     },
-    [effectiveProjectId, currentPage?.id, displayTitle, updateProjectMutation, updateTitleMutation],
+    [currentPage?.id, fallbackRootId, displayTitle, updateTitleMutation],
   );
 
   const handleMakeCopy = useCallback(async () => {
-    if (effectiveProjectId) {
-      const toastId = toast.loading('Duplicating project...');
+    const targetPageId = currentPage?.id || fallbackRootId;
+    if (targetPageId) {
+      const toastId = toast.loading('Duplicating document...');
       setIsSubmittingAction(true);
       try {
-        const res = (await duplicateProjectMutation.mutateAsync({
-          projectId: effectiveProjectId,
-        })) as { project?: { id?: string }; data?: { project?: { id?: string } }; id?: string } | null;
-        const newProjId = res?.project?.id || res?.data?.project?.id || res?.id;
-        toast.success('Project duplicated successfully!', { id: toastId });
-        if (newProjId) {
-          router.push(`/projects/${newProjId}/editor`);
+        const res = (await duplicatePageMutation.mutateAsync(targetPageId)) as {
+          page?: { id?: string };
+          rootPageId?: string;
+          id?: string;
+        } | null;
+        const newPageId = res?.page?.id || res?.rootPageId || res?.id;
+        toast.success('Document duplicated successfully!', { id: toastId });
+        if (newPageId) {
+          const isPersonal = !effectiveProjectId || effectiveProjectId === 'personal' || effectiveProjectId === targetPageId;
+          router.push(isPersonal ? `/pages/${newPageId}` : `/projects/${effectiveProjectId}/pages/${newPageId}`);
         }
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Failed to duplicate project, downloading backup file instead.';
+        const message = err instanceof Error ? err.message : 'Failed to duplicate document, downloading backup file instead.';
         toast.error(message, { id: toastId });
         downloadCopy(getContent(), activeFilePage?.title || displayTitle);
       } finally {
@@ -180,7 +176,7 @@ export function useProjectTitleActions({
     } else {
       downloadCopy(getContent(), activeFilePage?.title || displayTitle);
     }
-  }, [effectiveProjectId, duplicateProjectMutation, router, downloadCopy, getContent, activeFilePage?.title, displayTitle]);
+  }, [currentPage?.id, fallbackRootId, effectiveProjectId, duplicatePageMutation, router, downloadCopy, getContent, activeFilePage?.title, displayTitle]);
 
   return {
     isSubmittingAction,

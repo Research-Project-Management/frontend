@@ -2,7 +2,7 @@
  * docstore.client.ts
  *
  * Consolidated Manuscript API Gateway Client (Deep Module - SDK Layer).
- * Location: frontend/src/features/editor/sdk/manuscript/docstore.client.ts
+ * Location: frontend/src/features/editor/sdk/pages/docstore.client.ts
  *
  * Adheres strictly to Matt Pocock Codebase Design & Ousterhout Deep Module principles:
  * - Single typed entry point consolidating 22 shallow sub-domain endpoints.
@@ -721,7 +721,6 @@ import {
   spelling,
   spellingService,
   gitApi,
-  linkedFiles,
   type CustomDictionaryResponse,
   type SpellingSuggestionResponse,
   type MisspelledWord,
@@ -759,7 +758,6 @@ export {
   spelling,
   spellingService,
   gitApi,
-  linkedFiles,
 };
 
 export const review = {
@@ -918,7 +916,6 @@ export const manuscriptService = {
   export: exportDocs,
   structure,
   diagnostics,
-  linkedFiles,
   citations,
   templates,
   filestore,
@@ -936,5 +933,9 @@ export const manuscriptService = {
   exportProjectZip: exportDocs.exportProjectZip,
   importProjectZip: exportDocs.importProjectZip,
 };
+
+export const pagesService = manuscriptService;
+export const PagesService = manuscriptService;
+export const ManuscriptService = PagesService;
 
 export default manuscriptService;

@@ -1,6 +1,6 @@
 import type { ComponentType } from 'react';
 
-export type AddFilesTab = 'new-file' | 'upload' | 'project' | 'url' | 'library';
+export type AddFilesTab = 'new-file' | 'upload' | 'library';
 
 export interface AddFilesModalProps {
   open: boolean;

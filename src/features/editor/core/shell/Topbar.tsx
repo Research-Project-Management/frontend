@@ -63,10 +63,12 @@ export function Topbar() {
   const storeProjectId = usePageStore(
     (s) => s.projectId || extractProjectId(s.currentPage) || '',
   );
-  const effectiveProjectId = params?.projectId || storeProjectId;
-  const homeHref = effectiveProjectId
-    ? `/projects/${effectiveProjectId}/pages`
-    : '/projects';
+  const routeProjectId = params?.projectId as string | undefined;
+  const isPersonalPage = !routeProjectId || routeProjectId === 'personal';
+  const effectiveProjectId = isPersonalPage ? 'personal' : (routeProjectId || storeProjectId);
+  const homeHref = isPersonalPage
+    ? '/pages'
+    : `/projects/${routeProjectId}/pages`;
 
   const {
     toggleHistory,
@@ -84,7 +86,7 @@ export function Topbar() {
   const isSaving = hasDirtyFiles || updateTitleMutation.isPending;
 
   const { linkData: githubLinkData } = useGithubSync({
-    projectId: effectiveProjectId,
+    projectId: isPersonalPage ? '' : routeProjectId,
   });
 
   const handleToggleHistory = useCallback(async () => {

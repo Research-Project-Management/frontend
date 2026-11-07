@@ -5,8 +5,6 @@ import {
   X,
   FileText,
   Upload,
-  Folder,
-  Globe,
   BookOpen,
 } from 'lucide-react';
 import {
@@ -16,7 +14,6 @@ import {
   DialogDescription,
 } from '@/shared/components/ui/dialog';
 import { usePageActions } from '@/features/editor/ui/hooks/usePageActions';
-import { useEditorStorage } from '@/features/editor/ui/hooks/useStorage';
 import { usePageStore, syncShallowUrlParams } from '@/features/editor/core';
 
 import type {
@@ -27,8 +24,6 @@ import type {
 import { AddFilesSidebar } from './AddFilesSidebar';
 import { NewFileTabPane } from './NewFileTabPane';
 import { UploadTabPane } from './UploadTabPane';
-import { ProjectTabPane } from './ProjectTabPane';
-import { UrlTabPane } from './UrlTabPane';
 import { LibraryTabPane } from './LibraryTabPane';
 
 export type { AddFilesTab, AddFilesModalProps };
@@ -36,8 +31,6 @@ export type { AddFilesTab, AddFilesModalProps };
 const TABS: AddFilesTabItem[] = [
   { id: 'new-file', label: 'New file', icon: FileText },
   { id: 'upload', label: 'Upload', icon: Upload },
-  { id: 'project', label: 'From another project', icon: Folder },
-  { id: 'url', label: 'From external URL', icon: Globe },
   { id: 'library', label: 'From library', icon: BookOpen },
 ];
 
@@ -46,7 +39,6 @@ export default function AddFilesModal({
   onOpenChange,
   defaultTab = 'new-file',
   parentPageId: propParentPageId,
-  projectId = '',
   onPickItems,
 }: AddFilesModalProps) {
   const storeParentPageId = usePageStore((s) => s.parentPageId);
@@ -69,8 +61,6 @@ export default function AddFilesModal({
   }, [open, defaultTab]);
 
   const { createFile } = usePageActions();
-  const { uploadFile } = useEditorStorage(parentPageId, undefined);
-  const effectiveProjectId = projectId || parentPageId || '';
 
   const handleClose = () => onOpenChange(false);
 
@@ -87,7 +77,7 @@ export default function AddFilesModal({
               Add files
             </DialogTitle>
             <DialogDescription className="text-12 text-muted-foreground mt-0.5">
-              Create a new file, upload from your device, or import from an external source.
+              Create a new file, upload from your device, or import BibTeX from your library.
             </DialogDescription>
           </div>
           <button
@@ -129,27 +119,6 @@ export default function AddFilesModal({
             {activeTab === 'upload' && (
               <UploadTabPane
                 onPickItems={onPickItems}
-                onClose={handleClose}
-              />
-            )}
-
-            {activeTab === 'project' && (
-              <ProjectTabPane
-                projectId={projectId}
-                parentPageId={parentPageId}
-                createFile={createFile}
-                setSearchParams={setSearchParams}
-                onClose={handleClose}
-              />
-            )}
-
-            {activeTab === 'url' && (
-              <UrlTabPane
-                parentPageId={parentPageId}
-                effectiveProjectId={effectiveProjectId}
-                createFile={createFile}
-                uploadFile={uploadFile}
-                setSearchParams={setSearchParams}
                 onClose={handleClose}
               />
             )}

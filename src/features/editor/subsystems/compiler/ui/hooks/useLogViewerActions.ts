@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 import type { LogEntry, ErrorExplanationDto } from '@/features/editor/domain/types/compiler.types';
 import type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
 import type { AiErrorFixResult } from '@/features/editor/domain/ai/ai-error-assist';
-import { manuscriptService, downloadAuxFileUrl, downloadAllArtifactsZipUrl } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService, downloadAuxFileUrl, downloadAllArtifactsZipUrl } from '@/features/editor/sdk/pages.service';
 import { aiCoordinator } from '@/features/editor/subsystems/ai';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 import { usePageStore, useSettingsStore, workspaceCoordinator, editorCommandBus } from '@/features/editor/core';

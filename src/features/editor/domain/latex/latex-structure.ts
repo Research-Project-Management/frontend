@@ -4,7 +4,7 @@
  */
 
 import type { LogEntry, ParsedLog } from '@/features/editor/domain/types/compiler.types';
-import type { CompilerDiagnostic } from '@/features/editor/sdk/manuscript/types';
+import type { CompilerDiagnostic } from '@/features/editor/sdk/pages/types';
 import { parseLatexLog } from './compiler-logs-parser';
 
 export { parseLatexLog } from './compiler-logs-parser';

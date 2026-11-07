@@ -30,7 +30,7 @@ import {
   sessionCoordinator,
 } from "@/features/editor/core";
 import { useDebounce } from "@/shared/hooks/use-debounce";
-import { manuscriptService } from "@/features/editor/sdk/manuscript.service";
+import { manuscriptService } from "@/features/editor/sdk/pages.service";
 import { useEditorInstance } from "@/features/editor/ui/hooks/useEditorInstance";
 import { extractProjectId } from "@/features/editor/domain/types/core.types";
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';

@@ -8,7 +8,7 @@
  * - Generic file download triggers
  */
 
-import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/pages.service';
 
 export interface ExportSingleDocOptions {
   pageId: string;

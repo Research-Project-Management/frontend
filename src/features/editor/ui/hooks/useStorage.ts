@@ -16,7 +16,7 @@
 import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/pages.service';
 import type { EditorStorageItem } from '@/features/editor/domain/types/storage-item.types';
 import { usePageStore, workspaceCoordinator, editorCommandBus } from '@/features/editor/core';
 import { invalidateFileTreeQueries, storageKeys } from './document.queries';

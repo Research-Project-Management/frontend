@@ -8,7 +8,7 @@
  * - Snapshot / Historical revision ZIP packaging (`GET /projects/:projectId/history/versions/:version/export-zip`)
  */
 
-import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/pages.service';
 import { sessionCoordinator } from '@/features/editor/core';
 import { triggerFileDownload } from './document-download';
 

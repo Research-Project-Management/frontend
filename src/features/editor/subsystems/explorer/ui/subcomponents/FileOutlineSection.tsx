@@ -12,7 +12,7 @@ import {
   OUTLINE_INDENT,
   type OutlineEntry,
 } from '@/features/editor/subsystems/compiler';
-import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/pages.service';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
 import { useWorkspaceStore } from '@/features/editor/core';
 

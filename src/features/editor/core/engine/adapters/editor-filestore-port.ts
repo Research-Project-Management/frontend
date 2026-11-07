@@ -10,7 +10,7 @@
  * - Bridges to manuscriptService.filestore at application runtime.
  */
 
-import { filestore } from '@/features/editor/sdk/manuscript.service';
+import { filestore } from '@/features/editor/sdk/pages.service';
 
 export type FileUploader = (projectId: string, file: File, name: string) => Promise<unknown>;
 

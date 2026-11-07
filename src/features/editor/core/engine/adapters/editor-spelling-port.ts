@@ -13,7 +13,7 @@
 import { Facet } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
 import { toast } from 'sonner';
-import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/pages.service';
 import type {
   SpellingServicePort,
   SpellingNotificationPort,

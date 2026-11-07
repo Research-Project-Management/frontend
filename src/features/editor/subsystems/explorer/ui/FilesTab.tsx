@@ -43,8 +43,6 @@ import {
 } from '@/features/editor/ui/hooks/document.queries';
 import { usePageActions } from '@/features/editor/ui/hooks/usePageActions';
 import type { EditorStorageItem as StorageItem } from '@/features/editor/domain/types/storage-item.types';
-import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
-import { type LinkedFileDto } from '@/features/editor/sdk/manuscript/types';
 import { StorageFileRow } from './subcomponents/FileTreeNodes';
 import { UploadConflictDialog } from './modals/UploadConflictDialog';
 import { FileOutlineSection } from './subcomponents/FileOutlineSection';
@@ -73,8 +71,6 @@ const sanitizeTitle = (raw: string) => {
   if (FILE_EXTENSION_REGEX.test(trimmed)) return trimmed;
   return trimmed.replace(TRAILING_DOT_REGEX, '');
 };
-
-const EMPTY_LINKED_FILES: LinkedFileDto[] = [];
 
 function resolveExplorerItemById(
   fileId: string,
@@ -216,39 +212,9 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
     return editorCommandBus.subscribe('filetree:updated', handleFileTreeUpdated);
   }, [queryClient, parentPageId]);
 
-  // Query external linked files (Zotero, Mendeley, remote URL)
-  const { data: linkedFilesData } = useQuery<LinkedFileDto[]>({
-    queryKey: ['project-linked-files', projectId],
-    queryFn: async () => {
-      if (!projectId) return [];
-      try {
-        return await manuscriptService.linkedFiles.list(projectId);
-      } catch {
-        return [];
-      }
-    },
-    enabled: Boolean(projectId),
-    staleTime: 60_000,
-    gcTime: 5 * 60_000,
-  });
-
-  const linkedFiles = linkedFilesData ?? EMPTY_LINKED_FILES;
-
-  const linkedFileMap = useMemo(() => {
-    const map = new Map<string, LinkedFileDto>();
-    linkedFiles.forEach((lf) => {
-      if (lf.name) map.set(lf.name.toLowerCase(), lf);
-      if (lf.targetBibFile) map.set(lf.targetBibFile.toLowerCase(), lf);
-    });
-    return map;
-  }, [linkedFiles]);
-
   const {
     downloadTex,
     copyTexCommand,
-    refreshLinkedFile,
-    deleteLinkedFile,
-    refreshAllLinkedFiles,
     insertAsset,
     handleRenameSubmit,
     isRenamePending,
@@ -602,10 +568,6 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
         node.title === activeId ||
         (activeId === pageId && isMain);
 
-      const linked =
-        linkedFileMap.get(node.displayLabel.toLowerCase()) ||
-        linkedFileMap.get(node.title.toLowerCase());
-
       return (
         <TexFileRow
           key={node.id}
@@ -614,9 +576,6 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
           displayLabel={node.displayLabel}
           isActive={isActive}
           isMain={isMain}
-          linkedFile={linked}
-          onRefreshLinked={refreshLinkedFile}
-          onDeleteLinked={deleteLinkedFile}
           isRenaming={renamingId === node.id}
           renameValue={renameValue}
           isRenamePending={isRenamePending}
@@ -644,9 +603,6 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
       activeTabId,
       fileParam,
       pageId,
-      linkedFileMap,
-      refreshLinkedFile,
-      deleteLinkedFile,
       renamingId,
       renameValue,
       isRenamePending,
@@ -694,8 +650,6 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
           onOpenFileModal={handleOpenFileModal}
           onStartCreateFolder={handleStartCreateFolder}
           onOpenUploadModal={handleOpenUploadModal}
-          linkedFilesCount={linkedFiles.length}
-          onRefreshAllLinkedFiles={refreshAllLinkedFiles}
           onClose={onClose}
         />
 

@@ -24,7 +24,7 @@ import type { MentionMember } from '@/features/editor/domain/collaboration/menti
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
 import { useReviewRealtimeNotifications } from './useReviewRealtimeNotifications';
 import { jumpToEditorLine } from '@/features/editor/subsystems/navigation';
-import { manuscriptService, type ReviewStatus, type ReviewRoundInfo } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService, type ReviewStatus, type ReviewRoundInfo } from '@/features/editor/sdk/pages.service';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
@@ -146,7 +146,7 @@ export function useReviewState() {
   const { data: projectMembersData } = useQuery({
     queryKey: ['project-members', projectId],
     queryFn: async () => {
-      if (!projectId) return [];
+      if (!projectId || projectId === 'personal' || projectId === pageId) return [];
       try {
         const res = (await ProjectService.getMembers(projectId)) as {
           members?: ProjectMemberItem[];
@@ -159,7 +159,7 @@ export function useReviewState() {
     },
     staleTime: 5 * 60_000,
     gcTime: 10 * 60_000,
-    enabled: Boolean(projectId),
+    enabled: Boolean(projectId && projectId !== 'personal' && projectId !== pageId),
   });
 
   const mentionMembers = useMemo<MentionMember[]>(() => {

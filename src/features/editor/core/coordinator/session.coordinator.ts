@@ -26,7 +26,7 @@ import {
 } from '@/features/editor/domain/document/session-fsm';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import { latexDependencyGraph } from '@/features/editor/domain/latex/dependency-graph';
-import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/pages.service';
 import {
   markHttpSavedWhileDisconnected,
   flushYjsProvider,

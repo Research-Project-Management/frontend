@@ -18,7 +18,7 @@ import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-
 import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics/coordinator/diagnostics.coordinator';
 import { usePageStore } from '@/features/editor/core';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
-import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/pages.service';
 import {
   runLatexLinter,
   mapBackendDiagnosticsToOffsets,

@@ -2,7 +2,7 @@
 
 import React, { memo } from 'react';
 import { AlertCircle, AlertTriangle } from 'lucide-react';
-import type { CitationValidationDto } from '@/features/editor/sdk/manuscript/types';
+import type { CitationValidationDto } from '@/features/editor/sdk/pages/types';
 
 interface CitationValidationBannerProps {
   validation: CitationValidationDto | null | undefined;

@@ -15,7 +15,7 @@ import type {
 import type {
   CompilerDiagnostic,
   DiagnosticItemDto,
-} from '@/features/editor/sdk/manuscript/types';
+} from '@/features/editor/sdk/pages/types';
 
 export type { LogEntry, ParsedLog, LogSeverity };
 

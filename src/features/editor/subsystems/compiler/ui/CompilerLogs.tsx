@@ -28,8 +28,8 @@ import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { useCompileStore } from '@/features/editor/subsystems/compiler/coordinator/compiler.store';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
 import { editorCommandBus, usePageStore, useSettingsStore } from '@/features/editor/core';
-import { listAuxFiles, suggestLatexFix, manuscriptService } from '@/features/editor/sdk/manuscript.service';
-import { type AuxFileItem } from '@/features/editor/sdk/manuscript/types';
+import { listAuxFiles, suggestLatexFix, manuscriptService } from '@/features/editor/sdk/pages.service';
+import { type AuxFileItem } from '@/features/editor/sdk/pages/types';
 import type { AiErrorFixResult } from '@/features/editor/domain/ai/ai-error-assist';
 
 import type { LogEntry, ParsedLog, CompilerLogsProps, LogsProps, ErrorExplanationDto } from '@/features/editor/domain/types/compiler.types';

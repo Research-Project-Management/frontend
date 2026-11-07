@@ -78,37 +78,6 @@ export interface AutoFixResultDto {
   }>;
 }
 
-export interface LinkedFileDto {
-  id: string;
-  projectId: string;
-  name: string;
-  provider?: 'url' | 'zotero' | 'mendeley';
-  providerType?: 'URL' | 'ZOTERO' | 'MENDELEY' | 'DROPBOX' | 'GITHUB';
-  url?: string | null;
-  collectionId?: string | null;
-  nodeId?: string | null;
-  docId?: string | null;
-  fileId?: string | null;
-  targetBibFile?: string;
-  status: 'synced' | 'failed' | 'pending' | 'SYNCED' | 'SYNCING' | 'FAILED' | 'PENDING';
-  lastSyncedAt?: string | null;
-  errorMessage?: string | null;
-  autoRefresh?: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface CreateLinkedFilePayload {
-  name: string;
-  providerType?: 'URL' | 'ZOTERO' | 'MENDELEY' | 'DROPBOX' | 'GITHUB';
-  provider?: 'url' | 'zotero' | 'mendeley';
-  url?: string;
-  collectionId?: string;
-  targetBibFile?: string;
-  parentFolderId?: string;
-  autoRefresh?: boolean;
-}
-
 export interface BibEntryDto {
   id?: string;
   key: string;

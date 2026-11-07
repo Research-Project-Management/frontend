@@ -73,14 +73,21 @@ export function ProjectTitleDropdown() {
     storeProjectId ||
     '';
 
-  const { project } = useProject(effectiveProjectId, {
-    enabled: Boolean(effectiveProjectId),
+  const realProjectId =
+    effectiveProjectId &&
+    effectiveProjectId !== 'personal' &&
+    effectiveProjectId !== currentPageId
+      ? effectiveProjectId
+      : '';
+
+  const { project } = useProject(realProjectId, {
+    enabled: Boolean(realProjectId),
   });
 
   const displayTitle =
-    project?.name ||
     currentPageTitle ||
-    'Untitled Project';
+    project?.name ||
+    'Untitled Document';
 
   const { getContent } = useEditorInstance();
   const pdfUrl = useCompileStore((s) => s.pdfUrl);

@@ -36,8 +36,8 @@ import { validateIdentifier } from '@/features/editor/subsystems/citation/model/
 import {
   buildRetractedCitationMap, type RetractedItemInfo, } from '@/features/editor/subsystems/citation/model/retracted-citations';
 import type { BibEntry } from '@/features/editor/domain/latex/bib-parser';
-import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
-import type { BibEntryDto } from '@/features/editor/sdk/manuscript/types';
+import { manuscriptService } from '@/features/editor/sdk/pages.service';
+import type { BibEntryDto } from '@/features/editor/sdk/pages/types';
 import { useCollections } from '@/features/library/sdk/queries/collections.queries';
 import { useRetractedItems } from '@/features/library/sdk/queries/ingestion.queries';
 import {

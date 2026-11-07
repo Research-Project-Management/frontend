@@ -11,7 +11,7 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { FileText, Loader2 } from 'lucide-react';
-import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/pages.service';
 import { usePageComments } from '@/features/editor/subsystems/review/ui/hooks/useComment';
 import {
   usePageSuggestions,

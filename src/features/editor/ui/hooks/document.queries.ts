@@ -6,7 +6,7 @@
  */
 
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
-import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/pages.service';
 
 // ── 1. Query Keys ────────────────────────────────────────────────────────────
 

@@ -162,7 +162,7 @@ export async function executeProjectCitekeyRefactor(
 
   const { usePageStore, editorCommandBus, getActiveEditorEngine, documentFacade, sessionCoordinator } =
     await import('@/features/editor/core');
-  const { manuscriptService } = await import('@/features/editor/sdk/manuscript.service');
+  const { manuscriptService } = await import('@/features/editor/sdk/pages.service');
   const { lruDocumentCache } = await import('@/features/editor/domain/document/lru-document-cache');
   const { latexSymbolsIndex } = await import('@/features/editor/domain/latex/latex-symbols-index');
   const { latexDependencyGraph } = await import('@/features/editor/domain/latex/dependency-graph');

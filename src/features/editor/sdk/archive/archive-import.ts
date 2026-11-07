@@ -5,8 +5,8 @@
  * Backend Manuscripts ExportImportService (`POST /projects/:projectId/import/zip`).
  */
 
-import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
-import type { ImportProjectZipResult } from '@/features/editor/sdk/manuscript/types';
+import { manuscriptService } from '@/features/editor/sdk/pages.service';
+import type { ImportProjectZipResult } from '@/features/editor/sdk/pages/types';
 import { ProjectService } from '@/features/projects/shell/services/project.service';
 
 export const TEXT_EXTENSIONS = new Set([

@@ -36,7 +36,7 @@ import { Input } from '@/shared/components/ui/input';
 import { Badge } from '@/shared/components/ui/badge';
 import { cn } from '@/shared/lib/utils';
 
-import { manuscriptService, historyKeys } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService, historyKeys } from '@/features/editor/sdk/pages.service';
 import { exportVersionAsZip } from '@/features/editor/sdk/archive/archive-export';
 import {
   clearYjsProviderPool,
@@ -100,12 +100,19 @@ export function HistoryPage({
       onOpenChange(false);
       return;
     }
-    if (effectiveProjectId) {
-      router.push(`/projects/${effectiveProjectId}/editor`);
+    const isPersonal = !params?.projectId || params.projectId === 'personal';
+    if (isPersonal) {
+      if (effectivePageId) {
+        router.push(`/pages/${effectivePageId}`);
+      } else {
+        router.push('/pages');
+      }
+    } else if (effectivePageId) {
+      router.push(`/projects/${params.projectId}/pages/${effectivePageId}`);
     } else {
-      router.back();
+      router.push(`/projects/${params.projectId}/pages`);
     }
-  }, [onClose, onOpenChange, effectiveProjectId, router]);
+  }, [onClose, onOpenChange, params?.projectId, effectivePageId, router]);
 
   // UI State
   const [filter, setFilter] = useState<'all' | 'labelled'>('all');

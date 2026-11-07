@@ -102,7 +102,7 @@ export function useCollaborationPresence(
     {
       queryKey: ['project-members', projectId],
       queryFn: async () => {
-        if (!projectId) return [];
+        if (!projectId || projectId === 'personal' || projectId === pageId) return [];
         try {
           const res = (await ProjectService.getMembers(projectId)) as {
             members?: MemberRecord[];
@@ -115,7 +115,7 @@ export function useCollaborationPresence(
       },
       staleTime: 5 * 60_000,
       gcTime: 10 * 60_000,
-      enabled: Boolean(projectId),
+      enabled: Boolean(projectId && projectId !== 'personal' && projectId !== pageId),
     },
     effectiveQueryClient
   );

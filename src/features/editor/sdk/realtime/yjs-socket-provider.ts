@@ -12,7 +12,7 @@ import { io, type Socket } from 'socket.io-client';
 import { getEffectiveBaseUrl, getAuthToken } from '@/shared/lib/api';
 import type { IEditorCommandBus } from '@/features/editor/core/bus/command-bus.port';
 import { getAuthorColor } from '@/features/editor/domain/collaboration/author-display';
-import type { CollaborationPresence } from '../manuscript/types';
+import type { CollaborationPresence } from '../pages/types';
 import {
   buildLineStartsIndex,
   getOffsetFromRowCol,

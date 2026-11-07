@@ -27,8 +27,8 @@ import {
   type SymbolSnapshot,
 } from './latex-symbols-core';
 import { PrefixTrie, LatexSymbolCatalog } from './prefix-trie';
-import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
-import type { ProjectSymbolsResponseDto } from '@/features/editor/sdk/manuscript/types';
+import { manuscriptService } from '@/features/editor/sdk/pages.service';
+import type { ProjectSymbolsResponseDto } from '@/features/editor/sdk/pages/types';
 import { latexDependencyGraph } from './dependency-graph';
 import { isItemRetracted, getRetractionInfo } from '@/features/library/domain/system-views.policy';
 

@@ -12,12 +12,8 @@ import {
   Trash2,
   Download,
   Copy,
-  Link2,
-  Unlink2,
-  RefreshCw,
   Columns2,
 } from 'lucide-react';
-import type { LinkedFileDto } from '@/features/editor/sdk/manuscript/types';
 import { editorCommandBus } from '@/features/editor/core';
 import {
   ContextMenu,
@@ -96,9 +92,6 @@ export interface TexFileRowProps {
   onSetMain: (id: string) => void;
   onDownload?: (file: { id: string; title: string }) => void;
   onCopyCommand?: (title: string) => void;
-  linkedFile?: LinkedFileDto;
-  onRefreshLinked?: (linkedFileId: string, name: string) => void;
-  onDeleteLinked?: (linkedFileId: string, name: string) => void;
 }
 
 export const TexFileRow = React.memo(function TexFileRow({
@@ -119,9 +112,6 @@ export const TexFileRow = React.memo(function TexFileRow({
   onSetMain,
   onDownload,
   onCopyCommand,
-  linkedFile,
-  onRefreshLinked,
-  onDeleteLinked,
 }: TexFileRowProps) {
   const { icon: FileIcon, color: fileColor } = getFileIcon(file.title);
   const fullName = displayName(file.title);
@@ -264,30 +254,6 @@ export const TexFileRow = React.memo(function TexFileRow({
 
       {/* Row action dropdown trigger (⋮) */}
       <RowActions>
-        {linkedFile && onRefreshLinked && (
-          <DropdownMenuItem
-            onClick={(e) => {
-              e.stopPropagation();
-              onRefreshLinked(linkedFile.id, fullName);
-            }}
-            className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-          >
-            <RefreshCw className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-            <span>Refresh from {linkedFile.providerType || 'source'}</span>
-          </DropdownMenuItem>
-        )}
-        {linkedFile && onDeleteLinked && (
-          <DropdownMenuItem
-            onClick={(e) => {
-              e.stopPropagation();
-              onDeleteLinked(linkedFile.id, fullName);
-            }}
-            className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-          >
-            <Unlink2 className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-            <span>Unlink external source</span>
-          </DropdownMenuItem>
-        )}
         {!isMain && (
           <DropdownMenuItem
             onClick={(e) => {
@@ -356,30 +322,6 @@ export const TexFileRow = React.memo(function TexFileRow({
     <ContextMenu>
       <ContextMenuTrigger asChild>{rowContent}</ContextMenuTrigger>
       <ContextMenuContent className="w-56 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none text-13">
-        {linkedFile && onRefreshLinked && (
-          <ContextMenuItem
-            onClick={(e) => {
-              e.stopPropagation();
-              onRefreshLinked(linkedFile.id, fullName);
-            }}
-            className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-          >
-            <RefreshCw className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-            <span>Refresh from {linkedFile.providerType || 'source'}</span>
-          </ContextMenuItem>
-        )}
-        {linkedFile && onDeleteLinked && (
-          <ContextMenuItem
-            onClick={(e) => {
-              e.stopPropagation();
-              onDeleteLinked(linkedFile.id, fullName);
-            }}
-            className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
-          >
-            <Unlink2 className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
-            <span>Unlink external source</span>
-          </ContextMenuItem>
-        )}
         {!isMain ? (
           <ContextMenuItem
             onClick={(e) => {

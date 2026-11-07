@@ -14,7 +14,7 @@ import {
   type CompileLatexPayload,
   type CompilerDiagnostic,
   type ForwardSyncResult,
-} from '@/features/editor/sdk/manuscript.service';
+} from '@/features/editor/sdk/pages.service';
 import { parseCompileErrors, type ParsedCompileError } from '@/features/editor/domain/latex/latex-structure';
 import { sessionCoordinator } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';

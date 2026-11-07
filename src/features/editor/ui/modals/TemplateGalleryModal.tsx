@@ -37,7 +37,7 @@ import { lruDocumentCache } from '@/features/editor/subsystems/explorer';
 import { clearYjsProviderPool } from '@/features/editor/sdk/realtime/yjs-socket-provider';
 import { invalidateFileTreeQueries } from '@/features/editor/ui/hooks/document.queries';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
-import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/pages.service';
 import { DEFAULT_MAIN_FILE } from '@/features/editor/domain/constants/editor.constants';
 
 import {

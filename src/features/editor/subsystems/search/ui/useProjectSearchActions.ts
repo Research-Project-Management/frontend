@@ -11,7 +11,7 @@ import { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { filesQuery } from '@/features/editor/ui/hooks/document.queries';
-import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/pages.service';
 import {
   sessionCoordinator,
   documentFacade,

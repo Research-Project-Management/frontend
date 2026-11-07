@@ -225,7 +225,16 @@ export function extractProjectId(
     if (typeof doc.projectId === 'string') return doc.projectId;
     return (doc.projectId as PageProjectContext).id;
   }
-  if ('id' in doc && typeof doc.id === 'string') {
+  if (
+    'id' in doc &&
+    typeof doc.id === 'string' &&
+    !('title' in doc) &&
+    !('content' in doc) &&
+    !('status' in doc) &&
+    !('files' in doc) &&
+    !('rootDocId' in doc) &&
+    !('pageId' in doc)
+  ) {
     return doc.id;
   }
   return undefined;

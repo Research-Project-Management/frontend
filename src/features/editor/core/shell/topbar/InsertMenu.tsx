@@ -35,12 +35,6 @@ export function InsertMenu({ value = 'insert' }: { value?: string } = {}) {
     engine?.focus();
   };
 
-  const handleInsertFigureUrl = () => {
-    useWorkspaceStore.getState().setActiveSidebarTab('files');
-    useWorkspaceStore.getState().setSidebarLeftOpen(true);
-    editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'add-files', payload: { initialTab: 'url' } });
-  };
-
   const handleComment = () => {
     editorCommandBus.dispatch({ type: 'review:create-comment' });
   };
@@ -102,22 +96,6 @@ export function InsertMenu({ value = 'insert' }: { value?: string } = {}) {
               className="cursor-pointer"
             >
               <span className="whitespace-nowrap">From project files</span>
-            </MenubarItem>
-            <MenubarItem
-              onClick={() => {
-                useWorkspaceStore.getState().setActiveSidebarTab('files');
-                useWorkspaceStore.getState().setSidebarLeftOpen(true);
-                editorCommandBus.dispatch({ type: 'dialog:open', dialog: 'add-files', payload: { initialTab: 'project' } });
-              }}
-              className="cursor-pointer"
-            >
-              <span className="whitespace-nowrap">From another project</span>
-            </MenubarItem>
-            <MenubarItem
-              onClick={handleInsertFigureUrl}
-              className="cursor-pointer"
-            >
-              <span className="whitespace-nowrap">From URL</span>
             </MenubarItem>
           </MenubarSubContent>
         </MenubarSub>

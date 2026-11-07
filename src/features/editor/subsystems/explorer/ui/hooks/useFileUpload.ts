@@ -9,7 +9,7 @@ import { lruDocumentCache } from '@/features/editor/domain/document/lru-document
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 import type { EditorStorageItem as StorageItem } from '@/features/editor/domain/types/storage-item.types';
 import { TEX_EXTS, type PendingUploadItem as PendingItem } from '@/features/editor/subsystems/explorer/ui/modals/UploadConflictDialog';
-import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/pages.service';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
 import { normalizeVirtualPath, parseVirtualFolderId } from '@/features/editor/domain/document/document-naming';
 import { readEntriesRecursively } from '../modals/directory-reader';

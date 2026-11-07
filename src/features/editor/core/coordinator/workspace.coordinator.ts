@@ -13,8 +13,8 @@
  * - Deep Module architecture with ports for Service, Notification, and Store isolation.
  */
 
-import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
-import { type LinkedFileDto } from '@/features/editor/sdk/manuscript/types';
+import { manuscriptService } from '@/features/editor/sdk/pages.service';
+import { type StructureNodeDto } from '@/features/editor/sdk/pages/types';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import {
   normalizeVirtualPath,
@@ -63,7 +63,15 @@ export interface MoveItemOptions {
   projectId?: string;
 }
 
-type CreatedFileNode = LinkedFileDto & { title?: string; content?: string; path?: string };
+type CreatedFileNode = Partial<StructureNodeDto> & {
+  id: string;
+  name?: string;
+  docId?: string | null;
+  fileId?: string | null;
+  title?: string;
+  content?: string;
+  path?: string;
+};
 
 const defaultServicePort: WorkspaceServicePort = {
   createNode: (projectId, data) => manuscriptService.structure.createNode(projectId, data),
@@ -376,7 +384,7 @@ export class WorkspaceCoordinator {
   /**
    * Creates a new LaTeX or asset file in the workspace
    */
-  public async createFile(options: CreateFileOptions): Promise<LinkedFileDto | null> {
+  public async createFile(options: CreateFileOptions): Promise<CreatedFileNode | null> {
     const { name, folderId = null, content = '', projectId: optProjectId, openAfterCreate = true } = options;
     const effectiveProjectId = optProjectId || this.getActiveProjectId();
 

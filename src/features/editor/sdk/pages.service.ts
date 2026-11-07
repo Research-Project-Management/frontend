@@ -1,9 +1,9 @@
 /**
- * manuscript.service.ts
+ * pages.service.ts
  *
- * UNIFIED MANUSCRIPT CLIENT SDK FACADE (Matt Pocock Deep Module).
+ * UNIFIED PAGES / MANUSCRIPT CLIENT SDK FACADE (Matt Pocock Deep Module).
  *
- * Canonical entry point for all Manuscript subsystem operations:
+ * Canonical entry point for all Pages/Manuscript subsystem operations:
  * - docs: Document CRUD, child files, lines, thumbnails, incremental sync
  * - compiler: LaTeX compilation, word count, preview, aux artifacts
  * - synctex: Forward and reverse SyncTeX coordinate mapping
@@ -16,24 +16,26 @@
  * - structure: Project hierarchy, folders, file tree nodes, storage operations
  * - filestore: Binary file upload, streaming, signed URLs, presigned upload
  * - diagnostics: Error explanation, linter, autofix
- * - linkedFiles: External file links (Zotero, Mendeley, URL, etc.)
  * - citations: BibTeX entry resolution, validation, and search
  * - templates: Project and gallery template scaffolding
  * - updater: Batch document update buffering and buffer flushing
  * - spelling: Personal spellcheck dictionary
  */
 
-import { manuscriptService } from './manuscript/docstore.client';
-import { PageFileMapper, type RawPageFileRecord } from './manuscript/doc-mapper';
-import type { CollaborationEvent } from './manuscript/types';
+import { manuscriptService } from './pages/docstore.client';
+import { PageFileMapper, type RawPageFileRecord } from './pages/doc-mapper';
+import type { CollaborationEvent } from './pages/types';
 
-export * from './manuscript/base';
-export * from './manuscript/types';
-export * from './manuscript/docstore.client';
-export * from './manuscript/doc-mapper';
+export * from './pages/base';
+export * from './pages/types';
+export * from './pages/docstore.client';
+export * from './pages/doc-mapper';
 export * from './realtime/yjs-socket-provider';
 export * from './archive/archive-export';
 export * from './archive/archive-import';
+export const pagesService = manuscriptService;
+export const PagesService = manuscriptService;
+export const ManuscriptService = PagesService;
 export { manuscriptService, PageFileMapper, type RawPageFileRecord };
 export default manuscriptService;
 
@@ -53,8 +55,8 @@ export const collaborationService = {
     onEvent: (event: CollaborationEvent) => void,
   ): (() => void) => {
     const url = projectId
-      ? `/api/v1/manuscripts/projects/${projectId}/docs/${pageId}/collaboration/stream`
-      : `/api/v1/manuscripts/docs/${pageId}/collaboration/stream`;
+      ? `/api/v1/pages/projects/${projectId}/docs/${pageId}/collaboration/stream`
+      : `/api/v1/pages/docs/${pageId}/collaboration/stream`;
 
     const eventSource = new EventSource(url);
     eventSource.onmessage = (e: { data: string }) => {
@@ -75,7 +77,7 @@ export const collaborationService = {
 export const listAuxFiles = (projectId: string) => manuscriptService.compiler.listAuxFiles(projectId);
 export const downloadAuxFileUrl = (projectId: string, filename: string) => manuscriptService.compiler.downloadAuxFileUrl(projectId, filename);
 export const downloadAllArtifactsZipUrl = (projectId: string) => manuscriptService.compiler.downloadAllArtifactsZipUrl(projectId);
-export { suggestLatexFix } from './manuscript/ai.client';
+export { suggestLatexFix } from './pages/ai.client';
 export const fetchWordCount = async (
   source: string,
   projectId?: string,

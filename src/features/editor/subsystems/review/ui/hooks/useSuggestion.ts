@@ -9,8 +9,8 @@
 
 import { useQuery, useMutation, type QueryClient } from '@tanstack/react-query';
 import type { SuggestionStatus, PageSuggestion } from '@/features/editor/domain/types/suggestion.types';
-import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
-import { type CreateSuggestionPayload } from '@/features/editor/sdk/manuscript/types';
+import { manuscriptService } from '@/features/editor/sdk/pages.service';
+import { type CreateSuggestionPayload } from '@/features/editor/sdk/pages/types';
 import { reviewCoordinator } from '@/features/editor/subsystems/review/coordinator/review.coordinator';
 import { toast } from 'sonner';
 import { useSafeQueryClient } from './safeQueryClient';

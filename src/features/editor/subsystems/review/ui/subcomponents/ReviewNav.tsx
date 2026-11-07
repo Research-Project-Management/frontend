@@ -20,7 +20,7 @@ import {
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { SidebarPanelHeader } from '@/features/editor/core';
 import { ResolvedCommentsIcon } from './ReviewBadges';
-import type { ReviewStatus } from '@/features/editor/sdk/manuscript.service';
+import type { ReviewStatus } from '@/features/editor/sdk/pages.service';
 
 // ── Review Header ───────────────────────────────────────────────────────────
 

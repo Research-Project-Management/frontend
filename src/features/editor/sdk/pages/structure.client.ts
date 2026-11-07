@@ -1,7 +1,7 @@
 /**
  * structure.client.ts
  *
- * Project Hierarchy, Storage, Filestore, Linked Files, Citations, Templates,
+ * Project Hierarchy, Storage, Filestore, Citations, Templates,
  * Spelling, and Git Sub-APIs (Part of manuscriptService SDK).
  */
 
@@ -21,8 +21,6 @@ import type {
   StorageFileDto,
   BibEntryDto,
   CitationValidationDto,
-  LinkedFileDto,
-  CreateLinkedFilePayload,
   ProjectTemplateItem,
   ProjectOutlineResponseDto,
   ProjectSymbolsResponseDto,
@@ -649,41 +647,5 @@ export const gitApi = {
 
   revokeToken: async (tokenId: string): Promise<{ success: boolean }> => {
     return apiDelete<{ success: boolean }>(`${MANUSCRIPTS_API_BASE}/git/tokens/${tokenId}`);
-  },
-};
-
-// ── Sub-domain: linked-files.api.ts ──────────────────────────────────────
-/**
- * linked-files.api.ts
- *
- * Linked external files sub-API: URL imports, Zotero, Mendeley, Dropbox, GitHub syncing.
- */
-
-export const linkedFiles = {
-  list: async (projectId: string): Promise<LinkedFileDto[]> => {
-    return await apiGet<LinkedFileDto[]>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/linked-files`);
-  },
-
-  create: async (projectId: string, payload: CreateLinkedFilePayload): Promise<LinkedFileDto> => {
-    const body = {
-      ...payload,
-      provider: payload.provider || (payload.providerType ? payload.providerType.toLowerCase() : 'url'),
-    };
-    return await apiPost<LinkedFileDto>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/linked-files`, body);
-  },
-
-  refresh: async (projectId: string, fileId: string): Promise<LinkedFileDto> => {
-    return await apiPost<LinkedFileDto>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/linked-files/${fileId}/refresh`, {});
-  },
-
-  delete: async (projectId: string, fileId: string, deleteNode = false): Promise<void> => {
-    return await apiDelete(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/linked-files/${fileId}?deleteNode=${deleteNode}`);
-  },
-
-  refreshAll: async (projectId?: string): Promise<{ refreshedCount: number }> => {
-    if (projectId) {
-      return await apiPost<{ refreshedCount: number }>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/linked-files/refresh-all`, {});
-    }
-    return await apiPost<{ refreshedCount: number }>(`${MANUSCRIPTS_API_BASE}/linked-files/refresh-all`, { projectId });
   },
 };

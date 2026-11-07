@@ -9,7 +9,7 @@
 
 import { useQuery, useMutation, type QueryClient } from '@tanstack/react-query';
 import type { PageComment, CommentStatus } from '@/features/editor/domain/types/comment.types';
-import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/pages.service';
 import { getCachedUser } from '@/features/auth/services/auth.service';
 import { toast } from 'sonner';
 import { useSafeQueryClient } from './safeQueryClient';

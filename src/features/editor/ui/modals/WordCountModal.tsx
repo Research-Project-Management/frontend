@@ -34,7 +34,7 @@ import {
   X,
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
-import { fetchWordCount, type WordCountResponse } from '@/features/editor/sdk/manuscript.service';
+import { fetchWordCount, type WordCountResponse } from '@/features/editor/sdk/pages.service';
 import {
   countLatexWords,
   EMPTY_TEXCOUNT_STATS,

@@ -7,7 +7,7 @@
  * via `POST /api/v1/manuscripts/diagnostics/projects/:projectId/lint-doc` and `/diagnostics/lint`.
  */
 
-import type { DiagnosticItemDto } from '@/features/editor/sdk/manuscript/types';
+import type { DiagnosticItemDto } from '@/features/editor/sdk/pages/types';
 
 export interface RetractedItemInfo {
   title?: string;

@@ -10,7 +10,7 @@ import { getEffectiveBaseUrl } from '@/shared/lib/api';
 export const MANUSCRIPTS_API_BASE =
   process.env.NEXT_PUBLIC_MANUSCRIPTS_SERVICE_URL ||
   process.env.NEXT_PUBLIC_MANUSCRIPT_SERVICE_URL ||
-  '/api/v1/manuscripts';
+  '/api/v1/pages';
 
 export function getManuscriptsBaseUrl(): string {
   if (MANUSCRIPTS_API_BASE.startsWith('http://') || MANUSCRIPTS_API_BASE.startsWith('https://')) {

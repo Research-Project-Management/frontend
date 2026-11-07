@@ -14,7 +14,7 @@ import { Awareness, removeAwarenessStates } from 'y-protocols/awareness';
 import type { Socket } from 'socket.io-client';
 import type { IEditorCommandBus } from '@/features/editor/core/bus/command-bus.port';
 import { getAuthorColor } from '@/features/editor/domain/collaboration/author-display';
-import type { CollaborationPresence } from '../manuscript/types';
+import type { CollaborationPresence } from '../pages/types';
 
 export interface CollaboratorUser {
   id: string;

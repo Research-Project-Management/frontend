@@ -13,7 +13,7 @@
 
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
-import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/pages.service';
 import { formatBibEntryToBibtex } from '@/features/editor/subsystems/citation/model/citation-formatter';
 import type { BibEntry } from '@/features/editor/domain/latex/bib-parser';
 

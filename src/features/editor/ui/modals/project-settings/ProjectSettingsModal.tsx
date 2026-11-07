@@ -52,7 +52,7 @@ import { useGithubSync } from '@/features/editor/ui/hooks/useGithubSync';
 import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
 import { DEFAULT_MAIN_FILE } from '@/features/editor/domain/constants/editor.constants';
-import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/pages.service';
 
 import {
   EDITOR_FONT_FAMILIES,
@@ -673,37 +673,6 @@ export function ProjectSettingsModal() {
                     </div>
                   )}
                 </div>
-              </div>
-
-              {/* Dropbox (via Linked External Files) */}
-              <div className="flex items-center justify-between p-2.5 rounded-md border border-border bg-card/40 hover:bg-card transition-colors">
-                <div className="flex items-center gap-2.5">
-                  <div className="size-7 rounded-md bg-muted text-foreground flex items-center justify-center shrink-0">
-                    <Cloud className="size-4" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-foreground">External URL / Dropbox</p>
-                    <p className="text-[11px] text-muted-foreground">Sync external files via shared links</p>
-                  </div>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setSettingsPanelOpen(false);
-                    editorCommandBus.dispatch({ type: 'sidebar:open-panel', panel: 'Files' });
-                    setTimeout(() => {
-                      editorCommandBus.dispatch({
-                        type: 'dialog:open',
-                        dialog: 'add-files',
-                        payload: { initialTab: 'url' },
-                      });
-                    }, 50);
-                  }}
-                  className="h-7 text-xs px-2.5 cursor-pointer shrink-0"
-                >
-                  Link URL
-                </Button>
               </div>
             </section>
 

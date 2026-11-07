@@ -22,7 +22,7 @@ import {
 } from '@/features/editor/core';
 import { diagnosticsCoordinator, type IndexedDiagnosticItem } from '@/features/editor/subsystems/diagnostics';
 import type { EditorDiagnosticItem } from '@/features/editor/domain/types/diagnostics.types';
-import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
+import { manuscriptService } from '@/features/editor/sdk/pages.service';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import type { DiffProposal } from '@/features/editor/domain/types/ports/editor-engine.port';
 import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';

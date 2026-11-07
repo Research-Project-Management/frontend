@@ -6,7 +6,7 @@
 
 import { create } from 'zustand';
 import type { CompileStatus, CompileError, ParsedLog } from '@/features/editor/domain/types/compiler.types';
-import type { CompilerDiagnostic } from '@/features/editor/sdk/manuscript/types';
+import type { CompilerDiagnostic } from '@/features/editor/sdk/pages/types';
 import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 

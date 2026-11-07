@@ -35,21 +35,21 @@ const STATUS_CONFIG: Record<
 > = {
   on_track: {
     label: 'On Track',
-    badgeClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+    badgeClass: 'bg-success/10 text-success border-success/20',
     icon: CheckCircle2,
-    indicatorDot: 'bg-emerald-500',
+    indicatorDot: 'bg-success',
   },
   at_risk: {
     label: 'At Risk',
-    badgeClass: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+    badgeClass: 'bg-warning/10 text-warning border-warning/20',
     icon: AlertCircle,
-    indicatorDot: 'bg-amber-500',
+    indicatorDot: 'bg-warning',
   },
   off_track: {
     label: 'Off Track',
-    badgeClass: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20',
+    badgeClass: 'bg-destructive/10 text-destructive border-destructive/20',
     icon: AlertCircle,
-    indicatorDot: 'bg-rose-500',
+    indicatorDot: 'bg-destructive',
   },
 };
 

@@ -92,28 +92,28 @@ export function WorkItemProgressCard({
           {completedPct > 0 && (
             <div
               style={{ width: `${completedPct}%` }}
-              className="h-full bg-emerald-500 transition-all duration-300"
+              className="h-full bg-success transition-all duration-300"
               title={`Completed: ${completed} (${completedPct.toFixed(1)}%)`}
             />
           )}
           {startedPct > 0 && (
             <div
               style={{ width: `${startedPct}%` }}
-              className="h-full bg-amber-500 transition-all duration-300"
+              className="h-full bg-warning transition-all duration-300"
               title={`In Progress: ${started} (${startedPct.toFixed(1)}%)`}
             />
           )}
           {unstartedPct > 0 && (
             <div
               style={{ width: `${unstartedPct}%` }}
-              className="h-full bg-blue-500/80 transition-all duration-300"
+              className="h-full bg-primary/80 transition-all duration-300"
               title={`Unstarted: ${unstarted} (${unstartedPct.toFixed(1)}%)`}
             />
           )}
           {backlogPct > 0 && (
             <div
               style={{ width: `${backlogPct}%` }}
-              className="h-full bg-zinc-400 dark:bg-zinc-600 transition-all duration-300"
+              className="h-full bg-muted-foreground/60 transition-all duration-300"
               title={`Backlog: ${backlog} (${backlogPct.toFixed(1)}%)`}
             />
           )}
@@ -128,10 +128,10 @@ export function WorkItemProgressCard({
           >
             <div className="flex items-center justify-between">
               <span className="text-12 font-medium text-muted-foreground flex items-center gap-1.5">
-                <span className="size-2 rounded-full bg-emerald-500 shrink-0" />
+                <span className="size-2 rounded-full bg-success shrink-0" />
                 Completed
               </span>
-              <CheckCircle2 className="size-3.5 text-muted-foreground/60 group-hover:text-emerald-500 transition-colors" />
+              <CheckCircle2 className="size-3.5 text-muted-foreground/60 group-hover:text-success transition-colors" />
             </div>
             <div className="mt-2 flex items-baseline justify-between">
               <span className="text-16 font-semibold text-foreground font-mono">
@@ -150,10 +150,10 @@ export function WorkItemProgressCard({
           >
             <div className="flex items-center justify-between">
               <span className="text-12 font-medium text-muted-foreground flex items-center gap-1.5">
-                <span className="size-2 rounded-full bg-amber-500 shrink-0" />
+                <span className="size-2 rounded-full bg-warning shrink-0" />
                 In Progress
               </span>
-              <Clock className="size-3.5 text-muted-foreground/60 group-hover:text-amber-500 transition-colors" />
+              <Clock className="size-3.5 text-muted-foreground/60 group-hover:text-warning transition-colors" />
             </div>
             <div className="mt-2 flex items-baseline justify-between">
               <span className="text-16 font-semibold text-foreground font-mono">
@@ -172,10 +172,10 @@ export function WorkItemProgressCard({
           >
             <div className="flex items-center justify-between">
               <span className="text-12 font-medium text-muted-foreground flex items-center gap-1.5">
-                <span className="size-2 rounded-full bg-blue-500 shrink-0" />
+                <span className="size-2 rounded-full bg-primary shrink-0" />
                 Todo / Open
               </span>
-              <CircleDot className="size-3.5 text-muted-foreground/60 group-hover:text-blue-500 transition-colors" />
+              <CircleDot className="size-3.5 text-muted-foreground/60 group-hover:text-primary transition-colors" />
             </div>
             <div className="mt-2 flex items-baseline justify-between">
               <span className="text-16 font-semibold text-foreground font-mono">
@@ -194,7 +194,7 @@ export function WorkItemProgressCard({
           >
             <div className="flex items-center justify-between">
               <span className="text-12 font-medium text-muted-foreground flex items-center gap-1.5">
-                <span className="size-2 rounded-full bg-zinc-400 dark:bg-zinc-600 shrink-0" />
+                <span className="size-2 rounded-full bg-muted-foreground/60 shrink-0" />
                 Backlog
               </span>
               <Inbox className="size-3.5 text-muted-foreground/60 group-hover:text-foreground transition-colors" />
@@ -213,9 +213,9 @@ export function WorkItemProgressCard({
 
       {/* Overdue alert banner if > 0 */}
       {overdue > 0 && (
-        <div className="flex items-center justify-between gap-3 rounded-md border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-12 text-foreground">
+        <div className="flex items-center justify-between gap-3 rounded-md border border-warning/20 bg-warning/5 px-3 py-2 text-12 text-foreground">
           <div className="flex items-center gap-2">
-            <AlertTriangle className="size-4 shrink-0 text-amber-500" />
+            <AlertTriangle className="size-4 shrink-0 text-warning" />
             <span>
               <strong className="font-semibold text-foreground">{overdue}</strong>{' '}
               {overdue === 1 ? 'work item is' : 'work items are'} past due date
@@ -223,7 +223,7 @@ export function WorkItemProgressCard({
           </div>
           <Link
             href={`/projects/${projectId}/work-items`}
-            className="text-12 font-medium text-amber-600 dark:text-amber-400 hover:underline shrink-0"
+            className="text-12 font-medium text-warning hover:underline shrink-0"
           >
             Review overdue &rarr;
           </Link>

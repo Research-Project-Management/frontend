@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { manuscriptService } from '@/features/editor/core';
 import { projectPagesQueryOptions, usePageActions, pageKeys } from './hooks/use-page';
 import { useProjectsQuery, useProjectQuery } from '@/features/projects/shell/hooks/use-project';
+import { useWorkspaceContextStore } from '@/features/shell/store/workspace-context.store';
 import { Topbar } from './components/layout/Topbar';
 import { PagesEmptyState } from './components/layout/PagesEmptyState';
 import { GridView } from './components/views/GridView';
@@ -50,28 +51,26 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
 
   // Load workspace projects
   const { projects = [] } = useProjectsQuery();
+  const activeSpace = useWorkspaceContextStore((s) => s.activeSpace);
 
-  // Resolve effective project ID
+  // Resolve effective project ID based on URL or activeSpace
   const resolvedProjectId = useMemo(() => {
     if (propProjectId) return propProjectId;
     if (params?.projectId) return params.projectId;
-    if (typeof window !== 'undefined') {
-      try {
-        const stored = localStorage.getItem('flux_active_project_id');
-        if (stored && projects.some((p) => p.id === stored)) return stored;
-      } catch {}
+    if (activeSpace.type === 'project' && activeSpace.projectId) {
+      return activeSpace.projectId;
     }
-    return projects[0]?.id || '';
-  }, [propProjectId, params?.projectId, projects]);
+    return '';
+  }, [propProjectId, params?.projectId, activeSpace.type, activeSpace.projectId]);
 
   const projectId = resolvedProjectId;
 
-  // Auto-redirect /pages to /projects/[projectId]/pages once resolved
+  // Auto-redirect /pages to /projects/[projectId]/pages ONLY when in Project Space
   useEffect(() => {
-    if (!propProjectId && !params?.projectId && projectId) {
+    if (!propProjectId && !params?.projectId && activeSpace.type === 'project' && projectId) {
       router.replace(`/projects/${projectId}/pages`);
     }
-  }, [propProjectId, params?.projectId, projectId, router]);
+  }, [propProjectId, params?.projectId, activeSpace.type, projectId, router]);
 
   // Synchronous lookup from projects list cache
   const projectFromList = useMemo(
@@ -106,7 +105,7 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
     isLoading,
     isError,
     error,
-  } = useQuery(projectPagesQueryOptions(projectId));
+  } = useQuery(projectPagesQueryOptions(projectId || 'personal'));
 
   const { data: projectLabels = [] } = useProjectLabels(projectId);
 
@@ -180,11 +179,12 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
 
   const handleCreate = async () => {
     const trimmedTitle = title.trim();
-    if (!trimmedTitle || !projectId) return;
+    const targetProjectId = projectId || projects[0]?.id || 'personal';
+    if (!trimmedTitle) return;
 
     try {
       const data = await createPage.mutateAsync({
-        projectId,
+        projectId: targetProjectId,
         title: trimmedTitle,
         status: 'active',
         labels: [],
@@ -199,7 +199,9 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
           ? data.mainFile
           : (data.mainFile as { id?: string } | undefined)?.id);
       const queryStr = mainFileId ? `?file=${mainFileId}` : '';
-      const targetUrl = `/projects/${projectId}/pages/${data.page.id}${queryStr}`;
+      const targetUrl = projectId
+        ? `/projects/${projectId}/pages/${data.page.id}${queryStr}`
+        : `/pages/${data.page.id}${queryStr}`;
       router.push(targetUrl);
     } catch (err) {
       console.error(err);

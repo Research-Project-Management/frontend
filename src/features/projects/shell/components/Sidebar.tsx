@@ -1,30 +1,22 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
   ChevronDown,
   Home,
   Plus,
-  Settings,
   UserStar,
   Compass,
   Archive,
-  Star,
-  Share2,
-  Link2,
   Briefcase,
   PanelLeft,
   MessageSquare,
   Wallet,
-  FileText,
-  MoreHorizontal,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { logger } from '@/shared/lib/logger';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/shared/components/ui/collapsible';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import dynamic from 'next/dynamic';
 import { cn } from '@/shared/lib/utils';
@@ -33,13 +25,11 @@ import {
   DraftsIcon,
   WorkItemsIcon,
   StickiesIcon,
-  ProjectAvatar,
 } from '@/shared/components/icons';
 import { useProjectsQuery } from '../hooks/use-project';
-import type { Project } from '../types/project.types';
-import { useFavorites } from '@/features/projects/favorite/hooks/use-favorites';
 import { useQueryClient } from '@tanstack/react-query';
 import { useQuickCreate } from '@/features/projects/project-id/work-items/hooks/use-work-item';
+import { useWorkspaceContextStore } from '@/features/shell/store/workspace-context.store';
 import {
   prefetchWorkspaceRoute,
   prefetchProjectSubmodule,
@@ -56,39 +46,12 @@ const CreateModal = dynamic(
   { ssr: false }
 );
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-type ProjectModuleKey =
-  | 'overview'
-  | 'work-items'
-  | 'pages'
-  | 'messages'
-  | 'budget'
-  | 'settings';
-
-const MODULE_ORDER: ProjectModuleKey[] = [
-  'overview',
-  'work-items',
-  'pages',
-  'messages',
-  'budget',
-  'settings',
-];
-
-const modulesConfig: Record<ProjectModuleKey, { label: string; icon: React.ComponentType<{ className?: string }>; path: string }> = {
-  'overview': { label: 'Overview', icon: Compass, path: 'overview' },
-  'work-items': { label: 'Work items', icon: WorkItemsIcon, path: 'work-items' },
-  'pages': { label: 'Pages', icon: FileText, path: 'pages' },
-  'messages': { label: 'Messages', icon: MessageSquare, path: 'messages' },
-  'budget': { label: 'Budget', icon: Wallet, path: 'budget' },
-  'settings': { label: 'Settings', icon: Settings, path: 'settings' },
-};
-
 type NavItem = {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   to: string;
   exact?: boolean;
+  moduleKey?: string;
 };
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -142,34 +105,45 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
   const params = useParams<{ projectId?: string }>();
   const pathname = usePathname();
 
+  const activeSpace = useWorkspaceContextStore((s) => s.activeSpace);
+
   // Modals state
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
   const [isCreateWorkItemOpen, setIsCreateWorkItemOpen] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
+  const [directorySectionOpen, setDirectorySectionOpen] = useState(true);
 
-  const { projects = [], isLoading } = useProjectsQuery();
+  const { projects = [] } = useProjectsQuery();
 
-  // Active project ID for quick work item creation
-  const activeProjectId = params?.projectId || (projects && projects.length > 0 ? projects[0]?.id : '');
+  const isProjectMode =
+    activeSpace.type === 'project' && Boolean(activeSpace.projectId || params?.projectId);
 
-  // Main navigation items: strictly (home, drafts, your work, stickies)
-  const navItems: NavItem[] = [
-    { label: 'Home', icon: Home, to: '/home', exact: true },
-    { label: 'Drafts', icon: DraftsIcon, to: '/drafts', exact: false },
-    { label: 'Your work', icon: UserStar, to: '/your-work', exact: false },
-    { label: 'Stickies', icon: StickiesIcon, to: '/stickies', exact: false },
-  ];
+  const resolvedProjectId =
+    params?.projectId ||
+    (activeSpace.type === 'project' ? activeSpace.projectId : null) ||
+    (projects && projects.length > 0 ? projects[0]?.id : '') ||
+    '';
 
-  // Collapsible section open states
-  const [overviewSectionOpen, setOverviewSectionOpen] = useState(true);
-  const [favoritesSectionOpen, setFavoritesSectionOpen] = useState(true);
-  const [projectsSectionOpen, setProjectsSectionOpen] = useState(true);
+  const currentProject = useMemo(() => {
+    if (!resolvedProjectId) return null;
+    return projects.find((p) => p.id === resolvedProjectId) || null;
+  }, [projects, resolvedProjectId]);
 
-  const overviewItems = useMemo(
+  // ── 1. Personal Space (Private) Navigation ─────────────────────────────────
+  const personalNavItems: NavItem[] = useMemo(
+    () => [
+      { label: 'Home', icon: Home, to: '/home', exact: true },
+      { label: 'Your work', icon: UserStar, to: '/your-work', exact: false },
+      { label: 'Drafts', icon: DraftsIcon, to: '/drafts', exact: false },
+      { label: 'Stickies', icon: StickiesIcon, to: '/stickies', exact: false },
+    ],
+    []
+  );
+
+  const directoryItems = useMemo(
     () => [
       {
-        id: 'projects',
-        label: 'Projects',
+        id: 'all-projects',
+        label: 'All projects',
         icon: Briefcase,
         to: '/projects',
       },
@@ -183,286 +157,59 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
     []
   );
 
-  // ── Favorite projects (persisted & synchronized across views) ─────────────
-  const { favoriteIds: favoriteProjectIds, toggleFavorite } = useFavorites();
+  // ── 2. Project Space Navigation ────────────────────────────────────────────
+  const projectNavItems: NavItem[] = useMemo(() => {
+    if (!resolvedProjectId) return [];
+    return [
+      { label: 'Home', icon: Home, to: '/home', exact: true },
+      { label: 'Your work', icon: UserStar, to: '/your-work', exact: false },
+      { label: 'Drafts', icon: DraftsIcon, to: '/drafts', exact: false },
+      { label: 'Stickies', icon: StickiesIcon, to: '/stickies', exact: false },
+    ];
+  }, [resolvedProjectId]);
 
-  const favoriteProjects = useMemo(() => {
-    if (!projects || favoriteProjectIds.size === 0) return [];
-    return projects.filter((p) => favoriteProjectIds.has(p.id));
-  }, [projects, favoriteProjectIds]);
-
-  // ── Expanded projects (persisted) ──────────────────────────────────────────
-  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(() => new Set<string>());
-
-  useEffect(() => {
-    setIsMounted(true);
-    const saved = localStorage.getItem('sidebar_expanded_projects');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          setExpandedProjects(new Set<string>(parsed.filter((item): item is string => typeof item === 'string')));
-        }
-      } catch (err) {
-        logger.debug('[Sidebar] Failed to parse expanded projects', { err });
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!isMounted) return;
-    localStorage.setItem('sidebar_expanded_projects', JSON.stringify(Array.from(expandedProjects)));
-  }, [expandedProjects, isMounted]);
-
-  // Auto-expand active project on navigation
-  useEffect(() => {
-    const active = projects?.find((p) => pathname.includes(`/projects/${p.id}`));
-    if (!active) return;
-    const currentActiveId = active.id;
-    setExpandedProjects((prev) => (prev.has(currentActiveId) ? prev : new Set(prev).add(currentActiveId)));
-  }, [pathname, projects]);
-
-  const toggleProject = (projId: string) => {
-    setExpandedProjects((prev) => {
-      const next = new Set(prev);
-      if (next.has(projId)) next.delete(projId);
-      else next.add(projId);
-      return next;
-    });
-  };
+  const projectModuleItems: NavItem[] = useMemo(() => {
+    if (!resolvedProjectId) return [];
+    return [
+      {
+        label: 'Overview',
+        icon: Compass,
+        to: `/projects/${resolvedProjectId}/overview`,
+        moduleKey: 'overview',
+      },
+      {
+        label: 'Work items',
+        icon: WorkItemsIcon,
+        to: `/projects/${resolvedProjectId}/work-items`,
+        moduleKey: 'work-items',
+      },
+      {
+        label: 'Messages',
+        icon: MessageSquare,
+        to: `/projects/${resolvedProjectId}/messages`,
+        moduleKey: 'messages',
+      },
+      {
+        label: 'Budget',
+        icon: Wallet,
+        to: `/projects/${resolvedProjectId}/budget`,
+        moduleKey: 'budget',
+      },
+    ];
+  }, [resolvedProjectId]);
 
   // ── Navigation Helpers ─────────────────────────────────────────────────────
-  const isActive = (item: NavItem) => {
+  const isItemActive = (item: NavItem) => {
+    if (item.moduleKey === 'work-items') {
+      return (
+        pathname === item.to ||
+        pathname.startsWith(item.to + '/') ||
+        pathname === `/projects/${resolvedProjectId}` ||
+        pathname === `/projects/${resolvedProjectId}/`
+      );
+    }
     if (item.exact) return pathname === item.to || pathname === item.to + '/';
     return pathname === item.to || pathname.startsWith(item.to + '/');
-  };
-
-  // ── Project Item Renderer ──────────────────────────────────────────────────
-  const renderProjectItem = (project: Project, keyPrefix = '') => {
-    const projId = project.id || '';
-    const isOpen = expandedProjects.has(projId);
-    const projectModules = project.modules ?? [];
-    const isFavorited = favoriteProjectIds.has(projId);
-
-    return (
-      <Collapsible
-        className="w-full group/project-row"
-        key={`${keyPrefix}${projId}`}
-        open={isOpen}
-        onOpenChange={() => toggleProject(projId)}
-      >
-        <div
-          onMouseEnter={() => prefetchProjectSubmodule(queryClient, projId, 'work-items')}
-          onFocus={() => prefetchProjectSubmodule(queryClient, projId, 'work-items')}
-          className="group/row flex h-8 w-full items-center justify-between gap-1.5 rounded-md px-2.5 select-none outline-none text-foreground hover:bg-muted font-normal"
-        >
-          <CollapsibleTrigger asChild>
-            <button
-              type="button"
-              className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 text-left text-13 outline-none focus-visible:ring-1 focus-visible:ring-primary"
-            >
-              <ProjectAvatar avatar={project.avatar} name={project.name} id={projId} size="xs" />
-              <span className="min-w-0 truncate text-13 tracking-tight text-foreground font-medium">
-                {project.name}
-              </span>
-            </button>
-          </CollapsibleTrigger>
-
-          {/* Right Action Icons: 3 Dots Menu & Chevron Toggle */}
-          <div className="flex items-center gap-0.5 shrink-0">
-            {/* 3-dots dropdown menu */}
-            <DropdownMenu>
-              <Tooltip delayDuration={300}>
-                <TooltipTrigger asChild>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      type="button"
-                      aria-label="Project options"
-                      className={cn(
-                        "size-6 flex items-center justify-center rounded-md cursor-pointer text-muted-foreground hover:text-foreground hover:bg-background active:scale-95 outline-none focus-visible:ring-1 focus-visible:ring-primary",
-                        "opacity-0 group-hover/row:opacity-100 data-[state=open]:opacity-100 data-[state=open]:bg-background data-[state=open]:text-foreground focus:opacity-100"
-                      )}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <MoreHorizontal className="size-3.5 text-inherit shrink-0" />
-                    </button>
-                  </DropdownMenuTrigger>
-                </TooltipTrigger>
-                <TooltipContent side="top" sideOffset={6}>
-                  Project options
-                </TooltipContent>
-              </Tooltip>
-              <DropdownMenuContent
-                side="right"
-                align="start"
-                sideOffset={8}
-                className="w-52 p-1.5 border border-border bg-popover rounded-md animate-in fade-in zoom-in-95 duration-150 z-50"
-              >
-                {/* 1. Add to favorites / Remove from favorites */}
-                <DropdownMenuItem
-                  onClick={(e) => toggleFavorite(projId, e)}
-                  className="cursor-pointer text-sm font-medium flex items-center gap-2.5 px-2.5 py-2 rounded-md"
-                >
-                  <Star
-                    className={cn(
-                      "size-4 shrink-0",
-                      isFavorited
-                        ? "fill-warning text-warning"
-                        : "text-foreground"
-                    )}
-                  />
-                  <span>
-                    {isFavorited
-                      ? "Remove from favorites"
-                      : "Add to favorites"}
-                  </span>
-                </DropdownMenuItem>
-
-                {/* 2. Publish project */}
-                <DropdownMenuItem
-                  asChild
-                  className="cursor-pointer text-sm font-medium px-2.5 py-2 rounded-md"
-                >
-                  <Link
-                    href={`/projects/${projId}/settings`}
-                    className="flex items-center gap-2.5 w-full"
-                  >
-                    <Share2 className="size-4 text-foreground shrink-0" />
-                    <span>Publish project</span>
-                  </Link>
-                </DropdownMenuItem>
-
-                {/* 3. Copy link */}
-                <DropdownMenuItem
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (typeof window !== 'undefined') {
-                      navigator.clipboard.writeText(
-                        `${window.location.origin}/projects/${projId}`
-                      );
-                      toast.success('Project link copied');
-                    }
-                  }}
-                  className="cursor-pointer text-sm font-medium flex items-center gap-2.5 px-2.5 py-2 rounded-md"
-                >
-                  <Link2 className="size-4 text-foreground shrink-0" />
-                  <span>Copy link</span>
-                </DropdownMenuItem>
-
-                {/* 4. Archives */}
-                <DropdownMenuItem
-                  asChild
-                  className="cursor-pointer text-sm font-medium px-2.5 py-2 rounded-md"
-                >
-                  <Link
-                    href={`/projects/archives`}
-                    className="flex items-center gap-2.5 w-full"
-                  >
-                    <Archive className="size-4 text-foreground shrink-0" />
-                    <span>Archives</span>
-                  </Link>
-                </DropdownMenuItem>
-
-                {/* 5. Settings */}
-                <DropdownMenuItem
-                  asChild
-                  className="cursor-pointer text-sm font-medium px-2.5 py-2 rounded-md"
-                >
-                  <Link
-                    href={`/projects/${projId}/settings`}
-                    className="flex items-center gap-2.5 w-full"
-                  >
-                    <Settings className="size-4 text-foreground shrink-0" />
-                    <span>Settings</span>
-                  </Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {/* Chevron collapse / expand toggle button */}
-            <Tooltip delayDuration={300}>
-              <TooltipTrigger asChild>
-                <CollapsibleTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label={isOpen ? "Collapse project" : "Expand project"}
-                    className={cn(
-                      "size-6 flex items-center justify-center rounded-md cursor-pointer text-muted-foreground hover:text-foreground hover:bg-background active:scale-95 outline-none focus-visible:ring-1 focus-visible:ring-primary",
-                      isOpen ? "opacity-100" : "opacity-0 group-hover/row:opacity-100 focus:opacity-100"
-                    )}
-                  >
-                    <ChevronDown
-                      className={cn(
-                        "size-3.5 text-inherit transition-transform duration-150",
-                        isOpen ? "" : "-rotate-90"
-                      )}
-                    />
-                  </button>
-                </CollapsibleTrigger>
-              </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={6}>
-                {isOpen ? "Collapse project" : "Expand project"}
-              </TooltipContent>
-            </Tooltip>
-          </div>
-        </div>
-
-        {/* Project Submodules: overview, work-items, pages, messages, budget, settings */}
-        <CollapsibleContent className="overflow-hidden flex flex-col gap-1 mt-1">
-          {(() => {
-            const rawModules: string[] =
-              projectModules && projectModules.length > 0
-                ? projectModules.map((m: string) => String(m).toLowerCase().replace(/_/g, '-'))
-                : ['overview', 'work-items', 'pages', 'messages', 'budget', 'settings'];
-            const activeSet = new Set(rawModules);
-
-            // Strictly filter by MODULE_ORDER, ensuring core modules are always present
-            const effectiveModules = MODULE_ORDER.filter(
-              (k: string) =>
-                k === 'overview' ||
-                k === 'work-items' ||
-                k === 'messages' ||
-                k === 'budget' ||
-                k === 'settings' ||
-                !projectModules ||
-                projectModules.length === 0 ||
-                activeSet.has(k) ||
-                activeSet.has(k.replace(/-/g, '_'))
-            );
-            const displayModules = effectiveModules.length > 0 ? effectiveModules : MODULE_ORDER;
-
-            return displayModules.map((moduleKey) => {
-              const mod = modulesConfig[moduleKey];
-              if (!mod) return null;
-              const link = `/projects/${projId}/${mod.path}`;
-              const modActive =
-                pathname === link ||
-                pathname.startsWith(link + '/') ||
-                (moduleKey === 'work-items' &&
-                  (pathname === `/projects/${projId}` ||
-                    pathname === `/projects/${projId}/`));
-              return (
-                <Link
-                  href={link}
-                  key={moduleKey}
-                  onMouseEnter={() => prefetchProjectSubmodule(queryClient, projId, moduleKey)}
-                  onFocus={() => prefetchProjectSubmodule(queryClient, projId, moduleKey)}
-                  className={cn(
-                    "group flex h-8 items-center gap-2 rounded-md pl-6 pr-2.5 text-13 leading-5 outline-none",
-                    modActive
-                      ? "bg-muted text-foreground font-medium"
-                      : "text-foreground font-normal hover:bg-muted"
-                  )}
-                >
-                  <mod.icon className="size-3.5 shrink-0 text-foreground" />
-                  <span className="min-w-0 truncate tracking-tight">{mod.label}</span>
-                </Link>
-              );
-            });
-          })()}
-        </CollapsibleContent>
-      </Collapsible>
-    );
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -471,7 +218,11 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
     <aside className="flex flex-col h-full w-full shrink-0 overflow-hidden bg-transparent p-2 py-3 select-none">
       {/* Header */}
       <div className="mb-2 px-2 flex items-center justify-between font-semibold text-sm tracking-tight text-foreground shrink-0">
-        <span className="text-14 font-semibold text-foreground">Projects</span>
+        <span className="text-14 font-semibold text-foreground truncate">
+          {isProjectMode
+            ? currentProject?.name || activeSpace.projectName || 'Project'
+            : 'Projects'}
+        </span>
         <button
           type="button"
           onClick={() => {
@@ -483,7 +234,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
           }}
           aria-label="Collapse sidebar"
           title="Collapse sidebar"
-          className="flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
+          className="flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary shrink-0"
         >
           <PanelLeft className="size-4 shrink-0 text-muted-foreground" strokeWidth={1.5} />
         </button>
@@ -493,8 +244,14 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
       <div className="mb-2 shrink-0">
         <button
           type="button"
-          onMouseEnter={() => activeProjectId && prefetchProjectSubmodule(queryClient, activeProjectId, 'work-items')}
-          onFocus={() => activeProjectId && prefetchProjectSubmodule(queryClient, activeProjectId, 'work-items')}
+          onMouseEnter={() =>
+            resolvedProjectId &&
+            prefetchProjectSubmodule(queryClient, resolvedProjectId, 'work-items')
+          }
+          onFocus={() =>
+            resolvedProjectId &&
+            prefetchProjectSubmodule(queryClient, resolvedProjectId, 'work-items')
+          }
           onClick={() => setIsCreateWorkItemOpen(true)}
           className="flex h-8 w-full items-center gap-2 rounded-md border border-border bg-background hover:bg-muted px-2.5 text-13 font-medium text-foreground cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
         >
@@ -503,234 +260,201 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
         </button>
       </div>
 
-      {/* Scrollable Section: All Navigation below New Work Item */}
-      <div className="flex-1 min-h-0 overflow-y-auto sidebar-scrollbar flex flex-col gap-2">
-        {/* Nav items: strictly (home, drafts, your work, sticky) */}
-        <div className="shrink-0">
-          <nav className="flex flex-col gap-1">
-            {navItems.map((item) => {
-              const active = isActive(item);
-              return (
-                <Link
-                  href={item.to}
-                  key={item.label}
-                  onMouseEnter={() => prefetchWorkspaceRoute(queryClient, item.to)}
-                  onFocus={() => prefetchWorkspaceRoute(queryClient, item.to)}
-                  className={cn(
-                    "group relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 outline-none",
-                    active
-                      ? "bg-muted text-foreground font-medium"
-                      : "text-foreground hover:bg-muted font-normal"
-                  )}
-                >
-                  <item.icon
-                    className="relative z-10 size-4 shrink-0 text-foreground"
-                  />
-                  <span className="relative z-10 min-w-0 truncate tracking-tight">
-                    {item.label}
-                  </span>
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
-
-        {/* Workspace section */}
-        <Collapsible
-          open={overviewSectionOpen}
-          onOpenChange={setOverviewSectionOpen}
-          className="select-none"
-        >
-          <div className="flex items-center justify-between h-7 px-2.5 text-11 font-medium text-muted-foreground select-none">
-            <CollapsibleTrigger asChild>
-              <button className="flex-1 text-left text-11 font-medium text-muted-foreground hover:text-foreground cursor-pointer outline-none">
-                Workspace
-              </button>
-            </CollapsibleTrigger>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <CollapsibleTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label={overviewSectionOpen ? "Collapse workspace" : "Expand workspace"}
-                    className="size-5 flex items-center justify-center rounded-sm cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted outline-none"
-                  >
-                    <ChevronDown
+      {/* Scrollable Navigation Content */}
+      <div className="flex-1 min-h-0 overflow-y-auto sidebar-scrollbar flex flex-col gap-3">
+        {isProjectMode ? (
+          /* ── PROJECT SPACE VIEW ── */
+          <>
+            <div className="shrink-0">
+              <nav className="flex flex-col gap-1" aria-label="Workspace navigation">
+                {projectNavItems.map((item) => {
+                  const active = isItemActive(item);
+                  return (
+                    <Link
+                      href={item.to}
+                      key={item.label}
+                      onMouseEnter={() => prefetchWorkspaceRoute(queryClient, item.to)}
+                      onFocus={() => prefetchWorkspaceRoute(queryClient, item.to)}
                       className={cn(
-                        "size-3 text-inherit transition-transform duration-150",
-                        overviewSectionOpen ? "" : "-rotate-90"
+                        'group relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 outline-none',
+                        active
+                          ? 'bg-muted text-foreground font-medium'
+                          : 'text-foreground hover:bg-muted font-normal'
                       )}
-                    />
+                    >
+                      <item.icon className="relative z-10 size-4 shrink-0 text-foreground" />
+                      <span className="relative z-10 min-w-0 truncate tracking-tight">
+                        {item.label}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </nav>
+            </div>
+
+            <div className="shrink-0">
+              <div className="flex items-center justify-between h-7 px-2.5 text-11 font-medium text-muted-foreground select-none">
+                <span>Project</span>
+              </div>
+              <nav className="flex flex-col gap-1 mt-1" aria-label="Project modules">
+                {projectModuleItems.map((item) => {
+                  const active = isItemActive(item);
+                  return (
+                    <Link
+                      href={item.to}
+                      key={item.label}
+                      onMouseEnter={() => {
+                        if (item.moduleKey && resolvedProjectId) {
+                          prefetchProjectSubmodule(queryClient, resolvedProjectId, item.moduleKey);
+                        } else {
+                          prefetchWorkspaceRoute(queryClient, item.to);
+                        }
+                      }}
+                      onFocus={() => {
+                        if (item.moduleKey && resolvedProjectId) {
+                          prefetchProjectSubmodule(queryClient, resolvedProjectId, item.moduleKey);
+                        } else {
+                          prefetchWorkspaceRoute(queryClient, item.to);
+                        }
+                      }}
+                      className={cn(
+                        'group relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 outline-none',
+                        active
+                          ? 'bg-muted text-foreground font-medium'
+                          : 'text-foreground hover:bg-muted font-normal'
+                      )}
+                    >
+                      <item.icon className="relative z-10 size-4 shrink-0 text-foreground" />
+                      <span className="relative z-10 min-w-0 truncate tracking-tight">
+                        {item.label}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </nav>
+            </div>
+          </>
+        ) : (
+          /* ── PERSONAL SPACE (PRIVATE) VIEW ── */
+          <>
+            <div className="shrink-0">
+              <nav className="flex flex-col gap-1" aria-label="Personal navigation">
+                {personalNavItems.map((item) => {
+                  const active = isItemActive(item);
+                  return (
+                    <Link
+                      href={item.to}
+                      key={item.label}
+                      onMouseEnter={() => prefetchWorkspaceRoute(queryClient, item.to)}
+                      onFocus={() => prefetchWorkspaceRoute(queryClient, item.to)}
+                      className={cn(
+                        'group relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 outline-none',
+                        active
+                          ? 'bg-muted text-foreground font-medium'
+                          : 'text-foreground hover:bg-muted font-normal'
+                      )}
+                    >
+                      <item.icon className="relative z-10 size-4 shrink-0 text-foreground" />
+                      <span className="relative z-10 min-w-0 truncate tracking-tight">
+                        {item.label}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </nav>
+            </div>
+
+            {/* Directory section for managing Projects & Archives */}
+            <Collapsible
+              open={directorySectionOpen}
+              onOpenChange={setDirectorySectionOpen}
+              className="select-none"
+            >
+              <div className="group/proj-header flex items-center justify-between h-7 px-2.5 text-11 font-medium text-muted-foreground select-none">
+                <CollapsibleTrigger asChild>
+                  <button className="flex-1 text-left text-11 font-medium text-muted-foreground hover:text-foreground cursor-pointer outline-none">
+                    Directory
                   </button>
                 </CollapsibleTrigger>
-              </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={6}>
-                {overviewSectionOpen ? "Collapse workspace" : "Expand workspace"}
-              </TooltipContent>
-            </Tooltip>
-          </div>
 
-          <CollapsibleContent className="overflow-hidden mt-1">
-            <div className="flex flex-col gap-1">
-              {overviewItems.map((item) => {
-                const ItemIcon = item.icon;
-                const active =
-                  item.to === '/projects'
-                    ? pathname === '/projects' || pathname === '/projects/'
-                    : pathname === item.to || pathname.startsWith(item.to + '/');
-
-                return (
-                  <Link
-                    key={item.id}
-                    href={item.to}
-                    onMouseEnter={() => prefetchWorkspaceRoute(queryClient, item.to)}
-                    onFocus={() => prefetchWorkspaceRoute(queryClient, item.to)}
-                    className={cn(
-                      "group flex h-8 items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 outline-none",
-                      active
-                        ? "bg-muted text-foreground font-medium"
-                        : "text-foreground hover:bg-muted font-normal"
-                    )}
-                  >
-                    <ItemIcon className="size-4 shrink-0 text-foreground" />
-                    <span className="min-w-0 truncate tracking-tight">{item.label}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-        {/* Favorites section (only rendered when user has favorited projects) */}
-        {favoriteProjects.length > 0 && (
-          <Collapsible
-            open={favoritesSectionOpen}
-            onOpenChange={setFavoritesSectionOpen}
-            className="select-none"
-          >
-            <div className="flex items-center justify-between h-7 px-2.5 text-11 font-medium text-muted-foreground select-none">
-              <Link
-                href="/projects/favorite"
-                className="flex-1 text-left text-11 font-medium text-muted-foreground hover:text-foreground cursor-pointer outline-none"
-              >
-                Favorites
-              </Link>
-
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <CollapsibleTrigger asChild>
-                    <button
-                      type="button"
-                      aria-label={favoritesSectionOpen ? "Collapse favorites" : "Expand favorites"}
-                      className="size-5 flex items-center justify-center rounded-sm cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted outline-none"
-                    >
-                      <ChevronDown
+                <div className="flex items-center gap-0.5">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="Create project"
+                        onClick={() => setCreateProjectOpen(true)}
                         className={cn(
-                          "size-3 text-inherit transition-transform duration-150",
-                          favoritesSectionOpen ? "" : "-rotate-90"
+                          'size-5 flex items-center justify-center rounded-sm cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted outline-none',
+                          createProjectOpen
+                            ? 'bg-muted text-foreground'
+                            : 'opacity-0 group-hover/proj-header:opacity-100 focus:opacity-100'
                         )}
-                      />
-                    </button>
-                  </CollapsibleTrigger>
-                </TooltipTrigger>
-                <TooltipContent side="top" sideOffset={6}>
-                  {favoritesSectionOpen ? "Collapse favorites" : "Expand favorites"}
-                </TooltipContent>
-              </Tooltip>
-            </div>
+                      >
+                        <Plus className="size-3 text-inherit shrink-0" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" sideOffset={6}>
+                      Create project
+                    </TooltipContent>
+                  </Tooltip>
 
-            <CollapsibleContent className="overflow-hidden mt-1">
-              <div className="flex flex-col gap-1">
-                {favoriteProjects.map((project) => renderProjectItem(project, 'fav-'))}
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        )}
-
-        {/* Projects section */}
-        <Collapsible
-          open={projectsSectionOpen}
-          onOpenChange={setProjectsSectionOpen}
-          className="select-none"
-        >
-          <div className="group/proj-header flex items-center justify-between h-7 px-2.5 text-11 font-medium text-muted-foreground select-none">
-            <CollapsibleTrigger asChild>
-              <button className="flex-1 text-left text-11 font-medium text-muted-foreground hover:text-foreground cursor-pointer outline-none">
-                Projects
-              </button>
-            </CollapsibleTrigger>
-
-            {/* Right Action Icons: Plus (+), Chevron (v) */}
-            <div className="flex items-center gap-0.5">
-              {/* New Project Button with Tooltip */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label="Create project"
-                    onClick={() => setCreateProjectOpen(true)}
-                    className={cn(
-                      "size-5 flex items-center justify-center rounded-sm cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted outline-none",
-                      createProjectOpen
-                        ? "bg-muted text-foreground"
-                        : "opacity-0 group-hover/proj-header:opacity-100 focus:opacity-100"
-                    )}
-                  >
-                    <Plus className="size-3 text-inherit shrink-0" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top" sideOffset={6}>
-                  Create project
-                </TooltipContent>
-              </Tooltip>
-
-              {/* Collapse / Expand Toggle Button with Tooltip */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <CollapsibleTrigger asChild>
-                    <button
-                      type="button"
-                      aria-label={projectsSectionOpen ? "Collapse projects" : "Expand projects"}
-                      className="size-5 flex items-center justify-center rounded-sm cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted outline-none"
-                    >
-                      <ChevronDown
-                        className={cn(
-                          "size-3 text-inherit transition-transform duration-150",
-                          projectsSectionOpen ? "" : "-rotate-90"
-                        )}
-                      />
-                    </button>
-                  </CollapsibleTrigger>
-                </TooltipTrigger>
-                <TooltipContent side="top" sideOffset={6}>
-                  {projectsSectionOpen ? "Collapse projects" : "Expand projects"}
-                </TooltipContent>
-              </Tooltip>
-            </div>
-          </div>
-
-          {/* Collapsible Project List */}
-          <CollapsibleContent className="overflow-hidden mt-1">
-            <div className="flex flex-col gap-1">
-              {isLoading && (
-                <div className="space-y-1 py-1">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="h-8 w-full rounded-md bg-muted animate-pulse" />
-                  ))}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <CollapsibleTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label={directorySectionOpen ? 'Collapse directory' : 'Expand directory'}
+                          className="size-5 flex items-center justify-center rounded-sm cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted outline-none"
+                        >
+                          <ChevronDown
+                            className={cn(
+                              'size-3 text-inherit transition-transform duration-150',
+                              directorySectionOpen ? '' : '-rotate-90'
+                            )}
+                          />
+                        </button>
+                      </CollapsibleTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" sideOffset={6}>
+                      {directorySectionOpen ? 'Collapse directory' : 'Expand directory'}
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
-              )}
+              </div>
 
-              {!isLoading && (!projects || projects.length === 0) && (
-                <p className="px-2.5 py-3 text-xs text-muted-foreground">
-                  No projects found
-                </p>
-              )}
+              <CollapsibleContent className="overflow-hidden mt-1">
+                <div className="flex flex-col gap-1">
+                  {directoryItems.map((item) => {
+                    const ItemIcon = item.icon;
+                    const active =
+                      item.to === '/projects'
+                        ? pathname === '/projects' || pathname === '/projects/'
+                        : pathname === item.to || pathname.startsWith(item.to + '/');
 
-              {!isLoading &&
-                (projects ?? []).map((project) => renderProjectItem(project))}
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
+                    return (
+                      <Link
+                        key={item.id}
+                        href={item.to}
+                        onMouseEnter={() => prefetchWorkspaceRoute(queryClient, item.to)}
+                        onFocus={() => prefetchWorkspaceRoute(queryClient, item.to)}
+                        className={cn(
+                          'group flex h-8 items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 outline-none',
+                          active
+                            ? 'bg-muted text-foreground font-medium'
+                            : 'text-foreground hover:bg-muted font-normal'
+                        )}
+                      >
+                        <ItemIcon className="size-4 shrink-0 text-foreground" />
+                        <span className="min-w-0 truncate tracking-tight">{item.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          </>
+        )}
       </div>
 
       {/* Modals */}
@@ -746,7 +470,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
         <QuickCreateWorkItemDialog
           open={isCreateWorkItemOpen}
           onOpenChange={setIsCreateWorkItemOpen}
-          activeProjectId={activeProjectId || ''}
+          activeProjectId={resolvedProjectId}
         />
       )}
     </aside>

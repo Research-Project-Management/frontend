@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useRef, useMemo } from 'react';
-import { PenLine, Search, X, Columns3, AlignJustify, ListFilter, Check } from 'lucide-react';
+import { Search, X, Columns3, AlignJustify, ListFilter, Check } from 'lucide-react';
+import { WikiIcon } from '@/shared/components/icons';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Checkbox } from '@/shared/components/ui/checkbox';
@@ -28,7 +29,6 @@ import {
   PopoverTrigger,
 } from '@/shared/components/ui/popover';
 import { cn } from '@/shared/lib/utils';
-import { Switcher } from '@/features/projects/project-id/components/layout/Switcher';
 
 export interface TopbarProps {
   project?: {
@@ -133,12 +133,13 @@ export function Topbar({
       className="flex items-center justify-between px-3 sm:px-4 h-11 border-b border-border bg-transparent sticky top-0 z-10 shrink-0 select-none overflow-x-auto scrollbar-none min-w-0"
       style={{ paddingLeft: 'max(1rem, var(--header-offset, 0px))' }}
     >
-      {/* Left: Project Switcher & Module Title */}
-      <Switcher
-        project={project}
-        moduleTitle="Pages"
-        moduleIcon={PenLine}
-      />
+      {/* Left: Module Icon & Title */}
+      <div className="flex items-center gap-2.5 min-w-0 shrink-0">
+        <WikiIcon className="size-4 text-foreground shrink-0" />
+        <h1 className="text-sm font-semibold tracking-tight text-foreground truncate">
+          Pages
+        </h1>
+      </div>
 
       {/* Right: Collapsible Search, Label Filter, Segmented View Switcher & Add Document CTA */}
       <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 ml-auto">

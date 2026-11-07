@@ -27,6 +27,7 @@ const DeleteModal = dynamic(
   { ssr: false }
 );
 import { PageLayout, PageContent } from '@/shared/components/layout/PageLayout';
+import { PageHeader } from '@/shared/components/layout/PageHeader';
 import { PageToolbar } from '@/shared/components/layout/PageToolbar';
 import { EmptyState } from '@/shared/components/layout/EmptyState';
 import {
@@ -376,6 +377,7 @@ export default function LabelPage() {
   if (isLoadingLabels || isLoadingProject) {
     return (
       <PageLayout>
+        <PageHeader title="Labels" icon={Tag} />
         <PageContent maxWidth="lg">
           <div className="space-y-6">
             <Skeleton className="h-8 w-48 rounded motion-reduce:animate-none" />
@@ -394,6 +396,7 @@ export default function LabelPage() {
   if (isError || !project) {
     return (
       <PageLayout>
+        <PageHeader title="Labels" icon={Tag} />
         <PageContent maxWidth="lg">
           <div className="text-13 text-muted-foreground">
             Error loading project.
@@ -407,7 +410,7 @@ export default function LabelPage() {
 
   return (
     <PageLayout>
-
+      <PageHeader title="Labels" icon={Tag} />
       <PageContent maxWidth="lg">
         <div className="space-y-6">
 

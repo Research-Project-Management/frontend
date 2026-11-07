@@ -19,7 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/shared/components/ui/dropdown-menu';
-import { ProjectAvatar } from '@/shared/components/icons';
+import { ProjectAvatar, WikiIcon } from '@/shared/components/icons';
 import { useProjects } from '../hooks/use-project';
 import { PageService } from '@/features/projects/project-id/pages/services/page.service';
 import { PagesEmptyState } from '@/features/projects/project-id/pages/components/layout/PagesEmptyState';
@@ -64,7 +64,7 @@ export function WorkspacePagesPage() {
         style={{ paddingLeft: 'max(1.5rem, var(--header-offset, 0px))' }}
       >
         <div className="flex items-center gap-2.5 min-w-0">
-          <FileText className="size-4 text-primary shrink-0" />
+          <WikiIcon className="size-4 text-primary shrink-0" />
           <h1 className="text-13 font-semibold text-foreground tracking-tight">Pages</h1>
           <span className="text-12 text-muted-foreground hidden sm:inline">·</span>
           <span className="text-12 text-muted-foreground hidden sm:inline truncate">

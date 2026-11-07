@@ -314,7 +314,7 @@ const TimelineBar = memo(function TimelineBar({
         dragging ? 'opacity-90 ring-2 ring-foreground cursor-grabbing' : 'cursor-pointer hover:brightness-105',
         isConnectTarget && 'ring-2 ring-primary ring-offset-1',
         isConnecting && 'ring-2 ring-foreground opacity-80',
-        isCritical && 'ring-2 ring-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.45)]'
+        isCritical && 'ring-2 ring-destructive'
       )}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -382,7 +382,7 @@ const TimelineBar = memo(function TimelineBar({
           </span>
         )}
         {isCritical && showText && (
-          <span className="ml-auto px-1 py-0.5 rounded text-[9px] font-semibold bg-rose-600 text-white shrink-0 tracking-wider">
+          <span className="ml-auto px-1 py-0.5 rounded text-[9px] font-semibold bg-destructive text-destructive-foreground shrink-0 tracking-wider">
             CP
           </span>
         )}

@@ -32,20 +32,20 @@ const STATUS_OPTIONS: Array<{
   {
     value: 'on_track',
     label: 'On Track',
-    dotColor: 'bg-emerald-500',
-    selectedClass: 'border-emerald-500/50 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-medium ring-1 ring-emerald-500/25',
+    dotColor: 'bg-success',
+    selectedClass: 'border-success/50 bg-success/10 text-success font-medium ring-1 ring-success/25',
   },
   {
     value: 'at_risk',
     label: 'At Risk',
-    dotColor: 'bg-amber-500',
-    selectedClass: 'border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-medium ring-1 ring-amber-500/25',
+    dotColor: 'bg-warning',
+    selectedClass: 'border-warning/50 bg-warning/10 text-warning font-medium ring-1 ring-warning/25',
   },
   {
     value: 'off_track',
     label: 'Off Track',
-    dotColor: 'bg-rose-500',
-    selectedClass: 'border-rose-500/50 bg-rose-500/10 text-rose-600 dark:text-rose-400 font-medium ring-1 ring-rose-500/25',
+    dotColor: 'bg-destructive',
+    selectedClass: 'border-destructive/50 bg-destructive/10 text-destructive font-medium ring-1 ring-destructive/25',
   },
 ];
 

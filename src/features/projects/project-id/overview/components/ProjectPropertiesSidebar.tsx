@@ -28,9 +28,9 @@ const PRIORITY_CONFIG: Record<
   string,
   { label: string; color: string; dotColor: string }
 > = {
-  urgent: { label: 'Urgent', color: 'text-rose-500', dotColor: 'bg-rose-500' },
-  high: { label: 'High', color: 'text-amber-500', dotColor: 'bg-amber-500' },
-  medium: { label: 'Medium', color: 'text-blue-500', dotColor: 'bg-blue-500' },
+  urgent: { label: 'Urgent', color: 'text-destructive', dotColor: 'bg-destructive' },
+  high: { label: 'High', color: 'text-warning', dotColor: 'bg-warning' },
+  medium: { label: 'Medium', color: 'text-primary', dotColor: 'bg-primary' },
   low: { label: 'Low', color: 'text-muted-foreground', dotColor: 'bg-muted-foreground' },
   none: { label: 'None', color: 'text-muted-foreground/60', dotColor: 'bg-muted-foreground/40' },
 };
@@ -170,7 +170,7 @@ export function ProjectPropertiesSidebar({
             <span
               className={`font-medium font-mono text-11 ${
                 project.isOverdue
-                  ? 'text-rose-500 font-semibold'
+                  ? 'text-destructive font-semibold'
                   : 'text-foreground'
               }`}
             >

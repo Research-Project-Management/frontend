@@ -3,6 +3,7 @@
 import React, { useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useProjectsQuery } from '@/features/projects/shell/hooks/use-project';
+import { useWorkspaceContextStore } from '@/features/shell/store/workspace-context.store';
 import {
   useDrafts,
   useCreateDraft,
@@ -40,6 +41,9 @@ const DeleteModal = dynamic(
 
 export default function DraftsPage() {
   const { projects = [] } = useProjectsQuery();
+  const activeSpace = useWorkspaceContextStore((s) => s.activeSpace);
+  const activeProjectId =
+    activeSpace.type === 'project' ? activeSpace.projectId ?? undefined : undefined;
 
   // Modal States
   const [isEditorModalOpen, setIsEditorModalOpen] = useState(false);
@@ -52,9 +56,17 @@ export default function DraftsPage() {
   const [deletingDraft, setDeletingDraft] = useState<WorkItemDraft | null>(null);
 
   // Queries & Mutations
-  const { data, isLoading, isError, error } = useDrafts();
-  const drafts = data?.drafts || [];
-  const total = data?.total ?? drafts.length;
+  const { data, isLoading, isError, error } = useDrafts(
+    activeProjectId ? { projectId: activeProjectId } : undefined
+  );
+  const rawDrafts = data?.drafts || [];
+  const drafts = React.useMemo(() => {
+    if (activeSpace.type === 'personal') {
+      return rawDrafts.filter((d) => !d.projectId);
+    }
+    return rawDrafts;
+  }, [rawDrafts, activeSpace.type]);
+  const total = drafts.length;
 
   const createDraft = useCreateDraft();
   const updateDraft = useUpdateDraft();
@@ -119,7 +131,7 @@ export default function DraftsPage() {
         content: formData.description,
         priority: formData.priority,
         columnId: formData.columnId,
-        projectId: formData.projectId,
+        projectId: formData.projectId || activeProjectId,
         labels: formData.labels,
         startDate: formData.startDate,
         dueDate: formData.dueDate,

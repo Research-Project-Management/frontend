@@ -2,8 +2,10 @@
 
 import React from 'react';
 import { useParams } from 'next/navigation';
+import { SlidersHorizontal } from 'lucide-react';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { PageLayout, PageContent } from '@/shared/components/layout/PageLayout';
+import { PageHeader } from '@/shared/components/layout/PageHeader';
 import { GeneralBanner } from '../components/general/Banner';
 import { GeneralDetails } from '../components/general/Details';
 import { GeneralDanger } from '../components/general/Danger';
@@ -48,6 +50,7 @@ export default function GeneralPage() {
   if (isLoading) {
     return (
       <PageLayout>
+        <PageHeader title="General" icon={SlidersHorizontal} />
         <PageContent maxWidth="lg">
           <div className="space-y-6">
             <Skeleton className="h-44 w-full rounded-md" />
@@ -63,6 +66,7 @@ export default function GeneralPage() {
   if (isError || !project) {
     return (
       <PageLayout>
+        <PageHeader title="General" icon={SlidersHorizontal} />
         <PageContent maxWidth="lg">
           <div className="text-12 text-muted-foreground">
             Error loading project details.
@@ -74,6 +78,7 @@ export default function GeneralPage() {
 
   return (
     <PageLayout>
+      <PageHeader title="General" icon={SlidersHorizontal} />
       <PageContent maxWidth="lg">
         <div className="space-y-6">
           {/* ── Visual Banner & Icon ── */}

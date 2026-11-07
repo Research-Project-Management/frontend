@@ -16,7 +16,7 @@ export function extractFilterBadges(filters?: Record<string, unknown>): FilterBa
     badges.push({
       label: 'Priority',
       value: (filters.priority as string[]).map((p: string) => p.charAt(0).toUpperCase() + p.slice(1)).join(', '),
-      color: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30',
+      color: 'bg-warning/15 text-warning border-warning/30',
     });
   }
 

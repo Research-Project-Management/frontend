@@ -4,8 +4,9 @@ import React from 'react';
 import { useParams } from 'next/navigation';
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { FileText, LayoutGrid, MessageSquare } from 'lucide-react';
-import { WorkItemsIcon } from "@/shared/components/icons";
+import { WorkItemsIcon, WikiIcon } from "@/shared/components/icons";
 import { PageLayout, PageContent } from '@/shared/components/layout/PageLayout';
+import { PageHeader } from '@/shared/components/layout/PageHeader';
 import { Item } from '../components/module/Item';
 import { useModules } from '../hooks/use-module';
 import type { ModuleDef } from '../types/module.types';
@@ -14,7 +15,7 @@ import type { ModuleDef } from '../types/module.types';
 
 const MODULES: ModuleDef[] = [
   { id: 'work-items', label: 'Work items',  desc: 'Research activities and work item tracking', icon: WorkItemsIcon, locked: true },
-  { id: 'pages',      label: 'Pages',       desc: 'Collaborative documents, notes and manuscripts', icon: FileText },
+  { id: 'pages',      label: 'Pages',       desc: 'Collaborative documents, notes and manuscripts', icon: WikiIcon },
   { id: 'chat',       label: 'Project Chat', desc: 'Real-time discussion channels for project collaborators', icon: MessageSquare },
 ];
 
@@ -27,6 +28,7 @@ export default function ModulesPage() {
   if (isLoading) {
     return (
       <PageLayout>
+        <PageHeader title="Modules" icon={LayoutGrid} />
         <PageContent maxWidth="lg">
           <Skeleton className="h-64 w-full rounded-md motion-reduce:animate-none" />
         </PageContent>
@@ -37,6 +39,7 @@ export default function ModulesPage() {
   if (isError || !project) {
     return (
       <PageLayout>
+        <PageHeader title="Modules" icon={LayoutGrid} />
         <PageContent maxWidth="lg">
           <div className="text-13 text-muted-foreground">
             Error loading project.
@@ -48,7 +51,7 @@ export default function ModulesPage() {
 
   return (
     <PageLayout>
-
+      <PageHeader title="Modules" icon={LayoutGrid} />
       <PageContent maxWidth="lg">
         {/* Module Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">

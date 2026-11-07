@@ -10,6 +10,9 @@ export const PageService = {
     forceEmpty?: string,
     forceError?: string,
   ) => {
+    if (!projectId || projectId === 'personal') {
+      return [];
+    }
     const params: Record<string, string> = {};
     if (status && status !== 'all') params.status = status;
     if (search && search.trim()) params.search = search.trim();

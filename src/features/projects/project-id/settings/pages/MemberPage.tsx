@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useParams } from 'next/navigation';
-import { ArrowDownAZ, ArrowUpZA, ChevronDown, Search } from 'lucide-react';
+import { ArrowDownAZ, ArrowUpZA, ChevronDown, Search, Users } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -10,6 +10,7 @@ import { Skeleton } from '@/shared/components/ui/skeleton';
 import { DeleteModal } from '@/features/settings/components/labels/DeleteModal';
 import { toast } from 'sonner';
 import { PageLayout, PageContent } from '@/shared/components/layout/PageLayout';
+import { PageHeader } from '@/shared/components/layout/PageHeader';
 import { PageToolbar } from '@/shared/components/layout/PageToolbar';
 import { Assignee } from '../components/member/Assignee';
 import { Item } from '../components/member/Item';
@@ -158,6 +159,7 @@ export default function MemberPage() {
   if (isLoading) {
     return (
       <PageLayout>
+        <PageHeader title="Members" icon={Users} />
         <PageContent maxWidth="lg">
           <div className="space-y-6">
             <Skeleton className="h-10 w-full rounded-md motion-reduce:animate-none" />
@@ -172,6 +174,7 @@ export default function MemberPage() {
   if (isError || !project) {
     return (
       <PageLayout>
+        <PageHeader title="Members" icon={Users} />
         <PageContent maxWidth="lg">
           <div className="text-13 text-muted-foreground">
             Error loading project members.
@@ -183,6 +186,7 @@ export default function MemberPage() {
 
   return (
     <PageLayout>
+      <PageHeader title="Members" icon={Users} />
       <PageContent maxWidth="lg">
         <div className="space-y-6">
           {/* Top Settings: Default Assignee */}

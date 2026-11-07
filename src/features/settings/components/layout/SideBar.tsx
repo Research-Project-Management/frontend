@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { Tag, User, SlidersHorizontal, Blocks, Bell, Lock } from 'lucide-react';
+import { User, SlidersHorizontal, Bell, Lock, Tag, Blocks } from 'lucide-react';
 import React from 'react';
 import Link from 'next/link';
 import { cn } from "@/shared/lib/utils";
@@ -18,16 +18,16 @@ export function SideBar() {
   const navItems: NavItem[] = [
     { label: 'Profile', icon: User, to: '/settings' },
     { label: 'Preferences', icon: SlidersHorizontal, to: '/settings/preferences' },
-    { label: 'Integrations', icon: Blocks, to: '/settings/integrations' },
     { label: 'Notifications', icon: Bell, to: '/settings/notifications' },
     { label: 'Security', icon: Lock, to: '/settings/security' },
     { label: 'Labels', icon: Tag, to: '/settings/labels' },
+    { label: 'Integrations', icon: Blocks, to: '/settings/integrations' },
   ];
 
   const renderItem = (item: NavItem) => {
     const isActive =
       item.to === '/settings'
-        ? pathname === '/settings'
+        ? pathname === '/settings' || pathname === '/settings/profile'
         : pathname === item.to || pathname.startsWith(item.to + '/');
 
     return (
@@ -59,8 +59,8 @@ export function SideBar() {
       aria-label="Settings navigation"
       className="h-full w-60 shrink-0 border-r border-border bg-background md:bg-transparent flex flex-col select-none max-md:w-full max-md:h-auto max-md:border-r-0 max-md:border-b"
     >
-      {/* Topbar Header matching the h-11 border-b of PageHeader */}
-      <div className="h-11 border-b border-border px-4 flex items-center shrink-0 max-md:hidden">
+      {/* Topbar Header without border-b to match other sidebars */}
+      <div className="h-11 px-4 flex items-center shrink-0 max-md:hidden">
         <span className="font-semibold text-sm tracking-tight text-foreground">
           Settings
         </span>

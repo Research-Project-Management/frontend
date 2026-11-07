@@ -29,10 +29,16 @@ const PROJECT_WORKSPACE_PREFIXES = [
   '/drafts',
   '/stickies',
   '/your-work',
-  '/pages',
 ];
 
 function isProjectWorkspaceRoute(pathname: string): boolean {
+  if (
+    pathname === '/projects/pages' ||
+    /^\/projects\/[^/]+\/pages(\/|$)/.test(pathname) ||
+    /^\/projects\/[^/]+\/settings(\/|$)/.test(pathname)
+  ) {
+    return false;
+  }
   return PROJECT_WORKSPACE_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
   );

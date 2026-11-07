@@ -71,7 +71,7 @@ const markdownComponents: Components = {
   },
   blockquote({ children }) {
     return (
-      <blockquote className="my-2 border-l-2 border-primary/40 bg-muted px-3 py-2 text-foreground/75">
+      <blockquote className="my-2 border-l-2 border-border bg-muted/50 px-3 py-2 text-foreground/80">
         {children}
       </blockquote>
     );

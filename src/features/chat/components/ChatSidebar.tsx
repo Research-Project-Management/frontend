@@ -528,7 +528,7 @@ export function ChatSidebar({ conversations, isLoading }: ChatSidebarProps) {
                         {d.name.slice(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="absolute bottom-0 right-0 size-2 rounded-full bg-emerald-500 ring-2 ring-background" />
+                    <span className="absolute bottom-0 right-0 size-2 rounded-full bg-success ring-2 ring-background" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">

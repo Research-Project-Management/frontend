@@ -1022,7 +1022,7 @@
   opacity: 1 !important;
   pointer-events: none !important;
   z-index: 2 !important;
-  line-height: 1.35 !important;
+  line-height: 1 !important;
 }
 
 .react-pdf__Page__textLayer span,
@@ -1031,7 +1031,7 @@
   -webkit-text-fill-color: transparent !important;
   background: transparent !important;
   pointer-events: auto !important;
-  line-height: 1.35 !important;
+  line-height: 1 !important;
 }
 
 .react-pdf__Page__annotationLayer,

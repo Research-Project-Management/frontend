@@ -199,7 +199,7 @@ function getAttachmentVisuals(name: string, sourceType?: string, size?: number) 
       typeLabel: 'Spreadsheet',
       sizeText,
       icon: FileSpreadsheet,
-      iconColor: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20',
+      iconColor: 'text-success bg-success/10 border-success/20',
     };
   }
   if (['ts', 'tsx', 'js', 'jsx', 'json', 'py', 'java', 'cpp', 'c', 'go', 'rs', 'md', 'txt'].includes(ext)) {
@@ -207,7 +207,7 @@ function getAttachmentVisuals(name: string, sourceType?: string, size?: number) 
       typeLabel: extLabel,
       sizeText,
       icon: FileCode,
-      iconColor: 'text-amber-500 bg-amber-500/10 border-amber-500/20',
+      iconColor: 'text-warning bg-warning/10 border-warning/20',
     };
   }
   return {

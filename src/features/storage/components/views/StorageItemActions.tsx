@@ -103,7 +103,7 @@ export const ItemActions = React.memo(function ItemActions({
           onClick={() => onToggleStar?.(item.id)}
           title={item.starred ? 'Unstar' : 'Star'}
         >
-          <Star className={`size-3.5 ${item.starred ? 'fill-amber-400 text-amber-400' : ''} shrink-0`} />
+          <Star className={cn('size-3.5 shrink-0', item.starred && 'fill-warning text-warning')} />
         </Button>
       )}
 
@@ -200,7 +200,7 @@ export const ItemActions = React.memo(function ItemActions({
               onClick={() => onToggleStar?.(item.id)}
               className="gap-2 cursor-pointer sm:hidden"
             >
-              <Star className={cn('size-3.5 shrink-0', item.starred ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground')} />
+              <Star className={cn('size-3.5 shrink-0', item.starred ? 'fill-warning text-warning' : 'text-muted-foreground')} />
               <span>{item.starred ? 'Remove star' : 'Add star'}</span>
             </DropdownMenuItem>
 

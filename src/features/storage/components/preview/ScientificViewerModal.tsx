@@ -265,7 +265,7 @@ export default function ScientificViewerModal({
                 title="Copy content"
                 className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer disabled:opacity-40"
               >
-                {copied ? <Check className="size-4 text-emerald-500" /> : <Copy className="size-4" />}
+                {copied ? <Check className="size-4 text-success" /> : <Copy className="size-4" />}
               </button>
               <button
                 onClick={handleDownload}

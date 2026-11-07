@@ -495,7 +495,7 @@ export function FriendManagerModal() {
                           {item.friend.name.slice(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="absolute bottom-0 right-0 size-2 rounded-full bg-emerald-500 ring-2 ring-background" />
+                      <span className="absolute bottom-0 right-0 size-2 rounded-full bg-success ring-2 ring-background" />
                     </div>
                     <div className="truncate">
                       <p className="text-13 font-medium text-foreground">{item.friend.name}</p>

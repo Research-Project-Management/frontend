@@ -88,7 +88,7 @@ export const MessageItem = memo(function MessageItem({
                 }, 1500);
               }
             }}
-            className="text-11 px-2.5 py-1 rounded bg-muted/80 hover:bg-muted border-l-2 border-primary text-muted-foreground truncate max-w-full text-left cursor-pointer transition-colors inline-flex items-center gap-1.5"
+            className="text-11 px-2.5 py-1 rounded-md bg-muted/80 hover:bg-muted border border-border/80 text-muted-foreground truncate max-w-full text-left cursor-pointer transition-colors inline-flex items-center gap-1.5"
             title="Jump to replied message"
           >
             <span className="font-medium text-foreground shrink-0">

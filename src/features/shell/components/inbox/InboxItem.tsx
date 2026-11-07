@@ -78,31 +78,31 @@ export default function InboxItem({
       case 'mention':
         return {
           icon: AtSign,
-          color: 'text-sky-500 bg-sky-500/10 border-sky-500/20',
+          color: 'text-primary bg-primary/10 border-primary/20',
           label: 'Mentioned you',
         };
       case 'comment_reply':
         return {
           icon: MessageSquare,
-          color: 'text-violet-500 bg-violet-500/10 border-violet-500/20',
+          color: 'text-foreground bg-muted border-border',
           label: 'Replied to comment',
         };
       case 'thread_resolved':
         return {
           icon: CheckCircle2,
-          color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20',
+          color: 'text-success bg-success/10 border-success/20',
           label: 'Resolved comment thread',
         };
       case 'project_invite':
         return {
           icon: UserPlus,
-          color: 'text-amber-500 bg-amber-500/10 border-amber-500/20',
+          color: 'text-warning bg-warning/10 border-warning/20',
           label: 'Project Invitation',
         };
       case 'review_request':
         return {
           icon: FileText,
-          color: 'text-indigo-500 bg-indigo-500/10 border-indigo-500/20',
+          color: 'text-primary bg-primary/10 border-primary/20',
           label: 'Manuscript Review Request',
         };
       default:
@@ -257,7 +257,7 @@ export default function InboxItem({
 
         {hasResponded && (
           <div className="mt-2 text-12 font-medium text-muted-foreground flex items-center gap-1">
-            <CheckCircle2 className="size-3.5 text-emerald-500" />
+            <CheckCircle2 className="size-3.5 text-success" />
             <span>Invitation {hasResponded}.</span>
           </div>
         )}

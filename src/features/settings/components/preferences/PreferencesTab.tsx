@@ -30,19 +30,13 @@ export function PreferencesTab() {
 
   useEffect(() => {
     if (form.getValues('theme') !== theme) {
-      form.setValue('theme', theme);
+      form.setValue('theme', theme, { shouldDirty: false, shouldValidate: false });
     }
   }, [theme, form]);
 
   const onSubmit = useCallback((values: z.infer<typeof preferencesSchema>) => {
     setTheme(values.theme);
-    form.reset(values); // Reset to new values to clear isDirty state
-  }, [form, setTheme]);
-
-  useEffect(() => {
-    const subscription = form.watch(() => form.handleSubmit(onSubmit)());
-    return () => subscription.unsubscribe();
-  }, [form, onSubmit]);
+  }, [setTheme]);
 
   return (
     <div className="w-full max-w-3xl mx-auto p-6 md:p-8 space-y-6">

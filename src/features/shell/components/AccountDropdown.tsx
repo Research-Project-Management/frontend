@@ -4,12 +4,10 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  Settings,
-  FolderPlus,
-  UserPlus,
+  User,
+  SlidersHorizontal,
   LogOut,
   Image as ImageIcon,
-  Bell,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -23,28 +21,12 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/shared/components/ui/avat
 import { resolveFileUrl } from "@/shared/lib/file-client";
 import { useUserCover } from '@/features/settings/hooks/use-user-cover';
 import { useUpload } from "@/shared/hooks/use-upload";
+import { useWorkspaceContextStore } from '../store/workspace-context.store';
+import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import dynamic from 'next/dynamic';
-import { useMyProjectInvitations } from '@/features/projects/invitation/hooks/use-project-invitations';
-import { useUnreadNotificationCount } from '../hooks/use-inbox';
 
 const CoverModal = dynamic(
   () => import('@/shared/components/ui/cover-modal').then((m) => m.CoverModal),
-  { ssr: false }
-);
-
-const CreateProjectModal = dynamic(
-  () =>
-    import('@/features/projects/shell/components/project/CreateProjectModal').then(
-      (m) => m.CreateProjectModal
-    ),
-  { ssr: false }
-);
-
-const ProjectInvitesModal = dynamic(
-  () =>
-    import('@/features/projects/invitation/components/ProjectInvitesModal').then(
-      (m) => m.ProjectInvitesModal
-    ),
   { ssr: false }
 );
 
@@ -53,17 +35,15 @@ interface AccountDropdownProps {
   align?: 'start' | 'end';
 }
 
-export default function AccountDropdown({ align = 'start' }: AccountDropdownProps = {}) {
+export default function AccountDropdown({ align = 'end' }: AccountDropdownProps = {}) {
   const router = useRouter();
   const { user, isLoading, logout } = useAuth();
   const { cover, setCover } = useUserCover();
   const { uploadFile, isUploading } = useUpload();
-  const { data: invitations = [] } = useMyProjectInvitations();
-  const { data: unreadCount = 0 } = useUnreadNotificationCount();
+  const setPersonalSpace = useWorkspaceContextStore((s) => s.setPersonalSpace);
+  const setLibraryScope = useLibraryUIStore((s) => s.setActiveScope);
   const [mounted, setMounted] = useState(false);
   const [isCoverModalOpen, setIsCoverModalOpen] = useState(false);
-  const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
-  const [isProjectInvitesOpen, setIsProjectInvitesOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -138,30 +118,8 @@ export default function AccountDropdown({ align = 'start' }: AccountDropdownProp
         />
       )}
 
-      {/* ── Create Project Modal ── */}
-      {isCreateProjectOpen && (
-        <CreateProjectModal
-          open={isCreateProjectOpen}
-          onOpenChange={setIsCreateProjectOpen}
-          onSuccess={(newProj) => {
-            setIsCreateProjectOpen(false);
-            if (newProj?.id) {
-              router.push(`/projects/${newProj.id}`);
-            }
-          }}
-        />
-      )}
-
-      {/* ── Project Invites Modal ── */}
-      {isProjectInvitesOpen && (
-        <ProjectInvitesModal
-          open={isProjectInvitesOpen}
-          onOpenChange={setIsProjectInvitesOpen}
-        />
-      )}
-
       <DropdownMenu>
-        <DropdownMenuTrigger className="relative flex items-center justify-center size-8 rounded-md transition-colors hover:bg-muted outline-none focus-visible:ring-1 focus-visible:ring-primary data-[state=open]:bg-muted cursor-pointer before:absolute before:-inset-1.5 md:before:hidden">
+        <DropdownMenuTrigger className="relative flex items-center justify-center size-8 rounded-md transition-colors hover:bg-background/80 outline-none focus-visible:ring-1 focus-visible:ring-primary data-[state=open]:bg-background cursor-pointer before:absolute before:-inset-1.5 md:before:hidden">
           <Avatar className="size-7 rounded-full shrink-0 border border-border/60">
             {user.avatar ? (
               <AvatarImage
@@ -172,15 +130,12 @@ export default function AccountDropdown({ align = 'start' }: AccountDropdownProp
             ) : null}
             <AvatarFallback className="text-11 font-semibold">{userInitials}</AvatarFallback>
           </Avatar>
-          {(unreadCount > 0 || invitations.length > 0) && (
-            <span className="absolute top-0.5 right-0.5 size-2 rounded-full bg-primary ring-2 ring-background" />
-          )}
         </DropdownMenuTrigger>
 
         <DropdownMenuContent
           align={align}
           onCloseAutoFocus={(e) => e.preventDefault()}
-          className="w-72 p-0 overflow-hidden bg-popover rounded-md shadow-raised-200 border border-border"
+          className="w-72 p-0 overflow-hidden bg-popover rounded-md shadow-raised-200 border border-border select-none"
           alignOffset={0}
         >
           {/* Cover Banner Header with Change Background Button */}
@@ -232,70 +187,42 @@ export default function AccountDropdown({ align = 'start' }: AccountDropdownProp
             </div>
           </div>
 
-          {/* Menu Items (no divider lines, natural spacing, rounded-md items) */}
-          <div className="p-1.5 space-y-1">
-            {/* Section 1: Navigation & Settings */}
-            <div className="space-y-0.5">
-              <DropdownMenuItem
-                className="cursor-pointer gap-2.5 px-3 py-2 text-foreground hover:bg-muted focus:bg-muted rounded-md transition-colors"
-                asChild
-              >
-                <Link href="/inbox" className="flex items-center gap-2.5 w-full">
-                  <Bell className="size-4 text-muted-foreground shrink-0" />
-                  <span className="text-sm font-medium">Inbox</span>
-                  {unreadCount > 0 && (
-                    <span className="ml-auto px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground text-10 font-semibold leading-none tabular-nums">
-                      {unreadCount > 99 ? '99+' : unreadCount}
-                    </span>
-                  )}
-                </Link>
-              </DropdownMenuItem>
+          {/* Navigate to Profile & Preferences */}
+          <div className="p-1.5 space-y-0.5 border-t border-border">
+            <DropdownMenuItem
+              onSelect={() => {
+                setPersonalSpace();
+                setLibraryScope({ type: 'user', id: 'user', name: 'My Library' });
+                router.push('/settings');
+              }}
+              className="cursor-pointer gap-2.5 px-3 py-1.5 text-13 text-foreground hover:bg-muted focus:bg-muted rounded-md transition-colors"
+            >
+              <User className="size-4 text-muted-foreground shrink-0" />
+              <span className="font-medium">Profile</span>
+            </DropdownMenuItem>
 
-              <DropdownMenuItem
-                className="cursor-pointer gap-2.5 px-3 py-2 text-foreground hover:bg-muted focus:bg-muted rounded-md transition-colors"
-                asChild
-              >
-                <Link href="/settings">
-                  <Settings className="size-4 text-muted-foreground shrink-0" />
-                  <span className="text-sm font-medium">Settings</span>
-                </Link>
-              </DropdownMenuItem>
-            </div>
+            <DropdownMenuItem
+              onSelect={() => {
+                setPersonalSpace();
+                setLibraryScope({ type: 'user', id: 'user', name: 'My Library' });
+                router.push('/settings/preferences');
+              }}
+              className="cursor-pointer gap-2.5 px-3 py-1.5 text-13 text-foreground hover:bg-muted focus:bg-muted rounded-md transition-colors"
+            >
+              <SlidersHorizontal className="size-4 text-muted-foreground shrink-0" />
+              <span className="font-medium">Preferences</span>
+            </DropdownMenuItem>
+          </div>
 
-            {/* Section 2: Projects & Invitations */}
-            <div className="space-y-0.5 pt-1">
-              <DropdownMenuItem
-                onSelect={() => setIsCreateProjectOpen(true)}
-                className="cursor-pointer gap-2.5 px-3 py-2 text-foreground hover:bg-muted focus:bg-muted rounded-md transition-colors"
-              >
-                <FolderPlus className="size-4 text-muted-foreground shrink-0" />
-                <span className="text-sm font-medium">Create project</span>
-              </DropdownMenuItem>
-
-              <DropdownMenuItem
-                onSelect={() => setIsProjectInvitesOpen(true)}
-                className="cursor-pointer gap-2.5 px-3 py-2 text-foreground hover:bg-muted focus:bg-muted rounded-md transition-colors"
-              >
-                <UserPlus className="size-4 text-muted-foreground shrink-0" />
-                <span className="text-sm font-medium">Project invitations</span>
-                {invitations.length > 0 && (
-                  <span className="ml-auto px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground text-10 font-semibold leading-none">
-                    {invitations.length}
-                  </span>
-                )}
-              </DropdownMenuItem>
-            </div>
-
-            {/* Section 3: Sign out (Neutral gray tone, no red) */}
-            <div className="space-y-0.5 pt-1">
-              <DropdownMenuItem
-                onClick={() => logout()}
-                className="cursor-pointer gap-2.5 px-3 py-2 text-muted-foreground hover:text-foreground focus:text-foreground focus:bg-muted rounded-md transition-colors"
-              >
-                <LogOut className="size-4 text-muted-foreground shrink-0" />
-                <span className="text-sm font-medium">Sign out</span>
-              </DropdownMenuItem>
-            </div>
+          {/* Sign Out */}
+          <div className="p-1.5 border-t border-border">
+            <DropdownMenuItem
+              onClick={() => logout()}
+              className="cursor-pointer gap-2.5 px-3 py-1.5 text-13 text-destructive hover:text-destructive focus:text-destructive focus:bg-destructive/10 rounded-md transition-colors"
+            >
+              <LogOut className="size-4 text-destructive shrink-0" />
+              <span className="font-medium">Sign out</span>
+            </DropdownMenuItem>
           </div>
         </DropdownMenuContent>
       </DropdownMenu>

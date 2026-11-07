@@ -56,11 +56,6 @@ export const IntegrationCard = React.memo(function IntegrationCard({ item, onCon
               >
                 <span className="size-1.5 rounded-full bg-success" />
                 Connected
-                {item.accountName && (
-                  <span className="text-foreground font-normal">
-                    · {item.accountName}
-                  </span>
-                )}
               </Badge>
             )}
             {needsReconnect && (

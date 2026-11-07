@@ -203,7 +203,7 @@ export function BulkActionBar({ items, isTrash }: BulkActionBarProps) {
               >
                 <Star
                   className={`size-3.5 shrink-0 ${
-                    !hasUnstarred ? 'fill-amber-400 text-amber-400' : ''
+                    !hasUnstarred ? 'fill-warning text-warning' : ''
                   }`}
                 />
                 {hasUnstarred ? 'Star' : 'Unstar'}
@@ -229,7 +229,7 @@ export function BulkActionBar({ items, isTrash }: BulkActionBarProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 px-2 sm:px-2.5 text-xs gap-1 sm:gap-1.5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 cursor-pointer shrink-0 rounded-md"
+                className="h-8 px-2 sm:px-2.5 text-xs gap-1 sm:gap-1.5 text-success hover:bg-success/10 cursor-pointer shrink-0 rounded-md"
                 onClick={handleBulkRestore}
                 disabled={isRestoring}
                 title="Restore selected items"

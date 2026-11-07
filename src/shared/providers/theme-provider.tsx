@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useTransition } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 
 export type Theme = 'system' | 'light' | 'dark';
 export type ResolvedTheme = 'light' | 'dark';
@@ -86,7 +86,6 @@ export function ThemeProvider({
   });
 
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('light');
-  const [, startTransition] = useTransition();
 
   // Apply light / dark theme class
   useEffect(() => {
@@ -123,22 +122,18 @@ export function ThemeProvider({
     root.style.setProperty('--brand-hue', `${brandHue}`);
   }, [brandHue]);
 
-  const setTheme = (newTheme: Theme) => {
-    startTransition(() => {
-      setThemeState(newTheme);
-    });
+  const setTheme = useCallback((newTheme: Theme) => {
+    setThemeState((prev) => (prev === newTheme ? prev : newTheme));
     try {
       localStorage.setItem(STORAGE_KEY, newTheme);
     } catch {
       // Storage access error handling
     }
-  };
+  }, []);
 
-  const setBrandHue = (hue: number) => {
+  const setBrandHue = useCallback((hue: number) => {
     const validHue = Math.min(360, Math.max(0, Math.round(hue)));
-    startTransition(() => {
-      setBrandHueState(validHue);
-    });
+    setBrandHueState((prev) => (prev === validHue ? prev : validHue));
     try {
       localStorage.setItem(BRAND_HUE_KEY, `${validHue}`);
       if (typeof window !== 'undefined') {
@@ -147,29 +142,32 @@ export function ThemeProvider({
     } catch {
       // Storage access error handling
     }
-  };
+  }, []);
 
-  const setBrandPreset = (preset: BrandPresetKey) => {
+  const setBrandPreset = useCallback((preset: BrandPresetKey) => {
     const targetPreset = BRAND_COLOR_PRESETS[preset];
     if (targetPreset) {
       setBrandHue(targetPreset.hue);
     }
-  };
+  }, [setBrandHue]);
 
   const brandPreset = resolvePresetFromHue(brandHue);
 
+  const contextValue = useMemo(
+    () => ({
+      theme,
+      resolvedTheme,
+      setTheme,
+      brandHue,
+      setBrandHue,
+      brandPreset,
+      setBrandPreset,
+    }),
+    [theme, resolvedTheme, setTheme, brandHue, setBrandHue, brandPreset, setBrandPreset],
+  );
+
   return (
-    <ThemeContext.Provider
-      value={{
-        theme,
-        resolvedTheme,
-        setTheme,
-        brandHue,
-        setBrandHue,
-        brandPreset,
-        setBrandPreset,
-      }}
-    >
+    <ThemeContext.Provider value={contextValue}>
       {children}
     </ThemeContext.Provider>
   );

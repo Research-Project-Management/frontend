@@ -184,7 +184,7 @@ export function ExperimentsSidebar() {
           ) : (
             <>
               <span className="shrink-0 font-semibold text-15 tracking-tight text-foreground">
-                Lab
+                Labs
               </span>
 
               <div className="flex items-center gap-0.5 shrink-0">

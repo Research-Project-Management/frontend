@@ -362,7 +362,7 @@ export default function VersionHistoryModal({
                             {isCurrent && (
                               <Badge
                                 variant="outline"
-                                className="h-5 px-2 text-10 font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 gap-1"
+                                className="h-5 px-2 text-10 font-medium bg-success/10 text-success border-success/20 gap-1"
                               >
                                 <CheckCircle2 className="size-3" />
                                 Current version

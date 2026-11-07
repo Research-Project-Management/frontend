@@ -288,7 +288,7 @@ export function ChatWindow({ conversation, backHref, showSidebarToggle = true }:
                         {conversation.name.slice(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="absolute bottom-0 right-0 size-1.5 rounded-full bg-emerald-500 ring-1 ring-background" />
+                    <span className="absolute bottom-0 right-0 size-1.5 rounded-full bg-success ring-1 ring-background" />
                   </div>
                   <span className="truncate">{conversation.name}</span>
                 </>

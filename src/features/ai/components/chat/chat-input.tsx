@@ -95,7 +95,7 @@ function getFileMeta(name: string, sourceType?: string, size?: number) {
       typeLabel: 'Spreadsheet',
       sizeText,
       icon: FileSpreadsheet,
-      iconColor: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20',
+      iconColor: 'text-success bg-success/10 border-success/20',
     };
   }
 
@@ -104,7 +104,7 @@ function getFileMeta(name: string, sourceType?: string, size?: number) {
       typeLabel: extLabel,
       sizeText,
       icon: FileCode,
-      iconColor: 'text-amber-500 bg-amber-500/10 border-amber-500/20',
+      iconColor: 'text-warning bg-warning/10 border-warning/20',
     };
   }
 

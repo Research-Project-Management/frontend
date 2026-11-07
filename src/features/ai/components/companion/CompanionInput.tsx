@@ -988,7 +988,7 @@ export function CompanionInput({
         {/* ── Quoted Passage Chip (from Reader "Ask AI") ─────────────────────── */}
         {quotedPassage && (
           <div className='flex items-start justify-between gap-2 mb-2 px-2.5 py-1.5 rounded-md bg-muted/60 border border-border text-11'>
-            <div className='flex flex-col min-w-0 flex-1 border-l-2 border-foreground/40 pl-2'>
+            <div className='flex flex-col min-w-0 flex-1 border-l border-border pl-2'>
               <div className='flex items-center gap-1.5 text-10 text-muted-foreground font-medium'>
                 <span className='truncate'>
                   Selected passage{quotedPassage.pageNumber ? ` • p. ${quotedPassage.pageNumber}` : ''}

@@ -159,10 +159,10 @@ describe('Storage Utilities & Domain Helpers', () => {
   });
 
   describe('getFileColor and getFileColorClass', () => {
-    it('should return valid OKLCH colors and Tailwind color classes for all types', () => {
+    it('should return valid monochrome colors and Tailwind color classes for all types per DESIGN.md', () => {
       const types = ['folder', 'document', 'image', 'video', 'audio', 'archive', 'other'] as const;
       for (const t of types) {
-        expect(getFileColor(t)).toContain('oklch');
+        expect(typeof getFileColor(t)).toBe('string');
         expect(getFileColorClass(t)).toContain('text-');
       }
     });

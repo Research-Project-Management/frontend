@@ -45,6 +45,9 @@ interface BatchMoveCollectionPopoverProps {
 export function BatchMoveCollectionPopover({
   isUnfiledView = false,
   isAllProcessingSelected,
+  canMoveToRootUnfiled = false,
+  isProjectScope = false,
+  rootLibraryName,
   targetableCollections,
   allCollections,
   onBatchMove,
@@ -65,7 +68,10 @@ export function BatchMoveCollectionPopover({
     return labels;
   }, [allCollections, targetableCollections]);
 
-  if (targetableCollections.length === 0) return null;
+  if (targetableCollections.length === 0 && !canMoveToRootUnfiled) return null;
+
+  const effectiveRootLabel =
+    rootLibraryName || (isProjectScope ? 'Project Library (Unfiled)' : 'My Library (Unfiled)');
 
   return (
     <DropdownMenu>
@@ -87,13 +93,27 @@ export function BatchMoveCollectionPopover({
         onCloseAutoFocus={(e) => e.preventDefault()}
         className="w-64 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 max-h-64 overflow-y-auto"
       >
+        {canMoveToRootUnfiled && (
+          <>
+            <DropdownMenuItem
+              onClick={() => onBatchMove(null)}
+              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+            >
+              <Folder className="size-4 text-muted-foreground shrink-0" strokeWidth={1.5} />
+              <span className="truncate" title={effectiveRootLabel}>
+                {effectiveRootLabel}
+              </span>
+            </DropdownMenuItem>
+            {targetableCollections.length > 0 && <div className="mx-1 h-px my-1 bg-border" />}
+          </>
+        )}
         {targetableCollections.map((c) => {
           const fullLabel = collectionBreadcrumbMap.get(c.id) || c.name;
           return (
             <DropdownMenuItem
               key={c.id}
               onClick={() => {
-                if (onBatchAssign) {
+                if (isUnfiledView && onBatchAssign) {
                   onBatchAssign(c.id, c.name);
                 } else {
                   onBatchMove(c.id);
@@ -133,6 +153,7 @@ export function BatchCitationExportPopovers({
   effectiveScopeId,
   retractedCount,
   onCopyMultiCite,
+  onCopyInTextCite,
   onExportAllBibtex,
   onDownloadBibFile,
 }: BatchCitationExportPopoversProps) {
@@ -155,8 +176,11 @@ export function BatchCitationExportPopovers({
           align="center"
           side="top"
           sideOffset={8}
-          className="w-auto min-w-[200px] max-w-[300px] p-1.5 space-y-0.5 bg-popover border border-border rounded-md shadow-raised-200"
+          className="w-auto min-w-[200px] max-w-[300px] p-1.5 space-y-0.5 bg-popover border border-border rounded-md shadow-raised-200 max-h-80 overflow-y-auto"
         >
+          <div className="px-2.5 py-1 text-11 font-medium text-muted-foreground select-none">
+            Bibliography
+          </div>
           {citationStyles.map((style) => (
             <DropdownMenuItem
               key={style.id}
@@ -164,6 +188,20 @@ export function BatchCitationExportPopovers({
               className="h-8 gap-2 px-2.5 text-13 cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors whitespace-nowrap"
             >
               <span>{style.label}</span>
+            </DropdownMenuItem>
+          ))}
+
+          <div className="mx-1 h-px my-1 bg-border" />
+          <div className="px-2.5 py-1 text-11 font-medium text-muted-foreground select-none">
+            In-Text Citation
+          </div>
+          {citationStyles.slice(0, 4).map((style) => (
+            <DropdownMenuItem
+              key={`in-text-${style.id}`}
+              onClick={() => onCopyInTextCite(style.id as CslStyle)}
+              className="h-8 gap-2 px-2.5 text-13 cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors whitespace-nowrap"
+            >
+              <span>{style.label} (In-Text)</span>
             </DropdownMenuItem>
           ))}
 

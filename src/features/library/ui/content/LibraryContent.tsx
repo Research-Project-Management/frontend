@@ -39,7 +39,7 @@ export const ITEM_LIST_FIELDS = [
   'id', 'title', 'itemType', 'type', 'year', 'publicationTitle',
   'authors', 'creators', 'contributors', 'firstAuthor', 'doi', 'citationKey',
   'hasFile', 'attachmentCount', 'noteCount', 'readStatus', 'rating', 'isStarred',
-  'isMyPublication', 'isRetracted', 'retractionInfo',
+  'isMyPublication', 'isRetracted', 'retractionInfo', 'citationCount', 'extra',
   'version', 'createdAt', 'updatedAt', 'deletedAt', 'collectionIds',
   'tags', 'labels', 'url',
 ] as const;

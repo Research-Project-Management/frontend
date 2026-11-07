@@ -26,6 +26,7 @@ import {
   useFeedsStore,
   isFeedEntryInLibrary,
 } from '@/features/library/core/store/reader.store';
+import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import {
@@ -55,7 +56,8 @@ export function FeedViewContent({
   canEdit = true,
 }: FeedViewContentProps) {
   const searchParams = useSearchParams();
-  const searchQuery = (searchParams.get('q') || '').trim();
+  const ephemeralSearch = useLibraryUIStore((s) => s.ephemeralFilters.q);
+  const searchQuery = ((ephemeralSearch ?? searchParams.get('q')) || '').trim();
   const { mutateAsync: createItem } = useCreateLibraryItemMutation(scopeId);
   const { mutateAsync: ingestItem } = useIngestMutation(scopeId);
   const { collections } = useCollections(scopeId);

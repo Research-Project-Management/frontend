@@ -25,11 +25,12 @@ import {
   notifyServerFeedsHydrated,
   notifyReadEntriesHydrated,
   notifyDraftCacheCleared,
+  invokeLoadFeedsFallback,
+  invokeAddFeed,
+  invokeUpdateFeed,
+  invokeRemoveFeed,
+  getRegisteredFeedsSnapshot,
 } from '@/features/library/sdk/query-keys';
-import {
-  useFeedsStore,
-  registerFeedsTransportAdapter,
-} from '@/features/library/core/store/feeds.store';
 import {
   invalidateLibraryCatalogDependencies,
   patchItemAcrossScopeCaches,
@@ -88,10 +89,9 @@ export const feedsTransportBindings = {
   markItemRead: (entryId: string, isRead: boolean) =>
     FeedsService.markItemRead(entryId, isRead),
   markAllRead: (entryIds: string[]) => FeedsService.markAllRead(entryIds),
+  markFeedAllRead: (feedId: string) => FeedsService.markFeedAllRead(feedId),
   getItems: (feedId: string) => FeedsService.getItems(feedId),
 };
-
-registerFeedsTransportAdapter(feedsTransportBindings);
 
 export function useTrackedIdentifierIngestion(scopeId: string) {
   const queryClient = useQueryClient();
@@ -274,7 +274,6 @@ export function useFeedArticlesQuery(
         }
       });
       if (readIds.length > 0) {
-        useFeedsStore.getState().hydrateReadEntries(readIds);
         notifyReadEntriesHydrated(readIds);
       }
       return res;
@@ -302,7 +301,6 @@ export function useFetchFeed() {
         }
       });
       if (readIds.length > 0) {
-        useFeedsStore.getState().hydrateReadEntries(readIds);
         notifyReadEntriesHydrated(readIds);
       }
       return res;
@@ -347,12 +345,10 @@ export function useFeedSubscriptionsQuery(options?: { enabled?: boolean }) {
       const res = await FeedsService.getSubscriptions();
       if (res?.data && Array.isArray(res.data)) {
         const mappedFeeds = mapServerFeedSubscriptions(res.data);
-        useFeedsStore.getState().hydrateFeeds(mappedFeeds);
         notifyServerFeedsHydrated(mappedFeeds);
         return mappedFeeds;
       }
-      await useFeedsStore.getState().loadFeeds({ force: true });
-      return useFeedsStore.getState().feeds;
+      return invokeLoadFeedsFallback({ force: true });
     },
     enabled: options?.enabled ?? true,
     staleTime: 2 * 60 * 1000,
@@ -375,7 +371,7 @@ export function useSubscribeFeedMutation() {
       cleanupReadAfter?: SavedFeedSubscription['cleanupReadAfter'];
       cleanupUnreadAfter?: SavedFeedSubscription['cleanupUnreadAfter'];
     }): Promise<SavedFeedSubscription> =>
-      useFeedsStore.getState().addFeed(name, url, retentionDays, {
+      invokeAddFeed(name, url, retentionDays, {
         cleanupReadAfter,
         cleanupUnreadAfter,
       }),
@@ -401,10 +397,10 @@ export function useUpdateFeedSubscriptionMutation() {
         cleanupUnreadAfter?: SavedFeedSubscription['cleanupUnreadAfter'];
       };
     }): Promise<void> => {
-      await useFeedsStore.getState().updateFeed(id, updates);
+      await invokeUpdateFeed(id, updates);
     },
     onSuccess: () => {
-      queryClient.setQueryData(feedKeys.subscriptions(), useFeedsStore.getState().feeds);
+      queryClient.setQueryData(feedKeys.subscriptions(), getRegisteredFeedsSnapshot());
     },
   });
 }
@@ -413,10 +409,10 @@ export function useUnsubscribeFeedMutation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string): Promise<void> => {
-      await useFeedsStore.getState().removeFeed(id);
+      await invokeRemoveFeed(id);
     },
     onSuccess: () => {
-      queryClient.setQueryData(feedKeys.subscriptions(), useFeedsStore.getState().feeds);
+      queryClient.setQueryData(feedKeys.subscriptions(), getRegisteredFeedsSnapshot());
     },
   });
 }

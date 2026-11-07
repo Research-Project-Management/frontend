@@ -210,7 +210,10 @@ export const libraryKeys = {
 
   // Feeds
   feeds: () => [...libraryKeys.all, "feeds"] as const,
-  feedSubscriptions: () => [...libraryKeys.all, "feeds", "subscriptions"] as const,
+  feedSubscriptions: (scopeId?: string) =>
+    scopeId
+      ? ([...libraryKeys.all, "feeds", "subscriptions", normalizeScopeId(scopeId)] as const)
+      : ([...libraryKeys.all, "feeds", "subscriptions"] as const),
   feedArticles: (scopeId?: string, feedUrl?: string) =>
     [
       ...libraryKeys.all,
@@ -308,7 +311,7 @@ export const ingestKeys = {
 
 export const feedKeys = {
   all: libraryKeys.feeds(),
-  subscriptions: () => libraryKeys.feedSubscriptions(),
+  subscriptions: (scopeId?: string) => libraryKeys.feedSubscriptions(scopeId),
   articles: (scopeId?: string, feedUrl?: string) =>
     libraryKeys.feedArticles(scopeId, feedUrl),
 };
@@ -598,32 +601,74 @@ export function registerDraftCacheClearListener(
   };
 }
 
+let fallbackFeeds: SavedFeedSubscription[] = [];
+
+const defaultFeedHydrationObserver: FeedHydrationObserver = {
+  onServerFeedsHydrated: (feeds) => {
+    fallbackFeeds = Array.isArray(feeds) ? [...feeds] : [];
+  },
+  onReadEntriesHydrated: () => {},
+  onLoadFeedsFallback: async () => fallbackFeeds,
+  onAddFeed: (name, url, retentionDays = 30, options) => {
+    const trimmedUrl = url.trim();
+    const trimmedName =
+      name.trim() || trimmedUrl.replace(/^https?:\/\/(www\.)?/i, '').slice(0, 42);
+    const unreadDays = options?.cleanupUnreadAfter ?? retentionDays ?? 30;
+    const readDays = options?.cleanupReadAfter ?? 7;
+    const created: SavedFeedSubscription = {
+      id: `feed-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      name: trimmedName,
+      url: trimmedUrl,
+      retentionDays: unreadDays,
+      cleanupReadAfter: readDays,
+      cleanupUnreadAfter: unreadDays,
+    };
+    fallbackFeeds = [...fallbackFeeds.filter((f) => f.id !== created.id), created];
+    return created;
+  },
+  onUpdateFeed: async (id, updates) => {
+    fallbackFeeds = fallbackFeeds.map((f) =>
+      f.id === id ? { ...f, ...updates } : f,
+    );
+  },
+  onRemoveFeed: async (id) => {
+    fallbackFeeds = fallbackFeeds.filter((f) => f.id !== id);
+  },
+  getFeeds: () => fallbackFeeds,
+};
+
+function getEffectiveFeedObserver(): FeedHydrationObserver {
+  return activeObserver ?? defaultFeedHydrationObserver;
+}
+
 export function notifyServerFeedsHydrated(feeds: SavedFeedSubscription[]): void {
-  if (!activeObserver || !Array.isArray(feeds)) return;
+  const observer = getEffectiveFeedObserver();
+  if (!Array.isArray(feeds)) return;
   const nextKey = feeds
     .map(
       (f) =>
         `${f.id}|${f.name}|${f.url}|${f.retentionDays ?? ''}|${f.cleanupReadAfter ?? ''}|${f.cleanupUnreadAfter ?? ''}`,
     )
     .join(';;');
-  if (nextKey === lastHydratedFeedsKey && (activeObserver.getFeeds?.()?.length ?? 0) === feeds.length) {
+  if (nextKey === lastHydratedFeedsKey && (observer.getFeeds?.()?.length ?? 0) === feeds.length) {
     return;
   }
   lastHydratedFeedsKey = nextKey;
-  activeObserver.onServerFeedsHydrated(feeds);
+  observer.onServerFeedsHydrated(feeds);
 }
 
 export function notifyReadEntriesHydrated(entryIds: Iterable<string>): void {
-  activeObserver?.onReadEntriesHydrated(entryIds);
+  getEffectiveFeedObserver().onReadEntriesHydrated(entryIds);
 }
 
 export async function invokeLoadFeedsFallback(options?: {
   force?: boolean;
 }): Promise<SavedFeedSubscription[]> {
-  if (activeObserver?.onLoadFeedsFallback) {
-    return activeObserver.onLoadFeedsFallback(options);
+  const observer = getEffectiveFeedObserver();
+  if (observer.onLoadFeedsFallback) {
+    return observer.onLoadFeedsFallback(options);
   }
-  return activeObserver?.getFeeds?.() ?? [];
+  return observer.getFeeds?.() ?? [];
 }
 
 export async function invokeAddFeed(
@@ -635,25 +680,26 @@ export async function invokeAddFeed(
     cleanupUnreadAfter?: SavedFeedSubscription['cleanupUnreadAfter'];
   },
 ): Promise<SavedFeedSubscription> {
-  if (!activeObserver?.onAddFeed) {
-    throw new Error('FeedHydrationObserver.onAddFeed is not registered');
+  const observer = getEffectiveFeedObserver();
+  if (!observer.onAddFeed) {
+    return defaultFeedHydrationObserver.onAddFeed!(name, url, retentionDays, options);
   }
-  return activeObserver.onAddFeed(name, url, retentionDays, options);
+  return observer.onAddFeed(name, url, retentionDays, options);
 }
 
 export async function invokeUpdateFeed(
   id: string,
   updates: Partial<Omit<SavedFeedSubscription, 'id'>>,
 ): Promise<void> {
-  await activeObserver?.onUpdateFeed?.(id, updates);
+  await getEffectiveFeedObserver().onUpdateFeed?.(id, updates);
 }
 
 export async function invokeRemoveFeed(id: string): Promise<void> {
-  await activeObserver?.onRemoveFeed?.(id);
+  await getEffectiveFeedObserver().onRemoveFeed?.(id);
 }
 
 export function getRegisteredFeedsSnapshot(): SavedFeedSubscription[] {
-  return activeObserver?.getFeeds?.() ?? [];
+  return getEffectiveFeedObserver().getFeeds?.() ?? [];
 }
 
 export function notifyDraftCacheCleared(groupKey?: string): void {

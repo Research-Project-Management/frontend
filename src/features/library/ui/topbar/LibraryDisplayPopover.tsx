@@ -41,6 +41,7 @@ export const COLUMN_ITEMS: Array<{ key: LibraryColumnKey; label: string }> = [
   { key: "doi", label: "DOI" },
   { key: "citationKey", label: "Citation Key" },
   { key: "createdAt", label: "Date Added" },
+  { key: "citations", label: "Citations" },
 ];
 
 const ORDER_BY_OPTIONS: Array<{ value: LibraryOrderBy; label: string }> = [

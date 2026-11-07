@@ -12,7 +12,7 @@ import type { Collection, CslStyle, Item } from '@/features/library/types/core.t
 import { useLibraryBatchCoordinator } from '@/features/library/core/coordinator/batch-action.coordinator';
 import { executeCopyMultiCite, executeCopyInTextCite, executeExportAllBibtex, executeDownloadBibFile } from '@/features/library/core/coordinator/citation-export.coordinator';
 import { useCitationStyles } from '@/features/library/core/coordinator/citation-export.coordinator';
-import { useBatchRenameAttachmentsMutation } from '@/features/library/sdk/queries/extraction.queries';
+import { useBatchRenameAttachmentsMutation } from '@/features/library/core/coordinator/item-action.coordinator';
 import { formatCitationStyleLabel } from '@/features/library/domain/citations.domain';
 import { BatchMoveCollectionPopover, BatchCitationExportPopovers, BatchSmartViewActions, BatchLifecycleActions } from '@/features/library/ui/content/BatchBarPopovers';
 

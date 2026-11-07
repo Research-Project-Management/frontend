@@ -23,7 +23,10 @@ import {
   type AnnotationHistoryStrategy,
 } from '@/features/library/sdk/queries/annotation-history.queries';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
-import { useLibraryCommandStore } from '@/features/library/core/manager/library-command.manager';
+import {
+  dispatchContextualOrCommandUndo,
+  dispatchContextualOrCommandRedo,
+} from '@/features/library/core/manager/library-command.manager';
 import type {
   ReaderAnnotation,
   ReaderDocument,
@@ -48,18 +51,6 @@ interface UseAnnotationBatchOptions {
   paper: ReaderDocument | null;
   setPendingNoteText: (text: string) => void;
   extractNotes?: (paperId: string, options?: ExtractNotesOptions) => Promise<unknown>;
-}
-
-function dispatchPruneHistoryEntry(action: UndoAction, deletedSet: ReadonlySet<string>): UndoAction | null {
-  return pruneAnnotationHistoryEntry(action, deletedSet);
-}
-
-async function dispatchUndoHistoryEntry(action: UndoAction, ctx: AnnotationHistoryContext): Promise<void> {
-  await runUndoAnnotationHistoryAction(action, ctx);
-}
-
-async function dispatchRedoHistoryEntry(action: UndoAction, ctx: AnnotationHistoryContext): Promise<void> {
-  await runRedoAnnotationHistoryAction(action, ctx);
 }
 
 /**
@@ -166,7 +157,7 @@ export function useAnnotationBatch({
     if (!deletedIds || deletedIds.length === 0) return;
     const deletedSet = new Set(deletedIds);
     const filterAction = (action: UndoAction): UndoAction | null =>
-      dispatchPruneHistoryEntry(action, deletedSet);
+      pruneAnnotationHistoryEntry(action, deletedSet);
     updateUndoStack((prev) => prev.map(filterAction).filter((a): a is UndoAction => a !== null));
     updateRedoStack((prev) => prev.map(filterAction).filter((a): a is UndoAction => a !== null));
   }, [updateUndoStack, updateRedoStack]);
@@ -181,7 +172,7 @@ export function useAnnotationBatch({
     isProcessingRef.current = true;
     setIsBatchProcessing(true);
     try {
-      await dispatchUndoHistoryEntry(action, {
+      await runUndoAnnotationHistoryAction(action, {
         scopeId,
         effectiveAttachmentId,
         qc,
@@ -216,7 +207,7 @@ export function useAnnotationBatch({
     isProcessingRef.current = true;
     setIsBatchProcessing(true);
     try {
-      await dispatchRedoHistoryEntry(action, {
+      await runRedoAnnotationHistoryAction(action, {
         scopeId,
         effectiveAttachmentId,
         qc,
@@ -250,31 +241,19 @@ export function useAnnotationBatch({
 
       if ((e.ctrlKey || e.metaKey) && !e.altKey) {
         const keyLower = e.key.toLowerCase();
+        const contextualSource = {
+          latestUndoTimestamp: undoStackRef.current[undoStackRef.current.length - 1]?.timestamp ?? 0,
+          latestRedoTimestamp: redoStackRef.current[redoStackRef.current.length - 1]?.timestamp ?? 0,
+          undo,
+          redo,
+        };
         if (keyLower === 'z' && !e.shiftKey) {
-          const topAnnUndo = undoStackRef.current[undoStackRef.current.length - 1];
-          const cmdState = useLibraryCommandStore.getState();
-          const topCmdUndo = cmdState.undoStack[0];
-          if (!topAnnUndo && !topCmdUndo) return;
-          e.preventDefault();
-          const annTs = topAnnUndo?.timestamp ?? 0;
-          const cmdTs = topCmdUndo?.timestamp ?? 0;
-          if (topAnnUndo && (!topCmdUndo || annTs >= cmdTs)) {
-            void undo();
-          } else if (topCmdUndo) {
-            void cmdState.undo();
+          if (dispatchContextualOrCommandUndo(contextualSource)) {
+            e.preventDefault();
           }
         } else if ((keyLower === 'z' && e.shiftKey) || keyLower === 'y') {
-          const topAnnRedo = redoStackRef.current[redoStackRef.current.length - 1];
-          const cmdState = useLibraryCommandStore.getState();
-          const topCmdRedo = cmdState.redoStack[0];
-          if (!topAnnRedo && !topCmdRedo) return;
-          e.preventDefault();
-          const annTs = topAnnRedo?.timestamp ?? 0;
-          const cmdTs = topCmdRedo?.timestamp ?? 0;
-          if (topAnnRedo && (!topCmdRedo || annTs >= cmdTs)) {
-            void redo();
-          } else if (topCmdRedo) {
-            void cmdState.redo();
+          if (dispatchContextualOrCommandRedo(contextualSource)) {
+            e.preventDefault();
           }
         }
       }

@@ -258,6 +258,7 @@ interface SchemaRegistryPayload {
 
 export type SchemaPersistenceListener = (data: unknown) => void;
 let persistenceListener: SchemaPersistenceListener | null = null;
+let pendingUnpersistedSchemaData: unknown = null;
 let schemaRegistryVersion = 1;
 const schemaRegistryUpdateListeners = new Set<() => void>();
 
@@ -272,6 +273,11 @@ let cachedRegistrySnapshot: LibrarySchemaRegistrySnapshot | null = null;
 
 export function setSchemaPersistenceListener(listener: SchemaPersistenceListener | null): void {
   persistenceListener = listener;
+  if (listener && pendingUnpersistedSchemaData) {
+    const toPersist = pendingUnpersistedSchemaData;
+    pendingUnpersistedSchemaData = null;
+    listener(toPersist);
+  }
 }
 
 export function getSchemaRegistryVersion(): number {
@@ -317,8 +323,9 @@ export function updateLibrarySchemaRegistry(
   if (Array.isArray(data)) {
     const mapped = mapRegistryItemTypes(data);
     updateCachedFields(mapped);
-    if (shouldPersist && persistenceListener) {
-      persistenceListener(data);
+    if (shouldPersist) {
+      if (persistenceListener) persistenceListener(data);
+      else pendingUnpersistedSchemaData = data;
     }
     for (const def of mapped) {
       LIBRARY_ITEM_TYPES[def.itemType] = def;
@@ -357,8 +364,9 @@ export function updateLibrarySchemaRegistry(
   if (Array.isArray(rawTypes)) {
     const mapped = mapRegistryItemTypes(rawTypes);
     updateCachedFields(mapped);
-    if (shouldPersist && persistenceListener) {
-      persistenceListener(payload);
+    if (shouldPersist) {
+      if (persistenceListener) persistenceListener(payload);
+      else pendingUnpersistedSchemaData = payload;
     }
     for (const def of mapped) {
       LIBRARY_ITEM_TYPES[def.itemType] = def;

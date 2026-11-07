@@ -1,7 +1,3 @@
-/**
- * Pure Domain Presentation Helpers: Identifiers (DOI, arXiv, PMID, ISBN) & Item File URL Resolvers
- */
-
 import { stripLatexMarkup } from './metadata-sanitizers.domain';
 
 const BRACKET_PAIRS: ReadonlyArray<readonly [string, number, number]> = [
@@ -25,19 +21,13 @@ function hasMoreCloseThanOpen(str: string, closeCode: number, openCode: number):
 function trimUnmatchedClosingBrackets(str: string): string {
   let s = str;
   for (const [closeChar, closeCode, openCode] of BRACKET_PAIRS) {
-    while (
-      s.endsWith(closeChar) &&
-      hasMoreCloseThanOpen(s, closeCode, openCode)
-    ) {
+    while (s.endsWith(closeChar) && hasMoreCloseThanOpen(s, closeCode, openCode)) {
       s = s.slice(0, -1);
     }
   }
   return s;
 }
 
-/**
- * Validates and extracts a canonical clean DOI string (10.NNNN/...)
- */
 export function cleanDoi(doi?: string | null): string {
   if (!doi || typeof doi !== 'string') return '';
   let clean = doi.trim().replace(/^[([\s<"']+/, '');
@@ -63,14 +53,10 @@ export function cleanDoi(doi?: string | null): string {
 
   clean = stripTrailingJunk(clean);
 
-  const natureMatch = clean.match(
-    /^https?:\/\/(?:www\.)?nature\.com\/articles\/([a-z0-9._-]+)(?:[?#].*)?$/i,
-  );
+  const natureMatch = clean.match(/^https?:\/\/(?:www\.)?nature\.com\/articles\/([a-z0-9._-]+)(?:[?#].*)?$/i);
   if (natureMatch && natureMatch[1]) return `10.1038/${stripTrailingJunk(natureMatch[1])}`;
 
-  const zenodoMatch = clean.match(
-    /^https?:\/\/zenodo\.org\/records?\/(\d+)(?:[?#].*)?$/i,
-  );
+  const zenodoMatch = clean.match(/^https?:\/\/zenodo\.org\/records?\/(\d+)(?:[?#].*)?$/i);
   if (zenodoMatch && zenodoMatch[1]) return `10.5281/zenodo.${zenodoMatch[1]}`;
 
   const biorxivMatch = clean.match(
@@ -89,9 +75,7 @@ export function cleanDoi(doi?: string | null): string {
   if (
     aclMatch &&
     aclMatch[1] &&
-    !['anthology', 'events', 'venues', 'sigs', 'people', 'info'].includes(
-      aclMatch[1].toLowerCase(),
-    )
+    !['anthology', 'events', 'venues', 'sigs', 'people', 'info'].includes(aclMatch[1].toLowerCase())
   ) {
     return `10.18653/v1/${stripTrailingJunk(aclMatch[1])}`;
   }
@@ -135,9 +119,6 @@ export function isValidDoi(doi?: string | null): boolean {
   return Boolean(cleaned && /^10\.\d{4,9}\/.+/.test(cleaned));
 }
 
-/**
- * Extracts canonical arXiv ID from text, DOI or URL (e.g. "1706.03762", "2305.18290v1", or "hep-th/9901001v2")
- */
 export function extractArxivId(input?: string | null): string | null {
   if (!input || typeof input !== 'string') return null;
   const clean = input
@@ -153,7 +134,6 @@ export function extractArxivId(input?: string | null): string | null {
     clean.match(/arxiv[.:]\s*([a-z-]+\/\d{7}(?:v\d+)?|\d{4}\.\d{4,5}(?:v\d+)?)/i);
   if (explicitMatch) return explicitMatch[1];
 
-  // Do not extract bare NNNN.NNNNN substrings from non-arXiv DOIs (e.g. 10.1000/2020.12345)
   if (/^(?:https?:\/\/(?:dx\.)?doi\.org\/|doi\s*:\s*)?10\.(?!48550\/arxiv\.)\d{4,9}\//i.test(clean)) {
     return null;
   }
@@ -165,10 +145,6 @@ export function extractArxivId(input?: string | null): string | null {
   return match ? match[1] : null;
 }
 
-/**
- * Normalizes an arXiv identifier from URLs, DOIs (`10.48550/arXiv.NNNN.NNNNN`),
- * `arXiv:` prefixes, or category suffixes (`[cs.CL]`).
- */
 export function normalizeArxivId(
   input?: string | null,
   options?: { stripVersion?: boolean },
@@ -183,15 +159,9 @@ export function getArxivPdfUrl(arxivId?: string | null): string {
   return id ? `https://arxiv.org/pdf/${id}.pdf` : '';
 }
 
-/**
- * Extracts a numeric PubMed ID (PMID) from raw strings or URLs (e.g. "PMID: 34265844", "https://pubmed.ncbi.nlm.nih.gov/34265844/")
- */
 export function extractPmid(input?: string | null): string {
   if (!input || typeof input !== 'string') return '';
-  const clean = input
-    .trim()
-    .replace(/^[([\s<"']+/, '')
-    .replace(/[.,;:\s"')\]>]+$/, '');
+  const clean = input.trim().replace(/^[([\s<"']+/, '').replace(/[.,;:\s"')\]>]+$/, '');
   const urlMatch = clean.match(/(?:pubmed\.ncbi\.nlm\.nih\.gov|ncbi\.nlm\.nih\.gov\/pubmed)\/(\d{4,9})/i);
   if (urlMatch) return urlMatch[1];
   const prefixMatch = clean.match(/^(?:pmid\s*[:#]?\s*)?(\d{6,9})$/i);
@@ -201,22 +171,13 @@ export function extractPmid(input?: string | null): string {
   return '';
 }
 
-/**
- * Extracts a PubMed Central ID (PMCID) from raw strings or URLs (e.g. "PMCID: PMC8284567", "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8284567/")
- */
 export function extractPmcId(input?: string | null): string {
   if (!input || typeof input !== 'string') return '';
-  const clean = input
-    .trim()
-    .replace(/^[([\s<"']+/, '')
-    .replace(/[.,;:\s"')\]>]+$/, '');
+  const clean = input.trim().replace(/^[([\s<"']+/, '').replace(/[.,;:\s"')\]>]+$/, '');
   const match = clean.match(/\b(PMC\d{5,9})\b/i);
   return match ? match[1].toUpperCase() : '';
 }
 
-/**
- * Extracts and cleans ISBN-10 or ISBN-13 strings (e.g. "ISBN-13: 978-0-262-03561-3" -> "978-0-262-03561-3", "080442957X")
- */
 export function cleanIsbn(input?: string | null): string {
   if (!input || typeof input !== 'string') return '';
   const stripped = input
@@ -241,36 +202,16 @@ interface ParsedBatchIdentifier {
   raw: string;
 }
 
-/**
- * Parses, classifies, normalizes, and deduplicates a messy multi-line, comma-, semicolon-,
- * or whitespace-separated block of identifiers pasted into Zotero's "Add Item by Identifier"
- * Magic Wand input box (while preserving semicolons inside Wiley SICI DOIs and raw BibTeX/RIS snippets).
- */
 export function parseBatchIdentifiersInput(rawInput?: string | null): ParsedBatchIdentifier[] {
   if (!rawInput || typeof rawInput !== 'string') return [];
   const trimmed = rawInput.trim();
   if (!trimmed) return [];
 
   if (/^@[a-zA-Z]+\s*\{/.test(trimmed)) {
-    return [
-      {
-        type: 'bibtex',
-        value: trimmed,
-        canonicalKey: `bibtex:${trimmed.slice(0, 120).toLowerCase()}`,
-        raw: trimmed,
-      },
-    ];
+    return [{ type: 'bibtex', value: trimmed, canonicalKey: `bibtex:${trimmed.slice(0, 120).toLowerCase()}`, raw: trimmed }];
   }
-
   if (/^TY\s+-\s+/m.test(trimmed)) {
-    return [
-      {
-        type: 'ris',
-        value: trimmed,
-        canonicalKey: `ris:${trimmed.slice(0, 120).toLowerCase()}`,
-        raw: trimmed,
-      },
-    ];
+    return [{ type: 'ris', value: trimmed, canonicalKey: `ris:${trimmed.slice(0, 120).toLowerCase()}`, raw: trimmed }];
   }
 
   let normalized = trimmed
@@ -292,7 +233,6 @@ export function parseBatchIdentifiersInput(rawInput?: string | null): ParsedBatc
 
   const results: ParsedBatchIdentifier[] = [];
   const seenKeys = new Set<string>();
-
   const addUnique = (entry: ParsedBatchIdentifier) => {
     if (!seenKeys.has(entry.canonicalKey)) {
       seenKeys.add(entry.canonicalKey);
@@ -307,79 +247,44 @@ export function parseBatchIdentifiersInput(rawInput?: string | null): ParsedBatc
       (/arxiv/i.test(token) || /^\(?\[?(?:arxiv:\s*)?(\d{4}\.\d{4,5}|[a-z-]+\/\d{7})/i.test(token))
     ) {
       const baseArxiv = arxivCandidate.replace(/v\d+$/i, '').toLowerCase();
-      addUnique({
-        type: 'arxiv',
-        value: arxivCandidate,
-        canonicalKey: `arxiv:${baseArxiv}`,
-        raw: token,
-      });
+      addUnique({ type: 'arxiv', value: arxivCandidate, canonicalKey: `arxiv:${baseArxiv}`, raw: token });
       continue;
     }
 
     const pmcCandidate = extractPmcId(token);
     if (pmcCandidate) {
-      addUnique({
-        type: 'pmcid',
-        value: pmcCandidate,
-        canonicalKey: `pmcid:${pmcCandidate.toUpperCase()}`,
-        raw: token,
-      });
+      addUnique({ type: 'pmcid', value: pmcCandidate, canonicalKey: `pmcid:${pmcCandidate.toUpperCase()}`, raw: token });
       continue;
     }
 
     const pmidCandidate = extractPmid(token);
     if (pmidCandidate) {
-      addUnique({
-        type: 'pmid',
-        value: pmidCandidate,
-        canonicalKey: `pmid:${pmidCandidate}`,
-        raw: token,
-      });
+      addUnique({ type: 'pmid', value: pmidCandidate, canonicalKey: `pmid:${pmidCandidate}`, raw: token });
       continue;
     }
 
     const isbnCandidate = cleanIsbn(token);
     if (isbnCandidate) {
       const digitsOnly = isbnCandidate.replace(/[-\s]/g, '').toUpperCase();
-      addUnique({
-        type: 'isbn',
-        value: isbnCandidate,
-        canonicalKey: `isbn:${digitsOnly}`,
-        raw: token,
-      });
+      addUnique({ type: 'isbn', value: isbnCandidate, canonicalKey: `isbn:${digitsOnly}`, raw: token });
       continue;
     }
 
     const doiCandidate = cleanDoi(token);
     if (doiCandidate && /^10\.\d{4,9}\//.test(doiCandidate)) {
-      addUnique({
-        type: 'doi',
-        value: doiCandidate,
-        canonicalKey: `doi:${doiCandidate.toLowerCase()}`,
-        raw: token,
-      });
+      addUnique({ type: 'doi', value: doiCandidate, canonicalKey: `doi:${doiCandidate.toLowerCase()}`, raw: token });
       continue;
     }
 
-    const cleanedUrl = token
-      .replace(/^[([\s<"']+/, '')
-      .replace(/[.,;:\s"')\]>]+$/, '');
+    const cleanedUrl = token.replace(/^[([\s<"']+/, '').replace(/[.,;:\s"')\]>]+$/, '');
     if (/^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(cleanedUrl)) {
-      addUnique({
-        type: 'url',
-        value: cleanedUrl,
-        canonicalKey: `url:${cleanedUrl.toLowerCase()}`,
-        raw: token,
-      });
+      addUnique({ type: 'url', value: cleanedUrl, canonicalKey: `url:${cleanedUrl.toLowerCase()}`, raw: token });
     }
   }
 
   return results;
 }
 
-/**
- * Normalizes title string by stripping LaTeX markup, collapsing whitespace, and fixing spaced hyphens.
- */
 export function cleanPaperTitle(raw?: string | null): string {
   if (!raw || typeof raw !== 'string') return '';
   let cleaned = stripLatexMarkup(raw.trim());
@@ -393,10 +298,6 @@ const TITLE_CASE_STOP_WORDS: ReadonlySet<string> = new Set([
   'on', 'at', 'to', 'from', 'by', 'with', 'in', 'of', 'over', 'into', 'onto',
 ]);
 
-/**
- * Converts a title to standard academic title case, lowercasing common prepositions/articles
- * except when at the start or end of the title.
- */
 export function normalizeTitleCase(title?: string | null): string {
   if (!title || typeof title !== 'string') return '';
   const cleaned = cleanPaperTitle(title);
@@ -414,18 +315,10 @@ export function normalizeTitleCase(title?: string | null): string {
     .join(' ');
 }
 
-// ── Item File URL & Storage Resolvers ───────────────────────────────────────
-
 export function isProjectScope(scopeId?: string): scopeId is string {
   if (!scopeId) return false;
   const s = scopeId.trim().toLowerCase();
-  return (
-    s !== 'user' &&
-    s !== 'me' &&
-    s !== 'personal' &&
-    s !== 'global' &&
-    s !== 'default'
-  );
+  return s !== 'user' && s !== 'me' && s !== 'personal' && s !== 'global' && s !== 'default';
 }
 
 type ItemFileSource = {
@@ -451,11 +344,6 @@ type ItemFileSource = {
   [key: string]: unknown;
 };
 
-/**
- * Extracts the canonical PDF or reading file URL from an Item.
- * Strictly resolves canonical binary content URLs (/api/v1/library/files/:fileId/content)
- * and avoids falling back to DOI landing page URLs.
- */
 export function getItemFileUrl(
   item?: ItemFileSource | null | undefined,
   scopeId?: string,
@@ -468,10 +356,7 @@ export function getItemFileUrl(
       ? item.projectId
       : undefined;
 
-  const normalizeUrl = (
-    url?: string | null,
-    fileId?: string | null,
-  ): string => {
+  const normalizeUrl = (url?: string | null, fileId?: string | null): string => {
     if (fileId) {
       return isProjectScope(effectiveScope)
         ? `/api/v1/projects/${encodeURIComponent(effectiveScope)}/library/files/${encodeURIComponent(fileId)}/content`
@@ -491,7 +376,6 @@ export function getItemFileUrl(
   };
 
   const attachments = Array.isArray(item.attachments) ? item.attachments : [];
-
   const primaryPdfAttachment =
     attachments.find((a) => a?.attachmentType === 'primary_pdf') ||
     attachments.find((a) => a?.mimeType === 'application/pdf') ||
@@ -503,10 +387,7 @@ export function getItemFileUrl(
     );
 
   if (primaryPdfAttachment) {
-    const url = normalizeUrl(
-      primaryPdfAttachment.url,
-      primaryPdfAttachment.fileId,
-    );
+    const url = normalizeUrl(primaryPdfAttachment.url, primaryPdfAttachment.fileId);
     if (url) return url;
   }
 
@@ -546,11 +427,6 @@ export function getItemFileUrl(
   return '';
 }
 
-/**
- * Extracts all canonical file URLs (primary file + all attachments) associated with an Item.
- * Used during item deletion/purge/merge to deterministically evict every cached binary
- * and warm ObjectURL belonging to the item across Tier-1 RAM and Tier-4 OPFS/IndexedDB.
- */
 export function resolveAllItemAttachmentUrls(
   item?: ItemFileSource | null | undefined,
   scopeId?: string,
@@ -564,11 +440,7 @@ export function resolveAllItemAttachmentUrls(
     for (const att of item.attachments) {
       if (!att) continue;
       const attUrl = getItemFileUrl(
-        {
-          fileUrl: att.fileUrl || att.url,
-          url: att.url,
-          fileId: att.fileId,
-        },
+        { fileUrl: att.fileUrl || att.url, url: att.url, fileId: att.fileId },
         scopeId,
       );
       if (attUrl) urls.add(attUrl);
@@ -577,10 +449,6 @@ export function resolveAllItemAttachmentUrls(
   return Array.from(urls);
 }
 
-/**
- * Computes WebCrypto SHA-256 hex digest of a browser File/Blob (for files <= 25 MB)
- * to deduplicate identical binary files before network upload.
- */
 export async function computeEdgeFileSha256(file: Blob): Promise<string | null> {
   if (!file || file.size === 0 || file.size > 25 * 1024 * 1024) return null;
   if (typeof crypto === 'undefined' || !crypto.subtle?.digest) return null;
@@ -600,17 +468,10 @@ export type EdgeSniffedIdentifier =
   | { type: 'pmid'; value: string }
   | { type: 'url'; value: string };
 
-function extractIdentifierFromPdfSampleText(
-  sample: string,
-): EdgeSniffedIdentifier | null {
-  // 1. Authoritative XMP / PDF Info Dict tags (<prism:doi>, <pdfx:doi>, <dc:identifier>, /DOI (...))
+function extractIdentifierFromPdfSampleText(sample: string): EdgeSniffedIdentifier | null {
   const xmpDoiMatch =
-    sample.match(
-      /<(?:prism:doi|pdfx:doi|crossmark:doi)[^>]*>\s*(?:doi:\s*)?(10\.\d{4,9}\/[^\s<"'&]+)/i,
-    )?.[1] ||
-    sample.match(
-      /<dc:identifier[^>]*>\s*(?:doi:\s*|https?:\/\/(?:dx\.)?doi\.org\/)(10\.\d{4,9}\/[^\s<"'&]+)/i,
-    )?.[1] ||
+    sample.match(/<(?:prism:doi|pdfx:doi|crossmark:doi)[^>]*>\s*(?:doi:\s*)?(10\.\d{4,9}\/[^\s<"'&]+)/i)?.[1] ||
+    sample.match(/<dc:identifier[^>]*>\s*(?:doi:\s*|https?:\/\/(?:dx\.)?doi\.org\/)(10\.\d{4,9}\/[^\s<"'&]+)/i)?.[1] ||
     sample.match(/\/DOI\s*\(\s*(?:doi:\s*)?(10\.\d{4,9}\/[^)\s]+)\s*\)/i)?.[1] ||
     sample.match(/(?:doi\.org\/|doi:\s*)(10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+)/i)?.[1];
   if (xmpDoiMatch) {
@@ -620,7 +481,6 @@ function extractIdentifierFromPdfSampleText(
     }
   }
 
-  // 2. arXiv stamp or XMP arXiv identifier (e.g., arXiv:2303.08774v1 [cs.CL])
   const arxivMatch = sample.match(
     /arXiv:\s*(\d{4}\.\d{4,5}(?:v\d+)?|[a-z-]+(?:\.[a-z]{2})?\/\d{7}(?:v\d+)?)/i,
   )?.[1];
@@ -629,7 +489,6 @@ function extractIdentifierFromPdfSampleText(
     if (cleanedArxiv) return { type: 'arxiv', value: cleanedArxiv };
   }
 
-  // 3. Explicit PMID / PMCID in PDF front-matter
   const pmcMatch = sample.match(/\b(PMC\d{5,9})\b/i)?.[1];
   if (pmcMatch) return { type: 'pmid', value: pmcMatch.toUpperCase() };
   const pmidMatch = sample.match(/\bPMID\s*:\s*(\d{6,9})\b/i)?.[1];
@@ -638,10 +497,7 @@ function extractIdentifierFromPdfSampleText(
   return null;
 }
 
-async function decompressFirstFlateStreams(
-  rawBytes: Uint8Array,
-  maxStreams = 3,
-): Promise<string> {
+async function decompressFirstFlateStreams(rawBytes: Uint8Array, maxStreams = 3): Promise<string> {
   if (typeof DecompressionStream === 'undefined') return '';
   const latin1 = new TextDecoder('latin1').decode(rawBytes);
   const chunks: string[] = [];
@@ -691,57 +547,35 @@ async function decompressFirstFlateStreams(
   return chunks.join('\n');
 }
 
-/**
- * Surgical 128KB PDF Front-Matter, XMP & FlateDecode Stream Sniffer:
- * Inspects the filename (DOI, arXiv, ACL Anthology, BioRxiv/MedRxiv, PMC/PMID, OpenReview)
- * and the first 128 KB + last 64 KB of a PDF file (including browser-native DecompressionStream
- * inflation of compressed LaTeX/pdfTeX page-1 streams) in < 3ms without loading the full PDF into RAM.
- */
 export async function sniffPdfEdgeIdentifier(
   file: Pick<File, 'name' | 'size' | 'slice'>,
 ): Promise<EdgeSniffedIdentifier | null> {
   const filenameWithoutExt = (file.name || '').replace(/\.pdf$/i, '').trim();
 
-  // A. Direct DOI in filename (10.xxxx/yyyy or 10.xxxx_yyyy)
-  const fnDoiMatch = filenameWithoutExt.match(
-    /10\.\d{4,9}[/_@][-._;()/:A-Za-z0-9]+/,
-  )?.[0];
+  const fnDoiMatch = filenameWithoutExt.match(/10\.\d{4,9}[/_@][-._;()/:A-Za-z0-9]+/)?.[0];
   if (fnDoiMatch) {
     const cleaned = cleanDoi(fnDoiMatch.replace(/^(10\.\d{4,9})[_@]/, '$1/'));
     if (cleaned) return { type: 'doi', value: cleaned };
   }
 
-  // B. ACL Anthology filename pattern (e.g. 2023.acl-long.123.pdf, 2024.emnlp-main.45.pdf, 2023.naacl-main.12.pdf)
   const aclMatch = filenameWithoutExt.match(
     /\b(20\d{2}\.(?:acl|emnlp|naacl|eacl|coling|findings|tacl)-[a-z0-9-]+\.\d+)\b/i,
   )?.[1];
-  if (aclMatch) {
-    return { type: 'doi', value: `10.18653/v1/${aclMatch}` };
-  }
+  if (aclMatch) return { type: 'doi', value: `10.18653/v1/${aclMatch}` };
 
-  // C. BioRxiv / MedRxiv filename pattern (e.g. 2023.05.12.540123v1.full.pdf or 2023.05.12.540123.pdf)
   const biorxivMatch = filenameWithoutExt.match(
     /\b(20\d{2}\.\d{2}\.\d{2}\.\d{6,8})(?:v\d+)?(?:\.full)?$/i,
   )?.[1];
-  if (biorxivMatch) {
-    return { type: 'doi', value: `10.1101/${biorxivMatch}` };
-  }
+  if (biorxivMatch) return { type: 'doi', value: `10.1101/${biorxivMatch}` };
 
-  // D. PubMed Central / PMID filename pattern (e.g. PMC9876543.pdf or pmid_36123456.pdf)
   const fnPmc = filenameWithoutExt.match(/\b(PMC\d{5,9})\b/i)?.[1];
   if (fnPmc) return { type: 'pmid', value: fnPmc.toUpperCase() };
   const fnPmid = filenameWithoutExt.match(/\bpmid[-_:\s]*(\d{6,9})\b/i)?.[1];
   if (fnPmid) return { type: 'pmid', value: fnPmid };
 
-  // E. OpenReview filename pattern (e.g. openreview_id_k9Ps2abc.pdf)
-  const fnOpenReview = filenameWithoutExt.match(
-    /openreview[-_](?:id[-_])?([A-Za-z0-9_-]{8,14})\b/i,
-  )?.[1];
-  if (fnOpenReview) {
-    return { type: 'url', value: `https://openreview.net/forum?id=${fnOpenReview}` };
-  }
+  const fnOpenReview = filenameWithoutExt.match(/openreview[-_](?:id[-_])?([A-Za-z0-9_-]{8,14})\b/i)?.[1];
+  if (fnOpenReview) return { type: 'url', value: `https://openreview.net/forum?id=${fnOpenReview}` };
 
-  // F. arXiv filename pattern (e.g. 2303.08774v2.pdf)
   const fnArxiv = extractArxivId(filenameWithoutExt);
   if (fnArxiv && (/arxiv/i.test(filenameWithoutExt) || /^\d{4}\.\d{4,5}/.test(fnArxiv))) {
     return { type: 'arxiv', value: fnArxiv };
@@ -750,8 +584,7 @@ export async function sniffPdfEdgeIdentifier(
   if (typeof file.slice !== 'function' || file.size <= 0) return null;
   try {
     const headBytesCount = Math.min(file.size, 128 * 1024);
-    const headBlob = file.slice(0, headBytesCount);
-    const headBuffer = await headBlob.arrayBuffer();
+    const headBuffer = await file.slice(0, headBytesCount).arrayBuffer();
     const headUint8 = new Uint8Array(headBuffer);
     const headText = new TextDecoder('utf-8', { fatal: false }).decode(headUint8);
     const tailText =
@@ -762,11 +595,8 @@ export async function sniffPdfEdgeIdentifier(
     const rawFound = extractIdentifierFromPdfSampleText(`${headText}\n${tailText}`);
     if (rawFound) return rawFound;
 
-    // G. Browser-native DecompressionStream fallback for FlateDecode compressed LaTeX/pdfTeX streams
     const decompressedText = await decompressFirstFlateStreams(headUint8, 3);
-    if (decompressedText) {
-      return extractIdentifierFromPdfSampleText(decompressedText);
-    }
+    if (decompressedText) return extractIdentifierFromPdfSampleText(decompressedText);
   } catch {
     // Ignore binary slice read errors
   }

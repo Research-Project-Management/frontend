@@ -277,7 +277,7 @@ export function ModernLibraryPage({
 
   // Breadcrumb navigation with full ancestor chain
   const breadcrumbs = useMemo<BreadcrumbItem[] | undefined>(() => {
-    const rootName = activeScope.type === 'user' ? 'My Library' : (activeScope.name || 'Library');
+    const rootName = activeScope.type === 'user' ? 'My Library' : (activeScope.name || 'Project Library');
     if (isSavedSearchView && currentSavedSearch) {
       const { label: cleanName } = parseEmojiPrefix(currentSavedSearch.name);
       return [

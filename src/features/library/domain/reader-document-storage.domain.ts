@@ -4,8 +4,11 @@
  * and offline sessions for academic papers (PDFs).
  */
 
+import { withWebLock } from '@/shared/lib/multi-tab';
+
 const STORAGE_DB_NAME = 'flux:library:doc_storage:v1';
 const STORAGE_STORE_NAME = 'pdf_binaries';
+export const DOC_STORAGE_LOCK_PREFIX = 'flux:doc-storage:';
 
 /**
  * Empirical Benchmarks & W3C Browser Quota Survey Constants:
@@ -42,33 +45,13 @@ export function calculateAdaptiveReaderQuota(
 ): AdaptiveQuotaPolicy {
   let maxDiskBytes = MAX_READER_DISK_CEILING_BYTES;
 
-  if (
-    typeof originQuotaBytes === 'number' &&
-    Number.isFinite(originQuotaBytes) &&
-    originQuotaBytes > 0
-  ) {
-    const usedBytes =
-      typeof originUsageBytes === 'number' && Number.isFinite(originUsageBytes) && originUsageBytes > 0
-        ? originUsageBytes
-        : 0;
-    const availableBytes = Math.max(0, originQuotaBytes - usedBytes);
-    const proportionalShare = Math.floor(availableBytes * READER_ORIGIN_QUOTA_SHARE);
-    maxDiskBytes = Math.max(
-      MIN_READER_DISK_FLOOR_BYTES,
-      Math.min(MAX_READER_DISK_CEILING_BYTES, proportionalShare),
-    );
+  if (typeof originQuotaBytes === 'number' && Number.isFinite(originQuotaBytes) && originQuotaBytes > 0) {
+    const usedBytes = typeof originUsageBytes === 'number' && Number.isFinite(originUsageBytes) && originUsageBytes > 0 ? originUsageBytes : 0;
+    const proportionalShare = Math.floor(Math.max(0, originQuotaBytes - usedBytes) * READER_ORIGIN_QUOTA_SHARE);
+    maxDiskBytes = Math.max(MIN_READER_DISK_FLOOR_BYTES, Math.min(MAX_READER_DISK_CEILING_BYTES, proportionalShare));
   }
-
-  const maxCachedDocs = Math.max(
-    20,
-    Math.min(100, Math.floor(maxDiskBytes / ARXIV_MEAN_PAPER_BYTES)),
-  );
-
-  return {
-    maxDiskBytes,
-    maxCachedDocs,
-    originQuotaBytes,
-  };
+  const maxCachedDocs = Math.max(20, Math.min(100, Math.floor(maxDiskBytes / ARXIV_MEAN_PAPER_BYTES)));
+  return { maxDiskBytes, maxCachedDocs, originQuotaBytes };
 }
 
 /**
@@ -250,9 +233,29 @@ class DocumentStorageService {
             store.createIndex('lastAccessedAt', 'lastAccessedAt', { unique: false });
           }
         };
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => resolve(null);
+        req.onsuccess = () => {
+          const db = req.result;
+          // Multi-tab IndexedDB safety: release connection if another tab initiates a version upgrade
+          db.onversionchange = () => {
+            try {
+              db.close();
+            } catch {
+              // ignore
+            }
+            this.idbPromise = null;
+          };
+          resolve(db);
+        };
+        req.onerror = () => {
+          this.idbPromise = null;
+          resolve(null);
+        };
+        req.onblocked = () => {
+          this.idbPromise = null;
+          resolve(null);
+        };
       } catch {
+        this.idbPromise = null;
         resolve(null);
       }
     });
@@ -286,14 +289,18 @@ class DocumentStorageService {
       mimeType,
     };
 
-    // 1. Try OPFS (Tier 4A: Fast NVMe/SSD direct access)
+    // 1. Try OPFS (Tier 4A: Fast NVMe/SSD direct access) guarded by per-file Web Lock
+    // to prevent cross-tab NoModificationAllowedError when 2 tabs cache the same PDF simultaneously.
     if (this.isOpfsSupported && this.opfsRootDir) {
       try {
-        const safeName = encodeURIComponent(key);
-        const fileHandle = await this.opfsRootDir.getFileHandle(safeName, { create: true });
-        const writable = await fileHandle.createWritable();
-        await writable.write(buffer);
-        await writable.close();
+        const safeName = this.toSafeOpfsFileName(key);
+        const opfsDir = this.opfsRootDir;
+        await withWebLock(`${DOC_STORAGE_LOCK_PREFIX}write:${safeName}`, async () => {
+          const fileHandle = await opfsDir.getFileHandle(safeName, { create: true });
+          const writable = await fileHandle.createWritable();
+          await writable.write(buffer);
+          await writable.close();
+        });
         // Record metadata in IDB for fast index & quota management
         await this.saveMetaToIndexedDb(meta);
         await this.enforceQuota();
@@ -342,6 +349,29 @@ class DocumentStorageService {
   }
 
   /**
+   * Computes a deterministic, OS-safe OPFS filename guaranteed <= 64 characters,
+   * avoiding >255 byte `TypeError` failures on long URLs with query tokens.
+   */
+  private toSafeOpfsFileName(key: string): string {
+    const encoded = encodeURIComponent(key);
+    if (encoded.length <= 180) {
+      return encoded;
+    }
+    let h1 = 0xdeadbeef ^ key.length;
+    let h2 = 0x41c6ce57 ^ key.length;
+    for (let i = 0; i < key.length; i++) {
+      const ch = key.charCodeAt(i);
+      h1 = Math.imul(h1 ^ ch, 2654435761);
+      h2 = Math.imul(h2 ^ ch, 1597334677);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    const hex1 = (h1 >>> 0).toString(16).padStart(8, '0');
+    const hex2 = (h2 >>> 0).toString(16).padStart(8, '0');
+    return `doc_${encoded.slice(0, 64)}_${hex1}${hex2}_${key.length}.bin`;
+  }
+
+  /**
    * Retrieves binary document from storage. Returns null on Cache Miss.
    * Touches `lastAccessedAt` for LRU ordering on Hit.
    */
@@ -349,8 +379,18 @@ class DocumentStorageService {
     // 1. Try OPFS
     if (this.isOpfsSupported && this.opfsRootDir) {
       try {
-        const safeName = encodeURIComponent(key);
-        const fileHandle = await this.opfsRootDir.getFileHandle(safeName);
+        const safeName = this.toSafeOpfsFileName(key);
+        let fileHandle: FileSystemFileHandle;
+        try {
+          fileHandle = await this.opfsRootDir.getFileHandle(safeName);
+        } catch {
+          const legacyName = encodeURIComponent(key);
+          if (legacyName !== safeName) {
+            fileHandle = await this.opfsRootDir.getFileHandle(legacyName);
+          } else {
+            throw new Error('Not found');
+          }
+        }
         const file = await fileHandle.getFile();
         const meta = await this.getMetaFromIndexedDb(key);
         void this.touchAccess(key);
@@ -398,11 +438,19 @@ class DocumentStorageService {
     if (this.memoryFallback.has(key)) return true;
     if (this.isOpfsSupported && this.opfsRootDir) {
       try {
-        const safeName = encodeURIComponent(key);
+        const safeName = this.toSafeOpfsFileName(key);
         await this.opfsRootDir.getFileHandle(safeName);
         return true;
       } catch {
-        // Not in OPFS
+        const legacyName = encodeURIComponent(key);
+        if (legacyName !== this.toSafeOpfsFileName(key)) {
+          try {
+            await this.opfsRootDir.getFileHandle(legacyName);
+            return true;
+          } catch {
+            // Not in OPFS
+          }
+        }
       }
     }
     const db = await this.openIndexedDb();
@@ -422,12 +470,21 @@ class DocumentStorageService {
     let deleted = memoryDeleted;
 
     if (this.isOpfsSupported && this.opfsRootDir) {
+      const safeName = this.toSafeOpfsFileName(key);
       try {
-        const safeName = encodeURIComponent(key);
         await this.opfsRootDir.removeEntry(safeName);
         deleted = true;
       } catch {
         // Ignore
+      }
+      const legacyName = encodeURIComponent(key);
+      if (legacyName !== safeName) {
+        try {
+          await this.opfsRootDir.removeEntry(legacyName);
+          deleted = true;
+        } catch {
+          // Ignore
+        }
       }
     }
 
@@ -603,8 +660,44 @@ class DocumentStorageService {
     if (!db) return [];
     return new Promise((resolve) => {
       const tx = db.transaction(STORAGE_STORE_NAME, 'readonly');
-      const req = tx.objectStore(STORAGE_STORE_NAME).getAll();
-      req.onsuccess = () => resolve((req.result as StoredDocumentMeta[]) || []);
+      const store = tx.objectStore(STORAGE_STORE_NAME);
+      if (typeof store.openCursor === 'function') {
+        const metas: StoredDocumentMeta[] = [];
+        const req = store.openCursor();
+        req.onsuccess = () => {
+          const cursor = req.result;
+          if (cursor) {
+            const val = cursor.value as StoredDocumentMeta;
+            if (val && typeof val.key === 'string') {
+              metas.push({
+                key: val.key,
+                sizeBytes: val.sizeBytes ?? 0,
+                lastAccessedAt: val.lastAccessedAt ?? 0,
+                createdAt: val.createdAt ?? 0,
+                mimeType: val.mimeType || 'application/pdf',
+              });
+            }
+            cursor.continue();
+          } else {
+            resolve(metas);
+          }
+        };
+        req.onerror = () => resolve(metas);
+        return;
+      }
+      const req = store.getAll();
+      req.onsuccess = () => {
+        const rows = (req.result as StoredDocumentMeta[]) || [];
+        resolve(
+          rows.map((val) => ({
+            key: val.key,
+            sizeBytes: val.sizeBytes ?? 0,
+            lastAccessedAt: val.lastAccessedAt ?? 0,
+            createdAt: val.createdAt ?? 0,
+            mimeType: val.mimeType || 'application/pdf',
+          })),
+        );
+      };
       req.onerror = () => resolve([]);
     });
   }
@@ -632,26 +725,32 @@ class DocumentStorageService {
   }
 
   private async enforceQuota(): Promise<void> {
-    const metas = await this.getAllMetas();
-    if (metas.length <= this.maxCachedDocs) {
-      const total = metas.reduce((s, m) => s + (m.sizeBytes || 0), 0);
-      if (total <= this.maxDiskBytes) return;
-    }
+    await withWebLock(
+      `${DOC_STORAGE_LOCK_PREFIX}quota`,
+      async () => {
+        const metas = await this.getAllMetas();
+        if (metas.length <= this.maxCachedDocs) {
+          const total = metas.reduce((s, m) => s + (m.sizeBytes || 0), 0);
+          if (total <= this.maxDiskBytes) return;
+        }
 
-    // Sort by LRU (oldest lastAccessedAt first)
-    metas.sort((a, b) => a.lastAccessedAt - b.lastAccessedAt);
+        // Sort by LRU (oldest lastAccessedAt first)
+        metas.sort((a, b) => a.lastAccessedAt - b.lastAccessedAt);
 
-    let currentTotal = metas.reduce((s, m) => s + (m.sizeBytes || 0), 0);
-    let currentCount = metas.length;
+        let currentTotal = metas.reduce((s, m) => s + (m.sizeBytes || 0), 0);
+        let currentCount = metas.length;
 
-    for (const item of metas) {
-      if (currentCount <= this.maxCachedDocs && currentTotal <= this.maxDiskBytes) {
-        break;
-      }
-      await this.deleteDocumentBinary(item.key);
-      currentTotal -= item.sizeBytes || 0;
-      currentCount -= 1;
-    }
+        for (const item of metas) {
+          if (currentCount <= this.maxCachedDocs && currentTotal <= this.maxDiskBytes) {
+            break;
+          }
+          await this.deleteDocumentBinary(item.key);
+          currentTotal -= item.sizeBytes || 0;
+          currentCount -= 1;
+        }
+      },
+      { ifAvailable: true },
+    );
   }
 
   private async enforceMemoryQuota(): Promise<void> {

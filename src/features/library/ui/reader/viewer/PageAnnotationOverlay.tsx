@@ -214,55 +214,23 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
             const h = Math.max(0.01, r.height ?? (r.y2 ?? r.y1) - r.y1);
             return (
               <div
-                key={`${ann.id}-${rIdx}`}
-                id={rIdx === 0 ? `annotation-${ann.id}` : undefined}
-                data-annotation-id={ann.id}
+                key={`${ann.id}-${rIdx}`} id={rIdx === 0 ? `annotation-${ann.id}` : undefined} data-annotation-id={ann.id}
                 className={cn(
                   'absolute pointer-events-auto z-20',
                   isEraser ? 'cursor-crosshair hover:opacity-50' : 'cursor-pointer',
                   isPulsing && 'ring-2 ring-primary ring-offset-1',
                 )}
-                style={{
-                  left: `${r.x1 * 100}%`,
-                  top: `${r.y1 * 100}%`,
-                  width: `${w * 100}%`,
-                  height: `${h * 100}%`,
-                }}
+                style={{ left: `${r.x1 * 100}%`, top: `${r.y1 * 100}%`, width: `${w * 100}%`, height: `${h * 100}%` }}
                 onClick={(e) => handleAnnotationInteraction(e, ann)}
-                onMouseEnter={(e) => {
-                  if (isEraser && e.buttons === 1 && onDeleteAnnotation) {
-                    onDeleteAnnotation(ann);
-                  }
-                }}
+                onMouseEnter={(e) => { if (isEraser && e.buttons === 1 && onDeleteAnnotation) onDeleteAnnotation(ann); }}
               >
-                <svg
-                  viewBox="0 0 100 100"
-                  preserveAspectRatio="none"
-                  className="w-full h-full overflow-visible"
-                >
+                <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full overflow-visible">
                   {paths.length > 0 ? (
                     paths.map((d, pIdx) => (
-                      <path
-                        key={pIdx}
-                        d={d}
-                        fill="none"
-                        stroke={colorHex}
-                        strokeWidth={2.5}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        vectorEffect="non-scaling-stroke"
-                      />
+                      <path key={pIdx} d={d} fill="none" stroke={colorHex} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
                     ))
                   ) : (
-                    <line
-                      x1="0"
-                      y1="0"
-                      x2="100"
-                      y2="100"
-                      stroke={colorHex}
-                      strokeWidth={2.5}
-                      vectorEffect="non-scaling-stroke"
-                    />
+                    <line x1="0" y1="0" x2="100" y2="100" stroke={colorHex} strokeWidth={2.5} vectorEffect="non-scaling-stroke" />
                   )}
                 </svg>
               </div>
@@ -275,30 +243,17 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
           const r = rects[0];
           return (
             <div
-              key={ann.id}
-              id={`annotation-${ann.id}`}
-              data-annotation-id={ann.id}
+              key={ann.id} id={`annotation-${ann.id}`} data-annotation-id={ann.id}
               className={cn(
                 'absolute pointer-events-auto z-20 group transition-colors focus-visible:outline-none',
                 isEraser ? 'cursor-crosshair hover:opacity-50' : 'cursor-pointer',
                 isPulsing && 'ring-2 ring-primary ring-offset-2',
               )}
-              style={{
-                left: `${r.x1 * 100}%`,
-                top: `${r.y1 * 100}%`,
-                transform: 'translate(-50%, -50%)',
-              }}
+              style={{ left: `${r.x1 * 100}%`, top: `${r.y1 * 100}%`, transform: 'translate(-50%, -50%)' }}
               onClick={(e) => handleAnnotationInteraction(e, ann)}
-              onMouseEnter={(e) => {
-                if (isEraser && e.buttons === 1 && onDeleteAnnotation) {
-                  onDeleteAnnotation(ann);
-                }
-              }}
+              onMouseEnter={(e) => { if (isEraser && e.buttons === 1 && onDeleteAnnotation) onDeleteAnnotation(ann); }}
             >
-              <div
-                className="size-5 rounded flex items-center justify-center border border-black/15"
-                style={{ backgroundColor: colorHex }}
-              >
+              <div className="size-5 rounded flex items-center justify-center border border-black/15" style={{ backgroundColor: colorHex }}>
                 <StickyNote className="size-3 text-white fill-white/20" strokeWidth={2} />
               </div>
             </div>
@@ -310,31 +265,17 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
           const r = rects[0];
           return (
             <div
-              key={ann.id}
-              id={`annotation-${ann.id}`}
-              data-annotation-id={ann.id}
+              key={ann.id} id={`annotation-${ann.id}`} data-annotation-id={ann.id}
               className={cn(
                 'absolute pointer-events-auto text-11 font-sans font-medium px-2 py-1 rounded bg-background/95 border backdrop-blur-xs flex items-start gap-1.5 z-20 max-w-[260px]',
                 isEraser ? 'cursor-crosshair hover:opacity-50' : 'cursor-pointer',
                 isPulsing && 'ring-2 ring-primary ring-offset-1',
               )}
-              style={{
-                left: `${r.x1 * 100}%`,
-                top: `${r.y1 * 100}%`,
-                borderColor: colorHex,
-                color: colorHex,
-              }}
+              style={{ left: `${r.x1 * 100}%`, top: `${r.y1 * 100}%`, borderColor: colorHex, color: colorHex }}
               onClick={(e) => handleAnnotationInteraction(e, ann)}
-              onMouseEnter={(e) => {
-                if (isEraser && e.buttons === 1 && onDeleteAnnotation) {
-                  onDeleteAnnotation(ann);
-                }
-              }}
+              onMouseEnter={(e) => { if (isEraser && e.buttons === 1 && onDeleteAnnotation) onDeleteAnnotation(ann); }}
             >
-              <span
-                className="size-1.5 rounded-full shrink-0 mt-1.5"
-                style={{ backgroundColor: colorHex }}
-              />
+              <span className="size-1.5 rounded-full shrink-0 mt-1.5" style={{ backgroundColor: colorHex }} />
               <span className="break-words whitespace-pre-wrap line-clamp-4 text-foreground font-normal leading-snug">
                 {ann.quoteText || ann.text || ann.comment || 'Text'}
               </span>
@@ -345,14 +286,8 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
         // 3. Highlight / Underline / Strike / Rect (Area) Overlays
         if (rects.length > 0) {
           const isHighlight = !isRect && !isUnderline && !isStrike;
-
           const displayRects = rects.map((rawRect, rIdx) => {
-            const r =
-              draggingRectState &&
-              draggingRectState.annotationId === ann.id &&
-              draggingRectState.rectIdx === rIdx
-                ? draggingRectState.rect
-                : rawRect;
+            const r = draggingRectState && draggingRectState.annotationId === ann.id && draggingRectState.rectIdx === rIdx ? draggingRectState.rect : rawRect;
             return { ...r };
           });
 
@@ -374,24 +309,13 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
 
           if (isHighlight) {
             return (
-              <div
-                key={ann.id}
-                id={`annotation-${ann.id}`}
-                data-annotation-id={ann.id}
-                className={cn('absolute inset-0 pointer-events-none', isPulsing && 'z-30')}
-              >
-                {/* Unified composite highlight fill: zero overlapping dark stripes */}
-                <div
-                  className="absolute inset-0 pointer-events-none"
-                  style={{ mixBlendMode: 'multiply', opacity: 0.35 }}
-                >
+              <div key={ann.id} id={`annotation-${ann.id}`} data-annotation-id={ann.id} className={cn('absolute inset-0 pointer-events-none', isPulsing && 'z-30')}>
+                <div className="absolute inset-0 pointer-events-none" style={{ mixBlendMode: 'multiply', opacity: 0.35 }}>
                   {displayRects.map((r, rIdx) => (
                     <div
-                      key={`bg-${ann.id}-${rIdx}`}
-                      className="absolute rounded-[1px]"
+                      key={`bg-${ann.id}-${rIdx}`} className="absolute rounded-[1px]"
                       style={{
-                        left: `${r.x1 * 100}%`,
-                        top: `${r.y1 * 100}%`,
+                        left: `${r.x1 * 100}%`, top: `${r.y1 * 100}%`,
                         width: `${(r.width ?? (r.x2 ?? r.x1) - r.x1) * 100}%`,
                         height: `${(r.height ?? (r.y2 ?? r.y1) - r.y1) * 100}%`,
                         backgroundColor: colorHex,
@@ -400,7 +324,6 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
                   ))}
                 </div>
 
-                {/* Interactive Click & Hover Layer */}
                 {displayRects.map((r, rIdx) => (
                   <div
                     key={`hit-${ann.id}-${rIdx}`}
@@ -410,17 +333,13 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
                       isPulsing && 'ring-2 ring-primary ring-offset-1 z-30',
                     )}
                     style={{
-                      left: `${r.x1 * 100}%`,
-                      top: `${r.y1 * 100}%`,
+                      left: `${r.x1 * 100}%`, top: `${r.y1 * 100}%`,
                       width: `${(r.width ?? (r.x2 ?? r.x1) - r.x1) * 100}%`,
                       height: `${(r.height ?? (r.y2 ?? r.y1) - r.y1) * 100}%`,
                     }}
                     onClick={(e) => handleAnnotationInteraction(e, ann)}
                     onMouseEnter={(e) => {
-                      if (isEraser && e.buttons === 1 && onDeleteAnnotation) {
-                        onDeleteAnnotation(ann);
-                        return;
-                      }
+                      if (isEraser && e.buttons === 1 && onDeleteAnnotation) { onDeleteAnnotation(ann); return; }
                       if (ann.comment?.trim()) {
                         const rect = e.currentTarget.getBoundingClientRect();
                         const containerRect = overlayRef.current?.getBoundingClientRect();
@@ -436,9 +355,7 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
                     onMouseLeave={() => setHoveredCommentAnn(null)}
                   >
                     {ann.comment?.trim() && rIdx === 0 && (
-                      <span
-                        className="absolute -top-1.5 -right-1.5 size-3.5 rounded-full bg-primary text-primary-foreground flex items-center justify-center ring-1 ring-background pointer-events-none z-30 opacity-90 group-hover/rect:opacity-100"
-                      >
+                      <span className="absolute -top-1.5 -right-1.5 size-3.5 rounded-full bg-primary text-primary-foreground flex items-center justify-center ring-1 ring-background pointer-events-none z-30 opacity-90 group-hover/rect:opacity-100">
                         <MessageSquare className="size-2 text-primary-foreground fill-current" />
                       </span>
                     )}
@@ -450,48 +367,28 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
 
           return displayRects.map((r, rIdx) => (
             <div
-              key={`${ann.id}-${rIdx}`}
-              id={rIdx === 0 ? `annotation-${ann.id}` : undefined}
-              data-annotation-id={ann.id}
+              key={`${ann.id}-${rIdx}`} id={rIdx === 0 ? `annotation-${ann.id}` : undefined} data-annotation-id={ann.id}
               className={cn(
                 'absolute pointer-events-auto group/rect',
-                isEraser
-                  ? 'cursor-crosshair hover:opacity-40'
-                  : isRect && onUpdateAnnotation
-                    ? 'cursor-move'
-                    : 'cursor-pointer',
+                isEraser ? 'cursor-crosshair hover:opacity-40' : isRect && onUpdateAnnotation ? 'cursor-move' : 'cursor-pointer',
                 isRect && 'border-2 rounded-sm',
                 isUnderline && 'border-b-2 rounded-none',
-                isStrike &&
-                  "rounded-none after:content-[''] after:absolute after:left-0 after:right-0 after:top-1/2 after:-translate-y-1/2 after:border-t-2 after:border-current",
+                isStrike && "rounded-none after:content-[''] after:absolute after:left-0 after:right-0 after:top-1/2 after:-translate-y-1/2 after:border-t-2 after:border-current",
                 isPulsing && 'ring-2 ring-primary ring-offset-1 z-30',
               )}
               style={{
-                left: `${r.x1 * 100}%`,
-                top: `${r.y1 * 100}%`,
+                left: `${r.x1 * 100}%`, top: `${r.y1 * 100}%`,
                 width: `${(r.width ?? (r.x2 ?? r.x1) - r.x1) * 100}%`,
                 height: `${(r.height ?? (r.y2 ?? r.y1) - r.y1) * 100}%`,
                 borderColor: isRect || isUnderline ? colorHex : undefined,
                 color: isStrike ? colorHex : undefined,
-                backgroundColor:
-                  isUnderline || isStrike
-                    ? 'transparent'
-                    : isRect
-                      ? `${colorHex}25`
-                      : colorHex,
+                backgroundColor: isUnderline || isStrike ? 'transparent' : isRect ? `${colorHex}25` : colorHex,
                 opacity: isRect ? 0.95 : 1,
               }}
-              onMouseDown={(e) => {
-                if (isRect && !isEraser && onUpdateAnnotation) {
-                  startRectDrag(e, ann, rIdx, r, 'move');
-                }
-              }}
+              onMouseDown={(e) => { if (isRect && !isEraser && onUpdateAnnotation) startRectDrag(e, ann, rIdx, r, 'move'); }}
               onClick={(e) => handleAnnotationInteraction(e, ann)}
               onMouseEnter={(e) => {
-                if (isEraser && e.buttons === 1 && onDeleteAnnotation) {
-                  onDeleteAnnotation(ann);
-                  return;
-                }
+                if (isEraser && e.buttons === 1 && onDeleteAnnotation) { onDeleteAnnotation(ann); return; }
                 if (ann.comment?.trim()) {
                   const rect = e.currentTarget.getBoundingClientRect();
                   const containerRect = overlayRef.current?.getBoundingClientRect();
@@ -507,42 +404,21 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
               onMouseLeave={() => setHoveredCommentAnn(null)}
             >
               {ann.comment?.trim() && rIdx === 0 && !isRect && (
-                <span
-                  className="absolute -top-1.5 -right-1.5 size-3.5 rounded-full bg-primary text-primary-foreground flex items-center justify-center ring-1 ring-background pointer-events-none z-30 opacity-90 group-hover/rect:opacity-100"
-                >
+                <span className="absolute -top-1.5 -right-1.5 size-3.5 rounded-full bg-primary text-primary-foreground flex items-center justify-center ring-1 ring-background pointer-events-none z-30 opacity-90 group-hover/rect:opacity-100">
                   <MessageSquare className="size-2 text-primary-foreground fill-current" />
                 </span>
               )}
               {isRect && (
                 <>
-                  <span
-                    className="absolute -top-3.5 left-0 px-1 py-0.5 text-[9px] font-mono rounded text-white font-semibold pointer-events-none"
-                    style={{ backgroundColor: colorHex }}
-                  >
+                  <span className="absolute -top-3.5 left-0 px-1 py-0.5 text-[9px] font-mono rounded text-white font-semibold pointer-events-none" style={{ backgroundColor: colorHex }}>
                     Area
                   </span>
                   {!isEraser && onUpdateAnnotation && (
                     <>
-                      <span
-                        role="presentation"
-                        onMouseDown={(e) => startRectDrag(e, ann, rIdx, r, 'nw')}
-                        className="absolute -top-1 -left-1 size-2.5 rounded-full bg-background border border-foreground opacity-0 group-hover/rect:opacity-100 cursor-nwse-resize z-30"
-                      />
-                      <span
-                        role="presentation"
-                        onMouseDown={(e) => startRectDrag(e, ann, rIdx, r, 'ne')}
-                        className="absolute -top-1 -right-1 size-2.5 rounded-full bg-background border border-foreground opacity-0 group-hover/rect:opacity-100 cursor-nesw-resize z-30"
-                      />
-                      <span
-                        role="presentation"
-                        onMouseDown={(e) => startRectDrag(e, ann, rIdx, r, 'sw')}
-                        className="absolute -bottom-1 -left-1 size-2.5 rounded-full bg-background border border-foreground opacity-0 group-hover/rect:opacity-100 cursor-nesw-resize z-30"
-                      />
-                      <span
-                        role="presentation"
-                        onMouseDown={(e) => startRectDrag(e, ann, rIdx, r, 'se')}
-                        className="absolute -bottom-1 -right-1 size-2.5 rounded-full bg-background border border-foreground opacity-0 group-hover/rect:opacity-100 cursor-nwse-resize z-30"
-                      />
+                      <span role="presentation" onMouseDown={(e) => startRectDrag(e, ann, rIdx, r, 'nw')} className="absolute -top-1 -left-1 size-2.5 rounded-full bg-background border border-foreground opacity-0 group-hover/rect:opacity-100 cursor-nwse-resize z-30" />
+                      <span role="presentation" onMouseDown={(e) => startRectDrag(e, ann, rIdx, r, 'ne')} className="absolute -top-1 -right-1 size-2.5 rounded-full bg-background border border-foreground opacity-0 group-hover/rect:opacity-100 cursor-nesw-resize z-30" />
+                      <span role="presentation" onMouseDown={(e) => startRectDrag(e, ann, rIdx, r, 'sw')} className="absolute -bottom-1 -left-1 size-2.5 rounded-full bg-background border border-foreground opacity-0 group-hover/rect:opacity-100 cursor-nesw-resize z-30" />
+                      <span role="presentation" onMouseDown={(e) => startRectDrag(e, ann, rIdx, r, 'se')} className="absolute -bottom-1 -right-1 size-2.5 rounded-full bg-background border border-foreground opacity-0 group-hover/rect:opacity-100 cursor-nwse-resize z-30" />
                     </>
                   )}
                 </>
@@ -551,22 +427,16 @@ export const PageAnnotationOverlay = React.memo(function PageAnnotationOverlay({
           ));
         }
 
-        // Annotations without coordinates are listed in the sidebar, never rendered at arbitrary page coordinates
         return null;
       })}
 
       {hoveredCommentAnn && (
         <div
           className="absolute z-50 -translate-x-1/2 -translate-y-full pointer-events-none max-w-xs bg-popover/95 text-popover-foreground text-11 px-2.5 py-1.5 rounded-md shadow-raised-200 border border-border backdrop-blur-xs flex items-start gap-1.5 animate-in fade-in zoom-in-95 duration-75"
-          style={{
-            left: `${hoveredCommentAnn.x}px`,
-            top: `${hoveredCommentAnn.y}px`,
-          }}
+          style={{ left: `${hoveredCommentAnn.x}px`, top: `${hoveredCommentAnn.y}px` }}
         >
           <MessageSquare className="size-3 text-primary shrink-0 mt-0.5" />
-          <span className="line-clamp-4 select-none font-sans leading-snug font-normal">
-            {hoveredCommentAnn.comment}
-          </span>
+          <span className="line-clamp-4 select-none font-sans leading-snug font-normal">{hoveredCommentAnn.comment}</span>
         </div>
       )}
     </div>
@@ -589,19 +459,10 @@ interface AnnotationQuickEditCardProps {
 }
 
 export function AnnotationQuickEditCard({
-  tooltip,
-  visiblePage,
-  onUpdateAnnotation,
-  onDeleteAnnotation,
-  onAddToNote,
-  onAskAi,
-  onUpdateTooltip,
-  onClose,
+  tooltip, visiblePage, onUpdateAnnotation, onDeleteAnnotation, onAddToNote, onAskAi, onUpdateTooltip, onClose,
 }: AnnotationQuickEditCardProps) {
   const [tooltipComment, setTooltipComment] = useState<string>(tooltip.comment || '');
-  const [tooltipTagsInput, setTooltipTagsInput] = useState<string>(
-    () => (tooltip.ann.tags || []).map((t) => `#${t}`).join(' '),
-  );
+  const [tooltipTagsInput, setTooltipTagsInput] = useState<string>(() => (tooltip.ann.tags || []).map((t) => `#${t}`).join(' '));
   const [isSavingComment, setIsSavingComment] = useState<boolean>(false);
 
   useEffect(() => {
@@ -615,9 +476,7 @@ export function AnnotationQuickEditCard({
     onUpdateTooltip((prev) => (prev ? { ...prev, color: colorHex } : null));
     if (onUpdateAnnotation) {
       try {
-        const updated = (await onUpdateAnnotation(targetAnn.id, targetAnn.version, {
-          color: colorHex,
-        })) as Partial<ReaderAnnotation> | undefined;
+        const updated = (await onUpdateAnnotation(targetAnn.id, targetAnn.version, { color: colorHex })) as Partial<ReaderAnnotation> | undefined;
         const nextVersion =
           typeof updated?.version === 'number'
             ? updated.version
@@ -627,13 +486,8 @@ export function AnnotationQuickEditCard({
         onUpdateTooltip((prev) =>
           prev
             ? {
-                ...prev,
-                color: colorHex,
-                ann: {
-                  ...prev.ann,
-                  color: colorHex,
-                  ...(nextVersion !== undefined ? { version: nextVersion } : {}),
-                },
+                ...prev, color: colorHex,
+                ann: { ...prev.ann, color: colorHex, ...(nextVersion !== undefined ? { version: nextVersion } : {}) },
               }
             : null,
         );
@@ -647,44 +501,27 @@ export function AnnotationQuickEditCard({
     const targetAnn = tooltip.ann;
     const trimmed = tooltipComment.trim();
     const parsedTags = Array.from(
-      new Set(
-        tooltipTagsInput
-          .split(/[\s,;]+/)
-          .map((t) => t.replace(/^#+/, '').trim())
-          .filter(Boolean),
-      ),
+      new Set(tooltipTagsInput.split(/[\s,;]+/).map((t) => t.replace(/^#+/, '').trim()).filter(Boolean)),
     );
     const prevTags = targetAnn.tags || [];
     const commentUnchanged = (targetAnn.comment || '') === trimmed;
-    const tagsUnchanged =
-      prevTags.length === parsedTags.length &&
-      prevTags.every((t, idx) => t === parsedTags[idx]);
+    const tagsUnchanged = prevTags.length === parsedTags.length && prevTags.every((t, idx) => t === parsedTags[idx]);
     if (commentUnchanged && tagsUnchanged) return;
 
     setIsSavingComment(true);
     try {
-      let nextVersion =
-        typeof targetAnn.version === 'number' ? targetAnn.version + 1 : undefined;
+      let nextVersion = typeof targetAnn.version === 'number' ? targetAnn.version + 1 : undefined;
       if (onUpdateAnnotation) {
         const updated = (await onUpdateAnnotation(targetAnn.id, targetAnn.version, {
-          comment: trimmed,
-          tags: parsedTags,
+          comment: trimmed, tags: parsedTags,
         })) as Partial<ReaderAnnotation> | undefined;
-        if (typeof updated?.version === 'number') {
-          nextVersion = updated.version;
-        }
+        if (typeof updated?.version === 'number') nextVersion = updated.version;
       }
       onUpdateTooltip((prev) =>
         prev
           ? {
-              ...prev,
-              comment: trimmed,
-              ann: {
-                ...prev.ann,
-                comment: trimmed,
-                tags: parsedTags,
-                ...(nextVersion !== undefined ? { version: nextVersion } : {}),
-              },
+              ...prev, comment: trimmed,
+              ann: { ...prev.ann, comment: trimmed, tags: parsedTags, ...(nextVersion !== undefined ? { version: nextVersion } : {}) },
             }
           : null,
       );
@@ -706,27 +543,19 @@ export function AnnotationQuickEditCard({
     return 'Highlight';
   })();
 
-  const pageNumber =
-    tooltip.ann.pageNumber ||
-    (tooltip.ann.pageIndex !== undefined ? tooltip.ann.pageIndex + 1 : visiblePage);
+  const pageNumber = tooltip.ann.pageNumber || (tooltip.ann.pageIndex !== undefined ? tooltip.ann.pageIndex + 1 : visiblePage);
   const displayPageLabel = tooltip.ann.pageLabel?.trim() || String(pageNumber);
 
   return (
     <div
       className="absolute z-50 rounded-md border border-border bg-background p-2.5 shadow-raised-200 text-12 select-none w-72 max-w-[90vw] animate-in fade-in zoom-in-95 duration-100 font-sans"
-      style={{
-        top: `${tooltip.top}px`,
-        left: `${tooltip.left}px`,
-      }}
+      style={{ top: `${tooltip.top}px`, left: `${tooltip.left}px` }}
       onClick={(e) => e.stopPropagation()}
     >
       {/* 1. Header: Type Badge, Page, & Action Buttons */}
       <div className="flex items-center justify-between gap-2 border-b border-border-subtle pb-1.5 mb-2">
         <div className="flex items-center gap-1.5">
-          <span
-            className="size-2.5 rounded-full shrink-0"
-            style={{ backgroundColor: tooltip.color }}
-          />
+          <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: tooltip.color }} />
           <span className="text-11 font-semibold text-foreground">{typeLabel}</span>
           <span className="text-10 text-muted-foreground font-mono">p. {displayPageLabel}</span>
         </div>
@@ -736,23 +565,14 @@ export function AnnotationQuickEditCard({
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  onClick={() => {
-                    onAskAi(tooltip.quote || tooltipComment || tooltip.comment || '', pageNumber);
-                    onClose();
-                  }}
+                  onClick={() => { onAskAi(tooltip.quote || tooltipComment || tooltip.comment || '', pageNumber); onClose(); }}
                   className="size-6 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   aria-label="Ask AI"
                 >
-                  <img
-                    src="/Chat.svg"
-                    alt="AI Assistant"
-                    className="size-3.5 rounded-full object-cover shrink-0"
-                  />
+                  <img src="/Chat.svg" alt="AI Assistant" className="size-3.5 rounded-full object-cover shrink-0" />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={6} className="text-11">
-                Ask AI
-              </TooltipContent>
+              <TooltipContent side="top" sideOffset={6} className="text-11">Ask AI</TooltipContent>
             </Tooltip>
           )}
           {onAddToNote && (
@@ -760,19 +580,14 @@ export function AnnotationQuickEditCard({
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  onClick={() => {
-                    onAddToNote(tooltip.quote || tooltipComment || tooltip.comment || '', pageNumber, tooltip.ann.id);
-                    onClose();
-                  }}
+                  onClick={() => { onAddToNote(tooltip.quote || tooltipComment || tooltip.comment || '', pageNumber, tooltip.ann.id); onClose(); }}
                   className="size-6 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   aria-label="Add to Note"
                 >
                   <FileText className="size-3.5 shrink-0" strokeWidth={1.5} />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={6} className="text-11">
-                Add to Note
-              </TooltipContent>
+              <TooltipContent side="top" sideOffset={6} className="text-11">Add to Note</TooltipContent>
             </Tooltip>
           )}
           {onDeleteAnnotation && (
@@ -780,35 +595,26 @@ export function AnnotationQuickEditCard({
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  onClick={() => {
-                    onDeleteAnnotation(tooltip.ann);
-                    onClose();
-                  }}
+                  onClick={() => { onDeleteAnnotation(tooltip.ann); onClose(); }}
                   className="size-6 rounded-md text-foreground hover:text-destructive hover:bg-destructive/10 flex items-center justify-center cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   aria-label="Delete annotation"
                 >
                   <Trash2 className="size-3.5 shrink-0" strokeWidth={1.5} />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="top" sideOffset={6} className="text-11">
-                Delete annotation
-              </TooltipContent>
+              <TooltipContent side="top" sideOffset={6} className="text-11">Delete annotation</TooltipContent>
             </Tooltip>
           )}
           <Tooltip>
             <TooltipTrigger asChild>
               <button
-                type="button"
-                onClick={onClose}
+                type="button" onClick={onClose} aria-label="Close"
                 className="size-6 rounded-md text-foreground hover:bg-muted flex items-center justify-center cursor-pointer transition-colors relative before:absolute before:-inset-2 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                aria-label="Close"
               >
                 <X className="size-3.5 shrink-0" strokeWidth={1.5} />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="top" sideOffset={6} className="text-11">
-              Close
-            </TooltipContent>
+            <TooltipContent side="top" sideOffset={6} className="text-11">Close</TooltipContent>
           </Tooltip>
         </div>
       </div>

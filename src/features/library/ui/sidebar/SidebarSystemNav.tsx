@@ -9,7 +9,6 @@ import {
   ShieldAlert,
   Trash2,
   Star,
-  MoreVertical,
   Search,
   SlidersHorizontal,
   X,
@@ -20,16 +19,6 @@ import {
 import { cn } from '@/shared/lib/utils';
 import { Input } from '@/shared/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/shared/components/ui/dropdown-menu';
-import {
-  ContextMenuContent,
-  ContextMenuItem,
-} from '@/shared/components/ui/context-menu';
 import { SidebarNavItem } from './CollectionTree';
 import { SavedSearchListSection } from './FeedsListSection';
 import type { SavedSearch } from '@/features/library/types/ingestion.types';
@@ -279,8 +268,8 @@ const SYSTEM_BOTTOM_NAV_ITEMS: SystemNavItemConfig[] = [
     label: 'Starred Items',
     href: (basePath) => `${basePath}?filter=starred`,
     icon: Star,
-    isActive: (pathname, currentFilter, isUserScope, basePath) =>
-      isUserScope && pathname === basePath && currentFilter === 'starred',
+    isActive: (pathname, currentFilter, _isUserScope, basePath) =>
+      pathname === basePath && currentFilter === 'starred',
     getBadge: (stats) => stats.starredCount || null,
   },
   {
@@ -288,8 +277,8 @@ const SYSTEM_BOTTOM_NAV_ITEMS: SystemNavItemConfig[] = [
     label: 'Unfiled Items',
     href: (basePath) => `${basePath}?filter=unfiled`,
     icon: Inbox,
-    isActive: (pathname, currentFilter, isUserScope, basePath) =>
-      isUserScope && pathname === basePath && currentFilter === 'unfiled',
+    isActive: (pathname, currentFilter, _isUserScope, basePath) =>
+      pathname === basePath && currentFilter === 'unfiled',
     getBadge: (stats) => stats.unfiledCount || null,
   },
   {
@@ -306,16 +295,16 @@ const SYSTEM_BOTTOM_NAV_ITEMS: SystemNavItemConfig[] = [
     label: 'My Publications',
     href: (basePath) => `${basePath}?filter=my-publications`,
     icon: Award,
-    isActive: (pathname, currentFilter, isUserScope, basePath) =>
-      isUserScope && pathname === basePath && currentFilter === 'my-publications',
+    isActive: (pathname, currentFilter, _isUserScope, basePath) =>
+      pathname === basePath && currentFilter === 'my-publications',
   },
   {
     id: 'retracted',
     label: 'Retracted Items',
     href: (basePath) => `${basePath}?filter=retracted`,
     icon: ShieldAlert,
-    isActive: (pathname, currentFilter, isUserScope, basePath) =>
-      isUserScope && pathname === basePath && currentFilter === 'retracted',
+    isActive: (pathname, currentFilter, _isUserScope, basePath) =>
+      pathname === basePath && currentFilter === 'retracted',
     getBadge: (stats) => stats.retractedCount || null,
   },
   {
@@ -323,69 +312,10 @@ const SYSTEM_BOTTOM_NAV_ITEMS: SystemNavItemConfig[] = [
     label: 'Trash',
     href: (basePath) => `${basePath}?filter=trash`,
     icon: Trash2,
-    isActive: (pathname, currentFilter, isUserScope, basePath) =>
-      isUserScope && pathname === basePath && currentFilter === 'trash',
+    isActive: (pathname, currentFilter, _isUserScope, basePath) =>
+      pathname === basePath && currentFilter === 'trash',
   },
 ];
-
-interface TrashContextMenuProps {
-  onEmptyTrash: () => void;
-  isEmpty?: boolean;
-  canEmpty?: boolean;
-}
-
-function TrashContextMenuAction({
-  onEmptyTrash,
-  isEmpty = false,
-  canEmpty = true,
-}: TrashContextMenuProps) {
-  return (
-    <DropdownMenu modal={false}>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:text-foreground opacity-0 max-md:opacity-100 group-hover/item:opacity-100 data-[state=open]:opacity-100 data-[state=open]:bg-background data-[state=open]:border-border data-[state=open]:text-foreground focus-visible:opacity-100 border border-transparent hover:border-border/50 hover:bg-background transition-colors duration-150 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-primary"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          }}
-          aria-label="Trash options"
-        >
-          <MoreVertical className="size-3.5 shrink-0" strokeWidth={1.5} />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent side="bottom" align="end" sideOffset={4} className="w-44">
-        <DropdownMenuItem
-          onClick={onEmptyTrash}
-          disabled={isEmpty || !canEmpty}
-          className="text-destructive focus:text-destructive gap-2 text-12 cursor-pointer"
-        >
-          <Trash2 className="size-3.5 shrink-0" />
-          <span>Empty Trash...</span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
-function TrashContextMenuContent({
-  onEmptyTrash,
-  isEmpty = false,
-  canEmpty = true,
-}: TrashContextMenuProps) {
-  return (
-    <ContextMenuContent className="w-44">
-      <ContextMenuItem
-        onClick={onEmptyTrash}
-        disabled={isEmpty || !canEmpty}
-        className="text-destructive focus:text-destructive gap-2 text-12 cursor-pointer"
-      >
-        <Trash2 className="size-3.5 shrink-0" />
-        <span>Empty Trash...</span>
-      </ContextMenuItem>
-    </ContextMenuContent>
-  );
-}
 
 interface SidebarSystemNavProps {
   basePath: string;
@@ -431,9 +361,6 @@ export function SidebarSystemNav({
   onSubmitRenameSavedSearch,
   onRenameSavedSearchValueChange,
   onDuplicateSavedSearch,
-  onEmptyTrash,
-  trashCount = 0,
-  canEmptyTrash = true,
   onDropToTrash,
   onDropToMyPublications,
   renamingSavedSearchId,
@@ -441,7 +368,7 @@ export function SidebarSystemNav({
   children,
 }: SidebarSystemNavProps) {
   const isRecentReadActive =
-    isUserScope && pathname === basePath && currentFilter === 'recently-read';
+    pathname === basePath && currentFilter === 'recently-read';
 
   return (
     <>
@@ -462,7 +389,7 @@ export function SidebarSystemNav({
         navId={navId}
         currentFilter={currentFilter}
         currentSavedSearchId={currentSavedSearchId}
-        isActiveScope={isUserScope}
+        isActiveScope={true}
         onItemClick={onSelectUserScope}
         onEditSavedSearch={onEditSavedSearch}
         onStartRenameSavedSearch={onStartRenameSavedSearch}
@@ -475,10 +402,10 @@ export function SidebarSystemNav({
       />
 
       <div className="flex flex-col gap-0.5 w-full">
-        {SYSTEM_BOTTOM_NAV_ITEMS.map((item) => {
+        {SYSTEM_BOTTOM_NAV_ITEMS.filter(
+          (item) => item.id !== 'my-publications' || isUserScope
+        ).map((item) => {
           const isActive = item.isActive(pathname, currentFilter, isUserScope, basePath);
-          const isTrash = item.id === 'trash';
-          const isTrashEmpty = trashCount === 0;
 
           return (
             <SidebarNavItem
@@ -489,24 +416,6 @@ export function SidebarSystemNav({
               isActive={isActive}
               navId={navId}
               onClick={onSelectUserScope}
-              action={
-                isTrash && onEmptyTrash ? (
-                  <TrashContextMenuAction
-                    onEmptyTrash={onEmptyTrash}
-                    isEmpty={isTrashEmpty}
-                    canEmpty={canEmptyTrash}
-                  />
-                ) : undefined
-              }
-              contextMenu={
-                isTrash && onEmptyTrash ? (
-                  <TrashContextMenuContent
-                    onEmptyTrash={onEmptyTrash}
-                    isEmpty={isTrashEmpty}
-                    canEmpty={canEmptyTrash}
-                  />
-                ) : undefined
-              }
               onDropItems={
                 item.id === 'unfiled'
                   ? (ids) => onDropItems?.(ids, null)

@@ -15,8 +15,6 @@ import {
 
 export { cloneSnapshotValue, buildInverseMetadataPatch, PRE_CONVERSION_BIBLIOGRAPHIC_SCALAR_KEYS, buildPreConversionSnapshot };
 
-// ── LibraryCommand & Concrete Command Factories ──────────────────────────────
-
 interface LibraryCommand<TResult = unknown> {
   readonly id: string;
   readonly description: string;
@@ -193,12 +191,7 @@ function extractResultItem(res: unknown): Item | undefined {
 }
 
 interface ConvertItemTypeCommandParams {
-  itemId: string;
-  itemTitle?: string;
-  sourceItem: Partial<Item>;
-  targetType: string;
-  targetTypeLabel?: string;
-  retainUnmappedInExtra?: boolean;
+  itemId: string; itemTitle?: string; sourceItem: Partial<Item>; targetType: string; targetTypeLabel?: string; retainUnmappedInExtra?: boolean;
   convertType: (args: { itemId: string; targetType: string; retainUnmappedInExtra?: boolean; silent?: boolean }) => Promise<{ item?: Item } | unknown>;
   applyMetadataPatch?: (itemId: string, patch: Partial<Item>, expectedVersion?: number) => Promise<unknown>;
   onStateSynced?: (updatedItem?: Item) => void;
@@ -259,19 +252,12 @@ export function createConvertItemTypeCommand(params: ConvertItemTypeCommandParam
 }
 
 interface MergeDuplicatesCommandParams {
-  primaryItem: Item;
-  duplicateIdsToDelete: string[];
-  groupKey?: string;
-  mergedFields?: Record<string, unknown>;
-  items?: readonly Item[];
-  fieldOverrides?: Record<string, unknown>;
-  mergeMutation: {
-    mutateAsync: (args: { primaryItemId: string; duplicateItemIds: string[]; overrides?: Record<string, unknown> }) => Promise<unknown>;
-  };
+  primaryItem: Item; duplicateIdsToDelete: string[]; groupKey?: string;
+  mergedFields?: Record<string, unknown>; items?: readonly Item[]; fieldOverrides?: Record<string, unknown>;
+  mergeMutation: { mutateAsync: (args: { primaryItemId: string; duplicateItemIds: string[]; overrides?: Record<string, unknown> }) => Promise<unknown> };
   restoreMutation?: { mutateAsync: (itemIds: string[]) => Promise<unknown> };
   updateItemMutation?: { mutateAsync: (args: { itemId: string; data: Partial<Item>; silent?: boolean }) => Promise<unknown> };
-  onExecuted?: () => void;
-  onUndone?: () => void;
+  onExecuted?: () => void; onUndone?: () => void;
 }
 
 export function createMergeDuplicatesCommand(params: MergeDuplicatesCommandParams): LibraryCommand {
@@ -315,13 +301,10 @@ export function createMergeDuplicatesCommand(params: MergeDuplicatesCommandParam
 }
 
 interface BatchDetachCommandOptions {
-  collectionId: string;
-  collectionName?: string;
-  itemIds: string[];
+  collectionId: string; collectionName?: string; itemIds: string[];
   detachMutation: { mutateAsync: (args: { collectionId: string; itemIds: string[] }) => Promise<unknown> };
   assignMutation: { mutateAsync: (args: { collectionId: string; itemIds: string[] }) => Promise<unknown> };
-  onExecuted?: () => void;
-  onUndone?: () => void;
+  onExecuted?: () => void; onUndone?: () => void;
 }
 
 export function createBatchDetachCommand(options: BatchDetachCommandOptions): LibraryCommand {
@@ -342,14 +325,10 @@ export function createBatchDetachCommand(options: BatchDetachCommandOptions): Li
 }
 
 interface BatchAssignCommandOptions {
-  collectionId: string;
-  collectionName?: string;
-  itemIds: string[];
-  alreadyAssignedItemIds?: Set<string>;
+  collectionId: string; collectionName?: string; itemIds: string[]; alreadyAssignedItemIds?: Set<string>;
   assignMutation: { mutateAsync: (args: { collectionId: string; itemIds: string[] }) => Promise<unknown> };
   detachMutation: { mutateAsync: (args: { collectionId: string; itemIds: string[] }) => Promise<unknown> };
-  onExecuted?: () => void;
-  onUndone?: () => void;
+  onExecuted?: () => void; onUndone?: () => void;
 }
 
 export function createBatchAssignCommand(options: BatchAssignCommandOptions): LibraryCommand {
@@ -374,21 +353,11 @@ export function createBatchAssignCommand(options: BatchAssignCommandOptions): Li
   );
 }
 
-interface BatchTagToggleItemSnapshot {
-  itemId: string;
-  previousTags: string[];
-  nextTags: string[];
-}
-
+interface BatchTagToggleItemSnapshot { itemId: string; previousTags: string[]; nextTags: string[]; }
 interface BatchTagToggleCommandOptions {
-  tagName: string;
-  action: 'add' | 'remove';
-  snapshots: BatchTagToggleItemSnapshot[];
-  updateItemMutation: {
-    mutateAsync: (args: { itemId: string; data: { tags: string[] }; silent?: boolean }) => Promise<unknown>;
-  };
-  onExecuted?: () => void;
-  onUndone?: () => void;
+  tagName: string; action: 'add' | 'remove'; snapshots: BatchTagToggleItemSnapshot[];
+  updateItemMutation: { mutateAsync: (args: { itemId: string; data: { tags: string[] }; silent?: boolean }) => Promise<unknown> };
+  onExecuted?: () => void; onUndone?: () => void;
 }
 
 export function createBatchTagToggleCommand(options: BatchTagToggleCommandOptions): LibraryCommand {
@@ -399,9 +368,7 @@ export function createBatchTagToggleCommand(options: BatchTagToggleCommandOption
       for (let i = 0; i < options.snapshots.length; i += 6) {
         const batch = options.snapshots.slice(i, i + 6);
         await Promise.all(
-          batch.map((snap) =>
-            options.updateItemMutation.mutateAsync({ itemId: snap.itemId, data: { tags: snap.nextTags }, silent: true }),
-          ),
+          batch.map((snap) => options.updateItemMutation.mutateAsync({ itemId: snap.itemId, data: { tags: snap.nextTags }, silent: true })),
         );
       }
       options.onExecuted?.();
@@ -410,9 +377,7 @@ export function createBatchTagToggleCommand(options: BatchTagToggleCommandOption
       for (let i = 0; i < options.snapshots.length; i += 6) {
         const batch = options.snapshots.slice(i, i + 6);
         await Promise.all(
-          batch.map((snap) =>
-            options.updateItemMutation.mutateAsync({ itemId: snap.itemId, data: { tags: snap.previousTags }, silent: true }),
-          ),
+          batch.map((snap) => options.updateItemMutation.mutateAsync({ itemId: snap.itemId, data: { tags: snap.previousTags }, silent: true })),
         );
       }
       options.onUndone?.();
@@ -421,13 +386,10 @@ export function createBatchTagToggleCommand(options: BatchTagToggleCommandOption
 }
 
 interface AddNoteCommandOptions {
-  itemId?: string | null;
-  contentMd: string;
-  title?: string;
+  itemId?: string | null; contentMd: string; title?: string;
   createNote: (dto: { itemId?: string | null; contentMd: string; title?: string }) => Promise<{ id?: string; version?: number } | null | undefined>;
   deleteNote: (id: string, version?: number) => Promise<unknown>;
-  onExecuted?: (createdNoteId?: string) => void;
-  onUndone?: () => void;
+  onExecuted?: (createdNoteId?: string) => void; onUndone?: () => void;
 }
 
 export function createAddNoteCommand(options: AddNoteCommandOptions): LibraryCommand {
@@ -464,26 +426,16 @@ function resolveRemappedNoteId(noteId: string): string {
   return current;
 }
 
-function registerRecreatedNoteIdRemap(
-  oldNoteId: string,
-  newNoteId: string,
-  newVersion?: number,
-): void {
+function registerRecreatedNoteIdRemap(oldNoteId: string, newNoteId: string, newVersion?: number): void {
   if (!oldNoteId || !newNoteId || oldNoteId === newNoteId) return;
   noteIdRemapRegistry.set(oldNoteId, newNoteId);
-  if (typeof newVersion === 'number') {
-    noteVersionRemapRegistry.set(newNoteId, newVersion);
-  }
+  if (typeof newVersion === 'number') noteVersionRemapRegistry.set(newNoteId, newVersion);
 }
 
 interface UpdateNoteCommandOptions {
-  noteId: string;
-  initialVersion?: number;
-  previousContentMd: string;
-  nextContentMd: string;
+  noteId: string; initialVersion?: number; previousContentMd: string; nextContentMd: string;
   updateNote: (id: string, version: number, dto: { contentMd: string }) => Promise<{ version?: number } | null | undefined>;
-  onExecuted?: () => void;
-  onUndone?: () => void;
+  onExecuted?: () => void; onUndone?: () => void;
 }
 
 export function createUpdateNoteCommand(options: UpdateNoteCommandOptions): LibraryCommand {
@@ -511,17 +463,11 @@ export function createUpdateNoteCommand(options: UpdateNoteCommandOptions): Libr
 }
 
 interface DeleteNoteCommandOptions {
-  noteId: string;
-  version?: number;
-  itemId?: string | null;
-  contentMd: string;
-  contentJson?: Record<string, unknown> | null;
-  title?: string;
-  tags?: string[];
+  noteId: string; version?: number; itemId?: string | null; contentMd: string;
+  contentJson?: Record<string, unknown> | null; title?: string; tags?: string[];
   deleteNote: (id: string, version?: number) => Promise<unknown>;
   createNote: (dto: { itemId?: string | null; contentMd: string; contentJson?: Record<string, unknown> | null; title?: string; tags?: string[] }) => Promise<{ id?: string; version?: number } | null | undefined>;
-  onExecuted?: () => void;
-  onUndone?: (recreatedNoteId?: string) => void;
+  onExecuted?: () => void; onUndone?: (recreatedNoteId?: string) => void;
 }
 
 export function createDeleteNoteCommand(options: DeleteNoteCommandOptions): LibraryCommand {
@@ -555,8 +501,6 @@ export function createDeleteNoteCommand(options: DeleteNoteCommandOptions): Libr
     },
   );
 }
-
-// ── LibraryCommandStore ──────────────────────────────────────────────────────
 
 interface LibraryCommandState {
   undoStack: LibraryCommand[];
@@ -614,10 +558,7 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
         set({ isExecuting: stillExecuting });
         return result;
       }
-      const executedWithNow: LibraryCommand<T> = {
-        ...ensuredCommand,
-        timestamp: Date.now(),
-      };
+      const executedWithNow: LibraryCommand<T> = { ...ensuredCommand, timestamp: Date.now() };
       set((s) => ({
         undoStack: [executedWithNow, ...s.undoStack.filter((c) => c.id !== executedWithNow.id).slice(0, MAX_HISTORY_LENGTH - 1)],
         redoStack: [], lastCommand: executedWithNow, isExecuting: stillExecuting,
@@ -689,14 +630,12 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
     if (redoStack.length === 0 || isExecuting || isUndoing) return false;
     const commandToRedo = redoStack[0];
     if (!commandToRedo || (expectedCommandId && commandToRedo.id !== expectedCommandId)) return false;
-
     const startEpoch = get().epoch;
     activeExecutionsCount += 1;
     set({ isExecuting: true });
     try {
       if (commandToRedo.redo) await commandToRedo.redo();
       else await commandToRedo.execute();
-
       if (get().epoch !== startEpoch) {
         activeExecutionsCount = Math.max(0, activeExecutionsCount - 1);
         set({ isExecuting: activeExecutionsCount > 0 });
@@ -715,8 +654,7 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
     } catch (err: unknown) {
       activeExecutionsCount = Math.max(0, activeExecutionsCount - 1);
       set({ isExecuting: activeExecutionsCount > 0 });
-      const message = err instanceof Error ? err.message : 'Redo failed';
-      toast.error(`Redo failed: ${message}`);
+      toast.error(`Redo failed: ${err instanceof Error ? err.message : 'Redo failed'}`);
       return false;
     }
   },
@@ -744,3 +682,48 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
 registerLibraryScopeChangeListener(() => {
   useLibraryCommandStore.getState().clearHistory();
 });
+
+export interface ContextualUndoRedoSource {
+  readonly latestUndoTimestamp: number;
+  readonly latestRedoTimestamp: number;
+  undo: () => Promise<void> | void;
+  redo: () => Promise<void> | void;
+}
+
+export function dispatchContextualOrCommandUndo(
+  contextualSource?: ContextualUndoRedoSource | null,
+): boolean {
+  const cmdState = useLibraryCommandStore.getState();
+  const topCmdUndo = cmdState.undoStack[0];
+  const ctxTs = contextualSource?.latestUndoTimestamp ?? 0;
+  const cmdTs = topCmdUndo?.timestamp ?? 0;
+  if (ctxTs <= 0 && !topCmdUndo) return false;
+  if (ctxTs > 0 && (!topCmdUndo || ctxTs >= cmdTs)) {
+    void contextualSource!.undo();
+    return true;
+  }
+  if (topCmdUndo) {
+    void cmdState.undo();
+    return true;
+  }
+  return false;
+}
+
+export function dispatchContextualOrCommandRedo(
+  contextualSource?: ContextualUndoRedoSource | null,
+): boolean {
+  const cmdState = useLibraryCommandStore.getState();
+  const topCmdRedo = cmdState.redoStack[0];
+  const ctxTs = contextualSource?.latestRedoTimestamp ?? 0;
+  const cmdTs = topCmdRedo?.timestamp ?? 0;
+  if (ctxTs <= 0 && !topCmdRedo) return false;
+  if (ctxTs > 0 && (!topCmdRedo || ctxTs >= cmdTs)) {
+    void contextualSource!.redo();
+    return true;
+  }
+  if (topCmdRedo) {
+    void cmdState.redo();
+    return true;
+  }
+  return false;
+}

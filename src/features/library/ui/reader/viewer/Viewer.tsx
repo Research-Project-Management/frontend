@@ -123,6 +123,8 @@ export default function Viewer({
 
   useEffect(() => {
     setDocError(null);
+    hasRestoredInitialScrollRef.current = false;
+    programmaticScrollTargetRef.current = null;
     if (!sharedPdfDocProxy) {
       setNumPages(0);
     }
@@ -141,7 +143,7 @@ export default function Viewer({
         onDocumentLoadedRef.current?.(null as never);
       }
     };
-  }, [blobUrl, isSharedDocumentConsumer, sharedPdfDocProxy]);
+  }, [blobUrl, attachmentId, isSharedDocumentConsumer, sharedPdfDocProxy]);
 
   const annotationsByPage = useMemo(() => {
     const map = new Map<number, ReaderAnnotation[]>();
@@ -260,49 +262,19 @@ export default function Viewer({
   );
 
   const {
-    searchQuery,
-    setSearchQuery,
-    matchCase,
-    setMatchCase,
-    wholeWords,
-    setWholeWords,
-    currentMatchIdx,
-    searchMatches,
-    searchInputRef,
-    handleNextMatch,
-    handlePrevMatch,
-    customTextRenderer,
+    searchQuery, setSearchQuery, matchCase, setMatchCase, wholeWords, setWholeWords,
+    currentMatchIdx, searchMatches, searchInputRef, handleNextMatch, handlePrevMatch, customTextRenderer,
   } = useViewerSearch({
-    isSearchOpen,
-    initialSearchQuery,
-    attachmentId,
-    scopeId,
-    fulltext,
-    numPages,
-    pageRefs,
-    pdfDocument,
-    scrollToPage,
+    isSearchOpen, initialSearchQuery, attachmentId, scopeId, fulltext, numPages, pageRefs, pdfDocument, scrollToPage,
   });
 
   const handleAnnotateWithPageLabel = useCallback(
     (
-      selectedText: string,
-      pageNumber: number,
-      colorHex?: string,
-      rects?: AnnotationRect[],
-      type?: "highlight" | "underline" | "note" | "text" | "rect" | "area" | "ink",
-      comment?: string,
+      selectedText: string, pageNumber: number, colorHex?: string, rects?: AnnotationRect[],
+      type?: "highlight" | "underline" | "note" | "text" | "rect" | "area" | "ink", comment?: string,
     ) => {
       const resolvedLabel = pageLabelsRef.current[pageNumber - 1] ?? undefined;
-      return onAnnotate?.(
-        selectedText,
-        pageNumber,
-        colorHex,
-        rects,
-        type,
-        comment,
-        resolvedLabel,
-      );
+      return onAnnotate?.(selectedText, pageNumber, colorHex, rects, type, comment, resolvedLabel);
     },
     [onAnnotate],
   );
@@ -313,25 +285,19 @@ export default function Viewer({
     activeTool,
     activeColor,
     interactionMode,
+    isSuspended,
     onAnnotate: handleAnnotateWithPageLabel,
   });
 
   const handleNavigateOrScrollToPage = useCallback(
     (pageNumber: number) => {
-      if (onNavigateWithHistory) {
-        onNavigateWithHistory(pageNumber);
-      } else {
-        scrollToPage(pageNumber);
-      }
+      if (onNavigateWithHistory) onNavigateWithHistory(pageNumber);
+      else scrollToPage(pageNumber);
     },
     [onNavigateWithHistory, scrollToPage],
   );
 
-  const smartHover = useViewerSmartHover({
-    scrollContainerRef,
-    fulltext,
-    numPages,
-  });
+  const smartHover = useViewerSmartHover({ scrollContainerRef, fulltext, numPages });
 
   useEffect(() => {
     if (!scrollContainerRef.current) return;
@@ -343,21 +309,14 @@ export default function Viewer({
       const target = scrollContainerRef.current;
       const width = Math.round(target.clientWidth);
       const height = Math.round(target.clientHeight);
-      if (width > 0) {
-        setContainerWidth((prev) => (Math.abs(prev - width) >= 2 ? width : prev));
-      }
-      if (height > 0) {
-        setContainerHeight((prev) => (Math.abs(prev - height) >= 2 ? height : prev));
-      }
+      if (width > 0) setContainerWidth((prev) => (Math.abs(prev - width) >= 2 ? width : prev));
+      if (height > 0) setContainerHeight((prev) => (Math.abs(prev - height) >= 2 ? height : prev));
     };
 
     commitDimensions();
     const obs = new ResizeObserver(() => {
       if (rafId !== null) cancelAnimationFrame(rafId);
-      rafId = requestAnimationFrame(() => {
-        rafId = null;
-        commitDimensions();
-      });
+      rafId = requestAnimationFrame(() => { rafId = null; commitDimensions(); });
     });
     obs.observe(el);
     return () => {
@@ -448,8 +407,12 @@ export default function Viewer({
     setDocError("Failed to render PDF. The file may be corrupted.");
   };
 
+  const handledTargetKeyRef = useRef<string>("");
   useEffect(() => {
-    if (!targetPage || targetPage.pageNumber < 1) return;
+    if (!targetPage || targetPage.pageNumber < 1 || numPages === 0) return;
+    const targetKey = `${blobUrl || ""}:${attachmentId || ""}:${targetPage.pageNumber}:${targetPage.annotationId || ""}:${targetPage.timestamp || 0}`;
+    if (handledTargetKeyRef.current === targetKey) return;
+    handledTargetKeyRef.current = targetKey;
 
     scrollToPage(targetPage.pageNumber);
 
@@ -516,7 +479,7 @@ export default function Viewer({
         clearTimeout(safetyTimeoutId);
       };
     }
-  }, [targetPage, scrollToPage]);
+  }, [targetPage, numPages, blobUrl, attachmentId, scrollToPage]);
 
   const currentZoom = Math.min(5.0, Math.max(0.25, zoomProp ?? 1.0));
   const currentZoomRef = useRef<number>(currentZoom);
@@ -534,11 +497,15 @@ export default function Viewer({
   });
 
   useEffect(() => {
-    const handleGlobalCtrlWheel = (e: WheelEvent) => {
-      if (!e.ctrlKey && !e.metaKey) return;
-      e.preventDefault();
+    if (isSuspended) return;
+    const container = scrollContainerRef.current;
+    const target: EventTarget = container || window;
+    const handleCtrlWheel = (e: Event) => {
+      const wheelEvent = e as WheelEvent;
+      if (!wheelEvent.ctrlKey && !wheelEvent.metaKey) return;
+      wheelEvent.preventDefault();
       if (!onZoomChange) return;
-      const delta = e.deltaY < 0 ? 0.15 : -0.15;
+      const delta = wheelEvent.deltaY < 0 ? 0.15 : -0.15;
       const nextZoom = Math.min(
         5.0,
         Math.max(0.25, +(currentZoomRef.current + delta).toFixed(2)),
@@ -547,9 +514,9 @@ export default function Viewer({
       onZoomChange(nextZoom);
     };
 
-    window.addEventListener("wheel", handleGlobalCtrlWheel, { passive: false });
-    return () => window.removeEventListener("wheel", handleGlobalCtrlWheel);
-  }, [onZoomChange, onSelectFitMode]);
+    target.addEventListener("wheel", handleCtrlWheel, { passive: false });
+    return () => target.removeEventListener("wheel", handleCtrlWheel);
+  }, [onZoomChange, onSelectFitMode, isSuspended]);
 
   const spreadPairs = useMemo(() => computeSpreadPairs(numPages), [numPages]);
 
@@ -644,8 +611,10 @@ export default function Viewer({
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
+        onWheel={() => { programmaticScrollTargetRef.current = null; }}
+        onTouchMove={() => { programmaticScrollTargetRef.current = null; }}
         onMouseUp={interaction.handleMouseUpCombined}
-        onMouseDown={interaction.handleMouseDown}
+        onMouseDown={(e) => { programmaticScrollTargetRef.current = null; interaction.handleMouseDown(e); }}
         onMouseMove={interaction.handleMouseMove}
         onMouseOver={smartHover.handleContainerMouseOver}
         onMouseLeave={smartHover.scheduleDismissSmartHover}
@@ -661,31 +630,17 @@ export default function Viewer({
       >
         {isSearchOpen && (
           <ViewerSearchBar
-            searchInputRef={searchInputRef}
-            searchQuery={searchQuery}
-            onSearchQueryChange={setSearchQuery}
-            matchCase={matchCase}
-            onToggleMatchCase={() => setMatchCase((v) => !v)}
-            wholeWords={wholeWords}
-            onToggleWholeWords={() => setWholeWords((v) => !v)}
-            matchCount={searchMatches.length}
-            currentMatchIdx={currentMatchIdx}
-            onNextMatch={handleNextMatch}
-            onPrevMatch={handlePrevMatch}
-            onClose={onCloseSearch}
+            searchInputRef={searchInputRef} searchQuery={searchQuery} onSearchQueryChange={setSearchQuery}
+            matchCase={matchCase} onToggleMatchCase={() => setMatchCase((v) => !v)}
+            wholeWords={wholeWords} onToggleWholeWords={() => setWholeWords((v) => !v)}
+            matchCount={searchMatches.length} currentMatchIdx={currentMatchIdx}
+            onNextMatch={handleNextMatch} onPrevMatch={handlePrevMatch} onClose={onCloseSearch}
           />
         )}
 
         {error || docError ? (
           <div className="flex-1 flex flex-col items-center justify-center p-8 gap-4">
-            <PlaneErrorState
-              title="Unable to load document"
-              error={
-                error ||
-                docError ||
-                "An error occurred while loading this document."
-              }
-            />
+            <PlaneErrorState title="Unable to load document" error={error || docError || "An error occurred while loading this document."} />
           </div>
         ) : !blobUrl && !sharedPdfDocProxy ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 p-6 text-center">
@@ -694,11 +649,7 @@ export default function Viewer({
                 <DocumentPageSkeleton width={effectivePageWidth} />
               </div>
             ) : (
-              <PlaneEmptyState
-                variant="document"
-                title="Document file not found"
-                description="No valid PDF document path found for this entry."
-              />
+              <PlaneEmptyState variant="document" title="Document file not found" description="No valid PDF document path found for this entry." />
             )}
           </div>
         ) : sharedPdfDocProxy && isPdfDocumentValid(sharedPdfDocProxy) ? (
@@ -706,10 +657,7 @@ export default function Viewer({
             {viewMode === "spread" ? (
               <div className="w-full flex flex-col items-center gap-4 pb-8 max-w-[1920px] mx-auto">
                 {spreadPairs.map(([p1, p2]) => (
-                  <div
-                    key={p1}
-                    className="flex flex-row justify-center items-start gap-4"
-                  >
+                  <div key={p1} className="flex flex-row justify-center items-start gap-4">
                     {renderPageCard(p1)}
                     {p2 && renderPageCard(p2)}
                   </div>
@@ -717,51 +665,33 @@ export default function Viewer({
               </div>
             ) : viewMode === "single" ? (
               <div className="w-full flex flex-col items-center min-h-full justify-center">
-                {renderPageCard(
-                  Math.min(Math.max(1, visiblePage), numPages || 1),
-                )}
+                {renderPageCard(Math.min(Math.max(1, visiblePage), numPages || 1))}
               </div>
             ) : (
               <div className="w-full flex flex-col items-center gap-0 pb-8">
-                {Array.from({ length: numPages }, (_, i) => i + 1).map(
-                  (pageNum) => renderPageCard(pageNum),
-                )}
+                {Array.from({ length: numPages }, (_, i) => i + 1).map((pageNum) => renderPageCard(pageNum))}
               </div>
             )}
           </div>
         ) : (
           <Document
-            key={blobUrl}
-            file={blobUrl}
-            options={SHARED_PDF_OPTIONS}
-            externalLinkTarget="_blank"
-            externalLinkRel="noopener noreferrer"
+            key={blobUrl} file={blobUrl} options={SHARED_PDF_OPTIONS}
+            externalLinkTarget="_blank" externalLinkRel="noopener noreferrer"
             onItemClick={({ pageNumber }) => {
               if (pageNumber >= 1) {
-                if (onNavigateWithHistory) {
-                  onNavigateWithHistory(pageNumber);
-                } else {
-                  scrollToPage(pageNumber);
-                }
+                if (onNavigateWithHistory) onNavigateWithHistory(pageNumber);
+                else scrollToPage(pageNumber);
               }
             }}
             className="w-full min-w-full flex flex-col items-center"
-            onLoadSuccess={onDocumentLoadSuccess}
-            onLoadError={onDocumentLoadError}
-            loading={
-              <div className="w-full flex flex-col items-center pb-8">
-                <DocumentPageSkeleton width={effectivePageWidth} />
-              </div>
-            }
+            onLoadSuccess={onDocumentLoadSuccess} onLoadError={onDocumentLoadError}
+            loading={<div className="w-full flex flex-col items-center pb-8"><DocumentPageSkeleton width={effectivePageWidth} /></div>}
           >
             {pdfDocument && numPages > 0 ? (
               viewMode === "spread" ? (
                 <div className="w-full flex flex-col items-center gap-4 pb-8 max-w-[1920px] mx-auto">
                   {spreadPairs.map(([p1, p2]) => (
-                    <div
-                      key={p1}
-                      className="flex flex-row justify-center items-start gap-4"
-                    >
+                    <div key={p1} className="flex flex-row justify-center items-start gap-4">
                       {renderPageCard(p1)}
                       {p2 && renderPageCard(p2)}
                     </div>
@@ -769,15 +699,11 @@ export default function Viewer({
                 </div>
               ) : viewMode === "single" ? (
                 <div className="w-full flex flex-col items-center min-h-full justify-center">
-                  {renderPageCard(
-                    Math.min(Math.max(1, visiblePage), numPages || 1),
-                  )}
+                  {renderPageCard(Math.min(Math.max(1, visiblePage), numPages || 1))}
                 </div>
               ) : (
                 <div className="w-full flex flex-col items-center gap-0 pb-8">
-                  {Array.from({ length: numPages }, (_, i) => i + 1).map(
-                    (pageNum) => renderPageCard(pageNum),
-                  )}
+                  {Array.from({ length: numPages }, (_, i) => i + 1).map((pageNum) => renderPageCard(pageNum))}
                 </div>
               )
             ) : null}
@@ -786,12 +712,9 @@ export default function Viewer({
 
         {interaction.activeHighlightTooltip && (
           <AnnotationQuickEditCard
-            tooltip={interaction.activeHighlightTooltip}
-            visiblePage={visiblePage}
-            onUpdateAnnotation={onUpdateAnnotation}
-            onDeleteAnnotation={onDeleteAnnotation}
-            onAddToNote={onAddToNote}
-            onAskAi={onAskAi}
+            tooltip={interaction.activeHighlightTooltip} visiblePage={visiblePage}
+            onUpdateAnnotation={onUpdateAnnotation} onDeleteAnnotation={onDeleteAnnotation}
+            onAddToNote={onAddToNote} onAskAi={onAskAi}
             onUpdateTooltip={interaction.setActiveHighlightTooltip}
             onClose={() => interaction.setActiveHighlightTooltip(null)}
           />
@@ -799,32 +722,21 @@ export default function Viewer({
 
         {interaction.showFloatingMenu && interaction.selectedText && (
           <TextSelectionToolbar
-            selectedText={interaction.selectedText}
-            selectedPageNum={interaction.selectedPageNum}
-            selectedRects={interaction.selectedRects}
-            menuPosition={interaction.menuPosition}
-            activeColor={activeColor}
-            activeTool={activeTool}
-            paper={paper}
-            visiblePage={visiblePage}
-            onAnnotate={handleAnnotateWithPageLabel}
-            onSelectColor={onSelectColor}
-            onSelectTool={onSelectTool}
-            onOpenAnnotationCard={interaction.openAnnotationCard}
-            onAddToNote={onAddToNote}
-            onAskAi={onAskAi}
+            selectedText={interaction.selectedText} selectedPageNum={interaction.selectedPageNum}
+            selectedRects={interaction.selectedRects} menuPosition={interaction.menuPosition}
+            activeColor={activeColor} activeTool={activeTool} paper={paper} visiblePage={visiblePage}
+            onAnnotate={handleAnnotateWithPageLabel} onSelectColor={onSelectColor} onSelectTool={onSelectTool}
+            onOpenAnnotationCard={interaction.openAnnotationCard} onAddToNote={onAddToNote} onAskAi={onAskAi}
             onClose={() => interaction.setShowFloatingMenu(false)}
           />
         )}
 
         {smartHover.smartHoverCard && (
           <ViewerSmartHoverPopover
-            card={smartHover.smartHoverCard}
-            onCancelDismiss={smartHover.cancelHoverDismiss}
+            card={smartHover.smartHoverCard} onCancelDismiss={smartHover.cancelHoverDismiss}
             onScheduleDismiss={smartHover.scheduleDismissSmartHover}
             onDismiss={() => smartHover.setSmartHoverCard(null)}
-            onJumpToPage={handleNavigateOrScrollToPage}
-            onOpenInSplitView={onOpenInSplitView}
+            onJumpToPage={handleNavigateOrScrollToPage} onOpenInSplitView={onOpenInSplitView}
           />
         )}
       </div>

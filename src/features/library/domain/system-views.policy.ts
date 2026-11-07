@@ -473,7 +473,7 @@ export function doesItemMatchQueryFilter(
       if (!colIds.some((c) => expandedIds.includes(c)) && (!singleColId || !expandedIds.includes(singleColId))) return false;
     } else if (params.includeSubcollections === false) {
       if (!colIds.includes(collectionId) && singleColId !== collectionId) return false;
-    } else if (colIds.length === 0 && !singleColId) {
+    } else if (Array.isArray(item.collectionIds) && colIds.length === 0 && !singleColId) {
       return false;
     }
   }
@@ -506,18 +506,10 @@ export function doesItemMatchQueryFilter(
 }
 
 export const MEMBERSHIP_MUTATION_KEYS = new Set([
-  'isStarred',
-  'deletedAt',
-  'status',
-  'readStatus',
-  'isRead',
-  'collectionId',
-  'collectionIds',
-  'isMyPublication',
-  'isInMyPublications',
-  'isRetracted',
-  'retractionStatus',
-  'itemType',
+  'isStarred', 'starred', 'deletedAt', 'trashed', 'isTrashed', 'status',
+  'readStatus', 'isRead', 'collectionId', 'collectionIds', 'collections',
+  'isMyPublication', 'isInMyPublications', 'inPublications',
+  'isRetracted', 'retractionStatus', 'itemType', 'hasFile', 'attachments',
 ]);
 
 export function doesPatchAffectMembership(patch?: Record<string, unknown> | null): boolean {
@@ -532,7 +524,7 @@ export function isMetadataOnlyPatch(patch?: Record<string, unknown> | null): boo
   if (!patch || typeof patch !== 'object') return false;
   const keys = Object.keys(patch);
   if (keys.length === 0) return true;
-  return !keys.some((k) => MEMBERSHIP_MUTATION_KEYS.has(k) || k === 'tags');
+  return !keys.some((k) => MEMBERSHIP_MUTATION_KEYS.has(k) || k === 'tags' || k === 'itemTags');
 }
 
 const MEMBERSHIP_STATE_EXTRACTORS: ReadonlyArray<(it: Record<string, unknown>) => unknown> = [

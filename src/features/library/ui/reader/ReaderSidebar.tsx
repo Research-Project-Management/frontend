@@ -653,94 +653,50 @@ export function ReaderSidebar({
         >
           {activeTab === "outline" ? (
             <OutlineTreeView
-              filteredSections={filteredSections}
-              activeOutlineSectionId={activeOutlineSectionId}
-              collapsedOutlineIds={collapsedOutlineIds}
-              outlineFilter={outlineFilter}
+              filteredSections={filteredSections} activeOutlineSectionId={activeOutlineSectionId}
+              collapsedOutlineIds={collapsedOutlineIds} outlineFilter={outlineFilter}
               onToggleCollapse={toggleOutlineCollapse}
-              onSelectSection={(s) => {
-                setSelectedOutlineId(s.id);
-                onJumpToPage(s.page || 1);
-              }}
+              onSelectSection={(s) => { setSelectedOutlineId(s.id); onJumpToPage(s.page || 1); }}
             />
           ) : activeTab === "annotations" ? (
             paper ? (
               <AnnotationsPanel
-                paper={paper}
-                scopeId={scopeId || "user"}
-                attachmentId={attachmentId}
-                annotations={annotations}
-                searchQuery={annotationsSearchQuery}
-                onSearchQueryChange={setAnnotationsSearchQuery}
-                typeFilter={annotationsTypeFilter}
-                onTypeFilterChange={setAnnotationsTypeFilter}
-                sortBy={annotationsSortBy}
-                onSortByChange={setAnnotationsSortBy}
-                hideSearchBar={true}
-                isLoading={isLoadingAnnotations}
-                isError={isAnnotationsError}
-                refetch={onRefetchAnnotations}
-                isUpdating={isUpdatingAnnotation}
-                isExtracting={isExtractingNotes}
-                isImporting={isImportingAnnotations}
-                onImportExternal={onImportExternalAnnotations}
-                onNavigateToPage={onJumpToPage}
-                selectedIds={selectedIds}
-                onSelectIds={onSelectIds}
-                onToggleSelect={onToggleSelect}
-                onBatchChangeColor={onBatchChangeColor}
-                onBatchDelete={onBatchDelete}
-                onBatchAddToNote={onBatchAddToNote}
-                onAddToNote={onAddToNote}
-                onAskAi={onAskAi}
-                onUpdateAnnotation={onUpdateAnnotation}
-                onDeleteAnnotation={onDeleteAnnotation}
+                paper={paper} scopeId={scopeId || "user"} attachmentId={attachmentId}
+                annotations={annotations} searchQuery={annotationsSearchQuery}
+                onSearchQueryChange={setAnnotationsSearchQuery} typeFilter={annotationsTypeFilter}
+                onTypeFilterChange={setAnnotationsTypeFilter} sortBy={annotationsSortBy}
+                onSortByChange={setAnnotationsSortBy} hideSearchBar={true}
+                isLoading={isLoadingAnnotations} isError={isAnnotationsError}
+                refetch={onRefetchAnnotations} isUpdating={isUpdatingAnnotation}
+                isExtracting={isExtractingNotes} isImporting={isImportingAnnotations}
+                onImportExternal={onImportExternalAnnotations} onNavigateToPage={onJumpToPage}
+                selectedIds={selectedIds} onSelectIds={onSelectIds} onToggleSelect={onToggleSelect}
+                onBatchChangeColor={onBatchChangeColor} onBatchDelete={onBatchDelete}
+                onBatchAddToNote={onBatchAddToNote} onAddToNote={onAddToNote} onAskAi={onAskAi}
+                onUpdateAnnotation={onUpdateAnnotation} onDeleteAnnotation={onDeleteAnnotation}
                 onExtractNotes={onExtractNotes}
               />
             ) : (
-              <PlaneEmptyState
-                variant="document"
-                title="No document loaded"
-                description="Load a document to view annotations and highlights."
-                isCompact
-              />
+              <PlaneEmptyState variant="document" title="No document loaded" description="Load a document to view annotations and highlights." isCompact />
             )
           ) : (
             <ThumbnailsView
-              scrollContainerRef={thumbContainerRef}
-              totalPages={totalPages}
-              currentPage={currentPage}
-              bookmarkedPages={bookmarkedPages}
-              showBookmarkedPagesOnly={showBookmarkedPagesOnly}
-              isEnabled={activeTab === "pages" && isOpen}
-              pdfDocument={pdfDocument}
-              pdfBlobUrl={pdfBlobUrl}
-              onJumpToPage={onJumpToPage}
-              onToggleBookmarkPage={onToggleBookmarkPage}
+              scrollContainerRef={thumbContainerRef} totalPages={totalPages} currentPage={currentPage}
+              bookmarkedPages={bookmarkedPages} showBookmarkedPagesOnly={showBookmarkedPagesOnly}
+              isEnabled={activeTab === "pages" && isOpen} pdfDocument={pdfDocument} pdfBlobUrl={pdfBlobUrl}
+              onJumpToPage={onJumpToPage} onToggleBookmarkPage={onToggleBookmarkPage}
             />
           )}
         </div>
 
         {/* Right edge drag resize handle */}
         <div
-          role="separator"
-          aria-orientation="vertical"
-          aria-valuenow={width}
-          aria-valuemin={240}
-          aria-valuemax={520}
-          aria-label="Resize document navigation panel"
-          tabIndex={0}
-          onMouseDown={handleMouseDown}
-          onDoubleClick={() => setWidth(288)}
+          role="separator" aria-orientation="vertical" aria-valuenow={width} aria-valuemin={240} aria-valuemax={520}
+          aria-label="Resize document navigation panel" tabIndex={0}
+          onMouseDown={handleMouseDown} onDoubleClick={() => setWidth(288)}
           className="absolute top-0 bottom-0 -right-1.5 w-3 cursor-col-resize z-30 flex items-center justify-center group focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
         >
-          <div
-            className={cn(
-              "w-0.5 h-full transition-colors duration-150",
-              "group-hover:bg-primary",
-              isDragging && "bg-primary",
-            )}
-          />
+          <div className={cn("w-0.5 h-full transition-colors duration-150 group-hover:bg-primary", isDragging && "bg-primary")} />
         </div>
       </aside>
     </div>

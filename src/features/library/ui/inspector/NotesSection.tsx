@@ -139,6 +139,7 @@ function NotesSectionContent({
 
   const {
     notes: canonicalNotes,
+    isLoading: isLoadingNotes,
     createNote,
     updateNote,
     deleteNote,
@@ -179,7 +180,7 @@ function NotesSectionContent({
   }, [draftKey, newNoteContent, editingNoteId, editingContent]);
 
   const notes: NormalizedNote[] = useMemo(() => {
-    if (canonicalNotes && canonicalNotes.length > 0) {
+    if (!isLoadingNotes && Array.isArray(canonicalNotes)) {
       return normalizeNotes(canonicalNotes);
     }
     const normalizedExistingNotes = normalizeNotes(paper.notes);
@@ -187,7 +188,7 @@ function NotesSectionContent({
       return normalizedExistingNotes;
     }
     return [];
-  }, [canonicalNotes, paper.notes]);
+  }, [canonicalNotes, isLoadingNotes, paper.notes]);
 
   const toggleExpandNote = (id: string) => {
     setExpandedNoteIds((prev) => {

@@ -379,6 +379,7 @@ export default function CollectionsSection(props: CollectionsSectionProps) {
     handleToggleCollection: handleRemoveFromCollection,
   } = manager;
   const { projects = [], currentUserId } = useLibraryProjectContext();
+  const setActiveScope = useLibraryUIStore((s) => s.setActiveScope);
 
   // Resolve active library root name and icon (My Library vs Project Library)
   const isProject = Boolean(
@@ -405,7 +406,7 @@ export default function CollectionsSection(props: CollectionsSectionProps) {
   const handleLibraryScopeNavigation = () => {
     if (isProject && matchedProject) {
       const role = resolveProjectRole(matchedProject, currentUserId);
-      useLibraryUIStore.getState().setActiveScope({
+      setActiveScope({
         type: "project",
         id: matchedProject.id,
         projectId: matchedProject.id,
@@ -419,7 +420,7 @@ export default function CollectionsSection(props: CollectionsSectionProps) {
           : {}),
       });
     } else if (!isProject) {
-      useLibraryUIStore.getState().setActiveScope({
+      setActiveScope({
         type: "user",
         id: "user",
         name: "My Library",

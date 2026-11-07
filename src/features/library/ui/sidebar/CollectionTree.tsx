@@ -150,19 +150,12 @@ export const CollectionNode = memo(function CollectionNode({
   onDropItems,
 }: CollectionNodeProps) {
   const { prefetchCollection } = useLibraryCacheSynchronizer(node.projectId || undefined);
-  const includeSubcollections = useLibraryUIStore(
-    (s) => s.displayOptions?.includeSubcollections !== false,
-  );
   const to = `${basePath}/${node.id}`;
   const isActive = activeId === node.id;
   const isHighlightedContainer = Boolean(highlightedCollectionIds?.has(node.id));
   const hasChildren = node.children.length > 0;
   const [isOpen, setIsOpen] = useState(true);
   const [isDragOverTarget, setIsDragOverTarget] = useState(false);
-
-  const displayCount = includeSubcollections
-    ? (node.recursiveItemCount ?? node.itemCount ?? 0)
-    : (node.itemCount ?? 0);
 
   const handleDragOver = (e: React.DragEvent) => {
     if (!canManageCollections) return;
@@ -267,11 +260,6 @@ export const CollectionNode = memo(function CollectionNode({
             </Link>
 
             <div className="flex items-center gap-0.5 shrink-0 ml-auto">
-              {displayCount > 0 && (
-                <span className="px-1 text-11 font-mono tabular-nums text-muted-foreground group-hover/node:hidden group-has-[[data-state=open]]/node:hidden select-none">
-                  {displayCount}
-                </span>
-              )}
               <CollectionContextMenu
                 node={node}
                 allCollections={allCollections}
@@ -537,7 +525,7 @@ function CollectionContextMenu({
     Boolean(node.projectId) || (node.projectId === undefined && isProjectScope);
   const nodeScopeId: string =
     node.projectId || (isNodeProjectScope && activeScope.id ? activeScope.id : 'user');
-  const rootLibraryName = isNodeProjectScope ? (activeScope.name || 'Project') : 'My Library';
+  const rootLibraryName = isNodeProjectScope ? 'Project Library' : 'My Library';
 
   const validMoveTargets = useMemo(() => {
     if (propValidMoveTargets) return propValidMoveTargets;

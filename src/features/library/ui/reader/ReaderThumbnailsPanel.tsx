@@ -203,6 +203,18 @@ export function ThumbnailsView({
   const hasSharedPdfDoc = Boolean(validSharedDoc);
   const showPdfCanvas = Boolean(effectivePdfDoc);
 
+  useEffect(() => {
+    if (hasSharedPdfDoc && thumbPdfDocRef.current) {
+      try {
+        void thumbPdfDocRef.current.cleanup?.();
+      } catch {
+        // Ignore cleanup errors when transitioning to shared PdfDocument
+      }
+      thumbPdfDocRef.current = null;
+      setLoadedThumbPdfDoc(null);
+    }
+  }, [hasSharedPdfDoc]);
+
   const gridElement = (
     <div
       className="relative w-full p-1"

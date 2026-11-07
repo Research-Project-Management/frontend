@@ -88,6 +88,7 @@ export const ItemTable = React.memo(function ItemTable({
   // Store actions
   const selectAll = useLibraryUIStore((s) => s.selectAll);
   const selectRange = useLibraryUIStore((s) => s.selectRange);
+  const executeCommand = useLibraryCommandStore((s) => s.executeCommand);
   const clearSelection = useLibraryUIStore((s) => s.clearSelection);
   const toggleSelect = useLibraryUIStore((s) => s.toggleSelect);
   const setActiveItem = useLibraryUIStore((s) => s.setActiveItem);
@@ -372,7 +373,7 @@ export const ItemTable = React.memo(function ItemTable({
         }
       }
       try {
-        await useLibraryCommandStore.getState().executeCommand(
+        await executeCommand(
           createBatchAssignCommand({
             collectionId: targetCollectionId,
             collectionName: targetCol?.name,
@@ -386,7 +387,7 @@ export const ItemTable = React.memo(function ItemTable({
         // Error toast handled by useLibraryCommandStore
       }
     },
-    [assignMutation, batchDetachMutation, collections, itemsById],
+    [assignMutation, batchDetachMutation, collections, executeCommand, itemsById],
   );
 
   // Dynamically compute table minimum width to prevent column squashing when fields are toggled

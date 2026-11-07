@@ -502,8 +502,9 @@ export const useProcessModalStore = create<ProcessModalStore>()(
       dismissProcessingItem: get().dismissProcessingItem,
     };
     try {
-      if (registeredBatchUploadExecutor) {
-        await registeredBatchUploadExecutor(files, { ...options, abortSignal }, storeAdapter);
+      const executor = registeredBatchUploadExecutor;
+      if (executor) {
+        await executor(files, { ...options, abortSignal }, storeAdapter);
       }
     } finally {
       activeBatchUploadsCount = Math.max(0, activeBatchUploadsCount - 1);

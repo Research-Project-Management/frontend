@@ -319,8 +319,7 @@ export function LibraryTopbar({
 
   const displayTitle =
     title ||
-    (activeScope.type === "user" ? "My Library" : activeScope.name) ||
-    "My Library";
+    (activeScope.type === "user" ? "My Library" : (activeScope.name || "Project Library"));
 
   const RootIcon = activeScope.type === "project" ? Folder : LibraryIcon;
   const Icon =

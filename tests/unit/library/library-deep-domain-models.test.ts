@@ -231,4 +231,159 @@ describe('Library Deep Domain Models (Pure In-Process)', () => {
       }
     });
   });
+
+  describe('bibliographic-schema.domain (Candidate 1 Deep Module)', () => {
+    it('returns an immutable versioned BibliographicSchemaSnapshot and hydrates atomically', async () => {
+      const {
+        getBibliographicSchema,
+        hydrateBibliographicSchema,
+        resolveBibliographicField,
+        buildBibliographicFieldPatch,
+      } = await import('@/features/library/domain/bibliographic-schema.domain');
+
+      const initialSnap = getBibliographicSchema();
+      expect(initialSnap.version).toBeGreaterThanOrEqual(1);
+      expect(initialSnap.itemTypes.journalArticle).toBeDefined();
+      expect(initialSnap.dedicatedFieldsByType.get('conferencePaper')?.has('proceedingstitle')).toBe(true);
+
+      const nextSnap = hydrateBibliographicSchema(
+        {
+          baseFieldMappings: {
+            conferencePaper: { publicationTitle: 'proceedingsTitle' },
+          },
+        },
+        { persist: false },
+      );
+      expect(nextSnap.version).toBeGreaterThan(initialSnap.version);
+
+      const item = {
+        id: 'item-1',
+        itemType: 'conferencePaper',
+        title: 'Deep Modules in Practice',
+        publicationTitle: 'Proc. ICSE 2026',
+        extraFields: {},
+      };
+      expect(resolveBibliographicField(item, 'proceedingsTitle')).toBe('Proc. ICSE 2026');
+
+      const patch = buildBibliographicFieldPatch(item, 'proceedingsTitle', 'IEEE ICSE 2026');
+      expect(patch.proceedingsTitle).toBe('IEEE ICSE 2026');
+      expect(patch.publicationTitle).toBe('IEEE ICSE 2026');
+    });
+  });
+
+  describe('library-local-storage.adapter (Candidate 2 Local-Substitutable Adapter)', () => {
+    it('persists and hydrates Reader tabs, bookmarks, and Feed read IDs using an injected in-memory StorageLike adapter', async () => {
+      const {
+        setLibraryStorageProvider,
+        saveReaderTabsToStorage,
+        loadReaderStorageState,
+        saveFeedReadEntryIdsToStorage,
+        loadFeedReadEntryIdsFromStorage,
+      } = await import('@/features/library/core/adapters/library-local-storage.adapter');
+
+      const memoryMap = new Map<string, string>();
+      const memoryStorage = {
+        getItem: (key: string) => memoryMap.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          memoryMap.set(key, value);
+        },
+        removeItem: (key: string) => {
+          memoryMap.delete(key);
+        },
+      };
+
+      setLibraryStorageProvider(memoryStorage);
+      try {
+        saveReaderTabsToStorage(
+          [
+            { id: 'library', label: 'My Library', type: 'library' },
+            { id: 'paper-1', label: 'Paper 1', type: 'paper', zoom: 1.25 },
+          ],
+          'paper-1',
+        );
+        const loadedTabs = loadReaderStorageState();
+        expect(loadedTabs.activeTabId).toBe('paper-1');
+        expect(loadedTabs.tabs).toHaveLength(2);
+        expect(loadedTabs.tabs[1]?.id).toBe('paper-1');
+
+        saveFeedReadEntryIdsToStorage(['entry-a', 'entry-b']);
+        const readSet = loadFeedReadEntryIdsFromStorage();
+        expect(readSet.has('entry-a')).toBe(true);
+        expect(readSet.has('entry-b')).toBe(true);
+      } finally {
+        setLibraryStorageProvider(null);
+      }
+    });
+  });
+
+  describe('library-command.manager Undo/Redo Arbitration (Candidate 3)', () => {
+    it('arbitrates Undo and Redo between contextual Reader annotation history and global LibraryCommandStore by timestamp', async () => {
+      const {
+        useLibraryCommandStore,
+        dispatchContextualOrCommandUndo,
+        dispatchContextualOrCommandRedo,
+      } = await import('@/features/library/core/manager/library-command.manager');
+
+      useLibraryCommandStore.getState().clearHistory();
+      const events: string[] = [];
+
+      useLibraryCommandStore.getState().pushExecutedCommand(
+        {
+          id: 'cmd-1',
+          description: 'Test command',
+          timestamp: 1000,
+          execute: async () => {
+            events.push('cmd-exec');
+          },
+          undo: async () => {
+            events.push('cmd-undo');
+          },
+          redo: async () => {
+            events.push('cmd-redo');
+          },
+        },
+        { silentToast: true },
+      );
+
+      // Contextual source has a newer undo timestamp (2000 > 1000)
+      const contextualHandled = dispatchContextualOrCommandUndo({
+        latestUndoTimestamp: 2000,
+        latestRedoTimestamp: 0,
+        undo: () => {
+          events.push('ctx-undo');
+        },
+        redo: () => {
+          events.push('ctx-redo');
+        },
+      });
+      expect(contextualHandled).toBe(true);
+      expect(events).toEqual(['ctx-undo']);
+
+      // Contextual source has an older undo timestamp (500 < 1000) -> global command store wins
+      const globalHandled = dispatchContextualOrCommandUndo({
+        latestUndoTimestamp: 500,
+        latestRedoTimestamp: 0,
+        undo: () => {
+          events.push('ctx-undo-2');
+        },
+        redo: () => {
+          events.push('ctx-redo-2');
+        },
+      });
+      expect(globalHandled).toBe(true);
+
+      // Contextual redo when global redo is older/empty
+      useLibraryCommandStore.getState().clearHistory();
+      const redoHandled = dispatchContextualOrCommandRedo({
+        latestUndoTimestamp: 0,
+        latestRedoTimestamp: 3000,
+        undo: () => {},
+        redo: () => {
+          events.push('ctx-redo');
+        },
+      });
+      expect(redoHandled).toBe(true);
+      expect(events).toContain('ctx-redo');
+    });
+  });
 });

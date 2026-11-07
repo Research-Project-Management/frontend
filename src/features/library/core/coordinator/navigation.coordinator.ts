@@ -239,17 +239,12 @@ export function useLibraryNavigation() {
   // Merge URL structural params (filter, savedSearchId, feedId, item) with in-memory ephemeralFilters
   const mergedSearchParams = useMemo(() => {
     const params = new URLSearchParams(urlSearchParamsString);
-    const hasActiveEphemeralState = Object.values(ephemeralFilters).some(
-      (v) => v !== undefined,
-    );
 
     for (const key of EPHEMERAL_KEYS) {
+      if (!(key in ephemeralFilters)) continue;
       const val = ephemeralFilters[key];
-      if (hasActiveEphemeralState) {
-        params.delete(key);
-      }
+      params.delete(key);
       if (Array.isArray(val)) {
-        params.delete(key);
         for (const item of val) {
           if (item !== undefined && item !== '') {
             params.append(key, String(item));
@@ -271,7 +266,7 @@ export function useLibraryNavigation() {
   const collectionMatch = pathname.match(/\/library\/([a-zA-Z0-9_-]+)/);
   const routeCollectionId =
     collectionMatch &&
-    !['trash', 'unfiled', 'duplicates', 'feeds', 'saved-searches'].includes(
+    !['trash', 'unfiled', 'duplicates', 'feeds', 'saved-searches', 'papers'].includes(
       collectionMatch[1],
     )
       ? collectionMatch[1]

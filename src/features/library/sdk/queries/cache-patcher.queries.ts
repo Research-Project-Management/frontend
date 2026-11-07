@@ -1,35 +1,34 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
-import {
-  prefetchLibraryCollection,
-  prefetchLibraryProjectScope,
-} from '@/features/shell/lib/navigation-prefetch';
+import { multiTabBus } from '@/shared/lib/multi-tab';
+import { prefetchLibraryCollection, prefetchLibraryProjectScope } from '@/features/shell/lib/navigation-prefetch';
 import type { Item } from '@/features/library/types/core.types';
-import {
-  getMappedItemMeta,
-  setMappedItemMeta,
-} from '@/features/library/domain/metadata.mapper';
+import { getMappedItemMeta, setMappedItemMeta } from '@/features/library/domain/metadata.mapper';
 import type { InvalidationClient } from '@/features/library/types/ingestion.types';
 import {
   itemKeys,
   tagKeys,
   savedSearchKeys,
+  annotationKeys,
   invalidateCollections,
   normalizeScopeId,
 } from '@/features/library/sdk/query-keys';
+import { getItemFileUrl, resolveAllItemAttachmentUrls } from '@/features/library/domain/identifiers.domain';
+import { warmViewerPool } from '@/features/library/domain/reader-tab-pool.domain';
+import { invalidatePdfBlobCache } from '../clients/http.client';
 import {
-  getItemFileUrl,
-  resolveAllItemAttachmentUrls,
-} from '@/features/library/domain/identifiers.domain';
-import { cleanupReaderResourcesForItems } from '@/features/library/core/coordinator/reader/use-reader';
-import {
-  isTrashQueryKey,
-  doesItemMatchQueryFilter,
-  MEMBERSHIP_MUTATION_KEYS,
-  doesPatchAffectMembership,
-  isMetadataOnlyPatch,
-  hasMembershipFieldsChanged,
+  isTrashQueryKey, doesItemMatchQueryFilter, MEMBERSHIP_MUTATION_KEYS,
+  doesPatchAffectMembership, isMetadataOnlyPatch, hasMembershipFieldsChanged,
 } from '@/features/library/domain/system-views.policy';
+
+type ReaderResourceCleanupHandler = (
+  itemIds: Iterable<string>,
+  options?: { scopeId?: string; candidateUrls?: Iterable<string | null | undefined> },
+) => void;
+let readerResourceCleanupHandler: ReaderResourceCleanupHandler | null = null;
+export function registerReaderResourceCleanupHandler(handler: ReaderResourceCleanupHandler): void {
+  readerResourceCleanupHandler = handler;
+}
 
 export {
   isTrashQueryKey,
@@ -377,6 +376,7 @@ export function patchItemAcrossScopeCaches(
     membershipPatch?: Record<string, unknown>;
     forceSkipMembershipInvalidation?: boolean;
     baseItem?: Item | null;
+    skipBroadcast?: boolean;
   },
 ): void {
   const effectiveScope = normalizeScopeId(scopeId);
@@ -460,6 +460,15 @@ export function patchItemAcrossScopeCaches(
     });
     void invalidateCollections(queryClient, effectiveScope);
   }
+
+  if (!options?.skipBroadcast && typeof patch === 'object' && patch !== null) {
+    multiTabBus.publish({
+      type: 'LIBRARY_ITEM_PATCHED',
+      scopeId: effectiveScope,
+      itemId,
+      patch: patch as Record<string, unknown>,
+    });
+  }
 }
 
 /**
@@ -531,7 +540,7 @@ export function removeItemsFromScopeCaches(
   queryClient: QueryClient,
   scopeId: string,
   itemIds: string | string[],
-  options?: { permanent?: boolean },
+  options?: { permanent?: boolean; skipBroadcast?: boolean },
 ): void {
   const effectiveScope = normalizeScopeId(scopeId);
   const ids = Array.isArray(itemIds) ? itemIds : [itemIds];
@@ -548,10 +557,16 @@ export function removeItemsFromScopeCaches(
     queryClient.removeQueries({ queryKey: itemKeys.byId(effectiveScope, id), exact: true });
   }
 
-  cleanupReaderResourcesForItems(idSet, {
-    scopeId: effectiveScope,
-    candidateUrls,
-  });
+  for (const id of idSet) {
+    warmViewerPool.delete(id);
+  }
+  if (readerResourceCleanupHandler) {
+    readerResourceCleanupHandler(idSet, { scopeId: effectiveScope, candidateUrls });
+  } else {
+    for (const url of candidateUrls) {
+      if (url) void invalidatePdfBlobCache(url, { scopeId: effectiveScope });
+    }
+  }
 
   queryClient.setQueriesData(
     {
@@ -566,6 +581,15 @@ export function removeItemsFromScopeCaches(
   void queryClient.invalidateQueries({ queryKey: itemKeys.trash(effectiveScope) });
   void queryClient.invalidateQueries({ queryKey: itemKeys.counts(effectiveScope) });
   void invalidateCollections(queryClient, effectiveScope);
+
+  if (!options?.skipBroadcast) {
+    multiTabBus.publish({
+      type: 'LIBRARY_ITEMS_DELETED',
+      scopeId: effectiveScope,
+      itemIds: Array.from(idSet),
+      permanent: options?.permanent,
+    });
+  }
 }
 
 /**
@@ -582,6 +606,7 @@ export function invalidateLibraryCatalogDependencies(
     tags?: boolean;
     counts?: boolean;
     itemsList?: boolean;
+    skipBroadcast?: boolean;
   } = {},
 ): Promise<unknown[]> {
   const effectiveScope = normalizeScopeId(scopeId);
@@ -592,6 +617,7 @@ export function invalidateLibraryCatalogDependencies(
     tags = false,
     counts = false,
     itemsList = true,
+    skipBroadcast = false,
   } = options;
 
   const tasks: Array<Promise<unknown> | void> = [];
@@ -601,6 +627,20 @@ export function invalidateLibraryCatalogDependencies(
   if (collections) tasks.push(invalidateCollections(queryClient, effectiveScope));
   if (smartCollections) tasks.push(queryClient.invalidateQueries({ queryKey: savedSearchKeys.all(effectiveScope) }));
   if (tags) tasks.push(queryClient.invalidateQueries({ queryKey: tagKeys.list(effectiveScope) }));
+
+  if (!skipBroadcast) {
+    multiTabBus.publish({
+      type: 'LIBRARY_SCOPE_INVALIDATED',
+      scopeId: effectiveScope,
+      itemId,
+      collections,
+      smartCollections,
+      tags,
+      counts,
+      itemsList,
+    });
+  }
+
   return Promise.all(tasks);
 }
 
@@ -610,6 +650,7 @@ export function invalidateLibraryCatalogDependencies(
 export async function invalidateLibraryScopeCatalog(
   queryClient: InvalidationClient,
   scopeId: string,
+  options?: { skipBroadcast?: boolean },
 ): Promise<void> {
   const effectiveScope = normalizeScopeId(scopeId);
   await Promise.all([
@@ -617,6 +658,15 @@ export async function invalidateLibraryScopeCatalog(
     queryClient.invalidateQueries({ queryKey: itemKeys.trash(effectiveScope) }),
     invalidateCollections(queryClient, effectiveScope),
   ]);
+  if (!options?.skipBroadcast) {
+    multiTabBus.publish({
+      type: 'LIBRARY_SCOPE_INVALIDATED',
+      scopeId: effectiveScope,
+      collections: true,
+      counts: true,
+      itemsList: true,
+    });
+  }
 }
 
 /**
@@ -665,12 +715,67 @@ export function resolveCachedItemFromScope(
 }
 
 /**
+ * Registers a cross-tab BroadcastChannel listener on the given `QueryClient`
+ * so mutations performed in Tab 1 (deleting papers, editing metadata, adding annotations,
+ * updating collections) immediately patch or invalidate Tab 2's cache even with
+ * `refetchOnWindowFocus: false`.
+ */
+const registeredQueryClients = new WeakSet<QueryClient>();
+
+export function registerMultiTabQueryCacheSync(queryClient: QueryClient): () => void {
+  if (registeredQueryClients.has(queryClient)) {
+    return () => undefined;
+  }
+  registeredQueryClients.add(queryClient);
+
+  const unsubscribe = multiTabBus.subscribe((event) => {
+    if (event.type === 'LIBRARY_ITEMS_DELETED') {
+      removeItemsFromScopeCaches(queryClient, event.scopeId, event.itemIds, {
+        permanent: event.permanent,
+        skipBroadcast: true,
+      });
+    } else if (event.type === 'LIBRARY_ITEM_PATCHED') {
+      patchItemAcrossScopeCaches(
+        queryClient,
+        event.scopeId,
+        event.itemId,
+        event.patch as Partial<Item>,
+        { skipBroadcast: true },
+      );
+    } else if (event.type === 'LIBRARY_SCOPE_INVALIDATED') {
+      void invalidateLibraryCatalogDependencies(queryClient, event.scopeId, {
+        itemId: event.itemId,
+        collections: event.collections,
+        smartCollections: event.smartCollections,
+        tags: event.tags,
+        counts: event.counts,
+        itemsList: event.itemsList,
+        skipBroadcast: true,
+      });
+    } else if (event.type === 'READER_ANNOTATIONS_CHANGED') {
+      void queryClient.invalidateQueries({
+        queryKey: annotationKeys.byAttachment(event.scopeId, event.attachmentId),
+      });
+    }
+  });
+
+  return () => {
+    registeredQueryClients.delete(queryClient);
+    unsubscribe();
+  };
+}
+
+/**
  * Centralized React Hook for Library Cache Synchronization & Multi-Tier Resolution.
  * Eliminates scattered useQueryClient() + itemKeys.* calls across UI components.
  */
 export function useLibraryCacheSynchronizer(defaultScopeId?: string) {
   const queryClient = useQueryClient();
   const baseScope = normalizeScopeId(defaultScopeId);
+
+  useEffect(() => {
+    return registerMultiTabQueryCacheSync(queryClient);
+  }, [queryClient]);
 
   const invalidateScopeItemsAndCounts = useCallback(
     async (overrideScopeId?: string, options?: { includeCollections?: boolean }) => {

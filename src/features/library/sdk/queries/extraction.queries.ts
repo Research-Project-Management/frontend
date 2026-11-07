@@ -13,36 +13,10 @@ import type { ItemAttachment, CslStyle } from "@/features/library/types/core.typ
 
 export type UploadedMultipartFile = Awaited<ReturnType<typeof UploadService.uploadMultipart>>;
 
-export function formatCitationItem(
-  scopeId: string | undefined,
-  itemId: string,
-  style?: CslStyle,
-) {
-  return CitationService.formatCitation(scopeId, itemId, style);
-}
-
-export function batchFormatCitations(
-  scopeId: string | undefined,
-  itemIds: string[],
-  style?: CslStyle,
-) {
-  return CitationService.batchFormat(scopeId, itemIds, style);
-}
-
-export function exportLibraryBibliography(
-  scopeId: string | undefined,
-  params: Parameters<typeof ExportsService.exportLibrary>[1],
-) {
-  return ExportsService.exportLibrary(scopeId, params);
-}
-
-export function uploadLibraryFileMultipart(
-  scopeId: string | undefined,
-  file: File,
-  options?: Parameters<typeof UploadService.uploadMultipart>[2],
-) {
-  return UploadService.uploadMultipart(scopeId, file, options);
-}
+export const formatCitationItem = CitationService.formatCitation;
+export const batchFormatCitations = CitationService.batchFormat;
+export const exportLibraryBibliography = ExportsService.exportLibrary;
+export const uploadLibraryFileMultipart = UploadService.uploadMultipart;
 
 export function resolveAttachmentDownloadUrl(
   fileId: string,

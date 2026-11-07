@@ -11,9 +11,7 @@ import { cn } from "@/shared/lib/utils";
 import { Loader2 } from "lucide-react";
 import { PlaneEmptyState } from "@/shared/components/ui/PlaneEmptyState";
 import {
-  useReader,
-  useExportAnnotatedPdf,
-  evictWarmObjectUrl,
+  useReader, useExportAnnotatedPdf, evictWarmObjectUrl, prefetchReaderDocumentBlob,
 } from "@/features/library/core/coordinator/reader/use-reader";
 import { useShallow } from "zustand/react/shallow";
 import { useReaderStore } from "@/features/library/core/store/reader.store";
@@ -21,26 +19,17 @@ import { useLibraryUIStore } from "@/features/library/core/store/library-ui.stor
 import { useAiCompanionStore } from "@/features/ai/store/ai-companion.store";
 import { useLibraryPermissions } from "@/features/library/core/coordinator/navigation.coordinator";
 import { ReaderInspector } from "@/features/library/ui/inspector/LibraryInspector";
-import {
-  warmViewerPool,
-  type WarmViewerPoolItem,
-} from "@/features/library/domain/reader-tab-pool.domain";
-import { prefetchReaderDocumentBlob } from "@/features/library/sdk/queries/reader.queries";
+import { warmViewerPool, type WarmViewerPoolItem } from "@/features/library/domain/reader-tab-pool.domain";
 import Topbar, { ReaderRetractionBanner } from "@/features/library/ui/reader/ReaderTopbar";
 import ReaderToolbar from "@/features/library/ui/reader/ReaderToolbar";
 import type { AnnotationRect, ReaderNavigationTarget, PdfOutlineItem } from "@/features/library/types/reader.types";
 import {
-  useReaderTabHistory,
-  useReaderTabPresentation,
-  useReaderKeyboardShortcuts,
+  useReaderTabHistory, useReaderTabPresentation, useReaderKeyboardShortcuts,
 } from "@/features/library/core/coordinator/reader/use-reader-tabs";
 import { isEditableOrModalElementFocused } from "@/features/library/core/coordinator/keyboard-shortcuts.coordinator";
 
 const Sidebar = dynamic(() => import("@/features/library/ui/reader/ReaderSidebar"), { ssr: false });
-const BibtexModal = dynamic(
-  () => import("@/features/library/ui/modals/DeleteModal").then((m) => m.PaperBibtexDialog),
-  { ssr: false },
-);
+const BibtexModal = dynamic(() => import("@/features/library/ui/modals/DeleteModal").then((m) => m.PaperBibtexDialog), { ssr: false });
 const AiCompanionSidebar = dynamic(() => import("@/features/ai/components/companion/AiCompanionSidebar"), { ssr: false, loading: () => null });
 
 const Viewer = dynamic<import("@/features/library/ui/reader/viewer/Viewer").ViewerProps>(
@@ -68,10 +57,7 @@ const EpubAndSnapshotViewer = dynamic<import("@/features/library/ui/reader/viewe
   { ssr: false },
 );
 
-interface ReaderPageProps {
-  paperId?: string | null;
-  onBack?: () => void;
-}
+interface ReaderPageProps { paperId?: string | null; onBack?: () => void; }
 
 export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
   const router = useRouter();
@@ -96,28 +82,27 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     deleteAnnotation, updateAnnotation, extractNotes, importExternal, refetchAnnotations,
   } = actions;
 
-  // Standard URL citation jumping: ?page=X&annotation=Y (only fires when URL params change)
+  // Standard URL citation jumping: ?page=X&annotation=Y (only fires when URL params change and paper is loaded)
   const lastHandledDeepLinkRef = useRef<string>("");
+  const navigateToAnnotationRef = useRef(handleNavigateToAnnotation);
+  navigateToAnnotationRef.current = handleNavigateToAnnotation;
   useEffect(() => {
+    if (!paper?.id) return;
     const pageParam = searchParams.get("page");
     const annParam = searchParams.get("annotation") || undefined;
-    const linkKey = `${paper?.id || ""}:${pageParam || ""}:${annParam || ""}`;
+    const linkKey = `${paper.id}:${effectiveAttachmentId || ""}:${pageParam || ""}:${annParam || ""}`;
     if (lastHandledDeepLinkRef.current === linkKey) return;
     lastHandledDeepLinkRef.current = linkKey;
-
     if (pageParam) {
       const p = parseInt(pageParam, 10);
-      if (!isNaN(p) && p >= 1) {
-        handleNavigateToAnnotation(p, annParam);
-      }
+      if (!isNaN(p) && p >= 1) navigateToAnnotationRef.current(p, annParam);
     }
-  }, [searchParams, paper?.id, handleNavigateToAnnotation]);
+  }, [searchParams, paper?.id, effectiveAttachmentId]);
 
   // Multi-Tab Store
   const {
     tabs, activeTabId, openReader, closeTab, reorderTabs, setActiveTab, updateTabState,
-    activeColor, setActiveColor, activeTool, setActiveTool,
-    bookmarks, toggleBookmark,
+    activeColor, setActiveColor, activeTool, setActiveTool, bookmarks, toggleBookmark,
   } = useReaderStore(
     useShallow((s) => ({
       tabs: s.tabs, activeTabId: s.activeTabId, openReader: s.openReader,
@@ -132,92 +117,59 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
   const activeTab = tabs.find((t) => t.id === effectiveTabId);
 
   // Tri-State Tab Memory Pool (Zotero 5-tab baseline, dynamically scaled 3..8 by device RAM)
-  const [standbyViewers, setStandbyViewers] = useState<WarmViewerPoolItem[]>(() =>
-    warmViewerPool.getValuesMruOrder(),
-  );
+  const [standbyViewers, setStandbyViewers] = useState<WarmViewerPoolItem[]>(() => warmViewerPool.getValuesMruOrder());
 
   useEffect(() => {
     if (!effectiveTabId || effectiveTabId === "library") return;
+    const existingWarm = warmViewerPool.peek(effectiveTabId);
+    const resolvedBlobUrl =
+      pdfBlobUrl ?? (existingWarm && (!paperUrl || !existingWarm.fileUrl || existingWarm.fileUrl === paperUrl) ? existingWarm.blobUrl : null);
     warmViewerPool.put(
       effectiveTabId,
       {
-        paperId: effectiveTabId,
-        title: paper?.title || activeTab?.title || "Document",
-        blobUrl: pdfBlobUrl,
-        fileUrl: paperUrl,
-        scopeId,
-        attachmentId: effectiveAttachmentId || undefined,
-        scrollTop: activeTab?.scrollTop,
+        paperId: effectiveTabId, title: paper?.title || activeTab?.title || existingWarm?.title || "Document",
+        blobUrl: resolvedBlobUrl, fileUrl: paperUrl ?? existingWarm?.fileUrl, scopeId,
+        attachmentId: effectiveAttachmentId || existingWarm?.attachmentId || undefined,
+        scrollTop: activeTab?.scrollTop ?? existingWarm?.scrollTop,
       },
       new Set(["library", effectiveTabId]),
     );
     setStandbyViewers(warmViewerPool.getValuesMruOrder());
-  }, [
-    effectiveTabId,
-    paper?.title,
-    activeTab?.title,
-    pdfBlobUrl,
-    paperUrl,
-    scopeId,
-    effectiveAttachmentId,
-    activeTab?.scrollTop,
-  ]);
+  }, [effectiveTabId, paper?.title, activeTab?.title, pdfBlobUrl, paperUrl, scopeId, effectiveAttachmentId, activeTab?.scrollTop]);
 
-  // Persist resolved canonical PDF URL in ReaderTab so hover-prefetch hits the exact URL
+  // Persist resolved canonical PDF URL and scope projectId in ReaderTab so hover-prefetch & cross-scope tab switches stay accurate
   useEffect(() => {
-    if (effectiveTabId && effectiveTabId !== "library" && paperUrl && activeTab?.fileUrl !== paperUrl) {
-      updateTabState(effectiveTabId, { fileUrl: paperUrl });
-    }
-  }, [effectiveTabId, paperUrl, activeTab?.fileUrl, updateTabState]);
+    if (!effectiveTabId || effectiveTabId === "library") return;
+    const targetProjectId = isProject ? rawProjectId : null;
+    const patch: { fileUrl?: string; projectId?: string | null } = {};
+    if (paperUrl && activeTab?.fileUrl !== paperUrl) patch.fileUrl = paperUrl;
+    if (activeTab && activeTab.projectId !== targetProjectId) patch.projectId = targetProjectId;
+    if (Object.keys(patch).length > 0) updateTabState(effectiveTabId, patch);
+  }, [effectiveTabId, paperUrl, activeTab, isProject, rawProjectId, updateTabState]);
 
   // Reader inspector toggle backed directly by global library UI store
   const isGlobalInspectorOpen = useLibraryUIStore((s) => s.isInspectorOpen);
   const setIsGlobalInspectorOpen = useLibraryUIStore((s) => s.setIsInspectorOpen);
-
-  const handleToggleInspector = useCallback(() => {
-    setIsGlobalInspectorOpen(!isGlobalInspectorOpen);
-  }, [isGlobalInspectorOpen, setIsGlobalInspectorOpen]);
-
-  const handleCloseInspector = useCallback(() => {
-    setIsGlobalInspectorOpen(false);
-  }, [setIsGlobalInspectorOpen]);
+  const handleToggleInspector = useCallback(() => setIsGlobalInspectorOpen(!isGlobalInspectorOpen), [isGlobalInspectorOpen, setIsGlobalInspectorOpen]);
+  const handleCloseInspector = useCallback(() => setIsGlobalInspectorOpen(false), [setIsGlobalInspectorOpen]);
 
   // In-Document Search
-  const [isSearchOpen, setIsSearchOpen] = useState<boolean>(
-    Boolean(initialSearchQuery),
-  );
+  const [isSearchOpen, setIsSearchOpen] = useState<boolean>(Boolean(initialSearchQuery));
 
   // Page Presentation Mode (Continuous Scroll, Single Page, Two Pages/Spread)
-  const [fallbackViewMode, setFallbackViewMode] = useState<"single" | "continuous" | "spread">(
-    () => activeTab?.viewMode ?? "continuous",
-  );
+  const [fallbackViewMode, setFallbackViewMode] = useState<"single" | "continuous" | "spread">(() => activeTab?.viewMode ?? "continuous");
   const viewMode: "single" | "continuous" | "spread" = activeTab?.viewMode ?? fallbackViewMode;
 
   const setViewMode = useCallback(
     (next: "single" | "continuous" | "spread") => {
       setFallbackViewMode(next);
-      if (effectiveTabId && effectiveTabId !== "library") {
-        updateTabState(effectiveTabId, { viewMode: next });
-      }
+      if (effectiveTabId && effectiveTabId !== "library") updateTabState(effectiveTabId, { viewMode: next });
     },
     [effectiveTabId, updateTabState],
   );
 
-  const {
-    fitMode,
-    setFitMode,
-    rotation,
-    setRotation,
-    themeMode,
-    setThemeMode,
-    setTabZoom,
-  } = useReaderTabPresentation({
-    effectiveTabId,
-    activeTab,
-    zoom,
-    visiblePage,
-    setZoom,
-    updateTabState,
+  const { fitMode, setFitMode, rotation, setRotation, themeMode, setThemeMode, setTabZoom } = useReaderTabPresentation({
+    effectiveTabId, activeTab, zoom, visiblePage, setZoom, updateTabState,
   });
 
   // Global keyboard shortcut: Ctrl+F / Cmd+F to toggle document search
@@ -235,21 +187,35 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
 
   // Register opened paper into tab store
   useEffect(() => {
-    if (paper?.id) openReader(paper.id, paper.title || "Untitled Document");
-  }, [paper?.id, paper?.title, openReader]);
+    if (paper?.id) {
+      openReader(
+        paper.id,
+        paper.title || "Untitled Document",
+        isProject ? rawProjectId : null,
+      );
+    }
+  }, [paper?.id, paper?.title, isProject, rawProjectId, openReader]);
 
   const getPaperUrl = useCallback(
-    (id: string) => buildReaderPaperUrl(id, { projectId: isProject ? rawProjectId : undefined }),
-    [isProject, rawProjectId],
+    (id: string, explicitProjectId?: string | null) => {
+      const targetTab = tabs.find((t) => t.id === id);
+      const resolvedProjId =
+        explicitProjectId !== undefined
+          ? explicitProjectId
+          : targetTab?.projectId !== undefined
+            ? targetTab.projectId
+            : isProject
+              ? rawProjectId
+              : undefined;
+      return buildReaderPaperUrl(id, { projectId: resolvedProjId || undefined });
+    },
+    [tabs, isProject, rawProjectId],
   );
 
   const handleSelectTab = useCallback(
     (id: string) => {
       if (id === "library") goBack();
-      else {
-        setActiveTab(id);
-        router.push(getPaperUrl(id));
-      }
+      else { setActiveTab(id); router.push(getPaperUrl(id)); }
     },
     [goBack, setActiveTab, router, getPaperUrl],
   );
@@ -268,12 +234,9 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
       closeTab(id);
       if (wasActive) {
         const remaining = tabs.filter((t) => t.id !== id);
-        const next =
-          remaining[Math.min(Math.max(0, closedIdx), remaining.length - 1)] || {
-            id: "library",
-          };
+        const next = remaining[Math.min(Math.max(0, closedIdx), remaining.length - 1)] || { id: "library" };
         if (next.id === "library") goBack();
-        else router.push(getPaperUrl(next.id));
+        else router.push(getPaperUrl(next.id, (next as { projectId?: string | null }).projectId));
       }
     },
     [tabs, activeTabId, paper, paperUrl, scopeId, closeTab, goBack, router, getPaperUrl],
@@ -282,25 +245,23 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
   const handlePrefetchTab = useCallback(
     (id: string) => {
       if (!id || id === "library") return;
-      const targetScope = isProject && rawProjectId ? rawProjectId : undefined;
       const targetTab = tabs.find((t) => t.id === id);
       const warmItem = warmViewerPool.peek(id);
-      const resolvedUrl = targetTab?.fileUrl || warmItem?.fileUrl || `/papers/${id}.pdf`;
+      const resolvedUrl = targetTab?.fileUrl || warmItem?.fileUrl;
+      if (!resolvedUrl) return;
+      const targetScope =
+        targetTab?.projectId ||
+        warmItem?.scopeId ||
+        (isProject && rawProjectId ? rawProjectId : undefined);
       void prefetchReaderDocumentBlob(resolvedUrl, { scopeId: targetScope });
     },
     [isProject, rawProjectId, tabs],
   );
 
   // Academic Reader States (Pan/Select, Split View, Reading Mode, Lock Tool)
-  const [fallbackInteractionMode, setFallbackInteractionMode] = useState<"select" | "hand">(
-    () => activeTab?.interactionMode ?? "select",
-  );
-  const [fallbackSplitMode, setFallbackSplitMode] = useState<"none" | "horizontal" | "vertical">(
-    () => activeTab?.splitMode ?? "none",
-  );
-  const [fallbackSecondaryPage, setFallbackSecondaryPage] = useState<number>(
-    () => activeTab?.secondaryPage ?? 1,
-  );
+  const [fallbackInteractionMode, setFallbackInteractionMode] = useState<"select" | "hand">(() => activeTab?.interactionMode ?? "select");
+  const [fallbackSplitMode, setFallbackSplitMode] = useState<"none" | "horizontal" | "vertical">(() => activeTab?.splitMode ?? "none");
+  const [fallbackSecondaryPage, setFallbackSecondaryPage] = useState<number>(() => activeTab?.secondaryPage ?? 1);
   const interactionMode: "select" | "hand" = activeTab?.interactionMode ?? fallbackInteractionMode;
   const splitMode: "none" | "horizontal" | "vertical" = activeTab?.splitMode ?? fallbackSplitMode;
   const secondaryPage: number = activeTab?.secondaryPage ?? fallbackSecondaryPage;
@@ -308,9 +269,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
   const setInteractionMode = useCallback(
     (next: "select" | "hand") => {
       setFallbackInteractionMode(next);
-      if (effectiveTabId && effectiveTabId !== "library") {
-        updateTabState(effectiveTabId, { interactionMode: next });
-      }
+      if (effectiveTabId && effectiveTabId !== "library") updateTabState(effectiveTabId, { interactionMode: next });
     },
     [effectiveTabId, updateTabState],
   );
@@ -318,9 +277,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
   const setSecondaryPage = useCallback(
     (next: number) => {
       setFallbackSecondaryPage(next);
-      if (effectiveTabId && effectiveTabId !== "library") {
-        updateTabState(effectiveTabId, { secondaryPage: next });
-      }
+      if (effectiveTabId && effectiveTabId !== "library") updateTabState(effectiveTabId, { secondaryPage: next });
     },
     [effectiveTabId, updateTabState],
   );
@@ -331,8 +288,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     }
   }, [effectiveTabId, effectiveAttachmentId, updateTabState]);
 
-  const [secondaryScrollRequest, setSecondaryScrollRequest] =
-    useState<ReaderNavigationTarget | null>(null);
+  const [secondaryScrollRequest, setSecondaryScrollRequest] = useState<ReaderNavigationTarget | null>(null);
   const [isReadingMode, setIsReadingMode] = useState<boolean>(false);
   const [isToolLocked, setIsToolLocked] = useState<boolean>(false);
   const [pdfOutline, setPdfOutline] = useState<PdfOutlineItem[]>([]);
@@ -341,12 +297,13 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
   useEffect(() => {
     setPdfOutline([]);
     setSharedPdfDocument(null);
+    setFallbackViewMode(activeTab?.viewMode ?? "continuous");
+    setFallbackInteractionMode(activeTab?.interactionMode ?? "select");
+    setFallbackSplitMode(activeTab?.splitMode ?? "none");
+    setFallbackSecondaryPage(activeTab?.secondaryPage ?? 1);
   }, [paper?.id, effectiveAttachmentId]);
 
-  const currentPaperBookmarks = useMemo(
-    () => (paper?.id ? bookmarks[paper.id] ?? [] : []),
-    [paper?.id, bookmarks],
-  );
+  const currentPaperBookmarks = useMemo(() => (paper?.id ? bookmarks[paper.id] ?? [] : []), [paper?.id, bookmarks]);
 
   const handleToggleBookmarkPage = useCallback(
     (page: number) => {
@@ -356,9 +313,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     [paper?.id, toggleBookmark],
   );
 
-  const handleToggleReadingMode = useCallback(() => {
-    setIsReadingMode((v) => !v);
-  }, []);
+  const handleToggleReadingMode = useCallback(() => setIsReadingMode((v) => !v), []);
 
   const handleOpenInSplitView = useCallback(
     (targetPageNum: number) => {
@@ -366,15 +321,9 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
       setFallbackSplitMode(nextSplit);
       setFallbackSecondaryPage(targetPageNum);
       if (effectiveTabId && effectiveTabId !== "library") {
-        updateTabState(effectiveTabId, {
-          splitMode: nextSplit,
-          secondaryPage: targetPageNum,
-        });
+        updateTabState(effectiveTabId, { splitMode: nextSplit, secondaryPage: targetPageNum });
       }
-      setSecondaryScrollRequest({
-        pageNumber: targetPageNum,
-        timestamp: Date.now(),
-      });
+      setSecondaryScrollRequest({ pageNumber: targetPageNum, timestamp: Date.now() });
     },
     [splitMode, effectiveTabId, updateTabState],
   );
@@ -385,15 +334,9 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
       if (splitMode === "none" && nextMode !== "none") {
         setFallbackSecondaryPage(visiblePage);
         if (effectiveTabId && effectiveTabId !== "library") {
-          updateTabState(effectiveTabId, {
-            splitMode: nextMode,
-            secondaryPage: visiblePage,
-          });
+          updateTabState(effectiveTabId, { splitMode: nextMode, secondaryPage: visiblePage });
         }
-        setSecondaryScrollRequest({
-          pageNumber: visiblePage,
-          timestamp: Date.now(),
-        });
+        setSecondaryScrollRequest({ pageNumber: visiblePage, timestamp: Date.now() });
       } else if (effectiveTabId && effectiveTabId !== "library") {
         updateTabState(effectiveTabId, { splitMode: nextMode });
       }
@@ -401,79 +344,46 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     [splitMode, visiblePage, effectiveTabId, updateTabState],
   );
 
-  const {
-    pageHistory,
-    forwardHistory,
-    handleNavigateToPageWithHistory,
-    handleNavigateBack,
-    handleNavigateForward,
-  } = useReaderTabHistory({
-    effectiveTabId,
-    visiblePage,
-    onNavigateToPage: handleNavigateToPage,
-    onNavigateToAnnotation: actions.handleNavigateToAnnotation,
+  const { pageHistory, forwardHistory, handleNavigateToPageWithHistory, handleNavigateBack, handleNavigateForward } = useReaderTabHistory({
+    effectiveTabId, visiblePage, onNavigateToPage: handleNavigateToPage, onNavigateToAnnotation: actions.handleNavigateToAnnotation,
   });
 
   const handleSelectNextTab = useCallback(() => {
     if (tabs.length <= 1) return;
     const currentIndex = tabs.findIndex((t) => t.id === effectiveTabId);
-    const nextIndex = (currentIndex + 1) % tabs.length;
-    handleSelectTab(tabs[nextIndex].id);
+    handleSelectTab(tabs[(currentIndex + 1) % tabs.length].id);
   }, [tabs, effectiveTabId, handleSelectTab]);
 
   const handleSelectPrevTab = useCallback(() => {
     if (tabs.length <= 1) return;
     const currentIndex = tabs.findIndex((t) => t.id === effectiveTabId);
-    const prevIndex = (currentIndex - 1 + tabs.length) % tabs.length;
-    handleSelectTab(tabs[prevIndex].id);
+    handleSelectTab(tabs[(currentIndex - 1 + tabs.length) % tabs.length].id);
   }, [tabs, effectiveTabId, handleSelectTab]);
 
   const handleSelectTabByIndex = useCallback(
-    (index: number) => {
-      if (index >= 0 && index < tabs.length) {
-        handleSelectTab(tabs[index].id);
-      }
-    },
+    (index: number) => { if (index >= 0 && index < tabs.length) handleSelectTab(tabs[index].id); },
     [tabs, handleSelectTab],
   );
 
   const handleCloseCurrentActiveTab = useCallback(() => {
-    if (effectiveTabId && effectiveTabId !== "library") {
-      handleCloseTab(effectiveTabId);
-    }
+    if (effectiveTabId && effectiveTabId !== "library") handleCloseTab(effectiveTabId);
   }, [effectiveTabId, handleCloseTab]);
 
   useReaderKeyboardShortcuts({
-    activeTool: activeTool || "select",
-    setActiveTool,
-    setInteractionMode,
-    onNavigateBack: handleNavigateBack,
-    onNavigateForward: handleNavigateForward,
-    onNavigatePage: handleNavigateToPageWithHistory,
-    visiblePage,
-    totalPages: numPages,
-    setTabZoom,
-    setFitMode,
-    setRotation,
-    onSelectNextTab: handleSelectNextTab,
-    onSelectPrevTab: handleSelectPrevTab,
-    onCloseActiveTab: handleCloseCurrentActiveTab,
-    onSelectTabByIndex: handleSelectTabByIndex,
+    activeTool: activeTool || "select", setActiveTool, setInteractionMode,
+    onNavigateBack: handleNavigateBack, onNavigateForward: handleNavigateForward,
+    onNavigatePage: handleNavigateToPageWithHistory, visiblePage, totalPages: numPages,
+    setTabZoom, setFitMode, setRotation,
+    onSelectNextTab: handleSelectNextTab, onSelectPrevTab: handleSelectPrevTab,
+    onCloseActiveTab: handleCloseCurrentActiveTab, onSelectTabByIndex: handleSelectTabByIndex,
   });
 
   // Escape key exits distraction-free reading mode or resets active annotation tool to 'select'
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return;
-      if (isEditableOrModalElementFocused(e.target)) return;
-
-      if (isReadingMode) {
-        setIsReadingMode(false);
-        return;
-      }
-      if (activeTool && activeTool !== "select") {
-        setActiveTool("select");
-      }
+      if (e.key !== "Escape" || isEditableOrModalElementFocused(e.target)) return;
+      if (isReadingMode) { setIsReadingMode(false); return; }
+      if (activeTool && activeTool !== "select") setActiveTool("select");
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
@@ -484,30 +394,20 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
 
   const handleToggleThemeMode = useCallback(
     (mode?: "normal" | "dark" | "sepia" | "invert") => {
-      if (mode) {
-        setThemeMode(mode);
-      } else {
-        setThemeMode((m) =>
-          m === "normal" ? "sepia" : m === "sepia" ? "dark" : "normal",
-        );
-      }
+      if (mode) setThemeMode(mode);
+      else setThemeMode((m) => (m === "normal" ? "sepia" : m === "sepia" ? "dark" : "normal"));
     },
     [setThemeMode],
   );
 
   const handleEpubPageChange = useCallback(
-    (curr: number, total: number) => {
-      actions.setVisiblePage(curr);
-      actions.setNumPages(total);
-    },
+    (curr: number, total: number) => { actions.setVisiblePage(curr); actions.setNumPages(total); },
     [actions],
   );
 
   const handleAddToNoteAndExitReadingMode = useCallback(
     (text: string, pageNumber?: number, annotationId?: string) => {
-      if (isReadingMode) {
-        setIsReadingMode(false);
-      }
+      if (isReadingMode) setIsReadingMode(false);
       handleAddToNote(text, pageNumber, annotationId);
     },
     [isReadingMode, handleAddToNote],
@@ -519,14 +419,10 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     (selectedText: string, pageNumber?: number) => {
       const cleaned = selectedText.trim();
       if (!cleaned) return;
-      if (isReadingMode) {
-        setIsReadingMode(false);
-      }
+      if (isReadingMode) setIsReadingMode(false);
       setQuotedPassage({
-        text: cleaned,
-        pageNumber: pageNumber || visiblePage,
-        paperId: paper?.id,
-        paperTitle: paper?.title || "Current Paper",
+        text: cleaned, pageNumber: pageNumber || visiblePage,
+        paperId: paper?.id, paperTitle: paper?.title || "Current Paper",
       });
     },
     [isReadingMode, setQuotedPassage, visiblePage, paper?.id, paper?.title],
@@ -535,26 +431,12 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
   // Zotero 7 behavior: If tool is not locked and is not 'select', revert back to 'select' after creating annotation
   const handleAnnotateWithLock = useCallback(
     async (
-      text: string,
-      pageNum?: number,
-      colorHex?: string,
-      rects?: AnnotationRect[],
+      text: string, pageNum?: number, colorHex?: string, rects?: AnnotationRect[],
       type?: "highlight" | "underline" | "note" | "text" | "rect" | "area" | "ink",
-      comment?: string,
-      pageLabel?: string | null,
+      comment?: string, pageLabel?: string | null,
     ) => {
-      const res = await handleAnnotate(
-        text,
-        pageNum,
-        colorHex,
-        rects,
-        type,
-        comment,
-        pageLabel,
-      );
-      if (!isToolLocked && activeTool !== "select") {
-        setActiveTool("select");
-      }
+      const res = await handleAnnotate(text, pageNum, colorHex, rects, type, comment, pageLabel);
+      if (!isToolLocked && activeTool !== "select") setActiveTool("select");
       return res;
     },
     [handleAnnotate, isToolLocked, activeTool, setActiveTool],
@@ -566,40 +448,26 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     const currentPaperId = paper?.id || activeTabId;
     if (!currentPaperId || currentPaperId === "library") return;
     try {
-      await exportAnnotatedPdf(
-        currentPaperId,
-        `${paper?.title || "document"}-annotated.pdf`,
-        effectiveAttachmentId,
-      );
+      await exportAnnotatedPdf(currentPaperId, `${paper?.title || "document"}-annotated.pdf`, effectiveAttachmentId);
     } catch {
       // Handled in useExportAnnotatedPdf hook toast
     }
   }, [paper, activeTabId, effectiveAttachmentId, exportAnnotatedPdf]);
 
   const handleDeleteAnnotationProp = useCallback(
-    (ann: { id: string; version?: number }) => {
-      if (deleteAnnotation) deleteAnnotation(ann.id, ann.version);
-    },
+    (ann: { id: string; version?: number }) => { if (deleteAnnotation) deleteAnnotation(ann.id, ann.version); },
     [deleteAnnotation],
   );
 
   const handleUpdateAnnotationProp = useCallback(
     (
-      id: string,
-      version: number | undefined,
+      id: string, version: number | undefined,
       dto: {
         type?: import("@/features/library/types/reader.types").AnnotationType;
-        color?: string;
-        comment?: string;
-        quoteText?: string;
-        pageLabel?: string | null;
-        tags?: string[];
-        rects?: AnnotationRect[];
+        color?: string; comment?: string; quoteText?: string; pageLabel?: string | null;
+        tags?: string[]; rects?: AnnotationRect[];
       },
-    ) => {
-      if (updateAnnotation) return updateAnnotation(id, version, dto);
-      return Promise.resolve();
-    },
+    ) => (updateAnnotation ? updateAnnotation(id, version, dto) : Promise.resolve()),
     [updateAnnotation],
   );
 
@@ -639,9 +507,10 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     [effectiveTabId, updateTabState],
   );
 
-  const sharedViewerProps = useMemo(
+  const baseViewerProps = useMemo(
     () => ({
       blobUrl: pdfBlobUrl, isLoading: pdfLoading, error: pdfError,
+      onRetry: actions.handleRetryPdf,
       attachmentId: effectiveAttachmentId || undefined, scopeId,
       onAddToNote: handleAddToNoteAndExitReadingMode, onAskAi: handleAskAiWithSelection,
       onAnnotate: handleAnnotateWithLock, annotations,
@@ -649,19 +518,39 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
       fulltext, paper: paper || undefined, zoom, onZoomChange: handleSetCustomZoom,
       onSelectFitMode: setFitMode, rotation, themeMode, interactionMode, activeColor,
       activeTool, onSelectColor: setActiveColor, onSelectTool: setActiveTool,
-      viewMode, fitMode, onNavigateWithHistory: handleNavigateToPageWithHistory,
-      initialScrollTop: activeTab?.scrollTop,
-      onScrollPositionChange: handleScrollPositionChange,
+      viewMode, fitMode,
     }),
     [
-      pdfBlobUrl, pdfLoading, pdfError, effectiveAttachmentId, scopeId,
+      pdfBlobUrl, pdfLoading, pdfError, actions.handleRetryPdf, effectiveAttachmentId, scopeId,
       handleAddToNoteAndExitReadingMode, handleAskAiWithSelection,
       handleAnnotateWithLock, annotations, handleDeleteAnnotationProp, handleUpdateAnnotationProp,
       fulltext, paper, zoom, handleSetCustomZoom, setFitMode, rotation, themeMode, interactionMode,
       activeColor, activeTool, setActiveColor, setActiveTool,
-      viewMode, fitMode, handleNavigateToPageWithHistory,
-      activeTab?.scrollTop, handleScrollPositionChange,
+      viewMode, fitMode,
     ],
+  );
+
+  const sharedViewerProps = useMemo(
+    () => ({
+      ...baseViewerProps,
+      onNavigateWithHistory: handleNavigateToPageWithHistory,
+      initialScrollTop: activeTab?.scrollTop,
+      onScrollPositionChange: handleScrollPositionChange,
+    }),
+    [
+      baseViewerProps,
+      handleNavigateToPageWithHistory,
+      activeTab?.scrollTop,
+      handleScrollPositionChange,
+    ],
+  );
+
+  const handleSecondaryNavigateToPage = useCallback(
+    (pageNumber: number) => {
+      setSecondaryPage(pageNumber);
+      setSecondaryScrollRequest({ pageNumber, timestamp: Date.now() });
+    },
+    [setSecondaryPage],
   );
 
   const retractionDetails = paper?.retractionDetails as { reason?: string; noticeUrl?: string } | undefined;
@@ -772,16 +661,17 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
                     {...sharedViewerProps} targetPage={targetPage}
                     onVisiblePageChange={actions.setVisiblePage} onTotalPagesChange={actions.setNumPages}
                     onOutlineLoad={setPdfOutline} onDocumentLoad={setSharedPdfDocument}
-                    onDocumentLoaded={setSharedPdfDocument} onOpenInSplitView={handleOpenInSplitView}
+                    onOpenInSplitView={handleOpenInSplitView}
                     isSearchOpen={isSearchOpen} onCloseSearch={handleCloseSearch}
                     initialSearchQuery={initialSearchQuery}
                   />
                 </div>
                 <div className="flex-1 min-w-0 min-h-0 h-full overflow-hidden relative" data-secondary-page={secondaryPage}>
                   <Viewer
-                    {...sharedViewerProps} sharedPdfDocument={sharedPdfDocument}
+                    {...baseViewerProps} sharedPdfDocument={sharedPdfDocument}
                     targetPage={secondaryScrollRequest} onVisiblePageChange={setSecondaryPage}
-                    onTotalPagesChange={actions.setNumPages} onOpenInSplitView={handleOpenInSplitView}
+                    onNavigateWithHistory={handleSecondaryNavigateToPage}
+                    onOpenInSplitView={handleOpenInSplitView}
                     isSearchOpen={false}
                   />
                 </div>

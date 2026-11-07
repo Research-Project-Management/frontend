@@ -73,6 +73,7 @@ interface UsePdfViewerInteractionParams {
   activeTool: ReaderAnnotationTool;
   activeColor?: string;
   interactionMode: 'select' | 'hand';
+  isSuspended?: boolean;
   onAnnotate?: (
     selectedText: string,
     pageNumber: number,
@@ -89,6 +90,7 @@ export function usePdfViewerInteraction({
   activeTool,
   activeColor,
   interactionMode,
+  isSuspended = false,
   onAnnotate,
 }: UsePdfViewerInteractionParams) {
   const [selectedText, setSelectedText] = useState<string>('');
@@ -618,6 +620,7 @@ export function usePdfViewerInteraction({
   }, [interactionMode, handleMouseUp]);
 
   useEffect(() => {
+    if (isSuspended) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setShowFloatingMenu(false);
@@ -627,7 +630,7 @@ export function usePdfViewerInteraction({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [isSuspended]);
 
   return {
     selectedText,

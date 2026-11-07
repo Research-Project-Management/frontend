@@ -111,6 +111,7 @@ export function normalizeReaderTab(tab: ReaderTab): ReaderTab {
         : 'select',
     ...(tab.attachmentId !== undefined ? { attachmentId: tab.attachmentId } : {}),
     ...(tab.fileUrl !== undefined ? { fileUrl: tab.fileUrl } : {}),
+    ...(tab.projectId !== undefined ? { projectId: tab.projectId } : {}),
   };
 }
 

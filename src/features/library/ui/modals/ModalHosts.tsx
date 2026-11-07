@@ -24,7 +24,10 @@ import {
   buildPreConversionSnapshot,
   PRE_CONVERSION_BIBLIOGRAPHIC_SCALAR_KEYS,
 } from '@/features/library/core/manager/library-command.manager';
-import { useSavedSearches } from '@/features/library/core/coordinator/saved-search-builder.coordinator';
+import {
+  useSavedSearches,
+  useTrash,
+} from '@/features/library/core/coordinator/saved-search-builder.coordinator';
 import type {
   Collection,
   CollectionFormValues,
@@ -342,6 +345,9 @@ export function DestructiveItemModalsHost({
   const isEmptyTrashMode = activeModal === 'EMPTY_TRASH';
   const isPermanentDelete = Boolean(payload?.permanent) || isEmptyTrashMode;
   const customConfirmCallback = payload?.onConfirm;
+  const { emptyTrash } = useTrash(effectiveScope, {
+    enabled: isEmptyTrashMode && !customConfirmCallback,
+  });
 
   const handleConfirm = async () => {
     if (customConfirmCallback) {
@@ -351,6 +357,20 @@ export function DestructiveItemModalsHost({
         if (isPermanentDelete) {
           clearCommandHistory();
         }
+        closeModal();
+      } finally {
+        setIsCustomSubmitting(false);
+      }
+      return;
+    }
+
+    if (isEmptyTrashMode && itemIds.length === 0) {
+      setIsCustomSubmitting(true);
+      try {
+        await emptyTrash();
+        clearCommandHistory();
+        clearSelection();
+        setActiveItem(null);
         closeModal();
       } finally {
         setIsCustomSubmitting(false);
@@ -476,6 +496,7 @@ export function SavedSearchModalHost({
               sortOrder: data.sortOrder,
               targetScope: data.targetScope,
               scope: data.scope,
+              scopeOptions: data.scopeOptions,
             },
           });
         } else {

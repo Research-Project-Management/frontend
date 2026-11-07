@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { multiTabBus } from '@/shared/lib/multi-tab';
 import { getErrorMessage } from '@/shared/lib/utils';
 import { logger } from '@/shared/lib/logger';
 import {
@@ -13,6 +13,7 @@ import {
 import { getItemFileUrl, isProjectScope } from '@/features/library/domain/identifiers.domain';
 import {
   fetchReaderDocumentBlob,
+  prefetchReaderDocumentBlob,
   invalidateReaderDocumentBlob,
   useReaderBootstrap,
   useReaderItem,
@@ -20,13 +21,12 @@ import {
   useAnnotations,
   useExportAnnotatedPdf,
 } from '@/features/library/sdk/queries/reader.queries';
+import { registerReaderResourceCleanupHandler } from '@/features/library/sdk/queries/cache-patcher.queries';
 import {
   LruTabPool,
   calculateAdaptiveTabPoolCapacity,
   warmViewerPool,
 } from '@/features/library/domain/reader-tab-pool.domain';
-
-export { useExportAnnotatedPdf };
 import { normalizeScopeId } from '@/features/library/sdk/query-keys';
 import { useReadingProgress } from './use-reader-tabs';
 import { useAnnotationBatch } from './use-annotation-batch';
@@ -40,6 +40,8 @@ import type {
   AnnotationType,
 } from '@/features/library/types/reader.types';
 import { formatAnnotationCitation } from '@/features/library/domain/reader.domain';
+
+export { useExportAnnotatedPdf, prefetchReaderDocumentBlob };
 
 const READER_TOAST_IDS = {
   clipboard: 'reader-clipboard',
@@ -75,9 +77,7 @@ export function useReaderClipboard(resetDelay = 2000) {
 
       try {
         const ok = await copyToClipboard(clean);
-        if (!ok) {
-          throw new Error('Could not copy to clipboard');
-        }
+        if (!ok) throw new Error('Could not copy to clipboard');
 
         const successMessage = label ? `Copied ${label} to clipboard` : 'Copied to clipboard';
         toast.success(successMessage, { id: READER_TOAST_IDS.clipboard });
@@ -149,12 +149,6 @@ export function useReaderDocumentBlobLoader() {
   );
 }
 
-/**
- * Module-level Warm ObjectURL Pool (bounded to 3..8 tabs by device RAM).
- * Prevents premature `URL.revokeObjectURL` when switching tabs across dynamic routes,
- * allowing Standby `<Viewer isSuspended={true} />` instances to keep their parsed
- * `PDFDocumentProxy` alive in Web Worker RAM with 0ms tab-switch latency.
- */
 const warmObjectUrlPool = new LruTabPool<{ url: string; objectUrl: string }>(
   calculateAdaptiveTabPoolCapacity(),
 );
@@ -170,15 +164,14 @@ export function evictWarmObjectUrl(url?: string | null, scopeId?: string): void 
   if (existing) {
     URL.revokeObjectURL(existing.objectUrl);
     warmObjectUrlPool.delete(key);
+    for (const item of warmViewerPool.getValuesMruOrder()) {
+      if (item.blobUrl === existing.objectUrl || item.fileUrl === url) {
+        warmViewerPool.delete(item.paperId);
+      }
+    }
   }
 }
 
-/**
- * Cross-module garbage collector:
- * When items are trashed, permanently purged, or merged as duplicates in the Library,
- * closes their open Reader tabs, evicts their warm viewer/objectUrl instances,
- * and deletes their cached PDF binaries from Tier-1 RAM & Tier-4 OPFS/IndexedDB.
- */
 export function cleanupReaderResourcesForItems(
   itemIds: Iterable<string>,
   options?: { scopeId?: string; candidateUrls?: Iterable<string | null | undefined> },
@@ -196,17 +189,11 @@ export function cleanupReaderResourcesForItems(
   for (const id of itemIds) {
     if (!id || id === 'library') continue;
     const openTab = readerStore.tabs.find((t) => t.id === id);
-    if (openTab?.fileUrl) {
-      urlsToInvalidate.add(openTab.fileUrl);
-    }
+    if (openTab?.fileUrl) urlsToInvalidate.add(openTab.fileUrl);
     const warmEntry = warmViewerPool.peek(id);
-    if (warmEntry?.fileUrl) {
-      urlsToInvalidate.add(warmEntry.fileUrl);
-    }
+    if (warmEntry?.fileUrl) urlsToInvalidate.add(warmEntry.fileUrl);
     warmViewerPool.delete(id);
-    if (openTab) {
-      readerStore.closeTab(id);
-    }
+    if (openTab) readerStore.closeTab(id);
   }
 
   for (const url of urlsToInvalidate) {
@@ -216,15 +203,98 @@ export function cleanupReaderResourcesForItems(
   }
 }
 
+/**
+ * Revokes all in-memory ObjectURL blobs across `warmObjectUrlPool` and `warmViewerPool`
+ * (e.g., on cross-tab logout or session expiration).
+ */
+export function clearAllWarmReaderPools(): void {
+  for (const entry of warmObjectUrlPool.getValuesMruOrder()) {
+    try {
+      URL.revokeObjectURL(entry.objectUrl);
+    } catch {
+      // ignore
+    }
+  }
+  warmObjectUrlPool.clear();
+  warmViewerPool.clear();
+}
+
+/**
+ * Hibernates non-active warm ObjectURLs when a browser tab remains in the background
+ * for an extended period (3 minutes), reclaiming RAM across multi-tab sessions while keeping
+ * the active paper instant.
+ */
+export function hibernateInactiveWarmReaderPools(): number {
+  const activeTabId = useReaderStore.getState().activeTabId;
+  const activeTab = useReaderStore.getState().tabs.find((t) => t.id === activeTabId);
+  const activeUrl = activeTab?.fileUrl;
+  let evictedCount = 0;
+
+  for (const item of warmViewerPool.getValuesMruOrder()) {
+    if (item.paperId !== activeTabId) {
+      warmViewerPool.delete(item.paperId);
+      evictedCount += 1;
+    }
+  }
+
+  for (const key of warmObjectUrlPool.getKeysMruOrder()) {
+    const entry = warmObjectUrlPool.peek(key);
+    if (entry && (!activeUrl || entry.url !== activeUrl)) {
+      try {
+        URL.revokeObjectURL(entry.objectUrl);
+      } catch {
+        // ignore
+      }
+      warmObjectUrlPool.delete(key);
+      evictedCount += 1;
+    }
+  }
+
+  return evictedCount;
+}
+
+const READER_BACKGROUND_HIBERNATION_MS = 3 * 60 * 1000; // 3 minutes
+
+if (typeof window !== 'undefined') {
+  multiTabBus.subscribe((event) => {
+    if (event.type === 'AUTH_LOGOUT') {
+      clearAllWarmReaderPools();
+    }
+  });
+
+  if (typeof document !== 'undefined') {
+    let hibernationTimer: ReturnType<typeof setTimeout> | null = null;
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        if (hibernationTimer) clearTimeout(hibernationTimer);
+        hibernationTimer = setTimeout(() => {
+          if (document.visibilityState === 'hidden') {
+            hibernateInactiveWarmReaderPools();
+          }
+        }, READER_BACKGROUND_HIBERNATION_MS);
+      } else if (hibernationTimer) {
+        clearTimeout(hibernationTimer);
+        hibernationTimer = null;
+      }
+    });
+  }
+}
+
+registerReaderResourceCleanupHandler(cleanupReaderResourcesForItems);
+
 export function usePdf(url: string | null, scopeId?: string): UsePdfReturn {
   const [blobUrl, setBlobUrl] = useState<string | null>(() => {
     if (!url) return null;
-    return warmObjectUrlPool.peek(buildWarmObjectUrlKey(url, scopeId))?.objectUrl ?? null;
+    const direct = warmObjectUrlPool.peek(buildWarmObjectUrlKey(url, scopeId));
+    if (direct) return direct.objectUrl;
+    if (scopeId && scopeId !== 'user') {
+      return warmObjectUrlPool.peek(buildWarmObjectUrlKey(url, 'user'))?.objectUrl ?? null;
+    }
+    return null;
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
-
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const retry = useCallback(() => {
@@ -246,17 +316,20 @@ export function usePdf(url: string | null, scopeId?: string): UsePdfReturn {
 
     const poolKey = buildWarmObjectUrlKey(url, scopeId);
 
-    // Instant Warm-Pool Hit (0ms synchronous resolution on tab switch)
     if (retryCount === 0) {
-      const warmHit = warmObjectUrlPool.get(poolKey);
+      const warmHit =
+        warmObjectUrlPool.get(poolKey) ||
+        (scopeId && scopeId !== 'user'
+          ? warmObjectUrlPool.get(buildWarmObjectUrlKey(url, 'user'))
+          : undefined);
       if (warmHit) {
+        warmObjectUrlPool.put(poolKey, warmHit);
         setBlobUrl(warmHit.objectUrl);
         setIsLoading(false);
         setError(null);
         return;
       }
     } else {
-      // Explicit retry: revoke stale ObjectURL before re-fetching
       evictWarmObjectUrl(url, scopeId);
       void invalidateReaderDocumentBlob(url, { scopeId });
     }
@@ -295,15 +368,18 @@ export function usePdf(url: string | null, scopeId?: string): UsePdfReturn {
             const evictedObjectUrl = objectUrlsBefore.get(evictedKey);
             if (evictedObjectUrl && evictedObjectUrl !== newObjectUrl) {
               URL.revokeObjectURL(evictedObjectUrl);
+              for (const item of warmViewerPool.getValuesMruOrder()) {
+                if (item.blobUrl === evictedObjectUrl) {
+                  warmViewerPool.delete(item.paperId);
+                }
+              }
             }
           }
           setBlobUrl(newObjectUrl);
           setIsLoading(false);
         }
       } catch (err: unknown) {
-        if (controller.signal.aborted) {
-          return;
-        }
+        if (controller.signal.aborted) return;
         if (active) {
           logger.error('[usePdf] PDF load error', err);
           setError(getErrorMessage(err) || 'Unable to load PDF document.');
@@ -313,7 +389,7 @@ export function usePdf(url: string | null, scopeId?: string): UsePdfReturn {
       }
     }
 
-    loadPdf();
+    void loadPdf();
 
     return () => {
       active = false;
@@ -327,17 +403,17 @@ export function usePdf(url: string | null, scopeId?: string): UsePdfReturn {
 export function useReader(overridePaperId?: string | null, onBackOverride?: () => void) {
   const params = useParams() as { paperId?: string; projectId?: string };
   const router = useRouter();
-  const qc = useQueryClient();
   const activeScope = useLibraryUIStore((s) => s.activeScope);
   const searchParams = useSearchParams();
   const queryProjectId = searchParams?.get('projectId') || undefined;
   const isProject =
     activeScope.type === 'project' || Boolean(params?.projectId) || Boolean(queryProjectId);
   const rawProjectId =
-    params?.projectId ||
+    (params?.projectId as string) ||
     queryProjectId ||
     (activeScope.type === 'project' ? activeScope.projectId || activeScope.id : undefined);
-  const scopeId = normalizeScopeId(rawProjectId);
+  const projectId = rawProjectId || 'user';
+  const scopeId = normalizeScopeId(projectId);
 
   const storeReadingId = useReaderStore((s) => s.readingPaperId);
   const closeReader = useReaderStore((s) => s.closeReader);
@@ -430,6 +506,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     scopeId: effectiveScopeId,
     paper,
     effectivePaperId,
+    effectiveAttachmentId,
     visiblePage,
     setVisiblePage,
     setTargetPage,
@@ -506,11 +583,10 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
   const deleteAnnotation = useCallback(
     async (annotationId: string, expectedVersion?: number) => {
       const target = (annotationsRef.current || []).find((a) => a.id === annotationId);
+      const res = await rawDeleteAnnotation(annotationId, expectedVersion);
       pruneDeletedFromHistory([annotationId]);
-      if (target) {
-        recordSingleDeleteAnnotation(target);
-      }
-      return rawDeleteAnnotation(annotationId, expectedVersion);
+      if (target) recordSingleDeleteAnnotation(target);
+      return res;
     },
     [recordSingleDeleteAnnotation, rawDeleteAnnotation, pruneDeletedFromHistory],
   );
@@ -522,12 +598,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
   const handleNavigateToAnnotation = useCallback(
     (pageNumber: number, annotationId?: string, coords?: AnnotationRect) => {
       if (pageNumber >= 1) {
-        setTargetPage({
-          pageNumber,
-          annotationId,
-          coords,
-          timestamp: Date.now(),
-        });
+        setTargetPage({ pageNumber, annotationId, coords, timestamp: Date.now() });
       }
     },
     [],
@@ -600,7 +671,6 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
       pageLabel?: string | null,
     ) => {
       if (!effectiveAttachmentId) return;
-
       const quote = text?.trim();
       if (
         !quote &&
@@ -688,38 +758,12 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
       canRedo,
     }),
     [
-      effectiveScopeId,
-      isProject,
-      rawProjectId,
-      effectivePaperId,
-      isLoadingPapers,
-      paper,
-      paperUrl,
-      pdfBlobUrl,
-      pdfLoading,
-      pdfError,
-      pendingNoteText,
-      bibtexOpen,
-      fulltext,
-      isLoadingFulltext,
-      targetPage,
-      isSidebarOpen,
-      visiblePage,
-      numPages,
-      zoom,
-      selectedAnnotationIds,
-      isBatchProcessing,
-      annotations,
-      isLoadingAnnotations,
-      isAnnotationsError,
-      isUpdatingAnnotation,
-      isDeletingAnnotation,
-      isExtractingNotes,
-      isImportingAnnotations,
-      effectiveAttachmentId,
-      selectedAttachment,
-      canUndo,
-      canRedo,
+      effectiveScopeId, isProject, rawProjectId, effectivePaperId, isLoadingPapers,
+      paper, paperUrl, pdfBlobUrl, pdfLoading, pdfError, pendingNoteText, bibtexOpen,
+      fulltext, isLoadingFulltext, targetPage, isSidebarOpen, visiblePage, numPages,
+      zoom, selectedAnnotationIds, isBatchProcessing, annotations, isLoadingAnnotations,
+      isAnnotationsError, isUpdatingAnnotation, isDeletingAnnotation, isExtractingNotes,
+      isImportingAnnotations, effectiveAttachmentId, selectedAttachment, canUndo, canRedo,
     ],
   );
 
@@ -757,30 +801,13 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
       refetchAnnotations,
     }),
     [
-      handleAddToNote,
-      handleAnnotate,
-      handleNavigateToPage,
-      handleNavigateToAnnotation,
-      handleRetryPdf,
-      router.push,
-      goBack,
-      closeReader,
-      setSelectedAnnotationIds,
-      handleToggleSelectAnnotation,
-      handleBatchChangeColor,
-      handleBatchDelete,
-      handleBatchAddToNote,
-      handleUndoAnnotation,
-      handleRedoAnnotation,
-      recordCreateAnnotation,
-      recordUpdateAnnotation,
-      recordSingleDeleteAnnotation,
-      recordDeletedAnnotations,
-      updateAnnotation,
-      deleteAnnotation,
-      extractNotes,
-      importExternal,
-      refetchAnnotations,
+      handleAddToNote, handleAnnotate, handleNavigateToPage, handleNavigateToAnnotation,
+      handleRetryPdf, router.push, goBack, closeReader, setSelectedAnnotationIds,
+      handleToggleSelectAnnotation, handleBatchChangeColor, handleBatchDelete,
+      handleBatchAddToNote, handleUndoAnnotation, handleRedoAnnotation,
+      recordCreateAnnotation, recordUpdateAnnotation, recordSingleDeleteAnnotation,
+      recordDeletedAnnotations, updateAnnotation, deleteAnnotation, extractNotes,
+      importExternal, refetchAnnotations,
     ],
   );
 

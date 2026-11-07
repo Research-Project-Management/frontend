@@ -447,6 +447,51 @@ export async function unpackEpubArchiveChapters(
     const rawChapterHtml = await chapterFile.async('text');
     if (signal?.aborted) return [];
     const chapterDoc = parser.parseFromString(rawChapterHtml, 'text/html');
+    const chapterDir = resolvedPath.includes('/')
+      ? resolvedPath.slice(0, resolvedPath.lastIndexOf('/'))
+      : '';
+
+    // Inline relative EPUB archive images as data: URLs so figures/diagrams render cleanly
+    const imgEls = Array.from(chapterDoc.querySelectorAll('img[src], image[href], image[*|href]'));
+    for (const imgEl of imgEls) {
+      const rawSrc =
+        imgEl.getAttribute('src') ||
+        imgEl.getAttribute('href') ||
+        imgEl.getAttribute('xlink:href');
+      if (!rawSrc || /^(data:|blob:|https?:|\/\/)/i.test(rawSrc.trim())) continue;
+      const resolvedImgPath = resolveEpubPath(chapterDir, rawSrc.trim());
+      let decodedImgPath = resolvedImgPath;
+      try {
+        decodedImgPath = decodeURIComponent(resolvedImgPath);
+      } catch {
+        decodedImgPath = resolvedImgPath;
+      }
+      const imgZipFile = zip.file(resolvedImgPath) || zip.file(decodedImgPath);
+      if (!imgZipFile) continue;
+      try {
+        const b64 = await imgZipFile.async('base64');
+        const ext = resolvedImgPath.split('.').pop()?.toLowerCase() || '';
+        const mime =
+          ext === 'png'
+            ? 'image/png'
+            : ext === 'svg'
+              ? 'image/svg+xml'
+              : ext === 'gif'
+                ? 'image/gif'
+                : ext === 'webp'
+                  ? 'image/webp'
+                  : 'image/jpeg';
+        const dataUri = `data:${mime};base64,${b64}`;
+        if (imgEl.hasAttribute('src')) {
+          imgEl.setAttribute('src', dataUri);
+        } else {
+          imgEl.setAttribute('href', dataUri);
+        }
+      } catch {
+        // Ignore unreadable image entries
+      }
+    }
+
     const headingText =
       chapterDoc.querySelector('h1, h2, h3, title')?.textContent?.trim() ||
       `Section ${loadedChapters.length + 1}`;

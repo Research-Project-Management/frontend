@@ -438,6 +438,12 @@ function IngestionAndUtilityModalsHost({
 
   if (activeModal === 'MY_PUBLICATION_CONFIRM') {
     const targetItem = payload?.item as Item | undefined;
+    const targetItemIds =
+      Array.isArray(payload?.itemIds) && payload.itemIds.length > 0
+        ? (payload.itemIds as string[])
+        : targetItem
+          ? [targetItem.id]
+          : [];
     const customOnConfirm = payload?.onConfirm as
       | ((opts: {
           contributorId?: string | null;
@@ -455,12 +461,14 @@ function IngestionAndUtilityModalsHost({
         onConfirm={async (options) => {
           if (typeof customOnConfirm === 'function') {
             await customOnConfirm(options);
-          } else if (targetItem) {
-            await setMyPublicationMutation.mutateAsync({
-              itemId: targetItem.id,
-              isMyPublication: true,
-              options,
-            });
+          } else if (targetItemIds.length > 0) {
+            for (const itemId of targetItemIds) {
+              await setMyPublicationMutation.mutateAsync({
+                itemId,
+                isMyPublication: true,
+                options: itemId === targetItem?.id ? options : { ...options, contributorId: null },
+              });
+            }
           }
           closeModal();
         }}
@@ -522,7 +530,7 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
 
   // Resume polling on reload if there is an in-progress batch run
   useResumeBatchIngestionPolling(
-    effectiveScope,
+    processModalState.data?.scopeId || effectiveScope,
     processModalState.runId,
     processModalState.isComplete,
   );

@@ -169,6 +169,7 @@ export function useLibraryBatchCoordinator({
   const selectedIds = useLibraryUIStore((s) => s.selectedIds);
   const toggleSelect = useLibraryUIStore((s) => s.toggleSelect);
   const selectOnly = useLibraryUIStore((s) => s.selectOnly);
+  const selectRange = useLibraryUIStore((s) => s.selectRange);
   const selectAll = useLibraryUIStore((s) => s.selectAll);
   const clearSelection = useLibraryUIStore((s) => s.clearSelection);
   const openModal = useLibraryUIStore((s) => s.openModal);
@@ -261,9 +262,9 @@ export function useLibraryBatchCoordinator({
 
       const [start, end] = fromIdx < toIdx ? [fromIdx, toIdx] : [toIdx, fromIdx];
       const slice = orderedIds.slice(start, end + 1);
-      selectAll(slice);
+      selectRange(slice);
     },
-    [selectAll],
+    [selectRange],
   );
 
   // Action: Batch Move to Collection

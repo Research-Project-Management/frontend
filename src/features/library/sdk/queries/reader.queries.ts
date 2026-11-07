@@ -1,8 +1,9 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { multiTabBus } from '@/shared/lib/multi-tab';
 import { getErrorMessage } from '@/shared/lib/utils';
 import { ItemsService } from '../clients/items.client';
 import { AnnotationsService, normalizeAnnotationEntity } from '../clients/attachments-annotations.client';
@@ -17,57 +18,19 @@ import {
   fetchPdfBlob,
   prefetchPdfBlob,
   invalidatePdfBlobCache,
+  buildPdfBlobCacheKey,
 } from '../clients/http.client';
 
 export type { ExtractNotesOptions, ItemStateData };
+export { buildPdfBlobCacheKey };
 
-export function fetchReaderDocumentBlob(
-  url: string,
-  signal?: AbortSignal,
-  options?: Parameters<typeof fetchPdfBlob>[2],
-) {
-  return fetchPdfBlob(url, signal, options);
-}
-
-export function prefetchReaderDocumentBlob(
-  url: string,
-  options?: Parameters<typeof prefetchPdfBlob>[1],
-) {
-  return prefetchPdfBlob(url, options);
-}
-
-export function invalidateReaderDocumentBlob(
-  url?: string,
-  options?: Parameters<typeof invalidatePdfBlobCache>[1],
-) {
-  return invalidatePdfBlobCache(url, options);
-}
-
-export function fetchReaderItemState(scopeId: string | undefined, itemId: string) {
-  return StateService.getState(scopeId, itemId);
-}
-
-export function updateReaderItemState(
-  scopeId: string | undefined,
-  itemId: string,
-  payload: Parameters<typeof StateService.updateState>[2],
-) {
-  return StateService.updateState(scopeId, itemId, payload);
-}
-
-export function markReaderItemAsRead(scopeId: string | undefined, itemId: string) {
-  return StateService.markAsRead(scopeId, itemId);
-}
-
-export function searchReaderAttachmentAnchors(
-  attachmentId: string,
-  query: string,
-  pageIndex?: number,
-  scopeId?: string,
-  options?: { signal?: AbortSignal },
-) {
-  return SearchService.searchAnchors(attachmentId, query, pageIndex, scopeId, options);
-}
+export const fetchReaderDocumentBlob = fetchPdfBlob;
+export const prefetchReaderDocumentBlob = prefetchPdfBlob;
+export const invalidateReaderDocumentBlob = invalidatePdfBlobCache;
+export const fetchReaderItemState = StateService.getState;
+export const updateReaderItemState = StateService.updateState;
+export const markReaderItemAsRead = StateService.markAsRead;
+export const searchReaderAttachmentAnchors = SearchService.searchAnchors;
 import {
   itemKeys,
   readerQueryKeys,
@@ -81,7 +44,10 @@ import {
   getReaderBootstrapScope,
 } from '@/features/library/sdk/query-keys';
 import { useDownloadAnnotatedPdfMutation } from './extraction.queries';
-import { invalidateLibraryCatalogDependencies } from './cache-patcher.queries';
+import {
+  invalidateLibraryCatalogDependencies,
+  registerMultiTabQueryCacheSync,
+} from './cache-patcher.queries';
 import { PdfAnnotationEngine } from '@/features/library/domain/reader.domain';
 import { buildClientAnnotationSortIndex } from '@/features/library/domain/reader-search-outline.domain';
 import {
@@ -339,6 +305,10 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
   const targetScope = normalizeScopeId(scopeId);
   const cacheKey = annotationKeys.byAttachment(targetScope, attachmentId);
 
+  useEffect(() => {
+    return registerMultiTabQueryCacheSync(queryClient);
+  }, [queryClient]);
+
   const query = useQuery({
     queryKey: cacheKey,
     queryFn: async () => {
@@ -426,6 +396,11 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
         queryClient.invalidateQueries({
           queryKey: annotationKeys.byAttachment(scopeId, attachmentId),
         });
+        multiTabBus.publish({
+          type: 'READER_ANNOTATIONS_CHANGED',
+          scopeId: targetScope,
+          attachmentId,
+        });
       }
     },
     onError: (err: unknown, _variables, context) => {
@@ -465,6 +440,21 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
         dto,
       );
     },
+    onMutate: async (variables) => {
+      if (!attachmentId) return { previousAnnotations: undefined };
+      const queryKey = annotationKeys.byAttachment(scopeId, attachmentId);
+      await queryClient.cancelQueries({ queryKey });
+      const previousAnnotations = queryClient.getQueryData<ReaderAnnotation[]>(queryKey);
+      if (previousAnnotations) {
+        queryClient.setQueryData<ReaderAnnotation[]>(
+          queryKey,
+          previousAnnotations.map((a) =>
+            a.id === variables.annotationId ? ({ ...a, ...variables.dto } as ReaderAnnotation) : a,
+          ),
+        );
+      }
+      return { previousAnnotations };
+    },
     onSuccess: (updatedAnnotation, variables) => {
       if (attachmentId) {
         const queryKey = annotationKeys.byAttachment(scopeId, attachmentId);
@@ -480,8 +470,21 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
       queryClient.invalidateQueries({
         queryKey: annotationKeys.byAttachment(scopeId, attachmentId),
       });
+      if (attachmentId) {
+        multiTabBus.publish({
+          type: 'READER_ANNOTATIONS_CHANGED',
+          scopeId: targetScope,
+          attachmentId,
+        });
+      }
     },
-    onError: (err: unknown) => {
+    onError: (err: unknown, _variables, context) => {
+      if (attachmentId && context?.previousAnnotations) {
+        queryClient.setQueryData(
+          annotationKeys.byAttachment(scopeId, attachmentId),
+          context.previousAnnotations,
+        );
+      }
       toast.error('Failed to update annotation', {
         description: getErrorMessage(err) || 'Please try again.',
         id: 'reader-annotation-toast',
@@ -523,6 +526,13 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
       queryClient.invalidateQueries({
         queryKey: annotationKeys.byAttachment(scopeId, attachmentId),
       });
+      if (attachmentId) {
+        multiTabBus.publish({
+          type: 'READER_ANNOTATIONS_CHANGED',
+          scopeId: targetScope,
+          attachmentId,
+        });
+      }
       toast.success('Annotation deleted', { id: 'reader-annotation-toast' });
     },
     onError: (err: unknown, _variables, context) => {
@@ -601,6 +611,13 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
       queryClient.invalidateQueries({
         queryKey: annotationKeys.byAttachment(scopeId, attachmentId),
       });
+      if (attachmentId) {
+        multiTabBus.publish({
+          type: 'READER_ANNOTATIONS_CHANGED',
+          scopeId: targetScope,
+          attachmentId,
+        });
+      }
       const count =
         res?.importedCount ??
         (res as { imported?: number } | undefined)?.imported ??

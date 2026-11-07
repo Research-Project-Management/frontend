@@ -550,7 +550,7 @@ export function LibrarySidebar() {
                     basePath={basePath}
                     pathname={pathname}
                     currentFilter={currentFilter}
-                    isUserScope={true}
+                    isUserScope={!isInProjectContext}
                     navId={id}
                     savedSearches={isInProjectContext ? projectSavedSearches : userSavedSearches}
                     currentSavedSearchId={currentSavedSearchId}

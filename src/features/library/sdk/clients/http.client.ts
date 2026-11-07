@@ -1,27 +1,13 @@
-/**
- * library.client.ts
- *
- * UNIFIED LIBRARY CLIENT SDK & TRANSPORT (Deep Module Pattern)
- *
- * Single Source of Truth for all Library API and Microservice operations:
- * 1. Transport & URL Resolution:
- *    - Defaults to `/api/v1` (Monolith or unified API Gateway).
- *    - Standalone microservice host support via `NEXT_PUBLIC_LIBRARY_SERVICES_URL`.
- *    - User & Project scope semantics: Personal ('user') and Project ('projectId' via `X-Project-Id`).
- * 2. Unified Service Domain Operations (`libraryServices`):
- *    - items, collections, tags, notes, savedSearches, relations
- *    - citations, exports, attachments, upload, ingestion, curation, retraction, search, sync, reader
- * 3. Domain Services & Helpers:
- *    - ReaderService / readerService
- *    - fetchPdfBlob, getItemFileUrl, sanitizeItemPayload
- */
-
 import * as api from '@/shared/lib/api';
 import { API_BASE_URL } from '@/config/env';
 import { getAuthToken } from '@/shared/lib/token-storage';
 import type { RequestOptions } from '@/shared/types/api.types';
 import { isProjectScope, getItemFileUrl } from '@/features/library/domain/identifiers.domain';
 import { mapBackendItem } from '@/features/library/domain/metadata.mapper';
+import {
+  documentStorage,
+  extractStableUserNamespace,
+} from '@/features/library/domain/reader-document-storage.domain';
 import type {
   Item,
   TagWithCount,
@@ -68,23 +54,17 @@ const SUBDOMAIN_ENV_HOSTS: Record<LibrarySubdomain, string | undefined> = {
   get reader() { return process.env.NEXT_PUBLIC_LIBRARY_READER_URL; },
 };
 
-// Base URL & Endpoint Resolution
-
 function normalizeServiceHost(raw: string): string {
   const trimmed = raw.trim().replace(/\/+$/, '');
   if (!trimmed || trimmed === '/api/v1/library' || trimmed === '/api/v1' || trimmed === '/') {
     return '';
   }
-  return trimmed
-    .replace(/\/api\/v1\/library$/i, '')
-    .replace(/\/api\/v1$/i, '');
+  return trimmed.replace(/\/api\/v1\/library$/i, '').replace(/\/api\/v1$/i, '');
 }
 
 export function getLibraryServiceHost(domain?: LibrarySubdomain): string {
   const domainSpecific = domain ? SUBDOMAIN_ENV_HOSTS[domain]?.trim() : undefined;
-  if (domainSpecific) {
-    return normalizeServiceHost(domainSpecific);
-  }
+  if (domainSpecific) return normalizeServiceHost(domainSpecific);
   const rawConfigured =
     process.env.NEXT_PUBLIC_LIBRARY_SERVICES_URL ||
     process.env.NEXT_PUBLIC_API_URL ||
@@ -124,11 +104,9 @@ export function resolveLibraryUrl(
   const host = getLibraryServiceHost(domain);
   const cleanResource = resourcePath.startsWith('/') ? resourcePath : `/${resourcePath}`;
   const cleanSuffix = suffix ? (suffix.startsWith('/') ? suffix : `/${suffix}`) : '';
-
   const basePath = isProjectScope(scopeId)
     ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library${cleanResource}${cleanSuffix}`
     : `/api/v1/library${cleanResource}${cleanSuffix}`;
-
   return host ? `${host}${basePath}` : basePath;
 }
 
@@ -141,7 +119,7 @@ export function resolveLibraryRawPath(path: string, domain?: LibrarySubdomain): 
 }
 
 function withLibraryServiceOptions(
-  url: string,
+  _url: string,
   options?: RequestOptions,
   scopeId?: string,
 ): RequestOptions | undefined {
@@ -149,19 +127,14 @@ function withLibraryServiceOptions(
   const extraHeaders: Record<string, string> = {
     ...((options?.headers as Record<string, string>) || {}),
   };
-
   if (token && !extraHeaders['Authorization']) {
     extraHeaders['Authorization'] = `Bearer ${token}`;
   }
   if (isProjectScope(scopeId) && !extraHeaders['X-Project-Id']) {
     extraHeaders['X-Project-Id'] = scopeId!;
   }
-
   const hasExtraHeaders = Object.keys(extraHeaders).length > 0;
-  if (!options && !hasExtraHeaders) {
-    return undefined;
-  }
-
+  if (!options && !hasExtraHeaders) return undefined;
   return {
     ...options,
     ...(hasExtraHeaders ? { headers: extraHeaders } : {}),
@@ -183,27 +156,21 @@ export const libraryClient = {
   post<T>(url: string, body?: unknown, options?: RequestOptions, scopeId?: string): Promise<T> {
     const resolvedUrl = resolveLibraryRawPath(url);
     const effectiveOptions = withLibraryServiceOptions(resolvedUrl, options, scopeId);
-    if (effectiveOptions !== undefined) {
-      return api.apiPost<T>(resolvedUrl, body, effectiveOptions);
-    }
+    if (effectiveOptions !== undefined) return api.apiPost<T>(resolvedUrl, body, effectiveOptions);
     return body !== undefined ? api.apiPost<T>(resolvedUrl, body) : api.apiPost<T>(resolvedUrl);
   },
 
   put<T>(url: string, body?: unknown, options?: RequestOptions, scopeId?: string): Promise<T> {
     const resolvedUrl = resolveLibraryRawPath(url);
     const effectiveOptions = withLibraryServiceOptions(resolvedUrl, options, scopeId);
-    if (effectiveOptions !== undefined) {
-      return api.apiPut<T>(resolvedUrl, body, effectiveOptions);
-    }
+    if (effectiveOptions !== undefined) return api.apiPut<T>(resolvedUrl, body, effectiveOptions);
     return body !== undefined ? api.apiPut<T>(resolvedUrl, body) : api.apiPut<T>(resolvedUrl);
   },
 
   patch<T>(url: string, body?: unknown, options?: RequestOptions, scopeId?: string): Promise<T> {
     const resolvedUrl = resolveLibraryRawPath(url);
     const effectiveOptions = withLibraryServiceOptions(resolvedUrl, options, scopeId);
-    if (effectiveOptions !== undefined) {
-      return api.apiPatch<T>(resolvedUrl, body, effectiveOptions);
-    }
+    if (effectiveOptions !== undefined) return api.apiPatch<T>(resolvedUrl, body, effectiveOptions);
     return body !== undefined ? api.apiPatch<T>(resolvedUrl, body) : api.apiPatch<T>(resolvedUrl);
   },
 
@@ -215,8 +182,6 @@ export const libraryClient = {
       : api.apiDelete<T>(resolvedUrl);
   },
 };
-
-// Scope URL Helpers
 
 export function getBasePath(scopeId?: string, suffix = ''): string {
   return resolveLibraryUrl('catalog', '', scopeId, suffix).replace(/\/+$/, '');
@@ -234,9 +199,7 @@ function buildLibraryUrl(scopeId: string | undefined, resourcePath: string): str
 }
 
 export function getCatalogUrl(scopeId?: string, suffix = ''): string {
-  if (!suffix) {
-    return resolveLibraryUrl('catalog', '/items', scopeId);
-  }
+  if (!suffix) return resolveLibraryUrl('catalog', '/items', scopeId);
   const cleanSuffix = suffix.startsWith('/') ? suffix : `/${suffix}`;
   const resourcePath = cleanSuffix.startsWith('/items') ? cleanSuffix : `/items${cleanSuffix}`;
   return resolveLibraryUrl('catalog', resourcePath, scopeId);
@@ -267,24 +230,12 @@ export function getSyncUrl(scopeId?: string, suffix = ''): string {
 }
 
 export function getItemAttachmentUrl(scopeId: string | undefined, itemId: string, suffix = ''): string {
-  return resolveLibraryUrl(
-    'extraction',
-    `/items/${encodeURIComponent(itemId)}/attachments`,
-    scopeId,
-    suffix,
-  );
+  return resolveLibraryUrl('extraction', `/items/${encodeURIComponent(itemId)}/attachments`, scopeId, suffix);
 }
 
 export function getAttachmentUrl(scopeId: string | undefined, attachmentId: string, suffix = ''): string {
-  return resolveLibraryUrl(
-    'extraction',
-    `/attachments/${encodeURIComponent(attachmentId)}`,
-    scopeId,
-    suffix,
-  );
+  return resolveLibraryUrl('extraction', `/attachments/${encodeURIComponent(attachmentId)}`, scopeId, suffix);
 }
-
-// Generic Payload Cleaner
 
 export function sanitizeItemPayload(data: Record<string, unknown>): Record<string, unknown> {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return {};
@@ -303,11 +254,6 @@ interface InFlightPdfBlobEntry {
   subscribers: number;
 }
 
-import {
-  documentStorage,
-  extractStableUserNamespace,
-} from '@/features/library/domain/reader-document-storage.domain';
-
 const inFlightPdfBlobRequests = new Map<string, InFlightPdfBlobEntry>();
 const MAX_CACHED_PDF_BLOBS = 15;
 const MAX_CACHED_PDF_BLOB_BYTES = 60 * 1024 * 1024;
@@ -321,17 +267,13 @@ interface CachedPdfBlobEntry {
 const pdfBlobLruCache = new Map<string, CachedPdfBlobEntry>();
 
 export function buildPdfBlobCacheKey(url: string, scopeId?: string): string {
-  const token =
-    typeof api.getAuthToken === 'function' ? api.getAuthToken() : getAuthToken();
+  const token = typeof api.getAuthToken === 'function' ? api.getAuthToken() : getAuthToken();
   const userNamespace = extractStableUserNamespace(token);
   const normalizedScope = isProjectScope(scopeId) ? scopeId!.trim() : 'user';
   return `${userNamespace}:${normalizedScope}:${url.trim()}`;
 }
 
-export async function invalidatePdfBlobCache(
-  url?: string,
-  options?: { scopeId?: string },
-): Promise<void> {
+export async function invalidatePdfBlobCache(url?: string, options?: { scopeId?: string }): Promise<void> {
   if (!url) {
     pdfBlobLruCache.clear();
     await documentStorage.clearAll();
@@ -360,9 +302,7 @@ function setCachedPdfBlob(cacheKey: string, blob: Blob): void {
     pdfBlobLruCache.delete(cacheKey);
   } else if (pdfBlobLruCache.size >= MAX_CACHED_PDF_BLOBS) {
     const oldestKey = pdfBlobLruCache.keys().next().value;
-    if (oldestKey !== undefined) {
-      pdfBlobLruCache.delete(oldestKey);
-    }
+    if (oldestKey !== undefined) pdfBlobLruCache.delete(oldestKey);
   }
   pdfBlobLruCache.set(cacheKey, { blob, cachedAt: Date.now() });
 }
@@ -401,13 +341,8 @@ export const fetchPdfBlob = async (
   signal?: AbortSignal,
   options?: { allowHtml?: boolean; scopeId?: string; forceRefresh?: boolean },
 ): Promise<Blob> => {
-  if (!url || typeof url !== 'string') {
-    throw new Error('Invalid document URL provided.');
-  }
-
-  if (signal?.aborted) {
-    throw new DOMException('The operation was aborted.', 'AbortError');
-  }
+  if (!url || typeof url !== 'string') throw new Error('Invalid document URL provided.');
+  if (signal?.aborted) throw new DOMException('The operation was aborted.', 'AbortError');
 
   const targetUrl = url.trim();
   const cacheKey = buildPdfBlobCacheKey(targetUrl, options?.scopeId);
@@ -421,11 +356,7 @@ export const fetchPdfBlob = async (
     }
   } else {
     const cachedBlob = getCachedPdfBlob(cacheKey);
-    if (cachedBlob) {
-      return cachedBlob;
-    }
-
-    // Tier 4: Check Client-Side Persistent Disk Cache (OPFS / IndexedDB)
+    if (cachedBlob) return cachedBlob;
     try {
       const diskBlob = await documentStorage.getDocumentBinary(cacheKey);
       if (diskBlob) {
@@ -442,16 +373,13 @@ export const fetchPdfBlob = async (
     existingInFlight.subscribers += 1;
     return awaitWithSignal(existingInFlight.promise, signal, () => {
       existingInFlight.subscribers = Math.max(0, existingInFlight.subscribers - 1);
-      if (existingInFlight.subscribers === 0) {
-        existingInFlight.controller.abort();
-      }
+      if (existingInFlight.subscribers === 0) existingInFlight.controller.abort();
     });
   }
 
   const fetchTimeoutController = new AbortController();
   const executeFetch = async (): Promise<Blob> => {
     let normalizedTarget = targetUrl.trim();
-    // Special handling for arXiv URLs: /pdf/<id>.pdf redirects to /pdf/<id> which causes CORS in browsers
     if (normalizedTarget.includes('arxiv.org/pdf/') && normalizedTarget.endsWith('.pdf')) {
       normalizedTarget = normalizedTarget.replace(/\.pdf$/i, '');
     } else if (normalizedTarget.includes('arxiv.org/abs/')) {
@@ -474,16 +402,12 @@ export const fetchPdfBlob = async (
     let resolvedUrl = normalizedTarget;
     let trustedTargetOrigin = false;
     try {
-      if (normalizedTarget.startsWith('http://') || normalizedTarget.startsWith('https://')) {
-        resolvedUrl = normalizedTarget;
-      } else if (isLocalStatic) {
+      if (normalizedTarget.startsWith('http://') || normalizedTarget.startsWith('https://') || isLocalStatic) {
         resolvedUrl = normalizedTarget;
       } else if (rawApiBase) {
         const cleanBase = rawApiBase.replace(/\/+$/, '');
         const cleanPath = normalizedTarget.replace(/^\/+/, '');
         resolvedUrl = `${cleanBase}/${cleanPath}`;
-      } else {
-        resolvedUrl = normalizedTarget;
       }
 
       if (baseUrl) {
@@ -501,13 +425,8 @@ export const fetchPdfBlob = async (
     }
 
     const headers: Record<string, string> = {};
-    const token =
-      typeof api.getAuthToken === 'function'
-        ? api.getAuthToken()
-        : getAuthToken();
-    if (token && trustedTargetOrigin && !isLocalStatic) {
-      headers.Authorization = `Bearer ${token}`;
-    }
+    const token = typeof api.getAuthToken === 'function' ? api.getAuthToken() : getAuthToken();
+    if (token && trustedTargetOrigin && !isLocalStatic) headers.Authorization = `Bearer ${token}`;
 
     const effectiveScope = isProjectScope(options?.scopeId)
       ? options?.scopeId
@@ -532,20 +451,12 @@ export const fetchPdfBlob = async (
         signal: fetchTimeoutController.signal,
       });
     } catch (networkErr: unknown) {
-      if (
-        networkErr instanceof DOMException &&
-        networkErr.name === 'AbortError' &&
-        !timedOut
-      ) {
+      if (networkErr instanceof DOMException && networkErr.name === 'AbortError' && !timedOut) {
         clearTimeout(fetchTimeoutId);
         throw networkErr;
       }
 
-      // If direct fetch to an external URL failed (CORS, network error, or timeout), fallback to internal proxy route
-      if (
-        (resolvedUrl.startsWith('http://') || resolvedUrl.startsWith('https://')) &&
-        !trustedTargetOrigin
-      ) {
+      if ((resolvedUrl.startsWith('http://') || resolvedUrl.startsWith('https://')) && !trustedTargetOrigin) {
         const proxyController = new AbortController();
         const onCallerAbort = () => proxyController.abort();
         signal?.addEventListener('abort', onCallerAbort, { once: true });
@@ -568,7 +479,7 @@ export const fetchPdfBlob = async (
           signal?.removeEventListener('abort', onCallerAbort);
           const msg = networkErr instanceof Error ? networkErr.message : String(networkErr);
           throw new Error(
-            `Unable to load PDF from external source due to browser security (CORS) or network error: ${msg}. You can open the original document directly in a new tab.`
+            `Unable to load PDF from external source due to browser security (CORS) or network error: ${msg}. You can open the original document directly in a new tab.`,
           );
         }
         clearTimeout(proxyTimeoutId);
@@ -594,11 +505,7 @@ export const fetchPdfBlob = async (
       } catch {
         // Ignore parse failure
       }
-
-      if (errorDetail) {
-        throw new Error(errorDetail);
-      }
-
+      if (errorDetail) throw new Error(errorDetail);
       if (response.status === 401) throw new Error('Unauthorized: Session expired or invalid authentication.');
       if (response.status === 403) throw new Error('Forbidden: Access to this document was blocked or not permitted.');
       if (response.status === 404) throw new Error('Not Found: The requested document could not be found.');
@@ -628,9 +535,7 @@ export const fetchPdfBlob = async (
     }
 
     const blob = await response.blob();
-    if (blob.size === 0) {
-      throw new Error('Received an empty file from server.');
-    }
+    if (blob.size === 0) throw new Error('Received an empty file from server.');
     setCachedPdfBlob(cacheKey, blob);
     void documentStorage.saveDocumentBinary(cacheKey, blob);
     return blob;
@@ -648,16 +553,11 @@ export const fetchPdfBlob = async (
   inFlightPdfBlobRequests.set(cacheKey, entry);
   return awaitWithSignal(promise, signal, () => {
     entry.subscribers = Math.max(0, entry.subscribers - 1);
-    if (entry.subscribers === 0) {
-      entry.controller.abort();
-    }
+    if (entry.subscribers === 0) entry.controller.abort();
   });
 };
 
-export const prefetchPdfBlob = async (
-  url: string,
-  options?: { scopeId?: string },
-): Promise<void> => {
+export const prefetchPdfBlob = async (url: string, options?: { scopeId?: string }): Promise<void> => {
   if (!url || typeof url !== 'string') return;
   try {
     await fetchPdfBlob(url, undefined, options);
@@ -724,12 +624,7 @@ export function toIngestionSubmission(payload: UnifiedIngestionPayload): Record<
   }
 
   if (source === 'url') {
-    return {
-      ...base,
-      kind: 'URL',
-      url: p.url,
-      previewToken: p.previewToken,
-    };
+    return { ...base, kind: 'URL', url: p.url, previewToken: p.previewToken };
   }
   if (source === 'pdf') {
     return {
@@ -759,10 +654,7 @@ export function toIngestionSubmission(payload: UnifiedIngestionPayload): Record<
       content: JSON.stringify([p.item]),
     };
   }
-  return {
-    ...base,
-    kind: p.kind || (p.fileId ? 'FILE' : 'URL'),
-  };
+  return { ...base, kind: p.kind || (p.fileId ? 'FILE' : 'URL') };
 }
 
 export function unwrapList<T>(res: unknown, key: string): T[] {
@@ -791,4 +683,3 @@ export function unwrapResolvedReference(raw: unknown): ReferenceData | null {
   }
   return null;
 }
-

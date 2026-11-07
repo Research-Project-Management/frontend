@@ -17,12 +17,20 @@ import {
 import {
   prefetchReaderBootstrap,
   prefetchReaderDocumentBlob,
+  buildPdfBlobCacheKey,
 } from '@/features/library/sdk/queries/reader.queries';
 import { getItemFileUrl } from '@/features/library/domain/identifiers.domain';
 import { documentStorage } from '@/features/library/domain/reader-document-storage.domain';
-import { buildPdfBlobCacheKey } from '@/features/library/sdk/clients/http.client';
 import { useCollections } from '@/features/library/sdk/queries/collections.queries';
-import { normalizeTags, getAssignedCollectionIds } from '@/features/library/domain/metadata.mapper';
+import {
+  normalizeTags,
+  getAssignedCollectionIds,
+} from '@/features/library/domain/metadata.mapper';
+import {
+  getBibliographicSchema,
+  resolveBibliographicField,
+  buildBibliographicFieldPatch,
+} from '@/features/library/domain/bibliographic-schema.domain';
 import { getCollectionAncestorPath } from '@/features/library/domain/collection-tree.domain';
 import type {
   Item,
@@ -30,7 +38,12 @@ import type {
   CreateCollectionDTO,
 } from '@/features/library/types/core.types';
 
-export { getCollectionAncestorPath };
+export {
+  getCollectionAncestorPath,
+  getBibliographicSchema,
+  resolveBibliographicField,
+  buildBibliographicFieldPatch,
+};
 
 interface UsePanelResizeOptions {
   /** Initial or controlled width of the panel in pixels */
@@ -173,7 +186,8 @@ export function useInspectorItemResolver({
     cachedListItem &&
       cachedListItem.title !== undefined &&
       Array.isArray(cachedListItem.contributors) &&
-      cachedListItem.abstractNote !== undefined,
+      cachedListItem.abstractNote !== undefined &&
+      cachedListItem.extraFields !== undefined,
   );
   const shouldFetchFullDetail = Boolean(
     !incomingItem && targetItemId && (needsFullDetail || !hasCachedCoreMetadata),

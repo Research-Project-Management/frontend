@@ -49,8 +49,7 @@ function hasExplicitBookmarksInScrollPosition(scrollPosition: unknown): boolean 
 
 function extractBookmarksFromScrollPosition(scrollPosition: unknown): number[] | undefined {
   if (hasExplicitBookmarksInScrollPosition(scrollPosition)) {
-    const raw = (scrollPosition as { bookmarks?: unknown }).bookmarks;
-    return normalizeBookmarkPages(raw);
+    return normalizeBookmarkPages((scrollPosition as { bookmarks?: unknown }).bookmarks);
   }
   return undefined;
 }
@@ -84,20 +83,16 @@ interface UseReadingProgressOptions {
   scopeId: string;
   paper: ReaderDocument | null;
   effectivePaperId: string;
+  effectiveAttachmentId?: string;
   visiblePage: number;
   setVisiblePage: (page: number) => void;
   setTargetPage: (target: ReaderNavigationTarget | null) => void;
 }
 
-/**
- * Manages PDF Reader progress lifecycle:
- * 1. Restores last saved reading page on initial paper load.
- * 2. Debounces page updates back to the server as the user scrolls.
- * 3. Marks the document as read on first open.
- */
 export function useReadingProgress({
   scopeId,
   paper,
+  effectiveAttachmentId,
   visiblePage,
   setVisiblePage,
   setTargetPage,
@@ -117,16 +112,30 @@ export function useReadingProgress({
   const latestScrollPositionRef = useRef<ScrollPositionWithBookmarks>({});
 
   useEffect(() => {
-    if (!paper?.id || restoredPaperIdRef.current === paper.id) return;
+    const restorationKey = paper?.id ? `${paper.id}:${effectiveAttachmentId || ''}` : null;
+    if (!paper?.id || !restorationKey || restoredPaperIdRef.current === restorationKey) return;
     const paperId = paper.id;
-    restoredPaperIdRef.current = paperId;
+    const isSwitchingSecondaryAttachment =
+      restoredPaperIdRef.current !== null &&
+      restoredPaperIdRef.current.startsWith(`${paperId}:`) &&
+      restoredPaperIdRef.current !== restorationKey;
+    restoredPaperIdRef.current = restorationKey;
     isInitialStateLoadedRef.current = false;
     let isCancelled = false;
 
-    const applyHydratedState = (
-      currentPage?: number | null,
-      scrollPosition?: unknown,
-    ) => {
+    if (isSwitchingSecondaryAttachment) {
+      const tabState = useReaderStore.getState().tabs.find((t) => t.id === paperId);
+      const tabPage = tabState?.currentPage ?? 1;
+      lastSavedPageRef.current = tabPage;
+      setVisiblePage(tabPage);
+      if (!hasExplicitDeepLink) {
+        setTargetPage({ pageNumber: tabPage, timestamp: Date.now() });
+      }
+      isInitialStateLoadedRef.current = true;
+      return () => { isCancelled = true; };
+    }
+
+    const applyHydratedState = (currentPage?: number | null, scrollPosition?: unknown) => {
       if (isCancelled) return;
       const parsedScroll = parseScrollPositionObject(scrollPosition);
       latestScrollPositionRef.current = parsedScroll;
@@ -161,23 +170,18 @@ export function useReadingProgress({
 
     const embeddedState = paper.readingState;
     const embeddedCurrentPage =
-      embeddedState?.currentPage ??
-      (paper as { currentPage?: number }).currentPage;
+      embeddedState?.currentPage ?? (paper as { currentPage?: number }).currentPage;
 
     if (embeddedState !== undefined || embeddedCurrentPage !== undefined) {
       applyHydratedState(embeddedCurrentPage, embeddedState?.scrollPosition);
-      return () => {
-        isCancelled = true;
-      };
+      return () => { isCancelled = true; };
     }
 
     const stateKey = itemKeys.state(effectiveScope, paperId);
     const cachedState = queryClient.getQueryData<ItemStateData | null>(stateKey);
     if (cachedState && (cachedState.currentPage !== undefined || cachedState.scrollPosition !== undefined)) {
       applyHydratedState(cachedState.currentPage, cachedState.scrollPosition);
-      return () => {
-        isCancelled = true;
-      };
+      return () => { isCancelled = true; };
     }
 
     queryClient
@@ -190,15 +194,11 @@ export function useReadingProgress({
         applyHydratedState(stateData?.currentPage, stateData?.scrollPosition);
       })
       .catch(() => {
-        if (!isCancelled) {
-          isInitialStateLoadedRef.current = true;
-        }
+        if (!isCancelled) isInitialStateLoadedRef.current = true;
       });
 
-    return () => {
-      isCancelled = true;
-    };
-  }, [paper, effectiveScope, queryClient, setTargetPage, setVisiblePage, hasExplicitDeepLink]);
+    return () => { isCancelled = true; };
+  }, [paper, effectiveAttachmentId, effectiveScope, queryClient, setTargetPage, setVisiblePage, hasExplicitDeepLink]);
 
   const paperBookmarks = useReaderStore((s) => (paper?.id ? s.bookmarks[paper.id] : undefined));
   useEffect(() => {
@@ -222,13 +222,9 @@ export function useReadingProgress({
       );
       latestScrollPositionRef.current = nextScrollPos;
 
-      syncPaperStateQueryCache(queryClient, effectiveScope, paperId, {
-        scrollPosition: nextScrollPos,
-      });
+      syncPaperStateQueryCache(queryClient, effectiveScope, paperId, { scrollPosition: nextScrollPos });
 
-      updateReaderItemState(effectiveScope, paperId, {
-        scrollPosition: nextScrollPos,
-      })
+      updateReaderItemState(effectiveScope, paperId, { scrollPosition: nextScrollPos })
         .then((updatedState) => {
           syncPaperStateQueryCache(queryClient, effectiveScope, paperId, {
             ...(updatedState ?? {}),
@@ -238,9 +234,7 @@ export function useReadingProgress({
         .catch(() => {
           hydratedBookmarksRef.current = previousSerialized;
           latestScrollPositionRef.current = previousScrollPos;
-          syncPaperStateQueryCache(queryClient, effectiveScope, paperId, {
-            scrollPosition: previousScrollPos,
-          });
+          syncPaperStateQueryCache(queryClient, effectiveScope, paperId, { scrollPosition: previousScrollPos });
         });
     }, 400);
 
@@ -255,11 +249,7 @@ export function useReadingProgress({
     }
 
     const paperId = paper.id;
-    pendingPageUpdateRef.current = {
-      scope: effectiveScope,
-      paperId,
-      page: visiblePage,
-    };
+    pendingPageUpdateRef.current = { scope: effectiveScope, paperId, page: visiblePage };
 
     const timeout = setTimeout(() => {
       const pending = pendingPageUpdateRef.current;
@@ -310,9 +300,7 @@ export function useReadingProgress({
             lastSavedPageRef.current = previousSavedPage;
           }
           if (previousSavedPage !== null) {
-            syncPaperStateQueryCache(queryClient, effectiveScope, paperId, {
-              currentPage: previousSavedPage,
-            });
+            syncPaperStateQueryCache(queryClient, effectiveScope, paperId, { currentPage: previousSavedPage });
           }
         });
     }, 800);
@@ -321,13 +309,12 @@ export function useReadingProgress({
   }, [visiblePage, paper?.id, effectiveScope, queryClient]);
 
   useEffect(() => {
-    return () => {
+    const flushPendingReadingProgress = () => {
       const pending = pendingPageUpdateRef.current;
       if (pending && pending.page !== lastSavedPageRef.current) {
         pendingPageUpdateRef.current = null;
-        syncPaperStateQueryCache(queryClient, pending.scope, pending.paperId, {
-          currentPage: pending.page,
-        });
+        lastSavedPageRef.current = pending.page;
+        syncPaperStateQueryCache(queryClient, pending.scope, pending.paperId, { currentPage: pending.page });
         void updateReaderItemState(pending.scope, pending.paperId, {
           currentPage: pending.page,
           scrollPosition: latestScrollPositionRef.current,
@@ -340,6 +327,29 @@ export function useReadingProgress({
           })
           .catch(() => undefined);
       }
+    };
+
+    const handleVisibilityChange = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        flushPendingReadingProgress();
+      }
+    };
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('pagehide', flushPendingReadingProgress);
+    }
+
+    return () => {
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      }
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('pagehide', flushPendingReadingProgress);
+      }
+      flushPendingReadingProgress();
     };
   }, [queryClient]);
 
@@ -364,9 +374,7 @@ export function useReadingProgress({
           });
         })
         .catch(() => {
-          if (markedPaperIdRef.current === paperId) {
-            markedPaperIdRef.current = null;
-          }
+          if (markedPaperIdRef.current === paperId) markedPaperIdRef.current = null;
         });
     }
   }, [effectiveScope, paper?.id, queryClient]);
@@ -496,28 +504,25 @@ export function useReaderTabPresentation({
     () => normalizeReaderTheme(activeTab?.theme),
   );
 
-  const fitMode: ViewerFitMode = activeTab
-    ? normalizeReaderFitMode(activeTab.fitMode)
-    : fallbackFitMode;
-
+  const fitMode: ViewerFitMode = activeTab ? normalizeReaderFitMode(activeTab.fitMode) : fallbackFitMode;
   const rotation: number = activeTab ? (activeTab.rotation ?? 0) : fallbackRotation;
-
-  const themeMode: ViewerThemeMode = activeTab
-    ? normalizeReaderTheme(activeTab.theme)
-    : fallbackThemeMode;
+  const themeMode: ViewerThemeMode = activeTab ? normalizeReaderTheme(activeTab.theme) : fallbackThemeMode;
 
   const activeTabId = activeTab?.id;
   const activeTabZoom = activeTab?.zoom;
 
   useEffect(() => {
-    if (!activeTabId) return;
-    if (typeof activeTabZoom === 'number') {
-      setZoom(activeTabZoom);
-    }
+    if (activeTabId && typeof activeTabZoom === 'number') setZoom(activeTabZoom);
   }, [effectiveTabId, activeTabId, activeTabZoom, setZoom]);
+
+  const prevTabIdRef = useRef(effectiveTabId);
 
   useEffect(() => {
     if (!effectiveTabId || effectiveTabId === 'library' || visiblePage < 1) return;
+    if (prevTabIdRef.current !== effectiveTabId) {
+      prevTabIdRef.current = effectiveTabId;
+      return;
+    }
     const timeout = setTimeout(() => {
       updateTabState(effectiveTabId, { currentPage: visiblePage });
     }, 400);
@@ -531,9 +536,7 @@ export function useReaderTabPresentation({
     ) => {
       const currentZoom = activeTab?.zoom ?? zoom;
       const rawResolved =
-        typeof nextOrUpdater === 'function'
-          ? nextOrUpdater(currentZoom)
-          : nextOrUpdater;
+        typeof nextOrUpdater === 'function' ? nextOrUpdater(currentZoom) : nextOrUpdater;
       const resolved = normalizeReaderZoom(rawResolved);
       const mappedFitMode = normalizeReaderFitMode(nextFitMode);
       setZoom(resolved);
@@ -550,9 +553,7 @@ export function useReaderTabPresentation({
       const mappedFitMode = normalizeReaderFitMode(next);
       setFitModeState(mappedFitMode);
       if (effectiveTabId && effectiveTabId !== 'library') {
-        updateTabState(effectiveTabId, {
-          fitMode: mappedFitMode,
-        });
+        updateTabState(effectiveTabId, { fitMode: mappedFitMode });
       }
     },
     [effectiveTabId, updateTabState],
@@ -560,10 +561,7 @@ export function useReaderTabPresentation({
 
   const setRotation = useCallback(
     (nextOrUpdater: number | ((prev: number) => number)) => {
-      const resolved =
-        typeof nextOrUpdater === 'function'
-          ? nextOrUpdater(rotation)
-          : nextOrUpdater;
+      const resolved = typeof nextOrUpdater === 'function' ? nextOrUpdater(rotation) : nextOrUpdater;
       setRotationState(resolved);
       if (effectiveTabId && effectiveTabId !== 'library') {
         updateTabState(effectiveTabId, { rotation: resolved });
@@ -576,19 +574,12 @@ export function useReaderTabPresentation({
     (
       nextOrUpdater:
         | ('normal' | 'sepia' | 'dark' | 'invert')
-        | ((
-            prev: 'normal' | 'sepia' | 'dark' | 'invert',
-          ) => 'normal' | 'sepia' | 'dark' | 'invert'),
+        | ((prev: 'normal' | 'sepia' | 'dark' | 'invert') => 'normal' | 'sepia' | 'dark' | 'invert'),
     ) => {
-      const resolved =
-        typeof nextOrUpdater === 'function'
-          ? nextOrUpdater(themeMode)
-          : nextOrUpdater;
+      const resolved = typeof nextOrUpdater === 'function' ? nextOrUpdater(themeMode) : nextOrUpdater;
       setThemeModeState(resolved);
       if (effectiveTabId && effectiveTabId !== 'library') {
-        updateTabState(effectiveTabId, {
-          theme: resolved,
-        });
+        updateTabState(effectiveTabId, { theme: resolved });
       }
     },
     [effectiveTabId, themeMode, updateTabState],
@@ -651,7 +642,6 @@ export function useReaderKeyboardShortcuts({
           target.isContentEditable);
       if (isEditable) return;
 
-      // Tab Navigation Shortcuts
       if (
         (e.ctrlKey && e.key === 'PageDown') ||
         (e.altKey && e.key === ']') ||
@@ -685,7 +675,6 @@ export function useReaderKeyboardShortcuts({
         return;
       }
 
-      // Alt+1..7: Zotero annotation tool shortcuts, Alt+Left/Right: Back/Forward
       if (e.altKey && !e.ctrlKey && !e.metaKey) {
         if (e.key === 'ArrowLeft') {
           e.preventDefault();
@@ -698,13 +687,7 @@ export function useReaderKeyboardShortcuts({
           return;
         }
         const toolMap: Record<string, 'highlight' | 'underline' | 'note' | 'text' | 'area' | 'ink' | 'eraser'> = {
-          '1': 'highlight',
-          '2': 'underline',
-          '3': 'note',
-          '4': 'text',
-          '5': 'area',
-          '6': 'ink',
-          '7': 'eraser',
+          '1': 'highlight', '2': 'underline', '3': 'note', '4': 'text', '5': 'area', '6': 'ink', '7': 'eraser',
         };
         const mapped = toolMap[e.key];
         if (mapped) {
@@ -715,7 +698,6 @@ export function useReaderKeyboardShortcuts({
         }
       }
 
-      // Ctrl/Cmd + = / - / 0: Zoom shortcuts
       if ((e.ctrlKey || e.metaKey) && !e.altKey) {
         if (e.key === '=' || e.key === '+') {
           e.preventDefault();
@@ -737,7 +719,6 @@ export function useReaderKeyboardShortcuts({
 
       if (e.ctrlKey || e.metaKey || e.altKey) return;
 
-      // Single-key shortcuts: S (Select), H (Hand), R / Shift+R (Rotate), PageUp / PageDown
       if (e.key === 's' || e.key === 'S') {
         e.preventDefault();
         setInteractionMode('select');
@@ -772,27 +753,14 @@ export function useReaderKeyboardShortcuts({
           e.preventDefault();
           onNavigatePage(visiblePage + 1);
         }
-        return;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [
-    activeTool,
-    setActiveTool,
-    setInteractionMode,
-    onNavigateBack,
-    onNavigateForward,
-    onNavigatePage,
-    visiblePage,
-    totalPages,
-    setTabZoom,
-    setFitMode,
-    setRotation,
-    onSelectNextTab,
-    onSelectPrevTab,
-    onCloseActiveTab,
-    onSelectTabByIndex,
+    activeTool, setActiveTool, setInteractionMode, onNavigateBack, onNavigateForward,
+    onNavigatePage, visiblePage, totalPages, setTabZoom, setFitMode, setRotation,
+    onSelectNextTab, onSelectPrevTab, onCloseActiveTab, onSelectTabByIndex,
   ]);
 }

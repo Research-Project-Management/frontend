@@ -20,7 +20,13 @@ import {
   createMergeDuplicatesCommand,
 } from '@/features/library/core/manager/library-command.manager';
 import { registerDraftCacheClearListener } from '@/features/library/sdk/query-keys';
-import {
+export {
+  type DuplicateGroupMergeDraft,
+  createInitialDuplicateGroupMergeDraft,
+  computeDuplicateSetKey,
+  getDeterministicDuplicateGroupKey,
+};
+export {
   useDuplicateGroups,
   useDismissDuplicatesMutation,
   useMergeDuplicates,
@@ -38,29 +44,6 @@ import {
   useExportOpmlFeedsMutation,
   useImportOpmlFeedsMutation,
 } from '@/features/library/sdk/queries/ingestion.queries';
-
-export {
-  type DuplicateGroupMergeDraft,
-  createInitialDuplicateGroupMergeDraft,
-  computeDuplicateSetKey,
-  getDeterministicDuplicateGroupKey,
-  useDuplicateGroups,
-  useDismissDuplicatesMutation,
-  useMergeDuplicates,
-  useBatchMergeDuplicates,
-  useFeedArticlesQuery,
-  useFetchFeed,
-  useIngestMutation,
-  useRetraction,
-  useSubscribeFeedMutation,
-  useUpdateFeedSubscriptionMutation,
-  useSyncExternalBibtexMutation,
-  useTrackedIdentifierIngestion,
-  useFeedSubscriptionsQuery,
-  useUnsubscribeFeedMutation,
-  useExportOpmlFeedsMutation,
-  useImportOpmlFeedsMutation,
-};
 
 const MAX_DRAFT_GROUPS = 50;
 const groupMergeDraftCache = new Map<string, DuplicateGroupMergeDraft>();

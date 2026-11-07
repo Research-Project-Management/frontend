@@ -7,7 +7,7 @@ import { SearchService } from '../clients/catalog-entities.client';
 import type {
   Item, Collection, CursorPaginationMeta, ItemQueryParams, SearchFacets,
 } from '@/features/library/types/core.types';
-import { updateLibrarySchemaRegistry } from '@/features/library/types/core.types';
+import { hydrateBibliographicSchema } from '@/features/library/domain/bibliographic-schema.domain';
 import { ALL_ITEM_TYPES_FLAT } from '@/features/library/types/item-type-mappings.constants';
 import { getDescendantCollectionIds } from '@/features/library/domain/collection-tree.domain';
 import {
@@ -16,7 +16,6 @@ import {
   getReaderBootstrapScope, notifyServerFeedsHydrated,
 } from '@/features/library/sdk/query-keys';
 import { mapServerFeedSubscriptions } from '@/features/library/domain/feed-parser.domain';
-import { useFeedsStore } from '@/features/library/core/store/feeds.store';
 import {
   resolveCachedItemVersion, useUpdateLibraryItemMutation, useToggleStarItemMutation,
   useImportFromUserMutation, useCreateLibraryItemMutation, useReResolveItemMetadataMutation,
@@ -174,7 +173,7 @@ export function useLibraryBootstrapQuery(
             queryClient.setQueryData(tagKeys.list(targetScope), res.tags);
           }
           if (res.itemTypes && typeof res.itemTypes === 'object') {
-            updateLibrarySchemaRegistry(res.itemTypes);
+            hydrateBibliographicSchema(res.itemTypes);
             queryClient.setQueryData(itemKeys.types(targetScope), res.itemTypes);
             if (targetScope !== 'user') {
               queryClient.setQueryData(itemKeys.types('user'), res.itemTypes);
@@ -202,7 +201,6 @@ export function useLibraryBootstrapQuery(
           }
           if (targetScope === 'user' && Array.isArray(res.feedSubscriptions)) {
             const mappedFeeds = mapServerFeedSubscriptions(res.feedSubscriptions);
-            useFeedsStore.getState().hydrateFeeds(mappedFeeds);
             notifyServerFeedsHydrated(mappedFeeds);
             queryClient.setQueryData(feedKeys.subscriptions(), mappedFeeds);
           }
@@ -462,7 +460,7 @@ export function useItemTypes(
       if (seeded !== undefined) return seeded;
       const res = await ItemsService.getItemTypes(sid);
       if (res) {
-        updateLibrarySchemaRegistry(res);
+        hydrateBibliographicSchema(res);
       }
       return res;
     },
@@ -673,10 +671,23 @@ export function usePrefetchNextLibraryItemsPage(options: {
       queryFn: async ({ signal }) => {
         const res = await ItemsService.getAll(targetScope, nextParams, { signal });
         const nextItems: Item[] = res?.items || [];
-        const meta = res?.meta || null;
+        const meta = (res?.meta || null) as CursorPaginationMeta | null;
+        const hasNextPage = Boolean(meta?.hasNextPage);
+        const currentPage = activePage + 1;
+        const currentLimit = nextParams.limit ?? 200;
+        const minKnownCount = hasNextPage
+          ? currentPage * currentLimit + 1
+          : (currentPage - 1) * currentLimit + nextItems.length;
+        const total = Math.max(
+          meta?.totalCount ?? baseTotalCount ?? res?.total ?? nextItems.length,
+          minKnownCount,
+        );
         return {
-          items: nextItems, total: Math.max(baseTotalCount, nextItems.length),
-          meta, hasNextPage: Boolean(meta?.hasNextPage), nextCursor: meta?.nextCursor || meta?.cursor || null,
+          items: nextItems,
+          total,
+          meta,
+          hasNextPage,
+          nextCursor: meta?.nextCursor || meta?.cursor || null,
         };
       },
       staleTime: 30_000,

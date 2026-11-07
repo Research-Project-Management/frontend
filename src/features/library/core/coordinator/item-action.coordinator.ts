@@ -19,28 +19,18 @@ import {
   createToggleStarCommand,
 } from '@/features/library/core/manager/library-command.manager';
 import { resolveCachedItemFromScope } from '@/features/library/sdk/queries/cache-patcher.queries';
-import { useCitationStyles } from '@/features/library/sdk/queries/extraction.queries';
+import {
+  useCitationStyles,
+  useBatchRenameAttachmentsMutation,
+} from '@/features/library/sdk/queries/extraction.queries';
 import { useAssignCollectionItemsMutation } from '@/features/library/sdk/queries/collections.queries';
 import {
   fetchLibraryItemById,
   useReResolveItemMetadataMutation,
   useSetMyPublicationMutation,
-  useCreateLibraryItemMutation,
-  useToggleStarItemMutation,
-  useUpdateLibraryItemMutation,
-  useDeleteLibraryItemsMutation,
-  useBatchRestoreItemsMutation,
-  useBatchPurgeItemsMutation,
-  useLibraryItemsQuery,
-  usePrefetchNextLibraryItemsPage,
-  normalizeScopeId,
-  useItemTypes,
-  useViewItems,
-  useLibraryCountsQuery,
-  useImportFromUserMutation,
-  useLibraryCacheSynchronizer,
-  useLibraryBootstrapQuery,
 } from '@/features/library/sdk/queries/catalog.queries';
+
+export { useBatchRenameAttachmentsMutation };
 
 export {
   useSetMyPublicationMutation,
@@ -59,7 +49,7 @@ export {
   useImportFromUserMutation,
   useLibraryCacheSynchronizer,
   useLibraryBootstrapQuery,
-};
+} from '@/features/library/sdk/queries/catalog.queries';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { useRetraction } from '@/features/library/sdk/queries/ingestion.queries';
 import {
@@ -302,7 +292,7 @@ export function useDropToMyPublications(effectiveScopeId: string = 'user') {
           item = ((await fetchLibraryItemById(effectiveScopeId, targetId)) ?? undefined) as Item | undefined;
         }
         if (item) {
-          openModal('MY_PUBLICATION_CONFIRM', { item });
+          openModal('MY_PUBLICATION_CONFIRM', { item, itemIds: ids });
         }
       } catch {
         toast.error('Failed to prepare item for My Publications', { id: 'drop-to-my-pub-error' });

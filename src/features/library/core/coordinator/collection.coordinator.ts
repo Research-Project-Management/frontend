@@ -7,12 +7,6 @@ import {
   exportCollectionBibtex,
   exportCollectionBundle,
   useCollections,
-  useCollectionsQuery,
-  useMoveCollectionItemsMutation,
-  useAssignCollectionItemsMutation,
-  useBatchDetachItemsMutation,
-  useDetachItemFromCollectionMutation,
-  useCreateCollectionMutation,
   invalidateCollections,
 } from '@/features/library/sdk/queries/collections.queries';
 
@@ -24,7 +18,7 @@ export {
   useBatchDetachItemsMutation,
   useDetachItemFromCollectionMutation,
   useCreateCollectionMutation,
-};
+} from '@/features/library/sdk/queries/collections.queries';
 import { triggerBrowserTextDownload } from '@/features/library/core/coordinator/citation-export.coordinator';
 import { canMoveCollection } from '@/features/library/domain/collection-tree.domain';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';

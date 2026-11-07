@@ -1,5 +1,5 @@
 import { apiGet, apiPost, apiPut, apiDelete } from "@/shared/lib/api";
-import { MANUSCRIPTS_API_BASE } from '@/features/editor/sdk/manuscript/base';
+import { MANUSCRIPTS_API_BASE } from '@/features/editor/sdk/pages/base';
 import type { Page, CreatePageInput, CreatePageResponse } from '../types/page.types';
 
 export const PageService = {
@@ -9,17 +9,15 @@ export const PageService = {
     search?: string,
     forceEmpty?: string,
     forceError?: string,
-  ) => {
-    if (!projectId || projectId === 'personal') {
-      return [];
-    }
+  ): Promise<Page[]> => {
+    const targetScope = !projectId ? 'personal' : projectId;
     const params: Record<string, string> = {};
     if (status && status !== 'all') params.status = status;
     if (search && search.trim()) params.search = search.trim();
     if (forceEmpty) params.forceEmpty = forceEmpty;
     if (forceError) params.forceError = forceError;
     const res = await apiGet<{ pages: Page[]; total?: number; isEmpty?: boolean }>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs`,
+      `${MANUSCRIPTS_API_BASE}/projects/${targetScope}/docs`,
       { params },
     );
     return res?.pages ?? [];

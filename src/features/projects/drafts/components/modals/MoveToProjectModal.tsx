@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from '@/shared/components/ui/select';
 import { FolderInput, Loader2 } from 'lucide-react';
+import { useWorkspaceContextStore } from '@/features/shell/store/workspace-context.store';
 import type { WorkItemDraft } from '../../types/draft.types';
 
 interface MoveToProjectModalProps {
@@ -39,16 +40,21 @@ export const MoveToProjectModal: React.FC<MoveToProjectModalProps> = ({
   isMoving,
 }) => {
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
+  const activeSpace = useWorkspaceContextStore((s) => s.activeSpace);
+  const activeSpaceProjectId =
+    activeSpace.type === 'project' ? activeSpace.projectId : null;
 
   useEffect(() => {
     if (isOpen && draft) {
       if (draft.projectId && projects.some((p) => p.id === draft.projectId)) {
         setSelectedProjectId(draft.projectId);
+      } else if (activeSpaceProjectId && projects.some((p) => p.id === activeSpaceProjectId)) {
+        setSelectedProjectId(activeSpaceProjectId);
       } else if (projects.length > 0) {
         setSelectedProjectId(projects[0].id);
       }
     }
-  }, [isOpen, draft, projects]);
+  }, [isOpen, draft, projects, activeSpaceProjectId]);
 
   const handleConfirm = async () => {
     if (!draft || !selectedProjectId) return;

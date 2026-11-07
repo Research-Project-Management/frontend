@@ -20,7 +20,6 @@ import type { AssigneeFilterOption, ViewMode, TopbarProps } from '@/features/pro
 import { countActiveFilters } from '@/features/projects/project-id/work-items/utils/work-item.utils';
 import { DisplayPopover } from './DisplayPopover';
 import { FilterDropdown } from '@/features/projects/project-id/work-items/components/filters/FilterDropdown';
-import { Switcher } from '@/features/projects/project-id/components/layout/Switcher';
 
 export type { AssigneeFilterOption, ViewMode, TopbarProps };
 
@@ -127,14 +126,17 @@ export function Topbar({
       )}
       style={{ paddingLeft: 'max(0.75rem, var(--header-offset, 0px))' }}
     >
-      {/* Left: Project Switcher, Module Title & Scope Switcher */}
-      <Switcher
-        project={project}
-        moduleTitle={title}
-        moduleIcon={HeaderIcon}
-        count={count}
-      >
-
+      {/* Left: Module Title & Count */}
+      <div className="flex items-center gap-2 min-w-0 shrink-0">
+        <HeaderIcon className="size-4 text-foreground shrink-0" />
+        <span className="text-13 font-semibold text-foreground tracking-tight truncate">
+          {title}
+        </span>
+        {count !== undefined && count > 0 && (
+          <span className="px-1.5 py-0.5 rounded text-11 font-mono font-medium text-muted-foreground bg-muted shrink-0">
+            {count}
+          </span>
+        )}
         {showArchived && (
           <>
             <ChevronRight className="size-3.5 text-foreground/40 shrink-0 mx-0.5" strokeWidth={1.75} />
@@ -143,7 +145,7 @@ export function Topbar({
             </span>
           </>
         )}
-      </Switcher>
+      </div>
 
       {/* Right: View Switcher, Filter, Display, Analytics & Primary CTA */}
       <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-auto">

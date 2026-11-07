@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useMemo, useCallback, useEffect } from 'react';
 import { useYourWork } from '../hooks/use-your-work';
+import { useWorkspaceContextStore } from '@/features/shell/store/workspace-context.store';
 import {
   calculateStatusBreakdown,
   calculatePriorityBreakdown,
@@ -68,19 +69,27 @@ export interface YourWorkContextType {
 const YourWorkContext = createContext<YourWorkContextType | null>(null);
 
 export function YourWorkProvider({ children }: { children: React.ReactNode }) {
-  const [selectedProjectId, setSelectedProjectIdState] = useState<string | null>(null);
+  const activeSpace = useWorkspaceContextStore((s) => s.activeSpace);
+  const activeSpaceProjectId =
+    activeSpace.type === 'project' ? activeSpace.projectId : null;
+
+  const [selectedProjectId, setSelectedProjectIdState] = useState<string | null>(
+    activeSpaceProjectId
+  );
   const base = useYourWork();
 
-  // Sync with URL query parameter on client mount
+  // Sync with active space (Personal vs Project) or URL query parameter
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
       const proj = urlParams.get('project');
       if (proj) {
         setSelectedProjectIdState(proj);
+        return;
       }
     }
-  }, []);
+    setSelectedProjectIdState(activeSpaceProjectId);
+  }, [activeSpaceProjectId]);
 
   const setSelectedProjectId = useCallback((id: string | null) => {
     setSelectedProjectIdState(id);

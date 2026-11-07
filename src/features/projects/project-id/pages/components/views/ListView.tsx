@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import {
   FileText,
   ArrowUp,
@@ -34,6 +34,7 @@ interface ListViewProps {
 
 export const ListView = React.memo(function ListView({ pages, onEdit }: ListViewProps) {
   const router = useRouter();
+  const params = useParams<{ projectId?: string }>();
   const [sortColumn, setSortColumn] = useState<'title' | 'author' | 'updatedAt' | 'status'>('updatedAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const { deletePage, duplicatePage, updateStatus } = usePageActions();
@@ -183,7 +184,11 @@ export const ListView = React.memo(function ListView({ pages, onEdit }: ListView
                 : (page.mainFile as string)
               : null;
             const fileQuery = mainFileStr ? `?file=${mainFileStr}` : '';
-            const linkHref = `/projects/${projId}/pages/${page.id}${fileQuery}`;
+            const routeProjId = params?.projectId && params.projectId !== 'personal' ? params.projectId : null;
+            const isPersonal = !routeProjId || !projId || projId === 'personal';
+            const linkHref = isPersonal
+              ? `/pages/${page.id}${fileQuery}`
+              : `/projects/${routeProjId}/pages/${page.id}${fileQuery}`;
             const labels = (page.labels as Array<{ id?: string; name?: string; color?: string } | string>) || [];
             const authorName = page.author?.name;
             const isArchived = page.status === 'archived';

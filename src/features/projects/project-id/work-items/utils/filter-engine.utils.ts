@@ -425,10 +425,7 @@ export function filterItems(
 
     // 5. Created By
     if (filters.created_by && filters.created_by.length > 0) {
-      const author =
-        item.authorId ||
-        (typeof rawItem.createdBy === 'string' ? rawItem.createdBy : undefined) ||
-        (item.author && typeof item.author === 'object' ? item.author.id : undefined);
+      const author = ItemHelpers.resolveAuthorId(item);
       if (!author || !filters.created_by.includes(author)) return false;
     }
 

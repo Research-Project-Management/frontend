@@ -42,7 +42,26 @@ export interface TemplateItem {
   author: string;
   defaultRootDoc?: string;
   fileCount?: number;
-  files?: Array<{ path: string; content: string }>;
+  files?: Array<{ path: string; content: string }> | Record<string, string>;
+}
+
+function normalizeTemplateFiles(
+  files?: Array<{ path: string; content: string }> | Record<string, string> | null
+): Array<{ path: string; content: string }> {
+  if (!files) return [];
+  if (Array.isArray(files)) {
+    return files.filter(
+      (f): f is { path: string; content: string } =>
+        Boolean(f && typeof f.path === 'string')
+    );
+  }
+  if (typeof files === 'object') {
+    return Object.entries(files).map(([path, content]) => ({
+      path,
+      content: typeof content === 'string' ? content : String(content ?? ''),
+    }));
+  }
+  return [];
 }
 
 export const OVERLEAF_CATEGORIES = [
@@ -115,24 +134,51 @@ export function TemplatePickerDialog({
     return templates[0];
   }, [templates, selectedTemplateId]);
 
+  // Fetch full template details (including files) if list response only returned summary metadata
+  const { data: detailedTemplate } = useQuery<TemplateItem | null>({
+    queryKey: ['academic-template-detail', activeTemplate?.id],
+    queryFn: async () => {
+      if (!activeTemplate?.id) return null;
+      try {
+        const res = await manuscriptService.templates.getById(activeTemplate.id);
+        return (res as unknown as TemplateItem) || null;
+      } catch {
+        return null;
+      }
+    },
+    enabled: Boolean(
+      isOpen &&
+        activeTemplate?.id &&
+        normalizeTemplateFiles(activeTemplate.files).length === 0
+    ),
+    staleTime: 60_000,
+  });
+
+  const resolvedFiles = useMemo(() => {
+    const direct = normalizeTemplateFiles(activeTemplate?.files);
+    if (direct.length > 0) return direct;
+    return normalizeTemplateFiles(detailedTemplate?.files);
+  }, [activeTemplate?.files, detailedTemplate?.files]);
+
   // Main file vs bib file preview extraction
   const previewContent = useMemo(() => {
-    if (!activeTemplate?.files || activeTemplate.files.length === 0) {
+    if (resolvedFiles.length === 0) {
       return '% Template content will be loaded upon scaffolding';
     }
     if (previewTab === 'bib') {
-      const bib = activeTemplate.files.find((f) => f.path.endsWith('.bib'));
+      const bib = resolvedFiles.find((f) => f.path.endsWith('.bib'));
       return bib ? bib.content : '% No companion bibliography file';
     }
-    const main = activeTemplate.files.find(
-      (f) => f.path === (activeTemplate.defaultRootDoc || 'main.tex')
-    ) || activeTemplate.files[0];
+    const rootDocName =
+      activeTemplate?.defaultRootDoc || detailedTemplate?.defaultRootDoc || 'main.tex';
+    const main =
+      resolvedFiles.find((f) => f.path === rootDocName) || resolvedFiles[0];
     return main ? main.content : '% No document content available';
-  }, [activeTemplate, previewTab]);
+  }, [resolvedFiles, previewTab, activeTemplate?.defaultRootDoc, detailedTemplate?.defaultRootDoc]);
 
   const hasBibFile = useMemo(() => {
-    return Boolean(activeTemplate?.files?.some((f) => f.path.endsWith('.bib')));
-  }, [activeTemplate]);
+    return resolvedFiles.some((f) => f.path.endsWith('.bib'));
+  }, [resolvedFiles]);
 
   const handleCopy = () => {
     if (!previewContent) return;
@@ -158,7 +204,11 @@ export function TemplatePickerDialog({
       setIsOpen(false);
 
       if (result?.rootDocId) {
-        router.push(`/projects/${projectId}/pages/${result.rootDocId}`);
+        if (!projectId || projectId === 'personal') {
+          router.push(`/pages/${result.rootDocId}`);
+        } else {
+          router.push(`/projects/${projectId}/pages/${result.rootDocId}`);
+        }
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Scaffolding failed', { id: toastId });

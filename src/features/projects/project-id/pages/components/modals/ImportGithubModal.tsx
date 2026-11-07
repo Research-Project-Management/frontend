@@ -139,7 +139,11 @@ export function ImportGithubModal({
       setSelectedRepo(null);
 
       if (result?.rootDocId) {
-        router.push(`/projects/${projectId}/pages/${result.rootDocId}`);
+        if (!projectId || projectId === 'personal') {
+          router.push(`/pages/${result.rootDocId}`);
+        } else {
+          router.push(`/projects/${projectId}/pages/${result.rootDocId}`);
+        }
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'GitHub import failed', { id: toastId });

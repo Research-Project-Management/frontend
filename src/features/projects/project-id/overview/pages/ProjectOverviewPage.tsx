@@ -3,10 +3,7 @@
 import React from 'react';
 import { useParams } from 'next/navigation';
 import { useProjectOverview } from '../hooks/use-project-overview';
-import { useProjectDetails } from '@/features/projects/project-id/work-items/hooks/use-query';
 import { CleanProjectOverview } from '../components/CleanProjectOverview';
-import { Switcher } from '@/features/projects/project-id/components/layout/Switcher';
-import { Skeleton } from '@/shared/components/ui/skeleton';
 import {
   WorkspaceOverviewSkeleton,
   WorkspaceViewTransition,
@@ -26,34 +23,19 @@ export function ProjectOverviewPage() {
     refetch,
   } = useProjectOverview(projectId);
 
-  const { data: detailsData } = useProjectDetails(projectId);
-  const cachedProject =
-    detailsData && 'project' in detailsData && detailsData.project
-      ? detailsData.project
-      : undefined;
-
-  const activeProject = data?.project ?? cachedProject;
-
   return (
     <div className="flex-1 flex min-h-0 flex-col h-full bg-background overflow-hidden">
-      {/* Persistent Top Header with Switcher matching work-items and pages */}
+      {/* Persistent Top Header */}
       <header
         className="h-11 border-b border-border px-3 sm:px-4 flex items-center justify-between gap-2.5 bg-transparent shrink-0 text-13 w-full min-w-0 select-none sticky top-0 z-20"
         style={{ paddingLeft: 'max(0.75rem, var(--header-offset, 0px))' }}
       >
-        {activeProject ? (
-          <Switcher
-            project={{
-              id: activeProject.id,
-              name: activeProject.name,
-              avatar: activeProject.avatar,
-            }}
-            moduleTitle="Overview"
-            moduleIcon={Compass}
-          />
-        ) : (
-          <Skeleton className="h-6 w-36 rounded-md" />
-        )}
+        <div className="flex items-center gap-2 min-w-0">
+          <Compass className="size-4 text-foreground shrink-0" strokeWidth={1.75} />
+          <h1 className="text-13 font-semibold text-foreground tracking-tight truncate">
+            Overview
+          </h1>
+        </div>
       </header>
 
       {/* Main Content Area */}

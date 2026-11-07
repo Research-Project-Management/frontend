@@ -55,6 +55,7 @@ export interface TopbarProps {
   onSelectLabelId?: (labelId: string | null) => void;
   selectedLabelIds?: string[];
   onSelectLabelIds?: (labelIds: string[]) => void;
+  activeViewLabel?: string;
 }
 
 const VIEW_OPTIONS = [
@@ -92,6 +93,7 @@ export function Topbar({
   onSelectLabelId,
   selectedLabelIds,
   onSelectLabelIds,
+  activeViewLabel,
 }: TopbarProps) {
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -134,11 +136,19 @@ export function Topbar({
       style={{ paddingLeft: 'max(1rem, var(--header-offset, 0px))' }}
     >
       {/* Left: Module Icon & Title */}
-      <div className="flex items-center gap-2.5 min-w-0 shrink-0">
+      <div className="flex items-center gap-2 min-w-0 shrink-0">
         <WikiIcon className="size-4 text-foreground shrink-0" />
         <h1 className="text-sm font-semibold tracking-tight text-foreground truncate">
           Pages
         </h1>
+        {activeViewLabel && activeViewLabel !== 'All pages' && (
+          <>
+            <span className="text-muted-foreground/40 text-13 select-none">/</span>
+            <span className="text-13 font-medium text-muted-foreground truncate">
+              {activeViewLabel}
+            </span>
+          </>
+        )}
       </div>
 
       {/* Right: Collapsible Search, Label Filter, Segmented View Switcher & Add Document CTA */}

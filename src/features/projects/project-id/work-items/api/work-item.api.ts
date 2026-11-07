@@ -107,6 +107,9 @@ const normalizeWorkItemEntity = (raw: Item): Item => {
     subItems?: Item[];
     content?: string;
     description?: string;
+    stateId?: string;
+    createdById?: string;
+    createdBy?: { id?: string } | null;
   };
   const parentId = item.parentId ?? item.parentWorkItemId ?? null;
   const childWorkItems = item.childWorkItems || item.subItems || [];
@@ -117,8 +120,23 @@ const normalizeWorkItemEntity = (raw: Item): Item => {
       ? [item.assigneeId]
       : [];
   const assigneeId = item.assigneeId ?? assigneeIds[0] ?? null;
+  const resolvedStateId =
+    item.stateId ||
+    item.columnId ||
+    (item.state && typeof item.state === 'object' ? item.state.id : undefined) ||
+    '';
+  const resolvedAuthorId =
+    item.authorId ||
+    item.createdById ||
+    (item.author && typeof item.author === 'object' ? item.author.id : undefined) ||
+    (item.createdBy && typeof item.createdBy === 'object' ? item.createdBy.id : undefined) ||
+    '';
   return {
     ...item,
+    columnId: resolvedStateId,
+    stateId: resolvedStateId,
+    authorId: resolvedAuthorId,
+    createdById: resolvedAuthorId,
     parentId,
     parentWorkItemId: parentId,
     childWorkItems,

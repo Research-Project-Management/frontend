@@ -55,17 +55,15 @@ export default function DraftsPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deletingDraft, setDeletingDraft] = useState<WorkItemDraft | null>(null);
 
-  // Queries & Mutations
-  const { data, isLoading, isError, error } = useDrafts(
-    activeProjectId ? { projectId: activeProjectId } : undefined
-  );
+  // Queries & Mutations: Fetch all personal drafts of user (cross-space userId)
+  const { data, isLoading, isError, error } = useDrafts();
   const rawDrafts = data?.drafts || [];
   const drafts = React.useMemo(() => {
-    if (activeSpace.type === 'personal') {
-      return rawDrafts.filter((d) => !d.projectId);
+    if (activeSpace.type === 'project' && activeProjectId) {
+      return rawDrafts.filter((d) => !d.projectId || d.projectId === activeProjectId);
     }
     return rawDrafts;
-  }, [rawDrafts, activeSpace.type]);
+  }, [rawDrafts, activeSpace.type, activeProjectId]);
   const total = drafts.length;
 
   const createDraft = useCreateDraft();

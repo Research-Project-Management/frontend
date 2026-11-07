@@ -230,7 +230,13 @@ function applySingleItemPatch(
     assignees: nextAssignees,
     assigneeIds: nextAssigneeIds,
     assigneeId: nextAssigneeId,
-    ...(data.columnId && { columnId: data.columnId, stateId: data.columnId }),
+    ...(data.columnId && {
+      columnId: data.columnId,
+      stateId: data.columnId,
+      ...(item.state && typeof item.state === 'object' && item.state.id !== data.columnId
+        ? { state: undefined }
+        : {}),
+    }),
     ...(data.priority && { priority: data.priority }),
     ...(formattedDueDate !== undefined && { dueDate: formattedDueDate }),
     ...(formattedStartDate !== undefined && { startDate: formattedStartDate }),
@@ -481,7 +487,13 @@ export const useBulkUpdate = () =>
               assignees: nextAssignees,
               assigneeIds: nextAssigneeIds,
               assigneeId: nextAssigneeId,
-              ...(patch.columnId && { columnId: patch.columnId, stateId: patch.columnId }),
+              ...(patch.columnId && {
+                columnId: patch.columnId,
+                stateId: patch.columnId,
+                ...(item.state && typeof item.state === 'object' && item.state.id !== patch.columnId
+                  ? { state: undefined }
+                  : {}),
+              }),
             };
           }
           return item;
@@ -722,7 +734,13 @@ export const useReorderItem = () =>
           if (resolveItemId(item) === targetId) {
             return {
               ...item,
-              ...(vars.columnId && { columnId: vars.columnId, stateId: vars.columnId }),
+              ...(vars.columnId && {
+                columnId: vars.columnId,
+                stateId: vars.columnId,
+                ...(item.state && typeof item.state === 'object' && item.state.id !== vars.columnId
+                  ? { state: undefined }
+                  : {}),
+              }),
               ...(vars.rank !== undefined && { rank: vars.rank }),
             };
           }

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import {
   FileText,
   MoreHorizontal,
@@ -59,6 +59,7 @@ function extractSnippet(content?: unknown): string | null {
 
 export const Card = React.memo(function Card({ page, onEdit }: CardProps) {
   const router = useRouter();
+  const params = useParams<{ projectId?: string }>();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { deletePage, duplicatePage, updateStatus } = usePageActions();
 
@@ -72,7 +73,11 @@ export const Card = React.memo(function Card({ page, onEdit }: CardProps) {
       : (page.mainFile as string)
     : null;
   const fileQuery = mainFileStr ? `?file=${mainFileStr}` : '';
-  const linkHref = `/projects/${projId}/pages/${page.id}${fileQuery}`;
+  const routeProjId = params?.projectId && params.projectId !== 'personal' ? params.projectId : null;
+  const isPersonal = !routeProjId || !projId || projId === 'personal';
+  const linkHref = isPersonal
+    ? `/pages/${page.id}${fileQuery}`
+    : `/projects/${routeProjId}/pages/${page.id}${fileQuery}`;
   const authorName = page.author?.name;
   const snippet = useMemo(
     () => page.description || extractSnippet(page.content),

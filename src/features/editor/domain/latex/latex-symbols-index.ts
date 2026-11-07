@@ -78,7 +78,7 @@ export class LatexSymbolsIndex {
 
     this.inFlightServerFetch = (async () => {
       try {
-        const dto: ProjectSymbolsResponseDto = await manuscriptService.structure.getSymbols(projectId);
+        const dto = await manuscriptService.structure.getSymbols(projectId);
         if (!dto || typeof dto !== 'object') return null;
 
         if (dto.rootDocPath) {

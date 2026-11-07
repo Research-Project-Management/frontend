@@ -13,6 +13,7 @@
  */
 
 import type { EditorStorageItem as StorageItem } from '@/features/editor/domain/types/storage-item.types';
+import { extractProjectId } from '@/features/editor/domain/types/core.types';
 import {
   displayName,
   normalizeVirtualPath,
@@ -58,7 +59,7 @@ export interface BuildFileTreeParams {
     docId?: string | null;
     fileId?: string | null;
     pageId?: string | null;
-    projectId?: string | null;
+    projectId?: unknown;
     title?: string;
     path?: string;
     updatedAt?: string;
@@ -333,7 +334,7 @@ export function buildFileTree(params: BuildFileTreeParams): FileTreeNode[] {
         docId: f.docId ?? f.id,
         fileId: f.fileId ?? null,
         pageId: f.pageId ?? resolvedPageId,
-        projectId: f.projectId ?? resolvedProjectId,
+        projectId: extractProjectId(f.projectId as any) ?? resolvedProjectId ?? null,
         title: resolvedTitle,
         displayLabel: displayName(leafName || resolvedTitle),
         updatedAt: f.updatedAt,
@@ -384,7 +385,7 @@ export function buildFileTree(params: BuildFileTreeParams): FileTreeNode[] {
         docId: f.docId ?? (isDocNode ? nodeId : null),
         fileId: f.fileId ?? (!isDocNode ? f.id : null),
         pageId: f.pageId ?? resolvedPageId,
-        projectId: f.projectId ?? resolvedProjectId,
+        projectId: extractProjectId(f.projectId as any) ?? resolvedProjectId ?? null,
         title: folderPath ? rawPath : f.filename,
         displayLabel: isDocNode ? displayName(leafName) : leafName,
         updatedAt: f.updatedAt,

@@ -211,9 +211,11 @@ export function OverviewView({
     });
   }, []);
 
-  const totalResolved = overviewData?.summary?.resolvedComments !== undefined
-    ? (overviewData.summary.resolvedComments + overviewData.summary.resolvedSuggestions)
-    : Object.values(fileCounts).reduce((acc, curr) => acc + curr.resolved, 0);
+  const totalResolved = overviewData?.totals?.totalResolvedCount !== undefined
+    ? overviewData.totals.totalResolvedCount
+    : (overviewData as any)?.summary?.resolvedComments !== undefined
+      ? ((overviewData as any).summary.resolvedComments + ((overviewData as any).summary.resolvedSuggestions || 0))
+      : Object.values(fileCounts).reduce((acc, curr) => acc + curr.resolved, 0);
 
   useEffect(() => {
     onOverviewResolvedCount?.(totalResolved);

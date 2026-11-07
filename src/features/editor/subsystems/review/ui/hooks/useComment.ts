@@ -130,6 +130,7 @@ export const useUpdateComment = (customClient?: QueryClient) => {
       commentId: string;
       content?: string;
       status?: CommentStatus;
+      projectId?: string;
     }) => {
       return await manuscriptService.comments.updateComment(pageId, commentId, {
         content,

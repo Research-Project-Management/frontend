@@ -10,6 +10,7 @@ import { z } from 'zod';
 export const documentExportFormatSchema = z.enum([
   'pdf',
   'docx',
+  'html',
   'markdown',
   'md',
   'latex-source',

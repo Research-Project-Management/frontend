@@ -60,12 +60,16 @@ export type LaTeXEngine = CompilerEngine;
 
 export type CompileMode = 'full' | 'draft';
 
+export type LogSeverity = 'error' | 'warning' | 'info' | 'badbox';
+
 export type CompileStatus =
   | 'idle'
   | 'flushing'
   | 'syncing'
   | 'compiling'
   | 'done'
+  | 'success'
+  | 'aborted'
   | 'error';
 
 export interface CompileError {
@@ -74,7 +78,7 @@ export interface CompileError {
   /** Raw surrounding lines from the log for context */
   context?: string;
   file?: string;
-  severity?: 'error' | 'warning' | 'info';
+  severity?: 'error' | 'warning' | 'info' | 'badbox';
   code?: string;
   suggestion?: string;
   fixedSnippet?: string;
@@ -99,10 +103,12 @@ export interface WordCountResult {
 // ── Compiler Diagnostics & Log Viewer ────────────────────────────────────────
 
 export interface ErrorExplanationDto {
-  code: string;
+  code?: string;
   title: string;
   summary?: string;
   explanation?: string;
+  whyItHappened?: string;
+  howToFix?: string;
   commonCauses?: string[];
   suggestedFix?: string;
   exampleSnippet?: string;

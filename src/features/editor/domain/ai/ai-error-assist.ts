@@ -48,6 +48,28 @@ export function fixLatexError(params: AiErrorFixParams): AiErrorFixResult {
     };
   }
 
+  if (/undefined control sequence/i.test(errorMessage) && /toprule|bottomrule|midrule/i.test(errorMessage + detail)) {
+    return {
+      explanation: "Undefined control sequence for booktabs table rule. Include '\\usepackage{booktabs}' in your preamble.",
+      originalSnippet: currentLineText,
+      fixedSnippet: '\\usepackage{booktabs}',
+      startLine: lineNum,
+      endLine: lineNum,
+      confidence: 'high',
+    };
+  }
+
+  if (/perhaps a missing \\item/i.test(errorMessage) || /missing \\item/i.test(errorMessage)) {
+    return {
+      explanation: "List environment (itemize, enumerate) contains text before any '\\item' declaration.",
+      originalSnippet: currentLineText,
+      fixedSnippet: '\\item',
+      startLine: lineNum,
+      endLine: lineNum,
+      confidence: 'high',
+    };
+  }
+
   if (/missing \$ inserted/i.test(errorMessage)) {
     return {
       explanation: 'Mathematical symbol, subscript, or superscript used outside of math mode. Wrap the formula in $...$.',

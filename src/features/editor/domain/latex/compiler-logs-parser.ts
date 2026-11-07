@@ -97,15 +97,16 @@ export function diagnosticsToParsedLog(
       quickFix: item.quickFix,
       explanation: item.explanation
         ? {
+            code: (item.explanation as any).code,
             title: item.explanation.title,
             whyItHappened:
               'whyItHappened' in item.explanation
-                ? item.explanation.whyItHappened
-                : item.explanation.explanation || item.explanation.summary || '',
+                ? (item.explanation as any).whyItHappened
+                : (item.explanation as any).explanation || (item.explanation as any).summary || '',
             howToFix:
               'howToFix' in item.explanation
-                ? item.explanation.howToFix
-                : item.explanation.suggestedFix || '',
+                ? (item.explanation as any).howToFix
+                : (item.explanation as any).suggestedFix || '',
           }
         : undefined,
     };

@@ -91,11 +91,12 @@ export function ProjectTabPane({
         includeDeleted: false,
       });
       editorCommandBus.dispatch({ type: 'filetree:updated' });
-      const createdId = imported.docId || imported.fileId || imported.id;
-      const contentStr = typeof imported.content === 'string' ? imported.content : '';
+      const fileData = (imported?.file || imported || {}) as Record<string, any>;
+      const createdId = (fileData.docId || fileData.fileId || fileData.id || '') as string;
+      const contentStr = typeof fileData.content === 'string' ? fileData.content : '';
       navigationCoordinator.openDocument({
         fileId: createdId,
-        title: imported.title || targetTitle,
+        title: (fileData.title as string) || targetTitle,
         content: contentStr,
       });
       setSearchParams({ file: createdId });

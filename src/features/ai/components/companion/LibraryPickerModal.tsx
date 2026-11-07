@@ -199,11 +199,6 @@ export function LibraryPickerModal({
             <Folder className="size-3.5 shrink-0 text-muted-foreground" strokeWidth={1.5} />
             <span className="truncate">{node.name}</span>
           </div>
-          {typeof count === 'number' && count > 0 && (
-            <span className="text-10 text-muted-foreground tabular-nums shrink-0 font-mono">
-              {count}
-            </span>
-          )}
         </button>
 
         {node.children && node.children.length > 0 && (

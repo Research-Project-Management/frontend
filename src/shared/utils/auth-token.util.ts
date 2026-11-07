@@ -7,7 +7,10 @@
  * Checks if a token is a non-empty, structural JWT that is not expired.
  * Validates base64 payload and exp claim (with clock skew tolerance).
  */
-export function isTokenValid(token: string | null | undefined): boolean {
+export function isTokenValid(
+  token: string | null | undefined,
+  minValiditySeconds = 0,
+): boolean {
   if (!token || typeof token !== 'string') return false;
   const trimmed = token.trim();
   if (
@@ -42,8 +45,8 @@ export function isTokenValid(token: string | null | undefined): boolean {
     const exp = payload.exp;
     if (typeof exp === 'number') {
       const nowSeconds = Math.floor(Date.now() / 1000);
-      // Give a 10-second grace window for minor clock skew
-      if (exp <= nowSeconds - 10) {
+      const threshold = minValiditySeconds > 0 ? nowSeconds + minValiditySeconds : nowSeconds - 10;
+      if (exp <= threshold) {
         return false;
       }
     }

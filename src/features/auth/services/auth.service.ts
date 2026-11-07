@@ -6,6 +6,7 @@ import {
   removeAuthToken,
   getAuthToken,
 } from "@/shared/lib/api";
+import { multiTabBus } from "@/shared/lib/multi-tab";
 import { isApiError } from "@/shared/types/api.types";
 import { fixMojibake } from "@/shared/lib/utils";
 import type {
@@ -28,6 +29,10 @@ export const loginUser = async (payload: LoginPayload): Promise<AuthUser> => {
 
   if (res.accessToken) {
     setAuthToken(res.accessToken);
+    multiTabBus.publish({
+      type: 'AUTH_TOKEN_UPDATED',
+      accessToken: res.accessToken,
+    });
   }
 
   const user: AuthUser = (res.user || res) as AuthUser;
@@ -118,6 +123,10 @@ export const registerUser = async (
 
   if (res.accessToken) {
     setAuthToken(res.accessToken);
+    multiTabBus.publish({
+      type: 'AUTH_TOKEN_UPDATED',
+      accessToken: res.accessToken,
+    });
   }
   return res;
 };
@@ -128,6 +137,7 @@ export const registerUser = async (
 export const logoutUser = async (): Promise<void> => {
   removeAuthToken();
   setCachedUser(null);
+  multiTabBus.publish({ type: 'AUTH_LOGOUT', reason: 'user_logout' });
   try {
     await apiPost('/auth/logout', {});
   } catch {

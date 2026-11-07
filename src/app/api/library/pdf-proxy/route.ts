@@ -337,25 +337,26 @@ export async function GET(request: NextRequest) {
           { status: 413 },
         );
       }
+      // Initial connection and magic-byte verification succeeded; switch from total-download timeout
+      // to a per-chunk inactivity timeout so large PDFs streaming >30s are not prematurely aborted.
+      clearTimeout(timeoutId);
       body = new ReadableStream<Uint8Array>({
         start(streamController) {
           if (!firstRead.done && firstRead.value) {
             streamController.enqueue(firstRead.value);
           } else if (firstRead.done) {
-            clearTimeout(timeoutId);
             streamController.close();
           }
         },
         async pull(streamController) {
+          const chunkTimeoutId = setTimeout(() => controller.abort(), 30_000);
           try {
             const { done, value } = await reader.read();
             if (done) {
-              clearTimeout(timeoutId);
               streamController.close();
             } else if (value) {
               totalBytesRead += value.byteLength;
               if (totalBytesRead > MAX_PAYLOAD_BYTES) {
-                clearTimeout(timeoutId);
                 await reader.cancel('MAX_PAYLOAD_BYTES_EXCEEDED').catch(() => undefined);
                 streamController.error(new Error('Remote document exceeds maximum allowed size (50MB)'));
                 return;
@@ -363,12 +364,12 @@ export async function GET(request: NextRequest) {
               streamController.enqueue(value);
             }
           } catch (readErr) {
-            clearTimeout(timeoutId);
             streamController.error(readErr);
+          } finally {
+            clearTimeout(chunkTimeoutId);
           }
         },
         cancel(reason) {
-          clearTimeout(timeoutId);
           return reader.cancel(reason);
         },
       });

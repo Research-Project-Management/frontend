@@ -99,6 +99,12 @@ export function useInbox(initialCategory: InboxCategory = 'all'): UseInboxReturn
         setNotifications((prev) => [newNotification, ...prev]);
         setUnreadCount((prev) => prev + 1);
 
+        // Multi-tab deduplication: all tabs update state/badges, but only the visible tab
+        // displays the Sonner toast to prevent duplicate toast storms across background tabs.
+        if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+          return;
+        }
+
         // Friendly Sonner toast notification
         const title =
           newNotification.templateKey === 'project_invite'

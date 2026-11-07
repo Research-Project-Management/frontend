@@ -18,6 +18,8 @@ import { API_BASE_URL } from '@/config/env';
 import { ApiError, isApiError, type RequestOptions } from '@/shared/types/api.types';
 import { tryCatch, type Result } from '@/shared/utils/error.util';
 import { logger } from '@/shared/lib/logger';
+import { isTokenValid } from '@/shared/utils/auth-token.util';
+import { multiTabBus, withWebLock } from '@/shared/lib/multi-tab';
 import {
   tokenStorage,
   getAuthToken,
@@ -76,8 +78,12 @@ export function onSessionExpired(callback: SessionExpiredCallback): () => void {
   };
 }
 
-function handleSessionExpired(): void {
+function handleSessionExpired(options?: { broadcast?: boolean }): void {
   removeAuthToken();
+
+  if (options?.broadcast !== false) {
+    multiTabBus.publish({ type: 'AUTH_LOGOUT', reason: 'session_expired' });
+  }
 
   if (sessionExpiredListeners.size > 0) {
     sessionExpiredListeners.forEach((listener) => {
@@ -104,6 +110,8 @@ function handleSessionExpired(): void {
   }
 }
 
+export const AUTH_REFRESH_LOCK_NAME = 'flux:auth:refresh';
+
 interface RefreshTokenResult {
   readonly success: boolean;
   readonly accessToken: string | null;
@@ -112,64 +120,114 @@ interface RefreshTokenResult {
 
 let refreshPromise: Promise<RefreshTokenResult> | null = null;
 
-async function silentRefresh(): Promise<RefreshTokenResult> {
-  try {
-    const refreshEndpointUrl = `${getEffectiveBaseUrl()}/auth/refresh`;
+async function silentRefresh(staleTokenAt401?: string | null): Promise<RefreshTokenResult> {
+  // Cross-tab double-checked locking via W3C Web Locks API:
+  // If Tab 1 and Tab 2 both hit 401 simultaneously, Tab 1 acquires 'flux:auth:refresh',
+  // refreshes the token, writes the new token to localStorage, and releases the lock.
+  // When Tab 2 acquires the lock, it checks localStorage first and reuses Tab 1's new token
+  // without making a duplicate network call or creating redundant sibling sessions.
+  const lockedResult = await withWebLock<RefreshTokenResult>(
+    AUTH_REFRESH_LOCK_NAME,
+    async () => {
+      const currentStoredToken = getAuthToken();
+      if (
+        currentStoredToken &&
+        currentStoredToken !== staleTokenAt401 &&
+        isTokenValid(currentStoredToken, 5)
+      ) {
+        return {
+          success: true,
+          accessToken: currentStoredToken,
+          isSessionInvalid: false,
+        };
+      }
 
-    const refreshResponse = await fetch(refreshEndpointUrl, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
-    });
+      try {
+        const refreshEndpointUrl = `${getEffectiveBaseUrl()}/auth/refresh`;
 
-    if (!refreshResponse.ok) {
-      const isSessionInvalid =
-        refreshResponse.status === 401 ||
-        refreshResponse.status === 403 ||
-        refreshResponse.status === 400;
-      return {
-        success: false,
-        accessToken: null,
-        isSessionInvalid,
-      };
-    }
+        const refreshResponse = await fetch(refreshEndpointUrl, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        });
 
-    const refreshData = (await refreshResponse.json()) as {
-      accessToken?: string;
-      data?: {
-        accessToken?: string;
-      };
-    };
+        if (!refreshResponse.ok) {
+          // Before declaring session invalid, check once more if another tab updated the token
+          const latestTokenAfterFailure = getAuthToken();
+          if (
+            latestTokenAfterFailure &&
+            latestTokenAfterFailure !== staleTokenAt401 &&
+            isTokenValid(latestTokenAfterFailure, 5)
+          ) {
+            return {
+              success: true,
+              accessToken: latestTokenAfterFailure,
+              isSessionInvalid: false,
+            };
+          }
 
-    const newAccessToken = refreshData?.data?.accessToken ?? refreshData?.accessToken;
-    if (newAccessToken) {
-      setAuthToken(newAccessToken);
-      return {
-        success: true,
-        accessToken: newAccessToken,
-        isSessionInvalid: false,
-      };
-    }
+          const isSessionInvalid =
+            refreshResponse.status === 401 ||
+            refreshResponse.status === 403 ||
+            refreshResponse.status === 400;
+          return {
+            success: false,
+            accessToken: null,
+            isSessionInvalid,
+          };
+        }
 
-    return {
-      success: false,
-      accessToken: null,
-      isSessionInvalid: true,
-    };
-  } catch (caughtError: unknown) {
-    logger.warn('Silent refresh failed with network error', { error: caughtError });
-    return {
+        const refreshData = (await refreshResponse.json()) as {
+          accessToken?: string;
+          data?: {
+            accessToken?: string;
+          };
+        };
+
+        const newAccessToken = refreshData?.data?.accessToken ?? refreshData?.accessToken;
+        if (newAccessToken) {
+          setAuthToken(newAccessToken);
+          multiTabBus.publish({
+            type: 'AUTH_TOKEN_UPDATED',
+            accessToken: newAccessToken,
+          });
+          return {
+            success: true,
+            accessToken: newAccessToken,
+            isSessionInvalid: false,
+          };
+        }
+
+        return {
+          success: false,
+          accessToken: null,
+          isSessionInvalid: true,
+        };
+      } catch (caughtError: unknown) {
+        logger.warn('Silent refresh failed with network error', { error: caughtError });
+        return {
+          success: false,
+          accessToken: null,
+          isSessionInvalid: false,
+        };
+      }
+    },
+    { timeoutMs: 15_000 },
+  );
+
+  return (
+    lockedResult ?? {
       success: false,
       accessToken: null,
       isSessionInvalid: false,
-    };
-  }
+    }
+  );
 }
 
-function tryRefresh(): Promise<RefreshTokenResult> {
+export function tryRefresh(staleTokenAt401?: string | null): Promise<RefreshTokenResult> {
   if (!refreshPromise) {
-    refreshPromise = silentRefresh().finally(() => {
+    refreshPromise = silentRefresh(staleTokenAt401).finally(() => {
       refreshPromise = null;
     });
   }
@@ -384,7 +442,7 @@ export async function apiFetch<T>(
     }
 
     if (response.status === 401 && !options.skipAuth && !isUnauthenticatedAuthEndpoint) {
-      const refreshResult = await tryRefresh();
+      const refreshResult = await tryRefresh(token);
 
       if (refreshResult.success && refreshResult.accessToken) {
         try {

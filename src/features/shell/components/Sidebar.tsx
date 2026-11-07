@@ -34,7 +34,7 @@ const CORE_PILLARS: ShellNavItem[] = [
     id: 'projects',
     label: 'Projects',
     icon: ProjectsIcon,
-    getHref: () => '/home',
+    getHref: (projectId) => (projectId ? `/projects/${projectId}/overview` : '/home'),
   },
   {
     id: 'ai',

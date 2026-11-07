@@ -32,12 +32,34 @@ export const useWorkspaceContextStore = create<WorkspaceContextState>()(
     (set) => ({
       activeSpace: DEFAULT_PERSONAL_SPACE,
 
-      setPersonalSpace: () =>
+      setPersonalSpace: () => {
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.removeItem('flux_active_project_id');
+          } catch {}
+        }
         set({
           activeSpace: DEFAULT_PERSONAL_SPACE,
-        }),
+        });
+      },
 
       setProjectSpace: (project) => {
+        if (
+          !project.id ||
+          project.id === 'personal' ||
+          project.id === 'me' ||
+          project.id === 'user'
+        ) {
+          if (typeof window !== 'undefined') {
+            try {
+              localStorage.removeItem('flux_active_project_id');
+            } catch {}
+          }
+          set({
+            activeSpace: DEFAULT_PERSONAL_SPACE,
+          });
+          return;
+        }
         if (typeof window !== 'undefined' && project.id) {
           try {
             localStorage.setItem('flux_active_project_id', project.id);

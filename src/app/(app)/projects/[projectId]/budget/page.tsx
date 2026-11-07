@@ -1,30 +1,22 @@
 'use client';
 
 import React from 'react';
-import { useParams } from 'next/navigation';
 import { Wallet } from 'lucide-react';
-import { Switcher } from '@/features/projects/project-id/components/layout/Switcher';
-import { useProject } from '@/features/projects/shell/hooks/use-project';
 
 export default function BudgetRoute() {
-  const params = useParams<{ projectId: string }>();
-  const projectId = params?.projectId || '';
-  const { state: projectState } = useProject(projectId);
-  const project = projectState?.project;
-
   return (
     <div className="flex-1 flex min-h-0 flex-col h-full bg-background overflow-hidden">
-      {/* Top Header with Switcher */}
-      <header className="h-11 border-b border-border px-3 sm:px-4 flex items-center justify-between gap-2 bg-background shrink-0 text-13 w-full min-w-0 select-none sticky top-0 z-10">
-        <Switcher
-          project={{
-            id: project?.id || projectId,
-            name: project?.name || '',
-            avatar: project?.avatar,
-          }}
-          moduleTitle="Budget"
-          moduleIcon={Wallet}
-        />
+      {/* Top Header */}
+      <header
+        className="h-11 border-b border-border px-3 sm:px-4 flex items-center justify-between gap-2 bg-background shrink-0 text-13 w-full min-w-0 select-none sticky top-0 z-10"
+        style={{ paddingLeft: 'max(0.75rem, var(--header-offset, 0px))' }}
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <Wallet className="size-4 text-foreground shrink-0" strokeWidth={1.75} />
+          <h1 className="text-13 font-semibold text-foreground tracking-tight truncate">
+            Budget
+          </h1>
+        </div>
       </header>
 
       {/* Module not yet available: empty state */}

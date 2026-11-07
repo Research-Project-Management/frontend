@@ -46,6 +46,7 @@ import {
 import { cn } from '@/shared/lib/utils';
 import { ProjectAvatar } from '@/shared/components/icons';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
+import { useWorkspaceContextStore } from '@/features/shell/store/workspace-context.store';
 import { useAiCompanionStore } from '../../store/ai-companion.store';
 import { uploadDocument, type UploadDocumentProgress } from '../../services/chat.service';
 import dynamic from 'next/dynamic';
@@ -231,31 +232,39 @@ export function CompanionInput({
     setIsMounted(true);
   }, []);
 
+  const activeSpace = useWorkspaceContextStore((s) => s.activeSpace);
+  const effectiveSpaceProjectId =
+    currentProjectId ||
+    (activeSpace.type === 'project' &&
+    activeSpace.projectId &&
+    activeSpace.projectId !== 'personal'
+      ? activeSpace.projectId
+      : null);
+
   // Initialize selectedProject SSR-safe:
-  // 1. currentProjectId (prop from route)
-  // 2. null (synced with localStorage & activeProjects in useEffect after mount)
+  // 1. effectiveSpaceProjectId (from route or active project space)
+  // 2. null when in Personal Space
   const [selectedProject, setSelectedProject] = useState<string | null>(
-    currentProjectId || null
+    effectiveSpaceProjectId
   );
 
-  // When route project ID changes, sync and reset explicit clear flag
-  const prevRouteProjectIdRef = useRef(currentProjectId);
+  // When route or active space project ID changes, sync and reset explicit clear flag
+  const prevRouteProjectIdRef = useRef(effectiveSpaceProjectId);
   useEffect(() => {
-    if (currentProjectId !== prevRouteProjectIdRef.current) {
-      prevRouteProjectIdRef.current = currentProjectId;
-      if (currentProjectId) {
-        hasUserExplicitlyClearedRef.current = false;
+    if (effectiveSpaceProjectId !== prevRouteProjectIdRef.current) {
+      prevRouteProjectIdRef.current = effectiveSpaceProjectId;
+      hasUserExplicitlyClearedRef.current = false;
+      if (effectiveSpaceProjectId) {
         const matched = activeProjects.find(
-          (p) => p.id === currentProjectId || p.identifier === currentProjectId
+          (p) => p.id === effectiveSpaceProjectId || p.identifier === effectiveSpaceProjectId
         );
-        const resolvedId = matched ? matched.id : currentProjectId;
+        const resolvedId = matched ? matched.id : effectiveSpaceProjectId;
         setSelectedProject(resolvedId);
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('flux_active_project_id', resolvedId);
-        }
+      } else {
+        setSelectedProject(null);
       }
     }
-  }, [currentProjectId, activeProjects]);
+  }, [effectiveSpaceProjectId, activeProjects]);
 
   // Synchronize and auto-resolve selectedProject when activeProjects load or change
   useEffect(() => {
@@ -271,20 +280,23 @@ export function CompanionInput({
       return;
     }
 
-    // 1. If route project ID is present, try matching it first
-    if (currentProjectId) {
+    // 1. If route or active space project ID is present, try matching it first
+    if (effectiveSpaceProjectId) {
       const matched = activeProjects.find(
-        (p) => p.id === currentProjectId || p.identifier === currentProjectId
+        (p) => p.id === effectiveSpaceProjectId || p.identifier === effectiveSpaceProjectId
       );
       if (matched) {
         if (selectedProject !== matched.id) {
           setSelectedProject(matched.id);
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('flux_active_project_id', matched.id);
-          }
         }
         return;
       }
+    } else if (activeSpace.type === 'personal') {
+      // In Personal Space without a route project ID, do not auto-select a project from stale localStorage
+      if (selectedProject !== null) {
+        setSelectedProject(null);
+      }
+      return;
     }
 
     // 2. If current selectedProject matches an active project (by id or identifier)
@@ -295,37 +307,11 @@ export function CompanionInput({
       if (matched) {
         if (selectedProject !== matched.id) {
           setSelectedProject(matched.id);
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('flux_active_project_id', matched.id);
-          }
         }
         return;
       }
     }
-
-    // 3. Check localStorage for active project
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('flux_active_project_id');
-      if (stored) {
-        const matched = activeProjects.find(
-          (p) => p.id === stored || p.identifier === stored
-        );
-        if (matched) {
-          setSelectedProject(matched.id);
-          return;
-        }
-      }
-    }
-
-    // 4. Fallback: Default to the first active project if any exist (never default to 'None' when projects exist)
-    const firstProject = activeProjects[0];
-    if (firstProject) {
-      setSelectedProject(firstProject.id);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('flux_active_project_id', firstProject.id);
-      }
-    }
-  }, [activeProjects, currentProjectId, selectedProject]);
+  }, [activeProjects, effectiveSpaceProjectId, activeSpace.type, selectedProject]);
 
   const filteredProjects = useMemo(() => {
     const q = projectSearch.trim().toLowerCase();

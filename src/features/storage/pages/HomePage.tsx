@@ -29,6 +29,7 @@ import Topbar from '../components/layout/Topbar';
 import { BulkActionBar } from '../components/actions/BulkActionBar';
 import StorageDropzoneOverlay from '../components/dropzone/StorageDropzoneOverlay';
 import { useTopbar } from '../hooks/use-topbar';
+import { useWorkspaceContextStore } from '@/features/shell/store/workspace-context.store';
 
 const ROOT_NAME = 'All Files';
 
@@ -42,6 +43,13 @@ export default function HomePage({
   initialFolderId,
 }: UnifiedStoragePageProps = {}) {
   const searchParams = useSearchParams();
+  const activeSpace = useWorkspaceContextStore((s) => s.activeSpace);
+  const activeProjectId =
+    activeSpace.type === 'project' &&
+    activeSpace.projectId &&
+    activeSpace.projectId !== 'personal'
+      ? activeSpace.projectId
+      : undefined;
 
   // Storage UI Store State
   const activeSection = useStorageUIStore((s) => s.activeSection);
@@ -100,9 +108,16 @@ export default function HomePage({
     return () => window.removeEventListener('popstate', handlePopState);
   }, [setActiveSection, setCurrentFolderId, setHighlightedItemId, clearSelection]);
 
+  // Reset current folder and selection when switching between Personal Space and Project Space
+  useEffect(() => {
+    setCurrentFolderId(null, false);
+    clearSelection();
+  }, [activeProjectId, setCurrentFolderId, clearSelection]);
+
   // Upload handler for current active folder
   const activeUploadFolder = activeSection === 'my-files' ? currentFolderId : null;
   const { handleUploadFiles } = useTopbar({
+    projectId: activeProjectId,
     parentId: activeUploadFolder,
     searchQuery,
     onSearchChange: setSearchQuery,
@@ -111,7 +126,7 @@ export default function HomePage({
   // ── Unified Section Infinite Query ─────────────────────────────────────────
   const activeQuery = useSectionFiles(
     activeSection,
-    undefined,
+    activeProjectId,
     currentFolderId,
     queryParams,
   );
@@ -260,6 +275,7 @@ export default function HomePage({
         icon={topbarConfig.icon}
         breadcrumbs={activeSection === 'my-files' ? breadcrumbs : undefined}
         onBreadcrumbNavigate={activeSection === 'my-files' ? handleBreadcrumbNavigate : undefined}
+        projectId={activeProjectId}
         parentId={activeUploadFolder}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}

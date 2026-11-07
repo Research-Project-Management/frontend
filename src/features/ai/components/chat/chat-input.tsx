@@ -35,6 +35,7 @@ import { toast } from 'sonner';
 import { cn } from "@/shared/lib/utils";
 import { ProjectAvatar } from '@/shared/components/icons';
 import { useProjects } from '@/features/projects/shell/hooks/use-project';
+import { useWorkspaceContextStore } from '@/features/shell/store/workspace-context.store';
 import { useChatMode } from '../../hooks/use-chat-mode';
 import { useAiUIStore } from '../../store/ai-ui.store';
 import { uploadDocument } from '../../services/chat.service';
@@ -210,23 +211,29 @@ export function ChatInput({
     setMessage(initialMessage || '');
   }, [initialMessage]);
 
+  const activeSpace = useWorkspaceContextStore((s) => s.activeSpace);
+
   useEffect(() => {
     if (initialProject) {
       setSelectedProject(initialProject);
     }
   }, [initialProject]);
 
-  // If no initial project passed, check localStorage for stored active project
+  // Sync selected project with active workspace space when no initialProject is explicitly set
   useEffect(() => {
-    if (!initialProject && typeof window !== 'undefined') {
-      try {
-        const stored = localStorage.getItem('flux_active_project_id');
-        if (stored && activeProjects.some((p) => p.id === stored)) {
-          setSelectedProject(stored);
-        }
-      } catch {}
+    if (!initialProject) {
+      if (
+        activeSpace.type === 'project' &&
+        activeSpace.projectId &&
+        activeSpace.projectId !== 'personal' &&
+        activeProjects.some((p) => p.id === activeSpace.projectId)
+      ) {
+        setSelectedProject(activeSpace.projectId);
+      } else if (activeSpace.type === 'personal') {
+        setSelectedProject('all');
+      }
     }
-  }, [initialProject, activeProjects]);
+  }, [initialProject, activeSpace.type, activeSpace.projectId, activeProjects]);
 
   useEffect(() => {
     if (!disabled) {

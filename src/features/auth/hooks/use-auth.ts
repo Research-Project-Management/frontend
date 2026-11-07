@@ -6,8 +6,9 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { isApiError } from '@/shared/types/api.types';
 import { hasAuthToken, getAuthToken } from '@/shared/lib/api';
+import { multiTabBus } from '@/shared/lib/multi-tab';
 import { isTokenValid } from '@/shared/utils/auth-token.util';
-import { getUser, logoutUser } from '../services/auth.service';
+import { getUser, logoutUser, setCachedUser } from '../services/auth.service';
 import { authKeys } from '../constants/auth.keys';
 import type { AuthState, AuthUser } from '../types/auth.types';
 import { isAuth } from '../types/auth.types';
@@ -61,6 +62,53 @@ export const useAuth = (): UseAuthReturn => {
     hasClientMountedAuth = true;
     setIsHydrated(true);
   }, []);
+
+  useEffect(() => {
+    const handleRemoteLogout = () => {
+      setCachedUser(null);
+      queryClient.clear();
+      if (typeof window !== 'undefined') {
+        const publicPaths = ['/login', '/register', '/forgot-password', '/auth/callback', '/'];
+        const isPublicPath = publicPaths.some(
+          (publicPath) =>
+            window.location.pathname === publicPath ||
+            window.location.pathname.startsWith(publicPath + '/'),
+        );
+        if (!isPublicPath) {
+          router.replace('/login');
+        }
+      }
+    };
+
+    const unsubscribeBus = multiTabBus.subscribe((event) => {
+      if (event.type === 'AUTH_LOGOUT') {
+        handleRemoteLogout();
+      } else if (event.type === 'AUTH_TOKEN_UPDATED') {
+        void queryClient.invalidateQueries({ queryKey: authKeys.session() });
+      }
+    });
+
+    const handleStorageEvent = (e: StorageEvent) => {
+      if (e.key === 'accessToken') {
+        if (!e.newValue) {
+          handleRemoteLogout();
+        } else if (e.newValue !== e.oldValue) {
+          void queryClient.invalidateQueries({ queryKey: authKeys.session() });
+        }
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', handleStorageEvent);
+    }
+
+    return () => {
+      unsubscribeBus();
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('storage', handleStorageEvent);
+      }
+    };
+  }, [queryClient, router]);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: authKeys.session(),

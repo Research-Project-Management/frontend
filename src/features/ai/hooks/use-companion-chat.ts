@@ -33,7 +33,13 @@ export function useCompanionChat() {
   // Extract current project ID from URL if inside a project
   const currentProjectId = useMemo(() => {
     const match = pathname?.match(/\/projects\/([^/]+)/);
-    return match ? match[1] : undefined;
+    const rawProjectId = match?.[1] ?? null;
+    return rawProjectId &&
+      rawProjectId !== 'pages' &&
+      rawProjectId !== 'personal' &&
+      rawProjectId !== 'archives'
+      ? rawProjectId
+      : undefined;
   }, [pathname]);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);

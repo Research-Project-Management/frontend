@@ -2,25 +2,19 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import {
-  ArrowLeft,
   Hash,
   Plus,
   MessageSquare,
   Loader2,
-  FolderKanban,
 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
-import { Skeleton } from '@/shared/components/ui/skeleton';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
-import { useProject } from '@/features/projects/shell/hooks/use-project';
-import { Switcher } from '@/features/projects/project-id/components/layout/Switcher';
 import { ChatWindow } from '@/features/chat/components/ChatWindow';
 import { useProjectChannels } from '@/features/chat/hooks/use-chat-queries';
 import { useChatStore } from '@/features/chat/store/chat.store';
@@ -35,9 +29,6 @@ const CreateChannelModal = dynamic(
 export default function ProjectMessagesPage() {
   const params = useParams<{ projectId: string }>();
   const projectId = params?.projectId || '';
-
-  const { state: projectState, isLoading: isProjectLoading } = useProject(projectId);
-  const project = projectState?.project;
 
   const {
     data: projectChannels = [],
@@ -72,49 +63,16 @@ export default function ProjectMessagesPage() {
 
   return (
     <div className="flex-1 flex min-h-0 flex-col h-full bg-background overflow-hidden select-none">
-      {/* Top Header with Back Arrow and Project Switcher */}
+      {/* Top Header */}
       <header
         className="h-11 border-b border-border px-3 sm:px-4 flex items-center justify-between gap-2.5 bg-transparent shrink-0 text-13 w-full min-w-0 select-none sticky top-0 z-20"
         style={{ paddingLeft: 'max(0.75rem, var(--header-offset, 0px))' }}
       >
         <div className="flex items-center gap-2 min-w-0 truncate">
-          {/* Back arrow navigating to project ID screen */}
-          <Tooltip delayDuration={150}>
-            <TooltipTrigger asChild>
-              <Link
-                href={backToProjectHref}
-                className="flex items-center justify-center size-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer shrink-0"
-                aria-label="Back to project work items"
-              >
-                <ArrowLeft className="size-4 shrink-0" strokeWidth={1.5} />
-              </Link>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" align="start">
-              Back to project (Work items)
-            </TooltipContent>
-          </Tooltip>
-
-          <div className="h-4 w-px bg-border shrink-0" aria-hidden="true" />
-
-          {/* Switcher breadcrumb */}
-          {project ? (
-            <Switcher
-              project={{
-                id: project.id,
-                name: project.name,
-                avatar: project.avatar,
-              }}
-              moduleTitle="Messages"
-              moduleIcon={MessageSquare}
-            />
-          ) : isProjectLoading ? (
-            <Skeleton className="h-6 w-36 rounded-md" />
-          ) : (
-            <div className="flex items-center gap-1.5 text-13 font-semibold text-foreground">
-              <FolderKanban className="size-4 text-muted-foreground" />
-              <span>Project Messages</span>
-            </div>
-          )}
+          <MessageSquare className="size-4 text-foreground shrink-0" strokeWidth={1.75} />
+          <h1 className="text-13 font-semibold text-foreground tracking-tight truncate">
+            Messages
+          </h1>
         </div>
 
         {/* Project Channels selector / actions */}

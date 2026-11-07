@@ -10,6 +10,7 @@ import {
   UserPlus,
   PlusCircle,
   Mail,
+  Archive,
   LogOut,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
@@ -129,11 +130,17 @@ export default function SpaceSwitcher() {
     [projects]
   );
 
+  const archivedProjectsCount = useMemo(
+    () => projects.filter((p) => p.isArchived).length,
+    [projects]
+  );
+
   // Sync URL [projectId] param with WorkspaceContextStore
   React.useEffect(() => {
     const urlProjectId = params?.projectId;
-    if (urlProjectId) {
+    if (urlProjectId && urlProjectId !== 'personal' && urlProjectId !== 'pages') {
       const matched = projects.find((p) => p.id === urlProjectId);
+      const resolvedName = matched?.name || activeSpace.projectName || 'Project';
       if (
         activeSpace.type !== 'project' ||
         activeSpace.projectId !== urlProjectId ||
@@ -141,8 +148,14 @@ export default function SpaceSwitcher() {
       ) {
         setProjectSpace({
           id: urlProjectId,
-          name: matched?.name || activeSpace.projectName || 'Project',
+          name: resolvedName,
           avatar: matched?.avatar ?? activeSpace.projectAvatar ?? null,
+        });
+        setLibraryScope({
+          type: 'project',
+          id: urlProjectId,
+          projectId: urlProjectId,
+          name: resolvedName,
         });
       }
     }
@@ -154,6 +167,7 @@ export default function SpaceSwitcher() {
     activeSpace.projectName,
     activeSpace.projectAvatar,
     setProjectSpace,
+    setLibraryScope,
   ]);
 
   const personalDisplayName = useMemo(() => {
@@ -219,11 +233,7 @@ export default function SpaceSwitcher() {
     if (
       pathname.startsWith('/library') ||
       pathname.startsWith('/experiments') ||
-      pathname.startsWith('/ai') ||
-      pathname.startsWith('/home') ||
-      pathname.startsWith('/your-work') ||
-      pathname.startsWith('/drafts') ||
-      pathname.startsWith('/stickies')
+      pathname.startsWith('/ai')
     ) {
       return;
     }
@@ -325,37 +335,36 @@ export default function SpaceSwitcher() {
           sideOffset={6}
           className="w-72 p-0 border border-border bg-popover text-popover-foreground rounded-lg shadow-raised-200 select-none z-50 overflow-hidden"
         >
-          {/* ── 1. Active Space Header Card (Plane.so style) ── */}
-          <div className="p-2">
-            <div className="rounded-md bg-muted/60 p-2.5 flex flex-col gap-2.5">
-              <div className="flex items-center gap-2.5">
-                <SpaceSquareIcon
-                  name={activeTitle}
-                  avatar={isPersonal ? null : currentProject?.avatar}
-                  id={isPersonal ? user?.id || 'personal' : currentProject?.id}
-                  size="md"
-                />
-                <div className="flex flex-col min-w-0 flex-1">
-                  <span className="truncate text-13 font-semibold text-foreground leading-tight">
-                    {activeTitle}
-                  </span>
-                  <span className="truncate text-11 text-muted-foreground leading-tight mt-0.5">
-                    {activeSubtitle}
-                  </span>
-                </div>
-                <Check className="size-4 text-foreground shrink-0" strokeWidth={1.75} />
+          {/* ── 1. Active Space Header Card (Edge-to-edge top block) ── */}
+          <div className="bg-muted/60 border-b border-border p-3 flex flex-col gap-2.5">
+            <div className="flex items-center gap-2.5">
+              <SpaceSquareIcon
+                name={activeTitle}
+                avatar={isPersonal ? null : currentProject?.avatar}
+                id={isPersonal ? user?.id || 'personal' : currentProject?.id}
+                size="md"
+              />
+              <div className="flex flex-col min-w-0 flex-1">
+                <span className="truncate text-13 font-semibold text-foreground leading-tight">
+                  {activeTitle}
+                </span>
+                <span className="truncate text-11 text-muted-foreground leading-tight mt-0.5">
+                  {activeSubtitle}
+                </span>
               </div>
+              <Check className="size-4 text-foreground shrink-0" strokeWidth={1.75} />
+            </div>
 
-              {/* Action Pills: Settings & Invite members */}
-              <div className="flex items-center gap-1.5">
-                <Link
-                  href={settingsHref}
-                  onClick={() => setOpen(false)}
-                  className="flex h-7 items-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-12 font-medium text-foreground hover:bg-muted transition-colors cursor-pointer"
-                >
-                  <Settings className="size-3.5 text-muted-foreground shrink-0" />
-                  <span>Settings</span>
-                </Link>
+            {/* Action Pills: Settings & Invite members */}
+            <div className="flex items-center gap-1.5">
+              <Link
+                href={settingsHref}
+                onClick={() => setOpen(false)}
+                className="flex h-7 items-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-12 font-medium text-foreground hover:bg-muted transition-colors cursor-pointer"
+              >
+                <Settings className="size-3.5 text-muted-foreground shrink-0" />
+                <span>Settings</span>
+              </Link>
 
               <button
                 type="button"
@@ -372,12 +381,11 @@ export default function SpaceSwitcher() {
                 <UserPlus className="size-3.5 text-muted-foreground shrink-0" />
                 <span>Invite members</span>
               </button>
-              </div>
             </div>
           </div>
 
           {/* ── 2. Other Spaces List (Personal + Projects) ── */}
-          <div className="max-h-60 overflow-y-auto px-2 pb-2 space-y-0.5">
+          <div className="max-h-60 overflow-y-auto p-1.5 space-y-0.5">
             {/* Show Personal Space in list if currently inside a Project */}
             {!isPersonal && (
               <button
@@ -398,9 +406,6 @@ export default function SpaceSwitcher() {
                     Personal Space
                   </span>
                 </div>
-                <span className="px-2 py-0.5 rounded-sm bg-muted text-muted-foreground text-11 font-medium shrink-0">
-                  Private
-                </span>
               </button>
             )}
 
@@ -436,9 +441,6 @@ export default function SpaceSwitcher() {
                         {memberCount} Member{memberCount > 1 ? 's' : ''}
                       </span>
                     </div>
-                    <span className="px-2 py-0.5 rounded-sm bg-muted text-muted-foreground text-11 font-medium shrink-0">
-                      Free
-                    </span>
                   </button>
                 );
               })}
@@ -474,6 +476,23 @@ export default function SpaceSwitcher() {
                 </span>
               )}
             </button>
+
+            {archivedProjectsCount > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  router.push('/projects/archives');
+                }}
+                className="flex w-full items-center gap-2.5 px-2.5 py-1.5 rounded-md text-13 font-normal text-foreground hover:bg-muted transition-colors cursor-pointer text-left outline-none"
+              >
+                <Archive className="size-4 text-muted-foreground shrink-0" />
+                <span>Archived projects</span>
+                <span className="ml-auto text-11 font-mono text-muted-foreground">
+                  {archivedProjectsCount}
+                </span>
+              </button>
+            )}
           </div>
 
           {/* ── 4. Sign Out Row (Plane.so style) ── */}

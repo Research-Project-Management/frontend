@@ -164,7 +164,6 @@ export function useSyncCollection() {
       queryClient.invalidateQueries({ queryKey: ['pages'] });
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       queryClient.invalidateQueries({ queryKey: ['project-citation-validation'] });
-      queryClient.invalidateQueries({ queryKey: ['project-linked-files'] });
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('flux:filetree-updated'));
       }

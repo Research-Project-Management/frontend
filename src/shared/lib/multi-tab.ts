@@ -9,6 +9,10 @@
  *    with deterministic in-process fallback when `navigator.locks` is unavailable.
  */
 
+import { uuidv7, isUuidV7 } from '@/shared/utils/uuid.util';
+
+export { uuidv7, isUuidV7 };
+
 export const MULTI_TAB_CHANNEL_NAME = 'flux:multi-tab:v1';
 
 export type MultiTabEventPayload =
@@ -55,6 +59,19 @@ export type MultiTabEventPayload =
     }
   | {
       type: 'FEEDS_READ_IDS_SYNC';
+    }
+  | {
+      type: 'OFFLINE_OUTBOX_MUTATED';
+      action: 'ENQUEUED' | 'FLUSHED' | 'FAILED' | 'RETRY';
+      count: number;
+      mutationId?: string;
+    }
+  | {
+      type: 'EDITOR_COMPILATION_COMPLETED';
+      projectId: string;
+      pdfUrl: string | null;
+      status: 'success' | 'error';
+      timestamp: number;
     };
 
 export type MultiTabMessage<T extends MultiTabEventPayload = MultiTabEventPayload> = T & {
@@ -67,15 +84,11 @@ export type MultiTabListener = (event: MultiTabMessage) => void;
 let cachedTabId: string | null = null;
 
 /**
- * Returns a stable, unique identifier for the current browser tab / JS execution context.
+ * Returns a stable, time-sortable RFC 9562 UUIDv7 identifier for the current browser tab.
  */
 export function getTabId(): string {
   if (cachedTabId) return cachedTabId;
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    cachedTabId = crypto.randomUUID();
-  } else {
-    cachedTabId = `tab_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-  }
+  cachedTabId = uuidv7();
   return cachedTabId;
 }
 
@@ -139,6 +152,13 @@ class MultiTabBus {
   }
 
   /**
+   * Alias for `publish` to broadcast across tabs.
+   */
+  broadcast(payload: MultiTabEventPayload): void {
+    this.publish(payload);
+  }
+
+  /**
    * Subscribes to cross-tab events from other browser tabs.
    * Returns an unsubscribe cleanup function.
    */
@@ -198,7 +218,14 @@ const inProcessFallbackLocks = new Map<string, Promise<unknown>>();
 async function runWithInProcessLock<T>(
   lockName: string,
   callback: () => Promise<T>,
-): Promise<T> {
+  options: WebLockOptions = {},
+): Promise<T | null> {
+  const { ifAvailable = false, timeoutMs = 15_000 } = options;
+
+  if (ifAvailable && inProcessFallbackLocks.has(lockName)) {
+    return null;
+  }
+
   const previous = inProcessFallbackLocks.get(lockName) ?? Promise.resolve();
   let release!: () => void;
   const currentGate = new Promise<void>((resolve) => {
@@ -208,7 +235,21 @@ async function runWithInProcessLock<T>(
   inProcessFallbackLocks.set(lockName, chained);
 
   try {
-    await previous;
+    if (timeoutMs > 0 && timeoutMs < Infinity) {
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          reject(new DOMException(`Lock wait timed out for "${lockName}"`, 'TimeoutError'));
+        }, timeoutMs);
+      });
+      try {
+        await Promise.race([previous, timeoutPromise]);
+      } finally {
+        if (timeoutId) clearTimeout(timeoutId);
+      }
+    } else {
+      await previous;
+    }
     return await callback();
   } finally {
     release();
@@ -238,7 +279,7 @@ export async function withWebLock<T>(
       : null;
 
   if (!navLocks) {
-    return runWithInProcessLock(lockName, callback);
+    return runWithInProcessLock(lockName, callback, options);
   }
 
   if (ifAvailable) {

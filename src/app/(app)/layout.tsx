@@ -29,6 +29,7 @@ const PROJECT_WORKSPACE_PREFIXES = [
   '/drafts',
   '/stickies',
   '/your-work',
+  '/storage',
 ];
 
 function isProjectWorkspaceRoute(pathname: string): boolean {

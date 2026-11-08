@@ -115,7 +115,9 @@ export default function Sidebar() {
         pathname === '/your-work' ||
         pathname.startsWith('/your-work/') ||
         pathname === '/stickies' ||
-        pathname.startsWith('/stickies/')
+        pathname.startsWith('/stickies/') ||
+        pathname === '/storage' ||
+        pathname.startsWith('/storage/')
       );
     }
 

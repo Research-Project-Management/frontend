@@ -15,6 +15,11 @@ export function buildStorageUrl(
   folderId?: string | null,
   highlightId?: string | null,
 ): string {
+  const basePath =
+    typeof window !== 'undefined' &&
+    /^\/projects\/[^/]+\/storage/.test(window.location.pathname)
+      ? window.location.pathname.replace(/\/+$/, '')
+      : '/storage';
   const params = new URLSearchParams();
   if (section !== 'home') {
     params.set('view', section);
@@ -26,7 +31,7 @@ export function buildStorageUrl(
     params.set('highlight', highlightId);
   }
   const qs = params.toString();
-  return `/storage${qs ? `?${qs}` : ''}`;
+  return `${basePath}${qs ? `?${qs}` : ''}`;
 }
 
 export function syncUrl(url: string) {

@@ -1,4 +1,3 @@
-export * from "./CycleIcon";
 export * from "./WorkItemsIcon";
 export * from "./AddWorkItemIcon";
 export * from "./StickiesIcon";

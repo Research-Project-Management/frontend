@@ -122,6 +122,27 @@ export function ThemeProvider({
     root.style.setProperty('--brand-hue', `${brandHue}`);
   }, [brandHue]);
 
+  // Cross-tab synchronization for theme and brandHue via StorageEvent
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY && e.newValue) {
+        if (e.newValue === 'light' || e.newValue === 'dark' || e.newValue === 'system') {
+          const nextTheme = e.newValue as Theme;
+          setThemeState((prev) => (prev === nextTheme ? prev : nextTheme));
+        }
+      } else if (e.key === BRAND_HUE_KEY && e.newValue) {
+        const parsed = Number(e.newValue);
+        if (!Number.isNaN(parsed) && parsed >= 0 && parsed <= 360) {
+          const validHue = Math.round(parsed);
+          setBrandHueState((prev) => (prev === validHue ? prev : validHue));
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
   const setTheme = useCallback((newTheme: Theme) => {
     setThemeState((prev) => (prev === newTheme ? prev : newTheme));
     try {

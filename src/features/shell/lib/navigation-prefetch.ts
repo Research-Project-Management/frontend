@@ -18,6 +18,14 @@ import {
 import { workItemApi } from '@/features/projects/project-id/work-items/api/work-item.api';
 import { getYourWork } from '@/features/projects/your-work/services/your-work.service';
 import { OverviewService } from '@/features/projects/project-id/overview/services/overview.service';
+import {
+  AnalyticsService,
+  analyticsKeys,
+} from '@/features/projects/project-id/analytics/services/analytics.service';
+import {
+  ProjectArchiveService,
+  projectArchiveKeys,
+} from '@/features/projects/project-id/archives/services/archive.service';
 import { pageKeys } from '@/features/projects/project-id/pages/hooks/use-page';
 import { PageService } from '@/features/projects/project-id/pages/services/page.service';
 import {
@@ -241,7 +249,27 @@ export function prefetchProjectSubmodule(
       return;
     }
 
-    if (moduleKey === 'settings' || moduleKey === 'budget') {
+    if (moduleKey === 'analytics') {
+      void queryClient.prefetchQuery({
+        queryKey: analyticsKeys.distribution(projectId),
+        queryFn: ({ signal }) =>
+          AnalyticsService.getProjectAnalytics(projectId, signal),
+        staleTime: 60_000,
+      });
+      return;
+    }
+
+    if (moduleKey === 'archives') {
+      void queryClient.prefetchQuery({
+        queryKey: projectArchiveKeys.filtered(projectId, ''),
+        queryFn: ({ signal }) =>
+          ProjectArchiveService.getProjectArchives(projectId, undefined, signal),
+        staleTime: 30_000,
+      });
+      return;
+    }
+
+    if (moduleKey === 'settings') {
       void queryClient.prefetchQuery({
         queryKey: projectKeys.byId(projectId),
         queryFn: () => fetchProject(projectId),

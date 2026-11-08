@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo, useState, useCallback, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { toast } from 'sonner';
 import { Home, Folder, Users, Star, Trash2 } from 'lucide-react';
 
@@ -22,7 +23,10 @@ import {
   type StorageSection,
 } from '../store/storage-ui.store';
 import { StorageViewContainer } from '../components/layout/StorageViewContainer';
-import type { StorageItem, BreadcrumbSegment } from '@/features/storage/types/storage.types';
+import type {
+  StorageItem,
+  BreadcrumbSegment,
+} from '@/features/storage/types/storage.types';
 import { canDropIntoFolder } from '../utils/storage.util';
 import { downloadFileAuthorized } from '@/shared/lib/file-client';
 import Topbar from '../components/layout/Topbar';
@@ -30,6 +34,21 @@ import { BulkActionBar } from '../components/actions/BulkActionBar';
 import StorageDropzoneOverlay from '../components/dropzone/StorageDropzoneOverlay';
 import { useTopbar } from '../hooks/use-topbar';
 import { useWorkspaceContextStore } from '@/features/shell/store/workspace-context.store';
+
+const Preview = dynamic(
+  () => import('@/features/storage/components/preview/Preview'),
+  { ssr: false },
+);
+
+const VersionHistoryModal = dynamic(
+  () => import('@/features/storage/components/modal/VersionHistoryModal'),
+  { ssr: false },
+);
+
+const ScientificViewerModal = dynamic(
+  () => import('@/features/storage/components/preview/ScientificViewerModal'),
+  { ssr: false },
+);
 
 const ROOT_NAME = 'All Files';
 
@@ -42,14 +61,22 @@ export default function HomePage({
   initialSection,
   initialFolderId,
 }: UnifiedStoragePageProps = {}) {
+  const params = useParams<{ projectId?: string }>();
   const searchParams = useSearchParams();
   const activeSpace = useWorkspaceContextStore((s) => s.activeSpace);
+
+  const routeProjectId =
+    params?.projectId && params.projectId !== 'personal'
+      ? params.projectId
+      : undefined;
+
   const activeProjectId =
-    activeSpace.type === 'project' &&
+    routeProjectId ||
+    (activeSpace.type === 'project' &&
     activeSpace.projectId &&
     activeSpace.projectId !== 'personal'
       ? activeSpace.projectId
-      : undefined;
+      : undefined);
 
   // Storage UI Store State
   const activeSection = useStorageUIStore((s) => s.activeSection);
@@ -60,21 +87,24 @@ export default function HomePage({
   const setHighlightedItemId = useStorageUIStore((s) => s.setHighlightedItemId);
   const navigateToFolder = useStorageUIStore((s) => s.navigateToFolder);
 
+  const versionModalItem = useStorageUIStore((s) => s.versionModalItem);
+  const closeVersionModal = useStorageUIStore((s) => s.closeVersionModal);
+  const scientificViewerItem = useStorageUIStore((s) => s.scientificViewerItem);
+  const closeScientificViewer = useStorageUIStore((s) => s.closeScientificViewer);
+
   const clearSelection = useStorageSelectionStore((s) => s.clearSelection);
   const selectedItem = usePreviewStore((s) => s.selectedItem);
   const setSelectedItem = usePreviewStore((s) => s.setSelectedItem);
+  const isPreviewOpen = Boolean(selectedItem);
 
-  const {
-    searchQuery,
-    setSearchQuery,
-    queryParams,
-  } = useStorageQueryParams();
+  const { searchQuery, setSearchQuery, queryParams } = useStorageQueryParams();
 
   const [draggingItem, setDraggingItem] = useState<StorageItem | null>(null);
 
   // Sync state with URL params on mount / navigation
   useEffect(() => {
-    const viewParam = (searchParams?.get('view') as StorageSection) || initialSection || 'home';
+    const viewParam =
+      (searchParams?.get('view') as StorageSection) || initialSection || 'home';
     const folderParam = searchParams?.get('folder') || initialFolderId || null;
     const highlightParam = searchParams?.get('highlight') || null;
 
@@ -106,7 +136,12 @@ export default function HomePage({
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [setActiveSection, setCurrentFolderId, setHighlightedItemId, clearSelection]);
+  }, [
+    setActiveSection,
+    setCurrentFolderId,
+    setHighlightedItemId,
+    clearSelection,
+  ]);
 
   // Reset current folder and selection when switching between Personal Space and Project Space
   useEffect(() => {
@@ -115,7 +150,8 @@ export default function HomePage({
   }, [activeProjectId, setCurrentFolderId, clearSelection]);
 
   // Upload handler for current active folder
-  const activeUploadFolder = activeSection === 'my-files' ? currentFolderId : null;
+  const activeUploadFolder =
+    activeSection === 'my-files' ? currentFolderId : null;
   const { handleUploadFiles } = useTopbar({
     projectId: activeProjectId,
     parentId: activeUploadFolder,
@@ -151,11 +187,17 @@ export default function HomePage({
     return [{ id: null, name: ROOT_NAME }, ...folderPathData.path];
   }, [activeSection, currentFolderId, folderPathData?.path]);
 
-  const currentFolderName = breadcrumbs.length > 1 ? breadcrumbs[breadcrumbs.length - 1]?.name : ROOT_NAME;
+  const currentFolderName =
+    breadcrumbs.length > 1
+      ? breadcrumbs[breadcrumbs.length - 1]?.name
+      : ROOT_NAME;
 
   // File collection from paginated response
   const files = useMemo(
-    () => (activeQuery.data?.pages.flatMap((page: { files?: StorageItem[] }) => page.files || []) || []) as StorageItem[],
+    () =>
+      (activeQuery.data?.pages.flatMap(
+        (page: { files?: StorageItem[] }) => page.files || [],
+      ) || []) as StorageItem[],
     [activeQuery.data?.pages],
   );
 
@@ -238,16 +280,30 @@ export default function HomePage({
     isFetchingNextPage: activeQuery.isFetchingNextPage,
     onLoadMore: activeQuery.fetchNextPage,
     onFolderClick: isTrash ? undefined : handleFolderClick,
-    onToggleStar: isTrash ? undefined : (id: string) => { void handleToggleStar(id); },
+    onToggleStar: isTrash
+      ? undefined
+      : (id: string) => {
+          void handleToggleStar(id);
+        },
     onDelete: isTrash
-      ? (id: string) => { void handlePermanentlyDelete(id); }
-      : (id: string) => { void handleDelete(id); },
-    onRestore: isTrash ? (id: string) => { void handleRestore(id); } : undefined,
+      ? (id: string) => {
+          void handlePermanentlyDelete(id);
+        }
+      : (id: string) => {
+          void handleDelete(id);
+        },
+    onRestore: isTrash
+      ? (id: string) => {
+          void handleRestore(id);
+        }
+      : undefined,
     onDownload: handleDownload,
-    onOpenLocation: activeSection !== 'my-files' && !isTrash ? handleOpenLocation : undefined,
+    onOpenLocation:
+      activeSection !== 'my-files' && !isTrash ? handleOpenLocation : undefined,
     onFileClick: (item: StorageItem) => setSelectedItem(item),
     onDragStartFile: activeSection === 'my-files' ? handleDragStart : undefined,
-    onDropOnFolder: activeSection === 'my-files' ? handleDropOnFolder : undefined,
+    onDropOnFolder:
+      activeSection === 'my-files' ? handleDropOnFolder : undefined,
   };
 
   // ── Topbar Metadata ────────────────────────────────────────────────────────
@@ -269,30 +325,64 @@ export default function HomePage({
   }, [activeSection, currentFolderName]);
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden relative">
-      <Topbar
-        title={topbarConfig.title}
-        icon={topbarConfig.icon}
-        breadcrumbs={activeSection === 'my-files' ? breadcrumbs : undefined}
-        onBreadcrumbNavigate={activeSection === 'my-files' ? handleBreadcrumbNavigate : undefined}
-        projectId={activeProjectId}
-        parentId={activeUploadFolder}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-      />
-      <StorageDropzoneOverlay
-        onFilesDrop={handleFilesDrop}
-        folderName={activeSection === 'my-files' ? currentFolderName : 'All files'}
-      >
-        <StorageViewContainer
-          isLoading={activeQuery.isLoading && !activeQuery.data}
-          isError={activeQuery.isError}
-          error={activeQuery.error || new Error('Internal Server Error')}
-          viewProps={viewProps}
+    <div className="h-full flex min-h-0 overflow-hidden bg-background relative">
+      {/* Main Left Column: Topbar (Header + Tabs) & File View Content */}
+      <div className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden relative">
+        <Topbar
+          title={topbarConfig.title}
+          icon={topbarConfig.icon}
+          breadcrumbs={activeSection === 'my-files' ? breadcrumbs : undefined}
+          onBreadcrumbNavigate={
+            activeSection === 'my-files' ? handleBreadcrumbNavigate : undefined
+          }
+          projectId={activeProjectId}
+          parentId={activeUploadFolder}
           searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
         />
-      </StorageDropzoneOverlay>
-      <BulkActionBar items={files} isTrash={isTrash} />
+
+        <main className="flex-1 min-h-0 flex overflow-hidden relative">
+          <div className="h-full flex-1 w-full relative z-10 overflow-y-auto">
+            <StorageDropzoneOverlay
+              onFilesDrop={handleFilesDrop}
+              folderName={
+                activeSection === 'my-files' ? currentFolderName : 'All files'
+              }
+            >
+              <StorageViewContainer
+                isLoading={activeQuery.isLoading && !activeQuery.data}
+                isError={activeQuery.isError}
+                error={activeQuery.error || new Error('Internal Server Error')}
+                viewProps={viewProps}
+                searchQuery={searchQuery}
+              />
+            </StorageDropzoneOverlay>
+          </div>
+          {isPreviewOpen && <Preview />}
+        </main>
+
+        <BulkActionBar items={files} isTrash={isTrash} />
+      </div>
+
+      {versionModalItem && (
+        <VersionHistoryModal
+          open={Boolean(versionModalItem)}
+          onOpenChange={(open) => {
+            if (!open) closeVersionModal();
+          }}
+          file={versionModalItem}
+        />
+      )}
+
+      {scientificViewerItem && (
+        <ScientificViewerModal
+          open={Boolean(scientificViewerItem)}
+          onOpenChange={(open) => {
+            if (!open) closeScientificViewer();
+          }}
+          file={scientificViewerItem}
+        />
+      )}
     </div>
   );
 }

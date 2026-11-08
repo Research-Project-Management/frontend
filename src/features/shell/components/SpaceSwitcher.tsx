@@ -205,6 +205,10 @@ export default function SpaceSwitcher() {
         router.push('/settings');
       } else if (pathname.includes('/pages')) {
         router.push('/pages');
+      } else if (pathname.includes('/storage')) {
+        router.push('/storage');
+      } else if (pathname.includes('/analytics')) {
+        router.push('/your-work');
       } else {
         router.push('/home');
       }
@@ -243,6 +247,10 @@ export default function SpaceSwitcher() {
     }
     if (pathname.startsWith('/pages') || pathname.includes('/pages')) {
       router.push(`/projects/${proj.id}/pages`);
+      return;
+    }
+    if (pathname.startsWith('/storage') || pathname.includes('/storage')) {
+      router.push(`/projects/${proj.id}/storage`);
       return;
     }
     if (pathname.startsWith('/projects/') && params?.projectId) {

@@ -3,12 +3,19 @@
 import React, { useMemo, useRef, useEffect } from 'react';
 import { Document, Page } from 'react-pdf';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Bookmark, Loader2, ListTree, LayoutGrid, Highlighter, ChevronRight } from 'lucide-react';
+import { Bookmark, Loader2, ListTree, LayoutGrid, Highlighter, ChevronRight, RotateCw, RotateCcw } from 'lucide-react';
 import { setupPdfWorker, getSharedPdfDocumentOptions, isPdfDocumentValid } from '@/shared/lib/pdfjs-worker';
 import { cn } from '@/shared/lib/utils';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import {
+  ContextMenu,
+  ContextMenuTrigger,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+} from '@/shared/components/ui/context-menu';
 import type { FlattenedOutlineSection } from '@/features/library/domain/reader-search-outline.domain';
 
 setupPdfWorker();
@@ -22,6 +29,8 @@ export const LazyThumbnailPage = React.memo(function LazyThumbnailPage({
   pdfDocument,
   onJumpToPage,
   onToggleBookmarkPage,
+  onRotatePageRight,
+  onRotatePageLeft,
 }: {
   pageNum: number;
   isCurrent: boolean;
@@ -30,82 +39,120 @@ export const LazyThumbnailPage = React.memo(function LazyThumbnailPage({
   pdfDocument?: unknown;
   onJumpToPage: (page: number) => void;
   onToggleBookmarkPage?: (page: number) => void;
+  onRotatePageRight?: (page: number) => void;
+  onRotatePageLeft?: (page: number) => void;
 }) {
   return (
-    <div
-      className={cn(
-        "relative flex flex-col items-center p-1 rounded-md border transition-colors group overflow-hidden",
-        isCurrent
-          ? "border-primary bg-muted/40"
-          : "border-border hover:border-border/80 bg-card",
-      )}
-    >
-      {onToggleBookmarkPage && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleBookmarkPage(pageNum);
-          }}
-          aria-label={
-            isBookmarked
-              ? `Remove bookmark on page ${pageNum}`
-              : `Bookmark page ${pageNum}`
-          }
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div
           className={cn(
-            "absolute top-1.5 right-1.5 z-10 size-5 rounded-sm flex items-center justify-center transition-opacity cursor-pointer",
-            isBookmarked
-              ? "opacity-100 bg-background/90 text-foreground"
-              : "opacity-0 group-hover:opacity-100 bg-background/80 text-muted-foreground hover:text-foreground",
+            "relative flex flex-col items-center p-1 rounded-md border transition-colors group overflow-hidden select-none",
+            isCurrent
+              ? "border-primary bg-muted/40"
+              : "border-border hover:border-border/80 bg-card",
           )}
         >
-          <Bookmark
-            className={cn(
-              "size-3 shrink-0",
-              isBookmarked && "fill-foreground text-foreground",
-            )}
-            strokeWidth={1.5}
-          />
-        </button>
-      )}
-      <button
-        type="button"
-        onClick={() => onJumpToPage(pageNum)}
-        className="w-full flex flex-col items-center cursor-pointer outline-none"
-      >
-        <div className="w-full aspect-[1/1.4] rounded-sm bg-background border border-border overflow-hidden flex items-center justify-center">
-          {showPdfCanvas && isPdfDocumentValid(pdfDocument) ? (
-            <Page
-              pdf={isPdfDocumentValid(pdfDocument) ? (pdfDocument as never) : undefined}
-              pageNumber={pageNum}
-              width={100}
-              devicePixelRatio={1}
-              canvasBackground="#fcfcfb"
-              renderTextLayer={false}
-              renderAnnotationLayer={false}
-              onLoadError={() => {}}
-              loading={
-                <div className="size-full flex items-center justify-center text-foreground text-11 font-mono">
+          {onToggleBookmarkPage && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleBookmarkPage(pageNum);
+              }}
+              aria-label={
+                isBookmarked
+                  ? `Remove bookmark on page ${pageNum}`
+                  : `Bookmark page ${pageNum}`
+              }
+              className={cn(
+                "absolute top-1.5 right-1.5 z-10 size-5 rounded-sm flex items-center justify-center transition-opacity cursor-pointer",
+                isBookmarked
+                  ? "opacity-100 bg-background/90 text-foreground"
+                  : "opacity-0 group-hover:opacity-100 bg-background/80 text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Bookmark
+                className={cn(
+                  "size-3 shrink-0",
+                  isBookmarked && "fill-foreground text-foreground",
+                )}
+                strokeWidth={1.5}
+              />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => onJumpToPage(pageNum)}
+            className="w-full flex flex-col items-center cursor-pointer outline-none"
+          >
+            <div className="w-full aspect-[1/1.4] rounded-sm bg-background border border-border overflow-hidden flex items-center justify-center">
+              {showPdfCanvas && isPdfDocumentValid(pdfDocument) ? (
+                <Page
+                  pdf={isPdfDocumentValid(pdfDocument) ? (pdfDocument as never) : undefined}
+                  pageNumber={pageNum}
+                  width={100}
+                  devicePixelRatio={1}
+                  canvasBackground="#fcfcfb"
+                  renderTextLayer={false}
+                  renderAnnotationLayer={false}
+                  onLoadError={() => {}}
+                  loading={
+                    <div className="size-full flex items-center justify-center text-foreground text-11 font-mono">
+                      {pageNum}
+                    </div>
+                  }
+                />
+              ) : (
+                <div className="size-full flex items-center justify-center text-muted-foreground text-11 font-mono tabular-nums">
                   {pageNum}
                 </div>
-              }
-            />
-          ) : (
-            <div className="size-full flex items-center justify-center text-muted-foreground text-11 font-mono tabular-nums">
-              {pageNum}
+              )}
             </div>
-          )}
+            <span
+              className={cn(
+                "text-11 font-mono tabular-nums mt-1",
+                isCurrent ? "font-semibold text-foreground" : "text-muted-foreground",
+              )}
+            >
+              Page {pageNum}
+            </span>
+          </button>
         </div>
-        <span
-          className={cn(
-            "text-11 font-mono tabular-nums mt-1",
-            isCurrent ? "font-semibold text-foreground" : "text-muted-foreground",
-          )}
-        >
-          Page {pageNum}
-        </span>
-      </button>
-    </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-48 text-12">
+        {onRotatePageRight && (
+          <ContextMenuItem
+            onClick={() => onRotatePageRight(pageNum)}
+            className="cursor-pointer gap-2"
+          >
+            <RotateCw className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+            <span>Rotate Page Right</span>
+          </ContextMenuItem>
+        )}
+        {onRotatePageLeft && (
+          <ContextMenuItem
+            onClick={() => onRotatePageLeft(pageNum)}
+            className="cursor-pointer gap-2"
+          >
+            <RotateCcw className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+            <span>Rotate Page Left</span>
+          </ContextMenuItem>
+        )}
+        {onToggleBookmarkPage && (
+          <>
+            <ContextMenuSeparator />
+            <ContextMenuItem
+              onClick={() => onToggleBookmarkPage(pageNum)}
+              className="cursor-pointer gap-2"
+            >
+              <Bookmark className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+              <span>{isBookmarked ? 'Remove Bookmark' : 'Bookmark Page'}</span>
+            </ContextMenuItem>
+          </>
+        )}
+      </ContextMenuContent>
+    </ContextMenu>
   );
 });
 
@@ -120,6 +167,8 @@ export interface ThumbnailsViewProps {
   pdfBlobUrl?: string | null;
   onJumpToPage: (page: number) => void;
   onToggleBookmarkPage?: (page: number) => void;
+  onRotatePageRight?: (page: number) => void;
+  onRotatePageLeft?: (page: number) => void;
 }
 
 export function ThumbnailsView({
@@ -133,6 +182,8 @@ export function ThumbnailsView({
   pdfBlobUrl,
   onJumpToPage,
   onToggleBookmarkPage,
+  onRotatePageRight,
+  onRotatePageLeft,
 }: ThumbnailsViewProps) {
   const thumbPdfDocRef = useRef<{ cleanup?: () => Promise<void> | void } | null>(
     null,
@@ -242,6 +293,8 @@ export function ThumbnailsView({
               pdfDocument={effectivePdfDoc}
               onJumpToPage={onJumpToPage}
               onToggleBookmarkPage={onToggleBookmarkPage}
+              onRotatePageRight={onRotatePageRight}
+              onRotatePageLeft={onRotatePageLeft}
             />
             {p2 !== null && (
               <LazyThumbnailPage
@@ -252,6 +305,8 @@ export function ThumbnailsView({
                 pdfDocument={effectivePdfDoc}
                 onJumpToPage={onJumpToPage}
                 onToggleBookmarkPage={onToggleBookmarkPage}
+                onRotatePageRight={onRotatePageRight}
+                onRotatePageLeft={onRotatePageLeft}
               />
             )}
           </div>

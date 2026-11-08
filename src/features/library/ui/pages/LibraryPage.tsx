@@ -81,7 +81,7 @@ const FILTER_TITLE_MAP: Record<string, string> = {
   unfiled: 'Unfiled Items',
   trash: 'Trash',
   duplicates: 'Duplicate Items',
-  'recently-read': 'Recently Read',
+  recent: 'Recently Read',
   feed: 'Feeds',
 };
 
@@ -92,7 +92,7 @@ const FILTER_ICON_MAP: Record<string, React.ComponentType<{ className?: string; 
   'my-publications': Award,
   retracted: ShieldAlert,
   trash: Trash2,
-  'recently-read': History,
+  recent: History,
   feed: Rss,
 };
 

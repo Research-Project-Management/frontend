@@ -19,7 +19,10 @@ import {
   prefetchPdfBlob,
   invalidatePdfBlobCache,
   buildPdfBlobCacheKey,
+  resolveLibraryUrl,
 } from '../clients/http.client';
+import { uuidv7 } from '@/shared/utils/uuid.util';
+import { enqueueOfflineMutation } from '@/features/library/core/coordinator/offline-sync.coordinator';
 
 export type { ExtractNotesOptions, ItemStateData };
 export { buildPdfBlobCacheKey };
@@ -326,14 +329,52 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
   });
 
   const createMutation = useMutation({
-    mutationFn: (dto: CreateAnnotationDTO) => {
+    mutationFn: async (dto: CreateAnnotationDTO) => {
       if (!attachmentId) throw new Error('Attachment ID required to create annotation.');
-      const id = dto.id || crypto.randomUUID();
+      const id = dto.id || uuidv7();
+
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        const url = resolveLibraryUrl(
+          'reader',
+          `/attachments/${encodeURIComponent(attachmentId)}/annotations`,
+          scopeId,
+        );
+        await enqueueOfflineMutation(
+          {
+            scopeId: targetScope,
+            entityType: 'annotation',
+            entityId: id,
+            action: 'CREATE',
+            endpoint: url,
+            method: 'POST',
+            payload: { ...dto, id },
+          },
+          queryClient,
+          { flushImmediately: false },
+        );
+        return {
+          id,
+          attachmentId,
+          type: dto.type,
+          pageIndex: dto.pageIndex,
+          pageNumber: dto.pageNumber,
+          pageLabel: dto.pageLabel ?? null,
+          color: dto.color,
+          quoteText: dto.quoteText,
+          comment: dto.comment,
+          rects: dto.rects || [],
+          boundingRect: dto.boundingRect,
+          tags: dto.tags || [],
+          version: 1,
+          createdAt: new Date().toISOString(),
+        } as ReaderAnnotation;
+      }
+
       return AnnotationsService.create(scopeId, attachmentId, { ...dto, id });
     },
     onMutate: async (dto: CreateAnnotationDTO) => {
       if (!attachmentId) return undefined;
-      const id = dto.id || crypto.randomUUID();
+      const id = dto.id || uuidv7();
       const queryKey = annotationKeys.byAttachment(scopeId, attachmentId);
       await queryClient.cancelQueries({ queryKey });
       const previousAnnotations = queryClient.getQueryData<ReaderAnnotation[]>(queryKey);
@@ -432,6 +473,34 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
       dto: UpdateAnnotationDTO;
     }) => {
       if (!attachmentId) throw new Error('Attachment ID required to update annotation.');
+
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        const url = resolveLibraryUrl(
+          'reader',
+          `/attachments/${encodeURIComponent(attachmentId)}/annotations/${encodeURIComponent(annotationId)}`,
+          scopeId,
+        );
+        await enqueueOfflineMutation(
+          {
+            scopeId: targetScope,
+            entityType: 'annotation',
+            entityId: annotationId,
+            action: 'UPDATE',
+            endpoint: url,
+            method: 'PATCH',
+            payload: { ...dto, expectedVersion },
+          },
+          queryClient,
+          { flushImmediately: false },
+        );
+        return {
+          id: annotationId,
+          attachmentId,
+          version: expectedVersion ? expectedVersion + 1 : 2,
+          ...dto,
+        } as unknown as ReaderAnnotation;
+      }
+
       return AnnotationsService.update(
         scopeId,
         attachmentId,
@@ -501,6 +570,29 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
       expectedVersion?: number;
     }) => {
       if (!attachmentId) throw new Error('Attachment ID required to delete annotation.');
+
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        const url = resolveLibraryUrl(
+          'reader',
+          `/attachments/${encodeURIComponent(attachmentId)}/annotations/${encodeURIComponent(annotationId)}`,
+          scopeId,
+        );
+        await enqueueOfflineMutation(
+          {
+            scopeId: targetScope,
+            entityType: 'annotation',
+            entityId: annotationId,
+            action: 'DELETE',
+            endpoint: url,
+            method: 'DELETE',
+            payload: { expectedVersion },
+          },
+          queryClient,
+          { flushImmediately: false },
+        );
+        return { deleted: true, success: true };
+      }
+
       return AnnotationsService.delete(
         scopeId,
         attachmentId,

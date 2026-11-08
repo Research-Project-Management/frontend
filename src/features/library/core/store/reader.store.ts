@@ -60,6 +60,7 @@ interface ReaderStoreState {
   closeReader: (paperId?: string) => void;
   openTab: (tab: ReaderTab) => void;
   closeTab: (id: string) => void;
+  closeOtherTabs: (keepId: string) => void;
   reorderTabs: (newTabs: ReaderTab[]) => void;
   setActiveTab: (id: string) => void;
   setActiveColor: (color: string) => void;
@@ -213,6 +214,43 @@ export const useReaderStore = create<ReaderStoreState>((set, get) => ({
       activeTabId: nextActive,
       readingPaperId: nextActive !== 'library' ? nextActive : null,
     });
+  },
+
+  closeOtherTabs: (keepId: string) => {
+    const { tabs } = get();
+    if (keepId === 'library') {
+      const removedIds = tabs
+        .filter((t) => t.id !== 'library' && t.type !== 'library')
+        .map((t) => t.id);
+      if (removedIds.length === 0) return;
+      const nextTabs = tabs.filter((t) => t.id === 'library' || t.type === 'library');
+      const mergedTabs = saveReaderTabsToStorage(nextTabs, 'library', undefined, {
+        removedIds,
+      });
+      multiTabBus.publish({ type: 'READER_TABS_SYNC' });
+      set({
+        tabs: mergedTabs,
+        activeTabId: 'library',
+        readingPaperId: null,
+      });
+    } else {
+      const removedIds = tabs
+        .filter((t) => t.id !== keepId && t.id !== 'library' && t.type !== 'library')
+        .map((t) => t.id);
+      if (removedIds.length === 0) return;
+      const nextTabs = tabs.filter(
+        (t) => t.id === keepId || t.id === 'library' || t.type === 'library',
+      );
+      const mergedTabs = saveReaderTabsToStorage(nextTabs, keepId, undefined, {
+        removedIds,
+      });
+      multiTabBus.publish({ type: 'READER_TABS_SYNC' });
+      set({
+        tabs: mergedTabs,
+        activeTabId: keepId,
+        readingPaperId: keepId,
+      });
+    }
   },
 
   reorderTabs: (newTabs: ReaderTab[]) => {

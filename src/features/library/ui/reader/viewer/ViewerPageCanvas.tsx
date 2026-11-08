@@ -13,6 +13,7 @@ import { getCappedDevicePixelRatio, releaseCanvasMemory, isPdfDocumentValid } fr
 import type { ReaderAnnotation, AnnotationRect, InlineTextInputState, AreaSelectionState, InkDrawingState } from '@/features/library/types/reader.types';
 import type { ReaderAnnotationTool } from '@/features/library/core/store/reader.store';
 import { calculatePageAspectRatio } from '@/features/library/domain/reader-search-outline.domain';
+import { smoothPointsToSvgPath } from '@/features/library/domain/reader-ink-canvas.domain';
 import { PageAnnotationOverlay } from './PageAnnotationOverlay';
 import JSZip from 'jszip';
 import DOMPurify from 'dompurify';
@@ -284,9 +285,7 @@ export const ViewerPageCanvas = React.memo(function ViewerPageCanvas({
           className="absolute inset-0 w-full h-full pointer-events-none z-30"
         >
           <path
-            d={inkDrawing.currentPoints
-              .map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${(p.x * 100).toFixed(2)} ${(p.y * 100).toFixed(2)}`)
-              .join(' ')}
+            d={smoothPointsToSvgPath(inkDrawing.currentPoints)}
             fill="none"
             stroke={activeColor || '#ffd400'}
             strokeWidth={2.5}

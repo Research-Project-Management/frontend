@@ -3,12 +3,23 @@
 import { useId, useState, useMemo, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Library, ChevronRight } from 'lucide-react';
+import { Library, ChevronRight, FolderPlus, SlidersHorizontal, Download } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 
 import { cn } from "@/shared/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger,
+} from '@/shared/components/ui/context-menu';
+import { executeExportScopeFormat } from '@/features/library/core/coordinator/citation-export.coordinator';
 import {
   useCollections,
   useCollectionsQuery,
@@ -442,6 +453,40 @@ export function LibrarySidebar() {
 
   const [isMounted, setIsMounted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isRootDragOver, setIsRootDragOver] = useState(false);
+
+  const handleRootDragOver = useCallback((e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes('application/json') || e.dataTransfer.types.includes('text/plain')) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = 'move';
+      setIsRootDragOver(true);
+    }
+  }, []);
+
+  const handleRootDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsRootDragOver(false);
+  }, []);
+
+  const handleRootDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsRootDragOver(false);
+    try {
+      const raw = e.dataTransfer.getData('application/json') || e.dataTransfer.getData('text/plain');
+      if (raw) {
+        const parsed = JSON.parse(raw) as string[] | { ids?: string[] };
+        const ids = Array.isArray(parsed) ? parsed : (parsed?.ids || []);
+        if (ids.length > 0) {
+          void handleBatchMoveItems(ids, null);
+        }
+      }
+    } catch {
+      // Ignore parse error
+    }
+  }, [handleBatchMoveItems]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -487,29 +532,99 @@ export function LibrarySidebar() {
             >
               {/* 1. Root Library Section (My Library in Personal Space, Project Library in Project Space) */}
               <div className="relative group/root flex items-center w-full">
-                <Link
-                  href={basePath}
-                  onClick={() => {
-                    handleMobileLinkClick();
-                  }}
-                  className={cn(
-                    "group/item relative flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none select-none pr-8",
-                    isLibraryActive
-                      ? "bg-muted text-foreground font-medium"
-                      : "text-foreground hover:bg-muted group-hover/root:bg-muted font-normal"
-                  )}
-                >
-                  <Library
-                    className="relative z-10 size-4 shrink-0 text-foreground"
-                    strokeWidth={1.5}
-                  />
-                  <span className={cn(
-                    "relative z-10 min-w-0 truncate flex-1 tracking-tight text-foreground",
-                    isLibraryActive ? "font-medium" : "font-normal"
-                  )}>
-                    {isInProjectContext ? (activeScope.name || 'Project Library') : 'My Library'}
-                  </span>
-                </Link>
+                <ContextMenu>
+                  <ContextMenuTrigger asChild>
+                    <Link
+                      href={basePath}
+                      onClick={() => {
+                        handleMobileLinkClick();
+                      }}
+                      onDragOver={handleRootDragOver}
+                      onDragLeave={handleRootDragLeave}
+                      onDrop={handleRootDrop}
+                      className={cn(
+                        "group/item relative flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none select-none pr-8",
+                        isLibraryActive
+                          ? "bg-muted text-foreground font-medium"
+                          : "text-foreground hover:bg-muted group-hover/root:bg-muted font-normal",
+                        isRootDragOver && "bg-primary/10 text-primary font-medium ring-1 ring-primary ring-inset"
+                      )}
+                    >
+                      <Library
+                        className="relative z-10 size-4 shrink-0 text-foreground"
+                        strokeWidth={1.5}
+                      />
+                      <span className={cn(
+                        "relative z-10 min-w-0 truncate flex-1 tracking-tight text-foreground",
+                        isLibraryActive ? "font-medium" : "font-normal"
+                      )}>
+                        {isInProjectContext ? (activeScope.name || 'Project Library') : 'My Library'}
+                      </span>
+                    </Link>
+                  </ContextMenuTrigger>
+                  <ContextMenuContent
+                    collisionPadding={12}
+                    className="w-56 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 select-none space-y-0.5"
+                  >
+                    {canManageCollections && (
+                      <>
+                        <ContextMenuItem
+                          onClick={handlers.openCreateRoot}
+                          className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+                        >
+                          <FolderPlus className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                          <span>New Collection...</span>
+                        </ContextMenuItem>
+
+                        <ContextMenuItem
+                          onClick={() => openModal('SAVED_SEARCH')}
+                          className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+                        >
+                          <SlidersHorizontal className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                          <span>New Saved Search...</span>
+                        </ContextMenuItem>
+
+                        <ContextMenuSeparator className="my-1" />
+                      </>
+                    )}
+
+                    <ContextMenuSub>
+                      <ContextMenuSubTrigger className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors">
+                        <Download className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+                        <span>Export Library...</span>
+                      </ContextMenuSubTrigger>
+                      <ContextMenuSubContent
+                        collisionPadding={16}
+                        sideOffset={4}
+                        alignOffset={-4}
+                        className="w-48 p-1.5 rounded-md border border-border bg-popover text-popover-foreground text-13 shadow-raised-200 space-y-0.5 select-none"
+                      >
+                        {(
+                          [
+                            { format: 'bibtex' as const, label: 'BibTeX (.bib)' },
+                            { format: 'ris' as const, label: 'RIS (.ris)' },
+                            { format: 'csl_json' as const, label: 'CSL-JSON (.json)' },
+                            { format: 'csv' as const, label: 'CSV (.csv)' },
+                            { format: 'markdown' as const, label: 'Markdown (.md)' },
+                          ]
+                        ).map(({ format, label }) => (
+                          <ContextMenuItem
+                            key={format}
+                            onClick={() =>
+                              void executeExportScopeFormat(
+                                effectiveScopeId || 'user',
+                                format,
+                              )
+                            }
+                            className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+                          >
+                            <span>{label}</span>
+                          </ContextMenuItem>
+                        ))}
+                      </ContextMenuSubContent>
+                    </ContextMenuSub>
+                  </ContextMenuContent>
+                </ContextMenu>
 
                 <Tooltip>
                   <TooltipTrigger asChild>

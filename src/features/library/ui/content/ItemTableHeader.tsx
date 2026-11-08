@@ -299,7 +299,7 @@ interface LibraryEmptyStateProps {
 }
 
 type EmptyStateVariant =
-  | 'recently-read'
+  | 'recent'
   | 'search'
   | 'trash'
   | 'starred'
@@ -500,10 +500,7 @@ export function LibraryEmptyState(props: LibraryEmptyStateProps) {
   const activeFilter = props.activeFilter || null;
 
   const isSearchActive = Boolean(search.trim());
-  const isRecent =
-    activeFilter === 'recent' ||
-    activeFilter === 'recently-read' ||
-    pathname?.includes('/recently-read');
+  const isRecent = activeFilter === 'recent';
 
   if (isRecent && !isSearchActive) {
     return <RecentlyReadEmptyState />;
@@ -511,7 +508,7 @@ export function LibraryEmptyState(props: LibraryEmptyStateProps) {
 
   const variant: EmptyStateVariant = (() => {
     if (isSearchActive) return 'search';
-    if (isRecent) return 'recently-read';
+    if (isRecent) return 'recent';
     if (activeFilter === 'trash') return 'trash';
     if (activeFilter === 'starred') return 'starred';
     if (activeFilter === 'retracted') return 'retracted';

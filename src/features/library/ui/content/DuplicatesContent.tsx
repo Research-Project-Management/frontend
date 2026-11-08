@@ -36,6 +36,14 @@ import {
   inspectItemDifferences,
   selectBestMasterItemId,
 } from '@/features/library/domain/diff.domain';
+import {
+  useLibraryCommandStore,
+  createMergeDuplicatesCommand,
+} from '@/features/library/core/manager/library-command.manager';
+import {
+  useBatchRestoreItemsMutation,
+  useUpdateLibraryItemMutation,
+} from '@/features/library/sdk/queries/catalog.queries';
 import type { Item, DuplicateGroup } from '@/features/library/types/core.types';
 
 function InlineDiffView({ items, recommendedMasterId }: { items: Item[]; recommendedMasterId?: string }) {
@@ -159,6 +167,8 @@ export function DuplicatesContent({
   const dismissMutation = useDismissDuplicatesMutation(scopeId);
   const mergeMutation = useMergeDuplicates(scopeId);
   const batchMergeMutation = useBatchMergeDuplicates(scopeId);
+  const restoreMutation = useBatchRestoreItemsMutation(scopeId);
+  const updateItemMutation = useUpdateLibraryItemMutation(scopeId);
 
   // Local state
   const [dismissedGroupKeys, setDismissedGroupKeys] = useState<Set<string>>(new Set());
@@ -355,47 +365,79 @@ export function DuplicatesContent({
       }
 
       if (batchPayloads.length > 1) {
-        try {
-          await batchMergeMutation.mutateAsync(
-            batchPayloads.map((p) => ({
-              primaryItemId: p.primaryItemId,
-              duplicateItemIds: p.duplicateItemIds,
-              ...(p.overrides ? { fieldSelections: p.overrides as Record<string, string> } : {}),
-            })),
-          );
-          const mergedKeys: string[] = [];
-          batchPayloads.forEach((p) => {
-            clearGroupMergeDraft(p.key);
-            clearGroupMergeDraft(p.setKey);
-            mergedKeys.push(p.key);
-          });
-          setDismissedGroupKeys((prev) => {
-            const next = new Set(prev);
-            for (const k of mergedKeys) next.add(k);
-            return next;
-          });
-          mergedGroupsCount += batchPayloads.length;
-        } catch (err) {
-          toast.error(err instanceof Error && err.message ? err.message : 'Failed to merge duplicate groups', {
-            id: 'duplicate-group-action',
-          });
+        for (const p of batchPayloads) {
+          const group = activeGroupByKey.get(p.key) || activeGroupByKey.get(p.setKey);
+          const masterItem = (group?.items || []).find((it) => it.id === p.primaryItemId);
+          if (masterItem) {
+            try {
+              await useLibraryCommandStore.getState().executeCommand(
+                createMergeDuplicatesCommand({
+                  primaryItem: masterItem,
+                  duplicateIdsToDelete: p.duplicateItemIds,
+                  groupKey: p.key,
+                  fieldOverrides: p.overrides,
+                  items: (group?.items || []) as Item[],
+                  mergeMutation,
+                  restoreMutation,
+                  updateItemMutation,
+                  onExecuted: () => {
+                    clearGroupMergeDraft(p.key);
+                    clearGroupMergeDraft(p.setKey);
+                    setDismissedGroupKeys((prev) => new Set(prev).add(p.key));
+                  },
+                  onUndone: () => {
+                    setDismissedGroupKeys((prev) => {
+                      const next = new Set(prev);
+                      next.delete(p.key);
+                      return next;
+                    });
+                  },
+                }),
+                { silentToast: batchPayloads.length > 3 },
+              );
+              mergedGroupsCount++;
+            } catch {
+              // Handled by store
+            }
+          }
+        }
+        if (mergedGroupsCount > 0 && batchPayloads.length > 3) {
+          toast.success(`Merged ${mergedGroupsCount} duplicate groups`);
         }
       } else if (batchPayloads.length === 1) {
         const p = batchPayloads[0]!;
-        try {
-          await mergeMutation.mutateAsync({
-            primaryItemId: p.primaryItemId,
-            duplicateItemIds: p.duplicateItemIds,
-            ...(p.overrides ? { overrides: p.overrides } : {}),
-          });
-          clearGroupMergeDraft(p.key);
-          clearGroupMergeDraft(p.setKey);
-          setDismissedGroupKeys((prev) => new Set(prev).add(p.key));
-          mergedGroupsCount++;
-        } catch (err) {
-          toast.error(err instanceof Error && err.message ? err.message : 'Failed to merge duplicate group', {
-            id: 'duplicate-group-action',
-          });
+        const group = activeGroupByKey.get(p.key) || activeGroupByKey.get(p.setKey);
+        const masterItem = (group?.items || []).find((it) => it.id === p.primaryItemId);
+        if (masterItem) {
+          try {
+            await useLibraryCommandStore.getState().executeCommand(
+              createMergeDuplicatesCommand({
+                primaryItem: masterItem,
+                duplicateIdsToDelete: p.duplicateItemIds,
+                groupKey: p.key,
+                fieldOverrides: p.overrides,
+                items: (group?.items || []) as Item[],
+                mergeMutation,
+                restoreMutation,
+                updateItemMutation,
+                onExecuted: () => {
+                  clearGroupMergeDraft(p.key);
+                  clearGroupMergeDraft(p.setKey);
+                  setDismissedGroupKeys((prev) => new Set(prev).add(p.key));
+                },
+                onUndone: () => {
+                  setDismissedGroupKeys((prev) => {
+                    const next = new Set(prev);
+                    next.delete(p.key);
+                    return next;
+                  });
+                },
+              }),
+            );
+            mergedGroupsCount++;
+          } catch {
+            // Handled by store
+          }
         }
       }
 

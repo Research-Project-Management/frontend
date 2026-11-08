@@ -101,12 +101,12 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
 
   // Multi-Tab Store
   const {
-    tabs, activeTabId, openReader, closeTab, reorderTabs, setActiveTab, updateTabState,
+    tabs, activeTabId, openReader, closeTab, closeOtherTabs, reorderTabs, setActiveTab, updateTabState,
     activeColor, setActiveColor, activeTool, setActiveTool, bookmarks, toggleBookmark,
   } = useReaderStore(
     useShallow((s) => ({
       tabs: s.tabs, activeTabId: s.activeTabId, openReader: s.openReader,
-      closeTab: s.closeTab, reorderTabs: s.reorderTabs, setActiveTab: s.setActiveTab, updateTabState: s.updateTabState,
+      closeTab: s.closeTab, closeOtherTabs: s.closeOtherTabs, reorderTabs: s.reorderTabs, setActiveTab: s.setActiveTab, updateTabState: s.updateTabState,
       activeColor: s.activeColor, setActiveColor: s.setActiveColor,
       activeTool: s.activeTool, setActiveTool: s.setActiveTool,
       bookmarks: s.bookmarks, toggleBookmark: s.toggleBookmark,
@@ -240,6 +240,44 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
       }
     },
     [tabs, activeTabId, paper, paperUrl, scopeId, closeTab, goBack, router, getPaperUrl],
+  );
+
+  const handleCloseOtherTabs = useCallback(
+    (keepId: string) => {
+      const tabsToClose = tabs.filter((t) =>
+        keepId === "library"
+          ? t.id !== "library" && t.type !== "library"
+          : t.id !== keepId && t.id !== "library" && t.type !== "library",
+      );
+      for (const t of tabsToClose) {
+        const warm = warmViewerPool.peek(t.id);
+        const url = t.fileUrl || warm?.fileUrl;
+        evictWarmObjectUrl(url, warm?.scopeId ?? scopeId);
+        warmViewerPool.delete(t.id);
+      }
+      setStandbyViewers(warmViewerPool.getValuesMruOrder());
+
+      closeOtherTabs(keepId);
+      if (keepId === "library") {
+        goBack();
+      } else {
+        const targetTab = tabs.find((t) => t.id === keepId);
+        if (targetTab && activeTabId !== keepId) {
+          router.push(getPaperUrl(keepId, targetTab.projectId));
+        }
+      }
+    },
+    [tabs, scopeId, closeOtherTabs, goBack, activeTabId, router, getPaperUrl],
+  );
+
+  const handleMoveTabToNewWindow = useCallback(
+    (id: string) => {
+      const targetTab = tabs.find((t) => t.id === id);
+      const url = getPaperUrl(id, targetTab?.projectId);
+      openInNewTab(url);
+      handleCloseTab(id);
+    },
+    [tabs, getPaperUrl, handleCloseTab],
   );
 
   const handlePrefetchTab = useCallback(
@@ -567,7 +605,8 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
         <Topbar
           paper={paper} tabs={tabs} activeTabId={paper?.id || activeTabId}
           scopeTitle={activeScope.name} onSelectTab={handleSelectTab}
-          onCloseTab={handleCloseTab} onReorderTabs={reorderTabs}
+          onCloseTab={handleCloseTab} onCloseOtherTabs={handleCloseOtherTabs}
+          onMoveTabToNewWindow={handleMoveTabToNewWindow} onReorderTabs={reorderTabs}
           onPrefetchTab={handlePrefetchTab} onBack={goBack}
           onExportAnnotatedPdf={handleExportAnnotatedPdf}
         />
@@ -621,6 +660,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
             onAddToNote={handleAddToNoteAndExitReadingMode} onAskAi={handleAskAiWithSelection}
             onUpdateAnnotation={handleUpdateAnnotationProp} onDeleteAnnotation={deleteAnnotation}
             onExtractNotes={extractNotes}
+            onRotatePageRight={handleRotate} onRotatePageLeft={handleRotateCcw}
           />
         )}
 

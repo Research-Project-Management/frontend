@@ -36,6 +36,14 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/shared/components/ui/tooltip";
+import {
+  ContextMenu,
+  ContextMenuTrigger,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuShortcut,
+} from "@/shared/components/ui/context-menu";
 import type { ReaderDocument } from "@/features/library/types/reader.types";
 import type { ReaderTab } from "@/features/library/core/store/reader.store";
 
@@ -102,6 +110,8 @@ interface ReaderTopbarProps {
   scopeTitle?: string;
   onSelectTab?: (id: string) => void;
   onCloseTab?: (id: string) => void;
+  onCloseOtherTabs?: (id: string) => void;
+  onMoveTabToNewWindow?: (id: string) => void;
   onReorderTabs?: (nextTabs: ReaderTab[]) => void;
   onPrefetchTab?: (id: string) => void;
   onBack?: () => void;
@@ -113,6 +123,8 @@ interface SortableTabItemProps {
   isActive: boolean;
   onSelectTab?: (id: string) => void;
   onCloseTab?: (id: string) => void;
+  onCloseOtherTabs?: (id: string) => void;
+  onMoveTabToNewWindow?: (id: string) => void;
   onPrefetchTab?: (id: string) => void;
 }
 
@@ -121,6 +133,8 @@ const SortableTabItem = memo(function SortableTabItem({
   isActive,
   onSelectTab,
   onCloseTab,
+  onCloseOtherTabs,
+  onMoveTabToNewWindow,
   onPrefetchTab,
 }: SortableTabItemProps) {
   const {
@@ -144,58 +158,92 @@ const SortableTabItem = memo(function SortableTabItem({
   };
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      role="tab"
-      aria-selected={isActive}
-      tabIndex={0}
-      onClick={() => onSelectTab?.(tab.id)}
-      onAuxClick={(e) => {
-        if (e.button === 1 && onCloseTab) {
-          e.preventDefault();
-          onCloseTab(tab.id);
-        }
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onSelectTab?.(tab.id);
-        }
-      }}
-      className={cn(
-        "h-8 px-2.5 flex items-center gap-1.5 rounded-t-md transition-colors cursor-pointer shrink-0 text-12 max-w-[240px] group outline-none focus-visible:ring-1 focus-visible:ring-primary select-none",
-        isActive
-          ? "bg-background text-foreground font-medium border-x border-t border-border border-b-transparent -mb-px z-10"
-          : "text-muted-foreground hover:text-foreground hover:bg-background/60",
-      )}
-      title={tab.title}
-      onMouseEnter={() => onPrefetchTab?.(tab.id)}
-      {...sortableAttributes}
-      {...listeners}
-    >
-      <FileText className="size-3.5 shrink-0 text-foreground" strokeWidth={1.5} />
-      <span className="truncate flex-1 font-medium">{tab.title || "Untitled Document"}</span>
-
-      {onCloseTab && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onCloseTab(tab.id);
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div
+          ref={setNodeRef}
+          style={style}
+          role="tab"
+          aria-selected={isActive}
+          tabIndex={0}
+          onClick={() => onSelectTab?.(tab.id)}
+          onAuxClick={(e) => {
+            if (e.button === 1 && onCloseTab) {
+              e.preventDefault();
+              onCloseTab(tab.id);
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onSelectTab?.(tab.id);
+            }
           }}
           className={cn(
-            "size-4 flex items-center justify-center rounded-sm hover:bg-muted text-foreground transition-colors cursor-pointer shrink-0 relative before:absolute before:-inset-2.5 md:before:hidden",
+            "h-8 px-2.5 flex items-center gap-1.5 rounded-t-md transition-colors cursor-pointer shrink-0 text-12 max-w-[240px] group outline-none focus-visible:ring-1 focus-visible:ring-primary select-none",
             isActive
-              ? "opacity-70 hover:opacity-100"
-              : "opacity-0 group-hover:opacity-100 max-md:opacity-100",
+              ? "bg-background text-foreground font-medium border-x border-t border-border border-b-transparent -mb-px z-10"
+              : "text-muted-foreground hover:text-foreground hover:bg-background/60",
           )}
-          aria-label={`Close tab ${tab.title}`}
+          title={tab.title}
+          onMouseEnter={() => onPrefetchTab?.(tab.id)}
+          {...sortableAttributes}
+          {...listeners}
         >
-          <X className="size-3" strokeWidth={1.5} />
-        </button>
-      )}
-    </div>
+          <FileText className="size-3.5 shrink-0 text-foreground" strokeWidth={1.5} />
+          <span className="truncate flex-1 font-medium">{tab.title || "Untitled Document"}</span>
+
+          {onCloseTab && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onCloseTab(tab.id);
+              }}
+              className={cn(
+                "size-4 flex items-center justify-center rounded-sm hover:bg-muted text-foreground transition-colors cursor-pointer shrink-0 relative before:absolute before:-inset-2.5 md:before:hidden",
+                isActive
+                  ? "opacity-70 hover:opacity-100"
+                  : "opacity-0 group-hover:opacity-100 max-md:opacity-100",
+              )}
+              aria-label={`Close tab ${tab.title}`}
+            >
+              <X className="size-3" strokeWidth={1.5} />
+            </button>
+          )}
+        </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-52 text-12">
+        {onCloseTab && (
+          <ContextMenuItem
+            onClick={() => onCloseTab(tab.id)}
+            className="cursor-pointer gap-2"
+          >
+            <span>Close Tab</span>
+            <ContextMenuShortcut>Ctrl+W</ContextMenuShortcut>
+          </ContextMenuItem>
+        )}
+        {onCloseOtherTabs && (
+          <ContextMenuItem
+            onClick={() => onCloseOtherTabs(tab.id)}
+            className="cursor-pointer gap-2"
+          >
+            <span>Close Other Tabs</span>
+          </ContextMenuItem>
+        )}
+        {onMoveTabToNewWindow && (
+          <>
+            <ContextMenuSeparator />
+            <ContextMenuItem
+              onClick={() => onMoveTabToNewWindow(tab.id)}
+              className="cursor-pointer gap-2"
+            >
+              <span>Move Tab to New Window</span>
+            </ContextMenuItem>
+          </>
+        )}
+      </ContextMenuContent>
+    </ContextMenu>
   );
 });
 
@@ -206,6 +254,8 @@ export const ReaderTopbar = memo(function ReaderTopbar({
   scopeTitle,
   onSelectTab,
   onCloseTab,
+  onCloseOtherTabs,
+  onMoveTabToNewWindow,
   onReorderTabs,
   onPrefetchTab,
   onBack,
@@ -332,29 +382,48 @@ export const ReaderTopbar = memo(function ReaderTopbar({
 
               if (isLibrary) {
                 const tabTitle = tab.title || libraryTitle;
+                const canCloseOthers =
+                  effectiveTabs.filter(
+                    (t) => t.id !== "library" && t.type !== "library",
+                  ).length > 0;
+
                 return (
-                  <button
-                    key="library"
-                    type="button"
-                    role="tab"
-                    aria-selected={isActive}
-                    onClick={() => {
-                      if (onSelectTab) onSelectTab("library");
-                      else if (onBack) onBack();
-                    }}
-                    className={cn(
-                      "h-8 px-3 flex items-center gap-1.5 rounded-t-md transition-colors cursor-pointer shrink-0 text-12 outline-none focus-visible:ring-1 focus-visible:ring-primary relative before:absolute before:-inset-1 md:before:hidden",
-                      isActive
-                        ? "bg-background text-foreground font-medium border-x border-t border-border border-b-transparent -mb-px z-10"
-                        : "text-muted-foreground hover:text-foreground hover:bg-background/60",
+                  <ContextMenu key="library">
+                    <ContextMenuTrigger asChild>
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={isActive}
+                        onClick={() => {
+                          if (onSelectTab) onSelectTab("library");
+                          else if (onBack) onBack();
+                        }}
+                        className={cn(
+                          "h-8 px-3 flex items-center gap-1.5 rounded-t-md transition-colors cursor-pointer shrink-0 text-12 outline-none focus-visible:ring-1 focus-visible:ring-primary relative before:absolute before:-inset-1 md:before:hidden",
+                          isActive
+                            ? "bg-background text-foreground font-medium border-x border-t border-border border-b-transparent -mb-px z-10"
+                            : "text-muted-foreground hover:text-foreground hover:bg-background/60",
+                        )}
+                      >
+                        <Library
+                          className="size-3.5 shrink-0 text-foreground"
+                          strokeWidth={1.5}
+                        />
+                        <span className="font-sans font-medium">{tabTitle}</span>
+                      </button>
+                    </ContextMenuTrigger>
+                    {onCloseOtherTabs && (
+                      <ContextMenuContent className="w-52 text-12">
+                        <ContextMenuItem
+                          onClick={() => onCloseOtherTabs("library")}
+                          disabled={!canCloseOthers}
+                          className="cursor-pointer gap-2"
+                        >
+                          <span>Close Other Tabs</span>
+                        </ContextMenuItem>
+                      </ContextMenuContent>
                     )}
-                  >
-                    <Library
-                      className="size-3.5 shrink-0 text-foreground"
-                      strokeWidth={1.5}
-                    />
-                    <span className="font-sans font-medium">{tabTitle}</span>
-                  </button>
+                  </ContextMenu>
                 );
               }
 
@@ -365,6 +434,8 @@ export const ReaderTopbar = memo(function ReaderTopbar({
                   isActive={isActive}
                   onSelectTab={onSelectTab}
                   onCloseTab={onCloseTab}
+                  onCloseOtherTabs={onCloseOtherTabs}
+                  onMoveTabToNewWindow={onMoveTabToNewWindow}
                   onPrefetchTab={onPrefetchTab}
                 />
               );

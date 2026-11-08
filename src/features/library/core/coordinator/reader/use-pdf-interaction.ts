@@ -11,6 +11,11 @@ import type {
 } from '@/features/library/types/reader.types';
 import type { ReaderAnnotationTool } from '@/features/library/core/store/reader.store';
 import { cropCanvasSelectionToDataUrl } from '@/features/library/domain/reader-search-outline.domain';
+import {
+  calculatePointsBoundingBox,
+  simplifyPointsRdp,
+  smoothPointsToSvgPath,
+} from '@/features/library/domain/reader-ink-canvas.domain';
 import { searchReaderAttachmentAnchors } from '@/features/library/sdk/queries/reader.queries';
 
 export { cropCanvasSelectionToDataUrl };
@@ -248,37 +253,16 @@ export function usePdfViewerInteraction({
         activePageRectRef.current = null;
         setInkDrawing(null);
         if (pts.length >= 2) {
-          let minX = 1;
-          let minY = 1;
-          let maxX = 0;
-          let maxY = 0;
-          for (const p of pts) {
-            if (p.x < minX) minX = p.x;
-            if (p.y < minY) minY = p.y;
-            if (p.x > maxX) maxX = p.x;
-            if (p.y > maxY) maxY = p.y;
-          }
-          const pad = 0.005;
-          const x1 = Math.max(0, minX - pad);
-          const y1 = Math.max(0, minY - pad);
-          const x2 = Math.min(1, maxX + pad);
-          const y2 = Math.min(1, maxY + pad);
-          const width = Math.max(0.01, x2 - x1);
-          const height = Math.max(0.01, y2 - y1);
-          const svgPath = pts
-            .map((p, idx) => {
-              const rx = (((p.x - x1) / width) * 100).toFixed(2);
-              const ry = (((p.y - y1) / height) * 100).toFixed(2);
-              return `${idx === 0 ? 'M' : 'L'} ${rx} ${ry}`;
-            })
-            .join(' ');
+          const simplified = simplifyPointsRdp(pts, 0.0006);
+          const box = calculatePointsBoundingBox(simplified, 0.005);
+          const svgPath = smoothPointsToSvgPath(simplified, box);
           const rect: AnnotationRect = {
-            x1,
-            y1,
-            x2: x1 + width,
-            y2: y1 + height,
-            width,
-            height,
+            x1: box.x1,
+            y1: box.y1,
+            x2: box.x2,
+            y2: box.y2,
+            width: box.width,
+            height: box.height,
             paths: [svgPath],
           };
           void onAnnotate?.('', pageNum, activeColor || '#ffd400', [rect], 'ink');

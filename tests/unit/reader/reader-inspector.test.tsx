@@ -233,5 +233,52 @@ describe('ReaderInspector Shared LibraryInspector Parity', () => {
     expect(document.getElementById('inspector-section-tags')).toBeNull();
     expect(document.getElementById('inspector-section-info')).toBeNull();
   });
+
+  it('triggers notes tab activation and calls onClearPendingText when pendingNoteText is supplied', async () => {
+    const testItem = {
+      id: 'test-paper-1',
+      title: 'Attention Is All You Need',
+      itemType: 'journalArticle',
+    } as any;
+
+    const { useLibraryUIStore } = await import('@/features/library/core/store/library-ui.store');
+    const mockedStore = vi.mocked(useLibraryUIStore);
+    const mockSetIsInspectorOpen = vi.fn();
+    const mockSetActiveInspectorTab = vi.fn();
+    const mockClearPendingText = vi.fn();
+
+    mockedStore.mockImplementation((selector: any) =>
+      selector({
+        isInspectorOpen: true,
+        toggleInspector: vi.fn(),
+        activeInspectorTab: 'info',
+        setActiveInspectorTab: mockSetActiveInspectorTab,
+        setIsInspectorOpen: mockSetIsInspectorOpen,
+        inspectorWidth: 360,
+        setInspectorWidth: vi.fn(),
+        activeItemId: 'test-paper-1',
+        selectOnly: vi.fn(),
+        openModal: vi.fn(),
+      })
+    );
+
+    render(
+      <QueryClientProvider client={createTestClient()}>
+        <TooltipProvider>
+          <ReaderInspector
+            item={testItem}
+            scopeId="user"
+            canEdit={true}
+            pendingNoteText='> "Transformer model is based solely on attention mechanisms" (Vaswani et al., 2017, p. 1)'
+            onClearPendingText={mockClearPendingText}
+          />
+        </TooltipProvider>
+      </QueryClientProvider>
+    );
+
+    expect(mockSetIsInspectorOpen).toHaveBeenCalledWith(true);
+    expect(mockSetActiveInspectorTab).toHaveBeenCalledWith('notes');
+  });
 });
+
 

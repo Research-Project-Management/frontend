@@ -9,8 +9,15 @@ import {
   usePrefetchNextLibraryItemsPage,
   normalizeScopeId,
 } from '@/features/library/core/coordinator/item-action.coordinator';
-import { useDetachItemFromCollectionMutation } from '@/features/library/core/coordinator/collection.coordinator';
-import { useCollectionsQuery } from '@/features/library/core/coordinator/collection.coordinator';
+import {
+  useCollectionsQuery,
+  useBatchDetachItemsMutation,
+  useAssignCollectionItemsMutation,
+} from '@/features/library/core/coordinator/collection.coordinator';
+import {
+  useLibraryCommandStore,
+  createBatchDetachCommand,
+} from '@/features/library/core/manager/library-command.manager';
 import { useSavedSearchResults, useSavedSearches } from '@/features/library/core/coordinator/saved-search-builder.coordinator';
 import { ContentSkeleton } from './LibraryIllustrations';
 import { ItemTable } from './ItemTable';
@@ -297,7 +304,8 @@ export function LibraryContent({
   );
 
   const { data: collections = [] } = useCollectionsQuery(scopeId);
-  const detachMutation = useDetachItemFromCollectionMutation(scopeId);
+  const detachMutation = useBatchDetachItemsMutation(scopeId);
+  const assignMutation = useAssignCollectionItemsMutation(scopeId);
 
   const isLoading = isSavedSearchView ? savedSearchQuery.isLoading : isItemsLoading;
   const isFetching = isSavedSearchView ? savedSearchQuery.isFetching : isItemsFetching;
@@ -548,9 +556,18 @@ export function LibraryContent({
         });
         return;
       }
-      detachMutation.mutate({ collectionId, itemId });
+      const targetCol = collections.find((c) => c.id === collectionId);
+      void useLibraryCommandStore.getState().executeCommand(
+        createBatchDetachCommand({
+          collectionId,
+          collectionName: targetCol?.name,
+          itemIds: [itemId],
+          detachMutation,
+          assignMutation,
+        }),
+      );
     },
-    [collectionId, detachMutation],
+    [collectionId, collections, detachMutation, assignMutation],
   );
 
   const { setSorting } = nav;

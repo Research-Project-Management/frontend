@@ -4,6 +4,13 @@ import React, { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { Rss, ChevronRight, Plus, CheckCheck, MoreVertical, Pencil, RefreshCw, Trash2, Search, Copy, SlidersHorizontal, Users, Folder, Files } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '@/shared/components/ui/context-menu';
 import { CollectionTree, SidebarNavItem, type TreeNode } from './CollectionTree';
 import { useFeedsStore } from '@/features/library/core/store/reader.store';
 import { useFeedSubscriptionsQuery, useUnsubscribeFeedMutation } from '@/features/library/core/coordinator/curation.coordinator';
@@ -134,24 +141,40 @@ export function FeedsListSection({
   return (
     <div className="mt-1.5 flex flex-col gap-0.5 w-full">
       <div className="relative group/root flex items-center w-full">
-        <div
-          onClick={() => {
-            setIsExpanded(true);
-            router.push(`${basePath}/feeds`);
-            onItemClick?.();
-          }}
-          className={cn(
-            'group/item relative flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none select-none pr-14 cursor-pointer text-left font-normal',
-            isFeedsRootActive
-              ? 'bg-muted font-medium text-foreground'
-              : 'text-foreground hover:bg-muted group-hover/root:bg-muted',
-          )}
-        >
-          <Rss className="relative z-10 size-4 shrink-0 text-foreground" strokeWidth={1.5} />
-          <span className="relative z-10 min-w-0 truncate flex-1 tracking-tight text-foreground">
-            Feeds
-          </span>
-        </div>
+        <ContextMenu>
+          <ContextMenuTrigger asChild>
+            <div
+              onClick={() => {
+                setIsExpanded(true);
+                router.push(`${basePath}/feeds`);
+                onItemClick?.();
+              }}
+              className={cn(
+                'group/item relative flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-13 leading-5 transition-colors outline-none select-none pr-14 cursor-pointer text-left font-normal',
+                isFeedsRootActive
+                  ? 'bg-muted font-medium text-foreground'
+                  : 'text-foreground hover:bg-muted group-hover/root:bg-muted',
+              )}
+            >
+              <Rss className="relative z-10 size-4 shrink-0 text-foreground" strokeWidth={1.5} />
+              <span className="relative z-10 min-w-0 truncate flex-1 tracking-tight text-foreground">
+                Feeds
+              </span>
+            </div>
+          </ContextMenuTrigger>
+          <ContextMenuContent
+            collisionPadding={12}
+            className="w-48 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
+          >
+            <ContextMenuItem
+              onClick={() => openModal('ADD_FEED')}
+              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+            >
+              <Plus className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+              <span>New Feed...</span>
+            </ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
 
         <Tooltip>
           <TooltipTrigger asChild>
@@ -212,6 +235,65 @@ export function FeedsListSection({
               (currentFilter === 'feed' &&
                 (currentFeedId === feed.id || (!currentFeedId && feed === feeds[0])));
 
+            const feedContextMenuContent = (
+              <ContextMenuContent
+                collisionPadding={12}
+                className="w-48 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
+              >
+                <ContextMenuItem
+                  onClick={() => {
+                    setActiveFeedId(feed.id);
+                    triggerRefresh();
+                    toast.info(`Refreshing "${feed.name}"...`, { id: 'feed-refresh', duration: 2000 });
+                  }}
+                  className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+                >
+                  <RefreshCw className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                  <span>Refresh Feed</span>
+                </ContextMenuItem>
+
+                <ContextMenuItem
+                  onClick={async () => {
+                    try {
+                      await markFeedAsRead(feed.id);
+                      toast.success(`Marked all articles in "${feed.name}" as read`, { id: 'feed-mark-read', duration: 2000 });
+                    } catch {
+                      toast.error(`Failed to mark articles in "${feed.name}" as read`, { id: 'feed-mark-read' });
+                    }
+                  }}
+                  className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+                >
+                  <CheckCheck className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                  <span>Mark Feed as Read</span>
+                </ContextMenuItem>
+
+                <ContextMenuItem
+                  onClick={() => openModal('EDIT_FEED', { feed })}
+                  className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+                >
+                  <Pencil className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
+                  <span>Edit Feed...</span>
+                </ContextMenuItem>
+
+                <ContextMenuSeparator className="my-1" />
+
+                <ContextMenuItem
+                  onClick={async () => {
+                    try {
+                      await unsubscribeFeed(feed.id);
+                      toast.success(`Unsubscribed from "${feed.name}"`, { id: 'feed-unsubscribe' });
+                    } catch {
+                      // Error toast handled by mutation or caller
+                    }
+                  }}
+                  className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-destructive focus:text-destructive hover:bg-destructive/10 focus:bg-destructive/10 rounded-md outline-none transition-colors"
+                >
+                  <Trash2 className="size-3.5 text-destructive shrink-0" strokeWidth={1.5} />
+                  <span>Unsubscribe</span>
+                </ContextMenuItem>
+              </ContextMenuContent>
+            );
+
             return (
               <SidebarNavItem
                 key={feed.id}
@@ -221,6 +303,7 @@ export function FeedsListSection({
                 isActive={isFeedActive}
                 navId={navId}
                 onClick={onItemClick}
+                contextMenu={feedContextMenuContent}
                 action={
                   <FeedContextMenu
                     feed={feed}
@@ -413,6 +496,47 @@ export function SavedSearchListSection({
           );
         }
 
+        const savedSearchContextMenu = (
+          <ContextMenuContent
+            collisionPadding={12}
+            className="w-56 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none"
+          >
+            <ContextMenuItem
+              onClick={() => onEditSavedSearch?.(ss)}
+              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+            >
+              <SlidersHorizontal className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+              <span>Edit Saved Search...</span>
+            </ContextMenuItem>
+
+            <ContextMenuItem
+              onClick={() => onStartRenameSavedSearch?.(ss.id, ss.name)}
+              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+            >
+              <Pencil className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+              <span>Rename Saved Search</span>
+            </ContextMenuItem>
+
+            <ContextMenuItem
+              onClick={() => onDuplicateSavedSearch?.(ss)}
+              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-foreground rounded-md hover:bg-muted focus:bg-muted outline-none transition-colors"
+            >
+              <Copy className="size-4 text-foreground shrink-0" strokeWidth={1.5} />
+              <span>Duplicate Saved Search</span>
+            </ContextMenuItem>
+
+            <ContextMenuSeparator className="my-1" />
+
+            <ContextMenuItem
+              onClick={() => onDeleteSavedSearch?.(ss.id)}
+              className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-destructive focus:text-destructive hover:bg-destructive/10 focus:bg-destructive/10 rounded-md outline-none transition-colors"
+            >
+              <Trash2 className="size-4 text-destructive shrink-0" strokeWidth={1.5} />
+              <span>Delete Saved Search</span>
+            </ContextMenuItem>
+          </ContextMenuContent>
+        );
+
         return (
           <SidebarNavItem
             key={ss.id}
@@ -422,6 +546,7 @@ export function SavedSearchListSection({
             isActive={isSSActive}
             navId={navId}
             onClick={onItemClick}
+            contextMenu={savedSearchContextMenu}
             action={
               <SavedSearchContextMenu
                 savedSearch={ss}

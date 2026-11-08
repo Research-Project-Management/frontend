@@ -240,7 +240,7 @@ describe('ItemRowActions & Actions Column Parity', () => {
     );
 
     expect(screen.queryByText(/Merge 2 items/i)).toBeNull();
-    expect(screen.getByText(/^Move to$/i)).toBeDefined();
+    expect(screen.getByText(/^Add to$/i)).toBeDefined();
     expect(screen.getByText(/Rename PDFs/i)).toBeDefined();
     unmount();
 
@@ -255,7 +255,7 @@ describe('ItemRowActions & Actions Column Parity', () => {
     );
 
     expect(screen.getByText(/Merge 2 items/i)).toBeDefined();
-    expect(screen.queryByText(/^Move to$/i)).toBeNull();
+    expect(screen.queryByText(/^Add to$/i)).toBeNull();
   });
 
   it('BatchBar hides Rename PDFs when selected items have no PDF attachments', () => {
@@ -333,7 +333,7 @@ describe('ItemRowActions & Actions Column Parity', () => {
     expect(screen.getByText(/Clear flag/i)).toBeDefined();
     unmountRetracted();
 
-    // Unfiled view: shows Assign to instead of Move to
+    // Unfiled view: consistently shows Add to (Zotero parity: items are added to collections)
     const { unmount: unmountUnfiled } = renderWithProviders(
       <BatchBar
         items={[mockItem, mockItem2]}
@@ -343,7 +343,7 @@ describe('ItemRowActions & Actions Column Parity', () => {
         canEdit={true}
       />
     );
-    expect(screen.getByText(/^Assign to$/i)).toBeDefined();
+    expect(screen.getByText(/^Add to$/i)).toBeDefined();
     unmountUnfiled();
   });
 

@@ -201,6 +201,8 @@ interface ReaderSidebarProps {
   ) => Promise<unknown>;
   onDeleteAnnotation?: (annotationId: string, expectedVersion?: number) => Promise<unknown>;
   onExtractNotes?: (itemId: string) => Promise<unknown> | void;
+  onRotatePageRight?: (pageNum?: number) => void;
+  onRotatePageLeft?: (pageNum?: number) => void;
 }
 
 export function ReaderSidebar({
@@ -239,6 +241,8 @@ export function ReaderSidebar({
   onUpdateAnnotation,
   onDeleteAnnotation,
   onExtractNotes,
+  onRotatePageRight,
+  onRotatePageLeft,
 }: ReaderSidebarProps) {
   const [activeTab, setActiveTab] = useState<ReaderSidebarTab>("outline");
   const [outlineFilter, setOutlineFilter] = useState("");
@@ -685,6 +689,7 @@ export function ReaderSidebar({
               bookmarkedPages={bookmarkedPages} showBookmarkedPagesOnly={showBookmarkedPagesOnly}
               isEnabled={activeTab === "pages" && isOpen} pdfDocument={pdfDocument} pdfBlobUrl={pdfBlobUrl}
               onJumpToPage={onJumpToPage} onToggleBookmarkPage={onToggleBookmarkPage}
+              onRotatePageRight={onRotatePageRight} onRotatePageLeft={onRotatePageLeft}
             />
           )}
         </div>

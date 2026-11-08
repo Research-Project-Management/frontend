@@ -83,7 +83,7 @@ export function BatchMoveCollectionPopover({
           className="h-8 px-2.5 gap-1.5 text-12 font-medium text-foreground hover:bg-muted rounded-md cursor-pointer transition-colors shadow-none relative before:absolute before:-inset-1 md:before:hidden"
         >
           <Folder className="size-3.5 text-foreground shrink-0" />
-          <span>{isUnfiledView ? 'Assign to' : 'Move to'}</span>
+          <span>Add to</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -113,7 +113,7 @@ export function BatchMoveCollectionPopover({
             <DropdownMenuItem
               key={c.id}
               onClick={() => {
-                if (isUnfiledView && onBatchAssign) {
+                if (onBatchAssign) {
                   onBatchAssign(c.id, c.name);
                 } else {
                   onBatchMove(c.id);

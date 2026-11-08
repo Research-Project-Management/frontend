@@ -19,6 +19,10 @@ import {
 import { cn } from '@/shared/lib/utils';
 import { Input } from '@/shared/components/ui/input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import {
+  ContextMenuContent,
+  ContextMenuItem,
+} from '@/shared/components/ui/context-menu';
 import { SidebarNavItem } from './CollectionTree';
 import { SavedSearchListSection } from './FeedsListSection';
 import type { SavedSearch } from '@/features/library/types/ingestion.types';
@@ -246,6 +250,7 @@ interface SystemNavStats {
   unfiledCount?: number;
   duplicateCount?: number;
   starredCount?: number;
+  trashCount?: number;
 }
 
 interface SystemNavItemConfig {
@@ -270,7 +275,6 @@ const SYSTEM_BOTTOM_NAV_ITEMS: SystemNavItemConfig[] = [
     icon: Star,
     isActive: (pathname, currentFilter, _isUserScope, basePath) =>
       pathname === basePath && currentFilter === 'starred',
-    getBadge: (stats) => stats.starredCount || null,
   },
   {
     id: 'unfiled',
@@ -279,7 +283,6 @@ const SYSTEM_BOTTOM_NAV_ITEMS: SystemNavItemConfig[] = [
     icon: Inbox,
     isActive: (pathname, currentFilter, _isUserScope, basePath) =>
       pathname === basePath && currentFilter === 'unfiled',
-    getBadge: (stats) => stats.unfiledCount || null,
   },
   {
     id: 'duplicates',
@@ -314,6 +317,7 @@ const SYSTEM_BOTTOM_NAV_ITEMS: SystemNavItemConfig[] = [
     icon: Trash2,
     isActive: (pathname, currentFilter, _isUserScope, basePath) =>
       pathname === basePath && currentFilter === 'trash',
+    getBadge: (stats) => (stats.trashCount && stats.trashCount > 0 ? stats.trashCount : null),
   },
 ];
 
@@ -363,17 +367,43 @@ export function SidebarSystemNav({
   onDuplicateSavedSearch,
   onDropToTrash,
   onDropToMyPublications,
+  onEmptyTrash,
+  trashCount,
+  canEmptyTrash = true,
+  stats,
   renamingSavedSearchId,
   renameSavedSearchValue = '',
   children,
 }: SidebarSystemNavProps) {
   const isRecentReadActive =
-    pathname === basePath && currentFilter === 'recently-read';
+    pathname === basePath && currentFilter === 'recent';
+
+  const effectiveStats: SystemNavStats = {
+    ...stats,
+    trashCount: trashCount ?? stats?.trashCount,
+  };
+
+  const trashContextMenu =
+    onEmptyTrash && canEmptyTrash !== false ? (
+      <ContextMenuContent
+        collisionPadding={12}
+        className="w-48 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 select-none space-y-0.5"
+      >
+        <ContextMenuItem
+          disabled={(effectiveStats.trashCount ?? 0) === 0}
+          onClick={() => onEmptyTrash()}
+          className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer text-destructive focus:text-destructive hover:bg-destructive/10 focus:bg-destructive/10 rounded-md outline-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Trash2 className="size-4 text-destructive shrink-0" strokeWidth={1.5} />
+          <span>Empty Trash...</span>
+        </ContextMenuItem>
+      </ContextMenuContent>
+    ) : undefined;
 
   return (
     <>
       <SidebarNavItem
-        href={`${basePath}?filter=recently-read`}
+        href={`${basePath}?filter=recent`}
         icon={History}
         label="Recently Read"
         isActive={isRecentReadActive}
@@ -406,6 +436,13 @@ export function SidebarSystemNav({
           (item) => item.id !== 'my-publications' || isUserScope
         ).map((item) => {
           const isActive = item.isActive(pathname, currentFilter, isUserScope, basePath);
+          const badgeCount = item.getBadge?.(effectiveStats);
+          const badgeNode =
+            badgeCount !== null && badgeCount !== undefined ? (
+              <span className="relative z-10 ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-muted px-1.5 font-mono text-[10px] font-medium tabular-nums text-muted-foreground">
+                {badgeCount}
+              </span>
+            ) : undefined;
 
           return (
             <SidebarNavItem
@@ -415,6 +452,8 @@ export function SidebarSystemNav({
               label={item.label}
               isActive={isActive}
               navId={navId}
+              badge={badgeNode}
+              contextMenu={item.id === 'trash' ? trashContextMenu : undefined}
               onClick={onSelectUserScope}
               onDropItems={
                 item.id === 'unfiled'

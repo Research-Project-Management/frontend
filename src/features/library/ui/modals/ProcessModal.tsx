@@ -8,7 +8,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/
 import { Progress } from '@/shared/components/ui/progress';
 import { Badge } from '@/shared/components/ui/badge';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
-import { CheckCircle2, AlertCircle, RefreshCw, Loader2, X } from 'lucide-react';
+import { CheckCircle2, AlertCircle, RefreshCw, Loader2, X, ShieldCheck } from 'lucide-react';
 import { deriveProcessModalPhase, deriveProcessModalDisplayMode, classifyProcessItemStage, type ProcessModalState } from '@/features/library/core/store/process-modal.store';
 import { cn } from '@/shared/lib/utils';
 import { useForm, Controller } from 'react-hook-form';
@@ -378,7 +378,6 @@ export function MyPublicationModal({
   item,
   onConfirm,
 }: MyPublicationModalProps) {
-  const contributorSelectId = useId();
   const licenseSelectId = useId();
   const isPublicCheckboxId = useId();
   const includeAttachmentsCheckboxId = useId();
@@ -411,10 +410,6 @@ export function MyPublicationModal({
     }
   }, [open, item?.id, reset]);
 
-  const contributors = Array.isArray(item?.contributors)
-    ? item.contributors
-    : [];
-
   const itemTypeLabel = item?.itemType
     ? ALL_ITEM_TYPES_FLAT.find((t) => t.value === item.itemType)?.label ||
       item.itemType
@@ -424,12 +419,7 @@ export function MyPublicationModal({
     setIsSubmitting(true);
     try {
       await onConfirm({
-        contributorId:
-          data.contributorId &&
-          data.contributorId !== 'unlinked' &&
-          !data.contributorId.startsWith('contrib-')
-            ? data.contributorId
-            : null,
+        contributorId: null,
         isPublic: data.isPublic,
         includeAttachments: data.isPublic ? data.includeAttachments : false,
         openAccessLicense:
@@ -488,47 +478,13 @@ export function MyPublicationModal({
             </div>
           )}
 
-          {contributors.length > 0 && (
-            <div className="space-y-1.5">
-              <Label
-                htmlFor={contributorSelectId}
-                className="text-11 font-medium text-foreground"
-              >
-                Author Position
-              </Label>
-              <Controller
-                name="contributorId"
-                control={control}
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger
-                      id={contributorSelectId}
-                      className="w-full h-8 text-12 text-foreground justify-between rounded-md border-border bg-background hover:border-border-hover focus-visible:border-primary cursor-pointer"
-                    >
-                      <SelectValue placeholder="Select your name in author list" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60 bg-popover text-popover-foreground border border-border shadow-raised-200 rounded-md">
-                      <SelectItem value="unlinked" className="text-12 py-1.5 px-2">
-                        General Author (not linked to a specific position)
-                      </SelectItem>
-                      {contributors.map((c, index) => {
-                        const val = c.id || `contrib-${index}`;
-                        const nameLabel =
-                          c.fullName ||
-                          `${c.firstName || ''} ${c.lastName || ''}`.trim() ||
-                          'Author';
-                        return (
-                          <SelectItem key={val} value={val} className="text-12 py-1.5 px-2">
-                            {nameLabel}
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </div>
-          )}
+          {/* Authorship confirmation statement (Zotero parity) */}
+          <div className="flex items-start gap-2.5 rounded-md border border-border bg-muted/40 p-2.5 text-12 text-muted-foreground leading-normal">
+            <ShieldCheck className="size-4 text-primary shrink-0 mt-0.5" strokeWidth={1.5} />
+            <span>
+              By adding this work to <strong>My Publications</strong>, you confirm that you authored or co-authored it and hold the necessary rights to distribute it.
+            </span>
+          </div>
 
           <div className="flex flex-col gap-2.5 pt-0.5">
             <Controller

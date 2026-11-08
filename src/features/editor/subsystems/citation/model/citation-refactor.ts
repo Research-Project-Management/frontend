@@ -213,12 +213,32 @@ export async function executeProjectCitekeyRefactor(
 
   if (!handledByBackend && effectiveCtx?.service) {
     const serverFiles = await effectiveCtx.service.getFilesByProjectId(effectiveProjectId).catch(() => []);
-    const local = refactorCitationKeyAcrossFiles(
-      serverFiles.map((f) => ({
+    const cachedFiles = lruDocumentCache
+      .getAllModels()
+      .filter((m) => !effectiveProjectId || !m.projectId || m.projectId === effectiveProjectId)
+      .map((m) => ({
+        id: m.fileId,
+        path: m.filePath || 'untitled.tex',
+        content: m.content || '',
+      }));
+    const seenIds = new Set<string>();
+    const allCandidateFiles: Array<{ id: string; path: string; content: string }> = [];
+    for (const f of serverFiles) {
+      seenIds.add(f.id);
+      allCandidateFiles.push({
         id: f.id,
-        path: f.title || ('name' in f && f.name ? f.name : '') || '',
+        path: f.title || ('name' in f && f.name ? (f.name as string) : '') || '',
         content: documentFacade.getDocumentContent(f.id) || f.content || '',
-      })),
+      });
+    }
+    for (const c of cachedFiles) {
+      if (!seenIds.has(c.id)) {
+        seenIds.add(c.id);
+        allCandidateFiles.push(c);
+      }
+    }
+    const local = refactorCitationKeyAcrossFiles(
+      allCandidateFiles,
       oldKey,
       newKey,
     );

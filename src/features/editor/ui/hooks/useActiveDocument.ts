@@ -24,6 +24,8 @@ import {
 } from '@/features/editor/core';
 import { pageQuery, filesQuery } from './document.queries';
 import { extractProjectId, type Page } from '@/features/editor/domain/types/core.types';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
+import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 
 import type { WorkspaceTab } from '@/features/editor/domain/types/workspace.types';
 import type { PageFile } from '@/features/editor/domain/types/core.types';
@@ -158,6 +160,17 @@ export function useActiveDocument() {
   const activeFile = useMemo(() => {
     if (!resolvedFileId || isMainFile) return undefined;
     if (activeFileDoc) return activeFileDoc;
+    // Check in-memory LRU document cache for instantaneous tab-switching (0ms)
+    const cached = lruDocumentCache.getModel(resolvedFileId);
+    if (cached && typeof cached.content === 'string') {
+      const meta = childFiles.find((f) => f.id === resolvedFileId || f.title === resolvedFileId);
+      return {
+        id: resolvedFileId,
+        title: meta?.title || cached.filePath || 'untitled.tex',
+        path: cached.filePath || meta?.path || 'untitled.tex',
+        content: cached.content,
+      } as unknown as Page;
+    }
     const meta = childFiles.find((f) => f.id === resolvedFileId || f.title === resolvedFileId);
     if (meta && typeof meta.content === 'string' && meta.content.length > 0) return meta;
     const currentStoreFile = usePageStore.getState().activeFilePage;
@@ -166,6 +179,27 @@ export function useActiveDocument() {
     }
     return undefined;
   }, [resolvedFileId, isMainFile, activeFileDoc, childFiles, storeActiveFileId]);
+
+  // Keep LRU cache synchronized when active documents are loaded from server
+  useEffect(() => {
+    if (activeFileDoc && activeFileDoc.id && typeof activeFileDoc.content === 'string') {
+      lruDocumentCache.registerModel(activeFileDoc.id, {
+        content: activeFileDoc.content,
+        filePath: activeFileDoc.path || activeFileDoc.title || 'untitled.tex',
+        projectId: effectiveProjectId || pageId || undefined,
+      });
+    }
+  }, [activeFileDoc, effectiveProjectId, pageId]);
+
+  useEffect(() => {
+    if (parentPage && parentPage.id && typeof parentPage.content === 'string') {
+      lruDocumentCache.registerModel(parentPage.id, {
+        content: parentPage.content,
+        filePath: parentPage.path || parentPage.title || 'main.tex',
+        projectId: effectiveProjectId || pageId || undefined,
+      });
+    }
+  }, [parentPage, effectiveProjectId, pageId]);
 
   const setCurrentPage = usePageStore((s) => s.setCurrentPage);
   const setActiveFilePage = usePageStore((s) => s.setActiveFilePage);
@@ -182,7 +216,7 @@ export function useActiveDocument() {
     if (pageId) setParentPageId(pageId);
   }, [effectiveProjectId, pageId, setProjectId, setParentPageId]);
 
-  // Proactively index all project files for 0ms cross-file \cite, \ref, and DAG symbols
+  // Synchronize VFS file tree to workspace coordinator and initiate deferred symbols index
   useEffect(() => {
     if (!serverFiles && !parentPage) return;
     const allFiles: Array<{ id: string; title?: string; name?: string; path?: string; content?: unknown }> = [
@@ -192,9 +226,13 @@ export function useActiveDocument() {
       allFiles.unshift(parentPage);
     }
     if (allFiles.length > 0) {
-      workspaceCoordinator.initProjectSymbols(allFiles);
+      workspaceCoordinator.initProjectSymbols(allFiles, effectiveProjectId || pageId || undefined);
     }
-  }, [serverFiles, parentPage]);
+    const targetProject = effectiveProjectId || pageId;
+    if (targetProject) {
+      latexSymbolsIndex.refreshFromServer(targetProject, 50);
+    }
+  }, [serverFiles, parentPage, effectiveProjectId, pageId]);
 
   useEffect(() => {
     if (!parentPage) return;

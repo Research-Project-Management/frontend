@@ -14,6 +14,7 @@ import { Awareness, removeAwarenessStates } from 'y-protocols/awareness';
 import type { Socket } from 'socket.io-client';
 import type { IEditorCommandBus } from '@/features/editor/core/bus/command-bus.port';
 import { getAuthorColor } from '@/features/editor/domain/collaboration/author-display';
+import { shouldRenderRemoteCursor } from '@/features/editor/domain/collaboration/presence-aggregation';
 import type { CollaborationPresence } from '../pages/types';
 
 export interface CollaboratorUser {
@@ -315,7 +316,7 @@ export function toCollaborationPresence(
 ): CollaborationPresence {
   return {
     ...existing,
-    id: data.userId,
+    id: data.socketId || data.userId,
     userId: data.userId,
     socketId: data.socketId ?? existing?.socketId,
     name: data.name || existing?.name || 'Collaborator',
@@ -364,6 +365,8 @@ export function resolveRemoteClientId(
 export function applyRemoteCursorAwareness(params: {
   data: RemoteCursorPayload;
   localSocketId?: string;
+  localUserId?: string;
+  allowSelfSecondaryTabs?: boolean;
   doc: Y.Doc;
   yText: Y.Text;
   awareness: Awareness;
@@ -376,6 +379,8 @@ export function applyRemoteCursorAwareness(params: {
   const {
     data,
     localSocketId,
+    localUserId,
+    allowSelfSecondaryTabs = false,
     doc,
     yText,
     awareness,
@@ -386,7 +391,30 @@ export function applyRemoteCursorAwareness(params: {
     onCollaboratorsChange,
   } = params;
   if (!data || !data.cursor) return;
-  if (data.socketId && data.socketId === localSocketId) return;
+
+  const shouldRender = shouldRenderRemoteCursor({
+    cursorUserId: data.userId,
+    cursorSocketId: data.socketId,
+    currentUserId: localUserId,
+    localSocketId,
+    allowSelfSecondaryTabs,
+  });
+
+  // Always track the collaborator in collaboratorsMap for presence roster & avatar stack
+  const key = data.socketId || data.userId;
+  const existing =
+    collaboratorsMap.get(key) ||
+    (data.socketId ? collaboratorsMap.get(data.userId) : undefined);
+  if (data.socketId && existing && !collaboratorsMap.has(data.socketId)) {
+    collaboratorsMap.delete(data.userId);
+  }
+  collaboratorsMap.set(key, toCollaborationPresence(data, existing));
+  onCollaboratorsChange?.(Array.from(collaboratorsMap.values()));
+
+  // Suppress injecting cursor into Yjs awareness if it is a local tab or self secondary tab
+  if (!shouldRender) {
+    return;
+  }
 
   const clientId = resolveRemoteClientId(data.socketId || data.userId, doc.clientID, socketToClientIdMap);
 
@@ -426,16 +454,6 @@ export function applyRemoteCursorAwareness(params: {
     },
     'socket.io',
   ]);
-
-  const key = data.socketId || data.userId;
-  const existing =
-    collaboratorsMap.get(key) ||
-    (data.socketId ? collaboratorsMap.get(data.userId) : undefined);
-  if (data.socketId && existing && !collaboratorsMap.has(data.socketId)) {
-    collaboratorsMap.delete(data.userId);
-  }
-  collaboratorsMap.set(key, toCollaborationPresence(data, existing));
-  onCollaboratorsChange?.(Array.from(collaboratorsMap.values()));
 }
 
 export function removeRemoteCollaborator(params: {

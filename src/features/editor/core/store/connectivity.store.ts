@@ -44,7 +44,7 @@ export function isNetworkError(err: unknown): boolean {
 }
 
 export const useConnectivityStore = create<ConnectivityState>((set, get) => ({
-  isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
+  isOnline: typeof navigator !== 'undefined' && typeof navigator.onLine === 'boolean' ? navigator.onLine : true,
   syncStatus: 'synced',
   lastSavedAt: null,
   offlineSince: null,
@@ -54,7 +54,7 @@ export const useConnectivityStore = create<ConnectivityState>((set, get) => ({
   offlinePendingCompile: false,
 
   checkIsOnline: () =>
-    get().isOnline && (typeof navigator === 'undefined' || navigator.onLine),
+    get().isOnline && (typeof navigator === 'undefined' || typeof navigator.onLine !== 'boolean' || navigator.onLine),
 
   setIsOnline: (isOnline) =>
     set((s) => ({

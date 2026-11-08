@@ -35,6 +35,8 @@ import {
   type CollaboratorPresenceInfo,
 } from '@/features/editor/ui/hooks/useCollaboration';
 import { getCollaboratorColor } from '@/features/editor/ui/editor/CollaboratorCursors';
+import { aggregateCollaboratorPresences, type AggregatedCollaboratorUser } from '@/features/editor/domain/collaboration/presence-aggregation';
+import { getCachedUser } from '@/features/auth/services/auth.service';
 import { editorCommandBus } from '../../bus/command-bus';
 import { usePageStore } from '../../store/editor.store';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
@@ -71,10 +73,12 @@ export function CollaboratorAvatarStack({
   const projectId = params?.projectId || storeProjectId || currentPageProjectId || null;
 
   const { data: presenceData } = useCollaborationPresence(pageId, projectId);
+  const currentUserId = getCachedUser()?.id ?? null;
 
   const collaborators = useMemo(() => {
-    return propCollaborators ?? presenceData ?? [];
-  }, [propCollaborators, presenceData]);
+    const raw = propCollaborators ?? presenceData ?? [];
+    return aggregateCollaboratorPresences(raw, currentUserId);
+  }, [propCollaborators, presenceData, currentUserId]);
 
   if (!collaborators || collaborators.length === 0) {
     return null;
@@ -86,7 +90,8 @@ export function CollaboratorAvatarStack({
 
   const handleJump = (c: CollaboratorPresenceInfo) => {
     if (onJumpToCollaborator) {
-      onJumpToCollaborator(c);
+      const original = propCollaborators?.find((p) => p.id === c.id || (p.userId && p.userId === c.id));
+      onJumpToCollaborator(original || c);
       return;
     }
 
@@ -156,6 +161,16 @@ export function CollaboratorAvatarStack({
                       : "bg-warning"
                   )}
                 />
+
+                {/* Multi-Tab Count Badge */}
+                {c.tabCount > 1 && (
+                  <span
+                    title={`${c.tabCount} active browser tabs`}
+                    className="absolute -top-1 -right-1 z-20 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-primary px-0.5 text-[9px] font-bold text-primary-foreground shadow-xs ring-1 ring-background"
+                  >
+                    {c.tabCount}
+                  </span>
+                )}
               </button>
             </TooltipTrigger>
 
@@ -167,19 +182,26 @@ export function CollaboratorAvatarStack({
             >
               {/* Header: Name & Online Status */}
               <div className="flex items-center justify-between gap-2">
-                <span className="font-semibold text-foreground truncate max-w-[140px]">
-                  {c.name}
+                <span className="font-semibold text-foreground truncate max-w-[130px]">
+                  {c.name}{c.isSelf ? ' (You)' : ''}
                 </span>
-                <span
-                  className={cn(
-                    "text-11 px-1.5 py-0.5 rounded-full font-medium shrink-0",
-                    c.isOnline
-                      ? "bg-success/15 text-success"
-                      : "bg-muted text-muted-foreground"
+                <div className="flex items-center gap-1 shrink-0">
+                  {c.tabCount > 1 && (
+                    <span className="text-[10px] px-1 py-0.5 rounded-full font-medium bg-muted text-muted-foreground">
+                      {c.tabCount} tabs
+                    </span>
                   )}
-                >
-                  {c.isOnline ? 'Online' : 'Idle'}
-                </span>
+                  <span
+                    className={cn(
+                      "text-11 px-1.5 py-0.5 rounded-full font-medium shrink-0",
+                      c.isOnline
+                        ? "bg-success/15 text-success"
+                        : "bg-muted text-muted-foreground"
+                    )}
+                  >
+                    {c.isOnline ? 'Online' : 'Idle'}
+                  </span>
+                </div>
               </div>
 
               {/* Email (if present) */}
@@ -272,7 +294,7 @@ export function CollaboratorAvatarStack({
 
                       <div className="min-w-0 flex-1">
                         <div className="font-medium text-foreground truncate">
-                          {c.name}
+                          {c.name}{c.isSelf ? ' (You)' : ''}{c.tabCount > 1 ? ` (${c.tabCount} tabs)` : ''}
                         </div>
                         <div className="text-11 text-muted-foreground truncate flex items-center gap-1">
                           <span className="truncate">{c.activeFile || 'Document'}</span>

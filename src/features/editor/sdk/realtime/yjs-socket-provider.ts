@@ -690,6 +690,7 @@ export class YjsSocketIOProvider {
     applyRemoteCursorAwareness({
       data,
       localSocketId: this.socket?.id,
+      localUserId: this.options.user?.id,
       doc: this.doc,
       yText: this.yText,
       awareness: this.awareness,

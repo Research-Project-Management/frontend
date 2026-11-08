@@ -41,6 +41,7 @@ import {
   getActivePdfViewer,
 } from '@/features/editor/core';
 import { useCompileStore } from './compiler.store';
+import { multiTabBus } from '@/shared/lib/multi-tab';
 import type { CompileError, CompileStatus } from '@/features/editor/domain/types/compiler.types';
 import { extractProjectId, extractDocumentContentString } from '@/features/editor/domain/types/core.types';
 import type { NodeTreeItem } from '@/features/editor/domain/types/node.types';
@@ -274,7 +275,7 @@ export class CompilerCoordinator {
   }
 
   private initCommandSubscriptions(): void {
-    if (typeof window === 'undefined' || this.initialized) return;
+    if ((typeof window === 'undefined' && process.env?.NODE_ENV !== 'test') || this.initialized) return;
     this.initialized = true;
 
     editorCommandBus.subscribe('compiler:trigger', (cmd) => {
@@ -329,6 +330,21 @@ export class CompilerCoordinator {
 
     editorCommandBus.subscribe('compiler:finished', (cmd) => {
       useCompileStore.getState().setCompileStatus(cmd.success || cmd.aborted ? 'idle' : 'error');
+    });
+
+    multiTabBus.subscribe((msg) => {
+      if (msg.type === 'EDITOR_COMPILATION_COMPLETED') {
+        const pageStore = usePageStore.getState();
+        const activeProjectId = pageStore.projectId || extractProjectId(pageStore.getActiveDocument());
+        if (activeProjectId && activeProjectId === msg.projectId) {
+          if (!this.isCompiling && msg.status === 'success' && msg.pdfUrl) {
+            const compileStore = useCompileStore.getState();
+            compileStore.setPdfUrl(msg.pdfUrl);
+            compileStore.setCompileStatus('done');
+            compileStore.setLastCompiledAt(new Date(msg.timestamp));
+          }
+        }
+      }
     });
   }
 
@@ -641,6 +657,19 @@ export class CompilerCoordinator {
         }
 
         editorCommandBus.dispatch({ type: 'compiler:finished', success: true });
+        const activeProjectId =
+          effectiveProjectId ||
+          usePageStore.getState().projectId ||
+          extractProjectId(usePageStore.getState().getActiveDocument());
+        if (activeProjectId) {
+          multiTabBus.broadcast({
+            type: 'EDITOR_COMPILATION_COMPLETED',
+            projectId: activeProjectId,
+            pdfUrl: res.pdfUrl ?? null,
+            status: 'success',
+            timestamp: Date.now(),
+          });
+        }
         this.scheduleNextPendingCompile(currentController);
 
         return true;

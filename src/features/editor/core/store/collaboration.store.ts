@@ -16,6 +16,8 @@ export interface PendingComment {
 
 export interface CollaboratorPresenceInfo {
   id: string;
+  userId?: string;
+  socketId?: string;
   name: string;
   email?: string;
   avatar?: string | null;
@@ -33,6 +35,7 @@ export interface CollaboratorPresenceInfo {
       endColumn?: number;
     };
   };
+  tabCount?: number;
   lastActiveAt?: number;
 }
 

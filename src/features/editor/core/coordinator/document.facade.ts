@@ -256,7 +256,9 @@ export class DocumentFacade {
       }
 
       const effectiveContent = existing?.isDirty ? existing.content : serverContent;
-      indexPayload.push({ fileId: rawRecord.id, filePath: path, content: effectiveContent });
+      if (effectiveContent) {
+        indexPayload.push({ fileId: rawRecord.id, filePath: path, content: effectiveContent });
+      }
     }
 
     this.serverFilesByProject.set(projectKey, normalized);
@@ -266,8 +268,8 @@ export class DocumentFacade {
         latexDependencyGraph.parseAndRegister(item.filePath, item.content, item.fileId);
       }
       latexSymbolsIndex.indexFilesBatch(indexPayload);
-      latexSymbolsIndex.refreshFromServer(projectKey, 150);
     }
+    latexSymbolsIndex.refreshFromServer(projectKey, 50);
 
     return this.getOverlayFiles(projectKey, rawFiles);
   }

@@ -73,9 +73,16 @@ export interface RecentActivity {
   createdAt: string;
 }
 
+export interface ProjectOverviewAssets {
+  pagesCount: number;
+  libraryCount: number;
+  filesCount?: number;
+}
+
 export interface ProjectOverviewData {
   project: ProjectMetadata;
   metrics: WorkItemMetrics;
+  assets?: ProjectOverviewAssets;
   recentActivities: RecentActivity[];
   currentUpdate: ProjectStatusUpdate | null;
 }

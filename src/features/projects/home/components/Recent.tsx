@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Section } from './layouts/section';
-import { Loader2, Folder, FileText, File, ChevronDown } from 'lucide-react';
+import { Loader2, Folder, FileText, File, ChevronDown, Layers } from 'lucide-react';
 import { useRecentItems } from '../hooks/use-home';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
@@ -119,21 +119,34 @@ export default function Recent() {
       ) : items && items.length > 0 ? (
         <div className='grid gap-1.5'>
           {items.map((item) => {
-            const linkTo =
-              item.type === 'project'
-                ? `/projects/${item.id}/work-items`
-                : item.type === 'page' && item.project
+            const linkTo = (() => {
+              if (item.type === 'project') {
+                return `/projects/${item.id}/overview`;
+              }
+              if (item.type === 'work-item') {
+                return item.project?.id
+                  ? `/projects/${item.project.id}/work-items`
+                  : '/your-work';
+              }
+              if (item.type === 'page') {
+                return item.project?.id
                   ? `/projects/${item.project.id}/pages/${item.id}`
-                  : item.type === 'file'
-                    ? `/storage?highlight=${encodeURIComponent(item.id)}`
-                    : `/storage`;
+                  : '/pages';
+              }
+              if (item.type === 'file') {
+                return `/storage?highlight=${encodeURIComponent(item.id)}`;
+              }
+              return item.project?.id ? `/projects/${item.project.id}/overview` : '/home';
+            })();
 
             const Icon =
               item.type === 'project'
                 ? Folder
                 : item.type === 'page'
                   ? FileText
-                  : File;
+                  : item.type === 'work-item'
+                    ? Layers
+                    : File;
 
             const projectIdentifier =
               item.project?.identifier ||

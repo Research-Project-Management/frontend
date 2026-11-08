@@ -85,15 +85,15 @@ const PROJECT_MODULE_OPTIONS: ProjectModuleOption[] = [
     defaultOn: true,
   },
   {
-    id: 'views',
-    title: 'Enable views',
-    desc: 'Customized filter perspectives, sorts, and layouts for work items.',
+    id: 'pages',
+    title: 'Enable pages',
+    desc: 'Create and edit free-form content; notes, docs, and manuscripts.',
     defaultOn: true,
   },
   {
-    id: 'pages',
-    title: 'Enable pages',
-    desc: 'Create and edit free-form content; notes, docs, anything.',
+    id: 'chat',
+    title: 'Enable project chat',
+    desc: 'Real-time discussion channels for project collaborators.',
     defaultOn: true,
   },
 ];

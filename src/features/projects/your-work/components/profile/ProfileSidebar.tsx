@@ -20,6 +20,8 @@ export function ProfileSidebar({
   projects = [],
   className,
   onEditProfile,
+  selectedProjectId,
+  onSelectProject,
 }: ProfileSidebarProps) {
   // Default to first project open if available to match official screenshot
   const [openProjectIds, setOpenProjectIds] = useState<Set<string>>(() => {
@@ -124,8 +126,22 @@ export function ProfileSidebar({
 
       {/* 3. Projects List (Zero extra headers, Zero horizontal lines) */}
       <div className="px-5 pt-4 flex-1 space-y-4">
+        {selectedProjectId && (
+          <div className="flex items-center justify-between pb-1 text-11">
+            <span className="text-muted-foreground font-medium">Filtered by project</span>
+            <button
+              type="button"
+              onClick={() => onSelectProject?.(null)}
+              className="text-primary hover:underline cursor-pointer font-medium"
+            >
+              Clear filter
+            </button>
+          </div>
+        )}
+
         {projects.map((project) => {
           const isOpen = openProjectIds.has(project.projectId);
+          const isSelected = selectedProjectId === project.projectId;
           const pendingCount =
             (project.stateGroupBreakdown?.unstarted || 0) +
             (project.stateGroupBreakdown?.started || 0);
@@ -134,13 +150,23 @@ export function ProfileSidebar({
           return (
             <div key={project.projectId} className="space-y-3">
               {/* Project Header Row: icon/emoji + name + chevron */}
-              <button
-                type="button"
-                onClick={() => toggleProject(project.projectId)}
-                aria-expanded={isOpen}
-                className="w-full flex items-center justify-between text-left group cursor-pointer p-1.5 -mx-1.5 rounded-md hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              <div
+                className={cn(
+                  'w-full flex items-center justify-between text-left group p-1.5 -mx-1.5 rounded-md transition-colors',
+                  isSelected
+                    ? 'bg-primary/10 text-primary'
+                    : 'hover:bg-muted text-foreground',
+                )}
               >
-                <div className="flex items-center gap-2 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onSelectProject) {
+                      onSelectProject(isSelected ? null : project.projectId);
+                    }
+                  }}
+                  className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
                   <ProjectAvatar
                     avatar={project.projectAvatar}
                     name={project.projectName}
@@ -148,17 +174,30 @@ export function ProfileSidebar({
                     size="sm"
                     className="shrink-0"
                   />
-                  <span className="truncate text-13 font-medium text-foreground transition-colors">
+                  <span
+                    className={cn(
+                      'truncate text-13 font-medium transition-colors',
+                      isSelected ? 'text-primary font-semibold' : 'text-foreground',
+                    )}
+                  >
                     {project.projectName}
                   </span>
-                </div>
-                <ChevronDown
-                  className={cn(
-                    'size-4 text-foreground shrink-0 transition-transform duration-150',
-                    isOpen && 'rotate-180',
-                  )}
-                />
-              </button>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleProject(project.projectId)}
+                  aria-expanded={isOpen}
+                  aria-label={`Toggle ${project.projectName} breakdown`}
+                  className="p-1 rounded-sm text-foreground/70 hover:text-foreground hover:bg-muted/80 cursor-pointer"
+                >
+                  <ChevronDown
+                    className={cn(
+                      'size-4 shrink-0 transition-transform duration-150',
+                      isOpen && 'rotate-180',
+                    )}
+                  />
+                </button>
+              </div>
 
               {/* Project Breakdown Items (Exact 4 Work items categories from screenshot) */}
               {isOpen && (

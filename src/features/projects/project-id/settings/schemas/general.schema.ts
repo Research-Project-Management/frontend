@@ -6,9 +6,14 @@ export const projectGeneralSchema = z.object({
     .string()
     .min(1, 'Project ID is required')
     .max(12, 'Project ID must be at most 12 characters')
+    .regex(/^[A-Z0-9_-]+$/, 'Identifier must be uppercase letters, numbers, hyphens or underscores')
     .trim(),
   description: z.string(),
-  isPrivate: z.boolean(),
+  researchField: z.string().optional(),
+  priority: z.enum(['none', 'low', 'medium', 'high', 'urgent']),
+  startDate: z.string().nullable().optional(),
+  targetDate: z.string().nullable().optional(),
+  isPrivate: z.boolean().optional(),
   avatar: z.string().nullable().optional(),
   cover: z.string().nullable().optional(),
 });

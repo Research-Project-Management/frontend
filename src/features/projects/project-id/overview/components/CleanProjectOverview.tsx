@@ -1,22 +1,25 @@
+'use client';
+
 import React, { useState } from 'react';
 import Link from 'next/link';
 import {
   FolderKanban,
-  CheckCircle2,
-  Clock,
+  FileText,
+  BookOpen,
+  MessageSquare,
+  ArrowUpRight,
+  Settings,
   Layers,
-  ExternalLink,
-  Users,
-  User,
-  Activity,
-  AlertCircle,
+  HardDrive,
   TrendingUp,
 } from 'lucide-react';
 import { Badge } from '@/shared/components/ui/badge';
-import type {
-  ProjectOverviewData,
-  ProjectStatusIndicator,
-} from '../types/overview.types';
+import { Button } from '@/shared/components/ui/button';
+import type { ProjectOverviewData } from '../types/overview.types';
+import { WorkItemProgressCard } from './WorkItemProgressCard';
+import { ProjectStatusCard } from './ProjectStatusCard';
+import { ProjectPropertiesSidebar } from './ProjectPropertiesSidebar';
+import { RecentActivityList } from './RecentActivityList';
 import { AddStatusUpdateModal } from './AddStatusUpdateModal';
 import { useCreateProjectStatusUpdate } from '../hooks/use-project-overview';
 
@@ -24,103 +27,30 @@ export interface CleanProjectOverviewProps {
   data: ProjectOverviewData;
 }
 
-const STATUS_CONFIG: Record<
-  ProjectStatusIndicator,
-  {
-    label: string;
-    badgeClass: string;
-    icon: React.ElementType;
-    indicatorDot: string;
-  }
-> = {
-  on_track: {
-    label: 'On Track',
-    badgeClass: 'bg-success/10 text-success border-success/20',
-    icon: CheckCircle2,
-    indicatorDot: 'bg-success',
-  },
-  at_risk: {
-    label: 'At Risk',
-    badgeClass: 'bg-warning/10 text-warning border-warning/20',
-    icon: AlertCircle,
-    indicatorDot: 'bg-warning',
-  },
-  off_track: {
-    label: 'Off Track',
-    badgeClass: 'bg-destructive/10 text-destructive border-destructive/20',
-    icon: AlertCircle,
-    indicatorDot: 'bg-destructive',
-  },
-};
-
-function formatDate(dateStr?: string | null): string | null {
-  if (!dateStr) return null;
-  try {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return null;
-    return d.toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  } catch {
-    return null;
-  }
-}
-
-function formatRelativeTime(dateStr?: string): string {
-  if (!dateStr) return '';
-  try {
-    const d = new Date(dateStr);
-    const now = new Date();
-    const diffDays = Math.floor(
-      (now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24),
-    );
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Yesterday';
-    if (diffDays < 30) return `${diffDays}d ago`;
-    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  } catch {
-    return dateStr;
-  }
-}
-
 export function CleanProjectOverview({ data }: CleanProjectOverviewProps) {
   const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
-  const { project, metrics, recentActivities, currentUpdate } = data;
+  const { project, metrics, recentActivities, currentUpdate, assets } = data;
   const createUpdateMutation = useCreateProjectStatusUpdate(project.id);
 
-  const totalWorkItems =
-    metrics?.totalWorkItems ??
-    (metrics as { totalIssues?: number })?.totalIssues ??
-    0;
-  const completed = metrics?.completed || 0;
-  const inProgress = metrics?.started || 0;
-  const completionPercentage = metrics?.completionPercentage || 0;
-
-  const statusConfig = currentUpdate
-    ? STATUS_CONFIG[currentUpdate.status] || null
-    : null;
-
-  const membersList = project.members || [];
-  const displayMembers = membersList.slice(0, 6);
-  const formattedTargetDate = formatDate(project.targetDate);
+  const pagesCount = assets?.pagesCount ?? 0;
+  const libraryCount = assets?.libraryCount ?? 0;
+  const filesCount = assets?.filesCount ?? 0;
 
   return (
-    <div className="max-w-5xl mx-auto w-full flex flex-col gap-6 py-2 px-1">
-      {/* 1. MINIMAL HERO / PROJECT IDENTIFIER */}
+    <div className="max-w-6xl mx-auto w-full flex flex-col gap-6 py-2 px-1">
+      {/* 1. PROJECT HERO / HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-border/60">
         <div className="flex items-center gap-3.5 min-w-0">
-          <div className="size-11 rounded-lg border border-border bg-muted/40 flex items-center justify-center text-foreground font-semibold text-lg select-none shrink-0 overflow-hidden shadow-2xs">
+          <div className="size-12 rounded-xl border border-border bg-muted/40 flex items-center justify-center text-foreground font-semibold text-lg select-none shrink-0 overflow-hidden shadow-2xs">
             {project.avatar ? (
-              <span className="text-xl">{project.avatar}</span>
+              <span className="text-2xl">{project.avatar}</span>
             ) : (
-              <FolderKanban className="size-5 text-muted-foreground" strokeWidth={1.5} />
+              <FolderKanban className="size-6 text-muted-foreground" strokeWidth={1.5} />
             )}
           </div>
           <div className="flex flex-col min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="text-18 font-semibold tracking-tight text-foreground truncate">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-20 font-semibold tracking-tight text-foreground truncate">
                 {project.name}
               </h1>
               <Badge
@@ -131,216 +61,192 @@ export function CleanProjectOverview({ data }: CleanProjectOverviewProps) {
               </Badge>
             </div>
             {project.description ? (
-              <p className="text-13 text-muted-foreground truncate max-w-xl mt-0.5">
+              <p className="text-13 text-muted-foreground truncate max-w-2xl mt-0.5">
                 {project.description}
               </p>
             ) : null}
           </div>
         </div>
-      </div>
 
-      {/* 2. CORE STATS BAR (Streamlined KPIs with clean fallbacks) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 py-1">
-        {/* Work items */}
-        <div className="flex flex-col p-3 rounded-lg bg-muted/20 border border-border/40">
-          <span className="text-12 font-medium text-muted-foreground flex items-center gap-1.5">
-            <Layers className="size-3.5 text-muted-foreground/70" />
-            Work Items
-          </span>
-          <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-20 font-semibold font-mono text-foreground">
-              {totalWorkItems}
-            </span>
-            {totalWorkItems > 0 ? (
-              <span className="text-12 text-muted-foreground font-mono">
-                ({completed} done)
-              </span>
-            ) : (
-              <span className="text-12 text-muted-foreground font-sans">
-                No items
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Progress % */}
-        <div className="flex flex-col p-3 rounded-lg bg-muted/20 border border-border/40">
-          <span className="text-12 font-medium text-muted-foreground flex items-center gap-1.5">
-            <TrendingUp className="size-3.5 text-muted-foreground/70" />
-            Progress
-          </span>
-          <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-20 font-semibold font-mono text-foreground">
-              {completionPercentage}%
-            </span>
-            {inProgress > 0 ? (
-              <span className="text-12 text-muted-foreground font-mono">
-                {inProgress} active
-              </span>
-            ) : null}
-          </div>
-        </div>
-
-        {/* Status */}
-        <div className="flex flex-col p-3 rounded-lg bg-muted/20 border border-border/40 justify-between">
-          <span className="text-12 font-medium text-muted-foreground flex items-center gap-1.5">
-            <Activity className="size-3.5 text-muted-foreground/70" />
-            Status
-          </span>
-          <div className="mt-1 flex items-center justify-between gap-1">
-            {statusConfig ? (
-              <Badge
-                variant="outline"
-                className={`h-5 px-2 text-11 font-medium gap-1.5 ${statusConfig.badgeClass}`}
-              >
-                <span className={`size-1.5 rounded-full ${statusConfig.indicatorDot}`} />
-                <span>{statusConfig.label}</span>
-              </Badge>
-            ) : (
-              <span className="text-13 text-muted-foreground font-mono">—</span>
-            )}
-            <button
-              type="button"
-              onClick={() => setIsStatusModalOpen(true)}
-              className="text-11 text-primary hover:underline font-medium cursor-pointer"
-            >
-              Update
-            </button>
-          </div>
-        </div>
-
-        {/* Target Date */}
-        <div className="flex flex-col p-3 rounded-lg bg-muted/20 border border-border/40">
-          <span className="text-12 font-medium text-muted-foreground flex items-center gap-1.5">
-            <Clock className="size-3.5 text-muted-foreground/70" />
-            Target Date
-          </span>
-          <div className="mt-1 flex items-baseline">
-            {formattedTargetDate ? (
-              <span className="text-13 font-medium text-foreground font-mono truncate">
-                {formattedTargetDate}
-              </span>
-            ) : (
-              <span className="text-13 text-muted-foreground font-mono">—</span>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* 3. TWO-COLUMN BALANCED CONTENT (Activities & Members) */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 mt-1">
-        {/* Left: Recent Activity Stream (8 cols) */}
-        <div className="md:col-span-8 flex flex-col gap-3">
-          <div className="flex items-center justify-between pb-1">
-            <h2 className="text-13 font-semibold text-foreground flex items-center gap-2">
-              <Activity className="size-4 text-muted-foreground" />
-              Recent Activity
-            </h2>
-            <Link
-              href={`/projects/${project.id}/work-items`}
-              className="text-12 text-muted-foreground hover:text-foreground hover:underline flex items-center gap-1"
-            >
-              <span>View all</span>
-              <ExternalLink className="size-3" />
+        {/* Quick Project Action Buttons */}
+        <div className="flex items-center gap-2 flex-wrap shrink-0">
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="h-8 px-2.5 text-12 font-medium border-border hover:bg-muted"
+          >
+            <Link href={`/projects/${project.id}/work-items`}>
+              <Layers className="size-3.5 mr-1.5 text-muted-foreground" />
+              <span>Work Items</span>
             </Link>
-          </div>
+          </Button>
 
-          {recentActivities.length === 0 ? (
-            <div className="py-8 px-4 text-center rounded-lg border border-dashed border-border/70 bg-muted/10 text-12 text-muted-foreground">
-              No recent activity recorded yet.
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="h-8 px-2.5 text-12 font-medium border-border hover:bg-muted"
+          >
+            <Link href={`/projects/${project.id}/storage`}>
+              <HardDrive className="size-3.5 mr-1.5 text-muted-foreground" />
+              <span>Storage</span>
+            </Link>
+          </Button>
+
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="h-8 px-2.5 text-12 font-medium border-border hover:bg-muted"
+          >
+            <Link href={`/projects/${project.id}/analytics`}>
+              <TrendingUp className="size-3.5 mr-1.5 text-muted-foreground" />
+              <span>Analytics</span>
+            </Link>
+          </Button>
+
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="h-8 px-2.5 text-12 font-medium border-border hover:bg-muted"
+          >
+            <Link href={`/projects/${project.id}/messages`}>
+              <MessageSquare className="size-3.5 mr-1.5 text-muted-foreground" />
+              <span>Chat</span>
+            </Link>
+          </Button>
+
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            className="h-8 size-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
+          >
+            <Link href={`/projects/${project.id}/settings`}>
+              <Settings className="size-4" />
+              <span className="sr-only">Project Settings</span>
+            </Link>
+          </Button>
+        </div>
+      </div>
+
+      {/* 2. RESEARCH ASSETS BAR (Pages & Manuscripts, Storage & Lab Data, Literature & Citations, Analytics) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        {/* Manuscripts & Pages */}
+        <Link
+          href={`/projects/${project.id}/pages`}
+          className="group flex items-center justify-between p-3.5 rounded-lg border border-border/70 bg-card hover:border-primary/40 hover:bg-muted/30 transition-all shadow-2xs"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="size-9 rounded-md bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0 group-hover:scale-105 transition-transform">
+              <FileText className="size-4" />
             </div>
-          ) : (
-            <div className="flex flex-col divide-y divide-border/40 rounded-lg border border-border/60 bg-card overflow-hidden">
-              {recentActivities.map((act) => (
-                <div
-                  key={act.id}
-                  className="p-3 sm:px-4 flex items-start gap-3 hover:bg-muted/30 transition-colors text-12"
-                >
-                  <div className="size-6 rounded-full bg-muted border border-border/80 flex items-center justify-center text-muted-foreground overflow-hidden shrink-0 mt-0.5">
-                    {act.actor?.avatar ? (
-                      <img
-                        src={act.actor.avatar}
-                        alt={act.actor.name || 'User'}
-                        className="size-full object-cover"
-                      />
-                    ) : (
-                      <User className="size-3 text-muted-foreground" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <span className="font-medium text-foreground">
-                      {act.actor?.name || 'Someone'}
-                    </span>{' '}
-                    <span className="text-muted-foreground">
-                      {act.verb?.replace(/_/g, ' ') || 'updated'}
-                    </span>
-                    {act.field && (
-                      <span className="text-muted-foreground"> {act.field}</span>
-                    )}
-                  </div>
-                  <span className="text-11 text-muted-foreground/70 font-mono shrink-0">
-                    {formatRelativeTime(act.createdAt)}
-                  </span>
-                </div>
-              ))}
+            <div className="flex flex-col min-w-0">
+              <span className="text-13 font-semibold text-foreground group-hover:text-primary transition-colors">
+                Manuscripts & Docs
+              </span>
+              <span className="text-11 text-muted-foreground truncate font-mono">
+                {pagesCount > 0 ? `${pagesCount} LaTeX documents` : 'No documents yet'}
+              </span>
             </div>
-          )}
+          </div>
+          <ArrowUpRight className="size-4 text-muted-foreground/60 group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0" />
+        </Link>
+
+        {/* Research Data & Storage */}
+        <Link
+          href={`/projects/${project.id}/storage`}
+          className="group flex items-center justify-between p-3.5 rounded-lg border border-border/70 bg-card hover:border-primary/40 hover:bg-muted/30 transition-all shadow-2xs"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="size-9 rounded-md bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0 group-hover:scale-105 transition-transform">
+              <HardDrive className="size-4" />
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-13 font-semibold text-foreground group-hover:text-primary transition-colors">
+                Storage & Datasets
+              </span>
+              <span className="text-11 text-muted-foreground truncate font-mono">
+                {filesCount > 0 ? `${filesCount} files & artifacts` : 'Upload data & models'}
+              </span>
+            </div>
+          </div>
+          <ArrowUpRight className="size-4 text-muted-foreground/60 group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0" />
+        </Link>
+
+        {/* References & Citations */}
+        <Link
+          href="/library"
+          className="group flex items-center justify-between p-3.5 rounded-lg border border-border/70 bg-card hover:border-primary/40 hover:bg-muted/30 transition-all shadow-2xs"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="size-9 rounded-md bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0 group-hover:scale-105 transition-transform">
+              <BookOpen className="size-4" />
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-13 font-semibold text-foreground group-hover:text-primary transition-colors">
+                Literature & Citations
+              </span>
+              <span className="text-11 text-muted-foreground truncate font-mono">
+                {libraryCount > 0 ? `${libraryCount} indexed references` : 'Curate citations'}
+              </span>
+            </div>
+          </div>
+          <ArrowUpRight className="size-4 text-muted-foreground/60 group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0" />
+        </Link>
+
+        {/* Analytics & Research Velocity */}
+        <Link
+          href={`/projects/${project.id}/analytics`}
+          className="group flex items-center justify-between p-3.5 rounded-lg border border-border/70 bg-card hover:border-primary/40 hover:bg-muted/30 transition-all shadow-2xs"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="size-9 rounded-md bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-600 dark:text-violet-400 shrink-0 group-hover:scale-105 transition-transform">
+              <TrendingUp className="size-4" />
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-13 font-semibold text-foreground group-hover:text-primary transition-colors">
+                Analytics & Velocity
+              </span>
+              <span className="text-11 text-muted-foreground truncate">
+                Metrics & team velocity
+              </span>
+            </div>
+          </div>
+          <ArrowUpRight className="size-4 text-muted-foreground/60 group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0" />
+        </Link>
+      </div>
+
+      {/* 3. TWO-COLUMN MAIN CONTENT (Work Items Progress & Health on Left, Properties & Team on Right) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-1">
+        {/* Left Column (8 cols): Progress, Health, and Activity */}
+        <div className="lg:col-span-8 flex flex-col gap-6">
+          {/* Work Item Progress Card */}
+          <WorkItemProgressCard
+            projectId={project.id}
+            metrics={metrics}
+          />
+
+          {/* Project Status & Health Card */}
+          <ProjectStatusCard
+            projectId={project.id}
+            currentUpdate={currentUpdate}
+            isModalOpen={isStatusModalOpen}
+            onModalOpenChange={setIsStatusModalOpen}
+          />
+
+          {/* Recent Activity Feed */}
+          <RecentActivityList activities={recentActivities} />
         </div>
 
-        {/* Right: Team (4 cols) */}
-        <div className="md:col-span-4 flex flex-col gap-5">
-          <div className="flex flex-col gap-2.5">
-            <div className="flex items-center justify-between pb-1">
-              <h2 className="text-13 font-semibold text-foreground flex items-center gap-2">
-                <Users className="size-4 text-muted-foreground" />
-                Team ({membersList.length})
-              </h2>
-              <Link
-                href={`/projects/${project.id}/settings/members`}
-                className="text-12 text-muted-foreground hover:text-foreground hover:underline"
-              >
-                Manage
-              </Link>
-            </div>
-
-            {displayMembers.length === 0 ? (
-              <div className="py-6 px-4 text-center rounded-lg border border-dashed border-border/70 bg-muted/10 text-12 text-muted-foreground">
-                No members assigned
-              </div>
-            ) : (
-              <div className="flex flex-col divide-y divide-border/40 rounded-lg border border-border/60 bg-card overflow-hidden">
-                {displayMembers.map((member) => (
-                  <div
-                    key={member.id}
-                    className="px-3 py-2 flex items-center justify-between gap-2 text-12"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="size-6 rounded-full bg-muted border border-border/80 flex items-center justify-center overflow-hidden shrink-0">
-                        {member.avatar ? (
-                          <img
-                            src={member.avatar}
-                            alt={member.name}
-                            className="size-full object-cover"
-                          />
-                        ) : (
-                          <User className="size-3 text-muted-foreground" />
-                        )}
-                      </div>
-                      <span className="font-medium text-foreground truncate">
-                        {member.name}
-                      </span>
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className="h-5 px-1.5 text-11 font-medium uppercase tracking-wider text-muted-foreground border-border/80"
-                    >
-                      {member.role || 'Member'}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+        {/* Right Column (4 cols): Project Properties & Team Members */}
+        <div className="lg:col-span-4 flex flex-col gap-6">
+          <ProjectPropertiesSidebar
+            project={project}
+            currentUpdate={currentUpdate}
+          />
         </div>
       </div>
 
@@ -348,8 +254,8 @@ export function CleanProjectOverview({ data }: CleanProjectOverviewProps) {
       <AddStatusUpdateModal
         open={isStatusModalOpen}
         onOpenChange={setIsStatusModalOpen}
-        onSubmit={async (data) => {
-          await createUpdateMutation.mutateAsync(data);
+        onSubmit={async (updateData) => {
+          await createUpdateMutation.mutateAsync(updateData);
           setIsStatusModalOpen(false);
         }}
       />

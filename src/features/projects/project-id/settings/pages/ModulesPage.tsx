@@ -2,9 +2,9 @@
 
 import React from 'react';
 import { useParams } from 'next/navigation';
-import { Skeleton } from "@/shared/components/ui/skeleton";
-import { FileText, LayoutGrid, MessageSquare } from 'lucide-react';
-import { WorkItemsIcon, WikiIcon } from "@/shared/components/icons";
+import { Skeleton } from '@/shared/components/ui/skeleton';
+import { LayoutGrid, MessageSquare, BarChart3, Archive } from 'lucide-react';
+import { WorkItemsIcon, WikiIcon, StorageIcon } from '@/shared/components/icons';
 import { PageLayout, PageContent } from '@/shared/components/layout/PageLayout';
 import { PageHeader } from '@/shared/components/layout/PageHeader';
 import { Item } from '../components/module/Item';
@@ -14,16 +14,51 @@ import type { ModuleDef } from '../types/module.types';
 // ── Module Registry ───────────────────────────────────────────────────────────
 
 const MODULES: ModuleDef[] = [
-  { id: 'work-items', label: 'Work items',  desc: 'Research activities and work item tracking', icon: WorkItemsIcon, locked: true },
-  { id: 'pages',      label: 'Pages',       desc: 'Collaborative documents, notes and manuscripts', icon: WikiIcon },
-  { id: 'chat',       label: 'Project Chat', desc: 'Real-time discussion channels for project collaborators', icon: MessageSquare },
+  {
+    id: 'work-items',
+    label: 'Work items',
+    desc: 'Research activities and work item tracking',
+    icon: WorkItemsIcon,
+    locked: true,
+  },
+  {
+    id: 'pages',
+    label: 'Pages',
+    desc: 'Collaborative documents, notes and manuscripts',
+    icon: WikiIcon,
+  },
+  {
+    id: 'chat',
+    label: 'Project Chat',
+    desc: 'Real-time discussion channels for project collaborators',
+    icon: MessageSquare,
+  },
+  {
+    id: 'storage',
+    label: 'Storage',
+    desc: 'Project files, datasets, and shared research assets',
+    icon: StorageIcon,
+  },
+  {
+    id: 'analytics',
+    label: 'Analytics',
+    desc: 'Project workload, velocity trends, and state distributions',
+    icon: BarChart3,
+  },
+  {
+    id: 'archives',
+    label: 'Archives',
+    desc: 'Project-scoped archived work items and manuscript pages',
+    icon: Archive,
+  },
 ];
 
 // ── Page ───────────────────────────────────────────────────────────────────────
 
 export default function ModulesPage() {
   const { projectId } = useParams() as { projectId: string };
-  const { active, toggle, isSaving, isLoading, isError, project } = useModules(projectId);
+  const { active, toggle, isSaving, isLoading, isError, project } =
+    useModules(projectId);
 
   if (isLoading) {
     return (

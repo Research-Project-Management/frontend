@@ -34,6 +34,15 @@ const mockItems: Item[] = [
 ];
 
 describe('CalendarView Component', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-05T12:00:00.000Z'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('renders sticky week day labels', () => {
     render(
       <CalendarView

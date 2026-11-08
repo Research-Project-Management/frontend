@@ -12,7 +12,7 @@ export function useModules(projectId: string) {
   const updateMutation = useUpdateProject();
 
   const DEFAULT_MODULES = useMemo(
-    () => ['work-items', 'pages'],
+    () => ['work-items', 'pages', 'chat', 'storage', 'analytics', 'archives'],
     [],
   );
 
@@ -24,8 +24,6 @@ export function useModules(projectId: string) {
       (m: string) =>
         m !== 'overview' &&
         m !== 'stickies' &&
-        m !== 'storage' &&
-        m !== 'analytics' &&
         m !== 'settings'
     );
   }, [project?.modules, DEFAULT_MODULES]);
@@ -53,8 +51,11 @@ export function useModules(projectId: string) {
         });
       }
 
+      // Always persist core modules overview and work-items
+      const modulesToSave = Array.from(new Set(['overview', 'work-items', ...next]));
+
       updateProject(
-        { projectId, modules: next },
+        { projectId, modules: modulesToSave },
         {
           onSuccess: () => toast.success('Modules updated', { id: 'settings-module' }),
           onError: () => {
@@ -74,8 +75,9 @@ export function useModules(projectId: string) {
   }, [active, serverModules]);
 
   const save = useCallback(() => {
+    const modulesToSave = Array.from(new Set(['overview', 'work-items', ...active]));
     updateProject(
-      { projectId, modules: active },
+      { projectId, modules: modulesToSave },
       { onSuccess: () => toast.success('Modules updated', { id: 'settings-module' }) },
     );
   }, [projectId, active, updateProject]);

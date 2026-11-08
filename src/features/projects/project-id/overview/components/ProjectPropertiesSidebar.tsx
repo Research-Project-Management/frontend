@@ -275,6 +275,27 @@ export function ProjectPropertiesSidebar({
             <ExternalLink className="size-3 text-muted-foreground" />
           </Link>
           <Link
+            href={`/projects/${project.id}/storage`}
+            className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50 text-foreground transition-colors"
+          >
+            <span>Research Storage & Data</span>
+            <ExternalLink className="size-3 text-muted-foreground" />
+          </Link>
+          <Link
+            href={`/projects/${project.id}/analytics`}
+            className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50 text-foreground transition-colors"
+          >
+            <span>Project Analytics</span>
+            <ExternalLink className="size-3 text-muted-foreground" />
+          </Link>
+          <Link
+            href={`/projects/${project.id}/archives`}
+            className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50 text-foreground transition-colors"
+          >
+            <span>Project Archives</span>
+            <ExternalLink className="size-3 text-muted-foreground" />
+          </Link>
+          <Link
             href={`/projects/${project.id}/settings`}
             className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50 text-foreground transition-colors"
           >

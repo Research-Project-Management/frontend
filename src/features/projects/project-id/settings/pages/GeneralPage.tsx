@@ -31,6 +31,15 @@ export default function GeneralPage() {
     cover,
     isPrivate,
     setIsPrivate,
+    priority,
+    setPriority,
+    startDate,
+    setStartDate,
+    targetDate,
+    setTargetDate,
+    researchField,
+    setResearchField,
+    lead,
     isArchived,
     createdAt,
     // Actions
@@ -99,13 +108,22 @@ export default function GeneralPage() {
             name={name}
             identifier={identifier}
             description={description}
+            researchField={researchField}
             createdAt={createdAt}
+            priority={priority}
+            startDate={startDate}
+            targetDate={targetDate}
+            lead={lead}
             isSaving={isSaving}
             hasChanges={hasChanges}
             errors={errors}
             onNameChange={setName}
             onIdentifierChange={setIdentifier}
             onDescriptionChange={setDescription}
+            onResearchFieldChange={setResearchField}
+            onPriorityChange={setPriority}
+            onStartDateChange={setStartDate}
+            onTargetDateChange={setTargetDate}
             onSubmit={save}
           />
 

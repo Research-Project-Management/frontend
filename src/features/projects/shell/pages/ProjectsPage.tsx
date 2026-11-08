@@ -621,7 +621,7 @@ export function ProjectsPage() {
             <PlaneEmptyState
               variant="files"
               title="No projects yet"
-              description="Projects organize research work items, cycles, and collaborative notes in your workspace."
+              description="Projects organize research work items and collaborative notes in your workspace."
               action={{
                 label: 'New project',
                 onClick: () => setIsCreateOpen(true),

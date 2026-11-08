@@ -33,6 +33,10 @@ export function useGeneral(projectId: string) {
       name: '',
       identifier: '',
       description: '',
+      researchField: '',
+      priority: 'none',
+      startDate: null,
+      targetDate: null,
       isPrivate: false,
       avatar: null,
       cover: null,
@@ -50,9 +54,13 @@ export function useGeneral(projectId: string) {
         name: project.name || '',
         identifier: project.identifier || (settings.identifier as string | undefined) || project.key || '',
         description: project.description || '',
+        researchField: (settings.researchField as string | undefined) || '',
         avatar: project.avatar || null,
         cover: project.cover || project.coverImage || (settings.cover as string | null | undefined) || null,
         isPrivate: project.isPrivate ?? (settings.isPrivate as boolean | undefined) ?? false,
+        priority: (project.priority as ProjectGeneralFormValues['priority']) || 'none',
+        startDate: project.startDate ? new Date(project.startDate).toISOString().split('T')[0] : null,
+        targetDate: project.targetDate ? new Date(project.targetDate).toISOString().split('T')[0] : null,
       });
     }
   }, [project, reset]);
@@ -61,6 +69,10 @@ export function useGeneral(projectId: string) {
   const name = useWatch({ control, name: 'name' }) ?? '';
   const identifier = useWatch({ control, name: 'identifier' }) ?? '';
   const description = useWatch({ control, name: 'description' }) ?? '';
+  const researchField = useWatch({ control, name: 'researchField' }) ?? '';
+  const priority = useWatch({ control, name: 'priority' }) ?? 'none';
+  const startDate = useWatch({ control, name: 'startDate' }) ?? null;
+  const targetDate = useWatch({ control, name: 'targetDate' }) ?? null;
   const isPrivate = useWatch({ control, name: 'isPrivate' }) ?? false;
   const avatar = useWatch({ control, name: 'avatar' }) ?? null;
   const cover = useWatch({ control, name: 'cover' }) ?? null;
@@ -72,7 +84,7 @@ export function useGeneral(projectId: string) {
         ...existingSettings,
         identifier: values.identifier.toUpperCase(),
         cover: values.cover,
-        isPrivate: values.isPrivate,
+        researchField: values.researchField ? values.researchField.trim() : undefined,
       };
 
       updateMutation.mutate(
@@ -84,6 +96,9 @@ export function useGeneral(projectId: string) {
           coverImage: values.cover || undefined,
           description: values.description,
           avatar: values.avatar || undefined,
+          priority: values.priority,
+          startDate: values.startDate || null,
+          targetDate: values.targetDate || null,
           settings: newSettings,
         } as UpdateProjectVariables,
         {
@@ -114,6 +129,26 @@ export function useGeneral(projectId: string) {
 
   const setDescription = useCallback(
     (val: string) => setValue('description', val, { shouldDirty: true, shouldValidate: true }),
+    [setValue]
+  );
+
+  const setResearchField = useCallback(
+    (val: string) => setValue('researchField', val, { shouldDirty: true, shouldValidate: true }),
+    [setValue]
+  );
+
+  const setPriority = useCallback(
+    (val: ProjectGeneralFormValues['priority']) => setValue('priority', val, { shouldDirty: true, shouldValidate: true }),
+    [setValue]
+  );
+
+  const setStartDate = useCallback(
+    (val: string | null) => setValue('startDate', val, { shouldDirty: true, shouldValidate: true }),
+    [setValue]
+  );
+
+  const setTargetDate = useCallback(
+    (val: string | null) => setValue('targetDate', val, { shouldDirty: true, shouldValidate: true }),
     [setValue]
   );
 
@@ -188,6 +223,15 @@ export function useGeneral(projectId: string) {
     setIdentifier,
     description,
     setDescription,
+    researchField,
+    setResearchField,
+    priority,
+    setPriority,
+    startDate,
+    setStartDate,
+    targetDate,
+    setTargetDate,
+    lead: project?.lead || project?.createdBy,
     avatar,
     cover,
     isPrivate,

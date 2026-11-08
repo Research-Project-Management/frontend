@@ -72,7 +72,6 @@ export interface UpdateDraftInput {
 export interface PublishDraftInput {
   projectId?: string;
   columnId?: string;
-  cycleId?: string;
   title?: string;
   priority?: WorkItemPriority;
 }

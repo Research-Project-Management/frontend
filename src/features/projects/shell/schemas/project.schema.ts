@@ -3,7 +3,7 @@ import { z } from 'zod';
 /**
  * Valid Project Roles in Flux:
  * - owner: Principal Investigator / Team Lead (Full administrative & member control)
- * - coordinator: Coordinator / Project Manager (Manages cycles, roadmaps, and work items)
+ * - coordinator: Coordinator / Project Manager (Manages roadmaps and work items)
  * - contributor: Researcher (Creates and edits work items, papers, documents, uploads assets)
  * - reviewer: Advisor / Reviewer (Views, comments, and provides review feedback)
  */
@@ -60,7 +60,6 @@ export const ProjectSettingsSchema = z.object({
   leadId: z.string().nullish().transform((v) => v ?? undefined),
   defaultAssigneeId: z.string().nullish().transform((v) => v ?? undefined),
   subscriberIds: z.array(z.string()).optional(),
-  parallelCycles: z.boolean().optional(),
   isPrivate: z.boolean().optional(),
   folder: z.string().nullish().transform((v) => v ?? undefined),
   tags: z.array(z.string()).optional(),

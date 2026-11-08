@@ -30,7 +30,7 @@ export function DeletePermanentModal({
           <DialogDescription className="text-13 text-muted-foreground leading-relaxed">
             Are you sure you want to permanently delete{' '}
             <strong className="text-foreground font-semibold">{project.name}</strong>? All
-            associated work items, cycles, notes, and storage files will be lost forever.
+            associated work items, notes, and storage files will be lost forever.
             This action cannot be undone.
           </DialogDescription>
         </DialogHeader>

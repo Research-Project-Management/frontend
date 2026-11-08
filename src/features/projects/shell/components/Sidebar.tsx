@@ -9,7 +9,8 @@ import {
   Compass,
   PanelLeft,
   MessageSquare,
-  Wallet,
+  BarChart3,
+  Archive,
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
@@ -17,6 +18,8 @@ import {
   DraftsIcon,
   WorkItemsIcon,
   StickiesIcon,
+  StorageIcon,
+  WikiIcon,
 } from '@/shared/components/icons';
 import { useProjectsQuery } from '../hooks/use-project';
 import { useQueryClient } from '@tanstack/react-query';
@@ -76,6 +79,7 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
       { label: 'Your work', icon: UserStar, to: '/your-work', exact: false },
       { label: 'Drafts', icon: DraftsIcon, to: '/drafts', exact: false },
       { label: 'Stickies', icon: StickiesIcon, to: '/stickies', exact: false },
+      { label: 'Storage', icon: StorageIcon, to: '/storage', exact: false },
     ],
     []
   );
@@ -83,7 +87,8 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
   // ── 2. Project Space Navigation (100% Project-Scoped) ──────────────────────
   const projectModuleItems: NavItem[] = useMemo(() => {
     if (!resolvedProjectId) return [];
-    return [
+
+    const items: NavItem[] = [
       {
         label: 'Overview',
         icon: Compass,
@@ -97,19 +102,59 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
         moduleKey: 'work-items',
       },
       {
+        label: 'Pages',
+        icon: WikiIcon,
+        to: `/projects/${resolvedProjectId}/pages`,
+        moduleKey: 'pages',
+      },
+      {
         label: 'Messages',
         icon: MessageSquare,
         to: `/projects/${resolvedProjectId}/messages`,
-        moduleKey: 'messages',
+        moduleKey: 'chat',
       },
       {
-        label: 'Budget',
-        icon: Wallet,
-        to: `/projects/${resolvedProjectId}/budget`,
-        moduleKey: 'budget',
+        label: 'Storage',
+        icon: StorageIcon,
+        to: `/projects/${resolvedProjectId}/storage`,
+        moduleKey: 'storage',
+      },
+      {
+        label: 'Analytics',
+        icon: BarChart3,
+        to: `/projects/${resolvedProjectId}/analytics`,
+        moduleKey: 'analytics',
+      },
+      {
+        label: 'Archives',
+        icon: Archive,
+        to: `/projects/${resolvedProjectId}/archives`,
+        moduleKey: 'archives',
       },
     ];
-  }, [resolvedProjectId]);
+
+    if (!currentProject?.modules || currentProject.modules.length === 0) {
+      return items;
+    }
+
+    const activeSet = new Set(
+      currentProject.modules.map((m: string) =>
+        String(m).toLowerCase().replace(/_/g, '-')
+      )
+    );
+
+    return items.filter((item) => {
+      // Overview and Work items are permanent core anchors
+      if (!item.moduleKey || item.moduleKey === 'overview' || item.moduleKey === 'work-items') {
+        return true;
+      }
+      // For chat, match either 'chat' or 'messages'
+      if (item.moduleKey === 'chat') {
+        return activeSet.has('chat') || activeSet.has('messages');
+      }
+      return activeSet.has(item.moduleKey);
+    });
+  }, [resolvedProjectId, currentProject?.modules]);
 
   // ── Navigation Helpers ─────────────────────────────────────────────────────
   const isItemActive = (item: NavItem) => {

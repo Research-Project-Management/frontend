@@ -6,7 +6,7 @@ import {
   getPixelForTimeBinarySearch,
   calculateTaskDuration,
   wouldCauseCycle,
-} from '@/features/projects/project-id/work-items/utils/cpm-graph';
+} from '@/features/projects/project-id/work-items/utils/cpm-graph.utils';
 import type { Item } from '@/features/projects/project-id/work-items/types/work-item.types';
 
 describe('CPM (Critical Path Method) & DAG Graph Engine', () => {

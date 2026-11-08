@@ -12,7 +12,7 @@ import {
   getWorkItemProject,
   calculateStatusBreakdown,
   calculatePriorityBreakdown,
-} from '@/features/projects/your-work/utils/your-work.util';
+} from '@/features/projects/your-work/utils/your-work.utils';
 
 describe('YourWork Schema Validation & Integration Tests', () => {
   const mockBackendResponse = {

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import {
   ProjectMetadata,
@@ -9,15 +9,23 @@ import {
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from '@/shared/components/ui/popover';
+import {
   Calendar,
   Users,
   Settings,
   Clock,
   Flag,
   User,
+  Check,
   ExternalLink,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { cn } from '@/shared/lib/utils';
+import { useProjectStatesSettings } from '../../settings/hooks/use-project-states-settings';
 
 interface ProjectPropertiesSidebarProps {
   project: ProjectMetadata;
@@ -47,6 +55,9 @@ function formatDate(dateStr: string | null): string {
 export function ProjectPropertiesSidebar({
   project,
 }: ProjectPropertiesSidebarProps) {
+  const { states: projectStates, transitionState, isMutating } = useProjectStatesSettings(project.id);
+  const [openStatePopover, setOpenStatePopover] = useState(false);
+
   // Directly bind state info returned from DB via project.state
   const stateName =
     typeof project.state === 'object' && project.state !== null
@@ -99,19 +110,62 @@ export function ProjectPropertiesSidebar({
             <span className="text-muted-foreground font-medium flex items-center gap-1.5">
               <Clock className="size-3.5" /> State
             </span>
-            {stateName ? (
-              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-11 font-medium bg-muted/60 text-foreground border border-border/70">
-                {stateColor && (
-                  <span
-                    className="size-1.5 rounded-full shrink-0"
-                    style={{ backgroundColor: stateColor }}
-                  />
-                )}
-                <span>{stateName}</span>
-              </div>
-            ) : (
-              <span className="text-muted-foreground italic text-11">Unassigned</span>
-            )}
+            <Popover open={openStatePopover} onOpenChange={setOpenStatePopover}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  disabled={isMutating || projectStates.length === 0}
+                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-11 font-medium bg-muted/60 hover:bg-muted text-foreground border border-border/70 cursor-pointer transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  title="Click to change project state"
+                >
+                  {stateColor && (
+                    <span
+                      className="size-1.5 rounded-full shrink-0"
+                      style={{ backgroundColor: stateColor }}
+                    />
+                  )}
+                  <span>{stateName || 'Unassigned'}</span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="end"
+                className="w-48 p-1 rounded-md border border-border bg-popover z-100 space-y-0.5 shadow-overlay"
+              >
+                {projectStates.map((s) => {
+                  const isCurrent =
+                    s.name === stateName ||
+                    (typeof project.state === 'object' &&
+                      project.state !== null &&
+                      'id' in project.state &&
+                      s.id === project.state.id);
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={async () => {
+                        await transitionState(s.id);
+                        setOpenStatePopover(false);
+                      }}
+                      className={cn(
+                        'w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-12 transition-colors cursor-pointer text-left',
+                        isCurrent
+                          ? 'bg-muted font-medium text-foreground'
+                          : 'hover:bg-muted text-foreground'
+                      )}
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <span
+                          className="size-2 rounded-full shrink-0"
+                          style={{ backgroundColor: s.color || '#0284c7' }}
+                        />
+                        <span className="truncate">{s.name}</span>
+                      </div>
+                      {isCurrent && <Check className="size-3.5 shrink-0 text-primary" />}
+                    </button>
+                  );
+                })}
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Priority */}
@@ -275,10 +329,10 @@ export function ProjectPropertiesSidebar({
             <ExternalLink className="size-3 text-muted-foreground" />
           </Link>
           <Link
-            href={`/projects/${project.id}/storage`}
+            href={`/projects/${project.id}/experiments`}
             className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50 text-foreground transition-colors"
           >
-            <span>Research Storage & Data</span>
+            <span>Experiments & Datasets</span>
             <ExternalLink className="size-3 text-muted-foreground" />
           </Link>
           <Link

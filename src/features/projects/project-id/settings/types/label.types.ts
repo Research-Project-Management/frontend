@@ -1,4 +1,4 @@
-export type LabelType = 'work_item' | 'page' | 'work-item';
+export type LabelType = 'work_item' | 'library' | 'page';
 
 export interface Label {
   id: string;
@@ -7,7 +7,7 @@ export interface Label {
   description?: string | null;
   parentId?: string | null;
   sortOrder?: number;
-  type?: LabelType;
+  type?: LabelType | string;
   projectId?: string | null;
   createdById?: string;
   createdAt?: string;
@@ -22,7 +22,7 @@ export interface CreateLabelInput {
   description?: string;
   parentId?: string | null;
   sortOrder?: number;
-  type?: LabelType;
+  type?: LabelType | string;
 }
 
 export interface UpdateLabelInput {
@@ -31,7 +31,7 @@ export interface UpdateLabelInput {
   description?: string | null;
   parentId?: string | null;
   sortOrder?: number;
-  type?: LabelType;
+  type?: LabelType | string;
 }
 
 export interface CreateProjectLabelInput {
@@ -40,6 +40,7 @@ export interface CreateProjectLabelInput {
   description?: string;
   parentId?: string | null;
   sortOrder?: number;
+  type?: LabelType | string;
 }
 
 export interface UpdateProjectLabelInput {
@@ -48,6 +49,7 @@ export interface UpdateProjectLabelInput {
   description?: string | null;
   parentId?: string | null;
   sortOrder?: number;
+  type?: LabelType | string;
 }
 
 export interface ReorderLabelItem {

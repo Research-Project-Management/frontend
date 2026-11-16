@@ -187,8 +187,8 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
   } = useQuery(projectPagesQueryOptions(projectId || 'personal'));
 
   // Dual-space labels: Project labels when projectId is available, otherwise Personal/Global labels
-  const { data: projectScopedLabels = [] } = useProjectLabels(projectId);
-  const { data: personalScopedLabels = [] } = useLabels(undefined, projectId || undefined);
+  const { data: projectScopedLabels = [] } = useProjectLabels(projectId, 'page');
+  const { data: personalScopedLabels = [] } = useLabels('page', projectId || undefined);
   const projectLabels = projectId ? projectScopedLabels : personalScopedLabels;
 
   const createProjectLabelMutation = useCreateProjectLabel(projectId);
@@ -199,6 +199,7 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
       return await createProjectLabelMutation.mutateAsync({
         name: input.name,
         color: input.color,
+        type: 'page',
       });
     }
     return await createGlobalLabelMutation.mutateAsync({

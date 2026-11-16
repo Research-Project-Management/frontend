@@ -105,16 +105,31 @@ export function Attachments({
   const [paperSearchQuery, setPaperSearchQuery] = useState('');
   const [selectedLibraryPaper, setSelectedLibraryPaper] = useState<LibraryPaperItem | null>(null);
 
-  const libraryScope = projectId || 'user';
-  const { data: libraryData, isLoading: loadingLibraryPapers } = useViewItems(
-    openPaperDialog ? libraryScope : undefined,
+  const isProjectScoped = Boolean(projectId && projectId !== 'user' && projectId !== 'personal');
+  const { data: projectLibraryData, isLoading: loadingProjectPapers } = useViewItems(
+    openPaperDialog && isProjectScoped ? projectId : undefined,
     'all',
     paperSearchQuery,
   );
+  const { data: userLibraryData, isLoading: loadingUserPapers } = useViewItems(
+    openPaperDialog ? 'user' : undefined,
+    'all',
+    paperSearchQuery,
+  );
+
   const libraryPapers = React.useMemo(() => {
-    const dataObj = libraryData as { items?: LibraryPaperItem[] } | undefined;
-    return Array.isArray(dataObj?.items) ? dataObj.items : [];
-  }, [libraryData]);
+    const pItems = (projectLibraryData as { items?: LibraryPaperItem[] } | undefined)?.items || [];
+    const uItems = (userLibraryData as { items?: LibraryPaperItem[] } | undefined)?.items || [];
+    const map = new Map<string, LibraryPaperItem>();
+    for (const item of [...pItems, ...uItems]) {
+      if (item.id && !map.has(item.id)) {
+        map.set(item.id, item);
+      }
+    }
+    return Array.from(map.values());
+  }, [projectLibraryData, userLibraryData]);
+
+  const loadingLibraryPapers = loadingProjectPapers || loadingUserPapers;
 
   // Attach Link State
   const [linkTitle, setLinkTitle] = useState('');
@@ -205,9 +220,22 @@ export function Attachments({
 
   const handleConfirmAttachLink = () => {
     if (!linkUrl.trim()) return;
+    let url = linkUrl.trim();
+    if (!/^https?:\/\//i.test(url)) {
+      url = `https://${url}`;
+    }
+    let title = linkTitle.trim();
+    if (!title) {
+      try {
+        const parsed = new URL(url);
+        title = parsed.hostname.replace(/^www\./, '');
+      } catch {
+        title = url;
+      }
+    }
     onAttachLink?.({
-      title: linkTitle.trim() || linkUrl.trim(),
-      url: linkUrl.trim(),
+      title,
+      url,
     });
     setOpenLinkDialog(false);
     setLinkTitle('');
@@ -356,10 +384,10 @@ export function Attachments({
 
                     <div className="flex items-center gap-1">
                       <Link
-                        href={`/editor/${page.id}`}
+                        href={projectId ? `/projects/${projectId}/pages/${page.id}` : `/editor/${page.id}`}
                         target="_blank"
                         className="inline-flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors shrink-0"
-                        title="Open in LaTeX Editor"
+                        title={projectId ? "Open Page in Project" : "Open in LaTeX Editor"}
                       >
                         <ExternalLink className="size-3.5 shrink-0 text-foreground" />
                       </Link>
@@ -469,16 +497,39 @@ export function Attachments({
                       </div>
                     </div>
 
-                    {!isReadOnly && (
-                      <button
-                        type="button"
-                        onClick={() => onDetachPaper?.(((paper as { paperId?: string; id?: string }).paperId || paper.id || ''))}
-                        className="inline-flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer"
-                        title="Detach Paper"
-                      >
-                        <Trash2 className="size-3.5 shrink-0 text-foreground" />
-                      </button>
-                    )}
+                    <div className="flex items-center gap-1">
+                      {paper.doi ? (
+                        <a
+                          href={`https://doi.org/${paper.doi}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors shrink-0"
+                          title="Open DOI resolver"
+                        >
+                          <ExternalLink className="size-3.5 shrink-0 text-foreground" />
+                        </a>
+                      ) : ((paper as { paperId?: string; id?: string }).paperId || paper.id) ? (
+                        <Link
+                          href={`/library/papers/${(paper as { paperId?: string; id?: string }).paperId || paper.id}`}
+                          target="_blank"
+                          className="inline-flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors shrink-0"
+                          title="Open in Library"
+                        >
+                          <ExternalLink className="size-3.5 shrink-0 text-foreground" />
+                        </Link>
+                      ) : null}
+
+                      {!isReadOnly && (
+                        <button
+                          type="button"
+                          onClick={() => onDetachPaper?.(((paper as { paperId?: string; id?: string }).paperId || paper.id || ''))}
+                          className="inline-flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer"
+                          title="Detach Paper"
+                        >
+                          <Trash2 className="size-3.5 shrink-0 text-foreground" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

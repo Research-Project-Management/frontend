@@ -654,6 +654,12 @@ export const ItemHelpers = {
               return 0;
             })();
 
+    const rawAttach = item.attachments || rawItem.attach;
+    const attachObj = (rawAttach && typeof rawAttach === "object" && !Array.isArray(rawAttach)) ? (rawAttach as Record<string, unknown>) : null;
+    const pagesCount = attachObj && Array.isArray(attachObj.pages) ? attachObj.pages.length : 0;
+    const papersCount = attachObj && Array.isArray(attachObj.papers) ? attachObj.papers.length : 0;
+    const filesCount = attachObj && Array.isArray(attachObj.files) ? attachObj.files.length : (Array.isArray(rawAttach) ? rawAttach.length : 0);
+
     const attachmentsCount =
       typeof rawItem.attachmentCount === "number"
         ? rawItem.attachmentCount
@@ -668,6 +674,9 @@ export const ItemHelpers = {
       isCompleted,
       linksCount,
       attachmentsCount,
+      pagesCount,
+      papersCount,
+      filesCount,
     };
   },
 };

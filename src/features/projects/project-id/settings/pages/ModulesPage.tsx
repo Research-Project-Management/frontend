@@ -3,7 +3,7 @@
 import React from 'react';
 import { useParams } from 'next/navigation';
 import { Skeleton } from '@/shared/components/ui/skeleton';
-import { LayoutGrid, MessageSquare, BarChart3, Archive } from 'lucide-react';
+import { LayoutGrid, MessageSquare, BarChart3, Archive, Microscope } from 'lucide-react';
 import { WorkItemsIcon, WikiIcon, StorageIcon } from '@/shared/components/icons';
 import { PageLayout, PageContent } from '@/shared/components/layout/PageLayout';
 import { PageHeader } from '@/shared/components/layout/PageHeader';
@@ -34,10 +34,10 @@ const MODULES: ModuleDef[] = [
     icon: MessageSquare,
   },
   {
-    id: 'storage',
-    label: 'Storage',
-    desc: 'Project files, datasets, and shared research assets',
-    icon: StorageIcon,
+    id: 'experiments',
+    label: 'Experiments',
+    desc: 'Model training runs, benchmarks, and dataset management',
+    icon: Microscope,
   },
   {
     id: 'analytics',

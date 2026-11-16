@@ -15,6 +15,7 @@ export const ProjectStateItemSchema = z.object({
   name: z.string(),
   description: z.string().nullable().optional(),
   color: z.string(),
+  group: z.string().default('execution').optional(),
   sequence: z.number().default(0),
   isDefault: z.boolean().default(false),
   createdAt: z.string().or(z.date()).optional(),

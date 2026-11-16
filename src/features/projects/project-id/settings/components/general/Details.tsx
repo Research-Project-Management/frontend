@@ -21,9 +21,11 @@ import { Calendar } from '@/shared/components/ui/calendar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
 import { cn } from '@/shared/lib/utils';
 import { PROJECT_PRIORITY_OPTIONS } from '@/features/projects/shell/components/project/CreateProjectModal';
+import { useProjectStatesSettings } from '../../hooks/use-project-states-settings';
 import type { ProjectPriority } from '@/features/projects/shell/types/project.types';
 
 interface GeneralDetailsProps {
+  projectId?: string;
   name: string;
   identifier: string;
   description: string;
@@ -80,6 +82,7 @@ function formatDateLabel(dateStr: string | null | undefined, fallback: string): 
 }
 
 export function GeneralDetails({
+  projectId,
   name,
   identifier,
   description,
@@ -103,6 +106,14 @@ export function GeneralDetails({
 }: GeneralDetailsProps) {
   const formattedDate = formatCreatedDate(createdAt);
 
+  const {
+    states: projectStates = [],
+    currentState,
+    transitionState,
+    isMutating: isStateMutating,
+  } = useProjectStatesSettings(projectId || '');
+
+  const [openStatePopover, setOpenStatePopover] = useState(false);
   const [openPriorityPopover, setOpenPriorityPopover] = useState(false);
   const [openStartDatePopover, setOpenStartDatePopover] = useState(false);
   const [openTargetDatePopover, setOpenTargetDatePopover] = useState(false);
@@ -218,8 +229,116 @@ export function GeneralDetails({
           <span>Timeline & Priority</span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 items-end">
-          {/* 1. Start Date */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5 items-end">
+          {/* 1. Project Stage / State */}
+          <div className="space-y-1.5 min-w-0">
+            <Label className="text-12 font-medium text-muted-foreground">Project stage</Label>
+            <Popover open={openStatePopover} onOpenChange={setOpenStatePopover}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  disabled={isStateMutating || projectStates.length === 0}
+                  className="w-full flex items-center justify-between h-8 px-2.5 rounded-md border border-border bg-background hover:bg-muted text-12 font-medium text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <span
+                      className="size-2 rounded-full shrink-0"
+                      style={{ backgroundColor: currentState?.color || '#0284c7' }}
+                    />
+                    <span className="truncate">{currentState?.name || 'Ideation'}</span>
+                  </div>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="start"
+                className="w-48 p-1 rounded-md border border-border bg-popover z-100 space-y-0.5 shadow-overlay"
+              >
+                {projectStates.map((s) => {
+                  const isSelected = s.id === currentState?.id;
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={async () => {
+                        if (transitionState) {
+                          await transitionState(s.id);
+                        }
+                        setOpenStatePopover(false);
+                      }}
+                      className={cn(
+                        'w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-12 transition-colors cursor-pointer text-left',
+                        isSelected
+                          ? 'bg-muted font-medium text-foreground'
+                          : 'hover:bg-muted text-foreground'
+                      )}
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <span
+                          className="size-2 rounded-full shrink-0"
+                          style={{ backgroundColor: s.color || '#0284c7' }}
+                        />
+                        <span className="truncate">{s.name}</span>
+                      </div>
+                      {isSelected && <Check className="size-3.5 shrink-0 text-primary" />}
+                    </button>
+                  );
+                })}
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {/* 2. Priority */}
+          <div className="space-y-1.5 min-w-0">
+            <Label className="text-12 font-medium text-muted-foreground">Priority</Label>
+            <Popover open={openPriorityPopover} onOpenChange={setOpenPriorityPopover}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-between h-8 px-2.5 rounded-md border border-border bg-background hover:bg-muted text-12 font-medium text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <div className="flex items-center gap-2">
+                    <ActivePriorityIcon className="size-3.5 shrink-0" />
+                    <span>{activePriorityOption.label}</span>
+                  </div>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="start"
+                className="w-44 p-1 rounded-md border border-border bg-popover z-100 space-y-0.5 shadow-overlay"
+              >
+                {PROJECT_PRIORITY_OPTIONS.map((opt) => {
+                  const isSelected = priority === opt.value;
+                  const IconComp = opt.icon;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => {
+                        if (onPriorityChange) {
+                          onPriorityChange(opt.value);
+                        }
+                        setOpenPriorityPopover(false);
+                      }}
+                      className={cn(
+                        'w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-12 transition-colors cursor-pointer text-left',
+                        isSelected
+                          ? 'bg-muted font-medium text-foreground'
+                          : 'hover:bg-muted text-foreground'
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <IconComp className="size-3.5 shrink-0" />
+                        <span>{opt.label}</span>
+                      </div>
+                      {isSelected && <Check className="size-3.5 shrink-0 text-primary" />}
+                    </button>
+                  );
+                })}
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {/* 3. Start Date */}
           <div className="space-y-1.5 min-w-0">
             <Label className="text-12 font-medium text-muted-foreground">Start date</Label>
             <Popover open={openStartDatePopover} onOpenChange={setOpenStartDatePopover}>
@@ -269,9 +388,9 @@ export function GeneralDetails({
             </Popover>
           </div>
 
-          {/* 2. Target Date */}
+          {/* 4. Target Date */}
           <div className="space-y-1.5 min-w-0">
-            <Label className="text-12 font-medium text-muted-foreground">Target / Completion date</Label>
+            <Label className="text-12 font-medium text-muted-foreground">Target date</Label>
             <Popover open={openTargetDatePopover} onOpenChange={setOpenTargetDatePopover}>
               <PopoverTrigger asChild>
                 <button
@@ -315,57 +434,6 @@ export function GeneralDetails({
                   }}
                   className="p-3 text-xs"
                 />
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          {/* 3. Priority */}
-          <div className="space-y-1.5 min-w-0">
-            <Label className="text-12 font-medium text-muted-foreground">Priority</Label>
-            <Popover open={openPriorityPopover} onOpenChange={setOpenPriorityPopover}>
-              <PopoverTrigger asChild>
-                <button
-                  type="button"
-                  className="w-full flex items-center justify-between h-8 px-2.5 rounded-md border border-border bg-background hover:bg-muted text-12 font-medium text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                >
-                  <div className="flex items-center gap-2">
-                    <ActivePriorityIcon className="size-3.5 shrink-0" />
-                    <span>{activePriorityOption.label}</span>
-                  </div>
-                </button>
-              </PopoverTrigger>
-              <PopoverContent
-                align="start"
-                className="w-44 p-1 rounded-md border border-border bg-popover z-100 space-y-0.5 shadow-overlay"
-              >
-                {PROJECT_PRIORITY_OPTIONS.map((opt) => {
-                  const isSelected = priority === opt.value;
-                  const IconComp = opt.icon;
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => {
-                        if (onPriorityChange) {
-                          onPriorityChange(opt.value);
-                        }
-                        setOpenPriorityPopover(false);
-                      }}
-                      className={cn(
-                        'w-full flex items-center justify-between px-2.5 py-1.5 rounded-md text-12 transition-colors cursor-pointer text-left',
-                        isSelected
-                          ? 'bg-muted font-medium text-foreground'
-                          : 'hover:bg-muted text-foreground'
-                      )}
-                    >
-                      <div className="flex items-center gap-2">
-                        <IconComp className="size-3.5 shrink-0" />
-                        <span>{opt.label}</span>
-                      </div>
-                      {isSelected && <Check className="size-3.5 shrink-0 text-primary" />}
-                    </button>
-                  );
-                })}
               </PopoverContent>
             </Popover>
           </div>

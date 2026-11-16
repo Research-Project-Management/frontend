@@ -117,3 +117,4 @@ export function resolveStateColor(stateOrId?: Partial<WorkItemState> | string | 
   }
   return rawColor || '#94a3b8';
 }
+

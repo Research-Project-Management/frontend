@@ -27,8 +27,6 @@ import {
   User,
   Tag,
   ChevronDown,
-  Paperclip,
-  Link2,
   CheckSquare,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
@@ -217,8 +215,6 @@ export const CardUI = React.memo(function CardUI({
     stateGroup,
     isCompleted: isDone,
     isCancelled,
-    attachmentsCount,
-    linksCount,
   } = itemMeta;
 
   const priorityKey = (card.priority || 'none').toLowerCase() as Priority;
@@ -236,8 +232,6 @@ export const CardUI = React.memo(function CardUI({
   }).length;
 
   const showSubItems = displayOptions?.properties?.childWorkItemCount !== false && childWorkItemTotal > 0;
-  const showAttach = displayOptions?.properties?.attachmentCount !== false && attachmentsCount > 0;
-  const showLinks = displayOptions?.properties?.link !== false && linksCount > 0;
 
   return (
     <div
@@ -433,28 +427,6 @@ export const CardUI = React.memo(function CardUI({
             >
               <CheckSquare className="size-2.5 shrink-0" />
               <span className="tabular-nums font-mono text-10">{childWorkItemDone}/{childWorkItemTotal}</span>
-            </div>
-          )}
-
-          {/* 6. Attachments Indicator */}
-          {showAttach && (
-            <div
-              className="inline-flex items-center gap-1 px-1.5 h-5 rounded-sm text-10 text-foreground border border-border bg-muted/20 shrink-0"
-              title={`${attachmentsCount} attachment${attachmentsCount > 1 ? 's' : ''}`}
-            >
-              <Paperclip className="size-2.5 shrink-0" />
-              <span className="tabular-nums font-mono text-10">{attachmentsCount}</span>
-            </div>
-          )}
-
-          {/* 7. Links Indicator */}
-          {showLinks && (
-            <div
-              className="inline-flex items-center gap-1 px-1.5 h-5 rounded-sm text-10 text-foreground border border-border bg-muted/20 shrink-0"
-              title={`${linksCount} link${linksCount > 1 ? 's' : ''}`}
-            >
-              <Link2 className="size-2.5 shrink-0" />
-              <span className="tabular-nums font-mono text-10">{linksCount}</span>
             </div>
           )}
 

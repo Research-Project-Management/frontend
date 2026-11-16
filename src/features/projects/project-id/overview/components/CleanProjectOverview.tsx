@@ -12,6 +12,7 @@ import {
   Layers,
   HardDrive,
   TrendingUp,
+  Microscope,
 } from 'lucide-react';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
@@ -88,9 +89,9 @@ export function CleanProjectOverview({ data }: CleanProjectOverviewProps) {
             size="sm"
             className="h-8 px-2.5 text-12 font-medium border-border hover:bg-muted"
           >
-            <Link href={`/projects/${project.id}/storage`}>
-              <HardDrive className="size-3.5 mr-1.5 text-muted-foreground" />
-              <span>Storage</span>
+            <Link href={`/projects/${project.id}/experiments`}>
+              <Microscope className="size-3.5 mr-1.5 text-muted-foreground" />
+              <span>Experiments</span>
             </Link>
           </Button>
 
@@ -155,21 +156,21 @@ export function CleanProjectOverview({ data }: CleanProjectOverviewProps) {
           <ArrowUpRight className="size-4 text-muted-foreground/60 group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all shrink-0" />
         </Link>
 
-        {/* Research Data & Storage */}
+        {/* Research Experiments & Datasets */}
         <Link
-          href={`/projects/${project.id}/storage`}
+          href={`/projects/${project.id}/experiments`}
           className="group flex items-center justify-between p-3.5 rounded-lg border border-border/70 bg-card hover:border-primary/40 hover:bg-muted/30 transition-all shadow-2xs"
         >
           <div className="flex items-center gap-3 min-w-0">
             <div className="size-9 rounded-md bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0 group-hover:scale-105 transition-transform">
-              <HardDrive className="size-4" />
+              <Microscope className="size-4" />
             </div>
             <div className="flex flex-col min-w-0">
               <span className="text-13 font-semibold text-foreground group-hover:text-primary transition-colors">
-                Storage & Datasets
+                Experiments & Data
               </span>
               <span className="text-11 text-muted-foreground truncate font-mono">
-                {filesCount > 0 ? `${filesCount} files & artifacts` : 'Upload data & models'}
+                {filesCount > 0 ? `${filesCount} runs & datasets` : 'Model runs & datasets'}
               </span>
             </div>
           </div>

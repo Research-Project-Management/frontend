@@ -35,7 +35,7 @@ export function LabelPicker({
   const setIsOpen = onOpenChange !== undefined ? onOpenChange : setInternalOpen;
   const [labelSearch, setLabelSearch] = useState('');
 
-  const { data: rawLabels } = useLabelsQuery(projectId, 'work-item', {
+  const { data: rawLabels } = useLabelsQuery(projectId, 'work_item', {
     enabled: Boolean(projectId) && isOpen,
   });
 

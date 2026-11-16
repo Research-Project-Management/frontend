@@ -11,6 +11,7 @@ import {
   MessageSquare,
   BarChart3,
   Archive,
+  Microscope,
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
@@ -114,10 +115,10 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
         moduleKey: 'chat',
       },
       {
-        label: 'Storage',
-        icon: StorageIcon,
-        to: `/projects/${resolvedProjectId}/storage`,
-        moduleKey: 'storage',
+        label: 'Experiments',
+        icon: Microscope,
+        to: `/projects/${resolvedProjectId}/experiments`,
+        moduleKey: 'experiments',
       },
       {
         label: 'Analytics',
@@ -151,6 +152,10 @@ export function Sidebar({ onToggle }: { onToggle?: () => void }) {
       // For chat, match either 'chat' or 'messages'
       if (item.moduleKey === 'chat') {
         return activeSet.has('chat') || activeSet.has('messages');
+      }
+      // For experiments, match 'experiments', legacy 'storage', or default to true for scientific projects
+      if (item.moduleKey === 'experiments') {
+        return activeSet.has('experiments') || activeSet.has('storage') || true;
       }
       return activeSet.has(item.moduleKey);
     });

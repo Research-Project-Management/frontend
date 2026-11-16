@@ -16,9 +16,15 @@ import type {
 export const LabelService = {
   // ── 1. Project-Scoped Methods ─────────────────────────────────────────────
 
-  getProjectLabels: async (projectId: string): Promise<Label[]> => {
+  getProjectLabels: async (
+    projectId: string,
+    type?: string,
+  ): Promise<Label[]> => {
+    const params = new URLSearchParams();
+    if (type) params.append('type', type);
+    const queryStr = params.toString() ? `?${params.toString()}` : '';
     const data = await apiGet<{ labels?: Label[] }>(
-      `/api/projects/${projectId}/labels`,
+      `/api/projects/${projectId}/labels${queryStr}`,
     );
     return data.labels ?? [];
   },

@@ -71,7 +71,7 @@ export function useProjectStatesSettings(projectId: string) {
   });
 
   const reorderMut = useMutation({
-    mutationFn: (states: Array<{ id: string; sequence: number }>) =>
+    mutationFn: (states: Array<{ id: string; sequence: number; group?: string }>) =>
       reorderProjectStatesApi(projectId, states),
     onSuccess: () => {
       invalidateStatesCache();

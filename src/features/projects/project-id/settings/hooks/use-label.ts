@@ -19,15 +19,16 @@ export const labelKeys = {
   all: ['labels'] as const,
   list: (type?: LabelType) =>
     ['labels', type ?? 'all'] as const,
-  project: (projectId: string) => ['project-labels', projectId] as const,
+  project: (projectId: string, type?: string) =>
+    ['project-labels', projectId, type ?? 'all'] as const,
 };
 
 // ── Project-Scoped Hooks ─────────────────────────────────────────────────────
 
-export function useProjectLabels(projectId: string) {
+export function useProjectLabels(projectId: string, type?: string) {
   return useQuery<Label[]>({
-    queryKey: labelKeys.project(projectId),
-    queryFn: () => LabelService.getProjectLabels(projectId),
+    queryKey: labelKeys.project(projectId, type),
+    queryFn: () => LabelService.getProjectLabels(projectId, type),
     enabled: Boolean(projectId),
   });
 }
@@ -39,7 +40,7 @@ export function useCreateProjectLabel(projectId: string) {
     mutationFn: (input: CreateProjectLabelInput) =>
       LabelService.createProjectLabel(projectId, input),
     onSuccess: (newLabel) => {
-      queryClient.invalidateQueries({ queryKey: labelKeys.project(projectId) });
+      queryClient.invalidateQueries({ queryKey: ['project-labels', projectId] });
       queryClient.invalidateQueries({ queryKey: ['labels'] });
       queryClient.invalidateQueries({ queryKey: ['project-work-items', projectId] });
       queryClient.invalidateQueries({ queryKey: ['work-items', projectId] });
@@ -61,7 +62,7 @@ export function useUpdateProjectLabel(projectId: string) {
     }: UpdateProjectLabelInput & { labelId: string }) =>
       LabelService.updateProjectLabel(projectId, labelId, input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: labelKeys.project(projectId) });
+      queryClient.invalidateQueries({ queryKey: ['project-labels', projectId] });
       queryClient.invalidateQueries({ queryKey: ['labels'] });
       queryClient.invalidateQueries({ queryKey: ['project-work-items', projectId] });
       queryClient.invalidateQueries({ queryKey: ['work-items', projectId] });
@@ -80,7 +81,7 @@ export function useDeleteProjectLabel(projectId: string) {
     mutationFn: (labelId: string) =>
       LabelService.deleteProjectLabel(projectId, labelId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: labelKeys.project(projectId) });
+      queryClient.invalidateQueries({ queryKey: ['project-labels', projectId] });
       queryClient.invalidateQueries({ queryKey: ['labels'] });
       queryClient.invalidateQueries({ queryKey: ['project-work-items', projectId] });
       queryClient.invalidateQueries({ queryKey: ['work-items', projectId] });
@@ -99,7 +100,7 @@ export function useReorderProjectLabels(projectId: string) {
     mutationFn: (labels: ReorderLabelItem[]) =>
       LabelService.reorderProjectLabels(projectId, labels),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: labelKeys.project(projectId) });
+      queryClient.invalidateQueries({ queryKey: ['project-labels', projectId] });
       queryClient.invalidateQueries({ queryKey: ['labels'] });
     },
     onError: (err: unknown) => {

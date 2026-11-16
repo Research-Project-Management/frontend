@@ -105,6 +105,7 @@ export default function GeneralPage() {
 
           {/* ── Core Details Form & Update Action ── */}
           <GeneralDetails
+            projectId={projectId}
             name={name}
             identifier={identifier}
             description={description}

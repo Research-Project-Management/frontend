@@ -27,6 +27,7 @@ import type {
   ImportFromProjectPayload,
 } from './types';
 import type { EditorStorageItem } from '@/features/editor/domain/types/storage-item.types';
+import type { PageFile } from '@/features/editor/domain/types/core.types';
 
 export type {
   EditorStorageItem,
@@ -53,16 +54,71 @@ export interface SyncLibraryResult {
  * Project hierarchy, folder tree nodes, root document management sub-API.
  */
 
+export function mapStructureNodesToStorageItems(
+  nodes: StructureNodeDto[],
+  scopeId: string,
+): EditorStorageItem[] {
+  if (!Array.isArray(nodes)) return [];
+  return nodes.map((n) => {
+    const upperType = (n.type?.toUpperCase() || 'FILE') as 'FOLDER' | 'DOC' | 'FILE';
+    const isFolder = upperType === 'FOLDER';
+    const isFileAsset = upperType === 'FILE';
+    const normalizedPath = normalizeVirtualPath(n.path || n.name) || n.name;
+    return {
+      id: n.id,
+      nodeId: n.id,
+      pageId: n.pageId ?? n.projectId ?? scopeId ?? null,
+      projectId: n.projectId ?? null,
+      filename: n.name,
+      path: normalizedPath,
+      isFolder,
+      nodeType: upperType,
+      docId: n.docId ?? null,
+      fileId: n.fileId ?? null,
+      isRootDoc: Boolean(n.isRootDoc),
+      parentId: n.parentId ?? null,
+      sortOrder: n.sortOrder,
+      size: n.sizeBytes,
+      ...(isFileAsset ? { url: filestore.getStreamUrl(scopeId, n.fileId || n.id) } : {}),
+      createdAt: n.createdAt,
+      updatedAt: n.updatedAt,
+    };
+  });
+}
+
+export function mapStructureNodesToPageFiles(
+  nodes: StructureNodeDto[],
+  pageId: string,
+): PageFile[] {
+  if (!Array.isArray(nodes)) return [];
+  return nodes
+    .filter((n) => n.type?.toUpperCase() === 'DOC')
+    .map((n) => {
+      const cleanName =
+        (n.path ? n.path.replace(/^\/+/, '') : '') || n.name || 'main.tex';
+      return {
+        id: n.docId || n.id,
+        title: cleanName,
+        path: n.path,
+        content: '',
+        pageId,
+        projectId: n.projectId,
+        createdAt: n.createdAt,
+        updatedAt: n.updatedAt,
+      };
+    });
+}
+
 export const structure = {
   getTree: async (pageId: string) => {
     return await apiGet(`${MANUSCRIPTS_API_BASE}/pages/${pageId}/structure/tree`);
   },
 
-  getSymbols: async (projectId: string): Promise<ProjectSymbolsResponseDto | null> => {
-    if (!projectId) return null;
+  getSymbols: async (pageId: string): Promise<ProjectSymbolsResponseDto | null> => {
+    if (!pageId) return null;
     try {
       return await apiGet<ProjectSymbolsResponseDto>(
-        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/structure/symbols`,
+        `${MANUSCRIPTS_API_BASE}/pages/${encodeURIComponent(pageId)}/structure/symbols`,
         { silent: true },
       );
     } catch {
@@ -171,31 +227,7 @@ export const structure = {
         : `${MANUSCRIPTS_API_BASE}/pages/${pageId}/structure/nodes`;
       const nodes = await apiGet<StructureNodeDto[]>(endpoint, { silent: true });
       if (Array.isArray(nodes)) {
-        return nodes.map((n) => {
-          const upperType = (n.type?.toUpperCase() || 'FILE') as 'FOLDER' | 'DOC' | 'FILE';
-          const isFolder = upperType === 'FOLDER';
-          const isFileAsset = upperType === 'FILE';
-          const normalizedPath = normalizeVirtualPath(n.path || n.name) || n.name;
-          return {
-            id: n.id,
-            nodeId: n.id,
-            pageId: n.pageId ?? n.projectId ?? pageId ?? null,
-            projectId: n.projectId ?? null,
-            filename: n.name,
-            path: normalizedPath,
-            isFolder,
-            nodeType: upperType,
-            docId: n.docId ?? null,
-            fileId: n.fileId ?? null,
-            isRootDoc: Boolean(n.isRootDoc),
-            parentId: n.parentId ?? null,
-            sortOrder: n.sortOrder,
-            size: n.sizeBytes,
-            ...(isFileAsset ? { url: filestore.getStreamUrl(pageId, n.fileId || n.id) } : {}),
-            createdAt: n.createdAt,
-            updatedAt: n.updatedAt,
-          };
-        });
+        return mapStructureNodesToStorageItems(nodes, pageId);
       }
     } catch {
       return [];
@@ -228,12 +260,17 @@ export const filestore = {
     return `${MANUSCRIPTS_API_BASE}/projects/${projectIdOrPageId}/files/${fileId}`;
   },
 
-  upload: async (projectIdOrPageId: string, file: File | Blob, filename?: string): Promise<FileMetadataDto> => {
+  upload: async (
+    projectIdOrPageId: string,
+    file: File | Blob,
+    filename?: string,
+    pageId?: string,
+  ): Promise<FileMetadataDto> => {
     const name = filename || (file instanceof File ? file.name : 'unnamed.bin');
     const formData = new FormData();
     formData.append('file', file, name);
     const res = await rawFetch(
-      `${getManuscriptsBaseUrl()}/projects/${projectIdOrPageId}/files?name=${encodeURIComponent(name)}`,
+      `${getManuscriptsBaseUrl()}/projects/${projectIdOrPageId}/files?name=${encodeURIComponent(name)}${pageId ? `&pageId=${encodeURIComponent(pageId)}` : ''}`,
       'POST',
       formData,
     );
@@ -273,7 +310,12 @@ export const filestore = {
     projectId?: string,
   ): Promise<EditorStorageItem> => {
     const targetPageId = pageId || projectId || '';
-    const uploaded = await filestore.upload(targetPageId, file, file.name);
+    const uploaded = await filestore.upload(
+      projectId || targetPageId,
+      file,
+      file.name,
+      pageId || undefined,
+    );
     onProgress?.(100);
     const id = uploaded.id || '';
     const filename = uploaded.name || uploaded.filename || file.name;
@@ -293,7 +335,7 @@ export const filestore = {
       fileId: uploaded.fileId ?? id,
       isRootDoc: false,
       parentId: parentId || null,
-      url: filestore.getStreamUrl(targetPageId, id),
+      url: filestore.getStreamUrl(projectId || targetPageId, id),
     };
   },
 };

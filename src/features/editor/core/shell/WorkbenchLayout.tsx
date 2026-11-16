@@ -127,7 +127,11 @@ export function WorkbenchLayout() {
   }>();
 
   const storeProjectId = usePageStore((s) => s.projectId);
+  const spaceId = usePageStore((s) => s.spaceId);
   const rawProjectId = routeProjectId || storeProjectId || undefined;
+  // Anti-Corruption Adapter for Library SDK (which still expects 'user' | projectId)
+  const resolvedLibraryScope =
+    rawProjectId || (spaceId ? 'user' : undefined);
   const rootPageId = pageId ?? draftId ?? null;
 
   // Ensure active document and workspace store are always hydrated even in viewer-only or history modes
@@ -160,8 +164,12 @@ export function WorkbenchLayout() {
   const [keyboardShortcutsOpen, setKeyboardShortcutsOpen] = useState(false);
   const [quickOpenOpen, setQuickOpenOpen] = useState(false);
 
-  // Sync workspace library references into latexSymbolsIndex for instant autocomplete & hover
-  const { data: libraryData } = useViewItems(rawProjectId || 'user', 'all');
+  // Sync workspace library references into latexSymbolsIndex once workspace scope is resolved
+  const { data: libraryData } = useViewItems(
+    resolvedLibraryScope || 'user',
+    'all',
+    { enabled: Boolean(resolvedLibraryScope) },
+  );
   useEffect(() => {
     if (libraryData?.items && libraryData.items.length > 0) {
       latexSymbolsIndex.setLibraryCitations(libraryData.items);

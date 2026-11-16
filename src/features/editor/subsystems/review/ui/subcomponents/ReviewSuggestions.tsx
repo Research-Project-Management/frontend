@@ -17,6 +17,11 @@ import type { MentionMember } from '@/features/editor/domain/collaboration/menti
 import type { TrackChangesViewMode } from '@/features/editor/subsystems/review/extensions/track-changes.extension';
 import { formatReviewDate, resolveAuthorDisplay } from '@/features/editor/domain/collaboration/author-display';
 
+const REVIEW_CARD_CONTAINMENT_STYLE: React.CSSProperties = {
+  contentVisibility: 'auto',
+  containIntrinsicSize: 'auto 140px',
+};
+
 // ── Suggestion Card ─────────────────────────────────────────────────────────
 
 export interface SuggestionCardProps {
@@ -58,6 +63,7 @@ export const SuggestionCard = React.memo(function SuggestionCard({
   return (
     <div
       id={`suggestion-${suggestion.id}`}
+      style={REVIEW_CARD_CONTAINMENT_STYLE}
       className={cn(
         'mb-2.5 rounded-md border border-border bg-card p-3 space-y-2.5 transition-colors duration-150 text-xs text-card-foreground',
         isHighlighted && 'ring-1 ring-primary/40 border-primary',

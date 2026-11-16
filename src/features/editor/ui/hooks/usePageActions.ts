@@ -131,6 +131,13 @@ export function usePageActions() {
       if (pageStore.currentPage?.id === pageId) {
         setCurrentPage((prev) => (prev && prev.id === pageId ? { ...prev, title } : prev));
       }
+      if (
+        pageId === pageStore.rootPageId ||
+        pageId === pageStore.parentPageId ||
+        pageId === pageStore.currentPage?.id
+      ) {
+        pageStore.setWorkspaceTitle(title);
+      }
       return await manuscriptService.docs.updateTitle(pageId, title, oldTitle);
     },
     onSuccess: (_, variables) => {

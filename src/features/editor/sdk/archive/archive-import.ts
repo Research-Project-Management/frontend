@@ -263,7 +263,7 @@ export async function extractAndImportZipToProject({
 
   report('uploading_assets', `Importing archive "${finalProjectName}" on server...`, 0);
   const serverImportRes = await manuscriptService.export.importProjectZip(
-    effectiveProjectId,
+    existingParentPageId || effectiveProjectId,
     effectiveZipFile,
     extracted?.mainFilePath,
   );

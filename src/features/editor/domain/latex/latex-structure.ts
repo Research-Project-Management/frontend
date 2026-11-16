@@ -3,8 +3,11 @@
  * Authoritative full-document AST outline parsing is handled by `/structure/outline`.
  */
 
-import type { LogEntry, ParsedLog } from '@/features/editor/domain/types/compiler.types';
-import type { CompilerDiagnostic } from '@/features/editor/sdk/pages/types';
+import type {
+  LogEntry,
+  ParsedLog,
+  CompilerDiagnostic,
+} from '@/features/editor/domain/types/compiler.types';
 import { parseLatexLog } from './compiler-logs-parser';
 
 export { parseLatexLog } from './compiler-logs-parser';

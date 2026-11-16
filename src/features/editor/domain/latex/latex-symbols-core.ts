@@ -11,7 +11,7 @@
  */
 
 import { type BibEntry, parseBibContent } from './bib-parser';
-import type { ProjectSymbolsResponseDto } from '@/features/editor/sdk/pages/types';
+import type { ProjectSymbolsResponseDto } from '@/features/editor/domain/types/symbols.types';
 
 export type { BibEntry };
 

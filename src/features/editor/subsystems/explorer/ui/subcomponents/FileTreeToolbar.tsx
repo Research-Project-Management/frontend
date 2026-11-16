@@ -18,6 +18,8 @@ import {
   FilePlus,
   FolderPlus,
   Upload,
+  Search,
+  X,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -33,6 +35,8 @@ export interface FileTreeToolbarProps {
   onStartCreateFolder: () => void;
   onOpenUploadModal: () => void;
   onClose?: () => void;
+  fileFilter?: string;
+  onFileFilterChange?: (val: string) => void;
 }
 
 export const FileTreeToolbar = React.memo(function FileTreeToolbar({
@@ -41,7 +45,27 @@ export const FileTreeToolbar = React.memo(function FileTreeToolbar({
   onOpenFileModal,
   onStartCreateFolder,
   onOpenUploadModal,
+  fileFilter,
+  onFileFilterChange,
 }: FileTreeToolbarProps) {
+  const [isFilterOpen, setIsFilterOpen] = React.useState(false);
+  const filterInputRef = React.useRef<HTMLInputElement>(null);
+  const showFilterInput =
+    isFileTreeOpen && Boolean(onFileFilterChange) && (isFilterOpen || Boolean(fileFilter));
+
+  const handleToggleFilter = () => {
+    if (!onFileFilterChange) return;
+    if (showFilterInput) {
+      if (fileFilter) onFileFilterChange('');
+      setIsFilterOpen(false);
+    } else {
+      setIsFilterOpen(true);
+      requestAnimationFrame(() => {
+        filterInputRef.current?.focus();
+      });
+    }
+  };
+
   return (
     <div className="flex flex-col shrink-0 select-none border-b border-border">
       {/* ── Top Bar ── */}
@@ -93,7 +117,7 @@ export const FileTreeToolbar = React.memo(function FileTreeToolbar({
                 <TooltipTrigger asChild>
                   <button
                     type="button"
-                    onClick={onStartCreateFolder}
+                    onClick={() => onStartCreateFolder()}
                     aria-label="New Folder"
                     className="relative flex size-7 items-center justify-center rounded-md text-foreground transition-colors hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-foreground motion-reduce:transition-none after:absolute after:-inset-1 after:content-['']"
                   >
@@ -117,10 +141,71 @@ export const FileTreeToolbar = React.memo(function FileTreeToolbar({
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="text-11">Upload files</TooltipContent>
               </Tooltip>
+
+              {/* 4. Filter Files */}
+              {onFileFilterChange && (
+                <Tooltip delayDuration={300}>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={handleToggleFilter}
+                      aria-label="Filter files"
+                      aria-pressed={showFilterInput}
+                      className={cn(
+                        "relative flex size-7 items-center justify-center rounded-md transition-colors hover:bg-muted cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-foreground motion-reduce:transition-none after:absolute after:-inset-1 after:content-['']",
+                        showFilterInput ? 'bg-muted text-foreground' : 'text-foreground',
+                      )}
+                    >
+                      <Search className="size-3.5 shrink-0" strokeWidth={1.5} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-11">Filter files</TooltipContent>
+                </Tooltip>
+              )}
             </>
           )}
         </div>
       </div>
+
+      {showFilterInput && (
+        <div className="px-2.5 pb-2 pt-0.5">
+          <div className="relative flex items-center">
+            <Search
+              className="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none"
+              strokeWidth={1.5}
+            />
+            <input
+              ref={filterInputRef}
+              type="text"
+              value={fileFilter ?? ''}
+              onChange={(e) => onFileFilterChange?.(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  onFileFilterChange?.('');
+                  setIsFilterOpen(false);
+                }
+              }}
+              aria-label="Filter files by name"
+              placeholder="Filter files..."
+              className="h-7 w-full rounded-md border border-border bg-background pl-7 pr-6 text-12 text-foreground placeholder:text-muted-foreground outline-none focus-visible:ring-1 focus-visible:ring-foreground"
+            />
+            {Boolean(fileFilter) && (
+              <button
+                type="button"
+                aria-label="Clear file filter"
+                onClick={() => {
+                  onFileFilterChange?.('');
+                  filterInputRef.current?.focus();
+                }}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 rounded text-muted-foreground hover:text-foreground cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-foreground"
+              >
+                <X className="size-3 shrink-0" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 });

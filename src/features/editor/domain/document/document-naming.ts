@@ -56,13 +56,11 @@ export function cleanBasename(title: string): string {
  */
 export function normalizeVirtualPath(raw?: string | null): string {
   if (!raw) return '';
-  return raw
-    .trim()
-    .replace(/\\/g, '/')
-    .replace(/^(\.\/+|\/+)/, '')
-    .replace(/\/+/g, '/')
-    .replace(/\/+$/, '')
-    .trim();
+  let clean = raw.trim().replace(/\\/g, '/').replace(/\/+/g, '/');
+  while (/^(\.\/+|\/+)/.test(clean)) {
+    clean = clean.replace(/^(\.\/+|\/+)/, '');
+  }
+  return clean.replace(/\/+$/, '').trim();
 }
 
 /**

@@ -27,8 +27,7 @@ import {
   type SymbolSnapshot,
 } from './latex-symbols-core';
 import { PrefixTrie, LatexSymbolCatalog } from './prefix-trie';
-import { manuscriptService } from '@/features/editor/sdk/pages.service';
-import type { ProjectSymbolsResponseDto } from '@/features/editor/sdk/pages/types';
+import type { ProjectSymbolsResponseDto } from '@/features/editor/domain/types/symbols.types';
 import { latexDependencyGraph } from './dependency-graph';
 import { isItemRetracted, getRetractionInfo } from '@/features/library/domain/system-views.policy';
 
@@ -48,6 +47,10 @@ export class LatexSymbolsIndex {
   private debounceTimers = new Map<string, NodeJS.Timeout>();
   private serverRefreshTimer: NodeJS.Timeout | null = null;
   private inFlightServerFetch: Promise<SymbolSnapshot | null> | null = null;
+  private hydratedProjectIds = new Set<string>();
+  private symbolsFetcher:
+    | ((id: string) => Promise<ProjectSymbolsResponseDto | null>)
+    | null = null;
   private changeListeners = new Set<(snapshot: SymbolSnapshot) => void>();
   private libraryCitations: BibEntry[] = [];
   private retractedByDoi = new Map<string, { reason?: string; nature?: string; noticeUrl?: string; title?: string }>();
@@ -66,28 +69,60 @@ export class LatexSymbolsIndex {
   };
 
   /**
+   * Hydrates the project symbol index directly from an already-fetched `ProjectSymbolsResponseDto`
+   * (e.g. from the single-round-trip EditorBootstrap response), cancelling any queued refresh timer.
+   */
+  public hydrateFromDto(
+    dto: ProjectSymbolsResponseDto | null | undefined,
+    projectId?: string,
+  ): SymbolSnapshot | null {
+    if (!dto || typeof dto !== 'object') return null;
+
+    if (this.serverRefreshTimer) {
+      clearTimeout(this.serverRefreshTimer);
+      this.serverRefreshTimer = null;
+    }
+    if (projectId && projectId !== 'default' && projectId !== 'workspace-local') {
+      this.hydratedProjectIds.add(projectId);
+    }
+    if (dto.rootDocPath) {
+      latexDependencyGraph.setServerRootDoc(dto.rootDocPath);
+    }
+
+    const nextSnapshot = this.fallbackCore.hydrateFromServerDto(dto);
+    this.applySnapshotWithLibrary(nextSnapshot);
+    return this.snapshot;
+  }
+
+  public hasHydratedProject(projectId: string): boolean {
+    return Boolean(projectId && this.hydratedProjectIds.has(projectId));
+  }
+
+  public setSymbolsFetcher(
+    fetcher: (id: string) => Promise<ProjectSymbolsResponseDto | null>,
+  ): void {
+    this.symbolsFetcher = fetcher;
+  }
+
+  /**
    * Hydrates the project symbol index directly from the backend `/structure/symbols` endpoint.
    */
   public async hydrateFromServer(projectId: string): Promise<SymbolSnapshot | null> {
     if (!projectId || projectId === 'default' || projectId === 'workspace-local') {
       return null;
     }
+    if (!this.symbolsFetcher) {
+      return null;
+    }
     if (this.inFlightServerFetch) {
       return this.inFlightServerFetch;
     }
 
+    const fetchSymbols = this.symbolsFetcher;
     this.inFlightServerFetch = (async () => {
       try {
-        const dto = await manuscriptService.structure.getSymbols(projectId);
-        if (!dto || typeof dto !== 'object') return null;
-
-        if (dto.rootDocPath) {
-          latexDependencyGraph.setServerRootDoc(dto.rootDocPath);
-        }
-
-        const nextSnapshot = this.fallbackCore.hydrateFromServerDto(dto);
-        this.applySnapshotWithLibrary(nextSnapshot);
-        return this.snapshot;
+        const dto = await fetchSymbols(projectId);
+        return this.hydrateFromDto(dto, projectId);
       } catch (err) {
         console.warn('[LatexSymbolsIndex] Failed to hydrate symbols from server, keeping local snapshot:', err);
         return null;
@@ -203,6 +238,7 @@ export class LatexSymbolsIndex {
     this.libraryCitations = [];
     this.retractedByDoi.clear();
     this.retractedByKey.clear();
+    this.hydratedProjectIds.clear();
     this.catalog.clear();
 
     this.fallbackCore.clear();

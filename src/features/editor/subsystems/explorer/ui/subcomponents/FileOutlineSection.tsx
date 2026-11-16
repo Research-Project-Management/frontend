@@ -2,7 +2,9 @@
 
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { ChevronRight } from 'lucide-react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { cn } from '@/shared/lib/utils';
+import { FILE_OUTLINE_VIRTUAL_THRESHOLD } from '@/features/editor/domain/constants/editor.constants';
 import { editorCommandBus, usePageStore, documentFacade } from '@/features/editor/core';
 import { extractDocumentContentString, extractProjectId } from '@/features/editor/domain/types/core.types';
 import {
@@ -136,6 +138,16 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
 
   const [outline, setOutline] = useState<OutlineEntry[]>([]);
   const lastFetchedHashRef = useRef<string | null>(null);
+  const outlineScrollRef = useRef<HTMLDivElement | null>(null);
+
+  const isVirtualized = isOutlineOpen && outline.length >= FILE_OUTLINE_VIRTUAL_THRESHOLD;
+  const rowVirtualizer = useVirtualizer({
+    count: outline.length,
+    getScrollElement: () => outlineScrollRef.current,
+    estimateSize: () => 30,
+    overscan: 8,
+    enabled: isVirtualized,
+  });
 
   useEffect(() => {
     if (!isOutlineOpen) {
@@ -225,10 +237,22 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
 
   // Scroll active item into view
   useEffect(() => {
+    if (activeSectionIndex < 0 || !isOutlineOpen) return;
+    let cancelled = false;
+    if (isVirtualized) {
+      queueMicrotask(() => {
+        if (!cancelled) {
+          rowVirtualizer.scrollToIndex(activeSectionIndex, { align: 'auto' });
+        }
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
     if (activeItemRef.current) {
       activeItemRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
-  }, [activeSectionIndex]);
+  }, [activeSectionIndex, isOutlineOpen, isVirtualized, rowVirtualizer]);
 
   const handleOutlineClick = useCallback(
     (line: number) => {
@@ -242,6 +266,65 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
     },
     [engine],
   );
+
+  const renderOutlineRow = (entry: OutlineEntry, index: number) => {
+    const isActive = index === activeSectionIndex;
+    const indent = OUTLINE_INDENT[entry.level] ?? (entry.level * 10);
+    return (
+      <button
+        key={`${entry.line}-${index}`}
+        ref={!isVirtualized && isActive ? activeItemRef : undefined}
+        type="button"
+        onClick={() => handleOutlineClick(entry.line)}
+        style={{
+          paddingLeft: `${16 + indent}px`,
+        }}
+        className={cn(
+          'flex h-7.5 w-full items-center gap-2 pr-2 text-left text-13 tracking-tight transition-colors motion-reduce:transition-none cursor-pointer outline-none focus-visible:bg-muted focus-visible:ring-1 focus-visible:ring-foreground focus-visible:ring-inset select-none',
+          isActive
+            ? 'bg-primary/10 text-primary font-medium'
+            : 'hover:bg-muted/60 text-foreground/85 font-normal',
+        )}
+      >
+        <ChevronRight
+          className={cn(
+            'shrink-0',
+            isActive ? 'text-primary' : 'text-muted-foreground',
+            entry.level === 0 ? 'size-3.5' : 'size-3',
+          )}
+          strokeWidth={isActive ? 2 : 1.5}
+        />
+
+        {entry.type === 'figure' && (
+          <span className="px-1 py-0.5 rounded-sm text-[10px] font-mono leading-none bg-warning/15 text-warning border border-warning/30 shrink-0">
+            Fig
+          </span>
+        )}
+        {entry.type === 'table' && (
+          <span className="px-1 py-0.5 rounded-sm text-[10px] font-mono leading-none bg-primary/15 text-primary border border-primary/30 shrink-0">
+            Tab
+          </span>
+        )}
+
+        <span
+          className={cn(
+            'min-w-0 flex-1 truncate',
+            isActive ? 'text-primary font-medium' : 'text-foreground',
+          )}
+        >
+          {entry.title}
+        </span>
+        <span
+          className={cn(
+            'shrink-0 text-11 font-mono',
+            isActive ? 'text-primary/80 font-medium' : 'text-muted-foreground',
+          )}
+        >
+          :{entry.line}
+        </span>
+      </button>
+    );
+  };
 
   return (
     <div
@@ -286,6 +369,7 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
       {/* Outline content list */}
       {isOutlineOpen && (
         <div
+          ref={outlineScrollRef}
           style={isFileTreeOpen ? { height: `${outlineHeight}px` } : undefined}
           className={cn(
             'overflow-y-auto pb-3',
@@ -303,65 +387,36 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
                 </p>
               )}
             </div>
+          ) : isVirtualized ? (
+            <div
+              style={{
+                height: `${rowVirtualizer.getTotalSize()}px`,
+                width: '100%',
+                position: 'relative',
+              }}
+            >
+              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                const entry = outline[virtualRow.index];
+                if (!entry) return null;
+                return (
+                  <div
+                    key={`${entry.line}-${virtualRow.index}`}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: `${virtualRow.size}px`,
+                      transform: `translateY(${virtualRow.start}px)`,
+                    }}
+                  >
+                    {renderOutlineRow(entry, virtualRow.index)}
+                  </div>
+                );
+              })}
+            </div>
           ) : (
-            outline.map((entry, index) => {
-              const isActive = index === activeSectionIndex;
-              const indent = OUTLINE_INDENT[entry.level] ?? (entry.level * 10);
-              return (
-                <button
-                  key={`${entry.line}-${index}`}
-                  ref={isActive ? activeItemRef : undefined}
-                  type="button"
-                  onClick={() => handleOutlineClick(entry.line)}
-                  style={{
-                    paddingLeft: `${16 + indent}px`,
-                  }}
-                  className={cn(
-                    'flex h-7.5 w-full items-center gap-2 pr-2 text-left text-13 tracking-tight transition-colors motion-reduce:transition-none cursor-pointer outline-none focus-visible:bg-muted focus-visible:ring-1 focus-visible:ring-foreground focus-visible:ring-inset select-none',
-                    isActive
-                      ? 'bg-primary/10 text-primary font-medium'
-                      : 'hover:bg-muted/60 text-foreground/85 font-normal',
-                  )}
-                >
-                  <ChevronRight
-                    className={cn(
-                      'shrink-0',
-                      isActive ? 'text-primary' : 'text-muted-foreground',
-                      entry.level === 0 ? 'size-3.5' : 'size-3',
-                    )}
-                    strokeWidth={isActive ? 2 : 1.5}
-                  />
-
-                  {entry.type === 'figure' && (
-                    <span className="px-1 py-0.5 rounded-sm text-[10px] font-mono leading-none bg-warning/15 text-warning border border-warning/30 shrink-0">
-                      Fig
-                    </span>
-                  )}
-                  {entry.type === 'table' && (
-                    <span className="px-1 py-0.5 rounded-sm text-[10px] font-mono leading-none bg-primary/15 text-primary border border-primary/30 shrink-0">
-                      Tab
-                    </span>
-                  )}
-
-                  <span
-                    className={cn(
-                      'min-w-0 flex-1 truncate',
-                      isActive ? 'text-primary font-medium' : 'text-foreground',
-                    )}
-                  >
-                    {entry.title}
-                  </span>
-                  <span
-                    className={cn(
-                      'shrink-0 text-11 font-mono',
-                      isActive ? 'text-primary/80 font-medium' : 'text-muted-foreground',
-                    )}
-                  >
-                    :{entry.line}
-                  </span>
-                </button>
-              );
-            })
+            outline.map((entry, index) => renderOutlineRow(entry, index))
           )}
         </div>
       )}

@@ -33,7 +33,11 @@ import {
   type SyncTeXMap,
 } from '@/features/editor/subsystems/compiler/synctex/synctex-index';
 import { compilerCoordinator } from '@/features/editor/subsystems/compiler/coordinator/compiler.coordinator';
-import { useIntersectionObserver } from "@/shared/hooks/use-intersection-observer";
+import {
+  PDF_VIEWPORT_BUFFER_PAGES,
+  PDF_SPREAD_VIEWPORT_BUFFER_PAGES,
+  PDF_PINNED_TARGET_TTL_MS,
+} from '@/features/editor/domain/constants/editor.constants';
 import { logger, cn } from "@/shared/lib/utils";
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
@@ -197,7 +201,8 @@ interface OptimizedPDFPageProps {
   containerWidth?: number;
   pageDimensions?: PdfPageDimensions;
   onPageDimensionsResolved?: (pageNum: number, dims: PdfPageDimensions) => void;
-  pageElemRefs: React.MutableRefObject<Record<number, HTMLDivElement | null>>;
+  isVisible: boolean;
+  registerPageShell: (pageNum: number, el: HTMLDivElement | null) => void;
   approxHeightRef: React.MutableRefObject<number>;
   onDoubleClickPage: (
     pageNum: number,
@@ -223,7 +228,8 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
   containerWidth,
   pageDimensions,
   onPageDimensionsResolved,
-  pageElemRefs,
+  isVisible,
+  registerPageShell,
   approxHeightRef,
   onDoubleClickPage,
   clickIndicator,
@@ -232,16 +238,6 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
   onRenderTextLayer,
 }: OptimizedPDFPageProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-
-  const { isIntersecting: isVisible } = useIntersectionObserver(containerRef, {
-    rootMargin: '450px 0px 450px 0px',
-    threshold: 0.01,
-    onChange: (entry) => {
-      if (entry.isIntersecting && entry.boundingClientRect.height > 0) {
-        approxHeightRef.current = entry.boundingClientRect.height;
-      }
-    },
-  });
 
   const widthPt =
     pageDimensions?.widthPt && pageDimensions.widthPt > 0
@@ -295,16 +291,23 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
   }, [isVisible]);
 
   useEffect(() => {
-    const pageRefs = pageElemRefs.current;
     const container = containerRef.current;
     return () => {
       // 1. Clean up stale DOM node reference from parent registry
-      delete pageRefs[pageNum];
+      registerPageShell(pageNum, null);
 
       // 2. Explicitly release GPU canvas pixel buffers
       releaseCanvasMemory(container);
     };
-  }, [pageNum, pageElemRefs]);
+  }, [pageNum, registerPageShell]);
+
+  const setShellRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      containerRef.current = el;
+      registerPageShell(pageNum, el);
+    },
+    [pageNum, registerPageShell],
+  );
 
   const handlePageLoadSuccess = useCallback(
     (page: {
@@ -323,18 +326,16 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
 
   return (
     <div
-      ref={(el) => {
-        containerRef.current = el;
-        if (el) {
-          pageElemRefs.current[pageNum] = el;
-        } else {
-          delete pageElemRefs.current[pageNum];
-        }
-      }}
+      ref={setShellRef}
+      data-page-num={pageNum}
+      data-page-label={`Page ${pageNum}`}
       onClickCapture={handleClickCapture}
       onDoubleClickCapture={handleDoubleClick}
       className={cn(
-        "bg-canvas dark:bg-card relative flex items-center justify-center cursor-text shrink-0",
+        "relative flex items-center justify-center cursor-text shrink-0",
+        isVisible
+          ? "bg-canvas dark:bg-card"
+          : "bg-background/50 after:content-[attr(data-page-label)] after:text-xs after:font-mono after:font-medium after:text-muted-foreground/30 after:select-none after:pointer-events-none",
         isSpreadView ? "my-0" : "border-b border-border/60 last:border-b-0"
       )}
       style={{
@@ -362,11 +363,7 @@ const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
             </div>
           }
         />
-      ) : (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/50 text-muted-foreground/30 select-none">
-          <span className="text-xs font-mono font-medium">Page {pageNum}</span>
-        </div>
-      )}
+      ) : null}
       {clickIndicator && clickIndicator.page === pageNum && (
         <PdfSyncTeXHighlightBox
           indicator={clickIndicator}
@@ -451,6 +448,10 @@ export const PdfSurface = React.memo(forwardRef<PdfSurfaceHandle, PdfSurfaceProp
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const pageElemRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const approxHeightRef = useRef<number>(0);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const [visiblePages, setVisiblePages] = useState<Set<number>>(() => new Set([1, 2]));
+  const [pinnedPage, setPinnedPage] = useState<number | null>(null);
+  const pinnedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [clickIndicator, setClickIndicator] = useState<SynctexHighlightState | null>(null);
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [docLoadError, setDocLoadError] = useState<Error | null>(null);
@@ -509,9 +510,91 @@ export const PdfSurface = React.memo(forwardRef<PdfSurfaceHandle, PdfSurfaceProp
   useEffect(() => {
     return () => {
       if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+      if (pinnedTimerRef.current) clearTimeout(pinnedTimerRef.current);
       if (scrollRafRef.current !== null) cancelAnimationFrame(scrollRafRef.current);
     };
   }, []);
+
+  const pinTargetPage = useCallback((targetPage: number) => {
+    if (!Number.isFinite(targetPage) || targetPage < 1) return;
+    setPinnedPage(targetPage);
+    if (pinnedTimerRef.current) clearTimeout(pinnedTimerRef.current);
+    pinnedTimerRef.current = setTimeout(() => {
+      setPinnedPage(null);
+    }, PDF_PINNED_TARGET_TTL_MS);
+  }, []);
+
+  const registerPageShell = useCallback((pageNum: number, el: HTMLDivElement | null) => {
+    const prevEl = pageElemRefs.current[pageNum];
+    if (prevEl && prevEl !== el) {
+      observerRef.current?.unobserve(prevEl);
+    }
+    if (el) {
+      pageElemRefs.current[pageNum] = el;
+      if (prevEl !== el) {
+        observerRef.current?.observe(el);
+      }
+    } else {
+      delete pageElemRefs.current[pageNum];
+    }
+  }, []);
+
+  useEffect(() => {
+    if (
+      !scrollMode ||
+      numPages <= 0 ||
+      typeof window === 'undefined' ||
+      !('IntersectionObserver' in window)
+    ) {
+      return;
+    }
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries.length === 0) return;
+        for (const entry of entries) {
+          if (entry.isIntersecting && entry.boundingClientRect.height > 0) {
+            approxHeightRef.current = entry.boundingClientRect.height;
+          }
+        }
+        setVisiblePages((prev) => {
+          let next: Set<number> | null = null;
+          for (const entry of entries) {
+            const page = Number((entry.target as HTMLElement).dataset.pageNum);
+            if (Number.isNaN(page) || page < 1) continue;
+            const currentSet = next ?? prev;
+            if (entry.isIntersecting) {
+              if (!currentSet.has(page)) {
+                if (!next) next = new Set(prev);
+                next.add(page);
+              }
+            } else if (currentSet.has(page)) {
+              if (!next) next = new Set(prev);
+              next.delete(page);
+            }
+          }
+          return next ?? prev;
+        });
+      },
+      {
+        root: container,
+        rootMargin: '450px 0px 450px 0px',
+        threshold: [0, 0.01, 0.25],
+      },
+    );
+
+    observerRef.current = obs;
+    Object.values(pageElemRefs.current).forEach((el) => {
+      if (el) obs.observe(el);
+    });
+
+    return () => {
+      obs.disconnect();
+      observerRef.current = null;
+    };
+  }, [numPages, scrollMode, isSpreadView, pdfUrl]);
 
   useEffect(() => {
     setDocLoadError(null);
@@ -554,12 +637,14 @@ export const PdfSurface = React.memo(forwardRef<PdfSurfaceHandle, PdfSurfaceProp
   // Expose container, scrollToPage, scrollToCoords, and target highlighting via ref
   useImperativeHandle(ref, () => ({
     scrollToPage(pageNum: number) {
+      pinTargetPage(pageNum);
       const el = pageElemRefs.current[pageNum];
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     },
     scrollToCoords(page: number, y: number, behavior: ScrollBehavior = 'smooth') {
+      pinTargetPage(page);
       const el = pageElemRefs.current[page];
       if (el) {
         const container = scrollContainerRef.current;
@@ -573,6 +658,7 @@ export const PdfSurface = React.memo(forwardRef<PdfSurfaceHandle, PdfSurfaceProp
       }
     },
     highlightTarget(page: number, x: number, y: number, w?: number, h?: number) {
+      pinTargetPage(page);
       triggerClickIndicator(page, x, y, w, h, 'forward');
       const el = pageElemRefs.current[page];
       if (el) {
@@ -796,6 +882,31 @@ export const PdfSurface = React.memo(forwardRef<PdfSurfaceHandle, PdfSurfaceProp
   const singlePageDims = perPageDimensions[effectivePageNumber] || effectiveDefaultDimensions;
   const singlePageWidthPt = singlePageDims.widthPt > 0 ? singlePageDims.widthPt : DEFAULT_PDF_PAGE_WIDTH_PT;
 
+  const inWindowPages = useMemo<Set<number>>(() => {
+    const windowSet = new Set<number>();
+    const maxPage = numPages > 0 ? numPages : 1;
+    const buffer = isSpreadView ? PDF_SPREAD_VIEWPORT_BUFFER_PAGES : PDF_VIEWPORT_BUFFER_PAGES;
+    const addWithBuffer = (center: number) => {
+      if (center < 1 || center > maxPage) return;
+      const start = Math.max(1, center - buffer);
+      const end = Math.min(maxPage, center + buffer);
+      for (let p = start; p <= end; p++) {
+        windowSet.add(p);
+      }
+    };
+
+    for (const p of visiblePages) {
+      addWithBuffer(p);
+    }
+    if (windowSet.size === 0) {
+      addWithBuffer(Math.min(maxPage, Math.max(1, effectivePageNumber)));
+    }
+    if (pinnedPage !== null) {
+      addWithBuffer(pinnedPage);
+    }
+    return windowSet;
+  }, [visiblePages, pinnedPage, effectivePageNumber, numPages, isSpreadView]);
+
   return (
     <div
       ref={scrollContainerRef}
@@ -854,7 +965,8 @@ export const PdfSurface = React.memo(forwardRef<PdfSurfaceHandle, PdfSurfaceProp
                         pageDimensions={perPageDimensions[pageIdx + 1] || effectiveDefaultDimensions}
                         onPageDimensionsResolved={handlePageDimensionsResolved}
                         isSpreadView={true}
-                        pageElemRefs={pageElemRefs}
+                        isVisible={inWindowPages.has(pageIdx + 1)}
+                        registerPageShell={registerPageShell}
                         approxHeightRef={approxHeightRef}
                         onDoubleClickPage={handleDoubleClickPage}
                         clickIndicator={clickIndicator?.page === pageIdx + 1 ? clickIndicator : null}
@@ -879,7 +991,8 @@ export const PdfSurface = React.memo(forwardRef<PdfSurfaceHandle, PdfSurfaceProp
                     pageDimensions={perPageDimensions[i + 1] || effectiveDefaultDimensions}
                     onPageDimensionsResolved={handlePageDimensionsResolved}
                     isSpreadView={false}
-                    pageElemRefs={pageElemRefs}
+                    isVisible={inWindowPages.has(i + 1)}
+                    registerPageShell={registerPageShell}
                     approxHeightRef={approxHeightRef}
                     onDoubleClickPage={handleDoubleClickPage}
                     clickIndicator={clickIndicator?.page === i + 1 ? clickIndicator : null}
@@ -890,6 +1003,7 @@ export const PdfSurface = React.memo(forwardRef<PdfSurfaceHandle, PdfSurfaceProp
             )
           ) : (
             <div
+              data-page-num={effectivePageNumber}
               ref={(el) => {
                 pageElemRefs.current[effectivePageNumber] = el;
               }}

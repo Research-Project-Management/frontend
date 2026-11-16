@@ -10,9 +10,9 @@
  * Layer 4: Presentation / UI Hooks.
  */
 
-import { useEffect, useMemo, useCallback } from 'react';
+import { useEffect, useMemo, useCallback, useRef } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { manuscriptService } from '@/features/editor/sdk/pages.service';
 import {
   workspaceCoordinator,
@@ -22,7 +22,7 @@ import {
   DEFAULT_MAIN_FILE,
   syncShallowFileUrlParam,
 } from '@/features/editor/core';
-import { pageQuery, filesQuery } from './document.queries';
+import { editorBootstrapQuery, pageQuery, filesQuery } from './document.queries';
 import { extractProjectId, type Page } from '@/features/editor/domain/types/core.types';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
@@ -88,48 +88,64 @@ export function useActiveDocument() {
 
   const directPageId = rawPageId || rawId || draftId || '';
   const projectId = rawProjectId || undefined;
+  const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
+  const fileId = searchParams.get('file');
 
-  // Canonical Overleaf project route resolution: when visiting /projects/:projectId directly
+  const bootstrapTargetId = directPageId || projectId || '';
+  const isProjectOnlyRoute = Boolean(!directPageId && projectId);
+  const hasBootstrapClient =
+    typeof manuscriptService.bootstrap?.getEditorBootstrap === 'function';
+
+  // Pin initial ?file=... per bootstrapTargetId so subsequent tab switches never re-trigger /bootstrap
+  const initialBootstrapRef = useRef<{ targetId: string; fileId: string | null }>({
+    targetId: bootstrapTargetId,
+    fileId,
+  });
+  if (initialBootstrapRef.current.targetId !== bootstrapTargetId) {
+    initialBootstrapRef.current = { targetId: bootstrapTargetId, fileId };
+  }
+  const bootstrapFileId = initialBootstrapRef.current.fileId;
+
+  const bootstrapQuery = useQuery({
+    ...editorBootstrapQuery(queryClient, bootstrapTargetId, {
+      fileId: bootstrapFileId,
+      isProjectRoute: isProjectOnlyRoute,
+    }),
+    enabled: Boolean(bootstrapTargetId) && hasBootstrapClient,
+  });
+  const bootstrapData = bootstrapQuery.data ?? null;
+  const bootstrapPending = Boolean(
+    bootstrapTargetId &&
+      hasBootstrapClient &&
+      bootstrapQuery.isLoading &&
+      !bootstrapData,
+  );
+
+  // Fallback project route resolution if bootstrap endpoint was unavailable/offline
   const { data: projectDocsData, isLoading: projectDocsLoading } = useQuery({
     queryKey: ['projects', projectId, 'docs'],
     queryFn: () => manuscriptService.docs.getProjectDocs(projectId!),
-    enabled: !!projectId && !directPageId,
+    enabled:
+      Boolean(projectId && !directPageId) &&
+      !bootstrapPending &&
+      !bootstrapData?.workspace.rootDocId,
     staleTime: 30_000,
     gcTime: 5 * 60_000,
   });
 
   const projectDocs = projectDocsData ?? EMPTY_PAGE_ARRAY;
-  const pageId = directPageId || projectDocs[0]?.id || '';
+  const pageId =
+    directPageId ||
+    bootstrapData?.workspace.pageId ||
+    bootstrapData?.workspace.rootDocId ||
+    projectDocs[0]?.id ||
+    '';
 
-  const searchParams = useSearchParams();
-  const fileId = searchParams.get('file');
-
-  const { data: serverPage, isLoading: parentLoading } = useQuery({
-    ...pageQuery(pageId || ''),
-    enabled: !!pageId,
-  });
-
-  const { data: serverFilesData, isLoading: filesLoading } = useQuery({
-    ...filesQuery(pageId || ''),
-    enabled: !!pageId,
-  });
-
-  const serverFiles = serverFilesData ?? EMPTY_FILE_ARRAY;
-  const parentPage = serverPage || (projectDocs.length > 0 ? projectDocs[0] : null);
-  const childFiles = serverFiles;
-
-  const parentProjectId = extractProjectId(parentPage?.projectId) || null;
-  const effectiveProjectId = projectId || parentProjectId || null;
-
-  const mainId =
-    typeof parentPage?.mainFile === 'string'
-      ? parentPage.mainFile
-      : (parentPage?.mainFile as Page | undefined)?.id ||
-        (parentPage as { mainFileId?: string })?.mainFileId;
-
-  const storeActiveFileId = usePageStore((s) => s.activeFilePage?.id ?? null);
+  const storeActiveFilePage = usePageStore((s) => s.activeFilePage);
+  const storeActiveFileId = storeActiveFilePage?.id ?? null;
   const activeTabId = useWorkspaceStore((s) => {
-    for (const key of [effectiveProjectId, pageId, projectId]) {
+    for (const key of [projectId, pageId]) {
       if (key && s.activeByProject[key]) {
         return s.activeByProject[key];
       }
@@ -138,27 +154,100 @@ export function useActiveDocument() {
   });
 
   // Synchronously resolve active file ID: in-memory active tab or pageStore.activeFilePage takes precedence
-  const resolvedFileId =
+  const rawResolvedFileId =
     activeTabId ||
     (storeActiveFileId && storeActiveFileId !== pageId ? storeActiveFileId : null) ||
     fileId;
+  const resolvedFileId =
+    bootstrapData?.activeDoc.fallbackToRoot && rawResolvedFileId === fileId
+      ? null
+      : rawResolvedFileId;
 
   const isMainFile =
     !resolvedFileId ||
     resolvedFileId === pageId ||
     resolvedFileId === `${pageId}-main` ||
+    resolvedFileId === bootstrapData?.workspace.rootDocId;
+
+  const { data: serverPage, isLoading: parentLoading } = useQuery({
+    ...pageQuery(pageId || ''),
+    enabled: Boolean(pageId) && !bootstrapPending && (isMainFile || !bootstrapData),
+  });
+
+  const { data: serverFilesData, isLoading: filesLoading } = useQuery({
+    ...filesQuery(pageId || ''),
+    enabled: Boolean(pageId) && !bootstrapPending,
+  });
+
+  const bootstrapRootMetaPage = useMemo(() => {
+    if (!bootstrapData) return null;
+    const ws = bootstrapData.workspace;
+    const resolvedRootProjectId = !ws.projectId ? '' : (ws.projectId || ws.spaceId);
+    if (bootstrapData.activeDoc.id === ws.rootDocId) {
+      return {
+        ...bootstrapData.activeDoc.page,
+        id: ws.rootDocId,
+        title: ws.mainFilePath || bootstrapData.activeDoc.page.title,
+        projectId: resolvedRootProjectId,
+        mainFile: { id: ws.rootDocId, title: ws.mainFilePath || 'main.tex' },
+        mainFileId: ws.rootDocId,
+        rootPageId: ws.rootDocId,
+      } as unknown as Page;
+    }
+    return {
+      id: ws.rootDocId,
+      title: ws.mainFilePath || 'main.tex',
+      path: ws.mainFilePath,
+      status: 'published',
+      projectId: resolvedRootProjectId,
+      mainFile: { id: ws.rootDocId, title: ws.mainFilePath || 'main.tex' },
+      mainFileId: ws.rootDocId,
+      rootPageId: ws.rootDocId,
+    } as unknown as Page;
+  }, [bootstrapData]);
+
+  const serverFiles = serverFilesData ?? EMPTY_FILE_ARRAY;
+  const parentPage =
+    serverPage ||
+    bootstrapRootMetaPage ||
+    (projectDocs.length > 0 ? projectDocs[0] : null);
+  const childFiles = serverFiles;
+
+  const parentProjectId =
+    bootstrapData && !bootstrapData.workspace.projectId
+      ? null
+      : extractProjectId(parentPage?.projectId) ||
+        bootstrapData?.workspace.projectId ||
+        null;
+  const effectiveProjectId = projectId || parentProjectId || null;
+
+  const mainId =
+    typeof parentPage?.mainFile === 'string'
+      ? parentPage.mainFile
+      : (parentPage?.mainFile as Page | undefined)?.id ||
+        (parentPage as { mainFileId?: string })?.mainFileId;
+
+  const isResolvedMain =
+    isMainFile ||
     resolvedFileId === parentPage?.id ||
     Boolean(mainId && resolvedFileId === mainId);
 
-  // When a child file is active, query its complete content from server
-  const activeFileId = !isMainFile && resolvedFileId ? resolvedFileId : null;
+  // Clear stale ?file=... query param if backend bootstrap gracefully fell back to rootDoc
+  useEffect(() => {
+    if (bootstrapData?.activeDoc.fallbackToRoot && fileId) {
+      syncShallowFileUrlParam(null);
+    }
+  }, [bootstrapData?.activeDoc.fallbackToRoot, fileId]);
+
+  // When a child file is active, query its complete content from server (hits bootstrap cache on initial load)
+  const activeFileId = !isResolvedMain && resolvedFileId ? resolvedFileId : null;
   const { data: activeFileDoc, isLoading: fileLoading } = useQuery({
     ...pageQuery(activeFileId || ''),
-    enabled: Boolean(activeFileId),
+    enabled: Boolean(activeFileId) && !bootstrapPending,
   });
 
   const activeFile = useMemo(() => {
-    if (!resolvedFileId || isMainFile) return undefined;
+    if (!resolvedFileId || isResolvedMain) return undefined;
     if (activeFileDoc) return activeFileDoc;
     // Check in-memory LRU document cache for instantaneous tab-switching (0ms)
     const cached = lruDocumentCache.getModel(resolvedFileId);
@@ -173,12 +262,11 @@ export function useActiveDocument() {
     }
     const meta = childFiles.find((f) => f.id === resolvedFileId || f.title === resolvedFileId);
     if (meta && typeof meta.content === 'string' && meta.content.length > 0) return meta;
-    const currentStoreFile = usePageStore.getState().activeFilePage;
-    if (currentStoreFile && currentStoreFile.id === resolvedFileId) {
-      return currentStoreFile;
+    if (storeActiveFilePage && storeActiveFilePage.id === resolvedFileId) {
+      return storeActiveFilePage;
     }
     return undefined;
-  }, [resolvedFileId, isMainFile, activeFileDoc, childFiles, storeActiveFileId]);
+  }, [resolvedFileId, isResolvedMain, activeFileDoc, childFiles, storeActiveFilePage]);
 
   // Keep LRU cache synchronized when active documents are loaded from server
   useEffect(() => {
@@ -228,11 +316,19 @@ export function useActiveDocument() {
     if (allFiles.length > 0) {
       workspaceCoordinator.initProjectSymbols(allFiles, effectiveProjectId || pageId || undefined);
     }
-    const targetProject = effectiveProjectId || pageId;
-    if (targetProject) {
-      latexSymbolsIndex.refreshFromServer(targetProject, 50);
+    const targetSymbolScope =
+      bootstrapData?.workspace.pageId || pageId || effectiveProjectId;
+    if (targetSymbolScope) {
+      if (
+        bootstrapData?.symbols &&
+        !bootstrapData.degradedBranches.includes('symbols')
+      ) {
+        latexSymbolsIndex.hydrateFromDto(bootstrapData.symbols, targetSymbolScope);
+      } else if (!latexSymbolsIndex.hasHydratedProject(targetSymbolScope)) {
+        latexSymbolsIndex.refreshFromServer(targetSymbolScope, 50);
+      }
     }
-  }, [serverFiles, parentPage, effectiveProjectId, pageId]);
+  }, [serverFiles, parentPage, effectiveProjectId, pageId, bootstrapData]);
 
   useEffect(() => {
     if (!parentPage) return;
@@ -245,7 +341,7 @@ export function useActiveDocument() {
       setParentPageId?.(pageId);
     }
 
-    if (isMainFile) {
+    if (isResolvedMain) {
       if (pageStore.activeFilePage !== parentPage) {
         setActiveFilePage?.(parentPage);
       }
@@ -277,7 +373,7 @@ export function useActiveDocument() {
       );
     }
   }, [
-    isMainFile,
+    isResolvedMain,
     resolvedFileId,
     pageId,
     projectId,
@@ -317,10 +413,11 @@ export function useActiveDocument() {
 
   const selectedAsset = usePageStore((s) => s.selectedAsset);
   const isAssetTab = activeTabId?.startsWith('asset:') || false;
-  const activePage = isMainFile ? parentPage : (activeFile || null);
+  const activePage = isResolvedMain ? parentPage : (activeFile || null);
   const displayPage = isAssetTab ? null : activePage;
 
   const isDocumentLoading =
+    bootstrapPending ||
     (Boolean(projectId && !directPageId) && projectDocsLoading) ||
     (parentLoading && !parentPage) ||
     (Boolean(activeFileId) && !activeFile && fileLoading);

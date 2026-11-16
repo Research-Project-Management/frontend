@@ -9,9 +9,19 @@ import { create } from 'zustand';
 import type { AssetInfo } from '@/features/editor/domain/types/asset.types';
 import type { Page, PageFile } from '@/features/editor/domain/types/core.types';
 
+export interface EditorGithubLinkInfo {
+  id: string;
+  repoFullName: string;
+  branch: string;
+  lastSyncedAt: string | null;
+}
+
 export interface DocumentEditorState {
-  // ── Document & Project Hierarchy (projectId -> pageId (rootPageId) -> activeDocId) ──
+  // ── Coordinate Model (spaceId -> pageId -> activeDocId) ──
+  spaceId: string;
   projectId: string;
+  projectName: string | null;
+  workspaceTitle: string;
   rootPageId: string | null;
   activeDocId: string | null;
 
@@ -22,15 +32,21 @@ export interface DocumentEditorState {
   currentPage: Page | PageFile | null;
   activeFilePage: Page | PageFile | null;
   selectedAsset: AssetInfo | null;
+  permissions: { role: string; canEdit: boolean; canCompile: boolean } | null;
+  githubLink: EditorGithubLinkInfo | null;
 
   // ── Setters & Actions ───────────────────────────────────────────────────
   setCurrentPage: (page: Page | PageFile | null | ((prev: Page | PageFile | null) => Page | PageFile | null)) => void;
+  setSpaceId: (id: string) => void;
   setProjectId: (id: string) => void;
+  setWorkspaceTitle: (workspaceTitle: string) => void;
+  setGithubLink: (githubLink: EditorGithubLinkInfo | null) => void;
   setRootPageId: (id: string | null) => void;
   setParentPageId: (id: string | null) => void;
   setActiveDocId: (id: string | null) => void;
   setActivePageId: (id: string | null) => void;
   setHierarchy: (hierarchy: {
+    spaceId?: string;
     projectId?: string;
     rootPageId?: string | null;
     pageId?: string | null;
@@ -38,6 +54,14 @@ export interface DocumentEditorState {
   }) => void;
   setActiveFilePage: (page: Page | PageFile | null) => void;
   setSelectedAsset: (asset: AssetInfo | null) => void;
+  setWorkspaceContext: (ctx: {
+    spaceId: string;
+    projectId?: string | null;
+    projectName?: string | null;
+    workspaceTitle?: string;
+    permissions?: { role: string; canEdit: boolean; canCompile: boolean } | null;
+    githubLink?: EditorGithubLinkInfo | null;
+  }) => void;
   resetPageState: () => void;
 
   // ── Canonical Manuscript & LaTeX Accessors (Overleaf Parity) ────────────
@@ -52,13 +76,18 @@ export interface DocumentEditorState {
 
 export const usePageStore = create<DocumentEditorState>((set, get) => ({
   currentPage: null,
+  spaceId: '',
   projectId: '',
+  projectName: null,
+  workspaceTitle: '',
   rootPageId: null,
   parentPageId: null,
   activeDocId: null,
   activePageId: null,
   activeFilePage: null,
   selectedAsset: null,
+  permissions: null,
+  githubLink: null,
 
   setCurrentPage: (pageOrUpdater) =>
     set((state) => {
@@ -93,8 +122,14 @@ export const usePageStore = create<DocumentEditorState>((set, get) => ({
         activePageId: nextActivePageId,
       };
     }),
+  setSpaceId: (spaceId) =>
+    set((state) => (state.spaceId === spaceId ? state : { spaceId })),
   setProjectId: (projectId) =>
     set((state) => (state.projectId === projectId ? state : { projectId })),
+  setWorkspaceTitle: (workspaceTitle) =>
+    set((state) => (state.workspaceTitle === workspaceTitle ? state : { workspaceTitle })),
+  setGithubLink: (githubLink) =>
+    set((state) => (state.githubLink === githubLink ? state : { githubLink })),
   setRootPageId: (rootPageId) =>
     set((state) =>
       state.rootPageId === rootPageId && state.parentPageId === rootPageId
@@ -119,13 +154,15 @@ export const usePageStore = create<DocumentEditorState>((set, get) => ({
         ? state
         : { activeDocId: activePageId, activePageId },
     ),
-  setHierarchy: ({ projectId, rootPageId, pageId, activeDocId }) =>
+  setHierarchy: ({ spaceId, projectId, rootPageId, pageId, activeDocId }) =>
     set((state) => {
+      const resolvedSpaceId = spaceId !== undefined ? spaceId : state.spaceId;
       const resolvedProjectId = projectId !== undefined ? projectId : state.projectId;
       const resolvedRoot =
         rootPageId !== undefined ? rootPageId : pageId !== undefined ? pageId : state.rootPageId;
       const resolvedActive = activeDocId !== undefined ? activeDocId : state.activeDocId;
       return {
+        spaceId: resolvedSpaceId,
         projectId: resolvedProjectId,
         rootPageId: resolvedRoot,
         parentPageId: resolvedRoot,
@@ -151,16 +188,37 @@ export const usePageStore = create<DocumentEditorState>((set, get) => ({
     }),
   setSelectedAsset: (selectedAsset) =>
     set((state) => (state.selectedAsset === selectedAsset ? state : { selectedAsset })),
+  setWorkspaceContext: ({
+    spaceId,
+    projectId,
+    projectName,
+    workspaceTitle,
+    permissions,
+    githubLink,
+  }) =>
+    set((state) => ({
+      spaceId,
+      projectId: projectId !== undefined ? (projectId ?? '') : state.projectId,
+      projectName: projectName !== undefined ? (projectName ?? null) : state.projectName,
+      workspaceTitle: workspaceTitle !== undefined ? workspaceTitle : state.workspaceTitle,
+      permissions: permissions !== undefined ? permissions : state.permissions,
+      githubLink: githubLink !== undefined ? githubLink : state.githubLink,
+    })),
   resetPageState: () =>
     set({
       currentPage: null,
+      spaceId: '',
       projectId: '',
+      projectName: null,
+      workspaceTitle: '',
       rootPageId: null,
       parentPageId: null,
       activeDocId: null,
       activePageId: null,
       activeFilePage: null,
       selectedAsset: null,
+      permissions: null,
+      githubLink: null,
     }),
 
   // ── Canonical Manuscript Accessor Implementations ───────────────────────

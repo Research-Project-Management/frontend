@@ -89,8 +89,13 @@ export function usePdfSearch({
   const [isRegexError, setIsRegexError] = useState(false);
 
   const [matches, setMatches] = useState<PdfSearchMatch[]>([]);
+  const matchesRef = useRef<PdfSearchMatch[]>([]);
   const [currentMatchIndex, setCurrentMatchIndex] = useState<number>(0);
   const [isSearching, setIsSearching] = useState(false);
+
+  useEffect(() => {
+    matchesRef.current = matches;
+  }, [matches]);
 
   // Clear any existing DOM highlight spans in .textLayer / .react-pdf__Page__textContent
   const clearDomHighlights = useCallback(() => {
@@ -133,9 +138,21 @@ export function usePdfSearch({
       );
       if (!textLayers || textLayers.length === 0) return;
 
-      let globalMatchCounter = 0;
+      const pageCounters = new Map<number, number>();
+      for (const m of matchesRef.current) {
+        if (!pageCounters.has(m.pageNum)) {
+          pageCounters.set(m.pageNum, m.totalIndex);
+        }
+      }
+
+      let fallbackCounter = 0;
 
       textLayers.forEach((layer) => {
+        const pageShell = layer.closest('[data-page-num]') as HTMLElement | null;
+        const pageNum = pageShell ? Number(pageShell.dataset.pageNum) : NaN;
+        const hasPageBase = !Number.isNaN(pageNum) && pageCounters.has(pageNum);
+        let layerCounter = hasPageBase ? pageCounters.get(pageNum)! : fallbackCounter;
+
         const spans = layer.querySelectorAll('span');
         spans.forEach((span) => {
           const originalText = span.textContent || '';
@@ -163,16 +180,16 @@ export function usePdfSearch({
               );
             }
 
-            const isCurrent = globalMatchCounter === activeMatchIdx;
+            const isCurrent = layerCounter === activeMatchIdx;
             const mark = document.createElement('mark');
             mark.className = isCurrent
               ? 'flux-pdf-highlight flux-pdf-highlight-current'
               : 'flux-pdf-highlight';
-            mark.setAttribute('data-match-index', String(globalMatchCounter));
+            mark.setAttribute('data-match-index', String(layerCounter));
             mark.textContent = match[0];
             fragment.appendChild(mark);
 
-            globalMatchCounter++;
+            layerCounter++;
             lastIndex = end;
           }
 
@@ -185,6 +202,12 @@ export function usePdfSearch({
           span.textContent = '';
           span.appendChild(fragment);
         });
+
+        if (hasPageBase) {
+          pageCounters.set(pageNum, layerCounter);
+        } else {
+          fallbackCounter = layerCounter;
+        }
       });
 
       const activeMark = container.querySelector(
@@ -272,6 +295,7 @@ export function usePdfSearch({
 
       const trimmed = searchQuery.trim();
       if (!trimmed || !pdfDocRef.current) {
+        matchesRef.current = [];
         setMatches([]);
         setCurrentMatchIndex(0);
         setIsSearching(false);
@@ -284,6 +308,7 @@ export function usePdfSearch({
         if (re) {
           setIsRegexError(true);
         }
+        matchesRef.current = [];
         setMatches([]);
         setCurrentMatchIndex(0);
         setIsSearching(false);
@@ -389,6 +414,7 @@ export function usePdfSearch({
           }
         }
 
+        matchesRef.current = foundMatches;
         setMatches(foundMatches);
         setCurrentMatchIndex(0);
 
@@ -399,6 +425,7 @@ export function usePdfSearch({
       } catch (err) {
         if (searchGenerationRef.current === currentGen) {
           console.warn('[usePdfSearch] Error during search:', err);
+          matchesRef.current = [];
           setMatches([]);
         }
       } finally {
@@ -489,6 +516,7 @@ export function usePdfSearch({
   const closeSearch = useCallback(() => {
     setIsOpen(false);
     setQuery('');
+    matchesRef.current = [];
     setMatches([]);
     setCurrentMatchIndex(0);
     setIsRegexError(false);
@@ -505,6 +533,7 @@ export function usePdfSearch({
         }
       } else {
         setQuery('');
+        matchesRef.current = [];
         setMatches([]);
         setCurrentMatchIndex(0);
         setIsRegexError(false);

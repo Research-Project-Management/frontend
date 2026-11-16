@@ -536,6 +536,7 @@ export class CompilerCoordinator {
       (this.options.getProjectId ? this.options.getProjectId() : undefined) ||
       extractProjectId(activeDoc) ||
       pageStore.projectId ||
+      pageStore.spaceId ||
       '';
 
     // 6. Create an atomic in-memory snapshot across open tabs & editor buffer (0ms latency)

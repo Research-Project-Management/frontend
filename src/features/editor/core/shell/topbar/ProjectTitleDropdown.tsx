@@ -66,6 +66,9 @@ export function ProjectTitleDropdown() {
   const activeFileId = usePageStore((s) => s.activeFilePage?.id ?? undefined);
   const activeFileTitle = usePageStore((s) => s.activeFilePage?.title ?? undefined);
   const storeProjectId = usePageStore((s) => s.projectId);
+  const workspaceTitle = usePageStore((s) => s.workspaceTitle);
+  const storeProjectName = usePageStore((s) => s.projectName);
+  const spaceId = usePageStore((s) => s.spaceId);
 
   const effectiveProjectId =
     params?.projectId ||
@@ -81,12 +84,17 @@ export function ProjectTitleDropdown() {
       : '';
 
   const { project } = useProject(realProjectId, {
-    enabled: Boolean(realProjectId),
+    enabled: Boolean(realProjectId && !spaceId && !workspaceTitle && !storeProjectName),
   });
 
+  const nonMainPageTitle =
+    currentPageTitle && currentPageTitle !== 'main.tex' ? currentPageTitle : undefined;
   const displayTitle =
-    currentPageTitle ||
+    workspaceTitle ||
+    nonMainPageTitle ||
+    storeProjectName ||
     project?.name ||
+    currentPageTitle ||
     'Untitled Document';
 
   const { getContent } = useEditorInstance();

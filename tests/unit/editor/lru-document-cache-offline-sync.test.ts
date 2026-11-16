@@ -282,5 +282,46 @@ describe('LRU Document Cache & Local-First Offline Draft Sync (Overleaf Parity)'
       // All models should now be marked clean
       expect(lruDocumentCache.getDirtyModels().length).toBe(0);
     });
+
+    it('hydrateModelAsync marks model dirty when restoring from draft and skips persistence when evictModel uses skipPersistence', async () => {
+      const now = Date.now();
+      await draftStorageService.saveProjectFileSnapshot({
+        id: 'doc-hyd-draft',
+        projectId: 'proj-hyd',
+        title: 'drafted.tex',
+        content: 'Older server content',
+        filePath: 'drafted.tex',
+        updatedAt: now - 5000,
+      });
+      await draftStorageService.saveDraft(
+        'doc-hyd-draft',
+        'Newer local draft edits',
+        'proj-hyd',
+        'drafted.tex',
+      );
+
+      const cache = new LRUDocumentCache(draftStorageService);
+      const hydrated = await cache.hydrateModelAsync(
+        'doc-hyd-draft',
+        'fallback',
+        'drafted.tex',
+        'proj-hyd',
+      );
+      expect(hydrated.content).toBe('Newer local draft edits');
+      expect(hydrated.isDirty).toBe(true);
+      expect(cache.isDirty('doc-hyd-draft')).toBe(true);
+
+      const saveDraftSpy = vi.spyOn(draftStorageService, 'saveDraft');
+      const saveSnapSpy = vi.spyOn(draftStorageService, 'saveProjectFileSnapshot');
+
+      cache.evictModel('doc-hyd-draft', { skipPersistence: true });
+      expect(cache.has('doc-hyd-draft')).toBe(false);
+      expect(saveDraftSpy).not.toHaveBeenCalled();
+      expect(saveSnapSpy).not.toHaveBeenCalled();
+
+      // evictDeletedFile should also purge the cached project file snapshot
+      sessionCoordinator.evictDeletedFile('doc-hyd-draft');
+      expect(await draftStorageService.getProjectFileSnapshot('doc-hyd-draft')).toBeNull();
+    });
   });
 });

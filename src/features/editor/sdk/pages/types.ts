@@ -6,7 +6,20 @@
 
 import type { PageComment } from '@/features/editor/domain/types/comment.types';
 import type { PageSuggestion, SuggestionType } from '@/features/editor/domain/types/suggestion.types';
-import type { ErrorExplanationDto } from '@/features/editor/domain/types/compiler.types';
+import type {
+  CompilerDiagnostic,
+  DiagnosticItemDto,
+  ErrorExplanationDto,
+} from '@/features/editor/domain/types/compiler.types';
+import type {
+  ProjectSymbolLabelDto,
+  ProjectSymbolCitationDto,
+  ProjectSymbolCommandDto,
+  ProjectSymbolEnvironmentDto,
+  ProjectSymbolPackageDto,
+  ProjectSymbolOutlineDto,
+  ProjectSymbolsResponseDto,
+} from '@/features/editor/domain/types/symbols.types';
 import type {
   ProjectVersionListItem,
   ProjectSnapshotDetail,
@@ -23,35 +36,16 @@ export type {
   ProjectFileDiff,
   VersionLabelItem,
   ErrorExplanationDto,
+  DiagnosticItemDto,
+  CompilerDiagnostic,
+  ProjectSymbolLabelDto,
+  ProjectSymbolCitationDto,
+  ProjectSymbolCommandDto,
+  ProjectSymbolEnvironmentDto,
+  ProjectSymbolPackageDto,
+  ProjectSymbolOutlineDto,
+  ProjectSymbolsResponseDto,
 };
-
-export interface DiagnosticItemDto {
-  id?: string;
-  file: string;
-  line: number | null;
-  column?: number | null;
-  severity: 'error' | 'warning' | 'info' | 'badbox';
-  category?: 'error' | 'warning' | 'info' | 'badbox';
-  warningSubtype?: 'font' | 'package' | 'citation' | 'reference' | 'badbox';
-  message: string;
-  context?: string;
-  code?: string;
-  explanation?: {
-    code?: string;
-    title: string;
-    summary?: string;
-    explanation?: string;
-    commonCauses?: string[];
-    suggestedFix?: string;
-    exampleSnippet?: string;
-    latexSnippet?: string;
-    documentationUrl?: string;
-  };
-  quickFix?: {
-    description: string;
-    replacementText: string;
-  };
-}
 
 export interface DiagnosticReportDto {
   id?: string;
@@ -290,28 +284,6 @@ export interface StructureNodeDto {
 }
 
 export type ManuscriptNodeDto = StructureNodeDto;
-
-export interface CompilerDiagnostic {
-  file: string;
-  line: number | null;
-  column?: number;
-  message: string;
-  context: string;
-  severity: 'error' | 'warning' | 'info' | 'badbox';
-  category?: 'error' | 'warning' | 'info' | 'badbox';
-  warningSubtype?: 'font' | 'package' | 'citation' | 'reference' | 'badbox';
-  code?: string;
-  suggestion?: string;
-  quickFix?: {
-    description: string;
-    replacementText: string;
-  };
-  explanation?: {
-    title: string;
-    whyItHappened: string;
-    howToFix: string;
-  };
-}
 
 export interface CompileLatexPayload {
   projectId?: string;
@@ -647,83 +619,6 @@ export interface ProjectTemplateItem {
   [key: string]: unknown;
 }
 
-export interface ProjectSymbolLabelDto {
-  key: string;
-  file: string;
-  line: number;
-  context?: string;
-}
-
-export interface ProjectSymbolCitationDto {
-  key: string;
-  type: string;
-  title?: string;
-  author?: string;
-  year?: string;
-  journal?: string;
-  booktitle?: string;
-  publisher?: string;
-  doi?: string;
-  url?: string;
-  abstract?: string;
-  volume?: string;
-  number?: string;
-  pages?: string;
-  file: string;
-  line: number;
-  raw?: string;
-}
-
-export interface ProjectSymbolCommandDto {
-  name: string;
-  argCount?: number;
-  hasDefault?: boolean;
-  defaultValue?: string;
-  expansion?: string;
-  file: string;
-  line: number;
-  signature: string;
-}
-
-export interface ProjectSymbolEnvironmentDto {
-  name: string;
-  argCount?: number;
-  file: string;
-  line: number;
-}
-
-export interface ProjectSymbolPackageDto {
-  name: string;
-  options?: string;
-  file: string;
-  line: number;
-}
-
-export interface ProjectSymbolOutlineDto {
-  title: string;
-  level: number;
-  levelName: string;
-  file: string;
-  line: number;
-  from: number;
-  children?: ProjectSymbolOutlineDto[];
-}
-
-export interface ProjectSymbolsResponseDto {
-  rootDocPath: string | null;
-  labels: ProjectSymbolLabelDto[];
-  citations: ProjectSymbolCitationDto[];
-  customCommands: ProjectSymbolCommandDto[];
-  customEnvironments: ProjectSymbolEnvironmentDto[];
-  packages: ProjectSymbolPackageDto[];
-  bibliographies: string[];
-  includedFiles: string[];
-  imageFiles: string[];
-  files: string[];
-  images: string[];
-  outline: ProjectSymbolOutlineDto[];
-}
-
 export interface ProjectReviewFileOverviewDto {
   docId: string;
   fileId: string;
@@ -763,4 +658,75 @@ export interface ImportFromProjectPayload {
   targetName?: string;
   targetPath?: string;
   parentPageId?: string;
+}
+
+export type EditorBootstrapDegradedBranch = 'symbols' | 'lastBuild';
+
+export interface EditorBootstrapGithubLinkDto {
+  id: string;
+  repoFullName: string;
+  branch: string;
+  lastSyncedAt: string | null;
+}
+
+export interface EditorBootstrapPermissionsDto {
+  role: string;
+  canEdit: boolean;
+  canCompile: boolean;
+}
+
+export interface EditorBootstrapWorkspaceDto {
+  spaceId: string;
+  pageId: string;
+  rootDocId: string;
+  projectId: string | null;
+  projectName: string | null;
+  title: string;
+  mainFilePath: string;
+  permissions: EditorBootstrapPermissionsDto;
+  githubLink: EditorBootstrapGithubLinkDto | null;
+}
+
+export interface EditorBootstrapActiveDocDto {
+  id: string;
+  nodeId?: string | null;
+  page: {
+    id: string;
+    title: string;
+    content: string;
+    path?: string;
+    status: string;
+    projectId: string;
+    mainFile: { id: string; title: string };
+    mainFileId: string;
+    rootPageId: string;
+    version: number;
+    rev: number;
+    createdAt: string;
+    updatedAt: string;
+  };
+  lines: string[];
+  version: number;
+  rev: number;
+  ranges: Record<string, unknown>;
+  fallbackToRoot: boolean;
+}
+
+export interface EditorBootstrapLastBuildDto {
+  status: 'ready' | 'error' | 'uncompiled';
+  pdfArtifactUrl: string | null;
+  synctexAvailable: boolean;
+  lastCompiledAt: string | null;
+  diagnostics: CompilerDiagnostic[];
+}
+
+export interface EditorBootstrapResponseDto {
+  workspace: EditorBootstrapWorkspaceDto;
+  tree: StructureNodeDto[];
+  activeDoc: EditorBootstrapActiveDocDto;
+  symbols: ProjectSymbolsResponseDto | null;
+  lastBuild: EditorBootstrapLastBuildDto;
+  degraded: boolean;
+  degradedBranches: EditorBootstrapDegradedBranch[];
+  serverTimestamp: string;
 }

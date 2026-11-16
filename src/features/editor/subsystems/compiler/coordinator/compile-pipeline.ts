@@ -177,7 +177,7 @@ export type CompilerExecutionPort = CompilerPort;
 
 // Active compile controller for in-flight cancellation (debounce & anti-stacking)
 let activeCompileController: AbortController | null = null;
-let activeCompileProjectId: string | null = null;
+let activeCompileTargetId: string | null = null;
 
 // ── Deep Compile Pipeline ─────────────────────────────────────────────────────
 
@@ -186,14 +186,14 @@ export const CompilePipeline = {
    * Cancels any ongoing compilation request to free server resources.
    */
   cancelInFlightCompile(projectId?: string): void {
-    const targetProjectId = projectId || activeCompileProjectId;
+    const targetId = projectId || activeCompileTargetId;
     if (activeCompileController) {
       activeCompileController.abort();
       activeCompileController = null;
     }
-    activeCompileProjectId = null;
-    if (targetProjectId) {
-      void manuscriptService.compiler.cancelCompile(targetProjectId).catch(() => {});
+    activeCompileTargetId = null;
+    if (targetId) {
+      void manuscriptService.compiler.cancelCompile(targetId).catch(() => {});
     }
   },
 
@@ -213,8 +213,8 @@ export const CompilePipeline = {
     // 1. In-flight cancellation: Abort any previous compilation still running
     if (activeCompileController) {
       activeCompileController.abort();
-      if (activeCompileProjectId) {
-        void manuscriptService.compiler.cancelCompile(activeCompileProjectId).catch(() => {});
+      if (activeCompileTargetId) {
+        void manuscriptService.compiler.cancelCompile(activeCompileTargetId).catch(() => {});
       }
     }
     const controller = new AbortController();
@@ -226,7 +226,7 @@ export const CompilePipeline = {
       }
     }
     activeCompileController = controller;
-    activeCompileProjectId = projectId || null;
+    activeCompileTargetId = pageId || projectId || null;
     const currentSignal = controller.signal;
 
     // 2. Pre-compile dirty-file sync: await non-realtime dirty file flushes if not already flushed
@@ -458,6 +458,7 @@ export const CompilePipeline = {
     } finally {
       if (activeCompileController === controller) {
         activeCompileController = null;
+        activeCompileTargetId = null;
       }
     }
   },

@@ -146,7 +146,7 @@ export function useReviewState() {
   const { data: projectMembersData } = useQuery({
     queryKey: ['project-members', projectId],
     queryFn: async () => {
-      if (!projectId || projectId === 'personal' || projectId === pageId) return [];
+      if (!projectId || projectId === 'personal') return [];
       try {
         const res = (await ProjectService.getMembers(projectId)) as {
           members?: ProjectMemberItem[];

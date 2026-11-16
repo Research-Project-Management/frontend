@@ -166,7 +166,7 @@ export function CollaboratorAvatarStack({
                 {c.tabCount > 1 && (
                   <span
                     title={`${c.tabCount} active browser tabs`}
-                    className="absolute -top-1 -right-1 z-20 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-primary px-0.5 text-[9px] font-bold text-primary-foreground shadow-xs ring-1 ring-background"
+                    className="absolute -top-1 -right-1 z-20 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-primary px-0.5 text-[9px] font-semibold text-primary-foreground shadow-xs ring-1 ring-background"
                   >
                     {c.tabCount}
                   </span>

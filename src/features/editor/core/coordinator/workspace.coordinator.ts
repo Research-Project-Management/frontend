@@ -471,7 +471,7 @@ export class WorkspaceCoordinator {
         const nextTabs = tabs.map((t) => {
           let nextTab = t;
           if (t.path) {
-            const rewrittenPath = rewritePathPrefix(t.path, oldPrefix, newPrefix, true);
+            const rewrittenPath = rewritePathPrefix(t.path, oldPrefix, newPrefix);
             if (rewrittenPath !== null) {
               changed = true;
               nextTab = { ...nextTab, path: rewrittenPath };
@@ -527,14 +527,33 @@ export class WorkspaceCoordinator {
     const cascadedDescendants = oldPrefix
       ? lruDocumentCache.renameFolderPrefix(oldPrefix, newPrefix)
       : [];
+    const cascadedIds = new Set(cascadedDescendants.map((d) => d.fileId));
+    const unopenedDescendants: Array<{
+      ids: string[];
+      oldPath: string;
+      newPath: string;
+      content: string;
+    }> = [];
     if (this.projectFiles.length > 0) {
       this.projectFiles = this.projectFiles.map((f) => {
         if (f.id === itemId || f.nodeId === itemId || f.docId === itemId) {
           return { ...f, title: newPath, path: newPath };
         }
         if (oldPrefix) {
-          const rewrittenFPath = rewritePathPrefix(f.path || f.title || f.name || '', oldPrefix, newPrefix);
+          const oldFPath = f.path || f.title || f.name || '';
+          const rewrittenFPath = rewritePathPrefix(oldFPath, oldPrefix, newPrefix);
           if (rewrittenFPath !== null) {
+            const candidateIds = [f.id, f.nodeId, f.docId].filter(
+              (x): x is string => typeof x === 'string' && x.length > 0,
+            );
+            if (!f.isFolder && !candidateIds.some((id) => cascadedIds.has(id))) {
+              unopenedDescendants.push({
+                ids: candidateIds,
+                oldPath: oldFPath,
+                newPath: rewrittenFPath,
+                content: extractDocumentContentString(f.content),
+              });
+            }
             return { ...f, title: rewrittenFPath, path: rewrittenFPath };
           }
         }
@@ -546,14 +565,18 @@ export class WorkspaceCoordinator {
       documentFacade.hydrateServerProjectFiles(effectiveProjectId, this.projectFiles);
     }
 
-    // 4. Cascade to Diagnostics Coordinator (alias old path to new path)
-    diagnosticsCoordinator.registerAlias(newPath, oldPath);
+    // 4. Cascade to Diagnostics Coordinator (rename/migrate keys & register aliases)
+    diagnosticsCoordinator.renamePath(oldPath, newPath);
     for (const desc of cascadedDescendants) {
-      diagnosticsCoordinator.registerAlias(desc.newPath, desc.oldPath);
+      diagnosticsCoordinator.renamePath(desc.oldPath, desc.newPath);
+    }
+    for (const desc of unopenedDescendants) {
+      diagnosticsCoordinator.renamePath(desc.oldPath, desc.newPath);
     }
 
     // 5. Re-index in LaTeX DAG & Symbols
     latexDependencyGraph.removeFileNode(oldPath);
+    latexSymbolsIndex.removeFile(itemId, oldPath);
     const contentToIndex = cachedModel?.content || documentFacade.getDocumentContent(itemId);
     if (contentToIndex) {
       latexDependencyGraph.parseAndRegister(newPath, contentToIndex, itemId);
@@ -561,9 +584,20 @@ export class WorkspaceCoordinator {
     }
     for (const desc of cascadedDescendants) {
       latexDependencyGraph.removeFileNode(desc.oldPath);
+      latexSymbolsIndex.removeFile(desc.fileId, desc.oldPath);
       if (desc.content) {
         latexDependencyGraph.parseAndRegister(desc.newPath, desc.content, desc.fileId);
         latexSymbolsIndex.indexFile(desc.fileId, desc.newPath, desc.content);
+      }
+    }
+    for (const desc of unopenedDescendants) {
+      latexDependencyGraph.removeFileNode(desc.oldPath);
+      for (const fid of desc.ids) {
+        latexSymbolsIndex.removeFile(fid, desc.oldPath);
+      }
+      if (desc.content && desc.ids[0]) {
+        latexDependencyGraph.parseAndRegister(desc.newPath, desc.content, desc.ids[0]);
+        latexSymbolsIndex.indexFile(desc.ids[0], desc.newPath, desc.content);
       }
     }
   }
@@ -586,7 +620,7 @@ export class WorkspaceCoordinator {
 
     for (const id of candidateIds) {
       sessionCoordinator.evictDeletedFile(id);
-      lruDocumentCache.evictModel(id);
+      lruDocumentCache.evictModel(id, { skipPersistence: true });
       editorCommandBus.dispatch({ type: 'navigation:close-tab', fileId: id });
       editorCommandBus.dispatch({ type: 'navigation:close-tab', fileId: `asset:${id}` });
       this.closeTabInStore(id);
@@ -612,7 +646,7 @@ export class WorkspaceCoordinator {
       for (const model of lruDocumentCache.getAllModels()) {
         if (isUnderVirtualFolder(model.filePath, cleanFolderPrefix)) {
           sessionCoordinator.evictDeletedFile(model.fileId);
-          lruDocumentCache.evictModel(model.fileId);
+          lruDocumentCache.evictModel(model.fileId, { skipPersistence: true });
           this.closeTabInStore(model.fileId);
           latexDependencyGraph.removeFileNode(model.filePath);
           latexSymbolsIndex.removeFile(model.fileId, model.filePath);
@@ -626,9 +660,13 @@ export class WorkspaceCoordinator {
           );
           for (const dId of descIds) {
             sessionCoordinator.evictDeletedFile(dId);
-            lruDocumentCache.evictModel(dId);
+            lruDocumentCache.evictModel(dId, { skipPersistence: true });
             this.closeTabInStore(dId);
             this.closeTabInStore(`asset:${dId}`);
+          }
+          latexDependencyGraph.removeFileNode(fPath);
+          for (const dId of descIds) {
+            latexSymbolsIndex.removeFile(dId, fPath);
           }
         }
       }
@@ -649,8 +687,13 @@ export class WorkspaceCoordinator {
       }
     }
 
+    if (filePath) {
+      diagnosticsCoordinator.removePath(filePath);
+    }
     latexDependencyGraph.removeFileNode(filePath || fileId);
-    latexSymbolsIndex.removeFile(fileId, filePath);
+    for (const id of candidateIds) {
+      latexSymbolsIndex.removeFile(id, filePath);
+    }
     if (this.projectFiles.length > 0 && effectiveProjectId) {
       this.projectFiles = this.projectFiles.filter((f) => {
         if (f.id === fileId || f.nodeId === fileId || f.docId === fileId) return false;

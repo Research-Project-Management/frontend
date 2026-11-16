@@ -112,11 +112,37 @@ export async function decompressSyncTeXData(_base64OrRaw: string): Promise<strin
 export function resolveForwardDetail(
   line: number,
   map?: SyncTeXMap | Record<number, number> | null,
-  _filePath?: string,
+  filePath?: string,
   _numPages = 1,
 ): { page: number; x?: number; y?: number; w?: number; h?: number } | null {
   if (!map) return null;
   if ('lineToPage' in map) {
+    if (filePath) {
+      let clean = filePath.trim().replace(/\\/g, '/');
+      while (/^(\.\/+|\/+)/.test(clean)) {
+        clean = clean.replace(/^(\.\/+|\/+)/, '');
+      }
+      const tag =
+        map.pathToTag.get(clean) ??
+        map.pathToTag.get(clean.replace(/\.(tex|bib|sty|cls)$/i, ''));
+      if (tag !== undefined) {
+        const key = `${tag}:${line}`;
+        const node = map.tagLineToNode.get(key);
+        if (node) {
+          return {
+            page: node.page,
+            x: node.x,
+            y: node.y,
+            ...(node.w !== undefined ? { w: node.w } : {}),
+            ...(node.h !== undefined ? { h: node.h } : {}),
+          };
+        }
+        const taggedPage = map.tagLineToPage.get(key);
+        if (taggedPage !== undefined) {
+          return { page: taggedPage };
+        }
+      }
+    }
     const page = map.lineToPage.get(line);
     return page ? { page } : null;
   }

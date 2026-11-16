@@ -46,6 +46,7 @@ export function InlineInput({
   onCommit,
   onCancel,
   isPending,
+  depth = 0,
 }: {
   icon: React.ElementType;
   iconColor?: string;
@@ -55,12 +56,25 @@ export function InlineInput({
   onCommit: () => void;
   onCancel: () => void;
   isPending?: boolean;
+  depth?: number;
 }) {
   const handledRef = React.useRef(false);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const readyForBlurRef = React.useRef(false);
+
+  React.useEffect(() => {
+    const timer = window.setTimeout(() => {
+      inputRef.current?.focus();
+      readyForBlurRef.current = true;
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   return (
     <div
-      className="flex h-8 items-center gap-1.5 w-full rounded-md pl-2 pr-1 bg-muted/40 transition-colors select-none"
+      className="flex h-7.5 items-center gap-1.5 w-full rounded-md pl-2 pr-1 bg-muted/40 transition-colors select-none"
     >
+      <IndentGuides depth={depth} />
       <span className="size-3.5 shrink-0" aria-hidden="true" />
       <Icon
         className={cn(
@@ -70,7 +84,7 @@ export function InlineInput({
         strokeWidth={1.5}
       />
       <input
-        autoFocus
+        ref={inputRef}
         type="text"
         name="newItemName"
         value={value}
@@ -93,7 +107,7 @@ export function InlineInput({
           }
         }}
         onBlur={() => {
-          if (handledRef.current) return;
+          if (!readyForBlurRef.current || handledRef.current) return;
           handledRef.current = true;
           if (value.trim()) onCommit();
           else onCancel();
@@ -124,10 +138,22 @@ export function RenameInput({
   isPending?: boolean;
 }) {
   const handledRef = React.useRef(false);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const readyForBlurRef = React.useRef(false);
+
+  React.useEffect(() => {
+    const timer = window.setTimeout(() => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+      readyForBlurRef.current = true;
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   return (
     <div className="flex-1 min-w-0 flex items-center">
       <input
-        autoFocus
+        ref={inputRef}
         type="text"
         name="renameItemName"
         value={value}
@@ -152,7 +178,7 @@ export function RenameInput({
           }
         }}
         onBlur={() => {
-          if (handledRef.current) return;
+          if (!readyForBlurRef.current || handledRef.current) return;
           handledRef.current = true;
           if (value.trim()) onCommit();
           else onCancel();
@@ -178,8 +204,8 @@ export function RowActions({
   return (
     <DropdownMenu>
       <Tooltip delayDuration={300}>
-        <TooltipTrigger asChild>
-          <DropdownMenuTrigger asChild>
+        <DropdownMenuTrigger asChild>
+          <TooltipTrigger asChild>
             <button
               type="button"
               aria-label="Options"
@@ -191,8 +217,8 @@ export function RowActions({
             >
               <MoreVertical className="size-3.5 text-foreground shrink-0" strokeWidth={1.5} />
             </button>
-          </DropdownMenuTrigger>
-        </TooltipTrigger>
+          </TooltipTrigger>
+        </DropdownMenuTrigger>
         <TooltipContent side="top" className="text-11">
           Options
         </TooltipContent>
@@ -202,6 +228,7 @@ export function RowActions({
         align="end"
         sideOffset={4}
         collisionPadding={12}
+        onCloseAutoFocus={(e) => e.preventDefault()}
         className="w-56 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none text-13"
       >
         {children}

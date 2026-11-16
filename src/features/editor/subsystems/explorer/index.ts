@@ -16,11 +16,14 @@ export {
   buildUnifiedTree,
   filterFileTree,
   flattenFileTree,
+  flattenVisibleTree,
+  findAncestorFolderPaths,
   findNodeByPath,
   getRootFilePriority,
   type FileTreeNode,
   type FileTreeFileNode,
   type FileTreeFolderNode,
+  type FlattenedTreeNode,
   type BuildFileTreeParams,
 } from './model/document-tree';
 

@@ -114,9 +114,11 @@ export function useFileUpload({
   /** Auto-generate a unique suffix name: file.tex -> file_2.tex, file_3.tex ... */
   const autoSuffix = useCallback(
     (name: string, batchAllocatedNames?: Set<string>): string => {
+      const lastSlash = name.lastIndexOf('/');
       const dot = name.lastIndexOf('.');
-      const base = dot > 0 ? name.slice(0, dot) : name;
-      const ext = dot > 0 ? name.slice(dot) : '';
+      const hasExt = dot > lastSlash + 1;
+      const base = hasExt ? name.slice(0, dot) : name;
+      const ext = hasExt ? name.slice(dot) : '';
       let n = 2;
       let candidate = `${base}_${n}${ext}`;
       while (
@@ -337,7 +339,7 @@ export function useFileUpload({
           try {
             toast.loading(`Unpacking ${zipItem.file.name}...`, { id: `zip-${zipItem.name}` });
             const importRes = await manuscriptService.export.importProjectZip(
-              tabProjectId || parentPageId,
+              parentPageId || tabProjectId,
               zipItem.file,
             );
             const totalImported =
@@ -471,7 +473,9 @@ export function useFileUpload({
       }
     }
 
-    if (assetFlat.length && projectId) {
+    const uploadTargetProjectId = projectId || parentPageId || '';
+
+    if (assetFlat.length && uploadTargetProjectId) {
       await Promise.all(
         assetFlat.map(async ({ file, name }) => {
           try {
@@ -479,7 +483,7 @@ export function useFileUpload({
               name !== file.name ? new File([file], name, { type: file.type }) : file;
             await uploadFile.mutateAsync({
               file: renamedFile,
-              projectId,
+              projectId: uploadTargetProjectId,
               pageId: parentPageId,
               skipInvalidation: true,
             });
@@ -492,7 +496,7 @@ export function useFileUpload({
       );
     }
 
-    if (folderItems.length && projectId) {
+    if (folderItems.length && uploadTargetProjectId) {
       void (async () => {
         try {
           await Promise.all(
@@ -517,7 +521,7 @@ export function useFileUpload({
                 try {
                   await uploadFile.mutateAsync({
                     file: fileToUpload,
-                    projectId,
+                    projectId: uploadTargetProjectId,
                     pageId: parentPageId,
                     skipInvalidation: true,
                   });

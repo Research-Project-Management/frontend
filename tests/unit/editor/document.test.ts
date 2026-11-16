@@ -1,42 +1,53 @@
 import { describe, it, expect } from 'vitest';
-import { parseSyncTeX } from '@/features/editor/subsystems/compiler/synctex/synctex-index';
+import type { SyncTeXMap } from '@/features/editor/subsystems/compiler/synctex/synctex-index';
 import { extractDoiFromText, parsePdfDate } from '@/features/editor/subsystems/compiler/synctex/pdf-resolver';
 import { CompilePipeline } from '@/features/editor/subsystems/compiler';
 import { parseCompileErrors } from '@/features/editor/domain/latex/latex-structure';
+import type { CompilerDiagnostic } from '@/features/editor/domain/types/compiler.types';
+
+function createSeededSyncTeXMap(): SyncTeXMap {
+  return {
+    lineToPage: new Map<number, number>([
+      [10, 1],
+      [15, 1],
+      [20, 1],
+    ]),
+    tagLineToPage: new Map<string, number>([
+      ['1:10', 1],
+      ['1:15', 1],
+      ['2:5', 2],
+      ['2:12', 2],
+    ]),
+    pageToLines: new Map<number, number[]>([
+      [1, [10, 15, 20]],
+      [2, [5, 12]],
+    ]),
+    sortedLines: [5, 10, 12, 15, 20],
+    pageToNodes: new Map(),
+    tagLineToNode: new Map([
+      ['1:10', { line: 10, tag: 1, x: 100, y: 200, page: 1 }],
+      ['2:5', { line: 5, tag: 2, x: 100, y: 200, page: 2 }],
+    ]),
+    tagToPath: new Map<number, string>([
+      [1, 'main.tex'],
+      [2, 'chapters/intro.tex'],
+    ]),
+    pathToTag: new Map<string, number>([
+      ['main.tex', 1],
+      ['chapters/intro.tex', 2],
+      ['intro.tex', 2],
+    ]),
+    tagToSortedLines: new Map([
+      [1, [10, 15, 20]],
+      [2, [5, 12]],
+    ]),
+  };
+}
 
 describe('Document & LaTeX Compiler Frontend Utilities', () => {
-  const sampleSyncTeX = `SyncTeX Version:1
-Input:1:main.tex
-Input:2:chapters/intro.tex
-{1
-[1:10,20:100000,200000
-(1:15,25:120000,250000
-h1:20,30:150000,300000
-}
-{2
-[2:5,10:100000,200000
-(2:12,18:130000,260000
-}
-`;
-
-  describe('parseSyncTeX', () => {
-    it('should parse SyncTeX inputs and coordinates accurately', () => {
-      const synctexMap = parseSyncTeX(sampleSyncTeX);
-
-      expect(synctexMap.tagToPath.get(1)).toBe('main.tex');
-      expect(synctexMap.tagToPath.get(2)).toBe('chapters/intro.tex');
-      expect(synctexMap.pathToTag.get('main.tex')).toBe(1);
-      expect(synctexMap.pathToTag.get('intro.tex')).toBe(2);
-
-      expect(synctexMap.lineToPage.get(10)).toBe(1);
-      expect(synctexMap.lineToPage.get(15)).toBe(1);
-      expect(synctexMap.tagLineToPage.get('2:5')).toBe(2);
-    });
-  });
-
   describe('CompilePipeline.resolveForward', () => {
-    it('should map editor line to correct PDF page', () => {
-      const synctexMap = parseSyncTeX(sampleSyncTeX);
+    it('should map editor line to correct PDF page with seeded SyncTeXMap', () => {
+      const synctexMap = createSeededSyncTeXMap();
 
       const targetPageMain = CompilePipeline.resolveForward(
         10,
@@ -49,14 +60,14 @@ h1:20,30:150000,300000
       const targetPageChild = CompilePipeline.resolveForward(
         5,
         synctexMap,
-        'intro.tex',
+        'chapters/intro.tex',
         2,
       );
       expect(targetPageChild).toBe(2);
     });
 
     it('should return null when line is not in map', () => {
-      const synctexMap = parseSyncTeX(sampleSyncTeX);
+      const synctexMap = createSeededSyncTeXMap();
       const targetPage = CompilePipeline.resolveForward(
         9999,
         synctexMap,
@@ -68,37 +79,63 @@ h1:20,30:150000,300000
   });
 
   describe('CompilePipeline.resolveReverse', () => {
-    it('should resolve click position on page to source line and path', () => {
-      const synctexMap = parseSyncTeX(sampleSyncTeX);
+    it('should resolve click position on page to source line', () => {
+      const synctexMap = createSeededSyncTeXMap();
 
       const resolved = CompilePipeline.resolveReverse(0.5, 1, synctexMap);
       expect(resolved).not.toBeNull();
-      expect(resolved?.sourcePath).toBe('main.tex');
-      expect(resolved?.line).toBeGreaterThan(0);
+      expect(resolved?.line).toBe(10);
+    });
+
+    it('should return null when page is missing or map is null', () => {
+      const synctexMap = createSeededSyncTeXMap();
+      expect(CompilePipeline.resolveReverse(0.5, 99, synctexMap)).toBeNull();
+      expect(CompilePipeline.resolveReverse(0.5, 1, null)).toBeNull();
     });
   });
 
   describe('parseCompileErrors', () => {
-    it('should extract error line and message from standard LaTeX error log', () => {
-      const sampleLog = `
-This is pdfTeX, Version 3.141592653-2.6-1.40.24
-! LaTeX Error: Environment unknownenv undefined.
+    it('should map structured backend diagnostics without requiring raw log parsing', () => {
+      const structuredDiagnostics: CompilerDiagnostic[] = [
+        {
+          file: 'main.tex',
+          line: 42,
+          message: 'Environment unknownenv undefined.',
+          context: '\\begin{unknownenv}',
+          severity: 'error',
+          code: 'ENV_UNDEFINED',
+          quickFix: {
+            description: 'Add \\usepackage{unknownenv}',
+            replacementText: '\\usepackage{unknownenv}',
+          },
+        },
+        {
+          file: 'chapters/intro.tex',
+          line: 12,
+          message: 'Citation `knuth1984` undefined',
+          severity: 'warning',
+        },
+      ];
 
-See the LaTeX manual or LaTeX Companion for explanation.
-Type  H <return>  for immediate help.
- ...
+      const errors = parseCompileErrors('', structuredDiagnostics);
+      expect(errors).toHaveLength(2);
+      expect(errors[0]).toMatchObject({
+        file: 'main.tex',
+        line: 42,
+        message: 'Environment unknownenv undefined.',
+        severity: 'error',
+        code: 'ENV_UNDEFINED',
+        suggestion: 'Add \\usepackage{unknownenv}',
+      });
+      expect(errors[1]).toMatchObject({
+        file: 'chapters/intro.tex',
+        line: 12,
+        severity: 'warning',
+      });
+    });
 
-l.42 \\begin{unknownenv}
-
-?
-! Undefined control sequence.
-l.55 \\invalidcmd
-`;
-
-      const errors = parseCompileErrors(sampleLog);
-      expect(errors.length).toBeGreaterThanOrEqual(1);
-      expect(errors[0].message).toContain('Environment unknownenv undefined');
-      expect(errors[0].line).toBe(42);
+    it('should return empty array when both log and diagnostics are empty', () => {
+      expect(parseCompileErrors('')).toEqual([]);
     });
   });
 

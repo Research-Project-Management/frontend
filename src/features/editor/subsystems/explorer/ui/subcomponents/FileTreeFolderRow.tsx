@@ -282,7 +282,10 @@ export const FileTreeFolderRow = React.memo(function FileTreeFolderRow({
     <div className="flex flex-col">
       <ContextMenu>
         <ContextMenuTrigger asChild>{folderRowContent}</ContextMenuTrigger>
-        <ContextMenuContent className="w-56 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none text-13">
+        <ContextMenuContent
+          onCloseAutoFocus={(e) => e.preventDefault()}
+          className="w-56 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none text-13"
+        >
           <ContextMenuItem
             onClick={(e) => {
               e.stopPropagation();

@@ -41,6 +41,17 @@ export const EDITOR_LIMITS = {
   MAX_FOLD_SCAN_LINES: 2500,
   MAX_WORD_VALIDITY_CACHE_SIZE: 5000,
   MAX_WORD_SUGGESTIONS_CACHE_SIZE: 1000,
+  LRU_MAX_FILES: 40,
+  LRU_MAX_BYTES: 16 * 1024 * 1024,
+  MIN_EDITOR_DISK_FLOOR_BYTES: 24 * 1024 * 1024,
+  MAX_EDITOR_DISK_CEILING_BYTES: 100 * 1024 * 1024,
+  EDITOR_ORIGIN_QUOTA_SHARE: 0.08,
+  MAX_DRAFTS_DISK_BYTES: 25 * 1024 * 1024,
+  MAX_PROJECT_FILES_DISK_BYTES: 60 * 1024 * 1024,
+  MAX_MUTATIONS_DISK_BYTES: 15 * 1024 * 1024,
+  MAX_PROJECT_FILES_COUNT: 500,
+  STALE_DRAFT_TTL_MS: 30 * 24 * 60 * 60 * 1000,
+  EMERGENCY_UNLOAD_MAX_BYTES: 512 * 1024,
 } as const;
 
 export const IMAGE_EXTENSIONS = new Set([
@@ -171,3 +182,11 @@ export function syncShallowUrlParams(params: Record<string, string | null | unde
 export function syncShallowFileUrlParam(fileId?: string | null): void {
   syncShallowUrlParams({ file: fileId || null });
 }
+
+// ── Non-Destructive DOM Windowing Thresholds (Zero-Blocking) ─────────────────
+export const PDF_VIEWPORT_BUFFER_PAGES = 1;
+export const PDF_SPREAD_VIEWPORT_BUFFER_PAGES = 2;
+export const PDF_PINNED_TARGET_TTL_MS = 800;
+export const COMPILER_LOGS_VIRTUAL_THRESHOLD = 50;
+export const FILE_OUTLINE_VIRTUAL_THRESHOLD = 40;
+export const SEARCH_RESULTS_VIRTUAL_THRESHOLD = 60;

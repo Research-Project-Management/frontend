@@ -9,7 +9,10 @@
 
 import dynamic from 'next/dynamic';
 import React, { useEffect } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
+import { useSafeQueryClient } from '@/features/editor/subsystems/review/ui/hooks/safeQueryClient';
+import { editorBootstrapQuery } from '@/features/editor/ui/hooks/document.queries';
 import { sessionCoordinator } from '../coordinator/session.coordinator';
 import EditorSkeleton from './EditorSkeleton';
 
@@ -22,19 +25,38 @@ const WorkbenchLayout = dynamic(
 );
 
 export default function ClientEditor() {
-  const [mounted, setMounted] = React.useState(false);
+  const params = useParams<{
+    id?: string;
+    projectId?: string;
+    pageId?: string;
+    draftId?: string;
+  }>();
+  const searchParams = useSearchParams();
+  const queryClient = useSafeQueryClient();
+
+  const directPageId = params?.pageId || params?.id || params?.draftId || '';
+  const projectId = params?.projectId || '';
+  const bootstrapTargetId = directPageId || projectId || '';
+  const isProjectRoute = Boolean(!directPageId && projectId);
+  const fileId = searchParams?.get('file') ?? null;
 
   useEffect(() => {
-    setMounted(true);
+    if (bootstrapTargetId) {
+      void queryClient.prefetchQuery(
+        editorBootstrapQuery(queryClient, bootstrapTargetId, {
+          fileId,
+          isProjectRoute,
+        }),
+      );
+    }
+  }, [queryClient, bootstrapTargetId, fileId, isProjectRoute]);
+
+  useEffect(() => {
     const unsubBeforeUnload = sessionCoordinator.initBeforeUnloadProtection();
     return () => {
       unsubBeforeUnload();
     };
   }, []);
-
-  if (!mounted) {
-    return <EditorSkeleton />;
-  }
 
   return (
     <TooltipProvider delayDuration={200}>

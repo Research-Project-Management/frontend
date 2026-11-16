@@ -542,3 +542,85 @@ export function filterFileTree(nodes: FileTreeNode[], filter: string): FileTreeN
   }
   return result;
 }
+
+export interface FlattenedTreeNode {
+  node: FileTreeNode;
+  depth: number;
+  inlineCreateKind?: 'file' | 'folder';
+}
+
+/**
+ * Resolves ordered ancestor folder keys leading to a target file/folder ID or virtual path.
+ * Returns `[]` if the target sits at root level or does not exist in the tree.
+ */
+export function findAncestorFolderPaths(
+  nodes: FileTreeNode[],
+  targetIdOrPath: string,
+): string[] {
+  if (!targetIdOrPath) return [];
+  const rawTarget = targetIdOrPath.startsWith('asset:')
+    ? targetIdOrPath.slice('asset:'.length)
+    : targetIdOrPath;
+  const cleanTarget = normalizeVirtualPath(rawTarget).toLowerCase();
+  if (!rawTarget && !cleanTarget) return [];
+
+  const visit = (list: FileTreeNode[], ancestors: string[]): string[] | null => {
+    for (const node of list) {
+      if (node.type === 'file') {
+        const matchesId =
+          node.id === targetIdOrPath ||
+          node.id === rawTarget ||
+          node.fileId === rawTarget ||
+          node.docId === rawTarget ||
+          node.nodeId === rawTarget;
+        const matchesPath =
+          Boolean(cleanTarget) &&
+          normalizeVirtualPath(node.title).toLowerCase() === cleanTarget;
+        if (matchesId || matchesPath) {
+          return ancestors;
+        }
+      } else {
+        const folderKey = node.fullPath || node.path || node.name;
+        const matchesFolderId = node.id === targetIdOrPath || node.id === rawTarget;
+        const matchesFolderPath =
+          Boolean(cleanTarget) &&
+          normalizeVirtualPath(folderKey).toLowerCase() === cleanTarget;
+        if (matchesFolderId || matchesFolderPath) {
+          return ancestors;
+        }
+        const found = visit(node.children, [...ancestors, folderKey]);
+        if (found !== null) {
+          return found;
+        }
+      }
+    }
+    return null;
+  };
+
+  return visit(nodes, []) ?? [];
+}
+
+/**
+ * Flattens a hierarchical file tree into a 1D array of currently visible nodes,
+ * respecting each folder's expansion state.
+ *
+ * Essential for TanStack Virtual windowing:
+ * - O(N) single-pass traversal
+ * - Maintains exact hierarchy depth for IndentGuides
+ * - Caps DOM nodes to ~35-40 items regardless of project size (500 - 10,000 files)
+ */
+export function flattenVisibleTree(
+  nodes: FileTreeNode[],
+  isFolderExpanded: (node: FileTreeFolderNode) => boolean,
+  depth = 0,
+  out: FlattenedTreeNode[] = [],
+): FlattenedTreeNode[] {
+  for (const node of nodes) {
+    out.push({ node, depth });
+    if (node.type === 'folder' && isFolderExpanded(node) && Array.isArray(node.children)) {
+      flattenVisibleTree(node.children, isFolderExpanded, depth + 1, out);
+    }
+  }
+  return out;
+}
+

@@ -11,6 +11,7 @@ import {
  */
 
 import { draftStorageService, type IDraftStorageSink } from './draft-storage';
+import { EDITOR_LIMITS } from '@/features/editor/domain/constants/editor.constants';
 export type { IDraftStorageSink };
 
 export interface DocumentCursorSelection {
@@ -54,19 +55,24 @@ export type ModelEvictionListener = (fileId: string, model: DocumentModelState) 
 export interface DocumentModelStats {
   size: number;
   capacity: number;
+  totalBytes: number;
+  maxBytes: number;
   dirtyCount: number;
   mruFileId: string | null;
   lruFileId: string | null;
 }
 
-const DEFAULT_CAPACITY = 10;
+const DEFAULT_CAPACITY: number = EDITOR_LIMITS.LRU_MAX_FILES;
+const DEFAULT_MAX_BYTES: number = EDITOR_LIMITS.LRU_MAX_BYTES;
 
 export class LRUDocumentCache {
   private readonly models = new Map<string, DocumentModelState>();
   private readonly lruNodes = new Map<string, LRUNode>();
   private head: LRUNode | null = null; // Most Recently Used (MRU)
   private tail: LRUNode | null = null; // Least Recently Used (LRU)
-  private capacity = DEFAULT_CAPACITY;
+  private capacity: number = DEFAULT_CAPACITY;
+  private maxBytes: number = DEFAULT_MAX_BYTES;
+  private totalBytes = 0;
   private activeFileId: string | null = null;
   private version = 0;
   private readonly listeners = new Set<ModelChangeListener | CacheSubscriber>();
@@ -108,6 +114,24 @@ export class LRUDocumentCache {
   }
 
   /**
+   * Configures the maximum text byte budget retained in RAM simultaneously.
+   */
+  public setMaxBytes(newMaxBytes: number): void {
+    if (newMaxBytes < 1) return;
+    this.maxBytes = newMaxBytes;
+    this.enforceCapacity();
+  }
+
+  /**
+   * Restores dual-bound RAM defaults (40 files / 16 MB text).
+   */
+  public resetLimits(): void {
+    this.capacity = DEFAULT_CAPACITY;
+    this.maxBytes = DEFAULT_MAX_BYTES;
+    this.enforceCapacity();
+  }
+
+  /**
    * Returns current memory governor metrics.
    */
   public getStats(): DocumentModelStats {
@@ -118,6 +142,8 @@ export class LRUDocumentCache {
     return {
       size: this.models.size,
       capacity: this.capacity,
+      totalBytes: this.totalBytes,
+      maxBytes: this.maxBytes,
       dirtyCount,
       mruFileId: this.head?.fileId ?? null,
       lruFileId: this.tail?.fileId ?? null,
@@ -153,9 +179,13 @@ export class LRUDocumentCache {
       if (initialData.serverRev !== undefined) existing.serverRev = initialData.serverRev;
       if (initialData.serverUpdatedAt !== undefined) existing.serverUpdatedAt = initialData.serverUpdatedAt;
       if (!existing.isDirty && initialData.content !== existing.content) {
+        this.totalBytes = Math.max(0, this.totalBytes + initialData.content.length - existing.content.length);
         existing.content = initialData.content;
       }
       this.touch(fileId);
+      if (this.totalBytes > this.maxBytes && this.models.size > 1) {
+        this.enforceCapacity();
+      }
       this.notify(fileId, existing);
       return existing;
     }
@@ -175,6 +205,7 @@ export class LRUDocumentCache {
     };
 
     this.models.set(fileId, newModel);
+    this.totalBytes += newModel.content.length;
 
     // Create and attach new LRU node at the head
     const node: LRUNode = { fileId, prev: null, next: null };
@@ -219,24 +250,33 @@ export class LRUDocumentCache {
 
     if (this.persistenceSink) {
       try {
-        const draft = await this.persistenceSink.getDraft(fileId);
-        if (draft && typeof draft.content === 'string') {
-          return this.registerModel(fileId, {
+        const [draft, snapshot] = await Promise.all([
+          this.persistenceSink.getDraft(fileId).catch(() => null),
+          this.persistenceSink.getProjectFileSnapshot
+            ? this.persistenceSink.getProjectFileSnapshot(fileId).catch(() => null)
+            : Promise.resolve(null),
+        ]);
+
+        if (
+          draft &&
+          typeof draft.content === 'string' &&
+          (!snapshot || (draft.savedAt ?? Infinity) >= (snapshot.updatedAt ?? 0))
+        ) {
+          const model = this.registerModel(fileId, {
             content: draft.content,
-            filePath: filePath || draft.title || fileId,
-            projectId: projectId || draft.projectId,
+            filePath: filePath || draft.title || snapshot?.filePath || snapshot?.title || fileId,
+            projectId: projectId || draft.projectId || snapshot?.projectId,
           });
+          this.markDirty(fileId);
+          return model;
         }
 
-        if (this.persistenceSink.getProjectFileSnapshot) {
-          const snapshot = await this.persistenceSink.getProjectFileSnapshot(fileId);
-          if (snapshot && typeof snapshot.content === 'string') {
-            return this.registerModel(fileId, {
-              content: snapshot.content,
-              filePath: filePath || snapshot.filePath || snapshot.title || fileId,
-              projectId: projectId || snapshot.projectId,
-            });
-          }
+        if (snapshot && typeof snapshot.content === 'string') {
+          return this.registerModel(fileId, {
+            content: snapshot.content,
+            filePath: filePath || snapshot.filePath || snapshot.title || fileId,
+            projectId: projectId || snapshot.projectId,
+          });
         }
       } catch {
         // Fallback
@@ -307,12 +347,16 @@ export class LRUDocumentCache {
     }
 
     if (model.content !== content) {
+      this.totalBytes = Math.max(0, this.totalBytes + content.length - model.content.length);
       model.contentVersion = (model.contentVersion ?? 0) + 1;
     }
     model.content = content;
     model.isDirty = isDirty;
     model.lastActiveAt = Date.now();
     this.touch(fileId);
+    if (this.totalBytes > this.maxBytes && this.models.size > 1) {
+      this.enforceCapacity();
+    }
     this.notify(fileId, model);
   }
 
@@ -508,12 +552,12 @@ export class LRUDocumentCache {
   }
 
   /**
-   * Evicts a model from RAM and safely flushes it to IndexedDB if dirty.
+   * Evicts a model from RAM and safely flushes it to IndexedDB if dirty unless `skipPersistence` is set.
    */
-  public evictModel(fileId: string): void {
+  public evictModel(fileId: string, options?: { skipPersistence?: boolean }): void {
     const node = this.lruNodes.get(fileId);
     if (node) {
-      this.evictLRUNode(node);
+      this.evictLRUNode(node, options);
     }
   }
 
@@ -528,6 +572,7 @@ export class LRUDocumentCache {
     this.lruNodes.clear();
     this.head = null;
     this.tail = null;
+    this.totalBytes = 0;
     this.activeFileId = null;
     this.notify();
   }
@@ -544,6 +589,7 @@ export class LRUDocumentCache {
     this.lruNodes.clear();
     this.head = null;
     this.tail = null;
+    this.totalBytes = 0;
     this.activeFileId = null;
     this.notify();
   }
@@ -632,7 +678,10 @@ export class LRUDocumentCache {
   }
 
   private enforceCapacity(): void {
-    while (this.models.size > this.capacity && this.tail) {
+    while (
+      (this.models.size > this.capacity || (this.totalBytes > this.maxBytes && this.models.size > 1)) &&
+      this.tail
+    ) {
       let candidate: LRUNode | null = this.tail;
 
       if (candidate.fileId === this.activeFileId) {
@@ -644,17 +693,32 @@ export class LRUDocumentCache {
     }
   }
 
-  private evictLRUNode(node: LRUNode): void {
+  private evictLRUNode(node: LRUNode, options?: { skipPersistence?: boolean }): void {
     const { fileId } = node;
     const model = this.models.get(fileId);
 
-    if (model?.isDirty && this.persistenceSink) {
-      this.persistenceSink.saveDraft(
-        fileId,
-        model.content,
-        model.projectId || 'workspace-local',
-        model.filePath
-      ).catch(() => {});
+    if (!options?.skipPersistence && model && this.persistenceSink) {
+      if (model.isDirty) {
+        this.persistenceSink
+          .saveDraft(
+            fileId,
+            model.content,
+            model.projectId || 'workspace-local',
+            model.filePath,
+          )
+          .catch(() => {});
+      } else if (model.content.length > 0 && this.persistenceSink.saveProjectFileSnapshot) {
+        this.persistenceSink
+          .saveProjectFileSnapshot({
+            id: fileId,
+            projectId: model.projectId || 'workspace-local',
+            title: model.filePath,
+            content: model.content,
+            filePath: model.filePath,
+            updatedAt: Date.now(),
+          })
+          .catch(() => {});
+      }
     }
 
     this.detach(node);
@@ -662,6 +726,7 @@ export class LRUDocumentCache {
     this.models.delete(fileId);
 
     if (model) {
+      this.totalBytes = Math.max(0, this.totalBytes - model.content.length);
       for (const listener of this.evictionListeners) {
         try {
           listener(fileId, model);

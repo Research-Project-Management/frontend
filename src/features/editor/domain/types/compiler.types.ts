@@ -116,6 +116,56 @@ export interface ErrorExplanationDto {
   latexSnippet?: string;
 }
 
+export interface DiagnosticItemDto {
+  id?: string;
+  file: string;
+  line: number | null;
+  column?: number | null;
+  severity: 'error' | 'warning' | 'info' | 'badbox';
+  category?: 'error' | 'warning' | 'info' | 'badbox';
+  warningSubtype?: 'font' | 'package' | 'citation' | 'reference' | 'badbox';
+  message: string;
+  context?: string;
+  code?: string;
+  explanation?: {
+    code?: string;
+    title: string;
+    summary?: string;
+    explanation?: string;
+    commonCauses?: string[];
+    suggestedFix?: string;
+    exampleSnippet?: string;
+    latexSnippet?: string;
+    documentationUrl?: string;
+  };
+  quickFix?: {
+    description: string;
+    replacementText: string;
+  };
+}
+
+export interface CompilerDiagnostic {
+  file: string;
+  line: number | null;
+  column?: number;
+  message: string;
+  context: string;
+  severity: 'error' | 'warning' | 'info' | 'badbox';
+  category?: 'error' | 'warning' | 'info' | 'badbox';
+  warningSubtype?: 'font' | 'package' | 'citation' | 'reference' | 'badbox';
+  code?: string;
+  suggestion?: string;
+  quickFix?: {
+    description: string;
+    replacementText: string;
+  };
+  explanation?: {
+    title: string;
+    whyItHappened: string;
+    howToFix: string;
+  };
+}
+
 export interface LogEntry {
   message: string;
   file?: string;

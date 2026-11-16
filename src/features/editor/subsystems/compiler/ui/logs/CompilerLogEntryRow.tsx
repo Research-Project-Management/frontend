@@ -24,6 +24,10 @@ export interface CompilerLogEntryRowProps {
   isFixApplied?: boolean;
   onApplyFix?: (entry: LogEntry, fix: AiErrorFixResult) => void;
   onApplyQuickFix?: (entry: LogEntry, fix: { description: string; replacementText: string }) => void;
+  isExplainOpen?: boolean;
+  fetchedExplanation?: ErrorExplanationDto | null;
+  isExplaining?: boolean;
+  onToggleExplain?: (entry: LogEntry) => void;
 }
 
 export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
@@ -37,17 +41,29 @@ export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
   isFixApplied,
   onApplyFix,
   onApplyQuickFix,
+  isExplainOpen,
+  fetchedExplanation,
+  isExplaining,
+  onToggleExplain,
 }: CompilerLogEntryRowProps) {
   const isClickable = Boolean(entry.line);
-  const [isExplainOpen, setIsExplainOpen] = useState(false);
-  const [fetchedExplanation, setFetchedExplanation] = useState<ErrorExplanationDto | null>(null);
-  const [isExplaining, setIsExplaining] = useState(false);
+  const [internalExplainOpen, setInternalExplainOpen] = useState(false);
+  const [internalFetchedExplanation, setInternalFetchedExplanation] = useState<ErrorExplanationDto | null>(null);
+  const [internalIsExplaining, setInternalIsExplaining] = useState(false);
 
-  const activeExplanation = entry.explanation || fetchedExplanation;
+  const effectiveExplainOpen = isExplainOpen ?? internalExplainOpen;
+  const effectiveFetchedExplanation =
+    fetchedExplanation !== undefined ? fetchedExplanation : internalFetchedExplanation;
+  const effectiveIsExplaining = isExplaining ?? internalIsExplaining;
+  const activeExplanation = entry.explanation || effectiveFetchedExplanation;
 
   const handleToggleExplain = async () => {
-    if (isExplainOpen) {
-      setIsExplainOpen(false);
+    if (onToggleExplain) {
+      onToggleExplain(entry);
+      return;
+    }
+    if (internalExplainOpen) {
+      setInternalExplainOpen(false);
       return;
     }
     // Close AI fix if open
@@ -55,18 +71,18 @@ export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
       onSuggestFix(entry);
     }
     if (activeExplanation) {
-      setIsExplainOpen(true);
+      setInternalExplainOpen(true);
       return;
     }
-    setIsExplaining(true);
+    setInternalIsExplaining(true);
     try {
       const exp = await fetchLogEntryExplanation(entry);
       if (exp) {
-        setFetchedExplanation(exp);
-        setIsExplainOpen(true);
+        setInternalFetchedExplanation(exp);
+        setInternalExplainOpen(true);
       }
     } finally {
-      setIsExplaining(false);
+      setInternalIsExplaining(false);
     }
   };
 
@@ -79,7 +95,7 @@ export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
     fixResult ||
     isFixLoading
   );
-  const isExpanded = isExplainOpen || Boolean(fixResult || isFixLoading);
+  const isExpanded = effectiveExplainOpen || Boolean(fixResult || isFixLoading);
 
   return (
     <div
@@ -161,16 +177,16 @@ export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
                   }}
                   className={cn(
                     'min-h-[26px] flex items-center gap-1 text-xs px-2 py-0.5 rounded-md font-medium shrink-0 transition-colors border cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border relative after:absolute after:-inset-1 after:content-[\'\']',
-                    isExplainOpen
+                    effectiveExplainOpen
                       ? 'bg-primary/15 text-primary border-primary/30 font-semibold'
                       : 'bg-muted/60 text-muted-foreground border-border hover:bg-muted hover:text-foreground'
                   )}
                   title="View LaTeX error explanation"
                 >
-                  {isExplaining && (
+                  {effectiveIsExplaining && (
                     <Loader2 className="size-3 animate-spin motion-reduce:animate-none text-primary" />
                   )}
-                  <span>{isExplainOpen ? 'Hide guide' : 'Guide'}</span>
+                  <span>{effectiveExplainOpen ? 'Hide guide' : 'Guide'}</span>
                 </button>
               )}
             </div>
@@ -209,7 +225,7 @@ export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
       </div>
 
       {/* LaTeX Error Guide Expansion Panel (Only if no AI fix active) */}
-      {isExplainOpen && activeExplanation && !fixResult && !isFixLoading && (
+      {effectiveExplainOpen && activeExplanation && !fixResult && !isFixLoading && (
         <LogExplanationPanel explanation={activeExplanation} />
       )}
 

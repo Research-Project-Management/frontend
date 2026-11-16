@@ -74,6 +74,7 @@ export function ProjectSettingsModal() {
   const storeParentPageId = usePageStore((s) => s.parentPageId);
   const activeFilePage = usePageStore((s) => s.activeFilePage);
   const storeProjectId = usePageStore((s) => s.projectId);
+  const spaceId = usePageStore((s) => s.spaceId);
   const { getContent } = useEditorInstance();
   const pdfUrl = useCompileStore((s) => s.pdfUrl);
 
@@ -127,10 +128,14 @@ export function ProjectSettingsModal() {
   const { downloadPdf, exportZip, exportArxiv, isExporting } = useProjectExport();
 
   // GitHub Sync status
+  const storeGithubLink = usePageStore((s) => s.githubLink);
   const { linkData: githubLinkData } = useGithubSync({
     projectId: effectiveProjectId,
     projectTitle,
+    enabled: Boolean(effectiveProjectId && settingsPanelOpen),
+    fetchRepos: false,
   });
+  const effectiveGithubLink = githubLinkData?.link ?? storeGithubLink;
 
   // Query project files to populate Main Document and Bib files
   const { data: projectFiles } = useQuery({
@@ -371,14 +376,15 @@ export function ProjectSettingsModal() {
   // Cache clearing
   const [isClearingCache, setIsClearingCache] = useState(false);
   const handleClearCache = async () => {
-    if (!effectiveProjectId) {
-      toast.info('No active project found to clear cache.', { id: 'clear-cache' });
+    const scratchTargetId = pageId || currentPage?.id || spaceId || effectiveProjectId;
+    if (!scratchTargetId) {
+      toast.info('No active manuscript found to clear cache.', { id: 'clear-cache' });
       return;
     }
 
     setIsClearingCache(true);
     try {
-      const res = await manuscriptService.compiler.cleanAuxFiles(effectiveProjectId);
+      const res = await manuscriptService.compiler.cleanAuxFiles(scratchTargetId);
       if (res && res.success === false) {
         throw new Error('Failed to clear cached files');
       }
@@ -566,18 +572,18 @@ export function ProjectSettingsModal() {
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5">
                       <p className="text-xs font-medium text-foreground truncate">
-                        {githubLinkData?.link?.repoFullName || 'GitHub'}
+                        {effectiveGithubLink?.repoFullName || 'GitHub'}
                       </p>
-                      {githubLinkData?.link?.branch && (
+                      {effectiveGithubLink?.branch && (
                         <span className="text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.2 rounded">
-                          {githubLinkData.link.branch}
+                          {effectiveGithubLink.branch}
                         </span>
                       )}
                     </div>
                     <p className="text-[11px] text-muted-foreground truncate">
-                      {githubLinkData?.link
-                        ? (githubLinkData.link.lastSyncedAt
-                            ? `Last synced: ${new Date(githubLinkData.link.lastSyncedAt).toLocaleString()}`
+                      {effectiveGithubLink
+                        ? (effectiveGithubLink.lastSyncedAt
+                            ? `Last synced: ${new Date(effectiveGithubLink.lastSyncedAt).toLocaleString()}`
                             : 'Linked & ready to sync')
                         : 'Sync repository & commits'}
                     </p>
@@ -589,7 +595,7 @@ export function ProjectSettingsModal() {
                   onClick={() => setCurrentView('github')}
                   className="h-7 text-xs px-2.5 cursor-pointer shrink-0"
                 >
-                  {githubLinkData?.link ? 'Manage' : 'Configure'}
+                  {effectiveGithubLink ? 'Manage' : 'Configure'}
                 </Button>
               </div>
 

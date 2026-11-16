@@ -13,6 +13,7 @@
 
 import type { CompileError } from '@/features/editor/domain/types/compiler.types';
 import { normalizeLatexPath } from '@/features/editor/domain/latex/dependency-graph';
+import { normalizeVirtualPath } from '@/features/editor/domain/document/document-naming';
 import { fixLatexError } from '@/features/editor/domain/ai/ai-error-assist';
 import type { EditorDiagnosticItem } from '@/features/editor/domain/types/diagnostics.types';
 import { type WarningFilterOptions, filterDiagnostics } from '@/features/editor/domain/latex/warning-filter';
@@ -281,6 +282,125 @@ export class DiagnosticsCoordinator {
     this.setBoundedAlias(normAlias, normCanonical);
   }
 
+  private hasIndexedPrefix(prefix: string): boolean {
+    for (const key of this.fileIndex.keys()) {
+      if (key.startsWith(prefix)) return true;
+    }
+    for (const key of this.linterIndex.keys()) {
+      if (key.startsWith(prefix)) return true;
+    }
+    return false;
+  }
+
+  public renamePath(oldPath: string, newPath: string): void {
+    if (!oldPath || !newPath) return;
+    const cleanOld = normalizeVirtualPath(oldPath);
+    const cleanNew = normalizeVirtualPath(newPath);
+    if (!cleanOld || !cleanNew || cleanOld === cleanNew) return;
+
+    const normOldFile = normalizeLatexPath(oldPath);
+    const normNewFile = normalizeLatexPath(newPath);
+    const oldPrefix = `${cleanOld}/`;
+    const isFolderPrefix = this.hasIndexedPrefix(oldPrefix);
+
+    let migrated = false;
+    for (const indexMap of [this.fileIndex, this.linterIndex]) {
+      for (const [key, items] of Array.from(indexMap.entries())) {
+        let nextKey: string | null = null;
+        if (key === cleanOld || (!isFolderPrefix && key === normOldFile)) {
+          nextKey =
+            key === cleanOld && !cleanOld.includes('.') && !indexMap.has(normOldFile)
+              ? cleanNew
+              : normNewFile;
+        } else if (key.startsWith(oldPrefix)) {
+          nextKey = `${cleanNew}/${key.slice(oldPrefix.length)}`;
+        }
+        if (nextKey && nextKey !== key) {
+          indexMap.delete(key);
+          const updatedItems = items.map((item) => ({
+            ...item,
+            file: nextKey,
+            normalizedPath: nextKey,
+          }));
+          const existing = indexMap.get(nextKey);
+          if (existing) {
+            const merged = [...existing, ...updatedItems].sort(
+              (a, b) => a.line - b.line || (a.column ?? 0) - (b.column ?? 0),
+            );
+            indexMap.set(nextKey, merged);
+          } else {
+            indexMap.set(nextKey, updatedItems);
+          }
+          this.registerAlias(nextKey, key);
+          migrated = true;
+        }
+      }
+    }
+
+    for (const [aliasKey, target] of Array.from(this.aliasMap.entries())) {
+      if (target === cleanOld || (!isFolderPrefix && target === normOldFile)) {
+        this.aliasMap.set(aliasKey, normNewFile);
+      } else if (target.startsWith(oldPrefix)) {
+        this.aliasMap.set(aliasKey, `${cleanNew}/${target.slice(oldPrefix.length)}`);
+      }
+    }
+
+    if (!isFolderPrefix || !migrated) {
+      this.registerAlias(newPath, oldPath);
+    }
+
+    this.prevFileSummaryCache.clear();
+    this.prevFolderSummaryCache.clear();
+    this.prevProjectSummaryCache.clear();
+    this.notify(normNewFile, 'clear');
+  }
+
+  public removePath(targetPath: string): void {
+    if (!targetPath) return;
+    const cleanTarget = normalizeVirtualPath(targetPath);
+    if (!cleanTarget) return;
+
+    const normTargetFile = normalizeLatexPath(targetPath);
+    const targetPrefix = `${cleanTarget}/`;
+    const isFolderPrefix = this.hasIndexedPrefix(targetPrefix);
+
+    let removed = false;
+    for (const indexMap of [this.fileIndex, this.linterIndex]) {
+      for (const key of Array.from(indexMap.keys())) {
+        const exactMatch =
+          key === cleanTarget || (!isFolderPrefix && key === normTargetFile);
+        if (exactMatch || key.startsWith(targetPrefix)) {
+          indexMap.delete(key);
+          removed = true;
+        }
+      }
+    }
+
+    let aliasRemoved = false;
+    for (const [aliasKey, target] of Array.from(this.aliasMap.entries())) {
+      const aliasMatches =
+        aliasKey === targetPath ||
+        aliasKey === cleanTarget ||
+        (!isFolderPrefix && aliasKey === normTargetFile) ||
+        aliasKey.startsWith(targetPrefix);
+      const targetMatches =
+        target === cleanTarget ||
+        (!isFolderPrefix && target === normTargetFile) ||
+        target.startsWith(targetPrefix);
+      if (aliasMatches || targetMatches) {
+        this.aliasMap.delete(aliasKey);
+        aliasRemoved = true;
+      }
+    }
+
+    if (removed || aliasRemoved) {
+      this.prevFileSummaryCache.clear();
+      this.prevFolderSummaryCache.clear();
+      this.prevProjectSummaryCache.clear();
+      this.notify(undefined, 'clear');
+    }
+  }
+
   private resolveCanonicalKey(fileIdOrPath: string): string {
     if (this.aliasMap.has(fileIdOrPath)) {
       return this.aliasMap.get(fileIdOrPath)!;
@@ -545,7 +665,9 @@ export class DiagnosticsCoordinator {
   }
 
   public getFolderSummary(folderNameOrPath: string, applyFilter = true): FileDiagnosticsSummary {
-    const rawFolder = folderNameOrPath.trim().replace(/^["']|["']$/g, '').replace(/\\/g, '/').replace(/^\/+/, '').replace(/\/+$/, '');
+    const rawFolder = normalizeVirtualPath(
+      folderNameOrPath.trim().replace(/^["']|["']$/g, ''),
+    );
     if (!rawFolder) return this.getProjectSummary(applyFilter);
 
     const cacheKey = `${rawFolder}:${applyFilter}`;
@@ -562,7 +684,7 @@ export class DiagnosticsCoordinator {
     const allKeys = new Set([...this.fileIndex.keys(), ...this.linterIndex.keys()]);
 
     for (const key of allKeys) {
-      if (key.startsWith(prefix) || key.includes(`/${prefix}`) || key === rawFolder) {
+      if (key.startsWith(prefix) || key === rawFolder) {
         if (!checkedKeys.has(key)) {
           checkedKeys.add(key);
           const fileSummary = this.getFileSummary(key, applyFilter);

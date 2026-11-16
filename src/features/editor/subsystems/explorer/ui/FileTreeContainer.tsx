@@ -10,7 +10,12 @@ import {
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { InlineInput } from './subcomponents/FileTreePrimitives';
-import type { FileTreeNode } from '@/features/editor/subsystems/explorer/model/document-tree';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import type {
+  FileTreeNode,
+  FileTreeFolderNode,
+  FlattenedTreeNode,
+} from '@/features/editor/subsystems/explorer/model/document-tree';
 import { isFolderOpen } from './hooks/useFileTree';
 
 export { isFolderOpen };
@@ -63,6 +68,13 @@ export interface FileTreeContainerProps {
   fileFilter: string;
   setFileFilter: (val: string) => void;
   renderTreeNode: (node: FileTreeNode, depth?: number) => React.ReactNode;
+  flattenedTree?: FlattenedTreeNode[];
+  renderFlatRow?: (item: FlattenedTreeNode) => React.ReactNode;
+  showTopInlineCreate?: boolean;
+  activeFlatIndex?: number;
+  inlineCreateFlatIndex?: number;
+  isFolderExpanded?: (node: FileTreeFolderNode) => boolean;
+  onToggleFolder?: (folderKey: string) => void;
 }
 
 export function FileTreeContainer({
@@ -99,9 +111,188 @@ export function FileTreeContainer({
   fileFilter,
   setFileFilter,
   renderTreeNode,
+  flattenedTree,
+  renderFlatRow,
+  showTopInlineCreate = true,
+  activeFlatIndex,
+  inlineCreateFlatIndex,
+  isFolderExpanded,
+  onToggleFolder,
 }: FileTreeContainerProps) {
+  const parentRef = React.useRef<HTMLDivElement>(null);
+  const isVirtualized = Boolean(flattenedTree && flattenedTree.length >= 35 && renderFlatRow);
+  const lastRevealedIndexRef = React.useRef<number>(-1);
+  const [focusedIndex, setFocusedIndex] = React.useState<number>(-1);
+
+  const rowVirtualizer = useVirtualizer({
+    count: flattenedTree?.length ?? 0,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 30,
+    overscan: 8,
+    enabled: isVirtualized,
+  });
+
+  // Auto-reveal newly activated file inside the virtualized viewport
+  React.useEffect(() => {
+    let cancelled = false;
+    if (typeof activeFlatIndex === 'number' && activeFlatIndex >= 0) {
+      if (activeFlatIndex !== lastRevealedIndexRef.current) {
+        lastRevealedIndexRef.current = activeFlatIndex;
+        if (isVirtualized) {
+          const el = parentRef.current;
+          if (el && el.clientHeight > 0) {
+            const itemTop = activeFlatIndex * 30;
+            const itemBottom = itemTop + 30;
+            if (itemTop >= el.scrollTop && itemBottom <= el.scrollTop + el.clientHeight) {
+              return;
+            }
+          }
+          queueMicrotask(() => {
+            if (!cancelled) {
+              rowVirtualizer.scrollToIndex(activeFlatIndex, { align: 'auto' });
+            }
+          });
+        }
+      }
+    } else {
+      lastRevealedIndexRef.current = -1;
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [activeFlatIndex, isVirtualized, rowVirtualizer]);
+
+  // Scroll inline-create row (subfolder or top-of-tree) into view when initiated
+  React.useEffect(() => {
+    if (!isCreatingFile && !isCreatingFolder) return;
+    let cancelled = false;
+    if (typeof inlineCreateFlatIndex === 'number' && inlineCreateFlatIndex >= 0) {
+      if (isVirtualized) {
+        const el = parentRef.current;
+        if (el && el.clientHeight > 0) {
+          const itemTop = inlineCreateFlatIndex * 30;
+          const itemBottom = itemTop + 30;
+          if (itemTop >= el.scrollTop && itemBottom <= el.scrollTop + el.clientHeight) {
+            return;
+          }
+        }
+        queueMicrotask(() => {
+          if (!cancelled) {
+            rowVirtualizer.scrollToIndex(inlineCreateFlatIndex, { align: 'auto' });
+          }
+        });
+      }
+    } else if (showTopInlineCreate) {
+      parentRef.current?.scrollTo?.({ top: 0, behavior: 'smooth' });
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isCreatingFile,
+    isCreatingFolder,
+    inlineCreateFlatIndex,
+    showTopInlineCreate,
+    isVirtualized,
+    rowVirtualizer,
+  ]);
+
+  const focusRowAtIndex = React.useCallback(
+    (nextIdx: number) => {
+      if (!flattenedTree || flattenedTree.length === 0) return;
+      const clamped = Math.max(0, Math.min(flattenedTree.length - 1, nextIdx));
+      setFocusedIndex(clamped);
+      if (isVirtualized) {
+        rowVirtualizer.scrollToIndex(clamped, { align: 'auto' });
+      }
+      requestAnimationFrame(() => {
+        const wrapper = parentRef.current?.querySelector<HTMLElement>(
+          `[data-tree-flat-index="${clamped}"]`,
+        );
+        const target =
+          wrapper?.querySelector<HTMLElement>('[role="button"][tabindex="0"]') ?? wrapper;
+        if (target) {
+          target.focus({ preventScroll: isVirtualized });
+        }
+      });
+    },
+    [flattenedTree, isVirtualized, rowVirtualizer],
+  );
+
+  const handleTreeKeyDown = React.useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (!flattenedTree || flattenedTree.length === 0) return;
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+      const fallbackIdx =
+        typeof activeFlatIndex === 'number' && activeFlatIndex >= 0 ? activeFlatIndex : 0;
+      const currentIdx =
+        focusedIndex >= 0 && focusedIndex < flattenedTree.length ? focusedIndex : fallbackIdx;
+
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          focusRowAtIndex(currentIdx + 1);
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          focusRowAtIndex(currentIdx - 1);
+          break;
+        case 'Home':
+          e.preventDefault();
+          focusRowAtIndex(0);
+          break;
+        case 'End':
+          e.preventDefault();
+          focusRowAtIndex(flattenedTree.length - 1);
+          break;
+        case 'ArrowRight': {
+          const item = flattenedTree[currentIdx];
+          if (item?.node.type === 'folder' && !item.inlineCreateKind) {
+            e.preventDefault();
+            const folderKey = item.node.fullPath || item.node.path || item.node.name;
+            if (isFolderExpanded && !isFolderExpanded(item.node)) {
+              onToggleFolder?.(folderKey);
+            } else if (
+              currentIdx + 1 < flattenedTree.length &&
+              flattenedTree[currentIdx + 1].depth > item.depth
+            ) {
+              focusRowAtIndex(currentIdx + 1);
+            }
+          }
+          break;
+        }
+        case 'ArrowLeft': {
+          const item = flattenedTree[currentIdx];
+          if (!item) break;
+          if (item.node.type === 'folder' && !item.inlineCreateKind && isFolderExpanded?.(item.node)) {
+            e.preventDefault();
+            const folderKey = item.node.fullPath || item.node.path || item.node.name;
+            onToggleFolder?.(folderKey);
+          } else if (item.depth > 0) {
+            e.preventDefault();
+            for (let p = currentIdx - 1; p >= 0; p--) {
+              const candidate = flattenedTree[p];
+              if (candidate.node.type === 'folder' && candidate.depth === item.depth - 1) {
+                focusRowAtIndex(p);
+                break;
+              }
+            }
+          }
+          break;
+        }
+        default:
+          break;
+      }
+    },
+    [flattenedTree, activeFlatIndex, focusedIndex, focusRowAtIndex, isFolderExpanded, onToggleFolder],
+  );
+
   return (
     <div
+      ref={parentRef}
+      onKeyDown={handleTreeKeyDown}
       className="relative min-h-0 flex-1 overflow-y-auto px-2 pt-2.5 pb-3 thin-scrollbar space-y-0.5 border-b border-border bg-surface"
       onDragEnter={(e) => {
         if (!hasInternalDragType(e.dataTransfer)) {
@@ -138,8 +329,8 @@ export function FileTreeContainer({
         </div>
       )}
 
-      {/* ── Inline create inputs ────────────────────────────────────────── */}
-      {isCreatingFile && (
+      {/* ── Inline create inputs (Top-level fallback) ───────────────────── */}
+      {showTopInlineCreate && isCreatingFile && (
         <InlineInput
           icon={FileCode2}
           iconColor="text-foreground"
@@ -151,7 +342,7 @@ export function FileTreeContainer({
           isPending={isCreateFilePending}
         />
       )}
-      {isCreatingFolder && (
+      {showTopInlineCreate && isCreatingFolder && (
         <InlineInput
           icon={Folder}
           iconColor="text-foreground"
@@ -227,6 +418,47 @@ export function FileTreeContainer({
                 description="Create your first document or upload files to begin editing."
               />
             </div>
+          ) : isVirtualized && flattenedTree && renderFlatRow ? (
+            <div
+              style={{
+                height: `${rowVirtualizer.getTotalSize()}px`,
+                width: '100%',
+                position: 'relative',
+              }}
+            >
+              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                const item = flattenedTree[virtualRow.index];
+                if (!item) return null;
+                return (
+                  <div
+                    key={item.node.id}
+                    data-index={virtualRow.index}
+                    data-tree-flat-index={virtualRow.index}
+                    ref={rowVirtualizer.measureElement}
+                    onFocusCapture={() => setFocusedIndex(virtualRow.index)}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      transform: `translateY(${virtualRow.start}px)`,
+                    }}
+                  >
+                    {renderFlatRow(item)}
+                  </div>
+                );
+              })}
+            </div>
+          ) : flattenedTree && renderFlatRow ? (
+            flattenedTree.map((item, idx) => (
+              <div
+                key={item.node.id}
+                data-tree-flat-index={idx}
+                onFocusCapture={() => setFocusedIndex(idx)}
+              >
+                {renderFlatRow(item)}
+              </div>
+            ))
           ) : (
             displayTree.map((node) => renderTreeNode(node, 0))
           )}

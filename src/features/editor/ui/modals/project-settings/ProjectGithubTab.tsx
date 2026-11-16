@@ -74,6 +74,7 @@ export function ProjectGithubTab({ projectId, projectTitle }: ProjectGithubTabPr
     projectId,
     projectTitle,
     enabled: isGithubConnected,
+    fetchRepos: isGithubConnected,
     onLinkSuccess: () => setShowChangeRepo(false),
     onCreateSuccess: () => setIsCreatingNew(false),
   });

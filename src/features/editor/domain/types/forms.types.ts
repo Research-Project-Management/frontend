@@ -18,7 +18,15 @@ export const newFileModalSchema = z.object({
     .trim()
     .min(1, 'File name is required')
     .max(128, 'File name is too long')
-    .regex(/^[^<>:"/\\|?*]+$/, 'File name cannot contain invalid characters (<>:"/\\|?*)'),
+    .regex(/^[^<>:"\\|?*]+$/, 'File name cannot contain invalid characters (<>:"\\|?*)')
+    .refine(
+      (val) =>
+        val.split('/').every((seg) => {
+          const s = seg.trim();
+          return s.length > 0 && s !== '.' && s !== '..';
+        }),
+      'File path cannot contain empty segments or relative traversal (.) / (..)',
+    ),
 });
 
 export type NewFileModalFormValues = z.infer<typeof newFileModalSchema>;

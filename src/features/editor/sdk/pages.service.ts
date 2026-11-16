@@ -30,6 +30,10 @@ export * from './pages/base';
 export * from './pages/types';
 export * from './pages/docstore.client';
 export * from './pages/doc-mapper';
+export {
+  mapStructureNodesToStorageItems,
+  mapStructureNodesToPageFiles,
+} from './pages/structure.client';
 export * from './realtime/yjs-socket-provider';
 export * from './archive/archive-export';
 export * from './archive/archive-import';
@@ -74,9 +78,19 @@ export const collaborationService = {
   },
 };
 
-export const listAuxFiles = (projectId: string) => manuscriptService.compiler.listAuxFiles(projectId);
-export const downloadAuxFileUrl = (projectId: string, filename: string) => manuscriptService.compiler.downloadAuxFileUrl(projectId, filename);
-export const downloadAllArtifactsZipUrl = (projectId: string) => manuscriptService.compiler.downloadAllArtifactsZipUrl(projectId);
+export const listAuxFiles = (
+  pageOrProjectId: string,
+  options?: { isPageScoped?: boolean },
+) => manuscriptService.compiler.listAuxFiles(pageOrProjectId, options);
+export const downloadAuxFileUrl = (
+  pageOrProjectId: string,
+  filename: string,
+  options?: { isPageScoped?: boolean },
+) => manuscriptService.compiler.downloadAuxFileUrl(pageOrProjectId, filename, options);
+export const downloadAllArtifactsZipUrl = (
+  pageOrProjectId: string,
+  options?: { isPageScoped?: boolean },
+) => manuscriptService.compiler.downloadAllArtifactsZipUrl(pageOrProjectId, options);
 export { suggestLatexFix } from './pages/ai.client';
 export const fetchWordCount = async (
   source: string,

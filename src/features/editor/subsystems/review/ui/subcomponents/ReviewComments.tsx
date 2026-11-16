@@ -192,6 +192,11 @@ export const ReplyForm = React.memo(function ReplyForm({
   );
 });
 
+const REVIEW_CARD_CONTAINMENT_STYLE: React.CSSProperties = {
+  contentVisibility: 'auto',
+  containIntrinsicSize: 'auto 140px',
+};
+
 // ── Comment Card ────────────────────────────────────────────────────────────
 
 export interface CommentCardProps {
@@ -254,6 +259,7 @@ export const CommentCard = React.memo(function CommentCard({
   return (
     <div
       id={`comment-${comment.id}`}
+      style={REVIEW_CARD_CONTAINMENT_STYLE}
       className={cn(
         'rounded-md border p-3 bg-card text-card-foreground mb-2.5 transition-colors duration-150',
         isHighlighted

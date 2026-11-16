@@ -209,6 +209,33 @@ export function useFileTree({
     setExpandedFolders(new Set());
   }, []);
 
+  const expandPaths = useCallback((folderPaths: string[]) => {
+    if (!folderPaths || folderPaths.length === 0) return;
+    setExpandedFolders((prev) => {
+      let mutated = false;
+      let next: Set<string> | null = null;
+      for (const rawPath of folderPaths) {
+        if (!rawPath) continue;
+        const cleanKey =
+          normalizeVirtualPath(
+            rawPath.startsWith('folder:')
+              ? rawPath.slice('folder:'.length)
+              : rawPath,
+          ) || rawPath;
+        if (
+          !prev.has(cleanKey) &&
+          !prev.has(rawPath) &&
+          !prev.has(`folder:${cleanKey}`)
+        ) {
+          if (!next) next = new Set(prev);
+          next.add(cleanKey);
+          mutated = true;
+        }
+      }
+      return mutated && next ? next : prev;
+    });
+  }, []);
+
   const isFolderExpanded = useCallback(
     (node: { id: string; name: string; fullPath?: string; path?: string }): boolean => {
       if (fileFilter.trim()) return true;
@@ -224,6 +251,7 @@ export function useFileTree({
     toggleFolder,
     expandAll,
     collapseAll,
+    expandPaths,
     isFolderExpanded,
   };
 }

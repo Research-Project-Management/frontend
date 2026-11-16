@@ -120,14 +120,12 @@ export function LayoutSwitcher() {
     detachPdfPreview(params?.projectId, pdfUrl);
   };
 
-  const handleToggleFocusMode = toggleFocusMode;
-
   // Keyboard shortcut: Ctrl + Shift + M for Focus Mode
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'M' || e.key === 'm')) {
         e.preventDefault();
-        handleToggleFocusMode();
+        toggleFocusMode();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -248,7 +246,7 @@ export function LayoutSwitcher() {
 
         {/* 5. Focus mode */}
         <DropdownMenuItem
-          onClick={handleToggleFocusMode}
+          onClick={toggleFocusMode}
           className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-sm text-foreground hover:bg-muted focus:bg-muted focus:text-foreground cursor-pointer transition-colors text-xs font-medium select-none"
         >
           <div className="size-4 flex items-center justify-center shrink-0">

@@ -376,4 +376,61 @@ describe('WorkspaceCoordinator Deep Module (Ports & Seams)', () => {
       expect(mockService.updateFileContent).not.toHaveBeenCalled();
     });
   });
+
+  describe('diagnostics & unopened descendant cascades', () => {
+    it('migrates diagnostics and cleans unopened folder descendants on rename and delete', async () => {
+      diagnosticsCoordinator.clear();
+      diagnosticsCoordinator.ingestCompilerErrors(
+        [
+          { line: 4, message: 'Undefined macro', file: 'sections/intro.tex', severity: 'error' },
+        ],
+        'main.tex',
+      );
+
+      coordinator.syncStructureItems(
+        [
+          {
+            id: 'node-folder-sec',
+            filename: 'sections',
+            path: 'sections',
+            isFolder: true,
+            nodeType: 'FOLDER',
+          },
+          {
+            id: 'node-intro',
+            docId: 'doc-intro',
+            filename: 'intro.tex',
+            path: 'sections/intro.tex',
+            isFolder: false,
+            nodeType: 'DOC',
+          },
+          {
+            id: 'node-unopened',
+            docId: 'doc-unopened',
+            filename: 'appendix.tex',
+            path: 'sections/appendix.tex',
+            isFolder: false,
+            nodeType: 'DOC',
+          },
+        ],
+        'proj-test',
+      );
+      latexDependencyGraph.parseAndRegister('sections/appendix.tex', '\\section{App}', 'doc-unopened');
+
+      const renamed = await coordinator.renameItem({
+        itemId: 'node-folder-sec',
+        oldName: 'sections',
+        newName: 'chapters',
+      });
+      expect(renamed).toBe(true);
+      expect(diagnosticsCoordinator.getFolderSummary('sections').total).toBe(0);
+      expect(diagnosticsCoordinator.getFolderSummary('chapters').errorCount).toBe(1);
+      expect(latexDependencyGraph.getNode('sections/appendix.tex')).toBeUndefined();
+
+      const deleted = await coordinator.deleteFile('node-intro');
+      expect(deleted).toBe(true);
+      expect(diagnosticsCoordinator.getFileSummary('chapters/intro.tex').total).toBe(0);
+      expect(diagnosticsCoordinator.getFolderSummary('chapters').total).toBe(0);
+    });
+  });
 });

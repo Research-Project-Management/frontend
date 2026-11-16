@@ -448,6 +448,21 @@ export class SessionCoordinator {
       if (dirtyModels.length > 0) {
         e.preventDefault();
         e.returnValue = '';
+        const activeId = lruDocumentCache.getActiveFileId();
+        const prioritized = activeId
+          ? [
+              ...dirtyModels.filter((m) => m.fileId === activeId),
+              ...dirtyModels.filter((m) => m.fileId !== activeId),
+            ]
+          : dirtyModels;
+        for (const m of prioritized.slice(0, 2)) {
+          draftStorageService.saveEmergencyUnloadDraft(
+            m.fileId,
+            m.content,
+            this.resolveEffectiveProjectId(m.projectId),
+            m.filePath,
+          );
+        }
         this.flushPendingDrafts();
         void this.flushAllPending();
         return '';
@@ -513,10 +528,7 @@ export class SessionCoordinator {
       return;
     }
 
-    // 2. Mark dirty in compile store for immediate incremental compilation inclusion
-    useCompileStore.getState().markDirty(fileId, content);
-
-    // 3. Local crash resilience backup (Tier 2 persistence)
+    // 2. Local crash resilience backup (Tier 2 persistence; compile store already updated via LRU subscription)
     const activeProjectId = this.resolveEffectiveProjectId(currentModel?.projectId);
     this.saveDraftSnapshot(fileId, content, activeProjectId);
 
@@ -965,9 +977,10 @@ export class SessionCoordinator {
     this.transitionFsm(fileId, { type: 'EVICT' });
     this.fsmContexts.delete(fileId);
     lruDocumentCache.markClean(fileId);
-    lruDocumentCache.evictModel(fileId);
+    lruDocumentCache.evictModel(fileId, { skipPersistence: true });
     useCompileStore.getState().clearDirty(fileId);
     this.clearDraftSnapshot(fileId);
+    void draftStorageService.clearProjectFileSnapshot(fileId);
     this.lastCompiledContentMap.delete(fileId);
     this.realtimeConnected.delete(fileId);
     this.draftRecovery.evictFile(fileId);

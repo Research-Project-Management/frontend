@@ -321,7 +321,10 @@ export const TexFileRow = React.memo(function TexFileRow({
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>{rowContent}</ContextMenuTrigger>
-      <ContextMenuContent className="w-56 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none text-13">
+      <ContextMenuContent
+        onCloseAutoFocus={(e) => e.preventDefault()}
+        className="w-56 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none text-13"
+      >
         {!isMain ? (
           <ContextMenuItem
             onClick={(e) => {

@@ -14,13 +14,14 @@
  * - Bottom Bar: [Clear cached files] + [Other logs and files ▴]
  */
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import {
   ChevronRight,
   ChevronLeft,
 } from 'lucide-react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { toast } from 'sonner';
-import { useLogViewerActions } from './hooks/useLogViewerActions';
+import { fetchLogEntryExplanation, useLogViewerActions } from './hooks/useLogViewerActions';
 import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/components/ui/button';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
@@ -40,7 +41,10 @@ import {
   cacheBackendParsedLog,
   DEFAULT_OUTPUT_FILES,
 } from '@/features/editor/domain/latex/compiler-logs-parser';
-import { DEFAULT_MAIN_FILE } from '@/features/editor/domain/constants/editor.constants';
+import {
+  DEFAULT_MAIN_FILE,
+  COMPILER_LOGS_VIRTUAL_THRESHOLD,
+} from '@/features/editor/domain/constants/editor.constants';
 import { filterDiagnostics } from '@/features/editor/domain/latex/warning-filter';
 import { CompilerLogEntryRow } from './logs/CompilerLogEntryRow';
 import { CompilerLogsHeader } from './logs/CompilerLogsHeader';
@@ -62,7 +66,9 @@ export function CompilerLogs({
   onStopCompilation,
   onCompile,
 }: CompilerLogsProps & { onStopCompilation?: () => void }) {
-  const projectId = usePageStore((s) => s.projectId);
+  const scratchTargetId = usePageStore(
+    (s) => s.rootPageId || s.parentPageId || s.currentPage?.id || s.spaceId || s.projectId,
+  );
   const compileStatus = useCompileStore((s) => s.compileStatus);
   const storeParsedLog = useCompileStore((s) => s.parsedLog);
   const storeDiagnostics = useCompileStore((s) => s.compileDiagnostics);
@@ -164,7 +170,7 @@ export function CompilerLogs({
     downloadAllArtifacts,
   } = useLogViewerActions({
     engine,
-    projectId,
+    projectId: scratchTargetId,
     onCompile,
     onClearCacheAndCompile: handleClearCacheAndCompile,
   });
@@ -179,9 +185,9 @@ export function CompilerLogs({
   // Auxiliary files list
   const [auxFiles, setAuxFiles] = useState<AuxFileItem[]>([]);
   useEffect(() => {
-    if (projectId) {
+    if (scratchTargetId) {
       let isMounted = true;
-      listAuxFiles(projectId)
+      listAuxFiles(scratchTargetId)
         .then((files) => {
           if (isMounted) setAuxFiles(files);
         })
@@ -195,7 +201,7 @@ export function CompilerLogs({
         isMounted = false;
       };
     }
-  }, [projectId]);
+  }, [scratchTargetId]);
 
   const outputFiles = useMemo(() => {
     if (auxFiles && auxFiles.length > 0) {
@@ -294,6 +300,152 @@ export function CompilerLogs({
     });
   }, [applyAiFix, getEntryKey]);
 
+  // Lifted explanation drawer state so virtualized row unmounts never lose open state or fetched guides
+  const [explainState, setExplainState] = useState<
+    Record<string, { open: boolean; loading: boolean; explanation?: ErrorExplanationDto | null }>
+  >({});
+
+  const getExplainKey = useCallback(
+    (type: 'error' | 'warning' | 'badbox', entry: LogEntry, index: number) =>
+      `${type}-${getEntryKey(entry, index)}`,
+    [getEntryKey],
+  );
+
+  const handleToggleExplain = useCallback(
+    async (type: 'error' | 'warning' | 'badbox', entry: LogEntry, index: number) => {
+      const explainKey = getExplainKey(type, entry, index);
+      const current = explainState[explainKey];
+      if (current?.open) {
+        setExplainState((prev) => ({
+          ...prev,
+          [explainKey]: { ...prev[explainKey], open: false, loading: false },
+        }));
+        return;
+      }
+
+      if (type === 'error') {
+        const aiKey = getEntryKey(entry, index);
+        if (fixState[aiKey]?.result) {
+          void handleSuggestFix(entry, index);
+        }
+      }
+
+      const cachedExp = entry.explanation || current?.explanation;
+      if (cachedExp) {
+        setExplainState((prev) => ({
+          ...prev,
+          [explainKey]: { open: true, loading: false, explanation: cachedExp },
+        }));
+        return;
+      }
+
+      setExplainState((prev) => ({
+        ...prev,
+        [explainKey]: { ...prev[explainKey], open: false, loading: true },
+      }));
+
+      try {
+        const exp = await fetchLogEntryExplanation(entry);
+        setExplainState((prev) => ({
+          ...prev,
+          [explainKey]: {
+            open: Boolean(exp),
+            loading: false,
+            explanation: exp ?? null,
+          },
+        }));
+      } catch {
+        setExplainState((prev) => ({
+          ...prev,
+          [explainKey]: { ...prev[explainKey], open: false, loading: false },
+        }));
+      }
+    },
+    [explainState, fixState, getEntryKey, getExplainKey, handleSuggestFix],
+  );
+
+  const visibleRows = useMemo(() => {
+    const rows: Array<{
+      rowKey: string;
+      domId: string;
+      type: 'error' | 'warning' | 'badbox';
+      entry: LogEntry;
+      categoryIndex: number;
+    }> = [];
+
+    if (activeTab === 'all' || activeTab === 'errors') {
+      parsed.errors.forEach((entry: LogEntry, i: number) => {
+        rows.push({
+          rowKey: `err-${i}`,
+          domId: `log-entry-err-${i}`,
+          type: 'error',
+          entry,
+          categoryIndex: i,
+        });
+      });
+    }
+    if (activeTab === 'all' || activeTab === 'warnings') {
+      displayedWarnings.forEach((entry: LogEntry, i: number) => {
+        rows.push({
+          rowKey: `warn-${i}`,
+          domId: `log-entry-warn-${i}`,
+          type: 'warning',
+          entry,
+          categoryIndex: i,
+        });
+      });
+    }
+    if (activeTab === 'all' || activeTab === 'info') {
+      displayedBadBoxes.forEach((entry: LogEntry, i: number) => {
+        rows.push({
+          rowKey: `info-${i}`,
+          domId: `log-entry-info-${i}`,
+          type: 'badbox',
+          entry,
+          categoryIndex: i,
+        });
+      });
+    }
+    return rows;
+  }, [activeTab, parsed.errors, displayedWarnings, displayedBadBoxes]);
+
+  const logsScrollRef = useRef<HTMLDivElement | null>(null);
+  const isVirtualized = visibleRows.length >= COMPILER_LOGS_VIRTUAL_THRESHOLD;
+  const rowVirtualizer = useVirtualizer({
+    count: visibleRows.length,
+    getScrollElement: () => logsScrollRef.current,
+    estimateSize: () => 68,
+    overscan: 8,
+    enabled: isVirtualized,
+  });
+
+  const scrollToErrorEntry = useCallback(
+    (errorIdx: number, block: ScrollLogicalPosition = 'nearest') => {
+      if (errorIdx < 0 || errorIdx >= parsed.errors.length) return;
+      if (activeTab !== 'all' && activeTab !== 'errors') {
+        setActiveTab('errors');
+      }
+      if (isVirtualized) {
+        rowVirtualizer.scrollToIndex(errorIdx, {
+          align: block === 'center' ? 'center' : 'auto',
+        });
+        requestAnimationFrame(() => {
+          const el = document.getElementById(`log-entry-err-${errorIdx}`);
+          el?.scrollIntoView?.({ behavior: 'smooth', block });
+        });
+        return;
+      }
+      const el = document.getElementById(`log-entry-err-${errorIdx}`);
+      el?.scrollIntoView?.({ behavior: 'smooth', block });
+    },
+    [activeTab, isVirtualized, parsed.errors.length, rowVirtualizer],
+  );
+
+  const scrollToErrorEntryRef = useRef(scrollToErrorEntry);
+  useEffect(() => {
+    scrollToErrorEntryRef.current = scrollToErrorEntry;
+  }, [scrollToErrorEntry]);
+
   // Listen for editor:suggest-fix command from editor CodeMirror gutter or tooltip
   useEffect(() => {
     let scrollTimer: ReturnType<typeof setTimeout> | null = null;
@@ -311,8 +463,7 @@ export function CompilerLogs({
       if (targetIdx !== -1) {
         if (scrollTimer) clearTimeout(scrollTimer);
         scrollTimer = setTimeout(() => {
-          const el = document.getElementById(`log-entry-err-${targetIdx}`);
-          el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          scrollToErrorEntryRef.current(targetIdx, 'center');
         }, 120);
       }
     });
@@ -347,8 +498,7 @@ export function CompilerLogs({
     setCurrentErrorIdx(nextIdx);
     const err = parsed.errors[nextIdx];
     handleEntryClick(err);
-    const el = document.getElementById(`log-entry-err-${nextIdx}`);
-    el?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
+    scrollToErrorEntryRef.current(nextIdx, 'nearest');
   }, [currentErrorIdx, parsed.errors, handleEntryClick]);
 
   const handlePrevError = useCallback(() => {
@@ -357,8 +507,7 @@ export function CompilerLogs({
     setCurrentErrorIdx(prevIdx);
     const err = parsed.errors[prevIdx];
     handleEntryClick(err);
-    const el = document.getElementById(`log-entry-err-${prevIdx}`);
-    el?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
+    scrollToErrorEntryRef.current(prevIdx, 'nearest');
   }, [currentErrorIdx, parsed.errors, handleEntryClick]);
 
   useEffect(() => {
@@ -381,8 +530,7 @@ export function CompilerLogs({
     const unsubStepped = editorCommandBus.subscribe('editor:error-stepped', (cmd) => {
       if (cmd.errorIndex !== undefined && cmd.errorIndex >= 0) {
         setCurrentErrorIdx(cmd.errorIndex);
-        const el = document.getElementById(`log-entry-err-${cmd.errorIndex}`);
-        el?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
+        scrollToErrorEntryRef.current(cmd.errorIndex, 'nearest');
       }
     });
 
@@ -390,6 +538,51 @@ export function CompilerLogs({
       unsubStepped();
     };
   }, []);
+
+  const renderDiagnosticRow = (row: (typeof visibleRows)[number]) => {
+    const { entry, categoryIndex, type, rowKey, domId } = row;
+    const explainKey = getExplainKey(type, entry, categoryIndex);
+    const expState = explainState[explainKey];
+
+    if (type === 'error') {
+      const aiKey = getEntryKey(entry, categoryIndex);
+      const aiState = fixState[aiKey];
+      return (
+        <CompilerLogEntryRow
+          key={rowKey}
+          id={domId}
+          type="error"
+          entry={entry}
+          onClick={() => handleEntryClick(entry)}
+          onSuggestFix={() => handleSuggestFix(entry, categoryIndex)}
+          isFixLoading={aiState?.loading}
+          fixResult={aiState?.result}
+          isFixApplied={aiState?.applied}
+          onApplyFix={(_entry, fix) => handleApplyFix(entry, fix, categoryIndex)}
+          onApplyQuickFix={handleApplyQuickFix}
+          isExplainOpen={Boolean(expState?.open)}
+          fetchedExplanation={expState?.explanation ?? null}
+          isExplaining={Boolean(expState?.loading)}
+          onToggleExplain={() => void handleToggleExplain('error', entry, categoryIndex)}
+        />
+      );
+    }
+
+    return (
+      <CompilerLogEntryRow
+        key={rowKey}
+        id={domId}
+        type={type}
+        entry={entry}
+        onClick={() => handleEntryClick(entry)}
+        onApplyQuickFix={handleApplyQuickFix}
+        isExplainOpen={Boolean(expState?.open)}
+        fetchedExplanation={expState?.explanation ?? null}
+        isExplaining={Boolean(expState?.loading)}
+        onToggleExplain={() => void handleToggleExplain(type, entry, categoryIndex)}
+      />
+    );
+  };
 
   const totalLogsCount = parsed.errors.length + displayedWarnings.length + displayedBadBoxes.length;
 
@@ -450,9 +643,9 @@ export function CompilerLogs({
           />
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto bg-background divide-y divide-border/60 font-mono select-text">
+        <div className="flex-1 min-h-0 flex flex-col bg-background font-mono select-text">
           {/* Collapsible: > Raw logs accordion (Overleaf 1:1 Match) */}
-          <div id="raw-latex-logs" className="bg-background">
+          <div id="raw-latex-logs" className="shrink-0 border-b border-border/60 bg-background">
             <div className="flex items-center px-3 py-2 hover:bg-muted/60 transition-colors">
               <button
                 type="button"
@@ -475,58 +668,39 @@ export function CompilerLogs({
           </div>
 
           {/* Diagnostic Entries List */}
-          <div className="bg-background">
-            {/* Errors */}
-            {(activeTab === 'all' || activeTab === 'errors') &&
-              parsed.errors.map((e: LogEntry, i: number) => {
-                const key = getEntryKey(e, i);
-                const state = fixState[key];
-                return (
-                  <CompilerLogEntryRow
-                    key={`err-${i}`}
-                    id={`log-entry-err-${i}`}
-                    type="error"
-                    entry={e}
-                    onClick={() => handleEntryClick(e)}
-                    onSuggestFix={() => handleSuggestFix(e, i)}
-                    isFixLoading={state?.loading}
-                    fixResult={state?.result}
-                    isFixApplied={state?.applied}
-                    onApplyFix={(_entry, fix) => handleApplyFix(e, fix, i)}
-                    onApplyQuickFix={handleApplyQuickFix}
-                  />
-                );
-              })}
-
-            {/* Warnings */}
-            {(activeTab === 'all' || activeTab === 'warnings') &&
-              displayedWarnings.map((e: LogEntry, i: number) => {
-                return (
-                  <CompilerLogEntryRow
-                    key={`warn-${i}`}
-                    id={`log-entry-warn-${i}`}
-                    type="warning"
-                    entry={e}
-                    onClick={() => handleEntryClick(e)}
-                    onApplyQuickFix={handleApplyQuickFix}
-                  />
-                );
-              })}
-
-            {/* Info / Bad boxes */}
-            {(activeTab === 'all' || activeTab === 'info') &&
-              displayedBadBoxes.map((e: LogEntry, i: number) => {
-                return (
-                  <CompilerLogEntryRow
-                    key={`info-${i}`}
-                    id={`log-entry-info-${i}`}
-                    type="badbox"
-                    entry={e}
-                    onClick={() => handleEntryClick(e)}
-                    onApplyQuickFix={handleApplyQuickFix}
-                  />
-                );
-              })}
+          <div ref={logsScrollRef} className="flex-1 min-h-0 overflow-y-auto bg-background">
+            {isVirtualized ? (
+              <div
+                style={{
+                  height: `${rowVirtualizer.getTotalSize()}px`,
+                  width: '100%',
+                  position: 'relative',
+                }}
+              >
+                {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                  const row = visibleRows[virtualRow.index];
+                  if (!row) return null;
+                  return (
+                    <div
+                      key={row.rowKey}
+                      data-index={virtualRow.index}
+                      ref={rowVirtualizer.measureElement}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        transform: `translateY(${virtualRow.start}px)`,
+                      }}
+                    >
+                      {renderDiagnosticRow(row)}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              visibleRows.map((row) => renderDiagnosticRow(row))
+            )}
 
             {/* Empty States */}
             {activeTab === 'errors' && parsed.errors.length === 0 && (

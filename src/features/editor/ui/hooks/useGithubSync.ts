@@ -16,6 +16,7 @@ import {
   sessionCoordinator,
   documentFacade,
   getAllRegisteredEngines,
+  usePageStore,
 } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/subsystems/explorer';
 import { useCompileStore } from '@/features/editor/subsystems/compiler';
@@ -32,6 +33,7 @@ export interface UseGithubSyncOptions {
   projectId?: string;
   projectTitle?: string;
   enabled?: boolean;
+  fetchRepos?: boolean;
   onLinkSuccess?: () => void;
   onCreateSuccess?: () => void;
 }
@@ -40,6 +42,7 @@ export function useGithubSync({
   projectId,
   projectTitle,
   enabled = true,
+  fetchRepos = false,
   onLinkSuccess,
   onCreateSuccess,
 }: UseGithubSyncOptions = {}) {
@@ -56,7 +59,7 @@ export function useGithubSync({
   const reposQuery = useQuery({
     queryKey: githubSyncKeys.repos(),
     queryFn: () => integrationService.listGithubRepos(),
-    enabled,
+    enabled: Boolean(enabled && fetchRepos),
     retry: false,
     staleTime: 60_000,
     gcTime: 5 * 60_000,
@@ -73,6 +76,12 @@ export function useGithubSync({
     },
     onSuccess: (data) => {
       toast.success(`Successfully linked project to ${data.repoFullName}`, { id: 'github-link' });
+      usePageStore.getState().setGithubLink({
+        id: data.linkId,
+        repoFullName: data.repoFullName,
+        branch: data.branch,
+        lastSyncedAt: null,
+      });
       linkQuery.refetch();
       queryClient.invalidateQueries({ queryKey: githubSyncKeys.link(projectId) });
       onLinkSuccess?.();
@@ -106,6 +115,12 @@ export function useGithubSync({
     },
     onSuccess: (data) => {
       toast.success(`Created & linked repository ${data.repoFullName}!`, { id: 'github-create-link' });
+      usePageStore.getState().setGithubLink({
+        id: data.linkId,
+        repoFullName: data.repoFullName,
+        branch: data.branch,
+        lastSyncedAt: null,
+      });
       linkQuery.refetch();
       queryClient.invalidateQueries({ queryKey: githubSyncKeys.link(projectId) });
       onCreateSuccess?.();

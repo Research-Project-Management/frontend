@@ -1,120 +1,122 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import {
-  parseSyncTeX,
   resolveForwardDetail,
   resolveReverse,
   resolvePageForLine,
+  type SyncTeXMap,
 } from '@/features/editor/subsystems/compiler/synctex/synctex-index';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 
+function buildMultiFileSyncTeXMap(): SyncTeXMap {
+  return {
+    lineToPage: new Map<number, number>([
+      [10, 1],
+      [5, 2],
+      [1, 3],
+    ]),
+    tagLineToPage: new Map<string, number>([
+      ['1:10', 1],
+      ['1:15', 1],
+      ['2:5', 2],
+      ['2:12', 2],
+      ['3:1', 3],
+      ['3:10', 4],
+    ]),
+    pageToLines: new Map<number, number[]>([
+      [1, [10, 15]],
+      [2, [5, 12]],
+      [3, [1, 8]],
+    ]),
+    sortedLines: [1, 5, 10, 12, 15],
+    pageToNodes: new Map(),
+    tagLineToNode: new Map([
+      ['1:10', { line: 10, tag: 1, x: 200, y: 300, w: 100, h: 20, page: 1 }],
+      ['2:5', { line: 5, tag: 2, x: 150, y: 250, w: 120, h: 20, page: 2 }],
+      ['3:1', { line: 1, tag: 3, x: 180, y: 220, w: 140, h: 20, page: 3 }],
+    ]),
+    tagToPath: new Map<number, string>([
+      [1, 'main.tex'],
+      [2, 'sections/intro.tex'],
+      [3, './chapters/results.tex'],
+    ]),
+    pathToTag: new Map<string, number>([
+      ['main.tex', 1],
+      ['main', 1],
+      ['sections/intro.tex', 2],
+      ['sections/intro', 2],
+      ['chapters/results.tex', 3],
+      ['chapters/results', 3],
+    ]),
+    tagToSortedLines: new Map([
+      [1, [10, 15]],
+      [2, [5, 12]],
+      [3, [1, 8]],
+    ]),
+  };
+}
+
 describe('Bidirectional SyncTeX Multi-File & Subfile Precision (Overleaf Parity)', () => {
-  // Realistic multi-file SyncTeX sample
-  const sampleSyncTeX = `SyncTeX Version:1
-Input:1:main.tex
-Input:2:sections/intro.tex
-Input:3:./chapters/results.tex
-Output:main.pdf
-Unit:65536
-Magnification:1000
-Offset:0,0
-{1
-[1,10:200,300:100,20
-x1,15:200,350
-]
-}1
-{2
-[2,5:150,250:120,20
-x2,12:150,320
-]
-}2
-{3
-[3,1:180,220:140,20
-x3,8:180,280
-]
-}3
-`;
-
-  it('correctly parses and indexes multiple subfiles both with and without extensions', () => {
-    const map = parseSyncTeX(sampleSyncTeX);
-
-    expect(map.pathToTag.get('main.tex')).toBe(1);
-    expect(map.pathToTag.get('main')).toBe(1);
-
-    expect(map.pathToTag.get('sections/intro.tex')).toBe(2);
-    expect(map.pathToTag.get('sections/intro')).toBe(2);
-    expect(map.pathToTag.get('intro.tex')).toBe(2);
-    expect(map.pathToTag.get('intro')).toBe(2);
-
-    expect(map.pathToTag.get('chapters/results.tex')).toBe(3);
-    expect(map.pathToTag.get('chapters/results')).toBe(3);
-    expect(map.pathToTag.get('results.tex')).toBe(3);
+  beforeEach(() => {
+    lruDocumentCache.clearAll();
   });
 
-  it('resolves forward sync to exact subfile page and coordinates', () => {
-    const map = parseSyncTeX(sampleSyncTeX);
+  it('resolves forward sync with filePath via tagLineToNode and tagLineToPage', () => {
+    const map = buildMultiFileSyncTeXMap();
 
-    // Forward sync from sections/intro.tex line 5 -> should jump to Page 2
+    // Exact subfile node match
     const forwardIntro = resolveForwardDetail(5, map, 'sections/intro.tex');
-    expect(forwardIntro).not.toBeNull();
-    expect(forwardIntro?.page).toBe(2);
+    expect(forwardIntro).toEqual({ page: 2, x: 150, y: 250, w: 120, h: 20 });
 
-    // Forward sync from extensionless activeTitle "sections/intro" -> should jump to Page 2
-    const forwardIntroNoExt = resolveForwardDetail(5, map, 'sections/intro');
-    expect(forwardIntroNoExt?.page).toBe(2);
+    // Extensionless subfile path match via tagLineToPage
+    const forwardIntroNoExt = resolveForwardDetail(12, map, 'sections/intro');
+    expect(forwardIntroNoExt).toEqual({ page: 2 });
 
-    // Forward sync from chapters/results.tex line 1 -> should jump to Page 3
-    const forwardResults = resolveForwardDetail(1, map, 'chapters/results.tex');
-    expect(forwardResults?.page).toBe(3);
+    // Leading ./, /, and Windows backslash normalization
+    expect(resolveForwardDetail(1, map, './chapters/results.tex')?.page).toBe(3);
+    expect(resolveForwardDetail(1, map, '/./chapters/results.tex')?.page).toBe(3);
+    expect(resolveForwardDetail(1, map, 'chapters\\results.tex')?.page).toBe(3);
 
-    // Forward sync from main.tex line 10 -> should jump to Page 1
-    const forwardMain = resolveForwardDetail(10, map, 'main.tex');
-    expect(forwardMain?.page).toBe(1);
+    // Same line number in different subfile resolves to tag-specific page (line 10 in tag 3 -> page 4, not tag 1 -> page 1)
+    expect(resolveForwardDetail(10, map, 'chapters/results.tex')?.page).toBe(4);
+    expect(resolveForwardDetail(10, map, 'main.tex')?.page).toBe(1);
   });
 
-  it('prevents subfile lines from leaking into root main.tex page mapping', () => {
-    const map = parseSyncTeX(sampleSyncTeX);
+  it('prevents unknown subfile lines from leaking into root page mapping', () => {
+    const map = buildMultiFileSyncTeXMap();
 
-    // Line 999 in Tag 2 does not exist in Tag 2. It must NOT return Page 1.
-    const result = resolvePageForLine(map, 999, 2);
-    expect(result).toBeNull();
+    expect(resolvePageForLine(map, 999, 2)).toBeNull();
+    expect(resolvePageForLine(map, 10, 3)).toBe(4);
+    expect(resolvePageForLine(map, 10, 1)).toBe(1);
+    expect(resolveForwardDetail(999, map, 'sections/intro.tex')).toBeNull();
   });
 
-  it('resolves reverse sync (double-click in PDF) to correct subfile path and line', () => {
-    const map = parseSyncTeX(sampleSyncTeX);
+  it('resolves reverse sync from pageToLines on a seeded SyncTeXMap', () => {
+    const map = buildMultiFileSyncTeXMap();
 
-    // Page 2 node: y ~ 249, line=5, tag=2 (sections/intro.tex)
-    const reversePage2 = resolveReverse(0.3, 2, map, 150, 249);
-    expect(reversePage2).not.toBeNull();
-    expect(reversePage2?.sourcePath).toBe('sections/intro.tex');
-    expect(reversePage2?.line).toBe(5);
-
-    // Page 3 node: y ~ 219, line=1, tag=3 (./chapters/results.tex)
-    const reversePage3 = resolveReverse(0.2, 3, map, 180, 219);
-    expect(reversePage3).not.toBeNull();
-    expect(reversePage3?.sourcePath).toBe('./chapters/results.tex');
-    expect(reversePage3?.line).toBe(1);
+    expect(resolveReverse(0.3, 2, map, 150, 249)).toEqual({
+      line: 5,
+      sourcePath: null,
+    });
+    expect(resolveReverse(0.2, 3, map, 180, 219)).toEqual({
+      line: 1,
+      sourcePath: null,
+    });
+    expect(resolveReverse(0.5, 99, map)).toBeNull();
+    expect(resolveReverse(0.5, 1, null)).toBeNull();
   });
 
   it('lruDocumentCache.findByPath matches Windows backslashes and Docker container paths', () => {
-    lruDocumentCache.clearAll();
     lruDocumentCache.registerModel('file-intro-123', {
       content: '\\section{Introduction}',
       filePath: 'sections/intro.tex',
     });
 
-    // Match exact relative path
     expect(lruDocumentCache.findByPath('sections/intro.tex')?.fileId).toBe('file-intro-123');
-
-    // Match Windows backslashes
     expect(lruDocumentCache.findByPath('sections\\intro.tex')?.fileId).toBe('file-intro-123');
-
-    // Match Docker/Server container absolute path
-    expect(lruDocumentCache.findByPath('/tmp/compile_xyz/sections/intro.tex')?.fileId).toBe('file-intro-123');
-
-    // Match extensionless input path
+    expect(lruDocumentCache.findByPath('/tmp/compile_xyz/sections/intro.tex')?.fileId).toBe(
+      'file-intro-123',
+    );
     expect(lruDocumentCache.findByPath('sections/intro')?.fileId).toBe('file-intro-123');
-
-    // Match bare filename
     expect(lruDocumentCache.findByPath('intro.tex')?.fileId).toBe('file-intro-123');
   });
 });

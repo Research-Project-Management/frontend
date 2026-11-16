@@ -172,7 +172,7 @@ export function useCitationTabState() {
     }
 
     return list;
-  }, [serverBibEntries, content]);
+  }, [serverBibEntries]);
 
   // Load workspace library items
   const {

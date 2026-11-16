@@ -54,7 +54,6 @@ import { usePageStore } from '../store/editor.store';
 import { useWorkspaceStore } from '../store/workspace.store';
 import { useCompileStore } from '@/features/editor/subsystems/compiler';
 import { usePageActions } from '@/features/editor/ui/hooks/usePageActions';
-import { useGithubSync } from '@/features/editor/ui/hooks/useGithubSync';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
 import { GitHubIcon } from '@/shared/components/icons/IntegrationIcons';
 
@@ -85,9 +84,7 @@ export function Topbar() {
   const { updateTitle: updateTitleMutation } = usePageActions();
   const isSaving = hasDirtyFiles || updateTitleMutation.isPending;
 
-  const { linkData: githubLinkData } = useGithubSync({
-    projectId: isPersonalPage ? '' : routeProjectId,
-  });
+  const githubLink = usePageStore((s) => s.githubLink);
 
   const handleToggleHistory = useCallback(async () => {
     if (!isHistoryOpen) {
@@ -191,7 +188,7 @@ export function Topbar() {
           )}
 
           {/* GitHub Sync Status Indicator & Shortcut */}
-          {githubLinkData?.link && (
+          {githubLink && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
@@ -200,20 +197,20 @@ export function Topbar() {
                     useSettingsStore.getState().setSettingsActiveTab('github');
                     useSettingsStore.getState().setSettingsPanelOpen(true);
                   }}
-                  aria-label={`GitHub: ${githubLinkData.link.repoFullName} (${githubLinkData.link.branch})`}
+                  aria-label={`GitHub: ${githubLink.repoFullName} (${githubLink.branch})`}
                   className="hidden lg:flex items-center gap-1.5 h-7 px-2 rounded-md text-xs font-normal text-muted-foreground hover:text-foreground hover:bg-sidebar-hover transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-border select-none mr-0.5"
                 >
                   <GitHubIcon className="size-3.5 shrink-0 text-foreground/70" />
                   <span className="max-w-[110px] truncate text-11 font-mono">
-                    {githubLinkData.link.repoFullName.split('/')[1] || githubLinkData.link.repoFullName}
+                    {githubLink.repoFullName.split('/')[1] || githubLink.repoFullName}
                   </span>
                   <span className="text-[10px] text-muted-foreground/70 font-mono">
-                    :{githubLinkData.link.branch}
+                    :{githubLink.branch}
                   </span>
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" sideOffset={6}>
-                GitHub: {githubLinkData.link.repoFullName} ({githubLinkData.link.branch})
+                GitHub: {githubLink.repoFullName} ({githubLink.branch})
               </TooltipContent>
             </Tooltip>
           )}

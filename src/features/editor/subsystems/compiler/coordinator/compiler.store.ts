@@ -10,6 +10,57 @@ import type { CompilerDiagnostic } from '@/features/editor/sdk/pages/types';
 import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 
+/**
+ * Zero-copy live read-through view of dirty document contents backed directly by `lruDocumentCache`.
+ * Eliminates duplicate string maps and per-keystroke Zustand state churn.
+ */
+class DirtyContentReadThroughMap extends Map<string, string> {
+  override get(key: string): string | undefined {
+    return lruDocumentCache.isDirty(key) ? lruDocumentCache.getContent(key) : undefined;
+  }
+
+  override has(key: string): boolean {
+    return lruDocumentCache.isDirty(key);
+  }
+
+  override get size(): number {
+    return lruDocumentCache.getDirtyFileIds().length;
+  }
+
+  override *entries(): MapIterator<[string, string]> {
+    for (const model of lruDocumentCache.getDirtyModels()) {
+      yield [model.fileId, model.content];
+    }
+  }
+
+  override *keys(): MapIterator<string> {
+    for (const id of lruDocumentCache.getDirtyFileIds()) {
+      yield id;
+    }
+  }
+
+  override *values(): MapIterator<string> {
+    for (const model of lruDocumentCache.getDirtyModels()) {
+      yield model.content;
+    }
+  }
+
+  override forEach(
+    callbackfn: (value: string, key: string, map: Map<string, string>) => void,
+    thisArg?: unknown,
+  ): void {
+    for (const model of lruDocumentCache.getDirtyModels()) {
+      callbackfn.call(thisArg, model.content, model.fileId, this);
+    }
+  }
+
+  override [Symbol.iterator](): MapIterator<[string, string]> {
+    return this.entries();
+  }
+}
+
+const SHARED_DIRTY_CONTENT_MAP = new DirtyContentReadThroughMap();
+
 export interface DocumentCompilerState {
   // ── Dirty content tracking ─────────────────────────────────────────────
   /** fileId → latest editor content (updated on every keystroke, debounced ~300ms) */
@@ -58,7 +109,7 @@ export interface DocumentCompilerState {
 
 export const useCompileStore = create<DocumentCompilerState>()((set, get) => ({
   // ── Dirty tracking (Derived directly from lruDocumentCache) ───────────
-  dirtyContentMap: new Map(),
+  dirtyContentMap: SHARED_DIRTY_CONTENT_MAP,
   dirtyFileIds: new Set(),
 
   isDirtyFile(fileId: string) {
@@ -209,9 +260,7 @@ useWorkspaceStore.subscribe(
 
 // Keep useCompileStore.dirtyFileIds and dirtyContentMap reactively synchronized from lruDocumentCache
 function syncCompilerDirtyState() {
-  const dirtyModels = lruDocumentCache.getDirtyModels();
-  const nextDirtyIds = new Set(dirtyModels.map((m) => m.fileId));
-  const nextContentMap = new Map(dirtyModels.map((m) => [m.fileId, m.content]));
+  const nextDirtyIds = new Set(lruDocumentCache.getDirtyFileIds());
   const currentState = useCompileStore.getState();
 
   let idsChanged = nextDirtyIds.size !== currentState.dirtyFileIds.size;
@@ -224,20 +273,10 @@ function syncCompilerDirtyState() {
     }
   }
 
-  let contentChanged = nextContentMap.size !== currentState.dirtyContentMap.size;
-  if (!contentChanged) {
-    for (const [id, content] of nextContentMap) {
-      if (currentState.dirtyContentMap.get(id) !== content) {
-        contentChanged = true;
-        break;
-      }
-    }
-  }
-
-  if (idsChanged || contentChanged) {
+  if (idsChanged || currentState.dirtyContentMap !== SHARED_DIRTY_CONTENT_MAP) {
     useCompileStore.setState({
       dirtyFileIds: nextDirtyIds,
-      dirtyContentMap: nextContentMap,
+      dirtyContentMap: SHARED_DIRTY_CONTENT_MAP,
     });
   }
 }

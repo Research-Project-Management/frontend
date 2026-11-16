@@ -310,4 +310,89 @@ describe('Workspace Diagnostics Coordinator & File Tree Badges (Overleaf Parity)
     summary = diagnosticsCoordinator.getFileSummary('main.tex');
     expect(summary.warningCount).toBe(1);
   });
+
+  it('does NOT leak nested folder diagnostics onto unrelated top-level folders with the same leaf name', () => {
+    diagnosticsCoordinator.ingestCompilerErrors(
+      [
+        {
+          line: 14,
+          message: 'Missing closing brace',
+          file: 'chapters/part3/figures/plot.tex',
+          severity: 'error',
+        },
+      ],
+      'main.tex',
+    );
+
+    const rootFiguresSummary = diagnosticsCoordinator.getFolderSummary('figures');
+    expect(rootFiguresSummary.errorCount).toBe(0);
+    expect(rootFiguresSummary.total).toBe(0);
+
+    const nestedFiguresSummary = diagnosticsCoordinator.getFolderSummary('chapters/part3/figures');
+    expect(nestedFiguresSummary.errorCount).toBe(1);
+    expect(nestedFiguresSummary.total).toBe(1);
+
+    const chaptersSummary = diagnosticsCoordinator.getFolderSummary('chapters');
+    expect(chaptersSummary.errorCount).toBe(1);
+
+    act(() => {
+      renderWithProviders(
+        <FileTreeFolderRow
+          node={{ id: 'folder-root-figures', name: 'figures', fullPath: 'figures', type: 'folder', children: [] }}
+          isExpanded={false}
+          onToggle={vi.fn()}
+          onMoveItem={vi.fn()}
+          onNewFileInFolder={vi.fn()}
+          onUploadToFolder={vi.fn()}
+        />,
+      );
+    });
+
+    expect(screen.queryByTestId('folder-error-badge')).toBeNull();
+    expect(screen.queryByTestId('folder-warning-badge')).toBeNull();
+  });
+
+  it('migrates and purges compiler & linter diagnostics cleanly on renamePath and removePath', () => {
+    diagnosticsCoordinator.ingestCompilerErrors(
+      [
+        { line: 8, message: 'Error in intro', file: 'sections/intro.tex', severity: 'error' },
+        { line: 12, message: 'Warning in body', file: 'sections/body.tex', severity: 'warning' },
+      ],
+      'main.tex',
+    );
+    diagnosticsCoordinator.ingestLinterDiagnostics('sections/intro.tex', [
+      {
+        id: 'lint-intro-1',
+        file: 'sections/intro.tex',
+        normalizedPath: 'sections/intro.tex',
+        line: 20,
+        message: 'Lint hint',
+        severity: 'warning',
+        source: 'LaTeX Linter',
+      },
+    ]);
+
+    expect(diagnosticsCoordinator.getFolderSummary('sections').errorCount).toBe(1);
+    expect(diagnosticsCoordinator.getFolderSummary('sections').warningCount).toBe(2);
+
+    // Rename folder sections -> chapters
+    diagnosticsCoordinator.renamePath('sections', 'chapters');
+
+    expect(diagnosticsCoordinator.getFolderSummary('sections').total).toBe(0);
+    expect(diagnosticsCoordinator.getFolderSummary('chapters').errorCount).toBe(1);
+    expect(diagnosticsCoordinator.getFolderSummary('chapters').warningCount).toBe(2);
+    expect(diagnosticsCoordinator.getFileSummary('chapters/intro.tex').errorCount).toBe(1);
+    expect(diagnosticsCoordinator.getFileSummary('chapters/intro.tex').warningCount).toBe(1);
+
+    // Delete single file chapters/intro.tex
+    diagnosticsCoordinator.removePath('chapters/intro.tex');
+    expect(diagnosticsCoordinator.getFileSummary('chapters/intro.tex').total).toBe(0);
+    expect(diagnosticsCoordinator.getFolderSummary('chapters').errorCount).toBe(0);
+    expect(diagnosticsCoordinator.getFolderSummary('chapters').warningCount).toBe(1);
+
+    // Delete entire folder chapters
+    diagnosticsCoordinator.removePath('chapters');
+    expect(diagnosticsCoordinator.getFolderSummary('chapters').total).toBe(0);
+    expect(diagnosticsCoordinator.getFileSummary('chapters/body.tex').total).toBe(0);
+  });
 });

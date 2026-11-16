@@ -97,7 +97,10 @@ export function useViewerSyncTeX({
 
       // 1. Exact child file path match in candidateFiles (prioritize subfiles first)
       const exactChild = candidateFiles.find((p) => {
-        const pPathLower = (p.path || p.title || '').replace(/\\/g, '/').toLowerCase();
+        const pPathLower = (p.path || p.title || '')
+          .replace(/\\/g, '/')
+          .replace(/^\/+/, '')
+          .toLowerCase();
         return (
           pPathLower === cleanName ||
           pPathLower.replace(/\.(tex|bib|sty|cls)$/i, '') === baseNoExt ||

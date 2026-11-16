@@ -375,14 +375,22 @@ export const useWorkspaceStore = create<WorkspaceStoreState>()(
           set((state) => {
             const current = state.tabsByProject[projectId] ?? [];
             const target = current.find((t) => t.id === tabId);
-            if (!target || target.title === title) {
+            if (
+              !target ||
+              (target.title === title && (target.path === undefined || target.path === title))
+            ) {
               return state;
             }
             return {
               tabsByProject: {
                 ...state.tabsByProject,
                 [projectId]: current.map((t) =>
-                  t.id === tabId ? decorateTabWithDirtyGetter({ ...t, title }, t.lastAccessedAt) : t,
+                  t.id === tabId
+                    ? decorateTabWithDirtyGetter(
+                        { ...t, title, ...(t.path !== undefined ? { path: title } : {}) },
+                        t.lastAccessedAt,
+                      )
+                    : t,
                 ),
               },
             };

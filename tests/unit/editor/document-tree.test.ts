@@ -3,8 +3,12 @@ import {
   getRootFilePriority,
   buildFileTree,
   filterFileTree,
+  flattenVisibleTree,
+  findAncestorFolderPaths,
   type FileTreeFileNode,
 } from '@/features/editor/subsystems/explorer/model/document-tree';
+import { normalizeVirtualPath } from '@/features/editor/domain/document/document-naming';
+import { newFileModalSchema } from '@/features/editor/domain/types/forms.types';
 
 describe('document-tree (1:1 Path-Trie Builder)', () => {
   describe('sorting priorities', () => {
@@ -354,4 +358,73 @@ describe('document-tree (1:1 Path-Trie Builder)', () => {
       }
     });
   });
-});
+
+  describe('flattenVisibleTree (Virtual Windowing)', () => {
+    it('flattens root-only tree with depth 0', () => {
+      const tree = buildFileTree({
+        files: [
+          { id: '1', title: 'main.tex' },
+          { id: '2', title: 'refs.bib' },
+        ],
+      });
+      const flattened = flattenVisibleTree(tree, () => false);
+      expect(flattened).toHaveLength(2);
+      expect(flattened[0].depth).toBe(0);
+      expect(flattened[0].node.id).toBe('1');
+      expect(flattened[1].depth).toBe(0);
+      expect(flattened[1].node.id).toBe('2');
+    });
+
+    it('excludes collapsed folder children and includes expanded folder children with incremented depth', () => {
+      const tree = buildFileTree({
+        files: [
+          { id: '1', title: 'main.tex' },
+          { id: '2', title: 'sections/01_intro.tex' },
+          { id: '3', title: 'sections/02_methods.tex' },
+        ],
+      });
+
+      // 1. When folder is collapsed: only main.tex and folder sections are visible
+      const collapsed = flattenVisibleTree(tree, () => false);
+      expect(collapsed).toHaveLength(2);
+      expect(collapsed.map((i) => i.node.type)).toEqual(['file', 'folder']);
+      expect(collapsed.every((i) => i.depth === 0)).toBe(true);
+
+      // 2. When folder is expanded: children are flattened with depth = 1
+      const expanded = flattenVisibleTree(tree, (folder) => folder.name === 'sections');
+      expect(expanded).toHaveLength(4);
+      expect(expanded[0].node.type).toBe('file');
+      expect(expanded[0].depth).toBe(0);
+      expect(expanded[1].node.type).toBe('folder');
+      expect(expanded[1].depth).toBe(0);
+      expect(expanded[2].node.type).toBe('file');
+      expect(expanded[2].depth).toBe(1);
+      expect(expanded[3].node.type).toBe('file');
+      expect(expanded[3].depth).toBe(1);
+    });
+  });
+
+  describe('findAncestorFolderPaths (Auto-Reveal)', () => {
+    it('resolves ordered ancestor folders for deeply nested .tex files and prefixed asset IDs', () => {
+      const tree = buildFileTree({
+        files: [
+          { id: 'doc-main', title: 'main.tex' },
+          { id: 'doc-deep', title: 'chapters/part3/theorem1.tex' },
+        ],
+        projectFiles: [
+          {
+            id: 'img-deep',
+            filename: 'plot.png',
+            path: 'assets/figs/plot.png',
+            isFolder: false,
+            size: 512,
+          },
+        ],
+      });
+
+      expect(findAncestorFolderPaths(tree, 'doc-deep')).toEqual(['chapters', 'chapters/part3']);
+      expect(findAncestorFolderPaths(tree, 'chapters/part3/theorem1.tex')).toEqual([
+        'chapters',
+        'chapters/part3',
+      ]);
+      expect(findAncestorFolderPaths(tree, 'asset:img-deep')).toEqual(['assets', 'assets/

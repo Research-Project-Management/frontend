@@ -42,6 +42,7 @@ import type {
   ForwardSyncResult,
   ReverseSyncPayload,
   ReverseSyncResult,
+  EditorBootstrapResponseDto,
 } from './types';
 
 export type {
@@ -65,6 +66,7 @@ import type {
 } from '@/features/editor/domain/ai/ai-error-assist';
 import { flushYjsProviders } from '../realtime/yjs-provider-pool';
 import { PageFileMapper, type RawPageFileRecord } from './doc-mapper';
+import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import type {
   PendingBundleInfo,
   NotificationDigest,
@@ -479,11 +481,15 @@ export const compiler = {
     }
   },
 
-  listAuxFiles: async (projectId: string): Promise<AuxFileItem[]> => {
-    if (!projectId) return [];
+  listAuxFiles: async (
+    pageOrProjectId: string,
+    options?: { isPageScoped?: boolean },
+  ): Promise<AuxFileItem[]> => {
+    if (!pageOrProjectId) return [];
+    const segment = options?.isPageScoped !== false ? 'pages' : 'projects';
     try {
       const res = await rawFetch(
-        `${getManuscriptsBaseUrl()}/projects/${projectId}/artifacts`,
+        `${getManuscriptsBaseUrl()}/${segment}/${encodeURIComponent(pageOrProjectId)}/artifacts`,
         'GET',
         undefined,
         { silent: true },
@@ -496,18 +502,58 @@ export const compiler = {
     }
   },
 
-  downloadAuxFileUrl: (projectId: string, filename: string): string => {
-    return `${MANUSCRIPTS_API_BASE}/projects/${projectId}/artifacts/${encodeURIComponent(filename)}`;
+  downloadAuxFileUrl: (
+    pageOrProjectId: string,
+    filename: string,
+    options?: { isPageScoped?: boolean },
+  ): string => {
+    const segment = options?.isPageScoped !== false ? 'pages' : 'projects';
+    return `${MANUSCRIPTS_API_BASE}/${segment}/${encodeURIComponent(pageOrProjectId)}/artifacts/${encodeURIComponent(filename)}`;
   },
 
-  downloadAllArtifactsZipUrl: (projectId: string): string => {
-    return `${MANUSCRIPTS_API_BASE}/projects/${projectId}/artifacts-zip`;
+  fetchArtifactBlobUrl: async (
+    pageOrProjectId: string,
+    filename = 'output.pdf',
+    options?: { isPageScoped?: boolean },
+  ): Promise<string | null> => {
+    if (!pageOrProjectId) return null;
+    const segment = options?.isPageScoped !== false ? 'pages' : 'projects';
+    try {
+      const res = await rawFetch(
+        `${getManuscriptsBaseUrl()}/${segment}/${encodeURIComponent(pageOrProjectId)}/artifacts/${encodeURIComponent(filename)}`,
+        'GET',
+        undefined,
+        { silent: true },
+      );
+      if (!res.ok) return null;
+      const rawBlob = await res.blob();
+      if (!rawBlob || rawBlob.size === 0) return null;
+      const typedBlob =
+        rawBlob.type === 'application/pdf' || !filename.endsWith('.pdf')
+          ? rawBlob
+          : new Blob([rawBlob], { type: 'application/pdf' });
+      return URL.createObjectURL(typedBlob);
+    } catch {
+      return null;
+    }
   },
 
-  cancelCompile: async (projectId: string): Promise<{ success: boolean; cancelled: boolean }> => {
+  downloadAllArtifactsZipUrl: (
+    pageOrProjectId: string,
+    options?: { isPageScoped?: boolean },
+  ): string => {
+    const segment = options?.isPageScoped !== false ? 'pages' : 'projects';
+    return `${MANUSCRIPTS_API_BASE}/${segment}/${encodeURIComponent(pageOrProjectId)}/artifacts-zip`;
+  },
+
+  cancelCompile: async (
+    pageOrProjectId: string,
+    options?: { isPageScoped?: boolean },
+  ): Promise<{ success: boolean; cancelled: boolean }> => {
+    const segment = options?.isPageScoped !== false ? 'pages' : 'projects';
     try {
       return await apiPost<{ success: boolean; cancelled: boolean }>(
-        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/compile/cancel`,
+        `${MANUSCRIPTS_API_BASE}/${segment}/${encodeURIComponent(pageOrProjectId)}/compile/cancel`,
         {},
       );
     } catch {
@@ -515,11 +561,15 @@ export const compiler = {
     }
   },
 
-  cleanAuxFiles: async (projectId: string): Promise<{ success: boolean }> => {
-    if (!projectId) return { success: false };
+  cleanAuxFiles: async (
+    pageOrProjectId: string,
+    options?: { isPageScoped?: boolean },
+  ): Promise<{ success: boolean }> => {
+    if (!pageOrProjectId) return { success: false };
+    const segment = options?.isPageScoped !== false ? 'pages' : 'projects';
     try {
       return await apiPost<{ success: boolean }>(
-        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/clean-aux`,
+        `${MANUSCRIPTS_API_BASE}/${segment}/${encodeURIComponent(pageOrProjectId)}/clean-aux`,
         {},
       );
     } catch {
@@ -902,9 +952,34 @@ export const review = {
   },
 };
 
+export const bootstrap = {
+  getEditorBootstrap: async (
+    id: string,
+    options?: {
+      fileId?: string | null;
+      isProjectRoute?: boolean;
+      signal?: AbortSignal;
+    },
+  ): Promise<EditorBootstrapResponseDto> => {
+    if (!id) {
+      throw new Error('Workspace or page ID is required for editor bootstrap');
+    }
+    const segment = options?.isProjectRoute ? 'projects' : 'pages';
+    const params: Record<string, string> = {};
+    if (options?.fileId) {
+      params.fileId = options.fileId;
+    }
+    return await apiGet<EditorBootstrapResponseDto>(
+      `${MANUSCRIPTS_API_BASE}/${segment}/${encodeURIComponent(id)}/bootstrap`,
+      { params, signal: options?.signal },
+    );
+  },
+};
+
 // ── Unified Manuscript Service Facade ─────────────────────────────────────────
 
 export const manuscriptService = {
+  bootstrap,
   docs,
   compiler,
   synctex,
@@ -933,6 +1008,8 @@ export const manuscriptService = {
   exportProjectZip: exportDocs.exportProjectZip,
   importProjectZip: exportDocs.importProjectZip,
 };
+
+latexSymbolsIndex.setSymbolsFetcher((id) => manuscriptService.structure.getSymbols(id));
 
 export const pagesService = manuscriptService;
 export const PagesService = manuscriptService;

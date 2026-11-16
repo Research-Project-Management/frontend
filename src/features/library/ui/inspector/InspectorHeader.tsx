@@ -224,7 +224,7 @@ export function InspectorTabs({
     { id: 'files', label: 'Attachments', icon: Paperclip, badge: attachmentCount },
     { id: 'notes', label: 'Notes', icon: StickyNote, badge: noteCount },
     { id: 'collections', label: 'Collections', icon: FolderTree },
-    { id: 'tags', label: 'Tags', icon: Tag, badge: tagsCount },
+    { id: 'tags', label: 'Labels', icon: Tag, badge: tagsCount },
     { id: 'relations', label: 'Related', icon: Network },
     { id: 'cite', label: 'Citation', icon: Quote },
   ];

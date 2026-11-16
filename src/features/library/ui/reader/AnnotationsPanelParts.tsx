@@ -150,7 +150,7 @@ function AnnotationEditForm({
           className="w-full resize-none bg-muted/40 p-1.5 rounded-sm text-12 outline-none text-foreground leading-relaxed font-sans border border-border focus:border-primary transition-colors"
         />
         <input
-          value={tagText} onChange={(e) => setTagText(e.target.value)} aria-label="Tags" placeholder="Tags (e.g. methodology, result)..."
+          value={tagText} onChange={(e) => setTagText(e.target.value)} aria-label="Labels" placeholder="Labels (e.g. methodology, result)..."
           className="w-full bg-transparent text-11 font-mono outline-none text-foreground placeholder:text-muted-foreground border-t border-border-subtle pt-1"
         />
         <div className="flex justify-end gap-1">
@@ -681,7 +681,7 @@ export const AnnotationsBottomSelectorDock = React.memo(function AnnotationsBott
       {existingTags.length > 0 && (
         <div className="flex items-center gap-1 flex-wrap">
           <span className="text-10 font-medium text-muted-foreground">
-            Tags:
+            Labels:
           </span>
           <div className="flex items-center gap-1 flex-wrap">
             {existingTags.map((tag) => {

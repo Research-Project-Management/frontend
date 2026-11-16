@@ -23,6 +23,7 @@ import {
   ClipboardCheck,
   Table2,
   LineChart,
+  Microscope,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/shared/lib/utils';
@@ -131,8 +132,8 @@ export function ExperimentsTopbar() {
   const getViewInfo = () => {
     if (currentGroup) {
       return {
-        rootLabel: 'Lab',
-        RootIcon: FlaskConical,
+        rootLabel: 'Experiments',
+        RootIcon: Microscope,
         leafLabel: currentGroup.name,
         hasSwitcher: true,
       };
@@ -140,22 +141,22 @@ export function ExperimentsTopbar() {
     switch (activeView) {
       case 'all-runs':
         return {
-          rootLabel: 'Lab',
-          RootIcon: FlaskConical,
+          rootLabel: 'Experiments',
+          RootIcon: Microscope,
           leafLabel: 'All Runs',
           hasSwitcher: false,
         };
       case 'compare-runs':
         return {
-          rootLabel: 'Lab',
-          RootIcon: FlaskConical,
+          rootLabel: 'Experiments',
+          RootIcon: Microscope,
           leafLabel: 'Compare Runs',
           hasSwitcher: false,
         };
       case 'sweeps':
         return {
-          rootLabel: 'Lab',
-          RootIcon: FlaskConical,
+          rootLabel: 'Experiments',
+          RootIcon: Microscope,
           leafLabel: 'Hyperparameter Sweeps',
           hasSwitcher: false,
         };
@@ -196,15 +197,15 @@ export function ExperimentsTopbar() {
         };
       case 'trash':
         return {
-          rootLabel: 'Lab',
+          rootLabel: 'Experiments',
           RootIcon: Trash2,
           leafLabel: 'Trash',
           hasSwitcher: false,
         };
       default:
         return {
-          rootLabel: 'Lab',
-          RootIcon: FlaskConical,
+          rootLabel: 'Experiments',
+          RootIcon: Microscope,
           leafLabel: 'All Runs',
           hasSwitcher: false,
         };

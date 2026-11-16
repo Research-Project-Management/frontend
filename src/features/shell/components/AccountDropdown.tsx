@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import {
   User,
   SlidersHorizontal,
@@ -37,6 +37,7 @@ interface AccountDropdownProps {
 
 export default function AccountDropdown({ align = 'end' }: AccountDropdownProps = {}) {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, isLoading, logout } = useAuth();
   const { cover, setCover } = useUserCover();
   const { uploadFile, isUploading } = useUpload();
@@ -191,9 +192,9 @@ export default function AccountDropdown({ align = 'end' }: AccountDropdownProps 
           <div className="p-1.5 space-y-0.5 border-t border-border">
             <DropdownMenuItem
               onSelect={() => {
-                setPersonalSpace();
-                setLibraryScope({ type: 'user', id: 'user', name: 'My Library' });
-                router.push('/settings');
+                const returnUrl = pathname && !pathname.startsWith('/settings') ? pathname : undefined;
+                const target = returnUrl ? `/settings?returnUrl=${encodeURIComponent(returnUrl)}` : '/settings';
+                router.push(target);
               }}
               className="cursor-pointer gap-2.5 px-3 py-1.5 text-13 text-foreground hover:bg-muted focus:bg-muted rounded-md transition-colors"
             >
@@ -203,9 +204,11 @@ export default function AccountDropdown({ align = 'end' }: AccountDropdownProps 
 
             <DropdownMenuItem
               onSelect={() => {
-                setPersonalSpace();
-                setLibraryScope({ type: 'user', id: 'user', name: 'My Library' });
-                router.push('/settings/preferences');
+                const returnUrl = pathname && !pathname.startsWith('/settings') ? pathname : undefined;
+                const target = returnUrl
+                  ? `/settings/preferences?returnUrl=${encodeURIComponent(returnUrl)}`
+                  : '/settings/preferences';
+                router.push(target);
               }}
               className="cursor-pointer gap-2.5 px-3 py-1.5 text-13 text-foreground hover:bg-muted focus:bg-muted rounded-md transition-colors"
             >

@@ -9,7 +9,9 @@ export default function SettingLayout({
 }) {
   return (
     <div className="flex flex-col md:flex-row h-full w-full bg-background overflow-hidden relative select-none">
-      <Sidebar />
+      <React.Suspense fallback={<div className="h-full w-60 shrink-0 border-r border-border bg-background" />}>
+        <Sidebar />
+      </React.Suspense>
       <main className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden relative">
         {children}
       </main>

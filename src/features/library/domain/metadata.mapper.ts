@@ -526,11 +526,13 @@ function projectCanonicalBaseFields(
       }
     }
     mapped.tags = cleanTags;
+    mapped.labels = cleanTags;
     mapped.keywords = cleanTags;
     mapped.itemTags = structuredItemTags;
     if (mapped.extraFields && typeof mapped.extraFields === 'object') {
       const nextEf = mapped.extraFields as Record<string, unknown>;
       nextEf.tags = cleanTags;
+      nextEf.labels = cleanTags;
       nextEf.keywords = cleanTags;
     }
   }

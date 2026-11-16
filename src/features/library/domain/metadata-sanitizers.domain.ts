@@ -396,6 +396,7 @@ export function buildCanonicalTagsPatch(
   overrideTypes?: Map<string, "manual" | "automatic">,
 ): Partial<{
   tags: string[];
+  labels: string[];
   keywords: string[];
   itemTags: Array<Record<string, unknown>>;
   silent: boolean;
@@ -427,11 +428,14 @@ export function buildCanonicalTagsPatch(
 
   return {
     tags: updatedTags,
+    labels: updatedTags,
     keywords: updatedTags,
     itemTags: nextItemTags,
     silent: true,
   };
 }
+
+export const buildCanonicalLabelsPatch = buildCanonicalTagsPatch;
 
 
 /**

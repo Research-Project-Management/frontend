@@ -23,6 +23,7 @@ import {
   tagKeys,
   normalizeScopeId,
 } from '@/features/library/sdk/query-keys';
+import { registerOfflineMutationEnqueuer } from '@/features/library/sdk/queries/reader.queries';
 
 export const OFFLINE_SYNC_LOCK_NAME = 'flux:offline:sync:dispatcher';
 
@@ -305,6 +306,8 @@ export async function enqueueOfflineMutation<T = unknown>(
 
   return entry;
 }
+
+registerOfflineMutationEnqueuer(enqueueOfflineMutation as unknown as Parameters<typeof registerOfflineMutationEnqueuer>[0]);
 
 /**
  * React Hook for observing offline sync status, pending queue count across all tabs,

@@ -27,7 +27,6 @@ export default defineConfig({
     testTimeout: 30000,
     hookTimeout: 30000,
     teardownTimeout: 30000,
-    fileParallelism: false,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],

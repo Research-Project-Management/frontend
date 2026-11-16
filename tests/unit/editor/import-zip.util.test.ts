@@ -5,7 +5,7 @@ import {
   parseZipArchive,
   extractAndImportZipToProject,
 } from '@/features/editor/sdk/archive/archive-import';
-import { manuscriptService } from '@/features/editor/sdk/pages.service';
+import { manuscriptService, filestore } from '@/features/editor/sdk/pages.service';
 import type { ImportProjectZipResult } from '@/features/editor/sdk/pages/types';
 
 describe('import-zip.util (Thin-Client Archive SDK)', () => {
@@ -146,6 +146,62 @@ describe('import-zip.util (Thin-Client Archive SDK)', () => {
       await expect(
         extractAndImportZipToProject({ projectId: 'project-1' }),
       ).rejects.toThrow('ZIP archive file is required for import.');
+    });
+  });
+
+  describe('filestore.upload & uploadPageFile pageId routing', () => {
+    it('appends pageId query parameter when provided and preserves fallback when projectId is absent', async () => {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            id: 'file-1',
+            projectId: 'proj-1',
+            pageId: 'page-1',
+            filename: 'diagram.png',
+            path: '/figures/diagram.png',
+            sizeBytes: 12,
+            hash: 'abc',
+            mimeType: 'image/png',
+            createdAt: '2026-01-01T00:00:00.000Z',
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+
+      const png = new File([new Uint8Array([1, 2, 3])], 'diagram.png', { type: 'image/png' });
+      const uploadedWithProject = await filestore.uploadPageFile(
+        'page-1',
+        png,
+        null,
+        undefined,
+        'proj-1',
+      );
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      const firstUrl = String(fetchSpy.mock.calls[0]?.[0]);
+      expect(firstUrl).toContain('/projects/proj-1/files?name=diagram.png&pageId=page-1');
+      expect(uploadedWithProject.url).toContain('/projects/proj-1/files/file-1');
+
+      fetchSpy.mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            id: 'file-2',
+            projectId: 'page-standalone',
+            filename: 'standalone.png',
+            sizeBytes: 8,
+            hash: 'def',
+            mimeType: 'image/png',
+            createdAt: '2026-01-01T00:00:00.000Z',
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      );
+
+      await filestore.uploadPageFile('page-standalone', png, null, undefined, undefined);
+      const secondUrl = String(fetchSpy.mock.calls[1]?.[0]);
+      expect(secondUrl).toContain(
+        '/projects/page-standalone/files?name=diagram.png&pageId=page-standalone',
+      );
     });
   });
 });

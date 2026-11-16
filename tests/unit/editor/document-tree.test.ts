@@ -427,4 +427,32 @@ describe('document-tree (1:1 Path-Trie Builder)', () => {
         'chapters',
         'chapters/part3',
       ]);
-      expect(findAncestorFolderPaths(tree, 'asset:img-deep')).toEqual(['assets', 'assets/
+      expect(findAncestorFolderPaths(tree, 'asset:img-deep')).toEqual(['assets', 'assets/figs']);
+      expect(findAncestorFolderPaths(tree, 'doc-main')).toEqual([]);
+      expect(findAncestorFolderPaths(tree, 'nonexistent-id')).toEqual([]);
+    });
+  });
+
+  describe('normalizeVirtualPath & newFileModalSchema', () => {
+    it('strips repeated ./ and / prefixes in normalizeVirtualPath', () => {
+      expect(normalizeVirtualPath('././a.tex')).toBe('a.tex');
+      expect(normalizeVirtualPath('/./sections/intro.tex')).toBe('sections/intro.tex');
+      expect(normalizeVirtualPath('.//./v1.0/Makefile/')).toBe('v1.0/Makefile');
+    });
+
+    it('accepts valid nested relative paths and rejects traversal, empty segments, and invalid characters', () => {
+      expect(newFileModalSchema.safeParse({ fileName: 'main.tex' }).success).toBe(true);
+      expect(newFileModalSchema.safeParse({ fileName: 'sections/intro.tex' }).success).toBe(true);
+      expect(newFileModalSchema.safeParse({ fileName: 'a/b/c.bib' }).success).toBe(true);
+
+      expect(newFileModalSchema.safeParse({ fileName: '../secret.tex' }).success).toBe(false);
+      expect(newFileModalSchema.safeParse({ fileName: 'sections/../intro.tex' }).success).toBe(false);
+      expect(newFileModalSchema.safeParse({ fileName: '/main.tex' }).success).toBe(false);
+      expect(newFileModalSchema.safeParse({ fileName: 'main.tex/' }).success).toBe(false);
+      expect(newFileModalSchema.safeParse({ fileName: 'sections//intro.tex' }).success).toBe(false);
+      expect(newFileModalSchema.safeParse({ fileName: './intro.tex' }).success).toBe(false);
+      expect(newFileModalSchema.safeParse({ fileName: 'bad\\path.tex' }).success).toBe(false);
+      expect(newFileModalSchema.safeParse({ fileName: 'bad:name.tex' }).success).toBe(false);
+    });
+  });
+});

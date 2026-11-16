@@ -1,10 +1,11 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
-import { User, SlidersHorizontal, Bell, Lock, Tag, Blocks } from 'lucide-react';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { User, SlidersHorizontal, Bell, Lock, Tag, Blocks, ArrowLeft } from 'lucide-react';
 import React from 'react';
 import Link from 'next/link';
 import { cn } from "@/shared/lib/utils";
+import { useWorkspaceContextStore } from '@/features/shell/store/workspace-context.store';
 
 interface NavItem {
   label: string;
@@ -14,6 +15,23 @@ interface NavItem {
 
 export function SideBar() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const activeSpace = useWorkspaceContextStore((s) => s.activeSpace);
+
+  const returnUrl = searchParams?.get('returnUrl');
+  const isInProject = activeSpace.type === 'project' && Boolean(activeSpace.projectId);
+
+  const backHref =
+    returnUrl ||
+    (isInProject ? `/projects/${activeSpace.projectId}/overview` : '/home');
+
+  const backTitle = returnUrl
+    ? 'Back to previous page'
+    : isInProject
+      ? `Back to ${activeSpace.projectName || 'Project'}`
+      : 'Back to Home';
+
+  const backLabel = isInProject ? activeSpace.projectName || 'Project' : 'Home';
 
   const navItems: NavItem[] = [
     { label: 'Profile', icon: User, to: '/settings' },
@@ -30,9 +48,13 @@ export function SideBar() {
         ? pathname === '/settings' || pathname === '/settings/profile'
         : pathname === item.to || pathname.startsWith(item.to + '/');
 
+    const itemHref = returnUrl
+      ? `${item.to}?returnUrl=${encodeURIComponent(returnUrl)}`
+      : item.to;
+
     return (
       <Link
-        href={item.to}
+        href={itemHref}
         key={item.label}
         title={item.label}
         aria-current={isActive ? 'page' : undefined}
@@ -59,11 +81,19 @@ export function SideBar() {
       aria-label="Settings navigation"
       className="h-full w-60 shrink-0 border-r border-border bg-background md:bg-transparent flex flex-col select-none max-md:w-full max-md:h-auto max-md:border-r-0 max-md:border-b"
     >
-      {/* Topbar Header without border-b to match other sidebars */}
-      <div className="h-11 px-4 flex items-center shrink-0 max-md:hidden">
-        <span className="font-semibold text-sm tracking-tight text-foreground">
+      {/* Topbar Header with Back Link */}
+      <div className="h-11 px-3.5 flex items-center justify-between shrink-0 border-b border-border/50">
+        <span className="font-semibold text-13 tracking-tight text-foreground">
           Settings
         </span>
+        <Link
+          href={backHref}
+          className="inline-flex items-center gap-1.5 h-7 px-2 rounded-md text-11 font-medium text-muted-foreground hover:text-foreground hover:bg-muted border border-border/60 transition-colors max-w-[130px] truncate"
+          title={backTitle}
+        >
+          <ArrowLeft className="size-3 shrink-0" />
+          <span className="truncate">{backLabel}</span>
+        </Link>
       </div>
 
       <div className="flex-1 min-h-0 flex flex-col p-2.5 overflow-hidden">

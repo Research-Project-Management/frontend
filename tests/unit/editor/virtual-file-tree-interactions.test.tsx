@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup, act, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, act, waitFor, renderHook } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
 import {
@@ -16,6 +16,7 @@ import { usePageStore, useWorkspaceStore, useSettingsStore } from '@/features/ed
 import { EDITOR_STORAGE_KEYS } from '@/features/editor/domain/constants/editor.constants';
 import { pageKeys, storageKeys } from '@/features/editor/ui/hooks/document.queries';
 import { manuscriptService } from '@/features/editor/sdk/pages.service';
+import { useFileUpload } from '@/features/editor/subsystems/explorer/ui/hooks/useFileUpload';
 import type { EditorStorageItem } from '@/features/editor/domain/types/storage-item.types';
 import type { PageFile } from '@/features/editor/domain/types/core.types';
 
@@ -430,5 +431,77 @@ describe('Virtual File Tree Interactions (Auto-Reveal, Filter, Inline Subfolder 
       'true',
     );
     expect(screen.getByRole('button', { name: 'File child_0.tex' })).toBeInTheDocument();
+  });
+
+  it('useFileUpload unpacks zips to parentPageId, handles standalone uploads without hanging, and suffixes folder-dot filenames cleanly', async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={qc}>{children}</QueryClientProvider>
+    );
+
+    const uploadAsync = vi.fn().mockResolvedValue({});
+    const createAsync = vi.fn().mockResolvedValue({ id: 'new-tex-1' });
+    const updateAsync = vi.fn().mockResolvedValue({});
+    const importZipSpy = vi
+      .spyOn(manuscriptService.export, 'importProjectZip')
+      .mockResolvedValue({
+        projectId: 'space-1',
+        totalEntries: 1,
+        totalDocs: 1,
+        totalFiles: 0,
+        totalFolders: 0,
+      });
+
+    const { result } = renderHook(
+      () =>
+        useFileUpload({
+          parentPageId: 'page-standalone-1',
+          projectId: '',
+          parentPage: { id: 'page-standalone-1', projectId: 'space-1' } as never,
+          files: [],
+          projectFiles: [
+            {
+              id: 'existing-makefile',
+              filename: 'Makefile',
+              path: 'v1.0/Makefile',
+              isFolder: false,
+            } as EditorStorageItem,
+          ],
+          createFileMutation: { mutate: vi.fn(), mutateAsync: createAsync },
+          uploadFile: { mutate: vi.fn(), mutateAsync: uploadAsync },
+          updateContentMutation: { mutateAsync: updateAsync },
+          setSearchParams: vi.fn(),
+        }),
+      { wrapper },
+    );
+
+    // 1. Standalone flat asset + folder-dot duplicate suffix + zip unpack
+    const makefile = new File(['all:'], 'Makefile', { type: 'text/plain' });
+    const png = new File([new Uint8Array([1, 2])], 'fig.png', { type: 'image/png' });
+    const zip = new File(['PK'], 'bundle.zip', { type: 'application/zip' });
+
+    act(() => {
+      result.current.setPendingUploads([
+        { file: makefile, name: 'v1.0/Makefile', conflict: 'duplicate', resolution: 'suffix' },
+        { file: png, name: 'fig.png', conflict: 'none' },
+        { file: zip, name: 'bundle.zip', conflict: 'none', unpackZip: true },
+      ]);
+    });
+
+    await act(async () => {
+      await result.current.handleConfirmUpload();
+    });
+
+    await waitFor(() => {
+      expect(result.current.uploadingCount).toBe(0);
+    });
+    expect(importZipSpy).toHaveBeenCalledWith('page-standalone-1', zip);
+    // Standalone flat asset and folder asset upload both ran using parentPageId fallback (no hang!)
+    expect(uploadAsync).toHaveBeenCalledTimes(2);
+    const uploadedNames = uploadAsync.mock.calls.map(
+      (call) => (call[0] as { file: File; projectId: string }).file.name,
+    );
+    expect(uploadedNames).toContain('fig.png');
+    expect(uploadedNames).toContain('v1.0/Makefile_2');
   });
 });

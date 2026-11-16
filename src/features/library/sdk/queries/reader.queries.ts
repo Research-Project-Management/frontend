@@ -22,7 +22,26 @@ import {
   resolveLibraryUrl,
 } from '../clients/http.client';
 import { uuidv7 } from '@/shared/utils/uuid.util';
-import { enqueueOfflineMutation } from '@/features/library/core/coordinator/offline-sync.coordinator';
+
+export type OfflineMutationEnqueuer = (
+  input: {
+    scopeId: string;
+    entityType: string;
+    entityId: string;
+    action: string;
+    endpoint: string;
+    method: string;
+    payload: unknown;
+  },
+  queryClient?: unknown,
+  options?: { flushImmediately?: boolean },
+) => Promise<unknown>;
+
+let offlineMutationEnqueuer: OfflineMutationEnqueuer | null = null;
+
+export function registerOfflineMutationEnqueuer(enqueuer: OfflineMutationEnqueuer): void {
+  offlineMutationEnqueuer = enqueuer;
+}
 
 export type { ExtractNotesOptions, ItemStateData };
 export { buildPdfBlobCacheKey };
@@ -339,7 +358,7 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
           `/attachments/${encodeURIComponent(attachmentId)}/annotations`,
           scopeId,
         );
-        await enqueueOfflineMutation(
+        await offlineMutationEnqueuer?.(
           {
             scopeId: targetScope,
             entityType: 'annotation',
@@ -480,7 +499,7 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
           `/attachments/${encodeURIComponent(attachmentId)}/annotations/${encodeURIComponent(annotationId)}`,
           scopeId,
         );
-        await enqueueOfflineMutation(
+        await offlineMutationEnqueuer?.(
           {
             scopeId: targetScope,
             entityType: 'annotation',
@@ -577,7 +596,7 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
           `/attachments/${encodeURIComponent(attachmentId)}/annotations/${encodeURIComponent(annotationId)}`,
           scopeId,
         );
-        await enqueueOfflineMutation(
+        await offlineMutationEnqueuer?.(
           {
             scopeId: targetScope,
             entityType: 'annotation',

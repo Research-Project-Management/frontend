@@ -64,7 +64,7 @@ describe('Notification Bundling (10-Minute Digest - Overleaf Parity)', () => {
 
       const res = await notificationBundlerService.getPendingBundles();
       expect(api.apiGet).toHaveBeenCalledWith(
-        '/api/manuscripts/notifications/bundles',
+        '/api/v1/pages/notifications/bundles',
       );
       expect(res).toEqual(mockBundles);
     });
@@ -101,7 +101,7 @@ describe('Notification Bundling (10-Minute Digest - Overleaf Parity)', () => {
         'proj-1',
       );
       expect(api.apiPost).toHaveBeenCalledWith(
-        '/api/manuscripts/notifications/bundles/flush',
+        '/api/v1/pages/notifications/bundles/flush',
         { scopeId: 'proj-1', projectId: 'proj-1' },
       );
       expect(res).toEqual(mockDigest);
@@ -115,7 +115,7 @@ describe('Notification Bundling (10-Minute Digest - Overleaf Parity)', () => {
         windowMinutes: 15,
       });
       expect(api.apiPut).toHaveBeenCalledWith(
-        '/api/manuscripts/notifications/settings',
+        '/api/v1/pages/notifications/settings',
         { windowMinutes: 15 },
       );
       expect(res).toEqual(updated);

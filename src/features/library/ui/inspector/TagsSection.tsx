@@ -85,7 +85,7 @@ function TagItemInput({
         <input
           ref={inputRef}
           type="text"
-          aria-label={`Edit tag ${tag}`}
+          aria-label={`Edit label ${tag}`}
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onBlur={handleBlur}
@@ -131,12 +131,12 @@ function TagItemInput({
                 onRemove(tag);
               }}
               className="size-5 shrink-0 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-muted cursor-pointer invisible group-hover:visible max-md:visible focus-visible:visible relative before:absolute before:-inset-2.5 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors mt-0.5"
-              aria-label={`Remove tag "${tag}"`}
+              aria-label={`Remove label "${tag}"`}
             >
               <MinusCircle className="size-3.5 shrink-0" />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="top">Remove tag</TooltipContent>
+          <TooltipContent side="top">Remove label</TooltipContent>
         </Tooltip>
       )}
     </div>
@@ -242,7 +242,7 @@ export default function TagsSection({
     if (trimmed) {
       const cleaned = cleanSingleFrontendTag(trimmed);
       if (!cleaned) {
-        toast.warning(`Tag "${trimmed}" is invalid or disallowed`, {
+        toast.warning(`Label "${trimmed}" is invalid or disallowed`, {
           id: "tag-invalid-warning",
         });
       } else if (!tags.some((t) => t.toLowerCase() === cleaned.toLowerCase())) {
@@ -277,7 +277,7 @@ export default function TagsSection({
     const cleaned = cleanSingleFrontendTag(updatedTag);
     if (!cleaned) {
       if (updatedTag.trim()) {
-        toast.warning(`Tag "${updatedTag.trim()}" is invalid or disallowed`, {
+        toast.warning(`Label "${updatedTag.trim()}" is invalid or disallowed`, {
           id: "tag-invalid-warning",
         });
         return;
@@ -308,7 +308,7 @@ export default function TagsSection({
     <div className="flex flex-col gap-0.5 text-xs select-none font-sans">
       {!hideHeader && (
         <div className="flex items-center justify-between pb-1 px-1.5">
-          <h3 className="text-12 font-medium text-foreground">Tags</h3>
+          <h3 className="text-12 font-medium text-foreground">Labels</h3>
           {canEdit && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -316,7 +316,7 @@ export default function TagsSection({
                   type="button"
                   onClick={() => setIsAdding(true)}
                   className="size-5 flex items-center justify-center rounded text-foreground hover:bg-muted cursor-pointer transition-colors"
-                  aria-label="Add tag"
+                  aria-label="Add label"
                 >
                   <Plus
                     className="size-3.5 text-foreground shrink-0"
@@ -324,7 +324,7 @@ export default function TagsSection({
                   />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="top">Add tag</TooltipContent>
+              <TooltipContent side="top">Add label</TooltipContent>
             </Tooltip>
           )}
         </div>
@@ -352,8 +352,8 @@ export default function TagsSection({
               ref={newTagInputRef}
               autoFocus
               type="text"
-              placeholder="Add tag..."
-              aria-label="New tag name"
+              placeholder="Add label..."
+              aria-label="New label name"
               value={newTag}
               onChange={(e) => {
                 setNewTag(e.target.value);
@@ -410,7 +410,7 @@ export default function TagsSection({
                     onCancelAdding?.();
                   }}
                   className="size-5 shrink-0 flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-muted cursor-pointer relative before:absolute before:-inset-2.5 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring transition-colors mt-0.5"
-                  aria-label="Cancel adding tag"
+                  aria-label="Cancel adding label"
                 >
                   <MinusCircle className="size-3.5 shrink-0" />
                 </button>
@@ -422,7 +422,7 @@ export default function TagsSection({
           {autocompleteSuggestions.length > 0 && (
             <div
               role="listbox"
-              aria-label="Suggested tags"
+              aria-label="Suggested labels"
               className="mt-1 ml-6 mr-1 p-1 rounded-md border border-border bg-popover text-popover-foreground shadow-raised-200 z-20 max-h-40 overflow-y-auto scrollbar-thin"
             >
               {autocompleteSuggestions.map((sug, idx) => (
@@ -458,3 +458,5 @@ export default function TagsSection({
     </div>
   );
 }
+
+export { TagsSection as LabelsSection };

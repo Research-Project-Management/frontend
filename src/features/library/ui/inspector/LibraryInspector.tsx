@@ -499,11 +499,11 @@ function LibraryInspectorContent({
                   </InspectorSection>
                 )}
 
-                {/* Tags */}
+                {/* Tags / Labels */}
                 {visibleSections.has('tags') && (
                   <InspectorSection
                     id="tags"
-                    title="Tags"
+                    title="Labels"
                     count={tagsList.length}
                     isExpanded={expandedSections.tags}
                     onToggleExpand={() => toggleSection('tags')}

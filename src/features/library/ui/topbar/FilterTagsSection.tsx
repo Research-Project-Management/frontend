@@ -68,7 +68,7 @@ export function FilterTagsSection({
           onClick={() => setTagsOpen(!tagsOpen)}
           className="flex items-center gap-1.5 flex-1 text-left cursor-pointer"
         >
-          <span>Tags</span>
+          <span>Labels</span>
         </button>
 
         <div className="flex items-center gap-0.5">
@@ -79,7 +79,7 @@ export function FilterTagsSection({
                   type="button"
                   onClick={(e) => e.stopPropagation()}
                   className="size-5 flex items-center justify-center rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-                  aria-label="Tag filter options"
+                  aria-label="Label filter options"
                 >
                   <MoreHorizontal className="size-3.5 shrink-0" />
                 </button>
@@ -97,7 +97,7 @@ export function FilterTagsSection({
                       showAutomaticTags ? "opacity-100" : "opacity-0",
                     )}
                   />
-                  <span>Show Automatic Tags</span>
+                  <span>Show Automatic Labels</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -107,7 +107,7 @@ export function FilterTagsSection({
             type="button"
             onClick={() => setTagsOpen(!tagsOpen)}
             className="size-5 flex items-center justify-center rounded hover:bg-muted text-foreground cursor-pointer"
-            aria-label={tagsOpen ? "Collapse tags" : "Expand tags"}
+            aria-label={tagsOpen ? "Collapse labels" : "Expand labels"}
           >
             {tagsOpen ? (
               <ChevronUp className="size-3.5 text-foreground shrink-0" />

@@ -250,7 +250,11 @@ export default function SpaceSwitcher() {
       return;
     }
     if (pathname.startsWith('/storage') || pathname.includes('/storage')) {
-      router.push(`/projects/${proj.id}/storage`);
+      router.push(`/projects/${proj.id}/experiments`);
+      return;
+    }
+    if (pathname.startsWith('/experiments') || pathname.includes('/experiments')) {
+      router.push(`/projects/${proj.id}/experiments`);
       return;
     }
     if (pathname.startsWith('/projects/') && params?.projectId) {

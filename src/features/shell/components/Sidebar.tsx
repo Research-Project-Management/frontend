@@ -50,9 +50,9 @@ const CORE_PILLARS: ShellNavItem[] = [
   },
   {
     id: 'labs',
-    label: 'Labs',
+    label: 'Experiments',
     icon: Microscope,
-    getHref: () => '/experiments',
+    getHref: (projectId) => (projectId ? `/projects/${projectId}/experiments` : '/experiments'),
   },
   {
     id: 'pages',
@@ -126,7 +126,11 @@ export default function Sidebar() {
     }
 
     if (id === 'labs') {
-      return pathname === '/experiments' || pathname.startsWith('/experiments/');
+      return (
+        pathname === '/experiments' ||
+        pathname.startsWith('/experiments/') ||
+        /^\/projects\/[^/]+\/experiments(\/|$)/.test(pathname)
+      );
     }
 
     if (id === 'ai') {

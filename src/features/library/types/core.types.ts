@@ -125,6 +125,9 @@ export interface ReferenceData {
   license?: string;
   libraryCatalog?: string;
   keywords?: string[];
+  /** Canonical system taxonomy labels */
+  labels?: string[];
+  /** Legacy tag list, preserved for backward compatibility */
   tags?: string[];
   fieldsOfStudy?: string[];
   provenance?: Provenance | Record<string, unknown> | null;

@@ -43,7 +43,7 @@ import {
 import {
   useBatchRestoreItemsMutation,
   useUpdateLibraryItemMutation,
-} from '@/features/library/sdk/queries/catalog.queries';
+} from '@/features/library/core/coordinator/item-action.coordinator';
 import type { Item, DuplicateGroup } from '@/features/library/types/core.types';
 
 function InlineDiffView({ items, recommendedMasterId }: { items: Item[]; recommendedMasterId?: string }) {
@@ -169,6 +169,7 @@ export function DuplicatesContent({
   const batchMergeMutation = useBatchMergeDuplicates(scopeId);
   const restoreMutation = useBatchRestoreItemsMutation(scopeId);
   const updateItemMutation = useUpdateLibraryItemMutation(scopeId);
+  const executeCommand = useLibraryCommandStore((s) => s.executeCommand);
 
   // Local state
   const [dismissedGroupKeys, setDismissedGroupKeys] = useState<Set<string>>(new Set());
@@ -370,7 +371,7 @@ export function DuplicatesContent({
           const masterItem = (group?.items || []).find((it) => it.id === p.primaryItemId);
           if (masterItem) {
             try {
-              await useLibraryCommandStore.getState().executeCommand(
+              await executeCommand(
                 createMergeDuplicatesCommand({
                   primaryItem: masterItem,
                   duplicateIdsToDelete: p.duplicateItemIds,
@@ -410,7 +411,7 @@ export function DuplicatesContent({
         const masterItem = (group?.items || []).find((it) => it.id === p.primaryItemId);
         if (masterItem) {
           try {
-            await useLibraryCommandStore.getState().executeCommand(
+            await executeCommand(
               createMergeDuplicatesCommand({
                 primaryItem: masterItem,
                 duplicateIdsToDelete: p.duplicateItemIds,

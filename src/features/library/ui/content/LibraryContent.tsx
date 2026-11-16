@@ -133,6 +133,7 @@ export function LibraryContent({
   const displayOptions = useLibraryUIStore((s) => s.displayOptions);
   const setDisplayOptions = useLibraryUIStore((s) => s.setDisplayOptions);
   const processingItems = useProcessModalStore((s) => s.processingItems);
+  const executeCommand = useLibraryCommandStore((s) => s.executeCommand);
 
   const effectiveView = view || (nav.filterParam && nav.filterParam !== 'saved-search' ? nav.filterParam : undefined);
 
@@ -557,7 +558,7 @@ export function LibraryContent({
         return;
       }
       const targetCol = collections.find((c) => c.id === collectionId);
-      void useLibraryCommandStore.getState().executeCommand(
+      void executeCommand(
         createBatchDetachCommand({
           collectionId,
           collectionName: targetCol?.name,

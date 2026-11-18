@@ -13,6 +13,7 @@ import type {
 } from '@/features/storage/types/storage.types';
 
 export interface FileQueryParams {
+  spaceId?: string | null;
   projectId?: string | null;
   parentId?: string | null;
   search?: string;
@@ -27,9 +28,14 @@ export function buildQueryString(params?: FileQueryParams): string {
   if (!params) return '';
 
   const searchParams = new URLSearchParams();
+  const effectiveScopeId = params.spaceId || params.projectId;
 
-  if (params.projectId && params.projectId !== 'null') {
-    searchParams.set('projectId', params.projectId);
+  if (
+    effectiveScopeId &&
+    effectiveScopeId !== 'null' &&
+    effectiveScopeId !== 'personal'
+  ) {
+    searchParams.set('spaceId', effectiveScopeId);
   }
   if (params.parentId && params.parentId !== 'null' && params.parentId !== 'root') {
     searchParams.set('parentId', params.parentId);
@@ -65,7 +71,7 @@ export function resolveQueryParams(
   if (typeof scopeIdOrParams === 'object' && scopeIdOrParams !== null) {
     return scopeIdOrParams;
   }
-  const projectId =
+  const spaceId =
     typeof scopeIdOrParams === 'string' && scopeIdOrParams && scopeIdOrParams !== 'null'
       ? scopeIdOrParams
       : undefined;
@@ -73,14 +79,14 @@ export function resolveQueryParams(
   if (params !== undefined) {
     if (typeof params === 'string' || params === null) {
       return {
-        ...(projectId ? { projectId } : {}),
+        ...(spaceId ? { spaceId } : {}),
         ...(params ? { parentId: params } : {}),
       };
     }
-    return projectId ? { projectId, ...params } : params;
+    return spaceId ? { spaceId, ...params } : params;
   }
 
-  return projectId ? { projectId } : undefined;
+  return spaceId ? { spaceId } : undefined;
 }
 
 // ── Read Operations ──────────────────────────────────────────────────────────
@@ -125,11 +131,12 @@ export const getFolderPath = (folderId: string): Promise<FolderPathResponse> => 
 // ── Mutation Operations ──────────────────────────────────────────────────────
 
 export const createFolder = (name: string, params: CreateFolderParams = {}) => {
+  const spaceId = params.spaceId || params.projectId;
   return apiPost('/api/v1/storage/files/folder', {
     name,
     parentId: params.parentId ?? null,
     ...(params.pageId ? { pageId: params.pageId } : {}),
-    ...(params.projectId ? { projectId: params.projectId } : {}),
+    ...(spaceId ? { spaceId } : {}),
   });
 };
 

@@ -17,7 +17,6 @@ import {
   Settings,
   UserSquare2,
   Tag,
-  Copy,
   Trash2,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
@@ -65,7 +64,6 @@ import { filterArchivedProjects } from '../utils/archive-page.util';
 import {
   useProjects,
   useArchiveProject,
-  useDuplicateProject,
   useDeleteProject,
 } from '../hooks/use-project';
 import { useUserProjectLabels } from '../hooks/use-project-labels';
@@ -142,7 +140,6 @@ export function ProjectsPage() {
   const { projects: rawProjects = [], isLoading, isError, error, refetch } = useProjects();
   const { labels: userLabels = [] } = useUserProjectLabels();
   const archiveProjectMutation = useArchiveProject();
-  const duplicateProjectMutation = useDuplicateProject();
   const deleteProjectMutation = useDeleteProject();
 
   const handleSetViewMode = (mode: ViewMode) => {
@@ -574,18 +571,6 @@ export function ProjectsPage() {
                             <Settings className="size-3.5 shrink-0" />
                             <span>Settings</span>
                           </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            duplicateProjectMutation.mutate({ projectId });
-                          }}
-                          disabled={duplicateProjectMutation.isPending}
-                          className="cursor-pointer font-medium text-12 flex items-center gap-2"
-                        >
-                          <Copy className="size-3.5 shrink-0 text-muted-foreground" />
-                          <span>{duplicateProjectMutation.isPending ? 'Duplicating…' : 'Duplicate project'}</span>
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => handleArchiveProject(projectId)}

@@ -280,6 +280,7 @@ export async function rawFetch(
     path.includes('/import') ||
     path.includes('/ingestion') ||
     path.includes('/upload') ||
+    path.includes('/files') ||
     path.includes('/word-count');
   const timeout = customTimeout ?? (isHeavyOperation ? 120000 : 15000);
 

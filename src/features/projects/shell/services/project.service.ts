@@ -61,9 +61,6 @@ export function createProjectApi(
   return apiPost<ProjectDetailResponse>(`/api/projects`, data);
 }
 
-export const duplicateProjectApi = (projectId: string) =>
-  apiPost<ProjectDetailResponse>(`/api/projects/${projectId}/duplicate`, {});
-
 export const updateProjectApi = (
   projectId: string,
   data: Partial<UpdateProjectInput>,
@@ -228,7 +225,6 @@ export const ProjectService = {
   reorderStates: reorderProjectStatesApi,
   deleteState: deleteProjectStateApi,
   resetStates: resetProjectStatesApi,
-  duplicate: duplicateProjectApi,
   getDefaultStatesTemplate: fetchDefaultStatesTemplate,
   checkIdentifier: checkProjectIdentifierApi,
   // Trash & Permanent Delete

@@ -17,7 +17,7 @@ export const PageService = {
     if (forceEmpty) params.forceEmpty = forceEmpty;
     if (forceError) params.forceError = forceError;
     const res = await apiGet<{ pages: Page[]; total?: number; isEmpty?: boolean }>(
-      `${MANUSCRIPTS_API_BASE}/projects/${targetScope}/docs`,
+      `${MANUSCRIPTS_API_BASE}/spaces/${targetScope}/docs`,
       { params },
     );
     return res?.pages ?? [];
@@ -25,7 +25,7 @@ export const PageService = {
 
   create: async (input: CreatePageInput) => {
     const res = await apiPost<{ page: Page; mainFile?: { id: string; [key: string]: unknown } | string | null }>(
-      `${MANUSCRIPTS_API_BASE}/projects/${input.projectId}/docs`,
+      `${MANUSCRIPTS_API_BASE}/spaces/${input.projectId}/docs`,
       {
         title: input.title,
         content: input.content,
@@ -79,24 +79,24 @@ export const PageService = {
   },
 };
 
-export const getPageLabels = (projectId: string, pageId: string) =>
+export const getPageLabels = (spaceId: string, pageId: string) =>
   apiGet<{ labels: Array<{ id: string; name: string; color: string }> }>(
-    `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${pageId}/labels`
+    `${MANUSCRIPTS_API_BASE}/spaces/${spaceId}/docs/${pageId}/labels`
   );
 
-export const assignPageLabels = (projectId: string, pageId: string, labelIds: string[]) =>
+export const assignPageLabels = (spaceId: string, pageId: string, labelIds: string[]) =>
   apiPost<{ labels: Array<{ id: string; name: string; color: string }> }>(
-    `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${pageId}/labels`,
+    `${MANUSCRIPTS_API_BASE}/spaces/${spaceId}/docs/${pageId}/labels`,
     { labelIds }
   );
 
-export const replacePageLabels = (projectId: string, pageId: string, labelIds: string[]) =>
+export const replacePageLabels = (spaceId: string, pageId: string, labelIds: string[]) =>
   apiPut<{ labels: Array<{ id: string; name: string; color: string }> }>(
-    `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${pageId}/labels`,
+    `${MANUSCRIPTS_API_BASE}/spaces/${spaceId}/docs/${pageId}/labels`,
     { labelIds }
   );
 
-export const removePageLabel = (projectId: string, pageId: string, labelId: string) =>
+export const removePageLabel = (spaceId: string, pageId: string, labelId: string) =>
   apiDelete<{ labels: Array<{ id: string; name: string; color: string }> }>(
-    `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${pageId}/labels/${labelId}`
+    `${MANUSCRIPTS_API_BASE}/spaces/${spaceId}/docs/${pageId}/labels/${labelId}`
   );

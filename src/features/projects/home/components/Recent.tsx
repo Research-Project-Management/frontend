@@ -131,7 +131,7 @@ export default function Recent() {
               if (item.type === 'page') {
                 return item.project?.id
                   ? `/projects/${item.project.id}/pages/${item.id}`
-                  : '/pages';
+                  : `/pages/${item.id}`;
               }
               if (item.type === 'file') {
                 return `/storage?highlight=${encodeURIComponent(item.id)}`;

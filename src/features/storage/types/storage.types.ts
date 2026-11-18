@@ -22,6 +22,7 @@ export type StorageItem = {
   thumbnail?: string | null;
   starred: boolean;
   parentId?: string | null;
+  spaceId?: string | null;
   projectId?: string | null;
   trashedAt?: string | null;
   metaData?: Record<string, unknown>;
@@ -49,6 +50,7 @@ export type StorageResponse = {
 };
 
 export type UploadFileParams = {
+  spaceId?: string | null;
   projectId?: string;
   parentId?: string | null;
   pageId?: string | null;
@@ -57,6 +59,7 @@ export type UploadFileParams = {
 };
 
 export type CreateFolderParams = {
+  spaceId?: string | null;
   projectId?: string;
   parentId?: string | null;
   pageId?: string | null;

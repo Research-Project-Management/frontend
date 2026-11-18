@@ -18,6 +18,7 @@ export const pageSchema = z.object({
   ).default([]),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
+  spaceId: z.string().optional(),
   projectId: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
   parentPage: z.string().optional(),
   parentPageId: z.string().optional(),
@@ -35,6 +36,7 @@ export const pageSchema = z.object({
 // ── Create Page Input schema (project-scoped) ───────────────────────────────
 
 export const createPageSchema = z.object({
+  spaceId: z.string().optional(),
   projectId: z.string().min(1, 'Project ID is required'),
   title: z.string().min(1, 'Title is required'),
   content: z.string().optional(),

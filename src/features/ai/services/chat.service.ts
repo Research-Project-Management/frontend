@@ -20,7 +20,27 @@ import { logger } from '@/shared/lib/logger';
 
 // ── Streaming Chat ────────────────────────────────────────────────────────────
 
+const AI_PERSONAL_SENTINELS = new Set([
+  'all',
+  'me',
+  'user',
+  'personal',
+  'flux',
+  'null',
+  'undefined',
+]);
+
+function normalizeAiScopeId(value?: string | null): string | undefined {
+  if (!value || typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  if (!trimmed || AI_PERSONAL_SENTINELS.has(trimmed.toLowerCase())) {
+    return undefined;
+  }
+  return trimmed;
+}
+
 export interface StreamChatOptions {
+  spaceId?: string | null;
   projectId?: string | null;
   scopeId?: string | null;
   documentIds?: string[] | null;
@@ -127,9 +147,14 @@ export async function* streamChatResponse(
     content,
     ...(attachments && attachments.length > 0 ? { attachments } : {}),
   }));
+  const effectiveSpaceId =
+    normalizeAiScopeId(cleanOptions.spaceId) ||
+    normalizeAiScopeId(cleanOptions.projectId) ||
+    normalizeAiScopeId(cleanOptions.scopeId) ||
+    null;
   const response = await apiRawFetch('/api/ai/chat', 'POST', {
     messages: aiMessages,
-    project_id: cleanOptions.projectId ?? null,
+    space_id: effectiveSpaceId,
     document_ids: cleanOptions.documentIds ?? null,
     intent_hint: cleanOptions.intentHint ?? null,
     web_search_sites: cleanOptions.webSearchSites ?? null,
@@ -182,6 +207,7 @@ export async function* streamChatResponse(
 
 export interface StreamEditorChatOptions {
   chatId?: string | null;
+  spaceId?: string | null;
   projectId?: string | null;
   scopeId?: string | null;
   documentIds?: string[] | null;
@@ -215,10 +241,15 @@ export async function* streamEditorChat(
 ): AsyncGenerator<string, void, unknown> {
   const { signal, ...cleanOptions } = options ?? {};
   const aiMessages = messages.map(({ role, content }) => ({ role, content }));
+  const effectiveSpaceId =
+    normalizeAiScopeId(cleanOptions.spaceId) ||
+    normalizeAiScopeId(cleanOptions.projectId) ||
+    normalizeAiScopeId(cleanOptions.scopeId) ||
+    null;
   const response = await apiRawFetch('/api/ai/editor-chat', 'POST', {
     messages: aiMessages,
     chat_id: cleanOptions.chatId ?? null,
-    project_id: cleanOptions.projectId ?? null,
+    space_id: effectiveSpaceId,
     document_ids: cleanOptions.documentIds ?? null,
     filename: cleanOptions.filename ?? null,
     file_content: cleanOptions.fileContent ?? null,
@@ -283,13 +314,13 @@ export async function* streamEditorChat(
 // ── REST Chat Sessions ────────────────────────────────────────────────────────
 
 export async function fetchChatSessions(
-  projectId?: string | null,
+  spaceId?: string | null,
   scopeId?: string | null,
 ): Promise<ChatSession[]> {
   const params: Record<string, string> = {};
-  const pid = projectId || scopeId;
-  if (pid && pid !== 'all' && pid !== 'me' && pid !== 'flux') {
-    params.projectId = pid;
+  const pid = normalizeAiScopeId(spaceId) || normalizeAiScopeId(scopeId);
+  if (pid) {
+    params.spaceId = pid;
   }
 
   try {
@@ -316,16 +347,19 @@ export async function getChatSession(chatId: string): Promise<ChatSessionDetail>
 export async function createChatSession(
   input: {
     title: string;
+    spaceId?: string | null;
     projectId?: string | null;
     messages?: ChatMessage[];
     documentIds?: string[];
   },
 ): Promise<ChatSessionDetail> {
+  const effectiveSpaceId =
+    normalizeAiScopeId(input.spaceId) || normalizeAiScopeId(input.projectId);
   const data = await apiPost<ChatSessionDetail & { chat?: ChatSessionDetail }>(
     '/api/ai/chats',
     {
       title: input.title,
-      projectId: input.projectId,
+      spaceId: effectiveSpaceId,
       messages: input.messages || [],
       documentIds: input.documentIds,
     },
@@ -400,19 +434,11 @@ export function uploadDocument(
   return new Promise((resolve, reject) => {
     const formData = new FormData();
     formData.append('file', file);
-    const isPersonal =
-      !scopeId ||
-      scopeId === 'me' ||
-      scopeId === 'user' ||
-      scopeId === 'all' ||
-      scopeId === 'personal' ||
-      scopeId === 'null' ||
-      scopeId === 'undefined';
-
-    if (!isPersonal) {
-      formData.append('projectId', scopeId);
+    const cleanScopeId = normalizeAiScopeId(scopeId);
+    if (cleanScopeId) {
+      formData.append('spaceId', cleanScopeId);
     }
-    formData.append('scopeId', isPersonal ? 'user' : scopeId);
+    formData.append('scopeId', cleanScopeId || 'user');
 
     const xhr = new XMLHttpRequest();
     const url = `${getEffectiveBaseUrl()}/api/ai/documents/upload`;
@@ -507,9 +533,10 @@ export async function fetchDocumentContent(
 }
 
 export async function fetchDocuments(
-  projectId?: string,
+  spaceId?: string,
 ): Promise<DocumentItem[]> {
-  const qs = projectId && projectId !== 'all' ? `?projectId=${encodeURIComponent(projectId)}` : '';
+  const cleanId = normalizeAiScopeId(spaceId);
+  const qs = cleanId ? `?spaceId=${encodeURIComponent(cleanId)}` : '';
   const res = await apiGet<DocumentItem[]>(
     `/api/ai/documents${qs}`,
   );
@@ -518,9 +545,10 @@ export async function fetchDocuments(
 
 export async function deleteDocument(
   docId: string,
-  projectId?: string,
+  spaceId?: string,
 ): Promise<boolean> {
-  const qs = projectId && projectId !== 'all' ? `?projectId=${encodeURIComponent(projectId)}` : '';
+  const cleanId = normalizeAiScopeId(spaceId);
+  const qs = cleanId ? `?spaceId=${encodeURIComponent(cleanId)}` : '';
   await apiDelete(`/api/ai/documents/${docId}${qs}`);
   return true;
 }

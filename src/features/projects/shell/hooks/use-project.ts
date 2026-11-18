@@ -8,7 +8,6 @@ import {
   ProjectService,
   projectKeys,
   fetchUserProjects,
-  duplicateProjectApi,
   fetchTrashedProjects,
   restoreTrashedProjectApi,
   permanentDeleteProjectApi,
@@ -926,23 +925,6 @@ export function useProjectMembers(projectId: string): UseProjectMembersReturn {
     [state, actions, members, query.isLoading, query.isError, query.refetch]
   );
 }
-
-// ── Duplicate Project ─────────────────────────────────────────────────────────
-
-export const useDuplicateProject = () => {
-  const queryClient = useQueryClient();
-  return useMutation<unknown, Error, ProjectIdVariables>({
-    mutationFn: ({ projectId }: ProjectIdVariables) => duplicateProjectApi(projectId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: projectKeys.all() });
-      queryClient.invalidateQueries({ queryKey: projectKeys.projectsHeader() });
-      toast.success('Project duplicated successfully', { id: 'project-duplicate-success' });
-    },
-    onError: (error: Error) => {
-      toast.error(error?.message || 'Failed to duplicate project', { id: 'project-duplicate-error' });
-    },
-  });
-};
 
 // ── Trash (Soft-deleted projects) ─────────────────────────────────────────────
 

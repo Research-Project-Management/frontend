@@ -7,6 +7,7 @@ export type WorkspaceSpaceType = 'personal' | 'project';
 
 export interface ActiveSpace {
   type: WorkspaceSpaceType;
+  spaceId?: string | null;
   projectId: string | null;
   projectName?: string;
   projectAvatar?: string | null;
@@ -24,6 +25,7 @@ interface WorkspaceContextState {
 
 const DEFAULT_PERSONAL_SPACE: ActiveSpace = {
   type: 'personal',
+  spaceId: null,
   projectId: null,
 };
 
@@ -68,6 +70,7 @@ export const useWorkspaceContextStore = create<WorkspaceContextState>()(
         set({
           activeSpace: {
             type: 'project',
+            spaceId: project.id,
             projectId: project.id,
             projectName: project.name,
             projectAvatar: project.avatar ?? null,

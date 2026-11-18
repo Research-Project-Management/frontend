@@ -165,6 +165,9 @@ export default function InboxItem({
     if (item.projectId && item.docId) {
       return `/projects/${item.projectId}/pages/${item.docId}${opts.commentId ? `?commentId=${opts.commentId}` : ''}`;
     }
+    if (!item.projectId && item.docId) {
+      return `/pages/${item.docId}${opts.commentId ? `?commentId=${opts.commentId}` : ''}`;
+    }
     if (item.projectId) {
       return `/projects/${item.projectId}/overview`;
     }

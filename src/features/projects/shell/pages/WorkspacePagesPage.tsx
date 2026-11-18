@@ -210,7 +210,7 @@ export function WorkspacePagesPage() {
 
                   <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
                     <Button asChild size="sm" variant="ghost" className="h-7 text-12 font-medium px-2.5 gap-1.5 cursor-pointer text-foreground hover:bg-muted relative before:absolute before:-inset-1 md:before:hidden focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                      <Link href={`/projects/${page.projectId || targetProjectId}/pages`}>
+                      <Link href={`/projects/${page.projectId || targetProjectId}/pages/${page.id}`}>
                         <span>Open Doc</span>
                         <ExternalLink className="size-3" />
                       </Link>

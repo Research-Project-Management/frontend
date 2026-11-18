@@ -103,6 +103,7 @@ export const chatMessageSchema = z.object({
 export const chatSessionSchema = z.object({
   id: z.string(),
   title: z.string(),
+  spaceId: z.string().nullish(),
   projectId: z.string().nullable(),
   messageCount: z.number(),
   lastMessage: z.string(),
@@ -122,6 +123,7 @@ export const chatSessionDetailSchema = chatSessionSchema.extend({
 
 export const createChatSessionSchema = z.object({
   title: z.string(),
+  spaceId: z.string().optional(),
   projectId: z.string().optional(),
   messages: z.array(chatMessageSchema),
   documentIds: z.array(z.string()).optional(),

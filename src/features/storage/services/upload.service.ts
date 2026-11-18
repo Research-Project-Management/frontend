@@ -14,6 +14,7 @@ export interface PresignUploadDto {
   filename: string;
   mimeType?: string;
   size?: number;
+  spaceId?: string;
   projectId?: string;
   pageId?: string;
   parentId?: string | null;
@@ -38,6 +39,7 @@ export interface CompletePresignedParams {
   size?: number;
   sizeBytes?: number;
   mimeType?: string;
+  spaceId?: string;
   projectId?: string;
   pageId?: string;
   parentId?: string | null;
@@ -63,6 +65,7 @@ export interface MultipartPartDto {
 }
 
 export interface ResumableUploadOptions {
+  spaceId?: string;
   projectId?: string;
   pageId?: string;
   parentId?: string | null;
@@ -94,10 +97,17 @@ async function computeClientSha256Hex(blob: Blob): Promise<string | undefined> {
 // ── 1. Presigned & Direct Upload ─────────────────────────────────────────────
 
 export const presignUpload = (dto: PresignUploadDto) => {
-  return apiPost<PresignUploadResult>('/api/v1/storage/files/presign', dto);
+  const { projectId, spaceId, ...rest } = dto;
+  const effectiveSpaceId = spaceId ?? projectId;
+  return apiPost<PresignUploadResult>('/api/v1/storage/files/presign', {
+    ...rest,
+    ...(effectiveSpaceId ? { spaceId: effectiveSpaceId } : {}),
+  });
 };
 
 export const completePresigned = (params: CompletePresignedParams) => {
+  const { projectId, spaceId, ...rest } = params;
+  const effectiveSpaceId = spaceId ?? projectId;
   return apiPost<{
     id: string;
     fileId: string;
@@ -106,7 +116,10 @@ export const completePresigned = (params: CompletePresignedParams) => {
     filename: string;
     size: number;
     mimeType: string;
-  }>('/api/v1/storage/files/presign/complete', params);
+  }>('/api/v1/storage/files/presign/complete', {
+    ...rest,
+    ...(effectiveSpaceId ? { spaceId: effectiveSpaceId } : {}),
+  });
 };
 
 export const uploadDirectWithProgress = (
@@ -114,6 +127,7 @@ export const uploadDirectWithProgress = (
   fileName: string,
   onProgress?: (progress: number) => void,
   options?: {
+    spaceId?: string;
     projectId?: string;
     pageId?: string;
     parentId?: string | null;
@@ -128,7 +142,8 @@ export const uploadDirectWithProgress = (
     const formData = new FormData();
     formData.append('file', blob, fileName);
     formData.append('fileName', fileName);
-    if (options?.projectId) formData.append('projectId', options.projectId);
+    const effectiveSpaceId = options?.spaceId ?? options?.projectId;
+    if (effectiveSpaceId) formData.append('spaceId', effectiveSpaceId);
     if (options?.pageId) formData.append('pageId', options.pageId);
     if (options?.parentId) formData.append('parentId', options.parentId);
 
@@ -192,6 +207,7 @@ export const uploadBlobWithPresigned = async (
   blob: Blob | File,
   fileName: string,
   options?: {
+    spaceId?: string;
     projectId?: string;
     pageId?: string;
     parentId?: string | null;
@@ -201,7 +217,8 @@ export const uploadBlobWithPresigned = async (
   } | ((progress: number) => void),
 ): Promise<{ url: string; path: string; fileId?: string }> => {
   const onProgress = typeof options === 'function' ? options : options?.onProgress;
-  const projectId = typeof options === 'object' ? options?.projectId : undefined;
+  const spaceId =
+    typeof options === 'object' ? (options?.spaceId ?? options?.projectId) : undefined;
   const pageId = typeof options === 'object' ? options?.pageId : undefined;
   const parentId = typeof options === 'object' ? options?.parentId : undefined;
   const metaData = typeof options === 'object' ? options?.metaData : undefined;
@@ -213,7 +230,7 @@ export const uploadBlobWithPresigned = async (
       filename: fileName,
       mimeType: blob.type || 'application/octet-stream',
       size: blob.size,
-      projectId,
+      spaceId,
       pageId,
       parentId,
       contentHash,
@@ -265,7 +282,7 @@ export const uploadBlobWithPresigned = async (
         filename: fileName,
         size: blob.size,
         mimeType: blob.type || 'application/octet-stream',
-        projectId,
+        spaceId,
         pageId,
         parentId,
         contentHash,
@@ -284,7 +301,7 @@ export const uploadBlobWithPresigned = async (
   }
 
   return uploadDirectWithProgress(blob, fileName, onProgress, {
-    projectId,
+    spaceId,
     pageId,
     parentId,
     signal,
@@ -297,7 +314,7 @@ export const initiateMultipart = (
   filename: string,
   mimeType: string,
   totalSize: number,
-  projectId?: string | null,
+  spaceId?: string | null,
   parentId?: string | null,
   expectedHash?: string,
   pageId?: string | null,
@@ -307,7 +324,7 @@ export const initiateMultipart = (
     mimeType,
     totalSize,
     sizeBytes: totalSize,
-    projectId,
+    spaceId,
     pageId,
     parentId,
     expectedHash,
@@ -401,7 +418,7 @@ export const uploadLargeFileResumable = async (
     file.name,
     file.type || 'application/octet-stream',
     file.size,
-    options.projectId,
+    options.spaceId ?? options.projectId,
     options.parentId,
     expectedHash,
     options.pageId,
@@ -493,9 +510,10 @@ export const uploadFile = async (
   file: File,
   params: UploadFileParams,
 ): Promise<{ fileId: string; url: string }> => {
+  const effectiveSpaceId = (params.spaceId ?? params.projectId) || undefined;
   if (file.size > 15 * 1024 * 1024) {
     return uploadLargeFileResumable(file, {
-      projectId: params.projectId,
+      spaceId: effectiveSpaceId,
       parentId: params.parentId,
       pageId: params.pageId || undefined,
       onProgress: params.onProgress,
@@ -503,7 +521,7 @@ export const uploadFile = async (
   }
 
   const { url: uploadPath, fileId } = await uploadBlobWithPresigned(file, file.name, {
-    projectId: params.projectId,
+    spaceId: effectiveSpaceId,
     pageId: params.pageId || undefined,
     parentId: params.parentId,
     metaData: params.metaData,

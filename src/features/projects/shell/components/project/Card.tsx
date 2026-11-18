@@ -15,7 +15,6 @@ import {
   Archive,
   Share2,
   Tag,
-  Copy,
   Trash2,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/components/ui/avatar';
@@ -23,7 +22,7 @@ import { ProjectAvatar } from "@/shared/components/icons";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/shared/components/ui/dropdown-menu';
 import { cn } from "@/shared/lib/utils";
 import { useFavorites } from '@/features/projects/favorite/hooks/use-favorites';
-import { useArchiveProject, useDuplicateProject, useDeleteProject } from '../../hooks/use-project';
+import { useArchiveProject, useDeleteProject } from '../../hooks/use-project';
 import {
   getProjectKey,
   getBannerGradient,
@@ -47,7 +46,6 @@ export const Card = React.memo(function Card({ project, onArchive, onManageTags 
   const favorited = isFavorite(projectId);
 
   const archiveProjectMutation = useArchiveProject();
-  const duplicateProjectMutation = useDuplicateProject();
   const deleteProjectMutation = useDeleteProject();
   const canArchive = project.permissions?.canArchive ?? (project.yourRole === 'owner');
   const canDelete = project.permissions?.canDelete ?? (project.yourRole === 'owner');
@@ -154,18 +152,6 @@ export const Card = React.memo(function Card({ project, onArchive, onManageTags 
                   <Settings className="size-3.5 shrink-0" />
                   <span>Settings</span>
                 </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  duplicateProjectMutation.mutate({ projectId });
-                }}
-                disabled={duplicateProjectMutation.isPending}
-                className="cursor-pointer font-medium flex items-center gap-2"
-              >
-                <Copy className="size-3.5 shrink-0 text-muted-foreground" />
-                <span>{duplicateProjectMutation.isPending ? 'Duplicating…' : 'Duplicate project'}</span>
               </DropdownMenuItem>
               {canArchive && (
                 <DropdownMenuItem

@@ -113,6 +113,7 @@ export interface TemplateSummaryDto {
 export interface FileMetadataDto {
   id: string;
   projectId: string;
+  spaceId?: string | null;
   pageId?: string | null;
   nodeId?: string;
   docId?: string | null;
@@ -144,6 +145,7 @@ export interface TextRangeDto {
 
 export interface TrackChangeDto {
   id: string;
+  spaceId?: string | null;
   projectId: string;
   docId: string;
   type: 'insert' | 'delete';
@@ -174,6 +176,7 @@ export interface CommentReplyDto {
 
 export interface CommentThreadDto {
   id: string;
+  spaceId?: string | null;
   projectId: string;
   docId: string;
   authorId?: string;
@@ -221,6 +224,7 @@ export interface ReviewRoundInfo {
 export interface ReviewStatusResponse {
   ok: boolean;
   docId: string;
+  spaceId?: string | null;
   projectId: string;
   review: ReviewRoundInfo;
 }
@@ -243,6 +247,7 @@ export interface QueueUpdatePayload {
 
 export interface DocstoreDocDto {
   _id: string;
+  spaceId?: string | null;
   projectId: string;
   path: string;
   lines: string[];
@@ -254,6 +259,7 @@ export interface DocstoreDocDto {
 }
 
 export interface FlushResultDto {
+  spaceId?: string | null;
   projectId?: string;
   flushed?: boolean;
   flushedDocCount?: number;
@@ -267,6 +273,7 @@ export interface FlushResultDto {
 export interface StructureNodeDto {
   id: string;
   nodeId?: string;
+  spaceId?: string | null;
   pageId?: string | null;
   projectId: string;
   name: string;
@@ -286,7 +293,7 @@ export interface StructureNodeDto {
 export type ManuscriptNodeDto = StructureNodeDto;
 
 export interface CompileLatexPayload {
-  projectId?: string;
+  spaceId?: string | null;
   pageId?: string;
   mainFile?: string;
   engine: string;
@@ -400,7 +407,8 @@ export interface AuxFileItem {
 }
 
 export interface ForwardSyncPayload {
-  projectId: string;
+  spaceId?: string | null;
+  pageId?: string;
   file: string;
   line: number;
   column?: number;
@@ -416,7 +424,8 @@ export interface ForwardSyncResult {
 }
 
 export interface ReverseSyncPayload {
-  projectId: string;
+  spaceId?: string | null;
+  pageId?: string;
   page: number;
   x: number;
   y: number;
@@ -439,6 +448,7 @@ export interface CreateSuggestionPayload {
   toLine: number;
   toColumn?: number;
   description?: string;
+  spaceId?: string | null;
   projectId?: string;
   idempotencyKey?: string;
   silent?: boolean;
@@ -531,6 +541,7 @@ export interface SearchOptions {
   useRegex?: boolean;
   fileIds?: string[];
   maxResults?: number;
+  pageId?: string;
 }
 
 export interface BatchReplaceOptions {
@@ -538,6 +549,7 @@ export interface BatchReplaceOptions {
   wholeWord?: boolean;
   useRegex?: boolean;
   fileIds?: string[];
+  pageId?: string;
 }
 
 export interface ExportFileResult {
@@ -584,6 +596,7 @@ export interface CollaborationEvent {
 }
 
 export interface ImportProjectZipResult {
+  spaceId?: string | null;
   projectId: string;
   totalEntries: number;
   totalDocs: number;
@@ -639,6 +652,7 @@ export interface ProjectReviewFileOverviewDto {
 }
 
 export interface ProjectReviewOverviewResponseDto {
+  spaceId?: string | null;
   projectId: string;
   files: ProjectReviewFileOverviewDto[];
   totals: {
@@ -653,6 +667,7 @@ export interface ProjectReviewOverviewResponseDto {
 }
 
 export interface ImportFromProjectPayload {
+  sourceSpaceId?: string;
   sourceProjectId?: string;
   sourceFileId: string;
   targetName?: string;
@@ -677,9 +692,9 @@ export interface EditorBootstrapPermissionsDto {
 
 export interface EditorBootstrapWorkspaceDto {
   spaceId: string;
+  spaceType?: 'personal' | 'project';
   pageId: string;
   rootDocId: string;
-  projectId: string | null;
   projectName: string | null;
   title: string;
   mainFilePath: string;
@@ -696,6 +711,8 @@ export interface EditorBootstrapActiveDocDto {
     content: string;
     path?: string;
     status: string;
+    spaceId?: string;
+    pageId?: string;
     projectId: string;
     mainFile: { id: string; title: string };
     mainFileId: string;

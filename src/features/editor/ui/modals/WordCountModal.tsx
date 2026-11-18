@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { fetchWordCount, type WordCountResponse } from '@/features/editor/sdk/pages.service';
+import { usePageStore } from '@/features/editor/core/store/editor.store';
 import {
   countLatexWords,
   EMPTY_TEXCOUNT_STATS,
@@ -104,6 +105,9 @@ export function WordCountModal({
   activeFileName = 'main.tex',
   projectFiles = [],
 }: WordCountModalProps) {
+  const storeSpaceId = usePageStore((s) => s.projectId || s.spaceId || '');
+  const storePageId = usePageStore((s) => s.parentPageId || s.rootPageId || s.currentPage?.id || '');
+  const effectiveProjectId = projectId || storeSpaceId;
   const hasSelection = Boolean(selectedText && selectedText.trim().length > 0);
 
   // Initialize scope based on active selection presence
@@ -189,12 +193,13 @@ export function WordCountModal({
         scope === 'selection'
           ? 'selection.tex'
           : activeFileName || 'main.tex';
-      const targetProjectId = scope === 'project' ? projectId : undefined;
+      const targetProjectId = scope === 'project' ? effectiveProjectId || undefined : undefined;
+      const targetPageId = scope === 'project' ? storePageId || undefined : undefined;
       const filesForScope = scope === 'project' && projectFilesMap ? projectFilesMap : undefined;
 
       const cacheKey = hashWordCountInput(
         scope,
-        targetProjectId,
+        targetProjectId || targetPageId,
         includeBib,
         filenameParam,
         sourceParam,
@@ -218,6 +223,7 @@ export function WordCountModal({
         reqPromise = fetchWordCount(sourceParam, targetProjectId, {
           includeBib,
           filename: filenameParam,
+          ...(targetPageId ? { pageId: targetPageId } : {}),
           ...(filesForScope ? { files: filesForScope } : {}),
         }).finally(() => {
           wordCountInFlightCache.delete(cacheKey);

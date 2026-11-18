@@ -134,6 +134,7 @@ export default function CitationPickerModal({
   });
   const storeParentPageId = usePageStore((s) => s.parentPageId);
   const storeProjectId = usePageStore((s) => s.projectId);
+  const storeSpaceId = usePageStore((s) => s.spaceId);
 
   const rootId = params?.pageId || storeParentPageId || currentPageId || '';
   const effectiveProjectId =
@@ -141,7 +142,15 @@ export default function CitationPickerModal({
     params?.projectId ||
     storeProjectId ||
     currentPageProjectId ||
+    storeSpaceId ||
+    rootId ||
     '';
+  const libraryScopeId =
+    propsProjectId ||
+    params?.projectId ||
+    storeProjectId ||
+    currentPageProjectId ||
+    'user';
 
   const [selectedStyle, setSelectedStyle] = useState<CitationStyle>(defaultStyle);
   const [search, setSearch] = useState('');
@@ -171,12 +180,12 @@ export default function CitationPickerModal({
 
   // 2. Load workspace library items
   const { libraryItems = [] } = useEditorCitations({
-    projectId: effectiveProjectId,
+    projectId: libraryScopeId,
     enabled: open,
   });
 
   // 3. Query collections from backend
-  const { collections: serverCollections = [] } = useCollections(effectiveProjectId || 'user');
+  const { collections: serverCollections = [] } = useCollections(libraryScopeId);
 
   // 4. Resolve cited keys from document text if not explicitly provided (only when modal is open or propsCitedKeys passed)
   const citedKeys = useMemo(() => {
@@ -350,7 +359,10 @@ export default function CitationPickerModal({
   }, [localBaseItems, serverItems]);
 
   // Retraction awareness (Zotero parity): confirm before citing a retracted work
-  const { data: retractedItems } = useRetractedItems(effectiveProjectId, open);
+  const { data: retractedItems } = useRetractedItems(
+    libraryScopeId === 'user' ? '' : libraryScopeId,
+    open,
+  );
   const retractedMap = useMemo(
     () => buildRetractedCitationMap(allMergedItems, retractedItems),
     [allMergedItems, retractedItems],
@@ -505,6 +517,36 @@ export default function CitationPickerModal({
       const matchedLibItem = libraryItems.find(
         (it) => (it.citationKey || it.id)?.toLowerCase() === entry.key.toLowerCase(),
       );
+      const bibCode = matchedLibItem
+        ? formatItemToBibtex(matchedLibItem)
+        : formatBibEntryToBibtex(entry);
+
+      const getBibFileName = (f: (typeof projectFiles)[number]) =>
+        f.title || ('name' in f && typeof f.name === 'string' ? f.name : '') || '';
+      const existingBibFile =
+        projectFiles.find((f) => getBibFileName(f).toLowerCase() === preferredBib.toLowerCase()) ||
+        projectFiles.find((f) => getBibFileName(f).toLowerCase().endsWith('.bib'));
+
+      if (existingBibFile && bibCode) {
+        const cached = lruDocumentCache.get(existingBibFile.id);
+        const existingText =
+          cached?.content ?? extractDocumentContentString(existingBibFile.content) ?? '';
+        if (!existingText.includes(`{${entry.key},`)) {
+          const nextContent = existingText.trim()
+            ? `${existingText.trim()}\n\n${bibCode}\n`
+            : `${bibCode}\n`;
+          lruDocumentCache.updateContent(existingBibFile.id, nextContent, true);
+          sessionCoordinator.notifyContentChange(existingBibFile.id, nextContent);
+          latexSymbolsIndex.indexFile(
+            existingBibFile.id,
+            getBibFileName(existingBibFile) || preferredBib,
+            nextContent,
+          );
+          toast.success(`Synced @${entry.key} to ${getBibFileName(existingBibFile) || preferredBib}`, {
+            id: `sync-bib-${entry.key}`,
+          });
+        }
+      }
 
       try {
         const res = await manuscriptService.citations.upsertEntries(effectiveProjectId, {
@@ -515,10 +557,14 @@ export default function CitationPickerModal({
         if (res.syncedCount > 0 && res.formattedBibtex) {
           const targetDocId = res.docId || res.filePath || preferredBib;
           const existingCached = res.docId ? lruDocumentCache.get(res.docId) : undefined;
-          const updatedContent = existingCached?.content
-            ? `${existingCached.content.trim()}\n\n${res.formattedBibtex}\n`
-            : `${res.formattedBibtex}\n`;
-          if (res.docId) {
+          const alreadyPresent = existingCached?.content?.includes(`{${entry.key},`);
+          const updatedContent =
+            alreadyPresent && existingCached?.content
+              ? existingCached.content
+              : existingCached?.content
+                ? `${existingCached.content.trim()}\n\n${res.formattedBibtex}\n`
+                : `${res.formattedBibtex}\n`;
+          if (res.docId && !alreadyPresent) {
             lruDocumentCache.updateContent(res.docId, updatedContent, false);
           }
           latexSymbolsIndex.indexFile(targetDocId, res.filePath || preferredBib, updatedContent);
@@ -527,23 +573,19 @@ export default function CitationPickerModal({
           });
         }
       } catch {
-        // Fallback to local buffer sync if backend upsert is unreachable
-        const bibCode = matchedLibItem
-          ? formatItemToBibtex(matchedLibItem)
-          : formatBibEntryToBibtex(entry);
-        if (!bibCode) return;
-
-        const created = await workspaceCoordinator.createFile({
-          name: preferredBib,
-          content: `${bibCode}\n`,
-          openAfterCreate: false,
-        });
-        if (created?.id) {
-          latexSymbolsIndex.indexFile(created.id, preferredBib, `${bibCode}\n`);
+        if (!existingBibFile && bibCode) {
+          const created = await workspaceCoordinator.createFile({
+            name: preferredBib,
+            content: `${bibCode}\n`,
+            openAfterCreate: false,
+          });
+          if (created?.id) {
+            latexSymbolsIndex.indexFile(created.id, preferredBib, `${bibCode}\n`);
+          }
+          toast.success(`Synced @${entry.key} to ${preferredBib}`, {
+            id: `sync-bib-${entry.key}`,
+          });
         }
-        toast.success(`Synced @${entry.key} to ${preferredBib}`, {
-          id: `sync-bib-${entry.key}`,
-        });
       }
 
       if (rootId) {
@@ -555,7 +597,7 @@ export default function CitationPickerModal({
       queryClient.invalidateQueries({ queryKey: ['project-citations', effectiveProjectId] });
       editorCommandBus.dispatch({ type: 'filetree:updated' });
     },
-    [effectiveProjectId, libraryItems, rootId, queryClient],
+    [effectiveProjectId, libraryItems, projectFiles, rootId, queryClient],
   );
 
   /**

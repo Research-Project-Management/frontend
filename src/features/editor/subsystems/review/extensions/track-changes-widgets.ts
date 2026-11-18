@@ -252,10 +252,18 @@ export function createTrackChangesTooltipDOM(s: PageSuggestion): HTMLElement {
   const acceptBtn = dom.querySelector('.cm-track-btn-accept') as HTMLButtonElement;
   const rejectBtn = dom.querySelector('.cm-track-btn-reject') as HTMLButtonElement;
 
+  const lockActionButtons = () => {
+    if (acceptBtn) acceptBtn.disabled = true;
+    if (rejectBtn) rejectBtn.disabled = true;
+  };
+
   if (acceptBtn) {
     acceptBtn.onclick = (e) => {
       e.preventDefault();
       e.stopPropagation();
+      if (acceptBtn.disabled) return;
+      lockActionButtons();
+      acceptBtn.setAttribute('aria-busy', 'true');
       editorCommandBus.dispatch({
         type: 'review:accept-suggestion',
         suggestionId: s.id,
@@ -267,6 +275,9 @@ export function createTrackChangesTooltipDOM(s: PageSuggestion): HTMLElement {
     rejectBtn.onclick = (e) => {
       e.preventDefault();
       e.stopPropagation();
+      if (rejectBtn.disabled) return;
+      lockActionButtons();
+      rejectBtn.setAttribute('aria-busy', 'true');
       editorCommandBus.dispatch({
         type: 'review:reject-suggestion',
         suggestionId: s.id,

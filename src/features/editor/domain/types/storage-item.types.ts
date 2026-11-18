@@ -14,6 +14,7 @@ export interface EditorStorageItem {
   mimeType?: string;
   isFolder: boolean;
   nodeType?: 'FOLDER' | 'DOC' | 'FILE';
+  spaceId?: string | null;
   pageId?: string | null;
   projectId?: string | null;
   docId?: string | null;

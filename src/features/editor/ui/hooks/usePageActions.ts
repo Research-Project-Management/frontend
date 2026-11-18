@@ -102,7 +102,26 @@ export function usePageActions() {
         await sessionCoordinator.flushFile(pageId);
         return { id: pageId, content };
       }
-      const res = await manuscriptService.docs.updateContent(pageId, content);
+      const expectedRev = lruDocumentCache.getModel(pageId)?.serverRev;
+      const res =
+        expectedRev !== undefined
+          ? await manuscriptService.docs.updateContent(pageId, content, { expectedRev })
+          : await manuscriptService.docs.updateContent(pageId, content);
+      if (res && typeof res === 'object') {
+        const r = res as {
+          rev?: number;
+          updatedAt?: string;
+          page?: { rev?: number; updatedAt?: string };
+        };
+        const nextRev = r.rev ?? r.page?.rev;
+        const nextUpdatedAt = r.updatedAt ?? r.page?.updatedAt;
+        if (nextRev !== undefined || nextUpdatedAt !== undefined) {
+          lruDocumentCache.updateServerVersion(pageId, {
+            rev: nextRev,
+            updatedAt: nextUpdatedAt,
+          });
+        }
+      }
       lruDocumentCache.markClean(pageId);
       return res;
     },
@@ -122,6 +141,14 @@ export function usePageActions() {
   });
 
   const updateTitleMutation = useMutation({
+    onMutate: () => {
+      const pageStore = usePageStore.getState();
+      return {
+        prevActiveFilePage: pageStore.activeFilePage,
+        prevCurrentPage: pageStore.currentPage,
+        prevWorkspaceTitle: pageStore.workspaceTitle,
+      };
+    },
     mutationFn: async ({ pageId, title, oldTitle }: { pageId: string; title: string; oldTitle?: string }) => {
       if (isLocked) throw new Error('Document is locked');
       const pageStore = usePageStore.getState();
@@ -159,7 +186,19 @@ export function usePageActions() {
       editorCommandBus.dispatch({ type: 'filetree:updated' });
       toast.success(`Renamed to "${variables.title}"`, { id: `rename-file-${variables.pageId}` });
     },
-    onError: (err: unknown, variables) => {
+    onError: (err: unknown, variables, context) => {
+      const pageStore = usePageStore.getState();
+      if (context) {
+        if (context.prevActiveFilePage !== undefined) {
+          pageStore.setActiveFilePage(context.prevActiveFilePage);
+        }
+        if (context.prevCurrentPage !== undefined) {
+          setCurrentPage(context.prevCurrentPage);
+        }
+        if (context.prevWorkspaceTitle !== undefined) {
+          pageStore.setWorkspaceTitle(context.prevWorkspaceTitle);
+        }
+      }
       const msg = err instanceof Error ? err.message : 'Failed to rename file';
       toast.error(msg, { id: `rename-file-${variables.pageId}` });
     },
@@ -202,14 +241,14 @@ export function usePageActions() {
       if (isLocked) throw new Error('Document is locked');
       return await manuscriptService.docs.duplicate(pageId);
     },
-    onSuccess: (_data, pageId) => {
+    onSuccess: () => {
       const parentPageId = usePageStore.getState().parentPageId || usePageStore.getState().currentPage?.id;
       invalidateFileTreeQueries(queryClient, { parentPageId, includeDeleted: false });
+      queryClient.invalidateQueries({ queryKey: ['pages'] });
       editorCommandBus.dispatch({ type: 'filetree:updated' });
-      toast.success('File duplicated', { id: `duplicate-file-${pageId}` });
     },
     onError: (err: unknown, pageId) => {
-      const msg = err instanceof Error ? err.message : 'Failed to duplicate file';
+      const msg = err instanceof Error ? err.message : 'Failed to duplicate page';
       toast.error(msg, { id: `duplicate-file-${pageId}` });
     },
   });

@@ -33,9 +33,17 @@ import { Input } from '@/shared/components/ui/input';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { cn } from '@/shared/lib/utils';
 import { useEditorStorage } from '@/features/editor/ui/hooks/useStorage';
-import { resolveFileUrl } from '@/shared/lib/file-client';
+import { useAuthorizedImageSrc } from '@/features/editor/ui/hooks/useAuthorizedImageSrc';
 import { figureWizardSchema, type FigureWizardFormValues } from '@/features/editor/domain/types/core.types';
 import { IMAGE_EXTENSIONS } from '@/features/editor/core';
+
+function AuthorizedFigureThumbnail({ url, alt }: { url?: string | null; alt: string }) {
+  const authorizedSrc = useAuthorizedImageSrc(url);
+  if (!authorizedSrc) {
+    return <FileImage className="size-6 text-muted-foreground" />;
+  }
+  return <img src={authorizedSrc} alt={alt} className="w-full h-full object-contain" />;
+}
 
 export interface FigureWizardModalProps {
   open: boolean;
@@ -300,7 +308,6 @@ export function FigureWizardModal({
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5 max-h-44 overflow-y-auto p-1.5 border border-border rounded-md bg-muted/10">
               {imageFiles.map((img) => {
                 const isSelected = values.selectedFilename === img.filename;
-                const url = resolveFileUrl(img.url);
                 return (
                   <div
                     key={img.id}
@@ -321,15 +328,7 @@ export function FigureWizardModal({
                     )}
                   >
                     <div className="w-full h-16 rounded-sm bg-muted flex items-center justify-center overflow-hidden">
-                      {url ? (
-                        <img
-                          src={url}
-                          alt={img.filename}
-                          className="w-full h-full object-contain"
-                        />
-                      ) : (
-                        <FileImage className="size-6 text-muted-foreground" />
-                      )}
+                      <AuthorizedFigureThumbnail url={img.url} alt={img.filename} />
                     </div>
                     <span className="w-full truncate text-11 text-center font-mono font-medium text-foreground">
                       {img.filename}

@@ -55,6 +55,7 @@ export default function AiTab({ onClose }: AiTabProps) {
   const currentPageId = usePageStore((s) => s.currentPage?.id);
   const currentPageTitle = usePageStore((s) => s.currentPage?.title);
   const activeFilePage = usePageStore((s) => s.activeFilePage);
+  const storeProjectId = usePageStore((s) => s.projectId);
   const currentPageProjectId = usePageStore((s) => {
     const p = s.currentPage?.projectId;
     return typeof p === 'string' ? p : p?.id || null;
@@ -72,7 +73,7 @@ export default function AiTab({ onClose }: AiTabProps) {
     notifyChatCleared,
   } = useAiChatActions({ engine });
 
-  const currentProjectId = params?.projectId || currentPageProjectId || null;
+  const currentProjectId = params?.projectId || storeProjectId || currentPageProjectId || null;
 
   const activePageId = params?.pageId || params?.draftId || currentPageId || null;
 

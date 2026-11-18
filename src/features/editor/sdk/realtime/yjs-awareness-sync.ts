@@ -64,7 +64,7 @@ export type RemoteUserJoinedPayload = RemotePresencePayload;
 
 export interface ProjectChatMessage {
   id: string;
-  projectId: string;
+  spaceId: string;
   userId: string;
   userName: string;
   userColor?: string;
@@ -84,6 +84,8 @@ export interface YjsSocketIOProviderOptions {
   socketFactory?: (url: string, opts: Record<string, unknown>) => Socket;
   onStatusChange?: (status: ConnectionStatus) => void;
   onSynced?: () => void;
+  onUpdatesAcked?: (docId: string) => void;
+  onEvicted?: (docId: string) => void;
   onCollaboratorsChange?: (collaborators: CollaborationPresence[]) => void;
   onChatMessage?: (message: ProjectChatMessage) => void;
 }
@@ -227,7 +229,7 @@ export function applyBinarySyncFrame(
   data: Uint8Array | ArrayLike<number>,
   targetDoc: Y.Doc,
   socket: Socket | null,
-  projectId: string,
+  spaceId: string,
   pageId: string,
   emitStep2Reply: boolean,
 ): void {
@@ -239,7 +241,7 @@ export function applyBinarySyncFrame(
   }
   if (emitStep2Reply && encoding.length(replyEncoder) > 0) {
     socket?.emit('doc:sync:step2', {
-      projectId,
+      spaceId,
       docId: pageId,
       data: encoding.toUint8Array(replyEncoder),
     });

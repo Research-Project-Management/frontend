@@ -11,10 +11,6 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }));
 
-vi.mock('@/features/projects/shell/services/project.service', () => ({
-  duplicateProjectApi: vi.fn(),
-}));
-
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false } },
 });

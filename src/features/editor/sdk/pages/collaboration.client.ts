@@ -71,7 +71,7 @@ export const comments = {
       content: string;
       line?: number;
       lineEnd?: number;
-      projectId?: string;
+      spaceId?: string;
     },
   ): Promise<PageComment> => {
     const data = await apiPost<{ comment: PageComment }>(
@@ -261,12 +261,12 @@ export const notifications = {
 
   flushBundle: async (
     scopeId?: string,
-    projectId?: string,
+    spaceId?: string,
   ): Promise<NotificationDigest | null> => {
     try {
       const data = await api.apiPost<{ digest: NotificationDigest }>(
         `${MANUSCRIPTS_API_BASE}/notifications/bundles/flush`,
-        { scopeId, projectId },
+        { scopeId, spaceId },
       );
       return data.digest || null;
     } catch {
@@ -322,13 +322,15 @@ export const search = {
     query: string,
     options: SearchOptions = {},
   ): Promise<SearchResultResponse> => {
-    return apiPost<SearchResultResponse>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/search`,
-      {
-        query,
-        ...options,
-      },
-    );
+    const cleanPageId = options.pageId?.trim();
+    const endpoint =
+      !projectId && cleanPageId
+        ? `${MANUSCRIPTS_API_BASE}/pages/${encodeURIComponent(cleanPageId)}/search`
+        : `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/search`;
+    return apiPost<SearchResultResponse>(endpoint, {
+      query,
+      ...options,
+    });
   },
 
   batchReplace: async (
@@ -337,14 +339,16 @@ export const search = {
     replaceWith: string,
     options: BatchReplaceOptions = {},
   ): Promise<BatchReplaceResultResponse> => {
-    return apiPost<BatchReplaceResultResponse>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/replace`,
-      {
-        query,
-        replaceWith,
-        ...options,
-      },
-    );
+    const cleanPageId = options.pageId?.trim();
+    const endpoint =
+      !projectId && cleanPageId
+        ? `${MANUSCRIPTS_API_BASE}/pages/${encodeURIComponent(cleanPageId)}/replace`
+        : `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/replace`;
+    return apiPost<BatchReplaceResultResponse>(endpoint, {
+      query,
+      replaceWith,
+      ...options,
+    });
   },
 };
 
@@ -365,21 +369,25 @@ export const exportDocs = {
   exportProjectZipUrl: (projectId: string, includeAux = false): string => {
     const token = getAuthToken();
     const tokenQuery = token ? `?token=${encodeURIComponent(token)}&includeAux=${includeAux}` : `?includeAux=${includeAux}`;
-    return `${MANUSCRIPTS_API_BASE}/projects/${projectId}/export/zip${tokenQuery}`;
+    return `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/export/zip${tokenQuery}`;
   },
 
   exportProjectZip: async (
     projectId: string,
-    options: { includeAux?: boolean; includePdf?: boolean; cleanArxiv?: boolean; projectName?: string } = {},
+    options: { includeAux?: boolean; includePdf?: boolean; cleanArxiv?: boolean; projectName?: string; pageId?: string } = {},
   ): Promise<Blob> => {
     const params = new URLSearchParams();
     if (options.includeAux) params.append('includeAux', 'true');
     if (options.includePdf) params.append('includePdf', 'true');
     if (options.cleanArxiv) params.append('cleanArxiv', 'true');
     if (options.projectName) params.append('projectName', options.projectName);
+    const cleanPageId = options.pageId?.trim();
+    if (cleanPageId) params.append('pageId', cleanPageId);
     const queryString = params.toString() ? `?${params.toString()}` : '';
+    const targetScopeId = projectId || cleanPageId || '';
+    const scopePrefix = `spaces/${encodeURIComponent(targetScopeId)}`;
     const res = await rawFetch(
-      `${getManuscriptsBaseUrl()}/projects/${projectId}/export/zip${queryString}`,
+      `${getManuscriptsBaseUrl()}/${scopePrefix}/export/zip${queryString}`,
       'GET',
     );
     if (!res.ok) throw new Error(`Export ZIP failed: ${res.statusText}`);
@@ -390,12 +398,17 @@ export const exportDocs = {
     projectId: string,
     version: number | string,
     projectName?: string,
+    options?: { pageId?: string },
   ): Promise<Blob> => {
     const params = new URLSearchParams();
     if (projectName) params.append('projectName', projectName);
+    const cleanPageId = options?.pageId?.trim();
+    if (cleanPageId) params.append('pageId', cleanPageId);
     const queryString = params.toString() ? `?${params.toString()}` : '';
+    const scopePrefix =
+      !projectId && cleanPageId ? `pages/${encodeURIComponent(cleanPageId)}` : `spaces/${projectId}`;
     const res = await rawFetch(
-      `${getManuscriptsBaseUrl()}/projects/${projectId}/history/versions/${encodeURIComponent(String(version))}/export-zip${queryString}`,
+      `${getManuscriptsBaseUrl()}/${scopePrefix}/history/versions/${encodeURIComponent(String(version))}/export-zip${queryString}`,
       'GET',
     );
     if (!res.ok) throw new Error(`Export Version ZIP failed: ${res.statusText}`);
@@ -407,7 +420,7 @@ export const exportDocs = {
     formData.append('file', file);
     const query = preferredRootDoc ? `?preferredRootDoc=${encodeURIComponent(preferredRootDoc)}` : '';
     const res = await rawFetch(
-      `${getManuscriptsBaseUrl()}/projects/${projectId}/import/zip${query}`,
+      `${getManuscriptsBaseUrl()}/spaces/${projectId}/import/zip${query}`,
       'POST',
       formData,
     );
@@ -416,7 +429,7 @@ export const exportDocs = {
   },
 
   scaffoldTemplate: async (projectId: string, templateId: string): Promise<Record<string, unknown>> => {
-    return await apiPost<Record<string, unknown>>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/templates/${templateId}/scaffold`, {});
+    return await apiPost<Record<string, unknown>>(`${MANUSCRIPTS_API_BASE}/spaces/${projectId}/templates/${templateId}/scaffold`, {});
   },
 
   convertDocument: async (
@@ -428,7 +441,7 @@ export const exportDocs = {
     formData.append('file', file);
     const query = format ? `?format=${encodeURIComponent(format)}` : '';
     const res = await rawFetch(
-      `${getManuscriptsBaseUrl()}/projects/${projectId}/import/convert${query}`,
+      `${getManuscriptsBaseUrl()}/spaces/${projectId}/import/convert${query}`,
       'POST',
       formData,
     );
@@ -441,6 +454,17 @@ export const exportDocs = {
 };
 
 // ── Sub-domain: history.api.ts ──────────────────────────────────────
+
+function buildHistoryUrl(projectId: string, suffix: string, pageId?: string): string {
+  const cleanPageId = pageId?.trim();
+  if (!projectId && cleanPageId) {
+    return `${MANUSCRIPTS_API_BASE}/pages/${encodeURIComponent(cleanPageId)}/history${suffix}`;
+  }
+  const base = `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/history${suffix}`;
+  if (!cleanPageId) return base;
+  const sep = base.includes('?') ? '&' : '?';
+  return `${base}${sep}pageId=${encodeURIComponent(cleanPageId)}`;
+}
 
 export const history = {
   getByPageId: async (docId: string): Promise<PageVersion[]> => {
@@ -531,10 +555,13 @@ export const history = {
     return history.getDiff(docId, fromVersionId, toVersionId);
   },
 
-  getByProjectId: async (projectId: string): Promise<ProjectEvent[]> => {
+  getByProjectId: async (
+    projectId: string,
+    options?: { pageId?: string },
+  ): Promise<ProjectEvent[]> => {
     try {
       const res = await apiGet<ProjectVersionListItem[]>(
-        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/history/versions`,
+        buildHistoryUrl(projectId, '/versions', options?.pageId),
       );
       if (Array.isArray(res) && res.length > 0) {
         return res.map((s) => ({
@@ -550,7 +577,7 @@ export const history = {
           },
           sizeBytes: s.sizeBytes ?? 0,
           eventType: s.isAutomatic ? 'auto_save' : 'manual_save',
-          page: projectId,
+          page: projectId || options?.pageId || '',
         }));
       }
       return [];
@@ -559,10 +586,13 @@ export const history = {
     }
   },
 
-  getProjectVersions: async (projectId: string): Promise<ProjectVersionListItem[]> => {
+  getProjectVersions: async (
+    projectId: string,
+    options?: { pageId?: string },
+  ): Promise<ProjectVersionListItem[]> => {
     try {
       const res = await apiGet<ProjectVersionListItem[]>(
-        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/history/versions`,
+        buildHistoryUrl(projectId, '/versions', options?.pageId),
       );
       return Array.isArray(res) ? res : [];
     } catch {
@@ -573,10 +603,11 @@ export const history = {
   getProjectSnapshot: async (
     projectId: string,
     version: number,
+    options?: { pageId?: string },
   ): Promise<ProjectSnapshotDetail | null> => {
     try {
       return await apiGet<ProjectSnapshotDetail>(
-        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/history/versions/${version}`,
+        buildHistoryUrl(projectId, `/versions/${version}`, options?.pageId),
       );
     } catch {
       return null;
@@ -587,10 +618,15 @@ export const history = {
     projectId: string,
     baseVersion: number,
     targetVersion: number,
+    options?: { pageId?: string },
   ): Promise<ProjectDiffResponse | null> => {
     try {
       return await apiGet<ProjectDiffResponse>(
-        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/history/diff?baseVersion=${baseVersion}&targetVersion=${targetVersion}`,
+        buildHistoryUrl(
+          projectId,
+          `/diff?baseVersion=${baseVersion}&targetVersion=${targetVersion}`,
+          options?.pageId,
+        ),
       );
     } catch {
       return null;
@@ -601,30 +637,38 @@ export const history = {
     projectId: string,
     version: number,
     label: string,
+    options?: { pageId?: string },
   ): Promise<VersionLabelItem | null> => {
+    const cleanPageId = options?.pageId?.trim();
     return apiPost<VersionLabelItem>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/history/versions/${version}/labels`,
-      { label },
+      buildHistoryUrl(projectId, `/versions/${version}/labels`, cleanPageId),
+      { label, ...(cleanPageId ? { pageId: cleanPageId } : {}) },
     );
   },
 
-  deleteProjectLabel: async (projectId: string, labelId: string): Promise<void> => {
+  deleteProjectLabel: async (
+    projectId: string,
+    labelId: string,
+    options?: { pageId?: string },
+  ): Promise<void> => {
     await apiDelete(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/history/labels/${labelId}`,
+      buildHistoryUrl(projectId, `/labels/${labelId}`, options?.pageId),
     );
   },
 
   restoreProjectVersion: async (
     projectId: string,
     targetVersion: number,
+    options?: { pageId?: string },
   ): Promise<{
     restoredSnapshot: ProjectSnapshotDetail;
     newSnapshot: ProjectSnapshotDetail;
     restoreResult: { restoredFilesCount: number; restoredDocIds: string[] };
   }> => {
+    const cleanPageId = options?.pageId?.trim();
     return apiPost(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/history/restore`,
-      { targetVersion },
+      buildHistoryUrl(projectId, '/restore', cleanPageId),
+      { targetVersion, ...(cleanPageId ? { pageId: cleanPageId } : {}) },
     );
   },
 
@@ -633,10 +677,16 @@ export const history = {
     version: number,
     pathname: string,
     fileId?: string,
+    options?: { pageId?: string },
   ): Promise<RestoreProjectVersionFileResult> => {
+    const cleanPageId = options?.pageId?.trim();
     return apiPost<RestoreProjectVersionFileResult>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/history/versions/${version}/restore-file`,
-      { pathname, ...(fileId ? { fileId } : {}) },
+      buildHistoryUrl(projectId, `/versions/${version}/restore-file`, cleanPageId),
+      {
+        pathname,
+        ...(fileId ? { fileId } : {}),
+        ...(cleanPageId ? { pageId: cleanPageId } : {}),
+      },
     );
   },
 
@@ -644,17 +694,20 @@ export const history = {
     projectId: string,
     version: number | string,
     projectName?: string,
+    options?: { pageId?: string },
   ): Promise<Blob> => {
-    return exportDocs.exportVersionZip(projectId, version, projectName);
+    return exportDocs.exportVersionZip(projectId, version, projectName, options);
   },
 
   createProjectSnapshot: async (
     projectId: string,
-    dto: { summary?: string; label?: string; isAutomatic?: boolean },
+    dto: { summary?: string; label?: string; isAutomatic?: boolean; pageId?: string },
+    options?: { pageId?: string },
   ): Promise<ProjectSnapshotDetail> => {
+    const cleanPageId = options?.pageId?.trim() || dto.pageId?.trim();
     return apiPost<ProjectSnapshotDetail>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/history/snapshots`,
-      dto,
+      buildHistoryUrl(projectId, '/snapshots', cleanPageId),
+      { ...dto, ...(cleanPageId ? { pageId: cleanPageId } : {}) },
     );
   },
 

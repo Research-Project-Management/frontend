@@ -241,18 +241,6 @@ export function useFileUpload({
         combinedUploadRef.current?.click();
         return;
       }
-      const tabProjectId = extractProjectId(parentPage) || projectId || '';
-      setUploadingCount((prev) => prev + droppedFiles.length);
-
-      let batchRemaining = droppedFiles.length;
-      const settle = () => {
-        batchRemaining = Math.max(0, batchRemaining - 1);
-        setUploadingCount((prev) => Math.max(0, prev - 1));
-        if (batchRemaining === 0 && parentPageId) {
-          invalidateFileTreeQueries(queryClient, { parentPageId, includeDeleted: false });
-          editorCommandBus.dispatch({ type: 'filetree:updated' });
-        }
-      };
 
       let resolvedFolderPath = '';
       let resolvedFolderId: string | undefined = folderId;
@@ -272,6 +260,31 @@ export function useFileUpload({
           resolvedFolderPath = normalizeVirtualPath(folderItem.path || folderItem.filename || '');
         }
       }
+
+      const checkedItems = markDuplicates(
+        droppedFiles.map((file) => ({
+          file,
+          name: resolvedFolderPath ? `${resolvedFolderPath}/${file.name}` : file.name,
+        })),
+      );
+      if (checkedItems.some((item) => item.conflict === 'duplicate')) {
+        setPendingUploads(checkedItems);
+        setUploadDialogOpen(true);
+        return;
+      }
+
+      const tabProjectId = extractProjectId(parentPage) || projectId || '';
+      setUploadingCount((prev) => prev + droppedFiles.length);
+
+      let batchRemaining = droppedFiles.length;
+      const settle = () => {
+        batchRemaining = Math.max(0, batchRemaining - 1);
+        setUploadingCount((prev) => Math.max(0, prev - 1));
+        if (batchRemaining === 0 && parentPageId) {
+          invalidateFileTreeQueries(queryClient, { parentPageId, includeDeleted: false });
+          editorCommandBus.dispatch({ type: 'filetree:updated' });
+        }
+      };
 
       droppedFiles.forEach((file) => {
         const ext = '.' + (file.name.split('.').pop() ?? '').toLowerCase();
@@ -304,7 +317,7 @@ export function useFileUpload({
         }
       });
     },
-    [parentPageId, uploadFile, createFileMutation, parentPage, projectId, projectFiles, queryClient],
+    [parentPageId, uploadFile, createFileMutation, parentPage, projectId, projectFiles, queryClient, markDuplicates],
   );
 
   const handleConfirmUpload = async () => {
@@ -333,13 +346,13 @@ export function useFileUpload({
 
     if (zipUnpackItems.length > 0 && parentPageId) {
       void (async () => {
-        const tabProjectId = extractProjectId(parentPage) || projectId || '';
+        const targetZipId = projectId || parentPageId;
 
         for (const zipItem of zipUnpackItems) {
           try {
             toast.loading(`Unpacking ${zipItem.file.name}...`, { id: `zip-${zipItem.name}` });
             const importRes = await manuscriptService.export.importProjectZip(
-              parentPageId || tabProjectId,
+              targetZipId,
               zipItem.file,
             );
             const totalImported =
@@ -450,7 +463,7 @@ export function useFileUpload({
             const effectiveTitle = name.trim() || file.name;
             return await upsertTexFile(
               file,
-              conflict === 'duplicate' && resolution === 'overwrite' ? file.name : effectiveTitle,
+              effectiveTitle,
               conflict,
               resolution,
             );

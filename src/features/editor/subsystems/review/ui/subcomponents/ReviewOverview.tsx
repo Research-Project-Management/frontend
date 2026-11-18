@@ -11,6 +11,7 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { FileText, Loader2 } from 'lucide-react';
+import { usePageStore } from '@/features/editor/core';
 import { manuscriptService } from '@/features/editor/sdk/pages.service';
 import { usePageComments } from '@/features/editor/subsystems/review/ui/hooks/useComment';
 import {
@@ -181,11 +182,17 @@ export function OverviewView({
   onOverviewResolvedCount,
 }: OverviewViewProps) {
   const [fileCounts, setFileCounts] = useState<Record<string, { visible: number; resolved: number }>>({});
+  const rootPageId = usePageStore((s) => s.rootPageId);
+  const overviewScopeId = rootPageId || projectId || '';
+  const isPageScope = Boolean(rootPageId);
 
   const { data: overviewData, isLoading: isOverviewLoading } = useQuery({
-    queryKey: ['project-review-overview', projectId],
-    queryFn: () => manuscriptService.review.getProjectOverview(projectId!),
-    enabled: Boolean(projectId),
+    queryKey: ['project-review-overview', overviewScopeId, isPageScope ? 'page' : 'project'],
+    queryFn: () =>
+      manuscriptService.review.getProjectOverview(overviewScopeId, {
+        isPageScope,
+      }),
+    enabled: Boolean(overviewScopeId),
     staleTime: 30_000,
     gcTime: 5 * 60_000,
   });

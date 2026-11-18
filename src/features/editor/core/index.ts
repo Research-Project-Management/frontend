@@ -26,6 +26,7 @@ export {
   subscribeEditorEngineChanges,
 } from './bus/command-bus';
 export { useEditorCommand } from './bus/use-editor-command';
+export { programmaticSyncAnnotation } from './engine/adapters/codemirror.adapter';
 
 export type {
   IEditorCommandBus,

@@ -11,10 +11,13 @@ export interface RawPageFileRecord {
   id: string;
   _id?: string;
   pageId?: string;
+  spaceId?: string;
   title?: string;
   name?: string;
   path?: string;
   content?: string;
+  rev?: number;
+  version?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -42,6 +45,9 @@ export const PageFileMapper = {
       content: raw.content ?? options.fallbackContent ?? '',
       createdAt: raw.createdAt || now,
       updatedAt: raw.updatedAt || now,
+      ...(raw.spaceId ? { spaceId: raw.spaceId } : {}),
+      ...(typeof raw.rev === 'number' ? { rev: raw.rev } : {}),
+      ...(typeof raw.version === 'number' ? { version: raw.version } : {}),
     };
     if (options.includePath) {
       base.path = raw.path || raw.title || raw.name || options.defaultTitle;

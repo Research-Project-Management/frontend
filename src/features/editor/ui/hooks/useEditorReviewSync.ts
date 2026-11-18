@@ -64,6 +64,8 @@ export function useEditorReviewSync(
         contextClient.invalidateQueries({ queryKey: commentKeys.byPage(fileId) });
         contextClient.invalidateQueries({ queryKey: ['page-suggestions'] });
         contextClient.invalidateQueries({ queryKey: ['page-comments'] });
+        contextClient.invalidateQueries({ queryKey: ['project-review-overview'] });
+        contextClient.invalidateQueries({ queryKey: ['manuscript-review-status'] });
       }
     });
 

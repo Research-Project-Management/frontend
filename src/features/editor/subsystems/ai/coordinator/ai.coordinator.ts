@@ -222,7 +222,7 @@ export class AiCoordinator {
         surroundingCode,
         fullCode: content.length < 50000 ? content : undefined,
         pageId: activeDoc?.id,
-        projectId: pageStore.projectId,
+        projectId: pageStore.spaceId || pageStore.projectId,
       });
 
       if (toastId && typeof toast.dismiss === 'function') {

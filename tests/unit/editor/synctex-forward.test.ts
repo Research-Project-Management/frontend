@@ -176,7 +176,7 @@ x1,55:0,0
       );
 
       expect(manuscriptService.synctex.forwardSync).toHaveBeenCalledWith({
-        projectId: 'proj-456',
+        spaceId: 'proj-456',
         file: 'main.tex',
         line: 45,
         column: 0,

@@ -120,6 +120,8 @@ export type UpdateThumbnailInput = z.infer<typeof updateThumbnailSchema>;
 declare const brand: unique symbol;
 export type Brand<T, B> = T & { readonly [brand]: B };
 
+export type SpaceId = Brand<string, 'SpaceId'>;
+export type DocId = Brand<string, 'DocId'>;
 export type PageId = Brand<string, 'PageId'>;
 export type ProjectId = Brand<string, 'ProjectId'>;
 export type FileId = Brand<string, 'FileId'>;
@@ -153,6 +155,9 @@ export interface Page {
   content: DocumentContent; // LaTeX source text or JSON structure
   status: PageStatus;
   projectId: string | PageProjectContext;
+  spaceId?: string;
+  rev?: number;
+  version?: number;
   author: PageAuthor;
   views: number;
   lastAccessedAt: string;
@@ -173,6 +178,9 @@ export interface PageFile {
   content?: string;
   pageId: string;
   projectId?: string | PageProjectContext;
+  spaceId?: string;
+  rev?: number;
+  version?: number;
   createdAt?: string;
   updatedAt?: string;
   deletedAt?: string | null;
@@ -204,6 +212,8 @@ export interface ManuscriptNode {
 export interface TextDocument {
   id: string;
   projectId: string;
+  spaceId?: string;
+  pageId?: string;
   path: string;
   title: string;
   content: string;
@@ -214,16 +224,29 @@ export interface TextDocument {
 }
 
 /**
- * Safely extracts a string projectId from a Page, PageFile, PageProjectContext, or raw string.
+ * Safely extracts a string spaceId/projectId from a Page, PageFile, PageProjectContext, or raw string.
  */
 export function extractProjectId(
-  doc?: Page | PageFile | PageProjectContext | { id?: string; projectId?: string | PageProjectContext } | string | null,
+  doc?:
+    | Page
+    | PageFile
+    | PageProjectContext
+    | { id?: string; spaceId?: string; projectId?: string | PageProjectContext }
+    | string
+    | null,
 ): string | undefined {
   if (!doc) return undefined;
   if (typeof doc === 'string') return doc;
   if ('projectId' in doc && doc.projectId) {
     if (typeof doc.projectId === 'string') return doc.projectId;
     return (doc.projectId as PageProjectContext).id;
+  }
+  if (
+    'spaceId' in doc &&
+    typeof (doc as { spaceId?: unknown }).spaceId === 'string' &&
+    (doc as { spaceId: string }).spaceId
+  ) {
+    return (doc as { spaceId: string }).spaceId;
   }
   if (
     'id' in doc &&
@@ -238,6 +261,26 @@ export function extractProjectId(
     return doc.id;
   }
   return undefined;
+}
+
+/**
+ * Canonical Space extractor: prefers `spaceId` and falls back to `projectId`.
+ */
+export function extractSpaceId(
+  doc?:
+    | Page
+    | PageFile
+    | PageProjectContext
+    | { id?: string; spaceId?: string; projectId?: string | PageProjectContext }
+    | string
+    | null,
+): string | undefined {
+  if (!doc) return undefined;
+  if (typeof doc === 'string') return doc;
+  if ('spaceId' in doc && typeof doc.spaceId === 'string' && doc.spaceId) {
+    return doc.spaceId;
+  }
+  return extractProjectId(doc);
 }
 
 /**

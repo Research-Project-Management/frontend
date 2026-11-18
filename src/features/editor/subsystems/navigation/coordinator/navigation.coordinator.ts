@@ -300,7 +300,8 @@ export class NavigationCoordinator {
     }
 
     // 2. Open or activate tab in tabs store
-    const effectiveProjectId = pageStore.projectId || pageStore.currentPage?.id || 'default';
+    const effectiveProjectId =
+      pageStore.projectId || pageStore.spaceId || pageStore.currentPage?.id || 'default';
     const tabItem = {
       id: fileId,
       title,
@@ -359,18 +360,19 @@ export class NavigationCoordinator {
     }
 
     // 4. Set active in pageStore
-    const rootPageId = pageStore.currentPage?.id || pageStore.projectId || fileId;
+    const rootPageId = pageStore.currentPage?.id || pageStore.projectId || pageStore.spaceId || fileId;
     pageStore.setActiveFilePage({
       id: fileId,
       title,
       path: optPath || title,
       content: existingModel?.content || '',
       pageId: rootPageId,
+      spaceId: pageStore.spaceId,
       projectId: pageStore.projectId,
     });
 
     // 3b. Synchronize shallow URL history (0ms latency, zero page refresh)
-    const rootId = pageStore.currentPage?.id || pageStore.projectId;
+    const rootId = pageStore.currentPage?.id || pageStore.projectId || pageStore.spaceId;
     const isRoot = fileId === rootId || fileId === `${rootId}-main`;
     this.syncFileUrlParam(isRoot ? undefined : fileId);
 
@@ -413,7 +415,7 @@ export class NavigationCoordinator {
   public closeDocument(fileId: string): void {
     const tabsStore = useWorkspaceStore.getState();
     const pageStore = usePageStore.getState();
-    const projectId = pageStore.projectId || pageStore.parentPageId || pageStore.currentPage?.id || 'default';
+    const projectId = pageStore.projectId || pageStore.spaceId || pageStore.parentPageId || pageStore.currentPage?.id || 'default';
     const parentId = pageStore.parentPageId || pageStore.currentPage?.id;
 
     // 1. Save and evict from session coordinator

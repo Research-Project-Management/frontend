@@ -24,10 +24,38 @@ export interface DocumentScrollViewport {
   left: number;
 }
 
+/**
+ * Computes exact UTF-8 byte length of a UTF-16 string without allocating temporary buffers.
+ */
+export function measureUtf8Bytes(text: string): number {
+  let bytes = 0;
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+    if (code <= 0x7f) {
+      bytes += 1;
+    } else if (code <= 0x7ff) {
+      bytes += 2;
+    } else if (code >= 0xd800 && code <= 0xdbff) {
+      const next = text.charCodeAt(i + 1);
+      if (next >= 0xdc00 && next <= 0xdfff) {
+        bytes += 4;
+        i++;
+      } else {
+        bytes += 3;
+      }
+    } else {
+      bytes += 3;
+    }
+  }
+  return bytes;
+}
+
 export interface DocumentModelState {
   fileId: string;
   filePath: string;
   projectId?: string;
+  spaceId?: string;
+  pageId?: string;
   content: string;
   selection?: DocumentCursorSelection;
   scrollViewport?: DocumentScrollViewport;
@@ -161,6 +189,8 @@ export class LRUDocumentCache {
       content: string;
       filePath?: string;
       projectId?: string;
+      spaceId?: string;
+      pageId?: string;
       yText?: unknown;
       selection?: DocumentCursorSelection;
       scrollViewport?: DocumentScrollViewport;
@@ -175,11 +205,21 @@ export class LRUDocumentCache {
       existing.lastActiveAt = now;
       if (initialData.filePath) existing.filePath = initialData.filePath;
       if (initialData.projectId) existing.projectId = initialData.projectId;
+      if (initialData.spaceId) existing.spaceId = initialData.spaceId;
+      if (initialData.pageId) existing.pageId = initialData.pageId;
       if (initialData.yText !== undefined) existing.yText = initialData.yText;
-      if (initialData.serverRev !== undefined) existing.serverRev = initialData.serverRev;
+      if (
+        initialData.serverRev !== undefined &&
+        (existing.serverRev === undefined || initialData.serverRev >= existing.serverRev)
+      ) {
+        existing.serverRev = initialData.serverRev;
+      }
       if (initialData.serverUpdatedAt !== undefined) existing.serverUpdatedAt = initialData.serverUpdatedAt;
       if (!existing.isDirty && initialData.content !== existing.content) {
-        this.totalBytes = Math.max(0, this.totalBytes + initialData.content.length - existing.content.length);
+        this.totalBytes = Math.max(
+          0,
+          this.totalBytes + measureUtf8Bytes(initialData.content) - measureUtf8Bytes(existing.content),
+        );
         existing.content = initialData.content;
       }
       this.touch(fileId);
@@ -194,6 +234,8 @@ export class LRUDocumentCache {
       fileId,
       filePath: initialData.filePath || fileId,
       projectId: initialData.projectId,
+      spaceId: initialData.spaceId,
+      pageId: initialData.pageId,
       content: initialData.content,
       selection: initialData.selection,
       scrollViewport: initialData.scrollViewport,
@@ -205,7 +247,7 @@ export class LRUDocumentCache {
     };
 
     this.models.set(fileId, newModel);
-    this.totalBytes += newModel.content.length;
+    this.totalBytes += measureUtf8Bytes(newModel.content);
 
     // Create and attach new LRU node at the head
     const node: LRUNode = { fileId, prev: null, next: null };
@@ -347,7 +389,10 @@ export class LRUDocumentCache {
     }
 
     if (model.content !== content) {
-      this.totalBytes = Math.max(0, this.totalBytes + content.length - model.content.length);
+      this.totalBytes = Math.max(
+        0,
+        this.totalBytes + measureUtf8Bytes(content) - measureUtf8Bytes(model.content),
+      );
       model.contentVersion = (model.contentVersion ?? 0) + 1;
     }
     model.content = content;
@@ -364,6 +409,14 @@ export class LRUDocumentCache {
     const model = this.models.get(fileId);
     if (model) {
       model.serverRev = rev;
+      this.notify(fileId, model);
+    }
+  }
+
+  public clearServerRev(fileId: string): void {
+    const model = this.models.get(fileId);
+    if (model && model.serverRev !== undefined) {
+      model.serverRev = undefined;
       this.notify(fileId, model);
     }
   }
@@ -726,7 +779,7 @@ export class LRUDocumentCache {
     this.models.delete(fileId);
 
     if (model) {
-      this.totalBytes = Math.max(0, this.totalBytes - model.content.length);
+      this.totalBytes = Math.max(0, this.totalBytes - measureUtf8Bytes(model.content));
       for (const listener of this.evictionListeners) {
         try {
           listener(fileId, model);

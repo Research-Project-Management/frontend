@@ -220,7 +220,7 @@ describe('User-Driven Overleaf End-to-End Journeys (Phases 1 -> 14)', () => {
       // 4. Unlink a linked file when no longer needed
       await manuscriptService.linkedFiles.delete('proj-ieee-2026', 'link-url-1');
       expect(deleteSpy).toHaveBeenCalledWith(
-        expect.stringContaining('/projects/proj-ieee-2026/linked-files/link-url-1'),
+        expect.stringContaining('/spaces/proj-ieee-2026/linked-files/link-url-1'),
       );
     });
 
@@ -374,8 +374,8 @@ describe('User-Driven Overleaf End-to-End Journeys (Phases 1 -> 14)', () => {
       expect(cancelSpy).toHaveBeenCalledWith('proj-compile-99');
 
       // Aux file URLs (.bbl, .log, and all artifacts zip)
-      expect(downloadAuxFileUrl('proj-compile-99', 'output.bbl')).toContain('/projects/proj-compile-99/artifacts/output.bbl');
-      expect(downloadAllArtifactsZipUrl('proj-compile-99')).toContain('/projects/proj-compile-99/artifacts');
+      expect(downloadAuxFileUrl('proj-compile-99', 'output.bbl')).toContain('/spaces/proj-compile-99/artifacts/output.bbl');
+      expect(downloadAllArtifactsZipUrl('proj-compile-99')).toContain('/spaces/proj-compile-99/artifacts');
     });
 
     it('U7.5: Author jumps from Source Line -> PDF Coordinates (Forward SyncTeX) and Double-clicks PDF -> Source Line (Reverse SyncTeX)', () => {
@@ -567,7 +567,7 @@ describe('User-Driven Overleaf End-to-End Journeys (Phases 1 -> 14)', () => {
       });
 
       expect(fetchSpy).toHaveBeenCalledWith(
-        expect.stringContaining('/projects/proj-nature/export/zip?includeAux=true&cleanArxiv=true&projectName=Nature_Quantum_2026'),
+        expect.stringContaining('/spaces/proj-nature/export/zip?includeAux=true&cleanArxiv=true&projectName=Nature_Quantum_2026'),
         expect.any(Object),
       );
       expect(blob.size).toBeGreaterThan(0);

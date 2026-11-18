@@ -44,11 +44,13 @@ export function useCitationTabState() {
     return p?.path || p?.filePath || p?.title || '';
   });
   const storeParentPageId = usePageStore((s) => s.parentPageId);
+  const storeSpaceId = usePageStore((s) => s.spaceId);
   const storeProjectId = usePageStore((s) => s.projectId);
   const { engine, getContent } = useEditorInstance();
 
   const rootPageId = params?.pageId || storeParentPageId || currentPageId || params?.projectId || '';
-  const projectId = params?.projectId || storeProjectId || currentPageProjectId || rootPageId || '';
+  const projectId = params?.projectId || storeSpaceId || storeProjectId || currentPageProjectId || rootPageId || '';
+  const libraryProjectId = params?.projectId || storeProjectId || 'user';
 
   const [content, setContent] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -182,7 +184,7 @@ export function useCitationTabState() {
     isError: isLibraryError,
     getAuthorSummary,
   } = useEditorCitations({
-    projectId,
+    projectId: libraryProjectId,
     content,
     enabled: true,
   });

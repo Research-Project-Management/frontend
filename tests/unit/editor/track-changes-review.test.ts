@@ -72,7 +72,7 @@ describe('Track Changes & Review System (Overleaf Parity)', () => {
 
       const result = await manuscriptService.suggestions.getSuggestions('page-1', 'pending');
       expect(apiGetSpy).toHaveBeenCalledWith(
-        '/api/v1/manuscripts/docs/page-1/suggestions?status=pending',
+        '/api/v1/pages/docs/page-1/suggestions?status=pending',
         expect.anything(),
       );
       expect(result).toHaveLength(2);
@@ -94,7 +94,7 @@ describe('Track Changes & Review System (Overleaf Parity)', () => {
         description: 'Add amsmath for equations',
       });
 
-      expect(apiPostSpy).toHaveBeenCalledWith('/api/v1/manuscripts/docs/page-1/suggestions', {
+      expect(apiPostSpy).toHaveBeenCalledWith('/api/v1/pages/docs/page-1/suggestions', {
         type: 'insert',
         suggestedText: '\\usepackage{amsmath}\n',
         fromLine: 2,
@@ -112,7 +112,7 @@ describe('Track Changes & Review System (Overleaf Parity)', () => {
       } as any);
 
       const res = await manuscriptService.suggestions.acceptSuggestion('page-1', 'sugg-2');
-      expect(apiPostSpy).toHaveBeenCalledWith('/api/v1/manuscripts/docs/page-1/suggestions/sugg-2/accept', {});
+      expect(apiPostSpy).toHaveBeenCalledWith('/api/v1/pages/docs/page-1/suggestions/sugg-2/accept', {});
       expect(res.ok).toBe(true);
       expect(res.suggestion.status).toBe('accepted');
       expect(res.page.content).toBe('Updated LaTeX document text');
@@ -125,7 +125,7 @@ describe('Track Changes & Review System (Overleaf Parity)', () => {
       } as any);
 
       const res = await manuscriptService.suggestions.rejectSuggestion('page-1', 'sugg-2');
-      expect(apiPostSpy).toHaveBeenCalledWith('/api/v1/manuscripts/docs/page-1/suggestions/sugg-2/reject', {});
+      expect(apiPostSpy).toHaveBeenCalledWith('/api/v1/pages/docs/page-1/suggestions/sugg-2/reject', {});
       expect(res.ok).toBe(true);
       expect(res.suggestion.status).toBe('rejected');
     });
@@ -138,7 +138,9 @@ describe('Track Changes & Review System (Overleaf Parity)', () => {
       } as any);
 
       const res = await manuscriptService.suggestions.acceptAllSuggestions('page-1');
-      expect(apiPostSpy).toHaveBeenCalledWith('/api/v1/manuscripts/docs/page-1/suggestions/accept-all', {});
+      expect(apiPostSpy).toHaveBeenCalledWith('/api/v1/pages/docs/page-1/suggestions/batch-resolve', {
+        action: 'accept',
+      });
       expect(res.ok).toBe(true);
       expect(res.acceptedCount).toBe(2);
       expect(res.page?.content).toBe('Fully accepted document');
@@ -151,7 +153,9 @@ describe('Track Changes & Review System (Overleaf Parity)', () => {
       } as any);
 
       const res = await manuscriptService.suggestions.rejectAllSuggestions('page-1');
-      expect(apiPostSpy).toHaveBeenCalledWith('/api/v1/manuscripts/docs/page-1/suggestions/reject-all', {});
+      expect(apiPostSpy).toHaveBeenCalledWith('/api/v1/pages/docs/page-1/suggestions/batch-resolve', {
+        action: 'reject',
+      });
       expect(res.ok).toBe(true);
       expect(res.rejectedCount).toBe(2);
     });

@@ -67,7 +67,9 @@ export default function TemplateGalleryModal() {
   const activeFileId = usePageStore((s) => s.activeFilePage?.id);
   const activeFileTitle = usePageStore((s) => s.activeFilePage?.title);
   const currentPageId = usePageStore((s) => s.currentPage?.id);
-  const projectId = usePageStore((s) => s.projectId);
+  const projectId = usePageStore(
+    (s) => s.projectId || s.spaceId || s.parentPageId || s.currentPage?.id || '',
+  );
   const { engine } = useEditorInstance();
   const [selectedTemplate, setSelectedTemplate] = useState<ProjectTemplate>(PROJECT_TEMPLATES[0]);
   const [previewTab, setPreviewTab] = useState<'main' | 'bib'>('main');

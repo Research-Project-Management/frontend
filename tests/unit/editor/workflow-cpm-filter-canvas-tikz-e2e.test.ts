@@ -32,15 +32,13 @@ import * as Y from 'yjs';
 // CPM & Work Item Engine
 import {
   analyzeCriticalPath,
-  calculateTaskDuration,
   extractNormalizedEdges,
   type CpmAnalysisResult,
-} from '@/features/projects/project-id/work-items/utils/cpm-graph';
+} from '@/features/projects/project-id/work-items/utils/cpm-graph.utils';
 import {
-  WorkItemFilterEngine,
-  FastBitset,
-  type WorkItemFilterQuery,
-} from '@/features/projects/project-id/work-items/utils/work-item-filter-engine';
+  filterItems,
+  type FilterQuery as WorkItemFilterQuery,
+} from '@/features/projects/project-id/work-items/utils/filter-engine.utils';
 import type { Item } from '@/features/projects/project-id/work-items/types/work-item.types';
 
 // Canvas & TikZ Transpiler
@@ -62,7 +60,7 @@ import { lruDocumentCache } from '@/features/editor/domain/document/lru-document
 describe('End-to-End Workflow Verification: CPM -> Bitset Filter -> Canvas -> TikZ -> LaTeX Editor', () => {
   // Test project items for an academic research paper workflow
   let projectItems: Item[];
-  let filterEngine: WorkItemFilterEngine;
+  let filterEngine: { executeFilter: (filters?: Partial<WorkItemFilterQuery>, searchQuery?: string) => Item[] };
   let mockEngine: IEditorEngine & { insertedSnippets: string[]; isFocused: boolean; content: string };
 
   beforeEach(() => {
@@ -237,7 +235,10 @@ describe('End-to-End Workflow Verification: CPM -> Bitset Filter -> Canvas -> Ti
       },
     ] as unknown as Item[];
 
-    filterEngine = new WorkItemFilterEngine(projectItems, []);
+    filterEngine = {
+      executeFilter: (filters = {}, searchQuery = '') =>
+        filterItems(projectItems, filters, searchQuery, []),
+    };
   });
 
   afterEach(() => {

@@ -23,6 +23,8 @@
  */
 
 import { manuscriptService } from './pages/docstore.client';
+import { getManuscriptsBaseUrl } from './pages/base';
+import { getAuthToken } from '@/shared/lib/api';
 import { PageFileMapper, type RawPageFileRecord } from './pages/doc-mapper';
 import type { CollaborationEvent } from './pages/types';
 
@@ -46,7 +48,10 @@ export default manuscriptService;
 export const historyKeys = {
   all: ['history'] as const,
   project: (projectId: string) => ['history', 'project', projectId] as const,
-  versions: (projectId: string) => ['history', 'project', projectId, 'versions'] as const,
+  versions: (projectId: string, pageId?: string) =>
+    pageId
+      ? (['history', 'project', projectId, 'page', pageId, 'versions'] as const)
+      : (['history', 'project', projectId, 'versions'] as const),
   snapshot: (projectId: string, version: number) => ['history', 'snapshot', projectId, version] as const,
   doc: (docId: string) => ['history', 'doc', docId] as const,
   diff: (docId: string, from: string, to: string) => ['history', 'diff', docId, from, to] as const,
@@ -58,22 +63,76 @@ export const collaborationService = {
     pageId: string,
     onEvent: (event: CollaborationEvent) => void,
   ): (() => void) => {
+    const base = getManuscriptsBaseUrl().replace(/\/$/, '');
     const url = projectId
-      ? `/api/v1/pages/projects/${projectId}/docs/${pageId}/collaboration/stream`
-      : `/api/v1/pages/docs/${pageId}/collaboration/stream`;
+      ? `${base}/spaces/${encodeURIComponent(projectId)}/docs/${encodeURIComponent(pageId)}/collaboration/stream`
+      : `${base}/docs/${encodeURIComponent(pageId)}/collaboration/stream`;
 
-    const eventSource = new EventSource(url);
-    eventSource.onmessage = (e: { data: string }) => {
+    const token = getAuthToken();
+
+    if (typeof EventSource !== 'undefined') {
+      const streamUrl = token
+        ? `${url}${url.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`
+        : url;
+      const eventSource = new EventSource(streamUrl, { withCredentials: true });
+      eventSource.onmessage = (e: { data: string }) => {
+        try {
+          onEvent(JSON.parse(e.data) as CollaborationEvent);
+        } catch (err) {
+          console.error('Failed to parse SSE collaboration event', err);
+        }
+      };
+      return () => {
+        eventSource.close();
+      };
+    }
+
+    const controller = new AbortController();
+
+    void (async () => {
       try {
-        const parsed = JSON.parse(e.data) as CollaborationEvent;
-        onEvent(parsed);
-      } catch (err) {
-        console.error('Failed to parse SSE collaboration event', err);
+        const res = await fetch(url, {
+          method: 'GET',
+          headers: {
+            Accept: 'text/event-stream',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          credentials: 'include',
+          signal: controller.signal,
+        });
+        if (!res.ok || !res.body) return;
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        while (!controller.signal.aborted) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const frames = buffer.split(/\r?\n\r?\n/);
+          buffer = frames.pop() ?? '';
+          for (const frame of frames) {
+            const dataLines = frame
+              .split(/\r?\n/)
+              .filter((line) => line.startsWith('data:'))
+              .map((line) => line.slice(5).trimStart());
+            if (dataLines.length === 0) continue;
+            try {
+              const parsed = JSON.parse(dataLines.join('\n')) as CollaborationEvent;
+              onEvent(parsed);
+            } catch (err) {
+              console.error('Failed to parse SSE collaboration event', err);
+            }
+          }
+        }
+      } catch (err: unknown) {
+        if ((err as { name?: string })?.name !== 'AbortError') {
+          console.debug('Collaboration SSE stream closed', err);
+        }
       }
-    };
+    })();
 
     return () => {
-      eventSource.close();
+      controller.abort();
     };
   },
 };
@@ -108,9 +167,11 @@ export const restoreProjectVersionFile = (
   version: number,
   pathname: string,
   fileId?: string,
-) => manuscriptService.history.restoreProjectVersionFile(projectId, version, pathname, fileId);
+  options?: { pageId?: string },
+) => manuscriptService.history.restoreProjectVersionFile(projectId, version, pathname, fileId, options);
 export const exportVersionZip = (
   projectId: string,
   version: number | string,
   projectName?: string,
-) => manuscriptService.export.exportVersionZip(projectId, version, projectName);
+  options?: { pageId?: string },
+) => manuscriptService.export.exportVersionZip(projectId, version, projectName, options);

@@ -335,7 +335,10 @@ export class CompilerCoordinator {
     multiTabBus.subscribe((msg) => {
       if (msg.type === 'EDITOR_COMPILATION_COMPLETED') {
         const pageStore = usePageStore.getState();
-        const activeProjectId = pageStore.projectId || extractProjectId(pageStore.getActiveDocument());
+        const activeProjectId =
+          pageStore.projectId ||
+          pageStore.spaceId ||
+          extractProjectId(pageStore.getActiveDocument());
         if (activeProjectId && activeProjectId === msg.projectId) {
           if (!this.isCompiling && msg.status === 'success' && msg.pdfUrl) {
             const compileStore = useCompileStore.getState();
@@ -427,6 +430,7 @@ export class CompilerCoordinator {
         (this.options.getProjectId ? this.options.getProjectId() : undefined) ||
         extractProjectId(activeDoc) ||
         pageStore.projectId ||
+        pageStore.spaceId ||
         undefined;
       this.compilerEngine.cancelInFlightCompile(cancelProjectId);
       return false;
@@ -660,6 +664,7 @@ export class CompilerCoordinator {
         editorCommandBus.dispatch({ type: 'compiler:finished', success: true });
         const activeProjectId =
           effectiveProjectId ||
+          usePageStore.getState().spaceId ||
           usePageStore.getState().projectId ||
           extractProjectId(usePageStore.getState().getActiveDocument());
         if (activeProjectId) {
@@ -754,6 +759,7 @@ export class CompilerCoordinator {
     const targetId =
       projectId ||
       (this.options.getProjectId ? this.options.getProjectId() : undefined) ||
+      usePageStore.getState().spaceId ||
       usePageStore.getState().projectId ||
       '';
     if (!targetId) return { synced: [] };
@@ -779,6 +785,10 @@ export class CompilerCoordinator {
       (this.options.getProjectId ? this.options.getProjectId() : undefined) ||
       extractProjectId(activeDoc) ||
       pageStore.projectId ||
+      pageStore.rootPageId ||
+      pageStore.parentPageId ||
+      pageStore.currentPage?.id ||
+      pageStore.spaceId ||
       undefined;
     this.pendingCompileOptions = undefined;
     compileStore.setPendingCompile(false);
@@ -828,11 +838,12 @@ export class CompilerCoordinator {
     pageNum: number,
     x: number,
     y: number,
+    pageId?: string,
   ): Promise<{ sourcePath: string | null; line: number } | null> {
     if (this.compilerEngine.resolveReverseRemote) {
-      return this.compilerEngine.resolveReverseRemote(projectId, pageNum, x, y);
+      return this.compilerEngine.resolveReverseRemote(projectId, pageNum, x, y, pageId);
     }
-    return CompilePipeline.resolveReverseRemote(projectId, pageNum, x, y);
+    return CompilePipeline.resolveReverseRemote(projectId, pageNum, x, y, pageId);
   }
 
   public async resolveForwardRemote(
@@ -840,11 +851,12 @@ export class CompilerCoordinator {
     file: string,
     line: number,
     column: number = 0,
+    pageId?: string,
   ) {
     if (this.compilerEngine.resolveForwardRemote) {
-      return this.compilerEngine.resolveForwardRemote(projectId, file, line, column);
+      return this.compilerEngine.resolveForwardRemote(projectId, file, line, column, pageId);
     }
-    return CompilePipeline.resolveForwardRemote(projectId, file, line, column);
+    return CompilePipeline.resolveForwardRemote(projectId, file, line, column, pageId);
   }
 
   /**

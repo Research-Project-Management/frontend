@@ -31,6 +31,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { cn } from '@/shared/lib/utils';
 import { useQuery } from '@tanstack/react-query';
+import { usePageStore } from '@/features/editor/core';
 import { deletedFilesQuery } from '@/features/editor/ui/hooks/document.queries';
 import { usePageActions } from '@/features/editor/ui/hooks/usePageActions';
 import type { PageFile } from '@/features/editor/domain/types/core.types';
@@ -101,10 +102,12 @@ export default function DeletedFilesModal({
 }: DeletedFilesModalProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [restoringId, setRestoringId] = useState<string | null>(null);
+  const storeRootPageId = usePageStore((s) => s.rootPageId || s.parentPageId || '');
+  const effectiveScopePageId = storeRootPageId || pageId;
 
   const { data: deletedFiles = [], isLoading } = useQuery({
-    ...deletedFilesQuery(pageId),
-    enabled: open && Boolean(pageId),
+    ...deletedFilesQuery(effectiveScopePageId),
+    enabled: open && Boolean(effectiveScopePageId),
   });
 
   const { restorePage } = usePageActions();

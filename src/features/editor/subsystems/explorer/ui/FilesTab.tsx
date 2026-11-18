@@ -501,12 +501,24 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
         parentPageId,
         mainFileId,
       );
+      const effectiveProjectId = projectId || parentPageId;
       if (targetFile) {
         const cleanTitle = normalizeVirtualPath(targetFile.title) || 'main.tex';
-        const hasValidExt = VALID_MAIN_TEX_EXT_REGEX.test(cleanTitle);
-        setMainFile(hasValidExt ? cleanTitle : `${cleanTitle}.tex`);
+        if (!VALID_MAIN_TEX_EXT_REGEX.test(cleanTitle)) {
+          return;
+        }
+        const prevMainFile = useSettingsStore.getState().mainFile;
+        setMainFile(cleanTitle);
+        setMainFileMutation.mutate(
+          { pageId: parentPageId, fileId, projectId: effectiveProjectId },
+          {
+            onError: () => {
+              setMainFile(prevMainFile);
+            },
+          },
+        );
+        return;
       }
-      const effectiveProjectId = projectId || parentPageId;
       setMainFileMutation.mutate({ pageId: parentPageId, fileId, projectId: effectiveProjectId });
     },
     [parentPageId, files, projectFiles, parentPage, mainFileId, setMainFile, projectId, setMainFileMutation],
@@ -544,8 +556,8 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
               }
               handleStartCreateFolder(cleanFolder);
             }}
-            onUploadToFolder={(folderId) => {
-              handleUploadToFolder([], folderId);
+            onUploadToFolder={(folderId, droppedFiles) => {
+              handleUploadToFolder(droppedFiles ?? [], folderId);
             }}
             onStartRename={handleStartRename}
             onRenameChange={setRenameValue}

@@ -52,7 +52,7 @@ export interface FileTreeFolderRowProps {
   onMoveItem: (itemId: string, targetFolderId: string | null) => void;
   onNewFileInFolder: (folderName: string) => void;
   onNewFolderInFolder?: (folderName: string) => void;
-  onUploadToFolder: (folderId: string) => void;
+  onUploadToFolder: (folderId: string, files?: File[]) => void;
   onStartRename?: (folder: { id: string; title: string; isFolder?: boolean }) => void;
   onRenameChange?: (val: string) => void;
   onCommitRename?: (id: string) => void;
@@ -142,6 +142,10 @@ export const FileTreeFolderRow = React.memo(function FileTreeFolderRow({
           e.preventDefault();
           e.stopPropagation();
           e.dataTransfer.dropEffect = 'move';
+        } else if (e.dataTransfer.types.includes('Files')) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.dataTransfer.dropEffect = 'copy';
         }
       }}
       onDrop={(e) => {
@@ -156,6 +160,12 @@ export const FileTreeFolderRow = React.memo(function FileTreeFolderRow({
           e.preventDefault();
           e.stopPropagation();
           onMoveItem(internalFileId, node.id);
+          return;
+        }
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0 && !internalFileId) {
+          e.preventDefault();
+          e.stopPropagation();
+          onUploadToFolder(node.id, Array.from(e.dataTransfer.files));
         }
       }}
       className={cn(

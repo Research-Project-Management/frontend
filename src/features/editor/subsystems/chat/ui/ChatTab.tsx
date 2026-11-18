@@ -31,7 +31,7 @@ export const ChatTab = React.memo(function ChatTab({ onClose }: ChatTabProps) {
   const currentPageProjectId = usePageStore((s) => extractProjectId(s.currentPage));
   const rootPageId = routePageId || storeParentPageId || currentPageId;
   const pageId = storeActivePageId || currentPageId || rootPageId || '';
-  const storeProjectId = usePageStore((s) => s.projectId);
+  const storeProjectId = usePageStore((s) => s.spaceId || s.projectId);
   const projectId = routeProjectId || storeProjectId || currentPageProjectId || '';
 
   const { user } = useAuth();

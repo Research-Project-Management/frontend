@@ -217,7 +217,7 @@ export class YjsProviderPool {
   public flushAll(projectId?: string): number {
     let count = 0;
     for (const { provider } of this.byKey.values()) {
-      if (!provider.isDestroyed && (!projectId || provider.projectId === projectId)) {
+      if (!provider.isDestroyed && (!projectId || provider.spaceId === projectId)) {
         provider.flushPendingUpdates();
         count++;
       }
@@ -225,9 +225,43 @@ export class YjsProviderPool {
     return count;
   }
 
-  public clear(): void {
+  public evictByPage(
+    pageId: string,
+    options: { skipFlush?: boolean } = { skipFlush: true },
+  ): number {
+    const pageSet = this.byPage.get(pageId);
+    if (!pageSet || pageSet.size === 0) return 0;
+    const entries = Array.from(pageSet);
+    const skipFlush = options.skipFlush ?? true;
+    for (const entry of entries) {
+      this.unindexEntry(entry);
+      if (!entry.provider.isDestroyed) {
+        entry.provider.destroy({ skipFlush });
+      }
+    }
+    return entries.length;
+  }
+
+  public evictByProject(
+    projectId: string,
+    options: { skipFlush?: boolean } = { skipFlush: true },
+  ): number {
+    const entries = Array.from(this.byKey.values()).filter(
+      (entry) => entry.projectId === projectId,
+    );
+    const skipFlush = options.skipFlush ?? true;
+    for (const entry of entries) {
+      this.unindexEntry(entry);
+      if (!entry.provider.isDestroyed) {
+        entry.provider.destroy({ skipFlush });
+      }
+    }
+    return entries.length;
+  }
+
+  public clear(options?: { skipFlush?: boolean }): void {
     for (const item of this.byKey.values()) {
-      item.provider.destroy();
+      item.provider.destroy(options);
     }
     this.byKey.clear();
     this.byProjectPage.clear();
@@ -336,8 +370,28 @@ export function updateActiveYjsDocContent(
 }
 
 /**
+ * Evicts and destroys any pooled providers for a specific document ID (skipping flush by default).
+ */
+export function evictYjsProviderByDocId(
+  docId: string,
+  options: { skipFlush?: boolean } = { skipFlush: true },
+): number {
+  return yjsProviderPool.evictByPage(docId, options);
+}
+
+/**
+ * Evicts and destroys all pooled providers scoped to a specific project/space ID.
+ */
+export function evictYjsProvidersByProject(
+  projectId: string,
+  options: { skipFlush?: boolean } = { skipFlush: true },
+): number {
+  return yjsProviderPool.evictByProject(projectId, options);
+}
+
+/**
  * Destroys all pooled providers and clears the pool.
  */
-export function clearYjsProviderPool(): void {
-  yjsProviderPool.clear();
+export function clearYjsProviderPool(options?: { skipFlush?: boolean }): void {
+  yjsProviderPool.clear(options);
 }

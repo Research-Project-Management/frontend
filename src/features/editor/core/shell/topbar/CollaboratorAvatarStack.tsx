@@ -67,7 +67,7 @@ export function CollaboratorAvatarStack({
   const storeActivePageId = usePageStore((s) => s.activePageId);
   const currentPageId = usePageStore((s) => s.currentPage?.id ?? null);
   const currentPageProjectId = usePageStore((s) => extractProjectId(s.currentPage) ?? null);
-  const storeProjectId = usePageStore((s) => s.projectId);
+  const storeProjectId = usePageStore((s) => s.spaceId || s.projectId);
 
   const pageId = storeActivePageId || currentPageId || params?.pageId || null;
   const projectId = params?.projectId || storeProjectId || currentPageProjectId || null;

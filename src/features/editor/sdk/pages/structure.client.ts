@@ -13,7 +13,8 @@ import {
   rawFetch,
 } from '@/shared/lib/api';
 import { MANUSCRIPTS_API_BASE, getManuscriptsBaseUrl } from './base';
-import { normalizeVirtualPath } from '@/features/editor/domain/document/document-naming';
+import { normalizeVirtualPath, parseVirtualFolderId } from '@/features/editor/domain/document/document-naming';
+import { usePageStore } from '@/features/editor/core/store/editor.store';
 import type {
   StructureNodeDto,
   ManuscriptNodeDto,
@@ -64,10 +65,13 @@ export function mapStructureNodesToStorageItems(
     const isFolder = upperType === 'FOLDER';
     const isFileAsset = upperType === 'FILE';
     const normalizedPath = normalizeVirtualPath(n.path || n.name) || n.name;
+    const resolvedSpaceId = n.spaceId ?? n.projectId ?? null;
+    const resolvedPageId = n.pageId ?? n.projectId ?? scopeId ?? null;
     return {
       id: n.id,
       nodeId: n.id,
-      pageId: n.pageId ?? n.projectId ?? scopeId ?? null,
+      spaceId: resolvedSpaceId ?? scopeId ?? null,
+      pageId: resolvedPageId,
       projectId: n.projectId ?? null,
       filename: n.name,
       path: normalizedPath,
@@ -79,7 +83,15 @@ export function mapStructureNodesToStorageItems(
       parentId: n.parentId ?? null,
       sortOrder: n.sortOrder,
       size: n.sizeBytes,
-      ...(isFileAsset ? { url: filestore.getStreamUrl(scopeId, n.fileId || n.id) } : {}),
+      ...(isFileAsset
+        ? {
+            url: filestore.getStreamUrl(
+              resolvedSpaceId || scopeId,
+              n.fileId || n.id,
+              n.pageId || undefined,
+            ),
+          }
+        : {}),
       createdAt: n.createdAt,
       updatedAt: n.updatedAt,
     };
@@ -128,15 +140,16 @@ export const structure = {
 
   getOutline: async (
     projectId: string,
-    params?: { filePath?: string; docId?: string; content?: string },
+    params?: { filePath?: string; docId?: string; pageId?: string; content?: string },
   ): Promise<ProjectOutlineResponseDto> => {
-    if (!projectId) {
+    const scopeId = params?.pageId || projectId;
+    if (!scopeId) {
       return { rootDocPath: null, entries: [], tree: [] };
     }
     try {
       if (params?.content !== undefined) {
         return await apiPost<ProjectOutlineResponseDto>(
-          `${MANUSCRIPTS_API_BASE}/pages/${projectId}/structure/outline`,
+          `${MANUSCRIPTS_API_BASE}/pages/${scopeId}/structure/outline`,
           params,
           { silent: true },
         );
@@ -144,8 +157,9 @@ export const structure = {
       const query: Record<string, string> = {};
       if (params?.filePath) query.filePath = params.filePath;
       if (params?.docId) query.docId = params.docId;
+      if (params?.pageId) query.pageId = params.pageId;
       return await apiGet<ProjectOutlineResponseDto>(
-        `${MANUSCRIPTS_API_BASE}/pages/${projectId}/structure/outline`,
+        `${MANUSCRIPTS_API_BASE}/pages/${scopeId}/structure/outline`,
         { params: query, silent: true },
       );
     } catch {
@@ -255,9 +269,46 @@ export const structure = {
  * Filestore binary assets sub-API: Stream URLs, multipart uploads, signed URLs, deletion.
  */
 
+function resolveFilestoreCollectionRoute(
+  apiBase: string,
+  spaceIdOrPageId: string,
+  explicitPageId?: string,
+): { basePath: string; pageQuery?: string } {
+  const trimmedScope = spaceIdOrPageId?.trim() || '';
+  const trimmedPage = explicitPageId?.trim() || undefined;
+  if (trimmedPage && trimmedScope && trimmedScope !== trimmedPage) {
+    return {
+      basePath: `${apiBase}/spaces/${encodeURIComponent(trimmedScope)}/files`,
+      pageQuery: `pageId=${encodeURIComponent(trimmedPage)}`,
+    };
+  }
+  const pageState = typeof usePageStore?.getState === 'function' ? usePageStore.getState() : undefined;
+  const storeSpaceId = pageState?.spaceId?.trim() || '';
+  const storePageId = pageState?.rootPageId?.trim() || pageState?.parentPageId?.trim() || '';
+  if (trimmedPage && (!trimmedScope || (storeSpaceId && storeSpaceId !== trimmedPage))) {
+    return {
+      basePath: `${apiBase}/pages/${encodeURIComponent(trimmedPage)}/files`,
+    };
+  }
+  if (!trimmedPage && trimmedScope && storePageId && trimmedScope === storePageId && storeSpaceId !== trimmedScope) {
+    return {
+      basePath: `${apiBase}/pages/${encodeURIComponent(trimmedScope)}/files`,
+    };
+  }
+  return {
+    basePath: `${apiBase}/spaces/${encodeURIComponent(trimmedScope || trimmedPage || '')}/files`,
+    pageQuery: trimmedPage ? `pageId=${encodeURIComponent(trimmedPage)}` : undefined,
+  };
+}
+
 export const filestore = {
-  getStreamUrl: (projectIdOrPageId: string, fileId: string): string => {
-    return `${MANUSCRIPTS_API_BASE}/projects/${projectIdOrPageId}/files/${fileId}`;
+  getStreamUrl: (projectIdOrPageId: string, fileId: string, pageId?: string): string => {
+    const { basePath, pageQuery } = resolveFilestoreCollectionRoute(
+      MANUSCRIPTS_API_BASE,
+      projectIdOrPageId,
+      pageId,
+    );
+    return `${basePath}/${encodeURIComponent(fileId)}${pageQuery ? `?${pageQuery}` : ''}`;
   },
 
   upload: async (
@@ -269,27 +320,59 @@ export const filestore = {
     const name = filename || (file instanceof File ? file.name : 'unnamed.bin');
     const formData = new FormData();
     formData.append('file', file, name);
+    const { basePath, pageQuery } = resolveFilestoreCollectionRoute(
+      getManuscriptsBaseUrl(),
+      projectIdOrPageId,
+      pageId,
+    );
     const res = await rawFetch(
-      `${getManuscriptsBaseUrl()}/projects/${projectIdOrPageId}/files?name=${encodeURIComponent(name)}${pageId ? `&pageId=${encodeURIComponent(pageId)}` : ''}`,
+      `${basePath}?name=${encodeURIComponent(name)}${pageQuery ? `&${pageQuery}` : ''}`,
       'POST',
       formData,
     );
-    if (!res.ok) throw new Error(`File upload failed: ${res.statusText}`);
+    if (!res.ok) {
+      let message = res.statusText || `HTTP ${res.status}`;
+      try {
+        const errBody = (await res.json()) as {
+          message?: string;
+          error?: { message?: string };
+        };
+        message = errBody?.error?.message || errBody?.message || message;
+      } catch {
+        // Non-JSON response fallback
+      }
+      throw new Error(`File upload failed: ${message}`);
+    }
     return (await res.json()) as FileMetadataDto;
   },
 
-  getSignedUrl: async (projectIdOrPageId: string, fileId: string, expiresIn = 3600): Promise<{ signedUrl: string | null }> => {
+  getSignedUrl: async (
+    projectIdOrPageId: string,
+    fileId: string,
+    expiresIn = 3600,
+    pageId?: string,
+  ): Promise<{ signedUrl: string | null }> => {
     try {
+      const { basePath } = resolveFilestoreCollectionRoute(
+        MANUSCRIPTS_API_BASE,
+        projectIdOrPageId,
+        pageId,
+      );
       return await apiGet<{ signedUrl: string | null }>(
-        `${MANUSCRIPTS_API_BASE}/projects/${projectIdOrPageId}/files/${fileId}/signed-url?expiresIn=${expiresIn}`,
+        `${basePath}/${encodeURIComponent(fileId)}/signed-url?expiresIn=${expiresIn}`,
       );
     } catch {
       return { signedUrl: null };
     }
   },
 
-  delete: async (projectIdOrPageId: string, fileId: string): Promise<void> => {
-    return await apiDelete(`${MANUSCRIPTS_API_BASE}/projects/${projectIdOrPageId}/files/${fileId}`);
+  delete: async (projectIdOrPageId: string, fileId: string, pageId?: string): Promise<void> => {
+    const { basePath } = resolveFilestoreCollectionRoute(
+      MANUSCRIPTS_API_BASE,
+      projectIdOrPageId,
+      pageId,
+    );
+    return await apiDelete(`${basePath}/${encodeURIComponent(fileId)}`);
   },
 
   importFromProject: async (
@@ -297,7 +380,7 @@ export const filestore = {
     payload: ImportFromProjectPayload,
   ): Promise<{ file: Record<string, unknown> }> => {
     return await apiPost<{ file: Record<string, unknown> }>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectIdOrPageId}/files/import-from-project`,
+      `${MANUSCRIPTS_API_BASE}/spaces/${projectIdOrPageId}/files/import-from-project`,
       payload,
     );
   },
@@ -310,21 +393,40 @@ export const filestore = {
     projectId?: string,
   ): Promise<EditorStorageItem> => {
     const targetPageId = pageId || projectId || '';
+    const storeSpaceId =
+      typeof usePageStore?.getState === 'function' ? usePageStore.getState().spaceId?.trim() : '';
+    const resolvedSpaceId = projectId?.trim() || storeSpaceId || '';
+    let effectiveName = file.name;
+    if (parentId && !file.name.includes('/')) {
+      const virtualFolder = parseVirtualFolderId(parentId);
+      if (virtualFolder) {
+        effectiveName = `${virtualFolder}/${file.name}`;
+      } else if (targetPageId) {
+        const folderNode = await structure.getNodeById(targetPageId, parentId).catch(() => null);
+        const folderPath = normalizeVirtualPath(folderNode?.path || folderNode?.name || '');
+        if (folderPath) {
+          effectiveName = `${folderPath}/${file.name}`;
+        }
+      }
+    }
     const uploaded = await filestore.upload(
-      projectId || targetPageId,
+      resolvedSpaceId || targetPageId,
       file,
-      file.name,
+      effectiveName,
       pageId || undefined,
     );
     onProgress?.(100);
     const id = uploaded.id || '';
-    const filename = uploaded.name || uploaded.filename || file.name;
+    const filename = uploaded.name || uploaded.filename || effectiveName;
     const normalizedPath = normalizeVirtualPath(uploaded.path || filename) || filename;
+    const itemSpaceId = uploaded.spaceId ?? resolvedSpaceId ?? uploaded.projectId ?? null;
+    const itemPageId = uploaded.pageId ?? pageId ?? projectId ?? null;
     return {
       id,
       nodeId: uploaded.nodeId ?? id,
-      pageId: uploaded.pageId ?? pageId ?? projectId ?? null,
-      projectId: uploaded.projectId ?? projectId ?? pageId ?? null,
+      spaceId: itemSpaceId,
+      pageId: itemPageId,
+      projectId: uploaded.projectId ?? resolvedSpaceId ?? pageId ?? null,
       filename,
       path: normalizedPath,
       size: uploaded.sizeBytes ?? file.size,
@@ -335,7 +437,11 @@ export const filestore = {
       fileId: uploaded.fileId ?? id,
       isRootDoc: false,
       parentId: parentId || null,
-      url: filestore.getStreamUrl(projectId || targetPageId, id),
+      url: filestore.getStreamUrl(
+        itemSpaceId || targetPageId,
+        id,
+        itemPageId || undefined,
+      ),
     };
   },
 };
@@ -352,7 +458,7 @@ export const citations = {
     if (!projectId) return [];
     try {
       return await apiGet<BibEntryDto[]>(
-        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/citations?limit=${limit}`,
+        `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/citations?limit=${limit}`,
         { silent: true },
       );
     } catch {
@@ -362,19 +468,19 @@ export const citations = {
 
   search: async (projectId: string, query = '', limit = 20): Promise<BibEntryDto[]> => {
     return await apiGet<BibEntryDto[]>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/citations/search?query=${encodeURIComponent(query)}&limit=${limit}`,
+      `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/citations/search?query=${encodeURIComponent(query)}&limit=${limit}`,
     );
   },
 
   resolve: async (projectId: string, identifier: string): Promise<{ success: boolean; entry: BibEntryDto }> => {
     return await apiPost<{ success: boolean; entry: BibEntryDto }>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/citations/resolve`,
+      `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/citations/resolve`,
       { identifier },
     );
   },
 
   validate: async (projectId: string): Promise<CitationValidationDto> => {
-    return await apiGet<CitationValidationDto>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/citations/validate`);
+    return await apiGet<CitationValidationDto>(`${MANUSCRIPTS_API_BASE}/spaces/${projectId}/citations/validate`);
   },
 
   refactorKey: async (
@@ -392,7 +498,7 @@ export const citations = {
     }>;
   }> => {
     return await apiPost(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/citations/refactor`,
+      `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/citations/refactor`,
       dto,
     );
   },
@@ -415,7 +521,7 @@ export const citations = {
     conflicts?: string[];
   }> => {
     return await apiPost(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/citations/entries`,
+      `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/citations/entries`,
       dto,
     );
   },
@@ -444,7 +550,7 @@ export const citations = {
   }> => {
     if (projectId) {
       return await apiPost(
-        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/citations/inject-bibliography`,
+        `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/citations/inject-bibliography`,
         dto,
       );
     }
@@ -459,7 +565,7 @@ export const citations = {
       ...dto,
       ...(dto.targetBibFile && !dto.targetFilename ? { targetFilename: dto.targetBibFile } : {}),
     };
-    return await apiPost<SyncLibraryResult>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/citations/sync-library`, payload);
+    return await apiPost<SyncLibraryResult>(`${MANUSCRIPTS_API_BASE}/spaces/${projectId}/citations/sync-library`, payload);
   },
 
   listLibraryCollections: async (): Promise<Array<Record<string, unknown>>> => {
@@ -523,7 +629,7 @@ export const templates = {
   },
 
   scaffold: async (projectId: string, templateId: string): Promise<Record<string, unknown>> => {
-    return await apiPost<Record<string, unknown>>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/templates/${templateId}/scaffold`, {});
+    return await apiPost<Record<string, unknown>>(`${MANUSCRIPTS_API_BASE}/spaces/${projectId}/templates/${templateId}/scaffold`, {});
   },
 };
 
@@ -571,7 +677,7 @@ export const spelling = {
   ): Promise<SpellingReport> => {
     try {
       const res = await apiPost<SpellingReport>(
-        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/spelling/check`,
+        `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/spelling/check`,
         payload,
       );
       return res;
@@ -588,7 +694,7 @@ export const spelling = {
   getProjectDictionary: async (projectId: string): Promise<string[]> => {
     try {
       const res = await apiGet<CustomDictionaryResponse>(
-        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/spelling/dictionary`,
+        `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/spelling/dictionary`,
       );
       return res?.words || [];
     } catch {
@@ -598,7 +704,7 @@ export const spelling = {
 
   learnProjectWord: async (projectId: string, word: string): Promise<boolean> => {
     const res = await apiPost<{ success: boolean; word: string }>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/spelling/dictionary/learn`,
+      `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/spelling/dictionary/learn`,
       { word },
     );
     return res?.success ?? true;
@@ -606,7 +712,7 @@ export const spelling = {
 
   unlearnProjectWord: async (projectId: string, word: string): Promise<boolean> => {
     const res = await apiDelete<{ success: boolean; removed: boolean; word: string }>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/spelling/dictionary/${encodeURIComponent(word)}`,
+      `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/spelling/dictionary/${encodeURIComponent(word)}`,
     );
     return res?.success ?? true;
   },
@@ -676,7 +782,7 @@ export interface GitRepoInfo {
 
 export const gitApi = {
   getRepoInfo: async (projectId: string): Promise<GitRepoInfo> => {
-    return apiGet<GitRepoInfo>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/git`);
+    return apiGet<GitRepoInfo>(`${MANUSCRIPTS_API_BASE}/spaces/${projectId}/git`);
   },
 
   listTokens: async (): Promise<{ tokens: GitTokenInfo[] }> => {
@@ -689,5 +795,61 @@ export const gitApi = {
 
   revokeToken: async (tokenId: string): Promise<{ success: boolean }> => {
     return apiDelete<{ success: boolean }>(`${MANUSCRIPTS_API_BASE}/git/tokens/${tokenId}`);
+  },
+};
+
+export interface LinkedFileDto {
+  id: string;
+  name: string;
+  provider: string;
+  sourceProjectId?: string;
+  sourceFileId?: string;
+  sourceUrl?: string;
+  lastSyncedAt?: string;
+  [key: string]: unknown;
+}
+
+export interface CreateLinkedFilePayload {
+  name: string;
+  provider: string;
+  sourceProjectId?: string;
+  sourceFileId?: string;
+  sourceUrl?: string;
+  [key: string]: unknown;
+}
+
+export const linkedFiles = {
+  list: async (projectId: string): Promise<LinkedFileDto[]> => {
+    const res = await apiGet<LinkedFileDto[] | { linkedFiles?: LinkedFileDto[] }>(
+      `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/linked-files`,
+    );
+    return Array.isArray(res) ? res : res?.linkedFiles || [];
+  },
+
+  create: async (projectId: string, payload: CreateLinkedFilePayload): Promise<LinkedFileDto> => {
+    return apiPost<LinkedFileDto>(
+      `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/linked-files`,
+      payload,
+    );
+  },
+
+  refresh: async (projectId: string, linkId: string): Promise<LinkedFileDto> => {
+    return apiPost<LinkedFileDto>(
+      `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/linked-files/${linkId}/refresh`,
+      {},
+    );
+  },
+
+  refreshAll: async (projectId: string): Promise<{ refreshedCount: number; [key: string]: unknown }> => {
+    return apiPost<{ refreshedCount: number; [key: string]: unknown }>(
+      `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/linked-files/refresh-all`,
+      {},
+    );
+  },
+
+  delete: async (projectId: string, linkId: string): Promise<void> => {
+    await apiDelete<void>(
+      `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/linked-files/${linkId}`,
+    );
   },
 };

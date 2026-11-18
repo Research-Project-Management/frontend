@@ -6,7 +6,7 @@
  */
 
 import { EditorView } from '@codemirror/view';
-import { EditorSelection, StateEffect } from '@codemirror/state';
+import { Annotation, EditorSelection, StateEffect } from '@codemirror/state';
 import { undo, redo, selectAll, indentMore, indentLess, toggleComment } from '@codemirror/commands';
 import {
   openSearchPanel,
@@ -33,6 +33,8 @@ import {
   diffProposalField,
 } from '@/features/editor/core/engine/extensions/inline-diff';
 import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
+
+export const programmaticSyncAnnotation = Annotation.define<boolean>();
 
 // Effect to trigger line flash/highlight for SyncTeX or compiler errors
 export const highlightLineEffect = StateEffect.define<{ line: number; type: 'synctex' | 'error' }>();

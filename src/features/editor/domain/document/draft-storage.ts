@@ -19,6 +19,9 @@ export interface DraftSnapshot {
   content: string;
   savedAt: number;
   projectId?: string;
+  spaceId?: string;
+  pageId?: string;
+  expectedRev?: number;
   title?: string;
   sizeBytes?: number;
 }
@@ -44,8 +47,10 @@ export interface OfflineMutation {
   id?: string;
   fileId: string;
   projectId?: string;
+  spaceId?: string;
+  pageId?: string;
   type: 'update_content' | 'create_file' | 'delete_file';
-  payload: { content?: string; [key: string]: unknown };
+  payload: { content?: string; expectedRev?: number; [key: string]: unknown };
   status?: 'pending' | 'processing' | 'failed' | 'completed';
   retryCount?: number;
   error?: string;
@@ -1045,7 +1050,15 @@ export class DraftStorageService implements IDraftStorageSink {
         });
 
         if (existing) {
-          const mergedPayload = { ...existing.payload, ...mutation.payload };
+          const baselineExpectedRev =
+            existing.payload.expectedRev ?? mutation.payload.expectedRev;
+          const mergedPayload = {
+            ...existing.payload,
+            ...mutation.payload,
+            ...(baselineExpectedRev !== undefined
+              ? { expectedRev: baselineExpectedRev }
+              : {}),
+          };
           const updated: OfflineMutation = {
             ...existing,
             payload: mergedPayload,
@@ -1088,9 +1101,18 @@ export class DraftStorageService implements IDraftStorageSink {
         (m) => m.fileId === mutation.fileId && m.type === 'update_content' && (m.status === 'pending' || !m.status),
       );
       if (existingIdx !== -1) {
-        const mergedPayload = { ...this.mutationQueue[existingIdx].payload, ...mutation.payload };
+        const currentExisting = this.mutationQueue[existingIdx];
+        const baselineExpectedRev =
+          currentExisting.payload.expectedRev ?? mutation.payload.expectedRev;
+        const mergedPayload = {
+          ...currentExisting.payload,
+          ...mutation.payload,
+          ...(baselineExpectedRev !== undefined
+            ? { expectedRev: baselineExpectedRev }
+            : {}),
+        };
         this.mutationQueue[existingIdx] = {
-          ...this.mutationQueue[existingIdx],
+          ...currentExisting,
           payload: mergedPayload,
           status: 'pending',
           sizeBytes: JSON.stringify(mergedPayload).length,
@@ -1175,6 +1197,93 @@ export class DraftStorageService implements IDraftStorageSink {
     const idx = this.mutationQueue.findIndex((m) => m.id === id);
     if (idx !== -1) {
       this.mutationQueue.splice(idx, 1);
+    }
+  }
+
+  public async removeMutationsByFileId(fileId: string): Promise<void> {
+    if (!fileId) return;
+    for (let i = this.mutationQueue.length - 1; i >= 0; i--) {
+      if (this.mutationQueue[i].fileId === fileId) {
+        this.mutationQueue.splice(i, 1);
+      }
+    }
+    const db = await this.initDatabase();
+    if (db) {
+      await new Promise<void>((resolve) => {
+        try {
+          const tx = db.transaction(STORE_MUTATIONS, 'readwrite');
+          const store = tx.objectStore(STORE_MUTATIONS);
+          const index = store.index('fileId');
+          const req = index.openCursor(IDBKeyRange.only(fileId));
+          req.onsuccess = (e) => {
+            const cursor = (e.target as IDBRequest<IDBCursorWithValue>).result;
+            if (cursor) {
+              cursor.delete();
+              cursor.continue();
+            }
+          };
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => resolve();
+        } catch {
+          resolve();
+        }
+      });
+    }
+  }
+
+  public async renameFileSnapshots(
+    oldPath: string,
+    newPath: string,
+    fileId?: string,
+  ): Promise<void> {
+    const cleanOld = oldPath.trim().replace(/^\/+/, '');
+    const cleanNew = newPath.trim().replace(/^\/+/, '');
+    if (!cleanNew) return;
+
+    for (const [key, snap] of this.memoryCache.entries()) {
+      if (key === fileId || (cleanOld && snap.title?.replace(/^\/+/, '') === cleanOld)) {
+        this.memoryCache.set(key, { ...snap, title: cleanNew });
+      }
+    }
+    for (const [key, pf] of this.projectFilesMemoryCache.entries()) {
+      const pfPath = (pf.filePath || pf.title || '').replace(/^\/+/, '');
+      if (key === fileId || (cleanOld && pfPath === cleanOld)) {
+        this.projectFilesMemoryCache.set(key, {
+          ...pf,
+          title: cleanNew,
+          filePath: cleanNew,
+          updatedAt: Date.now(),
+        });
+      }
+    }
+
+    const db = await this.initDatabase();
+    if (db && fileId) {
+      await new Promise<void>((resolve) => {
+        try {
+          const tx = db.transaction([STORE_DRAFTS, STORE_PROJECT_FILES], 'readwrite');
+          const draftStore = tx.objectStore(STORE_DRAFTS);
+          const draftReq = draftStore.get(fileId);
+          draftReq.onsuccess = () => {
+            const draft = draftReq.result as DraftSnapshot | undefined;
+            if (draft) {
+              draftStore.put({ ...draft, title: cleanNew });
+            }
+          };
+          const fileStore = tx.objectStore(STORE_PROJECT_FILES);
+          const fileReq = fileStore.get(fileId);
+          fileReq.onsuccess = () => {
+            const pf = fileReq.result as ProjectFileSnapshot | undefined;
+            if (pf) {
+              fileStore.put({ ...pf, title: cleanNew, filePath: cleanNew, updatedAt: Date.now() });
+            }
+          };
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => resolve();
+        } catch {
+          resolve();
+        }
+      });
     }
   }
 

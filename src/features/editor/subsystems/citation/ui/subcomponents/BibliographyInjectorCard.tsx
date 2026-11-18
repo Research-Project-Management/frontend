@@ -42,6 +42,8 @@ export const BibliographyInjectorCard = React.memo(function BibliographyInjector
 }: BibliographyInjectorCardProps) {
   const [isInjecting, setIsInjecting] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const storeProjectId = usePageStore((s) => s.projectId);
+  const storeSpaceId = usePageStore((s) => s.spaceId);
 
   const fetchFormattedBibliography = useCallback(async () => {
     const itemIds = (citedItems || []).map((i) => i.id).filter(Boolean);
@@ -51,9 +53,11 @@ export const BibliographyInjectorCard = React.memo(function BibliographyInjector
 
     const currentContent = getContent ? getContent() : engine?.getContent?.() || '';
     const detectedStyle = detectDocumentCitationStyle(currentContent, activeFilePath);
+    const libraryProjectId =
+      storeProjectId || (projectId && projectId !== storeSpaceId ? projectId : undefined);
 
-    return await CitationService.batchFormat(projectId, itemIds, detectedStyle);
-  }, [citedItems, projectId, getContent, engine, activeFilePath]);
+    return await CitationService.batchFormat(libraryProjectId, itemIds, detectedStyle);
+  }, [citedItems, projectId, storeProjectId, storeSpaceId, getContent, engine, activeFilePath]);
 
   // Handler: Insert bibliography section directly into document content
   const handleInsert = useCallback(async () => {
@@ -84,7 +88,9 @@ export const BibliographyInjectorCard = React.memo(function BibliographyInjector
       let action: 'replaced' | 'appended';
 
       try {
-        const serverInj = await manuscriptService.citations.injectBibliography(projectId, {
+        const serverInj = await manuscriptService.citations.injectBibliography(
+          projectId || storeSpaceId || storeProjectId,
+          {
           docId: activeDocId ?? undefined,
           content: currentContent,
           filePath: activeFilePath,
@@ -148,6 +154,8 @@ export const BibliographyInjectorCard = React.memo(function BibliographyInjector
     fetchFormattedBibliography,
     citedItems,
     projectId,
+    storeProjectId,
+    storeSpaceId,
     refreshContent,
   ]);
 

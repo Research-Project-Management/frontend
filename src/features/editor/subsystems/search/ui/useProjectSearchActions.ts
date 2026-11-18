@@ -80,20 +80,21 @@ export function useProjectSearchActions({
   }, [engine, effectiveQuery, useRegex, wholeWord, caseSensitive, replaceText]);
 
   const handleReplaceAllEverywhere = useCallback(async () => {
-    if (!effectiveQuery || !rootProjectId) return;
+    if (!effectiveQuery || (!rootProjectId && !rootPageId)) return;
     setIsReplacingAll(true);
     try {
       // 1. Flush pending debounced writes across all sessions so server has latest content
       await sessionCoordinator.flushAllPending();
 
       const res = await manuscriptService.search.batchReplace(
-        rootProjectId,
+        rootProjectId || '',
         effectiveQuery,
         replaceText,
         {
           caseSensitive,
           wholeWord,
           useRegex,
+          ...(rootPageId && rootPageId !== rootProjectId ? { pageId: rootPageId } : {}),
         },
       );
       toast.success(

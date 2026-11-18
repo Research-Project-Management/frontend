@@ -74,6 +74,7 @@ export class DocumentFacade {
         const projectKey =
           pageState.parentPageId ||
           pageState.projectId ||
+          pageState.spaceId ||
           pageState.currentPage?.id ||
           '';
         const nextActiveId = projectKey ? activeByProject[projectKey] : null;
@@ -119,6 +120,7 @@ export class DocumentFacade {
     const projectId =
       params?.projectId ||
       pageState.projectId ||
+      pageState.spaceId ||
       extractProjectId(currentPage) ||
       rootPageId ||
       '';
@@ -233,6 +235,10 @@ export class DocumentFacade {
         name?: string;
         path?: string;
         content?: unknown;
+        rev?: number;
+        updatedAt?: string;
+        spaceId?: string;
+        pageId?: string;
       };
       const title = rawRecord.title || rawRecord.name || rawRecord.path || 'untitled.tex';
       const path = rawRecord.path || title;
@@ -247,11 +253,20 @@ export class DocumentFacade {
 
       // Only update LRU cache if the model is not currently dirty
       const existing = lruDocumentCache.getModel(rawRecord.id);
-      if (existing && !existing.isDirty && serverContent && existing.content !== serverContent) {
+      if (
+        existing &&
+        !existing.isDirty &&
+        ((serverContent && existing.content !== serverContent) ||
+          (typeof rawRecord.rev === 'number' && existing.serverRev !== rawRecord.rev))
+      ) {
         lruDocumentCache.registerModel(rawRecord.id, {
-          content: serverContent,
+          content: serverContent || existing.content,
           filePath: path,
           projectId: projectKey,
+          ...(rawRecord.spaceId ? { spaceId: rawRecord.spaceId } : {}),
+          ...(rawRecord.pageId ? { pageId: rawRecord.pageId } : {}),
+          ...(typeof rawRecord.rev === 'number' ? { serverRev: rawRecord.rev } : {}),
+          ...(rawRecord.updatedAt ? { serverUpdatedAt: rawRecord.updatedAt } : {}),
         });
       }
 

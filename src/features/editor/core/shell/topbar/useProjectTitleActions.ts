@@ -20,7 +20,6 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { usePageActions } from '@/features/editor/ui/hooks/usePageActions';
 import { useProjectExport } from '@/features/editor/ui/hooks/useExport';
-import { useUpdateProject, useDuplicateProject } from '@/features/projects/shell/hooks/use-project';
 import type { Page, PageFile } from '@/features/editor/domain/types/core.types';
 
 export interface UseProjectTitleActionsOptions {

@@ -59,8 +59,16 @@ export function InlineInput({
   depth?: number;
 }) {
   const handledRef = React.useRef(false);
+  const isPendingRef = React.useRef(Boolean(isPending));
   const inputRef = React.useRef<HTMLInputElement>(null);
   const readyForBlurRef = React.useRef(false);
+
+  React.useEffect(() => {
+    isPendingRef.current = Boolean(isPending);
+    if (!isPending) {
+      handledRef.current = false;
+    }
+  }, [isPending]);
 
   React.useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -95,22 +103,35 @@ export function InlineInput({
         onKeyDown={(e) => {
           if (e.key === 'Enter') {
             e.preventDefault();
-            if (handledRef.current) return;
+            if (handledRef.current || isPendingRef.current) return;
             handledRef.current = true;
             onCommit();
+            queueMicrotask(() => {
+              if (!isPendingRef.current) {
+                handledRef.current = false;
+              }
+            });
           }
           if (e.key === 'Escape') {
             e.preventDefault();
-            if (handledRef.current) return;
+            if (isPendingRef.current) return;
             handledRef.current = true;
             onCancel();
           }
         }}
         onBlur={() => {
-          if (!readyForBlurRef.current || handledRef.current) return;
+          if (!readyForBlurRef.current || handledRef.current || isPendingRef.current) return;
           handledRef.current = true;
-          if (value.trim()) onCommit();
-          else onCancel();
+          if (value.trim()) {
+            onCommit();
+            queueMicrotask(() => {
+              if (!isPendingRef.current) {
+                handledRef.current = false;
+              }
+            });
+          } else {
+            onCancel();
+          }
         }}
         placeholder={placeholder}
         aria-label={placeholder || 'Item name'}
@@ -138,8 +159,16 @@ export function RenameInput({
   isPending?: boolean;
 }) {
   const handledRef = React.useRef(false);
+  const isPendingRef = React.useRef(Boolean(isPending));
   const inputRef = React.useRef<HTMLInputElement>(null);
   const readyForBlurRef = React.useRef(false);
+
+  React.useEffect(() => {
+    isPendingRef.current = Boolean(isPending);
+    if (!isPending) {
+      handledRef.current = false;
+    }
+  }, [isPending]);
 
   React.useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -166,22 +195,35 @@ export function RenameInput({
           e.stopPropagation();
           if (e.key === 'Enter') {
             e.preventDefault();
-            if (handledRef.current) return;
+            if (handledRef.current || isPendingRef.current) return;
             handledRef.current = true;
             onCommit();
+            queueMicrotask(() => {
+              if (!isPendingRef.current) {
+                handledRef.current = false;
+              }
+            });
           }
           if (e.key === 'Escape') {
             e.preventDefault();
-            if (handledRef.current) return;
+            if (isPendingRef.current) return;
             handledRef.current = true;
             onCancel();
           }
         }}
         onBlur={() => {
-          if (!readyForBlurRef.current || handledRef.current) return;
+          if (!readyForBlurRef.current || handledRef.current || isPendingRef.current) return;
           handledRef.current = true;
-          if (value.trim()) onCommit();
-          else onCancel();
+          if (value.trim()) {
+            onCommit();
+            queueMicrotask(() => {
+              if (!isPendingRef.current) {
+                handledRef.current = false;
+              }
+            });
+          } else {
+            onCancel();
+          }
         }}
         aria-label="Rename file"
         disabled={isPending}

@@ -100,7 +100,7 @@ describe('Editor Real-Time Socket.IO & Yjs Collaboration Subsystem', () => {
         user,
       });
 
-      expect(provider.projectId).toBe(projectId);
+      expect(provider.spaceId).toBe(projectId);
       expect(provider.pageId).toBe(pageId);
       expect(provider.awareness).toBeDefined();
       expect(provider.yText).toBeDefined();

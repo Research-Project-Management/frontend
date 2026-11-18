@@ -48,15 +48,58 @@ export function fixLatexError(params: AiErrorFixParams): AiErrorFixResult {
     };
   }
 
-  if (/undefined control sequence/i.test(errorMessage) && /toprule|bottomrule|midrule/i.test(errorMessage + detail)) {
-    return {
-      explanation: "Undefined control sequence for booktabs table rule. Include '\\usepackage{booktabs}' in your preamble.",
-      originalSnippet: currentLineText,
-      fixedSnippet: '\\usepackage{booktabs}',
-      startLine: lineNum,
-      endLine: lineNum,
-      confidence: 'high',
-    };
+  const packageMap: Record<string, string> = {
+    includegraphics: 'graphicx',
+    textcolor: 'xcolor',
+    color: 'xcolor',
+    colorbox: 'xcolor',
+    toprule: 'booktabs',
+    midrule: 'booktabs',
+    bottomrule: 'booktabs',
+    cmidrule: 'booktabs',
+    multirow: 'multirow',
+    mathbb: 'amssymb, amsmath',
+    mathcal: 'amsmath',
+    mathfrak: 'amssymb',
+    text: 'amsmath',
+    align: 'amsmath',
+    dfrac: 'amsmath',
+    tfrac: 'amsmath',
+    boldsymbol: 'amsmath',
+    url: 'hyperref',
+    href: 'hyperref',
+    SI: 'siunitx',
+    si: 'siunitx',
+    num: 'siunitx',
+    tikz: 'tikz',
+    begin: 'amsmath',
+    lstinputlisting: 'listings',
+    lstlisting: 'listings',
+    FloatBarrier: 'placeins',
+    subfloat: 'subfig',
+    subfigure: 'subcaption',
+    captionof: 'caption',
+    rotatebox: 'graphicx',
+    scalebox: 'graphicx',
+  };
+
+  if (/undefined control sequence/i.test(errorMessage)) {
+    const cmdMatch = `${errorMessage} ${detail} ${surroundingCode}`.match(
+      /\\([a-zA-Z]+)/,
+    );
+    const cmdName = cmdMatch?.[1];
+    if (cmdName && packageMap[cmdName]) {
+      const pkg = packageMap[cmdName];
+      const primaryPkg = pkg.split(',')[0].trim();
+      return {
+        explanation: `Undefined control sequence \\${cmdName}. Include '\\usepackage{${primaryPkg}}'${pkg.includes(',') ? ` (or ${pkg})` : ''} in your preamble.`,
+        originalSnippet: currentLineText,
+        fixedSnippet: `\\usepackage{${primaryPkg}}`,
+        startLine: lineNum,
+        endLine: lineNum,
+        confidence: 'high',
+      };
+    }
   }
 
   if (/perhaps a missing \\item/i.test(errorMessage) || /missing \\item/i.test(errorMessage)) {

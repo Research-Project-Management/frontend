@@ -179,8 +179,8 @@ describe('import-zip.util (Thin-Client Archive SDK)', () => {
 
       expect(fetchSpy).toHaveBeenCalledTimes(1);
       const firstUrl = String(fetchSpy.mock.calls[0]?.[0]);
-      expect(firstUrl).toContain('/projects/proj-1/files?name=diagram.png&pageId=page-1');
-      expect(uploadedWithProject.url).toContain('/projects/proj-1/files/file-1');
+      expect(firstUrl).toContain('/spaces/proj-1/files?name=diagram.png&pageId=page-1');
+      expect(uploadedWithProject.url).toContain('/spaces/proj-1/files/file-1');
 
       fetchSpy.mockResolvedValueOnce(
         new Response(
@@ -200,7 +200,7 @@ describe('import-zip.util (Thin-Client Archive SDK)', () => {
       await filestore.uploadPageFile('page-standalone', png, null, undefined, undefined);
       const secondUrl = String(fetchSpy.mock.calls[1]?.[0]);
       expect(secondUrl).toContain(
-        '/projects/page-standalone/files?name=diagram.png&pageId=page-standalone',
+        '/spaces/page-standalone/files?name=diagram.png&pageId=page-standalone',
       );
     });
   });

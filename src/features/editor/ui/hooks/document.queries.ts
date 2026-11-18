@@ -97,16 +97,18 @@ export function waitForEditorBootstrap(
 
 function normalizeBootstrapActivePage(data: EditorBootstrapResponseDto): Page {
   const raw = data.activeDoc.page;
+  const resolvedProjectId =
+    data.workspace.spaceType === 'project' ? data.workspace.spaceId : '';
   return {
     id: raw.id,
     title: raw.title || data.workspace.mainFilePath || 'main.tex',
     path: raw.path,
     content: raw.content ?? (Array.isArray(data.activeDoc.lines) ? data.activeDoc.lines.join('\n') : ''),
     status: (raw.status as Page['status']) || 'published',
-    projectId: data.workspace.projectId || '',
+    projectId: resolvedProjectId,
     mainFile: { id: data.workspace.rootDocId, title: data.workspace.mainFilePath },
     mainFileId: data.workspace.rootDocId,
-    rootPageId: data.workspace.rootDocId,
+    rootPageId: data.workspace.pageId || data.workspace.rootDocId,
     version: raw.version ?? data.activeDoc.version ?? 1,
     rev: raw.rev ?? data.activeDoc.rev ?? 1,
     createdAt: raw.createdAt || data.serverTimestamp,
@@ -126,7 +128,8 @@ export function hydrateEditorBootstrap(
 ): void {
   const { workspace, tree, activeDoc, symbols, lastBuild, degradedBranches } = data;
   const activePage = normalizeBootstrapActivePage(data);
-  const effectiveProjectOrSpace = workspace.projectId || workspace.spaceId;
+  const resolvedProjectId = workspace.spaceType === 'project' ? workspace.spaceId : '';
+  const effectiveProjectOrSpace = workspace.spaceId;
 
   // 1. Seed TanStack Query caches for active doc, file list, and structure nodes
   queryClient.setQueryData(pageKeys.detail(activePage.id), activePage);
@@ -172,10 +175,15 @@ export function hydrateEditorBootstrap(
   const filePath = activePage.path || activePage.title || workspace.mainFilePath || 'main.tex';
   if (!lruDocumentCache.isDirty(activePage.id)) {
     const contentText = extractDocumentContentString(activePage.content);
+    const serverRev = activePage.rev ?? data.activeDoc.rev ?? data.activeDoc.page?.rev;
     lruDocumentCache.registerModel(activePage.id, {
       content: contentText,
       filePath,
       projectId: effectiveProjectOrSpace,
+      spaceId: workspace.spaceId,
+      pageId: workspace.pageId,
+      ...(typeof serverRev === 'number' ? { serverRev } : {}),
+      serverUpdatedAt: activePage.updatedAt,
     });
     void draftStorageService.saveProjectFileSnapshot({
       id: activePage.id,
@@ -198,16 +206,18 @@ export function hydrateEditorBootstrap(
   const pageStore = usePageStore.getState();
   pageStore.setWorkspaceContext({
     spaceId: workspace.spaceId,
-    projectId: workspace.projectId ?? '',
+    spaceType: workspace.spaceType ?? (resolvedProjectId ? 'project' : 'personal'),
+    projectId: resolvedProjectId,
     projectName: workspace.projectName ?? null,
     workspaceTitle: workspace.title,
     permissions: workspace.permissions,
     githubLink: workspace.githubLink ?? null,
   });
-  pageStore.setRootPageId(workspace.rootDocId);
+  pageStore.setRootPageId(workspace.pageId || workspace.rootDocId);
+  pageStore.setRootDocId(workspace.rootDocId ?? null);
 
-  if (workspace.projectId) {
-    queryClient.setQueryData(['github-link', workspace.projectId], {
+  if (resolvedProjectId) {
+    queryClient.setQueryData(['github-link', resolvedProjectId], {
       isConnected: Boolean(workspace.githubLink),
       link: workspace.githubLink ?? null,
     });
@@ -537,9 +547,9 @@ export async function synthesizeOfflineEditorBootstrap(
         }
       : {
           spaceId,
+          spaceType: 'personal',
           pageId,
           rootDocId,
-          projectId: null,
           projectName: null,
           title: workspaceTitle,
           mainFilePath,
@@ -560,7 +570,10 @@ export async function synthesizeOfflineEditorBootstrap(
         content: contentText,
         path: activePath,
         status: 'published',
-        projectId: treeSnapshot?.workspace.projectId ?? spaceId,
+        projectId:
+          treeSnapshot?.workspace.spaceType === 'personal'
+            ? ''
+            : (treeSnapshot?.workspace.spaceId ?? spaceId),
         mainFile: { id: rootDocId, title: mainFilePath },
         mainFileId: rootDocId,
         rootPageId: rootDocId,
@@ -678,6 +691,7 @@ export function invalidateFileTreeQueries(
   }
   if (includeRootDoc) {
     queryClient.invalidateQueries({ queryKey: storageKeys.rootDoc() });
+    queryClient.invalidateQueries({ queryKey: ['pages', 'bootstrap'] });
   }
   if (pageId) {
     queryClient.invalidateQueries({ queryKey: pageKeys.detail(pageId) });

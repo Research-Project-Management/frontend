@@ -12,10 +12,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Send } from 'lucide-react';
 import {
   acquireYjsProvider,
-  releaseYjsProvider,
   type YjsSocketIOProvider,
   type ProjectChatMessage,
 } from '@/features/editor/sdk/realtime/yjs-socket-provider';
+import { usePageStore } from '@/features/editor/core';
 import { Button } from '@/shared/components/ui/button';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { Input } from '@/shared/components/ui/input';
@@ -32,7 +32,8 @@ export function ProjectChatView({
   pageId,
   currentUserId,
 }: ProjectChatViewProps) {
-  const effectiveProjectId = projectId || pageId || '';
+  const storeSpaceId = usePageStore((s) => s.spaceId);
+  const effectiveProjectId = storeSpaceId || projectId || pageId || '';
   const chatRoomId = effectiveProjectId ? `chat:${effectiveProjectId}` : '';
 
   const [messages, setMessages] = useState<ProjectChatMessage[]>([]);
@@ -44,7 +45,8 @@ export function ProjectChatView({
   useEffect(() => {
     if (!effectiveProjectId || !chatRoomId) return;
 
-    const { provider } = acquireYjsProvider(effectiveProjectId, chatRoomId);
+    const handle = acquireYjsProvider(effectiveProjectId, chatRoomId);
+    const { provider } = handle;
     providerRef.current = provider;
 
     void provider.getChatHistory().then((history) => {
@@ -63,7 +65,7 @@ export function ProjectChatView({
     return () => {
       unsub();
       providerRef.current = null;
-      releaseYjsProvider(effectiveProjectId, chatRoomId);
+      handle.release();
     };
   }, [effectiveProjectId, chatRoomId]);
 

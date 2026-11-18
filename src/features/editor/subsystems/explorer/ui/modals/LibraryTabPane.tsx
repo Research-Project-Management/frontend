@@ -15,6 +15,7 @@ import { manuscriptService } from '@/features/editor/sdk/pages.service';
 import { useViewItems } from '@/features/library/sdk/queries/catalog.queries';
 import type { Item } from '@/features/library/types/core.types';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
+import { usePageStore } from '@/features/editor/core';
 import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 import { DEFAULT_BIB_FILE } from '@/features/editor/domain/constants/editor.constants';
 
@@ -52,8 +53,9 @@ export function LibraryTabPane({
     defaultValues: { fileName: useSettingsStore.getState().mainBibFile || DEFAULT_BIB_FILE },
   });
 
+  const storeProjectId = usePageStore((s) => s.projectId);
   const { data: libraryData, isLoading: isLoadingLibrary } = useViewItems(
-    'user',
+    storeProjectId || 'user',
     'all',
     librarySearch,
   );
@@ -90,7 +92,9 @@ export function LibraryTabPane({
 
     setIsExportingBib(true);
     try {
-      const res = await manuscriptService.citations.upsertEntries(parentPageId, {
+      const targetSpaceId =
+        usePageStore.getState().spaceId || usePageStore.getState().projectId || parentPageId;
+      const res = await manuscriptService.citations.upsertEntries(targetSpaceId, {
         entries: chosenItems as unknown as Array<Record<string, unknown>>,
         targetBibFile: targetName,
       });

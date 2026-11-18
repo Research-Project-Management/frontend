@@ -40,6 +40,7 @@ import { manuscriptService, historyKeys } from '@/features/editor/sdk/pages.serv
 import { exportVersionAsZip } from '@/features/editor/sdk/archive/archive-export';
 import {
   clearYjsProviderPool,
+  evictYjsProviderByDocId,
   flushYjsProviders,
 } from '@/features/editor/sdk/realtime/yjs-socket-provider';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
@@ -82,14 +83,22 @@ export function HistoryPage({
   const currentPageId = usePageStore((s) => s.currentPage?.id ?? '');
   const currentPageTitle = usePageStore((s) => s.currentPage?.title ?? '');
   const currentPageProjectId = usePageStore((s) => extractProjectId(s.currentPage) ?? '');
+  const storeSpaceId = usePageStore((s) => s.spaceId);
+  const storeRootPageId = usePageStore((s) => s.rootPageId || s.parentPageId || '');
 
-  const effectivePageId = propPageId || params?.pageId || currentPageId || '';
+  const effectivePageId =
+    propPageId || params?.pageId || storeRootPageId || currentPageId || '';
   const effectiveProjectId =
+    storeSpaceId ||
     propProjectId ||
     params?.projectId ||
     currentPageProjectId ||
     effectivePageId ||
     '';
+  const pageScopeOpts = React.useMemo(
+    () => (effectivePageId ? { pageId: effectivePageId } : undefined),
+    [effectivePageId],
+  );
 
   const handleClose = React.useCallback(() => {
     if (onClose) {
@@ -161,8 +170,9 @@ export function HistoryPage({
     isLoading: isLoadingVersions,
     refetch: refetchVersions,
   } = useQuery({
-    queryKey: historyKeys.versions(effectiveProjectId),
-    queryFn: () => manuscriptService.history.getProjectVersions(effectiveProjectId),
+    queryKey: historyKeys.versions(effectiveProjectId, effectivePageId || undefined),
+    queryFn: () =>
+      manuscriptService.history.getProjectVersions(effectiveProjectId, pageScopeOpts),
     enabled: !!effectiveProjectId && open,
     staleTime: 30_000,
     gcTime: 5 * 60_000,
@@ -201,6 +211,7 @@ export function HistoryPage({
     queryKey: [
       'project-history-diff',
       effectiveProjectId,
+      effectivePageId,
       selectedBaseVersion,
       selectedTargetVersion,
     ],
@@ -208,7 +219,8 @@ export function HistoryPage({
       manuscriptService.history.compareProjectVersions(
         effectiveProjectId,
         selectedBaseVersion!,
-        selectedTargetVersion!
+        selectedTargetVersion!,
+        pageScopeOpts,
       ),
     enabled: canCompare && open,
     staleTime: 5 * 60_000,
@@ -217,10 +229,14 @@ export function HistoryPage({
 
   // Query snapshots for file restoration and diff viewer
   const { data: baseSnapshot } = useQuery<ProjectSnapshotDetail | null>({
-    queryKey: ['project-snapshot', effectiveProjectId, selectedBaseVersion],
+    queryKey: ['project-snapshot', effectiveProjectId, effectivePageId, selectedBaseVersion],
     queryFn: () =>
       selectedBaseVersion
-        ? manuscriptService.history.getProjectSnapshot(effectiveProjectId, selectedBaseVersion)
+        ? manuscriptService.history.getProjectSnapshot(
+            effectiveProjectId,
+            selectedBaseVersion,
+            pageScopeOpts,
+          )
         : null,
     enabled: canCompare && open,
     staleTime: 5 * 60_000,
@@ -239,7 +255,12 @@ export function HistoryPage({
   // ── Mutations ──
   const addLabelMutation = useMutation({
     mutationFn: ({ version, label }: { version: number; label: string }) =>
-      manuscriptService.history.labelProjectVersion(effectiveProjectId, version, label),
+      manuscriptService.history.labelProjectVersion(
+        effectiveProjectId,
+        version,
+        label,
+        pageScopeOpts,
+      ),
     onSuccess: (_, vars) => {
       toast.success(`Attached label "${vars.label}" to v${vars.version}`, { id: `history-label-${vars.version}` });
       refetchVersions();
@@ -251,7 +272,11 @@ export function HistoryPage({
 
   const deleteLabelMutation = useMutation({
     mutationFn: (labelId: string) =>
-      manuscriptService.history.deleteProjectLabel(effectiveProjectId, labelId),
+      manuscriptService.history.deleteProjectLabel(
+        effectiveProjectId,
+        labelId,
+        pageScopeOpts,
+      ),
     onSuccess: (_data, labelId) => {
       toast.success('Label removed', { id: `history-label-${labelId}` });
       refetchVersions();
@@ -273,7 +298,11 @@ export function HistoryPage({
         }
         await sessionCoordinator.flushAllPending();
       }
-      return await manuscriptService.history.createProjectSnapshot(effectiveProjectId, { summary });
+      return await manuscriptService.history.createProjectSnapshot(
+        effectiveProjectId,
+        { summary, ...(effectivePageId ? { pageId: effectivePageId } : {}) },
+        pageScopeOpts,
+      );
     },
     onSuccess: (newVersion) => {
       if (!newVersion) return;
@@ -290,13 +319,18 @@ export function HistoryPage({
 
   const restoreMutation = useMutation({
     mutationFn: async (version: number) => {
-      return await manuscriptService.history.restoreProjectVersion(effectiveProjectId, version);
+      for (const m of lruDocumentCache.getAllModels()) {
+        sessionCoordinator.cancelPendingAutoSave(m.fileId);
+      }
+      return await manuscriptService.history.restoreProjectVersion(
+        effectiveProjectId,
+        version,
+        pageScopeOpts,
+      );
     },
     onSuccess: (_, restoredVersion) => {
       sessionCoordinator.resetSession();
-      toast.success(`Project successfully restored to v${restoredVersion}`, { id: 'history-restore' });
-      setConfirmingRestore(false);
-      handleClose();
+      clearYjsProviderPool({ skipFlush: true });
       for (const m of lruDocumentCache.getDirtyModels()) {
         lruDocumentCache.markClean(m.fileId);
         void draftStorageService.clearDraft(m.fileId);
@@ -309,16 +343,18 @@ export function HistoryPage({
         void draftStorageService.clearProjectDrafts(effectiveProjectId);
       }
       draftStorageService.clearMemoryCaches();
-      lruDocumentCache.clearAll();
+      lruDocumentCache.discardAll();
       useCompileStore.getState().clearAllDirty();
-      clearYjsProviderPool();
-      queryClient.invalidateQueries({ queryKey: historyKeys.versions(effectiveProjectId) });
+      queryClient.invalidateQueries({ queryKey: ['history'] });
       queryClient.invalidateQueries({ queryKey: ['project-history-diff'] });
       queryClient.invalidateQueries({ queryKey: ['project-snapshot'] });
       queryClient.invalidateQueries({ queryKey: ['pages'] });
       queryClient.invalidateQueries({ queryKey: ['editor-storage-files'] });
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       editorCommandBus.dispatch({ type: 'filetree:updated' });
+      toast.success(`Project successfully restored to v${restoredVersion}`, { id: 'history-restore' });
+      setConfirmingRestore(false);
+      handleClose();
     },
     onError: (err: unknown) => {
       toast.error(`Failed to restore project: ${(err as Error)?.message || 'Unknown error'}`, { id: 'history-restore' });
@@ -331,10 +367,17 @@ export function HistoryPage({
         throw new Error('Missing project, version or file information');
       }
 
+      const cachedMatch = lruDocumentCache.findByPath(activeFilePath);
+      if (cachedMatch) {
+        sessionCoordinator.cancelPendingAutoSave(cachedMatch.fileId);
+      }
+
       const restored = await manuscriptService.history.restoreProjectVersionFile(
         effectiveProjectId,
         selectedBaseVersion,
         activeFilePath,
+        undefined,
+        pageScopeOpts,
       );
 
       return {
@@ -350,6 +393,9 @@ export function HistoryPage({
       setConfirmingFileRestore(false);
       let updatedMountedEngine = false;
       if (docId) {
+        sessionCoordinator.cancelPendingAutoSave(docId);
+        evictYjsProviderByDocId(docId, { skipFlush: true });
+        lruDocumentCache.clearServerRev(docId);
         if (typeof rev === 'number') {
           lruDocumentCache.setServerRev(docId, rev);
         }
@@ -365,12 +411,18 @@ export function HistoryPage({
       }
       const cachedByPath = lruDocumentCache.findByPath(filePath);
       if (cachedByPath && cachedByPath.fileId !== docId) {
+        sessionCoordinator.cancelPendingAutoSave(cachedByPath.fileId);
+        evictYjsProviderByDocId(cachedByPath.fileId, { skipFlush: true });
+        lruDocumentCache.clearServerRev(cachedByPath.fileId);
+        if (typeof rev === 'number') {
+          lruDocumentCache.setServerRev(cachedByPath.fileId, rev);
+        }
         lruDocumentCache.updateContent(cachedByPath.fileId, baseContent, false);
         lruDocumentCache.markClean(cachedByPath.fileId);
         useCompileStore.getState().clearDirty(cachedByPath.fileId);
         void draftStorageService.clearDraft(cachedByPath.fileId);
       }
-      queryClient.invalidateQueries({ queryKey: historyKeys.versions(effectiveProjectId) });
+      queryClient.invalidateQueries({ queryKey: ['history'] });
       queryClient.invalidateQueries({ queryKey: ['project-history-diff'] });
       queryClient.invalidateQueries({ queryKey: ['project-snapshot'] });
       queryClient.invalidateQueries({ queryKey: ['pages'] });
@@ -394,7 +446,11 @@ export function HistoryPage({
     try {
       let snap = baseSnapshot;
       if (!snap && effectiveProjectId && selectedBaseVersion) {
-        snap = await manuscriptService.history.getProjectSnapshot(effectiveProjectId, selectedBaseVersion);
+        snap = await manuscriptService.history.getProjectSnapshot(
+          effectiveProjectId,
+          selectedBaseVersion,
+          pageScopeOpts,
+        );
       }
       if (!snap || !activeFilePath) return;
       const fileData =
@@ -427,6 +483,7 @@ export function HistoryPage({
       const projectTitle = currentPageTitle || 'project';
       await exportVersionAsZip({
         projectId: effectiveProjectId,
+        pageId: effectivePageId || undefined,
         version: selectedTargetVersion,
         projectTitle,
       });

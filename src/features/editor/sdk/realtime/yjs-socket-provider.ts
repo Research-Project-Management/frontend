@@ -61,7 +61,7 @@ export class YjsSocketIOProvider {
   public doc: Y.Doc;
   public yText: Y.Text;
   public awareness: Awareness;
-  public readonly projectId: string;
+  public readonly spaceId: string;
   public readonly pageId: string;
 
   public status: ConnectionStatus = 'connecting';
@@ -85,14 +85,19 @@ export class YjsSocketIOProvider {
   private handleOnline: (() => void) | null = null;
   private cachedText: string | null = null;
   private cachedLineStarts: number[] | null = null;
+  private isEvicted = false;
+
+  private isChatOnlyRoom(): boolean {
+    return this.pageId.startsWith('chat:');
+  }
 
   constructor(
-    projectId: string,
+    spaceId: string,
     pageId: string,
     doc?: Y.Doc,
     options: YjsSocketIOProviderOptions = {},
   ) {
-    this.projectId = projectId;
+    this.spaceId = spaceId;
     this.pageId = pageId;
     this.doc = doc || new Y.Doc();
     this.yText = this.doc.getText('latex');
@@ -107,7 +112,7 @@ export class YjsSocketIOProvider {
     this.setupLocalAwarenessListener();
     this.setupLocalDocListener();
 
-    if (typeof window !== 'undefined' && projectId && pageId) {
+    if (typeof window !== 'undefined' && spaceId && pageId) {
       this.connect();
     } else {
       this.status = 'connected';
@@ -176,7 +181,7 @@ export class YjsSocketIOProvider {
       }
       this.socket.emit(
         'project:chat:send',
-        { projectId: this.projectId, text: text.trim(), replyToId },
+        { spaceId: this.spaceId, text: text.trim(), replyToId },
         (res?: { success?: boolean; message?: ProjectChatMessage }) => {
           resolve(res?.success && res.message ? res.message : null);
         },
@@ -193,7 +198,7 @@ export class YjsSocketIOProvider {
       }
       this.socket.emit(
         'project:chat:history',
-        { projectId: this.projectId },
+        { spaceId: this.spaceId },
         (res?: { success?: boolean; messages?: ProjectChatMessage[] }) => {
           resolve(res?.success && Array.isArray(res.messages) ? res.messages : []);
         },
@@ -276,7 +281,7 @@ export class YjsSocketIOProvider {
     targetDoc: Y.Doc,
     emitStep2Reply: boolean,
   ): void {
-    applyBinarySyncFrame(data, targetDoc, this.socket, this.projectId, this.pageId, emitStep2Reply);
+    applyBinarySyncFrame(data, targetDoc, this.socket, this.spaceId, this.pageId, emitStep2Reply);
   }
 
   private registerSocketEvents(): void {
@@ -289,7 +294,7 @@ export class YjsSocketIOProvider {
 
       this.socket?.emit(
         'project:join',
-        { projectId: this.projectId },
+        { spaceId: this.spaceId },
         (res?: { success?: boolean; projectPresence?: CollaborationPresence[]; error?: string }) => {
           if (res?.error) {
             console.debug('[YjsSocketIOProvider] project:join info:', res.error);
@@ -297,9 +302,19 @@ export class YjsSocketIOProvider {
         },
       );
 
+      if (this.isChatOnlyRoom()) {
+        this.isSynced = true;
+        this.emitSynced();
+        return;
+      }
+
+      if (this.isEvicted) {
+        return;
+      }
+
       this.socket?.emit(
         'doc:join',
-        { projectId: this.projectId, docId: this.pageId },
+        { spaceId: this.spaceId, docId: this.pageId },
         (res?: { success?: boolean; docPresence?: RemotePresencePayload[]; error?: string }) => {
           if (res?.success && Array.isArray(res.docPresence)) {
             this.handleInitialDocPresence(res.docPresence);
@@ -332,11 +347,16 @@ export class YjsSocketIOProvider {
     });
 
     this.socket.on('doc:sync:update', (payload: {
-      projectId: string;
+      spaceId?: string;
       docId: string;
       data: Uint8Array | ArrayLike<number>;
     }) => {
-      if (this.destroyed || payload.projectId !== this.projectId || payload.docId !== this.pageId || !payload.data) {
+      if (
+        this.destroyed ||
+        (payload.spaceId && payload.spaceId !== this.spaceId) ||
+        payload.docId !== this.pageId ||
+        !payload.data
+      ) {
         return;
       }
       try {
@@ -389,9 +409,29 @@ export class YjsSocketIOProvider {
       this.handleUserLeft(data);
     });
 
+    this.socket.on('project:user-joined', (data: RemoteUserJoinedPayload) => {
+      if (this.destroyed || !data || data.socketId === this.socket?.id) return;
+      this.handleUserJoined(data);
+    });
+
     this.socket.on('project:user-left', (data: { userId?: string; socketId?: string }) => {
       if (this.destroyed) return;
       this.handleUserLeft(data);
+    });
+
+    this.socket.on('doc:evicted', (data: { spaceId?: string; docId?: string }) => {
+      if (this.destroyed) return;
+      if (data?.docId && data.docId !== this.pageId) return;
+      this.isEvicted = true;
+      this.pendingUpdates = [];
+      if (this.updateBatchTimer) {
+        clearTimeout(this.updateBatchTimer);
+        this.updateBatchTimer = null;
+      }
+      this.isSynced = false;
+      this.status = 'disconnected';
+      this.emitStatus('disconnected');
+      this.options.onEvicted?.(this.pageId);
     });
 
     this.socket.on('fileTree:update', (data: Record<string, unknown>) => {
@@ -410,7 +450,7 @@ export class YjsSocketIOProvider {
       }
     });
 
-    const reviewEvents: Array<[string, 'suggestion:recorded' | 'suggestion:resolved' | 'comment:created' | 'comment:replied' | 'comment:resolved' | 'review:status-changed']> = [
+    const reviewEvents: Array<[string, string]> = [
       ['review:status-changed', 'review:status-changed'],
       ['track-changes:recorded', 'suggestion:recorded'],
       ['track-changes:created', 'suggestion:recorded'],
@@ -418,10 +458,13 @@ export class YjsSocketIOProvider {
       ['comment:created', 'comment:created'],
       ['comment:replied', 'comment:replied'],
       ['comment:reply-added', 'comment:replied'],
+      ['comment:reply-updated', 'comment:replied'],
       ['comment:reply-deleted', 'comment:replied'],
       ['comment:updated', 'comment:created'],
       ['comment:deleted', 'comment:resolved'],
       ['comment:resolved', 'comment:resolved'],
+      ['comment:mention', 'comment:mention'],
+      ['notification:digest', 'notification:digest'],
     ];
     for (const [socketEvent, reviewEvent] of reviewEvents) {
       this.socket.on(socketEvent, (data: Record<string, unknown> & { docId?: string }) => {
@@ -519,7 +562,7 @@ export class YjsSocketIOProvider {
 
     this.socket.emit(
       'doc:sync:step1',
-      { projectId: this.projectId, docId: this.pageId, data: step1Data },
+      { spaceId: this.spaceId, docId: this.pageId, data: step1Data },
       (res?: { success?: boolean; data?: Uint8Array | ArrayLike<number> | unknown; error?: string }) => {
         this.resyncInFlight = false;
         if (this.destroyed) {
@@ -616,7 +659,7 @@ export class YjsSocketIOProvider {
     this.socket.emit(
       'doc:sync:update',
       {
-        projectId: this.projectId,
+        spaceId: this.spaceId,
         docId: this.pageId,
         data: mergedData,
       },
@@ -624,6 +667,10 @@ export class YjsSocketIOProvider {
         if (!res?.success && !this.destroyed) {
           console.warn('[YjsSocketIOProvider] Server rejected doc:sync:update or timed out:', res?.error);
           this.pendingUpdates = [mergedData, ...this.pendingUpdates];
+          return;
+        }
+        if (res?.success && !this.destroyed && this.pendingUpdates.length === 0) {
+          this.options.onUpdatesAcked?.(this.pageId);
         }
       },
     );
@@ -643,7 +690,7 @@ export class YjsSocketIOProvider {
     this.socket.emit(
       'doc:sync:step1',
       {
-        projectId: this.projectId,
+        spaceId: this.spaceId,
         docId: this.pageId,
         data: step1Payload,
       },
@@ -787,7 +834,7 @@ export class YjsSocketIOProvider {
       this.lastCursorEmitTime = now;
       this.pendingCursorData = null;
       this.socket.emit('doc:cursor', {
-        projectId: this.projectId,
+        spaceId: this.spaceId,
         docId: this.pageId,
         cursor: payload,
       });
@@ -801,7 +848,7 @@ export class YjsSocketIOProvider {
           const toEmit = this.pendingCursorData;
           this.pendingCursorData = null;
           this.socket.emit('doc:cursor', {
-            projectId: this.projectId,
+            spaceId: this.spaceId,
             docId: this.pageId,
             cursor: toEmit,
           });
@@ -824,11 +871,19 @@ export class YjsSocketIOProvider {
     this.flushPendingUpdates();
   }
 
-  public destroy(): void {
+  public destroy(options?: { skipFlush?: boolean }): void {
     if (this.destroyed) return;
     this.destroyed = true;
 
-    this.flushPendingUpdates();
+    if (options?.skipFlush) {
+      if (this.updateBatchTimer) {
+        clearTimeout(this.updateBatchTimer);
+        this.updateBatchTimer = null;
+      }
+      this.pendingUpdates = [];
+    } else {
+      this.flushPendingUpdates();
+    }
 
     if (this.cursorThrottleTimer) {
       clearTimeout(this.cursorThrottleTimer);
@@ -848,12 +903,14 @@ export class YjsSocketIOProvider {
     if (this.socket) {
       try {
         if (this.socket.connected) {
-          this.socket.emit('doc:leave', {
-            projectId: this.projectId,
-            docId: this.pageId,
-          });
+          if (!this.isChatOnlyRoom() && !this.isEvicted) {
+            this.socket.emit('doc:leave', {
+              spaceId: this.spaceId,
+              docId: this.pageId,
+            });
+          }
           this.socket.emit('project:leave', {
-            projectId: this.projectId,
+            spaceId: this.spaceId,
           });
         }
         this.socket.removeAllListeners();
@@ -882,6 +939,8 @@ export {
   flushYjsProviders,
   getActiveYjsProvider,
   updateActiveYjsDocContent,
+  evictYjsProviderByDocId,
+  evictYjsProvidersByProject,
   clearYjsProviderPool,
   subscribeYjsPoolCleared,
   getYjsPoolEpoch,

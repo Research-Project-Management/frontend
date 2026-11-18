@@ -69,6 +69,9 @@ export function CompilerLogs({
   const scratchTargetId = usePageStore(
     (s) => s.rootPageId || s.parentPageId || s.currentPage?.id || s.spaceId || s.projectId,
   );
+  const scratchIsPageScoped = usePageStore((s) =>
+    Boolean(s.rootPageId || s.parentPageId || (s.currentPage?.id && !s.projectId && !s.spaceId)),
+  );
   const compileStatus = useCompileStore((s) => s.compileStatus);
   const storeParsedLog = useCompileStore((s) => s.parsedLog);
   const storeDiagnostics = useCompileStore((s) => s.compileDiagnostics);
@@ -171,6 +174,7 @@ export function CompilerLogs({
   } = useLogViewerActions({
     engine,
     projectId: scratchTargetId,
+    isPageScoped: scratchIsPageScoped,
     onCompile,
     onClearCacheAndCompile: handleClearCacheAndCompile,
   });
@@ -187,7 +191,10 @@ export function CompilerLogs({
   useEffect(() => {
     if (scratchTargetId) {
       let isMounted = true;
-      listAuxFiles(scratchTargetId)
+      listAuxFiles(
+        scratchTargetId,
+        scratchIsPageScoped ? { isPageScoped: true } : undefined,
+      )
         .then((files) => {
           if (isMounted) setAuxFiles(files);
         })

@@ -29,9 +29,9 @@ function createSampleBootstrapPayload(
   return {
     workspace: {
       spaceId: projectId,
+      spaceType: 'project',
       pageId: rootDocId,
       rootDocId,
-      projectId,
       projectName: 'Quantum Project',
       title: 'Quantum LaTeX Paper',
       mainFilePath: 'main.tex',
@@ -181,7 +181,7 @@ function createSampleBootstrapPayload(
           },
     lastBuild: overrides?.lastBuild ?? {
       status: 'ready',
-      pdfArtifactUrl: `/api/v1/manuscripts/projects/${projectId}/artifacts/output.pdf`,
+      pdfArtifactUrl: `/api/v1/pages/spaces/${projectId}/artifacts/output.pdf`,
       synctexAvailable: true,
       lastCompiledAt: '2026-01-02T12:00:00.000Z',
       diagnostics: [
@@ -268,14 +268,14 @@ describe('Editor Bootstrap Single-Flight Hydration Seam', () => {
     expect(snapshotSpy).toHaveBeenCalledTimes(1);
     expect('scope' in payload.workspace).toBe(false);
     expect(usePageStore.getState().spaceId).toBe(payload.workspace.spaceId);
-    expect(usePageStore.getState().projectId).toBe(payload.workspace.projectId);
+    expect(usePageStore.getState().projectId).toBe(payload.workspace.spaceId);
     expect(usePageStore.getState().workspaceTitle).toBe('Quantum LaTeX Paper');
     expect(usePageStore.getState().projectName).toBe('Quantum Project');
     expect(usePageStore.getState().githubLink?.repoFullName).toBe(
       'flux-org/quantum-paper',
     );
     expect(
-      queryClient.getQueryData(['github-link', payload.workspace.projectId!]),
+      queryClient.getQueryData(['github-link', payload.workspace.spaceId]),
     ).toEqual({
       isConnected: true,
       link: payload.workspace.githubLink,
@@ -363,9 +363,9 @@ describe('Editor Bootstrap Single-Flight Hydration Seam', () => {
     const payload = createSampleBootstrapPayload({
       workspace: {
         spaceId: userSpaceId,
+        spaceType: 'personal',
         pageId: rootDocId,
         rootDocId,
-        projectId: null,
         projectName: null,
         title: 'Personal Draft',
         mainFilePath: 'main.tex',

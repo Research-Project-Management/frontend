@@ -62,7 +62,7 @@ describe('Editor & Document End-to-End Integration Tests', () => {
         () => {},
       );
 
-      expect(createdUrl).toContain('/projects/proj-456/docs/page-123/collaboration/stream');
+      expect(createdUrl).toContain('/spaces/proj-456/docs/page-123/collaboration/stream');
       cleanup();
       globalThis.EventSource = origEventSource;
     });

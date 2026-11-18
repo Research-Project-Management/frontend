@@ -16,6 +16,8 @@ export interface DocumentConflict {
   localContent: string;
   remoteContent: string;
   detectedAt: number;
+  currentRev?: number;
+  hasAuthoritativeRemote?: boolean;
 }
 
 export type ConflictListener = (conflict: DocumentConflict) => void;
@@ -129,6 +131,8 @@ export class DraftRecoveryCoordinator {
     filePath?: string,
     saveSnapshot = true,
   ): void {
+    const cachedModel = lruDocumentCache.getModel(fileId);
+    const expectedRev = cachedModel?.serverRev;
     if (saveSnapshot) {
       this.saveDraftSnapshot(fileId, content, projectId);
     }
@@ -144,8 +148,14 @@ export class DraftRecoveryCoordinator {
     void draftStorageService.enqueueMutation({
       fileId,
       projectId: effectiveProjectId,
+      spaceId: cachedModel?.spaceId,
+      pageId: cachedModel?.pageId,
       type: 'update_content',
-      payload: { content, filePath },
+      payload: {
+        content,
+        filePath,
+        ...(expectedRev !== undefined ? { expectedRev } : {}),
+      },
     });
   }
 
@@ -218,12 +228,20 @@ export class DraftRecoveryCoordinator {
     return conflict;
   }
 
-  public recordConflict(fileId: string, localContent: string, remoteContent: string, projectId?: string): void {
+  public recordConflict(
+    fileId: string,
+    localContent: string,
+    remoteContent: string,
+    projectId?: string,
+    options?: { currentRev?: number; hasAuthoritativeRemote?: boolean },
+  ): void {
     const conflict: DocumentConflict = {
       fileId,
       localContent,
       remoteContent,
       detectedAt: Date.now(),
+      ...(typeof options?.currentRev === 'number' ? { currentRev: options.currentRev } : {}),
+      hasAuthoritativeRemote: options?.hasAuthoritativeRemote ?? true,
     };
     this.conflicts.set(fileId, conflict);
     // Make sure the local version is durably backed up while the user decides.

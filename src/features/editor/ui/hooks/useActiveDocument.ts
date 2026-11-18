@@ -182,7 +182,7 @@ export function useActiveDocument() {
   const bootstrapRootMetaPage = useMemo(() => {
     if (!bootstrapData) return null;
     const ws = bootstrapData.workspace;
-    const resolvedRootProjectId = !ws.projectId ? '' : (ws.projectId || ws.spaceId);
+    const resolvedRootProjectId = ws.spaceType === 'project' ? ws.spaceId : '';
     if (bootstrapData.activeDoc.id === ws.rootDocId) {
       return {
         ...bootstrapData.activeDoc.page,
@@ -191,7 +191,7 @@ export function useActiveDocument() {
         projectId: resolvedRootProjectId,
         mainFile: { id: ws.rootDocId, title: ws.mainFilePath || 'main.tex' },
         mainFileId: ws.rootDocId,
-        rootPageId: ws.rootDocId,
+        rootPageId: ws.pageId || ws.rootDocId,
       } as unknown as Page;
     }
     return {
@@ -202,7 +202,7 @@ export function useActiveDocument() {
       projectId: resolvedRootProjectId,
       mainFile: { id: ws.rootDocId, title: ws.mainFilePath || 'main.tex' },
       mainFileId: ws.rootDocId,
-      rootPageId: ws.rootDocId,
+      rootPageId: ws.pageId || ws.rootDocId,
     } as unknown as Page;
   }, [bootstrapData]);
 
@@ -214,10 +214,12 @@ export function useActiveDocument() {
   const childFiles = serverFiles;
 
   const parentProjectId =
-    bootstrapData && !bootstrapData.workspace.projectId
+    bootstrapData && bootstrapData.workspace.spaceType !== 'project'
       ? null
       : extractProjectId(parentPage?.projectId) ||
-        bootstrapData?.workspace.projectId ||
+        (bootstrapData?.workspace.spaceType === 'project'
+          ? bootstrapData.workspace.spaceId
+          : null) ||
         null;
   const effectiveProjectId = projectId || parentProjectId || null;
 
@@ -275,6 +277,10 @@ export function useActiveDocument() {
         content: activeFileDoc.content,
         filePath: activeFileDoc.path || activeFileDoc.title || 'untitled.tex',
         projectId: effectiveProjectId || pageId || undefined,
+        ...(activeFileDoc.spaceId ? { spaceId: activeFileDoc.spaceId } : {}),
+        ...(pageId ? { pageId } : {}),
+        ...(typeof activeFileDoc.rev === 'number' ? { serverRev: activeFileDoc.rev } : {}),
+        ...(activeFileDoc.updatedAt ? { serverUpdatedAt: activeFileDoc.updatedAt } : {}),
       });
     }
   }, [activeFileDoc, effectiveProjectId, pageId]);
@@ -285,6 +291,10 @@ export function useActiveDocument() {
         content: parentPage.content,
         filePath: parentPage.path || parentPage.title || 'main.tex',
         projectId: effectiveProjectId || pageId || undefined,
+        ...(parentPage.spaceId ? { spaceId: parentPage.spaceId } : {}),
+        ...(pageId ? { pageId } : {}),
+        ...(typeof parentPage.rev === 'number' ? { serverRev: parentPage.rev } : {}),
+        ...(parentPage.updatedAt ? { serverUpdatedAt: parentPage.updatedAt } : {}),
       });
     }
   }, [parentPage, effectiveProjectId, pageId]);
@@ -293,6 +303,8 @@ export function useActiveDocument() {
   const setActiveFilePage = usePageStore((s) => s.setActiveFilePage);
   const setActivePageId = usePageStore((s) => s.setActivePageId);
   const setParentPageId = usePageStore((s) => s.setParentPageId);
+  const setRootDocId = usePageStore((s) => s.setRootDocId);
+  const setSpaceId = usePageStore((s) => s.setSpaceId);
   const setProjectId = usePageStore((s) => s.setProjectId);
   const activePageId = usePageStore((s) => s.activePageId);
 
@@ -300,9 +312,14 @@ export function useActiveDocument() {
   const setActive = useWorkspaceStore((s) => s.setActiveTab);
 
   useEffect(() => {
+    const resolvedSpaceId =
+      bootstrapData?.workspace?.spaceId || effectiveProjectId || '';
+    if (resolvedSpaceId) setSpaceId(resolvedSpaceId);
     if (effectiveProjectId) setProjectId(effectiveProjectId);
-    if (pageId) setParentPageId(pageId);
-  }, [effectiveProjectId, pageId, setProjectId, setParentPageId]);
+    const canonicalPageId = bootstrapData?.workspace?.pageId || pageId;
+    if (canonicalPageId) setParentPageId(canonicalPageId);
+    if (bootstrapData?.workspace?.rootDocId) setRootDocId(bootstrapData.workspace.rootDocId);
+  }, [effectiveProjectId, pageId, bootstrapData?.workspace?.spaceId, bootstrapData?.workspace?.pageId, bootstrapData?.workspace?.rootDocId, setSpaceId, setProjectId, setParentPageId, setRootDocId]);
 
   // Synchronize VFS file tree to workspace coordinator and initiate deferred symbols index
   useEffect(() => {
@@ -368,7 +385,7 @@ export function useActiveDocument() {
 
       syncWorkspaceTabs(
         [pageId, projectId],
-        { id: activeFile.id, title: activeFile.title },
+        { id: activeFile.id, title: activeFile.title, path: activeFile.path },
         { openTab, setActive },
       );
     }

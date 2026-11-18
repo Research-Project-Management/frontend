@@ -134,7 +134,7 @@ import {
 } from './coordinator/compiler.coordinator';
 import { useCompileStore } from './coordinator/compiler.store';
 import { editorCommandBus, usePageStore } from '@/features/editor/core';
-import { extractProjectId } from '@/features/editor/domain/types/core.types';
+import { extractProjectId, extractSpaceId } from '@/features/editor/domain/types/core.types';
 import type { ProjectCompilationSnapshot } from '@/features/editor/domain/document/compilation-snapshot';
 
 export interface CompileIntent {
@@ -206,7 +206,11 @@ export const compilerSubsystem: CompilerSubsystemPort = {
   },
   async jumpToSource(page: number, x: number, y: number): Promise<{ file: string; line: number } | null> {
     const activeDoc = usePageStore.getState().getActiveDocument();
-    const projectId = extractProjectId(activeDoc) || usePageStore.getState().projectId || '';
+    const projectId =
+      extractSpaceId(activeDoc) ||
+      usePageStore.getState().spaceId ||
+      usePageStore.getState().projectId ||
+      '';
     if (projectId) {
       const res = await compilerCoordinator.resolveReverseRemote(projectId, page, x, y);
       if (res && res.sourcePath) {

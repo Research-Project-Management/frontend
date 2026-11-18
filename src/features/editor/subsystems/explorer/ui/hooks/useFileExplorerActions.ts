@@ -24,7 +24,7 @@ import {
   splitVirtualPath,
 } from '@/features/editor/domain/document/document-naming';
 import { prepareAssetInsertion } from '@/features/editor/domain/latex/smart-paste';
-import { downloadFileUrl } from '@/shared/lib/file-client';
+import { downloadFileAuthorized } from '@/shared/lib/file-client';
 
 import { usePageStore, workspaceCoordinator } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
@@ -156,7 +156,10 @@ export function useStorageItemActions() {
 
   const downloadStorageItem = useCallback((url?: string, filename?: string) => {
     if (url && filename) {
-      downloadFileUrl(url, filename);
+      void downloadFileAuthorized(url, filename).catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : 'Failed to download file';
+        toast.error(msg, { id: 'download-file' });
+      });
     } else {
       toast.info('Downloading file...', { id: 'download-file' });
     }

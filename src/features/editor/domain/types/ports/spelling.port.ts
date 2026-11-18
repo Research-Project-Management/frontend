@@ -35,6 +35,7 @@ export interface SpellingServicePort {
   getProjectDictionary(projectId: string): Promise<string[]>;
   getUserDictionary(): Promise<string[]>;
   learnProjectWord(projectId: string, word: string): Promise<unknown>;
+  learnUserWord?(word: string): Promise<unknown>;
   checkSpelling(
     projectId: string,
     payload: CheckSpellingPayloadDomain,

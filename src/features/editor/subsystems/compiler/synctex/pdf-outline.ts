@@ -206,6 +206,24 @@ export function clearOutlineMemoCache(): void {
   cachedOutlineEntries = [];
 }
 
+function extractDocumentContentString(content: unknown): string {
+  if (typeof content === 'string') return content;
+  if (!content || typeof content !== 'object') return '';
+  const rec = content as {
+    source?: unknown;
+    content?: unknown;
+    text?: unknown;
+    lines?: unknown;
+  };
+  if (typeof rec.source === 'string') return rec.source;
+  if (typeof rec.content === 'string') return rec.content;
+  if (typeof rec.text === 'string') return rec.text;
+  if (Array.isArray(rec.lines)) {
+    return rec.lines.filter((l): l is string => typeof l === 'string').join('\n');
+  }
+  return '';
+}
+
 export function parseLatexHeadings(
   content: unknown,
   sourceFile?: string,
@@ -217,16 +235,21 @@ export function parseLatexHeadings(
     return mapped;
   }
 
-  if (content === undefined || content === null) {
+  if (content === null) {
+    return [];
+  }
+
+  if (content === undefined) {
     return cachedOutlineEntries;
   }
 
-  if (typeof content !== 'string' || !content.trim()) {
+  const text = extractDocumentContentString(content);
+  if (!text.trim()) {
     return [];
   }
 
   const entries: OutlineEntry[] = [];
-  const lines = content.split('\n');
+  const lines = text.split('\n');
   let currentFrameEntry: OutlineEntry | null = null;
 
   for (let i = 0; i < lines.length; i++) {

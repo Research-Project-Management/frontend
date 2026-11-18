@@ -71,27 +71,59 @@ export async function exportDocumentAsMarkdown({
   pageId,
   projectTitle,
   includeChildren = true,
+  fallbackContent,
+  content,
 }: ExportSingleDocOptions): Promise<string> {
-  const res = await manuscriptService.export.exportDocument(pageId, 'md', includeChildren);
-
-  const blob = new Blob([res.content], {
-    type: 'text/markdown;charset=utf-8',
-  });
-
   const fallbackName = (projectTitle || 'document')
     .toLowerCase()
     .replace(/[^a-z0-9_-]/g, '_');
-  const finalFilename = res.filename || `${fallbackName}.md`;
 
-  triggerFileDownload(blob, finalFilename);
-  return finalFilename;
+  try {
+    const res = await manuscriptService.export.exportDocument(pageId, 'md', includeChildren);
+    const blob = new Blob([res.content], {
+      type: 'text/markdown;charset=utf-8',
+    });
+    const finalFilename = res.filename || `${fallbackName}.md`;
+    triggerFileDownload(blob, finalFilename);
+    return finalFilename;
+  } catch (err) {
+    const offlineText = fallbackContent ?? content;
+    if (offlineText !== undefined) {
+      const blob = new Blob([offlineText], {
+        type: 'text/markdown;charset=utf-8',
+      });
+      const finalFilename = `${fallbackName}.md`;
+      triggerFileDownload(blob, finalFilename);
+      return finalFilename;
+    }
+    throw err;
+  }
+}
+
+function transpileLatexToStandaloneHtml(latexContent: string, title = 'Document'): string {
+  const body = (latexContent || '')
+    .replace(/\\section\*?\{([^}]+)\}/g, '<h1>$1</h1>')
+    .replace(/\\subsection\*?\{([^}]+)\}/g, '<h2>$1</h2>')
+    .replace(/\\textbf\{([^}]+)\}/g, '<strong>$1</strong>')
+    .replace(/\\textit\{([^}]+)\}/g, '<em>$1</em>');
+  return [
+    '<!DOCTYPE html>',
+    '<html lang="en">',
+    '<head>',
+    '<meta charset="UTF-8" />',
+    `<title>${title}</title>`,
+    '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />',
+    '</head>',
+    `<body>${body}</body>`,
+    '</html>',
+  ].join('\n');
 }
 
 /**
  * Exports document manuscript to HTML (.html) via backend transpiler and triggers download.
- * Returns the downloaded filename on success, throws on error.
+ * Supports synchronous direct content conversion when `pageId` is omitted.
  */
-export async function exportDocumentAsHtml(
+export function exportDocumentAsHtml(
   pageIdOrOptions:
     | string
     | {
@@ -99,9 +131,10 @@ export async function exportDocumentAsHtml(
         projectTitle?: string;
         includeChildren?: boolean;
         content?: string;
+        fallbackContent?: string;
       },
   title?: string,
-): Promise<string> {
+): string | Promise<string> {
   const pageId =
     typeof pageIdOrOptions === 'string'
       ? pageIdOrOptions
@@ -114,22 +147,45 @@ export async function exportDocumentAsHtml(
     typeof pageIdOrOptions === 'string'
       ? true
       : (pageIdOrOptions.includeChildren ?? true);
-
-  const res = await manuscriptService.export.exportDocument(
-    pageId,
-    'html',
-    includeChildren,
-  );
-
-  const blob = new Blob([res.content], {
-    type: 'text/html;charset=utf-8',
-  });
+  const directContent =
+    typeof pageIdOrOptions === 'string'
+      ? undefined
+      : (pageIdOrOptions.content ?? pageIdOrOptions.fallbackContent);
 
   const fallbackName = (projectTitle || 'document')
     .toLowerCase()
     .replace(/[^a-z0-9_-]/g, '_');
-  const finalFilename = res.filename || `${fallbackName}.html`;
 
-  triggerFileDownload(blob, finalFilename);
-  return finalFilename;
+  if (!pageId && directContent !== undefined) {
+    const html = transpileLatexToStandaloneHtml(directContent, projectTitle || 'Document');
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const finalFilename = `${fallbackName}.html`;
+    triggerFileDownload(blob, finalFilename);
+    return finalFilename;
+  }
+
+  return (async () => {
+    try {
+      const res = await manuscriptService.export.exportDocument(
+        pageId,
+        'html',
+        includeChildren,
+      );
+      const blob = new Blob([res.content], {
+        type: 'text/html;charset=utf-8',
+      });
+      const finalFilename = res.filename || `${fallbackName}.html`;
+      triggerFileDownload(blob, finalFilename);
+      return finalFilename;
+    } catch (err) {
+      if (directContent !== undefined) {
+        const html = transpileLatexToStandaloneHtml(directContent, projectTitle || 'Document');
+        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+        const finalFilename = `${fallbackName}.html`;
+        triggerFileDownload(blob, finalFilename);
+        return finalFilename;
+      }
+      throw err;
+    }
+  })();
 }

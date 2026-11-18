@@ -9,7 +9,6 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { duplicateProjectApi } from '@/features/projects/shell/services/project.service';
 import {
   X,
   Archive,
@@ -79,7 +78,8 @@ export function ProjectSettingsModal() {
   const pdfUrl = useCompileStore((s) => s.pdfUrl);
 
   const pageId = params?.pageId || storeParentPageId || currentPage?.id;
-  const rawProjectId = params?.projectId || params?.pageId || storeProjectId || currentPage?.id;
+  const rawProjectId =
+    params?.projectId || spaceId || params?.pageId || storeProjectId || currentPage?.id;
   const effectiveProjectId =
     extractProjectId(currentPage) ||
     rawProjectId ||
@@ -148,26 +148,39 @@ export function ProjectSettingsModal() {
     enabled: Boolean(pageId && settingsPanelOpen),
   });
 
-  const { setMainFile: setMainFileMutation } = usePageActions();
+  const {
+    setMainFile: setMainFileMutation,
+    duplicatePage: duplicatePageMutation,
+  } = usePageActions();
 
   const handleMainFileChange = (newMainFileName: string) => {
+    const prevMainFile = useSettingsStore.getState().mainFile;
     setMainFile(newMainFileName);
     const filesList = (projectFiles || []) as Array<{ id: string; title?: string; name?: string; filename?: string }>;
     const targetFile = filesList.find(
       (f) => (f.title || f.name || f.filename) === newMainFileName
     );
+    const onError = () => {
+      setMainFile(prevMainFile);
+    };
     if (targetFile && (pageId || effectiveProjectId)) {
-      setMainFileMutation.mutate({
-        pageId: (pageId || effectiveProjectId),
-        fileId: targetFile.id,
-        projectId: effectiveProjectId,
-      });
+      setMainFileMutation.mutate(
+        {
+          pageId: (pageId || effectiveProjectId),
+          fileId: targetFile.id,
+          projectId: effectiveProjectId,
+        },
+        { onError },
+      );
     } else if ((pageId || effectiveProjectId) && parentPage && (parentPage.title === newMainFileName || newMainFileName === 'main.tex')) {
-      setMainFileMutation.mutate({
-        pageId: (pageId || effectiveProjectId),
-        fileId: parentPage.id,
-        projectId: effectiveProjectId,
-      });
+      setMainFileMutation.mutate(
+        {
+          pageId: (pageId || effectiveProjectId),
+          fileId: parentPage.id,
+          projectId: effectiveProjectId,
+        },
+        { onError },
+      );
     }
   };
 
@@ -347,29 +360,42 @@ export function ProjectSettingsModal() {
     }
   };
 
-  // Copy Project (Overleaf Parity: Menu Drawer -> Project Functions -> Copy Project)
+  // Copy Page (Duplicate current manuscript page & full Virtual Tree into a new Page)
   const router = useRouter();
-  const [isCopyingProject, setIsCopyingProject] = useState(false);
+  const [isCopyingPage, setIsCopyingPage] = useState(false);
   const handleMakeCopy = async () => {
-    if (!effectiveProjectId) {
-      toast.info('No active project found to duplicate.', { id: 'duplicate-project' });
+    const targetPageId = pageId || currentPage?.id;
+    if (!targetPageId) {
+      toast.info('No active page found to duplicate.', { id: 'duplicate-page' });
       return;
     }
-    const toastId = toast.loading('Duplicating project...');
-    setIsCopyingProject(true);
+    const toastId = toast.loading('Duplicating page...');
+    setIsCopyingPage(true);
     try {
-      const res = (await duplicateProjectApi(effectiveProjectId)) as { project?: { id?: string }; id?: string } | null;
-      const newProjId = res?.project?.id || res?.id;
-      toast.success('Project duplicated successfully!', { id: toastId });
+      const res = (await duplicatePageMutation.mutateAsync(targetPageId)) as {
+        page?: { id?: string };
+        rootPageId?: string;
+        id?: string;
+      } | null;
+      const newPageId = res?.page?.id || res?.rootPageId || res?.id;
+      toast.success('Page duplicated successfully!', { id: toastId });
       setSettingsPanelOpen(false);
-      if (newProjId) {
-        router.push(`/projects/${newProjId}/pages`);
+      if (newPageId) {
+        const isPersonal =
+          !effectiveProjectId ||
+          effectiveProjectId === 'personal' ||
+          effectiveProjectId === targetPageId;
+        router.push(
+          isPersonal
+            ? `/pages/${newPageId}`
+            : `/projects/${effectiveProjectId}/pages/${newPageId}`,
+        );
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Failed to duplicate project';
+      const message = err instanceof Error ? err.message : 'Failed to duplicate page';
       toast.error(message, { id: toastId });
     } finally {
-      setIsCopyingProject(false);
+      setIsCopyingPage(false);
     }
   };
 
@@ -682,34 +708,34 @@ export function ProjectSettingsModal() {
               </div>
             </section>
 
-            {/* 3. PROJECT FUNCTIONS (Copy Project & Word Count) */}
+            {/* 3. PAGE FUNCTIONS (Copy Page & Word Count) */}
             <section aria-labelledby="menu-wordcount-heading" className="space-y-2">
               <h3
                 id="menu-wordcount-heading"
                 className="text-[11px] font-semibold text-muted-foreground px-1 mb-2.5"
               >
-                Project Functions
+                Page Functions
               </h3>
 
-              {/* Copy Project */}
+              {/* Copy Page */}
               <button
                 type="button"
                 onClick={handleMakeCopy}
-                disabled={isCopyingProject}
-                aria-label="Copy Project"
+                disabled={isCopyingPage}
+                aria-label="Copy Page"
                 className="w-full flex items-center justify-between p-2.5 rounded-md border border-border bg-card/40 hover:bg-card hover:border-foreground/30 transition-colors text-left cursor-pointer group"
               >
                 <div className="flex items-center gap-2.5">
                   <div className="size-7 rounded-md bg-muted text-foreground flex items-center justify-center shrink-0">
-                    {isCopyingProject ? <Loader2 className="size-4 animate-spin" /> : <Copy className="size-4" />}
+                    {isCopyingPage ? <Loader2 className="size-4 animate-spin" /> : <Copy className="size-4" />}
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-foreground">Copy Project</p>
-                    <p className="text-[11px] text-muted-foreground">Duplicate this project into a new one</p>
+                    <p className="text-xs font-medium text-foreground">Copy Page</p>
+                    <p className="text-[11px] text-muted-foreground">Duplicate this manuscript page and its files</p>
                   </div>
                 </div>
                 <span className="text-xs text-primary font-medium group-hover:underline">
-                  {isCopyingProject ? 'Copying...' : 'Duplicate →'}
+                  {isCopyingPage ? 'Copying...' : 'Duplicate →'}
                 </span>
               </button>
 

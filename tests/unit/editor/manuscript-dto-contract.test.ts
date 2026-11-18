@@ -7,7 +7,7 @@ import {
   history,
   citations,
   templates,
-} from '@/features/editor/sdk/manuscript/docstore.client';
+} from '@/features/editor/sdk/pages/docstore.client';
 
 const { apiGetMock, apiPostMock, apiPatchMock, apiDeleteMock } = vi.hoisted(() => ({
   apiGetMock: vi.fn(),
@@ -37,7 +37,7 @@ describe('Manuscript FE ↔ BE DTO Contract Alignment', () => {
     const res = await docs.updateDocLines('proj-1', 'doc-1', ['\\section{Intro}'], 4);
 
     expect(apiPostMock).toHaveBeenCalledWith(
-      '/api/v1/manuscripts/projects/proj-1/docs/doc/doc-1',
+      '/api/v1/pages/spaces/proj-1/docs/doc/doc-1',
       {
         lines: ['\\section{Intro}'],
         rev: 4,
@@ -53,7 +53,7 @@ describe('Manuscript FE ↔ BE DTO Contract Alignment', () => {
     await docs.patchDoc('proj-1', 'doc-1', { path: 'chapters/intro.tex', deleted: false });
 
     expect(apiPatchMock).toHaveBeenCalledWith(
-      '/api/v1/manuscripts/projects/proj-1/docs/doc/doc-1',
+      '/api/v1/pages/spaces/proj-1/docs/doc/doc-1',
       {
         path: 'chapters/intro.tex',
         name: 'chapters/intro.tex',
@@ -68,7 +68,7 @@ describe('Manuscript FE ↔ BE DTO Contract Alignment', () => {
     await structure.moveNode('proj-1', 'node-1', { parentId: 'folder-2', sortOrder: 1 });
 
     expect(apiPatchMock).toHaveBeenCalledWith(
-      '/api/v1/manuscripts/pages/proj-1/structure/nodes/node-1/move',
+      '/api/v1/pages/pages/proj-1/structure/nodes/node-1/move',
       {
         parentId: 'folder-2',
         destParentId: 'folder-2',
@@ -86,7 +86,7 @@ describe('Manuscript FE ↔ BE DTO Contract Alignment', () => {
     });
 
     expect(apiPostMock).toHaveBeenCalledWith(
-      '/api/v1/manuscripts/projects/proj-1/updater/doc/doc-1/update',
+      '/api/v1/pages/spaces/proj-1/updater/doc/doc-1/update',
       expect.objectContaining({
         docLines: ['line 1', 'line 2'],
         lines: ['line 1', 'line 2'],
@@ -110,7 +110,7 @@ describe('Manuscript FE ↔ BE DTO Contract Alignment', () => {
     const result = await comments.deleteReply('doc-1', 'thread-1', 'reply-1');
 
     expect(apiDeleteMock).toHaveBeenCalledWith(
-      '/api/v1/manuscripts/docs/doc-1/comments/thread-1/replies/reply-1',
+      '/api/v1/pages/docs/doc-1/comments/thread-1/replies/reply-1',
     );
     expect(result).toEqual(mockComment);
   });
@@ -121,7 +121,7 @@ describe('Manuscript FE ↔ BE DTO Contract Alignment', () => {
     const res = await history.getContentAt('doc-1', 1700000000000);
 
     expect(apiGetMock).toHaveBeenCalledWith(
-      '/api/v1/manuscripts/docs/doc-1/at?timestamp=1700000000000',
+      '/api/v1/pages/docs/doc-1/at?timestamp=1700000000000',
     );
     expect(res.content).toBe('\\documentclass{article}');
   });
@@ -136,7 +136,7 @@ describe('Manuscript FE ↔ BE DTO Contract Alignment', () => {
     });
 
     expect(apiPostMock).toHaveBeenCalledWith(
-      '/api/v1/manuscripts/projects/proj-1/citations/sync-library',
+      '/api/v1/pages/spaces/proj-1/citations/sync-library',
       {
         provider: 'zotero',
         collectionId: 'col-1',
@@ -154,7 +154,7 @@ describe('Manuscript FE ↔ BE DTO Contract Alignment', () => {
     const items = await templates.list({ category: 'academic_journal', search: 'IEEE', limit: 10, skip: 20 });
 
     expect(apiGetMock).toHaveBeenCalledWith(
-      '/api/v1/manuscripts/templates',
+      '/api/v1/pages/templates',
       {
         params: {
           category: 'academic_journal',

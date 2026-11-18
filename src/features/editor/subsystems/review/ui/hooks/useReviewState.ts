@@ -84,7 +84,7 @@ export function useReviewState() {
   const currentPageProjectId = usePageStore((s) => extractProjectId(s.currentPage));
   const rootPageId = routePageId || storeParentPageId || currentPageId;
   const pageId = storeActivePageId || currentPageId || rootPageId;
-  const storeProjectId = usePageStore((s) => s.projectId);
+  const storeProjectId = usePageStore((s) => s.spaceId || s.projectId);
   const projectId = routeProjectId || storeProjectId || currentPageProjectId || '';
 
   const { user } = useAuth();
@@ -94,10 +94,10 @@ export function useReviewState() {
   const { data: reviewStatusData } = useQuery({
     queryKey: ['manuscript-review-status', projectId, pageId],
     queryFn: async () => {
-      if (!projectId || !pageId) return null;
+      if (!pageId) return null;
       return await manuscriptService.review.getReviewStatus(projectId, pageId);
     },
-    enabled: Boolean(projectId && pageId),
+    enabled: Boolean(pageId),
     staleTime: 30_000,
   });
 
@@ -112,7 +112,7 @@ export function useReviewState() {
 
   const updateReviewStatusMutation = useMutation({
     mutationFn: async (payload: { status: ReviewStatus; notes?: string; deadline?: string }) => {
-      if (!projectId || !pageId) throw new Error('No active document');
+      if (!pageId) throw new Error('No active document');
       return await manuscriptService.review.updateReviewStatus(projectId, pageId, payload);
     },
     onSuccess: (res) => {

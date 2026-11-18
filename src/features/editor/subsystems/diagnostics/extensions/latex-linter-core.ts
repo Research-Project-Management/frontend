@@ -141,15 +141,27 @@ export function scanRetractedCitations(
       cursor += part.length + 1;
 
       if (!key) continue;
-      const retractedInfo = retractedCitationsMap.get(key.toLowerCase());
+      let retractedInfo =
+        retractedCitationsMap.get(key) ??
+        retractedCitationsMap.get(key.toLowerCase());
+      if (!retractedInfo) {
+        const lowerKey = key.toLowerCase();
+        for (const [k, v] of retractedCitationsMap.entries()) {
+          if (k.toLowerCase() === lowerKey) {
+            retractedInfo = v;
+            break;
+          }
+        }
+      }
       if (retractedInfo) {
         const natureLabel = retractedInfo.nature || 'Retracted Publication';
+        const titlePart = retractedInfo.title ? ` ("${retractedInfo.title}")` : '';
         const reasonStr = retractedInfo.reason ? ` — Reason: ${retractedInfo.reason}` : '';
         diagnostics.push({
           from: keyFrom,
           to: keyTo,
-          severity: 'error',
-          message: `CRITICAL ACADEMIC WARNING: Cited work '${key}' is a ${natureLabel}${reasonStr}. Avoid citing retracted literature.`,
+          severity: 'warning',
+          message: `CRITICAL ACADEMIC WARNING: Cited work '${key}'${titlePart} is a ${natureLabel}${reasonStr}. Avoid citing retracted literature.`,
           source: 'Retraction Watch Guard',
         });
       }

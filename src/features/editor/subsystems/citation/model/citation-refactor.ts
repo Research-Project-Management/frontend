@@ -176,6 +176,7 @@ export async function executeProjectCitekeyRefactor(
     effectiveCtx?.store?.getActiveProjectId() ||
     effectiveCtx?.projectId ||
     pageState.projectId ||
+    pageState.spaceId ||
     pageState.parentPageId ||
     activeDoc?.id ||
     '';

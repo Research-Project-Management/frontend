@@ -11,10 +11,16 @@
  */
 
 import { filestore } from '@/features/editor/sdk/pages.service';
+import { usePageStore } from '@/features/editor/core/store/editor.store';
 
-export type FileUploader = (projectId: string, file: File, name: string) => Promise<unknown>;
+export type FileUploader = (projectId: string, file: File, name: string, pageId?: string) => Promise<unknown>;
 
-let defaultUploader: FileUploader = (projectId, file, name) => filestore.upload(projectId, file, name);
+let defaultUploader: FileUploader = (projectId, file, name, pageId) => {
+  const pageState = typeof usePageStore?.getState === 'function' ? usePageStore.getState() : undefined;
+  const resolvedSpaceId = pageState?.spaceId?.trim() || projectId;
+  const resolvedPageId = pageId || pageState?.rootPageId || pageState?.parentPageId || undefined;
+  return filestore.upload(resolvedSpaceId, file, name, resolvedPageId);
+};
 
 export function setDefaultFileUploader(uploader: FileUploader): void {
   defaultUploader = uploader;

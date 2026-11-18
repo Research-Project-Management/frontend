@@ -163,12 +163,14 @@ export interface CompilerPort {
     file: string,
     line: number,
     column?: number,
+    pageId?: string,
   ): Promise<ForwardSyncResult | null>;
   resolveReverseRemote?(
     projectId: string,
     page: number,
     x: number,
     y: number,
+    pageId?: string,
   ): Promise<{ sourcePath: string | null; line: number } | null>;
 }
 
@@ -302,7 +304,7 @@ export const CompilePipeline = {
     }
 
     const payload: CompileLatexPayload = {
-      projectId: projectId || undefined,
+      spaceId: projectId || undefined,
       pageId: pageId || undefined,
       mainFile: mainFile || undefined,
       source: sourceContent || undefined,
@@ -475,10 +477,12 @@ export const CompilePipeline = {
     file: string,
     line: number,
     column: number = 0,
+    pageId?: string,
   ): Promise<ForwardSyncResult | null> {
     try {
       const res = await manuscriptService.synctex.forwardSync({
-        projectId,
+        spaceId: projectId,
+        ...(pageId ? { pageId } : {}),
         file,
         line,
         column,
@@ -498,10 +502,12 @@ export const CompilePipeline = {
     page: number,
     x: number,
     y: number,
+    pageId?: string,
   ): Promise<{ sourcePath: string | null; line: number } | null> {
     try {
       const res = await manuscriptService.synctex.reverseSync({
-        projectId,
+        spaceId: projectId,
+        ...(pageId ? { pageId } : {}),
         page,
         x,
         y,

@@ -27,7 +27,7 @@ export function FileMenu({ value = 'file' }: { value?: string } = {}) {
   const pdfUrl = useCompileStore((s) => s.pdfUrl);
   const currentPage = usePageStore((s) => s.currentPage);
   const activeFilePage = usePageStore((s) => s.activeFilePage);
-  const storeProjectId = usePageStore((s) => s.projectId);
+  const storeProjectId = usePageStore((s) => s.spaceId || s.projectId);
 
   const effectiveProjectId =
     params?.projectId ||

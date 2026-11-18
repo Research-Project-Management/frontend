@@ -43,6 +43,7 @@ const DocumentConflictDialog = dynamic(
 import { useActiveDocument } from '@/features/editor/ui/hooks/useActiveDocument';
 import {
   useWorkspaceStore,
+  usePageStore,
   editorCommandBus,
   sessionCoordinator,
   isPrimaryModKey,
@@ -170,7 +171,9 @@ export function EditorArea() {
     }
   }, [pageId, selectFile]);
 
-  const effectiveProjectId = extractProjectId(activePage) ?? extractProjectId(parentPage) ?? pageId;
+  const storeSpaceId = usePageStore((s) => s.spaceId);
+  const effectiveProjectId =
+    storeSpaceId || extractProjectId(activePage) || extractProjectId(parentPage) || pageId;
 
   // Surface remote-vs-local conflicts with visual inspection & merge dialog
   const [activeConflict, setActiveConflict] = React.useState<DocumentConflict | null>(null);

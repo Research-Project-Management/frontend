@@ -66,7 +66,7 @@ export function PdfViewer({ isDetached = false }: PdfViewerProps = {}) {
     draftId?: string;
   }>();
 
-  const storeProjectId = usePageStore((s) => s.projectId);
+  const storeProjectId = usePageStore((s) => s.spaceId || s.projectId);
   const currentPageId = usePageStore((s) => s.currentPage?.id);
   const rawProj = rawProjectId || storeProjectId;
   const projectId = rawProj || undefined;

@@ -12,12 +12,15 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Badge } from '@/shared/components/ui/badge';
 import { useSpellingDictionary } from '@/features/editor/ui/hooks/useSpelling';
+import { usePageStore } from '@/features/editor/core/store/editor.store';
 
 export interface ProjectDictionaryTabProps {
   projectId?: string;
 }
 
-export function ProjectDictionaryTab({ projectId }: ProjectDictionaryTabProps = {}) {
+export function ProjectDictionaryTab({ projectId: propProjectId }: ProjectDictionaryTabProps = {}) {
+  const storeSpaceId = usePageStore((s) => s.projectId || s.spaceId || '');
+  const projectId = propProjectId || storeSpaceId || undefined;
   const { userWords, projectWords, addWord, removeWord } = useSpellingDictionary(projectId, true);
   const [newDictionaryWord, setNewDictionaryWord] = useState('');
   const [scope, setScope] = useState<'project' | 'user'>(projectId ? 'project' : 'user');

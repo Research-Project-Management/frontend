@@ -223,7 +223,7 @@ describe('document-tree (1:1 Path-Trie Builder)', () => {
           isFolder: false,
           nodeType: 'FILE' as const,
           size: 4096,
-          url: '/api/v1/manuscripts/projects/p1/files/blob-fig',
+          url: '/api/v1/pages/spaces/p1/files/blob-fig',
         },
       ];
 

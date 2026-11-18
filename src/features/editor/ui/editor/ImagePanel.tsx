@@ -10,13 +10,14 @@
 import React from 'react';
 import { FileImage, AlertCircle } from 'lucide-react';
 import type { AssetInfo } from '@/features/editor/domain/types/asset.types';
-import { resolveFileUrl } from '@/shared/lib/file-client';
+import { useAuthorizedImageSrc } from '@/features/editor/ui/hooks/useAuthorizedImageSrc';
 
 export interface ImagePanelProps {
   asset: AssetInfo;
 }
 
 export function ImagePanel({ asset }: ImagePanelProps) {
+  const authorizedSrc = useAuthorizedImageSrc(asset.url);
   const ext = asset.filename.split('.').pop()?.toUpperCase() ?? '';
   const sizeLabel = asset.size
     ? asset.size < 1024
@@ -39,13 +40,17 @@ export function ImagePanel({ asset }: ImagePanelProps) {
         {sizeLabel && <span className="text-xs text-muted-foreground/70">{sizeLabel}</span>}
       </div>
       <div className="flex-1 flex items-center justify-center p-8 overflow-auto bg-muted">
-        {asset.url ? (
+        {authorizedSrc ? (
           <img
-            src={resolveFileUrl(asset.url) || ''}
+            src={authorizedSrc}
             alt={asset.filename}
-            crossOrigin="use-credentials"
             className="max-w-full max-h-full object-contain rounded-md border border-border"
           />
+        ) : asset.url ? (
+          <div className="flex flex-col items-center gap-2 text-muted-foreground">
+            <FileImage className="size-6 text-muted-foreground/60 shrink-0" />
+            <span className="text-sm">Loading image preview...</span>
+          </div>
         ) : (
           <div className="flex flex-col items-center gap-2 text-muted-foreground">
             <AlertCircle className="size-6 text-muted-foreground/60 shrink-0" />

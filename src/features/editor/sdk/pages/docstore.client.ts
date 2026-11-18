@@ -20,6 +20,7 @@ import {
   getAuthToken,
 } from '@/shared/lib/api';
 import { MANUSCRIPTS_API_BASE, getManuscriptsBaseUrl } from './base';
+import { usePageStore } from '@/features/editor/core/store/editor.store';
 
 import type {
   ReviewStatus,
@@ -148,7 +149,7 @@ export const docs = {
     content?: string;
     status?: string;
   }): Promise<Page> => {
-    const res = await apiPost<{ page: Page }>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs`, {
+    const res = await apiPost<{ page: Page }>(`${MANUSCRIPTS_API_BASE}/spaces/${projectId}/docs`, {
       title,
       content,
       status,
@@ -278,7 +279,7 @@ export const docs = {
     if (status && status !== 'all') params.status = status;
     if (search) params.search = search;
     try {
-      const res = await apiGet<{ pages: Page[] }>(`${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs`, { params });
+      const res = await apiGet<{ pages: Page[] }>(`${MANUSCRIPTS_API_BASE}/spaces/${projectId}/docs`, { params });
       return res.pages || [];
     } catch {
       return [];
@@ -292,7 +293,7 @@ export const docs = {
     rev?: number,
   ): Promise<{ modified: boolean; rev: number }> => {
     return await apiPost<{ modified: boolean; rev: number }>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/doc/${docId}`,
+      `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/docs/doc/${docId}`,
       { lines, rev, ...(rev !== undefined ? { expectedRev: rev } : {}) },
     );
   },
@@ -307,7 +308,7 @@ export const docs = {
       ...(dto.path && !dto.name ? { name: dto.path } : {}),
     };
     return await apiPatch<DocstoreDocDto | Record<string, unknown>>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/doc/${docId}`,
+      `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/docs/doc/${docId}`,
       payload,
     );
   },
@@ -329,7 +330,7 @@ export const updater = {
     const lines = dto.lines ?? dto.docLines ?? [];
     const clientRev = dto.clientRev ?? dto.version;
     return await apiPost<Record<string, unknown>>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/updater/doc/${docId}/update`,
+      `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/updater/doc/${docId}/update`,
       {
         ...dto,
         docLines: dto.docLines ?? lines,
@@ -346,7 +347,7 @@ export const updater = {
     const localFlushedCount = flushYjsProviders(projectId);
     try {
       const serverFlush = await apiPost<FlushResultDto & { flushedDocsCount?: number; flushedDocs?: number }>(
-        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/updater/flush`,
+        `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/updater/flush`,
         { force },
       );
       const serverCount = serverFlush?.flushedDocsCount ?? serverFlush?.flushedDocCount ?? serverFlush?.flushedDocs ?? 0;
@@ -373,6 +374,28 @@ export const updater = {
  *
  * Compilation sub-API: LaTeX compile, preview compile, word count, aux artifacts, clean aux.
  */
+
+function resolveCompilerArtifactSegment(
+  pageOrProjectId: string,
+  options?: { isPageScoped?: boolean },
+): 'pages' | 'spaces' {
+  if (options?.isPageScoped === true) return 'pages';
+  if (options?.isPageScoped === false) return 'spaces';
+  const state =
+    typeof usePageStore?.getState === 'function' ? usePageStore.getState() : undefined;
+  if (
+    state?.projectId &&
+    state.projectId === pageOrProjectId &&
+    state.rootPageId !== pageOrProjectId &&
+    state.parentPageId !== pageOrProjectId
+  ) {
+    return 'spaces';
+  }
+  if (/^proj[-_]/i.test(pageOrProjectId)) {
+    return 'spaces';
+  }
+  return 'pages';
+}
 
 export const compiler = {
   compile: async (payload: CompileLatexPayload, signal?: AbortSignal): Promise<CompileLatexResponse> => {
@@ -420,16 +443,20 @@ export const compiler = {
       includeBib?: boolean;
       filename?: string;
       files?: Record<string, string>;
+      pageId?: string;
     },
   ): Promise<WordCountResponse> => {
     const endpoint = projectId
-      ? `${MANUSCRIPTS_API_BASE}/projects/${projectId}/word-count`
-      : `${MANUSCRIPTS_API_BASE}/word-count`;
+      ? `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/word-count`
+      : options?.pageId
+        ? `${MANUSCRIPTS_API_BASE}/pages/${options.pageId}/word-count`
+        : `${MANUSCRIPTS_API_BASE}/word-count`;
     return await apiPost<WordCountResponse>(
       endpoint,
       {
         ...(source !== undefined ? { source } : {}),
-        ...(projectId ? { projectId } : {}),
+        ...(projectId ? { spaceId: projectId } : {}),
+        ...(options?.pageId ? { pageId: options.pageId } : {}),
         ...(options?.includeBib !== undefined
           ? { includeBib: options.includeBib }
           : {}),
@@ -454,7 +481,7 @@ export const compiler = {
       const res = await apiPost<{ pdf?: string; logs?: string; synctex?: string; error?: string }>(
         `${MANUSCRIPTS_API_BASE}/compile`,
         {
-          projectId: opts.sessionId || 'preview',
+          spaceId: opts.sessionId || 'preview',
           mainFile: 'preview.tex',
           engine,
           source,
@@ -486,7 +513,7 @@ export const compiler = {
     options?: { isPageScoped?: boolean },
   ): Promise<AuxFileItem[]> => {
     if (!pageOrProjectId) return [];
-    const segment = options?.isPageScoped !== false ? 'pages' : 'projects';
+    const segment = resolveCompilerArtifactSegment(pageOrProjectId, options);
     try {
       const res = await rawFetch(
         `${getManuscriptsBaseUrl()}/${segment}/${encodeURIComponent(pageOrProjectId)}/artifacts`,
@@ -507,7 +534,7 @@ export const compiler = {
     filename: string,
     options?: { isPageScoped?: boolean },
   ): string => {
-    const segment = options?.isPageScoped !== false ? 'pages' : 'projects';
+    const segment = resolveCompilerArtifactSegment(pageOrProjectId, options);
     return `${MANUSCRIPTS_API_BASE}/${segment}/${encodeURIComponent(pageOrProjectId)}/artifacts/${encodeURIComponent(filename)}`;
   },
 
@@ -517,7 +544,7 @@ export const compiler = {
     options?: { isPageScoped?: boolean },
   ): Promise<string | null> => {
     if (!pageOrProjectId) return null;
-    const segment = options?.isPageScoped !== false ? 'pages' : 'projects';
+    const segment = resolveCompilerArtifactSegment(pageOrProjectId, options);
     try {
       const res = await rawFetch(
         `${getManuscriptsBaseUrl()}/${segment}/${encodeURIComponent(pageOrProjectId)}/artifacts/${encodeURIComponent(filename)}`,
@@ -542,7 +569,7 @@ export const compiler = {
     pageOrProjectId: string,
     options?: { isPageScoped?: boolean },
   ): string => {
-    const segment = options?.isPageScoped !== false ? 'pages' : 'projects';
+    const segment = resolveCompilerArtifactSegment(pageOrProjectId, options);
     return `${MANUSCRIPTS_API_BASE}/${segment}/${encodeURIComponent(pageOrProjectId)}/artifacts-zip`;
   },
 
@@ -550,7 +577,7 @@ export const compiler = {
     pageOrProjectId: string,
     options?: { isPageScoped?: boolean },
   ): Promise<{ success: boolean; cancelled: boolean }> => {
-    const segment = options?.isPageScoped !== false ? 'pages' : 'projects';
+    const segment = resolveCompilerArtifactSegment(pageOrProjectId, options);
     try {
       return await apiPost<{ success: boolean; cancelled: boolean }>(
         `${MANUSCRIPTS_API_BASE}/${segment}/${encodeURIComponent(pageOrProjectId)}/compile/cancel`,
@@ -566,7 +593,7 @@ export const compiler = {
     options?: { isPageScoped?: boolean },
   ): Promise<{ success: boolean }> => {
     if (!pageOrProjectId) return { success: false };
-    const segment = options?.isPageScoped !== false ? 'pages' : 'projects';
+    const segment = resolveCompilerArtifactSegment(pageOrProjectId, options);
     try {
       return await apiPost<{ success: boolean }>(
         `${MANUSCRIPTS_API_BASE}/${segment}/${encodeURIComponent(pageOrProjectId)}/clean-aux`,
@@ -696,14 +723,14 @@ export const diagnostics = {
       source,
       content: source,
       filename,
-      projectId: options?.projectId,
+      spaceId: options?.projectId,
       docId: options?.docId,
       knownBibKeys: options?.knownBibKeys,
       knownLabels: options?.knownLabels,
     };
     if (options?.projectId) {
       return await apiPost<DiagnosticReportDto>(
-        `${MANUSCRIPTS_API_BASE}/diagnostics/projects/${options.projectId}/lint-doc`,
+        `${MANUSCRIPTS_API_BASE}/diagnostics/spaces/${options.projectId}/lint-doc`,
         payload,
         { silent: true },
       );
@@ -726,14 +753,14 @@ export const diagnostics = {
     },
   ): Promise<DiagnosticReportDto> => {
     return await apiPost<DiagnosticReportDto>(
-      `${MANUSCRIPTS_API_BASE}/diagnostics/projects/${projectId}/lint-doc`,
-      { ...payload, source: payload.content, projectId },
+      `${MANUSCRIPTS_API_BASE}/diagnostics/spaces/${projectId}/lint-doc`,
+      { ...payload, source: payload.content, spaceId: projectId },
       { silent: true },
     );
   },
 
   lintProject: async (projectId: string): Promise<DiagnosticReportDto> => {
-    return await apiPost<DiagnosticReportDto>(`${MANUSCRIPTS_API_BASE}/diagnostics/projects/${projectId}/lint`, {});
+    return await apiPost<DiagnosticReportDto>(`${MANUSCRIPTS_API_BASE}/diagnostics/spaces/${projectId}/lint`, {});
   },
 
   autoFix: async (source: string): Promise<AutoFixResultDto> => {
@@ -771,7 +798,10 @@ import {
   spelling,
   spellingService,
   gitApi,
+  linkedFiles,
   type CustomDictionaryResponse,
+  type LinkedFileDto,
+  type CreateLinkedFilePayload,
   type SpellingSuggestionResponse,
   type MisspelledWord,
   type SpellingReport,
@@ -788,6 +818,8 @@ export type {
   CheckSpellingPayload,
   GitTokenInfo,
   GitRepoInfo,
+  LinkedFileDto,
+  CreateLinkedFilePayload,
 };
 
 export {
@@ -808,24 +840,25 @@ export {
   spelling,
   spellingService,
   gitApi,
+  linkedFiles,
 };
 
 export const review = {
   getReviews: async (projectId: string, docId: string) => {
     return await apiGet<{ changes: unknown[]; threads: unknown[] }>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review`,
+      `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/docs/${docId}/review`,
     );
   },
 
   getThreads: async (projectId: string, docId: string) => {
     return await apiGet<unknown[]>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review/threads`,
+      `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/docs/${docId}/review/threads`,
     );
   },
 
   getChanges: async (projectId: string, docId: string) => {
     return await apiGet<unknown[]>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review/changes`,
+      `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/docs/${docId}/review/changes`,
     );
   },
 
@@ -843,7 +876,7 @@ export const review = {
     },
   ) => {
     return await apiPost<Record<string, unknown>>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review/changes`,
+      `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/docs/${docId}/review/changes`,
       payload,
     );
   },
@@ -857,7 +890,7 @@ export const review = {
     },
   ) => {
     return await apiPost<{ resolvedCount: number; action: string }>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review/changes/batch`,
+      `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/docs/${docId}/review/changes/batch`,
       payload,
     );
   },
@@ -877,7 +910,7 @@ export const review = {
     },
   ) => {
     return await apiPost<Record<string, unknown>>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review/threads`,
+      `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/docs/${docId}/review/threads`,
       payload,
     );
   },
@@ -889,7 +922,7 @@ export const review = {
     content: string,
   ) => {
     return await apiPost<Record<string, unknown>>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review/threads/${threadId}/replies`,
+      `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/docs/${docId}/review/threads/${threadId}/replies`,
       { content },
     );
   },
@@ -901,38 +934,41 @@ export const review = {
     resolved: boolean,
   ) => {
     return await apiPatch<Record<string, unknown>>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review/threads/${threadId}/resolve`,
+      `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/docs/${docId}/review/threads/${threadId}/resolve`,
       { resolve: Boolean(resolved) },
     );
   },
 
   acceptChange: async (projectId: string, docId: string, changeId: string) => {
     return await apiPost<Record<string, unknown>>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review/changes/${changeId}/accept`,
+      `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/docs/${docId}/review/changes/${changeId}/accept`,
       {},
     );
   },
 
   rejectChange: async (projectId: string, docId: string, changeId: string) => {
     return await apiPost<Record<string, unknown>>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review/changes/${changeId}/reject`,
+      `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/docs/${docId}/review/changes/${changeId}/reject`,
       {},
     );
   },
 
   getReviewStatus: async (projectId: string, docId: string): Promise<ReviewStatusResponse> => {
-    return await apiGet<ReviewStatusResponse>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review-status`,
-    );
+    const endpoint = projectId
+      ? `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/docs/${docId}/review-status`
+      : `${MANUSCRIPTS_API_BASE}/pages/${docId}/review-status`;
+    return await apiGet<ReviewStatusResponse>(endpoint);
   },
 
   getProjectOverview: async (
-    projectId: string,
+    scopeId: string,
+    options?: { isPageScope?: boolean },
   ): Promise<ProjectReviewOverviewResponseDto | null> => {
-    if (!projectId) return null;
+    if (!scopeId) return null;
+    const segment = options?.isPageScope ? 'pages' : 'spaces';
     try {
       return await apiGet<ProjectReviewOverviewResponseDto>(
-        `${MANUSCRIPTS_API_BASE}/projects/${projectId}/review-overview`,
+        `${MANUSCRIPTS_API_BASE}/${segment}/${scopeId}/review-overview`,
         { silent: true },
       );
     } catch {
@@ -945,10 +981,10 @@ export const review = {
     docId: string,
     payload: { status: ReviewStatus; notes?: string; deadline?: string },
   ): Promise<ReviewStatusResponse> => {
-    return await apiPost<ReviewStatusResponse>(
-      `${MANUSCRIPTS_API_BASE}/projects/${projectId}/docs/${docId}/review-status`,
-      payload,
-    );
+    const endpoint = projectId
+      ? `${MANUSCRIPTS_API_BASE}/spaces/${projectId}/docs/${docId}/review-status`
+      : `${MANUSCRIPTS_API_BASE}/pages/${docId}/review-status`;
+    return await apiPost<ReviewStatusResponse>(endpoint, payload);
   },
 };
 
@@ -964,7 +1000,7 @@ export const bootstrap = {
     if (!id) {
       throw new Error('Workspace or page ID is required for editor bootstrap');
     }
-    const segment = options?.isProjectRoute ? 'projects' : 'pages';
+    const segment = options?.isProjectRoute ? 'spaces' : 'pages';
     const params: Record<string, string> = {};
     if (options?.fileId) {
       params.fileId = options.fileId;
@@ -1002,6 +1038,7 @@ export const manuscriptService = {
   AcademicAiService,
   suggestLatexFix,
   git: gitApi,
+  linkedFiles,
   restoreProjectVersionFile: history.restoreProjectVersionFile,
   exportVersionZip: exportDocs.exportVersionZip,
   exportDocument: exportDocs.exportDocument,

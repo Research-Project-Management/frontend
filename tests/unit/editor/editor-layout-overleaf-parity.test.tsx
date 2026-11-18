@@ -69,6 +69,7 @@ vi.mock('@/features/editor/ui/hooks/usePageActions', () => ({
     setMainFile: { mutate: vi.fn(), isPending: false },
     updateThumbnail: { mutate: vi.fn() },
     updateTitle: { mutate: vi.fn(), isPending: false },
+    duplicatePage: { mutateAsync: vi.fn(), mutate: vi.fn(), isPending: false },
   }),
 }));
 
@@ -470,10 +471,11 @@ describe('Overleaf 1:1 Layout & Feature Placement Parity', () => {
       expect(screen.getByText(/^sync$/i)).toBeInTheDocument();
       expect(screen.getByText(/github/i)).toBeInTheDocument();
       expect(screen.getByText(/git clone url/i)).toBeInTheDocument();
-      expect(screen.getByText(/dropbox/i)).toBeInTheDocument();
+      expect(screen.getByText(/smart-http/i)).toBeInTheDocument();
 
-      // 4. PROJECT FUNCTIONS (Copy Project & Word Count)
-      expect(screen.getByRole('button', { name: /copy project/i })).toBeInTheDocument();
+      // 4. PROJECT FUNCTIONS (Copy Page & Word Count)
+      expect(screen.getByRole('button', { name: /copy page/i })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /copy project/i })).not.toBeInTheDocument();
       expect(screen.getByRole('button', { name: /run word count/i })).toBeInTheDocument();
 
       // 5. SETTINGS Section

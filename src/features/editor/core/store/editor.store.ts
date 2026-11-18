@@ -19,10 +19,12 @@ export interface EditorGithubLinkInfo {
 export interface DocumentEditorState {
   // ── Coordinate Model (spaceId -> pageId -> activeDocId) ──
   spaceId: string;
+  spaceType: 'personal' | 'project';
   projectId: string;
   projectName: string | null;
   workspaceTitle: string;
   rootPageId: string | null;
+  rootDocId: string | null;
   activeDocId: string | null;
 
   // Backward-compatible aliases
@@ -42,6 +44,7 @@ export interface DocumentEditorState {
   setWorkspaceTitle: (workspaceTitle: string) => void;
   setGithubLink: (githubLink: EditorGithubLinkInfo | null) => void;
   setRootPageId: (id: string | null) => void;
+  setRootDocId: (id: string | null) => void;
   setParentPageId: (id: string | null) => void;
   setActiveDocId: (id: string | null) => void;
   setActivePageId: (id: string | null) => void;
@@ -56,6 +59,7 @@ export interface DocumentEditorState {
   setSelectedAsset: (asset: AssetInfo | null) => void;
   setWorkspaceContext: (ctx: {
     spaceId: string;
+    spaceType?: 'personal' | 'project';
     projectId?: string | null;
     projectName?: string | null;
     workspaceTitle?: string;
@@ -69,6 +73,7 @@ export interface DocumentEditorState {
   getActiveDocumentId: () => string | null;
   getActiveDocumentTitle: () => string;
   setActiveDocument: (doc: Page | PageFile | null) => void;
+  getSpaceId: () => string;
   getProjectId: () => string;
   getRootPageId: () => string | null;
   getActiveDocId: () => string | null;
@@ -77,10 +82,12 @@ export interface DocumentEditorState {
 export const usePageStore = create<DocumentEditorState>((set, get) => ({
   currentPage: null,
   spaceId: '',
+  spaceType: 'personal',
   projectId: '',
   projectName: null,
   workspaceTitle: '',
   rootPageId: null,
+  rootDocId: null,
   parentPageId: null,
   activeDocId: null,
   activePageId: null,
@@ -125,7 +132,22 @@ export const usePageStore = create<DocumentEditorState>((set, get) => ({
   setSpaceId: (spaceId) =>
     set((state) => (state.spaceId === spaceId ? state : { spaceId })),
   setProjectId: (projectId) =>
-    set((state) => (state.projectId === projectId ? state : { projectId })),
+    set((state) => {
+      const nextSpaceId = state.spaceId || projectId;
+      const nextSpaceType = projectId ? 'project' : state.spaceType;
+      if (
+        state.projectId === projectId &&
+        state.spaceId === nextSpaceId &&
+        state.spaceType === nextSpaceType
+      ) {
+        return state;
+      }
+      return {
+        projectId,
+        spaceId: nextSpaceId,
+        spaceType: nextSpaceType,
+      };
+    }),
   setWorkspaceTitle: (workspaceTitle) =>
     set((state) => (state.workspaceTitle === workspaceTitle ? state : { workspaceTitle })),
   setGithubLink: (githubLink) =>
@@ -136,6 +158,8 @@ export const usePageStore = create<DocumentEditorState>((set, get) => ({
         ? state
         : { rootPageId, parentPageId: rootPageId },
     ),
+  setRootDocId: (rootDocId) =>
+    set((state) => (state.rootDocId === rootDocId ? state : { rootDocId })),
   setParentPageId: (parentPageId) =>
     set((state) =>
       state.rootPageId === parentPageId && state.parentPageId === parentPageId
@@ -190,28 +214,37 @@ export const usePageStore = create<DocumentEditorState>((set, get) => ({
     set((state) => (state.selectedAsset === selectedAsset ? state : { selectedAsset })),
   setWorkspaceContext: ({
     spaceId,
+    spaceType,
     projectId,
     projectName,
     workspaceTitle,
     permissions,
     githubLink,
   }) =>
-    set((state) => ({
-      spaceId,
-      projectId: projectId !== undefined ? (projectId ?? '') : state.projectId,
-      projectName: projectName !== undefined ? (projectName ?? null) : state.projectName,
-      workspaceTitle: workspaceTitle !== undefined ? workspaceTitle : state.workspaceTitle,
-      permissions: permissions !== undefined ? permissions : state.permissions,
-      githubLink: githubLink !== undefined ? githubLink : state.githubLink,
-    })),
+    set((state) => {
+      const resolvedProjectId =
+        projectId !== undefined ? (projectId ?? '') : state.projectId;
+      return {
+        spaceId,
+        spaceType:
+          spaceType ?? (resolvedProjectId ? 'project' : 'personal'),
+        projectId: resolvedProjectId,
+        projectName: projectName !== undefined ? (projectName ?? null) : state.projectName,
+        workspaceTitle: workspaceTitle !== undefined ? workspaceTitle : state.workspaceTitle,
+        permissions: permissions !== undefined ? permissions : state.permissions,
+        githubLink: githubLink !== undefined ? githubLink : state.githubLink,
+      };
+    }),
   resetPageState: () =>
     set({
       currentPage: null,
       spaceId: '',
+      spaceType: 'personal',
       projectId: '',
       projectName: null,
       workspaceTitle: '',
       rootPageId: null,
+      rootDocId: null,
       parentPageId: null,
       activeDocId: null,
       activePageId: null,
@@ -235,7 +268,8 @@ export const usePageStore = create<DocumentEditorState>((set, get) => ({
         currentPage: state.currentPage ?? doc,
       };
     }),
-  getProjectId: () => get().projectId,
+  getSpaceId: () => get().spaceId || get().projectId,
+  getProjectId: () => get().projectId || get().spaceId,
   getRootPageId: () => get().rootPageId || get().parentPageId,
   getActiveDocId: () => get().activeDocId || get().activePageId,
 }));

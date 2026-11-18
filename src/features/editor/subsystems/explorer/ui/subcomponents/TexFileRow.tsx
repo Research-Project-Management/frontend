@@ -254,7 +254,7 @@ export const TexFileRow = React.memo(function TexFileRow({
 
       {/* Row action dropdown trigger (⋮) */}
       <RowActions>
-        {!isMain && (
+        {!isMain && /\.(tex|ltx|rtex|rnw)$/i.test(file.title || displayName(file.title)) && (
           <DropdownMenuItem
             onClick={(e) => {
               e.stopPropagation();
@@ -305,11 +305,12 @@ export const TexFileRow = React.memo(function TexFileRow({
         </DropdownMenuItem>
         <DropdownMenuItem
           variant="destructive"
+          disabled={isMain}
           onClick={(e) => {
             e.stopPropagation();
-            onDelete(file.id);
+            if (!isMain) onDelete(file.id);
           }}
-          className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer rounded-md outline-none focus:bg-destructive/10 focus:text-destructive focus-visible:ring-1 focus-visible:ring-destructive transition-colors"
+          className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer rounded-md outline-none focus:bg-destructive/10 focus:text-destructive focus-visible:ring-1 focus-visible:ring-destructive transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Trash2 className="size-4 shrink-0" strokeWidth={1.5} />
           <span>Delete</span>
@@ -325,7 +326,7 @@ export const TexFileRow = React.memo(function TexFileRow({
         onCloseAutoFocus={(e) => e.preventDefault()}
         className="w-56 p-1.5 rounded-md border border-border bg-popover text-popover-foreground z-50 shadow-raised-200 space-y-0.5 select-none text-13"
       >
-        {!isMain ? (
+        {!isMain && /\.(tex|ltx|rtex|rnw)$/i.test(file.title || displayName(file.title)) ? (
           <ContextMenuItem
             onClick={(e) => {
               e.stopPropagation();
@@ -384,11 +385,12 @@ export const TexFileRow = React.memo(function TexFileRow({
         </ContextMenuItem>
         <ContextMenuItem
           variant="destructive"
+          disabled={isMain}
           onClick={(e) => {
             e.stopPropagation();
-            onDelete(file.id);
+            if (!isMain) onDelete(file.id);
           }}
-          className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer rounded-md outline-none focus:bg-destructive/10 focus:text-destructive focus-visible:ring-1 focus-visible:ring-destructive transition-colors"
+          className="h-8 gap-2.5 px-2.5 text-13 font-normal whitespace-nowrap cursor-pointer rounded-md outline-none focus:bg-destructive/10 focus:text-destructive focus-visible:ring-1 focus-visible:ring-destructive transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Trash2 className="size-4 shrink-0" strokeWidth={1.5} />
           <span>Delete</span>

@@ -9,11 +9,13 @@
  */
 
 import { manuscriptService } from '@/features/editor/sdk/pages.service';
-import { sessionCoordinator } from '@/features/editor/core';
+import { sessionCoordinator, usePageStore } from '@/features/editor/core';
+import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
 import { triggerFileDownload } from './document-download';
 
 export interface ArchiveExportOptions {
   parentPageId: string;
+  pageId?: string;
   projectTitle?: string;
   currentContent?: string;
   activeFileId?: string;
@@ -34,6 +36,7 @@ interface BundleZipOptions extends ArchiveExportOptions {
  */
 async function bundleAndDownloadZip({
   parentPageId,
+  pageId,
   projectTitle,
   isArxiv = false,
 }: BundleZipOptions): Promise<string> {
@@ -51,6 +54,10 @@ async function bundleAndDownloadZip({
       .trim()
       .replace(/\s+/g, '_') || (isArxiv ? 'manuscript' : 'flux-project');
 
+  const storeState = usePageStore.getState();
+  const targetScopeId = storeState.spaceId || storeState.projectId || parentPageId;
+  const targetPageId = pageId || parentPageId;
+
   const hadDirtyBeforeExport =
     typeof sessionCoordinator.hasDirtyDocuments === 'function'
       ? sessionCoordinator.hasDirtyDocuments()
@@ -58,18 +65,78 @@ async function bundleAndDownloadZip({
   if (hadDirtyBeforeExport) {
     const flushRes = await sessionCoordinator.flushAllPending().catch(() => null);
     if (!flushRes || flushRes.total > 0) {
-      await manuscriptService.updater.flushProject(parentPageId).catch(() => null);
+      await manuscriptService.updater.flushProject(targetScopeId).catch(() => null);
     }
   }
 
-  const serverBlob = await manuscriptService.export.exportProjectZip(parentPageId, {
-    cleanArxiv: isArxiv,
-    includePdf: !isArxiv,
-    projectName: cleanTitle,
-  });
+  let finalBlob: Blob | null = null;
+  try {
+    const serverBlob = await manuscriptService.export.exportProjectZip(targetScopeId, {
+      cleanArxiv: isArxiv,
+      includePdf: !isArxiv,
+      projectName: cleanTitle,
+      ...(targetPageId ? { pageId: targetPageId } : {}),
+    });
+    if (serverBlob && serverBlob.size >= 4) {
+      const header = new Uint8Array(await serverBlob.slice(0, 4).arrayBuffer());
+      if (header[0] === 0x50 && header[1] === 0x4b) {
+        finalBlob = serverBlob;
+      }
+    }
+  } catch {
+    finalBlob = null;
+  }
+
+  if (!finalBlob) {
+    const JSZip = (await import('jszip')).default;
+    const zip = new JSZip();
+    const auxPattern = /\.(aux|log|out|synctex\.gz|toc|lof|lot|fls|fdb_latexmk)$/i;
+
+    const rootDoc = await manuscriptService.docs.getById(parentPageId).catch(() => null);
+    if (rootDoc) {
+      const rootName =
+        rootDoc.title && rootDoc.title.toLowerCase().endsWith('.tex')
+          ? 'main.tex'
+          : 'main.tex';
+      const rootText = extractDocumentContentString(rootDoc.content);
+      if (rootText || !zip.file(rootName)) {
+        zip.file(rootName, rootText);
+      }
+    }
+
+    const docs = await manuscriptService.docs.getFiles(parentPageId).catch(() => []);
+    for (const d of docs || []) {
+      const entryName = (d.path || d.title || '').replace(/^\/+/, '');
+      if (!entryName) continue;
+      if (isArxiv && auxPattern.test(entryName)) continue;
+      zip.file(entryName, extractDocumentContentString(d.content));
+    }
+
+    const storageFiles = await manuscriptService.structure.getPageFiles(parentPageId).catch(() => []);
+    for (const sf of storageFiles || []) {
+      const sfPath = typeof sf.path === 'string' ? sf.path : '';
+      const sfName = typeof sf.name === 'string' ? sf.name : sf.filename || '';
+      const entryName = (sfPath || sfName).replace(/^\/+/, '');
+      if (!entryName) continue;
+      if (isArxiv && auxPattern.test(entryName)) continue;
+      const fileUrl = typeof sf.fileUrl === 'string' ? sf.fileUrl : sf.url;
+      if (typeof fileUrl === 'string' && fileUrl && typeof fetch === 'function') {
+        try {
+          const resp = await fetch(fileUrl);
+          if (resp.ok) {
+            zip.file(entryName, await resp.arrayBuffer());
+          }
+        } catch {
+          // Skip unreachable storage file during fallback ZIP generation
+        }
+      }
+    }
+
+    finalBlob = await zip.generateAsync({ type: 'blob' });
+  }
 
   const filename = isArxiv ? `arxiv-${cleanTitle}.zip` : `${cleanTitle}.zip`;
-  triggerFileDownload(serverBlob, filename);
+  triggerFileDownload(finalBlob, filename);
   return filename;
 }
 
@@ -92,6 +159,7 @@ export async function exportArxivSubmissionZip(options: ExportZipOptions): Promi
 export interface ExportVersionZipOptions {
   parentPageId?: string;
   projectId?: string;
+  pageId?: string;
   versionId?: string;
   version?: number | string;
   revisionDate?: string | Date;
@@ -104,7 +172,13 @@ export interface ExportVersionZipOptions {
  * directly from the backend (`manuscriptService.export.exportVersionZip`).
  */
 export async function exportVersionAsZip(options: ExportVersionZipOptions): Promise<string> {
-  const projectId = options.projectId || options.parentPageId || '';
+  const storeState = usePageStore.getState();
+  const projectId =
+    options.projectId ||
+    storeState.spaceId ||
+    storeState.projectId ||
+    options.parentPageId ||
+    '';
   const version = options.version ?? options.versionId ?? 1;
   const projectTitle = options.projectTitle || 'flux-project';
 
@@ -124,6 +198,7 @@ export async function exportVersionAsZip(options: ExportVersionZipOptions): Prom
     projectId,
     version,
     cleanTitle,
+    options.pageId ? { pageId: options.pageId } : undefined,
   );
 
   const revisionLabel =

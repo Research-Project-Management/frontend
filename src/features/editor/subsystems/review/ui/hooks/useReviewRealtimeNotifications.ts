@@ -45,12 +45,18 @@ export function useReviewRealtimeNotifications({
       if (event.startsWith('comment:') || event.startsWith('comments:')) {
         queryClient.invalidateQueries({ queryKey: ['page-comments', pageId] });
         queryClient.invalidateQueries({ queryKey: ['page-comments'] });
+        queryClient.invalidateQueries({ queryKey: ['project-review-overview'] });
         queryClient.invalidateQueries({ queryKey: ['pages', 'detail', pageId] });
       }
       if (event.startsWith('suggestion:') || event.startsWith('suggestions:')) {
         queryClient.invalidateQueries({ queryKey: ['page-suggestions', pageId] });
         queryClient.invalidateQueries({ queryKey: ['page-suggestions'] });
+        queryClient.invalidateQueries({ queryKey: ['project-review-overview'] });
         queryClient.invalidateQueries({ queryKey: ['pages', 'detail', pageId] });
+      }
+      if (event === 'review:status-changed') {
+        queryClient.invalidateQueries({ queryKey: ['manuscript-review-status'] });
+        queryClient.invalidateQueries({ queryKey: ['project-review-overview'] });
       }
       if (event === 'notification:digest') {
         queryClient.invalidateQueries({ queryKey: ['notification-bundler'] });

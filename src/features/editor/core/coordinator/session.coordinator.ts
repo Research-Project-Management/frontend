@@ -31,6 +31,7 @@ import {
   markHttpSavedWhileDisconnected,
   flushYjsProvider,
   getActiveYjsProvider,
+  evictYjsProviderByDocId,
 } from '@/features/editor/sdk/realtime/yjs-socket-provider';
 import { useCompileStore } from '@/features/editor/subsystems/compiler';
 import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store';
@@ -89,6 +90,13 @@ export interface DocumentPersistencePort {
     content: string,
     options?: { expectedRev?: number; expectedVersion?: number }
   ): Promise<unknown>;
+  getById?(
+    fileId: string
+  ): Promise<
+    | { content?: unknown; rev?: number; version?: number; lines?: string[]; updatedAt?: string }
+    | null
+    | undefined
+  >;
 }
 
 export interface DocumentSessionOptions {
@@ -177,7 +185,8 @@ export class SessionCoordinator {
       const p = this.options.getProjectId();
       if (p) return p;
     }
-    return usePageStore.getState().projectId || 'workspace-local';
+    const state = usePageStore.getState();
+    return state.spaceId || state.projectId || 'workspace-local';
   }
 
   // ── Realtime connection status ─────────────────────────────────────────────
@@ -274,6 +283,16 @@ export class SessionCoordinator {
     if (resolution === 'take-remote') {
       // Preserve the local version as a recoverable draft before replacing it.
       this.draftRecovery.flushDraftNow(fileId, conflict.localContent, lruDocumentCache.getModel(fileId)?.projectId);
+      if (
+        conflict.hasAuthoritativeRemote === false &&
+        conflict.remoteContent === '' &&
+        conflict.localContent.length > 0
+      ) {
+        console.warn(
+          `[SessionCoordinator] Refusing 'take-remote' empty overwrite for ${fileId}: authoritative remote content unavailable.`,
+        );
+        return;
+      }
       lruDocumentCache.updateContent(fileId, conflict.remoteContent, false);
       lruDocumentCache.markClean(fileId);
       useCompileStore.getState().clearDirty(fileId);
@@ -497,6 +516,11 @@ export class SessionCoordinator {
       const v = lruDocumentCache.getContentVersion(fileId) || 0;
       this.transitionFsm(fileId, { type: 'REMOTE_EDIT', version: v });
     } else {
+      if (isRealtime) {
+        // Realtime CRDT updates bypass HTTP OCC rev increments; clear stale cached rev
+        // so any disconnect fallback HTTP save does not send an outdated expectedRev.
+        lruDocumentCache.clearServerRev(fileId);
+      }
       lruDocumentCache.updateContent(fileId, content, true);
       const v = lruDocumentCache.getContentVersion(fileId) || 0;
       this.transitionFsm(fileId, { type: 'LOCAL_EDIT', version: v });
@@ -570,11 +594,17 @@ export class SessionCoordinator {
             ? await this.persistenceAdapter.updateContent(fileId, sentContent, { expectedRev })
             : await this.persistenceAdapter.updateContent(fileId, sentContent);
         if (res && typeof res === 'object') {
-          const r = res as { rev?: number; updatedAt?: string };
-          if (r.rev !== undefined || r.updatedAt !== undefined) {
+          const r = res as {
+            rev?: number;
+            updatedAt?: string;
+            page?: { rev?: number; updatedAt?: string };
+          };
+          const rev = r.rev ?? r.page?.rev;
+          const updatedAt = r.updatedAt ?? r.page?.updatedAt;
+          if (rev !== undefined || updatedAt !== undefined) {
             lruDocumentCache.updateServerVersion(fileId, {
-              rev: r.rev,
-              updatedAt: r.updatedAt,
+              rev,
+              updatedAt,
             });
           }
         }
@@ -594,33 +624,79 @@ export class SessionCoordinator {
     throw lastError;
   }
 
-  private handleSaveConflictOrError(
+  private async handleSaveConflictOrError(
     fileId: string,
     sentContent: string,
     err: unknown
-  ): void {
+  ): Promise<void> {
     const model = lruDocumentCache.getModel(fileId);
     const status = (err as { status?: number })?.status;
     const isConflict =
       status === 409 ||
       (err as { code?: string })?.code === 'CONFLICT' ||
+      (err as { code?: string })?.code === 'DOC_VERSION_CONFLICT' ||
       (err instanceof Error && CONFLICT_ERROR_MSG_REGEX.test(err.message));
 
     if (isConflict) {
       this.transitionFsm(fileId, { type: 'CONFLICT_DETECTED' });
+      const errObj =
+        err && typeof err === 'object' ? (err as Record<string, unknown>) : undefined;
       const details = (err as { details?: Record<string, unknown> })?.details;
-      const remoteRev = [details?.rev, details?.version, details?.remoteRev].find(
-        (v): v is number => typeof v === 'number',
-      );
+      let remoteRev = [
+        details?.currentRev,
+        details?.rev,
+        details?.remoteRev,
+        errObj?.currentRev,
+        errObj?.rev,
+        errObj?.remoteRev,
+      ].find((v): v is number => typeof v === 'number');
+
+      let resolvedRemoteContent = [
+        details?.remoteContent,
+        details?.content,
+        errObj?.remoteContent,
+        errObj?.content,
+      ].find((v): v is string => typeof v === 'string');
+
+      if (
+        resolvedRemoteContent === undefined &&
+        typeof this.persistenceAdapter.getById === 'function'
+      ) {
+        try {
+          const latest = await this.persistenceAdapter.getById(fileId);
+          if (latest && typeof latest === 'object') {
+            if (typeof latest.content === 'string') {
+              resolvedRemoteContent = latest.content;
+            } else if (Array.isArray(latest.lines)) {
+              resolvedRemoteContent = latest.lines.join('\n');
+            }
+            if (
+              typeof latest.rev === 'number' &&
+              (remoteRev === undefined || latest.rev > remoteRev)
+            ) {
+              remoteRev = latest.rev;
+            }
+          }
+        } catch {
+          // Non-fatal fallback; guard below prevents empty overwrite
+        }
+      }
+
       if (remoteRev !== undefined) {
         lruDocumentCache.updateServerVersion(fileId, { rev: remoteRev });
       }
-      const remoteContent =
-        [details?.remoteContent, details?.content].find(
-          (v): v is string => typeof v === 'string',
-        ) ?? '';
+      const hasAuthoritativeRemote = typeof resolvedRemoteContent === 'string';
       const localContent = model?.content ?? sentContent;
-      this.draftRecovery.recordConflict(fileId, localContent, remoteContent, model?.projectId);
+      this.draftRecovery.recordConflict(
+        fileId,
+        localContent,
+        resolvedRemoteContent ?? '',
+        model?.projectId,
+        {
+          currentRev: remoteRev,
+          hasAuthoritativeRemote,
+        },
+      );
       useConnectivityStore.getState().setSyncStatus('error');
       return;
     }
@@ -775,7 +851,7 @@ export class SessionCoordinator {
       return clean;
     } catch (err) {
       useConnectivityStore.getState().decrementPending();
-      this.handleSaveConflictOrError(fileId, sentContent, err);
+      await this.handleSaveConflictOrError(fileId, sentContent, err);
       console.error(`[SessionCoordinator] Failed to flush file ${fileId}:`, err);
       return false;
     }
@@ -889,7 +965,7 @@ export class SessionCoordinator {
               await draftStorageService.clearDraft(mut.fileId);
               succeeded++;
             } catch (err) {
-              this.handleSaveConflictOrError(mut.fileId, content, err);
+              await this.handleSaveConflictOrError(mut.fileId, content, err);
               const errMsg = err instanceof Error ? err.message : String(err);
               if (mut.id) {
                 await draftStorageService.updateMutationStatus(mut.id, 'failed', errMsg);
@@ -963,12 +1039,49 @@ export class SessionCoordinator {
     lruDocumentCache.setActiveFileId(toFileId);
   }
 
-  public evictDeletedFile(fileId: string): void {
+  public cancelPendingAutoSave(fileId: string): boolean {
     const timer = this.saveTimers.get(fileId);
     if (timer) {
       clearTimeout(timer);
       this.saveTimers.delete(fileId);
+      return true;
     }
+    return false;
+  }
+
+  public resumeAutoSaveIfDirty(fileId: string): void {
+    const model = lruDocumentCache.getModel(fileId);
+    if (model?.isDirty) {
+      this.scheduleAutoSave(fileId, this.options.autoSaveDelay ?? DEFAULT_AUTOSAVE_DELAY);
+    }
+  }
+
+  /**
+   * Called after the realtime gateway acknowledges `doc:sync:update` for `fileId`.
+   * Marks the in-memory model clean only if local content still matches what was synced.
+   */
+  public markRealtimeSynced(fileId: string, syncedContent?: string): void {
+    this.cancelPendingAutoSave(fileId);
+    const model = lruDocumentCache.getModel(fileId);
+    if (!model) return;
+    const expectedText = syncedContent ?? model.content;
+    if (lruDocumentCache.markCleanIfUnchanged(fileId, expectedText)) {
+      useCompileStore.getState().clearDirty(fileId);
+      this.clearWorkspaceTabDirty(fileId, model.projectId);
+      this.clearDraftSnapshot(fileId);
+      const currentVersion = lruDocumentCache.getContentVersion(fileId) || 0;
+      this.transitionFsm(fileId, {
+        type: 'SAVE_SUCCESS',
+        savedVersion: currentVersion,
+        currentVersion,
+      });
+      useConnectivityStore.getState().setLastSavedAt(new Date());
+    }
+  }
+
+  public evictDeletedFile(fileId: string): void {
+    this.cancelPendingAutoSave(fileId);
+    evictYjsProviderByDocId(fileId, { skipFlush: true });
     const dagTimer = this.dagDebounceTimers.get(fileId);
     if (dagTimer) {
       clearTimeout(dagTimer);
@@ -981,6 +1094,7 @@ export class SessionCoordinator {
     useCompileStore.getState().clearDirty(fileId);
     this.clearDraftSnapshot(fileId);
     void draftStorageService.clearProjectFileSnapshot(fileId);
+    void draftStorageService.removeMutationsByFileId(fileId).catch(() => {});
     this.lastCompiledContentMap.delete(fileId);
     this.realtimeConnected.delete(fileId);
     this.draftRecovery.evictFile(fileId);

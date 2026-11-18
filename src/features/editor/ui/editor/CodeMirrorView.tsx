@@ -18,8 +18,7 @@
 import React, { useEffect, useRef, useMemo, useCallback } from 'react';
 import { Annotation, EditorState, type Extension, type StateEffect } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
-
-const programmaticSyncAnnotation = Annotation.define<boolean>();
+import { programmaticSyncAnnotation } from '@/features/editor/core/engine/adapters/codemirror.adapter';
 import { forceLinting } from '@codemirror/lint';
 import { ySyncAnnotation } from 'y-codemirror.next';
 import type * as Y from 'yjs';

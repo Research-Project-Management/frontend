@@ -66,10 +66,15 @@ export default function SearchTab() {
   const currentPage = usePageStore((s) => s.currentPage);
   const activeFilePage = usePageStore((s) => s.activeFilePage);
   const storeProjectId = usePageStore((s) => s.projectId);
+  const storeRootPageId = usePageStore((s) => s.rootPageId);
+  const storeSpaceId = usePageStore((s) => s.spaceId);
   const { engine } = useEditorInstance();
 
-  const rootPageId = params?.pageId || params?.projectId || currentPage?.id || "";
-  const rootProjectId = params?.projectId || storeProjectId || extractProjectId(currentPage) || params?.pageId || currentPage?.id || "";
+  const explicitPageId = params?.pageId || storeRootPageId || undefined;
+  const rootPageId = explicitPageId || params?.projectId || currentPage?.id || "";
+  const effectiveSpaceOrProjectId =
+    params?.projectId || storeSpaceId || storeProjectId || extractProjectId(currentPage) || "";
+  const rootProjectId = effectiveSpaceOrProjectId || rootPageId;
   const activeFileId = searchParams.get("file") ?? activeFilePage?.id ?? currentPage?.id;
 
   const {
@@ -128,7 +133,7 @@ export default function SearchTab() {
     useRegex,
     wholeWord,
     caseSensitive,
-    rootProjectId,
+    rootProjectId: effectiveSpaceOrProjectId,
     rootPageId,
     activeFileId: activeFileId ?? null,
   });
@@ -187,13 +192,15 @@ export default function SearchTab() {
     queryKey: [
       "project-document-search",
       rootProjectId,
+      effectiveSpaceOrProjectId,
+      explicitPageId ?? null,
       effectiveQuery,
       caseSensitive,
       wholeWord,
       useRegex,
     ],
     queryFn: async () => {
-      if (!effectiveQuery.trim() || !rootProjectId) {
+      if (!effectiveQuery.trim() || (!effectiveSpaceOrProjectId && !explicitPageId)) {
         return null;
       }
       const hadDirtyBeforeFlush =
@@ -203,16 +210,19 @@ export default function SearchTab() {
       if (hadDirtyBeforeFlush) {
         const flushRes = await sessionCoordinator.flushAllPending();
         if (!flushRes || flushRes.total > 0) {
-          await manuscriptService.updater.flushProject(rootProjectId).catch(() => {});
+          await manuscriptService.updater
+            .flushProject(effectiveSpaceOrProjectId || explicitPageId!)
+            .catch(() => {});
         }
       }
-      return manuscriptService.search.search(rootProjectId, effectiveQuery, {
+      return manuscriptService.search.search(effectiveSpaceOrProjectId, effectiveQuery, {
         caseSensitive,
         wholeWord,
         useRegex,
+        ...(explicitPageId ? { pageId: explicitPageId } : {}),
       });
     },
-    enabled: !!effectiveQuery.trim() && !!rootProjectId,
+    enabled: !!effectiveQuery.trim() && Boolean(effectiveSpaceOrProjectId || explicitPageId),
     staleTime: 15_000,
     gcTime: 2 * 60_000,
   });

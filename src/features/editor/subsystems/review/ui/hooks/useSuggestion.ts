@@ -12,8 +12,17 @@ import type { SuggestionStatus, PageSuggestion } from '@/features/editor/domain/
 import { manuscriptService } from '@/features/editor/sdk/pages.service';
 import { type CreateSuggestionPayload } from '@/features/editor/sdk/pages/types';
 import { reviewCoordinator } from '@/features/editor/subsystems/review/coordinator/review.coordinator';
+import { lruDocumentCache, sessionCoordinator } from '@/features/editor/core';
+import { getActiveYjsProvider } from '@/features/editor/sdk/realtime/yjs-socket-provider';
 import { toast } from 'sonner';
 import { useSafeQueryClient } from './safeQueryClient';
+
+function hasSyncedYjsProvider(pageId: string): boolean {
+  const provider = getActiveYjsProvider(pageId);
+  return Boolean(
+    provider && !provider.isDestroyed && provider.status === 'connected' && provider.isSynced,
+  );
+}
 
 export const suggestionKeys = {
   all: ['page-suggestions'] as const,
@@ -69,7 +78,10 @@ export const useAcceptSuggestion = (customClient?: QueryClient) => {
   const queryClient = useSafeQueryClient(customClient);
   return useMutation({
     mutationFn: async ({ pageId, suggestionId }: { pageId: string; suggestionId: string }) => {
-      reviewCoordinator.applySuggestionByIdLocally(suggestionId, 'accept', pageId);
+      sessionCoordinator.cancelPendingAutoSave(pageId);
+      if (!hasSyncedYjsProvider(pageId)) {
+        reviewCoordinator.applySuggestionByIdLocally(suggestionId, 'accept', pageId);
+      }
       return await manuscriptService.suggestions.acceptSuggestion(pageId, suggestionId);
     },
     onMutate: async ({ pageId, suggestionId }) => {
@@ -97,7 +109,11 @@ export const useAcceptSuggestion = (customClient?: QueryClient) => {
       queryClient.invalidateQueries({ queryKey: ['project-review-overview'] });
       queryClient.invalidateQueries({ queryKey: ['pages', 'detail', vars.pageId] });
     },
-    onSuccess: (_data, vars) => {
+    onSuccess: (data, vars) => {
+      const rev = (data as { page?: { rev?: number } } | undefined)?.page?.rev;
+      if (typeof rev === 'number') {
+        lruDocumentCache.setServerRev(vars.pageId, rev);
+      }
       toast.success('Suggestion accepted', { id: `sug-${vars.suggestionId}` });
     },
   }, queryClient);
@@ -107,7 +123,10 @@ export const useRejectSuggestion = (customClient?: QueryClient) => {
   const queryClient = useSafeQueryClient(customClient);
   return useMutation({
     mutationFn: async ({ pageId, suggestionId }: { pageId: string; suggestionId: string }) => {
-      reviewCoordinator.applySuggestionByIdLocally(suggestionId, 'reject', pageId);
+      sessionCoordinator.cancelPendingAutoSave(pageId);
+      if (!hasSyncedYjsProvider(pageId)) {
+        reviewCoordinator.applySuggestionByIdLocally(suggestionId, 'reject', pageId);
+      }
       return await manuscriptService.suggestions.rejectSuggestion(pageId, suggestionId);
     },
     onMutate: async ({ pageId, suggestionId }) => {
@@ -134,7 +153,11 @@ export const useRejectSuggestion = (customClient?: QueryClient) => {
       queryClient.invalidateQueries({ queryKey: ['page-suggestions', vars.pageId] });
       queryClient.invalidateQueries({ queryKey: ['project-review-overview'] });
     },
-    onSuccess: (_data, vars) => {
+    onSuccess: (data, vars) => {
+      const rev = (data as { page?: { rev?: number } } | undefined)?.page?.rev;
+      if (typeof rev === 'number') {
+        lruDocumentCache.setServerRev(vars.pageId, rev);
+      }
       toast.info('Suggestion rejected', { id: `sug-${vars.suggestionId}` });
     },
   }, queryClient);
@@ -148,17 +171,24 @@ export const useAcceptAllSuggestions = (customClient?: QueryClient) => {
       return { snapshot };
     },
     mutationFn: async ({ pageId }: { pageId: string }) => {
-      reviewCoordinator.applyAllLocally('accept', pageId);
+      sessionCoordinator.cancelPendingAutoSave(pageId);
+      if (!hasSyncedYjsProvider(pageId)) {
+        reviewCoordinator.applyAllLocally('accept', pageId);
+      }
       return await manuscriptService.suggestions.acceptAllSuggestions(pageId);
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (data, variables) => {
+      const rev = (data as { page?: { rev?: number } } | undefined)?.page?.rev;
+      if (typeof rev === 'number') {
+        lruDocumentCache.setServerRev(variables.pageId, rev);
+      }
       queryClient.invalidateQueries({ queryKey: ['page-suggestions', variables.pageId] });
       queryClient.invalidateQueries({ queryKey: ['project-review-overview'] });
       queryClient.invalidateQueries({ queryKey: ['pages', 'detail', variables.pageId] });
       toast.success('All suggestions accepted', { id: 'sug-bulk' });
     },
-    onError: (err: unknown, _variables, context) => {
-      if (context?.snapshot) {
+    onError: (err: unknown, variables, context) => {
+      if (context?.snapshot && !hasSyncedYjsProvider(variables.pageId)) {
         reviewCoordinator.restoreSnapshot(context.snapshot);
       }
       toast.error((err as Error)?.message || 'Failed to accept all suggestions', { id: 'sug-bulk' });
@@ -174,16 +204,23 @@ export const useRejectAllSuggestions = (customClient?: QueryClient) => {
       return { snapshot };
     },
     mutationFn: async ({ pageId }: { pageId: string }) => {
-      reviewCoordinator.applyAllLocally('reject', pageId);
+      sessionCoordinator.cancelPendingAutoSave(pageId);
+      if (!hasSyncedYjsProvider(pageId)) {
+        reviewCoordinator.applyAllLocally('reject', pageId);
+      }
       return await manuscriptService.suggestions.rejectAllSuggestions(pageId);
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (data, variables) => {
+      const rev = (data as { page?: { rev?: number } } | undefined)?.page?.rev;
+      if (typeof rev === 'number') {
+        lruDocumentCache.setServerRev(variables.pageId, rev);
+      }
       queryClient.invalidateQueries({ queryKey: ['page-suggestions', variables.pageId] });
       queryClient.invalidateQueries({ queryKey: ['project-review-overview'] });
       toast.info('All suggestions rejected', { id: 'sug-bulk' });
     },
-    onError: (err: unknown, _variables, context) => {
-      if (context?.snapshot) {
+    onError: (err: unknown, variables, context) => {
+      if (context?.snapshot && !hasSyncedYjsProvider(variables.pageId)) {
         reviewCoordinator.restoreSnapshot(context.snapshot);
       }
       toast.error((err as Error)?.message || 'Failed to reject all suggestions', { id: 'sug-bulk' });

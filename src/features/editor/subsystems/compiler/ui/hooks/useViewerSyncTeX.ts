@@ -184,14 +184,15 @@ export function useViewerSyncTeX({
       let targetLine = line;
 
       // 1. Primary Authority: Backend SyncTeX reverse resolution when page & coordinates are provided
-      const rootId = projectId || pageId;
+      const rootId = pageId || projectId;
       if (rootId && pageNum && x !== undefined && y !== undefined && (!targetPath || targetLine < 1)) {
         try {
           const remoteRes = await compilerCoordinator.resolveReverseRemote(
-            rootId,
+            projectId || rootId,
             pageNum,
             x,
             y,
+            pageId || undefined,
           );
           if (remoteRes && remoteRes.line) {
             targetPath = remoteRes.sourcePath;
@@ -259,7 +260,7 @@ export function useViewerSyncTeX({
     const handleForwardSync = async (line?: number, overrideFilePath?: string) => {
       const targetLine: number = Math.max(1, line ?? getActiveEditorEngine()?.getCursorPosition?.()?.line ?? 1);
 
-      const rootId = projectId || pageId;
+      const rootId = pageId || projectId;
       if (!rootId) return;
       const filename = overrideFilePath || activeFilePath || useSettingsStore.getState().mainFile || DEFAULT_MAIN_FILE;
 
@@ -278,9 +279,11 @@ export function useViewerSyncTeX({
 
       // 1. Primary Authority: Backend Remote SyncTeX Resolution
       const remoteRes = await compilerCoordinator.resolveForwardRemote(
-        rootId,
+        projectId || rootId,
         filename,
         targetLine,
+        0,
+        pageId || undefined,
       );
       if (remoteRes) {
         targetPage = remoteRes.page ?? null;
@@ -351,17 +354,18 @@ export function useViewerSyncTeX({
   useEffect(() => {
     const handleReverse = async (customPage?: number, customX?: number, customY?: number) => {
       const p = customPage || pageNumber || useViewerStore.getState().pageNumber || 1;
-      const rootId = projectId || pageId;
+      const rootId = pageId || projectId;
       let resolved: { line: number; sourcePath: string | null } | null = null;
 
       // 1. Primary Authority: Backend Remote SyncTeX Reverse Resolution
       if (rootId && customX !== undefined && customY !== undefined) {
         try {
           const remoteRes = await compilerCoordinator.resolveReverseRemote(
-            rootId,
+            projectId || rootId,
             p,
             customX,
             customY,
+            pageId || undefined,
           );
           if (remoteRes && remoteRes.line) {
             resolved = remoteRes;

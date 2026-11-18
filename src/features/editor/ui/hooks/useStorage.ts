@@ -34,13 +34,13 @@ export function useResolvedProjectId(
 ): string {
   const pageProjectId = usePageStore((s) => {
     const rawProjectId = s.currentPage?.projectId;
-    if (typeof rawProjectId === 'string') return rawProjectId;
+    if (typeof rawProjectId === 'string' && rawProjectId) return rawProjectId;
     if (typeof rawProjectId === 'object' && rawProjectId !== null && 'id' in rawProjectId) {
       return String((rawProjectId as { id?: unknown }).id ?? '');
     }
-    return '';
+    return s.currentPage?.spaceId || '';
   });
-  const storeProjectId = usePageStore((s) => s.projectId);
+  const storeProjectId = usePageStore((s) => s.spaceId || s.projectId);
 
   const resolvedProjectId = explicitProjectId || pageProjectId || storeProjectId || '';
 
@@ -193,7 +193,8 @@ export function useEditorStorageMutations(
       skipInvalidation?: boolean;
       silent?: boolean;
     }): Promise<EditorStorageItem> => {
-      const pid = projectId || effectiveProjectId;
+      const storeSpaceId = usePageStore.getState().spaceId;
+      const pid = projectId || storeSpaceId || effectiveProjectId;
       const targetId = targetPageId || pageIdOrProjectId || effectivePageId || pid || '';
       return await manuscriptService.filestore.uploadPageFile(
         targetId,

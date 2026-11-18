@@ -223,7 +223,7 @@ export function createLatexLinterSource(boundFilePath?: string): (view: EditorVi
     const projectId =
       pageState.projectId ||
       extractProjectId(pageState.currentPage) ||
-      pageState.parentPageId ||
+      pageState.spaceId ||
       undefined;
     const docId = activeDoc?.id || pageState.currentPage?.id || undefined;
 

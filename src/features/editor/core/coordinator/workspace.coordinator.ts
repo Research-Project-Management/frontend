@@ -16,6 +16,7 @@
 import { manuscriptService } from '@/features/editor/sdk/pages.service';
 import { type StructureNodeDto } from '@/features/editor/sdk/pages/types';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
+import { draftStorageService } from '@/features/editor/domain/document/draft-storage';
 import {
   normalizeVirtualPath,
   splitVirtualPath,
@@ -28,6 +29,10 @@ import { extractDocumentContentString } from '@/features/editor/domain/types/cor
 import { latexDependencyGraph } from '@/features/editor/domain/latex/dependency-graph';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics';
+import {
+  clearYjsProviderPool,
+  evictYjsProviderByDocId,
+} from '@/features/editor/sdk/realtime/yjs-socket-provider';
 import type {
   WorkspaceCoordinatorPorts,
   WorkspaceNotificationPort,
@@ -103,6 +108,7 @@ const defaultStorePort: WorkspaceStorePort = {
       state.rootPageId ||
       state.parentPageId ||
       state.projectId ||
+      state.spaceId ||
       state.currentPage?.id ||
       null
     );
@@ -136,37 +142,26 @@ const defaultStorePort: WorkspaceStorePort = {
   getActiveDocumentId: () => usePageStore.getState().getActiveDocument()?.id ?? null,
 };
 
+type WorkspaceProjectItem = {
+  id: string;
+  nodeId?: string;
+  docId?: string | null;
+  fileId?: string | null;
+  pageId?: string | null;
+  projectId?: string | null;
+  isFolder?: boolean;
+  isRootDoc?: boolean;
+  nodeType?: 'FOLDER' | 'DOC' | 'FILE';
+  title?: string;
+  name?: string;
+  path?: string;
+  content?: unknown;
+};
+
 export class WorkspaceCoordinator {
   private initialized = false;
-  private projectFiles: Array<{
-    id: string;
-    nodeId?: string;
-    docId?: string | null;
-    fileId?: string | null;
-    pageId?: string | null;
-    projectId?: string | null;
-    isFolder?: boolean;
-    title?: string;
-    name?: string;
-    path?: string;
-    content?: unknown;
-  }> = [];
-  private projectFilesByScope = new Map<
-    string,
-    Array<{
-      id: string;
-      nodeId?: string;
-      docId?: string | null;
-      fileId?: string | null;
-      pageId?: string | null;
-      projectId?: string | null;
-      isFolder?: boolean;
-      title?: string;
-      name?: string;
-      path?: string;
-      content?: unknown;
-    }>
-  >();
+  private projectFiles: WorkspaceProjectItem[] = [];
+  private projectFilesByScope = new Map<string, WorkspaceProjectItem[]>();
   private servicePort: WorkspaceServicePort = defaultServicePort;
   private notificationPort: WorkspaceNotificationPort = defaultNotificationPort;
   private storePort: WorkspaceStorePort = defaultStorePort;
@@ -461,6 +456,7 @@ export class WorkspaceCoordinator {
   ): void {
     // 1. Cascade path/title change to Tabs Store across all project/page scopes
     this.updateTabTitleInStore(effectiveProjectId, itemId, newPath);
+    this.updateTabTitleInStore(effectiveProjectId, `asset:${itemId}`, newPath);
 
     const wsStore = useWorkspaceStore.getState();
     const oldPrefix = normalizeVirtualPath(oldPath);
@@ -470,18 +466,23 @@ export class WorkspaceCoordinator {
         let changed = false;
         const nextTabs = tabs.map((t) => {
           let nextTab = t;
-          if (t.path) {
-            const rewrittenPath = rewritePathPrefix(t.path, oldPrefix, newPrefix);
-            if (rewrittenPath !== null) {
-              changed = true;
-              nextTab = { ...nextTab, path: rewrittenPath };
+          if (t.id === itemId || t.id === `asset:${itemId}`) {
+            changed = true;
+            nextTab = { ...nextTab, title: newPath, path: newPath };
+          } else {
+            if (t.path) {
+              const rewrittenPath = rewritePathPrefix(t.path, oldPrefix, newPrefix);
+              if (rewrittenPath !== null) {
+                changed = true;
+                nextTab = { ...nextTab, path: rewrittenPath };
+              }
             }
-          }
-          if (t.title) {
-            const rewrittenTitle = rewritePathPrefix(t.title, oldPrefix, newPrefix);
-            if (rewrittenTitle !== null) {
-              changed = true;
-              nextTab = { ...nextTab, title: rewrittenTitle };
+            if (t.title) {
+              const rewrittenTitle = rewritePathPrefix(t.title, oldPrefix, newPrefix);
+              if (rewrittenTitle !== null) {
+                changed = true;
+                nextTab = { ...nextTab, title: rewrittenTitle };
+              }
             }
           }
           if (nextTab !== t) {
@@ -501,32 +502,51 @@ export class WorkspaceCoordinator {
       }
     }
 
-    // 2. Cascade to PageStore if active or current page matches (or is under renamed/moved folder)
+    // 2. Cascade to PageStore if active or current page (or binary asset) matches or sits under renamed folder
     const pageStore = usePageStore.getState();
     if (pageStore.activeFilePage?.id === itemId) {
       pageStore.setActiveFilePage({
         ...pageStore.activeFilePage,
         title: newPath,
+        path: newPath,
       });
-    } else if (oldPrefix && pageStore.activeFilePage?.title) {
-      const rewrittenActiveTitle = rewritePathPrefix(pageStore.activeFilePage.title, oldPrefix, newPrefix);
+    } else if (oldPrefix && (pageStore.activeFilePage?.path || pageStore.activeFilePage?.title)) {
+      const activePath = pageStore.activeFilePage.path || pageStore.activeFilePage.title || '';
+      const rewrittenActiveTitle = rewritePathPrefix(activePath, oldPrefix, newPrefix);
       if (rewrittenActiveTitle !== null) {
         pageStore.setActiveFilePage({
           ...pageStore.activeFilePage,
           title: rewrittenActiveTitle,
+          path: rewrittenActiveTitle,
         });
       }
     }
     if (pageStore.currentPage?.id === itemId) {
-      pageStore.setCurrentPage((prev) => (prev ? { ...prev, title: newPath } : prev));
+      pageStore.setCurrentPage((prev) => (prev ? { ...prev, title: newPath, path: newPath } : prev));
+    }
+    if (pageStore.selectedAsset) {
+      const asset = pageStore.selectedAsset;
+      const rewrittenAssetPath = oldPrefix
+        ? rewritePathPrefix(asset.filename || '', oldPrefix, newPrefix)
+        : null;
+      if (asset.id === itemId || rewrittenAssetPath !== null) {
+        pageStore.setSelectedAsset({
+          ...asset,
+          filename: asset.id === itemId ? newPath : (rewrittenAssetPath ?? asset.filename),
+        });
+      }
     }
 
-    // 3. Cascade to LRU Cache & Project Files cache (including folder prefix descendants)
+    // 3. Cascade to LRU Cache, offline IndexedDB snapshots & Project Files cache (including folder prefix descendants)
     const cachedModel = lruDocumentCache.getModel(itemId);
     lruDocumentCache.renameFile(itemId, newPath);
+    void draftStorageService.renameFileSnapshots(oldPath, newPath, itemId).catch(() => {});
     const cascadedDescendants = oldPrefix
       ? lruDocumentCache.renameFolderPrefix(oldPrefix, newPrefix)
       : [];
+    for (const desc of cascadedDescendants) {
+      void draftStorageService.renameFileSnapshots(desc.oldPath, desc.newPath, desc.fileId).catch(() => {});
+    }
     const cascadedIds = new Set(cascadedDescendants.map((d) => d.fileId));
     const unopenedDescendants: Array<{
       ids: string[];
@@ -619,6 +639,7 @@ export class WorkspaceCoordinator {
     if (resolvedNodeId) candidateIds.add(resolvedNodeId);
 
     for (const id of candidateIds) {
+      evictYjsProviderByDocId(id, { skipFlush: true });
       sessionCoordinator.evictDeletedFile(id);
       lruDocumentCache.evictModel(id, { skipPersistence: true });
       editorCommandBus.dispatch({ type: 'navigation:close-tab', fileId: id });
@@ -659,6 +680,7 @@ export class WorkspaceCoordinator {
             (x): x is string => typeof x === 'string' && x.length > 0,
           );
           for (const dId of descIds) {
+            evictYjsProviderByDocId(dId, { skipFlush: true });
             sessionCoordinator.evictDeletedFile(dId);
             lruDocumentCache.evictModel(dId, { skipPersistence: true });
             this.closeTabInStore(dId);
@@ -757,6 +779,54 @@ export class WorkspaceCoordinator {
     const effectiveProjectId = optProjectId || this.getActiveProjectId();
     if (!effectiveProjectId) return false;
 
+    const fileObj = this.findProjectItem(fileId);
+    const storeRootDocId =
+      typeof usePageStore?.getState === 'function' ? usePageStore.getState().rootDocId : null;
+    const folderPrefix = fileObj?.isFolder
+      ? normalizeVirtualPath(fileObj.path || fileObj.title || fileObj.name || '')
+      : '';
+    const isRootProtected =
+      Boolean(fileObj?.isRootDoc) ||
+      Boolean(
+        storeRootDocId &&
+          (fileId === storeRootDocId || fileObj?.docId === storeRootDocId),
+      ) ||
+      Boolean(
+        fileObj?.isFolder &&
+          folderPrefix &&
+          this.projectFiles.some((pf) => {
+            const p = pf.path || pf.title || pf.name || '';
+            const matchesRoot =
+              Boolean(pf.isRootDoc) ||
+              Boolean(storeRootDocId && (pf.id === storeRootDocId || pf.docId === storeRootDocId));
+            return matchesRoot && isUnderVirtualFolder(p, folderPrefix);
+          }),
+      );
+    if (isRootProtected) {
+      this.notificationPort.notifyError(
+        'Cannot delete the main document. Set another .tex file as Main Document first.',
+        `delete-file-${fileId}`,
+      );
+      return false;
+    }
+
+    // Cancel pending autosave timers BEFORE sending DELETE so no late PUT fires for deleted docs
+    const pausedTimerIds: string[] = [];
+    const timerCandidates = new Set<string>([fileId]);
+    if (fileObj?.docId) timerCandidates.add(fileObj.docId);
+    if (folderPrefix) {
+      for (const m of lruDocumentCache.getAllModels()) {
+        if (isUnderVirtualFolder(m.filePath, folderPrefix)) {
+          timerCandidates.add(m.fileId);
+        }
+      }
+    }
+    for (const cid of timerCandidates) {
+      if (sessionCoordinator.cancelPendingAutoSave(cid)) {
+        pausedTimerIds.push(cid);
+      }
+    }
+
     try {
       await this.servicePort.deleteNode(effectiveProjectId, fileId);
       this.evictDeletedFileResources(fileId, effectiveProjectId);
@@ -769,6 +839,9 @@ export class WorkspaceCoordinator {
       this.notificationPort.notifySuccess('File moved to trash', `delete-file-${fileId}`);
       return true;
     } catch (err: unknown) {
+      for (const cid of pausedTimerIds) {
+        sessionCoordinator.resumeAutoSaveIfDirty(cid);
+      }
       console.error('[WorkspaceCoordinator] Delete error:', err);
       this.notificationPort.notifyError((err as Error)?.message || 'Failed to delete file', `delete-file-${fileId}`);
       return false;
@@ -966,19 +1039,7 @@ export class WorkspaceCoordinator {
    * High-speed initial bulk indexing of all project files for cross-referencing and DAG
    */
   public initProjectSymbols(
-    files: Array<{
-      id: string;
-      nodeId?: string;
-      docId?: string | null;
-      fileId?: string | null;
-      pageId?: string | null;
-      projectId?: string | null;
-      isFolder?: boolean;
-      title?: string;
-      name?: string;
-      path?: string;
-      content?: unknown;
-    }>,
+    files: WorkspaceProjectItem[],
     scopeId?: string,
   ): void {
     const projectKey = scopeId || this.getActiveProjectId() || 'default';
@@ -998,13 +1059,31 @@ export class WorkspaceCoordinator {
     this.lastIndexedProjectKey = projectKey;
     this.lastIndexedFingerprint = fingerprint;
 
-    // Preserve structure-synced folder/asset/nodeId records scoped to this specific manuscript workspace
+    // Preserve structure-synced FOLDER and binary FILE records across space/page scopes
+    const activePageScopeId =
+      (typeof usePageStore?.getState === 'function'
+        ? usePageStore.getState().rootPageId || usePageStore.getState().parentPageId
+        : null) || '';
+    const candidatePools = [
+      ...(this.projectFilesByScope.get(projectKey) ?? []),
+      ...(activePageScopeId && activePageScopeId !== projectKey
+        ? (this.projectFilesByScope.get(activePageScopeId) ?? [])
+        : []),
+      ...(projectChanged ? [] : this.projectFiles),
+    ];
+    const preservedMap = new Map<string, (typeof candidatePools)[number]>();
+    for (const pf of candidatePools) {
+      if (!(pf.isFolder || pf.fileId || pf.nodeType === 'FOLDER' || pf.nodeType === 'FILE')) continue;
+      if (
+        !pf.pageId ||
+        pf.pageId === projectKey ||
+        (activePageScopeId && pf.pageId === activePageScopeId)
+      ) {
+        preservedMap.set(pf.id, pf);
+      }
+    }
+    const preservedStructureRecords = Array.from(preservedMap.values());
     const scopedExisting = this.projectFilesByScope.get(projectKey) ?? (projectChanged ? [] : this.projectFiles);
-    const preservedStructureRecords = scopedExisting.filter(
-      (pf) =>
-        (pf.isFolder || pf.fileId) &&
-        (!pf.pageId || pf.pageId === projectKey),
-    );
     const existingById = new Map(scopedExisting.map((pf) => [pf.id, pf]));
     const mergedDocs = files.map((f) => {
       const prior = existingById.get(f.id);
@@ -1164,6 +1243,29 @@ export class WorkspaceCoordinator {
     } finally {
       unsubFilter();
     }
+  }
+
+  /**
+   * Full workspace teardown on unmount / project switch:
+   * resets session coordinator timers, destroys pooled Yjs sockets without flushing stale buffers,
+   * clears in-memory LRU cache/store state, and resets ReviewCoordinator state.
+   */
+  public resetAllState(): void {
+    this.projectFiles = [];
+    this.projectFilesByScope.clear();
+    this.lastIndexedProjectKey = '';
+    this.lastIndexedFingerprint = '';
+    sessionCoordinator.resetSession();
+    clearYjsProviderPool({ skipFlush: true });
+    lruDocumentCache.discardAll();
+    if (typeof usePageStore?.getState === 'function') {
+      usePageStore.getState().resetPageState();
+    }
+    void import('@/features/editor/subsystems/review/coordinator/review.coordinator')
+      .then(({ reviewCoordinator }) => {
+        reviewCoordinator?.reset?.();
+      })
+      .catch(() => {});
   }
 }
 

@@ -71,7 +71,7 @@ test.describe('Overleaf Longitudinal Lifecycle E2E Suite (Week 1 -> 3M -> 6M -> 
     // 3. Verify Git Clone Smart-HTTP URL & Project Functions
     await expect(menuDialog.getByText('Git Clone URL')).toBeVisible();
     await expect(menuDialog.getByText('Smart-HTTP')).toBeVisible();
-    await expect(menuDialog.locator('button[aria-label="Copy Project"]')).toBeVisible();
+    await expect(menuDialog.locator('button[aria-label="Copy Page"]')).toBeVisible();
     await expect(menuDialog.locator('button[aria-label="Save as Template"]')).toBeVisible();
 
     // 4. Configure Compiler & Warning Suppression Filters (Hide bad boxes + Custom regex filter)

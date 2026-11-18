@@ -130,6 +130,15 @@ describe('HistoryPage Component (Overleaf Parity)', () => {
       newSnapshot: { version: 4 } as any,
       restoreResult: { restoredFilesCount: 2, restoredDocIds: ['doc-1'] },
     });
+    vi.spyOn(manuscriptService.history, 'restoreProjectVersionFile').mockResolvedValue({
+      path: '/main.tex',
+      version: 2,
+      newVersion: 4,
+      docId: 'p-1',
+      fileId: null,
+      content: '\\documentclass{article}\nOld methodology',
+      rev: 3,
+    });
 
     Object.assign(navigator, {
       clipboard: {
@@ -328,14 +337,13 @@ describe('HistoryPage Component (Overleaf Parity)', () => {
     fireEvent.click(confirmFileBtn);
 
     await waitFor(() => {
-      // Fetches base snapshot v2
-      expect(manuscriptService.history.getProjectSnapshot).toHaveBeenCalledWith('proj-123', 2);
-      // Updates document content
-      expect(manuscriptService.docs.updateContent).toHaveBeenCalledWith('p-1', '\\documentclass{article}\nOld methodology');
-      // Captures non-destructive checkpoint
-      expect(manuscriptService.history.createProjectSnapshot).toHaveBeenCalledWith(
+      // Executes atomic single-file restore on backend
+      expect(manuscriptService.history.restoreProjectVersionFile).toHaveBeenCalledWith(
         'proj-123',
-        expect.objectContaining({ summary: 'Restored main.tex from Version 2' })
+        2,
+        'main.tex',
+        undefined,
+        { pageId: 'doc-1' },
       );
       // Dispatches filetree update
       expect(dispatchSpy).toHaveBeenCalledWith({ type: 'filetree:updated' });
@@ -364,7 +372,11 @@ describe('HistoryPage Component (Overleaf Parity)', () => {
     fireEvent.click(confirmBtn);
 
     await waitFor(() => {
-      expect(manuscriptService.history.restoreProjectVersion).toHaveBeenCalledWith('proj-123', 3);
+      expect(manuscriptService.history.restoreProjectVersion).toHaveBeenCalledWith(
+        'proj-123',
+        3,
+        { pageId: 'doc-1' },
+      );
       expect(dispatchSpy).toHaveBeenCalledWith({ type: 'filetree:updated' });
       expect(onOpenChange).toHaveBeenCalledWith(false);
     });
@@ -418,7 +430,15 @@ describe('HistoryPage Component (Overleaf Parity)', () => {
         },
       },
     });
-    vi.spyOn(manuscriptService.docs, 'createChildFile').mockResolvedValue({ id: 'new-doc-1' } as any);
+    vi.spyOn(manuscriptService.history, 'restoreProjectVersionFile').mockResolvedValueOnce({
+      path: 'chapter1.tex',
+      version: 1,
+      newVersion: 3,
+      docId: 'new-doc-1',
+      fileId: null,
+      content: '\\chapter{Intro}\nThis was chapter 1.',
+      rev: 1,
+    });
 
     renderModal({ initialVersion: 2 });
 
@@ -438,12 +458,12 @@ describe('HistoryPage Component (Overleaf Parity)', () => {
     fireEvent.click(confirmBtn);
 
     await waitFor(() => {
-      expect(manuscriptService.docs.createChildFile).toHaveBeenCalledWith(
-        expect.objectContaining({
-          parentPageId: 'doc-1',
-          title: 'chapter1.tex',
-          content: '\\chapter{Intro}\nThis was chapter 1.',
-        })
+      expect(manuscriptService.history.restoreProjectVersionFile).toHaveBeenCalledWith(
+        'proj-123',
+        1,
+        'chapter1.tex',
+        undefined,
+        { pageId: 'doc-1' },
       );
     });
   });

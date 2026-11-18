@@ -48,6 +48,7 @@ export async function fetchLogEntryExplanation(entry: LogEntry): Promise<ErrorEx
 export interface UseLogViewerActionsOptions {
   engine?: (Pick<IEditorEngine, 'jumpToLine'> & Partial<Pick<IEditorEngine, 'getContent' | 'setContent' | 'insertText'>>) | null;
   projectId?: string;
+  isPageScoped?: boolean;
   onCompile?: () => void;
   onClearCacheAndCompile?: () => void;
 }
@@ -55,6 +56,7 @@ export interface UseLogViewerActionsOptions {
 export function useLogViewerActions({
   engine,
   projectId,
+  isPageScoped,
   onCompile,
   onClearCacheAndCompile,
 }: UseLogViewerActionsOptions = {}) {
@@ -209,11 +211,15 @@ export function useLogViewerActions({
         toast.error('Project ID not found', { id: 'download-aux' });
         return;
       }
-      const url = downloadAuxFileUrl(projectId, filename);
+      const url = downloadAuxFileUrl(
+        projectId,
+        filename,
+        isPageScoped ? { isPageScoped: true } : undefined,
+      );
       window.open(url, '_blank');
       toast.success(`Downloading ${filename}...`, { id: `download-aux-${filename}` });
     },
-    [projectId],
+    [projectId, isPageScoped],
   );
 
   const downloadAllAux = useCallback(() => {
@@ -221,10 +227,13 @@ export function useLogViewerActions({
       toast.error('Project ID not found', { id: 'download-all-aux' });
       return;
     }
-    const url = downloadAllArtifactsZipUrl(projectId);
+    const url = downloadAllArtifactsZipUrl(
+      projectId,
+      isPageScoped ? { isPageScoped: true } : undefined,
+    );
     window.open(url, '_blank');
     toast.success('Downloading all auxiliary files...', { id: 'download-all-aux' });
-  }, [projectId]);
+  }, [projectId, isPageScoped]);
 
   return {
     copySnippet,

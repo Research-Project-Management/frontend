@@ -17,7 +17,7 @@ describe('Spelling & Custom Dictionary (Overleaf Parity)', () => {
 
       const words = await spellingService.getProjectDictionary('proj-1');
 
-      expect(apiGetSpy).toHaveBeenCalledWith('/api/v1/manuscripts/projects/proj-1/spelling/dictionary');
+      expect(apiGetSpy).toHaveBeenCalledWith('/api/v1/pages/spaces/proj-1/spelling/dictionary');
       expect(words).toEqual(mockWords);
     });
 
@@ -30,7 +30,7 @@ describe('Spelling & Custom Dictionary (Overleaf Parity)', () => {
       const success = await spellingService.learnProjectWord('proj-1', 'transformer');
 
       expect(apiPostSpy).toHaveBeenCalledWith(
-        '/api/v1/manuscripts/projects/proj-1/spelling/dictionary/learn',
+        '/api/v1/pages/spaces/proj-1/spelling/dictionary/learn',
         { word: 'transformer' },
       );
       expect(success).toBe(true);
@@ -46,7 +46,7 @@ describe('Spelling & Custom Dictionary (Overleaf Parity)', () => {
       const success = await spellingService.unlearnProjectWord('proj-1', 'mistyped');
 
       expect(apiDeleteSpy).toHaveBeenCalledWith(
-        '/api/v1/manuscripts/projects/proj-1/spelling/dictionary/mistyped',
+        '/api/v1/pages/spaces/proj-1/spelling/dictionary/mistyped',
       );
       expect(success).toBe(true);
     });
@@ -61,7 +61,7 @@ describe('Spelling & Custom Dictionary (Overleaf Parity)', () => {
 
       const words = await spellingService.getUserDictionary();
 
-      expect(apiGetSpy).toHaveBeenCalledWith('/api/v1/manuscripts/spelling/user-dictionary');
+      expect(apiGetSpy).toHaveBeenCalledWith('/api/v1/pages/spelling/user-dictionary');
       expect(words).toEqual(mockWords);
     });
 
@@ -73,7 +73,7 @@ describe('Spelling & Custom Dictionary (Overleaf Parity)', () => {
 
       await spellingService.learnUserWord('algorithmics');
       expect(apiPostSpy).toHaveBeenCalledWith(
-        '/api/v1/manuscripts/spelling/user-dictionary/learn',
+        '/api/v1/pages/spelling/user-dictionary/learn',
         { word: 'algorithmics' },
       );
 
@@ -85,7 +85,7 @@ describe('Spelling & Custom Dictionary (Overleaf Parity)', () => {
 
       await spellingService.unlearnUserWord('algorithmics');
       expect(apiDeleteSpy).toHaveBeenCalledWith(
-        '/api/v1/manuscripts/spelling/user-dictionary/algorithmics',
+        '/api/v1/pages/spelling/user-dictionary/algorithmics',
       );
     });
   });

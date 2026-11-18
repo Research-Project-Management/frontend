@@ -125,6 +125,43 @@ export function isZipFile(file: File | Blob | string): boolean {
 /**
  * Determines whether a file path has an extension indicating text content.
  */
+/**
+ * Sanitizes a ZIP entry path to prevent Zip-Slip traversal and normalize separators.
+ */
+export function sanitizeZipPath(rawPath: string): string {
+  const normalized = String(rawPath || '').replace(/\\/g, '/');
+  const safeParts: string[] = [];
+  for (const part of normalized.split('/')) {
+    if (!part || part === '.') continue;
+    if (part === '..') {
+      if (safeParts.length > 0) safeParts.pop();
+      continue;
+    }
+    safeParts.push(part);
+  }
+  return safeParts.join('/');
+}
+
+/**
+ * Detects a single shared top-level directory prefix across archive entry paths.
+ */
+export function detectCommonRootPrefix(paths: string[]): string {
+  const cleaned = paths.map((p) => sanitizeZipPath(p)).filter(Boolean);
+  if (cleaned.length === 0) return '';
+  let commonRoot: string | null = null;
+  for (const entry of cleaned) {
+    const slashIdx = entry.indexOf('/');
+    if (slashIdx <= 0) return '';
+    const topDir = entry.slice(0, slashIdx + 1);
+    if (commonRoot === null) {
+      commonRoot = topDir;
+    } else if (commonRoot !== topDir) {
+      return '';
+    }
+  }
+  return commonRoot || '';
+}
+
 export function isTextFile(path: string): boolean {
   const ext = (path.split('.').pop() || '').toLowerCase();
   return TEXT_EXTENSIONS.has(ext);
@@ -262,18 +299,44 @@ export async function extractAndImportZipToProject({
   }
 
   report('uploading_assets', `Importing archive "${finalProjectName}" on server...`, 0);
-  const serverImportRes = await manuscriptService.export.importProjectZip(
-    existingParentPageId || effectiveProjectId,
-    effectiveZipFile,
-    extracted?.mainFilePath,
-  );
+  const serverImportRes =
+    zipFile && extracted && !extracted.zipFile
+      ? await manuscriptService.export.importProjectZip(
+          existingParentPageId || effectiveProjectId,
+          effectiveZipFile,
+        )
+      : await manuscriptService.export.importProjectZip(
+          existingParentPageId || effectiveProjectId,
+          effectiveZipFile,
+          extracted?.mainFilePath,
+        );
+
+  let rootPageId = serverImportRes?.rootDocId || existingParentPageId || '';
+  if (!rootPageId && extracted?.textFiles?.length) {
+    const mainItem =
+      (extracted.mainFilePath
+        ? extracted.textFiles.find(
+            (f) => f.path === extracted.mainFilePath || f.name === extracted.mainFilePath,
+          )
+        : undefined) || extracted.textFiles[0];
+    if (mainItem) {
+      const createdRoot = await manuscriptService.docs.create({
+        projectId: effectiveProjectId,
+        title: mainItem.name,
+        content: mainItem.textContent || '',
+      });
+      if (createdRoot && typeof createdRoot === 'object' && 'id' in createdRoot && createdRoot.id) {
+        rootPageId = String(createdRoot.id);
+      }
+    }
+  }
 
   report('done', 'Imported project archive successfully.', totalItems);
 
   return {
-    projectId: serverImportRes.projectId || effectiveProjectId,
-    rootPageId: serverImportRes.rootDocId || existingParentPageId || '',
-    mainFileId: serverImportRes.rootDocId || undefined,
+    projectId: serverImportRes?.projectId || effectiveProjectId,
+    rootPageId,
+    mainFileId: serverImportRes?.rootDocId || rootPageId || undefined,
     summary: serverImportRes,
   };
 }

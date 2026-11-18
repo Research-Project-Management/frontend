@@ -868,24 +868,33 @@ export const trackChangesReviewModeFilter = EditorState.transactionFilter.of((tr
     };
   }
 
-  // Case 3: Selection replacement in Suggesting Mode -> keep originalText and mark as pending replace
+  // Case 3: Selection replacement in Suggesting Mode -> keep originalText as pending 'delete'
+  // and insert new text right after it as a pending 'insert' so buffer and backend model stay 1:1
   if (fromA < toA && insertedText.length > 0) {
     const originalText = startDoc.sliceString(fromA, toA);
     const startLineObj = startDoc.lineAt(fromA);
     const endLineObj = startDoc.lineAt(toA);
+    const insertedLines = insertedText.split('\n');
+    const insertToLine = endLineObj.number + insertedLines.length - 1;
+    const insertFromColumn = toA - endLineObj.from + 1;
+    const insertToColumn =
+      insertedLines.length === 1
+        ? insertFromColumn + insertedText.length
+        : insertedLines[insertedLines.length - 1].length + 1;
+    const baseToken = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
-    const replaceSug: PageSuggestion = {
-      id: `sug-local-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    const deleteSug: PageSuggestion = {
+      id: `sug-local-${baseToken}-del`,
       pageId: currentScopePageId,
-      type: 'replace',
+      type: 'delete',
       originalText,
-      suggestedText: insertedText,
+      suggestedText: '',
       fromIndex: fromA,
       toIndex: toA,
       fromLine: startLineObj.number,
       fromColumn: fromA - startLineObj.from + 1,
       toLine: endLineObj.number,
-      toColumn: toA - endLineObj.from + 1,
+      toColumn: insertFromColumn,
       status: 'pending',
       authorId: localAuthorId,
       author: { id: localAuthorId, name: localAuthorName },
@@ -893,18 +902,54 @@ export const trackChangesReviewModeFilter = EditorState.transactionFilter.of((tr
       updatedAt: nowIso,
     };
 
-    const nextSuggestions = [...existing, replaceSug];
+    const insertSug: PageSuggestion = {
+      id: `sug-local-${baseToken}-ins`,
+      pageId: currentScopePageId,
+      type: 'insert',
+      originalText: '',
+      suggestedText: insertedText,
+      fromIndex: toA,
+      toIndex: toA + insertedText.length,
+      fromLine: endLineObj.number,
+      fromColumn: insertFromColumn,
+      toLine: insertToLine,
+      toColumn: insertToColumn,
+      status: 'pending',
+      authorId: localAuthorId,
+      author: { id: localAuthorId, name: localAuthorName },
+      createdAt: nowIso,
+      updatedAt: nowIso,
+    };
+
+    const mappedExisting = existing.map((s) => {
+      if (s.fromIndex == null || s.toIndex == null) return s;
+      const delta = insertedText.length;
+      return {
+        ...s,
+        fromIndex: s.fromIndex >= toA ? s.fromIndex + delta : s.fromIndex,
+        toIndex: s.toIndex > toA ? s.toIndex + delta : s.toIndex,
+      };
+    });
+
+    const nextSuggestions = [...mappedExisting, deleteSug, insertSug];
     queueMicrotask(() => {
       editorCommandBus.dispatch({
         type: 'editor:review-event',
         pageId: currentScopePageId,
         event: 'suggestion:local-recorded',
-        payload: { suggestion: replaceSug },
+        payload: { suggestion: deleteSug },
+      });
+      editorCommandBus.dispatch({
+        type: 'editor:review-event',
+        pageId: currentScopePageId,
+        event: 'suggestion:local-recorded',
+        payload: { suggestion: insertSug },
       });
     });
 
     return {
-      selection: { anchor: toA },
+      changes: { from: toA, to: toA, insert: insertedText },
+      selection: { anchor: toA + insertedText.length },
       effects: setTrackChangesSuggestionsEffect.of(nextSuggestions),
     };
   }

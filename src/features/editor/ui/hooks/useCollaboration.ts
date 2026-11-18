@@ -232,6 +232,24 @@ export function useEditorCollaboration({
       commandBus: editorCommandBus,
       onStatusChange: (s) => setStatus(s),
       onSynced: () => setIsSynced(true),
+      onUpdatesAcked: (ackedDocId) => {
+        import('@/features/editor/core/coordinator/session.coordinator')
+          .then(({ sessionCoordinator }) => {
+            sessionCoordinator.markRealtimeSynced(ackedDocId, instance.yText.toString());
+          })
+          .catch(() => {});
+      },
+      onCollaboratorsChange: (collaborators) => {
+        editorCommandBus.dispatch({
+          type: 'collab:presence-update',
+          collaborators: collaborators.map((c) => ({
+            ...c,
+            id: c.id || c.socketId || c.userId || '',
+            color: c.color || '#6366f1',
+            isOnline: true,
+          })),
+        });
+      },
     });
 
     setProviderState({ fileId, provider: instance });

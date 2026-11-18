@@ -130,6 +130,28 @@ export function parseLatexStructure(latex: string): LatexStructure {
     const line = lines[i].replace(/(^|[^\\])%.*$/, '$1');
     const secMatch = line.match(/\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\*?(?:\[[^\]]*\])?\{([^}]*)\}/);
     if (secMatch) sections.push({ level: secMatch[1], title: secMatch[2].trim(), startLine: lineNum });
+    const pkgRegex = /\\usepackage(?:\[[^\]]*\])?\{([^}]+)\}/g;
+    let pkgMatch: RegExpExecArray | null;
+    while ((pkgMatch = pkgRegex.exec(line)) !== null) {
+      for (const p of pkgMatch[1].split(',')) {
+        const cleanPkg = p.trim();
+        if (cleanPkg && !packages.includes(cleanPkg)) packages.push(cleanPkg);
+      }
+    }
+    const labelRegex = /\\label\{([^}]+)\}/g;
+    let lblMatch: RegExpExecArray | null;
+    while ((lblMatch = labelRegex.exec(line)) !== null) {
+      const cleanLbl = lblMatch[1].trim();
+      if (cleanLbl && !labels.includes(cleanLbl)) labels.push(cleanLbl);
+    }
+    const citeRegex = /\\(?:[a-zA-Z]*cite[a-zA-Z]*)\*?(?:\[[^\]]*\])*\{([^}]+)\}/g;
+    let citeMatch: RegExpExecArray | null;
+    while ((citeMatch = citeRegex.exec(line)) !== null) {
+      for (const c of citeMatch[1].split(',')) {
+        const cleanCite = c.trim();
+        if (cleanCite && !citations.includes(cleanCite)) citations.push(cleanCite);
+      }
+    }
     const bMatch = line.match(/\\begin\{([^}]+)\}/);
     if (bMatch) envStack.push({ type: bMatch[1].trim(), startLine: lineNum });
     const eMatch = line.match(/\\end\{([^}]+)\}/);

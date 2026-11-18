@@ -17,11 +17,13 @@ import {
   editorCommandBus,
   getActiveEditorEngine,
   lruDocumentCache,
+  programmaticSyncAnnotation,
   sessionCoordinator,
   useDocumentCollaborationStore,
   useWorkspaceStore,
 } from '@/features/editor/core';
 import { manuscriptService } from '@/features/editor/sdk/pages.service';
+import { getActiveYjsProvider } from '@/features/editor/sdk/realtime/yjs-socket-provider';
 import { toast } from 'sonner';
 import {
   trackChangesStateField,
@@ -125,11 +127,32 @@ export class ReviewCoordinator {
   private pendingPersistTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private rollbackSnapshots = new Map<string, SuggestionMemento>();
   private readonly inFlightSuggestionCreates = new Set<string>();
+  private readonly inFlightResolutions = new Set<string>();
   private pendingConcurrentSuggestionUpdates = new Map<string, { pageId: string; sug: PageSuggestion }>();
   private currentViewMode: TrackChangesViewMode = 'changes';
   private currentReviewMode = false;
   private currentReviewStatuses = new Map<string, string>();
   private initialized = false;
+
+  public reset(): void {
+    for (const timer of this.pendingPersistTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.pendingPersistTimers.clear();
+    this.pendingConcurrentSuggestionUpdates.clear();
+    this.inFlightSuggestionCreates.clear();
+    this.inFlightResolutions.clear();
+    this.rollbackSnapshots.clear();
+    this.currentSuggestions.clear();
+    this.currentComments.clear();
+    this.localToPersistedId.clear();
+    this.currentReviewStatuses.clear();
+    this.viewsByFileId.clear();
+    this.lastBoundView = null;
+    this.activePageId = null;
+    this.currentViewMode = 'changes';
+    this.currentReviewMode = false;
+  }
 
   public getReviewStatus(pageId?: string | null): string {
     const targetId = pageId || this.activePageId;
@@ -568,6 +591,7 @@ export class ReviewCoordinator {
         if (from < to && to <= doc.length) {
           view.dispatch({
             changes: { from, to, insert: '' },
+            annotations: programmaticSyncAnnotation.of(true),
           });
           postMutationTo = from;
         }
@@ -575,6 +599,7 @@ export class ReviewCoordinator {
         if (from < to && to <= doc.length && currentSlice !== sug.suggestedText) {
           view.dispatch({
             changes: { from, to, insert: sug.suggestedText },
+            annotations: programmaticSyncAnnotation.of(true),
           });
           postMutationTo = from + sug.suggestedText.length;
         }
@@ -582,6 +607,7 @@ export class ReviewCoordinator {
         if (from <= to && to <= doc.length && currentSlice !== sug.suggestedText) {
           view.dispatch({
             changes: { from, to: from, insert: sug.suggestedText },
+            annotations: programmaticSyncAnnotation.of(true),
           });
           postMutationTo = from + sug.suggestedText.length;
         }
@@ -593,6 +619,7 @@ export class ReviewCoordinator {
         if (from < to && to <= doc.length && (!sug.suggestedText || currentSlice === sug.suggestedText)) {
           view.dispatch({
             changes: { from, to, insert: '' },
+            annotations: programmaticSyncAnnotation.of(true),
           });
           postMutationTo = from;
         }
@@ -600,6 +627,7 @@ export class ReviewCoordinator {
         if (from < to && to <= doc.length && currentSlice !== sug.originalText) {
           view.dispatch({
             changes: { from, to, insert: sug.originalText },
+            annotations: programmaticSyncAnnotation.of(true),
           });
           postMutationTo = from + sug.originalText.length;
         }
@@ -608,6 +636,7 @@ export class ReviewCoordinator {
         if (from === to && from <= doc.length) {
           view.dispatch({
             changes: { from, to: from, insert: sug.originalText },
+            annotations: programmaticSyncAnnotation.of(true),
           });
           postMutationTo = from + sug.originalText.length;
         }
@@ -675,6 +704,7 @@ export class ReviewCoordinator {
     if (originalText !== undefined && (safeFrom !== safeTo || originalText.length > 0)) {
       view.dispatch({
         changes: { from: safeFrom, to: safeTo, insert: originalText },
+        annotations: programmaticSyncAnnotation.of(true),
       });
     }
 
@@ -718,6 +748,7 @@ export class ReviewCoordinator {
       if (currentText !== text) {
         view.dispatch({
           changes: { from: 0, to: currentText.length, insert: text },
+          annotations: programmaticSyncAnnotation.of(true),
         });
       }
     }
@@ -876,70 +907,133 @@ export class ReviewCoordinator {
     }
   }
 
+  private hasSyncedYjsForPage(pageId?: string | null): boolean {
+    if (!pageId) return false;
+    const liveProvider = getActiveYjsProvider(pageId);
+    return Boolean(
+      liveProvider &&
+        !liveProvider.isDestroyed &&
+        liveProvider.status === 'connected' &&
+        liveProvider.isSynced
+    );
+  }
+
   private async resolveSingleSuggestion(
     pageId: string,
     suggestionId: string,
     action: 'accept' | 'reject'
   ): Promise<boolean> {
-    const pendingTimer = this.pendingPersistTimers.get(suggestionId);
-    if (pendingTimer) {
-      clearTimeout(pendingTimer);
-      this.pendingPersistTimers.delete(suggestionId);
-    }
-
-    const sug = this.resolveKnownSuggestion(suggestionId);
-    if (sug) {
-      const targetViews = this.getViewsForFile(pageId || sug.pageId, this.activeView);
-      for (const view of targetViews) {
-        this.applySuggestionLocally(view, sug, action);
-      }
-    }
-
-    const pastTense = action === 'accept' ? 'accepted' : 'rejected';
-    const event = action === 'accept' ? 'suggestion:accepted' : 'suggestion:rejected';
     const effectiveId = this.localToPersistedId.get(suggestionId) ?? suggestionId;
-
-    if (effectiveId.startsWith('sug-local-')) {
-      this.notificationPort.notifySuccess(`Change ${pastTense}`, `sug-${suggestionId}`);
-      editorCommandBus.dispatch({
-        type: 'editor:review-event',
-        pageId,
-        event,
-        payload: { suggestionId },
-      });
-      return true;
+    if (
+      this.inFlightResolutions.has(suggestionId) ||
+      this.inFlightResolutions.has(effectiveId)
+    ) {
+      return false;
     }
+
+    this.inFlightResolutions.add(suggestionId);
+    this.inFlightResolutions.add(effectiveId);
 
     try {
-      const res =
-        action === 'accept'
-          ? await this.servicePort.acceptSuggestion(pageId, effectiveId)
-          : await this.servicePort.rejectSuggestion(pageId, effectiveId);
-      const serverRev = (res as { page?: { rev?: number } } | undefined)?.page?.rev;
-      if (typeof serverRev === 'number' && pageId) {
-        lruDocumentCache.setServerRev(pageId, serverRev);
+      this.clearPendingPersistTimer(suggestionId);
+      if (effectiveId !== suggestionId) {
+        this.clearPendingPersistTimer(effectiveId);
       }
-      this.notificationPort.notifySuccess(`Change ${pastTense}`, `sug-${suggestionId}`);
-      editorCommandBus.dispatch({
-        type: 'editor:review-event',
-        pageId,
-        event,
-        payload: { suggestionId: effectiveId },
-      });
-      return true;
-    } catch (err: unknown) {
-      this.rollbackSuggestionLocally(effectiveId);
-      this.notificationPort.notifyError(
-        (err as Error)?.message || `Failed to ${action} change`,
-        `sug-${suggestionId}`
-      );
-      editorCommandBus.dispatch({
-        type: 'editor:review-event',
-        pageId,
-        event: 'suggestion:rollback',
-        payload: { suggestionId: effectiveId },
-      });
-      return false;
+      if (pageId) {
+        sessionCoordinator.cancelPendingAutoSave(pageId);
+      }
+
+      const sug = this.resolveKnownSuggestion(suggestionId);
+      const isLocalOnly = effectiveId.startsWith('sug-local-');
+      const targetPageId = pageId || sug?.pageId || this.activePageId;
+      const skipOptimisticBufferSplice =
+        !isLocalOnly && this.hasSyncedYjsForPage(targetPageId);
+
+      const pastTense = action === 'accept' ? 'accepted' : 'rejected';
+      const event = action === 'accept' ? 'suggestion:accepted' : 'suggestion:rejected';
+      const nextStatus = action === 'accept' ? ('accepted' as const) : ('rejected' as const);
+
+      if (sug) {
+        const targetViews = this.getViewsForFile(targetPageId, this.activeView);
+        if (!skipOptimisticBufferSplice) {
+          for (const view of targetViews) {
+            this.applySuggestionLocally(view, sug, action);
+          }
+        } else {
+          this.currentSuggestions.set(sug.id, { ...sug, status: nextStatus });
+          for (const view of targetViews) {
+            this.syncEditorDecorations(
+              view,
+              Array.from(this.currentSuggestions.values()),
+              Array.from(this.currentComments.values()),
+              this.currentViewMode,
+              this.currentReviewMode,
+              targetPageId
+            );
+          }
+        }
+      }
+
+      if (isLocalOnly) {
+        this.notificationPort.notifySuccess(`Change ${pastTense}`, `sug-${suggestionId}`);
+        editorCommandBus.dispatch({
+          type: 'editor:review-event',
+          pageId,
+          event,
+          payload: { suggestionId },
+        });
+        return true;
+      }
+
+      try {
+        const res =
+          action === 'accept'
+            ? await this.servicePort.acceptSuggestion(pageId, effectiveId)
+            : await this.servicePort.rejectSuggestion(pageId, effectiveId);
+        const serverRev = (res as { page?: { rev?: number } } | undefined)?.page?.rev;
+        if (typeof serverRev === 'number' && pageId) {
+          lruDocumentCache.setServerRev(pageId, serverRev);
+        }
+        this.notificationPort.notifySuccess(`Change ${pastTense}`, `sug-${suggestionId}`);
+        editorCommandBus.dispatch({
+          type: 'editor:review-event',
+          pageId,
+          event,
+          payload: { suggestionId: effectiveId },
+        });
+        return true;
+      } catch (err: unknown) {
+        if (skipOptimisticBufferSplice && sug) {
+          this.currentSuggestions.set(sug.id, { ...sug, status: 'pending' });
+          const targetViews = this.getViewsForFile(targetPageId, this.activeView);
+          for (const view of targetViews) {
+            this.syncEditorDecorations(
+              view,
+              Array.from(this.currentSuggestions.values()),
+              Array.from(this.currentComments.values()),
+              this.currentViewMode,
+              this.currentReviewMode,
+              targetPageId
+            );
+          }
+        } else {
+          this.rollbackSuggestionLocally(effectiveId);
+        }
+        this.notificationPort.notifyError(
+          (err as Error)?.message || `Failed to ${action} change`,
+          `sug-${suggestionId}`
+        );
+        editorCommandBus.dispatch({
+          type: 'editor:review-event',
+          pageId,
+          event: 'suggestion:rollback',
+          payload: { suggestionId: effectiveId },
+        });
+        return false;
+      }
+    } finally {
+      this.inFlightResolutions.delete(suggestionId);
+      this.inFlightResolutions.delete(effectiveId);
     }
   }
 
@@ -986,6 +1080,7 @@ export class ReviewCoordinator {
         if (currentText !== serverText) {
           view.dispatch({
             changes: { from: 0, to: currentText.length, insert: serverText },
+            annotations: programmaticSyncAnnotation.of(true),
           });
         }
       }
@@ -1004,8 +1099,44 @@ export class ReviewCoordinator {
       clearTimeout(timer);
       this.pendingPersistTimers.delete(localId);
     }
+    if (pageId) {
+      sessionCoordinator.cancelPendingAutoSave(pageId);
+    }
 
-    this.applyAllLocally(action, pageId);
+    const targetViews = this.getViewsForFile(pageId, this.activeView);
+    const primaryView = targetViews[0];
+    if (primaryView) {
+      const stateSugs = primaryView.state.field(trackChangesStateField, false)?.suggestions || [];
+      for (const s of stateSugs) {
+        if (!this.currentSuggestions.has(s.id)) {
+          this.currentSuggestions.set(s.id, s);
+        }
+      }
+    }
+    const pendingForPage = Array.from(this.currentSuggestions.values()).filter(
+      (s) => s.status === 'pending' && (!pageId || !s.pageId || s.pageId === pageId)
+    );
+    const hasServerPending = pendingForPage.some((s) => !s.id.startsWith('sug-local-'));
+    const skipOptimisticBufferSplice = hasServerPending && this.hasSyncedYjsForPage(pageId);
+
+    if (!skipOptimisticBufferSplice) {
+      this.applyAllLocally(action, pageId);
+    } else {
+      const nextStatus = action === 'accept' ? ('accepted' as const) : ('rejected' as const);
+      for (const s of pendingForPage) {
+        this.currentSuggestions.set(s.id, { ...s, status: nextStatus });
+      }
+      for (const view of targetViews) {
+        this.syncEditorDecorations(
+          view,
+          Array.from(this.currentSuggestions.values()),
+          Array.from(this.currentComments.values()),
+          this.currentViewMode,
+          this.currentReviewMode,
+          pageId
+        );
+      }
+    }
 
     const pastTense = action === 'accept' ? 'accepted' : 'rejected';
     const event = action === 'accept' ? 'suggestion:accepted-all' : 'suggestion:rejected-all';
@@ -1024,6 +1155,21 @@ export class ReviewCoordinator {
       });
       return true;
     } catch (err: unknown) {
+      if (skipOptimisticBufferSplice) {
+        for (const s of pendingForPage) {
+          this.currentSuggestions.set(s.id, { ...s, status: 'pending' });
+        }
+        for (const view of targetViews) {
+          this.syncEditorDecorations(
+            view,
+            Array.from(this.currentSuggestions.values()),
+            Array.from(this.currentComments.values()),
+            this.currentViewMode,
+            this.currentReviewMode,
+            pageId
+          );
+        }
+      }
       this.notificationPort.notifyError(
         (err as Error)?.message || `Failed to ${action} all changes`,
         'sug-bulk'
@@ -1054,18 +1200,41 @@ export class ReviewCoordinator {
     if (!suggestionIds || suggestionIds.length === 0) return true;
 
     for (const id of suggestionIds) {
-      const timer = this.pendingPersistTimers.get(id);
-      if (timer) {
-        clearTimeout(timer);
-        this.pendingPersistTimers.delete(id);
-      }
+      this.clearPendingPersistTimer(id);
     }
-
-    this.applySelectedLocally(suggestionIds, action, pageId);
+    if (pageId) {
+      sessionCoordinator.cancelPendingAutoSave(pageId);
+    }
 
     const persistedIds = suggestionIds
       .map((id) => this.localToPersistedId.get(id) ?? id)
       .filter((id) => !id.startsWith('sug-local-'));
+    const skipOptimisticBufferSplice = persistedIds.length > 0 && this.hasSyncedYjsForPage(pageId);
+    const targetViews = this.getViewsForFile(pageId, this.activeView);
+    const prevSnapshots: PageSuggestion[] = [];
+
+    if (!skipOptimisticBufferSplice) {
+      this.applySelectedLocally(suggestionIds, action, pageId);
+    } else {
+      const nextStatus = action === 'accept' ? ('accepted' as const) : ('rejected' as const);
+      for (const rawId of suggestionIds) {
+        const sug = this.resolveKnownSuggestion(rawId);
+        if (sug && sug.status === 'pending') {
+          prevSnapshots.push({ ...sug });
+          this.currentSuggestions.set(sug.id, { ...sug, status: nextStatus });
+        }
+      }
+      for (const view of targetViews) {
+        this.syncEditorDecorations(
+          view,
+          Array.from(this.currentSuggestions.values()),
+          Array.from(this.currentComments.values()),
+          this.currentViewMode,
+          this.currentReviewMode,
+          pageId
+        );
+      }
+    }
 
     const pastTense = action === 'accept' ? 'accepted' : 'rejected';
     const event =
@@ -1098,6 +1267,21 @@ export class ReviewCoordinator {
       });
       return true;
     } catch (err: unknown) {
+      if (skipOptimisticBufferSplice && prevSnapshots.length > 0) {
+        for (const prev of prevSnapshots) {
+          this.currentSuggestions.set(prev.id, prev);
+        }
+        for (const view of targetViews) {
+          this.syncEditorDecorations(
+            view,
+            Array.from(this.currentSuggestions.values()),
+            Array.from(this.currentComments.values()),
+            this.currentViewMode,
+            this.currentReviewMode,
+            pageId
+          );
+        }
+      }
       this.notificationPort.notifyError(
         (err as Error)?.message || `Failed to ${action} selected changes`,
         'sug-bulk'

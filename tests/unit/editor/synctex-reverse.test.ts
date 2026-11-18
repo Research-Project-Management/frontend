@@ -162,7 +162,7 @@ x2,55:6553600,13107200
       );
 
       expect(manuscriptService.synctex.reverseSync).toHaveBeenCalledWith({
-        projectId: 'proj-123',
+        spaceId: 'proj-123',
         page: 1,
         x: 150,
         y: 220,

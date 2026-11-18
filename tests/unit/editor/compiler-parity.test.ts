@@ -11,7 +11,7 @@ describe('Phase 2: Compiler & Artifacts Overleaf Parity', () => {
   describe('Auxiliary & Output Artifacts Download Endpoints', () => {
     it('should generate correct download URL for individual auxiliary file', () => {
       const url = manuscriptService.compiler.downloadAuxFileUrl('proj-123', 'output.aux');
-      expect(url).toContain('/projects/proj-123/artifacts/output.aux');
+      expect(url).toContain('/spaces/proj-123/artifacts/output.aux');
     });
 
     it('should properly encode special characters in auxiliary filename', () => {
@@ -21,7 +21,7 @@ describe('Phase 2: Compiler & Artifacts Overleaf Parity', () => {
 
     it('should generate correct download URL for all artifacts ZIP package', () => {
       const url = manuscriptService.compiler.downloadAllArtifactsZipUrl('proj-123');
-      expect(url).toContain('/projects/proj-123/artifacts-zip');
+      expect(url).toContain('/spaces/proj-123/artifacts-zip');
     });
 
     it('should expose both aux URL helpers on manuscriptService.compiler object', () => {

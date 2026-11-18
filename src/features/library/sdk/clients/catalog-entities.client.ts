@@ -198,7 +198,7 @@ export const TagsService = {
         color,
         type,
         ...(shortcut !== undefined ? { shortcut } : {}),
-        ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
+        ...(isProjectScope(scopeId) ? { spaceId: scopeId } : {}),
       },
     );
     if (raw && typeof raw === 'object') {
@@ -251,7 +251,7 @@ export const TagsService = {
       data?: { tags?: TagWithCount[]; count?: number };
     }>(getTagsUrl(scopeId, `${encodeURIComponent(tagId)}/split`), {
       parts,
-      ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
+      ...(isProjectScope(scopeId) ? { spaceId: scopeId } : {}),
     });
     const tags = raw?.tags || raw?.data?.tags || [];
     return {
@@ -281,7 +281,7 @@ export const NotesService = {
   list: async (scopeId?: string, itemId?: string): Promise<Note[]> => {
     const params = new URLSearchParams();
     if (itemId) params.set('itemId', itemId);
-    if (isProjectScope(scopeId)) params.set('projectId', scopeId!);
+    if (isProjectScope(scopeId)) params.set('spaceId', scopeId!);
     const queryString = params.toString() ? `?${params.toString()}` : '';
     const raw = await libraryClient.get<Note[] | { success?: boolean; data?: Note[]; notes?: Note[] }>(
       `${getNotesUrl(scopeId)}${queryString}`,
@@ -305,7 +305,7 @@ export const NotesService = {
       getNotesUrl(scopeId),
       {
         ...dto,
-        ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
+        ...(isProjectScope(scopeId) ? { spaceId: scopeId } : {}),
       },
     );
     return unwrapNoteResponse(raw);
@@ -451,7 +451,7 @@ export const SavedSearchesService = {
       resolveLibraryUrl('catalog', '/saved-searches', effectiveScope),
       {
         ...payload,
-        ...(isProjectScope(effectiveScope) ? { projectId: effectiveScope } : {}),
+        ...(isProjectScope(effectiveScope) ? { spaceId: effectiveScope } : {}),
       },
     );
   },
@@ -486,7 +486,7 @@ export const SavedSearchesService = {
           ...(options?.sortBy ? { sortBy: options.sortBy } : {}),
           ...(options?.sortOrder ? { sortOrder: options.sortOrder } : {}),
           ...(options?.scopeOptions || conditions.scopeOptions ? { scopeOptions: options?.scopeOptions || conditions.scopeOptions } : {}),
-          ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
+          ...(isProjectScope(scopeId) ? { spaceId: scopeId } : {}),
         },
       )
       .then((res) => ({

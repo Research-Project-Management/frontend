@@ -160,7 +160,7 @@ describe('Library Deep Domain Models (Pure In-Process)', () => {
       expect(resolveLibraryUrl('catalog', '/items')).toBe('/api/v1/library/items');
       expect(resolveLibraryUrl('catalog', '/items', 'user')).toBe('/api/v1/library/items');
       expect(resolveLibraryUrl('catalog', '/items', 'proj-42', 'counts')).toBe(
-        '/api/v1/projects/proj-42/library/items/counts',
+        '/api/v1/spaces/proj-42/library/items/counts',
       );
       expect(resolveLibraryRawPath('/api/v1/library/citation/resolve', 'citation')).toBe(
         '/api/v1/library/citation/resolve',
@@ -181,7 +181,7 @@ describe('Library Deep Domain Models (Pure In-Process)', () => {
           'https://library-service.flux.io/api/v1/library/items',
         );
         expect(resolveLibraryUrl('catalog', '/items', 'proj-99')).toBe(
-          'https://library-service.flux.io/api/v1/projects/proj-99/library/items',
+          'https://library-service.flux.io/api/v1/spaces/proj-99/library/items',
         );
         expect(resolveLibraryRawPath('/api/v1/library/files/f-1/content', 'extraction')).toBe(
           'https://library-service.flux.io/api/v1/library/files/f-1/content',

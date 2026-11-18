@@ -226,6 +226,24 @@ export function ThumbnailsView({
     enabled: isEnabled,
   });
 
+  const validSharedDoc = isPdfDocumentValid(pdfDocument) ? pdfDocument : null;
+  const validThumbDoc = isPdfDocumentValid(loadedThumbPdfDoc) ? loadedThumbPdfDoc : null;
+  const effectivePdfDoc = validSharedDoc || validThumbDoc;
+  const hasSharedPdfDoc = Boolean(validSharedDoc);
+  const showPdfCanvas = Boolean(effectivePdfDoc);
+
+  useEffect(() => {
+    if (hasSharedPdfDoc && thumbPdfDocRef.current) {
+      try {
+        void thumbPdfDocRef.current.cleanup?.();
+      } catch {
+        // Ignore cleanup errors when transitioning to shared PdfDocument
+      }
+      thumbPdfDocRef.current = null;
+      setLoadedThumbPdfDoc(null);
+    }
+  }, [hasSharedPdfDoc]);
+
   if (totalPages === 0) {
     return (
       <PlaneEmptyState
@@ -247,24 +265,6 @@ export function ThumbnailsView({
       />
     );
   }
-
-  const validSharedDoc = isPdfDocumentValid(pdfDocument) ? pdfDocument : null;
-  const validThumbDoc = isPdfDocumentValid(loadedThumbPdfDoc) ? loadedThumbPdfDoc : null;
-  const effectivePdfDoc = validSharedDoc || validThumbDoc;
-  const hasSharedPdfDoc = Boolean(validSharedDoc);
-  const showPdfCanvas = Boolean(effectivePdfDoc);
-
-  useEffect(() => {
-    if (hasSharedPdfDoc && thumbPdfDocRef.current) {
-      try {
-        void thumbPdfDocRef.current.cleanup?.();
-      } catch {
-        // Ignore cleanup errors when transitioning to shared PdfDocument
-      }
-      thumbPdfDocRef.current = null;
-      setLoadedThumbPdfDoc(null);
-    }
-  }, [hasSharedPdfDoc]);
 
   const gridElement = (
     <div

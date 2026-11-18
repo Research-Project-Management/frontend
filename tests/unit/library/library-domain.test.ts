@@ -561,7 +561,7 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
       expect(target.isProject).toBe(true);
       expect(target.projectId).toBe("proj-789");
       expect(target.itemsApiUrl).toBe(
-        "/api/v1/projects/proj-789/library/items",
+        "/api/v1/spaces/proj-789/library/items",
       );
     });
 
@@ -706,7 +706,7 @@ describe("Library Domain Layer — Pure Functional Logic", () => {
     it("should resolve project file URL when project scope is provided", () => {
       const itemWithFileId = { fileId: "file-1111" };
       expect(getItemFileUrl(itemWithFileId, "proj-9999")).toBe(
-        "/api/v1/projects/proj-9999/library/files/file-1111/content",
+        "/api/v1/spaces/proj-9999/library/files/file-1111/content",
       );
     });
 

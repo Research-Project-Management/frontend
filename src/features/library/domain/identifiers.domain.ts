@@ -359,7 +359,7 @@ export function getItemFileUrl(
   const normalizeUrl = (url?: string | null, fileId?: string | null): string => {
     if (fileId) {
       return isProjectScope(effectiveScope)
-        ? `/api/v1/projects/${encodeURIComponent(effectiveScope)}/library/files/${encodeURIComponent(fileId)}/content`
+        ? `/api/v1/spaces/${encodeURIComponent(effectiveScope)}/library/files/${encodeURIComponent(fileId)}/content`
         : `/api/v1/library/files/${encodeURIComponent(fileId)}/content`;
     }
     if (!url || typeof url !== 'string') return '';
@@ -401,7 +401,7 @@ export function getItemFileUrl(
     (typeof metaObj?.file_id === 'string' ? metaObj.file_id : undefined);
   if (resolvedDirectFileId) {
     return isProjectScope(effectiveScope)
-      ? `/api/v1/projects/${encodeURIComponent(effectiveScope)}/library/files/${encodeURIComponent(resolvedDirectFileId)}/content`
+      ? `/api/v1/spaces/${encodeURIComponent(effectiveScope)}/library/files/${encodeURIComponent(resolvedDirectFileId)}/content`
       : `/api/v1/library/files/${encodeURIComponent(resolvedDirectFileId)}/content`;
   }
 

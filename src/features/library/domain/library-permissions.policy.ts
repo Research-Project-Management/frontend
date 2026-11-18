@@ -368,7 +368,7 @@ export function getScopeTarget(scope: LibraryScope): {
     return {
       isProject: true,
       projectId,
-      itemsApiUrl: `/api/v1/projects/${encodeURIComponent(projectId)}/library/items`,
+      itemsApiUrl: `/api/v1/spaces/${encodeURIComponent(projectId)}/library/items`,
     };
   }
   return {

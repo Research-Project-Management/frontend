@@ -105,7 +105,7 @@ export function resolveLibraryUrl(
   const cleanResource = resourcePath.startsWith('/') ? resourcePath : `/${resourcePath}`;
   const cleanSuffix = suffix ? (suffix.startsWith('/') ? suffix : `/${suffix}`) : '';
   const basePath = isProjectScope(scopeId)
-    ? `/api/v1/projects/${encodeURIComponent(scopeId!)}/library${cleanResource}${cleanSuffix}`
+    ? `/api/v1/spaces/${encodeURIComponent(scopeId!)}/library${cleanResource}${cleanSuffix}`
     : `/api/v1/library${cleanResource}${cleanSuffix}`;
   return host ? `${host}${basePath}` : basePath;
 }
@@ -130,8 +130,8 @@ function withLibraryServiceOptions(
   if (token && !extraHeaders['Authorization']) {
     extraHeaders['Authorization'] = `Bearer ${token}`;
   }
-  if (isProjectScope(scopeId) && !extraHeaders['X-Project-Id']) {
-    extraHeaders['X-Project-Id'] = scopeId!;
+  if (isProjectScope(scopeId) && !extraHeaders['X-Space-Id']) {
+    extraHeaders['X-Space-Id'] = scopeId!;
   }
   const hasExtraHeaders = Object.keys(extraHeaders).length > 0;
   if (!options && !hasExtraHeaders) return undefined;
@@ -191,7 +191,7 @@ function buildLibraryUrl(scopeId: string | undefined, resourcePath: string): str
   const cleanResource = resourcePath.startsWith('/') ? resourcePath : `/${resourcePath}`;
   if (cleanResource.startsWith('/pdf-proxy')) {
     const scopeQuery = isProjectScope(scopeId)
-      ? `${cleanResource.includes('?') ? '&' : '?'}projectId=${encodeURIComponent(scopeId!)}`
+      ? `${cleanResource.includes('?') ? '&' : '?'}spaceId=${encodeURIComponent(scopeId!)}`
       : '';
     return `/api/library${cleanResource}${scopeQuery}`;
   }

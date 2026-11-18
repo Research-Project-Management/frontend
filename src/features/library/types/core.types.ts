@@ -155,6 +155,7 @@ export interface LibraryPermissions {
 export interface UserLibraryScope {
   type: 'user';
   id?: string;
+  spaceId?: string;
   name?: string;
   role?: 'owner';
   permissions?: Partial<LibraryPermissions> | string[] | Record<string, unknown>;
@@ -164,6 +165,7 @@ export interface UserLibraryScope {
 export interface ProjectLibraryScope {
   type: 'project';
   id: string;
+  spaceId?: string;
   projectId?: string;
   name?: string;
   role?: ProjectRole;
@@ -181,6 +183,7 @@ export const collectionSchema = z.object({
   color: z.string().optional().default('#3b82f6'),
   icon: z.string().optional().default('📁'),
   scopeId: z.string().optional().default(''),
+  spaceId: z.string().nullish(),
   projectId: z.string().nullable().optional(),
   userId: z.string().optional(),
   parentId: z.string().nullable().optional(),

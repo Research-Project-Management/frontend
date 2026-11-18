@@ -92,7 +92,7 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
       await ItemService.getAll(projectId);
 
       expect(api.apiGet).toHaveBeenCalledWith(
-        `/api/v1/projects/${projectId}/library/items`,
+        `/api/v1/spaces/${projectId}/library/items`,
         expect.anything(),
       );
     });
@@ -172,7 +172,7 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
       const res = await QualityService.getDuplicates('workspace-42');
 
       expect(api.apiGet).toHaveBeenCalledWith(
-        '/api/v1/projects/workspace-42/library/curation/duplicates',
+        '/api/v1/spaces/workspace-42/library/curation/duplicates',
       );
       expect(res.duplicateGroups).toHaveLength(1);
       expect(res.duplicateGroups[0].matchType).toBe('DOI');
@@ -217,7 +217,7 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
       await SyncService.getVersion('proj-42');
 
       expect(api.apiGet).toHaveBeenCalledWith(
-        '/api/v1/projects/proj-42/library/sync/version',
+        '/api/v1/spaces/proj-42/library/sync/version',
       );
     });
 
@@ -242,7 +242,7 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
       const res = await SyncService.getChanges('proj-42', { since: '5', limit: 50 });
 
       expect(api.apiGet).toHaveBeenCalledWith(
-        '/api/v1/projects/proj-42/library/sync/changes',
+        '/api/v1/spaces/proj-42/library/sync/changes',
         {
           params: {
             since: '5',

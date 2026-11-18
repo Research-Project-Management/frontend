@@ -297,7 +297,7 @@ export const CurationService = {
         primaryItemId,
         duplicateItemIds,
         fieldSelections,
-        ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
+        ...(isProjectScope(scopeId) ? { spaceId: scopeId } : {}),
       },
     );
     const rawMaster =
@@ -345,7 +345,7 @@ export const CurationService = {
       getCurationUrl(scopeId, 'merge-batch'),
       {
         merges,
-        ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
+        ...(isProjectScope(scopeId) ? { spaceId: scopeId } : {}),
       },
     );
     const payload: BatchMergePayload = res?.data ?? res ?? {};
@@ -387,7 +387,7 @@ export const RetractionService = {
     libraryClient
       .get<Item[] | { items?: Item[]; data?: Item[] }>(
         getRetractionUrl(scopeId, 'items'),
-        { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
+        { params: isProjectScope(scopeId) ? { spaceId: scopeId } : undefined },
       )
       .then((res) => {
         const list = Array.isArray(res)
@@ -406,14 +406,14 @@ export const RetractionService = {
     }>(
       getRetractionUrl(scopeId, `items/${encodeURIComponent(itemId)}/check`),
       {},
-      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
+      { params: isProjectScope(scopeId) ? { spaceId: scopeId } : undefined },
     ),
 
   checkLibrary: (scopeId: string | undefined, itemIds?: string[]) =>
     libraryClient.post<{ scanned: number; newlyRetracted: number }>(
       getRetractionUrl(scopeId, 'check-all'),
       { itemIds },
-      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
+      { params: isProjectScope(scopeId) ? { spaceId: scopeId } : undefined },
     ),
 
   syncLibrary: (
@@ -428,7 +428,7 @@ export const RetractionService = {
     }>(
       getRetractionUrl(scopeId, 'sync'),
       options || {},
-      { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
+      { params: isProjectScope(scopeId) ? { spaceId: scopeId } : undefined },
     ),
 
   flagItem: (
@@ -440,7 +440,7 @@ export const RetractionService = {
       .post<Item | { item: Item }>(
         getRetractionUrl(scopeId, `items/${encodeURIComponent(itemId)}/flag`),
         data || {},
-        { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
+        { params: isProjectScope(scopeId) ? { spaceId: scopeId } : undefined },
       )
       .then((res) =>
         mapBackendItem(
@@ -454,7 +454,7 @@ export const RetractionService = {
     libraryClient
       .delete<Item | { item: Item }>(
         getRetractionUrl(scopeId, `items/${encodeURIComponent(itemId)}/flag`),
-        { params: isProjectScope(scopeId) ? { projectId: scopeId } : undefined },
+        { params: isProjectScope(scopeId) ? { spaceId: scopeId } : undefined },
       )
       .then((res) =>
         mapBackendItem(
@@ -474,7 +474,7 @@ export const IngestionService = {
     const validated = UnifiedIngestionPayloadSchema.parse(payload);
     const submission = {
       ...toIngestionSubmission(validated),
-      ...(isProjectScope(scopeId) ? { projectId: scopeId } : {}),
+      ...(isProjectScope(scopeId) ? { spaceId: scopeId } : {}),
     };
     const res = await libraryClient.post<Record<string, unknown>>(
       getIngestionUrl(scopeId, 'submit'),

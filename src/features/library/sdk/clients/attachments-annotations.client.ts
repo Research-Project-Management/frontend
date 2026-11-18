@@ -59,7 +59,7 @@ export const UploadService = {
     const formData = new FormData();
     formData.append('file', file);
     if (isProjectScope(scopeId)) {
-      formData.append('projectId', scopeId!);
+      formData.append('spaceId', scopeId!);
     }
     const uploadUrl = resolveLibraryUrl('extraction', '/upload', scopeId);
     const res = await libraryClient.post<{
@@ -264,7 +264,7 @@ export const AnnotationsService = {
 export const CitationService = {
   formatCitation: (scopeId: string | undefined, itemId: string, style: CslStyle = 'apa-7th', index = 1) => {
     const resolvedStyle = normalizeCitationStyleId(style);
-    const pQuery = isProjectScope(scopeId) ? `&projectId=${encodeURIComponent(scopeId!)}` : '';
+    const pQuery = isProjectScope(scopeId) ? `&spaceId=${encodeURIComponent(scopeId!)}` : '';
     return libraryClient.get<FormattedCitation>(
       `${getCitationUrl(scopeId, 'items')}/${encodeURIComponent(itemId)}/citation?style=${encodeURIComponent(resolvedStyle)}&index=${index}${pQuery}`,
     );
@@ -272,7 +272,7 @@ export const CitationService = {
 
   batchFormat: (scopeId: string | undefined, itemIds: string[], style: CslStyle = 'apa-7th') => {
     const resolvedStyle = normalizeCitationStyleId(style);
-    const projectId = isProjectScope(scopeId) ? scopeId : undefined;
+    const spaceId = isProjectScope(scopeId) ? scopeId : undefined;
     return libraryClient.post<{
       style: CslStyle;
       total: number;
@@ -283,12 +283,12 @@ export const CitationService = {
     }>(getCitationUrl(scopeId, 'batch-items'), {
       itemIds,
       style: resolvedStyle,
-      ...(projectId ? { projectId } : {}),
+      ...(spaceId ? { spaceId } : {}),
     });
   },
 
   getStyles: (scopeId?: string) => {
-    const pQuery = isProjectScope(scopeId) ? `?projectId=${encodeURIComponent(scopeId!)}` : '';
+    const pQuery = isProjectScope(scopeId) ? `?spaceId=${encodeURIComponent(scopeId!)}` : '';
     return libraryClient.get<import('@/features/library/types/core.types').StyleSummary[]>(
       `${getCitationUrl(scopeId, 'styles')}${pQuery}`,
     );
@@ -365,13 +365,15 @@ export const ExportsService = {
       collectionId?: string;
       tagId?: string;
       itemIds?: string[];
+      spaceId?: string;
       projectId?: string;
     },
   ) => {
-    const projectId = options?.projectId || (isProjectScope(scopeId) ? scopeId : undefined);
+    const { projectId: optProjectId, spaceId: optSpaceId, ...restOptions } = options || {};
+    const spaceId = optSpaceId || optProjectId || (isProjectScope(scopeId) ? scopeId : undefined);
     return libraryClient.post<{ content: string; filename: string; itemCount: number }>(
       getExportsUrl(scopeId),
-      { ...options, ...(projectId ? { projectId } : {}) },
+      { ...restOptions, ...(spaceId ? { spaceId } : {}) },
     );
   },
 
@@ -382,7 +384,7 @@ export const ExportsService = {
     attachmentId?: string,
   ): Promise<{ filename: string; mimeType: string }> => {
     const params = new URLSearchParams();
-    if (isProjectScope(scopeId)) params.set('projectId', scopeId!);
+    if (isProjectScope(scopeId)) params.set('spaceId', scopeId!);
     if (attachmentId) params.set('attachmentId', attachmentId);
     const qs = params.toString() ? `?${params.toString()}` : '';
     const endpoint = `${getExportsUrl(scopeId)}/items/${encodeURIComponent(itemId)}/annotated-pdf${qs}`;

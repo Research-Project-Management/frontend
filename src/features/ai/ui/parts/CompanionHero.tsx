@@ -1,0 +1,58 @@
+'use client';
+
+import React from 'react';
+import { cn } from '@/shared/lib/utils';
+
+export function CompanionHero({ compact = false }: { compact?: boolean }) {
+  return (
+    <div
+      className={cn(
+        'flex flex-col items-center justify-center select-none pointer-events-none',
+        compact ? 'py-2' : 'py-4',
+      )}
+    >
+      <div
+        className={cn(
+          'relative flex items-center justify-center pointer-events-none',
+          compact ? 'size-16 sm:size-18' : 'size-24 sm:size-26',
+        )}
+      >
+        <div
+          className="absolute inset-1 rounded-full blur-xl opacity-40 dark:opacity-30 pointer-events-none"
+          style={{
+            background:
+              'radial-gradient(circle at 45% 45%, rgba(51, 112, 255, 0.5) 0%, rgba(249, 120, 2, 0.35) 55%, transparent 75%)',
+          }}
+          aria-hidden="true"
+        />
+
+        <img
+          src="/Chat.svg"
+          alt="Flux AI"
+          className="relative size-full object-contain select-none rounded-full drop-shadow-[0_14px_32px_rgba(51,112,255,0.22)] dark:drop-shadow-[0_16px_36px_rgba(0,0,0,0.5)] z-10"
+          draggable={false}
+        />
+
+        <div
+          className="absolute inset-0 rounded-full pointer-events-none z-20"
+          style={{
+            background:
+              'radial-gradient(circle at 34% 24%, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.2) 35%, transparent 62%)',
+            mixBlendMode: 'overlay',
+          }}
+          aria-hidden="true"
+        />
+
+        <div
+          className={cn(
+            'absolute -bottom-2 rounded-[100%] bg-foreground/10 dark:bg-black/35 blur-xs pointer-events-none',
+            compact ? 'w-11 h-1.5' : 'w-16 h-2',
+          )}
+          aria-hidden="true"
+        />
+      </div>
+    </div>
+  );
+}
+
+export default CompanionHero;

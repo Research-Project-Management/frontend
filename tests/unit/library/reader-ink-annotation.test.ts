@@ -172,7 +172,7 @@ describe('PDF Native Annotation & Canvas Drawing Engine (Phân hệ 2)', () => {
       const annotationId = uuidv7();
 
       const mutation = await enqueueOfflineMutation({
-        scopeId: 'user',
+        spaceId: 'user',
         entityType: 'annotation',
         entityId: annotationId,
         action: 'CREATE',
@@ -211,7 +211,7 @@ describe('PDF Native Annotation & Canvas Drawing Engine (Phân hệ 2)', () => {
       const annId = uuidv7();
 
       await enqueueOfflineMutation({
-        scopeId: 'user',
+        spaceId: 'user',
         entityType: 'annotation',
         entityId: annId,
         action: 'DELETE',

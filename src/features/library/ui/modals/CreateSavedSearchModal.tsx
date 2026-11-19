@@ -258,7 +258,7 @@ interface CreateSavedSearchModalProps {
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: CreateSavedSearchInput) => Promise<unknown> | void;
   savedSearch?: SavedSearch | null;
-  scopeId?: string;
+  spaceId?: string;
   isPending?: boolean;
 }
 
@@ -267,14 +267,14 @@ export function CreateSavedSearchModal({
   onOpenChange,
   onSubmit,
   savedSearch,
-  scopeId = "user",
+  spaceId = "user",
   isPending = false,
 }: CreateSavedSearchModalProps) {
   const { projects = [] } = useLibraryProjectContext();
   const builder = useSavedSearchBuilder({
     open,
     savedSearch,
-    scopeId,
+    spaceId,
     onSubmit,
     onOpenChange,
   });

@@ -133,7 +133,7 @@ describe('ReaderInspector Shared LibraryInspector Parity', () => {
         <TooltipProvider>
           <ReaderInspector
             item={testItem}
-            scopeId="user"
+            spaceId="user"
             canEdit={true}
           />
         </TooltipProvider>
@@ -185,7 +185,7 @@ describe('ReaderInspector Shared LibraryInspector Parity', () => {
         <TooltipProvider>
           <ReaderInspector
             item={testItem}
-            scopeId="user"
+            spaceId="user"
             canEdit={true}
           />
         </TooltipProvider>
@@ -221,7 +221,7 @@ describe('ReaderInspector Shared LibraryInspector Parity', () => {
         <TooltipProvider>
           <ReaderInspector
             item={testItem}
-            scopeId="user"
+            spaceId="user"
             canEdit={true}
           />
         </TooltipProvider>
@@ -267,7 +267,7 @@ describe('ReaderInspector Shared LibraryInspector Parity', () => {
         <TooltipProvider>
           <ReaderInspector
             item={testItem}
-            scopeId="user"
+            spaceId="user"
             canEdit={true}
             pendingNoteText='> "Transformer model is based solely on attention mechanisms" (Vaswani et al., 2017, p. 1)'
             onClearPendingText={mockClearPendingText}

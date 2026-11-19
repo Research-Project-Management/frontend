@@ -67,7 +67,7 @@ const FeedItemInspector = dynamic(
 );
 
 interface LibraryPageProps {
-  scopeId?: string;
+  spaceId?: string;
   collectionId?: string;
   feedId?: string;
   view?: string;
@@ -101,7 +101,7 @@ const FILTER_ICON_MAP: Record<string, React.ComponentType<{ className?: string; 
  * Decoupled layout frame combining 5 autonomous UI zones.
  */
 export function ModernLibraryPage({
-  scopeId: propScopeId,
+  spaceId: propSpaceId,
   collectionId: propCollectionId,
   feedId: propFeedId,
   view,
@@ -110,7 +110,7 @@ export function ModernLibraryPage({
   const router = useRouter();
   const nav = useLibraryNavigation();
   const { queryClient, invalidateScopeItemsAndCounts, resolveCachedItem } =
-    useLibraryCacheSynchronizer(propScopeId);
+    useLibraryCacheSynchronizer(propSpaceId);
   const params = useParams() as { collectionId?: string; projectId?: string; feedId?: string };
   const activeScope = useLibraryUIStore((s) => s.activeScope);
   const openModal = useLibraryUIStore((s) => s.openModal);
@@ -148,8 +148,8 @@ export function ModernLibraryPage({
 
   const { spaceId: activeSpaceId } = useActiveLibrarySpace();
 
-  const effectiveScopeId =
-    propScopeId ||
+  const effectiveSpaceId =
+    propSpaceId ||
     params?.projectId ||
     activeSpaceId;
 
@@ -220,17 +220,17 @@ export function ModernLibraryPage({
 
   // Single-request workspace bootstrap: populates counts, collections, savedSearches,
   // itemTypes, syncVersion, feedSubscriptions, and initial items into TanStack Query cache.
-  useLibraryBootstrapQuery(effectiveScopeId, bootstrapItemParams, {
+  useLibraryBootstrapQuery(effectiveSpaceId, bootstrapItemParams, {
     includeItems: shouldBootstrapIncludeItems,
   });
 
   // Warm up dynamic item types schema from backend authoritative registry
-  useItemTypes(effectiveScopeId);
-  useLibraryDeltaSync(effectiveScopeId);
+  useItemTypes(effectiveSpaceId);
+  useLibraryDeltaSync(effectiveSpaceId);
 
-  const { data: collections = [] } = useCollectionsQuery(effectiveScopeId);
+  const { data: collections = [] } = useCollectionsQuery(effectiveSpaceId);
   const collectionList: Collection[] = (collections as Collection[]) || [];
-  const { savedSearches = [] } = useSavedSearches(effectiveScopeId, { enabled: isSavedSearchView });
+  const { savedSearches = [] } = useSavedSearches(effectiveSpaceId, { enabled: isSavedSearchView });
   const collectionMap = useMemo(() => {
     const map = new Map<string, (typeof collections)[number]>();
     for (const c of collections) {
@@ -246,7 +246,7 @@ export function ModernLibraryPage({
     ? savedSearches.find((s) => s.id === nav.savedSearchId)
     : undefined;
 
-  const duplicateGroupsQuery = useDuplicateGroups(effectiveScopeId, {
+  const duplicateGroupsQuery = useDuplicateGroups(effectiveSpaceId, {
     enabled: effectiveView === 'duplicates',
   });
 
@@ -256,13 +256,13 @@ export function ModernLibraryPage({
   const openMergeModalRef = useRef<((group: DuplicateGroup, groupKey?: string) => void) | null>(null);
 
   // Deep linking & Scope transition guard: prevent old scope's URL ?item= or duplicate group from leaking into new scope
-  const prevScopeIdRef = React.useRef<string>(effectiveScopeId);
+  const prevSpaceIdRef = React.useRef<string>(effectiveSpaceId);
   const lastConsumedItemIdRef = React.useRef<string | null>(null);
   React.useEffect(() => {
-    setCommandScope(effectiveScopeId);
-    const scopeChanged = prevScopeIdRef.current !== effectiveScopeId;
+    setCommandScope(effectiveSpaceId);
+    const scopeChanged = prevSpaceIdRef.current !== effectiveSpaceId;
     if (scopeChanged) {
-      prevScopeIdRef.current = effectiveScopeId;
+      prevSpaceIdRef.current = effectiveSpaceId;
       setSelectedDuplicateGroup(null);
       setSelectedDuplicateGroupKey(null);
       lastConsumedItemIdRef.current = nav.selectedItemId ?? null;
@@ -275,7 +275,7 @@ export function ModernLibraryPage({
       selectOnly(selectedId);
       setIsInspectorOpen(true);
     }
-  }, [effectiveScopeId, nav.selectedItemId, setActiveItem, selectOnly, setIsInspectorOpen, setCommandScope]);
+  }, [effectiveSpaceId, nav.selectedItemId, setActiveItem, selectOnly, setIsInspectorOpen, setCommandScope]);
 
   // Breadcrumb navigation with full ancestor chain
   const breadcrumbs = useMemo<BreadcrumbItem[] | undefined>(() => {
@@ -362,7 +362,7 @@ export function ModernLibraryPage({
   const processUpload = (files: File[]) => {
     if (!files?.length) return;
     void startBatchUpload(files, {
-      scopeId: effectiveScopeId,
+      spaceId: effectiveSpaceId,
       collectionId: effectiveCollectionId,
       queryClient,
     });
@@ -372,7 +372,7 @@ export function ModernLibraryPage({
   const handleDirectFolderUpload = (files: File[], _folderName: string) => processUpload(files);
 
   const { mutateAsync: createItem } = useCreateLibraryItemMutation(
-    effectiveScopeId,
+    effectiveSpaceId,
     effectiveCollectionId,
   );
 
@@ -408,7 +408,7 @@ export function ModernLibraryPage({
   };
 
   const isTrash = effectiveView === 'trash';
-  const { trashItems, emptyTrash } = useTrash(effectiveScopeId, { enabled: isTrash });
+  const { trashItems, emptyTrash } = useTrash(effectiveSpaceId, { enabled: isTrash });
   const clearSelection = useLibraryUIStore((s) => s.clearSelection);
 
   const handleEmptyTrash = () => {
@@ -431,7 +431,7 @@ export function ModernLibraryPage({
     });
   };
 
-  const { data: countsData } = useLibraryCountsQuery(effectiveScopeId);
+  const { data: countsData } = useLibraryCountsQuery(effectiveSpaceId);
   const displayCount = useMemo(() => {
     if (isTrash) return countsData?.trash ?? trashItems.length;
     if (effectiveView === 'duplicates') {
@@ -469,9 +469,9 @@ export function ModernLibraryPage({
     countsData?.total,
   ]);
 
-  const mergeMutation = useMergeDuplicates(effectiveScopeId);
-  const restoreItemsMutation = useBatchRestoreItemsMutation(effectiveScopeId);
-  const updateItemMutation = useUpdateLibraryItemMutation(effectiveScopeId);
+  const mergeMutation = useMergeDuplicates(effectiveSpaceId);
+  const restoreItemsMutation = useBatchRestoreItemsMutation(effectiveSpaceId);
+  const updateItemMutation = useUpdateLibraryItemMutation(effectiveSpaceId);
 
   const handleSelectedDuplicateGroupChange = useCallback(
     (
@@ -503,7 +503,7 @@ export function ModernLibraryPage({
         masterPaper,
         mergedFields: mergedFields as Record<string, unknown>,
         duplicateIdsToDelete,
-        effectiveScopeId,
+        effectiveSpaceId,
         resolveCachedItem,
         executeCommand,
         mergeMutation,
@@ -513,7 +513,7 @@ export function ModernLibraryPage({
       });
     },
     [
-      effectiveScopeId,
+      effectiveSpaceId,
       executeCommand,
       invalidateScopeItemsAndCounts,
       mergeMutation,
@@ -553,12 +553,12 @@ export function ModernLibraryPage({
     [handleExecuteDuplicateMerge],
   );
 
-  const { mutateAsync: ingestFeedItem } = useIngestMutation(effectiveScopeId);
+  const { mutateAsync: ingestFeedItem } = useIngestMutation(effectiveSpaceId);
 
   const handleSaveFeedItemFromInspector = async (entry: ParsedFeedEntry, targetColId?: string) => {
     await executeSaveFeedEntryWithFeedback({
       entry,
-      scopeId: effectiveScopeId,
+      spaceId: effectiveSpaceId,
       targetCollectionId: targetColId,
       createItem,
       ingestItem: ingestFeedItem,
@@ -594,7 +594,7 @@ export function ModernLibraryPage({
           count={effectiveView === 'feed' ? undefined : displayCount}
           breadcrumbs={breadcrumbs}
           onNavigateCrumb={handleNavigateCrumb}
-          scopeId={effectiveScopeId}
+          spaceId={effectiveSpaceId}
           canEdit={canEdit}
           isTrash={isTrash}
           onEmptyTrash={canEdit && isTrash ? handleEmptyTrash : undefined}
@@ -638,7 +638,7 @@ export function ModernLibraryPage({
         />
         <div className="flex-1 overflow-hidden min-h-0 relative">
           <LibraryContent
-            scopeId={effectiveScopeId}
+            spaceId={effectiveSpaceId}
             collectionId={effectiveCollectionId}
             savedSearchId={isSavedSearchView ? nav.savedSearchId : undefined}
             feedId={effectiveFeedId}
@@ -702,7 +702,7 @@ export function ModernLibraryPage({
             </div>
           ) : null
         ) : (
-          <LibraryInspector scopeId={effectiveScopeId} canEdit={canEdit} />
+          <LibraryInspector spaceId={effectiveSpaceId} canEdit={canEdit} />
         )}
       </ErrorBoundary>
 

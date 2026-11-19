@@ -75,7 +75,7 @@ function abortableSleep(ms: number, signal?: AbortSignal): Promise<void> {
 }
 
 export async function pollIngestionRunCompletion(
-  scopeId: string,
+  spaceId: string,
   runId: string,
   opts: PollIngestionRunOptions = {},
 ): Promise<PollRunOutcome> {
@@ -116,7 +116,7 @@ export async function pollIngestionRunCompletion(
     }
 
     try {
-      const runStatus = await IngestionService.getRunStatus(scopeId, runId);
+      const runStatus = await IngestionService.getRunStatus(spaceId, runId);
       consecutiveErrors = 0;
       const statusPayload = runStatus as {
         data?: {
@@ -526,7 +526,7 @@ export function buildIdentifierIngestionPayload(
 }
 
 export interface TrackedIdentifierIngestionOptions {
-  scopeId: string;
+  spaceId: string;
   rawInput: string;
   title?: string;
   attachOaPdf?: boolean;
@@ -540,7 +540,7 @@ export interface TrackedIdentifierIngestionOptions {
     fileName: string;
     fileSize: number;
     mimeType: string;
-    scopeId: string;
+    spaceId: string;
     collectionId?: string;
     status: 'PROCESSING';
     progress: number;
@@ -555,7 +555,7 @@ export interface TrackedIdentifierIngestionOptions {
  * background polling, provisional item display, and scoped cache synchronization.
  */
 export async function executeTrackedIdentifierIngestion({
-  scopeId,
+  spaceId,
   rawInput,
   title,
   attachOaPdf,
@@ -613,19 +613,19 @@ export async function executeTrackedIdentifierIngestion({
 
   const syncLibraryQueries = async () => {
     await Promise.all([
-      queryClient.refetchQueries({ queryKey: itemKeys.all(scopeId) }),
-      queryClient.refetchQueries({ queryKey: itemKeys.counts(scopeId) }),
+      queryClient.refetchQueries({ queryKey: itemKeys.all(spaceId) }),
+      queryClient.refetchQueries({ queryKey: itemKeys.counts(spaceId) }),
       targetCollectionId
         ? queryClient.refetchQueries({
-            queryKey: itemKeys.byCollection(scopeId, targetCollectionId),
+            queryKey: itemKeys.byCollection(spaceId, targetCollectionId),
           })
         : Promise.resolve(),
     ]);
-    invalidateCollections(queryClient, scopeId);
+    invalidateCollections(queryClient, spaceId);
   };
 
   try {
-    const ingestRes = await IngestionService.ingest(scopeId, ingestionPayload);
+    const ingestRes = await IngestionService.ingest(spaceId, ingestionPayload);
     const ingestData = ingestRes?.data;
     const runId = ingestData?.runId;
     const initialStatus = (ingestData?.status || '').toUpperCase();
@@ -659,7 +659,7 @@ export async function executeTrackedIdentifierIngestion({
 
     let modalClosed = false;
     let handedOffToBackground = false;
-    const pollOutcome = await pollIngestionRunCompletion(scopeId, runId, {
+    const pollOutcome = await pollIngestionRunCompletion(spaceId, runId, {
       fallbackTitle: finalTitle,
       pollIntervalMs: 700,
       maxWaitMs: 60000,
@@ -676,7 +676,7 @@ export async function executeTrackedIdentifierIngestion({
           fileName: effectiveDisplayTitle,
           fileSize: 0,
           mimeType: 'text/html',
-          scopeId,
+          spaceId,
           collectionId: targetCollectionId,
           status: 'PROCESSING',
           progress: 50,

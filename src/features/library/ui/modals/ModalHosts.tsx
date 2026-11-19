@@ -112,7 +112,7 @@ export function WorkspaceIntegrationsModalsHost({
   const isFeedsManagerOpen = activeModal === 'FEEDS_MANAGER';
 
   const collectionsController = useCollections({
-    scopeId: effectiveScope,
+    spaceId: effectiveScope,
     enabled: isExternalSyncOpen || isFeedsManagerOpen,
   });
   const collections = collectionsController.collections;
@@ -123,7 +123,7 @@ export function WorkspaceIntegrationsModalsHost({
         open={isExternalSyncOpen}
         onOpenChange={(open) => !open && closeModal()}
         defaultProvider={payload?.provider || 'zotero'}
-        scopeId={effectiveScope}
+        spaceId={effectiveScope}
         collections={collections}
         defaultCollectionId={payload?.collectionId || null}
       />
@@ -135,7 +135,7 @@ export function WorkspaceIntegrationsModalsHost({
       <FeedsManagerModal
         open={isFeedsManagerOpen}
         onOpenChange={(open) => !open && closeModal()}
-        scopeId={effectiveScope}
+        spaceId={effectiveScope}
         collections={collections}
         defaultCollectionId={payload?.collectionId || null}
       />
@@ -160,7 +160,7 @@ export function CollectionModalsHost(props: ModalHostProps) {
     activeModal === 'EXPORT_LIBRARY' || activeModal === 'FEEDS_MANAGER';
 
   const collectionsController = useCollections({
-    scopeId: effectiveScope,
+    spaceId: effectiveScope,
     enabled: isCreateCollectionOpen,
   });
   const collections = collectionsController.collections;
@@ -192,7 +192,7 @@ export function CollectionModalsHost(props: ModalHostProps) {
         description: data.description,
         color: data.color,
         parentId: data.parentId,
-        scopeId: effectiveScope,
+        spaceId: effectiveScope,
       });
       closeModal();
       return;
@@ -241,7 +241,7 @@ export function CollectionModalsHost(props: ModalHostProps) {
     if (payload?.collectionId) {
       await collectionsController.deleteCollection({
         collectionId: payload.collectionId,
-        scopeId: effectiveScope,
+        spaceId: effectiveScope,
       });
     }
     closeModal();
@@ -483,7 +483,7 @@ export function SavedSearchModalHost({
       open={true}
       onOpenChange={(open) => !open && closeModal()}
       savedSearch={payload?.savedSearch || null}
-      scopeId={effectiveScope}
+      spaceId={effectiveScope}
       onSubmit={async (data: CreateSavedSearchInput) => {
         if (payload?.savedSearch?.id) {
           await updateSavedSearch({

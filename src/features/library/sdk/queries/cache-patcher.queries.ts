@@ -11,7 +11,7 @@ import {
   savedSearchKeys,
   annotationKeys,
   invalidateCollections,
-  normalizeScopeId,
+  normalizeSpaceId,
 } from '@/features/library/sdk/query-keys';
 import { getItemFileUrl, resolveAllItemAttachmentUrls } from '@/features/library/domain/identifiers.domain';
 import { warmViewerPool } from '@/features/library/domain/reader-tab-pool.domain';
@@ -23,7 +23,7 @@ import {
 
 type ReaderResourceCleanupHandler = (
   itemIds: Iterable<string>,
-  options?: { scopeId?: string; candidateUrls?: Iterable<string | null | undefined> },
+  options?: { spaceId?: string; candidateUrls?: Iterable<string | null | undefined> },
 ) => void;
 let readerResourceCleanupHandler: ReaderResourceCleanupHandler | null = null;
 export function registerReaderResourceCleanupHandler(handler: ReaderResourceCleanupHandler): void {
@@ -365,11 +365,11 @@ export function patchSingleItemCache<T>(
 
 /**
  * Deterministically patches both the item detail cache and all active item list caches
- * within a given scopeId, while maintaining Trash and filtered list cache integrity.
+ * within a given spaceId, while maintaining Trash and filtered list cache integrity.
  */
 export function patchItemAcrossScopeCaches(
   queryClient: QueryClient,
-  scopeId: string,
+  spaceId: string,
   itemId: string,
   patch: Partial<Item> | ((item: Item) => Item),
   options?: {
@@ -379,7 +379,7 @@ export function patchItemAcrossScopeCaches(
     skipBroadcast?: boolean;
   },
 ): void {
-  const effectiveScope = normalizeScopeId(scopeId);
+  const effectiveScope = normalizeSpaceId(spaceId);
   const oldItem =
     options?.baseItem !== undefined
       ? options.baseItem
@@ -464,7 +464,7 @@ export function patchItemAcrossScopeCaches(
   if (!options?.skipBroadcast && typeof patch === 'object' && patch !== null) {
     multiTabBus.publish({
       type: 'LIBRARY_ITEM_PATCHED',
-      scopeId: effectiveScope,
+      spaceId: effectiveScope,
       itemId,
       patch: patch as Record<string, unknown>,
     });
@@ -532,17 +532,17 @@ export function removeItemsFromCacheData(
 
 /**
  * Deterministically removes deleted/purged items from both the item detail cache
- * and all active item list caches within a given scopeId.
- * Soft-deleted items are NOT evicted from `itemKeys.trash(scopeId)`; instead,
+ * and all active item list caches within a given spaceId.
+ * Soft-deleted items are NOT evicted from `itemKeys.trash(spaceId)`; instead,
  * the trash cache is invalidated so opening Trash displays newly deleted items.
  */
 export function removeItemsFromScopeCaches(
   queryClient: QueryClient,
-  scopeId: string,
+  spaceId: string,
   itemIds: string | string[],
   options?: { permanent?: boolean; skipBroadcast?: boolean },
 ): void {
-  const effectiveScope = normalizeScopeId(scopeId);
+  const effectiveScope = normalizeSpaceId(spaceId);
   const ids = Array.isArray(itemIds) ? itemIds : [itemIds];
   const idSet = new Set(ids.filter(Boolean));
   if (idSet.size === 0) return;
@@ -561,10 +561,10 @@ export function removeItemsFromScopeCaches(
     warmViewerPool.delete(id);
   }
   if (readerResourceCleanupHandler) {
-    readerResourceCleanupHandler(idSet, { scopeId: effectiveScope, candidateUrls });
+    readerResourceCleanupHandler(idSet, { spaceId: effectiveScope, candidateUrls });
   } else {
     for (const url of candidateUrls) {
-      if (url) void invalidatePdfBlobCache(url, { scopeId: effectiveScope });
+      if (url) void invalidatePdfBlobCache(url, { spaceId: effectiveScope });
     }
   }
 
@@ -585,7 +585,7 @@ export function removeItemsFromScopeCaches(
   if (!options?.skipBroadcast) {
     multiTabBus.publish({
       type: 'LIBRARY_ITEMS_DELETED',
-      scopeId: effectiveScope,
+      spaceId: effectiveScope,
       itemIds: Array.from(idSet),
       permanent: options?.permanent,
     });
@@ -593,12 +593,12 @@ export function removeItemsFromScopeCaches(
 }
 
 /**
- * Reusable post-mutation invalidation helper that normalizes scopeId and
+ * Reusable post-mutation invalidation helper that normalizes spaceId and
  * invalidates requested catalog key families (item detail, items list, counts, collections, tags).
  */
 export function invalidateLibraryCatalogDependencies(
   queryClient: InvalidationClient,
-  scopeId?: string,
+  spaceId?: string,
   options: {
     itemId?: string;
     collections?: boolean;
@@ -609,7 +609,7 @@ export function invalidateLibraryCatalogDependencies(
     skipBroadcast?: boolean;
   } = {},
 ): Promise<unknown[]> {
-  const effectiveScope = normalizeScopeId(scopeId);
+  const effectiveScope = normalizeSpaceId(spaceId);
   const {
     itemId,
     collections = false,
@@ -631,7 +631,7 @@ export function invalidateLibraryCatalogDependencies(
   if (!skipBroadcast) {
     multiTabBus.publish({
       type: 'LIBRARY_SCOPE_INVALIDATED',
-      scopeId: effectiveScope,
+      spaceId: effectiveScope,
       itemId,
       collections,
       smartCollections,
@@ -649,10 +649,10 @@ export function invalidateLibraryCatalogDependencies(
  */
 export async function invalidateLibraryScopeCatalog(
   queryClient: InvalidationClient,
-  scopeId: string,
+  spaceId: string,
   options?: { skipBroadcast?: boolean },
 ): Promise<void> {
-  const effectiveScope = normalizeScopeId(scopeId);
+  const effectiveScope = normalizeSpaceId(spaceId);
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) }),
     queryClient.invalidateQueries({ queryKey: itemKeys.trash(effectiveScope) }),
@@ -661,7 +661,7 @@ export async function invalidateLibraryScopeCatalog(
   if (!options?.skipBroadcast) {
     multiTabBus.publish({
       type: 'LIBRARY_SCOPE_INVALIDATED',
-      scopeId: effectiveScope,
+      spaceId: effectiveScope,
       collections: true,
       counts: true,
       itemsList: true,
@@ -672,13 +672,13 @@ export async function invalidateLibraryScopeCatalog(
 /**
  * Builds a Map of all cached items in a given scope from both detail and list queries.
  */
-export function getCachedItemsMapFromScope(queryClient: QueryClient, scopeId?: string): Map<string, Item> {
+export function getCachedItemsMapFromScope(queryClient: QueryClient, spaceId?: string): Map<string, Item> {
   const map = new Map<string, Item>();
   const addItems = (list?: Item[]) => {
     if (!Array.isArray(list)) return;
     for (const it of list) if (it?.id) map.set(it.id, it);
   };
-  for (const [, data] of queryClient.getQueriesData({ queryKey: itemKeys.all(normalizeScopeId(scopeId)) })) {
+  for (const [, data] of queryClient.getQueriesData({ queryKey: itemKeys.all(normalizeSpaceId(spaceId)) })) {
     if (!data || typeof data !== 'object') continue;
     if (Array.isArray(data)) { addItems(data as Item[]); continue; }
     const rec = data as Record<string, unknown>;
@@ -696,11 +696,11 @@ export function getCachedItemsMapFromScope(queryClient: QueryClient, scopeId?: s
  */
 export function resolveCachedItemFromScope(
   queryClient: QueryClient,
-  scopeId: string,
+  spaceId: string,
   itemId?: string,
 ): Item | null {
   if (!itemId) return null;
-  const effectiveScope = normalizeScopeId(scopeId);
+  const effectiveScope = normalizeSpaceId(spaceId);
 
   const directCached = queryClient.getQueryData(itemKeys.byId(effectiveScope, itemId));
   const directFound = extractItemFromCacheData(directCached, itemId);
@@ -730,20 +730,20 @@ export function registerMultiTabQueryCacheSync(queryClient: QueryClient): () => 
 
   const unsubscribe = multiTabBus.subscribe((event) => {
     if (event.type === 'LIBRARY_ITEMS_DELETED') {
-      removeItemsFromScopeCaches(queryClient, event.scopeId, event.itemIds, {
+      removeItemsFromScopeCaches(queryClient, event.spaceId, event.itemIds, {
         permanent: event.permanent,
         skipBroadcast: true,
       });
     } else if (event.type === 'LIBRARY_ITEM_PATCHED') {
       patchItemAcrossScopeCaches(
         queryClient,
-        event.scopeId,
+        event.spaceId,
         event.itemId,
         event.patch as Partial<Item>,
         { skipBroadcast: true },
       );
     } else if (event.type === 'LIBRARY_SCOPE_INVALIDATED') {
-      void invalidateLibraryCatalogDependencies(queryClient, event.scopeId, {
+      void invalidateLibraryCatalogDependencies(queryClient, event.spaceId, {
         itemId: event.itemId,
         collections: event.collections,
         smartCollections: event.smartCollections,
@@ -754,7 +754,7 @@ export function registerMultiTabQueryCacheSync(queryClient: QueryClient): () => 
       });
     } else if (event.type === 'READER_ANNOTATIONS_CHANGED') {
       void queryClient.invalidateQueries({
-        queryKey: annotationKeys.byAttachment(event.scopeId, event.attachmentId),
+        queryKey: annotationKeys.byAttachment(event.spaceId, event.attachmentId),
       });
     }
   });
@@ -769,17 +769,17 @@ export function registerMultiTabQueryCacheSync(queryClient: QueryClient): () => 
  * Centralized React Hook for Library Cache Synchronization & Multi-Tier Resolution.
  * Eliminates scattered useQueryClient() + itemKeys.* calls across UI components.
  */
-export function useLibraryCacheSynchronizer(defaultScopeId?: string) {
+export function useLibraryCacheSynchronizer(defaultSpaceId?: string) {
   const queryClient = useQueryClient();
-  const baseScope = normalizeScopeId(defaultScopeId);
+  const baseScope = normalizeSpaceId(defaultSpaceId);
 
   useEffect(() => {
     return registerMultiTabQueryCacheSync(queryClient);
   }, [queryClient]);
 
   const invalidateScopeItemsAndCounts = useCallback(
-    async (overrideScopeId?: string, options?: { includeCollections?: boolean }) => {
-      const scope = overrideScopeId ? normalizeScopeId(overrideScopeId) : baseScope;
+    async (overrideSpaceId?: string, options?: { includeCollections?: boolean }) => {
+      const scope = overrideSpaceId ? normalizeSpaceId(overrideSpaceId) : baseScope;
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: itemKeys.all(scope) }),
         queryClient.invalidateQueries({ queryKey: itemKeys.counts(scope) }),
@@ -790,16 +790,16 @@ export function useLibraryCacheSynchronizer(defaultScopeId?: string) {
   );
 
   const invalidateItemById = useCallback(
-    async (itemId: string, overrideScopeId?: string) => {
-      const scope = overrideScopeId ? normalizeScopeId(overrideScopeId) : baseScope;
+    async (itemId: string, overrideSpaceId?: string) => {
+      const scope = overrideSpaceId ? normalizeSpaceId(overrideSpaceId) : baseScope;
       await queryClient.invalidateQueries({ queryKey: itemKeys.byId(scope, itemId) });
     },
     [queryClient, baseScope],
   );
 
   const syncConvertedOrPatchedItem = useCallback(
-    (itemId: string, updatedItem?: Item, overrideScopeId?: string) => {
-      const scope = overrideScopeId ? normalizeScopeId(overrideScopeId) : baseScope;
+    (itemId: string, updatedItem?: Item, overrideSpaceId?: string) => {
+      const scope = overrideSpaceId ? normalizeSpaceId(overrideSpaceId) : baseScope;
       if (updatedItem?.id) {
         patchItemAcrossScopeCaches(queryClient, scope, updatedItem.id, updatedItem);
       }
@@ -810,8 +810,8 @@ export function useLibraryCacheSynchronizer(defaultScopeId?: string) {
   );
 
   const resolveCachedItem = useCallback(
-    (itemId?: string, overrideScopeId?: string) => {
-      const scope = overrideScopeId ? normalizeScopeId(overrideScopeId) : baseScope;
+    (itemId?: string, overrideSpaceId?: string) => {
+      const scope = overrideSpaceId ? normalizeSpaceId(overrideSpaceId) : baseScope;
       return resolveCachedItemFromScope(queryClient, scope, itemId);
     },
     [queryClient, baseScope],

@@ -35,7 +35,7 @@ interface ViewerSearchAnchor {
 export function useViewerSearchAnchors(
   attachmentId: string | undefined,
   debouncedQuery: string,
-  scopeId?: string,
+  spaceId?: string,
 ): ViewerSearchAnchor[] {
   const [matches, setMatches] = useState<ViewerSearchAnchor[]>([]);
 
@@ -50,7 +50,7 @@ export function useViewerSearchAnchors(
       attachmentId,
       trimmed,
       undefined,
-      scopeId,
+      spaceId,
       { signal: controller.signal },
     )
       .then((anchors: ViewerSearchAnchor[]) => {
@@ -67,7 +67,7 @@ export function useViewerSearchAnchors(
     return () => {
       controller.abort();
     };
-  }, [attachmentId, scopeId, debouncedQuery]);
+  }, [attachmentId, spaceId, debouncedQuery]);
 
   return matches;
 }

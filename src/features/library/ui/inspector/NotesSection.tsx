@@ -41,7 +41,7 @@ import {
 
 interface NotesSectionProps {
   item?: Item;
-  scopeId?: string;
+  spaceId?: string;
   hideHeader?: boolean;
   forceAdding?: boolean;
   onCancelAdding?: () => void;
@@ -65,7 +65,7 @@ function NoteIcon({ className = "size-3.5" }: { className?: string }) {
   );
 }
 
-// Module-level draft cache keyed by `${scopeId}:${paperId}` so unsaved note drafts
+// Module-level draft cache keyed by `${spaceId}:${paperId}` so unsaved note drafts
 // survive Inspector remounts and item switches without data loss.
 const NOTE_DRAFTS_BY_PAPER = new Map<
   string,
@@ -80,7 +80,7 @@ export default function NotesSection(props: NotesSectionProps) {
 
 function NotesSectionContent({
   item: paper,
-  scopeId,
+  spaceId,
   hideHeader = false,
   forceAdding = false,
   onCancelAdding,
@@ -92,8 +92,8 @@ function NotesSectionContent({
   onRegisterExtract,
 }: NotesSectionProps & { item: Item }) {
   const paperId = paper.id;
-  const activeScopeId = scopeId || paper?.projectId || "user";
-  const draftKey = `${activeScopeId}:${paperId}`;
+  const activeSpaceId = spaceId || paper?.projectId || "user";
+  const draftKey = `${activeSpaceId}:${paperId}`;
   const initialDraft = NOTE_DRAFTS_BY_PAPER.get(draftKey);
 
   const [isAdding, setIsAdding] = useState(() =>
@@ -145,7 +145,7 @@ function NotesSectionContent({
     deleteNote,
     extractFromAnnotations,
     isExtractingFromAnnotations,
-  } = useNotes(activeScopeId, paper.id);
+  } = useNotes(activeSpaceId, paper.id);
   const executeCommand = useLibraryCommandStore((s) => s.executeCommand);
 
   // Continuously sync active draft into NOTE_DRAFTS_BY_PAPER and restore on paper switch

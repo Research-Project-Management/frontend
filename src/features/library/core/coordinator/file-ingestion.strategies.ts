@@ -196,7 +196,7 @@ export function detectBibliographyFileFormat(
 }
 
 export interface FileIngestionStrategyContext {
-  readonly scopeId: string;
+  readonly spaceId: string;
   readonly index: number;
   readonly provisionalId: string;
   readonly effectiveCollection?: string;
@@ -232,7 +232,7 @@ async function ingestTextContent(
   content: string,
   ctx: FileIngestionStrategyContext,
 ): Promise<{ extractedTitle: string; resolvedItemId?: string; runId?: string }> {
-  const res = await executeLibraryIngestion(ctx.scopeId, {
+  const res = await executeLibraryIngestion(ctx.spaceId, {
     source,
     content,
     collectionId: ctx.effectiveCollection,
@@ -256,7 +256,7 @@ async function ingestTextContent(
     itemPayload?.id || resRecord?.data?.itemId || resRecord?.itemId;
 
   if (bibRunId) {
-    const pollOutcome = await pollIngestionRunCompletion(ctx.scopeId, bibRunId, {
+    const pollOutcome = await pollIngestionRunCompletion(ctx.spaceId, bibRunId, {
       fallbackTitle: extractedTitle,
       initialItemId: resolvedItemId,
       signal: ctx.signal,
@@ -535,7 +535,7 @@ export const BinaryAttachmentFileStrategy: IFileIngestionStrategy = {
     let uploadRes = ctx.uploadedCache.get(file);
     if (!uploadRes) {
       const contentHash = await computeEdgeFileSha256(file);
-      const hashCacheKey = contentHash ? `${ctx.scopeId}:${contentHash}` : null;
+      const hashCacheKey = contentHash ? `${ctx.spaceId}:${contentHash}` : null;
       const now = Date.now();
       const cachedEntry = hashCacheKey ? edgeUploadHashInFlight.get(hashCacheKey) : undefined;
 
@@ -543,7 +543,8 @@ export const BinaryAttachmentFileStrategy: IFileIngestionStrategy = {
         uploadRes = await cachedEntry.promise;
       } else {
         if (hashCacheKey && cachedEntry) edgeUploadHashInFlight.delete(hashCacheKey);
-        const uploadTask = uploadLibraryFileMultipart(ctx.scopeId, file, {
+        const uploadTask = uploadLibraryFileMultipart(ctx.spaceId, file, {
+          contentHash: contentHash || undefined,
           onProgress: (percent: number) => {
             ctx.store.updateProcessingItem(ctx.provisionalId, { progress: percent });
           },
@@ -594,7 +595,7 @@ export const BinaryAttachmentFileStrategy: IFileIngestionStrategy = {
     );
 
     const ingestRes = await executeLibraryIngestion(
-      ctx.scopeId,
+      ctx.spaceId,
       {
         source: 'pdf',
         fileId: uploadRes.fileId,
@@ -632,7 +633,7 @@ export const BinaryAttachmentFileStrategy: IFileIngestionStrategy = {
       );
 
       const extractionPromise = withBoundedBackgroundPoll(() =>
-        pollIngestionRunCompletion(ctx.scopeId, runId, {
+        pollIngestionRunCompletion(ctx.spaceId, runId, {
           fallbackTitle: identifiedTitle,
           initialItemId: completedItemId,
           signal: ctx.signal,
@@ -673,7 +674,7 @@ export function resolveFileIngestionStrategy(file: File): IFileIngestionStrategy
 export async function executeBundledTextBatch(
   bundle: BundledTextFileBatch,
   ctx: {
-    scopeId: string;
+    spaceId: string;
     effectiveCollection?: string;
     store: ProcessModalStoreApi;
     signal?: AbortSignal;
@@ -696,7 +697,7 @@ export async function executeBundledTextBatch(
       bundle.source,
       bundle.mergedContent,
       {
-        scopeId: ctx.scopeId,
+        spaceId: ctx.spaceId,
         index: firstEntry.index,
         provisionalId: firstEntry.provisionalId,
         effectiveCollection: ctx.effectiveCollection,
@@ -710,7 +711,7 @@ export async function executeBundledTextBatch(
     let progressItems: Array<{ title?: string; status?: string; itemId?: string; error?: string }> = [];
     if (runId) {
       try {
-        const pr = (await fetchIngestionRunProgress(ctx.scopeId, runId)) as {
+        const pr = (await fetchIngestionRunProgress(ctx.spaceId, runId)) as {
           items?: Array<{ title?: string; status?: string; itemId?: string; error?: string }>;
         } | null;
         if (Array.isArray(pr?.items)) progressItems = pr.items;

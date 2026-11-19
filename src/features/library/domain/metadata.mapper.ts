@@ -211,7 +211,7 @@ interface ProvisionalUploadItemInput {
 
 export function createProvisionalUploadItem(
   p: ProvisionalUploadItemInput,
-  scopeId?: string,
+  spaceId?: string,
   collectionId?: string | null,
 ): Item {
   const rawName = p.filename ?? p.fileName ?? '';
@@ -221,7 +221,7 @@ export function createProvisionalUploadItem(
     ...EMPTY_BACKEND_ITEM_DEFAULTS,
     id: p.id, title, itemType: 'journalArticle',
     authors: isExtracting ? ['Processing metadata...'] : ['Uploading raw file...'],
-    year: null, scopeId: scopeId ?? null,
+    year: null, spaceId: spaceId ?? null,
     collectionIds: collectionId ? [collectionId] : [],
     attachments: [{
       id: `att-${p.id}`, filename: rawName, size: p.fileSize ?? 0,

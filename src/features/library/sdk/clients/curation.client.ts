@@ -122,7 +122,7 @@ function normalizeDuplicateClusterItem(
 }
 
 async function batchHydrateMissingDuplicateItems(
-  scopeId: string | undefined,
+  spaceId: string | undefined,
   missingIds: ReadonlySet<string>,
   seedItems?: ReadonlyMap<string, Item>,
   fetchItemsByIds?: (ids: string[]) => Promise<Item[]>,
@@ -144,7 +144,7 @@ async function batchHydrateMissingDuplicateItems(
 
     const res = await libraryClient.get<
       Item[] | { items?: Item[]; data?: Item[] | { items?: Item[] } }
-    >(resolveLibraryUrl('catalog', '/items', scopeId), {
+    >(resolveLibraryUrl('catalog', '/items', spaceId), {
       params: {
         ids: unresolvedIds.join(','),
         limit: Math.max(250, unresolvedIds.length * 2),
@@ -191,7 +191,7 @@ function mapMatchReasonToType(reason?: string): DuplicateGroup['matchType'] {
 
 export const CurationService = {
   getDuplicates: async (
-    scopeId?: string,
+    spaceId?: string,
     options?: {
       cachedItemsById?: ReadonlyMap<string, Item>;
       fetchItemsByIds?: (ids: string[]) => Promise<Item[]>;
@@ -204,7 +204,7 @@ export const CurationService = {
           clusters?: RawDuplicateCluster[];
           duplicates?: DuplicateGroup[];
         }
-    >(getCurationUrl(scopeId, 'duplicates'));
+    >(getCurationUrl(spaceId, 'duplicates'));
 
     if (res && typeof res === 'object' && 'duplicates' in res && Array.isArray(res.duplicates)) {
       const groups = res.duplicates as DuplicateGroup[];
@@ -216,7 +216,7 @@ export const CurationService = {
       }
       if (missingIds.size > 0) {
         const hydratedMap = await batchHydrateMissingDuplicateItems(
-          scopeId,
+          spaceId,
           missingIds,
           options?.cachedItemsById,
           options?.fetchItemsByIds,
@@ -253,7 +253,7 @@ export const CurationService = {
     }
 
     const hydratedItemsMap = await batchHydrateMissingDuplicateItems(
-      scopeId,
+      spaceId,
       missingItemIds,
       options?.cachedItemsById,
     );
@@ -274,7 +274,7 @@ export const CurationService = {
   },
 
   mergeDuplicates: async (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     primaryItemId: string,
     duplicateItemIds: string[],
     fieldSelections?: Record<string, unknown>,
@@ -292,12 +292,12 @@ export const CurationService = {
       };
     }
     const res = await libraryClient.post<MergeApiResponse>(
-      getCurationUrl(scopeId, 'merge'),
+      getCurationUrl(spaceId, 'merge'),
       {
         primaryItemId,
         duplicateItemIds,
         fieldSelections,
-        ...(isProjectScope(scopeId) ? { spaceId: scopeId } : {}),
+        ...(isProjectScope(spaceId) ? { spaceId: spaceId } : {}),
       },
     );
     const rawMaster =
@@ -320,7 +320,7 @@ export const CurationService = {
   },
 
   mergeDuplicatesBatch: async (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     merges: Array<{
       primaryItemId: string;
       duplicateItemIds: string[];
@@ -342,10 +342,10 @@ export const CurationService = {
       failedGroups?: Array<{ primaryItemId: string; error: string }>;
     }
     const res = await libraryClient.post<BatchMergePayload & { data?: BatchMergePayload }>(
-      getCurationUrl(scopeId, 'merge-batch'),
+      getCurationUrl(spaceId, 'merge-batch'),
       {
         merges,
-        ...(isProjectScope(scopeId) ? { spaceId: scopeId } : {}),
+        ...(isProjectScope(spaceId) ? { spaceId: spaceId } : {}),
       },
     );
     const payload: BatchMergePayload = res?.data ?? res ?? {};
@@ -372,22 +372,22 @@ export const CurationService = {
     };
   },
 
-  dismissDuplicates: (scopeId: string | undefined, itemIds: string[]) =>
+  dismissDuplicates: (spaceId: string | undefined, itemIds: string[]) =>
     libraryClient.post<{ dismissed: boolean; itemIds: string[] }>(
-      getCurationUrl(scopeId, 'duplicates/dismiss'),
+      getCurationUrl(spaceId, 'duplicates/dismiss'),
       { itemIds },
     ),
 };
 
 export const RetractionService = {
-  getStats: (scopeId?: string) =>
-    libraryClient.get<RetractionStats>(getRetractionUrl(scopeId, 'stats')),
+  getStats: (spaceId?: string) =>
+    libraryClient.get<RetractionStats>(getRetractionUrl(spaceId, 'stats')),
 
-  getRetractedItems: (scopeId?: string): Promise<Item[]> =>
+  getRetractedItems: (spaceId?: string): Promise<Item[]> =>
     libraryClient
       .get<Item[] | { items?: Item[]; data?: Item[] }>(
-        getRetractionUrl(scopeId, 'items'),
-        { params: isProjectScope(scopeId) ? { spaceId: scopeId } : undefined },
+        getRetractionUrl(spaceId, 'items'),
+        { params: isProjectScope(spaceId) ? { spaceId: spaceId } : undefined },
       )
       .then((res) => {
         const list = Array.isArray(res)
@@ -396,7 +396,7 @@ export const RetractionService = {
         return list.map((it) => mapBackendItem(it));
       }),
 
-  checkItem: (scopeId: string | undefined, itemId: string) =>
+  checkItem: (spaceId: string | undefined, itemId: string) =>
     libraryClient.post<{
       itemId: string;
       isRetracted: boolean;
@@ -404,20 +404,20 @@ export const RetractionService = {
       nature?: string;
       details?: Record<string, unknown>;
     }>(
-      getRetractionUrl(scopeId, `items/${encodeURIComponent(itemId)}/check`),
+      getRetractionUrl(spaceId, `items/${encodeURIComponent(itemId)}/check`),
       {},
-      { params: isProjectScope(scopeId) ? { spaceId: scopeId } : undefined },
+      { params: isProjectScope(spaceId) ? { spaceId: spaceId } : undefined },
     ),
 
-  checkLibrary: (scopeId: string | undefined, itemIds?: string[]) =>
+  checkLibrary: (spaceId: string | undefined, itemIds?: string[]) =>
     libraryClient.post<{ scanned: number; newlyRetracted: number }>(
-      getRetractionUrl(scopeId, 'check-all'),
+      getRetractionUrl(spaceId, 'check-all'),
       { itemIds },
-      { params: isProjectScope(scopeId) ? { spaceId: scopeId } : undefined },
+      { params: isProjectScope(spaceId) ? { spaceId: spaceId } : undefined },
     ),
 
   syncLibrary: (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     options?: { maxDays?: number; limit?: number },
   ) =>
     libraryClient.post<{
@@ -426,21 +426,21 @@ export const RetractionService = {
       checkedCount?: number;
       [key: string]: unknown;
     }>(
-      getRetractionUrl(scopeId, 'sync'),
+      getRetractionUrl(spaceId, 'sync'),
       options || {},
-      { params: isProjectScope(scopeId) ? { spaceId: scopeId } : undefined },
+      { params: isProjectScope(spaceId) ? { spaceId: spaceId } : undefined },
     ),
 
   flagItem: (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     itemId: string,
     data?: FlagRetractionInput,
   ): Promise<Item> =>
     libraryClient
       .post<Item | { item: Item }>(
-        getRetractionUrl(scopeId, `items/${encodeURIComponent(itemId)}/flag`),
+        getRetractionUrl(spaceId, `items/${encodeURIComponent(itemId)}/flag`),
         data || {},
-        { params: isProjectScope(scopeId) ? { spaceId: scopeId } : undefined },
+        { params: isProjectScope(spaceId) ? { spaceId: spaceId } : undefined },
       )
       .then((res) =>
         mapBackendItem(
@@ -450,11 +450,11 @@ export const RetractionService = {
         ),
       ),
 
-  unflagItem: (scopeId: string | undefined, itemId: string): Promise<Item> =>
+  unflagItem: (spaceId: string | undefined, itemId: string): Promise<Item> =>
     libraryClient
       .delete<Item | { item: Item }>(
-        getRetractionUrl(scopeId, `items/${encodeURIComponent(itemId)}/flag`),
-        { params: isProjectScope(scopeId) ? { spaceId: scopeId } : undefined },
+        getRetractionUrl(spaceId, `items/${encodeURIComponent(itemId)}/flag`),
+        { params: isProjectScope(spaceId) ? { spaceId: spaceId } : undefined },
       )
       .then((res) =>
         mapBackendItem(
@@ -467,17 +467,17 @@ export const RetractionService = {
 
 export const IngestionService = {
   ingest: async (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     payload: UnifiedIngestionPayload,
     options?: { signal?: AbortSignal },
   ): Promise<UnifiedIngestionResponse> => {
     const validated = UnifiedIngestionPayloadSchema.parse(payload);
     const submission = {
       ...toIngestionSubmission(validated),
-      ...(isProjectScope(scopeId) ? { spaceId: scopeId } : {}),
+      ...(isProjectScope(spaceId) ? { spaceId: spaceId } : {}),
     };
     const res = await libraryClient.post<Record<string, unknown>>(
-      getIngestionUrl(scopeId, 'submit'),
+      getIngestionUrl(spaceId, 'submit'),
       submission,
       { timeout: 30000, signal: options?.signal },
     );
@@ -494,17 +494,17 @@ export const IngestionService = {
     });
   },
 
-  getRunStatus: async (scopeId: string | undefined, runId: string): Promise<IngestionRunSnapshotResponse> => {
+  getRunStatus: async (spaceId: string | undefined, runId: string): Promise<IngestionRunSnapshotResponse> => {
     const res = await libraryClient.get<Record<string, unknown>>(
-      getIngestionUrl(scopeId, `runs/${encodeURIComponent(runId)}`),
+      getIngestionUrl(spaceId, `runs/${encodeURIComponent(runId)}`),
     );
     const enveloped = res && typeof res === 'object' && 'data' in res ? res : { success: true, data: res };
     return IngestionRunSnapshotResponseSchema.parse(enveloped);
   },
 
-  getRunProgress: async (scopeId: string | undefined, runId: string) => {
+  getRunProgress: async (spaceId: string | undefined, runId: string) => {
     const res = await libraryClient.get<{ data?: unknown } | unknown>(
-      getIngestionUrl(scopeId, `status/${encodeURIComponent(runId)}/progress`),
+      getIngestionUrl(spaceId, `status/${encodeURIComponent(runId)}/progress`),
     );
     return (res && typeof res === 'object' && 'data' in res && res.data ? res.data : res) as import('@/features/library/types/ingestion.types').IngestionProgressResponse;
   },

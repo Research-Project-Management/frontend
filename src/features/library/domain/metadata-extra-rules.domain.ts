@@ -93,7 +93,7 @@ export const SYSTEM_INTERNAL_METADATA_KEYS = new Set<string>([
   'paperid',
   'userid',
   'projectid',
-  'scopeid',
+  'spaceid',
   'uploadedbyid',
   'createdbyid',
   'fileid',

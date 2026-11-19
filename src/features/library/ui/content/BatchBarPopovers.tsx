@@ -139,7 +139,7 @@ export function BatchMoveCollectionPopover({
 interface BatchCitationExportPopoversProps {
   citationStyles: Array<{ id: string; label: string }>;
   resolvedItems: Item[];
-  effectiveScopeId: string;
+  effectiveSpaceId: string;
   retractedCount: number;
   onCopyMultiCite: (style: CslStyle | 'latex') => void;
   onCopyInTextCite: (style: CslStyle) => void;
@@ -150,7 +150,7 @@ interface BatchCitationExportPopoversProps {
 export function BatchCitationExportPopovers({
   citationStyles,
   resolvedItems,
-  effectiveScopeId,
+  effectiveSpaceId,
   retractedCount,
   onCopyMultiCite,
   onCopyInTextCite,
@@ -251,7 +251,7 @@ export function BatchCitationExportPopovers({
             onClick={() =>
               void executeDownloadFormatFile(
                 resolvedItems,
-                effectiveScopeId,
+                effectiveSpaceId,
                 'ris',
                 retractedCount,
               )
@@ -264,7 +264,7 @@ export function BatchCitationExportPopovers({
             onClick={() =>
               void executeDownloadFormatFile(
                 resolvedItems,
-                effectiveScopeId,
+                effectiveSpaceId,
                 'csl_json',
                 retractedCount,
               )
@@ -277,7 +277,7 @@ export function BatchCitationExportPopovers({
             onClick={() =>
               void executeDownloadFormatFile(
                 resolvedItems,
-                effectiveScopeId,
+                effectiveSpaceId,
                 'csv',
                 retractedCount,
               )
@@ -290,7 +290,7 @@ export function BatchCitationExportPopovers({
             onClick={() =>
               void executeDownloadFormatFile(
                 resolvedItems,
-                effectiveScopeId,
+                effectiveSpaceId,
                 'markdown',
                 retractedCount,
               )

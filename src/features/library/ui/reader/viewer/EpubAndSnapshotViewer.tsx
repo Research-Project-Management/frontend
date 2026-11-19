@@ -40,7 +40,7 @@ export type { EpubChapter };
 export interface EpubAndSnapshotViewerProps {
   url: string;
   mode: 'epub' | 'snapshot';
-  scopeId?: string;
+  spaceId?: string;
   title?: string;
   sourceUrl?: string;
   themeMode?: 'normal' | 'sepia' | 'dark' | 'invert';
@@ -81,7 +81,7 @@ export interface EpubAndSnapshotViewerProps {
 export function EpubAndSnapshotViewer({
   url,
   mode,
-  scopeId,
+  spaceId,
   title,
   sourceUrl,
   themeMode = 'normal',
@@ -144,7 +144,7 @@ export function EpubAndSnapshotViewer({
       try {
         if (mode === 'snapshot') {
           const blob = await loadDocumentBlob(url, abortController.signal, {
-            scopeId,
+            spaceId,
             allowHtml: true,
           });
           if (cancelled || abortController.signal.aborted) return;
@@ -166,7 +166,7 @@ export function EpubAndSnapshotViewer({
           return;
         }
 
-        const blob = await loadDocumentBlob(url, abortController.signal, { scopeId });
+        const blob = await loadDocumentBlob(url, abortController.signal, { spaceId });
         if (cancelled || abortController.signal.aborted) return;
 
         const epubMagic = await blob.slice(0, 5).text();
@@ -215,7 +215,7 @@ export function EpubAndSnapshotViewer({
       cancelled = true;
       abortController.abort();
     };
-  }, [url, mode, scopeId, loadDocumentBlob]);
+  }, [url, mode, spaceId, loadDocumentBlob]);
 
   // Sync external targetPage navigation (from ReaderToolbar or ReaderSidebar)
   useEffect(() => {

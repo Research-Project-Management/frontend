@@ -39,7 +39,7 @@ import { getItemTypeDefinition } from '@/features/library/types/item-types.types
 interface ItemTableRowProps {
   item: Item;
   index: number;
-  scopeId?: string;
+  spaceId?: string;
   columns: Record<string, boolean>;
   isTrash?: boolean;
   collections?: Collection[];
@@ -69,7 +69,7 @@ const EMPTY_COLLECTIONS: Collection[] = [];
 export const ItemTableRow = React.memo(function ItemTableRow({
   item,
   index,
-  scopeId,
+  spaceId,
   isLast = false,
   columns,
   isTrash = false,
@@ -191,7 +191,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
   return (
     <ItemContextMenu
       item={item}
-      scopeId={scopeId}
+      spaceId={spaceId}
       isTrash={isTrash}
       collections={collections}
       canEdit={canEdit}
@@ -232,7 +232,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
             if (onOpenItem) {
               onOpenItem(item.id);
             } else {
-              openInNewTab(buildReaderPaperUrl(item.id, { projectId: item.projectId ? String(item.projectId) : scopeId }));
+              openInNewTab(buildReaderPaperUrl(item.id, { projectId: item.projectId ? String(item.projectId) : spaceId }));
             }
           } else {
             toast.info('Restore this reference to open in reader', {
@@ -355,7 +355,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
                           if (onOpenItem) {
                             onOpenItem(item.id);
                           } else {
-                            openInNewTab(buildReaderPaperUrl(item.id, { projectId: item.projectId ? String(item.projectId) : scopeId }));
+                            openInNewTab(buildReaderPaperUrl(item.id, { projectId: item.projectId ? String(item.projectId) : spaceId }));
                           }
                         }}
                         className="inline-flex items-center justify-center size-5 rounded-sm text-muted-foreground hover:text-foreground hover:bg-background/80 transition-colors cursor-pointer shrink-0 outline-none"
@@ -507,7 +507,7 @@ export const ItemTableRow = React.memo(function ItemTableRow({
         >
           <ItemRowActions
             item={item}
-            scopeId={scopeId}
+            spaceId={spaceId}
             isTrash={isTrash}
             collections={collections}
       canEdit={canEdit}

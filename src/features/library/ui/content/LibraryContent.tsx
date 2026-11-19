@@ -7,7 +7,7 @@ import { UploadCloud } from 'lucide-react';
 import {
   useLibraryItemsQuery,
   usePrefetchNextLibraryItemsPage,
-  normalizeScopeId,
+  normalizeSpaceId,
 } from '@/features/library/core/coordinator/item-action.coordinator';
 import {
   useCollectionsQuery,
@@ -97,7 +97,7 @@ const mapOrderByToSavedSearchSortBy = (
 };
 
 interface LibraryContentProps {
-  scopeId?: string;
+  spaceId?: string;
   collectionId?: string;
   savedSearchId?: string | null;
   feedId?: string;
@@ -115,7 +115,7 @@ interface LibraryContentProps {
 }
 
 export function LibraryContent({
-  scopeId,
+  spaceId,
   collectionId,
   savedSearchId: propSavedSearchId,
   feedId,
@@ -138,7 +138,7 @@ export function LibraryContent({
 
   const effectiveView = view || (nav.filterParam && nav.filterParam !== 'saved-search' ? nav.filterParam : undefined);
 
-  const { savedSearches = [] } = useSavedSearches(scopeId, { enabled: isSavedSearchView });
+  const { savedSearches = [] } = useSavedSearches(spaceId, { enabled: isSavedSearchView });
   const activeSavedSearch = useMemo(
     () => savedSearches.find((s) => s.id === effectiveSavedSearchId),
     [savedSearches, effectiveSavedSearchId],
@@ -183,7 +183,7 @@ export function LibraryContent({
   const filterKey = useMemo(
     () =>
       JSON.stringify([
-        scopeId,
+        spaceId,
         collectionId,
         effectiveSavedSearchId,
         effectiveView,
@@ -201,7 +201,7 @@ export function LibraryContent({
         effectiveOrderDirection,
       ]),
     [
-      scopeId,
+      spaceId,
       collectionId,
       effectiveSavedSearchId,
       effectiveView,
@@ -288,12 +288,12 @@ export function LibraryContent({
     isFetching: isItemsFetching,
     isError: isItemsError,
     error: itemsError,
-  } = useLibraryItemsQuery(scopeId, queryParams, {
+  } = useLibraryItemsQuery(spaceId, queryParams, {
     enabled: !isSavedSearchView && !isDuplicates && !isFeed,
   });
 
   const savedSearchQuery = useSavedSearchResults(
-    scopeId,
+    spaceId,
     effectiveSavedSearchId || null,
     {
       page: activePage,
@@ -305,9 +305,9 @@ export function LibraryContent({
     },
   );
 
-  const { data: collections = [] } = useCollectionsQuery(scopeId);
-  const detachMutation = useBatchDetachItemsMutation(scopeId);
-  const assignMutation = useAssignCollectionItemsMutation(scopeId);
+  const { data: collections = [] } = useCollectionsQuery(spaceId);
+  const detachMutation = useBatchDetachItemsMutation(spaceId);
+  const assignMutation = useAssignCollectionItemsMutation(spaceId);
 
   const isLoading = isSavedSearchView ? savedSearchQuery.isLoading : isItemsLoading;
   const isFetching = isSavedSearchView ? savedSearchQuery.isFetching : isItemsFetching;
@@ -326,7 +326,7 @@ export function LibraryContent({
 
   // If a project library query returns 403 Forbidden, self-heal back to personal library
   React.useEffect(() => {
-    if (isError && isAccessDenied && scopeId && scopeId !== 'user') {
+    if (isError && isAccessDenied && spaceId && spaceId !== 'user') {
       toast.error('Project library access denied. Reverting to Personal Library.', {
         id: 'library-access-denied-fallback',
       });
@@ -338,7 +338,7 @@ export function LibraryContent({
       });
       useWorkspaceContextStore.getState().setPersonalSpace();
     }
-  }, [isError, isAccessDenied, scopeId]);
+  }, [isError, isAccessDenied, spaceId]);
 
   const pageItems: Item[] = useMemo(() => {
     if (isSavedSearchView) {
@@ -435,9 +435,9 @@ export function LibraryContent({
       return [];
     }
 
-    const targetScope = normalizeScopeId(scopeId);
+    const targetScope = normalizeSpaceId(spaceId);
     const activeProcessing = processingItems.filter((p) => {
-      const pScope = normalizeScopeId(p.scopeId);
+      const pScope = normalizeSpaceId(p.spaceId);
       if (pScope !== targetScope) return false;
       if (effectiveView === 'unfiled' && p.collectionId) return false;
       if (collectionId && p.collectionId && p.collectionId !== collectionId) return false;
@@ -451,7 +451,7 @@ export function LibraryContent({
     return activeProcessing
       .filter((p) => !p.itemId || !existingIds.has(p.itemId))
       .map((p): Item => createProvisionalUploadItem(p, targetScope, collectionId));
-  }, [isTrash, isSavedSearchView, effectiveView, processingItems, scopeId, collectionId, items]);
+  }, [isTrash, isSavedSearchView, effectiveView, processingItems, spaceId, collectionId, items]);
 
   const displayedItems: Item[] = useMemo(() => {
     if (provisionalItems.length === 0) return items;
@@ -477,7 +477,7 @@ export function LibraryContent({
 
   // Zotero Web Pattern: Lookahead background prefetch of next chunk (page + 1)
   usePrefetchNextLibraryItemsPage({
-    scopeId,
+    spaceId,
     queryParams,
     activePage,
     baseTotalCount,
@@ -531,7 +531,7 @@ export function LibraryContent({
 
   // Zotero 7 Quick Copy Coordinator (Ctrl+Shift+C: Bibliography, Ctrl+Shift+A: In-text Citation)
   useQuickCopyCoordinator({
-    scopeId,
+    spaceId,
     items: displayedItems,
   });
 
@@ -621,7 +621,7 @@ export function LibraryContent({
   if (isDuplicates) {
     return (
       <DuplicatesContent
-        scopeId={scopeId}
+        spaceId={spaceId}
         canEdit={canEdit}
         onMergeGroup={onMergeDuplicateGroup}
         onSelectedGroupChange={onSelectedDuplicateGroupChange}
@@ -633,7 +633,7 @@ export function LibraryContent({
     return (
       <FeedViewContent
         feedId={feedId || nav.feedId}
-        scopeId={scopeId}
+        spaceId={spaceId}
         canEdit={canEdit}
       />
     );
@@ -715,7 +715,7 @@ export function LibraryContent({
             onLoadMore={hasNextPage ? handleLoadMore : undefined}
             displayOptions={effectiveDisplayOptions}
             onSortChange={handleSortChange}
-            scopeId={scopeId}
+            spaceId={spaceId}
             collectionId={collectionId}
             onDetachItem={canEdit && !isTrash && collectionId ? handleDetachItem : undefined}
             isTrash={isTrash}
@@ -731,7 +731,7 @@ export function LibraryContent({
         view={isSavedSearchView ? 'saved-search' : effectiveView}
         collections={collections as Collection[]}
         isTrash={isTrash}
-        scopeId={scopeId}
+        spaceId={spaceId}
         canEdit={canEdit}
       />
     </div>

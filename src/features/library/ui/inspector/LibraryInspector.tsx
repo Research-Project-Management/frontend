@@ -28,7 +28,7 @@ const CollectionPickerPopover = dynamic(() => import('./CollectionsSection').the
 const RelatedSection = dynamic(() => import('./RelatedSection'), { ssr: false });
 
 interface LibraryInspectorProps {
-  item?: Item | null; scopeId?: string; canEdit?: boolean; onClose?: () => void;
+  item?: Item | null; spaceId?: string; canEdit?: boolean; onClose?: () => void;
   onSelectItem?: (itemId: string) => void; pendingNoteText?: string; onClearPendingText?: () => void;
   onNavigateToAnnotation?: (pageNumber: number, annotationId?: string) => void;
   hideRailToggle?: boolean; defaultOpen?: boolean; isReader?: boolean; hideHeader?: boolean; hideTabs?: boolean;
@@ -42,7 +42,7 @@ export function LibraryInspector(props: LibraryInspectorProps) {
 
 function LibraryInspectorContent({
   item: propItem,
-  scopeId,
+  spaceId,
   canEdit = true,
   onClose: propOnClose,
   onSelectItem,
@@ -141,7 +141,7 @@ function LibraryInspectorContent({
     tagsList,
     itemCollectionIds,
     handleUpdateItem,
-  } = useInspectorItemResolver({ propItem, scopeId, canEdit, needsFullDetail });
+  } = useInspectorItemResolver({ propItem, spaceId, canEdit, needsFullDetail });
 
   const handleClose = propOnClose || toggleInspector;
 
@@ -255,7 +255,7 @@ function LibraryInspectorContent({
                 <InspectorHeader
                   key={effectiveItem.id}
                   item={effectiveItem}
-                  scopeId={targetScope}
+                  spaceId={targetScope}
                   canEdit={effectiveCanEdit}
                   onUpdateItem={handleUpdateItem}
                   onClose={handleClose}
@@ -282,7 +282,7 @@ function LibraryInspectorContent({
                       item={effectiveItem}
                       onUpdateItem={handleUpdateItem}
                       canEdit={effectiveCanEdit}
-                      scopeId={targetScope}
+                      spaceId={targetScope}
                     />
                   </InspectorSection>
                 )}
@@ -378,7 +378,7 @@ function LibraryInspectorContent({
                     <AttachmentsSection
                       key={effectiveItem.id}
                       item={effectiveItem}
-                      scopeId={targetScope}
+                      spaceId={targetScope}
                       hideHeader
                       canEdit={effectiveCanEdit}
                       onRegisterAdd={(fn) => {
@@ -444,7 +444,7 @@ function LibraryInspectorContent({
                     <NotesSection
                       key={effectiveItem.id}
                       item={effectiveItem}
-                      scopeId={targetScope}
+                      spaceId={targetScope}
                       hideHeader
                       forceAdding={isAddingNote || Boolean(pendingNoteText)}
                       pendingText={pendingNoteText}
@@ -470,7 +470,7 @@ function LibraryInspectorContent({
                       effectiveCanEdit && effectiveItem ? (
                         <CollectionPickerPopover
                           item={effectiveItem}
-                          scopeId={targetScope}
+                          spaceId={targetScope}
                           canEdit={effectiveCanEdit}
                           align="end"
                           onUpdateItem={handleUpdateItem}
@@ -491,7 +491,7 @@ function LibraryInspectorContent({
                     <CollectionsSection
                       key={effectiveItem.id}
                       item={effectiveItem}
-                      scopeId={targetScope}
+                      spaceId={targetScope}
                       hideHeader
                       canEdit={effectiveCanEdit}
                       onUpdateItem={handleUpdateItem}
@@ -517,7 +517,7 @@ function LibraryInspectorContent({
                     <TagsSection
                       key={effectiveItem.id}
                       item={effectiveItem}
-                      scopeId={targetScope}
+                      spaceId={targetScope}
                       precomputedTags={tagsList}
                       onUpdateItem={handleUpdateItem}
                       hideHeader
@@ -545,7 +545,7 @@ function LibraryInspectorContent({
                     <RelatedSection
                       key={effectiveItem.id}
                       item={effectiveItem}
-                      scopeId={targetScope}
+                      spaceId={targetScope}
                       onSelectItem={handleSelectItem}
                       hideHeader
                       isAddOpen={isAddRelatedOpen}
@@ -568,7 +568,7 @@ function LibraryInspectorContent({
                     <CiteSection
                       key={effectiveItem.id}
                       item={effectiveItem}
-                      scopeId={targetScope}
+                      spaceId={targetScope}
                     />
                   </InspectorSection>
                 )}
@@ -710,10 +710,10 @@ export function ReaderInspector({ item, onSelectItem, ...rest }: ReaderInspector
   const defaultSelectItem = useCallback(
     (itemId: string) => {
       const projectId =
-        item && 'projectId' in item && item.projectId ? String(item.projectId) : rest.scopeId;
+        item && 'projectId' in item && item.projectId ? String(item.projectId) : rest.spaceId;
       openInNewTab(buildReaderPaperUrl(itemId, { projectId }));
     },
-    [item, rest.scopeId],
+    [item, rest.spaceId],
   );
 
   return (

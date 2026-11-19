@@ -44,7 +44,7 @@ import DOMPurify from "dompurify";
 
 interface CiteSectionProps {
   item?: Item;
-  scopeId?: string;
+  spaceId?: string;
 }
 
 type CitationFormat = string;
@@ -80,7 +80,7 @@ function sanitizeCslHtml(html?: string): string {
 }
 
 // ─── CiteSection Component ───────────────────────────────────────────────────
-export default function CiteSection({ item, scopeId }: CiteSectionProps) {
+export default function CiteSection({ item, spaceId }: CiteSectionProps) {
   const openModal = useLibraryUIStore((s) => s.openModal);
   const [activeFormat, setActiveFormat] = useState<CitationFormat>("apa-7th");
   const [copied, setCopied] = useState(false);
@@ -90,10 +90,10 @@ export default function CiteSection({ item, scopeId }: CiteSectionProps) {
     label: string;
   } | null>(null);
 
-  const activeScopeId = scopeId || item?.projectId || "user";
+  const activeSpaceId = spaceId || item?.projectId || "user";
 
   // 1. Backend CSL style registry is the single source of truth for styles
-  const { data: serverStyles = [] } = useCitationStyles(activeScopeId);
+  const { data: serverStyles = [] } = useCitationStyles(activeSpaceId);
 
   const dropdownStyles = useMemo(() => {
     if (!serverStyles || serverStyles.length === 0) return [];
@@ -145,7 +145,7 @@ export default function CiteSection({ item, scopeId }: CiteSectionProps) {
   const currentCslStyle = normalizedActiveFormat as CslStyle;
 
   const { data: cslData, isLoading } = useCslCitation(
-    activeScopeId,
+    activeSpaceId,
     item?.id || "",
     currentCslStyle,
   );

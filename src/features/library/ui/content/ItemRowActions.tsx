@@ -15,7 +15,7 @@ export {
 
 interface ItemRowActionsProps {
   item: Item;
-  scopeId?: string;
+  spaceId?: string;
   isTrash?: boolean;
   collections?: Collection[];
   canEdit?: boolean;
@@ -32,7 +32,7 @@ interface ItemRowActionsProps {
 
 export const ItemRowActions = React.memo(function ItemRowActions({
   item,
-  scopeId,
+  spaceId,
   isTrash = false,
   collections = [],
   canEdit = true,
@@ -58,7 +58,7 @@ export const ItemRowActions = React.memo(function ItemRowActions({
     handleCopyCitationKey,
     handleSelectCollection,
   } = useItemActionHandlers(item, {
-    scopeId,
+    spaceId,
     isMenuOpen: isOpen,
     onOpenItem,
     onOpenInNewTab,
@@ -287,8 +287,8 @@ interface ItemContextMenuProps {
   onDetachFromCollection?: () => void;
   onOpenItem?: (id: string) => void;
   onOpenInNewTab?: (id: string) => void;
-  /** scopeId needed to call setMyPublication (project id or 'user') */
-  scopeId?: string;
+  /** spaceId needed to call setMyPublication (project id or 'user') */
+  spaceId?: string;
 }
 
 export function ItemContextMenu({
@@ -306,7 +306,7 @@ export function ItemContextMenu({
   onDetachFromCollection,
   onOpenItem,
   onOpenInNewTab,
-  scopeId,
+  spaceId,
 }: ItemContextMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -319,7 +319,7 @@ export function ItemContextMenu({
     handleCopyCitationKey,
     handleSelectCollection,
   } = useItemActionHandlers(item, {
-    scopeId,
+    spaceId,
     isMenuOpen: isOpen,
     onOpenItem,
     onOpenInNewTab,

@@ -22,7 +22,7 @@ import { Checkbox } from '@/shared/components/ui/checkbox';
 interface UploadFilesModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  scopeId?: string;
+  spaceId?: string;
   defaultCollectionId?: string;
   initialFiles?: File[];
   mode?: 'file' | 'folder';
@@ -55,20 +55,20 @@ function filterSupportedFiles(files: FileList | File[]): File[] {
 export function UploadFilesModal({
   open,
   onOpenChange,
-  scopeId,
+  spaceId,
   defaultCollectionId,
   initialFiles = EMPTY_FILES,
   mode = 'file',
   onSuccess,
 }: UploadFilesModalProps) {
-  const { queryClient } = useLibraryCacheSynchronizer(scopeId);
+  const { queryClient } = useLibraryCacheSynchronizer(spaceId);
   const routeParams = useParams() as { collectionId?: string };
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const startBatchUpload = useProcessModalStore((s) => s.startBatchUpload);
   const isFolderMode = mode === 'folder';
 
-  const { data: collections = [] } = useCollectionsQuery(scopeId);
+  const { data: collections = [] } = useCollectionsQuery(spaceId);
 
   const activeScope = useLibraryUIStore((s) => s.activeScope);
   const rootLibraryName =
@@ -100,13 +100,13 @@ export function UploadFilesModal({
       onOpenChange(false);
 
       void startBatchUpload(fileArray, {
-        scopeId,
+        spaceId,
         collectionId: targetCollection,
         queryClient,
         onSuccess,
       });
     },
-    [selectedCollectionId, onOpenChange, startBatchUpload, scopeId, queryClient, onSuccess],
+    [selectedCollectionId, onOpenChange, startBatchUpload, spaceId, queryClient, onSuccess],
   );
 
   const autoUploadedRef = useRef<File[] | null>(null);

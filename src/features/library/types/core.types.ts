@@ -9,7 +9,7 @@ export type Brand<T, B> = T & { readonly [__brand]: B };
 export type ItemId = Brand<string, 'ItemId'>;
 export type CollectionId = Brand<string, 'CollectionId'>;
 export type NoteId = Brand<string, 'NoteId'>;
-export type ScopeId = Brand<string, 'ScopeId'>;
+export type SpaceId = Brand<string, 'SpaceId'>;
 export type UserId = Brand<string, 'UserId'>;
 export type ProjectId = Brand<string, 'ProjectId'>;
 
@@ -182,7 +182,6 @@ export const collectionSchema = z.object({
   description: z.string().optional().default(''),
   color: z.string().optional().default('#3b82f6'),
   icon: z.string().optional().default('📁'),
-  scopeId: z.string().optional().default(''),
   spaceId: z.string().nullish(),
   projectId: z.string().nullable().optional(),
   userId: z.string().optional(),
@@ -238,7 +237,7 @@ export interface ItemTypesResponse {
 
 export interface ReaderBootstrapResponse {
   scope: 'user' | 'project';
-  scopeId: string;
+  spaceId: string;
   degraded?: boolean;
   degradedBranches?: string[];
   item: import('./items.types').Item;

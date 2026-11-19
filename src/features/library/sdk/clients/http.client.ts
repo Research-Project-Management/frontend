@@ -98,14 +98,14 @@ export function isTrustedOrigin(targetOrigin: string, fallbackBaseUrl?: string):
 export function resolveLibraryUrl(
   domain: LibrarySubdomain,
   resourcePath: string,
-  scopeId?: string,
+  spaceId?: string,
   suffix = '',
 ): string {
   const host = getLibraryServiceHost(domain);
   const cleanResource = resourcePath.startsWith('/') ? resourcePath : `/${resourcePath}`;
   const cleanSuffix = suffix ? (suffix.startsWith('/') ? suffix : `/${suffix}`) : '';
-  const basePath = isProjectScope(scopeId)
-    ? `/api/v1/spaces/${encodeURIComponent(scopeId!)}/library${cleanResource}${cleanSuffix}`
+  const basePath = isProjectScope(spaceId)
+    ? `/api/v1/spaces/${encodeURIComponent(spaceId!)}/library${cleanResource}${cleanSuffix}`
     : `/api/v1/library${cleanResource}${cleanSuffix}`;
   return host ? `${host}${basePath}` : basePath;
 }
@@ -121,7 +121,7 @@ export function resolveLibraryRawPath(path: string, domain?: LibrarySubdomain): 
 function withLibraryServiceOptions(
   _url: string,
   options?: RequestOptions,
-  scopeId?: string,
+  spaceId?: string,
 ): RequestOptions | undefined {
   const token = !options?.skipAuth ? getAuthToken() : null;
   const extraHeaders: Record<string, string> = {
@@ -130,8 +130,8 @@ function withLibraryServiceOptions(
   if (token && !extraHeaders['Authorization']) {
     extraHeaders['Authorization'] = `Bearer ${token}`;
   }
-  if (isProjectScope(scopeId) && !extraHeaders['X-Space-Id']) {
-    extraHeaders['X-Space-Id'] = scopeId!;
+  if (isProjectScope(spaceId) && !extraHeaders['X-Space-Id']) {
+    extraHeaders['X-Space-Id'] = spaceId!;
   }
   const hasExtraHeaders = Object.keys(extraHeaders).length > 0;
   if (!options && !hasExtraHeaders) return undefined;
@@ -145,96 +145,96 @@ export const libraryClient = {
   resolveUrl: resolveLibraryUrl,
   resolveRawPath: resolveLibraryRawPath,
 
-  get<T>(url: string, options?: RequestOptions, scopeId?: string): Promise<T> {
+  get<T>(url: string, options?: RequestOptions, spaceId?: string): Promise<T> {
     const resolvedUrl = resolveLibraryRawPath(url);
-    const effectiveOptions = withLibraryServiceOptions(resolvedUrl, options, scopeId);
+    const effectiveOptions = withLibraryServiceOptions(resolvedUrl, options, spaceId);
     return effectiveOptions !== undefined
       ? api.apiGet<T>(resolvedUrl, effectiveOptions)
       : api.apiGet<T>(resolvedUrl);
   },
 
-  post<T>(url: string, body?: unknown, options?: RequestOptions, scopeId?: string): Promise<T> {
+  post<T>(url: string, body?: unknown, options?: RequestOptions, spaceId?: string): Promise<T> {
     const resolvedUrl = resolveLibraryRawPath(url);
-    const effectiveOptions = withLibraryServiceOptions(resolvedUrl, options, scopeId);
+    const effectiveOptions = withLibraryServiceOptions(resolvedUrl, options, spaceId);
     if (effectiveOptions !== undefined) return api.apiPost<T>(resolvedUrl, body, effectiveOptions);
     return body !== undefined ? api.apiPost<T>(resolvedUrl, body) : api.apiPost<T>(resolvedUrl);
   },
 
-  put<T>(url: string, body?: unknown, options?: RequestOptions, scopeId?: string): Promise<T> {
+  put<T>(url: string, body?: unknown, options?: RequestOptions, spaceId?: string): Promise<T> {
     const resolvedUrl = resolveLibraryRawPath(url);
-    const effectiveOptions = withLibraryServiceOptions(resolvedUrl, options, scopeId);
+    const effectiveOptions = withLibraryServiceOptions(resolvedUrl, options, spaceId);
     if (effectiveOptions !== undefined) return api.apiPut<T>(resolvedUrl, body, effectiveOptions);
     return body !== undefined ? api.apiPut<T>(resolvedUrl, body) : api.apiPut<T>(resolvedUrl);
   },
 
-  patch<T>(url: string, body?: unknown, options?: RequestOptions, scopeId?: string): Promise<T> {
+  patch<T>(url: string, body?: unknown, options?: RequestOptions, spaceId?: string): Promise<T> {
     const resolvedUrl = resolveLibraryRawPath(url);
-    const effectiveOptions = withLibraryServiceOptions(resolvedUrl, options, scopeId);
+    const effectiveOptions = withLibraryServiceOptions(resolvedUrl, options, spaceId);
     if (effectiveOptions !== undefined) return api.apiPatch<T>(resolvedUrl, body, effectiveOptions);
     return body !== undefined ? api.apiPatch<T>(resolvedUrl, body) : api.apiPatch<T>(resolvedUrl);
   },
 
-  delete<T>(url: string, options?: RequestOptions, scopeId?: string): Promise<T> {
+  delete<T>(url: string, options?: RequestOptions, spaceId?: string): Promise<T> {
     const resolvedUrl = resolveLibraryRawPath(url);
-    const effectiveOptions = withLibraryServiceOptions(resolvedUrl, options, scopeId);
+    const effectiveOptions = withLibraryServiceOptions(resolvedUrl, options, spaceId);
     return effectiveOptions !== undefined
       ? api.apiDelete<T>(resolvedUrl, effectiveOptions)
       : api.apiDelete<T>(resolvedUrl);
   },
 };
 
-export function getBasePath(scopeId?: string, suffix = ''): string {
-  return resolveLibraryUrl('catalog', '', scopeId, suffix).replace(/\/+$/, '');
+export function getBasePath(spaceId?: string, suffix = ''): string {
+  return resolveLibraryUrl('catalog', '', spaceId, suffix).replace(/\/+$/, '');
 }
 
-function buildLibraryUrl(scopeId: string | undefined, resourcePath: string): string {
+function buildLibraryUrl(spaceId: string | undefined, resourcePath: string): string {
   const cleanResource = resourcePath.startsWith('/') ? resourcePath : `/${resourcePath}`;
   if (cleanResource.startsWith('/pdf-proxy')) {
-    const scopeQuery = isProjectScope(scopeId)
-      ? `${cleanResource.includes('?') ? '&' : '?'}spaceId=${encodeURIComponent(scopeId!)}`
+    const scopeQuery = isProjectScope(spaceId)
+      ? `${cleanResource.includes('?') ? '&' : '?'}spaceId=${encodeURIComponent(spaceId!)}`
       : '';
     return `/api/library${cleanResource}${scopeQuery}`;
   }
-  return resolveLibraryUrl('reader', cleanResource, scopeId);
+  return resolveLibraryUrl('reader', cleanResource, spaceId);
 }
 
-export function getCatalogUrl(scopeId?: string, suffix = ''): string {
-  if (!suffix) return resolveLibraryUrl('catalog', '/items', scopeId);
+export function getCatalogUrl(spaceId?: string, suffix = ''): string {
+  if (!suffix) return resolveLibraryUrl('catalog', '/items', spaceId);
   const cleanSuffix = suffix.startsWith('/') ? suffix : `/${suffix}`;
   const resourcePath = cleanSuffix.startsWith('/items') ? cleanSuffix : `/items${cleanSuffix}`;
-  return resolveLibraryUrl('catalog', resourcePath, scopeId);
+  return resolveLibraryUrl('catalog', resourcePath, spaceId);
 }
 
-export function getCitationUrl(scopeId?: string, suffix = ''): string {
-  return resolveLibraryUrl('citation', '/citation', scopeId, suffix);
+export function getCitationUrl(spaceId?: string, suffix = ''): string {
+  return resolveLibraryUrl('citation', '/citation', spaceId, suffix);
 }
 
-export function getExportsUrl(scopeId?: string, suffix = ''): string {
-  return resolveLibraryUrl('citation', '/exports', scopeId, suffix);
+export function getExportsUrl(spaceId?: string, suffix = ''): string {
+  return resolveLibraryUrl('citation', '/exports', spaceId, suffix);
 }
 
-export function getIngestionUrl(scopeId?: string, suffix = ''): string {
-  return resolveLibraryUrl('ingestion', '/ingestion', scopeId, suffix);
+export function getIngestionUrl(spaceId?: string, suffix = ''): string {
+  return resolveLibraryUrl('ingestion', '/ingestion', spaceId, suffix);
 }
 
-export function getCurationUrl(scopeId?: string, suffix = ''): string {
-  return resolveLibraryUrl('ingestion', '/curation', scopeId, suffix);
+export function getCurationUrl(spaceId?: string, suffix = ''): string {
+  return resolveLibraryUrl('ingestion', '/curation', spaceId, suffix);
 }
 
-export function getRetractionUrl(scopeId?: string, suffix = ''): string {
-  return resolveLibraryUrl('ingestion', '/retraction', scopeId, suffix);
+export function getRetractionUrl(spaceId?: string, suffix = ''): string {
+  return resolveLibraryUrl('ingestion', '/retraction', spaceId, suffix);
 }
 
-export function getSyncUrl(scopeId?: string, suffix = ''): string {
-  return resolveLibraryUrl('sync', '/sync', scopeId, suffix);
+export function getSyncUrl(spaceId?: string, suffix = ''): string {
+  return resolveLibraryUrl('sync', '/sync', spaceId, suffix);
 }
 
-export function getItemAttachmentUrl(scopeId: string | undefined, itemId: string, suffix = ''): string {
-  return resolveLibraryUrl('extraction', `/items/${encodeURIComponent(itemId)}/attachments`, scopeId, suffix);
+export function getItemAttachmentUrl(spaceId: string | undefined, itemId: string, suffix = ''): string {
+  return resolveLibraryUrl('extraction', `/items/${encodeURIComponent(itemId)}/attachments`, spaceId, suffix);
 }
 
-export function getAttachmentUrl(scopeId: string | undefined, attachmentId: string, suffix = ''): string {
-  return resolveLibraryUrl('extraction', `/attachments/${encodeURIComponent(attachmentId)}`, scopeId, suffix);
+export function getAttachmentUrl(spaceId: string | undefined, attachmentId: string, suffix = ''): string {
+  return resolveLibraryUrl('extraction', `/attachments/${encodeURIComponent(attachmentId)}`, spaceId, suffix);
 }
 
 export function sanitizeItemPayload(data: Record<string, unknown>): Record<string, unknown> {
@@ -266,20 +266,20 @@ interface CachedPdfBlobEntry {
 
 const pdfBlobLruCache = new Map<string, CachedPdfBlobEntry>();
 
-export function buildPdfBlobCacheKey(url: string, scopeId?: string): string {
+export function buildPdfBlobCacheKey(url: string, spaceId?: string): string {
   const token = typeof api.getAuthToken === 'function' ? api.getAuthToken() : getAuthToken();
   const userNamespace = extractStableUserNamespace(token);
-  const normalizedScope = isProjectScope(scopeId) ? scopeId!.trim() : 'user';
+  const normalizedScope = isProjectScope(spaceId) ? spaceId!.trim() : 'user';
   return `${userNamespace}:${normalizedScope}:${url.trim()}`;
 }
 
-export async function invalidatePdfBlobCache(url?: string, options?: { scopeId?: string }): Promise<void> {
+export async function invalidatePdfBlobCache(url?: string, options?: { spaceId?: string }): Promise<void> {
   if (!url) {
     pdfBlobLruCache.clear();
     await documentStorage.clearAll();
     return;
   }
-  const cacheKey = buildPdfBlobCacheKey(url.trim(), options?.scopeId);
+  const cacheKey = buildPdfBlobCacheKey(url.trim(), options?.spaceId);
   pdfBlobLruCache.delete(cacheKey);
   await documentStorage.deleteDocumentBinary(cacheKey);
 }
@@ -339,13 +339,13 @@ function awaitWithSignal<T>(
 export const fetchPdfBlob = async (
   url: string,
   signal?: AbortSignal,
-  options?: { allowHtml?: boolean; scopeId?: string; forceRefresh?: boolean },
+  options?: { allowHtml?: boolean; spaceId?: string; forceRefresh?: boolean },
 ): Promise<Blob> => {
   if (!url || typeof url !== 'string') throw new Error('Invalid document URL provided.');
   if (signal?.aborted) throw new DOMException('The operation was aborted.', 'AbortError');
 
   const targetUrl = url.trim();
-  const cacheKey = buildPdfBlobCacheKey(targetUrl, options?.scopeId);
+  const cacheKey = buildPdfBlobCacheKey(targetUrl, options?.spaceId);
 
   if (options?.forceRefresh) {
     pdfBlobLruCache.delete(cacheKey);
@@ -428,8 +428,8 @@ export const fetchPdfBlob = async (
     const token = typeof api.getAuthToken === 'function' ? api.getAuthToken() : getAuthToken();
     if (token && trustedTargetOrigin && !isLocalStatic) headers.Authorization = `Bearer ${token}`;
 
-    const effectiveScope = isProjectScope(options?.scopeId)
-      ? options?.scopeId
+    const effectiveScope = isProjectScope(options?.spaceId)
+      ? options?.spaceId
       : (() => {
           const match = normalizedTarget.match(/\/projects\/([^/?#]+)\//);
           return match?.[1] && isProjectScope(match[1]) ? match[1] : undefined;
@@ -557,7 +557,7 @@ export const fetchPdfBlob = async (
   });
 };
 
-export const prefetchPdfBlob = async (url: string, options?: { scopeId?: string }): Promise<void> => {
+export const prefetchPdfBlob = async (url: string, options?: { spaceId?: string }): Promise<void> => {
   if (!url || typeof url !== 'string') return;
   try {
     await fetchPdfBlob(url, undefined, options);

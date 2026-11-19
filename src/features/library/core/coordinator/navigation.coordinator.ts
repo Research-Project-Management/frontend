@@ -30,12 +30,12 @@ export function useActiveLibrarySpace() {
   };
 }
 
-function resolveActiveLibraryScopeId(
+function resolveActiveLibrarySpaceId(
   activeScope?: { type?: string; id?: string; projectId?: string } | null,
-  explicitScopeId?: string | null,
+  explicitSpaceId?: string | null,
   fallbackProjectId?: string | null,
 ): string {
-  if (explicitScopeId) return explicitScopeId;
+  if (explicitSpaceId) return explicitSpaceId;
   if (fallbackProjectId) return fallbackProjectId;
   if (activeScope?.type === 'project') {
     return activeScope.projectId || activeScope.id || 'user';

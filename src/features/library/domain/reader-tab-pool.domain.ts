@@ -352,7 +352,7 @@ export interface WarmViewerPoolItem {
   title: string;
   blobUrl?: string | null;
   fileUrl?: string;
-  scopeId?: string;
+  spaceId?: string;
   attachmentId?: string;
   scrollTop?: number;
 }

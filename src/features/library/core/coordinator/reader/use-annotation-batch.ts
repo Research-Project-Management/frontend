@@ -46,7 +46,7 @@ export {
 };
 
 interface UseAnnotationBatchOptions {
-  scopeId: string;
+  spaceId: string;
   effectiveAttachmentId?: string;
   paper: ReaderDocument | null;
   setPendingNoteText: (text: string) => void;
@@ -58,7 +58,7 @@ interface UseAnnotationBatchOptions {
  * context actions, and undo/redo inside the PDF Reader.
  */
 export function useAnnotationBatch({
-  scopeId,
+  spaceId,
   effectiveAttachmentId,
   paper,
   setPendingNoteText: _setPendingNoteText,
@@ -125,7 +125,7 @@ export function useAnnotationBatch({
     isProcessingRef.current = false;
     setIsBatchProcessing(false);
     setSelectedAnnotationIds(new Set());
-    const attKey = effectiveAttachmentId ? `${scopeId || 'user'}:${effectiveAttachmentId}` : null;
+    const attKey = effectiveAttachmentId ? `${spaceId || 'user'}:${effectiveAttachmentId}` : null;
     currentAttachmentKeyRef.current = attKey;
     const saved = attKey ? historyByAttachmentRef.current.get(attKey) : undefined;
     const restoredUndo = saved?.undoStack ?? [];
@@ -134,7 +134,7 @@ export function useAnnotationBatch({
     redoStackRef.current = restoredRedo;
     setUndoStackState(restoredUndo);
     setRedoStackState(restoredRedo);
-  }, [scopeId, effectiveAttachmentId]);
+  }, [spaceId, effectiveAttachmentId]);
 
   const handleToggleSelectAnnotation = useCallback((id: string) => {
     setSelectedAnnotationIds((prev) => {
@@ -173,7 +173,7 @@ export function useAnnotationBatch({
     setIsBatchProcessing(true);
     try {
       await runUndoAnnotationHistoryAction(action, {
-        scopeId,
+        spaceId,
         effectiveAttachmentId,
         qc,
         updateUndoStack: (updater) => {
@@ -195,7 +195,7 @@ export function useAnnotationBatch({
         setIsBatchProcessing(false);
       }
     }
-  }, [effectiveAttachmentId, scopeId, qc, isBatchProcessing, updateUndoStack, updateRedoStack]);
+  }, [effectiveAttachmentId, spaceId, qc, isBatchProcessing, updateUndoStack, updateRedoStack]);
 
   const redo = useCallback(async () => {
     const currentStack = redoStackRef.current;
@@ -208,7 +208,7 @@ export function useAnnotationBatch({
     setIsBatchProcessing(true);
     try {
       await runRedoAnnotationHistoryAction(action, {
-        scopeId,
+        spaceId,
         effectiveAttachmentId,
         qc,
         updateUndoStack: (updater) => {
@@ -230,7 +230,7 @@ export function useAnnotationBatch({
         setIsBatchProcessing(false);
       }
     }
-  }, [effectiveAttachmentId, scopeId, qc, isBatchProcessing, updateUndoStack, updateRedoStack]);
+  }, [effectiveAttachmentId, spaceId, qc, isBatchProcessing, updateUndoStack, updateRedoStack]);
 
   // Keyboard shortcut for Undo (Ctrl+Z) / Redo (Ctrl+Y or Ctrl+Shift+Z)
   useEffect(() => {
@@ -272,7 +272,7 @@ export function useAnnotationBatch({
       setIsBatchProcessing(true);
       try {
         const existing =
-          qc.getQueryData<ReaderAnnotation[]>(annotationKeys.byAttachment(scopeId, effectiveAttachmentId)) || [];
+          qc.getQueryData<ReaderAnnotation[]>(annotationKeys.byAttachment(spaceId, effectiveAttachmentId)) || [];
         const existingMap = new Map(existing.map((a) => [a.id, a]));
         const historyItems: {
           id: string;
@@ -306,7 +306,7 @@ export function useAnnotationBatch({
           };
         });
 
-        await executeAnnotationBatchSync(qc, scopeId, effectiveAttachmentId, {
+        await executeAnnotationBatchSync(qc, spaceId, effectiveAttachmentId, {
           upserts,
           deletes: [],
         });
@@ -338,7 +338,7 @@ export function useAnnotationBatch({
         }
       }
     },
-    [effectiveAttachmentId, selectedAnnotationIds, qc, scopeId, isBatchProcessing, updateUndoStack, updateRedoStack],
+    [effectiveAttachmentId, selectedAnnotationIds, qc, spaceId, isBatchProcessing, updateUndoStack, updateRedoStack],
   );
 
   const handleBatchDelete = useCallback(
@@ -350,11 +350,11 @@ export function useAnnotationBatch({
       setIsBatchProcessing(true);
       try {
         const existing =
-          qc.getQueryData<ReaderAnnotation[]>(annotationKeys.byAttachment(scopeId, effectiveAttachmentId)) || [];
+          qc.getQueryData<ReaderAnnotation[]>(annotationKeys.byAttachment(spaceId, effectiveAttachmentId)) || [];
         const targetSet = new Set(ids);
         const deletedItems = existing.filter((a) => targetSet.has(a.id));
 
-        await executeAnnotationBatchSync(qc, scopeId, effectiveAttachmentId, {
+        await executeAnnotationBatchSync(qc, spaceId, effectiveAttachmentId, {
           upserts: [],
           deletes: ids,
         });
@@ -391,7 +391,7 @@ export function useAnnotationBatch({
         }
       }
     },
-    [effectiveAttachmentId, selectedAnnotationIds, qc, scopeId, isBatchProcessing, pruneDeletedFromHistory, updateUndoStack, updateRedoStack],
+    [effectiveAttachmentId, selectedAnnotationIds, qc, spaceId, isBatchProcessing, pruneDeletedFromHistory, updateUndoStack, updateRedoStack],
   );
 
   const recordDeletedAnnotations = useCallback((items: ReaderAnnotation[]) => {
@@ -466,7 +466,7 @@ export function useAnnotationBatch({
         });
       } else {
         await executeExtractAnnotationNotes(
-          scopeId,
+          spaceId,
           paper.id,
           {
             attachmentId: effectiveAttachmentId,
@@ -478,7 +478,7 @@ export function useAnnotationBatch({
         );
       }
     },
-    [effectiveAttachmentId, selectedAnnotationIds, scopeId, paper?.id, extractNotes, qc],
+    [effectiveAttachmentId, selectedAnnotationIds, spaceId, paper?.id, extractNotes, qc],
   );
 
   return {

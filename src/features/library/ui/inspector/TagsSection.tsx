@@ -23,7 +23,7 @@ export { buildCanonicalTagsPatch };
 
 interface TagsSectionProps {
   item?: Item;
-  scopeId?: string;
+  spaceId?: string;
   precomputedTags?: string[];
   onUpdateItem?: (data: Partial<Item>, options?: { silent?: boolean }) => void;
   hideHeader?: boolean;
@@ -145,7 +145,7 @@ function TagItemInput({
 
 export default function TagsSection({
   item,
-  scopeId,
+  spaceId,
   onUpdateItem,
   precomputedTags,
   hideHeader = false,
@@ -159,8 +159,8 @@ export default function TagsSection({
   const newTagInputRef = useRef<HTMLInputElement>(null);
   const skipNextBlurCommitRef = useRef(false);
 
-  const { tags: catalogTags } = useTags(scopeId, {
-    enabled: Boolean(scopeId),
+  const { tags: catalogTags } = useTags(spaceId, {
+    enabled: Boolean(spaceId),
   });
 
   React.useEffect(() => {

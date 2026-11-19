@@ -91,7 +91,7 @@ interface CreateLibraryItemFromFeedPayload {
   tags?: string[];
   collectionId?: string;
   collectionIds: string[];
-  scopeId: string;
+  spaceId: string;
 }
 
 /**
@@ -100,9 +100,9 @@ interface CreateLibraryItemFromFeedPayload {
  */
 export function mapFeedEntryToCreateItemPayload(
   entry: ParsedFeedEntry,
-  options?: { scopeId?: string; collectionId?: string },
+  options?: { spaceId?: string; collectionId?: string },
 ): CreateLibraryItemFromFeedPayload {
-  const scopeId = options?.scopeId || 'user';
+  const spaceId = options?.spaceId || 'user';
   const collectionId = options?.collectionId || undefined;
   const isPreprint = Boolean(
     entry.arxivId && (!entry.doi || entry.doi.toLowerCase().includes('arxiv')),
@@ -154,7 +154,7 @@ export function mapFeedEntryToCreateItemPayload(
     tags: entry.categories,
     collectionId,
     collectionIds: collectionId ? [collectionId] : [],
-    scopeId,
+    spaceId,
   };
 }
 

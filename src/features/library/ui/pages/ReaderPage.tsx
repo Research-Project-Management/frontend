@@ -16,7 +16,7 @@ import {
 import { useShallow } from "zustand/react/shallow";
 import { useReaderStore } from "@/features/library/core/store/reader.store";
 import { useLibraryUIStore } from "@/features/library/core/store/library-ui.store";
-import { useAiCompanionStore } from "@/features/ai/store/ai-companion.store";
+import { useAiCompanionStore } from "@/features/ai";
 import { useLibraryPermissions } from "@/features/library/core/coordinator/navigation.coordinator";
 import { ReaderInspector } from "@/features/library/ui/inspector/LibraryInspector";
 import { warmViewerPool, type WarmViewerPoolItem } from "@/features/library/domain/reader-tab-pool.domain";
@@ -30,7 +30,7 @@ import { isEditableOrModalElementFocused } from "@/features/library/core/coordin
 
 const Sidebar = dynamic(() => import("@/features/library/ui/reader/ReaderSidebar"), { ssr: false });
 const BibtexModal = dynamic(() => import("@/features/library/ui/modals/DeleteModal").then((m) => m.PaperBibtexDialog), { ssr: false });
-const AiCompanionSidebar = dynamic(() => import("@/features/ai/components/companion/AiCompanionSidebar"), { ssr: false, loading: () => null });
+const AiCompanionSidebar = dynamic(() => import("@/features/ai").then((m) => m.CompanionDrawer), { ssr: false, loading: () => null });
 
 const Viewer = dynamic<import("@/features/library/ui/reader/viewer/Viewer").ViewerProps>(
   () => import("@/features/library/ui/reader/viewer/Viewer"),
@@ -67,7 +67,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
   const { canEditItem: canEdit } = useLibraryPermissions();
   const { state, actions } = useReader(paperId, onBack);
   const {
-    scopeId, isProject, rawProjectId, isLoadingPapers, paper, paperUrl, pdfBlobUrl,
+    spaceId, isProject, rawProjectId, isLoadingPapers, paper, paperUrl, pdfBlobUrl,
     pdfLoading, pdfError, pendingNoteText, bibtexOpen, fulltext, targetPage,
     isSidebarOpen, visiblePage, numPages, zoom, selectedAnnotationIds,
     annotations = [], isLoadingAnnotations, isAnnotationsError, isUpdatingAnnotation,
@@ -128,14 +128,14 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
       effectiveTabId,
       {
         paperId: effectiveTabId, title: paper?.title || activeTab?.title || existingWarm?.title || "Document",
-        blobUrl: resolvedBlobUrl, fileUrl: paperUrl ?? existingWarm?.fileUrl, scopeId,
+        blobUrl: resolvedBlobUrl, fileUrl: paperUrl ?? existingWarm?.fileUrl, spaceId,
         attachmentId: effectiveAttachmentId || existingWarm?.attachmentId || undefined,
         scrollTop: activeTab?.scrollTop ?? existingWarm?.scrollTop,
       },
       new Set(["library", effectiveTabId]),
     );
     setStandbyViewers(warmViewerPool.getValuesMruOrder());
-  }, [effectiveTabId, paper?.title, activeTab?.title, pdfBlobUrl, paperUrl, scopeId, effectiveAttachmentId, activeTab?.scrollTop]);
+  }, [effectiveTabId, paper?.title, activeTab?.title, pdfBlobUrl, paperUrl, spaceId, effectiveAttachmentId, activeTab?.scrollTop]);
 
   // Persist resolved canonical PDF URL and scope projectId in ReaderTab so hover-prefetch & cross-scope tab switches stay accurate
   useEffect(() => {
@@ -225,7 +225,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
       const closingTab = tabs.find((t) => t.id === id);
       const closingWarm = warmViewerPool.peek(id);
       const closingUrl = closingTab?.fileUrl || closingWarm?.fileUrl || (paper?.id === id ? paperUrl : undefined);
-      evictWarmObjectUrl(closingUrl, closingWarm?.scopeId ?? scopeId);
+      evictWarmObjectUrl(closingUrl, closingWarm?.spaceId ?? spaceId);
       warmViewerPool.delete(id);
       setStandbyViewers(warmViewerPool.getValuesMruOrder());
 
@@ -239,7 +239,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
         else router.push(getPaperUrl(next.id, (next as { projectId?: string | null }).projectId));
       }
     },
-    [tabs, activeTabId, paper, paperUrl, scopeId, closeTab, goBack, router, getPaperUrl],
+    [tabs, activeTabId, paper, paperUrl, spaceId, closeTab, goBack, router, getPaperUrl],
   );
 
   const handleCloseOtherTabs = useCallback(
@@ -252,7 +252,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
       for (const t of tabsToClose) {
         const warm = warmViewerPool.peek(t.id);
         const url = t.fileUrl || warm?.fileUrl;
-        evictWarmObjectUrl(url, warm?.scopeId ?? scopeId);
+        evictWarmObjectUrl(url, warm?.spaceId ?? spaceId);
         warmViewerPool.delete(t.id);
       }
       setStandbyViewers(warmViewerPool.getValuesMruOrder());
@@ -267,7 +267,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
         }
       }
     },
-    [tabs, scopeId, closeOtherTabs, goBack, activeTabId, router, getPaperUrl],
+    [tabs, spaceId, closeOtherTabs, goBack, activeTabId, router, getPaperUrl],
   );
 
   const handleMoveTabToNewWindow = useCallback(
@@ -289,9 +289,9 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
       if (!resolvedUrl) return;
       const targetScope =
         targetTab?.projectId ||
-        warmItem?.scopeId ||
+        warmItem?.spaceId ||
         (isProject && rawProjectId ? rawProjectId : undefined);
-      void prefetchReaderDocumentBlob(resolvedUrl, { scopeId: targetScope });
+      void prefetchReaderDocumentBlob(resolvedUrl, { spaceId: targetScope });
     },
     [isProject, rawProjectId, tabs],
   );
@@ -480,7 +480,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     [handleAnnotate, isToolLocked, activeTool, setActiveTool],
   );
 
-  const { exportAnnotatedPdf } = useExportAnnotatedPdf(scopeId || "user");
+  const { exportAnnotatedPdf } = useExportAnnotatedPdf(spaceId || "user");
 
   const handleExportAnnotatedPdf = useCallback(async () => {
     const currentPaperId = paper?.id || activeTabId;
@@ -549,7 +549,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
     () => ({
       blobUrl: pdfBlobUrl, isLoading: pdfLoading, error: pdfError,
       onRetry: actions.handleRetryPdf,
-      attachmentId: effectiveAttachmentId || undefined, scopeId,
+      attachmentId: effectiveAttachmentId || undefined, spaceId,
       onAddToNote: handleAddToNoteAndExitReadingMode, onAskAi: handleAskAiWithSelection,
       onAnnotate: handleAnnotateWithLock, annotations,
       onDeleteAnnotation: handleDeleteAnnotationProp, onUpdateAnnotation: handleUpdateAnnotationProp,
@@ -559,7 +559,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
       viewMode, fitMode,
     }),
     [
-      pdfBlobUrl, pdfLoading, pdfError, actions.handleRetryPdf, effectiveAttachmentId, scopeId,
+      pdfBlobUrl, pdfLoading, pdfError, actions.handleRetryPdf, effectiveAttachmentId, spaceId,
       handleAddToNoteAndExitReadingMode, handleAskAiWithSelection,
       handleAnnotateWithLock, annotations, handleDeleteAnnotationProp, handleUpdateAnnotationProp,
       fulltext, paper, zoom, handleSetCustomZoom, setFitMode, rotation, themeMode, interactionMode,
@@ -646,7 +646,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
           <Sidebar
             isOpen={isSidebarOpen} onClose={handleCloseSidebar} onToggleOpen={handleToggleSidebar}
             currentPage={visiblePage} totalPages={numPages} onJumpToPage={handleNavigateToPageWithHistory}
-            fulltext={fulltext} paper={paper} scopeId={scopeId} attachmentId={effectiveAttachmentId}
+            fulltext={fulltext} paper={paper} spaceId={spaceId} attachmentId={effectiveAttachmentId}
             pdfBlobUrl={pdfBlobUrl} pdfDocument={sharedPdfDocument} bookmarkedPages={currentPaperBookmarks}
             onToggleBookmarkPage={paper?.id ? handleToggleBookmarkPage : undefined}
             selectedIds={selectedAnnotationIds} onSelectIds={setSelectedAnnotationIds}
@@ -675,7 +675,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
             <PlaneEmptyState variant="document" title="Document not found" description="The document could not be found or you do not have permission." />
           ) : epubOrSnapshotInfo ? (
             <EpubAndSnapshotViewer
-              url={epubOrSnapshotInfo.url} mode={epubOrSnapshotInfo.mode} scopeId={scopeId}
+              url={epubOrSnapshotInfo.url} mode={epubOrSnapshotInfo.mode} spaceId={spaceId}
               title={paper.title} sourceUrl={paper.url ?? undefined} themeMode={themeMode}
               zoom={zoom} activeColor={activeColor} onSelectColor={setActiveColor}
               annotations={annotations} onOutlineLoad={setPdfOutline} targetPage={targetPage}
@@ -743,7 +743,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
                   isLoading={false}
                   error={null}
                   attachmentId={item.attachmentId ?? undefined}
-                  scopeId={item.scopeId}
+                  spaceId={item.spaceId}
                   zoom={standbyTab?.zoom ?? 1}
                   rotation={standbyTab?.rotation ?? 0}
                   themeMode={standbyTab?.theme ?? "normal"}
@@ -758,7 +758,7 @@ export function ReaderPage({ paperId, onBack }: ReaderPageProps = {}) {
         {/* 5. UNIFIED INSPECTOR PANEL */}
         {!isReadingMode && (
           <ReaderInspector
-            item={paper} scopeId={scopeId} canEdit={canEdit}
+            item={paper} spaceId={spaceId} canEdit={canEdit}
             defaultOpen={isGlobalInspectorOpen} hideHeader={true} hideRailToggle={true}
             onClose={handleCloseInspector} onSelectItem={handleSelectItem}
             onNavigateToAnnotation={handleNavigateToPageWithHistory}

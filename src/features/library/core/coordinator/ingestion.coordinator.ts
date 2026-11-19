@@ -75,7 +75,7 @@ export {
 
 function createProvisionalBatchItems(
   files: File[],
-  scopeId: string,
+  spaceId: string,
   collectionId?: string | null,
 ): ProcessingFileItem[] {
   const now = Date.now();
@@ -85,7 +85,7 @@ function createProvisionalBatchItems(
     fileName: file.name,
     fileSize: file.size,
     mimeType: file.type || 'application/pdf',
-    scopeId,
+    spaceId,
     collectionId: collectionId || undefined,
     status: 'UPLOADING',
     progress: 0,
@@ -96,7 +96,7 @@ function createProvisionalBatchItems(
 function initializeBatchModalState(
   store: ProcessModalStoreApi,
   files: File[],
-  scopeId: string,
+  spaceId: string,
   runId: string,
   initialProcessingItems: ProcessingFileItem[],
 ): void {
@@ -108,7 +108,7 @@ function initializeBatchModalState(
   }));
 
   store.initializeBatchRun(runId, title, newProgressItems, {
-    scopeId,
+    spaceId,
     currentTitle: files[0]?.name || title,
     initialProcessingItems,
   });
@@ -118,11 +118,11 @@ function initializeBatchModalState(
 
 async function synchronizeBatchCaches(
   queryClient: InvalidationClient,
-  scopeId: string,
+  spaceId: string,
   effectiveCollection?: string,
 ): Promise<void> {
   await Promise.all([
-    invalidateLibraryCatalogDependencies(queryClient, scopeId, {
+    invalidateLibraryCatalogDependencies(queryClient, spaceId, {
       itemsList: true,
       collections: true,
       tags: true,
@@ -131,13 +131,13 @@ async function synchronizeBatchCaches(
     }),
     queryClient.refetchQueries
       ? queryClient.refetchQueries({
-          queryKey: itemKeys.all(scopeId),
+          queryKey: itemKeys.all(spaceId),
           type: 'active',
         })
       : Promise.resolve(),
     effectiveCollection
       ? queryClient.invalidateQueries({
-          queryKey: itemKeys.byCollection(scopeId, effectiveCollection),
+          queryKey: itemKeys.byCollection(spaceId, effectiveCollection),
         })
       : Promise.resolve(),
   ]);
@@ -160,14 +160,14 @@ export async function executeBatchUpload(
   store: ProcessModalStoreApi,
 ): Promise<void> {
   if (!files || files.length === 0) return;
-  const { scopeId = 'user', collectionId, queryClient, onSuccess } = options;
+  const { spaceId = 'user', collectionId, queryClient, onSuccess } = options;
 
   const batchRunId =
     typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
       ? `batch-${crypto.randomUUID()}`
       : `batch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const initialProcessingItems = createProvisionalBatchItems(files, scopeId, collectionId);
-  initializeBatchModalState(store, files, scopeId, batchRunId, initialProcessingItems);
+  const initialProcessingItems = createProvisionalBatchItems(files, spaceId, collectionId);
+  initializeBatchModalState(store, files, spaceId, batchRunId, initialProcessingItems);
 
   const batchProvisionalIds = new Set(initialProcessingItems.map((p) => p.id));
   const queue = files.map((file, index) => ({
@@ -244,7 +244,7 @@ export async function executeBatchUpload(
 
       const strategy = resolveFileIngestionStrategy(file);
       await strategy.execute(file, {
-        scopeId,
+        spaceId,
         index,
         provisionalId,
         effectiveCollection,
@@ -272,7 +272,7 @@ export async function executeBatchUpload(
     data: bundle,
     execute: (b: typeof bundle, signal: AbortSignal) =>
       executeBundledTextBatch(b, {
-        scopeId,
+        spaceId,
         effectiveCollection,
         store,
         signal,
@@ -327,7 +327,7 @@ export async function executeBatchUpload(
     await Promise.allSettled(backgroundExtractions);
   }
 
-  await synchronizeBatchCaches(queryClient, scopeId, effectiveCollection);
+  await synchronizeBatchCaches(queryClient, spaceId, effectiveCollection);
 
   // Ensure all provisional items for this batch are wiped and modal reflects aggregate status
   store.completeBatchRun(undefined, batchProvisionalIds);
@@ -467,7 +467,7 @@ export function useResumeBatchIngestionPolling(
  */
 async function executeSaveFeedEntryToLibrary<TCreatePayload extends Record<string, unknown>>(params: {
   entry: ParsedFeedEntry;
-  scopeId: string;
+  spaceId: string;
   targetCollectionId?: string;
   createItem: (payload: TCreatePayload) => Promise<unknown>;
   ingestItem?: (
@@ -486,9 +486,9 @@ async function executeSaveFeedEntryToLibrary<TCreatePayload extends Record<strin
         },
   ) => Promise<unknown>;
 }): Promise<void> {
-  const { entry, scopeId, targetCollectionId, createItem, ingestItem } = params;
+  const { entry, spaceId, targetCollectionId, createItem, ingestItem } = params;
   const createPayload = mapFeedEntryToCreateItemPayload(entry, {
-    scopeId,
+    spaceId,
     collectionId: targetCollectionId,
   });
 
@@ -532,7 +532,7 @@ async function executeSaveFeedEntryToLibrary<TCreatePayload extends Record<strin
         initialStatus === 'PARTIAL' ||
         initialStatus === 'DUPLICATE';
       if (runId && !isAlreadyDone) {
-        const outcome = await pollIngestionRunCompletion(scopeId, runId);
+        const outcome = await pollIngestionRunCompletion(spaceId, runId);
         savedViaPipeline =
           outcome.status !== 'FAILED' && outcome.status !== 'BLOCKED';
       } else {
@@ -552,7 +552,7 @@ interface SaveFeedEntryCoordinatorOptions<
   TCreatePayload extends Record<string, unknown> = Record<string, unknown>,
 > {
   entry: ParsedFeedEntry;
-  scopeId: string;
+  spaceId: string;
   targetCollectionId?: string;
   createItem: (payload: TCreatePayload) => Promise<unknown>;
   ingestItem?: Parameters<typeof executeSaveFeedEntryToLibrary>[0]['ingestItem'];
@@ -570,7 +570,7 @@ export async function executeSaveFeedEntryWithFeedback<
   TCreatePayload extends Record<string, unknown> = Record<string, unknown>,
 >({
   entry,
-  scopeId,
+  spaceId,
   targetCollectionId,
   createItem,
   ingestItem,
@@ -583,7 +583,7 @@ export async function executeSaveFeedEntryWithFeedback<
   try {
     await executeSaveFeedEntryToLibrary({
       entry,
-      scopeId,
+      spaceId,
       targetCollectionId,
       createItem,
       ingestItem,

@@ -25,7 +25,7 @@ import type {
 
 interface UseAttachmentCoordinatorParams {
   item: Item;
-  scopeId?: string;
+  spaceId?: string;
   onRegisterAdd?: (trigger: () => void) => void;
 }
 
@@ -38,9 +38,9 @@ type AttachmentLike = Omit<ItemAttachment, 'attachmentType'> & {
 
 const EMPTY_ATTACHMENTS: ItemAttachment[] = [];
 
-function resolveAttachmentUrl(att: AttachmentLike, scopeId?: string): string {
+function resolveAttachmentUrl(att: AttachmentLike, spaceId?: string): string {
   if (att.fileId) {
-    return resolveAttachmentDownloadUrl(att.fileId, scopeId);
+    return resolveAttachmentDownloadUrl(att.fileId, spaceId);
   }
   const raw = getItemFileUrl(
     {
@@ -48,20 +48,20 @@ function resolveAttachmentUrl(att: AttachmentLike, scopeId?: string): string {
       url: att.url,
       fileId: att.fileId,
     },
-    scopeId,
+    spaceId,
   );
   return raw ? resolveAttachmentRawPath(raw) : '';
 }
 
 export function useAttachmentCoordinator({
   item: paper,
-  scopeId,
+  spaceId,
   onRegisterAdd,
 }: UseAttachmentCoordinatorParams) {
   const params = useParams();
   const searchParams = useSearchParams();
   const routeProjectId = typeof params?.projectId === 'string' ? params.projectId : undefined;
-  const rawScopeId = scopeId || paper.projectId || routeProjectId || 'user';
+  const rawSpaceId = spaceId || paper.projectId || routeProjectId || 'user';
 
   const {
     setPrimary,
@@ -69,10 +69,10 @@ export function useAttachmentCoordinator({
     add: addAttachment,
     remove: removeAttachment,
     isDeleting,
-  } = useAttachments(rawScopeId, paper.id || '');
-  const uploadAttachmentMutation = useUploadAttachmentMutation(rawScopeId);
-  const renameAttachmentMutation = useRenameAttachment(rawScopeId);
-  const reResolveMetadataMutation = useReResolveItemMetadataMutation(rawScopeId);
+  } = useAttachments(rawSpaceId, paper.id || '');
+  const uploadAttachmentMutation = useUploadAttachmentMutation(rawSpaceId);
+  const renameAttachmentMutation = useRenameAttachment(rawSpaceId);
+  const reResolveMetadataMutation = useReResolveItemMetadataMutation(rawSpaceId);
 
   const [isUploadingFile, setIsUploadingFile] = useState(false);
   const [isAddingLink, setIsAddingLink] = useState(false);
@@ -106,7 +106,7 @@ export function useAttachmentCoordinator({
   }, [onRegisterAdd]);
 
   const rawAttachments = paper.attachments || EMPTY_ATTACHMENTS;
-  const paperUrl = getItemFileUrl(paper, rawScopeId);
+  const paperUrl = getItemFileUrl(paper, rawSpaceId);
   const paperFilename = paper.filename;
 
   const allAttachments = useMemo<AttachmentLike[]>(() => {
@@ -159,12 +159,12 @@ export function useAttachmentCoordinator({
 
   const activePreviewUrl = useMemo(() => {
     if (activePreviewAttachment) {
-      const resolved = resolveAttachmentUrl(activePreviewAttachment, rawScopeId);
+      const resolved = resolveAttachmentUrl(activePreviewAttachment, rawSpaceId);
       if (resolved) return resolved;
     }
     // Only return paperUrl if paper actually has a direct file attachment / resolved file URL
     return paperUrl || '';
-  }, [activePreviewAttachment, rawScopeId, paperUrl]);
+  }, [activePreviewAttachment, rawSpaceId, paperUrl]);
 
   const handleFileSelect = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -278,14 +278,14 @@ export function useAttachmentCoordinator({
       const projectParam =
         urlParams.get('projectId') ||
         (paper.projectId ? String(paper.projectId) : undefined) ||
-        (rawScopeId && isProjectScope(rawScopeId) ? rawScopeId : undefined);
+        (rawSpaceId && isProjectScope(rawSpaceId) ? rawSpaceId : undefined);
       if (projectParam && !urlParams.has('projectId')) {
         urlParams.set('projectId', projectParam);
       }
       const qs = urlParams.toString();
       openInNewTab(`/library/papers/${paper.id}${qs ? `?${qs}` : ''}`);
     },
-    [paper.id, paper.projectId, rawScopeId, allAttachments.length, searchParams],
+    [paper.id, paper.projectId, rawSpaceId, allAttachments.length, searchParams],
   );
 
   const handleDownload = useCallback((url: string, filename: string) => {
@@ -309,13 +309,13 @@ export function useAttachmentCoordinator({
     async (attachmentId: string) => {
       if (!paper.id || !attachmentId) return;
       const targetAtt = allAttachments.find((att) => att.id === attachmentId);
-      const targetUrl = targetAtt ? resolveAttachmentUrl(targetAtt, rawScopeId) : '';
+      const targetUrl = targetAtt ? resolveAttachmentUrl(targetAtt, rawSpaceId) : '';
       try {
         await removeAttachment({ attachmentId, itemId: paper.id });
         if (targetUrl) {
-          evictWarmObjectUrl(targetUrl, rawScopeId);
+          evictWarmObjectUrl(targetUrl, rawSpaceId);
           evictWarmObjectUrl(targetUrl, undefined);
-          void invalidateReaderDocumentBlob(targetUrl, { scopeId: rawScopeId });
+          void invalidateReaderDocumentBlob(targetUrl, { spaceId: rawSpaceId });
         }
         const readerStore = useReaderStore.getState();
         const openTab = readerStore.tabs.find((t) => t.id === paper.id);
@@ -333,16 +333,16 @@ export function useAttachmentCoordinator({
         // Notification handled inside useAttachments
       }
     },
-    [paper.id, allAttachments, rawScopeId, removeAttachment, selectedAttachmentId],
+    [paper.id, allAttachments, rawSpaceId, removeAttachment, selectedAttachmentId],
   );
 
   const getAttachmentDownloadUrl = useCallback(
-    (att: AttachmentLike) => resolveAttachmentUrl(att, rawScopeId),
-    [rawScopeId],
+    (att: AttachmentLike) => resolveAttachmentUrl(att, rawSpaceId),
+    [rawSpaceId],
   );
 
   return {
-    rawScopeId,
+    rawSpaceId,
     fileInputRef,
     isUploadingFile,
     handleFileSelect,

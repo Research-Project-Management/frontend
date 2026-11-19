@@ -71,23 +71,23 @@ describe('Feeds Enhancements: Read Tracking, Abstract Expand, Direct PDF, Save t
 
     it('maps feed entry to root library when no collectionId is provided', () => {
       const payload = mapFeedEntryToCreateItemPayload(mockFeedEntry, {
-        scopeId: 'user',
+        spaceId: 'user',
       });
 
       expect(payload.title).toBe('The Era of 1-bit LLMs');
-      expect(payload.scopeId).toBe('user');
+      expect(payload.spaceId).toBe('user');
       expect(payload.collectionId).toBeUndefined();
       expect(payload.collectionIds).toEqual([]);
     });
 
     it('maps feed entry with specific target collectionId when selected from dropdown', () => {
       const payload = mapFeedEntryToCreateItemPayload(mockFeedEntry, {
-        scopeId: 'proj-123',
+        spaceId: 'proj-123',
         collectionId: 'col-deep-learning',
       });
 
       expect(payload.title).toBe('The Era of 1-bit LLMs');
-      expect(payload.scopeId).toBe('proj-123');
+      expect(payload.spaceId).toBe('proj-123');
       expect(payload.collectionId).toBe('col-deep-learning');
       expect(payload.collectionIds).toEqual(['col-deep-learning']);
     });

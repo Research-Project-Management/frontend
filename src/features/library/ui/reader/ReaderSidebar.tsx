@@ -160,7 +160,7 @@ interface ReaderSidebarProps {
   onJumpToPage: (page: number, annotationId?: string) => void;
   fulltext?: DocumentFulltext | null;
   paper?: ReaderDocument | null;
-  scopeId?: string;
+  spaceId?: string;
   attachmentId?: string;
   pdfBlobUrl?: string | null;
   pdfDocument?: unknown;
@@ -214,7 +214,7 @@ export function ReaderSidebar({
   onJumpToPage,
   fulltext,
   paper,
-  scopeId,
+  spaceId,
   attachmentId,
   pdfBlobUrl,
   pdfDocument,
@@ -665,7 +665,7 @@ export function ReaderSidebar({
           ) : activeTab === "annotations" ? (
             paper ? (
               <AnnotationsPanel
-                paper={paper} scopeId={scopeId || "user"} attachmentId={attachmentId}
+                paper={paper} spaceId={spaceId || "user"} attachmentId={attachmentId}
                 annotations={annotations} searchQuery={annotationsSearchQuery}
                 onSearchQueryChange={setAnnotationsSearchQuery} typeFilter={annotationsTypeFilter}
                 onTypeFilterChange={setAnnotationsTypeFilter} sortBy={annotationsSortBy}

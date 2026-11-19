@@ -21,7 +21,7 @@ import {
   itemKeys,
   collectionKeys,
   tagKeys,
-  normalizeScopeId,
+  normalizeSpaceId,
 } from '@/features/library/sdk/query-keys';
 import { registerOfflineMutationEnqueuer } from '@/features/library/sdk/queries/reader.queries';
 
@@ -191,7 +191,7 @@ export async function flushOfflineOutbox(
             // Successfully processed: remove from persistent outbox
             await storage.remove(entry.id);
             flushedCount++;
-            touchedScopes.add(normalizeScopeId(entry.scopeId));
+            touchedScopes.add(normalizeSpaceId(entry.spaceId));
 
             const remaining = await storage.count();
             notifyOutboxMutated('FLUSHED', remaining, entry.id);

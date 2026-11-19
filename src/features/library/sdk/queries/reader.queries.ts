@@ -25,7 +25,7 @@ import { uuidv7 } from '@/shared/utils/uuid.util';
 
 export type OfflineMutationEnqueuer = (
   input: {
-    scopeId: string;
+    spaceId: string;
     entityType: string;
     entityId: string;
     action: string;
@@ -59,7 +59,7 @@ import {
   annotationKeys,
   noteKeys,
   relationKeys,
-  normalizeScopeId,
+  normalizeSpaceId,
   prepareBootstrapScope,
   registerBootstrapPromise,
   waitForBootstrapCache,
@@ -202,12 +202,12 @@ function hydrateReaderBootstrapPayload(
 
 export async function prefetchReaderBootstrap(
   queryClient: QueryClient,
-  scopeId: string | undefined,
+  spaceId: string | undefined,
   itemId: string,
   attachmentId?: string,
 ): Promise<void> {
   if (!itemId || itemId === 'library') return;
-  const targetScope = normalizeScopeId(scopeId);
+  const targetScope = normalizeSpaceId(spaceId);
   const bootstrapKey = readerQueryKeys.bootstrap(targetScope, itemId, attachmentId);
   if (queryClient.getQueryData(bootstrapKey) !== undefined) return;
 
@@ -232,13 +232,13 @@ export async function prefetchReaderBootstrap(
 }
 
 export function useReaderBootstrap(
-  scopeId?: string,
+  spaceId?: string,
   itemId?: string,
   attachmentId?: string,
   options?: { enabled?: boolean },
 ) {
   const queryClient = useQueryClient();
-  const targetScope = normalizeScopeId(scopeId);
+  const targetScope = normalizeSpaceId(spaceId);
   const readerGateScope = getReaderBootstrapScope(targetScope);
   const bootstrapKey = readerQueryKeys.bootstrap(targetScope, itemId, attachmentId);
   const isEnabled = Boolean(itemId) && (options?.enabled ?? true);
@@ -278,9 +278,9 @@ export function useReaderBootstrap(
   });
 }
 
-export function useReaderItem(scopeId?: string, itemId?: string) {
+export function useReaderItem(spaceId?: string, itemId?: string) {
   const queryClient = useQueryClient();
-  const targetScope = normalizeScopeId(scopeId);
+  const targetScope = normalizeSpaceId(spaceId);
   const cacheKey = readerQueryKeys.item(targetScope, itemId);
   return useQuery({
     queryKey: cacheKey,
@@ -300,9 +300,9 @@ export function useReaderItem(scopeId?: string, itemId?: string) {
   });
 }
 
-export function useReaderFulltext(scopeId?: string, itemId?: string) {
+export function useReaderFulltext(spaceId?: string, itemId?: string) {
   const queryClient = useQueryClient();
-  const targetScope = normalizeScopeId(scopeId);
+  const targetScope = normalizeSpaceId(spaceId);
   const cacheKey = readerQueryKeys.fulltext(targetScope, itemId);
   return useQuery({
     queryKey: cacheKey,
@@ -322,9 +322,9 @@ export function useReaderFulltext(scopeId?: string, itemId?: string) {
 
 // ── 2. Annotations Queries & Mutations ───────────────────────────────────────
 
-export function useAnnotations(scopeId?: string, attachmentId?: string) {
+export function useAnnotations(spaceId?: string, attachmentId?: string) {
   const queryClient = useQueryClient();
-  const targetScope = normalizeScopeId(scopeId);
+  const targetScope = normalizeSpaceId(spaceId);
   const cacheKey = annotationKeys.byAttachment(targetScope, attachmentId);
 
   useEffect(() => {
@@ -356,11 +356,11 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
         const url = resolveLibraryUrl(
           'reader',
           `/attachments/${encodeURIComponent(attachmentId)}/annotations`,
-          scopeId,
+          spaceId,
         );
         await offlineMutationEnqueuer?.(
           {
-            scopeId: targetScope,
+            spaceId: targetScope,
             entityType: 'annotation',
             entityId: id,
             action: 'CREATE',
@@ -389,12 +389,12 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
         } as ReaderAnnotation;
       }
 
-      return AnnotationsService.create(scopeId, attachmentId, { ...dto, id });
+      return AnnotationsService.create(spaceId, attachmentId, { ...dto, id });
     },
     onMutate: async (dto: CreateAnnotationDTO) => {
       if (!attachmentId) return undefined;
       const id = dto.id || uuidv7();
-      const queryKey = annotationKeys.byAttachment(scopeId, attachmentId);
+      const queryKey = annotationKeys.byAttachment(spaceId, attachmentId);
       await queryClient.cancelQueries({ queryKey });
       const previousAnnotations = queryClient.getQueryData<ReaderAnnotation[]>(queryKey);
       const firstRect = dto.rects?.[0];
@@ -430,7 +430,7 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
     onSuccess: (created, _variables, context) => {
       const optimisticId = context?.optimisticId;
       if (attachmentId) {
-        const queryKey = annotationKeys.byAttachment(scopeId, attachmentId);
+        const queryKey = annotationKeys.byAttachment(spaceId, attachmentId);
         queryClient.setQueryData<ReaderAnnotation[]>(queryKey, (old = []) => {
           if (!created) return old;
           const targetId = optimisticId || created.id;
@@ -454,18 +454,18 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
           return [...old, created];
         });
         queryClient.invalidateQueries({
-          queryKey: annotationKeys.byAttachment(scopeId, attachmentId),
+          queryKey: annotationKeys.byAttachment(spaceId, attachmentId),
         });
         multiTabBus.publish({
           type: 'READER_ANNOTATIONS_CHANGED',
-          scopeId: targetScope,
+          spaceId: targetScope,
           attachmentId,
         });
       }
     },
     onError: (err: unknown, _variables, context) => {
       if (attachmentId) {
-        const queryKey = annotationKeys.byAttachment(scopeId, attachmentId);
+        const queryKey = annotationKeys.byAttachment(spaceId, attachmentId);
         if (context?.optimisticId) {
           queryClient.setQueryData<ReaderAnnotation[]>(queryKey, (old = []) =>
             old.filter((a) => a.id !== context.optimisticId),
@@ -497,11 +497,11 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
         const url = resolveLibraryUrl(
           'reader',
           `/attachments/${encodeURIComponent(attachmentId)}/annotations/${encodeURIComponent(annotationId)}`,
-          scopeId,
+          spaceId,
         );
         await offlineMutationEnqueuer?.(
           {
-            scopeId: targetScope,
+            spaceId: targetScope,
             entityType: 'annotation',
             entityId: annotationId,
             action: 'UPDATE',
@@ -521,7 +521,7 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
       }
 
       return AnnotationsService.update(
-        scopeId,
+        spaceId,
         attachmentId,
         annotationId,
         expectedVersion,
@@ -530,7 +530,7 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
     },
     onMutate: async (variables) => {
       if (!attachmentId) return { previousAnnotations: undefined };
-      const queryKey = annotationKeys.byAttachment(scopeId, attachmentId);
+      const queryKey = annotationKeys.byAttachment(spaceId, attachmentId);
       await queryClient.cancelQueries({ queryKey });
       const previousAnnotations = queryClient.getQueryData<ReaderAnnotation[]>(queryKey);
       if (previousAnnotations) {
@@ -545,7 +545,7 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
     },
     onSuccess: (updatedAnnotation, variables) => {
       if (attachmentId) {
-        const queryKey = annotationKeys.byAttachment(scopeId, attachmentId);
+        const queryKey = annotationKeys.byAttachment(spaceId, attachmentId);
         queryClient.setQueryData<ReaderAnnotation[]>(queryKey, (old) => {
           if (!old) return old;
           return old.map((a) =>
@@ -556,12 +556,12 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
         });
       }
       queryClient.invalidateQueries({
-        queryKey: annotationKeys.byAttachment(scopeId, attachmentId),
+        queryKey: annotationKeys.byAttachment(spaceId, attachmentId),
       });
       if (attachmentId) {
         multiTabBus.publish({
           type: 'READER_ANNOTATIONS_CHANGED',
-          scopeId: targetScope,
+          spaceId: targetScope,
           attachmentId,
         });
       }
@@ -569,7 +569,7 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
     onError: (err: unknown, _variables, context) => {
       if (attachmentId && context?.previousAnnotations) {
         queryClient.setQueryData(
-          annotationKeys.byAttachment(scopeId, attachmentId),
+          annotationKeys.byAttachment(spaceId, attachmentId),
           context.previousAnnotations,
         );
       }
@@ -594,11 +594,11 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
         const url = resolveLibraryUrl(
           'reader',
           `/attachments/${encodeURIComponent(attachmentId)}/annotations/${encodeURIComponent(annotationId)}`,
-          scopeId,
+          spaceId,
         );
         await offlineMutationEnqueuer?.(
           {
-            scopeId: targetScope,
+            spaceId: targetScope,
             entityType: 'annotation',
             entityId: annotationId,
             action: 'DELETE',
@@ -613,7 +613,7 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
       }
 
       return AnnotationsService.delete(
-        scopeId,
+        spaceId,
         attachmentId,
         annotationId,
         expectedVersion,
@@ -621,7 +621,7 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
     },
     onMutate: async ({ annotationId }) => {
       if (!attachmentId) return { previousAnnotations: undefined };
-      const queryKey = annotationKeys.byAttachment(scopeId, attachmentId);
+      const queryKey = annotationKeys.byAttachment(spaceId, attachmentId);
       await queryClient.cancelQueries({ queryKey });
       const previousAnnotations =
         queryClient.getQueryData<ReaderAnnotation[]>(queryKey);
@@ -635,12 +635,12 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: annotationKeys.byAttachment(scopeId, attachmentId),
+        queryKey: annotationKeys.byAttachment(spaceId, attachmentId),
       });
       if (attachmentId) {
         multiTabBus.publish({
           type: 'READER_ANNOTATIONS_CHANGED',
-          scopeId: targetScope,
+          spaceId: targetScope,
           attachmentId,
         });
       }
@@ -649,7 +649,7 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
     onError: (err: unknown, _variables, context) => {
       if (attachmentId && context?.previousAnnotations !== undefined) {
         queryClient.setQueryData(
-          annotationKeys.byAttachment(scopeId, attachmentId),
+          annotationKeys.byAttachment(spaceId, attachmentId),
           context.previousAnnotations,
         );
       }
@@ -671,21 +671,21 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
     ) => {
       const paperId = typeof params === 'string' ? params : params.paperId;
       const options = typeof params === 'string' ? undefined : params.options;
-      return NotesService.extractFromAnnotations(scopeId, paperId, options);
+      return NotesService.extractFromAnnotations(spaceId, paperId, options);
     },
     onSuccess: (res, params) => {
       const paperId = typeof params === 'string' ? params : params.paperId;
       if (paperId) {
-        queryClient.invalidateQueries({ queryKey: noteKeys.list(scopeId, paperId) });
-        queryClient.invalidateQueries({ queryKey: itemKeys.byId(scopeId, paperId) });
-        queryClient.invalidateQueries({ queryKey: readerQueryKeys.item(scopeId, paperId) });
-        invalidateLibraryCatalogDependencies(queryClient, normalizeScopeId(scopeId), {
+        queryClient.invalidateQueries({ queryKey: noteKeys.list(spaceId, paperId) });
+        queryClient.invalidateQueries({ queryKey: itemKeys.byId(spaceId, paperId) });
+        queryClient.invalidateQueries({ queryKey: readerQueryKeys.item(spaceId, paperId) });
+        invalidateLibraryCatalogDependencies(queryClient, normalizeSpaceId(spaceId), {
           itemId: paperId,
           itemsList: true,
           counts: true,
         });
       } else {
-        queryClient.invalidateQueries({ queryKey: noteKeys.all(scopeId) });
+        queryClient.invalidateQueries({ queryKey: noteKeys.all(spaceId) });
       }
       const addedCount =
         (res as { addedCount?: number } | undefined)?.addedCount ?? res?.totalExtracted;
@@ -716,16 +716,16 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
   const importExternalMutation = useMutation({
     mutationFn: () => {
       if (!attachmentId) throw new Error('Attachment ID required to import annotations.');
-      return AnnotationsService.importExternal(scopeId, attachmentId);
+      return AnnotationsService.importExternal(spaceId, attachmentId);
     },
     onSuccess: (res) => {
       queryClient.invalidateQueries({
-        queryKey: annotationKeys.byAttachment(scopeId, attachmentId),
+        queryKey: annotationKeys.byAttachment(spaceId, attachmentId),
       });
       if (attachmentId) {
         multiTabBus.publish({
           type: 'READER_ANNOTATIONS_CHANGED',
-          scopeId: targetScope,
+          spaceId: targetScope,
           attachmentId,
         });
       }
@@ -797,8 +797,8 @@ export function useAnnotations(scopeId?: string, attachmentId?: string) {
 
 // ── 3. PDF & OCR Action Hooks (Centralized Toasts) ───────────────────────────
 
-export function useExportAnnotatedPdf(scopeId?: string) {
-  const downloadMutation = useDownloadAnnotatedPdfMutation(scopeId);
+export function useExportAnnotatedPdf(spaceId?: string) {
+  const downloadMutation = useDownloadAnnotatedPdfMutation(spaceId);
 
   return {
     exportAnnotatedPdf: async (itemId: string, filename?: string, attachmentId?: string) => {
@@ -828,14 +828,14 @@ export function useExportAnnotatedPdf(scopeId?: string) {
 // ── 4. Annotation Batch & Undo/Redo History Transport (SDK Layer) ────────────
 
 export async function executeExtractAnnotationNotes(
-  scopeId: string,
+  spaceId: string,
   paperId: string,
   options?: Parameters<typeof AnnotationsService.extractNotes>[2],
   queryClient?: ReturnType<typeof useQueryClient>,
 ): Promise<unknown> {
-  const res = await AnnotationsService.extractNotes(scopeId, paperId, options);
+  const res = await AnnotationsService.extractNotes(spaceId, paperId, options);
   if (queryClient && paperId) {
-    const effectiveScope = normalizeScopeId(scopeId);
+    const effectiveScope = normalizeSpaceId(spaceId);
     void queryClient.invalidateQueries({ queryKey: noteKeys.list(effectiveScope, paperId) });
     void queryClient.invalidateQueries({ queryKey: itemKeys.byId(effectiveScope, paperId) });
   }

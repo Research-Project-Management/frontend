@@ -137,8 +137,8 @@ interface ExecuteDuplicateMergeWithCommandOptions {
   masterPaper: Item;
   mergedFields: Record<string, unknown>;
   duplicateIdsToDelete: string[];
-  effectiveScopeId: string;
-  resolveCachedItem: (itemId: string, scopeId?: string) => Item | null | undefined;
+  effectiveSpaceId: string;
+  resolveCachedItem: (itemId: string, spaceId?: string) => Item | null | undefined;
   executeCommand: ReturnType<typeof useLibraryCommandStore.getState>['executeCommand'];
   mergeMutation: {
     mutateAsync: (payload: {
@@ -158,14 +158,14 @@ interface ExecuteDuplicateMergeWithCommandOptions {
       silent?: boolean;
     }) => Promise<unknown>;
   };
-  invalidateScopeItemsAndCounts: (scopeId?: string) => Promise<void> | void;
+  invalidateScopeItemsAndCounts: (spaceId?: string) => Promise<void> | void;
 }
 
 export async function executeDuplicateMergeWithCommand({
   masterPaper,
   mergedFields,
   duplicateIdsToDelete,
-  effectiveScopeId,
+  effectiveSpaceId,
   resolveCachedItem,
   executeCommand,
   mergeMutation,
@@ -173,7 +173,7 @@ export async function executeDuplicateMergeWithCommand({
   updateItemMutation,
   invalidateScopeItemsAndCounts,
 }: ExecuteDuplicateMergeWithCommandOptions): Promise<void> {
-  const cachedPrimary = resolveCachedItem(masterPaper.id, effectiveScopeId);
+  const cachedPrimary = resolveCachedItem(masterPaper.id, effectiveSpaceId);
   const snapshotPrimary: Item = cachedPrimary
     ? { ...masterPaper, ...cachedPrimary }
     : masterPaper;
@@ -190,7 +190,7 @@ export async function executeDuplicateMergeWithCommand({
           updateItemMutation.mutateAsync({ itemId, data, silent }),
       },
       onUndone: () => {
-        void invalidateScopeItemsAndCounts(effectiveScopeId);
+        void invalidateScopeItemsAndCounts(effectiveSpaceId);
       },
     }),
     { silentToast: true },

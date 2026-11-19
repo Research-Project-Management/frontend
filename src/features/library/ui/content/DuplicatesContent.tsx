@@ -139,7 +139,7 @@ function getDeterministicGroupKey(group: DuplicateGroup): string {
 }
 
 interface DuplicatesContentProps {
-  scopeId?: string;
+  spaceId?: string;
   canEdit?: boolean;
   onMergeGroup?: (group: DuplicateGroup, groupKey: string) => Promise<void> | void;
   onDismissGroup?: (groupKey: string) => Promise<void> | void;
@@ -152,7 +152,7 @@ interface DuplicatesContentProps {
 }
 
 export function DuplicatesContent({
-  scopeId = 'user',
+  spaceId = 'user',
   canEdit = true,
   onMergeGroup,
   onDismissGroup,
@@ -163,12 +163,12 @@ export function DuplicatesContent({
   const openModal = useLibraryUIStore((s) => s.openModal);
 
   // Curation Queries
-  const { data, isLoading, isError, error } = useDuplicateGroups(scopeId);
-  const dismissMutation = useDismissDuplicatesMutation(scopeId);
-  const mergeMutation = useMergeDuplicates(scopeId);
-  const batchMergeMutation = useBatchMergeDuplicates(scopeId);
-  const restoreMutation = useBatchRestoreItemsMutation(scopeId);
-  const updateItemMutation = useUpdateLibraryItemMutation(scopeId);
+  const { data, isLoading, isError, error } = useDuplicateGroups(spaceId);
+  const dismissMutation = useDismissDuplicatesMutation(spaceId);
+  const mergeMutation = useMergeDuplicates(spaceId);
+  const batchMergeMutation = useBatchMergeDuplicates(spaceId);
+  const restoreMutation = useBatchRestoreItemsMutation(spaceId);
+  const updateItemMutation = useUpdateLibraryItemMutation(spaceId);
   const executeCommand = useLibraryCommandStore((s) => s.executeCommand);
 
   // Local state
@@ -234,7 +234,7 @@ export function DuplicatesContent({
 
   React.useEffect(() => {
     clearGroupMergeDraft();
-  }, [scopeId]);
+  }, [spaceId]);
 
   const handleDismissGroup = React.useCallback(
     async (groupKey: string) => {
@@ -700,7 +700,7 @@ export function DuplicatesContent({
                           setSelectedGroupKey(groupKey);
                           setActiveItem(item.id);
                         }}
-                        onDoubleClick={() => openInNewTab(buildReaderPaperUrl(item.id, { projectId: item.projectId ? String(item.projectId) : scopeId }))}
+                        onDoubleClick={() => openInNewTab(buildReaderPaperUrl(item.id, { projectId: item.projectId ? String(item.projectId) : spaceId }))}
                         className={cn(
                           'flex items-center justify-between gap-4 px-5 py-3 cursor-pointer transition-colors text-13',
                           isSelected
@@ -740,7 +740,7 @@ export function DuplicatesContent({
                                 size="icon"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  openInNewTab(buildReaderPaperUrl(item.id, { projectId: item.projectId ? String(item.projectId) : scopeId }));
+                                  openInNewTab(buildReaderPaperUrl(item.id, { projectId: item.projectId ? String(item.projectId) : spaceId }));
                                 }}
                                 className="size-7 text-foreground hover:bg-muted cursor-pointer"
                                 aria-label="Open in Reader"

@@ -64,7 +64,7 @@ function isSafeBrowserUrl(rawUrl?: string | null): boolean {
 
 interface AttachmentsSectionProps {
   item: Item;
-  scopeId?: string;
+  spaceId?: string;
   hideHeader?: boolean;
   hidePdfPreview?: boolean;
   canEdit?: boolean;
@@ -76,7 +76,7 @@ interface AttachmentsSectionProps {
 export default function AttachmentsSection(props: AttachmentsSectionProps) {
   const {
     item: paper,
-    scopeId,
+    spaceId,
     hideHeader = false,
     hidePdfPreview = false,
     canEdit = true,
@@ -85,7 +85,7 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
     onRegisterFindOaPdf,
   } = props;
   const {
-    rawScopeId,
+    rawSpaceId,
     fileInputRef,
     isUploadingFile,
     handleFileSelect,
@@ -114,7 +114,7 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
     reResolveMetadataMutation,
   } = useAttachmentCoordinator({
     item: paper,
-    scopeId,
+    spaceId,
     onRegisterAdd,
   });
 
@@ -274,7 +274,7 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
           <PdfPagePreview
             paper={paper}
             paperUrl={activePreviewUrl}
-            scopeId={rawScopeId}
+            spaceId={rawSpaceId}
             previewTitle={
               activePreviewAttachment?.title ||
               activePreviewAttachment?.filename ||
@@ -483,7 +483,7 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
                       </DropdownMenuItem>
                     )}
                     {canEdit &&
-                      rawScopeId &&
+                      rawSpaceId &&
                       att.id &&
                       !isPrimary &&
                       !isSnapshot &&
@@ -497,7 +497,7 @@ export default function AttachmentsSection(props: AttachmentsSectionProps) {
                           <span>Set as Primary Document</span>
                         </DropdownMenuItem>
                       )}
-                    {canEdit && rawScopeId && att.id && !isLink && (
+                    {canEdit && rawSpaceId && att.id && !isLink && (
                       <DropdownMenuItem
                         onClick={() =>
                           renameAttachmentMutation.mutate({

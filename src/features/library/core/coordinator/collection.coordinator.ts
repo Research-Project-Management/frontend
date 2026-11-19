@@ -32,7 +32,7 @@ export const DEFAULT_COLLECTION_COLOR = '#2563eb';
 
 interface UseCollectionCoordinatorParams {
   collectionService: ReturnType<typeof useCollections>;
-  effectiveScopeId: string;
+  effectiveSpaceId: string;
   collections: Collection[];
   allCollectionsByScope?: {
     user: Collection[];
@@ -55,7 +55,7 @@ interface UseCollectionCoordinatorParams {
  */
 export function useCollectionCoordinator({
   collectionService,
-  effectiveScopeId,
+  effectiveSpaceId,
   collections,
   allCollectionsByScope,
   activeCollectionId: propActiveCollectionId,
@@ -75,25 +75,25 @@ export function useCollectionCoordinator({
   const [renameValue, setRenameValue] = useState('');
 
   const findCollectionAndScope = useCallback(
-    (collectionId: string): { collection?: Collection; scopeId: string } => {
+    (collectionId: string): { collection?: Collection; spaceId: string } => {
       if (allCollectionsByScope) {
         const inUser = allCollectionsByScope.user.find((c) => c.id === collectionId);
-        if (inUser) return { collection: inUser, scopeId: 'user' };
+        if (inUser) return { collection: inUser, spaceId: 'user' };
         const inProj = allCollectionsByScope.project.find((c) => c.id === collectionId);
         if (inProj) {
           return {
             collection: inProj,
-            scopeId: inProj.projectId || allCollectionsByScope.projectId || effectiveScopeId,
+            spaceId: inProj.projectId || allCollectionsByScope.projectId || effectiveSpaceId,
           };
         }
       }
       const found = collections.find((c) => c.id === collectionId);
       return {
         collection: found,
-        scopeId: found?.projectId || effectiveScopeId,
+        spaceId: found?.projectId || effectiveSpaceId,
       };
     },
-    [allCollectionsByScope, collections, effectiveScopeId],
+    [allCollectionsByScope, collections, effectiveSpaceId],
   );
 
   const openModal = useLibraryUIStore((s) => s.openModal);
@@ -101,21 +101,21 @@ export function useCollectionCoordinator({
   const isInProjectContext = activeSpace.type === 'project' && Boolean(activeSpace.projectId);
 
   const openCreateModalForScope = useCallback(
-    (targetScopeId: string, defaultParentId: string | null) => {
+    (targetSpaceId: string, defaultParentId: string | null) => {
       const scopedCollections =
-        targetScopeId === 'user'
+        targetSpaceId === 'user'
           ? (allCollectionsByScope?.user ?? collections)
-          : targetScopeId && targetScopeId !== 'user'
+          : targetSpaceId && targetSpaceId !== 'user'
             ? (allCollectionsByScope?.project ?? collections)
             : collections;
       const rootLabel =
-        targetScopeId === 'user'
+        targetSpaceId === 'user'
           ? 'My Library'
           : isInProjectContext
             ? (activeSpace.projectName || 'Project')
             : 'My Library';
       const rootType: 'user' | 'project' =
-        targetScopeId === 'user'
+        targetSpaceId === 'user'
           ? 'user'
           : isInProjectContext
             ? 'project'
@@ -130,8 +130,8 @@ export function useCollectionCoordinator({
           const rawParent = data.parentId ?? defaultParentId ?? null;
           const cleanParentId = rawParent === 'root' || !rawParent ? null : rawParent;
           const resolvedScope =
-            targetScopeId ||
-            (cleanParentId ? findCollectionAndScope(cleanParentId).scopeId : effectiveScopeId);
+            targetSpaceId ||
+            (cleanParentId ? findCollectionAndScope(cleanParentId).spaceId : effectiveSpaceId);
           await new Promise<void>((resolve, reject) => {
             collectionService.createCollection(
               {
@@ -140,7 +140,7 @@ export function useCollectionCoordinator({
                 color: data.color || DEFAULT_COLLECTION_COLOR,
                 icon: data.icon || '',
                 parentId: cleanParentId,
-                scopeId: resolvedScope,
+                spaceId: resolvedScope,
               },
               {
                 onSuccess: () => {
@@ -159,7 +159,7 @@ export function useCollectionCoordinator({
       allCollectionsByScope,
       collectionService,
       collections,
-      effectiveScopeId,
+      effectiveSpaceId,
       findCollectionAndScope,
       openModal,
     ],
@@ -167,15 +167,15 @@ export function useCollectionCoordinator({
 
   const openCreateSub = useCallback(
     (parentId: string) => {
-      const { scopeId } = findCollectionAndScope(parentId);
-      openCreateModalForScope(scopeId, parentId);
+      const { spaceId } = findCollectionAndScope(parentId);
+      openCreateModalForScope(spaceId, parentId);
     },
     [findCollectionAndScope, openCreateModalForScope],
   );
 
   const openCreateRoot = useCallback(() => {
-    openCreateModalForScope(effectiveScopeId, null);
-  }, [effectiveScopeId, openCreateModalForScope]);
+    openCreateModalForScope(effectiveSpaceId, null);
+  }, [effectiveSpaceId, openCreateModalForScope]);
 
   const startRename = useCallback((collectionId: string, name: string) => {
     setRenamingId(collectionId);
@@ -187,11 +187,11 @@ export function useCollectionCoordinator({
       if (collectionId !== '__cancel__') {
         const trimmed = renameValue.trim();
         if (trimmed) {
-          const { scopeId } = findCollectionAndScope(collectionId);
+          const { spaceId } = findCollectionAndScope(collectionId);
           collectionService.updateCollection({
             collectionId,
             name: trimmed,
-            scopeId,
+            spaceId,
           });
         }
       }
@@ -203,7 +203,7 @@ export function useCollectionCoordinator({
 
   const openDeleteCollectionModal = useCallback(
     (collectionId: string, withItems: boolean) => {
-      const { collection: target, scopeId } = findCollectionAndScope(collectionId);
+      const { collection: target, spaceId } = findCollectionAndScope(collectionId);
       const collectionTitle = target?.name || 'Untitled Collection';
 
       openModal('DELETE_CONFIRM', {
@@ -216,7 +216,7 @@ export function useCollectionCoordinator({
           await collectionService.deleteCollection({
             collectionId,
             strategy: withItems ? 'cascade' : 'orphan',
-            scopeId: scopeId || effectiveScopeId,
+            spaceId: spaceId || effectiveSpaceId,
           });
           if (resolvedActiveCollectionId === collectionId) {
             setActiveCollectionId(null);
@@ -231,7 +231,7 @@ export function useCollectionCoordinator({
     },
     [
       collectionService,
-      effectiveScopeId,
+      effectiveSpaceId,
       findCollectionAndScope,
       onNavigate,
       openModal,
@@ -265,11 +265,11 @@ export function useCollectionCoordinator({
         toast.error('Cannot move collection into itself or its descendants');
         return;
       }
-      const { scopeId } = findCollectionAndScope(collectionId);
+      const { spaceId } = findCollectionAndScope(collectionId);
       collectionService.updateCollection({
         collectionId,
         parentId: newParentId,
-        scopeId,
+        spaceId,
       });
     },
     [allCollectionsByScope, collectionService, collections, findCollectionAndScope],
@@ -277,15 +277,15 @@ export function useCollectionCoordinator({
 
   const handleCopy = useCallback(
     async (collectionId: string, targetParentId: string | null) => {
-      const { collection: target, scopeId } = findCollectionAndScope(collectionId);
+      const { collection: target, spaceId } = findCollectionAndScope(collectionId);
       if (!target) return;
 
       const toastId = toast.loading(`Copying "${target.name}"...`, { id: 'collection-copy' });
       try {
-        await copyLibraryCollection(scopeId, collectionId, {
+        await copyLibraryCollection(spaceId, collectionId, {
           parentId: targetParentId,
         });
-        invalidateCollections(queryClient, scopeId);
+        invalidateCollections(queryClient, spaceId);
         toast.success(`Successfully copied "${target.name}"`, { id: toastId });
       } catch (err: unknown) {
         toast.error('Failed to copy collection', {
@@ -299,13 +299,13 @@ export function useCollectionCoordinator({
 
   const handleExportBibtex = useCallback(
     async (collectionId: string, name: string) => {
-      const { scopeId } = findCollectionAndScope(collectionId);
+      const { spaceId } = findCollectionAndScope(collectionId);
       const toastId = toast.loading(`Exporting BibTeX for "${name}"...`, {
         id: 'collection-export',
       });
       try {
         const res = await exportCollectionBibtex(
-          scopeId,
+          spaceId,
           collectionId,
         );
         const bibtex = res?.bibtex;
@@ -337,13 +337,13 @@ export function useCollectionCoordinator({
 
   const handleExportBundle = useCallback(
     async (collectionId: string, name: string) => {
-      const { scopeId } = findCollectionAndScope(collectionId);
+      const { spaceId } = findCollectionAndScope(collectionId);
       const toastId = toast.loading(`Preparing bundle for "${name}"...`, {
         id: 'bundle-export',
       });
       try {
         const data = await exportCollectionBundle(
-          scopeId,
+          spaceId,
           collectionId,
         );
         if (!data) {

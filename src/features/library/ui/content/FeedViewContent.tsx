@@ -45,22 +45,22 @@ export { FeedSubNavigationBar, FeedArticleRow };
 
 interface FeedViewContentProps {
   feedId?: string | null;
-  scopeId?: string;
+  spaceId?: string;
   canEdit?: boolean;
   onMarkAllRead?: (entryIds: string[]) => void;
 }
 
 export function FeedViewContent({
   feedId,
-  scopeId = 'user',
+  spaceId = 'user',
   canEdit = true,
 }: FeedViewContentProps) {
   const searchParams = useSearchParams();
   const ephemeralSearch = useLibraryUIStore((s) => s.ephemeralFilters.q);
   const searchQuery = ((ephemeralSearch ?? searchParams.get('q')) || '').trim();
-  const { mutateAsync: createItem } = useCreateLibraryItemMutation(scopeId);
-  const { mutateAsync: ingestItem } = useIngestMutation(scopeId);
-  const { collections } = useCollections(scopeId);
+  const { mutateAsync: createItem } = useCreateLibraryItemMutation(spaceId);
+  const { mutateAsync: ingestItem } = useIngestMutation(spaceId);
+  const { collections } = useCollections(spaceId);
   const collectionList = useMemo<Collection[]>(
     () => (collections as Collection[]) ?? [],
     [collections],
@@ -103,7 +103,7 @@ export function FeedViewContent({
     error: refreshError,
   } = useFetchFeed();
   const feedArticlesQuery = useFeedArticlesQuery(
-    scopeId,
+    spaceId,
     activeFeed?.url,
     {
       enabled: Boolean(activeFeed?.url),
@@ -248,7 +248,7 @@ export function FeedViewContent({
     async (entry: ParsedFeedEntry, targetCollectionId?: string) => {
       await executeSaveFeedEntryWithFeedback({
         entry,
-        scopeId,
+        spaceId,
         targetCollectionId,
         createItem,
         ingestItem,
@@ -264,7 +264,7 @@ export function FeedViewContent({
       ingestItem,
       markEntryAsRead,
       markEntrySaved,
-      scopeId,
+      spaceId,
       setEntrySaving,
     ],
   );

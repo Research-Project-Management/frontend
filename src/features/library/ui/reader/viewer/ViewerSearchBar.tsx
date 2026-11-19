@@ -31,7 +31,7 @@ interface UseViewerSearchOptions {
   isSearchOpen: boolean;
   initialSearchQuery?: string;
   attachmentId?: string;
-  scopeId?: string;
+  spaceId?: string;
   fulltext?: DocumentFulltext | null;
   numPages: number;
   pageRefs: React.MutableRefObject<Map<number, HTMLDivElement>>;
@@ -43,7 +43,7 @@ export function useViewerSearch({
   isSearchOpen,
   initialSearchQuery,
   attachmentId,
-  scopeId,
+  spaceId,
   fulltext,
   numPages,
   pageRefs,
@@ -62,7 +62,7 @@ export function useViewerSearch({
   const serverAnchorMatches = useViewerSearchAnchors(
     attachmentId,
     debouncedSearchQuery,
-    scopeId,
+    spaceId,
   );
   const searchInputRef = useRef<HTMLInputElement>(null);
   const extractedForDocRef = useRef<PdfSearchDocumentProxy | null>(null);

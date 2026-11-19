@@ -24,9 +24,9 @@ import {
 
 // 7. RelationsService
 export const RelationsService = {
-  getRelated: (scopeId: string | undefined, itemId: string) =>
+  getRelated: (spaceId: string | undefined, itemId: string) =>
     libraryClient.get<{ relatedItems?: RelatedItem[]; total?: number }>(
-      getCatalogUrl(scopeId, `${encodeURIComponent(itemId)}/relations`),
+      getCatalogUrl(spaceId, `${encodeURIComponent(itemId)}/relations`),
     ).then((res) => {
       const items = (res?.relatedItems ?? []).map((rel) => ({
         ...rel,
@@ -38,11 +38,11 @@ export const RelationsService = {
       };
     }),
 
-  list: (scopeId: string | undefined, itemId: string) =>
-    RelationsService.getRelated(scopeId, itemId).then((r) => r.relatedItems),
+  list: (spaceId: string | undefined, itemId: string) =>
+    RelationsService.getRelated(spaceId, itemId).then((r) => r.relatedItems),
 
   link: (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     itemId: string,
     targetItemId: string | string[],
     relationType: string = 'related',
@@ -52,14 +52,14 @@ export const RelationsService = {
       ? { targetItemIds: targetItemId, relationType: normalizedRelationType }
       : { targetItemId, relationType: normalizedRelationType };
     return libraryClient.post<{ message: string; relationType?: string; totalLinked?: number }>(
-      getCatalogUrl(scopeId, `${encodeURIComponent(itemId)}/relations`),
+      getCatalogUrl(spaceId, `${encodeURIComponent(itemId)}/relations`),
       payload,
     );
   },
 
-  unlink: (scopeId: string | undefined, itemId: string, targetItemId: string, _relationType?: string) =>
+  unlink: (spaceId: string | undefined, itemId: string, targetItemId: string, _relationType?: string) =>
     libraryClient.delete<{ message: string }>(
-      getCatalogUrl(scopeId, `${encodeURIComponent(itemId)}/relations/${encodeURIComponent(targetItemId)}`),
+      getCatalogUrl(spaceId, `${encodeURIComponent(itemId)}/relations/${encodeURIComponent(targetItemId)}`),
     ),
 };
 
@@ -68,7 +68,7 @@ export type { ItemTypesResponse, ReaderBootstrapResponse };
 
 interface LibraryBootstrapResponse {
   scope: 'user' | 'project';
-  scopeId: string;
+  spaceId: string;
   counts?: {
     total: number;
     unfiled: number;
@@ -90,7 +90,7 @@ interface LibraryBootstrapResponse {
   syncVersion?: {
     version: string;
     scope: 'user' | 'project';
-    scopeId: string;
+    spaceId: string;
   };
   itemTypes?: Record<string, unknown>;
   feedSubscriptions?: import('./curation.client').FeedSubscriptionResponse[];
@@ -102,19 +102,19 @@ interface LibraryBootstrapResponse {
 // 1. ItemsService
 export const ItemsService = {
   getReaderBootstrap: (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     itemId: string,
     attachmentId?: string,
     options?: { signal?: AbortSignal },
   ) =>
     libraryClient
       .get<ReaderBootstrapResponse>(
-        getCatalogUrl(scopeId || 'user', `${encodeURIComponent(itemId)}/reader-bootstrap`),
+        getCatalogUrl(spaceId || 'user', `${encodeURIComponent(itemId)}/reader-bootstrap`),
         {
           ...(attachmentId ? { params: { attachmentId } } : {}),
           signal: options?.signal,
         },
-        scopeId,
+        spaceId,
       )
       .then((res) => {
         if (!res || typeof res !== 'object') return res;
@@ -136,7 +136,7 @@ export const ItemsService = {
       }),
 
   getBootstrap: (
-    scopeId?: string,
+    spaceId?: string,
     params?: ItemQueryParams & { includeItems?: boolean },
     options?: { signal?: AbortSignal },
   ) => {
@@ -160,12 +160,12 @@ export const ItemsService = {
       : undefined;
     return libraryClient
       .get<LibraryBootstrapResponse>(
-        resolveLibraryUrl('catalog', '/bootstrap', scopeId),
+        resolveLibraryUrl('catalog', '/bootstrap', spaceId),
         {
           params: formattedParams,
           signal: options?.signal,
         },
-        scopeId,
+        spaceId,
       )
       .then((res) => {
         if (!res || typeof res !== 'object') return res;
@@ -187,7 +187,7 @@ export const ItemsService = {
     );
   },
 
-  getCounts: (scopeId?: string) =>
+  getCounts: (spaceId?: string) =>
     libraryClient.get<{
       total: number;
       unfiled: number;
@@ -200,10 +200,10 @@ export const ItemsService = {
       permissions?: Partial<import('@/features/library/types/core.types').LibraryPermissions> | string[];
       effectivePermissions?: string[];
       permissionOverrides?: Record<string, boolean>;
-    }>(getCatalogUrl(scopeId, 'counts')),
+    }>(getCatalogUrl(spaceId, 'counts')),
 
   getAll: (
-    scopeId?: string,
+    spaceId?: string,
     params?: (ItemQueryParams & { cursor?: string; fields?: readonly string[] | string[] | string }) | {
       view?: 'all' | 'recent' | 'unfiled' | 'trash' | 'my-publications' | 'publications' | string;
       search?: string;
@@ -235,7 +235,7 @@ export const ItemsService = {
         }
       : undefined;
     return libraryClient.get<PaginatedItemsResponse & { pagination?: CursorPaginationMeta }>(
-      getCatalogUrl(scopeId),
+      getCatalogUrl(spaceId),
       {
         params: formattedParams,
         signal: options?.signal,
@@ -266,19 +266,19 @@ export const ItemsService = {
   },
 
   list: (
-    scopeId?: string,
+    spaceId?: string,
     params?: ItemQueryParams,
     options?: { signal?: AbortSignal },
-  ) => ItemsService.getAll(scopeId, params, options),
+  ) => ItemsService.getAll(spaceId, params, options),
 
-  getById: (scopeId: string | undefined, itemId: string) =>
+  getById: (spaceId: string | undefined, itemId: string) =>
     libraryClient.get<Item | { item?: Item }>(
-      getCatalogUrl(scopeId || 'user', encodeURIComponent(itemId)),
+      getCatalogUrl(spaceId || 'user', encodeURIComponent(itemId)),
     ).then(unwrapItemResponse),
 
-  getByCollection: (scopeId: string | undefined, collectionId: string, search?: string) =>
+  getByCollection: (spaceId: string | undefined, collectionId: string, search?: string) =>
     libraryClient.get<Record<string, unknown> | Item[]>(
-      getCatalogUrl(scopeId || 'user'),
+      getCatalogUrl(spaceId || 'user'),
       { params: { collectionId, ...(search ? { search } : {}) } },
     ).then((res) => {
       const rawItems: Item[] = Array.isArray(res)
@@ -292,7 +292,7 @@ export const ItemsService = {
     }),
 
   create: (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     collectionId: string,
     data: Partial<Item> | Record<string, unknown>,
   ): Promise<Item> => {
@@ -301,13 +301,13 @@ export const ItemsService = {
       payload.collectionId = collectionId;
     }
     return libraryClient.post<Record<string, unknown>>(
-      getCatalogUrl(scopeId || 'user'),
+      getCatalogUrl(spaceId || 'user'),
       payload,
     ).then(unwrapItemResponse);
   },
 
   update: async (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     itemId: string,
     data: Partial<Item> | Record<string, unknown>,
     expectedVersion?: number,
@@ -321,22 +321,22 @@ export const ItemsService = {
       payload.expectedVersion = resolvedVersion;
     }
     const res = await libraryClient.patch<Record<string, unknown>>(
-      getCatalogUrl(scopeId || 'user', encodeURIComponent(itemId)),
+      getCatalogUrl(spaceId || 'user', encodeURIComponent(itemId)),
       payload,
     );
     return unwrapItemResponse(res);
   },
 
   patch: (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     itemId: string,
     data: Partial<Item> | Record<string, unknown>,
     expectedVersion?: number,
   ): Promise<Item> =>
-    ItemsService.update(scopeId, itemId, data, expectedVersion),
+    ItemsService.update(spaceId, itemId, data, expectedVersion),
 
   replace: async (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     itemId: string,
     data: Partial<Item> | Record<string, unknown>,
     expectedVersion?: number,
@@ -346,23 +346,23 @@ export const ItemsService = {
       payload.expectedVersion = expectedVersion;
     }
     const res = await libraryClient.put<Record<string, unknown>>(
-      getCatalogUrl(scopeId || 'user', encodeURIComponent(itemId)),
+      getCatalogUrl(spaceId || 'user', encodeURIComponent(itemId)),
       payload,
     );
     return unwrapItemResponse(res);
   },
 
-  delete: (scopeId: string | undefined, itemId: string) =>
+  delete: (spaceId: string | undefined, itemId: string) =>
     libraryClient.delete(
-      getCatalogUrl(scopeId || 'user', encodeURIComponent(itemId)),
+      getCatalogUrl(spaceId || 'user', encodeURIComponent(itemId)),
     ),
 
-  restore: (scopeId: string | undefined, itemId: string, expectedVersion?: number) => {
+  restore: (spaceId: string | undefined, itemId: string, expectedVersion?: number) => {
     const versionQuery = expectedVersion !== undefined
       ? `?expectedVersion=${encodeURIComponent(String(expectedVersion))}`
       : '';
     return libraryClient.post<Record<string, unknown>>(
-      getCatalogUrl(scopeId || 'user', `${encodeURIComponent(itemId)}/restore${versionQuery}`),
+      getCatalogUrl(spaceId || 'user', `${encodeURIComponent(itemId)}/restore${versionQuery}`),
       {},
     ).then((res) => {
       const item = unwrapItemResponse(res);
@@ -370,12 +370,12 @@ export const ItemsService = {
     });
   },
 
-  purge: (scopeId: string | undefined, itemId: string) =>
+  purge: (spaceId: string | undefined, itemId: string) =>
     libraryClient.delete<{ success: boolean; data: { purged: boolean } }>(
-      getCatalogUrl(scopeId || 'user', `${encodeURIComponent(itemId)}/purge`),
+      getCatalogUrl(spaceId || 'user', `${encodeURIComponent(itemId)}/purge`),
     ),
 
-  emptyTrash: (scopeId: string | undefined) =>
+  emptyTrash: (spaceId: string | undefined) =>
     libraryClient
       .delete<{
         success?: boolean;
@@ -383,7 +383,7 @@ export const ItemsService = {
         purgedCount?: number;
         succeededIds?: string[];
         failedIds?: string[];
-      }>(getCatalogUrl(scopeId || 'user', 'trash'))
+      }>(getCatalogUrl(spaceId || 'user', 'trash'))
       .then((res) => {
         const succeededIds = res?.succeededIds ?? [];
         const count = res?.purgedCount ?? res?.count ?? succeededIds.length;
@@ -396,7 +396,7 @@ export const ItemsService = {
         };
       }),
 
-  bulkPurge: (scopeId: string | undefined, itemIds: string[]) =>
+  bulkPurge: (spaceId: string | undefined, itemIds: string[]) =>
     libraryClient
       .post<{
         success?: boolean;
@@ -405,7 +405,7 @@ export const ItemsService = {
         purgedIds?: string[];
         succeededIds?: string[];
         failedIds?: string[];
-      }>(getCatalogUrl(scopeId || 'user', 'bulk-purge'), { itemIds })
+      }>(getCatalogUrl(spaceId || 'user', 'bulk-purge'), { itemIds })
       .then((res) => {
         const succeededIds = res?.succeededIds ?? res?.purgedIds ?? itemIds;
         const count = res?.count ?? res?.purgedCount ?? succeededIds.length;
@@ -419,7 +419,7 @@ export const ItemsService = {
         };
       }),
 
-  bulkTrash: (scopeId: string | undefined, itemIds: string[]) =>
+  bulkTrash: (spaceId: string | undefined, itemIds: string[]) =>
     libraryClient
       .post<{
         success?: boolean;
@@ -428,7 +428,7 @@ export const ItemsService = {
         trashedIds?: string[];
         succeededIds?: string[];
         failedIds?: string[];
-      }>(getCatalogUrl(scopeId || 'user', 'bulk-trash'), { itemIds })
+      }>(getCatalogUrl(spaceId || 'user', 'bulk-trash'), { itemIds })
       .then((res) => {
         const succeededIds = res?.succeededIds ?? res?.trashedIds ?? itemIds;
         const count = res?.count ?? res?.trashedCount ?? succeededIds.length;
@@ -442,10 +442,10 @@ export const ItemsService = {
         };
       }),
 
-  bulkDelete: (scopeId: string | undefined, itemIds: string[]) =>
-    ItemsService.bulkTrash(scopeId, itemIds),
+  bulkDelete: (spaceId: string | undefined, itemIds: string[]) =>
+    ItemsService.bulkTrash(spaceId, itemIds),
 
-  bulkRestore: (scopeId: string | undefined, itemIds: string[]) =>
+  bulkRestore: (spaceId: string | undefined, itemIds: string[]) =>
     libraryClient
       .post<{
         success?: boolean;
@@ -454,7 +454,7 @@ export const ItemsService = {
         restoredIds?: string[];
         succeededIds?: string[];
         failedIds?: string[];
-      }>(getCatalogUrl(scopeId || 'user', 'bulk-restore'), { itemIds })
+      }>(getCatalogUrl(spaceId || 'user', 'bulk-restore'), { itemIds })
       .then((res) => {
         const succeededIds = res?.succeededIds ?? res?.restoredIds ?? itemIds;
         const count = res?.count ?? res?.restoredCount ?? succeededIds.length;
@@ -468,14 +468,14 @@ export const ItemsService = {
         };
       }),
 
-  reindex: (scopeId: string | undefined, itemId: string) =>
+  reindex: (spaceId: string | undefined, itemId: string) =>
     libraryClient.post<{ success?: boolean; message?: string; itemId?: string; data?: unknown }>(
-      getCatalogUrl(scopeId || 'user', `${encodeURIComponent(itemId)}/reindex`),
+      getCatalogUrl(spaceId || 'user', `${encodeURIComponent(itemId)}/reindex`),
       {},
     ).then((res) => res?.data || res || { success: true }),
 
   reResolve: (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     itemId: string,
     options?: { attachOaPdf?: boolean; forceRefresh?: boolean },
   ) =>
@@ -489,7 +489,7 @@ export const ItemsService = {
         item?: Item;
         data?: Item;
       }>(
-        getCatalogUrl(scopeId || 'user', `${encodeURIComponent(itemId)}/re-resolve`),
+        getCatalogUrl(spaceId || 'user', `${encodeURIComponent(itemId)}/re-resolve`),
         { attachOaPdf: true, ...options },
       )
       .then((res) => ({
@@ -500,32 +500,32 @@ export const ItemsService = {
             : undefined,
       })),
 
-  getItemTypes: (_scopeId?: string) =>
+  getItemTypes: (_spaceId?: string) =>
     libraryClient.get<Record<string, unknown>>(
       resolveLibraryRawPath('/api/v1/library/item-types', 'catalog'),
       { rawEnvelope: true },
     ),
 
   previewConvertType: (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     itemId: string,
     targetType: string,
     retainUnmappedInExtra: boolean = true,
   ) =>
     libraryClient.post<{ success: boolean; preview: unknown; data: unknown }>(
-      getCatalogUrl(scopeId || 'user', `${encodeURIComponent(itemId)}/convert-type/preview`),
+      getCatalogUrl(spaceId || 'user', `${encodeURIComponent(itemId)}/convert-type/preview`),
       { targetType, retainUnmappedInExtra },
     ),
 
   convertType: (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     itemId: string,
     targetType: string,
     expectedVersion?: number,
     retainUnmappedInExtra: boolean = true,
   ) =>
     libraryClient.post<{ success: boolean; item?: Item; conversionReport: unknown }>(
-      getCatalogUrl(scopeId || 'user', `${encodeURIComponent(itemId)}/convert-type`),
+      getCatalogUrl(spaceId || 'user', `${encodeURIComponent(itemId)}/convert-type`),
       { targetType, expectedVersion, retainUnmappedInExtra },
     ).then((res) => ({
       success: Boolean(res?.success ?? true),
@@ -533,23 +533,23 @@ export const ItemsService = {
       conversionReport: res?.conversionReport,
     })),
 
-  getFulltext: (scopeId: string | undefined, itemId: string): Promise<DocumentFulltext | null> =>
+  getFulltext: (spaceId: string | undefined, itemId: string): Promise<DocumentFulltext | null> =>
     libraryClient.get<Record<string, unknown>>(
-      resolveLibraryUrl('reader', '/items', scopeId, `${encodeURIComponent(itemId)}/fulltext`),
+      resolveLibraryUrl('reader', '/items', spaceId, `${encodeURIComponent(itemId)}/fulltext`),
     ).then((res) => ((res as { data?: unknown })?.data || res || null) as DocumentFulltext | null).catch(() => null),
 
   getItemFileUrl,
 
-  updateItem: (scopeId: string | undefined, itemId: string, data: Partial<Item>) =>
-    ItemsService.update(scopeId || 'user', itemId, data),
+  updateItem: (spaceId: string | undefined, itemId: string, data: Partial<Item>) =>
+    ItemsService.update(spaceId || 'user', itemId, data),
 
   fetchPdfBlob,
 
-  getRelated: (scopeId: string | undefined, itemId: string) =>
-    RelationsService.getRelated(scopeId, itemId),
+  getRelated: (spaceId: string | undefined, itemId: string) =>
+    RelationsService.getRelated(spaceId, itemId),
 
   setMyPublication: (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     itemId: string,
     isMyPublication: boolean,
     options?: {
@@ -563,11 +563,11 @@ export const ItemsService = {
   ) =>
     isMyPublication
       ? libraryClient.post<{ success: boolean; data: Item; item: Item }>(
-          getCatalogUrl(scopeId || 'user', `${encodeURIComponent(itemId)}/my-publication`),
+          getCatalogUrl(spaceId || 'user', `${encodeURIComponent(itemId)}/my-publication`),
           options || {},
         ).then((res) => unwrapItemResponse(res?.item || res?.data || res))
       : libraryClient.delete<{ success: boolean; data: Item; item: Item }>(
-          getCatalogUrl(scopeId || 'user', `${encodeURIComponent(itemId)}/my-publication`),
+          getCatalogUrl(spaceId || 'user', `${encodeURIComponent(itemId)}/my-publication`),
         ).then((res) => unwrapItemResponse(res?.item || res?.data || res)),
 };
 

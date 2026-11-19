@@ -20,7 +20,7 @@ import {
   curationKeys,
   retractionKeys,
   invalidateCollections,
-  normalizeScopeId,
+  normalizeSpaceId,
   waitForBootstrapCache,
   notifyServerFeedsHydrated,
   notifyReadEntriesHydrated,
@@ -62,19 +62,19 @@ export {
 };
 
 export function executeLibraryIngestion(
-  scopeId: string | undefined,
+  spaceId: string | undefined,
   payload: UnifiedIngestionPayload,
   options?: Parameters<typeof IngestionService.ingest>[2],
 ) {
-  return IngestionService.ingest(scopeId, payload, options);
+  return IngestionService.ingest(spaceId, payload, options);
 }
 
-export function fetchIngestionRunStatus(scopeId: string | undefined, runId: string) {
-  return IngestionService.getRunStatus(scopeId, runId);
+export function fetchIngestionRunStatus(spaceId: string | undefined, runId: string) {
+  return IngestionService.getRunStatus(spaceId, runId);
 }
 
-export function fetchIngestionRunProgress(scopeId: string | undefined, runId: string) {
-  return IngestionService.getRunProgress(scopeId, runId);
+export function fetchIngestionRunProgress(spaceId: string | undefined, runId: string) {
+  return IngestionService.getRunProgress(spaceId, runId);
 }
 
 export const feedsTransportBindings = {
@@ -93,44 +93,44 @@ export const feedsTransportBindings = {
   getItems: (feedId: string) => FeedsService.getItems(feedId),
 };
 
-export function useTrackedIdentifierIngestion(scopeId: string) {
+export function useTrackedIdentifierIngestion(spaceId: string) {
   const queryClient = useQueryClient();
   return useCallback(
     (
-      options: Omit<TrackedIdentifierIngestionOptions, 'queryClient' | 'scopeId'> & {
-        scopeId?: string;
+      options: Omit<TrackedIdentifierIngestionOptions, 'queryClient' | 'spaceId'> & {
+        spaceId?: string;
       },
     ) =>
       executeTrackedIdentifierIngestion({
-        scopeId: options.scopeId || scopeId,
+        spaceId: options.spaceId || spaceId,
         queryClient,
         ...options,
       }),
-    [scopeId, queryClient],
+    [spaceId, queryClient],
   );
 }
 
 // ── Curation & Duplicates Queries ─────────────────────────────────────────────
 
 export function useDuplicateGroups(
-  scopeId?: string,
+  spaceId?: string,
   options?: { enabled?: boolean },
 ) {
   const queryClient = useQueryClient();
   return useQuery({
-    queryKey: curationKeys.duplicates(scopeId),
+    queryKey: curationKeys.duplicates(spaceId),
     queryFn: () =>
-      CurationService.getDuplicates(scopeId, {
-        cachedItemsById: getCachedItemsMapFromScope(queryClient, scopeId),
+      CurationService.getDuplicates(spaceId, {
+        cachedItemsById: getCachedItemsMapFromScope(queryClient, spaceId),
       }),
     enabled: options?.enabled ?? true,
     gcTime: 3 * 60 * 1000,
   });
 }
 
-export function useMergeDuplicates(scopeId?: string) {
+export function useMergeDuplicates(spaceId?: string) {
   const queryClient = useQueryClient();
-  const effectiveScope = normalizeScopeId(scopeId);
+  const effectiveScope = normalizeSpaceId(spaceId);
 
   return useMutation({
     mutationFn: ({
@@ -193,9 +193,9 @@ export function useMergeDuplicates(scopeId?: string) {
   });
 }
 
-export function useBatchMergeDuplicates(scopeId?: string) {
+export function useBatchMergeDuplicates(spaceId?: string) {
   const queryClient = useQueryClient();
-  const effectiveScope = normalizeScopeId(scopeId);
+  const effectiveScope = normalizeSpaceId(spaceId);
   return useMutation({
     mutationFn: (
       merges: Array<{
@@ -256,11 +256,11 @@ export function useBatchMergeDuplicates(scopeId?: string) {
 }
 
 export function useFeedArticlesQuery(
-  scopeId: string,
+  spaceId: string,
   feedUrl: string | undefined,
   options?: { enabled?: boolean },
 ) {
-  const effectiveScope = normalizeScopeId(scopeId);
+  const effectiveScope = normalizeSpaceId(spaceId);
   return useQuery({
     queryKey: feedKeys.articles(effectiveScope, feedUrl),
     queryFn: async () => {
@@ -443,9 +443,9 @@ export function useExportOpmlFeedsMutation() {
   });
 }
 
-export function useIngestMutation(scopeId?: string) {
+export function useIngestMutation(spaceId?: string) {
   const queryClient = useQueryClient();
-  const effectiveScope = normalizeScopeId(scopeId);
+  const effectiveScope = normalizeSpaceId(spaceId);
 
   return useMutation({
     mutationFn: async (payload: UnifiedIngestionPayload) => {
@@ -489,9 +489,9 @@ export function useIngestMutation(scopeId?: string) {
   });
 }
 
-export function useDismissDuplicatesMutation(scopeId?: string) {
+export function useDismissDuplicatesMutation(spaceId?: string) {
   const queryClient = useQueryClient();
-  const effectiveScope = normalizeScopeId(scopeId);
+  const effectiveScope = normalizeSpaceId(spaceId);
   return useMutation({
     mutationFn: (itemIds: string[]) =>
       CurationService.dismissDuplicates(effectiveScope, itemIds),
@@ -507,15 +507,15 @@ export function useDismissDuplicatesMutation(scopeId?: string) {
   });
 }
 
-const invalidateRetraction = (qc: QueryClient, scopeId?: string) => {
-  const effectiveScope = normalizeScopeId(scopeId);
+const invalidateRetraction = (qc: QueryClient, spaceId?: string) => {
+  const effectiveScope = normalizeSpaceId(spaceId);
   qc.invalidateQueries({ queryKey: retractionKeys.all(effectiveScope) });
   qc.invalidateQueries({ queryKey: itemKeys.all(effectiveScope) });
   qc.invalidateQueries({ queryKey: itemKeys.counts(effectiveScope) });
 };
 
-export function useRetractedItems(scopeId?: string, enabled = true) {
-  const effectiveScope = normalizeScopeId(scopeId);
+export function useRetractedItems(spaceId?: string, enabled = true) {
+  const effectiveScope = normalizeSpaceId(spaceId);
   return useQuery({
     queryKey: retractionKeys.items(effectiveScope),
     queryFn: () => RetractionService.getRetractedItems(effectiveScope),
@@ -524,9 +524,9 @@ export function useRetractedItems(scopeId?: string, enabled = true) {
   });
 }
 
-export function useRetraction(scopeId?: string, options?: { includeItems?: boolean }) {
+export function useRetraction(spaceId?: string, options?: { includeItems?: boolean }) {
   const queryClient = useQueryClient();
-  const effectiveScope = normalizeScopeId(scopeId);
+  const effectiveScope = normalizeSpaceId(spaceId);
   const statsQuery = useQuery({
     queryKey: retractionKeys.stats(effectiveScope),
     queryFn: () => RetractionService.getStats(effectiveScope),
@@ -540,7 +540,7 @@ export function useRetraction(scopeId?: string, options?: { includeItems?: boole
   const checkItemMutation = useMutation({
     mutationFn: (itemId: string) => RetractionService.checkItem(effectiveScope, itemId),
     onSuccess: (data) => {
-      invalidateRetraction(queryClient, scopeId);
+      invalidateRetraction(queryClient, spaceId);
       if (data.status === 'unknown') {
         toast.info('Could not verify this item', {
           description: 'Retraction status needs a DOI or PMID, or the lookup was unavailable. The stored status was not changed.',
@@ -563,7 +563,7 @@ export function useRetraction(scopeId?: string, options?: { includeItems?: boole
   const checkLibraryMutation = useMutation({
     mutationFn: (itemIds?: string[]) => RetractionService.checkLibrary(effectiveScope, itemIds),
     onSuccess: (res) => {
-      invalidateRetraction(queryClient, scopeId);
+      invalidateRetraction(queryClient, spaceId);
       if (res.newlyRetracted > 0) {
         toast.warning(`Scan completed: ${res.newlyRetracted} retracted item(s) found!`, {
           description: `Scanned ${res.scanned} publications in this library.`,
@@ -582,7 +582,7 @@ export function useRetraction(scopeId?: string, options?: { includeItems?: boole
     mutationFn: ({ itemId, data }: { itemId: string; data: FlagRetractionInput }) =>
       RetractionService.flagItem(effectiveScope, itemId, data),
     onSuccess: () => {
-      invalidateRetraction(queryClient, scopeId);
+      invalidateRetraction(queryClient, spaceId);
       toast.warning('Item flagged as retracted', { id: 'retraction-flag' });
     },
     onError: (err: Error) => toast.error('Failed to flag item', { description: err.message, id: 'retraction-flag' }),
@@ -590,7 +590,7 @@ export function useRetraction(scopeId?: string, options?: { includeItems?: boole
   const unflagMutation = useMutation({
     mutationFn: (itemId: string) => RetractionService.unflagItem(effectiveScope, itemId),
     onSuccess: () => {
-      invalidateRetraction(queryClient, scopeId);
+      invalidateRetraction(queryClient, spaceId);
       toast.success('Retraction flag removed', { id: 'retraction-flag' });
     },
     onError: (err: Error) => toast.error('Failed to remove flag', { description: err.message, id: 'retraction-flag' }),
@@ -599,7 +599,7 @@ export function useRetraction(scopeId?: string, options?: { includeItems?: boole
     mutationFn: (syncOptions?: { maxDays?: number; limit?: number }) =>
       RetractionService.syncLibrary(effectiveScope, syncOptions),
     onSuccess: (res) => {
-      invalidateRetraction(queryClient, scopeId);
+      invalidateRetraction(queryClient, spaceId);
       if (res.newlyRetracted > 0) {
         toast.warning(`Retraction sync: ${res.newlyRetracted} retracted item(s) found!`, {
           description: `Scanned ${res.scanned} publications in this library.`,
@@ -628,9 +628,9 @@ export function useRetraction(scopeId?: string, options?: { includeItems?: boole
   };
 }
 
-export function useSyncExternalBibtexMutation(scopeId?: string) {
+export function useSyncExternalBibtexMutation(spaceId?: string) {
   const queryClient = useQueryClient();
-  const effectiveScope = normalizeScopeId(scopeId);
+  const effectiveScope = normalizeSpaceId(spaceId);
   return useMutation({
     mutationFn: async ({
       bibtex: providedBibtex,

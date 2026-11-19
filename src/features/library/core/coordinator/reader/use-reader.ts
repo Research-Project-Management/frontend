@@ -27,7 +27,7 @@ import {
   calculateAdaptiveTabPoolCapacity,
   warmViewerPool,
 } from '@/features/library/domain/reader-tab-pool.domain';
-import { normalizeScopeId } from '@/features/library/sdk/query-keys';
+import { normalizeSpaceId } from '@/features/library/sdk/query-keys';
 import { useReadingProgress } from './use-reader-tabs';
 import { useAnnotationBatch } from './use-annotation-batch';
 import { useReaderStore } from '@/features/library/core/store/reader.store';
@@ -144,7 +144,7 @@ export function useReaderDocumentBlobLoader() {
     (
       url: string,
       signal?: AbortSignal,
-      options?: { scopeId?: string; allowHtml?: boolean },
+      options?: { spaceId?: string; allowHtml?: boolean },
     ) => fetchReaderDocumentBlob(url, signal, options),
     [],
   );
@@ -154,13 +154,13 @@ const warmObjectUrlPool = new LruTabPool<{ url: string; objectUrl: string }>(
   calculateAdaptiveTabPoolCapacity(),
 );
 
-function buildWarmObjectUrlKey(url: string, scopeId?: string): string {
-  return `${scopeId || 'global'}::${url}`;
+function buildWarmObjectUrlKey(url: string, spaceId?: string): string {
+  return `${spaceId || 'global'}::${url}`;
 }
 
-export function evictWarmObjectUrl(url?: string | null, scopeId?: string): void {
+export function evictWarmObjectUrl(url?: string | null, spaceId?: string): void {
   if (!url) return;
-  const key = buildWarmObjectUrlKey(url, scopeId);
+  const key = buildWarmObjectUrlKey(url, spaceId);
   const existing = warmObjectUrlPool.peek(key);
   if (existing) {
     URL.revokeObjectURL(existing.objectUrl);
@@ -175,9 +175,9 @@ export function evictWarmObjectUrl(url?: string | null, scopeId?: string): void 
 
 export function cleanupReaderResourcesForItems(
   itemIds: Iterable<string>,
-  options?: { scopeId?: string; candidateUrls?: Iterable<string | null | undefined> },
+  options?: { spaceId?: string; candidateUrls?: Iterable<string | null | undefined> },
 ): void {
-  const scopeId = options?.scopeId;
+  const spaceId = options?.spaceId;
   const readerStore = useReaderStore.getState();
   const urlsToInvalidate = new Set<string>();
 
@@ -198,9 +198,9 @@ export function cleanupReaderResourcesForItems(
   }
 
   for (const url of urlsToInvalidate) {
-    evictWarmObjectUrl(url, scopeId);
+    evictWarmObjectUrl(url, spaceId);
     evictWarmObjectUrl(url, undefined);
-    void invalidateReaderDocumentBlob(url, { scopeId });
+    void invalidateReaderDocumentBlob(url, { spaceId });
   }
 }
 
@@ -283,12 +283,12 @@ if (typeof window !== 'undefined') {
 
 registerReaderResourceCleanupHandler(cleanupReaderResourcesForItems);
 
-export function usePdf(url: string | null, scopeId?: string): UsePdfReturn {
+export function usePdf(url: string | null, spaceId?: string): UsePdfReturn {
   const [blobUrl, setBlobUrl] = useState<string | null>(() => {
     if (!url) return null;
-    const direct = warmObjectUrlPool.peek(buildWarmObjectUrlKey(url, scopeId));
+    const direct = warmObjectUrlPool.peek(buildWarmObjectUrlKey(url, spaceId));
     if (direct) return direct.objectUrl;
-    if (scopeId && scopeId !== 'user') {
+    if (spaceId && spaceId !== 'user') {
       return warmObjectUrlPool.peek(buildWarmObjectUrlKey(url, 'user'))?.objectUrl ?? null;
     }
     return null;
@@ -315,12 +315,12 @@ export function usePdf(url: string | null, scopeId?: string): UsePdfReturn {
       return;
     }
 
-    const poolKey = buildWarmObjectUrlKey(url, scopeId);
+    const poolKey = buildWarmObjectUrlKey(url, spaceId);
 
     if (retryCount === 0) {
       const warmHit =
         warmObjectUrlPool.get(poolKey) ||
-        (scopeId && scopeId !== 'user'
+        (spaceId && spaceId !== 'user'
           ? warmObjectUrlPool.get(buildWarmObjectUrlKey(url, 'user'))
           : undefined);
       if (warmHit) {
@@ -331,8 +331,8 @@ export function usePdf(url: string | null, scopeId?: string): UsePdfReturn {
         return;
       }
     } else {
-      evictWarmObjectUrl(url, scopeId);
-      void invalidateReaderDocumentBlob(url, { scopeId });
+      evictWarmObjectUrl(url, spaceId);
+      void invalidateReaderDocumentBlob(url, { spaceId });
     }
 
     const controller = new AbortController();
@@ -348,7 +348,7 @@ export function usePdf(url: string | null, scopeId?: string): UsePdfReturn {
         const blob = await fetchReaderDocumentBlob(
           url!,
           controller.signal,
-          { scopeId, forceRefresh: retryCount > 0 },
+          { spaceId, forceRefresh: retryCount > 0 },
         );
 
         if (active) {
@@ -396,7 +396,7 @@ export function usePdf(url: string | null, scopeId?: string): UsePdfReturn {
       active = false;
       controller.abort();
     };
-  }, [url, retryCount, scopeId]);
+  }, [url, retryCount, spaceId]);
 
   return { blobUrl, isLoading, error, retry };
 }
@@ -416,7 +416,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     queryProjectId ||
     (activeSpace.type === 'project' ? activeSpace.projectId : undefined);
   const projectId = rawProjectId || 'user';
-  const scopeId = normalizeScopeId(projectId);
+  const spaceId = normalizeSpaceId(projectId);
 
   const storeReadingId = useReaderStore((s) => s.readingPaperId);
   const closeReader = useReaderStore((s) => s.closeReader);
@@ -428,21 +428,21 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
   );
   const resolvedRequestedAttachmentId = requestedAttachmentId || activeTabAttachmentId || undefined;
 
-  useReaderBootstrap(scopeId, effectivePaperId, resolvedRequestedAttachmentId);
+  useReaderBootstrap(spaceId, effectivePaperId, resolvedRequestedAttachmentId);
 
-  const paperQuery = useReaderItem(scopeId, effectivePaperId);
+  const paperQuery = useReaderItem(spaceId, effectivePaperId);
   const paper = (paperQuery.data ?? null) as ReaderDocument | null;
   const isLoadingPapers = paperQuery.isLoading;
 
-  const effectiveScopeId = useMemo(() => {
-    if (isProjectScope(scopeId)) return scopeId;
+  const effectiveSpaceId = useMemo(() => {
+    if (isProjectScope(spaceId)) return spaceId;
     if (paper?.projectId && isProjectScope(String(paper.projectId))) {
       return String(paper.projectId);
     }
-    return scopeId;
-  }, [scopeId, paper?.projectId]);
+    return spaceId;
+  }, [spaceId, paper?.projectId]);
 
-  const fulltextQuery = useReaderFulltext(effectiveScopeId, effectivePaperId);
+  const fulltextQuery = useReaderFulltext(effectiveSpaceId, effectivePaperId);
   const fulltext = fulltextQuery.data ?? null;
   const isLoadingFulltext = fulltextQuery.isLoading;
 
@@ -468,15 +468,15 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
         selectedAttachment.url;
       if (downloadUrl) return downloadUrl;
     }
-    return getItemFileUrl(paper, effectiveScopeId);
-  }, [selectedAttachment, paper, effectiveScopeId]);
+    return getItemFileUrl(paper, effectiveSpaceId);
+  }, [selectedAttachment, paper, effectiveSpaceId]);
 
   const {
     blobUrl: pdfBlobUrl,
     isLoading: pdfLoading,
     error: pdfError,
     retry: handleRetryPdf,
-  } = usePdf(paperUrl || null, effectiveScopeId);
+  } = usePdf(paperUrl || null, effectiveSpaceId);
 
   const [pendingNoteText, setPendingNoteText] = useState('');
   const [bibtexOpen, setBibtexOpen] = useState(false);
@@ -500,13 +500,13 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     isDeleting: isDeletingAnnotation,
     isExtracting: isExtractingNotes,
     isImporting: isImportingAnnotations,
-  } = useAnnotations(effectiveScopeId, effectiveAttachmentId);
+  } = useAnnotations(effectiveSpaceId, effectiveAttachmentId);
 
   const annotationsRef = useRef<ReaderAnnotation[]>(annotations);
   annotationsRef.current = annotations;
 
   useReadingProgress({
-    scopeId: effectiveScopeId,
+    spaceId: effectiveSpaceId,
     paper,
     effectivePaperId,
     effectiveAttachmentId,
@@ -533,7 +533,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
     canUndo,
     canRedo,
   } = useAnnotationBatch({
-    scopeId: effectiveScopeId,
+    spaceId: effectiveSpaceId,
     effectiveAttachmentId,
     paper,
     setPendingNoteText,
@@ -639,7 +639,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
           effectiveAttachmentId,
           resolvedPage,
           annotationId,
-          effectiveScopeId,
+          effectiveSpaceId,
           targetAnn?.pageLabel,
         );
         citationLink = trimmed ? ` ${cit.markdown}` : cit.markdown;
@@ -660,7 +660,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
       useLibraryUIStore.getState().setIsInspectorOpen(true);
       useLibraryUIStore.getState().setActiveInspectorTab('notes');
     },
-    [paper, effectiveAttachmentId, effectiveScopeId],
+    [paper, effectiveAttachmentId, effectiveSpaceId],
   );
 
   const handleAnnotate = useCallback(
@@ -726,7 +726,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
 
   const state = useMemo(
     () => ({
-      scopeId: effectiveScopeId,
+      spaceId: effectiveSpaceId,
       projectId: isProject ? rawProjectId : undefined,
       isProject,
       rawProjectId,
@@ -761,7 +761,7 @@ export function useReader(overridePaperId?: string | null, onBackOverride?: () =
       canRedo,
     }),
     [
-      effectiveScopeId, isProject, rawProjectId, effectivePaperId, isLoadingPapers,
+      effectiveSpaceId, isProject, rawProjectId, effectivePaperId, isLoadingPapers,
       paper, paperUrl, pdfBlobUrl, pdfLoading, pdfError, pendingNoteText, bibtexOpen,
       fulltext, isLoadingFulltext, targetPage, isSidebarOpen, visiblePage, numPages,
       zoom, selectedAnnotationIds, isBatchProcessing, annotations, isLoadingAnnotations,

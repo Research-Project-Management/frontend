@@ -250,7 +250,7 @@ describe('Empirical Verification: Reader Tab Pool & DOM Safety Engine', () => {
       expect(useReaderStore.getState().tabs.some((t) => t.id === 'paper-gc-1')).toBe(true);
       expect(warmViewerPool.has('paper-gc-1')).toBe(true);
 
-      cleanupReaderResourcesForItems(['paper-gc-1'], { scopeId: 'user' });
+      cleanupReaderResourcesForItems(['paper-gc-1'], { spaceId: 'user' });
 
       expect(useReaderStore.getState().tabs.some((t) => t.id === 'paper-gc-1')).toBe(false);
       expect(warmViewerPool.has('paper-gc-1')).toBe(false);

@@ -353,7 +353,7 @@ describe('ItemRowActions & Actions Column Parity', () => {
 
     renderWithProviders(
       <DuplicatesContent
-        scopeId="user"
+        spaceId="user"
         canEdit={true}
         onMergeGroup={onMergeGroup}
         onDismissGroup={onDismissGroup}

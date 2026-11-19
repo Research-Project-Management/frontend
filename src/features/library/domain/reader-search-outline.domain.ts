@@ -428,7 +428,7 @@ export function formatAnnotationCitation(
   attachmentId?: string,
   pageNumber?: number,
   annotationId?: string,
-  scopeId?: string,
+  spaceId?: string,
   pageLabel?: string | null,
 ): { label: string; url: string; markdown: string } {
   const authors = paper ? normalizeReaderAuthors(paper.authors, paper.creators) : [];
@@ -441,8 +441,8 @@ export function formatAnnotationCitation(
   const label = `(${authorCitation}${pageStr})`;
 
   const itemId = paper?.id;
-  const effectiveProjectId = isProjectScope(scopeId)
-    ? scopeId
+  const effectiveProjectId = isProjectScope(spaceId)
+    ? spaceId
     : paper?.projectId && isProjectScope(String(paper.projectId))
       ? String(paper.projectId)
       : undefined;

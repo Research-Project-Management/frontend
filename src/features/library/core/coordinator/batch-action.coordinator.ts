@@ -43,7 +43,7 @@ export {
 
 interface UseLibraryBatchCoordinatorOptions {
   items?: Item[];
-  scopeId?: string;
+  spaceId?: string;
   collectionId?: string;
   view?: string;
   isTrash?: boolean;
@@ -128,14 +128,14 @@ function computeBatchCapabilityMask(params: {
  */
 export function useLibraryBatchCoordinator({
   items = EMPTY_ITEMS,
-  scopeId,
+  spaceId,
   collectionId,
   view,
   isTrash = false,
   canEdit = true,
   enableKeydownListener = true,
 }: UseLibraryBatchCoordinatorOptions = {}) {
-  const effectiveScope = scopeId || 'user';
+  const effectiveScope = spaceId || 'user';
   const effectiveIsTrash = isTrash || view === 'trash';
   const isDuplicatesView = view === 'duplicates';
   const isUnfiledView = view === 'unfiled';
@@ -298,7 +298,7 @@ export function useLibraryBatchCoordinator({
             moveMutation,
             detachMutation: batchDetachMutation,
             assignMutation,
-            scopeId: effectiveScope,
+            spaceId: effectiveScope,
             onExecuted: () => {
               clearSelection();
             },

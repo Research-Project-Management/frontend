@@ -53,7 +53,7 @@ export type SavedSearchBuilderSortBy =
 interface UseSavedSearchBuilderParams {
   open: boolean;
   savedSearch?: SavedSearch | null;
-  scopeId?: string;
+  spaceId?: string;
   onSubmit: (data: CreateSavedSearchInput) => Promise<unknown> | void;
   onOpenChange: (open: boolean) => void;
 }
@@ -61,22 +61,22 @@ interface UseSavedSearchBuilderParams {
 export function useSavedSearchBuilder({
   open,
   savedSearch,
-  scopeId = 'user',
+  spaceId = 'user',
   onSubmit,
   onOpenChange,
 }: UseSavedSearchBuilderParams) {
   const resolveDefaultScope = (
     search?: SavedSearch | null,
-    rawScopeId?: string,
+    rawSpaceId?: string,
   ): string =>
     search?.scope ||
-    search?.scopeId ||
-    (rawScopeId && !['all', 'trash', 'duplicates', 'unfiled'].includes(rawScopeId)
-      ? rawScopeId
+    search?.spaceId ||
+    (rawSpaceId && !['all', 'trash', 'duplicates', 'unfiled'].includes(rawSpaceId)
+      ? rawSpaceId
       : 'user');
 
   const [targetScope, setTargetScope] = useState<string>(() =>
-    resolveDefaultScope(savedSearch, scopeId),
+    resolveDefaultScope(savedSearch, spaceId),
   );
 
   const { types: registryItemTypes } = useItemTypes(targetScope);
@@ -149,9 +149,9 @@ export function useSavedSearchBuilder({
 
     setTargetScope(
       savedSearch?.scope ||
-        savedSearch?.scopeId ||
-        (scopeId && !['all', 'trash', 'duplicates', 'unfiled'].includes(scopeId)
-          ? scopeId
+        savedSearch?.spaceId ||
+        (spaceId && !['all', 'trash', 'duplicates', 'unfiled'].includes(spaceId)
+          ? spaceId
           : 'user'),
     );
 
@@ -206,7 +206,7 @@ export function useSavedSearchBuilder({
     setError(null);
     setPreviewCount(null);
     setPreviewSamples([]);
-  }, [open, savedSearch, scopeId]);
+  }, [open, savedSearch, spaceId]);
 
   useEffect(() => {
     if (!open) return;

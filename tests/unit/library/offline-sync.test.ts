@@ -38,7 +38,7 @@ describe('Library Offline Mutation Outbox & Sync Coordinator', () => {
 
     // Enqueue 3 mutations in sequence
     const m1 = await storage.enqueue({
-      scopeId: 'user',
+      spaceId: 'user',
       entityType: 'annotation',
       entityId: 'ann-1',
       action: 'CREATE',
@@ -48,7 +48,7 @@ describe('Library Offline Mutation Outbox & Sync Coordinator', () => {
     });
 
     const m2 = await storage.enqueue({
-      scopeId: 'user',
+      spaceId: 'user',
       entityType: 'annotation',
       entityId: 'ann-1',
       action: 'UPDATE',
@@ -58,7 +58,7 @@ describe('Library Offline Mutation Outbox & Sync Coordinator', () => {
     });
 
     const m3 = await storage.enqueue({
-      scopeId: 'user',
+      spaceId: 'user',
       entityType: 'item',
       entityId: 'item-1',
       action: 'UPDATE',
@@ -89,7 +89,7 @@ describe('Library Offline Mutation Outbox & Sync Coordinator', () => {
 
     await enqueueOfflineMutation(
       {
-        scopeId: 'user',
+        spaceId: 'user',
         entityType: 'annotation',
         entityId: 'ann-10',
         action: 'CREATE',
@@ -103,7 +103,7 @@ describe('Library Offline Mutation Outbox & Sync Coordinator', () => {
 
     await enqueueOfflineMutation(
       {
-        scopeId: 'user',
+        spaceId: 'user',
         entityType: 'annotation',
         entityId: 'ann-11',
         action: 'CREATE',
@@ -134,7 +134,7 @@ describe('Library Offline Mutation Outbox & Sync Coordinator', () => {
   it('stops queue and increments retry count on transient network failure without data loss', async () => {
     await enqueueOfflineMutation(
       {
-        scopeId: 'user',
+        spaceId: 'user',
         entityType: 'item',
         entityId: 'item-100',
         action: 'UPDATE',
@@ -148,7 +148,7 @@ describe('Library Offline Mutation Outbox & Sync Coordinator', () => {
 
     await enqueueOfflineMutation(
       {
-        scopeId: 'user',
+        spaceId: 'user',
         entityType: 'item',
         entityId: 'item-101',
         action: 'UPDATE',
@@ -188,7 +188,7 @@ describe('Library Offline Mutation Outbox & Sync Coordinator', () => {
     // 1st mutation is invalid (e.g. 422 Unprocessable Entity)
     await enqueueOfflineMutation(
       {
-        scopeId: 'user',
+        spaceId: 'user',
         entityType: 'item',
         entityId: 'bad-item',
         action: 'UPDATE',
@@ -203,7 +203,7 @@ describe('Library Offline Mutation Outbox & Sync Coordinator', () => {
     // 2nd mutation is valid
     await enqueueOfflineMutation(
       {
-        scopeId: 'user',
+        spaceId: 'user',
         entityType: 'item',
         entityId: 'good-item',
         action: 'UPDATE',
@@ -244,7 +244,7 @@ describe('Library Offline Mutation Outbox & Sync Coordinator', () => {
 
     const entry = await enqueueOfflineMutation(
       {
-        scopeId: 'user',
+        spaceId: 'user',
         entityType: 'tag',
         entityId: 'tag-1',
         action: 'CREATE',
@@ -281,7 +281,7 @@ describe('Library Offline Mutation Outbox & Sync Coordinator', () => {
 
     await enqueueOfflineMutation(
       {
-        scopeId: 'user',
+        spaceId: 'user',
         entityType: 'item',
         entityId: 'item-sync-1',
         action: 'UPDATE',
@@ -307,7 +307,7 @@ describe('Library Offline Mutation Outbox & Sync Coordinator', () => {
   it('yields safely when another browser tab already holds the Web Lock', async () => {
     await enqueueOfflineMutation(
       {
-        scopeId: 'user',
+        spaceId: 'user',
         entityType: 'tag',
         entityId: 'tag-lock-1',
         action: 'CREATE',
@@ -362,7 +362,7 @@ describe('Library Offline Mutation Outbox & Sync Coordinator', () => {
     await act(async () => {
       await enqueueOfflineMutation(
         {
-          scopeId: 'user',
+          spaceId: 'user',
           entityType: 'annotation',
           entityId: 'ann-offline',
           action: 'CREATE',

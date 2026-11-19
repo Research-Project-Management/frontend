@@ -29,7 +29,7 @@ import { cleanText, formatAuthors } from '@/features/library/domain/citations.do
 
 interface RelatedSectionProps {
   item?: Item;
-  scopeId?: string;
+  spaceId?: string;
   onSelectItem?: (itemId: string) => void;
   hideHeader?: boolean;
   forceAdding?: boolean;
@@ -41,7 +41,7 @@ interface RelatedSectionProps {
 export default function RelatedSection(props: RelatedSectionProps) {
   const {
     item,
-    scopeId,
+    spaceId,
     onSelectItem,
     hideHeader = false,
     forceAdding = false,
@@ -50,8 +50,8 @@ export default function RelatedSection(props: RelatedSectionProps) {
     canEdit = true,
   } = props;
 
-  const activeScopeId =
-    scopeId ||
+  const activeSpaceId =
+    spaceId ||
     item?.projectId ||
     'user';
 
@@ -78,7 +78,7 @@ export default function RelatedSection(props: RelatedSectionProps) {
   }, [searchQuery]);
 
   const { relatedItems, isLoading, link, unlink, isLinking } = useRelations(
-    activeScopeId,
+    activeSpaceId,
     item?.id || '',
   );
   const activeCollectionId =
@@ -86,14 +86,14 @@ export default function RelatedSection(props: RelatedSectionProps) {
       ? selectedCollectionFilter
       : undefined;
 
-  const { data: allItemsRes } = useViewItems(activeScopeId, 'all', {
+  const { data: allItemsRes } = useViewItems(activeSpaceId, 'all', {
     enabled: isModalOpen,
     limit: 100,
     search: debouncedSearch || undefined,
     collectionId: activeCollectionId,
   });
-  const { data: collections = [] } = useCollectionsQuery(activeScopeId);
-  const { data: libraryCounts } = useLibraryCountsQuery(activeScopeId);
+  const { data: collections = [] } = useCollectionsQuery(activeSpaceId);
+  const { data: libraryCounts } = useLibraryCountsQuery(activeSpaceId);
 
   useEffect(() => {
     if (forceAdding && canEdit) {

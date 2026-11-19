@@ -343,23 +343,23 @@ function FilterFacetSections({
 }
 
 interface LibraryFilterPopoverProps {
-  scopeId?: string;
+  spaceId?: string;
   items?: Item[];
   className?: string;
 }
 
 export function LibraryFilterPopover({
-  scopeId: propScopeId,
+  spaceId: propSpaceId,
   items,
   className,
 }: LibraryFilterPopoverProps) {
-  const scopeId = propScopeId || "user";
+  const spaceId = propSpaceId || "user";
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const facets = useLibraryFacetCounts({
-    scopeId,
+    spaceId,
     items,
     searchQuery,
     isOpen,

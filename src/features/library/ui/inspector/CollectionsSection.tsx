@@ -48,12 +48,12 @@ export {
 
 interface CollectionPickerContentProps {
   item: Item;
-  scopeId?: string;
+  spaceId?: string;
   canEdit?: boolean;
   align?: "start" | "center" | "end";
   collections?: Collection[];
   createCollection?: (
-    data: CreateCollectionDTO & { scopeId?: string },
+    data: CreateCollectionDTO & { spaceId?: string },
   ) => Promise<unknown>;
   onUpdateItem?: (
     payload: Partial<Item>,
@@ -65,7 +65,7 @@ interface CollectionPickerContentProps {
 
 function CollectionPickerContent({
   item,
-  scopeId,
+  spaceId,
   canEdit = true,
   align = "end",
   collections: externalCollections,
@@ -77,7 +77,7 @@ function CollectionPickerContent({
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreatingQuick, setIsCreatingQuick] = useState(false);
 
-  const effectiveScope = scopeId || item?.projectId || "user";
+  const effectiveScope = spaceId || item?.projectId || "user";
   const internalManager = useItemCollectionsManager(
     item,
     effectiveScope,
@@ -298,12 +298,12 @@ function CollectionPickerContent({
 // ── CollectionPickerPopover Component ────────────────────────────────────────
 interface CollectionPickerPopoverProps {
   item: Item;
-  scopeId?: string;
+  spaceId?: string;
   canEdit?: boolean;
   align?: "start" | "center" | "end";
   collections?: Collection[];
   createCollection?: (
-    data: CreateCollectionDTO & { scopeId?: string },
+    data: CreateCollectionDTO & { spaceId?: string },
   ) => Promise<unknown>;
   onUpdateItem?: (
     payload: Partial<Item>,
@@ -316,7 +316,7 @@ interface CollectionPickerPopoverProps {
 export function CollectionPickerPopover(props: CollectionPickerPopoverProps) {
   const {
     item,
-    scopeId,
+    spaceId,
     canEdit = true,
     align = "end",
     collections,
@@ -333,7 +333,7 @@ export function CollectionPickerPopover(props: CollectionPickerPopoverProps) {
       {open && (
         <CollectionPickerContent
           item={item}
-          scopeId={scopeId}
+          spaceId={spaceId}
           canEdit={canEdit}
           align={align}
           collections={collections}
@@ -350,7 +350,7 @@ export function CollectionPickerPopover(props: CollectionPickerPopoverProps) {
 // ── Main CollectionsSection Component ─────────────────────────────────────────
 interface CollectionsSectionProps {
   item: Item;
-  scopeId?: string;
+  spaceId?: string;
   hideHeader?: boolean;
   canEdit?: boolean;
   onUpdateItem?: (
@@ -360,8 +360,8 @@ interface CollectionsSectionProps {
 }
 
 export default function CollectionsSection(props: CollectionsSectionProps) {
-  const { item, scopeId, hideHeader = false, canEdit = true, onUpdateItem } = props;
-  const effectiveScope = scopeId || item?.projectId || "user";
+  const { item, spaceId, hideHeader = false, canEdit = true, onUpdateItem } = props;
+  const effectiveScope = spaceId || item?.projectId || "user";
   const manager = useItemCollectionsManager(
     item,
     effectiveScope,
@@ -453,7 +453,7 @@ export default function CollectionsSection(props: CollectionsSectionProps) {
           {canEdit && (
             <CollectionPickerPopover
               item={item}
-              scopeId={effectiveScope}
+              spaceId={effectiveScope}
               canEdit={canEdit}
               align="end"
               collections={collections}

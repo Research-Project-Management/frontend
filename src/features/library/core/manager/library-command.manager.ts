@@ -84,8 +84,8 @@ interface MoveItemsCommandOptions {
   onUndoMove?: () => Promise<void>;
   detachMutation?: { mutateAsync: (args: { collectionId: string; itemIds: string[] }) => Promise<unknown> };
   assignMutation?: { mutateAsync: (args: { collectionId: string; itemIds: string[] }) => Promise<unknown> };
-  moveMutation: { mutateAsync: (args: { targetCollectionId: string | null; itemIds: string[]; sourceCollectionId?: string | null; scopeId?: string }) => Promise<unknown> };
-  scopeId?: string; onExecuted?: () => void; onUndone?: () => void;
+  moveMutation: { mutateAsync: (args: { targetCollectionId: string | null; itemIds: string[]; sourceCollectionId?: string | null; spaceId?: string }) => Promise<unknown> };
+  spaceId?: string; onExecuted?: () => void; onUndone?: () => void;
 }
 
 export function createMoveItemsCommand(options: MoveItemsCommandOptions): LibraryCommand {
@@ -99,7 +99,7 @@ export function createMoveItemsCommand(options: MoveItemsCommandOptions): Librar
         targetCollectionId: options.targetCollectionId,
         itemIds: options.itemIds,
         sourceCollectionId: options.sourceCollectionId,
-        scopeId: options.scopeId,
+        spaceId: options.spaceId,
       });
       options.onExecuted?.();
     },
@@ -107,7 +107,7 @@ export function createMoveItemsCommand(options: MoveItemsCommandOptions): Librar
       if (options.onUndoMove) { await options.onUndoMove(); options.onUndone?.(); return; }
       if (options.sourceCollectionId && options.sourceCollectionId !== 'unfiled') {
         await options.moveMutation.mutateAsync({
-          targetCollectionId: options.sourceCollectionId, itemIds: options.itemIds, sourceCollectionId: options.targetCollectionId, scopeId: options.scopeId,
+          targetCollectionId: options.sourceCollectionId, itemIds: options.itemIds, sourceCollectionId: options.targetCollectionId, spaceId: options.spaceId,
         });
         options.onUndone?.();
         return;
@@ -144,7 +144,7 @@ export function createMoveItemsCommand(options: MoveItemsCommandOptions): Librar
         return;
       }
       await options.moveMutation.mutateAsync({
-        targetCollectionId: options.sourceCollectionId, itemIds: options.itemIds, sourceCollectionId: options.targetCollectionId, scopeId: options.scopeId,
+        targetCollectionId: options.sourceCollectionId, itemIds: options.itemIds, sourceCollectionId: options.targetCollectionId, spaceId: options.spaceId,
       });
       options.onUndone?.();
     },
@@ -509,7 +509,7 @@ interface LibraryCommandState {
   isUndoing: boolean;
   lastCommand: LibraryCommand | null;
   epoch: number;
-  currentScopeId: string | null;
+  currentSpaceId: string | null;
 }
 
 interface LibraryCommandActions {
@@ -520,7 +520,7 @@ interface LibraryCommandActions {
   redo: (expectedCommandId?: string) => Promise<boolean>;
   clearHistory: () => void;
   clear: () => void;
-  setScope: (scopeId?: string | null) => void;
+  setScope: (spaceId?: string | null) => void;
 }
 
 const MAX_HISTORY_LENGTH = 30;
@@ -539,7 +539,7 @@ function resolveCommandToastId(id: string): string {
 }
 
 export const useLibraryCommandStore = create<LibraryCommandState & LibraryCommandActions>((set, get) => ({
-  undoStack: [], redoStack: [], isExecuting: false, isUndoing: false, lastCommand: null, epoch: 0, currentScopeId: null,
+  undoStack: [], redoStack: [], isExecuting: false, isUndoing: false, lastCommand: null, epoch: 0, currentSpaceId: null,
 
   executeCommand: async <T>(command: LibraryCommand<T>, options: { silentToast?: boolean } = {}): Promise<T> => {
     const ensuredCommand: LibraryCommand<T> = {
@@ -669,13 +669,13 @@ export const useLibraryCommandStore = create<LibraryCommandState & LibraryComman
 
   clear: () => { get().clearHistory(); },
 
-  setScope: (scopeId?: string | null) => {
-    const normalized = scopeId || 'user';
-    if (get().currentScopeId && get().currentScopeId !== normalized) {
+  setScope: (spaceId?: string | null) => {
+    const normalized = spaceId || 'user';
+    if (get().currentSpaceId && get().currentSpaceId !== normalized) {
       get().clearHistory();
       notifyDraftCacheCleared();
     }
-    set({ currentScopeId: normalized });
+    set({ currentSpaceId: normalized });
   },
 }));
 

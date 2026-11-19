@@ -151,7 +151,7 @@ function CurationModalsHost({
       masterPaper,
       mergedFields,
       duplicateIdsToDelete,
-      effectiveScopeId: effectiveScope,
+      effectiveSpaceId: effectiveScope,
       resolveCachedItem,
       executeCommand,
       mergeMutation: mergeDuplicatesMutation,
@@ -188,7 +188,7 @@ function CurationModalsHost({
         onOpenChange={(open) => !open && closeModal()}
         item={sourceItemForConversion}
         targetType={targetType}
-        scopeId={effectiveScope}
+        spaceId={effectiveScope}
         onSuccess={(updatedItem: Item, retainUnmapped?: boolean) => {
           const targetItemId =
             updatedItem?.id || sourceItemForConversion?.id || payload?.itemId;
@@ -368,7 +368,7 @@ function IngestionAndUtilityModalsHost({
       <ImportFromPersonalModal
         open={true}
         onOpenChange={(open) => !open && closeModal()}
-        scopeId={effectiveScope}
+        spaceId={effectiveScope}
         projectName={activeScope?.name || 'Project'}
         existingTitles={existingProjectTitles}
         onSuccess={() => {
@@ -384,7 +384,7 @@ function IngestionAndUtilityModalsHost({
       <UploadFilesModal
         open={true}
         onOpenChange={(open) => !open && closeModal()}
-        scopeId={effectiveScope}
+        spaceId={effectiveScope}
         defaultCollectionId={payload?.collectionId || ''}
         initialFiles={payload?.files || payload?.initialFiles || []}
         mode={payload?.mode === 'folder' ? 'folder' : 'file'}
@@ -514,13 +514,13 @@ const ACTIVE_MODAL_REGISTRY: Partial<
  * Mounts once at the workspace root and delegates modal-specific TanStack Query / Mutation hooks
  * to dedicated lazy host containers in `ACTIVE_MODAL_REGISTRY` only when `activeModal` is non-null.
  */
-export function LibraryModals({ scopeId }: { scopeId?: string }) {
+export function LibraryModals({ spaceId }: { spaceId?: string }) {
   const activeModal = useLibraryUIStore((s) => s.activeModal);
   const modalProps = useLibraryUIStore((s) => s.modalProps);
   const closeModal = useLibraryUIStore((s) => s.closeModal);
   const activeScope = useLibraryUIStore((s) => s.activeScope);
   const effectiveScope =
-    scopeId || (activeScope.type === 'project' ? activeScope.id : 'user');
+    spaceId || (activeScope.type === 'project' ? activeScope.id : 'user');
 
   // Standalone Process / Metadata Retrieval Modal State & Handlers
   const processModalState = useProcessModalStore((s) => s.state);
@@ -530,7 +530,7 @@ export function LibraryModals({ scopeId }: { scopeId?: string }) {
 
   // Resume polling on reload if there is an in-progress batch run
   useResumeBatchIngestionPolling(
-    processModalState.data?.scopeId || effectiveScope,
+    processModalState.data?.spaceId || effectiveScope,
     processModalState.runId,
     processModalState.isComplete,
   );

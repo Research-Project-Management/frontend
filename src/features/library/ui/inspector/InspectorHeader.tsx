@@ -307,7 +307,7 @@ export function InspectorTabs({
 
 interface InspectorHeaderProps {
   item: Item;
-  scopeId?: string;
+  spaceId?: string;
   canEdit?: boolean;
   onUpdateItem?: (data: Partial<Item>, options?: { silent?: boolean }) => void;
   onClose?: () => void;
@@ -315,7 +315,7 @@ interface InspectorHeaderProps {
 
 export function InspectorHeader({
   item,
-  scopeId,
+  spaceId,
   canEdit = true,
   onUpdateItem,
   onClose,
@@ -329,11 +329,11 @@ export function InspectorHeader({
   const isTrash = Boolean(item.deletedAt);
   const effectiveCanEdit = canEdit && !isTrash;
 
-  const updateMutation = useUpdateLibraryItemMutation(scopeId);
-  const restoreMutation = useBatchRestoreItemsMutation(scopeId);
-  const deleteMutation = useDeleteLibraryItemsMutation(scopeId);
+  const updateMutation = useUpdateLibraryItemMutation(spaceId);
+  const restoreMutation = useBatchRestoreItemsMutation(spaceId);
+  const deleteMutation = useDeleteLibraryItemsMutation(spaceId);
   const executeCommand = useLibraryCommandStore((s) => s.executeCommand);
-  const { unflagItem, isUnflagging } = useRetraction(scopeId);
+  const { unflagItem, isUnflagging } = useRetraction(spaceId);
 
   const isRetracted = isItemRetracted(item);
   const { title: retractionTitle } = getRetractionInfo(item);

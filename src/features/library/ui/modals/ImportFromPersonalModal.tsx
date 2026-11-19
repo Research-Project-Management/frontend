@@ -40,7 +40,7 @@ import type {
 interface ImportFromPersonalModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  scopeId: string;
+  spaceId: string;
   projectName: string;
   existingTitles?: string[];
   onSuccess?: () => void;
@@ -49,7 +49,7 @@ interface ImportFromPersonalModalProps {
 export default function ImportFromPersonalModal({
   open,
   onOpenChange,
-  scopeId,
+  spaceId,
   projectName,
   existingTitles = [],
   onSuccess,
@@ -68,7 +68,7 @@ export default function ImportFromPersonalModal({
       setSelectedScope("all");
       setSelectedIdsSet(new Set());
     }
-  }, [open, scopeId]);
+  }, [open, spaceId]);
 
   useEffect(() => {
     const trimmed = search.trim();
@@ -105,7 +105,7 @@ export default function ImportFromPersonalModal({
     limit: 200,
     search: debouncedSearch || undefined,
     collectionId: activeCollectionId,
-    checkInProjectId: scopeId !== "user" ? scopeId : undefined,
+    checkInProjectId: spaceId !== "user" ? spaceId : undefined,
   });
   const filteredItems: Item[] = useMemo(() => data?.items ?? [], [data?.items]);
 
@@ -189,11 +189,11 @@ export default function ImportFromPersonalModal({
     });
   };
 
-  const importMutation = useImportFromUserMutation(scopeId);
+  const importMutation = useImportFromUserMutation(spaceId);
   const isImporting = importMutation.isPending;
 
   const handleImport = async () => {
-    if (selectedIdsSet.size === 0 || !scopeId) return;
+    if (selectedIdsSet.size === 0 || !spaceId) return;
     const selectedIds = Array.from(selectedIdsSet);
     try {
       const res = await importMutation.mutateAsync(selectedIds);

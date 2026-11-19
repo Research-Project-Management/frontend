@@ -79,10 +79,10 @@ export function LibrarySidebar() {
   const openModal = useLibraryUIStore((s) => s.openModal);
   const isInProjectContext = activeSpace.type === 'project' && Boolean(activeSpace.projectId);
   const projectId = isInProjectContext ? activeSpace.projectId! : '';
-  const effectiveScopeId = isInProjectContext ? activeSpace.projectId! : 'user';
-  const moveMutation = useMoveCollectionItemsMutation(effectiveScopeId);
-  const assignMutation = useAssignCollectionItemsMutation(effectiveScopeId);
-  const detachMutation = useBatchDetachItemsMutation(effectiveScopeId);
+  const effectiveSpaceId = isInProjectContext ? activeSpace.projectId! : 'user';
+  const moveMutation = useMoveCollectionItemsMutation(effectiveSpaceId);
+  const assignMutation = useAssignCollectionItemsMutation(effectiveSpaceId);
+  const detachMutation = useBatchDetachItemsMutation(effectiveSpaceId);
 
   const [isLibraryExpanded, setIsLibraryExpanded] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -96,7 +96,7 @@ export function LibrarySidebar() {
     enabled: isInProjectContext,
   });
   const collectionService = useCollections({
-    scopeId: effectiveScopeId,
+    spaceId: effectiveSpaceId,
     enabled: false,
   });
 
@@ -140,14 +140,14 @@ export function LibrarySidebar() {
     deleteSavedSearch: deleteProjectSavedSearch,
   } = useSavedSearches(projectId, { enabled: isInProjectContext });
 
-  const { trashItems, emptyTrash } = useTrash(effectiveScopeId, {
+  const { trashItems, emptyTrash } = useTrash(effectiveSpaceId, {
     enabled: currentFilter === 'trash',
   });
-  const { data: userCounts } = useLibraryCountsQuery(effectiveScopeId);
+  const { data: userCounts } = useLibraryCountsQuery(effectiveSpaceId);
   const effectiveTrashCount =
     currentFilter === 'trash' ? trashItems.length : (userCounts?.trash ?? trashItems.length);
-  const deleteMutation = useDeleteLibraryItemsMutation(effectiveScopeId);
-  const restoreMutation = useBatchRestoreItemsMutation(effectiveScopeId);
+  const deleteMutation = useDeleteLibraryItemsMutation(effectiveSpaceId);
+  const restoreMutation = useBatchRestoreItemsMutation(effectiveSpaceId);
   const executeCommand = useLibraryCommandStore((s) => s.executeCommand);
   const clearCommandHistory = useLibraryCommandStore((s) => s.clearHistory);
   const clearSelection = useLibraryUIStore((s) => s.clearSelection);
@@ -190,7 +190,7 @@ export function LibrarySidebar() {
     [deleteMutation, executeCommand, restoreMutation],
   );
 
-  const handleDropToMyPublications = useDropToMyPublications(effectiveScopeId);
+  const handleDropToMyPublications = useDropToMyPublications(effectiveSpaceId);
 
   const handleEditSavedSearch = (ss: SavedSearch) => {
     openModal('SAVED_SEARCH', { savedSearch: ss });
@@ -199,7 +199,7 @@ export function LibrarySidebar() {
   const handleDuplicateSavedSearch = async (ss: SavedSearch) => {
     const isProjectSearch =
       Boolean(ss.projectId) ||
-      (isInProjectContext && ss.scopeId === projectId);
+      (isInProjectContext && ss.spaceId === projectId);
     const targetCreate =
       isProjectSearch && projectId ? createProjectSavedSearch : createUserSavedSearch;
     await targetCreate({
@@ -270,14 +270,14 @@ export function LibrarySidebar() {
       options?: { copy?: boolean; move?: boolean },
     ) => {
       if (!ids.length) return;
-      let targetScopeId = effectiveScopeId;
+      let targetSpaceId = effectiveSpaceId;
       if (targetCollectionId) {
         const isUserCol = userCollections.some((c) => c.id === targetCollectionId);
         const isProjCol = projectCollections.some((c) => c.id === targetCollectionId);
         if (isUserCol) {
-          targetScopeId = 'user';
+          targetSpaceId = 'user';
         } else if (isProjCol && projectId) {
-          targetScopeId = projectId;
+          targetSpaceId = projectId;
         }
       }
 
@@ -338,7 +338,7 @@ export function LibrarySidebar() {
             moveMutation,
             detachMutation,
             assignMutation,
-            scopeId: targetScopeId,
+            spaceId: targetSpaceId,
           }),
           { silentToast: true },
         );
@@ -360,7 +360,7 @@ export function LibrarySidebar() {
       activeId,
       assignMutation,
       detachMutation,
-      effectiveScopeId,
+      effectiveSpaceId,
       executeCommand,
       moveMutation,
       projectCollections,
@@ -390,7 +390,7 @@ export function LibrarySidebar() {
 
   const { rename, handlers } = useCollectionCoordinator({
     collectionService,
-    effectiveScopeId,
+    effectiveSpaceId,
     collections,
     allCollectionsByScope,
     activeCollectionId: activeId,
@@ -560,7 +560,7 @@ export function LibrarySidebar() {
                             key={format}
                             onClick={() =>
                               void executeExportScopeFormat(
-                                effectiveScopeId || 'user',
+                                effectiveSpaceId || 'user',
                                 format,
                               )
                             }

@@ -45,7 +45,7 @@ interface TypeConversionModalProps {
   onOpenChange: (open: boolean) => void;
   item?: Item | TypeConversionItemLike;
   targetType: string;
-  scopeId?: string;
+  spaceId?: string;
   initialPreview?: TypeConversionPreview | null;
   onSuccess?: (updatedItem: Item, retainUnmapped?: boolean) => void;
 }
@@ -78,7 +78,7 @@ export function TypeConversionModal({
   onOpenChange,
   item: currentItem,
   targetType,
-  scopeId: propScopeId,
+  spaceId: propSpaceId,
   initialPreview,
   onSuccess,
 }: TypeConversionModalProps) {
@@ -86,7 +86,7 @@ export function TypeConversionModal({
   const sourceType = currentItem?.itemType || "journalArticle";
   const currentType = sourceType;
   const isOpen = open;
-  const scopeId = propScopeId || currentItem?.projectId || "user";
+  const spaceId = propSpaceId || currentItem?.projectId || "user";
 
   // ── State & Preview Query ──────────────────────────────────────────────────
   const [retainUnmapped, setRetainUnmapped] = useState(true);
@@ -101,7 +101,7 @@ export function TypeConversionModal({
     initialPreview && initialPreview.targetType === targetType,
   );
   const previewQuery = useItemTypeConversionPreviewQuery(
-    scopeId,
+    spaceId,
     currentItem?.id,
     targetType,
     isOpen &&
@@ -122,8 +122,8 @@ export function TypeConversionModal({
         : "Failed to preview type conversion"
       : null;
 
-  const { convertAsync, isConverting } = useItemTypeConversion(scopeId);
-  const { invalidateItemById } = useLibraryCacheSynchronizer(scopeId);
+  const { convertAsync, isConverting } = useItemTypeConversion(spaceId);
+  const { invalidateItemById } = useLibraryCacheSynchronizer(spaceId);
 
   const sourceTypeName = useMemo(() => {
     return (
@@ -168,7 +168,7 @@ export function TypeConversionModal({
       }
     } catch (err: unknown) {
       // Invalidate item query cache immediately on error so UI synchronizes latest version
-      const targetScope = scopeId || currentItem?.projectId || "user";
+      const targetScope = spaceId || currentItem?.projectId || "user";
       void invalidateItemById(itemId, targetScope);
 
       const errMsg = err instanceof Error ? err.message : String(err || "");

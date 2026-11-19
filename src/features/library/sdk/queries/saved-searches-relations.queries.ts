@@ -25,7 +25,7 @@ import {
   itemKeys,
   savedSearchKeys,
   relationKeys,
-  normalizeScopeId,
+  normalizeSpaceId,
   waitForBootstrapCache,
   getReaderBootstrapScope,
 } from '@/features/library/sdk/query-keys';
@@ -45,16 +45,16 @@ export type {
 
 // SAVED SEARCHES QUERY HOOKS
 
-const invalidateSavedSearches = (qc: QueryClient, scopeId?: string) => {
-  qc.invalidateQueries({ queryKey: savedSearchKeys.all(normalizeScopeId(scopeId)) });
+const invalidateSavedSearches = (qc: QueryClient, spaceId?: string) => {
+  qc.invalidateQueries({ queryKey: savedSearchKeys.all(normalizeSpaceId(spaceId)) });
 };
 
 export function useSavedSearches(
-  scopeId?: string,
+  spaceId?: string,
   options?: { enabled?: boolean },
 ) {
   const queryClient = useQueryClient();
-  const effectiveScope = normalizeScopeId(scopeId);
+  const effectiveScope = normalizeSpaceId(spaceId);
   const cacheKey = savedSearchKeys.all(effectiveScope);
 
   const savedSearchesQuery = useQuery({
@@ -74,7 +74,7 @@ export function useSavedSearches(
 
   const createMutation = useMutation({
     mutationFn: async (data: CreateSavedSearchInput) => {
-      const targetScope = normalizeScopeId(data.targetScope || data.scope || effectiveScope);
+      const targetScope = normalizeSpaceId(data.targetScope || data.scope || effectiveScope);
       const created = await SavedSearchesService.create(targetScope, data);
       return { created, targetScope };
     },
@@ -83,7 +83,7 @@ export function useSavedSearches(
       if (targetScope !== effectiveScope) {
         invalidateSavedSearches(queryClient, effectiveScope);
       }
-      const varScope = variables.targetScope ? normalizeScopeId(variables.targetScope) : undefined;
+      const varScope = variables.targetScope ? normalizeSpaceId(variables.targetScope) : undefined;
       if (varScope && varScope !== effectiveScope && varScope !== targetScope) {
         invalidateSavedSearches(queryClient, varScope);
       }
@@ -99,7 +99,7 @@ export function useSavedSearches(
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: UpdateSavedSearchInput }) => {
-      const targetScope = normalizeScopeId(data.targetScope || data.scope || effectiveScope);
+      const targetScope = normalizeSpaceId(data.targetScope || data.scope || effectiveScope);
       const updated = await SavedSearchesService.update(targetScope, id, data);
       return { updated, targetScope };
     },
@@ -177,7 +177,7 @@ export function useSavedSearches(
 }
 
 export function useSavedSearchResults(
-  scopeId: string | undefined,
+  spaceId: string | undefined,
   id: string | null,
   params?: {
     limit?: number;
@@ -187,7 +187,7 @@ export function useSavedSearchResults(
     sortOrder?: string;
   },
 ) {
-  const effectiveScope = normalizeScopeId(scopeId);
+  const effectiveScope = normalizeSpaceId(spaceId);
 
   return useQuery({
     queryKey: savedSearchKeys.results(effectiveScope, id || '', params),
@@ -204,33 +204,33 @@ export function useSavedSearchResults(
 // RELATIONS QUERY HOOKS
 
 export function useRelations(
-  scopeIdOrOptions?:
+  spaceIdOrOptions?:
     | string
-    | { scopeId?: string; projectId?: string; enabled?: boolean },
+    | { spaceId?: string; projectId?: string; enabled?: boolean },
   itemId?: string,
   options?: { enabled?: boolean },
 ) {
-  const scopeId =
-    typeof scopeIdOrOptions === 'string'
-      ? scopeIdOrOptions
-      : (scopeIdOrOptions?.scopeId || scopeIdOrOptions?.projectId || 'user');
+  const spaceId =
+    typeof spaceIdOrOptions === 'string'
+      ? spaceIdOrOptions
+      : (spaceIdOrOptions?.spaceId || spaceIdOrOptions?.projectId || 'user');
   const explicitEnabled =
-    (typeof scopeIdOrOptions === 'object' ? scopeIdOrOptions?.enabled : undefined) ??
+    (typeof spaceIdOrOptions === 'object' ? spaceIdOrOptions?.enabled : undefined) ??
     options?.enabled ??
     true;
 
   const queryClient = useQueryClient();
   const effectiveItemId = itemId || '';
-  const cacheKey = relationKeys.all(scopeId, effectiveItemId);
+  const cacheKey = relationKeys.all(spaceId, effectiveItemId);
 
   const relationsQuery = useQuery({
     queryKey: cacheKey,
     queryFn: async () => {
       const seeded = await waitForBootstrapCache<
         Awaited<ReturnType<typeof RelationsService.getRelated>>
-      >(queryClient, getReaderBootstrapScope(scopeId), cacheKey);
+      >(queryClient, getReaderBootstrapScope(spaceId), cacheKey);
       if (seeded !== undefined) return seeded;
-      return RelationsService.getRelated(scopeId || '', effectiveItemId);
+      return RelationsService.getRelated(spaceId || '', effectiveItemId);
     },
     enabled: explicitEnabled && Boolean(effectiveItemId && effectiveItemId !== 'user'),
     select: (data) => ({
@@ -254,7 +254,7 @@ export function useRelations(
           ? targetItemIds
           : (targetItemId ? [targetItemId] : []);
       return RelationsService.link(
-        scopeId || '',
+        spaceId || '',
         effectiveItemId,
         targets.length === 1 ? targets[0] : targets,
         relationType,
@@ -262,14 +262,14 @@ export function useRelations(
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: relationKeys.all(scopeId, effectiveItemId),
+        queryKey: relationKeys.all(spaceId, effectiveItemId),
       });
       const targets =
         variables.targetItemIds ||
         (variables.targetItemId ? [variables.targetItemId] : []);
       for (const tId of targets) {
         queryClient.invalidateQueries({
-          queryKey: relationKeys.all(scopeId, tId),
+          queryKey: relationKeys.all(spaceId, tId),
         });
       }
       const count = targets.length;
@@ -289,18 +289,18 @@ export function useRelations(
   const unlinkMutation = useMutation({
     mutationFn: (variables: { targetItemId: string; relationType?: string }) =>
       RelationsService.unlink(
-        scopeId || '',
+        spaceId || '',
         effectiveItemId,
         variables.targetItemId,
         variables.relationType,
       ),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: relationKeys.all(scopeId, effectiveItemId),
+        queryKey: relationKeys.all(spaceId, effectiveItemId),
       });
       if (variables.targetItemId) {
         queryClient.invalidateQueries({
-          queryKey: relationKeys.all(scopeId, variables.targetItemId),
+          queryKey: relationKeys.all(spaceId, variables.targetItemId),
         });
       }
       toast.success('Reference unlinked', { id: 'relation-mutation' });
@@ -327,18 +327,18 @@ export function useRelations(
 // CONVERSION QUERY HOOKS
 
 export function useItemTypeConversionPreviewQuery(
-  scopeId: string,
+  spaceId: string,
   itemId: string | undefined,
   targetType: string | undefined,
   enabled = true,
 ) {
-  const effectiveScopeId = normalizeScopeId(scopeId);
+  const effectiveSpaceId = normalizeSpaceId(spaceId);
 
   return useQuery({
-    queryKey: itemKeys.typeConversionPreview(effectiveScopeId, itemId, targetType),
+    queryKey: itemKeys.typeConversionPreview(effectiveSpaceId, itemId, targetType),
     queryFn: () =>
       ItemsService.previewConvertType(
-        effectiveScopeId,
+        effectiveSpaceId,
         itemId!,
         targetType!,
         true,
@@ -353,9 +353,9 @@ export function useItemTypeConversionPreviewQuery(
   });
 }
 
-export function useItemTypeConversion(scopeId?: string) {
+export function useItemTypeConversion(spaceId?: string) {
   const queryClient = useQueryClient();
-  const effectiveScopeId = normalizeScopeId(scopeId);
+  const effectiveSpaceId = normalizeSpaceId(spaceId);
 
   const convertMutation = useMutation({
     mutationFn: ({
@@ -373,9 +373,9 @@ export function useItemTypeConversion(scopeId?: string) {
     }) => {
       const resolvedExpectedVersion =
         expectedVersion ??
-        resolveCachedItemFromScope(queryClient, effectiveScopeId, itemId)?.version;
+        resolveCachedItemFromScope(queryClient, effectiveSpaceId, itemId)?.version;
       return ItemsService.convertType(
-        effectiveScopeId,
+        effectiveSpaceId,
         itemId,
         targetType,
         resolvedExpectedVersion,
@@ -389,9 +389,9 @@ export function useItemTypeConversion(scopeId?: string) {
         data;
       if (rawUpdated && typeof rawUpdated === 'object' && 'id' in rawUpdated) {
         const mapped = mapBackendItem(rawUpdated as Record<string, unknown>) as Item;
-        patchItemAcrossScopeCaches(queryClient, effectiveScopeId, variables.itemId, mapped);
+        patchItemAcrossScopeCaches(queryClient, effectiveSpaceId, variables.itemId, mapped);
       }
-      void invalidateLibraryCatalogDependencies(queryClient, effectiveScopeId, {
+      void invalidateLibraryCatalogDependencies(queryClient, effectiveSpaceId, {
         itemId: variables.itemId,
         itemsList: true,
         counts: true,
@@ -408,7 +408,7 @@ export function useItemTypeConversion(scopeId?: string) {
     },
     onError: (err: Error, variables) => {
       queryClient.invalidateQueries({
-        queryKey: itemKeys.byId(effectiveScopeId, variables.itemId),
+        queryKey: itemKeys.byId(effectiveSpaceId, variables.itemId),
       });
       toast.error('Conversion failed', {
         description: err.message || 'Could not convert item type.',

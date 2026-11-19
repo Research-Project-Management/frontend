@@ -76,7 +76,7 @@ export type ItemAttachment = z.input<typeof attachmentSchema> & {
 // ── Notes ────────────────────────────────────────────────────────────────────
 export const noteSchema = z.object({
   id: z.string().optional().default(''),
-  scopeId: z.string().optional(),
+  spaceId: z.string().optional(),
   projectId: z.string().nullable().optional(),
   userId: z.string().nullable().optional(),
   itemId: z.string().nullable().optional(),
@@ -123,7 +123,7 @@ export const tagSchema = z.object({
   color: z.string().optional().default('#3b82f6'),
   shortcut: z.number().int().min(1).max(9).nullable().optional(),
   type: tagTypeSchema.or(z.string()).optional().default('manual'),
-  scopeId: z.string().optional(),
+  spaceId: z.string().optional(),
   projectId: z.string().nullable().optional(),
   userId: z.string().nullable().optional(),
   _count: z.object({
@@ -442,7 +442,7 @@ export const baseItemSchema = z.object({
   user: userSchema.optional(),
   userId: z.string().nullish(),
   projectId: z.string().nullish(),
-  scopeId: z.string().nullish(),
+  spaceId: z.string().nullish(),
   createdAt: z.string().datetime().optional(),
   updatedAt: z.string().datetime().optional(),
   dateAdded: z.string().optional(),

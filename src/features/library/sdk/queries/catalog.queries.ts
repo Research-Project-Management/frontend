@@ -12,7 +12,7 @@ import { ALL_ITEM_TYPES_FLAT } from '@/features/library/types/item-type-mappings
 import { getDescendantCollectionIds } from '@/features/library/domain/collection-tree.domain';
 import {
   itemKeys, libraryKeys, collectionKeys, tagKeys, noteKeys, savedSearchKeys, relationKeys, feedKeys,
-  invalidateCollections, normalizeScopeId, prepareBootstrapScope, registerBootstrapPromise, waitForBootstrapCache,
+  invalidateCollections, normalizeSpaceId, prepareBootstrapScope, registerBootstrapPromise, waitForBootstrapCache,
   getReaderBootstrapScope, notifyServerFeedsHydrated,
 } from '@/features/library/sdk/query-keys';
 import { mapServerFeedSubscriptions } from '@/features/library/domain/feed-parser.domain';
@@ -31,15 +31,15 @@ import {
 export {
   type ItemTypesResponse,
   itemKeys, collectionKeys, tagKeys, noteKeys, savedSearchKeys, relationKeys, invalidateCollections,
-  normalizeScopeId,
+  normalizeSpaceId,
   chunkUniqueIds, extractItemFromCacheData, mergeCachedItemWithPatch, patchItemInCacheData,
   patchSingleItemCache, patchItemAcrossScopeCaches, removeItemsFromCacheData, removeItemsFromScopeCaches,
   invalidateLibraryCatalogDependencies, invalidateLibraryScopeCatalog, resolveCachedItemFromScope,
   useLibraryCacheSynchronizer,
 };
 
-export function fetchLibraryItemById(scopeId: string | undefined, itemId: string) {
-  return ItemsService.getById(scopeId, itemId);
+export function fetchLibraryItemById(spaceId: string | undefined, itemId: string) {
+  return ItemsService.getById(spaceId, itemId);
 }
 
 function derivePlaceholderItems(
@@ -94,12 +94,12 @@ function derivePlaceholderItems(
 // ITEMS QUERY HOOKS
 
 export function useLibraryBootstrapQuery(
-  scopeId?: string,
+  spaceId?: string,
   itemParams?: ItemQueryParams,
   options?: { enabled?: boolean; includeItems?: boolean },
 ) {
   const queryClient = useQueryClient();
-  const targetScope = normalizeScopeId(scopeId);
+  const targetScope = normalizeSpaceId(spaceId);
   const includeItems = options?.includeItems ?? true;
   const isEnabled = options?.enabled ?? true;
 
@@ -194,7 +194,7 @@ export function useLibraryBootstrapQuery(
             if (shouldAdvance) {
               queryClient.setQueryData(libraryKeys.syncVersion(targetScope), {
                 version: incomingVersion,
-                scopeId: targetScope,
+                spaceId: targetScope,
                 syncedCount: 0,
               });
             }
@@ -236,11 +236,11 @@ export function useLibraryBootstrapQuery(
 }
 
 export function useLibraryCountsQuery(
-  scopeId?: string,
+  spaceId?: string,
   options?: { enabled?: boolean },
 ) {
   const queryClient = useQueryClient();
-  const targetScope = normalizeScopeId(scopeId);
+  const targetScope = normalizeSpaceId(spaceId);
   const cacheKey = itemKeys.counts(targetScope);
   return useQuery({
     queryKey: cacheKey,
@@ -277,7 +277,7 @@ function selectViewItemsPayload(data: { items?: Item[]; meta?: CursorPaginationM
 }
 
 export function useViewItems(
-  scopeId?: string,
+  spaceId?: string,
   view: 'all' | 'recent' | 'unfiled' | 'trash' | 'my-publications' | 'publications' = 'all',
   searchOrOptions?:
     | string
@@ -290,7 +290,7 @@ export function useViewItems(
       },
   options?: { enabled?: boolean; limit?: number },
 ) {
-  const targetScope = normalizeScopeId(scopeId);
+  const targetScope = normalizeSpaceId(spaceId);
   const search = typeof searchOrOptions === 'string' ? searchOrOptions : searchOrOptions?.search;
   const collectionId = typeof searchOrOptions === 'object' ? searchOrOptions?.collectionId : undefined;
   const checkInProjectId =
@@ -372,7 +372,7 @@ export function useViewItems(
 
 interface UseItemsOptions {
   projectId?: string;
-  scopeId?: string;
+  spaceId?: string;
   collectionId?: string;
   itemId?: string;
   limit?: number;
@@ -380,9 +380,9 @@ interface UseItemsOptions {
 }
 
 export function useItems(optionsOrScope: string | UseItemsOptions = {}) {
-  const options = typeof optionsOrScope === 'string' ? { scopeId: optionsOrScope } : optionsOrScope;
-  const { scopeId, projectId, collectionId, itemId, limit } = options;
-  const targetScope = normalizeScopeId(scopeId || projectId);
+  const options = typeof optionsOrScope === 'string' ? { spaceId: optionsOrScope } : optionsOrScope;
+  const { spaceId, projectId, collectionId, itemId, limit } = options;
+  const targetScope = normalizeSpaceId(spaceId || projectId);
   const activeItemId = itemId || '';
   const effectiveLimit = limit ?? 200;
 
@@ -440,15 +440,15 @@ export function useItems(optionsOrScope: string | UseItemsOptions = {}) {
 }
 
 export function useItemTypes(
-  scopeIdOrOptions?: string | { scopeId?: string; projectId?: string; enabled?: boolean },
+  spaceIdOrOptions?: string | { spaceId?: string; projectId?: string; enabled?: boolean },
 ) {
   const rawSid =
-    typeof scopeIdOrOptions === 'string'
-      ? scopeIdOrOptions
-      : (scopeIdOrOptions?.scopeId || scopeIdOrOptions?.projectId || 'user');
-  const sid = normalizeScopeId(rawSid);
+    typeof spaceIdOrOptions === 'string'
+      ? spaceIdOrOptions
+      : (spaceIdOrOptions?.spaceId || spaceIdOrOptions?.projectId || 'user');
+  const sid = normalizeSpaceId(rawSid);
   const enabled =
-    typeof scopeIdOrOptions === 'object' ? (scopeIdOrOptions?.enabled ?? true) : true;
+    typeof spaceIdOrOptions === 'object' ? (spaceIdOrOptions?.enabled ?? true) : true;
 
   const queryClient = useQueryClient();
   const cacheKey = itemKeys.types(sid);
@@ -506,12 +506,12 @@ interface LibraryItemsQueryResult {
 }
 
 export function useLibrarySearchFacetsQuery(
-  scopeId?: string,
+  spaceId?: string,
   searchQuery?: string,
   collectionId?: string,
   searchMode?: 'title_creator_year' | 'fields_tags' | 'everything',
 ) {
-  const targetScope = normalizeScopeId(scopeId);
+  const targetScope = normalizeSpaceId(spaceId);
   const trimmedSearch = (searchQuery ?? '').trim();
   const effectiveSearchMode = searchMode || 'everything';
   const facetKey = libraryKeys.searchFacets(targetScope, {
@@ -542,12 +542,12 @@ export function useLibrarySearchFacetsQuery(
 }
 
 export function useLibraryItemsQuery(
-  scopeId?: string,
+  spaceId?: string,
   params?: ItemQueryParams,
   options?: { enabled?: boolean },
 ) {
   const queryClient = useQueryClient();
-  const targetScope = normalizeScopeId(scopeId);
+  const targetScope = normalizeSpaceId(spaceId);
   const cacheKey = libraryKeys.items(targetScope, params);
   return useQuery({
     queryKey: cacheKey,
@@ -654,17 +654,17 @@ export function useLibraryItemsQuery(
 }
 
 export function usePrefetchNextLibraryItemsPage(options: {
-  scopeId?: string;
+  spaceId?: string;
   queryParams?: ItemQueryParams;
   activePage: number;
   baseTotalCount: number;
   enabled: boolean;
 }) {
   const queryClient = useQueryClient();
-  const { scopeId, queryParams, activePage, baseTotalCount, enabled } = options;
+  const { spaceId, queryParams, activePage, baseTotalCount, enabled } = options;
   useEffect(() => {
     if (!enabled) return;
-    const targetScope = normalizeScopeId(scopeId);
+    const targetScope = normalizeSpaceId(spaceId);
     const nextParams = { ...queryParams, page: activePage + 1 };
     void queryClient.prefetchQuery({
       queryKey: libraryKeys.items(targetScope, nextParams),
@@ -692,13 +692,13 @@ export function usePrefetchNextLibraryItemsPage(options: {
       },
       staleTime: 30_000,
     });
-  }, [enabled, scopeId, queryParams, activePage, baseTotalCount, queryClient]);
+  }, [enabled, spaceId, queryParams, activePage, baseTotalCount, queryClient]);
 }
 
 export function useLibraryItemDetailQuery(
-  scopeId: string | undefined, itemId: string | undefined, options?: { enabled?: boolean },
+  spaceId: string | undefined, itemId: string | undefined, options?: { enabled?: boolean },
 ) {
-  const targetScope = normalizeScopeId(scopeId);
+  const targetScope = normalizeSpaceId(spaceId);
   return useQuery<Item>({
     queryKey: itemKeys.byId(targetScope, itemId || ''),
     queryFn: () => ItemsService.getById(targetScope, itemId || ''),

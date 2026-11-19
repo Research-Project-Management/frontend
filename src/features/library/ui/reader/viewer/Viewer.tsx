@@ -36,7 +36,7 @@ const SHARED_PDF_OPTIONS = getSharedPdfDocumentOptions();
 const EMPTY_ANNOTATIONS: ReaderAnnotation[] = [];
 
 export interface ViewerProps {
-  blobUrl: string | null; isLoading: boolean; error: string | null; attachmentId?: string; scopeId?: string;
+  blobUrl: string | null; isLoading: boolean; error: string | null; attachmentId?: string; spaceId?: string;
   onAddToNote?: (selectedText: string, pageNumber?: number, annotationId?: string) => void;
   onAskAi?: (selectedText: string, pageNumber?: number) => void;
   onAnnotate?: (
@@ -66,7 +66,7 @@ export interface ViewerProps {
 }
 
 export default function Viewer({
-  blobUrl, isLoading, error, attachmentId, scopeId, onAddToNote, onAskAi, onAnnotate, onUpdateAnnotation,
+  blobUrl, isLoading, error, attachmentId, spaceId, onAddToNote, onAskAi, onAnnotate, onUpdateAnnotation,
   annotations = [], onDeleteAnnotation, fulltext, targetPage, paper,
   onVisiblePageChange, onNavigateWithHistory, onTotalPagesChange, onOutlineLoad,
   onDocumentLoad, onDocumentLoaded, sharedPdfDocument, onOpenInSplitView,
@@ -265,7 +265,7 @@ export default function Viewer({
     searchQuery, setSearchQuery, matchCase, setMatchCase, wholeWords, setWholeWords,
     currentMatchIdx, searchMatches, searchInputRef, handleNextMatch, handlePrevMatch, customTextRenderer,
   } = useViewerSearch({
-    isSearchOpen, initialSearchQuery, attachmentId, scopeId, fulltext, numPages, pageRefs, pdfDocument, scrollToPage,
+    isSearchOpen, initialSearchQuery, attachmentId, spaceId, fulltext, numPages, pageRefs, pdfDocument, scrollToPage,
   });
 
   const handleAnnotateWithPageLabel = useCallback(

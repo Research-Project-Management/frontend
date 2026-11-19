@@ -163,7 +163,7 @@ interface ProcessModalStore {
       | boolean
       | {
           autoMinimize?: boolean;
-          scopeId?: string;
+          spaceId?: string;
           currentTitle?: string;
           initialProcessingItems?: ProcessingFileItem[];
         },
@@ -256,7 +256,7 @@ export const useProcessModalStore = create<ProcessModalStore>()(
       const mergedItems = hasActiveBatch ? [...s.state.data!.items, ...items] : items;
       const baseData: IngestionProgressResponse = {
         runId: hasActiveBatch ? s.state.data!.runId : runId,
-        scopeId: opts.scopeId ?? s.state.data?.scopeId ?? 'user',
+        spaceId: opts.spaceId ?? s.state.data?.spaceId ?? 'user',
         status: 'PROCESSING',
         total: mergedItems.length,
         processed: 0,

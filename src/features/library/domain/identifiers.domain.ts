@@ -315,9 +315,9 @@ export function normalizeTitleCase(title?: string | null): string {
     .join(' ');
 }
 
-export function isProjectScope(scopeId?: string): scopeId is string {
-  if (!scopeId) return false;
-  const s = scopeId.trim().toLowerCase();
+export function isProjectScope(spaceId?: string): spaceId is string {
+  if (!spaceId) return false;
+  const s = spaceId.trim().toLowerCase();
   return s !== 'user' && s !== 'me' && s !== 'personal' && s !== 'global' && s !== 'default';
 }
 
@@ -346,12 +346,12 @@ type ItemFileSource = {
 
 export function getItemFileUrl(
   item?: ItemFileSource | null | undefined,
-  scopeId?: string,
+  spaceId?: string,
 ): string {
   if (!item) return '';
 
-  const effectiveScope = isProjectScope(scopeId)
-    ? scopeId
+  const effectiveScope = isProjectScope(spaceId)
+    ? spaceId
     : typeof item.projectId === 'string' && isProjectScope(item.projectId)
       ? item.projectId
       : undefined;
@@ -429,11 +429,11 @@ export function getItemFileUrl(
 
 export function resolveAllItemAttachmentUrls(
   item?: ItemFileSource | null | undefined,
-  scopeId?: string,
+  spaceId?: string,
 ): string[] {
   if (!item) return [];
   const urls = new Set<string>();
-  const primary = getItemFileUrl(item, scopeId);
+  const primary = getItemFileUrl(item, spaceId);
   if (primary) urls.add(primary);
 
   if (Array.isArray(item.attachments)) {
@@ -441,7 +441,7 @@ export function resolveAllItemAttachmentUrls(
       if (!att) continue;
       const attUrl = getItemFileUrl(
         { fileUrl: att.fileUrl || att.url, url: att.url, fileId: att.fileId },
-        scopeId,
+        spaceId,
       );
       if (attUrl) urls.add(attUrl);
     }

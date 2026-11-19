@@ -25,7 +25,7 @@ interface BatchBarProps {
   view?: string;
   collections: Collection[];
   isTrash?: boolean;
-  scopeId?: string;
+  spaceId?: string;
   canEdit?: boolean;
 }
 
@@ -43,20 +43,20 @@ export function BatchBar({
   view,
   collections,
   isTrash = false,
-  scopeId: propsScopeId,
+  spaceId: propsSpaceId,
   canEdit = true,
 }: BatchBarProps) {
   const params = useParams() as { projectId?: string };
   const activeScope = useLibraryUIStore((s) => s.activeScope);
   const isProjectScope = activeScope.type === "project";
-  const effectiveScopeId =
-    propsScopeId ||
+  const effectiveSpaceId =
+    propsSpaceId ||
     params?.projectId ||
     (isProjectScope && activeScope.id ? activeScope.id : "user");
 
   const internalCoordinator = useLibraryBatchCoordinator({
     items,
-    scopeId: effectiveScopeId,
+    spaceId: effectiveSpaceId,
     collectionId: collectionId || undefined,
     view,
     isTrash,
@@ -130,7 +130,7 @@ export function BatchBar({
     Boolean(onBatchMove || onBatchAssign) &&
     targetableCollections.length > 0;
 
-  const { data: serverStyles = [] } = useCitationStyles(effectiveScopeId, {
+  const { data: serverStyles = [] } = useCitationStyles(effectiveSpaceId, {
     enabled: !effectiveIsTrash && selectedCount > 0,
   });
 
@@ -145,7 +145,7 @@ export function BatchBar({
     [serverStyles],
   );
 
-  const renameMutation = useBatchRenameAttachmentsMutation(effectiveScopeId);
+  const renameMutation = useBatchRenameAttachmentsMutation(effectiveSpaceId);
 
   if (selectedCount === 0) return null;
 
@@ -161,7 +161,7 @@ export function BatchBar({
   const handleCopyMultiCite = (style: CslStyle | "latex" = "apa") =>
     executeCopyMultiCite(
       resolvedItems,
-      effectiveScopeId,
+      effectiveSpaceId,
       style,
       retractedSelected.length,
     );
@@ -169,7 +169,7 @@ export function BatchBar({
   const handleCopyInTextCite = (style: CslStyle = "apa") =>
     executeCopyInTextCite(
       resolvedItems,
-      effectiveScopeId,
+      effectiveSpaceId,
       style,
       retractedSelected.length,
     );
@@ -177,7 +177,7 @@ export function BatchBar({
   const handleExportAllBibtex = () =>
     executeExportAllBibtex(
       resolvedItems,
-      effectiveScopeId,
+      effectiveSpaceId,
       selectedCount,
       retractedSelected.length,
     );
@@ -185,7 +185,7 @@ export function BatchBar({
   const handleDownloadBibFile = () =>
     executeDownloadBibFile(
       resolvedItems,
-      effectiveScopeId,
+      effectiveSpaceId,
       selectedCount,
       retractedSelected.length,
     );
@@ -283,7 +283,7 @@ export function BatchBar({
             <BatchCitationExportPopovers
               citationStyles={citationStyles}
               resolvedItems={resolvedItems}
-              effectiveScopeId={effectiveScopeId}
+              effectiveSpaceId={effectiveSpaceId}
               retractedCount={retractedSelected.length}
               onCopyMultiCite={(style) => void handleCopyMultiCite(style)}
               onCopyInTextCite={(style) => void handleCopyInTextCite(style)}

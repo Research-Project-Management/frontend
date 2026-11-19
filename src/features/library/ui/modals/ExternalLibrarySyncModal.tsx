@@ -50,7 +50,7 @@ interface ExternalLibrarySyncModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultProvider?: 'zotero' | 'mendeley';
-  scopeId?: string;
+  spaceId?: string;
   collections?: Collection[];
   defaultCollectionId?: string | null;
 }
@@ -58,11 +58,11 @@ interface ExternalLibrarySyncModalProps {
 export default function ExternalLibrarySyncModal({
   open,
   onOpenChange,
-  scopeId = 'user',
+  spaceId = 'user',
   collections = [],
   defaultCollectionId = null,
 }: ExternalLibrarySyncModalProps) {
-  const syncExternalBibtexMutation = useSyncExternalBibtexMutation(scopeId);
+  const syncExternalBibtexMutation = useSyncExternalBibtexMutation(spaceId);
   const [selectedRemoteCollection, setSelectedRemoteCollection] =
     useState<string>('');
   const [targetCollectionId, setTargetCollectionId] = useState<string>(

@@ -16,7 +16,7 @@ import {
   collectionKeys,
   tagKeys,
   noteKeys,
-  normalizeScopeId,
+  normalizeSpaceId,
 } from '@/features/library/sdk/query-keys';
 import {
   patchItemAcrossScopeCaches,
@@ -301,11 +301,11 @@ const DELTA_ENTITY_HANDLERS: Record<
  * to patch updated/created items and remove deleted items in the TanStack Query cache.
  */
 export function useLibraryDeltaSync(
-  scopeId?: string,
+  spaceId?: string,
   options?: { enabled?: boolean; refetchInterval?: number | false },
 ) {
   const queryClient = useQueryClient();
-  const effectiveScope = normalizeScopeId(scopeId);
+  const effectiveScope = normalizeSpaceId(spaceId);
   const lastSyncSeqRef = useRef<string | null>(null);
   const lastScopeRef = useRef<string>(effectiveScope);
 
@@ -340,7 +340,7 @@ export function useLibraryDeltaSync(
       const readCachedSyncVersion = () => {
         const cachedSync = queryClient.getQueryData<{
           version?: string;
-          scopeId?: string;
+          spaceId?: string;
         }>(libraryKeys.syncVersion(effectiveScope));
         return cachedSync?.version && cachedSync.version !== '0'
           ? String(cachedSync.version)
@@ -368,7 +368,7 @@ export function useLibraryDeltaSync(
         }
         return {
           version: bootstrapVersion,
-          scopeId: effectiveScope,
+          spaceId: effectiveScope,
           syncedCount: 0,
         };
       }
@@ -384,7 +384,7 @@ export function useLibraryDeltaSync(
           lastSyncSeqRef.current = remoteVersion;
           return {
             version: remoteVersion,
-            scopeId: effectiveScope,
+            spaceId: effectiveScope,
             syncedCount: 0,
           };
         }
@@ -393,7 +393,7 @@ export function useLibraryDeltaSync(
       if (!hasSyncVersionAdvanced(lastSyncSeqRef.current, remoteVersion)) {
         return {
           version: remoteVersion,
-          scopeId: effectiveScope,
+          spaceId: effectiveScope,
           syncedCount: 0,
         };
       }
@@ -401,7 +401,7 @@ export function useLibraryDeltaSync(
       if (queryClient.isMutating() > 0) {
         return {
           version: lastSyncSeqRef.current,
-          scopeId: effectiveScope,
+          spaceId: effectiveScope,
           syncedCount: 0,
           deferredForMutation: true,
         };
@@ -480,7 +480,7 @@ export function useLibraryDeltaSync(
             await invalidateFullSyncScopeCaches();
             return {
               version: remoteVersion,
-              scopeId: effectiveScope,
+              spaceId: effectiveScope,
               syncedCount: 0,
               fullSync: true,
             };
@@ -492,7 +492,7 @@ export function useLibraryDeltaSync(
           await invalidateFullSyncScopeCaches();
           return {
             version: remoteVersion,
-            scopeId: effectiveScope,
+            spaceId: effectiveScope,
             syncedCount: 0,
             fullSync: true,
           };
@@ -585,7 +585,7 @@ export function useLibraryDeltaSync(
         lastSyncSeqRef.current = currentSince;
         return {
           version: currentSince,
-          scopeId: effectiveScope,
+          spaceId: effectiveScope,
           syncedCount: batchCtx.patchedCount + batchCtx.deletedItemIds.length,
           deferredForMutation: true,
         };
@@ -719,7 +719,7 @@ export function useLibraryDeltaSync(
 
       return {
         version: settledSyncVersion,
-        scopeId: effectiveScope,
+        spaceId: effectiveScope,
         syncedCount: batchCtx.patchedCount + batchCtx.deletedItemIds.length,
       };
     },

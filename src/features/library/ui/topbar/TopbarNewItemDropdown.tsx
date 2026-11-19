@@ -274,7 +274,7 @@ export function TopbarNewFeedDropdown({
 }
 
 interface TopbarNewItemDropdownProps {
-  scopeId?: string;
+  spaceId?: string;
   activeCollectionId?: string;
   isSubcollection?: boolean;
   onAddLinkClick: () => void;
@@ -287,7 +287,7 @@ interface TopbarNewItemDropdownProps {
 }
 
 export function TopbarNewItemDropdown({
-  scopeId,
+  spaceId,
   activeCollectionId,
   isSubcollection = false,
   onAddLinkClick,
@@ -298,7 +298,7 @@ export function TopbarNewItemDropdown({
   onImportFromUser,
   openModal,
 }: TopbarNewItemDropdownProps) {
-  const { types: registryItemTypes, isLoading, isError } = useItemTypes(scopeId);
+  const { types: registryItemTypes, isLoading, isError } = useItemTypes(spaceId);
 
   const { primaryTypes, moreTypes } = React.useMemo(() => {
     const rawDefinitions = mapRegistryItemTypes(registryItemTypes);
@@ -514,7 +514,7 @@ export function TopbarNewItemDropdown({
                 key={format}
                 onClick={() =>
                   void executeExportScopeFormat(
-                    scopeId || "user",
+                    spaceId || "user",
                     format,
                     activeCollectionId,
                   )

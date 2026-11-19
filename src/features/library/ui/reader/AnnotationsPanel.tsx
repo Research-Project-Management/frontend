@@ -48,7 +48,7 @@ export { AnnotationsPanelCard, AnnotationsBottomSelectorDock };
 
 interface AnnotationsPanelProps {
   paper: ReaderDocument;
-  scopeId?: string;
+  spaceId?: string;
   attachmentId?: string;
   annotations?: ReaderAnnotation[];
   searchQuery?: string;
@@ -95,7 +95,7 @@ const EMPTY_ANNOTATIONS: ReaderAnnotation[] = [];
 
 export function AnnotationsPanel({
   paper,
-  scopeId,
+  spaceId,
   attachmentId,
   annotations: propAnnotations,
   searchQuery: propSearchQuery,
@@ -697,7 +697,7 @@ export function AnnotationsPanel({
                   key={annotation.id}
                   annotation={annotation}
                   paper={paper}
-                  scopeId={scopeId}
+                  spaceId={spaceId}
                   attachmentId={effectiveAttachmentId}
                   isEditing={editingId === annotation.id}
                   isDeletingCurrent={deletingId === annotation.id}

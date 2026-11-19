@@ -7,154 +7,154 @@ import type { SavedFeedSubscription } from "@/features/library/types/ingestion.t
  */
 const DEFAULT_SCOPE = "user";
 
-export function normalizeScopeId(scopeId?: string | null): string {
-  return !scopeId || scopeId === "me" || scopeId === "personal" ? DEFAULT_SCOPE : scopeId;
+export function normalizeSpaceId(spaceId?: string | null): string {
+  return !spaceId || spaceId === "me" || spaceId === "personal" ? DEFAULT_SCOPE : spaceId;
 }
 
 export const libraryKeys = {
   all: ["library"] as const,
 
   // Workspace & Document Reader Bootstrap
-  bootstrap: (scopeId?: string, params?: unknown) =>
+  bootstrap: (spaceId?: string, params?: unknown) =>
     [
       ...libraryKeys.all,
       "bootstrap",
-      normalizeScopeId(scopeId),
+      normalizeSpaceId(spaceId),
       (params ?? {}) as Record<string, unknown>,
     ] as const,
-  readerBootstrap: (scopeId?: string, itemId?: string, attachmentId?: string) =>
+  readerBootstrap: (spaceId?: string, itemId?: string, attachmentId?: string) =>
     [
       ...libraryKeys.all,
       "reader-bootstrap",
-      normalizeScopeId(scopeId),
+      normalizeSpaceId(spaceId),
       itemId || "none",
       attachmentId || "primary",
     ] as const,
 
   // Items
-  items: (scopeId?: string, params?: unknown) =>
+  items: (spaceId?: string, params?: unknown) =>
     [
       ...libraryKeys.all,
       "items",
-      normalizeScopeId(scopeId),
+      normalizeSpaceId(spaceId),
       (params ?? {}) as Record<string, unknown>,
     ] as const,
-  counts: (scopeId?: string) =>
-    [...libraryKeys.all, "counts", normalizeScopeId(scopeId)] as const,
-  item: (scopeId?: string, itemId?: string) =>
+  counts: (spaceId?: string) =>
+    [...libraryKeys.all, "counts", normalizeSpaceId(spaceId)] as const,
+  item: (spaceId?: string, itemId?: string) =>
     [
       ...libraryKeys.all,
       "items",
-      normalizeScopeId(scopeId),
+      normalizeSpaceId(spaceId),
       "detail",
       itemId || "none",
     ] as const,
-  fulltext: (scopeId?: string, itemId?: string) =>
+  fulltext: (spaceId?: string, itemId?: string) =>
     [
       ...libraryKeys.all,
       "fulltext",
-      normalizeScopeId(scopeId),
+      normalizeSpaceId(spaceId),
       itemId || "none",
     ] as const,
-  itemState: (scopeId?: string, itemId?: string) =>
+  itemState: (spaceId?: string, itemId?: string) =>
     [
       ...libraryKeys.all,
       "item-state",
-      normalizeScopeId(scopeId),
+      normalizeSpaceId(spaceId),
       itemId || "none",
     ] as const,
-  itemTypes: (scopeId?: string) =>
-    [...libraryKeys.all, "item-types", normalizeScopeId(scopeId)] as const,
+  itemTypes: (spaceId?: string) =>
+    [...libraryKeys.all, "item-types", normalizeSpaceId(spaceId)] as const,
   typeConversionPreview: (
-    scopeId?: string,
+    spaceId?: string,
     itemId?: string,
     targetType?: string,
   ) =>
     [
       ...libraryKeys.all,
       "items",
-      normalizeScopeId(scopeId),
+      normalizeSpaceId(spaceId),
       "type-conversion-preview",
       itemId || "none",
       targetType || "none",
     ] as const,
 
   // Collections (Folder Tree & Flat List)
-  collections: (scopeId?: string) =>
-    [...libraryKeys.all, "collections", normalizeScopeId(scopeId)] as const,
-  collection: (scopeId?: string, collectionId?: string) =>
+  collections: (spaceId?: string) =>
+    [...libraryKeys.all, "collections", normalizeSpaceId(spaceId)] as const,
+  collection: (spaceId?: string, collectionId?: string) =>
     [
       ...libraryKeys.all,
       "collections",
-      normalizeScopeId(scopeId),
+      normalizeSpaceId(spaceId),
       "detail",
       collectionId || "none",
     ] as const,
 
   // Tags
-  tags: (scopeId?: string) =>
-    [...libraryKeys.all, "tags", normalizeScopeId(scopeId)] as const,
+  tags: (spaceId?: string) =>
+    [...libraryKeys.all, "tags", normalizeSpaceId(spaceId)] as const,
 
   // Attachments & Annotations
-  attachmentsAll: (scopeId?: string) =>
-    [...libraryKeys.all, "attachments", normalizeScopeId(scopeId)] as const,
-  attachments: (scopeId?: string, itemId?: string) =>
+  attachmentsAll: (spaceId?: string) =>
+    [...libraryKeys.all, "attachments", normalizeSpaceId(spaceId)] as const,
+  attachments: (spaceId?: string, itemId?: string) =>
     [
       ...libraryKeys.all,
       "attachments",
-      normalizeScopeId(scopeId),
+      normalizeSpaceId(spaceId),
       itemId || "none",
     ] as const,
-  annotationsAll: (scopeId?: string) =>
-    [...libraryKeys.all, "annotations", normalizeScopeId(scopeId)] as const,
-  annotations: (scopeId?: string, attachmentId?: string) =>
+  annotationsAll: (spaceId?: string) =>
+    [...libraryKeys.all, "annotations", normalizeSpaceId(spaceId)] as const,
+  annotations: (spaceId?: string, attachmentId?: string) =>
     [
       ...libraryKeys.all,
       "annotations",
-      normalizeScopeId(scopeId),
+      normalizeSpaceId(spaceId),
       attachmentId || "none",
     ] as const,
 
   // Notes
-  notes: (scopeId?: string, itemId?: string) =>
+  notes: (spaceId?: string, itemId?: string) =>
     [
       ...libraryKeys.all,
       "notes",
-      normalizeScopeId(scopeId),
+      normalizeSpaceId(spaceId),
       itemId || "none",
     ] as const,
 
   // Relations
-  relationsAll: (scopeId?: string) =>
-    [...libraryKeys.all, "relations", normalizeScopeId(scopeId)] as const,
-  relations: (scopeId?: string, itemId?: string) =>
+  relationsAll: (spaceId?: string) =>
+    [...libraryKeys.all, "relations", normalizeSpaceId(spaceId)] as const,
+  relations: (spaceId?: string, itemId?: string) =>
     [
       ...libraryKeys.all,
       "relations",
-      normalizeScopeId(scopeId),
+      normalizeSpaceId(spaceId),
       itemId || "none",
     ] as const,
 
   // Saved Searches
-  savedSearches: (scopeId?: string) =>
-    [...libraryKeys.all, "saved-searches", normalizeScopeId(scopeId)] as const,
+  savedSearches: (spaceId?: string) =>
+    [...libraryKeys.all, "saved-searches", normalizeSpaceId(spaceId)] as const,
 
   // Curation: Duplicates, Integrity & Retractions
-  duplicates: (scopeId?: string) =>
-    [...libraryKeys.all, "duplicates", normalizeScopeId(scopeId)] as const,
-  integrity: (scopeId?: string) =>
+  duplicates: (spaceId?: string) =>
+    [...libraryKeys.all, "duplicates", normalizeSpaceId(spaceId)] as const,
+  integrity: (spaceId?: string) =>
     [
       ...libraryKeys.all,
       "curation",
-      normalizeScopeId(scopeId),
+      normalizeSpaceId(spaceId),
       "integrity",
     ] as const,
-  retractions: (scopeId?: string) =>
-    [...libraryKeys.all, "retractions", normalizeScopeId(scopeId)] as const,
+  retractions: (spaceId?: string) =>
+    [...libraryKeys.all, "retractions", normalizeSpaceId(spaceId)] as const,
 
   // Citations & Exports
   citation: (
-    scopeId?: string,
+    spaceId?: string,
     itemId?: string,
     style?: string,
     index?: number,
@@ -162,7 +162,7 @@ export const libraryKeys = {
     [
       ...libraryKeys.all,
       "citation",
-      normalizeScopeId(scopeId),
+      normalizeSpaceId(spaceId),
       itemId || "none",
       style || "apa",
       index ?? 1,
@@ -171,15 +171,15 @@ export const libraryKeys = {
 
   // Search
   search: () => [...libraryKeys.all, "search"] as const,
-  searchFacets: (scopeId?: string, params?: unknown) =>
+  searchFacets: (spaceId?: string, params?: unknown) =>
     [
       ...libraryKeys.all,
       "search-facets",
-      normalizeScopeId(scopeId),
+      normalizeSpaceId(spaceId),
       (params ?? {}) as Record<string, unknown>,
     ] as const,
   searchAnchors: (
-    scopeId?: string,
+    spaceId?: string,
     attachmentId?: string,
     term?: string,
     pageIndex?: number,
@@ -187,38 +187,38 @@ export const libraryKeys = {
     [
       ...libraryKeys.all,
       "search-anchors",
-      normalizeScopeId(scopeId),
+      normalizeSpaceId(spaceId),
       attachmentId || "none",
       term || "",
       pageIndex ?? "all",
     ] as const,
 
   // Sync (Distributed Replication CDC)
-  syncVersion: (scopeId?: string) =>
-    [...libraryKeys.all, "sync-version", normalizeScopeId(scopeId)] as const,
+  syncVersion: (spaceId?: string) =>
+    [...libraryKeys.all, "sync-version", normalizeSpaceId(spaceId)] as const,
 
   // Ingestion
-  ingestion: (scopeId?: string) =>
-    [...libraryKeys.all, "ingest", normalizeScopeId(scopeId)] as const,
-  ingestionRun: (scopeId?: string, runId?: string) =>
+  ingestion: (spaceId?: string) =>
+    [...libraryKeys.all, "ingest", normalizeSpaceId(spaceId)] as const,
+  ingestionRun: (spaceId?: string, runId?: string) =>
     [
       ...libraryKeys.all,
       "ingest",
-      normalizeScopeId(scopeId),
+      normalizeSpaceId(spaceId),
       runId || "none",
     ] as const,
 
   // Feeds
   feeds: () => [...libraryKeys.all, "feeds"] as const,
-  feedSubscriptions: (scopeId?: string) =>
-    scopeId
-      ? ([...libraryKeys.all, "feeds", "subscriptions", normalizeScopeId(scopeId)] as const)
+  feedSubscriptions: (spaceId?: string) =>
+    spaceId
+      ? ([...libraryKeys.all, "feeds", "subscriptions", normalizeSpaceId(spaceId)] as const)
       : ([...libraryKeys.all, "feeds", "subscriptions"] as const),
-  feedArticles: (scopeId?: string, feedUrl?: string) =>
+  feedArticles: (spaceId?: string, feedUrl?: string) =>
     [
       ...libraryKeys.all,
       "feeds",
-      normalizeScopeId(scopeId),
+      normalizeSpaceId(spaceId),
       "articles",
       feedUrl || "none",
     ] as const,
@@ -228,128 +228,128 @@ export const libraryKeys = {
  * Domain-specific key factories mapped directly to canonical libraryKeys
  */
 export const itemKeys = {
-  all: (scopeId?: string) =>
-    [...libraryKeys.all, "items", normalizeScopeId(scopeId)] as const,
-  byId: (scopeId?: string, itemId?: string) =>
-    libraryKeys.item(scopeId, itemId),
-  byCollection: (scopeId?: string, collectionId?: string) =>
+  all: (spaceId?: string) =>
+    [...libraryKeys.all, "items", normalizeSpaceId(spaceId)] as const,
+  byId: (spaceId?: string, itemId?: string) =>
+    libraryKeys.item(spaceId, itemId),
+  byCollection: (spaceId?: string, collectionId?: string) =>
     [
       ...libraryKeys.all,
       "items",
-      normalizeScopeId(scopeId),
+      normalizeSpaceId(spaceId),
       "by-collection",
       collectionId || "none",
     ] as const,
-  byView: (scopeId?: string, view?: string, search?: string) =>
-    libraryKeys.items(scopeId, { view: view || "all", search: search || "" }),
-  trash: (scopeId?: string) => libraryKeys.items(scopeId, { view: "trash" }),
-  state: (scopeId?: string, itemId?: string) =>
-    libraryKeys.itemState(scopeId, itemId),
-  types: (scopeId?: string) => libraryKeys.itemTypes(scopeId),
+  byView: (spaceId?: string, view?: string, search?: string) =>
+    libraryKeys.items(spaceId, { view: view || "all", search: search || "" }),
+  trash: (spaceId?: string) => libraryKeys.items(spaceId, { view: "trash" }),
+  state: (spaceId?: string, itemId?: string) =>
+    libraryKeys.itemState(spaceId, itemId),
+  types: (spaceId?: string) => libraryKeys.itemTypes(spaceId),
   typeConversionPreview: (
-    scopeId?: string,
+    spaceId?: string,
     itemId?: string,
     targetType?: string,
-  ) => libraryKeys.typeConversionPreview(scopeId, itemId, targetType),
-  counts: (scopeId?: string) => libraryKeys.counts(scopeId),
+  ) => libraryKeys.typeConversionPreview(spaceId, itemId, targetType),
+  counts: (spaceId?: string) => libraryKeys.counts(spaceId),
 };
 
 export const collectionKeys = {
-  all: (scopeId?: string) => libraryKeys.collections(scopeId),
-  byId: (scopeId?: string, collectionId?: string) =>
-    libraryKeys.collection(scopeId, collectionId),
+  all: (spaceId?: string) => libraryKeys.collections(spaceId),
+  byId: (spaceId?: string, collectionId?: string) =>
+    libraryKeys.collection(spaceId, collectionId),
 };
 
 export const tagKeys = {
   all: [...libraryKeys.all, "tags"] as const,
-  list: (scopeId?: string) => libraryKeys.tags(scopeId),
+  list: (spaceId?: string) => libraryKeys.tags(spaceId),
 };
 
 export const noteKeys = {
-  all: (scopeId?: string) =>
-    [...libraryKeys.all, "notes", normalizeScopeId(scopeId)] as const,
+  all: (spaceId?: string) =>
+    [...libraryKeys.all, "notes", normalizeSpaceId(spaceId)] as const,
   lists: () => [...libraryKeys.all, "notes"] as const,
-  list: (scopeId?: string, itemId?: string) =>
-    libraryKeys.notes(scopeId, itemId),
-  detail: (scopeId?: string, id?: string) =>
+  list: (spaceId?: string, itemId?: string) =>
+    libraryKeys.notes(spaceId, itemId),
+  detail: (spaceId?: string, id?: string) =>
     [
       ...libraryKeys.all,
       "notes",
-      normalizeScopeId(scopeId),
+      normalizeSpaceId(spaceId),
       "detail",
       id || "none",
     ] as const,
 };
 
 export const savedSearchKeys = {
-  all: (scopeId?: string) => libraryKeys.savedSearches(scopeId),
-  byId: (scopeId: string | undefined, id: string) =>
-    [...libraryKeys.savedSearches(scopeId), id] as const,
+  all: (spaceId?: string) => libraryKeys.savedSearches(spaceId),
+  byId: (spaceId: string | undefined, id: string) =>
+    [...libraryKeys.savedSearches(spaceId), id] as const,
   results: (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     id: string,
     params?: Record<string, unknown>,
-  ) => [...libraryKeys.savedSearches(scopeId), id, "results", params] as const,
+  ) => [...libraryKeys.savedSearches(spaceId), id, "results", params] as const,
 };
 
 export const relationKeys = {
-  all: (scopeId?: string, itemId?: string) =>
-    libraryKeys.relations(scopeId, itemId),
+  all: (spaceId?: string, itemId?: string) =>
+    libraryKeys.relations(spaceId, itemId),
 };
 
 export const attachmentKeys = {
-  all: (scopeId?: string) => libraryKeys.attachmentsAll(scopeId),
-  byItem: (scopeId?: string, itemId?: string) =>
-    libraryKeys.attachments(scopeId, itemId),
+  all: (spaceId?: string) => libraryKeys.attachmentsAll(spaceId),
+  byItem: (spaceId?: string, itemId?: string) =>
+    libraryKeys.attachments(spaceId, itemId),
 };
 
 export const ingestKeys = {
-  all: (scopeId?: string) => libraryKeys.ingestion(scopeId),
-  status: (scopeId?: string, runId?: string) =>
-    libraryKeys.ingestionRun(scopeId, runId),
+  all: (spaceId?: string) => libraryKeys.ingestion(spaceId),
+  status: (spaceId?: string, runId?: string) =>
+    libraryKeys.ingestionRun(spaceId, runId),
 };
 
 export const feedKeys = {
   all: libraryKeys.feeds(),
-  subscriptions: (scopeId?: string) => libraryKeys.feedSubscriptions(scopeId),
-  articles: (scopeId?: string, feedUrl?: string) =>
-    libraryKeys.feedArticles(scopeId, feedUrl),
+  subscriptions: (spaceId?: string) => libraryKeys.feedSubscriptions(spaceId),
+  articles: (spaceId?: string, feedUrl?: string) =>
+    libraryKeys.feedArticles(spaceId, feedUrl),
 };
 
 export const curationKeys = {
-  duplicates: (scopeId?: string) => libraryKeys.duplicates(scopeId),
-  integrity: (scopeId?: string) => libraryKeys.integrity(scopeId),
+  duplicates: (spaceId?: string) => libraryKeys.duplicates(spaceId),
+  integrity: (spaceId?: string) => libraryKeys.integrity(spaceId),
 };
 
 export const retractionKeys = {
-  all: (scopeId?: string) => libraryKeys.retractions(scopeId),
-  stats: (scopeId?: string) =>
-    [...libraryKeys.retractions(scopeId), "stats"] as const,
-  items: (scopeId?: string) =>
-    [...libraryKeys.retractions(scopeId), "items"] as const,
+  all: (spaceId?: string) => libraryKeys.retractions(spaceId),
+  stats: (spaceId?: string) =>
+    [...libraryKeys.retractions(spaceId), "stats"] as const,
+  items: (spaceId?: string) =>
+    [...libraryKeys.retractions(spaceId), "items"] as const,
 };
 
 export const citationKeys = {
   all: [...libraryKeys.all, "citation"] as const,
-  styles: (scopeId?: string) =>
+  styles: (spaceId?: string) =>
     [
       ...libraryKeys.all,
       "citation",
       "styles",
-      normalizeScopeId(scopeId),
+      normalizeSpaceId(spaceId),
     ] as const,
   item: (
-    scopeId?: string,
+    spaceId?: string,
     itemId?: string,
     style: CslStyle = "apa",
     index: number = 1,
-  ) => libraryKeys.citation(scopeId, itemId, style, index),
-  batch: (scopeId?: string, itemIds: string[] = [], style: CslStyle = "apa") =>
+  ) => libraryKeys.citation(spaceId, itemId, style, index),
+  batch: (spaceId?: string, itemIds: string[] = [], style: CslStyle = "apa") =>
     [
       ...libraryKeys.all,
       "citation",
       "batch",
-      normalizeScopeId(scopeId),
+      normalizeSpaceId(spaceId),
       itemIds.join(","),
       style,
     ] as const,
@@ -365,11 +365,11 @@ export function invalidateCollections(
       queryKey: readonly unknown[];
     }) => Promise<unknown> | void;
   },
-  scopeId?: string,
+  spaceId?: string,
 ): Promise<unknown> {
   return Promise.all([
-    qc.invalidateQueries({ queryKey: libraryKeys.collections(scopeId) }),
-    qc.invalidateQueries({ queryKey: itemKeys.counts(scopeId) }),
+    qc.invalidateQueries({ queryKey: libraryKeys.collections(spaceId) }),
+    qc.invalidateQueries({ queryKey: itemKeys.counts(spaceId) }),
   ]);
 }
 
@@ -378,38 +378,38 @@ export function invalidateCollections(
  */
 export const readerQueryKeys = {
   all: libraryKeys.all,
-  bootstrap: (scopeId?: string, itemId?: string, attachmentId?: string) =>
-    libraryKeys.readerBootstrap(scopeId, itemId, attachmentId),
-  item: (scopeId?: string, itemId?: string) =>
-    libraryKeys.item(scopeId, itemId),
-  fulltext: (scopeId?: string, itemId?: string) =>
-    libraryKeys.fulltext(scopeId, itemId),
-  annotations: (scopeId?: string, attachmentId?: string) =>
-    libraryKeys.annotations(scopeId, attachmentId),
-  notes: (scopeId?: string, itemId?: string) =>
-    libraryKeys.notes(scopeId, itemId),
-  state: (scopeId?: string, itemId?: string) =>
-    libraryKeys.itemState(scopeId, itemId),
-  attachments: (scopeId?: string, itemId?: string) =>
-    libraryKeys.attachments(scopeId, itemId),
-  collections: (scopeId?: string) => libraryKeys.collections(scopeId),
-  tags: (scopeId?: string) => libraryKeys.tags(scopeId),
-  itemTags: (scopeId?: string, itemId?: string) =>
+  bootstrap: (spaceId?: string, itemId?: string, attachmentId?: string) =>
+    libraryKeys.readerBootstrap(spaceId, itemId, attachmentId),
+  item: (spaceId?: string, itemId?: string) =>
+    libraryKeys.item(spaceId, itemId),
+  fulltext: (spaceId?: string, itemId?: string) =>
+    libraryKeys.fulltext(spaceId, itemId),
+  annotations: (spaceId?: string, attachmentId?: string) =>
+    libraryKeys.annotations(spaceId, attachmentId),
+  notes: (spaceId?: string, itemId?: string) =>
+    libraryKeys.notes(spaceId, itemId),
+  state: (spaceId?: string, itemId?: string) =>
+    libraryKeys.itemState(spaceId, itemId),
+  attachments: (spaceId?: string, itemId?: string) =>
+    libraryKeys.attachments(spaceId, itemId),
+  collections: (spaceId?: string) => libraryKeys.collections(spaceId),
+  tags: (spaceId?: string) => libraryKeys.tags(spaceId),
+  itemTags: (spaceId?: string, itemId?: string) =>
     [
       ...libraryKeys.all,
       "item-tags",
-      normalizeScopeId(scopeId),
+      normalizeSpaceId(spaceId),
       itemId || "none",
     ] as const,
-  relations: (scopeId?: string, itemId?: string) =>
-    libraryKeys.relations(scopeId, itemId),
-  citation: (scopeId?: string, itemId?: string, style?: string) =>
-    libraryKeys.citation(scopeId, itemId, style),
-  bibtex: (scopeId?: string, itemId?: string) =>
+  relations: (spaceId?: string, itemId?: string) =>
+    libraryKeys.relations(spaceId, itemId),
+  citation: (spaceId?: string, itemId?: string, style?: string) =>
+    libraryKeys.citation(spaceId, itemId, style),
+  bibtex: (spaceId?: string, itemId?: string) =>
     [
       ...libraryKeys.all,
       "bibtex",
-      normalizeScopeId(scopeId),
+      normalizeSpaceId(spaceId),
       itemId || "none",
     ] as const,
   styles: (query?: string) =>
@@ -419,12 +419,12 @@ export const readerQueryKeys = {
 
 export const annotationKeys = {
   all: [...libraryKeys.all, "annotations"] as const,
-  byAttachment: (scopeId?: string, attachmentId?: string) =>
-    libraryKeys.annotations(scopeId, attachmentId),
+  byAttachment: (spaceId?: string, attachmentId?: string) =>
+    libraryKeys.annotations(spaceId, attachmentId),
 };
 
-export function getReaderBootstrapScope(scopeId?: string | null): string {
-  return `reader:${normalizeScopeId(scopeId)}`;
+export function getReaderBootstrapScope(spaceId?: string | null): string {
+  return `reader:${normalizeSpaceId(spaceId)}`;
 }
 
 interface BootstrapDeferredGate {
@@ -444,9 +444,9 @@ const pendingBootstrapGates = new WeakMap<object, Map<string, BootstrapDeferredG
  */
 export function prepareBootstrapScope(
   queryClient: object,
-  scopeId?: string,
+  spaceId?: string,
 ): void {
-  const scope = normalizeScopeId(scopeId);
+  const scope = normalizeSpaceId(spaceId);
   let promiseMap = activeBootstrapPromises.get(queryClient);
   if (!promiseMap) {
     promiseMap = new Map<string, Promise<unknown>>();
@@ -485,10 +485,10 @@ export function prepareBootstrapScope(
 
 export function registerBootstrapPromise<T>(
   queryClient: object,
-  scopeId: string | undefined,
+  spaceId: string | undefined,
   promise: Promise<T>,
 ): Promise<T> {
-  const scope = normalizeScopeId(scopeId);
+  const scope = normalizeSpaceId(spaceId);
   let map = activeBootstrapPromises.get(queryClient);
   if (!map) {
     map = new Map<string, Promise<unknown>>();
@@ -514,9 +514,9 @@ export function registerBootstrapPromise<T>(
 
 function getActiveBootstrapPromise(
   queryClient: object,
-  scopeId?: string,
+  spaceId?: string,
 ): Promise<unknown> | undefined {
-  return activeBootstrapPromises.get(queryClient)?.get(normalizeScopeId(scopeId));
+  return activeBootstrapPromises.get(queryClient)?.get(normalizeSpaceId(spaceId));
 }
 
 export async function waitForBootstrapCache<T>(
@@ -524,11 +524,11 @@ export async function waitForBootstrapCache<T>(
     getQueryData: <D>(key: readonly unknown[]) => D | undefined;
     getQueryState?: (key: readonly unknown[]) => { dataUpdatedAt?: number } | undefined;
   },
-  scopeId: string | undefined,
+  spaceId: string | undefined,
   cacheKey: readonly unknown[],
 ): Promise<T | undefined> {
   await Promise.resolve();
-  const pending = getActiveBootstrapPromise(queryClient, scopeId);
+  const pending = getActiveBootstrapPromise(queryClient, spaceId);
   if (pending) {
     const updatedBefore = queryClient.getQueryState?.(cacheKey)?.dataUpdatedAt ?? 0;
     try {
@@ -536,7 +536,7 @@ export async function waitForBootstrapCache<T>(
     } catch {
       return undefined;
     }
-    const latestPending = getActiveBootstrapPromise(queryClient, scopeId);
+    const latestPending = getActiveBootstrapPromise(queryClient, spaceId);
     if (latestPending && latestPending !== pending) {
       try {
         await latestPending;

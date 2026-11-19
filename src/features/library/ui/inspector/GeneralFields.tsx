@@ -15,7 +15,7 @@ interface GeneralFieldsProps {
   selectableItemTypes: Array<{ value: string; label: string }>;
   typeDefinition: SchemaItemTypeDefinition;
   canEdit?: boolean;
-  scopeId?: string;
+  spaceId?: string;
   onUpdateItem?: (data: Partial<Item>) => void;
 }
 
@@ -26,7 +26,7 @@ export function GeneralFields({
   selectableItemTypes,
   typeDefinition,
   canEdit = true,
-  scopeId,
+  spaceId,
 }: GeneralFieldsProps) {
   const openModal = useLibraryUIStore((s) => s.openModal);
 
@@ -106,7 +106,7 @@ export function GeneralFields({
                           currentType: currentItemType,
                           targetType: t.value,
                           itemTitle: item.title,
-                          scopeId,
+                          spaceId,
                         });
                       }}
                       className={cn(

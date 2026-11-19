@@ -59,14 +59,14 @@ const READING_STATUS_OPTIONS = [
 ];
 
 interface UseLibraryFacetCountsParams {
-  scopeId: string;
+  spaceId: string;
   items?: Item[];
   searchQuery: string;
   isOpen?: boolean;
 }
 
 export function useLibraryFacetCounts({
-  scopeId,
+  spaceId,
   searchQuery,
   isOpen = true,
 }: UseLibraryFacetCountsParams) {
@@ -77,9 +77,9 @@ export function useLibraryFacetCounts({
     searchMode: activeSearchMode,
     collectionId: activeCollectionId,
   } = useLibraryNavigation();
-  const { data: counts } = useLibraryCountsQuery(scopeId, { enabled: isOpen });
+  const { data: counts } = useLibraryCountsQuery(spaceId, { enabled: isOpen });
   const { data: searchFacets } = useLibrarySearchFacetsQuery(
-    scopeId,
+    spaceId,
     isOpen ? activeLibrarySearch : undefined,
     activeCollectionId,
     activeSearchMode,
@@ -92,7 +92,7 @@ export function useLibraryFacetCounts({
     deleteAutomaticTags,
     isDeletingAutomatic,
     splitTag,
-  } = useTags(scopeId, { enabled: isOpen });
+  } = useTags(spaceId, { enabled: isOpen });
   const [showAutomaticTags, setShowAutomaticTags] = useState(true);
 
   const rawFileStatus = searchParams.get('fileStatus');
@@ -138,7 +138,7 @@ export function useLibraryFacetCounts({
       .filter(Boolean);
   }, [searchParams]);
 
-  const { types: registryItemTypes } = useItemTypes({ scopeId, enabled: isOpen });
+  const { types: registryItemTypes } = useItemTypes({ spaceId, enabled: isOpen });
   const serverItemTypes = useMemo(() => {
     const mapped = mapRegistryItemTypes(registryItemTypes);
     return mapped.length > 0 ? mapped : Object.values(LIBRARY_ITEM_TYPES);

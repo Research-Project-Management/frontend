@@ -19,7 +19,7 @@ interface InfoSectionProps {
   item?: Item;
   onUpdateItem?: (data: Partial<Item>, options?: { silent?: boolean }) => void;
   canEdit?: boolean;
-  scopeId?: string;
+  spaceId?: string;
 }
 
 const EXCLUDED_DYNAMIC_LOOP_FIELDS = new Set([
@@ -38,14 +38,14 @@ export function InfoSection({
   item,
   onUpdateItem,
   canEdit = true,
-  scopeId: propScopeId,
+  spaceId: propSpaceId,
 }: InfoSectionProps) {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const currentItemType = normalizeCanonicalItemType(item?.itemType);
-  const scopeId = propScopeId || item?.projectId || "user";
+  const spaceId = propSpaceId || item?.projectId || "user";
 
-  const { types: registryItemTypes } = useItemTypes(scopeId || undefined);
+  const { types: registryItemTypes } = useItemTypes(spaceId || undefined);
 
   const itemTypeDefinitions = useMemo(
     () => mapRegistryItemTypes(registryItemTypes),
@@ -181,7 +181,7 @@ export function InfoSection({
         selectableItemTypes={selectableItemTypes}
         typeDefinition={typeDefinition}
         canEdit={canEdit}
-        scopeId={scopeId}
+        spaceId={spaceId}
         onUpdateItem={onUpdateItem}
       />
 
@@ -373,19 +373,19 @@ const SHARED_PDF_OPTIONS = getSharedPdfDocumentOptions();
 
 export interface PdfPageCanvasProps {
   paperUrl: string;
-  scopeId?: string;
+  spaceId?: string;
 }
 
 export function PdfPageCanvas({
   paperUrl,
-  scopeId,
+  spaceId,
 }: PdfPageCanvasProps) {
   const {
     blobUrl: pdfBlobUrl,
     isLoading: pdfLoading,
     error: pdfError,
     retry: retryPdf,
-  } = usePdf(paperUrl || null, scopeId);
+  } = usePdf(paperUrl || null, spaceId);
 
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [numPages, setNumPages] = useState<number>(0);
@@ -554,7 +554,7 @@ export function PdfPageCanvas({
 export interface PdfPagePreviewProps {
   paper: Item;
   paperUrl: string;
-  scopeId?: string | null;
+  spaceId?: string | null;
   previewTitle?: string;
   onOpenReader: () => void;
 }
@@ -562,7 +562,7 @@ export interface PdfPagePreviewProps {
 export function PdfPagePreview({
   paper,
   paperUrl,
-  scopeId,
+  spaceId,
   previewTitle,
   onOpenReader,
 }: PdfPagePreviewProps) {
@@ -606,7 +606,7 @@ export function PdfPagePreview({
         <PdfPageCanvas
           key={paperUrl}
           paperUrl={paperUrl}
-          scopeId={scopeId || paper.projectId || undefined}
+          spaceId={spaceId || paper.projectId || undefined}
         />
       )}
     </div>

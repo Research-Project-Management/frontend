@@ -42,7 +42,7 @@ export {
   useBatchPurgeItemsMutation,
   useLibraryItemsQuery,
   usePrefetchNextLibraryItemsPage,
-  normalizeScopeId,
+  normalizeSpaceId,
   useItemTypes,
   useViewItems,
   useLibraryCountsQuery,
@@ -65,7 +65,7 @@ import { getAssignedCollectionIds } from '@/features/library/domain/metadata.map
 import type { Item, Collection, CslStyle } from '@/features/library/types/core.types';
 
 interface UseItemActionHandlersOptions {
-  scopeId?: string;
+  spaceId?: string;
   isMenuOpen?: boolean;
   onOpenItem?: (id: string) => void;
   onOpenInNewTab?: (id: string) => void;
@@ -90,7 +90,7 @@ export function useItemActionHandlers(
   options: UseItemActionHandlersOptions = {},
 ) {
   const {
-    scopeId,
+    spaceId,
     isMenuOpen = false,
     onOpenItem,
     onOpenInNewTab,
@@ -100,7 +100,7 @@ export function useItemActionHandlers(
   } = options;
 
   const router = useRouter();
-  const effectiveScope = scopeId || item.projectId || 'user';
+  const effectiveScope = spaceId || item.projectId || 'user';
 
   const assignCollectionItemsMutation = useAssignCollectionItemsMutation(effectiveScope);
   const reResolveMutation = useReResolveItemMetadataMutation(effectiveScope);
@@ -274,7 +274,7 @@ export function useItemActionHandlers(
  * Hook to handle dragging and dropping items directly into the "My Publications" system collection.
  * Conforms to SC-009 by abstracting queryClient/ItemsService lookup into a coordinator hook.
  */
-export function useDropToMyPublications(effectiveScopeId: string = 'user') {
+export function useDropToMyPublications(effectiveSpaceId: string = 'user') {
   const queryClient = useQueryClient();
   const openModal = useLibraryUIStore((s) => s.openModal);
 
@@ -285,11 +285,11 @@ export function useDropToMyPublications(effectiveScopeId: string = 'user') {
       try {
         let item: Item | undefined = resolveCachedItemFromScope(
           queryClient,
-          effectiveScopeId,
+          effectiveSpaceId,
           targetId,
         ) as Item | undefined;
         if (!item) {
-          item = ((await fetchLibraryItemById(effectiveScopeId, targetId)) ?? undefined) as Item | undefined;
+          item = ((await fetchLibraryItemById(effectiveSpaceId, targetId)) ?? undefined) as Item | undefined;
         }
         if (item) {
           openModal('MY_PUBLICATION_CONFIRM', { item, itemIds: ids });
@@ -298,7 +298,7 @@ export function useDropToMyPublications(effectiveScopeId: string = 'user') {
         toast.error('Failed to prepare item for My Publications', { id: 'drop-to-my-pub-error' });
       }
     },
-    [queryClient, effectiveScopeId, openModal],
+    [queryClient, effectiveSpaceId, openModal],
   );
 }
 
@@ -329,7 +329,7 @@ interface UseLibraryItemOperationsOptions {
       targetCollectionId: string | null;
       itemIds: string[];
       sourceCollectionId?: string | null;
-      scopeId?: string;
+      spaceId?: string;
     }) => Promise<unknown>;
   };
   detachMutation?: {

@@ -42,60 +42,60 @@ export type {
 
 // 2. CollectionsService
 export const CollectionsService = {
-  getAll: (scopeId?: string) =>
+  getAll: (spaceId?: string) =>
     libraryClient.get<{ collections: Collection[] }>(
-      resolveLibraryUrl('catalog', '/collections', scopeId),
+      resolveLibraryUrl('catalog', '/collections', spaceId),
     ),
 
-  list: (scopeId?: string) => CollectionsService.getAll(scopeId),
+  list: (spaceId?: string) => CollectionsService.getAll(spaceId),
 
-  getById: (scopeId?: string, collectionId?: string) => {
-    const effectiveScope = collectionId ? scopeId : undefined;
-    const effectiveId = collectionId || scopeId || '';
+  getById: (spaceId?: string, collectionId?: string) => {
+    const effectiveScope = collectionId ? spaceId : undefined;
+    const effectiveId = collectionId || spaceId || '';
     return libraryClient.get<{ collection: Collection }>(
       resolveLibraryUrl('catalog', `/collections/${encodeURIComponent(effectiveId)}`, effectiveScope),
     );
   },
 
-  get: (scopeId: string | undefined, collectionId: string) =>
-    CollectionsService.getById(scopeId, collectionId),
+  get: (spaceId: string | undefined, collectionId: string) =>
+    CollectionsService.getById(spaceId, collectionId),
 
-  create: (scopeId: string | undefined, data: CreateCollectionDTO) =>
+  create: (spaceId: string | undefined, data: CreateCollectionDTO) =>
     libraryClient.post<{ collection: Collection }>(
-      resolveLibraryUrl('catalog', '/collections', scopeId),
+      resolveLibraryUrl('catalog', '/collections', spaceId),
       data,
     ),
 
-  update: (scopeId: string | undefined, collectionId: string, data: UpdateCollectionDTO) =>
+  update: (spaceId: string | undefined, collectionId: string, data: UpdateCollectionDTO) =>
     libraryClient.put<{ collection: Collection }>(
-      resolveLibraryUrl('catalog', `/collections/${encodeURIComponent(collectionId)}`, scopeId),
+      resolveLibraryUrl('catalog', `/collections/${encodeURIComponent(collectionId)}`, spaceId),
       data,
     ),
 
-  delete: (scopeId: string | undefined, collectionId: string, strategy?: 'cascade' | 'move-to-parent' | 'orphan') =>
+  delete: (spaceId: string | undefined, collectionId: string, strategy?: 'cascade' | 'move-to-parent' | 'orphan') =>
     libraryClient.delete(
-      resolveLibraryUrl('catalog', `/collections/${encodeURIComponent(collectionId)}`, scopeId),
+      resolveLibraryUrl('catalog', `/collections/${encodeURIComponent(collectionId)}`, spaceId),
       strategy ? { params: { strategy } } : undefined,
     ),
 
   copy: (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     collectionId: string,
     data?: { parentId?: string | null },
   ) =>
     libraryClient.post<{ collection: Collection; copiedCount?: number }>(
-      resolveLibraryUrl('catalog', `/collections/${encodeURIComponent(collectionId)}/copy`, scopeId),
+      resolveLibraryUrl('catalog', `/collections/${encodeURIComponent(collectionId)}/copy`, spaceId),
       data ?? {},
     ),
 
   moveItems: (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     collectionId: string,
     itemIds: string[],
     sourceCollectionId?: string | null,
   ) =>
     libraryClient.post<{ message: string; count: number; targetCollectionId: string | null }>(
-      resolveLibraryUrl('catalog', `/collections/${encodeURIComponent(collectionId)}/move-items`, scopeId),
+      resolveLibraryUrl('catalog', `/collections/${encodeURIComponent(collectionId)}/move-items`, spaceId),
       {
         itemIds,
         ...(sourceCollectionId ? { sourceCollectionId } : {}),
@@ -103,55 +103,55 @@ export const CollectionsService = {
     ),
 
   reorder: (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     collections: Array<{ id: string; parentId?: string | null; orderIndex?: number }>,
   ) =>
     libraryClient.patch<{ collections: Collection[] }>(
-      resolveLibraryUrl('catalog', '/collections/reorder', scopeId),
+      resolveLibraryUrl('catalog', '/collections/reorder', spaceId),
       { collections },
     ),
 
   assignItems: (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     collectionId: string,
     itemIds: string[],
   ) =>
     libraryClient.post<{ success?: boolean; count: number; collectionId?: string }>(
-      resolveLibraryUrl('catalog', `/collections/${encodeURIComponent(collectionId)}/items`, scopeId),
+      resolveLibraryUrl('catalog', `/collections/${encodeURIComponent(collectionId)}/items`, spaceId),
       { itemIds },
     ),
 
   removeItem: (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     collectionId: string,
     itemId: string,
-  ) => CollectionsService.detachItem(scopeId, collectionId, itemId),
+  ) => CollectionsService.detachItem(spaceId, collectionId, itemId),
 
   detachItem: (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     collectionId: string,
     itemId: string,
   ) =>
     libraryClient.delete<{ success?: boolean; detached?: boolean }>(
-      resolveLibraryUrl('catalog', `/collections/${encodeURIComponent(collectionId)}/items/${encodeURIComponent(itemId)}`, scopeId),
+      resolveLibraryUrl('catalog', `/collections/${encodeURIComponent(collectionId)}/items/${encodeURIComponent(itemId)}`, spaceId),
     ),
 
   bulkDetachItems: (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     collectionId: string,
     itemIds: string[],
   ) =>
     libraryClient.post<{ success: boolean; count: number }>(
-      resolveLibraryUrl('catalog', `/collections/${encodeURIComponent(collectionId)}/items/bulk-detach`, scopeId),
+      resolveLibraryUrl('catalog', `/collections/${encodeURIComponent(collectionId)}/items/bulk-detach`, spaceId),
       { itemIds },
     ),
 
-  exportBibtex: (scopeId: string | undefined, collectionId: string) =>
+  exportBibtex: (spaceId: string | undefined, collectionId: string) =>
     libraryClient.get<{ bibtex: string; total: number; filename: string }>(
-      `${getExportsUrl(scopeId)}?format=bibtex&collectionId=${encodeURIComponent(collectionId)}`,
+      `${getExportsUrl(spaceId)}?format=bibtex&collectionId=${encodeURIComponent(collectionId)}`,
     ),
 
-  exportBundle: (scopeId: string | undefined, collectionId: string) =>
+  exportBundle: (spaceId: string | undefined, collectionId: string) =>
     libraryClient.get<{
       collection: { id: string; name: string };
       totalItems?: number;
@@ -160,20 +160,20 @@ export const CollectionsService = {
       bibtex: string;
       files: Array<{ itemId?: string; title: string; filename: string; fileUrl: string }>;
     }>(
-      getExportsUrl(scopeId, `${encodeURIComponent(collectionId)}/export-bundle`),
+      getExportsUrl(spaceId, `${encodeURIComponent(collectionId)}/export-bundle`),
     ),
 };
 
 // 3. TagsService
-function getTagsUrl(scopeId?: string, suffix = ''): string {
-  return resolveLibraryUrl('catalog', '/tags', scopeId, suffix);
+function getTagsUrl(spaceId?: string, suffix = ''): string {
+  return resolveLibraryUrl('catalog', '/tags', spaceId, suffix);
 }
 
 export const TagsService = {
-  list: async (scopeId?: string): Promise<TagWithCount[]> => {
+  list: async (spaceId?: string): Promise<TagWithCount[]> => {
     const raw = await libraryClient.get<
       TagWithCount[] | { data?: TagWithCount[]; tags?: TagWithCount[] }
-    >(getTagsUrl(scopeId));
+    >(getTagsUrl(spaceId));
     if (Array.isArray(raw)) return raw;
     if (raw && typeof raw === 'object') {
       if (Array.isArray(raw.tags)) return raw.tags;
@@ -183,7 +183,7 @@ export const TagsService = {
   },
 
   create: async (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     name: string,
     color?: string,
     type: string = 'manual',
@@ -192,13 +192,13 @@ export const TagsService = {
     const raw = await libraryClient.post<
       TagWithCount | { data?: TagWithCount; tag?: TagWithCount }
     >(
-      getTagsUrl(scopeId),
+      getTagsUrl(spaceId),
       {
         name,
         color,
         type,
         ...(shortcut !== undefined ? { shortcut } : {}),
-        ...(isProjectScope(scopeId) ? { spaceId: scopeId } : {}),
+        ...(isProjectScope(spaceId) ? { spaceId: spaceId } : {}),
       },
     );
     if (raw && typeof raw === 'object') {
@@ -209,14 +209,14 @@ export const TagsService = {
   },
 
   update: async (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     tagId: string,
     data: { name?: string; color?: string; type?: string; shortcut?: number | null },
   ): Promise<TagWithCount> => {
     const raw = await libraryClient.patch<
       TagWithCount | { data?: TagWithCount; tag?: TagWithCount }
     >(
-      getTagsUrl(scopeId, encodeURIComponent(tagId)),
+      getTagsUrl(spaceId, encodeURIComponent(tagId)),
       data,
     );
     if (raw && typeof raw === 'object') {
@@ -226,22 +226,22 @@ export const TagsService = {
     return raw as TagWithCount;
   },
 
-  rename: (scopeId: string | undefined, tagId: string, name: string) =>
-    TagsService.update(scopeId, tagId, { name }),
+  rename: (spaceId: string | undefined, tagId: string, name: string) =>
+    TagsService.update(spaceId, tagId, { name }),
 
-  delete: async (scopeId: string | undefined, tagId: string): Promise<void> => {
-    await libraryClient.delete<unknown>(getTagsUrl(scopeId, encodeURIComponent(tagId)));
+  delete: async (spaceId: string | undefined, tagId: string): Promise<void> => {
+    await libraryClient.delete<unknown>(getTagsUrl(spaceId, encodeURIComponent(tagId)));
   },
 
-  deleteAutomatic: async (scopeId?: string): Promise<{ count: number }> => {
+  deleteAutomatic: async (spaceId?: string): Promise<{ count: number }> => {
     const raw = await libraryClient.delete<{ count?: number; data?: { count: number } }>(
-      getTagsUrl(scopeId, 'automatic'),
+      getTagsUrl(spaceId, 'automatic'),
     );
     return raw?.data || (raw && typeof raw.count === 'number' ? { count: raw.count } : { count: 0 });
   },
 
   split: async (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     tagId: string,
     parts: string[],
   ): Promise<{ tags: TagWithCount[]; count: number }> => {
@@ -249,9 +249,9 @@ export const TagsService = {
       tags?: TagWithCount[];
       count?: number;
       data?: { tags?: TagWithCount[]; count?: number };
-    }>(getTagsUrl(scopeId, `${encodeURIComponent(tagId)}/split`), {
+    }>(getTagsUrl(spaceId, `${encodeURIComponent(tagId)}/split`), {
       parts,
-      ...(isProjectScope(scopeId) ? { spaceId: scopeId } : {}),
+      ...(isProjectScope(spaceId) ? { spaceId: spaceId } : {}),
     });
     const tags = raw?.tags || raw?.data?.tags || [];
     return {
@@ -262,8 +262,8 @@ export const TagsService = {
 };
 
 // 4. NotesService
-function getNotesUrl(scopeId?: string, suffix = ''): string {
-  return resolveLibraryUrl('catalog', '/notes', scopeId, suffix);
+function getNotesUrl(spaceId?: string, suffix = ''): string {
+  return resolveLibraryUrl('catalog', '/notes', spaceId, suffix);
 }
 
 function unwrapNoteResponse(
@@ -278,13 +278,13 @@ function unwrapNoteResponse(
 }
 
 export const NotesService = {
-  list: async (scopeId?: string, itemId?: string): Promise<Note[]> => {
+  list: async (spaceId?: string, itemId?: string): Promise<Note[]> => {
     const params = new URLSearchParams();
     if (itemId) params.set('itemId', itemId);
-    if (isProjectScope(scopeId)) params.set('spaceId', scopeId!);
+    if (isProjectScope(spaceId)) params.set('spaceId', spaceId!);
     const queryString = params.toString() ? `?${params.toString()}` : '';
     const raw = await libraryClient.get<Note[] | { success?: boolean; data?: Note[]; notes?: Note[] }>(
-      `${getNotesUrl(scopeId)}${queryString}`,
+      `${getNotesUrl(spaceId)}${queryString}`,
     );
 
     if (Array.isArray(raw)) {
@@ -293,32 +293,32 @@ export const NotesService = {
     return (raw && typeof raw === 'object' ? (raw.data || raw.notes) : []) || [];
   },
 
-  get: async (scopeId: string | undefined, id: string): Promise<Note> => {
+  get: async (spaceId: string | undefined, id: string): Promise<Note> => {
     const raw = await libraryClient.get<Note | { success?: boolean; data?: Note; note?: Note }>(
-      getNotesUrl(scopeId, encodeURIComponent(id)),
+      getNotesUrl(spaceId, encodeURIComponent(id)),
     );
     return unwrapNoteResponse(raw);
   },
 
-  create: async (scopeId: string | undefined, dto: CreateNoteDTO): Promise<Note> => {
+  create: async (spaceId: string | undefined, dto: CreateNoteDTO): Promise<Note> => {
     const raw = await libraryClient.post<Note | { success?: boolean; data?: Note; note?: Note }>(
-      getNotesUrl(scopeId),
+      getNotesUrl(spaceId),
       {
         ...dto,
-        ...(isProjectScope(scopeId) ? { spaceId: scopeId } : {}),
+        ...(isProjectScope(spaceId) ? { spaceId: spaceId } : {}),
       },
     );
     return unwrapNoteResponse(raw);
   },
 
   update: async (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     id: string,
     expectedVersion: number | undefined,
     dto: UpdateNoteDTO,
   ): Promise<Note> => {
     const raw = await libraryClient.patch<Note | { success?: boolean; data?: Note; note?: Note }>(
-      getNotesUrl(scopeId, encodeURIComponent(id)),
+      getNotesUrl(spaceId, encodeURIComponent(id)),
       {
         ...dto,
         expectedVersion,
@@ -328,7 +328,7 @@ export const NotesService = {
   },
 
   delete: async (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     id: string,
     expectedVersion?: number,
   ): Promise<{ deleted: boolean }> => {
@@ -336,7 +336,7 @@ export const NotesService = {
       ? `?expectedVersion=${encodeURIComponent(String(expectedVersion))}`
       : '';
     const raw = await libraryClient.delete<{ deleted?: boolean; data?: { deleted: boolean } }>(
-      `${getNotesUrl(scopeId, encodeURIComponent(id))}${versionQuery}`,
+      `${getNotesUrl(spaceId, encodeURIComponent(id))}${versionQuery}`,
     );
 
     if (raw && typeof raw === 'object' && 'deleted' in raw) {
@@ -346,11 +346,11 @@ export const NotesService = {
   },
 
   extractFromAnnotations: async (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     itemId: string,
     options?: ExtractNotesOptions,
   ): Promise<Partial<Note> & { totalExtracted: number; note?: Note; message?: string }> => {
-    const endpoint = `${getBasePath(scopeId)}/notes/items/${encodeURIComponent(itemId)}/from-annotations`;
+    const endpoint = `${getBasePath(spaceId)}/notes/items/${encodeURIComponent(itemId)}/from-annotations`;
     const raw = await libraryClient.post<
       | Note
       | {
@@ -379,11 +379,11 @@ export const NotesService = {
   },
 
   extractNotes: (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     itemId: string,
     options?: ExtractNotesOptions,
   ): Promise<Partial<Note> & { totalExtracted: number; note?: Note; message?: string }> =>
-    NotesService.extractFromAnnotations(scopeId, itemId, options),
+    NotesService.extractFromAnnotations(spaceId, itemId, options),
 };
 
 // 5. StateService
@@ -396,31 +396,31 @@ function unwrapState<T>(res: T | { data: T } | null | undefined): T | null {
 }
 
 export const StateService = {
-  getState: async (scopeId?: string, itemId?: string): Promise<ItemStateData | null> => {
+  getState: async (spaceId?: string, itemId?: string): Promise<ItemStateData | null> => {
     if (!itemId) return null;
     const res = await libraryClient.get<ItemStateData | { data: ItemStateData }>(
-      getCatalogUrl(scopeId, `${encodeURIComponent(itemId)}/state`),
+      getCatalogUrl(spaceId, `${encodeURIComponent(itemId)}/state`),
     );
     return unwrapState(res);
   },
 
   updateState: async (
-    scopeId?: string,
+    spaceId?: string,
     itemId?: string,
     data?: Partial<ItemStateData>,
   ): Promise<ItemStateData> => {
     if (!itemId) throw new Error('itemId is required');
     const res = await libraryClient.patch<ItemStateData | { data: ItemStateData }>(
-      getCatalogUrl(scopeId, `${encodeURIComponent(itemId)}/state`),
+      getCatalogUrl(spaceId, `${encodeURIComponent(itemId)}/state`),
       data ?? {},
     );
     return unwrapState(res) ?? ({} as ItemStateData);
   },
 
-  markAsRead: async (scopeId?: string, itemId?: string): Promise<ItemStateData> => {
+  markAsRead: async (spaceId?: string, itemId?: string): Promise<ItemStateData> => {
     if (!itemId) throw new Error('itemId is required');
     const res = await libraryClient.post<ItemStateData | { data: ItemStateData }>(
-      getCatalogUrl(scopeId, `${encodeURIComponent(itemId)}/state/mark-read`),
+      getCatalogUrl(spaceId, `${encodeURIComponent(itemId)}/state/mark-read`),
       {},
     );
     return unwrapState(res) ?? ({} as ItemStateData);
@@ -429,23 +429,23 @@ export const StateService = {
 
 // 6. SavedSearchesService
 export const SavedSearchesService = {
-  getAll: (scopeId?: string) =>
+  getAll: (spaceId?: string) =>
     libraryClient.get<SavedSearch[]>(
-      resolveLibraryUrl('catalog', '/saved-searches', scopeId),
+      resolveLibraryUrl('catalog', '/saved-searches', spaceId),
     ),
 
-  list: (scopeId?: string) => SavedSearchesService.getAll(scopeId),
+  list: (spaceId?: string) => SavedSearchesService.getAll(spaceId),
 
-  getById: (scopeId: string | undefined, id: string) =>
+  getById: (spaceId: string | undefined, id: string) =>
     libraryClient.get<SavedSearch>(
-      resolveLibraryUrl('catalog', `/saved-searches/${encodeURIComponent(id)}`, scopeId),
+      resolveLibraryUrl('catalog', `/saved-searches/${encodeURIComponent(id)}`, spaceId),
     ),
 
-  create: (scopeId: string | undefined, data: CreateSavedSearchInput) => {
+  create: (spaceId: string | undefined, data: CreateSavedSearchInput) => {
     const effectiveScope =
       (data as { targetScope?: string; scope?: string })?.targetScope ||
       (data as { scope?: string })?.scope ||
-      scopeId;
+      spaceId;
     const { targetScope: _, scope: __, ...payload } = data;
     return libraryClient.post<SavedSearch>(
       resolveLibraryUrl('catalog', '/saved-searches', effectiveScope),
@@ -456,11 +456,11 @@ export const SavedSearchesService = {
     );
   },
 
-  update: (scopeId: string | undefined, id: string, data: UpdateSavedSearchInput) => {
+  update: (spaceId: string | undefined, id: string, data: UpdateSavedSearchInput) => {
     const effectiveScope =
       (data as { targetScope?: string; scope?: string })?.targetScope ||
       (data as { scope?: string })?.scope ||
-      scopeId;
+      spaceId;
     const { targetScope: _, scope: __, ...payload } = data;
     return libraryClient.patch<SavedSearch>(
       resolveLibraryUrl('catalog', `/saved-searches/${encodeURIComponent(id)}`, effectiveScope),
@@ -468,25 +468,25 @@ export const SavedSearchesService = {
     );
   },
 
-  delete: (scopeId: string | undefined, id: string) =>
+  delete: (spaceId: string | undefined, id: string) =>
     libraryClient.delete<{ success: boolean; id: string }>(
-      resolveLibraryUrl('catalog', `/saved-searches/${encodeURIComponent(id)}`, scopeId),
+      resolveLibraryUrl('catalog', `/saved-searches/${encodeURIComponent(id)}`, spaceId),
     ),
 
   preview: (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     conditions: SavedSearchConditionGroup,
     options?: { sortBy?: string; sortOrder?: 'asc' | 'desc'; scopeOptions?: SavedSearchScopeOptions },
   ): Promise<SavedSearchPreviewResponse> =>
     libraryClient
       .post<SavedSearchPreviewResponse>(
-        resolveLibraryUrl('catalog', '/saved-searches/preview', scopeId),
+        resolveLibraryUrl('catalog', '/saved-searches/preview', spaceId),
         {
           conditions,
           ...(options?.sortBy ? { sortBy: options.sortBy } : {}),
           ...(options?.sortOrder ? { sortOrder: options.sortOrder } : {}),
           ...(options?.scopeOptions || conditions.scopeOptions ? { scopeOptions: options?.scopeOptions || conditions.scopeOptions } : {}),
-          ...(isProjectScope(scopeId) ? { spaceId: scopeId } : {}),
+          ...(isProjectScope(spaceId) ? { spaceId: spaceId } : {}),
         },
       )
       .then((res) => ({
@@ -497,7 +497,7 @@ export const SavedSearchesService = {
       })),
 
   getResults: (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     id: string,
     params?: {
       limit?: number;
@@ -509,7 +509,7 @@ export const SavedSearchesService = {
   ): Promise<SavedSearchResultsResponse> =>
     libraryClient
       .get<SavedSearchResultsResponse>(
-        resolveLibraryUrl('catalog', `/saved-searches/${encodeURIComponent(id)}/execute`, scopeId),
+        resolveLibraryUrl('catalog', `/saved-searches/${encodeURIComponent(id)}/execute`, spaceId),
         params ? { params } : undefined,
       )
       .then((res) => ({
@@ -519,8 +519,8 @@ export const SavedSearchesService = {
           : [],
       })),
 
-  execute: (scopeId: string | undefined, id: string, params?: { page?: number; limit?: number }) =>
-    SavedSearchesService.getResults(scopeId, id, params),
+  execute: (spaceId: string | undefined, id: string, params?: { page?: number; limit?: number }) =>
+    SavedSearchesService.getResults(spaceId, id, params),
 };
 
 export const SearchService = {
@@ -552,7 +552,7 @@ export const SearchService = {
       orderDirection?: 'asc' | 'desc';
       includeFacets?: boolean;
     },
-    scopeId?: string,
+    spaceId?: string,
     options?: { signal?: AbortSignal },
   ): Promise<SearchResponse> => {
     const effectiveQuery = params.query ?? params.q ?? '';
@@ -595,7 +595,7 @@ export const SearchService = {
 
     return libraryClient
       .get<SearchResponse>(
-        resolveLibraryUrl('search', '/search', scopeId),
+        resolveLibraryUrl('search', '/search', spaceId),
         { params: queryParams, signal: options?.signal },
       )
       .then((res) => ({
@@ -610,7 +610,7 @@ export const SearchService = {
     attachmentId: string,
     term: string,
     pageIndex?: number,
-    scopeId?: string,
+    spaceId?: string,
     options?: { signal?: AbortSignal },
   ) => {
     const params: Record<string, string> = { term };
@@ -632,7 +632,7 @@ export const SearchService = {
         resolveLibraryUrl(
           'search',
           `/search/attachments/${encodeURIComponent(attachmentId)}/anchors`,
-          scopeId,
+          spaceId,
         ),
         { params, signal: options?.signal },
       )
@@ -658,10 +658,10 @@ export const SearchService = {
 };
 
 export const SyncService = {
-  getVersion: (scopeId?: string) =>
-    libraryClient.get<{ version: string; scope: 'user' | 'project'; scopeId: string }>(getSyncUrl(scopeId, 'version')),
+  getVersion: (spaceId?: string) =>
+    libraryClient.get<{ version: string; scope: 'user' | 'project'; spaceId: string }>(getSyncUrl(spaceId, 'version')),
 
-  getChanges: (scopeId?: string, params?: { since?: string; limit?: number; compact?: boolean }) =>
+  getChanges: (spaceId?: string, params?: { since?: string; limit?: number; compact?: boolean }) =>
     libraryClient.get<{
       since: string;
       count: number;
@@ -671,7 +671,7 @@ export const SyncService = {
       nextSince?: string | null;
       changes: Array<Record<string, unknown>>;
     }>(
-      getSyncUrl(scopeId, 'changes'),
+      getSyncUrl(spaceId, 'changes'),
       {
         params: {
           since: params?.since ?? '0',

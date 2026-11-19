@@ -178,7 +178,7 @@ export interface TopbarProps {
   displayOptions?: LibraryDisplayOptions;
   onDisplayOptionsChange?: (options: LibraryDisplayOptions) => void;
   onSortChange?: (orderBy: LibraryOrderBy, orderDirection: "asc" | "desc") => void;
-  scopeId?: string;
+  spaceId?: string;
   items?: Item[];
   onAddPaper?: (mode?: "file" | "folder" | "link") => void;
   onNewManualItem?: (itemType: string) => void;
@@ -222,7 +222,7 @@ export function LibraryTopbar({
   displayOptions: propDisplayOptions,
   onDisplayOptionsChange: propOnDisplayOptionsChange,
   onSortChange,
-  scopeId: propScopeId,
+  spaceId: propSpaceId,
   items,
   onAddPaper,
   onNewManualItem,
@@ -314,7 +314,7 @@ export function LibraryTopbar({
   const params = useParams() as { collectionId?: string };
   const activeCollectionId = params?.collectionId;
 
-  const effectiveScopeId = propScopeId || activeSpaceId;
+  const effectiveSpaceId = propSpaceId || activeSpaceId;
   const displayTitle = title || spaceName;
   const RootIcon = isProject ? Folder : LibraryIcon;
   const Icon =
@@ -530,7 +530,7 @@ export function LibraryTopbar({
 
         {/* Academic Library Multi-Criteria Filter */}
         {showFilter && !isFeed && (
-          <LibraryFilterPopover scopeId={effectiveScopeId} items={items} />
+          <LibraryFilterPopover spaceId={effectiveSpaceId} items={items} />
         )}
 
         {/* Academic Library Display Options */}
@@ -576,7 +576,7 @@ export function LibraryTopbar({
           </div>
         ) : isEffectiveCanEdit && !isTrash && !isFeed ? (
           <TopbarNewItemDropdown
-            scopeId={effectiveScopeId}
+            spaceId={effectiveSpaceId}
             activeCollectionId={activeCollectionId}
             isSubcollection={isSubcollection}
             onAddLinkClick={handleAddLinkClick}

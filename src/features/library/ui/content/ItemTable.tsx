@@ -47,7 +47,7 @@ interface ItemTableProps {
   enableInfiniteScroll?: boolean;
   displayOptions?: LibraryDisplayOptions;
   isTrash?: boolean;
-  scopeId?: string;
+  spaceId?: string;
   collectionId?: string;
   canEdit?: boolean;
   onRestoreItems?: (ids: string[]) => void;
@@ -77,7 +77,7 @@ export const ItemTable = React.memo(function ItemTable({
   displayOptions: propDisplayOptions,
   isTrash = false,
   canEdit = true,
-  scopeId,
+  spaceId,
   collectionId,
   onRestoreItems,
   onPermanentDeleteItems,
@@ -119,17 +119,17 @@ export const ItemTable = React.memo(function ItemTable({
     DEFAULT_LIBRARY_DISPLAY_OPTIONS;
 
   // Mutations & Queries
-  const toggleStarMutation = useToggleStarItemMutation(scopeId);
-  const updateItemMutation = useUpdateLibraryItemMutation(scopeId);
-  const deleteMutation = useDeleteLibraryItemsMutation(scopeId);
-  const restoreMutation = useBatchRestoreItemsMutation(scopeId);
-  const purgeMutation = useBatchPurgeItemsMutation(scopeId);
-  const moveMutation = useMoveCollectionItemsMutation(scopeId);
-  const assignMutation = useAssignCollectionItemsMutation(scopeId);
-  const batchDetachMutation = useBatchDetachItemsMutation(scopeId);
-  const { data: rawCollections } = useCollectionsQuery(scopeId);
+  const toggleStarMutation = useToggleStarItemMutation(spaceId);
+  const updateItemMutation = useUpdateLibraryItemMutation(spaceId);
+  const deleteMutation = useDeleteLibraryItemsMutation(spaceId);
+  const restoreMutation = useBatchRestoreItemsMutation(spaceId);
+  const purgeMutation = useBatchPurgeItemsMutation(spaceId);
+  const moveMutation = useMoveCollectionItemsMutation(spaceId);
+  const assignMutation = useAssignCollectionItemsMutation(spaceId);
+  const batchDetachMutation = useBatchDetachItemsMutation(spaceId);
+  const { data: rawCollections } = useCollectionsQuery(spaceId);
   const collections = rawCollections ?? EMPTY_COLLECTIONS;
-  const { tags: rawScopeTags } = useTags(scopeId);
+  const { tags: rawScopeTags } = useTags(spaceId);
   const scopeTags = (rawScopeTags ?? EMPTY_TAGS) as typeof rawScopeTags;
 
   // Sorting state derived directly from displayOptions
@@ -533,7 +533,7 @@ export const ItemTable = React.memo(function ItemTable({
                   key={item.id}
                   item={item}
                   index={virtualRow.index}
-                  scopeId={scopeId}
+                  spaceId={spaceId}
                   isLast={isLast}
                   columns={columns}
                   isTrash={isTrash}

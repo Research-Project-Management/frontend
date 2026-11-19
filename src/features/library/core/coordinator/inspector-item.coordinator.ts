@@ -144,7 +144,7 @@ export function usePanelResize({
 
 interface UseInspectorItemResolverParams {
   propItem?: Item | null;
-  scopeId?: string;
+  spaceId?: string;
   canEdit?: boolean;
   needsFullDetail?: boolean;
 }
@@ -167,12 +167,12 @@ interface UseInspectorItemResolverResult {
 
 export function useInspectorItemResolver({
   propItem,
-  scopeId,
+  spaceId,
   canEdit = true,
   needsFullDetail = false,
 }: UseInspectorItemResolverParams = {}): UseInspectorItemResolverResult {
   const activeItemId = useLibraryUIStore((s) => s.activeItemId);
-  const targetScope = scopeId || 'user';
+  const targetScope = spaceId || 'user';
   const incomingItem = propItem || null;
 
   const targetItemId = incomingItem?.id || activeItemId || undefined;
@@ -247,7 +247,7 @@ export function useInspectorItemResolver({
         const cacheKey = buildPdfBlobCacheKey(candidatePdfUrl, targetScope);
         void documentStorage.has(cacheKey).then((isCachedOnDisk: boolean) => {
           if (isCachedOnDisk) {
-            void prefetchReaderDocumentBlob(candidatePdfUrl, { scopeId: targetScope });
+            void prefetchReaderDocumentBlob(candidatePdfUrl, { spaceId: targetScope });
           }
         });
       }
@@ -467,7 +467,7 @@ export function useItemCollectionsManager(
   canEdit: boolean,
   externalCollections?: Collection[],
   externalCreateCollection?: (
-    data: CreateCollectionDTO & { scopeId?: string },
+    data: CreateCollectionDTO & { spaceId?: string },
   ) => Promise<unknown>,
   onUpdateItem?: (
     payload: Partial<Item>,
@@ -502,7 +502,7 @@ export function useItemCollectionsManager(
     collections: queriedCollections = [],
     createCollection: queriedCreateCollection,
   } = useCollections({
-    scopeId: effectiveScope,
+    spaceId: effectiveScope,
     enabled: externalCollections === undefined,
   });
   const collections = externalCollections ?? queriedCollections;

@@ -6,7 +6,7 @@ import { ItemsService } from '../clients/items.client';
 import { StateService } from '../clients/catalog-entities.client';
 import { getMappedItemMeta, hasExplicitUserStateInPayload, preserveMappedItemFlags, setMappedItemMeta } from '@/features/library/domain/metadata.mapper';
 import type { Item, CreateItemDTO, UpdateItemDTO } from '@/features/library/types/core.types';
-import { itemKeys, libraryKeys, invalidateCollections, normalizeScopeId } from '@/features/library/sdk/query-keys';
+import { itemKeys, libraryKeys, invalidateCollections, normalizeSpaceId } from '@/features/library/sdk/query-keys';
 import { mergeCachedItemWithPatch, preserveCachedUserReadingState, patchItemAcrossScopeCaches, resolveCachedItemFromScope, chunkUniqueIds, invalidateLibraryCatalogDependencies, isMetadataOnlyPatch } from './cache-patcher.queries';
 import { isItemStarred } from '@/features/library/domain/system-views.policy';
 
@@ -62,9 +62,9 @@ function buildServerSuccessCachePatch(
   return patchData;
 }
 
-export function useUpdateLibraryItemMutation(scopeId?: string) {
+export function useUpdateLibraryItemMutation(spaceId?: string) {
   const queryClient = useQueryClient();
-  const effectiveScope = normalizeScopeId(scopeId);
+  const effectiveScope = normalizeSpaceId(spaceId);
   const mutationKey = ['update-item', effectiveScope];
 
   return useMutation({
@@ -227,9 +227,9 @@ export function useUpdateLibraryItemMutation(scopeId?: string) {
   });
 }
 
-export function useToggleStarItemMutation(scopeId?: string) {
+export function useToggleStarItemMutation(spaceId?: string) {
   const queryClient = useQueryClient();
-  const effectiveScope = normalizeScopeId(scopeId);
+  const effectiveScope = normalizeSpaceId(spaceId);
   const mutationKey = ['toggle-star-item', effectiveScope];
 
   return useMutation({
@@ -324,18 +324,18 @@ export function useToggleStarItemMutation(scopeId?: string) {
   });
 }
 
-export function useImportFromUserMutation(scopeId?: string) {
+export function useImportFromUserMutation(spaceId?: string) {
   const queryClient = useQueryClient();
-  const effectiveScope = normalizeScopeId(scopeId);
+  const effectiveScope = normalizeSpaceId(spaceId);
 
   return useMutation({
     mutationFn: async (
-      input: string[] | { projectId?: string; scopeId?: string; itemIds: string[] },
+      input: string[] | { projectId?: string; spaceId?: string; itemIds: string[] },
     ): Promise<{ success: boolean; importedCount: number }> => {
       const rawIds = Array.isArray(input) ? input : input.itemIds;
       const targetProject = Array.isArray(input)
         ? effectiveScope
-        : normalizeScopeId(input.projectId || input.scopeId || effectiveScope);
+        : normalizeSpaceId(input.projectId || input.spaceId || effectiveScope);
       const chunks = chunkUniqueIds(rawIds, 100);
       if (chunks.length === 0) return { success: true, importedCount: 0 };
       const results = await Promise.all(
@@ -350,7 +350,7 @@ export function useImportFromUserMutation(scopeId?: string) {
     onSettled: (_res, _err, input) => {
       const targetProject = Array.isArray(input)
         ? effectiveScope
-        : normalizeScopeId(input.projectId || input.scopeId || effectiveScope);
+        : normalizeSpaceId(input.projectId || input.spaceId || effectiveScope);
       queryClient.invalidateQueries({ queryKey: itemKeys.all(targetProject) });
       queryClient.invalidateQueries({ queryKey: itemKeys.counts(targetProject) });
       invalidateCollections(queryClient, targetProject);
@@ -367,11 +367,11 @@ type CreateLibraryItemMutationInput =
     };
 
 export function useCreateLibraryItemMutation(
-  scopeId?: string,
+  spaceId?: string,
   defaultCollectionId?: string,
 ) {
   const queryClient = useQueryClient();
-  const effectiveScope = normalizeScopeId(scopeId);
+  const effectiveScope = normalizeSpaceId(spaceId);
 
   return useMutation({
     mutationFn: (input: CreateLibraryItemMutationInput) => {
@@ -433,9 +433,9 @@ export function useCreateLibraryItemMutation(
   });
 }
 
-export function useReResolveItemMetadataMutation(scopeId?: string) {
+export function useReResolveItemMetadataMutation(spaceId?: string) {
   const queryClient = useQueryClient();
-  const effectiveScope = normalizeScopeId(scopeId);
+  const effectiveScope = normalizeSpaceId(spaceId);
 
   return useMutation({
     mutationFn: ({
@@ -506,9 +506,9 @@ export function useReResolveItemMetadataMutation(scopeId?: string) {
   });
 }
 
-export function useSetMyPublicationMutation(scopeId?: string) {
+export function useSetMyPublicationMutation(spaceId?: string) {
   const queryClient = useQueryClient();
-  const effectiveScope = normalizeScopeId(scopeId);
+  const effectiveScope = normalizeSpaceId(spaceId);
 
   return useMutation({
     mutationFn: ({

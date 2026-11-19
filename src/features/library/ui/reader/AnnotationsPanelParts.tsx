@@ -175,7 +175,7 @@ function AnnotationEditForm({
 interface AnnotationsPanelCardProps {
   annotation: ReaderAnnotation;
   paper?: ReaderDocument;
-  scopeId?: string;
+  spaceId?: string;
   attachmentId?: string;
   isEditing: boolean;
   isDeletingCurrent: boolean;
@@ -203,7 +203,7 @@ interface AnnotationsPanelCardProps {
 }
 
 export const AnnotationsPanelCard = React.memo(function AnnotationsPanelCard({
-  annotation, paper, scopeId, attachmentId, isEditing, isDeletingCurrent, isSelected, isUpdating,
+  annotation, paper, spaceId, attachmentId, isEditing, isDeletingCurrent, isSelected, isUpdating,
   targetIds, onCardClick, onCardContextMenu, onJumpToPage, onStartEdit, onCancelEdit, onSaveEdit,
   onStartDelete, onCancelDelete, onConfirmDelete, onAddToNote, onAskAi, onBatchAddToNote,
   onBatchChangeColor, onChangeType, onBatchDelete,
@@ -223,7 +223,7 @@ export const AnnotationsPanelCard = React.memo(function AnnotationsPanelCard({
     if (isEditing) { e.preventDefault(); return; }
     const pageNumber = (annotation.pageIndex ?? 0) + 1;
     const citation = formatAnnotationCitation(
-      paper, attachmentId || annotation.attachmentId, pageNumber, annotation.id, scopeId, annotation.pageLabel,
+      paper, attachmentId || annotation.attachmentId, pageNumber, annotation.id, spaceId, annotation.pageLabel,
     );
     const quoteText = (annotation.quoteText || annotation.text || '').trim();
     const commentText = (annotation.comment || '').trim();
@@ -249,22 +249,22 @@ export const AnnotationsPanelCard = React.memo(function AnnotationsPanelCard({
   const handleCopyCitation = useCallback(() => {
     const pageNumber = (annotation.pageIndex ?? 0) + 1;
     const citation = formatAnnotationCitation(
-      paper, attachmentId || annotation.attachmentId, pageNumber, annotation.id, scopeId, annotation.pageLabel,
+      paper, attachmentId || annotation.attachmentId, pageNumber, annotation.id, spaceId, annotation.pageLabel,
     );
     const quote = (annotation.quoteText || annotation.text || '').trim();
     void navigator.clipboard.writeText(quote ? `"${quote}" ${citation.label}` : citation.label);
     toast.success('Copied citation to clipboard', { id: 'reader-clipboard' });
-  }, [paper, attachmentId, annotation, scopeId]);
+  }, [paper, attachmentId, annotation, spaceId]);
 
   const handleCopyLink = useCallback(() => {
     const pageNumber = (annotation.pageIndex ?? 0) + 1;
     const citation = formatAnnotationCitation(
-      paper, attachmentId || annotation.attachmentId, pageNumber, annotation.id, scopeId, annotation.pageLabel,
+      paper, attachmentId || annotation.attachmentId, pageNumber, annotation.id, spaceId, annotation.pageLabel,
     );
     const fullUrl = typeof window !== 'undefined' ? `${window.location.origin}${citation.url}` : citation.url;
     void navigator.clipboard.writeText(fullUrl);
     toast.success('Copied deep link to clipboard', { id: 'reader-clipboard' });
-  }, [paper, attachmentId, annotation, scopeId]);
+  }, [paper, attachmentId, annotation, spaceId]);
 
   return (
     <ContextMenu>

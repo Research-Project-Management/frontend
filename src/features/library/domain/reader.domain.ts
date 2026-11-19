@@ -392,7 +392,7 @@ export const PdfAnnotationEngine = {
     annotations: ReaderAnnotation[],
     paper?: ReaderDocument | null,
     attachmentId?: string,
-    scopeId?: string,
+    spaceId?: string,
   ): string {
     const sorted = this.sortAnnotationsInReadingOrder(annotations);
     return sorted
@@ -404,7 +404,7 @@ export const PdfAnnotationEngine = {
           effAttId,
           pageNum,
           a.id,
-          scopeId,
+          spaceId,
           a.pageLabel,
         );
         const lines: string[] = [];

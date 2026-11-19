@@ -27,7 +27,7 @@ export type OutboxActionType = 'CREATE' | 'UPDATE' | 'DELETE';
 export interface OutboxMutationEntry<T = unknown> {
   /** UUIDv7: Monotonically increasing time-ordered identifier (RFC 9562) */
   readonly id: string;
-  readonly scopeId: string;
+  readonly spaceId: string;
   readonly entityType: OutboxEntityType;
   readonly entityId: string;
   readonly action: OutboxActionType;
@@ -70,13 +70,19 @@ class IndexedDbOutboxStorage implements OutboxStorageProvider {
 
     this.dbPromise = new Promise((resolve) => {
       try {
-        const req = window.indexedDB.open(OUTBOX_DB_NAME, 1);
+        const req = window.indexedDB.open(OUTBOX_DB_NAME, 2);
         req.onupgradeneeded = (e) => {
-          const db = (e.target as IDBOpenDBRequest).result;
+          const openReq = e.target as IDBOpenDBRequest;
+          const db = openReq.result;
           if (!db.objectStoreNames.contains(OUTBOX_STORE_NAME)) {
             const store = db.createObjectStore(OUTBOX_STORE_NAME, { keyPath: 'id' });
             store.createIndex('createdAt', 'createdAt', { unique: false });
-            store.createIndex('scopeId', 'scopeId', { unique: false });
+            store.createIndex('spaceId', 'spaceId', { unique: false });
+          } else if (openReq.transaction) {
+            const store = openReq.transaction.objectStore(OUTBOX_STORE_NAME);
+            if (!store.indexNames.contains('spaceId')) {
+              store.createIndex('spaceId', 'spaceId', { unique: false });
+            }
           }
         };
         req.onsuccess = () => {

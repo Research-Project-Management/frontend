@@ -3,94 +3,105 @@ import type { ReaderAnnotation, CreateAnnotationDto, UpdateAnnotationDto } from 
 import { libraryClient, resolveLibraryUrl, getItemAttachmentUrl, getAttachmentUrl, unwrapList, isProjectScope, getCitationUrl, getExportsUrl, unwrapResolvedReference } from './http.client';
 import { NotesService, type ExtractNotesOptions } from './catalog-entities.client';
 import { normalizeCitationStyleId } from '@/features/library/domain/citations.domain';
+import { smartUpload } from '@/shared/lib/smart-upload-engine';
 
 export const AttachmentsService = {
-  list: async (scopeId: string, itemId: string): Promise<ItemAttachment[]> => {
-    const res = await libraryClient.get<{ attachments: ItemAttachment[] }>(getItemAttachmentUrl(scopeId, itemId));
+  list: async (spaceId: string, itemId: string): Promise<ItemAttachment[]> => {
+    const res = await libraryClient.get<{ attachments: ItemAttachment[] }>(getItemAttachmentUrl(spaceId, itemId));
     return res.attachments || [];
   },
 
-  get: async (scopeId: string, attachmentId: string): Promise<ItemAttachment> => {
-    const res = await libraryClient.get<{ attachment?: ItemAttachment } | ItemAttachment>(getAttachmentUrl(scopeId, attachmentId));
+  get: async (spaceId: string, attachmentId: string): Promise<ItemAttachment> => {
+    const res = await libraryClient.get<{ attachment?: ItemAttachment } | ItemAttachment>(getAttachmentUrl(spaceId, attachmentId));
     if (res && typeof res === 'object' && 'attachment' in res && res.attachment) {
       return res.attachment;
     }
     return res as ItemAttachment;
   },
 
-  delete: async (scopeId: string, attachmentId: string): Promise<boolean> => {
-    const res = await libraryClient.delete<{ success: boolean }>(getAttachmentUrl(scopeId, attachmentId));
+  delete: async (spaceId: string, attachmentId: string): Promise<boolean> => {
+    const res = await libraryClient.delete<{ success: boolean }>(getAttachmentUrl(spaceId, attachmentId));
     return res.success;
   },
 
-  create: async (scopeId: string, itemId: string, data: Record<string, unknown>): Promise<ItemAttachment> => {
+  create: async (spaceId: string, itemId: string, data: Record<string, unknown>): Promise<ItemAttachment> => {
     const res = await libraryClient.post<{ attachment?: ItemAttachment } | ItemAttachment>(
-      getItemAttachmentUrl(scopeId, itemId),
+      getItemAttachmentUrl(spaceId, itemId),
       data,
     );
     return (res as { attachment?: ItemAttachment }).attachment ?? (res as ItemAttachment);
   },
 
-  rename: async (scopeId: string, attachmentId: string, dto: { filename?: string; pattern?: string }) =>
+  rename: async (spaceId: string, attachmentId: string, dto: { filename?: string; pattern?: string }) =>
     libraryClient.patch<{ attachment: ItemAttachment; oldFilename: string; newFilename: string }>(
-      getAttachmentUrl(scopeId, attachmentId, 'rename'),
+      getAttachmentUrl(spaceId, attachmentId, 'rename'),
       dto,
     ),
 
-  batchRename: async (scopeId: string, dto: { itemIds?: string[]; attachmentIds?: string[]; pattern?: string }) =>
+  batchRename: async (spaceId: string, dto: { itemIds?: string[]; attachmentIds?: string[]; pattern?: string }) =>
     libraryClient.post<{
       renamedCount: number;
       results: Array<{ attachmentId: string; itemId: string; oldFilename: string; newFilename: string }>;
-    }>(resolveLibraryUrl('extraction', '/attachments/batch-rename', scopeId), dto),
+    }>(resolveLibraryUrl('extraction', '/attachments/batch-rename', spaceId), dto),
 
-  setPrimary: (scopeId: string, itemId: string, attachmentId: string) =>
+  setPrimary: (spaceId: string, itemId: string, attachmentId: string) =>
     libraryClient.post<{ success: boolean }>(
-      getItemAttachmentUrl(scopeId, itemId, `${encodeURIComponent(attachmentId)}/set-primary`),
+      getItemAttachmentUrl(spaceId, itemId, `${encodeURIComponent(attachmentId)}/set-primary`),
       {},
     ),
 };
 
 export const UploadService = {
-  uploadMultipart: async (
-    scopeId: string | undefined,
+  uploadFile: async (
+    spaceId: string | undefined,
     file: File,
-    options?: { onProgress?: (percent: number) => void; signal?: AbortSignal },
-  ): Promise<{ fileId: string; url: string; filename: string; size: number; mimeType: string }> => {
-    const formData = new FormData();
-    formData.append('file', file);
-    if (isProjectScope(scopeId)) {
-      formData.append('spaceId', scopeId!);
-    }
-    const uploadUrl = resolveLibraryUrl('extraction', '/upload', scopeId);
-    const res = await libraryClient.post<{
-      fileId: string;
-      url: string;
-      filename?: string;
-      size?: number;
-      mimeType?: string;
-    }>(
-      uploadUrl,
-      formData,
-      {
-        signal: options?.signal,
-        onUploadProgress: options?.onProgress
-          ? (evt) => {
-              if (evt.total && evt.total > 0) {
-                options.onProgress?.(Math.round((evt.loaded * 100) / evt.total));
-              }
-            }
-          : undefined,
-      },
-      scopeId,
-    );
+    options?: {
+      contentHash?: string;
+      onProgress?: (percent: number) => void;
+      signal?: AbortSignal;
+    },
+  ): Promise<{
+    fileId: string;
+    url: string;
+    filename: string;
+    size: number;
+    mimeType: string;
+    deduplicated?: boolean;
+  }> => {
+    const effectiveSpaceId = isProjectScope(spaceId) ? spaceId : undefined;
+    const baseEndpoint = resolveLibraryUrl('extraction', '/attachments', effectiveSpaceId);
+    const directUploadEndpoint = resolveLibraryUrl('extraction', '/upload', effectiveSpaceId);
+    const result = await smartUpload(file, {
+      baseEndpoint,
+      directUploadEndpoint,
+      filename: file.name,
+      mimeType: file.type || 'application/pdf',
+      spaceId: effectiveSpaceId,
+      contentHash: options?.contentHash,
+      headers: effectiveSpaceId ? { 'X-Space-Id': effectiveSpaceId } : undefined,
+      allowDirectFallback: true,
+      onProgress: options?.onProgress,
+      signal: options?.signal,
+    });
     return {
-      fileId: res.fileId,
-      url: res.url,
-      filename: res.filename || file.name,
-      size: res.size ?? file.size,
-      mimeType: res.mimeType || file.type || 'application/pdf',
+      fileId: result.fileId,
+      url: result.url,
+      filename: result.filename || file.name,
+      size: result.size ?? file.size,
+      mimeType: result.mimeType || file.type || 'application/pdf',
+      deduplicated: result.deduplicated,
     };
   },
+
+  uploadMultipart: async (
+    spaceId: string | undefined,
+    file: File,
+    options?: {
+      contentHash?: string;
+      onProgress?: (percent: number) => void;
+      signal?: AbortSignal;
+    },
+  ) => UploadService.uploadFile(spaceId, file, options),
 };
 
 export function normalizeAnnotationEntity(raw: ReaderAnnotation & { rectCoords?: unknown; quoteText?: string }): ReaderAnnotation {
@@ -165,21 +176,21 @@ export function normalizeAnnotationEntity(raw: ReaderAnnotation & { rectCoords?:
 }
 
 export const AnnotationsService = {
-  getByAttachment: async (scopeId: string | undefined, attachmentId: string): Promise<ReaderAnnotation[]> => {
+  getByAttachment: async (spaceId: string | undefined, attachmentId: string): Promise<ReaderAnnotation[]> => {
     if (!attachmentId) return [];
-    const url = resolveLibraryUrl('reader', `/attachments/${encodeURIComponent(attachmentId)}/annotations`, scopeId);
+    const url = resolveLibraryUrl('reader', `/attachments/${encodeURIComponent(attachmentId)}/annotations`, spaceId);
     const res = await libraryClient.get<ReaderAnnotation[] | { data?: ReaderAnnotation[]; annotations?: ReaderAnnotation[] }>(url);
     return unwrapList<ReaderAnnotation>(res, 'annotations').map(normalizeAnnotationEntity);
   },
 
-  create: async (scopeId: string | undefined, attachmentId: string, dto: CreateAnnotationDto): Promise<ReaderAnnotation> => {
-    const url = resolveLibraryUrl('reader', `/attachments/${encodeURIComponent(attachmentId)}/annotations`, scopeId);
+  create: async (spaceId: string | undefined, attachmentId: string, dto: CreateAnnotationDto): Promise<ReaderAnnotation> => {
+    const url = resolveLibraryUrl('reader', `/attachments/${encodeURIComponent(attachmentId)}/annotations`, spaceId);
     const res = await libraryClient.post<ReaderAnnotation>(url, dto);
     return normalizeAnnotationEntity(res);
   },
 
   update: async (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     attachmentId: string,
     annotationId: string,
     expectedVersion: number | undefined,
@@ -188,14 +199,14 @@ export const AnnotationsService = {
     const url = resolveLibraryUrl(
       'reader',
       `/attachments/${encodeURIComponent(attachmentId)}/annotations/${encodeURIComponent(annotationId)}`,
-      scopeId,
+      spaceId,
     );
     const res = await libraryClient.patch<ReaderAnnotation>(url, { ...dto, expectedVersion });
     return normalizeAnnotationEntity(res);
   },
 
   delete: async (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     attachmentId: string,
     annotationId: string,
     expectedVersion?: number,
@@ -203,7 +214,7 @@ export const AnnotationsService = {
     const url = resolveLibraryUrl(
       'reader',
       `/attachments/${encodeURIComponent(attachmentId)}/annotations/${encodeURIComponent(annotationId)}`,
-      scopeId,
+      spaceId,
     );
     const res = await libraryClient.delete<{ deleted?: boolean; success?: boolean } | boolean>(url, {
       params: expectedVersion !== undefined ? { expectedVersion } : undefined,
@@ -212,27 +223,27 @@ export const AnnotationsService = {
   },
 
   batch: async (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     attachmentId: string,
     payload: { upserts: unknown[]; deletes: string[] },
   ): Promise<unknown> => {
     const url = resolveLibraryUrl(
       'reader',
       `/attachments/${encodeURIComponent(attachmentId)}/annotations/batch`,
-      scopeId,
+      spaceId,
     );
     return libraryClient.put<unknown>(url, payload);
   },
 
   extractNotes: (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     itemId: string,
     options?: ExtractNotesOptions,
   ): Promise<{ totalExtracted: number; note?: Note; message?: string }> =>
-    NotesService.extractFromAnnotations(scopeId, itemId, options),
+    NotesService.extractFromAnnotations(spaceId, itemId, options),
 
   importExternal: async (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     attachmentId: string,
   ): Promise<{
     importedCount: number;
@@ -243,7 +254,7 @@ export const AnnotationsService = {
     const url = resolveLibraryUrl(
       'reader',
       `/attachments/${encodeURIComponent(attachmentId)}/annotations/import-external`,
-      scopeId,
+      spaceId,
     );
     const res = await libraryClient.post<{
       importedCount?: number;
@@ -262,17 +273,17 @@ export const AnnotationsService = {
 };
 
 export const CitationService = {
-  formatCitation: (scopeId: string | undefined, itemId: string, style: CslStyle = 'apa-7th', index = 1) => {
+  formatCitation: (spaceId: string | undefined, itemId: string, style: CslStyle = 'apa-7th', index = 1) => {
     const resolvedStyle = normalizeCitationStyleId(style);
-    const pQuery = isProjectScope(scopeId) ? `&spaceId=${encodeURIComponent(scopeId!)}` : '';
+    const pQuery = isProjectScope(spaceId) ? `&spaceId=${encodeURIComponent(spaceId!)}` : '';
     return libraryClient.get<FormattedCitation>(
-      `${getCitationUrl(scopeId, 'items')}/${encodeURIComponent(itemId)}/citation?style=${encodeURIComponent(resolvedStyle)}&index=${index}${pQuery}`,
+      `${getCitationUrl(spaceId, 'items')}/${encodeURIComponent(itemId)}/citation?style=${encodeURIComponent(resolvedStyle)}&index=${index}${pQuery}`,
     );
   },
 
-  batchFormat: (scopeId: string | undefined, itemIds: string[], style: CslStyle = 'apa-7th') => {
+  batchFormat: (spaceId: string | undefined, itemIds: string[], style: CslStyle = 'apa-7th') => {
     const resolvedStyle = normalizeCitationStyleId(style);
-    const spaceId = isProjectScope(scopeId) ? scopeId : undefined;
+    const targetSpaceId = isProjectScope(spaceId) ? spaceId : undefined;
     return libraryClient.post<{
       style: CslStyle;
       total: number;
@@ -280,31 +291,31 @@ export const CitationService = {
       bibliographyText?: string;
       bibliographyHtml?: string;
       citations: Array<{ itemId?: string; citation: FormattedCitation }>;
-    }>(getCitationUrl(scopeId, 'batch-items'), {
+    }>(getCitationUrl(spaceId, 'batch-items'), {
       itemIds,
       style: resolvedStyle,
-      ...(spaceId ? { spaceId } : {}),
+      ...(targetSpaceId ? { spaceId: targetSpaceId } : {}),
     });
   },
 
-  getStyles: (scopeId?: string) => {
-    const pQuery = isProjectScope(scopeId) ? `?spaceId=${encodeURIComponent(scopeId!)}` : '';
+  getStyles: (spaceId?: string) => {
+    const pQuery = isProjectScope(spaceId) ? `?spaceId=${encodeURIComponent(spaceId!)}` : '';
     return libraryClient.get<import('@/features/library/types/core.types').StyleSummary[]>(
-      `${getCitationUrl(scopeId, 'styles')}${pQuery}`,
+      `${getCitationUrl(spaceId, 'styles')}${pQuery}`,
     );
   },
 
-  searchStyles: (query = '', limit = 30, scopeId?: string) =>
+  searchStyles: (query = '', limit = 30, spaceId?: string) =>
     libraryClient.get<{ styles: CslStyleMetadata[]; total: number }>(
-      `${getCitationUrl(scopeId, 'styles/search')}?q=${encodeURIComponent(query)}&limit=${limit}`,
+      `${getCitationUrl(spaceId, 'styles/search')}?q=${encodeURIComponent(query)}&limit=${limit}`,
     ),
 
-  resolveDoi: async (doi: string, scopeId?: string): Promise<ReferenceData | null> => {
+  resolveDoi: async (doi: string, spaceId?: string): Promise<ReferenceData | null> => {
     const rawDoi = typeof doi === 'string' ? doi.trim() : '';
     if (!rawDoi) throw new Error('Invalid DOI provided');
     try {
       const referenceResponse = await libraryClient.post<unknown>(
-        getCitationUrl(scopeId, 'resolve'),
+        getCitationUrl(spaceId, 'resolve'),
         { doi: rawDoi, query: rawDoi },
         { silent: true },
       );
@@ -316,7 +327,7 @@ export const CitationService = {
     return null;
   },
 
-  search: async (query: string, scopeId?: string): Promise<ReferenceData[]> => {
+  search: async (query: string, spaceId?: string): Promise<ReferenceData[]> => {
     if (!query || !query.trim()) return [];
     const trimmedQuery = query.trim();
     try {
@@ -325,7 +336,7 @@ export const CitationService = {
         results?: ReferenceData[];
         data?: ReferenceData[];
       }>(
-        `${getCitationUrl(scopeId, 'crossref/search')}?query=${encodeURIComponent(trimmedQuery)}&rows=10`,
+        `${getCitationUrl(spaceId, 'crossref/search')}?query=${encodeURIComponent(trimmedQuery)}&rows=10`,
         { silent: true },
       );
       if (response?.works && Array.isArray(response.works)) return response.works;
@@ -338,12 +349,12 @@ export const CitationService = {
     }
   },
 
-  resolve: async (query: string, scopeId?: string): Promise<ReferenceData | null> => {
+  resolve: async (query: string, spaceId?: string): Promise<ReferenceData | null> => {
     const trimmed = typeof query === 'string' ? query.trim() : '';
     if (!trimmed) return null;
     try {
       const referenceResponse = await libraryClient.post<unknown>(
-        getCitationUrl(scopeId, 'resolve'),
+        getCitationUrl(spaceId, 'resolve'),
         { query: trimmed },
         { silent: true },
       );
@@ -352,14 +363,14 @@ export const CitationService = {
     } catch {
       // Fall back to search
     }
-    const results = await CitationService.search(trimmed, scopeId);
+    const results = await CitationService.search(trimmed, spaceId);
     return results.length > 0 ? results[0] : null;
   },
 };
 
 export const ExportsService = {
   exportLibrary: (
-    scopeId?: string,
+    spaceId?: string,
     options?: {
       format?: string;
       collectionId?: string;
@@ -370,24 +381,24 @@ export const ExportsService = {
     },
   ) => {
     const { projectId: optProjectId, spaceId: optSpaceId, ...restOptions } = options || {};
-    const spaceId = optSpaceId || optProjectId || (isProjectScope(scopeId) ? scopeId : undefined);
+    const targetSpaceId = optSpaceId || optProjectId || (isProjectScope(spaceId) ? spaceId : undefined);
     return libraryClient.post<{ content: string; filename: string; itemCount: number }>(
-      getExportsUrl(scopeId),
-      { ...restOptions, ...(spaceId ? { spaceId } : {}) },
+      getExportsUrl(spaceId),
+      { ...restOptions, ...(targetSpaceId ? { spaceId: targetSpaceId } : {}) },
     );
   },
 
   downloadAnnotatedPdf: async (
-    scopeId: string | undefined,
+    spaceId: string | undefined,
     itemId: string,
     fallbackFilename = `annotated_${itemId}.pdf`,
     attachmentId?: string,
   ): Promise<{ filename: string; mimeType: string }> => {
     const params = new URLSearchParams();
-    if (isProjectScope(scopeId)) params.set('spaceId', scopeId!);
+    if (isProjectScope(spaceId)) params.set('spaceId', spaceId!);
     if (attachmentId) params.set('attachmentId', attachmentId);
     const qs = params.toString() ? `?${params.toString()}` : '';
-    const endpoint = `${getExportsUrl(scopeId)}/items/${encodeURIComponent(itemId)}/annotated-pdf${qs}`;
+    const endpoint = `${getExportsUrl(spaceId)}/items/${encodeURIComponent(itemId)}/annotated-pdf${qs}`;
     let resolvedFilename = fallbackFilename;
     const res = await libraryClient.get<{ filename: string; mimeType: string; base64: string }>(endpoint);
     if (!res || !res.base64) {

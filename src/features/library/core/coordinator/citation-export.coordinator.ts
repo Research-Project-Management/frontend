@@ -130,16 +130,16 @@ const EXPORT_FORMAT_EXTENSION_MAP: Record<ExportFormatType, string> = {
 };
 
 async function formatBibliographyForIds(
-  scopeId: string | undefined,
+  spaceId: string | undefined,
   itemIds: string[],
   style: CslStyle,
   preferSingleEndpoint: boolean = false,
 ): Promise<string> {
   if (preferSingleEndpoint && itemIds.length === 1) {
-    const res = await formatCitationItem(scopeId, itemIds[0], style);
+    const res = await formatCitationItem(spaceId, itemIds[0], style);
     return res.bibliography || res.inText || '';
   }
-  const res = await batchFormatCitations(scopeId, itemIds, style);
+  const res = await batchFormatCitations(spaceId, itemIds, style);
   return (
     res.bibliographyText ||
     res.citations
@@ -150,16 +150,16 @@ async function formatBibliographyForIds(
 }
 
 async function formatInTextForIds(
-  scopeId: string | undefined,
+  spaceId: string | undefined,
   itemIds: string[],
   style: CslStyle,
   preferSingleEndpoint: boolean = false,
 ): Promise<string> {
   if (preferSingleEndpoint && itemIds.length === 1) {
-    const res = await formatCitationItem(scopeId, itemIds[0], style);
+    const res = await formatCitationItem(spaceId, itemIds[0], style);
     return res.inText || '';
   }
-  const res = await batchFormatCitations(scopeId, itemIds, style);
+  const res = await batchFormatCitations(spaceId, itemIds, style);
   return (
     res.combinedInText ||
     res.citations
@@ -170,7 +170,7 @@ async function formatInTextForIds(
 }
 
 async function exportLibraryToFile(
-  scopeId: string,
+  spaceId: string,
   params: {
     format: ExportFormatType;
     itemIds?: string[];
@@ -184,7 +184,7 @@ async function exportLibraryToFile(
   },
 ): Promise<void> {
   try {
-    const res = await exportLibraryBibliography(scopeId, params);
+    const res = await exportLibraryBibliography(spaceId, params);
     if (res?.content) {
       const downloadFilename = res.filename || options.fallbackFilename;
       triggerBrowserTextDownload(res.content, downloadFilename, 'text/plain;charset=utf-8');
@@ -219,7 +219,7 @@ export function warnIfRetractedHelper(
 
 export async function executeCopyMultiCite(
   items: Item[],
-  scopeId: string,
+  spaceId: string,
   style: CslStyle | 'latex' = 'apa',
   retractedCount: number = 0,
 ): Promise<void> {
@@ -236,7 +236,7 @@ export async function executeCopyMultiCite(
   const itemIds = items.map((p) => p.id).filter(Boolean);
   if (itemIds.length > 0) {
     try {
-      const text = await formatBibliographyForIds(scopeId, itemIds, style);
+      const text = await formatBibliographyForIds(spaceId, itemIds, style);
       if (text) {
         await copyWithToastHelper(
           text,
@@ -254,7 +254,7 @@ export async function executeCopyMultiCite(
 
 export async function executeCopyInTextCite(
   items: Item[],
-  scopeId: string,
+  spaceId: string,
   style: CslStyle = 'apa',
   retractedCount: number = 0,
 ): Promise<void> {
@@ -262,7 +262,7 @@ export async function executeCopyInTextCite(
   const itemIds = items.map((p) => p.id).filter(Boolean);
   if (itemIds.length > 0) {
     try {
-      const text = await formatInTextForIds(scopeId, itemIds, style);
+      const text = await formatInTextForIds(spaceId, itemIds, style);
       if (text) {
         await copyWithToastHelper(text, `Copied in-text citation (${itemIds.length} items)`);
         return;
@@ -277,7 +277,7 @@ export async function executeCopyInTextCite(
 
 export async function executeExportAllBibtex(
   items: Item[],
-  scopeId: string,
+  spaceId: string,
   selectedCount: number,
   retractedCount: number = 0,
 ): Promise<void> {
@@ -286,7 +286,7 @@ export async function executeExportAllBibtex(
   if (itemIds.length === 0) return;
 
   try {
-    const res = await exportLibraryBibliography(scopeId, {
+    const res = await exportLibraryBibliography(spaceId, {
       format: 'bibtex',
       itemIds,
     });
@@ -306,7 +306,7 @@ export async function executeExportAllBibtex(
 
 export async function executeDownloadBibFile(
   items: Item[],
-  scopeId: string,
+  spaceId: string,
   selectedCount: number,
   retractedCount: number = 0,
 ): Promise<void> {
@@ -315,7 +315,7 @@ export async function executeDownloadBibFile(
   if (itemIds.length === 0) return;
 
   await exportLibraryToFile(
-    scopeId,
+    spaceId,
     { format: 'bibtex', itemIds },
     {
       fallbackFilename: `references-selected-${selectedCount}.bib`,
@@ -327,7 +327,7 @@ export async function executeDownloadBibFile(
 
 export async function executeDownloadFormatFile(
   items: Item[],
-  scopeId: string,
+  spaceId: string,
   format: ExportFormatType,
   retractedCount: number = 0,
 ): Promise<void> {
@@ -337,7 +337,7 @@ export async function executeDownloadFormatFile(
 
   const ext = EXPORT_FORMAT_EXTENSION_MAP[format];
   await exportLibraryToFile(
-    scopeId,
+    spaceId,
     { format, itemIds },
     {
       fallbackFilename: `references-selected-${items.length}.${ext}`,
@@ -351,14 +351,14 @@ export async function executeDownloadFormatFile(
 export async function executeExportCollectionFormat(
   collectionId: string,
   collectionName: string,
-  scopeId: string,
+  spaceId: string,
   format: ExportFormatType,
 ): Promise<void> {
   const ext = EXPORT_FORMAT_EXTENSION_MAP[format];
   const safeSlug = collectionName.toLowerCase().replace(/[^a-z0-9-_]+/g, '-') || 'collection';
 
   await exportLibraryToFile(
-    scopeId,
+    spaceId,
     { format, collectionId },
     {
       fallbackFilename: `${safeSlug}.${ext}`,
@@ -370,7 +370,7 @@ export async function executeExportCollectionFormat(
 }
 
 export async function executeExportScopeFormat(
-  scopeId: string,
+  spaceId: string,
   format: ExportFormatType,
   collectionId?: string,
 ): Promise<void> {
@@ -378,7 +378,7 @@ export async function executeExportScopeFormat(
   const dateSuffix = new Date().toISOString().slice(0, 10);
 
   await exportLibraryToFile(
-    scopeId,
+    spaceId,
     { format, ...(collectionId ? { collectionId } : {}) },
     {
       fallbackFilename: `${collectionId ? 'collection-export' : 'library-export'}-${dateSuffix}.${ext}`,
@@ -390,7 +390,7 @@ export async function executeExportScopeFormat(
 }
 
 interface UseQuickCopyOptions {
-  scopeId?: string;
+  spaceId?: string;
   items?: Item[];
   selectedIds?: Set<string>;
   activeItemId?: string | null;
@@ -404,7 +404,7 @@ interface UseQuickCopyOptions {
  * - Ctrl+Shift+A (Cmd+Shift+A on macOS): Copy Selected References as In-text Citation
  */
 export function useQuickCopyCoordinator({
-  scopeId,
+  spaceId,
   items,
   selectedIds: propSelectedIds,
   activeItemId: propActiveItemId,
@@ -458,7 +458,7 @@ export function useQuickCopyCoordinator({
       );
 
       try {
-        const text = await formatBibliographyForIds(scopeId, itemIds, style, true);
+        const text = await formatBibliographyForIds(spaceId, itemIds, style, true);
 
         if (!text.trim()) {
           toast.error('Unable to generate bibliography for selected items', { id: toastId });
@@ -480,7 +480,7 @@ export function useQuickCopyCoordinator({
         });
       }
     },
-    [getTargetItemIds, warnRetractedIfNeeded, scopeId, defaultStyle],
+    [getTargetItemIds, warnRetractedIfNeeded, spaceId, defaultStyle],
   );
 
   const copyInTextCitation = useCallback(
@@ -498,7 +498,7 @@ export function useQuickCopyCoordinator({
       );
 
       try {
-        const text = await formatInTextForIds(scopeId, itemIds, style, true);
+        const text = await formatInTextForIds(spaceId, itemIds, style, true);
 
         if (!text.trim()) {
           toast.error('Unable to generate in-text citation', { id: toastId });
@@ -520,7 +520,7 @@ export function useQuickCopyCoordinator({
         });
       }
     },
-    [getTargetItemIds, warnRetractedIfNeeded, scopeId, defaultStyle],
+    [getTargetItemIds, warnRetractedIfNeeded, spaceId, defaultStyle],
   );
 
   // Global Keyboard Listener

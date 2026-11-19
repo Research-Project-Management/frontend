@@ -196,7 +196,7 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
       vi.mocked(api.apiGet).mockResolvedValueOnce({
         version: '42',
         scope: 'user',
-        scopeId: 'user-1',
+        spaceId: 'user-1',
       });
 
       const res = await SyncService.getVersion('user');
@@ -211,7 +211,7 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
       vi.mocked(api.apiGet).mockResolvedValueOnce({
         version: '100',
         scope: 'project',
-        scopeId: 'proj-42',
+        spaceId: 'proj-42',
       });
 
       await SyncService.getVersion('proj-42');
@@ -402,26 +402,122 @@ describe('Library Module — Client Zero-Trust & Sanitization', () => {
       );
     });
 
-    it('forwards onProgress as onUploadProgress in UploadService.uploadMultipart', async () => {
+    it('executes Direct-to-R2 presigned PUT + progress forwarding and falls back to /upload in UploadService', async () => {
       const { UploadService } = await import(
         '@/features/library/sdk/clients/attachments-annotations.client'
       );
-      vi.mocked(api.apiPost).mockImplementationOnce(async (_url, _body, options) => {
-        options?.onUploadProgress?.({ loaded: 50, total: 100 });
-        return {
-          fileId: 'file-1',
-          url: '/files/file-1',
-          filename: 'paper.pdf',
-          size: 100,
-          mimeType: 'application/pdf',
+      const OriginalXhr = globalThis.XMLHttpRequest;
+      const recordedXhrs: Array<{
+        method: string;
+        url: string;
+        headers: Record<string, string>;
+      }> = [];
+
+      class MockUploadXhr {
+        public withCredentials = false;
+        public status = 0;
+        public responseText = '';
+        public upload: { onprogress: ((e: ProgressEvent) => void) | null } = {
+          onprogress: null,
         };
-      });
+        public onload: (() => void) | null = null;
+        public onerror: (() => void) | null = null;
+        public onabort: (() => void) | null = null;
+        private req = { method: '', url: '', headers: {} as Record<string, string> };
 
-      const onProgress = vi.fn();
-      const file = new File(['dummy'], 'paper.pdf', { type: 'application/pdf' });
-      await UploadService.uploadMultipart('user', file, { onProgress });
+        open(method: string, url: string) {
+          this.req.method = method;
+          this.req.url = url;
+        }
+        setRequestHeader(k: string, v: string) {
+          this.req.headers[k] = v;
+        }
+        getResponseHeader() {
+          return '"etag-lib-1"';
+        }
+        abort() {
+          this.onabort?.();
+        }
+        send() {
+          recordedXhrs.push(this.req);
+          queueMicrotask(() => {
+            this.upload.onprogress?.({
+              lengthComputable: true,
+              loaded: 50,
+              total: 100,
+            } as ProgressEvent);
+            if (this.req.method === 'POST') {
+              this.status = 201;
+              this.responseText = JSON.stringify({
+                fileId: 'file-fallback-1',
+                url: '/api/v1/files/file-fallback-1/content',
+                filename: 'paper.pdf',
+                size: 5,
+                mimeType: 'application/pdf',
+              });
+            } else {
+              this.status = 200;
+              this.responseText = '';
+            }
+            this.onload?.();
+          });
+        }
+      }
 
-      expect(onProgress).toHaveBeenCalledWith(50);
+      (globalThis as unknown as { XMLHttpRequest: typeof XMLHttpRequest }).XMLHttpRequest =
+        MockUploadXhr as unknown as typeof XMLHttpRequest;
+
+      try {
+        const spaceUuid = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+        const presignCalls: Array<{ url: string; body: unknown; options: unknown }> = [];
+        vi.mocked(api.apiPost).mockImplementation(async (url, body, options) => {
+          presignCalls.push({ url, body, options });
+          if (String(url).endsWith('/attachments/presign')) {
+            return {
+              deduplicated: false,
+              uploadUrl: 'https://r2.cloudflarestorage.com/flux/uploads/staging/paper.pdf',
+              storageKey: 'uploads/staging/u1/paper.pdf',
+            };
+          }
+          return {
+            fileId: 'file-presign-1',
+            url: '/api/v1/files/file-presign-1/content',
+            filename: 'paper.pdf',
+            size: 5,
+            mimeType: 'application/pdf',
+          };
+        });
+
+        const progressEvents: number[] = [];
+        const file = new File(['dummy'], 'paper.pdf', { type: 'application/pdf' });
+        const presignResult = await UploadService.uploadMultipart(spaceUuid, file, {
+          contentHash: 'b'.repeat(64),
+          onProgress: (p) => progressEvents.push(p),
+        });
+
+        expect(presignResult.fileId).toBe('file-presign-1');
+        expect(progressEvents).toContain(50);
+        expect(progressEvents[progressEvents.length - 1]).toBe(100);
+        expect(presignCalls).toHaveLength(2);
+        expect(presignCalls[0].url).toContain(`/api/v1/spaces/${spaceUuid}/library/attachments/presign`);
+        expect((presignCalls[0].options as { headers?: Record<string, string> })?.headers).toEqual({
+          'X-Space-Id': spaceUuid,
+        });
+        expect(recordedXhrs[0].method).toBe('PUT');
+        expect(recordedXhrs[0].url).toBe('https://r2.cloudflarestorage.com/flux/uploads/staging/paper.pdf');
+
+        // Fallback to /upload when presign returns unavailable (501)
+        recordedXhrs.length = 0;
+        vi.mocked(api.apiPost).mockRejectedValueOnce({ statusCode: 501, message: 'Not implemented' });
+        const fallbackResult = await UploadService.uploadFile('user', file);
+        expect(fallbackResult.fileId).toBe('file-fallback-1');
+        expect(recordedXhrs).toHaveLength(1);
+        expect(recordedXhrs[0].method).toBe('POST');
+        expect(recordedXhrs[0].url).toContain('/api/v1/library/upload');
+      } finally {
+        (globalThis as unknown as { XMLHttpRequest: typeof XMLHttpRequest }).XMLHttpRequest =
+          OriginalXhr;
+      }
     });
 
     it('unifies duplicate group key generation and deduplicates getItemAuthorsSummary / formatAuthors', async () => {

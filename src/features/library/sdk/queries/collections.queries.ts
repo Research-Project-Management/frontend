@@ -5,19 +5,19 @@ import { toast } from 'sonner';
 import { CollectionsService } from '../clients/catalog-entities.client';
 
 export function copyLibraryCollection(
-  scopeId: string | undefined,
+  spaceId: string | undefined,
   collectionId: string,
   options?: { parentId?: string | null; name?: string },
 ) {
-  return CollectionsService.copy(scopeId, collectionId, options);
+  return CollectionsService.copy(spaceId, collectionId, options);
 }
 
-export function exportCollectionBibtex(scopeId: string | undefined, collectionId: string) {
-  return CollectionsService.exportBibtex(scopeId, collectionId);
+export function exportCollectionBibtex(spaceId: string | undefined, collectionId: string) {
+  return CollectionsService.exportBibtex(spaceId, collectionId);
 }
 
-export function exportCollectionBundle(scopeId: string | undefined, collectionId: string) {
-  return CollectionsService.exportBundle(scopeId, collectionId);
+export function exportCollectionBundle(spaceId: string | undefined, collectionId: string) {
+  return CollectionsService.exportBundle(spaceId, collectionId);
 }
 import type {
   Collection,
@@ -29,7 +29,7 @@ import {
   libraryKeys,
   collectionKeys,
   invalidateCollections,
-  normalizeScopeId,
+  normalizeSpaceId,
   waitForBootstrapCache,
 } from '@/features/library/sdk/query-keys';
 import { chunkUniqueIds } from './cache-patcher.queries';
@@ -38,7 +38,7 @@ export { collectionKeys, invalidateCollections };
 
 type UseCollectionsScopeInput =
   | string
-  | { scopeId?: string; projectId?: string; enabled?: boolean };
+  | { spaceId?: string; projectId?: string; enabled?: boolean };
 
 function resolveCachedCollectionVersion(
   queryClient: QueryClient,
@@ -50,7 +50,7 @@ function resolveCachedCollectionVersion(
   if (typeof explicitExpectedVersion === 'number') return explicitExpectedVersion;
   if (typeof explicitVersion === 'number') return explicitVersion;
 
-  const targetScope = normalizeScopeId(effectiveScope);
+  const targetScope = normalizeSpaceId(effectiveScope);
   const cached = queryClient.getQueryData<Collection>(
     collectionKeys.byId(targetScope, collectionId),
   );
@@ -72,37 +72,37 @@ function resolveCachedCollectionVersion(
   return undefined;
 }
 
-export function useCollections(scopeIdOrOptions?: UseCollectionsScopeInput) {
+export function useCollections(spaceIdOrOptions?: UseCollectionsScopeInput) {
   const rawScope =
-    typeof scopeIdOrOptions === 'string'
-      ? scopeIdOrOptions
-      : (scopeIdOrOptions?.scopeId || scopeIdOrOptions?.projectId);
-  const scopeId = normalizeScopeId(rawScope);
+    typeof spaceIdOrOptions === 'string'
+      ? spaceIdOrOptions
+      : (spaceIdOrOptions?.spaceId || spaceIdOrOptions?.projectId);
+  const spaceId = normalizeSpaceId(rawScope);
   const explicitEnabled =
-    typeof scopeIdOrOptions === 'object' ? scopeIdOrOptions?.enabled : undefined;
+    typeof spaceIdOrOptions === 'object' ? spaceIdOrOptions?.enabled : undefined;
 
   const queryClient = useQueryClient();
-  const cacheKey = collectionKeys.all(scopeId);
+  const cacheKey = collectionKeys.all(spaceId);
 
   const collectionsQuery = useQuery({
     queryKey: cacheKey,
     queryFn: async () => {
       const seeded = await waitForBootstrapCache<Collection[] | { collections: Collection[] }>(
         queryClient,
-        scopeId,
+        spaceId,
         cacheKey,
       );
       if (seeded !== undefined) return seeded;
-      return CollectionsService.getAll(scopeId);
+      return CollectionsService.getAll(spaceId);
     },
-    enabled: (explicitEnabled ?? true) && Boolean(scopeId),
+    enabled: (explicitEnabled ?? true) && Boolean(spaceId),
     staleTime: 1000 * 60,
     select: (data) => (Array.isArray(data) ? data : (data?.collections || [])),
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: CreateCollectionDTO & { scopeId?: string }) => {
-      const targetScope = normalizeScopeId(data.scopeId || scopeId);
+    mutationFn: (data: CreateCollectionDTO & { spaceId?: string }) => {
+      const targetScope = normalizeSpaceId(data.spaceId || spaceId);
       const rawParent = data.parentId ?? null;
       const cleanParentId = rawParent === 'root' || !rawParent ? null : rawParent;
       const payload: CreateCollectionDTO = {
@@ -115,7 +115,7 @@ export function useCollections(scopeIdOrOptions?: UseCollectionsScopeInput) {
       return CollectionsService.create(targetScope, payload);
     },
     onSuccess: (_res, variables) => {
-      const targetScope = normalizeScopeId(variables.scopeId || scopeId);
+      const targetScope = normalizeSpaceId(variables.spaceId || spaceId);
       invalidateCollections(queryClient, targetScope);
       toast.success('Collection created', { id: 'collection-mutation' });
     },
@@ -129,10 +129,10 @@ export function useCollections(scopeIdOrOptions?: UseCollectionsScopeInput) {
 
   const updateMutation = useMutation({
     mutationFn: (
-      data: UpdateCollectionDTO & { collectionId: string; scopeId?: string },
+      data: UpdateCollectionDTO & { collectionId: string; spaceId?: string },
     ) => {
-      const { collectionId, scopeId: overrideScope, ...rest } = data;
-      const targetScope = normalizeScopeId(overrideScope || scopeId);
+      const { collectionId, spaceId: overrideScope, ...rest } = data;
+      const targetScope = normalizeSpaceId(overrideScope || spaceId);
       const rawParent = rest.parentId;
       const cleanParentId = rawParent === 'root' ? null : rawParent;
 
@@ -159,7 +159,7 @@ export function useCollections(scopeIdOrOptions?: UseCollectionsScopeInput) {
       return CollectionsService.update(targetScope, collectionId, payload);
     },
     onMutate: async (data) => {
-      const targetScope = normalizeScopeId(data.scopeId || scopeId);
+      const targetScope = normalizeSpaceId(data.spaceId || spaceId);
       await Promise.all([
         queryClient.cancelQueries({ queryKey: collectionKeys.all(targetScope) }),
         queryClient.cancelQueries({ queryKey: collectionKeys.byId(targetScope, data.collectionId) }),
@@ -200,7 +200,7 @@ export function useCollections(scopeIdOrOptions?: UseCollectionsScopeInput) {
     onError: (err: Error, _variables, context) => {
       if (context?.previousCollections) {
         queryClient.setQueryData(
-          collectionKeys.all(context.targetScope || scopeId),
+          collectionKeys.all(context.targetScope || spaceId),
           context.previousCollections,
         );
       }
@@ -220,11 +220,11 @@ export function useCollections(scopeIdOrOptions?: UseCollectionsScopeInput) {
       );
     },
     onSettled: (_res, _err, variables) => {
-      const targetScope = normalizeScopeId(variables.scopeId || scopeId);
+      const targetScope = normalizeSpaceId(variables.spaceId || spaceId);
       invalidateCollections(queryClient, targetScope);
     },
     onSuccess: (updatedCollection, variables) => {
-      const targetScope = normalizeScopeId(variables.scopeId || scopeId);
+      const targetScope = normalizeSpaceId(variables.spaceId || spaceId);
       const serverCollection =
         updatedCollection &&
         typeof updatedCollection === 'object' &&
@@ -266,18 +266,18 @@ export function useCollections(scopeIdOrOptions?: UseCollectionsScopeInput) {
         | {
             collectionId: string;
             strategy?: 'cascade' | 'move-to-parent' | 'orphan';
-            scopeId?: string;
+            spaceId?: string;
           },
     ) => {
       const collectionId = typeof input === 'string' ? input : input.collectionId;
       const strategy = typeof input === 'string' ? undefined : input.strategy;
-      const targetScope = normalizeScopeId(typeof input === 'object' ? input.scopeId : scopeId);
+      const targetScope = normalizeSpaceId(typeof input === 'object' ? input.spaceId : spaceId);
       return CollectionsService.delete(targetScope, collectionId, strategy);
     },
     onSuccess: (_res, input) => {
       const collectionId = typeof input === 'string' ? input : input.collectionId;
       const strategy = typeof input === 'string' ? undefined : input.strategy;
-      const targetScope = normalizeScopeId(typeof input === 'object' ? input.scopeId : scopeId);
+      const targetScope = normalizeSpaceId(typeof input === 'object' ? input.spaceId : spaceId);
       queryClient.removeQueries({ queryKey: collectionKeys.byId(targetScope, collectionId) });
       invalidateCollections(queryClient, targetScope);
       queryClient.invalidateQueries({ queryKey: itemKeys.all(targetScope) });
@@ -317,11 +317,11 @@ export function useCollections(scopeIdOrOptions?: UseCollectionsScopeInput) {
 }
 
 export function useCollectionsQuery(
-  scopeId?: string,
+  spaceId?: string,
   options?: { enabled?: boolean },
 ) {
   const queryClient = useQueryClient();
-  const targetScope = normalizeScopeId(scopeId);
+  const targetScope = normalizeSpaceId(spaceId);
   const cacheKey = libraryKeys.collections(targetScope);
   return useQuery({
     queryKey: cacheKey,
@@ -340,9 +340,9 @@ export function useCollectionsQuery(
   });
 }
 
-export function useCreateCollectionMutation(scopeId?: string) {
+export function useCreateCollectionMutation(spaceId?: string) {
   const queryClient = useQueryClient();
-  const effectiveScope = normalizeScopeId(scopeId);
+  const effectiveScope = normalizeSpaceId(spaceId);
 
   return useMutation({
     mutationFn: (data: CreateCollectionDTO) => {
@@ -370,9 +370,9 @@ export function useCreateCollectionMutation(scopeId?: string) {
   });
 }
 
-export function useDetachItemFromCollectionMutation(scopeId?: string) {
+export function useDetachItemFromCollectionMutation(spaceId?: string) {
   const queryClient = useQueryClient();
-  const effectiveScope = normalizeScopeId(scopeId);
+  const effectiveScope = normalizeSpaceId(spaceId);
 
   return useMutation({
     mutationFn: ({ collectionId, itemId }: { collectionId: string; itemId: string }) =>
@@ -394,9 +394,9 @@ export function useDetachItemFromCollectionMutation(scopeId?: string) {
   });
 }
 
-export function useBatchDetachItemsMutation(scopeId?: string) {
+export function useBatchDetachItemsMutation(spaceId?: string) {
   const queryClient = useQueryClient();
-  const effectiveScope = normalizeScopeId(scopeId);
+  const effectiveScope = normalizeSpaceId(spaceId);
 
   return useMutation({
     mutationFn: async ({
@@ -432,23 +432,23 @@ export function useBatchDetachItemsMutation(scopeId?: string) {
   });
 }
 
-export function useMoveCollectionItemsMutation(scopeId?: string) {
+export function useMoveCollectionItemsMutation(spaceId?: string) {
   const queryClient = useQueryClient();
-  const effectiveScopeId = normalizeScopeId(scopeId);
+  const effectiveSpaceId = normalizeSpaceId(spaceId);
 
   return useMutation({
     mutationFn: async ({
       targetCollectionId,
       itemIds,
       sourceCollectionId,
-      scopeId: overrideScope,
+      spaceId: overrideScope,
     }: {
       targetCollectionId: string | null;
       itemIds: string[];
       sourceCollectionId?: string | null;
-      scopeId?: string;
+      spaceId?: string;
     }) => {
-      const targetScope = normalizeScopeId(overrideScope || effectiveScopeId);
+      const targetScope = normalizeSpaceId(overrideScope || effectiveSpaceId);
       const chunks = chunkUniqueIds(itemIds, 500);
       await Promise.all(
         chunks.map((chunk) =>
@@ -462,7 +462,7 @@ export function useMoveCollectionItemsMutation(scopeId?: string) {
       );
     },
     onSettled: (_data, _err, variables) => {
-      const targetScope = normalizeScopeId(variables?.scopeId || effectiveScopeId);
+      const targetScope = normalizeSpaceId(variables?.spaceId || effectiveSpaceId);
       queryClient.invalidateQueries({ queryKey: itemKeys.all(targetScope) });
       if (variables?.targetCollectionId) {
         queryClient.invalidateQueries({
@@ -479,9 +479,9 @@ export function useMoveCollectionItemsMutation(scopeId?: string) {
   });
 }
 
-export function useAssignCollectionItemsMutation(scopeId?: string) {
+export function useAssignCollectionItemsMutation(spaceId?: string) {
   const queryClient = useQueryClient();
-  const effectiveScopeId = normalizeScopeId(scopeId);
+  const effectiveSpaceId = normalizeSpaceId(spaceId);
 
   return useMutation({
     mutationFn: async ({
@@ -495,18 +495,18 @@ export function useAssignCollectionItemsMutation(scopeId?: string) {
       const chunks = chunkUniqueIds(rawIds, 500);
       await Promise.all(
         chunks.map((chunk) =>
-          CollectionsService.assignItems(effectiveScopeId, collectionId, chunk),
+          CollectionsService.assignItems(effectiveSpaceId, collectionId, chunk),
         ),
       );
     },
     onSettled: (_data, _err, variables) => {
-      queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveScopeId) });
+      queryClient.invalidateQueries({ queryKey: itemKeys.all(effectiveSpaceId) });
       if (variables?.collectionId) {
         queryClient.invalidateQueries({
-          queryKey: itemKeys.byCollection(effectiveScopeId, variables.collectionId),
+          queryKey: itemKeys.byCollection(effectiveSpaceId, variables.collectionId),
         });
       }
-      invalidateCollections(queryClient, effectiveScopeId);
+      invalidateCollections(queryClient, effectiveSpaceId);
     },
   });
 }

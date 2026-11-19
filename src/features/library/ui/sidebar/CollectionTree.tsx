@@ -523,7 +523,7 @@ function CollectionContextMenu({
   const isProjectScope = activeScope.type === 'project';
   const isNodeProjectScope =
     Boolean(node.projectId) || (node.projectId === undefined && isProjectScope);
-  const nodeScopeId: string =
+  const nodeSpaceId: string =
     node.projectId || (isNodeProjectScope && activeScope.id ? activeScope.id : 'user');
   const rootLibraryName = isNodeProjectScope ? 'Project Library' : 'My Library';
 
@@ -660,7 +660,7 @@ function CollectionContextMenu({
                 void executeExportCollectionFormat(
                   node.id,
                   node.name,
-                  nodeScopeId,
+                  nodeSpaceId,
                   'ris',
                 )
               }
@@ -673,7 +673,7 @@ function CollectionContextMenu({
                 void executeExportCollectionFormat(
                   node.id,
                   node.name,
-                  nodeScopeId,
+                  nodeSpaceId,
                   'csl_json',
                 )
               }
@@ -686,7 +686,7 @@ function CollectionContextMenu({
                 void executeExportCollectionFormat(
                   node.id,
                   node.name,
-                  nodeScopeId,
+                  nodeSpaceId,
                   'csv',
                 )
               }
@@ -699,7 +699,7 @@ function CollectionContextMenu({
                 void executeExportCollectionFormat(
                   node.id,
                   node.name,
-                  nodeScopeId,
+                  nodeSpaceId,
                   'markdown',
                 )
               }

@@ -53,7 +53,7 @@ export type { SavedFeedSubscription };
 interface FeedsManagerModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  scopeId: string;
+  spaceId: string;
   collections?: Collection[];
   defaultCollectionId?: string | null;
 }
@@ -61,13 +61,13 @@ interface FeedsManagerModalProps {
 export default function FeedsManagerModal({
   open,
   onOpenChange,
-  scopeId,
+  spaceId,
   collections = [],
   defaultCollectionId = null,
 }: FeedsManagerModalProps) {
   const { mutateAsync: fetchAcademicFeed } = useFetchFeed();
-  const { mutateAsync: createItem } = useCreateLibraryItemMutation(scopeId);
-  const { mutateAsync: ingestItem } = useIngestMutation(scopeId);
+  const { mutateAsync: createItem } = useCreateLibraryItemMutation(spaceId);
+  const { mutateAsync: ingestItem } = useIngestMutation(spaceId);
   const feeds = useFeedsStore((s) => s.feeds);
   const activeFeedId = useFeedsStore((s) => s.activeFeedId);
   const loadFeeds = useFeedsStore((s) => s.loadFeeds);
@@ -227,7 +227,7 @@ export default function FeedsManagerModal({
   const handleSaveEntryToLibrary = async (entry: ParsedFeedEntry) => {
     await executeSaveFeedEntryWithFeedback({
       entry,
-      scopeId,
+      spaceId,
       targetCollectionId: targetCollectionId || undefined,
       createItem,
       ingestItem,

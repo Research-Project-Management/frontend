@@ -13,7 +13,7 @@ export interface IngestionProgressItem {
 
 export interface IngestionProgressResponse {
   runId: string;
-  scopeId?: string;
+  spaceId?: string;
   projectId?: string;
   userId?: string;
   status: string;
@@ -44,7 +44,7 @@ export interface ProcessingFileItem {
   fileName: string;
   fileSize: number;
   mimeType?: string;
-  scopeId: string;
+  spaceId: string;
   collectionId?: string;
   status: 'UPLOADING' | 'PROCESSING' | 'SUCCEEDED' | 'FAILED';
   progress: number;
@@ -65,7 +65,7 @@ export interface InvalidationClient {
 }
 
 export interface ProcessBatchUploadOptions {
-  scopeId?: string;
+  spaceId?: string;
   collectionId?: string;
   queryClient: InvalidationClient;
   onSuccess?: () => void;
@@ -101,7 +101,7 @@ export interface ProcessModalStoreApi {
       | boolean
       | {
           autoMinimize?: boolean;
-          scopeId?: string;
+          spaceId?: string;
           currentTitle?: string;
           initialProcessingItems?: ProcessingFileItem[];
         },
@@ -380,7 +380,7 @@ export const IngestionRunSnapshotDataSchema = z
   .object({
     id: z.string().nullable().optional(),
     runId: z.string().nullable().optional(),
-    scopeId: z.string().nullable().optional(),
+    spaceId: z.string().nullable().optional(),
     projectId: z.string().nullable().optional(),
     userId: z.string().nullable().optional(),
     sourceType: z.string().nullable().optional().default('unknown'),
@@ -629,7 +629,7 @@ export const savedSearchSchema = z.object({
   cachedCount: z.number().nullable().optional().default(0),
   lastEvaluatedAt: z.string().datetime().nullable().optional(),
   scope: z.string().optional(),
-  scopeId: z.string().optional(),
+  spaceId: z.string().optional(),
   projectId: z.string().nullable().optional(),
   userId: z.string(),
   creator: z

@@ -16,7 +16,7 @@ import {
   noteKeys,
   curationKeys,
   invalidateCollections,
-  normalizeScopeId,
+  normalizeSpaceId,
   waitForBootstrapCache,
   getReaderBootstrapScope,
 } from '@/features/library/sdk/query-keys';
@@ -31,11 +31,11 @@ export { tagKeys, noteKeys };
 // ── Trash & Bulk Item Lifecycle Queries ──────────────────────────────────────
 
 export function useTrash(
-  scopeId: string = 'user',
+  spaceId: string = 'user',
   options?: { enabled?: boolean },
 ) {
   const queryClient = useQueryClient();
-  const effectiveScope = normalizeScopeId(scopeId);
+  const effectiveScope = normalizeSpaceId(spaceId);
   const cacheKey = itemKeys.trash(effectiveScope);
 
   const trashQuery = useQuery({
@@ -47,7 +47,7 @@ export function useTrash(
       if (seeded !== undefined) return seeded;
       return ItemsService.getAll(effectiveScope, { view: 'trash' }, { signal });
     },
-    enabled: (options?.enabled ?? true) && Boolean(scopeId),
+    enabled: (options?.enabled ?? true) && Boolean(spaceId),
     select: (data): Item[] => {
       if (Array.isArray(data?.items)) return data.items;
       if (Array.isArray(data)) return data as Item[];
@@ -169,9 +169,9 @@ export function useTrash(
   };
 }
 
-export function useDeleteLibraryItemsMutation(scopeId?: string) {
+export function useDeleteLibraryItemsMutation(spaceId?: string) {
   const queryClient = useQueryClient();
-  const effectiveScope = normalizeScopeId(scopeId);
+  const effectiveScope = normalizeSpaceId(spaceId);
 
   return useMutation({
     mutationFn: async (itemIds: string[] | string) => {
@@ -215,9 +215,9 @@ export function useDeleteLibraryItemsMutation(scopeId?: string) {
   });
 }
 
-export function useBatchRestoreItemsMutation(scopeId?: string) {
+export function useBatchRestoreItemsMutation(spaceId?: string) {
   const queryClient = useQueryClient();
-  const effectiveScope = normalizeScopeId(scopeId);
+  const effectiveScope = normalizeSpaceId(spaceId);
 
   return useMutation({
     mutationFn: async (itemIds: string[] | string) => {
@@ -260,9 +260,9 @@ export function useBatchRestoreItemsMutation(scopeId?: string) {
   });
 }
 
-export function useBatchPurgeItemsMutation(scopeId?: string) {
+export function useBatchPurgeItemsMutation(spaceId?: string) {
   const queryClient = useQueryClient();
-  const effectiveScope = normalizeScopeId(scopeId);
+  const effectiveScope = normalizeSpaceId(spaceId);
 
   return useMutation({
     mutationFn: async (itemIds: string[] | string) => {
@@ -304,9 +304,9 @@ export function useBatchPurgeItemsMutation(scopeId?: string) {
 
 // ── Tags Query Hooks ─────────────────────────────────────────────────────────
 
-export function useTags(scopeId?: string, options?: { enabled?: boolean }) {
+export function useTags(spaceId?: string, options?: { enabled?: boolean }) {
   const queryClient = useQueryClient();
-  const effectiveScope = normalizeScopeId(scopeId);
+  const effectiveScope = normalizeSpaceId(spaceId);
 
   const cacheKey = tagKeys.list(effectiveScope);
   const tagsQuery = useQuery({
@@ -440,9 +440,9 @@ export function useTags(scopeId?: string, options?: { enabled?: boolean }) {
 
 // ── Notes Query Hooks ────────────────────────────────────────────────────────
 
-export function useNotes(scopeId?: string, itemId?: string) {
+export function useNotes(spaceId?: string, itemId?: string) {
   const queryClient = useQueryClient();
-  const effectiveScope = normalizeScopeId(scopeId);
+  const effectiveScope = normalizeSpaceId(spaceId);
 
   const cacheKey = noteKeys.list(effectiveScope, itemId);
   const notesQuery = useQuery({

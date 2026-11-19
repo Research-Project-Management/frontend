@@ -9,7 +9,7 @@ import {
   markReaderItemAsRead,
   type ItemStateData,
 } from '@/features/library/sdk/queries/reader.queries';
-import { itemKeys, normalizeScopeId } from '@/features/library/sdk/query-keys';
+import { itemKeys, normalizeSpaceId } from '@/features/library/sdk/query-keys';
 import { patchItemAcrossScopeCaches } from '@/features/library/sdk/queries/cache-patcher.queries';
 import { useReaderStore, type ReaderTab } from '@/features/library/core/store/reader.store';
 import {
@@ -80,7 +80,7 @@ function syncPaperStateQueryCache(
 }
 
 interface UseReadingProgressOptions {
-  scopeId: string;
+  spaceId: string;
   paper: ReaderDocument | null;
   effectivePaperId: string;
   effectiveAttachmentId?: string;
@@ -90,7 +90,7 @@ interface UseReadingProgressOptions {
 }
 
 export function useReadingProgress({
-  scopeId,
+  spaceId,
   paper,
   effectiveAttachmentId,
   visiblePage,
@@ -99,7 +99,7 @@ export function useReadingProgress({
 }: UseReadingProgressOptions): void {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  const effectiveScope = normalizeScopeId(scopeId);
+  const effectiveScope = normalizeSpaceId(spaceId);
   const hasExplicitDeepLink = Boolean(
     searchParams?.get('page') || searchParams?.get('annotation'),
   );

@@ -26,19 +26,19 @@ export type MultiTabEventPayload =
     }
   | {
       type: 'LIBRARY_ITEMS_DELETED';
-      scopeId: string;
+      spaceId: string;
       itemIds: string[];
       permanent?: boolean;
     }
   | {
       type: 'LIBRARY_ITEM_PATCHED';
-      scopeId: string;
+      spaceId: string;
       itemId: string;
       patch: Record<string, unknown>;
     }
   | {
       type: 'LIBRARY_SCOPE_INVALIDATED';
-      scopeId: string;
+      spaceId: string;
       itemId?: string;
       collections?: boolean;
       smartCollections?: boolean;
@@ -48,7 +48,7 @@ export type MultiTabEventPayload =
     }
   | {
       type: 'READER_ANNOTATIONS_CHANGED';
-      scopeId: string;
+      spaceId: string;
       attachmentId: string;
     }
   | {

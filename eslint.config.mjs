@@ -112,6 +112,30 @@ function createClassVisitor(checkClassString) {
   };
 }
 
+const NO_BARREL_PATHS = [
+  {
+    name: '@/shared/components/ui',
+    message:
+      'Direct file imports required (e.g. @/shared/components/ui/button). Barrel imports are forbidden.',
+  },
+  {
+    name: '@/shared/components/layout',
+    message:
+      'Direct file imports required (e.g. @/shared/components/layout/PageHeader). Barrel imports are forbidden.',
+  },
+];
+
+const NO_AI_SDK_PATHS = [
+  {
+    name: 'ai',
+    message: 'Only features/ai/engine/vercel.ts may import from ai SDK.',
+  },
+  {
+    name: '@ai-sdk/react',
+    message: 'Only features/ai/engine/vercel.ts may import from @ai-sdk/react.',
+  },
+];
+
 const eslintConfig = [
   {
     ignores: [
@@ -174,18 +198,7 @@ const eslintConfig = [
       'no-restricted-imports': [
         'error',
         {
-          paths: [
-            {
-              name: '@/shared/components/ui',
-              message:
-                'Direct file imports required (e.g. @/shared/components/ui/button). Barrel imports are forbidden.',
-            },
-            {
-              name: '@/shared/components/layout',
-              message:
-                'Direct file imports required (e.g. @/shared/components/layout/PageHeader). Barrel imports are forbidden.',
-            },
-          ],
+          paths: NO_BARREL_PATHS,
         },
       ],
     },
@@ -234,6 +247,98 @@ const eslintConfig = [
               ],
               message:
                 'engines/ (CodeMirror layer) may depend on domain/ only. Inject store/sdk/coordinator access through ports.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    name: 'ai-isolate-vercel-sdk',
+    files: ['src/features/ai/**/*.{ts,tsx}'],
+    ignores: ['src/features/ai/engine/vercel.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [...NO_BARREL_PATHS, ...NO_AI_SDK_PATHS],
+        },
+      ],
+    },
+  },
+  {
+    name: 'ai-layer-types-is-pure',
+    files: ['src/features/ai/types/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [...NO_BARREL_PATHS, ...NO_AI_SDK_PATHS],
+          patterns: [
+            {
+              group: [
+                '../transport/**',
+                '../engine/**',
+                '../context/**',
+                '../ui/**',
+                'react',
+                'react/**',
+                'ai',
+                '@ai-sdk/react',
+              ],
+              message: 'features/ai/types/ must stay pure without transport, engine, context, ui, React, or AI SDK imports.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    name: 'ai-layer-transport-no-react-or-engine',
+    files: ['src/features/ai/transport/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [...NO_BARREL_PATHS, ...NO_AI_SDK_PATHS],
+          patterns: [
+            {
+              group: [
+                '../engine/**',
+                '../context/**',
+                '../ui/**',
+                'react',
+                'react/**',
+                'ai',
+                '@ai-sdk/react',
+              ],
+              message: 'features/ai/transport/ may depend only on types/ and shared network utilities.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    name: 'ai-layer-ui-no-direct-transport',
+    files: ['src/features/ai/ui/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [...NO_BARREL_PATHS, ...NO_AI_SDK_PATHS],
+          patterns: [
+            {
+              group: [
+                '../transport/**',
+                '../../transport/**',
+                '@/features/ai/transport/**',
+                '@/features/library/sdk/**',
+                '@/features/library/domain/**',
+                '@/features/library/ui/**',
+              ],
+              message:
+                'features/ai/ui/ must call transport/ and cross-feature internals via engine/ or context/ adapters.',
             },
           ],
         },

@@ -63,11 +63,7 @@ test.describe('Word Count Dialog (Overleaf TeXcount Parity)', () => {
     const closeBtn = dialog.getByRole('button', { name: 'Close', exact: true }).first();
     await expect(closeBtn).toBeVisible();
 
-    // 8. Capture high-res screenshot of the modal in pristine state
-    await dialog.screenshot({ path: 'word_count_modal_component.png' });
-    await page.screenshot({ path: 'word_count_modal_fullpage.png' });
-
-    // 9. Close dialog
+    // 8. Close dialog
     await closeBtn.click();
     await expect(dialog).not.toBeVisible();
   });

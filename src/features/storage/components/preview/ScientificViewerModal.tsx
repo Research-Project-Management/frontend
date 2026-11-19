@@ -20,7 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/shared/components/ui/dialog';
-import { renderMarkdown } from '@/features/ai/utils/render-markdown';
+import { renderMarkdown } from '@/shared/components/markdown/render-markdown';
 import type { StorageItem } from '@/features/storage/types/storage.types';
 import { fetchAuthorized } from '@/features/storage/services/drive.service';
 import { isScientificTextFile } from '@/features/storage/utils/storage.util';
@@ -433,7 +433,7 @@ export default function ScientificViewerModal({
                       <BookOpen className="size-3.5 text-primary" />
                       Content Preview:
                     </p>
-                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                    <div className="prose prose-sm dark:prose-invert max-w-none text-sm">
                       {renderMarkdown(content)}
                     </div>
                   </div>

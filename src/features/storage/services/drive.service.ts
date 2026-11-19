@@ -28,14 +28,14 @@ export function buildQueryString(params?: FileQueryParams): string {
   if (!params) return '';
 
   const searchParams = new URLSearchParams();
-  const effectiveScopeId = params.spaceId || params.projectId;
+  const effectiveSpaceId = params.spaceId || params.projectId;
 
   if (
-    effectiveScopeId &&
-    effectiveScopeId !== 'null' &&
-    effectiveScopeId !== 'personal'
+    effectiveSpaceId &&
+    effectiveSpaceId !== 'null' &&
+    effectiveSpaceId !== 'personal'
   ) {
-    searchParams.set('spaceId', effectiveScopeId);
+    searchParams.set('spaceId', effectiveSpaceId);
   }
   if (params.parentId && params.parentId !== 'null' && params.parentId !== 'root') {
     searchParams.set('parentId', params.parentId);
@@ -65,15 +65,15 @@ export function buildQueryString(params?: FileQueryParams): string {
 }
 
 export function resolveQueryParams(
-  scopeIdOrParams?: string | FileQueryParams | null,
+  spaceIdOrParams?: string | FileQueryParams | null,
   params?: FileQueryParams | string | null,
 ): FileQueryParams | undefined {
-  if (typeof scopeIdOrParams === 'object' && scopeIdOrParams !== null) {
-    return scopeIdOrParams;
+  if (typeof spaceIdOrParams === 'object' && spaceIdOrParams !== null) {
+    return spaceIdOrParams;
   }
   const spaceId =
-    typeof scopeIdOrParams === 'string' && scopeIdOrParams && scopeIdOrParams !== 'null'
-      ? scopeIdOrParams
+    typeof spaceIdOrParams === 'string' && spaceIdOrParams && spaceIdOrParams !== 'null'
+      ? spaceIdOrParams
       : undefined;
 
   if (params !== undefined) {
@@ -92,29 +92,29 @@ export function resolveQueryParams(
 // ── Read Operations ──────────────────────────────────────────────────────────
 
 export const getAllFiles = (
-  scopeIdOrParams?: string | FileQueryParams | null,
+  spaceIdOrParams?: string | FileQueryParams | null,
   params?: FileQueryParams | string | null,
 ) => {
   return apiGet<StorageResponse>(
-    `/api/v1/experiments/files/my-files${buildQueryString(resolveQueryParams(scopeIdOrParams, params))}`,
+    `/api/v1/experiments/files/my-files${buildQueryString(resolveQueryParams(spaceIdOrParams, params))}`,
   );
 };
 
 export const getStarredFiles = (
-  scopeIdOrParams?: string | FileQueryParams | null,
+  spaceIdOrParams?: string | FileQueryParams | null,
   params?: FileQueryParams | string | null,
 ) => {
   return apiGet<StorageResponse>(
-    `/api/v1/experiments/files/starred${buildQueryString(resolveQueryParams(scopeIdOrParams, params))}`,
+    `/api/v1/experiments/files/starred${buildQueryString(resolveQueryParams(spaceIdOrParams, params))}`,
   );
 };
 
 export const getSharedFiles = (
-  scopeIdOrParams?: string | FileQueryParams | null,
+  spaceIdOrParams?: string | FileQueryParams | null,
   params?: FileQueryParams | string | null,
 ) => {
   return apiGet<StorageResponse>(
-    `/api/v1/experiments/files/shared${buildQueryString(resolveQueryParams(scopeIdOrParams, params))}`,
+    `/api/v1/experiments/files/shared${buildQueryString(resolveQueryParams(spaceIdOrParams, params))}`,
   );
 };
 
@@ -175,11 +175,11 @@ export const updateFileMetadata = (itemId: string, metaData: Record<string, unkn
 // ── Trash Operations ─────────────────────────────────────────────────────────
 
 export const getTrashedFiles = (
-  scopeIdOrParams?: string | FileQueryParams | null,
+  spaceIdOrParams?: string | FileQueryParams | null,
   params?: FileQueryParams | string | null,
 ) => {
   return apiGet<StorageResponse>(
-    `/api/v1/experiments/files/trash${buildQueryString(resolveQueryParams(scopeIdOrParams, params))}`,
+    `/api/v1/experiments/files/trash${buildQueryString(resolveQueryParams(spaceIdOrParams, params))}`,
   );
 };
 

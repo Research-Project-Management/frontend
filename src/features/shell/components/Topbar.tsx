@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { Search, Bell } from 'lucide-react';
-import { useAiCompanionStore } from '@/features/ai/store/ai-companion.store';
+import { useAiCompanionStore } from '@/features/ai';
 import { usePathname } from 'next/navigation';
 import { useUnreadNotificationCount } from '../hooks/use-inbox';
 import {

@@ -24,7 +24,7 @@ import {
 } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
 import { stripHtml } from '@/features/projects/stickies/utils/sticky.utils';
-import { useAiCompanionStore } from '@/features/ai/store/ai-companion.store';
+import { useAiCompanionStore } from '@/features/ai';
 import FloatingChatWidget from '@/features/chat/components/FloatingChatWidget';
 import { useChatStore } from '@/features/chat/store/chat.store';
 import type { StickiesEditorHandle } from '@/features/projects/stickies/components/card/Content';

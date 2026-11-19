@@ -29,7 +29,6 @@ test.describe('Manuscript Editor Smoke Suite', () => {
         pdfBottom: pdfToolbar ? Math.round(pdfToolbar.getBoundingClientRect().bottom) : null,
       };
     });
-    console.log('TOOLBAR_METRICS:', toolbarMetrics);
 
     expect(toolbarMetrics.filesBottom).not.toBeNull();
     expect(toolbarMetrics.editorBottom).not.toBeNull();

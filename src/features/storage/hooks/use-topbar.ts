@@ -25,7 +25,7 @@ export function useTopbar({
   searchQuery?: string;
   onSearchChange?: (query: string) => void;
 }) {
-  const scopeId = projectId;
+  const spaceId = projectId;
   const queryClient = useQueryClient();
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -95,7 +95,7 @@ export function useTopbar({
 
       let existingItems: StorageItem[] = [];
       try {
-        const res = await getAllFiles(scopeId, {
+        const res = await getAllFiles(spaceId, {
           parentId: targetFolder,
           limit: 500,
         });
@@ -203,7 +203,7 @@ export function useTopbar({
         await queryClient.invalidateQueries({ queryKey: storageKeys.all });
       }
     },
-    [scopeId, projectId, performSingleFileUpload, setDuplicatePrompt, queryClient],
+    [spaceId, projectId, performSingleFileUpload, setDuplicatePrompt, queryClient],
   );
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {

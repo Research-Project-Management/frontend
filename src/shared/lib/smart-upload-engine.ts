@@ -69,6 +69,7 @@ export interface UploadFingerprintInput {
 
 export interface SmartUploadOptions {
   baseEndpoint?: string;
+  directUploadEndpoint?: string;
   filename?: string;
   mimeType?: string;
   spaceId?: string;
@@ -76,6 +77,8 @@ export interface SmartUploadOptions {
   pageId?: string;
   parentId?: string | null;
   metaData?: Record<string, unknown> | null;
+  contentHash?: string;
+  headers?: Record<string, string>;
   multipartThresholdBytes?: number;
   concurrency?: number;
   maxPartRetries?: number;
@@ -136,7 +139,8 @@ interface InitiateMultipartPayload {
 
 interface PartUrlPayload {
   partNumber: number;
-  uploadUrl: string;
+  uploadUrl?: string;
+  partUrl?: string;
 }
 
 export function buildUploadFingerprint(input: UploadFingerprintInput): string {
@@ -547,7 +551,6 @@ function uploadDirectMultipartForm(
     formData.append('fileName', filename);
     if (effectiveSpaceId) {
       formData.append('spaceId', effectiveSpaceId);
-      formData.append('projectId', effectiveSpaceId);
     }
     if (options.pageId) formData.append('pageId', options.pageId);
     if (options.parentId) formData.append('parentId', options.parentId);
@@ -595,10 +598,19 @@ function uploadDirectMultipartForm(
     xhr.onerror = () => reject(new UploadHttpError('Network error during upload', 0, 'NETWORK_ERROR'));
     xhr.onabort = () => reject(new Error(USER_ABORT_ERROR_MESSAGE));
 
-    xhr.open('POST', resolveApiEndpoint(`${baseEndpoint}/upload`), true);
+    const directTargetUrl = options.directUploadEndpoint
+      ? resolveApiEndpoint(options.directUploadEndpoint)
+      : resolveApiEndpoint(`${baseEndpoint}/upload`);
+    xhr.open('POST', directTargetUrl, true);
     const token = getAuthToken();
     if (token) {
       xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    }
+    if (options.headers) {
+      for (const [k, v] of Object.entries(options.headers)) {
+        if (k.toLowerCase() === 'authorization' && token) continue;
+        xhr.setRequestHeader(k, v);
+      }
     }
     if (options.signal) {
       options.signal.addEventListener('abort', () => xhr.abort(), { once: true });
@@ -644,7 +656,8 @@ async function executePresignedSingleUpload(
   }
 
   try {
-    const contentHash = await computeClientSha256Hex(blob);
+    const contentHash = options.contentHash ?? (await computeClientSha256Hex(blob));
+    const apiHeadersOpt = options.headers ? { headers: options.headers } : {};
     const presignRaw = await apiPost<PresignResponsePayload>(
       `${baseEndpoint}/presign`,
       {
@@ -658,7 +671,7 @@ async function executePresignedSingleUpload(
         ...(contentHash ? { contentHash } : {}),
         ...(options.metaData ? { metaData: options.metaData } : {}),
       },
-      { signal: options.signal, silent: true },
+      { ...apiHeadersOpt, signal: options.signal, silent: true },
     );
     const presigned = unwrapPayload<PresignResponsePayload>(presignRaw);
 
@@ -699,7 +712,7 @@ async function executePresignedSingleUpload(
           ...(contentHash ? { contentHash } : {}),
           ...(options.metaData ? { metaData: options.metaData } : {}),
         },
-        { signal: options.signal },
+        { ...apiHeadersOpt, signal: options.signal },
       );
       const completed = unwrapPayload<UploadCompletePayload>(completeRaw);
       options.onProgress?.(100);
@@ -753,7 +766,8 @@ async function runResumableMultipartAttempt(
     throw new Error(USER_ABORT_ERROR_MESSAGE);
   }
 
-  const expectedHash = await computeClientSha256Hex(blob);
+  const apiHeadersOpt = options.headers ? { headers: options.headers } : {};
+  const expectedHash = options.contentHash ?? (await computeClientSha256Hex(blob));
   let checkpoint = checkpointStore.load(fingerprint);
   const resumedFromCheckpoint = Boolean(checkpoint);
 
@@ -770,7 +784,7 @@ async function runResumableMultipartAttempt(
         ...(options.parentId ? { parentId: options.parentId } : {}),
         ...(expectedHash ? { expectedHash } : {}),
       },
-      { signal: options.signal },
+      { ...apiHeadersOpt, signal: options.signal },
     );
     const initiated = unwrapPayload<InitiateMultipartPayload>(initiateRaw);
 
@@ -843,15 +857,20 @@ async function runResumableMultipartAttempt(
         const partUrlRaw = await apiGet<PartUrlPayload>(
           `${baseEndpoint}/multipart/${encodeURIComponent(sessionId)}/part-url`,
           {
+            ...apiHeadersOpt,
             params: { partNumber },
             signal: options.signal,
             silent: resumedFromCheckpoint && allowStaleRecovery,
           },
         );
-        const { uploadUrl } = unwrapPayload<PartUrlPayload>(partUrlRaw);
+        const unwrappedPartUrl = unwrapPayload<PartUrlPayload>(partUrlRaw);
+        const partUploadUrl = unwrappedPartUrl?.uploadUrl || unwrappedPartUrl?.partUrl || '';
+        if (!partUploadUrl) {
+          throw new Error(`Missing presigned URL for part ${partNumber}`);
+        }
 
         const { eTag } = await xhrPutBinary({
-          url: uploadUrl,
+          url: partUploadUrl,
           body: chunk,
           signal: options.signal,
           onProgress: (loadedBytes) => {
@@ -914,7 +933,7 @@ async function runResumableMultipartAttempt(
     const completeRaw = await apiPost<UploadCompletePayload>(
       `${baseEndpoint}/multipart/complete`,
       { sessionId, parts: completedParts },
-      { signal: options.signal },
+      { ...apiHeadersOpt, signal: options.signal },
     );
     const completed = unwrapPayload<UploadCompletePayload>(completeRaw);
     checkpointStore.remove(fingerprint);
@@ -932,6 +951,7 @@ async function runResumableMultipartAttempt(
     if (isAbortError(err, options.signal)) {
       checkpointStore.remove(fingerprint);
       await apiDelete(`${baseEndpoint}/multipart/${encodeURIComponent(sessionId)}`, {
+        ...apiHeadersOpt,
         silent: true,
       }).catch(() => {});
       throw new Error(USER_ABORT_ERROR_MESSAGE);

@@ -492,4 +492,149 @@ describe('Unified SmartUploadEngine', () => {
     expect(deleteEndpointCalled).toContain('/api/v1/files/multipart/sess-abort-99');
     expect(checkpointStore.load(fingerprint)).toBeNull();
   });
+
+  it('6. Forwards headers to backend APIs only (never external R2 PUT), honors precomputed contentHash, directUploadEndpoint, and partUrl', async () => {
+    const precomputedHash = 'a'.repeat(64);
+    const spaceId = '11111111-1111-4111-8111-111111111111';
+    const file = new File([new Uint8Array([0x25, 0x50, 0x44, 0x46])], 'library-paper.pdf', {
+      type: 'application/pdf',
+    });
+
+    const apiHeadersSeen: Array<Record<string, string>> = [];
+    const presignBodies: Array<Record<string, unknown>> = [];
+
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const reqHeaders = new Headers(init?.headers);
+      const headerRecord: Record<string, string> = {};
+      reqHeaders.forEach((v, k) => {
+        headerRecord[k.toLowerCase()] = v;
+      });
+      apiHeadersSeen.push(headerRecord);
+
+      if (url.endsWith('/presign')) {
+        presignBodies.push(JSON.parse(String(init?.body || '{}')) as Record<string, unknown>);
+        return new Response(
+          JSON.stringify({
+            deduplicated: false,
+            uploadUrl: 'https://acc123.r2.cloudflarestorage.com/flux/uploads/staging/u1/paper.pdf',
+            storageKey: 'uploads/staging/u1/paper.pdf',
+            fileUuid: 'lib-file-1',
+            expiresIn: 300,
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          success: true,
+          fileId: 'lib-blob-1',
+          url: '/api/v1/files/lib-blob-1/content',
+          filename: 'library-paper.pdf',
+          size: 4,
+          mimeType: 'application/pdf',
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    }) as unknown as typeof fetch;
+
+    const res = await smartUpload(file, {
+      baseEndpoint: `/api/v1/spaces/${spaceId}/library/attachments`,
+      directUploadEndpoint: `/api/v1/spaces/${spaceId}/library/upload`,
+      spaceId,
+      contentHash: precomputedHash,
+      headers: { 'X-Space-Id': spaceId },
+    });
+
+    expect(res.fileId).toBe('lib-blob-1');
+    expect(presignBodies[0]?.contentHash).toBe(precomputedHash);
+    expect(presignBodies[0]?.spaceId).toBe(spaceId);
+    expect(apiHeadersSeen).toHaveLength(2);
+    expect(apiHeadersSeen[0]['x-space-id']).toBe(spaceId);
+    expect(apiHeadersSeen[1]['x-space-id']).toBe(spaceId);
+    // External R2 PUT receives only Content-Type, NEVER X-Space-Id
+    expect(xhrCalls).toHaveLength(1);
+    expect(xhrCalls[0].headers['X-Space-Id']).toBeUndefined();
+
+    // Verify directUploadEndpoint fallback on non-definitive presign error (502) and multipart partUrl compatibility
+    xhrCalls = [];
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/presign')) {
+        return new Response('Bad Gateway', { status: 502 });
+      }
+      return new Response('{}', { status: 404 });
+    }) as unknown as typeof fetch;
+
+    xhrHandler = (_call, instance) => {
+      instance.status = 201;
+      instance.responseText = JSON.stringify({
+        success: true,
+        fileId: 'fallback-blob-1',
+        url: '/api/v1/files/fallback-blob-1/content',
+        filename: 'library-paper.pdf',
+        size: 4,
+        mimeType: 'application/pdf',
+      });
+      return 'ok';
+    };
+
+    const fallbackRes = await smartUpload(file, {
+      baseEndpoint: `/api/v1/spaces/${spaceId}/library/attachments`,
+      directUploadEndpoint: `/api/v1/spaces/${spaceId}/library/upload`,
+      spaceId,
+      headers: { 'X-Space-Id': spaceId },
+    });
+
+    expect(fallbackRes.fileId).toBe('fallback-blob-1');
+    expect(xhrCalls).toHaveLength(1);
+    expect(xhrCalls[0].method).toBe('POST');
+    expect(xhrCalls[0].url).toContain(`/api/v1/spaces/${spaceId}/library/upload`);
+    expect(xhrCalls[0].headers['X-Space-Id']).toBe(spaceId);
+
+    // Multipart partUrl fallback compatibility
+    const bigFile = new File([new Uint8Array(64)], 'big.pdf', { type: 'application/pdf' });
+    xhrCalls = [];
+    xhrHandler = (_call, instance) => {
+      instance.status = 200;
+      instance.headers = { ETag: '"etag-1"' };
+      return 'ok';
+    };
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/multipart/initiate')) {
+        return new Response(
+          JSON.stringify({
+            sessionId: 'sess-parturl-1',
+            uploadId: 'mpu-1',
+            partSize: 64,
+            totalParts: 1,
+            deduplicated: false,
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+      if (url.includes('/part-url')) {
+        return new Response(
+          JSON.stringify({ partNumber: 1, partUrl: 'https://r2.example.com/mpu-part-1' }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          fileId: 'mpu-blob-1',
+          url: '/api/v1/files/mpu-blob-1/content',
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    }) as unknown as typeof fetch;
+
+    const mpuRes = await smartUpload(bigFile, {
+      baseEndpoint: `/api/v1/spaces/${spaceId}/library/attachments`,
+      multipartThresholdBytes: 32,
+      contentHash: precomputedHash,
+    });
+    expect(mpuRes.fileId).toBe('mpu-blob-1');
+    expect(xhrCalls[0].url).toBe('https://r2.example.com/mpu-part-1');
+  });
 });

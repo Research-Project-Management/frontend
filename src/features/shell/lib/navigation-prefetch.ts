@@ -32,7 +32,7 @@ import {
   collectionKeys,
   itemKeys as libraryItemKeys,
   libraryKeys,
-  normalizeScopeId,
+  normalizeSpaceId,
 } from '@/features/library/sdk/query-keys';
 import { CollectionsService } from '@/features/library/sdk/clients/catalog-entities.client';
 import { ItemsService } from '@/features/library/sdk/clients/items.client';
@@ -281,11 +281,11 @@ export function prefetchProjectSubmodule(
 
 export function prefetchLibraryCollection(
   queryClient: QueryClient,
-  scopeId: string | undefined,
+  spaceId: string | undefined,
   collectionId: string,
 ): void {
   if (!collectionId) return;
-  const targetScope = normalizeScopeId(scopeId);
+  const targetScope = normalizeSpaceId(spaceId);
   schedulePrefetchIntent(`library-collection:${targetScope}:${collectionId}`, () => {
     const params = {
       collectionId,
@@ -305,7 +305,7 @@ export function prefetchLibraryProjectScope(
   projectId: string,
 ): void {
   if (!projectId) return;
-  const targetScope = normalizeScopeId(projectId);
+  const targetScope = normalizeSpaceId(projectId);
   schedulePrefetchIntent(`library-project:${targetScope}`, () => {
     void queryClient.prefetchQuery({
       queryKey: collectionKeys.all(targetScope),

@@ -9,9 +9,9 @@ export const homeKeys = {
   recent: (scope: string = 'me') => [...homeKeys.all, 'recent', scope] as const,
 };
 
-export const useRecentItems = (scopeId?: string) => {
+export const useRecentItems = (spaceId?: string) => {
   return useQuery<RecentItem[]>({
-    queryKey: homeKeys.recent(scopeId || 'me'),
-    queryFn: ({ signal }) => getRecentItems(scopeId, signal),
+    queryKey: homeKeys.recent(spaceId || 'me'),
+    queryFn: ({ signal }) => getRecentItems(spaceId, signal),
   });
 };

@@ -245,7 +245,7 @@ const SCOPE_UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function parseScopeFromPayload(payload: FileUploadPayload): {
-  projectId?: string;
+  spaceId?: string;
   pageId?: string;
   extraFormFields?: Record<string, string>;
 } {
@@ -258,23 +258,23 @@ function parseScopeFromPayload(payload: FileUploadPayload): {
         return { extraFormFields: { source: 'library' } };
       }
       if (parts[0] === 'project' && SCOPE_UUID_REGEX.test(parts[1])) {
-        return { projectId: parts[1] };
+        return { spaceId: parts[1] };
       }
       if (parts[0] === 'page' && SCOPE_UUID_REGEX.test(parts[1])) {
         return { pageId: parts[1] };
       }
     } else if (parts.length === 1 && SCOPE_UUID_REGEX.test(parts[0])) {
-      return { projectId: parts[0] };
+      return { spaceId: parts[0] };
     }
     return {};
   }
 
   if (scope) {
     if ((scope.type as string) === 'library' && scope.id && SCOPE_UUID_REGEX.test(scope.id)) {
-      return { projectId: scope.id, extraFormFields: { source: 'library' } };
+      return { spaceId: scope.id, extraFormFields: { source: 'library' } };
     }
     if (scope.type === 'project' && scope.id && SCOPE_UUID_REGEX.test(scope.id)) {
-      return { projectId: scope.id };
+      return { spaceId: scope.id };
     }
     if (scope.type === 'page' && scope.id && SCOPE_UUID_REGEX.test(scope.id)) {
       return { pageId: scope.id };
@@ -297,13 +297,13 @@ export async function uploadFileWithDetails(
   payload: FileUploadPayload,
 ): Promise<{ url: string; fileId: string }> {
   const { file, signal, onProgress } = payload;
-  const { projectId, pageId, extraFormFields } = parseScopeFromPayload(payload);
+  const { spaceId, pageId, extraFormFields } = parseScopeFromPayload(payload);
 
   const result = await smartUpload(file, {
     baseEndpoint: '/api/v1/files',
     filename: file.name,
     mimeType: file.type || 'application/octet-stream',
-    projectId,
+    spaceId,
     pageId,
     extraFormFields,
     signal,

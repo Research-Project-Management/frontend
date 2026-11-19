@@ -5,8 +5,8 @@ import type { YourWorkSummaryResponse } from '../schemas/your-work.schema';
  * Calls backend YourWorkController.getYourWork
  * Endpoint: GET /api/analytics/your-work
  */
-export const getYourWork = (scopeId?: string, signal?: AbortSignal): Promise<YourWorkSummaryResponse> => {
-  const query = scopeId ? `?projectId=${encodeURIComponent(scopeId)}` : '';
+export const getYourWork = (spaceId?: string, signal?: AbortSignal): Promise<YourWorkSummaryResponse> => {
+  const query = spaceId ? `?projectId=${encodeURIComponent(spaceId)}` : '';
   return apiGet(`/api/analytics/your-work${query}`, { signal });
 };
 

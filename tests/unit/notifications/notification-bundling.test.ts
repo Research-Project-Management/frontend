@@ -102,7 +102,7 @@ describe('Notification Bundling (10-Minute Digest - Overleaf Parity)', () => {
       );
       expect(api.apiPost).toHaveBeenCalledWith(
         '/api/v1/pages/notifications/bundles/flush',
-        { scopeId: 'proj-1', spaceId: 'proj-1' },
+        { bundleKey: 'proj-1', spaceId: 'proj-1' },
       );
       expect(res).toEqual(mockDigest);
     });
@@ -111,7 +111,7 @@ describe('Notification Bundling (10-Minute Digest - Overleaf Parity)', () => {
       const mockDigest: NotificationDigest = {
         id: 'digest-2',
         recipientId: 'user-1',
-        scopeId: 'space-1:page-1',
+        bundleKey: 'space-1:page-1',
         spaceId: 'space-1',
         pageId: 'page-1',
         summary: '1 reply from 1 collaborator',
@@ -135,7 +135,7 @@ describe('Notification Bundling (10-Minute Digest - Overleaf Parity)', () => {
       );
       expect(api.apiPost).toHaveBeenCalledWith(
         '/api/v1/pages/notifications/bundles/flush',
-        { scopeId: 'space-1:page-1', spaceId: 'space-1', pageId: 'page-1' },
+        { bundleKey: 'space-1:page-1', spaceId: 'space-1', pageId: 'page-1' },
       );
       expect(res).toEqual(mockDigest);
     });

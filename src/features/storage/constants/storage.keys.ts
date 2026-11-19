@@ -4,10 +4,10 @@
  */
 export const storageKeys = {
   all: ['storage'] as const,
-  scoped: (scopeId?: string | null) =>
-    [...storageKeys.all, 'scoped', scopeId || 'me'] as const,
+  scoped: (spaceId?: string | null) =>
+    [...storageKeys.all, 'scoped', spaceId || 'me'] as const,
   section: (
-    scopeId: string | null | undefined,
+    spaceId: string | null | undefined,
     section: string,
     parentId: string | null,
     params?: unknown,
@@ -15,7 +15,7 @@ export const storageKeys = {
     [
       ...storageKeys.all,
       'section',
-      scopeId ?? 'personal',
+      spaceId ?? 'personal',
       section,
       parentId,
       params,
@@ -24,6 +24,6 @@ export const storageKeys = {
     [...storageKeys.all, 'folder-path', folderId] as const,
   versions: (fileId: string | null) =>
     [...storageKeys.all, 'versions', fileId] as const,
-  moveFolders: (scopeId: string | null, folderId: string | null) =>
-    [...storageKeys.all, 'move-modal-folders', scopeId, folderId] as const,
+  moveFolders: (spaceId: string | null, folderId: string | null) =>
+    [...storageKeys.all, 'move-modal-folders', spaceId, folderId] as const,
 };

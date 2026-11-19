@@ -215,7 +215,7 @@ describe('THỰC NGHIỆM ĐO ĐẠC ĐA TAB TRÌNH DUYỆT (EMPIRICAL MULTI-TAB
     for (let i = 0; i < EVENT_COUNT; i++) {
       multiTabBus.dispatchSyntheticMessageForTesting({
         type: 'LIBRARY_ITEM_PATCHED',
-        scopeId: 'user',
+        spaceId: 'user',
         itemId: `item-${i}`,
         patch: { isStarred: i % 2 === 0 },
         senderTabId: 'sender-tab-0',

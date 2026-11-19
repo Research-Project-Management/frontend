@@ -413,7 +413,7 @@ test.describe('Overleaf & LaTeX-Workshop Official Internet Ground-Truth Benchmar
   }) => {
     void editor;
 
-    // Load real Overleaf compiled PDFs (`simple_bibliography.pdf`, `biber_bibliography.pdf`, `latex_compiler.pdf`, `tikz_feynman.pdf`)
+    // Load real Overleaf compiled PDFs (`simple_bibliography.pdf`, `latex_compiler.pdf`)
     // and real Overleaf log fixtures (`errors.log` + `undefined-control-sequence.log`)
     const simpleBibPdfBase64 = readFixtureBase64('simple_bibliography.pdf');
     const latexCompilerPdfBase64 = readFixtureBase64('latex_compiler.pdf');

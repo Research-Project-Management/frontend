@@ -10,7 +10,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { ProjectsIcon, LibraryIcon, AIIcon, WikiIcon } from '@/shared/components/icons';
 import { cn } from '@/shared/lib/utils';
-import { useAiCompanionStore } from '@/features/ai/store/ai-companion.store';
+import { useAiCompanionStore } from '@/features/ai';
 import { useWorkspaceContextStore } from '../store/workspace-context.store';
 import { prefetchAppSection } from '@/features/shell/lib/navigation-prefetch';
 import dynamic from 'next/dynamic';
@@ -188,7 +188,7 @@ export default function Sidebar() {
   return (
     <nav
       aria-label="Main Navigation"
-      className="order-2 relative flex h-14 shrink-0 items-center justify-between bg-transparent px-2 py-1 md:order-1 md:h-full md:w-11 md:flex-col md:justify-between md:rounded-none md:border-t-0 md:border-r-0 md:bg-muted md:p-0 md:py-2 select-none z-30"
+      className="order-2 relative flex h-14 shrink-0 items-center justify-between bg-transparent px-2 py-1 md:order-1 md:h-full md:w-[68px] md:flex-col md:justify-between md:rounded-none md:border-t-0 md:border-r-0 md:bg-muted md:px-1 md:py-2 select-none z-30"
     >
       {/* ── Mobile Navigation Bar Background ── */}
       <div className="md:hidden absolute inset-0 pointer-events-none -z-10 bg-muted border-t border-border" />

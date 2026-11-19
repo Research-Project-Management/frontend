@@ -50,7 +50,7 @@ export default function MoveModal({ projectId: propProjectId }: MoveModalProps) 
   const closeMoveModal = useStorageUIStore((s) => s.closeMoveModal);
   const open = itemsToMove.length > 0;
 
-  const targetScopeId = propProjectId || params.projectId || params.id || undefined;
+  const targetSpaceId = propProjectId || params.projectId || params.id || undefined;
 
   // Navigation state
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
@@ -85,8 +85,8 @@ export default function MoveModal({ projectId: propProjectId }: MoveModalProps) 
 
   // Fetch subfolders in the current folder being browsed
   const { data, isLoading, refetch } = useQuery({
-    queryKey: storageKeys.moveFolders(targetScopeId ?? null, currentFolderId),
-    queryFn: () => getWorkspaceFiles(targetScopeId, currentFolderId),
+    queryKey: storageKeys.moveFolders(targetSpaceId ?? null, currentFolderId),
+    queryFn: () => getWorkspaceFiles(targetSpaceId, currentFolderId),
     enabled: open,
   });
 
@@ -137,7 +137,7 @@ export default function MoveModal({ projectId: propProjectId }: MoveModalProps) 
     try {
       await createFolderMutation({
         name: newFolderName.trim(),
-        projectId: targetScopeId,
+        projectId: targetSpaceId,
         parentId: currentFolderId,
       });
       toast.success(`Created folder "${newFolderName.trim()}"`);

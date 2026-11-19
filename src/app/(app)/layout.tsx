@@ -12,14 +12,14 @@ import Topbar from '@/features/shell/components/Topbar';
 import Sidebar from '@/features/shell/components/Sidebar';
 import ProjectLayout from '@/features/projects/shell/components/ProjectLayout';
 
-import { useAiCompanionStore } from '@/features/ai/store/ai-companion.store';
+import { useAiCompanionStore } from '@/features/ai';
 
 const StickyDock = dynamic(() => import('@/features/shell/components/StickyDock'), {
   ssr: false,
 });
 
-const AiCompanionSidebar = dynamic(
-  () => import('@/features/ai/components/companion/AiCompanionSidebar'),
+const CompanionDrawer = dynamic(
+  () => import('@/features/ai').then((m) => m.CompanionDrawer),
   { ssr: false, loading: () => null }
 );
 
@@ -48,7 +48,7 @@ function isProjectWorkspaceRoute(pathname: string): boolean {
 function AiCompanionSlot() {
   const isOpen = useAiCompanionStore((s) => s.isOpen);
   if (!isOpen) return null;
-  return <AiCompanionSidebar />;
+  return <CompanionDrawer />;
 }
 
 export default function AppLayout({
@@ -95,15 +95,15 @@ export default function AppLayout({
   }
 
   return (
-    <div className='h-dvh max-h-dvh flex flex-col bg-muted relative overflow-hidden' suppressHydrationWarning>
+    <div className='h-dvh max-h-dvh flex flex-col bg-background relative overflow-hidden' suppressHydrationWarning>
       <ErrorBoundary fallback={null} featureName="Toolbar">
         <Topbar />
       </ErrorBoundary>
-      <div className='flex w-full flex-1 min-h-0 flex-col gap-2 p-2 pt-0 md:flex-row relative'>
+      <div className='flex w-full flex-1 min-h-0 flex-col md:flex-row relative'>
         <ErrorBoundary fallback={null} featureName="Sidebar">
           <Sidebar />
         </ErrorBoundary>
-        <div className='order-1 flex-1 min-w-0 rounded-md border border-border bg-background md:order-2 flex flex-col relative min-h-0 overflow-hidden'>
+        <div className='order-1 flex-1 min-w-0 md:order-2 flex flex-col relative min-h-0 overflow-hidden'>
           {isProjectWorkspace ? (
             <ProjectLayout>
               <ErrorBoundary resetKeys={[pathname]} variant="full" featureName="Page Content">

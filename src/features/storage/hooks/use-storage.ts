@@ -54,7 +54,7 @@ export const DRIVE_QUERY_OPTIONS = {
 
 export function useSectionFiles(
   section: StorageSection,
-  scopeId?: string,
+  spaceId?: string,
   parentId?: string | null,
   queryParams?: FileQueryParams,
 ) {
@@ -69,7 +69,7 @@ export function useSectionFiles(
 
   return useInfiniteQuery({
     queryKey: storageKeys.section(
-      scopeId,
+      spaceId,
       canonicalSection,
       effectiveParentId ?? null,
       mergedParams,
@@ -82,15 +82,15 @@ export function useSectionFiles(
       };
       switch (section) {
         case 'shared':
-          return getSharedFiles(scopeId, pageOpts);
+          return getSharedFiles(spaceId, pageOpts);
         case 'starred':
-          return getStarredFiles(scopeId, pageOpts);
+          return getStarredFiles(spaceId, pageOpts);
         case 'trash':
-          return getTrashedFiles(scopeId, pageOpts);
+          return getTrashedFiles(spaceId, pageOpts);
         case 'my-files':
         case 'home':
         default:
-          return getAllFiles(scopeId, pageOpts);
+          return getAllFiles(spaceId, pageOpts);
       }
     },
     initialPageParam: 1,

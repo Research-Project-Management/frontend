@@ -5,8 +5,8 @@ import type { Quicklink } from '../types/home.types';
 
 const quicklinksMemoryCache = new Map<string, Quicklink[]>();
 
-export function useQuicklinks(scopeId: string = 'default') {
-  const storageKey = `flux-quicklinks-${scopeId || 'default'}`;
+export function useQuicklinks(spaceId: string = 'default') {
+  const storageKey = `flux-quicklinks-${spaceId || 'default'}`;
 
   const [links, setLinks] = useState<Quicklink[]>(
     () => quicklinksMemoryCache.get(storageKey) ?? []
@@ -35,7 +35,7 @@ export function useQuicklinks(scopeId: string = 'default') {
     } finally {
       setIsLoaded(true);
     }
-  }, [scopeId, storageKey]);
+  }, [spaceId, storageKey]);
 
   const addQuicklink = useCallback(
     (data: { url: string; title?: string }) => {

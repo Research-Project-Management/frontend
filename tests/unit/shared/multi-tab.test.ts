@@ -236,7 +236,7 @@ describe('Browser Multi-Tab Coordination Architecture', () => {
         defaultOptions: { queries: { retry: false } },
       });
 
-      const scopeId = 'user';
+      const spaceId = 'user';
       const paper1: Item = {
         id: 'item-1',
         title: 'Attention Is All You Need',
@@ -250,8 +250,8 @@ describe('Browser Multi-Tab Coordination Architecture', () => {
         isStarred: false,
       } as Item;
 
-      tab2QueryClient.setQueryData(itemKeys.byId(scopeId, 'item-1'), paper1);
-      tab2QueryClient.setQueryData(itemKeys.byView(scopeId, 'all'), {
+      tab2QueryClient.setQueryData(itemKeys.byId(spaceId, 'item-1'), paper1);
+      tab2QueryClient.setQueryData(itemKeys.byView(spaceId, 'all'), {
         items: [paper1, paper2],
         total: 2,
       });
@@ -261,28 +261,28 @@ describe('Browser Multi-Tab Coordination Architecture', () => {
       // 1. Simulate Tab 1 starring 'item-1'
       multiTabBus.dispatchSyntheticMessageForTesting({
         type: 'LIBRARY_ITEM_PATCHED',
-        scopeId,
+        spaceId,
         itemId: 'item-1',
         patch: { isStarred: true, title: 'Attention Is All You Need (Updated)' },
         senderTabId: 'tab-1',
         timestamp: Date.now(),
       });
 
-      const updatedInTab2 = tab2QueryClient.getQueryData<Item>(itemKeys.byId(scopeId, 'item-1'));
+      const updatedInTab2 = tab2QueryClient.getQueryData<Item>(itemKeys.byId(spaceId, 'item-1'));
       expect(updatedInTab2?.isStarred).toBe(true);
       expect(updatedInTab2?.title).toBe('Attention Is All You Need (Updated)');
 
       // 2. Simulate Tab 1 deleting 'item-1'
       multiTabBus.dispatchSyntheticMessageForTesting({
         type: 'LIBRARY_ITEMS_DELETED',
-        scopeId,
+        spaceId,
         itemIds: ['item-1'],
         senderTabId: 'tab-1',
         timestamp: Date.now(),
       });
 
       const listInTab2 = tab2QueryClient.getQueryData<{ items: Item[]; total: number }>(
-        itemKeys.byView(scopeId, 'all'),
+        itemKeys.byView(spaceId, 'all'),
       );
       expect(listInTab2?.items.map((i) => i.id)).toEqual(['item-2']);
       expect(listInTab2?.total).toBe(1);
@@ -291,14 +291,14 @@ describe('Browser Multi-Tab Coordination Architecture', () => {
       const invalidateSpy = vi.spyOn(tab2QueryClient, 'invalidateQueries');
       multiTabBus.dispatchSyntheticMessageForTesting({
         type: 'READER_ANNOTATIONS_CHANGED',
-        scopeId,
+        spaceId,
         attachmentId: 'att-99',
         senderTabId: 'tab-1',
         timestamp: Date.now(),
       });
 
       expect(invalidateSpy).toHaveBeenCalledWith({
-        queryKey: annotationKeys.byAttachment(scopeId, 'att-99'),
+        queryKey: annotationKeys.byAttachment(spaceId, 'att-99'),
       });
 
       cleanup();
@@ -311,7 +311,7 @@ describe('Browser Multi-Tab Coordination Architecture', () => {
       patchItemAcrossScopeCaches(tab1QueryClient, 'user', 'item-77', { isStarred: true });
       expect(publishSpy).toHaveBeenCalledWith({
         type: 'LIBRARY_ITEM_PATCHED',
-        scopeId: 'user',
+        spaceId: 'user',
         itemId: 'item-77',
         patch: { isStarred: true },
       });
@@ -319,7 +319,7 @@ describe('Browser Multi-Tab Coordination Architecture', () => {
       removeItemsFromScopeCaches(tab1QueryClient, 'user', ['item-77']);
       expect(publishSpy).toHaveBeenCalledWith({
         type: 'LIBRARY_ITEMS_DELETED',
-        scopeId: 'user',
+        spaceId: 'user',
         itemIds: ['item-77'],
         permanent: undefined,
       });

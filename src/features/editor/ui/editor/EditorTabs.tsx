@@ -4,43 +4,142 @@
  * EditorTabs.tsx
  *
  * Canonical Multi-Document Tab Bar (Block 6: UI Features Layer).
- * Location: `features/editor/ui/features/editor/EditorTabs.tsx`
+ * Location: `features/editor/ui/editor/EditorTabs.tsx`
  *
- * Capabilities:
- * - 0ms Tab Switching with in-memory LRU document state preservation.
- * - Single source of truth for active tab (root vs sub-file).
- * - Shallow URL history synchronization (window.history.replaceState, no router transition).
+ * Capabilities (1:1 Reader Architecture Parity):
+ * - 0ms Tab Switching with in-memory Tri-State LRU document state preservation.
+ * - Drag-and-drop tab sorting via `@dnd-kit/core` + `@dnd-kit/sortable` (root tab pinned first).
+ * - Disambiguated duplicate filename badges via `computeEditorTabDisplayLabels`.
+ * - Preview vs Pinned styling (italic preview tabs, double-click & local-edit auto-pin).
+ * - Reactive unsaved dirty indicator dot backed directly by `lruDocumentCache`.
+ * - Hover prefetching with deduplication (`navigationCoordinator.prefetchDocument`).
+ * - Context menu actions (Pin, Open to Side, Close, Close Others, Close Saved).
  * - Keyboard navigation (ArrowLeft/Right, Home, End, Enter, Delete, Ctrl+W).
- * - Integrated directly with `sessionCoordinator` (no legacy core dependency).
  */
 
-import React, { useRef, useCallback, useMemo } from 'react';
-import { LayoutGroup } from 'framer-motion';
+import React, { useRef, useCallback, useMemo, useEffect, useSyncExternalStore } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { X, FileText } from 'lucide-react';
-import { cn } from "@/shared/lib/utils";
-import { useWorkspaceStore, useSettingsStore, type EditorTab, editorCommandBus } from '@/features/editor/core';
+import { X, FileText, Pin, SplitSquareHorizontal, Settings } from 'lucide-react';
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  arrayMove,
+  horizontalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { cn } from '@/shared/lib/utils';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '@/shared/components/ui/context-menu';
+import {
+  useWorkspaceStore,
+  useSettingsStore,
+  type EditorTab,
+  editorCommandBus,
+  lruDocumentCache,
+} from '@/features/editor/core';
+import {
+  computeEditorTabDisplayLabels,
+  type EditorTabDisplayLabel,
+} from '@/features/editor/domain/workspace/editor-tab-pool.domain';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 
-// ── Single Tab Item (Overleaf 1:1) ───────────────────────────────────────────
+// ── Single Tab Item ──────────────────────────────────────────────────────────
 
 interface TabItemProps {
   tab: EditorTab;
+  displayLabel: EditorTabDisplayLabel;
   isActive: boolean;
+  isRoot: boolean;
   rootPageId: string;
   canClose?: boolean;
+  hasClosableTabsToRight: boolean;
   onActivate: (id: string) => void;
+  onPinTab: (id: string) => void;
   onCloseTab: (id: string) => void;
+  onCloseOtherTabs: (id: string) => void;
+  onCloseTabsToRight: (id: string) => void;
+  onCloseSavedTabs: () => void;
+  onOpenToSide: (id: string) => void;
+  onOpenTabSettings: () => void;
+  onPrefetchTab: (tab: EditorTab) => void;
 }
 
-const TabItem = React.memo(function TabItem({ tab, isActive, canClose = true, onActivate, onCloseTab }: TabItemProps) {
+const TabItem = React.memo(function TabItem({
+  tab,
+  displayLabel,
+  isActive,
+  isRoot,
+  canClose = true,
+  hasClosableTabsToRight,
+  onActivate,
+  onPinTab,
+  onCloseTab,
+  onCloseOtherTabs,
+  onCloseTabsToRight,
+  onCloseSavedTabs,
+  onOpenToSide,
+  onOpenTabSettings,
+  onPrefetchTab,
+}: TabItemProps) {
+  const subscribeToFile = useCallback(
+    (onStoreChange: () => void) => lruDocumentCache.subscribeFile(tab.id, onStoreChange),
+    [tab.id],
+  );
+  const isDirty = useSyncExternalStore(
+    subscribeToFile,
+    () => lruDocumentCache.isDirty(tab.id),
+    () => Boolean(tab.isDirty),
+  );
+
+  const isPreview = Boolean(tab.isPreview && !tab.isPinned && !isRoot);
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: tab.id, disabled: isRoot });
+
+  // Strip dnd-kit role/tabIndex so native ARIA tablist keyboard navigation works identically
+  const { role: _dndRole, tabIndex: _dndTabIndex, ...sortableAttrs } = attributes;
+
+  const sortableStyle: React.CSSProperties = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+  };
+
   const handleActivate = useCallback(() => {
     onActivate(tab.id);
   }, [onActivate, tab.id]);
 
+  const handleDoubleClick = useCallback(() => {
+    if (isPreview) {
+      onPinTab(tab.id);
+    }
+  }, [isPreview, onPinTab, tab.id]);
+
   const handleClose = useCallback(() => {
     onCloseTab(tab.id);
   }, [onCloseTab, tab.id]);
+
+  const handleMouseEnter = useCallback(() => {
+    onPrefetchTab(tab);
+  }, [onPrefetchTab, tab]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -60,56 +159,135 @@ const TabItem = React.memo(function TabItem({ tab, isActive, canClose = true, on
   };
 
   return (
-    <div
-      role="tab"
-      id={`editor-tab-${tab.id}`}
-      aria-controls="editor-surface"
-      aria-selected={isActive}
-      aria-label={`Tab: ${tab.title}`}
-      tabIndex={isActive ? 0 : -1}
-      onClick={handleActivate}
-      onAuxClick={handleAuxClick}
-      onKeyDown={handleKeyDown}
-      className={cn(
-        'group/tab relative flex items-center gap-1.5 h-full px-3 cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-border',
-        'min-w-0 max-w-[200px] shrink-0 transition-colors motion-reduce:transition-none text-12 border-r border-border/60',
-        isActive
-          ? 'bg-transparent text-foreground font-medium z-10 before:absolute before:top-0 before:inset-x-0 before:h-[2px] before:bg-primary before:z-20'
-          : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground',
-      )}
-    >
-      {/* File Document Icon - Clean project style */}
-      <FileText className={cn("size-3.5 shrink-0", isActive ? "text-foreground" : "text-muted-foreground group-hover/tab:text-foreground")} />
-
-      {/* Title */}
-      <span className="text-12 font-sans font-medium tracking-tight truncate leading-none min-w-0">{tab.title}</span>
-
-      {/* Close button (only shown when canClose is true) */}
-      {canClose && (
-        <button
-          type="button"
-          aria-label={`Close file ${tab.title}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleClose();
-          }}
-          onAuxClick={(e) => e.preventDefault()}
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div
+          ref={setNodeRef}
+          style={sortableStyle}
+          {...sortableAttrs}
+          {...(isRoot ? {} : listeners)}
+          role="tab"
+          id={`editor-tab-${tab.id}`}
+          aria-controls="editor-surface"
+          aria-selected={isActive}
+          aria-label={`Tab: ${tab.title}`}
+          data-preview={isPreview ? 'true' : undefined}
+          title={displayLabel.fullPath}
+          tabIndex={isActive ? 0 : -1}
+          onClick={handleActivate}
+          onDoubleClick={handleDoubleClick}
+          onAuxClick={handleAuxClick}
+          onKeyDown={handleKeyDown}
+          onMouseEnter={handleMouseEnter}
           className={cn(
-            "ml-auto shrink-0 relative flex items-center justify-center rounded-xs transition-opacity motion-reduce:transition-none outline-none focus-visible:ring-1 focus-visible:ring-border cursor-pointer hover:bg-muted text-foreground",
-            "size-4 p-0.5 after:absolute after:-inset-2 after:content-['']",
+            'group/tab relative flex items-center gap-1.5 h-full px-3 cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-border',
+            'min-w-0 max-w-[220px] shrink-0 transition-colors motion-reduce:transition-none text-12 border-r border-border/60',
+            isDragging && 'opacity-60 z-30 bg-muted/60',
             isActive
-              ? "opacity-70 hover:opacity-100"
-              : "opacity-40 sm:opacity-0 group-hover/tab:opacity-70 group-hover/tab:hover:opacity-100 group-focus-within/tab:opacity-70 focus-visible:opacity-100",
+              ? 'bg-transparent text-foreground font-medium z-10 before:absolute before:top-0 before:inset-x-0 before:h-[2px] before:bg-primary before:z-20'
+              : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground',
           )}
         >
-          <X className="size-3 shrink-0" />
-        </button>
-      )}
-    </div>
+          {/* File Document Icon */}
+          <FileText
+            className={cn(
+              'size-3.5 shrink-0',
+              isActive ? 'text-foreground' : 'text-muted-foreground group-hover/tab:text-foreground',
+            )}
+          />
+
+          {/* File Name + Optional Path Disambiguator */}
+          <span
+            className={cn(
+              'text-12 font-sans font-medium tracking-tight truncate leading-none min-w-0',
+              isPreview && 'italic font-normal',
+            )}
+          >
+            {displayLabel.leafTitle}
+          </span>
+          {displayLabel.disambiguationDir && (
+            <span
+              data-testid={`tab-disambiguator-${tab.id}`}
+              className="text-10 text-muted-foreground/80 truncate max-w-[80px] shrink-0 leading-none"
+            >
+              {displayLabel.disambiguationDir}
+            </span>
+          )}
+
+          {/* Reactive Unsaved Dirty Indicator Dot */}
+          {isDirty && (
+            <span
+              data-testid={`tab-dirty-dot-${tab.id}`}
+              aria-label="Unsaved changes"
+              className="size-1.5 rounded-full bg-warning shrink-0"
+            />
+          )}
+
+          {/* Close button */}
+          {canClose && (
+            <button
+              type="button"
+              aria-label={`Close file ${tab.title}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleClose();
+              }}
+              onAuxClick={(e) => e.preventDefault()}
+              className={cn(
+                "ml-auto shrink-0 relative flex items-center justify-center rounded-xs transition-opacity motion-reduce:transition-none outline-none focus-visible:ring-1 focus-visible:ring-border cursor-pointer hover:bg-muted text-foreground",
+                "size-4 p-0.5 after:absolute after:-inset-2 after:content-['']",
+                isActive
+                  ? 'opacity-70 hover:opacity-100'
+                  : 'opacity-40 sm:opacity-0 group-hover/tab:opacity-70 group-hover/tab:hover:opacity-100 group-focus-within/tab:opacity-70 focus-visible:opacity-100',
+              )}
+            >
+              <X className="size-3 shrink-0" />
+            </button>
+          )}
+        </div>
+      </ContextMenuTrigger>
+
+      <ContextMenuContent className="w-48">
+        {isPreview && (
+          <>
+            <ContextMenuItem onSelect={() => onPinTab(tab.id)}>
+              <Pin className="size-3.5" />
+              Keep Open (Pin Tab)
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+          </>
+        )}
+        <ContextMenuItem onSelect={() => onOpenToSide(tab.id)}>
+          <SplitSquareHorizontal className="size-3.5" />
+          Open to the Side
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem disabled={!canClose} onSelect={handleClose}>
+          Close
+        </ContextMenuItem>
+        <ContextMenuItem onSelect={() => onCloseOtherTabs(tab.id)}>
+          Close other tabs
+        </ContextMenuItem>
+        <ContextMenuItem
+          disabled={!hasClosableTabsToRight}
+          onSelect={() => onCloseTabsToRight(tab.id)}
+        >
+          Close tabs to the right
+        </ContextMenuItem>
+        <ContextMenuItem onSelect={onCloseSavedTabs}>
+          Close saved tabs
+        </ContextMenuItem>
+        <ContextMenuSeparator />
+        <ContextMenuItem onSelect={onOpenTabSettings}>
+          <Settings className="size-3.5" />
+          Tab settings
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
   );
 });
 
-// ── Main Tabs Component (Only File Tabs - Clean Overleaf style) ───────────────
+// ── Main Tabs Component ──────────────────────────────────────────────────────
 
 const EMPTY_TABS: EditorTab[] = [];
 
@@ -126,11 +304,10 @@ export function EditorTabs({ rootPageId, activeFileId, availableFiles, rightSlot
 
   const rawTabs = useWorkspaceStore((s) => s.tabsByProject[rootPageId] ?? EMPTY_TABS);
 
-  // Guarantee no duplicate tabs are rendered, prune ghost tabs, and normalize root to main.tex
+  // Deduplicate strictly by canonical id, prune ghost tabs, and ensure root tab is normalized
   const tabs = useMemo(() => {
     const isRootDoc = (t: EditorTab) =>
-      t.id === rootPageId ||
-      t.id === `${rootPageId}-main`;
+      Boolean(t.isRoot) || t.id === rootPageId || t.id === `${rootPageId}-main`;
 
     const availableIds = availableFiles ? new Set(availableFiles.map((f) => f.id)) : null;
 
@@ -139,67 +316,74 @@ export function EditorTabs({ rootPageId, activeFileId, availableFiles, rightSlot
     const result: EditorTab[] = [];
     for (const t of rawTabs) {
       const isRoot = isRootDoc(t);
-      // Prune ghost tabs: if availableFiles is loaded, non-root tabs must exist in project files or be an asset
       if (availableIds && !isRoot && !t.id.startsWith('asset:') && !availableIds.has(t.id)) {
         continue;
       }
-      const key = isRoot ? '__root__' : (t.id || t.title.toLowerCase());
-      if (!seen.has(key)) {
+      const key = isRoot ? '__root__' : t.id;
+      if (key && !seen.has(key)) {
         seen.add(key);
         const trimmedTitle = (t.title || '').trim();
-        const normalizedTitle =
-          isRoot && !trimmedTitle
-            ? configuredMain
-            : t.title;
+        const normalizedTitle = isRoot && !trimmedTitle ? configuredMain : t.title;
         result.push({ ...t, title: normalizedTitle });
       }
     }
-    // Overleaf parity: root document entrypoint is always present if rootPageId exists
+
     if (result.length === 0 && rootPageId) {
       result.push({
         id: rootPageId,
         title: configuredMain,
+        isRoot: true,
+        isPinned: true,
+        isPreview: false,
       });
     }
     return result;
   }, [rawTabs, rootPageId, availableFiles]);
 
+  const displayLabels = useMemo(() => computeEditorTabDisplayLabels(tabs), [tabs]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 5 },
+    }),
+  );
+
+  const sortableIds = useMemo(() => tabs.map((t) => t.id), [tabs]);
+
   const currentParam = searchParams.get('file');
 
-  // Single source of truth for the active tab: exactly ONE tab can be active
-  // Prioritize explicit activeFileId prop (reactive in-memory state) over Next.js searchParams
-  // because shallow history.replaceState updates do not trigger useSearchParams() re-renders.
+  // Single source of truth for the active tab (strict ID match prioritized before title fallback)
   const resolvedActiveTabId = useMemo(() => {
     if (tabs.length === 0) return null;
 
-    // 1. If activeFileId passed from props is explicitly resolved:
     if (activeFileId) {
       if (activeFileId === rootPageId || activeFileId === `${rootPageId}-main`) {
         const rootTab = tabs.find(
-          (t) => t.id === rootPageId || t.id === `${rootPageId}-main`
+          (t) => Boolean(t.isRoot) || t.id === rootPageId || t.id === `${rootPageId}-main`,
         );
         if (rootTab) return rootTab.id;
       } else {
-        const match = tabs.find((t) => t.id === activeFileId || t.title === activeFileId);
+        const match =
+          tabs.find((t) => t.id === activeFileId) ?? tabs.find((t) => t.title === activeFileId);
         if (match) return match.id;
       }
     }
 
-    // 2. Fallback to initial URL ?file= param on first load before activeFileId hydrates:
     if (currentParam && currentParam !== rootPageId && currentParam !== `${rootPageId}-main`) {
-      const match = tabs.find((t) => t.id === currentParam || t.title === currentParam);
+      const match =
+        tabs.find((t) => t.id === currentParam) ?? tabs.find((t) => t.title === currentParam);
       if (match) return match.id;
     }
 
-    // 3. Otherwise root page is active: find the root document tab
     const rootTab = tabs.find(
-      (t) => t.id === rootPageId || t.id === `${rootPageId}-main`
+      (t) => Boolean(t.isRoot) || t.id === rootPageId || t.id === `${rootPageId}-main`,
     );
     if (rootTab) return rootTab.id;
 
-    // 4. Fallback to tab matching rootPageId by title or first tab
     const configuredMain = useSettingsStore.getState().mainFile || 'main.tex';
-    const fallbackRoot = tabs.find((t) => t.title === configuredMain || t.title.toLowerCase() === 'main.tex');
+    const fallbackRoot = tabs.find(
+      (t) => t.title === configuredMain || t.title.toLowerCase() === 'main.tex',
+    );
     if (fallbackRoot) return fallbackRoot.id;
 
     return tabs[0]?.id ?? null;
@@ -208,23 +392,84 @@ export function EditorTabs({ rootPageId, activeFileId, availableFiles, rightSlot
   const resolvedActiveTabIdRef = useRef(resolvedActiveTabId);
   resolvedActiveTabIdRef.current = resolvedActiveTabId;
 
-  const handleTabActivate = useCallback((tabId: string) => {
-    const isRoot = tabId === rootPageId || tabId === `${rootPageId}-main`;
-    const targetId = isRoot ? rootPageId : tabId;
+  const handleTabActivate = useCallback(
+    (tabId: string) => {
+      const isRoot = tabId === rootPageId || tabId === `${rootPageId}-main`;
+      const targetId = isRoot ? rootPageId : tabId;
 
-    if (targetId !== resolvedActiveTabIdRef.current) {
-      const targetTab = tabs.find((t) => t.id === tabId);
-      navigationCoordinator.openDocument({
-        fileId: targetId,
-        title: targetTab?.title || '',
-        path: targetTab?.path,
-      });
-    }
-  }, [rootPageId, tabs]);
+      if (targetId !== resolvedActiveTabIdRef.current) {
+        const targetTab = tabs.find((t) => t.id === tabId);
+        navigationCoordinator.openDocument({
+          fileId: targetId,
+          title: targetTab?.title || '',
+          path: targetTab?.path,
+          preview: Boolean(targetTab?.isPreview && !targetTab?.isPinned),
+        });
+      }
+    },
+    [rootPageId, tabs],
+  );
+
+  const handlePinTab = useCallback(
+    (tabId: string) => {
+      useWorkspaceStore.getState().pinTab(rootPageId, tabId);
+    },
+    [rootPageId],
+  );
 
   const handleTabClose = useCallback((tabId: string) => {
     editorCommandBus.dispatch({ type: 'navigation:close-tab', fileId: tabId });
   }, []);
+
+  const handleCloseOtherTabs = useCallback((keepFileId: string) => {
+    editorCommandBus.dispatch({ type: 'navigation:close-other-tabs', keepFileId });
+  }, []);
+
+  const handleCloseTabsToRight = useCallback((fromFileId: string) => {
+    editorCommandBus.dispatch({ type: 'navigation:close-tabs-to-right', fromFileId });
+  }, []);
+
+  const handleCloseSavedTabs = useCallback(() => {
+    editorCommandBus.dispatch({ type: 'navigation:close-saved-tabs' });
+  }, []);
+
+  const handleOpenToSide = useCallback((fileId: string) => {
+    editorCommandBus.dispatch({ type: 'editor:open-to-side', fileId });
+  }, []);
+
+  const handleOpenTabSettings = useCallback(() => {
+    useSettingsStore.getState().openSettingsModal('editor');
+  }, []);
+
+  useEffect(() => {
+    if (!resolvedActiveTabId || !tabListRef.current || typeof document === 'undefined') return;
+    const activeEl = document.getElementById(`editor-tab-${resolvedActiveTabId}`);
+    if (activeEl && tabListRef.current.contains(activeEl)) {
+      activeEl.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+    }
+  }, [resolvedActiveTabId]);
+
+  const handlePrefetchTab = useCallback((tab: EditorTab) => {
+    void navigationCoordinator.prefetchDocument(tab.id, tab.path || tab.title);
+  }, []);
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+
+      const oldIndex = tabs.findIndex((t) => t.id === active.id);
+      const newIndex = tabs.findIndex((t) => t.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return;
+
+      const reordered = arrayMove(tabs, oldIndex, newIndex);
+      useWorkspaceStore.getState().reorderTabs(
+        rootPageId,
+        reordered.map((t) => t.id),
+      );
+    },
+    [tabs, rootPageId],
+  );
 
   const handleTabListKeyDown = (e: React.KeyboardEvent) => {
     if (tabs.length === 0) return;
@@ -257,29 +502,66 @@ export function EditorTabs({ rootPageId, activeFileId, availableFiles, rightSlot
 
   return (
     <div className="flex items-center h-9 bg-surface select-none border-b border-border w-full px-1 relative">
-      {/* ── File tabs ── */}
-      <LayoutGroup id={`tab-bar-${rootPageId}`}>
-        <div
-          ref={tabListRef}
-          role="tablist"
-          aria-label="Open document tabs"
-          onKeyDown={handleTabListKeyDown}
-          onWheel={handleWheel}
-          className="flex h-full overflow-x-auto shrink min-w-0 scrollbar-none items-stretch"
-        >
-          {tabs.map((tab) => (
-            <TabItem
-              key={tab.id}
-              tab={tab}
-              isActive={tab.id === resolvedActiveTabId}
-              rootPageId={rootPageId}
-              canClose={tabs.length > 1 && !(tab.id === rootPageId || tab.id === `${rootPageId}-main` || Boolean(tab.isRoot))}
-              onActivate={handleTabActivate}
-              onCloseTab={handleTabClose}
-            />
-          ))}
-        </div>
-      </LayoutGroup>
+      {/* ── File tabs (Drag-and-drop sortable; root tab pinned first) ── */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={sortableIds} strategy={horizontalListSortingStrategy}>
+          <div
+            ref={tabListRef}
+            role="tablist"
+            aria-label="Open document tabs"
+            onKeyDown={handleTabListKeyDown}
+            onWheel={handleWheel}
+            className="flex h-full overflow-x-auto shrink min-w-0 scrollbar-none items-stretch"
+          >
+            {tabs.map((tab, idx) => {
+              const isRoot =
+                Boolean(tab.isRoot) ||
+                tab.id === rootPageId ||
+                tab.id === `${rootPageId}-main`;
+              const hasClosableTabsToRight = tabs.some(
+                (candidate, candidateIdx) =>
+                  candidateIdx > idx &&
+                  !(
+                    Boolean(candidate.isRoot) ||
+                    candidate.id === rootPageId ||
+                    candidate.id === `${rootPageId}-main`
+                  ) &&
+                  !lruDocumentCache.isDirty(candidate.id),
+              );
+              const displayLabel = displayLabels.get(tab.id) ?? {
+                leafTitle: tab.title,
+                disambiguationDir: null,
+                fullPath: tab.path || tab.title,
+              };
+              return (
+                <TabItem
+                  key={tab.id}
+                  tab={tab}
+                  displayLabel={displayLabel}
+                  isActive={tab.id === resolvedActiveTabId}
+                  isRoot={isRoot}
+                  rootPageId={rootPageId}
+                  canClose={tabs.length > 1 && !isRoot}
+                  hasClosableTabsToRight={hasClosableTabsToRight}
+                  onActivate={handleTabActivate}
+                  onPinTab={handlePinTab}
+                  onCloseTab={handleTabClose}
+                  onCloseOtherTabs={handleCloseOtherTabs}
+                  onCloseTabsToRight={handleCloseTabsToRight}
+                  onCloseSavedTabs={handleCloseSavedTabs}
+                  onOpenToSide={handleOpenToSide}
+                  onOpenTabSettings={handleOpenTabSettings}
+                  onPrefetchTab={handlePrefetchTab}
+                />
+              );
+            })}
+          </div>
+        </SortableContext>
+      </DndContext>
 
       {/* ── Right side: Pane Actions (Split, etc.) ── */}
       {rightSlot && (
@@ -292,4 +574,3 @@ export function EditorTabs({ rootPageId, activeFileId, availableFiles, rightSlot
 }
 
 export default EditorTabs;
-

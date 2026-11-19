@@ -72,6 +72,17 @@ export type MultiTabEventPayload =
       pdfUrl: string | null;
       status: 'success' | 'error';
       timestamp: number;
+    }
+  | {
+      type: 'EDITOR_TABS_SYNC';
+      pageId: string;
+    }
+  | {
+      type: 'EDITOR_OFFLINE_DRAFT_UPDATED';
+      fileId: string;
+      projectId?: string;
+      content: string;
+      updatedAt: number;
     };
 
 export type MultiTabMessage<T extends MultiTabEventPayload = MultiTabEventPayload> = T & {

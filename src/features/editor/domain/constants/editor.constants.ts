@@ -20,8 +20,8 @@ export const EDITOR_STORAGE_KEYS = {
 
 export const SYNCTEX_BROADCAST_CHANNEL = 'flux-synctex-bus';
 
-export function getSyncTexChannelName(scopeId?: string | null): string {
-  const clean = typeof scopeId === 'string' ? scopeId.trim() : '';
+export function getSyncTexChannelName(targetId?: string | null): string {
+  const clean = typeof targetId === 'string' ? targetId.trim() : '';
   return clean ? `${SYNCTEX_BROADCAST_CHANNEL}:${clean}` : SYNCTEX_BROADCAST_CHANNEL;
 }
 

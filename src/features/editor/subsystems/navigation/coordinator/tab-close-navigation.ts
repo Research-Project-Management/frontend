@@ -38,9 +38,9 @@ export function hydrateUnopenedDocumentFromOffline(params: {
   fileId: string;
   title: string;
   path?: string;
-  scopeId: string;
+  tabGroupId: string;
 }): void {
-  const { fileId, title, path: optPath, scopeId } = params;
+  const { fileId, title, path: optPath, tabGroupId } = params;
   void Promise.all([
     unsyncedEditsStore.get(fileId).catch(() => null),
     syncedDocCacheStore.get(fileId).catch(() => null),
@@ -64,7 +64,7 @@ export function hydrateUnopenedDocumentFromOffline(params: {
       lruDocumentCache.registerModel(fileId, {
         content: unsyncedEdit.content,
         filePath: optPath || title || unsyncedEdit.title || syncedDoc?.filePath || fileId,
-        projectId: unsyncedEdit.projectId || syncedDoc?.projectId || scopeId,
+        projectId: unsyncedEdit.projectId || syncedDoc?.projectId || tabGroupId,
         serverRev: unsyncedEdit.expectedRev ?? syncedDoc?.rev ?? manifest?.rev,
         hash: syncedDoc?.hash ?? manifest?.hash ?? null,
         isAuthoritative: true,
@@ -77,7 +77,7 @@ export function hydrateUnopenedDocumentFromOffline(params: {
           title,
           path: optPath || title,
           content: unsyncedEdit.content,
-          pageId: ps.currentPage?.id || scopeId || fileId,
+          pageId: ps.currentPage?.id || tabGroupId || fileId,
           spaceId: ps.spaceId,
           projectId: ps.projectId,
         });
@@ -93,7 +93,7 @@ export function hydrateUnopenedDocumentFromOffline(params: {
       lruDocumentCache.registerModel(fileId, {
         content: syncedDoc.content,
         filePath: optPath || title || syncedDoc.filePath || fileId,
-        projectId: syncedDoc.projectId || scopeId,
+        projectId: syncedDoc.projectId || tabGroupId,
         serverRev: syncedDoc.rev ?? manifest?.rev,
         hash: syncedDoc.hash ?? manifest?.hash ?? null,
         isAuthoritative: true,
@@ -105,7 +105,7 @@ export function hydrateUnopenedDocumentFromOffline(params: {
           title,
           path: optPath || title,
           content: syncedDoc.content,
-          pageId: ps.currentPage?.id || scopeId || fileId,
+          pageId: ps.currentPage?.id || tabGroupId || fileId,
           spaceId: ps.spaceId,
           projectId: ps.projectId,
         });
@@ -117,11 +117,11 @@ export function hydrateUnopenedDocumentFromOffline(params: {
 function openOrRestoreTabEntry(
   host: TabNavigationHost,
   nextActiveId: string | undefined,
-  scopeId: string,
+  tabGroupId: string,
   pageStore: ReturnType<typeof usePageStore.getState>,
   tabs: readonly EditorTab[],
 ): void {
-  const rootPageId = pageStore.parentPageId || pageStore.currentPage?.id || scopeId;
+  const rootPageId = pageStore.parentPageId || pageStore.currentPage?.id || tabGroupId;
   const isNextRoot = !nextActiveId || nextActiveId === rootPageId || nextActiveId === `${rootPageId}-main`;
   if (isNextRoot && pageStore.currentPage) {
     pageStore.setActiveFilePage(pageStore.currentPage);
@@ -142,17 +142,17 @@ function openOrRestoreTabEntry(
 export function executeCloseDocument(host: TabNavigationHost, fileId: string): void {
   const tabsStore = useWorkspaceStore.getState();
   const pageStore = usePageStore.getState();
-  const scopeId = host.resolveCanonicalTabScope(pageStore);
+  const tabGroupId = host.resolveCanonicalTabScope(pageStore);
 
   sessionCoordinator.closeTab(fileId);
 
-  tabsStore.closeTab(scopeId, fileId, (nextId) => {
-    const rootPageId = pageStore.parentPageId || pageStore.currentPage?.id || scopeId;
+  tabsStore.closeTab(tabGroupId, fileId, (nextId) => {
+    const rootPageId = pageStore.parentPageId || pageStore.currentPage?.id || tabGroupId;
     const isNextRoot = !nextId || nextId === rootPageId || nextId === `${rootPageId}-main`;
 
     if (!isNextRoot && nextId) {
-      tabsStore.setActiveTab(scopeId, nextId);
-      const tabs = useWorkspaceStore.getState().tabsByProject[scopeId] || [];
+      tabsStore.setActiveTab(tabGroupId, nextId);
+      const tabs = useWorkspaceStore.getState().tabsByProject[tabGroupId] || [];
       const nextActiveTab = tabs.find((t) => t.id === nextId);
       if (nextActiveTab) {
         host.openDocument({
@@ -163,7 +163,7 @@ export function executeCloseDocument(host: TabNavigationHost, fileId: string): v
         });
       }
     } else {
-      tabsStore.setActiveTab(scopeId, rootPageId);
+      tabsStore.setActiveTab(tabGroupId, rootPageId);
       const rootPage = pageStore.currentPage;
       if (rootPage) {
         pageStore.setActiveFilePage(rootPage);
@@ -176,68 +176,68 @@ export function executeCloseDocument(host: TabNavigationHost, fileId: string): v
 export function executeCloseOtherDocuments(host: TabNavigationHost, keepFileId: string): void {
   const tabsStore = useWorkspaceStore.getState();
   const pageStore = usePageStore.getState();
-  const scopeId = host.resolveCanonicalTabScope(pageStore);
-  const evicted = tabsStore.closeOtherTabs(scopeId, keepFileId);
+  const tabGroupId = host.resolveCanonicalTabScope(pageStore);
+  const evicted = tabsStore.closeOtherTabs(tabGroupId, keepFileId);
   for (const id of evicted) {
     sessionCoordinator.closeTab(id);
   }
 
   const nextState = useWorkspaceStore.getState();
-  const nextActiveId = nextState.activeByProject[scopeId];
+  const nextActiveId = nextState.activeByProject[tabGroupId];
   const currentActiveId = pageStore.getActiveDocumentId();
   if (nextActiveId && nextActiveId !== currentActiveId) {
-    openOrRestoreTabEntry(host, nextActiveId, scopeId, pageStore, nextState.tabsByProject[scopeId] ?? []);
+    openOrRestoreTabEntry(host, nextActiveId, tabGroupId, pageStore, nextState.tabsByProject[tabGroupId] ?? []);
   }
 }
 
 export function executeCloseDocumentsToRight(host: TabNavigationHost, fromFileId: string): void {
   const tabsStore = useWorkspaceStore.getState();
   const pageStore = usePageStore.getState();
-  const scopeId = host.resolveCanonicalTabScope(pageStore);
-  const closed = tabsStore.closeTabsToRight(scopeId, fromFileId);
+  const tabGroupId = host.resolveCanonicalTabScope(pageStore);
+  const closed = tabsStore.closeTabsToRight(tabGroupId, fromFileId);
   for (const id of closed) {
     sessionCoordinator.closeTab(id);
   }
 
   const nextState = useWorkspaceStore.getState();
-  const nextActiveId = nextState.activeByProject[scopeId];
+  const nextActiveId = nextState.activeByProject[tabGroupId];
   const currentActiveId = pageStore.getActiveDocumentId();
   if (nextActiveId && nextActiveId !== currentActiveId) {
-    openOrRestoreTabEntry(host, nextActiveId, scopeId, pageStore, nextState.tabsByProject[scopeId] ?? []);
+    openOrRestoreTabEntry(host, nextActiveId, tabGroupId, pageStore, nextState.tabsByProject[tabGroupId] ?? []);
   }
 }
 
 export function executeCloseSavedDocuments(host: TabNavigationHost): void {
   const tabsStore = useWorkspaceStore.getState();
   const pageStore = usePageStore.getState();
-  const scopeId = host.resolveCanonicalTabScope(pageStore);
-  const closed = tabsStore.closeSavedTabs(scopeId);
+  const tabGroupId = host.resolveCanonicalTabScope(pageStore);
+  const closed = tabsStore.closeSavedTabs(tabGroupId);
   for (const id of closed) {
     sessionCoordinator.closeTab(id);
   }
 
   const nextState = useWorkspaceStore.getState();
-  const nextActiveId = nextState.activeByProject[scopeId];
+  const nextActiveId = nextState.activeByProject[tabGroupId];
   const currentActiveId = pageStore.getActiveDocumentId();
-  const rootPageId = pageStore.parentPageId || pageStore.currentPage?.id || scopeId;
+  const rootPageId = pageStore.parentPageId || pageStore.currentPage?.id || tabGroupId;
   if (!nextActiveId || nextActiveId === rootPageId || nextActiveId === `${rootPageId}-main`) {
     if (pageStore.currentPage && currentActiveId !== pageStore.currentPage.id) {
       pageStore.setActiveFilePage(pageStore.currentPage);
       syncShallowFileUrlParam(undefined);
     }
   } else if (nextActiveId !== currentActiveId) {
-    openOrRestoreTabEntry(host, nextActiveId, scopeId, pageStore, nextState.tabsByProject[scopeId] ?? []);
+    openOrRestoreTabEntry(host, nextActiveId, tabGroupId, pageStore, nextState.tabsByProject[tabGroupId] ?? []);
   }
 }
 
 export function executeActivateAdjacentTab(host: TabNavigationHost, delta: 1 | -1): void {
   const tabsStore = useWorkspaceStore.getState();
   const pageStore = usePageStore.getState();
-  const scopeId = host.resolveCanonicalTabScope(pageStore);
-  const tabs = tabsStore.tabsByProject[scopeId] ?? [];
+  const tabGroupId = host.resolveCanonicalTabScope(pageStore);
+  const tabs = tabsStore.tabsByProject[tabGroupId] ?? [];
   if (tabs.length <= 1) return;
 
-  const currentActive = tabsStore.activeByProject[scopeId] || pageStore.getActiveDocumentId();
+  const currentActive = tabsStore.activeByProject[tabGroupId] || pageStore.getActiveDocumentId();
   const currentIdx = Math.max(0, tabs.findIndex((t) => t.id === currentActive));
   const nextIdx = (currentIdx + delta + tabs.length) % tabs.length;
   const nextTab = tabs[nextIdx];
@@ -254,15 +254,15 @@ export function executeActivateAdjacentTab(host: TabNavigationHost, delta: 1 | -
 export function executeCloseActiveDocument(host: TabNavigationHost): void {
   const tabsStore = useWorkspaceStore.getState();
   const pageStore = usePageStore.getState();
-  const scopeId = host.resolveCanonicalTabScope(pageStore);
-  const tabs = tabsStore.tabsByProject[scopeId] ?? [];
+  const tabGroupId = host.resolveCanonicalTabScope(pageStore);
+  const tabs = tabsStore.tabsByProject[tabGroupId] ?? [];
   if (tabs.length <= 1) return;
 
-  const activeId = tabsStore.activeByProject[scopeId] || pageStore.getActiveDocumentId();
+  const activeId = tabsStore.activeByProject[tabGroupId] || pageStore.getActiveDocumentId();
   if (!activeId) return;
 
   const activeTab = tabs.find((t) => t.id === activeId);
-  if (!activeTab || isProtectedRootTab(activeTab, scopeId)) return;
+  if (!activeTab || isProtectedRootTab(activeTab, tabGroupId)) return;
 
   executeCloseDocument(host, activeTab.id);
 }

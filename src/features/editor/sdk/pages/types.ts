@@ -7,8 +7,12 @@
 import type { PageComment } from '@/features/editor/domain/types/comment.types';
 import type { PageSuggestion, SuggestionType } from '@/features/editor/domain/types/suggestion.types';
 import type {
+  CompileLogMeta,
+  CompileOutcome,
+  CompileValidationIssue,
   CompilerDiagnostic,
   DiagnosticItemDto,
+  DiagnosticsSummary,
   ErrorExplanationDto,
 } from '@/features/editor/domain/types/compiler.types';
 import type {
@@ -38,6 +42,10 @@ export type {
   ErrorExplanationDto,
   DiagnosticItemDto,
   CompilerDiagnostic,
+  CompileOutcome,
+  CompileLogMeta,
+  DiagnosticsSummary,
+  CompileValidationIssue,
   ProjectSymbolLabelDto,
   ProjectSymbolCitationDto,
   ProjectSymbolCommandDto,
@@ -301,16 +309,25 @@ export interface CompileLatexPayload {
   timeoutMs?: number;
   source?: string;
   files?: Record<string, string>;
+  responseMode?: 'inline' | 'artifact';
   signal?: AbortSignal;
 }
 
 export interface CompileLatexResponse {
   success?: boolean;
+  outcome?: CompileOutcome;
   pdf: string;
+  pdfArtifactUrl?: string;
+  synctexArtifactUrl?: string;
+  synctexAvailable?: boolean;
+  pdfSizeBytes?: number;
   logs: string;
+  logMeta?: CompileLogMeta;
   synctex?: string;
   error?: string;
   diagnostics?: CompilerDiagnostic[];
+  diagnosticsSummary?: DiagnosticsSummary;
+  validationIssues?: CompileValidationIssue[];
 }
 
 export interface WordCountSectionDto {

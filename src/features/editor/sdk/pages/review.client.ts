@@ -293,14 +293,14 @@ export const review = {
   },
 
   getProjectOverview: async (
-    scopeId: string,
+    targetId: string,
     options?: { isPageScope?: boolean },
   ): Promise<ProjectReviewOverviewResponseDto | null> => {
-    if (!scopeId) return null;
+    if (!targetId) return null;
     const segment = options?.isPageScope ? 'pages' : 'spaces';
     try {
       return await apiGet<ProjectReviewOverviewResponseDto>(
-        `${PAGES_API_BASE}/${segment}/${scopeId}/review-overview`,
+        `${PAGES_API_BASE}/${segment}/${targetId}/review-overview`,
         { silent: true },
       );
     } catch {

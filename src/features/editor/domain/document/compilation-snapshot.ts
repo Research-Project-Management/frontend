@@ -130,11 +130,12 @@ export function assembleCompilationSnapshot(params: AssembleSnapshotParams): Pro
   const dirtyFileIdsSet = new Set<string>();
   const pathIndex = buildFilePathIndex(params);
 
-  // 1. Base project files
+  // 1. Base project files (paths already indexed in pathIndex; skip unloaded empty stubs)
   if (params.baseFiles && params.baseFiles.length > 0) {
     for (const file of params.baseFiles) {
-      const path = resolveSnapshotFilePath(file.id, file.path || file.title || file.name, pathIndex);
       const content = extractDocumentContentString(file.content);
+      if (!content) continue;
+      const path = resolveSnapshotFilePath(file.id, file.path || file.title || file.name, pathIndex);
       filesMap[path] = content;
       if (file.id && file.id !== path) {
         filesMap[file.id] = content;

@@ -69,8 +69,8 @@ export function usePageActions() {
     mutationFn: async (params: string | { pageId: string; fileId: string; projectId?: string }) => {
       if (isLocked) throw new Error('Document is locked');
       const fileId = typeof params === 'string' ? params : params.fileId;
-      const scopeId = typeof params === 'string' ? undefined : (params.pageId || params.projectId);
-      return await workspaceCoordinator.setMainFile(fileId, scopeId);
+      const targetId = typeof params === 'string' ? undefined : (params.pageId || params.projectId);
+      return await workspaceCoordinator.setMainFile(fileId, targetId);
     },
     onSuccess: (_, variables) => {
       const targetPageId = typeof variables === 'string' ? variables : variables.pageId;

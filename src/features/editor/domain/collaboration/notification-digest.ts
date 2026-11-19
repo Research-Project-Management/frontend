@@ -29,7 +29,7 @@ export interface BundledNotificationItem {
 }
 
 export interface NotificationBundle {
-  scopeId?: string;
+  bundleKey?: string;
   recipientId: string;
   spaceId?: string | null;
   projectId?: string;
@@ -57,7 +57,7 @@ export interface NotificationDigestAuthorSummary {
 export interface NotificationDigest {
   id: string;
   recipientId: string;
-  scopeId?: string;
+  bundleKey?: string;
   spaceId?: string | null;
   projectId?: string;
   pageId?: string | null;

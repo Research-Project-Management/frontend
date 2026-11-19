@@ -41,8 +41,8 @@ export const exportDocs = {
     const cleanPageId = options.pageId?.trim();
     if (cleanPageId) params.append('pageId', cleanPageId);
     const queryString = params.toString() ? `?${params.toString()}` : '';
-    const targetScopeId = projectId || cleanPageId || '';
-    const scopePrefix = `spaces/${encodeURIComponent(targetScopeId)}`;
+    const targetSpaceId = projectId || cleanPageId || '';
+    const scopePrefix = `spaces/${encodeURIComponent(targetSpaceId)}`;
     const res = await rawFetch(
       `${getPagesBaseUrl()}/${scopePrefix}/export/zip${queryString}`,
       'GET',

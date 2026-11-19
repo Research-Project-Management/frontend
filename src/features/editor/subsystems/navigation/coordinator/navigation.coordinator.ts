@@ -308,12 +308,12 @@ export class NavigationCoordinator {
       editorCommandBus.subscribe('editor:swap-panes', () => {
         const layoutStore = useWorkspaceStore.getState();
         const pageStore = usePageStore.getState();
-        const scopeId = this.resolveCanonicalTabScope(pageStore);
+        const tabGroupId = this.resolveCanonicalTabScope(pageStore);
         const primaryId = pageStore.getActiveDocumentId();
-        const secondaryId = layoutStore.secondaryActiveByProject[scopeId] ?? layoutStore.secondaryFileId;
+        const secondaryId = layoutStore.secondaryActiveByProject[tabGroupId] ?? layoutStore.secondaryFileId;
         if (primaryId && secondaryId) {
           this.openDocument({ fileId: secondaryId, title: '' });
-          layoutStore.setSecondaryActiveTab(scopeId, primaryId);
+          layoutStore.setSecondaryActiveTab(tabGroupId, primaryId);
           layoutStore.setSecondaryFileId(primaryId);
         }
       }),
@@ -349,10 +349,10 @@ export class NavigationCoordinator {
       sessionCoordinator.switchTab(currentActiveId || null, fileId);
     }
 
-    const scopeId = this.resolveCanonicalTabScope(pageStore);
-    const prevTabIds = (tabsStore.tabsByProject[scopeId] ?? []).map((t) => t.id);
+    const tabGroupId = this.resolveCanonicalTabScope(pageStore);
+    const prevTabIds = (tabsStore.tabsByProject[tabGroupId] ?? []).map((t) => t.id);
     const isPreview = Boolean(options.preview);
-    tabsStore.openTab(scopeId, {
+    tabsStore.openTab(tabGroupId, {
       id: fileId,
       title,
       path: optPath || title,
@@ -360,10 +360,10 @@ export class NavigationCoordinator {
       isPreview,
       isDirty: false,
     });
-    tabsStore.setActiveTab(scopeId, fileId);
+    tabsStore.setActiveTab(tabGroupId, fileId);
 
     const afterTabIds = new Set(
-      (useWorkspaceStore.getState().tabsByProject[scopeId] ?? []).map((t) => t.id),
+      (useWorkspaceStore.getState().tabsByProject[tabGroupId] ?? []).map((t) => t.id),
     );
     for (const prevId of prevTabIds) {
       if (prevId !== fileId && !afterTabIds.has(prevId)) {
@@ -411,7 +411,7 @@ export class NavigationCoordinator {
       lruDocumentCache.registerModel(fileId, {
         content: resolveFallbackContent(),
         filePath: optPath || title,
-        projectId: scopeId,
+        projectId: tabGroupId,
         isAuthoritative: hasAuthoritativeFallback,
       });
       existingModel = lruDocumentCache.getModel(fileId);
@@ -424,10 +424,10 @@ export class NavigationCoordinator {
     }
 
     if (!wasAlreadyAuthoritative && !hasAuthoritativeFallback) {
-      hydrateUnopenedDocumentFromOffline({ fileId, title, path: optPath, scopeId });
+      hydrateUnopenedDocumentFromOffline({ fileId, title, path: optPath, tabGroupId });
     }
 
-    const rootPageId = pageStore.currentPage?.id || scopeId || fileId;
+    const rootPageId = pageStore.currentPage?.id || tabGroupId || fileId;
     pageStore.setActiveFilePage({
       id: fileId,
       title,
@@ -438,7 +438,7 @@ export class NavigationCoordinator {
       projectId: pageStore.projectId,
     });
 
-    const rootId = pageStore.currentPage?.id || scopeId;
+    const rootId = pageStore.currentPage?.id || tabGroupId;
     const isRoot = fileId === rootId || fileId === `${rootId}-main`;
     syncShallowFileUrlParam(isRoot ? undefined : fileId);
 

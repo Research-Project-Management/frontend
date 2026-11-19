@@ -31,12 +31,12 @@ export const notifications = {
   },
 
   flushBundle: async (
-    scopeId?: string,
+    bundleKey?: string,
     spaceId?: string,
     pageId?: string,
   ): Promise<NotificationDigest | null> => {
-    const payload: { scopeId?: string; spaceId?: string; pageId?: string } = {};
-    if (scopeId) payload.scopeId = scopeId;
+    const payload: { bundleKey?: string; spaceId?: string; pageId?: string } = {};
+    if (bundleKey) payload.bundleKey = bundleKey;
     if (spaceId) payload.spaceId = spaceId;
     if (pageId) payload.pageId = pageId;
 

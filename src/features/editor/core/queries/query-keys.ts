@@ -8,10 +8,10 @@ import type { QueryClient } from '@tanstack/react-query';
 
 export const pageKeys = {
   all: ['pages'] as const,
-  bootstrap: (scopeId: string, fileId?: string | null, isProjectRoute?: boolean) =>
+  bootstrap: (targetId: string, fileId?: string | null, isProjectRoute?: boolean) =>
     isProjectRoute
-      ? (['pages', 'bootstrap', 'project', scopeId, fileId || 'root'] as const)
-      : (['pages', 'bootstrap', scopeId, fileId || 'root'] as const),
+      ? (['pages', 'bootstrap', 'project', targetId, fileId || 'root'] as const)
+      : (['pages', 'bootstrap', targetId, fileId || 'root'] as const),
   detail: (pageId: string) => ['pages', 'detail', pageId] as const,
   files: (pageId: string) => ['pages', 'detail', pageId, 'files'] as const,
   deletedFiles: (pageId: string) => ['pages', 'detail', pageId, 'deleted-files'] as const,

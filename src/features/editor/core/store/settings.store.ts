@@ -45,6 +45,7 @@ export interface DocumentSettingsState {
   keybinding: KeybindingMode;
   useCache: boolean;
   stopOnFirstError: boolean;
+  stopOnValidationError: boolean;
   settingsPanelOpen: boolean;
   settingsActiveTab: SettingsTab;
   mainFile: string;
@@ -101,6 +102,8 @@ export interface DocumentSettingsState {
   setUseCache: (useCache: boolean) => void;
   setStopOnFirstError: (stop: boolean) => void;
   toggleStopOnFirstError: () => void;
+  setStopOnValidationError: (stop: boolean) => void;
+  toggleStopOnValidationError: () => void;
   setSettingsPanelOpen: (open: boolean) => void;
   toggleSettingsPanel: () => void;
   setSettingsActiveTab: (tab: SettingsTab) => void;
@@ -193,6 +196,7 @@ export const useSettingsStore = create<DocumentSettingsState>()(
       showEditorTabs: true,
       showEquationPreview: true,
       stopOnFirstError: false,
+      stopOnValidationError: true,
       mainBibFile: 'auto',
       referenceSearchStyle: 'author-year',
 
@@ -208,6 +212,9 @@ export const useSettingsStore = create<DocumentSettingsState>()(
       setStopOnFirstError: (stopOnFirstError) => set({ stopOnFirstError }),
       toggleStopOnFirstError: () =>
         set((s) => ({ stopOnFirstError: !s.stopOnFirstError })),
+      setStopOnValidationError: (stopOnValidationError) => set({ stopOnValidationError }),
+      toggleStopOnValidationError: () =>
+        set((s) => ({ stopOnValidationError: !s.stopOnValidationError })),
       setSyncScroll: (syncScroll) => set({ syncScroll }),
       toggleSyncScroll: () => set((s) => ({ syncScroll: !s.syncScroll })),
       setSettingsPanelOpen: (settingsPanelOpen) => set({ settingsPanelOpen }),

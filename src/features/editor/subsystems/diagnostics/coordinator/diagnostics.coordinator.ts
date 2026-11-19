@@ -27,6 +27,9 @@ import {
   areDiagnosticsEqual,
   buildIndexedCompilerErrorItem,
   shiftDiagnosticItemsList,
+  remapDiagnosticItemsWithChangeSet,
+  type ChangeSetLike,
+  type TextDocLike,
   mergeCompilerAndLinterItems,
   binarySearchDiagnosticsAtLine,
   binarySearchDiagnosticsInRange,
@@ -157,6 +160,45 @@ export class DiagnosticsCoordinator {
     const linterShift = shiftDiagnosticItemsList(this.linterIndex.get(canonicalKey), fromLine, deltaLines);
     if (linterShift.changed && linterShift.shifted) {
       this.linterIndex.set(canonicalKey, linterShift.shifted);
+      changed = true;
+    }
+
+    if (changed) {
+      this.notify(canonicalKey, 'shift');
+    }
+  }
+
+  public remapDiagnosticsWithChangeSet(
+    fileIdOrPath: string,
+    oldDoc: TextDocLike,
+    changes: ChangeSetLike,
+    newDoc: { lines: number; lineAt(pos: number): { number: number } },
+  ): void {
+    if (!fileIdOrPath) return;
+    const canonicalKey = this.resolveCanonicalKey(fileIdOrPath);
+
+    let changed = false;
+    const compRemap = remapDiagnosticItemsWithChangeSet(
+      this.fileIndex.get(canonicalKey),
+      oldDoc,
+      changes,
+      newDoc,
+      true,
+    );
+    if (compRemap.changed && compRemap.remapped) {
+      this.fileIndex.set(canonicalKey, compRemap.remapped);
+      changed = true;
+    }
+
+    const linterRemap = remapDiagnosticItemsWithChangeSet(
+      this.linterIndex.get(canonicalKey),
+      oldDoc,
+      changes,
+      newDoc,
+      false,
+    );
+    if (linterRemap.changed && linterRemap.remapped) {
+      this.linterIndex.set(canonicalKey, linterRemap.remapped);
       changed = true;
     }
 

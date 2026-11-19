@@ -3,7 +3,7 @@ import { EditorState } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { usePageStore, editorCommandBus } from '@/features/editor/core';
 import { CodeMirrorEngineAdapter } from '@/features/editor/core/engine/adapters/codemirror.adapter';
-import { getPageChat, clearPageChat, streamEditorChat } from '@/features/ai/services/chat.service';
+import { getPageChat, clearPageChat, fluxTransport } from '@/features/ai';
 
 describe('Editor AI Assistant (Copilot) Subsystem Tests', () => {
   beforeEach(() => {
@@ -101,7 +101,7 @@ describe('Editor AI Assistant (Copilot) Subsystem Tests', () => {
           credentials: 'include',
         }),
       );
-      expect(result).toEqual(mockMessages);
+      expect(result).toEqual({ chatId: null, messages: mockMessages });
     });
 
     it('should delete page chat thread via clearPageChat', async () => {
@@ -141,21 +141,27 @@ describe('Editor AI Assistant (Copilot) Subsystem Tests', () => {
 
       vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
         ok: true,
+        headers: new Headers(),
         body: mockStream,
       } as any);
 
       const received: string[] = [];
-      const generator = streamEditorChat(
-        [{ role: 'user', content: 'Generate equation' }],
-        {
-          projectId: 'proj-1',
-          filename: 'main.tex',
-          fileContent: '\\documentclass{article}',
+      const streamResult = await fluxTransport.stream({
+        messages: [{ role: 'user', content: 'Generate equation' }],
+        context: {
+          mode: 'editor',
+          spaceId: 'proj-1',
+          editor: {
+            filename: 'main.tex',
+            fileContent: '\\documentclass{article}',
+          },
         },
-      );
+      });
 
-      for await (const chunk of generator) {
-        received.push(chunk);
+      for await (const ev of streamResult.events) {
+        if (ev.type === 'text-delta') {
+          received.push(ev.delta);
+        }
       }
 
       expect(received.join('')).toBe('Here is the LaTeX equation:');

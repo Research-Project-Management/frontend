@@ -196,8 +196,8 @@ export const NotificationDigestBadge: React.FC<NotificationDigestBadgeProps> = (
   const handleFlushNow = (e: React.MouseEvent) => {
     e.stopPropagation();
     flushBundle.mutate({
-      scopeId:
-        activeBundleInfo?.bundle.scopeId ||
+      bundleKey:
+        activeBundleInfo?.bundle.bundleKey ||
         (resolvedSpaceId && resolvedPageId
           ? `${resolvedSpaceId}:${resolvedPageId}`
           : resolvedSpaceId || resolvedPageId),

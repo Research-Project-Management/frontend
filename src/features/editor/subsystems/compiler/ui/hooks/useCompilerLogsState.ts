@@ -10,7 +10,10 @@ import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { toast } from 'sonner';
 import { fetchLogEntryExplanation, useLogViewerActions } from './useLogViewerActions';
-import { useCompileStore } from '@/features/editor/subsystems/compiler/coordinator/compiler.store';
+import {
+  useCompileStore,
+  selectFilteredCompileDiagnostics,
+} from '@/features/editor/subsystems/compiler/coordinator/compiler.store';
 import { useEditorInstance } from '@/features/editor/core/bus/use-editor-instance';
 import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
@@ -35,7 +38,6 @@ import {
   DEFAULT_MAIN_FILE,
   COMPILER_LOGS_VIRTUAL_THRESHOLD,
 } from '@/features/editor/domain/constants/editor.constants';
-import { filterDiagnostics } from '@/features/editor/domain/latex/warning-filter';
 import { type TabType } from '../logs/CompilerLogsFilterTabs';
 
 export interface UseCompilerLogsStateOptions {
@@ -68,13 +70,21 @@ export function useCompilerLogsState({
     Boolean(s.rootPageId || s.parentPageId || (s.currentPage?.id && !s.projectId && !s.spaceId)),
   );
   const compileStatus = useCompileStore((s) => s.compileStatus);
+  const compileOutcome = useCompileStore((s) => s.compileOutcome);
+  const compileReport = useCompileStore((s) => s.compileReport);
   const storeParsedLog = useCompileStore((s) => s.parsedLog);
   const storeDiagnostics = useCompileStore((s) => s.compileDiagnostics);
   const { engine } = useEditorInstance();
   const [remoteParsedLog, setRemoteParsedLog] = useState<ParsedLog | null>(null);
 
   useEffect(() => {
-    if (externalParsedLog || (storeDiagnostics && storeDiagnostics.length > 0) || !log || !log.trim()) {
+    if (
+      externalParsedLog ||
+      compileReport ||
+      (storeDiagnostics && storeDiagnostics.length > 0) ||
+      !log ||
+      !log.trim()
+    ) {
       setRemoteParsedLog(null);
       return;
     }
@@ -91,10 +101,13 @@ export function useCompilerLogsState({
     return () => {
       active = false;
     };
-  }, [externalParsedLog, storeDiagnostics, log]);
+  }, [externalParsedLog, compileReport, storeDiagnostics, log]);
 
   const parsed = useMemo(() => {
     if (externalParsedLog) return externalParsedLog;
+    if (compileReport && compileReport.diagnostics.length > 0) {
+      return diagnosticsToParsedLog(compileReport.diagnostics);
+    }
     if (
       storeParsedLog &&
       (storeParsedLog.errors.length > 0 ||
@@ -108,7 +121,7 @@ export function useCompilerLogsState({
     }
     if (remoteParsedLog) return remoteParsedLog;
     return parseLatexLog(log || '');
-  }, [externalParsedLog, storeParsedLog, storeDiagnostics, remoteParsedLog, log]);
+  }, [externalParsedLog, compileReport, storeParsedLog, storeDiagnostics, remoteParsedLog, log]);
 
   const [activeTab, setActiveTab] = useState<TabType>('all');
   const [isRawLogsOpen, setIsRawLogsOpen] = useState(false);
@@ -121,41 +134,36 @@ export function useCompilerLogsState({
 
   const [filterSuppressed, setFilterSuppressed] = useState(true);
 
-  const filterOptions = useMemo(
-    () => ({
+  const filteredDiagnostics = useMemo(
+    () =>
+      selectFilteredCompileDiagnostics(
+        externalParsedLog ? null : compileReport,
+        {
+          suppressBadBoxes,
+          suppressFontWarnings,
+          suppressPackageWarnings,
+          customPatterns: customSuppressedWarnings,
+          stopOnFirstError,
+          applyFilter: filterSuppressed,
+        },
+        externalParsedLog ?? parsed,
+      ),
+    [
+      externalParsedLog,
+      compileReport,
+      parsed,
       suppressBadBoxes,
       suppressFontWarnings,
       suppressPackageWarnings,
-      customPatterns: customSuppressedWarnings,
-    }),
-    [suppressBadBoxes, suppressFontWarnings, suppressPackageWarnings, customSuppressedWarnings],
+      customSuppressedWarnings,
+      stopOnFirstError,
+      filterSuppressed,
+    ],
   );
 
-  const nonTransientWarnings = useMemo(() => {
-    if (stopOnFirstError && parsed.errors.length > 0) {
-      const transientRegex = /(?:^|Warning:\s*)(?:Reference|Citation)\s+.+undefined\s+on\s+input\s+line/i;
-      return parsed.warnings.filter((w) => !transientRegex.test(w.message || ''));
-    }
-    return parsed.warnings;
-  }, [parsed.warnings, parsed.errors.length, stopOnFirstError]);
-
-  const displayedWarnings = useMemo(() => {
-    if (!filterSuppressed) return nonTransientWarnings;
-    return filterDiagnostics(nonTransientWarnings, filterOptions);
-  }, [nonTransientWarnings, filterSuppressed, filterOptions]);
-
-  const displayedBadBoxes = useMemo(() => {
-    if (!filterSuppressed) return parsed.badBoxes;
-    return filterDiagnostics(parsed.badBoxes, filterOptions);
-  }, [parsed.badBoxes, filterSuppressed, filterOptions]);
-
-  const suppressedCount = useMemo(() => {
-    const hiddenWarnings =
-      nonTransientWarnings.length - filterDiagnostics(nonTransientWarnings, filterOptions).length;
-    const hiddenBadBoxes =
-      parsed.badBoxes.length - filterDiagnostics(parsed.badBoxes, filterOptions).length;
-    return hiddenWarnings + hiddenBadBoxes;
-  }, [nonTransientWarnings, parsed.badBoxes, filterOptions]);
+  const displayedWarnings = filteredDiagnostics.warnings;
+  const displayedBadBoxes = filteredDiagnostics.badBoxes;
+  const suppressedCount = filteredDiagnostics.suppressedCount;
 
   const handleClearCacheAndCompile = useCallback(() => {
     if (onClearCacheAndCompile) {
@@ -209,12 +217,18 @@ export function useCompilerLogsState({
   }, [scratchTargetId, scratchIsPageScoped]);
 
   const outputFiles = useMemo(() => {
+    const bibLogs = compileReport?.logMeta?.bibLogFiles ?? [];
     if (auxFiles && auxFiles.length > 0) {
       const names = auxFiles.map((f) => f.name);
-      return Array.from(new Set([...names, ...(log && log.trim() ? ['output.log'] : [])]));
+      return Array.from(
+        new Set([...names, ...bibLogs, ...(log && log.trim() ? ['output.log'] : [])]),
+      );
+    }
+    if (bibLogs.length > 0) {
+      return Array.from(new Set([...DEFAULT_OUTPUT_FILES, ...bibLogs]));
     }
     return DEFAULT_OUTPUT_FILES;
-  }, [auxFiles, log]);
+  }, [auxFiles, compileReport?.logMeta?.bibLogFiles, log]);
 
   const handleDownloadRawLog = useCallback(() => {
     if (!log || !log.trim()) {
@@ -232,6 +246,26 @@ export function useCompilerLogsState({
     URL.revokeObjectURL(url);
     toast.success('Downloaded output.log');
   }, [log]);
+
+  const handleDownloadFullRawLog = useCallback(() => {
+    const artifactUrl = compileReport?.logMeta?.logArtifactUrl;
+    if (artifactUrl) {
+      window.open(artifactUrl, '_blank');
+      toast.success('Downloading full output.log...', { id: 'download-full-raw-log' });
+      return;
+    }
+    if (compileReport?.logMeta?.truncated && scratchTargetId) {
+      downloadFile('output.log');
+      return;
+    }
+    handleDownloadRawLog();
+  }, [
+    compileReport?.logMeta?.logArtifactUrl,
+    compileReport?.logMeta?.truncated,
+    scratchTargetId,
+    downloadFile,
+    handleDownloadRawLog,
+  ]);
 
   const handleDownloadOutputFile = useCallback(
     (fileName: string) => {
@@ -600,6 +634,8 @@ export function useCompilerLogsState({
 
   return {
     compileStatus,
+    compileOutcome,
+    compileReport,
     parsed,
     activeTab,
     setActiveTab,
@@ -630,6 +666,7 @@ export function useCompilerLogsState({
     handlePrevError,
     handleClearCacheAndCompile,
     handleDownloadOutputFile,
+    handleDownloadFullRawLog,
     downloadAllArtifacts,
   };
 }

@@ -9,7 +9,7 @@
  * - Single source of truth for the active compilation lifecycle (IDLE -> COMPILING -> SYNCING -> SUCCESS / ERROR / ABORTED).
  */
 
-import { CompilePipeline, type CompilerPort } from './compile-pipeline';
+import { CompilePipeline, type CompilerDiagnostic, type CompilerPort } from './compile-pipeline';
 import { FlushBarrier } from './flush-barrier';
 import {
   resolveForwardDetail,
@@ -40,16 +40,19 @@ import {
 } from '@/features/editor/core/store/connectivity.store';
 import { useCompileStore } from './compiler.store';
 import { multiTabBus } from '@/shared/lib/multi-tab';
-import type { CompileStatus } from '@/features/editor/domain/types/compiler.types';
+import type {
+  CompileError,
+  CompileOutcome,
+  CompileReport,
+  CompileStatus,
+  DiagnosticsSummary,
+} from '@/features/editor/domain/types/compiler.types';
+import { hasHardSyntaxErrors } from '@/features/editor/subsystems/diagnostics/model/local-latex-linter';
 import {
   extractDocumentContentString,
   extractProjectId,
 } from '@/features/editor/domain/types/core.types';
 import { parseCompileErrors } from '@/features/editor/domain/latex/latex-structure';
-import {
-  diagnosticsToParsedLog,
-  cacheBackendParsedLog,
-} from '@/features/editor/domain/latex/compiler-logs-parser';
 import {
   SnapshotProvider,
   buildPageStoreFilePaths,
@@ -71,6 +74,50 @@ const VALID_COMPILE_STATUSES = new Set<CompileStatus>([
   'error',
   'aborted',
 ]);
+
+function resolveDiagnosticsWithSummary(params: {
+  backendDiags: CompilerDiagnostic[];
+  fallbackErrors?: CompileError[];
+  rawLog: string;
+  mainFile: string;
+  backendSummary?: DiagnosticsSummary;
+}): { diagnostics: CompilerDiagnostic[]; summary: DiagnosticsSummary } {
+  const { backendDiags, fallbackErrors, rawLog, mainFile, backendSummary } = params;
+  const parsedFallback =
+    backendDiags.length > 0 || !rawLog
+      ? []
+      : fallbackErrors && fallbackErrors.length > 0
+        ? fallbackErrors
+        : parseCompileErrors(rawLog);
+
+  const diagnostics: CompilerDiagnostic[] =
+    backendDiags.length > 0
+      ? backendDiags
+      : parsedFallback.map((item) => ({
+          file: item.file || mainFile,
+          line: item.line,
+          message: item.message,
+          context: item.context ?? '',
+          severity: item.severity || ('error' as const),
+          source: item.source,
+          highlightCommand: item.highlightCommand,
+          code: item.code,
+          suggestion: item.suggestion,
+          quickFix: 'quickFix' in item ? item.quickFix : undefined,
+        }));
+
+  const summary: DiagnosticsSummary = backendSummary ?? {
+    totalErrors: diagnostics.filter((diag) => diag.severity === 'error').length,
+    totalWarnings: diagnostics.filter((diag) => diag.severity === 'warning').length,
+    totalBadboxes: diagnostics.filter(
+      (diag) => diag.severity === 'badbox' || diag.category === 'badbox',
+    ).length,
+    suppressedCascadeCount: 0,
+    truncated: false,
+  };
+
+  return { diagnostics, summary };
+}
 
 export interface CompileOptions {
   forceClean?: boolean;
@@ -262,6 +309,7 @@ export class CompilerCoordinator {
 
     const activeDoc = pageStore.getActiveDocument();
     const rootPageId =
+      pageStore.rootPageId ||
       pageStore.parentPageId ||
       pageStore.currentPage?.id ||
       pageStore.projectId ||
@@ -276,6 +324,8 @@ export class CompilerCoordinator {
     if (!isOnline) {
       useConnectivityStore.getState().setOfflinePendingCompile(true);
       sessionCoordinator.flushPendingUnsyncedEdits();
+      compileStore.setCompilePhase('idle');
+      compileStore.setCompileOutcome('offline-queued');
       compileStore.setCompileStatus('idle');
       compileStore.setCompileLog(
         '[Offline Mode] You are currently offline. Changes are safely saved locally (IndexedDB).\n' +
@@ -283,6 +333,25 @@ export class CompilerCoordinator {
       );
       editorCommandBus.dispatch({ type: 'compiler:finished', success: false, aborted: true });
       return false;
+    }
+
+    const isAutoCompileReason =
+      options?.reason === 'auto' || options?.reason === 'auto-compile';
+    if (isAutoCompileReason && settingsStore.stopOnValidationError) {
+      const activeFilePathOrId =
+        activeDoc?.path || activeDoc?.title || activeDoc?.id || pageStore.getActiveDocumentTitle();
+      if (activeFilePathOrId) {
+        const fileDiags = diagnosticsCoordinator.getDiagnosticsForFile(activeFilePathOrId, false);
+        const linterItems = fileDiags.filter(
+          (d) => d.source === 'LaTeX Linter' || d.source === 'linter',
+        );
+        if (hasHardSyntaxErrors(linterItems)) {
+          compileStore.setCompilePhase('idle');
+          compileStore.setCompileOutcome('code-check-blocked');
+          compileStore.setCompileStatus('idle');
+          return false;
+        }
+      }
     }
 
     if (this.isCompiling || compileStore.compileStatus === 'compiling') {
@@ -294,6 +363,8 @@ export class CompilerCoordinator {
       };
       this.compileAbortController?.abort();
       const cancelProjectId =
+        pageStore.rootPageId ||
+        pageStore.parentPageId ||
         (this.options.getProjectId ? this.options.getProjectId() : undefined) ||
         extractProjectId(activeDoc) ||
         pageStore.projectId ||
@@ -371,7 +442,7 @@ export class CompilerCoordinator {
     try {
       const res = await this.compilerEngine.compile({
         projectId: effectiveProjectId,
-        pageId: effectiveActiveFileId,
+        pageId: rootPageId,
         mainFile: resolvedMainFile,
         source: snapshot.source,
         files: snapshot.files,
@@ -402,15 +473,34 @@ export class CompilerCoordinator {
         compileStore.setPdfUrl(res.pdfUrl ?? null);
         this.synctexMap = res.synctexMap ?? null;
         this.rawSynctex = res.rawSynctex ?? res.synctexData ?? null;
-        compileStore.setCompileLog(res.logs ?? res.rawLog ?? null);
-        compileStore.setCompileStatus('done');
-        compileStore.setLastCompiledAt(
+
+        const rawLog = res.logs ?? res.rawLog ?? '';
+        const backendDiags = res.diagnostics || [];
+        const compiledAt =
           res.compiledAt instanceof Date
             ? res.compiledAt
             : typeof res.compiledAt === 'number'
               ? new Date(res.compiledAt)
-              : new Date(),
-        );
+              : new Date();
+        const { diagnostics: effectiveDiagnostics, summary } = resolveDiagnosticsWithSummary({
+          backendDiags,
+          rawLog,
+          mainFile: resolvedMainFile,
+          backendSummary: res.diagnosticsSummary,
+        });
+
+        const report: CompileReport = {
+          outcome: res.outcome || 'success',
+          errorMessage: null,
+          diagnostics: effectiveDiagnostics,
+          summary,
+          validationIssues: [],
+          logText: rawLog || null,
+          logMeta: res.logMeta ?? null,
+          compiledAt,
+          mainFile: resolvedMainFile,
+        };
+        compileStore.applyCompileResult(report);
 
         if (res.synctexPromise) {
           res.synctexPromise
@@ -423,23 +513,7 @@ export class CompilerCoordinator {
             .catch(() => {});
         }
 
-        const rawLog = res.logs ?? res.rawLog ?? '';
-        const backendDiags = res.diagnostics || [];
-        compileStore.setCompileDiagnostics(backendDiags);
-        const structuredParsedLog = diagnosticsToParsedLog(backendDiags);
-        if (rawLog) {
-          cacheBackendParsedLog(rawLog, structuredParsedLog);
-        }
-        compileStore.setParsedLog(structuredParsedLog);
-
-        const rawSuccessDiagnostics =
-          backendDiags.length > 0
-            ? backendDiags
-            : rawLog
-              ? parseCompileErrors(rawLog)
-              : [];
-        const successDiagnostics = normalizeEditorDiagnostics(rawSuccessDiagnostics, false);
-        compileStore.setCompileErrors(successDiagnostics);
+        const successDiagnostics = normalizeEditorDiagnostics(effectiveDiagnostics, false);
         diagnosticsCoordinator.ingestCompilerErrors(successDiagnostics, resolvedMainFile);
 
         if (res.flushedFileIds && res.flushedFileIds.length > 0) {
@@ -479,6 +553,7 @@ export class CompilerCoordinator {
       const isAborted =
         res.aborted ||
         res.status === 'aborted' ||
+        res.outcome === 'terminated' ||
         currentController.signal.aborted ||
         res.error === 'Compilation superseded' ||
         res.error === 'Compilation stopped' ||
@@ -486,30 +561,55 @@ export class CompilerCoordinator {
         rawLog.toLowerCase().includes('signal is aborted');
 
       if (isAborted) {
+        compileStore.setCompilePhase('idle');
         compileStore.setCompileStatus('idle');
         editorCommandBus.dispatch({ type: 'compiler:finished', success: false, aborted: true });
         this.scheduleNextPendingCompile(currentController);
         return false;
       }
 
-      compileStore.setCompileStatus('error');
-      compileStore.setCompileLog(rawLog || null);
+      const failOutcome: CompileOutcome =
+        res.outcome ||
+        (settingsStore.stopOnFirstError ? 'stopped-on-first-error' : 'failure');
+      const isNonCodeOutcome =
+        failOutcome === 'validation-problems' || failOutcome === 'clsi-unavailable';
+      const { diagnostics: effectiveFailureDiags, summary: failSummary } = isNonCodeOutcome
+        ? {
+            diagnostics: [] as CompilerDiagnostic[],
+            summary: res.diagnosticsSummary ?? {
+              totalErrors: 0,
+              totalWarnings: 0,
+              totalBadboxes: 0,
+              suppressedCascadeCount: 0,
+              truncated: false,
+            },
+          }
+        : resolveDiagnosticsWithSummary({
+            backendDiags: res.diagnostics || [],
+            fallbackErrors: res.errors,
+            rawLog,
+            mainFile: resolvedMainFile,
+            backendSummary: res.diagnosticsSummary,
+          });
 
-      const backendDiags = res.diagnostics || [];
-      compileStore.setCompileDiagnostics(backendDiags);
-      const structuredParsedLog = diagnosticsToParsedLog(backendDiags);
-      if (rawLog && backendDiags.length > 0) {
-        cacheBackendParsedLog(rawLog, structuredParsedLog);
+      compileStore.applyCompileResult({
+        outcome: failOutcome,
+        errorMessage: res.error || 'LaTeX compilation failed.',
+        diagnostics: effectiveFailureDiags,
+        summary: failSummary,
+        validationIssues: res.validationIssues ?? [],
+        logText: rawLog || null,
+        logMeta: res.logMeta ?? null,
+        compiledAt: null,
+        mainFile: resolvedMainFile,
+      });
+
+      if (failOutcome === 'validation-problems') {
+        diagnosticsCoordinator.ingestCompilerErrors([], resolvedMainFile);
+      } else if (failOutcome !== 'clsi-unavailable') {
+        const formattedErrors = normalizeEditorDiagnostics(effectiveFailureDiags, true);
+        diagnosticsCoordinator.ingestCompilerErrors(formattedErrors, resolvedMainFile);
       }
-      compileStore.setParsedLog(structuredParsedLog);
-
-      const formattedErrors = normalizeEditorDiagnostics(
-        backendDiags.length > 0 ? backendDiags : res.errors || [],
-        true,
-      );
-
-      compileStore.setCompileErrors(formattedErrors);
-      diagnosticsCoordinator.ingestCompilerErrors(formattedErrors, resolvedMainFile);
 
       if (res.flushedFileIds && res.flushedFileIds.length > 0) {
         res.flushedFileIds.forEach((fid: string) => compileStore.clearDirty(fid));
@@ -525,6 +625,8 @@ export class CompilerCoordinator {
         sessionCoordinator.flushPendingUnsyncedEdits();
         this.pendingCompileOptions = undefined;
         compileStore.setPendingCompile(false);
+        compileStore.setCompilePhase('idle');
+        compileStore.setCompileOutcome('offline-queued');
         compileStore.setCompileStatus('idle');
         compileStore.setCompileLog(
           '[Offline Mode] Network connection lost during compilation request.\n' +
@@ -532,7 +634,24 @@ export class CompilerCoordinator {
         );
         editorCommandBus.dispatch({ type: 'compiler:finished', success: false, aborted: true });
       } else {
-        compileStore.setCompileStatus('error');
+        const msg = err instanceof Error ? err.message : String(err);
+        compileStore.applyCompileResult({
+          outcome: 'clsi-unavailable',
+          errorMessage: msg || 'Compilation service unavailable',
+          diagnostics: [],
+          summary: {
+            totalErrors: 0,
+            totalWarnings: 0,
+            totalBadboxes: 0,
+            suppressedCascadeCount: 0,
+            truncated: false,
+          },
+          validationIssues: [],
+          logText: msg || null,
+          logMeta: null,
+          compiledAt: null,
+          mainFile: resolvedMainFile,
+        });
         editorCommandBus.dispatch({ type: 'compiler:finished', success: false, aborted: false });
         this.scheduleNextPendingCompile(currentController);
       }
@@ -575,11 +694,11 @@ export class CompilerCoordinator {
     const compileStore = useCompileStore.getState();
     const activeDoc = pageStore.getActiveDocument();
     const targetProjectId =
+      pageStore.rootPageId ||
+      pageStore.parentPageId ||
       (this.options.getProjectId ? this.options.getProjectId() : undefined) ||
       extractProjectId(activeDoc) ||
       pageStore.projectId ||
-      pageStore.rootPageId ||
-      pageStore.parentPageId ||
       pageStore.currentPage?.id ||
       pageStore.spaceId ||
       undefined;

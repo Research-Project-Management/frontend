@@ -49,10 +49,10 @@ export function registerEditorBootstrapPromise(
 }
 
 export function waitForEditorBootstrap(
-  scopeId?: string | null,
+  targetId?: string | null,
 ): Promise<EditorBootstrapResponseDto | null> | null {
-  if (!scopeId) return null;
-  return inFlightEditorBootstraps.get(scopeId) ?? null;
+  if (!targetId) return null;
+  return inFlightEditorBootstraps.get(targetId) ?? null;
 }
 
 export function normalizeBootstrapActivePage(data: EditorBootstrapResponseDto): Page {
@@ -90,7 +90,7 @@ export function normalizeBootstrapActivePage(data: EditorBootstrapResponseDto): 
 export function hydrateEditorBootstrap(
   queryClient: QueryClient,
   data: EditorBootstrapResponseDto,
-  requestedScopeId?: string,
+  requestedTargetId?: string,
   options?: { offlineFallback?: boolean },
 ): void {
   const { workspace, tree, activeDoc, symbols, lastBuild, degradedBranches } = data;
@@ -128,18 +128,18 @@ export function hydrateEditorBootstrap(
     if (workspace.pageId && workspace.pageId !== workspace.rootDocId) {
       queryClient.setQueryData(pageKeys.detail(workspace.pageId), activePage);
     }
-    if (requestedScopeId && requestedScopeId === workspace.rootDocId) {
-      queryClient.setQueryData(pageKeys.detail(requestedScopeId), activePage);
+    if (requestedTargetId && requestedTargetId === workspace.rootDocId) {
+      queryClient.setQueryData(pageKeys.detail(requestedTargetId), activePage);
     }
   }
 
   const pageFiles = mapStructureNodesToPageFiles(tree, workspace.rootDocId);
-  const fileScopeIds = Array.from(
+  const fileTargetIds = Array.from(
     new Set(
-      [workspace.pageId, workspace.rootDocId, requestedScopeId].filter((id): id is string => Boolean(id)),
+      [workspace.pageId, workspace.rootDocId, requestedTargetId].filter((id): id is string => Boolean(id)),
     ),
   );
-  for (const id of fileScopeIds) {
+  for (const id of fileTargetIds) {
     queryClient.setQueryData(pageKeys.files(id), pageFiles);
   }
 
@@ -150,10 +150,10 @@ export function hydrateEditorBootstrap(
     ...(workspace.rootDocId !== workspace.pageId
       ? [storageKeys.files(workspace.rootDocId, workspace.rootDocId)]
       : []),
-    ...(requestedScopeId &&
-    (requestedScopeId === workspace.pageId ||
-      requestedScopeId === workspace.rootDocId)
-      ? [storageKeys.files(requestedScopeId, requestedScopeId)]
+    ...(requestedTargetId &&
+    (requestedTargetId === workspace.pageId ||
+      requestedTargetId === workspace.rootDocId)
+      ? [storageKeys.files(requestedTargetId, requestedTargetId)]
       : []),
   ];
   for (const key of storageKeysToSeed) {
@@ -196,7 +196,7 @@ export function hydrateEditorBootstrap(
   }
 
   void syncedDocCacheStore.saveWorkspaceTree(
-    [workspace.pageId, workspace.rootDocId, requestedScopeId].filter(
+    [workspace.pageId, workspace.rootDocId, requestedTargetId].filter(
       (id): id is string => Boolean(id && id.trim()),
     ),
     { workspace, tree },
@@ -261,16 +261,16 @@ export function hydrateEditorBootstrap(
 
 export const editorBootstrapQuery = (
   _queryClient: QueryClient | undefined,
-  scopeId: string,
+  targetId: string,
   options?: { fileId?: string | null; isProjectRoute?: boolean },
 ) => {
   const fileId = options?.fileId ?? null;
   const isProjectRoute = Boolean(options?.isProjectRoute);
   return queryOptions({
-    queryKey: pageKeys.bootstrap(scopeId, fileId, isProjectRoute),
+    queryKey: pageKeys.bootstrap(targetId, fileId, isProjectRoute),
     queryFn: async ({ signal, client }): Promise<EditorBootstrapResponseDto | null> => {
       if (
-        !scopeId ||
+        !targetId ||
         typeof pagesService.bootstrap?.getEditorBootstrap !== 'function'
       ) {
         return null;
@@ -278,20 +278,20 @@ export const editorBootstrapQuery = (
 
       const promise = (async () => {
         try {
-          const data = await pagesService.bootstrap.getEditorBootstrap(scopeId, {
+          const data = await pagesService.bootstrap.getEditorBootstrap(targetId, {
             fileId,
             isProjectRoute,
             signal,
           });
           if (data && data.workspace && data.activeDoc) {
-            hydrateEditorBootstrap(client, data, scopeId);
+            hydrateEditorBootstrap(client, data, targetId);
             return data;
           }
           return null;
         } catch {
-          const offline = await synthesizeOfflineEditorBootstrap(scopeId, fileId);
+          const offline = await synthesizeOfflineEditorBootstrap(targetId, fileId);
           if (offline) {
-            hydrateEditorBootstrap(client, offline.dto, scopeId, { offlineFallback: true });
+            hydrateEditorBootstrap(client, offline.dto, targetId, { offlineFallback: true });
             if (offline.markActiveDirty) {
               lruDocumentCache.markDirty(offline.dto.activeDoc.id);
             }
@@ -301,7 +301,7 @@ export const editorBootstrapQuery = (
         }
       })();
 
-      return registerEditorBootstrapPromise([scopeId, fileId], promise);
+      return registerEditorBootstrapPromise([targetId, fileId], promise);
     },
     staleTime: DOCUMENT_QUERY_STALE_TIME,
     gcTime: DOCUMENT_QUERY_GC_TIME,

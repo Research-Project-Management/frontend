@@ -19,7 +19,8 @@ import { aiCoordinator } from '@/features/editor/subsystems/ai/coordinator/ai.co
 import { pagesService } from '@/features/editor/sdk/pages.service';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
 import { setActiveEditorEngine } from '@/features/editor/core';
-import { parseSseDataChunk, streamEditorChat, getPageChat } from '@/features/ai/services/chat.service';
+import { fluxTransport, getPageChat } from '@/features/ai';
+import { decodeFluxSseFrame } from '@/features/ai/transport/sse';
 import type { DiffProposal } from '@/features/editor/domain/types/ports/editor-engine.port';
 
 describe('Khối 2 / Tầng 5 Frontend — Inline Diff, Visual Mode, Copilot Chat & Track Changes Integration', () => {
@@ -299,22 +300,28 @@ describe('Khối 2 / Tầng 5 Frontend — Inline Diff, Visual Mode, Copilot Cha
     });
   });
 
-  describe('3. chat.service SSE Metadata Filtering & Page Chat Payload', () => {
-    it('parseSseDataChunk invokes onMeta on [META] and ignores metadata JSON objects without content', () => {
-      const onMeta = vi.fn();
-      const metaChunk = parseSseDataChunk('[META]{"chatId":"chat-99","title":"Proof"}', { onMeta });
-      expect(metaChunk).toEqual({});
-      expect(onMeta).toHaveBeenCalledWith({ chatId: 'chat-99', title: 'Proof' });
+  describe('3. SSE Metadata Filtering & Page Chat Payload', () => {
+    it('decodeFluxSseFrame decodes [META] and ignores metadata JSON objects without content', () => {
+      const metaEvents = decodeFluxSseFrame('message', '[META]{"chatId":"chat-99","title":"Proof"}');
+      expect(metaEvents).toEqual([
+        {
+          type: 'meta',
+          chatId: 'chat-99',
+          title: 'Proof',
+          agent: undefined,
+          intent: undefined,
+          sources: undefined,
+        },
+      ]);
 
-      const statusChunk = parseSseDataChunk('{"trace_id":"t-1","chat_id":"chat-99"}', { onMeta });
-      expect(statusChunk).toEqual({});
-      expect(onMeta).toHaveBeenCalledWith({ chatId: 'chat-99' });
+      const statusEvents = decodeFluxSseFrame('message', '{"trace_id":"t-1","chat_id":"chat-99"}');
+      expect(statusEvents).toEqual([{ type: 'meta', chatId: 'chat-99' }]);
 
-      const contentChunk = parseSseDataChunk('{"content":"Hello LaTeX"}', { onMeta });
-      expect(contentChunk).toEqual({ content: 'Hello LaTeX' });
+      const contentEvents = decodeFluxSseFrame('message', '{"content":"Hello LaTeX"}');
+      expect(contentEvents).toEqual([{ type: 'text-delta', delta: 'Hello LaTeX' }]);
     });
 
-    it('streamEditorChat sends space_id, page_id, chat_id, attachments, and document_structure', async () => {
+    it('fluxTransport.stream sends spaceId, pageId, chatId, attachments, and documentStructure for editor mode', async () => {
       const encoder = new TextEncoder();
       const streamBody = new ReadableStream({
         start(c) {
@@ -327,31 +334,43 @@ describe('Khối 2 / Tầng 5 Frontend — Inline Diff, Visual Mode, Copilot Cha
       });
       const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({
         ok: true,
+        headers: new Headers(),
         body: streamBody,
       } as any);
 
-      const metas: any[] = [];
+      const metas: unknown[] = [];
       const chunks: string[] = [];
-      for await (const c of streamEditorChat(
-        [{ role: 'user', content: 'Hi', attachments: [{ id: 'f1', name: 'ref.pdf' }] as any }],
-        {
+      const streamResult = await fluxTransport.stream({
+        messages: [{ role: 'user', content: 'Hi', attachments: [{ id: 'f1', name: 'ref.pdf' }] }],
+        context: {
+          mode: 'editor',
           spaceId: 'sp-1',
-          pageId: 'pg-1',
           chatId: 'chat-1',
-          documentStructure: '\\section{One}',
-          onMeta: (m) => metas.push(m),
+          editor: {
+            pageId: 'pg-1',
+            documentStructure: '\\section{One}',
+          },
         },
-      )) {
-        chunks.push(c);
+      });
+
+      for await (const ev of streamResult.events) {
+        if (ev.type === 'meta') metas.push(ev);
+        if (ev.type === 'text-delta') chunks.push(ev.delta);
       }
 
       expect(chunks).toEqual(['Done']);
-      expect(metas[0]).toEqual({ chatId: 'chat-1' });
-      const sentBody = JSON.parse(String(fetchSpy.mock.calls[0][1]?.body));
-      expect(sentBody.space_id).toBe('sp-1');
-      expect(sentBody.page_id).toBe('pg-1');
-      expect(sentBody.chat_id).toBe('chat-1');
-      expect(sentBody.document_structure).toBe('\\section{One}');
+      expect(metas[0]).toMatchObject({ type: 'meta', chatId: 'chat-1' });
+      const sentBody = JSON.parse(String(fetchSpy.mock.calls[0][1]?.body)) as {
+        spaceId: string;
+        pageId: string;
+        chatId: string;
+        documentStructure: string;
+        messages: Array<{ attachments: Array<{ id: string; name: string }> }>;
+      };
+      expect(sentBody.spaceId).toBe('sp-1');
+      expect(sentBody.pageId).toBe('pg-1');
+      expect(sentBody.chatId).toBe('chat-1');
+      expect(sentBody.documentStructure).toBe('\\section{One}');
       expect(sentBody.messages[0].attachments).toEqual([{ id: 'f1', name: 'ref.pdf' }]);
     });
 
@@ -368,8 +387,11 @@ describe('Khối 2 / Tầng 5 Frontend — Inline Diff, Visual Mode, Copilot Cha
         }),
       } as any);
 
-      const msgs = await getPageChat('pg-1');
-      expect(msgs).toEqual([{ role: 'user', content: 'Saved prompt' }]);
+      const res = await getPageChat('pg-1');
+      expect(res).toEqual({
+        chatId: 'c1',
+        messages: [{ role: 'user', content: 'Saved prompt' }],
+      });
     });
   });
 

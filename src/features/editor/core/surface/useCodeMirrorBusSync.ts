@@ -38,7 +38,11 @@ export interface AttachCodeMirrorBusListenersOptions {
   currentFilePathRef: React.MutableRefObject<string>;
   isSecondaryRef: React.MutableRefObject<boolean>;
   yTextRef: React.MutableRefObject<Y.Text | null | undefined>;
-  syncErrorLens: (targetView: EditorView, targetFilePath: string) => void;
+  syncErrorLens: (
+    targetView: EditorView,
+    targetFilePath: string,
+    options?: { syncCompilerGutter?: boolean },
+  ) => void;
   setActiveEditorView: (view: EditorView | null) => void;
   handleFocus: () => void;
 }
@@ -63,16 +67,17 @@ export function attachCodeMirrorBusListeners(
   let diagSyncTimerId: ReturnType<typeof setTimeout> | null = null;
   const unsubDiagnostics = diagnosticsCoordinator.subscribe((_fileKey, source) => {
     // Only re-trigger forceLinting when filter options change ('filter').
-    // Never call forceLinting on 'linter', 'shift', 'clear', or 'compiler' notifications,
-    // preventing coordinator -> forceLinting -> ingestLinterDiagnostics feedback loops.
+    // Compiler diagnostics arrive via push StateEffect (`setCompilerDiagnosticsEffect`) so
+    // never call forceLinting on 'linter', 'shift', 'clear', or 'compiler' notifications.
     const shouldForceLint = source === 'filter';
+    const syncCompilerGutter = source !== 'linter';
     const runSync = () => {
       if (viewRef.current) {
         try {
           if (shouldForceLint) {
             forceLinting(viewRef.current);
           }
-          syncErrorLens(viewRef.current, currentFilePathRef.current);
+          syncErrorLens(viewRef.current, currentFilePathRef.current, { syncCompilerGutter });
         } catch {
           // Defer if called mid-transaction
           if (diagSyncTimerId !== null) clearTimeout(diagSyncTimerId);
@@ -82,7 +87,7 @@ export function attachCodeMirrorBusListeners(
               if (shouldForceLint) {
                 forceLinting(viewRef.current);
               }
-              syncErrorLens(viewRef.current, currentFilePathRef.current);
+              syncErrorLens(viewRef.current, currentFilePathRef.current, { syncCompilerGutter });
             }
           }, 0);
         }

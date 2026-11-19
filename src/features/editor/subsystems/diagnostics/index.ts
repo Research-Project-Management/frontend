@@ -31,6 +31,11 @@ export {
   type LatexLinterOptions,
   type RetractedItemInfo,
 } from './model/latex-linter-core';
+export {
+  runLocalLatexSyntaxLinter,
+  hasHardSyntaxErrors,
+  HARD_SYNTAX_ERROR_CODES,
+} from './model/local-latex-linter';
 
 // 3. Engine Extensions (CodeMirror 6)
 export {
@@ -43,6 +48,11 @@ export {
 } from './extensions/latex-error-lens';
 export {
   createDiagnosticsGutter,
+  compilerDiagnosticsField,
+  setCompilerDiagnosticsEffect,
+  clearCompilerDiagnosticsEffect,
+  type CompilerDiagnosticRange,
+  type CompilerDiagnosticsState,
   type DiagnosticsGutterOptions,
 } from './extensions/diagnostics-gutter';
 export {

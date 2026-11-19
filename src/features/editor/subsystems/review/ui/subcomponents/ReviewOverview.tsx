@@ -183,16 +183,16 @@ export function OverviewView({
 }: OverviewViewProps) {
   const [fileCounts, setFileCounts] = useState<Record<string, { visible: number; resolved: number }>>({});
   const rootPageId = usePageStore((s) => s.rootPageId);
-  const overviewScopeId = rootPageId || projectId || '';
+  const overviewTargetId = rootPageId || projectId || '';
   const isPageScope = Boolean(rootPageId);
 
   const { data: overviewData, isLoading: isOverviewLoading } = useQuery({
-    queryKey: ['project-review-overview', overviewScopeId, isPageScope ? 'page' : 'project'],
+    queryKey: ['project-review-overview', overviewTargetId, isPageScope ? 'page' : 'project'],
     queryFn: () =>
-      pagesService.review.getProjectOverview(overviewScopeId, {
+      pagesService.review.getProjectOverview(overviewTargetId, {
         isPageScope,
       }),
-    enabled: Boolean(overviewScopeId),
+    enabled: Boolean(overviewTargetId),
     staleTime: 30_000,
     gcTime: 5 * 60_000,
   });

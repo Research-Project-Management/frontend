@@ -62,15 +62,15 @@ export class SyncedDocCacheStore {
     this.docMemoryCache.set(docId, entry);
   }
 
-  private setTreeMemoryBounded(scopeId: string, entry: CachedWorkspaceTree): void {
+  private setTreeMemoryBounded(targetId: string, entry: CachedWorkspaceTree): void {
     if (
       this.treeMemoryCache.size >= EDITOR_LIMITS.MAX_MEMORY_UNSYNCED_EDITS &&
-      !this.treeMemoryCache.has(scopeId)
+      !this.treeMemoryCache.has(targetId)
     ) {
       const oldestKey = this.treeMemoryCache.keys().next().value;
       if (oldestKey) this.treeMemoryCache.delete(oldestKey);
     }
-    this.treeMemoryCache.set(scopeId, entry);
+    this.treeMemoryCache.set(targetId, entry);
   }
 
   private evictOldestWorkspaceTreeLocalStorageEntry(): boolean {
@@ -314,14 +314,14 @@ export class SyncedDocCacheStore {
   }
 
   public async saveWorkspaceTree(
-    scopeIds: string[],
+    targetIds: string[],
     payload: { workspace: unknown; tree: unknown[] },
   ): Promise<void> {
-    if (!Array.isArray(scopeIds) || scopeIds.length === 0 || !payload) return;
-    const uniqueScopes = Array.from(
-      new Set(scopeIds.map((id) => id?.trim()).filter((id): id is string => Boolean(id))),
+    if (!Array.isArray(targetIds) || targetIds.length === 0 || !payload) return;
+    const uniqueTargets = Array.from(
+      new Set(targetIds.map((id) => id?.trim()).filter((id): id is string => Boolean(id))),
     );
-    if (uniqueScopes.length === 0) return;
+    if (uniqueTargets.length === 0) return;
 
     const entry: CachedWorkspaceTree = {
       workspace: payload.workspace,
@@ -329,8 +329,8 @@ export class SyncedDocCacheStore {
       updatedAt: Date.now(),
     };
 
-    for (const scopeId of uniqueScopes) {
-      this.setTreeMemoryBounded(scopeId, entry);
+    for (const targetId of uniqueTargets) {
+      this.setTreeMemoryBounded(targetId, entry);
     }
 
     if (typeof window === 'undefined') return;
@@ -352,8 +352,8 @@ export class SyncedDocCacheStore {
         }
       }
 
-      for (const scopeId of uniqueScopes) {
-        const storageKey = `${TREE_STORAGE_PREFIX}${scopeId}`;
+      for (const targetId of uniqueTargets) {
+        const storageKey = `${TREE_STORAGE_PREFIX}${targetId}`;
         if (!localStorage.getItem(storageKey)) {
           while (existingTreeKeys >= EDITOR_LIMITS.MAX_WORKSPACE_TREE_CACHE_ENTRIES) {
             if (!this.evictOldestWorkspaceTreeLocalStorageEntry()) break;
@@ -378,19 +378,19 @@ export class SyncedDocCacheStore {
     }
   }
 
-  public async getWorkspaceTree(scopeId: string): Promise<CachedWorkspaceTree | null> {
-    if (!scopeId) return null;
+  public async getWorkspaceTree(targetId: string): Promise<CachedWorkspaceTree | null> {
+    if (!targetId) return null;
 
-    const mem = this.treeMemoryCache.get(scopeId);
+    const mem = this.treeMemoryCache.get(targetId);
     if (mem) return mem;
 
     if (typeof window === 'undefined') return null;
     try {
-      const raw = localStorage.getItem(`${TREE_STORAGE_PREFIX}${scopeId}`);
+      const raw = localStorage.getItem(`${TREE_STORAGE_PREFIX}${targetId}`);
       if (!raw) return null;
       const parsed = JSON.parse(raw) as CachedWorkspaceTree;
       if (parsed && typeof parsed === 'object' && parsed.workspace && Array.isArray(parsed.tree)) {
-        this.setTreeMemoryBounded(scopeId, parsed);
+        this.setTreeMemoryBounded(targetId, parsed);
         return parsed;
       }
     } catch {

@@ -19,6 +19,8 @@ export interface ParsedCompileError {
   context: string;
   file?: string;
   severity?: 'error' | 'warning' | 'info' | 'badbox';
+  source?: 'tex' | 'bibtex' | 'biber' | 'system';
+  highlightCommand?: string;
   code?: string;
   suggestion?: string;
   quickFix?: {
@@ -38,6 +40,8 @@ export function parseCompileErrors(
       message: d.message,
       context: d.context || d.message,
       severity: d.severity,
+      ...(d.source ? { source: d.source } : {}),
+      ...(d.highlightCommand ? { highlightCommand: d.highlightCommand } : {}),
       code: d.code,
       suggestion: d.suggestion || d.quickFix?.description,
       quickFix: d.quickFix,

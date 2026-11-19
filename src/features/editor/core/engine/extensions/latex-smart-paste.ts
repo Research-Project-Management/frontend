@@ -42,7 +42,7 @@ export function createLatexSmartPasteExtension(options: LatexSmartPasteOptions =
     uploadFile = (pId, f, n) => getDefaultFileUploader()(pId, f, n),
     onFileTreeUpdated = () => editorCommandBus.dispatch({ type: 'filetree:updated' }),
   } = options;
-  const targetScopeId = spaceId || projectId;
+  const targetSpaceId = spaceId || projectId;
 
   return EditorView.domEventHandlers({
     paste(event, view) {
@@ -65,8 +65,8 @@ export function createLatexSmartPasteExtension(options: LatexSmartPasteOptions =
           });
 
           // Upload image in background if spaceId / projectId is provided
-          if (targetScopeId) {
-            uploadFile(targetScopeId, file, file.name)
+          if (targetSpaceId) {
+            uploadFile(targetSpaceId, file, file.name)
               .then(() => {
                 onFileTreeUpdated();
               })

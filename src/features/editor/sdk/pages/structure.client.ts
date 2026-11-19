@@ -30,7 +30,7 @@ export type {
 
 export function mapStructureNodesToStorageItems(
   nodes: StructureNodeDto[],
-  scopeId: string,
+  targetId: string,
 ): EditorStorageItem[] {
   if (!Array.isArray(nodes)) return [];
   const pageState = typeof usePageStore?.getState === 'function' ? usePageStore.getState() : undefined;
@@ -44,11 +44,11 @@ export function mapStructureNodesToStorageItems(
     const isFileAsset = upperType === 'FILE';
     const normalizedPath = normalizeVirtualPath(n.path || n.name) || n.name;
     const resolvedSpaceId = n.spaceId ?? n.projectId ?? null;
-    const resolvedPageId = n.pageId ?? n.projectId ?? scopeId ?? null;
+    const resolvedPageId = n.pageId ?? n.projectId ?? targetId ?? null;
     return {
       id: n.id,
       nodeId: n.id,
-      spaceId: resolvedSpaceId ?? scopeId ?? null,
+      spaceId: resolvedSpaceId ?? targetId ?? null,
       pageId: resolvedPageId,
       projectId: n.projectId ?? null,
       filename: n.name,
@@ -64,7 +64,7 @@ export function mapStructureNodesToStorageItems(
       ...(isFileAsset
         ? {
             url: buildFilestoreStreamUrl(
-              resolvedSpaceId || scopeId,
+              resolvedSpaceId || targetId,
               n.fileId || n.id,
               n.pageId || undefined,
               storeContext,
@@ -124,14 +124,14 @@ export const structure = {
     projectId: string,
     params?: { filePath?: string; docId?: string; pageId?: string; content?: string },
   ): Promise<ProjectOutlineResponseDto> => {
-    const scopeId = params?.pageId || projectId;
-    if (!scopeId) {
+    const targetId = params?.pageId || projectId;
+    if (!targetId) {
       return { rootDocPath: null, entries: [], tree: [] };
     }
     try {
       if (params?.content !== undefined) {
         return await apiPost<ProjectOutlineResponseDto>(
-          `${PAGES_API_BASE}/pages/${scopeId}/structure/outline`,
+          `${PAGES_API_BASE}/pages/${targetId}/structure/outline`,
           params,
           { silent: true },
         );
@@ -141,7 +141,7 @@ export const structure = {
       if (params?.docId) query.docId = params.docId;
       if (params?.pageId) query.pageId = params.pageId;
       return await apiGet<ProjectOutlineResponseDto>(
-        `${PAGES_API_BASE}/pages/${scopeId}/structure/outline`,
+        `${PAGES_API_BASE}/pages/${targetId}/structure/outline`,
         { params: query, silent: true },
       );
     } catch {

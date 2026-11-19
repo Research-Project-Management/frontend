@@ -29,7 +29,7 @@ const PdfViewer = dynamic(
 export function DetachedPdfViewer() {
   const params = useParams<{ projectId?: string; pageId?: string }>();
   const searchParams = useSearchParams();
-  const scopeId =
+  const targetId =
     searchParams?.get('pageId') || params?.pageId || params?.projectId || null;
 
   useEffect(() => {
@@ -38,13 +38,13 @@ export function DetachedPdfViewer() {
 
     if (typeof window === 'undefined' || !('BroadcastChannel' in window)) return;
 
-    const channelName = getSyncTexChannelName(scopeId);
+    const channelName = getSyncTexChannelName(targetId);
     let channel: BroadcastChannel | null = null;
     try {
       channel = new BroadcastChannel(channelName);
       channel.onmessage = (event) => {
-        const msgScope = (event.data as { scopeId?: unknown } | undefined)?.scopeId;
-        if (typeof msgScope === 'string' && msgScope.length > 0 && scopeId && msgScope !== scopeId) {
+        const msgTarget = (event.data as { targetId?: unknown } | undefined)?.targetId;
+        if (typeof msgTarget === 'string' && msgTarget.length > 0 && targetId && msgTarget !== targetId) {
           return;
         }
         const { type, payload } = event.data || {};
@@ -99,7 +99,7 @@ export function DetachedPdfViewer() {
       };
 
       // Query main window for initial PDF and compiler state
-      channel.postMessage({ type: 'preview:ready', ...(scopeId ? { scopeId } : {}) });
+      channel.postMessage({ type: 'preview:ready', ...(targetId ? { targetId } : {}) });
     } catch (err) {
       console.warn('[DetachedPreview] BroadcastChannel failed to initialize:', err);
     }
@@ -108,14 +108,14 @@ export function DetachedPdfViewer() {
     const unsubScroll = editorCommandBus.subscribe('editor:scroll-to-line', (cmd) => {
       channel?.postMessage({
         type: 'editor:scroll-to-line',
-        ...(scopeId ? { scopeId } : {}),
+        ...(targetId ? { targetId } : {}),
         payload: { line: cmd.line, smooth: cmd.smooth },
       });
     });
 
     const handleBeforeUnload = () => {
       try {
-        channel?.postMessage({ type: 'preview:window-closed', ...(scopeId ? { scopeId } : {}) });
+        channel?.postMessage({ type: 'preview:window-closed', ...(targetId ? { targetId } : {}) });
       } catch {}
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -124,11 +124,11 @@ export function DetachedPdfViewer() {
       unsubScroll();
       window.removeEventListener('beforeunload', handleBeforeUnload);
       try {
-        channel?.postMessage({ type: 'preview:window-closed', ...(scopeId ? { scopeId } : {}) });
+        channel?.postMessage({ type: 'preview:window-closed', ...(targetId ? { targetId } : {}) });
         channel?.close();
       } catch {}
     };
-  }, [scopeId]);
+  }, [targetId]);
 
   return (
     <div className="h-screen w-screen flex flex-col bg-background overflow-hidden">

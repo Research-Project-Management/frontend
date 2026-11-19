@@ -132,6 +132,14 @@ export const CompilerLogEntryRow = React.memo(function CompilerLogEntryRow({
         <div className="flex-1 min-w-0 max-w-[72ch]">
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-1.5 sm:gap-2">
             <p className="text-foreground font-mono text-xs leading-snug break-words min-w-0 max-w-[70ch]">
+              {(entry.source === 'bibtex' || entry.source === 'biber') && (
+                <span
+                  data-testid="log-entry-source-badge"
+                  className="inline-flex items-center mr-1.5 px-1.5 py-0.5 rounded bg-indigo-500/12 text-indigo-700 dark:text-indigo-300 text-[10px] font-semibold align-middle"
+                >
+                  {entry.source === 'bibtex' ? 'BibTeX' : 'Biber'}
+                </span>
+              )}
               {entry.message}
             </p>
             <div className="flex items-center flex-wrap gap-1.5 shrink-0">

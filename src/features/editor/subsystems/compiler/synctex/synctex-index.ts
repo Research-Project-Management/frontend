@@ -466,6 +466,39 @@ export async function decompressSyncTeXData(base64OrRaw: string): Promise<string
   }
 }
 
+export async function decompressSyncTeXBytes(input: ArrayBuffer | Uint8Array): Promise<string> {
+  const bytes = input instanceof Uint8Array ? input : new Uint8Array(input);
+  if (bytes.byteLength === 0) return '';
+
+  const isGzip = bytes.byteLength >= 2 && bytes[0] === 0x1f && bytes[1] === 0x8b;
+  if (!isGzip) {
+    const decoded = typeof TextDecoder !== 'undefined'
+      ? new TextDecoder().decode(bytes)
+      : Buffer.from(bytes).toString('utf8');
+    return decoded.includes('SyncTeX') || decoded.includes('Input:') ? decoded : '';
+  }
+
+  try {
+    if (typeof DecompressionStream !== 'undefined') {
+      const ds = new DecompressionStream('gzip');
+      const writer = ds.writable.getWriter();
+      await writer.write(new Uint8Array(bytes));
+      await writer.close();
+      const response = new Response(ds.readable);
+      return await response.text();
+    }
+  } catch {
+    return '';
+  }
+
+  try {
+    const zlib = await import('node:zlib');
+    return zlib.gunzipSync(Buffer.from(bytes)).toString('utf8');
+  } catch {
+    return '';
+  }
+}
+
 export function resolveForwardDetail(
   line: number,
   map?: SyncTeXMap | Record<number, number> | null,

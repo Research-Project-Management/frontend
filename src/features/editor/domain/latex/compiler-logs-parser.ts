@@ -91,6 +91,9 @@ export function diagnosticsToParsedLog(
       message: (item.message || '').replace(/—/g, '-'),
       file: file || undefined,
       line,
+      ...(item.code ? { code: item.code } : {}),
+      ...(item.source ? { source: item.source } : {}),
+      ...(item.highlightCommand ? { highlightCommand: item.highlightCommand } : {}),
       rawExcerpt: rawExcerpt ? rawExcerpt.replace(/—/g, '-') : undefined,
       quickFix: item.quickFix,
       explanation: item.explanation

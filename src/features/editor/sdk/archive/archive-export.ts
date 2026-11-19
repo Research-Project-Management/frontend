@@ -58,7 +58,7 @@ async function bundleAndDownloadZip({
       .replace(/\s+/g, '_') || (isArxiv ? 'manuscript' : 'flux-project');
 
   const storeState = usePageStore.getState();
-  const targetScopeId = storeState.spaceId || storeState.projectId || parentPageId;
+  const targetSpaceId = storeState.spaceId || storeState.projectId || parentPageId;
   const targetPageId = pageId || parentPageId;
 
   const hadDirtyBeforeExport =
@@ -68,13 +68,13 @@ async function bundleAndDownloadZip({
   if (hadDirtyBeforeExport) {
     const flushRes = await sessionCoordinator.flushAllPending().catch(() => null);
     if (!flushRes || flushRes.total > 0) {
-      await updater.flushProject(targetScopeId).catch(() => null);
+      await updater.flushProject(targetSpaceId).catch(() => null);
     }
   }
 
   let finalBlob: Blob | null = null;
   try {
-    const serverBlob = await exportDocs.exportProjectZip(targetScopeId, {
+    const serverBlob = await exportDocs.exportProjectZip(targetSpaceId, {
       cleanArxiv: isArxiv,
       includePdf: !isArxiv,
       projectName: cleanTitle,

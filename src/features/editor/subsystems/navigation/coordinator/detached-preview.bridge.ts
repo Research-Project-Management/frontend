@@ -48,7 +48,7 @@ export class DetachedPreviewBridge {
     }
   }
 
-  public resolveActiveScopeId(): string | null {
+  public resolveActiveTargetId(): string | null {
     const pageStore = usePageStore.getState();
     return (
       pageStore.parentPageId ||
@@ -70,7 +70,7 @@ export class DetachedPreviewBridge {
       return;
     }
 
-    const targetName = getSyncTexChannelName(this.resolveActiveScopeId());
+    const targetName = getSyncTexChannelName(this.resolveActiveTargetId());
     if (this.broadcastChannel && this.currentChannelName === targetName) {
       return;
     }
@@ -114,7 +114,7 @@ export class DetachedPreviewBridge {
     );
   }
 
-  public postMessage(message: { type: string; payload?: unknown; scopeId?: string }): void {
+  public postMessage(message: { type: string; payload?: unknown; targetId?: string }): void {
     if (!this.isCustomChannel) {
       this.syncScopedChannel();
     }
@@ -124,10 +124,10 @@ export class DetachedPreviewBridge {
   public attachChannelListeners(): void {
     if (!this.broadcastChannel) return;
     this.broadcastChannel.onmessage = (event) => {
-      const msgScope = (event.data as { scopeId?: unknown } | undefined)?.scopeId;
-      if (typeof msgScope === 'string' && msgScope.length > 0) {
-        const activeScope = this.resolveActiveScopeId();
-        if (activeScope && msgScope !== activeScope) {
+      const msgTarget = (event.data as { targetId?: unknown } | undefined)?.targetId;
+      if (typeof msgTarget === 'string' && msgTarget.length > 0) {
+        const activeTarget = this.resolveActiveTargetId();
+        if (activeTarget && msgTarget !== activeTarget) {
           return;
         }
       }

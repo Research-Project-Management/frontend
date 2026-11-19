@@ -285,9 +285,9 @@ export function useFilesTabController() {
         (configuredMainFile &&
           (title.toLowerCase() === configuredMainFile.toLowerCase() ||
             displayName(title).toLowerCase() === configuredMainFile.toLowerCase()));
-      const activeScopeId = parentPageId || pageId;
+      const activePageKey = parentPageId || pageId;
       const currentActive =
-        (activeScopeId ? layoutStore.activeByProject[activeScopeId] : null) ?? fileParam;
+        (activePageKey ? layoutStore.activeByProject[activePageKey] : null) ?? fileParam;
       if (isTargetMain && !currentActive) return;
       if (fileId === currentActive) return;
 

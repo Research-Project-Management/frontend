@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { CornerDownRight } from 'lucide-react';
-import { CompanionHero } from '@/features/ai/components/companion/CompanionHero';
+import { CompanionHero } from '@/features/ai';
 import { QUICK_ACTIONS } from '@/features/editor/domain/ai/ai-prompts';
 
 export interface AiSuggestionsHeroProps {

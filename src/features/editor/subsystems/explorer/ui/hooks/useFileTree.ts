@@ -70,8 +70,8 @@ export function useFileTree({
   const mainBibFile = useSettingsStore((s) => s.mainBibFile);
 
   const storageKey = useMemo(() => {
-    const scopeId = parentPageId || parentPage?.id || projectId || 'default';
-    return `${STORAGE_KEY_PREFIX}${scopeId}`;
+    const treeKey = parentPageId || parentPage?.id || projectId || 'default';
+    return `${STORAGE_KEY_PREFIX}${treeKey}`;
   }, [parentPageId, parentPage?.id, projectId]);
 
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(() =>

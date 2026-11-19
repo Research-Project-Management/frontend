@@ -40,40 +40,40 @@ export function parseCachedWorkspaceTree(
 }
 
 export async function synthesizeOfflineEditorBootstrap(
-  scopeId: string,
+  entryId: string,
   requestedFileId?: string | null,
 ): Promise<{ dto: EditorBootstrapResponseDto; markActiveDirty: boolean } | null> {
-  if (!scopeId) return null;
+  if (!entryId) return null;
   const trimmedFileId = requestedFileId?.trim() || null;
-  const targetId = trimmedFileId || scopeId;
+  const targetId = trimmedFileId || entryId;
 
   const [
     treeSnapshotRaw,
     requestedUnsynced,
     requestedCachedDoc,
-    rootUnsyncedByScope,
-    rootCachedDocByScope,
+    rootUnsyncedByEntry,
+    rootCachedDocByEntry,
     initialCachedDocs,
   ] = await Promise.all([
-    syncedDocCacheStore.getWorkspaceTree(scopeId),
+    syncedDocCacheStore.getWorkspaceTree(entryId),
     trimmedFileId ? unsyncedEditsStore.get(targetId) : Promise.resolve(null),
     trimmedFileId ? syncedDocCacheStore.get(targetId) : Promise.resolve(null),
-    unsyncedEditsStore.get(scopeId),
-    syncedDocCacheStore.get(scopeId),
-    syncedDocCacheStore.getByScope(scopeId),
+    unsyncedEditsStore.get(entryId),
+    syncedDocCacheStore.get(entryId),
+    syncedDocCacheStore.getByScope(entryId),
   ]);
 
   const treeSnapshot = parseCachedWorkspaceTree(treeSnapshotRaw);
 
-  let rootDraft = rootUnsyncedByScope;
-  let rootSnap = rootCachedDocByScope;
-  if (treeSnapshot && treeSnapshot.workspace.rootDocId !== scopeId) {
+  let rootDraft = rootUnsyncedByEntry;
+  let rootSnap = rootCachedDocByEntry;
+  if (treeSnapshot && treeSnapshot.workspace.rootDocId !== entryId) {
     const [resolvedRootDraft, resolvedRootSnap] = await Promise.all([
       unsyncedEditsStore.get(treeSnapshot.workspace.rootDocId),
       syncedDocCacheStore.get(treeSnapshot.workspace.rootDocId),
     ]);
-    rootDraft = resolvedRootDraft ?? rootUnsyncedByScope;
-    rootSnap = resolvedRootSnap ?? rootCachedDocByScope;
+    rootDraft = resolvedRootDraft ?? rootUnsyncedByEntry;
+    rootSnap = resolvedRootSnap ?? rootCachedDocByEntry;
   }
 
   const inferredProjectId =
@@ -86,7 +86,7 @@ export async function synthesizeOfflineEditorBootstrap(
   const snapshots =
     initialCachedDocs.length > 0
       ? initialCachedDocs
-      : inferredProjectId && inferredProjectId !== scopeId
+      : inferredProjectId && inferredProjectId !== entryId
         ? await syncedDocCacheStore.getByScope(inferredProjectId)
         : initialCachedDocs;
 
@@ -108,14 +108,14 @@ export async function synthesizeOfflineEditorBootstrap(
       rootDraft?.projectId ||
       requestedUnsynced?.projectId ||
       snapshots[0]?.projectId ||
-      scopeId;
+      entryId;
   const rootDocId = treeSnapshot
     ? treeSnapshot.workspace.rootDocId
-    : rootSnap?.id || rootDraft?.fileId || snapshots[0]?.id || scopeId;
+    : rootSnap?.id || rootDraft?.fileId || snapshots[0]?.id || entryId;
   const pageId = treeSnapshot
     ? treeSnapshot.workspace.pageId
-    : scopeId !== spaceId
-      ? scopeId
+    : entryId !== spaceId
+      ? entryId
       : rootDocId;
 
   const matchingTreeDocNode =
@@ -144,8 +144,8 @@ export async function synthesizeOfflineEditorBootstrap(
       ? requestedUnsynced
       : activeId === rootDocId
         ? rootDraft
-        : activeId === scopeId
-          ? rootUnsyncedByScope
+        : activeId === entryId
+          ? rootUnsyncedByEntry
           : await unsyncedEditsStore.get(activeId);
   const activeSnap =
     snapshots.find((s) => s.id === activeId) ??
@@ -153,8 +153,8 @@ export async function synthesizeOfflineEditorBootstrap(
       ? requestedCachedDoc
       : activeId === rootDocId
         ? rootSnap
-        : activeId === scopeId
-          ? rootCachedDocByScope
+        : activeId === entryId
+          ? rootCachedDocByEntry
           : await syncedDocCacheStore.get(activeId));
 
   const rootTreeNode = treeSnapshot?.tree.find(

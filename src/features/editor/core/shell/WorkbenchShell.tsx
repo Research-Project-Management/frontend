@@ -26,8 +26,8 @@ import { OfflineBanner } from './OfflineBanner';
 import { ErrorBoundary } from '@/shared/components/ui/error-boundary';
 import { cn } from '@/shared/lib/utils';
 
-const AiCompanionSidebar = dynamic(
-  () => import('@/features/ai/components/companion/AiCompanionSidebar'),
+const CompanionDrawer = dynamic(
+  () => import('@/features/ai').then((m) => m.CompanionDrawer),
   { ssr: false, loading: () => null }
 );
 
@@ -179,7 +179,7 @@ export function WorkbenchShell({
         {/* ── Slot 7: AI Companion Sidebar (Below Global Topbar) ───────────── */}
         <ErrorBoundary fallback={null} featureName="AI Companion">
           <Suspense fallback={null}>
-            <AiCompanionSidebar />
+            <CompanionDrawer />
           </Suspense>
         </ErrorBoundary>
       </main>

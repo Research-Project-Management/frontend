@@ -502,7 +502,7 @@ describe('Editor Browser Multi-Tab Hardening (Multiplexing, Offline CRDT, Settin
       const betaDetached = new MockBroadcastChannel(getSyncTexChannelName('page-beta'));
       betaDetached.postMessage({
         type: 'synctex:jump-to-code',
-        scopeId: 'page-beta',
+        targetId: 'page-beta',
         payload: { fileId: 'f-beta', line: 99 },
       });
       await flushMicrotasks();
@@ -511,7 +511,7 @@ describe('Editor Browser Multi-Tab Hardening (Multiplexing, Offline CRDT, Settin
       const alphaDetached = new MockBroadcastChannel(getSyncTexChannelName('page-alpha'));
       alphaDetached.postMessage({
         type: 'synctex:jump-to-code',
-        scopeId: 'page-alpha',
+        targetId: 'page-alpha',
         payload: { fileId: 'f-alpha', line: 42 },
       });
       await flushMicrotasks();

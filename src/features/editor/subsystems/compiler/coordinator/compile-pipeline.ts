@@ -12,7 +12,11 @@
 import {
   pagesService,
   type CompileLatexPayload,
+  type CompileLogMeta,
+  type CompileOutcome,
+  type CompileValidationIssue,
   type CompilerDiagnostic,
+  type DiagnosticsSummary,
   type ForwardSyncResult,
 } from '@/features/editor/sdk/pages.service';
 import { parseCompileErrors, type ParsedCompileError } from '@/features/editor/domain/latex/latex-structure';
@@ -26,6 +30,7 @@ import {
   resolvePageForLine,
   parseSyncTeX,
   decompressSyncTeXData,
+  decompressSyncTeXBytes,
   resolveForwardDetail,
   resolveForward,
   resolveReverse,
@@ -42,6 +47,7 @@ export {
   resolvePageForLine,
   parseSyncTeX,
   decompressSyncTeXData,
+  decompressSyncTeXBytes,
   resolveForwardDetail,
   resolveForward,
   resolveReverse,
@@ -132,15 +138,19 @@ export interface CompileExecutionOptions {
 
 export interface CompileExecutionResult {
   status?: 'success' | 'error' | 'aborted';
+  outcome?: CompileOutcome;
   success: boolean;
   aborted?: boolean;
   pdfUrl?: string | null;
   pdfBlob?: Blob | null;
   rawLog?: string;
   logs?: string;
+  logMeta?: CompileLogMeta;
   error?: string | null;
   errors?: ParsedCompileError[];
   diagnostics?: CompilerDiagnostic[];
+  diagnosticsSummary?: DiagnosticsSummary;
+  validationIssues?: CompileValidationIssue[];
   rawSynctex?: string | null;
   synctexData?: string | null;
   synctexPath?: string | null;
@@ -268,52 +278,104 @@ export const CompilePipeline = {
     // 3. Compile: Enter compiling phase
     onPhaseChange?.('compiling');
 
-    // Resolve source content from dirtyFiles, options, or active page
-    let sourceContent = opts.source ?? opts.content;
-    const rawFilesMap: Record<string, string> = { ...(opts.files || {}) };
+    const isPersistedProject = Boolean(projectId);
+    let payload: CompileLatexPayload;
 
-    for (const item of dirtyFiles) {
-      if (!sourceContent && (item.fileId === pageId || item.fileId === mainFile)) {
-        sourceContent = item.content;
+    if (isPersistedProject) {
+      // DB + Yjs flush on backend is authoritative; only forward overlay for files still dirty.
+      const failedFlushIds = new Set(flushErrors.map((e) => e.fileId));
+      const flushedSet = new Set(flushedFileIds);
+      const overlayFiles: Record<string, string> = {};
+
+      for (const item of dirtyFiles) {
+        const stillDirty =
+          lruDocumentCache.isDirty(item.fileId) ||
+          failedFlushIds.has(item.fileId) ||
+          !flushedSet.has(item.fileId);
+        if (!stillDirty) continue;
+
+        const resolvedPath = item.path || lruDocumentCache.getModel(item.fileId)?.filePath;
+        const latestContent = lruDocumentCache.getContent(item.fileId) ?? item.content;
+        if (resolvedPath) {
+          overlayFiles[resolvedPath] = latestContent;
+        } else {
+          overlayFiles[item.fileId] = latestContent;
+        }
       }
-      const resolvedPath = item.path || lruDocumentCache.getModel(item.fileId)?.filePath;
-      if (resolvedPath) {
-        rawFilesMap[resolvedPath] = item.content;
-      } else if (!(item.fileId in rawFilesMap) && Object.keys(rawFilesMap).length === 0) {
-        rawFilesMap[item.fileId] = item.content;
+
+      for (const model of lruDocumentCache.getDirtyModels()) {
+        const canonicalPath =
+          model.filePath && model.filePath !== model.fileId ? model.filePath : undefined;
+        if (canonicalPath && !(canonicalPath in overlayFiles)) {
+          overlayFiles[canonicalPath] = model.content;
+        } else if (!canonicalPath && !(model.fileId in overlayFiles) && Object.keys(overlayFiles).length === 0) {
+          overlayFiles[model.fileId] = model.content;
+        }
       }
+
+      payload = {
+        spaceId: projectId || undefined,
+        pageId: pageId || undefined,
+        mainFile: mainFile || undefined,
+        files: Object.keys(overlayFiles).length > 0 ? overlayFiles : undefined,
+        engine: engine ?? 'pdflatex',
+        texLiveVersion: opts.texLiveVersion,
+        draft: draft ?? false,
+        useCache: useCache ?? true,
+        forceClean: opts.forceClean,
+        stopOnFirstError: opts.stopOnFirstError,
+        responseMode: 'artifact',
+        ...(opts.timeoutMs ? { timeoutMs: opts.timeoutMs } : {}),
+      };
+    } else {
+      // Ad-hoc / unpersisted compile: resolve inline source and virtual files map
+      let sourceContent = opts.source ?? opts.content;
+      const rawFilesMap: Record<string, string> = { ...(opts.files || {}) };
+
+      for (const item of dirtyFiles) {
+        if (!sourceContent && (item.fileId === pageId || item.fileId === mainFile)) {
+          sourceContent = item.content;
+        }
+        const resolvedPath = item.path || lruDocumentCache.getModel(item.fileId)?.filePath;
+        if (resolvedPath) {
+          rawFilesMap[resolvedPath] = item.content;
+        } else if (!(item.fileId in rawFilesMap) && Object.keys(rawFilesMap).length === 0) {
+          rawFilesMap[item.fileId] = item.content;
+        }
+      }
+
+      // Deduplicate raw UUID aliases if a canonical relative path (with extension or slash) already exists
+      const filesMap: Record<string, string> = {};
+      const rawEntries = Object.entries(rawFilesMap);
+      const hasCanonicalPaths = rawEntries.some(([k]) => k.includes('.') || k.includes('/'));
+      for (const [key, val] of rawEntries) {
+        const isUuidLike =
+          !key.includes('.') &&
+          !key.includes('/') &&
+          (/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(key) ||
+            dirtyFiles.some((d) => d.fileId === key && (d.path || lruDocumentCache.getModel(d.fileId)?.filePath)));
+        if (hasCanonicalPaths && isUuidLike && key !== mainFile) {
+          continue;
+        }
+        filesMap[key] = val;
+      }
+
+      payload = {
+        spaceId: projectId || undefined,
+        pageId: pageId || undefined,
+        mainFile: mainFile || undefined,
+        source: sourceContent || undefined,
+        files: Object.keys(filesMap).length > 0 ? filesMap : undefined,
+        engine: engine ?? 'pdflatex',
+        texLiveVersion: opts.texLiveVersion,
+        draft: draft ?? false,
+        useCache: useCache ?? true,
+        forceClean: opts.forceClean,
+        stopOnFirstError: opts.stopOnFirstError,
+        responseMode: 'inline',
+        ...(opts.timeoutMs ? { timeoutMs: opts.timeoutMs } : {}),
+      };
     }
-
-    // Deduplicate raw UUID aliases if a canonical relative path (with extension or slash) already exists
-    const filesMap: Record<string, string> = {};
-    const rawEntries = Object.entries(rawFilesMap);
-    const hasCanonicalPaths = rawEntries.some(([k]) => k.includes('.') || k.includes('/'));
-    for (const [key, val] of rawEntries) {
-      const isUuidLike =
-        !key.includes('.') &&
-        !key.includes('/') &&
-        (/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(key) ||
-          dirtyFiles.some((d) => d.fileId === key && (d.path || lruDocumentCache.getModel(d.fileId)?.filePath)));
-      if (hasCanonicalPaths && isUuidLike && key !== mainFile) {
-        continue;
-      }
-      filesMap[key] = val;
-    }
-
-    const payload: CompileLatexPayload = {
-      spaceId: projectId || undefined,
-      pageId: pageId || undefined,
-      mainFile: mainFile || undefined,
-      source: sourceContent || undefined,
-      files: Object.keys(filesMap).length > 0 ? filesMap : undefined,
-      engine: engine ?? 'pdflatex',
-      texLiveVersion: opts.texLiveVersion,
-      draft: draft ?? false,
-      useCache: useCache ?? true,
-      forceClean: opts.forceClean,
-      stopOnFirstError: opts.stopOnFirstError,
-      ...(opts.timeoutMs ? { timeoutMs: opts.timeoutMs } : {}),
-    };
 
     try {
       if (currentSignal.aborted) {
@@ -347,31 +409,54 @@ export const CompilePipeline = {
       }
 
       const rawPdf = data?.pdf;
+      const hasInlinePdf = Boolean(rawPdf && typeof rawPdf === 'string' && rawPdf.trim().length > 0);
+      const artifactUrl = data?.pdfArtifactUrl;
 
-      if (rawPdf && typeof rawPdf === 'string' && rawPdf.trim().length > 0) {
-        const decoded = createPdfBlobAndUrl(rawPdf);
-        const url = decoded?.url || null;
-        const blob = decoded?.blob || null;
+      let resolvedPdf: PdfBlobResult | null = null;
+      if (hasInlinePdf) {
+        resolvedPdf = createPdfBlobAndUrl(rawPdf);
+      } else if (
+        data?.success &&
+        artifactUrl &&
+        typeof pagesService.compiler.fetchArtifactBlob === 'function'
+      ) {
+        resolvedPdf = await pagesService.compiler.fetchArtifactBlob(artifactUrl, currentSignal);
+      }
 
-        if (url) {
-          // Fast-path: small plain text synctex parses immediately for testing & small docs
-          const isSmallOrPlain = Boolean(
-            data.synctex && !data.synctex.trimStart().startsWith('H4sI') && (data.synctex.startsWith('SyncTeX') || data.synctex.length < 5000),
-          );
-          let initialSyncMap: SyncTeXMap | null = null;
-          if (isSmallOrPlain && data.synctex) {
-            try {
-              initialSyncMap = parseSyncTeX(data.synctex);
-            } catch {}
-          }
+      if (resolvedPdf?.url) {
+        const url = resolvedPdf.url;
+        const blob = resolvedPdf.blob;
 
-          // Offload heavy decompression and parsing to non-blocking promise for 0ms immediate PDF display
-          const synctexPayload = data.synctex;
-          const synctexPromise = synctexPayload
+        // Fast-path: small plain text synctex parses immediately for testing & small docs
+        const isSmallOrPlain = Boolean(
+          data.synctex && !data.synctex.trimStart().startsWith('H4sI') && (data.synctex.startsWith('SyncTeX') || data.synctex.length < 5000),
+        );
+        let initialSyncMap: SyncTeXMap | null = null;
+        if (isSmallOrPlain && data.synctex) {
+          try {
+            initialSyncMap = parseSyncTeX(data.synctex);
+          } catch {}
+        }
+
+        // Offload heavy decompression and parsing to non-blocking promise for 0ms immediate PDF display
+        const synctexPayload = data.synctex;
+        const synctexUrl = data.synctexArtifactUrl;
+        const synctexPromise = synctexPayload
+          ? (async () => {
+              if (initialSyncMap) return initialSyncMap;
+              try {
+                const rawSyncTex = await decompressSyncTeXData(synctexPayload);
+                return rawSyncTex ? parseSyncTeX(rawSyncTex) : null;
+              } catch {
+                return null;
+              }
+            })()
+          : synctexUrl && typeof pagesService.compiler.fetchArtifactArrayBuffer === 'function'
             ? (async () => {
-                if (initialSyncMap) return initialSyncMap;
                 try {
-                  const rawSyncTex = await decompressSyncTeXData(synctexPayload);
+                  const buf = await pagesService.compiler.fetchArtifactArrayBuffer(synctexUrl, currentSignal);
+                  if (!buf) return null;
+                  const rawSyncTex = await decompressSyncTeXBytes(buf);
                   return rawSyncTex ? parseSyncTeX(rawSyncTex) : null;
                 } catch {
                   return null;
@@ -379,46 +464,55 @@ export const CompilePipeline = {
               })()
             : Promise.resolve<SyncTeXMap | null>(null);
 
-          if (blob && onThumbnailGenerated) {
-            const runGen = () => {
-              generateThumbnail(blob).then((base64) => {
-                if (base64) onThumbnailGenerated(base64);
-              });
-            };
-            if (typeof requestIdleCallback === 'function') {
-              requestIdleCallback(runGen, { timeout: 2000 });
-            } else {
-              setTimeout(runGen, 150);
-            }
-          }
-
-          return {
-            status: 'success',
-            success: true,
-            pdfUrl: url,
-            pdfBlob: blob || undefined,
-            synctexMap: initialSyncMap,
-            synctexPromise,
-            rawSynctex: data.synctex || null,
-            logs: data.logs || '',
-            compiledAt: new Date(),
-            diagnostics: data.diagnostics,
-            flushedFileIds,
-            flushErrors,
+        if (blob && onThumbnailGenerated) {
+          const runGen = () => {
+            generateThumbnail(blob).then((base64) => {
+              if (base64) onThumbnailGenerated(base64);
+            });
           };
+          if (typeof requestIdleCallback === 'function') {
+            requestIdleCallback(runGen, { timeout: 2000 });
+          } else {
+            setTimeout(runGen, 150);
+          }
         }
+
+        return {
+          status: 'success',
+          outcome: data.outcome || 'success',
+          success: true,
+          pdfUrl: url,
+          pdfBlob: blob || undefined,
+          synctexMap: initialSyncMap,
+          synctexPromise,
+          rawSynctex: data.synctex || null,
+          logs: data.logs || '',
+          logMeta: data.logMeta,
+          compiledAt: new Date(),
+          diagnostics: data.diagnostics,
+          diagnosticsSummary: data.diagnosticsSummary,
+          flushedFileIds,
+          flushErrors,
+        };
       }
 
       const log = data?.logs || data?.error || 'Compilation finished without generating a PDF.';
       const parsedErrors = parseCompileErrors(log, data?.diagnostics);
+      const outcome: CompileOutcome =
+        data?.outcome ||
+        (opts.stopOnFirstError ? 'stopped-on-first-error' : 'failure');
 
       return {
         status: 'error',
+        outcome,
         success: false,
         error: data?.error || 'LaTeX compilation failed to produce a PDF.',
         logs: log,
+        logMeta: data?.logMeta,
         errors: parsedErrors,
-        diagnostics: data.diagnostics,
+        diagnostics: data?.diagnostics,
+        diagnosticsSummary: data?.diagnosticsSummary,
+        validationIssues: data?.validationIssues,
         flushedFileIds,
         flushErrors,
       };
@@ -432,6 +526,7 @@ export const CompilePipeline = {
         logger.debug('[CompilePipeline] Previous compile request aborted in favor of newer request.');
         return {
           status: 'aborted',
+          outcome: 'terminated',
           success: false,
           aborted: true,
           error: 'Compilation superseded',
@@ -443,14 +538,20 @@ export const CompilePipeline = {
       }
 
       const errStr = err instanceof Error ? err.message : String(err);
-      const parsedErrors = parseCompileErrors(errStr);
+      const isInfraError =
+        /failed to fetch|network|econnrefused|503|service unavailable|clsi/i.test(
+          errStr,
+        );
+      const parsedErrors = isInfraError ? [] : parseCompileErrors(errStr);
 
       return {
         status: 'error',
+        outcome: isInfraError ? 'clsi-unavailable' : 'failure',
         success: false,
         error: errStr,
         logs: errStr,
         errors: parsedErrors,
+        diagnostics: isInfraError ? [] : undefined,
         flushedFileIds,
         flushErrors,
       };

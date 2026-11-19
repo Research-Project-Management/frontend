@@ -530,10 +530,10 @@ export function createTabsSlice<
     pinTabForFile: (tabId) => {
       if (!tabId) return;
       const state = get();
-      for (const [scopeId, tabs] of Object.entries(state.tabsByProject)) {
+      for (const [groupKey, tabs] of Object.entries(state.tabsByProject)) {
         const match = tabs.find((t) => t.id === tabId && t.isPreview && !t.isPinned);
         if (match) {
-          state.pinTab(scopeId, tabId);
+          state.pinTab(groupKey, tabId);
         }
       }
     },

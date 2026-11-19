@@ -42,6 +42,18 @@ function resolveCompilerArtifactSegment(
   return 'pages';
 }
 
+function resolveArtifactRequestUrl(artifactUrlOrPath: string): string {
+  const trimmed = artifactUrlOrPath.trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return trimmed;
+  }
+  const pagesBase = getPagesBaseUrl().replace(/\/+$/, '');
+  if (trimmed.startsWith('/api/v1/pages')) {
+    return `${pagesBase}${trimmed.slice('/api/v1/pages'.length)}`;
+  }
+  return `${pagesBase}/${trimmed.replace(/^\/+/, '')}`;
+}
+
 export const compiler = {
   compile: async (payload: CompileLatexPayload, signal?: AbortSignal): Promise<CompileLatexResponse> => {
     const effectiveSignal = signal || payload.signal;
@@ -181,6 +193,58 @@ export const compiler = {
   ): string => {
     const segment = resolveCompilerArtifactSegment(pageOrProjectId, options);
     return `${PAGES_API_BASE}/${segment}/${encodeURIComponent(pageOrProjectId)}/artifacts/${encodeURIComponent(filename)}`;
+  },
+
+  fetchArtifactBlob: async (
+    artifactUrlOrPath: string,
+    signal?: AbortSignal,
+  ): Promise<{ url: string; blob: Blob } | null> => {
+    if (!artifactUrlOrPath?.trim()) return null;
+    try {
+      const res = await rawFetch(
+        resolveArtifactRequestUrl(artifactUrlOrPath),
+        'GET',
+        undefined,
+        { silent: true, signal },
+      );
+      if (!res.ok) return null;
+      const rawBlob = await res.blob();
+      if (!rawBlob || rawBlob.size === 0) return null;
+      const pathOnly = artifactUrlOrPath.split('?')[0].toLowerCase();
+      const typedBlob =
+        rawBlob.type === 'application/pdf' || !pathOnly.endsWith('.pdf')
+          ? rawBlob
+          : new Blob([rawBlob], { type: 'application/pdf' });
+      return { url: URL.createObjectURL(typedBlob), blob: typedBlob };
+    } catch (err: unknown) {
+      if (signal?.aborted || (err as { name?: string })?.name === 'AbortError') {
+        throw err;
+      }
+      return null;
+    }
+  },
+
+  fetchArtifactArrayBuffer: async (
+    artifactUrlOrPath: string,
+    signal?: AbortSignal,
+  ): Promise<ArrayBuffer | null> => {
+    if (!artifactUrlOrPath?.trim()) return null;
+    try {
+      const res = await rawFetch(
+        resolveArtifactRequestUrl(artifactUrlOrPath),
+        'GET',
+        undefined,
+        { silent: true, signal },
+      );
+      if (!res.ok) return null;
+      const buf = await res.arrayBuffer();
+      return buf.byteLength > 0 ? buf : null;
+    } catch (err: unknown) {
+      if (signal?.aborted || (err as { name?: string })?.name === 'AbortError') {
+        throw err;
+      }
+      return null;
+    }
   },
 
   fetchArtifactBlobUrl: async (

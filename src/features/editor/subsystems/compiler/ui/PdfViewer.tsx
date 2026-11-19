@@ -23,7 +23,10 @@ import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 
 import { usePageStore, useSettingsStore, useWorkspaceStore } from '@/features/editor/core';
-import { useCompileStore } from '@/features/editor/subsystems/compiler/coordinator/compiler.store';
+import {
+  useCompileStore,
+  useFilteredCompileDiagnostics,
+} from '@/features/editor/subsystems/compiler/coordinator/compiler.store';
 import { useViewerStore, type DocumentViewerState } from '@/features/editor/subsystems/compiler/coordinator/viewer.store';
 import { filesQuery } from '@/features/editor/core/queries/document.queries';
 import { usePageActions } from '@/features/editor/core/queries/usePageActions';
@@ -36,9 +39,9 @@ import { editorCommandBus, setActivePdfViewer } from '@/features/editor/core';
 
 import { PdfToolbar } from './PdfToolbar';
 import { PdfFindBar } from './PdfFindBar';
+import { CompilationErrorBanner } from './CompilationErrorBanner';
 import PdfSurface, { type PdfSurfaceHandle } from './PdfSurface';
 import { CompilerLogs, parseLatexLog } from './CompilerLogs';
-import { filterDiagnostics } from '@/features/editor/domain/latex/warning-filter';
 
 import { usePdfZoom } from './hooks/usePdfZoom';
 import { usePdfCompiler } from './hooks/usePdfCompiler';
@@ -46,7 +49,6 @@ import { useViewerSyncTeX, type ViewerPageFileEntry } from './hooks/useViewerSyn
 import { useSynchronizedScroll } from './hooks/useSynchronizedScroll';
 import { usePdfSearch, type PdfDocumentProxyLike } from './hooks/usePdfSearch';
 
-const TRANSIENT_WARNING_REGEX = /(?:^|Warning:\s*)(?:Reference|Citation)\s+.+undefined\s+on\s+input\s+line/i;
 const EMPTY_PAGE_FILES: ViewerPageFileEntry[] = [];
 
 export interface PdfViewerProps {
@@ -136,41 +138,19 @@ export function PdfViewer({ isDetached = false }: PdfViewerProps = {}) {
     saveThumbnailMutation,
   });
 
-  const suppressBadBoxes = useSettingsStore((s) => s.suppressBadBoxes);
-  const suppressFontWarnings = useSettingsStore((s) => s.suppressFontWarnings);
-  const suppressPackageWarnings = useSettingsStore((s) => s.suppressPackageWarnings);
-  const customSuppressedWarnings = useSettingsStore((s) => s.customSuppressedWarnings);
-  const stopOnFirstError = useSettingsStore((s) => s.stopOnFirstError);
-
+  const compilePhase = useCompileStore((s) => s.compilePhase);
+  const compileOutcome = useCompileStore((s) => s.compileOutcome);
+  const compileReport = useCompileStore((s) => s.compileReport);
   const storeParsedLog = useCompileStore((s) => s.parsedLog);
   const storeDiagnostics = useCompileStore((s) => s.compileDiagnostics);
 
-  const parsedLog = useMemo(() => {
+  const fallbackParsedLog = useMemo(() => {
     if (storeParsedLog) return storeParsedLog;
     if (compileLog) return parseLatexLog(compileLog, storeDiagnostics);
     return null;
   }, [storeParsedLog, storeDiagnostics, compileLog]);
 
-  const filteredWarningCount = useMemo(() => {
-    if (!parsedLog) return 0;
-    let warnings = parsedLog.warnings;
-    if (stopOnFirstError && parsedLog.errors.length > 0) {
-      warnings = warnings.filter((w) => !TRANSIENT_WARNING_REGEX.test(w.message || ''));
-    }
-    return filterDiagnostics(warnings, {
-      suppressBadBoxes,
-      suppressFontWarnings,
-      suppressPackageWarnings,
-      customPatterns: customSuppressedWarnings,
-    }).length;
-  }, [
-    parsedLog,
-    stopOnFirstError,
-    suppressBadBoxes,
-    suppressFontWarnings,
-    suppressPackageWarnings,
-    customSuppressedWarnings,
-  ]);
+  const filteredDiagnostics = useFilteredCompileDiagnostics(fallbackParsedLog, true);
 
   const handleToggleLog = useCallback(() => {
     setShowLogsOverlay((prev) => !prev);
@@ -265,23 +245,74 @@ export function PdfViewer({ isDetached = false }: PdfViewerProps = {}) {
   });
 
 
-  // Auto-switch to CompilerLogs on compilation error when no PDF is available, and return to PDF on successful compile
+  const handleJumpToFirstError = useCallback(() => {
+    const firstErr = filteredDiagnostics.errors[0];
+    if (firstErr) {
+      handleJumpToSource(
+        firstErr.file || null,
+        firstErr.line ?? 1,
+        undefined,
+        undefined,
+        undefined,
+        'error',
+      );
+      return;
+    }
+    setShowLogsOverlay(true);
+  }, [filteredDiagnostics.errors, handleJumpToSource]);
+
+  // Auto-open CompilerLogs when a build finishes with errors/failure/timeout/validation issues,
+  // and return to PDF on a clean success build (without snapping back if user clicks "Back to PDF").
   const prevCompileStatusRef = useRef(compileStatus);
+  const lastHandledCompileReportRef = useRef(compileReport);
   useEffect(() => {
-    if (compileStatus === 'error' && !pdfUrl) {
-      setShowLogsOverlay(true);
-    } else if (
-      (compileStatus === 'idle' || compileStatus === 'done') &&
-      (prevCompileStatusRef.current === 'compiling' ||
-        prevCompileStatusRef.current === 'error' ||
-        prevCompileStatusRef.current === 'done') &&
-      pdfUrl &&
-      (parsedLog?.errors.length ?? 0) === 0
+    if (
+      compileReport &&
+      compileReport !== lastHandledCompileReportRef.current &&
+      compilePhase === 'done'
     ) {
-      setShowLogsOverlay(false);
+      lastHandledCompileReportRef.current = compileReport;
+      if (
+        compileOutcome === 'failure' ||
+        compileOutcome === 'stopped-on-first-error' ||
+        compileOutcome === 'timedout' ||
+        compileOutcome === 'validation-problems'
+      ) {
+        setShowLogsOverlay(true);
+      } else if (
+        compileOutcome === 'success' &&
+        filteredDiagnostics.errors.length === 0 &&
+        pdfUrl
+      ) {
+        setShowLogsOverlay(false);
+      }
+      prevCompileStatusRef.current = compileStatus;
+      return;
+    }
+
+    if (!compileReport) {
+      if (compileStatus === 'error' && !pdfUrl) {
+        setShowLogsOverlay(true);
+      } else if (
+        (compileStatus === 'idle' || compileStatus === 'done') &&
+        (prevCompileStatusRef.current === 'compiling' ||
+          prevCompileStatusRef.current === 'error' ||
+          prevCompileStatusRef.current === 'done') &&
+        pdfUrl &&
+        filteredDiagnostics.errors.length === 0
+      ) {
+        setShowLogsOverlay(false);
+      }
     }
     prevCompileStatusRef.current = compileStatus;
-  }, [compileStatus, pdfUrl, parsedLog]);
+  }, [
+    compileReport,
+    compilePhase,
+    compileOutcome,
+    compileStatus,
+    pdfUrl,
+    filteredDiagnostics.errors.length,
+  ]);
 
 
   const onDocumentLoadSuccess = useCallback((pdf: { numPages: number } & Partial<PdfDocumentProxyLike>) => {
@@ -302,7 +333,7 @@ export function PdfViewer({ isDetached = false }: PdfViewerProps = {}) {
         <div className="relative flex-1 flex flex-col h-full min-w-0 overflow-hidden bg-background">
           <CompilerLogs
             log={compileLog || ''}
-            parsedLog={parsedLog ?? undefined}
+            parsedLog={fallbackParsedLog ?? undefined}
             onClose={() => setShowLogsOverlay(false)}
             onCompile={handleCompile}
             onClearCacheAndCompile={handleClearCacheAndCompile}
@@ -342,8 +373,8 @@ export function PdfViewer({ isDetached = false }: PdfViewerProps = {}) {
             onToggleSearch={toggleSearch}
             syncScroll={syncScroll}
             onToggleSyncScroll={toggleSyncScroll}
-            errorCount={parsedLog?.errors.length ?? 0}
-            warningCount={filteredWarningCount}
+            errorCount={filteredDiagnostics.errors.length}
+            warningCount={filteredDiagnostics.warnings.length}
             isDetached={isDetached}
           />
 
@@ -351,6 +382,15 @@ export function PdfViewer({ isDetached = false }: PdfViewerProps = {}) {
 
           {/* PDF Viewer Surface (Overleaf 1:1 Parity) */}
           <div ref={pdfContainerRef} className="flex-1 min-h-0 relative flex flex-col">
+            <CompilationErrorBanner
+              errorCount={filteredDiagnostics.errors.length}
+              outcome={compileOutcome}
+              errorMessage={compileReport?.errorMessage}
+              onJumpToFirstError={handleJumpToFirstError}
+              onOpenLogs={() => setShowLogsOverlay(true)}
+              onRetry={handleCompile}
+              onCompileAnyway={handleCompile}
+            />
             <PdfFindBar
               isOpen={isSearchOpen}
               query={searchQuery}

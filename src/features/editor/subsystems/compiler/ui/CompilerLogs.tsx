@@ -8,10 +8,9 @@
  */
 
 import React from 'react';
-import { ChevronRight, ChevronLeft } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Download } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 import { Button } from '@/shared/components/ui/button';
-import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import type {
   LogEntry,
@@ -25,6 +24,7 @@ import { CompilerLogEntryRow } from './logs/CompilerLogEntryRow';
 import { CompilerLogsHeader } from './logs/CompilerLogsHeader';
 import { CompilerLogsFilterTabs } from './logs/CompilerLogsFilterTabs';
 import { CompilerLogsFooter } from './logs/CompilerLogsFooter';
+import { CompileOutcomeCard } from './logs/CompileOutcomeCard';
 import {
   useCompilerLogsState,
   type CompilerLogVisibleRow,
@@ -96,8 +96,19 @@ export function CompilerLogs({
     );
   };
 
+  const effectiveOutcome =
+    s.compileOutcome ?? (s.compileStatus === 'error' ? 'failure' : null);
+  const hasOutcomeBanner = Boolean(
+    (effectiveOutcome &&
+      effectiveOutcome !== 'success' &&
+      (effectiveOutcome !== 'failure' || s.parsed.errors.length === 0)) ||
+      s.compileReport?.summary?.truncated ||
+      (s.compileReport?.summary?.suppressedCascadeCount ?? 0) > 0,
+  );
+  const isTruncatedLog = Boolean(s.compileReport?.logMeta?.truncated);
+
   return (
-    <div className="h-full w-full flex flex-col bg-canvas text-foreground overflow-hidden font-sans">
+    <div data-testid="compiler-logs-panel" className="h-full w-full flex flex-col bg-canvas text-foreground overflow-hidden font-sans">
       <CompilerLogsHeader
         onCompile={onCompile}
         onClearCacheAndCompile={onClearCacheAndCompile}
@@ -121,15 +132,7 @@ export function CompilerLogs({
         onToggleFilterSuppressed={() => s.setFilterSuppressed((prev) => !prev)}
       />
 
-      {s.compileStatus === 'error' && s.parsed.errors.length === 0 && !log?.toLowerCase().includes('aborted') ? (
-        <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center justify-center bg-transparent">
-          <PlaneErrorState
-            title="Compilation failed"
-            description="The LaTeX compiler encountered an error or terminated prematurely. Check the raw logs below to diagnose the issue."
-            error={log ? new Error(log.slice(-1000)) : new Error('LaTeX engine failed to compile document.')}
-          />
-        </div>
-      ) : s.activeTab === 'all' && s.totalLogsCount === 0 && !log ? (
+      {s.activeTab === 'all' && s.totalLogsCount === 0 && !log && !hasOutcomeBanner ? (
         <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center justify-center bg-transparent">
           <PlaneEmptyState
             variant="review"
@@ -151,27 +154,23 @@ export function CompilerLogs({
         </div>
       ) : (
         <div className="flex-1 min-h-0 flex flex-col bg-background font-mono select-text">
-          <div id="raw-latex-logs" className="shrink-0 border-b border-border/60 bg-background">
-            <div className="flex items-center px-3 py-2 hover:bg-muted/60 transition-colors">
-              <button
-                type="button"
-                aria-expanded={s.isRawLogsOpen}
-                aria-controls="raw-latex-logs-content"
-                onClick={() => s.setIsRawLogsOpen((prev) => !prev)}
-                className="flex items-center gap-2 text-left font-medium text-xs text-foreground cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-border w-full"
-              >
-                <ChevronRight
-                  className={cn('size-3.5 text-muted-foreground transition-transform duration-150', s.isRawLogsOpen && 'rotate-90')}
-                />
-                <span>Raw logs</span>
-              </button>
+          {effectiveOutcome && (
+            <div className="shrink-0 px-3 pt-2.5">
+              <CompileOutcomeCard
+                outcome={effectiveOutcome}
+                errorCount={s.parsed.errors.length}
+                errorMessage={s.compileReport?.errorMessage}
+                validationIssues={s.compileReport?.validationIssues}
+                summary={s.compileReport?.summary}
+                onCompile={onCompile}
+                onClearCacheAndCompile={s.handleClearCacheAndCompile}
+                onJumpToFirstError={() => {
+                  const firstError = s.parsed.errors[0];
+                  if (firstError) s.handleEntryClick(firstError);
+                }}
+              />
             </div>
-            {s.isRawLogsOpen && (
-              <pre id="raw-latex-logs-content" className="p-3 border-t border-border/60 bg-muted/20 font-mono text-12 text-foreground/90 whitespace-pre-wrap break-words leading-relaxed max-h-96 overflow-y-auto select-text">
-                {log || 'No compilation logs recorded yet.'}
-              </pre>
-            )}
-          </div>
+          )}
 
           <div ref={s.logsScrollRef} className="flex-1 min-h-0 overflow-y-auto bg-background">
             {s.isVirtualized ? (
@@ -237,7 +236,7 @@ export function CompilerLogs({
                 />
               </div>
             )}
-            {s.activeTab === 'all' && s.totalLogsCount === 0 && (
+            {s.activeTab === 'all' && s.totalLogsCount === 0 && !hasOutcomeBanner && (
               <div className="py-10">
                 <PlaneEmptyState
                   variant="review"
@@ -246,6 +245,44 @@ export function CompilerLogs({
                   description="Your document compiled cleanly with zero errors or warnings."
                 />
               </div>
+            )}
+          </div>
+
+          <div id="raw-latex-logs" className="shrink-0 border-t border-border/60 bg-background">
+            <div className="flex items-center justify-between gap-2 px-3 py-2 hover:bg-muted/60 transition-colors">
+              <button
+                type="button"
+                aria-expanded={s.isRawLogsOpen}
+                aria-controls="raw-latex-logs-content"
+                onClick={() => s.setIsRawLogsOpen((prev) => !prev)}
+                className="flex items-center gap-2 text-left font-medium text-xs text-foreground cursor-pointer select-none outline-none focus-visible:ring-1 focus-visible:ring-border flex-1 min-w-0"
+              >
+                <ChevronRight
+                  className={cn('size-3.5 text-muted-foreground transition-transform duration-150 shrink-0', s.isRawLogsOpen && 'rotate-90')}
+                />
+                <span>Raw logs</span>
+                {isTruncatedLog && (
+                  <span className="text-[10px] font-normal px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                    Truncated preview
+                  </span>
+                )}
+              </button>
+
+              {isTruncatedLog && (
+                <button
+                  type="button"
+                  onClick={s.handleDownloadFullRawLog}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-border text-[11px] font-medium text-primary hover:bg-muted transition-colors cursor-pointer shrink-0"
+                >
+                  <Download className="size-3" />
+                  <span>Download full output.log</span>
+                </button>
+              )}
+            </div>
+            {s.isRawLogsOpen && (
+              <pre id="raw-latex-logs-content" className="p-3 border-t border-border/60 bg-muted/20 font-mono text-12 text-foreground/90 whitespace-pre-wrap break-words leading-relaxed max-h-96 overflow-y-auto select-text">
+                {log || 'No compilation logs recorded yet.'}
+              </pre>
             )}
           </div>
         </div>

@@ -15,11 +15,16 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { cn } from '@/shared/lib/utils';
-import type { ChatMessage } from '@/features/ai/types/chat.types';
-import { ThinkingBlock, parseThinkingContent } from './ThinkingBlock';
+import {
+  HitlApprovalPart,
+  ThinkingPart,
+  parseThinkingContent,
+  type FluxMessage,
+  type HitlDecision,
+} from '@/features/ai';
 
 export interface AiMessageItemProps {
-  msg?: ChatMessage;
+  msg?: FluxMessage;
   rawStreamingContent?: string;
   isStreaming?: boolean;
   hasSelectionContext?: boolean;
@@ -28,6 +33,7 @@ export interface AiMessageItemProps {
   onInsertAtCursor: (code: string) => void;
   onProposeDiff: (code: string) => void;
   onReplaceSelection: (code: string) => void;
+  onResumeHitl?: (decisions: HitlDecision[]) => void | Promise<void>;
 }
 
 export function AiMessageItem({
@@ -40,13 +46,33 @@ export function AiMessageItem({
   onInsertAtCursor,
   onProposeDiff,
   onReplaceSelection,
+  onResumeHitl,
 }: AiMessageItemProps) {
   const isUser = msg?.role === 'user';
-  const rawText = isStreaming ? rawStreamingContent || '' : msg?.content || '';
 
-  const { thinking, answer, isThinkingOpen } = isUser
-    ? { thinking: null, answer: rawText, isThinkingOpen: false }
-    : parseThinkingContent(rawText);
+  const reasoningParts =
+    !isUser && msg?.parts
+      ? msg.parts.filter((p) => p.type === 'reasoning')
+      : [];
+  const hitlParts =
+    !isUser && msg?.parts ? msg.parts.filter((p) => p.type === 'hitl') : [];
+
+  const rawText = rawStreamingContent ?? msg?.content ?? '';
+  const parsedFallback =
+    isUser || reasoningParts.length > 0
+      ? { thinking: null, answer: rawText, isThinkingOpen: false }
+      : parseThinkingContent(rawText);
+
+  const thinkingText =
+    reasoningParts.length > 0
+      ? reasoningParts.map((p) => p.text).join('\n\n')
+      : parsedFallback.thinking;
+  const isThinkingActive =
+    reasoningParts.length > 0
+      ? reasoningParts.some((p) => Boolean(p.streaming)) && isStreaming
+      : parsedFallback.isThinkingOpen;
+  const answerText =
+    reasoningParts.length > 0 ? rawText : parsedFallback.answer;
 
   const markdownComponents: Components = {
     code({ className, children, ...props }) {
@@ -134,17 +160,27 @@ export function AiMessageItem({
               RAG Verified
             </span>
           </div>
-          {thinking && <ThinkingBlock content={thinking} isOpen={isThinkingOpen} />}
+          {thinkingText && (
+            <ThinkingPart content={thinkingText} isStreaming={isThinkingActive} compact />
+          )}
           <div className="prose prose-sm dark:prose-invert max-w-none text-13 space-y-2 break-words [&>p]:leading-relaxed [&>ul]:pl-4 [&>ol]:pl-4 [&_code]:font-mono [&_code]:text-11">
             <ReactMarkdown
               remarkPlugins={[remarkGfm, remarkMath]}
               rehypePlugins={[rehypeKatex]}
               components={markdownComponents}
             >
-              {answer || (!thinking ? rawStreamingContent || '' : '')}
+              {answerText}
             </ReactMarkdown>
             <span className="inline-block w-1.5 h-3.5 bg-ai ml-0.5 animate-pulse motion-reduce:animate-none" />
           </div>
+          {hitlParts.map((part) => (
+            <HitlApprovalPart
+              key={part.interruptId}
+              part={part}
+              onResume={onResumeHitl}
+              compact
+            />
+          ))}
         </div>
       </div>
     );
@@ -154,7 +190,7 @@ export function AiMessageItem({
     <div
       className={cn(
         'flex flex-col gap-1 w-full text-13',
-        isUser ? 'items-end' : 'items-start'
+        isUser ? 'items-end' : 'items-start',
       )}
     >
       <div
@@ -162,7 +198,7 @@ export function AiMessageItem({
           'relative max-w-[92%] rounded-md px-3 py-2 leading-relaxed',
           isUser
             ? 'bg-primary text-primary-foreground font-normal whitespace-pre-wrap'
-            : 'bg-ai-subtle/40 border border-ai-border/60 text-foreground'
+            : 'bg-ai-subtle/40 border border-ai-border/60 text-foreground',
         )}
       >
         {!isUser && (
@@ -173,18 +209,32 @@ export function AiMessageItem({
             </span>
           </div>
         )}
-        {thinking && <ThinkingBlock content={thinking} isOpen={isThinkingOpen} />}
+        {thinkingText && (
+          <ThinkingPart content={thinkingText} isStreaming={false} compact />
+        )}
         {isUser ? (
           <div>{msg?.content}</div>
         ) : (
-          <div className="prose prose-sm dark:prose-invert max-w-none text-13 space-y-2 break-words [&>p]:leading-relaxed [&>ul]:pl-4 [&>ol]:pl-4 [&_code]:font-mono [&_code]:text-11">
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm, remarkMath]}
-              rehypePlugins={[rehypeKatex]}
-              components={markdownComponents}
-            >
-              {answer || msg?.content || ''}
-            </ReactMarkdown>
+          <div className="space-y-2">
+            {answerText && (
+              <div className="prose prose-sm dark:prose-invert max-w-none text-13 space-y-2 break-words [&>p]:leading-relaxed [&>ul]:pl-4 [&>ol]:pl-4 [&_code]:font-mono [&_code]:text-11">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm, remarkMath]}
+                  rehypePlugins={[rehypeKatex]}
+                  components={markdownComponents}
+                >
+                  {answerText}
+                </ReactMarkdown>
+              </div>
+            )}
+            {hitlParts.map((part) => (
+              <HitlApprovalPart
+                key={part.interruptId}
+                part={part}
+                onResume={onResumeHitl}
+                compact
+              />
+            ))}
           </div>
         )}
       </div>

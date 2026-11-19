@@ -209,14 +209,14 @@ export function runInitProjectSymbols(state: {
   }
 
   const projectChanged = lastIndexedProjectKey !== '' && lastIndexedProjectKey !== projectKey;
-  const activePageScopeId =
+  const activePageTargetId =
     (typeof usePageStore?.getState === 'function'
       ? usePageStore.getState().rootPageId || usePageStore.getState().parentPageId
       : null) || '';
   const candidatePools = [
     ...(projectFilesByScope.get(projectKey) ?? []),
-    ...(activePageScopeId && activePageScopeId !== projectKey
-      ? (projectFilesByScope.get(activePageScopeId) ?? [])
+    ...(activePageTargetId && activePageTargetId !== projectKey
+      ? (projectFilesByScope.get(activePageTargetId) ?? [])
       : []),
     ...(projectChanged ? [] : projectFiles),
   ];
@@ -226,7 +226,7 @@ export function runInitProjectSymbols(state: {
     if (
       !pf.pageId ||
       pf.pageId === projectKey ||
-      (activePageScopeId && pf.pageId === activePageScopeId)
+      (activePageTargetId && pf.pageId === activePageTargetId)
     ) {
       preservedMap.set(pf.id, pf);
     }

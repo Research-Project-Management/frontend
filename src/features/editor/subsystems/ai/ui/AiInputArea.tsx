@@ -27,6 +27,7 @@ import {
   DropdownMenuSeparator,
 } from '@/shared/components/ui/dropdown-menu';
 import { cn } from '@/shared/lib/utils';
+import type { ContextTab, SourceEntry } from '@/features/ai';
 import { QUICK_ACTIONS } from '@/features/editor/domain/ai/ai-prompts';
 import {
   ACCEPTED_TYPES,
@@ -35,28 +36,9 @@ import {
   type UploadingFileItem,
 } from './ai-attachments';
 
-const LibraryPickerModal = nextDynamic(
-  () =>
-    import('@/features/ai/components/companion/LibraryPickerModal').then(
-      (m) => m.LibraryPickerModal
-    ),
-  { ssr: false }
-);
-
-const StoragePickerModal = nextDynamic(
-  () =>
-    import('@/features/ai/components/companion/StoragePickerModal').then(
-      (m) => m.StoragePickerModal
-    ),
-  { ssr: false }
-);
-
-const UploadedDocumentsModal = nextDynamic(
-  () =>
-    import('@/features/ai/components/companion/UploadedDocumentsModal').then(
-      (m) => m.UploadedDocumentsModal
-    ),
-  { ssr: false }
+const ContextPicker = nextDynamic(
+  () => import('@/features/ai').then((m) => m.ContextPicker),
+  { ssr: false },
 );
 
 export interface AiInputAreaProps {
@@ -74,15 +56,9 @@ export interface AiInputAreaProps {
   webSearchEnabled: boolean;
   setWebSearchEnabled: (val: boolean) => void;
   currentProjectId: string | null;
-  onLibraryAttached: (items: AttachedFile[]) => void;
-  onStorageAttached: (items: AttachedFile[]) => void;
-  onDocumentsAttached: (items: AttachedFile[]) => void;
-  isLibraryModalOpen: boolean;
-  setIsLibraryModalOpen: (open: boolean) => void;
-  isStorageModalOpen: boolean;
-  setIsStorageModalOpen: (open: boolean) => void;
-  isUploadedDocsModalOpen: boolean;
-  setIsUploadedDocsModalOpen: (open: boolean) => void;
+  pickerTab: ContextTab | null;
+  setPickerTab: (tab: ContextTab | null) => void;
+  onSourcesAttached: (items: AttachedFile[], source: 'library' | 'storage' | 'documents') => void;
 }
 
 export function AiInputArea({
@@ -100,15 +76,9 @@ export function AiInputArea({
   webSearchEnabled,
   setWebSearchEnabled,
   currentProjectId,
-  onLibraryAttached,
-  onStorageAttached,
-  onDocumentsAttached,
-  isLibraryModalOpen,
-  setIsLibraryModalOpen,
-  isStorageModalOpen,
-  setIsStorageModalOpen,
-  isUploadedDocsModalOpen,
-  setIsUploadedDocsModalOpen,
+  pickerTab,
+  setPickerTab,
+  onSourcesAttached,
 }: AiInputAreaProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -119,9 +89,23 @@ export function AiInputArea({
     e.target.style.height = `${Math.min(e.target.scrollHeight, 140)}px`;
   };
 
+  const handlePickerSelect = (entries: SourceEntry[]) => {
+    const items: AttachedFile[] = entries.map((e) => ({
+      id: e.id,
+      name: e.name,
+      size: e.size,
+    }));
+    const sourceKind =
+      pickerTab === 'library'
+        ? 'library'
+        : pickerTab === 'storage'
+          ? 'storage'
+          : 'documents';
+    onSourcesAttached(items, sourceKind);
+  };
+
   return (
     <div className="shrink-0 p-2.5 sm:p-3 bg-background select-none">
-      {/* Quick action chips above textarea if conversation is active */}
       {hasMessages && (
         <div className="flex items-center gap-1 overflow-x-auto pb-2 scrollbar-none">
           {QUICK_ACTIONS.slice(0, 3).map((act) => (
@@ -138,9 +122,7 @@ export function AiInputArea({
         </div>
       )}
 
-      {/* Input Box */}
       <div className="rounded-md border border-border/80 bg-muted/20 focus-within:border-ai/50 focus-within:bg-background transition-colors p-2 flex flex-col gap-1.5">
-        {/* Attached Files List */}
         {(attachedFiles.length > 0 || uploadingFiles.length > 0) && (
           <div className="flex items-center gap-1.5 flex-wrap pb-1.5 pt-0.5 max-h-32 overflow-y-auto">
             {uploadingFiles.map((up) => {
@@ -241,7 +223,6 @@ export function AiInputArea({
           className="w-full resize-none bg-transparent text-13 text-foreground placeholder:text-muted-foreground outline-none leading-relaxed min-h-[32px] max-h-[140px] px-0.5 py-1"
         />
 
-        {/* Bottom Action Toolbar inside card */}
         <div className="flex items-center justify-between pt-1">
           <div className="flex items-center gap-1">
             <DropdownMenu>
@@ -253,7 +234,7 @@ export function AiInputArea({
                       disabled={isStreaming}
                       className={cn(
                         'relative flex size-7 items-center justify-center rounded-md text-foreground hover:bg-muted transition-colors cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-ai',
-                        isStreaming && 'opacity-40 cursor-not-allowed'
+                        isStreaming && 'opacity-40 cursor-not-allowed',
                       )}
                       aria-label="Add attachment or toggle features"
                     >
@@ -280,7 +261,7 @@ export function AiInputArea({
                 </DropdownMenuItem>
 
                 <DropdownMenuItem
-                  onClick={() => setIsStorageModalOpen(true)}
+                  onClick={() => setPickerTab('storage')}
                   className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-13 font-normal cursor-pointer hover:bg-muted focus:bg-muted text-foreground"
                 >
                   <HardDrive className="size-4 text-foreground shrink-0" />
@@ -288,7 +269,7 @@ export function AiInputArea({
                 </DropdownMenuItem>
 
                 <DropdownMenuItem
-                  onClick={() => setIsLibraryModalOpen(true)}
+                  onClick={() => setPickerTab('library')}
                   className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-13 font-normal cursor-pointer hover:bg-muted focus:bg-muted text-foreground"
                 >
                   <BookOpen className="size-4 text-foreground shrink-0" />
@@ -296,7 +277,7 @@ export function AiInputArea({
                 </DropdownMenuItem>
 
                 <DropdownMenuItem
-                  onClick={() => setIsUploadedDocsModalOpen(true)}
+                  onClick={() => setPickerTab('uploaded')}
                   className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md text-13 font-normal cursor-pointer hover:bg-muted focus:bg-muted text-foreground"
                 >
                   <Database className="size-4 text-foreground shrink-0" />
@@ -329,13 +310,13 @@ export function AiInputArea({
                   <div
                     className={cn(
                       'relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out',
-                      webSearchEnabled ? 'bg-ai' : 'bg-muted-foreground/30'
+                      webSearchEnabled ? 'bg-ai' : 'bg-muted-foreground/30',
                     )}
                   >
                     <span
                       className={cn(
                         'pointer-events-none inline-block size-3 rounded-full bg-background transform ring-0 transition duration-200 ease-in-out',
-                        webSearchEnabled ? 'translate-x-3' : 'translate-x-0'
+                        webSearchEnabled ? 'translate-x-3' : 'translate-x-0',
                       )}
                     />
                   </div>
@@ -367,16 +348,21 @@ export function AiInputArea({
                   <button
                     type="button"
                     onClick={() => onSendMessage()}
-                    disabled={(!inputPrompt.trim() && attachedFiles.length === 0) || uploadingFiles.length > 0}
+                    disabled={
+                      (!inputPrompt.trim() && attachedFiles.length === 0) ||
+                      uploadingFiles.length > 0
+                    }
                     className={cn(
                       'flex size-7 items-center justify-center rounded-md p-0 transition-colors select-none',
                       uploadingFiles.length > 0
                         ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-60'
-                        : (!inputPrompt.trim() && attachedFiles.length === 0)
+                        : !inputPrompt.trim() && attachedFiles.length === 0
                           ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-40'
-                          : 'bg-ai text-ai-foreground hover:bg-ai-hover cursor-pointer'
+                          : 'bg-ai text-ai-foreground hover:bg-ai-hover cursor-pointer',
                     )}
-                    aria-label={uploadingFiles.length > 0 ? 'Processing documents...' : 'Send message'}
+                    aria-label={
+                      uploadingFiles.length > 0 ? 'Processing documents...' : 'Send message'
+                    }
                   >
                     {uploadingFiles.length > 0 ? (
                       <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none text-ai" />
@@ -386,7 +372,9 @@ export function AiInputArea({
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="top" sideOffset={4}>
-                  {uploadingFiles.length > 0 ? 'Processing documents...' : 'Send message (Enter)'}
+                  {uploadingFiles.length > 0
+                    ? 'Processing documents...'
+                    : 'Send message (Enter)'}
                 </TooltipContent>
               </Tooltip>
             )}
@@ -394,7 +382,6 @@ export function AiInputArea({
         </div>
       </div>
 
-      {/* Hidden File Input for Device Upload */}
       <input
         ref={fileInputRef}
         type="file"
@@ -404,27 +391,15 @@ export function AiInputArea({
         onChange={onFileUpload}
       />
 
-      {/* Attachment Modals */}
-      <LibraryPickerModal
-        isOpen={isLibraryModalOpen}
-        onClose={() => setIsLibraryModalOpen(false)}
-        projectId={currentProjectId}
-        onSelectItems={onLibraryAttached}
-      />
-
-      <StoragePickerModal
-        isOpen={isStorageModalOpen}
-        onClose={() => setIsStorageModalOpen(false)}
-        projectId={currentProjectId}
-        onSelectItems={onStorageAttached}
-      />
-
-      <UploadedDocumentsModal
-        isOpen={isUploadedDocsModalOpen}
-        onClose={() => setIsUploadedDocsModalOpen(false)}
-        projectId={currentProjectId}
-        onSelectItems={onDocumentsAttached}
-      />
+      {pickerTab && (
+        <ContextPicker
+          open={Boolean(pickerTab)}
+          onOpenChange={(open) => !open && setPickerTab(null)}
+          initialTab={pickerTab}
+          spaceId={currentProjectId}
+          onSelect={handlePickerSelect}
+        />
+      )}
     </div>
   );
 }

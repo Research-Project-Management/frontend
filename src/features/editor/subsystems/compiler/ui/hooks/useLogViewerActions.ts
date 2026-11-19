@@ -21,7 +21,130 @@ import { pagesService, downloadAuxFileUrl, downloadAllArtifactsZipUrl } from '@/
 import { aiCoordinator } from '@/features/editor/subsystems/ai';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 import { usePageStore, useSettingsStore, workspaceCoordinator, editorCommandBus } from '@/features/editor/core';
+import { getEditorEngineForFile } from '@/features/editor/core/bus/engine-registry';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { DEFAULT_MAIN_FILE } from '@/features/editor/domain/constants/editor.constants';
+
+export interface ProjectFileCandidate {
+  id: string;
+  title?: string;
+  name?: string;
+  path?: string;
+}
+
+function normalizeLogPath(filePath: string): string {
+  return filePath.replace(/\\/g, '/').replace(/^(?:\.\/)+/, '').replace(/^\/+/, '');
+}
+
+export function resolveProjectFileByLogPath<T extends ProjectFileCandidate>(
+  logFile: string | undefined,
+  mainFile: string,
+  projectFiles: T[],
+): T | undefined {
+  const rawTarget = (logFile || '').trim() || mainFile;
+  const normalizedTarget = normalizeLogPath(rawTarget);
+  if (!normalizedTarget || projectFiles.length === 0) return undefined;
+  const targetLower = normalizedTarget.toLowerCase();
+
+  const getCandidates = (file: T): string[] =>
+    [file.path, file.title, file.name].filter((value): value is string => Boolean(value)).map(normalizeLogPath);
+
+  return (
+    projectFiles.find((file) => getCandidates(file).some((candidate) => candidate === normalizedTarget)) ||
+    projectFiles.find((file) => getCandidates(file).some((candidate) => candidate.toLowerCase() === targetLower)) ||
+    projectFiles.find((file) =>
+      getCandidates(file).some((candidate) => candidate.toLowerCase().endsWith(`/${targetLower}`)),
+    )
+  );
+}
+
+interface QuickFixPatchResult {
+  updated: string;
+  fromOffset?: number;
+  toOffset?: number;
+  insertStr?: string;
+  changed: boolean;
+}
+
+function computeQuickFixPatch(
+  content: string,
+  entryLine: number | undefined,
+  quickFix: { description: string; replacementText: string },
+  isPreambleFix: boolean,
+): QuickFixPatchResult {
+  const replacement = quickFix.replacementText;
+  const trimmedFix = replacement.trim();
+  const descriptionLower = quickFix.description.toLowerCase();
+
+  if (isPreambleFix) {
+    if (content.includes(trimmedFix)) {
+      return { updated: content, changed: false };
+    }
+    const beginDocIdx = content.indexOf('\\begin{document}');
+    if (beginDocIdx !== -1) {
+      return {
+        updated: content.slice(0, beginDocIdx) + `${trimmedFix}\n` + content.slice(beginDocIdx),
+        fromOffset: beginDocIdx,
+        toOffset: beginDocIdx,
+        insertStr: `${trimmedFix}\n`,
+        changed: true,
+      };
+    }
+    const docClassMatch = content.match(/^.*\\documentclass(?:\[[^\]]*\])?\{[^}]+\}.*$/m);
+    if (docClassMatch && docClassMatch.index !== undefined) {
+      const insertPos = docClassMatch.index + docClassMatch[0].length;
+      return {
+        updated: content.slice(0, insertPos) + `\n${trimmedFix}` + content.slice(insertPos),
+        fromOffset: insertPos,
+        toOffset: insertPos,
+        insertStr: `\n${trimmedFix}`,
+        changed: true,
+      };
+    }
+    return {
+      updated: `${trimmedFix}\n${content}`,
+      fromOffset: 0,
+      toOffset: 0,
+      insertStr: `${trimmedFix}\n`,
+      changed: true,
+    };
+  }
+
+  if (entryLine && entryLine >= 1) {
+    const lines = content.split('\n');
+    const targetIdx = Math.min(entryLine - 1, Math.max(0, lines.length - 1));
+    const isInsertion =
+      trimmedFix.startsWith('\\end{') ||
+      descriptionLower.includes('insert') ||
+      descriptionLower.includes('add ') ||
+      descriptionLower.includes('append');
+    let lineStartOffset = 0;
+    for (let i = 0; i < targetIdx; i++) {
+      lineStartOffset += lines[i].length + 1;
+    }
+    const lineEndOffset = lineStartOffset + lines[targetIdx].length;
+    if (isInsertion) {
+      lines[targetIdx] = `${lines[targetIdx]}\n${replacement}`;
+      return {
+        updated: lines.join('\n'),
+        fromOffset: lineEndOffset,
+        toOffset: lineEndOffset,
+        insertStr: `\n${replacement}`,
+        changed: true,
+      };
+    }
+    lines[targetIdx] = replacement;
+    return {
+      updated: lines.join('\n'),
+      fromOffset: lineStartOffset,
+      toOffset: lineEndOffset,
+      insertStr: replacement,
+      changed: true,
+    };
+  }
+
+  return { updated: content, changed: false };
+}
 
 export function copySnippetToClipboard(snippet?: string): void {
   if (!snippet) return;
@@ -68,83 +191,75 @@ export function useLogViewerActions({
       entry: LogEntry,
       quickFix: { description: string; replacementText: string },
     ) => {
-      if (!engine) {
+      const pageStore = usePageStore.getState();
+      const configuredMainFile = useSettingsStore.getState().mainFile || DEFAULT_MAIN_FILE;
+      const activeFileId = pageStore.activeFilePage?.id || pageStore.currentPage?.id;
+      const replacement = quickFix.replacementText;
+      const trimmedFix = replacement.trim();
+      const descriptionLower = quickFix.description.toLowerCase();
+      const isPreambleFix =
+        trimmedFix.startsWith('\\usepackage') || descriptionLower.includes('preamble');
+
+      const projectFiles = (workspaceCoordinator.getProjectFiles() || []) as ProjectFileCandidate[];
+      const targetPath = isPreambleFix ? configuredMainFile : entry.file || configuredMainFile;
+      const targetNode = resolveProjectFileByLogPath(targetPath, configuredMainFile, projectFiles);
+
+      let targetEngine = engine ?? null;
+      const switchesToOtherFile = Boolean(targetNode && targetNode.id !== activeFileId);
+
+      if (targetNode && switchesToOtherFile) {
+        navigationCoordinator.openDocument({
+          fileId: targetNode.id,
+          title: targetNode.title || targetNode.name || targetPath,
+        });
+        targetEngine = getEditorEngineForFile(targetNode.id);
+      }
+
+      if (!targetEngine) {
+        if (targetNode && replacement) {
+          const cached = lruDocumentCache.getContent(targetNode.id);
+          if (typeof cached === 'string') {
+            const patch = computeQuickFixPatch(cached, entry.line, quickFix, isPreambleFix);
+            if (patch.changed) {
+              lruDocumentCache.updateContent(targetNode.id, patch.updated, true);
+            }
+            toast.success(`Applied fix: ${quickFix.description}`, { id: 'log-quick-fix' });
+            onCompile?.();
+            return;
+          }
+        }
         toast.error('Editor is not ready', { id: 'log-quick-fix' });
         return;
       }
 
-      if (entry.line) {
-        engine.jumpToLine(entry.line, 'error');
+      if (!isPreambleFix && entry.line) {
+        targetEngine.jumpToLine(entry.line, 'error');
       }
 
-      const replacement = quickFix.replacementText;
       if (replacement) {
-        if (typeof engine.getContent === 'function' && typeof engine.setContent === 'function') {
-          const content = engine.getContent();
-          const trimmedFix = replacement.trim();
-          const descLower = quickFix.description.toLowerCase();
-          const isPreambleFix =
-            trimmedFix.startsWith('\\usepackage') || descLower.includes('preamble');
+        if (typeof targetEngine.getContent === 'function' && typeof targetEngine.setContent === 'function') {
+          const content = targetEngine.getContent();
+          const patch = computeQuickFixPatch(content, entry.line, quickFix, isPreambleFix);
 
-          const applyUpdatedContent = (newContent: string, fromOffset?: number, toOffset?: number, insertStr?: string) => {
-            const anyEng = engine as Partial<Pick<IEditorEngine, 'replaceRange' | 'setContent'>>;
-            if (typeof anyEng.replaceRange === 'function' && fromOffset !== undefined && toOffset !== undefined && insertStr !== undefined) {
-              anyEng.replaceRange(insertStr, fromOffset, toOffset);
-            } else if (typeof anyEng.setContent === 'function') {
-              anyEng.setContent(newContent);
+          if (patch.changed) {
+            const editableEngine = targetEngine as Partial<Pick<IEditorEngine, 'replaceRange' | 'setContent'>>;
+            if (
+              typeof editableEngine.replaceRange === 'function' &&
+              patch.fromOffset !== undefined &&
+              patch.toOffset !== undefined &&
+              patch.insertStr !== undefined
+            ) {
+              editableEngine.replaceRange(patch.insertStr, patch.fromOffset, patch.toOffset);
+            } else if (typeof editableEngine.setContent === 'function') {
+              editableEngine.setContent(patch.updated);
             } else {
-              editorCommandBus.dispatch({ type: 'editor:set-content', content: newContent });
+              editorCommandBus.dispatch({ type: 'editor:set-content', content: patch.updated });
             }
-          };
-
-          if (isPreambleFix) {
-            if (!content.includes(trimmedFix)) {
-              const beginDocIdx = content.indexOf('\\begin{document}');
-              if (beginDocIdx !== -1) {
-                const updated =
-                  content.slice(0, beginDocIdx) +
-                  `${trimmedFix}\n` +
-                  content.slice(beginDocIdx);
-                applyUpdatedContent(updated, beginDocIdx, beginDocIdx, `${trimmedFix}\n`);
-              } else {
-                const docClassMatch = content.match(/^.*\\documentclass(?:\[[^\]]*\])?\{[^}]+\}.*$/m);
-                if (docClassMatch && docClassMatch.index !== undefined) {
-                  const insertPos = docClassMatch.index + docClassMatch[0].length;
-                  const updated =
-                    content.slice(0, insertPos) +
-                    `\n${trimmedFix}` +
-                    content.slice(insertPos);
-                  applyUpdatedContent(updated, insertPos, insertPos, `\n${trimmedFix}`);
-                } else {
-                  applyUpdatedContent(`${trimmedFix}\n${content}`, 0, 0, `${trimmedFix}\n`);
-                }
-              }
-            }
-          } else if (entry.line && entry.line >= 1) {
-            const lines = content.split('\n');
-            const targetIdx = Math.min(entry.line - 1, Math.max(0, lines.length - 1));
-            const isInsertion =
-              trimmedFix.startsWith('\\end{') ||
-              descLower.includes('insert') ||
-              descLower.includes('add ') ||
-              descLower.includes('append');
-            let lineStartOffset = 0;
-            for (let i = 0; i < targetIdx; i++) {
-              lineStartOffset += lines[i].length + 1;
-            }
-            const lineEndOffset = lineStartOffset + lines[targetIdx].length;
-            if (isInsertion) {
-              lines[targetIdx] = `${lines[targetIdx]}\n${replacement}`;
-              applyUpdatedContent(lines.join('\n'), lineEndOffset, lineEndOffset, `\n${replacement}`);
-            } else {
-              lines[targetIdx] = replacement;
-              applyUpdatedContent(lines.join('\n'), lineStartOffset, lineEndOffset, replacement);
-            }
-          } else if (typeof engine.insertText === 'function') {
-            engine.insertText(replacement);
+          } else if (!isPreambleFix && !entry.line && typeof targetEngine.insertText === 'function') {
+            targetEngine.insertText(replacement);
           }
-        } else if (typeof engine.insertText === 'function') {
-          engine.insertText(replacement);
+        } else if (typeof targetEngine.insertText === 'function') {
+          targetEngine.insertText(replacement);
         }
       }
 

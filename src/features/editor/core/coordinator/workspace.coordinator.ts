@@ -563,8 +563,8 @@ export class WorkspaceCoordinator {
     }
   }
 
-  public initProjectSymbols(files: WorkspaceProjectItem[], scopeId?: string): void {
-    const projectKey = scopeId || this.getActiveProjectId() || 'default';
+  public initProjectSymbols(files: WorkspaceProjectItem[], workspaceId?: string): void {
+    const projectKey = workspaceId || this.getActiveProjectId() || 'default';
     const result = runInitProjectSymbols({
       files,
       projectFiles: this.projectFiles,
@@ -580,9 +580,9 @@ export class WorkspaceCoordinator {
     }
   }
 
-  public syncStructureItems(items: WorkspaceStructureSyncItem[], scopeId?: string): void {
+  public syncStructureItems(items: WorkspaceStructureSyncItem[], workspaceId?: string): void {
     if (!Array.isArray(items) || items.length === 0) return;
-    const activeScope = scopeId || items[0]?.pageId || this.getActiveProjectId() || 'default';
+    const activeScope = workspaceId || items[0]?.pageId || this.getActiveProjectId() || 'default';
     const next = mergeWorkspaceStructureItems({
       items,
       projectFiles: this.projectFiles,
@@ -597,10 +597,10 @@ export class WorkspaceCoordinator {
   }
 
   public getProjectFiles(
-    scopeId?: string,
+    workspaceId?: string,
   ): Array<{ id: string; title?: string; name?: string; path?: string; content?: unknown }> {
-    if (scopeId && this.projectFilesByScope.has(scopeId)) {
-      return this.projectFilesByScope.get(scopeId)!;
+    if (workspaceId && this.projectFilesByScope.has(workspaceId)) {
+      return this.projectFilesByScope.get(workspaceId)!;
     }
     return this.projectFiles;
   }

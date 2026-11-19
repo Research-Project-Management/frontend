@@ -58,7 +58,8 @@ export class ErrorLensWidget extends WidgetType {
       this.diagnostic.id === other.diagnostic.id &&
       this.line === other.line &&
       this.diagnostic.message === other.diagnostic.message &&
-      this.diagnostic.severity === other.diagnostic.severity
+      this.diagnostic.severity === other.diagnostic.severity &&
+      Boolean(this.diagnostic.stale) === Boolean(other.diagnostic.stale)
     );
   }
 
@@ -66,20 +67,38 @@ export class ErrorLensWidget extends WidgetType {
     return true;
   }
 
-  toDOM(): HTMLElement {
+  toDOM(view?: EditorView): HTMLElement {
     const wrap = document.createElement('span');
-    const sev = this.diagnostic.severity || 'error';
-    wrap.className = `cm-error-lens cm-error-lens-${sev}`;
+    const severity = this.diagnostic.severity || 'error';
+    const isStale = Boolean(this.diagnostic.stale);
+    wrap.className = `cm-error-lens cm-error-lens-${severity}${isStale ? ' cm-error-lens-stale' : ''}`;
     wrap.setAttribute('role', 'status');
-    wrap.setAttribute('aria-label', `${sev}: ${this.diagnostic.message}`);
+    wrap.setAttribute('aria-label', `${severity}: ${this.diagnostic.message}`);
 
     wrap.setAttribute('data-line', String(this.diagnostic.line));
-    wrap.setAttribute('data-severity', sev);
+    wrap.setAttribute('data-severity', severity);
+    if (isStale) {
+      wrap.setAttribute('data-stale', 'true');
+      wrap.title = 'Line modified — recompile to verify';
+    }
+
+    const resolveLiveLine = (): number => {
+      if (view && typeof view.posAtDOM === 'function' && wrap.isConnected) {
+        try {
+          const pos = view.posAtDOM(wrap);
+          const clampedPos = Math.max(0, Math.min(pos, view.state.doc.length));
+          return view.state.doc.lineAt(clampedPos).number;
+        } catch {
+          // Fall back to diagnostic line when detached from document
+        }
+      }
+      return this.diagnostic.line;
+    };
 
     // 1. Icon Indicator
     const iconSpan = document.createElement('span');
     iconSpan.className = 'cm-error-lens-icon';
-    if (sev === 'error') {
+    if (severity === 'error') {
       iconSpan.innerHTML = `
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="10"/>
@@ -87,7 +106,7 @@ export class ErrorLensWidget extends WidgetType {
           <line x1="12" y1="16" x2="12.01" y2="16"/>
         </svg>
       `;
-    } else if (sev === 'warning') {
+    } else if (severity === 'warning') {
       iconSpan.innerHTML = `
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
@@ -109,9 +128,11 @@ export class ErrorLensWidget extends WidgetType {
     // 2. Message Text (cleaned up)
     const msgSpan = document.createElement('span');
     msgSpan.className = 'cm-error-lens-msg';
-    let cleanMsg = this.diagnostic.message.trim();
-    cleanMsg = cleanMsg.replace(/^LaTeX Error:\s*/i, '').replace(/^Error on line \d+:\s*/i, '');
-    msgSpan.textContent = cleanMsg;
+    const displayMessage = this.diagnostic.message
+      .trim()
+      .replace(/^LaTeX Error:\s*/i, '')
+      .replace(/^Error on line \d+:\s*/i, '');
+    msgSpan.textContent = displayMessage;
     wrap.appendChild(msgSpan);
 
     // Hairline Divider
@@ -140,9 +161,13 @@ export class ErrorLensWidget extends WidgetType {
       const triggerFix = (e: Event) => {
         e.preventDefault();
         e.stopPropagation();
+        const liveLine = resolveLiveLine();
         editorCommandBus.dispatch({
           type: 'ai:autofix-diagnostic',
-          diagnostic: this.diagnostic,
+          diagnostic: {
+            ...this.diagnostic,
+            line: liveLine,
+          },
         });
       };
       fixBtn.onmousedown = (e) => e.stopPropagation();
@@ -158,10 +183,11 @@ export class ErrorLensWidget extends WidgetType {
       const triggerAsk = (e: Event) => {
         e.preventDefault();
         e.stopPropagation();
+        const liveLine = resolveLiveLine();
         editorCommandBus.dispatch({
           type: 'editor:suggest-fix',
           error: {
-            line: this.diagnostic.line,
+            line: liveLine,
             file: this.diagnostic.file || this.filePath,
             message: this.diagnostic.message,
             context: this.diagnostic.context,
@@ -310,6 +336,10 @@ export const errorLensTheme = EditorView.baseTheme({
     backgroundColor: 'color-mix(in srgb, var(--primary) 9%, var(--canvas, #FCFCFB))',
     color: 'var(--primary)',
     border: '1px solid color-mix(in srgb, var(--primary) 24%, transparent)',
+  },
+  '.cm-error-lens-stale': {
+    opacity: '0.6',
+    borderStyle: 'dashed',
   },
   '.cm-error-lens-icon': {
     display: 'inline-flex',

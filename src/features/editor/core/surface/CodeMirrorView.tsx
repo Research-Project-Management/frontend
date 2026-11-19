@@ -46,6 +46,7 @@ import {
 import { reviewCoordinator } from '@/features/editor/subsystems/review/coordinator/review.coordinator';
 import { useEditorReviewSync } from '@/features/editor/subsystems/review/ui/hooks/useEditorReviewSync';
 import { setErrorLensDiagnosticsEffect } from '@/features/editor/subsystems/diagnostics/extensions/latex-error-lens';
+import { setCompilerDiagnosticsEffect } from '@/features/editor/subsystems/diagnostics/extensions/diagnostics-gutter';
 import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics/coordinator/diagnostics.coordinator';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation/coordinator/navigation.coordinator';
 import { sessionCoordinator } from '@/features/editor/core/coordinator/session.coordinator';
@@ -155,15 +156,26 @@ export function CodeMirrorView({
   const isActiveRef = useRef(isActive);
   isActiveRef.current = isActive;
 
-  const syncErrorLens = useCallback((targetView: EditorView, targetFilePath: string) => {
-    const diags = diagnosticsCoordinator.getDiagnosticsForFile(targetFilePath);
-    targetView.dispatch({
-      effects: setErrorLensDiagnosticsEffect.of({
-        diagnostics: diags,
-        filePath: targetFilePath,
-      }),
-    });
-  }, []);
+  const syncErrorLens = useCallback(
+    (
+      targetView: EditorView,
+      targetFilePath: string,
+      options?: { syncCompilerGutter?: boolean },
+    ) => {
+      const diags = diagnosticsCoordinator.getDiagnosticsForFile(targetFilePath);
+      const effects = [
+        setErrorLensDiagnosticsEffect.of({
+          diagnostics: diags,
+          filePath: targetFilePath,
+        }),
+        ...(options?.syncCompilerGutter === false
+          ? []
+          : [setCompilerDiagnosticsEffect.of(diags)]),
+      ];
+      targetView.dispatch({ effects });
+    },
+    [],
+  );
 
   // Stable view update listener delegating dynamically via refs
   const viewUpdateListener = useMemo(() => {

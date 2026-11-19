@@ -21,7 +21,9 @@ export interface EditorDiagnosticItem {
   endColumn?: number;
   severity?: DiagnosticSeverity;
   message: string;
-  source?: 'compiler' | 'static' | 'chktex' | 'bibtex' | 'linter' | string;
+  source?: 'compiler' | 'static' | 'chktex' | 'bibtex' | 'biber' | 'tex' | 'linter' | string;
+  highlightCommand?: string;
+  stale?: boolean;
   code?: string;
   context?: string;
   suggestion?: string;

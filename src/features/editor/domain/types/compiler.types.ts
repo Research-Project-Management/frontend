@@ -72,6 +72,55 @@ export type CompileStatus =
   | 'aborted'
   | 'error';
 
+export type CompilePhase = 'idle' | 'flushing' | 'compiling' | 'done';
+
+export type CompileOutcome =
+  | 'success'
+  | 'stopped-on-first-error'
+  | 'failure'
+  | 'timedout'
+  | 'terminated'
+  | 'validation-problems'
+  | 'clsi-unavailable'
+  | 'offline-queued'
+  | 'code-check-blocked';
+
+export interface CompileLogMeta {
+  sizeBytes: number;
+  truncated: boolean;
+  logArtifactUrl?: string;
+  bibLogFiles?: string[];
+}
+
+export interface DiagnosticsSummary {
+  totalErrors: number;
+  totalWarnings: number;
+  totalBadboxes: number;
+  suppressedCascadeCount: number;
+  truncated: boolean;
+}
+
+export type CompileValidationIssue =
+  | {
+      code: 'mainFile';
+      mainFile: string;
+      availableTexFiles: string[];
+      message: string;
+    }
+  | {
+      code: 'conflictedPaths';
+      paths: string[];
+      message: string;
+    }
+  | {
+      code: 'sizeCheck';
+      totalBytes: number;
+      limitBytes: number;
+      fileLimitBytes: number;
+      offendingFiles: Array<{ path: string; sizeBytes: number }>;
+      message: string;
+    };
+
 export interface CompileError {
   line: number | null;
   message: string;
@@ -79,6 +128,8 @@ export interface CompileError {
   context?: string;
   file?: string;
   severity?: 'error' | 'warning' | 'info' | 'badbox';
+  source?: 'tex' | 'bibtex' | 'biber' | 'system';
+  highlightCommand?: string;
   code?: string;
   suggestion?: string;
   fixedSnippet?: string;
@@ -124,6 +175,8 @@ export interface DiagnosticItemDto {
   severity: 'error' | 'warning' | 'info' | 'badbox';
   category?: 'error' | 'warning' | 'info' | 'badbox';
   warningSubtype?: 'font' | 'package' | 'citation' | 'reference' | 'badbox';
+  source?: 'tex' | 'bibtex' | 'biber' | 'system';
+  highlightCommand?: string;
   message: string;
   context?: string;
   code?: string;
@@ -153,6 +206,8 @@ export interface CompilerDiagnostic {
   severity: 'error' | 'warning' | 'info' | 'badbox';
   category?: 'error' | 'warning' | 'info' | 'badbox';
   warningSubtype?: 'font' | 'package' | 'citation' | 'reference' | 'badbox';
+  source?: 'tex' | 'bibtex' | 'biber' | 'system';
+  highlightCommand?: string;
   code?: string;
   suggestion?: string;
   quickFix?: {
@@ -172,6 +227,8 @@ export interface LogEntry {
   line?: number;
   detail?: string;
   code?: string;
+  source?: 'tex' | 'bibtex' | 'biber' | 'system';
+  highlightCommand?: string;
   rawExcerpt?: string;
   explanation?: ErrorExplanationDto;
   quickFix?: {
@@ -184,6 +241,18 @@ export interface ParsedLog {
   errors: LogEntry[];
   warnings: LogEntry[];
   badBoxes: LogEntry[];
+}
+
+export interface CompileReport {
+  outcome: CompileOutcome;
+  errorMessage: string | null;
+  diagnostics: CompilerDiagnostic[];
+  summary: DiagnosticsSummary;
+  validationIssues: CompileValidationIssue[];
+  logText: string | null;
+  logMeta: CompileLogMeta | null;
+  compiledAt: Date | null;
+  mainFile: string;
 }
 
 export interface CompilerLogsProps {

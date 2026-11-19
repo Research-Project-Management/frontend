@@ -53,7 +53,7 @@ export function useFlushBundle() {
       input?:
         | string
         | {
-            scopeId?: string;
+            bundleKey?: string;
             spaceId?: string;
             pageId?: string;
           },
@@ -62,7 +62,7 @@ export function useFlushBundle() {
         return pagesService.notifications.flushBundle(input);
       }
       return pagesService.notifications.flushBundle(
-        input?.scopeId,
+        input?.bundleKey,
         input?.spaceId,
         input?.pageId,
       );

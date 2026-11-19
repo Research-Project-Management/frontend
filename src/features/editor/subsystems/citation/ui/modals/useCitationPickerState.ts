@@ -120,7 +120,7 @@ export function useCitationPickerState({
     storeSpaceId ||
     rootId ||
     '';
-  const libraryScopeId =
+  const librarySpaceId =
     propsProjectId ||
     params?.projectId ||
     storeProjectId ||
@@ -153,11 +153,11 @@ export function useCitationPickerState({
   });
 
   const { libraryItems = [] } = useEditorCitations({
-    projectId: libraryScopeId,
+    projectId: librarySpaceId,
     enabled: open,
   });
 
-  const { collections: serverCollections = [] } = useCollections(libraryScopeId);
+  const { collections: serverCollections = [] } = useCollections(librarySpaceId);
 
   const citedKeys = useMemo(() => {
     if (propsCitedKeys && propsCitedKeys.length > 0) return propsCitedKeys;
@@ -325,7 +325,7 @@ export function useCitationPickerState({
   }, [localBaseItems, serverItems]);
 
   const { data: retractedItems } = useRetractedItems(
-    libraryScopeId === 'user' ? '' : libraryScopeId,
+    librarySpaceId === 'user' ? '' : librarySpaceId,
     open,
   );
   const retractedMap = useMemo(

@@ -162,13 +162,13 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
       '';
     const activePageId = pageState.rootPageId || pageState.parentPageId || pageState.currentPage?.id || undefined;
     const activeDocId = pageState.activeDocId || pageState.activePageId || undefined;
-    const outlineScopeId = activePageId || projectId;
-    if (!outlineScopeId) {
+    const outlineTargetId = activePageId || projectId;
+    if (!outlineTargetId) {
       setOutline(parseDocumentOutline(content));
       return;
     }
 
-    const outlineHash = hashOutlineKey(outlineScopeId, activeFileName, content);
+    const outlineHash = hashOutlineKey(outlineTargetId, activeFileName, content);
     if (lastFetchedHashRef.current === outlineHash) {
       return;
     }
@@ -185,7 +185,7 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
     let requestPromise = outlineInFlightCache.get(outlineHash);
     if (!requestPromise) {
       requestPromise = pagesService.structure
-        .getOutline(outlineScopeId, {
+        .getOutline(outlineTargetId, {
           filePath: activeFileName,
           docId: activeDocId,
           pageId: activePageId,

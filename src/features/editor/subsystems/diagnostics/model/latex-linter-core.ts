@@ -22,6 +22,7 @@ export interface LinterDiagnostic {
   severity: 'error' | 'warning' | 'info';
   message: string;
   source: string;
+  code?: string;
 }
 
 export type LatexLintDiagnostic = LinterDiagnostic;

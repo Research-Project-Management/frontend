@@ -21,7 +21,9 @@ export interface IndexedDiagnosticItem extends EditorDiagnosticItem {
   endColumn?: number;
   severity: 'error' | 'warning' | 'info';
   message: string;
-  source?: 'compiler' | 'static' | 'chktex' | 'bibtex' | 'linter' | string;
+  source?: 'compiler' | 'static' | 'chktex' | 'bibtex' | 'biber' | 'tex' | 'linter' | string;
+  highlightCommand?: string;
+  stale?: boolean;
   code?: string;
   context?: string;
   suggestion?: string;
@@ -129,12 +131,103 @@ export function buildIndexedCompilerErrorItem(
     severity: err.severity === 'warning' ? 'warning' : 'error',
     context: err.context,
     code: err.code,
+    ...(err.highlightCommand ? { highlightCommand: err.highlightCommand } : {}),
     suggestion: err.suggestion || heuristic?.explanation,
     fixedSnippet: err.fixedSnippet || heuristic?.fixedSnippet,
     originalSnippet: err.originalSnippet || heuristic?.originalSnippet,
     confidence: heuristic?.confidence,
-    source: 'LaTeX Compiler',
+    source:
+      err.source === 'bibtex' || err.source === 'biber'
+        ? err.source
+        : 'LaTeX Compiler',
   };
+}
+
+export interface ChangeSetLike {
+  mapPos(pos: number, assoc?: number): number;
+  iterChanges(
+    fn: (fromA: number, toA: number, fromB: number, toB: number) => void,
+  ): void;
+}
+
+export interface TextDocLike {
+  lines: number;
+  line(n: number): { from: number; to: number };
+  lineAt?(pos: number): { number: number };
+}
+
+export function remapDiagnosticItemsWithChangeSet(
+  items: IndexedDiagnosticItem[] | undefined,
+  oldDoc: TextDocLike,
+  changes: ChangeSetLike,
+  newDoc: { lines: number; lineAt(pos: number): { number: number } },
+  markEditedAsStale: boolean,
+): { remapped: IndexedDiagnosticItem[] | null; changed: boolean } {
+  if (!items || items.length === 0) {
+    return { remapped: null, changed: false };
+  }
+
+  const changeSpans: Array<{ fromA: number; toA: number }> = [];
+  changes.iterChanges((fromA, toA) => {
+    changeSpans.push({ fromA, toA });
+  });
+  if (changeSpans.length === 0) {
+    return { remapped: null, changed: false };
+  }
+
+  let changed = false;
+  const next = items.map((item) => {
+    const safeOldLine = Math.max(1, Math.min(item.line, oldDoc.lines));
+    const oldLineInfo = oldDoc.line(safeOldLine);
+    const mappedStart = changes.mapPos(oldLineInfo.from, 1);
+    const nextLine = Math.max(
+      1,
+      Math.min(newDoc.lineAt(mappedStart).number, newDoc.lines),
+    );
+    const nextEndLine =
+      item.endLine !== undefined
+        ? Math.max(
+            nextLine,
+            Math.min(
+              newDoc.lineAt(
+                changes.mapPos(
+                  oldDoc.line(Math.max(1, Math.min(item.endLine, oldDoc.lines)))
+                    .from,
+                  1,
+                ),
+              ).number,
+              newDoc.lines,
+            ),
+          )
+        : undefined;
+
+    const touched =
+      markEditedAsStale &&
+      changeSpans.some(
+        (span) => span.fromA <= oldLineInfo.to && span.toA >= oldLineInfo.from,
+      );
+    const nextStale = touched ? true : item.stale;
+
+    if (
+      nextLine !== item.line ||
+      nextEndLine !== item.endLine ||
+      nextStale !== item.stale
+    ) {
+      changed = true;
+      return {
+        ...item,
+        line: nextLine,
+        ...(nextEndLine !== undefined ? { endLine: nextEndLine } : {}),
+        ...(nextStale !== undefined ? { stale: nextStale } : {}),
+      };
+    }
+    return item;
+  });
+
+  if (changed) {
+    next.sort((a, b) => a.line - b.line || (a.column ?? 0) - (b.column ?? 0));
+  }
+  return { remapped: changed ? next : null, changed };
 }
 
 export function shiftDiagnosticItemsList(

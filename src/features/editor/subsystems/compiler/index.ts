@@ -32,8 +32,19 @@ export {
 } from './coordinator/compile-pipeline';
 export {
   useCompileStore,
+  selectFilteredCompileDiagnostics,
+  useFilteredCompileDiagnostics,
   type DocumentCompilerState,
+  type FilteredCompileDiagnosticsResult,
+  type CompilePhase,
+  type CompileOutcome,
+  type CompileReport,
 } from './coordinator/compiler.store';
+export type {
+  CompileLogMeta,
+  DiagnosticsSummary,
+  CompileValidationIssue,
+} from '@/features/editor/domain/types/compiler.types';
 export {
   useViewerStore,
   type DocumentViewerState,
@@ -106,8 +117,13 @@ export {
   type ClickIndicator,
 } from './ui/PdfSurface';
 export { default as CompilerLogs } from './ui/CompilerLogs';
+export { CompileOutcomeCard } from './ui/logs/CompileOutcomeCard';
 export { CompileButton } from './ui/CompileButton';
 export { default as CompilationErrorBanner } from './ui/CompilationErrorBanner';
+export {
+  resolveProjectFileByLogPath,
+  type ProjectFileCandidate,
+} from './ui/hooks/useLogViewerActions';
 export { default as PdfToolbar } from './ui/PdfToolbar';
 export { default as PdfFindBar } from './ui/PdfFindBar';
 export { default as PdfZoomControls } from './ui/PdfZoomControls';

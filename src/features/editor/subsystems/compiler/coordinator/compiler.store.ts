@@ -5,10 +5,28 @@
  */
 
 import { create } from 'zustand';
-import type { CompileStatus, CompileError, ParsedLog } from '@/features/editor/domain/types/compiler.types';
+import { useMemo } from 'react';
+import type {
+  CompileStatus,
+  CompilePhase,
+  CompileOutcome,
+  CompileReport,
+  CompileError,
+  ParsedLog,
+  LogEntry,
+} from '@/features/editor/domain/types/compiler.types';
 import type { CompilerDiagnostic } from '@/features/editor/sdk/pages/types';
 import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store';
+import { useSettingsStore } from '@/features/editor/core/store/settings.store';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
+import {
+  diagnosticsToParsedLog,
+  cacheBackendParsedLog,
+} from '@/features/editor/domain/latex/compiler-logs-parser';
+import {
+  filterDiagnostics,
+  type WarningFilterOptions,
+} from '@/features/editor/domain/latex/warning-filter';
 
 /**
  * Zero-copy live read-through view of dirty document contents backed directly by `lruDocumentCache`.
@@ -81,6 +99,9 @@ export interface DocumentCompilerState {
 
   // ── Compile state (background, non-blocking) ───────────────────────────
   compileStatus: CompileStatus;
+  compilePhase: CompilePhase;
+  compileOutcome: CompileOutcome | null;
+  compileReport: CompileReport | null;
   compileLog: string | null;
   /** Parsed error list from the last failed compilation */
   compileErrors: CompileError[];
@@ -94,6 +115,9 @@ export interface DocumentCompilerState {
   isViewerPoppedOut: boolean;
 
   setCompileStatus: (status: CompileStatus) => void;
+  setCompilePhase: (phase: CompilePhase) => void;
+  setCompileOutcome: (outcome: CompileOutcome | null) => void;
+  applyCompileResult: (report: CompileReport) => void;
   setCompileLog: (log: string | null) => void;
   setCompileErrors: (errors: CompileError[]) => void;
   setCompileDiagnostics: (diagnostics: CompilerDiagnostic[]) => void;
@@ -152,6 +176,9 @@ export const useCompileStore = create<DocumentCompilerState>()((set, get) => ({
 
   // ── Compile state ─────────────────────────────────────────────────────
   compileStatus: 'idle',
+  compilePhase: 'idle',
+  compileOutcome: null,
+  compileReport: null,
   compileLog: null,
   compileErrors: [],
   compileDiagnostics: [],
@@ -162,7 +189,76 @@ export const useCompileStore = create<DocumentCompilerState>()((set, get) => ({
   isViewerPoppedOut: false,
 
   setCompileStatus(status) {
-    set({ compileStatus: status });
+    const nextPhase: CompilePhase =
+      status === 'compiling' || status === 'syncing'
+        ? 'compiling'
+        : status === 'flushing'
+          ? 'flushing'
+          : status === 'idle'
+            ? 'idle'
+            : 'done';
+    set({ compileStatus: status, compilePhase: nextPhase });
+  },
+
+  setCompilePhase(phase) {
+    set({ compilePhase: phase });
+  },
+
+  setCompileOutcome(outcome) {
+    set({ compileOutcome: outcome });
+  },
+
+  applyCompileResult(report) {
+    const MAX_LOG_LENGTH = 500_000;
+    const rawLog = report.logText;
+    const trimmedLog = !rawLog
+      ? null
+      : rawLog.length > MAX_LOG_LENGTH
+        ? '... [truncated previous logs]\n' + rawLog.slice(rawLog.length - MAX_LOG_LENGTH)
+        : rawLog;
+
+    const structuredParsedLog = diagnosticsToParsedLog(report.diagnostics);
+    if (trimmedLog && report.diagnostics.length > 0) {
+      cacheBackendParsedLog(trimmedLog, structuredParsedLog);
+    }
+
+    const legacyErrors: CompileError[] = report.diagnostics
+      .filter((d) => d.severity !== 'info' && d.severity !== 'badbox')
+      .map((d) => ({
+        line: d.line,
+        message: d.message,
+        context: d.context,
+        file: d.file,
+        severity: d.severity,
+        source: d.source,
+        highlightCommand: d.highlightCommand,
+        code: d.code,
+        suggestion: d.suggestion,
+      }));
+
+    const derivedStatus: CompileStatus =
+      report.outcome === 'success'
+        ? 'done'
+        : report.outcome === 'terminated'
+          ? 'aborted'
+          : report.outcome === 'offline-queued' || report.outcome === 'code-check-blocked'
+            ? 'idle'
+            : 'error';
+
+    set({
+      compilePhase: 'done',
+      compileOutcome: report.outcome,
+      compileStatus: derivedStatus,
+      compileReport: {
+        ...report,
+        logText: trimmedLog,
+      },
+      compileLog: trimmedLog,
+      compileDiagnostics: report.diagnostics,
+      parsedLog: structuredParsedLog,
+      compileErrors: legacyErrors,
+      ...(report.compiledAt !== null ? { lastCompiledAt: report.compiledAt } : {}),
+    });
   },
 
   setCompileLog(log) {
@@ -207,6 +303,8 @@ export const useCompileStore = create<DocumentCompilerState>()((set, get) => ({
 
   clearLogs() {
     set({
+      compileReport: null,
+      compileOutcome: null,
       compileLog: null,
       compileErrors: [],
       compileDiagnostics: [],
@@ -225,6 +323,9 @@ export const useCompileStore = create<DocumentCompilerState>()((set, get) => ({
     }
     set({
       pdfUrl: null,
+      compileReport: null,
+      compileOutcome: null,
+      compilePhase: 'idle',
       compileLog: null,
       compileErrors: [],
       compileDiagnostics: [],
@@ -283,4 +384,125 @@ function syncCompilerDirtyState() {
 
 lruDocumentCache.subscribe(syncCompilerDirtyState);
 
-export type { CompileStatus, CompileError };
+const TRANSIENT_REF_CITE_WARNING_REGEX =
+  /(?:^|Warning:\s*)(?:Reference|Citation)\s+.+undefined\s+on\s+input\s+line/i;
+
+export interface CompileFilterSettings extends WarningFilterOptions {
+  stopOnFirstError?: boolean;
+  applyFilter?: boolean;
+}
+
+export interface FilteredCompileDiagnosticsResult {
+  errors: LogEntry[];
+  warnings: LogEntry[];
+  badBoxes: LogEntry[];
+  allWarnings: LogEntry[];
+  allBadBoxes: LogEntry[];
+  suppressedCount: number;
+  totalVisible: number;
+}
+
+const EMPTY_FILTERED_DIAGNOSTICS: FilteredCompileDiagnosticsResult = {
+  errors: [],
+  warnings: [],
+  badBoxes: [],
+  allWarnings: [],
+  allBadBoxes: [],
+  suppressedCount: 0,
+  totalVisible: 0,
+};
+
+export function selectFilteredCompileDiagnostics(
+  report: CompileReport | null | undefined,
+  filterSettings: CompileFilterSettings = {},
+  fallbackParsedLog?: ParsedLog | null,
+): FilteredCompileDiagnosticsResult {
+  const baseParsed: ParsedLog | null =
+    report && report.diagnostics.length > 0
+      ? diagnosticsToParsedLog(report.diagnostics)
+      : fallbackParsedLog ?? null;
+
+  if (!baseParsed) {
+    return EMPTY_FILTERED_DIAGNOSTICS;
+  }
+
+  const errors = baseParsed.errors;
+  const nonTransientWarnings =
+    filterSettings.stopOnFirstError && errors.length > 0
+      ? baseParsed.warnings.filter(
+          (w) => !TRANSIENT_REF_CITE_WARNING_REGEX.test(w.message || ''),
+        )
+      : baseParsed.warnings;
+
+  const filterOpts: WarningFilterOptions = {
+    suppressBadBoxes: filterSettings.suppressBadBoxes,
+    suppressFontWarnings: filterSettings.suppressFontWarnings,
+    suppressPackageWarnings: filterSettings.suppressPackageWarnings,
+    customPatterns: filterSettings.customPatterns,
+  };
+
+  const applyFilter = filterSettings.applyFilter !== false;
+  const hiddenWarningsCount =
+    nonTransientWarnings.length - filterDiagnostics(nonTransientWarnings, filterOpts).length;
+  const hiddenBadBoxesCount =
+    baseParsed.badBoxes.length - filterDiagnostics(baseParsed.badBoxes, filterOpts).length;
+
+  const warnings = applyFilter
+    ? filterDiagnostics(nonTransientWarnings, filterOpts)
+    : nonTransientWarnings;
+  const badBoxes = applyFilter
+    ? filterDiagnostics(baseParsed.badBoxes, filterOpts)
+    : baseParsed.badBoxes;
+
+  return {
+    errors,
+    warnings,
+    badBoxes,
+    allWarnings: nonTransientWarnings,
+    allBadBoxes: baseParsed.badBoxes,
+    suppressedCount: hiddenWarningsCount + hiddenBadBoxesCount,
+    totalVisible: errors.length + warnings.length + badBoxes.length,
+  };
+}
+
+export function useFilteredCompileDiagnostics(
+  fallbackParsedLog?: ParsedLog | null,
+  applyFilter = true,
+): FilteredCompileDiagnosticsResult {
+  const compileReport = useCompileStore((s) => s.compileReport);
+  const parsedLog = useCompileStore((s) => s.parsedLog);
+  const suppressBadBoxes = useSettingsStore((s) => s.suppressBadBoxes);
+  const suppressFontWarnings = useSettingsStore((s) => s.suppressFontWarnings);
+  const suppressPackageWarnings = useSettingsStore((s) => s.suppressPackageWarnings);
+  const customPatterns = useSettingsStore((s) => s.customSuppressedWarnings);
+  const stopOnFirstError = useSettingsStore((s) => s.stopOnFirstError);
+
+  return useMemo(
+    () =>
+      selectFilteredCompileDiagnostics(
+        compileReport,
+        {
+          suppressBadBoxes,
+          suppressFontWarnings,
+          suppressPackageWarnings,
+          customPatterns,
+          stopOnFirstError,
+          applyFilter,
+        },
+        fallbackParsedLog ?? parsedLog,
+      ),
+    [
+      compileReport,
+      parsedLog,
+      fallbackParsedLog,
+      suppressBadBoxes,
+      suppressFontWarnings,
+      suppressPackageWarnings,
+      customPatterns,
+      stopOnFirstError,
+      applyFilter,
+    ],
+  );
+}
+
+export type { CompileStatus, CompilePhase, CompileOutcome, CompileReport, CompileError };

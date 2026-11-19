@@ -134,5 +134,4 @@ export class VisibilityCoordinator {
   }
 }
 
-export { VisibilityCoordinator as VisibilityCoordinatorRegistry };
 export const visibilityCoordinator = new VisibilityCoordinator();

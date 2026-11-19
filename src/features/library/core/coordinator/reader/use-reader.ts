@@ -32,6 +32,7 @@ import { useReadingProgress } from './use-reader-tabs';
 import { useAnnotationBatch } from './use-annotation-batch';
 import { useReaderStore } from '@/features/library/core/store/reader.store';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import { useWorkspaceContextStore } from '@/features/shell/store/workspace-context.store';
 import type {
   ReaderDocument,
   ReaderAnnotation,
@@ -403,15 +404,17 @@ export function usePdf(url: string | null, scopeId?: string): UsePdfReturn {
 export function useReader(overridePaperId?: string | null, onBackOverride?: () => void) {
   const params = useParams() as { paperId?: string; projectId?: string };
   const router = useRouter();
-  const activeScope = useLibraryUIStore((s) => s.activeScope);
+  const activeSpace = useWorkspaceContextStore((s) => s.activeSpace);
   const searchParams = useSearchParams();
   const queryProjectId = searchParams?.get('projectId') || undefined;
   const isProject =
-    activeScope.type === 'project' || Boolean(params?.projectId) || Boolean(queryProjectId);
+    (activeSpace.type === 'project' && Boolean(activeSpace.projectId)) ||
+    Boolean(params?.projectId) ||
+    Boolean(queryProjectId);
   const rawProjectId =
     (params?.projectId as string) ||
     queryProjectId ||
-    (activeScope.type === 'project' ? activeScope.projectId || activeScope.id : undefined);
+    (activeSpace.type === 'project' ? activeSpace.projectId : undefined);
   const projectId = rawProjectId || 'user';
   const scopeId = normalizeScopeId(projectId);
 

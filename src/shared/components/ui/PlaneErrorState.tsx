@@ -274,6 +274,7 @@ export function PlaneErrorState({
   title = 'An unexpected error occurred',
   description = 'This view encountered an issue while loading data. Navigation and other workspaces remain safe.',
   error,
+  action,
   className,
   isFullPage = false,
 }: PlaneErrorStateProps) {
@@ -398,6 +399,8 @@ export function PlaneErrorState({
           )}
         </div>
       )}
+
+      {action && <div className="mt-4 flex items-center justify-center">{action}</div>}
     </div>
   );
 }

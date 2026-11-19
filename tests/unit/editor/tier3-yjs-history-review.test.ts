@@ -16,8 +16,7 @@ import {
   trackChangesStateField,
 } from '@/features/editor/subsystems/review/extensions/track-changes.extension';
 import { ReviewCoordinator } from '@/features/editor/subsystems/review/coordinator/review.coordinator';
-import { history } from '@/features/editor/sdk/pages/collaboration.client';
-import { review } from '@/features/editor/sdk/pages/docstore.client';
+import { history, review } from '@/features/editor/sdk/pages.service';
 import { useConnectivityStore } from '@/features/editor/core';
 import type { PageSuggestion } from '@/features/editor/domain/types/suggestion.types';
 

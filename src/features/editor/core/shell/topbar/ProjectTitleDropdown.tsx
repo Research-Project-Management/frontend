@@ -4,7 +4,7 @@
  * ProjectTitleDropdown.tsx
  *
  * Canonical Overleaf Project Title & Actions Dropdown (Block 7: UI Shell Layer).
- * Location: `features/editor/ui/shell/topbar/ProjectTitleDropdown.tsx`
+ * Location: `features/editor/core/shell/topbar/ProjectTitleDropdown.tsx`
  *
  * Features (1:1 Overleaf Parity):
  * - Project title display with subtle dropdown indicator.
@@ -50,7 +50,7 @@ import { Input } from '@/shared/components/ui/input';
 import { usePageStore } from '../../store/editor.store';
 import { useSettingsStore } from '../../store/settings.store';
 import { useCompileStore } from '@/features/editor/subsystems/compiler';
-import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
+import { useEditorInstance } from '@/features/editor/core/bus/use-editor-instance';
 import { useProject } from '@/features/projects/shell/hooks/use-project';
 import { editorCommandBus } from '../../bus/command-bus';
 

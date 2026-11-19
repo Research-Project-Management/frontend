@@ -4,7 +4,7 @@
  * use-pdf-zoom.ts
  *
  * Responsive Viewport Zoom & Scaling Controller (Block 6: UI Features Layer).
- * Location: `features/editor/ui/features/preview/hooks/use-pdf-zoom.ts`
+ * Location: `features/editor/subsystems/compiler/ui/hooks/usePdfZoom.ts`
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react';

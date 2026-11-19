@@ -4,7 +4,7 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-import { EditorArea } from '@/features/editor/ui/editor/EditorArea';
+import { EditorArea } from '@/features/editor/core/surface/EditorArea';
 import { PdfToolbar, DetachedPdfPlaceholder } from '@/features/editor/subsystems/compiler';
 import { WorkbenchShell } from '@/features/editor/core/shell/WorkbenchShell';
 import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/core';
@@ -20,7 +20,7 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/projects/test-proj',
 }));
 
-vi.mock('@/features/editor/ui/hooks/useActiveDocument', () => {
+vi.mock('@/features/editor/core/queries/useActiveDocument', () => {
   const defaultPage = {
     id: 'doc-main',
     title: 'main.tex',
@@ -50,7 +50,7 @@ vi.mock('@/features/editor/ui/hooks/useActiveDocument', () => {
 });
 
 // Mock CodeMirrorView to identify which file is rendered in which pane
-vi.mock('@/features/editor/ui/editor/CodeMirrorView', () => ({
+vi.mock('@/features/editor/core/surface/CodeMirrorView', () => ({
   CodeMirrorView: (props: any) => (
     <div
       data-testid="mock-codemirror-view"

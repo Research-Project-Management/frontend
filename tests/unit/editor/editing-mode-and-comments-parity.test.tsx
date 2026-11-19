@@ -3,8 +3,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import { EditingModeDropdown } from '@/features/editor/core/shell/topbar/EditingModeDropdown';
 import { CommentCard } from '@/features/editor/subsystems/review';
-import { EditorToolbar } from '@/features/editor/ui/editor/EditorToolbar';
-import { FigureWizardModal } from '@/features/editor/ui/modals/FigureWizardModal';
+import { EditorToolbar } from '@/features/editor/core/surface/EditorToolbar';
+import { FigureWizardModal } from '@/features/editor/subsystems/authoring-wizards/ui/FigureWizardModal';
 import { useSettingsStore } from '@/features/editor/core';
 import { editorCommandBus } from '@/features/editor/core';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
@@ -15,7 +15,7 @@ const mockMutateResolve = (globalThis as any).__reviewMocks.mockMutateResolve;
 const mockMutateDelete = (globalThis as any).__reviewMocks.mockMutateDelete;
 const mockMutateDeleteReply = (globalThis as any).__reviewMocks.mockMutateDeleteReply;
 
-vi.mock('@/features/editor/ui/hooks/useStorage', () => ({
+vi.mock('@/features/editor/subsystems/explorer/ui/hooks/useStorage', () => ({
   useEditorStorage: () => ({
     files: [
       { id: 'img-1', filename: 'figure1.png', url: '/figure1.png', isFolder: false, mimeType: 'image/png' },

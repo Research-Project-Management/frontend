@@ -20,8 +20,8 @@ import {
   useSettingsStore,
   setActiveEditorEngine,
 } from '@/features/editor/core';
-import { manuscriptService } from '@/features/editor/sdk/pages.service';
-import type { EditorPort } from '@/features/editor/domain/ports/editor.port';
+import { pagesService } from '@/features/editor/sdk/pages.service';
+import type { EditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
 import type { PageComment } from '@/features/editor/domain/types/comment.types';
 import type { PageSuggestion } from '@/features/editor/domain/types/suggestion.types';
 
@@ -399,7 +399,7 @@ describe('Editor Non-Destructive DOM Windowing (Zero-Blocking, Zero-State-Loss)'
         onContentChange: () => () => {},
         jumpToLine: vi.fn(),
         focus: vi.fn(),
-      } as unknown as EditorPort;
+      } as unknown as EditorEngine;
 
       useWorkspaceStore.setState({ fileOutlineOpen: true, fileTreeOpen: true });
 
@@ -430,7 +430,7 @@ describe('Editor Non-Destructive DOM Windowing (Zero-Blocking, Zero-State-Loss)'
 
   describe('5. SearchTab flattened virtualization without truncating matches', () => {
     it('displays all 120 matches in status bar while virtualizing DOM rows and preserving file collapse', async () => {
-      const searchSpy = vi.spyOn(manuscriptService.search, 'search').mockResolvedValue({
+      const searchSpy = vi.spyOn(pagesService.search, 'search').mockResolvedValue({
         query: 'theorem',
         totalMatches: 120,
         truncated: false,

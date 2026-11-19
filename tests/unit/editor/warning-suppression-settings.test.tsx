@@ -4,7 +4,7 @@ import { render, screen, fireEvent, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useSettingsStore } from '@/features/editor/core';
 import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics';
-import { ProjectSettingsModal } from '@/features/editor/ui/modals/project-settings/ProjectSettingsModal';
+import { ProjectSettingsModal } from '@/features/editor/subsystems/project-settings/ui/ProjectSettingsModal';
 
 vi.mock('next/navigation', () => ({
   useParams: () => ({ projectId: 'test-project-1' }),

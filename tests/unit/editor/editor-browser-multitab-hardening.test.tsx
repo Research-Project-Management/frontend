@@ -417,11 +417,11 @@ describe('Editor Browser Multi-Tab Hardening (Multiplexing, Offline CRDT, Settin
       expect(useConnectivityStore.getState().pendingMutationsCount).toBe(0);
       expect(useConnectivityStore.getState().syncStatus).toBe('synced');
 
-      // Clean non-Yjs draft sync
+      // Clean non-Yjs unsynced edit sync
       lruDocumentCache.registerModel('doc-plain', { content: 'old content' });
       const cmdSpy = vi.spyOn(editorCommandBus, 'dispatch');
       multiTabBus.dispatchSyntheticMessageForTesting({
-        type: 'EDITOR_OFFLINE_DRAFT_UPDATED',
+        type: 'EDITOR_UNSYNCED_EDIT_UPDATED',
         fileId: 'doc-plain',
         content: 'updated offline draft',
         updatedAt: Date.now(),

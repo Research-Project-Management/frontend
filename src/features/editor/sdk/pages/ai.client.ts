@@ -1,15 +1,15 @@
 /**
  * ai.client.ts
  *
- * AI Assistant & LaTeX Error Repair Sub-API (Part of manuscriptService SDK).
+ * AI Assistant & LaTeX Error Repair Sub-API (Part of pagesService SDK).
  * Connects frontend editor and logs to authoritative backend CLSI AI endpoints:
- * - POST /api/v1/manuscripts/clsi/ai/transform
- * - POST /api/v1/manuscripts/clsi/ai/fix-error
- * - POST /api/v1/manuscripts/clsi/ai/generate-table
+ * - POST /api/v1/pages/clsi/ai/transform
+ * - POST /api/v1/pages/clsi/ai/fix-error
+ * - POST /api/v1/pages/clsi/ai/generate-table
  */
 
 import { apiPost } from '@/shared/lib/api';
-import { MANUSCRIPTS_API_BASE } from './base';
+import { PAGES_API_BASE } from './base';
 import {
   applyFallbackTransform,
   type AiActionParams,
@@ -58,7 +58,7 @@ export class AiClient {
 
     try {
       const res = await apiPost<AiActionResult>(
-        `${MANUSCRIPTS_API_BASE}/clsi/ai/transform`,
+        `${PAGES_API_BASE}/clsi/ai/transform`,
         params,
         { silent: true },
       );
@@ -89,15 +89,13 @@ export class AiClient {
   }
 }
 
-export { AiClient as AcademicAiService };
-
 /**
  * Request AI fix suggestion for a given compilation error via backend CLSI AI endpoint.
  */
 export async function suggestLatexFix(params: AiErrorFixParams): Promise<AiErrorFixResult> {
   try {
     const res = await apiPost<AiErrorFixResult>(
-      `${MANUSCRIPTS_API_BASE}/clsi/ai/fix-error`,
+      `${PAGES_API_BASE}/clsi/ai/fix-error`,
       params,
       { silent: true },
     );
@@ -119,7 +117,7 @@ export async function generateLatexTable(
   options?: { spaceId?: string; pageId?: string },
 ): Promise<string> {
   const res = await apiPost<{ table?: string; content?: string } | null>(
-    `${MANUSCRIPTS_API_BASE}/clsi/ai/generate-table`,
+    `${PAGES_API_BASE}/clsi/ai/generate-table`,
     {
       prompt,
       ...(options?.spaceId ? { spaceId: options.spaceId } : {}),
@@ -136,5 +134,4 @@ export const ai = {
   suggestLatexFix,
   generateLatexTable,
   AiClient,
-  AcademicAiService: AiClient,
 };

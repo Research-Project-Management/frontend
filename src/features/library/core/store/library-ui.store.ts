@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { StateCreator } from 'zustand';
+import { useWorkspaceContextStore } from '@/features/shell/store/workspace-context.store';
 import type { LibraryScope } from '@/features/library/types/core.types';
 import {
   DEFAULT_LIBRARY_DISPLAY_OPTIONS,
@@ -152,17 +153,17 @@ const MAX_SIDEBAR_WIDTH = 400;
 export const MIN_INSPECTOR_WIDTH = 260;
 export const MAX_INSPECTOR_WIDTH = 640;
 
+function getInitialScopeFromWorkspace(): LibraryScope {
+  return { type: 'user', id: 'user', name: 'My Library', role: 'owner' };
+}
+
 const createScopeSlice: StateCreator<
   LibraryUIState,
   [],
   [],
   LibraryScopeSlice
 > = (set) => ({
-  activeScope: {
-    type: 'user',
-    id: 'user',
-    name: 'Library',
-  },
+  activeScope: getInitialScopeFromWorkspace(),
   activeCollectionId: null,
   activeSavedSearchId: null,
   ephemeralFilters: EMPTY_EPHEMERAL_FILTERS,
@@ -455,14 +456,6 @@ export const useLibraryUIStore = create<LibraryUIState>()(
     {
       name: 'flux_library_sidebar_v1',
       partialize: (state) => ({
-        activeScope: {
-          type: state.activeScope.type,
-          id: state.activeScope.id,
-          name: state.activeScope.name,
-          ...(state.activeScope.type === 'project' && state.activeScope.projectId
-            ? { projectId: state.activeScope.projectId }
-            : {}),
-        } as LibraryScope,
         sidebarWidth: state.sidebarWidth,
         inspectorWidth: state.inspectorWidth,
         displayOptions: state.displayOptions,
@@ -476,23 +469,6 @@ export const useLibraryUIStore = create<LibraryUIState>()(
 
         const sidebarWidth = clamp(persisted.sidebarWidth, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH, currentState.sidebarWidth);
         const inspectorWidth = clamp(persisted.inspectorWidth, MIN_INSPECTOR_WIDTH, MAX_INSPECTOR_WIDTH, currentState.inspectorWidth);
-
-        const rawScope = persisted.activeScope;
-        const isValidScope =
-          rawScope &&
-          typeof rawScope === 'object' &&
-          (rawScope.type === 'user' || rawScope.type === 'project');
-
-        const activeScope: LibraryScope = isValidScope
-          ? {
-              type: rawScope.type,
-              id: typeof rawScope.id === 'string' ? rawScope.id : '',
-              name: typeof rawScope.name === 'string' ? rawScope.name : 'Library',
-              ...(rawScope.type === 'project' && typeof rawScope.projectId === 'string'
-                ? { projectId: rawScope.projectId }
-                : {}),
-            }
-          : currentState.activeScope;
 
         const rawDisplay = persisted.displayOptions;
         const displayOptions: LibraryDisplayOptions = {
@@ -509,7 +485,6 @@ export const useLibraryUIStore = create<LibraryUIState>()(
           ...persisted,
           sidebarWidth,
           inspectorWidth,
-          activeScope,
           displayOptions,
         };
       },
@@ -523,6 +498,30 @@ export const useIsItemSelected = (id: string): boolean =>
 
 export const useIsActiveItem = (id: string): boolean =>
   useLibraryUIStore((state) => state.activeItemId === id);
+
+// Synchronize LibraryUIStore activeScope with WorkspaceContextStore canonical activeSpace
+if (typeof window !== 'undefined') {
+  const syncWithWorkspace = (state: { activeSpace: { type: string; projectId: string | null; projectName?: string } }) => {
+    const isProj = state.activeSpace.type === 'project' && Boolean(state.activeSpace.projectId);
+    const targetScope: LibraryScope = isProj
+      ? {
+          type: 'project',
+          id: state.activeSpace.projectId!,
+          projectId: state.activeSpace.projectId!,
+          name: state.activeSpace.projectName || 'Project Library',
+        }
+      : {
+          type: 'user',
+          id: 'user',
+          name: 'My Library',
+          role: 'owner',
+        };
+    useLibraryUIStore.getState().setActiveScope(targetScope);
+  };
+
+  useWorkspaceContextStore.subscribe(syncWithWorkspace);
+  syncWithWorkspace(useWorkspaceContextStore.getState());
+}
 
 if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
   (window as unknown as Record<string, unknown>).__LIBRARY_UI_STORE__ = useLibraryUIStore;

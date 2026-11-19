@@ -7,14 +7,18 @@ import {
   pageQuery,
   filesQuery,
   storageKeys,
-} from '@/features/editor/ui/hooks/document.queries';
+} from '@/features/editor/core/queries/document.queries';
 import {
-  MANUSCRIPTS_API_BASE,
-  manuscriptService,
+  PAGES_API_BASE,
+  pagesService,
   type EditorBootstrapResponseDto,
 } from '@/features/editor/sdk/pages.service';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
-import { draftStorageService } from '@/features/editor/domain/document/draft-storage';
+import {
+  unsyncedEditsStore,
+  syncedDocCacheStore,
+  clearAllOfflineMemory,
+} from '@/features/editor/domain/offline-storage';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
 import { useCompileStore } from '@/features/editor/subsystems/compiler/coordinator/compiler.store';
@@ -216,23 +220,23 @@ describe('Editor Bootstrap Single-Flight Hydration Seam', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     queryClient.clear();
-    draftStorageService.clearMemory();
+    clearAllOfflineMemory();
   });
 
   it('hydrates all 3 Editor blocks in 1 HTTP call and seeds QueryClient, LRU RAM, Symbols, PageStore, and CompilerStore with 0 extra fetches', async () => {
     const payload = createSampleBootstrapPayload();
     const bootSpy = vi
-      .spyOn(manuscriptService.bootstrap, 'getEditorBootstrap')
+      .spyOn(pagesService.bootstrap, 'getEditorBootstrap')
       .mockResolvedValue(payload);
-    const getByIdSpy = vi.spyOn(manuscriptService.docs, 'getById');
-    const getFilesSpy = vi.spyOn(manuscriptService.docs, 'getFiles');
-    const getAllNodesSpy = vi.spyOn(manuscriptService.structure, 'getAllNodes');
-    const getSymbolsSpy = vi.spyOn(manuscriptService.structure, 'getSymbols');
+    const getByIdSpy = vi.spyOn(pagesService.docs, 'getById');
+    const getFilesSpy = vi.spyOn(pagesService.docs, 'getFiles');
+    const getAllNodesSpy = vi.spyOn(pagesService.structure, 'getAllNodes');
+    const getSymbolsSpy = vi.spyOn(pagesService.structure, 'getSymbols');
     const artifactSpy = vi
-      .spyOn(manuscriptService.compiler, 'fetchArtifactBlobUrl')
+      .spyOn(pagesService.compiler, 'fetchArtifactBlobUrl')
       .mockResolvedValue('blob:mock-pdf-url');
     const snapshotSpy = vi
-      .spyOn(draftStorageService, 'saveProjectFileSnapshot')
+      .spyOn(syncedDocCacheStore, 'put')
       .mockResolvedValue();
 
     const bootOptions = editorBootstrapQuery(queryClient, payload.workspace.rootDocId);
@@ -304,16 +308,16 @@ describe('Editor Bootstrap Single-Flight Hydration Seam', () => {
   it('coalesces concurrent pageQuery and filesQuery waiters onto in-flight bootstrap without firing duplicate API requests', async () => {
     const payload = createSampleBootstrapPayload();
     let resolveBoot!: (val: EditorBootstrapResponseDto) => void;
-    vi.spyOn(manuscriptService.bootstrap, 'getEditorBootstrap').mockImplementation(
+    vi.spyOn(pagesService.bootstrap, 'getEditorBootstrap').mockImplementation(
       () =>
         new Promise((resolve) => {
           resolveBoot = resolve;
         }),
     );
-    vi.spyOn(manuscriptService.compiler, 'fetchArtifactBlobUrl').mockResolvedValue(null);
-    vi.spyOn(draftStorageService, 'saveProjectFileSnapshot').mockResolvedValue();
-    const getByIdSpy = vi.spyOn(manuscriptService.docs, 'getById');
-    const getFilesSpy = vi.spyOn(manuscriptService.docs, 'getFiles');
+    vi.spyOn(pagesService.compiler, 'fetchArtifactBlobUrl').mockResolvedValue(null);
+    vi.spyOn(syncedDocCacheStore, 'put').mockResolvedValue();
+    const getByIdSpy = vi.spyOn(pagesService.docs, 'getById');
+    const getFilesSpy = vi.spyOn(pagesService.docs, 'getFiles');
 
     const rootId = payload.workspace.rootDocId;
     const bootPromise = queryClient.fetchQuery(editorBootstrapQuery(queryClient, rootId));
@@ -346,8 +350,8 @@ describe('Editor Bootstrap Single-Flight Hydration Seam', () => {
     });
     lruDocumentCache.updateContent(docId, 'Unsaved local draft edits v2', true);
 
-    vi.spyOn(manuscriptService.compiler, 'fetchArtifactBlobUrl').mockResolvedValue(null);
-    const snapshotSpy = vi.spyOn(draftStorageService, 'saveProjectFileSnapshot');
+    vi.spyOn(pagesService.compiler, 'fetchArtifactBlobUrl').mockResolvedValue(null);
+    const snapshotSpy = vi.spyOn(syncedDocCacheStore, 'put');
 
     hydrateEditorBootstrap(queryClient, payload);
 
@@ -395,7 +399,7 @@ describe('Editor Bootstrap Single-Flight Hydration Seam', () => {
       degradedBranches: ['symbols', 'lastBuild'],
     });
 
-    vi.spyOn(draftStorageService, 'saveProjectFileSnapshot').mockResolvedValue();
+    vi.spyOn(syncedDocCacheStore, 'put').mockResolvedValue();
 
     hydrateEditorBootstrap(queryClient, payload);
 
@@ -414,15 +418,15 @@ describe('Editor Bootstrap Single-Flight Hydration Seam', () => {
     const pageId = '44444444-4444-4444-8444-444444444444';
     const payload = createSampleBootstrapPayload();
 
-    expect(manuscriptService.compiler.downloadAuxFileUrl(pageId, 'output.log')).toBe(
-      `${MANUSCRIPTS_API_BASE}/pages/${pageId}/artifacts/output.log`,
+    expect(pagesService.compiler.downloadAuxFileUrl(pageId, 'output.log')).toBe(
+      `${PAGES_API_BASE}/pages/${pageId}/artifacts/output.log`,
     );
-    expect(manuscriptService.compiler.downloadAllArtifactsZipUrl(pageId)).toBe(
-      `${MANUSCRIPTS_API_BASE}/pages/${pageId}/artifacts-zip`,
+    expect(pagesService.compiler.downloadAllArtifactsZipUrl(pageId)).toBe(
+      `${PAGES_API_BASE}/pages/${pageId}/artifacts-zip`,
     );
 
     const getSymbolsSpy = vi
-      .spyOn(manuscriptService.structure, 'getSymbols')
+      .spyOn(pagesService.structure, 'getSymbols')
       .mockResolvedValue(payload.symbols);
 
     const snapshot = await latexSymbolsIndex.hydrateFromServer(pageId);
@@ -438,7 +442,7 @@ describe('Editor Bootstrap Single-Flight Hydration Seam', () => {
     const pageId = '55555555-5555-4555-8555-555555555551';
     const spaceId = '55555555-5555-4555-8555-555555555550';
 
-    await draftStorageService.saveProjectFileSnapshot({
+    await syncedDocCacheStore.put({
       id: pageId,
       projectId: spaceId,
       title: 'Offline Paper Title',
@@ -446,14 +450,14 @@ describe('Editor Bootstrap Single-Flight Hydration Seam', () => {
       filePath: 'main.tex',
       updatedAt: Date.now() - 5000,
     });
-    await draftStorageService.saveDraft(
+    await unsyncedEditsStore.save(
       pageId,
       'Offline edited LaTeX body',
       spaceId,
       'Offline Paper Title',
     );
 
-    vi.spyOn(manuscriptService.bootstrap, 'getEditorBootstrap').mockRejectedValue(
+    vi.spyOn(pagesService.bootstrap, 'getEditorBootstrap').mockRejectedValue(
       new Error('Failed to fetch'),
     );
 
@@ -582,13 +586,13 @@ describe('Editor Bootstrap Single-Flight Hydration Seam', () => {
       },
     });
 
-    vi.spyOn(manuscriptService.compiler, 'fetchArtifactBlobUrl').mockResolvedValue(null);
+    vi.spyOn(pagesService.compiler, 'fetchArtifactBlobUrl').mockResolvedValue(null);
     hydrateEditorBootstrap(queryClient, onlinePayload, pageId);
 
     // Simulate reload while offline (clear QueryClient and RAM LRU, keep IndexedDB/localStorage snapshot)
     const qcOffline = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     lruDocumentCache.clearAll();
-    vi.spyOn(manuscriptService.bootstrap, 'getEditorBootstrap').mockRejectedValue(
+    vi.spyOn(pagesService.bootstrap, 'getEditorBootstrap').mockRejectedValue(
       new Error('Failed to fetch'),
     );
 

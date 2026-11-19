@@ -4,7 +4,7 @@
  * LayoutSwitcher.tsx
  *
  * Quick Layout Dropdown Menu (Block 7: UI Shell Layer).
- * Location: `features/editor/ui/shell/topbar/LayoutSwitcher.tsx`
+ * Location: `features/editor/core/shell/topbar/LayoutSwitcher.tsx`
  */
 
 import React, { useEffect } from 'react';

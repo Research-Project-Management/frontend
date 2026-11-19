@@ -41,5 +41,3 @@ export function validateIdentifier(query: string): {
   return { isIdentifier: false };
 }
 
-export { validateIdentifier as validateAcademicIdentifier };
-

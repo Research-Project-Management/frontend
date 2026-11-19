@@ -14,79 +14,33 @@
 import type { CompileError } from '@/features/editor/domain/types/compiler.types';
 import { normalizeLatexPath } from '@/features/editor/domain/latex/dependency-graph';
 import { normalizeVirtualPath } from '@/features/editor/domain/document/document-naming';
-import { fixLatexError } from '@/features/editor/domain/ai/ai-error-assist';
-import type { EditorDiagnosticItem } from '@/features/editor/domain/types/diagnostics.types';
 import { type WarningFilterOptions, filterDiagnostics } from '@/features/editor/domain/latex/warning-filter';
 import { useSettingsStore, type DocumentSettingsState } from '@/features/editor/core/store/settings.store';
+import {
+  type IndexedDiagnosticItem,
+  type FileDiagnosticsSummary,
+  type DiagnosticsTelemetry,
+  type DiagnosticsSnapshot,
+  type DiagnosticsChangeSource,
+  EMPTY_DIAGNOSTICS_SUMMARY,
+  areSummariesEqual,
+  areDiagnosticsEqual,
+  buildIndexedCompilerErrorItem,
+  shiftDiagnosticItemsList,
+  mergeCompilerAndLinterItems,
+  binarySearchDiagnosticsAtLine,
+  binarySearchDiagnosticsInRange,
+  summarizeDiagnosticItems,
+} from './diagnostics-query-index';
 
-export interface IndexedDiagnosticItem extends EditorDiagnosticItem {
-  id: string;
-  file: string;
-  fileKey?: string;
-  rawFile?: string;
-  normalizedPath: string;
-  line: number;
-  column?: number;
-  endLine?: number;
-  endColumn?: number;
-  severity: 'error' | 'warning' | 'info';
-  message: string;
-  source?: 'compiler' | 'static' | 'chktex' | 'bibtex' | 'linter' | string;
-  code?: string;
-  context?: string;
-  suggestion?: string;
-  fixedSnippet?: string;
-  originalSnippet?: string;
-  confidence?: 'high' | 'medium' | 'low' | number;
-}
-
-export interface FileDiagnosticsSummary {
-  errorCount: number;
-  warningCount: number;
-  badboxCount?: number;
-  infoCount: number;
-  total: number;
-  totalCount: number;
-}
-
-export interface DiagnosticsTelemetry {
-  totalIngested: number;
-  linterIngested: number;
-  binarySearchQueries: number;
-  queryHits: number;
-  cacheHits: number;
-}
-
-export interface DiagnosticsSnapshot {
-  fileCount: number;
-  totalDiagnostics: number;
-  summary: FileDiagnosticsSummary;
-  fileIndex?: Map<string, IndexedDiagnosticItem[]>;
-  unmappedDiagnostics?: IndexedDiagnosticItem[];
-  projectSummary?: FileDiagnosticsSummary;
-  telemetry?: DiagnosticsTelemetry;
-}
-
-export type DiagnosticsChangeSource = 'linter' | 'compiler' | 'shift' | 'filter' | 'clear';
-
-export const EMPTY_DIAGNOSTICS_SUMMARY: FileDiagnosticsSummary = Object.freeze({
-  errorCount: 0,
-  warningCount: 0,
-  infoCount: 0,
-  total: 0,
-  totalCount: 0,
-});
-
-function areSummariesEqual(a: FileDiagnosticsSummary | undefined, b: FileDiagnosticsSummary): boolean {
-  if (!a) return false;
-  return (
-    a.errorCount === b.errorCount &&
-    a.warningCount === b.warningCount &&
-    a.infoCount === b.infoCount &&
-    a.total === b.total &&
-    a.totalCount === b.totalCount
-  );
-}
+export {
+  EMPTY_DIAGNOSTICS_SUMMARY,
+  type IndexedDiagnosticItem,
+  type FileDiagnosticsSummary,
+  type DiagnosticsTelemetry,
+  type DiagnosticsSnapshot,
+  type DiagnosticsChangeSource,
+};
 
 export class DiagnosticsCoordinator {
   private static readonly MAX_ALIAS_MAP_SIZE = 500;
@@ -129,8 +83,13 @@ export class DiagnosticsCoordinator {
     this.clear();
   }
 
-  public setFilterOptions(options: WarningFilterOptions & { enableLinter?: boolean; enableSpellcheck?: boolean }): void {
-    const prev = this.filterOptions as WarningFilterOptions & { enableLinter?: boolean; enableSpellcheck?: boolean };
+  public setFilterOptions(
+    options: WarningFilterOptions & { enableLinter?: boolean; enableSpellcheck?: boolean },
+  ): void {
+    const prev = this.filterOptions as WarningFilterOptions & {
+      enableLinter?: boolean;
+      enableSpellcheck?: boolean;
+    };
     const prevPatterns = prev.customPatterns ?? [];
     const nextPatterns = options.customPatterns ?? [];
     const samePatterns =
@@ -157,34 +116,12 @@ export class DiagnosticsCoordinator {
     return { ...this.filterOptions };
   }
 
-  private areDiagnosticsEqual(
-    prev: IndexedDiagnosticItem[] | undefined,
-    next: IndexedDiagnosticItem[],
-  ): boolean {
-    if (!prev) return next.length === 0;
-    if (prev.length !== next.length) return false;
-    for (let i = 0; i < prev.length; i++) {
-      const a = prev[i];
-      const b = next[i];
-      if (
-        a.line !== b.line ||
-        a.column !== b.column ||
-        a.severity !== b.severity ||
-        a.message !== b.message ||
-        a.source !== b.source
-      ) {
-        return false;
-      }
-    }
-    return true;
-  }
-
   public ingestLinterDiagnostics(fileIdOrPath: string, diagnostics: IndexedDiagnosticItem[]): void {
     if (!fileIdOrPath) return;
     this.telemetry.linterIngested += diagnostics.length;
     const canonicalKey = this.resolveCanonicalKey(fileIdOrPath);
     const prev = this.linterIndex.get(canonicalKey);
-    if (this.areDiagnosticsEqual(prev, diagnostics)) {
+    if (areDiagnosticsEqual(prev, diagnostics)) {
       return;
     }
     this.linterIndex.set(canonicalKey, [...diagnostics]);
@@ -211,50 +148,16 @@ export class DiagnosticsCoordinator {
     const canonicalKey = this.resolveCanonicalKey(fileIdOrPath);
 
     let changed = false;
-    const compItems = this.fileIndex.get(canonicalKey);
-    if (compItems && compItems.length > 0) {
-      let compChanged = false;
-      const nextComp = compItems.map((item) => {
-        if (item.line >= fromLine) {
-          compChanged = true;
-          changed = true;
-          const newLine = Math.max(1, item.line + deltaLines);
-          const newEndLine = item.endLine !== undefined ? Math.max(newLine, item.endLine + deltaLines) : undefined;
-          return {
-            ...item,
-            line: newLine,
-            ...(newEndLine !== undefined ? { endLine: newEndLine } : {}),
-          };
-        }
-        return item;
-      });
-      if (compChanged) {
-        nextComp.sort((a, b) => a.line - b.line || (a.column ?? 0) - (b.column ?? 0));
-        this.fileIndex.set(canonicalKey, nextComp);
-      }
+    const compShift = shiftDiagnosticItemsList(this.fileIndex.get(canonicalKey), fromLine, deltaLines);
+    if (compShift.changed && compShift.shifted) {
+      this.fileIndex.set(canonicalKey, compShift.shifted);
+      changed = true;
     }
 
-    const linterItems = this.linterIndex.get(canonicalKey);
-    if (linterItems && linterItems.length > 0) {
-      let linterChanged = false;
-      const nextLinter = linterItems.map((item) => {
-        if (item.line >= fromLine) {
-          linterChanged = true;
-          changed = true;
-          const newLine = Math.max(1, item.line + deltaLines);
-          const newEndLine = item.endLine !== undefined ? Math.max(newLine, item.endLine + deltaLines) : undefined;
-          return {
-            ...item,
-            line: newLine,
-            ...(newEndLine !== undefined ? { endLine: newEndLine } : {}),
-          };
-        }
-        return item;
-      });
-      if (linterChanged) {
-        nextLinter.sort((a, b) => a.line - b.line || (a.column ?? 0) - (b.column ?? 0));
-        this.linterIndex.set(canonicalKey, nextLinter);
-      }
+    const linterShift = shiftDiagnosticItemsList(this.linterIndex.get(canonicalKey), fromLine, deltaLines);
+    if (linterShift.changed && linterShift.shifted) {
+      this.linterIndex.set(canonicalKey, linterShift.shifted);
+      changed = true;
     }
 
     if (changed) {
@@ -429,50 +332,12 @@ export class DiagnosticsCoordinator {
 
     for (let i = 0; i < errors.length; i++) {
       const err = errors[i];
-      // Do not process pure info messages into editor line diagnostics
-      if (err.severity === 'info') {
-        continue;
-      }
-
-      // If an error does not have a specific line, DO NOT force it onto line 1 in the code editor!
-      // In Overleaf, errors without line numbers stay in the Compiler Logs panel and do not annotate editor code.
-      if (!err.line || err.line < 1) {
-        continue;
-      }
+      if (err.severity === 'info') continue;
+      if (!err.line || err.line < 1) continue;
 
       const rawFile = err.file ? err.file.trim() : '';
       const canonicalKey = rawFile ? this.resolveCanonicalKey(rawFile) : normDefault;
-
-      const heuristic = !err.suggestion
-        ? fixLatexError({
-            errorMessage: err.message,
-            errorLine: err.line,
-            errorFile: err.file || defaultFile,
-            detail: err.context,
-          })
-        : null;
-
-      const suggestion = err.suggestion || heuristic?.explanation;
-      const fixedSnippet = err.fixedSnippet || heuristic?.fixedSnippet;
-      const originalSnippet = err.originalSnippet || heuristic?.originalSnippet;
-      const confidence = heuristic?.confidence;
-
-      const item: IndexedDiagnosticItem = {
-        id: `comp-${i}-${err.line}`,
-        file: err.file || defaultFile,
-        normalizedPath: canonicalKey,
-        line: err.line,
-        column: 1,
-        message: err.message,
-        severity: err.severity === 'warning' ? 'warning' : 'error',
-        context: err.context,
-        code: err.code,
-        suggestion,
-        fixedSnippet,
-        originalSnippet,
-        confidence,
-        source: 'LaTeX Compiler',
-      };
+      const item = buildIndexedCompilerErrorItem(err, i, canonicalKey, defaultFile);
 
       if (!this.fileIndex.has(canonicalKey)) {
         this.fileIndex.set(canonicalKey, []);
@@ -492,54 +357,16 @@ export class DiagnosticsCoordinator {
     let combined = this.combinedFileIndexCache.get(key);
 
     if (!combined) {
-      let compilerItems = this.fileIndex.get(key) || [];
-      const linterItems = this.linterIndex.get(key) || [];
-
-      // Guard: A .bib file cannot have LaTeX document-level compiler errors (e.g. Missing \begin{document})
-      const isBib = fileIdOrPath.endsWith('.bib') || key.endsWith('.bib');
-      if (isBib && compilerItems.length > 0) {
-        const isLatexDocError = (msg: string) =>
-          /missing \\begin\{document\}|documentclass|emergency stop|fatal error occurred|no output pdf/i.test(msg);
-        compilerItems = compilerItems.filter(
-          (item) => !isLatexDocError(item.message) && (!item.file || item.file.endsWith('.bib'))
-        );
-      }
-
-      if (linterItems.length === 0) {
-        combined = compilerItems;
-      } else if (compilerItems.length === 0) {
-        combined = linterItems;
-      } else {
-        const normalizeMsg = (m: string) =>
-          m.toLowerCase().replace(/^(?:!|latex error:|error:|\s)+/g, '').replace(/[\s\r\n]+/g, ' ').trim();
-        const seenLineCode = new Set<string>();
-        const seenMessages = new Set<string>();
-        combined = [];
-        for (const item of compilerItems) {
-          const norm = normalizeMsg(item.message);
-          seenLineCode.add(`${item.line}:${item.code || norm.slice(0, 40)}`);
-          seenMessages.add(norm);
-          combined.push(item);
-        }
-        for (const item of linterItems) {
-          const norm = normalizeMsg(item.message);
-          const itemKey = `${item.line}:${item.code || norm.slice(0, 40)}`;
-          // Deduplicate if identical line + message or identical message already exists in compiler items
-          if (!seenLineCode.has(itemKey) && !seenMessages.has(norm)) {
-            seenLineCode.add(itemKey);
-            seenMessages.add(norm);
-            combined.push(item);
-          }
-        }
-        combined.sort((a, b) => a.line - b.line || (a.column ?? 0) - (b.column ?? 0));
-      }
+      combined = mergeCompilerAndLinterItems(
+        fileIdOrPath,
+        key,
+        this.fileIndex.get(key) || [],
+        this.linterIndex.get(key) || [],
+      );
       this.combinedFileIndexCache.set(key, combined);
     }
 
-    if (applyFilter) {
-      return filterDiagnostics(combined, this.filterOptions);
-    }
-    return combined;
+    return applyFilter ? filterDiagnostics(combined, this.filterOptions) : combined;
   }
 
   public getFileDiagnostics(fileIdOrPath: string, applyFilter = true): IndexedDiagnosticItem[] {
@@ -548,39 +375,7 @@ export class DiagnosticsCoordinator {
 
   public findDiagnosticsAtLine(fileIdOrPath: string, targetLine: number): IndexedDiagnosticItem[] {
     this.telemetry.binarySearchQueries++;
-    const items = this.getDiagnosticsForFile(fileIdOrPath);
-    if (items.length === 0 || targetLine < 1) return [];
-
-    let low = 0;
-    let high = items.length - 1;
-    let matchIdx = -1;
-
-    while (low <= high) {
-      const mid = (low + high) >> 1;
-      const midLine = items[mid].line;
-      if (midLine === targetLine) {
-        matchIdx = mid;
-        break;
-      } else if (midLine < targetLine) {
-        low = mid + 1;
-      } else {
-        high = mid - 1;
-      }
-    }
-
-    if (matchIdx === -1) return [];
-
-    let start = matchIdx;
-    while (start > 0 && items[start - 1].line === targetLine) {
-      start--;
-    }
-
-    let end = matchIdx;
-    while (end < items.length - 1 && items[end + 1].line === targetLine) {
-      end++;
-    }
-
-    const result = items.slice(start, end + 1);
+    const result = binarySearchDiagnosticsAtLine(this.getDiagnosticsForFile(fileIdOrPath), targetLine);
     if (result.length > 0) this.telemetry.queryHits++;
     return result;
   }
@@ -588,45 +383,14 @@ export class DiagnosticsCoordinator {
   public findDiagnosticsInRange(
     fileIdOrPath: string,
     fromLine: number,
-    toLine: number
+    toLine: number,
   ): IndexedDiagnosticItem[] {
     this.telemetry.binarySearchQueries++;
-    const items = this.getDiagnosticsForFile(fileIdOrPath);
-    if (items.length === 0 || fromLine > toLine) return [];
-
-    let low = 0;
-    let high = items.length - 1;
-    let startIndex = items.length;
-
-    while (low <= high) {
-      const mid = (low + high) >> 1;
-      if (items[mid].line >= fromLine) {
-        startIndex = mid;
-        high = mid - 1;
-      } else {
-        low = mid + 1;
-      }
-    }
-
-    if (startIndex >= items.length || items[startIndex].line > toLine) {
-      return [];
-    }
-
-    low = startIndex;
-    high = items.length - 1;
-    let endIndex = startIndex;
-
-    while (low <= high) {
-      const mid = (low + high) >> 1;
-      if (items[mid].line <= toLine) {
-        endIndex = mid;
-        low = mid + 1;
-      } else {
-        high = mid - 1;
-      }
-    }
-
-    const result = items.slice(startIndex, endIndex + 1);
+    const result = binarySearchDiagnosticsInRange(
+      this.getDiagnosticsForFile(fileIdOrPath),
+      fromLine,
+      toLine,
+    );
     if (result.length > 0) this.telemetry.queryHits++;
     return result;
   }
@@ -640,23 +404,11 @@ export class DiagnosticsCoordinator {
       return cached;
     }
 
-    const items = this.getDiagnosticsForFile(canonicalKey, applyFilter);
-    let errorCount = 0;
-    let warningCount = 0;
-    let infoCount = 0;
-
-    for (const item of items) {
-      if (item.severity === 'error') errorCount++;
-      else if (item.severity === 'warning') warningCount++;
-      else infoCount++;
-    }
-
-    const total = items.length;
-    if (total === 0 && errorCount === 0 && warningCount === 0 && infoCount === 0) {
+    const nextSummary = summarizeDiagnosticItems(this.getDiagnosticsForFile(canonicalKey, applyFilter));
+    if (nextSummary.total === 0) {
       this.fileSummaryCache.set(cacheKey, EMPTY_DIAGNOSTICS_SUMMARY);
       return EMPTY_DIAGNOSTICS_SUMMARY;
     }
-    const nextSummary: FileDiagnosticsSummary = { errorCount, warningCount, infoCount, total, totalCount: total };
     const prevSummary = this.prevFileSummaryCache.get(cacheKey);
     const summary = areSummariesEqual(prevSummary, nextSummary) ? prevSummary! : nextSummary;
     this.fileSummaryCache.set(cacheKey, summary);
@@ -665,9 +417,7 @@ export class DiagnosticsCoordinator {
   }
 
   public getFolderSummary(folderNameOrPath: string, applyFilter = true): FileDiagnosticsSummary {
-    const rawFolder = normalizeVirtualPath(
-      folderNameOrPath.trim().replace(/^["']|["']$/g, ''),
-    );
+    const rawFolder = normalizeVirtualPath(folderNameOrPath.trim().replace(/^["']|["']$/g, ''));
     if (!rawFolder) return this.getProjectSummary(applyFilter);
 
     const cacheKey = `${rawFolder}:${applyFilter}`;
@@ -696,7 +446,7 @@ export class DiagnosticsCoordinator {
       }
     }
 
-    if (total === 0 && errorCount === 0 && warningCount === 0 && infoCount === 0) {
+    if (total === 0) {
       this.folderSummaryCache.set(cacheKey, EMPTY_DIAGNOSTICS_SUMMARY);
       return EMPTY_DIAGNOSTICS_SUMMARY;
     }
@@ -729,7 +479,7 @@ export class DiagnosticsCoordinator {
       total += summary.total;
     }
 
-    if (total === 0 && errorCount === 0 && warningCount === 0 && infoCount === 0) {
+    if (total === 0) {
       this.projectSummaryCache.set(applyFilter, EMPTY_DIAGNOSTICS_SUMMARY);
       return EMPTY_DIAGNOSTICS_SUMMARY;
     }
@@ -818,7 +568,6 @@ export class DiagnosticsCoordinator {
   }
 }
 
-export { DiagnosticsCoordinator as DiagnosticsCoordinatorRegistry };
 export const diagnosticsCoordinator = new DiagnosticsCoordinator();
 
 const syncFilterOptions = (state: DocumentSettingsState) => {
@@ -832,4 +581,3 @@ const syncFilterOptions = (state: DocumentSettingsState) => {
 
 syncFilterOptions(useSettingsStore.getState());
 useSettingsStore.subscribe(syncFilterOptions);
-

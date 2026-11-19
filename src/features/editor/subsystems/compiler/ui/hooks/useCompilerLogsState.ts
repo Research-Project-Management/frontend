@@ -1,0 +1,635 @@
+/**
+ * useCompilerLogsState.ts
+ *
+ * State, backend log parsing, warning filtering, virtualized row preparation,
+ * AI fix & error explanation drawers, F8 error stepper, and artifact download logic
+ * for CompilerLogs.
+ */
+
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { toast } from 'sonner';
+import { fetchLogEntryExplanation, useLogViewerActions } from './useLogViewerActions';
+import { useCompileStore } from '@/features/editor/subsystems/compiler/coordinator/compiler.store';
+import { useEditorInstance } from '@/features/editor/core/bus/use-editor-instance';
+import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
+import { usePageStore } from '@/features/editor/core/store/editor.store';
+import { useSettingsStore } from '@/features/editor/core/store/settings.store';
+import { workspaceCoordinator } from '@/features/editor/core/coordinator/workspace.coordinator';
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
+import { listAuxFiles, suggestLatexFix, pagesService } from '@/features/editor/sdk/pages.service';
+import { type AuxFileItem } from '@/features/editor/sdk/pages/types';
+import type { AiErrorFixResult } from '@/features/editor/domain/ai/ai-error-assist';
+import type {
+  LogEntry,
+  ParsedLog,
+  ErrorExplanationDto,
+} from '@/features/editor/domain/types/compiler.types';
+import {
+  parseLatexLog,
+  diagnosticsToParsedLog,
+  cacheBackendParsedLog,
+  DEFAULT_OUTPUT_FILES,
+} from '@/features/editor/domain/latex/compiler-logs-parser';
+import {
+  DEFAULT_MAIN_FILE,
+  COMPILER_LOGS_VIRTUAL_THRESHOLD,
+} from '@/features/editor/domain/constants/editor.constants';
+import { filterDiagnostics } from '@/features/editor/domain/latex/warning-filter';
+import { type TabType } from '../logs/CompilerLogsFilterTabs';
+
+export interface UseCompilerLogsStateOptions {
+  log?: string | null;
+  parsedLog?: ParsedLog | null;
+  onJumpToError?: (file: string, line: number) => void;
+  onClearCacheAndCompile?: () => void;
+  onCompile?: () => void;
+}
+
+export interface CompilerLogVisibleRow {
+  rowKey: string;
+  domId: string;
+  type: 'error' | 'warning' | 'badbox';
+  entry: LogEntry;
+  categoryIndex: number;
+}
+
+export function useCompilerLogsState({
+  log,
+  parsedLog: externalParsedLog,
+  onJumpToError,
+  onClearCacheAndCompile,
+  onCompile,
+}: UseCompilerLogsStateOptions) {
+  const scratchTargetId = usePageStore(
+    (s) => s.rootPageId || s.parentPageId || s.currentPage?.id || s.spaceId || s.projectId,
+  );
+  const scratchIsPageScoped = usePageStore((s) =>
+    Boolean(s.rootPageId || s.parentPageId || (s.currentPage?.id && !s.projectId && !s.spaceId)),
+  );
+  const compileStatus = useCompileStore((s) => s.compileStatus);
+  const storeParsedLog = useCompileStore((s) => s.parsedLog);
+  const storeDiagnostics = useCompileStore((s) => s.compileDiagnostics);
+  const { engine } = useEditorInstance();
+  const [remoteParsedLog, setRemoteParsedLog] = useState<ParsedLog | null>(null);
+
+  useEffect(() => {
+    if (externalParsedLog || (storeDiagnostics && storeDiagnostics.length > 0) || !log || !log.trim()) {
+      setRemoteParsedLog(null);
+      return;
+    }
+    let active = true;
+    pagesService.diagnostics
+      .parseLog(log)
+      .then((report) => {
+        if (!active || !report?.items) return;
+        const converted = diagnosticsToParsedLog(report.items);
+        cacheBackendParsedLog(log, converted);
+        setRemoteParsedLog(converted);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [externalParsedLog, storeDiagnostics, log]);
+
+  const parsed = useMemo(() => {
+    if (externalParsedLog) return externalParsedLog;
+    if (
+      storeParsedLog &&
+      (storeParsedLog.errors.length > 0 ||
+        storeParsedLog.warnings.length > 0 ||
+        storeParsedLog.badBoxes.length > 0)
+    ) {
+      return storeParsedLog;
+    }
+    if (storeDiagnostics && storeDiagnostics.length > 0) {
+      return diagnosticsToParsedLog(storeDiagnostics);
+    }
+    if (remoteParsedLog) return remoteParsedLog;
+    return parseLatexLog(log || '');
+  }, [externalParsedLog, storeParsedLog, storeDiagnostics, remoteParsedLog, log]);
+
+  const [activeTab, setActiveTab] = useState<TabType>('all');
+  const [isRawLogsOpen, setIsRawLogsOpen] = useState(false);
+
+  const suppressBadBoxes = useSettingsStore((s) => s.suppressBadBoxes);
+  const suppressFontWarnings = useSettingsStore((s) => s.suppressFontWarnings);
+  const suppressPackageWarnings = useSettingsStore((s) => s.suppressPackageWarnings);
+  const customSuppressedWarnings = useSettingsStore((s) => s.customSuppressedWarnings);
+  const stopOnFirstError = useSettingsStore((s) => s.stopOnFirstError);
+
+  const [filterSuppressed, setFilterSuppressed] = useState(true);
+
+  const filterOptions = useMemo(
+    () => ({
+      suppressBadBoxes,
+      suppressFontWarnings,
+      suppressPackageWarnings,
+      customPatterns: customSuppressedWarnings,
+    }),
+    [suppressBadBoxes, suppressFontWarnings, suppressPackageWarnings, customSuppressedWarnings],
+  );
+
+  const nonTransientWarnings = useMemo(() => {
+    if (stopOnFirstError && parsed.errors.length > 0) {
+      const transientRegex = /(?:^|Warning:\s*)(?:Reference|Citation)\s+.+undefined\s+on\s+input\s+line/i;
+      return parsed.warnings.filter((w) => !transientRegex.test(w.message || ''));
+    }
+    return parsed.warnings;
+  }, [parsed.warnings, parsed.errors.length, stopOnFirstError]);
+
+  const displayedWarnings = useMemo(() => {
+    if (!filterSuppressed) return nonTransientWarnings;
+    return filterDiagnostics(nonTransientWarnings, filterOptions);
+  }, [nonTransientWarnings, filterSuppressed, filterOptions]);
+
+  const displayedBadBoxes = useMemo(() => {
+    if (!filterSuppressed) return parsed.badBoxes;
+    return filterDiagnostics(parsed.badBoxes, filterOptions);
+  }, [parsed.badBoxes, filterSuppressed, filterOptions]);
+
+  const suppressedCount = useMemo(() => {
+    const hiddenWarnings =
+      nonTransientWarnings.length - filterDiagnostics(nonTransientWarnings, filterOptions).length;
+    const hiddenBadBoxes =
+      parsed.badBoxes.length - filterDiagnostics(parsed.badBoxes, filterOptions).length;
+    return hiddenWarnings + hiddenBadBoxes;
+  }, [nonTransientWarnings, parsed.badBoxes, filterOptions]);
+
+  const handleClearCacheAndCompile = useCallback(() => {
+    if (onClearCacheAndCompile) {
+      onClearCacheAndCompile();
+    } else {
+      editorCommandBus.dispatch({ type: 'compiler:trigger', forceClean: true });
+    }
+  }, [onClearCacheAndCompile]);
+
+  const {
+    applyQuickFix,
+    applyAiFix,
+    downloadFile,
+    downloadAllArtifacts,
+  } = useLogViewerActions({
+    engine,
+    projectId: scratchTargetId,
+    isPageScoped: scratchIsPageScoped,
+    onCompile,
+    onClearCacheAndCompile: handleClearCacheAndCompile,
+  });
+
+  const handleApplyQuickFix = useCallback(
+    (entry: LogEntry, quickFix: { description: string; replacementText: string }) => {
+      applyQuickFix(entry, quickFix);
+    },
+    [applyQuickFix],
+  );
+
+  const [auxFiles, setAuxFiles] = useState<AuxFileItem[]>([]);
+  useEffect(() => {
+    if (scratchTargetId) {
+      let isMounted = true;
+      listAuxFiles(
+        scratchTargetId,
+        scratchIsPageScoped ? { isPageScoped: true } : undefined,
+      )
+        .then((files) => {
+          if (isMounted) setAuxFiles(files);
+        })
+        .catch((err) => {
+          if (isMounted) {
+            console.warn('[CompilerLogs] Failed to fetch auxiliary files list:', err);
+            setAuxFiles([]);
+          }
+        });
+      return () => {
+        isMounted = false;
+      };
+    }
+  }, [scratchTargetId, scratchIsPageScoped]);
+
+  const outputFiles = useMemo(() => {
+    if (auxFiles && auxFiles.length > 0) {
+      const names = auxFiles.map((f) => f.name);
+      return Array.from(new Set([...names, ...(log && log.trim() ? ['output.log'] : [])]));
+    }
+    return DEFAULT_OUTPUT_FILES;
+  }, [auxFiles, log]);
+
+  const handleDownloadRawLog = useCallback(() => {
+    if (!log || !log.trim()) {
+      toast.info('No compilation logs available to download', { id: 'download-raw-log' });
+      return;
+    }
+    const blob = new Blob([log], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'output.log';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success('Downloaded output.log');
+  }, [log]);
+
+  const handleDownloadOutputFile = useCallback(
+    (fileName: string) => {
+      if (fileName === 'output.log' && log && log.trim()) {
+        handleDownloadRawLog();
+      } else {
+        downloadFile(fileName);
+      }
+    },
+    [downloadFile, handleDownloadRawLog, log],
+  );
+
+  const [fixState, setFixState] = useState<
+    Record<string, { loading: boolean; result?: AiErrorFixResult; proposed?: boolean; applied?: boolean }>
+  >({});
+
+  useEffect(() => {
+    return editorCommandBus.subscribe('ai:diff-resolved', (cmd) => {
+      setFixState((prev) => {
+        let changed = false;
+        const next: typeof prev = { ...prev };
+        for (const [k, st] of Object.entries(prev)) {
+          if (st.proposed && !st.applied) {
+            changed = true;
+            next[k] =
+              cmd.action === 'accept'
+                ? { ...st, proposed: false, applied: true }
+                : { ...st, proposed: false };
+          }
+        }
+        return changed ? next : prev;
+      });
+    });
+  }, []);
+
+  const getEntryKey = useCallback(
+    (entry: LogEntry, index: number) =>
+      `${entry.file || ''}-${entry.line || 0}-${entry.message}-${index}`,
+    [],
+  );
+
+  const handleSuggestFix = useCallback(
+    async (entry: LogEntry, index: number) => {
+      const key = getEntryKey(entry, index);
+      if (fixState[key]?.result && !fixState[key].loading) {
+        setFixState((prev) => {
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        });
+        return;
+      }
+
+      setFixState((prev) => ({
+        ...prev,
+        [key]: { loading: true },
+      }));
+
+      const pageStore = usePageStore.getState();
+      let targetContent = '';
+      if (entry.file) {
+        const cleanEntryFile = entry.file.replace(/^\/+/, '');
+        const projectFiles = workspaceCoordinator.getProjectFiles?.() || [];
+        const found = projectFiles.find(
+          (f: { id: string; title?: string; name?: string; path?: string }) =>
+            f.title === cleanEntryFile ||
+            f.name === cleanEntryFile ||
+            (f.path && f.path.replace(/^\/+/, '') === cleanEntryFile),
+        );
+        if (found?.id) {
+          const cached = lruDocumentCache.getModel(found.id);
+          if (cached?.content) {
+            targetContent = cached.content;
+          } else if (found.id === pageStore.activeFilePage?.id && engine) {
+            targetContent = engine.getContent();
+          }
+        }
+      }
+      if (!targetContent && engine) {
+        targetContent = engine.getContent();
+      }
+
+      let surroundingCode = '';
+      if (targetContent && entry.line) {
+        const lines = targetContent.split('\n');
+        const start = Math.max(0, entry.line - 4);
+        const end = Math.min(lines.length, entry.line + 3);
+        surroundingCode = lines.slice(start, end).join('\n');
+      }
+
+      try {
+        const result = await suggestLatexFix({
+          errorMessage: entry.message,
+          errorLine: entry.line,
+          errorFile: entry.file,
+          detail: entry.detail,
+          surroundingCode,
+          spaceId: pageStore.spaceId || pageStore.projectId || undefined,
+          pageId:
+            pageStore.rootPageId || pageStore.parentPageId || pageStore.currentPage?.id || undefined,
+        });
+
+        setFixState((prev) => ({
+          ...prev,
+          [key]: { loading: false, result },
+        }));
+      } catch (err) {
+        console.warn('[CompilerLogs] AI fix suggestion failed:', err);
+        setFixState((prev) => ({
+          ...prev,
+          [key]: { loading: false },
+        }));
+      }
+    },
+    [engine, fixState, getEntryKey],
+  );
+
+  const handleApplyFix = useCallback(
+    (entry: LogEntry, fix: AiErrorFixResult, index: number) => {
+      const key = getEntryKey(entry, index);
+      applyAiFix(entry, fix, (outcome) => {
+        setFixState((prev) => ({
+          ...prev,
+          [key]: {
+            loading: false,
+            proposed: outcome === 'proposed',
+            applied: outcome === 'applied',
+            result: fix,
+          },
+        }));
+      });
+    },
+    [applyAiFix, getEntryKey],
+  );
+
+  const [explainState, setExplainState] = useState<
+    Record<string, { open: boolean; loading: boolean; explanation?: ErrorExplanationDto | null }>
+  >({});
+
+  const getExplainKey = useCallback(
+    (type: 'error' | 'warning' | 'badbox', entry: LogEntry, index: number) =>
+      `${type}-${getEntryKey(entry, index)}`,
+    [getEntryKey],
+  );
+
+  const handleToggleExplain = useCallback(
+    async (type: 'error' | 'warning' | 'badbox', entry: LogEntry, index: number) => {
+      const explainKey = getExplainKey(type, entry, index);
+      const current = explainState[explainKey];
+      if (current?.open) {
+        setExplainState((prev) => ({
+          ...prev,
+          [explainKey]: { ...prev[explainKey], open: false, loading: false },
+        }));
+        return;
+      }
+
+      if (type === 'error') {
+        const aiKey = getEntryKey(entry, index);
+        if (fixState[aiKey]?.result) {
+          void handleSuggestFix(entry, index);
+        }
+      }
+
+      const cachedExp = entry.explanation || current?.explanation;
+      if (cachedExp) {
+        setExplainState((prev) => ({
+          ...prev,
+          [explainKey]: { open: true, loading: false, explanation: cachedExp },
+        }));
+        return;
+      }
+
+      setExplainState((prev) => ({
+        ...prev,
+        [explainKey]: { ...prev[explainKey], open: false, loading: true },
+      }));
+
+      try {
+        const exp = await fetchLogEntryExplanation(entry);
+        setExplainState((prev) => ({
+          ...prev,
+          [explainKey]: {
+            open: Boolean(exp),
+            loading: false,
+            explanation: exp ?? null,
+          },
+        }));
+      } catch {
+        setExplainState((prev) => ({
+          ...prev,
+          [explainKey]: { ...prev[explainKey], open: false, loading: false },
+        }));
+      }
+    },
+    [explainState, fixState, getEntryKey, getExplainKey, handleSuggestFix],
+  );
+
+  const visibleRows = useMemo<CompilerLogVisibleRow[]>(() => {
+    const rows: CompilerLogVisibleRow[] = [];
+
+    if (activeTab === 'all' || activeTab === 'errors') {
+      parsed.errors.forEach((entry: LogEntry, i: number) => {
+        rows.push({
+          rowKey: `err-${i}`,
+          domId: `log-entry-err-${i}`,
+          type: 'error',
+          entry,
+          categoryIndex: i,
+        });
+      });
+    }
+    if (activeTab === 'all' || activeTab === 'warnings') {
+      displayedWarnings.forEach((entry: LogEntry, i: number) => {
+        rows.push({
+          rowKey: `warn-${i}`,
+          domId: `log-entry-warn-${i}`,
+          type: 'warning',
+          entry,
+          categoryIndex: i,
+        });
+      });
+    }
+    if (activeTab === 'all' || activeTab === 'info') {
+      displayedBadBoxes.forEach((entry: LogEntry, i: number) => {
+        rows.push({
+          rowKey: `info-${i}`,
+          domId: `log-entry-info-${i}`,
+          type: 'badbox',
+          entry,
+          categoryIndex: i,
+        });
+      });
+    }
+    return rows;
+  }, [activeTab, parsed.errors, displayedWarnings, displayedBadBoxes]);
+
+  const logsScrollRef = useRef<HTMLDivElement | null>(null);
+  const isVirtualized = visibleRows.length >= COMPILER_LOGS_VIRTUAL_THRESHOLD;
+  const rowVirtualizer = useVirtualizer({
+    count: visibleRows.length,
+    getScrollElement: () => logsScrollRef.current,
+    estimateSize: () => 68,
+    overscan: 8,
+    enabled: isVirtualized,
+  });
+
+  const scrollToErrorEntry = useCallback(
+    (errorIdx: number, block: ScrollLogicalPosition = 'nearest') => {
+      if (errorIdx < 0 || errorIdx >= parsed.errors.length) return;
+      if (activeTab !== 'all' && activeTab !== 'errors') {
+        setActiveTab('errors');
+      }
+      if (isVirtualized) {
+        rowVirtualizer.scrollToIndex(errorIdx, {
+          align: block === 'center' ? 'center' : 'auto',
+        });
+        requestAnimationFrame(() => {
+          const el = document.getElementById(`log-entry-err-${errorIdx}`);
+          el?.scrollIntoView?.({ behavior: 'smooth', block });
+        });
+        return;
+      }
+      const el = document.getElementById(`log-entry-err-${errorIdx}`);
+      el?.scrollIntoView?.({ behavior: 'smooth', block });
+    },
+    [activeTab, isVirtualized, parsed.errors.length, rowVirtualizer],
+  );
+
+  const scrollToErrorEntryRef = useRef(scrollToErrorEntry);
+  useEffect(() => {
+    scrollToErrorEntryRef.current = scrollToErrorEntry;
+  }, [scrollToErrorEntry]);
+
+  useEffect(() => {
+    let scrollTimer: ReturnType<typeof setTimeout> | null = null;
+    const unsub = editorCommandBus.subscribe('editor:suggest-fix', (cmd) => {
+      const { error } = cmd;
+      setActiveTab('errors');
+
+      const idx = parsed.errors.findIndex(
+        (e: LogEntry) =>
+          (error.line && e.line === error.line) ||
+          (error.message && (e.message.includes(error.message) || error.message.includes(e.message))),
+      );
+
+      const targetIdx = idx !== -1 ? idx : parsed.errors.length > 0 ? 0 : -1;
+      if (targetIdx !== -1) {
+        if (scrollTimer) clearTimeout(scrollTimer);
+        scrollTimer = setTimeout(() => {
+          scrollToErrorEntryRef.current(targetIdx, 'center');
+        }, 120);
+      }
+    });
+    return () => {
+      unsub();
+      if (scrollTimer) clearTimeout(scrollTimer);
+    };
+  }, [parsed.errors]);
+
+  const handleEntryClick = useCallback(
+    (entry: LogEntry) => {
+      if (entry.line) {
+        const targetFile = entry.file || useSettingsStore.getState().mainFile || DEFAULT_MAIN_FILE;
+        if (onJumpToError) {
+          onJumpToError(targetFile, entry.line);
+          toast.info(`Jumped to ${targetFile} line ${entry.line}`);
+        } else {
+          editorCommandBus.dispatch({
+            type: 'editor:jump-to-line',
+            line: entry.line,
+            highlight: 'error',
+          });
+        }
+      }
+    },
+    [onJumpToError],
+  );
+
+  const [currentErrorIdx, setCurrentErrorIdx] = useState<number>(0);
+
+  const handleNextError = useCallback(() => {
+    if (parsed.errors.length === 0) return;
+    const nextIdx = (currentErrorIdx + 1) % parsed.errors.length;
+    setCurrentErrorIdx(nextIdx);
+    const err = parsed.errors[nextIdx];
+    handleEntryClick(err);
+    scrollToErrorEntryRef.current(nextIdx, 'nearest');
+  }, [currentErrorIdx, parsed.errors, handleEntryClick]);
+
+  const handlePrevError = useCallback(() => {
+    if (parsed.errors.length === 0) return;
+    const prevIdx = (currentErrorIdx - 1 + parsed.errors.length) % parsed.errors.length;
+    setCurrentErrorIdx(prevIdx);
+    const err = parsed.errors[prevIdx];
+    handleEntryClick(err);
+    scrollToErrorEntryRef.current(prevIdx, 'nearest');
+  }, [currentErrorIdx, parsed.errors, handleEntryClick]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F8') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          handlePrevError();
+        } else {
+          handleNextError();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleNextError, handlePrevError]);
+
+  useEffect(() => {
+    return editorCommandBus.subscribe('editor:error-stepped', (cmd) => {
+      if (cmd.errorIndex !== undefined && cmd.errorIndex >= 0) {
+        setCurrentErrorIdx(cmd.errorIndex);
+        scrollToErrorEntryRef.current(cmd.errorIndex, 'nearest');
+      }
+    });
+  }, []);
+
+  const totalLogsCount =
+    parsed.errors.length + displayedWarnings.length + displayedBadBoxes.length;
+
+  return {
+    compileStatus,
+    parsed,
+    activeTab,
+    setActiveTab,
+    isRawLogsOpen,
+    setIsRawLogsOpen,
+    filterSuppressed,
+    setFilterSuppressed,
+    displayedWarnings,
+    displayedBadBoxes,
+    suppressedCount,
+    totalLogsCount,
+    visibleRows,
+    logsScrollRef,
+    isVirtualized,
+    rowVirtualizer,
+    currentErrorIdx,
+    fixState,
+    explainState,
+    outputFiles,
+    getEntryKey,
+    getExplainKey,
+    handleEntryClick,
+    handleSuggestFix,
+    handleApplyFix,
+    handleApplyQuickFix,
+    handleToggleExplain,
+    handleNextError,
+    handlePrevError,
+    handleClearCacheAndCompile,
+    handleDownloadOutputFile,
+    downloadAllArtifacts,
+  };
+}

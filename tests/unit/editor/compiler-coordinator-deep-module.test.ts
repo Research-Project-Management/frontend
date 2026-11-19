@@ -182,8 +182,8 @@ describe('CompilerCoordinator as Deep Module (Matt Pocock Codebase Design)', () 
     expect(dispatchSpy).toHaveBeenCalledWith({ type: 'viewer:goto-page', page: 3 });
   });
 
-  it('FlushBarrier flushes pending drafts and synchronizes active dirty buffer', async () => {
-    const flushDraftsSpy = vi.spyOn(sessionCoordinator, 'flushPendingDrafts');
+  it('FlushBarrier flushes pending unsynced edits and synchronizes active dirty buffer', async () => {
+    const flushUnsyncedSpy = vi.spyOn(sessionCoordinator, 'flushPendingUnsyncedEdits');
     const flushAllSpy = vi.spyOn(sessionCoordinator, 'flushAllPending').mockResolvedValue({
       total: 0,
       succeeded: 0,
@@ -197,7 +197,7 @@ describe('CompilerCoordinator as Deep Module (Matt Pocock Codebase Design)', () 
     });
 
     const result = await FlushBarrier.execute('doc-1', 'Updated content via editor');
-    expect(flushDraftsSpy).toHaveBeenCalled();
+    expect(flushUnsyncedSpy).toHaveBeenCalled();
     expect(flushAllSpy).toHaveBeenCalled();
     expect(result.activeFlushed).toBe(true);
     expect(lruDocumentCache.getModel('doc-1')?.content).toBe('Updated content via editor');

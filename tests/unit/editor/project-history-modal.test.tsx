@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/re
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import HistoryPage from '@/features/editor/subsystems/history/ui/HistoryPage';
-import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
+import { pagesService } from '@/features/editor/sdk/pages.service';
 import { editorCommandBus } from '@/features/editor/core';
 import { usePageStore } from '@/features/editor/core';
 import type { ProjectVersionListItem, ProjectDiffResponse } from '@/features/editor/domain/types/history.types';
@@ -97,9 +97,9 @@ describe('HistoryPage Component (Overleaf Parity)', () => {
       currentPage: { id: 'p-1', projectId: 'proj-123' } as any,
     });
 
-    vi.spyOn(manuscriptService.history, 'getProjectVersions').mockResolvedValue(mockVersions);
-    vi.spyOn(manuscriptService.history, 'compareProjectVersions').mockResolvedValue(mockDiff);
-    vi.spyOn(manuscriptService.history, 'getProjectSnapshot').mockResolvedValue({
+    vi.spyOn(pagesService.history, 'getProjectVersions').mockResolvedValue(mockVersions);
+    vi.spyOn(pagesService.history, 'compareProjectVersions').mockResolvedValue(mockDiff);
+    vi.spyOn(pagesService.history, 'getProjectSnapshot').mockResolvedValue({
       id: 'snap-2',
       projectId: 'proj-123',
       version: 2,
@@ -120,17 +120,17 @@ describe('HistoryPage Component (Overleaf Parity)', () => {
         },
       },
     });
-    vi.spyOn(manuscriptService.history, 'createProjectSnapshot').mockResolvedValue({
+    vi.spyOn(pagesService.history, 'createProjectSnapshot').mockResolvedValue({
       id: 'snap-4',
       version: 4,
     } as any);
-    vi.spyOn(manuscriptService.docs, 'updateContent').mockResolvedValue({} as any);
-    vi.spyOn(manuscriptService.history, 'restoreProjectVersion').mockResolvedValue({
+    vi.spyOn(pagesService.docs, 'updateContent').mockResolvedValue({} as any);
+    vi.spyOn(pagesService.history, 'restoreProjectVersion').mockResolvedValue({
       restoredSnapshot: { version: 2 } as any,
       newSnapshot: { version: 4 } as any,
       restoreResult: { restoredFilesCount: 2, restoredDocIds: ['doc-1'] },
     });
-    vi.spyOn(manuscriptService.history, 'restoreProjectVersionFile').mockResolvedValue({
+    vi.spyOn(pagesService.history, 'restoreProjectVersionFile').mockResolvedValue({
       path: '/main.tex',
       version: 2,
       newVersion: 4,
@@ -338,7 +338,7 @@ describe('HistoryPage Component (Overleaf Parity)', () => {
 
     await waitFor(() => {
       // Executes atomic single-file restore on backend
-      expect(manuscriptService.history.restoreProjectVersionFile).toHaveBeenCalledWith(
+      expect(pagesService.history.restoreProjectVersionFile).toHaveBeenCalledWith(
         'proj-123',
         2,
         'main.tex',
@@ -372,7 +372,7 @@ describe('HistoryPage Component (Overleaf Parity)', () => {
     fireEvent.click(confirmBtn);
 
     await waitFor(() => {
-      expect(manuscriptService.history.restoreProjectVersion).toHaveBeenCalledWith(
+      expect(pagesService.history.restoreProjectVersion).toHaveBeenCalledWith(
         'proj-123',
         3,
         { pageId: 'doc-1' },
@@ -412,8 +412,8 @@ describe('HistoryPage Component (Overleaf Parity)', () => {
       ],
     };
 
-    vi.spyOn(manuscriptService.history, 'compareProjectVersions').mockResolvedValue(deletedDiff);
-    vi.spyOn(manuscriptService.history, 'getProjectSnapshot').mockResolvedValue({
+    vi.spyOn(pagesService.history, 'compareProjectVersions').mockResolvedValue(deletedDiff);
+    vi.spyOn(pagesService.history, 'getProjectSnapshot').mockResolvedValue({
       id: 'snap-1',
       projectId: 'proj-123',
       version: 1,
@@ -430,7 +430,7 @@ describe('HistoryPage Component (Overleaf Parity)', () => {
         },
       },
     });
-    vi.spyOn(manuscriptService.history, 'restoreProjectVersionFile').mockResolvedValueOnce({
+    vi.spyOn(pagesService.history, 'restoreProjectVersionFile').mockResolvedValueOnce({
       path: 'chapter1.tex',
       version: 1,
       newVersion: 3,
@@ -458,7 +458,7 @@ describe('HistoryPage Component (Overleaf Parity)', () => {
     fireEvent.click(confirmBtn);
 
     await waitFor(() => {
-      expect(manuscriptService.history.restoreProjectVersionFile).toHaveBeenCalledWith(
+      expect(pagesService.history.restoreProjectVersionFile).toHaveBeenCalledWith(
         'proj-123',
         1,
         'chapter1.tex',

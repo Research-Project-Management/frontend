@@ -2,22 +2,15 @@
  * session.coordinator.ts
  *
  * Unified Document Session Coordinator (Deep Module - Coordinators Layer):
- * Follows Matt Pocock's Codebase Design principles:
- * - Deep Module: A lot of behavior (FSM, autosave, offline sync, conflict resolution,
- *   crash resilience, debounced draft indexing) behind a concise interface.
- * - Real Seam: Injected DocumentPersistencePort with production & test stand-in support.
  * - Finite State Machine: Tracks document session lifecycle to prevent race conditions.
  * - Single source of truth for in-memory & persisted document state.
  */
 
+import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import {
-  lruDocumentCache,
-} from '@/features/editor/domain/document/lru-document-cache';
-import {
-  draftStorageService,
-  type DraftSnapshot,
-  type ProjectFileSnapshot,
-} from '@/features/editor/domain/document/draft-storage';
+  type UnsyncedDocEdit,
+  type SyncedDocCacheEntry,
+} from '@/features/editor/domain/offline-storage';
 import {
   createInitialSessionContext,
   sessionFsmTransition,
@@ -26,41 +19,53 @@ import {
 } from '@/features/editor/domain/document/session-fsm';
 import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-index';
 import { latexDependencyGraph } from '@/features/editor/domain/latex/dependency-graph';
-import { manuscriptService } from '@/features/editor/sdk/pages.service';
-import {
-  markHttpSavedWhileDisconnected,
-  flushYjsProvider,
-  getActiveYjsProvider,
-  evictYjsProviderByDocId,
-} from '@/features/editor/sdk/realtime/yjs-socket-provider';
-import { useCompileStore } from '@/features/editor/subsystems/compiler';
-import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store';
+import { pagesService } from '@/features/editor/sdk/pages.service';
+import { getActiveYjsProvider } from '@/features/editor/sdk/realtime/yjs-socket-provider';
+import { useCompileStore } from '@/features/editor/subsystems/compiler/coordinator/compiler.store';
 import { usePageStore } from '../store/editor.store';
 import { useSettingsStore } from '../store/settings.store';
-import { useConnectivityStore, isNetworkError } from '../store/connectivity.store';
-import { EDITOR_LIMITS } from '@/features/editor/domain/constants/editor.constants';
+import { useConnectivityStore } from '../store/connectivity.store';
 import { warmEditorStatePool } from '@/features/editor/domain/workspace/editor-tab-pool.domain';
-import { multiTabBus, withWebLock } from '@/shared/lib/multi-tab';
-import {
-  editorCommandBus,
-  getActiveEditorEngine,
-  getEditorEngineForFile,
-  getAllRegisteredEngines,
-  getActiveEditorContent,
-} from '../bus/command-bus';
+import { multiTabBus } from '@/shared/lib/multi-tab';
+import { editorCommandBus } from '../bus/command-bus';
 import { visibilityCoordinator } from './visibility.coordinator';
+import { UnsyncedEditsCoordinator } from './unsynced-edits.coordinator';
 import {
-  DraftRecoveryCoordinator,
+  DocumentConflictCoordinator,
   type DocumentConflict,
   type ConflictListener,
-} from './draft-recovery.coordinator';
+} from './document-conflict.coordinator';
+import {
+  shouldUseRealtimePersistence,
+  clearWorkspaceTabDirty,
+  flushViaRealtimeYjsStrategy,
+  flushViaRestCasStrategy,
+  executeResolveConflictHelper,
+  executeFlushAllDirtyModelsHelper,
+  type DocumentPersistencePort,
+  type SessionPersistenceHost,
+} from './session-persistence.strategy';
+import {
+  enqueueOfflineEditHelper,
+  flushViaOfflineQueueStrategy,
+  replayPendingOfflineMutations,
+  dispatchMultiTabSyncEvent,
+  performEmergencyUnloadSave,
+  clearDeletedFileSessionResources,
+  finalizeTabCloseEviction,
+  executeSwitchTabDeactivate,
+  executeRemoteContentUpdatedHelper,
+  type OfflineMutationModel,
+} from './session-offline-sync';
 
+export { shouldUseRealtimePersistence };
 export type {
-  DraftSnapshot,
-  ProjectFileSnapshot,
+  UnsyncedDocEdit,
+  SyncedDocCacheEntry,
   DocumentSessionState,
   DocumentConflict,
   ConflictListener,
+  DocumentPersistencePort,
 };
 
 export interface FlushResult {
@@ -76,32 +81,6 @@ export interface FlushAllResult {
   results: FlushResult[];
 }
 
-/**
- * Pure policy: HTTP autosave is required unless a realtime CRDT channel is actually connected.
- */
-export function shouldUseRealtimePersistence(input: {
-  hasYText: boolean;
-  isOnline: boolean;
-  isProviderConnected: boolean;
-}): boolean {
-  return input.hasYText && input.isOnline && input.isProviderConnected;
-}
-
-export interface DocumentPersistencePort {
-  updateContent(
-    fileId: string,
-    content: string,
-    options?: { expectedRev?: number; expectedVersion?: number }
-  ): Promise<unknown>;
-  getById?(
-    fileId: string
-  ): Promise<
-    | { content?: unknown; rev?: number; version?: number; lines?: string[]; updatedAt?: string }
-    | null
-    | undefined
-  >;
-}
-
 export interface DocumentSessionOptions {
   persistenceAdapter?: DocumentPersistencePort;
   autoSaveDelay?: number;
@@ -115,12 +94,9 @@ const DEFAULT_AUTOCOMPILE_DELAY = 1500; // ms (Overleaf parity)
 const MAX_FSM_CONTEXTS = 200;
 const STRUCTURAL_DIRECTIVE_REGEX =
   /\\(?:documentclass|input|include|subfile|import|bibliography|addbibresource)/;
-const TRANSIENT_ERROR_MSG_REGEX =
-  /timeout|timed out|too many requests|bad gateway|service unavailable|gateway timeout/i;
-const CONFLICT_ERROR_MSG_REGEX = /\b409\b|conflict/i;
 
 export class SessionCoordinator {
-  private readonly persistenceAdapter: DocumentPersistencePort;
+  private readonly customPersistenceAdapter?: DocumentPersistencePort;
   private readonly saveTimers = new Map<string, NodeJS.Timeout>();
   private compileTimer: NodeJS.Timeout | null = null;
   private readonly dagDebounceTimers = new Map<string, NodeJS.Timeout>();
@@ -129,29 +105,51 @@ export class SessionCoordinator {
   private beforeUnloadInitialized = false;
   private readonly inFlightFileFlushes = new Map<string, Promise<boolean>>();
 
-  /** Per-document Finite State Machine contexts */
   private readonly fsmContexts = new Map<string, SessionFsmContext>();
-
-  /** Custom options / dependency hooks */
   private readonly options: DocumentSessionOptions;
-
-  /** Per-file realtime (Yjs socket) connection status reported by the editor UI. */
   private readonly realtimeConnected = new Map<string, boolean>();
-  /** Draft recovery & conflict sub-coordinator */
-  private readonly draftRecovery: DraftRecoveryCoordinator;
+  private readonly unsyncedEdits: UnsyncedEditsCoordinator;
+  private readonly conflicts = new DocumentConflictCoordinator();
   private multiTabUnsubscriber: (() => void) | null = null;
+  private onlineHandler: (() => void) | null = null;
+  private offlineHandler: (() => void) | null = null;
 
   constructor(options: DocumentSessionOptions = {}) {
     this.options = options;
-    this.persistenceAdapter = options.persistenceAdapter ?? manuscriptService.docs;
-    this.draftRecovery = new DraftRecoveryCoordinator((projectId) =>
-      this.resolveEffectiveProjectId(projectId)
+    this.customPersistenceAdapter = options.persistenceAdapter;
+    this.unsyncedEdits = new UnsyncedEditsCoordinator((projectId) =>
+      this.resolveEffectiveProjectId(projectId),
     );
 
     this.initVisibilityFlushHandler();
     this.initCommandSubscriptions();
     this.initOnlineListener();
     this.initMultiTabSubscriptions();
+  }
+
+  private get persistenceAdapter(): DocumentPersistencePort {
+    return this.customPersistenceAdapter ?? pagesService.docs;
+  }
+
+  private createPersistenceHost(): SessionPersistenceHost {
+    return {
+      persistenceAdapter: this.persistenceAdapter,
+      unsyncedEdits: this.unsyncedEdits,
+      conflicts: this.conflicts,
+      autoSaveDelay: this.options.autoSaveDelay ?? DEFAULT_AUTOSAVE_DELAY,
+      transitionFsm: (fileId, event) => {
+        this.transitionFsm(fileId, event);
+      },
+      resolveEffectiveProjectId: (modelProjectId) =>
+        this.resolveEffectiveProjectId(modelProjectId),
+      isRealtimeConnected: (fileId) => this.isRealtimeConnected(fileId),
+      scheduleAutoSave: (fileId, delayMs) => this.scheduleAutoSave(fileId, delayMs),
+      saveUnsyncedEdit: (fileId, content, projectId) =>
+        this.saveUnsyncedEdit(fileId, content, projectId),
+      clearUnsyncedEdit: (fileId) => this.clearUnsyncedEdit(fileId),
+      enqueueOfflineEdit: (fileId, model, opts) =>
+        this.enqueueOfflineEdit(fileId, model, opts),
+    };
   }
 
   public getFsmState(fileId: string): DocumentSessionState {
@@ -163,9 +161,7 @@ export class SessionCoordinator {
     if (!ctx) {
       if (this.fsmContexts.size >= MAX_FSM_CONTEXTS) {
         const oldestKey = this.fsmContexts.keys().next().value;
-        if (oldestKey !== undefined) {
-          this.fsmContexts.delete(oldestKey);
-        }
+        if (oldestKey !== undefined) this.fsmContexts.delete(oldestKey);
       }
       const version = lruDocumentCache.getContentVersion(fileId) || 0;
       ctx = createInitialSessionContext(fileId, version);
@@ -176,7 +172,7 @@ export class SessionCoordinator {
 
   private transitionFsm(
     fileId: string,
-    event: Parameters<typeof sessionFsmTransition>[1]
+    event: Parameters<typeof sessionFsmTransition>[1],
   ): SessionFsmContext {
     const ctx = this.getOrCreateFsmContext(fileId);
     const updated = sessionFsmTransition(ctx, event);
@@ -194,20 +190,13 @@ export class SessionCoordinator {
     return state.spaceId || state.projectId || 'workspace-local';
   }
 
-  // ── Realtime connection status ─────────────────────────────────────────────
-
-  /**
-   * Reports the actual realtime (Yjs socket) connection status for a file.
-   * On a connected -> disconnected transition, dirty content is immediately
-   * protected via draft snapshot + HTTP autosave since the CRDT channel is gone.
-   */
   public setRealtimeConnected(fileId: string, connected: boolean): void {
     const previous = this.realtimeConnected.get(fileId);
     this.realtimeConnected.set(fileId, connected);
     if (previous === true && !connected) {
       const model = lruDocumentCache.getModel(fileId);
       if (model?.isDirty) {
-        this.saveDraftSnapshot(fileId, model.content, model.projectId);
+        this.saveUnsyncedEdit(fileId, model.content, model.projectId);
         this.scheduleAutoSave(fileId, this.options.autoSaveDelay ?? DEFAULT_AUTOSAVE_DELAY);
       }
     }
@@ -218,9 +207,7 @@ export class SessionCoordinator {
   }
 
   public isRealtimeConnected(fileId: string): boolean {
-    if (this.realtimeConnected.get(fileId) !== true) {
-      return false;
-    }
+    if (this.realtimeConnected.get(fileId) !== true) return false;
     const activeProvider = getActiveYjsProvider(fileId);
     if (activeProvider) {
       return activeProvider.status === 'connected' && activeProvider.isSynced;
@@ -228,92 +215,55 @@ export class SessionCoordinator {
     return true;
   }
 
-  // ── Draft recovery decision gate ───────────────────────────────────────────
-
-  public beginDraftDecision(fileId: string): void {
-    this.draftRecovery.beginDraftDecision(fileId);
+  public beginRecoveryDecision(fileId: string): void {
+    this.unsyncedEdits.beginRecoveryDecision(fileId);
   }
 
-  public endDraftDecision(fileId: string): void {
-    this.draftRecovery.endDraftDecision(fileId);
+  public endRecoveryDecision(fileId: string): void {
+    this.unsyncedEdits.endRecoveryDecision(fileId);
   }
 
-  public isDraftDecisionPending(fileId: string): boolean {
-    return this.draftRecovery.isDraftDecisionPending(fileId);
+  public isRecoveryDecisionPending(fileId: string): boolean {
+    return this.unsyncedEdits.isRecoveryDecisionPending(fileId);
   }
 
-  public restoreDraft(fileId: string, content: string): void {
-    this.endDraftDecision(fileId);
+  public restoreUnsyncedEdit(fileId: string, content: string): void {
+    this.endRecoveryDecision(fileId);
     lruDocumentCache.updateContent(fileId, content, true);
     this.notifyContentChange(fileId, content, {
       isRealtimeActive: this.isRealtimeConnected(fileId),
     });
   }
 
-  public discardDraft(fileId: string): void {
-    this.endDraftDecision(fileId);
-    this.clearDraftSnapshot(fileId);
+  public discardUnsyncedEdit(fileId: string): void {
+    this.endRecoveryDecision(fileId);
+    this.clearUnsyncedEdit(fileId);
   }
 
-  // ── Conflict surfacing ─────────────────────────────────────────────────────
-
   public onConflict(listener: ConflictListener): () => void {
-    return this.draftRecovery.onConflict(listener);
+    return this.conflicts.onConflict(listener);
   }
 
   public getConflict(fileId: string): DocumentConflict | undefined {
-    return this.draftRecovery.getConflict(fileId);
+    return this.conflicts.getConflict(fileId);
   }
 
   public getConflicts(): DocumentConflict[] {
-    return this.draftRecovery.getConflicts();
+    return this.conflicts.getConflicts();
   }
 
-  /**
-   * Resolves a surfaced conflict.
-   * - 'keep-local': local edits stay dirty and will be saved, overwriting the remote version.
-   * - 'take-remote': local content is replaced by the remote version (local copy kept as draft).
-   * - 'custom-merge': custom merged content replaces local & remote (local copy kept as draft) and is scheduled for save.
-   */
   public resolveConflict(
     fileId: string,
     resolution: 'keep-local' | 'take-remote' | 'custom-merge',
-    mergedContent?: string
+    mergedContent?: string,
   ): void {
-    const conflict = this.draftRecovery.takeConflict(fileId);
-    if (!conflict) return;
-
-    this.transitionFsm(fileId, { type: 'CONFLICT_RESOLVED', resolution });
-
-    if (resolution === 'take-remote') {
-      // Preserve the local version as a recoverable draft before replacing it.
-      this.draftRecovery.flushDraftNow(fileId, conflict.localContent, lruDocumentCache.getModel(fileId)?.projectId);
-      if (
-        conflict.hasAuthoritativeRemote === false &&
-        conflict.remoteContent === '' &&
-        conflict.localContent.length > 0
-      ) {
-        console.warn(
-          `[SessionCoordinator] Refusing 'take-remote' empty overwrite for ${fileId}: authoritative remote content unavailable.`,
-        );
-        return;
-      }
-      lruDocumentCache.updateContent(fileId, conflict.remoteContent, false);
-      lruDocumentCache.markClean(fileId);
-      useCompileStore.getState().clearDirty(fileId);
-      this.reindex(fileId, conflict.remoteContent);
-      editorCommandBus.dispatch({ type: 'editor:set-content', content: conflict.remoteContent, fileId });
-    } else if (resolution === 'custom-merge' && typeof mergedContent === 'string') {
-      // Preserve the local version as a recoverable draft before applying custom merge
-      this.draftRecovery.flushDraftNow(fileId, conflict.localContent, lruDocumentCache.getModel(fileId)?.projectId);
-      lruDocumentCache.updateContent(fileId, mergedContent, true);
-      useCompileStore.getState().markDirty(fileId, mergedContent);
-      this.reindex(fileId, mergedContent);
-      editorCommandBus.dispatch({ type: 'editor:set-content', content: mergedContent, fileId });
-      this.scheduleAutoSave(fileId, this.options.autoSaveDelay ?? DEFAULT_AUTOSAVE_DELAY);
-    } else {
-      this.scheduleAutoSave(fileId, this.options.autoSaveDelay ?? DEFAULT_AUTOSAVE_DELAY);
-    }
+    executeResolveConflictHelper({
+      host: this.createPersistenceHost(),
+      fileId,
+      resolution,
+      mergedContent,
+      reindex: (fid, content) => this.reindex(fid, content),
+    });
   }
 
   private reindex(fileId: string, content: string): void {
@@ -323,63 +273,6 @@ export class SessionCoordinator {
     if (STRUCTURAL_DIRECTIVE_REGEX.test(content)) {
       latexDependencyGraph.parseAndRegister(filePath, content, fileId);
     }
-  }
-
-  /**
-   * Common post-save bookkeeping. Only marks the model clean / clears drafts if the
-   * content sent to the server is still the current local content; otherwise the newer
-   * edits remain dirty and another save is scheduled.
-   * Returns true when the file is fully clean.
-   */
-  private async finalizeSuccessfulSave(
-    fileId: string,
-    sentContent: string,
-    sentVersion?: number
-  ): Promise<boolean> {
-    markHttpSavedWhileDisconnected(fileId);
-
-    const currentVersion = lruDocumentCache.getContentVersion(fileId) || 0;
-    this.transitionFsm(fileId, {
-      type: 'SAVE_SUCCESS',
-      savedVersion: sentVersion ?? currentVersion,
-      currentVersion,
-    });
-
-    const model = lruDocumentCache.getModel(fileId);
-    if (!model) {
-      // No live model: clear the stored draft only if it is exactly what we saved.
-      const draft = await draftStorageService.getDraft(fileId).catch(() => null);
-      if (!draft || draft.content === sentContent) {
-        useCompileStore.getState().clearDirty(fileId);
-        this.clearWorkspaceTabDirty(fileId);
-        this.clearDraftSnapshot(fileId);
-        return true;
-      }
-      return false;
-    }
-    if (lruDocumentCache.markCleanIfUnchanged(fileId, sentContent, sentVersion)) {
-      useCompileStore.getState().clearDirty(fileId);
-      this.clearWorkspaceTabDirty(fileId, model.projectId);
-      this.clearDraftSnapshot(fileId);
-      const effectiveProjectId = this.resolveEffectiveProjectId(model.projectId);
-      void draftStorageService.saveProjectFileSnapshot({
-        id: fileId,
-        projectId: effectiveProjectId,
-        title: model.filePath || fileId,
-        content: sentContent,
-        filePath: model.filePath,
-        rev: model.serverRev,
-        hash: model.hash,
-        updatedAt: Date.now(),
-      });
-      latexSymbolsIndex.refreshFromServer(effectiveProjectId);
-      return true;
-    }
-    // Content changed while the request was in flight: keep dirty & re-save.
-    if (!this.isRealtimeConnected(fileId)) {
-      this.scheduleAutoSave(fileId, this.options.autoSaveDelay ?? DEFAULT_AUTOSAVE_DELAY);
-    }
-    return false;
   }
 
   public async handleOnline(): Promise<void> {
@@ -400,26 +293,18 @@ export class SessionCoordinator {
 
   public handleOffline(): void {
     useConnectivityStore.getState().recordOffline();
-    this.flushPendingDrafts();
+    this.flushPendingUnsyncedEdits();
   }
-
-  private onlineHandler: (() => void) | null = null;
-  private offlineHandler: (() => void) | null = null;
 
   private initOnlineListener(): void {
     if (typeof window === 'undefined') return;
     this.disposeOnlineListener();
-    this.onlineHandler = () => {
-      void this.handleOnline();
-    };
-    this.offlineHandler = () => {
-      this.handleOffline();
-    };
+    this.onlineHandler = () => void this.handleOnline();
+    this.offlineHandler = () => this.handleOffline();
     window.addEventListener('online', this.onlineHandler);
     window.addEventListener('offline', this.offlineHandler);
   }
 
-  /** Removes window online/offline listeners (HMR, tests, coordinator re-instantiation). */
   public disposeOnlineListener(): void {
     if (typeof window === 'undefined') return;
     if (this.onlineHandler) window.removeEventListener('online', this.onlineHandler);
@@ -437,119 +322,53 @@ export class SessionCoordinator {
   private initMultiTabSubscriptions(): void {
     this.multiTabUnsubscriber?.();
     this.multiTabUnsubscriber = multiTabBus.subscribe((event) => {
-      if (event.type === 'OFFLINE_OUTBOX_MUTATED') {
-        useConnectivityStore.getState().setPendingMutationsCount(event.count);
-        if (event.action === 'FLUSHED' && event.count === 0) {
-          const conn = useConnectivityStore.getState();
-          if (conn.isOnline && conn.pendingSaveCount === 0) {
-            conn.setSyncStatus('synced');
-          }
-        }
-        return;
-      }
-
-      if (event.type === 'EDITOR_OFFLINE_DRAFT_UPDATED') {
-        if (getActiveYjsProvider(event.fileId)) {
-          return;
-        }
-        const model = lruDocumentCache.getModel(event.fileId);
-        if (model && model.content !== event.content) {
-          lruDocumentCache.applyRemoteContent(event.fileId, event.content);
-          this.reindex(event.fileId, event.content);
-          editorCommandBus.dispatch({
-            type: 'editor:set-content',
-            fileId: event.fileId,
-            content: event.content,
-          });
-        }
-      }
+      dispatchMultiTabSyncEvent(event, (fileId, content) => this.reindex(fileId, content));
     });
   }
 
-  /**
-   * Handles a remote full-content update (server broadcast). Never silently drops data:
-   * - local clean  -> apply remote content.
-   * - local dirty & identical -> nothing to do.
-   * - local dirty & realtime CRDT connected -> Yjs merges both sides; nothing is lost.
-   * - local dirty & no realtime -> surface a conflict to listeners for user resolution.
-   */
   public handleRemoteContentUpdated(fileId: string, remoteContent: string): void {
-    const model = lruDocumentCache.getModel(fileId);
-    if (!model?.isDirty) {
-      lruDocumentCache.updateContent(fileId, remoteContent, false);
-      lruDocumentCache.markClean(fileId);
-      useCompileStore.getState().clearDirty(fileId);
-      const v = lruDocumentCache.getContentVersion(fileId) || 0;
-      this.transitionFsm(fileId, { type: 'REMOTE_EDIT', version: v });
-      this.reindex(fileId, remoteContent);
-      return;
-    }
-    if (model.content === remoteContent) {
-      this.draftRecovery.clearConflict(fileId);
-      return;
-    }
-    if (this.isRealtimeConnected(fileId)) {
-      return;
-    }
-
-    this.transitionFsm(fileId, { type: 'CONFLICT_DETECTED' });
-    this.draftRecovery.recordConflict(fileId, model.content, remoteContent, model.projectId);
+    executeRemoteContentUpdatedHelper({
+      fileId,
+      remoteContent,
+      isRealtimeConnected: (fid) => this.isRealtimeConnected(fid),
+      transitionRemoteEdit: (fid, v) => this.transitionFsm(fid, { type: 'REMOTE_EDIT', version: v }),
+      transitionConflictDetected: (fid) => this.transitionFsm(fid, { type: 'CONFLICT_DETECTED' }),
+      reindex: (fid, c) => this.reindex(fid, c),
+      unsyncedEdits: this.unsyncedEdits,
+      conflicts: this.conflicts,
+    });
   }
 
-  public recordOfflineDraftConflict(
+  public recordOfflineEditConflict(
     fileId: string,
     localContent: string,
     remoteContent: string,
     options?: { projectId?: string; currentRev?: number },
   ): void {
     this.transitionFsm(fileId, { type: 'CONFLICT_DETECTED' });
-    this.draftRecovery.recordConflict(
-      fileId,
-      localContent,
-      remoteContent,
-      options?.projectId,
-      {
-        currentRev: options?.currentRev,
-        hasAuthoritativeRemote: true,
-      },
-    );
+    this.unsyncedEdits.flushNow(fileId, localContent, options?.projectId);
+    this.conflicts.recordConflict(fileId, localContent, remoteContent, {
+      currentRev: options?.currentRev,
+      hasAuthoritativeRemote: true,
+    });
   }
 
   private initVisibilityFlushHandler(): void {
     visibilityCoordinator.registerFlushHandler(async () => {
-      this.flushPendingDrafts();
+      this.flushPendingUnsyncedEdits();
       await this.flushAllPending();
     });
   }
 
   public initBeforeUnloadProtection(): () => void {
-    if (typeof window === 'undefined' || this.beforeUnloadInitialized) {
-      return () => {};
-    }
+    if (typeof window === 'undefined' || this.beforeUnloadInitialized) return () => {};
     this.beforeUnloadInitialized = true;
 
     const handler = (e: BeforeUnloadEvent) => {
-      const dirtyModels = lruDocumentCache.getDirtyModels();
-      if (dirtyModels.length > 0) {
+      if (performEmergencyUnloadSave((pid) => this.resolveEffectiveProjectId(pid))) {
         e.preventDefault();
         e.returnValue = '';
-        const activeId = lruDocumentCache.getActiveFileId();
-        const prioritized = activeId
-          ? [
-              ...dirtyModels.filter((m) => m.fileId === activeId),
-              ...dirtyModels.filter((m) => m.fileId !== activeId),
-            ]
-          : dirtyModels;
-        for (const m of prioritized.slice(0, 2)) {
-          draftStorageService.saveEmergencyUnloadDraft(
-            m.fileId,
-            m.content,
-            this.resolveEffectiveProjectId(m.projectId),
-            m.filePath,
-            m.serverRev,
-          );
-        }
-        this.flushPendingDrafts();
+        this.flushPendingUnsyncedEdits();
         void this.flushAllPending();
         return '';
       }
@@ -571,34 +390,26 @@ export class SessionCoordinator {
       skipAutoCompile?: boolean;
       hasStructuralChange?: boolean;
       origin?: 'local' | 'remote';
-    }
+    },
   ): void {
     const isRealtime = options?.isRealtimeActive ?? this.isRealtimeConnected(fileId);
     const isRemote = options?.origin === 'remote';
 
-    // 1. In-memory hot RAM update (0ms latency). Remote changes never set — nor clear — the
-    //    local dirty flag (clearing it would drop unsaved local edits from persistence).
     if (isRemote) {
       lruDocumentCache.applyRemoteContent(fileId, content);
       const v = lruDocumentCache.getContentVersion(fileId) || 0;
       this.transitionFsm(fileId, { type: 'REMOTE_EDIT', version: v });
     } else {
-      if (isRealtime) {
-        // Realtime CRDT updates bypass HTTP OCC rev increments; clear stale cached rev
-        // so any disconnect fallback HTTP save does not send an outdated expectedRev.
-        lruDocumentCache.clearServerRev(fileId);
-      }
+      if (isRealtime) lruDocumentCache.clearServerRev(fileId);
       lruDocumentCache.updateContent(fileId, content, true);
       const v = lruDocumentCache.getContentVersion(fileId) || 0;
       this.transitionFsm(fileId, { type: 'LOCAL_EDIT', version: v });
     }
 
-    // 1b. Incrementally update Cross-file LaTeX symbols (Offloaded to Web Worker)
     const currentModel = lruDocumentCache.getModel(fileId);
     const filePath = currentModel?.filePath || fileId;
     latexSymbolsIndex.indexFile(fileId, filePath, content);
 
-    // Fast guard: debounced re-parsing of DAG graph if file contains structural include/class directives.
     const shouldCheckDag = options?.hasStructuralChange ?? true;
     if (shouldCheckDag && STRUCTURAL_DIRECTIVE_REGEX.test(content)) {
       const existingDagTimer = this.dagDebounceTimers.get(fileId);
@@ -614,178 +425,29 @@ export class SessionCoordinator {
 
     if (isRemote) {
       if (currentModel?.isDirty) {
-        this.saveDraftSnapshot(fileId, content, currentModel.projectId);
+        this.saveUnsyncedEdit(fileId, content, currentModel.projectId);
       }
       return;
     }
 
-    // 2. Local crash resilience backup (Tier 2 persistence; compile store already updated via LRU subscription)
     const activeProjectId = this.resolveEffectiveProjectId(currentModel?.projectId);
-    this.saveDraftSnapshot(fileId, content, activeProjectId);
+    this.saveUnsyncedEdit(fileId, content, activeProjectId);
 
-    // 4. Schedule debounced auto-save to backend
     if (!isRealtime) {
-      this.scheduleAutoSave(fileId, options?.customAutoSaveDelay ?? this.options.autoSaveDelay ?? DEFAULT_AUTOSAVE_DELAY);
+      this.scheduleAutoSave(
+        fileId,
+        options?.customAutoSaveDelay ?? this.options.autoSaveDelay ?? DEFAULT_AUTOSAVE_DELAY,
+      );
     }
 
-    // 5. Schedule debounced auto-compile if enabled in user settings
     if (!options?.skipAutoCompile) {
       this.scheduleAutoCompile(fileId);
     }
   }
 
-  private isTransientSaveError(err: unknown): boolean {
-    const status = (err as { status?: number })?.status;
-    if (status === 408 || status === 429 || status === 502 || status === 503 || status === 504) {
-      return true;
-    }
-    if (status !== undefined) {
-      return false;
-    }
-    return err instanceof Error && TRANSIENT_ERROR_MSG_REGEX.test(err.message);
-  }
-
-  private async persistWithRetry(
-    fileId: string,
-    sentContent: string,
-    expectedRev?: number
-  ): Promise<unknown> {
-    const maxAttempts = 3;
-    const baseDelayMs = 300;
-    let lastError: unknown;
-
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        const res =
-          expectedRev !== undefined
-            ? await this.persistenceAdapter.updateContent(fileId, sentContent, { expectedRev })
-            : await this.persistenceAdapter.updateContent(fileId, sentContent);
-        if (res && typeof res === 'object') {
-          const r = res as {
-            rev?: number;
-            hash?: string | null;
-            updatedAt?: string;
-            page?: { rev?: number; hash?: string | null; updatedAt?: string };
-          };
-          const rev = r.rev ?? r.page?.rev;
-          const hash = r.hash ?? r.page?.hash;
-          const updatedAt = r.updatedAt ?? r.page?.updatedAt;
-          if (rev !== undefined || hash !== undefined || updatedAt !== undefined) {
-            lruDocumentCache.updateServerVersion(fileId, {
-              rev,
-              hash,
-              updatedAt,
-            });
-          }
-        }
-        return res;
-      } catch (err: unknown) {
-        lastError = err;
-        const status = (err as { status?: number })?.status;
-        if (status === 409 || attempt >= maxAttempts || !this.isTransientSaveError(err)) {
-          throw err;
-        }
-        const expDelay = baseDelayMs * Math.pow(2, attempt - 1);
-        const jitter = Math.floor(Math.random() * 100);
-        await new Promise((resolve) => setTimeout(resolve, expDelay + jitter));
-      }
-    }
-
-    throw lastError;
-  }
-
-  private async handleSaveConflictOrError(
-    fileId: string,
-    sentContent: string,
-    err: unknown
-  ): Promise<void> {
-    const model = lruDocumentCache.getModel(fileId);
-    const status = (err as { status?: number })?.status;
-    const isConflict =
-      status === 409 ||
-      (err as { code?: string })?.code === 'CONFLICT' ||
-      (err as { code?: string })?.code === 'DOC_VERSION_CONFLICT' ||
-      (err instanceof Error && CONFLICT_ERROR_MSG_REGEX.test(err.message));
-
-    if (isConflict) {
-      this.transitionFsm(fileId, { type: 'CONFLICT_DETECTED' });
-      const errObj =
-        err && typeof err === 'object' ? (err as Record<string, unknown>) : undefined;
-      const details = (err as { details?: Record<string, unknown> })?.details;
-      let remoteRev = [
-        details?.currentRev,
-        details?.rev,
-        details?.remoteRev,
-        errObj?.currentRev,
-        errObj?.rev,
-        errObj?.remoteRev,
-      ].find((v): v is number => typeof v === 'number');
-
-      let resolvedRemoteContent = [
-        details?.remoteContent,
-        details?.content,
-        errObj?.remoteContent,
-        errObj?.content,
-      ].find((v): v is string => typeof v === 'string');
-
-      if (
-        resolvedRemoteContent === undefined &&
-        typeof this.persistenceAdapter.getById === 'function'
-      ) {
-        try {
-          const latest = await this.persistenceAdapter.getById(fileId);
-          if (latest && typeof latest === 'object') {
-            if (typeof latest.content === 'string') {
-              resolvedRemoteContent = latest.content;
-            } else if (Array.isArray(latest.lines)) {
-              resolvedRemoteContent = latest.lines.join('\n');
-            }
-            if (
-              typeof latest.rev === 'number' &&
-              (remoteRev === undefined || latest.rev > remoteRev)
-            ) {
-              remoteRev = latest.rev;
-            }
-          }
-        } catch {
-          // Non-fatal fallback; guard below prevents empty overwrite
-        }
-      }
-
-      if (remoteRev !== undefined) {
-        lruDocumentCache.updateServerVersion(fileId, { rev: remoteRev });
-      }
-      const hasAuthoritativeRemote = typeof resolvedRemoteContent === 'string';
-      const localContent = model?.content ?? sentContent;
-      this.draftRecovery.recordConflict(
-        fileId,
-        localContent,
-        resolvedRemoteContent ?? '',
-        model?.projectId,
-        {
-          currentRev: remoteRev,
-          hasAuthoritativeRemote,
-        },
-      );
-      useConnectivityStore.getState().setSyncStatus('error');
-      return;
-    }
-
-    this.transitionFsm(fileId, { type: 'SAVE_FAILURE', error: err });
-    if (isNetworkError(err) && model) {
-      useConnectivityStore.getState().recordOffline();
-      this.saveDraftSnapshot(fileId, model.content, model.projectId);
-      this.draftRecovery.persistOfflineDraft(model.projectId, fileId, model.content, model.filePath, false);
-    } else {
-      useConnectivityStore.getState().setSyncStatus('error');
-    }
-  }
-
   public async flushFile(fileId: string): Promise<boolean> {
     const existingFlush = this.inFlightFileFlushes.get(fileId);
-    if (existingFlush) {
-      return existingFlush;
-    }
+    if (existingFlush) return existingFlush;
 
     const flushPromise = this.executeFlushFile(fileId).finally(() => {
       this.inFlightFileFlushes.delete(fileId);
@@ -802,138 +464,42 @@ export class SessionCoordinator {
     }
 
     const model = lruDocumentCache.getModel(fileId);
-    if (!model || !model.isDirty) {
-      return true;
-    }
+    if (!model || !model.isDirty) return true;
 
+    const host = this.createPersistenceHost();
     const mode = this.selectFlushStrategyMode(fileId);
-    if (mode === 'realtime-yjs') {
-      return this.flushViaRealtimeYjsStrategy(fileId, model.projectId);
-    }
-    if (mode === 'offline-queue') {
-      return this.flushViaOfflineQueueStrategy(fileId, model);
-    }
-    return this.flushViaRestCasStrategy(fileId, model);
+    if (mode === 'realtime-yjs') return flushViaRealtimeYjsStrategy(host, fileId, model.projectId);
+    if (mode === 'offline-queue') return flushViaOfflineQueueStrategy(host, fileId, model);
+    return flushViaRestCasStrategy(host, fileId, model);
   }
 
-  /**
-   * Strategy Selector: Determines which persistence strategy applies to the document flush.
-   */
   public selectFlushStrategyMode(
     fileId: string,
   ): 'realtime-yjs' | 'offline-queue' | 'rest-cas' {
-    if (this.isRealtimeConnected(fileId)) {
-      return 'realtime-yjs';
-    }
-    if (!useConnectivityStore.getState().checkIsOnline()) {
-      return 'offline-queue';
-    }
+    if (this.isRealtimeConnected(fileId)) return 'realtime-yjs';
+    if (!useConnectivityStore.getState().checkIsOnline()) return 'offline-queue';
     return 'rest-cas';
   }
 
-  private clearWorkspaceTabDirty(fileId: string, projectId?: string): void {
-    const wsState = useWorkspaceStore.getState();
-    const targetScopes = projectId
-      ? [projectId, ...Object.keys(wsState.tabsByProject)]
-      : Object.keys(wsState.tabsByProject);
-    const visited = new Set<string>();
-    for (const scope of targetScopes) {
-      if (!scope || visited.has(scope)) continue;
-      visited.add(scope);
-      const tabs = wsState.tabsByProject[scope];
-      if (tabs?.some((t) => t.id === fileId && t.isDirty)) {
-        wsState.markTabDirty(scope, fileId, false);
-      }
-    }
-  }
-
-  /**
-   * Strategy 1: Realtime Yjs Persistence Strategy
-   */
-  private flushViaRealtimeYjsStrategy(
+  private enqueueOfflineEdit(
     fileId: string,
-    projectId?: string,
-  ): boolean {
-    const effectiveProjectId = this.resolveEffectiveProjectId(projectId);
-    flushYjsProvider(effectiveProjectId, fileId);
-    const model = lruDocumentCache.getModel(fileId);
-    if (model) {
-      this.saveDraftSnapshot(fileId, model.content, effectiveProjectId);
-    }
-    lruDocumentCache.markSaved(fileId);
-    useCompileStore.getState().clearDirty(fileId);
-    this.clearWorkspaceTabDirty(fileId, effectiveProjectId);
-    const currentVersion = lruDocumentCache.getContentVersion(fileId) || 0;
-    this.transitionFsm(fileId, {
-      type: 'SAVE_SUCCESS',
-      savedVersion: currentVersion,
-      currentVersion,
-    });
-    useConnectivityStore.getState().setLastSavedAt(new Date());
-    return true;
-  }
-
-  /**
-   * Strategy 2: Offline Queue & Local Snapshot Persistence Decorator/Strategy
-   */
-  private flushViaOfflineQueueStrategy(
-    fileId: string,
-    model: { projectId?: string; content: string; filePath?: string },
-  ): boolean {
-    useConnectivityStore.getState().setSyncStatus('offline');
-    this.saveDraftSnapshot(fileId, model.content, model.projectId);
-    this.draftRecovery.persistOfflineDraft(
-      model.projectId,
+    model: OfflineMutationModel,
+    options?: { flushImmediate?: boolean },
+  ): void {
+    enqueueOfflineEditHelper(
+      {
+        unsyncedEdits: this.unsyncedEdits,
+        resolveEffectiveProjectId: (projectId) => this.resolveEffectiveProjectId(projectId),
+      },
       fileId,
-      model.content,
-      model.filePath,
-      false,
+      model,
+      options,
     );
-    void draftStorageService
-      .getPendingMutations()
-      .then((m) => useConnectivityStore.getState().setPendingMutationsCount(m.length))
-      .catch(() => {});
-    return false;
-  }
-
-  /**
-   * Strategy 3: Online REST Optimistic-Concurrency (CAS) Persistence Strategy
-   */
-  private async flushViaRestCasStrategy(
-    fileId: string,
-    model: { content: string; serverRev?: number },
-  ): Promise<boolean> {
-    this.transitionFsm(fileId, { type: 'SAVE_START' });
-
-    const sentContent = model.content;
-    const sentVersion = lruDocumentCache.getContentVersion(fileId);
-    const expectedRev = model.serverRev;
-    try {
-      useConnectivityStore.getState().incrementPending();
-      await this.persistWithRetry(fileId, sentContent, expectedRev);
-      const clean = await this.finalizeSuccessfulSave(
-        fileId,
-        sentContent,
-        sentVersion,
-      );
-      useConnectivityStore.getState().decrementPending();
-      useConnectivityStore.getState().setLastSavedAt(new Date());
-      return clean;
-    } catch (err) {
-      useConnectivityStore.getState().decrementPending();
-      await this.handleSaveConflictOrError(fileId, sentContent, err);
-      console.error(`[SessionCoordinator] Failed to flush file ${fileId}:`, err);
-      return false;
-    }
   }
 
   public hasDirtyDocuments(): boolean {
-    if (this.saveTimers.size > 0 || this.inFlightFileFlushes.size > 0) {
-      return true;
-    }
-    if (lruDocumentCache.getDirtyModels().length > 0) {
-      return true;
-    }
+    if (this.saveTimers.size > 0 || this.inFlightFileFlushes.size > 0) return true;
+    if (lruDocumentCache.getDirtyModels().length > 0) return true;
     return useCompileStore.getState().getDirtyFiles().length > 0;
   }
 
@@ -942,16 +508,12 @@ export class SessionCoordinator {
   }
 
   public async flushAllPending(): Promise<FlushAllResult> {
-    if (this.isFlushingAll) {
-      return { total: 0, succeeded: 0, failed: 0, results: [] };
-    }
+    if (this.isFlushingAll) return { total: 0, succeeded: 0, failed: 0, results: [] };
     this.isFlushingAll = true;
 
-    for (const timer of this.saveTimers.values()) {
-      clearTimeout(timer);
-    }
+    for (const timer of this.saveTimers.values()) clearTimeout(timer);
     this.saveTimers.clear();
-    this.flushPendingDrafts();
+    this.flushPendingUnsyncedEdits();
 
     const dirtyModels = lruDocumentCache.getDirtyModels();
     if (dirtyModels.length === 0) {
@@ -959,174 +521,60 @@ export class SessionCoordinator {
       return { total: 0, succeeded: 0, failed: 0, results: [] };
     }
 
-    const isOnline = useConnectivityStore.getState().checkIsOnline();
-
-    if (!isOnline) {
-      useConnectivityStore.getState().setSyncStatus('offline');
-      for (const model of dirtyModels) {
-        this.draftRecovery.persistOfflineDraft(model.projectId, model.fileId, model.content, model.filePath);
-      }
+    try {
+      return await executeFlushAllDirtyModelsHelper({
+        dirtyModels,
+        flushFile: (fid) => this.flushFile(fid),
+        enqueueOfflineEdit: (fid, model) => this.enqueueOfflineEdit(fid, model),
+      });
+    } finally {
       this.isFlushingAll = false;
-      return { total: dirtyModels.length, succeeded: 0, failed: 0, results: [] };
     }
-
-    const results: FlushResult[] = [];
-    let succeeded = 0;
-    let failed = 0;
-
-    const flushPromises = dirtyModels.map(async (model) => {
-      try {
-        const ok = await this.flushFile(model.fileId);
-        if (ok || !lruDocumentCache.getModel(model.fileId)?.isDirty) {
-          succeeded++;
-          results.push({ fileId: model.fileId, success: true });
-        } else {
-          failed++;
-          results.push({ fileId: model.fileId, success: false });
-        }
-      } catch (err) {
-        failed++;
-        results.push({ fileId: model.fileId, success: false, error: err });
-      }
-    });
-
-    await Promise.allSettled(flushPromises);
-    this.isFlushingAll = false;
-
-    return { total: dirtyModels.length, succeeded, failed, results };
   }
 
-  public async replayPendingMutations(): Promise<{ total: number; succeeded: number; failed: number }> {
-    const lockResult = await withWebLock(
-      EDITOR_LIMITS.OFFLINE_REPLAY_LOCK_NAME,
-      async () => {
-        const pending = await draftStorageService.getPendingMutations();
-        useConnectivityStore.getState().setPendingMutationsCount(pending.length);
-        if (pending.length === 0) {
-          return { total: 0, succeeded: 0, failed: 0 };
-        }
-
-        let succeeded = 0;
-        let failed = 0;
-
-        // Group mutations by fileId so independent files replay in parallel while
-        // preserving sequential order within each fileId.
-        const mutationsByFile = new Map<string, typeof pending>();
-        for (const mut of pending) {
-          const list = mutationsByFile.get(mut.fileId);
-          if (list) {
-            list.push(mut);
-          } else {
-            mutationsByFile.set(mut.fileId, [mut]);
-          }
-        }
-
-        await Promise.allSettled(
-          Array.from(mutationsByFile.values()).map(async (fileMutations) => {
-            for (const mut of fileMutations) {
-              if (mut.type === 'update_content' && mut.payload.content !== undefined) {
-                const content = mut.payload.content as string;
-                const cachedModel = lruDocumentCache.getModel(mut.fileId);
-                const expectedRev =
-                  (mut.payload.expectedRev as number | undefined) ?? cachedModel?.serverRev;
-                try {
-                  await this.persistWithRetry(mut.fileId, content, expectedRev);
-                  await this.finalizeSuccessfulSave(mut.fileId, content);
-                  if (mut.id) {
-                    await draftStorageService.removeMutation(mut.id);
-                  }
-                  await draftStorageService.clearDraft(mut.fileId);
-                  succeeded++;
-                } catch (err) {
-                  await this.handleSaveConflictOrError(mut.fileId, content, err);
-                  const errMsg = err instanceof Error ? err.message : String(err);
-                  if (mut.id) {
-                    await draftStorageService.updateMutationStatus(mut.id, 'failed', errMsg);
-                  }
-                  failed++;
-                }
-              }
-            }
-          }),
-        );
-
-        const remaining = await draftStorageService.getPendingMutations().catch(() => []);
-        useConnectivityStore.getState().setPendingMutationsCount(remaining.length);
-
-        if (succeeded > 0 && failed === 0) {
-          useConnectivityStore.getState().setSyncStatus('synced');
-          useConnectivityStore.getState().setLastSavedAt(new Date());
-        }
-
-        if (succeeded > 0 || failed > 0) {
-          multiTabBus.publish({
-            type: 'OFFLINE_OUTBOX_MUTATED',
-            action: failed > 0 && succeeded === 0 ? 'FAILED' : 'FLUSHED',
-            count: remaining.length,
-          });
-        }
-
-        return { total: pending.length, succeeded, failed };
-      },
-      { ifAvailable: true },
-    );
-
-    if (lockResult === null) {
-      return { total: 0, succeeded: 0, failed: 0 };
-    }
-
-    return lockResult;
+  public async replayPendingMutations(): Promise<{
+    total: number;
+    succeeded: number;
+    failed: number;
+  }> {
+    return replayPendingOfflineMutations(this.createPersistenceHost());
   }
 
-  public flushPendingDrafts(): void {
-    this.draftRecovery.flushPendingDrafts();
+  public flushPendingUnsyncedEdits(): void {
+    this.unsyncedEdits.flushPending();
   }
 
-  public saveDraftSnapshot(fileId: string, content: string, projectId?: string): void {
-    this.draftRecovery.saveDraftSnapshot(fileId, content, projectId);
+  public saveUnsyncedEdit(fileId: string, content: string, projectId?: string): void {
+    this.unsyncedEdits.scheduleSave(fileId, content, projectId);
   }
 
-  public clearDraftSnapshot(fileId: string): void {
-    this.draftRecovery.clearDraftSnapshot(fileId);
+  public clearUnsyncedEdit(fileId: string): void {
+    this.unsyncedEdits.clear(fileId);
   }
 
-  public checkDraftRecovery(
+  public checkUnsyncedEditRecovery(
     fileId: string,
-    serverContent: string
-  ): { hasRecoverableDraft: boolean; draft?: DraftSnapshot } {
-    return this.draftRecovery.checkDraftRecovery(fileId, serverContent);
+    serverContent: string,
+  ): { hasRecoverableEdit: boolean; edit?: UnsyncedDocEdit } {
+    return this.unsyncedEdits.checkRecoverySync(fileId, serverContent);
   }
 
-  public async checkDraftRecoveryAsync(
+  public async checkUnsyncedEditRecoveryAsync(
     fileId: string,
-    serverContent: string
-  ): Promise<{ hasRecoverableDraft: boolean; draft?: DraftSnapshot }> {
-    return this.draftRecovery.checkDraftRecoveryAsync(fileId, serverContent);
+    serverContent: string,
+  ): Promise<{ hasRecoverableEdit: boolean; edit?: UnsyncedDocEdit }> {
+    return this.unsyncedEdits.checkRecoveryAsync(fileId, serverContent);
   }
 
   public switchTab(fromFileId: string | null, toFileId: string): void {
-    if (fromFileId && fromFileId !== toFileId) {
-      // Synchronize uncommitted editor keystrokes for the specific outgoing fileId (Split-Pane safe)
-      const registeredCount = getAllRegisteredEngines?.()?.size ?? 0;
-      const fromEngine =
-        getEditorEngineForFile?.(fromFileId) ??
-        (registeredCount === 0 ? getActiveEditorEngine() : null);
-      const fromContent = fromEngine?.getContent();
-      const fromModel = lruDocumentCache.getModel(fromFileId);
-      if (fromContent !== undefined && fromModel && fromModel.content !== fromContent) {
-        lruDocumentCache.updateContent(fromFileId, fromContent, true);
-        useCompileStore.getState().markDirty(fromFileId, fromContent);
-      }
-
-      this.transitionFsm(fromFileId, { type: 'DEACTIVATE' });
-      const updatedFromModel = lruDocumentCache.getModel(fromFileId);
-      if (updatedFromModel && updatedFromModel.isDirty) {
-        this.saveDraftSnapshot(fromFileId, updatedFromModel.content, updatedFromModel.projectId);
-        this.flushPendingDrafts();
-      }
-    }
-    this.transitionFsm(toFileId, { type: 'ACTIVATE' });
-    lruDocumentCache.setActiveFileId(toFileId);
+    executeSwitchTabDeactivate({
+      fromFileId,
+      toFileId,
+      transitionDeactivate: (fid) => this.transitionFsm(fid, { type: 'DEACTIVATE' }),
+      transitionActivate: (fid) => this.transitionFsm(fid, { type: 'ACTIVATE' }),
+      saveUnsyncedEdit: (fid, c, pid) => this.saveUnsyncedEdit(fid, c, pid),
+      flushPendingUnsyncedEdits: () => this.flushPendingUnsyncedEdits(),
+    });
   }
 
   public cancelPendingAutoSave(fileId: string): boolean {
@@ -1146,10 +594,6 @@ export class SessionCoordinator {
     }
   }
 
-  /**
-   * Called after the realtime gateway acknowledges `doc:sync:update` for `fileId`.
-   * Marks the in-memory model clean only if local content still matches what was synced.
-   */
   public markRealtimeSynced(fileId: string, syncedContent?: string): void {
     this.cancelPendingAutoSave(fileId);
     const model = lruDocumentCache.getModel(fileId);
@@ -1157,8 +601,8 @@ export class SessionCoordinator {
     const expectedText = syncedContent ?? model.content;
     if (lruDocumentCache.markCleanIfUnchanged(fileId, expectedText)) {
       useCompileStore.getState().clearDirty(fileId);
-      this.clearWorkspaceTabDirty(fileId, model.projectId);
-      this.clearDraftSnapshot(fileId);
+      clearWorkspaceTabDirty(fileId, model.projectId);
+      this.clearUnsyncedEdit(fileId);
       const currentVersion = lruDocumentCache.getContentVersion(fileId) || 0;
       this.transitionFsm(fileId, {
         type: 'SAVE_SUCCESS',
@@ -1171,84 +615,59 @@ export class SessionCoordinator {
 
   public evictDeletedFile(fileId: string): void {
     this.cancelPendingAutoSave(fileId);
-    evictYjsProviderByDocId(fileId, { skipFlush: true });
     const dagTimer = this.dagDebounceTimers.get(fileId);
     if (dagTimer) {
       clearTimeout(dagTimer);
       this.dagDebounceTimers.delete(fileId);
     }
     this.transitionFsm(fileId, { type: 'EVICT' });
-    this.fsmContexts.delete(fileId);
-    warmEditorStatePool.delete(fileId);
-    lruDocumentCache.markClean(fileId);
-    lruDocumentCache.evictModel(fileId, { skipPersistence: true });
-    useCompileStore.getState().clearDirty(fileId);
-    this.clearDraftSnapshot(fileId);
-    void draftStorageService.clearProjectFileSnapshot(fileId);
-    void draftStorageService.removeMutationsByFileId(fileId).catch(() => {});
-    this.lastCompiledContentMap.delete(fileId);
-    this.realtimeConnected.delete(fileId);
-    this.draftRecovery.evictFile(fileId);
+    clearDeletedFileSessionResources({
+      fileId,
+      unsyncedEdits: this.unsyncedEdits,
+      conflicts: this.conflicts,
+      lastCompiledContentMap: this.lastCompiledContentMap,
+      realtimeConnected: this.realtimeConnected,
+      fsmContexts: this.fsmContexts,
+      clearUnsyncedEdit: (fid) => this.clearUnsyncedEdit(fid),
+    });
   }
 
   public closeTab(fileId: string): void {
     this.transitionFsm(fileId, { type: 'EVICT' });
-    warmEditorStatePool.delete(fileId);
-    const model = lruDocumentCache.getModel(fileId);
-    if (model?.isDirty) {
-      this.saveDraftSnapshot(fileId, model.content, model.projectId);
-      this.flushPendingDrafts();
-    }
-    this.lastCompiledContentMap.delete(fileId);
-    this.realtimeConnected.delete(fileId);
-
-    const finalizeEviction = () => {
-      const wsState = useWorkspaceStore.getState();
-      const stillOpenInAnyTab = Object.values(wsState.tabsByProject).some((tabs) =>
-        tabs?.some((t) => t.id === fileId),
-      );
-      if (!stillOpenInAnyTab && !lruDocumentCache.isDirty(fileId)) {
-        lruDocumentCache.evictModel(fileId);
-        this.draftRecovery.evictFile(fileId);
-      }
-    };
-
-    if (model?.isDirty || this.inFlightFileFlushes.has(fileId)) {
-      void this.flushFile(fileId).finally(finalizeEviction);
-    } else {
-      lruDocumentCache.evictModel(fileId);
-      this.draftRecovery.evictFile(fileId);
-    }
+    finalizeTabCloseEviction({
+      fileId,
+      hasInFlightFlush: this.inFlightFileFlushes.has(fileId),
+      flushFile: (fid) => this.flushFile(fid),
+      saveUnsyncedEdit: (fid, content, pid) => this.saveUnsyncedEdit(fid, content, pid),
+      flushPendingUnsyncedEdits: () => this.flushPendingUnsyncedEdits(),
+      unsyncedEdits: this.unsyncedEdits,
+      conflicts: this.conflicts,
+      lastCompiledContentMap: this.lastCompiledContentMap,
+      realtimeConnected: this.realtimeConnected,
+    });
   }
 
   public resetSession(): void {
-    for (const timer of this.saveTimers.values()) {
-      clearTimeout(timer);
-    }
+    for (const timer of this.saveTimers.values()) clearTimeout(timer);
     this.saveTimers.clear();
     if (this.compileTimer) {
       clearTimeout(this.compileTimer);
       this.compileTimer = null;
     }
-    for (const timer of this.dagDebounceTimers.values()) {
-      clearTimeout(timer);
-    }
+    for (const timer of this.dagDebounceTimers.values()) clearTimeout(timer);
     this.dagDebounceTimers.clear();
     this.fsmContexts.clear();
     this.lastCompiledContentMap.clear();
     this.realtimeConnected.clear();
     warmEditorStatePool.clear();
-    this.draftRecovery.clearAll();
+    this.unsyncedEdits.clearAll();
+    this.conflicts.clearAll();
   }
 
   private scheduleAutoSave(fileId: string, delayMs: number): void {
-    if (this.isRealtimeConnected(fileId)) {
-      return;
-    }
+    if (this.isRealtimeConnected(fileId)) return;
     const existing = this.saveTimers.get(fileId);
-    if (existing) {
-      clearTimeout(existing);
-    }
+    if (existing) clearTimeout(existing);
 
     const timer = setTimeout(() => {
       this.saveTimers.delete(fileId);
@@ -1268,30 +687,23 @@ export class SessionCoordinator {
       : useSettingsStore.getState().autoCompile;
     if (!isAutoCompile) return;
 
-    const currentModel = lruDocumentCache.getModel(fileId);
-    const currentContent = currentModel?.content;
+    const currentContent = lruDocumentCache.getModel(fileId)?.content;
     const prevCompiled = this.lastCompiledContentMap.get(fileId);
     if (prevCompiled !== undefined && currentContent !== undefined && prevCompiled === currentContent) {
       return;
     }
 
-    if (this.compileTimer) {
-      clearTimeout(this.compileTimer);
-    }
+    if (this.compileTimer) clearTimeout(this.compileTimer);
 
     this.compileTimer = setTimeout(() => {
       this.compileTimer = null;
       const model = lruDocumentCache.getModel(fileId);
       if (!model) return;
-
-      const lastCompiled = this.lastCompiledContentMap.get(fileId);
-      if (model.content === lastCompiled) return;
-
+      if (model.content === this.lastCompiledContentMap.get(fileId)) return;
       this.lastCompiledContentMap.set(fileId, model.content);
       editorCommandBus.dispatch({ type: 'compiler:trigger' });
     }, this.options.autoCompileDelay ?? DEFAULT_AUTOCOMPILE_DELAY);
   }
 }
 
-export { SessionCoordinator as SessionCoordinatorRegistry };
 export const sessionCoordinator = new SessionCoordinator();

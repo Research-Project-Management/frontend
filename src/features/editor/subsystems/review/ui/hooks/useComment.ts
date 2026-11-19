@@ -9,7 +9,7 @@
 
 import { useQuery, useMutation, type QueryClient } from '@tanstack/react-query';
 import type { PageComment, CommentStatus } from '@/features/editor/domain/types/comment.types';
-import { manuscriptService } from '@/features/editor/sdk/pages.service';
+import { pagesService } from '@/features/editor/sdk/pages.service';
 import { getCachedUser } from '@/features/auth/services/auth.service';
 import { toast } from 'sonner';
 import { useSafeQueryClient } from './safeQueryClient';
@@ -33,7 +33,7 @@ export const usePageComments = (
       queryKey: commentKeys.byPage(pageId, status),
       queryFn: async (): Promise<PageComment[]> => {
         if (!pageId) return [];
-        const comments = await manuscriptService.comments.getComments(pageId, status);
+        const comments = await pagesService.comments.getComments(pageId, status);
         return comments || [];
       },
       enabled: Boolean(pageId),
@@ -60,7 +60,7 @@ export const useCreateComment = (customClient?: QueryClient) => {
       lineEnd?: number | null;
       projectId?: string;
     }) => {
-      return await manuscriptService.comments.createComment(pageId, {
+      return await pagesService.comments.createComment(pageId, {
         content,
         line: line ?? undefined,
         lineEnd: lineEnd ?? undefined,
@@ -132,7 +132,7 @@ export const useUpdateComment = (customClient?: QueryClient) => {
       status?: CommentStatus;
       projectId?: string;
     }) => {
-      return await manuscriptService.comments.updateComment(pageId, commentId, {
+      return await pagesService.comments.updateComment(pageId, commentId, {
         content,
         status: status === 'resolved' ? 'resolved' : 'open',
       });
@@ -194,7 +194,7 @@ export const useDeleteComment = (customClient?: QueryClient) => {
       commentId: string;
       projectId?: string;
     }) => {
-      return await manuscriptService.comments.deleteComment(pageId, commentId);
+      return await pagesService.comments.deleteComment(pageId, commentId);
     },
     onMutate: async ({ pageId, commentId }) => {
       await queryClient.cancelQueries({ queryKey: ['page-comments', pageId] });
@@ -238,7 +238,7 @@ export const useAddReply = (customClient?: QueryClient) => {
       content: string;
       projectId?: string;
     }) => {
-      return await manuscriptService.comments.addReply(pageId, commentId, content);
+      return await pagesService.comments.addReply(pageId, commentId, content);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['page-comments', variables.pageId] });
@@ -265,7 +265,7 @@ export const useResolveComment = (customClient?: QueryClient) => {
       resolved: boolean;
       projectId?: string;
     }) => {
-      return await manuscriptService.comments.resolveComment(pageId, commentId, resolved);
+      return await pagesService.comments.resolveComment(pageId, commentId, resolved);
     },
     onMutate: async ({ pageId, commentId, resolved }) => {
       await queryClient.cancelQueries({ queryKey: ['page-comments', pageId] });
@@ -314,7 +314,7 @@ export const useDeleteReply = (customClient?: QueryClient) => {
       replyId: string;
       projectId?: string;
     }) => {
-      return await manuscriptService.comments.deleteReply(pageId, commentId, replyId);
+      return await pagesService.comments.deleteReply(pageId, commentId, replyId);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['page-comments', variables.pageId] });

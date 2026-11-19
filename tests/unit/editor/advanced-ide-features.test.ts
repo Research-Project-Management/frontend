@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { detectMathAtPosition } from '@/features/editor/core/engine/extensions/latex-math-preview';
-import { SHORTCUT_LIST, type ShortcutItem } from '@/features/editor/ui/modals/KeyboardShortcutsModal';
+import { SHORTCUT_LIST, type ShortcutItem } from '@/features/editor/subsystems/keybinding/ui/KeyboardShortcutsModal';
 import { parseSyncTeX } from '@/features/editor/subsystems/compiler/synctex/synctex-index';
 import { CompilePipeline } from '@/features/editor/subsystems/compiler';
 import { useSettingsStore } from '@/features/editor/core';

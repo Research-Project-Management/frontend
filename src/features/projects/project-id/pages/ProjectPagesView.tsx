@@ -7,7 +7,7 @@ import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PanelLeft } from 'lucide-react';
 import { toast } from 'sonner';
-import { manuscriptService } from '@/features/editor/core';
+import { pagesService } from '@/features/editor/core';
 import { projectPagesQueryOptions, usePageActions, pageKeys } from './hooks/use-page';
 import { useProjectsQuery, useProjectQuery } from '@/features/projects/shell/hooks/use-project';
 import { useWorkspaceContextStore } from '@/features/shell/store/workspace-context.store';
@@ -336,7 +336,7 @@ export function ProjectPagesView({ projectId: propProjectId }: { projectId?: str
     const targetSpaceId = projectId || 'personal';
     const toastId = toast.loading(`Importing ${file.name}...`);
     try {
-      const result = await manuscriptService.export.importProjectZip(targetSpaceId, file);
+      const result = await pagesService.export.importProjectZip(targetSpaceId, file);
       await queryClient.invalidateQueries({ queryKey: pageKeys.all });
       toast.success('Project imported successfully', { id: toastId });
       const targetDocId = result?.rootDocId;

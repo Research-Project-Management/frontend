@@ -14,7 +14,6 @@
 export {
   diagnosticsCoordinator,
   DiagnosticsCoordinator,
-  DiagnosticsCoordinator as DiagnosticsCoordinatorRegistry,
   type IndexedDiagnosticItem,
   type FileDiagnosticsSummary,
   type DiagnosticsTelemetry,
@@ -24,7 +23,6 @@ export {
 // 2. Syntax Linter & Parser Engines
 export {
   runLatexLinter,
-  runLatexLinter as lintLatexRules,
   lintLatexDocument,
   clearLatexLinterCache,
   type LinterDiagnostic,
@@ -32,7 +30,7 @@ export {
   type LinterOptions,
   type LatexLinterOptions,
   type RetractedItemInfo,
-} from './extensions/latex-linter-core';
+} from './model/latex-linter-core';
 
 // 3. Engine Extensions (CodeMirror 6)
 export {
@@ -50,11 +48,14 @@ export {
 export {
   createLatexLinterExtension,
   LatexLinterClient,
-  LatexLinterClient as LatexLinterBackendClient,
   latexLinterClient,
-  latexLinterClient as latexLinterWorkerClient,
   createLatexLinterPlugin,
-  createLatexLinterPlugin as createLatexLinterIncrementalPlugin,
   latexLinterPlugin,
-  latexLinterPlugin as latexLinterIncrementalPlugin,
 } from './extensions/latex-linter';
+
+// 4. Presentation Hooks
+export {
+  useFileDiagnosticsSummary,
+  useFolderDiagnosticsSummary,
+  useProjectDiagnosticsSummary,
+} from './ui/hooks/useDiagnosticsSummary';

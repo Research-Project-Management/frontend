@@ -1,5 +1,5 @@
 import { apiGet, apiPost, apiPut, apiDelete } from "@/shared/lib/api";
-import { MANUSCRIPTS_API_BASE } from '@/features/editor/sdk/pages/base';
+import { PAGES_API_BASE } from '@/features/editor/sdk/pages/base';
 import type { Page, CreatePageInput, CreatePageResponse } from '../types/page.types';
 
 export const PageService = {
@@ -17,7 +17,7 @@ export const PageService = {
     if (forceEmpty) params.forceEmpty = forceEmpty;
     if (forceError) params.forceError = forceError;
     const res = await apiGet<{ pages: Page[]; total?: number; isEmpty?: boolean }>(
-      `${MANUSCRIPTS_API_BASE}/spaces/${targetScope}/docs`,
+      `${PAGES_API_BASE}/spaces/${targetScope}/docs`,
       { params },
     );
     return res?.pages ?? [];
@@ -25,7 +25,7 @@ export const PageService = {
 
   create: async (input: CreatePageInput) => {
     const res = await apiPost<{ page: Page; mainFile?: { id: string; [key: string]: unknown } | string | null }>(
-      `${MANUSCRIPTS_API_BASE}/spaces/${input.projectId}/docs`,
+      `${PAGES_API_BASE}/spaces/${input.projectId}/docs`,
       {
         title: input.title,
         content: input.content,
@@ -50,7 +50,7 @@ export const PageService = {
     } satisfies CreatePageResponse;
   },
 
-  delete: (pageId: string) => apiDelete<void>(`${MANUSCRIPTS_API_BASE}/docs/${pageId}`),
+  delete: (pageId: string) => apiDelete<void>(`${PAGES_API_BASE}/docs/${pageId}`),
 
   duplicate: async (pageId: string) => {
     const res = await apiPost<{
@@ -58,7 +58,7 @@ export const PageService = {
       mainFile?: { id: string; [key: string]: unknown } | string | null;
       rootPageId?: string;
       mainFileId?: string | null;
-    }>(`${MANUSCRIPTS_API_BASE}/docs/${pageId}/duplicate`, {});
+    }>(`${PAGES_API_BASE}/docs/${pageId}/duplicate`, {});
     return res;
   },
 
@@ -70,7 +70,7 @@ export const PageService = {
       description?: string;
     },
   ) => {
-    const res = await apiPut<{ page: Page }>(`${MANUSCRIPTS_API_BASE}/docs/${pageId}`, data);
+    const res = await apiPut<{ page: Page }>(`${PAGES_API_BASE}/docs/${pageId}`, data);
     return res.page;
   },
 
@@ -81,22 +81,22 @@ export const PageService = {
 
 export const getPageLabels = (spaceId: string, pageId: string) =>
   apiGet<{ labels: Array<{ id: string; name: string; color: string }> }>(
-    `${MANUSCRIPTS_API_BASE}/spaces/${spaceId}/docs/${pageId}/labels`
+    `${PAGES_API_BASE}/spaces/${spaceId}/docs/${pageId}/labels`
   );
 
 export const assignPageLabels = (spaceId: string, pageId: string, labelIds: string[]) =>
   apiPost<{ labels: Array<{ id: string; name: string; color: string }> }>(
-    `${MANUSCRIPTS_API_BASE}/spaces/${spaceId}/docs/${pageId}/labels`,
+    `${PAGES_API_BASE}/spaces/${spaceId}/docs/${pageId}/labels`,
     { labelIds }
   );
 
 export const replacePageLabels = (spaceId: string, pageId: string, labelIds: string[]) =>
   apiPut<{ labels: Array<{ id: string; name: string; color: string }> }>(
-    `${MANUSCRIPTS_API_BASE}/spaces/${spaceId}/docs/${pageId}/labels`,
+    `${PAGES_API_BASE}/spaces/${spaceId}/docs/${pageId}/labels`,
     { labelIds }
   );
 
 export const removePageLabel = (spaceId: string, pageId: string, labelId: string) =>
   apiDelete<{ labels: Array<{ id: string; name: string; color: string }> }>(
-    `${MANUSCRIPTS_API_BASE}/spaces/${spaceId}/docs/${pageId}/labels/${labelId}`
+    `${PAGES_API_BASE}/spaces/${spaceId}/docs/${pageId}/labels/${labelId}`
   );

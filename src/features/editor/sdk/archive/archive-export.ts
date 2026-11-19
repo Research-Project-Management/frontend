@@ -8,8 +8,11 @@
  * - Snapshot / Historical revision ZIP packaging (`GET /projects/:projectId/history/versions/:version/export-zip`)
  */
 
-import { manuscriptService } from '@/features/editor/sdk/pages.service';
-import { sessionCoordinator, usePageStore } from '@/features/editor/core';
+import { docs, updater } from '../pages/docs.client';
+import { exportDocs } from '../pages/export.client';
+import { structure } from '../pages/structure.client';
+import { sessionCoordinator } from '@/features/editor/core/coordinator/session.coordinator';
+import { usePageStore } from '@/features/editor/core/store/editor.store';
 import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
 import { triggerFileDownload } from './document-download';
 
@@ -65,13 +68,13 @@ async function bundleAndDownloadZip({
   if (hadDirtyBeforeExport) {
     const flushRes = await sessionCoordinator.flushAllPending().catch(() => null);
     if (!flushRes || flushRes.total > 0) {
-      await manuscriptService.updater.flushProject(targetScopeId).catch(() => null);
+      await updater.flushProject(targetScopeId).catch(() => null);
     }
   }
 
   let finalBlob: Blob | null = null;
   try {
-    const serverBlob = await manuscriptService.export.exportProjectZip(targetScopeId, {
+    const serverBlob = await exportDocs.exportProjectZip(targetScopeId, {
       cleanArxiv: isArxiv,
       includePdf: !isArxiv,
       projectName: cleanTitle,
@@ -92,7 +95,7 @@ async function bundleAndDownloadZip({
     const zip = new JSZip();
     const auxPattern = /\.(aux|log|out|synctex\.gz|toc|lof|lot|fls|fdb_latexmk)$/i;
 
-    const rootDoc = await manuscriptService.docs.getById(parentPageId).catch(() => null);
+    const rootDoc = await docs.getById(parentPageId).catch(() => null);
     if (rootDoc) {
       const rootName =
         rootDoc.title && rootDoc.title.toLowerCase().endsWith('.tex')
@@ -104,15 +107,15 @@ async function bundleAndDownloadZip({
       }
     }
 
-    const docs = await manuscriptService.docs.getFiles(parentPageId).catch(() => []);
-    for (const d of docs || []) {
+    const childDocs = await docs.getFiles(parentPageId).catch(() => []);
+    for (const d of childDocs || []) {
       const entryName = (d.path || d.title || '').replace(/^\/+/, '');
       if (!entryName) continue;
       if (isArxiv && auxPattern.test(entryName)) continue;
       zip.file(entryName, extractDocumentContentString(d.content));
     }
 
-    const storageFiles = await manuscriptService.structure.getPageFiles(parentPageId).catch(() => []);
+    const storageFiles = await structure.getPageFiles(parentPageId).catch(() => []);
     for (const sf of storageFiles || []) {
       const sfPath = typeof sf.path === 'string' ? sf.path : '';
       const sfName = typeof sf.name === 'string' ? sf.name : sf.filename || '';
@@ -169,7 +172,7 @@ export interface ExportVersionZipOptions {
 
 /**
  * Downloads a specific historical revision snapshot as a compressed .zip archive
- * directly from the backend (`manuscriptService.export.exportVersionZip`).
+ * directly from the backend (`pagesService.export.exportVersionZip`).
  */
 export async function exportVersionAsZip(options: ExportVersionZipOptions): Promise<string> {
   const storeState = usePageStore.getState();
@@ -194,7 +197,7 @@ export async function exportVersionAsZip(options: ExportVersionZipOptions): Prom
 
   await sessionCoordinator.flushAllPending().catch(() => null);
 
-  const serverBlob = await manuscriptService.export.exportVersionZip(
+  const serverBlob = await exportDocs.exportVersionZip(
     projectId,
     version,
     cleanTitle,

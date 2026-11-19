@@ -21,6 +21,7 @@ interface WorkspaceContextState {
     name?: string;
     avatar?: string | null;
   }) => void;
+  validateOrHealSpace: (validProjects: Array<{ id: string }>) => void;
 }
 
 const DEFAULT_PERSONAL_SPACE: ActiveSpace = {
@@ -77,9 +78,52 @@ export const useWorkspaceContextStore = create<WorkspaceContextState>()(
           },
         });
       },
+
+      validateOrHealSpace: (validProjects) => {
+        set((state) => {
+          if (state.activeSpace.type !== 'project' || !state.activeSpace.projectId) {
+            return state;
+          }
+          const exists = validProjects.some((p) => p.id === state.activeSpace.projectId);
+          if (!exists) {
+            if (typeof window !== 'undefined') {
+              try {
+                localStorage.removeItem('flux_active_project_id');
+              } catch {}
+            }
+            return {
+              activeSpace: DEFAULT_PERSONAL_SPACE,
+            };
+          }
+          return state;
+        });
+      },
     }),
     {
       name: 'flux_workspace_space_v1',
+      merge: (persistedState, currentState) => {
+        const persisted = (persistedState as Partial<WorkspaceContextState>) || {};
+        const rawSpace = persisted.activeSpace;
+        const isValid =
+          rawSpace &&
+          typeof rawSpace === 'object' &&
+          (rawSpace.type === 'personal' || rawSpace.type === 'project');
+
+        const activeSpace: ActiveSpace = isValid
+          ? {
+              type: rawSpace.type,
+              spaceId: typeof rawSpace.spaceId === 'string' ? rawSpace.spaceId : null,
+              projectId: typeof rawSpace.projectId === 'string' ? rawSpace.projectId : null,
+              projectName: typeof rawSpace.projectName === 'string' ? rawSpace.projectName : undefined,
+              projectAvatar: typeof rawSpace.projectAvatar === 'string' ? rawSpace.projectAvatar : null,
+            }
+          : currentState.activeSpace;
+
+        return {
+          ...currentState,
+          activeSpace,
+        };
+      },
     }
   )
 );

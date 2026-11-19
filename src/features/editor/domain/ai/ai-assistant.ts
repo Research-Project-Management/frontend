@@ -103,12 +103,8 @@ export function getAiSystemPrompt(action: AiActionType, customPrompt?: string): 
   return AI_ACTION_STRATEGIES[action]?.buildSystemPrompt(customPrompt) ?? (customPrompt || `AI action: ${action}`);
 }
 
-export { getAiSystemPrompt as getAcademicSystemPrompt };
-
 export function applyFallbackTransform(text: string, action: AiActionType): string {
   const { maskedText, unmask } = maskLatexEntities(text);
   const transformed = AI_ACTION_STRATEGIES[action]?.applyHeuristic(maskedText) ?? maskedText;
   return unmask(transformed);
 }
-
-export { applyFallbackTransform as applyHeuristicTransformation };

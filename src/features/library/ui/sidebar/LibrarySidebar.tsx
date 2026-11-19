@@ -70,8 +70,6 @@ export function LibrarySidebar() {
   const router = useRouter();
   const id = useId();
 
-  const activeScope = useLibraryUIStore((s) => s.activeScope);
-  const setActiveScope = useLibraryUIStore((s) => s.setActiveScope);
   const activeSpace = useWorkspaceContextStore((s) => s.activeSpace);
   const isSidebarOpen = useLibraryUIStore((s) => s.isSidebarOpen);
   const setSidebarOpen = useLibraryUIStore((s) => s.setSidebarOpen);
@@ -79,9 +77,9 @@ export function LibrarySidebar() {
   const setSidebarWidth = useLibraryUIStore((s) => s.setSidebarWidth);
   const toggleSidebar = useLibraryUIStore((s) => s.toggleSidebar);
   const openModal = useLibraryUIStore((s) => s.openModal);
-  const isInProjectContext = activeScope.type === 'project' && Boolean(activeScope.id);
-  const projectId = isInProjectContext ? activeScope.id : '';
-  const effectiveScopeId = isInProjectContext ? activeScope.id : 'user';
+  const isInProjectContext = activeSpace.type === 'project' && Boolean(activeSpace.projectId);
+  const projectId = isInProjectContext ? activeSpace.projectId! : '';
+  const effectiveScopeId = isInProjectContext ? activeSpace.projectId! : 'user';
   const moveMutation = useMoveCollectionItemsMutation(effectiveScopeId);
   const assignMutation = useAssignCollectionItemsMutation(effectiveScopeId);
   const detachMutation = useBatchDetachItemsMutation(effectiveScopeId);
@@ -121,63 +119,10 @@ export function LibrarySidebar() {
   const currentSavedSearchId = searchParams.get('savedSearchId');
   const currentFeedId = searchParams.get('feedId');
 
-  const { projects, currentUserId } = useLibraryProjectContext();
-
-  const isUserScope = activeScope.type === 'user';
+  const isUserScope = !isInProjectContext;
   const isLibraryActive = pathname === basePath && !currentFilter && !activeId;
 
   const { canManageCollections } = useLibraryPermissions();
-
-  // Sync Library activeScope with global Topbar SpaceSwitcher (Personal vs Project)
-  useEffect(() => {
-    if (activeSpace.type === 'personal' && activeScope.type !== 'user') {
-      setActiveScope({
-        type: 'user',
-        id: 'user',
-        name: 'My Library',
-        role: 'owner',
-      });
-    } else if (
-      activeSpace.type === 'project' &&
-      activeSpace.projectId &&
-      (activeScope.type !== 'project' || activeScope.id !== activeSpace.projectId)
-    ) {
-      const matched = projects?.find((p: ProjectLike) => p.id === activeSpace.projectId);
-      setActiveScope({
-        type: 'project',
-        id: activeSpace.projectId,
-        projectId: activeSpace.projectId,
-        name: matched?.name || activeSpace.projectName || 'Project Library',
-        role: matched ? resolveProjectRole(matched, currentUserId) : 'owner',
-      });
-    }
-  }, [activeSpace, activeScope.type, activeScope.id, projects, currentUserId, setActiveScope]);
-
-  // Synchronize active project role and permissions with server-provided project list
-  useEffect(() => {
-    if (activeScope.type === 'project' && projects && projects.length > 0) {
-      const currentProject = projects.find((p: ProjectLike) => p.id === activeScope.id);
-      if (currentProject) {
-        const accurateRole = resolveProjectRole(currentProject, currentUserId);
-        const serverPerms = currentProject.permissions;
-        const serverEffective = Array.isArray(currentProject.effectivePermissions)
-          ? (currentProject.effectivePermissions as string[])
-          : undefined;
-        if (
-          accurateRole !== activeScope.role ||
-          serverPerms !== activeScope.permissions ||
-          serverEffective !== activeScope.effectivePermissions
-        ) {
-          setActiveScope({
-            ...activeScope,
-            role: accurateRole,
-            ...(serverPerms ? { permissions: serverPerms } : {}),
-            ...(serverEffective ? { effectivePermissions: serverEffective } : {}),
-          });
-        }
-      }
-    }
-  }, [activeScope, currentUserId, projects, setActiveScope]);
 
   const {
     savedSearches: userSavedSearches,
@@ -254,7 +199,7 @@ export function LibrarySidebar() {
   const handleDuplicateSavedSearch = async (ss: SavedSearch) => {
     const isProjectSearch =
       Boolean(ss.projectId) ||
-      (activeScope.type === 'project' && ss.scopeId === activeScope.id);
+      (isInProjectContext && ss.scopeId === projectId);
     const targetCreate =
       isProjectSearch && projectId ? createProjectSavedSearch : createUserSavedSearch;
     await targetCreate({
@@ -314,8 +259,8 @@ export function LibrarySidebar() {
   );
 
   const collections = useMemo(
-    () => (activeScope.type === 'project' ? projectCollections : userCollections),
-    [activeScope.type, projectCollections, userCollections],
+    () => (isInProjectContext ? projectCollections : userCollections),
+    [isInProjectContext, projectCollections, userCollections],
   );
 
   const handleBatchMoveItems = useCallback(
@@ -554,11 +499,14 @@ export function LibrarySidebar() {
                         className="relative z-10 size-4 shrink-0 text-foreground"
                         strokeWidth={1.5}
                       />
-                      <span className={cn(
-                        "relative z-10 min-w-0 truncate flex-1 tracking-tight text-foreground",
-                        isLibraryActive ? "font-medium" : "font-normal"
-                      )}>
-                        {isInProjectContext ? (activeScope.name || 'Project Library') : 'My Library'}
+                      <span
+                        suppressHydrationWarning
+                        className={cn(
+                          "relative z-10 min-w-0 truncate flex-1 tracking-tight text-foreground",
+                          isLibraryActive ? "font-medium" : "font-normal"
+                        )}
+                      >
+                        {isInProjectContext ? (activeSpace.projectName || 'Project Library') : 'My Library'}
                       </span>
                     </Link>
                   </ContextMenuTrigger>

@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
-import { draftStorageService } from '@/features/editor/domain/document/draft-storage';
+import { unsyncedEditsStore } from '@/features/editor/domain/offline-storage';
 import {
   sessionCoordinator,
   useCompileStore,
   editorCommandBus,
   type DocumentConflict,
 } from '@/features/editor/core';
-import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
+import { pagesService } from '@/features/editor/sdk/pages.service';
 
 let seq = 0;
 const nextId = (p: string) => `${p}-conflict-${Date.now()}-${seq++}`;
@@ -52,7 +52,7 @@ describe('Document Conflict Resolution & 3-Way Merge Deep Module', () => {
 
   it('resolves conflict with "keep-local", keeping local edits dirty and scheduling autosave', async () => {
     const id = nextId('keep-local');
-    const updateSpy = vi.spyOn(manuscriptService.docs, 'updateContent').mockResolvedValue(undefined as never);
+    const updateSpy = vi.spyOn(pagesService.docs, 'updateContent').mockResolvedValue(undefined as never);
 
     lruDocumentCache.registerModel(id, { content: 'base v1', filePath: 'main.tex' });
     lruDocumentCache.updateContent(id, 'local master edit', true);
@@ -101,16 +101,16 @@ describe('Document Conflict Resolution & 3-Way Merge Deep Module', () => {
       content: 'authoritative remote text',
     }));
 
-    // Previous local version preserved in draft storage
-    const draft = await draftStorageService.getDraft(id);
-    expect(draft?.content).toBe('my local ideas');
+    // Previous local version preserved in unsynced edits storage
+    const savedEdit = await unsyncedEditsStore.get(id);
+    expect(savedEdit?.content).toBe('my local ideas');
 
     unsubBus();
   });
 
   it('resolves conflict with "custom-merge", applying merged content, marking dirty, and preserving draft', async () => {
     const id = nextId('custom-merge');
-    const updateSpy = vi.spyOn(manuscriptService.docs, 'updateContent').mockResolvedValue(undefined as never);
+    const updateSpy = vi.spyOn(pagesService.docs, 'updateContent').mockResolvedValue(undefined as never);
     const busSpy = vi.fn();
     const unsubBus = editorCommandBus.subscribe('editor:set-content', busSpy);
 
@@ -140,9 +140,9 @@ describe('Document Conflict Resolution & 3-Way Merge Deep Module', () => {
       content: mergedContent,
     }));
 
-    // Overwritten local version preserved in draft storage
-    const draft = await draftStorageService.getDraft(id);
-    expect(draft?.content).toBe('Section 1 (Local)');
+    // Overwritten local version preserved in unsynced edits storage
+    const savedEdit = await unsyncedEditsStore.get(id);
+    expect(savedEdit?.content).toBe('Section 1 (Local)');
 
     // Autosave scheduled and saves merged content
     await vi.advanceTimersByTimeAsync(1200);

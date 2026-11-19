@@ -7,6 +7,7 @@
 import { apiPost, apiDelete, apiGet, getAuthToken } from '@/shared/lib/api';
 import { API_BASE_URL } from '@/config/env';
 import { resolveFileUrl } from '@/shared/lib/file-client';
+import { smartUpload } from '@/shared/lib/smart-upload-engine';
 import type { UploadFileParams } from '../types/storage.types';
 export type { UploadFileParams };
 
@@ -77,26 +78,6 @@ export interface ResumableUploadOptions {
   chunkSize?: number;
   signal?: AbortSignal;
   onProgress?: (progress: number) => void;
-}
-
-async function computeClientSha256Hex(blob: Blob): Promise<string | undefined> {
-  // Compute SHA-256 in browser using Web Crypto API for blobs <= 50MB
-  if (
-    typeof window === 'undefined' ||
-    !window.crypto?.subtle ||
-    blob.size <= 0 ||
-    blob.size > 50 * 1024 * 1024
-  ) {
-    return undefined;
-  }
-  try {
-    const buffer = await blob.arrayBuffer();
-    const hashBuffer = await window.crypto.subtle.digest('SHA-256', buffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
-  } catch {
-    return undefined;
-  }
 }
 
 // ── 1. Presigned & Direct Upload ─────────────────────────────────────────────
@@ -229,88 +210,24 @@ export const uploadBlobWithPresigned = async (
   const metaData = typeof options === 'object' ? options?.metaData : undefined;
   const signal = typeof options === 'object' ? options?.signal : undefined;
 
-  try {
-    const contentHash = await computeClientSha256Hex(blob);
-    const presignRes = await presignUpload({
-      filename: fileName,
-      mimeType: blob.type || 'application/octet-stream',
-      size: blob.size,
-      spaceId,
-      pageId,
-      parentId,
-      contentHash,
-      metaData,
-    });
-
-    // Zero-byte Instant CAS Deduplication Hit
-    if (presignRes?.deduplicated && presignRes.fileId && presignRes.url) {
-      onProgress?.(100);
-      return {
-        url: presignRes.url,
-        path: presignRes.url,
-        fileId: presignRes.fileId,
-      };
-    }
-
-    const uploadUrl = presignRes?.uploadUrl;
-    if (uploadUrl && presignRes?.storageKey) {
-      await new Promise<void>((resolve, reject) => {
-        if (signal?.aborted) return reject(new Error('Upload aborted'));
-        const xhr = new XMLHttpRequest();
-        if (onProgress) {
-          xhr.upload.onprogress = (event) => {
-            if (event.lengthComputable) {
-              const percentComplete = Math.round((event.loaded / event.total) * 100);
-              onProgress(percentComplete);
-            }
-          };
-        }
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            resolve();
-          } else {
-            reject(new Error(`Direct S3 upload failed: ${xhr.status}`));
-          }
-        };
-        xhr.onerror = () => reject(new Error('Direct S3 upload network error'));
-        xhr.onabort = () => reject(new Error('Direct S3 upload aborted'));
-        if (signal) {
-          signal.addEventListener('abort', () => xhr.abort(), { once: true });
-        }
-        xhr.open('PUT', uploadUrl, true);
-        xhr.setRequestHeader('Content-Type', blob.type || 'application/octet-stream');
-        xhr.send(blob);
-      });
-
-      const completed = await completePresigned({
-        storageKey: presignRes.storageKey,
-        filename: fileName,
-        size: blob.size,
-        mimeType: blob.type || 'application/octet-stream',
-        spaceId,
-        pageId,
-        parentId,
-        contentHash,
-        metaData,
-      });
-
-      return {
-        url: completed.url,
-        path: completed.url,
-        fileId: completed.fileId || completed.id,
-      };
-    }
-  } catch (err: unknown) {
-    if (signal?.aborted) throw err;
-    // Fallback to direct upload if presigned fails
-  }
-
-  return uploadDirectWithProgress(blob, fileName, onProgress, {
+  const result = await smartUpload(blob, {
+    baseEndpoint: '/api/v1/experiments/files',
+    filename: fileName,
+    mimeType: blob.type || 'application/octet-stream',
     spaceId,
     pageId,
     parentId,
+    metaData,
+    multipartThresholdBytes: Number.MAX_SAFE_INTEGER,
     signal,
+    onProgress,
   });
+
+  return {
+    url: result.path || result.url,
+    path: result.path || result.url,
+    fileId: result.fileId,
+  };
 };
 
 // ── 2. Multipart Chunked Upload (S3 Protocol for Large Files) ───────────────
@@ -407,112 +324,25 @@ export const abortMultipart = (sessionId: string) => {
 
 /**
  * Resumable multi-chunk upload for large research datasets (>15MB).
- * Handles chunking, bounded parallel part uploads (concurrency=3), per-part exponential retry,
- * progress reporting, and completion.
+ * Delegates to Unified SmartUploadEngine (persistent checkpoints, bounded concurrency, instant CAS dedup).
  */
 export const uploadLargeFileResumable = async (
   file: File,
   options: ResumableUploadOptions = {},
 ): Promise<{ fileId: string; url: string }> => {
-  if (options.signal?.aborted) {
-    throw new Error('Upload aborted');
-  }
+  const result = await smartUpload(file, {
+    baseEndpoint: '/api/v1/experiments/files',
+    filename: file.name,
+    mimeType: file.type || 'application/octet-stream',
+    spaceId: options.spaceId ?? options.projectId,
+    pageId: options.pageId,
+    parentId: options.parentId,
+    multipartThresholdBytes: 0,
+    signal: options.signal,
+    onProgress: options.onProgress,
+  });
 
-  const expectedHash = await computeClientSha256Hex(file);
-  const session = await initiateMultipart(
-    file.name,
-    file.type || 'application/octet-stream',
-    file.size,
-    options.spaceId ?? options.projectId,
-    options.parentId,
-    expectedHash,
-    options.pageId,
-  );
-
-  // Zero-byte Instant CAS Deduplication Hit for Multipart
-  if (session?.deduplicated && session.fileId && session.url) {
-    options.onProgress?.(100);
-    return { fileId: session.fileId, url: session.url };
-  }
-
-  const partSize = session.partSize;
-  const totalParts = session.totalParts;
-  const parts: MultipartPartDto[] = new Array(totalParts);
-  const partLoadedBytes = new Array<number>(totalParts).fill(0);
-
-  const reportProgress = () => {
-    if (options.onProgress) {
-      const loaded = partLoadedBytes.reduce((acc, bytes) => acc + bytes, 0);
-      const percent = Math.min(100, Math.round((loaded / file.size) * 100));
-      options.onProgress(percent);
-    }
-  };
-
-  const uploadSinglePartWithRetry = async (partNumber: number): Promise<void> => {
-    const start = (partNumber - 1) * partSize;
-    const end = Math.min(start + partSize, file.size);
-    const chunk = file.slice(start, end);
-    const maxAttempts = 3;
-
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      if (options.signal?.aborted) {
-        throw new Error('Upload aborted by user');
-      }
-      try {
-        const { uploadUrl } = await getMultipartPartUrl(session.sessionId, partNumber);
-        const partResult = await uploadPartToS3(
-          uploadUrl,
-          partNumber,
-          chunk,
-          options.signal,
-          (loaded) => {
-            partLoadedBytes[partNumber - 1] = loaded;
-            reportProgress();
-          },
-        );
-        partLoadedBytes[partNumber - 1] = chunk.size;
-        reportProgress();
-        parts[partNumber - 1] = partResult;
-        return;
-      } catch (err) {
-        if (options.signal?.aborted || attempt === maxAttempts) {
-          throw err;
-        }
-        partLoadedBytes[partNumber - 1] = 0;
-        await new Promise((r) => setTimeout(r, 500 * attempt));
-      }
-    }
-  };
-
-  try {
-    const CONCURRENCY = 3;
-    let nextPart = 1;
-
-    const worker = async () => {
-      while (nextPart <= totalParts) {
-        if (options.signal?.aborted) {
-          throw new Error('Upload aborted by user');
-        }
-        const currentPart = nextPart++;
-        await uploadSinglePartWithRetry(currentPart);
-      }
-    };
-
-    const workers = Array.from(
-      { length: Math.min(CONCURRENCY, totalParts) },
-      () => worker(),
-    );
-    await Promise.all(workers);
-
-    const completeResult = await completeMultipart(session.sessionId, parts);
-    if (options.onProgress) options.onProgress(100);
-    return { fileId: completeResult.fileId, url: completeResult.url };
-  } catch (err) {
-    if (options.signal?.aborted) {
-      await abortMultipart(session.sessionId).catch(() => {});
-    }
-    throw err;
-  }
+  return { fileId: result.fileId, url: result.url };
 };
 
 // ── 3. High-Level Facade Functions ──────────────────────────────────────────
@@ -522,25 +352,19 @@ export const uploadFile = async (
   params: UploadFileParams,
 ): Promise<{ fileId: string; url: string }> => {
   const effectiveSpaceId = (params.spaceId ?? params.projectId) || undefined;
-  if (file.size > 15 * 1024 * 1024) {
-    return uploadLargeFileResumable(file, {
-      spaceId: effectiveSpaceId,
-      parentId: params.parentId,
-      pageId: params.pageId || undefined,
-      onProgress: params.onProgress,
-    });
-  }
-
-  const { url: uploadPath, fileId } = await uploadBlobWithPresigned(file, file.name, {
+  const result = await smartUpload(file, {
+    baseEndpoint: '/api/v1/experiments/files',
+    filename: file.name,
+    mimeType: file.type || 'application/octet-stream',
     spaceId: effectiveSpaceId,
     pageId: params.pageId || undefined,
     parentId: params.parentId,
     metaData: params.metaData,
     onProgress: params.onProgress,
+    resolveUrl: resolveFileUrl,
   });
 
-  const uploadUrl = resolveFileUrl(uploadPath) || uploadPath;
-  return { fileId: fileId || '', url: uploadUrl };
+  return { fileId: result.fileId, url: result.url };
 };
 
 export { uploadGenericFile } from '@/shared/lib/file-client';

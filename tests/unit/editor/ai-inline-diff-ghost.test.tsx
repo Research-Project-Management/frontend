@@ -12,7 +12,7 @@ import {
 } from '@/features/editor/core/engine/extensions/inline-diff';
 import { editorCommandBus } from '@/features/editor/core';
 import { aiCoordinator } from '@/features/editor/subsystems/ai';
-import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
+import { pagesService } from '@/features/editor/sdk/pages.service';
 import { CodeMirrorEngineAdapter } from '@/features/editor/core/engine/adapters/codemirror.adapter';
 import { setActiveEditorEngine } from '@/features/editor/core';
 import { usePageStore } from '@/features/editor/core';
@@ -246,7 +246,7 @@ describe('AI Inline Ghost Diff & 1-Click Error Assist (Cursor / Overleaf Parity)
 
   describe('3. aiCoordinator 1-Click AutoFix & Compiler Error Integration', () => {
     it('executes autoFixDiagnostic, calls AI service, and mounts inline diff', async () => {
-      const suggestSpy = vi.spyOn(manuscriptService.ai, 'suggestLatexFix').mockResolvedValue({
+      const suggestSpy = vi.spyOn(pagesService.ai, 'suggestLatexFix').mockResolvedValue({
         originalSnippet: '\\undefinedMacro',
         fixedSnippet: '\\textbf{Fixed Macro}',
         explanation: 'Replaced unknown macro with textbf',

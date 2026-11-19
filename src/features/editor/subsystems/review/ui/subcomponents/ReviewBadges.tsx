@@ -80,12 +80,6 @@ export function ResolvedCommentsIcon({
   );
 }
 
-export {
-  ReviewIcon as OverleafReviewIcon,
-  ReviewSolidIcon as OverleafReviewSolidIcon,
-  ResolvedCommentsIcon as OverleafResolvedCommentsIcon,
-};
-
 // ── Mention Badges & Renderer ───────────────────────────────────────────────
 
 export interface MentionBadgeProps {

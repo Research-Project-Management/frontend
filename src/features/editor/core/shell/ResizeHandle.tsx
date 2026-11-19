@@ -2,7 +2,7 @@
  * ResizeHandle.tsx
  *
  * Project-Themed Overleaf-Parity Separator & Draggable Splitter Handle.
- * Location: `features/editor/ui/shell/ResizeHandle.tsx`
+ * Location: `features/editor/core/shell/ResizeHandle.tsx`
  *
  * Design Specifications:
  * - 8px gutter bar matching the project's light & dark design tokens.

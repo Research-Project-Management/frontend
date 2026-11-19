@@ -458,5 +458,4 @@ export class KeybindingCoordinator {
   }
 }
 
-export { KeybindingCoordinator as KeybindingCoordinatorRegistry };
 export const keybindingCoordinator = new KeybindingCoordinator();

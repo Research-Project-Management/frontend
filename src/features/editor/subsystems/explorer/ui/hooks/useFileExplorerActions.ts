@@ -15,7 +15,7 @@
 
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
-import { manuscriptService } from '@/features/editor/sdk/pages.service';
+import { pagesService } from '@/features/editor/sdk/pages.service';
 import { extractDocumentContentString, type Page, type PageFile } from '@/features/editor/domain/types/core.types';
 import type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
 import {
@@ -56,7 +56,7 @@ export function useFileExplorerActions(options?: UseFileExplorerActionsOptions) 
           if (latestPage && latestPage.id === file.id && latestPage.content) {
             rawContent = latestPage.content;
           } else {
-            const doc = await manuscriptService.docs.getById(file.id);
+            const doc = await pagesService.docs.getById(file.id);
             rawContent = doc?.content ?? '';
           }
         }

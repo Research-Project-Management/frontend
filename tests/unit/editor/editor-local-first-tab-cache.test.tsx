@@ -1,14 +1,17 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
-import { manuscriptService, type EditorBootstrapResponseDto } from '@/features/editor/sdk/pages.service';
-import { draftStorageService } from '@/features/editor/domain/document/draft-storage';
+import { pagesService, type EditorBootstrapResponseDto } from '@/features/editor/sdk/pages.service';
+import {
+  unsyncedEditsStore,
+  syncedDocCacheStore,
+} from '@/features/editor/domain/offline-storage';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { sessionCoordinator, useConnectivityStore } from '@/features/editor/core';
 import {
   pageQuery,
   hydrateEditorBootstrap,
   resolveDocumentLocalFirst,
-} from '@/features/editor/ui/hooks/document.queries';
+} from '@/features/editor/core/queries/document.queries';
 import type { Page } from '@/features/editor/domain/types/core.types';
 
 function makeBootstrapDto(overrides?: Partial<EditorBootstrapResponseDto>): EditorBootstrapResponseDto {
@@ -143,8 +146,8 @@ const TEST_DOC_IDS = [
 async function clearTestDraftStorage(): Promise<void> {
   await Promise.all(
     TEST_DOC_IDS.flatMap((id) => [
-      draftStorageService.clearDraft(id).catch(() => {}),
-      draftStorageService.deleteProjectFileSnapshot(id).catch(() => {}),
+      unsyncedEditsStore.clear(id).catch(() => {}),
+      syncedDocCacheStore.delete(id).catch(() => {}),
     ]),
   );
 }
@@ -178,7 +181,7 @@ describe('Single-User Local-First Tab Cache (RAM -> OfflineDB -> Server) & O(1) 
     hydrateEditorBootstrap(queryClient, boot);
 
     const getByIdSpy = vi
-      .spyOn(manuscriptService.docs, 'getById')
+      .spyOn(pagesService.docs, 'getById')
       .mockResolvedValue({
         id: 'ch1',
         title: 'ch1.tex',
@@ -212,7 +215,7 @@ describe('Single-User Local-First Tab Cache (RAM -> OfflineDB -> Server) & O(1) 
   it('hydrates clean spilled tabs (>40 tabs / LRU eviction) from OfflineDB with 0 HTTP calls', async () => {
     lruDocumentCache.setCapacity(3);
     const getByIdSpy = vi
-      .spyOn(manuscriptService.docs, 'getById')
+      .spyOn(pagesService.docs, 'getById')
       .mockImplementation(async (docId: string) => ({
         id: docId,
         title: `${docId}.tex`,
@@ -244,8 +247,8 @@ describe('Single-User Local-First Tab Cache (RAM -> OfflineDB -> Server) & O(1) 
   });
 
   it('validates OfflineDB snapshots after F5 reload via tree (hash, rev) manifest: 0 HTTP on match, 1 HTTP on mismatch', async () => {
-    // Seed OfflineDB snapshots before simulated reload
-    await draftStorageService.saveProjectFileSnapshot({
+    // Seed OfflineDB synced doc cache before simulated reload
+    await syncedDocCacheStore.put({
       id: 'ch1',
       projectId: 'space-lf-1',
       title: 'ch1.tex',
@@ -255,7 +258,7 @@ describe('Single-User Local-First Tab Cache (RAM -> OfflineDB -> Server) & O(1) 
       hash: 'sha-ch1-v1',
       updatedAt: Date.now() - 10_000,
     });
-    await draftStorageService.saveProjectFileSnapshot({
+    await syncedDocCacheStore.put({
       id: 'ch2',
       projectId: 'space-lf-1',
       title: 'ch2.tex',
@@ -272,7 +275,7 @@ describe('Single-User Local-First Tab Cache (RAM -> OfflineDB -> Server) & O(1) 
     hydrateEditorBootstrap(queryClient, makeBootstrapDto());
 
     const getByIdSpy = vi
-      .spyOn(manuscriptService.docs, 'getById')
+      .spyOn(pagesService.docs, 'getById')
       .mockResolvedValue({
         id: 'ch2',
         title: 'ch2.tex',
@@ -299,7 +302,7 @@ describe('Single-User Local-First Tab Cache (RAM -> OfflineDB -> Server) & O(1) 
     expect(resolvedCh2Again.content).toBe('ch2-fresh-server-v2');
     expect(getByIdSpy).toHaveBeenCalledTimes(1);
 
-    const updatedSnap = await draftStorageService.getProjectFileSnapshot('ch2');
+    const updatedSnap = await syncedDocCacheStore.get('ch2');
     expect(updatedSnap?.rev).toBe(2);
     expect(updatedSnap?.hash).toBe('sha-ch2-v2');
     expect(updatedSnap?.content).toBe('ch2-fresh-server-v2');
@@ -316,7 +319,7 @@ describe('Single-User Local-First Tab Cache (RAM -> OfflineDB -> Server) & O(1) 
     });
 
     const updateSpy = vi
-      .spyOn(manuscriptService.docs, 'updateContent')
+      .spyOn(pagesService.docs, 'updateContent')
       .mockResolvedValue({
         id: 'ch1',
         title: 'ch1.tex',
@@ -337,17 +340,17 @@ describe('Single-User Local-First Tab Cache (RAM -> OfflineDB -> Server) & O(1) 
     expect(lruDocumentCache.getModel('ch1')?.hash).toBe('sha-ch1-v2');
     expect(lruDocumentCache.getManifestEntry('ch1')).toMatchObject({ rev: 2, hash: 'sha-ch1-v2' });
 
-    const persistedSnap = await draftStorageService.getProjectFileSnapshot('ch1');
+    const persistedSnap = await syncedDocCacheStore.get('ch1');
     expect(persistedSnap?.content).toBe('edited v2');
     expect(persistedSnap?.rev).toBe(2);
     expect(persistedSnap?.hash).toBe('sha-ch1-v2');
 
-    // Simulate reload where user had uncommitted draft at expectedRev=1 while server moved to rev=3
+    // Simulate reload where user had uncommitted edit at expectedRev=1 while server moved to rev=3
     lruDocumentCache.clear();
-    await draftStorageService.saveDraft('ch1', 'offline edit based on v1', 'space-lf-1', 'ch1.tex', 1);
+    await unsyncedEditsStore.save('ch1', 'offline edit based on v1', 'space-lf-1', 'ch1.tex', 1);
     lruDocumentCache.setManifestEntry('ch1', { rev: 3, hash: 'sha-ch1-v3', sessionValidated: true });
 
-    vi.spyOn(manuscriptService.docs, 'getById').mockResolvedValue({
+    vi.spyOn(pagesService.docs, 'getById').mockResolvedValue({
       id: 'ch1',
       title: 'ch1.tex',
       path: '/chapters/ch1.tex',

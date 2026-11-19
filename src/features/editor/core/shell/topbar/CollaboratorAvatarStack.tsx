@@ -4,7 +4,7 @@
  * CollaboratorAvatarStack.tsx
  *
  * Real-Time Collaborator Presence Avatar Stack for Topbar (Block 7: UI Shell Layer).
- * Location: `features/editor/ui/shell/topbar/CollaboratorAvatarStack.tsx`
+ * Location: `features/editor/core/shell/topbar/CollaboratorAvatarStack.tsx`
  *
  * Overleaf & Figma parity:
  * - Overlapping circular avatars with distinct collaborator colors matching cursors.
@@ -33,8 +33,8 @@ import { cn } from '@/shared/lib/utils';
 import {
   useCollaborationPresence,
   type CollaboratorPresenceInfo,
-} from '@/features/editor/ui/hooks/useCollaboration';
-import { getCollaboratorColor } from '@/features/editor/ui/editor/CollaboratorCursors';
+} from '@/features/editor/core/collaboration/useCollaboration';
+import { getCollaboratorColor } from '@/features/editor/core/collaboration/CollaboratorCursors';
 import { aggregateCollaboratorPresences, type AggregatedCollaboratorUser } from '@/features/editor/domain/collaboration/presence-aggregation';
 import { getCachedUser } from '@/features/auth/services/auth.service';
 import { editorCommandBus } from '../../bus/command-bus';

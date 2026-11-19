@@ -24,7 +24,6 @@ import { useProjects } from '@/features/projects/shell/hooks/use-project';
 import { useMyProjectInvitations } from '@/features/projects/invitation/hooks/use-project-invitations';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { useWorkspaceContextStore } from '../store/workspace-context.store';
-import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import { cn } from '@/shared/lib/utils';
 import type { Project } from '@/features/projects/shell/types/project.types';
 
@@ -113,13 +112,13 @@ export default function SpaceSwitcher() {
   const pathname = usePathname();
   const params = useParams<{ projectId?: string }>();
   const { user, logout } = useAuth();
-  const { projects = [] } = useProjects();
+  const { projects = [], isLoading: isLoadingProjects, isError: isProjectsError } = useProjects();
   const { data: invitations = [] } = useMyProjectInvitations();
 
   const activeSpace = useWorkspaceContextStore((s) => s.activeSpace);
   const setPersonalSpace = useWorkspaceContextStore((s) => s.setPersonalSpace);
   const setProjectSpace = useWorkspaceContextStore((s) => s.setProjectSpace);
-  const setLibraryScope = useLibraryUIStore((s) => s.setActiveScope);
+  const validateOrHealSpace = useWorkspaceContextStore((s) => s.validateOrHealSpace);
 
   const [open, setOpen] = useState(false);
   const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
@@ -134,6 +133,24 @@ export default function SpaceSwitcher() {
     () => projects.filter((p) => p.isArchived).length,
     [projects]
   );
+
+  // Auto-heal workspace space and library scope if active project is deleted/inaccessible
+  React.useEffect(() => {
+    if (
+      !params?.projectId &&
+      !isLoadingProjects &&
+      !isProjectsError &&
+      Array.isArray(projects)
+    ) {
+      validateOrHealSpace(projects);
+    }
+  }, [
+    params?.projectId,
+    isLoadingProjects,
+    isProjectsError,
+    projects,
+    validateOrHealSpace,
+  ]);
 
   // Sync URL [projectId] param with WorkspaceContextStore
   React.useEffect(() => {
@@ -151,12 +168,6 @@ export default function SpaceSwitcher() {
           name: resolvedName,
           avatar: matched?.avatar ?? activeSpace.projectAvatar ?? null,
         });
-        setLibraryScope({
-          type: 'project',
-          id: urlProjectId,
-          projectId: urlProjectId,
-          name: resolvedName,
-        });
       }
     }
   }, [
@@ -167,7 +178,6 @@ export default function SpaceSwitcher() {
     activeSpace.projectName,
     activeSpace.projectAvatar,
     setProjectSpace,
-    setLibraryScope,
   ]);
 
   const personalDisplayName = useMemo(() => {
@@ -194,11 +204,6 @@ export default function SpaceSwitcher() {
   const handleSelectPersonal = () => {
     setOpen(false);
     setPersonalSpace();
-    setLibraryScope({
-      type: 'user',
-      id: 'user',
-      name: 'My Library',
-    });
 
     if (pathname?.startsWith('/projects/')) {
       if (pathname.includes('/settings')) {
@@ -224,12 +229,6 @@ export default function SpaceSwitcher() {
   }) => {
     setOpen(false);
     setProjectSpace(proj);
-    setLibraryScope({
-      type: 'project',
-      id: proj.id,
-      projectId: proj.id,
-      name: proj.name,
-    });
 
     if (!pathname) {
       router.push(`/projects/${proj.id}/overview`);

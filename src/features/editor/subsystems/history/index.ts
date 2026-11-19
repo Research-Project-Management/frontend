@@ -12,10 +12,10 @@
 
 // 1. Models & Domain Algorithms
 export {
-  computeDraftDiffSummary,
-  type DraftDiffSummary,
-  type DraftDiffLine,
-} from '@/features/editor/domain/document/draft-diff';
+  computeUnsyncedEditDiffSummary,
+  type UnsyncedEditDiffSummary,
+  type UnsyncedEditDiffLine,
+} from '@/features/editor/domain/document/unsynced-edit-diff';
 export {
   type ProjectCompilationSnapshot,
   type SnapshotProjectFile,

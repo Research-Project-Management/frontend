@@ -4,7 +4,7 @@
  * CitationTab.tsx
  *
  * Canonical BibTeX & Workspace Reference Viewlet (Block 6: UI Features Layer).
- * Location: `features/editor/ui/features/sidebar/citation/CitationTab.tsx`
+ * Location: `features/editor/subsystems/citation/ui/CitationTab.tsx`
  */
 
 import React from 'react';

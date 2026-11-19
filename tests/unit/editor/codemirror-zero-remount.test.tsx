@@ -2,7 +2,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, act, cleanup } from '@testing-library/react';
 import { EditorView } from '@codemirror/view';
-import { CodeMirrorView, buildEditorState } from '@/features/editor/ui/editor/CodeMirrorView';
+import { CodeMirrorView, buildEditorState } from '@/features/editor/core/surface/CodeMirrorView';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { reviewCoordinator } from '@/features/editor/subsystems/review';
 import { getActiveEditorEngine, setActiveEditorEngine } from '@/features/editor/core';

@@ -14,8 +14,8 @@ import {
   OUTLINE_INDENT,
   type OutlineEntry,
 } from '@/features/editor/subsystems/compiler';
-import { manuscriptService } from '@/features/editor/sdk/pages.service';
-import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
+import { pagesService } from '@/features/editor/sdk/pages.service';
+import { useEditorInstance } from '@/features/editor/core/bus/use-editor-instance';
 import { useWorkspaceStore } from '@/features/editor/core';
 
 const outlineResultCache = new Map<string, OutlineEntry[]>();
@@ -184,7 +184,7 @@ export const FileOutlineSection = React.memo(function FileOutlineSection({
     let cancelled = false;
     let requestPromise = outlineInFlightCache.get(outlineHash);
     if (!requestPromise) {
-      requestPromise = manuscriptService.structure
+      requestPromise = pagesService.structure
         .getOutline(outlineScopeId, {
           filePath: activeFileName,
           docId: activeDocId,

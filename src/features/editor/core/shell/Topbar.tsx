@@ -4,7 +4,7 @@
  * Topbar.tsx
  *
  * Topbar & Menubar (Block 7: UI Shell Layer).
- * Location: `features/editor/ui/shell/Topbar.tsx`
+ * Location: `features/editor/core/shell/Topbar.tsx`
  *
  * Layout:
  * - Left: Back to Projects / Logo, Menubar (File, Edit, Insert, View, Format).
@@ -53,7 +53,7 @@ import { useSettingsStore } from '../store/settings.store';
 import { usePageStore } from '../store/editor.store';
 import { useWorkspaceStore } from '../store/workspace.store';
 import { useCompileStore } from '@/features/editor/subsystems/compiler';
-import { usePageActions } from '@/features/editor/ui/hooks/usePageActions';
+import { usePageActions } from '@/features/editor/core/queries/usePageActions';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
 import { GitHubIcon } from '@/shared/components/icons/IntegrationIcons';
 

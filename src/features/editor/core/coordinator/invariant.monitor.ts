@@ -22,15 +22,11 @@ export interface InvariantViolation {
   details: string;
 }
 
-export type EditorInvariantViolation = InvariantViolation;
-
 export interface InvariantReport {
   valid: boolean;
   checkedAt: number;
   violations: InvariantViolation[];
 }
-
-export type EditorInvariantReport = InvariantReport;
 
 export class InvariantMonitor {
   public start(): void {}
@@ -58,6 +54,4 @@ export class InvariantMonitor {
   }
 }
 
-export { InvariantMonitor as EditorStateInvariantMonitor };
 export const invariantMonitor = new InvariantMonitor();
-export { invariantMonitor as editorInvariantMonitor };

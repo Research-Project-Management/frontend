@@ -2,7 +2,7 @@
  * ActivityBar.tsx
  *
  * Canonical VS Code-Style Activity Bar (Block 7: UI Shell Layer).
- * Location: `features/editor/ui/shell/ActivityBar.tsx`
+ * Location: `features/editor/core/shell/ActivityBar.tsx`
  *
  * Provides the narrow vertical icon strip (48px) on the far left:
  * - Controls Primary Sidebar viewlets: Files, Search, Citations, Review, Chat, AI.

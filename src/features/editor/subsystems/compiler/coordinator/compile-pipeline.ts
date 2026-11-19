@@ -10,7 +10,7 @@
  */
 
 import {
-  manuscriptService,
+  pagesService,
   type CompileLatexPayload,
   type CompilerDiagnostic,
   type ForwardSyncResult,
@@ -174,9 +174,6 @@ export interface CompilerPort {
   ): Promise<{ sourcePath: string | null; line: number } | null>;
 }
 
-export type CompilerExecutionEngine = CompilerPort;
-export type CompilerExecutionPort = CompilerPort;
-
 // Active compile controller for in-flight cancellation (debounce & anti-stacking)
 let activeCompileController: AbortController | null = null;
 let activeCompileTargetId: string | null = null;
@@ -195,7 +192,7 @@ export const CompilePipeline = {
     }
     activeCompileTargetId = null;
     if (targetId) {
-      void manuscriptService.compiler.cancelCompile(targetId).catch(() => {});
+      void pagesService.compiler.cancelCompile(targetId).catch(() => {});
     }
   },
 
@@ -216,7 +213,7 @@ export const CompilePipeline = {
     if (activeCompileController) {
       activeCompileController.abort();
       if (activeCompileTargetId) {
-        void manuscriptService.compiler.cancelCompile(activeCompileTargetId).catch(() => {});
+        void pagesService.compiler.cancelCompile(activeCompileTargetId).catch(() => {});
       }
     }
     const controller = new AbortController();
@@ -333,7 +330,7 @@ export const CompilePipeline = {
         };
       }
 
-      const data = await manuscriptService.compiler.compile(payload, currentSignal);
+      const data = await pagesService.compiler.compile(payload, currentSignal);
 
       if (currentSignal.aborted || data?.error?.toLowerCase().includes('aborted')) {
         logger.debug('[CompilePipeline] Compile request aborted or superseded.');
@@ -466,11 +463,11 @@ export const CompilePipeline = {
   },
 
   forceSync(projectId: string): Promise<{ synced: string[] }> {
-    return manuscriptService.docs.syncIncremental(projectId, [], true);
+    return pagesService.docs.syncIncremental(projectId, [], true);
   },
 
   /**
-   * Forward SyncTeX via Backend Single Source of Truth
+   * Remote forward SyncTeX resolution via Backend Single Source of Truth
    */
   async resolveForwardRemote(
     projectId: string,
@@ -480,7 +477,7 @@ export const CompilePipeline = {
     pageId?: string,
   ): Promise<ForwardSyncResult | null> {
     try {
-      const res = await manuscriptService.synctex.forwardSync({
+      const res = await pagesService.synctex.forwardSync({
         spaceId: projectId,
         ...(pageId ? { pageId } : {}),
         file,
@@ -495,7 +492,7 @@ export const CompilePipeline = {
   },
 
   /**
-   * Reverse SyncTeX via Backend Single Source of Truth
+   * Remote reverse SyncTeX resolution via Backend Single Source of Truth
    */
   async resolveReverseRemote(
     projectId: string,
@@ -505,7 +502,7 @@ export const CompilePipeline = {
     pageId?: string,
   ): Promise<{ sourcePath: string | null; line: number } | null> {
     try {
-      const res = await manuscriptService.synctex.reverseSync({
+      const res = await pagesService.synctex.reverseSync({
         spaceId: projectId,
         ...(pageId ? { pageId } : {}),
         page,
@@ -539,5 +536,4 @@ export const CompilePipeline = {
   resolveReverse,
 };
 
-export { CompilePipeline as LatexCompilerEngine };
 export { extractDoiFromText, parsePdfDate } from '@/features/editor/subsystems/compiler/synctex/pdf-resolver';

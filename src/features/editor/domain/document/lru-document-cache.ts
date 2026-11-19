@@ -1,8 +1,3 @@
-import {
-  normalizeVirtualPath,
-  rewritePathPrefix,
-} from './document-naming';
-
 /**
  * In-Memory Virtual Document Model & Bounded LRU Cache (Domain Layer).
  *
@@ -10,9 +5,29 @@ import {
  * Automatically flushes dirty documents to Tier 2 Persistent Storage (IndexedDB) upon eviction.
  */
 
-import { draftStorageService, type IDraftStorageSink } from './draft-storage';
+import {
+  LRULinkedList,
+  measureUtf8Bytes,
+  type LRUNode,
+} from './lru-linked-list';
+import {
+  DocumentManifestStore,
+  findModelByNormalizedPath,
+  mergeModelRegistration,
+  persistEvictedModelToSink,
+  resolveHydratedRegistrationFromSink,
+  rewriteModelsFolderPrefix,
+  type DocumentManifestEntry,
+  type ManifestTreeNode,
+} from './document-manifest.store';
+import {
+  defaultDocumentSpillSink,
+  type IDocumentSpillSink,
+} from '@/features/editor/domain/offline-storage';
 import { EDITOR_LIMITS } from '@/features/editor/domain/constants/editor.constants';
-export type { IDraftStorageSink };
+
+export { measureUtf8Bytes };
+export type { IDocumentSpillSink, DocumentManifestEntry, LRUNode };
 
 export interface DocumentCursorSelection {
   anchor: number;
@@ -22,32 +37,6 @@ export interface DocumentCursorSelection {
 export interface DocumentScrollViewport {
   top: number;
   left: number;
-}
-
-/**
- * Computes exact UTF-8 byte length of a UTF-16 string without allocating temporary buffers.
- */
-export function measureUtf8Bytes(text: string): number {
-  let bytes = 0;
-  for (let i = 0; i < text.length; i++) {
-    const code = text.charCodeAt(i);
-    if (code <= 0x7f) {
-      bytes += 1;
-    } else if (code <= 0x7ff) {
-      bytes += 2;
-    } else if (code >= 0xd800 && code <= 0xdbff) {
-      const next = text.charCodeAt(i + 1);
-      if (next >= 0xdc00 && next <= 0xdfff) {
-        bytes += 4;
-        i++;
-      } else {
-        bytes += 3;
-      }
-    } else {
-      bytes += 3;
-    }
-  }
-  return bytes;
 }
 
 export interface DocumentModelState {
@@ -73,19 +62,6 @@ export interface DocumentModelState {
   metadata?: Record<string, unknown>;
 }
 
-export interface DocumentManifestEntry {
-  rev?: number;
-  hash?: string | null;
-  sizeBytes?: number;
-  sessionValidated?: boolean;
-}
-
-export interface LRUNode {
-  fileId: string;
-  prev: LRUNode | null;
-  next: LRUNode | null;
-}
-
 export type ModelChangeListener = (fileId?: string, model?: DocumentModelState) => void;
 export type CacheSubscriber = () => void;
 export type ModelEvictionListener = (fileId: string, model: DocumentModelState) => void;
@@ -105,9 +81,8 @@ const DEFAULT_MAX_BYTES: number = EDITOR_LIMITS.LRU_MAX_BYTES;
 
 export class LRUDocumentCache {
   private readonly models = new Map<string, DocumentModelState>();
-  private readonly lruNodes = new Map<string, LRUNode>();
-  private head: LRUNode | null = null; // Most Recently Used (MRU)
-  private tail: LRUNode | null = null; // Least Recently Used (LRU)
+  private readonly lruList = new LRULinkedList();
+  private readonly manifestStore = new DocumentManifestStore();
   private capacity: number = DEFAULT_CAPACITY;
   private maxBytes: number = DEFAULT_MAX_BYTES;
   private totalBytes = 0;
@@ -116,65 +91,44 @@ export class LRUDocumentCache {
   private readonly listeners = new Set<ModelChangeListener | CacheSubscriber>();
   private readonly fileListeners = new Map<string, Set<CacheSubscriber>>();
   private readonly dirtyFileIds = new Set<string>();
-  private readonly manifestByDocId = new Map<string, DocumentManifestEntry>();
   private readonly evictionListeners = new Set<ModelEvictionListener>();
-  private persistenceSink: IDraftStorageSink | null = draftStorageService;
+  private persistenceSink: IDocumentSpillSink | null = defaultDocumentSpillSink;
 
-  constructor(persistenceSink: IDraftStorageSink | null = draftStorageService) {
+  constructor(persistenceSink: IDocumentSpillSink | null = defaultDocumentSpillSink) {
     this.persistenceSink = persistenceSink;
   }
 
-  /**
-   * Configures the backing multi-tier persistence sink (seam for draft storage).
-   */
-  public setPersistenceSink(sink: IDraftStorageSink | null): void {
+  public setPersistenceSink(sink: IDocumentSpillSink | null): void {
     this.persistenceSink = sink;
   }
 
-  /**
-   * Designates the currently active editor file so it is protected from eviction.
-   */
   public setActiveFileId(fileId: string | null): void {
     this.activeFileId = fileId;
-    if (fileId) {
-      this.touch(fileId);
-    }
+    if (fileId) this.lruList.touch(fileId);
   }
 
   public getActiveFileId(): string | null {
     return this.activeFileId;
   }
 
-  /**
-   * Configures the maximum number of documents retained in RAM simultaneously.
-   */
   public setCapacity(newCapacity: number): void {
     if (newCapacity < 1) return;
     this.capacity = newCapacity;
     this.enforceCapacity();
   }
 
-  /**
-   * Configures the maximum text byte budget retained in RAM simultaneously.
-   */
   public setMaxBytes(newMaxBytes: number): void {
     if (newMaxBytes < 1) return;
     this.maxBytes = newMaxBytes;
     this.enforceCapacity();
   }
 
-  /**
-   * Restores dual-bound RAM defaults (40 files / 16 MB text).
-   */
   public resetLimits(): void {
     this.capacity = DEFAULT_CAPACITY;
     this.maxBytes = DEFAULT_MAX_BYTES;
     this.enforceCapacity();
   }
 
-  /**
-   * Returns current memory governor metrics.
-   */
   public getStats(): DocumentModelStats {
     return {
       size: this.models.size,
@@ -182,119 +136,33 @@ export class LRUDocumentCache {
       totalBytes: this.totalBytes,
       maxBytes: this.maxBytes,
       dirtyCount: this.dirtyFileIds.size,
-      mruFileId: this.head?.fileId ?? null,
-      lruFileId: this.tail?.fileId ?? null,
+      mruFileId: this.lruList.getMruId(),
+      lruFileId: this.lruList.getLruId(),
     };
   }
 
   public setManifestEntry(fileId: string, entry: DocumentManifestEntry): void {
-    if (!fileId) return;
-    const prev = this.manifestByDocId.get(fileId) ?? {};
-    this.manifestByDocId.set(fileId, {
-      ...prev,
-      ...(entry.rev !== undefined ? { rev: entry.rev } : {}),
-      ...(entry.hash !== undefined ? { hash: entry.hash } : {}),
-      ...(entry.sizeBytes !== undefined ? { sizeBytes: entry.sizeBytes } : {}),
-      ...(entry.sessionValidated !== undefined
-        ? { sessionValidated: entry.sessionValidated }
-        : prev.sessionValidated !== undefined
-          ? { sessionValidated: prev.sessionValidated }
-          : {}),
-    });
+    this.manifestStore.setEntry(fileId, entry);
   }
 
   public getManifestEntry(fileId: string): DocumentManifestEntry | undefined {
-    return this.manifestByDocId.get(fileId);
+    return this.manifestStore.getEntry(fileId);
   }
 
   public hydrateManifestFromTree(
-    nodes: ReadonlyArray<{
-      type?: string;
-      id?: string;
-      docId?: string | null;
-      hash?: string | null;
-      rev?: number | null;
-      sizeBytes?: number;
-      isRootDoc?: boolean;
-      children?: unknown[];
-    }>,
+    nodes: ReadonlyArray<ManifestTreeNode>,
     options?: { rootDocId?: string; pageId?: string },
   ): void {
-    if (!Array.isArray(nodes)) return;
-    const visit = (
-      list: ReadonlyArray<{
-        type?: string;
-        id?: string;
-        docId?: string | null;
-        hash?: string | null;
-        rev?: number | null;
-        sizeBytes?: number;
-        isRootDoc?: boolean;
-        children?: unknown[];
-      }>,
-    ) => {
-      for (const node of list) {
-        if (!node) continue;
-        const upperType = node.type?.toUpperCase();
-        if (!upperType || upperType === 'DOC') {
-          const docId = node.docId || node.id;
-          if (docId) {
-            const entry: DocumentManifestEntry = {
-              ...(node.hash !== undefined ? { hash: node.hash } : {}),
-              ...(typeof node.rev === 'number' ? { rev: node.rev } : {}),
-              ...(typeof node.sizeBytes === 'number' ? { sizeBytes: node.sizeBytes } : {}),
-              sessionValidated: true,
-            };
-            this.setManifestEntry(docId, entry);
-            if (
-              (node.isRootDoc || docId === options?.rootDocId) &&
-              options?.pageId &&
-              options.pageId !== docId
-            ) {
-              this.setManifestEntry(options.pageId, entry);
-            }
-          }
-        }
-        if (Array.isArray(node.children) && node.children.length > 0) {
-          visit(
-            node.children as ReadonlyArray<{
-              type?: string;
-              id?: string;
-              docId?: string | null;
-              hash?: string | null;
-              rev?: number | null;
-              sizeBytes?: number;
-              isRootDoc?: boolean;
-              children?: unknown[];
-            }>,
-          );
-        }
-      }
-    };
-    visit(nodes);
+    this.manifestStore.hydrateFromTree(nodes, options);
   }
 
-  public isSnapshotFreshAgainstManifest(
+  public isSyncedCacheFreshAgainstManifest(
     fileId: string,
-    snapshot: { rev?: number; hash?: string | null },
+    cached: { rev?: number; hash?: string | null },
   ): boolean {
-    const manifest = this.manifestByDocId.get(fileId);
-    if (!manifest) return false;
-    if (manifest.hash && snapshot.hash) {
-      return manifest.hash === snapshot.hash;
-    }
-    if (manifest.rev !== undefined && snapshot.rev !== undefined) {
-      return manifest.rev === snapshot.rev;
-    }
-    if (manifest.sessionValidated && manifest.hash === undefined && manifest.rev === undefined) {
-      return true;
-    }
-    return false;
+    return this.manifestStore.isSyncedCacheFreshAgainstManifest(fileId, cached);
   }
 
-  /**
-   * Registers a document model in the in-memory cache or updates existing metadata.
-   */
   public warm = this.registerModel.bind(this);
 
   public registerModel(
@@ -312,36 +180,16 @@ export class LRUDocumentCache {
       hash?: string | null;
       serverUpdatedAt?: string;
       isAuthoritative?: boolean;
-    }
+    },
   ): DocumentModelState {
     const existing = this.models.get(fileId);
     const now = Date.now();
     const incomingAuthoritative = initialData.isAuthoritative !== false;
 
     if (existing) {
-      existing.lastActiveAt = now;
-      if (initialData.filePath) existing.filePath = initialData.filePath;
-      if (initialData.projectId) existing.projectId = initialData.projectId;
-      if (initialData.spaceId) existing.spaceId = initialData.spaceId;
-      if (initialData.pageId) existing.pageId = initialData.pageId;
-      if (initialData.yText !== undefined) existing.yText = initialData.yText;
-      if (
-        initialData.serverRev !== undefined &&
-        (existing.serverRev === undefined || initialData.serverRev >= existing.serverRev)
-      ) {
-        existing.serverRev = initialData.serverRev;
-      }
-      if (initialData.hash !== undefined) existing.hash = initialData.hash;
-      if (initialData.serverUpdatedAt !== undefined) existing.serverUpdatedAt = initialData.serverUpdatedAt;
-      if (incomingAuthoritative) {
-        existing.isAuthoritative = true;
-      }
-      if (!existing.isDirty && incomingAuthoritative && initialData.content !== existing.content) {
-        this.totalBytes = Math.max(
-          0,
-          this.totalBytes + measureUtf8Bytes(initialData.content) - measureUtf8Bytes(existing.content),
-        );
-        existing.content = initialData.content;
+      const bytesDelta = mergeModelRegistration(existing, initialData, incomingAuthoritative, now);
+      if (bytesDelta !== 0) {
+        this.totalBytes = Math.max(0, this.totalBytes + bytesDelta);
       }
       if (existing.isAuthoritative !== false) {
         this.setManifestEntry(fileId, {
@@ -350,7 +198,7 @@ export class LRUDocumentCache {
           sessionValidated: true,
         });
       }
-      this.touch(fileId);
+      this.lruList.touch(fileId);
       if (this.totalBytes > this.maxBytes && this.models.size > 1) {
         this.enforceCapacity();
       }
@@ -386,25 +234,15 @@ export class LRUDocumentCache {
 
     this.models.set(fileId, newModel);
     this.totalBytes += measureUtf8Bytes(newModel.content);
-
-    // Create and attach new LRU node at the head
-    const node: LRUNode = { fileId, prev: null, next: null };
-    this.lruNodes.set(fileId, node);
-    this.attachToHead(node);
-
+    this.lruList.insertAtHead(fileId);
     this.enforceCapacity();
     this.notify(fileId, newModel);
     return newModel;
   }
 
-  /**
-   * Retrieves an in-memory document model by fileId.
-   */
   public getModel(fileId: string): DocumentModelState | undefined {
     const model = this.models.get(fileId);
-    if (model) {
-      this.touch(fileId);
-    }
+    if (model) this.lruList.touch(fileId);
     return model;
   }
 
@@ -412,62 +250,28 @@ export class LRUDocumentCache {
     return this.getModel(fileId);
   }
 
-  /**
-   * Hydrates a model from Tier 2 Storage (IndexedDB) if it was evicted from RAM.
-   * Checks:
-   * 1. Active uncommitted draft snapshot
-   * 2. Cached project file snapshot
-   * 3. Fallback content
-   */
   public async hydrateModelAsync(
     fileId: string,
     fallbackContent: string,
     filePath?: string,
-    projectId?: string
+    projectId?: string,
   ): Promise<DocumentModelState> {
     const existing = this.getModel(fileId);
     if (existing && existing.isAuthoritative !== false) return existing;
 
-    const manifest = this.manifestByDocId.get(fileId);
-
+    const manifest = this.manifestStore.getEntry(fileId);
     if (this.persistenceSink) {
-      try {
-        const [draft, snapshot] = await Promise.all([
-          this.persistenceSink.getDraft(fileId).catch(() => null),
-          this.persistenceSink.getProjectFileSnapshot
-            ? this.persistenceSink.getProjectFileSnapshot(fileId).catch(() => null)
-            : Promise.resolve(null),
-        ]);
-
-        if (
-          draft &&
-          typeof draft.content === 'string' &&
-          (!snapshot || (draft.savedAt ?? Infinity) >= (snapshot.updatedAt ?? 0))
-        ) {
-          const model = this.registerModel(fileId, {
-            content: draft.content,
-            filePath: filePath || draft.title || snapshot?.filePath || snapshot?.title || fileId,
-            projectId: projectId || draft.projectId || snapshot?.projectId,
-            serverRev: draft.expectedRev ?? snapshot?.rev ?? manifest?.rev,
-            hash: snapshot?.hash ?? manifest?.hash,
-            isAuthoritative: true,
-          });
-          this.markDirty(fileId);
-          return model;
-        }
-
-        if (snapshot && typeof snapshot.content === 'string') {
-          return this.registerModel(fileId, {
-            content: snapshot.content,
-            filePath: filePath || snapshot.filePath || snapshot.title || fileId,
-            projectId: projectId || snapshot.projectId,
-            serverRev: snapshot.rev ?? manifest?.rev,
-            hash: snapshot.hash ?? manifest?.hash,
-            isAuthoritative: true,
-          });
-        }
-      } catch {
-        // Fallback
+      const hydrated = await resolveHydratedRegistrationFromSink(
+        this.persistenceSink,
+        manifest,
+        fileId,
+        filePath,
+        projectId,
+      );
+      if (hydrated) {
+        const model = this.registerModel(fileId, hydrated.data);
+        if (hydrated.isDirty) this.markDirty(fileId);
+        return model;
       }
     }
 
@@ -481,53 +285,14 @@ export class LRUDocumentCache {
     });
   }
 
-  /**
-   * Checks if a document model is currently mounted in RAM.
-   */
   public hasModel(fileId: string): boolean {
     return this.models.has(fileId);
   }
 
-  /**
-   * Finds a cached model by matching its filePath (case-insensitive & relative path normalized).
-   */
   public findByPath(targetPath: string): DocumentModelState | undefined {
-    if (!targetPath) return undefined;
-    const cleanTarget = targetPath.replace(/\\/g, '/').replace(/^\.?\//, '').trim().toLowerCase();
-    const bareTarget = cleanTarget.split('/').pop() || cleanTarget;
-    const cleanTargetNoExt = cleanTarget.replace(/\.(tex|bib|sty|cls)$/i, '');
-    const bareTargetNoExt = bareTarget.replace(/\.(tex|bib|sty|cls)$/i, '');
-
-    let bareFallback: DocumentModelState | undefined;
-
-    for (const model of this.models.values()) {
-      const cleanPath = (model.filePath || model.fileId).replace(/\\/g, '/').replace(/^\.?\//, '').trim().toLowerCase();
-      const barePath = cleanPath.split('/').pop() || cleanPath;
-      const cleanPathNoExt = cleanPath.replace(/\.(tex|bib|sty|cls)$/i, '');
-      const barePathNoExt = barePath.replace(/\.(tex|bib|sty|cls)$/i, '');
-
-      if (
-        cleanPath === cleanTarget ||
-        cleanPath === cleanTargetNoExt ||
-        cleanPathNoExt === cleanTargetNoExt ||
-        cleanPath.endsWith(`/${cleanTarget}`) ||
-        cleanPathNoExt.endsWith(`/${cleanTargetNoExt}`) ||
-        cleanTarget.endsWith(`/${cleanPath}`) ||
-        cleanTargetNoExt.endsWith(`/${cleanPathNoExt}`)
-      ) {
-        return model;
-      }
-
-      if (!bareFallback && !cleanTarget.includes('/') && (barePath === bareTarget || barePathNoExt === bareTargetNoExt)) {
-        bareFallback = model;
-      }
-    }
-    return bareFallback;
+    return findModelByNormalizedPath(this.models.values(), targetPath);
   }
 
-  /**
-   * Updates content and dirty flag for an existing model.
-   */
   public updateContent(fileId: string, content: string, isDirty = true): void {
     let model = this.models.get(fileId);
     if (!model) {
@@ -554,13 +319,10 @@ export class LRUDocumentCache {
     model.content = content;
     model.isDirty = isDirty;
     model.isAuthoritative = true;
-    if (isDirty) {
-      this.dirtyFileIds.add(fileId);
-    } else {
-      this.dirtyFileIds.delete(fileId);
-    }
+    if (isDirty) this.dirtyFileIds.add(fileId);
+    else this.dirtyFileIds.delete(fileId);
     model.lastActiveAt = Date.now();
-    this.touch(fileId);
+    this.lruList.touch(fileId);
     if (this.totalBytes > this.maxBytes && this.models.size > 1) {
       this.enforceCapacity();
     }
@@ -583,67 +345,50 @@ export class LRUDocumentCache {
     }
   }
 
-  /**
-   * Applies content that originated from a remote collaborator (e.g. Yjs sync).
-   * Never marks the model dirty, and never clears an existing local dirty flag —
-   * unsaved local edits must remain flagged for persistence.
-   */
   public applyRemoteContent(fileId: string, content: string): void {
     const existing = this.models.get(fileId);
     this.updateContent(fileId, content, existing?.isDirty ?? false);
   }
 
-  /**
-   * Returns the current content version for a model (0 when unknown).
-   */
   public getContentVersion(fileId: string): number {
     return this.models.get(fileId)?.contentVersion ?? 0;
   }
 
-  /**
-   * Marks the model clean only if its content has not changed since `expectedContent`
-   * was captured for saving. Returns true when the model was marked clean.
-   * Prevents losing edits typed while a save request was in flight.
-   */
-  public markCleanIfUnchanged(fileId: string, expectedContent: string, expectedVersion?: number): boolean {
+  public markCleanIfUnchanged(
+    fileId: string,
+    expectedContent: string,
+    expectedVersion?: number,
+  ): boolean {
     const model = this.models.get(fileId);
     if (!model) return false;
     if (model.content !== expectedContent) return false;
-    if (expectedVersion !== undefined && (model.contentVersion ?? 0) !== expectedVersion) return false;
+    if (expectedVersion !== undefined && (model.contentVersion ?? 0) !== expectedVersion) {
+      return false;
+    }
     this.markClean(fileId);
     return true;
   }
 
-  /**
-   * Preserves view state (selection & scroll) across tab switches.
-   */
   public updateViewState(
     fileId: string,
     selection?: DocumentCursorSelection,
-    scrollViewport?: DocumentScrollViewport
+    scrollViewport?: DocumentScrollViewport,
   ): void {
     const model = this.models.get(fileId);
     if (!model) return;
-
     if (selection) model.selection = selection;
     if (scrollViewport) model.scrollViewport = scrollViewport;
     model.lastActiveAt = Date.now();
-    this.touch(fileId);
+    this.lruList.touch(fileId);
   }
 
-  /**
-   * Marks a model as clean (saved to disk/backend).
-   */
   public markClean(fileId: string): void {
     const model = this.models.get(fileId);
     const hadDirtyFlag = this.dirtyFileIds.delete(fileId);
     if (!model) {
-      if (hadDirtyFlag) {
-        this.notify(fileId, undefined);
-      }
+      if (hadDirtyFlag) this.notify(fileId, undefined);
       return;
     }
-
     model.isDirty = false;
     model.lastSavedAt = Date.now();
     this.notify(fileId, model);
@@ -653,58 +398,24 @@ export class LRUDocumentCache {
     this.markClean(fileId);
   }
 
-  /**
-   * Encapsulated domain command to rename a file's path and notify listeners.
-   */
   public renameFile(fileId: string, newFilePath: string): void {
     const model = this.models.get(fileId);
     if (!model) return;
     model.filePath = newFilePath;
     model.lastActiveAt = Date.now();
-    this.touch(fileId);
+    this.lruList.touch(fileId);
     this.notify(fileId, model);
   }
 
-  /**
-   * Renames all cached models whose filePath resides under `oldPrefix/`.
-   * Returns the list of updated models with their old and new paths so callers
-   * can synchronize DAG, symbol index, and diagnostics aliases.
-   */
   public renameFolderPrefix(
     oldPrefix: string,
     newPrefix: string,
   ): Array<{ fileId: string; oldPath: string; newPath: string; content: string }> {
-    const cleanOld = normalizeVirtualPath(oldPrefix);
-    const cleanNew = normalizeVirtualPath(newPrefix);
-    if (!cleanOld || cleanOld === cleanNew) return [];
-
-    const updated: Array<{ fileId: string; oldPath: string; newPath: string; content: string }> = [];
-    const now = Date.now();
-
-    for (const model of this.models.values()) {
-      const nextPath = rewritePathPrefix(model.filePath, cleanOld, cleanNew, true);
-      if (nextPath !== null) {
-        const prevPath = model.filePath;
-        model.filePath = nextPath;
-        model.lastActiveAt = now;
-        updated.push({
-          fileId: model.fileId,
-          oldPath: prevPath,
-          newPath: nextPath,
-          content: model.content,
-        });
-      }
-    }
-
-    if (updated.length > 0) {
-      this.notify();
-    }
+    const updated = rewriteModelsFolderPrefix(this.models.values(), oldPrefix, newPrefix);
+    if (updated.length > 0) this.notify();
     return updated;
   }
 
-  /**
-   * Encapsulated domain command to update server optimistic concurrency metadata.
-   */
   public updateServerVersion(
     fileId: string,
     meta: { rev?: number; hash?: string | null; updatedAt?: string },
@@ -722,21 +433,11 @@ export class LRUDocumentCache {
     this.notify(fileId, model);
   }
 
-  /**
-   * Returns a monotonic snapshot version counter bumped on every cache mutation.
-   * Compatible with React 18/19 useSyncExternalStore.
-   */
-  public getSnapshot = (): number => {
-    return this.version;
-  };
-
+  public getSnapshot = (): number => this.version;
   public getVersion(): number {
     return this.version;
   }
 
-  /**
-   * Returns all currently dirty models.
-   */
   public getDirtyModels(): DocumentModelState[] {
     const dirty: DocumentModelState[] = [];
     for (const model of this.models.values()) {
@@ -745,17 +446,10 @@ export class LRUDocumentCache {
     return dirty;
   }
 
-  /**
-   * Returns file IDs for all currently dirty models (including spilled IDB drafts).
-   * Single source of truth for unsaved state.
-   */
   public getDirtyFileIds(): string[] {
     return Array.from(this.dirtyFileIds);
   }
 
-  /**
-   * Marks all models clean.
-   */
   public clearAllDirty(): void {
     let changed = this.dirtyFileIds.size > 0;
     this.dirtyFileIds.clear();
@@ -766,60 +460,39 @@ export class LRUDocumentCache {
         changed = true;
       }
     }
-    if (changed) {
-      this.notify();
-    }
+    if (changed) this.notify();
   }
 
-  /**
-   * Returns all document models currently retained in RAM.
-   */
   public getAllModels(): DocumentModelState[] {
     return Array.from(this.models.values());
   }
 
-  /**
-   * Evicts a model from RAM and safely flushes it to IndexedDB if dirty unless `skipPersistence` is set.
-   */
   public evictModel(fileId: string, options?: { skipPersistence?: boolean }): void {
-    const node = this.lruNodes.get(fileId);
-    if (node) {
-      this.evictLRUNode(node, options);
-    }
+    const node = this.lruList.get(fileId);
+    if (node) this.evictLRUNode(node, options);
   }
 
-  /**
-   * Evicts all models from RAM.
-   */
   public clearAll(): void {
-    for (const node of Array.from(this.lruNodes.values())) {
+    for (const node of Array.from(this.lruList.values())) {
       this.evictLRUNode(node);
     }
     this.models.clear();
-    this.lruNodes.clear();
+    this.lruList.clear();
     this.dirtyFileIds.clear();
-    this.manifestByDocId.clear();
-    this.head = null;
-    this.tail = null;
+    this.manifestStore.clear();
     this.totalBytes = 0;
     this.activeFileId = null;
     this.notify();
   }
 
-  /**
-   * Discards all models from RAM immediately without persisting dirty models to persistenceSink.
-   * Used when remote state (e.g. GitHub Pull) authoritatively replaces local workspace files.
-   */
   public discardAll(): void {
     for (const model of this.models.values()) {
       model.yText = null;
     }
     this.models.clear();
-    this.lruNodes.clear();
+    this.lruList.clear();
     this.dirtyFileIds.clear();
-    this.manifestByDocId.clear();
-    this.head = null;
-    this.tail = null;
+    this.manifestStore.clear();
     this.totalBytes = 0;
     this.activeFileId = null;
     this.notify();
@@ -846,9 +519,7 @@ export class LRUDocumentCache {
     const newlyDirty = !this.dirtyFileIds.has(fileId);
     this.dirtyFileIds.add(fileId);
     if (!model) {
-      if (newlyDirty) {
-        this.notify(fileId, undefined);
-      }
+      if (newlyDirty) this.notify(fileId, undefined);
       return;
     }
     if (!model.isDirty || newlyDirty) {
@@ -857,10 +528,6 @@ export class LRUDocumentCache {
     }
   }
 
-  /**
-   * O(1) per-file subscription for UI elements (e.g., individual EditorTab dirty dots)
-   * so keystrokes in one file never wake N sibling tabs.
-   */
   public subscribeFile = (fileId: string, listener: CacheSubscriber): (() => void) => {
     let listenersForFile = this.fileListeners.get(fileId);
     if (!listenersForFile) {
@@ -872,17 +539,10 @@ export class LRUDocumentCache {
       const set = this.fileListeners.get(fileId);
       if (!set) return;
       set.delete(listener);
-      if (set.size === 0) {
-        this.fileListeners.delete(fileId);
-      }
+      if (set.size === 0) this.fileListeners.delete(fileId);
     };
   };
 
-  /**
-   * Subscribes to document cache changes.
-   * Supports zero-argument subscriber callbacks (compatible with React `useSyncExternalStore`)
-   * as well as legacy `(fileId, model)` listeners.
-   */
   public subscribe = (listener: CacheSubscriber | ModelChangeListener): (() => void) => {
     this.listeners.add(listener);
     return () => {
@@ -899,54 +559,13 @@ export class LRUDocumentCache {
     return this.onEvict(listener);
   }
 
-  private touch(fileId: string): void {
-    const node = this.lruNodes.get(fileId);
-    if (!node || node === this.head) return;
-
-    this.detach(node);
-    this.attachToHead(node);
-  }
-
-  private attachToHead(node: LRUNode): void {
-    node.prev = null;
-    node.next = this.head;
-    if (this.head) {
-      this.head.prev = node;
-    }
-    this.head = node;
-    if (!this.tail) {
-      this.tail = node;
-    }
-  }
-
-  private detach(node: LRUNode): void {
-    if (node.prev) {
-      node.prev.next = node.next;
-    } else {
-      this.head = node.next;
-    }
-
-    if (node.next) {
-      node.next.prev = node.prev;
-    } else {
-      this.tail = node.prev;
-    }
-
-    node.prev = null;
-    node.next = null;
-  }
-
   private enforceCapacity(): void {
     while (
-      (this.models.size > this.capacity || (this.totalBytes > this.maxBytes && this.models.size > 1)) &&
-      this.tail
+      (this.models.size > this.capacity ||
+        (this.totalBytes > this.maxBytes && this.models.size > 1)) &&
+      this.lruList.getTail()
     ) {
-      let candidate: LRUNode | null = this.tail;
-
-      if (candidate.fileId === this.activeFileId) {
-        candidate = candidate.prev;
-      }
-
+      const candidate = this.lruList.getEvictionCandidate(this.activeFileId);
       if (!candidate) break;
       this.evictLRUNode(candidate);
     }
@@ -956,54 +575,13 @@ export class LRUDocumentCache {
     const { fileId } = node;
     const model = this.models.get(fileId);
 
-    if (options?.skipPersistence) {
-      this.dirtyFileIds.delete(fileId);
-    }
+    if (options?.skipPersistence) this.dirtyFileIds.delete(fileId);
 
     if (!options?.skipPersistence && model && this.persistenceSink) {
-      if (model.isDirty) {
-        this.dirtyFileIds.add(fileId);
-        const savePromise =
-          model.serverRev !== undefined
-            ? this.persistenceSink.saveDraft(
-                fileId,
-                model.content,
-                model.projectId || 'workspace-local',
-                model.filePath,
-                model.serverRev,
-              )
-            : this.persistenceSink.saveDraft(
-                fileId,
-                model.content,
-                model.projectId || 'workspace-local',
-                model.filePath,
-              );
-        savePromise.catch(() => {});
-      } else {
-        this.dirtyFileIds.delete(fileId);
-        if (
-          model.isAuthoritative !== false &&
-          (model.content.length > 0 || model.serverRev !== undefined || model.hash !== undefined) &&
-          this.persistenceSink.saveProjectFileSnapshot
-        ) {
-          this.persistenceSink
-            .saveProjectFileSnapshot({
-              id: fileId,
-              projectId: model.projectId || 'workspace-local',
-              title: model.filePath,
-              content: model.content,
-              filePath: model.filePath,
-              rev: model.serverRev,
-              hash: model.hash,
-              updatedAt: Date.now(),
-            })
-            .catch(() => {});
-        }
-      }
+      persistEvictedModelToSink(this.persistenceSink, fileId, model, this.dirtyFileIds);
     }
 
-    this.detach(node);
-    this.lruNodes.delete(fileId);
+    this.lruList.remove(fileId);
     this.models.delete(fileId);
 
     if (model) {

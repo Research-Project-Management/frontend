@@ -43,8 +43,8 @@ export class FlushBarrier {
     activeContent?: string,
     timeoutMs: number = DEFAULT_BARRIER_TIMEOUT_MS,
   ): Promise<FlushBarrierResult> {
-    // 1. Synchronously commit pending in-memory drafts to local persistent storage
-    sessionCoordinator.flushPendingDrafts();
+    // 1. Synchronously commit pending unsynced edit timers so local state is crash-resilient
+    sessionCoordinator.flushPendingUnsyncedEdits();
 
     // 2. Synchronize all mounted editor engines (primary + secondary split panes)
     let activeFlushed = false;
@@ -103,5 +103,3 @@ export class FlushBarrier {
     return { dirtyFileCount, activeFlushed, timedOut };
   }
 }
-
-export { FlushBarrier as CompilationFlushBarrier };

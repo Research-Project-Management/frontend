@@ -31,7 +31,7 @@ import {
   TooltipTrigger,
 } from '@/shared/components/ui/tooltip';
 import { cn } from '@/shared/lib/utils';
-import { useEditorStorageMutations } from '@/features/editor/ui/hooks/useStorage';
+import { useEditorStorageMutations } from '@/features/editor/subsystems/explorer/ui/hooks/useStorage';
 import type { EditorStorageItem as StorageItem } from '@/features/editor/domain/types/storage-item.types';
 import {
   RASTER_AND_VECTOR_IMAGE_EXTENSIONS,

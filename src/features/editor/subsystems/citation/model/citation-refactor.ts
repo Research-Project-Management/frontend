@@ -3,7 +3,7 @@
  *
  * Domain Engine for Project-Wide Citation Key Refactoring & Renaming.
  * Validates BibTeX/BibLaTeX/Natbib citation keys, delegates project-wide refactoring
- * to the backend Citations endpoint (`manuscriptService.citations.refactorKey`),
+ * to the backend Citations endpoint (`pagesService.citations.refactorKey`),
  * and synchronizes affected local Yjs/LRU buffers.
  */
 
@@ -162,7 +162,7 @@ export async function executeProjectCitekeyRefactor(
 
   const { usePageStore, editorCommandBus, getActiveEditorEngine, documentFacade, sessionCoordinator } =
     await import('@/features/editor/core');
-  const { manuscriptService } = await import('@/features/editor/sdk/pages.service');
+  const { pagesService } = await import('@/features/editor/sdk/pages.service');
   const { lruDocumentCache } = await import('@/features/editor/domain/document/lru-document-cache');
   const { latexSymbolsIndex } = await import('@/features/editor/domain/latex/latex-symbols-index');
   const { latexDependencyGraph } = await import('@/features/editor/domain/latex/dependency-graph');
@@ -196,7 +196,7 @@ export async function executeProjectCitekeyRefactor(
 
   if (!effectiveCtx?.service) {
     try {
-      const serverResult = await manuscriptService.citations.refactorKey(effectiveProjectId, { oldKey, newKey });
+      const serverResult = await pagesService.citations.refactorKey(effectiveProjectId, { oldKey, newKey });
       if (serverResult && Array.isArray(serverResult.affectedFiles)) {
         handledByBackend = true;
         totalCount = serverResult.totalReplacements ?? 0;

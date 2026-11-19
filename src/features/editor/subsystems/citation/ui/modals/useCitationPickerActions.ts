@@ -13,7 +13,7 @@
 
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
-import { manuscriptService } from '@/features/editor/sdk/pages.service';
+import { pagesService } from '@/features/editor/sdk/pages.service';
 import { formatBibEntryToBibtex } from '@/features/editor/subsystems/citation/model/citation-formatter';
 import type { BibEntry } from '@/features/editor/domain/latex/bib-parser';
 
@@ -53,7 +53,7 @@ export function useCitationPickerActions() {
 
       setIsResolving(true);
       try {
-        const res = await manuscriptService.citations.resolve(projectId, trimmed);
+        const res = await pagesService.citations.resolve(projectId, trimmed);
         if (res?.entry?.key) {
           toast.success(`Resolved BibTeX for ${res.entry.key}`);
           const newEntry: BibEntry = {
@@ -89,7 +89,7 @@ export function useCitationPickerActions() {
     async (projectId: string, collectionId?: string | null, targetFilename?: string) => {
       if (!projectId) return null;
       try {
-        const res = await manuscriptService.citations.syncLibrary(projectId, {
+        const res = await pagesService.citations.syncLibrary(projectId, {
           collectionId: collectionId ?? '',
           targetFilename,
         });

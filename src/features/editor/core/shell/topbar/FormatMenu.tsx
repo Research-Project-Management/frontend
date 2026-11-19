@@ -19,7 +19,7 @@
  * - Subsubsection
  * - Paragraph
  * - Subparagraph
- * Location: `features/editor/ui/shell/topbar/FormatMenu.tsx`
+ * Location: `features/editor/core/shell/topbar/FormatMenu.tsx`
  */
 
 import React, { useMemo, useCallback } from 'react';
@@ -33,7 +33,7 @@ import {
   MenubarSeparator,
   MenubarShortcut,
 } from '@/shared/components/ui/menubar';
-import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
+import { useEditorInstance } from '@/features/editor/core/bus/use-editor-instance';
 import { useSettingsStore } from '../../store/settings.store';
 import { editorCommandBus } from '../../bus/command-bus';
 import { isMacPlatform } from '@/features/editor/domain/constants/editor.constants';

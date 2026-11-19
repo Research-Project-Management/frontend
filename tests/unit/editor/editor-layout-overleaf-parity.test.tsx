@@ -4,7 +4,7 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
 import { Menubar } from '@/shared/components/ui';
 import { PdfToolbar } from '@/features/editor/subsystems/compiler';
-import { EditorArea } from '@/features/editor/ui/editor/EditorArea';
+import { EditorArea } from '@/features/editor/core/surface/EditorArea';
 import { Topbar } from '@/features/editor/core/shell/Topbar';
 import { ActivityBar } from '@/features/editor/core/shell/ActivityBar';
 import { WorkbenchShell } from '@/features/editor/core/shell/WorkbenchShell';
@@ -37,7 +37,7 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/editor/proj-123',
 }));
 
-vi.mock('@/features/editor/ui/hooks/useActiveDocument', () => ({
+vi.mock('@/features/editor/core/queries/useActiveDocument', () => ({
   useActiveDocument: () => ({
     isLoading: false,
     activePage: {
@@ -63,7 +63,7 @@ vi.mock('@/features/editor/ui/hooks/useActiveDocument', () => ({
   }),
 }));
 
-vi.mock('@/features/editor/ui/hooks/usePageActions', () => ({
+vi.mock('@/features/editor/core/queries/usePageActions', () => ({
   usePageActions: () => ({
     createFile: { mutate: vi.fn(), isPending: false },
     setMainFile: { mutate: vi.fn(), isPending: false },
@@ -73,13 +73,13 @@ vi.mock('@/features/editor/ui/hooks/usePageActions', () => ({
   }),
 }));
 
-vi.mock('@/features/editor/ui/hooks/document.queries', () => ({
+vi.mock('@/features/editor/core/queries/document.queries', () => ({
   filesQuery: () => ({ queryKey: ['files'], queryFn: vi.fn() }),
   pageQuery: () => ({ queryKey: ['page'], queryFn: vi.fn() }),
 }));
 
 // Mock CodeMirrorView to identify it easily
-vi.mock('@/features/editor/ui/editor/CodeMirrorView', () => ({
+vi.mock('@/features/editor/core/surface/CodeMirrorView', () => ({
   CodeMirrorView: (props: any) => (
     <div data-testid="mock-codemirror-view" data-file-id={props.fileId}>
       <span>CodeMirror Engine Mock</span>
@@ -456,7 +456,7 @@ describe('Overleaf 1:1 Layout & Feature Placement Parity', () => {
         settingsActiveTab: 'editor',
       });
 
-      const { ProjectSettingsModal } = await import('@/features/editor/ui/modals/project-settings/ProjectSettingsModal');
+      const { ProjectSettingsModal } = await import('@/features/editor/subsystems/project-settings/ui/ProjectSettingsModal');
       renderWithProviders(<ProjectSettingsModal />);
 
       // 1. Header
@@ -501,7 +501,7 @@ describe('Overleaf 1:1 Layout & Feature Placement Parity', () => {
       const dispatchSpy = vi.spyOn(editorCommandBus, 'dispatch');
       useSettingsStore.setState({ settingsPanelOpen: true });
 
-      const { ProjectSettingsModal } = await import('@/features/editor/ui/modals/project-settings/ProjectSettingsModal');
+      const { ProjectSettingsModal } = await import('@/features/editor/subsystems/project-settings/ui/ProjectSettingsModal');
       renderWithProviders(<ProjectSettingsModal />);
 
       const wordCountBtn = screen.getByRole('button', { name: /run word count/i });
@@ -516,7 +516,7 @@ describe('Overleaf 1:1 Layout & Feature Placement Parity', () => {
 
     it('shows Git Clone URL with Smart-HTTP badge and allows copying command', async () => {
       useSettingsStore.setState({ settingsPanelOpen: true });
-      const { ProjectSettingsModal } = await import('@/features/editor/ui/modals/project-settings/ProjectSettingsModal');
+      const { ProjectSettingsModal } = await import('@/features/editor/subsystems/project-settings/ui/ProjectSettingsModal');
       renderWithProviders(<ProjectSettingsModal />);
 
       expect(screen.getByText(/smart-http/i)).toBeInTheDocument();
@@ -535,7 +535,7 @@ describe('Overleaf 1:1 Layout & Feature Placement Parity', () => {
       useSettingsStore.setState({ settingsPanelOpen: true });
       usePageStore.setState({ projectId: 'proj-test-clean' });
 
-      const { ProjectSettingsModal } = await import('@/features/editor/ui/modals/project-settings/ProjectSettingsModal');
+      const { ProjectSettingsModal } = await import('@/features/editor/subsystems/project-settings/ui/ProjectSettingsModal');
       renderWithProviders(<ProjectSettingsModal />);
 
       const clearCacheBtn = screen.getByRole('button', { name: /clear cache/i });

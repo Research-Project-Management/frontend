@@ -363,6 +363,4 @@ export class DocumentFacade {
   }
 }
 
-export { DocumentFacade as DocumentAuthorityRegistry };
 export const documentFacade = new DocumentFacade();
-export { documentFacade as documentAuthority };

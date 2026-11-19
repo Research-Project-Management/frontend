@@ -6,8 +6,8 @@ import { useQuery } from '@tanstack/react-query';
 import { usePageStore } from '@/features/editor/core';
 import { useDocumentCollaborationStore } from '@/features/editor/core';
 import { useSettingsStore } from '@/features/editor/core';
-import { useActiveDocument } from '@/features/editor/ui/hooks/useActiveDocument';
-import { filesQuery } from '@/features/editor/ui/hooks/document.queries';
+import { useActiveDocument } from '@/features/editor/core/queries/useActiveDocument';
+import { filesQuery } from '@/features/editor/core/queries/document.queries';
 import { useAuth } from '@/features/auth/hooks/use-auth';
 import { usePageComments } from './useComment';
 import {
@@ -24,7 +24,7 @@ import type { MentionMember } from '@/features/editor/domain/collaboration/menti
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
 import { useReviewRealtimeNotifications } from './useReviewRealtimeNotifications';
 import { jumpToEditorLine } from '@/features/editor/subsystems/navigation';
-import { manuscriptService, type ReviewStatus, type ReviewRoundInfo } from '@/features/editor/sdk/pages.service';
+import { pagesService, type ReviewStatus, type ReviewRoundInfo } from '@/features/editor/sdk/pages.service';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
@@ -95,7 +95,7 @@ export function useReviewState() {
     queryKey: ['manuscript-review-status', projectId, pageId],
     queryFn: async () => {
       if (!pageId) return null;
-      return await manuscriptService.review.getReviewStatus(projectId, pageId);
+      return await pagesService.review.getReviewStatus(projectId, pageId);
     },
     enabled: Boolean(pageId),
     staleTime: 30_000,
@@ -113,7 +113,7 @@ export function useReviewState() {
   const updateReviewStatusMutation = useMutation({
     mutationFn: async (payload: { status: ReviewStatus; notes?: string; deadline?: string }) => {
       if (!pageId) throw new Error('No active document');
-      return await manuscriptService.review.updateReviewStatus(projectId, pageId, payload);
+      return await pagesService.review.updateReviewStatus(projectId, pageId, payload);
     },
     onSuccess: (res) => {
       if (pageId) {

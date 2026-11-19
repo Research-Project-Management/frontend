@@ -20,7 +20,7 @@ import {
 } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/lib/utils';
-import { manuscriptService } from '@/features/editor/core';
+import { pagesService } from '@/features/editor/core';
 import { pageKeys } from '../../hooks/use-page';
 
 interface ImportDocumentModalProps {
@@ -114,7 +114,7 @@ export function ImportDocumentModal({
     const toastId = toast.loading(`Converting and importing ${selectedFile.name}...`);
 
     try {
-      const result = await manuscriptService.export.convertDocument(
+      const result = await pagesService.export.convertDocument(
         projectId,
         selectedFile,
         format,

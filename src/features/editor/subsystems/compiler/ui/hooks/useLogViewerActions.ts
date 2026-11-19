@@ -9,7 +9,7 @@
  * - Quick fix execution (replacement, end tag insertion, preamble insertion)
  * - AI fix application
  * - Auxiliary / output file downloading
- * Location: `features/editor/ui/features/preview/hooks/use-log-viewer-actions.ts`
+ * Location: `features/editor/subsystems/compiler/ui/hooks/useLogViewerActions.ts`
  */
 
 import { useCallback } from 'react';
@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 import type { LogEntry, ErrorExplanationDto } from '@/features/editor/domain/types/compiler.types';
 import type { IEditorEngine } from '@/features/editor/domain/types/ports/editor-engine.port';
 import type { AiErrorFixResult } from '@/features/editor/domain/ai/ai-error-assist';
-import { manuscriptService, downloadAuxFileUrl, downloadAllArtifactsZipUrl } from '@/features/editor/sdk/pages.service';
+import { pagesService, downloadAuxFileUrl, downloadAllArtifactsZipUrl } from '@/features/editor/sdk/pages.service';
 import { aiCoordinator } from '@/features/editor/subsystems/ai';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 import { usePageStore, useSettingsStore, workspaceCoordinator, editorCommandBus } from '@/features/editor/core';
@@ -32,9 +32,9 @@ export function copySnippetToClipboard(snippet?: string): void {
 export async function fetchLogEntryExplanation(entry: LogEntry): Promise<ErrorExplanationDto | null> {
   try {
     if (entry.code) {
-      return await manuscriptService.diagnostics.getExplanation(entry.code);
+      return await pagesService.diagnostics.getExplanation(entry.code);
     }
-    const rules = await manuscriptService.diagnostics.getRules();
+    const rules = await pagesService.diagnostics.getRules();
     const found = rules.find((r) => {
       if (r.title && entry.message.toLowerCase().includes(r.title.toLowerCase())) return true;
       return false;

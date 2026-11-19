@@ -5,7 +5,7 @@
  *
  * Canonical Overleaf-parity Editing Mode Switcher in Top-Right Corner.
  * Citation: Overleaf Learn - Track Changes & Reviewing mode in Overleaf.
- * Location: `features/editor/ui/shell/topbar/EditingModeDropdown.tsx`
+ * Location: `features/editor/core/shell/topbar/EditingModeDropdown.tsx`
  */
 
 import React from 'react';

@@ -2,13 +2,13 @@
  * document-download.ts
  *
  * Client SDK triggers for authoritative backend single-document exports and browser file downloads:
- * - Word (.docx) export via backend `manuscriptService.export.exportDocument(..., 'docx')`
- * - Markdown (.md) export via backend `manuscriptService.export.exportDocument(..., 'md')`
- * - Standalone styled HTML (.html) export via backend `manuscriptService.export.exportDocument(..., 'html')`
+ * - Word (.docx) export via backend `pagesService.export.exportDocument(..., 'docx')`
+ * - Markdown (.md) export via backend `pagesService.export.exportDocument(..., 'md')`
+ * - Standalone styled HTML (.html) export via backend `pagesService.export.exportDocument(..., 'html')`
  * - Generic file download triggers
  */
 
-import { manuscriptService } from '@/features/editor/sdk/pages.service';
+import { exportDocs } from '../pages/export.client';
 
 export interface ExportSingleDocOptions {
   pageId: string;
@@ -41,7 +41,7 @@ export async function exportDocumentAsWord({
   projectTitle,
   includeChildren = true,
 }: ExportSingleDocOptions): Promise<string> {
-  const res = await manuscriptService.export.exportDocument(pageId, 'docx', includeChildren);
+  const res = await exportDocs.exportDocument(pageId, 'docx', includeChildren);
 
   const binaryStr = window.atob(res.content);
   const len = binaryStr.length;
@@ -79,7 +79,7 @@ export async function exportDocumentAsMarkdown({
     .replace(/[^a-z0-9_-]/g, '_');
 
   try {
-    const res = await manuscriptService.export.exportDocument(pageId, 'md', includeChildren);
+    const res = await exportDocs.exportDocument(pageId, 'md', includeChildren);
     const blob = new Blob([res.content], {
       type: 'text/markdown;charset=utf-8',
     });
@@ -166,7 +166,7 @@ export function exportDocumentAsHtml(
 
   return (async () => {
     try {
-      const res = await manuscriptService.export.exportDocument(
+      const res = await exportDocs.exportDocument(
         pageId,
         'html',
         includeChildren,

@@ -4,16 +4,19 @@ import {
   lruDocumentCache,
   measureUtf8Bytes,
 } from '@/features/editor/domain/document/lru-document-cache';
-import { draftStorageService } from '@/features/editor/domain/document/draft-storage';
+import {
+  pendingOutboxStore,
+  clearAllOfflineMemory,
+} from '@/features/editor/domain/offline-storage';
 import {
   SessionCoordinator,
+  sessionCoordinator,
   useCompileStore,
   useConnectivityStore,
   usePageStore,
   useWorkspaceStore,
 } from '@/features/editor/core';
-import { DraftRecoveryCoordinator } from '@/features/editor/core/coordinator/draft-recovery.coordinator';
-import { hydrateEditorBootstrap } from '@/features/editor/ui/hooks/document.queries';
+import { hydrateEditorBootstrap } from '@/features/editor/core/queries/document.queries';
 import { PageFileMapper } from '@/features/editor/sdk/pages/doc-mapper';
 import type { EditorBootstrapResponseDto } from '@/features/editor/sdk/pages/types';
 
@@ -23,7 +26,8 @@ describe('Khối 2 / Tầng 1 — OCC, UTF-8 LRU Cache & Offline Coalescing', ()
     lruDocumentCache.clear();
     useCompileStore.getState().clearAllDirty();
     useConnectivityStore.getState().reset?.();
-    await draftStorageService.clearAll?.().catch(() => {});
+    clearAllOfflineMemory();
+    await pendingOutboxStore.clearAll().catch(() => {});
   });
 
   afterEach(() => {
@@ -239,8 +243,7 @@ describe('Khối 2 / Tầng 1 — OCC, UTF-8 LRU Cache & Offline Coalescing', ()
     );
   });
 
-  it('preserves baseline expectedRev when coalescing multiple offline drafts', async () => {
-    const recovery = new DraftRecoveryCoordinator((p) => p || 'space-off');
+  it('preserves baseline expectedRev when coalescing multiple offline edits in outbox', async () => {
     const docId = `doc-offline-${Date.now()}`;
 
     lruDocumentCache.registerModel(docId, {
@@ -252,9 +255,12 @@ describe('Khối 2 / Tầng 1 — OCC, UTF-8 LRU Cache & Offline Coalescing', ()
       serverRev: 5,
     });
 
-    recovery.persistOfflineDraft('space-off', docId, 'offline v1', 'chapters/ch1.tex');
+    useConnectivityStore.getState().recordOffline();
+    lruDocumentCache.updateContent(docId, 'offline v1', true);
+    await sessionCoordinator.flushFile(docId);
+
     // Simulate a subsequent queued mutation whose payload omitted expectedRev (e.g. partial caller)
-    await draftStorageService.enqueueMutation({
+    await pendingOutboxStore.enqueue({
       fileId: docId,
       projectId: 'space-off',
       type: 'update_content',
@@ -262,7 +268,7 @@ describe('Khối 2 / Tầng 1 — OCC, UTF-8 LRU Cache & Offline Coalescing', ()
     });
 
     await vi.runAllTimersAsync();
-    const pending = await draftStorageService.getPendingMutations();
+    const pending = await pendingOutboxStore.getPending();
     const match = pending.find((m) => m.fileId === docId);
 
     expect(match).toBeDefined();

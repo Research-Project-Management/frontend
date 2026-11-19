@@ -1,7 +1,12 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
-import { validateFile, uploadFileXhr, uploadFileWithDetails } from '@/shared/lib/file-client';
+import {
+  validateFile,
+  uploadFileXhr,
+  uploadFileWithDetails,
+  USER_ABORT_ERROR_MESSAGE,
+} from '@/shared/lib/file-client';
 
 export type UploadStatus = 'pending' | 'uploading' | 'success' | 'error' | 'aborted';
 
@@ -112,7 +117,8 @@ export function useUpload() {
         return { id, url: uploadUrl, fileId };
       } catch (err) {
         const uploadError = err instanceof Error ? err : new Error('Unknown upload error');
-        const isAborted = uploadError.message === 'Upload aborted by user';
+        const isAborted =
+          controller.signal.aborted || uploadError.message === USER_ABORT_ERROR_MESSAGE;
 
         updateUploadState(id, {
           status: isAborted ? 'aborted' : 'error',

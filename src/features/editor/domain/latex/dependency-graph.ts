@@ -554,6 +554,4 @@ export class LatexDependencyGraph {
   }
 }
 
-export { LatexDependencyGraph as LatexDagEngine };
 export const latexDependencyGraph = new LatexDependencyGraph();
-export { latexDependencyGraph as latexDagEngine };

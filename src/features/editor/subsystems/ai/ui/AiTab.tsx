@@ -4,7 +4,7 @@
  * AiTab.tsx
  *
  * Primary Sidebar AI Research Assistant Viewlet (Block 6: UI Features Layer).
- * Location: `features/editor/ui/features/sidebar/ai/AiTab.tsx`
+ * Location: `features/editor/subsystems/ai/ui/AiTab.tsx`
  *
  * Integrates directly into the Left Primary Sidebar:
  * - Direct AI Assistant chat with streaming responses and KaTeX LaTeX rendering
@@ -23,7 +23,7 @@ import {
 import { AIIcon } from '@/shared/components/icons';
 import { useAiChatActions } from './useAiChatActions';
 import { usePageStore, editorCommandBus } from '@/features/editor/core';
-import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
+import { useEditorInstance } from '@/features/editor/core/bus/use-editor-instance';
 import {
   streamEditorChat,
   getPageChat,

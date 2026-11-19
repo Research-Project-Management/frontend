@@ -39,7 +39,7 @@ import {
 import { cn } from '@/shared/lib/utils';
 import { IndentGuides, RenameInput, RowActions } from './FileTreePrimitives';
 import type { FileTreeFolderNode } from '@/features/editor/subsystems/explorer/model/document-tree';
-import { useFolderDiagnosticsSummary } from '@/features/editor/ui/hooks/useDiagnosticsSummary';
+import { useFolderDiagnosticsSummary } from '@/features/editor/subsystems/diagnostics/ui/hooks/useDiagnosticsSummary';
 
 export interface FileTreeFolderRowProps {
   node: FileTreeFolderNode;

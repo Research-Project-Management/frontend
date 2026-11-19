@@ -4,7 +4,7 @@
  * PdfToolbar.tsx
  *
  * Scoped Viewer Toolbar for PDF Preview (Block 6: UI Features Layer).
- * Location: `features/editor/ui/features/preview/PdfToolbar.tsx`
+ * Location: `features/editor/subsystems/compiler/ui/PdfToolbar.tsx`
  *
  * Unified PDF viewer header toolbar (Overleaf parity):
  * - Left: Compile Button (with options dropdown), Logs and output files, Download PDF

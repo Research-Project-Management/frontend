@@ -3,13 +3,13 @@
 import { useState, useRef, useCallback, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { invalidateFileTreeQueries } from '@/features/editor/ui/hooks/document.queries';
+import { invalidateFileTreeQueries } from '@/features/editor/core/queries/document.queries';
 import { editorCommandBus } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
 import type { EditorStorageItem as StorageItem } from '@/features/editor/domain/types/storage-item.types';
 import { TEX_EXTS, type PendingUploadItem as PendingItem } from '@/features/editor/subsystems/explorer/ui/modals/UploadConflictDialog';
-import { manuscriptService } from '@/features/editor/sdk/pages.service';
+import { pagesService } from '@/features/editor/sdk/pages.service';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
 import { normalizeVirtualPath, parseVirtualFolderId } from '@/features/editor/domain/document/document-naming';
 import { readEntriesRecursively } from '../modals/directory-reader';
@@ -351,7 +351,7 @@ export function useFileUpload({
         for (const zipItem of zipUnpackItems) {
           try {
             toast.loading(`Unpacking ${zipItem.file.name}...`, { id: `zip-${zipItem.name}` });
-            const importRes = await manuscriptService.export.importProjectZip(
+            const importRes = await pagesService.export.importProjectZip(
               targetZipId,
               zipItem.file,
             );

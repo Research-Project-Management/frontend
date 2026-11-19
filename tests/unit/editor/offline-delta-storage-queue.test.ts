@@ -1,21 +1,24 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
-  draftStorageService,
-  type OfflineMutation,
-  type ProjectFileSnapshot,
-} from '@/features/editor/domain/document/draft-storage';
+  unsyncedEditsStore,
+  syncedDocCacheStore,
+  pendingOutboxStore,
+  defaultDocumentSpillSink,
+  clearAllOfflineMemory,
+  type SyncedDocCacheEntry,
+} from '@/features/editor/domain/offline-storage';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { sessionCoordinator } from '@/features/editor/core';
-import { manuscriptService } from '@/features/editor/sdk/pages.service';
+import { pagesService } from '@/features/editor/sdk/pages.service';
 import { useConnectivityStore } from '@/features/editor/core';
 import { useCompileStore } from '@/features/editor/core';
 
-describe('Direction 3: Offline-First Persistence (Project Snapshot Cache & Mutation Queue)', () => {
+describe('Direction 3: Offline-First Persistence (Synced Doc Cache & Pending Outbox)', () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    draftStorageService.clearMemory();
+    clearAllOfflineMemory();
     lruDocumentCache.clear();
-    lruDocumentCache.setPersistenceSink(draftStorageService);
+    lruDocumentCache.setPersistenceSink(defaultDocumentSpillSink);
     useConnectivityStore.setState({
       isOnline: true,
       syncStatus: 'synced',
@@ -32,12 +35,12 @@ describe('Direction 3: Offline-First Persistence (Project Snapshot Cache & Mutat
   afterEach(() => {
     vi.useRealTimers();
     vi.clearAllMocks();
-    draftStorageService.clearMemory();
+    clearAllOfflineMemory();
   });
 
-  describe('1. Project Files Offline Snapshot Cache', () => {
-    it('persists and retrieves single project file snapshots', async () => {
-      const fileSnapshot: ProjectFileSnapshot = {
+  describe('1. Synced Doc Cache (Server-Authoritative Offline Cache)', () => {
+    it('persists and retrieves single synced doc cache entries', async () => {
+      const entry: SyncedDocCacheEntry = {
         id: 'file-chap1',
         projectId: 'proj-thesis',
         title: 'Chapter 1',
@@ -46,9 +49,9 @@ describe('Direction 3: Offline-First Persistence (Project Snapshot Cache & Mutat
         updatedAt: Date.now(),
       };
 
-      await draftStorageService.saveProjectFileSnapshot(fileSnapshot);
+      await syncedDocCacheStore.put(entry);
 
-      const retrieved = await draftStorageService.getProjectFileSnapshot('file-chap1');
+      const retrieved = await syncedDocCacheStore.get('file-chap1');
       expect(retrieved).not.toBeNull();
       expect(retrieved?.id).toBe('file-chap1');
       expect(retrieved?.projectId).toBe('proj-thesis');
@@ -56,8 +59,8 @@ describe('Direction 3: Offline-First Persistence (Project Snapshot Cache & Mutat
       expect(retrieved?.filePath).toBe('chapters/chap1.tex');
     });
 
-    it('batch saves and queries all file snapshots belonging to a project', async () => {
-      const files: ProjectFileSnapshot[] = [
+    it('batch saves and queries all cached entries belonging to a project', async () => {
+      const files: SyncedDocCacheEntry[] = [
         {
           id: 'file-main',
           projectId: 'proj-ml',
@@ -81,20 +84,20 @@ describe('Direction 3: Offline-First Persistence (Project Snapshot Cache & Mutat
         },
       ];
 
-      await draftStorageService.saveProjectFilesSnapshot(files);
+      await syncedDocCacheStore.putMany(files);
 
-      const mlFiles = await draftStorageService.getProjectFilesSnapshot('proj-ml');
+      const mlFiles = await syncedDocCacheStore.getByScope('proj-ml');
       expect(mlFiles.length).toBe(2);
       expect(mlFiles.map((f) => f.id).sort()).toEqual(['file-main', 'file-ref']);
 
-      const otherFiles = await draftStorageService.getProjectFilesSnapshot('proj-other-proj');
+      const otherFiles = await syncedDocCacheStore.getByScope('proj-other-proj');
       expect(otherFiles.length).toBe(1);
       expect(otherFiles[0].id).toBe('file-other');
     });
 
-    it('hydrates model from project file snapshot when no draft exists and RAM is cold', async () => {
-      // Warm snapshot in persistence
-      await draftStorageService.saveProjectFileSnapshot({
+    it('hydrates model from synced doc cache when no unsynced edit exists and RAM is cold', async () => {
+      // Warm clean server cache in persistence
+      await syncedDocCacheStore.put({
         id: 'file-offline-hydrate',
         projectId: 'p-hyd',
         title: 'offline-preview.tex',
@@ -117,23 +120,23 @@ describe('Direction 3: Offline-First Persistence (Project Snapshot Cache & Mutat
     });
   });
 
-  describe('2. Offline Mutation Queue & Write Coalescing', () => {
+  describe('2. Pending Outbox Queue & Write Coalescing', () => {
     it('enqueues mutations and preserves FIFO ordering', async () => {
-      await draftStorageService.enqueueMutation({
+      await pendingOutboxStore.enqueue({
         fileId: 'file-1',
         projectId: 'p1',
         type: 'update_content',
         payload: { content: 'Rev 1' },
       });
 
-      await draftStorageService.enqueueMutation({
+      await pendingOutboxStore.enqueue({
         fileId: 'file-2',
         projectId: 'p1',
         type: 'update_content',
         payload: { content: 'File 2 Content' },
       });
 
-      const queue = await draftStorageService.getPendingMutations();
+      const queue = await pendingOutboxStore.getPending();
       expect(queue.length).toBe(2);
       expect(queue[0].fileId).toBe('file-1');
       expect(queue[0].payload.content).toBe('Rev 1');
@@ -143,7 +146,7 @@ describe('Direction 3: Offline-First Persistence (Project Snapshot Cache & Mutat
 
     it('coalesces multiple consecutive update_content mutations on the same file into a single entry', async () => {
       // User types revision 1 offline
-      await draftStorageService.enqueueMutation({
+      await pendingOutboxStore.enqueue({
         fileId: 'file-fast-typing',
         projectId: 'p1',
         type: 'update_content',
@@ -151,7 +154,7 @@ describe('Direction 3: Offline-First Persistence (Project Snapshot Cache & Mutat
       });
 
       // User continues typing revision 2 offline
-      await draftStorageService.enqueueMutation({
+      await pendingOutboxStore.enqueue({
         fileId: 'file-fast-typing',
         projectId: 'p1',
         type: 'update_content',
@@ -159,14 +162,14 @@ describe('Direction 3: Offline-First Persistence (Project Snapshot Cache & Mutat
       });
 
       // User finishes sentence revision 3 offline
-      await draftStorageService.enqueueMutation({
+      await pendingOutboxStore.enqueue({
         fileId: 'file-fast-typing',
         projectId: 'p1',
         type: 'update_content',
         payload: { content: 'Typed word 1 and word 2 finished.' },
       });
 
-      const queue = await draftStorageService.getPendingMutations();
+      const queue = await pendingOutboxStore.getPending();
       // Should have coalesced into exactly 1 mutation with latest payload!
       expect(queue.length).toBe(1);
       expect(queue[0].fileId).toBe('file-fast-typing');
@@ -175,7 +178,7 @@ describe('Direction 3: Offline-First Persistence (Project Snapshot Cache & Mutat
     });
 
     it('updates mutation status and allows removing processed mutations', async () => {
-      const mut = await draftStorageService.enqueueMutation({
+      const mut = await pendingOutboxStore.enqueue({
         fileId: 'file-status-check',
         type: 'update_content',
         payload: { content: 'Checking status flow' },
@@ -183,26 +186,26 @@ describe('Direction 3: Offline-First Persistence (Project Snapshot Cache & Mutat
 
       expect(mut.id).toBeDefined();
 
-      await draftStorageService.updateMutationStatus(mut.id!, 'processing');
-      let queue = await draftStorageService.getPendingMutations();
+      await pendingOutboxStore.updateStatus(mut.id!, 'processing');
+      let queue = await pendingOutboxStore.getPending();
       // 'processing' is not returned in pending queue
       expect(queue.length).toBe(0);
 
-      await draftStorageService.updateMutationStatus(mut.id!, 'failed', 'Timeout error');
-      queue = await draftStorageService.getPendingMutations();
+      await pendingOutboxStore.updateStatus(mut.id!, 'failed', 'Timeout error');
+      queue = await pendingOutboxStore.getPending();
       expect(queue.length).toBe(1);
       expect(queue[0].status).toBe('failed');
       expect(queue[0].retryCount).toBe(1);
       expect(queue[0].error).toBe('Timeout error');
 
-      await draftStorageService.removeMutation(mut.id!);
-      queue = await draftStorageService.getPendingMutations();
+      await pendingOutboxStore.remove(mut.id!);
+      queue = await pendingOutboxStore.getPending();
       expect(queue.length).toBe(0);
     });
   });
 
   describe('3. Session Coordinator Offline Integration & Replay Engine', () => {
-    it('enqueues mutations and writes snapshots automatically when flushFile is attempted while offline', async () => {
+    it('enqueues outbox mutations and saves unsynced edits without polluting syncedDocCacheStore when offline', async () => {
       useConnectivityStore.getState().recordOffline();
 
       lruDocumentCache.registerModel('doc-off-save', {
@@ -215,42 +218,45 @@ describe('Direction 3: Offline-First Persistence (Project Snapshot Cache & Mutat
       const success = await sessionCoordinator.flushFile('doc-off-save');
       expect(success).toBe(false);
 
-      // Verify mutation queue has received the item
-      const pending = await draftStorageService.getPendingMutations();
+      // Verify outbox queue has received the mutation
+      const pending = await pendingOutboxStore.getPending();
       expect(pending.length).toBe(1);
       expect(pending[0].fileId).toBe('doc-off-save');
       expect(pending[0].payload.content).toBe('\\section{Offline Edits Here}');
 
-      // Verify snapshot cache has been updated
-      const snapshot = await draftStorageService.getProjectFileSnapshot('doc-off-save');
-      expect(snapshot).not.toBeNull();
-      expect(snapshot?.content).toBe('\\section{Offline Edits Here}');
+      // Verify unsynced edit store holds the uncommitted edit
+      const unsynced = await unsyncedEditsStore.get('doc-off-save');
+      expect(unsynced).not.toBeNull();
+      expect(unsynced?.content).toBe('\\section{Offline Edits Here}');
+
+      // Verify clean server cache was NOT polluted with dirty offline edits
+      expect(await syncedDocCacheStore.get('doc-off-save')).toBeNull();
     });
 
     it('replays all queued mutations sequentially and syncs to backend on reconnection', async () => {
       const updateContentSpy = vi
-        .spyOn(manuscriptService.docs, 'updateContent')
+        .spyOn(pagesService.docs, 'updateContent')
         .mockResolvedValue({} as any);
 
       // Enqueue 2 offline mutations
-      await draftStorageService.enqueueMutation({
+      await pendingOutboxStore.enqueue({
         fileId: 'file-replay-1',
         projectId: 'p1',
         type: 'update_content',
         payload: { content: 'Offline Content 1' },
       });
-      await draftStorageService.enqueueMutation({
+      await pendingOutboxStore.enqueue({
         fileId: 'file-replay-2',
         projectId: 'p1',
         type: 'update_content',
         payload: { content: 'Offline Content 2' },
       });
 
-      // Save corresponding local drafts
-      await draftStorageService.saveDraft('file-replay-1', 'Offline Content 1');
-      await draftStorageService.saveDraft('file-replay-2', 'Offline Content 2');
+      // Save corresponding local unsynced edits
+      await unsyncedEditsStore.save('file-replay-1', 'Offline Content 1');
+      await unsyncedEditsStore.save('file-replay-2', 'Offline Content 2');
 
-      expect((await draftStorageService.getPendingMutations()).length).toBe(2);
+      expect((await pendingOutboxStore.getPending()).length).toBe(2);
 
       // Trigger online recovery
       const replayResult = await sessionCoordinator.replayPendingMutations();
@@ -264,12 +270,12 @@ describe('Direction 3: Offline-First Persistence (Project Snapshot Cache & Mutat
       expect(updateContentSpy).toHaveBeenCalledWith('file-replay-2', 'Offline Content 2');
 
       // Mutation queue must now be drained
-      const remainingQueue = await draftStorageService.getPendingMutations();
+      const remainingQueue = await pendingOutboxStore.getPending();
       expect(remainingQueue.length).toBe(0);
 
-      // Drafts should be cleaned
-      expect(await draftStorageService.getDraft('file-replay-1')).toBeNull();
-      expect(await draftStorageService.getDraft('file-replay-2')).toBeNull();
+      // Unsynced edits should be cleaned
+      expect(await unsyncedEditsStore.get('file-replay-1')).toBeNull();
+      expect(await unsyncedEditsStore.get('file-replay-2')).toBeNull();
 
       // Connectivity state should reflect synced
       expect(useConnectivityStore.getState().syncStatus).toBe('synced');
@@ -277,19 +283,19 @@ describe('Direction 3: Offline-First Persistence (Project Snapshot Cache & Mutat
     });
 
     it('isolates failures: successfully synced files drain while failed mutations remain queued with retryCount', async () => {
-      vi.spyOn(manuscriptService.docs, 'updateContent').mockImplementation(async (fileId) => {
+      vi.spyOn(pagesService.docs, 'updateContent').mockImplementation(async (fileId) => {
         if (fileId === 'file-fail') {
           throw new Error('500 Internal Server Error');
         }
         return {} as any;
       });
 
-      await draftStorageService.enqueueMutation({
+      await pendingOutboxStore.enqueue({
         fileId: 'file-success',
         type: 'update_content',
         payload: { content: 'Good content' },
       });
-      await draftStorageService.enqueueMutation({
+      await pendingOutboxStore.enqueue({
         fileId: 'file-fail',
         type: 'update_content',
         payload: { content: 'Content with server crash' },
@@ -301,7 +307,7 @@ describe('Direction 3: Offline-First Persistence (Project Snapshot Cache & Mutat
       expect(replayResult.succeeded).toBe(1);
       expect(replayResult.failed).toBe(1);
 
-      const remaining = await draftStorageService.getPendingMutations();
+      const remaining = await pendingOutboxStore.getPending();
       expect(remaining.length).toBe(1);
       expect(remaining[0].fileId).toBe('file-fail');
       expect(remaining[0].status).toBe('failed');

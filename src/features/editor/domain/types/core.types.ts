@@ -193,27 +193,6 @@ export interface PageFile {
 
 // ── Canonical Manuscript & LaTeX Domain Models (Overleaf Parity) ────────────
 
-export type ManuscriptNodeType = 'FOLDER' | 'DOC' | 'FILE';
-
-export interface ManuscriptNode {
-  id: string;
-  projectId: string;
-  parentId: string | null;
-  type: ManuscriptNodeType;
-  name: string;
-  path: string;
-  depth: number;
-  docId?: string | null;
-  fileId?: string | null;
-  isRootDoc?: boolean;
-  sizeBytes?: number;
-  hash?: string | null;
-  rev?: number | null;
-  sortOrder?: number;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
 export interface TextDocument {
   id: string;
   projectId: string;

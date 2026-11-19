@@ -16,7 +16,7 @@ import {
 import { VISUAL_COMMAND_STRATEGIES, editorCommandBus } from '@/features/editor/core/bus/command-bus';
 import { latexVisualMath } from '@/features/editor/core/engine/extensions/latex-visual-math';
 import { aiCoordinator } from '@/features/editor/subsystems/ai/coordinator/ai.coordinator';
-import { manuscriptService } from '@/features/editor/sdk/pages.service';
+import { pagesService } from '@/features/editor/sdk/pages.service';
 import { usePageStore } from '@/features/editor/core/store/editor.store';
 import { setActiveEditorEngine } from '@/features/editor/core';
 import { parseSseDataChunk, streamEditorChat, getPageChat } from '@/features/ai/services/chat.service';
@@ -256,7 +256,7 @@ describe('Khối 2 / Tầng 5 Frontend — Inline Diff, Visual Mode, Copilot Cha
         activeFilePage: { id: 'doc-child-1', title: 'chapter1.tex' } as any,
       });
 
-      const spy = vi.spyOn(manuscriptService.ai, 'suggestLatexFix').mockResolvedValue({
+      const spy = vi.spyOn(pagesService.ai, 'suggestLatexFix').mockResolvedValue({
         explanation: 'Fix cmd',
         originalSnippet: '\\unknownCmd',
         fixedSnippet: '\\textbf{cmd}',

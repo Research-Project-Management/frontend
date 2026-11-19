@@ -4,7 +4,7 @@
  * use-pdf-compiler.ts
  *
  * Slim Presenter Hook bridging Previewer with CompilerLifecycleCoordinator (Block 6: UI Features Layer).
- * Location: `features/editor/ui/features/preview/hooks/use-pdf-compiler.ts`
+ * Location: `features/editor/subsystems/compiler/ui/hooks/usePdfCompiler.ts`
  */
 
 import { useRef, useState, useEffect, useCallback } from 'react';

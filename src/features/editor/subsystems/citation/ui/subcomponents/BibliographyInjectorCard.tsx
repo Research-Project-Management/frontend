@@ -5,7 +5,7 @@ import { BookOpen, Copy, Check, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { copyToClipboard } from '@/shared/lib/utils';
 import { CitationService } from '@/features/library/sdk/clients/attachments-annotations.client';
-import { manuscriptService } from '@/features/editor/sdk/pages.service';
+import { pagesService } from '@/features/editor/sdk/pages.service';
 import type { Item } from '@/features/library/types/core.types';
 import {
   isLatexDocument,
@@ -88,7 +88,7 @@ export const BibliographyInjectorCard = React.memo(function BibliographyInjector
       let action: 'replaced' | 'appended';
 
       try {
-        const serverInj = await manuscriptService.citations.injectBibliography(
+        const serverInj = await pagesService.citations.injectBibliography(
           projectId || storeSpaceId || storeProjectId,
           {
           docId: activeDocId ?? undefined,

@@ -32,6 +32,7 @@ import { useLibraryUIStore } from "@/features/library/core/store/library-ui.stor
 import {
   useLibraryNavigation,
   useLibraryPermissions,
+  useActiveLibrarySpace,
 } from "@/features/library/core/coordinator/navigation.coordinator";
 import type { Item } from "@/features/library/types/core.types";
 
@@ -247,7 +248,7 @@ export function LibraryTopbar({
   const toggleSidebar = useLibraryUIStore((s) => s.toggleSidebar);
   const isInspectorOpen = useLibraryUIStore((s) => s.isInspectorOpen);
   const toggleInspector = useLibraryUIStore((s) => s.toggleInspector);
-  const activeScope = useLibraryUIStore((s) => s.activeScope);
+  const { spaceId: activeSpaceId, isProject, name: spaceName } = useActiveLibrarySpace();
   const handleToggleSidebar = onToggleSidebar || toggleSidebar;
   const { canEditItem } = useLibraryPermissions();
   const isEffectiveCanEdit = canEdit && canEditItem;
@@ -313,15 +314,9 @@ export function LibraryTopbar({
   const params = useParams() as { collectionId?: string };
   const activeCollectionId = params?.collectionId;
 
-  const effectiveScopeId =
-    propScopeId ||
-    (activeScope.type === "project" ? activeScope.id : "user");
-
-  const displayTitle =
-    title ||
-    (activeScope.type === "user" ? "My Library" : (activeScope.name || "Project Library"));
-
-  const RootIcon = activeScope.type === "project" ? Folder : LibraryIcon;
+  const effectiveScopeId = propScopeId || activeSpaceId;
+  const displayTitle = title || spaceName;
+  const RootIcon = isProject ? Folder : LibraryIcon;
   const Icon =
     propIcon !== undefined ? propIcon : isTrash ? Trash2 : LibraryIcon;
 
@@ -486,7 +481,10 @@ export function LibraryTopbar({
                       )}
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <span className="text-13 font-medium tracking-tight text-foreground truncate max-w-[200px] sm:max-w-[320px]">
+                          <span
+                            suppressHydrationWarning
+                            className="text-13 font-medium tracking-tight text-foreground truncate max-w-[200px] sm:max-w-[320px]"
+                          >
                             {crumb.name}
                           </span>
                         </TooltipTrigger>
@@ -501,14 +499,20 @@ export function LibraryTopbar({
             })}
           </nav>
         ) : (
-          <div className="flex items-center gap-2 h-7 px-1 min-w-0 select-none shrink-0">
+          <div
+            suppressHydrationWarning
+            className="flex items-center gap-2 h-7 px-1 min-w-0 select-none shrink-0"
+          >
             {Icon && (
               <Icon
                 className="size-4 text-foreground shrink-0"
                 strokeWidth={1.5}
               />
             )}
-            <span className="text-13 font-medium tracking-tight text-foreground truncate">
+            <span
+              suppressHydrationWarning
+              className="text-13 font-medium tracking-tight text-foreground truncate"
+            >
               {displayTitle}
             </span>
           </div>

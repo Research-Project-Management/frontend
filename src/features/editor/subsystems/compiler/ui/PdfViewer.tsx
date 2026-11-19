@@ -2,7 +2,7 @@
  * PdfViewer.tsx
  *
  * Full PDF Preview Container with Overleaf Parity (Block 6: UI Features Layer).
- * Location: `features/editor/ui/features/preview/PdfViewer.tsx`
+ * Location: `features/editor/subsystems/compiler/ui/PdfViewer.tsx`
  *
  * Orchestrates:
  * - Scoped PdfToolbar (Recompile, Logs, Download, Zoom, Pages, View Options).
@@ -25,8 +25,8 @@ import dynamic from 'next/dynamic';
 import { usePageStore, useSettingsStore, useWorkspaceStore } from '@/features/editor/core';
 import { useCompileStore } from '@/features/editor/subsystems/compiler/coordinator/compiler.store';
 import { useViewerStore, type DocumentViewerState } from '@/features/editor/subsystems/compiler/coordinator/viewer.store';
-import { filesQuery } from '@/features/editor/ui/hooks/document.queries';
-import { usePageActions } from '@/features/editor/ui/hooks/usePageActions';
+import { filesQuery } from '@/features/editor/core/queries/document.queries';
+import { usePageActions } from '@/features/editor/core/queries/usePageActions';
 import {
   DEFAULT_PDF_PAGE_WIDTH_PT,
   DEFAULT_PDF_PAGE_HEIGHT_PT,

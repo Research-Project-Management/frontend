@@ -13,9 +13,9 @@ import {
 } from '@/features/library/ui/content/LibraryContent';
 import { LibraryInspector } from '@/features/library/ui/inspector/LibraryInspector';
 import { ErrorBoundary } from '@/shared/components/ui/error-boundary';
-import { useLibraryNavigation } from '@/features/library/core/coordinator/navigation.coordinator';
+import { useLibraryNavigation, useActiveLibrarySpace } from '@/features/library/core/coordinator/navigation.coordinator';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
-import '@/features/library/core/adapters/project-context.adapter';
+import { useLibraryProjectContext } from '@/features/library/core/adapters/project-context.adapter';
 import {
   useLibraryCommandStore,
 } from '@/features/library/core/manager/library-command.manager';
@@ -146,10 +146,12 @@ export function ModernLibraryPage({
     return feeds.find((f) => f.id === effectiveFeedId) || feeds[0];
   }, [feeds, effectiveFeedId]);
 
+  const { spaceId: activeSpaceId } = useActiveLibrarySpace();
+
   const effectiveScopeId =
     propScopeId ||
     params?.projectId ||
-    (activeScope.type === 'project' ? activeScope.id : 'user');
+    activeSpaceId;
 
   const effectiveCollectionId =
     propCollectionId || params?.collectionId || undefined;

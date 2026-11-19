@@ -4,7 +4,7 @@
  * use-synchronized-scroll.ts
  *
  * Split-View Synchronized Dual Scrolling Hook with Overleaf Parity.
- * Location: `features/editor/ui/features/preview/hooks/use-synchronized-scroll.ts`
+ * Location: `features/editor/subsystems/compiler/ui/hooks/useSynchronizedScroll.ts`
  *
  * Capabilities:
  * 1. Bidirectional lock-scrolling between Editor (CodeMirror 6 / Visual) and PDF Preview.

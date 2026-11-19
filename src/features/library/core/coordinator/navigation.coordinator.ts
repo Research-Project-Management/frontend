@@ -8,8 +8,27 @@ import { resolveEffectiveLibraryPermissions } from '@/features/library/domain/li
 import { useLibraryCountsQuery } from '@/features/library/sdk/queries/catalog.queries';
 import { useLibraryDeltaSync } from '@/features/library/sdk/queries/sync.queries';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import { useWorkspaceContextStore } from '@/features/shell/store/workspace-context.store';
 
 export { useLibraryDeltaSync };
+
+/**
+ * Unified Space Hook for features/library
+ * Directly consumes the canonical activeSpace from useWorkspaceContextStore,
+ * eliminating the legacy activeScope technical debt.
+ */
+export function useActiveLibrarySpace() {
+  const activeSpace = useWorkspaceContextStore((s) => s.activeSpace);
+  const isProject = activeSpace.type === 'project' && Boolean(activeSpace.projectId);
+  const spaceId = isProject ? activeSpace.projectId! : 'user';
+  return {
+    isProject,
+    spaceId,
+    projectId: isProject ? activeSpace.projectId! : undefined,
+    name: isProject ? (activeSpace.projectName || 'Project Library') : 'My Library',
+    activeSpace,
+  };
+}
 
 function resolveActiveLibraryScopeId(
   activeScope?: { type?: string; id?: string; projectId?: string } | null,
@@ -27,19 +46,21 @@ function resolveActiveLibraryScopeId(
 /**
  * Permissions Coordinator Hook
  *
- * Single Source of Truth for combining Client Scope (Zustand Store),
+ * Single Source of Truth for combining Client Space Context (Workspace Store),
  * Server Permissions & Capability Counts (TanStack Query), and Pure RBAC Policies.
- * Decoupled from pure Zustand Store selectors.
  */
 export function useLibraryPermissions(): LibraryPermissions {
-  const activeScope = useLibraryUIStore((state) => state.activeScope);
-  const effectiveScopeId = resolveActiveLibraryScopeId(activeScope);
-  const { data: countsData } = useLibraryCountsQuery(effectiveScopeId);
+  const activeSpace = useWorkspaceContextStore((state) => state.activeSpace);
+  const isProject = activeSpace.type === 'project' && Boolean(activeSpace.projectId);
+  const effectiveSpaceId = isProject ? activeSpace.projectId! : 'user';
+  const { data: countsData } = useLibraryCountsQuery(effectiveSpaceId);
 
   return useMemo(
     () =>
       resolveEffectiveLibraryPermissions(
-        activeScope,
+        isProject
+          ? { type: 'project', id: activeSpace.projectId!, name: activeSpace.projectName || 'Project Library' }
+          : { type: 'user', id: 'user', name: 'My Library' },
         countsData
           ? {
               role: countsData.role || countsData.yourRole,
@@ -49,7 +70,7 @@ export function useLibraryPermissions(): LibraryPermissions {
             }
           : null,
       ),
-    [activeScope, countsData],
+    [isProject, activeSpace.projectId, activeSpace.projectName, countsData],
   );
 }
 

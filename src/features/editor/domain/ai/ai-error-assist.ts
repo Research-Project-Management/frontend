@@ -142,5 +142,3 @@ export function fixLatexError(params: AiErrorFixParams): AiErrorFixResult {
     confidence: 'medium',
   };
 }
-
-export { fixLatexError as heuristicLatexErrorFix };

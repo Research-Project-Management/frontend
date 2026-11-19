@@ -4,7 +4,7 @@
  * ViewMenu.tsx
  *
  * Topbar View Dropdown Menu (Block 7: UI Shell Layer).
- * Location: `features/editor/ui/shell/topbar/ViewMenu.tsx`
+ * Location: `features/editor/core/shell/topbar/ViewMenu.tsx`
  */
 
 import React from 'react';

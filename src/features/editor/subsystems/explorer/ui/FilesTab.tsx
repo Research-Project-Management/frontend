@@ -4,560 +4,38 @@
  * FilesTab.tsx
  *
  * Canonical Files & Explorer sidebar component:
- * - File tree building handled by `document-tree.ts` & `useFileTree.ts`
- * - Folder row rendering extracted to `FileTreeFolderRow.tsx`
- * - Asset insertion & LaTeX actions powered by `domain/latex` & `domain/document`
- * - Drag-drop & upload orchestration extracted to `useFileUpload.ts`
- *
- * Location: `features/editor/ui/features/sidebar/explorer/FilesTab.tsx`
+ * Location: `features/editor/subsystems/explorer/ui/FilesTab.tsx`
  */
 
-import React, {
-  useState,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-} from 'react';
+import React, { useCallback } from 'react';
 import { FileCode2, Folder } from 'lucide-react';
-import { useParams, useSearchParams } from 'next/navigation';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 
-import { useEditorStorage } from '@/features/editor/ui/hooks/useStorage';
-import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
-import { createFileSchema, createFolderSchema, renameItemSchema, extractProjectId, type Page } from '@/features/editor/domain/types/core.types';
-import { splitVirtualPath, normalizeVirtualPath } from '@/features/editor/domain/document/document-naming';
+import { normalizeVirtualPath } from '@/features/editor/domain/document/document-naming';
 import { DEFAULT_MAIN_FILE } from '@/features/editor/domain/constants/editor.constants';
-import {
-  usePageStore,
-  useSettingsStore,
-  useWorkspaceStore,
-  editorCommandBus,
-  syncShallowUrlParams,
-} from '@/features/editor/core';
-import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
-import type { AssetInfo } from '@/features/editor/domain/types/asset.types';
-import {
-  pageQuery,
-  filesQuery,
-  invalidateFileTreeQueries,
-} from '@/features/editor/ui/hooks/document.queries';
-import { usePageActions } from '@/features/editor/ui/hooks/usePageActions';
 import type { EditorStorageItem as StorageItem } from '@/features/editor/domain/types/storage-item.types';
 import { StorageFileRow } from './subcomponents/FileTreeNodes';
 import { UploadConflictDialog } from './modals/UploadConflictDialog';
 import { FileOutlineSection } from './subcomponents/FileOutlineSection';
 import { FileTreeToolbar } from './subcomponents/FileTreeToolbar';
-import { TexFileRow, displayName } from './subcomponents/TexFileRow';
+import { TexFileRow } from './subcomponents/TexFileRow';
 import { FileTreeFolderRow } from './subcomponents/FileTreeFolderRow';
-import { useFileUpload } from './hooks/useFileUpload';
-import { useFileTree } from './hooks/useFileTree';
 import {
-  flattenVisibleTree,
-  findAncestorFolderPaths,
   type FileTreeNode,
   type FlattenedTreeNode,
 } from '@/features/editor/subsystems/explorer/model/document-tree';
-import { useFileExplorerActions } from './hooks/useFileExplorerActions';
-import type { AddFilesTab } from '@/features/editor/subsystems/explorer/ui/modals/add-files.types';
 import { DeleteFileDialog } from './modals/DeleteFileDialog';
 import { FileTreeContainer } from './FileTreeContainer';
 import { InlineInput } from './subcomponents/FileTreePrimitives';
+import { useFilesTabController } from './hooks/useFilesTabController';
 
 const AddFilesModal = dynamic(
   () => import('@/features/editor/subsystems/explorer/ui/modals/AddFilesModal'),
   { ssr: false },
 );
 
-const FILE_EXTENSION_REGEX = /\.[a-z]+$/i;
-const VALID_MAIN_TEX_EXT_REGEX = /\.(tex|ltx|rtex|rnw)$/i;
-const TRAILING_DOT_REGEX = /\.$/;
-
-const sanitizeTitle = (raw: string) => {
-  const trimmed = raw.trim();
-  if (FILE_EXTENSION_REGEX.test(trimmed)) return trimmed;
-  return trimmed.replace(TRAILING_DOT_REGEX, '');
-};
-
-function resolveExplorerItemById(
-  fileId: string,
-  files?: Array<{ id: string; title: string }> | null,
-  projectFiles?: StorageItem[] | null,
-  parentPage?: { id: string; title?: string } | null,
-  parentPageId?: string | null,
-  mainFileId?: string | null,
-): { id: string; title: string; isFolder?: boolean } | null {
-  const matchedDoc = files?.find((f) => f.id === fileId);
-  if (matchedDoc) {
-    return { id: matchedDoc.id, title: matchedDoc.title };
-  }
-  const matchedStorage = projectFiles?.find(
-    (pf) => pf.id === fileId || pf.docId === fileId || pf.fileId === fileId,
-  );
-  if (matchedStorage) {
-    return {
-      id: matchedStorage.id,
-      title: matchedStorage.path || matchedStorage.filename,
-      isFolder: matchedStorage.isFolder,
-    };
-  }
-  if (fileId === parentPageId || fileId === mainFileId) {
-    return {
-      id: fileId,
-      title: parentPage?.title || 'main.tex',
-    };
-  }
-  return null;
-}
-
-// ── Main FilesTab ───────────────────────────────────────────────────────────
-
 const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => void }) {
-  const { pageId, projectId: routeProjectId } = useParams<{ pageId?: string; projectId?: string }>();
-  const searchParams = useSearchParams();
-  const fileParam = searchParams.get('file');
-  const setSearchParams = useCallback(
-    (newParams: Record<string, string>) => {
-      syncShallowUrlParams(newParams);
-    },
-    [],
-  );
-
-  const storeCurrentPage = usePageStore((s) => s.currentPage);
-  const currentPageId = usePageStore((s) => s.currentPage?.id);
-  const currentPageTitle = usePageStore((s) => s.currentPage?.title);
-  const currentPageProjectId = usePageStore((s) => extractProjectId(s.currentPage));
-  const storeParentPageId = usePageStore((s) => s.parentPageId);
-  const activeFileId = usePageStore((s) => s.activeFilePage?.id);
-  const activeFileTitle = usePageStore((s) => s.activeFilePage?.title);
-  const setSelectedAsset = usePageStore((s) => s.setSelectedAsset);
-  const setMainFile = useSettingsStore((s) => s.setMainFile);
-  const configuredMainFile = useSettingsStore((s) => s.mainFile);
-  const openTab = useWorkspaceStore((s) => s.openTab);
-
-  const parentPageId: string | null = pageId || storeParentPageId || currentPageId || null;
-
-  const { data: queriedParentPage } = useQuery({
-    ...pageQuery(parentPageId ?? ''),
-    enabled: Boolean(parentPageId && !storeCurrentPage),
-  });
-  const parentPage = queriedParentPage ?? (storeCurrentPage as Page | null);
-
-  const projectId =
-    routeProjectId ||
-    extractProjectId(parentPage) ||
-    currentPageProjectId ||
-    '';
-
-  const activeTabId = useWorkspaceStore((s) =>
-    (parentPageId ? s.activeByProject[parentPageId] : null) ||
-    (projectId ? s.activeByProject[projectId] : null) ||
-    null
-  );
-  const { engine } = useEditorInstance();
-
-  const [isFileTreeOpen, setIsFileTreeOpen] = useState(true);
-  const [isAddFilesModalOpen, setIsAddFilesModalOpen] = useState(false);
-  const [addFilesTab, setAddFilesTab] = useState<AddFilesTab>('new-file');
-
-  const [renamingId, setRenamingId] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState('');
-  const [fileFilter, setFileFilter] = useState('');
-  const [isCreatingFile, setIsCreatingFile] = useState(false);
-  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
-  const [createParentFolderPath, setCreateParentFolderPath] = useState<string | null>(null);
-  const [newFileName, setNewFileName] = useState('');
-  const [newFolderName, setNewFolderName] = useState('');
-  const [fileToDelete, setFileToDelete] = useState<{ id: string; title: string; isFolder?: boolean } | null>(null);
-
-  const mainFileId =
-    parentPage?.mainFile && typeof parentPage.mainFile === 'object'
-      ? parentPage.mainFile.id
-      : ((parentPage?.mainFile as string | null | undefined) ?? null);
-
-  const {
-    data: files,
-    isLoading,
-    isError: isFilesError,
-    error: filesError,
-  } = useQuery({
-    ...filesQuery(parentPageId ?? ''),
-    enabled: !!parentPageId,
-  });
-
-  const {
-    createFile: createFileMutation,
-    setMainFile: setMainFileMutation,
-    deletePage: deletePageMutation,
-    updateContent: updateContentMutation,
-  } = usePageActions();
-
-  const {
-    items: projectFiles,
-    isLoading: projectFilesLoading,
-    uploadFile,
-    createFolder,
-    moveItem,
-  } = useEditorStorage(parentPageId || null, undefined, projectId || null);
-
-  const queryClient = useQueryClient();
-
-  const handleMoveItem = useCallback(
-    async (itemId: string, targetFolderId: string | null) => {
-      moveItem.mutate({ itemId, targetFolderId });
-    },
-    [moveItem],
-  );
-
-  // Listen for real-time WebSocket and Coordinator file-tree mutations (Hollywood Principle)
-  useEffect(() => {
-    const handleFileTreeUpdated = () => {
-      invalidateFileTreeQueries(queryClient, {
-        parentPageId,
-        includeRootDoc: true,
-        includeProjects: false,
-      });
-    };
-
-    return editorCommandBus.subscribe('filetree:updated', handleFileTreeUpdated);
-  }, [queryClient, parentPageId]);
-
-  const {
-    downloadTex,
-    copyTexCommand,
-    insertAsset,
-    handleRenameSubmit,
-    isRenamePending,
-  } = useFileExplorerActions({
-    projectId,
-    parentPageId,
-    engine,
-  });
-
-  // Hook extracting all upload orchestration, zip extraction, drag-drop
-  const {
-    combinedUploadRef,
-    folderUploadRef,
-    uploadingCount,
-    uploadDialogOpen,
-    setUploadDialogOpen,
-    pendingUploads,
-    setPendingUploads,
-    isDragging,
-    handleFilePicked,
-    handleFolderPicked,
-    handleAddFilesPick,
-    handleDrop,
-    handleDragEnter,
-    handleDragLeave,
-    handleDragOver,
-    handleConfirmUpload,
-    handleUploadToFolder,
-  } = useFileUpload({
-    parentPageId,
-    projectId,
-    parentPage,
-    files,
-    projectFiles,
-    createFileMutation,
-    uploadFile,
-    updateContentMutation,
-    setSearchParams,
-  });
-
-  // Pure hierarchical tree builder hook
-  const {
-    treeItems,
-    displayTree,
-    toggleFolder,
-    expandPaths,
-    isFolderExpanded,
-    collapseAll,
-  } = useFileTree({
-    projectFiles,
-    files,
-    parentPage,
-    projectId,
-    parentPageId,
-    mainFileId,
-    configuredMainFile,
-    fileFilter,
-  });
-
-
-
-  const handleOpenPreview = useCallback(
-    (item: StorageItem) => {
-      const assetTabId = item.id.startsWith('asset:') ? item.id : `asset:${item.id}`;
-      const fullAssetPath = normalizeVirtualPath(item.path || item.filename) || item.filename;
-      const asset: AssetInfo = {
-        id: item.id,
-        filename: item.filename,
-        url: item.url,
-        mimeType: item.mimeType,
-        size: item.size,
-      };
-      setSelectedAsset(asset);
-      const isPreviewMode = useSettingsStore.getState().previewEditorTabs;
-      if (parentPageId)
-        openTab(parentPageId, {
-          id: assetTabId,
-          title: item.filename,
-          path: fullAssetPath,
-          isDirty: false,
-          isPreview: isPreviewMode,
-          isPinned: !isPreviewMode,
-        });
-      setSearchParams({ file: assetTabId });
-    },
-    [parentPageId, openTab, setSearchParams, setSelectedAsset],
-  );
-
-  const handleFileClick = useCallback(
-    (fileId: string, title: string) => {
-      const layoutStore = useWorkspaceStore.getState();
-      if (layoutStore.editorSplitMode !== 'none' && layoutStore.activeEditorPane === 'secondary') {
-        if (parentPageId) {
-          layoutStore.setSecondaryActiveTab(parentPageId, fileId);
-        }
-        layoutStore.pinTabForFile(fileId);
-        layoutStore.setSecondaryFileId(fileId);
-        return;
-      }
-
-      const isTargetMain =
-        fileId === pageId ||
-        fileId === parentPageId ||
-        fileId === mainFileId ||
-        (configuredMainFile && (title.toLowerCase() === configuredMainFile.toLowerCase() || displayName(title).toLowerCase() === configuredMainFile.toLowerCase()));
-      const activeScopeId = parentPageId || pageId;
-      const currentActive =
-        (activeScopeId ? layoutStore.activeByProject[activeScopeId] : null) ?? fileParam;
-      if (isTargetMain && !currentActive) return;
-      if (fileId === currentActive) return;
-
-      navigationCoordinator.openDocument({
-        fileId,
-        title,
-        path: title,
-        preview: useSettingsStore.getState().previewEditorTabs,
-      });
-    },
-    [fileParam, pageId, parentPageId, mainFileId, configuredMainFile],
-  );
-
-  const handleFileDoubleClick = useCallback(
-    (fileId: string, title: string) => {
-      const layoutStore = useWorkspaceStore.getState();
-      if (layoutStore.editorSplitMode !== 'none' && layoutStore.activeEditorPane === 'secondary') {
-        if (parentPageId) {
-          layoutStore.setSecondaryActiveTab(parentPageId, fileId);
-        }
-        layoutStore.pinTabForFile(fileId);
-        layoutStore.setSecondaryFileId(fileId);
-        return;
-      }
-
-      navigationCoordinator.openDocument({
-        fileId,
-        title,
-        path: title,
-        preview: false,
-      });
-      if (parentPageId) {
-        layoutStore.pinTab(parentPageId, fileId);
-      }
-    },
-    [parentPageId],
-  );
-
-  const handleStartCreateFolder = useCallback((initialPrefix = '') => {
-    const cleanParent = normalizeVirtualPath(initialPrefix);
-    setIsCreatingFile(false);
-    setNewFileName('');
-    setIsCreatingFolder(true);
-    setNewFolderName('');
-    setCreateParentFolderPath(cleanParent || null);
-  }, []);
-
-  const handleCancelCreate = useCallback(() => {
-    setIsCreatingFile(false);
-    setNewFileName('');
-    setCreateParentFolderPath(null);
-  }, []);
-
-  const handleCancelCreateFolder = useCallback(() => {
-    setIsCreatingFolder(false);
-    setNewFolderName('');
-    setCreateParentFolderPath(null);
-  }, []);
-
-  const handleOpenFileModal = useCallback(() => {
-    setAddFilesTab('new-file');
-    setIsAddFilesModalOpen(true);
-  }, []);
-
-  const handleOpenUploadModal = useCallback(() => {
-    setAddFilesTab('upload');
-    setIsAddFilesModalOpen(true);
-  }, []);
-
-  useEffect(() => {
-    const unsubCmd = editorCommandBus.subscribe('dialog:open', (cmd) => {
-      if (cmd.dialog === 'add-files') {
-        setIsFileTreeOpen(true);
-        if (cmd.payload?.initialTab) {
-          setAddFilesTab(cmd.payload.initialTab as AddFilesTab);
-        }
-        setIsAddFilesModalOpen(true);
-      } else if (cmd.dialog === 'new-file') {
-        setIsFileTreeOpen(true);
-        setAddFilesTab('new-file');
-        setIsAddFilesModalOpen(true);
-      } else if (cmd.dialog === 'new-folder') {
-        setIsFileTreeOpen(true);
-        handleStartCreateFolder();
-      } else if (cmd.dialog === 'upload-file') {
-        setIsFileTreeOpen(true);
-        setAddFilesTab('upload');
-        setIsAddFilesModalOpen(true);
-      }
-    });
-    return () => {
-      unsubCmd();
-    };
-  }, [handleStartCreateFolder]);
-
-  const handleCreateFile = useCallback(() => {
-    const rawLeaf = normalizeVirtualPath(sanitizeTitle(newFileName));
-    const fullTitle =
-      createParentFolderPath && rawLeaf && !rawLeaf.startsWith(`${createParentFolderPath}/`)
-        ? `${createParentFolderPath}/${rawLeaf}`
-        : rawLeaf;
-    const parsed = createFileSchema.safeParse({ title: fullTitle });
-    if (!parentPageId || !parsed.success) return;
-    createFileMutation.mutate(
-      { parentPageId, title: parsed.data.title },
-      {
-        onSuccess: (file: { id: string }) => {
-          handleCancelCreate();
-          navigationCoordinator.openDocument({
-            fileId: file.id,
-            title: parsed.data.title,
-            content: '',
-          });
-        },
-      },
-    );
-  }, [newFileName, createParentFolderPath, parentPageId, createFileMutation, handleCancelCreate]);
-
-  const handleCreateFolder = useCallback(() => {
-    const rawLeaf = normalizeVirtualPath(newFolderName);
-    const fullFolderName =
-      createParentFolderPath && rawLeaf && !rawLeaf.startsWith(`${createParentFolderPath}/`)
-        ? `${createParentFolderPath}/${rawLeaf}`
-        : rawLeaf;
-    const parsed = createFolderSchema.safeParse({ name: fullFolderName });
-    if (!parentPageId || !parsed.success) return;
-    const effectiveProjectId = projectId || parentPageId;
-    createFolder.mutate(
-      { name: parsed.data.name, projectId: effectiveProjectId, pageId: parentPageId },
-      {
-        onSuccess: handleCancelCreateFolder,
-      },
-    );
-  }, [newFolderName, createParentFolderPath, parentPageId, projectId, createFolder, handleCancelCreateFolder]);
-
-  const handleStartRename = useCallback(
-    (file: { id: string; title: string; isFolder?: boolean }) => {
-      setRenamingId(file.id);
-      const { leafName } = splitVirtualPath(file.title);
-      setRenameValue(leafName || file.title);
-    },
-    [],
-  );
-
-  const handleCommitRename = useCallback(
-    (fileId: string) => {
-      const title = sanitizeTitle(renameValue);
-      const parsed = renameItemSchema.safeParse({ name: title });
-      if (!parsed.success) {
-        setRenamingId(null);
-        return;
-      }
-      const existing = resolveExplorerItemById(
-        fileId,
-        files,
-        projectFiles,
-        parentPage,
-        parentPageId,
-        mainFileId,
-      );
-      void handleRenameSubmit(fileId, parsed.data.name, existing?.title ?? '').finally(() => {
-        setRenamingId(null);
-      });
-    },
-    [renameValue, files, projectFiles, parentPage, parentPageId, mainFileId, handleRenameSubmit],
-  );
-
-  const handleDelete = useCallback(
-    (fileId: string) => {
-      const target = resolveExplorerItemById(
-        fileId,
-        files,
-        projectFiles,
-        parentPage,
-        parentPageId,
-        mainFileId,
-      );
-      setFileToDelete(target ?? { id: fileId, title: 'document.tex' });
-    },
-    [files, projectFiles, parentPage, parentPageId, mainFileId],
-  );
-
-  const handleConfirmDelete = useCallback(() => {
-    if (!fileToDelete || !parentPageId) return;
-    deletePageMutation.mutate(fileToDelete.id, {
-      onSuccess: () => {
-        setFileToDelete(null);
-      },
-    });
-  }, [fileToDelete, parentPageId, deletePageMutation]);
-
-  const handleSetMain = useCallback(
-    (fileId: string) => {
-      if (!parentPageId) return;
-      const targetFile = resolveExplorerItemById(
-        fileId,
-        files,
-        projectFiles,
-        parentPage,
-        parentPageId,
-        mainFileId,
-      );
-      const effectiveProjectId = projectId || parentPageId;
-      if (targetFile) {
-        const cleanTitle = normalizeVirtualPath(targetFile.title) || 'main.tex';
-        if (!VALID_MAIN_TEX_EXT_REGEX.test(cleanTitle)) {
-          return;
-        }
-        const prevMainFile = useSettingsStore.getState().mainFile;
-        setMainFile(cleanTitle);
-        setMainFileMutation.mutate(
-          { pageId: parentPageId, fileId, projectId: effectiveProjectId },
-          {
-            onError: () => {
-              setMainFile(prevMainFile);
-            },
-          },
-        );
-        return;
-      }
-      setMainFileMutation.mutate({ pageId: parentPageId, fileId, projectId: effectiveProjectId });
-    },
-    [parentPageId, files, projectFiles, parentPage, mainFileId, setMainFile, projectId, setMainFileMutation],
-  );
+  const c = useFilesTabController();
 
   const renderTreeNode = useCallback(
     (node: FileTreeNode, depth = 0, isFlat = false): React.ReactNode => {
@@ -567,45 +45,44 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
             key={node.id}
             node={node}
             depth={depth}
-            isExpanded={isFolderExpanded(node)}
-            isRenaming={renamingId === node.id}
-            renameValue={renameValue}
-            isRenamePending={isRenamePending}
-            onToggle={toggleFolder}
-            onMoveItem={handleMoveItem}
+            isExpanded={c.isFolderExpanded(node)}
+            isRenaming={c.renamingId === node.id}
+            renameValue={c.renameValue}
+            isRenamePending={c.isRenamePending}
+            onToggle={c.toggleFolder}
+            onMoveItem={c.handleMoveItem}
             onNewFileInFolder={(folderPath) => {
               const cleanFolder = normalizeVirtualPath(folderPath);
               if (cleanFolder) {
-                expandPaths([cleanFolder]);
+                c.expandPaths([cleanFolder]);
               }
-              setIsCreatingFolder(false);
-              setNewFolderName('');
-              setCreateParentFolderPath(cleanFolder || null);
-              setNewFileName('');
-              setIsCreatingFile(true);
+              c.setIsCreatingFolder(false);
+              c.setNewFolderName('');
+              c.setCreateParentFolderPath(cleanFolder || null);
+              c.setNewFileName('');
+              c.setIsCreatingFile(true);
             }}
             onNewFolderInFolder={(folderPath) => {
               const cleanFolder = normalizeVirtualPath(folderPath);
               if (cleanFolder) {
-                expandPaths([cleanFolder]);
+                c.expandPaths([cleanFolder]);
               }
-              handleStartCreateFolder(cleanFolder);
+              c.handleStartCreateFolder(cleanFolder);
             }}
             onUploadToFolder={(folderId, droppedFiles) => {
-              handleUploadToFolder(droppedFiles ?? [], folderId);
+              c.handleUploadToFolder(droppedFiles ?? [], folderId);
             }}
-            onStartRename={handleStartRename}
-            onRenameChange={setRenameValue}
-            onCommitRename={handleCommitRename}
-            onCancelRename={() => setRenamingId(null)}
-            onDelete={handleDelete}
+            onStartRename={c.handleStartRename}
+            onRenameChange={c.setRenameValue}
+            onCommitRename={c.handleCommitRename}
+            onCancelRename={() => c.setRenamingId(null)}
+            onDelete={c.handleDelete}
           >
             {!isFlat && node.children.map((child) => renderTreeNode(child, depth + 1, false))}
           </FileTreeFolderRow>
         );
       }
 
-      // Storage asset
       if (node.kind === 'asset') {
         const storageItem: StorageItem = node.storageData || {
           id: node.id,
@@ -619,28 +96,27 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
             key={node.id}
             item={storageItem}
             depth={depth}
-            onInsertAsset={insertAsset}
-            onPreview={handleOpenPreview}
-            onRequestDelete={handleDelete}
-            onStartRename={handleStartRename}
-            isRenaming={renamingId === storageItem.id}
-            renameValue={renameValue}
-            isRenamePending={isRenamePending}
-            onRenameChange={setRenameValue}
-            onCommitRename={handleCommitRename}
-            onCancelRename={() => setRenamingId(null)}
-            projectId={projectId}
+            onInsertAsset={c.insertAsset}
+            onPreview={c.handleOpenPreview}
+            onRequestDelete={c.handleDelete}
+            onStartRename={c.handleStartRename}
+            isRenaming={c.renamingId === storageItem.id}
+            renameValue={c.renameValue}
+            isRenamePending={c.isRenamePending}
+            onRenameChange={c.setRenameValue}
+            onCommitRename={c.handleCommitRename}
+            onCancelRename={() => c.setRenamingId(null)}
+            projectId={c.projectId}
           />
         );
       }
 
-      // TeX file node
-      const activeId = activeTabId || activeFileId || fileParam || pageId;
+      const activeId = c.activeTabId || c.activeFileId || c.fileParam || c.pageId;
       const isMain = Boolean(node.isRootDoc);
       const isActive =
         node.id === activeId ||
         node.title === activeId ||
-        (activeId === pageId && isMain);
+        (activeId === c.pageId && isMain);
 
       return (
         <TexFileRow
@@ -650,113 +126,24 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
           displayLabel={node.displayLabel}
           isActive={isActive}
           isMain={isMain}
-          isRenaming={renamingId === node.id}
-          renameValue={renameValue}
-          isRenamePending={isRenamePending}
-          onFileClick={handleFileClick}
-          onFileDoubleClick={handleFileDoubleClick}
-          onStartRename={handleStartRename}
-          onRenameChange={setRenameValue}
-          onCommitRename={handleCommitRename}
-          onCancelRename={() => setRenamingId(null)}
-          onDelete={handleDelete}
-          onSetMain={handleSetMain}
-          onDownload={downloadTex}
-          onCopyCommand={copyTexCommand}
+          isRenaming={c.renamingId === node.id}
+          renameValue={c.renameValue}
+          isRenamePending={c.isRenamePending}
+          onFileClick={c.handleFileClick}
+          onFileDoubleClick={c.handleFileDoubleClick}
+          onStartRename={c.handleStartRename}
+          onRenameChange={c.setRenameValue}
+          onCommitRename={c.handleCommitRename}
+          onCancelRename={() => c.setRenamingId(null)}
+          onDelete={c.handleDelete}
+          onSetMain={c.handleSetMain}
+          onDownload={c.downloadTex}
+          onCopyCommand={c.copyTexCommand}
         />
       );
     },
-    [
-      isFolderExpanded,
-      expandPaths,
-      toggleFolder,
-      handleMoveItem,
-      handleUploadToFolder,
-      handleStartCreateFolder,
-      insertAsset,
-      handleOpenPreview,
-      projectId,
-      activeFileId,
-      activeTabId,
-      fileParam,
-      pageId,
-      renamingId,
-      renameValue,
-      isRenamePending,
-      handleFileClick,
-      handleFileDoubleClick,
-      handleStartRename,
-      handleCommitRename,
-      handleDelete,
-      handleSetMain,
-      downloadTex,
-      copyTexCommand,
-    ],
+    [c],
   );
-
-  const effectiveActiveId = activeTabId || activeFileId || fileParam || pageId || null;
-  const lastRevealedTargetRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!effectiveActiveId || treeItems.length === 0) return;
-    if (lastRevealedTargetRef.current === effectiveActiveId) return;
-    lastRevealedTargetRef.current = effectiveActiveId;
-    const ancestors = findAncestorFolderPaths(treeItems, effectiveActiveId);
-    if (ancestors.length > 0) {
-      expandPaths(ancestors);
-    }
-  }, [effectiveActiveId, treeItems, expandPaths]);
-
-  const flattenedTree = useMemo(() => {
-    const base = flattenVisibleTree(displayTree, isFolderExpanded);
-    if ((isCreatingFile || isCreatingFolder) && createParentFolderPath) {
-      const parentIdx = base.findIndex(
-        (item) =>
-          item.node.type === 'folder' &&
-          normalizeVirtualPath(item.node.fullPath || item.node.path || item.node.name) ===
-            createParentFolderPath,
-      );
-      if (parentIdx !== -1) {
-        const next = [...base];
-        next.splice(parentIdx + 1, 0, {
-          node: {
-            type: 'file',
-            id: '__inline_tree_create__',
-            title: '__inline_tree_create__',
-            displayLabel: '',
-            kind: 'tex',
-          },
-          depth: base[parentIdx].depth + 1,
-          inlineCreateKind: isCreatingFile ? 'file' : 'folder',
-        });
-        return next;
-      }
-    }
-    return base;
-  }, [displayTree, isFolderExpanded, isCreatingFile, isCreatingFolder, createParentFolderPath]);
-
-  const inlineCreateFlatIndex = useMemo(
-    () => flattenedTree.findIndex((item) => item.inlineCreateKind !== undefined),
-    [flattenedTree],
-  );
-
-  const activeFlatIndex = useMemo(() => {
-    if (!effectiveActiveId) return -1;
-    const stripped = effectiveActiveId.startsWith('asset:')
-      ? effectiveActiveId.slice('asset:'.length)
-      : effectiveActiveId;
-    return flattenedTree.findIndex(
-      (item) =>
-        !item.inlineCreateKind &&
-        item.node.type === 'file' &&
-        (item.node.id === effectiveActiveId ||
-          item.node.id === stripped ||
-          item.node.fileId === stripped ||
-          item.node.docId === stripped ||
-          item.node.title === effectiveActiveId ||
-          (effectiveActiveId === pageId && Boolean(item.node.isRootDoc))),
-    );
-  }, [flattenedTree, effectiveActiveId, pageId]);
 
   const renderFlatRow = useCallback(
     (item: FlattenedTreeNode): React.ReactNode => {
@@ -766,12 +153,12 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
             depth={item.depth}
             icon={FileCode2}
             iconColor="text-foreground"
-            value={newFileName}
-            onChange={setNewFileName}
+            value={c.newFileName}
+            onChange={c.setNewFileName}
             placeholder="filename.tex"
-            onCommit={handleCreateFile}
-            onCancel={handleCancelCreate}
-            isPending={createFileMutation.isPending}
+            onCommit={c.handleCreateFile}
+            onCancel={c.handleCancelCreate}
+            isPending={c.isCreateFilePending}
           />
         );
       }
@@ -781,169 +168,142 @@ const FilesTab = React.memo(function FilesTab({ onClose }: { onClose?: () => voi
             depth={item.depth}
             icon={Folder}
             iconColor="text-foreground"
-            value={newFolderName}
-            onChange={setNewFolderName}
+            value={c.newFolderName}
+            onChange={c.setNewFolderName}
             placeholder="folder name"
-            onCommit={handleCreateFolder}
-            onCancel={handleCancelCreateFolder}
-            isPending={createFolder.isPending}
+            onCommit={c.handleCreateFolder}
+            onCancel={c.handleCancelCreateFolder}
+            isPending={c.isCreateFolderPending}
           />
         );
       }
       return renderTreeNode(item.node, item.depth, true);
     },
-    [
-      renderTreeNode,
-      newFileName,
-      handleCreateFile,
-      handleCancelCreate,
-      createFileMutation.isPending,
-      newFolderName,
-      handleCreateFolder,
-      handleCancelCreateFolder,
-      createFolder.isPending,
-    ],
+    [renderTreeNode, c],
   );
 
   return (
     <>
       <div className="w-full h-full flex flex-col select-none text-sm">
-        {/* Hidden upload inputs */}
         <input
           id="editor-combined-file-upload"
           name="combinedFileUpload"
-          ref={combinedUploadRef}
+          ref={c.combinedUploadRef}
           type="file"
           multiple
           className="hidden"
-          onChange={handleFilePicked}
+          onChange={c.handleFilePicked}
         />
         <input
           id="editor-folder-upload"
           name="folderUpload"
-          ref={folderUploadRef}
+          ref={c.folderUploadRef}
           type="file"
           multiple
           className="hidden"
-          onChange={handleFolderPicked}
+          onChange={c.handleFolderPicked}
           {...({ webkitdirectory: '', directory: '' } as React.InputHTMLAttributes<HTMLInputElement> & {
             webkitdirectory?: string;
             directory?: string;
           })}
         />
 
-        {/* Header Toolbar */}
         <FileTreeToolbar
-          isFileTreeOpen={isFileTreeOpen}
-          onToggleFileTree={() => setIsFileTreeOpen((prev) => !prev)}
-          onOpenFileModal={handleOpenFileModal}
-          onStartCreateFolder={() => handleStartCreateFolder('')}
-          onOpenUploadModal={handleOpenUploadModal}
+          isFileTreeOpen={c.isFileTreeOpen}
+          onToggleFileTree={() => c.setIsFileTreeOpen((prev) => !prev)}
+          onOpenFileModal={c.handleOpenFileModal}
+          onStartCreateFolder={() => c.handleStartCreateFolder('')}
+          onOpenUploadModal={c.handleOpenUploadModal}
           onClose={onClose}
-          fileFilter={fileFilter}
-          onFileFilterChange={setFileFilter}
+          fileFilter={c.fileFilter}
+          onFileFilterChange={c.setFileFilter}
         />
 
-        {/* ── File tree ──────────────────────────────────────────────────────── */}
-        {isFileTreeOpen && (
+        {c.isFileTreeOpen && (
           <FileTreeContainer
-            isDragging={isDragging}
-            handleDragEnter={handleDragEnter}
-            handleDragLeave={handleDragLeave}
-            handleDragOver={handleDragOver}
-            handleDrop={handleDrop}
-            handleMoveItem={handleMoveItem}
-            isCreatingFile={isCreatingFile}
-            newFileName={newFileName}
-            setNewFileName={setNewFileName}
-            handleCreateFile={handleCreateFile}
-            handleCancelCreate={handleCancelCreate}
-            isCreateFilePending={createFileMutation.isPending}
-            isCreatingFolder={isCreatingFolder}
-            newFolderName={newFolderName}
-            setNewFolderName={setNewFolderName}
-            handleCreateFolder={handleCreateFolder}
-            handleCancelCreateFolder={handleCancelCreateFolder}
-            isCreateFolderPending={createFolder.isPending}
-            isLoading={isLoading}
-            projectFilesLoading={projectFilesLoading}
-            uploadingCount={uploadingCount}
-            isFilesError={isFilesError}
-            filesError={filesError}
-            treeItemsLength={treeItems.length}
-            displayTree={displayTree}
-            fileFilter={fileFilter}
-            setFileFilter={setFileFilter}
+            isDragging={c.isDragging}
+            handleDragEnter={c.handleDragEnter}
+            handleDragLeave={c.handleDragLeave}
+            handleDragOver={c.handleDragOver}
+            handleDrop={c.handleDrop}
+            handleMoveItem={c.handleMoveItem}
+            isCreatingFile={c.isCreatingFile}
+            newFileName={c.newFileName}
+            setNewFileName={c.setNewFileName}
+            handleCreateFile={c.handleCreateFile}
+            handleCancelCreate={c.handleCancelCreate}
+            isCreateFilePending={c.isCreateFilePending}
+            isCreatingFolder={c.isCreatingFolder}
+            newFolderName={c.newFolderName}
+            setNewFolderName={c.setNewFolderName}
+            handleCreateFolder={c.handleCreateFolder}
+            handleCancelCreateFolder={c.handleCancelCreateFolder}
+            isCreateFolderPending={c.isCreateFolderPending}
+            isLoading={c.isLoading}
+            projectFilesLoading={c.projectFilesLoading}
+            uploadingCount={c.uploadingCount}
+            isFilesError={c.isFilesError}
+            filesError={c.filesError}
+            treeItemsLength={c.treeItems.length}
+            displayTree={c.displayTree}
+            fileFilter={c.fileFilter}
+            setFileFilter={c.setFileFilter}
             renderTreeNode={renderTreeNode}
-            flattenedTree={flattenedTree}
+            flattenedTree={c.flattenedTree}
             renderFlatRow={renderFlatRow}
-            showTopInlineCreate={inlineCreateFlatIndex === -1}
-            activeFlatIndex={activeFlatIndex}
-            inlineCreateFlatIndex={inlineCreateFlatIndex}
-            isFolderExpanded={isFolderExpanded}
-            onToggleFolder={toggleFolder}
+            showTopInlineCreate={c.inlineCreateFlatIndex === -1}
+            activeFlatIndex={c.activeFlatIndex}
+            inlineCreateFlatIndex={c.inlineCreateFlatIndex}
+            isFolderExpanded={c.isFolderExpanded}
+            onToggleFolder={c.toggleFolder}
           />
         )}
 
-        {/* ── File Outline Accordion ────────────────────────────────────────── */}
         <FileOutlineSection
-          isFileTreeOpen={isFileTreeOpen}
-          activeFileName={
-            activeFileTitle
-              ? displayName(activeFileTitle)
-              : currentPageTitle
-                ? displayName(currentPageTitle)
-                : (configuredMainFile || DEFAULT_MAIN_FILE)
-          }
+          isFileTreeOpen={c.isFileTreeOpen}
+          activeFileName={c.activeOutlineFileName || c.configuredMainFile || DEFAULT_MAIN_FILE}
         />
       </div>
 
       <UploadConflictDialog
-        open={uploadDialogOpen}
+        open={c.uploadDialogOpen}
         onOpenChange={(open) => {
           if (!open) {
-            setUploadDialogOpen(false);
-            setPendingUploads([]);
+            c.setUploadDialogOpen(false);
+            c.setPendingUploads([]);
           }
         }}
-        pendingUploads={pendingUploads}
-        onRemoveItem={(i) =>
-          setPendingUploads((prev) => prev.filter((_, j) => j !== i))
-        }
+        pendingUploads={c.pendingUploads}
+        onRemoveItem={(i) => c.setPendingUploads((prev) => prev.filter((_, j) => j !== i))}
         onSetResolution={(i, resolution) =>
-          setPendingUploads((prev) =>
-            prev.map((p, j) => (j === i ? { ...p, resolution } : p)),
-          )
+          c.setPendingUploads((prev) => prev.map((p, j) => (j === i ? { ...p, resolution } : p)))
         }
         onToggleUnpackZip={(i, unpack) =>
-          setPendingUploads((prev) =>
-            prev.map((p, j) => (j === i ? { ...p, unpackZip: unpack } : p)),
-          )
+          c.setPendingUploads((prev) => prev.map((p, j) => (j === i ? { ...p, unpackZip: unpack } : p)))
         }
         onCancel={() => {
-          setUploadDialogOpen(false);
-          setPendingUploads([]);
+          c.setUploadDialogOpen(false);
+          c.setPendingUploads([]);
         }}
-        onConfirm={handleConfirmUpload}
+        onConfirm={c.handleConfirmUpload}
       />
 
-      {isAddFilesModalOpen && (
+      {c.isAddFilesModalOpen && (
         <AddFilesModal
-          open={isAddFilesModalOpen}
-          onOpenChange={setIsAddFilesModalOpen}
-          defaultTab={addFilesTab}
-          parentPageId={parentPageId}
-          projectId={projectId}
-          onPickItems={handleAddFilesPick}
+          open={c.isAddFilesModalOpen}
+          onOpenChange={c.setIsAddFilesModalOpen}
+          defaultTab={c.addFilesTab}
+          parentPageId={c.parentPageId}
+          projectId={c.projectId}
+          onPickItems={c.handleAddFilesPick}
         />
       )}
 
-      {/* ── Delete File Confirmation Modal ── */}
       <DeleteFileDialog
-        fileToDelete={fileToDelete}
-        isPending={deletePageMutation.isPending}
-        onClose={() => setFileToDelete(null)}
-        onConfirm={handleConfirmDelete}
+        fileToDelete={c.fileToDelete}
+        isPending={c.isDeletePending}
+        onClose={() => c.setFileToDelete(null)}
+        onConfirm={c.handleConfirmDelete}
       />
     </>
   );

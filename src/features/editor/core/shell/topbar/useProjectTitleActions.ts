@@ -12,14 +12,14 @@
  *
  * Adheres strictly to the architectural constraint:
  * All toasts are managed inside hooks, keeping components purely presentation-focused.
- * Location: `features/editor/ui/shell/topbar/useProjectTitleActions.ts`
+ * Location: `features/editor/core/shell/topbar/useProjectTitleActions.ts`
  */
 
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { usePageActions } from '@/features/editor/ui/hooks/usePageActions';
-import { useProjectExport } from '@/features/editor/ui/hooks/useExport';
+import { usePageActions } from '@/features/editor/core/queries/usePageActions';
+import { useProjectExport } from '@/features/editor/core/hooks/useExport';
 import type { Page, PageFile } from '@/features/editor/domain/types/core.types';
 
 export interface UseProjectTitleActionsOptions {

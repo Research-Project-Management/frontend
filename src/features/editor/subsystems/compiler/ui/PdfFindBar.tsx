@@ -2,7 +2,7 @@
  * PdfFindBar.tsx
  *
  * Floating in-document PDF search bar (Block 6: UI Features Layer).
- * Location: `features/editor/ui/features/preview/PdfFindBar.tsx`
+ * Location: `features/editor/subsystems/compiler/ui/PdfFindBar.tsx`
  *
  * Real-time query search across all compiled PDF pages:
  * - Match counter (e.g. "3 of 12" / "No matches" / "Invalid regex")

@@ -9,7 +9,7 @@
 
 import { useQuery, useMutation, type QueryClient } from '@tanstack/react-query';
 import type { SuggestionStatus, PageSuggestion } from '@/features/editor/domain/types/suggestion.types';
-import { manuscriptService } from '@/features/editor/sdk/pages.service';
+import { pagesService } from '@/features/editor/sdk/pages.service';
 import { type CreateSuggestionPayload } from '@/features/editor/sdk/pages/types';
 import { reviewCoordinator } from '@/features/editor/subsystems/review/coordinator/review.coordinator';
 import { lruDocumentCache, sessionCoordinator } from '@/features/editor/core';
@@ -44,7 +44,7 @@ export const usePageSuggestions = (
       queryKey: suggestionKeys.byPage(pageId, status),
       queryFn: async (): Promise<PageSuggestion[]> => {
         if (!pageId) return [];
-        const suggestions = await manuscriptService.suggestions.getSuggestions(pageId, status);
+        const suggestions = await pagesService.suggestions.getSuggestions(pageId, status);
         return suggestions || [];
       },
       enabled: Boolean(pageId),
@@ -59,7 +59,7 @@ export const useCreateSuggestion = (customClient?: QueryClient) => {
   const queryClient = useSafeQueryClient(customClient);
   return useMutation({
     mutationFn: async (payload: CreateSuggestionPayload) => {
-      return await manuscriptService.suggestions.createSuggestion(payload);
+      return await pagesService.suggestions.createSuggestion(payload);
     },
     onSuccess: (_newSug, variables) => {
       queryClient.invalidateQueries({ queryKey: ['page-suggestions', variables.pageId] });
@@ -82,7 +82,7 @@ export const useAcceptSuggestion = (customClient?: QueryClient) => {
       if (!hasSyncedYjsProvider(pageId)) {
         reviewCoordinator.applySuggestionByIdLocally(suggestionId, 'accept', pageId);
       }
-      return await manuscriptService.suggestions.acceptSuggestion(pageId, suggestionId);
+      return await pagesService.suggestions.acceptSuggestion(pageId, suggestionId);
     },
     onMutate: async ({ pageId, suggestionId }) => {
       await queryClient.cancelQueries({ queryKey: ['page-suggestions', pageId] });
@@ -127,7 +127,7 @@ export const useRejectSuggestion = (customClient?: QueryClient) => {
       if (!hasSyncedYjsProvider(pageId)) {
         reviewCoordinator.applySuggestionByIdLocally(suggestionId, 'reject', pageId);
       }
-      return await manuscriptService.suggestions.rejectSuggestion(pageId, suggestionId);
+      return await pagesService.suggestions.rejectSuggestion(pageId, suggestionId);
     },
     onMutate: async ({ pageId, suggestionId }) => {
       await queryClient.cancelQueries({ queryKey: ['page-suggestions', pageId] });
@@ -175,7 +175,7 @@ export const useAcceptAllSuggestions = (customClient?: QueryClient) => {
       if (!hasSyncedYjsProvider(pageId)) {
         reviewCoordinator.applyAllLocally('accept', pageId);
       }
-      return await manuscriptService.suggestions.acceptAllSuggestions(pageId);
+      return await pagesService.suggestions.acceptAllSuggestions(pageId);
     },
     onSuccess: (data, variables) => {
       const rev = (data as { page?: { rev?: number } } | undefined)?.page?.rev;
@@ -208,7 +208,7 @@ export const useRejectAllSuggestions = (customClient?: QueryClient) => {
       if (!hasSyncedYjsProvider(pageId)) {
         reviewCoordinator.applyAllLocally('reject', pageId);
       }
-      return await manuscriptService.suggestions.rejectAllSuggestions(pageId);
+      return await pagesService.suggestions.rejectAllSuggestions(pageId);
     },
     onSuccess: (data, variables) => {
       const rev = (data as { page?: { rev?: number } } | undefined)?.page?.rev;

@@ -7,23 +7,23 @@
  * Matt Pocock Codebase Design principles:
  * - Decouples CodeMirror extensions from coordinator and SDK singletons.
  * - Allows headless testing of extensions with in-memory spelling stand-ins.
- * - Bridges to manuscriptService and toast at application runtime.
+ * - Bridges to pagesService and toast at application runtime.
  */
 
 import { Facet } from '@codemirror/state';
 import type { EditorView } from '@codemirror/view';
 import { toast } from 'sonner';
-import { manuscriptService } from '@/features/editor/sdk/pages.service';
+import { pagesService } from '@/features/editor/sdk/pages.service';
 import type {
   SpellingServicePort,
   SpellingNotificationPort,
 } from '@/features/editor/domain/types/ports/spelling.port';
 
 let defaultSpellingService: SpellingServicePort = {
-  getProjectDictionary: (projectId) => manuscriptService.spelling.getProjectDictionary(projectId),
-  getUserDictionary: () => manuscriptService.spelling.getUserDictionary(),
-  learnProjectWord: (projectId, word) => manuscriptService.spelling.learnProjectWord(projectId, word),
-  checkSpelling: (projectId, payload) => manuscriptService.spelling.checkSpelling(projectId, payload),
+  getProjectDictionary: (projectId) => pagesService.spelling.getProjectDictionary(projectId),
+  getUserDictionary: () => pagesService.spelling.getUserDictionary(),
+  learnProjectWord: (projectId, word) => pagesService.spelling.learnProjectWord(projectId, word),
+  checkSpelling: (projectId, payload) => pagesService.spelling.checkSpelling(projectId, payload),
 };
 
 let defaultNotifier: SpellingNotificationPort = {

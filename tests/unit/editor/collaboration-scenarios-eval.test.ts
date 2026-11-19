@@ -30,7 +30,7 @@ import * as encoding from 'lib0/encoding';
 import * as decoding from 'lib0/decoding';
 import { sessionCoordinator } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
-import { draftStorageService } from '@/features/editor/domain/document/draft-storage';
+import { unsyncedEditsStore } from '@/features/editor/domain/offline-storage';
 
 describe('Real-Time Collaboration System: Best Case, Bad Case & Edge Cases', () => {
 
@@ -260,21 +260,21 @@ describe('Real-Time Collaboration System: Best Case, Bad Case & Edge Cases', () 
       expect(textServer.toString()).toContain('% valid edit after bad packet');
     });
 
-    it('Bad Case 2.3: Offline draft persistence recovers document after complete crash and reload', async () => {
+    it('Bad Case 2.3: Offline unsynced edit persistence recovers document after complete crash and reload', async () => {
       const fileId = 'crash-doc-001';
       const unsavedLatex = '\\section{Crucial Offline Research}\nThis was typed right before browser crash.';
 
-      // Save draft to local storage
-      await draftStorageService.saveDraft(fileId, unsavedLatex);
+      // Save unsynced edit to local storage
+      await unsyncedEditsStore.save(fileId, unsavedLatex);
 
-      // Check draft exists
-      const draft = await draftStorageService.getDraft(fileId);
-      expect(draft).toBeDefined();
-      expect(draft?.content).toBe(unsavedLatex);
+      // Check unsynced edit exists
+      const savedEdit = await unsyncedEditsStore.get(fileId);
+      expect(savedEdit).toBeDefined();
+      expect(savedEdit?.content).toBe(unsavedLatex);
 
-      // Clear draft on proper save
-      await draftStorageService.clearDraft(fileId);
-      const afterClear = await draftStorageService.getDraft(fileId);
+      // Clear unsynced edit on proper save
+      await unsyncedEditsStore.clear(fileId);
+      const afterClear = await unsyncedEditsStore.get(fileId);
       expect(afterClear).toBeNull();
     });
   });

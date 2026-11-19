@@ -6,7 +6,7 @@
  *
  * Architecture:
  * - Delegates LaTeX tokenization and AST/environment/citation/label linting to the backend
- *   `FastSyntaxLinter` via `manuscriptService.diagnostics.lint(...)` (`POST /diagnostics/projects/:projectId/lint-doc`).
+ *   `FastSyntaxLinter` via `pagesService.diagnostics.lint(...)` (`POST /diagnostics/projects/:projectId/lint-doc`).
  * - Debounced via CodeMirror 6 `linter(..., { delay: 400 })` with per-view content caching.
  * - Preserves incremental line-number shifting on document edits for zero-latency gutter updates.
  */
@@ -18,7 +18,7 @@ import { latexSymbolsIndex } from '@/features/editor/domain/latex/latex-symbols-
 import { diagnosticsCoordinator } from '@/features/editor/subsystems/diagnostics/coordinator/diagnostics.coordinator';
 import { usePageStore } from '@/features/editor/core';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
-import { manuscriptService } from '@/features/editor/sdk/pages.service';
+import { pagesService } from '@/features/editor/sdk/pages.service';
 import {
   runLatexLinter,
   mapBackendDiagnosticsToOffsets,
@@ -27,7 +27,7 @@ import {
   clearLatexLinterCache,
   type LinterDiagnostic,
   type LinterOptions,
-} from './latex-linter-core';
+} from '../model/latex-linter-core';
 
 function hashLinterInput(text: string, options: LinterOptions = {}): string {
   let h = 2166136261;
@@ -58,7 +58,7 @@ export class LatexLinterClient {
   private inFlightByHash = new Map<string, Promise<Diagnostic[]>>();
 
   /**
-   * Executes linting on text via backend `manuscriptService.diagnostics.lint`
+   * Executes linting on text via backend `pagesService.diagnostics.lint`
    * with content-hash deduplication so unchanged text + options incur 0 network requests.
    */
   public async lint(text: string, options: LinterOptions = {}): Promise<Diagnostic[]> {
@@ -86,7 +86,7 @@ export class LatexLinterClient {
 
     const requestPromise = (async (): Promise<Diagnostic[]> => {
       try {
-        const report = await manuscriptService.diagnostics.lint(
+        const report = await pagesService.diagnostics.lint(
           text,
           options.filePath || 'main.tex',
           {
@@ -136,9 +136,7 @@ export class LatexLinterClient {
   }
 }
 
-export { LatexLinterClient as LatexLinterBackendClient };
 export const latexLinterClient = new LatexLinterClient();
-export { latexLinterClient as latexLinterWorkerClient };
 
 interface ViewLinterCacheEntry {
   text: string;
@@ -191,8 +189,6 @@ export function createLatexLinterPlugin(boundFilePath?: string) {
   );
 }
 
-export { createLatexLinterPlugin as createLatexLinterIncrementalPlugin };
-
 /**
  * Incremental CodeMirror 6 ViewPlugin:
  * - Immediately skips transactions where docChanged is false (cursor / selection only).
@@ -200,7 +196,6 @@ export { createLatexLinterPlugin as createLatexLinterIncrementalPlugin };
  *   to adjust existing error line numbers with zero latency before asynchronous backend lint re-runs.
  */
 export const latexLinterPlugin = createLatexLinterPlugin();
-export { latexLinterPlugin as latexLinterIncrementalPlugin };
 
 export function createLatexLinterSource(boundFilePath?: string): (view: EditorView) => Promise<Diagnostic[]> {
   let instanceLastDocText: string | null = null;
@@ -294,4 +289,4 @@ export function createLatexLinterExtension(filePath?: string): Extension {
   ];
 }
 
-export { runLatexLinter, type LinterDiagnostic, type LinterOptions } from './latex-linter-core';
+export { runLatexLinter, type LinterDiagnostic, type LinterOptions } from '../model/latex-linter-core';

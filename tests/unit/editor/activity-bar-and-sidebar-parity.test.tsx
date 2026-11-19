@@ -6,9 +6,9 @@ import { ActivityBar } from '@/features/editor/core/shell/ActivityBar';
 import { TexFileRow } from '@/features/editor/subsystems/explorer';
 import { useWorkspaceStore } from '@/features/editor/core';
 
-// Mock manuscriptService to keep tests decoupled and fast
-vi.mock('@/features/editor/sdk/manuscript.service', () => ({
-  manuscriptService: {
+// Mock pagesService to keep tests decoupled and fast
+vi.mock('@/features/editor/sdk/pages.service', () => ({
+  pagesService: {
     linkedFiles: { refresh: vi.fn() },
     docs: {
       getById: vi.fn().mockResolvedValue({ content: 'Mock content' }),

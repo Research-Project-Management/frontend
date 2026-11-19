@@ -22,6 +22,7 @@ export {
 import { triggerBrowserTextDownload } from '@/features/library/core/coordinator/citation-export.coordinator';
 import { canMoveCollection } from '@/features/library/domain/collection-tree.domain';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import { useWorkspaceContextStore } from '@/features/shell/store/workspace-context.store';
 import type {
   Collection,
   CollectionInput,
@@ -96,7 +97,8 @@ export function useCollectionCoordinator({
   );
 
   const openModal = useLibraryUIStore((s) => s.openModal);
-  const activeScope = useLibraryUIStore((s) => s.activeScope);
+  const activeSpace = useWorkspaceContextStore((s) => s.activeSpace);
+  const isInProjectContext = activeSpace.type === 'project' && Boolean(activeSpace.projectId);
 
   const openCreateModalForScope = useCallback(
     (targetScopeId: string, defaultParentId: string | null) => {
@@ -109,13 +111,13 @@ export function useCollectionCoordinator({
       const rootLabel =
         targetScopeId === 'user'
           ? 'My Library'
-          : activeScope.type === 'project'
-            ? (activeScope.name || 'Project')
+          : isInProjectContext
+            ? (activeSpace.projectName || 'Project')
             : 'My Library';
       const rootType: 'user' | 'project' =
         targetScopeId === 'user'
           ? 'user'
-          : activeScope.type === 'project'
+          : isInProjectContext
             ? 'project'
             : 'user';
 
@@ -152,8 +154,8 @@ export function useCollectionCoordinator({
       });
     },
     [
-      activeScope.name,
-      activeScope.type,
+      activeSpace.projectName,
+      isInProjectContext,
       allCollectionsByScope,
       collectionService,
       collections,

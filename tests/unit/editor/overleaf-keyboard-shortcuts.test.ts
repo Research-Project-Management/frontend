@@ -103,14 +103,14 @@ describe('Overleaf LaTeX Formatting & Auto-Close (Overleaf Parity)', () => {
   });
 
   it('SHORTCUT_LIST has Go to Line bound to Ctrl+G (Overleaf 1:1 Parity)', async () => {
-    const { SHORTCUT_LIST } = await import('@/features/editor/ui/modals/KeyboardShortcutsModal');
+    const { SHORTCUT_LIST } = await import('@/features/editor/subsystems/keybinding/ui/KeyboardShortcutsModal');
     const gotoItem = SHORTCUT_LIST.find((s) => s.id === 'goto-line');
     expect(gotoItem).toBeDefined();
     expect(gotoItem?.keys).toEqual(['Ctrl', 'G']);
   });
 
   it('SHORTCUT_LIST has Code Folding shortcuts (fold-code, unfold-code, fold-all, unfold-all)', async () => {
-    const { SHORTCUT_LIST } = await import('@/features/editor/ui/modals/KeyboardShortcutsModal');
+    const { SHORTCUT_LIST } = await import('@/features/editor/subsystems/keybinding/ui/KeyboardShortcutsModal');
     const foldCurrent = SHORTCUT_LIST.find((s) => s.id === 'fold-code');
     const unfoldCurrent = SHORTCUT_LIST.find((s) => s.id === 'unfold-code');
     const foldAll = SHORTCUT_LIST.find((s) => s.id === 'fold-all');
@@ -194,7 +194,7 @@ describe('Overleaf LaTeX Formatting & Auto-Close (Overleaf Parity)', () => {
   });
 
   it('SHORTCUT_LIST has Table Wizard and Toggle Editor Mode shortcuts', async () => {
-    const { SHORTCUT_LIST } = await import('@/features/editor/ui/modals/KeyboardShortcutsModal');
+    const { SHORTCUT_LIST } = await import('@/features/editor/subsystems/keybinding/ui/KeyboardShortcutsModal');
     const tableWizard = SHORTCUT_LIST.find((s) => s.id === 'table-wizard');
     const toggleEditor = SHORTCUT_LIST.find((s) => s.id === 'toggle-editor-mode');
 
@@ -203,7 +203,7 @@ describe('Overleaf LaTeX Formatting & Auto-Close (Overleaf Parity)', () => {
   });
 
   it('SHORTCUT_LIST has Word Count bound to Ctrl+Shift+W (Overleaf 1:1 Parity)', async () => {
-    const { SHORTCUT_LIST } = await import('@/features/editor/ui/modals/KeyboardShortcutsModal');
+    const { SHORTCUT_LIST } = await import('@/features/editor/subsystems/keybinding/ui/KeyboardShortcutsModal');
     const wordCount = SHORTCUT_LIST.find((s) => s.id === 'word-count');
     expect(wordCount).toBeDefined();
     expect(wordCount?.keys).toEqual(['Ctrl', 'Shift', 'W']);

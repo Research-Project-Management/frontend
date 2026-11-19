@@ -40,13 +40,10 @@ export {
 
 export {
   PROJECT_TEMPLATES,
-  PROJECT_TEMPLATES as ACADEMIC_TEMPLATES,
   RAW_ACADEMIC_TEMPLATES,
   type ProjectTemplate,
-  type ProjectTemplate as AcademicTemplate,
   type RawAcademicTemplate,
   type TemplateCategory,
-  type TemplateCategory as AcademicTemplateCategory,
   type TemplateIconName,
 } from './model/template-gallery.data';
 

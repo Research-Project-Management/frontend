@@ -7,8 +7,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { manuscriptService } from '@/features/editor/sdk/pages.service';
-const notificationBundlerService = manuscriptService.notifications;
+import { pagesService } from '@/features/editor/sdk/pages.service';
 import { toast } from 'sonner';
 
 export const notificationBundlerKeys = {
@@ -21,7 +20,7 @@ export const notificationBundlerKeys = {
 export function usePendingBundles(options?: { enabled?: boolean; refetchInterval?: number | false }) {
   return useQuery({
     queryKey: notificationBundlerKeys.bundles(),
-    queryFn: () => notificationBundlerService.getPendingBundles(),
+    queryFn: () => pagesService.notifications.getPendingBundles(),
     enabled: options?.enabled ?? true,
     refetchInterval: options?.refetchInterval ?? false,
     placeholderData: [],
@@ -31,7 +30,7 @@ export function usePendingBundles(options?: { enabled?: boolean; refetchInterval
 export function useDigestHistory(limit = 20, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: [...notificationBundlerKeys.digests(), limit],
-    queryFn: () => notificationBundlerService.getDigestHistory(limit),
+    queryFn: () => pagesService.notifications.getDigestHistory(limit),
     enabled: options?.enabled ?? false,
     placeholderData: [],
   });
@@ -40,7 +39,7 @@ export function useDigestHistory(limit = 20, options?: { enabled?: boolean }) {
 export function useNotificationSettings(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: notificationBundlerKeys.settings(),
-    queryFn: () => notificationBundlerService.getSettings(),
+    queryFn: () => pagesService.notifications.getSettings(),
     enabled: options?.enabled ?? false,
     placeholderData: { enabled: false, windowMinutes: 10 },
   });
@@ -60,9 +59,9 @@ export function useFlushBundle() {
           },
     ) => {
       if (typeof input === 'string') {
-        return notificationBundlerService.flushBundle(input);
+        return pagesService.notifications.flushBundle(input);
       }
-      return notificationBundlerService.flushBundle(
+      return pagesService.notifications.flushBundle(
         input?.scopeId,
         input?.spaceId,
         input?.pageId,
@@ -92,7 +91,7 @@ export function useUpdateNotificationSettings() {
 
   return useMutation({
     mutationFn: (settings: { enabled?: boolean; windowMinutes?: number }) =>
-      notificationBundlerService.updateSettings(settings),
+      pagesService.notifications.updateSettings(settings),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: notificationBundlerKeys.settings(),

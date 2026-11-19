@@ -14,8 +14,8 @@ import {
 } from '@/features/editor/subsystems/explorer';
 import { usePageStore, useWorkspaceStore, useSettingsStore } from '@/features/editor/core';
 import { EDITOR_STORAGE_KEYS } from '@/features/editor/domain/constants/editor.constants';
-import { pageKeys, storageKeys } from '@/features/editor/ui/hooks/document.queries';
-import { manuscriptService } from '@/features/editor/sdk/pages.service';
+import { pageKeys, storageKeys } from '@/features/editor/core/queries/document.queries';
+import { pagesService } from '@/features/editor/sdk/pages.service';
 import { useFileUpload } from '@/features/editor/subsystems/explorer/ui/hooks/useFileUpload';
 import type { EditorStorageItem } from '@/features/editor/domain/types/storage-item.types';
 import type { PageFile } from '@/features/editor/domain/types/core.types';
@@ -240,7 +240,7 @@ describe('Virtual File Tree Interactions (Auto-Reveal, Filter, Inline Subfolder 
 
   it('renders inline file creation directly under target folder instead of duplicating at top and prefixes path cleanly', async () => {
     const createSpy = vi
-      .spyOn(manuscriptService.docs, 'createChildFile')
+      .spyOn(pagesService.docs, 'createChildFile')
       .mockResolvedValue({ id: 'new-lemma', title: 'chapters/part3/lemma.tex', content: '' } as PageFile);
 
     const { pageFiles, storageItems } = buildLargeFilesFixture();
@@ -443,7 +443,7 @@ describe('Virtual File Tree Interactions (Auto-Reveal, Filter, Inline Subfolder 
     const createAsync = vi.fn().mockResolvedValue({ id: 'new-tex-1' });
     const updateAsync = vi.fn().mockResolvedValue({});
     const importZipSpy = vi
-      .spyOn(manuscriptService.export, 'importProjectZip')
+      .spyOn(pagesService.export, 'importProjectZip')
       .mockResolvedValue({
         projectId: 'space-1',
         totalEntries: 1,

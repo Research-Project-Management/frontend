@@ -4,7 +4,7 @@
  * PdfZoomControls.tsx
  *
  * Zoom level controls for PDF viewer (Block 6: UI Features Layer).
- * Location: `features/editor/ui/features/preview/PdfZoomControls.tsx`
+ * Location: `features/editor/subsystems/compiler/ui/PdfZoomControls.tsx`
  */
 
 import React from 'react';

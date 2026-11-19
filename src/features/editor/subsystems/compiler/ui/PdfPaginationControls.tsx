@@ -4,7 +4,7 @@
  * PdfPaginationControls.tsx
  *
  * Page navigation controls for PDF viewing (Block 6: UI Features Layer).
- * Location: `features/editor/ui/features/preview/PdfPaginationControls.tsx`
+ * Location: `features/editor/subsystems/compiler/ui/PdfPaginationControls.tsx`
  */
 
 import React, { useState, useEffect } from 'react';

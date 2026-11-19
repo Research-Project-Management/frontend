@@ -19,9 +19,9 @@ import {
   trackChangesDecorationsField,
 } from '@/features/editor/subsystems/review/extensions/track-changes.extension';
 import { reviewCoordinator } from '@/features/editor/subsystems/review';
-import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
+import { pagesService } from '@/features/editor/sdk/pages.service';
 import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/core';
-import type { TrackChangeDto, CommentThreadDto } from '@/features/editor/sdk/manuscript/types';
+import type { TrackChangeDto, CommentThreadDto } from '@/features/editor/sdk/pages/types';
 import type { ProjectVersionListItem, ProjectDiffResponse } from '@/features/editor/domain/types/history.types';
 
 describe('Track Changes, Review Mode & Version History Subsystem', () => {
@@ -268,9 +268,9 @@ describe('Track Changes, Review Mode & Version History Subsystem', () => {
       expect(view.state.selection.main.head).toBe(linePos.from);
     });
 
-    it('delegates acceptSuggestion to manuscriptService.suggestions and dispatches update', async () => {
+    it('delegates acceptSuggestion to pagesService.suggestions and dispatches update', async () => {
       const spyAccept = vi
-        .spyOn(manuscriptService.suggestions, 'acceptSuggestion')
+        .spyOn(pagesService.suggestions, 'acceptSuggestion')
         .mockResolvedValue(undefined as any);
 
       const dispatchSpy = vi.spyOn(editorCommandBus, 'dispatch');
@@ -289,9 +289,9 @@ describe('Track Changes, Review Mode & Version History Subsystem', () => {
       );
     });
 
-    it('delegates rejectSuggestion to manuscriptService.suggestions and dispatches update', async () => {
+    it('delegates rejectSuggestion to pagesService.suggestions and dispatches update', async () => {
       const spyReject = vi
-        .spyOn(manuscriptService.suggestions, 'rejectSuggestion')
+        .spyOn(pagesService.suggestions, 'rejectSuggestion')
         .mockResolvedValue(undefined as any);
 
       const dispatchSpy = vi.spyOn(editorCommandBus, 'dispatch');
@@ -310,13 +310,13 @@ describe('Track Changes, Review Mode & Version History Subsystem', () => {
       );
     });
 
-    it('performs acceptAll and rejectAll batch operations via manuscriptService.suggestions', async () => {
+    it('performs acceptAll and rejectAll batch operations via pagesService.suggestions', async () => {
       const spyAcceptAll = vi
-        .spyOn(manuscriptService.suggestions, 'acceptAllSuggestions')
+        .spyOn(pagesService.suggestions, 'acceptAllSuggestions')
         .mockResolvedValue(undefined as any);
 
       const spyRejectAll = vi
-        .spyOn(manuscriptService.suggestions, 'rejectAllSuggestions')
+        .spyOn(pagesService.suggestions, 'rejectAllSuggestions')
         .mockResolvedValue(undefined as any);
 
       await reviewCoordinator.acceptAll('doc-123');
@@ -368,9 +368,9 @@ describe('Track Changes, Review Mode & Version History Subsystem', () => {
         },
       ];
 
-      vi.spyOn(manuscriptService.history, 'getProjectVersions').mockResolvedValue(mockVersions);
+      vi.spyOn(pagesService.history, 'getProjectVersions').mockResolvedValue(mockVersions);
 
-      const list = await manuscriptService.history.getProjectVersions('p-1');
+      const list = await pagesService.history.getProjectVersions('p-1');
       expect(list).toHaveLength(3);
       expect(list[0].version).toBe(3);
       expect(list[0].labels[0].label).toBe('Camera-Ready');
@@ -417,9 +417,9 @@ describe('Track Changes, Review Mode & Version History Subsystem', () => {
         ],
       };
 
-      vi.spyOn(manuscriptService.history, 'compareProjectVersions').mockResolvedValue(mockDiffResponse);
+      vi.spyOn(pagesService.history, 'compareProjectVersions').mockResolvedValue(mockDiffResponse);
 
-      const diff = await manuscriptService.history.compareProjectVersions('p-1', 1, 2);
+      const diff = await pagesService.history.compareProjectVersions('p-1', 1, 2);
       expect(diff).not.toBeNull();
       expect(diff?.totalAdditions).toBe(12);
       expect(diff?.totalDeletions).toBe(3);
@@ -429,43 +429,43 @@ describe('Track Changes, Review Mode & Version History Subsystem', () => {
     });
 
     it('attaches and deletes milestone labels on a version', async () => {
-      const spyLabel = vi.spyOn(manuscriptService.history, 'labelProjectVersion').mockResolvedValue({
+      const spyLabel = vi.spyOn(pagesService.history, 'labelProjectVersion').mockResolvedValue({
         id: 'lbl-new',
         version: 2,
         label: 'Pre-Submission',
         createdAt: '2026-09-01T00:00:00Z',
       });
 
-      const spyDelete = vi.spyOn(manuscriptService.history, 'deleteProjectLabel').mockResolvedValue();
+      const spyDelete = vi.spyOn(pagesService.history, 'deleteProjectLabel').mockResolvedValue();
 
-      await manuscriptService.history.labelProjectVersion('p-1', 2, 'Pre-Submission');
+      await pagesService.history.labelProjectVersion('p-1', 2, 'Pre-Submission');
       expect(spyLabel).toHaveBeenCalledWith('p-1', 2, 'Pre-Submission');
 
-      await manuscriptService.history.deleteProjectLabel('p-1', 'lbl-new');
+      await pagesService.history.deleteProjectLabel('p-1', 'lbl-new');
       expect(spyDelete).toHaveBeenCalledWith('p-1', 'lbl-new');
     });
 
     it('restores project files to a historical version with 1-click rollback', async () => {
-      const spyRestore = vi.spyOn(manuscriptService.history, 'restoreProjectVersion').mockResolvedValue({
+      const spyRestore = vi.spyOn(pagesService.history, 'restoreProjectVersion').mockResolvedValue({
         restoredSnapshot: { version: 1 } as any,
         newSnapshot: { version: 4 } as any,
         restoreResult: { restoredFilesCount: 2, restoredDocIds: ['doc-1', 'doc-2'] },
       });
 
-      const result = await manuscriptService.history.restoreProjectVersion('p-1', 1);
+      const result = await pagesService.history.restoreProjectVersion('p-1', 1);
       expect(spyRestore).toHaveBeenCalledWith('p-1', 1);
       expect(result.restoreResult.restoredFilesCount).toBe(2);
       expect(result.newSnapshot.version).toBe(4);
     });
 
     it('creates on-demand snapshot checkpoints', async () => {
-      const spyCreate = vi.spyOn(manuscriptService.history, 'createProjectSnapshot').mockResolvedValue({
+      const spyCreate = vi.spyOn(pagesService.history, 'createProjectSnapshot').mockResolvedValue({
         id: 'snap-new',
         version: 5,
         summary: 'Manual checkpoint before refactor',
       } as any);
 
-      const snap = await manuscriptService.history.createProjectSnapshot('p-1', 'Manual checkpoint before refactor');
+      const snap = await pagesService.history.createProjectSnapshot('p-1', 'Manual checkpoint before refactor');
       expect(spyCreate).toHaveBeenCalledWith('p-1', 'Manual checkpoint before refactor');
       expect(snap.version).toBe(5);
     });

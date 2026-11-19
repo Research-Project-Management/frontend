@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
-import { draftStorageService } from '@/features/editor/domain/document/draft-storage';
+import { unsyncedEditsStore } from '@/features/editor/domain/offline-storage';
 import {
   sessionCoordinator,
   shouldUseRealtimePersistence,
   type DocumentConflict,
 } from '@/features/editor/core';
 import { useConnectivityStore } from '@/features/editor/core';
-import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
+import { pagesService } from '@/features/editor/sdk/pages.service';
 
 let seq = 0;
 const nextId = (p: string) => `${p}-${Date.now()}-${seq++}`;
@@ -32,7 +32,7 @@ describe('Session coordinator data-loss guards', () => {
     it('schedules HTTP autosave when the realtime provider disconnects with dirty content', async () => {
       vi.useFakeTimers();
       const id = nextId('rt');
-      const spy = vi.spyOn(manuscriptService.docs, 'updateContent').mockResolvedValue(undefined as never);
+      const spy = vi.spyOn(pagesService.docs, 'updateContent').mockResolvedValue(undefined as never);
       lruDocumentCache.registerModel(id, { content: 'base' });
       sessionCoordinator.setRealtimeConnected(id, true);
       sessionCoordinator.notifyContentChange(id, 'typed while connected', { isRealtimeActive: true, skipAutoCompile: true });
@@ -114,7 +114,7 @@ describe('Session coordinator data-loss guards', () => {
       lruDocumentCache.registerModel(id, { content: 'v0' });
       lruDocumentCache.updateContent(id, 'v1', true);
       let release!: () => void;
-      vi.spyOn(manuscriptService.docs, 'updateContent').mockImplementation(
+      vi.spyOn(pagesService.docs, 'updateContent').mockImplementation(
         () => new Promise((r) => (release = () => r(undefined as never)))
       );
       const p = sessionCoordinator.flushFile(id);
@@ -131,7 +131,7 @@ describe('Session coordinator data-loss guards', () => {
       const id = nextId('ok');
       lruDocumentCache.registerModel(id, { content: 'v0' });
       lruDocumentCache.updateContent(id, 'v1', true);
-      vi.spyOn(manuscriptService.docs, 'updateContent').mockResolvedValue(undefined as never);
+      vi.spyOn(pagesService.docs, 'updateContent').mockResolvedValue(undefined as never);
       expect(await sessionCoordinator.flushFile(id)).toBe(true);
       expect(lruDocumentCache.getModel(id)?.isDirty).toBe(false);
     });
@@ -141,7 +141,7 @@ describe('Session coordinator data-loss guards', () => {
       lruDocumentCache.registerModel(id, { content: 'v0' });
       lruDocumentCache.updateContent(id, 'v1', true);
       const releases: Array<() => void> = [];
-      vi.spyOn(manuscriptService.docs, 'updateContent').mockImplementation(
+      vi.spyOn(pagesService.docs, 'updateContent').mockImplementation(
         () => new Promise((r) => releases.push(() => r(undefined as never)))
       );
       const p = sessionCoordinator.flushAllPending();
@@ -153,32 +153,32 @@ describe('Session coordinator data-loss guards', () => {
     });
   });
 
-  describe('#1 draft decision gate', () => {
-    it('does not overwrite or clear the stored draft while a decision is pending', async () => {
+  describe('#1 unsynced edit recovery decision gate', () => {
+    it('does not overwrite or clear the stored unsynced edit while a decision is pending', async () => {
       const id = nextId('draft');
-      await draftStorageService.saveDraft(id, 'precious offline draft', 'proj');
-      sessionCoordinator.beginDraftDecision(id);
-      sessionCoordinator.saveDraftSnapshot(id, 'stale server content', 'proj');
-      sessionCoordinator.clearDraftSnapshot(id);
-      sessionCoordinator.flushPendingDrafts();
-      const check = await sessionCoordinator.checkDraftRecoveryAsync(id, 'stale server content');
-      expect(check.hasRecoverableDraft).toBe(true);
-      expect(check.draft?.content).toBe('precious offline draft');
+      await unsyncedEditsStore.save(id, 'precious offline edit', 'proj');
+      sessionCoordinator.beginRecoveryDecision(id);
+      sessionCoordinator.saveUnsyncedEdit(id, 'stale server content', 'proj');
+      sessionCoordinator.clearUnsyncedEdit(id);
+      sessionCoordinator.flushPendingUnsyncedEdits();
+      const check = await sessionCoordinator.checkUnsyncedEditRecoveryAsync(id, 'stale server content');
+      expect(check.hasRecoverableEdit).toBe(true);
+      expect(check.edit?.content).toBe('precious offline edit');
 
-      sessionCoordinator.restoreDraft(id, check.draft!.content);
-      expect(sessionCoordinator.isDraftDecisionPending(id)).toBe(false);
-      expect(lruDocumentCache.getModel(id)?.content).toBe('precious offline draft');
+      sessionCoordinator.restoreUnsyncedEdit(id, check.edit!.content);
+      expect(sessionCoordinator.isRecoveryDecisionPending(id)).toBe(false);
+      expect(lruDocumentCache.getModel(id)?.content).toBe('precious offline edit');
       expect(lruDocumentCache.getModel(id)?.isDirty).toBe(true);
     });
 
-    it('discardDraft removes the draft and keeps server version', async () => {
+    it('discardUnsyncedEdit removes the unsynced edit and keeps server version', async () => {
       const id = nextId('discard');
-      await draftStorageService.saveDraft(id, 'old draft', 'proj');
-      sessionCoordinator.beginDraftDecision(id);
-      sessionCoordinator.discardDraft(id);
+      await unsyncedEditsStore.save(id, 'old unsynced edit', 'proj');
+      sessionCoordinator.beginRecoveryDecision(id);
+      sessionCoordinator.discardUnsyncedEdit(id);
       await new Promise((r) => setTimeout(r, 10));
-      const check = await sessionCoordinator.checkDraftRecoveryAsync(id, 'server');
-      expect(check.hasRecoverableDraft).toBe(false);
+      const check = await sessionCoordinator.checkUnsyncedEditRecoveryAsync(id, 'server');
+      expect(check.hasRecoverableEdit).toBe(false);
     });
   });
 });

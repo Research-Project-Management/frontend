@@ -5,7 +5,8 @@
  * Backend Manuscripts ExportImportService (`POST /projects/:projectId/import/zip`).
  */
 
-import { manuscriptService } from '@/features/editor/sdk/pages.service';
+import { docs } from '../pages/docs.client';
+import { exportDocs } from '../pages/export.client';
 import type { ImportProjectZipResult } from '@/features/editor/sdk/pages/types';
 import { ProjectService } from '@/features/projects/shell/services/project.service';
 
@@ -227,7 +228,7 @@ export interface ImportZipOptions {
 
 /**
  * Delegates ZIP archive unpacking and project hydration directly to the Flux backend
- * (`manuscriptService.export.importProjectZip`).
+ * (`pagesService.export.importProjectZip`).
  * - If `projectId` is absent: creates a new Project container first, then imports the ZIP on the server.
  * - If `projectId` is provided: imports the ZIP directly into the existing project on the server.
  */
@@ -301,11 +302,11 @@ export async function extractAndImportZipToProject({
   report('uploading_assets', `Importing archive "${finalProjectName}" on server...`, 0);
   const serverImportRes =
     zipFile && extracted && !extracted.zipFile
-      ? await manuscriptService.export.importProjectZip(
+      ? await exportDocs.importProjectZip(
           existingParentPageId || effectiveProjectId,
           effectiveZipFile,
         )
-      : await manuscriptService.export.importProjectZip(
+      : await exportDocs.importProjectZip(
           existingParentPageId || effectiveProjectId,
           effectiveZipFile,
           extracted?.mainFilePath,
@@ -320,7 +321,7 @@ export async function extractAndImportZipToProject({
           )
         : undefined) || extracted.textFiles[0];
     if (mainItem) {
-      const createdRoot = await manuscriptService.docs.create({
+      const createdRoot = await docs.create({
         projectId: effectiveProjectId,
         title: mainItem.name,
         content: mainItem.textContent || '',

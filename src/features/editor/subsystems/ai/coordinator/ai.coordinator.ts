@@ -22,7 +22,7 @@ import {
 } from '@/features/editor/core';
 import { diagnosticsCoordinator, type IndexedDiagnosticItem } from '@/features/editor/subsystems/diagnostics';
 import type { EditorDiagnosticItem } from '@/features/editor/domain/types/diagnostics.types';
-import { manuscriptService } from '@/features/editor/sdk/pages.service';
+import { pagesService } from '@/features/editor/sdk/pages.service';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import type { DiffProposal } from '@/features/editor/domain/types/ports/editor-engine.port';
 import { extractDocumentContentString } from '@/features/editor/domain/types/core.types';
@@ -239,7 +239,7 @@ export class AiCoordinator {
       : null;
 
     try {
-      const fixResult = await manuscriptService.ai.suggestLatexFix({
+      const fixResult = await pagesService.ai.suggestLatexFix({
         errorMessage: diagnostic.message,
         errorLine: diagnostic.line,
         errorFile: fileName,
@@ -537,5 +537,4 @@ export class AiCoordinator {
   }
 }
 
-export { AiCoordinator as AiCoordinatorRegistry };
 export const aiCoordinator = new AiCoordinator();

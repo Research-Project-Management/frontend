@@ -4,7 +4,7 @@ import {
   type SyncTeXMap,
 } from '@/features/editor/subsystems/compiler/synctex/synctex-index';
 import { CompilePipeline } from '@/features/editor/subsystems/compiler';
-import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
+import { pagesService } from '@/features/editor/sdk/pages.service';
 
 describe('Forward SyncTeX (Code Cursor -> PDF Highlight & Bounding Box)', () => {
   beforeEach(() => {
@@ -158,7 +158,7 @@ x1,55:0,0
   });
 
   describe('CompilePipeline.resolveForwardRemote (Backend Single Source of Truth)', () => {
-    it('should query manuscriptService.synctex.forwardSync and return full coordinate and box result', async () => {
+    it('should query pagesService.synctex.forwardSync and return full coordinate and box result', async () => {
       const mockResult = {
         page: 3,
         x: 120,
@@ -167,7 +167,7 @@ x1,55:0,0
         h: 15,
       };
 
-      vi.spyOn(manuscriptService.synctex, 'forwardSync').mockResolvedValueOnce(mockResult);
+      vi.spyOn(pagesService.synctex, 'forwardSync').mockResolvedValueOnce(mockResult);
 
       const res = await CompilePipeline.resolveForwardRemote(
         'proj-456',
@@ -175,7 +175,7 @@ x1,55:0,0
         45,
       );
 
-      expect(manuscriptService.synctex.forwardSync).toHaveBeenCalledWith({
+      expect(pagesService.synctex.forwardSync).toHaveBeenCalledWith({
         spaceId: 'proj-456',
         file: 'main.tex',
         line: 45,
@@ -186,7 +186,7 @@ x1,55:0,0
     });
 
     it('should handle remote failure gracefully', async () => {
-      vi.spyOn(manuscriptService.synctex, 'forwardSync').mockRejectedValueOnce(new Error('Compiler unreachable'));
+      vi.spyOn(pagesService.synctex, 'forwardSync').mockRejectedValueOnce(new Error('Compiler unreachable'));
 
       const res = await CompilePipeline.resolveForwardRemote(
         'proj-456',

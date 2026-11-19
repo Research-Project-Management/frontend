@@ -11,7 +11,7 @@ import { Badge } from '@/shared/components/ui/badge';
 import { cn } from '@/shared/lib/utils';
 import { libraryBibtexModalSchema, type LibraryBibtexModalFormValues } from '@/features/editor/domain/types/core.types';
 import { formatItemToBibtex } from '@/features/editor/subsystems/citation';
-import { manuscriptService } from '@/features/editor/sdk/pages.service';
+import { pagesService } from '@/features/editor/sdk/pages.service';
 import { useViewItems } from '@/features/library/sdk/queries/catalog.queries';
 import type { Item } from '@/features/library/types/core.types';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
@@ -94,7 +94,7 @@ export function LibraryTabPane({
     try {
       const targetSpaceId =
         usePageStore.getState().spaceId || usePageStore.getState().projectId || parentPageId;
-      const res = await manuscriptService.citations.upsertEntries(targetSpaceId, {
+      const res = await pagesService.citations.upsertEntries(targetSpaceId, {
         entries: chosenItems as unknown as Array<Record<string, unknown>>,
         targetBibFile: targetName,
       });

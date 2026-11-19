@@ -34,10 +34,10 @@ import {
 } from '@/features/editor/core';
 import type { WorkspaceTab } from '@/features/editor/domain/types/workspace.types';
 import { navigationCoordinator } from '@/features/editor/subsystems/navigation';
-import { draftStorageService } from '@/features/editor/domain/document/draft-storage';
-import { buildEditorState } from '@/features/editor/ui/editor/CodeMirrorView';
+import { pendingOutboxStore } from '@/features/editor/domain/offline-storage';
+import { buildEditorState } from '@/features/editor/core/surface/CodeMirrorView';
 import { YjsCodeMirrorAdapter } from '@/features/editor/core/engine/collaboration/yjs-codemirror-adapter';
-import { EditorTabs } from '@/features/editor/ui/editor/EditorTabs';
+import { EditorTabs } from '@/features/editor/core/surface/EditorTabs';
 
 function createMemoryStorage(): StorageLike & { store: Map<string, string> } {
   const store = new Map<string, string>();
@@ -513,12 +513,12 @@ describe('Editor Tab Pool, Multi-Window Sync & CM6 Warm State Governance', () =>
         resolveFetch = resolve;
       });
       const spy = vi
-        .spyOn(draftStorageService, 'getPendingMutations')
+        .spyOn(pendingOutboxStore, 'getPending')
         .mockReturnValueOnce(pendingPromise)
         .mockResolvedValue([]);
 
       try {
-        expect(EDITOR_LIMITS.OFFLINE_REPLAY_LOCK_NAME).toBe('flux:editor:offline-mutations-replay');
+        expect(EDITOR_LIMITS.OFFLINE_REPLAY_LOCK_NAME).toBe('flux:editor:offline-outbox-replay');
         const firstCall = sessionCoordinator.replayPendingMutations();
         const concurrentSecondCall = sessionCoordinator.replayPendingMutations();
 

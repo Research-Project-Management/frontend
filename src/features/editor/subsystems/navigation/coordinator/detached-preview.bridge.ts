@@ -5,15 +5,16 @@
  * synchronization between the Main Editor Window and the Detached PDF Preview Window.
  */
 
+import { usePageStore } from '@/features/editor/core/store/editor.store';
+import { useWorkspaceStore } from '@/features/editor/core/store/workspace.store';
 import {
-  usePageStore,
-  useWorkspaceStore,
   editorCommandBus,
   getActiveEditorEngine,
-  getSyncTexChannelName,
-} from '@/features/editor/core';
+} from '@/features/editor/core/bus/command-bus';
+import { getSyncTexChannelName } from '@/features/editor/domain/constants/editor.constants';
 import { extractProjectId } from '@/features/editor/domain/types/core.types';
-import { compilerCoordinator, useCompileStore } from '@/features/editor/subsystems/compiler';
+import { compilerCoordinator } from '@/features/editor/subsystems/compiler/coordinator/compiler.coordinator';
+import { useCompileStore } from '@/features/editor/subsystems/compiler/coordinator/compiler.store';
 
 export interface DetachedPreviewNavigationCallbacks {
   onJumpToCode: (payload: {
@@ -166,8 +167,8 @@ export class DetachedPreviewBridge {
         type === 'preview:closed' ||
         type === 'preview:attached'
       ) {
-        useWorkspaceStore.getState().setPdfDetached(false);
-        useCompileStore.getState().setIsViewerPoppedOut(false);
+        useWorkspaceStore?.getState?.()?.setPdfDetached(false);
+        useCompileStore?.getState?.()?.setIsViewerPoppedOut(false);
       }
     };
   }

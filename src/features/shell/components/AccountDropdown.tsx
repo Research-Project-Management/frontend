@@ -22,7 +22,6 @@ import { resolveFileUrl } from "@/shared/lib/file-client";
 import { useUserCover } from '@/features/settings/hooks/use-user-cover';
 import { useUpload } from "@/shared/hooks/use-upload";
 import { useWorkspaceContextStore } from '../store/workspace-context.store';
-import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
 import dynamic from 'next/dynamic';
 
 const CoverModal = dynamic(
@@ -42,7 +41,6 @@ export default function AccountDropdown({ align = 'end' }: AccountDropdownProps 
   const { cover, setCover } = useUserCover();
   const { uploadFile, isUploading } = useUpload();
   const setPersonalSpace = useWorkspaceContextStore((s) => s.setPersonalSpace);
-  const setLibraryScope = useLibraryUIStore((s) => s.setActiveScope);
   const [mounted, setMounted] = useState(false);
   const [isCoverModalOpen, setIsCoverModalOpen] = useState(false);
 

@@ -6,6 +6,27 @@
 
 import { API_BASE_URL } from '@/config/env';
 import { getAuthToken } from '@/shared/lib/token-storage';
+import {
+  buildUploadFingerprint,
+  computeClientSha256Hex,
+  defaultCheckpointStore,
+  MultipartCheckpointStore,
+  smartUpload,
+  USER_ABORT_ERROR_MESSAGE,
+  type SmartUploadOptions,
+  type SmartUploadResult,
+} from '@/shared/lib/smart-upload-engine';
+
+export {
+  buildUploadFingerprint,
+  computeClientSha256Hex,
+  defaultCheckpointStore,
+  MultipartCheckpointStore,
+  smartUpload,
+  USER_ABORT_ERROR_MESSAGE,
+  type SmartUploadOptions,
+  type SmartUploadResult,
+};
 
 // ─── 1. Types & Options ───────────────────────────────────────────────────────
 
@@ -218,157 +239,82 @@ export async function downloadFileAuthorized(
   }
 }
 
-// ─── 6. File Upload Transport (XHR with Progress & Abort) ─────────────────────
+// ─── 6. File Upload Transport (Unified Smart Upload Engine) ──────────────────
+
+const SCOPE_UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function parseScopeFromPayload(payload: FileUploadPayload): {
+  projectId?: string;
+  pageId?: string;
+  extraFormFields?: Record<string, string>;
+} {
+  const { prefix, scope } = payload;
+
+  if (prefix) {
+    const parts = prefix.split('/').filter(Boolean);
+    if (parts.length >= 2) {
+      if (parts.includes('library')) {
+        return { extraFormFields: { source: 'library' } };
+      }
+      if (parts[0] === 'project' && SCOPE_UUID_REGEX.test(parts[1])) {
+        return { projectId: parts[1] };
+      }
+      if (parts[0] === 'page' && SCOPE_UUID_REGEX.test(parts[1])) {
+        return { pageId: parts[1] };
+      }
+    } else if (parts.length === 1 && SCOPE_UUID_REGEX.test(parts[0])) {
+      return { projectId: parts[0] };
+    }
+    return {};
+  }
+
+  if (scope) {
+    if ((scope.type as string) === 'library' && scope.id && SCOPE_UUID_REGEX.test(scope.id)) {
+      return { projectId: scope.id, extraFormFields: { source: 'library' } };
+    }
+    if (scope.type === 'project' && scope.id && SCOPE_UUID_REGEX.test(scope.id)) {
+      return { projectId: scope.id };
+    }
+    if (scope.type === 'page' && scope.id && SCOPE_UUID_REGEX.test(scope.id)) {
+      return { pageId: scope.id };
+    }
+  }
+
+  return {};
+}
 
 /**
- * Uploads a file to the backend storage endpoint via XMLHttpRequest,
- * supporting progress tracking, cancellation signals, and auth headers.
+ * Uploads a file to FilesModule via Unified SmartUploadEngine
+ * (SHA-256 instant CAS dedup, Presigned PUT <= 15MB, Resumable Multipart > 15MB).
  */
 export async function uploadFileXhr(payload: FileUploadPayload): Promise<string> {
   const result = await uploadFileWithDetails(payload);
   return result.url;
 }
 
-export function uploadFileWithDetails(
+export async function uploadFileWithDetails(
   payload: FileUploadPayload,
 ): Promise<{ url: string; fileId: string }> {
-  const { file, prefix, scope, signal, onProgress } = payload;
+  const { file, signal, onProgress } = payload;
+  const { projectId, pageId, extraFormFields } = parseScopeFromPayload(payload);
 
-  return new Promise<{ url: string; fileId: string }>((resolve, reject) => {
-    if (signal?.aborted) {
-      return reject(new Error('Upload aborted by user'));
-    }
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('fileName', file.name);
-
-    const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-    if (prefix) {
-      const parts = prefix.split('/').filter(Boolean);
-      if (parts.length >= 2) {
-        if (parts.includes('library')) {
-          formData.append('source', 'library');
-        } else if (parts[0] === 'project' && UUID_REGEX.test(parts[1])) {
-          formData.append('projectId', parts[1]);
-        } else if (parts[0] === 'page' && UUID_REGEX.test(parts[1])) {
-          formData.append('pageId', parts[1]);
-        }
-      } else if (parts.length === 1 && UUID_REGEX.test(parts[0])) {
-        formData.append('projectId', parts[0]);
-      }
-    } else if (scope) {
-      if ((scope.type as string) === 'library' && scope.id && UUID_REGEX.test(scope.id)) {
-        formData.append('projectId', scope.id);
-        formData.append('source', 'library');
-      } else if (scope.type === 'project' && scope.id && UUID_REGEX.test(scope.id)) {
-        formData.append('projectId', scope.id);
-      } else if (scope.type === 'page' && scope.id && UUID_REGEX.test(scope.id)) {
-        formData.append('pageId', scope.id);
-      }
-    }
-
-    const xhr = new XMLHttpRequest();
-    xhr.withCredentials = true;
-
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable && onProgress) {
-        const percentComplete = Math.round((event.loaded / event.total) * 100);
-        onProgress(percentComplete);
-      }
-    };
-
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          interface UploadRawPayload {
-            url?: string;
-            path?: string;
-            id?: string;
-            data?: UploadRawPayload;
-            file?: { id?: string; url?: string };
-          }
-          const response = JSON.parse(xhr.responseText) as UploadRawPayload;
-          const payloadData = response.data || response;
-          const rawUrl =
-            payloadData.url ||
-            payloadData.file?.url ||
-            payloadData.path ||
-            '';
-          const resolvedUrl = resolveFileUrl(rawUrl) || rawUrl;
-          const fileId = payloadData.file?.id || payloadData.id || '';
-          resolve({ url: resolvedUrl, fileId });
-        } catch {
-          reject(new Error('Failed to parse backend response'));
-        }
-      } else {
-        let errorMsg = `Upload failed with status ${xhr.status}`;
-        try {
-          const rawText = xhr.responseText;
-          if (rawText) {
-            const errRes = JSON.parse(rawText) as Record<string, unknown> | string;
-            if (typeof errRes === 'string') {
-              errorMsg = errRes;
-            } else if (errRes && typeof errRes === 'object') {
-              if (errRes.message) {
-                if (Array.isArray(errRes.message)) {
-                  errorMsg = errRes.message
-                    .map((m: unknown) =>
-                      typeof m === 'object' && m !== null && 'message' in m
-                        ? String((m as { message?: unknown }).message ?? '')
-                        : typeof m === 'object' && m !== null
-                          ? JSON.stringify(m)
-                          : String(m)
-                    )
-                    .join(', ');
-                } else if (typeof errRes.message === 'object' && errRes.message !== null) {
-                  const mObj = errRes.message as Record<string, unknown>;
-                  errorMsg = String(mObj.message || mObj.error || JSON.stringify(errRes.message));
-                } else {
-                  errorMsg = String(errRes.message);
-                }
-              } else if (errRes.error) {
-                if (typeof errRes.error === 'object' && errRes.error !== null) {
-                  const eObj = errRes.error as Record<string, unknown>;
-                  errorMsg = String(eObj.message || eObj.error || JSON.stringify(errRes.error));
-                } else {
-                  errorMsg = String(errRes.error);
-                }
-              } else if (errRes.detail) {
-                errorMsg = typeof errRes.detail === 'object' ? JSON.stringify(errRes.detail) : String(errRes.detail);
-              }
-            }
-          }
-        } catch {
-          if (xhr.responseText && typeof xhr.responseText === 'string') {
-            errorMsg = xhr.responseText.slice(0, 300);
-          }
-        }
-        reject(new Error(errorMsg));
-      }
-    };
-
-    xhr.onerror = () => reject(new Error('Network error during upload'));
-    xhr.onabort = () => reject(new Error('Upload aborted by user'));
-
-    const targetUploadUrl =
-      typeof window !== 'undefined'
-        ? '/api/v1/files/upload'
-        : `${API_BASE_URL}/api/v1/files/upload`;
-    xhr.open('POST', targetUploadUrl, true);
-
-    const token = getAuthToken();
-    if (token) {
-      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-    }
-
-    if (signal) {
-      signal.addEventListener('abort', () => xhr.abort(), { once: true });
-    }
-
-    xhr.send(formData);
+  const result = await smartUpload(file, {
+    baseEndpoint: '/api/v1/files',
+    filename: file.name,
+    mimeType: file.type || 'application/octet-stream',
+    projectId,
+    pageId,
+    extraFormFields,
+    signal,
+    onProgress,
+    resolveUrl: resolveFileUrl,
   });
+
+  return {
+    url: result.url,
+    fileId: result.fileId,
+  };
 }
 
 /**
@@ -382,69 +328,13 @@ export async function uploadGenericFile(
   const ext = dotIdx !== -1 ? file.name.slice(dotIdx) : '';
   const fileName = `avatars/${scopePrefix || 'flux'}-${Date.now()}${ext}`;
 
-  try {
-    const presignRes = await fetchAuthorized('/api/v1/files/presign', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        filename: fileName,
-        mimeType: file.type || 'application/octet-stream',
-        sizeBytes: file.size,
-      }),
-    });
-    if (!presignRes.ok) {
-      throw new Error(`Presign failed (${presignRes.status})`);
-    }
+  const result = await smartUpload(file, {
+    baseEndpoint: '/api/v1/files',
+    filename: fileName,
+    mimeType: file.type || 'application/octet-stream',
+    extraFormFields: scopePrefix ? { prefix: scopePrefix } : undefined,
+    resolveUrl: resolveFileUrl,
+  });
 
-    const presignJson = (await presignRes.json()) as {
-      data?: Record<string, unknown>;
-    } & Record<string, unknown>;
-    const presigned = presignJson.data ?? presignJson;
-
-    if (presigned.deduplicated && typeof presigned.url === 'string') {
-      return resolveFileUrl(presigned.url) || presigned.url;
-    }
-
-    if (typeof presigned.uploadUrl === 'string' && typeof presigned.storageKey === 'string') {
-      const putUrl = presigned.uploadUrl.startsWith('/')
-        ? presigned.uploadUrl
-        : presigned.uploadUrl;
-      const isLocalPut = presigned.uploadUrl.startsWith('/');
-      const putRes = await fetch(putUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': file.type || 'application/octet-stream' },
-        body: file,
-        ...(isLocalPut ? { credentials: 'include' as const } : {}),
-      });
-      if (!putRes.ok) {
-        throw new Error(`Direct upload failed (${putRes.status})`);
-      }
-
-      const completeRes = await fetchAuthorized('/api/v1/files/presign/complete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          storageKey: presigned.storageKey,
-          filename: fileName,
-          mimeType: file.type || 'application/octet-stream',
-          sizeBytes: file.size,
-        }),
-      });
-      if (!completeRes.ok) {
-        throw new Error(`Presign complete failed (${completeRes.status})`);
-      }
-      const completeJson = (await completeRes.json()) as {
-        data?: { url?: string };
-        url?: string;
-      };
-      const finalPath = completeJson.data?.url || completeJson.url || '';
-      if (finalPath) {
-        return resolveFileUrl(finalPath) || finalPath;
-      }
-    }
-  } catch {
-    // Fall back to direct multipart upload onto /api/v1/files/upload
-  }
-
-  return uploadFileXhr({ file, prefix: scopePrefix });
+  return result.url;
 }

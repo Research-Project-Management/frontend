@@ -2,7 +2,7 @@
  * OfflineBanner.tsx
  *
  * Global Offline & Connectivity Status Banner (Block 7: UI Shell Layer).
- * Location: `features/editor/ui/shell/OfflineBanner.tsx`
+ * Location: `features/editor/core/shell/OfflineBanner.tsx`
  *
  * Informs the user when network connectivity is lost (Overleaf Parity):
  * - Displays warning banner with pending changes counter.

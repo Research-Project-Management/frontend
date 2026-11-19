@@ -4,7 +4,7 @@
  * use-viewer-synctex.ts
  *
  * Bidirectional SyncTeX Navigation Controller (Block 6: UI Features Layer).
- * Location: `features/editor/ui/features/preview/hooks/use-viewer-synctex.ts`
+ * Location: `features/editor/subsystems/compiler/ui/hooks/useViewerSyncTeX.ts`
  */
 
 import { useCallback, useEffect } from 'react';

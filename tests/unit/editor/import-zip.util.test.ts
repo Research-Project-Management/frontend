@@ -5,7 +5,7 @@ import {
   parseZipArchive,
   extractAndImportZipToProject,
 } from '@/features/editor/sdk/archive/archive-import';
-import { manuscriptService, filestore } from '@/features/editor/sdk/pages.service';
+import { pagesService, filestore } from '@/features/editor/sdk/pages.service';
 import type { ImportProjectZipResult } from '@/features/editor/sdk/pages/types';
 
 describe('import-zip.util (Thin-Client Archive SDK)', () => {
@@ -88,7 +88,7 @@ describe('import-zip.util (Thin-Client Archive SDK)', () => {
         rootDocPath: 'main.tex',
       };
       const importSpy = vi
-        .spyOn(manuscriptService.export, 'importProjectZip')
+        .spyOn(pagesService.export, 'importProjectZip')
         .mockResolvedValueOnce(mockResult);
 
       const zipFile = new File(['PK-bytes'], 'manuscript.zip', { type: 'application/zip' });
@@ -116,7 +116,7 @@ describe('import-zip.util (Thin-Client Archive SDK)', () => {
 
     it('falls back to projectId when parentPageId is not supplied', async () => {
       const importSpy = vi
-        .spyOn(manuscriptService.export, 'importProjectZip')
+        .spyOn(pagesService.export, 'importProjectZip')
         .mockResolvedValueOnce({
           projectId: 'project-container-2',
           totalEntries: 2,

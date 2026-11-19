@@ -33,11 +33,11 @@ import {
   getRowColFromOffset,
 } from '@/features/editor/sdk/realtime/yjs-socket-provider';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
-import { draftStorageService } from '@/features/editor/domain/document/draft-storage';
+import { unsyncedEditsStore } from '@/features/editor/domain/offline-storage';
 import { sessionCoordinator } from '@/features/editor/core';
 import { useCompileStore } from '@/features/editor/core';
 import { useConnectivityStore } from '@/features/editor/core';
-import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
+import { pagesService } from '@/features/editor/sdk/pages.service';
 
 describe('Editor Real-Time Collaboration & Auto-Save Subsystem', () => {
   describe('1. Mathematical CRDT Convergence & Strong Eventual Consistency (SEC)', () => {
@@ -250,17 +250,17 @@ describe('Editor Real-Time Collaboration & Auto-Save Subsystem', () => {
       } catch {}
       lruDocumentCache.clearAll();
       useCompileStore.getState().clearDirty(fileId);
-      draftStorageService.clearDraft(fileId);
+      unsyncedEditsStore.clear(fileId);
     });
 
     afterEach(() => {
       lruDocumentCache.clearAll();
-      draftStorageService.clearDraft(fileId);
+      unsyncedEditsStore.clear(fileId);
     });
 
     it('tracks dirty states and coordinates flush before compilation', async () => {
       // Spy on backend persistence updateContent
-      const updateSpy = vi.spyOn(manuscriptService.docs, 'updateContent').mockResolvedValue({
+      const updateSpy = vi.spyOn(pagesService.docs, 'updateContent').mockResolvedValue({
         success: true,
         version: 2,
       } as any);
@@ -303,26 +303,26 @@ describe('Editor Real-Time Collaboration & Auto-Save Subsystem', () => {
     const content = '\\begin{equation}\nE = mc^2\n\\end{equation}';
 
     beforeEach(() => {
-      draftStorageService.clearDraft(fileId);
+      unsyncedEditsStore.clear(fileId);
     });
 
     afterEach(() => {
-      draftStorageService.clearDraft(fileId);
+      unsyncedEditsStore.clear(fileId);
     });
 
-    it('saves draft into memory and recovers it when document is opened', async () => {
-      await draftStorageService.saveDraft(fileId, content, projectId);
+    it('saves unsynced edit into memory and recovers it when document is opened', async () => {
+      await unsyncedEditsStore.save(fileId, content, projectId);
 
-      // Check draft exists
-      const draft = await draftStorageService.getDraft(fileId);
-      expect(draft).toBeDefined();
-      expect(draft?.fileId).toBe(fileId);
-      expect(draft?.content).toBe(content);
-      expect(draft?.projectId).toBe(projectId);
+      // Check unsynced edit exists
+      const savedEdit = await unsyncedEditsStore.get(fileId);
+      expect(savedEdit).toBeDefined();
+      expect(savedEdit?.fileId).toBe(fileId);
+      expect(savedEdit?.content).toBe(content);
+      expect(savedEdit?.projectId).toBe(projectId);
 
-      // Clear draft
-      await draftStorageService.clearDraft(fileId);
-      const afterClear = await draftStorageService.getDraft(fileId);
+      // Clear unsynced edit
+      await unsyncedEditsStore.clear(fileId);
+      const afterClear = await unsyncedEditsStore.get(fileId);
       expect(afterClear).toBeNull();
     });
   });

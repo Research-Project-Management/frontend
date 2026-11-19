@@ -14,7 +14,6 @@
 export {
   reviewCoordinator,
   ReviewCoordinator,
-  ReviewCoordinator as ReviewCoordinatorRegistry,
 } from './coordinator/review.coordinator';
 export type {
   ReviewServicePort,
@@ -88,11 +87,8 @@ export {
 } from './ui/subcomponents/ReviewNav';
 export {
   ReviewIcon,
-  ReviewIcon as OverleafReviewIcon,
   ReviewSolidIcon,
-  ReviewSolidIcon as OverleafReviewSolidIcon,
   ResolvedCommentsIcon,
-  ResolvedCommentsIcon as OverleafResolvedCommentsIcon,
   MentionBadge,
   MentionRenderer,
   NotificationDigestBadge,

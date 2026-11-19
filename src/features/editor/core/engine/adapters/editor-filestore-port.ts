@@ -7,7 +7,7 @@
  * Matt Pocock Codebase Design principles:
  * - Decouples CodeMirror extensions from SDK filestore singletons.
  * - Allows headless testing of smart-paste image uploads with mock uploaders.
- * - Bridges to manuscriptService.filestore at application runtime.
+ * - Bridges to pagesService.filestore at application runtime.
  */
 
 import { filestore } from '@/features/editor/sdk/pages.service';

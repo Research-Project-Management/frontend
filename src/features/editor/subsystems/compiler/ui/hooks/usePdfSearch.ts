@@ -4,7 +4,7 @@
  * use-pdf-search.ts
  *
  * In-document PDF Search Engine with Overleaf Parity (Block 6: UI Features Layer).
- * Location: `features/editor/ui/features/preview/hooks/use-pdf-search.ts`
+ * Location: `features/editor/subsystems/compiler/ui/hooks/usePdfSearch.ts`
  *
  * Features:
  * - Real-time case sensitivity, whole word boundary, and regex matching.

@@ -31,7 +31,7 @@ import {
 import { cn } from '@/shared/lib/utils';
 import { copyTexCommandToClipboard } from '@/features/editor/subsystems/explorer/ui/hooks/useFileExplorerActions';
 import { IndentGuides, RenameInput, RowActions } from './FileTreePrimitives';
-import { useFileDiagnosticsSummary } from '@/features/editor/ui/hooks/useDiagnosticsSummary';
+import { useFileDiagnosticsSummary } from '@/features/editor/subsystems/diagnostics/ui/hooks/useDiagnosticsSummary';
 
 const ICON_TEX = { icon: FileCode2, color: 'text-foreground' };
 const ICON_BIB = { icon: BookText, color: 'text-foreground' };

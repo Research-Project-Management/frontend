@@ -28,6 +28,7 @@ import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { ErrorBoundary } from '@/shared/components/ui/error-boundary';
 import { BatchBar } from './BatchBar';
 import { useLibraryUIStore } from '@/features/library/core/store/library-ui.store';
+import { useWorkspaceContextStore } from '@/features/shell/store/workspace-context.store';
 import { useProcessModalStore } from '@/features/library/core/store/process-modal.store';
 import { createProvisionalUploadItem } from '@/features/library/domain/metadata.mapper';
 import { useQuickCopyCoordinator } from '@/features/library/core/coordinator/citation-export.coordinator';
@@ -313,6 +314,31 @@ export function LibraryContent({
   const isError = isSavedSearchView ? savedSearchQuery.isError : isItemsError;
   const error = isSavedSearchView ? savedSearchQuery.error : itemsError;
   const isTrash = effectiveView === 'trash';
+
+  const isAccessDenied = React.useMemo(() => {
+    if (!isError || !error) return false;
+    const errorMsg = error instanceof Error ? error.message : String(error ?? '');
+    return (
+      (error as { statusCode?: number })?.statusCode === 403 ||
+      errorMsg.toLowerCase().includes('access denied')
+    );
+  }, [isError, error]);
+
+  // If a project library query returns 403 Forbidden, self-heal back to personal library
+  React.useEffect(() => {
+    if (isError && isAccessDenied && scopeId && scopeId !== 'user') {
+      toast.error('Project library access denied. Reverting to Personal Library.', {
+        id: 'library-access-denied-fallback',
+      });
+      useLibraryUIStore.getState().setActiveScope({
+        type: 'user',
+        id: 'user',
+        name: 'My Library',
+        role: 'owner',
+      });
+      useWorkspaceContextStore.getState().setPersonalSpace();
+    }
+  }, [isError, isAccessDenied, scopeId]);
 
   const pageItems: Item[] = useMemo(() => {
     if (isSavedSearchView) {
@@ -621,8 +647,31 @@ export function LibraryContent({
     return (
       <PlaneErrorState
         title="Unable to load references"
-        description="An issue occurred while loading the reference library. Other features remain unaffected."
+        description={
+          isAccessDenied
+            ? 'Access to this library was denied or the project scope is no longer valid. Switch to your personal library to continue.'
+            : 'An issue occurred while loading the reference library. Other features remain unaffected.'
+        }
         error={error || new Error('Internal Server Error')}
+        action={
+          isAccessDenied ? (
+            <button
+              type="button"
+              onClick={() => {
+                useLibraryUIStore.getState().setActiveScope({
+                  type: 'user',
+                  id: 'user',
+                  name: 'My Library',
+                  role: 'owner',
+                });
+                useWorkspaceContextStore.getState().setPersonalSpace();
+              }}
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-12 font-medium bg-foreground text-background hover:bg-foreground/90 transition-colors shadow-xs cursor-pointer select-none"
+            >
+              Switch to My Library
+            </button>
+          ) : undefined
+        }
       />
     );
   }

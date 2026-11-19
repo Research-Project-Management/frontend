@@ -26,6 +26,7 @@ export {
   subscribeEditorEngineChanges,
 } from './bus/command-bus';
 export { useEditorCommand } from './bus/use-editor-command';
+export { useEditorInstance, useViewerInstance } from './bus/use-editor-instance';
 export { programmaticSyncAnnotation } from './engine/adapters/codemirror.adapter';
 
 export type {
@@ -120,7 +121,7 @@ export {
 export type { CompileError } from '@/features/editor/domain/types/compiler.types';
 
 // 3. Shell Presentation Layer
-export { default as WorkbenchLayout, WorkbenchLayout as ModernWorkbenchLayout } from './shell/WorkbenchLayout';
+export { default as WorkbenchLayout } from './shell/WorkbenchLayout';
 export { default as ActivityBar } from './shell/ActivityBar';
 export { default as Topbar } from './shell/Topbar';
 export { default as WorkbenchShell } from './shell/WorkbenchShell';
@@ -132,11 +133,10 @@ export { default as PrimarySidebar } from './shell/PrimarySidebar';
 export {
   sessionCoordinator,
   SessionCoordinator,
-  SessionCoordinator as SessionCoordinatorRegistry,
   shouldUseRealtimePersistence,
   type DocumentPersistencePort,
   type DocumentSessionOptions,
-  type DraftSnapshot,
+  type UnsyncedDocEdit,
   type DocumentConflict,
   type ConflictListener,
 } from './coordinator/session.coordinator';
@@ -144,41 +144,33 @@ export {
 export {
   workspaceCoordinator,
   WorkspaceCoordinator,
-  WorkspaceCoordinator as WorkspaceCoordinatorRegistry,
 } from './coordinator/workspace.coordinator';
 
 export {
   visibilityCoordinator,
   VisibilityCoordinator,
-  VisibilityCoordinator as VisibilityCoordinatorRegistry,
   type VisibilityLifecycleState,
 } from './coordinator/visibility.coordinator';
 
 export {
   documentFacade,
-  documentFacade as documentAuthority,
   DocumentFacade,
-  DocumentFacade as DocumentAuthorityRegistry,
   type ProjectFileReadModel,
   type ActiveDocumentDescriptor,
 } from './coordinator/document.facade';
 
 export {
   invariantMonitor,
-  invariantMonitor as editorInvariantMonitor,
   InvariantMonitor,
-  InvariantMonitor as EditorStateInvariantMonitor,
   type InvariantViolation,
-  type EditorInvariantViolation,
   type InvariantReport,
-  type EditorInvariantReport,
 } from './coordinator/invariant.monitor';
 export { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 
-// 5. Manuscript Backend Services & API Contracts
+// 5. Pages Backend Services & API Contracts
 export {
-  manuscriptService,
+  pagesService,
 } from '@/features/editor/sdk/pages.service';
 export {
-  MANUSCRIPTS_API_BASE,
+  PAGES_API_BASE,
 } from '@/features/editor/sdk/pages/base';

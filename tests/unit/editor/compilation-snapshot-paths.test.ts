@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { assembleCompilationSnapshot } from '@/features/editor/domain/document/compilation-snapshot';
-import { computeDraftDiffSummary } from '@/features/editor/domain/document/draft-diff';
+import { computeUnsyncedEditDiffSummary } from '@/features/editor/domain/document/unsynced-edit-diff';
 
 describe('#7 compilation snapshot path resolution', () => {
   const chapterId = '3f2a9c1e-uuid-chapter';
@@ -32,12 +32,12 @@ describe('#7 compilation snapshot path resolution', () => {
   });
 });
 
-describe('draft diff summary', () => {
+describe('unsynced edit diff summary', () => {
   it('reports identical content', () => {
-    expect(computeDraftDiffSummary('a\nb', 'a\nb').identical).toBe(true);
+    expect(computeUnsyncedEditDiffSummary('a\nb', 'a\nb').identical).toBe(true);
   });
   it('counts added and removed lines with preview', () => {
-    const s = computeDraftDiffSummary('a\nB\nc\nd', 'a\nb\nc');
+    const s = computeUnsyncedEditDiffSummary('a\nB\nc\nd', 'a\nb\nc');
     expect(s.identical).toBe(false);
     expect(s.addedLines).toBe(2);
     expect(s.removedLines).toBe(1);

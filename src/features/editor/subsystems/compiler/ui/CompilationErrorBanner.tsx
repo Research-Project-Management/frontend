@@ -4,7 +4,7 @@
  * CompilationErrorBanner.tsx
  *
  * Floating Compilation Error Alert Banner (Block 5: PDF Viewer & Compiler Panel).
- * Location: `features/editor/ui/features/preview/CompilationErrorBanner.tsx`
+ * Location: `features/editor/subsystems/compiler/ui/CompilationErrorBanner.tsx`
  *
  * Overleaf 1:1 Parity:
  * - Rendered at top of PDF preview pane when compilation fails with errors.

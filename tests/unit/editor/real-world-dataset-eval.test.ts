@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { parseBibContent, type BibEntry } from '@/features/editor/domain/latex/bib-parser';
 import { LatexDependencyGraph } from '@/features/editor/domain/latex/dependency-graph';
-import { runLatexLinter } from '@/features/editor/subsystems/diagnostics/extensions/latex-linter-core';
+import { runLatexLinter } from '@/features/editor/subsystems/diagnostics/model/latex-linter-core';
 import { countLatexWords } from '@/features/editor/domain/document/word-count';
 
 const FIXTURES_DIR = path.resolve(__dirname, '../../fixtures/real-world-datasets');

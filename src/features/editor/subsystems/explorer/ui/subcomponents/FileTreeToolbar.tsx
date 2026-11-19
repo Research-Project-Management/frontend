@@ -4,7 +4,7 @@
  * FileTreeToolbar.tsx
  *
  * Overleaf-parity File Tree Header & Toolbar (Block 6: UI Features Layer).
- * Location: `features/editor/ui/features/sidebar/explorer/FileTreeToolbar.tsx`
+ * Location: `features/editor/subsystems/explorer/ui/subcomponents/FileTreeToolbar.tsx`
  *
  * Layout:
  * - Header: Chevron accordion toggle + "File Tree" title.

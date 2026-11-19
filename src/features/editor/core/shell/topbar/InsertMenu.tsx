@@ -19,7 +19,7 @@ import {
   MenubarSubContent,
   MenubarSeparator,
 } from '@/shared/components/ui/menubar';
-import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
+import { useEditorInstance } from '@/features/editor/core/bus/use-editor-instance';
 import { editorCommandBus } from '../../bus/command-bus';
 import { useWorkspaceStore } from '../../store/workspace.store';
 import { useSettingsStore } from '../../store/settings.store';

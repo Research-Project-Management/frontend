@@ -4,12 +4,12 @@
  * EditMenu.tsx
  *
  * Topbar Edit Dropdown Menu (Block 7: UI Shell Layer).
- * Location: `features/editor/ui/shell/topbar/EditMenu.tsx`
+ * Location: `features/editor/core/shell/topbar/EditMenu.tsx`
  */
 
 import React from 'react';
 import { MenubarMenu, MenubarTrigger, MenubarContent, MenubarItem, MenubarSeparator, MenubarShortcut } from '@/shared/components/ui/menubar';
-import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
+import { useEditorInstance } from '@/features/editor/core/bus/use-editor-instance';
 import { editorCommandBus } from '../../bus/command-bus';
 import { ShieldCheck } from 'lucide-react';
 import { useSearchStore } from '../../store/search.store';

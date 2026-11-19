@@ -16,10 +16,10 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as api from '@/shared/lib/api';
 import {
-  manuscriptService,
+  pagesService,
   downloadAuxFileUrl,
   downloadAllArtifactsZipUrl,
-} from '@/features/editor/sdk/manuscript.service';
+} from '@/features/editor/sdk/pages.service';
 import {
   editorCommandBus,
   useSettingsStore,
@@ -68,7 +68,7 @@ describe('User-Driven Overleaf End-to-End Journeys (Phases 1 -> 14)', () => {
       const deleteSpy = vi.spyOn(api, 'apiDelete').mockResolvedValueOnce({ success: true } as never);
 
       // 1. Generate token to run `git clone`
-      const generated = await manuscriptService.git.createToken('MacBook Pro CLI');
+      const generated = await pagesService.git.createToken('MacBook Pro CLI');
       expect(postSpy).toHaveBeenCalledWith(
         expect.stringContaining('/git/tokens'),
         expect.objectContaining({ label: 'MacBook Pro CLI' }),
@@ -76,13 +76,13 @@ describe('User-Driven Overleaf End-to-End Journeys (Phases 1 -> 14)', () => {
       expect(generated.token).toBe('olp_secret_git_token_2026');
 
       // 2. View active tokens in Settings
-      const activeTokens = await manuscriptService.git.listTokens();
+      const activeTokens = await pagesService.git.listTokens();
       expect(getSpy).toHaveBeenCalledWith(expect.stringContaining('/git/tokens'));
       expect(activeTokens.tokens).toHaveLength(1);
       expect(activeTokens.tokens[0]?.id).toBe('tok-99');
 
       // 3. Revoke token when switching machines
-      await manuscriptService.git.revokeToken('tok-99');
+      await pagesService.git.revokeToken('tok-99');
       expect(deleteSpy).toHaveBeenCalledWith(expect.stringContaining('/git/tokens/tok-99'));
     });
 
@@ -95,14 +95,14 @@ describe('User-Driven Overleaf End-to-End Journeys (Phases 1 -> 14)', () => {
         word: 'eigenstate',
       } as never);
 
-      const learned = await manuscriptService.spelling.learnProjectWord('proj-quantum', 'eigenstate');
+      const learned = await pagesService.spelling.learnProjectWord('proj-quantum', 'eigenstate');
       expect(learned).toBe(true);
 
-      const dict = await manuscriptService.spelling.getProjectDictionary('proj-quantum');
+      const dict = await pagesService.spelling.getProjectDictionary('proj-quantum');
       expect(dict).toContain('eigenstate');
       expect(dict).toContain('Hamiltonian');
 
-      const removed = await manuscriptService.spelling.unlearnProjectWord('proj-quantum', 'eigenstate');
+      const removed = await pagesService.spelling.unlearnProjectWord('proj-quantum', 'eigenstate');
       expect(removed).toBe(true);
       expect(delSpy).toHaveBeenCalled();
     });
@@ -160,10 +160,10 @@ describe('User-Driven Overleaf End-to-End Journeys (Phases 1 -> 14)', () => {
           category: 'Academic',
         } as never);
 
-      const instantiated = await manuscriptService.templates.instantiate('tpl-ieee-conf', 'Quantum Routing 2026');
+      const instantiated = await pagesService.templates.instantiate('tpl-ieee-conf', 'Quantum Routing 2026');
       expect(instantiated.projectId).toBe('proj-ieee-2026');
 
-      const savedCustom = await manuscriptService.templates.createCustom({
+      const savedCustom = await pagesService.templates.createCustom({
         projectId: 'proj-ieee-2026',
         name: 'Lab IEEE Conference Template',
         description: 'Pre-configured with lab macros and theorem environments',
@@ -197,7 +197,7 @@ describe('User-Driven Overleaf End-to-End Journeys (Phases 1 -> 14)', () => {
       const deleteSpy = vi.spyOn(api, 'apiDelete').mockResolvedValueOnce(undefined as never);
 
       // 1. Link file from another project
-      const linkedFromProj = await manuscriptService.linkedFiles.create('proj-ieee-2026', {
+      const linkedFromProj = await pagesService.linkedFiles.create('proj-ieee-2026', {
         name: 'shared_lab_refs.bib',
         provider: 'project',
         sourceProjectId: 'proj-master-bib',
@@ -206,7 +206,7 @@ describe('User-Driven Overleaf End-to-End Journeys (Phases 1 -> 14)', () => {
       expect(linkedFromProj.name).toBe('shared_lab_refs.bib');
 
       // 2. Link file from external URL
-      const linkedFromUrl = await manuscriptService.linkedFiles.create('proj-ieee-2026', {
+      const linkedFromUrl = await pagesService.linkedFiles.create('proj-ieee-2026', {
         name: 'benchmark_results.csv',
         provider: 'url',
         sourceUrl: 'https://raw.githubusercontent.com/lab/data/main/benchmark_results.csv',
@@ -214,11 +214,11 @@ describe('User-Driven Overleaf End-to-End Journeys (Phases 1 -> 14)', () => {
       expect(linkedFromUrl.name).toBe('benchmark_results.csv');
 
       // 3. Refresh all linked files when upstream changes
-      const refreshAllRes = await manuscriptService.linkedFiles.refreshAll('proj-ieee-2026');
+      const refreshAllRes = await pagesService.linkedFiles.refreshAll('proj-ieee-2026');
       expect(refreshAllRes).toMatchObject({ refreshedCount: 2 });
 
       // 4. Unlink a linked file when no longer needed
-      await manuscriptService.linkedFiles.delete('proj-ieee-2026', 'link-url-1');
+      await pagesService.linkedFiles.delete('proj-ieee-2026', 'link-url-1');
       expect(deleteSpy).toHaveBeenCalledWith(
         expect.stringContaining('/spaces/proj-ieee-2026/linked-files/link-url-1'),
       );
@@ -232,11 +232,11 @@ describe('User-Driven Overleaf End-to-End Journeys (Phases 1 -> 14)', () => {
         page: { id: 'file-ch3', title: 'chapters/methodology.tex', deletedAt: null },
       } as never);
 
-      const deletedList = await manuscriptService.docs.getDeletedFiles('root-page-1');
+      const deletedList = await pagesService.docs.getDeletedFiles('root-page-1');
       expect(deletedList).toHaveLength(1);
       expect(deletedList[0]?.title).toBe('chapters/methodology.tex');
 
-      const restored = await manuscriptService.docs.restore('file-ch3');
+      const restored = await pagesService.docs.restore('file-ch3');
       expect(restored.id).toBe('file-ch3');
       expect(restored.deletedAt).toBeNull();
     });
@@ -363,7 +363,7 @@ describe('User-Driven Overleaf End-to-End Journeys (Phases 1 -> 14)', () => {
     });
 
     it('U7.2 & U7.4: Author stops an infinite-loop LaTeX compile on the server and generates auxiliary file download URLs (.bbl for arXiv)', async () => {
-      const cancelSpy = vi.spyOn(manuscriptService.compiler, 'cancelCompile').mockResolvedValueOnce({ cancelled: true });
+      const cancelSpy = vi.spyOn(pagesService.compiler, 'cancelCompile').mockResolvedValueOnce({ cancelled: true });
 
       usePageStore.setState({
         projectId: 'proj-compile-99',
@@ -482,7 +482,7 @@ describe('User-Driven Overleaf End-to-End Journeys (Phases 1 -> 14)', () => {
         resolved: true,
       } as never);
 
-      const createdThread = await manuscriptService.review.createCommentThread('proj-1', 'doc-1', {
+      const createdThread = await pagesService.review.createCommentThread('proj-1', 'doc-1', {
         startLine: 10,
         startCol: 0,
         endLine: 10,
@@ -492,7 +492,7 @@ describe('User-Driven Overleaf End-to-End Journeys (Phases 1 -> 14)', () => {
       });
       expect(createdThread.id).toBe('thread-101');
 
-      const reply = await manuscriptService.review.addCommentReply(
+      const reply = await pagesService.review.addCommentReply(
         'proj-1',
         'doc-1',
         'thread-101',
@@ -500,10 +500,10 @@ describe('User-Driven Overleaf End-to-End Journeys (Phases 1 -> 14)', () => {
       );
       expect(reply.content).toBe('Fixed in Equation 4.');
 
-      const resolved = await manuscriptService.review.resolveCommentThread('proj-1', 'doc-1', 'thread-101', true);
+      const resolved = await pagesService.review.resolveCommentThread('proj-1', 'doc-1', 'thread-101', true);
       expect(resolved.resolved).toBe(true);
 
-      const acceptedChange = await manuscriptService.review.acceptChange('proj-1', 'doc-1', 'chg-55');
+      const acceptedChange = await pagesService.review.acceptChange('proj-1', 'doc-1', 'chg-55');
       expect(acceptedChange.status).toBe('accepted');
     });
   });
@@ -537,7 +537,7 @@ describe('User-Driven Overleaf End-to-End Journeys (Phases 1 -> 14)', () => {
       } as never);
 
       // 1. Label Version 2 milestone
-      const labeledVer = await manuscriptService.history.labelProjectVersion(
+      const labeledVer = await pagesService.history.labelProjectVersion(
         'proj-nature',
         2,
         'Submitted to Nature',
@@ -545,11 +545,11 @@ describe('User-Driven Overleaf End-to-End Journeys (Phases 1 -> 14)', () => {
       expect(labeledVer?.label).toBe('Submitted to Nature');
 
       // 2. Compare Version 1 and Version 2
-      const comparison = await manuscriptService.history.compareProjectVersions('proj-nature', 1, 2);
+      const comparison = await pagesService.history.compareProjectVersions('proj-nature', 1, 2);
       expect(comparison?.files).toHaveLength(1);
 
       // 3. Restore to Version 1
-      const restored = await manuscriptService.history.restoreProjectVersion('proj-nature', 1);
+      const restored = await pagesService.history.restoreProjectVersion('proj-nature', 1);
       expect(restored.restoreResult.restoredFilesCount).toBe(4);
     });
 
@@ -560,7 +560,7 @@ describe('User-Driven Overleaf End-to-End Journeys (Phases 1 -> 14)', () => {
         blob: async () => mockBlob,
       } as Response);
 
-      const blob = await manuscriptService.export.exportProjectZip('proj-nature', {
+      const blob = await pagesService.export.exportProjectZip('proj-nature', {
         cleanArxiv: true,
         includeAux: true,
         projectName: 'Nature_Quantum_2026',
@@ -578,17 +578,17 @@ describe('User-Driven Overleaf End-to-End Journeys (Phases 1 -> 14)', () => {
   // JOURNEY 7: USER-NEEDS GAP VERIFICATION (ZIP SERVER SYNC, COMPILER QUICK FIX & SMART PASTE)
   // ═══════════════════════════════════════════════════════════════════════════
   describe('Journey 7: User-Expectation Verification (ZIP Server Sync, Compiler Quick Fix & Smart Paste)', () => {
-    it('U3.4: Uploading a .zip project with zipFile triggers server-side manuscriptService.export.importProjectZip before completing import', async () => {
+    it('U3.4: Uploading a .zip project with zipFile triggers server-side pagesService.export.importProjectZip before completing import', async () => {
       const { extractAndImportZipToProject } = await import('@/features/editor/sdk/archive/archive-import');
-      const { manuscriptService } = await import('@/features/editor/sdk/manuscript.service');
+      const { pagesService } = await import('@/features/editor/sdk/pages.service');
       const importZipSpy = vi
-        .spyOn(manuscriptService.export, 'importProjectZip')
+        .spyOn(pagesService.export, 'importProjectZip')
         .mockResolvedValueOnce({ importedCount: 2 });
-      vi.spyOn(manuscriptService.docs, 'create').mockResolvedValueOnce({
+      vi.spyOn(pagesService.docs, 'create').mockResolvedValueOnce({
         id: 'root-page-ieee',
         title: 'main.tex',
       } as never);
-      vi.spyOn(manuscriptService.docs, 'createChildFile').mockResolvedValueOnce({
+      vi.spyOn(pagesService.docs, 'createChildFile').mockResolvedValueOnce({
         id: 'file-refs-bib',
         title: 'refs.bib',
       } as never);

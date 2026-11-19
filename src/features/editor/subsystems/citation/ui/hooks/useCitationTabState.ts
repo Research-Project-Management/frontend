@@ -7,11 +7,11 @@ import {
   usePageStore,
   editorCommandBus,
 } from '@/features/editor/core';
-import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
+import { useEditorInstance } from '@/features/editor/core/bus/use-editor-instance';
 import { useEditorCitations } from '@/features/editor/subsystems/citation/ui/hooks/useCitation';
 import { toast } from 'sonner';
-import { manuscriptService } from '@/features/editor/sdk/pages.service';
-import { type CitationValidationResult, type BibEntryDto } from '@/features/editor/sdk/pages/types';
+import { pagesService } from '@/features/editor/sdk/pages.service';
+import { type CitationValidationDto, type BibEntryDto } from '@/features/editor/sdk/pages/types';
 import { generateCitationKey } from '@/features/library/domain/citations.domain';
 import { type BibEntry } from '@/features/editor/domain/latex/bib-parser';
 import {
@@ -104,7 +104,7 @@ export function useCitationTabState() {
     queryKey: ['project-citations', projectId],
     queryFn: async () => {
       if (!projectId) return [];
-      return await manuscriptService.citations.list(projectId, 500);
+      return await pagesService.citations.list(projectId, 500);
     },
     staleTime: 30_000,
     gcTime: 5 * 60_000,
@@ -112,12 +112,12 @@ export function useCitationTabState() {
   });
 
   // Fetch authoritative bibliography validation (duplicate keys, missing required fields) with caching
-  const { data: citationValidation } = useQuery<CitationValidationResult | null>({
+  const { data: citationValidation } = useQuery<CitationValidationDto | null>({
     queryKey: ['project-citation-validation', projectId],
     queryFn: async () => {
       if (!projectId) return null;
       try {
-        return await manuscriptService.citations.validate(projectId);
+        return await pagesService.citations.validate(projectId);
       } catch {
         return null;
       }

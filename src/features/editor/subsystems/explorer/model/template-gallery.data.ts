@@ -8,7 +8,6 @@
  */
 
 export type TemplateCategory = 'Conference' | 'Journal' | 'Preprint' | 'Thesis' | 'Resume';
-export type AcademicTemplateCategory = TemplateCategory;
 
 export type TemplateIconName =
   | 'Layout'
@@ -31,7 +30,6 @@ export interface ProjectTemplate {
 }
 
 export type RawAcademicTemplate = ProjectTemplate;
-export type AcademicTemplate = ProjectTemplate;
 
 export const PROJECT_TEMPLATES: ProjectTemplate[] = [
   {
@@ -96,6 +94,5 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
   },
 ];
 
-export const ACADEMIC_TEMPLATES = PROJECT_TEMPLATES;
 export const RAW_ACADEMIC_TEMPLATES = PROJECT_TEMPLATES;
 

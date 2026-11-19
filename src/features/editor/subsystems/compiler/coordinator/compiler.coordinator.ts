@@ -9,7 +9,7 @@
  * - Single source of truth for the active compilation lifecycle (IDLE -> COMPILING -> SYNCING -> SUCCESS / ERROR / ABORTED).
  */
 
-import { CompilePipeline, type CompilerPort, type CompilerExecutionEngine, type CompilerExecutionPort } from './compile-pipeline';
+import { CompilePipeline, type CompilerPort } from './compile-pipeline';
 import { FlushBarrier } from './flush-barrier';
 import {
   resolveForwardDetail,
@@ -17,39 +17,49 @@ import {
   resolveReverse,
   type SyncTeXMap,
 } from '@/features/editor/subsystems/compiler/synctex/synctex-index';
-import {
-  assembleCompilationSnapshot,
-  type ProjectCompilationSnapshot,
-  type SnapshotProjectFile,
-} from '@/features/editor/domain/document/compilation-snapshot';
-import { latexDependencyGraph } from '@/features/editor/domain/latex/dependency-graph';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
-import { diagnosticsCoordinator, type IndexedDiagnosticItem, type FileDiagnosticsSummary } from '@/features/editor/subsystems/diagnostics';
 import {
-  editorCommandBus,
-  workspaceCoordinator,
-  sessionCoordinator,
-  documentFacade,
-  usePageStore,
-  useSettingsStore,
-  useConnectivityStore,
-  isNetworkError,
+  diagnosticsCoordinator,
+  type IndexedDiagnosticItem,
+  type FileDiagnosticsSummary,
+} from '@/features/editor/subsystems/diagnostics/coordinator/diagnostics.coordinator';
+import { editorCommandBus } from '@/features/editor/core/bus/command-bus';
+import {
   getActiveEditorContent,
   getActiveEditorEngine,
-  getEditorEngineForFile,
-  getAllRegisteredEngines,
   getActivePdfViewer,
-} from '@/features/editor/core';
+  getAllRegisteredEngines,
+  getEditorEngineForFile,
+} from '@/features/editor/core/bus/engine-registry';
+import { sessionCoordinator } from '@/features/editor/core/coordinator/session.coordinator';
+import { usePageStore } from '@/features/editor/core/store/editor.store';
+import { useSettingsStore } from '@/features/editor/core/store/settings.store';
+import {
+  isNetworkError,
+  useConnectivityStore,
+} from '@/features/editor/core/store/connectivity.store';
 import { useCompileStore } from './compiler.store';
 import { multiTabBus } from '@/shared/lib/multi-tab';
-import type { CompileError, CompileStatus } from '@/features/editor/domain/types/compiler.types';
-import { extractProjectId, extractDocumentContentString } from '@/features/editor/domain/types/core.types';
-import type { NodeTreeItem } from '@/features/editor/domain/types/node.types';
+import type { CompileStatus } from '@/features/editor/domain/types/compiler.types';
+import {
+  extractDocumentContentString,
+  extractProjectId,
+} from '@/features/editor/domain/types/core.types';
 import { parseCompileErrors } from '@/features/editor/domain/latex/latex-structure';
 import {
   diagnosticsToParsedLog,
   cacheBackendParsedLog,
 } from '@/features/editor/domain/latex/compiler-logs-parser';
+import {
+  SnapshotProvider,
+  buildPageStoreFilePaths,
+  normalizeEditorDiagnostics,
+  updateDagNodesAndAliases,
+  buildCompileDirtyFilesPayload,
+  type CreateSnapshotOptions,
+} from './compilation-snapshot.provider';
+
+export { SnapshotProvider, buildPageStoreFilePaths, type CreateSnapshotOptions };
 
 const VALID_COMPILE_STATUSES = new Set<CompileStatus>([
   'idle',
@@ -61,135 +71,6 @@ const VALID_COMPILE_STATUSES = new Set<CompileStatus>([
   'error',
   'aborted',
 ]);
-const EM_EN_DASH_REGEX = /[\u2014\u2013]/g;
-const BOX_WARNING_MSG_REGEX = /^(Overfull|Underfull)\s*\\[hv]box/i;
-
-function sanitizeDash(s?: string): string {
-  return s ? s.replace(EM_EN_DASH_REGEX, '-') : '';
-}
-
-function normalizeEditorDiagnostics(
-  items: ReadonlyArray<CompileError>,
-  excludeBoxWarnings = false,
-): CompileError[] {
-  return items
-    .filter((d) => {
-      if (d.severity === 'info' || d.severity === 'badbox') return false;
-      if (excludeBoxWarnings && BOX_WARNING_MSG_REGEX.test(d.message || '')) return false;
-      return true;
-    })
-    .map((d) => ({
-      line: d.line,
-      message: sanitizeDash(d.message),
-      context: sanitizeDash(d.context || ''),
-      file: d.file,
-      severity: d.severity === 'badbox' ? 'info' : d.severity,
-      code: d.code,
-      suggestion: d.suggestion,
-    }));
-}
-
-export interface CreateSnapshotOptions {
-  rootFileId?: string;
-  resolvedMainFile?: string;
-  projectFiles?: SnapshotProjectFile[];
-  activeContentOverride?: string;
-}
-
-/**
- * Collects fileId -> path/title from every page-store source (file hierarchy, current page,
- * active file page) so in-memory models registered without a filePath are not keyed by UUID.
- */
-export function buildPageStoreFilePaths(pageStore: {
-  fileHierarchy?: NodeTreeItem[] | null;
-  currentPage?: { id?: string; title?: string; path?: string } | null;
-  activeFilePage?: { id?: string; title?: string; path?: string } | null;
-}): Record<string, string> {
-  const map: Record<string, string> = {};
-  const add = (id?: string, path?: string) => {
-    if (id && path && path !== id && !map[id]) map[id] = path;
-  };
-  add(pageStore.activeFilePage?.id, pageStore.activeFilePage?.path || pageStore.activeFilePage?.title);
-  add(pageStore.currentPage?.id, pageStore.currentPage?.path || pageStore.currentPage?.title);
-  const wsFiles = workspaceCoordinator.getProjectFiles() || [];
-  for (const wf of wsFiles) {
-    add(wf.id, wf.path || wf.title || wf.name);
-  }
-  const stack: NodeTreeItem[] = [...(pageStore.fileHierarchy ?? [])];
-  while (stack.length > 0) {
-    const node = stack.pop()!;
-    add(node.id, node.title);
-    if (node.children?.length) stack.push(...node.children);
-  }
-  return map;
-}
-
-export class SnapshotProvider {
-  public static createSnapshot(options: CreateSnapshotOptions = {}): ProjectCompilationSnapshot {
-    const pageStore = usePageStore.getState();
-    const compileStore = useCompileStore.getState();
-
-    const activeDoc = pageStore.getActiveDocument();
-    const targetFileId = activeDoc?.id || options.rootFileId;
-    const targetEngine = targetFileId ? getEditorEngineForFile?.(targetFileId) : null;
-    const registeredCount = getAllRegisteredEngines?.()?.size ?? 0;
-    const fallbackActiveContent =
-      registeredCount === 0 && targetFileId === activeDoc?.id ? getActiveEditorContent() : null;
-    const activeContent =
-      options.activeContentOverride ||
-      targetEngine?.getContent?.() ||
-      fallbackActiveContent ||
-      (targetFileId ? lruDocumentCache.getContent(targetFileId) : undefined) ||
-      extractDocumentContentString(activeDoc?.content);
-
-    const wsFiles = workspaceCoordinator.getProjectFiles();
-    const baseFiles =
-      options.projectFiles ||
-      (wsFiles && wsFiles.length > 0 ? wsFiles : documentFacade.getOverlayFiles()) ||
-      [];
-    const lruModels = lruDocumentCache.getAllModels();
-    const dirtyFiles = compileStore.getDirtyFiles();
-    const filePathsById = buildPageStoreFilePaths(pageStore);
-
-    const liveEngineBuffers: Array<{ fileId: string; filePath: string; content: string }> = [];
-    const registeredEngines = getAllRegisteredEngines?.();
-    if (registeredEngines && registeredEngines.size > 0) {
-      for (const [fId, eng] of registeredEngines.entries()) {
-        if (!fId) continue;
-        const liveContent = eng?.getContent?.();
-        if (typeof liveContent === 'string') {
-          const model = lruDocumentCache.getModel(fId);
-          const wsFile = baseFiles.find((f) => f.id === fId);
-          const fPath =
-            model?.filePath ||
-            wsFile?.path ||
-            wsFile?.title ||
-            filePathsById[fId] ||
-            (fId === activeDoc?.id ? activeDoc?.path || activeDoc?.title : undefined) ||
-            fId;
-          liveEngineBuffers.push({
-            fileId: fId,
-            filePath: fPath,
-            content: liveContent,
-          });
-        }
-      }
-    }
-
-    return assembleCompilationSnapshot({
-      baseFiles,
-      lruModels,
-      dirtyFiles,
-      liveEngineBuffers,
-      currentPage: pageStore.currentPage,
-      activeDoc,
-      activeContent,
-      rootFileId: options.rootFileId,
-      resolvedMainFile: options.resolvedMainFile,
-      filePathsById,
-    });
-  }
-}
 
 export interface CompileOptions {
   forceClean?: boolean;
@@ -241,10 +122,6 @@ export class CompilerCoordinator {
     this.initCommandSubscriptions();
   }
 
-  /**
-   * Deterministically drains any queued compilation right after the current compile
-   * promise settles via queueMicrotask, avoiding arbitrary setTimeout delays.
-   */
   private scheduleNextPendingCompile(completedController: AbortController): void {
     if (this.compileAbortController === completedController) {
       this.compileAbortController = null;
@@ -263,8 +140,6 @@ export class CompilerCoordinator {
       void this.compile(nextOpts);
     });
   }
-
-  // ── Dependency Injection & Seam Configuration ───────────────────────────────
 
   public setCompilerEngine(engine: CompilerPort): void {
     this.compilerEngine = engine;
@@ -287,7 +162,6 @@ export class CompilerCoordinator {
     });
 
     editorCommandBus.subscribe('synctex:forward', (cmd) => {
-      // If a full PDF preview surface is active, useViewerSyncTeX handles forward sync with coordinate precision
       if (getActivePdfViewer()) return;
 
       let targetLine = cmd.line;
@@ -297,8 +171,7 @@ export class CompilerCoordinator {
       }
       if (targetLine !== undefined) {
         const activeDoc = usePageStore.getState().getActiveDocument();
-        const activeTitle = activeDoc?.title;
-        const target = this.resolveForward(targetLine, activeTitle);
+        const target = this.resolveForward(targetLine, activeDoc?.title);
         if (target !== null) {
           editorCommandBus.dispatch({ type: 'viewer:goto-page', page: target });
         }
@@ -367,8 +240,6 @@ export class CompilerCoordinator {
     return this.rawSynctex;
   }
 
-  // ── Deep Diagnostics Exposure (High Leverage) ──────────────────────────────
-
   public getDiagnostics(fileIdOrPath?: string, applyFilter = true): IndexedDiagnosticItem[] {
     if (fileIdOrPath) {
       return diagnosticsCoordinator.getDiagnosticsForFile(fileIdOrPath, applyFilter);
@@ -390,7 +261,6 @@ export class CompilerCoordinator {
     const compileStore = useCompileStore.getState();
 
     const activeDoc = pageStore.getActiveDocument();
-    // Overleaf Parity: Root page resolution must prioritize project/parent root document over current active subfile
     const rootPageId =
       pageStore.parentPageId ||
       pageStore.currentPage?.id ||
@@ -402,22 +272,19 @@ export class CompilerCoordinator {
       return false;
     }
 
-    // 0. Guard against offline compilation: queue compile for reconnection and protect drafts
     const isOnline = useConnectivityStore.getState().checkIsOnline();
-
     if (!isOnline) {
       useConnectivityStore.getState().setOfflinePendingCompile(true);
-      sessionCoordinator.flushPendingDrafts();
+      sessionCoordinator.flushPendingUnsyncedEdits();
       compileStore.setCompileStatus('idle');
       compileStore.setCompileLog(
         '[Offline Mode] You are currently offline. Changes are safely saved locally (IndexedDB).\n' +
-        'Compilation has been queued and will start automatically when connection is restored.'
+        'Compilation has been queued and will start automatically when connection is restored.',
       );
       editorCommandBus.dispatch({ type: 'compiler:finished', success: false, aborted: true });
       return false;
     }
 
-    // 1. Guard against overlapping compilations: cancel previous in-flight job and queue next
     if (this.isCompiling || compileStore.compileStatus === 'compiling') {
       compileStore.setPendingCompile(true);
       this.pendingCompileOptions = {
@@ -435,6 +302,7 @@ export class CompilerCoordinator {
       this.compilerEngine.cancelInFlightCompile(cancelProjectId);
       return false;
     }
+
     this.isCompiling = true;
     const currentController = new AbortController();
     this.compileAbortController = currentController;
@@ -450,7 +318,6 @@ export class CompilerCoordinator {
       (effectiveActiveFileId ? lruDocumentCache.getContent(effectiveActiveFileId) : undefined) ||
       extractDocumentContentString(activeDoc?.content);
 
-    // 2. Pre-compile atomic flush barrier: commit drafts, sync active buffer, trigger background save
     await FlushBarrier.execute(effectiveActiveFileId, currentVal);
 
     if (currentController.signal.aborted) {
@@ -460,79 +327,24 @@ export class CompilerCoordinator {
       return false;
     }
 
-    // 3. Notify start of compilation
     editorCommandBus.dispatch({ type: 'compiler:started' });
     compileStore.setCompileStatus('compiling');
 
-    // 4. Update LaTeX DAG with all active in-memory buffers (including all mounted split-pane engines)
-    const allFilePathsById = buildPageStoreFilePaths(pageStore);
-    const allModels = lruDocumentCache.getAllModels();
-    for (const m of allModels) {
-      latexDependencyGraph.updateFileNode(m.fileId, m.filePath || m.fileId, m.content);
-    }
-    if (activeDoc && activeDoc.content) {
-      const cTitle = activeDoc.title || 'main.tex';
-      const cContent = extractDocumentContentString(activeDoc.content);
-      latexDependencyGraph.updateFileNode(activeDoc.id, cTitle, cContent);
-    }
-    const registeredEngines = getAllRegisteredEngines?.();
-    if (registeredEngines && registeredEngines.size > 0) {
-      const wsFiles = workspaceCoordinator.getProjectFiles() || [];
-      for (const [fId, eng] of registeredEngines.entries()) {
-        if (!fId) continue;
-        const liveText = eng?.getContent?.();
-        if (typeof liveText === 'string') {
-          const model = lruDocumentCache.getModel(fId);
-          const wsFile = wsFiles.find((f) => f.id === fId);
-          const fPath =
-            model?.filePath ||
-            wsFile?.path ||
-            wsFile?.title ||
-            allFilePathsById[fId] ||
-            (fId === effectiveActiveFileId ? activeTitle : fId);
-          latexDependencyGraph.updateFileNode(fId, fPath, liveText);
-        }
-      }
-    }
-    if (effectiveActiveFileId) {
-      latexDependencyGraph.updateFileNode(effectiveActiveFileId, activeTitle, currentVal);
-    }
-
-    // 5. Infer Root Document (DAG traversal, subfile resolution, or settings preference)
     const preferredMainFile = this.options.getMainFile
       ? this.options.getMainFile()
       : settingsStore.mainFile;
 
-    const inferred = latexDependencyGraph.inferRootDocument(
-      effectiveActiveFileId,
-      preferredMainFile
-    );
-    const resolvedMainFile = inferred.rootPath;
+    const { allFilePathsById, resolvedMainFile, rootFileId, hasCycleWarning } =
+      updateDagNodesAndAliases({
+        pageStore,
+        effectiveActiveFileId,
+        activeDoc,
+        activeTitle,
+        currentVal,
+        preferredMainFile,
+      });
 
-    // Register aliases: canonicalPath is the clean path, alias is the file ID / alternate key
-    if (activeTitle && effectiveActiveFileId) {
-      diagnosticsCoordinator.registerAlias(activeTitle, effectiveActiveFileId);
-    }
-    if (resolvedMainFile) {
-      diagnosticsCoordinator.registerAlias(resolvedMainFile, resolvedMainFile);
-    }
-    if (resolvedMainFile && inferred.rootFileId) {
-      diagnosticsCoordinator.registerAlias(resolvedMainFile, inferred.rootFileId);
-    }
-    for (const [fId, fPath] of Object.entries(allFilePathsById)) {
-      if (fId && fPath) {
-        diagnosticsCoordinator.registerAlias(fPath, fId);
-      }
-    }
-    const wsFiles = workspaceCoordinator.getProjectFiles() || [];
-    for (const wf of wsFiles) {
-      const wfPath = wf.path || wf.title;
-      if (wf.id && wfPath) {
-        diagnosticsCoordinator.registerAlias(wfPath, wf.id);
-      }
-    }
-
-    if (inferred.hasCycleWarning) {
+    if (hasCycleWarning) {
       console.warn('[CompilerCoordinator] Circular include dependency detected in LaTeX project DAG');
     }
 
@@ -543,11 +355,9 @@ export class CompilerCoordinator {
       pageStore.spaceId ||
       '';
 
-    // 6. Create an atomic in-memory snapshot across open tabs & editor buffer (0ms latency)
-    // Guard: never use .bib file ID or sub-document ID as rootFileId when parentPage/inferred root exists
     const isBibFile = activeTitle.toLowerCase().endsWith('.bib');
     const safeRootFileId =
-      inferred.rootFileId ||
+      rootFileId ||
       pageStore.parentPageId ||
       pageStore.currentPage?.id ||
       (!isBibFile ? activeDoc?.id : undefined) ||
@@ -571,22 +381,12 @@ export class CompilerCoordinator {
         useCache: options?.forceClean ? false : settingsStore.useCache,
         forceClean: options?.forceClean,
         stopOnFirstError: settingsStore.stopOnFirstError,
-        dirtyFiles: snapshot.dirtyFileIds.map((id: string) => {
-          const resolvedPath =
-            allFilePathsById[id] ||
-            lruDocumentCache.getModel(id)?.filePath ||
-            undefined;
-          return {
-            fileId: id,
-            path: resolvedPath && resolvedPath !== id ? resolvedPath : undefined,
-            content:
-              lruDocumentCache.getContent(id) ??
-              compileStore.dirtyContentMap.get(id) ??
-              (resolvedPath ? snapshot.files[resolvedPath] : undefined) ??
-              snapshot.files[id] ??
-              '',
-          };
-        }),
+        dirtyFiles: buildCompileDirtyFilesPayload(
+          snapshot.dirtyFileIds,
+          allFilePathsById,
+          snapshot.files,
+          compileStore.dirtyContentMap,
+        ),
         signal: currentController.signal,
         onPhaseChange: (phase: string) => {
           compileStore.setCompileStatus(phase as CompileStatus);
@@ -612,7 +412,6 @@ export class CompilerCoordinator {
               : new Date(),
         );
 
-        // Asynchronously update synctexMap when non-blocking parser resolves
         if (res.synctexPromise) {
           res.synctexPromise
             .then((map: SyncTeXMap | null) => {
@@ -621,9 +420,7 @@ export class CompilerCoordinator {
                 editorCommandBus.dispatch({ type: 'synctex:map-updated', map });
               }
             })
-            .catch(() => {
-              // Ignore SyncTeX decompression errors on superseded/aborted runs
-            });
+            .catch(() => {});
         }
 
         const rawLog = res.logs ?? res.rawLog ?? '';
@@ -641,8 +438,6 @@ export class CompilerCoordinator {
             : rawLog
               ? parseCompileErrors(rawLog)
               : [];
-        // Only ingest real errors and warnings into Editor Diagnostics Coordinator.
-        // Filter out badboxes and info messages (Overfull \hbox etc.) so they stay in CompilerLogs panel only.
         const successDiagnostics = normalizeEditorDiagnostics(rawSuccessDiagnostics, false);
         compileStore.setCompileErrors(successDiagnostics);
         diagnosticsCoordinator.ingestCompilerErrors(successDiagnostics, resolvedMainFile);
@@ -677,65 +472,63 @@ export class CompilerCoordinator {
           });
         }
         this.scheduleNextPendingCompile(currentController);
-
         return true;
-      } else {
-        const rawLog = res.logs ?? res.rawLog ?? '';
-        const isAborted =
-          res.aborted ||
-          res.status === 'aborted' ||
-          currentController.signal.aborted ||
-          res.error === 'Compilation superseded' ||
-          res.error === 'Compilation stopped' ||
-          res.error?.toLowerCase().includes('aborted') ||
-          rawLog.toLowerCase().includes('signal is aborted');
+      }
 
-        if (isAborted) {
-          compileStore.setCompileStatus('idle');
-          editorCommandBus.dispatch({ type: 'compiler:finished', success: false, aborted: true });
-          this.scheduleNextPendingCompile(currentController);
-          return false;
-        }
+      const rawLog = res.logs ?? res.rawLog ?? '';
+      const isAborted =
+        res.aborted ||
+        res.status === 'aborted' ||
+        currentController.signal.aborted ||
+        res.error === 'Compilation superseded' ||
+        res.error === 'Compilation stopped' ||
+        res.error?.toLowerCase().includes('aborted') ||
+        rawLog.toLowerCase().includes('signal is aborted');
 
-        compileStore.setCompileStatus('error');
-        compileStore.setCompileLog(rawLog || null);
-
-        const backendDiags = res.diagnostics || [];
-        compileStore.setCompileDiagnostics(backendDiags);
-        const structuredParsedLog = diagnosticsToParsedLog(backendDiags);
-        if (rawLog && backendDiags.length > 0) {
-          cacheBackendParsedLog(rawLog, structuredParsedLog);
-        }
-        compileStore.setParsedLog(structuredParsedLog);
-
-        const formattedErrors = normalizeEditorDiagnostics(
-          backendDiags.length > 0 ? backendDiags : res.errors || [],
-          true,
-        );
-
-        compileStore.setCompileErrors(formattedErrors);
-        diagnosticsCoordinator.ingestCompilerErrors(formattedErrors, resolvedMainFile);
-
-        if (res.flushedFileIds && res.flushedFileIds.length > 0) {
-          res.flushedFileIds.forEach((fid: string) => compileStore.clearDirty(fid));
-        }
-
-        editorCommandBus.dispatch({ type: 'compiler:finished', success: false, aborted: false });
+      if (isAborted) {
+        compileStore.setCompileStatus('idle');
+        editorCommandBus.dispatch({ type: 'compiler:finished', success: false, aborted: true });
         this.scheduleNextPendingCompile(currentController);
-
         return false;
       }
+
+      compileStore.setCompileStatus('error');
+      compileStore.setCompileLog(rawLog || null);
+
+      const backendDiags = res.diagnostics || [];
+      compileStore.setCompileDiagnostics(backendDiags);
+      const structuredParsedLog = diagnosticsToParsedLog(backendDiags);
+      if (rawLog && backendDiags.length > 0) {
+        cacheBackendParsedLog(rawLog, structuredParsedLog);
+      }
+      compileStore.setParsedLog(structuredParsedLog);
+
+      const formattedErrors = normalizeEditorDiagnostics(
+        backendDiags.length > 0 ? backendDiags : res.errors || [],
+        true,
+      );
+
+      compileStore.setCompileErrors(formattedErrors);
+      diagnosticsCoordinator.ingestCompilerErrors(formattedErrors, resolvedMainFile);
+
+      if (res.flushedFileIds && res.flushedFileIds.length > 0) {
+        res.flushedFileIds.forEach((fid: string) => compileStore.clearDirty(fid));
+      }
+
+      editorCommandBus.dispatch({ type: 'compiler:finished', success: false, aborted: false });
+      this.scheduleNextPendingCompile(currentController);
+      return false;
     } catch (err) {
       if (isNetworkError(err)) {
         useConnectivityStore.getState().recordOffline();
         useConnectivityStore.getState().setOfflinePendingCompile(true);
-        sessionCoordinator.flushPendingDrafts();
+        sessionCoordinator.flushPendingUnsyncedEdits();
         this.pendingCompileOptions = undefined;
         compileStore.setPendingCompile(false);
         compileStore.setCompileStatus('idle');
         compileStore.setCompileLog(
           '[Offline Mode] Network connection lost during compilation request.\n' +
-          'Your draft is saved locally and will automatically recompile when reconnected.'
+          'Your draft is saved locally and will automatically recompile when reconnected.',
         );
         editorCommandBus.dispatch({ type: 'compiler:finished', success: false, aborted: true });
       } else {
@@ -859,9 +652,7 @@ export class CompilerCoordinator {
     return CompilePipeline.resolveForwardRemote(projectId, file, line, column, pageId);
   }
 
-  /**
-   * Releases compiler resources and clears SyncTeX caches for GC.
-   */
+  /** Releases compiler resources and clears SyncTeX caches for GC. */
   public dispose(): void {
     this.stop();
     this.synctexMap = null;
@@ -871,9 +662,3 @@ export class CompilerCoordinator {
 }
 
 export const compilerCoordinator = new CompilerCoordinator();
-export {
-  CompilerCoordinator as CompilerCoordinatorRegistry,
-  SnapshotProvider as CompilationSnapshotProvider,
-};
-export type { CompilerExecutionEngine, CompilerExecutionPort };
-

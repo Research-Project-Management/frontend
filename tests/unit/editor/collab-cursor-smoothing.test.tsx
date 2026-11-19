@@ -4,7 +4,7 @@ import {
   getCollaboratorColor,
   COLLABORATOR_PALETTE,
   buildCollaboratorCursorCss,
-} from '@/features/editor/ui/editor/CollaboratorCursors';
+} from '@/features/editor/core/collaboration/CollaboratorCursors';
 import {
   useDocumentCollaborationStore,
 } from '@/features/editor/core';

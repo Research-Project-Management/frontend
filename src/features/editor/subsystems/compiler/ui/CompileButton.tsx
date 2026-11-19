@@ -4,7 +4,7 @@
  * CompileButton.tsx
  *
  * Dedicated Overleaf-parity recompile button with integrated options dropdown (Block 6: UI Features Layer).
- * Location: `features/editor/ui/features/preview/CompileButton.tsx`
+ * Location: `features/editor/subsystems/compiler/ui/CompileButton.tsx`
  */
 
 import React from 'react';

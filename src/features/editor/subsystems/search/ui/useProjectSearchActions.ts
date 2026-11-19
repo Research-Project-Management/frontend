@@ -10,8 +10,8 @@
 import { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { filesQuery } from '@/features/editor/ui/hooks/document.queries';
-import { manuscriptService } from '@/features/editor/sdk/pages.service';
+import { filesQuery } from '@/features/editor/core/queries/document.queries';
+import { pagesService } from '@/features/editor/sdk/pages.service';
 import {
   sessionCoordinator,
   documentFacade,
@@ -86,7 +86,7 @@ export function useProjectSearchActions({
       // 1. Flush pending debounced writes across all sessions so server has latest content
       await sessionCoordinator.flushAllPending();
 
-      const res = await manuscriptService.search.batchReplace(
+      const res = await pagesService.search.batchReplace(
         rootProjectId || '',
         effectiveQuery,
         replaceText,
@@ -134,7 +134,7 @@ export function useProjectSearchActions({
               }
             }
             try {
-              const freshPage = await manuscriptService.docs.getById(affectedId);
+              const freshPage = await pagesService.docs.getById(affectedId);
               const raw = freshPage?.content;
               const freshText =
                 typeof raw === 'string'

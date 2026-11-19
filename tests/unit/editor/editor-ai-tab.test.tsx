@@ -10,7 +10,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 // Mock editor context
-vi.mock('@/features/editor/ui/hooks/useEditorInstance', () => ({
+vi.mock('@/features/editor/core/bus/use-editor-instance', () => ({
   useEditorInstance: () => ({
     engine: {
       getSelectedText: () => '',

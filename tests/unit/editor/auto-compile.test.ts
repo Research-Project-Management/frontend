@@ -5,19 +5,19 @@ import { editorCommandBus } from '@/features/editor/core';
 import { sessionCoordinator } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 
-import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
-import { draftStorageService } from '@/features/editor/domain/document/draft-storage';
+import { pagesService } from '@/features/editor/sdk/pages.service';
+import { unsyncedEditsStore } from '@/features/editor/domain/offline-storage';
 
 describe('Auto-Compile on Typing with Debounce (Overleaf Parity)', () => {
   let unsubscribeCompile: (() => void) | null = null;
 
   beforeEach(() => {
     vi.restoreAllMocks();
-    vi.spyOn(manuscriptService.docs, 'updateContent').mockResolvedValue({ success: true } as any);
-    vi.spyOn(manuscriptService.updater, 'flushProject').mockResolvedValue({ success: true } as any);
-    vi.spyOn(draftStorageService, 'saveDraft').mockResolvedValue(undefined);
-    vi.spyOn(draftStorageService, 'clearDraft').mockResolvedValue(undefined);
-    vi.spyOn(draftStorageService, 'saveMemoryDraft').mockReturnValue({} as any);
+    vi.spyOn(pagesService.docs, 'updateContent').mockResolvedValue({ success: true } as any);
+    vi.spyOn(pagesService.updater, 'flushProject').mockResolvedValue({ success: true } as any);
+    vi.spyOn(unsyncedEditsStore, 'save').mockResolvedValue(undefined);
+    vi.spyOn(unsyncedEditsStore, 'clear').mockResolvedValue(undefined);
+    vi.spyOn(unsyncedEditsStore, 'saveMemory').mockReturnValue({} as any);
 
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     useSettingsStore.setState({ autoCompile: true });

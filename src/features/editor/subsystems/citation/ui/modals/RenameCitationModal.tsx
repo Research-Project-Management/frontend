@@ -4,7 +4,7 @@
  * RenameCitationModal.tsx
  *
  * Dedicated Dialog for Project-Wide Citation Key Renaming & Refactoring.
- * Location: `features/editor/ui/modals/citation-picker/RenameCitationModal.tsx`
+ * Location: `features/editor/subsystems/citation/ui/modals/RenameCitationModal.tsx`
  *
  * Provides a clean modal workflow for researchers:
  * - Real-time input validation (no illegal characters, no spaces, must differ from old key)

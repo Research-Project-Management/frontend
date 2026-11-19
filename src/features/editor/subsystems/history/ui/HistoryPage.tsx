@@ -36,7 +36,7 @@ import { Input } from '@/shared/components/ui/input';
 import { Badge } from '@/shared/components/ui/badge';
 import { cn } from '@/shared/lib/utils';
 
-import { manuscriptService, historyKeys } from '@/features/editor/sdk/pages.service';
+import { pagesService, historyKeys } from '@/features/editor/sdk/pages.service';
 import { exportVersionAsZip } from '@/features/editor/sdk/archive/archive-export';
 import {
   clearYjsProviderPool,
@@ -52,7 +52,10 @@ import {
 } from '@/features/editor/core';
 import { useCompileStore } from '@/features/editor/subsystems/compiler';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
-import { draftStorageService } from '@/features/editor/domain/document/draft-storage';
+import {
+  unsyncedEditsStore,
+  clearAllOfflineMemory,
+} from '@/features/editor/domain/offline-storage';
 import type {
   ProjectDiffResponse,
   ProjectSnapshotDetail,
@@ -172,7 +175,7 @@ export function HistoryPage({
   } = useQuery({
     queryKey: historyKeys.versions(effectiveProjectId, effectivePageId || undefined),
     queryFn: () =>
-      manuscriptService.history.getProjectVersions(effectiveProjectId, pageScopeOpts),
+      pagesService.history.getProjectVersions(effectiveProjectId, pageScopeOpts),
     enabled: !!effectiveProjectId && open,
     staleTime: 30_000,
     gcTime: 5 * 60_000,
@@ -216,7 +219,7 @@ export function HistoryPage({
       selectedTargetVersion,
     ],
     queryFn: () =>
-      manuscriptService.history.compareProjectVersions(
+      pagesService.history.compareProjectVersions(
         effectiveProjectId,
         selectedBaseVersion!,
         selectedTargetVersion!,
@@ -232,7 +235,7 @@ export function HistoryPage({
     queryKey: ['project-snapshot', effectiveProjectId, effectivePageId, selectedBaseVersion],
     queryFn: () =>
       selectedBaseVersion
-        ? manuscriptService.history.getProjectSnapshot(
+        ? pagesService.history.getProjectSnapshot(
             effectiveProjectId,
             selectedBaseVersion,
             pageScopeOpts,
@@ -255,7 +258,7 @@ export function HistoryPage({
   // ── Mutations ──
   const addLabelMutation = useMutation({
     mutationFn: ({ version, label }: { version: number; label: string }) =>
-      manuscriptService.history.labelProjectVersion(
+      pagesService.history.labelProjectVersion(
         effectiveProjectId,
         version,
         label,
@@ -272,7 +275,7 @@ export function HistoryPage({
 
   const deleteLabelMutation = useMutation({
     mutationFn: (labelId: string) =>
-      manuscriptService.history.deleteProjectLabel(
+      pagesService.history.deleteProjectLabel(
         effectiveProjectId,
         labelId,
         pageScopeOpts,
@@ -298,7 +301,7 @@ export function HistoryPage({
         }
         await sessionCoordinator.flushAllPending();
       }
-      return await manuscriptService.history.createProjectSnapshot(
+      return await pagesService.history.createProjectSnapshot(
         effectiveProjectId,
         { summary, ...(effectivePageId ? { pageId: effectivePageId } : {}) },
         pageScopeOpts,
@@ -322,7 +325,7 @@ export function HistoryPage({
       for (const m of lruDocumentCache.getAllModels()) {
         sessionCoordinator.cancelPendingAutoSave(m.fileId);
       }
-      return await manuscriptService.history.restoreProjectVersion(
+      return await pagesService.history.restoreProjectVersion(
         effectiveProjectId,
         version,
         pageScopeOpts,
@@ -333,16 +336,16 @@ export function HistoryPage({
       clearYjsProviderPool({ skipFlush: true });
       for (const m of lruDocumentCache.getDirtyModels()) {
         lruDocumentCache.markClean(m.fileId);
-        void draftStorageService.clearDraft(m.fileId);
+        void unsyncedEditsStore.clear(m.fileId);
       }
       for (const m of lruDocumentCache.getAllModels()) {
-        void draftStorageService.clearDraft(m.fileId);
+        void unsyncedEditsStore.clear(m.fileId);
       }
       if (effectiveProjectId) {
         documentFacade.clearProjectCache(effectiveProjectId);
-        void draftStorageService.clearProjectDrafts(effectiveProjectId);
+        void unsyncedEditsStore.clearByScope(effectiveProjectId);
       }
-      draftStorageService.clearMemoryCaches();
+      clearAllOfflineMemory();
       lruDocumentCache.discardAll();
       useCompileStore.getState().clearAllDirty();
       queryClient.invalidateQueries({ queryKey: ['history'] });
@@ -372,7 +375,7 @@ export function HistoryPage({
         sessionCoordinator.cancelPendingAutoSave(cachedMatch.fileId);
       }
 
-      const restored = await manuscriptService.history.restoreProjectVersionFile(
+      const restored = await pagesService.history.restoreProjectVersionFile(
         effectiveProjectId,
         selectedBaseVersion,
         activeFilePath,
@@ -402,7 +405,7 @@ export function HistoryPage({
         lruDocumentCache.updateContent(docId, baseContent, false);
         lruDocumentCache.markClean(docId);
         useCompileStore.getState().clearDirty(docId);
-        void draftStorageService.clearDraft(docId);
+        void unsyncedEditsStore.clear(docId);
         const engine = documentFacade.getEditorEngineForFile(docId);
         if (engine) {
           engine.setContent(baseContent);
@@ -420,7 +423,7 @@ export function HistoryPage({
         lruDocumentCache.updateContent(cachedByPath.fileId, baseContent, false);
         lruDocumentCache.markClean(cachedByPath.fileId);
         useCompileStore.getState().clearDirty(cachedByPath.fileId);
-        void draftStorageService.clearDraft(cachedByPath.fileId);
+        void unsyncedEditsStore.clear(cachedByPath.fileId);
       }
       queryClient.invalidateQueries({ queryKey: ['history'] });
       queryClient.invalidateQueries({ queryKey: ['project-history-diff'] });
@@ -446,7 +449,7 @@ export function HistoryPage({
     try {
       let snap = baseSnapshot;
       if (!snap && effectiveProjectId && selectedBaseVersion) {
-        snap = await manuscriptService.history.getProjectSnapshot(
+        snap = await pagesService.history.getProjectSnapshot(
           effectiveProjectId,
           selectedBaseVersion,
           pageScopeOpts,

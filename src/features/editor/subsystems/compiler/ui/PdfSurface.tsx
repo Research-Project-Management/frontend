@@ -4,15 +4,7 @@
  * PdfSurface.tsx
  *
  * Virtualized PDF.js Render Canvas with SyncTeX Double-Click Interactivity (Block 6: UI Features Layer).
- * Location: `features/editor/ui/features/preview/PdfSurface.tsx`
- *
- * Capabilities:
- * - Single-page & multi-page continuous vertical virtualized scrolling.
- * - Spread two-page side-by-side view.
- * - SyncTeX forward & inverse jump (double-click to navigate back to exact line in LaTeX source).
- * - Animated radar target marker for visual jump feedback.
- * - High-DPI canvas scaling with devicePixelRatio awareness.
- * - Invert colors / dark preview mode for eye comfort.
+ * Location: `features/editor/subsystems/compiler/ui/PdfSurface.tsx`
  */
 
 import React, {
@@ -33,12 +25,7 @@ import {
   type SyncTeXMap,
 } from '@/features/editor/subsystems/compiler/synctex/synctex-index';
 import { compilerCoordinator } from '@/features/editor/subsystems/compiler/coordinator/compiler.coordinator';
-import {
-  PDF_VIEWPORT_BUFFER_PAGES,
-  PDF_SPREAD_VIEWPORT_BUFFER_PAGES,
-  PDF_PINNED_TARGET_TTL_MS,
-} from '@/features/editor/domain/constants/editor.constants';
-import { logger, cn } from "@/shared/lib/utils";
+import { cn } from '@/shared/lib/utils';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { useViewerStore } from '@/features/editor/subsystems/compiler/coordinator/viewer.store';
@@ -49,334 +36,32 @@ import {
   setupPdfWorker,
   getSharedPdfDocumentOptions,
   getCappedDevicePixelRatio,
-  releaseCanvasMemory,
 } from '@/shared/lib/pdfjs-worker';
+import {
+  PdfSyncTeXHighlightBox,
+  type SynctexHighlightState,
+  type ClickIndicator,
+  type PdfSyncTeXHighlightBoxProps,
+} from './PdfSyncTeXHighlightBox';
+import {
+  OptimizedPDFPage,
+  extractPageDimensionsPt,
+  normalizePdfTextItem,
+} from './OptimizedPdfPage';
+import { usePdfViewportVirtualizer } from './hooks/usePdfViewportVirtualizer';
 
-// Ensure PDF.js worker is registered synchronously and with absolute origin URL
 if (typeof window !== 'undefined' && pdfjs?.GlobalWorkerOptions) {
   pdfjs.GlobalWorkerOptions.workerSrc = `${window.location.origin}/pdf.worker.min.mjs`;
 }
 setupPdfWorker();
 
-export type { PdfPageDimensions };
-
-function extractPageDimensionsPt(page: {
-  getViewport?: (params: { scale: number }) => { width?: number; height?: number };
-  view?: number[];
-  originalWidth?: number;
-  originalHeight?: number;
-  width?: number;
-  height?: number;
-}): PdfPageDimensions {
-  let widthPt = 0;
-  let heightPt = 0;
-
-  if (typeof page.getViewport === 'function') {
-    try {
-      const vp = page.getViewport({ scale: 1 });
-      if (vp?.width && vp.width > 0) widthPt = vp.width;
-      if (vp?.height && vp.height > 0) heightPt = vp.height;
-    } catch {
-      // fallback to view or originalWidth/Height
-    }
-  }
-
-  if ((!widthPt || !heightPt) && Array.isArray(page.view) && page.view.length >= 4) {
-    const vw = page.view[2] - page.view[0];
-    const vh = page.view[3] - page.view[1];
-    if (!widthPt && vw > 0) widthPt = vw;
-    if (!heightPt && vh > 0) heightPt = vh;
-  }
-
-  if (!widthPt && page.originalWidth && page.originalWidth > 0) {
-    widthPt = page.originalWidth;
-  }
-  if (!heightPt && page.originalHeight && page.originalHeight > 0) {
-    heightPt = page.originalHeight;
-  }
-
-  return {
-    widthPt: widthPt > 0 ? widthPt : DEFAULT_PDF_PAGE_WIDTH_PT,
-    heightPt: heightPt > 0 ? heightPt : DEFAULT_PDF_PAGE_HEIGHT_PT,
-  };
-}
-
-// ── Optimized PDF Page with IntersectionObserver ──────────────────────────────
-
-export interface SynctexHighlightState {
-  page: number;
-  x: number;
-  y: number;
-  w?: number;
-  h?: number;
-  id: number;
-  type?: 'forward' | 'backward';
-}
-
-export type ClickIndicator = SynctexHighlightState;
-
-export interface PdfSyncTeXHighlightBoxProps {
-  indicator: SynctexHighlightState;
-  pageWidth: number;
-  scale: number;
-  pageDimensions?: PdfPageDimensions;
-}
-
-export const PdfSyncTeXHighlightBox = React.memo(function PdfSyncTeXHighlightBox({
-  indicator,
-  pageWidth,
-  scale,
-  pageDimensions,
-}: PdfSyncTeXHighlightBoxProps) {
-  const isForward = indicator.type === 'forward' || (indicator.w !== undefined && indicator.h !== undefined);
-
-  if (isForward) {
-    const widthPt =
-      pageDimensions?.widthPt && pageDimensions.widthPt > 0
-        ? pageDimensions.widthPt
-        : DEFAULT_PDF_PAGE_WIDTH_PT;
-    const effectivePageWidth = pageWidth > 0 ? pageWidth : Math.round(widthPt * (scale > 0 ? scale : 1));
-    const left = Math.max(8, indicator.x - 4);
-    const width =
-      indicator.w !== undefined && indicator.w > 0
-        ? Math.max(indicator.w + 8, 48)
-        : Math.max(160, Math.min(effectivePageWidth - left - 24, 480));
-    const rawH =
-      indicator.h !== undefined && indicator.h > 0
-        ? indicator.h
-        : Math.max(14 * (scale > 0 ? scale : 1), 14);
-    const height = Math.max(rawH + 6, 16);
-    // In SyncTeX, y is the text baseline measured from the top of the page, while glyphs extend upward by ascent (~0.8 * rawH)
-    const top = Math.max(0, indicator.y - rawH * 0.8);
-
-    return (
-      <div
-        key={indicator.id}
-        data-testid="synctex-pdf-highlight-box"
-        role="presentation"
-        aria-hidden="true"
-        className="synctex-pdf-highlight-box pointer-events-none"
-        style={{
-          left: `${left}px`,
-          top: `${top}px`,
-          width: `${width}px`,
-          height: `${height}px`,
-        }}
-      >
-        {/* Left Accent Indicator / Baseline Pin (Overleaf Parity) */}
-        <div
-          data-testid="synctex-pdf-accent-bar"
-          className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-4/5 max-h-5 rounded-full bg-warning shadow-none"
-        />
-      </div>
-    );
-  }
-
-  return (
-    <div
-      key={indicator.id}
-      data-testid="synctex-pdf-backward-ripple"
-      role="presentation"
-      aria-hidden="true"
-      className="pointer-events-none absolute z-30 transition-opacity duration-300"
-      style={{
-        left: `${indicator.x}px`,
-        top: `${indicator.y}px`,
-        transform: 'translate(-50%, -50%)',
-      }}
-    >
-      <span className="relative flex size-9 items-center justify-center">
-        <span className="absolute inline-flex size-full rounded-full bg-primary/60 opacity-80" />
-        <span className="absolute inline-flex size-6 rounded-full border-2 border-primary bg-primary/20" />
-        <span className="relative inline-flex size-2 rounded-full bg-primary" />
-      </span>
-    </div>
-  );
-});
-
-interface OptimizedPDFPageProps {
-  pageIndex: number; // 0-based
-  scale: number;
-  autoFit?: boolean;
-  containerWidth?: number;
-  pageDimensions?: PdfPageDimensions;
-  onPageDimensionsResolved?: (pageNum: number, dims: PdfPageDimensions) => void;
-  isVisible: boolean;
-  registerPageShell: (pageNum: number, el: HTMLDivElement | null) => void;
-  approxHeightRef: React.MutableRefObject<number>;
-  onDoubleClickPage: (
-    pageNum: number,
-    clickFraction: number,
-    ptX?: number,
-    ptY?: number,
-    pixelX?: number,
-    pixelY?: number,
-  ) => void;
-  clickIndicator?: SynctexHighlightState | null;
-  invertColors?: boolean;
-  isSpreadView?: boolean;
-  onRenderTextLayer?: () => void;
-}
-
-const normalizePdfTextItem = (item: { str: string }) =>
-  item.str && item.str.includes('—') ? item.str.replace(/—/g, '-') : item.str;
-
-const OptimizedPDFPage = React.memo(function OptimizedPDFPage({
-  pageIndex,
-  scale,
-  autoFit = true,
-  containerWidth,
-  pageDimensions,
-  onPageDimensionsResolved,
-  isVisible,
-  registerPageShell,
-  approxHeightRef,
-  onDoubleClickPage,
-  clickIndicator,
-  invertColors = false,
-  isSpreadView = false,
-  onRenderTextLayer,
-}: OptimizedPDFPageProps) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-
-  const widthPt =
-    pageDimensions?.widthPt && pageDimensions.widthPt > 0
-      ? pageDimensions.widthPt
-      : DEFAULT_PDF_PAGE_WIDTH_PT;
-  const heightPt =
-    pageDimensions?.heightPt && pageDimensions.heightPt > 0
-      ? pageDimensions.heightPt
-      : DEFAULT_PDF_PAGE_HEIGHT_PT;
-
-  const resolvedPageDimensions = useMemo<PdfPageDimensions>(
-    () => ({ widthPt, heightPt }),
-    [widthPt, heightPt],
-  );
-
-  const pageNum = pageIndex + 1;
-  const pageWidth = isSpreadView && containerWidth
-    ? Math.floor((containerWidth - 8) / 2)
-    : (autoFit && containerWidth
-        ? containerWidth
-        : Math.round(widthPt * scale));
-
-  const estimatedHeight = approxHeightRef.current > 0
-    ? approxHeightRef.current
-    : Math.round(pageWidth * (heightPt / widthPt));
-
-  const handleDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const clickY = e.clientY - rect.top;
-    const pageHeight = rect.height;
-    const clickFraction = pageHeight > 0 ? Math.max(0, Math.min(1, clickY / pageHeight)) : 0;
-    const effectiveScale = rect.width > 0 ? rect.width / widthPt : (scale > 0 ? scale : 1);
-    const ptX = Math.round(clickX / effectiveScale);
-    const ptY = Math.round(clickY / effectiveScale);
-    onDoubleClickPage(pageNum, clickFraction, ptX, ptY, clickX, clickY);
-  };
-
-  const handleClickCapture = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.ctrlKey || e.metaKey) {
-      e.preventDefault();
-      e.stopPropagation();
-      handleDoubleClick(e);
-    }
-  };
-
-  useEffect(() => {
-    if (!isVisible && containerRef.current) {
-      releaseCanvasMemory(containerRef.current);
-    }
-  }, [isVisible]);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    return () => {
-      // 1. Clean up stale DOM node reference from parent registry
-      registerPageShell(pageNum, null);
-
-      // 2. Explicitly release GPU canvas pixel buffers
-      releaseCanvasMemory(container);
-    };
-  }, [pageNum, registerPageShell]);
-
-  const setShellRef = useCallback(
-    (el: HTMLDivElement | null) => {
-      containerRef.current = el;
-      registerPageShell(pageNum, el);
-    },
-    [pageNum, registerPageShell],
-  );
-
-  const handlePageLoadSuccess = useCallback(
-    (page: {
-      getViewport?: (params: { scale: number }) => { width?: number; height?: number };
-      view?: number[];
-      originalWidth?: number;
-      originalHeight?: number;
-    }) => {
-      if (onPageDimensionsResolved) {
-        const dims = extractPageDimensionsPt(page);
-        onPageDimensionsResolved(pageNum, dims);
-      }
-    },
-    [onPageDimensionsResolved, pageNum],
-  );
-
-  return (
-    <div
-      ref={setShellRef}
-      data-page-num={pageNum}
-      data-page-label={`Page ${pageNum}`}
-      onClickCapture={handleClickCapture}
-      onDoubleClickCapture={handleDoubleClick}
-      className={cn(
-        "relative flex items-center justify-center cursor-text shrink-0",
-        isVisible
-          ? "bg-canvas dark:bg-card"
-          : "bg-background/50 after:content-[attr(data-page-label)] after:text-xs after:font-mono after:font-medium after:text-muted-foreground/30 after:select-none after:pointer-events-none",
-        isSpreadView ? "my-0" : "border-b border-border/60 last:border-b-0"
-      )}
-      style={{
-        width: autoFit ? '100%' : pageWidth,
-        maxWidth: '100%',
-        minHeight: isVisible ? undefined : estimatedHeight,
-        aspectRatio: isVisible ? undefined : `${widthPt} / ${heightPt}`,
-      }}
-    >
-      {isVisible ? (
-        <Page
-          pageNumber={pageNum}
-          width={autoFit ? pageWidth : undefined}
-          scale={autoFit ? undefined : scale}
-          canvasBackground="#ffffff"
-          renderTextLayer
-          renderAnnotationLayer
-          customTextRenderer={normalizePdfTextItem}
-          onLoadSuccess={handlePageLoadSuccess}
-          onRenderTextLayerSuccess={onRenderTextLayer}
-          devicePixelRatio={getCappedDevicePixelRatio(2)}
-          loading={
-            <div className="absolute inset-0 flex items-center justify-center bg-canvas dark:bg-card">
-              <Loader2 className="size-5 animate-spin motion-reduce:animate-none text-muted-foreground/30 shrink-0" />
-            </div>
-          }
-        />
-      ) : null}
-      {clickIndicator && clickIndicator.page === pageNum && (
-        <PdfSyncTeXHighlightBox
-          indicator={clickIndicator}
-          pageWidth={pageWidth}
-          scale={scale}
-          pageDimensions={resolvedPageDimensions}
-        />
-      )}
-    </div>
-  );
-});
-
-// ── Surface Imperative Handle ─────────────────────────────────────────────────
+export {
+  PdfSyncTeXHighlightBox,
+  type PdfPageDimensions,
+  type SynctexHighlightState,
+  type ClickIndicator,
+  type PdfSyncTeXHighlightBoxProps,
+};
 
 export interface PdfSurfaceHandle {
   scrollToPage: (pageNum: number) => void;
@@ -385,8 +70,6 @@ export interface PdfSurfaceHandle {
   clearHighlight?: () => void;
   getContainer: () => HTMLDivElement | null;
 }
-
-// ── Surface Props ─────────────────────────────────────────────────────────────
 
 export interface PdfSurfaceProps {
   pdfUrl: string | null;
@@ -429,12 +112,9 @@ export const PdfSurface = React.memo(forwardRef<PdfSurfaceHandle, PdfSurfaceProp
     scrollMode = true,
     pageNumber,
     numPages,
-    compileStatus,
-    onPageNumberChange,
     onNumPagesChange,
     onDocumentLoadSuccess: parentOnLoadSuccess,
     onJumpToSource,
-    onCompile,
     invertColors = false,
     isSpreadView = false,
     onScroll,
@@ -442,19 +122,10 @@ export const PdfSurface = React.memo(forwardRef<PdfSurfaceHandle, PdfSurfaceProp
   },
   ref,
 ) {
-  // Guarantee workerSrc is initialized before <Document> mounts
   setupPdfWorker();
 
-  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
-  const pageElemRefs = useRef<Record<number, HTMLDivElement | null>>({});
-  const approxHeightRef = useRef<number>(0);
-  const observerRef = useRef<IntersectionObserver | null>(null);
-  const [visiblePages, setVisiblePages] = useState<Set<number>>(() => new Set([1, 2]));
-  const [pinnedPage, setPinnedPage] = useState<number | null>(null);
-  const pinnedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [clickIndicator, setClickIndicator] = useState<SynctexHighlightState | null>(null);
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [docLoadError, setDocLoadError] = useState<Error | null>(null);
   const [defaultPageDimensions, setDefaultPageDimensions] = useState<PdfPageDimensions>({
     widthPt: DEFAULT_PDF_PAGE_WIDTH_PT,
     heightPt: DEFAULT_PDF_PAGE_HEIGHT_PT,
@@ -496,6 +167,9 @@ export const PdfSurface = React.memo(forwardRef<PdfSurfaceHandle, PdfSurfaceProp
 
   useEffect(() => {
     setupPdfWorker();
+    return () => {
+      if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+    };
   }, []);
 
   const documentOptions = useMemo(
@@ -503,105 +177,36 @@ export const PdfSurface = React.memo(forwardRef<PdfSurfaceHandle, PdfSurfaceProp
     [],
   );
 
-  const scrollRafRef = useRef<number | null>(null);
-  const lastScrollTopRef = useRef<number>(0);
-  const isRestoringScrollRef = useRef<boolean>(false);
+  const effectivePageNumber = pageNumber ?? useViewerStore.getState().pageNumber ?? 1;
 
-  useEffect(() => {
-    return () => {
-      if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
-      if (pinnedTimerRef.current) clearTimeout(pinnedTimerRef.current);
-      if (scrollRafRef.current !== null) cancelAnimationFrame(scrollRafRef.current);
-    };
-  }, []);
-
-  const pinTargetPage = useCallback((targetPage: number) => {
-    if (!Number.isFinite(targetPage) || targetPage < 1) return;
-    setPinnedPage(targetPage);
-    if (pinnedTimerRef.current) clearTimeout(pinnedTimerRef.current);
-    pinnedTimerRef.current = setTimeout(() => {
-      setPinnedPage(null);
-    }, PDF_PINNED_TARGET_TTL_MS);
-  }, []);
-
-  const registerPageShell = useCallback((pageNum: number, el: HTMLDivElement | null) => {
-    const prevEl = pageElemRefs.current[pageNum];
-    if (prevEl && prevEl !== el) {
-      observerRef.current?.unobserve(prevEl);
-    }
-    if (el) {
-      pageElemRefs.current[pageNum] = el;
-      if (prevEl !== el) {
-        observerRef.current?.observe(el);
-      }
-    } else {
-      delete pageElemRefs.current[pageNum];
-    }
-  }, []);
-
-  useEffect(() => {
-    if (
-      !scrollMode ||
-      numPages <= 0 ||
-      typeof window === 'undefined' ||
-      !('IntersectionObserver' in window)
-    ) {
-      return;
-    }
-    const container = scrollContainerRef.current;
-    if (!container) return;
-
-    const obs = new IntersectionObserver(
-      (entries) => {
-        if (entries.length === 0) return;
-        for (const entry of entries) {
-          if (entry.isIntersecting && entry.boundingClientRect.height > 0) {
-            approxHeightRef.current = entry.boundingClientRect.height;
-          }
-        }
-        setVisiblePages((prev) => {
-          let next: Set<number> | null = null;
-          for (const entry of entries) {
-            const page = Number((entry.target as HTMLElement).dataset.pageNum);
-            if (Number.isNaN(page) || page < 1) continue;
-            const currentSet = next ?? prev;
-            if (entry.isIntersecting) {
-              if (!currentSet.has(page)) {
-                if (!next) next = new Set(prev);
-                next.add(page);
-              }
-            } else if (currentSet.has(page)) {
-              if (!next) next = new Set(prev);
-              next.delete(page);
-            }
-          }
-          return next ?? prev;
-        });
-      },
-      {
-        root: container,
-        rootMargin: '450px 0px 450px 0px',
-        threshold: [0, 0.01, 0.25],
-      },
-    );
-
-    observerRef.current = obs;
-    Object.values(pageElemRefs.current).forEach((el) => {
-      if (el) obs.observe(el);
-    });
-
-    return () => {
-      obs.disconnect();
-      observerRef.current = null;
-    };
-  }, [numPages, scrollMode, isSpreadView, pdfUrl]);
-
-  useEffect(() => {
-    setDocLoadError(null);
-    if (lastScrollTopRef.current > 0) {
-      isRestoringScrollRef.current = true;
-    }
-  }, [pdfUrl]);
+  const {
+    scrollContainerRef,
+    pageElemRefs,
+    approxHeightRef,
+    docLoadError,
+    currentContainerWidth,
+    inWindowPages,
+    pagePairs,
+    registerPageShell,
+    pinTargetPage,
+    handleContainerScroll,
+    handleDocumentLoadSuccess,
+    handleDocumentLoadError,
+  } = usePdfViewportVirtualizer({
+    pdfUrl,
+    numPages,
+    scrollMode,
+    isSpreadView,
+    containerWidth,
+    effectivePageNumber,
+    scale,
+    perPageDimensions,
+    effectiveDefaultDimensions,
+    onScroll,
+    onNumPagesChange,
+    onDocumentLoadSuccess: parentOnLoadSuccess,
+    onPageDimensionsResolved: handlePageDimensionsResolved,
+  });
 
   const triggerClickIndicator = useCallback(
     (
@@ -621,20 +226,6 @@ export const PdfSurface = React.memo(forwardRef<PdfSurfaceHandle, PdfSurfaceProp
     [],
   );
 
-  const pagePairs = useMemo(() => {
-    if (!isSpreadView) return [];
-    const pairs: number[][] = [];
-    for (let i = 0; i < numPages; i += 2) {
-      if (i + 1 < numPages) {
-        pairs.push([i, i + 1]);
-      } else {
-        pairs.push([i]);
-      }
-    }
-    return pairs;
-  }, [numPages, isSpreadView]);
-
-  // Expose container, scrollToPage, scrollToCoords, and target highlighting via ref
   useImperativeHandle(ref, () => ({
     scrollToPage(pageNum: number) {
       pinTargetPage(pageNum);
@@ -681,231 +272,42 @@ export const PdfSurface = React.memo(forwardRef<PdfSurfaceHandle, PdfSurfaceProp
     },
   }));
 
-  const handleContainerScroll = useCallback(() => {
-    if (
-      !isRestoringScrollRef.current &&
-      scrollContainerRef.current &&
-      scrollContainerRef.current.scrollTop > 0
-    ) {
-      lastScrollTopRef.current = scrollContainerRef.current.scrollTop;
-    }
-    if (!onScroll) return;
-    if (scrollRafRef.current !== null) return;
-
-    scrollRafRef.current = requestAnimationFrame(() => {
-      scrollRafRef.current = null;
-      const container = scrollContainerRef.current;
-      if (!container) return;
-      const containerTop = container.scrollTop;
-      const containerHeight = container.clientHeight;
-      const scrollFocus = containerTop + containerHeight / 4;
-
-      let low = 1;
-      let high = numPages;
-      let candidatePage = 1;
-
-      while (low <= high) {
-        const mid = (low + high) >>> 1;
-        const midEl = pageElemRefs.current[mid];
-        if (!midEl) {
-          break;
-        }
-        if (midEl.offsetTop <= scrollFocus) {
-          candidatePage = mid;
-          low = mid + 1;
-        } else {
-          high = mid - 1;
-        }
+  const handleDoubleClickPage = useCallback(
+    (
+      pageNum: number,
+      clickFraction: number,
+      ptX?: number,
+      ptY?: number,
+      pixelX?: number,
+      pixelY?: number,
+    ) => {
+      if (pixelX !== undefined && pixelY !== undefined) {
+        triggerClickIndicator(pageNum, pixelX, pixelY, undefined, undefined, 'backward');
       }
-
-      // Check candidatePage first (O(1) in sorted vertical layout), fallback to linear scan if refs are sparse
-      const checkPage = (p: number): boolean => {
-        const el = pageElemRefs.current[p];
-        if (!el) return false;
-        const elTop = el.offsetTop;
-        const elHeight = el.offsetHeight;
-        if (scrollFocus >= elTop && scrollFocus <= elTop + elHeight) {
-          const relativeY = scrollFocus - elTop;
-          const pageDims = perPageDimensions[p] || effectiveDefaultDimensions;
-          const widthPt = pageDims.widthPt > 0 ? pageDims.widthPt : DEFAULT_PDF_PAGE_WIDTH_PT;
-          const effectiveScale = el.offsetWidth > 0 ? el.offsetWidth / widthPt : (scale > 0 ? scale : 1);
-          const ptY = relativeY / effectiveScale;
-          const fraction = elHeight > 0 ? relativeY / elHeight : 0;
-          onScroll({ page: p, y: ptY, fraction });
-          return true;
-        }
-        return false;
-      };
-
-      if (!checkPage(candidatePage) && !checkPage(candidatePage + 1)) {
-        for (let p = 1; p <= numPages; p++) {
-          const el = pageElemRefs.current[p];
-          if (el && el.offsetTop > scrollFocus) break;
-          if (checkPage(p)) break;
-        }
-      }
-    });
-  }, [onScroll, numPages, scale, perPageDimensions, effectiveDefaultDimensions]);
-
-  const handleDocumentLoadSuccess = useCallback((pdf: {
-    numPages: number;
-    getPage?: (pageNum: number) => Promise<{
-      getViewport?: (params: { scale: number }) => { width?: number; height?: number };
-      view?: number[];
-      originalWidth?: number;
-      originalHeight?: number;
-    }>;
-  }) => {
-    const savedTop = lastScrollTopRef.current;
-    if (typeof pdf.getPage === 'function' && pdf.numPages >= 1) {
-      Promise.resolve(pdf.getPage(1))
-        .then((page) => {
-          if (page) {
-            const dims = extractPageDimensionsPt(page);
-            handlePageDimensionsResolved(1, dims);
-            (page as { cleanup?: () => void })?.cleanup?.();
-          }
-        })
-        .catch(() => {
-          // ignore and rely on Page onLoadSuccess or default A4
-        });
-    }
-    queueMicrotask(() => {
-      setDocLoadError(null);
-      onNumPagesChange?.(pdf.numPages);
-      parentOnLoadSuccess?.(pdf);
-
-      // Overleaf Parity: Restore scroll position across recompiles after React mounts page placeholders
-      if (savedTop > 0) {
-        const restoreScroll = () => {
-          if (scrollContainerRef.current && scrollContainerRef.current.scrollHeight > savedTop) {
-            scrollContainerRef.current.scrollTop = savedTop;
-            lastScrollTopRef.current = savedTop;
-            isRestoringScrollRef.current = false;
-          }
-        };
-        requestAnimationFrame(() => {
-          restoreScroll();
-          requestAnimationFrame(restoreScroll);
-        });
-        setTimeout(() => {
-          restoreScroll();
-          isRestoringScrollRef.current = false;
-        }, 120);
-      } else {
-        isRestoringScrollRef.current = false;
-      }
-    });
-  }, [onNumPagesChange, parentOnLoadSuccess, handlePageDimensionsResolved]);
-
-  const handleDocumentLoadError = useCallback((error: unknown) => {
-    logger.warn('[Surface] Document load error', { error });
-    queueMicrotask(() => {
-      setDocLoadError(
-        error instanceof Error
-          ? error
-          : new Error(
-              typeof error === 'object' && error !== null && 'message' in error
-                ? String((error as { message: unknown }).message)
-                : 'The compiled PDF document could not be decoded by the viewer engine.',
-            ),
+      if (!onJumpToSource) return;
+      const pageDims = perPageDimensions[pageNum] || effectiveDefaultDimensions;
+      const heightPt = pageDims.heightPt > 0 ? pageDims.heightPt : DEFAULT_PDF_PAGE_HEIGHT_PT;
+      const resolved = compilerCoordinator.resolveReverse(
+        clickFraction,
+        pageNum,
+        ptX,
+        ptY,
+        synctexMap,
+        heightPt,
       );
-    });
-  }, []);
+      onJumpToSource(
+        resolved?.sourcePath ?? null,
+        resolved?.line ?? 1,
+        pageNum,
+        ptX,
+        ptY,
+      );
+    },
+    [triggerClickIndicator, onJumpToSource, synctexMap, perPageDimensions, effectiveDefaultDimensions],
+  );
 
-  // SyncTeX inverse search (PDF double-click -> LaTeX source jump)
-  const handleDoubleClickPage = useCallback((
-    pageNum: number,
-    clickFraction: number,
-    ptX?: number,
-    ptY?: number,
-    pixelX?: number,
-    pixelY?: number,
-  ) => {
-    if (pixelX !== undefined && pixelY !== undefined) {
-      triggerClickIndicator(pageNum, pixelX, pixelY, undefined, undefined, 'backward');
-    }
-    if (!onJumpToSource) return;
-    const pageDims = perPageDimensions[pageNum] || effectiveDefaultDimensions;
-    const heightPt = pageDims.heightPt > 0 ? pageDims.heightPt : DEFAULT_PDF_PAGE_HEIGHT_PT;
-    const resolved = compilerCoordinator.resolveReverse(
-      clickFraction,
-      pageNum,
-      ptX,
-      ptY,
-      synctexMap,
-      heightPt,
-    );
-    onJumpToSource(
-      resolved?.sourcePath ?? null,
-      resolved?.line ?? 1,
-      pageNum,
-      ptX,
-      ptY,
-    );
-  }, [triggerClickIndicator, onJumpToSource, synctexMap, perPageDimensions, effectiveDefaultDimensions]);
-
-  const [containerWidthState, setContainerWidthState] = useState<number>(0);
-
-  useEffect(() => {
-    const el = scrollContainerRef.current;
-    if (!el) return;
-
-    let rafId: number | null = null;
-    const updateWidth = () => {
-      if (rafId !== null) return;
-      rafId = requestAnimationFrame(() => {
-        rafId = null;
-        if (el.clientWidth > 0) {
-          setContainerWidthState((prev) => {
-            // 2px deadband prevents layout thrashing during panel dragging
-            return Math.abs(prev - el.clientWidth) >= 2 ? el.clientWidth : prev;
-          });
-        }
-      });
-    };
-    updateWidth();
-    const ro = new ResizeObserver(updateWidth);
-    ro.observe(el);
-    return () => {
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
-      }
-      ro.disconnect();
-    };
-  }, []);
-
-  const currentContainerWidth =
-    containerWidthState || containerWidth || scrollContainerRef.current?.clientWidth || 600;
-
-  const effectivePageNumber = pageNumber ?? useViewerStore.getState().pageNumber ?? 1;
   const singlePageDims = perPageDimensions[effectivePageNumber] || effectiveDefaultDimensions;
   const singlePageWidthPt = singlePageDims.widthPt > 0 ? singlePageDims.widthPt : DEFAULT_PDF_PAGE_WIDTH_PT;
-
-  const inWindowPages = useMemo<Set<number>>(() => {
-    const windowSet = new Set<number>();
-    const maxPage = numPages > 0 ? numPages : 1;
-    const buffer = isSpreadView ? PDF_SPREAD_VIEWPORT_BUFFER_PAGES : PDF_VIEWPORT_BUFFER_PAGES;
-    const addWithBuffer = (center: number) => {
-      if (center < 1 || center > maxPage) return;
-      const start = Math.max(1, center - buffer);
-      const end = Math.min(maxPage, center + buffer);
-      for (let p = start; p <= end; p++) {
-        windowSet.add(p);
-      }
-    };
-
-    for (const p of visiblePages) {
-      addWithBuffer(p);
-    }
-    if (windowSet.size === 0) {
-      addWithBuffer(Math.min(maxPage, Math.max(1, effectivePageNumber)));
-    }
-    if (pinnedPage !== null) {
-      addWithBuffer(pinnedPage);
-    }
-    return windowSet;
-  }, [visiblePages, pinnedPage, effectivePageNumber, numPages, isSpreadView]);
 
   return (
     <div
@@ -914,18 +316,17 @@ export const PdfSurface = React.memo(forwardRef<PdfSurfaceHandle, PdfSurfaceProp
       aria-label="PDF document preview"
       onScroll={handleContainerScroll}
       className={cn(
-        "flex-1 h-full min-h-0 overflow-y-auto flex flex-col items-center justify-start select-text relative transition-colors duration-200 thin-scrollbar",
-        autoFit ? "overflow-x-hidden" : "overflow-x-auto",
-        invertColors ? "dark bg-background text-foreground" : "bg-canvas text-foreground"
+        'flex-1 h-full min-h-0 overflow-y-auto flex flex-col items-center justify-start select-text relative transition-colors duration-200 thin-scrollbar',
+        autoFit ? 'overflow-x-hidden' : 'overflow-x-auto',
+        invertColors ? 'dark bg-background text-foreground' : 'bg-canvas text-foreground',
       )}
     >
       {!pdfUrl ? (
         <PlaneEmptyState
           variant="preview"
-          className={invertColors ? "dark bg-background text-foreground" : undefined}
+          className={invertColors ? 'dark bg-background text-foreground' : undefined}
         />
       ) : (
-        /* PDF Document Canvas */
         <Document
           file={pdfUrl}
           options={documentOptions}
@@ -1019,7 +420,7 @@ export const PdfSurface = React.memo(forwardRef<PdfSurfaceHandle, PdfSurfaceProp
                 handleDoubleClickPage(effectivePageNumber, clickFraction, ptX, ptY, clickX, clickY);
               }}
               className={cn(
-                "bg-canvas dark:bg-card relative flex items-center justify-center cursor-text transition-[filter] duration-200 shrink-0"
+                'bg-canvas dark:bg-card relative flex items-center justify-center cursor-text transition-[filter] duration-200 shrink-0',
               )}
               style={invertColors ? { filter: 'invert(0.9) hue-rotate(180deg) contrast(1.25)' } : undefined}
             >

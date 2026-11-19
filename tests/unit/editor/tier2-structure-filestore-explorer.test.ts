@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
 import {
-  MANUSCRIPTS_API_BASE,
+  PAGES_API_BASE,
   filestore,
   structure,
 } from '@/features/editor/sdk/pages.service';
-import { hydrateEditorBootstrap } from '@/features/editor/ui/hooks/document.queries';
+import { hydrateEditorBootstrap } from '@/features/editor/core/queries/document.queries';
 import {
   WorkspaceCoordinator,
   SessionCoordinator,
@@ -14,7 +14,11 @@ import {
   useWorkspaceStore,
 } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
-import { draftStorageService } from '@/features/editor/domain/document/draft-storage';
+import {
+  syncedDocCacheStore,
+  pendingOutboxStore,
+  clearAllOfflineMemory,
+} from '@/features/editor/domain/offline-storage';
 import type { EditorBootstrapResponseDto } from '@/features/editor/sdk/pages/types';
 import type {
   WorkspaceServicePort,
@@ -28,7 +32,8 @@ describe('Khối 2 / Tầng 2 — Virtual Tree SDK, Explorer Safety & Filestore 
     lruDocumentCache.clearAll();
     usePageStore.getState().resetPageState();
     useWorkspaceStore.setState({ tabsByProject: {}, activeByProject: {} });
-    await draftStorageService.clearMutations();
+    clearAllOfflineMemory();
+    await pendingOutboxStore.clearAll();
   });
 
   afterEach(() => {
@@ -39,14 +44,14 @@ describe('Khối 2 / Tầng 2 — Virtual Tree SDK, Explorer Safety & Filestore 
   it('routes Personal vs Project Space filestore stream URLs cleanly and prefixes nested parentId in uploadPageFile', async () => {
     // Project Space: distinct spaceId & pageId -> /spaces/:spaceId/files/:fileId?pageId=:pageId
     expect(filestore.getStreamUrl('space-1', 'file-1', 'page-2')).toBe(
-      `${MANUSCRIPTS_API_BASE}/spaces/space-1/files/file-1?pageId=page-2`,
+      `${PAGES_API_BASE}/spaces/space-1/files/file-1?pageId=page-2`,
     );
 
     // Personal Space: store spaceId differs from active rootPageId
     usePageStore.getState().setWorkspaceContext({ spaceId: 'user-personal' });
     usePageStore.getState().setRootPageId('page-personal');
     expect(filestore.getStreamUrl('page-personal', 'file-9')).toBe(
-      `${MANUSCRIPTS_API_BASE}/pages/page-personal/files/file-9`,
+      `${PAGES_API_BASE}/pages/page-personal/files/file-9`,
     );
 
     const uploadSpy = vi.spyOn(filestore, 'upload').mockResolvedValue({
@@ -88,7 +93,7 @@ describe('Khối 2 / Tầng 2 — Virtual Tree SDK, Explorer Safety & Filestore 
     expect(item.spaceId).toBe('space-1');
     expect(item.pageId).toBe('page-2');
     expect(item.url).toBe(
-      `${MANUSCRIPTS_API_BASE}/spaces/space-1/files/file-uploaded?pageId=page-2`,
+      `${PAGES_API_BASE}/spaces/space-1/files/file-uploaded?pageId=page-2`,
     );
   });
 
@@ -234,7 +239,7 @@ describe('Khối 2 / Tầng 2 — Virtual Tree SDK, Explorer Safety & Filestore 
       'space-x',
     );
 
-    // Prepare activeFilePage, asset tab, selectedAsset, and projectFileSnapshot before folder rename
+    // Prepare activeFilePage, asset tab, selectedAsset, and syncedDocCacheStore entry before folder rename
     usePageStore.getState().setActiveFilePage({
       id: 'doc-sec1',
       title: 'sections/intro.tex',
@@ -256,7 +261,7 @@ describe('Khối 2 / Tầng 2 — Virtual Tree SDK, Explorer Safety & Filestore 
       filePath: 'sections/intro.tex',
       projectId: 'page-x',
     });
-    await draftStorageService.saveProjectFileSnapshot({
+    await syncedDocCacheStore.put({
       id: 'doc-sec1',
       projectId: 'page-x',
       title: 'sections/intro.tex',
@@ -279,15 +284,15 @@ describe('Khối 2 / Tầng 2 — Virtual Tree SDK, Explorer Safety & Filestore 
         .getState()
         .tabsByProject['page-x']?.find((t) => t.id === 'asset:asset-fig')?.title,
     ).toBe('chapters/fig.png');
-    const updatedSnap = await draftStorageService.getProjectFileSnapshot('doc-sec1');
+    const updatedSnap = await syncedDocCacheStore.get('doc-sec1');
     expect(updatedSnap?.filePath).toBe('chapters/intro.tex');
 
     // Protected Root Document & folder deletion blocked without hitting backend
     expect(await coordinator.deleteFile('doc-main', 'page-x')).toBe(false);
     expect(mockService.deleteNode).not.toHaveBeenCalled();
 
-    // Deleting non-root folder cancels autosave timers, deletes cleanly, and evicts descendants & offline mutations
-    await draftStorageService.enqueueMutation({
+    // Deleting non-root folder cancels autosave timers, deletes cleanly, and evicts descendants & offline outbox mutations
+    await pendingOutboxStore.enqueue({
       fileId: 'doc-sec1',
       projectId: 'page-x',
       type: 'update_content',
@@ -296,7 +301,7 @@ describe('Khối 2 / Tầng 2 — Virtual Tree SDK, Explorer Safety & Filestore 
     const cancelSpy = vi.spyOn(sessionCoordinator, 'cancelPendingAutoSave');
     expect(await coordinator.deleteFile('folder-sec', 'page-x')).toBe(true);
     expect(cancelSpy).toHaveBeenCalledWith('doc-sec1');
-    const pendingAfterDelete = await draftStorageService.getPendingMutations();
+    const pendingAfterDelete = await pendingOutboxStore.getPending();
     expect(pendingAfterDelete.some((m) => m.fileId === 'doc-sec1')).toBe(false);
   });
 
@@ -304,7 +309,7 @@ describe('Khối 2 / Tầng 2 — Virtual Tree SDK, Explorer Safety & Filestore 
     const sc = new SessionCoordinator({
       persistenceAdapter: { updateContent: vi.fn() },
     });
-    await draftStorageService.enqueueMutation({
+    await pendingOutboxStore.enqueue({
       fileId: 'del-mut-doc',
       projectId: 'p1',
       type: 'update_content',
@@ -314,7 +319,7 @@ describe('Khối 2 / Tầng 2 — Virtual Tree SDK, Explorer Safety & Filestore 
     sc.evictDeletedFile('del-mut-doc');
     await vi.runAllTimersAsync();
 
-    const remaining = await draftStorageService.getPendingMutations();
+    const remaining = await pendingOutboxStore.getPending();
     expect(remaining.some((m) => m.fileId === 'del-mut-doc')).toBe(false);
   });
 });

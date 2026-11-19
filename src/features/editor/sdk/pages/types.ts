@@ -99,8 +99,6 @@ export interface CitationValidationDto {
   totalEntries: number;
 }
 
-export type CitationValidationResult = CitationValidationDto;
-
 export interface TemplateSummaryDto {
   id: string;
   name: string;
@@ -133,8 +131,6 @@ export interface FileMetadataDto {
   createdAt: string;
   updatedAt?: string;
 }
-
-export type StorageFileDto = FileMetadataDto;
 
 export interface TextRangeDto {
   startLine: number;
@@ -291,8 +287,6 @@ export interface StructureNodeDto {
   updatedAt: string;
   children?: StructureNodeDto[];
 }
-
-export type ManuscriptNodeDto = StructureNodeDto;
 
 export interface CompileLatexPayload {
   spaceId?: string | null;

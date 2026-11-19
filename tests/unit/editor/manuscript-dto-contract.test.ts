@@ -7,7 +7,7 @@ import {
   history,
   citations,
   templates,
-} from '@/features/editor/sdk/pages/docstore.client';
+} from '@/features/editor/sdk/pages.service';
 
 const { apiGetMock, apiPostMock, apiPatchMock, apiDeleteMock } = vi.hoisted(() => ({
   apiGetMock: vi.fn(),

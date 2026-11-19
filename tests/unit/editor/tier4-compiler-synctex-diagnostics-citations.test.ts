@@ -15,7 +15,7 @@ import {
 } from '@/features/editor/subsystems/compiler/synctex/synctex-index';
 import { parseLatexLog } from '@/features/editor/domain/latex/compiler-logs-parser';
 import { fixLatexError } from '@/features/editor/domain/ai/ai-error-assist';
-import { scanRetractedCitations } from '@/features/editor/subsystems/diagnostics/extensions/latex-linter-core';
+import { scanRetractedCitations } from '@/features/editor/subsystems/diagnostics/model/latex-linter-core';
 import {
   sanitizeZipPath,
   detectCommonRootPrefix,

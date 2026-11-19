@@ -21,14 +21,14 @@ import { useDocumentCollaborationStore } from '@/features/editor/core';
 import { useReviewPendingCount } from '@/features/editor/subsystems/review';
 import { SuggestionCard, SuggestionBulkActions } from '@/features/editor/subsystems/review';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
-import { EditorToolbar } from '@/features/editor/ui/editor/EditorToolbar';
+import { EditorToolbar } from '@/features/editor/core/surface/EditorToolbar';
 import { ActivityBar } from '@/features/editor/core/shell/ActivityBar';
 import { Topbar } from '@/features/editor/core/shell/Topbar';
 import { reviewCoordinator } from '@/features/editor/subsystems/review';
 import { keybindingCoordinator } from '@/features/editor/subsystems/keybinding';
 import { jumpToEditorLine } from '@/features/editor/subsystems/navigation';
 import { editorCommandBus, setActiveEditorEngine } from '@/features/editor/core';
-import { manuscriptService } from '@/features/editor/sdk/manuscript.service';
+import { pagesService } from '@/features/editor/sdk/pages.service';
 import type { PageSuggestion } from '@/features/editor/domain/types/suggestion.types';
 
 // Mock next/navigation
@@ -43,7 +43,7 @@ vi.mock('next/navigation', () => ({
 const mockComments: any[] = (globalThis as any).__reviewMocks.mockComments;
 const mockSuggestions: PageSuggestion[] = (globalThis as any).__reviewMocks.mockSuggestions;
 
-vi.mock('@/features/editor/ui/hooks/usePageActions', () => ({
+vi.mock('@/features/editor/core/queries/usePageActions', () => ({
   usePageActions: () => ({
     updateTitle: { isPending: false },
   }),
@@ -71,8 +71,8 @@ describe('Track Changes & Review Panel (Overleaf Parity)', () => {
     vi.clearAllMocks();
     mockComments.length = 0;
     mockSuggestions.length = 0;
-    vi.spyOn(manuscriptService.suggestions, 'getSuggestions').mockImplementation(async () => [...mockSuggestions]);
-    vi.spyOn(manuscriptService.comments, 'getComments').mockImplementation(async () => [...mockComments]);
+    vi.spyOn(pagesService.suggestions, 'getSuggestions').mockImplementation(async () => [...mockSuggestions]);
+    vi.spyOn(pagesService.comments, 'getComments').mockImplementation(async () => [...mockComments]);
     document.body.removeAttribute('data-scroll-locked');
     document.body.style.pointerEvents = '';
     document.querySelectorAll('[aria-hidden]').forEach((el) => {

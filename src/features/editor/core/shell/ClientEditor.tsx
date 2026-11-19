@@ -12,7 +12,7 @@ import React, { useEffect } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { TooltipProvider } from '@/shared/components/ui/tooltip';
 import { useSafeQueryClient } from '@/features/editor/subsystems/review/ui/hooks/safeQueryClient';
-import { editorBootstrapQuery } from '@/features/editor/ui/hooks/document.queries';
+import { editorBootstrapQuery } from '@/features/editor/core/queries/document.queries';
 import { sessionCoordinator } from '../coordinator/session.coordinator';
 import EditorSkeleton from './EditorSkeleton';
 

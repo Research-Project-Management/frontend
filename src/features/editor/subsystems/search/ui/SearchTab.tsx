@@ -4,7 +4,7 @@
  * SearchTab.tsx
  *
  * Canonical Full Project Regex and Text Search Viewlet (Block 6: UI Features Layer).
- * Location: `features/editor/ui/features/sidebar/search/SearchTab.tsx`
+ * Location: `features/editor/subsystems/search/ui/SearchTab.tsx`
  */
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
@@ -32,8 +32,8 @@ import {
 } from "@/features/editor/core";
 import { SEARCH_RESULTS_VIRTUAL_THRESHOLD } from "@/features/editor/domain/constants/editor.constants";
 import { useDebounce } from "@/shared/hooks/use-debounce";
-import { manuscriptService } from "@/features/editor/sdk/pages.service";
-import { useEditorInstance } from "@/features/editor/ui/hooks/useEditorInstance";
+import { pagesService } from "@/features/editor/sdk/pages.service";
+import { useEditorInstance } from "@/features/editor/core/bus/use-editor-instance";
 import { extractProjectId } from "@/features/editor/domain/types/core.types";
 import { PlaneEmptyState } from '@/shared/components/ui/PlaneEmptyState';
 import { PlaneErrorState } from '@/shared/components/ui/PlaneErrorState';
@@ -210,12 +210,12 @@ export default function SearchTab() {
       if (hadDirtyBeforeFlush) {
         const flushRes = await sessionCoordinator.flushAllPending();
         if (!flushRes || flushRes.total > 0) {
-          await manuscriptService.updater
+          await pagesService.updater
             .flushProject(effectiveSpaceOrProjectId || explicitPageId!)
             .catch(() => {});
         }
       }
-      return manuscriptService.search.search(effectiveSpaceOrProjectId, effectiveQuery, {
+      return pagesService.search.search(effectiveSpaceOrProjectId, effectiveQuery, {
         caseSensitive,
         wholeWord,
         useRegex,

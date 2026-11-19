@@ -7,15 +7,15 @@ import { useSettingsStore } from '@/features/editor/core';
 import { toast } from 'sonner';
 
 
-vi.mock('@/features/editor/sdk/manuscript.service', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/features/editor/sdk/manuscript.service')>();
+vi.mock('@/features/editor/sdk/pages.service', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/editor/sdk/pages.service')>();
   return {
     ...actual,
     listAuxFiles: vi.fn().mockResolvedValue([]),
     downloadAuxFileUrl: vi.fn(),
     downloadAllArtifactsZipUrl: vi.fn(),
-    manuscriptService: {
-      ...actual.manuscriptService,
+    pagesService: {
+      ...actual.pagesService,
       diagnostics: {
         parseLog: vi.fn().mockResolvedValue(null),
         getExplanation: vi.fn().mockResolvedValue(null),

@@ -31,7 +31,7 @@ import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { cn } from '@/shared/lib/utils';
-import { manuscriptService } from '@/features/editor/core';
+import { pagesService } from '@/features/editor/core';
 import { pageKeys } from '../../hooks/use-page';
 
 export interface TemplateItem {
@@ -111,7 +111,7 @@ export function TemplatePickerDialog({
     queryKey: ['academic-templates', selectedCategory, searchQuery],
     queryFn: async () => {
       try {
-        const res = await manuscriptService.templates.list({
+        const res = await pagesService.templates.list({
           category: selectedCategory === 'all' ? undefined : selectedCategory,
           search: searchQuery || undefined,
         });
@@ -140,7 +140,7 @@ export function TemplatePickerDialog({
     queryFn: async () => {
       if (!activeTemplate?.id) return null;
       try {
-        const res = await manuscriptService.templates.getById(activeTemplate.id);
+        const res = await pagesService.templates.getById(activeTemplate.id);
         return (res as unknown as TemplateItem) || null;
       } catch {
         return null;
@@ -194,7 +194,7 @@ export function TemplatePickerDialog({
     const toastId = toast.loading(`Scaffolding ${activeTemplate.title}...`);
 
     try {
-      const result = await manuscriptService.export.scaffoldTemplate(
+      const result = await pagesService.export.scaffoldTemplate(
         projectId,
         activeTemplate.id
       );

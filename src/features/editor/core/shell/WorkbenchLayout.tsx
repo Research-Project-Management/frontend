@@ -27,14 +27,14 @@ import { WorkbenchShell } from './WorkbenchShell';
 import { ActivityBar } from './ActivityBar';
 import Topbar from './Topbar';
 import { PrimarySidebar } from './PrimarySidebar';
-import { EditorArea } from '@/features/editor/ui/editor/EditorArea';
+import { EditorArea } from '@/features/editor/core/surface/EditorArea';
 
-import { filesQuery } from '@/features/editor/ui/hooks/document.queries';
+import { filesQuery } from '@/features/editor/core/queries/document.queries';
 import { usePageStore } from '../store/editor.store';
 import { useSettingsStore } from '../store/settings.store';
 import { useWorkspaceStore, type ActivityBarTab } from '../store/workspace.store';
-import { useEditorInstance } from '@/features/editor/ui/hooks/useEditorInstance';
-import { useActiveDocument } from '@/features/editor/ui/hooks/useActiveDocument';
+import { useEditorInstance } from '@/features/editor/core/bus/use-editor-instance';
+import { useActiveDocument } from '@/features/editor/core/queries/useActiveDocument';
 import { editorCommandBus, getActiveEditorEngine } from '../bus/command-bus';
 import { keybindingCoordinator } from '@/features/editor/subsystems/keybinding';
 import { useViewItems } from '@/features/library/sdk/queries/catalog.queries';
@@ -44,18 +44,18 @@ import { DEFAULT_MAIN_FILE } from '@/features/editor/domain/constants/editor.con
 
 const PdfViewer = dynamic(() => import('@/features/editor/subsystems/compiler').then(m => m.PdfViewer), { ssr: false });
 const DetachedPdfPlaceholder = dynamic(() => import('@/features/editor/subsystems/compiler').then(m => m.DetachedPdfPlaceholder), { ssr: false });
-const ProjectSettingsModal = dynamic(() => import('@/features/editor/ui/modals/project-settings/ProjectSettingsModal'), { ssr: false });
-const DeletedFilesModal = dynamic(() => import('@/features/editor/ui/modals/DeletedFilesModal'), { ssr: false });
-const WordCountModal = dynamic(() => import('@/features/editor/ui/modals/WordCountModal'), { ssr: false });
+const ProjectSettingsModal = dynamic(() => import('@/features/editor/subsystems/project-settings/ui/ProjectSettingsModal'), { ssr: false });
+const DeletedFilesModal = dynamic(() => import('@/features/editor/subsystems/explorer/ui/modals/DeletedFilesModal'), { ssr: false });
+const WordCountModal = dynamic(() => import('@/features/editor/subsystems/compiler/ui/modals/WordCountModal'), { ssr: false });
 const CitationPickerModal = dynamic(() => import('@/features/editor/subsystems/citation/ui/modals/CitationPickerModal'), { ssr: false });
 const RenameCitationModal = dynamic(() => import('@/features/editor/subsystems/citation/ui/modals/RenameCitationModal'), { ssr: false });
 const HistoryPage = dynamic(() => import('@/features/editor/subsystems/history/ui/HistoryPage'), { ssr: false });
-const TableWizardModal = dynamic(() => import('@/features/editor/ui/modals/table-wizard/TableWizardModal'), { ssr: false });
-const FigureWizardModal = dynamic(() => import('@/features/editor/ui/modals/FigureWizardModal'), { ssr: false });
-const SymbolPaletteModal = dynamic(() => import('@/features/editor/ui/modals/SymbolPaletteModal'), { ssr: false });
-const TemplateGalleryModal = dynamic(() => import('@/features/editor/ui/modals/TemplateGalleryModal'), { ssr: false });
-const KeyboardShortcutsModal = dynamic(() => import('@/features/editor/ui/modals/KeyboardShortcutsModal'), { ssr: false });
-const QuickOpenModal = dynamic(() => import('@/features/editor/ui/modals/QuickOpenModal'), { ssr: false });
+const TableWizardModal = dynamic(() => import('@/features/editor/subsystems/authoring-wizards/ui/table-wizard/TableWizardModal'), { ssr: false });
+const FigureWizardModal = dynamic(() => import('@/features/editor/subsystems/authoring-wizards/ui/FigureWizardModal'), { ssr: false });
+const SymbolPaletteModal = dynamic(() => import('@/features/editor/subsystems/authoring-wizards/ui/SymbolPaletteModal'), { ssr: false });
+const TemplateGalleryModal = dynamic(() => import('@/features/editor/subsystems/explorer/ui/modals/TemplateGalleryModal'), { ssr: false });
+const KeyboardShortcutsModal = dynamic(() => import('@/features/editor/subsystems/keybinding/ui/KeyboardShortcutsModal'), { ssr: false });
+const QuickOpenModal = dynamic(() => import('@/features/editor/subsystems/navigation/ui/QuickOpenModal'), { ssr: false });
 
 /** Safely extracts LaTeX string content from active engine or document entity */
 function getDocContent(doc: unknown, fallbackEngineContent?: string): string {
@@ -459,5 +459,4 @@ export function WorkbenchLayout() {
   );
 }
 
-export { WorkbenchLayout as ModernWorkbenchLayout };
 export default WorkbenchLayout;

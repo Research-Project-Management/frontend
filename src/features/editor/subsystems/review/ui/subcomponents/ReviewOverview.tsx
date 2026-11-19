@@ -12,7 +12,7 @@ import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { FileText, Loader2 } from 'lucide-react';
 import { usePageStore } from '@/features/editor/core';
-import { manuscriptService } from '@/features/editor/sdk/pages.service';
+import { pagesService } from '@/features/editor/sdk/pages.service';
 import { usePageComments } from '@/features/editor/subsystems/review/ui/hooks/useComment';
 import {
   usePageSuggestions,
@@ -189,7 +189,7 @@ export function OverviewView({
   const { data: overviewData, isLoading: isOverviewLoading } = useQuery({
     queryKey: ['project-review-overview', overviewScopeId, isPageScope ? 'page' : 'project'],
     queryFn: () =>
-      manuscriptService.review.getProjectOverview(overviewScopeId, {
+      pagesService.review.getProjectOverview(overviewScopeId, {
         isPageScope,
       }),
     enabled: Boolean(overviewScopeId),

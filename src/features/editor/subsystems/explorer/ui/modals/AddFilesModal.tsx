@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/shared/components/ui/dialog';
-import { usePageActions } from '@/features/editor/ui/hooks/usePageActions';
+import { usePageActions } from '@/features/editor/core/queries/usePageActions';
 import { usePageStore, syncShallowUrlParams } from '@/features/editor/core';
 
 import type {

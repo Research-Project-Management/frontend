@@ -14,9 +14,7 @@
 export {
   compilerCoordinator,
   CompilerCoordinator,
-  CompilerCoordinator as CompilerCoordinatorRegistry,
   SnapshotProvider,
-  SnapshotProvider as CompilationSnapshotProvider,
   buildPageStoreFilePaths,
   type CompileOptions,
   type SyncTeXForwardDetail,
@@ -24,11 +22,8 @@ export {
 } from './coordinator/compiler.coordinator';
 export {
   CompilePipeline,
-  CompilePipeline as LatexCompilerEngine,
   generateThumbnail,
   type CompilerPort,
-  type CompilerPort as CompilerExecutionEngine,
-  type CompilerPort as CompilerExecutionPort,
   type CompileExecutionOptions,
   type CompileExecutionResult,
   type DirtyFileItem,
@@ -123,7 +118,6 @@ export { useSynchronizedScroll } from './ui/hooks/useSynchronizedScroll';
 // 5. Pre-Compile Flush Barrier
 export {
   FlushBarrier,
-  FlushBarrier as CompilationFlushBarrier,
   type FlushBarrierResult,
 } from './coordinator/flush-barrier';
 

@@ -78,7 +78,7 @@ export type MultiTabEventPayload =
       pageId: string;
     }
   | {
-      type: 'EDITOR_OFFLINE_DRAFT_UPDATED';
+      type: 'EDITOR_UNSYNCED_EDIT_UPDATED';
       fileId: string;
       projectId?: string;
       content: string;

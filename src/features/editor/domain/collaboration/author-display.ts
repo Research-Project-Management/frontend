@@ -48,8 +48,6 @@ export function formatReviewDate(iso: string | null | undefined): string {
   }
 }
 
-export { formatReviewDate as formatOverleafDate };
-
 /**
  * Format relative time (e.g. "just now", "10m ago", "2h ago", "1d ago")
  */

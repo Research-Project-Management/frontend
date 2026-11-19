@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import React from 'react';
-import { EditorArea } from '@/features/editor/ui/editor/EditorArea';
+import { EditorArea } from '@/features/editor/core/surface/EditorArea';
 import { useSettingsStore, useWorkspaceStore } from '@/features/editor/core';
 import { lruDocumentCache } from '@/features/editor/domain/document/lru-document-cache';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -16,7 +16,7 @@ const createTestQueryClient = () =>
     },
   });
 
-vi.mock('@/features/editor/ui/hooks/document.queries', () => ({
+vi.mock('@/features/editor/core/queries/document.queries', () => ({
   filesQuery: () => ({ queryKey: ['files'], queryFn: vi.fn() }),
   pageQuery: () => ({ queryKey: ['page'], queryFn: vi.fn() }),
 }));
@@ -30,7 +30,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 // Mock useActiveDocument to supply test manuscript document
-vi.mock('@/features/editor/ui/hooks/useActiveDocument', () => ({
+vi.mock('@/features/editor/core/queries/useActiveDocument', () => ({
   useActiveDocument: () => ({
     isLoading: false,
     activePage: {
@@ -54,7 +54,7 @@ vi.mock('@/features/editor/ui/hooks/useActiveDocument', () => ({
 }));
 
 // Mock CodeMirrorView to identify it easily in tests
-vi.mock('@/features/editor/ui/editor/CodeMirrorView', () => ({
+vi.mock('@/features/editor/core/surface/CodeMirrorView', () => ({
   CodeMirrorView: (props: any) => (
     <div data-testid="mock-codemirror-view" data-file-id={props.fileId}>
       <span>CodeMirror Engine Mock</span>

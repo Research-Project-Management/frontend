@@ -4,9 +4,14 @@ import {
   lruDocumentCache,
   type DocumentModelState,
 } from '@/features/editor/domain/document/lru-document-cache';
-import { draftStorageService } from '@/features/editor/domain/document/draft-storage';
+import {
+  unsyncedEditsStore,
+  syncedDocCacheStore,
+  defaultDocumentSpillSink,
+  clearAllOfflineMemory,
+} from '@/features/editor/domain/offline-storage';
 import { sessionCoordinator } from '@/features/editor/core';
-import { manuscriptService } from '@/features/editor/sdk/pages.service';
+import { pagesService } from '@/features/editor/sdk/pages.service';
 import { useCompileStore } from '@/features/editor/core';
 import { useConnectivityStore } from '@/features/editor/core';
 import { usePageStore } from '@/features/editor/core';
@@ -26,7 +31,7 @@ describe('LRU Document Cache & Local-First Offline Draft Sync (Overleaf Parity)'
   afterEach(() => {
     vi.useRealTimers();
     vi.clearAllMocks();
-    draftStorageService.clearMemory();
+    clearAllOfflineMemory();
     try {
       localStorage.clear();
     } catch {}
@@ -116,8 +121,8 @@ describe('LRU Document Cache & Local-First Offline Draft Sync (Overleaf Parity)'
       expect(cache.has('doc-2')).toBe(false);
     });
 
-    it('automatically persists dirty documents to DraftStorageService upon eviction', async () => {
-      const saveDraftSpy = vi.spyOn(draftStorageService, 'saveDraft').mockResolvedValue(undefined);
+    it('automatically persists dirty documents to UnsyncedEditsStore upon eviction', async () => {
+      const saveUnsyncedSpy = vi.spyOn(unsyncedEditsStore, 'save').mockResolvedValue(undefined);
 
       const cache = new LRUDocumentCache();
       cache.setCapacity(2);
@@ -131,17 +136,17 @@ describe('LRU Document Cache & Local-First Offline Draft Sync (Overleaf Parity)'
 
       cache.registerModel('doc-clean', { content: 'Clean Doc' });
 
-      // Pushing doc-3 should evict doc-dirty and trigger saveDraft
+      // Pushing doc-3 should evict doc-dirty and trigger unsyncedEditsStore.save
       cache.registerModel('doc-3', { content: 'Doc 3' });
 
       expect(cache.has('doc-dirty')).toBe(false);
-      expect(saveDraftSpy).toHaveBeenCalledWith(
+      expect(saveUnsyncedSpy).toHaveBeenCalledWith(
         'doc-dirty',
         '\\section{Unsaved Draft Changes}',
         'proj-123',
         'main.tex'
       );
-      saveDraftSpy.mockRestore();
+      saveUnsyncedSpy.mockRestore();
     });
 
     it('notifies eviction listeners when documents are removed', () => {
@@ -162,46 +167,46 @@ describe('LRU Document Cache & Local-First Offline Draft Sync (Overleaf Parity)'
     });
   });
 
-  describe('2. DraftStorageService Resilience & Recovery', () => {
-    it('saves and retrieves document snapshots across storage tiers', async () => {
-      await draftStorageService.saveDraft(
+  describe('2. UnsyncedEditsStore Resilience & Recovery', () => {
+    it('saves and retrieves document unsynced edits across storage tiers', async () => {
+      await unsyncedEditsStore.save(
         'file-draft-1',
         '\\begin{equation} E = mc^2 \\end{equation}',
         'project-abc',
         'math.tex'
       );
 
-      const draft = await draftStorageService.getDraft('file-draft-1');
-      expect(draft).not.toBeNull();
-      expect(draft?.fileId).toBe('file-draft-1');
-      expect(draft?.content).toBe('\\begin{equation} E = mc^2 \\end{equation}');
-      expect(draft?.projectId).toBe('project-abc');
-      expect(draft?.title).toBe('math.tex');
-      expect(draft?.savedAt).toBeGreaterThan(0);
+      const edit = await unsyncedEditsStore.get('file-draft-1');
+      expect(edit).not.toBeNull();
+      expect(edit?.fileId).toBe('file-draft-1');
+      expect(edit?.content).toBe('\\begin{equation} E = mc^2 \\end{equation}');
+      expect(edit?.projectId).toBe('project-abc');
+      expect(edit?.title).toBe('math.tex');
+      expect(edit?.savedAt).toBeGreaterThan(0);
     });
 
-    it('clears draft after successful server synchronization', async () => {
-      await draftStorageService.saveDraft('file-to-clear', 'Some Draft Content');
-      expect(await draftStorageService.getDraft('file-to-clear')).not.toBeNull();
+    it('clears unsynced edit after successful server synchronization', async () => {
+      await unsyncedEditsStore.save('file-to-clear', 'Some Unsynced Content');
+      expect(await unsyncedEditsStore.get('file-to-clear')).not.toBeNull();
 
-      await draftStorageService.clearDraft('file-to-clear');
-      expect(await draftStorageService.getDraft('file-to-clear')).toBeNull();
+      await unsyncedEditsStore.clear('file-to-clear');
+      expect(await unsyncedEditsStore.get('file-to-clear')).toBeNull();
     });
 
-    it('retrieves all recent drafts for a specific project', async () => {
-      await draftStorageService.saveDraft('doc-p1-a', 'P1 Content A', 'proj-target');
-      await draftStorageService.saveDraft('doc-p1-b', 'P1 Content B', 'proj-target');
-      await draftStorageService.saveDraft('doc-p2-c', 'P2 Content C', 'proj-other');
+    it('retrieves all recent unsynced edits for a specific project', async () => {
+      await unsyncedEditsStore.save('doc-p1-a', 'P1 Content A', 'proj-target');
+      await unsyncedEditsStore.save('doc-p1-b', 'P1 Content B', 'proj-target');
+      await unsyncedEditsStore.save('doc-p2-c', 'P2 Content C', 'proj-other');
 
-      const projectDrafts = await draftStorageService.getRecentDraftsForProject('proj-target');
-      expect(projectDrafts.length).toBe(2);
-      expect(projectDrafts.map((d) => d.fileId).sort()).toEqual(['doc-p1-a', 'doc-p1-b']);
+      const projectEdits = await unsyncedEditsStore.getAllByScope('proj-target');
+      expect(projectEdits.length).toBe(2);
+      expect(projectEdits.map((d) => d.fileId).sort()).toEqual(['doc-p1-a', 'doc-p1-b']);
     });
   });
 
   describe('3. SessionCoordinator Offline Resilience & Reconnection Sync', () => {
-    it('notifies content changes, updates RAM cache, marks compile dirty, and saves draft snapshot', () => {
-      const saveDraftSpy = vi.spyOn(sessionCoordinator, 'saveDraftSnapshot');
+    it('notifies content changes, updates RAM cache, marks compile dirty, and saves unsynced edit', () => {
+      const saveUnsyncedSpy = vi.spyOn(sessionCoordinator, 'saveUnsyncedEdit');
       usePageStore.setState({ projectId: 'proj-sync' });
 
       lruDocumentCache.registerModel('doc-editing', { content: 'Initial' });
@@ -217,36 +222,36 @@ describe('LRU Document Cache & Local-First Offline Draft Sync (Overleaf Parity)'
       // 2. Compile store must be dirty
       expect(useCompileStore.getState().dirtyContentMap.get('doc-editing')).toBe('New Edited Content');
 
-      // 3. Draft snapshot must have been requested
-      expect(saveDraftSpy).toHaveBeenCalledWith('doc-editing', 'New Edited Content', 'proj-sync');
+      // 3. Unsynced edit save must have been requested
+      expect(saveUnsyncedSpy).toHaveBeenCalledWith('doc-editing', 'New Edited Content', 'proj-sync');
     });
 
-    it('detects recoverable local drafts when local unsaved content differs from server', async () => {
+    it('detects recoverable local edits when local unsaved content differs from server', async () => {
       lruDocumentCache.registerModel('file-conflict', {
-        content: 'Local unsaved draft text',
+        content: 'Local unsaved edit text',
         filePath: 'intro.tex',
         projectId: 'p1',
       });
       lruDocumentCache.markDirty('file-conflict');
 
-      const recovery = sessionCoordinator.checkDraftRecovery(
+      const recovery = sessionCoordinator.checkUnsyncedEditRecovery(
         'file-conflict',
         'Stale server text'
       );
 
-      expect(recovery.hasRecoverableDraft).toBe(true);
-      expect(recovery.draft?.content).toBe('Local unsaved draft text');
+      expect(recovery.hasRecoverableEdit).toBe(true);
+      expect(recovery.edit?.content).toBe('Local unsaved edit text');
 
       // If server matches local dirty content, no conflict recovery needed
-      const noRecovery = sessionCoordinator.checkDraftRecovery(
+      const noRecovery = sessionCoordinator.checkUnsyncedEditRecovery(
         'file-conflict',
-        'Local unsaved draft text'
+        'Local unsaved edit text'
       );
-      expect(noRecovery.hasRecoverableDraft).toBe(false);
+      expect(noRecovery.hasRecoverableEdit).toBe(false);
     });
 
-    it('persists outgoing draft and switches active file when switching tabs', () => {
-      const saveDraftSpy = vi.spyOn(sessionCoordinator, 'saveDraftSnapshot');
+    it('persists outgoing unsynced edit and switches active file when switching tabs', () => {
+      const saveUnsyncedSpy = vi.spyOn(sessionCoordinator, 'saveUnsyncedEdit');
 
       lruDocumentCache.registerModel('tab-1', { content: 'Tab 1 dirty content' });
       lruDocumentCache.markDirty('tab-1');
@@ -255,13 +260,13 @@ describe('LRU Document Cache & Local-First Offline Draft Sync (Overleaf Parity)'
 
       sessionCoordinator.switchTab('tab-1', 'tab-2');
 
-      expect(saveDraftSpy).toHaveBeenCalledWith('tab-1', 'Tab 1 dirty content', undefined);
+      expect(saveUnsyncedSpy).toHaveBeenCalledWith('tab-1', 'Tab 1 dirty content', undefined);
       expect(lruDocumentCache.getStats().mruFileId).toBe('tab-2');
     });
 
-    it('flushes all pending dirty documents and clears drafts upon network reconnection', async () => {
-      const updateContentSpy = vi.spyOn(manuscriptService.docs, 'updateContent').mockResolvedValue({} as any);
-      const clearDraftSpy = vi.spyOn(sessionCoordinator, 'clearDraftSnapshot');
+    it('flushes all pending dirty documents and clears unsynced edits upon network reconnection', async () => {
+      const updateContentSpy = vi.spyOn(pagesService.docs, 'updateContent').mockResolvedValue({} as any);
+      const clearUnsyncedSpy = vi.spyOn(sessionCoordinator, 'clearUnsyncedEdit');
 
       lruDocumentCache.registerModel('pending-1', { content: 'Pending Content 1' });
       lruDocumentCache.markDirty('pending-1');
@@ -276,16 +281,16 @@ describe('LRU Document Cache & Local-First Offline Draft Sync (Overleaf Parity)'
       expect(flushResult.failed).toBe(0);
 
       expect(updateContentSpy).toHaveBeenCalledTimes(2);
-      expect(clearDraftSpy).toHaveBeenCalledWith('pending-1');
-      expect(clearDraftSpy).toHaveBeenCalledWith('pending-2');
+      expect(clearUnsyncedSpy).toHaveBeenCalledWith('pending-1');
+      expect(clearUnsyncedSpy).toHaveBeenCalledWith('pending-2');
 
       // All models should now be marked clean
       expect(lruDocumentCache.getDirtyModels().length).toBe(0);
     });
 
-    it('hydrateModelAsync marks model dirty when restoring from draft and skips persistence when evictModel uses skipPersistence', async () => {
+    it('hydrateModelAsync marks model dirty when restoring from unsynced edit and skips persistence when evictModel uses skipPersistence', async () => {
       const now = Date.now();
-      await draftStorageService.saveProjectFileSnapshot({
+      await syncedDocCacheStore.put({
         id: 'doc-hyd-draft',
         projectId: 'proj-hyd',
         title: 'drafted.tex',
@@ -293,35 +298,35 @@ describe('LRU Document Cache & Local-First Offline Draft Sync (Overleaf Parity)'
         filePath: 'drafted.tex',
         updatedAt: now - 5000,
       });
-      await draftStorageService.saveDraft(
+      await unsyncedEditsStore.save(
         'doc-hyd-draft',
-        'Newer local draft edits',
+        'Newer local unsynced edits',
         'proj-hyd',
         'drafted.tex',
       );
 
-      const cache = new LRUDocumentCache(draftStorageService);
+      const cache = new LRUDocumentCache(defaultDocumentSpillSink);
       const hydrated = await cache.hydrateModelAsync(
         'doc-hyd-draft',
         'fallback',
         'drafted.tex',
         'proj-hyd',
       );
-      expect(hydrated.content).toBe('Newer local draft edits');
+      expect(hydrated.content).toBe('Newer local unsynced edits');
       expect(hydrated.isDirty).toBe(true);
       expect(cache.isDirty('doc-hyd-draft')).toBe(true);
 
-      const saveDraftSpy = vi.spyOn(draftStorageService, 'saveDraft');
-      const saveSnapSpy = vi.spyOn(draftStorageService, 'saveProjectFileSnapshot');
+      const saveUnsyncedSpy = vi.spyOn(defaultDocumentSpillSink, 'saveUnsyncedEdit');
+      const putSyncedSpy = vi.spyOn(defaultDocumentSpillSink, 'putSyncedDoc');
 
       cache.evictModel('doc-hyd-draft', { skipPersistence: true });
       expect(cache.has('doc-hyd-draft')).toBe(false);
-      expect(saveDraftSpy).not.toHaveBeenCalled();
-      expect(saveSnapSpy).not.toHaveBeenCalled();
+      expect(saveUnsyncedSpy).not.toHaveBeenCalled();
+      expect(putSyncedSpy).not.toHaveBeenCalled();
 
-      // evictDeletedFile should also purge the cached project file snapshot
+      // evictDeletedFile should also purge the cached synced doc
       sessionCoordinator.evictDeletedFile('doc-hyd-draft');
-      expect(await draftStorageService.getProjectFileSnapshot('doc-hyd-draft')).toBeNull();
+      expect(await syncedDocCacheStore.get('doc-hyd-draft')).toBeNull();
     });
   });
 });
